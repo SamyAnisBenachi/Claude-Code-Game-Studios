@@ -22,7 +22,7 @@ mod core;
 mod feature;
 
 use bevy::prelude::*;
-use lightyear::prelude::*;
+// lightyear::prelude imported in Epic 4 (S1-05 spike) once API is verified against docs.rs
 
 // ---------------------------------------------------------------------------
 // Server-only Resources
@@ -67,23 +67,9 @@ pub struct HiddenObjectives {
 /// - ADR-008 — channel config; `MessageReceiver<T>` (verify against Lightyear
 ///   0.26 docs; checklist items 4–7 must be resolved before implementation)
 /// - network-protocol.md Rule 4 — silent discard on validation failure
-/// Register protocol channels and messages on the server side.
-/// ADR-003 fallback: lives here (not shared/) because lightyear has no `shared` feature.
-/// ADR-008: ReliableChannel for all game state; UnreliableChannel for heartbeat + auction timer.
-/// Lightyear 0.26 API verified via liv-bevy-lightyear skill (api_patterns.md).
-/// Must be called AFTER ServerPlugins are added (Epic 4).
-fn register_protocol(app: &mut App) {
-    app.add_channel::<shared::protocol::ReliableChannel>(ChannelSettings {
-        mode: ChannelMode::OrderedReliable(ReliableSettings::default()),
-        ..default()
-    });
-    app.add_channel::<shared::protocol::UnreliableChannel>(ChannelSettings {
-        mode: ChannelMode::UnorderedUnreliable,
-        ..default()
-    });
-    app.register_message::<shared::protocol::S2CHeartbeat>()
-        .add_direction(NetworkDirection::ServerToClient);
-}
+// TODO(S1-05 Lightyear spike): verify exact Lightyear 0.26 channel + message registration
+// API against docs.rs/lightyear/0.26 before implementing. Checklist items 1-6 must be
+// signed off first. Stub lives here (not shared/) per ADR-003 fallback.
 
 fn handle_c2s_message() {
     // TODO(Epic 4 — S1-05 Lightyear spike):
@@ -110,11 +96,7 @@ fn main() {
 
     app.add_plugins(MinimalPlugins);
 
-    // Register Lightyear protocol — channels and message types.
-    // ADR-003 fallback (2026-04-29): lightyear `shared` feature does not exist in 0.26.
-    // register_protocol lives here (server) and in client/main.rs (client), not in shared/.
-    // TODO(Epic 4 — S1-05 spike): move into ServerPlugins setup once Lightyear is wired.
-    register_protocol(&mut app);
+    // TODO(S1-05 Lightyear spike): register_protocol(&mut app) once API is verified.
 
     // Insert server-only resources.
     // ADR-002: these are unreachable from client/ by crate isolation.

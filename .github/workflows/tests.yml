@@ -136,17 +136,17 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
-      - name: Assert no tokio/rand_chacha in client/
+      - name: Assert no rand_chacha in client/ (tokio allowed — lightyear websocket native dep)
         run: |
           set -euo pipefail
           TREE=$(cargo tree -p client --prefix none)
-          VIOLATIONS=$(echo "$TREE" | grep -E '^(tokio|rand_chacha) ' || true)
+          VIOLATIONS=$(echo "$TREE" | grep -E '^(rand_chacha) ' || true)
           if [ -n "$VIOLATIONS" ]; then
-            echo "FAIL: disallowed crates in client/ dep tree:"
+            echo "FAIL: rand_chacha found in client/ dep tree — gameplay RNG must stay server-side:"
             echo "$VIOLATIONS"
             exit 1
           fi
-          echo "PASS: client/ dep tree clean"
+          echo "PASS: client/ dep tree clean (rand_chacha absent)"
 
   dep-gate-server:
     name: server/ dep purity

@@ -6,7 +6,7 @@ description = "Headless Bevy game server. All authoritative game state lives her
 
 [dependencies]
 shared = { path = "../shared" }
-bevy = { version = "0.18", default-features = false, features = ["multi_threaded"] }
+bevy = { version = "0.18", default-features = false, features = ["bevy_ecs", "multi_threaded"] }
 lightyear = { version = "0.26", features = ["server", "websocket"] }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
