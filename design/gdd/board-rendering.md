@@ -403,7 +403,7 @@ total_ms = pre_animation_pause_ms
 | **Combat Resolution** (Designed) | Hard | Resolution sub-step event data arrives via `S2CResolutionEvent` (owned by Network Protocol); Board Rendering has no direct interface with Combat Resolution |
 | **Network Protocol** (Approved) | Hard | `S2CPlacementReveal` → fog lift + unit reveal; `S2CResolutionEvent` → animation queue; `S2CPhaseChanged` → all `BoardRenderState` transitions; `S2CGameSnapshot` → full board rebuild on connect/reconnect |
 | **Card Data & Pool** (Approved) | Hard | `TextureAtlas` asset loaded at startup; slice index looked up by `card_id` at unit spawn time; fallback to placeholder sprite if `card_id` is missing (EC-12) |
-| **Game Config** (Approved) | Soft | `lane_count=5` and `cells_per_lane=8` confirm board grid dimensions at startup; animation timing constants (`resolution_sub_step_duration_ms`, `fog_lift_duration_ms`, `pre_animation_pause_ms`, `inter_step_pause_ms`) loaded from `GameConfig` resource |
+| **Game Config** (Approved) | Hard | `lane_count=5` and `cells_per_lane=8` confirm board grid dimensions at startup; animation timing constants (`board_sub_step_duration_ms`, `board_fog_lift_ms`, `board_pre_anim_pause_ms`, `board_inter_step_pause_ms`, `board_objective_reveal_hold_ms`) and visual tuning (`board_fog_opacity`, `board_cell_width`, `board_lane_height`, `board_hp_*_threshold`, `board_co_occupancy_offset`, `board_prism_spin_speed`) loaded from `GameConfig` resource (added to game-config.md 2026-04-30) |
 
 ### Peer Presentation Systems (same layer — no hard dependency, shared resource)
 

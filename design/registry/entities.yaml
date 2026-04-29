@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-04-29"  # updated: shop-auction-ui.md authored — 1 new formula (local_free_gold); referenced_by updated on 6 entries
+last_updated: "2026-04-30"  # updated: /consistency-check resolved 2 conflicts post-board-rendering revision — registered S2CObjectiveIdentities (was in ADR-001 only); board-rendering animation timing fields added to game-config.md
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -1104,6 +1104,21 @@ network_messages:
     payload: "{ player_id: PlayerId, gold: u32, reserved_gold: u32 }"
     channel: reliable
     notes: "Broadcast to all players on any gold mutation. reserved_gold = amount locked by the player's current auction bid (0 outside DRAFT_AUCTION by invariant). free_gold = gold - reserved_gold. Used by auction panel to display both players' available gold. See formula local_free_gold in shop-auction-ui.md."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: S2CObjectiveIdentities
+    status: active
+    source: docs/architecture/adr-001-objective-identity-unicast.md  # ADR is authoritative; NP GDD wraps for delivery
+    referenced_by:
+      - design/gdd/network-protocol.md
+      - design/gdd/board-rendering.md
+      - design/ux/hud.md
+      - docs/architecture/adr-003-cargo-workspace-structure.md
+    payload: "{ identities: Vec<(LaneId, bool)> }"
+    channel: reliable
+    scope: "unicast (owner)"
+    notes: "Per-client objective identity reveal. Sent once at DRAFT_INITIAL to each player with their own (lane, is_fake) tuples. MUST be re-sent on reconnect after S2CGameSnapshot — reliable delivery guarantees in-session but not reconnect replay. Payload ~6 bytes/player. Source-of-truth: ADR-001. Board Rendering caches in ObjectiveIdentityCache resource; Rule 12 forbids reading it for standing-objective rendering; only used for Sang Méprise audio-suppression branch."
     added: "2026-04-30"
     revised: ""
 

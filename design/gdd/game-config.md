@@ -80,6 +80,22 @@ pub struct GameConfig {
     pub hello_timeout_ms: u32,
     pub ack_timeout_ms: u32,
     pub heartbeat_interval_ms: u32,
+
+    // Board Rendering — animation timings (added 2026-04-30 per board-rendering.md /design-review revision)
+    pub board_pre_anim_pause_ms: u32,        // default 400; safe 200–800
+    pub board_sub_step_duration_ms: u32,     // default 600; safe 400–1000 (was 800; tightened 2026-04-30 to defend ≤5s match watch budget)
+    pub board_inter_step_pause_ms: u32,      // default 150; safe 100–300 (was 200; tightened 2026-04-30)
+    pub board_fog_lift_ms: u32,              // default 350; safe 200–600
+    pub board_objective_reveal_hold_ms: u32, // default 500; safe 300–800
+
+    // Board Rendering — visual tuning (added 2026-04-30)
+    pub board_fog_opacity: f32,              // default 0.6; safe 0.4–0.8
+    pub board_cell_width: f32,               // default 64.0; safe 48–96 (world units)
+    pub board_lane_height: f32,              // default 80.0; safe 64–112 (world units)
+    pub board_hp_green_threshold: f32,       // default 0.6; safe 0.5–0.75
+    pub board_hp_red_threshold: f32,         // default 0.3; safe 0.2–0.4
+    pub board_co_occupancy_offset: f32,      // default 8.0; safe 4–16 (2v2 only)
+    pub board_prism_spin_speed: f32,         // default 0.5; safe 0.2–1.0 (rad/s)
 }
 ```
 
@@ -137,6 +153,7 @@ No partial states. `GameConfig` is either fully available or the server is not r
 | **Objective System** | `objective_hp`, `fake_count` |
 | **Board / Lane System** | `fake_objective_spawn_advance` |
 | **Auction System** | `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds`, `auction_floor_rare`, `auction_floor_epic`, `auction_floor_legendary`, `legendary_pool_entry_round` |
+| **Board Rendering** | `board_pre_anim_pause_ms`, `board_sub_step_duration_ms`, `board_inter_step_pause_ms`, `board_fog_lift_ms`, `board_objective_reveal_hold_ms`, `board_fog_opacity`, `board_cell_width`, `board_lane_height`, `board_hp_green_threshold`, `board_hp_red_threshold`, `board_co_occupancy_offset`, `board_prism_spin_speed` |
 | **Round State Machine** | `placement_timer_seconds`, `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `resolution_max_duration_seconds`, `auction_max_duration_seconds`, `disconnect_grace_seconds` |
 | **Class System (Xelor)** | `xelor_sablier_steal` |
 | **Server-side RNG** | *(none — RNG seeds are generated at runtime)* |
@@ -262,6 +279,19 @@ This is the authoritative list of all `GameConfig` fields and their design-inten
 | `hello_timeout_ms` | 5000 | 2000–15000 | Milliseconds server waits for `C2SHello` after transport connect before closing. Too low: legitimate WASM cold-start clients kicked. Too high: slow DoS detection. | — |
 | `ack_timeout_ms` | 10000 | 5000–30000 | Milliseconds server waits for `C2SAcknowledgeResult` after GAME_OVER before cleaning up the session. Result persisted regardless. | — |
 | `heartbeat_interval_ms` | 5000 | 2000–15000 | Target interval at which the client sends `C2SHeartbeat`. Server uses heartbeat absence (plus `disconnect_grace_seconds`) to detect half-open WASM/WebSocket connections. Must be ≪ `disconnect_grace_seconds × 1000`. | — |
+| **Board Rendering** (added 2026-04-30 per board-rendering.md /design-review revision) | | | | |
+| `board_pre_anim_pause_ms` | 400 | 200–800 | Hold after fog lift before sub-step 1 animation begins. Too low: players can't read simultaneous reveal before action. Too high: dead time. | — |
+| `board_sub_step_duration_ms` | 600 | 400–1000 | Active animation window per sub-step group. Was 800ms before 2026-04-30 revision; tightened to defend the ≤5s default match watch budget per Player Fantasy. Too low: sub-steps blur. Too high: watching becomes idle dead time. | — |
+| `board_inter_step_pause_ms` | 150 | 100–300 | Silent pause between consecutive sub-step groups. Was 200ms before 2026-04-30. Too low: rushed; too high: stalls. | — |
+| `board_fog_lift_ms` | 350 | 200–600 | Duration of the fog alpha fade-out tween at `S2CPlacementReveal`. Concurrent with `board_pre_anim_pause_ms`. Too low: reveal feels abrupt. Too high: sluggish. | — |
+| `board_objective_reveal_hold_ms` | 500 | 300–800 | Hold time on objective entity before destruction VFX fires (suspense beat). Too low: instant; too high: padded. | — |
+| `board_fog_opacity` | 0.6 | 0.4–0.8 | Opponent-half fog sprite alpha during PLACEMENT. Too low: opponent half partially readable; too high: harsh. Validated/clamped at intake (BR-FOG-OPACITY). | — |
+| `board_cell_width` | 64.0 | 48–96 | Cell width in world units. At min: cramped read; at max: board may exceed viewport (camera spec OQ-BR-02 pending). | — |
+| `board_lane_height` | 80.0 | 64–112 | Lane height in world units. Same constraints as `board_cell_width`. | — |
+| `board_hp_green_threshold` | 0.6 | 0.5–0.75 | Fill fraction at or above which HP bar is green. Below: yellow (until red threshold). | — |
+| `board_hp_red_threshold` | 0.3 | 0.2–0.4 | Fill fraction below which HP bar is red. Must be < `board_hp_green_threshold`. | — |
+| `board_co_occupancy_offset` | 8.0 | 4–16 | World-unit X offset per unit from cell center in 2v2 co-occupancy. Below 4 with 48px sprites: visible overlap. Above 16: clips outside cell node. | — |
+| `board_prism_spin_speed` | 0.5 | 0.2–1.0 | Prism rotation rate (rad/s). Too low: looks static; too high: distracting. | — |
 
 ## Visual/Audio Requirements
 

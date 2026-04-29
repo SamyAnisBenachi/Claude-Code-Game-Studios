@@ -123,6 +123,7 @@ enum PlayTarget {
 | `S2CConfirmClassRejected` | Reliable | Unicast | `{ reason: ConfirmClassRejectedReason }` — enum: `ClassAlreadyConfirmed` |
 | `S2CSessionCancelled` | Reliable | Broadcast | `{ reason: SessionCancelledReason }` — enum: `LobbyTimeout`, `PlayerDisconnected` |
 | `S2CSangMepriseReveal` | Reliable | Unicast (opponent) | `{ identities: Vec<(lane: u8, is_fake: bool)> }` — reveals selected objective identities to the opponent. Decided in `objective-system.md` Open Question 6 (Option B: targeted unicast). Sent by Objective System; protocol delivers. |
+| `S2CObjectiveIdentities` | Reliable | Unicast (owner) | `{ identities: Vec<(LaneId, bool)> }` — `(lane_id, is_fake)`. Owned by ADR-001. Dispatched once at DRAFT_INITIAL to each player with their own objective identity assignments; **MUST be re-sent on reconnect** as part of the session resume sequence (after `S2CGameSnapshot`, before any actionable phase). Reliable delivery guarantees in-session arrival but does not auto-replay across reconnects — the server explicitly re-dispatches. Payload is tiny (~6 bytes per player). Cross-references: `docs/architecture/adr-001-objective-identity-unicast.md` (source); `design/gdd/board-rendering.md` Rule 11 + ObjectiveIdentityCache (consumer); `design/ux/hud.md` (own-objective dots). |
 
 **Component Replication (Lightyear replicated ECS components — unreliable, all players):**
 
