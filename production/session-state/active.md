@@ -3,7 +3,7 @@
 > Lis ce fichier EN PREMIER dans toute nouvelle session.
 > Il contient l'état complet du projet au 2026-04-29.
 >
-> **Session active (2026-04-29):** Designing Card Acquisition GDD — design/gdd/card-acquisition.md. A ✅ B ✅ C ✅. Working on Section D (Formulas).
+> **Session active (2026-04-29):** Designing Card Acquisition GDD — design/gdd/card-acquisition.md. A ✅ B ✅ C ✅ D ✅ E ✅ F ✅. Working on Section G (Tuning Knobs).
 
 ---
 
@@ -208,3 +208,21 @@ C:\Program Files\GitHub CLI\gh.exe
 - **Test written**: Embedded `#[cfg(test)] mod tests` in `rng.rs` (10 tests; run via `cargo test -p server`)
 - **Blockers**: Local build blocked by Smart App Control — CI is verification gate (same as prior stories)
 - **Next**: `/code-review server/src/foundation/rng.rs` then `/story-done production/epics/server-rng/story-002-intent-named-api-invariants.md`
+
+## Session Extract — /story-done 2026-04-29
+- **Verdict**: COMPLETE
+- **Story**: `production/epics/game-config-pipeline/story-001-asset-data-files.md` — Asset Data Files (S1-06)
+- **Criteria**: 8/8 passing — all ACs auto-verified (file reads + evidence doc)
+- **Deviations**: None — manifest version match (2026-04-29)
+- **Tech debt logged**: None
+- **Next recommended**: S1-07 — Asset Loading Pipeline at `production/epics/game-config-pipeline/story-002-asset-loading-pipeline.md` (now unblocked: S1-06 Done)
+
+## Session Extract — /story-done 2026-04-29
+- **Verdict**: COMPLETE
+- **Story**: `production/epics/server-rng/story-002-intent-named-api-invariants.md` — Intent-Named API & Consumption Invariants (S1-10)
+- **Criteria**: 11/11 passing — all ACs auto-verified (code read + test traceability)
+- **Deviations**: None — ADR-005 compliant, manifest version match (2026-04-29)
+- **Test Evidence**: Logic — 10 embedded `#[cfg(test)]` tests in `server/src/foundation/rng.rs`; evidence doc at `tests/unit/foundation/server_rng_api_test.rs`
+- **Code Review**: APPROVED (lean mode)
+- **Tech debt logged**: None
+- **Next recommended**: S1-12 — Determinism Proof & Session Reset at `production/epics/server-rng/story-003-determinism-session-reset.md` (S1-10 now Done, blocker cleared)

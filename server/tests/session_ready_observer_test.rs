@@ -38,7 +38,7 @@ fn test_session_ready_observer_fires_in_same_frame() {
     let observer_fired = Arc::new(AtomicBool::new(false));
     let flag = observer_fired.clone();
 
-    app.observe(move |_trigger: Trigger<SessionReady>| {
+    app.add_observer(move |_trigger: On<SessionReady>| {
         flag.store(true, Ordering::SeqCst);
     });
 
@@ -85,7 +85,7 @@ fn test_session_ready_observer_resource_visible_after_commands_insert() {
 
     // Observer accesses Res<SessionConfig> — will panic if resource not present
     // when triggered (which would also constitute a test failure).
-    app.observe(move |_trigger: Trigger<SessionReady>, config: Res<SessionConfig>| {
+    app.add_observer(move |_trigger: On<SessionReady>, config: Res<SessionConfig>| {
         flag.store(config.value == 42, Ordering::SeqCst);
     });
 

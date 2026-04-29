@@ -6,7 +6,7 @@ goal: "Compilable workspace, all Foundation shared types, Lightyear 0.26 API ver
 start: "2026-04-30"
 end: "2026-05-13"
 generated: "2026-04-29"
-updated: "2026-04-29 (S1-01, S1-04, S1-09 done)"
+updated: "2026-04-29 (S1-01, S1-04, S1-06, S1-09, S1-10 done)"
 
 stories:
   - id: "S1-01"
@@ -63,11 +63,11 @@ stories:
     name: "Asset Data Files"
     file: "production/epics/game-config-pipeline/story-001-asset-data-files.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
-    blocker: "S1-03 must be Done"
-    completed: ""
+    blocker: ""
+    completed: "2026-04-29"
 
   - id: "S1-07"
     name: "Asset Loading Pipeline"
@@ -103,11 +103,11 @@ stories:
     name: "Intent-Named API & Consumption Invariants"
     file: "production/epics/server-rng/story-002-intent-named-api-invariants.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 1.0
-    blocker: "S1-09 must be Done"
-    completed: ""
+    blocker: ""
+    completed: "2026-04-29"
 
   - id: "S1-11"
     name: "Debug Hot-Reload & Release Verification"

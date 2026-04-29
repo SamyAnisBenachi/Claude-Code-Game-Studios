@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/card-data-pool.md
 > **Architecture Module**: `server/core/pool/` (full module — `state.rs`, `api.rs`, `system.rs`, `plugin.rs`); the `CardCatalog` lookup type is consumed from `shared/` (Foundation epic)
 > **Status**: Ready
-> **Stories**: To be created — see Story Breakdown Hint below
+> **Stories**: 6 stories — see `## Stories` table below
 
 ## Overview
 
@@ -174,6 +174,21 @@ pub fn total_acquired(pool: &PlayerPool, catalog: &CardCatalog, id: CardId) -> u
 - An integration test demonstrates pool exhaustion edge case: configure `copies_remaining` for a Legendary card to 1, acquire it once, attempt next draw with class filter that includes that Legendary — confirm it's no longer in the pool and the draw produces a non-Legendary result without error.
 - An integration test confirms RNG audit log integration: 3 shop draws produce exactly 3 `RngEvent::DrawShopSlot` entries in `Res<ServerRng>.audit_log`.
 - `CardPoolPlugin` registers cleanly in a headless Bevy `App` startup test with mock `CardCatalog` and `GameConfig`.
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [Pool State + Core API](story-001-pool-state-core-api.md) | Logic | Ready | ADR-006 |
+| 002 | [Weighted Draw Functions](story-002-weighted-draw-functions.md) | Logic | Ready | ADR-006 |
+| 003 | [refresh_shop + Slot Variants](story-003-refresh-shop-slot-variants.md) | Logic | Ready | ADR-006 |
+| 004 | [ShopRefreshNeeded Subscriber + SessionReady Init](story-004-shop-refresh-subscriber-session-ready.md) | Integration | Ready | ADR-006, ADR-010 |
+| 005 | [Manual Refresh + Cost Escalation](story-005-manual-refresh-cost-escalation.md) | Integration | Ready | ADR-006, ADR-010 |
+| 006 | [Network Dispatch Wiring](story-006-network-dispatch-wiring.md) | Integration | Ready (2 ACs DEFERRED) | ADR-010, ADR-008 |
+
+**Dependency order**: 001 → 002 → 003 → 004 → 005 → 006. Story 001 can start immediately in parallel with other foundation/core epics.
+
+---
 
 ## Story Breakdown Hint
 

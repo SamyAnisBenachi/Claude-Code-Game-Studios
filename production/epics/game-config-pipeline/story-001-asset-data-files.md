@@ -26,14 +26,14 @@
 
 ## Acceptance Criteria
 
-- [ ] `assets/config/game_config.ron` exists and is valid RON parseable by `ron 0.8`
-- [ ] Every field from `design/gdd/game-config.md` Section G (Tuning Knobs) is present with its design-intent default value (see Implementation Notes for complete list)
-- [ ] Timer fields use seconds suffix matching the GDD field names (e.g. `placement_timer_seconds: 10`)
-- [ ] `assets/data/cards.json` exists and is valid JSON parseable by `serde_json`
-- [ ] `cards.json` fixture contains at minimum: one card of each rarity (`Common`, `Uncommon`, `Rare`, `Epic`, `Legendary`), cards from at least 2 different `ClassId` values, one `Neutral` card with a `family` field set, one card with a valid `pool_copies_override` (≥ 1), one card with `pool_copies_override: -1` (for soft-error testing), one card with `pool_copies_override: null` (uses rarity default)
-- [ ] All cards in `cards.json` have unique `id` values — no duplicates
-- [ ] All `cards.json` entries include all required base fields: `id`, `name_fr`, `name_en`, `class`, `rarity`, `card_type`, `unit_type`, `cost`, `atk`, `hp`, `mp`, `ar`, `keywords`, `effect_text`, `art_id`
-- [ ] `cargo check --workspace` still passes after adding these files (no code change — files are data only)
+- [x] `assets/config/game_config.ron` exists and is valid RON parseable by `ron 0.8`
+- [x] Every field from `design/gdd/game-config.md` Section G (Tuning Knobs) is present with its design-intent default value (see Implementation Notes for complete list)
+- [x] Timer fields use seconds suffix matching the GDD field names (e.g. `placement_timer_seconds: 10`)
+- [x] `assets/data/cards.json` exists and is valid JSON parseable by `serde_json`
+- [x] `cards.json` fixture contains at minimum: one card of each rarity (`Common`, `Uncommon`, `Rare`, `Epic`, `Legendary`), cards from at least 2 different `ClassId` values, one `Neutral` card with a `family` field set, one card with a valid `pool_copies_override` (≥ 1), one card with `pool_copies_override: -1` (for soft-error testing), one card with `pool_copies_override: null` (uses rarity default)
+- [x] All cards in `cards.json` have unique `id` values — no duplicates
+- [x] All `cards.json` entries include all required base fields: `id`, `name_fr`, `name_en`, `class`, `rarity`, `card_type`, `unit_type`, `cost`, `atk`, `hp`, `mp`, `ar`, `keywords`, `effect_text`, `art_id`
+- [x] `cargo check --workspace` still passes after adding these files (no code change — files are data only)
 
 ---
 
@@ -134,3 +134,12 @@ Use JSON array form: `[{ "id": 1, "name_fr": "...", ... }, ...]`. The fixture us
 
 - Depends on: `workspace-and-shared-types` Story 003 (GameConfig POD struct must be defined before RON field names can be verified)
 - Unlocks: Story 002 (asset loading pipeline)
+
+---
+
+## Completion Notes
+**Completed**: 2026-04-29
+**Criteria**: 8/8 passing
+**Deviations**: None
+**Test Evidence**: Config/Data — `tests/evidence/story-gcp-001-data-files.md` (PASS — data-only changes; CI green run 25130998038, commit 6bdee76). Changes: 3 network timeout values corrected in game_config.ron (hello_timeout_ms 5000→10000, ack_timeout_ms 10000→5000, heartbeat_interval_ms 5000→3000); serde newtype bug fixed in cards.json ("id": [N] → "id": N on all 8 entries).
+**Code Review**: Skipped — Lean mode (Config/Data story, no Rust code)
