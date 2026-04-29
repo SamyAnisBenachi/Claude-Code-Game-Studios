@@ -7,8 +7,8 @@ description = "Protocol types, GameConfig struct, and shared data definitions. Z
 # ADR-003: shared/ compiles with bevy default-features=false, features=["serialize"] ONLY.
 # No Resource derive, no plugins, no game logic.
 [dependencies]
-bevy = { workspace = true, default-features = false, features = ["serialize"] }
-# lightyear removed — shared/ only defines plain serde types.
+# bevy removed — shared/ only defines plain serde types, no Bevy derives needed.
+# lightyear removed — shared feature doesn't exist in lightyear 0.26.
 # ADR-003 fallback: register_protocol lives in server/main.rs and client/main.rs,
 # not here. The `shared` feature does not exist in lightyear 0.26.
 serde = { workspace = true }
