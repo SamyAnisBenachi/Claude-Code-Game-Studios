@@ -12,10 +12,10 @@
 **Requirement**: TR-GSS-07 (`SessionConfig` and `ServerRng` destroyed on `GameOverEmitted`)
 
 **ADR Governing Implementation**: ADR-010 (RSM Event Bus), ADR-005 (Server-side RNG lifecycle), ADR-008 (Lightyear Channel Config)
-**ADR Decision Summary**: The GSS subscribes to `GameOverEmitted` via `EventReader<GameOverEmitted>` (buffered event from the RSM event bus — ADR-010). On receipt, the GSS broadcasts `S2CGameOver` on `ReliableChannel`, then removes `SessionConfig` and `ServerRng` from the world, and transitions `LobbyState` to `GameOver`. `ReconnectTracker` cleanup is also performed here.
+**ADR Decision Summary**: The GSS subscribes to `GameOverEmitted` via `MessageReader<GameOverEmitted>` (buffered Message from the RSM message bus — ADR-010). On receipt, the GSS broadcasts `S2CGameOver` on `ReliableChannel`, then removes `SessionConfig` and `ServerRng` from the world, and transitions `LobbyState` to `GameOver`. `ReconnectTracker` cleanup is also performed here.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: LOW
-**Engine Notes**: `EventReader<GameOverEmitted>` is standard Bevy buffered event consumption. `commands.remove_resource::<T>()` is a stable Bevy API. `liv-bevy-018` and `liv-bevy-lightyear` skills are mandatory on all `.rs` files.
+**Engine Notes**: `MessageReader<GameOverEmitted>` is the Bevy 0.18 buffered message consumption API (`EventReader` no longer exists). `commands.remove_resource::<T>()` is a stable Bevy API. `liv-bevy-018` and `liv-bevy-lightyear` skills are mandatory on all `.rs` files.
 
 **Control Manifest Rules (Core layer)**:
 - Required: `SessionConfig` and `ServerRng` removed from the world exactly once — in `handle_game_over_teardown`.
@@ -28,7 +28,7 @@
 ## Acceptance Criteria
 
 - [ ] `handle_game_over_teardown` system exists in `server/src/core/session/system.rs` and:
-  - Subscribes to `EventReader<GameOverEmitted>` (from Epic 1 — RSM event bus)
+  - Subscribes to `MessageReader<GameOverEmitted>` (from Epic 1 — RSM message bus)
   - On `GameOverEmitted { loser, round, reason }`: broadcasts `S2CGameOver { loser, round, reason }` to all session participants on `ReliableChannel`
   - Calls `commands.remove_resource::<SessionConfig>()` after the broadcast
   - Calls `commands.remove_resource::<ServerRng>()` after the broadcast

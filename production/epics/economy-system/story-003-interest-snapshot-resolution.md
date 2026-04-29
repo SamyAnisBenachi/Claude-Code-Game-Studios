@@ -15,7 +15,7 @@
 **ADR Decision Summary**: Economy System subscribes to `ResolutionPhaseEntered { round }`. The snapshot system runs `.after(ObjectiveSystemSet::ProcessDestructions)` and `.after(CombatSystemSet::ProcessKills)` and `.before(ResolutionCompleteEmitter)`. This ordering guarantees the snapshot includes all kill and objective gold awards fired during RESOLUTION before the next DRAFT income is calculated. For M1 (no live Combat), the snapshot system accepts a synthetic `ResolutionPhaseEntered` event with manually configured gold state.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: MEDIUM
-**Engine Notes**: Uses `EventReader<ResolutionPhaseEntered>::read()` (Bevy 0.18 — not `.iter()`). System ordering labels `ObjectiveSystemSet` and `CombatSystemSet` are defined by their respective epics; for M1 the placeholder label `EconomySystemSet::ResolutionEnd` is used and the story notes the M2 wiring required. `liv-bevy-018` mandatory.
+**Engine Notes**: Uses `MessageReader<ResolutionPhaseEntered>::read()` (Bevy 0.18 — `EventReader` no longer exists). System ordering labels `ObjectiveSystemSet` and `CombatSystemSet` are defined by their respective epics; for M1 the placeholder label `EconomySystemSet::ResolutionEnd` is used. `liv-bevy-018` mandatory.
 
 **Control Manifest Rules (Core layer)**:
 - Required: Snapshot is taken from `gold` at RESOLUTION END — after all kill/objective rewards have fired, before `ResolutionComplete` is emitted. This is the F4 contract.
@@ -28,11 +28,11 @@
 ## Acceptance Criteria
 
 - [ ] `server/src/core/economy/system.rs` contains `on_resolution_phase_entered` system:
-  - Reads `EventReader<ResolutionPhaseEntered>`, `Res<PlayerEconomies>`, `ResMut<InterestSnapshots>`, `Res<SessionConfig>`
+  - Reads `MessageReader<ResolutionPhaseEntered>`, `Res<PlayerEconomies>`, `ResMut<InterestSnapshots>`, `Res<SessionConfig>`
   - For each player: writes `InterestSnapshots.0.insert(player, economy.gold)` — overwrites any prior value
   - System is labelled `EconomySystemSet::ResolutionEnd`
 - [ ] `server/src/core/economy/system.rs` contains `discard_current_mana_at_resolution_end` system:
-  - Reads `EventReader<ResolutionPhaseEntered>`, `ResMut<PlayerEconomies>`, `Res<SessionConfig>`
+  - Reads `MessageReader<ResolutionPhaseEntered>`, `ResMut<PlayerEconomies>`, `Res<SessionConfig>`
   - For each player: calls `api::discard_current_mana(economy)` → `current_mana = 0`
   - Runs in the same `EconomySystemSet::ResolutionEnd` label as the snapshot system
 - [ ] `EconomyPlugin` schedules both systems `.after(advance_phase)` — using the M1 placeholder label; adds a `// TODO M2: also order .after(ObjectiveSystemSet::ProcessDestructions).after(CombatSystemSet::ProcessKills).before(ResolutionCompleteEmitter)` comment

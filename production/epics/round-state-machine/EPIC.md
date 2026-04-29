@@ -15,15 +15,15 @@ Implements the server-authoritative phase orchestrator for Lanes and Lies. This 
 | ADR | Decision Summary | Engine Risk |
 |-----|-----------------|-------------|
 | ADR-009: RSM Phase State as ECS Resource | `RoundState` is a plain `Resource` (NOT `#[derive(States)]`); single writer (`advance_phase`); phase-gate pattern in every C2S handler; client holds read-only `ClientPhaseView` mirror | HIGH |
-| ADR-010: RSM Phase Event Bus | All outbound phase signals are Bevy buffered `Event` types (not Observers); `EventWriter::write()` not `.send()`; F2 emission ordering enforced by linear code order in `advance_phase` match arms; `BroadcastPhaseChanged` always emitted last | HIGH |
+| ADR-010: RSM Phase Event Bus | All outbound phase signals are Bevy buffered `Message` types (`#[derive(Message)]`); `MessageWriter::write()` in `advance_phase`; F2 emission ordering enforced by linear code order in `advance_phase` match arms; `BroadcastPhaseChanged` always written last | HIGH |
 
 ## Engine Risk: HIGH
 
 Three post-cutoff APIs converge in this epic:
 
-1. **`EventWriter::write()` not `.send()`** — `send()` was removed in Bevy 0.16. Any pre-0.15 tutorial pattern fails to compile. `liv-bevy-018` skill enforces the correct method on every emitter.
+1. **`MessageWriter::write()` — `EventWriter`/`EventReader` no longer exist in Bevy 0.17+.** RSM phase signals use `#[derive(Message)]` + `MessageWriter<T>` + `MessageReader<T>` + `app.add_message::<T>()`. `liv-bevy-018` skill is mandatory to enforce the correct API.
 2. **No `#[derive(States)]` for `RoundPhase`** — Bevy States' `OnEnter`/`OnExit` schedules conflict with Lightyear session lifecycle (ADR-009 Alternative 1 rejected). `RoundPhase` is a plain enum stored inside the `RoundState` resource.
-3. **Buffered Events vs Observers split** — Bevy 0.17 formalised the split. RSM phase events are buffered (`EventReader::read()`); Observers are reserved for Feature-layer keyword triggers (DEATH/APPEARANCE/FINAL BLOW). `SessionReady` is the documented exception (handled by Epic 2 — Game Session System), delivered via Observer for same-frame resource visibility.
+3. **Buffered Message vs Observer split** — Bevy 0.17 formalised the split. RSM phase signals are buffered Messages (`MessageReader::read()`); Observers are one-shot lifecycle triggers. `SessionReady` uses Observer (Epic 2 / ADR-012); all recurring phase messages use `#[derive(Message)]`.
 
 `liv-bevy-018` skill is mandatory on every `.rs` file in this epic. Any networking touch (Lightyear broadcast of `S2CPhaseChanged`, `S2CGameOver`) additionally triggers `liv-bevy-lightyear`.
 
@@ -57,26 +57,27 @@ Three post-cutoff APIs converge in this epic:
 
 **`server/src/core/rsm/events.rs`** (the full ADR-010 catalog)
 - Outbound: `DraftStarted { round, phase: DraftPhase }`, `ShopRefreshNeeded { player }`, `AuctionPhaseEntered { round }`, `PlacementPhaseEntered { round }`, `ResolutionPhaseEntered { round }`, `GameOverEmitted { reason, loser: Option<PlayerId> }`, `BroadcastPhaseChanged { phase, round, timer_ms }`
-- Inbound: `SessionReady` (marker — delivery is Observer per ADR-012, see Epic 2), `AuctionSettled { winner, final_price, card_id }` [M2 — type defined now, subscriber wired in M2], `ResolutionComplete` [M2 — same]
-- All derive `Event`, `Clone`, `Debug`. All re-exported through `server/core/rsm/mod.rs` so feature systems import via `server::core::rsm::events::*` (never internal paths).
+- Inbound buffered messages: `AuctionSettled { winner, final_price, card_id }` [M2], `ResolutionComplete` [M2]
+- Observer event (NOT a message): `SessionReady` — delivery via Observer per ADR-012. Do NOT register with `app.add_message::<SessionReady>()`. Do NOT read via `MessageReader<SessionReady>`.
+- All outbound and inbound messages derive `Message`, `Clone`, `Debug`. `SessionReady` derives `Event`. All re-exported through `server/core/rsm/mod.rs`.
 
 **`server/src/core/rsm/transitions.rs`**
-- `advance_phase` system — the SOLE writer of `ResMut<RoundState>`. Match arm per source phase. Inside each arm, F2 emission order is enforced by linear `EventWriter::write()` call order. `BroadcastPhaseChanged` is always the last `.write()` call.
+- `advance_phase` system — the SOLE writer of `ResMut<RoundState>`. Match arm per source phase. Inside each arm, F2 emission order is enforced by linear `MessageWriter::write()` call order. `BroadcastPhaseChanged` is always the last `.write()` call.
 - CI grep gate: `grep -r "ResMut<RoundState>" server/src/ | grep -v transitions.rs` must return zero matches.
 
 **`server/src/core/rsm/system.rs`**
-- `rsm_input_reader` system: reads `EventReader<SessionReady>` (from Epic 2), `EventReader<AuctionSettled>` [M2], `EventReader<ResolutionComplete>` [M2]; updates RSM state with the inbound-event guard pattern (`if rsm_state.phase != expected { continue; }`); schedules `.before(advance_phase)`.
+- `rsm_input_reader` system: reads `MessageReader<AuctionSettled>` [M2], `MessageReader<ResolutionComplete>` [M2]; updates RSM state with the inbound-message guard pattern (`if rsm_state.phase != expected { continue; }`); schedules `.before(advance_phase)`. `SessionReady` is handled by the RSM Observer (`on_session_ready`), NOT by this system.
 - Timer tick system: ticks only the active phase's timer. Resets the relevant timer immediately on phase entry before ticking. Calls `advance_phase` when a timer reaches 0.
-- Submission tracking system: handles `EventReader<C2SSubmitPlacement>` (validates phase via `Res<RoundState>.phase`); updates `submissions_received`; triggers `advance_phase` when set is full.
+- Submission tracking system: handles `MessageReader<C2SSubmitPlacement>` (validates phase via `Res<RoundState>.phase`); updates `submissions_received`; triggers `advance_phase` when set is full.
 - Disconnect tracking system: subscribes to Lightyear `OnDisconnected` / `OnConnected`; iterates `disconnect_trackers` in a single pass per tick (RSM-37 mutual-disconnection invariant); fires `GameOverEmitted { reason: Disconnection | Draw, loser: ... }` on threshold breach.
 - Win-condition evaluation system: at RESOLUTION end, reads `Res<ObjectiveCounters>` (defined by Epic 4 / Objective epic — this epic forward-declares the contract); routes RSM to GAME_OVER (single loser), GAME_OVER (Draw), or next DRAFT.
 
 **`server/src/core/rsm/plugin.rs`**
-- `RsmPlugin`: registers all event types via `app.add_event::<T>()`; inserts `RoundState` resource; wires system scheduling: `rsm_input_reader → advance_phase → [all subscriber systems via .after(advance_phase)]`. Auction System and Combat Resolution System are scheduled `.before(rsm_input_reader)` per RSM GDD Rules 7 and 10 (RSM must see their `AuctionSettled` / `ResolutionComplete` events in the same frame).
+- `RsmPlugin`: registers all message types via `app.add_message::<T>()`; registers `SessionReady` Observer via `app.observe(on_session_ready)`; inserts `RoundState` resource; wires system scheduling: `rsm_input_reader → advance_phase → [all subscriber systems via .after(advance_phase)]`. Auction System and Combat Resolution System are scheduled `.before(rsm_input_reader)` per RSM GDD Rules 7 and 10.
 
 **Network dispatch wiring**
-- A system in `server/src/network/` reads `EventReader<BroadcastPhaseChanged>` and sends `S2CPhaseChanged { phase, round_number, timer_duration_ms }` via `MessageSender<S2CPhaseChanged>` on `ReliableChannel` to `NetworkTarget::All`. Lives in network crate, NOT in `server/core/rsm/` (preserves the rule that `core/` does not import Lightyear send code).
-- `S2CGameOver { loser, round, reason }` send is wired to `EventReader<GameOverEmitted>` in the Game Session System teardown subscriber (Epic 2). This epic only emits the event; Epic 2 owns the broadcast.
+- A system in `server/src/network/` reads `MessageReader<BroadcastPhaseChanged>` and sends `S2CPhaseChanged { phase, round_number, timer_duration_ms }` via `MessageSender<S2CPhaseChanged>` on `ReliableChannel` to `NetworkTarget::All`. Lives in network crate, NOT in `server/core/rsm/` (preserves the rule that `core/` does not import Lightyear send code).
+- `S2CGameOver { loser, round, reason }` send is wired to `MessageReader<GameOverEmitted>` in the Game Session System teardown subscriber (Epic 2). This epic only writes the message; Epic 2 owns the broadcast.
 
 **Tests**
 - `tests/unit/rsm/` — all 38 RSM acceptance criteria (RSM-1 through RSM-38) testable with `World::new()` + event injection. No live Lightyear session required.
@@ -110,7 +111,7 @@ Three post-cutoff APIs converge in this epic:
 - `cargo check --workspace` green; zero warnings on `server/src/core/rsm/**`.
 - CI grep gate: `grep -r "ResMut<RoundState>" server/src/ | grep -v transitions.rs` returns zero matches.
 - CI grep gate: `grep -r "use server::feature" server/src/core/rsm/` returns zero matches (RSM has zero feature/ imports — ADR-010 invariant).
-- CI grep gate: `grep -rE "EventWriter::send|\.send\(.*\)" server/src/core/rsm/` returns zero matches (use `.write()` only — Bevy 0.16+).
+- CI grep gate: `grep -rE "EventWriter|EventReader|Events<|add_event" server/src/core/rsm/` returns zero matches (`EventWriter`/`EventReader` do not exist in Bevy 0.17+; use `MessageWriter`/`MessageReader`).
 - An integration test demonstrates that `BroadcastPhaseChanged` is emitted strictly after `DraftStarted`, `ShopRefreshNeeded`, and `AuctionPhaseEntered` in any DRAFT entry transition (assert via order-recorded mock subscribers).
 - An integration test demonstrates that a C2S message arriving in the wrong phase is silently discarded with no S2C response (ADR-009 phase-gate pattern verification).
 - `RsmPlugin` registers cleanly in a headless Bevy `App` startup test; resource and event registration succeed without panic.

@@ -13,10 +13,10 @@
 *(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)*
 
 **ADR Governing Implementation**: ADR-009 (RSM Phase State as ECS Resource), ADR-010 (RSM Phase Event Bus), ADR-008 (Lightyear Channel Config)
-**ADR Decision Summary**: Network dispatch lives in `server/src/network/` — NOT in `server/core/rsm/`. A system in `server/src/network/` reads `EventReader<BroadcastPhaseChanged>` and sends `S2CPhaseChanged { phase, round_number, timer_duration_ms }` via `MessageSender<S2CPhaseChanged>` on `ReliableChannel` to `NetworkTarget::All`. This preserves the rule that `server/core/rsm/` does not import Lightyear send code. A resolution safety timeout (ADVISORY) is also wired in this story.
+**ADR Decision Summary**: Network dispatch lives in `server/src/network/` — NOT in `server/core/rsm/`. A system in `server/src/network/` reads `MessageReader<BroadcastPhaseChanged>` and sends `S2CPhaseChanged { phase, round_number, timer_duration_ms }` via `MessageSender<S2CPhaseChanged>` on `ReliableChannel` to `NetworkTarget::All`. This preserves the rule that `server/core/rsm/` does not import Lightyear send code. A resolution safety timeout (ADVISORY) is also wired in this story.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
-**Engine Notes**: `MessageSender<T>` and `NetworkTarget::All` are Lightyear 0.26 API — verify exact type names against `liv-bevy-lightyear` skill before implementation. `ReliableChannel` assignment from ADR-008. `EventReader::read()` not `.iter()`. `liv-bevy-lightyear` skill is MANDATORY on all files in this story. `liv-bevy-018` skill also mandatory.
+**Engine Notes**: `MessageSender<T>` and `NetworkTarget::All` are Lightyear 0.26 API — verify exact type names against `liv-bevy-lightyear` skill before implementation. `ReliableChannel` assignment from ADR-008. Bevy-side: `MessageReader::read()` not `EventReader::read()` (`EventReader` does not exist in Bevy 0.18). `liv-bevy-lightyear` skill is MANDATORY on all files in this story. `liv-bevy-018` skill also mandatory.
 
 **Control Manifest Rules (Core layer / Network layer)**:
 - Required: Network dispatch system lives in `server/src/network/` — never in `server/src/core/rsm/`.
@@ -31,15 +31,15 @@
 
 ## Acceptance Criteria
 
-- [ ] `server/src/network/rsm_dispatch.rs` (or `server/src/network/mod.rs`) defines `dispatch_phase_changed` system: reads `EventReader<BroadcastPhaseChanged>`; for each event, sends `S2CPhaseChanged { phase: event.phase, round_number: event.round, timer_duration_ms: event.timer_ms }` via `MessageSender<S2CPhaseChanged>` on `ReliableChannel` to `NetworkTarget::All`
+- [ ] `server/src/network/rsm_dispatch.rs` (or `server/src/network/mod.rs`) defines `dispatch_phase_changed` system: reads `MessageReader<BroadcastPhaseChanged>`; for each message, sends `S2CPhaseChanged { phase: event.phase, round_number: event.round, timer_duration_ms: event.timer_ms }` via `MessageSender<S2CPhaseChanged>` on `ReliableChannel` to `NetworkTarget::All`
 - [ ] `dispatch_phase_changed` is registered in the network plugin (or `RsmPlugin`) with `.after(advance_phase)` scheduling constraint
 - [ ] `S2CPhaseChanged { phase, round_number, timer_duration_ms }` is defined in `shared/src/protocol.rs` with `#[derive(Serialize, Deserialize, Clone, Debug)]` and registered as a Lightyear message type on `ReliableChannel` (verify registration pattern with `liv-bevy-lightyear`)
-- [ ] No Lightyear `MessageSender` usage exists in `server/src/core/rsm/` — the RSM emits `BroadcastPhaseChanged` (a Bevy buffered Event) and the network dispatch system converts it to a Lightyear message
+- [ ] No Lightyear `MessageSender` usage exists in `server/src/core/rsm/` — the RSM writes `BroadcastPhaseChanged` (a Bevy buffered Message) and the network dispatch system converts it to a Lightyear message
 - [ ] Resolution safety timeout (ADVISORY): if `phase == Resolution` for longer than `config.resolution_max_duration_seconds` (default: 60s), `rsm_input_reader` or the timer tick system emits `GameOverEmitted { reason: Draw, loser: None }` and transitions to GAME_OVER; this timeout must never fire in normal play — its presence protects against a Combat Resolution crash or infinite keyword chain
 - [ ] `resolution_max_duration_seconds = 60.0` is a `GameConfig` field in `assets/config/game_config.ron` — not hardcoded
 - [ ] `RsmPlugin::build()` documents full system scheduling in a comment: `AuctionSystem → CombatResolutionSystem → rsm_input_reader → advance_phase → [subscriber systems] → dispatch_phase_changed`; system ordering constraints are applied in the plugin
 - [ ] CI grep gate: `grep -r "MessageSender" server/src/core/rsm/` returns zero matches
-- [ ] CI grep gate: `grep -rE "EventWriter::send|\.send\(.*\)" server/src/core/rsm/` returns zero matches (re-verified at integration completion)
+- [ ] CI grep gate: `grep -rE "EventWriter|EventReader|Events<|add_event" server/src/core/rsm/` returns zero matches (re-verified at integration completion)
 - [ ] `cargo check --workspace` clean with zero warnings across all RSM and network files
 - [ ] `tests/integration/rsm/rsm_network_dispatch_test.rs` passes tests RSM-26 and RSM-38 (see QA Test Cases)
 
@@ -61,10 +61,10 @@ The exact API may differ — do NOT guess from pre-0.26 Lightyear examples.
 **`MessageSender<S2CPhaseChanged>` usage in dispatch system:**
 ```rust
 fn dispatch_phase_changed(
-    mut events: EventReader<BroadcastPhaseChanged>,
-    mut sender: MessageSender<S2CPhaseChanged>,  // Lightyear 0.26 — verify type
+    mut messages: MessageReader<BroadcastPhaseChanged>,  // Bevy 0.18 — verify type name
+    mut sender: MessageSender<S2CPhaseChanged>,          // Lightyear 0.26 — verify type
 ) {
-    for event in events.read() {
+    for event in messages.read() {
         sender.send_to_all(  // or send(NetworkTarget::All) — verify API
             &S2CPhaseChanged {
                 phase: event.phase,

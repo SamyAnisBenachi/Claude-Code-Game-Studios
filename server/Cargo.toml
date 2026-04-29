@@ -6,8 +6,14 @@ description = "Headless Bevy game server. All authoritative game state lives her
 
 [dependencies]
 shared = { path = "../shared" }
+# TODO(liv-bevy-018): verify Bevy 0.18 headless server features.
+# "multi_threaded" enables the async task executor (likely correct for server).
+# Bevy 0.18 also introduces high-level feature collections ("2d", "3d", "ui") —
+# for a headless server, no rendering features are needed. If "multi_threaded"
+# alone is insufficient (e.g., missing scheduling), add "bevy_app", "bevy_ecs".
+# Do NOT add "bevy_ecs" as a feature — it is a crate name, not a feature flag.
 bevy = { version = "0.18", default-features = false, features = ["multi_threaded"] }
-lightyear = { version = "0.26", features = ["server", "websocket"] }
+lightyear = { version = "0.26", default-features = false, features = ["server", "websocket"] }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
 ron = { workspace = true }

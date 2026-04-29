@@ -71,9 +71,9 @@ Cargo workspace structure*
 
 - **`RoundState` resource is the server's single source of truth for game phase. All systems read via `Res<RoundState>`.** — ADR-009
 - **Only `advance_phase` (in `server/core/rsm/transitions.rs`) may hold `ResMut<RoundState>`. No other system writes phase.** Enforced by CI grep: `grep -r "ResMut<RoundState>" server/src/ | grep -v transitions.rs` must return zero results. — ADR-009
-- **Use `EventWriter::write()` not `EventWriter::send()`. `send()` was removed in Bevy 0.16.** — ADR-009, ADR-010
-- **Use `EventReader::read()` not `EventReader::iter()`. Verify method name against Bevy 0.18 before implementing.** — ADR-010
-- **RSM emits all phase transitions as Bevy buffered Events. `advance_phase` is the sole emitter. RSM has zero direct imports from `server/feature/`.** — ADR-010
+- **Use `MessageWriter::write()` to emit RSM phase messages. `EventWriter`/`EventReader` no longer exist in Bevy 0.17+.** — ADR-009, ADR-010
+- **Use `MessageReader::read()` to consume RSM phase messages. Register with `app.add_message::<T>()`. Do NOT use `app.add_event::<T>()` for buffered messages.** — ADR-010
+- **RSM emits all phase transitions as Bevy buffered Messages (`#[derive(Message)]`). `advance_phase` is the sole emitter. RSM has zero direct imports from `server/feature/`.** — ADR-010
 - **Emission ordering on any DRAFT entry is strict (GDD F2):**
   1. `DraftStarted` (Economy reads — mana ramp + gold income)
   2. `ShopRefreshNeeded { player }` per player (Card Pool reads — draw shop slots)
@@ -250,7 +250,7 @@ The following APIs are deprecated or removed in Bevy 0.15–0.18. Using them pro
 | `SpatialBundle` | `Transform` + `Visibility` | 0.15 |
 | Manual `GlobalTransform` insert | Don't — auto-inserted by `Transform` | 0.15 |
 | `query.single()` panicking | `query.single()?` or `let Ok(x) = query.single()` | 0.16 |
-| `event_writer.send(e)` | `event_writer.write(e)` | 0.16 |
+| `EventWriter<T>` / `EventReader<T>` / `Events<T>` | `MessageWriter<T>` / `MessageReader<T>` + `app.add_message::<T>()` for buffered messages; `#[derive(Event)]` + `Observer` + `commands.trigger()` for one-shot triggers | 0.17 |
 | `commands.entity(e).set_parent(p)` | `commands.entity(e).insert(ChildOf(p))` | 0.16 |
 | `Parent` component | `ChildOf` component | 0.16 |
 | `commands.entity(e).despawn_recursive()` | `commands.entity(e).despawn()` | 0.16 |

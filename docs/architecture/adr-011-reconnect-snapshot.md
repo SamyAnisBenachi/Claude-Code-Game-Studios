@@ -28,6 +28,27 @@ confirmed, and re-sends all session-start messages — `S2CObjectiveIdentities`,
 `S2CHandshake`, and `S2CPhaseChanged` — in a fixed order before unfreezing the
 live message queue.
 
+## ⚠️ API Verification Required (Lightyear 0.26)
+
+Lightyear 0.26 uses an **entity-per-connection** model. The reconnect flow described
+in this ADR uses `OnConnected`/`OnDisconnected` which may be Bevy Observer triggers
+in 0.26, NOT buffered Bevy Events. The `liv-bevy-lightyear` skill shows connection
+lifecycle uses `Connect`/`Disconnect` triggers and `Disconnected`/`Connecting`/`Connected`
+marker components. All API patterns in this ADR must be verified before implementation:
+
+- `OnConnected`/`OnDisconnected` — verify exact type names and whether they are
+  Observer triggers or another mechanism in Lightyear 0.26
+- `NetworkTarget::Single(ClientId)` — verify unicast variant name
+- `MessageSender<T>` unicast send — verify method signature
+- Per-connection reliable enqueue order — verify cross-message-type ordering guarantee
+- Entity-per-connection model: each connecting client spawns a child entity with
+  `LinkOf` component on the server entity
+
+See `liv-bevy-lightyear` skill (`references/api_patterns.md`, `references/architecture.md`)
+for the complete verified 0.26 API reference.
+
+---
+
 ## Engine Compatibility
 
 | Field | Value |

@@ -16,7 +16,7 @@
 **ADR Decision Summary**: `SessionReady` is delivered via `Trigger<SessionReady>` Observer (same-frame), not `EventReader<SessionReady>` (ADR-012). Timer durations come from `Res<GameConfig>` fields — never hardcoded. `rsm_input_reader` reads inbound events (`AuctionSettled`, `ResolutionComplete`) and schedules `.before(advance_phase)`. Timer tick system activates only the timer for the current phase.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
-**Engine Notes**: `Trigger<SessionReady>` Observer handler parameter — verify `Trigger<E>` signature in Bevy 0.18 (post-cutoff API, ADR-012 verification required). `Timer::tick(time.delta())` API — verify in Bevy 0.18. `EventReader::read()` not `.iter()` — confirm in Bevy 0.18. `liv-bevy-018` skill mandatory on all files in this story.
+**Engine Notes**: `Trigger<SessionReady>` Observer handler parameter — verify `Trigger<E>` vs `On<E>` signature in Bevy 0.18 (post-cutoff API, ADR-012 verification required). `Timer::tick(time.delta())` API — verify in Bevy 0.18. RSM inbound messages use `MessageReader::read()` — `EventReader` no longer exists in Bevy 0.18. `liv-bevy-018` skill mandatory on all files in this story.
 
 **Control Manifest Rules (Core layer)**:
 - Required: `on_session_ready` is registered as `app.observe(on_session_ready)` in `RsmPlugin::build()` — NOT via `app.add_systems`.
@@ -31,7 +31,7 @@
 
 ## Acceptance Criteria
 
-- [ ] `server/src/core/rsm/system.rs` defines `rsm_input_reader` system: reads `EventReader<AuctionSettled>` and `EventReader<ResolutionComplete>`; applies inbound event guard (`if rsm.phase != RoundPhase::DraftAuction { continue; }` for `AuctionSettled`; `if rsm.phase != RoundPhase::Resolution { continue; }` for `ResolutionComplete`); updates `rsm.phase` to the appropriate next phase and calls or schedules `advance_phase` on match
+- [ ] `server/src/core/rsm/system.rs` defines `rsm_input_reader` system: reads `MessageReader<AuctionSettled>` and `MessageReader<ResolutionComplete>`; applies inbound message guard (`if rsm.phase != RoundPhase::DraftAuction { continue; }` for `AuctionSettled`; `if rsm.phase != RoundPhase::Resolution { continue; }` for `ResolutionComplete`); updates `rsm.phase` to the appropriate next phase and calls or schedules `advance_phase` on match
 - [ ] `rsm_input_reader` is registered in `RsmPlugin` with `.before(advance_phase)` scheduling constraint in the `Update` set
 - [ ] `server/src/core/rsm/system.rs` defines a timer tick system that: ticks `placement_timer` only when `phase == Placement`; ticks `draft_shop_timer` only when `phase == DraftShop`; ticks `draft_initial_timer` only when `phase == DraftInitial`; calls `advance_phase` (or sets a trigger) when the active timer's `just_finished()` returns true
 - [ ] `server/src/core/rsm/system.rs` defines `on_session_ready(trigger: Trigger<SessionReady>, mut rsm: ResMut<RoundState>, config: Res<GameConfig>)`: sets `rsm.phase = RoundPhase::DraftInitial`, `rsm.round_number = 1`, initialises `rsm.draft_initial_timer = Some(Timer::from_seconds(config.draft_initial_timer_seconds, TimerMode::Once))`; then calls or schedules `advance_phase` so F2 emission for DRAFT_INITIAL fires from the standard match arm in the same tick
@@ -76,7 +76,7 @@ fn tick_rsm_timers(
 
 **`DRAFT_SHOP` submission ("ready" signal):** The GDD (Rule 8) states players can signal ready before the timer expires. A `C2SPlayerReady` event (or similar) is read in `rsm_input_reader`. When all players are ready, `rsm_input_reader` triggers `advance_phase` for DRAFT_SHOP → PLACEMENT. The `C2SPlayerReady` type may not exist yet — if not, add it to the protocol as a stub.
 
-**`PLACEMENT` full-submission check:** Read `EventReader<C2SSubmitPlacement>`. On each receipt, add `player_id` to `rsm.submissions_received`. When `rsm.submissions_received.len() == session.player_count`, trigger `advance_phase`. Phase gate: reject if `rsm.phase != Placement`.
+**`PLACEMENT` full-submission check:** Read `MessageReader<C2SSubmitPlacement>`. On each receipt, add `player_id` to `rsm.submissions_received`. When `rsm.submissions_received.len() == session.player_count`, trigger `advance_phase`. Phase gate: reject if `rsm.phase != Placement`.
 
 **`GameConfig` fields:** If `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `placement_timer_seconds` are not yet fields on `GameConfig`, add them as `f32` fields with the defaults above. These are Feel Knobs (ADR-009 Tuning Knobs) and must be in `assets/config/game_config.ron`, not hardcoded.
 

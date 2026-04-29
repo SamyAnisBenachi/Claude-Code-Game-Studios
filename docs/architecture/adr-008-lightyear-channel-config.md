@@ -20,6 +20,25 @@ User + network-programmer (design spike), technical-director (authority model va
 
 All Lanes and Lies network messages route over exactly two Lightyear channels: a `ReliableChannel` for all game-state and control messages that must arrive in order, and an `UnreliableChannel` for high-frequency updates (auction timer ticks, `C2SHeartbeat`) where a dropped packet is superseded by the next. Channel assignment is permanent per message type — no message ever switches channel at runtime.
 
+## ⚠️ API Verification Required (Lightyear 0.26)
+
+Lightyear 0.26 uses an **entity-per-connection** model (introduced in v0.25). The
+older resource-based approach (`ClientConfig`, `ClientConnectionManager`) no longer
+exists. All Lightyear API patterns in this ADR must be verified against
+`docs.rs/lightyear/0.26` before any networking story begins implementation.
+
+Key model changes to verify:
+- Client is an entity with `Client` marker + `Link` + transport IO component
+- Server is an entity with `NetcodeServer` (which auto-inserts `Server`)
+- Connection lifecycle uses triggers (`Connect`/`Disconnect`, `Start`/`Stop`) and
+  marker components (`Disconnected`/`Connecting`/`Connected`)
+- `MessageSender<M>`/`MessageReceiver<M>` auto-added based on protocol registration
+- Protocol registered via `ProtocolPlugin` AFTER `ClientPlugins`/`ServerPlugins`
+
+See `liv-bevy-lightyear` skill for the complete 0.26 API reference.
+
+---
+
 ## Engine Compatibility
 
 | Field | Value |

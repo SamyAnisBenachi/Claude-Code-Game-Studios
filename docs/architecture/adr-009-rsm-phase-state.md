@@ -37,8 +37,8 @@ components.
 | **Domain** | Core / Networking |
 | **Knowledge Risk** | HIGH — Bevy 0.15–0.18 are all post-cutoff; Required Components API (0.15), `Query::single()` returning `Result` (0.16), and ECS resource APIs must be verified |
 | **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, `design/gdd/round-state-machine.md`, ADR-002, ADR-008 |
-| **Post-Cutoff APIs Used** | `Resource` derive macro (stable across versions but 0.18 patterns should be verified); `Res<T>` / `ResMut<T>` system params; `EventReader<T>` / `EventWriter<T>` (now split into `Message` and `Observer` in 0.17+) |
-| **Verification Required** | (1) Confirm `Res<T>` / `ResMut<T>` system param API is unchanged in 0.18. (2) Confirm Bevy 0.18 buffered event pattern for inter-system signalling — `AuctionSettled` and `ResolutionComplete` are Bevy Events, not Lightyear messages; verify `EventReader`/`EventWriter` vs. `Event`/`Observer` split introduced in 0.16–0.17. (3) Confirm `SystemSet` ordering API for scheduling the RSM after dependent systems. |
+| **Post-Cutoff APIs Used** | `Resource` derive macro (stable across versions but 0.18 patterns should be verified); `Res<T>` / `ResMut<T>` system params; `MessageReader<T>` / `MessageWriter<T>` (Bevy 0.17+ Message/Event split — `EventReader`/`EventWriter` no longer exist); `#[derive(Message)]` for buffered inter-system signals |
+| **Verification Required** | (1) Confirm `Res<T>` / `ResMut<T>` system param API is unchanged in 0.18. (2) Confirm Bevy 0.18 buffered Message pattern: `AuctionSettled` and `ResolutionComplete` use `#[derive(Message)]` + `MessageReader<T>` + `app.add_message::<T>()`; `SessionReady` uses `#[derive(Event)]` + `Observer` per ADR-012. (3) Confirm `SystemSet` ordering API for scheduling the RSM after dependent systems. |
 
 > **Note**: Knowledge Risk is HIGH. Any Bevy upgrade from 0.18 requires re-validating
 > the event/observer split and resource API patterns before touching the RSM system.
@@ -126,19 +126,19 @@ SERVER WORLD
 │  └── disconnect_trackers: HashMap<PlayerId, f32>         │
 │                                                          │
 │  rsm_tick_system                                         │
-│    reads:  EventReader<AuctionSettled>                   │
-│            EventReader<ResolutionComplete>               │
+│    reads:  MessageReader<AuctionSettled>                 │
+│            MessageReader<ResolutionComplete>             │
 │            Lightyear OnConnected / OnDisconnected        │
 │    writes: ResMut<RoundState>                            │
 │    sends:  MessageSender<S2CPhaseChanged>  (ReliableChannel) │
 │            MessageSender<S2CGameOver>      (ReliableChannel) │
-│    fires:  EventWriter<OnResolutionEnd>                  │
-│            EventWriter<StartAuction>                     │
-│            EventWriter<BeginResolution>                  │
-│            EventWriter<ApplyManaRamp>                    │
-│            EventWriter<ApplyGoldIncome>                  │
-│            EventWriter<RefreshShop>                      │
-│            EventWriter<InterestSnapshot>                 │
+│    fires:  MessageWriter<OnResolutionEnd>                │
+│            MessageWriter<StartAuction>                   │
+│            MessageWriter<BeginResolution>                │
+│            MessageWriter<ApplyManaRamp>                  │
+│            MessageWriter<ApplyGoldIncome>                │
+│            MessageWriter<RefreshShop>                    │
+│            MessageWriter<InterestSnapshot>               │
 │                                                          │
 │  All other systems gate on: Res<RoundState>.phase        │
 │  (Economy, Auction, Combat, Objective, Board/Lane, C2S   │
@@ -211,26 +211,28 @@ pub struct ClientPhaseView {
 ```
 
 ```rust
-// Bevy buffered events used for inter-system signalling (server-side)
-// All defined in shared/src/events.rs or server/src/events.rs
+// Bevy buffered Messages used for inter-system signalling (server-side)
+// All defined in server/src/core/rsm/events.rs
+// NOTE: These use #[derive(Message)] not #[derive(Event)] — see ADR-010 and
+// the Bevy 0.17+ Message/Event split. Register via app.add_message::<T>().
 
-#[derive(Event)] pub struct AuctionSettled { pub winner: Option<PlayerId>, pub winning_bid: u32 }
-#[derive(Event)] pub struct ResolutionComplete;
-#[derive(Event)] pub struct OnResolutionEnd;
-#[derive(Event)] pub struct StartAuction { pub round_number: u32 }
-#[derive(Event)] pub struct AbortAuction;
-#[derive(Event)] pub struct BeginResolution;
-#[derive(Event)] pub struct ApplyManaRamp { pub player: PlayerId }
-#[derive(Event)] pub struct ApplyGoldIncome { pub player: PlayerId }
-#[derive(Event)] pub struct RefreshShop { pub player: PlayerId }
-#[derive(Event)] pub struct InterestSnapshot { pub player: PlayerId }
+#[derive(Message)] pub struct AuctionSettled { pub winner: Option<PlayerId>, pub winning_bid: u32 }
+#[derive(Message)] pub struct ResolutionComplete;
+#[derive(Message)] pub struct OnResolutionEnd;
+#[derive(Message)] pub struct StartAuction { pub round_number: u32 }
+#[derive(Message)] pub struct AbortAuction;
+#[derive(Message)] pub struct BeginResolution;
+#[derive(Message)] pub struct ApplyManaRamp { pub player: PlayerId }
+#[derive(Message)] pub struct ApplyGoldIncome { pub player: PlayerId }
+#[derive(Message)] pub struct RefreshShop { pub player: PlayerId }
+#[derive(Message)] pub struct InterestSnapshot { pub player: PlayerId }
 ```
 
 ```rust
 // Phase-gate pattern used by all C2S message handlers
 
 fn handle_c2s_auction_bid(
-    mut bids: EventReader<C2SAuctionBid>,
+    mut bids: MessageReader<C2SAuctionBid>,
     round_state: Res<RoundState>,
     // ...
 ) {
@@ -336,13 +338,12 @@ must be scheduled after the Auction and Combat Resolution systems.
 
 ### Risks
 
-- **Risk**: Bevy 0.16+ `Event`/`Observer` split changes the `EventReader`
-  / `EventWriter` API for inter-system events. If `AuctionSettled` and
-  `ResolutionComplete` must become `Observers` rather than buffered events,
-  the scheduling relationship between systems changes.
-  **Mitigation**: Verify event API in Bevy 0.18 before implementing. If
-  `Observer` is required, use `trigger_targets` for entity-scoped events; for
-  non-entity events, confirm whether `EventWriter<T>` still works in 0.18.
+- **Risk**: Bevy 0.17+ `Message`/`Event` split renamed `EventReader`/`EventWriter`
+  to `MessageReader`/`MessageWriter` for buffered signals. Verification Required
+  item (2) must be completed before implementing the RSM system.
+  **Mitigation**: `AuctionSettled` and `ResolutionComplete` use `#[derive(Message)]`
+  + `MessageReader<T>`. `SessionReady` uses `#[derive(Event)]` + Observer per ADR-012.
+  No EventWriter/EventReader usage anywhere in RSM code — these no longer exist.
 
 - **Risk**: A second system accidentally acquires `ResMut<RoundState>` and
   mutates phase outside the RSM tick, creating a split-brain state.
@@ -397,8 +398,10 @@ This is a greenfield decision — no existing RSM code exists in the codebase.
 5. Register `RoundState` as a resource and `rsm_tick_system` in the server's RSM
    plugin (`server/src/rsm/plugin.rs`).
 6. Implement `ClientPhaseView` update system in `client/src/rsm/plugin.rs`.
-7. Verify `EventReader`/`EventWriter` vs. `Observer` API in Bevy 0.18 before
-   writing any event code (see Engine Compatibility Verification Required).
+7. Verify `MessageReader`/`MessageWriter` API in Bevy 0.18 before writing any
+   messaging code (see Engine Compatibility Verification Required). Confirm
+   `app.add_message::<T>()` registration pattern. `EventReader`/`EventWriter`
+   no longer exist — do not use them.
 
 ## Validation Criteria
 

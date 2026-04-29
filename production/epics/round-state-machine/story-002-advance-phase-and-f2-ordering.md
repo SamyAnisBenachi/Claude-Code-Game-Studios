@@ -13,26 +13,26 @@
 *(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)*
 
 **ADR Governing Implementation**: ADR-009 (RSM Phase State as ECS Resource), ADR-010 (RSM Phase Event Bus)
-**ADR Decision Summary**: `advance_phase` is the SOLE writer of `ResMut<RoundState>`. All 7 phase match arms enforce F2 emission ordering by linear `EventWriter::write()` call order within the arm — not by Bevy system scheduling. `BroadcastPhaseChanged` is always the last `.write()` call in every match arm. A double-transition guard (`if rsm.phase != expected_source_phase { return; }`) runs at the top of `advance_phase`. `round_number` increments on RESOLUTION exit before economy events fire.
+**ADR Decision Summary**: `advance_phase` is the SOLE writer of `ResMut<RoundState>`. All 7 phase match arms enforce F2 emission ordering by linear `MessageWriter::write()` call order within the arm — not by Bevy system scheduling. `BroadcastPhaseChanged` is always the last `.write()` call in every match arm. A double-transition guard (`if rsm.phase != expected_source_phase { return; }`) runs at the top of `advance_phase`. `round_number` increments on RESOLUTION exit before economy messages fire.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
-**Engine Notes**: `EventWriter::write()` not `.send()` — enforced by `liv-bevy-018` skill. `ResMut<RoundState>` must appear in exactly one system (`advance_phase`) across the entire `server/src/` codebase — CI grep gate enforces this. `liv-bevy-018` skill mandatory on all files in this story.
+**Engine Notes**: `MessageWriter::write()` is the correct API — `EventWriter`/`EventReader` do NOT exist in Bevy 0.17+. `ResMut<RoundState>` must appear in exactly one system (`advance_phase`) across the entire `server/src/` codebase — CI grep gate enforces this. `liv-bevy-018` skill mandatory on all files in this story.
 
 **Control Manifest Rules (Core layer)**:
 - Required: `advance_phase` is the sole system taking `ResMut<RoundState>`. All other systems take `Res<RoundState>` (read-only).
-- Required: Inside each match arm, `EventWriter<BroadcastPhaseChanged>.write()` is the final call — no event writes after it.
+- Required: Inside each match arm, `MessageWriter<BroadcastPhaseChanged>.write()` is the final call — no message writes after it.
 - Required: F2 emission order within DRAFT entry arms: `DraftStarted` → `ShopRefreshNeeded` (×N players) → `AuctionPhaseEntered` (if applicable) → `BroadcastPhaseChanged`.
-- Required: `round_number` increments on RESOLUTION → DRAFT_* transition, before `DraftStarted` is emitted, so economy events receive the already-incremented value.
+- Required: `round_number` increments on RESOLUTION → DRAFT_* transition, before `DraftStarted` is written, so economy systems receive the already-incremented value.
 - Required: Double-transition guard at entry: `if rsm.phase != expected_source { return; }`.
 - Forbidden: `ResMut<RoundState>` in any system other than `advance_phase`.
-- Forbidden: Any `EventWriter::send()` call in `server/src/core/rsm/`.
+- Forbidden: Any `EventWriter`, `EventReader`, or `Events<T>` usage in `server/src/core/rsm/`.
 - CI grep gate: `grep -r "ResMut<RoundState>" server/src/ | grep -v transitions.rs` must return zero matches.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `server/src/core/rsm/transitions.rs` defines `advance_phase` as a Bevy system taking `ResMut<RoundState>` and `EventWriter<T>` params for all 7 outbound event types
+- [ ] `server/src/core/rsm/transitions.rs` defines `advance_phase` as a Bevy system taking `ResMut<RoundState>` and `MessageWriter<T>` params for all 7 outbound message types
 - [ ] `advance_phase` contains exactly 7 match arms covering all source phases: `Lobby`, `DraftInitial`, `DraftAuction`, `DraftShop`, `Placement`, `Resolution`, `GameOver`
 - [ ] Each match arm begins with a double-transition guard: `if rsm.phase != [expected_source] { return; }` — the second of two simultaneous triggers finds the phase already changed and silently no-ops (RSM-31, RSM-34)
 - [ ] `GameOver` match arm is a no-op terminal: sets nothing, emits nothing, returns immediately
@@ -46,7 +46,7 @@
 - [ ] `BroadcastPhaseChanged` emitted for DRAFT_AUCTION has `timer_ms = 0` (Auction System drives its own countdown; RSM does not own DRAFT_AUCTION timer)
 - [ ] `BroadcastPhaseChanged` for GAME_OVER and LOBBY phases has `timer_ms = 0`
 - [ ] CI grep gate: `grep -r "ResMut<RoundState>" server/src/ | grep -v transitions.rs` returns zero matches
-- [ ] CI grep gate: `grep -rE "EventWriter::send|\.send\(.*\)" server/src/core/rsm/` returns zero matches
+- [ ] CI grep gate: `grep -rE "EventWriter|EventReader|Events<|add_event" server/src/core/rsm/` returns zero matches
 - [ ] `tests/unit/rsm/rsm_transitions_test.rs` passes all tests listed in the QA Test Cases section (RSM-1 through RSM-12, RSM-31, RSM-32, RSM-33)
 
 ---
@@ -55,23 +55,25 @@
 
 *Derived from ADR-009 and ADR-010:*
 
-**F2 emission ordering is enforced by code order, not system scheduling:** All events within a single `advance_phase` call are written before any subscriber system runs. The subscriber systems are scheduled `.after(advance_phase)` in `RsmPlugin`. The ordering guarantee within a transition is: the code order of `EventWriter::write()` calls in the match arm is the canonical ordering. Do not use Bevy system ordering to enforce F2 steps — that approach was rejected (ADR-010 Alternative 1).
+**F2 emission ordering is enforced by code order, not system scheduling:** All messages within a single `advance_phase` call are written before any subscriber system runs. The subscriber systems are scheduled `.after(advance_phase)` in `RsmPlugin`. The ordering guarantee within a transition is: the code order of `MessageWriter::write()` calls in the match arm is the canonical ordering. Do not use Bevy system ordering to enforce F2 steps — that approach was rejected (ADR-010 Alternative 1).
 
 **`advance_phase` system signature example:**
 ```rust
 pub fn advance_phase(
     mut rsm: ResMut<RoundState>,
-    mut draft_started: EventWriter<DraftStarted>,
-    mut shop_refresh: EventWriter<ShopRefreshNeeded>,
-    mut auction_entered: EventWriter<AuctionPhaseEntered>,
-    mut placement_entered: EventWriter<PlacementPhaseEntered>,
-    mut resolution_entered: EventWriter<ResolutionPhaseEntered>,
-    mut game_over_emitted: EventWriter<GameOverEmitted>,
-    mut broadcast: EventWriter<BroadcastPhaseChanged>,
+    mut draft_started: MessageWriter<DraftStarted>,
+    mut shop_refresh: MessageWriter<ShopRefreshNeeded>,
+    mut auction_entered: MessageWriter<AuctionPhaseEntered>,
+    mut placement_entered: MessageWriter<PlacementPhaseEntered>,
+    mut resolution_entered: MessageWriter<ResolutionPhaseEntered>,
+    mut game_over_emitted: MessageWriter<GameOverEmitted>,
+    mut broadcast: MessageWriter<BroadcastPhaseChanged>,
     config: Res<GameConfig>,
     // Player list needed for per-player ShopRefreshNeeded fan-out:
     session: Res<SessionConfig>,
 )
+// TODO(liv-bevy-018): verify MessageWriter<T> is the correct system param name
+// in Bevy 0.18. See SKILL.md — do NOT use EventWriter<T> (removed in 0.17).
 ```
 
 **Per-player fan-out for `ShopRefreshNeeded`:** In DRAFT entry arms, emit one `ShopRefreshNeeded` per player. The player list comes from `Res<SessionConfig>`. In a 1v1 game, exactly 2 `ShopRefreshNeeded` events are written. The Card Pool reads N events and draws N independent shops.

@@ -53,12 +53,14 @@
 ```rust
 fn tick_disconnect_timers(
     mut rsm: ResMut<RoundState>,
-    mut disconnected: EventReader</* Lightyear disconnect event type */>,
-    mut reconnected: EventReader</* Lightyear reconnect event type */>,
+    // TODO(S1-05): verify Lightyear 0.26 disconnect event type — see liv-bevy-lightyear skill.
+    // Lightyear 0.26 uses entity-per-connection model; disconnect may be an Observer trigger.
+    // mut disconnected: MessageReader</* verify: Lightyear 0.26 disconnect type */>,
+    // mut reconnected: MessageReader</* verify: Lightyear 0.26 reconnect type */>,
     time: Res<Time>,
     config: Res<GameConfig>,
-    mut game_over_writer: EventWriter<GameOverEmitted>,
-    mut abort_auction_writer: EventWriter<AbortAuction>,
+    mut game_over_writer: MessageWriter<GameOverEmitted>,
+    mut abort_auction_writer: MessageWriter<AbortAuction>,
     mut advance: /* trigger mechanism */,
 ) {
     // 1. Update tracker map from connection events

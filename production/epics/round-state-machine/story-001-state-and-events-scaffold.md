@@ -13,18 +13,19 @@
 *(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)*
 
 **ADR Governing Implementation**: ADR-009 (RSM Phase State as ECS Resource), ADR-010 (RSM Phase Event Bus)
-**ADR Decision Summary**: `RoundState` is a plain `Resource` (NOT `#[derive(States)]`); `RoundPhase` is a plain enum stored inside `RoundState`, never a Bevy `State`. All 10 event types derive `Event`, `Clone`, `Debug`. Events are registered via `app.add_event::<T>()` in `RsmPlugin`. Re-exported through `server/core/rsm/mod.rs` so feature systems import from `server::core::rsm::events::*`.
+**ADR Decision Summary**: `RoundState` is a plain `Resource` (NOT `#[derive(States)]`); `RoundPhase` is a plain enum stored inside `RoundState`, never a Bevy `State`. All outbound RSM message types derive `Message`, `Clone`, `Debug`. Messages are registered via `app.add_message::<T>()` in `RsmPlugin`. `SessionReady` is an Observer Event (`#[derive(Event)]`) registered via `app.observe(on_session_ready)` — NOT via `add_message`. Re-exported through `server/core/rsm/mod.rs` so feature systems import from `server::core::rsm::events::*`.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
-**Engine Notes**: `EventWriter::write()` not `.send()` — `.send()` was removed in Bevy 0.16. `#[derive(States)]` must NOT be applied to `RoundPhase` — Bevy States' `OnEnter`/`OnExit` schedules conflict with Lightyear session lifecycle (ADR-009 Alternative 1 rejected). `#[derive(Resource)]` pattern is stable but must be verified against 0.18. `liv-bevy-018` skill mandatory on all files in this story.
+**Engine Notes**: RSM phase messages use `#[derive(Message)]` + `MessageWriter<T>`/`MessageReader<T>` + `app.add_message::<T>()`. `EventWriter`/`EventReader`/`Events<T>` do NOT exist in Bevy 0.17+. `SessionReady` is the sole exception — it uses `#[derive(Event)]` + Observer. `#[derive(States)]` must NOT be applied to `RoundPhase` — Bevy States' `OnEnter`/`OnExit` schedules conflict with Lightyear session lifecycle (ADR-009 Alternative 1 rejected). `#[derive(Resource)]` pattern is stable but must be verified against 0.18. `liv-bevy-018` skill mandatory on all files in this story.
 
 **Control Manifest Rules (Core layer)**:
 - Required: `RoundPhase` is a plain enum with no `#[derive(States)]`. Only `#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]`.
 - Required: `RoundState` derives `Resource` (not `Component`, not `States`).
-- Required: All event types use `EventWriter::write()` not `.send()`.
+- Required: All RSM phase message types use `#[derive(Message)]` and `MessageWriter::write()`. `SessionReady` uses `#[derive(Event)]` (Observer only).
+- Required: Register messages via `app.add_message::<T>()`, NOT `app.add_event::<T>()`.
 - Forbidden: No `#[derive(States)]` on `RoundPhase` anywhere in `server/src/core/rsm/`.
-- Forbidden: No `EventWriter::send()` calls in `server/src/core/rsm/`.
-- Guardrail: Re-export all event types through `server/core/rsm/mod.rs` — feature systems must not import from internal paths.
+- Forbidden: No `EventWriter`, `EventReader`, or `Events<T>` usage anywhere in `server/src/core/rsm/`.
+- Guardrail: Re-export all types through `server/core/rsm/mod.rs` — feature systems must not import from internal paths.
 
 ---
 
@@ -36,14 +37,14 @@
 - [ ] `shared/src/protocol.rs` (or `shared/src/lib.rs`) defines `DraftPhase` enum with variants `Initial`, `Auction`, `Shop`; derives `Serialize`, `Deserialize`, `Clone`, `Debug`, `PartialEq`, `Eq`
 - [ ] `shared/src/protocol.rs` defines `GameOverReason` enum with variants `ObjectivesDestroyed`, `Disconnection`, `Draw`; derives `Serialize`, `Deserialize`, `Clone`, `Debug`, `PartialEq`, `Eq`
 - [ ] `client/src/state/mod.rs` (or `client/src/rsm/view.rs`) defines `ClientPhaseView` resource with fields: `phase: RoundPhase`, `round_number: u32`, `timer_duration_ms: u32`; derives `Resource`, `Default`; doc comment states "Updated only by S2CPhaseChanged handler — never drives server transitions"
-- [ ] `server/src/core/rsm/events.rs` defines all 7 outbound event types: `DraftStarted { round: u32, phase: DraftPhase }`, `ShopRefreshNeeded { player: PlayerId }`, `AuctionPhaseEntered { round: u32 }`, `PlacementPhaseEntered { round: u32 }`, `ResolutionPhaseEntered { round: u32 }`, `GameOverEmitted { reason: GameOverReason, loser: Option<PlayerId> }`, `BroadcastPhaseChanged { phase: RoundPhase, round: u32, timer_ms: u32 }` — all derive `Event`, `Clone`, `Debug`
-- [ ] `server/src/core/rsm/events.rs` defines all 3 inbound event types: `SessionReady` (marker struct — doc comment states "DELIVERY: Observer trigger per ADR-012, NOT a buffered Event — do not read via EventReader"), `AuctionSettled { winner: Option<PlayerId>, final_price: u32, card_id: CardId }`, `ResolutionComplete` (marker struct) — all derive `Event`, `Clone`, `Debug`
-- [ ] `server/src/core/rsm/plugin.rs` defines `RsmPlugin` struct implementing Bevy `Plugin`; `build()` registers all 10 event types via `app.add_event::<T>()`; inserts `RoundState` resource via `app.insert_resource(RoundState::new())`; `SessionReady` is registered via `app.observe(on_session_ready)` not `app.add_event::<SessionReady>()`
+- [ ] `server/src/core/rsm/events.rs` defines all 7 outbound message types: `DraftStarted { round: u32, phase: DraftPhase }`, `ShopRefreshNeeded { player: PlayerId }`, `AuctionPhaseEntered { round: u32 }`, `PlacementPhaseEntered { round: u32 }`, `ResolutionPhaseEntered { round: u32 }`, `GameOverEmitted { reason: GameOverReason, loser: Option<PlayerId> }`, `BroadcastPhaseChanged { phase: RoundPhase, round: u32, timer_ms: u32 }` — all derive `Message`, `Clone`, `Debug`
+- [ ] `server/src/core/rsm/events.rs` defines: `SessionReady` (marker struct — `#[derive(Event)]` — doc comment states "DELIVERY: Observer trigger per ADR-012, NOT a buffered Message — do not read via MessageReader; subscribe via app.observe(on_session_ready)"), `AuctionSettled { winner: Option<PlayerId>, final_price: u32, card_id: CardId }` (`#[derive(Message, Clone, Debug)]`), `ResolutionComplete` (marker struct — `#[derive(Message, Clone, Debug)]`)
+- [ ] `server/src/core/rsm/plugin.rs` defines `RsmPlugin` struct implementing Bevy `Plugin`; `build()` registers all 9 message types (all except `SessionReady`) via `app.add_message::<T>()`; inserts `RoundState` resource via `app.insert_resource(RoundState::new())`; `SessionReady` is registered via `app.observe(on_session_ready)` — NOT via `app.add_message::<SessionReady>()`
 - [ ] `server/src/core/rsm/mod.rs` re-exports: `pub use events::*;`, `pub use state::{RoundPhase, RoundState};`, `pub use plugin::RsmPlugin;`
-- [ ] CI grep gate: `grep -rE "EventWriter::send|\.send\(.*\)" server/src/core/rsm/` returns zero matches
+- [ ] CI grep gate: `grep -rE "EventWriter|EventReader|Events<|add_event" server/src/core/rsm/` returns zero matches
 - [ ] CI grep gate: `grep -r "derive(States)" server/src/core/rsm/` returns zero matches
 - [ ] `cargo check --workspace` clean with zero warnings on `server/src/core/rsm/**`
-- [ ] `tests/unit/rsm/rsm_scaffold_test.rs` passes: `World::new()` + `app.init_resource::<RoundState>()` succeeds without panic; `world.resource::<RoundState>().phase == RoundPhase::Lobby`; `world.resource::<RoundState>().round_number == 0`; all 9 event types (excluding `SessionReady`) can be added via `app.add_event::<T>()` and read back from the world without panic
+- [ ] `tests/unit/rsm/rsm_scaffold_test.rs` passes: `World::new()` + `app.init_resource::<RoundState>()` succeeds without panic; `world.resource::<RoundState>().phase == RoundPhase::Lobby`; `world.resource::<RoundState>().round_number == 0`; all 9 message types (excluding `SessionReady`) can be added via `app.add_message::<T>()` and read back from the world without panic
 
 ---
 
@@ -85,14 +86,14 @@
   - When: `world.resource::<RoundState>()` is called
   - Then: Returns without panic; `phase == RoundPhase::Lobby`; `round_number == 0`; all timers `None`; both collections empty
 
-- **AC: All event types compile and register**
+- **AC: All message types compile and register**
   - Given: A fresh `App::new()` with `RsmPlugin` added
   - When: `app.finish()` and `app.cleanup()` are called
-  - Then: No panic; `Events<DraftStarted>`, `Events<ShopRefreshNeeded>`, `Events<AuctionPhaseEntered>`, `Events<PlacementPhaseEntered>`, `Events<ResolutionPhaseEntered>`, `Events<GameOverEmitted>`, `Events<BroadcastPhaseChanged>`, `Events<AuctionSettled>`, `Events<ResolutionComplete>` all exist as resources in the world
+  - Then: No panic; `Messages<DraftStarted>`, `Messages<ShopRefreshNeeded>`, `Messages<AuctionPhaseEntered>`, `Messages<PlacementPhaseEntered>`, `Messages<ResolutionPhaseEntered>`, `Messages<GameOverEmitted>`, `Messages<BroadcastPhaseChanged>`, `Messages<AuctionSettled>`, `Messages<ResolutionComplete>` all exist as resources in the world
 
-- **AC: No `.send()` calls in rsm module**
+- **AC: No EventWriter/EventReader usage in rsm module**
   - Given: CI grep on `server/src/core/rsm/`
-  - When: `grep -rE "EventWriter::send|\.send\(.*\)"` runs
+  - When: `grep -rE "EventWriter|EventReader|Events<|add_event"` runs
   - Then: Zero matches
 
 - **AC: No `derive(States)` on RoundPhase**

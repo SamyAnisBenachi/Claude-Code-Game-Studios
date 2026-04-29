@@ -91,7 +91,7 @@ fn handle_c2s_message() {
 
 fn main() {
     // ADR-002: headless server — no windowing, no rendering, no UI.
-    // Bevy feature flags in server/Cargo.toml: "bevy_ecs" + "multi_threaded".
+    // Bevy feature flags in server/Cargo.toml: "multi_threaded" (see Cargo.toml TODO).
     let mut app = App::new();
 
     app.add_plugins(MinimalPlugins);

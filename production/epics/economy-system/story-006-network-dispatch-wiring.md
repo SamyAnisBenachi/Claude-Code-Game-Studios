@@ -16,7 +16,7 @@
 **ADR Decision Summary (ADR-008)**: Both messages are sent on `ReliableChannel`. `S2CGoldUpdate` carries the full private state (`gold`, `current_mana`, `reserve_mana`, `mana_cap`) to the owning player only. `S2CGoldBroadcast` carries only `{ player: PlayerId, gold: u32 }` to all players — gold is publicly visible per GDD Rule 6. Both are sent on `ReliableChannel` because currency desync is a game-breaking bug; reliability is mandatory.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: MEDIUM
-**Engine Notes**: `MessageSender<S2CGoldUpdate>` unicast requires specifying `NetworkTarget::Single(player_connection_id)`. `MessageSender<S2CGoldBroadcast>` uses `NetworkTarget::All`. Lightyear 0.26 API patterns must follow `liv-bevy-lightyear` skill. `EventWriter::write()` / `EventReader::read()` patterns must follow `liv-bevy-018`. The dispatch system reads Bevy events (internal) and calls Lightyear send (external) — both API families are active in the same file; BOTH skills are mandatory.
+**Engine Notes**: `MessageSender<S2CGoldUpdate>` unicast requires specifying `NetworkTarget::Single(player_connection_id)`. `MessageSender<S2CGoldBroadcast>` uses `NetworkTarget::All`. Lightyear 0.26 API patterns must follow `liv-bevy-lightyear` skill. Bevy-side: `MessageWriter::write()` / `MessageReader::read()` — `EventWriter`/`EventReader` do not exist in Bevy 0.18. The dispatch system reads Bevy messages (internal) and calls Lightyear send (external) — both API families are active in the same file; BOTH skills are mandatory.
 
 > **liv-bevy-lightyear skill is MANDATORY on the implementing agent for this story.** Any `.rs` file that imports `lightyear` must activate this skill. Failure to do so risks pre-0.26 Lightyear API patterns that will fail to compile.
 
@@ -33,8 +33,8 @@
 ## Acceptance Criteria
 
 - [ ] `server/src/network/economy_dispatch.rs` exists with two systems:
-  - `dispatch_gold_update(mut reader: EventReader<S2CGoldUpdate>, sender: MessageSender<S2CGoldUpdate>, connection_map: Res<PlayerConnectionMap>)` — unicasts each event to the owning player's `ConnectionId` on `ReliableChannel`
-  - `dispatch_gold_broadcast(mut reader: EventReader<S2CGoldBroadcast>, sender: MessageSender<S2CGoldBroadcast>)` — broadcasts each event to `NetworkTarget::All` on `ReliableChannel`
+  - `dispatch_gold_update(mut reader: MessageReader<S2CGoldUpdate>, sender: MessageSender<S2CGoldUpdate>, connection_map: Res<PlayerConnectionMap>)` — unicasts each message to the owning player's `ConnectionId` on `ReliableChannel` — TODO(liv-bevy-018): verify MessageReader<T> type name in Bevy 0.18
+  - `dispatch_gold_broadcast(mut reader: MessageReader<S2CGoldBroadcast>, sender: MessageSender<S2CGoldBroadcast>)` — broadcasts each message to `NetworkTarget::All` on `ReliableChannel`
 - [ ] `PlayerConnectionMap` resource (or equivalent Lightyear API for player→connection lookup) is used to resolve `PlayerId` → `ConnectionId` for unicast
 - [ ] If `ConnectionId` not found for a player in `dispatch_gold_update`, a `warn!` (not `error!`, not panic) is emitted and the event is skipped
 - [ ] Both systems are registered in `EconomyPlugin` or a new `EconomyNetworkPlugin` in `server/src/network/`; scheduled in `Update` `.after(on_draft_started)` and `.after(handle_kill_award)` and `.after(handle_objective_award)` (dispatch runs after all economy mutations that enqueue events in the same frame)

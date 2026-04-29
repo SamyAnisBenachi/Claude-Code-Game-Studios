@@ -20,10 +20,10 @@
 
 **Engine**: Bevy 0.18 | **Risk**: MEDIUM
 **Engine Notes**:
-- `EventReader::read()` (not `.iter()`) — Bevy 0.16 API rename. `liv-bevy-018` skill mandatory.
-- `Observer` API: in Bevy 0.18, observers are registered via `app.observe(on_session_ready_init)`. The callback receives `Trigger<SessionReady>`. Verify exact `Trigger` generic parameter against `liv-bevy-018` skill before implementing.
-- `ShopRefreshNeeded` event has a two-frame lifetime in Bevy's default event system. The subscriber must run every frame to avoid missing events. Scheduling `.after(advance_phase)` from ADR-010 ensures correct phase visibility.
-- `bevy_asset_loader` compatibility: `Res<CardCatalog>` is assumed to be inserted by the `game-config-pipeline` epic's loading state before `SessionReady` fires. The Observer must not access `CardCatalog` before it is inserted — verify with `Option<Res<CardCatalog>>` guard if load ordering is uncertain.
+- `MessageReader::read()` (Bevy 0.18 — `EventReader` no longer exists; `EventReader` was removed in 0.17). `liv-bevy-018` skill mandatory.
+- `Observer` API: in Bevy 0.18, observers are registered via `app.observe(on_session_ready_init)`. The callback receives `Trigger<SessionReady>` (verify exact `Trigger` vs `On<E>` parameter — post-cutoff API). Consult `liv-bevy-018` REFERENCE.md.
+- `ShopRefreshNeeded` is a Bevy **Message** (`#[derive(Message)]`) with a two-frame lifetime. The subscriber must run every frame to avoid missing messages. Scheduling `.after(advance_phase)` from ADR-010 ensures correct phase visibility.
+- `bevy_asset_loader` compatibility: `Res<CardCatalog>` is assumed to be inserted by the `game-config-pipeline` epic before `SessionReady` fires. Guard with `Option<Res<CardCatalog>>` if load ordering is uncertain.
 
 **Control Manifest Rules (Core layer)**:
 - Required: `on_session_ready_init` iterates `SessionConfig.team_map.keys()` in deterministic (sorted) order to maintain RNG audit log replay correctness (ADR-005).
@@ -39,7 +39,7 @@
 
 - [ ] `server/src/core/pool/system.rs` exists and defines:
   - `on_session_ready_init(trigger: Trigger<SessionReady>, mut pools: ResMut<PlayerPools>, mut shop_slots: ResMut<ShopSlots>, mut offering: ResMut<InitialDraftOffering>, mut refresh_count: ResMut<ManualRefreshCount>, catalog: Res<CardCatalog>, config: Res<GameConfig>, session: Res<SessionConfig>)` — initializes all four resources for each player in the session
-  - `on_shop_refresh_needed(mut events: EventReader<ShopRefreshNeeded>, mut pools: ResMut<PlayerPools>, mut shop_slots: ResMut<ShopSlots>, mut offering: ResMut<InitialDraftOffering>, mut refresh_count: ResMut<ManualRefreshCount>, round_state: Res<RoundState>, catalog: Res<CardCatalog>, family_index: Res<FamilyIndex>, mut rng: ResMut<ServerRng>, config: Res<GameConfig>)` — processes per-player shop refresh events
+  - `on_shop_refresh_needed(mut events: MessageReader<ShopRefreshNeeded>, mut pools: ResMut<PlayerPools>, mut shop_slots: ResMut<ShopSlots>, mut offering: ResMut<InitialDraftOffering>, mut refresh_count: ResMut<ManualRefreshCount>, round_state: Res<RoundState>, catalog: Res<CardCatalog>, family_index: Res<FamilyIndex>, mut rng: ResMut<ServerRng>, config: Res<GameConfig>)` — processes per-player shop refresh messages — TODO(liv-bevy-018): verify MessageReader<T> type name
 - [ ] `server/src/core/pool/plugin.rs` exists and defines `CardPoolPlugin` which:
   - Inserts `PlayerPools`, `ShopSlots`, `InitialDraftOffering`, `ManualRefreshCount` as default-empty resources at app startup
   - Registers `on_session_ready_init` as an Observer for the `SessionReady` event

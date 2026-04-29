@@ -19,9 +19,9 @@ User + lead-programmer + gameplay-programmer + network-programmer
 ## Summary
 
 The Round State Machine communicates all phase transitions exclusively via Bevy
-buffered Events (`EventWriter`/`EventReader`). The RSM's `advance_phase` function
-is the sole emitter of phase boundary events. All Core and Feature systems subscribe
-to these events to react to phase changes. The RSM has zero direct imports from
+buffered Messages (`MessageWriter`/`MessageReader`). The RSM's `advance_phase` function
+is the sole emitter of phase boundary messages. All Core and Feature systems subscribe
+to these messages to react to phase changes. The RSM has zero direct imports from
 `feature/` modules — it never calls into them. Emission ordering within a single
 phase transition is enforced by linear code order in `advance_phase` match arms,
 not by Bevy system scheduling constraints.
@@ -41,21 +41,17 @@ not by Bevy system scheduling constraints.
 | **Domain** | Core / ECS Events |
 | **Knowledge Risk** | HIGH — Bevy 0.15–0.18 all post-cutoff; Event API changed significantly across these versions |
 | **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, ADR-009 (RSM state structure) |
-| **Post-Cutoff APIs Used** | `EventWriter::write()` (not `.send()` — changed in Bevy 0.16); `EventReader::read()` (not `.iter()` — verify in Bevy 0.18); `#[derive(Event)]` (stable since 0.14); Bevy 0.17 formalised the Event/Observer split |
-| **Verification Required** | Confirm `EventWriter::write()` vs `EventWriter::send()` in Bevy 0.18 migration guide; confirm `EventReader::read()` return type; confirm that `#[derive(Event)]` does not require `Message` derive for buffered event use |
+| **Post-Cutoff APIs Used** | `MessageWriter::write()` / `MessageReader::read()` (Bevy 0.17+ Message/Event split — `EventWriter`/`EventReader` no longer exist); `#[derive(Message)]` for buffered pull-based messages; `#[derive(Event)]` + `Observer` for push-based triggers only |
+| **Verification Required** | Confirm `MessageWriter<T>` / `MessageReader<T>` system param names in Bevy 0.18; confirm `app.add_message::<T>()` registration API; confirm that RSM phase messages correctly use `#[derive(Message)]` not `#[derive(Event)]` |
 
-> **Critical API note**: `EventWriter::send()` was renamed to `EventWriter::write()` in
-> Bevy 0.16. All emitter code in `advance_phase` MUST use `.write()`. Any pre-0.15
-> tutorial code using `.send()` will fail to compile on Bevy 0.18.
+> **Critical API note — Bevy 0.18 Message/Event split**: `EventWriter`/`EventReader`/`Events<T>` **no longer exist** in Bevy 0.17+. They were replaced by two distinct mechanisms:
+> - **Buffered Messages** (pull-based, polled each frame): `#[derive(Message)]` + `MessageWriter<T>` + `MessageReader<T>` + `app.add_message::<T>()`. This is the correct pattern for RSM phase transitions.
+> - **Observer Events** (push-based, immediate same-frame trigger): `#[derive(Event)]` + `commands.trigger()` + `Observer`. Reserved for one-shot lifecycle events (`SessionReady` per ADR-012) and reactive keyword triggers in the Feature layer.
 >
-> **Events vs Observers**: Bevy 0.17 formalised the split. Buffered Events
-> (`EventWriter`/`EventReader`) are the correct pattern for RSM phase transitions —
-> they are polled each frame by subscribed systems. Observers (triggered on component
-> mutation) are reserved for reactive keyword triggers (APPEARANCE, DEATH, FINAL BLOW)
-> in the Feature layer. Do NOT use Observers for RSM phase events.
+> Any code using `EventWriter<T>`, `EventReader<T>`, or `app.add_event::<T>()` will fail to compile on Bevy 0.18.
 >
 > **`liv-bevy-018` mandatory** on all `.rs` files that define, emit, or read these
-> event types. The skill enforces correct 0.18 API patterns and prevents pre-0.15
+> message types. The skill enforces correct 0.18 API patterns and prevents pre-0.17
 > regressions.
 
 ---
@@ -127,14 +123,15 @@ is ready. The RSM's GDD (Formula F2) specifies this order explicitly.
 
 ## Decision
 
-The RSM communicates all phase transitions via Bevy buffered Events. The RSM's
+The RSM communicates all phase transitions via Bevy buffered Messages. The RSM's
 `advance_phase` function (defined in ADR-009) is the sole emitter of outbound
-phase events. Feature and Core systems subscribe via `EventReader`. The RSM reads
-a small set of inbound events from other systems to detect completion signals
-(session ready, auction settled, resolution complete).
+phase messages. Feature and Core systems subscribe via `MessageReader`. The RSM reads
+a small set of inbound messages from other systems to detect completion signals
+(auction settled, resolution complete). `SessionReady` is delivered via Bevy Observer
+(same-frame trigger) per ADR-012 — it is NOT a buffered Message.
 
-All event types are defined in `server/core/rsm/events.rs` and re-exported through
-the `server/core` module boundary. Feature systems import event types from `core`,
+All message types are defined in `server/core/rsm/events.rs` and re-exported through
+the `server/core` module boundary. Feature systems import message types from `core`,
 not from `rsm` directly.
 
 ### Architecture Diagram
@@ -145,8 +142,8 @@ server/core/rsm/advance_phase
           │  emits (in strict order per F2)
           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  RSM Event Bus                              │
-│  (Bevy buffered EventWriter — same Update set)              │
+│                  RSM Message Bus                            │
+│  (Bevy buffered MessageWriter — same Update set)            │
 │                                                             │
 │  DraftStarted ──────────────────────► Economy System        │
 │    { round, phase: DraftPhase }           apply_mana_ramp   │
@@ -189,11 +186,16 @@ server/core/rsm/advance_phase
 
 ### Complete Event Catalog
 
-All events are defined in `server/core/rsm/events.rs`. All derive `Event`, `Clone`,
-and `Debug`. Types imported from other modules (`PlayerId`, `CardId`, `RoundPhase`,
-`GameOverReason`, `DraftPhase`) are defined in `shared/src/protocol.rs`.
+All outbound message types are defined in `server/core/rsm/events.rs`. All derive
+`Message`, `Clone`, and `Debug`. Types imported from other modules (`PlayerId`,
+`CardId`, `RoundPhase`, `GameOverReason`, `DraftPhase`) are defined in
+`shared/src/protocol.rs`.
 
-#### Outbound Events (RSM emits, systems read)
+`SessionReady` is an Observer Event (`#[derive(Event)]`) not a buffered Message —
+it uses `commands.trigger()` per ADR-012 and must NOT be registered via
+`app.add_message::<SessionReady>()`.
+
+#### Outbound Messages (RSM writes, systems read)
 
 ```rust
 // server/core/rsm/events.rs
@@ -201,11 +203,11 @@ and `Debug`. Types imported from other modules (`PlayerId`, `CardId`, `RoundPhas
 use bevy::prelude::*;
 use shared::protocol::{PlayerId, CardId, RoundPhase, GameOverReason, DraftPhase};
 
-/// Emitted on entry into DRAFT_INITIAL, DRAFT_AUCTION, or DRAFT_SHOP.
+/// Written on entry into DRAFT_INITIAL, DRAFT_AUCTION, or DRAFT_SHOP.
 /// The Economy System reads this to apply mana ramp and gold income.
 /// The `phase` field tells the Economy System which income formula applies
 /// (round 1 starting gold vs. baseline + interest).
-#[derive(Event, Clone, Debug)]
+#[derive(Message, Clone, Debug)]
 pub struct DraftStarted {
     /// The round number as of this DRAFT entry (already incremented per Rule 2).
     pub round: u32,
@@ -213,62 +215,62 @@ pub struct DraftStarted {
     pub phase: DraftPhase,  // DraftPhase::Initial | Auction | Shop
 }
 
-/// Emitted once per player on entry into any DRAFT phase, after DraftStarted.
+/// Written once per player on entry into any DRAFT phase, after DraftStarted.
 /// The Card Pool reads this to draw 3 weighted cards for that player's shop.
 /// For DRAFT_INITIAL, this populates the initial 9-card selection.
-/// Emitted separately per player so the Card Pool can draw independently per player.
-#[derive(Event, Clone, Debug)]
+/// Written separately per player so the Card Pool can draw independently per player.
+#[derive(Message, Clone, Debug)]
 pub struct ShopRefreshNeeded {
     /// The player whose shop should be refreshed.
     pub player: PlayerId,
 }
 
-/// Emitted on entry into DRAFT_AUCTION, after ShopRefreshNeeded for all players.
+/// Written on entry into DRAFT_AUCTION, after ShopRefreshNeeded for all players.
 /// The Auction System [M2] reads this to initialise auction state and start its
 /// 20-second timer. Clients are NOT notified of DRAFT_AUCTION until after this
-/// event is processed (see F2 step 4 — BroadcastPhaseChanged comes last).
-#[derive(Event, Clone, Debug)]
+/// message is processed (see F2 step 4 — BroadcastPhaseChanged comes last).
+#[derive(Message, Clone, Debug)]
 pub struct AuctionPhaseEntered {
     pub round: u32,
 }
 
-/// Emitted on entry into PLACEMENT.
+/// Written on entry into PLACEMENT.
 /// The Board/Lane System reads this to open the placement submission buffer
 /// and begin tracking per-player submission status.
-#[derive(Event, Clone, Debug)]
+#[derive(Message, Clone, Debug)]
 pub struct PlacementPhaseEntered {
     pub round: u32,
 }
 
-/// Emitted on entry into RESOLUTION.
+/// Written on entry into RESOLUTION.
 /// Multiple systems subscribe:
 ///   - Combat Resolution [M2]: execute all six global sub-steps
 ///   - Objective System: evaluate destruction damage (reads real_objectives_destroyed)
 ///   - Board/Lane System: prepare for board cleanup after resolution completes
-#[derive(Event, Clone, Debug)]
+#[derive(Message, Clone, Debug)]
 pub struct ResolutionPhaseEntered {
     pub round: u32,
 }
 
-/// Emitted when the RSM transitions to GAME_OVER for any reason.
+/// Written when the RSM transitions to GAME_OVER for any reason.
 /// The Game Session System reads this to execute session teardown:
 /// destroy SessionConfig, release ServerRng, and clean up Lightyear session state.
 /// `loser: None` signals a Draw (mutual destruction, mutual disconnection, or
 /// resolution safety timeout). This field mirrors the `S2CGameOver` payload shape.
-#[derive(Event, Clone, Debug)]
+#[derive(Message, Clone, Debug)]
 pub struct GameOverEmitted {
     pub reason: GameOverReason,
     /// None = Draw; Some(id) = the player who lost.
     pub loser: Option<PlayerId>,
 }
 
-/// Always the LAST event emitted in any phase transition.
+/// Always the LAST message written in any phase transition.
 /// The network dispatch system reads this to send `S2CPhaseChanged` via
 /// `ReliableChannel` to all connected clients (see ADR-008).
 /// `timer_ms = 0` for GAME_OVER and LOBBY phases (no client-side timer).
 /// `timer_ms = 0` for DRAFT_AUCTION (Auction System drives its own countdown;
 /// clients must not render an RSM-owned timer for DRAFT_AUCTION).
-#[derive(Event, Clone, Debug)]
+#[derive(Message, Clone, Debug)]
 pub struct BroadcastPhaseChanged {
     /// The RoundPhase that was just entered.
     pub phase: RoundPhase,
@@ -279,22 +281,23 @@ pub struct BroadcastPhaseChanged {
 }
 ```
 
-#### Inbound Events (Other systems emit, RSM reads)
+#### Inbound Messages (Other systems write, RSM reads)
 
 ```rust
-/// Emitted by the Game Session System when all player slots are filled
-/// and all players have confirmed their class.
-/// The RSM reads this to trigger the LOBBY → DRAFT_INITIAL transition.
-/// See game-session-system.md for the full LOBBY guard specification.
+/// DELIVERY: Observer trigger per ADR-012. NOT a buffered Message.
+/// Triggered by the Game Session System via `commands.trigger(SessionReady)` when
+/// all LOBBY conditions are satisfied. The RSM observes this via `app.observe(on_session_ready)`.
+/// Do NOT register via `app.add_message::<SessionReady>()`.
+/// Do NOT read via `MessageReader<SessionReady>` — it will never fire.
 #[derive(Event, Clone, Debug)]
 pub struct SessionReady;
 
-/// Emitted by the Auction System [M2] when the auction concludes
+/// Written by the Auction System [M2] when the auction concludes
 /// (winner found or 20-second timer expired with no bids).
 /// The RSM reads this in DRAFT_AUCTION to transition to DRAFT_SHOP.
 /// The RSM validates `phase == DRAFT_AUCTION` before acting — a stale
-/// AuctionSettled event (e.g., fired after GAME_OVER) is silently discarded.
-#[derive(Event, Clone, Debug)]
+/// AuctionSettled message (e.g., written after GAME_OVER) is silently discarded.
+#[derive(Message, Clone, Debug)]
 pub struct AuctionSettled {
     /// None if the auction timed out with no bids.
     pub winner: Option<PlayerId>,
@@ -303,11 +306,11 @@ pub struct AuctionSettled {
     pub card_id: CardId,
 }
 
-/// Emitted by Combat Resolution [M2] when all six global sub-steps complete.
+/// Written by Combat Resolution [M2] when all six global sub-steps complete.
 /// The RSM reads this in RESOLUTION to evaluate the GAME_OVER condition
 /// (real_objectives_destroyed) and then transition to the next DRAFT or GAME_OVER.
 /// The RSM validates `phase == RESOLUTION` before acting.
-#[derive(Event, Clone, Debug)]
+#[derive(Message, Clone, Debug)]
 pub struct ResolutionComplete;
 ```
 
@@ -339,6 +342,7 @@ needing to read `round_number` directly from RSM state.
 This table is the canonical subscriber contract. It is BLOCKING for story authoring:
 any story implementing a phase-reactive system MUST be traceable to a row in this table.
 M2 rows are placeholders — they must be filled in when M2 systems are implemented.
+All subscribers read via `MessageReader<T>`, not `EventReader<T>`.
 
 | Event emitted by RSM | Subscriber System | Action | Story milestone |
 |---|---|---|---|
@@ -373,12 +377,12 @@ any subscriber system runs.
 ```
 In advance_phase match arm for DRAFT_* entry:
 
-1. EventWriter<DraftStarted>.write(...)         // Economy: mana + income
-2. EventWriter<ShopRefreshNeeded>.write(...)     // Card Pool: per player, in order
-   EventWriter<ShopRefreshNeeded>.write(...)     // (one write per player)
-3. EventWriter<AuctionPhaseEntered>.write(...)   // DRAFT_AUCTION only
-4. EventWriter<BroadcastPhaseChanged>.write(...) // ALWAYS LAST — clients notified
-                                                  // after all server state is ready
+1. MessageWriter<DraftStarted>.write(...)         // Economy: mana + income
+2. MessageWriter<ShopRefreshNeeded>.write(...)     // Card Pool: per player, in order
+   MessageWriter<ShopRefreshNeeded>.write(...)     // (one write per player)
+3. MessageWriter<AuctionPhaseEntered>.write(...)   // DRAFT_AUCTION only
+4. MessageWriter<BroadcastPhaseChanged>.write(...) // ALWAYS LAST — clients notified
+                                                    // after all server state is ready
 ```
 
 Rationale for ordering:
@@ -397,22 +401,22 @@ Rationale for ordering:
 #### PLACEMENT Entry
 
 ```
-1. EventWriter<PlacementPhaseEntered>.write(...)
-2. EventWriter<BroadcastPhaseChanged>.write(...) // ALWAYS LAST
+1. MessageWriter<PlacementPhaseEntered>.write(...)
+2. MessageWriter<BroadcastPhaseChanged>.write(...) // ALWAYS LAST
 ```
 
 #### RESOLUTION Entry
 
 ```
-1. EventWriter<ResolutionPhaseEntered>.write(...)
-2. EventWriter<BroadcastPhaseChanged>.write(...) // ALWAYS LAST
+1. MessageWriter<ResolutionPhaseEntered>.write(...)
+2. MessageWriter<BroadcastPhaseChanged>.write(...) // ALWAYS LAST
 ```
 
 #### GAME_OVER Entry
 
 ```
-1. EventWriter<GameOverEmitted>.write(...)
-2. EventWriter<BroadcastPhaseChanged>.write(...) // ALWAYS LAST
+1. MessageWriter<GameOverEmitted>.write(...)
+2. MessageWriter<BroadcastPhaseChanged>.write(...) // ALWAYS LAST
 ```
 
 Note: `S2CGameOver` is a separate network message from `S2CPhaseChanged(GAME_OVER)`.
@@ -445,8 +449,8 @@ The RSM only signals phase entry and exit. Systems own their responses.
    `use server::core::rsm::events::*` — not from internal module paths.
 
 2. **`advance_phase` emitter discipline**: The `advance_phase` system takes
-   `EventWriter<T>` parameters for all outbound events it may emit. It does NOT
-   take any `EventReader<T>` for inbound signals — those are read by a separate
+   `MessageWriter<T>` parameters for all outbound messages it may emit. It does NOT
+   take any `MessageReader<T>` for inbound signals — those are read by a separate
    `rsm_input_reader` system that updates RSM state before `advance_phase` runs.
 
 3. **System scheduling in `Update`**: In the RSM plugin's `Update` set:
@@ -454,29 +458,30 @@ The RSM only signals phase entry and exit. Systems own their responses.
    rsm_input_reader  →  advance_phase  →  [all subscriber systems]
    ```
    All subscriber systems must be scheduled `.after(advance_phase)` so they read
-   events written in the current frame. Subscribers scheduled before `advance_phase`
-   will not see the current frame's events.
+   messages written in the current frame. Subscribers scheduled before `advance_phase`
+   will not see the current frame's messages.
 
-4. **Bevy event lifetime**: By default, Bevy clears events two frames after they are
-   written. Subscriber systems that are not guaranteed to run every frame must handle
-   the case where an event was missed. For RSM events, all subscribers run every frame
-   in `Update` — missed events are a bug, not an expected code path.
+4. **Bevy message lifetime**: By default, Bevy clears messages two frames after they
+   are written. Subscriber systems that are not guaranteed to run every frame must
+   handle the case where a message was missed. For RSM messages, all subscribers run
+   every frame in `Update` — missed messages are a bug, not an expected code path.
 
-5. **Guard pattern for inbound events**: The RSM `rsm_input_reader` system must
-   validate `phase == expected_phase` before acting on inbound events:
+5. **Guard pattern for inbound messages**: The RSM `rsm_input_reader` system must
+   validate `phase == expected_phase` before acting on inbound messages:
    ```rust
-   for _ in auction_settled_events.read() {
+   for _ in auction_settled_messages.read() {
        if rsm_state.phase != RoundPhase::DraftAuction {
-           continue; // Stale event — discard silently
+           continue; // Stale message — discard silently
        }
        rsm_state.phase = RoundPhase::DraftShop;
        // ... queue advance_phase
    }
    ```
 
-6. **No Observers for RSM events**: Using `Observer::new(callback)` to watch RSM
-   event types would bypass the scheduling guarantees described above. RSM events are
-   polled via `EventReader` only. The `liv-bevy-018` skill enforces this distinction.
+6. **No Observers for RSM messages**: Using `Observer::new(callback)` to watch RSM
+   message types would bypass the scheduling guarantees described above. RSM messages
+   are polled via `MessageReader` only. `SessionReady` is the sole exception — it uses
+   Observer per ADR-012. The `liv-bevy-018` skill enforces this distinction.
 
 ---
 
@@ -497,21 +502,23 @@ The RSM only signals phase entry and exit. Systems own their responses.
 ### Alternative 2: Bevy Observers (Reactive Triggers) for Phase Events
 
 - **Description**: Use Bevy 0.17+ Observer pattern — `app.observe(on_draft_started)`
-  — rather than `EventWriter`/`EventReader`. Systems register callbacks that fire
+  — rather than `MessageWriter`/`MessageReader`. Systems register callbacks that fire
   immediately when the event is triggered.
 - **Pros**: No per-frame polling overhead; observer callbacks fire immediately on
-  trigger, not on the next `EventReader` poll; no two-frame event lifetime concern.
+  trigger, not on the next `MessageReader` poll; no two-frame message lifetime concern.
 - **Cons**: Observers in Bevy 0.17/0.18 are designed for component mutation reactions
-  (ADDED, REMOVED, CHANGED on components), not for explicit phase transitions.
-  Observer callbacks run in an implicit order that is harder to reason about than
-  explicit system scheduling. The F2 emission ordering guarantee (steps 1–4) cannot
-  be enforced across Observer callbacks without additional coordination. The Bevy
-  0.17 event/observer split explicitly designates `EventWriter`/`EventReader` for
-  "fire when a system writes it" patterns and Observers for "fire when a component
-  changes" patterns — using Observers for RSM events would violate this convention.
-- **Rejection Reason**: Observer semantics are wrong for RSM phase events. Buffered
-  events with explicit system ordering are the correct Bevy 0.17/0.18 pattern for
-  "system A writes, systems B/C/D read next frame." Rejected.
+  (ADDED, REMOVED, CHANGED on components) and one-shot lifecycle triggers. They are
+  NOT suited for explicit phase transitions where multiple subscribers must fire in a
+  defined order. Observer callbacks run in an implicit order that is harder to reason
+  about than explicit system scheduling. The F2 emission ordering guarantee (steps 1–4)
+  cannot be enforced across Observer callbacks without additional coordination.
+  The Bevy 0.17 Message/Observer split explicitly designates buffered `Message` types
+  for "system A writes, systems B/C/D read next frame" patterns, and Observers for
+  one-shot reactive triggers (`SessionReady` per ADR-012). Using Observers for
+  recurring RSM phase messages would violate this convention.
+- **Rejection Reason**: Observer semantics are wrong for RSM phase messages. Buffered
+  Messages with explicit system ordering are the correct Bevy 0.17/0.18 pattern for
+  recurring, polled signals. Rejected.
 
 ### Alternative 3: Single `PhaseChanged { old_phase, new_phase }` Omnibus Event
 
@@ -632,12 +639,15 @@ phase transitions yet — the RSM itself has not been implemented.
 
 Implementation sequence:
 
-1. Define all event types in `server/core/rsm/events.rs` per the catalog above.
-2. Register all event types in the RSM plugin: `app.add_event::<DraftStarted>()`, etc.
-3. Implement `advance_phase` (per ADR-009) with `EventWriter<T>` parameters for all
-   outbound events. Enforce F2 emission ordering by code order within each match arm.
-4. Implement `rsm_input_reader` system: reads `SessionReady`, `AuctionSettled`,
-   `ResolutionComplete`; updates RSM phase state; schedules `.before(advance_phase)`.
+1. Define all message types in `server/core/rsm/events.rs` per the catalog above.
+   Outbound RSM types derive `Message`; `SessionReady` derives `Event` (Observer only).
+2. Register all message types in the RSM plugin: `app.add_message::<DraftStarted>()`, etc.
+   Register `SessionReady` via `app.observe(on_session_ready)` — NOT `add_message`.
+3. Implement `advance_phase` (per ADR-009) with `MessageWriter<T>` parameters for all
+   outbound messages. Enforce F2 emission ordering by code order within each match arm.
+4. Implement `rsm_input_reader` system: reads `AuctionSettled`, `ResolutionComplete`
+   via `MessageReader<T>`; updates RSM phase state; schedules `.before(advance_phase)`.
+   `SessionReady` is handled by the RSM Observer (`on_session_ready`), not this system.
 5. Implement subscriber systems for M1 events: Economy System (`DraftStarted`),
    Card Pool (`ShopRefreshNeeded`), Board/Lane System (`PlacementPhaseEntered`,
    `ResolutionPhaseEntered`), Game Session System (`GameOverEmitted`), Network Dispatch
@@ -654,9 +664,10 @@ Implementation sequence:
 
 Each criterion maps to one or more RSM acceptance criteria from `round-state-machine.md`.
 
-- [ ] **Event catalog compiles**: All types in `server/core/rsm/events.rs` derive
-  `Event`, `Clone`, `Debug` and compile against Bevy 0.18 without deprecation warnings.
-  (`EventWriter::write()` not `.send()`.)
+- [ ] **Message catalog compiles**: All outbound types in `server/core/rsm/events.rs`
+  derive `Message`, `Clone`, `Debug` and compile against Bevy 0.18 without deprecation
+  warnings. `SessionReady` derives `Event` (Observer). `app.add_message::<T>()` used
+  for all types except `SessionReady` (which uses `app.observe(on_session_ready)`).
 - [ ] **F2 ordering — mana before income**: In a test that writes `DraftStarted` and
   runs the Economy System, `current_mana` is set before `gold` is credited. No ordering
   inversion observed. (RSM-6, RSM-7, RSM-8)

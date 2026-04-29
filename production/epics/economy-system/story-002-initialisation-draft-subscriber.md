@@ -15,7 +15,7 @@
 **ADR Decision Summary**: Economy System subscribes to `DraftStarted { round, phase: DraftPhase }` emitted by the RSM's `advance_phase`. The `phase` field selects the income formula: `DraftPhase::Initial` grants `starting_gold = 5` (already set at init — no income applied at round 1 DRAFT entry); `DraftPhase::Auction | Shop` grants `baseline + interest` (interest read from `InterestSnapshots`). Economy subscriber must be scheduled `.after(advance_phase)`. Economy emits `S2CGoldUpdate` unicast and `S2CGoldBroadcast` broadcast as internal events after each state mutation — the network dispatch system (Story 006) delivers them to clients.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: MEDIUM
-**Engine Notes**: Uses `EventReader<DraftStarted>::read()` (not `.iter()` — renamed Bevy 0.16) and `EventWriter<S2CGoldUpdate>::write()` (not `.send()` — renamed Bevy 0.16). Both are enforced by `liv-bevy-018`. `PlayerEconomies` initialisation on `SessionReady` requires the `SessionConfig` resource to be present — dependency on GSS Epic (Story S2-xx). For M1 unit testing, `SessionConfig` is constructed manually in the test world.
+**Engine Notes**: Uses `MessageReader<DraftStarted>::read()` (Bevy 0.18 — `EventReader` no longer exists) and `MessageWriter<S2CGoldUpdate>::write()` (Bevy 0.18 — `EventWriter` no longer exists). `initialise_player_economies` subscribes to `SessionReady` via `MessageReader<SessionReady>` — but see ADR-012: `SessionReady` is an Observer trigger. Correct approach: use `app.observe(init_player_economies)` instead. Both enforced by `liv-bevy-018`.
 
 **Control Manifest Rules (Core layer)**:
 - Required: `on_draft_started` scheduled `.after(advance_phase)` in `EconomyPlugin`'s `Update` set.
@@ -29,20 +29,21 @@
 ## Acceptance Criteria
 
 - [ ] `server/src/core/economy/system.rs` exists with `on_draft_started` system:
-  - Reads `EventReader<DraftStarted>`, `Res<SessionConfig>`, `ResMut<PlayerEconomies>`, `Res<InterestSnapshots>`, `Res<GameConfig>`, `EventWriter<S2CGoldUpdate>`, `EventWriter<S2CGoldBroadcast>`
+  - Reads `MessageReader<DraftStarted>`, `Res<SessionConfig>`, `ResMut<PlayerEconomies>`, `Res<InterestSnapshots>`, `Res<GameConfig>`, `MessageWriter<S2CGoldUpdate>`, `MessageWriter<S2CGoldBroadcast>` — TODO(liv-bevy-018): verify MessageWriter/MessageReader type names in Bevy 0.18
   - For each player in `SessionConfig.team_map.keys()`: calls `api::apply_mana_ramp(player, round)` setting `current_mana = min(round, mana_cap)`
   - If `phase == DraftPhase::Initial` AND `round == 1`: no gold added (starting gold already at 5 from init)
   - If `phase == DraftPhase::Auction | Shop`: reads `InterestSnapshots[player]` (default 0 if absent), computes `interest = min(floor(snap / interest_threshold_gold), interest_max_bonus)`, calls `api::apply_gold_award(player, gold_baseline_per_round + interest)`, clears snapshot entry
   - Enqueues `S2CGoldUpdate { player, gold, current_mana, reserve_mana, mana_cap }` per player
   - Enqueues `S2CGoldBroadcast { player, gold }` per player
-- [ ] `server/src/core/economy/system.rs` contains `initialise_player_economies` system:
-  - Reads `EventReader<SessionReady>`, `Res<SessionConfig>`, `Res<GameConfig>`, `ResMut<PlayerEconomies>`
+- [ ] `server/src/core/economy/system.rs` contains `initialise_player_economies` Observer:
+  - Registered via `app.observe(initialise_player_economies)` — NOT via `app.add_systems`. `SessionReady` is an Observer trigger (ADR-012); `MessageReader<SessionReady>` will never fire.
+  - Receives `_trigger: Trigger<SessionReady>`, `Res<SessionConfig>`, `Res<GameConfig>`, `ResMut<PlayerEconomies>`
   - On `SessionReady`: for each player in `SessionConfig.team_map.keys()`: inserts `PlayerEconomy { gold: config.starting_gold, current_mana: 0, reserve_mana: 0, mana_cap: config.mana_cap, reserved_gold: 0 }`
   - `InterestSnapshots` resource is also inserted empty (`HashMap::new()`)
 - [ ] `server/src/core/economy/plugin.rs` exists and defines `EconomyPlugin`:
   - Registers `PlayerEconomies` and `InterestSnapshots` resources (via `app.init_resource` or `app.insert_resource`)
-  - Registers `S2CGoldUpdate` and `S2CGoldBroadcast` as Bevy events (`app.add_event`)
-  - Schedules `initialise_player_economies` in `Update` `.after(rsm_input_reader)` (reads `SessionReady` which RSM also reads)
+  - Registers `S2CGoldUpdate` and `S2CGoldBroadcast` as Bevy messages (`app.add_message::<S2CGoldUpdate>()`, `app.add_message::<S2CGoldBroadcast>()`)
+  - Registers `initialise_player_economies` via `app.observe(initialise_player_economies)` — NOT `app.add_systems` (ADR-012)
   - Schedules `on_draft_started` in `Update` `.after(advance_phase)`
 - [ ] **EC12**: GIVEN game start, WHEN `initialise_player_economies` fires on `SessionReady`, THEN each player's `gold = 5`, `current_mana = 0`, `reserve_mana = 0`, `mana_cap = GameConfig.mana_cap`
 - [ ] **EC6**: GIVEN `reserve_mana = 7` at RESOLUTION end, WHEN next `DraftStarted` fires (round 2), THEN `reserve_mana = 7` (unchanged), `current_mana = min(2, 10) = 2`

@@ -27,13 +27,29 @@ observer runs in the same `Update` tick. The alternative (buffered Events)
 introduces a one-frame gap during which the RSM would attempt to read
 `SessionConfig` before it exists, producing a fatal resource-not-found panic.
 
+## ⚠️ API Verification Required (Bevy 0.18 Observer Pattern)
+
+This ADR uses Bevy 0.17+ Observer semantics. Key verification items:
+- `Commands::trigger(SessionReady)` fires Observer in the **same** `Update` tick
+- Resource inserted via `Commands::insert_resource()` before `Commands::trigger()`
+  is visible to the Observer handler (command queue ordering)
+- `Trigger<SessionReady>` is the correct Observer handler parameter in Bevy 0.18
+  (skill shows `On<E>` as the trigger type — confirm which is correct for 0.18)
+- `app.observe(on_session_ready)` is the correct registration API
+
+Note: `SessionReady` uses `#[derive(Event)]` (not `#[derive(Message)]`) because
+it is a one-shot Observer trigger, NOT a recurring buffered message. This is the
+correct Bevy 0.17/0.18 pattern for lifecycle events.
+
+---
+
 ## Engine Compatibility
 
 | Field | Value |
 |-------|-------|
 | **Engine** | Bevy 0.18 |
 | **Domain** | Core / ECS |
-| **Knowledge Risk** | HIGH — Bevy 0.17 formalized the Event/Observer split; 0.18 is post-cutoff. Observer semantics (immediate trigger, same-frame delivery), `trigger()` call site, and `ObserverTrigger` / `Trigger<E>` handler signature must be verified against 0.18 docs before implementation. |
+| **Knowledge Risk** | HIGH — Bevy 0.17 formalized the Event/Observer split; 0.18 is post-cutoff. Observer semantics (immediate trigger, same-frame delivery), `trigger()` call site, and `ObserverTrigger` / `Trigger<E>` / `On<E>` handler signature must be verified against 0.18 docs before implementation. |
 | **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, `design/gdd/game-session-system.md` (Rule 11, OQ-C note), `design/gdd/round-state-machine.md` (Rule 1 LOBBY exit guard), `docs/architecture/architecture.md` (OQ-C) |
 | **Post-Cutoff APIs Used** | Bevy 0.17+ `World::trigger()` / `Commands::trigger()` for Observer dispatch; `Observer` system registration; `Trigger<E>` parameter in observer handler systems. The `Event`/`Observer` split was formalized in 0.17 — both `#[derive(Event)]` and `#[derive(Event)]` + trigger coexist; verify the trigger path does not require a separate derive or registration flag in 0.18. |
 | **Verification Required** | (1) Confirm `Commands::trigger(SessionReady)` runs the registered observer in the **same** `Update` tick (not deferred to next frame). (2) Confirm a resource inserted via `Commands::insert_resource` in the same system that calls `Commands::trigger` is visible to the triggered observer (i.e., Commands flush order: inserts before triggers, or triggers after all commands). (3) Confirm the observer handler receives a `Trigger<SessionReady>` parameter and can access `Res<SessionConfig>` and `Res<ServerRng>` from world. (4) Confirm `World::trigger()` vs `Commands::trigger()` — which is appropriate for a regular system (not exclusive system)? |

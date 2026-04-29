@@ -1,48 +1,147 @@
-# Session State
+# Session State — Lanes and Lies
 
-## Current Stage: Pre-Production ✅
+> Lis ce fichier EN PREMIER dans toute nouvelle session.
+> Il contient l'état complet du projet au 2026-04-29.
 
-## Sprint 1 Progress
+---
 
-| ID | Story | Priority | Status |
+## Stage actuel : Pre-Production ✅
+`production/stage.txt` = `Pre-Production`
+
+---
+
+## Sprint 1 — État des stories
+
+| ID | Story | Fichier | Statut |
 |---|---|---|---|
-| **S1-01** | Cargo Workspace Scaffolding | Must Have | ✅ done (2026-04-29) |
-| **S1-02** | Shared Card Types | Must Have | ✅ done (2026-04-29) |
-| **S1-03** | GameConfig POD Struct | Must Have | ✅ done (2026-04-29) |
-| **S1-04** | Protocol Skeleton + CI Gates | Must Have | ⚠️ impl-complete — needs local `cargo check` |
-| S1-05 ⭐ | Lightyear 0.26 Verification Spike | Must Have | backlog (needs S1-04 Done) |
-| **S1-09** | ServerRng Type Definitions | Should Have | ⚠️ impl-complete — needs `cargo test -p server` |
+| S1-01 | Cargo Workspace Scaffolding | `production/epics/workspace-and-shared-types/story-001-cargo-workspace-scaffolding.md` | ✅ Done |
+| S1-02 | Shared Card Types | `story-002-shared-card-types.md` | ✅ Done |
+| S1-03 | GameConfig POD Struct | `story-003-game-config-pod-struct.md` | ✅ Done |
+| S1-04 | Protocol Skeleton + CI Gates | `story-004-protocol-skeleton-ci-gates.md` | ⚠️ Impl — attendre CI vert |
+| S1-05 | Lightyear 0.26 Spike ⭐ | `production/epics/lightyear-protocol-verification/story-001-lightyear-026-verification-spike.md` | 🔒 Bloqué sur S1-04 |
+| S1-09 | ServerRng Type Definitions | `production/epics/server-rng/story-001-type-definitions-audit-infrastructure.md` | ⚠️ Impl — attendre CI vert |
 
-## Pending User Actions
-1. `cargo check --workspace` → paste into `tests/evidence/story-004-workspace-check.md`
-2. If S1-04 Option A fails → move `register_protocol` out of `shared/` (ADR-003 fallback)
-3. `cargo test -p server --verbose` → confirms 6 RNG tests pass → close S1-09
-4. Run `/story-done` on S1-04 and S1-09 once evidence collected
-5. Note: `cards.json` uses `"id": [1]` format (serde newtype serialization) — may need `#[serde(transparent)]` on CardId in Story 002 (loader)
+**Machine-readable status :** `production/sprint-status.yaml`
+**Plan complet :** `production/sprints/sprint-1.md`
 
-## Wave 1 — DONE
-- ✅ server-rng/story-001: ServerRng + AuditEntry + RngEvent + 6 tests
-- ✅ create-epics core: RSM, GSS, Economy, Pool epics + index
-- ✅ qa-plan: production/qa/sprint-1-qa-plan.md
+---
 
-## Wave 2 — DONE (2026-04-29)
-- ✅ game-config-pipeline/story-001: assets/config/game_config.ron + assets/data/cards.json
-- ✅ create-stories RSM: 6 stories (001–006)
-- ✅ create-stories GSS: 7 stories (001–007, story-004 Blocked on ADR-012)
-- ✅ create-stories Economy: 6 stories (001–006)
-- ✅ create-stories Card-Data-Pool: 6 stories (001–006)
+## CI GitHub Actions
 
-## Stories Backlog — Ready for Development
-Foundation:
-- production/epics/game-config-pipeline/story-001 (asset data) — impl done, needs /story-done
-- production/epics/server-rng/story-002-intent-named-api-invariants.md (needs S1-09 Done)
-- production/epics/game-config-pipeline/story-002 and story-003 (needs S1-03 Done ✅)
+**Dernier commit :** `88971ec` — "Fix CI: remove invalid bevy_ecs feature, strip bevy from shared/"
+**URL :** https://github.com/SamyAnisBenachi/Claude-Code-Game-Studios/actions
 
-Core (sequenced — must do RSM before GSS before Economy/Pool):
-- RSM story-001 → RSM story-002 → ... → RSM story-006
-- GSS story-001 (lobby scaffold) — Ready
-- Economy story-001 (pure API scaffold) — Ready  
-- Pool story-001 (state & API) — Ready
+**Statut attendu :** En attente de vérification (doit être vert)
 
-## Next After S1-04/S1-09 Close
-Wave 3 → Wave 4 (S1-05 ⭐ Lightyear spike — GATE STRICT SÉQUENTIEL)
+**Historique des fixes CI cette session :**
+1. Commit `4d2666a` — push initial → ROUGE (register_protocol non-vérifié)
+2. Commit `865a138` — suppression appels Lightyear non-vérifiés → ROUGE (bevy_ecs feature invalide)
+3. Commit `88971ec` — suppression bevy_ecs feature + bevy de shared/ → EN ATTENTE
+
+**Une fois CI vert :** lancer `/story-done S1-04` puis `/story-done S1-09`
+
+---
+
+## Découvertes critiques Bevy 0.18 (2026-04-29)
+
+> Ces infos doivent être appliquées avant tout code Bevy
+
+**liv-bevy-018 installé globalement :** `C:\Users\Sam\.claude\skills\liv-bevy-018\`
+**liv-bevy-lightyear installé globalement :** `C:\Users\Sam\.claude\skills\liv-bevy-lightyear\`
+
+### Violations dans les stories/ADRs actuels
+
+Le skill liv-bevy-018 révèle que **EventWriter/EventReader n'existent plus en Bevy 0.18** :
+- `EventWriter<T>` → `MessageWriter<T>`
+- `EventReader<T>` → `MessageReader<T>`
+- `app.add_event::<T>()` → `app.add_message::<T>()`
+
+**Fichiers à corriger (audit en attente) :**
+- `docs/architecture/adr-010-rsm-event-bus.md` — dit "Bevy buffered Events" → doit dire "Messages"
+- `production/epics/round-state-machine/story-001-state-and-events-scaffold.md` — EventWriter dans ACs
+- `docs/architecture/control-manifest.md` — Core Layer Rules mentionnent EventWriter::write()
+- Toutes les stories RSM, GSS, Economy qui mentionnent EventWriter/EventReader
+
+**Action requise :** Lancer l'agent d'audit avec le prompt dans `production/session-state/bevy-audit-prompt.md`
+
+### Lightyear 0.26 — API non-vérifiée
+
+- Lightyear 0.26 utilise un **entity-per-connection model** (depuis v0.25)
+- L'ancienne API resource-based (ClientConfig, ClientConnectionManager) n'existe plus
+- **Aucun code Lightyear ne peut être écrit avant S1-05** (spike de vérification)
+- S1-05 doit lire `api_patterns.md` dans `C:\Users\Sam\.claude\skills\liv-bevy-lightyear\`
+
+### Features Bevy 0.18 valides
+
+- `"bevy_ecs"` **n'est PAS** une feature valide dans Bevy 0.18
+- Server headless : `bevy = { default-features = false, features = ["multi_threaded"] }`
+- Client 2D : `bevy = { features = ["2d"] }` (collection haute-niveau Bevy 0.18)
+- `EventWriter`/`EventReader` n'existent plus → `MessageWriter`/`MessageReader`
+
+---
+
+## Prochaines étapes (dans l'ordre)
+
+### Immédiat
+1. Vérifier CI vert sur commit `88971ec`
+2. `/story-done production/epics/workspace-and-shared-types/story-004-protocol-skeleton-ci-gates.md`
+3. `/story-done production/epics/server-rng/story-001-type-definitions-audit-infrastructure.md`
+
+### Audit Bevy 0.18 (prompt disponible)
+4. Lancer l'agent d'audit — prompt dans `production/session-state/bevy-audit-prompt.md`
+   (lit liv-bevy-018 + liv-bevy-lightyear, corrige toutes les violations dans stories/ADRs/code)
+
+### Premier vrai code de jeu (pas de gate Lightyear)
+5. `/dev-story production/epics/round-state-machine/story-001-state-and-events-scaffold.md`
+   → MAIS attendre l'audit Bevy d'abord (le story a des ACs avec EventWriter incorrect)
+
+### Gate Lightyear (bloque tout le networking)
+6. `/dev-story production/epics/lightyear-protocol-verification/story-001-...`
+   → S1-05 ⭐ — rien de networking avant que ce spike soit Done
+
+---
+
+## Epics créés
+
+### Foundation (Sprint 1)
+- `production/epics/workspace-and-shared-types/` — 4 stories
+- `production/epics/game-config-pipeline/` — 4 stories
+- `production/epics/server-rng/` — 3 stories
+- `production/epics/lightyear-protocol-verification/` — 4 stories ⭐
+
+### Core (Sprint 2+)
+- `production/epics/round-state-machine/` — 6 stories
+- `production/epics/game-session-system/` — 7 stories (story-004 Blocked ADR-012)
+- `production/epics/economy-system/` — 6 stories
+- `production/epics/card-data-pool/` — 6 stories
+
+**Index complet :** `production/epics/index.md`
+
+---
+
+## Design — État GDDs
+
+M1 (9 GDDs) : ✅ TOUS APPROUVÉS — prêts à implémenter
+M2 (7 GDDs) : ❌ PAS COMMENCÉS — à designer pendant implémentation M1
+
+**M2 priorité :** Auction System (signature mécanique) → Card Acquisition → Combat Resolution
+**Commande :** `/design [system-name]` ou vérifier quel skill existe
+
+---
+
+## Outils importants
+
+```bash
+# CI GitHub
+https://github.com/SamyAnisBenachi/Claude-Code-Game-Studios/actions
+
+# Cargo (Windows)
+C:\Users\Sam\.cargo\bin\cargo.exe check --workspace
+C:\Users\Sam\.cargo\bin\cargo.exe test -p server --verbose
+
+# gh CLI (installé, besoin auth)
+C:\Program Files\GitHub CLI\gh.exe
+
+# Rust installé via winget 2026-04-29
+# Smart App Control bloque les builds locaux → utiliser CI ou WSL2
+```
