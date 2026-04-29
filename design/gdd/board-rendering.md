@@ -1,6 +1,6 @@
 # Board Rendering
 
-> **Status**: In Design
+> **Status**: Designed — /design-review pending (fresh session)
 > **Author**: SamyAnisBenachi + Claude Code agents
 > **Last Updated**: 2026-04-29
 > **Implements Pillar**: No idle spectating · Simple surface · Deep emergence
@@ -276,24 +276,245 @@ total_ms = pre_animation_pause_ms
 
 ## Dependencies
 
-[To be designed]
+### Upstream Dependencies
+
+| System | Type | Interface |
+|---|---|---|
+| **Board / Lane System** (Approved) | Hard | Lightyear replicates `BoardPosition { lane, cell }` and `UnitStats { hp_current, hp_max, owner }` per unit entity to the client; Board Rendering queries these components each frame to drive sprite positions and HP bar fill |
+| **Objective System** (Approved) | Hard | Lightyear replicates `ObjectiveHp { hp }` per objective; `ObjectiveDestroyed { target_player_id, lane, was_fake }` reliable message drives the destruction reveal sequence in `ResolutionObjectiveReveal` |
+| **Combat Resolution** (Designed) | Hard | Resolution sub-step event data arrives via `S2CResolutionEvent` (owned by Network Protocol); Board Rendering has no direct interface with Combat Resolution |
+| **Network Protocol** (Approved) | Hard | `S2CPlacementReveal` → fog lift + unit reveal; `S2CResolutionEvent` → animation queue; `S2CPhaseChanged` → all `BoardRenderState` transitions; `S2CGameSnapshot` → full board rebuild on connect/reconnect |
+| **Card Data & Pool** (Approved) | Hard | `TextureAtlas` asset loaded at startup; slice index looked up by `card_id` at unit spawn time; fallback to placeholder sprite if `card_id` is missing (EC-12) |
+| **Game Config** (Approved) | Soft | `lane_count=5` and `cells_per_lane=8` confirm board grid dimensions at startup; animation timing constants (`resolution_sub_step_duration_ms`, `fog_lift_duration_ms`, `pre_animation_pause_ms`, `inter_step_pause_ms`) loaded from `GameConfig` resource |
+
+### Peer Presentation Systems (same layer — no hard dependency, shared resource)
+
+| System | Direction | Interface |
+|---|---|---|
+| **Hand UI** (Not Started) | Hand UI → Rendering | Hand UI writes `GhostPlacementChanged { cell, card_id }` messages; Board Rendering reads them to manage the ghost unit. Hand UI reads `Res<BoardLayout>` for cell-to-world coordinate lookup (no reverse dependency). |
+| **HUD** (Not Started) | Rendering → HUD | `BoardRenderState` transition events signal HUD to show/hide the placement timer ring; HUD reads `ObjectiveHp` replicated components directly for display — no data passes through Board Rendering |
+
+### Downstream Dependents
+
+| System | Type | Interface |
+|---|---|---|
+| **Card Animations** (Not Started — M3) | Soft | Card Animations replaces placeholder `bevy_tweening` slide tweens with polished curves in M3; Board Rendering schedules tweens from `S2CResolutionEvent` data in M2 without knowing the final curve implementation |
 
 ## Tuning Knobs
 
-[To be designed]
+| Knob | GameConfig field | Default | Safe Range | Too Low | Too High |
+|---|---|---|---|---|---|
+| `cell_width` | `board_cell_width` | 64.0 px | 48–96 | Sprites overlap; board too cramped to read | Board wider than viewport |
+| `lane_height` | `board_lane_height` | 80.0 px | 64–112 | Lanes too close; unit sprites overlap vertically | Board taller than viewport |
+| `fog_opacity` | `board_fog_opacity` | 0.6 | 0.4–0.8 | Opponent half still partially readable | Opponent half completely black; harsh |
+| `fog_lift_duration_ms` | `board_fog_lift_ms` | 350 ms | 200–600 | Reveal feels abrupt; dramatic moment lost | Reveal sluggish; players wait too long |
+| `pre_animation_pause_ms` | `board_pre_anim_pause_ms` | 400 ms | 200–800 | Players can't read the simultaneous reveal before animation begins | Dead time before action |
+| `resolution_sub_step_duration_ms` | `board_sub_step_duration_ms` | 800 ms | 400–1500 | Sub-steps blur together | Resolution drags; "No idle spectating" violated |
+| `inter_step_pause_ms` | `board_inter_step_pause_ms` | 200 ms | 100–400 | No breathing room; feels rushed | Resolution stalls between steps |
+| `health_bar_green_threshold` | `board_hp_green_threshold` | 0.6 | 0.5–0.75 | Danger not signalled early enough | Bar turns yellow at healthy HP |
+| `health_bar_red_threshold` | `board_hp_red_threshold` | 0.3 | 0.2–0.4 | Late warning (bar red only when nearly dead) | Bar constantly red; misleading |
+| `co_occupancy_side_offset` | `board_co_occupancy_offset` | 8.0 px | 4–16 | Units nearly overlap in 2v2 | Units clip outside cell node |
+| `prism_spin_speed` | `board_prism_spin_speed` | 0.5 rad/s | 0.2–1.0 | Prism looks static; easy to miss | Prism visibly spinning; distracting |
+| `objective_reveal_hold_ms` | `board_objective_reveal_hold_ms` | 500 ms | 300–800 | Suspense lost; feels instant | Momentum killed; reveal feels padded |
+
+**Cross-referenced knobs (owned by upstream GDDs — do not duplicate here):**
+
+| Constant | Value | Source |
+|---|---|---|
+| `lane_count` | 5 | board-lane-system.md |
+| `cells_per_lane` | 8 | board-lane-system.md |
+| `placement_timer_seconds` | 10s | game-config.md |
 
 ## Visual/Audio Requirements
 
-[To be designed]
+*Visual targets specified by `board-lane-system.md` (approved). This section specifies the asset requirements, VFX event catalog, and M2 hackathon priorities for implementing those targets.*
+
+---
+
+### Asset Requirements
+
+**Priority:** `BLOCKING` = must ship real art for M2. `PLACEHOLDER` = colored rect or tint acceptable for hackathon.
+
+#### Board Environment
+
+| Asset | Approx Dims | Atlas | Priority | Notes |
+|---|---|---|---|---|
+| `env_board_background_default` | 512×512 | standalone | PLACEHOLDER | Stone arena floor, 3/4 perspective; flat warm-grey rect acceptable for M2 |
+| `env_lane_divider_64x80` | 64×80 | board-elements | PLACEHOLDER | Raised stone ridge; flat dark line acceptable |
+| `env_lane_number_label_01–05` | 32×32 ×5 | board-elements | BLOCKING | Lane numbers 1–5; high-contrast; displayed at both board ends; text asset or font glyph |
+
+#### Cell Nodes
+
+| Asset | Approx Dims | Atlas | Priority | Notes |
+|---|---|---|---|---|
+| `env_cell_node_idle_32x32` | 32×32 | board-elements | BLOCKING | Diamond shape, cyan-blue; primary navigational landmark; must be readable at board zoom |
+| `env_cell_node_spawn_active_32x32` | 32×32 | board-elements | BLOCKING | Warm gold-white variant; PLACEMENT spawn highlight; must contrast with idle |
+| `env_cell_node_spawn_inactive_32x32` | 32×32 | board-elements | PLACEHOLDER | M2: reuse idle node at 50% alpha |
+| `env_cell_node_invalid_32x32` | 32×32 | board-elements | PLACEHOLDER | M2: red-tinted idle node |
+
+Player A / Player B half color tinting (cool vs. warm) is applied at runtime via `Sprite.color` — no separate per-player node textures required.
+
+#### Objectives
+
+| Asset | Approx Dims | Atlas | Priority | Notes |
+|---|---|---|---|---|
+| `env_objective_unknown_64x96` | 64×96 | board-elements | BLOCKING | Stone egg + "?" glyph; all standing objectives render as this (ADR-001) |
+| `env_objective_real_reveal_64x96` | 64×96 | board-elements | BLOCKING | Golden flame totem; displayed only during the ~500ms reveal window; this is the game's emotional peak |
+| `env_objective_fake_crack_64x96` | 64×96 | board-elements | PLACEHOLDER | M2: tinted unknown sprite + "FAKE" text overlay |
+
+#### Unit Bases (colorblind redundancy — shapes are load-bearing)
+
+| Asset | Approx Dims | Atlas | Priority | Notes |
+|---|---|---|---|---|
+| `ui_unit_base_player_a_48x16` | 48×16 | board-elements | BLOCKING | Circle base ring; Player A; shape distinguishes from Player B in colorblind modes |
+| `ui_unit_base_player_b_48x16` | 48×16 | board-elements | BLOCKING | Hexagon/diamond base ring; Player B; must be visually distinct shape from circle |
+
+#### Special Card Type Tokens
+
+| Asset | Approx Dims | Atlas | Priority | Notes |
+|---|---|---|---|---|
+| `ui_trap_tile_facedown_32x32` | 32×32 | board-elements | BLOCKING | Face-down card tile; must signal "something hidden here"; team-color ring via `Sprite.color` tint |
+| `ui_structure_token_32x32` | 32×32 | board-elements | PLACEHOLDER | M2: colored rect + "S" badge glyph |
+| `ui_field_wash_lane_512x80` | 512×80 | standalone | PLACEHOLDER | Full-lane translucent wash; flat colored rect at 30% alpha fully acceptable |
+| `ui_field_badge_icon_24x24` | 24×24 | board-elements | PLACEHOLDER | Lane-edge badge indicating Field is active |
+
+#### Prism
+
+| Asset | Approx Dims | Atlas | Priority | Notes |
+|---|---|---|---|---|
+| `env_prism_idle_32x32` | 32×32 | board-elements | PLACEHOLDER | M2: white diamond sprite with slow rotation; inner-light sparkle cycle is M3 |
+
+#### Fog Overlay
+
+No texture asset. Two fog sprites use `Sprite { color: Color::srgba(0.05, 0.05, 0.2, 0.6) }` with no texture. The solid color is the fog.
+
+#### Unit Sprite Fallback
+
+Board Rendering requires one fallback atlas frame for EC-12 (missing card_id):
+- `ui_unit_placeholder_48x64` — solid color tile + "?" glyph. Prevents render-loop panics on asset miss.
+
+---
+
+### VFX Event List
+
+Complexity: **Simple** = tint/alpha tween on existing sprite · **Medium** = multi-step bevy_tweening sequence or particle-lite · **Complex** = shader or full particle system.
+
+| Event | Trigger | Visual | Complexity | M2 Status | Audio Cue |
+|---|---|---|---|---|---|
+| Cell node idle pulse | Always | Scale ±3% oscillation, 1.5s loop | Simple | BLOCKING | None |
+| Spawn highlight activation | PLACEMENT start | Node tint: cyan → gold-white (held) | Simple | BLOCKING | None |
+| Spawn range expansion | Fake destroyed | Radial gold pulse on newly unlocked nodes | Medium | PLACEHOLDER (instant tint swap) | None |
+| Ghost unit appear/move | `GhostPlacementChanged` | Semi-transparent sprite snaps to cell | Simple | BLOCKING | None |
+| **Fog lift — simultaneous reveal** | `S2CPlacementReveal` | Alpha fade-out on both fog sprites, 350ms, synchronized | Simple | **BLOCKING** | **Sharp "veil lift" whoosh + chord sting** |
+| Unit placed (own, post-reveal) | `S2CPlacementReveal` | Real sprite replaces ghost; no flash | Simple | BLOCKING | Soft stone-thud/card-snap (low volume) |
+| Unit advance | Sub-step 2/5 move event | Slide tween cell-to-cell over `resolution_sub_step_duration_ms` | Simple | **BLOCKING** | Short footstep-shuffle; per-lane audio offset |
+| HP bar live-update | HP change during RESOLUTION | Fill bar `scale.x` lerp to new value | Simple | BLOCKING | None |
+| Objective attack aura | Unit reaches objective cell | Unit shifts forward ~4px; red-orange pulsing ring child sprite | Medium | PLACEHOLDER (shift only, no ring) | Heavy deep thud on HP decrease |
+| Objective idle pulse | Always (standing) | Scale ±2% oscillation, 2s loop | Simple | BLOCKING | None |
+| **Objective: real reveal** | `ObjectiveDestroyed.was_fake=false` | 500ms hold → golden flash overlay (3-step alpha) → slot cleared | Medium | **BLOCKING** | **Explosion/shatter + musical hit** |
+| **Objective: fake reveal** | `ObjectiveDestroyed.was_fake=true` | 500ms hold → crack overlay + "FAKE" text (800ms) → slot cleared | Medium | **BLOCKING** | Hollow dud thud (intentionally underwhelming — the bluff punchline) |
+| Prism idle spin | Always (prism present) | Transform rotation at `prism_spin_speed` rad/s | Simple | PLACEHOLDER (white diamond) | None |
+| Prism collection | Unit enters prism cell (sub-step 5 end) | Scale spike to 1.5× then fade; collecting unit shimmer overlay, ~400ms | Medium | PLACEHOLDER (instant despawn, skip shimmer) | Bright crystalline chime |
+| Trap trigger | Trap fires during RESOLUTION | Card-flip Y-axis tween → face revealed; unit passes through | Medium | PLACEHOLDER (instant face reveal, no flip) | Percussive hit + card flip reveal |
+| Unit death | HP reaches 0 → `UnitRemoved` event | Alpha fade to 0, 300ms; entity despawn | Simple | BLOCKING | None (audio owned by Combat Resolution) |
+| Co-occupant death → survivor recenters | Allied unit dies mid-RESOLUTION | Cancel active tween; 0ms snap-to-center tween | Simple | BLOCKING | None |
+| Invalid cell hover | Ghost dragged out of range | Cell node brief red tint, 200ms, then revert | Simple | BLOCKING | None |
+
+---
+
+### M2 Hackathon Priorities
+
+**Test:** Can two people sit down and follow what is happening in every lane without reading a tooltip? If yes, M2 visual bar is met.
+
+**Must ship real art for M2 (BLOCKING):** cell nodes (idle + spawn-active), objective unknown sprite, objective real-reveal sprite, unit base rings (both shapes), lane number labels, trap face-down tile, fog lift VFX (alpha tween + audio sting), unit slide tweens, unit death fade.
+
+**Acceptable as placeholder for M2:** board background, lane dividers, prism art and collection VFX, objective attack aura ring, fake crack frame, trap flip animation, structure token, Field wash, spawn range expansion pulse.
+
+**Audio minimum for M2 — three cues are load-bearing:**
+1. **Fog lift chord sting** — without this, the simultaneous reveal loses its drama.
+2. **Footstep shuffle on advance** — signals that something is moving in a lane.
+3. **Objective destruction hit** — the game's biggest moment needs audio weight.
+
+All other audio is advisory for M2.
+
+📌 **Asset Spec** — Visual/Audio requirements are defined. After the art bible is approved, run `/asset-spec system:board-rendering` to produce per-asset visual descriptions, dimensions, and AI generation prompts from this section.
 
 ## UI Requirements
 
-[To be designed]
+Board Rendering is a world-space 2D sprite system. It owns no `bevy_ui` canvas elements. All positioning is driven by `Transform` in world-space via `Res<BoardLayout>`.
+
+| UI Element | Owner | Board Rendering role |
+|---|---|---|
+| Board grid (5×8 cells, 40 nodes) | **Board Rendering** | Spawns and updates 40 cell node sprite entities at world positions from `cell_to_world(lane, cell)` |
+| Unit sprites + health bars | **Board Rendering** | Spawns/despawns unit entities with child HP bar sprites; positions driven by `BoardPosition` replicated component |
+| Fog overlay (opponent half, PLACEMENT) | **Board Rendering** | Two `Sprite` entities at `Z_FOG`; visibility and alpha driven by `BoardRenderState` |
+| Spawn range highlights | **Board Rendering** | Recolors cell node sprites in response to `SpawnRangeChanged` messages during PLACEMENT |
+| Ghost unit preview | **Board Rendering** | Spawns/moves/despawns the `GhostUnit` entity in response to `GhostPlacementChanged` messages from Hand UI |
+| Trap tile, Structure token, Field wash | **Board Rendering** | Spawns world-space sprite entities per card type at correct cell or lane position |
+| Prism token | **Board Rendering** | Spawns rotating sprite entity at spawn cell; despawns on `PrismCollected` event |
+| Objective sprites + HP bars | **Board Rendering** | Spawns objective entities with HP bar; drives destruction reveal sequence in `ResolutionObjectiveReveal` |
+| Placement timer ring | **HUD** (not Board Rendering) | Board Rendering publishes `BoardRenderState` transitions; HUD shows/hides the ring in response |
+| Hand cards, shop panel, auction overlay | **Hand UI / Shop-Auction UI** (not Board Rendering) | Board Rendering provides `Res<BoardLayout>` for coordinate queries only |
+
+📌 **UX Flag — Board Rendering:** This system's world-space layout determines where Hand UI drag targets and hover feedback must appear. Run `/ux-design board-view` before writing Board Rendering epics to produce a UX spec for the board view and PLACEMENT interaction. Stories referencing board UI should cite `design/ux/board-view.md`.
 
 ## Acceptance Criteria
 
-[To be designed]
+**Classification:** BLOCKING = automated `#[test]` against real ECS `World` (no renderer, no mocks) — must pass before story is Done. ADVISORY = screenshot, live playtest, or visual inspection — evidence in `production/qa/evidence/`.
+
+| ID | Criterion | Classification |
+|---|---|---|
+| BR-1 | GIVEN a `BoardLayout` with default `cell_width=64.0` and `lane_height=80.0`, WHEN the board initializes, THEN exactly 40 `CellNode` entities exist, each carrying a `Transform` whose `translation.xy` matches `cell_to_world(lane, cell)` for every (lane, cell) in [1–5]×[1–8]. No two entities share the same world position. | BLOCKING |
+| BR-2 | GIVEN `board_origin=(0.0, 0.0)`, `cell_width=64.0`, `lane_height=80.0`, WHEN `cell_to_world` is called for (1,1), (5,8), and (3,5), THEN the returned `Vec2` values are `(0.0, 0.0)`, `(448.0, −320.0)`, and `(256.0, −160.0)` respectively (tolerance ≤0.01). | BLOCKING |
+| BR-3 | GIVEN a fully-populated board (5 lanes, 2v2 co-occupancy, all objectives present, fog active), WHEN the frame is rendered, THEN total draw call count is ≤15; all unit sprites originate from one `TextureAtlas` batch; no per-unit custom materials are present. | ADVISORY |
+| BR-4 | GIVEN a unit with `UnitStats { hp_current, hp_max }`, WHEN fill = `clamp(hp_current/hp_max, 0.0, 1.0)` is evaluated, THEN: (a) 5/5 → fill=1.0, Green; (b) 2/5 → fill=0.4, Yellow; (c) 1/5 → fill=0.2, Red; (d) 0/5 → fill=0.0, Red; (e) 6/5 (overflow) → fill=1.0, Green. HP bar child entity `Transform.scale.x` matches fill ±0.01. | BLOCKING |
+| BR-5 | GIVEN any unit entity present on the board, REGARDLESS of `BoardRenderState`, THEN the unit's child HP bar entity has `Visibility::Visible` (never Hidden). | BLOCKING |
+| BR-6 | GIVEN `BoardRenderState` transitions to `Placement`, THEN: (a) exactly two fog `Sprite` entities exist tagged with a fog marker; (b) opponent-half fog has `Visibility::Visible` and `Sprite.color.alpha ≥ 0.55`; (c) local-player-half fog has `Visibility::Hidden`. The same two entities are reused on subsequent PLACEMENT entries (not respawned). | BLOCKING |
+| BR-7 | GIVEN `S2CPlacementReveal` is received and `ResolutionReveal` is entered, WHEN the fog lift tween begins, THEN both fog sprites' alpha values decrease simultaneously within the same frame (no sequential ordering). The lift completes within `fog_lift_duration_ms` ±50ms; both entities reach `Sprite.color.alpha = 0.0` after completion. | ADVISORY |
+| BR-8 | GIVEN a `GhostPlacementChanged` event is received while a ghost entity already exists, WHEN the system processes it, THEN the old ghost is despawned before the new one is spawned, and exactly one `GhostUnit` marker entity exists in the World after processing. | BLOCKING |
+| BR-9 | GIVEN one `GhostUnit` entity exists, WHEN `S2CPlacementReveal` is received, THEN the `GhostUnit` entity is despawned within the same frame (zero `GhostUnit` entities after system runs). | BLOCKING |
+| BR-10 | GIVEN no `GhostUnit` entity exists, WHEN `GhostPlacementChanged { cell: None, card_id: None }` is received, THEN no panic occurs, no entity is spawned, and World state is unchanged. The despawn path uses `commands.get_entity(e).map(EntityCommands::despawn)`, not `commands.despawn()` on an unresolved entity. | BLOCKING |
+| BR-11 | GIVEN a ghost unit entity is spawned, WHEN inspected in the ECS World, THEN: (a) `Sprite.color.alpha = 0.5`; (b) no child HP bar entity exists; (c) no `Replicated` component is present; (d) `Transform.translation.xy` matches `cell_to_world(lane, cell)` for the target cell. | BLOCKING |
+| BR-12 | GIVEN a `S2CResolutionEvent` with sub_step values [1, 1, 3, 3, 3, 5], WHEN the animation queue is built, THEN exactly 3 `AnimGroup` entries exist sorted [1, 3, 5] with event counts [2, 3, 1] respectively; total duration equals `pre_animation_pause_ms + 3*(resolution_sub_step_duration_ms + inter_step_pause_ms)` ±1ms. | BLOCKING |
+| BR-13 | GIVEN default timings (`pre=400, sub_step=800, inter=200`) and `N_groups=3`, THEN `total_ms=3400`. GIVEN `N_groups=0` (no events), THEN `total_ms=pre_animation_pause_ms`. Both values produced without side effects. | BLOCKING |
+| BR-14 | GIVEN the board is in `ResolutionExecuting` with 3 `AnimGroup`s queued, WHEN `S2CPhaseChanged(DRAFT_SHOP)` is received, THEN: (a) the message is buffered and not applied immediately; (b) the animation queue drains normally; (c) after `ResolutionObjectiveReveal` completes, the board transitions to `DraftShop`. | BLOCKING |
+| BR-15 | GIVEN the board is in `ResolutionExecuting` executing group 2 of 4, WHEN `S2CPhaseChanged(GAME_OVER)` is received, THEN: (a) group 2 completes its duration; (b) groups 3 and 4 are discarded; (c) `ResolutionObjectiveReveal` runs for buffered `ObjectiveDestroyed` events; (d) board transitions to `GameOver`. Board never reaches `DraftShop`. | BLOCKING |
+| BR-16 | GIVEN a unit entity has an in-flight `Tween<Transform>` active, WHEN any system repositions that unit, THEN the active tween is cancelled and replaced with a new tween (0ms snap is acceptable). No system writes directly to `Transform.translation` on an entity with an active `Tween<Transform>` lens registered. | BLOCKING |
+| BR-17 | GIVEN the board is in any state with N entities, WHEN `S2CGameSnapshot` is received, THEN: (a) all prior board entities are despawned within the same frame; (b) rebuilt entity count and component values match snapshot data exactly; (c) no in-progress tweens from the prior state remain. Operation completes in a single `App::update()` tick. | BLOCKING |
+| BR-18 | GIVEN `S2CGameSnapshot { phase: RESOLUTION }` AND `S2CResolutionEvent` already buffered, WHEN rebuild completes, THEN `BoardRenderState` is `ResolutionExecuting`. GIVEN `S2CGameSnapshot { phase: RESOLUTION }` AND no `S2CResolutionEvent` buffered, THEN `BoardRenderState` is `DraftShop`. | BLOCKING |
+| BR-19 | GIVEN 5 objective entities in the World in any state prior to `ObjectiveDestroyed`, WHEN inspected, THEN every objective entity uses the `env_objective_unknown_64x96` atlas frame index. No entity carries component data that differentiates real from fake. | BLOCKING |
+| BR-20 | GIVEN `ObjectiveDestroyed { was_fake: false, lane: 3 }` is received during `ResolutionObjectiveReveal`, WHEN the sequence plays, THEN: (a) objective holds for `objective_reveal_hold_ms` (500ms ±50ms) before changing; (b) golden flash overlay fires after the hold; (c) objective entity despawns and lane slot clears; (d) spawn range highlights refresh within the same frame. | ADVISORY |
+| BR-21 | GIVEN `ObjectiveDestroyed` for lanes 4 and 2 in the same RESOLUTION, WHEN `ResolutionObjectiveReveal` processes them, THEN lane 2's reveal (500ms hold + reveal + clear) fully completes before lane 4's reveal begins. The two reveals do not overlap. | BLOCKING |
+| BR-22 | GIVEN two allied units at the same (lane, cell) with `co_occupancy_side_offset=8.0`, WHEN render positions are computed, THEN unit_index=0 → `x_offset=−4.0`; unit_index=1 → `x_offset=+4.0`. The two units' `Transform.translation.x` values differ by exactly `co_occupancy_side_offset` (8.0 world units). | BLOCKING |
+| BR-23 | GIVEN two allied units at the same cell (indices 0 and 1) with active `Tween<Transform>` on both, WHEN unit_index=0 dies mid-RESOLUTION, THEN the surviving unit (index=1): (a) has its active tween cancelled; (b) has a new 0ms snap tween substituted that moves it to `x_offset=0.0`; (c) `Transform.translation.x` is never written directly while a tween is active. | BLOCKING |
+| BR-24 | GIVEN a `S2CResolutionEvent` containing `sub_step=7` (out of range), WHEN the animation queue is built, THEN: (a) that group is omitted; (b) remaining valid groups are processed normally; (c) a warning is logged containing "sub_step" and the value; (d) no panic occurs. | BLOCKING |
+| BR-25 | GIVEN all Rust source files in the board rendering module, WHEN scanned for inline `f32` literals assigned to `Transform.translation.z`, THEN no such literals are found in spawn functions. All Z values reference named constants from `rendering_constants.rs`. | ADVISORY |
+
+**Test file targets:**
+- BLOCKING unit tests → `tests/unit/board_rendering/`
+- BLOCKING state machine integration tests → `tests/integration/board_rendering/`
+- ADVISORY evidence → `production/qa/evidence/board-rendering-[sprint].md`
+
+**Implementation notes:** BR-2, BR-4, BR-13, BR-22 are pure function tests — no ECS `World` needed. BR-14/BR-15 require time-stepped ECS (use `App::update()` in a loop; inject messages between updates). BR-16 is a no-panic safety invariant test. BR-3 is the only AC requiring a live browser build with GPU frame capture.
 
 ## Open Questions
 
-[To be designed]
+**OQ-BR-01 — Sang Méprise suppression signal (OPEN)**
+The fake reveal sequence has a "confirmed reveal" variant (no surprise sting) when the Sang Méprise ability was active this round — the attacker already knew the identity. Board Rendering needs a signal indicating this. The delivery mechanism is undefined: replicated component, a field in `S2CResolutionEvent`, or a dedicated S2C message. Must be resolved before the Sang Méprise keyword is authored in the Keyword System GDD.
+*Owner: Network Protocol GDD + Keyword System GDD. Blocking: Keyword System.*
+
+**OQ-BR-02 — Camera specification (OPEN)**
+The GDD specifies world-space 2D sprites but does not define the camera setup. Fixed orthographic (static position and zoom) or dynamic (zoom/pan on events like objective reveal)? A fixed camera is simpler and consistent with "board as constant reference." Panning violates the "legibility at full-board zoom" requirement if any part of the board is ever outside view.
+*Owner: Board Rendering GDD. Recommended: fixed orthographic, no pan/zoom in M2. The Board Rendering epic should include a camera-setup story.*
+
+**OQ-BR-03 — `ResolutionEvent` enum variants (OPEN)**
+The animation queue (Core Rule 9) dispatches on `ResolutionEvent` variants, but the complete enum is not yet defined. Combat Resolution GDD flags this as OQ5. Board Rendering cannot be fully implemented until variants (`UnitMoved`, `UnitAttacked`, `UnitKilled`, `TrapTriggered`, `ObjectiveDamaged`, etc.) are specified and registered in the Network Protocol GDD.
+*Owner: Combat Resolution GDD + Network Protocol GDD. Blocking: Board Rendering implementation.*
+
+**OQ-BR-04 — Spawn range update signal (OPEN)**
+Board Rendering needs a signal when a player's spawn range expands (to update cell node highlights). The `SpawnRangeChanged` message assumed in this GDD is not yet defined in the Network Protocol GDD. Simplest option: derive it from `ObjectiveDestroyed` (fake destruction is the only cause). Must be resolved before the Board Rendering spawn highlight story is implemented.
+*Owner: Network Protocol GDD. Blocking: Board Rendering spawn highlight implementation.*
+
+**OQ-BR-05 — Unit atlas frame count and dimensions (OPEN)**
+The draw call budget (≤15 per frame) assumes all unit sprites fit in one `TextureAtlas`. The art bible is not yet authored. If the 30+ Krosmaga cards each need a unique facing sprite, the atlas must be sized accordingly. If the atlas exceeds WASM bundle constraints, the single-draw-call assumption breaks and the budget must be revised.
+*Owner: Art Director + Art Bible. Blocking: asset pipeline setup.*

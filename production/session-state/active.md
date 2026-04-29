@@ -3,7 +3,7 @@
 > Lis ce fichier EN PREMIER dans toute nouvelle session.
 > Il contient l'état complet du projet au 2026-04-29.
 >
-> **Session active (2026-04-29):** Hand UI GDD — design/gdd/hand-ui.md. Skeleton created. Working on Section A: Overview. Combat Resolution GDD ✅ DESIGNED. Keyword System GDD — was in progress, superseded by Hand UI. Next: /design-review on combat-resolution.md and keyword-system.md (fresh sessions).
+> **Session active (2026-04-29):** Hand UI GDD — design/gdd/hand-ui.md. Overview ✅ Player Fantasy ✅. Working on Section C: Detailed Design. Board Rendering GDD In Design (separate session). Combat Resolution GDD ✅ DESIGNED.
 
 ---
 
