@@ -1,7 +1,7 @@
 # Story 001: Asset Data Files
 
 > **Epic**: GameConfig & CardCatalog Loading Pipeline
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Config/Data
 > **Manifest Version**: 2026-04-29
@@ -9,7 +9,7 @@
 ## Context
 
 **GDD**: `design/gdd/game-config.md` · `design/gdd/card-data-pool.md`
-**Requirement**: TR-??? (covers TR-GC-01: all tuning knobs in external file; TR-CDP-01: card data in external JSON)
+**Requirement**: TR-GC-01, TR-CDP-01 (TR-GC-01: all tuning knobs in external file; TR-CDP-01: card data in external JSON)
 
 **ADR Governing Implementation**: ADR-004: Asset Loading Pipeline
 **ADR Decision Summary**: `game_config.ron` is the single source of all tuning knobs — no hardcoded values in systems. `cards.json` is the card catalog loaded at startup. Both files are bundled with the server binary. Load failure is always fatal.
@@ -92,7 +92,7 @@
 ```
 
 **`assets/data/cards.json` fixture structure:**
-Use JSON array form: `[{ "id": 1, "name_fr": "...", ... }, ...]`. Each entry must include all `CardData` fields defined in `shared/src/card.rs` (Story 002 of workspace-and-shared-types epic). For the fixture, `keywords` can be `[]` on most cards; `art_id` can be a placeholder string like `"placeholder_iop_001"`. Stat fields (`atk`, `hp`, `mp`, `ar`) should be non-zero only on `Minion` and `Structure` types.
+Use JSON array form: `[{ "id": 1, "name_fr": "...", ... }, ...]`. The fixture uses array form `[{...}]`; ADR-004 §5 note on array form applies — duplicate CardId check in AC 6 is explicit per-element validation, not HashMap key deduplication. Each entry must include all `CardData` fields defined in `shared/src/card.rs` (Story 002 of workspace-and-shared-types epic). For the fixture, `keywords` can be `[]` on most cards; `art_id` can be a placeholder string like `"placeholder_iop_001"`. Stat fields (`atk`, `hp`, `mp`, `ar`) should be non-zero only on `Minion` and `Structure` types.
 
 **Timer field naming:** The GDD Section G uses `_seconds` suffixes for all timer fields. The `shared/src/config.rs` GameConfig struct (Story 003 of workspace-and-shared-types) uses `_ms` suffixes per the network-protocol.md correction. **Verify the field names match what was implemented in shared/src/config.rs before authoring this RON file.** If there is a mismatch, the serde `#[serde(default)]` will silently ignore unrecognised fields — catching this early is better than discovering it during hot-reload testing.
 
@@ -126,7 +126,7 @@ Use JSON array form: `[{ "id": 1, "name_fr": "...", ... }, ...]`. Each entry mus
 
 **Story Type**: Config/Data
 **Required evidence**: Smoke check pass — `cargo check --workspace` output showing zero warnings after adding files → `tests/evidence/story-gcp-001-data-files.md`
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/evidence/story-gcp-001-data-files.md` — PASS (2026-04-29)
 
 ---
 

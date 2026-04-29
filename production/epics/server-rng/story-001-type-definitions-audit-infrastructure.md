@@ -1,7 +1,7 @@
 # Story 001: ServerRng Type Definitions & Audit Infrastructure
 
 > **Epic**: Server-side RNG
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -143,3 +143,12 @@ impl ServerRng {
 
 - Depends on: `workspace-and-shared-types` Story 001 (workspace scaffolding must exist)
 - Unlocks: Story 002 (intent-named API)
+
+---
+
+## Completion Notes
+**Completed**: 2026-04-29
+**Criteria**: 13/13 passing
+**Deviations**: None
+**Test Evidence**: Logic — `tests/unit/foundation/server_rng_types_test.rs` (5 tests, all passing — CI green commit 6bdee76)
+**Code Review**: Skipped — Lean mode

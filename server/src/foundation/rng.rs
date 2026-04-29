@@ -41,7 +41,7 @@ pub enum RngEvent {
 }
 
 /// One entry in the server-side audit log.
-/// Appended on every next_seed() call (ADR-005 §5).
+/// Appended on every intent-named method call (ADR-005 §5).
 /// The audit log is server-only and MUST NOT be transmitted to clients.
 #[derive(Debug, Clone)]
 pub struct AuditEntry {
@@ -49,9 +49,9 @@ pub struct AuditEntry {
     pub event_type: RngEvent,
     /// Monotonically increasing index. Entry 0 is always SessionInit.
     pub seed_index: u32,
-    /// Human-readable encoded outcome. None for SessionInit or empty-pool draws.
+    /// Human-readable encoded outcome. None for SessionInit or stub methods.
     /// Encoding per event type defined in server-rng.md Rule 8.
-    /// Story 002 fills in real result strings when intent-named methods are added.
+    /// Consuming epics fill in real result strings when they implement actual draws.
     pub result: Option<String>,
 }
 
@@ -61,10 +61,25 @@ pub struct AuditEntry {
 /// session start via `ServerRng::new()`. Never re-seeded mid-session.
 ///
 /// All access to the inner `ChaCha20Rng` is private to this module.
-/// Consumers call intent-named methods (Story 002), not raw RNG access.
+/// Consumers call intent-named methods (one per `RngEvent` variant),
+/// never raw RNG access.
 ///
 /// ADR-005 forbidden list: never use `rand::thread_rng()`, `StdRng`, `SmallRng`.
 /// technical-preferences.md: seeds are never transmitted to clients.
+///
+/// # Ordering Contract
+///
+/// When multiple players have simultaneous random events (e.g., Ecaflip triggers
+/// for both players in the same resolution sub-step), callers MUST process events
+/// in this deterministic order:
+///
+/// 1. Ascending `player_id` (lower ID first)
+/// 2. Within one player: ascending `lane` index (lane 1 → 5)
+/// 3. Within a lane: ascending board position (cell 1 → 8)
+///
+/// Violating this order produces a different audit log for the same game state,
+/// breaking determinism and replay. This is a caller contract — `ServerRng` cannot
+/// enforce it internally.
 #[derive(Resource)]
 pub struct ServerRng {
     /// Private — never exposed. All ChaCha20Rng access stays in this module.
@@ -132,20 +147,346 @@ impl ServerRng {
         &self.audit_log
     }
 
-    /// Internal seed advancement. Private to this module.
+    /// Advances the ChaCha20 stream and increments `seed_index`.
     ///
-    /// Advances the ChaCha20 stream, appends an audit entry, increments seed_index.
-    /// Intent-named public methods (Story 002) call this and supply the event_type
-    /// and result encoding. No external code calls this directly.
-    pub(crate) fn next_seed(&mut self, event_type: RngEvent, result: Option<String>) -> u64 {
+    /// Private — callers are the intent-named public methods only.
+    /// The caller captures `seed_index` before this call and pushes its own
+    /// `AuditEntry` with the pre-call index (ADR-005 §5).
+    fn next_seed(&mut self) -> u64 {
         use rand::RngCore;
         let value = self.rng.next_u64();
-        self.audit_log.push(AuditEntry {
-            event_type,
-            seed_index: self.seed_index,
-            result,
-        });
         self.seed_index = self.seed_index.wrapping_add(1);
         value
+    }
+
+    // -------------------------------------------------------------------------
+    // Intent-named public API — one method per RngEvent variant (ADR-005 §6).
+    // Each method: captures seed_index, calls next_seed(), pushes AuditEntry,
+    // returns the seed (or typed stub result). result: None in all stubs —
+    // consuming epics fill in real result strings when they implement draws.
+    // -------------------------------------------------------------------------
+
+    /// Assign fake objective lanes for one player.
+    ///
+    /// Consumes 2 seeds per call (GDD seed table, DRAFT_INITIAL order 1).
+    /// Returns `(0, 0)` as stub — Objective System epic implements real assignment.
+    /// Callers MUST iterate ascending `player_id` (ADR-005 §4 ordering contract).
+    pub fn assign_fake_objectives(&mut self, player_id: PlayerId) -> (u8, u8) {
+        let idx1 = self.seed_index;
+        let _seed1 = self.next_seed();
+        self.audit_log.push(AuditEntry {
+            event_type: RngEvent::AssignFakeObjectives { player_id },
+            seed_index: idx1,
+            result: None,
+        });
+        let idx2 = self.seed_index;
+        let _seed2 = self.next_seed();
+        self.audit_log.push(AuditEntry {
+            event_type: RngEvent::AssignFakeObjectives { player_id },
+            seed_index: idx2,
+            result: None,
+        });
+        (0, 0)
+    }
+
+    /// Draw seed for a player's initial draft hand.
+    ///
+    /// Consumes 1 seed (DRAFT_INITIAL order 2). Returns the raw seed for Card
+    /// Pool to use. Callers MUST iterate ascending `player_id`.
+    pub fn draw_initial_draft(&mut self, player_id: PlayerId) -> u64 {
+        let idx = self.seed_index;
+        let seed = self.next_seed();
+        self.audit_log.push(AuditEntry {
+            event_type: RngEvent::DrawInitialDraft { player_id },
+            seed_index: idx,
+            result: None,
+        });
+        seed
+    }
+
+    /// Draw seed for one shop slot.
+    ///
+    /// Consumes 1 seed per call (DRAFT_SHOP order 3). Card Pool determines total
+    /// call count (2–3 seeds per slot via multiple calls). Returns raw seed.
+    /// Callers MUST iterate ascending `player_id` then ascending `slot_index`.
+    pub fn draw_shop_slot(&mut self, player_id: PlayerId, slot_index: u8) -> u64 {
+        let idx = self.seed_index;
+        let seed = self.next_seed();
+        self.audit_log.push(AuditEntry {
+            event_type: RngEvent::DrawShopSlot { player_id, slot_index },
+            seed_index: idx,
+            result: None,
+        });
+        seed
+    }
+
+    /// Draw seed for an Ecaflip dice trigger on a lane.
+    ///
+    /// Consumes 1 seed (RESOLUTION order 4). Returns raw seed.
+    /// Callers MUST iterate ascending `lane` index.
+    pub fn resolve_ecaflip(&mut self, lane: u8) -> u64 {
+        let idx = self.seed_index;
+        let seed = self.next_seed();
+        self.audit_log.push(AuditEntry {
+            event_type: RngEvent::ResolveEcaflip { lane },
+            seed_index: idx,
+            result: None,
+        });
+        seed
+    }
+
+    /// Draw seed for a Prism activation on a lane.
+    ///
+    /// Consumes 1 seed (RESOLUTION order 5). Returns raw seed.
+    /// Callers MUST iterate ascending `player_id` then ascending `lane`.
+    pub fn resolve_prism(&mut self, player_id: PlayerId, lane: u8) -> u64 {
+        let idx = self.seed_index;
+        let seed = self.next_seed();
+        self.audit_log.push(AuditEntry {
+            event_type: RngEvent::ResolvePrism { player_id, lane },
+            seed_index: idx,
+            result: None,
+        });
+        seed
+    }
+
+    /// Draw seed for a fake-objective-destroyed reward roll.
+    ///
+    /// Consumes 1 seed (RESOLUTION order 6). Returns raw seed.
+    /// Callers MUST iterate ascending `player_id` then ascending `lane`.
+    pub fn award_fake_objective_reward(&mut self, player_id: PlayerId, lane: u8) -> u64 {
+        let idx = self.seed_index;
+        let seed = self.next_seed();
+        self.audit_log.push(AuditEntry {
+            event_type: RngEvent::AwardFakeObjectiveReward { player_id, lane },
+            seed_index: idx,
+            result: None,
+        });
+        seed
+    }
+
+    /// Draw seed for a conditional free-card draw.
+    ///
+    /// Consumes 1 seed (RESOLUTION order 7, only when order 6 awarded a free card).
+    /// Returns raw seed.
+    pub fn draw_free_card(&mut self, player_id: PlayerId) -> u64 {
+        let idx = self.seed_index;
+        let seed = self.next_seed();
+        self.audit_log.push(AuditEntry {
+            event_type: RngEvent::DrawFreeCard { player_id },
+            seed_index: idx,
+            result: None,
+        });
+        seed
+    }
+}
+
+// =============================================================================
+// Tests — Story 001 (type definitions) + Story 002 (intent-named API)
+// =============================================================================
+//
+// These run via `cargo test -p server`. Deterministic seeds via from_seed().
+// Evidence files:
+//   tests/unit/foundation/server_rng_types_test.rs  (Story 001)
+//   tests/unit/foundation/server_rng_api_test.rs    (Story 002)
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -------------------------------------------------------------------------
+    // Story 001: Type definitions & audit infrastructure
+    // -------------------------------------------------------------------------
+
+    // RNG1: After ServerRng::new(), current_seed_index() == 1
+    #[test]
+    fn test_new_seed_index_is_one() {
+        let rng = ServerRng::from_seed(0);
+        assert_eq!(
+            rng.current_seed_index(),
+            1,
+            "index 0 is consumed by SessionInit sentinel; gameplay starts at 1"
+        );
+    }
+
+    // RNG5: 0 gameplay calls → 1 audit entry (sentinel only)
+    #[test]
+    fn test_zero_calls_has_one_audit_entry() {
+        let rng = ServerRng::from_seed(42);
+        assert_eq!(
+            rng.audit_log().len(),
+            1,
+            "only the SessionInit sentinel should be present"
+        );
+    }
+
+    // RNG5: N gameplay calls → N+1 audit entries
+    #[test]
+    fn test_n_calls_produces_n_plus_one_audit_entries() {
+        let mut rng = ServerRng::from_seed(42);
+        rng.resolve_ecaflip(0);
+        rng.resolve_ecaflip(1);
+        rng.resolve_ecaflip(2);
+        assert_eq!(
+            rng.audit_log().len(),
+            4,
+            "1 sentinel + 3 gameplay calls = 4 entries"
+        );
+        assert_eq!(rng.current_seed_index(), 4);
+    }
+
+    // RNG11: audit_log()[0] is SessionInit with result = None
+    #[test]
+    fn test_sentinel_is_session_init_with_no_result() {
+        let rng = ServerRng::from_seed(12345);
+        let first = &rng.audit_log()[0];
+        assert_eq!(first.event_type, RngEvent::SessionInit);
+        assert_eq!(first.seed_index, 0);
+        assert!(first.result.is_none(), "SessionInit must have result = None");
+    }
+
+    // RNG11: no raw seed bytes appear in any AuditEntry.result
+    #[test]
+    fn test_no_raw_seed_in_audit_log() {
+        let seed: u64 = 12345;
+        let mut rng = ServerRng::from_seed(seed);
+        rng.resolve_ecaflip(0);
+        for entry in rng.audit_log() {
+            if let Some(result) = &entry.result {
+                assert!(
+                    !result.contains(&seed.to_string()),
+                    "raw seed value must not appear in any audit entry result"
+                );
+            }
+        }
+    }
+
+    // seed_index values in audit log are monotonically ordered 0..N
+    #[test]
+    fn test_audit_log_seed_indices_are_sequential() {
+        let mut rng = ServerRng::from_seed(7);
+        rng.draw_free_card(1);
+        rng.draw_free_card(2);
+        let log = rng.audit_log();
+        for (i, entry) in log.iter().enumerate() {
+            assert_eq!(
+                entry.seed_index,
+                i as u32,
+                "seed_index at position {} should be {}",
+                i,
+                i
+            );
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Story 002: Intent-named API & consumption invariants
+    // -------------------------------------------------------------------------
+
+    // RNG2: Two ServerRng with different seeds → different first output
+    #[test]
+    fn test_rng2_different_seeds_produce_different_first_output() {
+        let mut a = ServerRng::from_seed(1);
+        let mut b = ServerRng::from_seed(2);
+        assert_ne!(
+            a.resolve_ecaflip(0),
+            b.resolve_ecaflip(0),
+            "different seeds must produce different outputs on the first call"
+        );
+    }
+
+    // RNG6: Empty-pool draw still increments seed_index (seed consumed regardless of outcome)
+    #[test]
+    fn test_rng6_draw_always_increments_seed_index() {
+        let mut rng = ServerRng::from_seed(99);
+        assert_eq!(rng.current_seed_index(), 1);
+        rng.resolve_ecaflip(0);
+        assert_eq!(
+            rng.current_seed_index(),
+            2,
+            "seed_index must increment even when the draw result is vacuous"
+        );
+        assert!(
+            rng.audit_log().last().unwrap().result.is_none(),
+            "stub result must be None"
+        );
+    }
+
+    // RNG7: Two Ecaflip triggers on the same lane produce consecutive seed_index entries
+    #[test]
+    fn test_rng7_consecutive_ecaflip_calls_have_sequential_seed_indices() {
+        let mut rng = ServerRng::from_seed(7);
+        assert_eq!(rng.current_seed_index(), 1);
+        rng.resolve_ecaflip(1);
+        rng.resolve_ecaflip(1);
+        let log = rng.audit_log();
+        assert_eq!(log[1].seed_index, 1);
+        assert_eq!(log[2].seed_index, 2);
+        assert_eq!(log[1].event_type, RngEvent::ResolveEcaflip { lane: 1 });
+        assert_eq!(log[2].event_type, RngEvent::ResolveEcaflip { lane: 1 });
+    }
+
+    // RNG12: assign_fake_objectives produces exactly 2 audit entries per call
+    #[test]
+    fn test_rng12_assign_fake_objectives_produces_two_entries() {
+        let mut rng = ServerRng::from_seed(3);
+        rng.assign_fake_objectives(1);
+        let log = rng.audit_log();
+        assert_eq!(log.len(), 3, "sentinel + 2 entries from assign_fake_objectives");
+        assert_eq!(
+            log[1].event_type,
+            RngEvent::AssignFakeObjectives { player_id: 1 }
+        );
+        assert_eq!(
+            log[2].event_type,
+            RngEvent::AssignFakeObjectives { player_id: 1 }
+        );
+        assert_eq!(log[1].seed_index, 1);
+        assert_eq!(log[2].seed_index, 2);
+    }
+
+    // RNG12: ordering contract — correct ordering produces deterministic audit log
+    #[test]
+    fn test_rng12_ascending_lane_order_produces_ordered_audit_entries() {
+        let mut rng = ServerRng::from_seed(42);
+        // Caller follows the ordering contract: ascending lane
+        rng.resolve_ecaflip(1);
+        rng.resolve_ecaflip(2);
+        rng.resolve_ecaflip(3);
+        let log = rng.audit_log();
+        // Verify entries are in the correct positions and seed_index is sequential
+        assert_eq!(log[1].event_type, RngEvent::ResolveEcaflip { lane: 1 });
+        assert_eq!(log[2].event_type, RngEvent::ResolveEcaflip { lane: 2 });
+        assert_eq!(log[3].event_type, RngEvent::ResolveEcaflip { lane: 3 });
+        assert_eq!(log[1].seed_index, 1);
+        assert_eq!(log[2].seed_index, 2);
+        assert_eq!(log[3].seed_index, 3);
+    }
+
+    // API boundary: no method exposes ChaCha20Rng, seed_index writable, or raw state
+    // (structural — verified by the module's visibility rules; no runtime assertion needed)
+    // Verified: next_seed() is private; rng/seed_index/audit_log fields are private.
+
+    // All 7 intent-named methods exist and push exactly one entry per next_seed() call
+    #[test]
+    fn test_all_seven_methods_push_one_entry_each() {
+        let mut rng = ServerRng::from_seed(0);
+        let baseline = rng.audit_log().len(); // 1 (sentinel)
+        rng.assign_fake_objectives(1); // +2 entries
+        assert_eq!(rng.audit_log().len(), baseline + 2);
+        rng.draw_initial_draft(1); // +1
+        assert_eq!(rng.audit_log().len(), baseline + 3);
+        rng.draw_shop_slot(1, 0); // +1
+        assert_eq!(rng.audit_log().len(), baseline + 4);
+        rng.resolve_ecaflip(0); // +1
+        assert_eq!(rng.audit_log().len(), baseline + 5);
+        rng.resolve_prism(1, 0); // +1
+        assert_eq!(rng.audit_log().len(), baseline + 6);
+        rng.award_fake_objective_reward(1, 0); // +1
+        assert_eq!(rng.audit_log().len(), baseline + 7);
+        rng.draw_free_card(1); // +1
+        assert_eq!(rng.audit_log().len(), baseline + 8);
+        // seed_index: 1 (start) + 2 + 1 + 1 + 1 + 1 + 1 + 1 = 9
+        assert_eq!(rng.current_seed_index(), 9);
     }
 }

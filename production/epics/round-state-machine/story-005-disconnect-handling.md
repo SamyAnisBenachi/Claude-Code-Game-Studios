@@ -130,11 +130,37 @@ fn tick_disconnect_timers(
 
 Each test uses `World::new()` + simulated Lightyear disconnect events (stub `OnDisconnected` events injected directly). No live Lightyear session required.
 
-- **RSM-23**: Single disconnect — inject `OnDisconnected` for player A; advance simulated time by 31 seconds; assert `GameOverEmitted { reason: Disconnection, loser: Some(player_a) }` emitted; `rsm.phase == GameOver`
-- **RSM-24**: Reconnect within grace — inject `OnDisconnected` for player A; advance 15 seconds; inject `OnConnected` for player A; advance 20 more seconds (total 35s since disconnect, but only 15s without reconnect); assert no `GameOverEmitted` emitted; `rsm.phase != GameOver`
-- **RSM-25**: DRAFT_AUCTION disconnect — set `rsm.phase = DraftAuction`; inject disconnect + advance past grace; assert `AbortAuction` emitted before `GameOverEmitted`; assert `BroadcastPhaseChanged { phase: GameOver }` follows
-- **RSM-35**: Mid-RESOLUTION deferral — set `rsm.phase = Resolution`; inject disconnect + advance past grace; assert no immediate `GameOverEmitted`; assert `rsm.pending_disconnect_outcome` is `Some`; inject `ResolutionComplete`; run `rsm_input_reader`; assert `GameOverEmitted` now emitted; win condition evaluation skipped
-- **RSM-37**: Mutual disconnect — inject `OnDisconnected` for both player A and player B; advance 31 seconds; assert exactly one `GameOverEmitted { reason: Draw, loser: None }` emitted (not two); assert no double-transition
+**RSM-23 — Single disconnect exceeds grace:**
+- Given: `RoundState { phase: Placement, disconnect_trackers: {} }`; `config.disconnect_grace_seconds = 30.0`
+- When: `disconnect_trackers[player_a]` set to `30.001` directly (bypasses Lightyear event for unit test); `tick_disconnect_timers` runs with delta=0
+- Then: `GameOverEmitted { reason: Disconnection, loser: Some(player_a) }` written; `rsm.phase == GameOver`
+- Edge cases: tracker = 30.0 exactly → must NOT trigger (strict `>`); tracker = 29.999 → must NOT trigger
+
+**RSM-24 — Reconnect within grace:**
+- Given: `disconnect_trackers[player_a] = 0.0` inserted (simulating disconnect)
+- When: `tick_disconnect_timers` runs with cumulative delta of 15.0s; tracker removed (simulating reconnect); 20.0 more seconds tick
+- Then: no `GameOverEmitted` written at any point; `rsm.phase` unchanged
+- Edge cases: re-disconnect after reconnect starts a fresh 0.0 tracker entry
+
+**RSM-25 — Boundary: exactly disconnect_grace_seconds survives:**
+- Given: `disconnect_trackers[player_a] = 30.0` (exactly at boundary)
+- When: `tick_disconnect_timers` runs (delta=0, tracker already at 30.0)
+- Then: no `GameOverEmitted` written; condition is `elapsed > 30.0` (strict greater-than, not `>=`)
+- Edge cases: 30.0 + f32::EPSILON → triggers; verify comparison operator is `>` not `>=`
+
+**RSM-35 — Mid-RESOLUTION deferral:**
+- Given: `RoundState { phase: Resolution, pending_disconnect_outcome: None, disconnect_trackers: {player_a: 30.001} }`
+- When: `tick_disconnect_timers` runs
+- Then: no `GameOverEmitted` written immediately; `rsm.pending_disconnect_outcome == Some(...)` with `reason: Disconnection, loser: Some(player_a)`; `rsm.phase` still `Resolution`
+- When (continued): `ResolutionComplete` injected; `rsm_input_reader` runs
+- Then: `GameOverEmitted { reason: Disconnection, loser: Some(player_a) }` written; win condition evaluation skipped; `rsm.phase == GameOver`; `pending_disconnect_outcome` cleared
+- Edge cases: both players disconnect mid-RESOLUTION → pending = Draw
+
+**RSM-37 — Mutual disconnect → single Draw GameOverEmitted:**
+- Given: `disconnect_trackers: { player_a: 30.001, player_b: 30.001 }`
+- When: `tick_disconnect_timers` runs (single pass evaluates both)
+- Then: exactly one `GameOverEmitted { reason: Draw, loser: None }` in queue; no `GameOverEmitted { reason: Disconnection }` written; `rsm.phase == GameOver` exactly once
+- Edge cases: player_a = 30.001, player_b = 30.0 → only player_a breaches → single loser (not Draw)
 
 ---
 

@@ -6,7 +6,7 @@ goal: "Compilable workspace, all Foundation shared types, Lightyear 0.26 API ver
 start: "2026-04-30"
 end: "2026-05-13"
 generated: "2026-04-29"
-updated: "2026-04-29 (S1-01 done)"
+updated: "2026-04-29 (S1-01, S1-04, S1-09 done)"
 
 stories:
   - id: "S1-01"
@@ -43,20 +43,20 @@ stories:
     name: "Protocol Skeleton & CI Dependency Gates"
     file: "production/epics/workspace-and-shared-types/story-004-protocol-skeleton-ci-gates.md"
     priority: must-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 1.0
-    blocker: "S1-01, S1-02, S1-03 must be Done"
-    completed: ""
+    blocker: ""
+    completed: "2026-04-29"
 
   - id: "S1-05"
     name: "Lightyear 0.26 Verification Spike"
     file: "production/epics/lightyear-protocol-verification/story-001-lightyear-026-verification-spike.md"
     priority: must-have
-    status: backlog
+    status: ready-for-dev
     owner: ""
     estimate_days: 1.0
-    blocker: "S1-04 must be Done — HARD GATE on all networking code"
+    blocker: ""
     completed: ""
 
   - id: "S1-06"
@@ -93,11 +93,11 @@ stories:
     name: "ServerRng Type Definitions & Audit Infrastructure"
     file: "production/epics/server-rng/story-001-type-definitions-audit-infrastructure.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: "S1-01 must be Done"
-    completed: ""
+    completed: "2026-04-29"
 
   - id: "S1-10"
     name: "Intent-Named API & Consumption Invariants"

@@ -43,7 +43,7 @@
 
     // Network Protocol
     protocol_version: 1,
-    hello_timeout_ms: 5000,
-    ack_timeout_ms: 10000,
-    heartbeat_interval_ms: 5000,
+    hello_timeout_ms: 10000,
+    ack_timeout_ms: 5000,
+    heartbeat_interval_ms: 3000,
 )

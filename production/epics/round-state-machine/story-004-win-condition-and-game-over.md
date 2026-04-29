@@ -96,10 +96,29 @@ The RSM epic defines the interface; the Objective System epic fills in the data.
 
 Each test uses `World::new()` + event injection. No live Lightyear session or Objective System implementation required.
 
-- **RSM-20**: Single loser — inject `ObjectiveCounters` with player A having 2 destroyed objectives; process `ResolutionComplete`; assert `GameOverEmitted { reason: ObjectivesDestroyed, loser: Some(player_a) }` and `BroadcastPhaseChanged { phase: GameOver }` emitted in that order; `rsm.phase == GameOver`
-- **RSM-21**: Mutual destruction (Draw) — inject `ObjectiveCounters` with both players having >= 2 destroyed objectives; process `ResolutionComplete`; assert `GameOverEmitted { reason: Draw, loser: None }` emitted; `BroadcastPhaseChanged { phase: GameOver }` follows
-- **RSM-22**: No win condition met — inject `ObjectiveCounters` with all players under 2 destroyed objectives; process `ResolutionComplete`; assert next DRAFT phase entered (DRAFT_AUCTION or DRAFT_SHOP based on `round_number`); no `GameOverEmitted` emitted
-- **RSM-36**: `GameOverEmitted` is emitted before `BroadcastPhaseChanged` in all GAME_OVER paths (assert event sequence: `GameOverEmitted` index < `BroadcastPhaseChanged` index in the event queue)
+**RSM-20 — Single loser via objectives:**
+- Given: `RoundState { phase: Resolution, round_number: 5 }`; `ObjectiveCounters { destroyed_per_player: {player_a: 2, player_b: 0} }`; `ResolutionComplete` in queue
+- When: `rsm_input_reader` processes `ResolutionComplete`; win condition evaluated
+- Then: `GameOverEmitted { reason: ObjectivesDestroyed, loser: Some(player_a) }` written; `BroadcastPhaseChanged { phase: GameOver, timer_ms: 0 }` written after `GameOverEmitted`; `rsm.phase == GameOver`
+- Edge cases: player_a destroyed = 1 (below threshold → no GAME_OVER); player_a destroyed = 3 (above threshold → same result); player_b destroyed = 2 (player_b is loser)
+
+**RSM-21 — No win condition → next DRAFT:**
+- Given: `RoundState { phase: Resolution, round_number: 2 }`; `ObjectiveCounters { destroyed_per_player: {player_a: 1, player_b: 0} }`; `ResolutionComplete` in queue
+- When: win condition evaluated
+- Then: no `GameOverEmitted` written; `rsm.phase != GameOver`; `round_number == 3` after increment; `BroadcastPhaseChanged { phase: DraftAuction }` written (3%3==0 → auction)
+- Edge cases: 0 objectives destroyed for all (clear no-win); both at 1 (below threshold for all)
+
+**RSM-22 — Mutual destruction → Draw:**
+- Given: `ObjectiveCounters { destroyed_per_player: {player_a: 2, player_b: 2} }`; `ResolutionComplete` in queue
+- When: win condition evaluated
+- Then: `GameOverEmitted { reason: Draw, loser: None }` written; no single player declared loser; exactly one `GameOverEmitted` in queue (not two)
+- Edge cases: player_a = 3, player_b = 2 → Draw (both qualify); player_a = 2, player_b = 1 → ObjectivesDestroyed (single loser)
+
+**RSM-36 — reason field matches cause (parametric):**
+- Scenario A (objectives): `ObjectiveCounters` loss condition met → `reason == ObjectivesDestroyed`; `loser == Some(id)`
+- Scenario B (disconnect): `pending_disconnect_outcome` set (from Story 005) → `reason == Disconnection`; `loser == Some(id)`
+- Scenario C (mutual): both players qualify → `reason == Draw`; `loser == None`
+- Assert: `GameOverEmitted.reason` matches the scenario's cause exactly; no cross-scenario contamination
 
 **Integration test (F2 ordering)** — `tests/integration/rsm/rsm_f2_ordering_test.rs`:
 - **RSM-32 integration**: Run full `rsm_input_reader → advance_phase → [mock subscribers]` pipeline for a DRAFT entry transition; assert `DraftStarted` is processed before `ShopRefreshNeeded`, which is processed before `BroadcastPhaseChanged`; no subscriber's effect is visible before the prior step's effect

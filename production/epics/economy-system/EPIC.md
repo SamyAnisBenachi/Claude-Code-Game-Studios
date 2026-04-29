@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/economy-system.md
 > **Architecture Module**: `server/core/economy/` (full module — `state.rs`, `api.rs`, `system.rs`, `plugin.rs`)
 > **Status**: Ready
-> **Stories**: To be created — see Story Breakdown Hint below
+> **Stories**: Created — see Stories table below
 
 ## Overview
 
@@ -162,17 +162,15 @@ pub fn discard_current_mana(economy: &mut PlayerEconomy);  // RESOLUTION end; cu
 - An integration test demonstrates `S2CGoldUpdate` unicast and `S2CGoldBroadcast` broadcast both fire on every DRAFT entry, with consistent values.
 - `EconomyPlugin` registers cleanly in a headless Bevy `App` startup test.
 
-## Story Breakdown Hint
+## Stories
 
-Suggested decomposition (final story list to be authored via `/create-stories`):
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [State & Pure API Scaffold](story-001-state-and-pure-api-scaffold.md) | Logic | Ready | ADR-010 |
+| 002 | [Initialisation + DraftStarted Subscriber](story-002-initialisation-draft-subscriber.md) | Logic | Ready | ADR-010 |
+| 003 | [Interest Snapshot & Resolution End](story-003-interest-snapshot-resolution.md) | Logic | Ready | ADR-010 |
+| 004 | [Kill & Objective Awards](story-004-kill-and-objective-awards.md) | Logic | Ready | ADR-010 |
+| 005 | [Auction Reservation & Bid Validation](story-005-auction-reservation-bid-validation.md) | Logic | Ready | ADR-010 |
+| 006 | [Network Dispatch Wiring](story-006-network-dispatch-wiring.md) | Integration | Ready | ADR-010, ADR-008 |
 
-1. **State + API scaffold** (Config/Data + Logic) — `state.rs`, `api.rs`, all single-writer functions; unit tests EC1–EC11 (auto-split, reserve-only, mana cap, self-inflicted) — pure-function tests, no Bevy app needed.
-2. **Initialisation + DraftStarted subscriber** (Logic) — `PlayerEconomies` initialised on `SessionReady`; `on_draft_started` for round 1 (Initial) and round ≥ 2 (Auction/Shop with interest); tests EC12, EC15, EC18, integration round 1 → 2 trace.
-3. **Interest snapshot + RESOLUTION end** (Logic) — `on_resolution_phase_entered` snapshot; mana discard; tests EC13, EC14.
-4. **Awards (kill, objective, mana_cap)** (Logic) — `handle_kill_award`, `handle_objective_award`; tests EC16, EC17, plus mana_cap reward path.
-5. **Auction reservation + bid validation** (Logic) — `reserve_gold`, `release_gold_reservation`, `can_afford_bid`, hand-full check; tests EC21, EC22, EC23.
-6. **Network dispatch wiring** (Integration) — `S2CGoldUpdate` unicast, `S2CGoldBroadcast` broadcast; `liv-bevy-lightyear` mandatory; integration test asserts the right messages on the right channel with the right targets.
-
-## Next Step
-
-Run `/create-stories production/epics/economy-system/EPIC.md` to author the story files. Story 1 (State + API) can begin in parallel with Epic 1's Story 1 (RSM scaffold) — they are independent. Story 2 onward is gated on Epic 1's `DraftStarted` event being defined in `server/core/rsm/events.rs`.
+Work through stories in order — each story's `Depends on:` field tells you what must be DONE before you can start it. Story 001 (State + API) can begin in parallel with other epics — it is pure Rust with no dependencies.

@@ -273,28 +273,32 @@ Source: `docs/engine-reference/bevy/deprecated-apis.md`
 
 | # | Item | ADR | Status |
 |---|---|---|---|
-| 1 | Channel definition syntax: `ReliableChannel` / `UnreliableChannel` struct names and registration API | ADR-008 | ⬜ |
-| 2 | `ChannelMode` enum variants (e.g., `Ordered`, `Unordered`, `Sequenced`) | ADR-008 | ⬜ |
-| 3 | `ChannelDirection` enum variants (ServerToClient, ClientToServer, Bidirectional) | ADR-008 | ⬜ |
-| 4 | `MessageSender<T>` and `MessageReceiver<T>` — confirm exact type/param names in 0.26 | ADR-008 | ⬜ |
-| 5 | Client→server send method: `sender.send_to_server(msg)` — confirm name | ADR-008 | ⬜ |
-| 6 | Server receive method: `receiver.receive_messages()` — confirm return type | ADR-008 | ⬜ |
-| 7 | Unicast target: `NetworkTarget::Single(ClientId)` vs `NetworkTarget::Only(vec![id])` — confirm variant name | ADR-001, ADR-008 | ⬜ |
-| 8 | Broadcast target: `NetworkTarget::All` — confirm variant name | ADR-008 | ⬜ |
-| 9 | Server unicast send API: `server.send_message_to_target::<Channel, Msg>(msg, target)` — confirm signature | ADR-001, ADR-011 | ⬜ |
-| 10 | In-order delivery guarantee within a single reliable channel across different message types | ADR-008 | ⬜ |
-| 11 | Snapshot-before-live-messages guarantee: server can hold live messages until snapshot delivery confirmed | ADR-011 | ⬜ |
-| 12 | `ClientId` is always reassigned on new transport connect (reconnect gets new `ClientId`) | ADR-011 | ⬜ |
-| 13 | `OnConnected` event fires synchronously in same `Update` frame as transport connect | ADR-011 | ⬜ |
-| 14 | Messages sent pre-`OnConnected` not delivered to new `ClientId` | ADR-011 | ⬜ |
-| 15 | `Commands::trigger(SessionReady)` fires Observer in same `Update` frame | ADR-012 | ⬜ |
-| 16 | Resource inserted via `Commands::insert_resource()` before `Commands::trigger()` is visible to Observer handler | ADR-012 | ⬜ |
-| 17 | `Trigger<T>` is correct Observer parameter type in Bevy 0.18 | ADR-012 | ⬜ |
-| 18 | Component replication does NOT auto-replicate newly spawned entities until Lightyear replication is explicitly configured | ADR-007 | ⬜ |
-| 19 | `ReplicationGroup` API (if used for entity grouping) — confirm 0.26 syntax | ADR-001 | ⬜ |
-| 20 | `LocalTimeline` is a `Resource` in 0.26 (changed from prior versions) | Engine reference | ⬜ |
+| 1 | Channel definition syntax: plain structs + `app.add_channel::<T>(ChannelSettings { mode, send_frequency, priority })` — no `#[derive(Channel)]` macro | ADR-008 | ⚠️ DIFFERS |
+| 2 | `ChannelMode` enum variants: `OrderedReliable(ReliableSettings)` ✅, `UnorderedUnreliable` ✅ (also: `UnorderedReliable`, `SequencedReliable`, `SequencedUnreliable`, `UnorderedUnreliableWithAcks`) | ADR-008 | ✅ CONFIRMED |
+| 3 | Direction is on message registration, NOT channel: `app.register_message::<T>().add_direction(NetworkDirection::...)` — `NetworkDirection` enum: `ServerToClient`, `ClientToServer`, `Bidirectional` | ADR-008 | ⚠️ DIFFERS |
+| 4 | `MessageSender<M>` and `MessageReceiver<M>` type names confirmed in prelude; both are **components** on entities (not standalone system params) | ADR-008 | ✅ CONFIRMED |
+| 5 | Client send: `sender.send::<Channel>(message)` — channel via generic type, no target param, no `send_to_server()` method | ADR-008 | ⚠️ DIFFERS |
+| 6 | Server receive: `receiver.receive() -> impl Iterator<Item = M>` — no `receive_messages()` method; also `receive_with_tick()`, `has_messages()`, `num_messages()` | ADR-008 | ⚠️ DIFFERS |
+| 7 | `NetworkTarget` = `type alias Target<PeerId>`. Unicast: `NetworkTarget::Single(PeerId)` — identifier is `PeerId` not `ClientId` | ADR-001, ADR-008 | ⚠️ DIFFERS |
+| 8 | `NetworkTarget::All` ✅ confirmed; also `AllExceptSingle(PeerId)`, `AllExcept(Vec<PeerId>)`, `Only(Vec<PeerId>)`, `None` | ADR-008 | ✅ CONFIRMED |
+| 9 | Server send API: `ServerMultiMessageSender` system param — `send::<M, C>(&msg, &server, &NetworkTarget)` (generics: Message first, Channel second; not `send_message_to_target`) | ADR-001, ADR-011 | ⚠️ DIFFERS |
+| 10 | `OrderedReliable` channel guarantees FIFO across all message types on the channel by definition; OQ-D invariant upheld by same-channel enqueue order | ADR-008 | ✅ CONFIRMED |
+| 11 | No built-in snapshot guarantee — application-level concern: enqueue snapshot first in `Update` tick + `snapshot_sent` flag per ADR-011 design | ADR-011 | ✅ CONFIRMED |
+| 12 | On reconnect, new `LinkOf` entity spawns with new `PeerId` (not `ClientId` — renamed); old entity despawned; `SessionToken` is cross-reconnect identity bridge | ADR-011 | ⚠️ DIFFERS |
+| 13 | No `OnConnected` event — connection state uses marker components (`Connected`); detect via `Trigger<OnAdd, Connected>` observer on client entities | ADR-011 | ⚠️ DIFFERS |
+| 14 | Pre-connect messages NOT delivered to new `PeerId`: confirmed by entity-per-connection model — new entity starts with empty message queue | ADR-011 | ✅ CONFIRMED |
+| 15 | `Commands::trigger(SessionReady)` fires Observer in same `Update` frame — **PENDING CI** (test written: `server/tests/session_ready_observer_test.rs`) | ADR-012 | ⚠️ PENDING |
+| 16 | `Res<T>` inserted via `Commands::insert_resource()` before `Commands::trigger()` is visible to Observer — **PENDING CI** (test written: `server/tests/session_ready_observer_test.rs`) | ADR-012 | ⚠️ PENDING |
+| 17 | `Trigger<T>` is correct Observer parameter type in Bevy 0.18 — confirmed from Bevy 0.18 api_patterns | ADR-012 | ✅ CONFIRMED |
+| 18 | Component replication is opt-in: entity must have `Replicate::default()` AND component must be registered via `app.register_component::<T>()` | ADR-007 | ✅ CONFIRMED |
+| 19 | `ReplicationGroup` struct confirmed in prelude; `ReplicationGroup::new_id(id)` syntax confirmed | ADR-001 | ✅ CONFIRMED |
+| 20 | `LocalTimeline` is a struct in `lightyear::core::prelude` ("local timeline matching Time<Virtual>"); accessible as `Res<LocalTimeline>` | Engine reference | ✅ CONFIRMED |
 
-Mark items ✅ as verified. **Do not merge any networking story with unverified checklist items.**
+**Legend:** ✅ CONFIRMED — API exists as assumed | ⚠️ DIFFERS — API differs, resolution path documented in `tests/evidence/lightyear-026-verification.md` | ⚠️ PENDING — test written, CI run required
+
+Items 15 and 16 are PENDING CI execution. Run `cargo test -p server session_ready_observer` in a VS Developer Command Prompt or CI to resolve.
+
+**Do not merge any networking story with unverified or unresolved DIFFERS items.**
 
 ---
 

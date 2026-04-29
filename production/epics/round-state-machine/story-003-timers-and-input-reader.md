@@ -103,10 +103,19 @@ Each test uses `World::new()` + event injection + `Time` resource injection. No 
 - **RSM-10**: `rsm_input_reader` discards `AuctionSettled` when `phase != DraftAuction`; no transition occurs; no `BroadcastPhaseChanged` emitted
 - **RSM-15**: `draft_initial_timer` starts at 45s on DRAFT_INITIAL entry; after advancing simulated time to 45s, timer fires; `advance_phase` transitions to PLACEMENT
 - **RSM-16**: `draft_shop_timer` starts at 30s on DRAFT_SHOP entry; timer fires at 30s; `advance_phase` transitions to PLACEMENT
-- **RSM-17**: `placement_timer` starts at 10s on PLACEMENT entry; timer fires at 10s; `advance_phase` transitions to RESOLUTION; non-submitting players treated as submitting zero cards (no refund)
+- **RSM-17**: `placement_timer` starts at 10s on PLACEMENT entry; timer fires at 10s; `advance_phase` transitions to RESOLUTION regardless of submission count; `BroadcastPhaseChanged { phase: Resolution }` emitted — RSM obligation ends here; Board/Lane System owns the "no cards placed for non-submitters" invariant (out of scope for this story)
+  - Given: `RoundState { phase: Placement, placement_timer: Some(Timer at 10s) }`, submissions_received = {player_a} only (1 of 2)
+  - When: simulated time advances to 10s; timer tick system runs
+  - Then: `rsm.phase == Resolution`; `BroadcastPhaseChanged { phase: Resolution }` written; `rsm.submissions_received` unchanged (Board/Lane reads it separately)
+  - Edge cases: 0 submissions at expiry (still transitions); timer must not trigger at 9.999s
 - **RSM-18**: PLACEMENT early exit — all players submit before timer; `advance_phase` transitions to RESOLUTION immediately; timer is not ticked to zero
 - **RSM-19**: DRAFT_SHOP early exit — all players signal ready before timer; `advance_phase` transitions to PLACEMENT immediately
-- **RSM-30**: `on_session_ready` Observer sets `round_number = 1`, `phase = DraftInitial`, `draft_initial_timer` initialized from `GameConfig`; `SessionConfig` and `ServerRng` are accessible in observer without panic (ADR-012 GSS-30 invariant)
+- **RSM-30** (RSM obligation only — gold forfeiture is DEFERRED to Epic 3 Economy System): `draft_initial_timer` fires after `draft_initial_timer_seconds`; `advance_phase` transitions to `Placement`; `BroadcastPhaseChanged { phase: Placement }` emitted; `round_number` remains 1 on DraftInitial exit
+  - Given: `RoundState { phase: DraftInitial, round_number: 1, draft_initial_timer: Some(Timer at 45s) }`, Player A has purchased some cards but timer expires
+  - When: simulated time advances to 45s; timer tick system runs
+  - Then: `rsm.phase == Placement`; `BroadcastPhaseChanged { phase: Placement }` written; `round_number` still 1
+  - Edge cases: early-exit (all-submit before timer — RSM-16 pattern applies); gold forfeiture ("use-it-or-lose-it") is Economy System's responsibility — RSM does NOT assert on gold values
+  - DEFERRED: GDD RSM-30 gold assertion (`Player A's gold = 0`) is tracked in Epic 3 (Economy System) story readiness review
 
 ---
 

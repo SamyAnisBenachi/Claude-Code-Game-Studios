@@ -135,4 +135,5 @@ Integration tests that verify the full `BroadcastPhaseChanged` → `S2CPhaseChan
 ## Dependencies
 
 - Depends on: Story 005 (disconnect handling) must be Done — full RSM system chain must be complete before network dispatch integration can be validated end-to-end
+- **Prerequisite (RSM-26 test harness)**: S1-05 (Lightyear 0.26 Verification Spike, `production/epics/workspace-and-shared-types/story-005-lightyear-verification-spike.md` or equivalent) must be Done before RSM-26 can be tested. The pattern for inspecting Lightyear's outbound message queue in a headless `World::new()` test is unverifiable until S1-05 establishes the verified Lightyear 0.26 API. Do not begin Story 006 implementation until S1-05 is Done.
 - Unlocks: Epic Definition of Done — all 38 RSM acceptance criteria covered; downstream epics (Economy System, Card Data & Pool, Board/Lane System) can begin implementing their `DraftStarted` / `ShopRefreshNeeded` / `PlacementPhaseEntered` / `ResolutionPhaseEntered` subscribers

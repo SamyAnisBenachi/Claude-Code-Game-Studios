@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/round-state-machine.md
 > **Architecture Module**: `server/core/rsm/` (full module — `state.rs`, `events.rs`, `transitions.rs`, `system.rs`, `plugin.rs`)
 > **Status**: Ready
-> **Stories**: To be created — see Story Breakdown Hint below
+> **Stories**: 6 stories created — see Stories table below
 
 ## Overview
 
@@ -115,6 +115,21 @@ Three post-cutoff APIs converge in this epic:
 - An integration test demonstrates that `BroadcastPhaseChanged` is emitted strictly after `DraftStarted`, `ShopRefreshNeeded`, and `AuctionPhaseEntered` in any DRAFT entry transition (assert via order-recorded mock subscribers).
 - An integration test demonstrates that a C2S message arriving in the wrong phase is silently discarded with no S2C response (ADR-009 phase-gate pattern verification).
 - `RsmPlugin` registers cleanly in a headless Bevy `App` startup test; resource and event registration succeed without panic.
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [State and Events Scaffold](story-001-state-and-events-scaffold.md) | Config/Data | Ready | ADR-009, ADR-010 |
+| 002 | [Advance Phase and F2 Ordering](story-002-advance-phase-and-f2-ordering.md) | Logic | Ready | ADR-009, ADR-010 |
+| 003 | [Timers and Input Reader](story-003-timers-and-input-reader.md) | Logic | Ready | ADR-009, ADR-010, ADR-012 |
+| 004 | [Win Condition and Game Over](story-004-win-condition-and-game-over.md) | Logic | Ready | ADR-009, ADR-010 |
+| 005 | [Disconnect Handling](story-005-disconnect-handling.md) | Logic | Ready | ADR-009 |
+| 006 | [Network Dispatch Wiring](story-006-network-dispatch-wiring.md) | Integration | Ready | ADR-009, ADR-010, ADR-008 |
+
+Work through stories in order — each story's `Depends on:` field tells you what must be Done before you can start it.
+
+---
 
 ## Story Breakdown Hint
 

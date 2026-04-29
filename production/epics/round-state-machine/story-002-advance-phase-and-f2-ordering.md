@@ -108,6 +108,14 @@ The exact mechanism for passing the trigger's expected source phase to `advance_
 *Handled by neighbouring stories — do not implement here:*
 
 - Story 001: `RoundState`, `RoundPhase`, all event type definitions — must be Done before this story begins
+
+**Deferred GDD ACs (Economy System territory — do NOT test here):**
+- **GDD RSM-7** (mana formula): `current_mana = min(round_number, mana_cap)` — this is an Economy System formula applied when it reads `DraftStarted`. The RSM obligation tested here is only that `DraftStarted { round: N, phase: DraftPhase::Shop }` is emitted with the correct `round` field.
+- **GDD RSM-9** (interest formula): `gold += baseline + interest` calculation — Economy System territory. RSM obligation: `DraftStarted` is emitted; Economy reads it and applies interest. Not asserted in RSM tests.
+- **GDD RSM-13** (purchase accepted when gold ≥ cost) — Economy System + C2S handler. RSM phase-gate only: `phase == DraftShop` is the correct gate for purchases.
+- **GDD RSM-14** (purchase rejected when gold < cost) — Economy System + C2S handler. RSM obligation: phase guard rejects purchases outside `DraftShop`. The gold check belongs to Epic 3.
+
+These ACs are tracked in the Economy System epic story readiness review (Epic 3 / `production/epics/economy-system/`).
 - Story 003: Timer tick systems, `rsm_input_reader`, `on_session_ready` — the mechanism that calls `advance_phase`
 - Story 004: Win condition check — reads `Res<ObjectiveCounters>` at RESOLUTION end to decide GAME_OVER vs next DRAFT
 - Story 005: Disconnect tracking systems
@@ -119,21 +127,49 @@ The exact mechanism for passing the trigger's expected source phase to `advance_
 
 Each test uses `World::new()` + event injection. No live Lightyear session required.
 
-- **RSM-1**: LOBBY → DRAFT_INITIAL transition fires when `SessionReady` Observer triggers (tested via `on_session_ready` stub + `advance_phase` call); `S2CPhaseChanged` equivalent (`BroadcastPhaseChanged`) emitted; `round_number = 1`
-- **RSM-2**: `round_number` increments on RESOLUTION → DRAFT_* (any DRAFT); economy events receive incremented value; `round_number` never reaches 0 at `is_auction_round`
-- **RSM-3**: DRAFT_INITIAL → PLACEMENT when all players submit; `submissions_received` cleared; `BroadcastPhaseChanged { phase: Placement }` emitted
-- **RSM-4**: DRAFT_INITIAL → PLACEMENT when timer expires (timer injection — advance timer to 0, call `advance_phase`)
-- **RSM-5**: PLACEMENT → RESOLUTION when all players submit; `BroadcastPhaseChanged { phase: Resolution }` emitted
-- **RSM-6**: DRAFT_INITIAL entry emits `DraftStarted { phase: DraftPhase::Initial }` then `ShopRefreshNeeded ×2` (1v1) before `BroadcastPhaseChanged`
-- **RSM-7**: DRAFT_SHOP entry emits `DraftStarted { phase: DraftPhase::Shop }` then `ShopRefreshNeeded ×2` before `BroadcastPhaseChanged`
-- **RSM-8**: DRAFT_AUCTION entry emits `DraftStarted { phase: DraftPhase::Auction }` then `ShopRefreshNeeded ×2` then `AuctionPhaseEntered` before `BroadcastPhaseChanged`
-- **RSM-9**: RESOLUTION → DRAFT_AUCTION on auction round (R % 3 == 0); DRAFT_AUCTION emits `AuctionPhaseEntered { round }` with `timer_ms = 0` in `BroadcastPhaseChanged`
-- **RSM-10**: RESOLUTION → DRAFT_SHOP on non-auction round; no `AuctionPhaseEntered` emitted
-- **RSM-11**: Exactly 2 `ShopRefreshNeeded` events emitted per DRAFT entry in 1v1; each carries a distinct `player` field
-- **RSM-12**: PLACEMENT → RESOLUTION when timer expires (inject timer to 0, non-submitting players treated as submitting zero cards — no refund; assert `submissions_received` not checked for full set)
-- **RSM-31**: Double-transition guard — two simultaneous triggers in the same tick produce exactly one `BroadcastPhaseChanged` (second call finds phase already changed, returns silently)
-- **RSM-32**: F2 ordering test — assert `DraftStarted` is written before `ShopRefreshNeeded`, which is written before `BroadcastPhaseChanged`; use order-recording mock `MessageWriter` or inspect message queue state
-- **RSM-33**: `is_auction_round(0)` is never reached in any test; `round_number` is always >= 1 when `is_auction_round` is called
+**RSM-2 — round_number increments before DraftStarted:**
+- Given: `RoundState { phase: Resolution, round_number: 1 }`; `ResolutionComplete` in message queue; no loss condition in `ObjectiveCounters`
+- When: `rsm_input_reader` runs, then `advance_phase` runs
+- Then: `DraftStarted.round == 2`; `rsm.round_number == 2`; `BroadcastPhaseChanged { phase: DraftShop }` written (round 2: 2%3≠0)
+- Edge cases: round_number = 2 → DraftStarted.round == 3; assert DraftStarted.round == rsm.round_number (must match)
+
+**RSM-3 / RSM-4 — is_auction_round correctness (pure function):**
+- Given: Pure function test, no World needed
+- When: `is_auction_round(R)` called for R in {1, 2, 3, 4, 5, 6, 7, 8, 9}
+- Then: returns true for {3, 6, 9}; returns false for {1, 2, 4, 5, 7, 8}
+- Edge cases: R=12 → true; R=0 → unreachable (debug_assert guard fires in debug builds)
+
+**RSM-5 / RSM-9 / RSM-10 — RESOLUTION → DRAFT routing:**
+- DRAFT_AUCTION: Given `round_number=2` (increments to 3, 3%3==0) → `DraftAuction`; `AuctionPhaseEntered { round: 3 }` written; `BroadcastPhaseChanged { timer_ms: 0 }` last
+- DRAFT_SHOP: Given `round_number=3` (increments to 4, 4%3≠0) → `DraftShop`; no `AuctionPhaseEntered` written
+
+**RSM-6 / RSM-7 / RSM-8 — F2 write order for DRAFT entry arms (all use order-recording stub writers):**
+- DRAFT_INITIAL: write log = [DraftStarted {phase:Initial, round:1}, ShopRefreshNeeded(p1), ShopRefreshNeeded(p2), BroadcastPhaseChanged]; BroadcastPhaseChanged is index 3 (last)
+- DRAFT_SHOP: write log = [DraftStarted {phase:Shop}, ShopRefreshNeeded(p1), ShopRefreshNeeded(p2), BroadcastPhaseChanged]
+- DRAFT_AUCTION: write log = [DraftStarted {phase:Auction}, ShopRefreshNeeded(p1), ShopRefreshNeeded(p2), AuctionPhaseEntered, BroadcastPhaseChanged]
+- In each case: BroadcastPhaseChanged index > all other indices
+
+**RSM-11 — per-player ShopRefreshNeeded fan-out in 1v1:**
+- Given: 2-player session; advance_phase enters any DRAFT phase
+- Then: exactly 2 `ShopRefreshNeeded` events written; each carries a distinct `player` field; no event carries the same player_id twice
+
+**RSM-12 — PLACEMENT → RESOLUTION (timer or all-submit):**
+- Timer path: inject `placement_timer.just_finished() = true`; assert `rsm.phase == Resolution`
+- All-submit path (see Story 003 for submission tracking)
+
+**RSM-31 — Double-transition guard:**
+- Given: `RoundState { phase: Placement }`; advance_phase called twice in same tick
+- When: first call → `rsm.phase = Resolution`; second call runs
+- Then: second call finds `phase ≠ Placement` → early return; exactly 1 `BroadcastPhaseChanged` in queue
+- Edge cases: two simultaneous timer+submit triggers — same result
+
+**RSM-32 — F2 ordering invariant (integration):**
+- Given: full `rsm_input_reader → advance_phase → mock-subscribers` pipeline; DRAFT entry transition
+- Then: position(DraftStarted) < position(ShopRefreshNeeded[*]) < position(BroadcastPhaseChanged); no subscriber effect visible before its triggering event
+
+**RSM-33 — debug_assert prevents is_auction_round(0):**
+- Given: `RoundState { round_number: 0 }` (pre-session sentinel, should never reach is_auction_round)
+- Then: In debug builds, `debug_assert!(rsm.round_number >= 1)` panics before `is_auction_round` is reached; no normal game flow path reaches this state
 
 ---
 

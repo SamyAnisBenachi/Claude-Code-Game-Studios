@@ -1,6 +1,6 @@
 [
   {
-    "id": [1],
+    "id": 1,
     "name_fr": "Chevalier Iop",
     "name_en": "Iop Knight",
     "class": "Iop",
@@ -19,7 +19,7 @@
     "pool_copies_override": null
   },
   {
-    "id": [2],
+    "id": 2,
     "name_fr": "Fantassin Sacrieur",
     "name_en": "Sacrier Footsoldier",
     "class": "Sacrier",
@@ -38,7 +38,7 @@
     "pool_copies_override": null
   },
   {
-    "id": [3],
+    "id": 3,
     "name_fr": "Tir Percant",
     "name_en": "Piercing Shot",
     "class": "Cra",
@@ -57,7 +57,7 @@
     "pool_copies_override": null
   },
   {
-    "id": [4],
+    "id": 4,
     "name_fr": "Piège Temporel",
     "name_en": "Time Trap",
     "class": "Xelor",
@@ -76,7 +76,7 @@
     "pool_copies_override": null
   },
   {
-    "id": [5],
+    "id": 5,
     "name_fr": "Goball Costaud",
     "name_en": "Sturdy Gobball",
     "class": "Neutral",
@@ -95,7 +95,7 @@
     "pool_copies_override": null
   },
   {
-    "id": [6],
+    "id": 6,
     "name_fr": "Champ de Roses Sadida",
     "name_en": "Sadida Rose Field",
     "class": "Sadida",
@@ -114,7 +114,7 @@
     "pool_copies_override": 2
   },
   {
-    "id": [7],
+    "id": 7,
     "name_fr": "Ordre Écaflip",
     "name_en": "Ecaflip's Decree",
     "class": "Ecaflip",
@@ -133,7 +133,7 @@
     "pool_copies_override": -1
   },
   {
-    "id": [8],
+    "id": 8,
     "name_fr": "Lame Double-Face",
     "name_en": "Double-Face Blade",
     "class": "Iop",
