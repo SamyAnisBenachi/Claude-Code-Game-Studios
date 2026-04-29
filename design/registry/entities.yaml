@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-04-29"  # updated: /consistency-check — added interest_threshold_gold constant; refresh_cap.referenced_by += game-config.md; 3 GDD conflicts resolved (RSM-30 forfeiture, economy refresh cap, NP refresh cost)
+last_updated: "2026-04-29"  # updated: /consistency-check (2) — net_damage.variables += AR_attacker_combat + output_range corrected; S2CGoldUpdate.notes: RESOLUTION exception documented; 2 new constants (type_advantage_atk_bonus, type_advantage_ar_bonus); network-protocol.md Combat Resolution row conflict resolved
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -287,11 +287,12 @@ formulas:
       - ATK_resist
       - AR_base
       - AR_pierce
-    output_range: [0, "uncapped (typical 0-8 per hit)"]
+      - AR_attacker_combat  # +1 when type_beats(attacker, defender)=true; applied to attacker's AR in the simultaneous return-strike (two-pass bilateral combat model)
+    output_range: [0, 31]  # max: ATK_base=20 + ATK_leader=5 + ATK_type=1 + ATK_vuln=5, AR=0. Typical play: 0-8.
     expression: "max(0, max(0, ATK_base + ATK_leader + ATK_type + ATK_vuln - ATK_resist) - (if AR_pierce { 0 } else { AR_base }))"
-    notes: "Full modifier stack defined in combat-resolution.md Detailed Design. SILENCE strips attacker keywords before stack evaluates. STUN prevents attack entirely (damage = 0). Keyword System and Class System will extend via hook points."
+    notes: "Full modifier stack in combat-resolution.md Detailed Design. Intermediate arithmetic in i32 (not u8) to prevent Rust underflow panic. AR_attacker_combat used in two-pass simultaneous bilateral combat — see combat-resolution.md Formula 1 for the algorithm. SILENCE strips attacker keywords before stack evaluates. STUN prevents attack (damage=0)."
     added: "2026-04-29"
-    revised: ""
+    revised: "2026-04-29"  # was: AR_attacker_combat variable missing; output_range was 'uncapped'
 
   - name: type_advantage
     status: active
@@ -806,6 +807,28 @@ constants:
     added: "2026-04-29"
     revised: "2026-04-29"
 
+  - name: type_advantage_atk_bonus
+    status: active
+    source: design/gdd/combat-resolution.md
+    referenced_by:
+      - design/gdd/combat-resolution.md
+    value: 1
+    unit: atk_points
+    notes: "ATK bonus granted to attacker when type_beats(attacker_type, defender_type)=true. Must be added to game-config.md as type_advantage_atk_bonus. Action: game-config.md update required before Combat Resolution epic begins."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: type_advantage_ar_bonus
+    status: active
+    source: design/gdd/combat-resolution.md
+    referenced_by:
+      - design/gdd/combat-resolution.md
+    value: 1
+    unit: ar_points
+    notes: "AR bonus granted to attacker (as defender in simultaneous return-strike) when type_beats(attacker_type, defender_type)=true. Must be added to game-config.md as type_advantage_ar_bonus. Change this and type_advantage_atk_bonus together — they are paired."
+    added: "2026-04-29"
+    revised: ""
+
   - name: interest_threshold_gold
     status: active
     source: design/gdd/game-config.md
@@ -872,9 +895,9 @@ network_messages:
       - design/gdd/economy-system.md
     payload: "{ gold: u32, current_mana: u32, reserve_mana: u32, mana_cap: u8 }"
     channel: reliable
-    notes: "Unicast to owning player only. Sent on any gold or mana change event (purchase, draft entry, kill reward, objective reward, mana cap increase). Never broadcast."
+    notes: "Unicast to owning player only. Sent on gold/mana change events: purchase, draft entry, mana cap increase, baseline/interest income, auction spend. EXCEPTION: kill rewards and objective rewards during RESOLUTION are NOT sent via S2CGoldUpdate — they are embedded as GoldAwarded entries in S2CResolutionEvent. S2CGoldUpdate resumes for all non-RESOLUTION gold events. Never broadcast."
     added: "2026-04-29"
-    revised: ""
+    revised: "2026-04-29"  # was: notes said 'kill reward, objective reward' without RESOLUTION exception
 
   - name: S2CPlacementReveal
     status: active
