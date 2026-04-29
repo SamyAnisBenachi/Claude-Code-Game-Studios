@@ -12,7 +12,7 @@ shared = { path = "../shared" }
 # for a headless server, no rendering features are needed. If "multi_threaded"
 # alone is insufficient (e.g., missing scheduling), add "bevy_app", "bevy_ecs".
 # Do NOT add "bevy_ecs" as a feature — it is a crate name, not a feature flag.
-bevy = { version = "0.18", default-features = false, features = ["multi_threaded"] }
+bevy = { version = "0.18", default-features = false, features = ["multi_threaded", "bevy_log"] }
 # "client" required: lightyear_transport 0.26.4 has a shared bidirectional transport
 # layer that requires both "client" and "server" features to compile, even in a
 # server-only binary. Verify in S1-05 whether a truly server-only subset is possible.
