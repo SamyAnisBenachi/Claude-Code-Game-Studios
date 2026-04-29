@@ -13,7 +13,10 @@ shared = { path = "../shared" }
 # alone is insufficient (e.g., missing scheduling), add "bevy_app", "bevy_ecs".
 # Do NOT add "bevy_ecs" as a feature — it is a crate name, not a feature flag.
 bevy = { version = "0.18", default-features = false, features = ["multi_threaded"] }
-lightyear = { version = "0.26", default-features = false, features = ["server", "websocket"] }
+# "client" required: lightyear_transport 0.26.4 has a shared bidirectional transport
+# layer that requires both "client" and "server" features to compile, even in a
+# server-only binary. Verify in S1-05 whether a truly server-only subset is possible.
+lightyear = { version = "0.26", default-features = false, features = ["client", "server", "websocket"] }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
 ron = { workspace = true }
