@@ -53,11 +53,11 @@ stories:
     name: "Lightyear 0.26 Verification Spike"
     file: "production/epics/lightyear-protocol-verification/story-001-lightyear-026-verification-spike.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-04-29"
 
   - id: "S1-06"
     name: "Asset Data Files"

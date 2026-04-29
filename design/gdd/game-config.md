@@ -65,6 +65,10 @@ pub struct GameConfig {
     pub auction_timer_seconds: u32,
     pub auction_timer_reset_seconds: u32,
     pub auction_max_duration_seconds: u32,
+    // Starting bid floors — Auction System (added 2026-04-29 per auction-system.md)
+    pub auction_floor_rare: u32,
+    pub auction_floor_epic: u32,
+    pub auction_floor_legendary: u32,
 
     // Class mechanics
     pub xelor_sablier_steal: u32,
@@ -130,7 +134,7 @@ No partial states. `GameConfig` is either fully available or the server is not r
 | **Economy System** | `starting_gold`, `gold_baseline_per_round`, `interest_threshold_gold`, `interest_max_bonus`, `objective_gold_reward`, `kill_gold_reward`, `mana_cap`, `refresh_base_cost` |
 | **Objective System** | `objective_hp`, `fake_count` |
 | **Board / Lane System** | `fake_objective_spawn_advance` |
-| **Auction System** | `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds` |
+| **Auction System** | `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds`, `auction_floor_rare`, `auction_floor_epic`, `auction_floor_legendary` |
 | **Round State Machine** | `placement_timer_seconds`, `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `resolution_max_duration_seconds`, `auction_max_duration_seconds`, `disconnect_grace_seconds` |
 | **Class System (Xelor)** | `xelor_sablier_steal` |
 | **Server-side RNG** | *(none — RNG seeds are generated at runtime)* |
@@ -196,7 +200,7 @@ These invariants are preconditions that other systems rely on being true before 
 | **Economy System** | Downstream (hard) | Reads: `starting_gold`, `gold_baseline_per_round`, `interest_threshold_gold`, `interest_max_bonus`, `objective_gold_reward`, `kill_gold_reward`, `mana_cap`, `refresh_base_cost` |
 | **Objective System** | Downstream (hard) | Reads: `objective_hp`, `fake_count` |
 | **Board / Lane System** | Downstream (hard) | Reads: `fake_objective_spawn_advance` |
-| **Auction System** | Downstream (hard) | Reads: `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds` |
+| **Auction System** | Downstream (hard) | Reads: `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds`, `auction_floor_rare`, `auction_floor_epic`, `auction_floor_legendary` |
 | **Round State Machine** | Downstream (hard) | Reads: `placement_timer_seconds`, `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `resolution_max_duration_seconds`, `auction_max_duration_seconds`, `disconnect_grace_seconds` |
 | **Game Session System** | Downstream (hard) | Reads: `lobby_timeout_seconds` (for lobby deadline), `lobby_heartbeat_timeout_seconds` (for LOBBY heartbeat-gap detection). Note: `disconnect_grace_seconds` is RSM-owned and does NOT apply during LOBBY. |
 | **Class System** | Downstream (soft) | Reads: `xelor_sablier_steal` (Xelor-specific; other classes have no dedicated config knobs at this time) |
@@ -245,6 +249,9 @@ This is the authoritative list of all `GameConfig` fields and their design-inten
 | `auction_timer_seconds` | 20 | 10–30 | Shorter = more time pressure and bluff risk; longer = more deliberation | **validated: ≥ 1** |
 | `auction_timer_reset_seconds` | 5 | 3–10 | How much each accepted bid adds back to the timer | **validated: < auction_timer_seconds** |
 | `auction_max_duration_seconds` | 120 | 60–300 | Safety timeout for DRAFT_AUCTION. Must be ≥ `auction_timer_seconds + (20 × auction_timer_reset_seconds)` to avoid cutting off a legitimate bidding war. | — |
+| `auction_floor_rare` | 3 | 2–5 | Starting bid for Rare-rarity auction cards. Must stay above Uncommon shop cost (2g) to preserve rarity signal. | — |
+| `auction_floor_epic` | 4 | 3–6 | Starting bid for neutral Epic-rarity auction cards. Requires original neutral Epic card designs (auction-system.md OQ1). | — |
+| `auction_floor_legendary` | 5 | 4–8 | Starting bid for Legendary-rarity auction cards. Too low = Legendary feels too accessible early; too high = gates cashflow-poor players. | — |
 | **Class System** | | | | |
 | `xelor_sablier_steal` | 1 | 1–3 | Mana stolen from opponent's current pool per Sablier cast. Effective steal = `min(steal, opponent.current_mana)`. See Class System GDD for 0-mana behavior specification. | — |
 | **Network Protocol** | | | | |

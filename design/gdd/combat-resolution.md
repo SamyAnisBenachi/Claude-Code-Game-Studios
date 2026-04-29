@@ -170,19 +170,185 @@ Each internal state is logged for the RSM safety timeout. If RESOLUTION exceeds 
 
 ## Formulas
 
-[To be designed]
+### Formula 1: Combat Damage
+
+The `net_damage` formula is defined as:
+
+`net_damage = max(0, ATK_effective − AR_effective)`
+
+**Variables:**
+
+| Variable | Symbol | Type | Range | Description |
+|---|---|---|---|---|
+| Base attack | `ATK_base` | u8 | 0–20 | Unit's card stat before modifiers |
+| LEADER bonus ATK | `ATK_leader` | u8 | 0–5 | Granted by a living LEADER of the same family (snapshotted at round start) |
+| Type advantage ATK | `ATK_type` | u8 | 0 or 1 | +1 if attacker's type beats defender's type |
+| VULNERABILITY X | `ATK_vuln` | u8 | 0–5 | Defender keyword: incoming ATK increased by X |
+| RESISTANCE X | `ATK_resist` | u8 | 0–5 | Defender keyword: incoming ATK decreased by X |
+| Effective attack | `ATK_effective` | u8 | 0+ | `max(0, ATK_base + ATK_leader + ATK_type + ATK_vuln − ATK_resist)` |
+| Base armor | `AR_base` | u8 | 0–10 | Unit's card stat before modifiers |
+| ARMOR-PIERCING | `AR_pierce` | bool | — | If true: `AR_effective = 0` (applied after RESISTANCE) |
+| Effective armor | `AR_effective` | u8 | 0+ | `AR_base` if no ARMOR-PIERCING; `0` if ARMOR-PIERCING is true |
+| Net damage | `net_damage` | u8 | 0+ | `max(0, ATK_effective − AR_effective)` |
+
+**Full modifier application order:**
+```
+ATK_effective = max(0,
+  ATK_base
+  + ATK_leader
+  + ATK_type        // +1 if type advantage
+  + ATK_vuln        // +X from VULNERABILITY
+  - ATK_resist      // -X from RESISTANCE
+)
+
+AR_effective = if ARMOR_PIERCING { 0 } else { AR_base }
+// Type advantage AR (+1) applies to the ATTACKER's own AR on retaliation — not to AR_effective
+
+net_damage = max(0, ATK_effective - AR_effective)
+```
+
+**Output Range:** 0 (fully absorbed) to uncapped. Typical range in normal play: 0–8 per hit.
+
+**Example:** Blade unit (ATK=3) attacks Shield unit (AR=2, RESISTANCE 1). Type advantage: ATK_type=+1. ATK_effective = max(0, 3+1−1) = 3. AR_effective = 2 (no ARMOR-PIERCING). `net_damage = max(0, 3−2) = 1`.
+
+---
+
+### Formula 2: Type Advantage
+
+`type_beats(attacker_type, defender_type) → bool`
+
+```
+Blade > Arcane > Shield > Blade   (cyclic triangle)
+Neutral: no advantage or disadvantage
+
+type_beats(Blade, Arcane)  = true
+type_beats(Arcane, Shield) = true
+type_beats(Shield, Blade)  = true
+type_beats(Neutral, _)     = false
+type_beats(_, Neutral)     = false
+type_beats(X, X)           = false  // same type, no advantage
+```
+
+**Output when `type_beats = true`:**
+- `ATK_combat += 1` (step 4 in modifier stack)
+- `AR_attacker_combat += 1` (attacker absorbs 1 more incoming retaliation damage this combat only)
+
+These bonuses are per-combat-interaction only and do not modify base card stats.
+
+**Current status:** Most cards are typed as Neutral (unassigned). Type assignment is progressive. Unassigned cards are treated as Neutral.
+
+---
+
+### Formula 3: Objective Damage (reference — owned by objective-system.md)
+
+`HP_new = max(0, HP_current - ATK_effective)`
+
+Where `ATK_effective` = attacker's ATK including active buffs (LEADER, spell buffs) but excluding all defensive modifiers (objectives have 0 AR; ARMOR-PIERCING, RESISTANCE, VULNERABILITY do not apply to objectives). See `objective-system.md` for full specification.
+
+**Output Range:** 0 to `objective_hp` (5 by default). HP is monotonically non-increasing.
+
+---
+
+### Formula 4: RANGE Target Selection
+
+`valid_targets(attacker, range_X) = enemy units at cells [attacker_cell+1 .. attacker_cell+range_X]` (Player A)
+`valid_targets(attacker, range_X) = enemy units at cells [attacker_cell−range_X .. attacker_cell−1]` (Player B)
+
+- Forward-only: targets cells toward the opponent's side exclusively
+- Cell range clamped to [1, 8]
+- Target priority: nearest enemy first (minimum cell-distance). If equidistant, server selects randomly.
+- Walls and Structures within range are valid targets; friendly units are never valid targets
+- Output: target unit reference, or null (no valid targets = no attack this sub-step)
 
 ## Edge Cases
 
-[To be designed]
+**If two FIRST STRIKE units face each other in sub-step 3:** Both calculate and apply damage simultaneously using pre-combat stats. Neither has priority. If both die, both DEATH triggers fire (in lane order).
+
+**If a RANGE + FIRST STRIKE unit attacks in sub-step 3 and the target survives:** The unit attacks again in sub-step 6. SHIELD consumed in sub-step 3 does not protect in sub-step 6 (separate sub-steps).
+
+**If a RANGE + FIRST STRIKE unit kills in sub-step 3:** Target is removed in sub-step 4; the unit may attack a different valid target in sub-step 6 if one exists within range.
+
+**If STUN is applied by an APPEARANCE trigger in sub-step 1:** STUN takes effect immediately. The STUNned unit cannot move or attack for the rest of this RESOLUTION, even if it has CHARGE.
+
+**If a SHIELD unit is hit by multiple simultaneous attackers in the same sub-step:** SHIELD absorbs the entire sub-step's incoming damage (all simultaneous hits). SHIELD is consumed once. Sub-steps 3 and 6 are separate — SHIELD consumed in sub-step 3 does not protect in sub-step 6.
+
+**If a RANGE attacker deals damage to a unit with COUNTERATTACK:** COUNTERATTACK does not fire. COUNTERATTACK requires physical proximity (same-cell contact). A RANGE unit that did not advance to the target's cell cannot be counter-attacked.
+
+**If a WALL unit is in the path of an advancing enemy:** The enemy stops at the WALL's cell and attacks it in sub-step 6. WALL has 0 ATK and deals no damage back. A RANGE unit within range of a WALL attacks it from range without stopping.
+
+**If two enemy units' paths would cross (each moving to the other's cell in the same tick):** Both halt at their cells from the previous tick (adjacent facing cells) and fight each other in sub-step 6.
+
+**If two enemy units would land on the same cell in the same movement tick:** Both land there and fight normally in sub-step 6.
+
+**If a unit at Cell 8 is killed by FIRST STRIKE in sub-step 3:** Removed in sub-step 4; does NOT deal objective damage in sub-step 6. Objective damage requires the unit to be alive at the end of sub-step 6.
+
+**If two objectives from different players are both destroyed in the same sub-step 6:** Both loss conditions are checked simultaneously. If both players satisfy the loss condition, the game is a Draw — RSM broadcasts `S2CGameOver { loser: None, reason: Draw }`.
+
+**If FINAL BLOW fires in sub-step 3:** The effect resolves immediately in sub-step 3, before sub-step 4. The killed unit is still on the board during FINAL BLOW resolution.
+
+**If a unit is killed by the second of two sequential damage sources in sub-step 3 (lane-order application):** The source applied second (higher lane number) receives FINAL BLOW credit — it was the source whose damage reduced HP to 0.
+
+**If INJURED grants FIRST STRIKE mid-RESOLUTION:** INJURED activates at the sub-step boundary after the damage that triggered it. A unit damaged in sub-step 3 does not retroactively attack in sub-step 3. It gains FIRST STRIKE from sub-step 4 onward — meaning FIRST STRIKE applies to sub-step 3 of the *next* round, not the current one.
+
+**If a LEADER dies in sub-step 4:** The LEADER bonus (snapshotted at RESOLUTION entry) remains active for sub-steps 5 and 6 of the same RESOLUTION. Next round: if LEADER is still dead, no bonus is applied.
+
+**If SILENCE is applied to a unit with an INJURED-granted FIRST STRIKE:** SILENCE strips the FIRST STRIKE keyword. The INJURED flag remains (SILENCE does not cure INJURED). If SILENCE ends, INJURED-granted FIRST STRIKE can return.
+
+**If a STUNned unit has CHARGE X:** STUN suppresses all movement and attacks. CHARGE X bonus movement in sub-step 2 is also suppressed — STUN overrides CHARGE X.
+
+**If an Ecaflip dice roll affects combat (e.g., Karla Blondie gains 1d6 ATK):** The RNG result is computed server-side via the RESOLUTION RNG chain before sub-step 1. Broadcast to clients via `S2CResolutionEvent`. No client-side RNG.
+
+**If a unit is destroyed by Punition (self-targeting objective damage, Sacrier):** The self-destroyed objective triggers the loss condition check but the controller does not receive +3 gold (no attacker reward for self-destruction). See objective-system.md for the full self-destroy rule.
+
+**If a unit dealing objective damage has an ATK-buffing spell active this round (e.g., Heure de Gloire):** The buffed ATK is used for objective damage. Objective damage uses `ATK_effective` including spell buffs but excluding ARMOR-PIERCING and RESISTANCE (inapplicable to objectives).
 
 ## Dependencies
 
-[To be designed]
+### Upstream (Combat Resolution depends on these)
+
+| System | GDD | Interface | Nature |
+|---|---|---|---|
+| Card Data & Pool | `card-data-pool.md` | Unit ATK, HP, AR, MP, type, keywords per card | Hard |
+| Game Config | `game-config.md` | `kill_gold_reward`, `objective_gold_reward`, `placement_timer_seconds`, `objective_hp` | Hard |
+| Server-side RNG | `server-rng.md` | RESOLUTION RNG chain; Ecaflip dice rolls | Hard |
+| Economy System | `economy-system.md` | Kill/objective gold reward values; gold update event | Hard |
+| Board/Lane System | `board-lane-system.md` | Cell positions, lane layout, spawn ranges, WALL cell occupancy | Hard |
+| Round State Machine | `round-state-machine.md` | `BeginResolution` trigger; RESOLUTION safety timeout (60s) | Hard |
+| Network Protocol | `network-protocol.md` | `S2CPlacementReveal`, `S2CResolutionEvent`, `C2SSubmitPlacement` | Hard |
+| Objective System | `objective-system.md` | `objective_damage` formula; `ObjectiveDestroyed` event; fake reward dispatch | Hard |
+
+### Downstream (these depend on Combat Resolution's output)
+
+| System | GDD | What it consumes | Nature |
+|---|---|---|---|
+| Board Rendering | `board-rendering.md` | `S2CResolutionEvent` log for animation playback | Soft |
+| Keyword System | `keyword-system.md` | Sub-step ordering, INJURED/DEATH/FINAL BLOW trigger timing | Soft — extends; must not contradict sub-step assignments |
+| Prism System | `prism-system.md` | Unit positions at sub-step 5 (prism collection at spawn cell) | Soft |
+| Class System | `class-system.md` | Kill/FINAL BLOW/DEATH trigger hooks; reserve mana interactions | Soft |
+| Card Animations | `card-animations.md` | Sub-step event sequence from `S2CResolutionEvent` | Soft |
+
+### Bidirectional consistency note
+
+Board/Lane System GDD defines `unit_movement` as "skip intermediate cells." Combat Resolution defines step-by-step collision detection as a deliberate deviation. An ADR will document this divergence. The `unit_movement` formula (owned by board-lane-system.md) still defines the intended destination; Combat Resolution's step-by-step logic determines the actual final position after collision halts.
 
 ## Tuning Knobs
 
-[To be designed]
+> All values below are configurable in `assets/config/game_config.ron`. Source of truth: `game-config.md`.
+
+| Knob | Config Field | Default | Safe Range | Gameplay Impact |
+|---|---|---|---|---|
+| Kill gold reward | `kill_gold_reward` | 1g | 0–2g | 0 = removes combat economy loop; 2 = strong snowball incentive |
+| Objective gold reward | `objective_gold_reward` | 3g | 2–5g | Higher = stronger swing on first destruction; lower = slower snowball |
+| Objective HP | `objective_hp` | 5 HP | 3–8 HP | Lower = faster games; higher = more comeback potential |
+| Placement timer | `placement_timer_seconds` | 10s | 5–20s | Shorter = more reflex pressure; longer = more deliberate tactical choice |
+| Type advantage ATK bonus | *(hardcoded in resolution logic — not currently in GameConfig)* | +1 | +1–+2 | +2 would make type dominant; keep at +1 unless RPS feels weak in playtests |
+| Type advantage AR bonus | *(hardcoded in resolution logic)* | +1 | +1–+2 | Paired with ATK bonus; change both together or not at all |
+
+**Not in this system (but affect it):**
+- Mana ramp (`mana_cap`) — controls cards-per-round; indirectly scales combat density
+- RESISTANCE X, VULNERABILITY X, RANGE X — per-card values, not global knobs
+
+**Interaction note:** `kill_gold_reward` and `objective_gold_reward` interact with the interest formula. Higher combat rewards accelerate the economic snowball — do not tune in isolation from `interest_threshold_gold`.
 
 ## Visual/Audio Requirements
 

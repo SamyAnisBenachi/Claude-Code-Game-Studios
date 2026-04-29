@@ -277,11 +277,50 @@ All Auction System knobs live in `GameConfig`. The three starting-price fields m
 
 ## Visual/Audio Requirements
 
-[To be designed]
+This system is the game's signature mechanic. Audio and visual urgency are load-bearing — they create the "brink" feeling the Player Fantasy describes.
+
+**Visual requirements:**
+
+| Event | Visual requirement |
+|---|---|
+| DRAFT_AUCTION entry (`S2CAuctionCard` received) | Auction panel slides in. Card art, name, rarity badge, and starting price displayed. Timer bar appears at full (20s). |
+| Bid accepted (`S2CAuctionBidAccepted`) | Price counter animates to new value. Current leader name/avatar updates immediately. Timer bar resets to new value with a flash. |
+| Player is current leader | "YOU ARE LEADING" indicator active. Bid button state changes to "Raise bid." |
+| Timer countdown | Timer bar drains continuously. Color urgency: green (>10s) → yellow (5–10s) → red (<5s). |
+| Timer reset on bid | Timer bar briefly fills back before resuming drain — visible "extension" animation. |
+| `S2CAuctionSettled` (winner) | Card animates to winner's hand area. Gold total animates down. Win/loss overlay per player. |
+| `S2CAuctionSettled` (no bids) | Card fades out with "NO BIDS — CARD LOST" overlay. Timer collapses. |
+| Post-settlement transition | Auction panel slides out. DRAFT_SHOP panel slides in. |
+
+**Audio requirements:**
+
+| Event | Audio requirement |
+|---|---|
+| DRAFT_AUCTION entry | Ambient urgency tone begins (distinct from DRAFT_SHOP calm) |
+| Each accepted bid | Short ascending SFX — escalating pitch series on rapid bids |
+| Timer < 5s | Audible countdown tick sound |
+| Timer reset on bid | Brief "extension" reverse-tick sound |
+| Auction won by self | Victory sting |
+| Auction won by opponent | Neutral resolved sting |
+| No-bid settlement | Muted "card gone" sound — minor key |
+
+📌 **Asset Spec** — Visual/Audio requirements are defined. After the art bible is approved, run `/asset-spec system:auction-system` to produce per-asset visual descriptions and generation prompts.
 
 ## UI Requirements
 
-[To be designed]
+The auction bid panel is a time-critical interactive UI. All elements must update within one frame of receiving the relevant `S2C` message.
+
+| Element | Spec |
+|---|---|
+| **Card display** | Card art, name, rarity badge (Rare=blue, Epic=purple, Legendary=gold), current price (large, bold) |
+| **Timer bar** | Horizontal bar draining continuously. Color urgency (green → yellow → red). Value driven by `timer_remaining_ms` from `S2CAuctionBidAccepted`, not by local timer drift. |
+| **Current leader** | Player name and avatar. "You" vs opponent label. "No leader yet" state when `current_leader == None`. Updates each `S2CAuctionBidAccepted`. |
+| **Bid input** | Minimum bid displayed (`current_price + 1`). +1g increment button (primary). Manual input (secondary, clamped ≥ minimum_bid). Confirm button. |
+| **Available gold** | Shows `gold - reserved_gold` (free gold) — not raw gold — so the player sees exactly what they can commit to a new bid. |
+| **"You are leading" indicator** | Visually distinct when the local player is `current_leader`. Bid button reads "Raise bid" (not "Place bid"). |
+| **Personal shop** | Shop slots remain visible and interactive during DRAFT_AUCTION. Shop panel must not occlude the auction panel. |
+
+📌 **UX Flag — Auction System:** This system has complex time-critical UI. Run `/ux-design` for the `shop-auction-ui` screen before writing epics. Stories referencing auction UI must cite `design/ux/shop-auction-ui.md`, not this GDD directly.
 
 ## Acceptance Criteria
 
@@ -306,4 +345,11 @@ All Auction System knobs live in `GameConfig`. The three starting-price fields m
 
 ## Open Questions
 
-[To be designed]
+| # | Question | Owner | Priority |
+|---|---|---|---|
+| OQ1 | **Neutral Epic card designs.** No neutral Epics exist in Krosmaga Extension=1. Neutral Epics at auction require original card designs. Until they exist, the auction pool is Rare + Legendary only. Epic floor price (4g) reserved for when they are designed. | Game Designer | Before M2 implementation |
+| OQ2 | **GameConfig additions.** `auction_floor_rare`, `auction_floor_epic`, `auction_floor_legendary` must be added to `game-config.md`, `game_config.ron`, and the shared `GameConfig` Rust struct. Currently hardcoded as formula values. | Gameplay Programmer | Before Auction System story implementation |
+| OQ3 | **`BidRejectedReason` enum additions.** `AlreadyLeader` and `HandFull` variants must be added to the enum in `network-protocol.md`. That GDD must be updated before protocol implementation. | Network Programmer | Before Auction System story implementation |
+| OQ4 | **`spend_reserved_gold` API name.** The economy-system.md describes the pattern (gold -= reserved; reserved = 0) but does not name the function explicitly. Verify exact API name before implementation — may be `spend_gold(player, reserved_amount)` + `release_gold_reservation`. | Gameplay Programmer | Before Auction System story implementation |
+| OQ5 | **2v2/3v3 auction behavior.** Master GDD OQ3: "1 card per auction — consider 1 per N players in larger modes." Current spec assumes 1v1. Multi-player auction dynamics (4+ bidders, card count scaling) unresolved. Hackathon scope: 1v1 only. | Game Designer | Post-hackathon |
+| OQ6 | **Card Data & Pool GDD update needed.** `card-data-pool.md` must be updated to: (1) add neutral Epic as a rarity bucket in the shared auction pool, (2) document Auction System as a `draw_auction_card()` consumer, (3) specify the initial copy count for the shared neutral pool. | Game Designer | Before Card Acquisition GDD is authored |

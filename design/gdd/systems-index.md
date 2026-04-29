@@ -54,8 +54,8 @@ Board Rendering · Hand UI · Shop/Auction UI · HUD · Card Animations
 
 | # | System | File | Status | Notes |
 |---|---|---|---|---|
-| 10 | Card Acquisition | `gdd/card-acquisition.md` | Not Started | Personal shop (3 cards/round, TFT weighting), initial draft (9 cards/5g), hand management |
-| 11 | Auction System | `gdd/auction-system.md` | Not Started | **Signature mechanic** — open ascending, visible price/leader, +5s timer reset, lightyear sync |
+| 10 | Card Acquisition | `gdd/card-acquisition.md` | Designed | 7 core rules, 4-state machine (INACTIVE/DRAFT_INITIAL/SHOP_ACTIVE/AUCTION_LOCK), 19 ACs (CA1–CA19). 2 formulas: refresh_cost (capped escalation) + dedup retry probability. New GameConfig knob: refresh_cap (default 1). OQs: refresh_cap + S2CShopSlots/S2CDraftOffering to add to game-config.md + NP GDD. /design-review pending. |
+| 11 | Auction System | `gdd/auction-system.md` | Designed | **Signature mechanic** — open ascending, visible price/leader, +5s timer reset, lightyear sync. 10 rules, 4-state machine, 14 ACs (AU1–AU14) + master GDD A1–A10. OQs: neutral Epic designs needed, 3 GameConfig fields to add, enum additions to network-protocol.md. /design-review pending. |
 | 12 | Combat Resolution | `gdd/combat-resolution.md` | Not Started | Simultaneous reveal, sub-step order, damage formula, objective damage, RPS type advantage |
 | 13 | Board Rendering | `gdd/board-rendering.md` | Not Started | Visual 5-lane grid, unit sprites at cells, health bars, Ankama art style |
 | 14 | Hand UI | `gdd/hand-ui.md` | Not Started | Card fan display, card selection, play confirmation during PLACEMENT |

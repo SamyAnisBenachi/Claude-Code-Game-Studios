@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-04-29"  # updated: objective-system.md authored — 2 new formulas (objective_damage, fake_reward_probability), 1 new network message (ObjectiveDestroyed), 5 referenced_by updates
+last_updated: "2026-04-29"  # updated: card-acquisition.md authored — 1 new formula (refresh_cost), 2 new constants (refresh_base_cost, refresh_cap), 2 new network messages (S2CDraftOffering, S2CShopSlots)
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -160,12 +160,58 @@ formulas:
     source: design/gdd/round-state-machine.md
     referenced_by:
       - design/gdd/round-state-machine.md
+      - design/gdd/auction-system.md
     variables:
       - round_number
     output_range: [false, true]
     expression: "R mod 3 == 0"
     notes: "Evaluated after round_number increments on RESOLUTION exit. DRAFT_INITIAL (round 1) is exempt — formula is never evaluated for round 1. Density: one auction every 3 rounds; 3-4 auctions in a typical 9-12 round game."
     added: 2026-04-28
+    revised: ""
+
+  - name: starting_price
+    status: active
+    source: design/gdd/auction-system.md
+    referenced_by:
+      - design/gdd/auction-system.md
+      - design/gdd/lanes-and-lies-gdd.md
+    variables:
+      - rarity
+    output_range: [3, 5]
+    expression: "{ Rare: auction_floor_rare, Epic: auction_floor_epic, Legendary: auction_floor_legendary }[rarity]"
+    notes: "Sets current_price at auction start. Values from GameConfig fields (to be added: auction_floor_rare=3, auction_floor_epic=4, auction_floor_legendary=5). First valid bid = starting_price + 1."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: minimum_bid
+    status: active
+    source: design/gdd/auction-system.md
+    referenced_by:
+      - design/gdd/auction-system.md
+      - design/gdd/lanes-and-lies-gdd.md
+    variables:
+      - current_price
+    output_range: [4, "unbounded"]
+    expression: "current_price + 1"
+    notes: "A C2SPlaceBid with amount < minimum_bid is rejected with AmountTooLow. current_price starts at starting_price and increases with each accepted bid."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: timer_reset_on_bid
+    status: active
+    source: design/gdd/auction-system.md
+    referenced_by:
+      - design/gdd/auction-system.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/game-config.md
+    variables:
+      - timer_remaining_ms
+      - auction_timer_reset_seconds
+      - auction_timer_seconds
+    output_range: [5000, 20000]
+    expression: "min(timer_remaining_ms + auction_timer_reset_seconds * 1000, auction_timer_seconds * 1000)"
+    notes: "Applied on each accepted bid. All wire messages carry milliseconds. Timer can never exceed its initial value (cap = auction_timer_seconds * 1000 = 20000ms default)."
+    added: "2026-04-29"
     revised: ""
 
   - name: unit_movement
@@ -225,6 +271,22 @@ formulas:
     output_range: ["ManaCapIncreased", "FreeCardPick"]
     expression: "gen_range(0..2) -> { 0: ManaCapIncreased, 1: FreeCardPick }"
     notes: "Uniform 50/50 Bernoulli per fake destruction. Independent draws. Uses one seed from RESOLUTION RNG chain. ManaCapIncreased -> Economy System; FreeCardPick -> draw_random_card on Card Data & Pool."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: refresh_cost
+    status: active
+    source: design/gdd/card-acquisition.md
+    referenced_by:
+      - design/gdd/card-acquisition.md
+      - design/gdd/economy-system.md
+    variables:
+      - refresh_base_cost
+      - refresh_cap
+      - refresh_count_this_draft
+    output_range: [1, "refresh_base_cost + refresh_cap"]
+    expression: "refresh_base_cost + min(refresh_count_this_draft, refresh_cap)"
+    notes: "Applied on each manual refresh during DRAFT_SHOP. refresh_count_this_draft resets to 0 on every DRAFT_SHOP phase entry. Default output: 1g first refresh, 2g all subsequent (base=1, cap=1). Economy System validates spend before draw fires."
     added: "2026-04-29"
     revised: ""
 
@@ -512,6 +574,7 @@ constants:
     referenced_by:
       - design/gdd/game-config.md
       - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/auction-system.md
     value: 20
     unit: seconds
     added: 2026-04-28
@@ -523,9 +586,46 @@ constants:
     referenced_by:
       - design/gdd/game-config.md
       - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/auction-system.md
     value: 5
     unit: seconds
     added: 2026-04-28
+    revised: ""
+
+  - name: auction_floor_rare
+    status: active
+    source: design/gdd/auction-system.md
+    referenced_by:
+      - design/gdd/auction-system.md
+      - design/gdd/lanes-and-lies-gdd.md
+    value: 3
+    unit: gold
+    notes: "Starting bid for Rare-rarity cards at auction. Must be added to GameConfig as auction_floor_rare. Must remain > 2g (above Uncommon shop cost) to preserve rarity signal."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: auction_floor_epic
+    status: active
+    source: design/gdd/auction-system.md
+    referenced_by:
+      - design/gdd/auction-system.md
+      - design/gdd/lanes-and-lies-gdd.md
+    value: 4
+    unit: gold
+    notes: "Starting bid for neutral Epic-rarity cards at auction. Requires original neutral Epic card designs — no Neutral Epics in Krosmaga Extension=1 (OQ1). Must be added to GameConfig."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: auction_floor_legendary
+    status: active
+    source: design/gdd/auction-system.md
+    referenced_by:
+      - design/gdd/auction-system.md
+      - design/gdd/lanes-and-lies-gdd.md
+    value: 5
+    unit: gold
+    notes: "Starting bid for Legendary-rarity cards at auction. Legendary = neutral only, 1 copy per player pool. Must be added to GameConfig as auction_floor_legendary."
+    added: "2026-04-29"
     revised: ""
 
   - name: placement_timer_seconds
@@ -644,6 +744,30 @@ constants:
     added: "2026-04-29"
     revised: ""
 
+  - name: refresh_base_cost
+    status: active
+    source: design/gdd/economy-system.md
+    referenced_by:
+      - design/gdd/economy-system.md
+      - design/gdd/card-acquisition.md
+      - design/gdd/game-config.md
+    value: 1
+    unit: gold
+    notes: "Gold cost of the first manual shop refresh in a DRAFT_SHOP phase. Subsequent refreshes cost refresh_base_cost + min(count, refresh_cap). Safe range: 1–3g."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: refresh_cap
+    status: active
+    source: design/gdd/card-acquisition.md
+    referenced_by:
+      - design/gdd/card-acquisition.md
+    value: 1
+    unit: gold
+    notes: "Maximum additional cost above refresh_base_cost for manual shop refreshes (caps escalation). Default 1 → refresh costs 1g, 2g, 2g, 2g... Must be added to game-config.ron and game-config.md. Safe range: 0–5."
+    added: "2026-04-29"
+    revised: ""
+
 
 # ─── NETWORK MESSAGES ────────────────────────────────────────────────────────
 # Named server-to-client (S2C) or client-to-server (C2S) message types that
@@ -757,6 +881,78 @@ network_messages:
     payload: "{ target_player_id: PlayerId, lane: LaneId, was_fake: bool }"
     channel: reliable
     notes: "Broadcast to both players at RESOLUTION-end sync when an objective's HP reaches 0. target_player_id identifies whose objective was destroyed (required when multiple objectives fall same RESOLUTION). Reveals real/fake identity to attacker. Triggers Board Rendering to clear the correct slot. Not a mid-sub-step push — batched at RESOLUTION end."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: S2CAuctionCard
+    status: active
+    source: design/gdd/auction-system.md
+    referenced_by:
+      - design/gdd/auction-system.md
+      - design/gdd/network-protocol.md
+    payload: "{ card_id: CardId, starting_price: u32 }"
+    channel: reliable
+    notes: "Broadcast by Auction System on SELECTING exit. MUST be enqueued before S2CPhaseChanged(DRAFT_AUCTION) — ordering invariant. Not re-sent on reconnect; AuctionSnapshot in S2CGameSnapshot serves reconnecting clients."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: S2CAuctionBidAccepted
+    status: active
+    source: design/gdd/auction-system.md
+    referenced_by:
+      - design/gdd/auction-system.md
+      - design/gdd/network-protocol.md
+    payload: "{ bidder: PlayerId, amount: u32, new_timer_ms: u32 }"
+    channel: reliable
+    notes: "Broadcast to all players on each accepted bid. Client updates price display, leader display, and timer bar from this payload. Timer bar must use new_timer_ms, not local timer drift."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: S2CAuctionSettled
+    status: active
+    source: design/gdd/auction-system.md
+    referenced_by:
+      - design/gdd/auction-system.md
+      - design/gdd/network-protocol.md
+    payload: "{ winner: Option<PlayerId>, amount: u32 }"
+    channel: reliable
+    notes: "Terminal auction signal. Broadcast when timer reaches 0. winner=None if no bids placed. Gold is deducted server-side before this message is sent — clients update gold display on receipt. NOT sent on AbortAuction (RSM already handling GAME_OVER in that case)."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: S2CAuctionBidRejected
+    status: active
+    source: design/gdd/auction-system.md
+    referenced_by:
+      - design/gdd/auction-system.md
+      - design/gdd/network-protocol.md
+    payload: "{ reason: BidRejectedReason }"
+    channel: reliable
+    notes: "Unicast to bidder only on bid validation failure. BidRejectedReason enum (5 variants): InsufficientGold, AmountTooLow, AuctionExpired, AlreadyLeader, HandFull. AlreadyLeader and HandFull are additions not yet in network-protocol.md — must be added (OQ3)."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: S2CDraftOffering
+    status: active
+    source: design/gdd/card-acquisition.md
+    referenced_by:
+      - design/gdd/card-acquisition.md
+      - design/gdd/card-data-pool.md
+    payload: "{ card_ids: [CardId; 9] }"
+    channel: reliable
+    notes: "Unicast to the player once at DRAFT_INITIAL entry, after draw_initial_draft() completes. Contains exactly 9 distinct card IDs (any rarity). Full schema to be formally registered in network-protocol.md (OQ2 in card-acquisition.md)."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: S2CShopSlots
+    status: active
+    source: design/gdd/card-acquisition.md
+    referenced_by:
+      - design/gdd/card-acquisition.md
+      - design/gdd/card-data-pool.md
+    payload: "{ slots: Vec<Option<CardId>> }"
+    channel: reliable
+    notes: "Unicast to the player after every auto-refresh (DRAFT_SHOP and DRAFT_AUCTION entry) and manual refresh. Contains 3 slot entries; null slots are empty (pool exhausted or dedup short-circuit). Full schema to be formally registered in network-protocol.md (OQ2 in card-acquisition.md)."
     added: "2026-04-29"
     revised: ""
 

@@ -3,7 +3,7 @@
 > Lis ce fichier EN PREMIER dans toute nouvelle session.
 > Il contient l'état complet du projet au 2026-04-29.
 >
-> **Session active (2026-04-29):** Designing Card Acquisition GDD — design/gdd/card-acquisition.md. A ✅ B ✅ C ✅ D ✅ E ✅ F ✅. Working on Section G (Tuning Knobs).
+> **Session active (2026-04-29):** Card Acquisition GDD ✅ DESIGNED — design/gdd/card-acquisition.md. All 8 sections complete + Open Questions. Registry updated (refresh_cost formula, refresh_base_cost/refresh_cap constants, S2CDraftOffering/S2CShopSlots messages). Systems index updated. /design-review pending (fresh session). Next: /consistency-check or design Combat Resolution GDD.
 
 ---
 
@@ -131,10 +131,9 @@ Le skill liv-bevy-018 révèle que **EventWriter/EventReader n'existent plus en 
 M1 (9 GDDs) : ✅ TOUS APPROUVÉS — prêts à implémenter
 M2 (7 GDDs) : 1 EN COURS, 6 PAS COMMENCÉS
 
-**En cours :** Auction System GDD — `design/gdd/auction-system.md` (skeleton créé 2026-04-29)
-**Section courante :** D — Formulas
-**Sections complètes :** A — Overview ✅ · B — Player Fantasy ✅ · C — Detailed Design ✅
-**M2 priorité :** Auction System → Card Acquisition → Combat Resolution
+**Auction System GDD :** `design/gdd/auction-system.md` — ✅ DESIGNED (2026-04-29). Toutes sections complètes (A–H + Visual/Audio + UI + OQs). /design-review pending (fresh session).
+**OQs critiques :** OQ1 neutral Epics, OQ2 GameConfig fields, OQ3 BidRejectedReason enum, OQ6 card-data-pool.md update
+**M2 priorité :** Card Acquisition → Combat Resolution (Auction System → /design-review)
 
 ### 🔵 EN COURS — Combat Resolution GDD
 - **Fichier :** `design/gdd/combat-resolution.md`

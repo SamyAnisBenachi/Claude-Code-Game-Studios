@@ -412,9 +412,11 @@ type SessionToken = [u8; 16];   // UUID v4 (128-bit), server-generated at first 
 type EntityId = u64;            // server-assigned monotonic counter per session; mapped to local ECS Entity via HashMap<EntityId, Entity> on each client
 
 enum BidRejectedReason {
-    InsufficientGold,   // player.gold < amount
+    InsufficientGold,   // player.gold - reserved_gold < amount
     AmountTooLow,       // amount <= current bid (must be >= last_accepted_bid + 1)
     AuctionExpired,     // server timer fired between client send and server receive — S2CAuctionSettled follows immediately
+    AlreadyLeader,      // bidder == current_leader; self-bids are rejected (auction-system.md Rule 4)
+    HandFull,           // bidder.hand_size == 10; must play a card before bidding (auction-system.md Rule 4)
 }
 ```
 

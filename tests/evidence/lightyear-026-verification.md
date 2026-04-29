@@ -310,18 +310,25 @@ Test written at `server/tests/session_ready_observer_test.rs` (`test_session_rea
 
 ---
 
-### Item 17: `Trigger<T>` as Observer parameter type
-✅ **CONFIRMED**
+### Item 17: Observer parameter type and registration API
+⚠️ **DIFFERS** — `Trigger<T>` renamed to `On<T>`; `App::observe()` renamed to `App::add_observer()`
 
-`Trigger<EventType>` is the correct handler signature for Observer functions in Bevy 0.18. Confirmed from `liv-bevy-lightyear` `api_patterns.md` (avian integration shows `trigger: Trigger<OnAdd, T>` for lifecycle hooks; custom events use `trigger: Trigger<SessionReady>`).
+**Initial assumption:** `Trigger<EventType>` + `app.observe()`.
+
+**Confirmed by CI compilation (2026-04-29, commit f498671):** The correct Bevy 0.18 API is `On<T>` (renamed from `Trigger<T>` in 0.16) and `App::add_observer()` (renamed from `App::observe()`).
 
 ```rust
-// Correct Bevy 0.18 observer signature:
-fn on_session_ready(_trigger: Trigger<SessionReady>, config: Res<SessionConfig>) {
+// ✅ Correct Bevy 0.18 observer signature:
+fn on_session_ready(_trigger: On<SessionReady>, config: Res<SessionConfig>) {
     // ...
 }
-app.observe(on_session_ready);
+app.add_observer(on_session_ready);
+
+// ❌ Old API (pre-0.16) — does not compile on Bevy 0.18:
+// Trigger<SessionReady>, app.observe()
 ```
+
+**Resolution:** Replace `Trigger<T>` with `On<T>` and `app.observe()` with `app.add_observer()` everywhere. `commands.trigger(E)` and `commands.trigger_targets(E, entity)` are unchanged.
 
 ---
 
@@ -367,10 +374,10 @@ commands.spawn((
 
 | Test | File | Expected Result | Actual Result |
 |------|------|-----------------|---------------|
-| `test_session_ready_observer_fires_in_same_frame` | `server/tests/session_ready_observer_test.rs` | PASS | PENDING CI |
-| `test_session_ready_observer_resource_visible_after_commands_insert` | `server/tests/session_ready_observer_test.rs` | PASS | PENDING CI |
+| `test_session_ready_observer_fires_in_same_frame` | `server/tests/session_ready_observer_test.rs` | PASS | ✅ PASS (CI run 25133926012, commit f498671) |
+| `test_session_ready_observer_resource_visible_after_commands_insert` | `server/tests/session_ready_observer_test.rs` | PASS | ✅ PASS (CI run 25133926012, commit f498671) |
 
-**If both tests PASS:** Document "ADR-012 open condition: RESOLVED — `Commands::trigger()` flush ordering confirmed. `Res<SessionConfig>` visible to Observer after `Commands::insert_resource()`. No `apply_deferred` needed in `RsmPlugin::build()`."
+**ADR-012 open condition: RESOLVED** — `Commands::trigger()` flush ordering confirmed. `Res<SessionConfig>` visible to Observer after `Commands::insert_resource()`. No `apply_deferred` needed in `RsmPlugin::build()`.
 
 **If Item 16 test FAILS:** Add `apply_deferred` to the `.chain()` in `RsmPlugin::build()` between `evaluate_session_ready` and the RSM observer trigger system. Alternatively, adopt the `World::trigger()` exclusive system fallback from ADR-012 §Alternative 2.
 

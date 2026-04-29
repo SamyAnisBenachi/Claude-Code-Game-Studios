@@ -37,6 +37,10 @@
     auction_timer_seconds: 20,
     auction_timer_reset_seconds: 5,
     auction_max_duration_seconds: 120,
+    // Starting bid floors — Auction System
+    auction_floor_rare: 3,
+    auction_floor_epic: 4,
+    auction_floor_legendary: 5,
 
     // Class mechanics
     xelor_sablier_steal: 1,

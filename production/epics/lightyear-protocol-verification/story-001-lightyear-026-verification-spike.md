@@ -1,7 +1,7 @@
 # Story 001: Lightyear 0.26 Verification Spike ⭐
 
 > **Epic**: Lightyear Protocol & Verification Spike
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-04-29
@@ -150,3 +150,11 @@ If this test fails, the fix is documented (but not implemented here — GSS epic
 
 - Depends on: `workspace-and-shared-types` Story 004 Done (Lightyear deps present in Cargo.toml so docs.rs lookup matches actual dependency)
 - Unlocks: **Story 002, Story 003, Story 004** — AND all Core/Feature epics that touch networking. **This story is a hard gate.**
+
+## Completion Notes
+**Completed**: 2026-04-29
+**Criteria**: 9/9 passing
+**Deviations**: ADVISORY — Item 17 corrected: `Trigger<T>`→`On<T>`, `App::observe()`→`App::add_observer()` (Bevy 0.16+ rename; proved by CI compilation)
+**Test Evidence**: Integration — `tests/evidence/lightyear-026-verification.md` (20 items); `server/tests/session_ready_observer_test.rs` (2 tests, CI PASS run 25133926012)
+**ADR-012**: RESOLVED — flush ordering confirmed, no apply_deferred needed
+**Code Review**: Skipped (Lean mode)
