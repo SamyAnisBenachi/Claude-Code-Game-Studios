@@ -3,7 +3,7 @@
 > Lis ce fichier EN PREMIER dans toute nouvelle session.
 > Il contient l'état complet du projet au 2026-04-29.
 >
-> **Session active (2026-04-29):** Hand UI GDD — design/gdd/hand-ui.md. Overview ✅ Player Fantasy ✅. Working on Section C: Detailed Design. Board Rendering GDD In Design (separate session). Combat Resolution GDD ✅ DESIGNED.
+> **Session active (2026-04-29):** Hand UI GDD ✅ DESIGNED — design/gdd/hand-ui.md. All 8 sections + Visual/Audio + UI Requirements + Open Questions complete (24 ACs). Systems index updated. /design-review pending (fresh session). Next: Shop/Auction UI GDD (already Designed by parallel session), HUD GDD.
 
 ---
 
@@ -135,10 +135,12 @@ M2 (7 GDDs) : 2 DESIGNED, 5 PAS COMMENCÉS
 **Combat Resolution GDD :** `design/gdd/combat-resolution.md` — ✅ DESIGNED (2026-04-29). Toutes sections complètes (A–H + Visual/Audio + UI Requirements + Open Questions). Registry: 2 nouvelles formules (net_damage, type_advantage). 5 OQs: OQ1 WALL ADR, OQ2 type advantage GameConfig, OQ3 RANGE RNG seed, OQ4 COUNTERATTACK proximity, OQ5 ResolutionEvent enum. /design-review pending (fresh session).
 **Card Acquisition GDD :** `design/gdd/card-acquisition.md` — ✅ DESIGNED (2026-04-29). /design-review pending (fresh session).
 
-### 🔵 EN COURS — Shop/Auction UI GDD
+### ✅ TERMINÉ — Shop/Auction UI GDD
 - **Fichier :** `design/gdd/shop-auction-ui.md`
-- **Section courante :** Section A — Overview (skeleton créé 2026-04-29)
-- **Skill :** `/design-system shop-auction-ui` (review mode: lean)
+- **Statut :** Designed (2026-04-29) — sections A–H + Visual/Audio + UI Requirements + Open Questions
+- **Registry :** 1 nouvelle formule (local_free_gold); 6 referenced_by mis à jour
+- **5 OQs :** bid text input (OQ1), tooltip persistence (OQ2), S2CGoldBroadcast reserved_gold NP update (OQ3), screen layout split (OQ4), C2SSignalReady NP registration (OQ5)
+- **Next :** /design-review design/gdd/shop-auction-ui.md (fresh session) · /ux-design shop-auction-ui
 
 ---
 

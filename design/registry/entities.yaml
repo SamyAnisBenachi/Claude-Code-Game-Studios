@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-04-29"  # updated: /consistency-check (2) — net_damage.variables += AR_attacker_combat + output_range corrected; S2CGoldUpdate.notes: RESOLUTION exception documented; 2 new constants (type_advantage_atk_bonus, type_advantage_ar_bonus); network-protocol.md Combat Resolution row conflict resolved
+last_updated: "2026-04-29"  # updated: shop-auction-ui.md authored — 1 new formula (local_free_gold); referenced_by updated on 6 entries
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -189,6 +189,7 @@ formulas:
     referenced_by:
       - design/gdd/auction-system.md
       - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/shop-auction-ui.md
     variables:
       - current_price
     output_range: [4, "unbounded"]
@@ -314,6 +315,7 @@ formulas:
     referenced_by:
       - design/gdd/card-acquisition.md
       - design/gdd/economy-system.md
+      - design/gdd/shop-auction-ui.md
     variables:
       - refresh_base_cost
       - refresh_cap
@@ -321,6 +323,20 @@ formulas:
     output_range: [1, "refresh_base_cost + refresh_cap"]
     expression: "refresh_base_cost + min(refresh_count_this_draft, refresh_cap)"
     notes: "Applied on each manual refresh during DRAFT_SHOP. refresh_count_this_draft resets to 0 on every DRAFT_SHOP phase entry. Default output: 1g first refresh, 2g all subsequent (base=1, cap=1). Economy System validates spend before draw fires."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: local_free_gold
+    status: active
+    source: design/gdd/shop-auction-ui.md
+    referenced_by:
+      - design/gdd/shop-auction-ui.md
+    variables:
+      - gold
+      - reserved_gold
+    output_range: [0, "gold"]
+    expression: "gold - reserved_gold"
+    notes: "gold and reserved_gold both sourced from S2CGoldBroadcast (not S2CGoldUpdate — reserved_gold is not a field of S2CGoldUpdate). Computed for both the local player and the opponent during DRAFT_AUCTION for the auction panel free-gold display. guaranteed non-negative by server invariant (reserved_gold <= gold); implementation should use saturating subtraction as a guard. Will also be referenced by HUD GDD for opponent free-gold display."
     added: "2026-04-29"
     revised: ""
 
@@ -612,6 +628,7 @@ constants:
       - design/gdd/game-config.md
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/auction-system.md
+      - design/gdd/shop-auction-ui.md
     value: 20
     unit: seconds
     added: 2026-04-28
@@ -624,6 +641,7 @@ constants:
       - design/gdd/game-config.md
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/auction-system.md
+      - design/gdd/shop-auction-ui.md
     value: 5
     unit: seconds
     added: 2026-04-28
@@ -694,6 +712,7 @@ constants:
     referenced_by:
       - design/gdd/game-config.md
       - design/gdd/round-state-machine.md
+      - design/gdd/shop-auction-ui.md
     value: 30
     unit: seconds
     added: 2026-04-28
@@ -705,6 +724,7 @@ constants:
     referenced_by:
       - design/gdd/game-config.md
       - design/gdd/round-state-machine.md
+      - design/gdd/shop-auction-ui.md
     value: 45
     unit: seconds
     notes: "Early exit expected at ~25-30s via all-submit. Timer is a safety net for new players evaluating 9 cards with 5g budget."

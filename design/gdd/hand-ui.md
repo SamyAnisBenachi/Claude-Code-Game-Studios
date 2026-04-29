@@ -267,16 +267,192 @@ This formula is owned by **Board Rendering** via the `BoardLayout` resource. Han
 
 ## Visual/Audio Requirements
 
-[To be designed]
+### VA-1: Card Face Visual Hierarchy
+
+Card display size: 120×180 px. At 10-card hand compression, the face must communicate this priority order:
+
+| Priority | Element | Spec |
+|---|---|---|
+| 1 | Art | Full-bleed illustration dominates the face |
+| 2 | Mana cost | Top-left diamond badge, class-color background |
+| 3 | Card name | Bottom strip, Ivory `#F7F0DC`, Heavy weight |
+| 4 | ATK | Top-right orange `#E07020` badge (orange is globally reserved for ATK) |
+| 5 | HP | Below ATK, teal `#2AA8C4` gem (teal is globally reserved for HP) |
+| 6 | Type/rarity | Small icon bottom corner, 18px — degrades gracefully if compressed |
+
+ATK and HP badges must maintain a minimum 16×16 px render floor at 10-card overlap — they clip before they disappear.
+
+**Hover state** (DRAFT_INITIAL grid and DRAFT_SHOP): card scales to 240×360 px zoom tier (80ms ease-out). Hovered card receives a gold outline pulse (`#F5C842`, 2px, 1Hz). Adjacent fan cards compress slightly.
+
+### VA-2: Staged (Committed) Card Ghost
+
+Fan slot retains a ghost: card art **desaturated to 40% chroma, 50% opacity**. No tint — desaturation alone is the "committed" signal. Card identity remains readable; the player can see which unit they staged.
+
+**Sold-out slot** (DRAFT_INITIAL pool-exhausted card): art desaturated to 20% chroma + `#1A2D5A` Ink Blue overlay at 60% + "Sold Out" text label (Ivory Heavy, 1× base). Click suppressed.
+
+**Hand-full grid lock**: remaining grid cards desaturate to 30% chroma + 40% Ink Blue overlay.
+
+### VA-3: Drag Interaction Visuals
+
+**Drag sprite:** world-space clone of card art (120×180 px logical) at 1.10× scale. Frame border dropped during drag — art + stat badges only, no card frame. Cursor follows drag sprite at 0 lag. No shadow or glow pass — scale + physical separation from the fan communicates lift; shadow would add GPU cost with no readability gain.
+
+### VA-4: Valid Target Highlights
+
+**BoardCell valid cells:** Sky Blue `#3A8EDB` semi-opaque overlay at 50% (Player A). Terracotta `#D45C22` for Player B. Static overlays — no pulsing. Highlights appear instantly on drag-start; disappear instantly on drag-end.
+
+**No red/invalid overlay for occupied cells.** Occupied cells have no highlight — they are simply absent from the valid set. Red is reserved for combat events; showing red invalid cells trains players incorrectly.
+
+**TargetUnit hover:** target unit receives Prism White `#EEF4FF` outline pulse (2px, 2Hz). Applied to the world-space unit sprite, not the board tile.
+
+**LaneWide cards:** full lane column receives the Sky Blue/Terracotta overlay across all rows.
+
+### VA-5: PLACEMENT Timer
+
+| Time Remaining | Color | Scale | Effect |
+|---|---|---|---|
+| 10s – 6s | Ivory `#F7F0DC` | 1.0× | None |
+| 5s – 1s | Amber `#E87C1E` → Crimson `#9C2000` (stepped per second) | 1.05× | Per-second pulse: 1.10×→1.05× over 120ms |
+
+Heavy-weight whole-second numeral on a semi-opaque Ink Blue `#1A2D5A` 40% panel (minimum 60×36 px). Panel required — timer must never render directly over animated board content. After Submit: timer keeps running; a checkmark glyph (20px Ivory) appears left of the numeral.
+
+### VA-6: DRAFT_INITIAL Grid
+
+Centered overlay: 70% opacity Ink Blue backing (board visible behind), panel in dark `#0D1830` with 2px Arcane Gold `#F5C842` border (12px radius). Purchase-send feedback: 60ms Gold bloom flash. On S2CCardAcquired: card slides to fan (280ms ease-out); empty slot shows faint checkmark for 500ms.
+
+### VA-7: Instant Card Fan Plate Drop Zone
+
+Hand fan background plate receives: Prism White `#EEF4FF` 3px border glow at 60% opacity, 0.5Hz pulse. Plate background brightens to `#1E2A3A`. On Instant staged: border flashes Arcane Gold for 80ms then returns to rest. Slow pulse (0.5Hz) signals "inviting" not "urgent" — categorically different from board-cell highlights.
+
+### VA-8: Audio Cues
+
+| Event | Character |
+|---|---|
+| Card lift (drag-start) | Crisp, papery pick-up transient, 60–80ms, no reverb |
+| Valid target highlights appear | Subtle crystalline shimmer, ~100ms, nearly subliminal — one cue per drag, not per cell |
+| Successful stage (valid drop) | Weighted "thunk" or placement click, warm and physical, 80–120ms — heavier than lift |
+| Snap-back / invalid drop | Soft whoosh-back, shorter and quieter than stage sound, 80ms |
+| Instant card staged to plate | Same register as valid stage + subtle crystalline overtone, 100ms |
+| Submit pressed | Sharp leading click + resonant ring decaying over 400ms — the ring signals permanence |
+| Timer urgency (5s) | Single heartbeat tone at 5-second mark; per-second visual pulse runs silently after |
+| Card acquired (DRAFT_INITIAL) | Light ascending two-note chime, ~150ms |
+| Hand full notification | Soft neutral bell, ~200ms, informs rather than scolds |
+
+**Hard audio constraints:** (1) No looping audio during PLACEMENT — the single 5-second cue is the entire timer audio budget. (2) Submit sound must be audible at low browser volume. (3) All hand audio in `ui_hand` audio channel for independent volume control.
+
+> **Art bible cross-references are provisional** — the art bible has not been authored yet. Color values and visual principles above are grounded in the master GDD's Ankama/Wakfu art direction. When `/art-bible` is run, reconcile these values against the authored sections.
+
+> **📌 Asset Spec** — Visual requirements are defined. After the art bible is approved, run `/asset-spec system:hand-ui` to produce per-asset visual descriptions, dimensions, and generation prompts from this section.
 
 ## UI Requirements
 
-[To be designed]
+Hand UI is itself a UI system. This section documents the interaction surfaces that require a formal UX spec before implementation.
+
+### Screens and Surfaces Requiring UX Specs
+
+| Surface | Phase | Spec needed |
+|---|---|---|
+| Hand fan (PLACEMENT staging) | PLACEMENT | Drag-and-stage flow, valid/invalid states, fan ghost, submit button placement |
+| DRAFT_INITIAL grid overlay | DRAFT_INITIAL | 3×3 grid layout, slot anatomy, purchase feedback, hand-full lock state |
+| Instant card drop zone | PLACEMENT | Fan plate highlight, drop confirmation |
+| PLACEMENT timer display | PLACEMENT | Timer position, urgency visual states |
+| "Hand full" notification | DRAFT_INITIAL | Notification placement, duration, dismissal |
+
+### Input Model
+
+- **Primary input:** Mouse (cursor) — click and drag
+- **PLACEMENT drag:** mouse-down on card → drag to board or fan plate → mouse-up to drop
+- **DRAFT_INITIAL / DRAFT_SHOP:** click-only (no drag)
+- **Keyboard:** no keybindings defined for Hand UI in this GDD (Sprint 1 scope)
+- **Touch:** not in scope (hackathon scope per technical preferences)
+
+### Layout Constraints
+
+- Hand fan occupies the bottom strip of the screen (~80–100 px tall at rest; expands to show card zoom on hover)
+- DRAFT_INITIAL grid overlay: centered, modal — blocks other input behind it
+- Submit button: fixed position above the fan during PLACEMENT, does not shift when fan layout updates
+- Timer: fixed position, upper-right of the screen (does not overlap board center)
+
+> **📌 UX Flag — Hand UI**: This system has UI requirements. Run `/ux-design hand-ui` to create a UX spec for the hand fan, DRAFT_INITIAL grid, and PLACEMENT staging flow **before** writing implementation epics. Stories that reference Hand UI interaction should cite `design/ux/hand-ui.md`, not this GDD directly.
 
 ## Acceptance Criteria
 
-[To be designed]
+All criteria BLOCKING unless noted ADVISORY.
+
+### Hand Fan Display
+
+| # | Criterion | Type |
+|---|---|---|
+| HU-01 | **GIVEN** the game session starts with 0 cards in hand, **WHEN** Hand UI initializes, **THEN** 10 pre-pooled card slot entities exist in the scene (all hidden), with no runtime spawn or despawn occurring during the session. | BLOCKING |
+| HU-02 | **GIVEN** the hand has 5 cards, **WHEN** the fan layout renders, **THEN** card at index 2 (center) has `t=0`, `card_x = fan_center_x`, `card_rotation_deg = 0°`. Card at index 4 (rightmost) has `t=1.0`, `card_x = fan_center_x + fan_half_spread`, `card_rotation_deg = max_rotation_deg`. | BLOCKING |
+| HU-03 | **GIVEN** the hand has exactly 1 card, **WHEN** the fan renders, **THEN** the single card is centered (t=0, Formula 1 denominator clamped to 1), no arc lift, 0° rotation. | BLOCKING |
+
+### Phase Behavior
+
+| # | Criterion | Type |
+|---|---|---|
+| HU-04 | **GIVEN** RSM transitions to RESOLUTION, **WHEN** S2CPhaseChanged(RESOLUTION) is received, **THEN** all Hand UI elements (fan, submit button, timer) are hidden (Visibility::Hidden) within the same frame. No exit animation plays. | BLOCKING |
+| HU-05 | **GIVEN** Hand UI is in RESOLUTION (hidden), **WHEN** S2CPhaseChanged(DRAFT_SHOP) is received, **THEN** the hand fan becomes visible with the updated hand state. | BLOCKING |
+| HU-06 | **GIVEN** RSM is in DRAFT_AUCTION and the player clicks a card in the hand fan, **THEN** no C2SActivateCard or any other message is sent (input fully suppressed in PASSIVE_LOCKED state). | BLOCKING |
+
+### DRAFT_INITIAL Grid
+
+| # | Criterion | Type |
+|---|---|---|
+| HU-07 | **GIVEN** DRAFT_INITIAL begins and S2CDraftOffering is received with 9 card IDs, **WHEN** the grid renders, **THEN** exactly 9 card slots are visible in the 3×3 panel, each showing the correct card's art, name, mana cost. | BLOCKING |
+| HU-08 | **GIVEN** the player clicks a card in the DRAFT_INITIAL grid, **WHEN** S2CCardAcquired confirms the purchase, **THEN** the grid slot empties AND the card appears in the hand fan at its computed fan position, arriving within `card_draw_animation_ms` (280ms default). | BLOCKING |
+| HU-09 | **GIVEN** local hand count reaches 10 during DRAFT_INITIAL, **WHEN** S2CCardAcquired delivers the 10th card, **THEN** all remaining grid cards enter the locked visual state (30% chroma, 40% Ink Blue overlay) and click events are suppressed client-side within the same frame. | BLOCKING |
+| HU-10 | **GIVEN** the player clicks a grid card during DRAFT_INITIAL and the server silently rejects it (pool exhausted — dead slot), **WHEN** no S2CCardAcquired arrives, **THEN** the card remains visible in the grid with a "Sold Out" visual indicator; no gold is deducted. | BLOCKING |
+
+### PLACEMENT — Drag and Stage
+
+| # | Criterion | Type |
+|---|---|---|
+| HU-11 | **GIVEN** PLACEMENT begins, **WHEN** Hand UI enters STAGING state, **THEN** the Submit button is visible, labeled "Submit (0 cards)", and is active (clickable) from the first frame of PLACEMENT. | BLOCKING |
+| HU-12 | **GIVEN** the player drag-starts a Minion card during PLACEMENT, **WHEN** the cursor enters the board area, **THEN** only the player's valid spawn cells (minus occupied and already-staged cells) highlight in Sky Blue. Occupied cells have no highlight. | BLOCKING |
+| HU-13 | **GIVEN** the player stages a card by dropping it on a valid board target, **WHEN** the drop is confirmed, **THEN** a GhostPlacementChanged message is sent to Board Rendering, the fan slot dims to 40% chroma / 50% opacity ghost, and the Submit button updates to "Submit (N cards)". | BLOCKING |
+| HU-14 | **GIVEN** the player drops a dragged card on an unhighlighted (invalid) target, **WHEN** the drop fires, **THEN** the drag sprite despawns and the card entity reappears at its original fan slot position. No GhostPlacementChanged message is sent. | BLOCKING |
+| HU-15 | **GIVEN** the player has 2 cards staged and the PLACEMENT timer reaches 0 while a third card is mid-drag, **WHEN** timer expiry fires, **THEN** C2SSubmitPlacement is sent with exactly the 2 staged placements. The in-flight card returns to its fan slot. The third card is NOT included in the submission. | BLOCKING — Integration |
+| HU-16 | **GIVEN** the player clicks Submit with 0 staged cards, **THEN** C2SSubmitPlacement is sent with an empty placements vec, Submit button becomes inactive ("Submitted"), and no confirmation modal appears. | BLOCKING |
+| HU-17 | **GIVEN** the player clicks Submit once and the button becomes inactive, **WHEN** the player attempts to click Submit again, **THEN** no second C2SSubmitPlacement is sent. | BLOCKING |
+
+### PLACEMENT — Instant Cards
+
+| # | Criterion | Type |
+|---|---|---|
+| HU-18 | **GIVEN** the player drag-starts an Instant card during PLACEMENT, **WHEN** the drag sprite lifts, **THEN** the hand fan background plate highlights (Prism White border, 0.5Hz pulse) and no board cells highlight. | BLOCKING |
+| HU-19 | **GIVEN** the player drops an Instant card on the highlighted fan plate zone, **WHEN** the drop fires, **THEN** the card stages as `PlayTarget::Instant`, Submit count increments, and the plate border flashes gold for 80ms then returns to rest. | BLOCKING |
+
+### PLACEMENT — TargetUnit Edge Case
+
+| # | Criterion | Type |
+|---|---|---|
+| HU-20 | **GIVEN** the player drag-starts a TargetUnit card during a round where no valid target units exist on the board, **WHEN** the drag sprite is over the board, **THEN** no cells highlight and a "no valid targets" overlay covers the board. Drop anywhere returns the card to hand. | BLOCKING |
+
+### Un-Staging
+
+| # | Criterion | Type |
+|---|---|---|
+| HU-21 | **GIVEN** a card is staged (fan ghost visible, board ghost active), **WHEN** the player clicks the board ghost, **THEN** the card is removed from the pending queue, GhostPlacementChanged clears the board ghost, the fan slot restores to full opacity, and Submit count decrements. | BLOCKING |
+
+### Timer
+
+| # | Criterion | Type |
+|---|---|---|
+| HU-22 | **GIVEN** the placement timer shows 5 seconds remaining, **WHEN** the 5-second threshold fires, **THEN** the timer numeral color shifts to Amber `#E87C1E` and a single urgency audio cue plays. No looping audio begins. | ADVISORY |
+| HU-23 | **GIVEN** the player submits at 7 seconds remaining, **WHEN** Submit fires, **THEN** the timer continues running and a checkmark glyph appears left of the numeral. The timer color ramps normally through urgency states. | BLOCKING |
+
+### Reconnect
+
+| # | Criterion | Type |
+|---|---|---|
+| HU-24 | **GIVEN** the player reconnects during PLACEMENT (S2CGameSnapshot received with phase=PLACEMENT), **WHEN** Hand UI rebuilds, **THEN** the fan enters STAGING state with 0 staged cards, Submit shows "Submit (0 cards)", and the timer displays timer_remaining_ms from the snapshot. | BLOCKING — Integration |
 
 ## Open Questions
 
-[To be designed]
+| # | Question | Owner | Notes |
+|---|---|---|---|
+| OQ1 | **Reserve mana split UI for non-Xelor classes** — the `reserve_amount: u32` field in `PlacedCard` is currently spec'd as Xelor-only (+/- buttons per staged card). If future classes also use reserve mana (Class System GDD), will the same +/- control work for them, or does each class need a different UI? | Class System GDD | Flag for Class System designer when authoring class-specific rules. The +/- control should be designed to be parameterizable, not hard-coded to Xelor. |
+| OQ2 | **Card zoom → click activation interaction** — when a card is in the zoomed hover state (240×360 px) during DRAFT_SHOP and the player clicks, does the click fire C2SActivateCard immediately, or does the zoom dismiss first (requiring a second click)? | UX spec (`/ux-design hand-ui`) | A UX call. Recommend: click while zoomed = activate immediately (no double-click barrier). |
+| OQ3 | **Ready signal button (C2SSignalReady)** — RSM Rule 8 provides an early-exit mechanism where all players can signal ready to skip remaining DRAFT_SHOP time. Should Hand UI show a "Ready" button during DRAFT_SHOP, or is this Shop/Auction UI's responsibility? Not defined in this GDD. | Shop/Auction UI GDD | Likely Shop/Auction UI since the ready signal is a draft-flow decision. Hand UI does not currently own this surface. |
+| OQ4 | **GhostPlacementChanged interface** — Board Rendering's GDD is currently a skeleton (Detailed Design not yet authored). The formal message type and payload for GhostPlacementChanged needs to be specified when Board Rendering's Interactions section is written. Hand UI depends on this interface being stable before implementation. | Board Rendering GDD | Do not implement Hand UI's staging system until Board Rendering's GDD defines this interface. |
+| OQ5 | **Card ID → visual asset mapping** — at session start, Hand UI reads card definitions to get TextureAtlas frame indices. Is this via a `CardDataPlugin` resource loaded by `bevy_asset_loader`, or does Hand UI query Card Data & Pool directly? The asset loading architecture is not defined in this GDD. | Architecture / ADR | Needs an ADR for the client-side card data pipeline before implementation. |
