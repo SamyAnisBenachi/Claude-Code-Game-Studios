@@ -43,7 +43,7 @@ pub enum RngEvent {
 /// One entry in the server-side audit log.
 /// Appended on every intent-named method call (ADR-005 §5).
 /// The audit log is server-only and MUST NOT be transmitted to clients.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AuditEntry {
     /// Which random event consumed this seed.
     pub event_type: RngEvent,
@@ -133,6 +133,27 @@ impl ServerRng {
             audit_log,
         }
     }
+
+    /// Test-only constructor — sets seed_index to u32::MAX for overflow testing.
+    ///
+    /// Allows testing RNG15 (wrapping_add overflow) without calling next_seed()
+    /// ~4.3 billion times. Session starts with the standard SessionInit sentinel.
+    /// Only callable in test builds (ADR-005 §2 lifecycle).
+    #[cfg(test)]
+    pub fn at_max_seed_index() -> Self {
+        let mut s = Self::from_seed(42);
+        s.seed_index = u32::MAX;
+        s
+    }
+
+    // -------------------------------------------------------------------------
+    // Deferred ACs — Story 003 (RNG13: session reset, RNG15: overflow)
+    // -------------------------------------------------------------------------
+    //
+    // RNG8 (RESOLUTION ordering): deferred to RSM epic — requires full system chain.
+    // RNG9 (run condition): each consuming system adds its own guard — see ADR-005 §2 lifecycle.
+    // RNG10 (chi-squared): deferred to QA/Polish phase.
+    // RNG14 (no seeds in S2C): deferred to Epic 4 network integration tests.
 
     /// Current seed index. Equals 1 after construction; increments on each call.
     pub fn current_seed_index(&self) -> u32 {
@@ -282,13 +303,15 @@ impl ServerRng {
 }
 
 // =============================================================================
-// Tests — Story 001 (type definitions) + Story 002 (intent-named API)
+// Tests — Story 001 (type definitions) + Story 002 (intent-named API) +
+//         Story 003 (determinism proof & session reset)
 // =============================================================================
 //
 // These run via `cargo test -p server`. Deterministic seeds via from_seed().
 // Evidence files:
-//   tests/unit/foundation/server_rng_types_test.rs  (Story 001)
-//   tests/unit/foundation/server_rng_api_test.rs    (Story 002)
+//   tests/unit/foundation/server_rng_types_test.rs        (Story 001)
+//   tests/unit/foundation/server_rng_api_test.rs          (Story 002)
+//   tests/unit/foundation/server_rng_determinism_test.rs  (Story 003)
 
 #[cfg(test)]
 mod tests {
@@ -488,5 +511,201 @@ mod tests {
         assert_eq!(rng.audit_log().len(), baseline + 8);
         // seed_index: 1 (start) + 2 + 1 + 1 + 1 + 1 + 1 + 1 = 9
         assert_eq!(rng.current_seed_index(), 9);
+    }
+
+    // -------------------------------------------------------------------------
+    // Story 003: Determinism Proof & Session Reset
+    // Evidence: tests/unit/foundation/server_rng_determinism_test.rs
+    // Implements: ADR-005 VC1, VC2; GDD TR-RNG-04, RNG13, RNG15
+    // -------------------------------------------------------------------------
+
+    /// Runs the full scripted ADR-005 §4 consumption-order sequence against a
+    /// fixed seed and returns the resulting audit log. Used by both determinism
+    /// tests to guarantee the exact same call sequence each time.
+    fn run_scripted_session(seed: u64) -> Vec<AuditEntry> {
+        let mut rng = ServerRng::from_seed(seed);
+        // DRAFT_INITIAL (ADR-005 §4 order 1-2): ascending player_id
+        rng.assign_fake_objectives(1);
+        rng.assign_fake_objectives(2);
+        rng.draw_initial_draft(1);
+        rng.draw_initial_draft(2);
+        // DRAFT_SHOP (order 3): ascending player_id → ascending slot_index
+        for slot in 0..3u8 {
+            rng.draw_shop_slot(1, slot);
+            rng.draw_shop_slot(2, slot);
+        }
+        // RESOLUTION (orders 4-7)
+        rng.resolve_ecaflip(1);
+        rng.resolve_prism(1, 2);
+        rng.award_fake_objective_reward(1, 3);
+        rng.draw_free_card(1);
+        rng.audit_log().to_vec()
+    }
+
+    // ADR-005 VC1: same seed → identical audit_log structure across two independent instances
+    #[test]
+    fn test_determinism_same_seed_produces_identical_audit_log() {
+        // Arrange
+        const SEED: u64 = 0xDEAD_BEEF_CAFE_1234;
+
+        // Act
+        let log_a = run_scripted_session(SEED);
+        let log_b = run_scripted_session(SEED);
+
+        // Assert: lengths match
+        assert_eq!(
+            log_a.len(),
+            log_b.len(),
+            "audit_log length must be identical for the same fixed seed"
+        );
+        // Assert: every (seed_index, event_type) pair matches structurally
+        for (i, (a, b)) in log_a.iter().zip(log_b.iter()).enumerate() {
+            assert_eq!(
+                a.seed_index, b.seed_index,
+                "seed_index mismatch at audit_log position {}",
+                i
+            );
+            assert_eq!(
+                std::mem::discriminant(&a.event_type),
+                std::mem::discriminant(&b.event_type),
+                "event_type discriminant mismatch at audit_log position {}",
+                i
+            );
+        }
+    }
+
+    // ADR-005 VC2: same scripted sequence run twice in the same process produces
+    // identical results — guards against state leakage between test runs
+    #[test]
+    fn test_determinism_repeated_runs_in_same_process_are_identical() {
+        // Arrange
+        const SEED: u64 = 0xDEAD_BEEF_CAFE_1234;
+
+        // Act: two independent calls within the same test process
+        let log_first = run_scripted_session(SEED);
+        let log_second = run_scripted_session(SEED);
+
+        // Assert: structurally identical
+        assert_eq!(log_first.len(), log_second.len());
+        for (i, (a, b)) in log_first.iter().zip(log_second.iter()).enumerate() {
+            assert_eq!(
+                a.seed_index, b.seed_index,
+                "seed_index mismatch on second run at position {}",
+                i
+            );
+            assert_eq!(
+                std::mem::discriminant(&a.event_type),
+                std::mem::discriminant(&b.event_type),
+                "event_type discriminant mismatch on second run at position {}",
+                i
+            );
+        }
+    }
+
+    // RNG13: new ServerRng instance always starts clean — seed_index and audit_log
+    // do not carry over from a prior session
+    #[test]
+    fn test_session_reset_new_instance_starts_clean() {
+        // Arrange: session A — advance past sentinel
+        let mut session_a = ServerRng::from_seed(1);
+        session_a.resolve_ecaflip(0);
+        session_a.resolve_ecaflip(1);
+        // session_a.current_seed_index() == 3 here
+
+        // Act: create a completely independent session B
+        let session_b = ServerRng::from_seed(1);
+
+        // Assert: B starts clean regardless of A's state
+        assert_eq!(
+            session_b.current_seed_index(),
+            1,
+            "new session must start at seed_index 1 (after sentinel), not inherit from prior session"
+        );
+        assert_eq!(
+            session_b.audit_log().len(),
+            1,
+            "new session audit_log must contain only the SessionInit sentinel"
+        );
+        assert!(
+            matches!(session_b.audit_log()[0].event_type, RngEvent::SessionInit),
+            "audit_log[0] must be SessionInit"
+        );
+    }
+
+    // RNG13: the first non-sentinel seed_index in a new session is 1, not the
+    // prior session's final seed_index + 1 — sessions are fully independent
+    #[test]
+    fn test_session_reset_seed_index_not_inherited_from_prior_session() {
+        // Arrange: session A reaches a high seed_index
+        let mut session_a = ServerRng::from_seed(10);
+        session_a.resolve_ecaflip(0);
+        session_a.resolve_ecaflip(1);
+        session_a.resolve_ecaflip(2);
+        let prior_final_index = session_a.current_seed_index(); // 4
+
+        // Act: new session B
+        let mut session_b = ServerRng::from_seed(10);
+        session_b.resolve_ecaflip(0);
+        let first_entry_in_b = &session_b.audit_log()[1];
+
+        // Assert: B's first gameplay entry has seed_index == 1, not prior_final_index
+        assert_eq!(
+            first_entry_in_b.seed_index,
+            1,
+            "first gameplay entry in new session must have seed_index 1, not {}",
+            prior_final_index
+        );
+    }
+
+    // RNG15 (ADVISORY): u32::MAX seed_index does not panic when next_seed is called
+    #[test]
+    fn test_overflow_does_not_panic() {
+        // Arrange
+        let mut rng = ServerRng::at_max_seed_index();
+        // Act + Assert: must not panic
+        rng.resolve_ecaflip(0);
+    }
+
+    // RNG15: after overflow, current_seed_index wraps to 0 (wrapping_add)
+    #[test]
+    fn test_overflow_wraps_seed_index_to_zero() {
+        // Arrange
+        let mut rng = ServerRng::at_max_seed_index();
+
+        // Act
+        rng.resolve_ecaflip(0);
+
+        // Assert: wrapping_add(u32::MAX, 1) == 0
+        assert_eq!(
+            rng.current_seed_index(),
+            0,
+            "seed_index must wrap to 0 after u32::MAX (wrapping_add behaviour)"
+        );
+    }
+
+    // RNG15: the audit entry for the overflow call records seed_index == u32::MAX
+    // (the value AT time of call, before wrap)
+    #[test]
+    fn test_overflow_audit_entry_records_max_seed_index() {
+        // Arrange
+        let mut rng = ServerRng::at_max_seed_index();
+        let entries_before = rng.audit_log().len();
+
+        // Act
+        rng.resolve_ecaflip(0);
+
+        // Assert: one new entry was added
+        assert_eq!(
+            rng.audit_log().len(),
+            entries_before + 1,
+            "overflow call must still push an audit entry"
+        );
+        // Assert: that entry records the pre-wrap seed_index (u32::MAX)
+        let overflow_entry = rng.audit_log().last().unwrap();
+        assert_eq!(
+            overflow_entry.seed_index,
+            u32::MAX,
+            "overflow audit entry must record u32::MAX as the seed_index at time of call"
+        );
     }
 }

@@ -129,16 +129,16 @@ Le skill liv-bevy-018 révèle que **EventWriter/EventReader n'existent plus en 
 ## Design — État GDDs
 
 M1 (9 GDDs) : ✅ TOUS APPROUVÉS — prêts à implémenter
-M2 (7 GDDs) : 1 EN COURS, 6 PAS COMMENCÉS
+M2 (7 GDDs) : 2 DESIGNED, 5 PAS COMMENCÉS
 
-**Auction System GDD :** `design/gdd/auction-system.md` — ✅ DESIGNED (2026-04-29). Toutes sections complètes (A–H + Visual/Audio + UI + OQs). /design-review pending (fresh session).
-**OQs critiques :** OQ1 neutral Epics, OQ2 GameConfig fields, OQ3 BidRejectedReason enum, OQ6 card-data-pool.md update
-**M2 priorité :** Card Acquisition → Combat Resolution (Auction System → /design-review)
+**Auction System GDD :** `design/gdd/auction-system.md` — ✅ DESIGNED (2026-04-29). /design-review pending (fresh session).
+**Combat Resolution GDD :** `design/gdd/combat-resolution.md` — ✅ DESIGNED (2026-04-29). Toutes sections complètes (A–H + Visual/Audio + UI Requirements + Open Questions). Registry: 2 nouvelles formules (net_damage, type_advantage). 5 OQs: OQ1 WALL ADR, OQ2 type advantage GameConfig, OQ3 RANGE RNG seed, OQ4 COUNTERATTACK proximity, OQ5 ResolutionEvent enum. /design-review pending (fresh session).
+**Card Acquisition GDD :** `design/gdd/card-acquisition.md` — ✅ DESIGNED (2026-04-29). /design-review pending (fresh session).
 
-### 🔵 EN COURS — Combat Resolution GDD
-- **Fichier :** `design/gdd/combat-resolution.md`
-- **Section courante :** Section B — Player Fantasy (A: Overview ✅ 2026-04-29)
-- **Skill :** `/design-system combat-resolution` (review mode: lean)
+### 🔵 EN COURS — Board Rendering GDD
+- **Fichier :** `design/gdd/board-rendering.md`
+- **Section courante :** Section A — Overview (skeleton créé 2026-04-29)
+- **Skill :** `/design-system board-rendering` (review mode: lean)
 
 ---
 
@@ -199,6 +199,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - **Next**: Push to CI for test execution, then `/story-done production/epics/lightyear-protocol-verification/story-001-lightyear-026-verification-spike.md` once CI confirms PASS on both ADR-012 tests
 
 ## Session Extract — /dev-story 2026-04-29
+- **Story**: `production/epics/server-rng/story-003-determinism-session-reset.md` — Determinism Proof & Session Reset (S1-12)
+- **Files changed**:
+  - `server/src/foundation/rng.rs` — added `PartialEq` to `AuditEntry` derive; added `at_max_seed_index()` test-only constructor; added deferred-AC comments (RNG8/9/10/14); added 7 new Story 003 tests embedded in `#[cfg(test)] mod tests`
+  - `tests/unit/foundation/server_rng_determinism_test.rs` — created; Story 003 evidence documentation
+- **Test written**: 7 embedded `#[cfg(test)]` tests in `rng.rs`: 2× determinism (VC1/VC2), 2× session reset (RNG13), 3× overflow (RNG15)
+- **Blockers**: Local build blocked by Smart App Control (pre-existing) — CI is verification gate
+- **Next**: `/code-review server/src/foundation/rng.rs` then `/story-done production/epics/server-rng/story-003-determinism-session-reset.md`
+
+## Session Extract — /dev-story 2026-04-29
 - **Story**: `production/epics/server-rng/story-002-intent-named-api-invariants.md` — Intent-Named API & Consumption Invariants
 - **Files changed**:
   - `server/src/foundation/rng.rs` — refactored `next_seed()` to private no-param helper; added 7 intent-named public methods; added `# Ordering Contract` doc-comment on `ServerRng`; embedded `#[cfg(test)]` module with 10 tests covering both Story 001 (updated) and Story 002 ACs
@@ -207,6 +216,19 @@ C:\Program Files\GitHub CLI\gh.exe
 - **Test written**: Embedded `#[cfg(test)] mod tests` in `rng.rs` (10 tests; run via `cargo test -p server`)
 - **Blockers**: Local build blocked by Smart App Control — CI is verification gate (same as prior stories)
 - **Next**: `/code-review server/src/foundation/rng.rs` then `/story-done production/epics/server-rng/story-002-intent-named-api-invariants.md`
+
+## Session Extract — /dev-story 2026-04-29
+- **Story**: `production/epics/game-config-pipeline/story-002-asset-loading-pipeline.md` — Asset Loading Pipeline (S1-07)
+- **Files changed**:
+  - `server/src/foundation/config.rs` — NEW: full pipeline (AppState, GameConfigAsset, GameConfigLoader, CardCatalog struct, CardCatalogLoader, GameAssets, start_loading, check_loading_done, validate_and_promote stub, ConfigPlugin)
+  - `server/src/foundation/mod.rs` — added `pub mod config;`
+  - `server/src/main.rs` — added AssetPlugin + ConfigPlugin to App builder
+  - `server/Cargo.toml` — added bevy features `bevy_asset`, `bevy_state`; added `thiserror = "1"`
+  - `shared/src/config.rs` — added 3 missing auction floor fields (auction_floor_rare/epic/legendary)
+- **Test written**: None — Integration story; evidence at `tests/evidence/story-gcp-002-pipeline.md`
+- **Key deviation**: bevy_asset_loader unavailable for 0.18 (PR #264 draft) — manual AssetServer polling used
+- **Blockers**: Local build blocked by Smart App Control — CI is verification gate
+- **Next**: `/code-review server/src/foundation/config.rs` then `/story-done production/epics/game-config-pipeline/story-002-asset-loading-pipeline.md`
 
 ## Session Extract — /story-done 2026-04-29
 - **Verdict**: COMPLETE
