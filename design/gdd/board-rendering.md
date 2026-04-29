@@ -1,8 +1,8 @@
 # Board Rendering
 
-> **Status**: Designed — /design-review pending (fresh session)
+> **Status**: Designed — /design-review 2026-04-30 MAJOR REVISION resolved in-session
 > **Author**: SamyAnisBenachi + Claude Code agents
-> **Last Updated**: 2026-04-29
+> **Last Updated**: 2026-04-30
 > **Implements Pillar**: No idle spectating · Simple surface · Deep emergence
 
 ## Overview
@@ -20,15 +20,74 @@ Hands lie. Bids lie. Two of the opponent's five objectives are counterfeits. But
 **The emotional target:** The player feels like the director and audience of a five-act play that writes itself in real time. PLACEMENT is the rehearsal — quiet, deliberate, full of secret intent. RESOLUTION is the curtain rising on all five stages at once: lanes erupt simultaneously, units clash, objectives crack and reveal what they really were. The player's eyes sweep left to right, drinking in five lanes of consequence in seconds. The board doesn't argue; it just plays the tape. Every position is a fact the opponent committed in ink. Every objective shatter is a verdict on a bluff. The board is where the lies end — and where the better reader wins.
 
 **What the player must feel:**
-- **Active, not passive** — during RESOLUTION the board floods with information. A skilled player's eyes are scanning unit positions, objective HP deltas, status effect changes, lane commitments. Watching is reading is playing.
-- **Legibility as earned power** — a veteran looks at the same mid-RESOLUTION board as a newcomer and extracts three times more information in the same glance. That gap must feel good to both: the veteran feels sharp; the newcomer can still follow what happened and learn the vocabulary.
+- **Watching IS reading** — RESOLUTION is the savor-the-payoff phase. The player's input is locked, deliberately, so they can absorb the consequences of decisions already committed. Watching is not a non-action; it is the act of converting the round's hidden information into knowledge that informs the next PLACEMENT. The player who skims sub-steps 2–4 will misread the board next round. This is dramaturgy, not interactivity — and the design owes the player a tight, legible cut, not a long movie.
+- **Legibility as earned power** — a veteran looks at the same mid-RESOLUTION board as a newcomer and extracts three times more information in the same glance: unit type vocabulary (range vs melee silhouettes, class color), HP delta patterns across rounds, opponent placement tells, prism contest outcomes. The newcomer can still follow what happened and learn the vocabulary; the veteran reads three rounds ahead.
 - **The board makes me a better tactician** — not because the animations are beautiful, but because every sprite is exactly where it needs to be, every indicator is exactly the right size, and after twenty games the player reads the board faster than they think.
 
-**What to avoid:** Treating the board as decorative substrate or invisible plumbing. The board is a protagonist in the experience — the surface on which the entire information war resolves. Animations that obscure tactical state have failed. Status indicators that require hovering to be understood have failed. If the player cannot take in all five lanes simultaneously during RESOLUTION, the board has failed.
+**What to avoid:** Treating the board as decorative substrate or invisible plumbing. The board is a protagonist in the experience — the surface on which the entire information war resolves. Animations that obscure tactical state have failed. Status indicators that require hovering to be understood have failed. If the player cannot take in all five lanes simultaneously during RESOLUTION, the board has failed. Animation budgets that exceed ~5 seconds default per RESOLUTION have also failed — beyond that the savor-the-payoff phase becomes idle dead time.
 
-*Pillar alignment: "No idle spectating" — watching IS playing when the board is designed to be read. "Simple surface" — the visual rule is that positions are facts: one rule, infinitely deep.*
+*Pillar alignment: "No idle spectating" applies to PLACEMENT and DRAFT phases where decisions are live. RESOLUTION is the deliberate watch-the-tape phase — kept tight (≤5s default, ≤8.5s ceiling) so the watch never becomes idle. "Simple surface" — the visual rule is that positions are facts: one rule, infinitely deep.*
 
 ## Detailed Design
+
+### Data Structures
+
+**`AnimGroup`** — one resolution sub-step's worth of simultaneous animations:
+
+```
+struct AnimGroup {
+    sub_step: u8,              // 1..=6 (validated on intake; OOR = fatal desync, see Rule 9)
+    events: Vec<ResolutionEvent>,  // owned by combat-resolution.md (see OQ-BR-03)
+    duration_ms: u32,          // = resolution_sub_step_duration_ms
+}
+```
+
+**`AnimQueue`** — `Resource` (NOT a sentinel-component pattern). Holds the queue of `AnimGroup`s for the current resolution playback, the index of the currently-playing group, and the elapsed timer:
+
+```
+#[derive(Resource, Default)]
+struct AnimQueue {
+    groups: Vec<AnimGroup>,    // sorted ascending by sub_step
+    current_index: usize,
+    group_timer: Timer,        // Bevy Timer, TimerMode::Once, advances via Time<Virtual>
+    inter_step_timer: Timer,   // pause between groups
+    total_duration_ms: u32,    // computed via F4 at queue construction
+}
+
+impl AnimQueue {
+    fn total_duration_ms(&self) -> u32 { self.total_duration_ms }
+}
+```
+
+**`PendingPhaseChange`** — `Resource<Option<RoundPhase>>` holding a buffered `S2CPhaseChanged` value when one arrives during RESOLUTION (see Rule 10). Last-write-wins on duplicate buffer (server is authoritative).
+
+**`PendingResolutionScript`** — `Resource<Option<S2CResolutionEvent>>` holding a `S2CResolutionEvent` that arrived before its corresponding `S2CPlacementReveal` (see Rule 9). Cleared on consumption.
+
+**Timer mechanism.** Sub-step advancement uses Bevy `Timer` components on `AnimQueue`, ticked by `Time<Virtual>` (pausable, manipulable in tests via injected delta). Wall-clock time and `Time<Real>` are NOT used — `Time<Virtual>` enables `App::update()` test patterns where the test injects time deltas to verify timing invariants headlessly (see ACs BR-7, BR-14, BR-15, BR-20).
+
+**`ObjectiveIdentityCache`** — `Resource<HashMap<(PlayerId, Lane), bool>>` holding `is_fake` per objective, populated from `S2CObjectiveIdentities` (unicast at DRAFT_INITIAL and re-sent on reconnect per ADR-001). Board Rendering does **not** read this cache for standing-objective rendering (Rule 12 — all standing objectives render identically). The cache is kept here only to suppress the "surprise" audio sting on fake reveal when Sang Méprise was active (see OQ-BR-01).
+
+### Bevy 0.18 API Contract
+
+This subsection enforces the post-cutoff Bevy 0.18 API patterns. All implementers MUST follow these — they are the most common implementation traps for code generated from training data ≤0.14.
+
+| Pattern | Required | Forbidden (pre-0.16) |
+|---|---|---|
+| Despawn an entity (with or without children) | `commands.entity(e).despawn()` (recursive by default in 0.16+) | `despawn_recursive()`, `despawn_descendants()` |
+| Despawn an entity that may not exist | `if let Some(mut ec) = commands.get_entity(e) { ec.despawn(); }` | `commands.get_entity(e).map(EntityCommands::despawn)` (does not compile in 0.18) |
+| Parent a child entity | `commands.entity(child).insert(ChildOf(parent))` or `with_children` | `set_parent()`, `Parent` component query |
+| Read network/intra-client messages | `MessageReader<T>` | `EventReader<T>` (removed in 0.17+) |
+| Write network/intra-client messages | `MessageWriter<T>` + `.write(...)` | `EventWriter<T>` + `.send(...)` (removed in 0.17+) |
+| Single-entity query | `let Ok(e) = q.single() else { return; }` | `let e = q.single();` (returns `Result` in 0.16+, panics if used as value) |
+| Sprite construction (no texture, e.g. fog) | `Sprite { color: Color::srgba(..), ..default() }` | `SpriteBundle` (deprecated 0.15+) |
+| Sprite color | `Color::srgba(r, g, b, a)` | `Color::rgba(...)` (renamed 0.15) |
+| Hierarchy parenting | `ChildOf` component (0.16+) | `Parent` component (removed) |
+
+**Health bar child Z is local, not global.** The constant `Z_HEALTH_BARS = 3.1` is the **target world-space Z**. Because health bar entities are spawned as children of unit entities (whose `Transform.translation.z = 3.0`), the health bar child's `Transform.translation.z` must be `0.1` (LOCAL — added to parent's Z), not `3.1`. Any spawn site that sets `Transform::from_xyz(_, _, Z_HEALTH_BARS)` on a health bar child is incorrect. See AC BR-Z-LOCAL.
+
+**Custom `bevy_tweening` lens for fog alpha.** `bevy_tweening` ships with `TransformPositionLens`, `TransformRotationLens`, `TransformScaleLens` — but no `Sprite.color.alpha` lens. The fog lift (Rule 7) requires a custom `SpriteAlphaLens` implementing `Lens<Sprite>` that mutates `sprite.color.set_alpha(...)`. This lens is a deliverable of the fog lift implementation story.
+
+**Tween cancel and replace.** To replace an active `Tween<Transform>` on an entity (Rule 9, edge case "co-occupant death"), call `animator.set_tweenable(new_tween)` on the existing `Animator<Transform>` component — do NOT despawn-and-respawn the entity (loses game-state components) and do NOT write `Transform.translation` directly while an active animator exists (BR-16 invariant).
 
 ### Core Rules
 
@@ -74,11 +133,23 @@ Hand UI uses `Res<BoardLayout>` for drag-to-cell snapping. Other Presentation sy
 
 **Rule 8 — Ghost unit lifecycle.** The ghost unit is a client-local entity tagged with marker component `GhostUnit`; it has no `Replicated` component and is never known to the server. Hand UI communicates targeting via a `GhostPlacementChanged { cell: Option<(u8, u8)>, card_id: Option<CardId> }` message. Board Rendering reads this message each frame and spawns/moves/despawns the ghost entity accordingly. Only one `GhostUnit` entity may exist at any time — despawn any existing ghost before spawning a new one. Ghost visual: same art as the real unit, `Sprite { color: Color::srgba(1.0, 1.0, 1.0, 0.5), .. }`, no HP bar, no status indicators. On `S2CPlacementReveal`: despawn all ghost units immediately; real unit entities for all newly placed cards appear simultaneously from replication data.
 
-**Rule 9 — Resolution animation queue.** On receipt of `S2CResolutionEvent`, Board Rendering partitions the flat event list into `AnimGroup`s by `sub_step`, sorted ascending by sub_step. Groups play sequentially: each group's events are scheduled as simultaneous `bevy_tweening` Tweens in the same frame, then `resolution_sub_step_duration_ms` elapses, then `inter_step_pause_ms` pause, then the next group begins. All Tweens for a resolution batch are scheduled in a single frame — never spread across frames. Final state data (unit positions, HP values) is always maintained in a non-tween resource/component that remains authoritative regardless of animation state.
+**Rule 9 — Resolution animation queue.** On receipt of `S2CResolutionEvent`, Board Rendering partitions the flat event list into `AnimGroup`s by `sub_step`, sorted ascending by sub_step. Groups play sequentially: each group's events are scheduled as simultaneous `bevy_tweening` Tweens in the same frame, then `resolution_sub_step_duration_ms` elapses (measured via `Time<Virtual>` against `AnimQueue.group_timer`), then `inter_step_pause_ms` pause, then the next group begins. All Tweens for a resolution batch are scheduled in a single frame — never spread across frames. Final state data (unit positions, HP values) is always maintained in a non-tween resource/component that remains authoritative regardless of animation state. **Validation on intake:** any `sub_step` value outside `[1, 6]` is treated as a fatal protocol desync — discard the entire `AnimQueue`, log error, and request a fresh `S2CGameSnapshot` from the server (per network-protocol.md client contract). Out-of-range sub_step is a server-side serialization bug or version mismatch, never a normal occurrence; silent skip is forbidden because it corrupts subsequent state references.
 
-**Rule 10 — Tween interrupt (phase skip).** If `S2CPhaseChanged(DRAFT_SHOP)` arrives while RESOLUTION animation is playing: buffer the message, do not apply it. After `ResolutionObjectiveReveal` completes, apply the buffered transition. Exception: on `S2CPhaseChanged(GAME_OVER)`, complete the current `AnimGroup`, skip remaining groups, execute objective reveals, then transition to `GameOver`.
+**Rule 10 — Phase change buffering during RESOLUTION.** Phase transitions during the RESOLUTION sequence must not interrupt animation playback. The buffer protects the resolution sequence from being silently truncated regardless of which direction the ordering anomaly comes from:
 
-**Rule 11 — Reconnect rebuild.** On `S2CGameSnapshot` receipt in any state, discard all in-progress animation state, despawn all board entities, and rebuild the full board from snapshot data in a single frame. Transition to the rendering state matching `snapshot.phase`. If `snapshot.phase == RESOLUTION`, enter `ResolutionExecuting` only if `S2CResolutionEvent` has also been received; otherwise enter `DraftShop` (animation is not replayed for reconnecting clients — they receive the authoritative final state directly via Lightyear component replication).
+- **If `S2CPhaseChanged(DRAFT_SHOP)` arrives in any of `Placement`, `ResolutionReveal`, `ResolutionExecuting`, or `ResolutionObjectiveReveal`:** store in `PendingPhaseChange` (last-write-wins on duplicate). Do not transition. After `ResolutionObjectiveReveal` completes, drain the buffer and apply the transition.
+- **If `S2CPhaseChanged(GAME_OVER)` arrives during any RESOLUTION state:** complete the current `AnimGroup` (do not interrupt mid-tween), skip remaining groups in the queue, execute `ResolutionObjectiveReveal` for any buffered `ObjectiveDestroyed` events, then transition to `GameOver`. Never skip the objective reveal — it is the mandatory emotional beat.
+- **If a second `S2CPhaseChanged` arrives while one is already buffered:** last-write-wins. Server is authoritative; the latest target phase is the truth.
+
+**Rule 11 — Reconnect rebuild.** On `S2CGameSnapshot` receipt in any state, discard all in-progress animation state (clear `AnimQueue`, `PendingPhaseChange`, `PendingResolutionScript`; cancel all active `Animator<Transform>` and `Animator<Sprite>` components), despawn all board entities, and rebuild the full board from snapshot data in a single frame (one `App::update()` tick). Transition to the rendering state matching `snapshot.phase`.
+
+**Animation is never replayed on reconnect.** When `snapshot.phase == RESOLUTION`, enter `DraftShop` immediately — the reconnecting client receives the authoritative final state directly via Lightyear component replication and the snapshot payload. The resolution animation playback is sacrificed in exchange for instant, deterministic recovery.
+
+**ADR-001 reconnect requirement.** After processing the snapshot, the client must wait for a re-sent `S2CObjectiveIdentities` unicast message (per ADR-001) to repopulate the `ObjectiveIdentityCache` before entering any actionable phase (DRAFT_SHOP, DRAFT_AUCTION, PLACEMENT). Without this, the player cannot evaluate which of their own objectives to defend. If the cache is empty when an actionable phase begins, hold in a `Reconnecting` sub-state and log a warning.
+
+**ResolutionReveal stuck-state recovery.** If `S2CPlacementReveal` was received but `S2CResolutionEvent` does not arrive within 2000ms (server crash mid-resolution, lost message), the client requests a fresh `S2CGameSnapshot` from the server (single C2S `RequestSnapshot` call) and resets `BoardRenderState` to whatever the snapshot delivers. This is the only fallback — without it, the player is permanently stuck on a fog-lifted board with no animation, no input, no recovery. See network-protocol.md for the C2S `RequestSnapshot` contract (currently undefined — flagged as new OQ).
+
+**2v2 reconnect symmetry.** When one player in a 2v2 match reconnects mid-RESOLUTION, the non-reconnecting clients keep animating uninterrupted (their `S2CResolutionEvent` is unaffected). The reconnecting client snapshots-then-fast-forwards to `DraftShop` per the rule above; it does not try to catch up to the live animation.
 
 **Rule 12 — Objective rendering (ADR-001 constraint).** Board Rendering does not know which objectives are real or fake. All standing objectives render identically: stone-egg sprite + "?" glyph + HP bar + slow idle pulse (2s scale oscillation ±2%). The fill on the HP bar reflects `ObjectiveHp.hp` replicated component. On `ObjectiveDestroyed.was_fake=false`: 500ms hold → real-reveal golden flash → destruction VFX → slot cleared. On `ObjectiveDestroyed.was_fake=true`: 500ms hold → crack animation + "FAKE" overlay (800ms) → slot cleared → spawn range highlight refreshes. Multiple destructions in one RESOLUTION: reveal in ascending lane order, sequentially.
 
@@ -113,9 +184,12 @@ Board Rendering maintains a `BoardRenderState` enum driven exclusively by networ
 | `Placement` | `S2CPlacementReveal` received | `ResolutionReveal` |
 | `ResolutionReveal` | `pre_animation_pause_ms` elapsed | `ResolutionExecuting` |
 | `ResolutionExecuting` | Queue exhausted | `ResolutionObjectiveReveal` |
-| `ResolutionObjectiveReveal` | Reveal animations complete | `DraftShop` (or `GameOver` if buffered) |
-| Any | `S2CGameSnapshot` received | Phase-matched state (full board rebuild) |
-| Any (except `GameOver`) | `S2CPhaseChanged(GAME_OVER)` | `GameOver` |
+| `ResolutionObjectiveReveal` | Reveal animations complete | Target from `PendingPhaseChange` buffer (`DraftShop`, `GameOver`, or default `DraftShop` if buffer empty) |
+| Any | `S2CGameSnapshot` received | Phase-matched state (full board rebuild). If `snapshot.phase == RESOLUTION`, target is `DraftShop` (no animation replay per Rule 11). Wait for `S2CObjectiveIdentities` re-send before any actionable phase. |
+| `Placement`, `ResolutionReveal`, `ResolutionExecuting`, `ResolutionObjectiveReveal` | `S2CPhaseChanged(DRAFT_SHOP)` | (no transition) — buffered in `PendingPhaseChange`; applied after `ResolutionObjectiveReveal` completes |
+| Any RESOLUTION state | `S2CPhaseChanged(GAME_OVER)` | Complete current `AnimGroup` → execute `ResolutionObjectiveReveal` → `GameOver` |
+| Any non-RESOLUTION state (except `GameOver`) | `S2CPhaseChanged(GAME_OVER)` | `GameOver` (immediate) |
+| `ResolutionReveal` | 2000ms elapsed without `S2CResolutionEvent` | Request fresh snapshot via C2S `RequestSnapshot`; transition to phase from snapshot |
 
 ---
 
@@ -141,6 +215,13 @@ Board Rendering maintains a `BoardRenderState` enum driven exclusively by networ
 The `cell_to_world` formula is defined as:
 
 ```
+// PRECONDITION: 1 <= lane <= 5  AND  1 <= cell <= 8
+//   - Out-of-range inputs are u8 underflow traps: 0u8 - 1 wraps to 255 in
+//     release mode, producing world positions ~16,000 units off-screen with
+//     no panic and no log.
+//   - The implementation MUST guard with: assert!((1..=5).contains(&lane) && (1..=8).contains(&cell), "cell_to_world out of range: lane={}, cell={}", lane, cell);
+//   - assert! (not debug_assert!) — we want the failure loud in WASM release builds.
+
 cell_to_world(lane, cell) = Vec2 {
     x: board_origin_x + (cell - 1) as f32 * cell_width,
     y: board_origin_y - (lane - 1) as f32 * lane_height,
@@ -151,8 +232,8 @@ cell_to_world(lane, cell) = Vec2 {
 
 | Variable | Symbol | Type | Range | Description |
 |---|---|---|---|---|
-| Lane number | `lane` | u8 | 1–5 | Logical lane index (1 = top of screen, 5 = bottom) |
-| Cell number | `cell` | u8 | 1–8 | Absolute cell position within the lane |
+| Lane number | `lane` | u8 | 1–5 (asserted) | Logical lane index (1 = top of screen, 5 = bottom). `lane=0` or `lane > 5` is a panic. |
+| Cell number | `cell` | u8 | 1–8 (asserted) | Absolute cell position within the lane. `cell=0` or `cell > 8` is a panic. |
 | Board origin X | `board_origin_x` | f32 | tunable | World-space X of (lane=1, cell=1) — defined in `BoardLayout` resource |
 | Board origin Y | `board_origin_y` | f32 | tunable | World-space Y of (lane=1, cell=1) — defined in `BoardLayout` resource |
 | Cell width | `cell_width` | f32 | 48.0–96.0 | World units per cell; default 64.0 |
@@ -169,7 +250,16 @@ cell_to_world(lane, cell) = Vec2 {
 The `health_bar_fill` formula is defined as:
 
 ```
-fill = clamp(hp_current / hp_max, 0.0, 1.0)
+// PRECONDITION: hp_max >= 1
+//   - hp_max == 0 produces 0.0/0.0 = NaN; clamp(NaN, 0.0, 1.0) = NaN;
+//     scale.x = NaN renders an invisible/degenerate sprite with no Bevy error.
+//   - The implementation MUST guard at intake (replication ingestion):
+//       let hp_max_safe = hp_max.max(1);
+//       if hp_max == 0 { warn!("UnitStats.hp_max=0 from server; clamped to 1"); }
+//   - Friend-game policy: silent clamp + warning, do NOT panic. Log captures the
+//     server-contract violation; client keeps rendering.
+
+fill = clamp(hp_current as f32 / hp_max_safe as f32, 0.0, 1.0)
 
 bar_color = if fill >= health_bar_green_threshold { Green }
             else if fill >= health_bar_red_threshold { Yellow }
@@ -180,17 +270,21 @@ bar_color = if fill >= health_bar_green_threshold { Green }
 
 | Variable | Symbol | Type | Range | Description |
 |---|---|---|---|---|
-| Current HP | `hp_current` | u8 | 0–`hp_max` | Unit's replicated current HP |
-| Max HP | `hp_max` | u8 | 1–20 | Unit's maximum HP from card definition |
+| Current HP | `hp_current` | u8 | 0–`hp_max` (overflow tolerated; clamp saturates) | Unit's replicated current HP |
+| Max HP | `hp_max` | u8 | 1–20 (clamped to ≥1 at intake) | Unit's maximum HP from card definition. `hp_max=0` is a server-contract violation; client clamps to 1 + log warning. |
 | Green threshold | `health_bar_green_threshold` | f32 | 0.5–0.75 | Fill fraction at or above which bar renders green; default 0.6 |
 | Red threshold | `health_bar_red_threshold` | f32 | 0.2–0.4 | Fill fraction below which bar renders red; default 0.3 |
 
 **Output Range:** fill ∈ [0.0, 1.0]; color ∈ {Green, Yellow, Red}.
 
+**Zero-HP visual.** At `fill=0.0`, the HP bar's `Transform.scale.x = 0.0` renders the bar structurally invisible. This is intentional: a unit at 0 HP is dead and despawns synchronously in the same tick (sub-step 5 of RESOLUTION). The "HP bars always visible" invariant (Rule 6, BR-5) applies to all **live** units (`hp_current > 0`); a 0-HP unit in mid-despawn does not violate the invariant. See edge case "EC-HP-ZERO".
+
 **Examples:**
 - `hp_current=2, hp_max=5` → fill=0.40 → Yellow (below green, at or above red threshold)
 - `hp_current=5, hp_max=5` → fill=1.00 → Green
 - `hp_current=1, hp_max=5` → fill=0.20 → Red (at red threshold boundary)
+- `hp_current=0, hp_max=5` → fill=0.00 → Red, scale.x=0.0 (bar invisible; unit despawning same tick)
+- `hp_current=3, hp_max=0` (server bug) → hp_max clamped to 1 → fill=clamp(3.0, 0.0, 1.0)=1.0 → Green + warn!() logged
 
 ---
 
@@ -199,6 +293,12 @@ bar_color = if fill >= health_bar_green_threshold { Green }
 The `co_occupancy_offset` formula is defined as:
 
 ```
+// PRECONDITION: unit_index in {0, 1}
+//   - unit_index >= 2 is a server-side bug (more than two allied co-occupants
+//     in a single cell — not allowed by 2v2 rules). Silently producing
+//     out-of-cell render coordinates would mask the bug; instead:
+//   - The implementation MUST guard with: assert!(unit_index <= 1, "F3 co-occupancy: unit_index={} > 1 — invalid co-occupancy state", unit_index);
+
 x_offset(unit_index) = (unit_index as f32 - 0.5) * co_occupancy_side_offset
 ```
 
@@ -206,7 +306,7 @@ x_offset(unit_index) = (unit_index as f32 - 0.5) * co_occupancy_side_offset
 
 | Variable | Symbol | Type | Range | Description |
 |---|---|---|---|---|
-| Unit index | `unit_index` | u8 | 0–1 | Render slot within the cell; assigned by ascending entity ID among allied co-occupants |
+| Unit index | `unit_index` | u8 | 0–1 (asserted) | Render slot within the cell; assigned by ascending entity ID among allied co-occupants. `unit_index >= 2` is a panic. |
 | Side offset | `co_occupancy_side_offset` | f32 | 4.0–16.0 | World units of X displacement per unit from cell center; default 8.0 |
 
 **Output Range:** x_offset ∈ [−`co_occupancy_side_offset`/2, +`co_occupancy_side_offset`/2]. For default: [−4.0, +4.0].
@@ -215,7 +315,7 @@ x_offset(unit_index) = (unit_index as f32 - 0.5) * co_occupancy_side_offset
 - unit_index=0 → x_offset = (0.0 − 0.5) × 16 = −8.0 (left of cell center)
 - unit_index=1 → x_offset = (1.0 − 0.5) × 16 = +8.0 (right of cell center)
 
-This formula applies only in 2v2 mode. In 1v1 at most one unit per player per lane; offset is not evaluated.
+This formula applies only in 2v2 mode. In 1v1 at most one unit per player per lane; offset is not evaluated. **M2 scope note:** F3 is retained on the M2 critical path per design decision 2026-04-30 — the client-side rendering support for 2v2 lands in M2 even if the 2v2 game mode itself is not committed for friend-game launch. Avoids rework if 2v2 is added later.
 
 ---
 
