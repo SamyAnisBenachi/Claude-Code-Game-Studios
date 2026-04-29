@@ -86,12 +86,15 @@ jobs:
       - name: Check shared/ purity
         run: |
           set -euo pipefail
-          if grep -r "derive(Resource)" shared/src/ 2>/dev/null; then
+          # Exclude comment lines (grep -r output is "path:content"; :\s*// matches comment lines)
+          if grep -r "derive(Resource)" shared/src/ 2>/dev/null | grep -vE ":\s*//" | grep -q .; then
             echo "FAIL: #[derive(Resource)] found in shared/ — violates ADR-003"
+            grep -r "derive(Resource)" shared/src/ | grep -vE ":\s*//"
             exit 1
           fi
-          if grep -r "Plugin" shared/src/ 2>/dev/null; then
+          if grep -r "Plugin" shared/src/ 2>/dev/null | grep -vE ":\s*//" | grep -q .; then
             echo "FAIL: Plugin trait found in shared/ — violates ADR-003"
+            grep -r "Plugin" shared/src/ | grep -vE ":\s*//"
             exit 1
           fi
           echo "PASS: shared/ purity checks pass"
