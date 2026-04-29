@@ -71,11 +71,12 @@ jobs:
       - name: Check RSM single-writer invariant
         run: |
           set -euo pipefail
-          # Exclude doc/line comments (grep -r output is "path:content"; :\s*// matches comment lines)
-          count=$(grep -r "ResMut<RoundState>" server/src/ 2>/dev/null | grep -v "transitions.rs" | grep -vE ":\s*//" | wc -l)
+          # Exclude doc/line comments (grep -r output is "path:content"; :\s*// matches comment lines).
+          # || echo 0 handles pipefail: grep -vE exits 1 when all lines are filtered out (no non-comment matches).
+          count=$(grep -r "ResMut<RoundState>" server/src/ 2>/dev/null | grep -v "transitions.rs" | grep -vE ":\s*//" | wc -l || echo 0)
           if [ "$count" -gt "0" ]; then
-            echo "FAIL: ResMut<RoundState> found outside transitions.rs"
-            grep -r "ResMut<RoundState>" server/src/ | grep -v "transitions.rs" | grep -vE ":\s*//"
+            echo "FAIL: ResMut<RoundState> found outside transitions.rs (in non-comment code)"
+            grep -r "ResMut<RoundState>" server/src/ | grep -v "transitions.rs" | grep -vE ":\s*//" || true
             exit 1
           fi
           echo "PASS: ResMut<RoundState> single-writer invariant holds"
