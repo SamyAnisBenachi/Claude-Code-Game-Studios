@@ -1,6 +1,6 @@
 # Card Acquisition
 
-> **Status**: Designed (pending design-review)
+> **Status**: Approved (post-revision 2026-04-29)
 > **Author**: User + Agents
 > **Last Updated**: 2026-04-29
 > **Implements Pillar**: Deep emergence · Auction as signature
@@ -13,7 +13,7 @@ Card Acquisition is the server-side system that governs how players obtain cards
 
 The shop is not where you win — it is where you **decide**. While the auction tests conviction, the shop builds it. Purchases here are commitments: each Gobball you buy tilts the next slot toward Gobball, and the player can feel the system leaning their way, rewarding the player who chose a side over the player who kept options open.
 
-**The five feelings this system serves:**
+**The four feelings this system serves:**
 
 1. **"I committed."** — Round 3. Two class cards already in hand. The shop refreshes and a third appears in slot 2 next to a tempting neutral. You buy the third. You're not ahead. You're not even certain the archetype will land. But you've stopped hedging. The weighting will now tilt your way for the rest of the game — and you can feel that tilt begin. The shop becomes a *covenant*: you hold your end, the system holds its.
 
@@ -41,8 +41,14 @@ On RSM entry into `DRAFT_INITIAL`:
 5. Unspent gold at timer end carries over to round 1 DRAFT. The 5g is a budget ceiling, not a use-it-or-lose-it pool.
 
 **Rule 3 — Personal Shop Auto-Refresh**
-On RSM entry into `DRAFT_SHOP` or `DRAFT_AUCTION` (triggered by `refresh_shop(player)` from RSM Rule 5):
-1. Clear `displayed_this_draft` (new DRAFT phase begins clean).
+Triggered by `refresh_shop(player)` from RSM Rule 5. Fires **once per round**: at DRAFT_AUCTION entry in auction rounds, or at DRAFT_SHOP entry in non-auction rounds.
+
+**Auction rounds:** auto-refresh fires at DRAFT_AUCTION entry. The same 3 slots remain visible but locked during DRAFT_AUCTION and become purchasable when DRAFT_SHOP begins. `displayed_this_draft` is **not** cleared on DRAFT_AUCTION → DRAFT_SHOP — dedup history carries through.
+
+**Non-auction rounds:** auto-refresh fires at DRAFT_SHOP entry normally.
+
+Steps for the auto-refresh draw:
+1. Clear `displayed_this_draft` (new DRAFT phase begins clean; in auction rounds this happens at DRAFT_AUCTION entry only).
 2. For each of 3 slots, run the draw pipeline:
    - **Phase 1:** consume one seed → `gen_range(0..2)` → `SlotType` (Class or Neutral)
    - **Phase 2 (Class):** `draw_class_card(class, next_seed())` → `Option<CardId>`
@@ -53,7 +59,7 @@ On RSM entry into `DRAFT_SHOP` or `DRAFT_AUCTION` (triggered by `refresh_shop(pl
 4. Send `S2CShopSlots { slots: Vec<Option<CardId>> }` to this player (unicast, reliable).
 
 **Rule 4 — DRAFT_AUCTION: Shop Locked**
-During `DRAFT_AUCTION`, the shop slots populated by Rule 3 are visible to the player alongside the auction UI. The auction screen is shared by all players simultaneously and is the primary UI focus. Card Acquisition accepts no `C2SPurchaseCard` or `C2SRefreshShop` messages during this phase — any received are rejected with `ERR_WRONG_PHASE`. No shop state mutations occur until `DRAFT_SHOP` begins.
+During `DRAFT_AUCTION`, the shop slots populated by Rule 3 are visible to the player alongside the auction UI. The auction screen is shared by all players simultaneously and is the primary UI focus. Card Acquisition accepts no `C2SPurchaseCard` or `C2SRefreshShop` messages during this phase — any received are silently discarded by the server (Network Protocol Rule 4). No shop state mutations occur until `DRAFT_SHOP` begins.
 
 **Rule 5 — Manual Refresh (DRAFT_SHOP only)**
 Available from `DRAFT_SHOP` entry until the phase ends (PLACEMENT begins). Not available in any other phase.
@@ -87,9 +93,9 @@ Cards added to hand via Prism Lane 3 or the free card pick (fake objective rewar
 ```
 INACTIVE → DRAFT_INITIAL     on RSM: DRAFT_INITIAL entry (refresh_shop fires)
 DRAFT_INITIAL → INACTIVE     on RSM: DRAFT_INITIAL → PLACEMENT
-INACTIVE → AUCTION_LOCK      on RSM: DRAFT_AUCTION entry (refresh_shop fires)
-AUCTION_LOCK → SHOP_ACTIVE   on RSM: DRAFT_AUCTION → DRAFT_SHOP (refresh_shop fires again)
-INACTIVE → SHOP_ACTIVE       on RSM: DRAFT_SHOP entry (non-auction round, refresh_shop fires)
+INACTIVE → AUCTION_LOCK      on RSM: DRAFT_AUCTION entry (refresh_shop fires; slots populated)
+AUCTION_LOCK → SHOP_ACTIVE   on RSM: DRAFT_AUCTION → DRAFT_SHOP (no new refresh; same slots become purchasable)
+INACTIVE → SHOP_ACTIVE       on RSM: DRAFT_SHOP entry (non-auction round; refresh_shop fires here)
 SHOP_ACTIVE → INACTIVE       on RSM: DRAFT_SHOP → PLACEMENT
 ```
 
@@ -99,7 +105,7 @@ SHOP_ACTIVE → INACTIVE       on RSM: DRAFT_SHOP → PLACEMENT
 
 | System | Direction | What flows |
 |---|---|---|
-| **Round State Machine** | RSM → Card Acquisition | `refresh_shop(player)` fires on DRAFT_INITIAL, DRAFT_AUCTION, and DRAFT_SHOP entry — the only trigger for auto-refresh |
+| **Round State Machine** | RSM → Card Acquisition | `refresh_shop(player)` fires on DRAFT_INITIAL; on DRAFT_AUCTION entry (auction rounds); on DRAFT_SHOP entry (non-auction rounds). Fires once per round — in auction rounds the same slots from DRAFT_AUCTION carry into DRAFT_SHOP. The only trigger for auto-refresh. |
 | **Card Data & Pool** | Card Acquisition → Pool | `draw_initial_draft(class, 9, seed)` at DRAFT_INITIAL; `draw_class_card()`, `draw_neutral_family()`, `draw_family_card()` per slot per refresh; `distribute(card_id)` on confirmed purchase |
 | **Server-side RNG** | Card Acquisition → RNG | 1 seed per Phase 1 split roll + 1 seed per Phase 2 draw + 1 seed per Phase 3 draw (neutral slots) + 1 seed per fallback retry, per slot per refresh |
 | **Economy System** | Card Acquisition → Economy | `spend_gold(player, card_cost)` on purchase; `spend_gold(player, refresh_cost)` on manual refresh |
@@ -150,6 +156,8 @@ P_unique = (N - K) / N
 
 **Example:** 12 eligible neutral cards, 2 already displayed this phase: `P_unique = 10/12 ≈ 0.833`. Probability all 20 retries fail: `0.167^20 ≈ negligible`. At the tightest realistic case (N=3, K=2): `P_unique = 0.333`; probability exhausting 20 retries: `0.667^20 ≈ 0.0003`. Empty slot from dedup exhaustion is a statistical curiosity, not a normal gameplay occurrence.
 
+**Note on two-tier neutral sampling:** This formula approximates card-level uniform sampling. The actual neutral draw is a two-tier operation: `draw_neutral_family()` selects a family, then `draw_family_card()` selects within it. A family with only 1 eligible copy remaining is sampled as frequently as a family with 4, but produces collisions far more often. In late-game neutral pools with depleted families, actual collision rates are higher than `(N-K)/N` implies. Treat these probability estimates as lower bounds. The 20-retry limit and K≥N short-circuit remain correct.
+
 ---
 
 ### Reference — Shop Slot Weighted Draw
@@ -162,9 +170,9 @@ The probability that a specific card or family appears in a shop slot is compute
 
 - **If the player attempts to buy a card during DRAFT_INITIAL when `hand.len() == 10`:** Rejected. Slot stays. (Theoretical — hand starts at 0 and the 5g budget caps purchases well below 10. Enforced regardless for defense-in-depth.)
 
-- **If the player attempts a manual refresh during DRAFT_INITIAL:** Rejected with `ERR_WRONG_PHASE`. The 9-card display is fixed for the timer duration. No gold deducted, `refresh_count_this_draft` unchanged.
+- **If the player attempts a manual refresh during DRAFT_INITIAL:** Silently rejected by the server. The 9-card display is fixed for the timer duration. No gold deducted, `refresh_count_this_draft` unchanged.
 
-- **If the player attempts a manual refresh or purchase during DRAFT_AUCTION:** Rejected with `ERR_WRONG_PHASE`. Shop is read-only in `AUCTION_LOCK` state.
+- **If the player attempts a manual refresh or purchase during DRAFT_AUCTION:** Silently rejected by the server. Shop is read-only in `AUCTION_LOCK` state.
 
 - **If the player attempts a manual refresh with insufficient gold:** Rejected. `refresh_count_this_draft` is NOT incremented — a rejected refresh does not consume a refresh slot or change the cost of the next attempt.
 
@@ -172,7 +180,7 @@ The probability that a specific card or family appears in a shop slot is compute
 
 - **If a card's `copies_remaining` reaches 0 between when it was placed in a shop slot and when the player attempts to purchase it** (another system consumed the last copy — e.g., opponent auction draw): Rule 6 check 3 (`pool.is_available(card_id)`) rejects the purchase. The slot remains visible displaying a card the player can no longer buy (a "dead slot"). The server does not automatically refill it. The player can trigger a manual refresh to replace it.
 
-- **If `distribute()` returns `Err(DistributeError::Exhausted)` after all three Rule 6 checks passed** (TOCTOU bug — should not occur in correct implementation): Treat as purchase rejection. Log a server error. Do not apply gold spend. No state change. Gold must never be deducted unless `distribute()` returns `Ok(())`.
+- **If `distribute()` returns `Err(DistributeError::Exhausted)` after all three Rule 6 checks passed** (TOCTOU bug — should not occur in correct implementation): Call `refund_gold(player, cost)` on the Economy System immediately. Card is NOT added to hand. Log a server error. Slot remains displayed. Gold must never remain deducted after a failed distribute — the `refund_gold` call is mandatory before returning.
 
 - **If fewer than 9 unique eligible cards exist in the pool at DRAFT_INITIAL** (only possible with a stripped test fixture — not in live play with ~298 cards): `draw_initial_draft()` returns however many distinct IDs are available (fewer than 9). The offering displays N < 9 cards with no padding or error. Player's 5g budget still applies to what is shown.
 
@@ -181,6 +189,8 @@ The probability that a specific card or family appears in a shop slot is compute
 - **If both class and neutral pools are exhausted:** All 3 shop slots display as empty for that DRAFT_SHOP phase. No error. The player retains cards already in hand.
 
 - **If the DRAFT_INITIAL timer expires with zero purchases:** The player's hand remains empty and their 5g carries over to round 1 DRAFT. The 5g is a budget ceiling, not a use-it-or-lose-it pool.
+
+- **If the 9-card DRAFT_INITIAL draw contains zero cards from the player's intended archetype:** No bad-luck protection exists; this is an accepted design risk. The shop weighting in subsequent rounds starts from zero owned class cards (no tilt). Players may purchase neutral cards with the 5g budget or save gold. The 9-card draw is intentionally random.
 
 - **If the Prism System (Lane 3) or Objective System (free card pick) adds a card that brings `hand.len()` to exactly 10** between a player's auto-refresh and their next purchase attempt: Auto-refreshed slots remain displayed. Any purchase attempt fires the `hand.len() < 10` check and is rejected normally. Card Acquisition takes no proactive action on the hand-full event; it only checks at purchase time.
 
@@ -213,13 +223,13 @@ The probability that a specific card or family appears in a shop slot is compute
 | Knob | Default | Safe Range | Impact | GameConfig field |
 |---|---|---|---|---|
 | `refresh_base_cost` | 1g | 1–3g | Entry cost of the first refresh per DRAFT phase. At 2g: first refresh costs as much as a Common card. At 3g: refreshing is a major economy commitment. | `GameConfig.refresh_base_cost` |
-| `refresh_cap` | 1 | 0–5 | Maximum additional cost above base for subsequent refreshes. At 0: flat rate (all refreshes cost `refresh_base_cost`). At 1 (default): cap at 2g total. At 5: escalates up to 6g before flattening — strong deterrent. Do not set below 0. | `GameConfig.refresh_cap` — **NEW, must be added to game-config.ron and game-config.md** |
+| `refresh_cap` | 1 | 0–5 | Maximum additional cost above base for subsequent refreshes. At 0: flat rate (all refreshes cost `refresh_base_cost`). At 1 (default): cap at 2g total. At 5: escalates up to 6g before flattening — strong deterrent. Upper-bound footgun: avoid `refresh_base_cost + refresh_cap > 5` (more than one interest bracket per refresh). | `GameConfig.refresh_cap` |
 
 **Knobs that affect Card Acquisition but are owned elsewhere:**
 
 | Knob | Default | Owner | Impact on Card Acquisition |
 |---|---|---|---|
-| `shop_weight_per_card` | 0.10 | master GDD / game-config.md | How strongly the shop tilts toward the player's archetype per owned copy. Higher = faster feedback loop; lower = more variety |
+| `shop_weight_per_card` | 0.10 | master GDD / game-config.md | How strongly the shop tilts toward the player's archetype per owned copy. Higher = faster feedback loop; lower = more variety. **Design note:** at 0.10, the tilt is statistically imperceptible in sessions under 12 rounds; evaluate raising to 0.20–0.25 during playtesting to match the "feel the lean" Player Fantasy. |
 | `shop_weight_cap` | 0.65 | master GDD / game-config.md | Prevents one type from dominating the shop entirely. Do not set below `1/eligible_types` — see card-data-pool.md Formula 2 for the constraint |
 | `draft_initial_timer_seconds` | 45s | game-config.md | How long players have to evaluate 9 cards against a 5g budget. Safe range: 30–90s |
 | Common/Uncommon/Rare/Epic/Legendary pool copies | 6/5/4/1/1 | card-data-pool.md | Affects pool depletion rate and how quickly class exhaustion occurs |
@@ -249,14 +259,14 @@ All criteria are BLOCKING unless noted. Integration-type ACs require a multi-sys
 |---|---|---|
 | CA3 | **GIVEN** DRAFT_INITIAL begins, **WHEN** `draw_initial_draft()` completes and `S2CDraftOffering` is sent, **THEN** the offering contains exactly 9 distinct card IDs with no duplicates within the 9. | BLOCKING |
 | CA4 | **GIVEN** a player has 5g at DRAFT_INITIAL and buys one 3g Rare, **WHEN** the timer expires, **THEN** the player's gold at round 1 DRAFT start is 2g (5−3 carried over; unused budget is not forfeited). | BLOCKING |
-| CA5 | **GIVEN** DRAFT_INITIAL is active, **WHEN** `C2SRefreshShop` is received, **THEN** server returns `ERR_WRONG_PHASE`, gold unchanged, `refresh_count_this_draft` unchanged. | BLOCKING |
+| CA5 | **GIVEN** DRAFT_INITIAL is active, **WHEN** `C2SRefreshShop` is received, **THEN** server silently discards the message, gold unchanged, `refresh_count_this_draft` unchanged, no S2C error response. | BLOCKING |
 
 ### Auto-Refresh and Dedup
 
 | # | Criterion | Type |
 |---|---|---|
-| CA6 | **GIVEN** DRAFT_SHOP begins and auto-refresh fires, **WHEN** `S2CShopSlots` is sent, **THEN** all non-null slot IDs are absent from `displayed_this_draft` before the refresh, and all are added to `displayed_this_draft` after. | BLOCKING |
-| CA7 | **GIVEN** a player is in DRAFT_AUCTION state, **WHEN** they send `C2SPurchaseCard` or `C2SRefreshShop`, **THEN** both return `ERR_WRONG_PHASE`, gold unchanged, hand unchanged. | BLOCKING |
+| CA6 | **GIVEN** DRAFT_SHOP begins and auto-refresh fires, **WHEN** `S2CShopSlots` is sent, **THEN** all non-null slot IDs are absent from `displayed_this_draft` before the refresh, all are added to `displayed_this_draft` after, and all non-null IDs within the same message are mutually distinct (no intra-message duplicates). | BLOCKING |
+| CA7 | **GIVEN** a player is in DRAFT_AUCTION state, **WHEN** they send `C2SPurchaseCard` or `C2SRefreshShop`, **THEN** both are silently discarded by the server, gold unchanged, hand unchanged, no S2C error response. | BLOCKING |
 | CA12 | **GIVEN** all eligible cards for a slot type are already in `displayed_this_draft` (`K ≥ N`), **WHEN** auto-refresh or manual refresh assigns this slot, **THEN** the slot is set to empty without any retry attempts. | BLOCKING |
 | CA16 | **GIVEN** a player triggers a manual refresh after already receiving auto-refresh slots this DRAFT phase, **WHEN** `S2CShopSlots` is sent, **THEN** none of the 3 new card IDs match any card ID sent in any prior `S2CShopSlots` message since this DRAFT phase began. | BLOCKING |
 | CA19 | **GIVEN** `N = 0` (no eligible cards exist for a slot type — test fixture only), **WHEN** any refresh assigns this slot, **THEN** slot is set to empty immediately with no probability computation or retry. | BLOCKING |
@@ -277,20 +287,28 @@ All criteria are BLOCKING unless noted. Integration-type ACs require a multi-sys
 |---|---|---|
 | CA13 | **GIVEN** card X sits in shop slot 1 with `copies_remaining=1` AND the Prism System or Objective System concurrently distributes the last copy (`copies_remaining` → 0), **WHEN** the player attempts to purchase card X, **THEN** purchase rejected, gold unchanged, slot 1 remains displayed (dead slot). | BLOCKING — Integration |
 | CA14 | **GIVEN** a player purchases the card in slot 2 successfully, **WHEN** purchase completes, **THEN** card is in `player.hand`, gold decremented by `card_cost`, and slot 2 is no longer in the shop display. | BLOCKING |
-| CA18 | **GIVEN** all three Rule 6 checks pass AND `spend_gold()` succeeds AND `distribute()` returns `Err(DistributeError::Exhausted)` (injected fault), **WHEN** this occurs, **THEN** gold deduction is rolled back, card NOT added to hand, error logged, slot remains displayed. | BLOCKING — Integration |
+| CA18 | **GIVEN** all three Rule 6 checks pass AND `spend_gold()` succeeds (verifiable via pre/post gold delta) AND `distribute()` returns `Err(DistributeError::Exhausted)` (injected fault), **WHEN** this occurs, **THEN** `refund_gold(player, cost)` is called returning gold to its pre-purchase value, card NOT added to hand, server-side error logged, slot remains displayed. | BLOCKING — Integration |
 
 ### External Bypasses (Rule 7)
 
 | # | Criterion | Type |
 |---|---|---|
-| CA17 | **GIVEN** a Lane 3 prism is collected during RESOLUTION, **WHEN** the Prism System processes the reward, **THEN** the card is added directly to the player's hand: no gold deducted, no `C2SPurchaseCard` involved, no phase restriction applies. Card Acquisition does not mediate this path. | BLOCKING — Integration |
+| CA17 | **GIVEN** a Lane 3 prism is collected during RESOLUTION, **WHEN** the Prism System processes the reward, **THEN** `hand.len() == hand_len_before + 1`, `gold == gold_before`, and no `C2SPurchaseCard` event was written to the message queue. | BLOCKING — Integration |
+
+### Phase Boundary and Routing
+
+| # | Criterion | Type |
+|---|---|---|
+| CA20 | **GIVEN** a player sends `C2SPurchaseCard` during DRAFT_SHOP with 0.1s remaining on the timer AND the DRAFT_SHOP timer expires before the server processes the message, **THEN** the purchase is silently discarded (phase transition wins) and gold is unchanged. | BLOCKING — Integration |
+| CA21 | **GIVEN** DRAFT_INITIAL begins for a 2-player game, **WHEN** `S2CDraftOffering` is sent, **THEN** exactly one `S2CDraftOffering` is received by the target player and zero are received by the opponent (unicast verified at network layer). | BLOCKING — Integration |
+| CA22 | **GIVEN** round N DRAFT_AUCTION saw the auto-refresh fire (auction round) followed by round N DRAFT_SHOP (no second refresh), **WHEN** round N+1 DRAFT_SHOP begins and the player triggers their first manual refresh, **THEN** `refresh_count_this_draft` is 1 and gold decrements by `refresh_base_cost` — confirming the counter was 0 at the new DRAFT_AUCTION entry, not carried from round N's accumulated state. | BLOCKING |
 
 ## Open Questions
 
 | # | Question | Owner | Notes |
 |---|---|---|---|
-| OQ1 | `refresh_cap` is a new GameConfig knob introduced in this GDD. It must be added to `game-config.ron` and `game-config.md`. What is the canonical field name and safe range to document? | Gameplay Programmer / Game Designer | Default confirmed as 1 (cap at 2g); field not yet in game-config.md |
-| OQ2 | `S2CDraftOffering` and `S2CShopSlots` are referenced here but not yet formally registered in `network-protocol.md`. Full payload schemas (including null-slot encoding for empty slots) must be defined before implementation. | Network Protocol GDD | Referenced in card-data-pool.md as "to be specified in NP GDD" |
+| OQ1 | ~~`refresh_cap` is a new GameConfig knob introduced in this GDD.~~ **RESOLVED** — `refresh_cap: u32` added to `game-config.md` Rust struct (2026-04-29). Default 1, range 0–5. | Gameplay Programmer / Game Designer | Field name: `GameConfig.refresh_cap`. Must also be added to `game-config.ron`. |
+| OQ2 | ~~`S2CDraftOffering` and `S2CShopSlots` not yet formally registered in `network-protocol.md`.~~ **RESOLVED** — Both registered in NP GDD S2C table (2026-04-29). `S2CShopSlots` schema corrected to `Vec<Option<CardId>>`. `S2CDraftOffering` uses `Vec<CardId>` (exactly 9 in normal play). | Network Protocol GDD | Null-slot encoding for `S2CShopSlots` documented in NP GDD row. |
 | OQ3 | "Dead slot" display: when a slot's card becomes unavailable (copies_remaining → 0 after display), the server does not auto-refill it. How should the client render this — greyed-out card art, empty slot, or a "sold out" indicator? | Hand UI / Shop/Auction UI GDD | A UX decision; not a Card Acquisition rule decision |
 | OQ4 | CA18 (atomicity rollback of gold-spend if distribute() fails) requires a test harness with fault injection. What is the team's approach to testing this? A mock Pool or an explicit error-injection path in the Pool? | Gameplay Programmer | Needed before the CA18 AC can be implemented as an automated test |
 | OQ5 | Draft Initial display order: the 9 cards are drawn from `draw_initial_draft()` as a `Vec<CardId>`. Should the client display them in a fixed layout or sorted by rarity/cost? No rule yet. | Shop/Auction UI GDD | Cosmetic ordering; no gameplay impact |

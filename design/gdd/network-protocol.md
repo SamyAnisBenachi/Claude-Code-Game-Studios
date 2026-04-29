@@ -103,8 +103,8 @@ enum PlayTarget {
 | `S2CGoldUpdate` | Reliable | Unicast | `{ gold: u32, current_mana: u32, reserve_mana: u32, mana_cap: u8 }` |
 | `S2CGoldBroadcast` | Reliable | Broadcast | `{ player_id: PlayerId, gold: u32 }` — satisfies AC M7; opponent gold always visible |
 | `S2CCardAcquired` | Reliable | Unicast | `{ card_id: CardId, source: CardSource }` |
-| `S2CShopSlots` | Reliable | Unicast | `{ slots: Vec<CardId> }` |
-| `S2CDraftOffering` | Reliable | Unicast | `{ card_ids: Vec<CardId> }` — 9 cards for DRAFT_INITIAL |
+| `S2CShopSlots` | Reliable | Unicast | `{ slots: Vec<Option<CardId>> }` — `None` = empty slot (dedup exhaustion or pool exhaustion for that slot type) |
+| `S2CDraftOffering` | Reliable | Unicast | `{ card_ids: Vec<CardId> }` — exactly 9 cards at DRAFT_INITIAL (fewer only in stripped test fixtures) |
 | `S2CPoolUpdate` | Reliable | Unicast | `{ updates: Vec<(CardId, u8)> }` — delta `copies_remaining` |
 | `S2CPlacementReveal` | Reliable | Broadcast | `{ placements: Vec<PlacedCard> }` — atomic simultaneous reveal; both players receive this as the sole signal that placement is closed. Client MUST render from this payload, not from pre-arrived component replication, to honour the simultaneous-reveal guarantee. |
 | `S2CResolutionEvent` | Reliable | Broadcast | `{ events: Vec<TaggedEvent> }` — ordered sub-step replay log |

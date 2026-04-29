@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-04-29"  # updated: card-acquisition.md authored — 1 new formula (refresh_cost), 2 new constants (refresh_base_cost, refresh_cap), 2 new network messages (S2CDraftOffering, S2CShopSlots)
+last_updated: "2026-04-29"  # updated: combat-resolution.md authored — 2 new formulas (net_damage, type_advantage); referenced_by updated on 4 constants (kill_gold_reward, objective_gold_reward, placement_timer_seconds, objective_hp)
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -274,6 +274,39 @@ formulas:
     added: "2026-04-29"
     revised: ""
 
+  - name: net_damage
+    status: active
+    source: design/gdd/combat-resolution.md
+    referenced_by:
+      - design/gdd/combat-resolution.md
+    variables:
+      - ATK_base
+      - ATK_leader
+      - ATK_type
+      - ATK_vuln
+      - ATK_resist
+      - AR_base
+      - AR_pierce
+    output_range: [0, "uncapped (typical 0-8 per hit)"]
+    expression: "max(0, max(0, ATK_base + ATK_leader + ATK_type + ATK_vuln - ATK_resist) - (if AR_pierce { 0 } else { AR_base }))"
+    notes: "Full modifier stack defined in combat-resolution.md Detailed Design. SILENCE strips attacker keywords before stack evaluates. STUN prevents attack entirely (damage = 0). Keyword System and Class System will extend via hook points."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: type_advantage
+    status: active
+    source: design/gdd/combat-resolution.md
+    referenced_by:
+      - design/gdd/combat-resolution.md
+    variables:
+      - attacker_type
+      - defender_type
+    output_range: [false, true]
+    expression: "type_beats(attacker, defender): Blade>Arcane>Shield>Blade (cyclic); Neutral beats/loses to nothing; same type = false"
+    notes: "When true: attacker gains +1 ATK_combat and +1 AR_combat (retaliation only) for that combat interaction only. Does not modify base card stats. Most cards currently Neutral (unassigned). Cyclic RPS triangle."
+    added: "2026-04-29"
+    revised: ""
+
   - name: refresh_cost
     status: active
     source: design/gdd/card-acquisition.md
@@ -448,6 +481,7 @@ constants:
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/economy-system.md
       - design/gdd/objective-system.md
+      - design/gdd/combat-resolution.md
     value: 3
     unit: gold
     added: 2026-04-28
@@ -460,6 +494,7 @@ constants:
       - design/gdd/game-config.md
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/economy-system.md
+      - design/gdd/combat-resolution.md
     value: 1
     unit: gold
     added: 2026-04-28
@@ -484,6 +519,7 @@ constants:
       - design/gdd/game-config.md
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/objective-system.md
+      - design/gdd/combat-resolution.md
     value: 5
     unit: hp
     added: 2026-04-28
@@ -634,6 +670,7 @@ constants:
     referenced_by:
       - design/gdd/game-config.md
       - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/combat-resolution.md
     value: 10
     unit: seconds
     added: 2026-04-28

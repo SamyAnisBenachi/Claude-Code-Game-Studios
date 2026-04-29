@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 /// All balance-tunable values. Loaded at server startup from game_config.ron.
 /// ADR-004: all fields have #[serde(default)] — missing fields fall back to Default impl.
 /// ADR-003: no Resource derive in shared/; server does app.insert_resource(config).
-/// TODO(Epic 2): Asset+TypePath decision — add bevy_asset feature to shared/ (ADR-004 path)
-/// OR create a server-side wrapper in server/foundation/config.rs. Decide before Epic 2 starts.
+/// Epic 2 decision (ADR-004 path b): server creates GameConfigAsset + GameConfig wrapper types.
+/// shared/ stays bevy-free. See server/src/foundation/config.rs for the wrapper definitions.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GameConfig {
@@ -47,6 +47,10 @@ pub struct GameConfig {
     pub auction_timer_seconds: u32,
     pub auction_timer_reset_seconds: u32,
     pub auction_max_duration_seconds: u32,
+    // Starting bid floors — Auction System (card-data-pool.md §Tuning Knobs)
+    pub auction_floor_rare: u32,
+    pub auction_floor_epic: u32,
+    pub auction_floor_legendary: u32,
 
     // Class mechanics
     pub xelor_sablier_steal: u32,
@@ -90,6 +94,9 @@ impl Default for GameConfig {
             auction_timer_seconds: 20,
             auction_timer_reset_seconds: 5,
             auction_max_duration_seconds: 120,
+            auction_floor_rare: 3,
+            auction_floor_epic: 4,
+            auction_floor_legendary: 5,
             xelor_sablier_steal: 1,
             protocol_version: 1,
             hello_timeout_ms: 5000,

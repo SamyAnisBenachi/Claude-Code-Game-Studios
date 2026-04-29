@@ -54,7 +54,10 @@ On entry into DRAFT_INITIAL, DRAFT_AUCTION, or DRAFT_SHOP (from RESOLUTION or ga
 At RESOLUTION end — after all combat, kill rewards, and objective rewards have fired — the RSM instructs the Economy System to snapshot each player's gold. The Economy System holds this snapshot and applies it in Rule 3 at the next DRAFT entry.
 
 **Rule 5 — Shop refresh timing:**
-On entry into any DRAFT phase (DRAFT_INITIAL, DRAFT_AUCTION, or DRAFT_SHOP), the RSM fires `refresh_shop(player)` for all players immediately after economy events. For DRAFT_INITIAL this populates the initial 9-card selection; for DRAFT_AUCTION and DRAFT_SHOP it refreshes the personal shop. During DRAFT_AUCTION the shop is **visible but not interactable** — players see their upcoming cards while the auction runs (a deliberate design choice: players can make informed bid decisions knowing what their shop holds). Shop purchases and manual refresh are accepted only during DRAFT_SHOP.
+The RSM fires `refresh_shop(player)` for all players immediately after economy events on DRAFT phase entry. Firing rules:
+- **DRAFT_INITIAL:** fires once → populates the 9-card initial selection.
+- **Auction rounds:** fires once at DRAFT_AUCTION entry → populates 3 personal shop slots (visible, locked). When DRAFT_AUCTION transitions to DRAFT_SHOP, `refresh_shop` does **not** fire again — the same 3 slots become purchasable. Players see their upcoming shop cards while the auction runs; this is intentional (informed bid decisions). Shop purchases and manual refresh are accepted only during DRAFT_SHOP.
+- **Non-auction rounds:** fires once at DRAFT_SHOP entry → populates 3 personal shop slots (immediately purchasable).
 
 **Rule 6 — Auction round detection:**
 ```
@@ -82,7 +85,7 @@ On entry, RSM signals the Combat Resolution System to execute all six global sub
 After RESOLUTION completes and after the interest snapshot (Rule 4) is taken, the RSM evaluates: for each player, if `real_objectives_destroyed(player) >= 2`. If any player meets the condition, transition to GAME_OVER. If multiple players meet the condition simultaneously (mutual destruction in the same RESOLUTION), the result is a **Draw** — all qualifying players are declared losers; no winner is announced.
 
 **Rule 12 — DRAFT_INITIAL termination:**
-Ends when all players submit (early exit) OR `draft_initial_timer_seconds` expires. Non-submitting players forfeit their starting gold (use-it-or-lose-it). RSM then transitions to PLACEMENT with round_number = 1.
+Ends when all players submit (early exit) OR `draft_initial_timer_seconds` expires. Unspent starting gold carries over to round 1 DRAFT — the 5g budget is a ceiling, not use-it-or-lose-it. RSM then transitions to PLACEMENT with round_number = 1.
 
 **Rule 13 — Disconnection:**
 The RSM updates `disconnect_trackers` using Lightyear's `OnDisconnected` and `OnConnected` connection events (not a custom heartbeat message). If time since last `OnConnected` event > `disconnect_grace_seconds` (default: **30s**), RSM immediately transitions to GAME_OVER, declaring that player the loser. In team modes: that player's team loses. If reconnected within the grace period, game continues normally.

@@ -1,6 +1,6 @@
 # Combat Resolution
 
-> **Status**: In Design (8 required sections complete — Visual/Audio, Open Questions pending)
+> **Status**: Designed (all sections complete — /design-review pending in fresh session)
 > **Author**: SamyAnisBenachi + Claude Code agents
 > **Last Updated**: 2026-04-29
 > **Implements Pillar**: Simple surface · Deep emergence · No idle spectating
@@ -352,11 +352,192 @@ Board/Lane System GDD defines `unit_movement` as "skip intermediate cells." Comb
 
 ## Visual/Audio Requirements
 
-[To be designed]
+> **Art Direction:** Ankama/Wakfu cel-shaded 2D, bold clean outlines, rich saturated colors. No blur, glow, or bloom on unit sprites — impact flashes are flat 1-frame color fills. Single exception: objective destruction uses a full-screen opacity overlay to simulate bloom without a GPU post-process pass.
+
+### Color Conventions (Combat)
+
+Color encodes timing across all combat events — these four roles must never overlap or drift:
+
+| Color | Hex | Meaning |
+|---|---|---|
+| Prism White flash | `#EEF4FF` | FIRST STRIKE impact (timing advantage) |
+| Warm orange flash | `#E07020` | Standard combat impact (normal timing) |
+| Arcane Gold pulse | `#F5C842` | Keyword trigger fired (APPEARANCE, DEATH, LEADER bonus) |
+| Crimson Slate | `#8B1A2F` | Damage received (numbers + death tint) |
+
+### Mandatory Pause Gates
+
+Three pauses between sub-steps serve "No idle spectating" — they are active board-reading time, not dead time:
+- **100ms** after last CHARGE X unit lands → before FIRST STRIKE attacks begin
+- **100ms** after all sub-step 5 movement settles → before sub-step 6 combat begins
+- **100ms** after sub-step 6 combat resolves → before objective damage numbers appear
+
+### Placement Reveal
+
+- All 5 lanes reveal simultaneously in one frame — no per-lane stagger. Stagger implies sequence where none exists.
+- 3-frame flip per unit: back-of-card silhouette → Prism White edge-on squash flash → front-face sprite. Total: 80–100ms.
+- Frame 3: base ring flashes player-side color for 1 frame (Sky Blue `#3A8EDB` for Player A, Terracotta `#D45C22` for Player B), then snaps to normal.
+
+### CHARGE X vs Standard Movement
+
+| Attribute | CHARGE X (sub-step 2) | Standard (sub-step 5) |
+|---|---|---|
+| Motion trail | 2–3 fading sprite copies at 40% opacity, 1 cell behind, fade over 150ms | None |
+| Speed | 150ms per cell | 120ms per cell |
+
+Trail is the differentiator: trail = CHARGE X; no trail = standard.
+
+### FIRST STRIKE vs Standard Attack
+
+| Attribute | FIRST STRIKE (sub-step 3) | Standard (sub-step 6) |
+|---|---|---|
+| Impact flash | Prism White `#EEF4FF` | Warm orange `#E07020` |
+| Lanes animated simultaneously | Yes (global pass) | Yes (global pass) |
+
+Attack animation per hit: smear frame (1 frame, limb stretched toward target) + impact flash (1 frame) + recover. Total 200–250ms per Art Bible Section 5.5.
+
+### Damage Numbers
+
+- Position: at impact point, above target unit (never below/beside). Minimum 24px at full-board zoom.
+- Style: Crimson Slate `#8B1A2F`, 2.5× base typography, Heavy weight.
+- Float: +40px upward over 500ms; fade begins at 250ms.
+- Two sources hitting same target in lane order: first source offset left, second right — never overlap.
+- Spawned as world-space entities at the impact cell (not HUD overlay) — position stays correct regardless of camera.
+- **SHIELD absorption exception:** No damage number when SHIELD absorbs. Absence of a number after an attack connects is the information signal.
+
+### SHIELD Visual States
+
+| Moment | Visual |
+|---|---|
+| SHIELD active | Hexagonal Prism White glyph (8×8px) on base ring |
+| SHIELD absorbing damage | Hex glyph scales to 1.5× over 100ms → snaps back and disappears |
+| SHIELD consumed | 3-particle Prism White burst (4px particles, radial 20px outward, 250ms fade) |
+
+SHIELD glyph consumed in sub-step 3 does not reappear for sub-step 6. Glyph absence = SHIELD gone.
+
+### Death Animation
+
+Frame 1 (full opacity) → Frame 2 (50% vertical squash, Crimson Slate 60% tint) → Frame 3 (vanish with 3–4 Crimson Slate particles, radial outward, 200ms fade). Total: 350ms. Fast and brutal — not cinematic.
+
+If DEATH trigger: Arcane Gold ring pulse radiates from unit base before Frame 3. DEATH trigger effect plays after pulse fades. Sequential — never overlap death pulses from chained units.
+
+### APPEARANCE Trigger
+
+Arcane Gold aura pulse on entry: radiates from base ring, reaches ~2× unit width diameter, fades 200ms. If the APPEARANCE effect applies to a target, the target's reaction plays separately — caster's gold pulse = "I did something"; target's visual = "something happened to me."
+
+### RANGE Attack
+
+No movement. Unit plays a 5px forward-lean toward target (80ms, springs back). Projectile (`vfx_ranged_bolt_[type]_small.png`, tinted by attacker class color) travels at 600–800px/s. On arrival: warm orange `#E07020` impact flash + damage number.
+
+### Persistent State Indicators
+
+All indicators attach to the unit entity (survive movement). They must never animate except on state change; never disappear during other animations.
+
+| State | Visual | Location |
+|---|---|---|
+| STUN | 3 Prism White rotating stars, 6px each, 1 rev/sec | Orbiting base ring |
+| SHIELD active | Hexagonal Prism White glyph, 8×8px | On base ring |
+| INJURED | Outline pulses Void `#0D0D14` ↔ rust-brown `#5C2E10` at 0.5 Hz | Unit outline |
+| LEADER | Arcane Gold crown glyph, 8×8px | Above unit head |
+| LEADER family buff | Arcane Gold 20% opacity base ring tint on buffed allies | On base ring |
+| SILENCE | Outline desaturates Void → grey `#666666` | Unit outline |
+| OUTNUMBERED | Crimson Slate arrow-down on player's lane-line side | Lane edge (per lane) |
+
+LEADER bonus tint fades over 300ms after LEADER dies — the bonus persists this round per rules, so the fading tint correctly shows "bonus outlasted its source."
+
+### Objective Damage and Destruction
+
+**Taking damage:** HP pips flash Crimson Slate per pip removed. Damage number (Crimson Slate, 2.5×, float +60px, 500ms fade — taller clearance than unit damage). Attacking unit plays a 10px forward-lean.
+
+**Destruction:** 3-frame Prism White full-screen overlay (80% → 60% → 30% opacity). Pedestal swaps to cracked-sprite variant. Flame animation stops permanently.
+- **Real objective:** warm gold fill floods lane column for 400ms.
+- **Fake objective:** `?` glyph scales to 3× over 200ms, rotates 45°, dissolves. No gold fill.
+
+**HUD objective dot:** Real destroyed → Crimson Slate filled `×`. Fake destroyed → mid-grey `?`.
+
+### Kill / Objective Gold Feedback
+
+| Event | Visual | Duration |
+|---|---|---|
+| Kill gold +1 | `+1` Arcane Gold, 1.5× base, floats +20px above killing unit | 400ms fade |
+| Objective gold +3 | `+3` Arcane Gold, 2× base, HUD gold counter tick with bloom pulse | 600ms fade |
+
+### Animation Constraints (Bevy 0.18 / WASM)
+
+| Constraint | Value |
+|---|---|
+| RESOLUTION display time target | ≤3,000ms single exchange; ≤5,000ms full 5-lane contested round |
+| Tweening easing | `EaseOutQuad` for all combat translates. Spring/elastic reserved for UI confirmation events only. |
+| Tween scoping | One `Animator<Transform>` per unit entity. No shared-clock chains. |
+| Damage number entities | World-space transient entities (`Tween<Transform>` float + `Tween<Sprite>` alpha fade) |
+| VFX atlas budget | ≤120 of 256 available frames in `atlas_vfx` at 64×64px. Combat VFX estimate: 21 frames. |
+| 5-lane parallelism | All lanes animate simultaneously during all global passes. No lane-by-lane sequential playback. |
+
+### Audio Events (Direction Pending)
+
+Audio specification requires separate direction from a sound designer. Events below require distinct audio cues; timing gated on animation completion, not on server event receipt:
+
+- Placement reveal (5-lane simultaneous flip)
+- FIRST STRIKE impact (distinct timbre from standard)
+- Standard combat impact
+- Unit death
+- SHIELD absorption (blocked hit, no damage) + SHIELD break (consumed)
+- Objective damage hit
+- Objective destruction — real
+- Objective destruction — fake reveal
+- Kill gold reward +1
+- COUNTERATTACK response
+
+### Implementation Priority
+
+1. Placement reveal flip (emotional hook — must land before any playtest)
+2. Damage numbers + impact flashes (Prism White FIRST STRIKE, orange standard)
+3. Unit movement translates (standard + CHARGE X trail)
+4. Death sequence
+5. SHIELD absorption visual + persistent SHIELD glyph
+6. Objective damage + destruction burst
+7. Kill/objective gold floats
+8. Persistent state indicators (STUN stars, SHIELD glyph, LEADER crown, INJURED outline)
+9. APPEARANCE / DEATH trigger gold pulses
+10. COUNTERATTACK animation, RANGE projectile, WALL trim
+11. OUTNUMBERED lane indicator
+12. SILENCE grey outline
 
 ## UI Requirements
 
-[To be designed]
+Combat Resolution does not own any screen or interactive panel. Its UI requirements are a **display contract** on downstream systems (`board-rendering.md`, `card-animations.md`, `hud.md`) that must be met for RESOLUTION to be legible.
+
+**R1 — Simultaneous placement reveal**
+When `S2CPlacementReveal` arrives, all new units across all 5 lanes must appear simultaneously — not sequentially per lane, not unit-by-unit. Sequential reveal breaks the simultaneous-placement fantasy.
+*Owner:* Board Rendering GDD.
+
+**R2 — Sub-step visual separation**
+`S2CResolutionEvent` delivers a sequenced event log. The client replay must introduce enough visual pause between sub-steps that players can parse what caused what. Each sub-step boundary (1→2, 2→3, ..., 5→6) must be legible. Sub-step 3 effects must complete visually before sub-step 5 movement begins.
+*Owner:* Card Animations GDD.
+
+**R3 — Per-unit status indicators visible during RESOLUTION**
+At any point during RESOLUTION playback, the following states must be identifiable by sight without inspecting the unit:
+- SHIELD active: distinct visual indicator (e.g., bubble or border) — disappears when consumed
+- STUN active: frozen/locked visual — must be distinct from WALL (also immobile)
+- INJURED: required only if the unit gains new keywords via INJURED (visual reflects enhanced state, not HP loss)
+- LEADER bonus: units receiving the LEADER ATK buff carry a visible aura for the duration of RESOLUTION
+*Owner:* Board Rendering GDD.
+
+**R4 — Damage numbers attributable to source**
+`net_damage` values appear as floating text over the target. Multiple sources hitting the same target in one sub-step stagger by a few frames to remain individually readable. Both players see all damage — no fog of war on combat results.
+*Owner:* Board Rendering GDD.
+
+**R5 — Kill and objective gold reward display**
++1 kill gold and +3 objective gold must display contextually (near the killed unit / destroyed objective), not only in the HUD gold counter. The player must be able to see mid-RESOLUTION that they earned gold and why, without looking away from the board.
+*Owner:* HUD GDD (reward popup), Board Rendering GDD (contextual origin point).
+
+**R6 — Objective HP updates during sub-step 6 execution**
+Objective HP bars must decrement as damage is dealt within sub-step 6, not at RESOLUTION end. If an objective reaches 0 HP, the destruction visual must play before `S2CPhaseChanged(DRAFT_SHOP)` arrives.
+*Owner:* Board Rendering GDD.
+
+**R7 — No interactive elements during RESOLUTION**
+Hand cards, shop slots, and all placement controls must be non-interactive and visually suppressed during RESOLUTION_EXECUTING. The player is in observation mode. Only read-only HUD elements (gold, HP bars) remain visible. No modal dialogs.
+*Owner:* Board Rendering / HUD GDD coordination.
 
 ## Acceptance Criteria
 
@@ -399,4 +580,22 @@ Board/Lane System GDD defines `unit_movement` as "skip intermediate cells." Comb
 
 ## Open Questions
 
-[To be designed]
+**OQ1 — WALL deviation ADR (Action Required)**
+Sub-step 5 explicitly notes a deliberate deviation from the Board/Lane System GDD's "skip intermediate cells" rule. The ADR documenting this deviation has not been created yet. This is load-bearing for collision behavior correctness.
+**Owner:** Lead programmer. **Action:** Create ADR before Combat Resolution epic is started.
+
+**OQ2 — Type advantage values in GameConfig**
+The +1 ATK / +1 AR type advantage bonuses are flagged in Tuning Knobs as "hardcoded in resolution logic — not currently in GameConfig." Decision needed: move to `game_config.ron` fields before implementation, or keep hardcoded?
+**Owner:** Design. **Resolution needed before:** Combat Resolution story authoring.
+
+**OQ3 — RANGE equidistant target selection RNG seed**
+Formula 4 states equidistant targets are "selected randomly by the server." No explicit seed slot exists in the RESOLUTION RNG chain (`server-rng.md`) for RANGE random selection. Must be registered in the seed table before RANGE keyword implementation.
+**Owner:** Design + server-rng.md update. **Resolution needed before:** RANGE keyword implementation.
+
+**OQ4 — COUNTERATTACK proximity definition for collision-halt cases**
+The GDD specifies same-cell contact triggers COUNTERATTACK. Units halted facing each other from sub-step 5 collision are on adjacent cells, not the same cell. Does COUNTERATTACK fire for adjacent-cell collision-halt combat? Currently unspecified.
+**Owner:** Design. **Resolution needed before:** COUNTERATTACK keyword implementation.
+
+**OQ5 — ResolutionEvent enum variants need formal NP specification**
+`S2CResolutionEvent` is registered in the network registry but its `ResolutionEvent` enum variants are only informally described ("enum variants in network-protocol.md Section D.2"). Needs formal schema definition in network-protocol.md before implementation.
+**Owner:** network-protocol.md update.

@@ -91,10 +91,20 @@ fn handle_c2s_message() {
 
 fn main() {
     // ADR-002: headless server — no windowing, no rendering, no UI.
-    // Bevy feature flags in server/Cargo.toml: "multi_threaded" (see Cargo.toml TODO).
+    // Bevy feature flags in server/Cargo.toml: "multi_threaded", "bevy_log",
+    // "bevy_asset", "bevy_state" (see Cargo.toml).
     let mut app = App::new();
 
     app.add_plugins(MinimalPlugins);
+
+    // Asset pipeline — must be added before ConfigPlugin.
+    // ADR-004: AssetPlugin default configuration; asset root is assets/.
+    app.add_plugins(AssetPlugin::default());
+
+    // Foundation — GameConfig + CardCatalog loading pipeline (ADR-004).
+    // Registers loaders, AppState machine, and loading systems.
+    // State machine: Loading → ConfigValidation → Lobby.
+    app.add_plugins(foundation::config::ConfigPlugin);
 
     // TODO(S1-05 Lightyear spike): register_protocol(&mut app) once API is verified.
 
@@ -112,7 +122,6 @@ fn main() {
 
     // TODO(Epic 2 — foundation/core/feature plugin stories):
     // Add layer plugins following the DAG from ADR-003:
-    //   app.add_plugins(foundation::FoundationPlugin);  // GameConfig, ServerRng seeding
     //   app.add_plugins(core::CorePlugin);              // RSM, Session, Economy, Pool
     //   app.add_plugins(feature::FeaturePlugin);        // Board, Objective (M1)
     // Each plugin is defined in its layer's mod.rs.

@@ -46,6 +46,7 @@ pub struct GameConfig {
     pub kill_gold_reward: u32,
     pub mana_cap: u32,
     pub refresh_base_cost: u32,
+    pub refresh_cap: u32,
 
     // Objectives / Spawn
     pub objective_hp: u32,

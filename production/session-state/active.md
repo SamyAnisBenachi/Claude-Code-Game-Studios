@@ -199,6 +199,21 @@ C:\Program Files\GitHub CLI\gh.exe
 - **Next**: Push to CI for test execution, then `/story-done production/epics/lightyear-protocol-verification/story-001-lightyear-026-verification-spike.md` once CI confirms PASS on both ADR-012 tests
 
 ## Session Extract — /dev-story 2026-04-29
+- **Story**: `production/epics/card-data-pool/story-001-pool-state-core-api.md` — Pool State + Core API
+- **Files changed**:
+  - `shared/src/session.rs` — created; `PlayerId(u64)` type
+  - `shared/src/lib.rs` — added `pub mod session;`
+  - `server/src/core/pool/state.rs` — created; `PlayerPool`, `PlayerPools`, `DistributeError`, `PoolFilter` structs
+  - `server/src/core/pool/api.rs` — created; `impl PlayerPool` (initialize, distribute, is_available, copies_remaining, total_acquired) + 20 embedded `#[cfg(test)]` tests
+  - `server/src/core/pool/plugin.rs` — created; `CardPoolPlugin` skeleton (registers `PlayerPools`)
+  - `server/src/core/pool/mod.rs` — created; module re-exports
+  - `server/src/core/mod.rs` — added `pub mod pool;`
+  - `tests/unit/pool/pool_state_test.rs` — created; evidence documentation (20 test cases mapped to ACs 1–10)
+- **Test written**: 20 `#[cfg(test)]` tests in `server/src/core/pool/api.rs`; run via `cargo test -p server`
+- **Blockers**: Local builds blocked by Smart App Control — CI is verification gate
+- **Next**: `/code-review server/src/core/pool/api.rs server/src/core/pool/state.rs` then `/story-done production/epics/card-data-pool/story-001-pool-state-core-api.md`
+
+## Session Extract — /dev-story 2026-04-29
 - **Story**: `production/epics/server-rng/story-003-determinism-session-reset.md` — Determinism Proof & Session Reset (S1-12)
 - **Files changed**:
   - `server/src/foundation/rng.rs` — added `PartialEq` to `AuditEntry` derive; added `at_max_seed_index()` test-only constructor; added deferred-AC comments (RNG8/9/10/14); added 7 new Story 003 tests embedded in `#[cfg(test)] mod tests`
