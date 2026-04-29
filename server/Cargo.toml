@@ -23,6 +23,7 @@ ron = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = "1"
+tracing = "0.1"
 
 # ADR-004: ron is a direct dep — not re-exported from bevy_asset as of Bevy 0.18
 
