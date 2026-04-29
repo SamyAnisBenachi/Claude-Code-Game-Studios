@@ -1,0 +1,291 @@
+# Game Config
+
+> **Status**: In Design
+> **Author**: User + Agents
+> **Last Updated**: 2026-04-28
+> **Implements Pillar**: Simple surface — all tuning knobs externalized from code
+
+## Overview
+
+`GameConfig` is the single authoritative source for all balance-tunable values in Lanes and Lies. At server startup, `assets/config/game_config.ron` is deserialized into a `GameConfig` struct and inserted as a Bevy `Resource`. Every system that uses a tuning knob — pool copy counts, shop weights, economy constants, auction timers, combat parameters — reads its values from this resource rather than using hardcoded literals. No game logic resides in `GameConfig`; it is a read-only data container. Changing a balance value requires editing only the RON file, not touching compiled code.
+
+## Player Fantasy
+
+`GameConfig` is infrastructure with no direct player-facing behavior. The player experiences it indirectly: when the shop feels like it "knows what they're building," when gold income feels satisfying without being exploitable, or when auction stakes feel real — those feelings emerge from values defined in this file. Designers and developers are the direct users of this system during balance iteration.
+
+## Detailed Design
+
+### Core Rules
+
+**1. File location and format**
+- Config file: `assets/config/game_config.ron` (RON — Rusty Object Notation)
+- The file is bundled with the server binary. The client does not load it.
+- All fields use `#[serde(default)]` — missing fields fall back to the struct's `Default` impl, which encodes the design-intent defaults from Section G (Tuning Knobs).
+
+**2. Rust type**
+```rust
+#[derive(Asset, Resource, Deserialize, Reflect, Default, Clone)]
+#[reflect(Resource)]
+pub struct GameConfig {
+    // Pool (Card Data & Pool)
+    // Note: Epic and Legendary copy counts are hardcoded as Rust consts in the pool system
+    // (EPIC_POOL_COPIES = 1, LEGENDARY_POOL_COPIES = 1) — scarcity is a load-bearing design
+    // pillar, not a tuning knob. They are NOT fields in this struct.
+    pub common_pool_copies: u32,
+    pub uncommon_pool_copies: u32,
+    pub rare_pool_copies: u32,
+    pub shop_weight_per_card: f32,
+    pub shop_weight_cap: f32,
+
+    // Economy
+    pub starting_gold: u32,
+    pub gold_baseline_per_round: u32,
+    pub interest_threshold_gold: u32,
+    pub interest_max_bonus: u32,
+    pub objective_gold_reward: u32,
+    pub kill_gold_reward: u32,
+    pub mana_cap: u32,
+
+    // Objectives / Spawn
+    pub objective_hp: u32,
+    pub fake_count: u32,
+    pub fake_objective_spawn_advance: u32,
+
+    // Timers — RSM phase durations
+    pub draft_initial_timer_seconds: u32,
+    pub draft_shop_timer_seconds: u32,
+    pub placement_timer_seconds: u32,
+    pub resolution_max_duration_seconds: u32,
+    pub disconnect_grace_seconds: u32,
+
+    // Timers — Auction System
+    pub auction_timer_seconds: u32,
+    pub auction_timer_reset_seconds: u32,
+    pub auction_max_duration_seconds: u32,
+
+    // Class mechanics
+    pub xelor_sablier_steal: u32,
+}
+```
+
+**3. Loading**
+- Loaded via `bevy_asset_loader` during the server's `LoadingState`.
+- After the loading state completes, the `GameConfig` asset is promoted to a `Res<GameConfig>`. All game systems start only after this promotion is confirmed.
+- Load failure is fatal — if `game_config.ron` is absent or unparseable, the server aborts with a logged error.
+
+**4. Access pattern**
+- All systems read via `Res<GameConfig>`. No system holds mutable access after startup.
+- Systems must not cache individual field values in local state — always read from `Res<GameConfig>` each frame, so hot-reload picks up changes immediately.
+
+**5. Startup validation (dangerous values only)**
+After loading (and again after each hot-reload), a validation system aborts the server if any of the following are violated:
+- `shop_weight_cap > 0.0` — a cap of 0 causes division-by-zero in the shop weighting formula
+- `shop_weight_cap < 1.0` — a cap of ≥ 1.0 makes the weight ceiling inert (no raw weight can exceed 1.0, so the cap becomes a no-op)
+- `shop_weight_per_card < shop_weight_cap` — if per-card weight ≥ cap, the cap fires on the first copy acquired and per-acquisition scaling never operates; the archetype-weighting fantasy is nullified
+- `common_pool_copies >= 1`, `uncommon_pool_copies >= 1`, `rare_pool_copies >= 1` — pools with 0 copies have no cards to distribute
+- `fake_count >= 1` — `0` silently disables the bluffing mechanic, the "Lies" pillar of the game's identity
+- `fake_count <= 4` — at least 1 of 5 objectives must be real; `fake_count: 5` is semantically broken
+- `objective_hp >= 1` — `0` causes u32 underflow on damage (debug: panic; release: wraps to ~4.29B, objectives become indestructible, win condition never triggers)
+- `placement_timer_seconds >= 1` — `0` silently skips the PLACEMENT phase on the first tick
+- `auction_timer_seconds >= 1` — `0` skips all bidding and produces undefined interaction with timer reset logic
+- `auction_timer_reset_seconds < auction_timer_seconds` — a reset ≥ total timer allows a single bid to push duration above the initial value, inverting "shorter = more pressure"
+
+All other values are trusted as authored.
+
+**6. Debug hot-reload**
+In debug builds (`#[cfg(debug_assertions)]`), a system watches for `AssetEvent::<GameConfig>::Modified`. On each change event, it: (1) deserializes the updated RON file, (2) re-runs the full validation check from Rule 5 — if validation fails, the reload is rejected and the existing resource is retained with a warning logged, (3) if validation passes, re-inserts the updated struct as `Res<GameConfig>`.
+
+Production builds treat `game_config.ron` as immutable after startup — no watcher is registered.
+
+**7. No game logic**
+`GameConfig` is a plain data container. No methods beyond the serde/reflect derives. No computed properties. No mutable state.
+
+---
+
+### States and Transitions
+
+| State | Description | Valid transitions |
+|---|---|---|
+| `Unloaded` | `LoadingState` in progress; `Res<GameConfig>` not yet inserted | → `Ready` (load + validation pass) / Server aborts (missing file, parse error, or validation failure) |
+| `Ready` | `Res<GameConfig>` available to all systems; values read-only | → `Ready` (debug only: hot-reload re-inserts updated values after re-validation) / `Destroyed` (server shutdown) |
+
+No partial states. `GameConfig` is either fully available or the server is not running.
+
+---
+
+### Interactions with Other Systems
+
+| System | What is read from GameConfig |
+|---|---|
+| **Card Data & Pool** | `common/uncommon/rare_pool_copies`, `shop_weight_per_card`, `shop_weight_cap` |
+| **Economy System** | `starting_gold`, `gold_baseline_per_round`, `interest_threshold_gold`, `interest_max_bonus`, `objective_gold_reward`, `kill_gold_reward`, `mana_cap` |
+| **Objective System** | `objective_hp`, `fake_count` |
+| **Board / Lane System** | `fake_objective_spawn_advance` |
+| **Auction System** | `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds` |
+| **Round State Machine** | `placement_timer_seconds`, `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `resolution_max_duration_seconds`, `auction_max_duration_seconds`, `disconnect_grace_seconds` |
+| **Class System (Xelor)** | `xelor_sablier_steal` |
+| **Server-side RNG** | *(none — RNG seeds are generated at runtime)* |
+
+`GameConfig` has no upstream data dependencies. It reads from disk only.
+
+## Formulas
+
+`GameConfig` contains no runtime formulas. All mathematical operations are performed by the systems that read from it; the canonical formula definitions are in their respective GDDs.
+
+**Structural invariants (validated at load time and on each hot-reload):**
+
+| Invariant | Condition | Effect if violated |
+|---|---|---|
+| Shop weight cap is operational | `0.0 < shop_weight_cap < 1.0` | Server aborts (cap = 0 → division-by-zero; cap ≥ 1.0 → weight ceiling inert) |
+| Shop weight scaling is operative | `shop_weight_per_card < shop_weight_cap` | Server aborts (cap fires on first copy; per-acquisition scaling never operates) |
+| Common/Uncommon/Rare pool counts nonzero | `N_pool_copies >= 1` for Common, Uncommon, Rare | Server aborts (pools with 0 copies have no cards to distribute) |
+| Fake count minimum | `fake_count >= 1` | Server aborts (`0` disables the bluffing mechanic — the "Lies" pillar) |
+| Fake count maximum | `fake_count <= 4` | Server aborts (≥ 5 fakes leaves 0 real objectives — game cannot end normally) |
+| Objective HP nonzero | `objective_hp >= 1` | Server aborts (0 → u32 underflow on damage → debug panic or release wrap to ~4.29B) |
+| PLACEMENT timer nonzero | `placement_timer_seconds >= 1` | Server aborts (0 silently skips the PLACEMENT phase) |
+| AUCTION timer nonzero | `auction_timer_seconds >= 1` | Server aborts (0 skips bidding; undefined interaction with reset logic) |
+| Auction reset below timer | `auction_timer_reset_seconds < auction_timer_seconds` | Server aborts (reset ≥ timer: single bid pushes duration above initial, inverting time-pressure intent) |
+
+These invariants are preconditions that other systems rely on being true before they execute. They are not runtime formulas.
+
+## Edge Cases
+
+- **`game_config.ron` is missing or unparseable:** Fatal — server aborts with a logged error including the file path and, for parse errors, the location in the file. There is no fallback to defaults; a missing or broken config is a deployment error, not a runtime condition to tolerate.
+
+- **A field is missing from the RON file (`#[serde(default)]` active):** The field silently falls back to the struct's `Default` impl value. This is intentional — it allows partial configs during development. The `Default` values must match the documented design-intent defaults from Section G exactly.
+
+- **`shop_weight_cap = 0.0` or `>= 1.0`:** Validation failure at load time or hot-reload. Server aborts (load) or rejects the reload and retains the existing resource (hot-reload). A warning is logged identifying the offending value.
+
+- **Any Common, Uncommon, or Rare `pool_copies = 0`:** Validation failure, abort or reject. (Epic and Legendary copy counts are hardcoded consts, not config fields — see struct note.)
+
+- **`shop_weight_per_card >= shop_weight_cap`:** Validation failure — the cap fires on the first copy acquired, nullifying per-acquisition scaling. Abort or reject.
+
+- **`fake_count = 5`:** Validation failure — no real objectives would exist. Abort (load) or reject (hot-reload) with logged reason.
+
+- **`fake_count = 0`:** Validation failure — `0` disables the bluffing mechanic entirely. Abort or reject with error: *"`fake_count` must be ≥ 1 — the bluffing mechanic is a load-bearing design pillar."*
+
+- **`objective_hp = 0`:** Validation failure — `0` causes u32 underflow on the first damage application (debug: panic; release: wraps to ~4.29B, making objectives permanently indestructible, win condition never triggers). Abort or reject.
+
+- **`placement_timer_seconds = 0` or `auction_timer_seconds = 0`:** Validation failure — zero-duration timers skip the phase on the first server tick. Abort or reject.
+
+- **`auction_timer_reset_seconds >= auction_timer_seconds`:** Validation failure — a reset ≥ total timer allows a single bid to push duration above the initial value. Abort or reject.
+
+- **Out-of-range balance value not in the dangerous-only set** (e.g., `mana_cap: 100`, `starting_gold: 100`): Loaded and applied without error. The server trusts that designers know what they're setting. Extreme values may produce unintended gameplay but will not crash the server.
+
+- **`fake_objective_spawn_advance = 0`:** Accepted. Destroying a fake objective grants no spawn expansion. This is a legal tuning choice (effectively disables the mechanic).
+
+- **Hot-reload in a production build:** The watcher is never registered (`#[cfg(debug_assertions)]` guard). Editing `game_config.ron` on a running production server has no effect — a restart is required to apply changes.
+
+- **Two systems read `Res<GameConfig>` in the same frame:** Safe by design — Bevy's `Res<T>` is an immutable shared reference; concurrent reads are always valid.
+
+## Dependencies
+
+| System | Relationship | Interface |
+|---|---|---|
+| **File system / Bevy asset pipeline** | Hard upstream | Reads `assets/config/game_config.ron` at startup. Fatal if absent. |
+| **Card Data & Pool** | Downstream (hard) | Reads: `common/uncommon/rare_pool_copies`, `shop_weight_per_card`, `shop_weight_cap` |
+| **Economy System** | Downstream (hard) | Reads: `starting_gold`, `gold_baseline_per_round`, `interest_threshold_gold`, `interest_max_bonus`, `objective_gold_reward`, `kill_gold_reward`, `mana_cap` |
+| **Objective System** | Downstream (hard) | Reads: `objective_hp`, `fake_count` |
+| **Board / Lane System** | Downstream (hard) | Reads: `fake_objective_spawn_advance` |
+| **Auction System** | Downstream (hard) | Reads: `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds` |
+| **Round State Machine** | Downstream (hard) | Reads: `placement_timer_seconds`, `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `resolution_max_duration_seconds`, `auction_max_duration_seconds`, `disconnect_grace_seconds` |
+| **Class System** | Downstream (soft) | Reads: `xelor_sablier_steal` (Xelor-specific; other classes have no dedicated config knobs at this time) |
+
+**Bidirectionality:** `card-data-pool.md` ✓, `board-lane-system.md` ✓, `round-state-machine.md` ✓, `economy-system.md` ✓ — all list Game Config as an upstream dependency. `economy-system.md` must add `interest_threshold_gold` to its dependency table when the economy GDD is next revised. GDDs not yet authored (Objective System, Auction System, Class System) must list Game Config when written.
+
+GameConfig has no peer dependencies. It reads from disk only and is the bottom of the dependency stack.
+
+## Tuning Knobs
+
+This is the authoritative list of all `GameConfig` fields and their design-intent defaults. Every value corresponds to a field in the Rust struct. Defaults are encoded in the struct's `Default` impl; missing RON fields fall back silently to these values.
+
+| Field | Default | Safe Range | Gameplay Impact | Constraint |
+|---|---|---|---|---|
+| **Pool — Card Data & Pool** | | | | |
+| `common_pool_copies` | 6 | 3–10 | Higher = more Common diversity and durability late-game; lower = earlier scarcity and empty slots | validated ≥ 1 |
+| `uncommon_pool_copies` | 5 | 3–8 | Same as above for Uncommons | validated ≥ 1 |
+| `rare_pool_copies` | 4 | 1–6 | At 1: Rares feel as scarce as Epics; at 6: Rares freely available all game | validated ≥ 1 |
+| *(Epic copies)* | `EPIC_POOL_COPIES = 1` | *const* | Not tunable — Epic class-identity scarcity is load-bearing. Hardcoded in pool system. | *not in config* |
+| *(Legendary copies)* | `LEGENDARY_POOL_COPIES = 1` | *const* | Not tunable — Legendary auction stakes fantasy depends on exactly 1 copy. Hardcoded in pool system. | *not in config* |
+| `shop_weight_per_card` | 0.10 | 0.02–0.15 | At 15%: archetype feels scripted by round 4. At 0.02: weighting is imperceptible (effect negligible below ~0.05). | **validated: < shop_weight_cap** |
+| `shop_weight_cap` | 0.65 | 0.50–0.80 | Must stay strictly between 0.0 and 1.0 (both exclusive); activates at ~7 acquired copies (at default per-card weight) | **validated: 0.0 < cap < 1.0** |
+| **Economy System** | | | | |
+| `starting_gold` | 5 | 3–8 | Higher = more initial draft choice; lower = more constraint and variance in opening | — |
+| `gold_baseline_per_round` | 2 | 1–4 | Core economy pacing; affects interest threshold timing | — |
+| `interest_threshold_gold` | 5 | 3–10 | The divisor in `floor(gold / interest_threshold_gold)`. At 3: interest activates at 3g — very strong early hoard incentive. At 10: only meaningful at 10g+ | — |
+| `interest_max_bonus` | 2 | 1–3 | Higher = stronger hoard incentive and snowball; lower = weaker reward for patience | — |
+| `objective_gold_reward` | 3 | 2–5 | Higher = more snowball from first objective destruction | — |
+| `kill_gold_reward` | 1 | 0–2 | 0 = remove combat gold loop entirely; 2 = stronger snowball from aggressive play | — |
+| `mana_cap` | 10 | 6–14 | Higher = more cards playable per round; dramatically changes tempo ceiling | — |
+| **Objective System** | | | | |
+| `objective_hp` | 5 | 3–8 | Lower = faster games and fewer comebacks; higher = more durability and comeback potential | **validated: ≥ 1** |
+| `fake_count` | 2 | 1–3 | More fakes = more bluff space; fewer = more direct information war | **validated: ≥ 1 and ≤ 4** |
+| `fake_objective_spawn_advance` | 1 | 1–2 | Rows of spawn range unlocked per fake destroyed (used in Formula 3 of card-data-pool.md). At 2: Row 3 reachable after the first fake is destroyed. | — |
+| **Timers — RSM phases** | | | | |
+| `draft_initial_timer_seconds` | 45 | 30–90 | Round 1 DRAFT_INITIAL duration; early exit expected at ~25–30s when all players submit | — |
+| `draft_shop_timer_seconds` | 30 | 20–60 | Per-round DRAFT_SHOP duration; early exit when all players signal ready | — |
+| `placement_timer_seconds` | 10 | 5–20 | Shorter = more reflex/pressure; longer = more deliberation | **validated: ≥ 1** |
+| `resolution_max_duration_seconds` | 60 | 30–120 | Safety timeout for RESOLUTION. Aborts to Draw if Combat Resolution doesn't complete. Must never fire in normal play. | — |
+| `disconnect_grace_seconds` | 30 | 15–60 | Seconds before a disconnected player forfeits. 30s is intentional for WASM/browser — OS interrupts can cause 3–6s gaps. | — |
+| **Timers — Auction System** | | | | |
+| `auction_timer_seconds` | 20 | 10–30 | Shorter = more time pressure and bluff risk; longer = more deliberation | **validated: ≥ 1** |
+| `auction_timer_reset_seconds` | 5 | 3–10 | How much each accepted bid adds back to the timer | **validated: < auction_timer_seconds** |
+| `auction_max_duration_seconds` | 120 | 60–300 | Safety timeout for DRAFT_AUCTION. Must be ≥ `auction_timer_seconds + (20 × auction_timer_reset_seconds)` to avoid cutting off a legitimate bidding war. | — |
+| **Class System** | | | | |
+| `xelor_sablier_steal` | 1 | 1–3 | Mana stolen from opponent's current pool per Sablier cast. Effective steal = `min(steal, opponent.current_mana)`. See Class System GDD for 0-mana behavior specification. | — |
+
+## Visual/Audio Requirements
+
+None. `GameConfig` is a server-side data resource with no visual or audio output.
+
+## UI Requirements
+
+None. `GameConfig` is not exposed in any player-facing UI. The values it holds affect what other systems display, but those displays are owned by the consuming systems, not GameConfig itself.
+
+## Acceptance Criteria
+
+### Config Loading
+
+| # | Criterion | Type |
+|---|---|---|
+| GC1 | **GIVEN** a `game_config.ron` where every field is explicitly set to a non-default value (fixture: `common_pool_copies: 7`, `uncommon_pool_copies: 6`, `rare_pool_copies: 5`, `shop_weight_per_card: 0.08`, `shop_weight_cap: 0.70`, `starting_gold: 6`, `gold_baseline_per_round: 3`, `interest_threshold_gold: 6`, `interest_max_bonus: 3`, `objective_gold_reward: 4`, `kill_gold_reward: 2`, `mana_cap: 12`, `objective_hp: 6`, `fake_count: 3`, `fake_objective_spawn_advance: 2`, `draft_initial_timer_seconds: 60`, `draft_shop_timer_seconds: 25`, `placement_timer_seconds: 15`, `resolution_max_duration_seconds: 90`, `auction_max_duration_seconds: 180`, `disconnect_grace_seconds: 45`, `auction_timer_seconds: 25`, `auction_timer_reset_seconds: 8`, `xelor_sablier_steal: 2`), **WHEN** `load_game_config()` is called, **THEN** it returns `Ok(config)` where every field equals the fixture value (verified field-by-field). | BLOCKING |
+| GC2a | **GIVEN** `load_game_config()` is called with a path that does not exist on the file system, **WHEN** the function returns, **THEN** it returns `Err(e)` where `e.to_string()` contains the literal string `"assets/config/game_config.ron"`. | BLOCKING |
+| GC2b | **GIVEN** a Bevy `App` configured with the server startup plugin and no `game_config.ron` at `assets/config/game_config.ron`, **WHEN** the loading state runs, **THEN** the `App` does not advance to the `InGame` state and `Res<GameConfig>` is not present in the `World`. | BLOCKING (Integration) |
+| GC3 | **GIVEN** a file at the expected config path containing deliberately malformed RON (e.g., `GameConfig( mana_cap: `), **WHEN** `load_game_config()` is called, **THEN** it returns `Err(e)` where `e.to_string()` contains `"assets/config/game_config.ron"` AND contains content beyond the path alone (a line/column position, or a non-empty parse error description). | BLOCKING |
+| GC4 | **GIVEN** a `game_config.ron` that omits the `mana_cap` field (all other fields valid), **WHEN** `load_game_config()` is called, **THEN** it returns `Ok(config)` where `config.mana_cap == 10` (the design-intent default from the Tuning Knobs table). | BLOCKING |
+| GCN-DEFAULTS | **GIVEN** `GameConfig::default()` is constructed, **THEN** every field equals the Tuning Knobs table value: `common_pool_copies == 6`, `uncommon_pool_copies == 5`, `rare_pool_copies == 4`, `shop_weight_per_card == 0.10`, `shop_weight_cap == 0.65`, `starting_gold == 5`, `gold_baseline_per_round == 2`, `interest_threshold_gold == 5`, `interest_max_bonus == 2`, `objective_gold_reward == 3`, `kill_gold_reward == 1`, `mana_cap == 10`, `objective_hp == 5`, `fake_count == 2`, `fake_objective_spawn_advance == 1`, `draft_initial_timer_seconds == 45`, `draft_shop_timer_seconds == 30`, `placement_timer_seconds == 10`, `resolution_max_duration_seconds == 60`, `auction_max_duration_seconds == 120`, `disconnect_grace_seconds == 30`, `auction_timer_seconds == 20`, `auction_timer_reset_seconds == 5`, `xelor_sablier_steal == 1`. | BLOCKING |
+
+### Validation
+
+| # | Criterion | Type |
+|---|---|---|
+| GC5 | **GIVEN** `shop_weight_cap = 0.0`, **WHEN** `validate_game_config()` is called, **THEN** it returns `Err`. | BLOCKING |
+| GC6 | **GIVEN** `shop_weight_cap = 1.0`, **WHEN** `validate_game_config()` is called, **THEN** it returns `Err`. | BLOCKING |
+| GC6b | **GIVEN** `shop_weight_cap = -0.1f32`, **WHEN** `validate_game_config()` is called, **THEN** it returns `Err`. | BLOCKING |
+| GC6c | **GIVEN** `shop_weight_cap = 0.5` and `shop_weight_per_card = 0.10` (per-card weight below cap), **WHEN** `validate_game_config()` is called, **THEN** it returns `Ok(())`. | BLOCKING |
+| GC6d | **GIVEN** `shop_weight_per_card = 0.15` and `shop_weight_cap = 0.10` (per-card weight ≥ cap), **WHEN** `validate_game_config()` is called, **THEN** it returns `Err`. | BLOCKING |
+| GC7 | *(Three independent test cases, one per validated rarity)* **GIVEN** a `GameConfig` with exactly one of `common_pool_copies`, `uncommon_pool_copies`, or `rare_pool_copies` set to `0` (each tested separately, all other fields valid), **WHEN** `validate_game_config()` is called, **THEN** it returns `Err` in each of the three cases. | BLOCKING |
+| GC8 | **GIVEN** `fake_count = 5`, **WHEN** `validate_game_config()` is called, **THEN** it returns `Err`. | BLOCKING |
+| GC8b | **GIVEN** `fake_count = 0`, **WHEN** `validate_game_config()` is called, **THEN** it returns `Err` and `e.to_string()` contains `"fake_count"`. | BLOCKING |
+| GC9 | **GIVEN** a `GameConfig` with `mana_cap = 100` and all other fields valid, **WHEN** `validate_game_config()` is called, **THEN** it returns `Ok(())`. Additionally, **GIVEN** `load_game_config()` with a fixture containing `mana_cap: 100`, **THEN** it returns `Ok(config)` where `config.mana_cap == 100`. | BLOCKING |
+| GC9b | **GIVEN** `objective_hp = 0`, **WHEN** `validate_game_config()` is called, **THEN** it returns `Err`. | BLOCKING |
+| GC9c | **GIVEN** `placement_timer_seconds = 0`, **WHEN** `validate_game_config()` is called, **THEN** it returns `Err`. | BLOCKING |
+| GC9d | **GIVEN** `auction_timer_seconds = 0`, **WHEN** `validate_game_config()` is called, **THEN** it returns `Err`. | BLOCKING |
+| GC9e | **GIVEN** `auction_timer_reset_seconds = 20` and `auction_timer_seconds = 20` (reset equals total timer), **WHEN** `validate_game_config()` is called, **THEN** it returns `Err`. | BLOCKING |
+| GC9f | **GIVEN** `auction_timer_reset_seconds = 5` and `auction_timer_seconds = 20` (reset less than total timer), **WHEN** `validate_game_config()` is called, **THEN** it returns `Ok(())`. | BLOCKING |
+
+### Hot-Reload (Integration — require running Bevy `App`)
+
+| # | Criterion | Type |
+|---|---|---|
+| GC10 | **GIVEN** a Bevy `App` running in debug mode with `GameConfig` loaded from a fixture containing `placement_timer_seconds: 10`, **WHEN** the fixture file is overwritten with `placement_timer_seconds: 15` and the `App` is updated until `AssetEvent::<GameConfig>::Modified` is processed, **THEN** querying `Res<GameConfig>` from the `World` returns a value where `placement_timer_seconds == 15` (before the update it was `10`). Test evidence: `tests/integration/game_config/hot_reload_valid_test.rs` | BLOCKING (Integration) |
+| GC11 | **GIVEN** a Bevy `App` running in debug mode with `GameConfig` loaded from a valid fixture containing `placement_timer_seconds: 10`, **WHEN** the fixture file is overwritten with an invalid config (`shop_weight_cap: 0.0`) and the `App` is updated until the asset event is processed, **THEN** (a) `Res<GameConfig>.placement_timer_seconds == 10` (original value unchanged), AND (b) the test log capture buffer contains at least one WARN-level entry. Note: requires `tracing-test` crate or equivalent. Test evidence: `tests/integration/game_config/hot_reload_invalid_test.rs` | BLOCKING (Integration) |
+| GC12 | **GIVEN** a Bevy `App` compiled without `debug_assertions` (release build) with `GameConfig` loaded from a fixture containing `placement_timer_seconds: 10`, **WHEN** the fixture file is overwritten with `placement_timer_seconds: 15` and the `App` is updated for 2 full ticks, **THEN** `Res<GameConfig>.placement_timer_seconds == 10` (no reload occurred). Test evidence: `tests/integration/game_config/no_hot_reload_release_test.rs` | BLOCKING (Integration) |
+
+## Open Questions
+
+| # | Question | Owner | Priority |
+|---|---|---|---|
+| OQ1 | Which version of `bevy_asset_loader` is compatible with Bevy 0.18? Verify on crates.io — assume ~0.22 until confirmed. | Engine Programmer | Before sprint start |
+| OQ2 | Does `bevy_asset_loader` for Bevy 0.18 handle `TypePath` internally for custom asset types, or does `GameConfig`'s loader struct require an explicit `#[derive(TypePath)]`? | Engine Programmer | Before sprint start |
+| OQ3 | `ron` is no longer re-exported from `bevy_asset` in Bevy 0.18 — add `ron = "0.8"` as a direct dependency in `Cargo.toml`. Confirm exact version against Bevy 0.18 compatibility before implementation. | Lead Programmer | Before sprint start |

@@ -1,87 +1,101 @@
 # Technical Preferences
 
-<!-- Populated by /setup-engine. Updated as the user makes decisions throughout development. -->
+<!-- Updated: 2026-04-28 — Bevy 0.18 + Lightyear stack confirmed. -->
 <!-- All agents reference this file for project-specific standards and conventions. -->
 
 ## Engine & Language
 
-- **Engine**: [TO BE CONFIGURED — run /setup-engine]
-- **Language**: [TO BE CONFIGURED]
-- **Rendering**: [TO BE CONFIGURED]
-- **Physics**: [TO BE CONFIGURED]
+- **Engine**: Bevy 0.18 (Rust)
+- **Language**: Rust (stable toolchain, edition 2021)
+- **Rendering**: Bevy 2D — sprites, TextureAtlas, bevy_ui (Required Components API)
+- **Physics**: None (lane-based game; no physics engine needed)
+- **Networking**: Lightyear (bevy_lightyear) over WebSocket (WASM client) / native (server)
+- **Animation**: bevy_tweening for UI and unit movement transitions
+- **Asset loading**: bevy_asset_loader (typed asset collections, loading states)
 
 ## Input & Platform
 
-<!-- Written by /setup-engine. Read by /ux-design, /ux-review, /test-setup, /team-ui, and /dev-story -->
-<!-- to scope interaction specs, test helpers, and implementation to the correct input methods. -->
-
-- **Target Platforms**: [TO BE CONFIGURED — e.g., PC, Console, Mobile, Web]
-- **Input Methods**: [TO BE CONFIGURED — e.g., Keyboard/Mouse, Gamepad, Touch, Mixed]
-- **Primary Input**: [TO BE CONFIGURED — the dominant input for this game]
-- **Gamepad Support**: [TO BE CONFIGURED — Full / Partial / None]
-- **Touch Support**: [TO BE CONFIGURED — Full / Partial / None]
-- **Platform Notes**: [TO BE CONFIGURED — any platform-specific UX constraints]
+- **Target Platforms**: Web browser (WASM via Trunk) — primary. Native desktop as dev/debug target.
+- **Input Methods**: Mouse + Keyboard (primary). Touch (stretch goal — not hackathon scope).
+- **Primary Input**: Mouse click (card selection, bidding, lane targeting)
+- **Gamepad Support**: None
+- **Touch Support**: None (hackathon scope)
+- **Platform Notes**: WASM bundle must stay under 50 MB. Trunk builds with `--release` for production. Server is a headless Rust binary deployed to Railway via Docker.
 
 ## Naming Conventions
 
-- **Classes**: [TO BE CONFIGURED]
-- **Variables**: [TO BE CONFIGURED]
-- **Signals/Events**: [TO BE CONFIGURED]
-- **Files**: [TO BE CONFIGURED]
-- **Scenes/Prefabs**: [TO BE CONFIGURED]
-- **Constants**: [TO BE CONFIGURED]
+- **Structs / Enums / Components / Events / Plugins**: `PascalCase` (e.g., `CardUnit`, `AuctionBidEvent`, `GamePlugin`)
+- **Functions / Systems / Variables / Fields**: `snake_case` (e.g., `resolve_combat`, `current_gold`)
+- **Constants / Statics**: `SCREAMING_SNAKE_CASE` (e.g., `OBJECTIVE_HP`, `MAX_HAND_SIZE`)
+- **Files / Modules**: `snake_case.rs` (e.g., `auction_system.rs`, `card_pool.rs`)
+- **Plugins**: suffix `Plugin` (e.g., `CombatPlugin`, `AuctionPlugin`, `LightyearPlugin`)
+- **Systems**: verb_noun pattern (e.g., `spawn_unit`, `resolve_lane_combat`, `apply_interest`)
+- **Resources**: noun, PascalCase (e.g., `GameConfig`, `CardPool`, `RoundState`)
+- **Lightyear protocol types**: prefix with `C2S` (client-to-server) or `S2C` (server-to-client) for messages (e.g., `C2SPlaceUnit`, `S2CRoundResolved`)
 
 ## Performance Budgets
 
-- **Target Framerate**: [TO BE CONFIGURED]
-- **Frame Budget**: [TO BE CONFIGURED]
-- **Draw Calls**: [TO BE CONFIGURED]
-- **Memory Ceiling**: [TO BE CONFIGURED]
+- **Target Framerate**: 60 FPS (browser/WASM)
+- **Frame Budget**: 16.67ms total; game logic < 2ms; render < 12ms
+- **Draw Calls**: Minimise via sprite batching — all units of same atlas in one draw call
+- **WASM Bundle Size**: < 50 MB (release build with LTO + strip)
+- **Memory**: < 256 MB WASM heap
+- **Network**: < 1 KB per round message (lightyear delta compression assumed)
 
 ## Testing
 
-- **Framework**: [TO BE CONFIGURED]
-- **Minimum Coverage**: [TO BE CONFIGURED]
-- **Required Tests**: Balance formulas, gameplay systems, networking (if applicable)
+- **Framework**: Bevy's built-in `World`-based ECS tests (`#[test]` with `World::new()`)
+- **Minimum Coverage**: All economy formulas, combat damage formula, auction state machine, win condition check
+- **Required Tests**: See GDD Section 8 Acceptance Criteria — all BLOCKING criteria need a test
+- **Test location**: `tests/unit/[system]/` for unit; `tests/integration/[system]/` for multi-system
+- **No mocks**: Test against real ECS `World` state, not mock systems (see `liv-bevy-018` for patterns)
 
 ## Forbidden Patterns
 
-<!-- Add patterns that should never appear in this project's codebase -->
-- [None configured yet — add as architectural decisions are made]
+- **No client-side RNG** — all randomness (Ecaflip dice, shop rolls, fake-objective rewards) must be seeded and computed server-side, result broadcast to clients
+- **No game state on client** — clients are views; all authoritative state lives on the Lightyear server
+- **No `unwrap()` in production paths** — use `?` propagation or explicit `expect()` with a message
+- **No `bevy_egui` in shipped build** — egui is dev/debug only; all shipped UI uses bevy_ui
+- **No hardcoded balance values in systems** — all tuning knobs go through `GameConfig` resource loaded from `assets/config/game_config.ron`
 
 ## Allowed Libraries / Addons
 
-<!-- Add approved third-party dependencies here -->
-- [None configured yet — add as dependencies are approved]
+| Crate | Version | Purpose |
+|---|---|---|
+| `bevy` | 0.18 | Core engine |
+| `bevy_lightyear` | latest compatible with 0.18 | Multiplayer networking |
+| `bevy_tweening` | latest compatible with 0.18 | UI and movement animations |
+| `bevy_asset_loader` | latest compatible with 0.18 | Typed asset loading / loading screens |
+| `rand` + `rand_chacha` | latest | Server-side seeded RNG (ChaCha for determinism) |
+| `serde` + `serde_json` | latest | Card data serialisation (JSON card pool files) |
+| `ron` | latest | Config files (`GameConfig`, card definitions) |
+| `trunk` | latest | WASM build + dev server |
+| `wasm-bindgen` | latest | WASM/JS boundary (if needed for browser APIs) |
 
 ## Architecture Decisions Log
 
-<!-- Quick reference linking to full ADRs in docs/architecture/ -->
 - [No ADRs yet — use /architecture-decision to create one]
+- Pending ADRs needed: client-server authority model, card data schema, round state machine, auction event flow
 
 ## Engine Specialists
 
-<!-- Written by /setup-engine when engine is configured. -->
-<!-- Read by /code-review, /architecture-decision, /architecture-review, and team skills -->
-<!-- to know which specialist to spawn for engine-specific validation. -->
-
-- **Primary**: [TO BE CONFIGURED — run /setup-engine]
-- **Language/Code Specialist**: [TO BE CONFIGURED]
-- **Shader Specialist**: [TO BE CONFIGURED]
-- **UI Specialist**: [TO BE CONFIGURED]
-- **Additional Specialists**: [TO BE CONFIGURED]
-- **Routing Notes**: [TO BE CONFIGURED]
+- **Primary**: `liv-bevy-018` skill (enforces Bevy 0.18 API patterns)
+- **Networking**: `liv-bevy-lightyear` skill (all lightyear code)
+- **Language/Code Specialist**: `gameplay-programmer` agent (Rust game logic)
+- **Shader Specialist**: `technical-artist` agent (Bevy custom shaders if needed)
+- **UI Specialist**: `ui-programmer` agent + `liv-bevy-018` skill
+- **Additional Specialists**: `network-programmer` agent for protocol/sync design
+- **Routing Notes**: Any `.rs` file importing `bevy` triggers `liv-bevy-018`. Any `.rs` file importing `lightyear` also triggers `liv-bevy-lightyear`.
 
 ### File Extension Routing
 
-<!-- Skills use this table to select the right specialist per file type. -->
-<!-- If a row says [TO BE CONFIGURED], fall back to Primary for that file type. -->
-
 | File Extension / Type | Specialist to Spawn |
 |-----------------------|---------------------|
-| Game code (primary language) | [TO BE CONFIGURED] |
-| Shader / material files | [TO BE CONFIGURED] |
-| UI / screen files | [TO BE CONFIGURED] |
-| Scene / prefab / level files | [TO BE CONFIGURED] |
-| Native extension / plugin files | [TO BE CONFIGURED] |
-| General architecture review | Primary |
+| `*.rs` (game logic, ECS systems) | `gameplay-programmer` + `liv-bevy-018` |
+| `*.rs` (lightyear protocol/networking) | `network-programmer` + `liv-bevy-lightyear` + `liv-bevy-018` |
+| `*.rs` (UI systems, bevy_ui) | `ui-programmer` + `liv-bevy-018` |
+| `*.wgsl` (custom shaders) | `technical-artist` |
+| `*.ron` (config, card data) | `gameplay-programmer` |
+| `*.json` (card pool data) | `gameplay-programmer` |
+| `Trunk.toml` / `Cargo.toml` | `devops-engineer` |
+| General architecture review | `lead-programmer` + `liv-bevy-018` |

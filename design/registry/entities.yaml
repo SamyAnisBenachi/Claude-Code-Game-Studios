@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: ""
+last_updated: "2026-04-29"  # updated: disconnect_grace_seconds 5→30 (RSM review); spawn_range_valid expression updated to named constants
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -106,7 +106,97 @@ items: []
 #   output_range[min, max], added
 # Optional: expression (the actual formula), notes
 
-formulas: []
+formulas:
+  - name: mana_ramp
+    status: active
+    source: design/gdd/economy-system.md
+    referenced_by:
+      - design/gdd/economy-system.md
+      - design/gdd/lanes-and-lies-gdd.md
+    variables:
+      - round_number
+      - mana_cap
+    output_range: [1, 12]
+    expression: "min(R, mana_cap)"
+    notes: "Applied at the start of each DRAFT phase. Monotonically non-decreasing until mana_cap is reached."
+    added: 2026-04-28
+    revised: ""
+
+  - name: interest
+    status: active
+    source: design/gdd/economy-system.md
+    referenced_by:
+      - design/gdd/economy-system.md
+      - design/gdd/lanes-and-lies-gdd.md
+    variables:
+      - gold_at_resolution_end
+      - interest_max_bonus
+    output_range: [0, 2]
+    expression: "min(floor(g / 5), interest_max_bonus)"
+    notes: "Snapshot taken from gold held at RESOLUTION end, BEFORE baseline is added. Threshold divisor 5 is hardcoded."
+    added: 2026-04-28
+    revised: ""
+
+  - name: gold_income
+    status: active
+    source: design/gdd/economy-system.md
+    referenced_by:
+      - design/gdd/economy-system.md
+      - design/gdd/lanes-and-lies-gdd.md
+    variables:
+      - gold_at_resolution_end
+      - interest_max_bonus
+      - gold_baseline_per_round
+    output_range: ["gold_prev+2", "gold_prev+4"]
+    expression: "gold_prev + min(floor(gold_prev / 5), interest_max_bonus) + gold_baseline_per_round"
+    notes: "Applied at DRAFT start. Interest is computed first from gold_prev snapshot, then baseline added."
+    added: 2026-04-28
+    revised: ""
+
+  - name: is_auction_round
+    status: active
+    source: design/gdd/round-state-machine.md
+    referenced_by:
+      - design/gdd/round-state-machine.md
+    variables:
+      - round_number
+    output_range: [false, true]
+    expression: "R mod 3 == 0"
+    notes: "Evaluated after round_number increments on RESOLUTION exit. DRAFT_INITIAL (round 1) is exempt — formula is never evaluated for round 1. Density: one auction every 3 rounds; 3-4 auctions in a typical 9-12 round game."
+    added: 2026-04-28
+    revised: ""
+
+  - name: unit_movement
+    status: active
+    source: design/gdd/board-lane-system.md
+    referenced_by:
+      - design/gdd/board-lane-system.md
+    variables:
+      - current_cell
+      - mp
+      - player_direction
+    output_range: [1, 8]
+    expression: "clamp(current_cell + direction(player) * mp, 1, 8)"
+    notes: "direction(Player A) = +1; direction(Player B) = -1. Applied independently at sub-step 2 (CHARGE X) and sub-step 5 (standard movement). Units clamp at objective cell and persist there."
+    added: 2026-04-28
+    revised: ""
+
+  - name: spawn_range_valid
+    status: active
+    source: design/gdd/board-lane-system.md
+    referenced_by:
+      - design/gdd/board-lane-system.md
+    variables:
+      - target_cell
+      - fakes_destroyed
+      - player
+      - spawn_cell_A  # = 1, loaded from GameConfig
+      - spawn_cell_B  # = 8, loaded from GameConfig
+    output_range: [false, true]
+    expression: "Player A: (target_cell >= spawn_cell_A) AND (target_cell <= spawn_cell_A + fakes_A); Player B: (target_cell >= spawn_cell_B - fakes_B) AND (target_cell <= spawn_cell_B)"
+    notes: "spawn_cell_A=1, spawn_cell_B=8 (named constants from GameConfig, not hardcoded). Spawn range expands globally across all 5 lanes by 1 cell per fake objective destroyed. Structures and Traps bypass this formula entirely."
+    added: 2026-04-28
+    revised: "2026-04-29"
 
 # Example:
 #
@@ -139,7 +229,325 @@ formulas: []
 #
 # Required fields: name, status, source, referenced_by, value, unit, added
 
-constants: []
+constants:
+  - name: common_pool_copies
+    status: active
+    source: design/gdd/card-data-pool.md
+    referenced_by:
+      - design/gdd/card-data-pool.md
+      - design/gdd/game-config.md
+    value: 6
+    unit: copies_per_player_pool
+    added: 2026-04-28
+    revised: ""
+
+  - name: uncommon_pool_copies
+    status: active
+    source: design/gdd/card-data-pool.md
+    referenced_by:
+      - design/gdd/card-data-pool.md
+      - design/gdd/game-config.md
+    value: 5
+    unit: copies_per_player_pool
+    added: 2026-04-28
+    revised: ""
+
+  - name: rare_pool_copies
+    status: active
+    source: design/gdd/card-data-pool.md
+    referenced_by:
+      - design/gdd/card-data-pool.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/game-config.md
+    value: 4
+    unit: copies_per_player_pool
+    added: 2026-04-28
+    revised: ""
+
+  - name: epic_pool_copies
+    status: active
+    source: design/gdd/card-data-pool.md
+    referenced_by:
+      - design/gdd/card-data-pool.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/game-config.md
+    value: 1  # was: 2 before 2026-04-28 (consistency-check resolved conflict with master GDD rarity table)
+    unit: copies_per_player_pool
+    added: 2026-04-28
+    revised: "2026-04-28"
+
+  - name: legendary_pool_copies
+    status: active
+    source: design/gdd/card-data-pool.md
+    referenced_by:
+      - design/gdd/card-data-pool.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/game-config.md
+    value: 1
+    unit: copies_per_player_pool
+    added: 2026-04-28
+    revised: ""
+
+  - name: shop_weight_per_card
+    status: active
+    source: design/gdd/lanes-and-lies-gdd.md
+    referenced_by:
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/card-data-pool.md
+      - design/gdd/game-config.md
+    value: 0.10
+    unit: probability_per_owned_card
+    added: 2026-04-28
+    revised: ""
+
+  - name: shop_weight_cap
+    status: active
+    source: design/gdd/lanes-and-lies-gdd.md
+    referenced_by:
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/card-data-pool.md
+      - design/gdd/game-config.md
+    value: 0.65
+    unit: max_raw_weight
+    added: 2026-04-28
+    revised: ""
+
+  - name: starting_gold
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/economy-system.md
+    value: 5
+    unit: gold
+    added: 2026-04-28
+    revised: ""
+
+  - name: gold_baseline_per_round
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/economy-system.md
+    value: 2
+    unit: gold_per_round
+    added: 2026-04-28
+    revised: ""
+
+  - name: interest_max_bonus
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/economy-system.md
+    value: 2
+    unit: gold_per_round
+    added: 2026-04-28
+    revised: ""
+
+  - name: objective_gold_reward
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/economy-system.md
+    value: 3
+    unit: gold
+    added: 2026-04-28
+    revised: ""
+
+  - name: kill_gold_reward
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/economy-system.md
+    value: 1
+    unit: gold
+    added: 2026-04-28
+    revised: ""
+
+  - name: mana_cap
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/economy-system.md
+    value: 10
+    unit: mana
+    added: 2026-04-28
+    revised: ""
+
+  - name: objective_hp
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+    value: 5
+    unit: hp
+    added: 2026-04-28
+    revised: ""
+
+  - name: fake_count
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/board-lane-system.md
+    value: 2
+    unit: count
+    added: 2026-04-28
+    revised: ""
+
+  - name: fake_objective_spawn_advance
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/card-data-pool.md
+      - design/gdd/board-lane-system.md
+    value: 1
+    unit: cells
+    added: 2026-04-28
+    revised: ""
+
+  - name: lane_count
+    status: active
+    source: design/gdd/board-lane-system.md
+    referenced_by:
+      - design/gdd/board-lane-system.md
+    value: 5
+    unit: lanes
+    added: 2026-04-28
+    revised: ""
+
+  - name: cells_per_lane
+    status: active
+    source: design/gdd/board-lane-system.md
+    referenced_by:
+      - design/gdd/board-lane-system.md
+    value: 8
+    unit: cells
+    added: 2026-04-28
+    revised: ""
+
+  - name: max_minions_per_player_per_lane
+    status: active
+    source: design/gdd/board-lane-system.md
+    referenced_by:
+      - design/gdd/board-lane-system.md
+    value: 1
+    unit: minions
+    added: 2026-04-28
+    revised: ""
+
+  - name: spawn_range_default
+    status: active
+    source: design/gdd/board-lane-system.md
+    referenced_by:
+      - design/gdd/board-lane-system.md
+    value: 1
+    unit: cells_from_spawn
+    notes: "Default spawn range = cell 1 only (no fakes destroyed). Expands by fake_objective_spawn_advance per fake destroyed."
+    added: 2026-04-28
+    revised: ""
+
+  - name: spawn_range_max
+    status: active
+    source: design/gdd/board-lane-system.md
+    referenced_by:
+      - design/gdd/board-lane-system.md
+    value: 3
+    unit: cells_from_spawn
+    notes: "Maximum spawn range when both fake objectives destroyed (fake_count=2, fake_objective_spawn_advance=1 each)."
+    added: 2026-04-28
+    revised: ""
+
+  - name: auction_timer_seconds
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+    value: 20
+    unit: seconds
+    added: 2026-04-28
+    revised: ""
+
+  - name: auction_timer_reset_seconds
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+    value: 5
+    unit: seconds
+    added: 2026-04-28
+    revised: ""
+
+  - name: placement_timer_seconds
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+    value: 10
+    unit: seconds
+    added: 2026-04-28
+    revised: ""
+
+  - name: xelor_sablier_steal
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/lanes-and-lies-gdd.md
+    value: 1
+    unit: mana
+    added: 2026-04-28
+    revised: ""
+
+  - name: draft_shop_timer_seconds
+    status: active
+    source: design/gdd/round-state-machine.md
+    referenced_by:
+      - design/gdd/round-state-machine.md
+    value: 30
+    unit: seconds
+    added: 2026-04-28
+    revised: ""
+
+  - name: draft_initial_timer_seconds
+    status: active
+    source: design/gdd/round-state-machine.md
+    referenced_by:
+      - design/gdd/round-state-machine.md
+    value: 45
+    unit: seconds
+    notes: "Early exit expected at ~25-30s via all-submit. Timer is a safety net for new players evaluating 9 cards with 5g budget."
+    added: 2026-04-28
+    revised: ""
+
+  - name: disconnect_grace_seconds
+    status: active
+    source: design/gdd/round-state-machine.md
+    referenced_by:
+      - design/gdd/round-state-machine.md
+      - design/gdd/lanes-and-lies-gdd.md
+    value: 30  # was: 5 before 2026-04-29 (RSM design-review raised for WASM browser targets — OS interrupts cause 3-6s gaps)
+    unit: seconds
+    notes: "Strict greater-than condition. 30s is intentional for WASM/browser target — OS interrupts, antivirus, tab switches cause 3-6s gaps. Hard to abuse in a 10-15 min game. Safe range: 15-60."
+    added: 2026-04-28
+    revised: "2026-04-29"
 
 # Example:
 #

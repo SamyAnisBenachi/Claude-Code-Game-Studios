@@ -1,0 +1,344 @@
+HANDOVER FINAL — GAME DESIGN COMPLET
+CONTEXTE PROJET
+Format : Hackathon 1 semaine, développeur solo assisté par IA
+Stack : Phaser 3 + Socket.io + Node.js, déployé Railway/Vercel
+Public cible : Gamers hardcore (FPS, LoL/Dota, WC3, WoW, Slay the Spire, Terraria, Factorio, Waven, Dofus, Krosmaga)
+Sessions de jeu : 1-2h total, parties de 10-15 min
+Thème : Fantasy (placeholder)
+
+CONCEPT CENTRAL
+Jeu de cartes / lane-pushing tactique multijoueur avec enchères compétitives comme mécanique de draft originale. Inspiré de Krosmaga (structure de jeu, cartes, board), TFT (économie gold, pondération shop), Hearthstone (courbe de mana), Slay the Spire (deckbuilding progressif).
+
+Mécanique signature : Enchères avec bluff — pool de cartes partagé, le prix monte si plusieurs joueurs enchérissent, le dernier enchérisseur paye et prend. Bluff possible : enchérir pour faire monter le prix à un adversaire, mais si tu es le dernier à bidder tu dois assumer l'achat.
+
+MODES DE JEU
+Même structure pour tous les modes — nombre d'équipes/joueurs est un paramètre :
+
+1v1 / 2v2 / 3v3 / 1v1v1 / 2v2v2
+STRUCTURE DU BOARD
+Identique à Krosmaga
+4 cases par côté par lane. Chaque lane = 8 cases totales (4 de ton côté, 4 du côté adverse). 5 lanes = 20 cases de ton côté, 20 du côté adverse.
+
+Les unités spawnnent sur tes cases, avancent automatiquement selon leur MP vers le côté adverse.
+
+1v1 / 2v2 / 3v3
+
+5 lanes horizontales
+Équipe A (bas) ←→ Équipe B (haut)
+2v2v2
+
+5 lanes au total :
+- 2 lanes vers Équipe adverse A
+- 2 lanes vers Équipe adverse B
+- 1 lane centrale → point de capture au milieu
+Point de capture central : L'équipe qui tient une unité dessus reçoit un bonus passif (valeur à définir en dev). Toutes les équipes peuvent contester.
+
+OBJECTIFS CACHÉS
+5 objectifs par équipe (un par lane)
+3 vrais + 2 faux — l'adversaire ne sait pas lesquels sont vrais
+5 PV par objectif
+Win condition : tu PERDS quand 2 de tes propres objectifs sont détruits, peu importe par quelle équipe adverse
+Rewards destruction d'objectif
+Tout objectif détruit (vrai ou faux) :
+→ Attaquant reçoit +3 gold
+
+Faux objectif détruit (en plus) :
+→ TOUJOURS : spawn tes unités dans cette lane à une case plus avancée (expanded spawn range)
+→ + reward aléatoire : +1 mana permanent OU pick de carte solo sans enchère
+
+Les faux objectifs ont chacun un reward aléatoire assigné aléatoirement en début de partie — personne ne sait lequel est où.
+
+Cartes double-tranchant
+Cartes puissantes avec contrecoup sur TES PROPRES objectifs :
+
+Révèle un de tes objectifs à l'adversaire (tu choisis)
+Détruit un de tes faux objectifs
+L'adversaire voit si un de tes objectifs est vrai ou faux
+ÉCONOMIE — DOUBLE MONNAIE
+MANA / PA (jouer des cartes en combat)
+
++1 par round automatiquement
+Round 1 = 1 mana | Round 10 = 10 mana (cap)
+Reset à 0 chaque round (SAUF Xelor — voir classes)
+Utilisé pour : jouer unités, sorts, pièges, structures
+GOLD (économie de draft)
+
++2 automatiquement par round (baseline garanti)
+
+Bonus combat :
+  Kill unité adverse    → +1 gold
+  Détruire un objectif  → +3 gold (vrai ou faux)
+  Collecter un prism    → voir section Prisms
+
+Intérêt TFT :
+  +1 gold par 5 gold épargnés (max +2 gold bonus/round)
+
+5 gold offerts au départ (draft initial, unique)
+Coûts shop
+
+Commune  : 1 gold
+Rare     : 2 gold
+Épique   : 3 gold
+Limitée  : 4 gold
+Refresh shop : 1 gold
+PRISMS
+1 prism par lane, distribution sur 5 lanes identique à Krosmaga :
+
+
+Lane 1 (extrémité) → carte spell : 1 dégât à un dofus adverse (coûte 3 mana)
+Lane 2             → +1 mana ajouté à ta réserve immédiatement
+Lane 3 (centre)    → piocher 1 carte aléatoire
+Lane 4             → +1 mana ajouté à ta réserve immédiatement
+Lane 5 (extrémité) → carte spell : 1 dégât à un dofus adverse (coûte 3 mana)
+Respawn : réapparaissent quand tous collectés (identique Krosmaga).
+
+DRAFT — ACQUISITION DE CARTES
+Draft initial (pré-partie)
+9 cartes aléatoires affichées (mix classe + neutres)
+Budget de 5 gold offerts (unique)
+Tu achètes ce que tu veux dans ce budget
+Cartes non achetées disparaissent
+Shop personnel (chaque round)
+3 cartes par round
+Composition : chaque slot = 50% chance carte de ta classe / 50% carte neutre
+Pondération TFT à l'intérieur de chaque catégorie :
+Dans la moitié classe : si t'as beaucoup d'unités Iop → plus de sorts Iop
+Dans la moitié neutre : si t'as des Gobballs → plus de Gobballs
+Refresh automatique chaque round (cartes non achetées disparaissent)
+Refresh manuel possible en payant 1 gold mid-round
+Si main à 10 cartes → impossible d'acheter
+Enchères partagées (intervalles réguliers)
+Aux rounds 1-3, 1-6, 2-3, 2-6, 3-3, 3-6... etc.
+
+Cartes rares/épiques/limitées uniquement — plus puissantes que le shop normal
+Puissance croissante selon le stage
+Timer 20 secondes, last bidder paye et prend
+Bluff possible — enchérir sans vouloir la carte pour faire monter le prix adversaire
+Seules cartes neutres/génériques aux enchères (pas de cartes de classe)
+Structure des stages
+
+Stage 1 : 1-1, 1-2, [1-3 enchère], 1-4, 1-5, [1-6 enchère]
+Stage 2 : 2-1, 2-2, [2-3 enchère], 2-4, 2-5, [2-6 enchère]
+etc.
+La partie continue jusqu'à win condition — pas de fin de stage fixe.
+
+Hand size
+Maximum 10 cartes en main.
+
+POOL DE CARTES
+Source : Krosmaga cardlist (Extension=1 uniquement, Extension 518 retirée)
+
+6 classes (Extension=1 seulement) :
+  Iop     : 24 cartes
+  Cra     : 25 cartes
+  Sacrier : 25 cartes
+  Xelor   : 25 cartes
+  Ecaflip : 24 cartes
+  Sadida  : 25 cartes
+  TOTAL   : 148 cartes de classe
+
+Neutres (Extension=1) : ~150 cartes
+TOTAL UTILISABLE      : ~298 cartes
+Familles neutres incluses
+Toutes les familles Krosmaga Extension=1 sont dans le pool :
+Arachnée, Bow Meow, Chafer, Craqueleur, Gobball, Blibli, Jelly, Drheller, Tofu, Wabbit/Cawwot, Strich, Rat, Larva, Scaraleaf, Piwi, Vigilante, Vampire, Moogrr, Boowolf, Monk, Plant, Snapper, Bandit, Midgins, Infinite Neutrals, Krosmics divers.
+
+Cartes Infinite (cartes Limitées dans notre système)
+Les cartes Infinite Krosmaga = nos cartes Limitées — apparaissent 1 seule fois par partie dans l'enchère. Elles ont 3 niveaux d'évolution dans Krosmaga (ce mécanisme est à adapter ou ignorer pour le hackathon).
+
+Classes non choisies (ignorées)
+Eniripsa, Sram, Enutrof, Feca, Huppermage (~114 cartes) → non incluses.
+
+Rarités
+
+Communes  : copies multiples dans le pool
+Uncommons : copies multiples (légèrement moins)
+Rares     : 1-2 copies
+Krosmics  : 1 copie
+Limitées  : 1 copie, apparaissent uniquement aux enchères
+CLASSES (6 CLASSES, BASE EXTENSION=1)
+La classe visible de chaque joueur par tous. Les cartes de classe apparaissent dans le shop personnel uniquement (jamais aux enchères).
+
+IOP — 24 cartes | Aggro Rush
+Identité : frapper vite, buff, CHARGE natif
+Cartes signature :
+
+Authority (Krosmic) — l'unité ciblée charge jusqu'au dofus adverse
+Felida (Krosmic) — FINAL BLOW : ajoute Jump à la main
+Heure de Gloire (Krosmic) — dépense tout le mana restant pour +1AT+1AR par mana
+Appel à la Baston (Krosmic) — pioche 4 cartes, garde les unités, défausse le reste
+Unités clés : Chuck Maurice (FIRST STRIKE 1/1), Archille (FIRST STRIKE 5/4), Sono Sino (autres chargent 1 chaque début de tour)
+
+Spells clés : Charge (ciblée charge 2), Intimidation (toutes chargent 2), Ravage (+2AT+FIRST STRIKE), Compulsion (+2AT+2AR)
+
+CRA — 25 cartes | Control Range
+Identité : RANGE, dégâts directs, repel
+Cartes signature :
+
+Criblage/Riddling (Krosmic) — inflige autant de dégâts à un dofus qu'il y a d'unités Crâ alliées en jeu
+Harcèlement (Krosmic) — 1 dégât à tous les dofus adverses
+Flèche Destructrice (Krosmic) — détruit une unité
+Guy Yomtella (Krosmic) — RANGE 1-6
+Unités clés : Clara Byne (RANGE 1-2, 1 dégât APPEARANCE), Fantôme Crâ (RANGE 1-2 + UNTARGETABLE), Betty Boubz (RANGE 1-3, COUNTERATTACK recule 2)
+
+Spells clés : Flèche de Recul (repel 5), Flèche Explosive (4 dégâts), Flèche Percante (ARMOR-PIERCING 2), Dernier Recours (retire RANGE + double AT)
+
+Note : "chaque Crâ en jeu" = chaque UNITÉ Crâ sur le board — scale naturellement avec tes minions Crâ.
+
+SACRIER — 25 cartes | Masochiste/Sacrifice
+Identité : INJURED (plus fort quand blessé), BODYGUARD, sacrifice
+Cartes signature :
+
+Fulgurance/Light Speed (Krosmic) — échange position de 2 unités alliées
+Sang Méprise (Krosmic) — révèle tous les dofus
+Punition (Krosmic) — sacrifie un de tes dofus pour infliger 3 dégâts à un dofus adverse
+Jet le Pied Volant (Krosmic) — charge 1 case quand une de tes unités/dofus prend des dégâts
+Unités clés : Edass (INJURED: +2AT+FIRST STRIKE), Dureden Taillair (INJURED: +2AT+1MP), Bould Erdash (BODYGUARD 7/6)
+
+Spells clés : Coup de Sang (AT = HP), La Gerbouille (+2AT injured + charge 2), Mort Proche (+3AT+2AR, meurt fin de tour), Refus de Mort (sacrifice dofus pour piocher 3)
+
+Note mode équipe : Punition sacrifie un objectif d'équipe — gardé tel quel même en 2v2.
+
+XELOR — 25 cartes | Tempo/Réserve
+Identité : Réserve de mana (PA), effets conditionnés à la réserve, manipulation du temps
+Mécanique de classe unique : Xelor est la seule classe dont le mana ne reset pas complètement. Il peut accumuler son mana via ses spells (Gelure transfère le mana courant vers la réserve). La réserve persiste entre les rounds.
+Cartes signature :
+
+Rollback (Krosmic) — dépense toute la réserve, tes unités chargent d'autant de cases
+Garde-Temps (Krosmic, 20 mana!) — détruit un dofus
+Dévouement (Krosmic) — transforme une unité en Momie alliée
+Miss Nuit (Krosmic) — +1 mana en réserve chaque fois que l'adversaire joue une carte
+Unités clés : Instantina (2 ou 5 dégâts si 5+ PA en réserve), Dente le Remonteur (gratuit si 5+ PA), Radoris Montrouge (dépense réserve pour AT+AR)
+
+Spells clés : Sinistro (se place sur dofus, 1 dégât/tour, détruit si blessé), Gelure (transfère PA vers réserve), Sablier (vole 1 PA à l'adversaire), Xelorium (vole TOUT le PA adverse)
+
+Note : PA/mana = même chose. "5+ AP en réserve" = 5+ mana accumulé dans la réserve Xelor. Les autres classes ne peuvent pas accumuler de mana.
+
+ECAFLIP — 24 cartes | Luck/Chaos
+Identité : dés 1d6, coin flip, variance maximale
+Cartes signature :
+
+Chacha/Bow Meow (Krosmic) — transforme une unité en Chacha Noir allié
+Craps (Krosmic) — inflige 8 OU 4 dégâts répartis entre les dofus adverses
+Miranda (Krosmic) — APPEARANCE : prend contrôle des unités adverses adjacentes jusqu'à sa mort
+Defhi Croquets (Krosmic) — FIRST STRIKE + charge 1d6 cases
+Unités clés : Chatar (APPEARANCE: +2AT OU 2 dégâts sur soi), Shava Shavien (DEATH: retourne dans ta main OU dans celle de l'adversaire), Karla Blondie (gagne 1d6 AT)
+
+Spells clés : Bluff (échange position de 2 de tes dofus — parfait pour notre système bluff!), Dé du Chateux (1d6 dégâts + révèle dofus si 3 ou moins), De Ecaflip (1d6, récupère si 3 ou moins), Bond du Félin (téléporte 1d6 cases)
+
+SADIDA — 25 cartes | Setup/Nature
+Identité : Seeds posées sur le board → transformées en unités/poupées, setup en deux phases
+Placement des Seeds : identique à Krosmaga — une Seed se pose sur une case spécifique du board (grille 4×5 de ton côté). Une unité qui marche dessus gagne +1AR si alliée ou prend 1 dégât si ennemie.
+Cartes signature :
+
+Pollinisation (Krosmic) — 3 dégâts aux unités adverses + pose une Seed sur les cases des morts
+Savoir Sadida/Knowledge of Dolls (Krosmic) — transforme une unité en Graine alliée
+Sacrifice Poupesque (Krosmic) — sacrifie tes poupées, chacune inflige 1 dégât au dofus adverse de sa ligne
+Sylvine Folherbe (Krosmic) — APPEARANCE : ajoute Madoll + Sac de Graines + Buisson à la main
+Tokens (générés par cartes Sadida) :
+
+Graine/Seed (Token) : +1AR alliés qui marchent dessus / 1 dégât ennemis qui marchent dessus
+La Gonflable (Token) : soigne de 2PV tes autres unités de sa ligne après tous les mouvements
+La Folle/Madoll (Token) : réduit coût de tes sorts de 1 PA tant qu'elle est en jeu
+La Sacrifiée (Token) : DEATH : 1 dégât aux unités adverses de sa ligne
+Spells clés : Sac de Graines (add 2 Seeds), Ronce (2 dégâts + Seed si meurt), Graines de Folie (Seeds → Madolls), Tremblement de Terre (4 dégâts + adjacent)
+
+COMBAT
+Flow de chaque round
+
+1. DRAFT    → Shop personnel + Enchère si round d'enchère
+2. PLACEMENT → Timer 10-15 sec, choix des cartes en secret
+3. RÉSOLUTION → Révélation simultanée, unités avancent selon MP, combats résolus
+Résolution simultanée
+Tout le monde joue en secret → révélation en même temps
+Si 2 effets simultanés → les deux se résolvent, pas de priorité
+2 unités FIRST STRIKE en face à face → s'annulent, tapent simultanément
+Système de types RPS
+
+Lame > Arcane > Bouclier > Lame
+Type advantage : +1 ATK infligé + +1 AR (absorbe 1 dégât de plus)
+Séparé du keyword FIRST STRIKE
+Stats des unités
+ATK — dégâts infligés
+PV — points de vie
+MP — Movement Points (cases avancées par round automatiquement)
+AR — Armor (dégâts absorbés)
+Stats de référence : base Krosmaga Extension=1.
+
+Placement
+1 slot par joueur par lane maximum (identique Krosmaga)
+En 2v2 : max 2 unités par lane côté équipe
+Limite : mana uniquement
+Cas spéciaux
+Mana reset à 0 chaque round (sauf Xelor)
+Déconnexion = défaite immédiate
+Hand full (10 cartes) = impossible d'acheter
+KEYWORDS — SYSTÈME DE TRIGGERS
+Timing triggers (identiques Krosmaga)
+Trigger	Déclenchement
+APPEARANCE	Unité entre en jeu
+DEATH	Unité meurt
+FINAL BLOW	Unité tue une autre
+COUNTERATTACK	Unité reçoit dégâts en combat
+INJURED	Unité a des PV manquants (état persistant)
+START OF TURN	Début de round
+END OF TURN	Fin de round
+Keywords de combat (identiques Krosmaga)
+FIRST STRIKE — attaque en premier, kill propre possible
+CHARGE — peut agir le round où jouée (pas de summon sickness)
+RANGE 1-X — attaque à distance sans avancer
+WALL — stationnaire, MP=0
+BODYGUARD — fonctionne exactement comme Krosmaga (même layout de lanes)
+IRREMOVABLE — ne peut pas être déplacée ou renvoyée en main
+UNTARGETABLE — ne peut pas être ciblée par sorts
+RESISTANCE X — prend X dégâts de moins par hit
+VULNERABILITY X — prend X dégâts de plus par hit
+SILENCE — perd son effet/keyword
+STUN — ne peut pas agir ce round
+ARMOR-PIERCING — ignore l'AR
+SHIELD — absorbe la prochaine attaque
+LEADER — booste les unités de la même famille
+OUTNUMBERED — effet si moins d'unités que l'adversaire
+NECRO — keyword expansion (Extension 518, retiré du pool)
+Mouvements (identiques Krosmaga)
+CHARGE X — avance X cases supplémentaires
+REPEL X — pousse adversaire X cases vers arrière
+ATTRACT X — tire unité X cases vers soi
+TELEPORT — repositionne une unité sur une case
+CHANGE LANE — passe dans une autre lane (ex: Strich — change de lane automatiquement quand une unité adverse entre en jeu)
+TYPES DE CARTES
+Unités — ATK/PV/MP/AR + keywords, avancent automatiquement selon MP
+Sorts — effets instantanés, coûtent du mana
+Pièges — posés face cachée sur une case (grille 4×5), trigger au contact ennemi. Certains sont faux pièges (1 mana, ne font rien, bluff pur)
+Structures — 0 ATK, ont des PV, placables n'importe où sur tes 20 cases, effets continus
+Passifs/Auras — joués une fois, effet permanent sur 1 lane, visible par adversaire
+Ordres — joués sur une unité déjà en jeu
+Cartes Double-Face — jouables comme unité OU comme sort
+Draw = piocher 1 carte aléatoire (du pool du shop, pas d'une main ou deck fixe).
+
+FAMILLES NOTABLES ET ARCHETYPES
+Famille	Archetype	Mécanique clé
+Chafer	Résurrection	DEATH: spawn Decrepit Chafer si autre Chafer allié
+Craqueleur	Armure	RESISTANCE:1 natif, stack avec LEADER
+Gobball	Buff famille	LEADER +AT/AR, synergies APPEARANCE
+Tofu	Rush	CHARGE, scale avec nombre de Tofus
+Boowolf	Evolution	FINAL BLOW: transform into next form
+Strich	Chaos lanes	Change de lane automatiquement quand ennemi joue (conservé — fun)
+Arachnée	Retour en main	Units return to hand when conditions met
+Bow Meow	Swarm speed	Tokens rapides MP=6, génération de masse
+Jelly	Synergies spawn	+AT+AR quand Jelly entre en jeu
+Scaraleaf	Stack armure	+AR accumulé chaque round
+Drheller	Draw engine	DEATH: draw card
+CE QUI RESTE À DÉFINIR EN DEV
+Bonus exact du point de capture central (2v2v2)
+Art direction / thème visuel précis
+Distribution exacte des rarités dans le pool d'enchères
+Balance fine des valeurs (coûts mana/gold, stats par tier)
+Adaptation des cartes Infinite (3 niveaux d'évolution → garder ou simplifier ?)
+PRINCIPES DE DESIGN CORE
+Simple en surface, profond en émergence — chaque règle génère de la complexité sociale et stratégique
+Zéro downtime — tout est simultané
+Bluff et information cachée comme ADN — objectifs, pièges, mains, enchères
+L'enchère est la mécanique signature — le bluff économique différencie ce jeu
+Base Krosmaga Extension=1 — on adapte les cartes existantes, on ne réinvente pas from scratch
+Pondération TFT — tu construis un archetype, tu ne subis pas le hasard

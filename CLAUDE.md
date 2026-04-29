@@ -5,14 +5,17 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 ## Technology Stack
 
-- **Engine**: [CHOOSE: Godot 4 / Unity / Unreal Engine 5]
-- **Language**: [CHOOSE: GDScript / C# / C++ / Blueprint]
+- **Engine**: Bevy 0.18 (Rust)
+- **Language**: Rust (stable toolchain)
 - **Version Control**: Git with trunk-based development
-- **Build System**: [SPECIFY after choosing engine]
-- **Asset Pipeline**: [SPECIFY after choosing engine]
+- **Build System**: Cargo + Trunk (WASM client) / Cargo (headless server)
+- **Asset Pipeline**: bevy_asset_loader + TextureAtlas (sprite sheets)
+- **Networking**: Lightyear (bevy_lightyear) — client/server over WebSocket/WebTransport
+- **UI**: bevy_ui (0.18 Required Components API) + bevy_tweening
+- **Deployment**: WASM client → Vercel / Rust server → Railway (Docker)
 
-> **Note**: Engine-specialist agents exist for Godot, Unity, and Unreal with
-> dedicated sub-specialists. Use the set matching your engine.
+> **Note**: Use `liv-bevy-018` skill for ALL Bevy code. Use `liv-bevy-lightyear`
+> skill for ALL networking code. These skills enforce correct 0.18 API patterns.
 
 ## Project Structure
 
@@ -20,7 +23,7 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 ## Engine Version Reference
 
-@docs/engine-reference/godot/VERSION.md
+@docs/engine-reference/bevy/VERSION.md
 
 ## Technical Preferences
 
