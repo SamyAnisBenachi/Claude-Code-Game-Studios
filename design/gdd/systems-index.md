@@ -67,7 +67,7 @@ Board Rendering · Hand UI · Shop/Auction UI · HUD · Card Animations
 
 | # | System | File | Status | Notes |
 |---|---|---|---|---|
-| 17 | Keyword System | `gdd/keyword-system.md` | Not Started | All triggers: APPEARANCE, DEATH, FINAL BLOW, INJURED, START/END OF TURN; all movement/combat keywords |
+| 17 | Keyword System | `gdd/keyword-system.md` | Designed | 28 keywords: 7 timing triggers, 15 combat (HASTE renamed from CHARGE), 5 movement. OQ4 resolved (COUNTERATTACK adjacent-cell). 5 OQs: RNG seed (KS1), HASTE audit (KS2), CR OQ4 close (KS3), Trap traversal (KS4), DisplacementEvent (NP1). /design-review pending. |
 | 18 | Prism System | `gdd/prism-system.md` | Not Started | 5 prisms; Lane 1/5 → obj-damage spell; Lane 2/4 → reserve spell card; Lane 3 → draw; respawn |
 | 19 | Class System | `gdd/class-system.md` | Not Started | Xelor reserve spells (Gelure, Rollback, etc.); other class-specific rules; interaction matrix |
 | 20 | Card Animations | `gdd/card-animations.md` | Not Started | bevy_tweening for card draw, play, unit movement per round, combat resolution reveal |

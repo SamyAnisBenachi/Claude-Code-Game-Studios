@@ -326,6 +326,50 @@ formulas:
     added: "2026-04-29"
     revised: ""
 
+  - name: repel_destination
+    status: active
+    source: design/gdd/keyword-system.md
+    referenced_by:
+      - design/gdd/keyword-system.md
+    variables:
+      - target_cell
+      - advance_dir
+      - X
+    output_range: [1, 8]
+    expression: "clamp(target_cell + (−advance_dir(target.owner)) × X, 1, 8)"
+    notes: "advance_dir(Player A)=+1, advance_dir(Player B)=-1. Output always [1,8] — clamped at board edges, never off-board. IRREMOVABLE units: no displacement. WALL can be pushed."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: attract_destination
+    status: active
+    source: design/gdd/keyword-system.md
+    referenced_by:
+      - design/gdd/keyword-system.md
+    variables:
+      - caster_cell
+      - target_cell
+      - X
+    output_range: [1, 8]
+    expression: "effective_X = min(X, |caster_cell − target_cell|); attract_destination = target_cell + sign(caster_cell − target_cell) × effective_X"
+    notes: "Target stops at caster's cell — cannot overshoot. effective_X = 0 if already co-located. Lane-local only. IRREMOVABLE blocks."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: outnumbered
+    status: active
+    source: design/gdd/keyword-system.md
+    referenced_by:
+      - design/gdd/keyword-system.md
+    variables:
+      - alive_units_player
+      - alive_units_opponent
+    output_range: [false, true]
+    expression: "count(alive_units(player)) < count(alive_units(opponent))"
+    notes: "Strict less-than only. Equal counts = false. Counts: all alive Minions + Structures across all lanes; Traps excluded. Evaluated at start of each sub-step — can flip mid-RESOLUTION."
+    added: "2026-04-30"
+    revised: ""
+
   - name: local_free_gold
     status: active
     source: design/gdd/shop-auction-ui.md

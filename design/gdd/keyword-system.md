@@ -1,8 +1,8 @@
 # Keyword System
 
-> **Status**: In Design
+> **Status**: Designed (all sections complete — /design-review pending in fresh session)
 > **Author**: SamyAnisBenachi + Claude Code agents
-> **Last Updated**: 2026-04-29
+> **Last Updated**: 2026-04-30
 > **Implements Pillar**: Deep emergence · Simple surface · No idle spectating
 
 ## Overview
@@ -299,11 +299,81 @@ Combat Resolution is both an upstream dependency (sub-step structure) and has th
 
 ## Visual/Audio Requirements
 
-[To be designed]
+> Visual conventions from `combat-resolution.md` apply to all keyword visuals — color palette, impact flash timing, and STUN/SHIELD/INJURED/LEADER/SILENCE/OUTNUMBERED indicator specs are defined there. This section specifies only indicators and animations unique to the Keyword System.
+
+### New State Indicators
+
+**BODYGUARD active — two-element indicator:**
+- **On the BODYGUARD unit:** Prism White `#EEF4FF` shield-arc glyph (6×8px) at top-left of base ring. Static. On BODYGUARD death: 2-frame split into ±30° diagonal shards, each fading over 200ms (reuses existing 4px particle sprites — 0 additional atlas frames).
+- **On the protected unit:** Three Prism White 3px dots tracing the shortest path between BODYGUARD's glyph and the protected unit's base ring (procedural connector, not a sprite). Cross-lane connections allowed. Static while bond is active; disappears when BODYGUARD dies.
+- Atlas cost: 1 static frame (BODYGUARD arc glyph).
+
+**IRREMOVABLE:**
+- Void `#0D0D14` chain-link glyph (6×6px — two interlocked 45°-rotated squares) at bottom-center of base ring. Static.
+- On displacement attempt: 1-frame Void flat flash (full-sprite 15% opacity, fades 100ms). No displacement animation plays.
+- Atlas cost: 1 frame.
+
+**UNTARGETABLE:**
+- Ivory `#F7F0DC` diamond outline (6×6px) with a 2px diagonal cross-stroke, at top-right of base ring. Static. Represents "targeting reticle broken."
+- Atlas cost: 1 frame.
+
+### Glyph Position Map (all indicators, no conflicts)
+
+| Indicator | Position | Color |
+|---|---|---|
+| STUN stars | Orbiting base ring | Prism White `#EEF4FF` |
+| SHIELD hex | Base ring center | Prism White `#EEF4FF` |
+| LEADER crown | Above unit head | Arcane Gold `#F5C842` |
+| BODYGUARD arc | Top-left of base ring | Prism White `#EEF4FF` |
+| IRREMOVABLE chain | Bottom-center of base ring | Void `#0D0D14` |
+| UNTARGETABLE diamond | Top-right of base ring | Ivory `#F7F0DC` |
+| INJURED outline | Full unit perimeter | Void ↔ rust-brown pulse |
+| SILENCE outline | Full unit perimeter | Desaturate to `#666666` |
+
+A SILENCED + INJURED unit simultaneously shows a grey outline that oscillates between `#666666` and rust-brown — both states readable in one visual.
+
+### Displacement Animations (REPEL, ATTRACT, TELEPORT)
+
+All complete in ≤480ms (6-cell max at 80ms/cell).
+
+**REPEL X** — `EaseInQuad` straight-line slide toward target's own side (accelerates away = physical push). Warm orange `#E07020` flat flash (40% opacity) at impact, fades 80ms. Trail: 1 fading sprite copy (35% opacity, 0.5 cells behind, 120ms). Arrival: 1-frame Void shadow-burst (20% opacity, 4px radius), fades 80ms. **Mnemonic: orange = pushed.**
+
+**ATTRACT X** — `EaseOutQuad` straight-line slide toward caster's cell (decelerates into arrival = pulled in gently). Arcane Gold `#F5C842` flat flash (35% opacity) at pull initiation, fades 100ms. Trail: 1 fading sprite copy (35% opacity, 0.5 cells behind). No arrival burst. **Mnemonic: gold = pulled.**
+
+**TELEPORT** — No translate. Two-beat blink:
+- *Exit:* sprite squashes to 0px height over 80ms → 1-frame Prism White `#EEF4FF` horizontal bar (4px height, full sprite width at base-ring level), fades 60ms.
+- *Entry:* Prism White bar appears at destination for 1 frame → sprite expands from 0px to full height over 80ms (`EaseOutQuad`). Total: ~300ms.
+- No trail. Does NOT play Arcane Gold APPEARANCE aura pulse (TELEPORT does not trigger APPEARANCE). **Mnemonic: Prism White blink = magical repositioning.**
+
+### START OF TURN / END OF TURN Trigger Visual
+
+**START OF TURN** — Arcane Gold `#F5C842` base ring pulse (radiates to ~2× unit width, fades 200ms — identical to APPEARANCE/DEATH pulse). During DRAFT phases only: Ivory `#F7F0DC` floating label `"START OF TURN"` (0.8× base typography), fades 600ms. Non-blocking.
+
+**END OF TURN** — Identical Arcane Gold pulse (200ms). All END OF TURN triggers fire simultaneously (global pass). No text label during RESOLUTION_COMPLETE (would compete with objective damage floats). If overlapping with gold reward floats: END OF TURN pulse reduces to 50% opacity for 250ms overlap window (combat economy feedback has visual priority).
+
+### Atlas Budget
+
+| Category | Frames |
+|---|---|
+| Combat VFX (from `combat-resolution.md`) | ~21 |
+| IRREMOVABLE chain-link glyph | 1 |
+| UNTARGETABLE diamond-cross glyph | 1 |
+| TELEPORT Prism White bar (exit + entry) | 2 |
+| **Total** | **~25 / 120 budget** |
+
+BODYGUARD, REPEL, ATTRACT, START/END OF TURN all reuse existing atlas sprites — 0 additional frames.
+
+📌 **Asset Spec** — Visual/Audio requirements defined. After the art bible is approved, run `/asset-spec system:keyword-system` to produce per-asset visual descriptions and generation prompts for the new glyph sprites.
 
 ## UI Requirements
 
-[To be designed]
+The Keyword System owns no interactive UI screen or panel. Keyword display is a display contract on downstream systems:
+
+- **Card face display** (Hand UI GDD): keywords rendered as bold badge tags on each card in hand (e.g., `RANGE 1-3`, `RESISTANCE 2`). HASTE badge must reflect the rename — update card text strings in `cards.json` alongside the keyword schema change.
+- **Board unit state indicators** (Board Rendering GDD): all persistent keyword state glyphs defined in Visual/Audio Requirements above — BODYGUARD, IRREMOVABLE, UNTARGETABLE, plus all indicators from `combat-resolution.md`.
+- **Displacement animation playback** (Card Animations GDD): REPEL/ATTRACT/TELEPORT animation specs from Visual/Audio Requirements, driven by the `S2CResolutionEvent.DisplacementEvent` variant (see OQ-NP1).
+
+No interactive elements. No modal dialogs. Keyword tooltips are not specified — keywords are intended to be self-describing from their card text.
 
 ## Acceptance Criteria
 
@@ -370,4 +440,10 @@ Combat Resolution is both an upstream dependency (sub-step structure) and has th
 
 ## Open Questions
 
-[To be designed]
+| # | Question | Owner | Action Required |
+|---|---|---|---|
+| OQ-KS1 | RANGE equidistant target selection and TELEPORT random destination both require server-side RNG. No seed slot exists in the RESOLUTION RNG chain for either use case. One seed slot should cover both. | Server-side RNG + Network Protocol | Add seed slot to `server-rng.md` seed table before RANGE or TELEPORT implementation. Resolves OQ3 in `combat-resolution.md`. |
+| OQ-KS2 | HASTE rename (from CHARGE): all Extension=1 cards with the CHARGE combat keyword must be audited and updated to `"Haste"` in `cards.json`. Schema field update required in `card-data-pool.md`. | Card Data & Pool + Game Designer | Audit before any card data encoding begins. |
+| OQ-KS3 | OQ4 in `combat-resolution.md` (COUNTERATTACK proximity) is now resolved: fires for both same-cell AND collision-halted adjacent contact. | Combat Resolution GDD | Update `combat-resolution.md` OQ4 status to Resolved. |
+| OQ-KS4 | ATTRACT and REPEL traversal triggers Traps on intermediate cells. The Trap GDD (part of `card-data-pool.md` OQ1 original designs) must specify that Traps fire on cell entry regardless of how the unit entered. | Trap design | Include in Trap card design spec when original Trap cards are authored. |
+| OQ-NP1 | `S2CResolutionEvent` needs a `DisplacementEvent { unit_id, keyword: DisplacementKind, from_cell, to_cell, sub_step }` variant for REPEL/ATTRACT/TELEPORT animation on client. Currently unregistered. | Network Protocol GDD | Add variant to `S2CResolutionEvent` enum in `network-protocol.md` before Board Rendering implementation. |
