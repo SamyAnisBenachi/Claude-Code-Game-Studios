@@ -418,9 +418,12 @@ fn validate_and_promote(
     configs: Res<Assets<GameConfig>>,
     catalogs: Res<Assets<CardCatalog>>,
     mut next_state: ResMut<NextState<AppState>>,
-    // TODO(liv-bevy-018): verify AppExit dispatch in Bevy 0.18 — may be
-    // commands.trigger(AppExit::error()) rather than EventWriter<AppExit>
-    mut exit: EventWriter<AppExit>,  // TODO(liv-bevy-018): verify this still exists
+    // TODO(S1-05/liv-bevy-018): EventWriter<AppExit> DOES NOT EXIST in Bevy 0.17+.
+    // Correct pattern in Bevy 0.18: commands.trigger(AppExit::error())
+    // OR: app.world_mut().send_event(AppExit::Error) if AppExit retained Event trait.
+    // Verify against Bevy 0.18 release notes before implementing.
+    // PLACEHOLDER — replace with verified pattern:
+    mut exit: EventWriter<AppExit>,  // ❌ UNVERIFIED — EventWriter removed in 0.17
 ) {
     let Some(cfg) = configs.get(&game_assets.game_config) else {
         error!("GameConfig handle did not resolve to an asset");
@@ -515,8 +518,11 @@ check at that point.
 ```rust
 #[cfg(debug_assertions)]
 fn hot_reload_game_config(
-    // TODO(liv-bevy-018): verify AssetEvent pattern in Bevy 0.18 — may use MessageReader or a different API
-    mut events: EventReader<AssetEvent<GameConfig>>,
+    // TODO(S1-05/liv-bevy-018): EventReader<AssetEvent<T>> DOES NOT EXIST in Bevy 0.17+.
+    // AssetEvent may be an Observer event in 0.18 — use app.observe(|t: On<AssetEvent<T>>| ...)
+    // OR it may retain buffered semantics under a new name — verify against Bevy 0.18 asset docs.
+    // PLACEHOLDER — replace with verified pattern:
+    mut events: EventReader<AssetEvent<GameConfig>>,  // ❌ UNVERIFIED — EventReader removed in 0.17
     game_assets: Res<GameAssets>,
     configs: Res<Assets<GameConfig>>,
     mut commands: Commands,

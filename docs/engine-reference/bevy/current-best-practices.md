@@ -55,18 +55,25 @@ fn resolve_combat(
 
 ---
 
-## Events vs Observers (0.17+)
+## Messages vs Observers (0.17+)
 
 ```rust
-// Use Events (EventWriter/EventReader) for GAME LOOP messages:
+// ⚠️ EventWriter/EventReader DO NOT EXIST in Bevy 0.17+.
+// Use MessageWriter/MessageReader for BUFFERED game-loop messages:
 // — placement submitted, bid placed, gold awarded
-// These are buffered and processed next frame.
+// These are buffered and read via MessageReader each frame.
 
-#[derive(Event)]
+#[derive(Message, Clone, Debug)]
 struct UnitPlaced { lane: u8, card: CardId }
 
-fn handle_placement(mut events: EventReader<UnitPlaced>, /* ... */) {
-    for event in events.read() { /* ... */ }
+// Register: app.add_message::<UnitPlaced>();
+
+fn emit_placement(mut writer: MessageWriter<UnitPlaced>, /* ... */) {
+    writer.write(UnitPlaced { lane: 2, card: CardId(42) });
+}
+
+fn handle_placement(mut reader: MessageReader<UnitPlaced>, /* ... */) {
+    for msg in reader.read() { /* ... */ }
 }
 
 // Use Observers for REACTIVE triggers that fire immediately:

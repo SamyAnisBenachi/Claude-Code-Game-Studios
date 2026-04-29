@@ -16,7 +16,7 @@
 - ADR-010: RSM Phase Event Bus — `on_shop_refresh_needed` subscribes to `ShopRefreshNeeded { player }` event (one per player per DRAFT entry); subscriber must run `.after(advance_phase)` to guarantee `RoundState.phase` is updated before the slot-count check
 - ADR-012: Session Ready Delivery — `SessionReady` is the canonical trigger for all per-session resource initialization; `on_session_ready_init` must be an Observer (not a `startup` system) so it fires once per session, not once at app startup
 
-**ADR Decision Summary**: `CardPoolPlugin` inserts all four resources (`PlayerPools`, `ShopSlots`, `InitialDraftOffering`, `ManualRefreshCount`) and registers `on_session_ready_init` as an Observer for `SessionReady`. The `ShopRefreshNeeded` subscriber determines slot count from `Res<RoundState>.phase` — 9 for `Phase::DraftInitial`, 3 for `Phase::DraftShop`. Per-player fan-out (N events per frame for 1v1 to 3v3) is handled by sequential iteration over events in the `EventReader`. After each player's shop is drawn, `ManualRefreshCount[player]` is reset to 0.
+**ADR Decision Summary**: `CardPoolPlugin` inserts all four resources (`PlayerPools`, `ShopSlots`, `InitialDraftOffering`, `ManualRefreshCount`) and registers `on_session_ready_init` as an Observer for `SessionReady`. The `ShopRefreshNeeded` subscriber determines slot count from `Res<RoundState>.phase` — 9 for `Phase::DraftInitial`, 3 for `Phase::DraftShop`. Per-player fan-out (N messages per frame for 1v1 to 3v3) is handled by sequential iteration via `MessageReader<ShopRefreshNeeded>::read()`. After each player's shop is drawn, `ManualRefreshCount[player]` is reset to 0.
 
 **Engine**: Bevy 0.18 | **Risk**: MEDIUM
 **Engine Notes**:

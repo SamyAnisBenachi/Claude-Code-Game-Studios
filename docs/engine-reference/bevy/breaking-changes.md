@@ -118,17 +118,28 @@ commands.spawn(ImageNode::new(texture_handle));
 ### Event vs Message: critical distinction
 
 ```rust
-// Events (0.17+) are for OBSERVERS (reactive, immediate)
-// Messages are for EventWriter/EventReader (buffered, frame-delayed)
-
-// For game state changes observed reactively → Event + Observer
+// ⚠️ BEVY 0.17+ BREAKING CHANGE — EventWriter/EventReader REMOVED
+//
+// Old names (pre-0.17): EventWriter<T>, EventReader<T>, Events<T>
+// These types DO NOT EXIST in Bevy 0.17+.
+//
+// NEW API — two distinct mechanisms:
+//
+// 1. BUFFERED MESSAGES (pull-based, polled each frame):
+//    #[derive(Message)] + MessageWriter<T> + MessageReader<T> + app.add_message::<T>()
+#[derive(Message)]
+struct UnitPlaced { lane: u8 }
+// fn emit(mut w: MessageWriter<UnitPlaced>) { w.write(UnitPlaced { lane: 0 }); }
+// fn read(mut r: MessageReader<UnitPlaced>) { for msg in r.read() { ... } }
+//
+// 2. OBSERVER EVENTS (push-based, immediate/same-frame trigger):
+//    #[derive(Event)] + commands.trigger() / trigger_targets() + Observer
 #[derive(Event)]
 struct UnitDied { entity: Entity }
-
-// For game loop messages (placement submitted, bid placed) → use Events or direct channels
-
-// EventWriter still works for buffered events — but Event trait is now dual-purpose
-// Check liv-bevy-018 skill for current correct pattern
+// commands.trigger_targets(UnitDied { entity }, target_entity);
+// app.observe(|t: On<UnitDied>| { ... });
+//
+// See liv-bevy-018 skill for full patterns.
 ```
 
 ### bevy_render reorganization
