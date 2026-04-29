@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/game-session-system.md
 > **Architecture Module**: `server/core/session/` (full module — `state.rs`, `events.rs`, `system.rs`, `config.rs`, `plugin.rs`); contributes `on_session_ready` Observer registration to `server/core/rsm/`
 > **Status**: Ready
-> **Stories**: To be created — see Story Breakdown Hint below
+> **Stories**: 7 stories — see Stories section below
 
 ## Overview
 
@@ -139,6 +139,20 @@ If any check fails: implement `evaluate_session_ready` as `fn(world: &mut World)
 - An integration test demonstrates the full LOBBY → DRAFT_INITIAL path: room created, second player joins, both players confirm class, `SessionReady` triggers, RSM transitions, `S2CPhaseChanged(DRAFT_INITIAL)` broadcast — all within the same Update run.
 - An integration test demonstrates session teardown: `GameOverEmitted` event causes `SessionConfig` and `ServerRng` to be removed from the World; `S2CGameOver` broadcast on `ReliableChannel`.
 - Reconnect integration test: `S2CGameSnapshot` is sent before any live message after a reconnect; live messages queued during the snapshot window are delivered after `snapshot_sent[player] = true`.
+
+## Stories
+
+| # | Story | Type | Status | Primary ADR |
+|---|-------|------|--------|-------------|
+| 001 | Lobby Scaffold | Config/Data | Ready | ADR-012, ADR-005 |
+| 002 | Room Create and Join | Integration | Ready | ADR-008, ADR-002 |
+| 003 | Class Selection and Reveal | Logic | Ready | ADR-008 |
+| 004 | F4 Predicate and SessionReady Trigger | Logic | **Blocked** | ADR-012, ADR-005, ADR-009 |
+| 005 | Lobby Disconnect — Dual-Signal Cancel | Integration | Ready | ADR-011, ADR-008 |
+| 006 | Game-Over Teardown | Integration | Ready | ADR-010, ADR-005, ADR-008 |
+| 007 | Reconnect and Game Snapshot | Integration | Ready | ADR-011, ADR-001, ADR-008, ADR-002 |
+
+> ⚠️ Story 004 is **Blocked** pending ADR-012 verification (Commands::trigger ordering invariant — 4 checklist items must be confirmed against Bevy 0.18). Run the verification spike before Story 004 can be marked Ready.
 
 ## Story Breakdown Hint
 

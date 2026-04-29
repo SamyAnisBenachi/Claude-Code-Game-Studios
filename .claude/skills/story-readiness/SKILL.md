@@ -138,8 +138,6 @@ items pass or are explicitly marked N/A with a stated reason.
 
 ### Scope Clarity
 
-- [ ] **Estimate present**: The story includes a size estimate (hours,
-  points, or a t-shirt size). A story with no estimate cannot be planned.
 - [ ] **In-scope / Out-of-scope boundary stated**: The story states what
   it does NOT include, either in an explicit Out of Scope section or in
   language that makes the boundary unambiguous. Without this, scope creep
@@ -307,8 +305,8 @@ If any are found, surface up to 3:
 ```
 ### Other Ready Stories in This Sprint
 
-1. [Story name] — [1-line description] — Est: [X hrs]
-2. [Story name] — [1-line description] — Est: [X hrs]
+1. [Story name] — [1-line description]
+2. [Story name] — [1-line description]
 
 Run `/story-readiness [path]` to validate before starting.
 ```
