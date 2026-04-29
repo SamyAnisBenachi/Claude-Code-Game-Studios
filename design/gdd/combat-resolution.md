@@ -1,6 +1,6 @@
 # Combat Resolution
 
-> **Status**: In Design
+> **Status**: In Design (8 required sections complete — Visual/Audio, Open Questions pending)
 > **Author**: SamyAnisBenachi + Claude Code agents
 > **Last Updated**: 2026-04-29
 > **Implements Pillar**: Simple surface · Deep emergence · No idle spectating
@@ -360,7 +360,42 @@ Board/Lane System GDD defines `unit_movement` as "skip intermediate cells." Comb
 
 ## Acceptance Criteria
 
-[To be designed]
+| # | Criterion | Type |
+|---|---|---|
+| CR-1 | GIVEN a unit with FIRST STRIKE in any lane, WHEN sub-step 3 executes, THEN that unit deals net_damage to any enemy unit sharing its cell before sub-step 5 movement occurs. | BLOCKING |
+| CR-2 | GIVEN two FIRST STRIKE units sharing a cell, WHEN sub-step 3 executes, THEN both deal damage simultaneously (HP snapshots taken before either mutation is applied); if both receive lethal damage, both die and both DEATH triggers fire. | BLOCKING |
+| CR-3 | GIVEN a unit with RANGE 1-X at cell C, WHEN sub-step 6 executes, THEN it attacks the nearest enemy unit in the forward direction (Player A: cells C+1 to C+X; Player B: cells C-X to C-1); it does not advance to do so; equidistant targets are selected randomly by the server. | BLOCKING |
+| CR-4 | GIVEN a unit with RANGE 1-X AND FIRST STRIKE, WHEN RESOLUTION executes, THEN two distinct damage events are emitted: one in sub-step 3 (FIRST STRIKE pass) and one in sub-step 6 (standard combat pass). | BLOCKING |
+| CR-5 | GIVEN a STUNned unit (including a CHARGE unit STUNned in sub-step 1), WHEN RESOLUTION executes, THEN the unit does not advance in sub-step 2 (CHARGE X suppressed), does not advance in sub-step 5, and does not attack in sub-steps 3 or 6. | BLOCKING |
+| CR-6 | GIVEN a unit with SHIELD receives damage in sub-step 3, WHEN sub-step 3 resolves, THEN all sub-step 3 damage is negated and SHIELD is consumed; WHEN sub-step 6 attacks that same unit, THEN damage is applied normally (SHIELD already consumed). | BLOCKING |
+| CR-7 | GIVEN a unit with SHIELD receives no damage during RESOLUTION, WHEN the next round's RESOLUTION begins, THEN SHIELD is still active (persists between rounds until consumed). | BLOCKING |
+| CR-8 | GIVEN an advancing enemy unit whose next step would reach a WALL unit's cell, WHEN sub-step 5 executes, THEN the attacker halts at the WALL's cell; WHEN sub-step 6 executes, THEN the attacker deals net_damage to the WALL (WALL has 0 ATK, deals 0 damage back); if WALL HP reaches 0, the WALL is removed at the next DEATH-processing point and the attacker remains at that cell for the rest of this RESOLUTION. | BLOCKING |
+| CR-9 | GIVEN two enemy units whose movement paths would cross in sub-step 5 (each moving to the other's cell in the same tick), WHEN sub-step 5 executes, THEN both halt at their pre-crossing cells; WHEN sub-step 6 executes, THEN both units fight each other. | BLOCKING |
+| CR-10 | GIVEN a unit alive at Cell 8 at the end of sub-step 6, WHEN sub-step 6 completes, THEN that unit deals its ATK value as damage to the objective in that lane AND the unit remains at Cell 8 (attacks again next round unless killed). | BLOCKING |
+| CR-11 | GIVEN a unit with FIRST STRIKE is at Cell 8 and is killed in sub-step 3, WHEN sub-step 4 removes it, THEN it does NOT deal objective damage in sub-step 6. | BLOCKING |
+| CR-12 | GIVEN ATK_attacker = 3 and AR_defender = 5, WHEN combat resolves, THEN net_damage = 0 (damage cannot go negative). | BLOCKING |
+| CR-13 | GIVEN a unit with RESISTANCE 2 (AR=1) attacked by a unit with ATK=4, WHEN combat resolves, THEN ATK_effective = max(0, 4−2) = 2; net_damage = max(0, 2−1) = 1. | BLOCKING |
+| CR-14 | GIVEN a unit with ARMOR-PIERCING (ATK=3) attacks a unit with AR=4 and RESISTANCE 1, WHEN combat resolves, THEN ATK_effective = max(0, 3−1) = 2 (RESISTANCE applied first); AR_effective = 0 (ARMOR-PIERCING applied independently after RESISTANCE); net_damage = max(0, 2−0) = 2. | BLOCKING |
+| CR-15 | GIVEN a Blade-type unit attacks an Arcane-type unit, WHEN combat resolves, THEN attacker's ATK_combat += 1 and attacker's AR_combat += 1 for this combat only; base card stats and other combats this round are unaffected. | BLOCKING |
+| CR-16 | GIVEN a unit kills an enemy unit, WHEN sub-step 4 processes the dead unit, THEN the killing player immediately receives +1 gold. | BLOCKING |
+| CR-17 | GIVEN a unit at Cell 8 destroys an objective, WHEN sub-step 6 completes, THEN the attacking player receives +3 gold and does NOT additionally receive +1 kill gold (objectives are not units). | BLOCKING |
+| CR-18 | GIVEN the 2nd real objective of Player B is destroyed, WHEN the loss condition check runs, THEN the server broadcasts S2CGameOver { loser: Player B, reason: ObjectivesDestroyed } on the reliable channel. | BLOCKING |
+| CR-19 | GIVEN both players' 2nd real objectives are destroyed in the same sub-step 6, WHEN the loss condition check runs, THEN the server broadcasts S2CGameOver { loser: None, reason: Draw }. | BLOCKING |
+| CR-20 | GIVEN a unit with COUNTERATTACK receives damage from a RANGE attacker that did not occupy the target's cell, WHEN damage is applied, THEN COUNTERATTACK does NOT fire (physical proximity required). | BLOCKING |
+| CR-21 | GIVEN a unit with COUNTERATTACK receives damage from a same-cell attacker in sub-step 3 or sub-step 6, WHEN damage is applied, THEN COUNTERATTACK fires immediately in that same sub-step (before the next sub-step begins). | BLOCKING |
+| CR-22 | GIVEN a unit kills another unit in sub-step 3 (FIRST STRIKE), WHEN FINAL BLOW fires, THEN it fires in sub-step 3 (before sub-step 4); the killed unit is still present on the board during FINAL BLOW resolution. | BLOCKING |
+| CR-23 | GIVEN a unit kills another unit in sub-step 6 (standard combat), WHEN FINAL BLOW fires, THEN it fires in sub-step 6 (not consolidated to sub-step 4). | BLOCKING |
+| CR-24 | GIVEN a unit with an APPEARANCE ability enters play in sub-step 1, WHEN sub-step 1 executes, THEN the APPEARANCE ability fires before sub-step 2 begins. | BLOCKING |
+| CR-25 | GIVEN unit A's DEATH trigger kills unit B in sub-step 4, WHEN DEATH triggers process, THEN B's DEATH trigger fires AFTER A's DEATH trigger completes (sequential chain, not simultaneous). | BLOCKING |
+| CR-26 | GIVEN a unit takes damage in sub-step 3 that puts HP below maximum (activating INJURED), WHEN sub-step 3 completes, THEN the INJURED bonus is NOT active in sub-step 3; it IS active from sub-step 5 onward for this RESOLUTION. | BLOCKING |
+| CR-27 | GIVEN a unit at Cell 8 with ATK=3 attacks an objective with HP=2, WHEN sub-step 6 completes, THEN objective HP = 0 (not −1; floor at 0 applies) and the objective is destroyed. | BLOCKING |
+| CR-28 | GIVEN a RANGE unit with enemies both forward and behind it (both within range X), WHEN sub-step 6 executes, THEN only the forward enemy is targeted; the enemy behind is never a valid RANGE target. | BLOCKING |
+| CR-29 | GIVEN a RANGE + FIRST STRIKE unit attacks a SHIELD unit in sub-step 3 (consuming SHIELD), WHEN sub-step 6 executes the second attack from the same unit, THEN the attack deals full damage (SHIELD consumed in sub-step 3 does not protect in sub-step 6). | BLOCKING |
+| CR-30 | GIVEN S2CPlacementReveal is broadcast, WHEN RESOLUTION begins, THEN PlacementReveal is sent before any sub-step 1 effects execute and contains both players' full placements in one atomic message. | BLOCKING |
+| CR-31 | GIVEN a unit with CHARGE X, WHEN sub-step 2 executes, THEN the unit advances X additional cells (subject to WALL-blocking and crossing rules); WHEN sub-step 5 executes, THEN the unit additionally advances its MP value as a separate movement. | ADVISORY |
+| CR-32 | GIVEN RESOLUTION completes all 6 sub-steps, WHEN RESOLUTION_COMPLETE fires, THEN S2CResolutionEvent containing a sequenced log of all sub-step events is broadcast to all players before S2CPhaseChanged(DRAFT_SHOP). | ADVISORY |
+| CR-33 | GIVEN a LEADER unit grants +1 ATK to family units and is killed in sub-step 4, WHEN sub-steps 5 and 6 execute, THEN family units retain the +1 ATK bonus; the following round with LEADER dead, the bonus is absent. | ADVISORY |
+| CR-34 | GIVEN a unit gains FIRST STRIKE via INJURED (activated at sub-step boundary after sub-step 3 damage), WHEN sub-step 3 of the NEXT round executes, THEN the unit attacks as a FIRST STRIKE unit. | ADVISORY |
 
 ## Open Questions
 
