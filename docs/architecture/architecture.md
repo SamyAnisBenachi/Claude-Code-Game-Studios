@@ -20,7 +20,7 @@
 | Risk | Domain | Key Implication |
 |---|---|---|
 | HIGH | ECS / Spawning | Required Components (0.15) — no Bundles; `Query::single()` returns `Result` (0.16); `despawn()` replaces `despawn_recursive()` (0.16) |
-| HIGH | Events / Observers | `EventWriter::write()` not `send()` (0.16); Observers for reactive keyword triggers; Events for buffered game-loop messages (0.17) |
+| HIGH | Messages / Observers | `EventWriter`/`EventReader` removed (0.17) → `MessageWriter`/`MessageReader` + `app.add_message::<T>()` for buffered messages; `#[derive(Event)]` + Observer for one-shot triggers; `SessionReady` uses Observer per ADR-012 |
 | HIGH | Lightyear 0.26 | Entire networking API is post-cutoff — unicast target shape, ReplicationState, channel ordering must be verified against docs.rs before implementing |
 | HIGH | bevy_ui | `ImageNode` not `UiImage` (0.16); `LineHeight` as required component (0.18); `BorderRadius` inside `Node` field (0.18) |
 | MEDIUM | Asset Loading | `AssetLoader` requires `#[derive(TypePath)]` (0.18); `ron` must be direct dep (0.18) |
@@ -221,12 +221,12 @@ Within server/:
 
 | Module | Engine APIs | Risk |
 |---|---|---|
-| RSM | `#[derive(States)]`, `EventWriter::write()`, Lightyear broadcast | HIGH |
+| RSM | `#[derive(States)]` forbidden; `MessageWriter::write()` (not EventWriter); Lightyear broadcast | HIGH |
 | Game Session System | Lightyear `OnConnected`/`OnDisconnected`, `MessageReceiver` | HIGH |
-| Economy System | `EventWriter::write()`, `EventReader` | MEDIUM |
+| Economy System | `MessageWriter::write()`, `MessageReader::read()` (not EventWriter/EventReader) | MEDIUM |
 | Card Data & Pool | `bevy_asset_loader`, `#[derive(TypePath)]`, `ron` direct dep | MEDIUM |
-| Board/Lane System | `EventWriter::write()`, Lightyear broadcast | HIGH |
-| Objective System | Lightyear unicast (ADR-001 pattern), `EventWriter::write()` | HIGH |
+| Board/Lane System | `MessageWriter::write()` (not EventWriter), Lightyear broadcast | HIGH |
+| Objective System | Lightyear unicast (ADR-001 pattern), `MessageWriter::write()` (not EventWriter) | HIGH |
 | Presentation (all) | `Node`, `ImageNode`, `LineHeight`, `Text`, `TextFont` | HIGH |
 
 ---
@@ -444,8 +444,9 @@ pub struct UnreliableChannel;  // best-effort, for high-frequency position updat
 
 ```rust
 // server/core/rsm/events.rs
-// Bevy Events (buffered EventWriter/EventReader).
-// RSM writes; Core and Feature systems subscribe.
+// Bevy Messages (buffered MessageWriter/MessageReader — #[derive(Message)]).
+// RSM writes; Core and Feature systems subscribe via MessageReader.
+// SessionReady is the sole exception: Observer trigger per ADR-012.
 // RSM has ZERO imports from feature/ or other core/ modules.
 
 #[derive(Event)] pub struct DraftStarted       { pub round: u32, pub phase: DraftPhase }

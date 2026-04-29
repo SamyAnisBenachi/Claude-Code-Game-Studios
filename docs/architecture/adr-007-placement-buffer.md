@@ -28,8 +28,8 @@ During PLACEMENT, each player's submitted cards are held in a plain Rust data st
 | **Domain** | Networking / Core / Gameplay |
 | **Knowledge Risk** | HIGH — Bevy 0.15–0.18 and Lightyear 0.26 are all post-cutoff |
 | **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, `design/gdd/network-protocol.md`, `design/gdd/board-lane-system.md`, `design/gdd/round-state-machine.md` |
-| **Post-Cutoff APIs Used** | `EventWriter::write()` (Bevy 0.16+ — replaces deprecated `send()`); `Commands::spawn()` without Bundle (Bevy 0.15+ Required Components API); Lightyear 0.26 `ConnectionManager` unicast and `ReplicateTo` entity replication |
-| **Verification Required** | (1) Verify `EventWriter::write()` signature in Bevy 0.18. (2) Verify Lightyear 0.26 entity replication is NOT triggered until `ReplicateTo` / replication group is explicitly added — confirm no auto-replication occurs on `Commands::spawn`. (3) Verify `ConnectionManager` broadcast API shape for `S2CPlacementReveal`. |
+| **Post-Cutoff APIs Used** | `MessageWriter::write()` / `MessageReader::read()` (Bevy 0.17+ — `EventWriter`/`EventReader` no longer exist); `Commands::spawn()` without Bundle (Bevy 0.15+ Required Components API); Lightyear 0.26 `ConnectionManager` unicast and `ReplicateTo` entity replication |
+| **Verification Required** | (1) Verify `MessageWriter<T>` system param name in Bevy 0.18 — `EventWriter` was removed in 0.17. (2) Verify Lightyear 0.26 entity replication is NOT triggered until `ReplicateTo` / replication group is explicitly added — confirm no auto-replication occurs on `Commands::spawn`. (3) Verify `ConnectionManager` broadcast API shape for `S2CPlacementReveal`. |
 
 > **Note**: Knowledge Risk is HIGH. This ADR must be re-validated if the project upgrades engine versions. Flag as "Superseded" and write a new ADR.
 

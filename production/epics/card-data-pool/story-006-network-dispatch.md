@@ -14,7 +14,7 @@
 **ADRs Governing Implementation**:
 - ADR-006: Card Data Schema and Pool State Architecture — `S2CShopSlots` and `S2CDraftOffering` are unicast messages sent on `ReliableChannel` to the owning `PlayerId`; client is a view only, no pool state on client
 - ADR-008: Lightyear Channel Configuration — `ReliableChannel` guarantees ordered delivery; shop slot messages must not arrive out-of-order; use this channel for all shop-related unicast
-- ADR-010: RSM Phase Event Bus — network dispatch is downstream of the pool refresh subscriber; dispatch reads `EventReader<S2CShopSlots>` and `EventReader<S2CDraftOffering>` enqueued by Stories 004 and 005
+- ADR-010: RSM Phase Event Bus — network dispatch is downstream of the pool refresh subscriber; dispatch reads `MessageReader<S2CShopSlots>` and `MessageReader<S2CDraftOffering>` written by Stories 004 and 005
 
 **ADR Decision Summary**: Network dispatch lives in `server/src/network/` — NOT in `server/src/core/pool/`. Core pool emits ECS events; the network layer consumes them and sends Lightyear unicast messages. This separation keeps the core pool free of Lightyear dependencies. The dispatch system guards on `ReconnectTracker.snapshot_sent` before enqueuing a message — if the reconnecting client has not yet received the session snapshot, the shop message is queued (or regenerated post-snapshot delivery). Each draw produces one `RngEvent::DrawShopSlot` entry in `ServerRng.audit_log`; the integration test verifies 3 draws produce exactly 3 audit entries.
 
@@ -23,7 +23,7 @@
 - `liv-bevy-lightyear` skill is MANDATORY for all files in `server/src/network/` that touch Lightyear send APIs.
 - `liv-bevy-018` skill is also MANDATORY — Lightyear 0.26 runs on Bevy 0.18; both skills apply simultaneously.
 - Unicast send in Lightyear 0.26: use `ConnectionManager.send_message_to_target::<ReliableChannel, _>(client_id, message)`. Verify exact API surface against `liv-bevy-lightyear` skill — the send API changed between Lightyear 0.20 and 0.26.
-- `EventReader::read()` (not `.iter()`) — Bevy 0.16 rename.
+- Bevy 0.18: use `MessageReader::read()` — `EventReader` no longer exists (`EventReader` was removed in Bevy 0.17).
 - The `ReconnectTracker` resource name and `snapshot_sent` field: confirm exact type against `game-session-system` epic deliverables before implementing.
 
 **Control Manifest Rules (Network layer)**:
@@ -38,8 +38,8 @@
 ## Acceptance Criteria
 
 - [ ] `server/src/network/pool_dispatch.rs` exists and defines:
-  - `dispatch_shop_slots(mut events: EventReader<S2CShopSlots>, connection_manager: ResMut<ConnectionManager>, reconnect: Res<ReconnectTracker>)` — reads `S2CShopSlots` events; unicasts each on `ReliableChannel` to the target `client_id` mapped from `player_id`; skips if `!reconnect.snapshot_sent[player_id]`
-  - `dispatch_draft_offering(mut events: EventReader<S2CDraftOffering>, connection_manager: ResMut<ConnectionManager>, reconnect: Res<ReconnectTracker>)` — same pattern for `S2CDraftOffering`
+  - `dispatch_shop_slots(mut events: MessageReader<S2CShopSlots>, connection_manager: ResMut<ConnectionManager>, reconnect: Res<ReconnectTracker>)` — reads `S2CShopSlots` messages; unicasts each on `ReliableChannel` to the target `client_id`; skips if `!reconnect.snapshot_sent[player_id]` — TODO(liv-bevy-018): verify MessageReader<T> type name in Bevy 0.18
+  - `dispatch_draft_offering(mut events: MessageReader<S2CDraftOffering>, connection_manager: ResMut<ConnectionManager>, reconnect: Res<ReconnectTracker>)` — same pattern for `S2CDraftOffering`
 - [ ] Both dispatch systems are registered in a `PoolNetworkPlugin` (or added to the existing network plugin) with `.after(on_shop_refresh_needed)` and `.after(on_manual_refresh)` scheduling — dispatch always runs after the events are written
 - [ ] Unicast correctness: GIVEN `S2CShopSlots { player_id: A, slots: [X, Y, Z] }` enqueued, WHEN dispatch runs, THEN `ConnectionManager.send_message_to_target(client_id_for_A, S2CShopSlots { ... })` is called exactly once; Player B does not receive Player A's shop slots
 - [ ] Reconnect guard: GIVEN `ReconnectTracker.snapshot_sent[player_id] == false`, WHEN `S2CShopSlots` enqueued for that player, THEN the dispatch system does NOT call `send_message_to_target` for that player; the ECS event is consumed (not re-queued)
@@ -70,7 +70,7 @@ connection_manager.send_message_to_target::<ReliableChannel, _>(
 **`ReconnectTracker` guard implementation:**
 ```rust
 fn dispatch_shop_slots(
-    mut events: EventReader<S2CShopSlots>,
+    mut events: MessageReader<S2CShopSlots>,  // TODO(liv-bevy-018): verify MessageReader type name
     connection_manager: ResMut<ConnectionManager>,
     reconnect: Res<ReconnectTracker>,
 ) {

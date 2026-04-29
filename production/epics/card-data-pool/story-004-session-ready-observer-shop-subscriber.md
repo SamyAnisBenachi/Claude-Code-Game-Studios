@@ -27,7 +27,7 @@
 
 **Control Manifest Rules (Core layer)**:
 - Required: `on_session_ready_init` iterates `SessionConfig.team_map.keys()` in deterministic (sorted) order to maintain RNG audit log replay correctness (ADR-005).
-- Required: `on_shop_refresh_needed` processes events sequentially in emission order — Bevy's `EventReader` provides FIFO ordering within a frame.
+- Required: `on_shop_refresh_needed` processes messages sequentially in emission order — Bevy's `MessageReader` provides FIFO ordering within a frame.
 - Required: `ManualRefreshCount[player] = 0` reset happens inside `on_shop_refresh_needed` before `refresh_shop()` is called, so that a DRAFT_INITIAL entry starts with a clean counter.
 - Required: `CardPoolPlugin` registers the `on_shop_refresh_needed` system with `.after(advance_phase)` using the ordering label exported by the Round State Machine epic.
 - Forbidden: `on_session_ready_init` must NEVER abort or panic due to a bad `pool_copies_override` value — soft error and continue per ADR-006.
@@ -92,7 +92,7 @@ impl Plugin for CardPoolPlugin {
 
 **RNG determinism — player iteration order:** In `on_session_ready_init`, sort `session.team_map.keys()` before iterating. `PlayerId` must implement `Ord` or `PartialOrd` for this. If `PlayerId = u32`, standard sort order applies. This ensures the audit log records seed consumption in the same order on every server restart given identical inputs.
 
-**`S2CShopSlots` / `S2CDraftOffering` enqueue pattern:** These are ECS events (not direct network sends). Story 006's network dispatch system reads these events and sends the actual Lightyear messages. In this story, enqueuing means `EventWriter<S2CShopSlots>.write(S2CShopSlots { player_id, slots })`. The event types are defined in `shared/src/protocol.rs` (`workspace-and-shared-types` Story 004).
+**`S2CShopSlots` / `S2CDraftOffering` enqueue pattern:** These are Bevy buffered Messages (not direct network sends). Story 006's network dispatch system reads these messages via `MessageReader<T>` and sends the actual Lightyear messages. In this story, enqueuing means `MessageWriter<S2CShopSlots>.write(S2CShopSlots { player_id, slots })` — TODO(liv-bevy-018): verify MessageWriter type name. The message types derive `Message` and are registered via `app.add_message::<T>()`. Types defined in `shared/src/protocol.rs`.
 
 **Partial fill message encoding:** When `refresh_shop()` returns fewer cards than `slot_count`, the outbound `S2CShopSlots` message should use `Vec<Option<CardId>>` (not `Vec<CardId>`) to encode empty slots as `None`. If the protocol type uses `Vec<CardId>`, discuss with the network programmer whether to use a sentinel value or extend the type — do not silently truncate.
 

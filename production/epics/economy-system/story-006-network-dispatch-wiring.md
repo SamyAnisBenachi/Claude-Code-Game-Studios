@@ -54,7 +54,7 @@
 ```rust
 // Approximate pattern — exact Lightyear 0.26 API must be verified via the skill
 fn dispatch_gold_update(
-    mut events: EventReader<S2CGoldUpdate>,
+    mut events: MessageReader<S2CGoldUpdate>,  // TODO(liv-bevy-018): verify MessageReader type name
     mut sender: MessageSender<S2CGoldUpdate>,
     connection_map: Res<PlayerConnectionMap>,
 ) {

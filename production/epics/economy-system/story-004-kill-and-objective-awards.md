@@ -15,7 +15,7 @@
 **ADR Decision Summary**: Economy subscribes to `EventReader<UnitKilled>` and `EventReader<ObjectiveDestroyed>`. Both events are defined by their respective epics (Combat Resolution M2 and Objective System); this story consumes them as read-only subscribers. The self-inflicted guard (`attacker_player == defending_player`) is enforced in the Economy System handler — the Objective System does not filter this. `increment_mana_cap` is called only when `ObjectiveDestroyed.was_fake == true` and the server's RNG draw selects the mana reward (50/50 against free card pick).
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: MEDIUM
-**Engine Notes**: Uses `EventReader<UnitKilled>::read()` and `EventReader<ObjectiveDestroyed>::read()` (Bevy 0.18 — not `.iter()`). Event types `UnitKilled` and `ObjectiveDestroyed` are defined by Combat Resolution (M2) and Objective System epics respectively. For M1 unit testing, these event types are defined as minimal stubs in `tests/unit/economy/` — not in production code. `liv-bevy-018` mandatory on all `.rs` files touched here.
+**Engine Notes**: Uses `MessageReader<UnitKilled>::read()` and `MessageReader<ObjectiveDestroyed>::read()` (Bevy 0.18 — `EventReader` no longer exists). Message types `UnitKilled` and `ObjectiveDestroyed` are defined by Combat Resolution (M2) and Objective System epics respectively and must derive `Message`. For M1 unit testing, these types are defined as minimal stubs in `tests/unit/economy/`. `liv-bevy-018` mandatory on all `.rs` files touched here.
 
 **Control Manifest Rules (Core layer)**:
 - Required: Self-inflicted objective guard: if `attacker_player_id == defending_player_id`, `handle_objective_award` returns early without calling `apply_gold_award`. Loss condition is evaluated by the RSM independently.
@@ -28,11 +28,11 @@
 ## Acceptance Criteria
 
 - [ ] `server/src/core/economy/system.rs` contains `handle_kill_award` system:
-  - Reads `EventReader<UnitKilled>`, `ResMut<PlayerEconomies>`, `Res<GameConfig>`, `EventWriter<S2CGoldUpdate>`, `EventWriter<S2CGoldBroadcast>`
-  - For each `UnitKilled` event: calls `api::apply_gold_award(killer_economy, config.kill_gold_reward)`; enqueues `S2CGoldUpdate` and `S2CGoldBroadcast` for the killer
+  - Reads `MessageReader<UnitKilled>`, `ResMut<PlayerEconomies>`, `Res<GameConfig>`, `MessageWriter<S2CGoldUpdate>`, `MessageWriter<S2CGoldBroadcast>` — TODO(liv-bevy-018): verify MessageReader/MessageWriter type names
+  - For each `UnitKilled` message: calls `api::apply_gold_award(killer_economy, config.kill_gold_reward)`; enqueues `S2CGoldUpdate` and `S2CGoldBroadcast` for the killer
   - Does NOT award gold to the killed player
 - [ ] `server/src/core/economy/system.rs` contains `handle_objective_award` system:
-  - Reads `EventReader<ObjectiveDestroyed>`, `ResMut<PlayerEconomies>`, `Res<GameConfig>`, `EventWriter<S2CGoldUpdate>`, `EventWriter<S2CGoldBroadcast>`
+  - Reads `MessageReader<ObjectiveDestroyed>`, `ResMut<PlayerEconomies>`, `Res<GameConfig>`, `MessageWriter<S2CGoldUpdate>`, `MessageWriter<S2CGoldBroadcast>`
   - For each `ObjectiveDestroyed` event where `attacker_player_id != defending_player_id`: calls `api::apply_gold_award(attacker_economy, config.objective_gold_reward)`; enqueues `S2CGoldUpdate` and `S2CGoldBroadcast`
   - For each `ObjectiveDestroyed` event where `attacker_player_id == defending_player_id`: returns early — no gold awarded (EC11 self-inflicted guard)
   - If `event.was_fake == true` AND `event.reward_type == FakeReward::ManaCap`: calls `api::increment_mana_cap(attacker_economy, config)`; enqueues `S2CGoldUpdate` for the attacker (mana_cap updated)

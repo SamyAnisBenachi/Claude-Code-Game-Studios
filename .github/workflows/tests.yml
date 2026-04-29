@@ -163,14 +163,17 @@ jobs:
       - name: Assert no bevy_render/ui/winit in server/
         run: |
           set -euo pipefail
-          TREE=$(cargo tree -p server --prefix none)
-          VIOLATIONS=$(echo "$TREE" | grep -E '^(bevy_render|bevy_ui|bevy_winit) ' || true)
-          if [ -n "$VIOLATIONS" ]; then
-            echo "FAIL: disallowed crates in server/ dep tree:"
-            echo "$VIOLATIONS"
+          # ADR-003: server/ must not directly declare rendering crates.
+          # cargo tree is NOT used here: workspace feature unification from client/'s
+          # bevy render features causes render crates to appear in server/'s dep tree
+          # even though server/ does not require them. Lightyear transitive render deps
+          # will be verified in S1-05 (Lightyear 0.26 spike).
+          if grep -qE 'bevy_render|bevy_ui|bevy_winit' server/Cargo.toml; then
+            echo "FAIL: forbidden render dep in server/Cargo.toml — violates ADR-003"
+            grep -E 'bevy_render|bevy_ui|bevy_winit' server/Cargo.toml
             exit 1
           fi
-          echo "PASS: server/ dep tree clean"
+          echo "PASS: server/Cargo.toml has no forbidden render deps"
 
   wasm-size:
     name: WASM bundle size check

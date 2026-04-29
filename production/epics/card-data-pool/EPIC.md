@@ -22,8 +22,8 @@ Implements the session-scoped player card pools and the weighted-draw shop refre
 The data model itself is LOW risk (plain `HashMap`, `serde`, no Bevy-version coupling). The MEDIUM-risk surface area:
 
 1. **`bevy_asset_loader` 0.18 compatibility** — `CardCatalog` loading happens at server startup (Foundation epic territory) but if a `CardCatalogAsset` wrapper is used here for shop-side type validation, `#[derive(Asset, TypePath)]` is required as of Bevy 0.18. Verify against pinned `bevy_asset_loader` version.
-2. **`EventReader::read()` not `.iter()`** — same 0.16 rename concern as Economy.
-3. **Per-player fan-out** — `ShopRefreshNeeded` is emitted once per player per DRAFT entry. The subscriber must handle N events per frame (2 for 1v1, up to 6 for 3v3). Bevy's two-frame event lifetime means the subscriber must run every frame; missing an event is a silent shop-fail bug. Subscriber must be `.after(advance_phase)`.
+2. **`MessageReader::read()` — `EventReader` no longer exists in Bevy 0.17+.** Card Pool subscribes to `ShopRefreshNeeded` (a `#[derive(Message)]` type) via `MessageReader<ShopRefreshNeeded>`. `liv-bevy-018` enforces the correct API.
+3. **Per-player fan-out** — `ShopRefreshNeeded` is written once per player per DRAFT entry. The subscriber must handle N messages per frame (2 for 1v1, up to 6 for 3v3). Bevy's two-frame message lifetime means the subscriber must run every frame; missing a message is a silent shop-fail bug. Subscriber must be `.after(advance_phase)`.
 
 `liv-bevy-018` skill is mandatory on every `.rs` file. `liv-bevy-lightyear` is mandatory wherever `S2CShopSlots` and `S2CDraftOffering` send code lives (the network dispatch system).
 
@@ -106,22 +106,22 @@ pub fn total_acquired(pool: &PlayerPool, catalog: &CardCatalog, id: CardId) -> u
 
 **`server/src/core/pool/system.rs`**
 - `on_session_ready_init` — Observer for `SessionReady` (registered by GSS plugin in Epic 2 — coordinated): initialise `PlayerPools` from `Res<SessionConfig>.team_map.keys()` × `Res<CardCatalog>` × `Res<GameConfig>`. Apply rarity defaults + `pool_copies_override` per card with soft-error logging.
-- `on_shop_refresh_needed` — `EventReader<ShopRefreshNeeded>` subscriber. For each event:
+- `on_shop_refresh_needed` — `MessageReader<ShopRefreshNeeded>` subscriber. For each message:
   1. Determine slot count: 9 if `Res<RoundState>.phase == DraftInitial`, 3 otherwise.
   2. Call `refresh_shop(player, ...)` — atomic distribute-and-collect.
   3. Write to `ShopSlots[player]` (or `InitialDraftOffering[player]` for DRAFT_INITIAL).
   4. Reset `ManualRefreshCount[player] = 0`.
   5. Enqueue `S2CShopSlots { slots: Vec<CardId> }` unicast on `ReliableChannel`. For DRAFT_INITIAL, enqueue `S2CDraftOffering { offering: Vec<CardId> }` instead.
   6. If shop draw returns < `slot_count` cards (filtered pool exhausted): fill remaining slots with `None` placeholders in the message; client renders empty slot. Soft fail per ADR-006.
-- `on_manual_refresh` — `EventReader<C2SShopRefresh>` subscriber. Phase-gate (`phase == DraftShop`); compute cost from `ManualRefreshCount`; call Economy's `validate_spend` (`from_reserve_only=false`) + `apply_spend` for the gold; then call `refresh_shop` for 3 slots; increment `ManualRefreshCount`. Send fresh `S2CShopSlots`.
-- `on_card_acquired` — `EventReader<CardAcquired>` (emitted by shop purchase / auction win / objective free-pick): call `acquire_card(pool, card_id)` to remove the copy. Emits `S2CHandUpdate` to the owner (defined in shared protocol; this epic only enqueues).
+- `on_manual_refresh` — `MessageReader<C2SShopRefresh>` subscriber. Phase-gate (`phase == DraftShop`); compute cost from `ManualRefreshCount`; call Economy's `validate_spend` (`from_reserve_only=false`) + `apply_spend` for the gold; then call `refresh_shop` for 3 slots; increment `ManualRefreshCount`. Send fresh `S2CShopSlots`.
+- `on_card_acquired` — `MessageReader<CardAcquired>` (emitted by shop purchase / auction win / objective free-pick): call `acquire_card(pool, card_id)` to remove the copy. Enqueues `S2CHandUpdate` to the owner (defined in shared protocol; this epic only enqueues).
 
 **`server/src/core/pool/plugin.rs`**
 - `CardPoolPlugin`: registers `PlayerPools`, `ShopSlots`, `InitialDraftOffering`, `ManualRefreshCount`; subscribes `on_shop_refresh_needed` `.after(advance_phase)` (Epic 1 ordering contract); registers `on_session_ready_init` Observer; teardown subscriber on `GameOverEmitted` to clear all per-session resources.
 
 **Network dispatch wiring**
-- A system in `server/src/network/` reads `EventReader<S2CShopSlots>` and sends unicast on `ReliableChannel`.
-- A system reads `EventReader<S2CDraftOffering>` and sends unicast on `ReliableChannel`.
+- A system in `server/src/network/` reads `MessageReader<S2CShopSlots>` and sends unicast on `ReliableChannel`.
+- A system reads `MessageReader<S2CDraftOffering>` and sends unicast on `ReliableChannel`.
 - Message types defined in `shared/src/protocol.rs` (`workspace-and-shared-types` Foundation epic).
 
 **Tests**
@@ -182,7 +182,7 @@ Suggested decomposition (final story list to be authored via `/create-stories`):
 1. **State + API scaffold** (Config/Data + Logic) — `state.rs`, `api.rs`, `distribute()`, `acquire_card()`, `total_acquired()`; pure-function unit tests including `pool_copies_override <= 0` soft-error path.
 2. **Weighted draw** (Logic) — `draw()` with full PoolFilter (class, family, max_rarity); Formula 2 weighting; empty-filtered-pool returns `None`; convenience wrappers; tests for each filter combination.
 3. **`refresh_shop` + 3/9 slot variants** (Logic) — atomic distribute-and-collect; partial-fill on exhaustion; tests for both DRAFT_INITIAL (9) and DRAFT_SHOP (3) cases.
-4. **`ShopRefreshNeeded` subscriber + `SessionReady` init** (Integration) — Observer for `SessionReady` initialises pools; `EventReader<ShopRefreshNeeded>` subscriber calls `refresh_shop` and writes `ShopSlots`; per-player fan-out across 1v1 and 2v2.
+4. **`ShopRefreshNeeded` subscriber + `SessionReady` init** (Integration) — Observer for `SessionReady` initialises pools; `MessageReader<ShopRefreshNeeded>` subscriber calls `refresh_shop` and writes `ShopSlots`; per-player fan-out across 1v1 and 2v2.
 5. **Manual refresh + cost escalation** (Logic + Integration) — `on_manual_refresh` with `ManualRefreshCount`; phase-gate to DRAFT_SHOP; calls Economy's `validate_spend` + `apply_spend`; counter reset on DRAFT entry; tests EC24/EC25/EC26 from Economy GDD covered jointly.
 6. **Network dispatch wiring** (Integration) — `S2CShopSlots` and `S2CDraftOffering` unicast on `ReliableChannel`; `liv-bevy-lightyear` mandatory; integration test asserts correct messages on correct channel with correct targets.
 

@@ -84,7 +84,7 @@ pub fn advance_phase(
 ```rust
 pub fn advance_phase(
     mut rsm: ResMut<RoundState>,
-    // ... EventWriter params ...
+    // ... MessageWriter params ...
     trigger: Local<RsmTrigger>,  // or passed as param from rsm_input_reader
 ) {
     let expected_source = trigger.expected_source;
@@ -132,7 +132,7 @@ Each test uses `World::new()` + event injection. No live Lightyear session requi
 - **RSM-11**: Exactly 2 `ShopRefreshNeeded` events emitted per DRAFT entry in 1v1; each carries a distinct `player` field
 - **RSM-12**: PLACEMENT → RESOLUTION when timer expires (inject timer to 0, non-submitting players treated as submitting zero cards — no refund; assert `submissions_received` not checked for full set)
 - **RSM-31**: Double-transition guard — two simultaneous triggers in the same tick produce exactly one `BroadcastPhaseChanged` (second call finds phase already changed, returns silently)
-- **RSM-32**: F2 ordering test — assert `DraftStarted` is written before `ShopRefreshNeeded`, which is written before `BroadcastPhaseChanged`; use order-recording mock `EventWriter` or inspect event queue state
+- **RSM-32**: F2 ordering test — assert `DraftStarted` is written before `ShopRefreshNeeded`, which is written before `BroadcastPhaseChanged`; use order-recording mock `MessageWriter` or inspect message queue state
 - **RSM-33**: `is_auction_round(0)` is never reached in any test; `round_number` is always >= 1 when `is_auction_round` is called
 
 ---

@@ -15,7 +15,7 @@
 **ADR Decision Summary**: `validate_and_promote` runs once on entry to `AppState::ConfigValidation`. On any invariant failure, it calls `exit.write(AppExit::error())` — never `panic!`. On full success, it clones both assets into resources and transitions to `AppState::Lobby`. The distinction between fatal errors and soft errors (warn + continue) is explicitly defined.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: LOW
-**Engine Notes**: `AppExit::error()` is the correct non-panicking fatal exit in Bevy 0.18. `EventWriter<AppExit>` is the injection point. Verify `AppExit` import path against Bevy 0.18 — it may be `bevy::app::AppExit` or `bevy::prelude::AppExit`.
+**Engine Notes**: `AppExit::error()` is the correct non-panicking fatal exit in Bevy 0.18. In Bevy 0.18, `AppExit` is an Observer event — send via `commands.trigger(AppExit::error())` or check if `EventWriter<AppExit>` still exists (post-cutoff, verify against `liv-bevy-018`). Verify `AppExit` import path: `bevy::app::AppExit` or `bevy::prelude::AppExit`. TODO(liv-bevy-018): verify AppExit dispatch mechanism in Bevy 0.18.
 
 **Control Manifest Rules (Foundation layer)**:
 - Required: Abort startup if any dangerous `GameConfig` value is invalid (full list in ACs below).

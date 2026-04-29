@@ -78,7 +78,7 @@ Three high-risk post-cutoff API behaviours converge in this epic:
 - `handle_lobby_disconnect` — subscribes to Lightyear `OnDisconnected`; if `LobbyState == LobbyWaiting | LobbyReady`, immediately cancels session, broadcasts `S2CSessionCancelled { reason: PlayerDisconnected }`, destroys session resources.
 - `tick_lobby_heartbeats` — fallback dual-signal: tracks `C2SHeartbeat` per occupied slot; if gap > `lobby_heartbeat_timeout_seconds` (default 15s — separate from RSM's 30s grace), cancel as if `OnDisconnected` fired. Tracker is destroyed on `SessionReady` (RSM takes over with `disconnect_grace_seconds`).
 - `lobby_timeout_check` — at `now > lobby_deadline` with F4 false, transitions to `LobbyCancelled` with `reason: LobbyTimeout`.
-- `handle_game_over_teardown` — subscribes to `EventReader<GameOverEmitted>` (from Epic 1); broadcasts `S2CGameOver { loser, round, reason }` on `ReliableChannel`; removes `SessionConfig` and `ServerRng` resources from world; transitions `LobbyState` to `GameOver`. The GAME_OVER → session destruction path lives here per ADR-010 subscriber contract.
+- `handle_game_over_teardown` — subscribes to `MessageReader<GameOverEmitted>` (from Epic 1 RSM message bus); broadcasts `S2CGameOver { loser, round, reason }` on `ReliableChannel`; removes `SessionConfig` and `ServerRng` resources from world; transitions `LobbyState` to `GameOver`. The GAME_OVER → session destruction path lives here per ADR-010 subscriber contract.
 
 **`on_session_ready` (lives in `server/core/rsm/system.rs`, registered by GSS plugin)**
 - Per ADR-012: `fn on_session_ready(_t: Trigger<SessionReady>, config: Res<SessionConfig>, rng: Res<ServerRng>, mut round_state: ResMut<RoundState>, ...)`.

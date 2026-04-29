@@ -63,7 +63,7 @@ not by Bevy system scheduling constraints.
 | **Depends On** | ADR-009 (RSM states and `advance_phase` function — that ADR defines the state machine; this ADR defines what it emits); ADR-003 (workspace layout — events defined in `server/core/rsm/events.rs`); ADR-008 (channel config — `BroadcastPhaseChanged` triggers the network dispatch that uses `ReliableChannel`) |
 | **Enables** | Economy System implementation (reads `DraftStarted`); Card Pool implementation (reads `ShopRefreshNeeded`); Board/Lane System phase gating (reads `PlacementPhaseEntered`, `ResolutionPhaseEntered`); Game Session System teardown (reads `GameOverEmitted`); Network dispatch system (reads `BroadcastPhaseChanged`) |
 | **Blocks** | Any story that implements a phase-reactive server system. No system may write a phase-reactive subscriber until this ADR is Accepted and the event types in `server/core/rsm/events.rs` are defined. |
-| **Ordering Note** | ADR-009 must be Accepted first — `advance_phase` is where all `EventWriter::write()` calls live. This ADR is a companion to ADR-009, not a replacement. |
+| **Ordering Note** | ADR-009 must be Accepted first — `advance_phase` is where all `MessageWriter::write()` calls live. This ADR is a companion to ADR-009, not a replacement. |
 
 ---
 
@@ -99,10 +99,11 @@ is ready. The RSM's GDD (Formula F2) specifies this order explicitly.
 - The RSM (`server/core/rsm/`) must have zero direct imports from `server/feature/`.
 - All phase-reactive logic must be triggered by an event, not by direct function call.
 - The F2 emission order (GDD round-state-machine.md) is contractual and must be enforced.
-- Events are Bevy buffered events — they are processed within the same `Update` set,
-  by systems scheduled after `advance_phase`.
-- Observers are reserved for the Feature layer's keyword trigger system. The RSM
-  event bus uses `EventWriter`/`EventReader` only.
+- Messages are Bevy buffered Messages (`#[derive(Message)]`) — they are processed
+  within the same `Update` set, by systems scheduled after `advance_phase`.
+- Observers are reserved for one-shot lifecycle triggers (`SessionReady` per ADR-012)
+  and the Feature layer's keyword trigger system. The RSM message bus uses
+  `MessageWriter`/`MessageReader` only.
 - Configuration values (timer durations, round numbers) must be passed as event fields
   — subscribers must not re-query `GameConfig` to determine context they could receive
   from the event directly.
@@ -603,7 +604,7 @@ The RSM only signals phase entry and exit. Systems own their responses.
 
 | Risk | Probability | Impact | Mitigation |
 |------|------------|--------|------------|
-| Bevy 0.18 `EventWriter::write()` API differs from expected | MEDIUM | Compilation failure | Verify against Bevy 0.18 migration guide before writing any emitter code. `liv-bevy-018` skill enforces correct method name. |
+| Bevy 0.18 `MessageWriter::write()` API differs from expected | MEDIUM | Compilation failure | `EventWriter`/`EventReader` no longer exist in Bevy 0.17+. Use `MessageWriter<T>`/`MessageReader<T>` + `app.add_message::<T>()`. Verify exact names against Bevy 0.18 docs. `liv-bevy-018` skill enforces correct API. |
 | Subscriber scheduled before `advance_phase` misses events | MEDIUM | Silent logic failure — phase entry action never executes | Enforce `.after(advance_phase)` scheduling in each subscriber's plugin registration. Add an integration test that verifies each subscriber fires on the expected phase. |
 | M2 subscriber contracts added without updating this ADR | MEDIUM | Undocumented coupling between RSM events and M2 systems | Gate M2 stories on updating this ADR's Subscriber Contracts table before implementation begins. |
 | Stale `AuctionSettled` or `ResolutionComplete` event processed out-of-phase | LOW | RSM double-transitions or transitions from wrong phase | Guard pattern in `rsm_input_reader` (see Implementation Guidelines item 5) must be implemented and tested. RSM-31 and RSM-35 acceptance criteria cover the double-transition case. |

@@ -418,7 +418,9 @@ fn validate_and_promote(
     configs: Res<Assets<GameConfig>>,
     catalogs: Res<Assets<CardCatalog>>,
     mut next_state: ResMut<NextState<AppState>>,
-    mut exit: EventWriter<AppExit>,
+    // TODO(liv-bevy-018): verify AppExit dispatch in Bevy 0.18 — may be
+    // commands.trigger(AppExit::error()) rather than EventWriter<AppExit>
+    mut exit: EventWriter<AppExit>,  // TODO(liv-bevy-018): verify this still exists
 ) {
     let Some(cfg) = configs.get(&game_assets.game_config) else {
         error!("GameConfig handle did not resolve to an asset");
@@ -513,6 +515,7 @@ check at that point.
 ```rust
 #[cfg(debug_assertions)]
 fn hot_reload_game_config(
+    // TODO(liv-bevy-018): verify AssetEvent pattern in Bevy 0.18 — may use MessageReader or a different API
     mut events: EventReader<AssetEvent<GameConfig>>,
     game_assets: Res<GameAssets>,
     configs: Res<Assets<GameConfig>>,

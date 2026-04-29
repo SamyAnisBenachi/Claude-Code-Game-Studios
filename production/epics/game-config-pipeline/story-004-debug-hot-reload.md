@@ -15,7 +15,7 @@
 **ADR Decision Summary**: A debug-only `hot_reload_game_config` system watches `AssetEvent::<GameConfig>::Modified`. On change, it re-runs `validate_game_config` — on pass, re-inserts `Res<GameConfig>`; on fail, logs a warning and retains the prior config. `CardCatalog` intentionally has no hot-reload path. The `add_systems` call itself (not just the function body) must be gated behind `#[cfg(debug_assertions)]` to guarantee the system is absent from release builds.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: MEDIUM
-**Engine Notes**: `AssetEvent::<T>::Modified` API — verify the event variant name against Bevy 0.18 (may be `AssetEvent::Modified { id }` with pattern matching). `EventReader::read()` not `iter()` (Bevy 0.16+ change). Confirm `AssetEvent` import path. Release-build symbol verification requires `nm`, `cargo-bloat`, or equivalent.
+**Engine Notes**: `AssetEvent::<T>::Modified` — verify whether `AssetEvent` uses Bevy Message or Observer pattern in 0.18 (asset events may retain the old API or have migrated). If `AssetEvent` is still an ECS event, the pattern is `MessageReader<AssetEvent<GameConfig>>::read()`. Verify `AssetEvent` variant name against Bevy 0.18 migration guide. TODO(liv-bevy-018): verify `AssetEvent` API and `MessageReader` vs other pattern in Bevy 0.18. Release-build symbol verification requires `nm`, `cargo-bloat`, or equivalent.
 
 **Control Manifest Rules (Foundation layer)**:
 - Required: Debug hot-reload of `GameConfig` must re-validate before applying. Reject invalid reload with warning; retain previous config.
@@ -50,7 +50,8 @@
 ```rust
 #[cfg(debug_assertions)]
 fn hot_reload_game_config(
-    mut events: EventReader<AssetEvent<GameConfig>>,
+    // TODO(liv-bevy-018): verify if AssetEvent uses MessageReader or a different pattern in Bevy 0.18
+    mut events: MessageReader<AssetEvent<GameConfig>>,
     game_assets: Res<GameAssets>,
     configs: Res<Assets<GameConfig>>,
     mut commands: Commands,

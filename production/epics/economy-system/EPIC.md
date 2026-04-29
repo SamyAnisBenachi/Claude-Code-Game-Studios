@@ -18,11 +18,11 @@ Implements the per-player currency state and the public spend/award API consumed
 
 ## Engine Risk: MEDIUM
 
-Lower than RSM/GSS because Economy uses standard Bevy patterns: a `Resource` for state, `EventReader::read()` for subscribing to RSM events, plain function-call API for spend/award, `EventWriter::write()` for `S2CGoldUpdate` enqueue. The risks:
+Lower than RSM/GSS because Economy uses standard Bevy patterns: a `Resource` for state, `MessageReader::read()` for subscribing to RSM messages, plain function-call API for spend/award, `MessageWriter::write()` for `S2CGoldUpdate` enqueue. The risks:
 
-1. **`EventReader::read()` not `.iter()`** — `iter()` was renamed in Bevy 0.16. `liv-bevy-018` enforces this on every reader.
-2. **`EventWriter::write()` not `.send()`** — `send()` was removed in Bevy 0.16.
-3. **Subscriber ordering** — Economy's `DraftStarted` subscriber must run `.after(advance_phase)` so events written in the current frame are visible. This is the Epic 1 contract; Economy enforces it in its plugin scheduling.
+1. **`MessageReader::read()` — `EventReader` no longer exists in Bevy 0.17+.** `liv-bevy-018` skill is mandatory on every reader to enforce the correct API. RSM phase messages use `#[derive(Message)]` + `MessageReader<T>`.
+2. **`MessageWriter::write()` — `EventWriter` no longer exists in Bevy 0.17+.** All internal message dispatch uses `MessageWriter<T>` + `app.add_message::<T>()`.
+3. **Subscriber ordering** — Economy's `DraftStarted` subscriber must run `.after(advance_phase)` so messages written in the current frame are visible. This is the Epic 1 contract; Economy enforces it in its plugin scheduling.
 
 `liv-bevy-018` skill is mandatory on every `.rs` file. `liv-bevy-lightyear` is mandatory wherever `S2CGoldUpdate` send code lives (the network dispatch system).
 
@@ -90,7 +90,7 @@ pub fn discard_current_mana(economy: &mut PlayerEconomy);  // RESOLUTION end; cu
 - All u32 arithmetic uses `saturating_sub` to prevent underflow.
 
 **`server/src/core/economy/system.rs`**
-- `on_draft_started` — `EventReader<DraftStarted>` subscriber. For each event:
+- `on_draft_started` — `MessageReader<DraftStarted>` subscriber. For each message:
   1. For all players in `Res<SessionConfig>.team_map`:
      - `apply_mana_ramp(player, round_number)` → `current_mana = min(round_number, mana_cap)`
      - If `phase == DraftPhase::Initial` AND `round_number == 1`: gold is already `5` from initialisation; no income applied this DRAFT entry.
@@ -99,16 +99,16 @@ pub fn discard_current_mana(economy: &mut PlayerEconomy);  // RESOLUTION end; cu
   3. Enqueue `S2CGoldBroadcast { player, gold }` broadcast (gold is publicly visible per GDD Rule 6).
 - `on_resolution_phase_entered` — takes interest snapshot AT THE END of resolution. Implementation: the system runs `.after(combat_resolution_complete_marker)` (the marker is established by Combat Resolution in M2; for M1 we use a placeholder system label that runs after Objective System's destruction processing). Snapshot reads `gold` for each player and writes to `InterestSnapshots`. The snapshot is what `on_draft_started` consumes at next DRAFT entry — never recomputed from "current" gold.
 - `discard_current_mana_at_resolution_end` — for each player: `current_mana = 0`. Runs in the same system step as the snapshot.
-- `handle_kill_award` — `EventReader<UnitKilled>` (from Combat Resolution M2 — type defined now): `apply_gold_award(killer, kill_gold_reward)`; enqueue `S2CGoldUpdate` + `S2CGoldBroadcast`.
-- `handle_objective_award` — `EventReader<ObjectiveDestroyed>` (from Objective System): if `attacker != target`: `apply_gold_award(attacker, objective_gold_reward)`; if `was_fake` and the RNG-rolled reward is "mana_cap +1": `increment_mana_cap(attacker)`. Self-inflicted objective damage (EC11) does NOT award gold.
+- `handle_kill_award` — `MessageReader<UnitKilled>` (from Combat Resolution M2 — type derives `Message`): `apply_gold_award(killer, kill_gold_reward)`; enqueue `S2CGoldUpdate` + `S2CGoldBroadcast`.
+- `handle_objective_award` — `MessageReader<ObjectiveDestroyed>` (from Objective System — type derives `Message`): if `attacker != target`: `apply_gold_award(attacker, objective_gold_reward)`; if `was_fake` and the RNG-rolled reward is "mana_cap +1": `increment_mana_cap(attacker)`. Self-inflicted objective damage (EC11) does NOT award gold.
 - `handle_card_play_spend` — called by Board/Lane System on placement commit (NOT by this epic — Board/Lane calls `apply_spend` after `validate_spend` returns Ok). Documented contract; no system here.
 
 **`server/src/core/economy/plugin.rs`**
 - `EconomyPlugin`: registers `PlayerEconomies`, `InterestSnapshots`; subscribes `on_draft_started` `.after(advance_phase)` (Epic 1 ordering contract); subscribes resolution-end systems.
 
 **Network dispatch wiring**
-- A system in `server/src/network/` reads `EventReader<S2CGoldUpdate>` and sends unicast on `ReliableChannel` via `MessageSender<S2CGoldUpdate>` to the owning player.
-- A system reads `EventReader<S2CGoldBroadcast>` and sends broadcast on `ReliableChannel`.
+- A system in `server/src/network/` reads `MessageReader<S2CGoldUpdate>` and sends unicast on `ReliableChannel` via `MessageSender<S2CGoldUpdate>` to the owning player.
+- A system reads `MessageReader<S2CGoldBroadcast>` and sends broadcast on `ReliableChannel`.
 - Both message types are defined in `shared/src/protocol.rs` (`workspace-and-shared-types` Foundation epic).
 
 **Tests**
@@ -157,7 +157,7 @@ pub fn discard_current_mana(economy: &mut PlayerEconomy);  // RESOLUTION end; cu
 - `cargo check --workspace` green; zero warnings on `server/src/core/economy/**`.
 - CI grep gate: direct field mutation outside `economy/api.rs` returns zero matches:
   `grep -rE "economy\.(gold|current_mana|reserve_mana|mana_cap|reserved_gold)\s*=" server/src/ | grep -v "core/economy/"` returns zero matches.
-- CI grep gate: `grep -rE "EventWriter::send|\.iter\(\)" server/src/core/economy/ | grep -E "Event(Reader|Writer)"` returns zero matches.
+- CI grep gate: `grep -rE "EventWriter|EventReader|Events<|add_event" server/src/core/economy/` returns zero matches (`EventWriter`/`EventReader` do not exist in Bevy 0.18).
 - An integration test simulates round 1 → 2 → 3 with a fixed gold/mana trace and asserts every value at every DRAFT entry matches GDD formulas (Formula 1, 2, 3, 4).
 - An integration test demonstrates `S2CGoldUpdate` unicast and `S2CGoldBroadcast` broadcast both fire on every DRAFT entry, with consistent values.
 - `EconomyPlugin` registers cleanly in a headless Bevy `App` startup test.

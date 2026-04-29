@@ -19,7 +19,7 @@
 
 **Engine**: Bevy 0.18 | **Risk**: MEDIUM
 **Engine Notes**:
-- `EventReader<C2SShopRefresh>` uses Bevy 0.16 `.read()` API — `liv-bevy-018` mandatory.
+- Bevy 0.18: `C2SShopRefresh` messages use `MessageReader<C2SShopRefresh>::read()` — `EventReader` no longer exists. `liv-bevy-018` mandatory.
 - Economy `validate_spend` and `apply_spend` are pure functions (no ECS surface) but `PlayerEconomies` is a `ResMut` — the borrow checker enforces that `PlayerPools` and `PlayerEconomies` are not simultaneously mutably borrowed in the same system call. Destructure borrows carefully.
 - `C2SShopRefresh` is a client-to-server Lightyear message. At the system layer it arrives as an ECS event. Confirm with `liv-bevy-lightyear` skill the exact event type name for deserialized C2S messages in Lightyear 0.26.
 
@@ -36,7 +36,7 @@
 ## Acceptance Criteria
 
 - [ ] `server/src/core/pool/system.rs` is extended with `on_manual_refresh`:
-  - `on_manual_refresh(mut events: EventReader<C2SShopRefresh>, mut pools: ResMut<PlayerPools>, mut shop_slots: ResMut<ShopSlots>, mut refresh_count: ResMut<ManualRefreshCount>, mut economies: ResMut<PlayerEconomies>, round_state: Res<RoundState>, catalog: Res<CardCatalog>, family_index: Res<FamilyIndex>, mut rng: ResMut<ServerRng>, config: Res<GameConfig>, mut errors: EventWriter<S2CError>)`
+  - `on_manual_refresh(mut events: MessageReader<C2SShopRefresh>, mut pools: ResMut<PlayerPools>, mut shop_slots: ResMut<ShopSlots>, mut refresh_count: ResMut<ManualRefreshCount>, mut economies: ResMut<PlayerEconomies>, round_state: Res<RoundState>, catalog: Res<CardCatalog>, family_index: Res<FamilyIndex>, mut rng: ResMut<ServerRng>, config: Res<GameConfig>, mut errors: MessageWriter<S2CError>)` — TODO(liv-bevy-018): verify MessageReader/MessageWriter type names in Bevy 0.18
 - [ ] Phase gate: GIVEN `round_state.phase != Phase::DraftShop`, WHEN `C2SShopRefresh` received for any player, THEN event is consumed; `S2CError::WrongPhase` is enqueued for that player; no pool or economy mutation occurs
 - [ ] Cost escalation formula: cost for the `n`th refresh (1-indexed) in a DRAFT phase = `config.manual_refresh_base_cost + (n - 1)` gold
   - 1st refresh: `base_cost + 0 = base_cost` (e.g., 1g)
@@ -80,7 +80,7 @@ let cost = config.manual_refresh_base_cost + n;  // n = 0 for first refresh
 9. ManualRefreshCount[player_id] += 1
 10. slots = refresh_shop(pool, catalog, family_index, rng, config, 3)
 11. ShopSlots[player_id] = slots.clone()
-12. EventWriter<S2CShopSlots>.write(S2CShopSlots { player_id, slots })
+12. MessageWriter<S2CShopSlots>.write(S2CShopSlots { player_id, slots })  // TODO(liv-bevy-018): verify MessageWriter type name
 ```
 
 **Borrow splitting:** `PlayerPools` and `PlayerEconomies` are two separate `ResMut` parameters — Bevy allows multiple mutable resource borrows in the same system as long as they are distinct resource types. Do not attempt to hold both as `&mut` references to fields of the same struct.

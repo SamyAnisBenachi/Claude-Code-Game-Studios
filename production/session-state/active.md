@@ -49,20 +49,25 @@
 **liv-bevy-018 installé globalement :** `C:\Users\Sam\.claude\skills\liv-bevy-018\`
 **liv-bevy-lightyear installé globalement :** `C:\Users\Sam\.claude\skills\liv-bevy-lightyear\`
 
-### Violations dans les stories/ADRs actuels
+### ✅ AUDIT COMPLET — 2026-04-29
 
 Le skill liv-bevy-018 révèle que **EventWriter/EventReader n'existent plus en Bevy 0.18** :
 - `EventWriter<T>` → `MessageWriter<T>`
 - `EventReader<T>` → `MessageReader<T>`
 - `app.add_event::<T>()` → `app.add_message::<T>()`
 
-**Fichiers à corriger (audit en attente) :**
-- `docs/architecture/adr-010-rsm-event-bus.md` — dit "Bevy buffered Events" → doit dire "Messages"
-- `production/epics/round-state-machine/story-001-state-and-events-scaffold.md` — EventWriter dans ACs
-- `docs/architecture/control-manifest.md` — Core Layer Rules mentionnent EventWriter::write()
-- Toutes les stories RSM, GSS, Economy qui mentionnent EventWriter/EventReader
-
-**Action requise :** Lancer l'agent d'audit avec le prompt dans `production/session-state/bevy-audit-prompt.md`
+**AUDIT TERMINÉ — Toutes les violations corrigées :**
+- `docs/architecture/adr-010-rsm-event-bus.md` — ✅ "Bevy buffered Messages (MessageWriter/MessageReader)"
+- `docs/architecture/adr-009-rsm-phase-state.md` — ✅ EventReader/EventWriter → MessageReader/MessageWriter
+- `docs/architecture/control-manifest.md` — ✅ Core Layer Rules mis à jour
+- `docs/architecture/architecture.md` — ✅ Engine risk table corrigée
+- `docs/architecture/adr-007-placement-buffer.md` — ✅ TODO(liv-bevy-018) ajouté
+- `docs/architecture/adr-004-asset-loading-pipeline.md` — ✅ TODO(liv-bevy-018) ajouté
+- `docs/architecture/adr-008/011/012-*.md` — ✅ Sections ⚠️ API Verification Required ajoutées
+- Toutes les stories RSM, GSS, Economy, CardPool — ✅ MessageWriter/MessageReader
+- `server/Cargo.toml` — ✅ TODO feature verification ajouté
+- `client/Cargo.toml` — ✅ TODO feature collection verification ajouté
+- `server/src/main.rs` — ✅ Commentaire "bevy_ecs" corrigé
 
 ### Lightyear 0.26 — API non-vérifiée
 
@@ -87,13 +92,13 @@ Le skill liv-bevy-018 révèle que **EventWriter/EventReader n'existent plus en 
 2. `/story-done production/epics/workspace-and-shared-types/story-004-protocol-skeleton-ci-gates.md`
 3. `/story-done production/epics/server-rng/story-001-type-definitions-audit-infrastructure.md`
 
-### Audit Bevy 0.18 (prompt disponible)
-4. Lancer l'agent d'audit — prompt dans `production/session-state/bevy-audit-prompt.md`
-   (lit liv-bevy-018 + liv-bevy-lightyear, corrige toutes les violations dans stories/ADRs/code)
+### ✅ Audit Bevy 0.18 TERMINÉ
+4. Audit complet fait — toutes violations EventWriter/EventReader corrigées en MessageWriter/MessageReader
+   Lightyear ADRs annotés avec ⚠️ API Verification Required
 
 ### Premier vrai code de jeu (pas de gate Lightyear)
 5. `/dev-story production/epics/round-state-machine/story-001-state-and-events-scaffold.md`
-   → MAIS attendre l'audit Bevy d'abord (le story a des ACs avec EventWriter incorrect)
+   → Story prête : ACs corrigés avec MessageWriter/MessageReader/#[derive(Message)]
 
 ### Gate Lightyear (bloque tout le networking)
 6. `/dev-story production/epics/lightyear-protocol-verification/story-001-...`

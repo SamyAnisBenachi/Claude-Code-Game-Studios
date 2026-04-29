@@ -52,7 +52,7 @@
 
 **Snapshot ordering concern for M1:** Combat Resolution (kill awards) and Objective System (objective awards) are not implemented in M1. For M1 acceptance, the ordering contract is documented but enforced by placeholder. The M1 test injects gold manually before triggering `ResolutionPhaseEntered`, simulating post-award gold state. M2 will enforce the real ordering via system labels.
 
-**Single `EventReader<ResolutionPhaseEntered>` or two?** If `on_resolution_phase_entered` and `discard_current_mana_at_resolution_end` are two separate systems, each needs its own `EventReader<ResolutionPhaseEntered>`. Bevy buffered events support multiple readers — each reader sees each event independently. Both systems are scheduled in the same label set so they run in the same frame and both see the event.
+**Single `MessageReader<ResolutionPhaseEntered>` or two?** If `on_resolution_phase_entered` and `discard_current_mana_at_resolution_end` are two separate systems, each needs its own `MessageReader<ResolutionPhaseEntered>`. Bevy buffered Messages support multiple readers — each reader sees each message independently. Both systems run in the same frame and both see the message.
 
 Alternatively, merge into one system `resolve_economy_at_resolution_end` that both takes the snapshot and discards mana in one pass. This is simpler for M1 — both operations happen atomically from the event. The merged approach is recommended unless a specific reason to separate arises.
 
