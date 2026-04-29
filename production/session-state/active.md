@@ -1,57 +1,48 @@
 # Session State
 
-## Current Task
-/review-all-gdds — FAIL verdict (2026-04-29 R2)
+## Current Stage: Pre-Production ✅
 
-## Status
-Cross-GDD review R2 complete. 7 blocking issues prevent architecture start.
-Progress: 6 prior blockers resolved this session, 3 new blockers surfaced.
+## Sprint 1 Progress
 
-## Session Extract — /design-review game-config.md 2026-04-29
-- Verdict: APPROVED (post-revision, then NEEDS REVISION again per /review-all-gdds R2)
-- Key changes: 5 RSM timer fields added, reserve_mana_cap + interest_threshold_gold added, epic/legendary moved to const, 6 new validation rules, 13 ACs rewritten, Formula 3 in card-data-pool.md updated to use fake_objective_spawn_advance
-- N-B1 discovered post-approval: refresh_base_cost missing from struct (economy-system.md references it)
-- Review log: design/gdd/reviews/game-config-review-log.md
+| ID | Story | Priority | Status |
+|---|---|---|---|
+| **S1-01** | Cargo Workspace Scaffolding | Must Have | ✅ done (2026-04-29) |
+| **S1-02** | Shared Card Types | Must Have | ✅ done (2026-04-29) |
+| **S1-03** | GameConfig POD Struct | Must Have | ✅ done (2026-04-29) |
+| **S1-04** | Protocol Skeleton + CI Gates | Must Have | ⚠️ impl-complete — needs local `cargo check` |
+| S1-05 ⭐ | Lightyear 0.26 Verification Spike | Must Have | backlog (needs S1-04 Done) |
+| **S1-09** | ServerRng Type Definitions | Should Have | ⚠️ impl-complete — needs `cargo test -p server` |
 
-## Session Extract — /review-all-gdds 2026-04-29 R2
-- Verdict: FAIL
-- GDDs reviewed: 7
-- Flagged for revision: game-config.md, economy-system.md, card-data-pool.md, lanes-and-lies-gdd.md, entities.yaml
-- Report: design/gdd/gdd-cross-review-2026-04-29.md (overwritten with R2)
+## Pending User Actions
+1. `cargo check --workspace` → paste into `tests/evidence/story-004-workspace-check.md`
+2. If S1-04 Option A fails → move `register_protocol` out of `shared/` (ADR-003 fallback)
+3. `cargo test -p server --verbose` → confirms 6 RNG tests pass → close S1-09
+4. Run `/story-done` on S1-04 and S1-09 once evidence collected
+5. Note: `cards.json` uses `"id": [1]` format (serde newtype serialization) — may need `#[serde(transparent)]` on CardId in Story 002 (loader)
 
-## Remaining Blocking Issues (7)
+## Wave 1 — DONE
+- ✅ server-rng/story-001: ServerRng + AuditEntry + RngEvent + 6 tests
+- ✅ create-epics core: RSM, GSS, Economy, Pool epics + index
+- ✅ qa-plan: production/qa/sprint-1-qa-plan.md
 
-**Consistency cluster:**
-- C-B4: card-data-pool.md missing refresh_shop() auto-refresh policy (§3.4)
-- C-B5: interest formula hardcodes /5 in economy-system.md, master GDD §7, entities.yaml
-- C-B6: S2CGameOver + GameOverReason unregistered in entities.yaml; not in master GDD
-- N-B1 (NEW): refresh_base_cost missing from game-config.md (economy-system.md references it)
-- N-B2 (NEW): master GDD §3.9 + §4.1 still say "no reserve cap" — contradicts reserve_mana_cap
+## Wave 2 — DONE (2026-04-29)
+- ✅ game-config-pipeline/story-001: assets/config/game_config.ron + assets/data/cards.json
+- ✅ create-stories RSM: 6 stories (001–006)
+- ✅ create-stories GSS: 7 stories (001–007, story-004 Blocked on ADR-012)
+- ✅ create-stories Economy: 6 stories (001–006)
+- ✅ create-stories Card-Data-Pool: 6 stories (001–006)
 
-**Design cluster:**
-- D-B1: Fake-first still strictly dominant (unchanged)
-- B-2 (NEW): Garde-Temps costs 20 reserve but reserve_mana_cap=10 — card permanently unplayable. Introduced by D-B2 fix. Design decision required: raise cap, lower cost, or change spending model.
-- B-3 (NEW): Free card pick from fake destruction can draw Legendary from auction pool — bypasses "Auction as signature." Fix: cap free pick at Rare/Epic.
+## Stories Backlog — Ready for Development
+Foundation:
+- production/epics/game-config-pipeline/story-001 (asset data) — impl done, needs /story-done
+- production/epics/server-rng/story-002-intent-named-api-invariants.md (needs S1-09 Done)
+- production/epics/game-config-pipeline/story-002 and story-003 (needs S1-03 Done ✅)
 
-## Resolved This Session (6)
-- C-B1: disconnect_grace_seconds — master GDD updated (OQ6 resolved, §5 = 30s, M4 = 30s)
-- C-B2/C-B3: 5 RSM timer fields added to game-config.md
-- D-B2: reserve_mana_cap=10 added to game-config.md
-- D-B3: OQ1 resolved in economy-system.md (though B-3 shows the resolution has a design flaw)
-- D-B4: server-rng.md Approved (RNG execution order rewritten as per-phase chains)
+Core (sequenced — must do RSM before GSS before Economy/Pool):
+- RSM story-001 → RSM story-002 → ... → RSM story-006
+- GSS story-001 (lobby scaffold) — Ready
+- Economy story-001 (pure API scaffold) — Ready  
+- Pool story-001 (state & API) — Ready
 
-## Recommended Fix Order (before re-running /review-all-gdds)
-
-1. **Design decisions first (block the mechanical fixes):**
-   - D-B1: Choose fake reward asymmetry fix (spawn decoupled, or real objectives get bonus)
-   - B-2: Choose Garde-Temps path (raise reserve_mana_cap, lower cost, or combined pool)
-   - B-3: Confirm free pick capped at Rare/Epic — update economy OQ1 and relevant GDDs
-
-2. **Mechanical fixes (no design decisions needed):**
-   - N-B1: Add refresh_base_cost to game-config.md (struct + Tuning Knobs + ACs)
-   - N-B2: Update master GDD §3.9 (line 377) and §4.1 (line 518) reserve cap claims
-   - C-B5: Update economy-system.md formula, master GDD §7 row, entities.yaml expression
-   - C-B6: Add S2CGameOver + GameOverReason to entities.yaml; add master GDD §8 stub
-   - C-B4: Run /design-review card-data-pool.md (needs §3.4 auto-refresh policy)
-
-3. **Re-run /review-all-gdds**
+## Next After S1-04/S1-09 Close
+Wave 3 → Wave 4 (S1-05 ⭐ Lightyear spike — GATE STRICT SÉQUENTIEL)

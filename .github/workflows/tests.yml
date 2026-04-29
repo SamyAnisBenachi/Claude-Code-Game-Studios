@@ -1,0 +1,239 @@
+name: Automated Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  # Bevy on Linux requires these system libraries
+  BEVY_ASSET_ROOT: ${{ github.workspace }}
+
+jobs:
+  test:
+    name: Run Cargo Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Cache Cargo registry + build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      # Bevy on Linux requires these for the windowing/audio backends
+      # Server tests only need headless deps — client tests need full deps
+      - name: Install Linux dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libudev-dev \
+            libxkbcommon-dev \
+            pkg-config
+
+      # ADR-003: compile shared/ with minimal deps first
+      - name: Check shared crate
+        run: |
+          set -euo pipefail
+          cargo check -p shared
+
+      # Run all tests in the workspace
+      # Note: client crate tests excluded (WASM target requires trunk, not cargo test)
+      - name: Run server tests
+        run: |
+          set -euo pipefail
+          cargo test -p server --verbose
+
+      - name: Run shared tests
+        run: |
+          set -euo pipefail
+          cargo test -p shared --verbose
+
+      # RSM single-writer invariant check (ADR-009)
+      # Fails if any system other than advance_phase holds ResMut<RoundState>
+      - name: Check RSM single-writer invariant
+        run: |
+          set -euo pipefail
+          count=$(grep -r "ResMut<RoundState>" server/src/ 2>/dev/null | grep -v "transitions.rs" | wc -l)
+          if [ "$count" -gt "0" ]; then
+            echo "FAIL: ResMut<RoundState> found outside transitions.rs"
+            grep -r "ResMut<RoundState>" server/src/ | grep -v "transitions.rs"
+            exit 1
+          fi
+          echo "PASS: ResMut<RoundState> single-writer invariant holds"
+
+      # shared/ purity check (ADR-003)
+      # shared/ must not derive Resource, contain plugins, or import bevy_ecs
+      - name: Check shared/ purity
+        run: |
+          set -euo pipefail
+          if grep -r "derive(Resource)" shared/src/ 2>/dev/null; then
+            echo "FAIL: #[derive(Resource)] found in shared/ — violates ADR-003"
+            exit 1
+          fi
+          if grep -r "Plugin" shared/src/ 2>/dev/null; then
+            echo "FAIL: Plugin trait found in shared/ — violates ADR-003"
+            exit 1
+          fi
+          echo "PASS: shared/ purity checks pass"
+
+  dep-gate-shared:
+    name: shared/ dep purity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Assert no bevy_ecs/render/ui/winit/tokio in shared/
+        run: |
+          set -euo pipefail
+          TREE=$(cargo tree -p shared --prefix none)
+          VIOLATIONS=$(echo "$TREE" | grep -E '^(bevy_ecs|bevy_render|bevy_ui|bevy_winit|tokio) ' || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "FAIL: disallowed crates in shared/ dep tree:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "PASS: shared/ dep tree clean"
+
+  dep-gate-client:
+    name: client/ dep purity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Assert no tokio/rand_chacha in client/
+        run: |
+          set -euo pipefail
+          TREE=$(cargo tree -p client --prefix none)
+          VIOLATIONS=$(echo "$TREE" | grep -E '^(tokio|rand_chacha) ' || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "FAIL: disallowed crates in client/ dep tree:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "PASS: client/ dep tree clean"
+
+  dep-gate-server:
+    name: server/ dep purity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Assert no bevy_render/ui/winit in server/
+        run: |
+          set -euo pipefail
+          TREE=$(cargo tree -p server --prefix none)
+          VIOLATIONS=$(echo "$TREE" | grep -E '^(bevy_render|bevy_ui|bevy_winit) ' || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "FAIL: disallowed crates in server/ dep tree:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "PASS: server/ dep tree clean"
+
+  wasm-size:
+    name: WASM bundle size check
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-wasm-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-wasm-
+      - name: Install Linux dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libudev-dev \
+            libxkbcommon-dev \
+            pkg-config
+      - name: Build WASM client (release, raw cargo — not Trunk bundle)
+        run: |
+          set -euo pipefail
+          cargo build -p client --target wasm32-unknown-unknown --release
+      - name: Check raw WASM artifact size (upper-bound proxy; Trunk bundle will be smaller)
+        run: |
+          set -euo pipefail
+          WASM=target/wasm32-unknown-unknown/release/client.wasm
+          if [ ! -f "$WASM" ]; then
+            echo "FAIL: client.wasm not found at expected path"
+            exit 1
+          fi
+          SIZE=$(stat --format="%s" "$WASM")
+          echo "Raw WASM size: $SIZE bytes ($(( SIZE / 1024 / 1024 )) MB)"
+          echo "Note: Trunk-processed bundle (50 MB budget) will be smaller than this raw artifact"
+          if [ "$SIZE" -gt 104857600 ]; then
+            echo "FAIL: raw WASM artifact ($SIZE bytes) exceeds 100 MB upper-bound proxy"
+            exit 1
+          fi
+          echo "PASS: raw artifact within 100 MB proxy budget"
+
+  # WASM client build check (does not run tests — just verifies it compiles)
+  # Requires trunk; run locally: trunk build --release
+  # TODO: add trunk-based CI once client has meaningful code
+  # client-build:
+  #   name: Check WASM Client Build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         targets: wasm32-unknown-unknown
+  #     - run: cargo install trunk
+  #     - run: trunk build --release
+  #       working-directory: client

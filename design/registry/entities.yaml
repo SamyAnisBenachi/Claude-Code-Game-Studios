@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-04-29"  # updated: disconnect_grace_seconds 5→30 (RSM review); spawn_range_valid expression updated to named constants
+last_updated: "2026-04-29"  # updated: objective-system.md authored — 2 new formulas (objective_damage, fake_reward_probability), 1 new network message (ObjectiveDestroyed), 5 referenced_by updates
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -128,14 +128,16 @@ formulas:
     referenced_by:
       - design/gdd/economy-system.md
       - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/game-config.md
     variables:
       - gold_at_resolution_end
+      - interest_threshold_gold
       - interest_max_bonus
     output_range: [0, 2]
-    expression: "min(floor(g / 5), interest_max_bonus)"
-    notes: "Snapshot taken from gold held at RESOLUTION end, BEFORE baseline is added. Threshold divisor 5 is hardcoded."
+    expression: "min(floor(g / interest_threshold_gold), interest_max_bonus)"
+    notes: "Snapshot taken from gold held at RESOLUTION end, BEFORE baseline is added. interest_threshold_gold is a GameConfig field (default 5, safe range 5-10); interest_max_bonus is a GameConfig field (default 2)."
     added: 2026-04-28
-    revised: ""
+    revised: "2026-04-29"
 
   - name: gold_income
     status: active
@@ -186,6 +188,7 @@ formulas:
     source: design/gdd/board-lane-system.md
     referenced_by:
       - design/gdd/board-lane-system.md
+      - design/gdd/objective-system.md
     variables:
       - target_cell
       - fakes_destroyed
@@ -197,6 +200,33 @@ formulas:
     notes: "spawn_cell_A=1, spawn_cell_B=8 (named constants from GameConfig, not hardcoded). Spawn range expands globally across all 5 lanes by 1 cell per fake objective destroyed. Structures and Traps bypass this formula entirely."
     added: 2026-04-28
     revised: "2026-04-29"
+
+  - name: objective_damage
+    status: active
+    source: design/gdd/objective-system.md
+    referenced_by:
+      - design/gdd/objective-system.md
+    variables:
+      - HP_current
+      - amount
+    output_range: [0, 5]
+    expression: "HP_new = max(0, HP_current - amount)"
+    notes: "Implemented via saturating_sub in Rust. AR is 0 on objectives — no AR reduction step. Short-circuit if amount == 0. Destruction fires only on HP_current > 0 → HP_new == 0 transition."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: fake_reward_probability
+    status: active
+    source: design/gdd/objective-system.md
+    referenced_by:
+      - design/gdd/objective-system.md
+    variables:
+      - RNG_draw
+    output_range: ["ManaCapIncreased", "FreeCardPick"]
+    expression: "gen_range(0..2) -> { 0: ManaCapIncreased, 1: FreeCardPick }"
+    notes: "Uniform 50/50 Bernoulli per fake destruction. Independent draws. Uses one seed from RESOLUTION RNG chain. ManaCapIncreased -> Economy System; FreeCardPick -> draw_random_card on Card Data & Pool."
+    added: "2026-04-29"
+    revised: ""
 
 # Example:
 #
@@ -355,6 +385,7 @@ constants:
       - design/gdd/game-config.md
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/economy-system.md
+      - design/gdd/objective-system.md
     value: 3
     unit: gold
     added: 2026-04-28
@@ -390,6 +421,7 @@ constants:
     referenced_by:
       - design/gdd/game-config.md
       - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/objective-system.md
     value: 5
     unit: hp
     added: 2026-04-28
@@ -402,6 +434,7 @@ constants:
       - design/gdd/game-config.md
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/board-lane-system.md
+      - design/gdd/objective-system.md
     value: 2
     unit: count
     added: 2026-04-28
@@ -415,6 +448,7 @@ constants:
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/card-data-pool.md
       - design/gdd/board-lane-system.md
+      - design/gdd/objective-system.md
     value: 1
     unit: cells
     added: 2026-04-28
@@ -518,18 +552,20 @@ constants:
 
   - name: draft_shop_timer_seconds
     status: active
-    source: design/gdd/round-state-machine.md
+    source: design/gdd/game-config.md
     referenced_by:
+      - design/gdd/game-config.md
       - design/gdd/round-state-machine.md
     value: 30
     unit: seconds
     added: 2026-04-28
-    revised: ""
+    revised: "2026-04-29"
 
   - name: draft_initial_timer_seconds
     status: active
-    source: design/gdd/round-state-machine.md
+    source: design/gdd/game-config.md
     referenced_by:
+      - design/gdd/game-config.md
       - design/gdd/round-state-machine.md
     value: 45
     unit: seconds
@@ -543,11 +579,186 @@ constants:
     referenced_by:
       - design/gdd/round-state-machine.md
       - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/network-protocol.md
+      - design/gdd/game-session-system.md
     value: 30  # was: 5 before 2026-04-29 (RSM design-review raised for WASM browser targets — OS interrupts cause 3-6s gaps)
     unit: seconds
     notes: "Strict greater-than condition. 30s is intentional for WASM/browser target — OS interrupts, antivirus, tab switches cause 3-6s gaps. Hard to abuse in a 10-15 min game. Safe range: 15-60."
     added: 2026-04-28
     revised: "2026-04-29"
+
+  - name: lobby_timeout_seconds
+    status: active
+    source: design/gdd/game-session-system.md
+    referenced_by:
+      - design/gdd/game-session-system.md
+      - design/gdd/round-state-machine.md
+    value: 90
+    unit: seconds
+    notes: "Resolves RSM Open Question 1. Countdown begins at room creation, not at first join. Safe range: 60-300. Session is LOBBY_CANCELLED (not GAME_OVER) when deadline fires without SessionReady."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: lobby_heartbeat_timeout_seconds
+    status: active
+    source: design/gdd/game-session-system.md
+    referenced_by:
+      - design/gdd/game-session-system.md
+      - design/gdd/game-config.md
+    value: 15
+    unit: seconds
+    notes: "Seconds without a client heartbeat before Game Session System treats a LOBBY player as disconnected and cancels the session. Shorter than disconnect_grace_seconds — LOBBY has no game state to recover. Safe range: 10-60. GSS OQ8 resolved."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: hello_timeout_ms
+    status: active
+    source: design/gdd/network-protocol.md
+    referenced_by:
+      - design/gdd/network-protocol.md
+    value: 5000
+    unit: milliseconds
+    notes: "Server closes transport if C2SHello not received within this window. Prevents connection-flooding. Must be added to game-config.md. Safe range: 2000-15000."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: ack_timeout_ms
+    status: active
+    source: design/gdd/network-protocol.md
+    referenced_by:
+      - design/gdd/network-protocol.md
+    value: 10000
+    unit: milliseconds
+    notes: "Server waits this long for C2SAcknowledgeResult after GAME_OVER before cleaning up the session. Must be added to game-config.md. Safe range: 5000-30000."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: protocol_version
+    status: active
+    source: design/gdd/network-protocol.md
+    referenced_by:
+      - design/gdd/network-protocol.md
+    value: 1
+    unit: version_number
+    notes: "Validated at LOBBY handshake via C2SHello. Increment on any breaking wire change. Must be added to game-config.md. Client and server must match exactly."
+    added: "2026-04-29"
+    revised: ""
+
+
+# ─── NETWORK MESSAGES ────────────────────────────────────────────────────────
+# Named server-to-client (S2C) or client-to-server (C2S) message types that
+# cross system boundaries. Register when a message type is referenced in more
+# than one GDD. Full message definitions live in the owning GDD.
+
+network_messages:
+  - name: S2CGameOver
+    status: active
+    source: design/gdd/round-state-machine.md
+    referenced_by:
+      - design/gdd/round-state-machine.md
+      - design/gdd/lanes-and-lies-gdd.md
+      - design/gdd/network-protocol.md
+    payload: "{ loser: Option<PlayerId>, round: u32, reason: GameOverReason }"
+    notes: "loser is None for Draw outcomes (mutual destruction, mutual disconnection, resolution timeout). Some(id) for single-loser outcomes (Disconnection, ObjectivesDestroyed)."
+    channel: reliable
+    notes: "Broadcast in addition to S2CPhaseChanged(GAME_OVER). GameOverReason enum has three variants: ObjectivesDestroyed, Disconnection, Draw. See round-state-machine.md Rule 14 for full definition."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: S2CPhaseChanged
+    status: active
+    source: design/gdd/round-state-machine.md
+    referenced_by:
+      - design/gdd/round-state-machine.md
+      - design/gdd/network-protocol.md
+    payload: "{ phase: RoundPhase, round_number: u32, timer_duration_ms: u32 }"
+    channel: reliable
+    notes: "Broadcast on every RSM phase transition, after all server-side entry actions have fired. Payload defined in network-protocol.md. timer_duration_ms=0 for RESOLUTION and GAME_OVER."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: S2CGameSnapshot
+    status: active
+    source: design/gdd/network-protocol.md
+    referenced_by:
+      - design/gdd/network-protocol.md
+      - design/gdd/round-state-machine.md
+    payload: "{ protocol_version, round_number, phase, timer_remaining_ms, players: Vec<PlayerSnapshot>, board: BoardSnapshot, auction_state: Option<AuctionSnapshot> }"
+    channel: reliable
+    notes: "Unicast per player on every connect and reconnect. Opponent secret fields stripped. Full schema in network-protocol.md Section D.1. Resolves RSM Open Question 4 (late-joiner sync)."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: S2CGoldUpdate
+    status: active
+    source: design/gdd/network-protocol.md
+    referenced_by:
+      - design/gdd/network-protocol.md
+      - design/gdd/economy-system.md
+    payload: "{ gold: u32, current_mana: u32, reserve_mana: u32, mana_cap: u8 }"
+    channel: reliable
+    notes: "Unicast to owning player only. Sent on any gold or mana change event (purchase, draft entry, kill reward, objective reward, mana cap increase). Never broadcast."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: S2CPlacementReveal
+    status: active
+    source: design/gdd/network-protocol.md
+    referenced_by:
+      - design/gdd/network-protocol.md
+      - design/gdd/board-lane-system.md
+    payload: "{ placements: Vec<PlacedCard> }"
+    channel: reliable
+    notes: "Broadcast atomically at RESOLUTION sub-step 1 (PlacementBuffer commit). Contains both players' placements in one message — not per-entity replication — to guarantee simultaneous client-side reveal. PlacedCard matches the C2SSubmitPlacement payload struct."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: S2CResolutionEvent
+    status: active
+    source: design/gdd/network-protocol.md
+    referenced_by:
+      - design/gdd/network-protocol.md
+      - design/gdd/board-lane-system.md
+    payload: "{ events: Vec<TaggedEvent { sub_step: u8, event: ResolutionEvent }> }"
+    channel: reliable
+    notes: "Broadcast once per RESOLUTION, after S2CPlacementReveal and before S2CPhaseChanged(DRAFT_SHOP). ResolutionEvent enum variants in network-protocol.md Section D.2. Client replays in order for animation."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: C2SSubmitPlacement
+    status: active
+    source: design/gdd/network-protocol.md
+    referenced_by:
+      - design/gdd/network-protocol.md
+      - design/gdd/board-lane-system.md
+      - design/gdd/round-state-machine.md
+    payload: "{ placements: Vec<PlacedCard { card_id, target: PlayTarget, reserve_amount: u32 }> }"
+    channel: reliable
+    notes: "Single batch submit per PLACEMENT phase. Marks player as submitted in RSM. Empty list = zero new cards. Cannot be retracted once accepted. See PlayTarget enum in network-protocol.md Section C."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: GameOverReason
+    status: active
+    source: design/gdd/round-state-machine.md
+    referenced_by:
+      - design/gdd/round-state-machine.md
+    payload: "enum { ObjectivesDestroyed, Disconnection, Draw }"
+    notes: "Payload field of S2CGameOver. ObjectivesDestroyed = normal win condition; Disconnection = player exceeded disconnect_grace_seconds; Draw = mutual destruction or mutual disconnection same tick."
+    added: "2026-04-29"
+    revised: ""
+
+  - name: ObjectiveDestroyed
+    status: active
+    source: design/gdd/objective-system.md
+    referenced_by:
+      - design/gdd/objective-system.md
+      - design/gdd/network-protocol.md
+    payload: "{ target_player_id: PlayerId, lane: LaneId, was_fake: bool }"
+    channel: reliable
+    notes: "Broadcast to both players at RESOLUTION-end sync when an objective's HP reaches 0. target_player_id identifies whose objective was destroyed (required when multiple objectives fall same RESOLUTION). Reveals real/fake identity to attacker. Triggers Board Rendering to clear the correct slot. Not a mid-sub-step push — batched at RESOLUTION end."
+    added: "2026-04-29"
+    revised: ""
 
 # Example:
 #

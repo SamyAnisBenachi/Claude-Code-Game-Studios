@@ -1,0 +1,7 @@
+[build]
+# Build target outside D:\_DEV to avoid Windows Application Control policy blocking
+# compiled build scripts. User profile is in the trusted zone.
+target-dir = "C:\\Users\\Sam\\.cargo\\build-targets\\lanes-and-lies"
+
+[target.x86_64-pc-windows-gnu]
+linker = "D:\\_APP\\MSYS2\\mingw64\\bin\\gcc.exe"

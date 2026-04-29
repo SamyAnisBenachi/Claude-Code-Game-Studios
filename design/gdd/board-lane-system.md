@@ -15,7 +15,7 @@ Each lane operates independently. A player occupies 4 cells on their side (Cells
 
 The board is the one place your opponent cannot lie. Their hand is hidden, their bid is hidden, two of their objectives are fakes — but the units they have placed are physical evidence of intent. Each PLACEMENT phase, the player scans all five lanes as a war-room commander reading dispositions: which lane has the opponent reinforced, which have they abandoned, where is their advancing line going to be next round. The fantasy is forensic — *I can see where they committed last round. Movement is deterministic: I know where that unit will be. My question is: what did they add on top of that?* Then both players place blind, and the board reveals whether either of them read it right.
 
-## Detailed Design
+## Detailed Rules
 
 ### Core Rules
 

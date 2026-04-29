@@ -19,7 +19,7 @@ Economy is not just a budget — it is a read. A player who has held 8 gold for 
 
 Mana adds a second texture: it resets every round, but Reserve turns leftover mana into savings. The satisfying moment is slotting that last 1 mana into Reserve after a tight play — the game noticing your efficiency without announcing it.
 
-## Detailed Design
+## Detailed Rules
 
 ### Core Rules
 
@@ -145,7 +145,7 @@ gold += GameConfig.gold_baseline_per_round + interest
 | Manual shop refresh | 1g (1st), +1g per additional refresh this DRAFT phase | DRAFT (before PLACEMENT begins) |
 | Auction winning bid | Bid amount | Auction (during DRAFT phase) |
 
-**Refresh cost escalation:** The first manual shop refresh in a DRAFT phase costs `GameConfig.refresh_base_cost` (default: 1g). Each subsequent refresh in the same DRAFT phase costs 1g more (2g, 3g, …). The counter resets at the start of each DRAFT phase. **Note:** Adding `refresh_base_cost` to GameConfig requires updating `game-config.md`.
+**Refresh cost escalation:** The first manual shop refresh in a DRAFT phase costs `GameConfig.refresh_base_cost` (default: 1g). Each subsequent refresh in the same DRAFT phase costs 1g more (2g, 3g, …). The counter resets at the start of each DRAFT phase.
 
 **Spend validation:** Server checks `gold >= cost` before accepting any purchase. If false: rejected, gold not deducted. No partial payment.
 
@@ -208,7 +208,7 @@ current_mana(R) = min(R, mana_cap)
 **Formula 2: Interest**
 
 ```
-interest(g) = min(floor(g / 5), interest_max_bonus)
+interest(g) = min(floor(g / interest_threshold_gold), interest_max_bonus)
 ```
 
 **Variables:**
@@ -248,7 +248,7 @@ gold_new = gold_RESOLUTION_end + interest(gold_RESOLUTION_end) + gold_baseline_p
 
 **Output Range:** Minimum `gold_RESOLUTION_end + 2`; maximum `gold_RESOLUTION_end + 4`.
 **Example:** 8g at RESOLUTION end → 8 + 1 (interest) + 2 (baseline) = **11g** at DRAFT start.
-**Note:** `interest_per_5g = 5` is hardcoded in Formula 2 and is NOT a `GameConfig` field.
+**Note:** `interest_threshold_gold` is a `GameConfig` field (default 5, safe range 5–10). The formula reads this value at runtime — changing it in `game_config.ron` changes where interest brackets fall without a code change.
 
 ---
 
@@ -296,8 +296,6 @@ mana_cap_achieved = GameConfig.mana_cap + fake_objective_mana_rewards
 
 - **Self-inflicted objective damage (Sacrier Punition, double-tranchant):** If `attacker_player == defending_player`, the Economy System does NOT call `award_gold`. Loss condition still applies. Per master GDD §5.
 
-- **Reserve gain at cap:** If adding reserve would exceed `reserve_mana_cap`, the gain is clamped. Example: cap=10, current reserve=8, Gelure transfers 5 → `reserve_mana` is set to 10; the excess 3 are lost silently. Legal — no error.
-
 - **Mid-RESOLUTION disconnect:** Per RSM Rule 13, if a disconnect aborts RESOLUTION before all sub-steps complete, the interest snapshot does NOT fire for that round. All partial RESOLUTION gold awards already applied before the abort (kills, objectives that resolved) remain. On reconnect (within `disconnect_grace_seconds`), the Economy System re-syncs all currency values to the client. The skipped interest snapshot is not retroactively applied.
 
 - **Reserved gold and shop purchases:** A player's active auction bid reservation reduces available gold for shop validation. Shop spend check: `gold − reserved_gold >= shop_cost`. Example: player has 8g, active bid reservation = 5g → at most 3g available for shop cards. A 4g shop purchase is rejected even though raw `gold = 8`.
@@ -308,7 +306,7 @@ mana_cap_achieved = GameConfig.mana_cap + fake_objective_mana_rewards
 
 | System | Relationship | Interface |
 |---|---|---|
-| **Game Config** | Upstream (hard) | Reads `mana_cap`, `starting_gold`, `gold_baseline_per_round`, `interest_max_bonus`, `kill_gold_reward`, `objective_gold_reward`, `reserve_mana_cap`, `refresh_base_cost` |
+| **Game Config** | Upstream (hard) | Reads `mana_cap`, `starting_gold`, `gold_baseline_per_round`, `interest_threshold_gold`, `interest_max_bonus`, `kill_gold_reward`, `objective_gold_reward`, `refresh_base_cost` |
 | **Round State Machine** | Upstream (coordination) | Triggers: mana reset at DRAFT start, interest+baseline application at DRAFT start, mana discard at RESOLUTION end |
 | **Card Acquisition (Shop)** | Downstream (hard) | Calls `spend_gold(player, amount)` for shop purchases; Economy validates |
 | **Auction System** | Downstream (hard) | Calls `can_afford_bid(player, amount)`; `reserve_gold(player, amount)`; `release_gold_reservation(player)`; `spend_gold(player, bid_amount)` on win |
@@ -332,14 +330,13 @@ All Economy System tuning knobs are defined in `GameConfig` (see [game-config.md
 | `interest_max_bonus` | 2 | `GameConfig.interest_max_bonus` | Maximum interest per round; cap on hoard incentive |
 | `kill_gold_reward` | 1 | `GameConfig.kill_gold_reward` | Gold from aggression; snowball potential of ahead player |
 | `objective_gold_reward` | 3 | `GameConfig.objective_gold_reward` | Gold from objective destruction; biggest per-event income source |
-| `reserve_mana_cap` | 10 | `GameConfig.reserve_mana_cap` | Maximum reserve mana any player can hold; prevents Xelor/prism accumulation from trivializing mana costs in late game |
 | `refresh_base_cost` | 1 | `GameConfig.refresh_base_cost` | Base gold cost of the first manual shop refresh per DRAFT phase; each additional refresh in the same phase costs +1g more |
 
-**Not a tuning knob:** `interest_per_5g = 5` is hardcoded in the interest formula. Adding it to GameConfig requires redesigning the formula.
+**`interest_threshold_gold`** (default 5, safe range 5–10): the divisor in the interest formula. Owned by `game-config.md`. Do not set below 5 — at threshold 3 or 4, starting gold (5g) immediately exceeds the maximum-interest bracket, removing the miser/gambler decision pressure.
 
 **Miss Nuit per-round cap:** Miss Nuit's reserve gain is hard-capped at +2 per round (regardless of how many cards the opponent plays). This is not a GameConfig field — it is hardcoded in the Class System GDD.
 
-**GameConfig updates required:** `reserve_mana_cap` and `refresh_base_cost` are new fields not yet in `game-config.md`. Both must be added to the GameConfig struct, RON defaults, and Tuning Knobs table when `game-config.md` is next revised.
+**GameConfig status:** `refresh_base_cost` added to `game-config.md` 2026-04-29. `reserve_mana_cap` was briefly added then removed by design decision (no total reserve cap; organic pressure is the intended limiter — see OQ2).
 
 ## Visual/Audio Requirements
 
@@ -403,13 +400,6 @@ Economy data (gold, mana, reserve, mana_cap) is read by the HUD for display. UI 
 | EC17 | **GIVEN** a player destroys an opponent objective (`attacker ≠ defender`) during RESOLUTION, **WHEN** `award_gold(player, objective_gold_reward)` fires, **THEN** player `gold` increases by exactly `objective_gold_reward` (default: 3). | BLOCKING |
 | EC18 | **GIVEN** `current_mana = 4` at the start of RESOLUTION, **WHEN** RESOLUTION phase ends (mana discard step), **THEN** `current_mana = 0`. | BLOCKING |
 
-### Reserve Cap
-
-| # | Criterion | Type |
-|---|---|---|
-| EC19 | **GIVEN** `reserve_mana = 9` and `reserve_mana_cap = 10`, **WHEN** a reserve gain of 5 is applied (e.g., Gelure with `current_mana = 5`), **THEN** `reserve_mana = 10` (clamped to cap; excess 4 lost). | BLOCKING |
-| EC20 | **GIVEN** `reserve_mana = 10` (at cap), **WHEN** any reserve gain of 1+ is applied, **THEN** `reserve_mana` remains 10. | BLOCKING |
-
 ### Auction Behavior
 
 | # | Criterion | Type |
@@ -431,6 +421,6 @@ Economy data (gold, mana, reserve, mana_cap) is read by the HUD for display. UI 
 | # | Question | Owner | Priority |
 |---|---|---|---|
 | OQ1 | ~~Rarity ceiling for "free card pick" from fake objective destruction.~~ **RESOLVED (2026-04-29):** Free card pick draws from the shared auction pool (same pool as auction draws). Any rarity may be drawn, subject to pool availability (e.g., if the only Legendary copy is already in play, it cannot be picked). The drawn card is removed from the pool and cannot appear at subsequent auctions. No rarity cap. The Objective System GDD owns the draw implementation. | Game Designer | RESOLVED |
-| OQ2 | ~~Reserve cap — balance TBD via playtesting.~~ **RESOLVED (2026-04-29):** Universal cap `reserve_mana_cap = 10` added to GameConfig. Miss Nuit capped at +2 reserve per round. Adjust via playtesting from this baseline. | Game Designer | RESOLVED |
+| OQ2 | ~~Reserve cap — balance TBD via playtesting.~~ **DESIGN DECISION (2026-04-29): No total reserve cap.** Reserve has no maximum. Organic board pressure (card deployment, objective pressure) is the intended limiter. Miss Nuit per-round gain is capped at +2 (Class System GDD). `reserve_mana_cap` was briefly added and then removed — it made Garde-Temps (cost 20 reserve) permanently unplayable at cap=10. Rely on playtesting to catch snowball if it emerges. | Game Designer | CLOSED |
 | OQ3 | Interest as gold-read signal: the +2 cap means 8g and 14g look the same to opponents. Does this weaken "gold as a read"? Evaluate in playtesting; consider visible gold-advantage HUD indicator for large disparities. | Game Designer | After first playtesting session |
 | OQ4 | Predictable hoarding windows: fixed auction rounds enable 2-round low-action buildup. Monitor in playtesting — if this conflicts with "no idle spectating," consider exclusive shop incentives to maintain spend pressure pre-auction. | Game Designer | After first playtesting session |

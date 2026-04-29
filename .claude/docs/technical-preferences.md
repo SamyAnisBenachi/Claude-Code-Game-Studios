@@ -74,8 +74,11 @@
 
 ## Architecture Decisions Log
 
-- [No ADRs yet — use /architecture-decision to create one]
-- Pending ADRs needed: client-server authority model, card data schema, round state machine, auction event flow
+| ADR | File | Status | Summary |
+|---|---|---|---|
+| ADR-001 | `docs/architecture/adr-001-objective-identity-unicast.md` | Accepted | `ObjectiveIdentity` sent as unicast message at DRAFT_INITIAL, not replicated ECS component. Lightyear 0.26 has no per-component replication scope. |
+
+Pending ADRs needed: client-server authority model, card data schema, round state machine, auction event flow, Sang Méprise reveal mechanism
 
 ## Engine Specialists
 

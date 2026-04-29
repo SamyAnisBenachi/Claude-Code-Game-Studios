@@ -13,7 +13,7 @@ The Server-side RNG system is the single source of randomness for all non-determ
 
 `ServerRng` is infrastructure with no direct player-facing behavior. Players never see RNG state or seeds. They experience the randomness it enables: the Ecaflip card that flips, the shop that shows an unexpected Rare, the fake objective reward that grants a mana cap boost. The fairness guarantee — that all randomness is computed by the server and the client cannot predict or manipulate it — is invisible to players who never cheat and non-negotiable to those who might try.
 
-## Detailed Design
+## Detailed Rules
 
 ### Core Rules
 

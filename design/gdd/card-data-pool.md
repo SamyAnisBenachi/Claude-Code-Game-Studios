@@ -1,8 +1,8 @@
 # Card Data & Pool
 
-> **Status**: In Design
+> **Status**: Approved (post-revision)
 > **Author**: User + Agents
-> **Last Updated**: 2026-04-28
+> **Last Updated**: 2026-04-29
 > **Implements Pillar**: Krosmaga Foundation — adapts existing cards, doesn't reinvent
 
 ## Overview
@@ -13,7 +13,7 @@ The Card Data & Pool system is the single source of truth for all card definitio
 
 The shop is not a slot machine — it is a world that watches. As a player commits to an archetype, the pool leans toward them, rewarding conviction with coherence. *The game seems to know what they're building.* And every card carries weight: the pool is finite and personal — each player's copy counts are theirs alone, unaffected by what others buy. Within your pool, a Legendary card exists only once. When one surfaces in the auction, every player understands the weight of it — if you lose this bid, that copy will never appear in your auction again. The player does not think about probability tables or copy counts. They feel a world that responds to their choices, and stakes that cannot be undone.
 
-## Detailed Design
+## Detailed Rules
 
 ### Core Rules
 
@@ -96,17 +96,36 @@ Trigger keywords (`AppearanceTrigger`, `DeathTrigger`, `FinalBlowTrigger`, `Coun
 
 **4. Pool queries**
 
+**`SlotType` enum** (used by shop draw functions — determines which weighted algorithm runs):
+
+```rust
+enum SlotType { Class, Neutral }
+```
+
+Phase 1 of shop slot generation (the 50/50 split roll that determines SlotType) is the calling system's responsibility — Card Acquisition calls `next_seed()` from ServerRng and uses `gen_range(0..2)` to produce a SlotType. The pool never performs this roll.
+
 | Operation | Input | Output | Notes |
 |---|---|---|---|
 | `is_available(card_id)` | CardId | bool | O(1) fast check |
 | `copies_remaining(card_id)` | CardId | u32 | For UI display |
 | `draw_initial_draft(class, count, seed)` | Class, u8, u64 | Vec\<CardId\> | 9 distinct cards; fully random from eligible class + neutral catalog cards (any rarity); no rarity floor guaranteed — see Draft Algorithm note below |
-| `draw_shop_slot(class, owned_counts, slot_type, seed)` | Class, HashMap, SlotType, u64 | Option\<CardId\> | Returns None if subset exhausted |
-| `draw_auction_card(seed)` | u64 | Option\<CardId\> | Rare/Legendary; Neutral only (Epic cards are class-specific per master GDD §3.10 — no Neutral Epics exist); draws from this player's own Neutral Rare/Legendary subset — exact auction round draw mechanics to be specified in Auction System GDD |
-| `draw_random(filter, seed)` | PoolFilter, u64 | Option\<CardId\> | Draw effects, prism lane 3 |
-| `distribute(card_id)` | CardId | Result | Only mutation — decrements copies |
+| `draw_class_card(class, seed)` | Class, u64 | Option\<CardId\> | **Phase 2 for class slots.** Weighted pick over the player's eligible class card_ids (Formula 2). Pool computes `total_acquired` internally from `initial_count − copies_remaining`. Returns None only if all class cards are exhausted. |
+| `draw_neutral_family(seed)` | u64 | Option\<FamilyId\> | **Phase 2 for neutral slots.** Weighted pick over eligible neutral families (Formula 2). Returns None only if all neutral families are fully exhausted. |
+| `draw_family_card(family, seed)` | FamilyId, u64 | Option\<CardId\> | **Phase 3 for neutral slots.** Uniform pick among available cards in the selected family (`copies_remaining > 0`). Returns None if the family is fully exhausted (should not occur when draw_neutral_family returned Some). |
+| `draw_auction_card(seed)` | u64 | Option\<CardId\> | Draws from the **shared neutral auction pool** — a game-level pool of Neutral Rare and Legendary cards shared across all players. The auction offers one card per auction round; all players bid on the same card simultaneously. Epic cards are excluded (class-specific, no Neutral Epics). This pool is **separate from every player's personal shop pool** — there is no copy collision between shop and auction draws. Full shared pool management to be specified in Auction System GDD. Returns None if the shared auction pool is exhausted. |
+| `draw_random(filter, seed)` | PoolFilter, u64 | Option\<CardId\> | Uniform pick over distinct eligible cards matching the filter (not copy-weighted). Used for draw effects and prism Lane 3. Caller is responsible for calling `distribute()` after receiving a non-None result if the effect consumes the card. |
+| `distribute(card_id)` | CardId | `Result<(), DistributeError>` | Only mutation — decrements `copies_remaining` by 1. Returns `Err(DistributeError::Exhausted)` if `copies_remaining == 0`. Callers should check `is_available()` before calling. |
 
 The pool never holds a random source — callers supply explicit seeds from the server-side RNG system. All randomness is server-seeded.
+
+**Shop draw flow for Card Acquisition (per slot, aligns with server-rng.md seed table):**
+1. Card Acquisition calls `next_seed()` → `gen_range(0..2)` → SlotType (Phase 1 split roll)
+2. **Class slot:** `draw_class_card(class, next_seed())` → `Option<CardId>` (Phase 2)
+3. **Neutral slot:** `draw_neutral_family(next_seed())` → `Option<FamilyId>` (Phase 2); if `Some(family)`, `draw_family_card(family, next_seed())` → `Option<CardId>` (Phase 3)
+4. **Fallback (class exhausted):** if `draw_class_card` returns None, Card Acquisition retries as neutral with new seeds. This fallback is Card Acquisition's responsibility — the pool does not perform it internally.
+5. **Both exhausted:** slot returns None (empty slot in UI).
+
+**Shop refresh policy:** A shop refresh (auto at DRAFT phase start, or manual for escalating cost per Economy System) is N fresh calls to the draw functions above with new seeds from ServerRng. The pool does not track which cards were displayed this round — it only tracks copies distributed (purchased). Un-purchased displayed cards have unchanged `copies_remaining` and may reappear on refresh. Any within-round deduplication (preventing re-display of the same card in the same DRAFT phase) is Card Acquisition's responsibility, not the pool's.
 
 **Draft Algorithm:** `draw_initial_draft` draws 9 distinct card IDs uniformly at random from the union of the player's class cards and all Neutral cards. Any rarity is eligible — including Epic and Legendary. Cards are drawn without replacement (no duplicates within the 9). The player keeps any subset they can afford within the 5g starting budget; unselected cards are discarded without decrementing the pool. Only purchased cards trigger `distribute()`.
 
@@ -150,10 +169,10 @@ No degraded or partial state. The pool either exists fully or not at all.
 | System | Direction | What flows |
 |---|---|---|
 | **Server-side RNG** | Pool ← RNG | Seeds for all random draws |
-| **Card Acquisition (Shop)** | Shop → Pool | Calls `draw_shop_slot()` each round; `distribute()` on purchase |
+| **Card Acquisition (Shop)** | Shop → Pool | Calls `draw_class_card()`, `draw_neutral_family()`, `draw_family_card()` for each slot each round; owns Phase 1 split roll and fallback logic; calls `distribute()` on purchase; owns within-round dedup policy |
 | **Auction System** | Auction → Pool | Calls `draw_auction_card()`; `distribute()` on auction win |
-| **Round State Machine** | RSM → Pool | Calls `draw_initial_draft()` at game start |
-| **Economy System** | Economy → Pool | Reads `copies_remaining()` for scarcity indicator display in shop UI (note: shop *cost* is rarity-based and static — `copies_remaining` is for the UI copy counter, not price calculation) |
+| **Round State Machine** | RSM → Pool | Calls `draw_initial_draft()` at game start. Also triggers each DRAFT phase start event, which causes Card Acquisition to call shop draw functions each round. |
+| **Shop UI / Board Rendering** | Read-only | Reads `copies_remaining()` for scarcity indicator display in shop UI (note: shop *cost* is rarity-based and static — `copies_remaining` is for the UI copy counter, not price calculation) |
 | **Combat Resolution** | Combat → Pool | Reads card definitions by `id` for stats and keywords |
 | **Board Rendering / UI** | Rendering → Pool | Reads card definitions by `id` for sprites and display |
 | **Lightyear (network)** | Pool → Network | `copies_remaining()` delta-updated each round via `S2CPoolUpdate` (only changed counts). On initial connect or reconnect, server sends full pool state via `S2CPoolSnapshot` before resuming deltas. Also requires: `S2CDraftOffering` (9 initial draft card IDs), `S2CShopSlots` (3 shop slot IDs per round), `S2CAuctionCard` (auction card draw result broadcast). These message types to be fully specified in Network Protocol GDD. |
@@ -194,33 +213,33 @@ pool_copy_count = pool_copies_override           if pool_copies_override is not 
 
 ### Formula 2: Shop Slot Weighted Selection
 
+This formula is implemented by `draw_class_card` (Phase 2, class slots) and `draw_neutral_family` (Phase 2, neutral slots). Phase 1 (split roll) and fallback logic are the calling system's responsibility. Phase 3 (`draw_family_card`) uses uniform selection, not this formula.
+
+**Phase mapping:**
+
+| Phase | Responsible | Pool function | Seeds |
+|---|---|---|---|
+| Phase 1: 50/50 split roll | Card Acquisition | (none — caller uses gen_range(0..2)) | 1 seed |
+| Phase 2: Weighted pick | Pool | `draw_class_card` or `draw_neutral_family` | 1 seed |
+| Phase 3: Uniform card within family | Pool | `draw_family_card` (neutral only) | 1 seed |
+| Fallback (class exhausted → neutral) | Card Acquisition | (retry with new seeds) | 1 seed (new Phase 1) |
+
 ```
-// Phase 1: 50/50 class/neutral split (per slot)
-split_roll = random_uniform(0, 1)
-if split_roll < 0.5:
-    subset = class_subset
-else:
-    subset = neutral_subset
-
-// Fallback: if chosen subset has 0 eligible types, use the other subset
-if |eligible_types(subset)| == 0:
-    subset = other_subset
-if |eligible_types(subset)| == 0:
-    return None  // both subsets exhausted — empty slot
-
-// Phase 2: Weighted selection within subset
-// Precondition: |eligible_types| > 0 (guaranteed by Phase 1 fallback logic — never called with empty set)
+// Phase 2 algorithm (used by draw_class_card and draw_neutral_family):
+// Precondition: |eligible_types| > 0 (guaranteed by fallback in calling system before this is called)
 // CLASS slot: type = individual card_id (one weight entry per distinct card in the player's class)
 // NEUTRAL slot: type = FAMILY (e.g., Gobball family; not individual cards)
-//   total_acquired(t) = cumulative copies purchased via distribute(), never reset within a game session
+//   total_acquired(t) is computed internally by the pool:
 //   For class: total_acquired(card_id) = initial_count(card_id) − copies_remaining(card_id)
 //   For neutral: total_acquired(family) = Σ total_acquired(card_id) for all card_ids in family
+//   initial_count is stored at pool initialization and is never modified by distribute() calls.
 
 raw_weight(t)        = (1 / |eligible_types|) + SHOP_WEIGHT_PER_CARD_OWNED × total_acquired(t)
 raw_weight(t)        = clamp(raw_weight(t), 0.0, SHOP_WEIGHT_CAP)
 normalized_weight(t) = raw_weight(t) / Σ raw_weight(t')   (for all t' in eligible_types)
 
-// For neutral slots: once a family is selected, draw uniformly from that family's available cards
+// Phase 3 (draw_family_card): once a family is selected by Phase 2, draw uniformly from
+// that family's available cards (all members with copies_remaining > 0, equal probability).
 ```
 
 **Variables:**
@@ -285,7 +304,11 @@ At `fake_objective_spawn_advance = 2`: destroying 1 fake immediately unlocks Row
 
 - **If `pool_copies_override ≤ 0` (zero or any negative integer):** Validation error at load time. Card ID is logged; card receives its rarity default copy count. Server does not abort. (Formula condition is `> 0` — both 0 and negatives are rejected.)
 
-- **If class slot rolls but all class cards are exhausted:** Fallback to neutral subset. If both subsets are fully exhausted for a slot, the slot returns `None` (empty slot in UI).
+- **If class slot rolls but all class cards are exhausted:** Card Acquisition detects that `draw_class_card` returned None, then retries as a neutral slot (calling `draw_neutral_family` with a new seed). If both subsets are fully exhausted, the slot returns `None` (empty slot in UI). The pool does not perform this fallback internally — the calling system owns the retry logic.
+
+- **Late-game class pool exhaustion:** When a player has purchased all available copies of all their class cards, `draw_class_card` returns None every time. The shop will show only neutral cards (via fallback) for the rest of the game. This is correct and intentional — the player has exhausted their class archetype pool. Add AC: GIVEN all class cards have `copies_remaining = 0`, WHEN `draw_class_card(class, seed)` is called, THEN it returns None.
+
+- **Single eligible type (`eligible_types = 1`):** Formula 2 normalization produces `normalized_weight = 1.0` for the sole remaining eligible type. That card appears in every draw until purchased. This is correct behavior — not a bug — and signals that the archetype slot is nearly exhausted.
 
 - **If the entire pool is exhausted:** `draw_random()` and draw-effect calls return `None`. Draw effects silently fail with no compensation.
 
@@ -311,13 +334,15 @@ At `fake_objective_spawn_advance = 2`: destroying 1 fake immediately unlocks Row
 |---|---|---|
 | Server-side RNG | Hard upstream | Pool receives seeds for all random draws; never owns RNG source |
 | Game Config | Hard upstream | Reads `SHOP_WEIGHT_PER_CARD_OWNED`, `SHOP_WEIGHT_CAP`, copy count defaults |
-| Card Acquisition (Shop) | Downstream | Calls `draw_shop_slot()`, `draw_initial_draft()`, `distribute()` on purchase |
+| Card Acquisition (Shop) | Downstream | Calls `draw_class_card()`, `draw_neutral_family()`, `draw_family_card()`, `draw_initial_draft()`, `distribute()` on purchase. Owns Phase 1 split roll and fallback logic. |
 | Auction System | Downstream | Calls `draw_auction_card()`, `distribute()` on auction win |
 | Round State Machine | Downstream | Calls `draw_initial_draft()` once at session start |
 | Combat Resolution | Downstream (read-only) | Reads card definitions by `id` for stats and keywords |
 | Board Rendering / Hand UI | Downstream (read-only) | Reads card definitions by `id` for display; reads `copies_remaining()` for UI |
 | Lightyear Network | Downstream | Sends `copies_remaining()` to clients via `S2CPoolUpdate` (delta only); also requires `S2CDraftOffering`, `S2CShopSlots`, `S2CAuctionCard` (to be defined in Network Protocol GDD) |
 | Game Session System | Hard upstream | Must perform `cards.json` catalog hash handshake at connection time to detect client/server version skew before a game starts |
+
+**Shared Auction Pool note:** `draw_auction_card()` draws from a shared game-level pool (not per-player). The architecture of that pool — initialization, depletion tracking, multi-player behavior — is the Auction System GDD's responsibility. This GDD commits only to the function interface and the Neutral-only, no-Epic constraint.
 
 ## Tuning Knobs
 
@@ -353,6 +378,8 @@ Knobs that affect this system but are owned by the master GDD (Section 7):
 | CP2 | **GIVEN** a card with `pool_copies_override: 0` or any negative integer, **WHEN** the pool initializes, **THEN**: (1) pool initialization does not abort; (2) `copies_remaining(card_id)` equals the rarity default; (3) an error-level log entry containing the card's ID is emitted. | BLOCKING |
 | CP3a | **GIVEN** `cards.json` does not exist at the expected path, **WHEN** `load_card_catalog()` is called, **THEN** it returns `Err` containing the attempted file path. | BLOCKING |
 | CP3b | **GIVEN** `cards.json` exists but contains invalid JSON, **WHEN** `load_card_catalog()` is called, **THEN** it returns `Err` containing the file path and parse error location. | BLOCKING |
+| CP3c | **GIVEN** `cards.json` is valid JSON but contains two card definitions with identical `id` values (e.g., `"iop_001"` appearing twice), **WHEN** `load_card_catalog()` is called, **THEN** it returns `Err` whose string representation contains all duplicate IDs and the server does not start. | BLOCKING |
+| CP3d | **GIVEN** `cards.json` contains a card definition with a missing or unrecognized `rarity` field (e.g., `rarity: "UltraRare"`), **WHEN** `load_card_catalog()` is called, **THEN** it returns `Err` containing the offending card's ID and the server does not start. | BLOCKING |
 
 ### Pool Queries & Distribution
 
@@ -360,21 +387,29 @@ Knobs that affect this system but are owned by the master GDD (Section 7):
 |---|---|---|
 | CP4 | **GIVEN** a Rare card with no `pool_copies_override`, **WHEN** `player_pool.initialize()` completes (before any draws), **THEN** `copies_remaining(card_id) == 4`. | BLOCKING |
 | CP5 | **GIVEN** `copies_remaining(card_id) == N` (N > 0), **WHEN** `distribute(card_id)` is called, **THEN** `copies_remaining(card_id) == N - 1` and `distribute` returns `Ok(())`. | BLOCKING |
+| CP5c | **GIVEN** `copies_remaining(card_id) == 0`, **WHEN** `distribute(card_id)` is called, **THEN** it returns `Err(DistributeError::Exhausted)` and `copies_remaining` remains 0. | BLOCKING |
 | CP5b | **GIVEN** a valid positive `pool_copies_override: 2` on a Rare card, **WHEN** `player_pool.initialize()` completes, **THEN** `copies_remaining(card_id) == 2` (override applied, not the rarity default of 4). | BLOCKING |
 | CP6a | **GIVEN** `copies_remaining(card_id) == 0`, **WHEN** `is_available(card_id)` is called, **THEN** returns `false`. | BLOCKING |
 | CP6b | **GIVEN** `copies_remaining(card_id) >= 1`, **WHEN** `is_available(card_id)` is called, **THEN** returns `true`. | BLOCKING |
-| CP7 | **GIVEN** a pool where all class cards have `copies_remaining = 0` and at least one neutral card has `copies_remaining >= 1`, **WHEN** `draw_shop_slot()` is called with a seed that produces a class-subset split roll, **THEN** the returned `CardId` belongs to the neutral subset (not `None`). | BLOCKING |
+| CP7 | **GIVEN** a pool where all class cards have `copies_remaining = 0` and at least one neutral card has `copies_remaining >= 1`, **WHEN** `draw_class_card(class, seed)` is called 100 times with distinct seeds, **THEN** every call returns `None` (class exhausted; fallback is the calling system's responsibility — the pool does not route to neutral internally). | BLOCKING |
+| CP7b | **GIVEN** a pool where all class cards have `copies_remaining = 0` and at least one neutral card has `copies_remaining >= 1`, **WHEN** Card Acquisition executes the full fallback flow (detect `draw_class_card` → None, retry via `draw_neutral_family` + `draw_family_card` with new seeds), **THEN** the returned `CardId` belongs to the neutral subset (not `None`). *(Integration test — verifies Card Acquisition's fallback logic, not pool internals.)* | BLOCKING |
 | CP8a | **GIVEN** both class and neutral subsets have `copies_remaining = 0` for all cards, **WHEN** `draw_shop_slot()` is called, **THEN** returns `None`. | BLOCKING |
 | CP8b | **GIVEN** `draw_shop_slot()` returns `None` for a shop slot, **WHEN** the shop UI renders that slot, **THEN** the slot displays an empty-slot visual state. | ADVISORY |
+| CP-IC | **GIVEN** a pool initialized with `initial_count(card_id) = N` (from rarity default or override), **WHEN** `distribute(card_id)` is called K times (K < N), **THEN** `initial_count(card_id) == N` (unchanged), `copies_remaining(card_id) == N - K`, and `total_acquired(card_id) == K`. *(Verifies initial_count immutability, Formula 2's total_acquired computation, and pool retention of initial counts.)* | BLOCKING |
+| CP-SHC | **GIVEN** a pool with eligible class cards, **WHEN** `draw_class_card(class, seed)` is called, **THEN** the returned CardId has `class == player_class` and `copies_remaining(card_id) >= 1` at call time. | BLOCKING |
+| CP-SHN | **GIVEN** a pool with eligible neutral families (at least one card with `copies_remaining >= 1`), **WHEN** `draw_neutral_family(seed)` followed by `draw_family_card(family, seed2)` is called, **THEN** the returned CardId belongs to the returned FamilyId, `class == Neutral`, and `copies_remaining(card_id) >= 1`. | BLOCKING |
+| CP-NW | **GIVEN** any non-empty set of eligible_types with mixed owned/unowned types, **WHEN** `normalized_weight(t)` is computed for all t in eligible_types, **THEN** `|Σ normalized_weight(t) − 1.0| < 1e-6`. | BLOCKING |
 | CP-A | **GIVEN** a pool where all Neutral Rare and Legendary cards have `copies_remaining = 0`, **WHEN** `draw_auction_card(seed)` is called, **THEN** it returns `None`. | BLOCKING |
 | CP-B | **GIVEN** a pool where all cards matching a given `PoolFilter` have `copies_remaining = 0`, **WHEN** `draw_random(filter, seed)` is called, **THEN** it returns `None` and no `distribute()` is called. | BLOCKING |
 | CP-C | **GIVEN** a pool with sufficient eligible cards for a player's class, **WHEN** `draw_initial_draft(class, 9, seed)` is called, **THEN** the returned `Vec<CardId>` has length 9 and contains no duplicate IDs. | BLOCKING |
+| CP-C2 | **GIVEN** `draw_initial_draft(class=Iop, 9, seed)` returns a `Vec<CardId>` of length 9, **WHEN** each CardId is queried for its class field, **THEN** every CardId has `class == Iop OR class == Neutral`, and no CardId has any other class value. | BLOCKING |
+| CP-C3 | **GIVEN** `draw_initial_draft(class, 9, seed)` returns `Vec<CardId>`, **WHEN** any card in the returned Vec is checked against `distribute()` calls, **THEN** `copies_remaining(card_id)` is unchanged for all unselected (not purchased) cards — `distribute()` is NOT called for cards the player did not choose. | BLOCKING |
 
 ### Shop Weighting
 
 | # | Criterion | Type |
 |---|---|---|
-| CP9 | **GIVEN** a player owns 3 copies of card type T (class slot, 25 eligible types, no other ownership), **WHEN** `raw_weight(T)` and `normalized_weight(T)` are computed, **THEN** `raw_weight(T) == 0.34` (within float epsilon) and `normalized_weight(T) > normalized_weight(U)` for all unweighted types U. | ADVISORY |
+| CP9 | **GIVEN** a player owns 3 copies of card type T (class slot, 25 eligible types, no other ownership), SHOP_WEIGHT_PER_CARD=0.10, SHOP_WEIGHT_CAP=0.65, **WHEN** `raw_weight(T)` and `normalized_weight(T)` are computed, **THEN** `raw_weight(T) == 0.34` (±1e-6), `normalized_weight(T) == 0.2615` (±1e-4), and `normalized_weight(T) > normalized_weight(U)` for all unweighted types U. | BLOCKING |
 | CP10 | **GIVEN** `GameConfig.shop_weight_cap = 0.65`, `GameConfig.shop_weight_per_card = 0.10`, 25 eligible types, and a player owns exactly 7 copies of card type T, **WHEN** the pre-clamp raw weight for T is computed (`1/25 + 0.10×7 = 0.74`), **THEN** the clamped output equals `GameConfig.shop_weight_cap` (0.65). | BLOCKING |
 
 ### Spawn Range
@@ -401,4 +436,4 @@ Knobs that affect this system but are owned by the master GDD (Section 7):
 | OQ4 | Exact `cards.json` schema for Structure, Trap, and Field card effects: how are continuous/triggered effects encoded when they're too complex for simple text? | Gameplay Programmer | Effect text is adequate for hackathon; structured effect encoding is post-launch |
 | OQ5 | 2v2v2 mode: `fakes_destroyed` is per-team — but which enemy team's fakes count? Both? Only the team you last attacked? | Game Designer | Deferred until 2v2v2 is prioritized |
 | OQ6 | `DoubleFace` card schema: what fields does the second face require? Does it have its own cost, stats, and effect_text, or is it a transformed version of the same card? | Game Designer / Gameplay Programmer | Required before any DoubleFace cards can be added to cards.json |
-| OQ7 | Auction round draw mechanics: which player's pool (or shared catalog) does `draw_auction_card()` draw from? How are Neutral Rare/Epic/Legendary cards divided between shop and auction eligibility? | Auction System GDD | Must be decided before Auction System GDD is authored |
+| OQ7 | **RESOLVED (2026-04-29):** The auction is a shared/common event — one card is drawn per auction round and all players bid on the same card simultaneously. The auction draws from a **shared neutral auction pool** that is separate from every player's personal shop pool. There is no shop/auction copy collision — the per-player shop pool and the shared auction pool are independent. Epic cards are excluded from auction (class-specific; no Neutral Epics exist). Full shared auction pool management (size, cycle-out rules, multi-player behavior) to be specified in Auction System GDD. | Auction System GDD | Shared pool architecture confirmed; implementation details deferred to Auction GDD |

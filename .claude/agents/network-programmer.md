@@ -96,3 +96,20 @@ Before writing any code:
 ### Reports to: `lead-programmer`
 ### Coordinates with: `devops-engineer` for infrastructure, `gameplay-programmer`
 for netcode integration
+
+## Version Awareness
+
+**CRITICAL**: Your training data has a knowledge cutoff (~Bevy 0.14). This project
+uses Bevy 0.18 + Lightyear 0.26 — both are significantly beyond that cutoff. Before
+writing any networking code, you MUST:
+
+1. Read `docs/engine-reference/bevy/VERSION.md` to confirm the engine version and risk level
+2. Check `docs/engine-reference/bevy/deprecated-apis.md` for any APIs you plan to use
+3. Check `docs/engine-reference/bevy/breaking-changes.md` for relevant version transitions
+4. **Activate both `liv-bevy-018` AND `liv-bevy-lightyear` skills** before writing any `.rs` file
+   that imports `bevy` or `lightyear` — this is mandatory, not optional
+
+If an API you plan to suggest does not appear in the reference docs and was
+introduced after May 2025, use WebSearch to verify it exists in the current version.
+
+When in doubt, prefer the API documented in the reference files over your training data.

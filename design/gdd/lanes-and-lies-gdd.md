@@ -25,17 +25,30 @@ The player should feel like a **cunning tactician in an information war** — ne
 3. **"My deck came online."** — The TFT weighting handed you a third Gobball that triggered your LEADER synergy and turned a losing lane into a wall. Archetype building should feel satisfying without being mandatory.
 4. **"Zero idle time."** — Even when the opponent is resolving their turn, you are watching the board, watching their gold, watching the price rise on the auction card. Spectating should feel like active intelligence gathering.
 
-**Design pillars:**
+## Game Pillars
 
-| Pillar | Definition |
+| Pillar | Definition | Design Test |
+|---|---|---|
+| Simple surface | Every rule has at most one exception. A new player can place units on round 1 without reading a manual. | When two rule formulations achieve the same outcome, choose the one that requires fewer words to explain to a first-time player. |
+| Deep emergence | Classes, families, card synergies, and objective positioning create 10+ viable strategies without being explicitly taught. | When adding a mechanic, ask: does this increase strategic depth without increasing the rules surface? If not, cut it. |
+| No idle spectating | Players always have an active decision available or are watching live information that affects their next decision. Every phase gives you something meaningful to do or observe. | When a player has no cards to play, they should still be reading the board, watching opponent gold, tracking prisms, or timing the auction. If they have nothing to do at all, add a decision. |
+| Auction as signature | The open ascending auction — watching the price climb in real time and deciding when to drop — is the mechanic no other game has. It is the commercial identity of this game. | When choosing between two draft system designs, prefer the one that puts more tension on the auction moment. The shop is scaffolding; the auction is the feature. |
+
+> **Canonical pillar names (4):** Simple surface · Deep emergence · No idle spectating · Auction as signature.
+> "Krosmaga foundation" is a sourcing constraint, not a design pillar — it does not gate design decisions.
+
+## Anti-Pillars
+
+What this game is NOT. These statements prevent scope creep and clarify the design boundary.
+
+| Anti-Pillar | Why it is excluded |
 |---|---|
-| Simple surface | Every rule has at most one exception. A new player can place units on round 1. |
-| Deep emergence | Classes, families, card synergies, and objective positioning create 10+ viable strategies without being taught. |
-| No idle spectating | Players always have an active decision available or are watching live information that affects their next decision. |
-| Auction as signature | The open ascending auction — watching the price climb and deciding when to drop — is the mechanic no other game has. |
-| Krosmaga foundation | ~298 cards from Krosmaga Extension=1 are the card pool. Adapt, don't reinvent. |
+| Not a chess-like pure strategy game | Perfect information removes the bluff and economic pressure that define the core fantasy. Hidden objectives and real-time auction dynamics are load-bearing — remove them and the game becomes a different genre. |
+| Not a collectible deck-builder | Players build their hand from a shared pool each match, not from a personal owned collection between sessions. There is no deckbuilding meta outside of the game session. Progression is within-match and within-round, not across sessions. |
+| Not a real-time twitch game | Placement is simultaneous and timed but deliberate (10-second window). Reaction speed is not a skill axis — reading information, bidding strategy, and resource management are. The game punishes recklessness, not slowness. |
+| Not a passive spectator experience | No phase exists where a player has nothing to do or observe. Idle watching is an explicit failure state for the design, not a feature. Any mechanic that produces forced downtime violates the "No idle spectating" pillar and must be redesigned. |
 
-**Art direction:** Ankama studio style — vibrant cel-shaded 2D illustration, bold clean outlines, rich saturated colors, Wakfu animated series aesthetic, French fantasy cartoon. Reference images in `design/art-references/`: `slide1_title_board_epic.png`, `slide3_board_gameplay.png`, `slide4_objectives_real_fake.png`, `slide6_auction_bidding.png`, `slide7_classes_lineup.png`.
+**Art direction:** Ankama studio style — vibrant cel-shaded 2D illustration, bold clean outlines, rich saturated colors, Wakfu animated series aesthetic, French fantasy cartoon. Reference images in `design/art-references/`: `slide1_title_board_epic.png`, `slide3_board_gameplay.png`, `slide4_objectives_real_fake.png`, `slide6_auction_bidding.png`, `slide7_classes_lineup.png`. **Visual authority:** The reference images are the authoritative visual target — they were generated from this text description and are consistent with it. For `/art-bible` authoring, treat the images as the primary source and this text as commentary.
 
 ---
 
@@ -374,7 +387,7 @@ All classes are public information — your opponent can see which class you cho
 **Context — Reserve is universal:** All players have a reserve (see Section 3.4). Lane 2/4 prisms add +1 to reserve for any class. Xelor's uniqueness is not the reserve itself — it is the class spells that fill the reserve far beyond what prisms allow, and the Krosmic cards that spend massive reserve amounts.
 
 **Unique class mechanics:**
-- Reserve has no stated maximum cap for Xelor (balance tuning TBD)
+- Reserve has no maximum cap for any class — organic board pressure is the intended limiter
 - Standard mana still accrues each round normally; Xelor chooses what to spend from reserve vs. current mana
 - **Spending rule:** All Xelor cards cost from **current-round mana** unless the card text explicitly says "from reserve" or "dépense la réserve." Garde-Temps specifically costs 20 reserve mana.
 
@@ -515,7 +528,7 @@ reserve += 1  (by playing the "+1 reserve" spell card received from Prism Lane 2
 reserve += current_mana_transferred  (via Gelure — converts current mana to reserve)
 reserve += 1  (per opponent card played, via Miss Nuit)
 
-// No maximum cap on reserve (balance TBD)
+// No maximum cap on reserve — organic board pressure is the intended limiter
 
 // Spending:
 // Any card can be paid from reserve OR current mana (player chooses)
@@ -528,7 +541,7 @@ reserve += 1  (per opponent card played, via Miss Nuit)
 ```
 gold_at_start_of_round = gold_previous + baseline + interest_bonus
 baseline = 2 (every round)
-interest_bonus = min(floor(gold_held_at_previous_resolution / 5), 2)
+interest_bonus = min(floor(gold_held_at_previous_resolution / interest_threshold_gold), interest_max_bonus)
 gold_held_at_previous_resolution = gold balance after RESOLUTION of the prior round
 
 combat_gold = kill_gold + objective_gold
@@ -546,8 +559,10 @@ objective_gold = objectives_destroyed_this_round × 3  (any objective, real or f
 ### 4.3 Interest Formula
 
 ```
-interest_bonus = min(floor(g / 5), 2)
+interest_bonus = min(floor(g / interest_threshold_gold), interest_max_bonus)
 where g = gold held at the END of RESOLUTION (before the next round's DRAFT begins)
+      interest_threshold_gold = GameConfig field, default 5 (divisor; determines bracket spacing)
+      interest_max_bonus = GameConfig field, default 2 (ceiling bonus)
 
 interest is added at the START of the next DRAFT phase, before any shop spending
 ```
@@ -746,7 +761,7 @@ All values below are configurable. Ranges indicate safe bounds for playtesting b
 | `mana_cap` | 10 | 6–14 | Higher = more cards playable per round; dramatically changes tempo |
 | `gold_baseline_per_round` | 2 | 1–4 | Core economy pacing; affects interest threshold timing |
 | `interest_max_bonus` | +2 | +1 to +3 | Higher = stronger hoard incentive; lower = less snowball |
-| `interest_per_5g` | 1 | 1 | Do not change unless redesigning interest formula |
+| `interest_threshold_gold` | 5 | 5–10 | Divisor in `floor(g / interest_threshold_gold)` — bracket spacing. At 5: interest fires at 5g, 10g. At 10: only at 10g+. Do not set below 5 (below 5 removes the miser/gambler tension). |
 | `objective_hp` | 5 | 3–8 | Lower = faster games; higher = more comeback potential |
 | `fake_count` | 2 of 5 | 1–3 | More fakes = more bluff; fewer = more direct information |
 | `objective_gold_reward` | 3 | 2–5 | Higher = more snowball from first destruction |
@@ -807,7 +822,7 @@ All criteria below must pass before the game is considered feature-complete. **B
 | C4 | A unit at Cell 8 is NOT removed after attacking the objective; it persists and attacks again next round. | BLOCKING |
 | C5 | Objectives have exactly 5 HP and 0 AR. They cannot be healed. | BLOCKING |
 | C6 | Destroying a fake objective does NOT advance the loss condition. Destroying a real objective advances it by 1. | BLOCKING |
-| C7 | The defending player loses exactly when 2 of their real objectives have been destroyed. Not 1, not 3. | BLOCKING |
+| C7 | The defending player loses exactly when 2 of their real objectives have been destroyed. Not 1, not 3. The server broadcasts `S2CGameOver { loser, round, reason: GameOverReason::ObjectivesDestroyed }` on the reliable channel. See `round-state-machine.md` Rule 14. | BLOCKING |
 | C8 | Destroying a fake objective: attacker receives expanded spawn in that lane + a **randomly-assigned** bonus (server-determined: mana cap +1 OR free card pick, 50/50). The player does not choose which bonus they receive. | BLOCKING |
 | C9 | Expanded spawn persists for the remainder of the game (attacker's units in that lane spawn 1 cell further). | BLOCKING |
 | C10 | ARMOR-PIERCING treats defender AR as 0 for the attacker's outgoing damage. The attacker's own AR (including any RPS type-advantage AR bonus) is unaffected. | BLOCKING |

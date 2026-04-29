@@ -1,0 +1,26 @@
+[package]
+name = "client"
+version = "0.1.0"
+edition = "2021"
+description = "WASM Bevy client. Read-only view of server state. No game logic."
+
+[dependencies]
+shared = { path = "../shared" }
+# ADR-003: input feature names (mouse/keyboard) must be verified against Bevy 0.18
+# cargo features matrix before merge — see control-manifest.md verification checklist
+bevy = { version = "0.18", features = [
+    "bevy_ui",
+    "bevy_sprite",
+    "bevy_text",
+    "bevy_asset",
+    "webgl2",
+    # "mouse",     # verify feature name in Bevy 0.18
+    # "keyboard",  # verify feature name in Bevy 0.18
+] }
+lightyear = { version = "0.26", features = ["client", "websocket"] }
+# bevy_tweening: no 0.18 release on crates.io yet — re-add when available
+# bevy_asset_loader = "0.22"  # TODO: verify 0.18-compatible version on crates.io
+
+[[bin]]
+name = "client"
+path = "src/main.rs"

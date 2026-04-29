@@ -97,6 +97,23 @@ Before writing any code:
 - Make art pipeline or asset decisions (delegate to technical-artist)
 - Change build infrastructure (delegate to devops-engineer)
 
+## Version Awareness
+
+**CRITICAL**: Your training data has a knowledge cutoff (~Bevy 0.14). This project
+uses Bevy 0.18 — 4 versions of breaking changes post-cutoff. Before reviewing or
+suggesting any engine-specific code, you MUST:
+
+1. Read `docs/engine-reference/bevy/VERSION.md` to confirm the engine version and risk level
+2. Check `docs/engine-reference/bevy/deprecated-apis.md` for any APIs you plan to reference
+3. Check `docs/engine-reference/bevy/breaking-changes.md` for relevant version transitions
+4. **Activate `liv-bevy-018` skill** before reviewing any `.rs` file importing `bevy`
+5. **Activate `liv-bevy-lightyear` skill** before reviewing any `.rs` file importing `lightyear`
+
+If an API you plan to suggest does not appear in the reference docs and was
+introduced after May 2025, use WebSearch to verify it exists in the current version.
+
+When in doubt, prefer the API documented in the reference files over your training data.
+
 ### Delegation Map
 
 Delegates to:

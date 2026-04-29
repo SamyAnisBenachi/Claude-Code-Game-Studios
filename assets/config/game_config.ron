@@ -1,0 +1,49 @@
+// game_config.ron — design-intent defaults
+// All values match GameConfig::default() in shared/src/config.rs
+// Modify this file to tune the game; server validates on startup (ADR-004).
+(
+    // Pool — Card Data & Pool
+    common_pool_copies: 6,
+    uncommon_pool_copies: 5,
+    rare_pool_copies: 4,
+    shop_weight_per_card: 0.10,
+    shop_weight_cap: 0.65,
+
+    // Economy
+    starting_gold: 5,
+    gold_baseline_per_round: 2,
+    interest_threshold_gold: 5,
+    interest_max_bonus: 2,
+    objective_gold_reward: 3,
+    kill_gold_reward: 1,
+    mana_cap: 10,
+    refresh_base_cost: 1,
+
+    // Objectives / Spawn
+    objective_hp: 5,
+    fake_count: 2,
+    fake_objective_spawn_advance: 1,
+
+    // Timers — RSM phase durations
+    draft_initial_timer_seconds: 45,
+    draft_shop_timer_seconds: 30,
+    placement_timer_seconds: 10,
+    resolution_max_duration_seconds: 60,
+    disconnect_grace_seconds: 30,
+    lobby_timeout_seconds: 90,
+    lobby_heartbeat_timeout_seconds: 15,
+
+    // Timers — Auction System
+    auction_timer_seconds: 20,
+    auction_timer_reset_seconds: 5,
+    auction_max_duration_seconds: 120,
+
+    // Class mechanics
+    xelor_sablier_steal: 1,
+
+    // Network Protocol
+    protocol_version: 1,
+    hello_timeout_ms: 5000,
+    ack_timeout_ms: 10000,
+    heartbeat_interval_ms: 5000,
+)

@@ -1,0 +1,17 @@
+# Review Log — Network Protocol
+
+## Review — 2026-04-29 (R2) — Verdict: NEEDS REVISION → Revised Inline
+Scope signal: XL
+Specialists: network-programmer, systems-designer, game-designer, qa-lead, creative-director
+Blocking items: 29 | Recommended: 20+
+Summary: R1 was a textual patch that introduced internal contradictions and failed to propagate to the registry. R2 surfaced three architectural gaps R1 missed: reconnect identity (no session token in C2SHello — Lightyear assigns new ClientId on each WebSocket connect), EntityId undefined (Bevy Entity cannot cross the wire), and timer precision (u32 seconds → milliseconds for 10s PLACEMENT window). Also fixed: S2CGameOver.loser→Option<PlayerId> for Draw support; S2CAuctionBidRejected added (player-fantasy blocker); Sang Méprise reveal message absent from all tables; BoardSnapshot missing prisms; UnitBoardState missing atk/ar; PlacedUnit→PlacedCard; 6 new ACs for heartbeat and LOBBY phase-gating; game-config.md and entities.yaml registry updated. The GDD structure is sound — R2 issues were targeted additions rather than redesign. Pending R3 focused re-review.
+Prior verdict resolved: Yes — R1 (MAJOR REVISION NEEDED) blockers resolved inline before R2 began.
+Blockers resolved inline (29): session_token in C2SHello/S2CHandshake/Rule 3; EntityId/NetworkId defined; timer_remaining_ms; S2CGameOver.loser→Option<PlayerId>; S2CAuctionBidRejected+BidRejectedReason; S2CSangMepriseReveal; StructureDamaged/StructureDestroyed/TrapDestroyed; TrapDestroyed; PrismBoardState in BoardSnapshot; atk/ar in UnitBoardState; spawn_range_cells public clarified; PlacedUnit→PlacedCard; dual-disconnect edge case; post-snapshot sequencing note; S2CAuctionCard ordering edge case; S2COpponentDisconnected→unicast; last_accepted_bid rename; OpponentObjectiveSnapshot invariant; sub_step contracts; C2SActivateCard ack model; gold public/private clarified; NP-5/9/11/12/19/22 fixed; NP-24–NP-29 added; heartbeat_interval_ms in Tuning Knobs; game-config.md 4 constants; entities.yaml 3 fixes; section header renamed; S2CPlacementAcknowledged ghost fully removed.
+
+## Review — 2026-04-29 — Verdict: MAJOR REVISION NEEDED → Revised Inline
+Scope signal: XL
+Specialists: network-programmer, game-designer, systems-designer, qa-lead, creative-director
+Blocking items: 14 | Recommended: 11
+Summary: Three independent blocking categories required revision before architecture could proceed: (1) pillar violation — S2CPlacementAcknowledged broadcast revealed placement timing, breaking "I fooled them" fantasy and the simultaneous-reveal invariant; (2) AC M7 compliance gap — no broadcast gold mechanism meant auction bluff reads were structurally blind; (3) schema correctness — pay_from_reserve bool insufficient for Garde-Temps, mana_cap absent from snapshot, ManaCapIncreased and CHANGE LANE missing from ResolutionEvent. All 14 blockers resolved inline in the same session. Re-review (R2) recommended in a fresh session.
+Prior verdict resolved: N/A — first review
+Blockers resolved inline: S2CPlacementAcknowledged removed; S2CGoldBroadcast added; C2SHeartbeat made mandatory; reserve_amount replaces pay_from_reserve bool; mana_cap added to PlayerSnapshot + S2CGoldUpdate; ManaCapIncreased + from_lane/to_lane added to ResolutionEvent; snapshot_max_bytes raised 4096→16384; lane domain validation contract added; LOBBY note added; S2CPoolSnapshot superseded note added; NP-6/7/8/14 revised; NP-19–23 added (23 ACs total).

@@ -2,6 +2,16 @@
 
 ---
 
+## Review — 2026-04-29 (Pass 3) — Verdict: MAJOR REVISION NEEDED → APPROVED (post-revision)
+
+Scope signal: M (implementation) / L (revision cost — cross-GDD audit required)
+Specialists: game-designer, systems-designer, economy-designer, qa-lead, creative-director
+Blocking items: 7 | Recommended: 7
+Summary: Pass 3 applied cross-GDD pressure for the first time and found a direct contradiction between two Approved GDDs (server-rng.md specifies 2–3 seeds per shop slot; draw_shop_slot accepted only 1). Resolved via Option C — draw_shop_slot split into three phase-specific pool functions (draw_class_card, draw_neutral_family, draw_family_card) matching server-rng.md's audit log event_type design. OQ7 (shop/auction pool collision) resolved by user clarification: the auction is a shared/common pool per-game (one card per auction round, all players bid on the same card), entirely separate from each player's personal shop pool — no collision exists. C-B4 resolved: refresh policy documented (Card Acquisition owns display-slot state and fallback; pool documents no-tracking policy). 12 new ACs added, CP9 reclassified BLOCKING. Economy System dependency direction in Interactions table corrected.
+Prior verdict resolved: Yes — all 7 blockers addressed in same session. OQ7 closed by design decision.
+
+---
+
 ## Review — 2026-04-28 (Re-Review Pass 2) — Verdict: NEEDS REVISION → APPROVED
 
 Scope signal: M (implementation cost)

@@ -13,7 +13,7 @@
 
 `GameConfig` is infrastructure with no direct player-facing behavior. The player experiences it indirectly: when the shop feels like it "knows what they're building," when gold income feels satisfying without being exploitable, or when auction stakes feel real — those feelings emerge from values defined in this file. Designers and developers are the direct users of this system during balance iteration.
 
-## Detailed Design
+## Detailed Rules
 
 ### Core Rules
 
@@ -45,6 +45,7 @@ pub struct GameConfig {
     pub objective_gold_reward: u32,
     pub kill_gold_reward: u32,
     pub mana_cap: u32,
+    pub refresh_base_cost: u32,
 
     // Objectives / Spawn
     pub objective_hp: u32,
@@ -57,6 +58,8 @@ pub struct GameConfig {
     pub placement_timer_seconds: u32,
     pub resolution_max_duration_seconds: u32,
     pub disconnect_grace_seconds: u32,
+    pub lobby_timeout_seconds: u32,
+    pub lobby_heartbeat_timeout_seconds: u32,
 
     // Timers — Auction System
     pub auction_timer_seconds: u32,
@@ -65,6 +68,12 @@ pub struct GameConfig {
 
     // Class mechanics
     pub xelor_sablier_steal: u32,
+
+    // Network Protocol
+    pub protocol_version: u32,
+    pub hello_timeout_ms: u32,
+    pub ack_timeout_ms: u32,
+    pub heartbeat_interval_ms: u32,
 }
 ```
 
@@ -84,7 +93,7 @@ After loading (and again after each hot-reload), a validation system aborts the 
 - `shop_weight_per_card < shop_weight_cap` — if per-card weight ≥ cap, the cap fires on the first copy acquired and per-acquisition scaling never operates; the archetype-weighting fantasy is nullified
 - `common_pool_copies >= 1`, `uncommon_pool_copies >= 1`, `rare_pool_copies >= 1` — pools with 0 copies have no cards to distribute
 - `fake_count >= 1` — `0` silently disables the bluffing mechanic, the "Lies" pillar of the game's identity
-- `fake_count <= 4` — at least 1 of 5 objectives must be real; `fake_count: 5` is semantically broken
+- `fake_count <= 3` — ensures `loss_threshold = 2` is reachable; at `fake_count = 4` only 1 real objective exists per player and the loss condition can never be triggered (`fake_count: 4` or `5` both produce unwinnable games)
 - `objective_hp >= 1` — `0` causes u32 underflow on damage (debug: panic; release: wraps to ~4.29B, objectives become indestructible, win condition never triggers)
 - `placement_timer_seconds >= 1` — `0` silently skips the PLACEMENT phase on the first tick
 - `auction_timer_seconds >= 1` — `0` skips all bidding and produces undefined interaction with timer reset logic
@@ -118,7 +127,7 @@ No partial states. `GameConfig` is either fully available or the server is not r
 | System | What is read from GameConfig |
 |---|---|
 | **Card Data & Pool** | `common/uncommon/rare_pool_copies`, `shop_weight_per_card`, `shop_weight_cap` |
-| **Economy System** | `starting_gold`, `gold_baseline_per_round`, `interest_threshold_gold`, `interest_max_bonus`, `objective_gold_reward`, `kill_gold_reward`, `mana_cap` |
+| **Economy System** | `starting_gold`, `gold_baseline_per_round`, `interest_threshold_gold`, `interest_max_bonus`, `objective_gold_reward`, `kill_gold_reward`, `mana_cap`, `refresh_base_cost` |
 | **Objective System** | `objective_hp`, `fake_count` |
 | **Board / Lane System** | `fake_objective_spawn_advance` |
 | **Auction System** | `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds` |
@@ -140,7 +149,7 @@ No partial states. `GameConfig` is either fully available or the server is not r
 | Shop weight scaling is operative | `shop_weight_per_card < shop_weight_cap` | Server aborts (cap fires on first copy; per-acquisition scaling never operates) |
 | Common/Uncommon/Rare pool counts nonzero | `N_pool_copies >= 1` for Common, Uncommon, Rare | Server aborts (pools with 0 copies have no cards to distribute) |
 | Fake count minimum | `fake_count >= 1` | Server aborts (`0` disables the bluffing mechanic — the "Lies" pillar) |
-| Fake count maximum | `fake_count <= 4` | Server aborts (≥ 5 fakes leaves 0 real objectives — game cannot end normally) |
+| Fake count maximum | `fake_count <= 3` | Server aborts (`fake_count = 4` leaves only 1 real objective; `loss_threshold = 2` is unreachable — game cannot end normally) |
 | Objective HP nonzero | `objective_hp >= 1` | Server aborts (0 → u32 underflow on damage → debug panic or release wrap to ~4.29B) |
 | PLACEMENT timer nonzero | `placement_timer_seconds >= 1` | Server aborts (0 silently skips the PLACEMENT phase) |
 | AUCTION timer nonzero | `auction_timer_seconds >= 1` | Server aborts (0 skips bidding; undefined interaction with reset logic) |
@@ -184,12 +193,14 @@ These invariants are preconditions that other systems rely on being true before 
 |---|---|---|
 | **File system / Bevy asset pipeline** | Hard upstream | Reads `assets/config/game_config.ron` at startup. Fatal if absent. |
 | **Card Data & Pool** | Downstream (hard) | Reads: `common/uncommon/rare_pool_copies`, `shop_weight_per_card`, `shop_weight_cap` |
-| **Economy System** | Downstream (hard) | Reads: `starting_gold`, `gold_baseline_per_round`, `interest_threshold_gold`, `interest_max_bonus`, `objective_gold_reward`, `kill_gold_reward`, `mana_cap` |
+| **Economy System** | Downstream (hard) | Reads: `starting_gold`, `gold_baseline_per_round`, `interest_threshold_gold`, `interest_max_bonus`, `objective_gold_reward`, `kill_gold_reward`, `mana_cap`, `refresh_base_cost` |
 | **Objective System** | Downstream (hard) | Reads: `objective_hp`, `fake_count` |
 | **Board / Lane System** | Downstream (hard) | Reads: `fake_objective_spawn_advance` |
 | **Auction System** | Downstream (hard) | Reads: `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds` |
 | **Round State Machine** | Downstream (hard) | Reads: `placement_timer_seconds`, `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `resolution_max_duration_seconds`, `auction_max_duration_seconds`, `disconnect_grace_seconds` |
+| **Game Session System** | Downstream (hard) | Reads: `lobby_timeout_seconds` (for lobby deadline), `lobby_heartbeat_timeout_seconds` (for LOBBY heartbeat-gap detection). Note: `disconnect_grace_seconds` is RSM-owned and does NOT apply during LOBBY. |
 | **Class System** | Downstream (soft) | Reads: `xelor_sablier_steal` (Xelor-specific; other classes have no dedicated config knobs at this time) |
+| **Network Protocol** | Downstream (hard) | Reads: `protocol_version`, `hello_timeout_ms`, `ack_timeout_ms`, `heartbeat_interval_ms`, `disconnect_grace_seconds` |
 
 **Bidirectionality:** `card-data-pool.md` ✓, `board-lane-system.md` ✓, `round-state-machine.md` ✓, `economy-system.md` ✓ — all list Game Config as an upstream dependency. `economy-system.md` must add `interest_threshold_gold` to its dependency table when the economy GDD is next revised. GDDs not yet authored (Objective System, Auction System, Class System) must list Game Config when written.
 
@@ -217,9 +228,10 @@ This is the authoritative list of all `GameConfig` fields and their design-inten
 | `objective_gold_reward` | 3 | 2–5 | Higher = more snowball from first objective destruction | — |
 | `kill_gold_reward` | 1 | 0–2 | 0 = remove combat gold loop entirely; 2 = stronger snowball from aggressive play | — |
 | `mana_cap` | 10 | 6–14 | Higher = more cards playable per round; dramatically changes tempo ceiling | — |
+| `refresh_base_cost` | 1 | 1–3 | Base gold cost of the first manual shop refresh per DRAFT phase; each additional refresh in the same phase costs +1g more | — |
 | **Objective System** | | | | |
 | `objective_hp` | 5 | 3–8 | Lower = faster games and fewer comebacks; higher = more durability and comeback potential | **validated: ≥ 1** |
-| `fake_count` | 2 | 1–3 | More fakes = more bluff space; fewer = more direct information war | **validated: ≥ 1 and ≤ 4** |
+| `fake_count` | 2 | 1–3 | More fakes = more bluff space; fewer = more direct information war | **validated: ≥ 1 and ≤ 3** |
 | `fake_objective_spawn_advance` | 1 | 1–2 | Rows of spawn range unlocked per fake destroyed (used in Formula 3 of card-data-pool.md). At 2: Row 3 reachable after the first fake is destroyed. | — |
 | **Timers — RSM phases** | | | | |
 | `draft_initial_timer_seconds` | 45 | 30–90 | Round 1 DRAFT_INITIAL duration; early exit expected at ~25–30s when all players submit | — |
@@ -227,12 +239,19 @@ This is the authoritative list of all `GameConfig` fields and their design-inten
 | `placement_timer_seconds` | 10 | 5–20 | Shorter = more reflex/pressure; longer = more deliberation | **validated: ≥ 1** |
 | `resolution_max_duration_seconds` | 60 | 30–120 | Safety timeout for RESOLUTION. Aborts to Draw if Combat Resolution doesn't complete. Must never fire in normal play. | — |
 | `disconnect_grace_seconds` | 30 | 15–60 | Seconds before a disconnected player forfeits. 30s is intentional for WASM/browser — OS interrupts can cause 3–6s gaps. | — |
+| `lobby_timeout_seconds` | 90 | 60–300 | How long the LOBBY waits for all slots to fill and all classes to be confirmed before cancelling the session. Countdown starts at room creation. Too low = false cancellations for friend groups; too high = long idle wait for abandoned lobbies. | — |
+| `lobby_heartbeat_timeout_seconds` | 15 | 10–60 | Seconds without a client heartbeat before the Game Session System treats a LOBBY player as disconnected and cancels the session. Shorter than `disconnect_grace_seconds` — LOBBY has no game state to recover, so early timeout is safe. Must be ≪ `lobby_timeout_seconds`. | — |
 | **Timers — Auction System** | | | | |
 | `auction_timer_seconds` | 20 | 10–30 | Shorter = more time pressure and bluff risk; longer = more deliberation | **validated: ≥ 1** |
 | `auction_timer_reset_seconds` | 5 | 3–10 | How much each accepted bid adds back to the timer | **validated: < auction_timer_seconds** |
 | `auction_max_duration_seconds` | 120 | 60–300 | Safety timeout for DRAFT_AUCTION. Must be ≥ `auction_timer_seconds + (20 × auction_timer_reset_seconds)` to avoid cutting off a legitimate bidding war. | — |
 | **Class System** | | | | |
 | `xelor_sablier_steal` | 1 | 1–3 | Mana stolen from opponent's current pool per Sablier cast. Effective steal = `min(steal, opponent.current_mana)`. See Class System GDD for 0-mana behavior specification. | — |
+| **Network Protocol** | | | | |
+| `protocol_version` | 1 | N/A | Wire protocol version; must match client and server exactly. Any mismatch → `S2CHandshakeRejected`. Increment on any breaking wire change (new message type, removed message, field type change). | compatibility gate, not balance |
+| `hello_timeout_ms` | 5000 | 2000–15000 | Milliseconds server waits for `C2SHello` after transport connect before closing. Too low: legitimate WASM cold-start clients kicked. Too high: slow DoS detection. | — |
+| `ack_timeout_ms` | 10000 | 5000–30000 | Milliseconds server waits for `C2SAcknowledgeResult` after GAME_OVER before cleaning up the session. Result persisted regardless. | — |
+| `heartbeat_interval_ms` | 5000 | 2000–15000 | Target interval at which the client sends `C2SHeartbeat`. Server uses heartbeat absence (plus `disconnect_grace_seconds`) to detect half-open WASM/WebSocket connections. Must be ≪ `disconnect_grace_seconds × 1000`. | — |
 
 ## Visual/Audio Requirements
 
@@ -248,12 +267,12 @@ None. `GameConfig` is not exposed in any player-facing UI. The values it holds a
 
 | # | Criterion | Type |
 |---|---|---|
-| GC1 | **GIVEN** a `game_config.ron` where every field is explicitly set to a non-default value (fixture: `common_pool_copies: 7`, `uncommon_pool_copies: 6`, `rare_pool_copies: 5`, `shop_weight_per_card: 0.08`, `shop_weight_cap: 0.70`, `starting_gold: 6`, `gold_baseline_per_round: 3`, `interest_threshold_gold: 6`, `interest_max_bonus: 3`, `objective_gold_reward: 4`, `kill_gold_reward: 2`, `mana_cap: 12`, `objective_hp: 6`, `fake_count: 3`, `fake_objective_spawn_advance: 2`, `draft_initial_timer_seconds: 60`, `draft_shop_timer_seconds: 25`, `placement_timer_seconds: 15`, `resolution_max_duration_seconds: 90`, `auction_max_duration_seconds: 180`, `disconnect_grace_seconds: 45`, `auction_timer_seconds: 25`, `auction_timer_reset_seconds: 8`, `xelor_sablier_steal: 2`), **WHEN** `load_game_config()` is called, **THEN** it returns `Ok(config)` where every field equals the fixture value (verified field-by-field). | BLOCKING |
+| GC1 | **GIVEN** a `game_config.ron` where every field is explicitly set to a non-default value (fixture: `common_pool_copies: 7`, `uncommon_pool_copies: 6`, `rare_pool_copies: 5`, `shop_weight_per_card: 0.08`, `shop_weight_cap: 0.70`, `starting_gold: 6`, `gold_baseline_per_round: 3`, `interest_threshold_gold: 6`, `interest_max_bonus: 3`, `objective_gold_reward: 4`, `kill_gold_reward: 2`, `mana_cap: 12`, `refresh_base_cost: 2`, `objective_hp: 6`, `fake_count: 3`, `fake_objective_spawn_advance: 2`, `draft_initial_timer_seconds: 60`, `draft_shop_timer_seconds: 25`, `placement_timer_seconds: 15`, `resolution_max_duration_seconds: 90`, `auction_max_duration_seconds: 180`, `disconnect_grace_seconds: 45`, `auction_timer_seconds: 25`, `auction_timer_reset_seconds: 8`, `xelor_sablier_steal: 2`), **WHEN** `load_game_config()` is called, **THEN** it returns `Ok(config)` where every field equals the fixture value (verified field-by-field). | BLOCKING |
 | GC2a | **GIVEN** `load_game_config()` is called with a path that does not exist on the file system, **WHEN** the function returns, **THEN** it returns `Err(e)` where `e.to_string()` contains the literal string `"assets/config/game_config.ron"`. | BLOCKING |
 | GC2b | **GIVEN** a Bevy `App` configured with the server startup plugin and no `game_config.ron` at `assets/config/game_config.ron`, **WHEN** the loading state runs, **THEN** the `App` does not advance to the `InGame` state and `Res<GameConfig>` is not present in the `World`. | BLOCKING (Integration) |
 | GC3 | **GIVEN** a file at the expected config path containing deliberately malformed RON (e.g., `GameConfig( mana_cap: `), **WHEN** `load_game_config()` is called, **THEN** it returns `Err(e)` where `e.to_string()` contains `"assets/config/game_config.ron"` AND contains content beyond the path alone (a line/column position, or a non-empty parse error description). | BLOCKING |
 | GC4 | **GIVEN** a `game_config.ron` that omits the `mana_cap` field (all other fields valid), **WHEN** `load_game_config()` is called, **THEN** it returns `Ok(config)` where `config.mana_cap == 10` (the design-intent default from the Tuning Knobs table). | BLOCKING |
-| GCN-DEFAULTS | **GIVEN** `GameConfig::default()` is constructed, **THEN** every field equals the Tuning Knobs table value: `common_pool_copies == 6`, `uncommon_pool_copies == 5`, `rare_pool_copies == 4`, `shop_weight_per_card == 0.10`, `shop_weight_cap == 0.65`, `starting_gold == 5`, `gold_baseline_per_round == 2`, `interest_threshold_gold == 5`, `interest_max_bonus == 2`, `objective_gold_reward == 3`, `kill_gold_reward == 1`, `mana_cap == 10`, `objective_hp == 5`, `fake_count == 2`, `fake_objective_spawn_advance == 1`, `draft_initial_timer_seconds == 45`, `draft_shop_timer_seconds == 30`, `placement_timer_seconds == 10`, `resolution_max_duration_seconds == 60`, `auction_max_duration_seconds == 120`, `disconnect_grace_seconds == 30`, `auction_timer_seconds == 20`, `auction_timer_reset_seconds == 5`, `xelor_sablier_steal == 1`. | BLOCKING |
+| GCN-DEFAULTS | **GIVEN** `GameConfig::default()` is constructed, **THEN** every field equals the Tuning Knobs table value: `common_pool_copies == 6`, `uncommon_pool_copies == 5`, `rare_pool_copies == 4`, `shop_weight_per_card == 0.10`, `shop_weight_cap == 0.65`, `starting_gold == 5`, `gold_baseline_per_round == 2`, `interest_threshold_gold == 5`, `interest_max_bonus == 2`, `objective_gold_reward == 3`, `kill_gold_reward == 1`, `mana_cap == 10`, `refresh_base_cost == 1`, `objective_hp == 5`, `fake_count == 2`, `fake_objective_spawn_advance == 1`, `draft_initial_timer_seconds == 45`, `draft_shop_timer_seconds == 30`, `placement_timer_seconds == 10`, `resolution_max_duration_seconds == 60`, `auction_max_duration_seconds == 120`, `disconnect_grace_seconds == 30`, `auction_timer_seconds == 20`, `auction_timer_reset_seconds == 5`, `xelor_sablier_steal == 1`, `protocol_version == 1`, `hello_timeout_ms == 5000`, `ack_timeout_ms == 10000`, `heartbeat_interval_ms == 5000`, `lobby_heartbeat_timeout_seconds == 15`. | BLOCKING |
 
 ### Validation
 
@@ -266,6 +285,7 @@ None. `GameConfig` is not exposed in any player-facing UI. The values it holds a
 | GC6d | **GIVEN** `shop_weight_per_card = 0.15` and `shop_weight_cap = 0.10` (per-card weight ≥ cap), **WHEN** `validate_game_config()` is called, **THEN** it returns `Err`. | BLOCKING |
 | GC7 | *(Three independent test cases, one per validated rarity)* **GIVEN** a `GameConfig` with exactly one of `common_pool_copies`, `uncommon_pool_copies`, or `rare_pool_copies` set to `0` (each tested separately, all other fields valid), **WHEN** `validate_game_config()` is called, **THEN** it returns `Err` in each of the three cases. | BLOCKING |
 | GC8 | **GIVEN** `fake_count = 5`, **WHEN** `validate_game_config()` is called, **THEN** it returns `Err`. | BLOCKING |
+| GC8c | **GIVEN** `fake_count = 4`, **WHEN** `validate_game_config()` is called, **THEN** it returns `Err` (only 1 real objective would exist; `loss_threshold = 2` is unreachable). | BLOCKING |
 | GC8b | **GIVEN** `fake_count = 0`, **WHEN** `validate_game_config()` is called, **THEN** it returns `Err` and `e.to_string()` contains `"fake_count"`. | BLOCKING |
 | GC9 | **GIVEN** a `GameConfig` with `mana_cap = 100` and all other fields valid, **WHEN** `validate_game_config()` is called, **THEN** it returns `Ok(())`. Additionally, **GIVEN** `load_game_config()` with a fixture containing `mana_cap: 100`, **THEN** it returns `Ok(config)` where `config.mana_cap == 100`. | BLOCKING |
 | GC9b | **GIVEN** `objective_hp = 0`, **WHEN** `validate_game_config()` is called, **THEN** it returns `Err`. | BLOCKING |

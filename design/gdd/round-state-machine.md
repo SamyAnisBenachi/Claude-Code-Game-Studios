@@ -13,7 +13,7 @@ The Round State Machine is the server-side phase orchestrator that drives all ga
 
 The Round State Machine is not something the player interacts with — it is the tempo they live inside. Its presence is felt most sharply in one moment: the hand hovering over submit during PLACEMENT. The player has read the gold counts, watched the auction tells, counted the cards the opponent could hold — and now they must commit, blind, on a clock. No take-back. No reactive adjustment after the reveal begins. The RSM's hard phase boundaries make every placement a decision the player owns completely. When the reveal vindicates the read, it feels earned. When it punishes them, they know exactly which assumption was wrong.
 
-## Detailed Design
+## Detailed Rules
 
 ### Core Rules
 
@@ -39,6 +39,8 @@ LOBBY
                     └─► GAME_OVER (terminal)
 ```
 DRAFT_INITIAL is the round 1 draft phase. It transitions directly to PLACEMENT — there is no DRAFT_SHOP for round 1.
+
+**LOBBY exit guard:** LOBBY → DRAFT_INITIAL requires the `SessionReady` event from the Game Session System. `SessionReady` fires when all player slots are filled AND all players have confirmed their class. See `design/gdd/game-session-system.md` for the full LOBBY guard specification, session state machine, and pre-game disconnect handling.
 
 **Rule 2 — Round counter increment:**
 `round_number` is set to 1 when DRAFT_INITIAL begins. It increments by 1 at the moment the RSM transitions out of RESOLUTION into DRAFT_AUCTION or DRAFT_SHOP. Economy events at the new DRAFT entry (Rule 3) use the already-incremented value.
@@ -90,9 +92,9 @@ The RSM updates `disconnect_trackers` using Lightyear's `OnDisconnected` and `On
 **Disconnection during RESOLUTION:** The RSM defers the GAME_OVER transition until RESOLUTION exits naturally. The current combat sub-step completes, `OnResolutionEnd` fires, the interest snapshot fires (if applicable), and only then is GAME_OVER set. This preserves a clean RESOLUTION→GAME_OVER transition and prevents Board/Lane state from leaking.
 
 **Rule 14 — Phase broadcast:**
-Every state transition broadcasts `S2CPhaseChanged` to all connected clients after the new state is entered and all entry actions have fired. Sent on the Lightyear **reliable** channel — phase changes must not be dropped. Payload: `{ phase, round_number, timer_duration_secs }`. For DRAFT_AUCTION, `timer_duration_secs = 0` (the Auction System drives its own countdown; clients must not render an RSM-owned timer for DRAFT_AUCTION). Clients hold a read-only `ClientPhaseView` resource for UI only and have no authority to trigger transitions.
+Every state transition broadcasts `S2CPhaseChanged` to all connected clients after the new state is entered and all entry actions have fired. Sent on the Lightyear **reliable** channel — phase changes must not be dropped. Payload: `{ phase, round_number, timer_duration_ms }`. For DRAFT_AUCTION, `timer_duration_ms = 0` (the Auction System drives its own countdown; clients must not render an RSM-owned timer for DRAFT_AUCTION). Clients hold a read-only `ClientPhaseView` resource for UI only and have no authority to trigger transitions.
 
-**GAME_OVER message:** In addition to `S2CPhaseChanged(GAME_OVER)`, the RSM also broadcasts a separate `S2CGameOver` message on the reliable channel. Payload: `{ loser: PlayerId, round: u32, reason: GameOverReason }`. The `GameOverReason` enum is defined here (server-side type, rendered by HUD):
+**GAME_OVER message:** In addition to `S2CPhaseChanged(GAME_OVER)`, the RSM also broadcasts a separate `S2CGameOver` message on the reliable channel. Payload: `{ loser: Option<PlayerId>, round: u32, reason: GameOverReason }` — `None` = Draw (no winner; e.g., mutual destruction, mutual disconnection, or resolution timeout). The `GameOverReason` enum is defined here (server-side type, rendered by HUD):
 
 ```rust
 pub enum GameOverReason {
@@ -145,10 +147,10 @@ GAME_OVER is terminal — no transitions out.
 | **Card Data & Pool** | RSM → Pool | Fires `refresh_shop(player)` on DRAFT_AUCTION or DRAFT_SHOP entry (after economy events) |
 | **Auction System** *(GDD not yet written)* | RSM ↔ Auction | Sends `StartAuction(round_number)` on DRAFT_AUCTION entry; waits for `AuctionSettled` signal before transitioning to DRAFT_SHOP |
 | **Combat Resolution** *(GDD not yet written)* | RSM ↔ Combat | Sends `BeginResolution` on RESOLUTION entry; waits for `ResolutionComplete` signal; kill and objective rewards fire inside Combat Resolution, not RSM |
-| **Objective System** *(GDD not yet written)* | RSM reads | Reads `real_objectives_destroyed(player)` at RESOLUTION end to evaluate GAME_OVER condition |
+| **Objective System** | RSM reads | Reads `real_objectives_destroyed(player)` at RESOLUTION end to evaluate GAME_OVER condition |
 | **Server-side RNG** | Combat/Objective call directly | RSM ensures random operations only occur inside RESOLUTION state; does not call RNG itself |
-| **Network Protocol / Lightyear** *(GDD not yet written)* | RSM → all clients | Broadcasts `S2CPhaseChanged` on every transition; relies on Lightyear for delivery to all connected clients |
-| **Board/Lane System** *(GDD not yet written — provisional)* | RSM → Board | Fires `OnResolutionEnd` event; Board/Lane System listens to clean up dead units and carry over board state. Interface to be finalized when Board/Lane GDD is written. |
+| **Network Protocol / Lightyear** | RSM → all clients | Broadcasts `S2CPhaseChanged` on every transition; relies on Lightyear for delivery to all connected clients |
+| **Board/Lane System** | RSM → Board | Fires `OnResolutionEnd` event; Board/Lane System listens to clean up dead units and carry over board state. |
 
 ## Formulas
 
@@ -270,15 +272,15 @@ Per-round wall-clock time as seen by players. `T_res` is the server-determined R
 |---|---|---|---|
 | **Auction System** *(GDD not yet written)* | Hard | RSM → Auction: `StartAuction(round_number)`, `AbortAuction`; Auction → RSM: `AuctionSettled` | Bidirectional — RSM drives and waits; Auction System must support AbortAuction for disconnection edge case |
 | **Combat Resolution** *(GDD not yet written)* | Hard | RSM → Combat: `BeginResolution`; Combat → RSM: `ResolutionComplete` | Kill and objective rewards fire inside Combat Resolution; RSM receives only the completion signal |
-| **Objective System** *(GDD not yet written)* | Hard | RSM reads `real_objectives_destroyed(player)` at RESOLUTION end | RSM does not mutate objective state; read-only dependency |
-| **Network Protocol / Lightyear** *(GDD not yet written)* | Hard | RSM emits `S2CPhaseChanged` via Lightyear broadcast on every transition | All clients depend on this for phase mirror; late-joiner sync is an open question (see Open Questions) |
-| **Game Session System** *(GDD not yet written)* | Hard | Game Session System manages the LOBBY state and triggers DRAFT_INITIAL start; RSM takes over from DRAFT_INITIAL onward | Game Session System sets up player count, class selection, and mode config that RSM reads for LOBBY guard conditions |
-| **Board/Lane System** *(GDD not yet written — provisional)* | Soft | RSM fires `OnResolutionEnd`; Board/Lane System listens for board cleanup | Provisional — interface to be finalized when Board/Lane GDD is authored |
+| **Objective System** | Hard | RSM reads `real_objectives_destroyed(player)` at RESOLUTION end | RSM does not mutate objective state; read-only dependency |
+| **Network Protocol / Lightyear** | Hard | RSM emits `S2CPhaseChanged` via Lightyear broadcast on every transition | All clients depend on this for phase mirror; late-joiner sync is an open question (see Open Questions) |
+| **Game Session System** | Hard | Game Session System manages the LOBBY state and triggers DRAFT_INITIAL start; RSM takes over from DRAFT_INITIAL onward | Game Session System sets up player count, class selection, and mode config that RSM reads for LOBBY guard conditions |
+| **Board/Lane System** | Soft | RSM fires `OnResolutionEnd`; Board/Lane System listens for board cleanup | |
 | **All Feature systems** | Soft | Feature systems gate their logic on `phase == X` (e.g., Auction only active in DRAFT_AUCTION) | RSM doesn't push to feature systems beyond phase signals; each system reads current phase independently |
 
 ## Tuning Knobs
 
-All RSM timer constants are loaded from `GameConfig` (`assets/config/game_config.ron`) at startup. No code change is required to tune them. **Note:** `auction_max_duration_seconds` and `resolution_max_duration_seconds` must be explicitly added to `game-config.md` when that GDD is reviewed.
+All RSM timer constants are loaded from `GameConfig` (`assets/config/game_config.ron`) at startup. No code change is required to tune them.
 
 | Knob | Default | Safe Range | Too Low | Too High | Interacts With |
 |---|---|---|---|---|---|
@@ -323,10 +325,10 @@ The RSM drives the following UI elements via `S2CPhaseChanged` broadcasts. Each 
 |---|---|---|
 | Phase indicator | All | `phase` enum value from `S2CPhaseChanged` |
 | Round number | All | `round_number` from `S2CPhaseChanged` |
-| DRAFT_INITIAL countdown | DRAFT_INITIAL | `timer_duration_secs = 45` on entry; client counts down locally |
-| DRAFT_SHOP countdown | DRAFT_SHOP | `timer_duration_secs = 30` on entry |
-| PLACEMENT countdown | PLACEMENT | `timer_duration_secs = 10` on entry; must stop (not hide) on early-exit |
-| GAME_OVER result screen | GAME_OVER | `loser: PlayerId`, `round: u32`, `reason: GameOverReason` |
+| DRAFT_INITIAL countdown | DRAFT_INITIAL | `timer_duration_ms = 45000` on entry; client counts down locally |
+| DRAFT_SHOP countdown | DRAFT_SHOP | `timer_duration_ms = 30000` on entry |
+| PLACEMENT countdown | PLACEMENT | `timer_duration_ms = 10000` on entry; must stop (not hide) on early-exit |
+| GAME_OVER result screen | GAME_OVER | `loser: Option<PlayerId>` (None = Draw), `round: u32`, `reason: GameOverReason` |
 | Auction UI trigger | DRAFT_AUCTION | RSM enters DRAFT_AUCTION state; Auction System drives auction timer shown in Auction UI |
 
 📌 **UX Flag — Round State Machine**: This system has UI requirements. In Pre-Production, run `/ux-design` to create a UX spec for the HUD and phase-transition overlay before writing epics. Stories referencing phase display should cite `design/ux/hud.md`, not this GDD directly.
@@ -360,7 +362,7 @@ The RSM drives the following UI elements via `S2CPhaseChanged` broadcasts. Each 
 | RSM-23 | GIVEN a player's heartbeat gap exceeds 30 seconds (strictly greater than disconnect_grace_seconds), WHEN the RSM evaluates disconnect trackers, THEN the RSM transitions to GAME_OVER with that player declared the loser and S2CGameOver(reason=Disconnection) broadcast. | BLOCKING |
 | RSM-24 | GIVEN a player loses connection at t=5s and reconnects at t=20s (within disconnect_grace_seconds), WHEN the RSM evaluates, THEN GAME_OVER is not triggered and the game continues. | BLOCKING |
 | RSM-25 | GIVEN a player's heartbeat gap is set to exactly `disconnect_grace_seconds` (test by directly writing `disconnect_tracker[player] = disconnect_grace_seconds`), WHEN the RSM evaluates, THEN the player survives — the condition is `> disconnect_grace_seconds`, not `>=`. | BLOCKING |
-| RSM-26 | GIVEN any RSM state transition occurs, WHEN all server-side entry actions have completed, THEN an `S2CPhaseChanged` message is broadcast containing: `phase` matching the new state, `round_number` matching the post-increment counter, and `timer_duration_secs` matching the timer started in the new state (0 for RESOLUTION and GAME_OVER). | BLOCKING |
+| RSM-26 | GIVEN any RSM state transition occurs, WHEN all server-side entry actions have completed, THEN an `S2CPhaseChanged` message is broadcast containing: `phase` matching the new state, `round_number` matching the post-increment counter, and `timer_duration_ms` matching the timer started in the new state (0 for RESOLUTION and GAME_OVER). | BLOCKING |
 | RSM-27 | GIVEN PLACEMENT is active, WHEN a player sends a shop purchase or manual refresh message, THEN the server rejects it. | BLOCKING |
 | RSM-28 | GIVEN DRAFT_AUCTION is active, WHEN a player sends a shop purchase or manual refresh message, THEN the server rejects it. | BLOCKING |
 | RSM-29 | GIVEN RESOLUTION is active, WHEN a player sends a placement submission, THEN the server rejects it. | BLOCKING |

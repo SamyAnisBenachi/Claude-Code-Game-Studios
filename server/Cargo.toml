@@ -1,0 +1,21 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+description = "Headless Bevy game server. All authoritative game state lives here."
+
+[dependencies]
+shared = { path = "../shared" }
+bevy = { version = "0.18", default-features = false, features = ["multi_threaded"] }
+lightyear = { version = "0.26", features = ["server", "websocket"] }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+ron = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# ADR-004: ron is a direct dep — not re-exported from bevy_asset as of Bevy 0.18
+
+[[bin]]
+name = "server"
+path = "src/main.rs"
