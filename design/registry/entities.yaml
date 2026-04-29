@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-04-29"  # updated: combat-resolution.md authored — 2 new formulas (net_damage, type_advantage); referenced_by updated on 4 constants (kill_gold_reward, objective_gold_reward, placement_timer_seconds, objective_hp)
+last_updated: "2026-04-29"  # updated: /consistency-check — added interest_threshold_gold constant; refresh_cap.referenced_by += game-config.md; 3 GDD conflicts resolved (RSM-30 forfeiture, economy refresh cap, NP refresh cost)
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -799,9 +799,23 @@ constants:
     source: design/gdd/card-acquisition.md
     referenced_by:
       - design/gdd/card-acquisition.md
+      - design/gdd/game-config.md
     value: 1
     unit: gold
-    notes: "Maximum additional cost above refresh_base_cost for manual shop refreshes (caps escalation). Default 1 → refresh costs 1g, 2g, 2g, 2g... Must be added to game-config.ron and game-config.md. Safe range: 0–5."
+    notes: "Maximum additional cost above refresh_base_cost for manual shop refreshes (caps escalation). Default 1 → refresh costs 1g, 2g, 2g, 2g... Safe range: 0–5."
+    added: "2026-04-29"
+    revised: "2026-04-29"
+
+  - name: interest_threshold_gold
+    status: active
+    source: design/gdd/game-config.md
+    referenced_by:
+      - design/gdd/game-config.md
+      - design/gdd/economy-system.md
+      - design/gdd/lanes-and-lies-gdd.md
+    value: 5
+    unit: gold
+    notes: "Divisor in the interest formula: floor(g / interest_threshold_gold). Safe range: 5–10. Do not set below 5 — starting gold (5g) would immediately exceed the max-interest bracket, removing the miser/gambler tension."
     added: "2026-04-29"
     revised: ""
 

@@ -3,7 +3,7 @@
 > Lis ce fichier EN PREMIER dans toute nouvelle session.
 > Il contient l'état complet du projet au 2026-04-29.
 >
-> **Session active (2026-04-29):** Card Acquisition GDD ✅ DESIGNED — design/gdd/card-acquisition.md. All 8 sections complete + Open Questions. Registry updated (refresh_cost formula, refresh_base_cost/refresh_cap constants, S2CDraftOffering/S2CShopSlots messages). Systems index updated. /design-review pending (fresh session). Next: /consistency-check or design Combat Resolution GDD.
+> **Session active (2026-04-29):** Hand UI GDD — design/gdd/hand-ui.md. Skeleton created. Working on Section A: Overview. Combat Resolution GDD ✅ DESIGNED. Keyword System GDD — was in progress, superseded by Hand UI. Next: /design-review on combat-resolution.md and keyword-system.md (fresh sessions).
 
 ---
 
@@ -135,10 +135,10 @@ M2 (7 GDDs) : 2 DESIGNED, 5 PAS COMMENCÉS
 **Combat Resolution GDD :** `design/gdd/combat-resolution.md` — ✅ DESIGNED (2026-04-29). Toutes sections complètes (A–H + Visual/Audio + UI Requirements + Open Questions). Registry: 2 nouvelles formules (net_damage, type_advantage). 5 OQs: OQ1 WALL ADR, OQ2 type advantage GameConfig, OQ3 RANGE RNG seed, OQ4 COUNTERATTACK proximity, OQ5 ResolutionEvent enum. /design-review pending (fresh session).
 **Card Acquisition GDD :** `design/gdd/card-acquisition.md` — ✅ DESIGNED (2026-04-29). /design-review pending (fresh session).
 
-### 🔵 EN COURS — Board Rendering GDD
-- **Fichier :** `design/gdd/board-rendering.md`
+### 🔵 EN COURS — Shop/Auction UI GDD
+- **Fichier :** `design/gdd/shop-auction-ui.md`
 - **Section courante :** Section A — Overview (skeleton créé 2026-04-29)
-- **Skill :** `/design-system board-rendering` (review mode: lean)
+- **Skill :** `/design-system shop-auction-ui` (review mode: lean)
 
 ---
 

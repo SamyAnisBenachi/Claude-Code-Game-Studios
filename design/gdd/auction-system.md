@@ -62,7 +62,7 @@ On rejection: unicast `S2CAuctionBidRejected { reason: BidRejectedReason }` to t
 
 **`BidRejectedReason` enum (5 variants):** `InsufficientGold` · `AmountTooLow` · `AuctionExpired` · `AlreadyLeader` · `HandFull`
 
-`AlreadyLeader` and `HandFull` are additions to the enum currently defined in `network-protocol.md`. That file must be updated to match.
+`AlreadyLeader` and `HandFull` are both in `network-protocol.md` ✓ (added 2026-04-29).
 
 **Rule 5 — Accepted bid processing**
 When all validation passes, in this exact order:
@@ -242,6 +242,8 @@ timer_remaining_ms = min(timer_remaining_ms + auction_timer_reset_seconds × 100
 
 - **If a player reconnects during LIVE_BIDDING:** The reconnecting player receives `S2CGameSnapshot` with `auction_state != None` — containing current card, price, leader, and timer. `S2CAuctionCard` is not re-sent. The player can bid immediately on receipt of the snapshot.
 
+- **If the reconnect snapshot has `auction_state.timer_remaining_ms == 0`:** The auction is still resolving on the server (timer hit zero in the same tick the snapshot was produced, or the client's RTT consumed the remaining time). The client must NOT treat the auction as settled. Immediately enter the "locally expired, awaiting settlement" state: display the auction panel with timer bar frozen at 0% and a "Auction resolving…" label in place of the bid button area. Wait for `S2CAuctionSettled` as the terminal signal. This is the reconnect path into the locally-expired state — the same handling applies whether the player was connected throughout or just reconnected.
+
 - **If the client's local timer reaches zero before `S2CAuctionSettled` arrives ("locally expired, awaiting settlement" state):** This occurs when a same-tick bid on the server extends the timer, but the client has already decremented to zero locally. The client must NOT finalize the auction state locally. While in this state: timer bar freezes at 0%, bid button remains disabled (since the server authority is unknown), the client waits for either `S2CAuctionBidAccepted` (resume — animate bar from 0% to `new_timer_ms / cap` before resuming drain) or `S2CAuctionSettled` (finalize). This is the most tension-laden moment of the signature mechanic; visual behavior must not be undefined.
 
 - **Auction pool card count visibility:** The number of cards remaining in the shared neutral auction pool is **not shown to players**. This is an intentional design choice: hidden pool state preserves the "is the next auction worth saving for?" tension that informs no-bid decisions. Revealing the pool count would remove a layer of strategic uncertainty that gives experienced players an edge. The UI must not display pool remaining count before, during, or after an auction.
@@ -269,17 +271,17 @@ timer_remaining_ms = min(timer_remaining_ms + auction_timer_reset_seconds × 100
 
 ## Tuning Knobs
 
-All Auction System knobs live in `GameConfig`. The three starting-price fields must be added to `game-config.md` and `game_config.ron` — they are not yet registered.
+All Auction System knobs live in `GameConfig`. All fields below are registered in `game-config.md`, `game_config.ron`, and the `GameConfig` Rust struct.
 
 | Knob | Default | GameConfig field | Safe Range | Too Low | Too High |
 |---|---|---|---|---|---|
 | `auction_timer_seconds` | 20s | `GameConfig.auction_timer_seconds` | 10–30s | Insufficient time to process information; bluff decisions become reflex | Auction phase exceeds DRAFT_SHOP in duration; pacing sags |
 | `auction_timer_reset_seconds` | 5s | `GameConfig.auction_timer_reset_seconds` | 3–10s | Each bid barely extends the timer; contested auctions end abruptly | Near-full reset on every bid; auctions can run very long on active cards |
-| `auction_floor_rare` | 3g | `GameConfig.auction_floor_rare` *(add)* | 2–5g | Below 2g: floor indistinguishable from shop card costs | Excludes players who spent gold heavily this round |
-| `auction_floor_epic` | 4g | `GameConfig.auction_floor_epic` *(add)* | 3–6g | Same as Rare concern | — |
-| `auction_floor_legendary` | 5g | `GameConfig.auction_floor_legendary` *(add)* | 4–8g | Legendary too accessible early; no prestige signal | May gate cashflow-poor players |
-
-| `legendary_pool_entry_round` | 6 | GameConfig field *(add)* | 3–9 | Earliest round at which Legendary cards become eligible for `draw_auction_card()`. Default 6 (second auction). Below 3: Legendaries can appear at round 3 when gold is likely insufficient to contest them. Above 9: Legendaries may never appear in shorter games. |
+| `auction_max_duration_seconds` | 120s | `GameConfig.auction_max_duration_seconds` | 60–300s | May cut off a legitimate bidding war before natural resolution | No practical concern; safety timeout should never fire in normal play |
+| `auction_floor_rare` | 3g | `GameConfig.auction_floor_rare` | 2–5g | Below 2g: floor indistinguishable from shop card costs | Excludes players who spent gold heavily this round |
+| `auction_floor_epic` | 4g | `GameConfig.auction_floor_epic` | 3–6g | Same as Rare concern | — |
+| `auction_floor_legendary` | 5g | `GameConfig.auction_floor_legendary` | 4–8g | Legendary too accessible early; no prestige signal | May gate cashflow-poor players |
+| `legendary_pool_entry_round` | 6 | `GameConfig.legendary_pool_entry_round` | 3–9 | Legendaries appear at Round 3 when most players have 5–10g — 6g minimum bid is uncontestable | Legendaries may never appear in shorter games |
 
 **Knob interactions:**
 - `auction_timer_seconds` × `auction_timer_reset_seconds` determine maximum theoretical auction duration. The RSM's `auction_max_duration_seconds` safety timeout must always exceed `auction_timer_seconds + (realistic_max_bids × auction_timer_reset_seconds)`.
@@ -325,13 +327,14 @@ The auction bid panel is a time-critical interactive UI. All elements must updat
 
 | Element | Spec |
 |---|---|
-| **Card display** | Card art, name, rarity badge (Rare=blue, Epic=purple, Legendary=gold), current price (large, bold) |
-| **Timer bar** | Horizontal bar draining continuously. Color urgency (green → yellow → red). Value driven by `timer_remaining_ms` from `S2CAuctionBidAccepted`, not by local timer drift. **Smoothing:** when `S2CAuctionBidAccepted` arrives, interpolate the bar from its current display value to `new_timer_ms / cap` over ~100 ms before resuming the drain — do not hard-jump. This prevents a visible snap artifact at 150 ms RTT. |
-| **Current leader** | Player name and avatar. "You" vs opponent label. "No leader yet" state when `current_leader == None`. Updates each `S2CAuctionBidAccepted`. |
-| **Bid input** | Free-form amount input (primary — clamped ≥ `minimum_bid`). +1g convenience button (secondary). Confirm button. The manual amount field is the primary interaction: bid size is the signal. | 
+| **Card display** | Card art, name, rarity badge with **both** color (Rare=blue, Epic=purple, Legendary=gold) **and** text label ("RARE" / "EPIC" / "LEGENDARY") on the badge — color alone fails the project accessibility checklist (deuteranopia/tritanopia risk on blue vs. purple). Current price (large, bold). |
+| **Timer bar** | Horizontal bar draining continuously. Color urgency (green → yellow → red). Value driven by `timer_remaining_ms` from `S2CAuctionBidAccepted`, not by local timer drift. **Smoothing:** when `S2CAuctionBidAccepted` arrives, the bar chases `new_timer_ms / (auction_timer_seconds × 1000)` using an ease-out curve over ~100 ms — drain and interpolation run **concurrently** (the bar moves toward the new target while also continuing to drain). Do not hard-jump and do not pause drain during interpolation. `cap = auction_timer_seconds × 1000` ms. |
+| **Current leader** | Player name and avatar. "You" vs opponent label. "No leader yet" state when `current_leader == None`. Updates each `S2CAuctionBidAccepted`. When the local player is outbid: "YOU ARE LEADING" indicator clears, price counter shows the new amount, and the bid button reverts to "Place bid" — all in the same frame the `S2CAuctionBidAccepted` is processed. |
+| **Bid input** | **Preset buttons (primary):** "Min" (= `current_price + 1`), "+3g", "+5g". **Custom** fallback: free-form amount input clamped ≥ `minimum_bid` and ≤ `player.gold - player.reserved_gold`. Confirm button. Preset buttons are the primary interaction for time-critical play; Custom is for unusual amounts. Bid size is the signal. |
 | **Available gold** | Shows `gold - reserved_gold` (free gold) — not raw gold — so the player sees exactly what they can commit to a new bid. |
 | **"You are leading" indicator** | Visually distinct when the local player is `current_leader`. Bid button reads "Raise bid" (not "Place bid"). |
-| **Personal shop** | Shop slots are visible but **NOT interactable** during DRAFT_AUCTION. Shop panel must not occlude the auction panel. Shop purchases and manual refresh are accepted only during DRAFT_SHOP. This matches RSM Rule 5 and Card Acquisition Rule 4 (`ERR_WRONG_PHASE`). |
+| **Personal shop** | Shop slots are visible but **NOT interactable** during DRAFT_AUCTION. Visual locked state: desaturated overlay on all shop card slots. Any click or hover attempt on a shop slot displays a tooltip: "Shop available during Draft Shop." Shop panel must not occlude the auction panel. Shop purchases and manual refresh are accepted only during DRAFT_SHOP. This matches RSM Rule 5 and Card Acquisition Rule 4 (`ERR_WRONG_PHASE`). |
+| **Hand-full reactive state** | Bid button disabled state is re-evaluated on every incoming `S2C` message that could change `hand_size` — not only at DRAFT_AUCTION entry. If the local player's `hand_size` reaches 10 mid-auction (edge case; acknowledged unreachable under correct RSM enforcement per Rule 7), the bid button must disable immediately and the "Hand full — play a card to bid" warning must re-surface without requiring a panel reload. |
 
 📌 **UX Flag — Auction System:** This system has complex time-critical UI. Run `/ux-design` for the `shop-auction-ui` screen before writing epics. Stories referencing auction UI must cite `design/ux/shop-auction-ui.md`, not this GDD directly.
 
@@ -342,13 +345,13 @@ The auction bid panel is a time-critical interactive UI. All elements must updat
 | # | Criterion | Type |
 |---|---|---|
 | AU1-a | **GIVEN** `StartAuction(R)` is processed by the Auction System, **WHEN** execution completes, **THEN** internal state is `LIVE_BIDDING`, `card_id != None`, and `current_price == starting_price_for_drawn_rarity`. (Proves full initialisation before returning to RSM.) | BLOCKING — Logic/Unit |
-| AU1-b | **GIVEN** the RSM enters DRAFT_AUCTION, **WHEN** `S2CPhaseChanged(DRAFT_AUCTION)` is dispatched, **THEN** an `S2CAuctionCard` message was already queued in the same or earlier frame. *BLOCKED pending NP Open Question 3 (Lightyear reliable channel FIFO guarantee across message types). Implement as integration test (`App::new()` with both RSM and Auction System plugins).* | BLOCKING — Integration (pending NP OQ3) |
+| AU1-b | **GIVEN** the RSM enters DRAFT_AUCTION, **WHEN** `S2CPhaseChanged(DRAFT_AUCTION)` is dispatched, **THEN** an `S2CAuctionCard` message was already queued in the same or earlier frame. *BLOCKED pending NP Open Question 3 (Lightyear reliable channel FIFO guarantee across message types). Implement as integration test (`App::new()` with both RSM and Auction System plugins). **Fallback if NP OQ3 cannot resolve before sprint ends:** replace with a code-review assertion — confirm via Bevy system schedule inspection that the RSM system ordering places the `StartAuction` handler before `S2CPhaseChanged` dispatch in the same frame, and document the review in `production/qa/evidence/au1b-ordering-review.md`.* | BLOCKING — Integration (pending NP OQ3) |
 | AU2 | **GIVEN** an auction is LIVE_BIDDING and `bidder == current_leader`, **WHEN** `C2SPlaceBid` is received, **THEN** `S2CAuctionBidRejected { reason: AlreadyLeader }` is unicast to the bidder and no auction state changes. | BLOCKING |
 | AU3 | **GIVEN** an auction is LIVE_BIDDING and `bidder.hand_size == 10`, **WHEN** `C2SPlaceBid` is received, **THEN** `S2CAuctionBidRejected { reason: HandFull }` is unicast and no state changes. | BLOCKING |
 | AU4 | **GIVEN** Player A has `gold = 10, reserved_gold = 5` (current leader) and Player B has `gold = 10, reserved_gold = 0`, **WHEN** Player B's bid of 6g is accepted, **THEN** `Player_A.reserved_gold == 0` AND `Player_B.reserved_gold == 6`. No player has non-zero `reserved_gold` for a bid they are no longer leading. | BLOCKING — Logic/Unit |
 | AU5 | **GIVEN** an accepted bid with `timer_remaining_ms = 3000` and `auction_timer_seconds = 20`, `auction_timer_reset_seconds = 5`, **WHEN** the bid is processed, **THEN** `timer_remaining_ms = 8000` (`min(3000 + 5000, 20000)`). | BLOCKING |
 | AU6 | **GIVEN** an accepted bid with `timer_remaining_ms = 17000` and `auction_timer_seconds = 20`, `auction_timer_reset_seconds = 5`, **WHEN** the bid is processed, **THEN** `timer_remaining_ms = 20000` (capped — `min(22000, 20000) = 20000`). | BLOCKING |
-| AU7-a | **GIVEN** the timer reaches 0 with a current leader and `leader.hand_size < 10`, **WHEN** resolution fires, **THEN** `spend_reserved_gold(leader)` is called (`gold` decremented by bid amount, `reserved_gold` zeroed), the card is added to the leader's hand (`hand_size` increases by 1), and `S2CAuctionSettled { winner: Some(leader), amount }` is broadcast. | BLOCKING |
+| AU7-a | **GIVEN** the timer reaches 0 with a current leader and `leader.hand_size < 10`, **WHEN** resolution fires, **THEN** `spend_reserved_gold(leader)` is called: `leader.gold` is decremented by the bid amount, **`leader.reserved_gold == 0`** (the reservation is zeroed — not just decremented), the card is added to the leader's hand (`hand_size` increases by 1), and `S2CAuctionSettled { winner: Some(leader), amount }` is broadcast. Assert all three output values. | BLOCKING |
 | AU7-b | **GIVEN** the timer reaches 0 with a current leader and `leader.hand_size == 10` (injected artificially), **WHEN** resolution fires, **THEN** `spend_reserved_gold(leader)` is still called (gold deducted), the card is NOT added to the hand (`hand_size` remains 10), and `S2CAuctionSettled { winner: Some(leader), amount }` is broadcast. (See master GDD A9. This path is documented as unreachable under correct RSM enforcement — this test confirms the guard works.) | BLOCKING |
 | AU8 | **GIVEN** the timer reaches 0 with no bids placed, **WHEN** resolution fires, **THEN** no gold changes for any player and `S2CAuctionSettled { winner: None, amount: 0 }` is broadcast. Additionally, **GIVEN** `draw_auction_card()` was called at SELECTING entry, **WHEN** the auction ends (any outcome), **THEN** the drawn card's `copies_remaining` in the shared neutral pool has been decremented by 1 (`distribute()` was called at draw time). *(Merges former AU12.)* | BLOCKING |
 | AU9 | **GIVEN** the RSM sends `AbortAuction` with `current_leader == Some(Player_A)` and `Player_A.reserved_gold == 5`, **WHEN** the Auction System processes `AbortAuction`, **THEN** `Player_A.reserved_gold == 0`, Auction System state is `IDLE`, and the `Events<AuctionSettled>` resource contains zero events (verified by reading the `Events` resource after the system runs). | BLOCKING |

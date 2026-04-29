@@ -145,7 +145,7 @@ gold += GameConfig.gold_baseline_per_round + interest
 | Manual shop refresh | 1g (1st), +1g per additional refresh this DRAFT phase | DRAFT (before PLACEMENT begins) |
 | Auction winning bid | Bid amount | Auction (during DRAFT phase) |
 
-**Refresh cost escalation:** The first manual shop refresh in a DRAFT phase costs `GameConfig.refresh_base_cost` (default: 1g). Each subsequent refresh in the same DRAFT phase costs 1g more (2g, 3g, …). The counter resets at the start of each DRAFT phase.
+**Refresh cost escalation:** The first manual shop refresh in a DRAFT phase costs `GameConfig.refresh_base_cost` (default: 1g). Each subsequent refresh costs `refresh_base_cost + min(refresh_count_this_draft, refresh_cap)` — at defaults (base=1, cap=1): 1g first refresh, 2g all subsequent (escalation is capped). The counter resets at the start of each DRAFT phase.
 
 **Spend validation:** Server checks `gold >= cost` before accepting any purchase. If false: rejected, gold not deducted. No partial payment.
 

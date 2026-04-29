@@ -369,7 +369,7 @@ The RSM drives the following UI elements via `S2CPhaseChanged` broadcasts. Each 
 | RSM-27 | GIVEN PLACEMENT is active, WHEN a player sends a shop purchase or manual refresh message, THEN the server rejects it. | BLOCKING |
 | RSM-28 | GIVEN DRAFT_AUCTION is active, WHEN a player sends a shop purchase or manual refresh message, THEN the server rejects it. | BLOCKING |
 | RSM-29 | GIVEN RESOLUTION is active, WHEN a player sends a placement submission, THEN the server rejects it. | BLOCKING |
-| RSM-30 | GIVEN DRAFT_INITIAL timer expires and Player A spent 3g of the 5g budget, WHEN PLACEMENT begins, THEN Player A's gold = 0 (unspent starting gold is forfeited) and Player A has only the cards they purchased in hand. | BLOCKING |
+| RSM-30 | GIVEN DRAFT_INITIAL timer expires and Player A spent 3g of the 5g budget, WHEN PLACEMENT begins, THEN Player A's gold = 2g (5−3 = 2 carried over; unspent starting gold is **not** forfeited) and Player A has only the cards they purchased in hand. | BLOCKING |
 | RSM-31 | GIVEN PLACEMENT is active and both an all-submit event and a timer-expiry event arrive on the same server tick, WHEN the RSM processes them, THEN the RSM transitions to RESOLUTION exactly once — the second trigger is discarded. Double-transition would execute combat twice; this is a data-corruption scenario. | BLOCKING |
 | RSM-32 | GIVEN the RSM enters any DRAFT state, WHEN entry actions fire, THEN the execution sequence is strictly: (1) apply_mana_ramp, (2) apply_gold_income, (3) refresh_shop, (4) StartAuction if DRAFT_AUCTION, (5) S2CPhaseChanged — a purchase or bid message arriving before S2CPhaseChanged is broadcast is rejected by the phase guard. | BLOCKING |
 | RSM-33 | GIVEN LOBBY transitions to DRAFT_INITIAL, WHEN the RSM initialises its state, THEN round_number = 1. The value 0 must be unreachable at any is_auction_round call site. | BLOCKING |
@@ -383,7 +383,7 @@ The RSM drives the following UI elements via `S2CPhaseChanged` broadcasts. Each 
 
 1. **`lobby_timeout_seconds`** — How long does LOBBY wait before cancelling the session if the expected player count is never reached? Referenced in Edge Cases but no default value set. Proposed default: **90s**. Must be added to GameConfig and the entity registry before the RSM can be implemented. Owner: Game Session System GDD when authored.
 
-2. **DRAFT_INITIAL gold forfeiture** — AC RSM-30 assumes unspent starting gold is zeroed at DRAFT_INITIAL end ("use it or lose it"). Economy System GDD does not explicitly confirm the zeroing. Confirm before either system is implemented. If gold carries forward, RSM-30 must be revised.
+2. ~~**DRAFT_INITIAL gold forfeiture**~~ — **Resolved (2026-04-29, /consistency-check).** Card Acquisition GDD (Rule 5, CA4, Edge Cases) confirms gold carries over. RSM-30 revised to match.
 
 3. **Auction card count in multiplayer modes** — Master GDD Open Question 3: 1 card per auction in 1v1; what about 2v2/3v3? If multiple auction cards run sequentially, DRAFT_AUCTION becomes a multi-step loop. RSM design is sound for 1v1. Extension to multi-card auctions must be handled in the Auction System GDD.
 

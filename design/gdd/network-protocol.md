@@ -43,7 +43,7 @@ Players never see the Network Protocol, but they feel it the instant it fails. T
 |---|---|---|---|
 | `C2SHello` | `{ protocol_version: u32, session_token: Option<SessionToken> }` | HANDSHAKING | Client sends first. `None` = fresh connect. `Some(token)` = reconnect; server uses token to map the new Lightyear `ClientId` to the existing session slot. |
 | `C2SPurchaseCard` | `{ card_id: CardId }` | DRAFT_INITIAL, DRAFT_SHOP | Server validates: gold ≥ cost, hand < 10, card in shop |
-| `C2SRefreshShop` | `{}` | DRAFT_SHOP | Costs 1g server-side; not valid in DRAFT_INITIAL |
+| `C2SRefreshShop` | `{}` | DRAFT_SHOP | Cost validated server-side via refresh_cost formula (1g first refresh, 2g all subsequent per refresh_cap); not valid in DRAFT_INITIAL |
 | `C2SActivateCard` | `{ card_id: CardId }` | DRAFT_INITIAL, DRAFT_SHOP | Play instant-effect card from hand during DRAFT (reserve spells, Gelure, etc.); no board target |
 | `C2SSignalReady` | `{ retract: bool }` | DRAFT_INITIAL, DRAFT_SHOP | `false` = signal ready; `true` = retract ready signal |
 | `C2SPlaceBid` | `{ amount: u32 }` | DRAFT_AUCTION | Server validates: `amount ≥ last_accepted_bid + 1`, `player.gold ≥ amount` |
@@ -101,7 +101,7 @@ enum PlayTarget {
 | `S2CPhaseChanged` | Reliable | Broadcast | `{ phase: RoundPhase, round_number: u32, timer_duration_ms: u32 }` |
 | `S2CGameOver` | Reliable | Broadcast | `{ loser: Option<PlayerId>, round: u32, reason: GameOverReason }` — `None` = Draw (both players lose; reason = `Draw` for mutual destruction/disconnection/resolution timeout) |
 | `S2CGoldUpdate` | Reliable | Unicast | `{ gold: u32, current_mana: u32, reserve_mana: u32, mana_cap: u8 }` |
-| `S2CGoldBroadcast` | Reliable | Broadcast | `{ player_id: PlayerId, gold: u32 }` — satisfies AC M7; opponent gold always visible |
+| `S2CGoldBroadcast` | Reliable | Broadcast | `{ player_id: PlayerId, gold: u32, reserved_gold: u32 }` — opponent gold always visible; `gold - reserved_gold` = free gold (required for auction panel to display correct bidding headroom) |
 | `S2CCardAcquired` | Reliable | Unicast | `{ card_id: CardId, source: CardSource }` |
 | `S2CShopSlots` | Reliable | Unicast | `{ slots: Vec<Option<CardId>> }` — `None` = empty slot (dedup exhaustion or pool exhaustion for that slot type) |
 | `S2CDraftOffering` | Reliable | Unicast | `{ card_ids: Vec<CardId> }` — exactly 9 cards at DRAFT_INITIAL (fewer only in stripped test fixtures) |
@@ -532,7 +532,7 @@ N/A — This system renders nothing. The protocol delivers data consumed by UI s
 | NP-16 | **GIVEN** a two-player game is in progress and Player B reconnects, **WHEN** the server produces Player B's `S2CGameSnapshot`, **THEN** the snapshot does NOT contain: Player A's `hand`, `shop_slots`, `pool_snapshot`, or any `ObjectiveSnapshot.is_real = true` for Player A's objectives. | BLOCKING |
 | NP-17 | **GIVEN** a player disconnects and reconnects within `disconnect_grace_seconds`, **WHEN** the server processes the reconnect, **THEN** `S2COpponentReconnected` is broadcast to the remaining player. | BLOCKING |
 | NP-18 | **GIVEN** the server is in DRAFT_AUCTION and a player reconnects, **WHEN** `S2CGameSnapshot` is received, **THEN** `auction_state` is non-null and contains: `card_id`, `last_accepted_bid`, `current_leader` (or `None` if no bids yet), and `timer_remaining_ms`. | BLOCKING |
-| NP-19 | **GIVEN** Player A's gold changes for any reason (purchase, kill reward, objective reward, prism reward, phase income — baseline + interest applied at end of RESOLUTION), **WHEN** the server processes the change, **THEN** `S2CGoldBroadcast { player_id: Player_A, gold: new_amount }` is delivered to ALL connected players including Player B. (Satisfies AC M7 — opponent gold always visible.) | BLOCKING |
+| NP-19 | **GIVEN** Player A's gold changes for any reason (purchase, kill reward, objective reward, prism reward, phase income — baseline + interest applied at end of RESOLUTION), **WHEN** the server processes the change, **THEN** `S2CGoldBroadcast { player_id: Player_A, gold: new_amount, reserved_gold: Player_A.reserved_gold }` is delivered to ALL connected players including Player B. (Satisfies AC M7 — opponent gold and reserved gold always visible; allows any client to compute `free_gold = gold - reserved_gold`.) | BLOCKING |
 | NP-20 | **GIVEN** a game is in PLACEMENT with at least 2 units on the board, **WHEN** a player reconnects and receives `S2CGameSnapshot`, **THEN** the snapshot contains: `round_number > 0`, `phase = PLACEMENT`, all board units present in `BoardSnapshot.units`, and the reconnecting player's `hand` is populated if they hold cards. (Integration test.) | BLOCKING |
 | NP-21 | **GIVEN** a client reconnects during PLACEMENT before having submitted, **WHEN** `S2CGameSnapshot` is processed, **THEN** `PlayerSnapshot.submitted = false` for the reconnecting player, and the placement UI is re-presented with `timer_remaining_ms` already counting down from its current value (in milliseconds). | BLOCKING |
 | NP-22 | **GIVEN** a client reconnects during PLACEMENT and the opponent has already submitted, **WHEN** `S2CGameSnapshot` is processed, **THEN** the opponent's `PlayerSnapshot.submitted = true` and the reconnecting client renders the "waiting for opponent" state. The snapshot is the sole authority — no further submission confirmation messages are sent. | BLOCKING |

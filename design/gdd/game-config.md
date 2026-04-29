@@ -70,6 +70,7 @@ pub struct GameConfig {
     pub auction_floor_rare: u32,
     pub auction_floor_epic: u32,
     pub auction_floor_legendary: u32,
+    pub legendary_pool_entry_round: u32,
 
     // Class mechanics
     pub xelor_sablier_steal: u32,
@@ -228,7 +229,7 @@ This is the authoritative list of all `GameConfig` fields and their design-inten
 | **Economy System** | | | | |
 | `starting_gold` | 5 | 3–8 | Higher = more initial draft choice; lower = more constraint and variance in opening | — |
 | `gold_baseline_per_round` | 2 | 1–4 | Core economy pacing; affects interest threshold timing | — |
-| `interest_threshold_gold` | 5 | 3–10 | The divisor in `floor(gold / interest_threshold_gold)`. At 3: interest activates at 3g — very strong early hoard incentive. At 10: only meaningful at 10g+ | — |
+| `interest_threshold_gold` | 5 | 5–10 | The divisor in `floor(gold / interest_threshold_gold)`. Do not set below 5 — starting gold (5g) would immediately exceed the max-interest bracket, removing the miser/gambler tension. At 10: only meaningful at 10g+ | — |
 | `interest_max_bonus` | 2 | 1–3 | Higher = stronger hoard incentive and snowball; lower = weaker reward for patience | — |
 | `objective_gold_reward` | 3 | 2–5 | Higher = more snowball from first objective destruction | — |
 | `kill_gold_reward` | 1 | 0–2 | 0 = remove combat gold loop entirely; 2 = stronger snowball from aggressive play | — |
@@ -253,6 +254,7 @@ This is the authoritative list of all `GameConfig` fields and their design-inten
 | `auction_floor_rare` | 3 | 2–5 | Starting bid for Rare-rarity auction cards. Must stay above Uncommon shop cost (2g) to preserve rarity signal. | — |
 | `auction_floor_epic` | 4 | 3–6 | Starting bid for neutral Epic-rarity auction cards. Requires original neutral Epic card designs (auction-system.md OQ1). | — |
 | `auction_floor_legendary` | 5 | 4–8 | Starting bid for Legendary-rarity auction cards. Too low = Legendary feels too accessible early; too high = gates cashflow-poor players. | — |
+| `legendary_pool_entry_round` | 6 | 3–9 | Earliest round at which Legendary cards become eligible for `draw_auction_card()`. Default 6 = second auction. Below 3: Legendaries appear when most players have 5–10g, making the 6g minimum bid uncontestable. Above 9: Legendaries may never appear in short games. | — |
 | **Class System** | | | | |
 | `xelor_sablier_steal` | 1 | 1–3 | Mana stolen from opponent's current pool per Sablier cast. Effective steal = `min(steal, opponent.current_mana)`. See Class System GDD for 0-mana behavior specification. | — |
 | **Network Protocol** | | | | |
