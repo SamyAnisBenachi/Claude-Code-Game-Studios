@@ -136,7 +136,7 @@ No partial states. `GameConfig` is either fully available or the server is not r
 | **Economy System** | `starting_gold`, `gold_baseline_per_round`, `interest_threshold_gold`, `interest_max_bonus`, `objective_gold_reward`, `kill_gold_reward`, `mana_cap`, `refresh_base_cost` |
 | **Objective System** | `objective_hp`, `fake_count` |
 | **Board / Lane System** | `fake_objective_spawn_advance` |
-| **Auction System** | `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds`, `auction_floor_rare`, `auction_floor_epic`, `auction_floor_legendary` |
+| **Auction System** | `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds`, `auction_floor_rare`, `auction_floor_epic`, `auction_floor_legendary`, `legendary_pool_entry_round` |
 | **Round State Machine** | `placement_timer_seconds`, `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `resolution_max_duration_seconds`, `auction_max_duration_seconds`, `disconnect_grace_seconds` |
 | **Class System (Xelor)** | `xelor_sablier_steal` |
 | **Server-side RNG** | *(none — RNG seeds are generated at runtime)* |

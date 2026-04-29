@@ -136,11 +136,143 @@ Board Rendering maintains a `BoardRenderState` enum driven exclusively by networ
 
 ## Formulas
 
-[To be designed]
+### F1 — Cell-to-World Coordinate
+
+The `cell_to_world` formula is defined as:
+
+```
+cell_to_world(lane, cell) = Vec2 {
+    x: board_origin_x + (cell - 1) as f32 * cell_width,
+    y: board_origin_y - (lane - 1) as f32 * lane_height,
+}
+```
+
+**Variables:**
+
+| Variable | Symbol | Type | Range | Description |
+|---|---|---|---|---|
+| Lane number | `lane` | u8 | 1–5 | Logical lane index (1 = top of screen, 5 = bottom) |
+| Cell number | `cell` | u8 | 1–8 | Absolute cell position within the lane |
+| Board origin X | `board_origin_x` | f32 | tunable | World-space X of (lane=1, cell=1) — defined in `BoardLayout` resource |
+| Board origin Y | `board_origin_y` | f32 | tunable | World-space Y of (lane=1, cell=1) — defined in `BoardLayout` resource |
+| Cell width | `cell_width` | f32 | 48.0–96.0 | World units per cell; default 64.0 |
+| Lane height | `lane_height` | f32 | 64.0–112.0 | World units per lane; default 80.0 |
+
+**Output Range:** 2D world-space position. For default values the board spans 448 units wide (7 cell gaps × 64) and 320 units tall (4 lane gaps × 80).
+
+**Example:** `cell_to_world(lane=3, cell=5)` → `(board_origin_x + 256, board_origin_y − 160)`. A unit in the middle lane, on Player B's home half.
+
+---
+
+### F2 — Health Bar Fill Fraction
+
+The `health_bar_fill` formula is defined as:
+
+```
+fill = clamp(hp_current / hp_max, 0.0, 1.0)
+
+bar_color = if fill >= health_bar_green_threshold { Green }
+            else if fill >= health_bar_red_threshold { Yellow }
+            else { Red }
+```
+
+**Variables:**
+
+| Variable | Symbol | Type | Range | Description |
+|---|---|---|---|---|
+| Current HP | `hp_current` | u8 | 0–`hp_max` | Unit's replicated current HP |
+| Max HP | `hp_max` | u8 | 1–20 | Unit's maximum HP from card definition |
+| Green threshold | `health_bar_green_threshold` | f32 | 0.5–0.75 | Fill fraction at or above which bar renders green; default 0.6 |
+| Red threshold | `health_bar_red_threshold` | f32 | 0.2–0.4 | Fill fraction below which bar renders red; default 0.3 |
+
+**Output Range:** fill ∈ [0.0, 1.0]; color ∈ {Green, Yellow, Red}.
+
+**Examples:**
+- `hp_current=2, hp_max=5` → fill=0.40 → Yellow (below green, at or above red threshold)
+- `hp_current=5, hp_max=5` → fill=1.00 → Green
+- `hp_current=1, hp_max=5` → fill=0.20 → Red (at red threshold boundary)
+
+---
+
+### F3 — Co-occupancy Render Offset (2v2 only)
+
+The `co_occupancy_offset` formula is defined as:
+
+```
+x_offset(unit_index) = (unit_index as f32 - 0.5) * co_occupancy_side_offset
+```
+
+**Variables:**
+
+| Variable | Symbol | Type | Range | Description |
+|---|---|---|---|---|
+| Unit index | `unit_index` | u8 | 0–1 | Render slot within the cell; assigned by ascending entity ID among allied co-occupants |
+| Side offset | `co_occupancy_side_offset` | f32 | 4.0–16.0 | World units of X displacement per unit from cell center; default 8.0 |
+
+**Output Range:** x_offset ∈ [−`co_occupancy_side_offset`/2, +`co_occupancy_side_offset`/2]. For default: [−4.0, +4.0].
+
+**Example:** Two allied units at (lane=2, cell=4), `co_occupancy_side_offset=16`:
+- unit_index=0 → x_offset = (0.0 − 0.5) × 16 = −8.0 (left of cell center)
+- unit_index=1 → x_offset = (1.0 − 0.5) × 16 = +8.0 (right of cell center)
+
+This formula applies only in 2v2 mode. In 1v1 at most one unit per player per lane; offset is not evaluated.
+
+---
+
+### F4 — Resolution Animation Total Duration
+
+The `resolution_animation_duration` formula is defined as:
+
+```
+total_ms = pre_animation_pause_ms
+         + N_groups * (resolution_sub_step_duration_ms + inter_step_pause_ms)
+```
+
+**Variables:**
+
+| Variable | Symbol | Type | Range | Description |
+|---|---|---|---|---|
+| Pre-animation pause | `pre_animation_pause_ms` | u32 | 200–800 | Hold after fog lift before sub-step 1 animation begins; default 400ms |
+| Sub-step duration | `resolution_sub_step_duration_ms` | u32 | 400–1500 | Active animation window per sub-step group; default 800ms |
+| Inter-step pause | `inter_step_pause_ms` | u32 | 100–400 | Silent pause between consecutive groups; default 200ms |
+| Group count | `N_groups` | u8 | 0–6 | Count of distinct `sub_step` values present in `S2CResolutionEvent`; sub-steps with no events contribute 0ms |
+
+**Output Range:**
+- Minimum: `pre_animation_pause_ms` (no event groups)
+- Typical (all 6 sub-steps active, default timings): 400 + 6×(800+200) = **6,400ms** (~6.4 s)
+- Maximum (all sub-steps, tuning ceiling): 800 + 6×(1500+400) = **12,200ms**
+
+**Example:** A round with events only in sub-steps 1, 5, 6 (N_groups=3, defaults): `total_ms = 400 + 3×(800+200) = 3,400ms`.
 
 ## Edge Cases
 
-[To be designed]
+**If `S2CResolutionEvent` contains a `sub_step` value outside [1–6]:** skip that group and log a warning; do not halt the animation queue.
+
+**If `S2CPhaseChanged(DRAFT_SHOP)` arrives while `ResolutionExecuting` is active:** buffer the message; apply the transition only after `ResolutionObjectiveReveal` completes. The player must always see the full resolution sequence.
+
+**If `S2CPhaseChanged(GAME_OVER)` arrives mid-`ResolutionExecuting`:** complete the current `AnimGroup`, skip remaining groups, execute `ResolutionObjectiveReveal` for any buffered `ObjectiveDestroyed` events, then transition to `GameOver`. Never skip the objective reveal — it is the mandatory emotional beat.
+
+**If `S2CGameSnapshot` arrives mid-RESOLUTION (reconnect):** discard all in-progress animation state, clear the ghost unit, rebuild the full board from snapshot in one frame. If `snapshot.phase == RESOLUTION` AND `S2CResolutionEvent` has already been buffered, enter `ResolutionExecuting`. If `S2CResolutionEvent` has not yet arrived, enter `DraftShop` — the animation is not replayed; the reconnecting client receives the final board state directly via replication.
+
+**If `S2CResolutionEvent` has N_groups=0 (no events):** advance from the `ResolutionReveal` pause directly to `ResolutionObjectiveReveal` without spawning any Tweens.
+
+**If `ObjectiveHp` replicates a value of 0 while `ResolutionExecuting` is active:** the HP bar clamps to 0 (F2 guarantees no negative fill). The destruction VFX fires separately when `ObjectiveDestroyed` arrives during `ResolutionObjectiveReveal`.
+
+**If two objectives are destroyed in the same RESOLUTION:** reveal in ascending lane order, sequentially. Each reveal plays its full 500ms hold → reveal animation → slot clear before the next lane begins.
+
+**If a co-occupying allied unit dies mid-RESOLUTION:** the surviving unit must return to cell center. Cancel any in-flight `bevy_tweening` tween on the surviving unit and substitute a 0ms snap-to-center tween — do not write `Transform` directly while a tween is active on the same entity.
+
+**If the ghost unit is hovered to an invalid cell (outside spawn range, or Minion slot occupied):** the ghost stays at the last valid cell; the invalid cell node shows a brief red tint. The ghost does not move to the invalid cell.
+
+**If `S2CPlacementReveal` arrives before `S2CResolutionEvent`:** enter `ResolutionReveal` and begin the fog-lift tween, but do not transition to `ResolutionExecuting` until `S2CResolutionEvent` also arrives. Hold in `ResolutionReveal` indefinitely. Log a warning if the hold exceeds 2000ms.
+
+**If `S2CResolutionEvent` arrives before `S2CPlacementReveal`** (reliable channel ordering violation — should not occur): buffer the event; do not begin any animation. When `S2CPlacementReveal` arrives, lift fog and enter `ResolutionExecuting` immediately with no `pre_animation_pause_ms` hold. Assert and log a warning.
+
+**If a unit's `card_id` has no matching entry in the local card asset pool at spawn time** (stale client assets): render a placeholder sprite (solid-color tile + "?" glyph) at the correct cell. HP bar still renders using replicated `UnitStats`. Log an asset-miss warning. Never panic or skip the entity spawn.
+
+**If `ObjectiveDestroyed` arrives for a lane where no objective entity currently exists on the client** (replication removed it before the reliable message was processed): suppress the destruction VFX; update spawn range highlights immediately; log a warning. Do not spawn a temporary entity — this risks double-reveal if the replicated entity arrives late.
+
+**If `GhostPlacementChanged { cell: None, card_id: None }` arrives and no ghost entity exists** (deselect event after ghost was already cleared by `S2CPlacementReveal`): no-op. Use `commands.get_entity(e).map(EntityCommands::despawn)` — calling `commands.despawn()` on a nonexistent entity panics in Bevy 0.18.
 
 ## Dependencies
 
