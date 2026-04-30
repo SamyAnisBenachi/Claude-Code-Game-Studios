@@ -174,8 +174,8 @@ gold += GameConfig.gold_baseline_per_round + interest
 | **Round State Machine** | RSM → Economy | Triggers mana reset (DRAFT start), interest+baseline application (DRAFT start), mana discard (RESOLUTION end) |
 | **Card Acquisition (Shop)** | Shop → Economy | Calls `spend_gold(player, amount)`; Economy validates |
 | **Auction System** | Auction → Economy | Calls `can_afford_bid(player, amount)` per bid placement; `reserve_gold(player, amount)` when bid becomes highest; `release_gold_reservation(player)` when outbid; `spend_gold(player, bid_amount)` on win |
-| **Combat Resolution** | Combat → Economy | Calls `award_gold(player, kill_reward)` per kill |
-| **Objective System** | Objectives → Economy | Calls `award_gold(player, objective_reward)` on destruction; calls `increment_mana_cap(player)` on fake destroy mana reward |
+| **Combat Resolution** | Combat → Economy | Calls `apply_gold_award(player, kill_reward)` per kill |
+| **Objective System** | Objectives → Economy | Calls `apply_gold_award(player, objective_reward)` on destruction; calls `increment_mana_cap(player)` on fake destroy mana reward |
 | **Prism System** | Prism → Economy | Hands player a "+1 reserve" spell card (Lane 2/4 only); playing that card calls `add_reserve(player, 1)` |
 | **Class System (Xelor)** | Class → Economy | Xelor spells call `add_reserve(player, n)` and spend via normal Rule 4 validation |
 | **HUD / Board Rendering** | Economy → UI | Broadcasts `current_mana`, `reserve_mana`, `gold`, `mana_cap` for display each round |
@@ -294,7 +294,7 @@ mana_cap_achieved = GameConfig.mana_cap + fake_objective_mana_rewards
 
 - **Two units die simultaneously from the same player's kill:** Both kill rewards apply: `gold += 2 × kill_gold_reward`. Applied immediately in RESOLUTION.
 
-- **Self-inflicted objective damage (Sacrier Punition, double-tranchant):** If `attacker_player == defending_player`, the Economy System does NOT call `award_gold`. Loss condition still applies. Per master GDD §5.
+- **Self-inflicted objective damage (Sacrier Punition, double-tranchant):** If `attacker_player == defending_player`, the Economy System does NOT call `apply_gold_award`. Loss condition still applies. Per master GDD §5.
 
 - **Mid-RESOLUTION disconnect:** Per RSM Rule 13, if a disconnect aborts RESOLUTION before all sub-steps complete, the interest snapshot does NOT fire for that round. All partial RESOLUTION gold awards already applied before the abort (kills, objectives that resolved) remain. On reconnect (within `disconnect_grace_seconds`), the Economy System re-syncs all currency values to the client. The skipped interest snapshot is not retroactively applied.
 
@@ -310,8 +310,8 @@ mana_cap_achieved = GameConfig.mana_cap + fake_objective_mana_rewards
 | **Round State Machine** | Upstream (coordination) | Triggers: mana reset at DRAFT start, interest+baseline application at DRAFT start, mana discard at RESOLUTION end |
 | **Card Acquisition (Shop)** | Downstream (hard) | Calls `spend_gold(player, amount)` for shop purchases; Economy validates |
 | **Auction System** | Downstream (hard) | Calls `can_afford_bid(player, amount)`; `reserve_gold(player, amount)`; `release_gold_reservation(player)`; `spend_gold(player, bid_amount)` on win |
-| **Combat Resolution** | Downstream (hard) | Calls `award_gold(player, kill_gold_reward)` per kill during RESOLUTION |
-| **Objective System** | Downstream (hard) | Calls `award_gold(player, objective_gold_reward)` on objective destruction; calls `increment_mana_cap(player)` on fake destruction mana reward |
+| **Combat Resolution** | Downstream (hard) | Calls `apply_gold_award(player, kill_gold_reward)` per kill during RESOLUTION |
+| **Objective System** | Downstream (hard) | Calls `apply_gold_award(player, objective_gold_reward)` on objective destruction; calls `increment_mana_cap(player)` on fake destruction mana reward |
 | **Prism System** | Downstream (soft) | Lane 2/4 prism grants "+1 reserve" spell card; playing it calls `add_reserve(player, 1)` |
 | **Class System** | Downstream (soft) | Xelor spells call `add_reserve(player, n)` and interact with reserve via normal Rule 4 spend validation |
 | **HUD / Board Rendering** | Downstream (read-only) | Reads `current_mana`, `reserve_mana`, `gold`, `mana_cap` per player for display |
@@ -396,8 +396,8 @@ Economy data (gold, mana, reserve, mana_cap) is read by the HUD for display. UI 
 | EC13 | **GIVEN** `gold_at_RESOLUTION_end = 8`, **WHEN** next DRAFT phase begins, **THEN** `interest = 1` (`floor(8/5) = 1`). | BLOCKING |
 | EC14 | **GIVEN** `gold_at_RESOLUTION_end = 10`, **WHEN** next DRAFT phase begins, **THEN** `interest = 2` (maximum). | BLOCKING |
 | EC15 | **GIVEN** `gold_at_RESOLUTION_end = 8`, **WHEN** next DRAFT phase begins and baseline + interest are applied, **THEN** `gold = 11` (`8 + 1 interest + 2 baseline`). | BLOCKING |
-| EC16 | **GIVEN** a player's unit kills an opponent unit during RESOLUTION, **WHEN** `award_gold(player, kill_gold_reward)` fires, **THEN** player `gold` increases by exactly `kill_gold_reward` (default: 1). | BLOCKING |
-| EC17 | **GIVEN** a player destroys an opponent objective (`attacker ≠ defender`) during RESOLUTION, **WHEN** `award_gold(player, objective_gold_reward)` fires, **THEN** player `gold` increases by exactly `objective_gold_reward` (default: 3). | BLOCKING |
+| EC16 | **GIVEN** a player's unit kills an opponent unit during RESOLUTION, **WHEN** `apply_gold_award(player, kill_gold_reward)` fires, **THEN** player `gold` increases by exactly `kill_gold_reward` (default: 1). | BLOCKING |
+| EC17 | **GIVEN** a player destroys an opponent objective (`attacker ≠ defender`) during RESOLUTION, **WHEN** `apply_gold_award(player, objective_gold_reward)` fires, **THEN** player `gold` increases by exactly `objective_gold_reward` (default: 3). | BLOCKING |
 | EC18 | **GIVEN** `current_mana = 4` at the start of RESOLUTION, **WHEN** RESOLUTION phase ends (mana discard step), **THEN** `current_mana = 0`. | BLOCKING |
 
 ### Auction Behavior

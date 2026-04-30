@@ -1,6 +1,6 @@
 # Hand UI
 
-> **Status**: In Review
+> **Status**: In Review (revision pass 2026-04-30 R2)
 > **Author**: SamyAnisBenachi + Claude Code agents
 > **Last Updated**: 2026-04-30
 > **Implements Pillar**: No idle spectating · Simple surface
@@ -65,7 +65,9 @@ During DRAFT_SHOP, Instant-type cards in the hand fan can be activated with a si
 
 **Rule 5b — Click while zoomed.** If a card is in the hover-zoom state (240×360 px, see VA-1) when the player clicks it, `C2SActivateCard` fires immediately on that click. The zoom is not a confirmation barrier — there is no double-click requirement. (Resolves OQ2.)
 
-**Rule 5c — Single-shot activation lock.** On click, the card slot enters a locked visual state (`Visibility::Hidden` + input suppressed on the slot) until either (a) `S2CGoldUpdate` confirms the activation side effects, or (b) `activate_timeout_ms` (3000 ms default) elapses without confirmation. On timeout, the slot reverts to its prior state and the player may retry. This prevents double-click message storms during latency spikes. `S2CCardAcquired` is NOT a valid resolver for `C2SActivateCard` — instant card plays never add a card to hand; only `S2CGoldUpdate` (with unchanged or changed values) serves as the activation acknowledgement per NP Rule 2 (`C2SActivateCard` acknowledgement model).
+**Rule 5c — Single-shot activation lock.** On click, the card slot enters a locked visual state (`Visibility::Hidden` + input suppressed on the slot) until one of: (a) `S2CGoldUpdate` confirms the activation side effects; (b) `S2CActivationRejected` is received — slot unlocks immediately with no gold change; or (c) `activate_timeout_ms` (3000 ms default) elapses without any server response — slot reverts and the player may retry. This prevents double-click message storms during latency spikes. `S2CCardAcquired` is NOT a valid resolver — instant card plays never add a card to hand; only `S2CGoldUpdate` or `S2CActivationRejected` serve as the activation acknowledgement per NP Rule 2. **Dependency:** `S2CActivationRejected` does not exist in the NP GDD as of 2026-04-30 — see OQ8; this AC cannot be fully implemented until OQ8 is resolved.
+
+**Rule 5d — DRAFT_SHOP drag-start suppression.** During DRAFT_SHOP, drag-start on any card in the hand fan is suppressed: no drag sprite becomes visible, no card entity hides from the fan slot. The gesture is silently absorbed. Players who attempt to drag a card in DRAFT_SHOP see no lift animation and no response — the mode switch from PLACEMENT's drag-to-stage to DRAFT_SHOP's click-only is intentional, and suppression prevents confusion from PLACEMENT muscle-memory transfers.
 
 **Rule 6 — PLACEMENT: Drag-to-Stage**
 On PLACEMENT entry: the Submit button appears immediately ("Submit (0 cards)"), and the timer starts. Staging flow:
@@ -97,12 +99,14 @@ A staged card may be un-staged by any of the three gestures below. All three fol
 | **Click dimmed fan ghost (Instant cards only)** | Instant | Instant-staged cards have no board ghost; their fan slot ghost is the only un-stage surface. Click on the dimmed fan slot un-stages. |
 
 **Rule 9 — Timer Expiry During Active Drag**
-If the PLACEMENT timer reaches 0 while a card is mid-drag (lifted from fan, not yet dropped):
+If the PLACEMENT timer reaches 0 while a card is mid-drag (lifted from fan, not yet dropped), the system enters a **200ms grace window**:
 
-- **If the cursor is over a valid target at expiry** (board cell highlighted, target unit highlighted, objective highlighted, lane column highlighted, or fan plate highlighted for Instant): the drag resolves as a normal drop on that target. The card stages, `GhostPlacementChanged` fires, and the card IS included in the submission. This honours the `I committed, I moved on` fantasy and the anti-pillar `not a twitch game` — a player who aimed correctly is not penalised by 50ms of late mouse-up.
-- **If the cursor is NOT over a valid target at expiry** (over invalid cell, over the board's no-highlight area, off-screen): the drag cancels; the drag sprite hides; the in-flight card returns to its fan slot. The card is NOT included in the submission.
+- During the grace window, the drag sprite remains visible, highlights remain active, and the player may complete a drop gesture normally. If mouse-up lands on a valid target within the window, the card stages (`GhostPlacementChanged` fires) and is included in the submission. This preserves the "not a twitch game" principle — a player completing an intentional drop is not penalised for 50–200ms of buzzer lag.
+- If the 200ms window elapses without a mouse-up on a valid target, the drag cancels: the drag sprite hides, the in-flight card returns to its fan slot, and the card is NOT included in the submission.
 
-In both cases, `C2SSubmitPlacement` fires immediately after the drag resolution above (within the same frame as expiry).
+`C2SSubmitPlacement` fires at the end of grace window resolution (after the card is staged or returned).
+
+**Why 200ms and not cursor-position detection:** The prior design (auto-stage if cursor over valid target at expiry) would commit a card based on cursor position at an arbitrary clock moment — indistinguishable from the player hovering while reconsidering. The grace window instead requires the player's explicit mouse-up gesture within a short window, preserving player agency as the commit agent (Pillar 1: "I placed, I committed, I moved on").
 
 **Rule 10 — Submit (with client-side pre-validation)**
 The Submit button is active from PLACEMENT entry regardless of staged count. Pressing Submit triggers a two-step sequence:
@@ -123,6 +127,8 @@ The Submit button is active from PLACEMENT entry regardless of staged count. Pre
 
 The server still performs the same validation server-side and silently discards invalid batches per NP Rule 4 — pre-validation is defence-in-depth, not a replacement for server validation. Hand UI does not hide on submit — only on RESOLUTION entry. The player may still watch the timer and board after submitting.
 
+**Stale card_id edge case.** If a card in the staged queue is removed from the player's hand by a server-side event between PLACEMENT entry and submission (e.g., a future Class System mechanic), the server will silently discard the entire batch per NP Rule 4. The Submit button will show "Submitted" with no recovery path. This is accepted silent-failure behavior for the current scope. Revisit when the Class System GDD (M3) is authored and its PLACEMENT-phase hand-modification interactions are defined.
+
 **Rule 11 — PLACEMENT Timer Display**
 - Shows whole seconds (not milliseconds); large enough to read peripherally.
 - At 5 seconds remaining: timer shifts visual state (color change — Art Director defines specifics).
@@ -136,24 +142,26 @@ Cards with `cost > 0` may have a portion of their cost paid from the player's re
 
 **When the control appears.** The split control attaches to each staged card's *fan ghost* (not the board ghost) — anchored just above the dimmed fan slot in the bottom strip. It appears the moment a card stages and disappears the moment it un-stages. It is visible only during PLACEMENT in `STAGING` state and is disabled (display-only, non-interactive) once the player presses Submit.
 
+**Strip positioning at high card counts.** Each strip is centered horizontally on its fan ghost slot's `card_x` position (from Formula 1). At `fan_half_spread = 280 px` with 10 staged cards, adjacent fan slots are spaced ≈62 px apart center-to-center. Strips (96 px wide) will overlap adjacent strips by ≈34 px at full staging — this overlap is intentional and acceptable given the absolute positioning of each strip over its ghost. The `[ − ]` and `[ + ]` buttons (24 px each) remain accessible at the left and right edges of each strip despite overlap. The minimum spatial separation between a strip button and the Instant card un-stage gesture (clicking the dimmed fan ghost): the un-stage click target is the full 120-px slot; the strip is positioned 8 px above it. Vertical separation of ≥8 px is maintained at all card counts.
+
 **Layout.** Each control is a single horizontal strip (height 24 px, width 96 px) showing `[ − ] [N / cost] [ + ]`:
 - `[ − ]` decrements `reserve_amount` by 1 (clamped to 0).
 - `[ + ]` increments `reserve_amount` by 1 (clamped to `card.cost` and to `player.reserve_mana − sum(other_staged.reserve_amount)`).
 - `[N / cost]` displays the current split, e.g. `2 / 5` = "2 mana from reserve, 3 from current."
 
 **Interaction model.**
-- Click `[ − ]` or `[ + ]` to step `reserve_amount` by 1. No drag, no slider, no modal — single-click steps only. Each click runs the clamp checks above and updates the display in the same frame.
+- Click `[ − ]` or `[ + ]` to step `reserve_amount` by 1. No drag, no slider, no modal — single-click steps only. Each click runs the clamp checks and updates the display in the same frame.
 - The strip is non-modal: it does not block board reading or other staging actions. The 10-second timer continues to run during adjustment.
 - If the player has no reserve mana available at all (`player.reserve_mana == 0`), all `[ + ]` buttons are disabled (greyed out) and the strip displays `0 / cost`. No interaction possible.
 - For cards with `cost == 0` (free cards), the entire strip is hidden (no decision to make).
-- Clamp recomputes across all staged cards at each click — staging a second card may force the first card's `reserve_amount` to drop if the new total would exceed `player.reserve_mana`. In that auto-adjustment case, the affected card's strip flashes Crimson `#9C2000` for 200 ms to signal the auto-adjustment.
+- The `[ + ]` button becomes `Disabled` immediately when `reserve_amount` reaches `min(card.cost, player.reserve_mana − sum(other_staged.reserve_amount))` — the remaining pool ceiling. **No auto-decrement of other staged cards occurs.** If the player wants to allocate more reserve to card B, they must first press `[ − ]` on card A to free reserve. This keeps the interaction model explicit and reversible.
 
 **Pre-submit validation interaction.** The Rule 10 pre-validation sums all `reserve_amount` and all `cost − reserve_amount` across staged cards. The `[ + ]` button-disable logic prevents most overdraw cases proactively, but the Rule 10 check is the final gate.
 
 **Class System dependency.** The Hand UI control is class-agnostic: any card with `cost > 0` shows the strip. The Class System GDD (M3, Not Started) may add class-specific reserve mana behaviours (e.g., Xelor `Rollback` mechanics). The +/- control's *interaction model* is fixed by this GDD; the *availability* and *meaning* of reserve mana per class is owned by Class System.
 
 **Rule 14 — `C2SPurchaseCard` Pending Timeout (DRAFT_INITIAL grid)**
-When the player clicks a grid card during DRAFT_INITIAL, the slot enters a "pending" visual state (grid card dimmed, click suppressed on that slot). The pending state resolves on `S2CCardAcquired` (success → grid slot empties, card slides to fan) or on the sold-out edge case (slot enters Sold Out state, see edge cases). If neither resolution occurs within `purchase_timeout_ms` (3000 ms default), the slot reverts to its pre-click state and the player may retry. This guards against narrow race conditions where a server response is dropped without an observable side effect.
+When the player clicks a grid card during DRAFT_INITIAL, the slot enters a "pending" visual state (grid card dimmed, click suppressed on that slot). The pending state resolves on `S2CCardAcquired` (success → grid slot empties, card slides to fan). If no `S2CCardAcquired` arrives within `purchase_timeout_ms` (3000 ms default), the slot reverts to its pre-click state and the player may retry. This covers all non-arrival cases — delayed server response, phase transition, and pool-exhausted silent rejection — uniformly. No sold-out visual state exists; the ambiguity between "sold out" and "server drop" is accepted (see Edge Cases).
 
 ---
 
@@ -278,7 +286,7 @@ This formula is owned by **Board Rendering** via the `BoardLayout` resource. Han
 
 - **If the player drops a dragged card on an unhighlighted cell, outside the board, or outside the Instant play zone:** drag cancels. The drag sprite despawns. The UI card entity reappears at its original fan slot position (snap-back to origin, not to nearest open slot).
 
-- **If the PLACEMENT timer reaches 0 while a card is mid-drag** (lifted from fan, not yet dropped): the drag resolves per Rule 9 — auto-stage to the valid target under the cursor at expiry if one exists, otherwise return to fan. `C2SSubmitPlacement` then fires within the same frame. This honours the anti-pillar "not a twitch game" — a player who aimed correctly is not penalised for releasing 50 ms after the buzzer.
+- **If the PLACEMENT timer reaches 0 while a card is mid-drag** (lifted from fan, not yet dropped): the system enters a 200ms grace window per Rule 9. If the player completes a drop on a valid target within the window, the card stages and is included in the submission. If the window elapses without a valid drop, the drag cancels and the card returns to its fan slot. `C2SSubmitPlacement` fires at the end of grace window resolution. Only deliberate mouse-up gestures stage cards; cursor position at timer expiry has no effect.
 
 - **If the player presses Submit during PLACEMENT with 0 staged cards:** C2SSubmitPlacement fires with an empty placements vec. This is a valid no-op play (the player chooses to play nothing this round). The Submit button becomes inactive and the board does not change. This is intentional — the irrevocable commit applies equally to empty submits.
 
@@ -286,7 +294,7 @@ This formula is owned by **Board Rendering** via the `BoardLayout` resource. Han
 
 - **If a card is bought during DRAFT_INITIAL and hand count reaches 10:** on receiving server confirmation (S2CCardAcquired), the client immediately locks all remaining grid cards (muted/non-interactive visual state) and shows a "Hand full" notification near the fan for 2 seconds. If a second C2SPurchaseCard was already sent before the first confirmation arrived (race condition), the server silently discards it; the client's lock fires on confirmation of the 10th card regardless.
 
-- **If the pool for a displayed DRAFT_INITIAL grid card is exhausted by the opponent** (copies_remaining → 0 between display and click — CA OQ3): the server silently rejects the purchase. The client, which did not optimistically remove the card (Rule 4), shows the card still in the grid. The card renders with a "sold out" visual indicator (desaturated art + overlay text — Art Director defines the exact form). The slot remains visible but locked for the remainder of DRAFT_INITIAL. No gold is deducted.
+- **If the pool for a displayed DRAFT_INITIAL grid card is exhausted by the opponent** (copies_remaining → 0 between display and click — CA OQ3): the server silently rejects the purchase with no `S2CCardAcquired` response. After `purchase_timeout_ms` (3000 ms), the slot reverts to its pre-click state per Rule 14. No gold is deducted. The player may retry the click; if the pool is still exhausted, they receive another timeout-revert. No sold-out visual indicator is shown — the ambiguity between "sold out" and "slow server response" is accepted. The player must infer unavailability from repeated failed attempts.
 
 - **If the hand has exactly 1 card** (count=1): Formula 1's denominator clamps to 1; t=0 for the single card; it is centered horizontally at fan_center_x with no arc lift and no rotation (Formula 2 produces 0°). No edge-case layout failure.
 
@@ -369,8 +377,6 @@ ATK and HP badges must maintain a minimum 16×16 px render floor at 10-card over
 
 Fan slot retains a ghost: card art **desaturated to 40% chroma, 50% opacity**. No tint — desaturation alone is the "committed" signal. Card identity remains readable; the player can see which unit they staged.
 
-**Sold-out slot** (DRAFT_INITIAL pool-exhausted card): art desaturated to 20% chroma + `#1A2D5A` Ink Blue overlay at 60% + "Sold Out" text label (Ivory Heavy, 1× base). Click suppressed.
-
 **Hand-full grid lock**: remaining grid cards desaturate to 30% chroma + 40% Ink Blue overlay.
 
 ### VA-3: Drag Interaction Visuals
@@ -429,11 +435,22 @@ The split control attaches to each staged card's fan ghost (anchored 8 px above 
 | Strip background | Ink Blue `#1A2D5A` 70% opacity, 4 px corner radius |
 | Buttons (`[ − ]`, `[ + ]`) | 24×24 px each. Active: Ivory `#F7F0DC` glyph on Ink Blue. Hovered: glyph brightens to Prism White `#EEF4FF`. Disabled: glyph desaturated to 30% chroma. |
 | `[N / cost]` numeric display | Ivory `#F7F0DC`, Heavy weight, centered, e.g. `2 / 5`. The leading number is the reserve_amount; the trailing number is the card's cost. |
-| Auto-adjust flash | When Rule 13 clamp recompute forces a reserve_amount drop, the entire strip pulses Crimson `#9C2000` (background tint, 200 ms ease-in-out). |
 | `cost == 0` cards | Strip not rendered (no decision available) |
 | `player.reserve_mana == 0` | Both `[ − ]` and `[ + ]` disabled; display shows `0 / cost` |
 
-**Audio:** Reserve adjust click (`[ − ]` or `[ + ]`) — soft mid-register click, ~50 ms, no reverb. Auto-adjust flash audio: same click but with a brief sub-bass thud (~80 ms total) signalling the involuntary change. In `ui_hand` channel.
+**Audio:** Reserve adjust click (`[ − ]` or `[ + ]`) — soft mid-register click, ~50 ms, no reverb. In `ui_hand` channel.
+
+### VA-10: PASSIVE_LOCKED Read-Only State
+
+During DRAFT_AUCTION (`PASSIVE_LOCKED` state), the hand fan is visible but non-interactive. Visual treatment to communicate read-only status:
+
+| Element | Spec |
+|---|---|
+| Fan card opacity | All slots reduced to 70% opacity (uniform dimming signals non-interactivity) |
+| Cursor | Default cursor on hover — no pointer/hand cursor |
+| Label | Small `"Auction in progress"` text above the fan (Ivory `#F7F0DC`, 12 px, 40% Ink Blue `#1A2D5A` backing panel) |
+
+The label and reduced opacity together communicate that cards are readable but unclickable. No click-feedback sound plays on input attempts in this state.
 
 > **Art bible cross-references are provisional** — the art bible has not been authored yet. Color values and visual principles above are grounded in the master GDD's Ankama/Wakfu art direction. When `/art-bible` is run, reconcile these values against the authored sections.
 
@@ -501,9 +518,9 @@ All criteria BLOCKING unless noted ADVISORY. Where an AC asserts visual properti
 | HU-07 | **GIVEN** DRAFT_INITIAL begins and `S2CDraftOffering` is received with 9 card IDs, **WHEN** the grid renders, **THEN** exactly 9 grid slot entities have `Visibility::Visible` AND each slot's bound card data matches its corresponding ID in the offering (name and mana cost components verified). Art rendering is ADVISORY (lead sign-off). | BLOCKING |
 | HU-08 | **GIVEN** the player clicks a grid card during DRAFT_INITIAL, **WHEN** `S2CCardAcquired` confirms the purchase, **THEN** (a) the grid slot's `Visibility` becomes `Hidden` within one tick of receipt; (b) the corresponding fan slot becomes `Visible` and an `Animator<Transform>` interpolating to the computed fan position is attached; (c) after advancing virtual time by `card_draw_animation_ms`, the fan slot's `Transform.translation` equals the formula-computed fan position. | BLOCKING |
 | HU-09 | **GIVEN** the 10th card has been added to the hand during DRAFT_INITIAL, **WHEN** `S2CCardAcquired` delivers the 10th card, **THEN** within the same `App::update()` tick: (a) all remaining visible grid slots have a `GridSlotState::HandFullLocked` marker component; (b) clicks on locked grid slots produce no `C2SPurchaseCard` message. The 30% chroma / Ink Blue overlay rendering is ADVISORY. | BLOCKING |
-| HU-10 | **GIVEN** the player clicks a grid card and the server silently rejects it (pool exhausted), **WHEN** no `S2CCardAcquired` arrives, **THEN** (a) `player.gold` resource is unchanged; (b) the slot enters a `GridSlotState::SoldOut` marker component; (c) clicks on the slot produce no further `C2SPurchaseCard` messages. The "Sold Out" visual rendering is ADVISORY. | BLOCKING |
+| HU-10 | **GIVEN** the player clicks a grid card and no `S2CCardAcquired` arrives (pool exhausted or server drop), **WHEN** `purchase_timeout_ms` (3000 ms) elapses, **THEN** (a) `player.gold` resource is unchanged; (b) the slot reverts from `GridSlotState::Pending` to `GridSlotState::Available`; (c) clicks on the slot are accepted again (player may retry). | BLOCKING |
 | HU-10b | **GIVEN** the player clicks a grid card and neither `S2CCardAcquired` nor a sold-out signal arrives within `purchase_timeout_ms`, **THEN** the slot reverts from pending state to its pre-click state and clicks are accepted again. | BLOCKING |
-| HU-10c | **GIVEN** the hand reaches 10 cards (locking grid) AND a previously displayed grid card is also pool-exhausted, **THEN** the slot's state is `GridSlotState::HandFullLocked` (hand-full lock takes precedence over sold-out — both suppress click; the more restrictive marker is applied). | BLOCKING |
+| HU-10c | **GIVEN** the hand reaches 10 cards (locking grid) AND a previously clicked grid card is still in `GridSlotState::Pending` (purchase in flight), **THEN** the slot's state becomes `GridSlotState::HandFullLocked` (hand-full lock takes precedence — click suppressed, pending state cleared). | BLOCKING |
 
 ### PLACEMENT — Drag and Stage
 
@@ -516,8 +533,8 @@ All criteria BLOCKING unless noted ADVISORY. Where an AC asserts visual properti
 | HU-12d | **GIVEN** the player drag-starts a TargetUnit card during a round where ≥ 1 valid target unit exists, **WHEN** the cursor hovers a valid unit, **THEN** the unit entity receives a `TargetUnitHover` marker component AND no `BoardCellHighlighted` markers are added (this is unit-targeting, not cell-targeting). Prism White outline rendering is ADVISORY. | BLOCKING |
 | HU-13 | **GIVEN** the player stages a card by dropping it on a valid board target, **WHEN** the drop is confirmed, **THEN** (a) a `GhostPlacementChanged { target: Some(<resolved variant>), card_id: Some(card_id) }` message is written; (b) the fan slot enters `FanSlotState::Ghost` marker component; (c) the Submit button text updates to `"Submit (N cards)"` where N is the new count; (d) the staged card's reserve strip entity (Rule 13) becomes `Visible`. The 40% chroma / 50% opacity ghost rendering is ADVISORY. | BLOCKING |
 | HU-14 | **GIVEN** the player drops a dragged card on an unhighlighted (invalid) target, **WHEN** the drop fires, **THEN** (a) the drag sprite returns to `Visibility::Hidden`; (b) the original fan slot returns to `FanSlotState::Active` marker component; (c) no `GhostPlacementChanged` message is written. | BLOCKING |
-| HU-15 | **GIVEN** the player has 2 cards staged and the PLACEMENT timer reaches 0 while a third card is mid-drag with the cursor over the board's no-highlight area (invalid target), **WHEN** timer expiry fires, **THEN** `C2SSubmitPlacement` is sent with exactly the 2 staged placements; the in-flight card returns to its fan slot; the third card is NOT included. | BLOCKING — Integration |
-| HU-15b | **GIVEN** the player has 2 cards staged and the PLACEMENT timer reaches 0 while a third Minion card is mid-drag with the cursor over a *valid* highlighted board cell, **WHEN** timer expiry fires, **THEN** the third card auto-stages to that cell (per Rule 9) and `C2SSubmitPlacement` is sent with all 3 placements. | BLOCKING — Integration |
+| HU-15 | **GIVEN** the player has 2 cards staged and the PLACEMENT timer reaches 0 while a third card is mid-drag, **WHEN** the 200ms grace window elapses without a mouse-up on a valid target, **THEN** `C2SSubmitPlacement` is sent with exactly the 2 staged placements; the in-flight card returns to its fan slot; the third card is NOT included. | BLOCKING — Integration |
+| HU-15b | **GIVEN** the player has 2 cards staged and the PLACEMENT timer reaches 0 while a third Minion card is mid-drag over a valid highlighted board cell, **WHEN** the player releases mouse-up on that valid cell during the 200ms grace window, **THEN** the third card stages to that cell and `C2SSubmitPlacement` is sent with all 3 placements. | BLOCKING — Integration |
 | HU-16 | **GIVEN** the player clicks Submit with 0 staged cards, **THEN** `C2SSubmitPlacement` is sent with an empty `placements` vec, the Submit button enters `Inactive` interaction state with text `"Submitted"`, and no confirmation modal entity is spawned. | BLOCKING |
 | HU-17 | **GIVEN** the player clicks Submit once and the button becomes inactive, **WHEN** the player attempts to click Submit again, **THEN** no second `C2SSubmitPlacement` is written to the message queue. | BLOCKING |
 
@@ -553,15 +570,16 @@ All criteria BLOCKING unless noted ADVISORY. Where an AC asserts visual properti
 
 | # | Criterion | Type |
 |---|---|---|
-| HU-25 | **GIVEN** a card with `cost = 5` is staged AND `player.reserve_mana = 3`, **WHEN** the player clicks `[ + ]` on its reserve strip 4 times, **THEN** the strip's `reserve_amount` value increments to 1, 2, 3, then is clamped (no further increase). The fourth click produces no state change; the strip's `[ + ]` button enters `Disabled` interaction state. | BLOCKING |
-| HU-26 | **GIVEN** card A is staged with `reserve_amount = 2` AND `player.reserve_mana = 3`, **WHEN** card B (cost ≥ 2) is staged and the global clamp recompute would force B's `reserve_amount > player.reserve_mana − 2 = 1`, **THEN** card A's `reserve_amount` may auto-decrement so that the new total fits, and card A's strip receives an `AutoAdjustFlash` marker for 200 ms (Crimson pulse rendering is ADVISORY). | BLOCKING |
+| HU-25 | **GIVEN** a card with `cost = 5` is staged AND `player.reserve_mana = 3`, **WHEN** the player clicks `[ + ]` on its reserve strip 3 times, **THEN** the strip's `reserve_amount` increments to 1, 2, 3; after the third click `reserve_amount == min(5, 3) = 3` so `[ + ]` immediately enters `Disabled` state. A fourth click produces no state change. | BLOCKING |
+| HU-26 | **GIVEN** card A is staged with `reserve_amount = 2` AND `player.reserve_mana = 3`, **WHEN** card B (cost ≥ 2) is staged (default `reserve_amount = 0`) AND the player presses `[ + ]` on card B's reserve strip, **THEN** (a) card B's `reserve_amount` increments to 1 (ceiling = `player.reserve_mana − sum_other = 3 − 2 = 1`); (b) card B's `[ + ]` button immediately enters `Disabled` state; (c) card A's `reserve_amount` remains 2 (no auto-decrement occurs). | BLOCKING |
 | HU-27 | **GIVEN** a card with `cost = 0` is staged, **WHEN** the staged ghost renders, **THEN** the reserve strip entity for that card has `Visibility::Hidden` (no decision available). | BLOCKING |
 
 ### Activation Lock (Rule 5c)
 
 | # | Criterion | Type |
 |---|---|---|
-| HU-28 | **GIVEN** the player clicks an Instant card in hand during DRAFT_SHOP, **WHEN** `C2SActivateCard` is sent, **THEN** the card slot enters `HandSlotState::ActivationLocked` and clicks on it produce no further `C2SActivateCard` messages until either `S2CGoldUpdate` is received OR `activate_timeout_ms` (3000 ms default) elapses. (`S2CCardAcquired` is NOT a valid unlock signal for `C2SActivateCard` — see Rule 5c.) | BLOCKING |
+| HU-28 | **GIVEN** the player clicks an Instant card in hand during DRAFT_SHOP, **WHEN** `C2SActivateCard` is sent, **THEN** the card slot enters `HandSlotState::ActivationLocked` and clicks on it produce no further `C2SActivateCard` messages until one of: (a) `S2CGoldUpdate` is received; (b) `S2CActivationRejected` is received; or (c) `activate_timeout_ms` (3000 ms default) elapses. (`S2CCardAcquired` is NOT a valid unlock signal — see Rule 5c.) **Gate: OQ8 must be resolved before this AC can be fully implemented.** | BLOCKING |
+| HU-28b | **GIVEN** an Instant card is in `HandSlotState::ActivationLocked` AND `S2CActivationRejected` is received, **THEN** the slot immediately reverts to `HandSlotState::Active` and clicks are accepted again (no timeout wait). **Gate: OQ8.** | BLOCKING |
 | HU-29 | **GIVEN** an Instant card is in `ActivationLocked` state and `activate_timeout_ms` elapses with no S2C confirmation, **THEN** the slot reverts to `HandSlotState::Active` and clicks are accepted again. | BLOCKING |
 
 ### Hand Full Notification
@@ -581,7 +599,7 @@ All criteria BLOCKING unless noted ADVISORY. Where an AC asserts visual properti
 
 | # | Criterion | Type |
 |---|---|---|
-| HU-24 | **GIVEN** the player reconnects during PLACEMENT (`S2CGameSnapshot` received with `phase = PLACEMENT`), **WHEN** Hand UI rebuilds, **THEN** Hand UI's state machine is `STAGING`, the local pending placements vec is empty, the Submit button text reads `"Submit (0 cards)"`, and the timer's `remaining_ms` resource value equals `snapshot.timer_remaining_ms`. | BLOCKING — Integration |
+| HU-24 | **GIVEN** the player reconnects during PLACEMENT (`S2CGameSnapshot` received with `phase = PLACEMENT`), **WHEN** Hand UI rebuilds, **THEN** (a) Hand UI's state machine is `STAGING`; (b) the local pending placements vec is empty; (c) the Submit button text reads `"Submit (0 cards)"`; (d) the timer's `remaining_ms` resource value equals `snapshot.timer_remaining_ms`; (e) the pre-pooled drag sprite entity has `Visibility::Hidden` (any in-flight drag at disconnect is cancelled and does not persist after rebuild). | BLOCKING — Integration |
 
 ## Open Questions
 

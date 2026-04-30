@@ -1,5 +1,35 @@
 # Board Rendering — Review Log
 
+## Review — 2026-04-30 (R4) — Verdict: NEEDS REVISION → resolved in-session
+Scope signal: XL
+Specialists: game-designer, systems-designer, network-programmer, qa-lead, performance-analyst, gameplay-programmer (Bevy 0.18), creative-director (senior synthesis)
+Blocking items: 7 | Recommended: 5+
+Summary: R4 trigger was OQ-BR-06 resolution in network-protocol.md. Six new blocker categories surfaced: (1) compile-time API error — `sprite.color.set_alpha()` does not exist in Bevy 0.18; (2) OQ-BR-06 stale text at 3 locations, 3 ACs still gated; (3) single-shot snapshot recovery lacks rate-limit contract (NP-43 server cooldown can silently drop requests, leaving client frozen up to 30s); (4) draw call worst-case underestimated by 6–8 calls (cell nodes = 6 batches not 3; status icons add 3–5 more; true worst case ~18–25); (5) F4 ceiling math incorrect for 5-destroy scenario (18,000ms not ~14,600ms); (6) two ACs described in body text but absent from AC table. Plus Rule 14 status overflow had no priority ordering (game-deciding keywords could be hidden). All 7 blockers resolved in-session. OQ-BR-10 also closed (Approach A confirmed).
+Prior verdict resolved: Yes — R3 items remain closed; R4 surfaces a new layer (cross-doc OQ closure, API correctness, rate-limit contract, draw call math, missing ACs)
+
+### R4 design decisions made by user
+- **Draw call ceiling**: Accept ~18–25 worst-case; update table to reflect reality; keep BR-3 ADVISORY; no architecture change
+- **F4 ceiling**: Remove "≤12.6s absolute ceiling" claim; ceiling now scales with destroy count; ≤5s default remains the anchor
+- **Recovery retry**: Document NP-43 rate-limit in all 3 recovery paths; accept 30s Lightyear heartbeat as intentional backstop; no retry loops added
+- **Status overflow priority**: Define Tier 1 (SHIELDED/TAUNT/STEALTH/IMMUNE always visible) inline in Rule 14; keyword-system.md must add `display_tier` per keyword
+
+### R4 in-session resolutions (7 BLOCKING)
+1. SpriteAlphaLens API: `sprite.color.set_alpha(...)` → `sprite.color = sprite.color.with_alpha(lerp_value)` (Bevy 0.18: `Color` has no mutating `set_alpha` method)
+2. OQ-BR-06 marked RESOLVED; stale "currently undefined" text removed from Rule 11/EC-RESOLUTION-REVEAL-STUCK, Dependencies table, OQ section; BR-18c + BR-EC-STUCK ungated
+3. NP-43 rate-limit note added to EC-SUBSTEP-OOR, EC-RESOLUTION-REVEAL-STUCK, EC-PLACEMENT-STUCK — clarifies 30s heartbeat is intentional backstop when request is rate-limited
+4. Draw call table corrected: cell nodes 3→6 batches; status icon row added; worst-case 12–17→~18–25; explanatory note updated
+5. F4 theoretical 5-destroy ceiling corrected (~14.6s→18,000ms at ceiling knobs); Player Fantasy absolute ceiling claim removed; F4 Player Fantasy ceiling paragraph rewritten
+6. BR-EC-PLACEMENT-STUCK AC added (from EC-PLACEMENT-STUCK edge case); BR-CAMERA-PROJ AC added (from OQ-BR-02)
+7. Rule 14 priority tiers added: Tier 1 = SHIELDED/TAUNT/STEALTH/IMMUNE (always visible); Tier 2 = other keywords (overflow candidates); `display_tier` field requirement added for keyword-system.md
+
+### Status disposition
+- All 7 R4 BLOCKING items resolved within board-rendering.md and systems-index.md.
+- Recommended cluster for R5: simultaneous-reveal collection-window spec (verify `liv-bevy-lightyear` API for newly-replicated detection); F3 minimum cell_width constraint vs sprite_w; AnimQueue staleness after GAME_OVER truncation; BR-RECONNECT-TIME hardware spec.
+- OQ-BR-10 RESOLVED (Approach A).
+- OQ-BR-01/02/03/05/07/08/09 remain OPEN (unchanged from R3).
+
+---
+
 ## Review — 2026-04-30 (R3) — Verdict: NEEDS REVISION → resolved in-session
 Scope signal: XL
 Specialists: game-designer, systems-designer, performance-analyst, network-programmer, qa-lead, creative-director (senior synthesis)

@@ -1,8 +1,8 @@
 # Combat Resolution
 
-> **Status**: Designed — /design-review complete 2026-04-29 (MAJOR REVISION NEEDED → revised in-session; 25 blockers addressed)
+> **Status**: Designed — /design-review complete 2026-04-30 (MAJOR REVISION NEEDED → revised in-session; P0 fixes: SHIELD canonical pre-check rule, COUNTERATTACK formula defined, OQ3 seed registered, bilateral+multi-source overlap specified, INJURED/OUTNUMBERED ordering fixed, kill-log mechanism added; OQ1/OQ5 closed)
 > **Author**: SamyAnisBenachi + Claude Code agents
-> **Last Updated**: 2026-04-29
+> **Last Updated**: 2026-04-30
 > **Implements Pillar**: Simple surface · Deep emergence · No idle spectating
 
 ## Overview
@@ -60,7 +60,7 @@ All units with the movement keyword CHARGE X advance an additional X cells simul
 All units with the FIRST STRIKE keyword deal damage simultaneously across all lanes:
 - **RANGE + FIRST STRIKE:** A unit with both keywords also attacks in this sub-step (in addition to sub-step 6). It targets the nearest enemy unit within its forward RANGE. If multiple targets are equidistant, the server resolves randomly.
 - **Damage application:** When multiple sources hit the same unit in sub-step 3, damage is applied sequentially in lane order (Lane 1 first, Lane 5 last). Each source is resolved separately — HP is updated between each source.
-- **COUNTERATTACK:** If a unit with COUNTERATTACK receives damage in sub-step 3 from a melee attacker (same-cell contact), its COUNTERATTACK effect fires immediately in sub-step 3 (before sub-step 4 begins). COUNTERATTACK is triggered by direct melee contact only. A RANGE attacker that does not occupy the target's cell **cannot** be counter-attacked. Sub-step 3 COUNTERATTACK fires on the damage event receipt (before SHIELD absorption check).
+- **COUNTERATTACK:** If a unit with COUNTERATTACK is attacked in sub-step 3 by one or more melee attackers (same-cell contact), its COUNTERATTACK effect fires once after all sub-step 3 damage to it is resolved — including SHIELD pre-check absorption. COUNTERATTACK fires even if SHIELD absorbed all incoming damage. COUNTERATTACK is triggered by direct melee contact only. A RANGE attacker that did not advance to the target's cell **cannot** trigger COUNTERATTACK. See *COUNTERATTACK Retaliation Formula* in the Combat Modifier Stack section for damage, FINAL BLOW eligibility, and chain behavior.
 - **STUN:** A STUNned unit does not attack in sub-step 3 and does not move in sub-step 5. It is completely frozen for the round.
 - Dead units (HP reduced to 0) from sub-step 3 damage are NOT removed until sub-step 4. A unit killed in sub-step 3 can still deal FIRST STRIKE damage in the same sub-step, and may trigger COUNTERATTACK. *(Design note: this is an explicit design choice following the standard simultaneous-resolution model. Visually, the attack animation plays from the dying unit before it collapses — the death animation is deferred to sub-step 4 so that the unit's own FIRST STRIKE attack resolves first. This is a known exception to the "board tells the truth" pillar; it is accepted because simultaneous resolution is the intended strategic model. Both attack animations should overlap in time, with the kill animation completing after the killing-blow impact.)*
 
@@ -113,7 +113,7 @@ Cross-lane triggers (CHANGE LANE, Strich auto-switch) caused by sub-step 5 movem
 
 - Both units in bilateral pair combat calculate and apply damage at the same time; no unit has combat priority over the other in sub-step 6
 - **RANGE units:** attack the nearest enemy unit in the forward direction within their range. RANGE units without FIRST STRIKE attack only in this sub-step. RANGE + FIRST STRIKE units also attacked in sub-step 3 and attack again here — two separate attacks, each capable of consuming SHIELD independently.
-- **COUNTERATTACK:** fires immediately when a unit receives melee damage in sub-step 6. Applies to same-cell combat and to **collision-halt adjacent-cell combat** — any unit fighting via direct melee contact (same-cell or adjacent halted) can trigger COUNTERATTACK. RANGE attackers that did not advance to the target's cell still cannot trigger COUNTERATTACK.
+- **COUNTERATTACK:** fires once after all sub-step 6 damage to the unit is resolved — including SHIELD pre-check absorption. Fires even if SHIELD absorbed all incoming damage. Applies to same-cell combat and to **collision-halt adjacent-cell combat**. RANGE attackers that did not advance to the target's cell cannot trigger COUNTERATTACK. See *COUNTERATTACK Retaliation Formula* in the Combat Modifier Stack section for damage, FINAL BLOW eligibility, and chain behavior.
 - **Sequential damage:** multiple sources hitting one unit in sub-step 6 are applied in lane order (Lane 1 first) per the multi-source rule above
 
 **Objective damage:** After all unit combat resolves, any unit occupying the opponent's Cell 8 deals its ATK value as direct damage to the objective:
@@ -129,6 +129,8 @@ Cross-lane triggers (CHANGE LANE, Strich auto-switch) caused by sub-step 5 movem
 
 Applied in this order for each individual attack (one attacker, one defender):
 
+**SHIELD pre-check (runs before the modifier stack):** If the defender has SHIELD, negate all incoming damage from this sub-step's attacks, consume SHIELD once, and skip the modifier stack entirely. This is a sub-step-level absorption — SHIELD blocks all simultaneous attackers at once regardless of source count. COUNTERATTACK fires after this pre-check (not before it). The attacker's own SHIELD absorbs COUNTERATTACK retaliation via the same pre-check logic.
+
 1. **SILENCE** — strip all keywords from the attacker for this combat
 2. **STUN** — if attacker is STUNned, attack does not execute; skip all remaining steps
 3. **LEADER bonus** — apply LEADER-granted ATK bonuses (snapshotted at round start; persist until end of RESOLUTION)
@@ -138,7 +140,6 @@ Applied in this order for each individual attack (one attacker, one defender):
 7. **ARMOR-PIERCING** — if attacker has ARMOR-PIERCING: `AR_defender = 0` (RESISTANCE was applied in step 6 independently and is unaffected)
 8. **Type advantage (AR)** — if attacker's type beats defender's type: `AR_attacker_combat += 1`
 9. **Formula:** `net_damage = max(0, ATK_effective − AR_defender)`
-10. **SHIELD** — if defender has SHIELD: negate all damage from this sub-step's attacks (sub-step-level absorption; blocks all simultaneous attackers at once; consumed after blocking)
 
 ---
 
@@ -151,6 +152,13 @@ Applied in this order for each individual attack (one attacker, one defender):
 **LEADER** — Stat bonuses snapshotted at RESOLUTION entry. Persist until RESOLUTION ends regardless of LEADER death within that round. Recalculated each round.
 
 **OUTNUMBERED** — Board count (friendly vs. enemy units) evaluated at the start of each sub-step. A unit becomes OUTNUMBERED if the count at sub-step entry favors the opponent.
+
+**Sub-step boundary evaluation order:** At each sub-step boundary (e.g., SS3→SS4, SS5→SS6), evaluations occur in this fixed order:
+1. Remove dead units (HP ≤ 0) from the board; fire DEATH triggers (SS4 only; SS6 dead-unit removal runs as a post-combat cleanup pass after all SS6 attacks resolve)
+2. Recompute OUTNUMBERED based on post-removal board state
+3. Evaluate INJURED status for all surviving units based on HP mutations in the completed sub-step
+
+This ordering ensures OUTNUMBERED counts reflect the final board state after deaths and INJURED reflects actual damage dealt. A unit that becomes simultaneously INJURED and OUTNUMBERED at the SS3→SS4 boundary gains both bonuses at SS4 entry — the OUTNUMBERED count uses the post-death board (deaths from SS3 are removed first).
 
 ---
 
@@ -170,7 +178,11 @@ REMOVING_DEAD → EXECUTING_MOVEMENT → EXECUTING_COMBAT_AND_OBJECTIVE
 
 Each internal state is logged for the RSM safety timeout. If RESOLUTION exceeds 60 seconds total, the round resolves as a Draw (RSM Rule 14).
 
-**Reward ownership:** Kill gold (+1) is awarded at sub-step 4, when the dead unit is formally removed — not at the moment of lethal damage. This is consistent with the state table (sub-step 4 owns gold for kills). A FIRST STRIKE kill in sub-step 3 still awards gold at sub-step 4, not sub-step 3. Objective gold (+3) and fake rewards fire at sub-step 6 when objective HP reaches 0. All gold events are embedded as `GoldAwarded` entries in `S2CResolutionEvent` (batch-only; no standalone `S2CGoldUpdate` during RESOLUTION). The RSM does not manage rewards.
+**Reward ownership:** Kill gold (+1) is awarded when the dead unit is formally removed (sub-step 4 for SS3 kills; post-combat cleanup pass at end of sub-step 6 for SS6 kills). Objective gold (+3) and fake rewards fire during sub-step 6 when objective HP reaches 0. All gold events are embedded as `GoldAwarded` entries in `S2CResolutionEvent` (batch-only; no standalone `S2CGoldUpdate` during RESOLUTION). The RSM does not manage rewards.
+
+**Kill-gold attribution mechanism:** The exclusive system maintains an internal `kill_log: Vec<KillRecord { killer_player_id: PlayerId, victim_id: UnitId, lethal_sub_step: u8 }>`. When a unit's HP reaches 0 during any sub-step, a `KillRecord` is appended immediately at the point of lethal damage. For SS3 kills: the `kill_log` is drained at sub-step 4 when those units are formally removed. For SS6 kills: the `kill_log` is drained during the post-SS6-combat cleanup pass. Each drain emits one `GoldAwarded { player_id: killer_player_id, amount: 1 }` entry into the `ResolutionLog`.
+
+**Internal iteration budget:** The `resolve_combat` exclusive system tracks a monotonically increasing internal iteration counter across all sub-step loops (tick loop in SS5, DEATH trigger chains in SS4, COUNTERATTACK chains). If the counter exceeds 10,000 total iterations for a single RESOLUTION, the algorithm aborts and the RSM is notified to broadcast `S2CGameOver { loser: None, reason: Draw }`. This guards against infinite loops in pathological trigger configurations. The 60-second RSM safety timeout remains as an outer backstop for cases where the exclusive system itself hangs (process-level watchdog territory).
 
 ---
 
@@ -181,7 +193,7 @@ Each internal state is logged for the RSM safety timeout. If RESOLUTION exceeds 
 | Board/Lane System | Unit positions, spawn ranges, lane layout, cell occupancy | Updated unit positions after sub-step 5 | Combat Resolution reads `BoardState`; writes updated positions. WALL collision uses cell occupancy. |
 | Objective System | `objective_damage(HP_current, amount)` formula | Updated objective HP; `ObjectiveDestroyed` events | Owned by objective-system.md. Called at end of sub-step 6. |
 | Economy System | `kill_gold_reward` = 1g, `objective_gold_reward` = 3g | Gold updates (`GoldAwarded` entry in `S2CResolutionEvent` batch) | During RESOLUTION, all gold rewards are embedded as `GoldAwarded` entries in `S2CResolutionEvent`. No standalone `S2CGoldUpdate` is sent during RESOLUTION. Kill gold is applied at sub-step 4 (when the dead unit is formally removed). Objective gold is applied at sub-step 6 (when objective HP reaches 0). |
-| Network Protocol | `C2SSubmitPlacement` (from PlacementBuffer) | `S2CPlacementReveal`, `S2CResolutionEvent` | PlacementReveal sent before sub-step 1. ResolutionEvent sent after all sub-steps complete (batched log). |
+| Network Protocol | `C2SSubmitPlacement` (from PlacementBuffer) | `S2CPlacementReveal`, `S2CResolutionEvent` | PlacementReveal sent before sub-step 1; ResolutionEvent sent after all sub-steps complete (batched log). Both messages are enqueued in the same `resolve_combat` exclusive-system frame. Pre-implementation gate: verify or enforce that Lightyear 0.26 delivers same-frame reliable-channel messages in enqueue order (PlacementReveal before ResolutionEvent). See ADR-011 risk table. |
 | Server-side RNG | Ecaflip 1d6 dice rolls | Dice results broadcast to clients | Combat Resolution calls into RNG chain for Ecaflip keyword triggers. No other RNG in this system. |
 | Round State Machine | `BeginResolution` (entry) | `ResolutionComplete` (exit) | RSM controls phase; Combat Resolution executes sub-steps and notifies on completion. |
 
@@ -246,14 +258,43 @@ A.hp -= net_damage_B_to_A
 B.hp -= net_damage_A_to_B
 ```
 
-*Note: `AR_attacker_combat_A` is 0 if A does not have type advantage over B; 1 if it does.*
+*Note: `AR_attacker_combat_A` is 0 if A does not have type advantage over B; 1 if it does. B's AR bonus is discarded (`_`) because the cyclic triangle guarantees `type_beats(B, A) = false` whenever `type_beats(A, B) = true` — this discard is only safe under strict anti-symmetric typing. Any future non-cyclic type extension must revise this algorithm.*
 
 **Output Range:** 0 (fully absorbed) to **31 maximum** (ATK_base=20 + ATK_leader=5 + ATK_type=1 + ATK_vuln=5, vs AR=0 with ARMOR-PIERCING). u8 storage is safe (max 31 < 255). Typical range in normal play: 0–8 per hit.
+
+**Note on arithmetic:** Compute all modifier sums in i32 (not u8) for both addition and subtraction before clamping. Naive u8 addition (`ATK_base + ATK_leader`) is safe at current stat caps (max 31) but will silently overflow if ATK_base range is ever extended past 224. The formula comment applies to the full expression.
+
+**Bilateral + cross-lane attacker overlap rule:**
+
+When a bilateral pair (A↔B) also receives cross-lane damage in the same sub-step (e.g., unit C from a different lane attacks B):
+
+1. **Bilateral first:** compute A↔B bilateral exchange using pre-combat HP snapshots for both A and B. Apply both results simultaneously.
+2. **Cross-lane sequential after:** apply C's damage against B's post-bilateral HP, in lane order relative to other cross-lane attackers. HP is updated between each cross-lane source.
+
+The SHIELD pre-check for B against C uses B's post-bilateral SHIELD state — if A's bilateral attack consumed B's SHIELD, it is unavailable for C's cross-lane attack. If B's SHIELD is intact after the bilateral exchange (because A is a RANGE attacker that did not trigger SHIELD, or A's damage was 0), B's SHIELD absorbs C's cross-lane attack.
 
 **Example:** Blade unit (ATK=3, AR=1) attacks Arcane unit (ATK=2, AR=1, RESISTANCE 1). Type advantage: ATK_type=+1, AR_attacker_combat=+1.
 - Pass 1 (Blade→Arcane): ATK_effective = max(0, 3+1−1) = 3. AR_effective = 1. `net_damage_Blade_to_Arcane = 2`.
 - Pass 2 (Arcane→Blade): AR_effective_Blade = AR_base_Blade(1) + AR_attacker_combat(1) = 2. ATK_effective_Arcane = max(0, 2+0−0) = 2. `net_damage_Arcane_to_Blade = max(0, 2−2) = 0`.
 - Result: Blade takes 0 damage (type advantage AR reduced incoming damage to 0), Arcane takes 2 damage.
+
+---
+
+### COUNTERATTACK Retaliation Formula
+
+When COUNTERATTACK fires (once per sub-step, after all damage to the defending unit is resolved):
+
+**Timing:** After all incoming attacks for the sub-step are processed (damage applied or absorbed via SHIELD pre-check). COUNTERATTACK fires even if all incoming damage was absorbed by SHIELD.
+
+**Targets:** All melee attackers that attacked this unit in this sub-step (same-cell or collision-halt adjacency). RANGE attackers who did not advance to the target's cell are excluded.
+
+**Retaliation damage:** runs the full modifier stack (steps 1–9 above), treating the COUNTERATTACK unit as attacker and the original attacker as defender. The original attacker's SHIELD pre-check applies to each retaliation independently — if the original attacker has SHIELD, COUNTERATTACK damage is absorbed by their SHIELD.
+
+**FINAL BLOW:** eligible. If COUNTERATTACK retaliation reduces an attacker to 0 HP, FINAL BLOW fires for the COUNTERATTACK unit in the current sub-step.
+
+**Chain (fires once):** If the original attacker also has COUNTERATTACK, they retaliate back once against the COUNTERATTACK unit (running the same full modifier stack). The chain stops there — no further COUNTERATTACK fires from either side.
+
+**Multiple attackers:** If two or more melee attackers attacked the COUNTERATTACK unit in the same sub-step, the COUNTERATTACK unit retaliates against all of them simultaneously using pre-retaliation HP snapshots for each bilateral pair.
 
 ---
 
@@ -345,7 +386,9 @@ Where `ATK_effective` = attacker's ATK including active buffs (LEADER, spell buf
 
 **If an Ecaflip dice roll affects combat (e.g., Karla Blondie gains 1d6 ATK):** The RNG result is computed server-side via the RESOLUTION RNG chain before sub-step 1. Broadcast to clients via `S2CResolutionEvent`. No client-side RNG.
 
-**If a unit with COUNTERATTACK is hit by an attacker while SHIELD is active:** COUNTERATTACK fires. COUNTERATTACK triggers on the damage event receipt (before absorption), not on damage application after SHIELD check. The unit was attacked; SHIELD negates the damage but does not prevent the reactive COUNTERATTACK.
+**If a unit with COUNTERATTACK is hit by an attacker while SHIELD is active:** COUNTERATTACK fires after all sub-step damage (including SHIELD absorption) is resolved. SHIELD absorbs the incoming damage; COUNTERATTACK fires anyway — the unit was attacked regardless of absorption outcome. The COUNTERATTACK retaliation is a separate damage event; the original attacker's SHIELD pre-check applies to the retaliation independently.
+
+**If a STUNned unit also has SHIELD:** STUN suppresses the unit's outgoing actions (movement and attacks) only. SHIELD is a passive defensive state — it absorbs incoming damage regardless of STUN. A STUNned unit with SHIELD still absorbs the first incoming attack via the SHIELD pre-check and consumes SHIELD as normal. STUN does not strip or disable SHIELD.
 
 **If a unit is destroyed by Punition (self-targeting objective damage, Sacrier):** The self-destroyed objective triggers the loss condition check but the controller does not receive +3 gold (no attacker reward for self-destruction). See objective-system.md for the full self-destroy rule.
 
@@ -596,7 +639,7 @@ Hand cards, shop slots, and all placement controls must be non-interactive and v
 |---|---|---|
 | CR-1 | GIVEN a unit with FIRST STRIKE in any lane, WHEN sub-step 3 executes, THEN that unit deals net_damage to any enemy unit sharing its cell before sub-step 5 movement occurs. | BLOCKING |
 | CR-2 | GIVEN two FIRST STRIKE units sharing a cell, WHEN sub-step 3 executes, THEN both deal damage simultaneously (HP snapshots taken before either mutation is applied); if both receive lethal damage, both die and both DEATH triggers fire. | BLOCKING |
-| CR-3 | GIVEN a unit with RANGE 1-X at cell C, WHEN sub-step 6 executes, THEN it attacks the nearest enemy unit in the forward direction (Player A: cells C+1 to C+X; Player B: cells C-X to C-1); it does not advance to do so; equidistant targets are selected randomly by the server. | BLOCKING |
+| CR-3 | GIVEN a unit with RANGE 1-X at cell C with a single nearest enemy, WHEN sub-step 6 executes, THEN it attacks that nearest enemy (Player A: minimum cell-distance in cells C+1 to C+X; Player B: C-X to C-1); it does not advance to do so. Equidistant target selection: promote to BLOCKING once the `range_equidistant_select` seed slot is wired up in the RANGE keyword story. Until then treat as ADVISORY for the equidistant case only. | ADVISORY (equidistant case) / BLOCKING (single-nearest case) |
 | CR-4 | GIVEN a unit with RANGE 1-X AND FIRST STRIKE, WHEN RESOLUTION executes, THEN two distinct damage events are emitted: one in sub-step 3 (FIRST STRIKE pass) and one in sub-step 6 (standard combat pass). | BLOCKING |
 | CR-5 | GIVEN a STUNned unit (including a CHARGE unit STUNned in sub-step 1), WHEN RESOLUTION executes, THEN the unit does not advance in sub-step 2 (CHARGE X suppressed), does not advance in sub-step 5, and does not attack in sub-steps 3 or 6. | BLOCKING |
 | CR-6 | GIVEN a unit with SHIELD receives damage in sub-step 3, WHEN sub-step 3 resolves, THEN all sub-step 3 damage is negated and SHIELD is consumed; WHEN sub-step 6 attacks that same unit, THEN damage is applied normally (SHIELD already consumed). | BLOCKING |
@@ -625,7 +668,7 @@ Hand cards, shop slots, and all placement controls must be non-interactive and v
 | CR-29 | GIVEN a RANGE + FIRST STRIKE unit attacks a SHIELD unit in sub-step 3 (consuming SHIELD), WHEN sub-step 6 executes the second attack from the same unit, THEN the attack deals full damage (SHIELD consumed in sub-step 3 does not protect in sub-step 6). | BLOCKING |
 | CR-30 | GIVEN S2CPlacementReveal is broadcast, WHEN RESOLUTION begins, THEN PlacementReveal is sent before any sub-step 1 effects execute and contains both players' full placements in one atomic message. | BLOCKING |
 | CR-31 | GIVEN a unit with CHARGE X, WHEN sub-step 2 executes, THEN the unit advances X additional cells (subject to WALL-blocking and crossing rules); WHEN sub-step 5 executes, THEN the unit additionally advances its MP value as a separate movement. | BLOCKING |
-| CR-32 | GIVEN RESOLUTION completes all 6 sub-steps, WHEN RESOLUTION_COMPLETE fires, THEN S2CResolutionEvent containing a sequenced log of all sub-step events (including at minimum: one SubStepEntry per executed sub-step, CombatDamage records for every damage application, UnitRemovedRecord for each kill, GoldAwarded records for kill/objective rewards) is received by all clients before S2CPhaseChanged(DRAFT_SHOP) is observed. | BLOCKING |
+| CR-32 | GIVEN RESOLUTION completes all 6 sub-steps, WHEN RESOLUTION_COMPLETE fires, THEN S2CResolutionEvent MUST contain: exactly one SubStepEntry per executed sub-step, one CombatDamage record per damage application (including non-lethal hits), one UnitRemovedRecord per killed unit, one GoldAwarded record per gold event, and one KeywordTriggered record per APPEARANCE/DEATH/COUNTERATTACK/FINAL BLOW activation — all in chronological (sub_step, trigger_index) order. S2CPhaseChanged(DRAFT_SHOP) must NOT be observed by any client before S2CResolutionEvent is received. | BLOCKING |
 | CR-33 | GIVEN a LEADER unit (grants +1 ATK to family units) is killed in sub-step 4 of round N, WHEN round N sub-steps 5 and 6 execute, THEN family units' ATK_effective includes the +1 LEADER bonus; WHEN round N+1 RESOLUTION begins with LEADER still dead, THEN family units' ATK_effective equals ATK_base only (verified by asserting damage dealt equals ATK_base-derived formula with no LEADER term). | BLOCKING |
 | CR-34 | GIVEN a unit gains FIRST STRIKE via INJURED (activated at sub-step boundary after sub-step 3 damage), WHEN sub-step 3 of the NEXT round executes, THEN the unit attacks as a FIRST STRIKE unit. | BLOCKING |
 
@@ -638,21 +681,17 @@ Hand cards, shop slots, and all placement controls must be non-interactive and v
 | CR-41 | GIVEN RESOLUTION_EXECUTING has been active for > 60 seconds (simulated via injected RSM safety timeout), WHEN the timeout fires, THEN the server broadcasts S2CGameOver { loser: None, reason: Draw } and RESOLUTION_COMPLETE does not fire for that round. | BLOCKING |
 | CR-42 | GIVEN a unit with VULNERABILITY 2 (AR=1) is attacked by a unit with ATK=3, WHEN combat resolves, THEN ATK_effective = 3+2 = 5; net_damage = max(0, 5−1) = 4. | BLOCKING |
 | CR-43 | GIVEN a unit with FIRST STRIKE and ARMOR-PIERCING is SILENCEd before RESOLUTION, WHEN sub-step 3 executes, THEN the unit does NOT attack (FIRST STRIKE stripped by SILENCE); WHEN sub-step 6 executes, THEN the unit's attack does not apply ARMOR-PIERCING (stripped by SILENCE); the defender's AR_base is used normally. | BLOCKING |
-| CR-44 | GIVEN a RANGE 1-3 unit is 2 cells from a WALL unit, WHEN sub-step 5 executes, THEN the RANGE unit does NOT halt at the WALL's cell (it does not advance to fight it in melee); WHEN sub-step 6 executes, THEN the RANGE unit attacks the WALL from its current position (2 cells away, within range). | RECOMMENDED |
-| CR-45 | GIVEN a RANGE + FIRST STRIKE unit kills its sub-step 3 target, AND a different enemy unit exists within range, WHEN sub-step 6 executes, THEN the RANGE unit acquires the surviving enemy unit as its sub-step 6 target (retargets after the sub-step 3 target's removal in sub-step 4). | RECOMMENDED |
+| CR-44 | GIVEN a RANGE 1-3 unit at cell C with a WALL unit at cell C+2, WHEN sub-step 5 executes, THEN the RANGE unit's cell position is unchanged (it does not halt or advance toward the WALL); WHEN sub-step 6 executes, THEN the RANGE unit attacks the WALL from cell C and a CombatDamage record is emitted with target = WALL. | BLOCKING |
+| CR-45 | GIVEN a RANGE + FIRST STRIKE unit kills its sub-step 3 target, AND a different enemy unit exists within range at sub-step 6 entry, WHEN sub-step 4 removes the killed unit AND sub-step 6 executes, THEN the RANGE unit acquires the surviving enemy as its sub-step 6 target and a CombatDamage record is emitted for that target. | BLOCKING |
 
 ## Open Questions
 
-**OQ1 — WALL deviation ADR (Action Required)**
-Sub-step 5 explicitly notes a deliberate deviation from the Board/Lane System GDD's "skip intermediate cells" rule. The ADR documenting this deviation has not been created yet. This is load-bearing for collision behavior correctness.
-**Owner:** Lead programmer. **Action:** Create ADR before Combat Resolution epic is started.
+**OQ1 — RESOLVED.** ADR-017 Decision 2 formally documents the step-by-step collision detection boundary. Rule A: the destination formula (Board/Lane GDD F1) governs Trap/Prism triggering and applies to all movement. Rule B: the tick-by-tick enemy collision loop (Combat Resolution SS5) is an additional layer for enemy unit obstruction only. These rules are complementary, not contradictory.
 
 **OQ2 — RESOLVED.** Type advantage ATK and AR bonuses moved to `game_config.ron` as `type_advantage_atk_bonus` and `type_advantage_ar_bonus` (both default +1). **Action required:** Add these two fields to `game-config.md` before Combat Resolution epic begins. This was a coding-standards violation (technical-preferences.md forbids hardcoded balance values).
 
-**OQ3 — RANGE equidistant target selection RNG seed**
-Formula 4 states equidistant targets are "selected randomly by the server." No explicit seed slot exists in the RESOLUTION RNG chain (`server-rng.md`) for RANGE random selection. Must be registered in the seed table before RANGE keyword implementation.
-**Owner:** Design + server-rng.md update. **Resolution needed before:** RANGE keyword implementation.
+**OQ3 — RESOLVED (seed registered).** `range_equidistant_select` seed slot added to the server-rng.md RESOLUTION caller table. Consumes 1 seed per equidistant RANGE attack (0 seeds when a single nearest target exists). The seed name is `range_equidistant_select`. CR-3 remains ADVISORY until the RANGE keyword story begins; promote to BLOCKING at that point.
 
 **OQ4 — RESOLVED.** COUNTERATTACK fires for all direct melee contact including collision-halt adjacent-cell combat. COUNTERATTACK is a "defensive reactive strike" — any unit fighting via direct melee (same-cell or adjacent halted) can trigger it. RANGE attackers that stayed at distance cannot. Updated in CR-21, sub-step 6 rules, and Edge Cases.
 
-**OQ5 — PARTIALLY RESOLVED.** `S2CResolutionEvent` schema is formally defined in network-protocol.md Section D.2. However, the schema is **missing critical variants**: a `CombatDamage` (or `DamageDealt`) variant for non-lethal unit-vs-unit damage events, and a `KeywordTriggered` variant for APPEARANCE/DEATH/COUNTERATTACK animations. Without these, the animation contract (damage numbers, impact flashes, SHIELD absorption visual) cannot be fulfilled. **Action required:** Add `CombatDamage { attacker_id, defender_id, damage_amount, was_blocked_by_shield: bool, sub_step: u8 }` and `KeywordTriggered { unit_id, keyword: KeywordKind, sub_step: u8 }` variants to the ResolutionEvent enum in network-protocol.md. OQ5 cannot be fully closed until both variants are added.
+**OQ5 — RESOLVED.** `CombatDamage` and `KeywordTriggered` variants are now defined in both network-protocol.md Section D.2 and ADR-017 Decision 3. Pre-implementation gate: reconcile the `UnitId` type name (ADR-017) vs. `EntityId` (NP D.2) across both documents — they must match before code is written.

@@ -1,5 +1,13 @@
 # Review Log — Class System GDD
 
+## Review — 2026-04-30 (Pass 2) — Verdict: APPROVED
+
+Scope signal: XL
+Specialists: game-designer, systems-designer, qa-lead, economy-designer, network-programmer, ux-designer, creative-director
+Blocking items: 30 | Recommended: 14
+Summary: 30 new blocking items surfaced in re-review: Cra missing CS-12 RANGE anchor formula, Sadida AR ceiling resolved via PIERCE counter documentation, Rollback↔Garde-Temps strategic tradeoff made explicit, garde_temps_used_this_game ownership declared (Game Session System), OQ-CS-2 closed matching NP GDD, three new NP contracts registered (NP-6/7/8 for Sinistro/Miranda/Chacha Noir), CS-11 naming standardized, Craps division guard added, six UI requirements added (class picker state, Xelorium drain, Sinistro display, Garde-Temps permanent disable). Shava Shavien tails-to-opponent kept by design decision — CD's criterion #3 not met by design choice. All 30 blockers resolved in-session.
+Prior verdict resolved: Yes — all 18 prior blockers confirmed resolved from Pass 1.
+
 ## Review — 2026-04-30 — Verdict: MAJOR REVISION NEEDED → Revised In-Session
 
 Scope signal: XL

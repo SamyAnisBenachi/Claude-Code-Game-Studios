@@ -1,5 +1,13 @@
 # Review Log — Combat Resolution GDD
 
+## Review — 2026-04-30 — Verdict: MAJOR REVISION NEEDED → Revised In-Session → APPROVED
+
+Scope signal: XL
+Specialists: game-designer, systems-designer, qa-lead, network-programmer, gameplay-programmer, creative-director
+Blocking items: 9 | Recommended: 9
+Summary: Full panel identified three P0 issues: (1) SHIELD was specified in three mutually contradictory positions — pre-check in SS6, step 10 in modifier stack, and "after COUNTERATTACK" in SS3. Resolved by canonicalizing as pre-check, removing from modifier stack step 10. (2) COUNTERATTACK had no retaliation formula anywhere in either GDD, and its timing contradicted keyword-system.md. Resolved by defining the full formula (full modifier stack, FINAL BLOW eligible, chains once, multi-attacker simultaneous retaliation) and fixing timing to "once after all damage applied." (3) RANGE equidistant RNG seed slot was missing from server-rng.md, which would have corrupted audit-log sequences. Added `range_equidistant_select` to the RESOLUTION caller table. P1 fixes: bilateral+multi-source overlap rule specified; INJURED/OUTNUMBERED/death ordering at sub-step boundaries fixed; kill_log attribution mechanism added; internal 10k iteration budget added as deadlock guard. OQ1 and OQ5 closed. CR-44/45 promoted to BLOCKING. All OQs resolved.
+Prior verdict resolved: Yes — addressed all 25 blockers from 2026-04-29 pass
+
 ## Review — 2026-04-29 — Verdict: MAJOR REVISION NEEDED → Revised In-Session
 
 Scope signal: XL

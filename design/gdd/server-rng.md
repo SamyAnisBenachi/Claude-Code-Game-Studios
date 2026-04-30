@@ -42,6 +42,7 @@ The Server-side RNG system is the single source of randomness for all non-determ
 | Card Data & Pool | draw_random (prism Lane 3, draw effects) | RESOLUTION | 1 per draw event — uniform pick from filtered eligible subset (no weighting). **Exception:** 0 seeds consumed if the collecting player's hand is full at collection time (Prism Lane 3 only) — the hand-full pre-check in Prism System Rule 5 step 1 short-circuits before `next_seed()` is called. Replay tools must not assume a fixed 1 seed per Lane 3 `PrismCollected` event. |
 | Combat Resolution | Ecaflip dice trigger | RESOLUTION | 1 per trigger instance |
 | Combat Resolution | Ecaflip coin flip | RESOLUTION | 1 per flip instance |
+| Combat Resolution | RANGE equidistant target selection (`range_equidistant_select`) | RESOLUTION | 1 per equidistant RANGE attack — consumed only when ≥2 valid targets share the minimum cell-distance. 0 seeds consumed when a single nearest target exists. Registered here so audit-log seed indices remain correct for all subsequent Ecaflip calls in the round. |
 | Objective System | Fake objective reward (mana cap or card pick) | RESOLUTION | 1 per fake destroyed |
 
 **Expected total seeds per round (2-player 1v1, typical):**

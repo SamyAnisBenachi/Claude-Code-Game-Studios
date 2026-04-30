@@ -87,7 +87,7 @@ pub struct GameConfig {
 
     // Board Rendering — animation timings (updated R3 2026-04-30: fog fields removed; reveal-tween fields added)
     pub board_pre_anim_pause_ms: u32,              // default 400; safe 200–800
-    pub board_sub_step_duration_ms: u32,           // default 600; safe 400–1000
+    pub board_sub_step_duration_ms: u32,           // default 600; safe 451–1000 (minimum 451 per F2 constraint in card-animations.md)
     pub board_inter_step_pause_ms: u32,            // default 150; safe 100–300
     pub board_objective_reveal_hold_ms: u32,       // default 500; safe 300–800
     pub board_obj_reveal_anim_ms: u32,             // default 800; safe 500–1000 (R2 new — fake/real reveal VFX)
@@ -103,6 +103,12 @@ pub struct GameConfig {
     pub board_hp_red_threshold: f32,               // default 0.3; safe 0.2–0.4
     pub board_co_occupancy_offset: f32,            // default 8.0; safe 4–16 (2v2 only)
     pub board_prism_spin_speed: f32,               // default 0.5; safe 0.2–1.0 (rad/s)
+
+    // Card Animations — timing constants (added 2026-04-30 per card-animations.md)
+    pub card_draw_animation_ms: u32,               // default 280; safe 150–400
+    pub snap_back_duration_ms: u32,                // default 220; safe 100–250 (clamped at runtime to 250 by CA-12)
+    pub stagger_cadence_ms: u32,                   // default 100; safe 80–120 (ms between objective reveal animations)
+    pub impact_flash_audio_offset_ms: u32,         // default 17; safe 0–33 (≈ 1 frame at 60fps; see card-animations V.3)
 }
 ```
 
@@ -162,6 +168,7 @@ No partial states. `GameConfig` is either fully available or the server is not r
 | **Auction System** | `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds`, `auction_floor_rare`, `auction_floor_epic`, `auction_floor_legendary`, `legendary_pool_entry_round` |
 | **Board Rendering** | `board_pre_anim_pause_ms`, `board_sub_step_duration_ms`, `board_inter_step_pause_ms`, `board_fog_lift_ms`, `board_objective_reveal_hold_ms`, `board_fog_opacity`, `board_cell_width`, `board_lane_height`, `board_hp_green_threshold`, `board_hp_red_threshold`, `board_co_occupancy_offset`, `board_prism_spin_speed` |
 | **Round State Machine** | `placement_timer_seconds`, `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `resolution_max_duration_seconds`, `auction_max_duration_seconds`, `disconnect_grace_seconds` |
+| **Card Animations** | `card_draw_animation_ms`, `snap_back_duration_ms`, `stagger_cadence_ms`, `impact_flash_audio_offset_ms`, `board_pre_anim_pause_ms`, `board_sub_step_duration_ms`, `board_inter_step_pause_ms` |
 | **Class System (Xelor)** | `xelor_sablier_steal` |
 | **Server-side RNG** | *(none — RNG seeds are generated at runtime)* |
 

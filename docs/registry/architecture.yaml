@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-04-30"  # updated by ADR-014, ADR-015, ADR-016
+last_updated: "2026-04-30"  # updated by ADR-014, ADR-015, ADR-016, ADR-019
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -109,6 +109,30 @@ state_ownership:
     write_access: keyword::state_eval systems (leader_snapshot_system, eval_outnumbered_system, bodyguard_cleanup_system) + keyword::effects::* called from resolve_combat exclusive system
     referenced_by:
       - docs/architecture/adr-018-keyword-system.md
+    added: "2026-04-30"
+    revised: ""
+
+  - state: player_economies
+    status: active
+    owner_system: economy-system
+    adr: docs/architecture/adr-019-economy-resource-architecture.md
+    interface: "Res<PlayerEconomies> (read-only for all other systems); ResMut<PlayerEconomies> permitted ONLY in: initialise_player_economies (Observer), on_draft_started (DraftStarted subscriber), on_resolution_complete (ResolutionComplete subscriber), auction_tick_system (reservation atomicity per ADR-013), resolve_combat (exclusive system — kill/objective gold awards via api.rs functions). All field writes go through server/src/core/economy/api.rs — direct field assignment is forbidden outside that module."
+    write_access: economy_tick_systems + auction_tick_system (atomic reservation) + resolve_combat (exclusive, gold awards only)
+    referenced_by:
+      - docs/architecture/adr-019-economy-resource-architecture.md
+      - docs/architecture/adr-013-auction-system-state.md   # auction_tick_system holds ResMut<PlayerEconomies>
+      - docs/architecture/adr-017-combat-resolution-execution-architecture.md   # resolve_combat awards gold via world.resource_mut()
+    added: "2026-04-30"
+    revised: ""
+
+  - state: interest_snapshots
+    status: active
+    owner_system: economy-system
+    adr: docs/architecture/adr-019-economy-resource-architecture.md
+    interface: "InterestSnapshots is economy-system-internal — not exposed via Res<T> to other systems. Written once per round by on_resolution_complete (reads ResolutionComplete, captures gold per player). Consumed once per round by on_draft_started (removes entry, uses for interest formula). Absent entry → 0 interest (correct for round 1)."
+    write_access: on_resolution_complete (writer) + on_draft_started (consumer/remover) — no other system may read or write this resource
+    referenced_by:
+      - docs/architecture/adr-019-economy-resource-architecture.md
     added: "2026-04-30"
     revised: ""
 
@@ -386,6 +410,29 @@ api_decisions:
     added: "2026-04-30"
     revised: ""
 
+  - purpose: economy_write_api
+    status: active
+    api: "Pure Rust functions in server/src/core/economy/api.rs taking (&mut PlayerEconomy, ...) — apply_gold_award, spend_gold, apply_mana_ramp, add_reserve, reserve_gold, release_gold_reservation, discard_current_mana, increment_mana_cap, validate_spend, apply_spend"
+    not: "Direct field assignment to PlayerEconomy fields outside api.rs; buffered Messages for economy mutations (e.g., AwardGold { player, amount } as a cross-system message); separate per-currency resources (GoldState, ManaState) that split the auto-split mana invariant"
+    adr: docs/architecture/adr-019-economy-resource-architecture.md
+    reason: "All PlayerEconomy field mutations centralized in api.rs for auditability and grep-gateability. Auto-split mana spend (current first, reserve overflow) and auction reservation invariant (reserved_gold <= gold) both require inspecting multiple fields atomically — only possible when fields co-locate in one struct with a single write path."
+    referenced_by:
+      - docs/architecture/adr-019-economy-resource-architecture.md
+      - docs/architecture/adr-013-auction-system-state.md   # auction uses reserve_gold / release_gold_reservation via api.rs
+    added: "2026-04-30"
+    revised: ""
+
+  - purpose: economy_interest_snapshot_trigger
+    status: active
+    api: "MessageReader<ResolutionComplete> in on_resolution_complete (EconomySystemSet::ResolutionEnd) — captures gold snapshot AFTER resolve_combat has awarded all kill/objective gold"
+    not: "MessageReader<ResolutionPhaseEntered> for the snapshot — fires at RESOLUTION start, before kill/objective rewards, producing incorrect (understated) interest income"
+    adr: docs/architecture/adr-019-economy-resource-architecture.md
+    reason: "GDD economy-system.md Rule 6 specifies snapshot at end of RESOLUTION 'after all kill/objective rewards have fired'. ResolutionPhaseEntered fires at start; ResolutionComplete fires after resolve_combat's six sub-steps complete. The snapshot must read ResolutionComplete."
+    referenced_by:
+      - docs/architecture/adr-019-economy-resource-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
 # Example:
 #
 # api_decisions:
@@ -479,6 +526,20 @@ forbidden_patterns:
     description: "BODYGUARD bond and all keyword state must NOT be stored as lane-scoped or cell-scoped attributes on any board/lane resource. Keyword state belongs on the unit entity's UnitKeywordState component."
     why: "Lane-scoped storage silently orphans the BODYGUARD bond when the protected unit executes CHANGE LANE — the entity reference is lost. GDD explicitly forbids this: 'BODYGUARD protection MUST be stored as a unit-to-unit entity bond, NOT as a lane-scoped attribute.' Entity references in UnitKeywordState are stable across position changes."
     adr: docs/architecture/adr-018-keyword-system.md
+    added: "2026-04-30"
+
+  - pattern: direct_player_economy_field_write
+    status: active
+    description: "Code outside server/src/core/economy/api.rs must NOT assign directly to PlayerEconomy fields (economy.gold = x, economy.current_mana = x, economy.reserve_mana = x, economy.mana_cap = x, economy.reserved_gold = x). All mutations must go through api.rs functions."
+    why: "Direct field mutation bypasses validation (auto-split invariant, reserved_gold <= gold invariant, mana_cap ceiling) and breaks the single auditable write path. A CI grep for '.gold =', '.current_mana =', etc. outside api.rs is the enforcement mechanism."
+    adr: docs/architecture/adr-019-economy-resource-architecture.md
+    added: "2026-04-30"
+
+  - pattern: economy_snapshot_at_resolution_start
+    status: active
+    description: "The economy interest snapshot must NOT be captured at ResolutionPhaseEntered. Any system reading MessageReader<ResolutionPhaseEntered> to snapshot gold is wrong — the snapshot must read MessageReader<ResolutionComplete>."
+    why: "ResolutionPhaseEntered fires before resolve_combat runs; kill/objective gold awards happen inside resolve_combat's six sub-steps. A snapshot at ResolutionPhaseEntered misses all in-round gold awards, understating next-round interest. GDD Rule 6: snapshot is taken 'after all kill/objective rewards have fired'."
+    adr: docs/architecture/adr-019-economy-resource-architecture.md
     added: "2026-04-30"
 
 # Example:

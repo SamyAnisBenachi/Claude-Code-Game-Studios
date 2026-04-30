@@ -1,6 +1,6 @@
 # Class System
 
-> **Status**: Needs Revision (in-session revision pass — re-review recommended)
+> **Status**: Approved (2026-04-30 pass 2 — 30 blockers resolved in-session; Shava Shavien tails-to-opponent kept by design decision)
 > **Author**: SamyAnisBenachi + Claude Code agents
 > **Last Updated**: 2026-04-30
 > **Implements Pillar**: Deep emergence · Simple surface
@@ -75,7 +75,7 @@ These are distinct gear-ratios under the same pillar, not exceptions to it. A Sa
 | **Sinistro** | Xelor | Sinistro spell, Diod Dewit (APPEARANCE) | Spell-attached, lives on a friendly objective; deals 1 damage/RESOLUTION to opposing-lane objective; destroyed if its parent objective takes damage |
 | **Chacha Noir** | Ecaflip | Chacha/Bow Meow (transform target) | Unit token (HP=2/ATK=2/MP=6); replaces the target unit at the target's cell; no passive effect |
 | **Graine / Seed** | Sadida | Pollinisation, Sac de Graines, Ronce (DEATH), Sadida cards with seed-place effects | Cell-attached marker; +1 AR to friendly walk-over (permanent on unit), 1 damage to enemy walk-over; persistent until explicitly consumed/converted; **max 1 seed per cell** |
-| **Madoll / La Folle** | Sadida | Graines de Folie (convert from Seeds), Sylvine Folherbe (hand grant) | Unit token (HP=3/ATK=1/MP=3); passive: spells cost 1 less while in play |
+| **Madoll / La Folle** | Sadida | Graines de Folie (convert from Seeds), Sylvine Folherbe (hand grant) | Unit token (HP=3/ATK=1/MP=3); passive: Spell-type cards cost 1 less while in play (Trap and Order cards unaffected — OQ-CS-4 closed ruling) |
 | **La Gonflable** | Sadida | Sylvine Folherbe + class spawn paths | Unit token (HP=3/ATK=2/MP=3); END OF MOVEMENT: heals other friendly units in its lane for 2 HP |
 | **La Sacrifiée** | Sadida | Sacrifice Poupesque, Sadida class spawn paths | Unit token (HP=2/ATK=2/MP=3); DEATH: 1 damage to enemy units in its lane |
 
@@ -96,7 +96,8 @@ Tokens carry a `source_class` tag for two purposes: (1) LEADER family bonus chec
 
 **Per-round Class System trackers.** Class System has **no round-scoped state of its own**. The two trackers below are owned by other systems and merely *consumed* by class effects:
 
-- `miss_nuit_cards_played_this_round: u32` — owned by Economy System; reset to 0 at DRAFT phase entry.
+- `miss_nuit_reserve_gained_this_round: u32` — owned by Economy System; tracks reserve actually granted this round (not raw card-play count); reset to 0 at DRAFT phase entry.
+- `garde_temps_used_this_game: u32` — owned by **Game Session System** (game-scoped, not round-scoped); initialized to 0 at `on_lobby_to_draft_initial` transition; persists across all rounds; never reset mid-game; discarded at session end. This is the enforcement counter for `garde_temps_per_game_cap`.
 - `sang_meprise_active: bool` — owned by Objective System; cleared at RESOLUTION end.
 
 **Token state.** Tokens occupy normal board state once spawned and are owned by Combat Resolution / Board-Lane System. Class System does not maintain a "live tokens" registry per round.
@@ -126,7 +127,7 @@ The cross-class interaction matrix below names every class-mechanic that crosses
 | **INJURED bonus stats** | Sacrier (and any) | Each sub-step boundary while `current_HP < max_HP` | Class-specific additive bonuses (e.g., Edass +2 ATK + FIRST STRIKE while INJURED) — applied/removed via Keyword System's INJURED re-evaluation | Keyword System |
 | **Ecaflip 1d6 / coin flip** | Ecaflip | Card-specific (APPEARANCE / spell / DEATH) | Roll computed via RESOLUTION RNG chain (server-rng.md Rule 5); broadcast as `S2CResolutionEvent` outcome | Server-side RNG + Combat Resolution |
 | **Dé du Chateux** (1d6 + reveal-on-low) | Ecaflip | Spell | `roll = 1..=6`; deal `roll` damage; if `roll <= dé_chateux_reveal_threshold` (default 3), reveal the targeted-row enemy objective (unicast to Ecaflip player only — narrower than Sang Méprise) | Server-RNG + Combat Resolution + Objective System |
-| **Miranda** (control transfer) | Ecaflip | APPEARANCE, persists while alive | Adjacent enemy units transfer to Ecaflip player's control; on Miranda's death, units revert to original controller. Stolen tokens retain their `source_class` (no class-LEADER boost from new controller). | Combat Resolution / Board |
+| **Miranda** (control transfer) | Ecaflip | APPEARANCE, persists while alive | Adjacent enemy units (geometric binding: units in lanes `own_lane − 1` and `own_lane + 1`, at any cell — i.e., the entire directly neighbouring lanes; see Combat Resolution GDD adjacency definition for the authoritative spec) transfer to Ecaflip player's control; on Miranda's death, units revert to original controller. Stolen tokens retain their `source_class` (no class-LEADER boost from new controller). | Combat Resolution / Board |
 | **Sadida Seed** (passive cell hazard) | Sadida | Walk-over event — each seeded cell the unit's path traverses during sub-step 5 (intermediate + destination cells both trigger) | Friendly: `unit.AR += 1` (permanent until unit destroyed); enemy: 1 damage pre-AR (passes through AR pipeline). Seed persists; max 1 per cell. | Combat Resolution |
 | **Graines de Folie** (Seeds → Madolls) | Sadida | Spell | For each board Seed: remove Seed, spawn Madoll on Seed's cell | Board / Lane System (spawn) |
 | **Pollinisation** | Sadida | Spell | 3 damage to enemy units + place Seed on each cell where a unit died this resolution | Combat Resolution + Board |
@@ -176,6 +177,7 @@ The Xelorium steal formula is defined as:
 **Output Range:** `self.reserve_new ∈ [self.reserve, self.reserve + mana_cap]`. Opponent reserve is **not** touched.
 **Example:** self.reserve = 3, opponent.current_mana = 5 → self.reserve = 8, opponent.current_mana = 0.
 **Timing:** Resolves at sub-step 1 (PLACEMENT commit), not at DRAFT-phase cast time. The opponent's current_mana is stolen as it stood when both players' placements arrive at the server. *(See Open Question OQ-Xelorium-timing for the alternative interpretation.)*
+**Cost deduction order:** Xelorium's 4-mana cost is deducted from `self.current_mana` per Economy Rule 4 **before** the steal formula fires. The steal formula's input (`opponent.current_mana`) is computed on post-cost state. Implementers must not optimistically read `opponent.current_mana` before the cost deduction completes.
 **Edge case:** Opponent already spent all current_mana before sub-step 1 → steal of 0; Xelorium's own cost (4 mana) is still paid by Xelor.
 
 ### CS-3 — Rollback (Xelor: reserve → friendly charge distance)
@@ -201,6 +203,7 @@ for each friendly Minion u in self.units:  -- Minion-type only; Structures and T
 **Example:** Xelor (Player A) reserve = 4. Three units at cells 2, 3, 5 → destinations 6, 7, 8 (last one clamped).
 **Edge case (n = 0):** All units charge 0 cells; reserve stays 0; spell cost still paid. Client UI should warn before submission.
 **Timing:** Rollback fires at sub-step 2 (CHARGE X bonus movement). Units placed this round with HASTE are eligible for Rollback's movement (HASTE removed summoning sickness; Rollback is movement, not action). Units with STUN do NOT charge — STUN suppresses sub-step 2.
+**Strategic tradeoff (binding):** Spending reserve via Rollback in rounds 3+ effectively forecloses Garde-Temps access for the remainder of a standard 5-round game — recovering from 0 to 20 reserve in the remaining rounds is not achievable via normal accumulation paths. This is Xelor's central strategic decision: commit to Rollback for immediate board movement, or hold reserve for Garde-Temps later. Both are valid play-lines; neither is a mistake. Players must make this choice consciously by round 3.
 
 ### CS-4 — Garde-Temps (Xelor: 20-reserve gate, destroy enemy objective)
 
@@ -233,6 +236,8 @@ else:
 **Example:** reserve = 23, garde_temps_used_this_game = 0 → playable = true → reserve_new = 3; objective take_damage fires.
 **Interface alignment:** Uses `take_damage()` not `destroy()` — consistent with objective-system.md Edge Cases ("If Garde-Temps targets an objective: Treated as `take_damage(lane, attacker_player, objective_hp)`) and with Punition below.
 **Note:** Garde-Temps' card-data `mana_cost` field is 0 (or absent); Economy System's "from reserve" path (Rule 4) is the only valid payment route. Server validates `reserve >= 20` BEFORE accepting the placement.
+**Counter ownership:** `self.garde_temps_used_this_game` is owned by **Game Session System**, initialized to 0 at `on_lobby_to_draft_initial` transition, and persists for the full game session. It is never reset mid-game. The registry formula for `garde_temps_gate` MUST include the `garde_temps_used_this_game < garde_temps_per_game_cap` guard — this is a required enforcement check, not optional.
+**Strategic context:** Garde-Temps is the payoff for the *hold-reserve* line. A Xelor player who has spent reserve via Rollback cannot realistically reach 20 reserve again in a standard 5-round game. The 20-reserve threshold at the default setting is calibrated to this tradeoff — see CS-3 strategic tradeoff note.
 
 ### CS-5 — Sang Méprise (Sacrier: full objective reveal)
 
@@ -299,6 +304,7 @@ The Seed walk-over formula is defined per direction. **Walk-over definition (bin
 | `damage_to_unit` | u32 | 1 (pre-AR) | Damage dealt to enemy walker |
 
 **Output Range:** Friendly AR +1 per walk-over (a unit walking over multiple seeds in one movement gains +1 each — but `max 1 seed per cell` caps any single cell to one bonus). Enemy 1 damage pre-AR.
+**Counter:** The **PIERCE** keyword (defined in `keyword-system.md`) bypasses AR entirely, dealing full damage regardless of the target unit's AR value. PIERCE cards are the intended design counter to high-AR Sadida units. There is no numeric AR cap applied to units; PIERCE is the design ceiling. If the Keyword System does not yet define PIERCE or it is unavailable to the relevant card pool, this gap must be flagged as a pre-implementation blocker before Class System stories begin.
 **Stacking rule:** **Max 1 seed per cell.** Attempting to place a second seed on an occupied cell discards the new placement; client UI tooltip informs the player.
 **Lifetime:** Seeds persist indefinitely. Removed only by: (a) explicit consume/convert (Graines de Folie, etc.), or (b) game session end. Seeds on cells with no walk-over remain dormant board hazards.
 
@@ -344,7 +350,8 @@ reveal = (roll <= dé_chateux_reveal_threshold)  -- default 3
 | `reveal` | bool | {false, true} | Whether targeted-row enemy objective is revealed |
 
 **Output Range:** damage ∈ [1, 6]; reveal = true on rolls {1, 2, 3} (50 % at default).
-**Example:** roll = 2 → damage = 2; reveal = true → enemy objective in target row revealed (unicast to Ecaflip player only — narrower than Sang Méprise).
+**Target:** The unit or objective selected by the Ecaflip player at card-play time. Target type (unit vs. objective vs. player-choice) is specified in `cards.json` for this card. Damage routes through the standard `take_damage(target, roll)` pipeline: for units, AR reduction applies; for objectives, HP reduction via `objective-system.md` Rule 9.
+**Example:** roll = 2 → damage = 2 applied to target; reveal = true → enemy objective in target lane revealed (unicast to Ecaflip player only — narrower than Sang Méprise).
 **RNG sourcing:** Consumed from the RESOLUTION chain per server-rng.md Rule 5; ordering ascending player_id → lane → trigger_index_within_card.
 
 ### CS-10 — Ecaflip Coin Flip (Chatar / Shava Shavien / Craps)
@@ -364,6 +371,8 @@ flip = uniform(seed, 0..=1)  -- 0 = outcome_A, 1 = outcome_B
 | Shava Shavien (DEATH) | card returns to **owner's** hand | card returns to **opponent's** hand |
 | Craps (Krosmic spell) | 8 damage spread among alive opponent objectives | 4 damage spread among alive opponent objectives |
 
+**Design note (Shava Shavien):** flip=tails returning to the *opponent's* hand is intentional extreme-variance design — Shava Shavien is Ecaflip's highest-risk card. A tails result gifts the opponent a Krosmic card from Ecaflip's class. This is not a bug. Deploying Shava Shavien is the authored risk; the player who plays it chose to accept this downside. No mitigation mechanic exists by design. Documenting explicitly so implementers do not treat it as an error.
+
 **Craps damage distribution sub-formula (equal-share):**
 
 ```
@@ -374,7 +383,8 @@ remainder = total mod alive
 ```
 
 **Example (Craps heads, 3 alive opponents):** total = 8, alive = 3 → share = 2, remainder = 2 → Lanes 1 and 2 receive 3 damage; Lane 3 receives 2.
-**Edge case (alive = 0):** Game already over; Craps is no-op.
+**Edge case (alive = 0):** Game already over; Craps is no-op. **Implementation guard:** Server MUST evaluate `if alive == 0 { return no_op; }` **before** computing `share = total / alive`. Use `checked_div` or an explicit early-return to prevent integer division-by-zero panic in Rust.
+**alive = 1:** `share = floor(total / 1) = total`, `remainder = 0`. All damage concentrates on the last objective (8 or 4 HP from Craps). If this exceeds the objective's remaining HP, the objective is destroyed via the standard `take_damage` path — this is the intended win-condition case.
 
 ### CS-11 — Miss Nuit Reserve Trigger (per-round cap)
 
@@ -382,16 +392,16 @@ The Miss Nuit reserve trigger formula is defined as:
 
 ```
 -- Fires on each opponent_card_played_event during PLACEMENT commit (sub-step 1)
-if Miss_Nuit.is_alive AND NOT Miss_Nuit.is_silenced AND reserve_gain_this_round < miss_nuit_cap:
+if Miss_Nuit.is_alive AND NOT Miss_Nuit.is_silenced AND miss_nuit_reserve_gained_this_round < miss_nuit_cap:
   self.reserve += 1
-  reserve_gain_this_round += 1
+  miss_nuit_reserve_gained_this_round += 1
 ```
 
 **Variables:**
 
 | Variable | Type | Range | Description |
 |---|---|---|---|
-| `reserve_gain_this_round` | u32 | 0 – `miss_nuit_cap` | Running count this round |
+| `miss_nuit_reserve_gained_this_round` | u32 | 0 – `miss_nuit_cap` | Reserve actually granted this round (tracks grant count, not raw card-play count — these are equivalent under current rules but semantically distinct) |
 | `miss_nuit_cap` | u32 | 2 (GameConfig) | Per-round Miss Nuit reserve gain ceiling |
 
 **Output Range:** Reserve gain ∈ [0, +2] per round.
@@ -400,6 +410,26 @@ if Miss_Nuit.is_alive AND NOT Miss_Nuit.is_silenced AND reserve_gain_this_round 
 - **Does NOT count:** Token spawns (Mummy, Madoll, Bow Meow); free card grants from Lane 3 prism; Drheller-style triggered draws.
 - **Does NOT count:** Xelor's own card plays — only **opponent** plays trigger Miss Nuit.
 **Edge case (Miss Nuit silenced or destroyed mid-round):** Subsequent opponent plays in the same round do not trigger; the trigger is gated on Miss Nuit being alive AND not silenced at the moment opponent's card commits.
+
+### CS-12 — Cra RANGE Mechanic (class anchor, cross-reference)
+
+Cra's class rhythm — "Long and thin — fires from outside trade range. Range is the rhythm." — is mechanically anchored in the **RANGE keyword** and its attack resolution at **Combat Resolution sub-step 6**. Unlike Xelor (CS-1 through CS-4) or Sadida (CS-7/8), Cra has no unique formula beyond what RANGE defines — the class rhythm *is* the RANGE mechanic applied systematically.
+
+**Cra cards feeding the RANGE mechanic:**
+
+| Card | Class contribution |
+|---|---|
+| *Criblage* | RANGE damage to targets across columns |
+| *Harcèlement* | Persistent RANGE damage per RESOLUTION while in play |
+| *Flèche Destructrice* | Single-shot RANGE with conditional multiplier |
+| *Guy Yomtella* | RANGE unit — attacks from outside melee reach |
+| *Lucy Fayre* | RANGE + FIRST STRIKE unit — fires before melee exchange |
+
+**Formula reference:** The RANGE attack formula lives in `combat-resolution.md` sub-step 6: RANGE attacks fire at cell-distance ≥ 2, before melee contact (sub-step 3). Cra's tempo signature is the *sub-step ordering advantage* — RANGE attacks create board pressure before opponents can engage in melee. The Cra player's rhythm is timed around maintaining units in the 3–5 cell range corridor while denying opponent advance.
+
+**Cross-reference:** `keyword-system.md` — RANGE keyword definition and stacking rules. `combat-resolution.md` sub-step 6 — RANGE attack resolution formula (authoritative). This Class System section is the class-identity anchor; the mechanics live in those documents.
+
+---
 
 ## Edge Cases
 
@@ -429,7 +459,7 @@ Edge cases are grouped by category. Each entry follows the form **If [condition]
 - **If Sablier is cast while opponent.reserve = 0** → `opponent.reserve = saturating_sub(0, 1) = 0`; `self.reserve += 1`. Xelor gains +1 even when the opponent has nothing to swap from. Asymmetric by design — the gain is the mechanic.
 - **If Garde-Temps reserve gate fails (reserve < 20)** → Server rejects the placement; spell cost is **not** deducted (validation precedes deduction, per Economy Rule 4). Implementers must not deduct optimistically.
 - **If Garde-Temps targets an already-destroyed (HP=0) objective** → `target_valid = false`; server rejects. The 20 reserve is NOT deducted. A player who selects a destroyed lane as target receives a rejection without penalty. Client UI should grey out already-destroyed lanes as invalid targets.
-- **If a Sadida unit with high MP traverses a fully-seeded lane (max seeds per cell)** → The unit gains +1 AR per seeded cell traversed. With all 4 cells on the Sadida player's side seeded and unit MP ≥ 4, a unit gains +4 AR from a single movement. This is the intended degenerate ceiling for seed density. The `seed_ar_bonus` knob controls per-seed gain; actual AR accumulation depends on seed density × unit MP. Implementers must not cap per-movement AR gain from seeds — multiple seeds in one path are intended to stack.
+- **If a Sadida unit with high MP traverses a fully-seeded lane (max seeds per cell)** → The unit gains +1 AR per seeded cell traversed. With all 4 cells on the Sadida player's side seeded and unit MP ≥ 4, a unit gains +4 AR from a single movement. This is the intended maximum from seed density. The `seed_ar_bonus` knob controls per-seed gain; actual AR accumulation depends on seed density × unit MP. Multiple seeds in one path are intended to stack. **The design counter to high-AR units is the PIERCE keyword** (see CS-7 counter note and `keyword-system.md`) — PIERCE bypasses AR entirely, restoring full damage. No numeric AR cap is applied; PIERCE is the design ceiling. Pre-implementation gate: verify PIERCE is defined and available in the relevant card pools before Class System stories begin.
 
 #### Card-data and cross-class legality
 
@@ -468,7 +498,7 @@ All knobs live in `assets/config/game_config.ron` and map to `GameConfig` fields
 | Garde-Temps per-game use cap | `garde_temps_per_game_cap` | 1 | 1 – 2 | At 1: Xelor gets one deterministic swing; combined with reserve economy this is sufficient to close a game once. At 2: two objectives can be destroyed by reserve alone — dominant strategy risk if Mummy passive cap is also absent. Raise to 2 only after M2 confirms reserve accumulation is manageable. | N/A (minimum is 1 — 0 disables the card entirely) |
 | Miss Nuit per-round cap | `miss_nuit_cap` | 2 | 1 – 4 | Reserve gain too slow vs. active opponents | Mass-token opponents (Chafer, Bow Meow) flood Xelor's reserve; Rollback trivially recharged each round |
 | Dé du Chateux reveal threshold | `dé_chateux_reveal_threshold` | 3 (≈50 % chance) | 1 – 5 | Objective reveal almost never fires; low-roll dice spell feels punishing with no upside | Near-guaranteed reveal every cast; Ecaflip gains too much information advantage |
-| Seed AR bonus per walk-over | `seed_ar_bonus` | 1 | 1 – 2 | (minimum is 1 — below that removes the mechanic) | +2 per seed → degenerate AR stacking mid-game; Sadida units become unkillable by round 6 |
+| Seed AR bonus per walk-over | `seed_ar_bonus` | 1 | 1 – 2 | (minimum is 1 — below that removes the mechanic) | +2 per seed → extreme AR stacking mid-game; Sadida units gain very high AR by round 6 (counter: PIERCE keyword cards — see CS-7 and keyword-system.md) |
 | Seed damage to enemy walkers | `seed_enemy_damage` | 1 | 1 – 2 | (minimum is 1) | 2 per step = too punishing for aggressive classes; rush strategies against Sadida become non-viable |
 
 **Upstream knobs referenced (not owned here):**
@@ -485,20 +515,34 @@ All knobs live in `assets/config/game_config.ron` and map to `GameConfig` fields
 ## UI Requirements
 
 **Class picker (LOBBY):**
-- Player selects from 6 classes before clicking Ready; each class shows its one-line tempo signature and 4 signature Krosmic card names.
-- Opponent's locked class is displayed to both players once both have committed.
+- Player selects from 6 classes before clicking Ready; each class shows its one-line tempo signature and 4 signature Krosmic card names. Hovering a card name should surface a tooltip with the card's effect summary — 4 names without context are insufficient for new players to make an informed class choice.
+- Intermediate state: after Player A clicks Ready (one player committed, other not yet), Player A's class is locked and displayed to them with a visual lock indicator; Player B's slot shows "Waiting for opponent…". The opponent's locked class is revealed to both players simultaneously only when both have committed.
 - Class cannot be changed after Ready is clicked; UI must disable the picker post-lock.
+- Exception: if a player retracts their Ready (RSM ready-retractable rule — allowed before both players commit), the class picker re-enables for that player. The picker re-disables when they click Ready again.
 
 **Reserve display (all classes):**
 - Reserve mana is always visible in the HUD alongside current mana (per HUD GDD). All six classes see their reserve — reserve is not Xelor-exclusive.
-- Reserve value updates immediately on any mutation (Gelure, prism reward, Miss Nuit gain, Xelorium deduction on opponent side).
+- **Outside RESOLUTION:** Reserve value updates immediately on any mutation (Gelure, prism reward, Miss Nuit gain).
+- **During RESOLUTION:** Reserve counter reflects the post-RESOLUTION state sync when the animation batch completes. Real-time mid-RESOLUTION reserve updates (Xelorium steal at sub-step 1, Rollback drain at sub-step 2, Mummy passive gains) are contingent on NP-5 being resolved. Until NP-5 closes, these values update only after the full RESOLUTION animation concludes.
 
 **Garde-Temps gate feedback:**
-- If player attempts to submit a placement containing Garde-Temps with `reserve < 20`, the card should be visually marked as unplayable (greyed, lock icon) and the submission blocked at the client side before sending to server.
+- If player attempts to submit a placement containing Garde-Temps with `reserve < 20`, the card should be visually marked as unplayable and the submission blocked at the client side before sending to server.
+- Reserve-insufficient must use a **visually distinct treatment from mana-insufficient** (e.g., different icon color, "R" indicator prefix). Using identical visuals for two different failure reasons teaches the wrong mental model about the reserve vs. mana distinction. Coordinate with Hand UI GDD to ensure both insufficient-mana and insufficient-reserve states are defined as a coherent system.
+- After the once-per-game cap is consumed (`garde_temps_used_this_game = garde_temps_per_game_cap`), Garde-Temps shows a **permanently exhausted state** distinct from the temporary reserve-insufficient state. Tooltip: "Already used this game." This state persists for the remainder of the session.
 - Server-side rejection is the authoritative gate; client-side feedback is ADVISORY but expected for UX.
 
 **Rollback n=0 warning:**
-- If Xelor player attempts to play Rollback with `reserve = 0`, display a tooltip: "No reserve — Rollback will have no effect." Player may still submit; it is not blocked.
+- If Xelor player stages Rollback with `reserve = 0`, display an **inline warning in the staged-card area** (visible without hover): "No reserve — Rollback will have no effect." Player may still submit; it is not blocked. A hover tooltip is insufficient here — players staging under time pressure do not hover, so the warning must be visible in the staging area without requiring interaction.
+
+**Xelorium drain feedback:**
+- When Xelorium resolves and zeroes the opponent's current mana, the opponent's mana counter animates from its current value to 0 with a brief visual flash or glow marking the steal event.
+- The Xelor player's reserve counter increments by the stolen amount. Update timing subject to NP-5 (see Reserve display above).
+- This feedback is required — a mana pool silently hitting 0 mid-RESOLUTION with no visual signal is a readability failure for the opponent.
+
+**Sinistro attachment display:**
+- Sinistro's presence on a friendly objective is displayed as a persistent spell-indicator icon on the objective tile, visible to both players throughout the game (not hidden information).
+- The icon is removed when Sinistro is destroyed (parent objective takes damage).
+- The indicator must be visually distinct from objective HP displays, fake/real indicators, and other objective decorations.
 
 **Sang Méprise reveal overlay:**
 - When `S2CSangMepriseReveal` is received, the board displays real/fake indicators on all 10 objective slots for the duration of the RESOLUTION.
@@ -517,23 +561,29 @@ All criteria are BLOCKING unless marked ADVISORY. Format: GIVEN [state] / WHEN [
 
 **CS-AC-02** GIVEN both players have locked their class, WHEN the RSM transitions LOBBY → DRAFT_INITIAL, THEN every active player's `class` field is `Some(C)` — no player may have `class = None`.
 
-**CS-AC-03** GIVEN both players have locked their classes and the RSM has transitioned to DRAFT_INITIAL, WHEN any player receives `S2CGameSnapshot`, THEN the `PlayerSnapshot` for each player contains a `class_id` field equal to that player's locked class; the opponent's class name is rendered in the game UI header for the duration of the game.
+**CS-AC-03a** GIVEN both players have locked their classes and the RSM has transitioned to DRAFT_INITIAL, WHEN any player receives `S2CGameSnapshot`, THEN the `PlayerSnapshot` for each player contains a `class_id` field equal to that player's locked class.
+
+**CS-AC-03b** (ADVISORY) GIVEN both players' classes are locked and the game is in progress, THEN the opponent's class name is rendered in the game UI header for the duration of the game. (UI-layer assertion — verify in manual walkthrough, not headless unit test.)
 
 #### Xelor reserve formulas
 
 **CS-AC-04** GIVEN Xelor player with `current_mana=5` and `reserve=2`, WHEN Gelure is played, THEN `current_mana=0` and `reserve=7`.
 
-**CS-AC-05** GIVEN Xelor player with `reserve=3` and opponent with `current_mana=6` and `reserve=8`, WHEN Xelorium resolves at RESOLUTION sub-step 1, THEN `Xelor.reserve=9`, `opponent.current_mana=0`, and `opponent.reserve=8` (unchanged).
+**CS-AC-05** GIVEN Xelor player with `current_mana=8, reserve=3` and opponent with `current_mana=6, reserve=8`, WHEN Xelorium (cost=4 mana, deducted first per Economy Rule 4) resolves at RESOLUTION sub-step 1, THEN `Xelor.current_mana=4`, `Xelor.reserve=9`, `opponent.current_mana=0`, and `opponent.reserve=8` (unchanged).
+
+**CS-AC-05b** GIVEN Xelor player with `current_mana=4` (exactly the cost of Xelorium) and opponent with `current_mana=6`, WHEN Xelorium is played, THEN `Xelor.current_mana=0` (cost deducted), `Xelor.reserve` increases by 6 (the steal receives post-cost `opponent.current_mana=6`), and the play is not rejected as insufficient-mana (exact-cost payment is valid).
 
 **CS-AC-06** GIVEN Xelor player with `reserve=4` and three friendly units at cells 2, 3, 5 on a board of cells [1–8] where Player A advances in the +1 direction, WHEN Rollback resolves, THEN `reserve=0` and units land at cells 6, 7, 8 (`clamp(2+4)=6`, `clamp(3+4)=7`, `clamp(5+4)=8`).
 
-**CS-AC-07** GIVEN Xelor player with `reserve=0`, WHEN Rollback is played, THEN `reserve=0`, all friendly units advance 0 cells, and Rollback's mana cost is still deducted.
+**CS-AC-07** GIVEN Xelor player with `current_mana=N` (N ≥ Rollback's mana cost per `cards.json`), `reserve=0`, WHEN Rollback is played, THEN `reserve=0`, all friendly units advance 0 cells, and `current_mana = N − Rollback_mana_cost` (mana cost deducted normally; zero-reserve cast is valid and not rejected).
 
 **CS-AC-08** GIVEN Xelor player with `reserve=5`, one healthy unit at cell 2 and one STUNned unit at cell 4, WHEN Rollback resolves, THEN the healthy unit moves to cell 7; the STUNned unit does not move; `reserve=0`.
 
 **CS-AC-09** GIVEN Xelor player with `reserve=15` (below `garde_temps_reserve_cost=20`), WHEN Garde-Temps play is submitted, THEN server rejects with insufficient-reserve error; no mana deducted; `reserve=15` unchanged.
 
 **CS-AC-10** GIVEN Xelor player with `reserve=22`, WHEN Garde-Temps is accepted, THEN `reserve=2` and the chosen enemy objective HP=0.
+
+**CS-AC-10b** GIVEN Xelor player with `reserve=22` and `garde_temps_used_this_game=1` (`garde_temps_per_game_cap=1`), WHEN Garde-Temps play is submitted, THEN server rejects with "per-game cap reached" error; `reserve=22` unchanged; `garde_temps_used_this_game=1` unchanged.
 
 #### Miss Nuit
 
@@ -543,9 +593,9 @@ All criteria are BLOCKING unless marked ADVISORY. Format: GIVEN [state] / WHEN [
 
 #### Sacrier formulas
 
-**CS-AC-13** GIVEN Sacrier player who submitted Sang Méprise at PLACEMENT, WHEN RESOLUTION begins and placements are committed, THEN both players receive a unicast `S2CSangMepriseReveal` containing the `is_fake` status for every alive objective slot across both players.
+**CS-AC-13** GIVEN Sacrier player who submitted Sang Méprise at PLACEMENT, WHEN RESOLUTION begins and placements are committed, THEN both players receive a unicast `S2CSangMepriseReveal` containing the `is_fake` status for every alive objective slot across both players. *(Integration test — requires NP-1 and Lightyear unicast infrastructure. Unit test: assert `sang_meprise_active = true` and `reveal_set` is correctly populated after placement commit, without asserting message delivery.)*
 
-**CS-AC-14a** GIVEN Sang Méprise was active during a RESOLUTION, WHEN that RESOLUTION ends (RSM exits sub-step 6 or transitions to next phase), THEN the server's `sang_meprise_active` flag is `false`; subsequent `S2CResolutionEvent` messages for the next round do not include objective reveal data.
+**CS-AC-14a** GIVEN Sang Méprise was active during a RESOLUTION, WHEN that RESOLUTION ends (RSM exits sub-step 6 or transitions to next phase), THEN the server's `sang_meprise_active` flag is `false`; subsequent `S2CResolutionEvent` messages for the next round do not include objective reveal data. *(The `sang_meprise_active=false` assertion is headless-testable. Asserting `S2CResolutionEvent` message content is integration-level — requires Lightyear infrastructure.)*
 
 **CS-AC-14b** (ADVISORY) GIVEN Sang Méprise is no longer active, THEN the client renders opponent objectives as hidden (fog/unrevealed state) in the following PLACEMENT phase.
 
@@ -567,7 +617,9 @@ All criteria are BLOCKING unless marked ADVISORY. Format: GIVEN [state] / WHEN [
 
 #### Ecaflip RNG
 
-**CS-AC-22** GIVEN Ecaflip player's Dé du Chateux server RNG roll = 2, WHEN the effect resolves, THEN 2 damage is dealt to the target AND the enemy objective in the target lane is revealed (unicast to Ecaflip player only; roll ≤ 3).
+> **RNG test setup (CS-AC-22/23/24/25):** ACs requiring specific roll/flip values must use one of: (a) extract resolution logic as a pure function taking `roll: u8` or `flip: u8` directly (preferred for unit tests), or (b) seed the RESOLUTION RNG chain to a ChaCha seed known to produce the required value at the relevant trigger index (required for full integration tests). Test setup must be specified alongside the test implementation.
+
+**CS-AC-22** GIVEN Ecaflip player's Dé du Chateux server RNG roll = 2 (test setup: inject roll via pure function or seeded RNG), WHEN the effect resolves, THEN 2 damage is dealt to the target AND the enemy objective in the target lane is revealed (unicast to Ecaflip player only; roll ≤ 3).
 
 **CS-AC-23** GIVEN Ecaflip player's Dé du Chateux server RNG roll = 5, WHEN the effect resolves, THEN 5 damage is dealt to target AND no objective reveal occurs (roll > 3).
 
@@ -596,11 +648,14 @@ All criteria are BLOCKING unless marked ADVISORY. Format: GIVEN [state] / WHEN [
 | ID | Question | Owner | Status |
 |---|---|---|---|
 | OQ-CS-1 | **Xelorium timing** — Closed. Ruling: sub-step 1. Implementation note: Xelorium's own mana cost (4) MUST be deducted from Xelor's `current_mana` before the steal formula fires, or Xelor will steal back their own 4 mana. Deduction precedes effect application per Economy Rule 4. | Design | **Closed — sub-step 1** |
-| OQ-CS-2 | **Sang Méprise reconnect gap** — `S2CSangMepriseReveal` is absent from `S2CGameSnapshot`. Mandated fix: Network Protocol GDD must add `active_sang_meprise_identities: Option<Vec<(PlayerId, LaneId, bool)>>` to `S2CGameSnapshot`. This field is non-None only during RESOLUTION when `sang_meprise_active = true`. The server must re-send the reveal unicast on reconnect if `sang_meprise_active = true`. "Degrades gracefully" is not acceptable — the reconnecting player loses gameplay-critical information. | Network Protocol / NP GDD owner | Open — NP backlog (mandated, not advisory) |
+| OQ-CS-2 | **Sang Méprise reconnect gap** — Resolved. NP GDD closed this via snapshot-field approach: `active_sang_meprise_reveals: Option<Vec<(PlayerId, LaneId, bool)>>` in `S2CGameSnapshot`. Client rebuilds reveal state from the snapshot field on reconnect; no re-unicast path is needed. The Class GDD Edge Cases section (disconnect section) is authoritative. | Network Protocol | **Closed — NP GDD resolution (snapshot field)** |
 | OQ-CS-3 | **Rollback and HASTE** — Closed. Ruling: HASTE units placed this round are eligible for Rollback movement. Rationale: HASTE removes summoning sickness for action; Rollback is external movement (sub-step 2), not an action. CS-AC-08 is correct as written. | Design | **Closed — HASTE units eligible** |
 | OQ-CS-4 | **Madoll passive cost-reduction scope** — Closed. Ruling: Spell-type cards only. Rationale: consistent with Krosmaga original and with the Keyword System's spell/trap/order type distinction. Trap and Order cards are NOT affected by Madoll's passive. | Design | **Closed — Spell-type only** |
 | NP-1 | **`PlayerSnapshot` missing `class_id` field** — `S2CGameSnapshot`'s `PlayerSnapshot` struct has no `class_id: ClassId` field. Class is publicly visible throughout the game (hard rule). NP GDD must add this field to both players' snapshots. CS-AC-03 depends on this field existing. | Network Protocol | Open — NP required change |
 | NP-2 | **`UnitBoardState` missing `source_class` field** — Miranda-stolen tokens must retain `source_class` for LEADER bonus checks and client rendering. `UnitBoardState` needs `source_class: Option<ClassId>` (None for non-token units; Some(class) set at spawn, never mutated). Required for state reconstruction on crash/reconnect. | Network Protocol | Open — NP required change |
 | NP-3 | **`S2CResolutionEvent` missing `UnitSpawned` variant** — Tokens (Mummy, Madoll, Chacha Noir, La Gonflable, La Sacrifiée) spawn during RESOLUTION. Without a `UnitSpawned` event variant, clients animating resolution replay will encounter `UnitMoved` for entities that don't yet exist locally. Add `UnitSpawned { unit_id, card_id, owner, lane, cell, source: SpawnSource }` where `SpawnSource` ∈ {DeathTrigger, AppearanceTrigger, ClassTokenConversion}. | Network Protocol | Open — NP required change |
 | NP-4 | **No registered message type for Dé du Chateux single-lane reveal** — The single-lane unicast (Ecaflip-only, per Dé du Chateux roll ≤ threshold) cannot reuse `S2CSangMepriseReveal` (wrong payload shape, wrong semantic, wrong recipient scope). NP GDD must register `S2CSingleObjectiveReveal { player_id: PlayerId, lane: u8, is_fake: bool }` as a separate unicast message. | Network Protocol | Open — NP required change |
-| NP-5 | **Reserve mutations during RESOLUTION have no communication path** — `S2CGoldUpdate` is suppressed during RESOLUTION per NP GDD rules. Xelorium (sub-step 1) and Rollback (sub-step 2) reserve mutations have no specified event variant to communicate the change mid-resolution. Either add a `ReserveChanged { player_id, new_reserve }` variant to `S2CResolutionEvent`, or clarify that the NP suppression rule applies to gold-only updates and allows reserve-only unicasts. Without this, the reserve counter cannot animate in real-time during resolution replay. | Network Protocol | Open — NP required change |
+| NP-5 | **Reserve mutations during RESOLUTION have no communication path** — `S2CGoldUpdate` is suppressed during RESOLUTION per NP GDD rules. Xelorium (sub-step 1), Rollback (sub-step 2), and Mummy passive (per-hit during combat sub-steps) reserve mutations have no specified event variant. Either add a `ReserveChanged { player_id, new_reserve }` variant to `S2CResolutionEvent`, or clarify that the NP suppression rule applies to gold-only updates and allows reserve-only unicasts. All three mutation sites must be covered, not just Xelorium and Rollback. | Network Protocol | Open — NP required change |
+| NP-6 | **Sinistro ResolutionEvent gaps** — Three missing protocol elements: (1) No `DamageKind` variant to discriminate Sinistro damage from spell damage during RESOLUTION replay; (2) Sinistro's sub-step assignment is unspecified (recommended: sub-step 6, after all combat); (3) No `SinistroDestroyed` event for the client to remove the Sinistro indicator mid-RESOLUTION when the parent objective takes damage. NP GDD must add all three. | Network Protocol | Open — NP required change |
+| NP-7 | **Miranda control transfer has no message** — `CardOwner` component replication is suppressed during RESOLUTION animation. `UnitMoved` carries no `controller_id` field. Client cannot render Miranda-stolen units with the correct team color during RESOLUTION replay. Miranda revert on death has no `released_units` payload. NP GDD must add: `ResolutionEvent::ControlTransferred { unit_id, new_owner }` and `MirandaRevertFired { released_units: Vec<EntityId> }`. | Network Protocol | Open — NP required change |
+| NP-8 | **Chacha Noir SpawnSource missing Replacement variant** — `SpawnSource ∈ {DeathTrigger, AppearanceTrigger, ClassTokenConversion}` is incomplete. Chacha Noir replaces a target unit (original dies, Chacha Noir spawns at its cell). Without `SpawnSource::Replacement { replaced_unit_id: EntityId }`, the client cannot causal-link the `UnitDied` and `UnitSpawned` events and will render them as unrelated animations rather than a replacement sequence. NP GDD must add this variant. | Network Protocol | Open — NP required change |
