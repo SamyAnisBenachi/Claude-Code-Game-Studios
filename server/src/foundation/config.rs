@@ -512,9 +512,11 @@ pub fn validate_card_catalog(c: &CardCatalog) -> Result<(), String> {
 /// ```rust,no_run
 /// # use bevy::asset::AssetPlugin;
 /// # use bevy::prelude::*;
+/// # use bevy::state::app::StatesPlugin;
 /// # use server::foundation::config::ConfigPlugin;
 /// App::new()
 ///     .add_plugins(MinimalPlugins)
+///     .add_plugins(StatesPlugin)
 ///     .add_plugins(AssetPlugin::default())
 ///     .add_plugins(ConfigPlugin)
 ///     .run();
@@ -547,6 +549,7 @@ mod tests {
     use super::*;
     use bevy::app::App;
     use bevy::prelude::{MinimalPlugins, Update};
+    use bevy::state::app::StatesPlugin;
     use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 
     fn game_config_error(mut edit: impl FnMut(&mut shared::config::GameConfig)) -> String {
@@ -713,6 +716,7 @@ mod tests {
     fn test_game_config_validation_promote_success_inserts_resources_and_enters_lobby() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
+        app.add_plugins(StatesPlugin);
         app.add_message::<AppExit>();
         app.init_state::<AppState>();
 
@@ -744,6 +748,7 @@ mod tests {
     fn test_game_config_validation_promote_failure_writes_app_exit_and_does_not_promote() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
+        app.add_plugins(StatesPlugin);
         app.add_message::<AppExit>();
         app.init_state::<AppState>();
 

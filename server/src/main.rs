@@ -23,6 +23,7 @@ mod foundation;
 mod network;
 
 use bevy::prelude::*;
+use bevy::state::app::StatesPlugin;
 
 // ---------------------------------------------------------------------------
 // Server-only Resources
@@ -96,6 +97,7 @@ fn main() {
     let mut app = App::new();
 
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(StatesPlugin);
 
     // Asset pipeline — must be added before ConfigPlugin.
     // ADR-004: AssetPlugin default configuration; asset root is assets/.
