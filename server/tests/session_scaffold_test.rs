@@ -125,3 +125,17 @@ fn test_session_config_resource_constructs_directly() {
 
     assert_eq!(config.players().collect::<Vec<_>>(), vec![p1]);
 }
+
+#[test]
+fn test_session_config_players_iterate_in_ascending_player_id_order() {
+    let p1 = player(1);
+    let p2 = player(2);
+    let config = SessionConfig {
+        mode: GameMode::OneVOne,
+        player_count: 2,
+        team_map: HashMap::from([(p2, 1), (p1, 0)]),
+        class_map: HashMap::from([(p2, ClassId::Cra), (p1, ClassId::Iop)]),
+    };
+
+    assert_eq!(config.players().collect::<Vec<_>>(), vec![p1, p2]);
+}

@@ -18,8 +18,10 @@ pub struct SessionConfig {
 }
 
 impl SessionConfig {
-    pub fn players(&self) -> impl Iterator<Item = PlayerId> + '_ {
-        self.team_map.keys().copied()
+    pub fn players(&self) -> impl Iterator<Item = PlayerId> {
+        let mut players = self.team_map.keys().copied().collect::<Vec<_>>();
+        players.sort_by_key(|player| player.0);
+        players.into_iter()
     }
 }
 
