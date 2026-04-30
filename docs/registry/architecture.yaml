@@ -173,6 +173,36 @@ interfaces:
     added: "2026-04-30"
     revised: ""
 
+  - contract: resolution_execution
+    status: active
+    pattern: direct_call
+    producer: rsm-system   # writes BeginResolution message to trigger
+    consumers:
+      - combat-resolution-system   # resolve_combat exclusive system reads BeginResolution
+    adr: docs/architecture/adr-017-combat-resolution-execution-architecture.md
+    signal_signature: "fn resolve_combat(world: &mut World) — single exclusive Bevy system; sole entry point for all RESOLUTION processing; writes ResolutionComplete on exit"
+    referenced_by:
+      - docs/architecture/adr-017-combat-resolution-execution-architecture.md
+      - docs/architecture/adr-009-rsm-phase-state.md
+      - docs/architecture/adr-010-rsm-event-bus.md
+    added: "2026-04-30"
+    revised: ""
+
+  - contract: resolution_event_delivery
+    status: active
+    pattern: event_bus
+    producer: combat-resolution-system
+    consumers:
+      - client-board-rendering   # replays ResolutionLog for animation
+      - client-hud               # reads GoldAwarded, ObjectiveDestroyed events
+    adr: docs/architecture/adr-017-combat-resolution-execution-architecture.md
+    signal_signature: "S2CResolutionEvent { round: u32, events: Vec<ResolutionEvent> } — single Lightyear reliable-broadcast after all 6 sub-steps complete; no per-sub-step streaming"
+    referenced_by:
+      - docs/architecture/adr-017-combat-resolution-execution-architecture.md
+      - docs/architecture/adr-002-client-server-authority.md
+    added: "2026-04-30"
+    revised: ""
+
 # Example:
 #
 # interfaces:
@@ -200,7 +230,17 @@ interfaces:
 # Register a budget when an ADR explicitly claims a frame time allocation.
 # The registry lets /architecture-review verify the total doesn't exceed the target.
 
-performance_budgets: []
+performance_budgets:
+  - system: combat-resolution
+    status: active
+    budget_ms: 15.0
+    platform: Server (Railway dyno)
+    adr: docs/architecture/adr-017-combat-resolution-execution-architecture.md
+    notes: "Single-frame spike during RESOLUTION phase only; clients are non-interactive. Steady-state (between resolutions) < 1 ms. Worst case: contested 5-lane round with 10 units + keywords."
+    referenced_by:
+      - docs/architecture/adr-017-combat-resolution-execution-architecture.md
+    added: "2026-04-30"
+    revised: ""
 
 # Example:
 #
@@ -251,6 +291,18 @@ api_decisions:
     reason: "Shared function prevents dual-ownership while keeping HandState write path consistent. Bevy system scheduler enforces that no two callers hold ResMut<HandState> concurrently — card-acquisition runs in DRAFT, prism runs in RESOLUTION, phases are mutually exclusive."
     referenced_by:
       - docs/architecture/adr-016-prism-system-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
+  - purpose: bevy_vs_lightyear_message_api
+    status: active
+    api: "MessageWriter<T> / MessageReader<T> for Bevy-internal server phase messages (BeginResolution, ResolutionComplete, AuctionPhaseEntered, etc.); MessageSender<T> / MessageReceiver<T> for Lightyear network protocol messages (S2CResolutionEvent, C2SSubmitPlacement, etc.)"
+    not: "Using MessageWriter for Lightyear protocol messages, or MessageSender for Bevy-internal phase messages — these are different crates with different APIs that do not compose"
+    adr: docs/architecture/adr-017-combat-resolution-execution-architecture.md
+    reason: "Bevy 0.16 split Event into Message (buffered, same-process) while Lightyear 0.26 uses its own MessageSender/MessageReceiver over the network transport layer. Conflating the two causes compile errors or silent message loss with no type-system guard."
+    referenced_by:
+      - docs/architecture/adr-017-combat-resolution-execution-architecture.md
+      - docs/architecture/adr-010-rsm-event-bus.md
     added: "2026-04-30"
     revised: ""
 
@@ -312,6 +364,20 @@ forbidden_patterns:
     description: "Only resolve_prism_draws may drain MessageReader<PrismCollected>. No other system may register a MessageReader<PrismCollected>. PrismCollected is a server-internal Bevy Message (not a Lightyear C2S message) — MessageReader<T> and Lightyear's MessageReceiver<T> are distinct APIs and must not be conflated."
     why: "Bevy's MessageReader<T> drains the buffer on read — a second reader in the same Update frame would starve the first. Since resolve_prism_draws is the sole consumer of prism collection events, registering a second reader would silently cause it to see zero events, breaking prism reward delivery with no compile-time error."
     adr: docs/architecture/adr-016-prism-system-architecture.md
+    added: "2026-04-30"
+
+  - pattern: multi_frame_resolution_substeps
+    status: active
+    description: "The 6-step Combat Resolution algorithm must NOT be split across Bevy frames via a ResolutionSubStep state machine. All 6 sub-steps must execute inside a single fn resolve_combat(world: &mut World) exclusive system call."
+    why: "Cross-frame execution allows other Bevy systems to observe intermediate board state between sub-steps (e.g., dead units still present after sub-step 3 damage but before sub-step 4 removal). It also complicates the RSM's 60-second safety timeout, which monitors a single ResolutionComplete message — not per-sub-step heartbeats."
+    adr: docs/architecture/adr-017-combat-resolution-execution-architecture.md
+    added: "2026-04-30"
+
+  - pattern: per_substep_resolution_streaming
+    status: active
+    description: "S2CResolutionEvent must NOT be sent as a stream of per-sub-step partial messages. A single batch message is sent after all 6 sub-steps complete."
+    why: "The server completes all 6 sub-steps in ≤ 15 ms (one Bevy frame). Streaming messages would arrive in the same Lightyear batch — no latency benefit — while requiring clients to apply partial board mutations mid-resolution, complicating ClientState and the reconnect snapshot path."
+    adr: docs/architecture/adr-017-combat-resolution-execution-architecture.md
     added: "2026-04-30"
 
 # Example:
