@@ -450,3 +450,11 @@ C:\Program Files\GitHub CLI\gh.exe
 - Top required ADRs: ADR-019 (Economy Resource), ADR-020 (Presentation Layer), ADR-006 amendment, ADR-005 amendment
 - Report: docs/architecture/architecture-review-2026-04-30b.md
 - Traceability index updated: docs/architecture/architecture-traceability.md
+
+## Session Extract - /story-done 2026-04-30
+- Verdict: COMPLETE
+- Story: `production/epics/game-config-pipeline/story-003-startup-validation-gate.md` - Startup Validation Gate
+- Criteria: 22/22 passing; validation tests mapped in `tests/unit/foundation/game_config_validation_test.rs` and embedded in `server/src/foundation/config.rs`
+- Verification: CI green on main run `25176947506`; local `cargo test -p server game_config` attempted from normal PowerShell but failed before story tests due Windows resource/toolchain metadata errors
+- Tech debt logged: None
+- Next recommended: S2-09 Server & Client Network Plugins is in progress; after it completes, S2-10 E2E WebSocket Round-Trip is blocked on S2-09 completion
