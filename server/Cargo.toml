@@ -36,3 +36,7 @@ path = "src/main.rs"
 [[test]]
 name = "e2e_websocket_test"
 path = "../tests/integration/network/e2e_websocket_test.rs"
+
+[[test]]
+name = "auction_state_scaffold_test"
+path = "../tests/unit/auction/auction_state_scaffold_test.rs"

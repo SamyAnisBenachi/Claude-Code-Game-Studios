@@ -467,3 +467,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Verification: CI green on main run `25176947506`; local `cargo test -p server game_config` attempted from normal PowerShell but failed before story tests due Windows resource/toolchain metadata errors
 - Tech debt logged: None
 - Next recommended: S2-09 Server & Client Network Plugins is in progress; after it completes, S2-10 E2E WebSocket Round-Trip is blocked on S2-09 completion
+
+## Session Extract - /dev-story 2026-04-30
+- Story: `production/epics/auction-system/story-001-auction-state-scaffold.md` - AuctionState Types & Snapshot Scaffold
+- Owner: `claude-auc-001-auction-state`
+- Files changed: `server/src/feature/auction/state.rs`, `server/src/feature/auction/snapshot.rs`, `server/src/feature/auction/mod.rs`, `server/src/feature/mod.rs`, `server/src/lib.rs`, `server/Cargo.toml`, `tests/unit/auction/auction_state_scaffold_test.rs`, `production/sprint-status.yaml`
+- Test written: `tests/unit/auction/auction_state_scaffold_test.rs` (7 executable tests; Cargo-wired as `auction_state_scaffold_test`)
+- Verification: Visual Studio developer environment via `VsDevCmd.bat`, `cargo test -p server --test auction_state_scaffold_test` -> 7 passed; `rustfmt --check` passed for AUC-001 files. Workspace `cargo fmt --check` is blocked by unrelated formatting drift in `server/src/core/rsm/transitions.rs`, `server/src/lobby/handler.rs`, and `server/src/network/mod.rs`.
+- Notes: Snapshot scaffold follows current `network-protocol.md` by carrying `starting_price` in addition to ADR-013's original fields.
+- Blockers: None
+- Next: `/code-review server/src/feature/auction/state.rs server/src/feature/auction/snapshot.rs tests/unit/auction/auction_state_scaffold_test.rs` then `/story-done production/epics/auction-system/story-001-auction-state-scaffold.md` after CI green

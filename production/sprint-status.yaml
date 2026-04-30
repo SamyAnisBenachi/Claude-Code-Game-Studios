@@ -108,3 +108,13 @@ stories:
     estimate_days: 1.0
     blocker: ""
     completed: ""
+
+  - id: "AUC-001"
+    name: "AuctionState Types & Snapshot Scaffold"
+    file: "production/epics/auction-system/story-001-auction-state-scaffold.md"
+    priority: must-have
+    status: in-progress
+    owner: "claude-auc-001-auction-state"
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""

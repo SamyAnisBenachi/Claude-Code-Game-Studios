@@ -4,5 +4,6 @@
 // remains in main.rs.
 
 pub mod core;
+pub mod feature;
 pub mod foundation;
 pub mod network;
