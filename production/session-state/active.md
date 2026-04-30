@@ -325,3 +325,11 @@ C:\Program Files\GitHub CLI\gh.exe
 - Resolved this cycle: C-B1 (S2CResolutionEvent variants), C-B3 partial (AcquisitionSource rename — variants still incomplete), C-W1
 - Recommended next: address 9 blockers per file table in report (single registry pass closes 4 at once); /design-review re-runs for class-system, hand-ui, auction-system after fixes
 - Report: design/gdd/gdd-cross-review-2026-04-30-r7.md
+
+## Session Extract - /dev-story 2026-04-30
+- Story: `production/epics/card-data-pool/story-002-weighted-draw-functions.md` - Weighted Draw Functions
+- Files changed: `server/src/core/pool/api.rs`, `tests/unit/pool/weighted_draw_test.rs`
+- Test written: embedded tests in `server/src/core/pool/api.rs` (11 S2-03 tests), evidence mapping at `tests/unit/pool/weighted_draw_test.rs`
+- Verification: CI green on run 25161381682 for commit `013f204`
+- Blockers: local `cargo test -p server weighted_draw --verbose` blocked by Windows/MSVC build-script failures before server tests ran; CI passed
+- Next: S2-04 Card Pool Story 3: Refresh Shop Slot Variants is unblocked once sprint tracker is read fresh

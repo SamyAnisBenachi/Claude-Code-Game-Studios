@@ -33,11 +33,11 @@ stories:
     name: "Card Pool Story 2: Weighted Draw Functions"
     file: "production/epics/card-data-pool/story-002-weighted-draw-functions.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-04-30"
 
   - id: "S2-04"
     name: "Card Pool Story 3: Refresh Shop Slot Variants"

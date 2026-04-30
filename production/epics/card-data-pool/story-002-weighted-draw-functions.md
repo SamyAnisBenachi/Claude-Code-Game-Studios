@@ -1,7 +1,7 @@
 # Story 002: Weighted Draw Functions
 
 > **Epic**: Card Data & Pool
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -168,7 +168,7 @@ Expose a `pub(crate) fn compute_weights(eligible: &[CardId], pool: &PlayerPool, 
 **Required evidence**:
 - `tests/unit/pool/weighted_draw_test.rs` — must exist and all tests must pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created
 
 ---
 
@@ -176,3 +176,10 @@ Expose a `pub(crate) fn compute_weights(eligible: &[CardId], pool: &PlayerPool, 
 
 - Depends on: Story 001 (Pool State + Core API) must be **DONE** — `PlayerPool`, `distribute()`, `total_acquired()` required
 - Unlocks: Story 003 (refresh_shop needs the draw functions)
+
+## Completion Notes
+**Completed**: 2026-04-30
+**Criteria**: 11/11 passing in CI
+**Deviations**: None. `compute_weights()` returns `ComputedWeight` entries so Formula 2 tests can assert both raw and normalized weights deterministically.
+**Test Evidence**: Logic â€” embedded tests in `server/src/core/pool/api.rs`; evidence mapping at `tests/unit/pool/weighted_draw_test.rs`; CI green on run 25161381682.
+**Implementation Commit**: `013f204` â€” `S2-03 impl: card pool weighted draws`
