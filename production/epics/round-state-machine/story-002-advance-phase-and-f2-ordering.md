@@ -32,22 +32,22 @@
 
 ## Acceptance Criteria
 
-- [ ] `server/src/core/rsm/transitions.rs` defines `advance_phase` as a Bevy system taking `ResMut<RoundState>` and `MessageWriter<T>` params for all 7 outbound message types
-- [ ] `advance_phase` contains exactly 7 match arms covering all source phases: `Lobby`, `DraftInitial`, `DraftAuction`, `DraftShop`, `Placement`, `Resolution`, `GameOver`
-- [ ] Each match arm begins with a double-transition guard: `if rsm.phase != [expected_source] { return; }` — the second of two simultaneous triggers finds the phase already changed and silently no-ops (RSM-31, RSM-34)
-- [ ] `GameOver` match arm is a no-op terminal: sets nothing, emits nothing, returns immediately
-- [ ] DRAFT entry arms (from `DraftInitial`, `DraftAuction` → `DraftShop`, `Resolution` → `DraftAuction` or `DraftShop`) emit events in strict F2 order: (1) `DraftStarted`, (2) `ShopRefreshNeeded` once per player, (3) `AuctionPhaseEntered` if and only if entering `DraftAuction`, (4) `BroadcastPhaseChanged` last
-- [ ] `PLACEMENT` entry arm emits: (1) `PlacementPhaseEntered`, (2) `BroadcastPhaseChanged` last; resets `submissions_received` to empty set
-- [ ] `RESOLUTION` entry arm emits: (1) `ResolutionPhaseEntered`, (2) `BroadcastPhaseChanged` last
-- [ ] `GAME_OVER` entry arm emits: (1) `GameOverEmitted { reason, loser }`, (2) `BroadcastPhaseChanged { timer_ms: 0 }` last
-- [ ] `round_number` increments on any RESOLUTION → DRAFT_* transition, before `DraftStarted` is emitted; `DraftStarted.round` carries the incremented value (RSM-2, RSM-33)
-- [ ] `round_number` is set to 1 on LOBBY → `DraftInitial` transition (handled by `on_session_ready` in Story 003 — `advance_phase` match arm for `DraftInitial` entry assumes `round_number` is already 1)
-- [ ] `is_auction_round(R)` helper function defined: returns `true` if `R % 3 == 0`; RESOLUTION exit checks this to determine whether next DRAFT phase is `DraftAuction` or `DraftShop` (RSM-33: `round_number == 0` is unreachable at any `is_auction_round` call site because `round_number` is set to 1 before first DRAFT_INITIAL entry)
-- [ ] `BroadcastPhaseChanged` emitted for DRAFT_AUCTION has `timer_ms = 0` (Auction System drives its own countdown; RSM does not own DRAFT_AUCTION timer)
-- [ ] `BroadcastPhaseChanged` for GAME_OVER and LOBBY phases has `timer_ms = 0`
-- [ ] CI grep gate: `grep -r "ResMut<RoundState>" server/src/ | grep -v transitions.rs` returns zero matches
-- [ ] CI grep gate: `grep -rE "EventWriter|EventReader|Events<|add_event" server/src/core/rsm/` returns zero matches
-- [ ] `tests/unit/rsm/rsm_transitions_test.rs` passes all tests listed in the QA Test Cases section (RSM-1 through RSM-12, RSM-31, RSM-32, RSM-33)
+- [x] `server/src/core/rsm/transitions.rs` defines `advance_phase` as a Bevy system taking `ResMut<RoundState>` and `MessageWriter<T>` params for all 7 outbound message types
+- [x] `advance_phase` contains exactly 7 match arms covering all source phases: `Lobby`, `DraftInitial`, `DraftAuction`, `DraftShop`, `Placement`, `Resolution`, `GameOver`
+- [x] Each match arm begins with a double-transition guard: `if rsm.phase != [expected_source] { return; }` — the second of two simultaneous triggers finds the phase already changed and silently no-ops (RSM-31, RSM-34)
+- [x] `GameOver` match arm is a no-op terminal: sets nothing, emits nothing, returns immediately
+- [x] DRAFT entry arms (from `DraftInitial`, `DraftAuction` → `DraftShop`, `Resolution` → `DraftAuction` or `DraftShop`) emit events in strict F2 order: (1) `DraftStarted`, (2) `ShopRefreshNeeded` once per player, (3) `AuctionPhaseEntered` if and only if entering `DraftAuction`, (4) `BroadcastPhaseChanged` last
+- [x] `PLACEMENT` entry arm emits: (1) `PlacementPhaseEntered`, (2) `BroadcastPhaseChanged` last; resets `submissions_received` to empty set
+- [x] `RESOLUTION` entry arm emits: (1) `ResolutionPhaseEntered`, (2) `BroadcastPhaseChanged` last
+- [x] `GAME_OVER` entry arm emits: (1) `GameOverEmitted { reason, loser }`, (2) `BroadcastPhaseChanged { timer_ms: 0 }` last
+- [x] `round_number` increments on any RESOLUTION → DRAFT_* transition, before `DraftStarted` is emitted; `DraftStarted.round` carries the incremented value (RSM-2, RSM-33)
+- [x] `round_number` is set to 1 on LOBBY → `DraftInitial` transition (handled by `on_session_ready` in Story 003 — `advance_phase` match arm for `DraftInitial` entry assumes `round_number` is already 1)
+- [x] `is_auction_round(R)` helper function defined: returns `true` if `R % 3 == 0`; RESOLUTION exit checks this to determine whether next DRAFT phase is `DraftAuction` or `DraftShop` (RSM-33: `round_number == 0` is unreachable at any `is_auction_round` call site because `round_number` is set to 1 before first DRAFT_INITIAL entry)
+- [x] `BroadcastPhaseChanged` emitted for DRAFT_AUCTION has `timer_ms = 0` (Auction System drives its own countdown; RSM does not own DRAFT_AUCTION timer)
+- [x] `BroadcastPhaseChanged` for GAME_OVER and LOBBY phases has `timer_ms = 0`
+- [x] CI grep gate: `grep -r "ResMut<RoundState>" server/src/ | grep -v transitions.rs` returns zero matches
+- [x] CI grep gate: `grep -rE "EventWriter|EventReader|Events<|add_event" server/src/core/rsm/` returns zero matches
+- [x] `tests/unit/rsm/rsm_transitions_test.rs` passes all tests listed in the QA Test Cases section (RSM-1 through RSM-12, RSM-31, RSM-32, RSM-33)
 
 ---
 
