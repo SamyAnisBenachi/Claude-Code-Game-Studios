@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-04-30
 **Engine:** Bevy 0.18 + Lightyear 0.26
-**Layer in progress:** Feature (M1)
+**Layer in progress:** Feature (M1 + M2)
 
 | Epic | Layer | Architecture Module | GDD(s) | Stories | Status |
 |------|-------|---------------------|--------|---------|--------|
@@ -16,6 +16,7 @@
 | [card-data-pool](card-data-pool/EPIC.md) | Core | `server/core/pool/` | card-data-pool | TBD — see hint | Ready |
 | [board-lane-system](board-lane-system/EPIC.md) | Feature (M1) | `server/feature/board/` | board-lane-system | TBD | Ready |
 | [objective-system](objective-system/EPIC.md) | Feature (M1) | `server/feature/objective/` | objective-system | TBD | Ready |
+| [auction-system](auction-system/EPIC.md) | Feature (M2) | `server/feature/auction/` | auction-system | Not yet created | Ready |
 
 > ⭐ Sprint 1 Story 1.0 = `lightyear-protocol-verification` Story 001 (Lightyear 0.26 verification spike)
 
@@ -42,7 +43,7 @@
 | Foundation | **Stories complete — ready for sprint planning** | Pre-Production → Production gate requires Foundation + Core epics |
 | Core | **EPIC files written 2026-04-29 — run `/create-stories` per epic next** | Story authoring next; sprint planning after |
 | Feature (M1) | **EPIC files written 2026-04-30 — run `/create-stories` per epic next** | Board/Lane + Objective epics ready; M2/M3 epics paused pending ADRs |
-| Feature (M2) | Not started — write ADRs for Auction System, Combat Resolution, Card Acquisition first | Run `/architecture-decision` per system, then `/create-epics layer:feature` |
+| Feature (M2) | **auction-system EPIC written 2026-04-30** — run `/create-stories auction-system` next; Combat Resolution, Card Acquisition, Presentation epics pending ADRs | ADR-013 ✅; remaining M2 ADRs needed before remaining epics |
 | Feature (M3) | Not started — write ADRs for Keyword, Prism, Class first | Same as M2 |
 | Presentation | Not started | — |
 

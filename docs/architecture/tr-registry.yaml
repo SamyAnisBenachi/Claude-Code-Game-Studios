@@ -790,12 +790,107 @@ requirements:
     revised: ""
     status: active
 
-  # ─── M2/M3 SYSTEMS — ADRs NOT YET AUTHORED ────────────────────────────────
-  # TRs for M2/M3 GDDs will be added when their governing ADRs are written.
+  # ─── Auction System (TR-AUC) ──────────────────────────────────────────────
+  # GDD: design/gdd/auction-system.md
+  # ADR coverage: ADR-013 (state machine, bid processing, timer, settlement, snapshot)
+  # Registered: 2026-04-30 (as part of /create-epics auction-system)
+
+  - id: TR-AUC-001
+    system: auction-system
+    gdd: design/gdd/auction-system.md
+    gdd_ac_ids: [AU1-a, AU23]
+    requirement: "AuctionState resource starts in Idle; AuctionPhaseEntered triggers SELECTING→LIVE_BIDDING; duplicate AuctionPhaseEntered in non-Idle state is silently discarded with server error log — no state change"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-AUC-002
+    system: auction-system
+    gdd: design/gdd/auction-system.md
+    gdd_ac_ids: [AU1-b-server, AU1-b-network]
+    requirement: "S2CAuctionCard is enqueued in the outbound message queue before S2CPhaseChanged(DRAFT_AUCTION); AU1-b-server testable with World::new(); AU1-b-network blocked on ADR-008 Lightyear FIFO integration test"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-AUC-003
+    system: auction-system
+    gdd: design/gdd/auction-system.md
+    gdd_ac_ids: [AU2, AU3, AU12, AU16, AU17]
+    requirement: "C2SAuctionBid accepted only when all 5 conditions pass (LIVE_BIDDING + timer > 0, amount >= current_price + 1, bidder != current_leader, gold - reserved_gold >= amount, hand_size < 10); rejection unicasts S2CAuctionBidRejected with specific BidRejectedReason variant"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-AUC-004
+    system: auction-system
+    gdd: design/gdd/auction-system.md
+    gdd_ac_ids: [AU4, AU20, M7-a, M7-c]
+    requirement: "release_gold_reservation(prev_leader) executes before reserve_gold(new_leader, amount) within a single system body with no system boundary between them; at no observable ECS checkpoint do two players simultaneously hold non-zero reserved_gold; S2CGoldBroadcast includes reserved_gold for both affected players on each bid"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-AUC-005
+    system: auction-system
+    gdd: design/gdd/auction-system.md
+    gdd_ac_ids: [AU5, AU6, AU22]
+    requirement: "Timer reset Formula 3: timer_remaining_ms = min(remaining + auction_timer_reset_seconds * 1000, auction_timer_seconds * 1000) on accepted bid; tick delta clamped to 1000ms max before saturating_sub; bid drain loop executes before timer decrement within auction_tick_system"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-AUC-006
+    system: auction-system
+    gdd: design/gdd/auction-system.md
+    gdd_ac_ids: [AU7-a, AU7-b, AU8]
+    requirement: "Case A resolution: spend_reserved_gold zeroes reserved_gold and deducts gold; card added to hand if hand_size < 10 with S2CCardAcquired unicast; S2CAuctionSettled{winner: Some} broadcast; AuctionSettled Bevy Message written. Case B: no gold changes; S2CAuctionSettled{winner: None, amount: 0}; AuctionSettled Bevy Message written"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-AUC-007
+    system: auction-system
+    gdd: design/gdd/auction-system.md
+    gdd_ac_ids: [AU8-pool, AU15, AU21]
+    requirement: "draw_auction_card() called at SELECTING entry; distribute() called unconditionally at draw time (card permanently consumed regardless of auction outcome); pool-empty guard fires AuctionSettled{winner:None} immediately without S2CAuctionCard; Legendary cards filtered from draw if round_number < legendary_pool_entry_round"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-AUC-008
+    system: auction-system
+    gdd: design/gdd/auction-system.md
+    gdd_ac_ids: [AU9, AU19-a, AU19-b]
+    requirement: "AbortAuction from RSM: release reservation if current_leader != None, return to IDLE, do NOT write AuctionSettled; RESOLVING is uninterruptible — AbortAuction arriving during RESOLVING is a no-op (settlement completes normally)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-AUC-009
+    system: auction-system
+    gdd: design/gdd/auction-system.md
+    gdd_ac_ids: [AU10]
+    requirement: "auction_snapshot() is a pure function on &AuctionState; returns None exactly when phase == AuctionPhase::Idle; last_accepted_bid == 0 when no bids placed (0 is the sentinel — not starting_price); reconnect snapshot system scheduled before auction_tick_system"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-AUC-010
+    system: auction-system
+    gdd: design/gdd/auction-system.md
+    gdd_ac_ids: [AU13, AU14, AU18]
+    requirement: "Same-tick duplicate bids: first received accepted, second rejected AmountTooLow; stale C2SAuctionBid after S2CAuctionSettled dispatched: silently discarded, no S2CAuctionBidRejected; reserved_gold == 0 for all players at every SELECTING entry"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── M2/M3 REMAINING SYSTEMS — ADRs PENDING ───────────────────────────────
+  # TRs for remaining M2/M3 GDDs will be added when their governing ADRs are written.
   # See docs/architecture/architecture-review-2026-04-30.md §Phase 3 for
-  # the full gap list and required ADR titles (ADR-013 through ADR-022).
+  # the full gap list and required ADR titles.
   #
   # Systems pending TR registration:
-  #   M2: auction-system, combat-resolution, card-acquisition
+  #   M2: combat-resolution, card-acquisition
   #       board-rendering, hand-ui, shop-auction-ui, hud
   #   M3: keyword-system, prism-system, class-system, card-animations
