@@ -1,6 +1,6 @@
 # Card Animations
 
-> **Status**: In Review (Pass 3 — pending re-review)
+> **Status**: In Review (Pass 4 — resolved in-session, pending re-review)
 > **Author**: Sam + design-system skill
 > **Last Updated**: 2026-04-30
 > **Implements Pillar**: No idle spectating · Simple surface (animations as silent tutorial)
@@ -404,6 +404,14 @@ The `damage_number_despawn` formula is defined as:
 
 ---
 
+**F3 — Damage number position jitter** *(BLOCKED — pending OQ-CA-11)*
+
+`offset_px = jitter_table[event_id % jitter_table_len]`
+
+Provides deterministic position offset for damage numbers when two simultaneous hits target the same unit in one sub-step. Prevents number stacking at identical world positions without client-side RNG. `jitter_table` is a static table of `Vec2` offsets; `jitter_table_len` and table contents are undefined pending OQ-CA-11. Placeholder: e.g., 8-entry table, `jitter_table_len = 8`. **Must resolve before damage number spawn stories are implemented** — CA-25 is blocked on this.
+
+---
+
 **Cross-references (not redefined here):**
 
 - **Health bar fill fraction** → defined in `board-rendering.md § F2 (health_bar_fill)`. `TransformScaleXLens` reads this value as the tween target; Card Animations does not own the formula.
@@ -607,7 +615,7 @@ Edge Cases §6 references `event_id % jitter_table_len` for deterministic damage
 The `ResolutionExecuting` drain system should run only during `BoardRenderState::ResolutionExecuting` to avoid unnecessary per-frame polls during DRAFT and PLACEMENT phases. Confirm the correct Bevy 0.18 pattern for run conditions (`.run_if(in_state(BoardRenderState::ResolutionExecuting))`) and add it to the system registration in `CardAnimationsPlugin::build()`.
 
 **OQ-CA-10 — Bevy 0.18 `Sprite` and `BackgroundColor` alpha API verification** *(Owner: gameplay-programmer)*
-`SpriteAlphaLens` calls `sprite.color.set_alpha(value)` and `SpriteColorLens` writes to `sprite.color`. `BackgroundColorAlphaLens` calls `background_color.0.set_alpha(value)`. In Bevy 0.14 these paths were valid; in 0.15–0.18 the `Color` type was overhauled and alpha access may require a different path (e.g., `sprite.color.to_linear().alpha` or a `LinearRgba` accessor). If the API is `with_alpha()` style (returns new value), the lens implementation must use assignment (`sprite.color = sprite.color.with_alpha(value)`) rather than in-place mutation. Confirm: (a) `Sprite.color` field name and type in 0.18, (b) `set_alpha()` method availability or `with_alpha()` alternative, (c) `BackgroundColor` struct layout (still a `Color` newtype?). **Must resolve before any lens implementation — same priority as OQ-CA-05.**
+`SpriteAlphaLens` calls `sprite.color.set_alpha(value)` and `SpriteColorLens` writes to `sprite.color`. `BackgroundColorAlphaLens` calls `background_color.0.set_alpha(value)`. In Bevy 0.14 these paths were valid; in 0.15–0.18 the `Color` type was overhauled and alpha access may require a different path (e.g., `sprite.color.to_linear().alpha` or a `LinearRgba` accessor). If the API is `with_alpha()` style (returns new value), the lens implementation must use assignment (`sprite.color = sprite.color.with_alpha(value)`) rather than in-place mutation. Confirm: (a) `Sprite.color` field name and type in 0.18, (b) `set_alpha()` method availability or `with_alpha()` alternative, (c) `BackgroundColor` struct layout (still a `Color` newtype with `.0` accessor, or refactored to named fields e.g. `BackgroundColor { color: Color }`? If refactored, `background_color.0.set_alpha(value)` is a compile error). **Must resolve before any lens implementation — same priority as OQ-CA-05.**
 
 **OQ-CA-13 — Settlement overlay audio ownership** *(Owner: audio-director + shop-auction-ui.md)* **⚠️ BLOCKING PRE-IMPLEMENTATION GATE — the settlement story cannot enter sprint until all three sub-questions are resolved:**
 (a) **Trigger owner** — who fires the audio cue? Shop/Auction UI is the likely owner since it knows the win/loss outcome from `S2CAuctionSettled.winner`.

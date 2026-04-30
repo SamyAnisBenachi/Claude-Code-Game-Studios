@@ -30,6 +30,7 @@ The other moment this system owns: buying nothing. You close DRAFT_SHOP with you
 ### Core Rules
 
 **DRAFT_INITIAL Panel**
+*(Ownership: this GDD owns the 3×3 grid slot entities and rendering. Hand UI GDD owns fan animation on card acquisition confirmation.)*
 
 **Rule 1 — Activation.** Panel activation requires **both** `S2CPhaseChanged(DRAFT_INITIAL)` and `S2CDraftOffering { card_ids }`. The client buffers whichever arrives first and activates only when both are present (same pattern as DRAFT_AUCTION Rule 1 — cross-type FIFO ordering is not assumed). Timer initialization requires `S2CPhaseChanged { timer_duration_ms }` — the panel must not activate on `S2CDraftOffering` alone. Before both messages arrive, the panel is blank. The panel header reads permanently: **"DRAFT OFFERING — ONE TIME ONLY · NO REFRESH"**. On a player's first session, a dismissible callout tooltip appears **above the 3×3 grid** (anchored to the panel header, not overlaid on card slots — must not occlude card art): *"These 9 cards are your only offering. No refresh. 5g to spend."* Dismiss mechanic: click anywhere outside the tooltip box (or a dedicated "Got it" button if the UX spec requires one). The tooltip must not occlude any card slot — if the player must dismiss before they can read the cards, the tutorial defeats the decision. Tooltip disappears on first explicit dismiss and does not reappear. Exact anchor point and dismiss UX deferred to UX spec (see OQ2). No disabled refresh button exists — the affordance is absent, not locked, to avoid teaching the wrong mental model.
 
@@ -149,8 +150,8 @@ First, revert any "BIDDING..." label on a clicked button back to its total-commi
 
 | Case | Animation | Transition |
 |---|---|---|
-| `winner == local_player` | Card art animates to hand area; gold counter animates down; "YOU WON" overlay 1.5s | Auction panel slides DOWN · shop footer EXPANDS UPWARD · 350ms |
-| `winner == opponent` | "OPPONENT WON" overlay 1.5s | Same transition |
+| `winner == local_player` | Card art animates to hand area; gold counter animates down; "YOU WON" overlay **400ms** (cut from 1.5s — see card-animations.md OQ-CA-07 resolution) | Auction panel slides DOWN · shop footer EXPANDS UPWARD · 350ms |
+| `winner == opponent` | "OPPONENT WON" overlay **400ms** | Same transition |
 | `winner == None` (no bids) | Card art fades out; "NO BIDS — CARD LOST" overlay 1.0s | Same transition |
 
 DRAFT_SHOP timer starts when the panel expansion animation completes, not during the transition.
@@ -552,8 +553,8 @@ Horizontal pill, full panel width, 12px tall (1080p ref), 6px rounded ends, 1px 
 
 | Case | Visual treatment | Duration |
 |---|---|---|
-| YOU WON | Arcane Gold overlay (85% opacity); "YOU WON" Heavy 3× Ink Blue with Prism White stroke; card art arcs to hand tray | 1.5s |
-| OPPONENT WON | Ink Blue overlay (75% opacity); "OPPONENT WON" Heavy 2.5× Ivory | 1.5s |
+| YOU WON | Arcane Gold overlay (85% opacity); "YOU WON" Heavy 3× Ink Blue with Prism White stroke; card art arcs to hand tray | **400ms** |
+| OPPONENT WON | Ink Blue overlay (75% opacity); "OPPONENT WON" Heavy 2.5× Ivory | **400ms** |
 | NO BIDS — CARD LOST | Panel desaturates to grayscale over 200ms; "NO BIDS" Heavy 2.5× + "CARD LOST" Regular 1.25× Ivory; card art fades to 0 over 400ms | 1.0s |
 
 ---
@@ -721,7 +722,7 @@ All BLOCKING criteria require an automated test in `tests/unit/shop_auction_ui/`
 | SAU-DS8 | **GIVEN** DRAFT_SHOP refresh button is clicked, **WHEN** the click handler returns, **THEN** the refresh button is disabled in the same frame (before any subsequent click event can fire) AND exactly one `C2SRefreshShop` is sent | BLOCKING |
 | SAU-DI10 | **GIVEN** DRAFT_INITIAL, valid purchase click sent, **WHEN** `S2CCardAcquired` + `S2CGoldUpdate` arrive, **THEN** the purchased slot entity has `slot_state == SlotState::Purchased` (or equivalent) AND the "BOUGHT" overlay is rendered on that slot | BLOCKING (state); ADVISORY (overlay visual) |
 | SAU-SET1a | **GIVEN** `S2CAuctionSettled { winner: local_player, amount: 5 }` arrives, **WHEN** settlement processes, **THEN** `panel_state == AuctionPanelState::Settling` AND a card-acquired event targeting the hand area is fired (e.g., `CardAcquiredByLocalPlayer` or equivalent). Note: inject `S2CGoldUpdate` separately to verify gold decrease — the gold assertion requires a second message. | BLOCKING |
-| SAU-SET1b | **GIVEN** SAU-SET1a state, **WHEN** rendered, **THEN** card art visually arcs to hand tray area over the 1.5s settlement overlay period | ADVISORY |
+| SAU-SET1b | **GIVEN** SAU-SET1a state, **WHEN** rendered, **THEN** card art visually arcs to hand tray area over the 400ms settlement overlay period | ADVISORY |
 | SAU-SET2 | **GIVEN** `S2CAuctionSettled { winner: opponent, amount: 5 }` arrives, **WHEN** settlement processes, **THEN** `panel_state == AuctionPanelState::Settling` AND no card entity moves toward the local player's hand | BLOCKING |
 | SAU-SET3 | **GIVEN** `S2CAuctionSettled { winner: None, amount: 0 }` (no bids), **WHEN** settlement processes, **THEN** `panel_state == AuctionPanelState::Settling` AND no gold change for either player | BLOCKING |
 | SAU-EG5 | **GIVEN** panel is in `AUCTION_PREPARING` state AND `S2CPhaseChanged(GAME_OVER)` arrives, **WHEN** the phase change is processed, **THEN** `panel_phase == INACTIVE` (buffer cleared; preparing panel dismissed) AND `S2CPhaseChanged(GAME_OVER)` is processed normally | BLOCKING |

@@ -1,5 +1,12 @@
 # Review Log — Card Animations
 
+## Review — 2026-04-30 (Pass 4) — Verdict: NEEDS REVISION → resolved in-session
+Scope signal: L
+Specialists: game-designer · systems-designer · qa-lead · gameplay-programmer · audio-director · ux-designer · network-programmer · creative-director (senior synthesis)
+Blocking items: 11 | Significant: 9 | Advisory: 14+
+Summary: Pass 4 surfaced 11 blockers across 7 specialist domains. The settlement overlay's D1 reframing (accepted in Pass 3) was rejected as circular reasoning: mental-state transition is not information delivery, and the overlay fails D2. Cut to 400ms. Three critical architectural issues discovered: F2 Tuning Knobs safe-range column was wrong at sub-step minimum (context-dependent, not a fixed 549ms ceiling); F1+GAME_OVER stagger sequence had an unhandled interleaving (Board Rendering now polls StagedObjectiveRevealQueue.is_empty() before GAME_OVER transition); and Rule C-13's hover invariant contradicted CA-24's 2-entity Playing assertion (restated to "scaling toward 1.12× only"). CA-5a was vacuous (1-group queue, 0 always equals 0); CA-5c was untestable against MessageReader (messages don't persist across update() calls); OQ-CA-13 settlement audio promoted to BLOCKING. All 11 blockers resolved in-session. 5 significant items also fixed (ResolutionObjectiveReveal build spec, StagedObjectiveRevealQueue u8 type, F3 stub, BackgroundColor OQ-CA-10 extension, CA-14 reclassification). GAME_OVER 599ms compromise tagged PRE-LAUNCH BLOCKING.
+Prior verdict resolved: Yes — Pass 3 (2026-04-30) NEEDS REVISION resolved
+
 ## Review — 2026-04-30 (Pass 3) — Verdict: NEEDS REVISION → resolved in-session
 Scope signal: L
 Specialists: game-designer · systems-designer · qa-lead · gameplay-programmer · audio-director · ux-designer · network-programmer · creative-director (senior synthesis)
