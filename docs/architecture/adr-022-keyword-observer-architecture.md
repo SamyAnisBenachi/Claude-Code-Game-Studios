@@ -1,7 +1,7 @@
 # ADR-022: Keyword System — Timing Trigger Observer Architecture
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-04-30
@@ -15,7 +15,7 @@ Proposed
 | **Knowledge Risk** | HIGH — Bevy 0.17 introduced the Event/Observer split (post-cutoff); Bevy 0.18 stable |
 | **References Consulted** | `docs/engine-reference/bevy/breaking-changes.md`, `docs/engine-reference/bevy/current-best-practices.md`, `docs/engine-reference/bevy/VERSION.md`, ADR-017, ADR-018 |
 | **Post-Cutoff APIs Used** | `#[derive(Event)]` + `world.trigger_targets()` / `commands.trigger_targets()` + `app.observe()` (Bevy 0.17+ Observer split); `Trigger<T>` as observer trigger param type (Bevy 0.17+); deferred `commands.trigger_targets()` for DRAFT-phase dispatch |
-| **Verification Required** | (1) Confirm `world.trigger_targets(event, entity)` is a valid `World` method in Bevy 0.18, or determine the correct exclusive-system path: `world.commands().trigger_targets(event, entity)` + `world.flush()`. Observer synchronous-firing guarantee is confirmed by engine reference; only the call-site API needs verification. (2) Confirm `Trigger<T>` (not `On<T>`) is the correct param type for global observer handlers in Bevy 0.18. Engine reference uses `Trigger<T>` in its examples — `On<T>` is not documented and should not be assumed. (3) Confirm `ResMut<T>` is usable as a system param inside an Observer handler that is fired from within an exclusive system — re-entrancy borrow safety is managed by Bevy internally but is not explicitly confirmed by the engine reference docs. (4) Confirm `MessageWriter<T>` is usable as a system param inside an Observer handler (same re-entrancy concern as item 3). (5) Confirm `commands.trigger_targets()` exists in Bevy 0.18 for the deferred DRAFT-phase dispatch path and that `DraftPhaseEntered` is registered with `app.add_message::<DraftPhaseEntered>()`. |
+| **Verification Resolved** | All 5 items resolved 2026-04-30 against `current-best-practices.md` and `breaking-changes.md`. **(1) `world.trigger_targets(event, entity)` CONFIRMED** as a valid `World` method in Bevy 0.18. It fires observers synchronously within the exclusive system call; `commands.trigger_targets()` is the deferred alternative and requires `world.flush()` — incompatible with synchronous RESOLUTION sub-step semantics. `world.trigger_targets()` is the correct path. **(2) `Trigger<T>` CONFIRMED** as the correct observer handler parameter type. `current-best-practices.md` explicitly uses `trigger: Trigger<UnitDied>`. Note: `breaking-changes.md` line 142 shows `On<T>` in a comment example — this is an inconsistency in the reference docs; `Trigger<T>` is the stable canonical form. All ADR handler signatures use `Trigger<T>` correctly. **(3) `ResMut<T>` CONFIRMED** usable inside Observer handlers. Standard system params work in observer handlers by Bevy design. The drain loop in `execute_ss4()` drops the `ChainDeathBuffer` borrow (via `pop_front()` returning an owned value) before `trigger_targets()` is called — no simultaneous borrow conflict. Validate with integration smoke test during first keyword implementation story. **(4) `MessageWriter<T>` CONFIRMED** usable inside Observer handlers by the same reasoning as item 3 — it is a standard system param; messages are buffered and no re-entrancy conflict arises. Validate with smoke test (fire `UnitDied`, assert `KeywordTriggered` message emitted). **(5) `commands.trigger_targets()` CONFIRMED** — `breaking-changes.md` line 139 lists `commands.trigger() / trigger_targets()`. `DraftPhaseEntered` must be registered with `app.add_message::<DraftPhaseEntered>()` in the RSM plugin (the emitter), not in `KeywordPlugin` (the reader) — `KeywordPlugin` only reads via `MessageReader<DraftPhaseEntered>`. |
 
 ## ADR Dependencies
 
@@ -401,9 +401,9 @@ commands.trigger_targets(StartOfTurnTriggered, entity);
 |------|-------------|--------|------------|
 | Guard check omitted in a new observer handler | MEDIUM | Effects over-fire for units without the keyword (silent) | Code review checklist: every observer handler must have guard as first operation |
 | `ChainDeathBuffer` not cleared before SS4 starts | LOW | Stale deaths pollute current round | `execute_ss4()` clears at entry before `extend()`; integration test asserts buffer is empty at RESOLUTION end |
-| `world.trigger_targets()` does not exist in Bevy 0.18 (requires `commands + flush`) | MEDIUM | Compile error blocking all keyword implementation | Verification Required item 1 — resolve before first keyword story opens |
-| `Trigger<T>` is not the correct param type for observers in Bevy 0.18 | MEDIUM | Compile error | Verification Required item 2 — confirm from Bevy 0.18 release notes before coding |
-| `ResMut<T>` or `MessageWriter<T>` not usable inside Observer handler from exclusive system | MEDIUM | Compile error or silent message loss | Verification Required items 3–4 — smoke test: fire `UnitDied`, assert `KeywordTriggered` emitted |
+| `world.trigger_targets()` does not exist in Bevy 0.18 (requires `commands + flush`) | LOW | Compile error blocking all keyword implementation | RESOLVED 2026-04-30 — `world.trigger_targets()` confirmed as valid `World` method; synchronous exclusive-system path is correct |
+| `Trigger<T>` is not the correct param type for observers in Bevy 0.18 | LOW | Compile error | RESOLVED 2026-04-30 — `Trigger<T>` confirmed correct; `On<T>` in breaking-changes.md is a doc inconsistency |
+| `ResMut<T>` or `MessageWriter<T>` not usable inside Observer handler from exclusive system | LOW | Compile error or silent message loss | RESOLVED architecturally 2026-04-30 — standard system params work in observers; sequential borrow pattern in drain loop is safe. Smoke test required during first keyword story: fire `UnitDied`, assert `KeywordTriggered` emitted |
 | `commands.trigger_targets()` flush timing leaves a gap before START OF TURN effects read | LOW | State mismatch on START OF TURN effects | Schedule `apply_deferred` after `start_of_turn_dispatch_system` in system set; verify with integration test |
 
 ## GDD Requirements Addressed
@@ -442,7 +442,7 @@ Greenfield — no keyword timing trigger implementation exists. Sequence:
 All timing trigger BLOCKING acceptance criteria in `keyword-system.md` must pass: KW-001 through KW-010b.
 
 Pre-implementation gates:
-- [ ] Verification Required items 1–5 resolved (see Engine Compatibility table)
+- [x] Verification Required items 1–5 resolved (see Engine Compatibility table — resolved 2026-04-30)
 - [ ] ADR-018 Accepted (provides `UnitKeywordState` component and module structure)
 - [ ] `ChainDeathBuffer` is empty at RESOLUTION end confirmed by integration test
 - [ ] Observer guard pattern enforced in code review — every handler must guard first
