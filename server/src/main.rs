@@ -17,9 +17,9 @@
 // import foundation/. Reverse direction is forbidden. Violations require
 // escalation to lead-programmer.
 
-mod foundation;
 mod core;
 mod feature;
+mod foundation;
 
 use bevy::prelude::*;
 // lightyear::prelude imported in Epic 4 (S1-05 spike) once API is verified against docs.rs
@@ -59,7 +59,7 @@ pub struct HiddenObjectives {
 /// # Implementation note
 /// This stub will be replaced in the Lightyear integration story (Epic 4,
 /// S1-05 spike) with a proper Bevy system accepting `MessageReceiver<T>` and
-/// `ResMut<RoundState>` system params. The signature is reserved here to
+/// mutable `RoundState` system params. The signature is reserved here to
 /// document the authority-dispatch contract before any networking code is wired.
 ///
 /// # References
@@ -105,6 +105,9 @@ fn main() {
     // Registers loaders, AppState machine, and loading systems.
     // State machine: Loading → ConfigValidation → Lobby.
     app.add_plugins(foundation::config::ConfigPlugin);
+
+    // Core — Round State Machine scaffold (ADR-009/ADR-010).
+    app.add_plugins(core::rsm::RsmPlugin);
 
     // TODO(S1-05 Lightyear spike): register_protocol(&mut app) once API is verified.
 

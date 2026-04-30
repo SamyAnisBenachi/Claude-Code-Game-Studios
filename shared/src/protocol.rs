@@ -18,8 +18,9 @@ pub struct UnreliableChannel;
 
 /// Current game phase — shared between server (RoundState) and wire protocol.
 /// ADR-009: defined here so S2CPhaseChanged and S2CGameSnapshot can embed it.
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default, Serialize, Deserialize)]
 pub enum RoundPhase {
+    #[default]
     Lobby,
     DraftInitial,
     DraftAuction,
@@ -27,6 +28,14 @@ pub enum RoundPhase {
     Placement,
     Resolution,
     GameOver,
+}
+
+/// Draft sub-phase used by RSM phase-entry messages.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub enum DraftPhase {
+    Initial,
+    Auction,
+    Shop,
 }
 
 /// Game modes supported — all modes ship (ADR-003, milestones.md).
@@ -45,7 +54,7 @@ pub enum GameMode {
 pub struct SessionToken(pub [u8; 16]);
 
 /// Reason for game over — round-state-machine.md Rule 14.
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum GameOverReason {
     ObjectivesDestroyed,
     Disconnection,

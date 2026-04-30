@@ -13,8 +13,8 @@ stories:
     name: "RSM Story 1: State + Events Scaffold"
     file: "production/epics/round-state-machine/story-001-state-and-events-scaffold.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: in-progress
+    owner: "codex-s2-01-rsm"
     estimate_days: 1.5
     blocker: ""
     completed: ""

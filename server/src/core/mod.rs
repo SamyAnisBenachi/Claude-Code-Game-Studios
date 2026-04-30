@@ -2,3 +2,4 @@
 
 pub mod economy;
 pub mod pool;
+pub mod rsm;

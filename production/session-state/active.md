@@ -327,6 +327,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Report: design/gdd/gdd-cross-review-2026-04-30-r7.md
 
 ## Session Extract - /dev-story 2026-04-30
+- Story: `production/epics/round-state-machine/story-001-state-and-events-scaffold.md` - State and Events Scaffold
+- Files changed: `server/src/core/rsm/state.rs`, `server/src/core/rsm/events.rs`, `server/src/core/rsm/plugin.rs`, `server/src/core/rsm/mod.rs`, `server/src/core/mod.rs`, `server/src/lib.rs`, `server/src/main.rs`, `shared/src/protocol.rs`, `client/src/state/mod.rs`, `server/tests/rsm_scaffold_test.rs`, `tests/unit/rsm/rsm_scaffold_test.rs`, `tests/evidence/rsm-story-001-check.md`
+- Test written: `server/tests/rsm_scaffold_test.rs` (2 tests), evidence mapping at `tests/unit/rsm/rsm_scaffold_test.rs`, smoke evidence at `tests/evidence/rsm-story-001-check.md`
+- Blockers: local `cargo check --workspace` blocked by missing MSVC `link.exe`; source-level Bevy API check confirmed `add_message`, `Messages<T>`, and `add_observer`
+- Next: `/code-review server/src/core/rsm/state.rs server/src/core/rsm/events.rs server/src/core/rsm/plugin.rs server/tests/rsm_scaffold_test.rs` then run Cargo in a VS Developer Command Prompt or CI
+
+## Session Extract - /dev-story 2026-04-30
 - Story: `production/epics/card-data-pool/story-002-weighted-draw-functions.md` - Weighted Draw Functions
 - Files changed: `server/src/core/pool/api.rs`, `tests/unit/pool/weighted_draw_test.rs`
 - Test written: embedded tests in `server/src/core/pool/api.rs` (11 S2-03 tests), evidence mapping at `tests/unit/pool/weighted_draw_test.rs`
