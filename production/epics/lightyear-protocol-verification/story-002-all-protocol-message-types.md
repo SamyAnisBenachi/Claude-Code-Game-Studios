@@ -27,76 +27,76 @@
 ## Acceptance Criteria
 
 **Channel type stubs (using verified 0.26 syntax from Story 001):**
-- [ ] `ReliableChannel` struct defined in `shared/src/protocol.rs` with correct Lightyear 0.26 channel registration
-- [ ] `UnreliableChannel` struct defined with correct channel settings
+- [x] `ReliableChannel` struct defined in `shared/src/protocol.rs` with correct Lightyear 0.26 channel registration
+- [x] `UnreliableChannel` struct defined with correct channel settings
 
 **C2S message types (all `#[derive(Serialize, Deserialize, Debug, Clone)]`):**
-- [ ] `C2SHello { protocol_version: u32, session_token: Option<[u8; 16]> }`
-- [ ] `C2SCreateRoom { mode: GameMode }` (LOBBY)
-- [ ] `C2SJoinRoom { room_code: String, requested_slot: u8 }` (LOBBY)
-- [ ] `C2SSelectClass { class_id: ClassId }` (LOBBY)
-- [ ] `C2SConfirmClass { class_id: ClassId }` (LOBBY)
-- [ ] `C2SPurchaseCard { card_id: CardId }`
-- [ ] `C2SRefreshShop {}`
-- [ ] `C2SActivateCard { card_id: CardId }`
-- [ ] `C2SSignalReady { retract: bool }`
-- [ ] `C2SPlaceBid { amount: u32 }`
-- [ ] `C2SSubmitPlacement { placements: Vec<PlacedCard> }`
-- [ ] `C2SAcknowledgeResult {}`
-- [ ] `C2SHeartbeat {}` — assigned to `UnreliableChannel`
+- [x] `C2SHello { protocol_version: u32, session_token: Option<[u8; 16]> }`
+- [x] `C2SCreateRoom { mode: GameMode }` (LOBBY)
+- [x] `C2SJoinRoom { room_code: String, requested_slot: u8 }` (LOBBY)
+- [x] `C2SSelectClass { class_id: ClassId }` (LOBBY)
+- [x] `C2SConfirmClass { class_id: ClassId }` (LOBBY)
+- [x] `C2SPurchaseCard { card_id: CardId }`
+- [x] `C2SRefreshShop {}`
+- [x] `C2SActivateCard { card_id: CardId }`
+- [x] `C2SSignalReady { retract: bool }`
+- [x] `C2SPlaceBid { amount: u32 }`
+- [x] `C2SSubmitPlacement { placements: Vec<PlacedCard> }`
+- [x] `C2SAcknowledgeResult {}`
+- [x] `C2SHeartbeat {}` — assigned to `UnreliableChannel`
 
 **S2C message types (all `#[derive(Serialize, Deserialize, Debug, Clone)]`):**
-- [ ] `S2CHandshake { protocol_version: u32, session_id: u64, session_token: [u8; 16] }`
-- [ ] `S2CHandshakeRejected { server_version: u32, client_version: u32 }`
-- [ ] `S2CPhaseChanged { phase: RoundPhase, round_number: u32, timer_duration_ms: u32 }`
-- [ ] `S2CGameOver { loser: Option<PlayerId>, round: u32, reason: GameOverReason }`
-- [ ] `S2CGoldUpdate { gold: u32, current_mana: u32, reserve_mana: u32, mana_cap: u8 }`
-- [ ] `S2CGoldBroadcast { player_id: PlayerId, gold: u32 }`
-- [ ] `S2CCardAcquired { card_id: CardId, source: CardSource }`
-- [ ] `S2CShopSlots { slots: Vec<CardId> }`
-- [ ] `S2CDraftOffering { card_ids: Vec<CardId> }`
-- [ ] `S2CPoolUpdate { updates: Vec<(CardId, u8)> }`
-- [ ] `S2CPlacementReveal { placements: Vec<PlacedCard> }`
-- [ ] `S2CResolutionEvent { events: Vec<TaggedEvent> }`
-- [ ] `S2CAuctionCard { card_id: CardId, starting_price: u32 }`
-- [ ] `S2CAuctionBidAccepted { bidder: PlayerId, amount: u32, new_timer_ms: u32 }`
-- [ ] `S2CAuctionSettled { winner: Option<PlayerId>, amount: u32 }`
-- [ ] `S2CAuctionBidRejected { reason: BidRejectedReason }`
-- [ ] `S2COpponentDisconnected { player_id: PlayerId, grace_remaining_ms: u32 }`
-- [ ] `S2COpponentReconnected { player_id: PlayerId }`
-- [ ] `S2CRoomCreated { room_code: String, mode: GameMode, slots: Vec<SessionSlot> }`
-- [ ] `S2CJoinAck { mode: GameMode, slots: Vec<SessionSlot> }`
-- [ ] `S2CJoinRejected { reason: JoinRejectedReason }`
-- [ ] `S2CSlotUpdated { slots: Vec<SessionSlot> }`
-- [ ] `S2CClassLocked { class_id: ClassId }`
-- [ ] `S2CClassesRevealed { player_class_map: Vec<(PlayerId, ClassId)> }`
-- [ ] `S2CConfirmClassRejected { reason: ConfirmClassRejectedReason }`
-- [ ] `S2CSessionCancelled { reason: SessionCancelledReason }`
-- [ ] `S2CSangMepriseReveal { identities: Vec<(u8, bool)> }` — (lane, is_fake)
-- [ ] `S2CGameSnapshot` — minimal stub with a `player_id: PlayerId` field; full schema defined by GSS epic
-- [ ] `S2CHeartbeat {}` — assigned to `UnreliableChannel`
+- [x] `S2CHandshake { protocol_version: u32, session_id: u64, session_token: [u8; 16] }`
+- [x] `S2CHandshakeRejected { server_version: u32, client_version: u32 }`
+- [x] `S2CPhaseChanged { phase: RoundPhase, round_number: u32, timer_duration_ms: u32 }`
+- [x] `S2CGameOver { loser: Option<PlayerId>, round: u32, reason: GameOverReason }`
+- [x] `S2CGoldUpdate { gold: u32, current_mana: u32, reserve_mana: u32, mana_cap: u8 }`
+- [x] `S2CGoldBroadcast { player_id: PlayerId, gold: u32 }`
+- [x] `S2CCardAcquired { card_id: CardId, source: CardSource }`
+- [x] `S2CShopSlots { slots: Vec<CardId> }`
+- [x] `S2CDraftOffering { card_ids: Vec<CardId> }`
+- [x] `S2CPoolUpdate { updates: Vec<(CardId, u8)> }`
+- [x] `S2CPlacementReveal { placements: Vec<PlacedCard> }`
+- [x] `S2CResolutionEvent { events: Vec<TaggedEvent> }`
+- [x] `S2CAuctionCard { card_id: CardId, starting_price: u32 }`
+- [x] `S2CAuctionBidAccepted { bidder: PlayerId, amount: u32, new_timer_ms: u32 }`
+- [x] `S2CAuctionSettled { winner: Option<PlayerId>, amount: u32 }`
+- [x] `S2CAuctionBidRejected { reason: BidRejectedReason }`
+- [x] `S2COpponentDisconnected { player_id: PlayerId, grace_remaining_ms: u32 }`
+- [x] `S2COpponentReconnected { player_id: PlayerId }`
+- [x] `S2CRoomCreated { room_code: String, mode: GameMode, slots: Vec<SessionSlot> }`
+- [x] `S2CJoinAck { mode: GameMode, slots: Vec<SessionSlot> }`
+- [x] `S2CJoinRejected { reason: JoinRejectedReason }`
+- [x] `S2CSlotUpdated { slots: Vec<SessionSlot> }`
+- [x] `S2CClassLocked { class_id: ClassId }`
+- [x] `S2CClassesRevealed { player_class_map: Vec<(PlayerId, ClassId)> }`
+- [x] `S2CConfirmClassRejected { reason: ConfirmClassRejectedReason }`
+- [x] `S2CSessionCancelled { reason: SessionCancelledReason }`
+- [x] `S2CSangMepriseReveal { identities: Vec<(u8, bool)> }` — (lane, is_fake)
+- [x] `S2CGameSnapshot` — minimal stub with a `player_id: PlayerId` field; full schema defined by GSS epic
+- [x] `S2CHeartbeat {}` — assigned to `UnreliableChannel`
 
 **Supporting enum/struct types:**
-- [ ] `GameMode` enum: `OneVOne` (minimum; extend as needed)
-- [ ] `RoundPhase` enum: `Handshaking`, `Lobby`, `DraftInitial`, `DraftShop`, `DraftAuction`, `Placement`, `Resolution`, `GameOver`
-- [ ] `GameOverReason` enum: `ObjectivesDestroyed`, `Disconnect`, `Draw`, `ResolutionTimeout`
-- [ ] `SessionCancelledReason` enum: `LobbyTimeout`, `PlayerDisconnected`, `ServerRngFail`
-- [ ] `JoinRejectedReason` enum: `SlotOccupied`, `SessionFull`, `RoomNotFound`, `InvalidSlot`, `AlreadyInSession`, `SessionInProgress`, `InvalidMode`
-- [ ] `BidRejectedReason` enum: `InsufficientGold`, `AmountTooLow`, `AuctionExpired`
-- [ ] `ConfirmClassRejectedReason` enum: `ClassAlreadyConfirmed`
-- [ ] `CardSource` enum: all variants from GDD §D.3
-- [ ] `PlacedCard { card_id: CardId, owner_id: PlayerId, target: PlayTarget }`
-- [ ] `PlayTarget` enum: `BoardCell { lane: u8, cell: u8 }`, `TargetUnit { lane: u8, unit_id: u64 }`, `TargetObj { player_id: PlayerId, lane: u8 }`, `LaneWide { lane: u8 }`, `Instant`
-- [ ] `TaggedEvent { sub_step: u8, event: ResolutionEvent }`
-- [ ] `ResolutionEvent` enum: `UnitMoved`, `UnitDied`, `TrapTriggered` stubs (full variants deferred to Combat epic)
-- [ ] `SessionSlot` stub struct (full schema owned by GSS epic)
-- [ ] `PlayerId` newtype — confirm against `shared/src/card.rs` or define as `pub struct PlayerId(pub u32)` if not yet in shared/
+- [x] `GameMode` enum: `OneVOne` (minimum; extend as needed)
+- [x] `RoundPhase` enum: `Handshaking`, `Lobby`, `DraftInitial`, `DraftShop`, `DraftAuction`, `Placement`, `Resolution`, `GameOver`
+- [x] `GameOverReason` enum: `ObjectivesDestroyed`, `Disconnect`, `Draw`, `ResolutionTimeout`
+- [x] `SessionCancelledReason` enum: `LobbyTimeout`, `PlayerDisconnected`, `ServerRngFail`
+- [x] `JoinRejectedReason` enum: `SlotOccupied`, `SessionFull`, `RoomNotFound`, `InvalidSlot`, `AlreadyInSession`, `SessionInProgress`, `InvalidMode`
+- [x] `BidRejectedReason` enum: `InsufficientGold`, `AmountTooLow`, `AuctionExpired`
+- [x] `ConfirmClassRejectedReason` enum: `ClassAlreadyConfirmed`
+- [x] `CardSource` enum: all variants from GDD §D.3
+- [x] `PlacedCard { card_id: CardId, owner_id: PlayerId, target: PlayTarget }`
+- [x] `PlayTarget` enum: `BoardCell { lane: u8, cell: u8 }`, `TargetUnit { lane: u8, unit_id: u64 }`, `TargetObj { player_id: PlayerId, lane: u8 }`, `LaneWide { lane: u8 }`, `Instant`
+- [x] `TaggedEvent { sub_step: u8, event: ResolutionEvent }`
+- [x] `ResolutionEvent` enum: `UnitMoved`, `UnitDied`, `TrapTriggered` stubs (full variants deferred to Combat epic)
+- [x] `SessionSlot` stub struct (full schema owned by GSS epic)
+- [x] `PlayerId` newtype — defined as `pub struct PlayerId(pub u64)` in `shared/src/session.rs` (u64 aligns with Lightyear ClientId)
 
 **`register_protocol` updated:**
-- [ ] All C2S types registered on their assigned channel (`C2SHeartbeat` on `UnreliableChannel`; all others on `ReliableChannel`)
-- [ ] All S2C types registered (`S2CHeartbeat` on `UnreliableChannel`; all others on `ReliableChannel`)
-- [ ] Every Lightyear API call has a code comment: `// Lightyear 0.26: verified in tests/evidence/lightyear-026-verification.md item N`
-- [ ] `cargo check -p shared` passes with zero warnings
+- [x] All C2S types registered on their assigned channel (`C2SHeartbeat` on `UnreliableChannel`; all others on `ReliableChannel`)
+- [x] All S2C types registered (`S2CHeartbeat` on `UnreliableChannel`; all others on `ReliableChannel`)
+- [x] Every Lightyear API call has a code comment: `// Lightyear 0.26: verified in tests/evidence/lightyear-026-verification.md item N`
+- [x] `cargo check -p shared` passes with zero warnings
 
 ---
 
