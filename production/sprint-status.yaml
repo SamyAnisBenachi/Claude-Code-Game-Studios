@@ -103,8 +103,8 @@ stories:
     name: "S1 Carryover: E2E WebSocket Round-Trip"
     file: "production/epics/lightyear-protocol-verification/story-004-e2e-websocket-roundtrip.md"
     priority: nice-to-have
-    status: backlog
+    status: ready-for-dev
     owner: ""
     estimate_days: 1.0
-    blocker: "S2-09 must be Done"
+    blocker: ""
     completed: ""
