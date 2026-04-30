@@ -9,11 +9,12 @@ pub struct GameSessionPlugin;
 
 impl Plugin for GameSessionPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PlayerSessions>()
-            .add_observer(initialise_player_sessions);
+        app.init_resource::<PlayerSessions>();
     }
 }
 
+// Called by DraftStarted { phase: Initial } subscriber - NOT a SessionReady observer.
+// Wired up in the class-selection story (S3-03) via RSM-owned DraftStarted signal.
 pub fn initialise_player_sessions(
     _trigger: On<SessionReady>,
     session: Res<SessionConfig>,
