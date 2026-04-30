@@ -150,9 +150,9 @@ server/core/rsm/advance_phase
 │    { round, phase: DraftPhase }           apply_mana_ramp   │
 │                                           apply_gold_income  │
 │                                                             │
-│  ShopRefreshNeeded ─────────────────► Card Pool             │
-│    { player: PlayerId }                   refresh_shop       │
-│                                           (per player)      │
+│  ShopRefreshTriggered ──────────────► Card Acquisition [M2] │
+│    { player_id, trigger: ShopRefreshTrigger }  auto_refresh  │
+│    (supersedes ShopRefreshNeeded — see ADR-014)             │
 │                                                             │
 │  AuctionPhaseEntered ───────────────► Auction System [M2]   │
 │    { round: u32 }                         start_auction      │
@@ -216,14 +216,35 @@ pub struct DraftStarted {
     pub phase: DraftPhase,  // DraftPhase::Initial | Auction | Shop
 }
 
-/// Written once per player on entry into any DRAFT phase, after DraftStarted.
-/// The Card Pool reads this to draw 3 weighted cards for that player's shop.
-/// For DRAFT_INITIAL, this populates the initial 9-card selection.
-/// Written separately per player so the Card Pool can draw independently per player.
+/// SUPERSEDED by ShopRefreshTriggered (ADR-014, 2026-04-30).
+/// Do NOT implement this type. Left here for audit trail.
+/// The Card Acquisition system (not Card Pool) orchestrates shop draws.
+/// ShopRefreshTriggered provides richer trigger-variant context required by CA GDD.
 #[derive(Message, Clone, Debug)]
 pub struct ShopRefreshNeeded {
-    /// The player whose shop should be refreshed.
     pub player: PlayerId,
+}
+
+/// Supersedes ShopRefreshNeeded. Written by rsm_tick_system on relevant phase entries.
+/// The Card Acquisition system reads this to execute auto-refresh draws.
+/// Written separately per player; trigger variant encodes which draw behaviour applies.
+/// Added to catalog by ADR-014 (card-acquisition).
+#[derive(Message, Clone, Debug)]
+pub struct ShopRefreshTriggered {
+    pub player_id: PlayerId,
+    /// DraftInitial: draw 9 cards via draw_initial_draft().
+    /// AuctionLock: draw 3 slots, lock shop (DRAFT_AUCTION entry, auction round).
+    /// ShopOpen: draw 3 slots, open shop (DRAFT_SHOP entry, non-auction round).
+    /// ShopUnlock: no new draw — same slots become purchasable (DRAFT_AUCTION→DRAFT_SHOP).
+    pub trigger: ShopRefreshTrigger,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShopRefreshTrigger {
+    DraftInitial,
+    AuctionLock,
+    ShopOpen,
+    ShopUnlock,
 }
 
 /// Written on entry into DRAFT_AUCTION, after ShopRefreshNeeded for all players.

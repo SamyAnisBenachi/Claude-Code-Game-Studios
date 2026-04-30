@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-04-30"
+last_updated: "2026-04-30"  # updated by ADR-014, ADR-015, ADR-016
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -53,6 +53,40 @@ state_ownership:
     referenced_by:
       - docs/architecture/adr-013-auction-system-state.md
       - docs/architecture/adr-009-rsm-phase-state.md   # rsm_tick_system reads AuctionSettled, not AuctionState directly
+    added: "2026-04-30"
+    revised: ""
+
+  - state: shop_state_per_player
+    status: active
+    owner_system: card-acquisition-system
+    adr: docs/architecture/adr-015-card-acquisition-shop-state.md
+    interface: "Res<ShopStates> (read-only from all other systems); ResMut<ShopStates> in card_acquisition_tick_system ONLY — PlayerShopState fields: phase, displayed_this_draft, current_slots, refresh_count_this_draft"
+    write_access: card_acquisition_tick_system-only
+    referenced_by:
+      - docs/architecture/adr-015-card-acquisition-shop-state.md
+    added: "2026-04-30"
+    revised: ""
+
+  - state: player_hands
+    status: active
+    owner_system: card-acquisition-system
+    adr: docs/architecture/adr-015-card-acquisition-shop-state.md
+    interface: "ResMut<PlayerHands> — multiple authorized writers (card_acquisition_tick_system in DRAFT phases; prism_tick_system and objective_tick_system in RESOLUTION phase). Phases are mutually exclusive — no concurrent write conflict. Read via Res<PlayerHands> by any system."
+    write_access: card_acquisition_tick_system (DRAFT) + prism_tick_system (RESOLUTION) + objective_tick_system (RESOLUTION)
+    referenced_by:
+      - docs/architecture/adr-015-card-acquisition-shop-state.md
+      - docs/architecture/adr-016-prism-system-architecture.md   # hand_push() shared fn writes PlayerHands from RESOLUTION
+    added: "2026-04-30"
+    revised: ""
+
+  - state: prism_state
+    status: active
+    owner_system: prism-system
+    adr: docs/architecture/adr-016-prism-system-architecture.md
+    interface: "Res<PrismState> NOT exposed to external systems — external systems read PrismPresence component (Lightyear-replicated) instead. ResMut<PrismState> exclusive to resolve_prism_draws."
+    write_access: resolve_prism_draws-only
+    referenced_by:
+      - docs/architecture/adr-016-prism-system-architecture.md
     added: "2026-04-30"
     revised: ""
 
@@ -109,6 +143,33 @@ interfaces:
       - docs/architecture/adr-013-auction-system-state.md
       - docs/architecture/adr-010-rsm-event-bus.md
       - docs/architecture/adr-009-rsm-phase-state.md
+    added: "2026-04-30"
+    revised: ""
+
+  - contract: shop_refresh_trigger
+    status: active
+    pattern: event_bus
+    producer: rsm-system
+    consumers:
+      - card-acquisition-system   # reads ShopRefreshTriggered to execute auto-refresh draws
+    adr: docs/architecture/adr-015-card-acquisition-shop-state.md
+    signal_signature: "ShopRefreshTriggered { player_id: PlayerId, trigger: ShopRefreshTrigger } — Bevy buffered Message, #[derive(Message)]. Trigger variants: DraftInitial | AuctionLock | ShopOpen | ShopUnlock"
+    referenced_by:
+      - docs/architecture/adr-015-card-acquisition-shop-state.md
+      - docs/architecture/adr-010-rsm-event-bus.md
+    added: "2026-04-30"
+    revised: ""
+
+  - contract: prism_collection_trigger
+    status: active
+    pattern: event_bus
+    producer: board-lane-system
+    consumers:
+      - prism-system   # MessageReader<PrismCollected> in resolve_prism_draws; server-internal Bevy Message only
+    adr: docs/architecture/adr-016-prism-system-architecture.md
+    signal_signature: "PrismCollected { player: PlayerId, lane: u8 } — Bevy buffered Message (#[derive(Message)]), server-internal. NOT a Lightyear C2S message. Emitted during RESOLUTION sub-step 5 by Board/Lane System when a unit ends standard movement at its own spawn cell with prism present."
+    referenced_by:
+      - docs/architecture/adr-016-prism-system-architecture.md
     added: "2026-04-30"
     revised: ""
 
@@ -182,6 +243,17 @@ api_decisions:
     added: "2026-04-30"
     revised: ""
 
+  - purpose: hand_write_api
+    status: active
+    api: "hand_push(&mut HandState, player: PlayerId, card_id: CardId) -> Result<(), HandFullError> — pure module function in server/feature/hand/mod.rs"
+    not: "Direct ResMut<HandState> struct field mutation inline; Message-based hand write (AddCardToHand message + separate writer system)"
+    adr: docs/architecture/adr-016-prism-system-architecture.md
+    reason: "Shared function prevents dual-ownership while keeping HandState write path consistent. Bevy system scheduler enforces that no two callers hold ResMut<HandState> concurrently — card-acquisition runs in DRAFT, prism runs in RESOLUTION, phases are mutually exclusive."
+    referenced_by:
+      - docs/architecture/adr-016-prism-system-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
 # Example:
 #
 # api_decisions:
@@ -219,6 +291,27 @@ forbidden_patterns:
     description: "ResMut<AuctionState> may only appear in auction_tick_system. All other systems must use Res<AuctionState> (read-only)."
     why: "AuctionState is the single source of truth for auction phase. Multiple writers would create split-brain state and violate the Rule 5 reservation invariant, which relies on sequential execution within one system body."
     adr: docs/architecture/adr-013-auction-system-state.md
+    added: "2026-04-30"
+
+  - pattern: multiple_c2s_shop_message_readers
+    status: active
+    description: "Only card_acquisition_tick_system may drain MessageReceiver<C2SPurchaseCard> and MessageReceiver<C2SRefreshShop>. No other system may read these receivers."
+    why: "Lightyear's MessageReceiver<T> can only be drained once per frame — the first system to read it consumes all messages. A second reader would silently starve the first, causing purchases or refresh requests to be lost without error."
+    adr: docs/architecture/adr-015-card-acquisition-shop-state.md
+    added: "2026-04-30"
+
+  - pattern: resMut_shop_states_outside_tick_system
+    status: active
+    description: "ResMut<ShopStates> may only appear in card_acquisition_tick_system. All other systems must use Res<ShopStates> (read-only)."
+    why: "ShopStates is the single source of truth for per-player shop state. Multiple writers would allow external systems to corrupt displayed_this_draft or current_slots, breaking the dedup invariant and the CA18 rollback guarantee."
+    adr: docs/architecture/adr-015-card-acquisition-shop-state.md
+    added: "2026-04-30"
+
+  - pattern: multiple_prism_collected_readers
+    status: active
+    description: "Only resolve_prism_draws may drain MessageReader<PrismCollected>. No other system may register a MessageReader<PrismCollected>. PrismCollected is a server-internal Bevy Message (not a Lightyear C2S message) — MessageReader<T> and Lightyear's MessageReceiver<T> are distinct APIs and must not be conflated."
+    why: "Bevy's MessageReader<T> drains the buffer on read — a second reader in the same Update frame would starve the first. Since resolve_prism_draws is the sole consumer of prism collection events, registering a second reader would silently cause it to see zero events, breaking prism reward delivery with no compile-time error."
+    adr: docs/architecture/adr-016-prism-system-architecture.md
     added: "2026-04-30"
 
 # Example:
