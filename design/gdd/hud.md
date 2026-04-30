@@ -1,6 +1,6 @@
 # HUD
 
-> **Status**: In Review — Revised 2026-04-30 (Pass 3: 14 blockers resolved — Bevy 0.18 API [TextSpan, BorderRadius, ui_picking, Lens conflict], HudObjectiveUpdate→Observer, Rule 11 field-split proof, S2CGoldBroadcast mode-independence, Rule 13 LOBBY snapshot gap, DRAFT_INITIAL recurrence clarified, stale NP warning removed, HUD-07/HUD-19/HUD-23 rewrites, audio GAME_OVER tick exemption)
+> **Status**: Approved — 2026-04-30 (Pass 4: 1 blocker resolved — HUD-01 entity count corrected 16→18 [TextSpan children]; 4 recommended fixes: GoldDisplayState is_populated unified in Rule 1, Rule 11 .before() terminology, OQ-HUD-01 pre-implementation gate note, LOBBY audio row + D.1 type note)
 > **Author**: SamyAnisBenachi + Claude Code agents
 > **Last Updated**: 2026-04-30
 > **Implements Pillar**: No idle spectating · Simple surface
@@ -49,7 +49,7 @@ If Hand UI is the war map and the Board is the place the opponent cannot lie, th
 ### Core Rules
 
 **Rule 1 — Pre-pooled HUD node tree.**
-All HUD elements — phase label, round counter, own gold label, opponent gold label, mana label, reserve mana label, and the 10 scoreboard dot entities (5 opponent + 5 local) — are spawned at session start as children of a single root `Node` and toggled via `Visibility::Visible` / `Visibility::Hidden`. No per-round spawn or despawn; no per-update entity creation. There are **no separate "reserved gold" sub-label entities** — reserved gold is encoded inline in the gold label strings during ECONOMY_AUCTION mode (Rule 3). Each gold label entity carries a backing `GoldDisplayState { gold: f32, reserved_gold: f32 }` component that holds the canonical numeric values; the displayed string is re-derived from this component by a change-detection system each frame during a tween. The root `Node` carries `PickingBehavior { should_block_lower: false, is_hoverable: false }` guarded with `#[cfg(feature = "ui_picking")]` (Bevy 0.18 renames the Cargo feature from `bevy_ui_picking_backend` to `ui_picking`; inserting `PickingBehavior` without the feature compiled in causes a runtime panic — component not registered) so HUD never captures click events; sister UIs receive all input. If `ui_picking` is not in `Cargo.toml`, the root `Node` is already non-interactive and no picking component is needed.
+All HUD elements — phase label, round counter, own gold label, opponent gold label, mana label, reserve mana label, and the 10 scoreboard dot entities (5 opponent + 5 local) — are spawned at session start as children of a single root `Node` and toggled via `Visibility::Visible` / `Visibility::Hidden`. No per-round spawn or despawn; no per-update entity creation. There are **no separate "reserved gold" sub-label entities** — reserved gold is encoded inline in the gold label strings during ECONOMY_AUCTION mode (Rule 3). Each gold label entity carries a backing `GoldDisplayState { gold: f32, reserved_gold: f32, is_populated: bool }` component that holds the canonical numeric values (`is_populated` distinguishes the cold-start `"--g"` placeholder from a legitimate `0g` value — see Edge Cases); the displayed string is re-derived from this component by a change-detection system each frame during a tween. The root `Node` carries `PickingBehavior { should_block_lower: false, is_hoverable: false }` guarded with `#[cfg(feature = "ui_picking")]` (Bevy 0.18 renames the Cargo feature from `bevy_ui_picking_backend` to `ui_picking`; inserting `PickingBehavior` without the feature compiled in causes a runtime panic — component not registered) so HUD never captures click events; sister UIs receive all input. If `ui_picking` is not in `Cargo.toml`, the root `Node` is already non-interactive and no picking component is needed.
 
 **Rule 2 — Screen placement (fixed for the entire match).**
 The HUD occupies four screen-edge zones, each anchored with `Val::Px(12.0)` from the screen edges. Layout never reflows during a match:
@@ -131,7 +131,7 @@ On `S2CPhaseChanged(GAME_OVER)`: phase label updates to `GAME OVER`. All readout
 
 **Rule 11 — Tie-break: `S2CGoldUpdate` vs `S2CGoldBroadcast` for own gold display.**
 Both messages contribute to the own gold label. `S2CGoldUpdate` owns the `gold` value; `S2CGoldBroadcast` (when `player_id == local_id`) owns the `reserved_gold` value. They write to separate fields of the `GoldDisplayState` component on the own gold label entity. When both arrive in the same Bevy tick:
-1. `handle_gold_broadcast_system` runs first (system order: lower priority) — writes opponent gold + reserved (both fields), and writes own `GoldDisplayState.reserved_gold` only.
+1. `handle_gold_broadcast_system` runs first (scheduled `.before(handle_gold_update_system)`) — writes opponent gold + reserved (both fields), and writes own `GoldDisplayState.reserved_gold` only.
 2. `handle_gold_update_system` runs second (system order: higher priority) — writes own `GoldDisplayState.gold`. It does NOT touch `GoldDisplayState.reserved_gold`.
 3. The label re-renders from the `GoldDisplayState` component after both systems complete, producing `{gold from S2CGoldUpdate}g ({reserved_gold from S2CGoldBroadcast}r)` in ECONOMY_AUCTION mode.
 
@@ -214,6 +214,7 @@ The HUD renders free gold *implicitly* — the player computes it from the inlin
 
 **Output Range:** 0 to gold (always non-negative under server invariant `reserved_gold ≤ gold`).
 **Example:** `gold = 11, reserved_gold = 4` ⇒ `local_free_gold = 7`. HUD displays `11g (4r)` in ECONOMY_AUCTION; player reads `free = 7` from the inline label.
+**Type note:** The server sends `gold` and `reserved_gold` as `u32` in network messages. The HUD converts to `f32` at the message handler boundary (stored in `GoldDisplayState.gold: f32` and `GoldDisplayState.reserved_gold: f32`) for `bevy_tweening` compatibility.
 
 **Authority:** Owned by `shop-auction-ui.md`, registered in `entities.yaml` formulas section as `local_free_gold`. HUD does not duplicate ownership — it renders both values inline per Rule 3.
 
@@ -400,6 +401,7 @@ Phase label recedes via size and opacity alone (0.65×, 65% opacity). No backgro
 | Gold tween during RESOLUTION | **Silent** | Board animation track owns all audio space during RESOLUTION |
 | GAME_OVER phase transition | Single resolved chord — two or three notes settling to tonic; no fanfare, no sting. The typography refuses drama (same visual register as all phase labels); the chord provides the singular audio confirmation of finality. This intentional contrast — quiet label, resolved chord — gives the moment weight without spectacle. | Confirms finality without editorialising win/loss; win/loss musical differentiation belongs to the outcome screen |
 | All other HUD events (mana update, reserve mana change, phase label other than GAME_OVER, gold label format switch) | **Silent** | Peripheral UI layer must not add audio noise to active decision phases |
+| All HUD events while in HIDDEN mode (LOBBY phase) | **Silent** | HUD root is `Visibility::Hidden` during LOBBY; no audio events fire |
 
 📌 **Asset Spec** — Visual/Audio requirements are defined. After the art bible is approved, run `/asset-spec system:hud` to produce per-asset visual descriptions, dimensions, and generation prompts from this section.
 
@@ -446,9 +448,12 @@ The HUD's UI architecture is fully specified in Section C (Detailed Design). Thi
 HUD-01: Pre-pooled node tree — BLOCKING
 GIVEN the session has started,
 WHEN HUD is initialized,
-THEN exactly 16 HUD entities exist in the World before any S2C message is
-received: 1 phase label, 1 round counter, 1 own gold label, 1 opponent gold
-label, 1 mana label, 1 reserve mana label, and 10 scoreboard dot entities.
+THEN exactly 18 HUD entities exist in the World before any S2C message is
+received: 1 phase label, 1 round counter, 1 own gold label parent entity,
+1 own gold TextSpan child entity (text ""), 1 opponent gold label parent
+entity, 1 opponent gold TextSpan child entity (text ""), 1 mana label,
+1 reserve mana label, and 10 scoreboard dot entities (= 6 top-level label
+entities + 2 pre-spawned TextSpan child entities + 10 dots = 18).
 No new HUD entities are spawned when subsequent update messages arrive.
 
 HUD-02: Fixed four-zone layout — ADVISORY
@@ -708,7 +713,7 @@ on a server bug or test fixture anomaly.)
 
 | ID | Question | Owner | Status |
 |---|---|---|---|
-| OQ-HUD-01 | **Disconnect/pause indicator — reclassified as gameplay correctness gap.** During the 30-second disconnect grace window, client-side phase timers continue countdown. When PLACEMENT timer expires, Hand UI fires its timeout action locally — but the server is paused. `S2CSessionPaused` / `S2CSessionResumed` must be defined in `network-protocol.md` before any timer-bearing phase can be safely implemented. HUD owns the "Waiting for opponent…" badge. This OQ is **blocking on Network Protocol GDD**. | Network Protocol GDD (blocking) | Open — NP GDD amendment required |
+| OQ-HUD-01 | **Disconnect/pause indicator — reclassified as gameplay correctness gap.** During the 30-second disconnect grace window, client-side phase timers continue countdown. When PLACEMENT timer expires, Hand UI fires its timeout action locally — but the server is paused. `S2CSessionPaused` / `S2CSessionResumed` must be defined in `network-protocol.md` before any timer-bearing phase can be safely implemented. HUD owns the "Waiting for opponent…" badge. This OQ is **blocking on Network Protocol GDD**. **Pre-implementation gate:** NP GDD must reach Approved status before the pause overlay can be implemented. Until then, implement HUD without the pause overlay badge — treat the disconnect grace window as invisible to the HUD. | Network Protocol GDD (blocking) | Open — NP GDD amendment required |
 | OQ-HUD-02 | **Local player real/fake opt-in display — DESIGN REJECTED.** A settings flag would recreate the screen-share leak (the reason Rule 7 exists). | Design | Closed — Rejected |
 | OQ-HUD-03 | **GAME_OVER summary screen.** Rule 10 defers retroactive real/fake revelation to a post-game summary screen. When is this GDD'd? Does HUD hand off any state to the summary screen, or does the summary screen rebuild from `S2CGameSnapshot`? | Future GDD (post-game flow / M3) | Open |
 | OQ-HUD-04 | **`LANE_MIDPOINT_X` constant sharing.** How does HudPlugin read Board Rendering's lane midpoint X-coordinates for dot alignment? Options: a `const` in a shared crate, a `BoardLayout` resource inserted by Board Rendering plugin, or a layout token in `entities.yaml`. Must be resolved before HUD implementation begins. | Board Rendering / Tech Lead | Open |

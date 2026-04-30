@@ -209,11 +209,14 @@ The Garde-Temps reserve-gate formula is defined as:
 ```
 target_valid = (chosen_enemy_objective.is_alive = true)
 playable = (self.reserve >= garde_temps_cost) AND target_valid
+        AND (self.garde_temps_used_this_game < garde_temps_per_game_cap)
 if playable:
   self.reserve_new = self.reserve - garde_temps_cost
-  destroy(chosen_enemy_objective)
+  self.garde_temps_used_this_game += 1
+  take_damage(lane=chosen_enemy_objective.lane, attacker=self, amount=chosen_enemy_objective.hp)
+  -- lethal damage regardless of current HP; full consequence path fires via objective-system.md Rule 9
 else:
-  reject_play  -- gold/mana untouched; reject also if target already HP=0
+  reject_play  -- reserve/mana untouched; reject also if target already HP=0 or cap reached
 ```
 
 **Variables:**
@@ -222,10 +225,13 @@ else:
 |---|---|---|---|
 | `self.reserve` | u32 | 0 – unbounded | Player reserve at play attempt |
 | `garde_temps_cost` | u32 | 20 (GameConfig knob) | Reserve cost; replaces standard mana cost path |
+| `garde_temps_per_game_cap` | u32 | 1 (GameConfig knob) | Max number of Garde-Temps activations per game per player |
+| `self.garde_temps_used_this_game` | u32 | 0 – cap | Counter incremented on each successful activation; persisted in session state |
 | `playable` | bool | {false, true} | Server-side acceptance gate |
 
-**Output Range:** On accept, `self.reserve_new = self.reserve − 20` (≥ 0 by gate); one enemy objective destroyed (HP 0). On reject, no state change.
-**Example:** reserve = 23 → playable = true → reserve_new = 3; enemy objective destroyed.
+**Output Range:** On accept, `self.reserve_new = self.reserve − 20` (≥ 0 by gate); one enemy objective receives lethal `take_damage` (routes through objective-system.md Rule 9 consequence path). On reject, no state change.
+**Example:** reserve = 23, garde_temps_used_this_game = 0 → playable = true → reserve_new = 3; objective take_damage fires.
+**Interface alignment:** Uses `take_damage()` not `destroy()` — consistent with objective-system.md Edge Cases ("If Garde-Temps targets an objective: Treated as `take_damage(lane, attacker_player, objective_hp)`) and with Punition below.
 **Note:** Garde-Temps' card-data `mana_cost` field is 0 (or absent); Economy System's "from reserve" path (Rule 4) is the only valid payment route. Server validates `reserve >= 20` BEFORE accepting the placement.
 
 ### CS-5 — Sang Méprise (Sacrier: full objective reveal)
@@ -257,7 +263,8 @@ The Punition self-destroy + damage formula is defined as:
 ```
 has_eligible_real = ( count({o ∈ self.objectives | o.is_real ∧ o.is_alive}) >= 1 )
 if has_eligible_real:
-  destroy(chosen_real_objective)
+  take_damage(lane=chosen_real_objective.lane, attacker=self, amount=chosen_real_objective.hp)
+  -- lethal self-damage; full consequence path fires via objective-system.md Rule 9
   for each o ∈ opponent.objectives where o.is_alive:
     take_damage(lane=o.lane, attacker=self, amount=3)
 else:
@@ -432,7 +439,7 @@ Edge cases are grouped by category. Each entry follows the form **If [condition]
 #### Disconnect during class-active effects
 
 - **If Xelor disconnects after submitting a placement that includes Rollback** → C2SSubmitPlacement was already received; disconnect after submission does not cancel committed placements. Rollback fires at sub-step 2 as submitted. Grace timer (30 s) starts; reconnecting player receives snapshot + missed S2CResolutionEvents.
-- **If Sacrier disconnects mid-RESOLUTION while Sang Méprise is active** → Reveal already broadcast. On reconnect, S2CGameSnapshot does NOT include the reveal payload (known gap — OQ-NP-snapshot). Reconnected client degrades gracefully: objectives appear hidden for the rest of that RESOLUTION. Server does NOT re-unicast `S2CSangMepriseReveal` on reconnect.
+- **If Sacrier disconnects mid-RESOLUTION while Sang Méprise is active** → Reveal already broadcast. On reconnect, `S2CGameSnapshot.active_sang_meprise_reveals` (if non-None) carries the full reveal set; the client rebuilds reveal state from the snapshot field and does NOT require a second `S2CSangMepriseReveal` unicast. See NP D.1 `active_sang_meprise_reveals` field. This closes OQ-NP-snapshot (formerly OQ6 in network-protocol.md).
 
 ## Dependencies
 
@@ -458,6 +465,7 @@ All knobs live in `assets/config/game_config.ron` and map to `GameConfig` fields
 | Knob | GameConfig field | Default | Safe range | Too low | Too high |
 |---|---|---|---|---|---|
 | Garde-Temps reserve cost | `garde_temps_reserve_cost` | 20 | 10 – 30 | Objective destruction cheapened; Xelor bomb too accessible | Unreachable in normal play; Xelor loses late-game win condition |
+| Garde-Temps per-game use cap | `garde_temps_per_game_cap` | 1 | 1 – 2 | At 1: Xelor gets one deterministic swing; combined with reserve economy this is sufficient to close a game once. At 2: two objectives can be destroyed by reserve alone — dominant strategy risk if Mummy passive cap is also absent. Raise to 2 only after M2 confirms reserve accumulation is manageable. | N/A (minimum is 1 — 0 disables the card entirely) |
 | Miss Nuit per-round cap | `miss_nuit_cap` | 2 | 1 – 4 | Reserve gain too slow vs. active opponents | Mass-token opponents (Chafer, Bow Meow) flood Xelor's reserve; Rollback trivially recharged each round |
 | Dé du Chateux reveal threshold | `dé_chateux_reveal_threshold` | 3 (≈50 % chance) | 1 – 5 | Objective reveal almost never fires; low-roll dice spell feels punishing with no upside | Near-guaranteed reveal every cast; Ecaflip gains too much information advantage |
 | Seed AR bonus per walk-over | `seed_ar_bonus` | 1 | 1 – 2 | (minimum is 1 — below that removes the mechanic) | +2 per seed → degenerate AR stacking mid-game; Sadida units become unkillable by round 6 |

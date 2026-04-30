@@ -27,7 +27,7 @@ The timer never stops. It only slows. Every accepted bid resets it — not by mu
 
 **On economic dominance:** A player who has accumulated more gold than their opponent will win more auctions at lower relative cost — this is accepted as a valid win condition alongside bidding skill. "No idle spectating" guarantees the trailing player always has at least one actionable bid decision each auction round (a player can always afford the starting floor in typical rounds); it does not guarantee symmetric auction outcomes. Gold advantage earned through prior economic play is intended to compound at auction. M2 monitoring remains active: if gold differential regularly exceeds 20g before Round 9 AND both players report no meaningful auction agency, escalate to a targeted economic design sprint.
 
-**On bid increment as signal:** The preset bid increments (+1g, +3g, +5g) are themselves information. A player who probes cautiously with +1g communicates different intent than one who leaps with +5g — the increment choice is a read alongside the gold total. Bidding *style* is accepted as a signal, not a flaw. M2 telemetry gate: if players converge on +1g chains exclusively (attrition by endurance rather than intent reads), escalate to a bid-design sprint before M2 closes.
+**On bid increment as signal:** The preset bid increments (+1g, +3g, +5g) are themselves information. A player who probes cautiously with +1g communicates different intent than one who leaps with +5g — the increment choice is a read alongside the gold total. Bidding *style* is accepted as a signal, not a flaw. M2 telemetry gate: if players converge on +1g chains exclusively (attrition by endurance rather than intent reads), escalate to a bid-design sprint before M2 closes. **Bid input type locked:** preset three-button input (+1/+3/+5) confirmed by `shop-auction-ui.md` Rule 4 (SAU OQ1 resolved 2026-04-30) — no free-form text entry.
 
 ## Detailed Design
 
@@ -101,10 +101,20 @@ A bid arriving in the same server tick as the timer-zero event is processed befo
 3. Broadcast `S2CAuctionSettled { winner: None, amount: 0 }`
 4. Fire `AuctionSettled` Bevy Message → RSM transitions to DRAFT_SHOP
 
-**Rule 8 — AbortAuction (RSM-initiated cleanup)**
+**Rule 8 — Disconnect-grace window during DRAFT_AUCTION**
+
+When a player disconnects during DRAFT_AUCTION, the RSM starts a `disconnect_grace_seconds` (30s) countdown before committing to GAME_OVER. During this window the Auction System enters a **grace-pause state**:
+
+1. **Timer paused.** `timer_remaining_ms` stops decrementing. No new bids are accepted (C2SPlaceBid rejected with `AuctionExpired` — the timer is logically at pause, not zero). The pause prevents the auction from resolving while the opponent may still reconnect.
+2. **Surviving player UX.** `S2COpponentDisconnected { player_id, grace_remaining_ms }` is delivered to the surviving player by the RSM (not the Auction System). The Auction Panel responds: the timer bar freezes, an "Opponent disconnected — waiting [N]s" overlay appears over the bid buttons, bid buttons are disabled. The current leader display and price remain visible. The surviving player cannot bid during the grace window.
+3. **Reservation preserved.** If `current_leader != None`, the leader's gold reservation is held as-is. No refund during the grace window — the auction is paused, not aborted.
+4. **On reconnect.** `S2COpponentReconnected` fires; grace overlay dismisses; the Auction Panel re-enables bid buttons; `timer_remaining_ms` resumes from its frozen value. The auction continues normally.
+5. **On grace expiry.** The RSM commits to GAME_OVER and sends `AbortAuction` to the Auction System before transitioning.
+
+**Rule 8b — AbortAuction (RSM-initiated cleanup)**
 The RSM sends `AbortAuction` in two cases:
-1. **Player disconnect during DRAFT_AUCTION** — RSM has committed to GAME_OVER and sends `AbortAuction` before transitioning.
-2. **`auction_max_duration_seconds` safety timeout** — if total elapsed auction time tracked by the RSM exceeds `GameConfig.auction_max_duration_seconds`, the RSM sends `AbortAuction` and transitions to GAME_OVER. *(The RSM GDD must be updated to document this second trigger path.)*
+1. **Player grace expired during DRAFT_AUCTION** — RSM has committed to GAME_OVER and sends `AbortAuction` before transitioning.
+2. **`auction_max_duration_seconds` safety timeout** — if total elapsed auction time (including grace-pause time) tracked by the RSM exceeds `GameConfig.auction_max_duration_seconds`, the RSM sends `AbortAuction` and transitions to GAME_OVER.
 
 In both cases, handling is identical:
 1. Cancel the timer.
@@ -276,6 +286,7 @@ timer_remaining_ms = min(timer_remaining_ms + auction_timer_reset_seconds × 100
 | **Server-side RNG** | Upstream (indirect) | RNG seed consumed inside `draw_auction_card()` via the SHOP RNG chain. Auction System does not call RNG directly. |
 | **Network Protocol / Lightyear** | Downstream (hard) | Auction System produces all auction wire messages. Protocol delivers them via reliable broadcast or unicast. |
 | **Shop/Auction UI** | Downstream (hard) | UI renders bid panel, timer, price, and leader from auction state. Must not render until `S2CAuctionCard` has been received. |
+| **Hand UI** | Downstream (soft) | On auction win, `S2CCardAcquired { source: AcquisitionSource::AuctionWon }` is unicast to the winner; Hand UI adds the card to the fan. Routing is NP-mediated — Auction System does not call Hand UI directly. Bidirectionality: hand-ui.md Rule 5c and its Interactions table list `S2CCardAcquired` as a received message (hand additions on purchase/win). |
 | **Objective System** | Shared dependency | Also a consumer of `draw_auction_card()` for the fake-objective free-card-pick (Economy GDD OQ1). Both systems share the same neutral pool; pool depletion from one affects the other. |
 
 **Bidirectionality:** RSM GDD lists Auction System as a downstream dependent ✓. Economy GDD lists Auction System as a downstream caller ✓. Card Data & Pool GDD must be updated to list Auction System as a `draw_auction_card()` consumer and to document the neutral Epic rarity bucket.

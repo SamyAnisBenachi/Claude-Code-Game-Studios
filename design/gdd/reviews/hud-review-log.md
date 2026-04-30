@@ -1,5 +1,12 @@
 # Review Log — HUD GDD
 
+## Review — 2026-04-30 (Pass 4) — Verdict: APPROVED
+Scope signal: L
+Specialists: none (lean mode)
+Blocking items: 1 resolved | Recommended: 4 resolved | Nice-to-have: 2 resolved
+Summary: Single blocking issue: HUD-01 entity count asserted "exactly 16" but a correct implementation pre-spawns 18 entities — the TextSpan child entities (one per gold label, pre-spawned empty) were not counted. Fix was a two-line AC edit. Recommended fixes: `GoldDisplayState` struct definition in Rule 1 unified with `is_populated: bool` field already present in UI Requirements and Edge Cases; Rule 11 scheduling terminology clarified from "lower priority" to explicit `.before()`; OQ-HUD-01 pre-implementation gate note added (NP GDD must reach Approved before pause overlay can be implemented). Nice-to-have: explicit LOBBY-silent row in audio table; D.1 `u32`→`f32` type conversion note. GDD is otherwise production-ready.
+Prior verdict resolved: Yes — Pass 3 blockers (Bevy 0.18 API, Lens conflict, Observer) were fully resolved.
+
 ## Review — 2026-04-30 (Pass 3) — Verdict: NEEDS REVISION → Revised in-session
 Scope signal: L
 Specialists: game-designer, systems-designer, qa-lead, ux-designer, ui-programmer, network-programmer, audio-director, creative-director

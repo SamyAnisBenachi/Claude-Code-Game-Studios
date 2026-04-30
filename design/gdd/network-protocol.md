@@ -202,6 +202,21 @@ S2CGameSnapshot {
 
     players: Vec<PlayerSnapshot>,    // one entry per player in the session
     board:   BoardSnapshot,
+
+    // Populated only when phase = RESOLUTION AND Sang Méprise was played this RESOLUTION.
+    // Contains the full reveal set (both players' alive objectives) as unicast to both players
+    // by S2CSangMepriseReveal earlier in the RESOLUTION. A reconnecting client MUST rebuild
+    // its local reveal state from this field — S2CSangMepriseReveal is NOT re-sent on reconnect.
+    // None = Sang Méprise not active this RESOLUTION (or phase is not RESOLUTION).
+    active_sang_meprise_reveals: Option<Vec<ObjectiveReveal>>,
+}
+
+ObjectiveReveal {
+    player_id: PlayerId,  // which player's objective this entry describes
+    lane:      u8,        // 1–5
+    is_fake:   bool,      // the reveal value (true = fake, false = real)
+    // SERVER INVARIANT: only alive objectives are included (destroyed objectives excluded —
+    // they were revealed at destruction and are not part of the Sang Méprise reveal set).
 }
 
 PlayerSnapshot {
@@ -355,11 +370,27 @@ S2CResolutionEvent {
 }
 
 TaggedEvent {
-    sub_step: u8,       // 1–7: sub-steps 1–6 = in-turn resolution; 7 = post-SS6 END OF TURN bucket (EndOfTurnFired events).
-                        // SERVER CONTRACT: MUST NOT emit sub_step outside 1–7.
-                        // CLIENT CONTRACT: treat 8+ as fatal desync — send C2SRequestSnapshot immediately.
-    event:    ResolutionEvent,
+    sub_step:      u8,   // 1–7: sub-steps 1–6 = in-turn resolution; 7 = post-SS6 END OF TURN bucket (EndOfTurnFired events).
+                         // SERVER CONTRACT: MUST NOT emit sub_step outside 1–7.
+                         // CLIENT CONTRACT: treat 8+ as fatal desync — send C2SRequestSnapshot immediately.
+    trigger_index: u32,  // Monotonically increasing counter, unique per event within this RESOLUTION.
+                         // Assigned by Combat Resolution at resolution start in submission order.
+                         // PRIMARY ORDERING KEY for events within the same sub_step.
+                         // SERVER INVARIANT: events in the Vec<TaggedEvent> array MUST be in ascending
+                         // (sub_step, trigger_index) order. Two events sharing the same trigger_index
+                         // is a server bug — Combat Resolution must assign unique values.
+                         // CLIENT CONTRACT: render events strictly in array order; do NOT re-sort.
+                         // Resolves class-system.md concurrency notes ("ascending trigger_index order").
+    event:         ResolutionEvent,
 }
+
+// ── Ordering invariant for same-sub-step effects ──────────────────────────────
+// When multiple Krosmic spells or class effects resolve in the same sub_step
+// (e.g., Xelorium + Gelure both fire at sub-step 1), trigger_index is the sole
+// tiebreaker. Assignment rule: trigger_index is drawn from a per-RESOLUTION
+// monotonic counter starting at 0, incremented once per TaggedEvent emitted.
+// Clients MUST NOT assume semantic ordering beyond the array position —
+// trigger_index is a wire-stable sort key, not a gameplay priority system.
 
 enum ResolutionEvent {
     // ── Sub-step delimiters ──────────────────────────────────────────────────
@@ -794,6 +825,6 @@ N/A — This system renders nothing. The protocol delivers data consumed by UI s
 
 5. ~~**`PlayTarget::TargetUnit` extension**~~ — **RESOLVED (R3 2026-04-30):** Keyword System GDD (approved) confirms no keyword requires targeting current-PLACEMENT units. `PlayTarget` enum is stable. No extension needed.
 
-6. **Sang Méprise reconnect gap** — `S2CGameSnapshot` has no `sang_meprise_active` field. A Sacrier player who reconnects mid-RESOLUTION while Sang Méprise is active loses the reveal information they paid a card for. This is tracked as OQ-CS-2 in class-system.md. **Owner:** Network Protocol + Objective System. **Priority: MEDIUM** (upgraded from LOW — card expenditure + information loss is a fairness issue, not just polish; must resolve before M3 implementation).
+6. ~~**Sang Méprise reconnect gap**~~ — **RESOLVED (R8 2026-04-30):** `S2CGameSnapshot` now includes `active_sang_meprise_reveals: Option<Vec<ObjectiveReveal>>` (D.1 schema, see struct added above). Populated only during RESOLUTION when Sang Méprise is active. Reconnecting client rebuilds reveal state from this field; `S2CSangMepriseReveal` is NOT re-sent. Canonical field name: `active_sang_meprise_reveals`. class-system.md Edge Cases updated to reference D.1 field. ✓
 
 7. **Mid-RESOLUTION reconnect + HASTE policy** — `UnitBoardState` has no `haste_active` field. A client reconnecting mid-RESOLUTION after sub-step 1 cannot determine which units had HASTE (and already acted in SS1) vs. units subject to summoning sickness. The AnimQueue cannot correctly fast-forward without this. **Two options:** (A) Add `haste_active: bool` to `UnitBoardState` — set to `true` for all units whose `card_id` has the HASTE keyword; (B) Accept that mid-RESOLUTION reconnect replays the entire RESOLUTION from SS1, requiring the server to buffer the full current RESOLUTION event log until phase exits. **Owner:** Network Protocol + Keyword System. **Priority: MEDIUM — must decide before RESOLUTION implementation begins.**

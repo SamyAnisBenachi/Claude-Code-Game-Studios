@@ -1,13 +1,13 @@
 # Shop / Auction UI
 
-> **Status**: In Review (post-/design-review revision 2026-04-30: 11 BLOCKING items resolved; re-review pending in fresh session)
+> **Status**: In Review (post-/design-review revision 2026-04-30 pass 3: 28 BLOCKING items resolved; re-review pending in fresh session)
 > **Author**: SamyAnisBenachi + Claude Code agents
-> **Last Updated**: 2026-04-30
+> **Last Updated**: 2026-04-30 (pass 3)
 > **Implements Pillar**: No idle spectating · Auction as signature · Simple surface
 
 ## Overview
 
-Shop / Auction UI is the client-side presentation system that surfaces every economic decision a player faces each round. It owns three distinct panels corresponding to three RSM phases: the **Draft Offering** (DRAFT_INITIAL — a fixed 9-card grid sent by the server at game start, purchasable within a 5-gold budget over 45 seconds), the **Shop Panel** (DRAFT_SHOP — three refreshable slots drawn from the player's personal pool, purchased with gold, refreshable at escalating cost), and the **Auction Panel** (DRAFT_AUCTION — the game's signature interaction: a live bid timer, current price counter, leader display, and bid input the player uses to contest the neutral card on the block).
+Shop / Auction UI is the client-side presentation system that surfaces every economic decision a player faces each round. It owns three distinct panels corresponding to three RSM phases: the **Draft Offering** (DRAFT_INITIAL — a fixed 9-card grid sent by the server at game start, purchasable using the player's 5-gold starting budget over 45 seconds), the **Shop Panel** (DRAFT_SHOP — three refreshable slots drawn from the player's personal pool, purchased with gold, refreshable at escalating cost), and the **Auction Panel** (DRAFT_AUCTION — the game's signature interaction: a live bid timer, current price counter, leader display, and bid input the player uses to contest the neutral card on the block).
 
 The system consumes six server-to-client messages — `S2CDraftOffering`, `S2CShopSlots`, `S2CAuctionCard`, `S2CAuctionBidAccepted`, `S2CAuctionSettled`, `S2CAuctionBidRejected` — and `S2CGoldUpdate` for real-time economy display. All panel state transitions follow RSM phase changes. During DRAFT_AUCTION the Shop Panel remains visible but all purchase and refresh interactions are locked; the Auction Panel is the primary UI focus. During DRAFT_SHOP the Auction Panel is dismissed and the Shop Panel becomes fully interactive. The system produces `C2SPurchaseCard`, `C2SRefreshShop`, and `C2SPlaceBid` messages from player input.
 
@@ -17,9 +17,9 @@ The player fantasy this system serves is economic agency under imperfect informa
 
 The Shop / Auction UI is your dashboard. It surfaces three things at any moment: how much you have, what it would buy, and how long until the moment passes. The panel does not editorialize. It does not tell you which slot to take or when to bid. It shows you the cost. The decision is yours — and the UI's restraint is what makes the decision feel like one.
 
-The opponent's gold is visible the same way the price is visible: as a number on screen. You can read whether they can outbid you. You can read whether the +5g you are about to send pushes them to their ceiling. The inference itself — *what does that price tell me about their plan?* — happens in your head, not in any UI affordance. The panel is honest about the data; it does not editorialize the read.
+The opponent's gold is visible the same way the price is visible: as a number on screen. You can read whether they can outbid you. You can read whether your next bid pushes them to their ceiling. The inference itself — *what does that price tell me about their plan?* — happens in your head, not in any UI affordance. The panel is honest about the data; it does not editorialize the read.
 
-In DRAFT_INITIAL the panel asks *who are you?* Nine cards, a 5-gold budget, no refresh. You are reading the lineup while your opponent reads theirs, and every card you pick is a card they cannot have. In DRAFT_SHOP it asks *who are you becoming?* Three slots refresh toward your archetype, and you feel the tilt if you have committed: a second Gobball appearing beside the first, probability leaning your way without announcing itself. In DRAFT_AUCTION it asks *how badly?* Five gold left, eight seconds on the timer, the +1g button under your cursor. The auction panel does not help. It just holds the number up and waits.
+In DRAFT_INITIAL the panel asks *who are you?* Nine cards, a 5-gold budget, no refresh. You are reading the lineup while your opponent reads theirs, and every card you pick is a card they cannot have. In DRAFT_SHOP it asks *who are you becoming?* Three slots refresh toward your archetype, and you feel the tilt if you have committed: a second Gobball appearing beside the first, probability leaning your way without announcing itself. In DRAFT_AUCTION it asks *how badly?* Five gold left, eight seconds on the timer, the minimum bid under your cursor. The auction panel does not help. It just holds the number up and waits.
 
 The other moment this system owns: buying nothing. You close DRAFT_SHOP with your gold intact and cards unspent. The opponent sees the same: your gold total unchanged on their screen. Whether they read that as restraint or as inability is up to them. The UI guarantees the data is shared; the meaning is not.
 
@@ -31,11 +31,16 @@ The other moment this system owns: buying nothing. You close DRAFT_SHOP with you
 
 **DRAFT_INITIAL Panel**
 
-**Rule 1 — Activation.** The panel activates on receipt of `S2CDraftOffering { card_ids }`. Before this message arrives, the panel is blank. The panel header reads permanently: **"DRAFT OFFERING — ONE TIME ONLY · NO REFRESH · 5g BUDGET"**. On a player's first session, a dismissible callout tooltip appears over the grid: *"These 9 cards are your only offering. No refresh. 5g to spend."* The tooltip disappears on first explicit dismiss and does not reappear. No disabled refresh button exists — the affordance is absent, not locked, to avoid teaching the wrong mental model.
+**Rule 1 — Activation.** Panel activation requires **both** `S2CPhaseChanged(DRAFT_INITIAL)` and `S2CDraftOffering { card_ids }`. The client buffers whichever arrives first and activates only when both are present (same pattern as DRAFT_AUCTION Rule 1 — cross-type FIFO ordering is not assumed). Timer initialization requires `S2CPhaseChanged { timer_duration_ms }` — the panel must not activate on `S2CDraftOffering` alone. Before both messages arrive, the panel is blank. The panel header reads permanently: **"DRAFT OFFERING — ONE TIME ONLY · NO REFRESH"**. On a player's first session, a dismissible callout tooltip appears **above the 3×3 grid** (anchored to the panel header, not overlaid on card slots — must not occlude card art): *"These 9 cards are your only offering. No refresh. 5g to spend."* Dismiss mechanic: click anywhere outside the tooltip box (or a dedicated "Got it" button if the UX spec requires one). The tooltip must not occlude any card slot — if the player must dismiss before they can read the cards, the tutorial defeats the decision. Tooltip disappears on first explicit dismiss and does not reappear. Exact anchor point and dismiss UX deferred to UX spec (see OQ2). No disabled refresh button exists — the affordance is absent, not locked, to avoid teaching the wrong mental model.
 
 **Rule 2 — Grid layout.** 9 cards in a 3×3 grid. Sort order: rarity descending (Legendary → Epic → Rare → Uncommon → Common), then cost descending within rarity. This resolves Card Acquisition Open Question 5.
 
-**Rule 3 — Accepted input.** The only accepted input is a click on a card slot to purchase it. Client pre-validates before sending: `local_gold >= card_cost` AND `local_hand_size < 10`. If either fails, the click is silently ignored — no server message, no visual error. On valid click: send `C2SPurchaseCard { card_id }`, await `S2CGoldUpdate` + `S2CCardAcquired`.
+**Rule 3 — Accepted input.** The only accepted input is a click on a card slot to purchase it. Client pre-validates before sending: `local_gold >= card_cost` AND `local_hand_size < 10`.
+
+- **If `local_gold < card_cost`:** Do not send. Flash the gold counter with a brief red-amber tint (200ms, Auction Amber `#E87C1E`) — same tint used on gold decrease animation. This gives a visible "can't afford" signal without adding a popup. No toast, no slot lock.
+- **If `local_hand_size >= 10`:** Covered by Rule 6 lockout (slots are already greyed and non-clickable — this path is unreachable if Rule 6 is implemented correctly).
+
+On valid click: send `C2SPurchaseCard { card_id }`, await `S2CGoldUpdate` + `S2CCardAcquired`.
 
 **Rule 4 — Slot state after purchase.** On confirmed purchase: the slot gains a "BOUGHT" overlay and grays out — it does not disappear. Slots stay in position to preserve spatial memory during the 45-second window. Gold budget counter animates down from `S2CGoldUpdate`.
 
@@ -56,23 +61,28 @@ Activation steps (when both messages have been received):
 - Timer bar at 100%, "No leader yet", preset bid buttons enabled per affordability check.
 - Start client-side timer countdown.
 
-If only `S2CAuctionCard` has arrived: render card art and price in a "preparing..." state with timer bar greyed; do not start countdown. If only `S2CPhaseChanged(DRAFT_AUCTION)` has arrived: hold the previous panel state (auction not yet visible); do not start countdown.
+If only `S2CAuctionCard` has arrived: render card art and price in a "preparing..." state with timer bar greyed and label "Auction starting..."; do not start countdown. This enters the `AUCTION_PREPARING` state in the state machine. **Timeout:** if `S2CPhaseChanged(DRAFT_AUCTION)` does not arrive within 10 seconds, show "Connection error — awaiting server..." and transition to an error display. **Dismiss:** if any non-DRAFT_AUCTION `S2CPhaseChanged` arrives while in `AUCTION_PREPARING` (e.g., `S2CPhaseChanged(GAME_OVER)` from a disconnect-driven abort), clear the buffer, dismiss the preparing panel, and process the phase change normally.
 
-**Rule 2 — Shop footer during DRAFT_AUCTION.** The shop slots (populated at DRAFT_AUCTION entry by auto-refresh) are visible as a footer strip below the auction panel. The strip is fully locked: slots are read-only (greyed, non-clickable), the refresh button is **hidden** (not just disabled). The footer is intentionally visible so the player can evaluate upcoming shop options while bidding. No `C2SPurchaseCard` or `C2SRefreshShop` is sent.
+If only `S2CPhaseChanged(DRAFT_AUCTION)` has arrived: hold the previous panel state (auction not yet visible); do not start countdown.
+
+**Rule 2 — Shop footer during DRAFT_AUCTION.** The shop slots (populated at DRAFT_AUCTION entry by auto-refresh) are visible as a footer strip below the auction panel. The strip is fully locked: slots are read-only (greyed, non-clickable), the refresh button is **hidden** (not just disabled). The footer is intentionally visible so the player can evaluate upcoming shop options while bidding. **Card costs are visible on each footer slot at 30% opacity** (same as card art) — consistent with the "panel is honest about data" principle; the player can evaluate DRAFT_SHOP budget constraints during the auction. No `C2SPurchaseCard` or `C2SRefreshShop` is sent.
 
 **Rule 3 — Timer bar.** Drains continuously from `auction_timer_ms` (20s default). Color urgency: green above 10s · yellow 5–10s · red below 5s. Zone color transitions cross-fade over 300ms — no snap. Timer authority is local; server corrections arrive only via `S2CAuctionBidAccepted.new_timer_ms`.
 
-**Rule 4 — Bid input: preset buttons only.** The bid input consists of three preset increment buttons — no free-form text field:
-- **+1g** — bids `current_price + 1` (minimum bid)
-- **+3g** — bids `current_price + 3`
-- **+5g** — bids `current_price + 5`
+**Rule 4 — Bid input: preset buttons only.** The bid input consists of three preset bid buttons — no free-form text field. Each button's **primary label shows the total bid commitment** (not the increment); the increment is shown as smaller secondary text:
+
+- **Primary: `current_price + 1`g** · Secondary: "(+1)" — minimum bid
+- **Primary: `current_price + 3`g** · Secondary: "(+3)"
+- **Primary: `current_price + 5`g** · Secondary: "(+5)"
+
+**Example:** at `current_price = 7`, buttons read **"8g (+1)"** / **"10g (+3)"** / **"12g (+5)"**. At auction start with `starting_price = 3` (Rare), buttons read **"4g (+1)"** / **"6g (+3)"** / **"8g (+5)"**. Labels update immediately on each `S2CAuctionBidAccepted.amount` receipt. Rationale: at 20-second auction pressure, the player's question is "can I commit this total?" — displaying the total directly removes a mental arithmetic step.
 
 Each button fires immediately on click (no separate Confirm step). On click: re-validate, send `C2SPlaceBid { amount: current_price + offset }`, then enter the in-flight state:
-- The clicked button's label changes from "+Xg" to **"BIDDING..."** in the same Heavy weight at 80% opacity.
+- The clicked button's primary label changes to **"BIDDING..."** in the same Heavy weight at 80% opacity.
 - The other two buttons render in standard generic-disabled state (greyed, ~30% opacity).
 - All three buttons are non-interactive until `S2CAuctionBidAccepted` or `S2CAuctionBidRejected` arrives.
 
-This in-flight visual is the player's confirmation that the click was received and the bid is in transit (50–250ms typical RTT). On bid resolution, the "BIDDING..." label reverts to its "+Xg" form and per-button affordability re-evaluates per Rule 5.
+This in-flight visual is the player's confirmation that the click was received and the bid is in transit (50–250ms typical RTT). On bid resolution, the "BIDDING..." label reverts to its total-commitment form and per-button affordability re-evaluates per Rule 5.
 
 The `current_price` used for each button is the last value received from `S2CAuctionBidAccepted.amount` (or `starting_price` if no bids yet).
 
@@ -80,7 +90,7 @@ The `current_price` used for each button is the last value received from `S2CAuc
 
 | `current_price` range | Border color tier | Hex |
 |---|---|---|
-| 1–3 g | Ink Blue | `#1A2D5A` |
+| 0–3 g | Pale Ink Blue | `#2A4D8A` |
 | 4–6 g | Auction Amber | `#E87C1E` |
 | 7–9 g | Deep Amber | `#C2630E` |
 | 10+ g | Crimson-Amber | `#9C2000` |
@@ -94,36 +104,48 @@ Tier transitions cross-fade over 300ms (same animation policy as timer color zon
 | `hand_size == 10` | All three disabled | "Hand full — no bids possible this auction" (cards cannot be played during DRAFT_AUCTION; the lockout is unrecoverable for this auction) |
 | `free_gold < current_price + 1` | All three disabled | "Insufficient gold" |
 | `free_gold < current_price + offset` (per button) | That button only | Button greyed |
-| `player == current_leader` | All three disabled | "YOU ARE LEADING" badge; no raise action available |
+| `player == current_leader` | All three **hidden** | "YOU ARE LEADING" badge fills the button area; no bid action available. Hidden (not disabled) — a disabled button implies an unavailable action and editorializes; the badge replaces the buttons entirely. |
 | Bid in flight (clicked button awaiting server response) | All three disabled; clicked button shows "BIDDING..." | (see Rule 4) |
 | Locally expired, awaiting settlement | All three disabled | (see Rule 8) |
 
 **Bid stride note.** With three preset increments (+1g/+3g/+5g), the player can bid `current_price + {1, 3, 5}` only — never `+2` or `+4` from a given anchor price. Across successive bids the achievable bid amounts cover all integers (since `+1` from an opponent's `+1` reaches every parity), but the *single-action* squeeze-bid at exact opponent ceiling (e.g., bidding +2g to push opponent to 0) is not expressible. This is a deliberate design constraint — see OQ1 closure note for the fantasy tradeoff.
 
-Individual button disable: +1g disabled if `free_gold < current_price + 1`; +3g disabled if `free_gold < current_price + 3`; +5g disabled if `free_gold < current_price + 5`. A player with exactly 2g free gold and `current_price = 0` sees +1g enabled, +3g disabled, +5g disabled.
+Individual button disable (when buttons are visible): the +1 increment button is disabled if `free_gold < current_price + 1`; the +3 increment button is disabled if `free_gold < current_price + 3`; the +5 increment button is disabled if `free_gold < current_price + 5`. A player with exactly 2g free gold and `current_price = 0` sees the +1 button enabled (labels "1g (+1)"), +3 button disabled, +5 button disabled.
 
 **Rule 6 — Bid accepted: `S2CAuctionBidAccepted { bidder, amount, new_timer_ms }`.**
-Update current price to `amount`. Update leader display. If `bidder == local_player`: activate "YOU ARE LEADING" badge; all three preset buttons disabled (cannot bid against self). If `bidder == opponent`: clear "YOU ARE LEADING" if active; re-enable preset buttons per current affordability (update `current_price = amount` first, then evaluate per-button disable). Timer bar: animate (ease-out, 120–150ms) from current display position to `new_timer_ms / cap_ms`, brief bar flash, then resume drain.
+Update current price to `amount`. Update leader display. If `bidder == local_player`: hide all three preset buttons and display the "YOU ARE LEADING" badge in their place (per Rule 5 leading-state handling; cannot bid against self). If `bidder == opponent`: clear "YOU ARE LEADING" badge and restore button visibility if active; **defer button re-enable** — do not re-enable preset buttons yet.
+
+**Deferred re-enable — symmetric two-message gate.** Re-enable requires BOTH of the following to have arrived (regardless of order):
+- `pending_bid_accepted` flag: set when `S2CAuctionBidAccepted { bidder: opponent }` is processed.
+- `pending_gold_broadcast_seen` flag: set when `S2CGoldBroadcast { player_id: local_player }` arrives. **Filter: only broadcasts where `player_id == local_player` satisfy this gate.** The opponent's broadcast does not.
+
+If `S2CGoldBroadcast { player_id: local_player }` arrives **before** `S2CAuctionBidAccepted` (cross-type ordering): set `pending_gold_broadcast_seen` and store the broadcast values. When `S2CAuctionBidAccepted` subsequently arrives, both flags are immediately true — re-enable proceeds without waiting for another broadcast. This handles both arrival orderings.
+
+When both flags are set: update `current_price = amount`, update `local_free_gold = gold - reserved_gold` from the stored broadcast, evaluate per-button affordability, re-enable. Clear both flags on `S2CAuctionSettled` (unconditional reset — see Rule 9).
+
+Rationale: `S2CGoldBroadcast` is a separate wire message; computing affordability before it arrives uses stale `local_free_gold` and may flash wrong button states. Timer bar: animate (ease-out, 120–150ms) from current display position to `new_timer_ms / cap_ms`, brief bar flash, then resume drain.
 
 **Rule 7 — Bid rejected: `S2CAuctionBidRejected { reason }`.**
-First, revert any "BIDDING..." label on a clicked button back to its "+Xg" form. Then re-enable preset buttons (per affordability). Toast notification per reason:
+First, revert any "BIDDING..." label on a clicked button back to its total-commitment form (e.g., "8g (+1)"). Then re-enable preset buttons (per affordability). Toast notification per reason:
 
 | Reason | Toast text |
 |---|---|
 | `InsufficientGold` | "Not enough gold" |
 | `AmountTooLow` | "Bid must be at least [minimum_bid]g" |
 | `AlreadyLeader` | "You are already leading" |
-| `HandFull` | "Hand full — play a card to bid" |
+| `HandFull` | "Hand full — no bids possible this auction" |
 | `AuctionExpired` | "Auction has ended" |
 
 **Rule 8 — Locally expired, awaiting settlement.** Activates when the client's local timer drains to 0 before `S2CAuctionSettled` arrives.
 1. Timer bar freezes at 0%.
-2. All three preset buttons disabled.
-3. After 500ms: subtle pulse animation on the timer bar **and** small "Bid placed — finalizing..." label appears beneath the bar (immediate, not delayed — the player needs feedback that the system is processing, not "broken").
+2. All three preset buttons disabled. If a bid is currently in "BIDDING..." in-flight state, the label persists — the bid may still be resolved server-side.
+3. Immediately (at timer-zero, no delay): small "Auction ending..." label appears beneath the timer bar. This label is true in all cases (bid placed or not, leading or not — the auction timer has expired for this client). After 500ms: subtle pulse animation on the timer bar begins.
 4. After 1500ms: label changes to "Awaiting server..." if still unresolved (longer-than-typical RTT — escalation from "normal processing" to "noticeable lag").
 5. Two resolutions: `S2CAuctionBidAccepted` → animate bar to `new_timer_ms / cap`, re-enable preset buttons (per affordability), resume drain, clear pulse + label; `S2CAuctionSettled` → proceed to Rule 9.
 
 **Rule 9 — Settlement: `S2CAuctionSettled { winner, amount }`.**
+
+**Unconditional state reset (applies regardless of client state when `S2CAuctionSettled` arrives):** Immediately clear all in-flight bid tracking — discard any "BIDDING..." label state, discard any queued `S2CAuctionBidRejected` messages (a queued rejection arriving after settlement must not re-enable bid buttons), **discard any subsequently arriving `S2CAuctionBidAccepted` messages** (a post-settlement accepted bid must not update `current_price` or set re-enable flags — `S2CAuctionSettled` is terminal and takes precedence over any in-transit accepted bid), clear the `pending_bid_accepted` and `pending_gold_broadcast_seen` flags from Rule 6. Then proceed to the settlement animation below. `S2CAuctionSettled` is a terminal event; no other auction state transitions follow it.
 
 | Case | Animation | Transition |
 |---|---|---|
@@ -164,17 +186,23 @@ The disable is set in the same frame as the click handler — no intervening ren
 |---|---|---|
 | `INACTIVE` | PLACEMENT / RESOLUTION / GAME_OVER | None |
 | `DRAFT_INITIAL` | RSM phase == DRAFT_INITIAL | Purchase click |
-| `AUCTION_ACTIVE` | RSM phase == DRAFT_AUCTION | Preset bid buttons +1g/+3g/+5g (if not locked per affordability/state) |
+| `AUCTION_PREPARING` | S2CAuctionCard buffered, S2CPhaseChanged(DRAFT_AUCTION) not yet arrived | None — read-only: card art + price displayed; timer bar greyed |
+| `AUCTION_ACTIVE` | RSM phase == DRAFT_AUCTION, both activation messages received | Preset bid buttons +1g/+3g/+5g (if not locked per affordability/state) |
 | `SHOP_ACTIVE` | RSM phase == DRAFT_SHOP | Purchase, Refresh, Ready signal |
 
 ```
-INACTIVE ──► DRAFT_INITIAL     on S2CPhaseChanged(DRAFT_INITIAL) + S2CDraftOffering
-DRAFT_INITIAL ──► INACTIVE     on S2CPhaseChanged(PLACEMENT)
-INACTIVE ──► AUCTION_ACTIVE    on S2CAuctionCard received (before S2CPhaseChanged(DRAFT_AUCTION))
-AUCTION_ACTIVE ──► SHOP_ACTIVE on S2CAuctionSettled + 350ms transition animation
-INACTIVE ──► SHOP_ACTIVE       on S2CPhaseChanged(DRAFT_SHOP) + S2CShopSlots (non-auction round)
-SHOP_ACTIVE ──► INACTIVE       on S2CPhaseChanged(PLACEMENT)
+INACTIVE ──► AUCTION_PREPARING     on S2CAuctionCard received (S2CPhaseChanged not yet arrived)
+INACTIVE ──► DRAFT_INITIAL         on S2CPhaseChanged(DRAFT_INITIAL) + S2CDraftOffering
+DRAFT_INITIAL ──► INACTIVE         on S2CPhaseChanged(PLACEMENT)
+AUCTION_PREPARING ──► AUCTION_ACTIVE   on S2CPhaseChanged(DRAFT_AUCTION) received (both messages now present)
+AUCTION_PREPARING ──► INACTIVE     on any non-DRAFT_AUCTION S2CPhaseChanged (cancel buffered card; see Edge Cases)
+INACTIVE ──► AUCTION_ACTIVE        on S2CPhaseChanged(DRAFT_AUCTION) + S2CAuctionCard both available
+AUCTION_ACTIVE ──► SHOP_ACTIVE     on S2CAuctionSettled + 350ms transition animation
+INACTIVE ──► SHOP_ACTIVE           on S2CPhaseChanged(DRAFT_SHOP) + S2CShopSlots (non-auction round)
+SHOP_ACTIVE ──► INACTIVE           on S2CPhaseChanged(PLACEMENT)
 ```
+
+**Hidden sub-state note:** When `S2CPhaseChanged(DRAFT_AUCTION)` arrives while in INACTIVE (before `S2CAuctionCard`), the client remains in INACTIVE but sets an internal `phase_auction_buffered` flag. The state diagram shows `INACTIVE ──► AUCTION_ACTIVE` when both messages are available — this path fires when `S2CAuctionCard` subsequently arrives and the flag is set. The client never enters AUCTION_PREPARING in this ordering; it transitions directly INACTIVE → AUCTION_ACTIVE. SAU-EG4a covers this path.
 
 Panel transitions:
 - `DRAFT_INITIAL → INACTIVE`: panel fades out on phase change
@@ -189,7 +217,7 @@ Panel transitions:
 |---|---|---|
 | **Card Acquisition** | Upstream → UI | `S2CDraftOffering` (9 cards, DRAFT_INITIAL activation); `S2CShopSlots` (3 slots at each auto-refresh and manual refresh). UI holds no card pool knowledge — slot state is entirely message-driven. |
 | **Auction System** | Upstream → UI | `S2CAuctionCard` (auction panel activation); `S2CAuctionBidAccepted` (price, leader, timer updates); `S2CAuctionBidRejected` (inline error + re-enable); `S2CAuctionSettled` (settlement animation + panel transition). UI → Auction: `C2SPlaceBid { amount }`. |
-| **Economy System** | Upstream → UI | `S2CGoldUpdate { gold, current_mana, reserve_mana, mana_cap }` (own player — drives gold display, refresh cost disable, and buy lockout. Note: does NOT carry `reserved_gold`); `S2CGoldBroadcast { player_id, gold, reserved_gold }` (both own and opponent — drives `local_free_gold = gold - reserved_gold` for preset button affordability checks and available-gold display; opponent's broadcast drives opponent free-gold display in auction panel). |
+| **Economy System** | Upstream → UI | `S2CGoldUpdate { gold, reserved_gold, current_mana, reserve_mana, mana_cap }` (own player — drives gold display, refresh cost disable, and buy lockout. Carries `reserved_gold` — do not confuse with `reserve_mana`, which is a mana economy field); `S2CGoldBroadcast { player_id, gold, reserved_gold }` (both own and opponent — drives `local_free_gold = gold - reserved_gold` for the Rule 6 re-enable gate and available-gold display; opponent's broadcast drives opponent free-gold display in auction panel). |
 | **Round State Machine** | Upstream → UI | `S2CPhaseChanged` (sole authority for panel state activation, timer initialization, and dismissal). UI owns no phase logic. |
 | **UI → Network Protocol** | Downstream | `C2SPurchaseCard { card_id }` (DRAFT_INITIAL and DRAFT_SHOP); `C2SRefreshShop {}` (DRAFT_SHOP only); `C2SPlaceBid { amount }` (DRAFT_AUCTION only); `C2SSignalReady { retract: bool }` (DRAFT_INITIAL and DRAFT_SHOP — matches RSM Rule 12 + Player Inputs table). All locks enforced client-side before send. |
 
@@ -213,7 +241,7 @@ The preset bid buttons' affordability check and the auction panel's "available g
 
 **Example:** `gold = 8`, `reserved_gold = 5` (player is auction leader with a 5g bid). `local_free_gold = 3`. With `current_price = 0`: +1g enabled (3 ≥ 1), +3g enabled (3 ≥ 3), +5g disabled (3 < 5).
 
-**Source note:** `reserved_gold` comes exclusively from `S2CGoldBroadcast`. `S2CGoldUpdate` carries `reserve_mana` (mana economy) — a different field. The opponent's free gold uses the same formula from their `S2CGoldBroadcast` entry.
+**Source note:** `reserved_gold` is available in both `S2CGoldUpdate` (own player) and `S2CGoldBroadcast` (both players). Do not confuse with `reserve_mana` in `S2CGoldUpdate`, which is a mana economy field — a distinct field. During DRAFT_AUCTION, affordability re-enables use the `S2CGoldBroadcast` path (the Rule 6 two-message gate). The opponent's free gold uses `S2CGoldBroadcast` exclusively (the opponent's `S2CGoldUpdate` is a server-to-self-only message not broadcast to the local client).
 
 ---
 
@@ -221,7 +249,10 @@ The preset bid buttons' affordability check and the auction panel's "available g
 
 Drives the visual fill width of all three phase timer bars.
 
-`fill_pct = clamp(timer_remaining_ms / timer_max_ms, 0.0, 1.0)`
+```
+if timer_max_ms == 0.0 { return 0.0 }  // guard: clamp() does NOT protect against NaN (IEEE 754)
+fill_pct = clamp(timer_remaining_ms / timer_max_ms, 0.0, 1.0)
+```
 
 **Variables:**
 
@@ -257,7 +288,7 @@ timer_color_zone(timer_remaining_ms) =
 | Remaining time | `timer_remaining_ms` | f32 | 0–20000 | Evaluated every frame (same value driving D.2) |
 | Output | `timer_color_zone` | enum | Green \| Yellow \| Red | Target color zone; the cross-fade animates to this target |
 
-**Boundaries:** >10001ms → Green. 10000ms → Yellow (first Yellow frame). 5001ms → Yellow. 5000ms → Red (first Red frame).
+**Boundaries (f32 domain):** >10000ms → Green (strictly greater than 10000.0f32). 10000ms → Yellow (first Yellow frame — `10000.0 > 10000.0` is false in IEEE 754). 5001ms → Yellow. 5000ms → Red (first Red frame). Note: the formula uses strict `>` on f32, not integer comparison. An implementer using integer milliseconds should compare `timer_remaining_ms > 10000` (same result as f32 since both reject the exact boundary value).
 
 **Cross-fade rule:** Zone changes trigger a 300ms cross-fade from current rendered color to target. The formula produces a target, not an instantaneous rendered value. Scope: DRAFT_AUCTION only. DRAFT_INITIAL and DRAFT_SHOP use Formula D.5c.
 
@@ -298,7 +329,7 @@ Owned by `design/gdd/auction-system.md`, registered in `design/registry/entities
 
 `minimum_bid = current_price + 1`
 
-**UI usage:** `minimum_bid = current_price + 1` defines the effective amount sent by the **+1g button**. The +3g and +5g buttons send `current_price + 3` and `current_price + 5` respectively. `current_price` is updated locally on each `S2CAuctionBidAccepted.amount` receipt. If the server rejects a bid with `AmountTooLow`, the toast shows the actual `minimum_bid`.
+**UI usage:** `minimum_bid = current_price + 1` defines the effective amount sent by the **+1 increment button** (labeled "[current_price+1]g (+1)"). The +3 and +5 increment buttons send `current_price + 3` and `current_price + 5` respectively. `current_price` is updated locally on each `S2CAuctionBidAccepted.amount` receipt. If the server rejects a bid with `AmountTooLow`, the toast shows the actual `minimum_bid`.
 
 ---
 
@@ -308,7 +339,7 @@ Discrete tier function mapping `current_price` to the auction panel's border col
 
 ```
 auction_border_color_tier(current_price) =
-  current_price ≤ 3   →  Ink Blue       (#1A2D5A)
+  current_price ≤ 3   →  Pale Ink Blue  (#2A4D8A)
   4 ≤ current_price ≤ 6  →  Auction Amber  (#E87C1E)
   7 ≤ current_price ≤ 9  →  Deep Amber     (#C2630E)
   current_price ≥ 10  →  Crimson-Amber  (#9C2000)
@@ -319,13 +350,13 @@ auction_border_color_tier(current_price) =
 | Variable | Symbol | Type | Range | Description |
 |---|---|---|---|---|
 | Current auction price | `current_price` | u32 | 0–unbounded | Most recent value from `S2CAuctionBidAccepted.amount`, or `starting_price` if no bids placed |
-| Output | `auction_border_color_tier` | enum | InkBlue \| AuctionAmber \| DeepAmber \| CrimsonAmber | Target border color tier; the cross-fade animates to this target |
+| Output | `auction_border_color_tier` | enum | PaleInkBlue \| AuctionAmber \| DeepAmber \| CrimsonAmber | Target border color tier; the cross-fade animates to this target |
 
-**Boundaries:** `current_price = 0` (panel entry, no bids) → Ink Blue (treated as ≤ 3 case). 3 → Ink Blue. 4 → Auction Amber. 6 → Auction Amber. 7 → Deep Amber. 9 → Deep Amber. 10 → Crimson-Amber.
+**Boundaries:** `current_price = 0` (panel entry, no bids) → Pale Ink Blue (treated as ≤ 3 case). 3 → Pale Ink Blue. 4 → Auction Amber. 6 → Auction Amber. 7 → Deep Amber. 9 → Deep Amber. 10 → Crimson-Amber.
 
 **Cross-fade rule:** Tier changes trigger a 300ms cross-fade from current rendered border color to target. Independent from Formula D.3 (timer zone color); both may transition simultaneously.
 
-**Scope:** DRAFT_AUCTION only. The Ink Blue starting tier matches the panel background, so the border is visually subtle at low prices and grows louder as the auction escalates — reinforcing "the most consequential 20 seconds of the round."
+**Scope:** DRAFT_AUCTION only. The Pale Ink Blue starting tier (#2A4D8A) is slightly lighter than the panel background (#1A2D5A), providing a visually present but subdued border at low prices — the ramp escalates from subtle to loud as the auction intensifies, reinforcing "the most consequential 20 seconds of the round."
 
 ---
 
@@ -369,7 +400,7 @@ draft_timer_color_zone(timer_remaining_ms) =
 
 - **If `S2CAuctionSettled` arrives during the "locally expired" state:** Normal expected resolution. Finalize immediately. Cancel the 500ms/1500ms feedback timers.
 
-- **If `S2CAuctionBidAccepted` arrives during the "locally expired" state:** A same-tick server bid extended the timer. Animate bar from 0% to the fill percentage computed from `new_timer_ms`. Re-enable preset buttons per current affordability (update `current_price = amount` first, then evaluate per-button disable). Clear pulse and "Awaiting server..." label. If the local player had a "BIDDING..." in-flight state on a button, revert that button's label to "+Xg" before re-enabling.
+- **If `S2CAuctionBidAccepted` arrives during the "locally expired" state:** A same-tick server bid extended the timer. Animate bar from 0% to the fill percentage computed from `new_timer_ms`. Re-enable preset buttons per current affordability (update `current_price = amount` first, then evaluate per-button disable). Clear pulse and "Awaiting server..." label. If the local player had a "BIDDING..." in-flight state on a button, revert that button's label to its total-commitment form before re-enabling.
 
 - **If `S2CAuctionBidAccepted` and `S2CAuctionSettled` arrive in the same delivery batch (same server tick — last-second bid + simultaneous settlement):** Apply both updates in arrival order before any visual update. Step 1: process `S2CAuctionBidAccepted` (update `current_price`, `current_leader`, timer); Step 2: immediately process `S2CAuctionSettled` (Rule 9 transition). Do not render an intermediate "in-flight resolved" frame between the two — the player should see the settlement animation directly with the final `current_leader` reflected. The "BIDDING..." label, if active, is bypassed and the panel transitions to settlement.
 
@@ -380,6 +411,10 @@ draft_timer_color_zone(timer_remaining_ms) =
 - **If a purchase in-flight confirmation arrives after `S2CPhaseChanged(PLACEMENT)` fires:** Restore the slot to its pre-click state. Gold remains unchanged. The phase-change wins; the purchase was silently rejected by the server.
 
 - **If `S2CPhaseChanged(PLACEMENT)` arrives while the auction panel settlement animation is still playing:** Cancel the animation and transition immediately. The PLACEMENT 10s timer starts on this message — UI animations must never delay phase entry.
+
+- **If the `AUCTION_PREPARING` state persists for more than 10 seconds (no `S2CPhaseChanged(DRAFT_AUCTION)` arrives):** Show "Connection error — awaiting server..." label on the preparing panel. This is a server fault — the reliable channel cannot drop messages, so this implies a server hang or crash. The client remains in AUCTION_PREPARING until `S2CPhaseChanged` of any kind resolves it (dismiss on any phase change as specified in Rule 1).
+
+- **If a purchase `S2CGoldUpdate`/`S2CCardAcquired` confirmation arrives AFTER `S2CPhaseChanged(PLACEMENT)`:** Restore the slot to its pre-click state. Gold display remains unchanged (phase-change wins). Exception: if `S2CGoldUpdate`/`S2CCardAcquired` arrives BEFORE `S2CPhaseChanged(PLACEMENT)` — i.e., the server processed the purchase while still in DRAFT_INITIAL — the purchase is valid and the slot correctly shows as BOUGHT. The "phase-change wins" edge case applies only to confirmations arriving late (after PLACEMENT fires).
 
 ## Dependencies
 
@@ -411,7 +446,7 @@ This system owns no numerical knobs of its own — all gameplay values are sourc
 | `draft_initial_timer_seconds` | 45s | game-config.md | Duration of the DRAFT_INITIAL panel. Drives `timer_max_ms` in Formula D.2. Color urgency: yellow <15s, red <5s. |
 | `draft_shop_timer_seconds` | 30s | game-config.md | Duration of the DRAFT_SHOP panel. Drives `timer_max_ms` in Formula D.2. Color urgency: red <5s. |
 | `auction_timer_seconds` | 20s | game-config.md | Auction panel duration and reset cap. Drives `timer_max_ms` in Formula D.2 and zone boundaries in Formula D.3. |
-| `auction_timer_reset_seconds` | 5s | game-config.md | Timer bar extension per accepted bid. Determines magnitude of the ease-out fill animation. |
+| `auction_timer_reset_seconds` | 5s | game-config.md | Timer extension per accepted bid — sets the new `new_timer_ms` ceiling per `S2CAuctionBidAccepted`. Controls how much of the 20s cap is restored, not the tween animation duration (always 120–150ms). |
 | `refresh_base_cost` | 1g | game-config.md / economy-system.md | First manual refresh cost in DRAFT_SHOP. Drives the initial Refresh button label. |
 | `refresh_cap` | 1 | game-config.md / card-acquisition.md | Maximum escalation above base refresh cost. Determines when the Refresh button label stops increasing (stays at 2g by default). |
 | `auction_floor_rare/epic/legendary` | 3/4/5g | auction-system.md / game-config.md | Starting prices displayed on auction panel activation. Passed as `S2CAuctionCard.starting_price` — no UI logic depends on these values directly. |
@@ -437,13 +472,13 @@ This system owns no numerical knobs of its own — all gameplay values are sourc
 
 | Tier | Elements | Treatment |
 |---|---|---|
-| PRIMARY (decision surface) | Three preset bid buttons (+1g/+3g/+5g); current price numeral; opponent free-gold numeral; player free-gold numeral | 100% opacity; Heavy weight; largest type/touch targets. The cluster the player's eye lands on. |
+| PRIMARY (decision surface) | Three preset bid buttons (total-commitment labels: "Xg (+1)" / "Xg (+3)" / "Xg (+5)"); current price numeral; opponent free-gold numeral; player free-gold numeral | 100% opacity; Heavy weight; largest type/touch targets. The cluster the player's eye lands on. |
 | SECONDARY (context surface) | Card art (240×360); rarity badge; auction timer bar; "YOU ARE LEADING" badge when active | 100% opacity; subordinate scale (card art is large but visually centered, not flashing/animated unless settlement). |
 | TERTIARY (peripheral context) | Shop footer strip (3 cards); footer slot art | 30% opacity (revised from 60%); 80% scale relative to baseline shop slots; no hover affordance. Reads as "available later," not "actionable now." |
 
 Settlement overlays and red-zone timer pulse temporarily promote their target element (timer bar, card art) above the PRIMARY tier — those are momentary, not steady-state.
 
-The "Simple surface — one question at a time" pillar is satisfied by the prominence hierarchy: the player's eye is anchored to PRIMARY for the bid decision; SECONDARY supplies the context for that decision; TERTIARY is informational only.
+The "Simple surface" pillar is directional, not a literal count of on-screen elements: the prominence hierarchy anchors the player's attention to the PRIMARY bid decision; SECONDARY supplies context; TERTIARY is informational only. The design goal is that the player's working attention is on one decision at a time, even when multiple signals are present at lower prominence.
 
 **DRAFT_SHOP Panel:** Warm intimate — cooler than the auction, warmer than the board. Parchment-warm border (`#D4AF72`, 2–3px, no escalation ramp). Background: dark parchment-brown tint (`#1E1610`). Slot wells have a soft warm highlight strip at the top edge (baked art, not dynamic light).
 
@@ -460,7 +495,7 @@ The "Simple surface — one question at a time" pillar is satisfied by the promi
 | DRAFT_AUCTION featured card | Card Zoom | 240 × 360 px | 100% — brightest element on screen |
 | DRAFT_SHOP slots (interactive) | Card Display | 120 × 180 px; hover: 160 × 240 px, 8px lift, gold outline pulse | 100% |
 | DRAFT_INITIAL grid | Card Display | 120 × 180 px; hover: 160 × 240 px (same hover behavior) | 100%; purchased = 40% behind "BOUGHT" overlay |
-| DRAFT_AUCTION footer strip | Card Display | 120 × 180 px | 60% |
+| DRAFT_AUCTION footer strip | Card Display | 120 × 180 px | 30% |
 
 **Rarity badge gems (art bible Section 7.5):**
 - Rare: circular gem, Ink Blue outer / lighter blue center gradient
@@ -536,13 +571,17 @@ Horizontal pill, full panel width, 12px tall (1080p ref), 6px rounded ends, 1px 
 | DRAFT_INITIAL budget depleted | `local_gold` reaches 0 | Single soft low bell; 1 beat |
 | DRAFT_SHOP entry | Panel activates | Brief descending acoustic phrase, 1–2s; contrasts clearly with auction urgency tone |
 | DRAFT_SHOP purchase confirm | `S2CCardAcquired` received in DRAFT_SHOP | Single warm chime, slightly lower pitch than DRAFT_INITIAL confirm; 300–400ms |
-| Refresh swoosh | `C2SRefreshShop` sent (immediate feedback) | Paper/card shuffle, 200–300ms |
-| Refresh failed | 5s timeout fires | Reversed swoosh, 150ms, low alarm register |
+| Refresh swoosh | `S2CShopSlots` received (server-confirmed) | Paper/card shuffle, 200–300ms |
+| Refresh failed | 5s timeout fires | Reversed swoosh, 200ms, soft failure register (muted/dampened — a retry prompt, not an alarm) |
 | Ready signal | `C2SSignalReady` sent | Short ascending two-note phrase, 200–300ms |
 | Ready retracted | `C2SSignalReady { retract: true }` sent | Single descending counterpart note, same duration |
-| Timer red zone entry (<5s) | First red-zone frame (all phases) | Shared countdown tick cue — same audio across all phases for "critical timer" |
+| Timer red zone entry (<5s) — DRAFT_INITIAL and DRAFT_SHOP only | First red-zone frame | Looping countdown tick cue (owned by this GDD for these two phases). Loop starts at red-zone entry, stops at phase end. Character: rhythmic short tick, same as the DRAFT_AUCTION red-zone tick but fired by this system's handler, not auction-system.md's. |
 
-**Audio principle:** No looping ambient underscore in DRAFT_INITIAL or DRAFT_SHOP. Any shop entry sting ducks to silence over 200ms when the auction urgency tone begins.
+**Audio ownership note (red-zone tick):** During DRAFT_AUCTION the countdown tick is owned by `auction-system.md` (event: "Timer < 5s"). During DRAFT_INITIAL and DRAFT_SHOP it is owned by this GDD. Both reference the same audio asset; they must use separate trigger handlers to avoid double-fire. A single `AudioState` flag gating "tick already playing for this phase" prevents duplicate playback if the handler fires multiple frames.
+
+**Looping tick stop conditions:** The tick loop stops on: (a) `S2CPhaseChanged` to any phase, (b) for DRAFT_AUCTION only — `S2CAuctionBidAccepted.new_timer_ms > 5000` (timer reset above red zone — owner is auction-system.md, stop logic is also its responsibility).
+
+**Audio principle:** No looping ambient underscore in DRAFT_INITIAL or DRAFT_SHOP. **Transition duck (AUCTION → SHOP):** When `S2CAuctionSettled` is received, the auction urgency tone (owned by auction-system.md) fades out over 350ms — it must be fully silent before the DRAFT_SHOP entry sting fires. The DRAFT_SHOP entry sting fires at transition-animation-complete (~350ms after settlement); add a 50ms audio holdoff after animation-complete before firing the sting to guarantee the tone is fully silent. Note: the flow is always AUCTION→SHOP; there is no SHOP→AUCTION transition. DRAFT_INITIAL and DRAFT_SHOP never coexist — DRAFT_INITIAL transitions directly to PLACEMENT, not DRAFT_SHOP (RSM Rule 1).
 
 ---
 
@@ -572,17 +611,26 @@ The Shop/Auction UI is implemented as a `bevy_ui` node tree overlay coexisting w
 - `ShopAuctionUiRoot` — full-screen z-layer above board; pointer-events active only in the panel area
   - `DraftInitialPanel` — visible during DRAFT_INITIAL only
   - `AuctionPanel` — visible during DRAFT_AUCTION only
-    - `ShopFooterStrip` — child of AuctionPanel; expands to become DRAFT_SHOP panel on transition
-  - `ShopPanel` — visible during DRAFT_SHOP only (the expanded ShopFooterStrip)
+    - `ShopFooterStrip` — child of AuctionPanel; read-only slot preview at 30% opacity during DRAFT_AUCTION
+  - `ShopPanel` — **separate entity** from `ShopFooterStrip`; visible during DRAFT_SHOP only. Pre-populated with slot content before the AUCTION→SHOP transition begins (using the buffered `S2CShopSlots` data). During the transition animation it is already content-complete but occluded by the descending AuctionPanel; it is revealed as AuctionPanel slides down.
 
-**Transition implementation:** Panel transitions (auction down / shop expand up) driven by `bevy_tweening` over 350ms. **`Tween<Transform>` is NOT viable** — bevy_ui panel position is controlled by `Node` layout properties, not `Transform`. Implementer must provide a custom `bevy_tweening::Lens` that interpolates the relevant `Node` field (e.g., `bottom: Val::Percent(...)`) on the panel's `Node` component. Slot content is already populated before the transition begins; no data loading during animation. Verify final field name and Lens pattern with `liv-bevy-018`.
+**Important:** `ShopPanel` and `ShopFooterStrip` are distinct entities with independent lifecycles. `ShopPanel` is NOT a renamed or reparented `ShopFooterStrip` — reparenting a Bevy entity during an active `bevy_tweening` tween is undefined behavior. `ShopFooterStrip` fades out during the AUCTION→SHOP transition; `ShopPanel` expands upward simultaneously.
+
+**Transition implementation:** Panel transitions (auction down / shop expand up) driven by `bevy_tweening` over 350ms. **`Tween<Transform>` is NOT viable** — bevy_ui panel position is controlled by `Node` layout properties, not `Transform`. Implementer must provide custom `bevy_tweening::Lens` instances that interpolate `Node` layout fields (`Val::Percent` to `Val::Percent` — same variant required; the lens extracts and lerps the inner f32):
+
+- **AuctionPanel slide-down:** `AuctionPanel` must use `PositionType::Absolute` — in default flex layout, `Node.top` is ignored and the animation has no visible effect. Interpolate `Node.top` from `Val::Percent(0.0)` to `Val::Percent(100.0)` (off-screen). Set `PositionType::Absolute` at panel spawn; absolute-positioned children are removed from flex flow. Verify exact field name with `liv-bevy-018`.
+- **ShopPanel expand-up:** `ShopPanel` must set `overflow: Overflow::Clip` on its `Node` — default overflow is `Visible`, which causes pre-populated card content to render outside the expanding bounds during animation, breaking the reveal. Interpolate `Node.height` from `Val::Percent(footerHeightPct)` to `Val::Percent(fullPanelHeightPct)`. ShopPanel is pre-populated and positioned at the bottom edge of the panel area before animation begins.
+
+Both tweens run simultaneously on separate entities. Slot content is populated before the transition begins; no data loading during animation.
+
+**DRAFT_SHOP timer start:** The timer must NOT start at `S2CAuctionSettled` receipt (which is when the settlement overlay begins — 1000–1500ms before the animation completes). The timer starts on `TweenCompleted` event fired by bevy_tweening when the ShopPanel expand-up tween finishes. The system responsible for starting the DRAFT_SHOP countdown must subscribe to `TweenCompleted` and filter for the ShopPanel entity's tween ID. Activate `liv-bevy-018` to verify the exact `TweenCompleted` type in bevy_tweening 0.18.
 
 **bevy_ui component requirements (Bevy 0.18):**
-- Panels use `Node`, `BackgroundColor`, `BorderColor`, `BorderRadius` (Required Components API — no `NodeBundle`)
-- Text uses `Text` component; `LineHeight` is a required component on `Text` in Bevy 0.18 — every spawned text node must include it (verify exact constructor with `liv-bevy-018`). The Heavy 2.5× numerals in VA.4 must specify `LineHeight` at spawn time.
-- Timer bar: width is set via the `Node` component's width field (`Val::Percent(fill_pct * 100.0)`) — `Style.width` does **not** exist in Bevy 0.18 (the `Style` component was merged into `Node` in 0.15). Update each frame the bar is visible (see Performance section for dirty-flag note).
-- **Bid input — preset buttons only (OQ1 RESOLVED):** Three discrete `Button` widgets (+1g/+3g/+5g) per Detailed Design Rule 4. No text-input widget required. The earlier "HIGH risk" assessment around bevy_ui 0.18 text input is moot for this system.
-- All panels use `Visibility::Hidden` when inactive (not despawned) to preserve state across phase transitions. **Note:** `Visibility::Hidden` suppresses rendering but layout participation behavior in Bevy 0.18 is unverified — if hidden nodes still participate in flex layout, the "zero layout cost" claim under Performance may not hold. Verify with `liv-bevy-018`; if Hidden retains layout cost, switch to `Display::None` (or 0.18 equivalent) for inactive panels.
+- Panels use `Node` (with `border_radius: BorderRadius::all(Val::Px(...))` as a **field on `Node`**, not a separate component), `BackgroundColor`, `BorderColor` (Required Components API — no `NodeBundle`). **`BorderRadius` is a field inside `Node` in Bevy 0.18, not a separate spawn component** — inserting it as a separate component will cause a compile error or conflict.
+- Text uses `Text` component; `LineHeight` is a required component auto-inserted with a default value in Bevy 0.18. Explicitly insert `LineHeight` only when overriding the default (e.g., for the Heavy 2.5× numerals in VA.4 that require specific line spacing). Verify with `liv-bevy-018`.
+- Timer bar: width is set via the `Node` component's width field (`Val::Percent(fill_pct * 100.0)`) — `Style.width` does **not** exist in Bevy 0.18 (the `Style` component was merged into `Node` in 0.15). Update only when the bar is visible; add a system run condition or `Display::None` guard to avoid triggering unnecessary change detection on inactive panels (WASM performance).
+- **Bid input — preset buttons only (OQ1 RESOLVED):** Three discrete `Button` widgets with total-commitment-primary labels per Detailed Design Rule 4. No text-input widget required.
+- All panels use `Node { display: Display::None, .. }` when inactive (set via `node.display = Display::None` on the `Node` component). `Visibility::Hidden` suppresses rendering but does NOT remove a node from flex layout participation in Bevy 0.18. `Display::None` removes the node from layout entirely (equivalent to CSS `display: none`) — this is the correct choice for inactive full-screen overlay panels that must not consume layout space.
 
 **Z-ordering (lowest to highest):**
 1. Board (rendered by Board Rendering)
@@ -593,9 +641,9 @@ The Shop/Auction UI is implemented as a `bevy_ui` node tree overlay coexisting w
 Settlement overlays are bounded to the auction-panel area only; they may dim the panel content but must not extend over the HUD chips or the board.
 
 **Performance:**
-- Timer bar: dirty-flag update — only write the `Node` width field when `fill_pct` changes by >0.0005 (revised from 0.005 to avoid visible quantized stepping at 60 FPS — DRAFT_AUCTION drains ~0.00083 per frame, DRAFT_INITIAL ~0.00037 per frame).
+- Timer bar: dirty-flag update — only write the `Node` width field when `fill_pct` changes by ≥ `1.0 / bar_width_px` (one-pixel resolution). At a 400px bar: threshold ≈ 0.0025. At 600px: ≈ 0.00167. The threshold must be calibrated to the actual bar width once the UX spec defines it. Note: DRAFT_AUCTION drains ~0.000833/frame at 60 FPS; a threshold of 0.0025 batches writes to ~every 3 frames (imperceptible at sub-pixel resolution). Do not use a threshold below the per-frame drain rate — it defeats the dirty-flag pattern entirely.
 - Gold counters: update only on `S2CGoldUpdate`/`S2CGoldBroadcast`, not continuously.
-- All panels hidden during RESOLUTION — layout cost depends on whether `Visibility::Hidden` removes layout participation in Bevy 0.18 (see UI Requirements note above). If not, switch to `Display::None`.
+- All panels inactive during RESOLUTION use `Display::None` (see UI Requirements note above) — zero layout participation cost.
 
 📌 **UX Flag — Shop/Auction UI:** This system has UI requirements. Run `/ux-design` for the `shop-auction-ui` screen before writing epics. Stories referencing this UI must cite `design/ux/shop-auction-ui.md`, not this GDD directly.
 
@@ -609,7 +657,7 @@ All BLOCKING criteria require an automated test in `tests/unit/shop_auction_ui/`
 |---|---|---|
 | SAU-F1 | **GIVEN** `gold = 8`, `reserved_gold = 5` (from `S2CGoldBroadcast`), **WHEN** `local_free_gold` is computed, **THEN** result is 3 | BLOCKING |
 | SAU-F2 | **GIVEN** `gold = 3`, `reserved_gold = 5` (server invariant violation), **WHEN** `local_free_gold` is computed, **THEN** result saturates to 0 (no u32 underflow) | BLOCKING |
-| SAU-F3 | **GIVEN** `S2CGoldUpdate` arrives with `reserve_mana = 4` AND `S2CGoldBroadcast` has NOT arrived, **WHEN** preset button affordability is evaluated, **THEN** `reserved_gold = 0` (not sourced from `S2CGoldUpdate.reserve_mana`) | BLOCKING |
+| SAU-F3 | **GIVEN** `S2CGoldUpdate` arrives with `reserve_mana = 4` AND `S2CGoldBroadcast` has NOT arrived, **WHEN** preset button affordability is evaluated, **THEN** `reserved_gold = 0` (not sourced from `S2CGoldUpdate.reserve_mana`). Fixture must set `reserve_mana = 4` (non-zero) so that a wrong implementation that reads `reserve_mana` as `reserved_gold` returns 4 and fails the assertion — a fixture with `reserve_mana = 0` cannot distinguish correct from incorrect logic. | BLOCKING |
 | SAU-F4 | **GIVEN** `timer_remaining_ms = 6000`, `timer_max_ms = 20000`, **WHEN** `timer_bar_fill_pct` is computed, **THEN** result = 0.30 (±f32 tolerance) | BLOCKING |
 | SAU-F5 | **GIVEN** `timer_remaining_ms = -50.0` (drift undershot), **WHEN** `timer_bar_fill_pct` is computed, **THEN** result = 0.0 (clamped, not negative) | BLOCKING |
 | SAU-F6 | **GIVEN** `timer_remaining_ms = 20100.0`, `timer_max_ms = 20000`, **WHEN** `timer_bar_fill_pct` is computed, **THEN** result = 1.0 (clamped at upper bound) | BLOCKING |
@@ -619,8 +667,9 @@ All BLOCKING criteria require an automated test in `tests/unit/shop_auction_ui/`
 | SAU-F10 | **GIVEN** `refresh_base_cost = 1`, `refresh_cap = 1`, `refresh_count_this_draft = 0`, **WHEN** `displayed_refresh_cost` is computed, **THEN** result = 1 | BLOCKING |
 | SAU-F11 | **GIVEN** same config, `refresh_count_this_draft = 1`, **WHEN** `displayed_refresh_cost` is computed, **THEN** result = 2 | BLOCKING |
 | SAU-F12 | **GIVEN** same config, `refresh_count_this_draft = 5`, **WHEN** `displayed_refresh_cost` is computed, **THEN** result = 2 (cap: `min(5, 1) = 1`) | BLOCKING |
-| SAU-F13 | **GIVEN** `local_free_gold = 3`, `current_price = 0`, **WHEN** preset button affordability is evaluated, **THEN** +1g enabled (3 ≥ 1) AND +3g enabled (3 ≥ 3) AND +5g disabled (3 < 5) | BLOCKING |
-| SAU-F13b | **GIVEN** `local_free_gold = 2`, `current_price = 0`, **WHEN** preset button affordability is evaluated, **THEN** +1g enabled (2 ≥ 1) AND +3g disabled (2 < 3) AND +5g disabled (2 < 5) | BLOCKING |
+| SAU-F13 | **GIVEN** `local_free_gold = 3`, `current_price = 0`, **WHEN** preset button affordability is evaluated, **THEN** the +1 increment button is enabled (3 ≥ 1) AND the +3 increment button is enabled (3 ≥ 3) AND the +5 increment button is disabled (3 < 5) | BLOCKING |
+| SAU-F13b | **GIVEN** `local_free_gold = 2`, `current_price = 0`, **WHEN** preset button affordability is evaluated, **THEN** the +1 increment button is enabled (2 ≥ 1) AND the +3 increment button is disabled (2 < 3) AND the +5 increment button is disabled (2 < 5) | BLOCKING |
+| SAU-F20 | **GIVEN** `current_price = 0` (panel activation, no bids placed), **WHEN** `auction_border_color_tier` is computed, **THEN** result is PaleInkBlue | BLOCKING |
 | SAU-F14 | **GIVEN** DRAFT_INITIAL: `timer_remaining_ms = 15000` → Yellow; 5000 → Red; 5001 → Yellow, **WHEN** `draft_timer_color_zone` is evaluated for each, **THEN** zones match | BLOCKING |
 | SAU-F15 | **GIVEN** DRAFT_SHOP: `timer_remaining_ms = 5000` → Red; 5001 → Neutral, **WHEN** `draft_timer_color_zone` is evaluated, **THEN** zones match | BLOCKING |
 
@@ -632,18 +681,18 @@ All BLOCKING criteria require an automated test in `tests/unit/shop_auction_ui/`
 | SAU-DI2 | **GIVEN** DRAFT_INITIAL, `local_hand_size = 10`, **WHEN** any slot is clicked, **THEN** no `C2SPurchaseCard` is sent | BLOCKING |
 | SAU-DI3 | **GIVEN** DRAFT_INITIAL, `local_gold = 5`, `card_cost = 2`, `local_hand_size = 9`, **WHEN** slot is clicked, **THEN** exactly one `C2SPurchaseCard { card_id }` is sent | BLOCKING |
 | SAU-DI4 | **GIVEN** DRAFT_INITIAL, any refresh mechanism triggered, **WHEN** message queue is checked, **THEN** no `C2SRefreshShop` was sent | BLOCKING |
-| SAU-DI5 | **GIVEN** DRAFT_INITIAL, `timer_remaining_ms = 0`, **WHEN** slot is clicked, **THEN** no `C2SPurchaseCard` sent AND panel remains visible awaiting `S2CPhaseChanged(PLACEMENT)` | BLOCKING |
+| SAU-DI5 | **GIVEN** DRAFT_INITIAL, `timer_remaining_ms = 0`, **WHEN** slot is clicked, **THEN** no `C2SPurchaseCard` sent AND `panel_phase == PanelPhase::DraftInitialFrozen` (or equivalent timer-expired state) AND panel entity is not despawned | BLOCKING |
 | SAU-DI6 | **GIVEN** `S2CDraftOffering` contains a known set of cards with mixed rarities and costs, **WHEN** 3×3 grid is populated, **THEN** cards appear in rarity-descending then cost-descending order | BLOCKING |
-| SAU-DA1 | **GIVEN** DRAFT_AUCTION, `local_free_gold = 6`, `current_price = 0`, **WHEN** preset buttons are evaluated, **THEN** all three (+1g/+3g/+5g) are enabled (6 ≥ 1, 6 ≥ 3, 6 ≥ 5) | BLOCKING |
-| SAU-DA2 | **GIVEN** `S2CAuctionCard` arrives AND `local_hand_size = 10`, **WHEN** panel initializes, **THEN** all three preset buttons are immediately disabled with "Hand full — play a card to bid" | BLOCKING |
-| SAU-DA3 | **GIVEN** DRAFT_AUCTION, `local_free_gold = 2`, `current_price = 0`, **WHEN** button states are evaluated, **THEN** +1g enabled AND +3g disabled AND +5g disabled | BLOCKING |
-| SAU-DA4 | **GIVEN** all preset buttons are disabled ("Bid sent — waiting..."), **WHEN** `S2CAuctionBidRejected { reason }` arrives, **THEN** preset buttons re-enabled (per affordability) AND toast notification matches the reason code | BLOCKING (state); ADVISORY (toast text) |
+| SAU-DA1 | **GIVEN** DRAFT_AUCTION, `local_free_gold = 6`, `current_price = 0`, **WHEN** preset buttons are evaluated, **THEN** all three increment buttons (+1/+3/+5) are enabled (6 ≥ 1, 6 ≥ 3, 6 ≥ 5) | BLOCKING |
+| SAU-DA2 | **GIVEN** `S2CAuctionCard` arrives AND `local_hand_size = 10`, **WHEN** panel initializes, **THEN** all three preset buttons are immediately disabled with "Hand full — no bids possible this auction" | BLOCKING |
+| SAU-DA3 | **GIVEN** DRAFT_AUCTION, `local_free_gold = 2`, `current_price = 0`, **WHEN** button states are evaluated, **THEN** the +1 increment button is enabled AND the +3 and +5 increment buttons are disabled | BLOCKING |
+| SAU-DA4 | **GIVEN** all preset buttons are in in-flight disabled state ("BIDDING..."), **WHEN** `S2CAuctionBidRejected { reason }` arrives, **THEN** preset buttons re-enabled per current affordability (Rule 5) | BLOCKING |
 | SAU-DA5 | **GIVEN** `S2CAuctionBidRejected` with each of: `InsufficientGold`, `AmountTooLow`, `AlreadyLeader`, `HandFull`, `AuctionExpired` (5 cases), **WHEN** each arrives, **THEN** mapped toast text matches the GDD table | BLOCKING |
-| SAU-DA6 | **GIVEN** `S2CAuctionBidAccepted { bidder: local_player, amount: 5 }` arrives, **WHEN** leader state is updated, **THEN** `current_leader == local_player` AND all three preset buttons are disabled AND "YOU ARE LEADING" badge is shown | BLOCKING |
-| SAU-DA7 | **GIVEN** `S2CAuctionBidAccepted { bidder: opponent, amount: 7 }` arrives, **WHEN** state is updated, **THEN** `current_price = 7` AND preset buttons re-enabled per new affordability (buttons needing `free_gold >= 7 + offset` evaluated) | BLOCKING |
-| SAU-DA8 | **GIVEN** local timer drains to 0 AND no `S2CAuctionSettled` has arrived, **WHEN** locally expired state activates, **THEN** `timer_bar_fill_pct = 0.0` AND all three preset buttons are disabled | BLOCKING |
-| SAU-DA9 | **GIVEN** `local_free_gold = 4`, `current_price = 0` (all buttons enabled), **WHEN** `S2CGoldBroadcast { gold: 2, reserved_gold: 0 }` arrives, **THEN** +1g enabled (2 ≥ 1) AND +3g disabled (2 < 3) AND +5g disabled (2 < 5) | BLOCKING |
-| SAU-DA10 | **GIVEN** locally expired state, **WHEN** `S2CAuctionBidAccepted { new_timer_ms: 8000 }` arrives, **THEN** preset buttons re-enabled (per affordability) AND `timer_bar_fill_pct` target = 0.40 | BLOCKING (state); ADVISORY (animation) |
+| SAU-DA6 | **GIVEN** `S2CAuctionBidAccepted { bidder: local_player, amount: 5 }` arrives, **WHEN** leader state is updated, **THEN** `current_leader == local_player` AND all three preset buttons are **hidden** AND "YOU ARE LEADING" badge fills the button area | BLOCKING |
+| SAU-DA7 | **GIVEN** `S2CAuctionBidAccepted { bidder: opponent, amount: 7 }` arrives AND corresponding `S2CGoldBroadcast { player_id: local_player }` has also arrived (Rule 6 two-message gate satisfied), **WHEN** both flags are set, **THEN** `current_price = 7` AND preset buttons re-enabled per affordability (evaluate `free_gold >= 7 + offset` for each) | BLOCKING |
+| SAU-DA8 | **GIVEN** local timer drains to 0 AND no `S2CAuctionSettled` has arrived, **WHEN** the expiry-check system evaluates `timer_remaining_ms <= 0` and transitions to `LocallyExpired` state, **THEN** `timer_bar_fill_pct = 0.0` AND `auction_panel_state == AuctionPanelState::LocallyExpired` AND all three preset buttons are non-interactive. *(Test trigger: set `timer_remaining_ms = 0` on the `AuctionTimerState` resource and run the expiry system in the test World.)* | BLOCKING |
+| SAU-DA9 | **GIVEN** `local_free_gold = 4`, `current_price = 0` (all buttons enabled), **WHEN** `S2CGoldBroadcast { player_id: local_player, gold: 2, reserved_gold: 0 }` arrives, **THEN** the +1 increment button is enabled (2 ≥ 1) AND the +3 and +5 increment buttons are disabled (2 < 3, 2 < 5) | BLOCKING |
+| SAU-DA10 | **GIVEN** locally expired state, **WHEN** `S2CAuctionBidAccepted { new_timer_ms: 8000 }` and the corresponding `S2CGoldBroadcast { player_id: local_player }` both arrive (Rule 6 two-message gate satisfied), **THEN** preset buttons re-enabled (per affordability) AND a `PendingTimerTarget` resource (or equivalent test-observable component) records target fill_pct = 0.40 (8000 / 20000). Assert the target value written to the test-observable resource — do NOT assert the instantaneous rendered bar width, which requires running the bevy_tweening animation system. | BLOCKING (state + tween target); ADVISORY (animation easing) |
 | SAU-DS1 | **GIVEN** non-auction round: `S2CPhaseChanged(DRAFT_SHOP)` arrives without `S2CShopSlots`, **WHEN** panel state is checked, **THEN** panel is not yet interactive; **WHEN** `S2CShopSlots` arrives, **THEN** panel activates | BLOCKING |
 | SAU-DS2 | **GIVEN** `refresh_count_this_draft = 0`, `C2SRefreshShop` sent but `S2CShopSlots` not yet arrived, **WHEN** counter is read, **THEN** count = 0; **WHEN** `S2CShopSlots` arrives, **THEN** count = 1 | BLOCKING |
 | SAU-DS3 | **GIVEN** `refresh_count_this_draft = 2` at end of DRAFT_SHOP, **WHEN** next DRAFT_SHOP begins, **THEN** count resets to 0 AND `displayed_refresh_cost = 1` | BLOCKING |
@@ -653,15 +702,35 @@ All BLOCKING criteria require an automated test in `tests/unit/shop_auction_ui/`
 | SAU-DS7 | **GIVEN** `C2SPurchaseCard` is in-flight AND `S2CPhaseChanged(PLACEMENT)` arrives, **WHEN** late confirmation arrives, **THEN** slot restored to pre-click state AND gold unchanged | BLOCKING |
 | SAU-EG1 | **GIVEN** `S2CPhaseChanged(DRAFT_AUCTION)` arrives before `S2CAuctionCard`, **WHEN** state is checked, **THEN** auction panel NOT activated; **WHEN** `S2CAuctionCard` arrives, **THEN** panel activates normally | BLOCKING |
 | SAU-EG2 | **GIVEN** AUCTION_ACTIVE state AND `S2CShopSlots` arrives, **WHEN** footer is checked, **THEN** NOT updated mid-auction; **WHEN** DRAFT_SHOP becomes active post-transition, **THEN** buffered slots applied | BLOCKING |
-| SAU-EG3 | **GIVEN** `S2CAuctionBidAccepted` and `S2CAuctionSettled` arrive in the same delivery batch (last-tick bid), **WHEN** the client processes them in arrival order, **THEN** the bid-accepted state (current_price, current_leader, timer) is applied first, followed immediately by the settlement transition; no intermediate "in-flight resolved" frame is rendered | BLOCKING |
-| SAU-EG4 | **GIVEN** only `S2CPhaseChanged(DRAFT_AUCTION)` has arrived (no `S2CAuctionCard`), **WHEN** state is checked, **THEN** auction panel NOT activated; **GIVEN** only `S2CAuctionCard` has arrived (no `S2CPhaseChanged`), **THEN** auction panel renders in "preparing..." state with timer greyed and countdown not started | BLOCKING |
+| SAU-EG3 | **GIVEN** both `S2CAuctionBidAccepted { bidder: opponent, amount: 7 }` and `S2CAuctionSettled { winner: opponent, amount: 7 }` are processed in the same Update tick (inject both events, run bid-accepted handler then settled handler in order), **WHEN** both systems complete, **THEN** `current_price == 7` AND `current_leader == opponent` AND `panel_state == AuctionPanelState::Settled`. Implementation note (not part of AC): `handle_auction_bid_accepted` must be scheduled before `handle_auction_settled` in the Bevy Update schedule — document in the story implementation notes, not enforced by this test. | BLOCKING |
+| SAU-EG4a | **GIVEN** only `S2CPhaseChanged(DRAFT_AUCTION)` has arrived (no `S2CAuctionCard`), **WHEN** state is checked, **THEN** `panel_phase != AUCTION_PREPARING AND panel_phase != AUCTION_ACTIVE` (panel not activated in any auction state) | BLOCKING |
+| SAU-EG4b | **GIVEN** only `S2CAuctionCard` has arrived (no `S2CPhaseChanged`), **WHEN** state is checked, **THEN** `panel_phase == AUCTION_PREPARING AND countdown_active == false` | BLOCKING |
+| SAU-EG4c | **GIVEN** panel is in `AUCTION_PREPARING` state, **WHEN** `S2CPhaseChanged(DRAFT_AUCTION)` arrives, **THEN** `panel_phase == AUCTION_ACTIVE AND countdown_active == true` (exit from preparing state) | BLOCKING |
+| SAU-EG4-V | Preparing state visual: timer bar greyed (not green/yellow/red); "Auction starting..." label visible; card art and price visible | ADVISORY |
 | SAU-DI7 | **GIVEN** DRAFT_INITIAL is active and player clicks Ready, **WHEN** message queue is checked, **THEN** exactly one `C2SSignalReady { retract: false }` is sent AND button label changes to "Retract Ready" | BLOCKING |
 | SAU-DI8 | **GIVEN** DRAFT_INITIAL is active and player has signalled ready, **WHEN** player clicks a purchasable slot, **THEN** `C2SPurchaseCard` is sent (grid remains interactive while ready) | BLOCKING |
 | SAU-DI9 | **GIVEN** DRAFT_INITIAL Ready clicked, **WHEN** player clicks "Retract Ready", **THEN** exactly one `C2SSignalReady { retract: true }` is sent AND button label reverts to "Ready" | BLOCKING |
-| SAU-DA11 | **GIVEN** preset bid button +3g is clicked, **WHEN** the in-flight state activates, **THEN** the +3g button label reads "BIDDING..." at 80% opacity AND the +1g/+5g buttons render in standard generic-disabled state (~30% opacity) | BLOCKING (state); ADVISORY (visual treatment) |
-| SAU-DA12 | **GIVEN** in-flight "BIDDING..." state on +3g button, **WHEN** `S2CAuctionBidAccepted` or `S2CAuctionBidRejected` arrives, **THEN** the +3g button label reverts to "+3g" AND all three buttons re-evaluate per Rule 5 affordability | BLOCKING |
+| SAU-DI11 | **GIVEN** DRAFT_INITIAL is active (timer > 0), **WHEN** `S2CPhaseChanged(PLACEMENT)` arrives, **THEN** `panel_phase == PanelPhase::Inactive` AND no `C2SPurchaseCard` can be sent (panel fully dismissed) | BLOCKING |
+| SAU-DS9 | **GIVEN** DRAFT_SHOP is active and player clicks Ready, **WHEN** message queue is checked, **THEN** exactly one `C2SSignalReady { retract: false }` is sent AND button label changes to "Retract Ready" AND "Waiting for opponent..." text appears beneath the button | BLOCKING |
+| SAU-DS10 | **GIVEN** DRAFT_SHOP is active and player has signalled ready, **WHEN** player clicks a purchasable slot, **THEN** `C2SPurchaseCard` is sent (shop remains fully interactive while ready) | BLOCKING |
+| SAU-DS11 | **GIVEN** DRAFT_SHOP Ready has been clicked, **WHEN** player clicks "Retract Ready", **THEN** exactly one `C2SSignalReady { retract: true }` is sent AND button label reverts to "Ready" AND "Waiting for opponent..." text clears | BLOCKING |
+| SAU-DS12 | **GIVEN** DRAFT_SHOP is active (timer > 0), **WHEN** `S2CPhaseChanged(PLACEMENT)` arrives, **THEN** `panel_phase == PanelPhase::Inactive` AND no `C2SPurchaseCard` or `C2SRefreshShop` can be sent | BLOCKING |
+| SAU-DA11a | **GIVEN** the middle bid button (+3 increment) is clicked, **WHEN** the in-flight state activates, **THEN** the +3 increment button is in InFlight state AND the +1 and +5 increment buttons are in GenericDisabled state (non-interactive) | BLOCKING |
+| SAU-DA11b | **GIVEN** DA11a in-flight state, **WHEN** rendered, **THEN** the +3 increment button label reads "BIDDING..." AND the +1/+5 increment buttons render at ~30% opacity | ADVISORY |
+| SAU-DA12 | **GIVEN** in-flight "BIDDING..." state on the +3 increment button, **WHEN** `S2CAuctionBidAccepted` or `S2CAuctionBidRejected` arrives, **THEN** the +3 increment button label reverts to its total-commitment form AND all three buttons re-evaluate per Rule 5 affordability | BLOCKING |
 | SAU-DS8 | **GIVEN** DRAFT_SHOP refresh button is clicked, **WHEN** the click handler returns, **THEN** the refresh button is disabled in the same frame (before any subsequent click event can fire) AND exactly one `C2SRefreshShop` is sent | BLOCKING |
-| SAU-F16 | **GIVEN** `current_price = 3`, **WHEN** `auction_border_color_tier` is computed, **THEN** result is InkBlue | BLOCKING |
+| SAU-DI10 | **GIVEN** DRAFT_INITIAL, valid purchase click sent, **WHEN** `S2CCardAcquired` + `S2CGoldUpdate` arrive, **THEN** the purchased slot entity has `slot_state == SlotState::Purchased` (or equivalent) AND the "BOUGHT" overlay is rendered on that slot | BLOCKING (state); ADVISORY (overlay visual) |
+| SAU-SET1a | **GIVEN** `S2CAuctionSettled { winner: local_player, amount: 5 }` arrives, **WHEN** settlement processes, **THEN** `panel_state == AuctionPanelState::Settling` AND a card-acquired event targeting the hand area is fired (e.g., `CardAcquiredByLocalPlayer` or equivalent). Note: inject `S2CGoldUpdate` separately to verify gold decrease — the gold assertion requires a second message. | BLOCKING |
+| SAU-SET1b | **GIVEN** SAU-SET1a state, **WHEN** rendered, **THEN** card art visually arcs to hand tray area over the 1.5s settlement overlay period | ADVISORY |
+| SAU-SET2 | **GIVEN** `S2CAuctionSettled { winner: opponent, amount: 5 }` arrives, **WHEN** settlement processes, **THEN** `panel_state == AuctionPanelState::Settling` AND no card entity moves toward the local player's hand | BLOCKING |
+| SAU-SET3 | **GIVEN** `S2CAuctionSettled { winner: None, amount: 0 }` (no bids), **WHEN** settlement processes, **THEN** `panel_state == AuctionPanelState::Settling` AND no gold change for either player | BLOCKING |
+| SAU-EG5 | **GIVEN** panel is in `AUCTION_PREPARING` state AND `S2CPhaseChanged(GAME_OVER)` arrives, **WHEN** the phase change is processed, **THEN** `panel_phase == INACTIVE` (buffer cleared; preparing panel dismissed) AND `S2CPhaseChanged(GAME_OVER)` is processed normally | BLOCKING |
+| SAU-DA13 | **GIVEN** `S2CAuctionSettled` arrives AND a `C2SPlaceBid` is still in-flight ("BIDDING..." state active) AND a `S2CAuctionBidRejected` arrives after the settlement, **WHEN** the rejection is processed, **THEN** bid buttons remain disabled (settlement takes precedence; the rejection does NOT re-enable buttons) | BLOCKING |
+| SAU-DA14 | **GIVEN** `S2CAuctionBidAccepted { bidder: opponent, amount: 7 }` arrives AND `S2CGoldBroadcast { player_id: local_player }` has NOT yet arrived, **WHEN** button states are evaluated, **THEN** all three preset buttons remain disabled or hidden (`pending_bid_accepted` flag set, `pending_gold_broadcast_seen` not yet set — re-enable gate not satisfied) | BLOCKING |
+| SAU-DA15 | **GIVEN** SAU-DA14 state, **WHEN** `S2CGoldBroadcast { player_id: local_player, gold: 10, reserved_gold: 0 }` arrives, **THEN** `local_free_gold = 10` AND all three buttons re-enable per affordability (10 ≥ 7+1, 10 ≥ 7+3, 10 ≥ 7+5) | BLOCKING |
+| SAU-EG6a | **GIVEN** panel is in `AUCTION_PREPARING` state AND 10 seconds elapse with no `S2CPhaseChanged(DRAFT_AUCTION)` received, **WHEN** the timeout fires, **THEN** `auction_panel_state == AuctionPanelState::PrepareTimeout` (or equivalent error state) | BLOCKING |
+| SAU-EG6b | **GIVEN** SAU-EG6a state, **WHEN** the panel is rendered, **THEN** "Connection error — awaiting server..." label is visible on the preparing panel | ADVISORY |
+| SAU-F16 | **GIVEN** `current_price = 3`, **WHEN** `auction_border_color_tier` is computed, **THEN** result is PaleInkBlue | BLOCKING |
 | SAU-F17 | **GIVEN** `current_price = 4`, **WHEN** `auction_border_color_tier` is computed, **THEN** result is AuctionAmber | BLOCKING |
 | SAU-F18 | **GIVEN** `current_price = 7`, **WHEN** `auction_border_color_tier` is computed, **THEN** result is DeepAmber | BLOCKING |
 | SAU-F19 | **GIVEN** `current_price = 10`, **WHEN** `auction_border_color_tier` is computed, **THEN** result is CrimsonAmber | BLOCKING |
@@ -670,14 +739,14 @@ All BLOCKING criteria require an automated test in `tests/unit/shop_auction_ui/`
 
 | # | Criterion | Evidence |
 |---|---|---|
-| SAU-V1 | DRAFT_INITIAL header reads "DRAFT OFFERING — ONE TIME ONLY · NO REFRESH · 5g BUDGET" | Manual walkthrough |
+| SAU-V1 | DRAFT_INITIAL header reads "DRAFT OFFERING — ONE TIME ONLY · NO REFRESH" (no "5g BUDGET" suffix) | Manual walkthrough |
 | SAU-V2 | First-session tooltip appears on activation; dismisses and does not reappear | Manual walkthrough |
 | SAU-V3 | Purchased slot shows "BOUGHT" overlay at same grid position; no reflow of remaining slots | Screenshot |
 | SAU-V4 | DRAFT_INITIAL timer: neutral → yellow cross-fade at 15s → red cross-fade at 5s (no snap) | Manual walkthrough |
 | SAU-V5 | DRAFT_AUCTION shop footer: read-only slots, no refresh button present | Screenshot |
 | SAU-V6 | DRAFT_AUCTION timer bar colors: green >10s, yellow 5–10s, red ≤5s; all transitions cross-fade | Manual walkthrough |
 | SAU-V7 | `S2CAuctionBidAccepted`: timer bar eases out to new position (~120–150ms, with brief bar flash); no snap | Manual walkthrough |
-| SAU-V8 | "YOU ARE LEADING" badge visible when local player is leader; all three preset bid buttons are disabled | Screenshot |
+| SAU-V8 | "YOU ARE LEADING" badge visible and fills the button area when local player is leader; all three preset bid buttons are **hidden** (not disabled) | Screenshot |
 | SAU-V9 | Locally expired (1500ms+): "Awaiting server..." label visible beneath frozen timer bar | Manual walkthrough |
 | SAU-V10 | Settlement: correct overlay per outcome; panel slides down, shop expands up (~350ms) for all 3 `S2CAuctionSettled` cases | Manual walkthrough (3 cases) |
 | SAU-V11 | DRAFT_SHOP timer starts when panel expansion animation completes (not during the 350ms transition) | Manual walkthrough |
@@ -689,11 +758,12 @@ All BLOCKING criteria require an automated test in `tests/unit/shop_auction_ui/`
 
 | # | Question | Owner | Priority |
 |---|---|---|---|
-| OQ1 | ~~Bid input text field implementation.~~ **RESOLVED** — Bid input changed to preset buttons (+1g/+3g/+5g) only. No free-form text field. **Fantasy tradeoff acknowledged:** preset stride was chosen for friend-scope implementation simplicity (no bevy_ui 0.18 text-input research, clearer touch targets, fewer error states). The cost: +2g/+4g squeeze-bids — explicitly called for by the auction-system fantasy ("calibrate next bluff at exact moment it costs the most") — are no longer expressible. The auction-system.md fantasy text should be updated in a future pass to match. | — | Closed 2026-04-30 |
-| OQ2 | **DRAFT_INITIAL tooltip dismiss persistence.** The one-time "no refresh" tooltip must not reappear after the first dismiss. Storage location for this flag (browser `localStorage` for WASM target, or a player preferences resource?) must be resolved during WASM client architecture review. | Engine Programmer / Client Architecture | Before M2 UI story implementation |
+| OQ1 | ~~Bid input text field implementation.~~ **RESOLVED** — Bid input changed to preset buttons with total-commitment-primary labels ("8g (+1)") per pass-3 review. No free-form text field. **Fantasy tradeoff acknowledged:** preset stride was chosen for friend-scope implementation simplicity. The cost: +2g/+4g squeeze-bids are not expressible from a single action. This GDD's Player Fantasy has been updated to match the preset system; `auction-system.md` Player Fantasy section also requires a future update to remove "calibrate next bluff at exact moment it costs the most." | — | Closed 2026-04-30 |
+| OQ2 | **DRAFT_INITIAL tooltip placement and dismiss persistence.** The tooltip anchor point and dismiss mechanic are constrained by Rule 1 (above header, non-occluding) but exact positioning and dismiss UX must be specified in `design/ux/shop-auction-ui.md` before implementation. Additionally, the tooltip dismiss persistence flag storage (browser `localStorage` for WASM target, or a player preferences resource?) must be resolved during WASM client architecture review. | UX Designer + Engine Programmer | Before M2 UI story implementation |
 | OQ3 | ~~`S2CGoldBroadcast` must include `reserved_gold`.~~ **RESOLVED** — `network-protocol.md` already includes `{ player_id: PlayerId, gold: u32, reserved_gold: u32 }` (NP line 104, added 2026-04-29). No further update needed. | — | Closed 2026-04-30 |
-| OQ4 | **Screen layout split with Board Rendering.** Exact pixel/percentage allocation between the board area and the Shop/Auction UI bottom panel is undefined. **Prereq:** UX spec also needs hand-tray vertical extent (from `hand-ui.md`) and HUD chip position (from `hud.md`, not yet authored) before it can finalize a layout. Must be specified in the UX spec (`/ux-design shop-auction-ui`) before any layout implementation begins. | UX Designer | Before `/ux-design` is run; HUD GDD must exist |
+| OQ4 | **Screen layout split with Board Rendering.** Exact pixel/percentage allocation between the board area and the Shop/Auction UI bottom panel is undefined. **Prereq:** UX spec needs hand-tray vertical extent (from `hand-ui.md`) and HUD chip position (from `hud.md` — now authored, In Review as of 2026-04-30). Must be specified in the UX spec (`/ux-design shop-auction-ui`) before any layout implementation begins. | UX Designer | Before `/ux-design` is run |
 | OQ5 | ~~`C2SSignalReady` message registration.~~ **RESOLVED** — `network-protocol.md` already registers `C2SSignalReady { retract: bool }` for both DRAFT_INITIAL and DRAFT_SHOP (NP line 48). GDD updated 2026-04-30 to add Ready button to DRAFT_INITIAL panel (matches RSM Rule 12 + Player Inputs table). | — | Closed 2026-04-30 |
 | OQ6 | **Lightyear reliable channel cross-type FIFO ordering** is unverified — see `network-protocol.md` OQ3. This GDD has been authored to **not depend** on cross-type FIFO (Rule 1 buffers both `S2CAuctionCard` and `S2CPhaseChanged` until both arrive). If NP OQ3 resolves with strict FIFO guarantees, the buffer becomes a no-op for the common case but remains a correctness guard. No further GDD changes required regardless of NP OQ3 outcome. | Network Programmer (informational only) | Track NP OQ3; informational |
 | OQ7 | **Bidirectional dependency updates pending** — `economy-system.md` should list this GDD as `S2CGoldBroadcast` consumer; `game-config.md` should list this GDD as downstream consumer of timer + refresh knobs. Self-flagged in Dependencies section "Bidirectionality notes" (lines for economy-system / game-config). | Whoever next edits those GDDs | Before M2 UI story implementation |
-| OQ8 | **`S2CShopSlots` buffer application timing.** Rule 1a (DRAFT_SHOP, auction rounds) says "shop slots already populated — no new `S2CShopSlots` arrives." Edge Case (line ~309) says buffer arriving during DRAFT_AUCTION applies at transition completion. Same message — clarify whether the buffered `S2CShopSlots` is applied before or after the panel-expansion animation completes. Suggested resolution: apply at transition-complete moment (consistent with "DRAFT_SHOP timer starts when expansion completes"). | Lead Programmer | Before DRAFT_SHOP rendering story implementation |
+| OQ8 | **`S2CShopSlots` buffer application timing.** Rule 1a (DRAFT_SHOP, auction rounds) says "shop slots already populated — no new `S2CShopSlots` arrives." Edge Case says buffer arriving during DRAFT_AUCTION applies at transition completion. **Resolution:** Apply the buffered `S2CShopSlots` to `ShopPanel` entity content before the transition animation begins (pre-populate while it is still occluded by the descending AuctionPanel). The player never sees an empty ShopPanel — the animation reveals a fully-populated panel. ShopPanel data is ready at animation-start; timer starts at animation-complete. | — | Resolved 2026-04-30 |
+| OQ9 | **YOU-ARE-LEADING idle window vs "No idle spectating" pillar.** When the local player is the auction leader, all three bid buttons are hidden and no action is available for potentially 15 of 20 seconds. **Reclassified HIGH RISK (pass-3 creative-director review):** The price display, opponent gold display, and timer are static reads — none change unless the opponent acts. If the opponent is also idle, the leader watches a timer bar drain with zero new information arriving. The "predatory patience" frame requires active information resolution; a static display with no incoming signals does not qualify. **Keep as-is for now** — keep the current hidden-button design, document the risk. **Validation trigger:** if playtesting yields any report of the leader window as "boring" or "dead time" rather than "tense," escalate immediately — this is a Pillar 1 failure mode. Potential remediation: a leader action mechanic (e.g., "raise own bid preemptively") or a passive opponent-activity micro-signal. | Designer | HIGH RISK — validate in first playtest |

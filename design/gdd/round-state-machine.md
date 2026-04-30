@@ -84,6 +84,9 @@ On entry, RSM signals the Combat Resolution System to execute all six global sub
 **Rule 11 — GAME_OVER detection:**
 After RESOLUTION completes and after the interest snapshot (Rule 4) is taken, the RSM evaluates: for each player, if `real_objectives_destroyed(player) >= 2`. If any player meets the condition, transition to GAME_OVER. If multiple players meet the condition simultaneously (mutual destruction in the same RESOLUTION), the result is a **Draw** — all qualifying players are declared losers; no winner is announced.
 
+**Rule 11a — trigger_index assignment (PLACEMENT → RESOLUTION handoff):**
+Before signalling Combat Resolution to begin, the RSM assigns a monotonically increasing `trigger_index` (u32, starting at 0) to each submitted placement in the combined batch (both players). Assignment order: Player A's placements in submission order, then Player B's placements in submission order. The resulting `(player_id, placement_index, trigger_index)` map is passed to Combat Resolution, which embeds `trigger_index` in every `TaggedEvent` emitted to `S2CResolutionEvent`. This ensures deterministic ordering of same-sub-step effects across both players' actions — including multi-Krosmic batches (e.g., Xelorium + Gelure at sub-step 1). See `network-protocol.md` D.2 `TaggedEvent.trigger_index` for the wire contract and `class-system.md` Edge Cases ("ascending trigger_index order") for the class-level concurrency specification.
+
 **Rule 12 — DRAFT_INITIAL termination:**
 Ends when all players submit (early exit) OR `draft_initial_timer_seconds` expires. Unspent starting gold carries over to round 1 DRAFT — the 5g budget is a ceiling, not use-it-or-lose-it. RSM then transitions to PLACEMENT with round_number = 1.
 

@@ -65,7 +65,7 @@ During DRAFT_SHOP, Instant-type cards in the hand fan can be activated with a si
 
 **Rule 5b — Click while zoomed.** If a card is in the hover-zoom state (240×360 px, see VA-1) when the player clicks it, `C2SActivateCard` fires immediately on that click. The zoom is not a confirmation barrier — there is no double-click requirement. (Resolves OQ2.)
 
-**Rule 5c — Single-shot activation lock.** On click, the card slot enters a locked visual state (`Visibility::Hidden` + input suppressed on the slot) until either (a) `S2CCardAcquired` / `S2CGoldUpdate` confirms the activation side effects, or (b) `activate_timeout_ms` (3000 ms default) elapses without confirmation. On timeout, the slot reverts to its prior state and the player may retry. This prevents double-click message storms during latency spikes.
+**Rule 5c — Single-shot activation lock.** On click, the card slot enters a locked visual state (`Visibility::Hidden` + input suppressed on the slot) until either (a) `S2CGoldUpdate` confirms the activation side effects, or (b) `activate_timeout_ms` (3000 ms default) elapses without confirmation. On timeout, the slot reverts to its prior state and the player may retry. This prevents double-click message storms during latency spikes. `S2CCardAcquired` is NOT a valid resolver for `C2SActivateCard` — instant card plays never add a card to hand; only `S2CGoldUpdate` (with unchanged or changed values) serves as the activation acknowledgement per NP Rule 2 (`C2SActivateCard` acknowledgement model).
 
 **Rule 6 — PLACEMENT: Drag-to-Stage**
 On PLACEMENT entry: the Submit button appears immediately ("Submit (0 cards)"), and the timer starts. Staging flow:
@@ -561,7 +561,7 @@ All criteria BLOCKING unless noted ADVISORY. Where an AC asserts visual properti
 
 | # | Criterion | Type |
 |---|---|---|
-| HU-28 | **GIVEN** the player clicks an Instant card in hand during DRAFT_SHOP, **WHEN** `C2SActivateCard` is sent, **THEN** the card slot enters `HandSlotState::ActivationLocked` and clicks on it produce no further `C2SActivateCard` messages until either `S2CGoldUpdate` / `S2CCardAcquired` is received OR `activate_timeout_ms` (3000 ms default) elapses. | BLOCKING |
+| HU-28 | **GIVEN** the player clicks an Instant card in hand during DRAFT_SHOP, **WHEN** `C2SActivateCard` is sent, **THEN** the card slot enters `HandSlotState::ActivationLocked` and clicks on it produce no further `C2SActivateCard` messages until either `S2CGoldUpdate` is received OR `activate_timeout_ms` (3000 ms default) elapses. (`S2CCardAcquired` is NOT a valid unlock signal for `C2SActivateCard` — see Rule 5c.) | BLOCKING |
 | HU-29 | **GIVEN** an Instant card is in `ActivationLocked` state and `activate_timeout_ms` elapses with no S2C confirmation, **THEN** the slot reverts to `HandSlotState::Active` and clicks are accepted again. | BLOCKING |
 
 ### Hand Full Notification

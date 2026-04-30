@@ -8,12 +8,10 @@ mod state;
 mod ui;
 
 use bevy::prelude::*;
-// lightyear::prelude imported in Epic 4 (S1-05 spike) once API is verified against docs.rs
 
 fn main() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
-    // TODO(S1-05 Lightyear spike): register_protocol(&mut app) once API is verified.
-    // TODO(Epic 4): add ClientPlugins + Lightyear client setup after S1-05 spike
+    app.add_plugins(network::ClientNetworkPlugin);
     app.run();
 }
