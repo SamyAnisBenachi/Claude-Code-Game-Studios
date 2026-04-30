@@ -1,5 +1,13 @@
 # Review Log — Network Protocol
 
+## Review — 2026-04-30 (R6 full) — Verdict: NEEDS REVISION → Revised Inline
+Scope signal: L
+Specialists: network-programmer, systems-designer, qa-lead, game-designer, creative-director
+Blocking items: 14 addressed inline | Recommended: 13
+Summary: First full specialist pass since R4. Four convergence findings confirmed by 2+ specialists: AR cap TBD (→ set to 20), OQ-7 HASTE reconnect misclassified as MEDIUM (→ RESOLVED, Option A: haste_active: bool), stun_active: bool loses duration inconsistent with SILENCE encoding (→ stunned_until_round: Option<u32>), OQ-6 Sang Méprise reconnect broken in 3 ways (source lifecycle + phase condition + missing ACs). Additional fixes: Player Fantasy expanded with fantasy→rule mapping table; timer_remaining_ms → Option<u32> (0 was overloaded); shop_slots → Vec<Option<CardId>> (inconsistent with S2CShopSlots); sub_step authoritative source declared; Bevy system scheduling note added to Edge Cases; Silence=Pass heartbeat-uncertain indicator specified; activate_timeout_ms added to Tuning Knobs; C2SActivateCard dispatcher enforcement pattern + NP-55; NP-7/12 rewritten for testability; NP-17 reclassified ADVISORY (transport-drop not headlessly testable until OQ-1 resolved); 12 new ACs (NP-31h, NP-46–NP-55). Creative-director verdict: bounded, concrete fixes — no redesign required. OQ-6 post-RESOLUTION reconnect data loss accepted as known limitation. R7 should reach APPROVED.
+Prior verdict resolved: Yes — R5 APPROVED (lean) was a partial pass; full specialist panel surfaced 14 additional blockers.
+Blockers resolved inline (14): Player Fantasy fantasy→rule table; OQ-7 RESOLVED (haste_active: bool); AR cap = 20 documented; stunned_until_round: Option<u32> replacing stun_active: bool; timer_remaining_ms → Option<u32>; shop_slots → Vec<Option<CardId>>; sub_step authoritative source + SERVER INVARIANT; OQ-6 source lifecycle + accepted limitation noted; Bevy scheduling edge case added; Silence=Pass heartbeat-uncertain indicator; activate_timeout_ms added to Tuning Knobs; C2SActivateCard dispatcher enforcement pattern; NP-7 rewrite (tick→channel-level); NP-12 clarified (phase-affecting→S2CPhaseChanged|S2CGameOver); NP-17 ADVISORY; NP-31h/46/47/48/49/50/51/52/53/54/55 added; bodyguard_protects SERVER INVARIANT; OQ-1 fallback path documented; OQ-2 canonical approach documented; OQ-6 updated with limitation.
+
 ## Review — 2026-04-30 (R5 lean) — Verdict: APPROVED
 Scope signal: L
 Specialists: none (lean mode)
