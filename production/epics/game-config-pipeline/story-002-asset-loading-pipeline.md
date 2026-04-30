@@ -1,7 +1,7 @@
 # Story 002: Asset Loading Pipeline
 
 > **Epic**: GameConfig & CardCatalog Loading Pipeline
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-04-29
@@ -27,15 +27,15 @@
 
 ## Acceptance Criteria
 
-- [ ] `AppState` enum exists with variants: `Loading`, `ConfigValidation`, `Lobby`, `InSession`
-- [ ] `GameAssets` resource (`#[derive(AssetCollection, Resource)]`) holds handles: `game_config: Handle<GameConfig>` and `card_catalog: Handle<CardCatalog>`
-- [ ] `RonAssetPlugin::<GameConfig>::new(&["ron"])` is registered in `server/main.rs`
-- [ ] `CardCatalogLoader` struct exists with `#[derive(Default, TypePath)]` and implements `AssetLoader` with `type Asset = CardCatalog`; reads JSON via `serde_json`
-- [ ] `LoadingState::new(AppState::Loading).continue_to_state(AppState::ConfigValidation).load_collection::<GameAssets>()` is wired in `server/main.rs`
-- [ ] Server successfully transitions through `Loading` → `ConfigValidation` → `Lobby` when both asset files are present and valid
-- [ ] After transition to `AppState::Lobby`, both `Res<GameConfig>` and `Res<CardCatalog>` are present in the ECS world and non-empty
-- [ ] The `Asset+TypePath` decision for `GameConfig` in `shared/` is resolved and documented in a code comment in `server/src/foundation/config.rs` or the loader file
-- [ ] `bevy_asset_loader` version is pinned in `workspace.dependencies` (or fallback to manual `LoadingState` is documented)
+- [x] `AppState` enum exists with variants: `Loading`, `ConfigValidation`, `Lobby`, `InSession`
+- [x] `GameAssets` resource (`#[derive(AssetCollection, Resource)]`) holds handles: `game_config: Handle<GameConfig>` and `card_catalog: Handle<CardCatalog>`
+- [x] `RonAssetPlugin::<GameConfig>::new(&["ron"])` is registered in `server/main.rs`
+- [x] `CardCatalogLoader` struct exists with `#[derive(Default, TypePath)]` and implements `AssetLoader` with `type Asset = CardCatalog`; reads JSON via `serde_json`
+- [x] `LoadingState::new(AppState::Loading).continue_to_state(AppState::ConfigValidation).load_collection::<GameAssets>()` is wired in `server/main.rs`
+- [x] Server successfully transitions through `Loading` → `ConfigValidation` → `Lobby` when both asset files are present and valid
+- [x] After transition to `AppState::Lobby`, both `Res<GameConfig>` and `Res<CardCatalog>` are present in the ECS world and non-empty
+- [x] The `Asset+TypePath` decision for `GameConfig` in `shared/` is resolved and documented in a code comment in `server/src/foundation/config.rs` or the loader file
+- [x] `bevy_asset_loader` version is pinned in `workspace.dependencies` (or fallback to manual `LoadingState` is documented)
 
 ---
 
@@ -136,7 +136,7 @@ In this story, wire a minimal stub that reads both handles and transitions to `A
 
 **Story Type**: Integration
 **Required evidence**: Integration test or manual startup log showing state transitions and both resources present → `tests/evidence/story-gcp-002-pipeline.md`
-**Status**: [ ] Not yet created
+**Status**: [x] Created and locally re-verified 2026-04-30
 
 ---
 
@@ -144,3 +144,11 @@ In this story, wire a minimal stub that reads both handles and transitions to `A
 
 - Depends on: Story 001 (asset files) + `workspace-and-shared-types` Story 004 (workspace fully scaffolded with CI gates passing)
 - Unlocks: Story 003 (validation gate)
+
+## Completion Notes
+
+**Completed**: 2026-04-30
+**Criteria**: 9/9 passing
+**Deviations**: `bevy_asset_loader` and `RonAssetPlugin` were replaced by the documented ADR-004 fallback: manual `AssetServer` loading plus custom `GameConfigLoader`; `GameAssets` uses the server-side `GameConfigAsset` handle so `shared/` remains Bevy-free.
+**Test Evidence**: `tests/evidence/story-gcp-002-pipeline.md`; local verification `cargo test -p server game_config` (7 passed) and `cargo test -p server --verbose` (all server tests/doctests passed) on 2026-04-30.
+**Code Review**: Lean mode; source inspected against ADR-004, Game Config GDD, TR-GC-001/TR-CDP-001, and control manifest.

@@ -3,7 +3,7 @@
 > **Story**: `production/epics/game-config-pipeline/story-002-asset-loading-pipeline.md`
 > **Type**: Integration
 > **Date**: 2026-04-29
-> **Status**: COMPLETE (code review + CI pending)
+> **Status**: COMPLETE (locally re-verified 2026-04-30; CI pending after push)
 
 ---
 
@@ -141,7 +141,12 @@ workaround exists). Added all three to `GameConfig` with design-intent defaults 
 
 ## CI verification
 
-**Cannot run locally** — Smart App Control blocks the MSVC linker. Push to CI at:
-https://github.com/SamyAnisBenachi/Claude-Code-Game-Studios/actions
+Local verification now works from the configured MSVC target directory.
 
-Expected CI result: green `cargo check --workspace` (no Rust type errors — only pre-existing linker issues in local environment).
+- `cargo test -p server game_config` → PASS: 7 `game_config` tests passed.
+- `cargo test -p server --verbose` → PASS: all server unit/integration/doc tests passed.
+
+Cargo emitted a non-fatal global-cache warning: `failed to save last-use data` / `attempt to write a readonly database`.
+
+Push to CI at:
+https://github.com/SamyAnisBenachi/Claude-Code-Game-Studios/actions
