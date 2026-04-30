@@ -29,7 +29,8 @@ At every interaction:
 3. **Tell them if it's parallelizable** with other work
 4. **Tell them how they'll know it worked** (CI green, test passing, or manual playtest at later milestone)
 5. **Implement** when asked
-6. **Update tracking files** when done (story Status, sprint-status.yaml, session-state/active.md)
+6. **Claim work before coding** (`status: in-progress`, `owner: <window-id>`)
+7. **Update tracking files** when done (story Status, sprint-status.yaml, session-state/active.md)
 
 You are NOT the designer. If a story has design ambiguity → STOP and tell the user to go to Claude Code for `/quick-design` or `/architecture-decision`. Never invent design answers.
 
@@ -82,20 +83,71 @@ Read sprint-status.yaml + active.md + last 10 git commits. Reply with:
 
 1. Find next `ready-for-dev` story in `sprint-status.yaml`
 2. If multiple ready, recommend the foundational one first
-3. Read story file fully
-4. Read every ADR referenced
-5. Read the GDD section the story points to
-6. Read `docs/architecture/control-manifest.md` Foundation/Core/Feature rules
-7. Implement following Bevy 0.18 + Lightyear 0.26 constraints (see below)
-8. Write tests prescribed in story's `## Test Evidence` section
-9. Commit: `<story-id> impl: <short title>`
-10. Push: `git push origin main`
-11. Watch CI: `gh run watch <id>`
-12. If CI fails → read failure log, fix, repeat
-13. If CI green → update story Status to Complete + add Completion Notes
-14. Update `sprint-status.yaml`: `status: done`, `completed: <YYYY-MM-DD>`
-15. Append session extract to `production/session-state/active.md`
-16. Tell user what unblocked + next recommended command
+3. **Reserve it before reading/implementing:** edit that story in `sprint-status.yaml` to `status: in-progress`, set `owner` to a unique window id, and save the file
+4. Re-read `sprint-status.yaml`; if another owner already claimed the story, pick a different `ready-for-dev` story instead
+5. Tell the user: claimed story, owner id, next command/window, parallelizable?, how to know the claim worked
+6. Read story file fully
+7. Read every ADR referenced
+8. Read the GDD section the story points to
+9. Read `docs/architecture/control-manifest.md` Foundation/Core/Feature rules
+10. Implement following Bevy 0.18 + Lightyear 0.26 constraints (see below)
+11. Write tests prescribed in story's `## Test Evidence` section
+12. Review `git status --short` and `git diff` to identify only this window's changes
+13. Stage explicit paths only; never use `git add .` or stage unrelated parallel-agent/user work
+14. Commit: `<story-id> impl: <short title>`
+15. Push: `git push origin main`
+16. Watch CI: `gh run watch <id>`
+17. If CI fails → read failure log, fix, repeat
+18. If CI green → update story Status to Complete + add Completion Notes
+19. Update `sprint-status.yaml`: `status: done`, `owner: ""`, `completed: <YYYY-MM-DD>`
+20. Stage only story/status/session files changed by this completion update
+21. Commit completion tracking separately: `story-done <story-id>: <short title> COMPLETE`
+22. Push and watch CI again
+23. Tell user what unblocked + next recommended command, including commit hashes and CI run IDs
+
+### Story Reservation Protocol
+
+Before any Codex window starts implementation, it must claim exactly one story.
+This is the only approved direct edit to `sprint-status.yaml` outside `/story-done`;
+it is a temporary coordination claim, not a completion update.
+
+**Claim format in `production/sprint-status.yaml`:**
+
+```yaml
+status: in-progress
+owner: "codex-<story-id>-<short-purpose>"
+```
+
+Examples:
+- `owner: "codex-s2-01-rsm"`
+- `owner: "codex-s2-02-economy"`
+- `owner: "codex-s2-03-pool"`
+
+Rules:
+- Only claim stories with `status: ready-for-dev` and empty `owner`.
+- The user's "implement next" request authorizes this reservation edit; do not ask for separate approval before claiming.
+- Treat `in-progress` stories as unavailable, even if they look parallel-safe.
+- Never use generic "implement next" in multiple windows without this claim step.
+- Do not claim more than one story per Codex window.
+- Use a stable owner id from story id + purpose; if that id is already present, append a short timestamp.
+- If you abandon a story before code changes, restore `status: ready-for-dev` and `owner: ""`, then tell the user.
+- If you discover a blocker after claiming, set `status: blocked`, fill `blocker`, clear `owner`, and tell the user the required Claude Code command (`/story-readiness`, `/quick-design`, or `/architecture-decision`).
+- If CI passes, clear `owner` when marking the story `done`.
+- If a merge conflict occurs in `sprint-status.yaml`, preserve all other windows' `in-progress`/`owner` claims.
+
+### Commit Hygiene for Parallel Work
+
+Every Codex worker is responsible for committing its own completed work. Do not leave completed implementation changes uncommitted unless the user explicitly asks to pause before commit.
+
+Rules:
+- Commit at coherent checkpoints: one implementation commit after code/tests pass locally or are ready for CI, and one separate completion-tracking commit after CI is green.
+- For long or risky work, make small step commits only at stable boundaries and explain what each commit proves.
+- Before staging, always run `git status --short` and inspect relevant diffs.
+- Stage explicit file paths only: `git add path/to/file1 path/to/file2`. Never use `git add .`, `git add -A`, or broad wildcards in a parallel-work session.
+- Commit only files this window created or intentionally modified. Never stage unrelated user work or another agent's files, even if they are required for the build.
+- If a file contains mixed changes from multiple agents, stop and ask the user how to split it instead of staging the whole file.
+- Include commit details in the handoff: commit hash, commit subject, files changed, tests run, CI run ID/status, and any skipped verification.
+- If push fails because another worker pushed first, pull/rebase carefully, preserve other workers' commits and claims, re-run relevant checks, then push.
 
 ### "What can I run in parallel?"
 
@@ -203,6 +255,11 @@ The user is non-technical. Tell them honestly when they can SEE / PLAY something
 
 Multiple Codex sessions can implement multiple stories simultaneously IF they don't touch the same files.
 
+Parallel work requires story claims first. When asked "what can run in parallel?", report both file overlap and reservation state:
+- `ready-for-dev` + empty `owner` = available
+- `in-progress` + non-empty `owner` = already claimed
+- `blocked` = do not implement until blocker is resolved
+
 ### Sprint 2 example (3 parallel-safe must-haves)
 
 | Story | Primary files | Parallel safe? |
@@ -223,7 +280,7 @@ These get touched by every story-done — serialize when updating:
 - `production/sprint-status.yaml`
 - `production/session-state/active.md`
 
-→ Solution: each Codex session commits separately; git handles merge.
+→ Solution: each Codex session claims first, implements one story, then commits separately; git handles merge.
 
 ---
 
@@ -270,6 +327,8 @@ Stop and tell the user "go to Claude Code and run X" if:
 ---
 
 ## Commit Conventions
+
+Workers must stage only their own files with explicit paths before every commit.
 
 ```
 <story-id> impl: <short imperative title>
@@ -371,7 +430,7 @@ You don't have persistent memory across sessions. Every Codex session reads:
 
 After completing work, ALWAYS update:
 - The story file (Status: Complete + Completion Notes)
-- `sprint-status.yaml` (`status: done`, `completed: <date>`)
+- `sprint-status.yaml` (`status: done`, `owner: ""`, `completed: <date>`)
 - `production/session-state/active.md` (append session extract)
 
 This is how the next Codex session (or Claude Code session) will know what you did.
@@ -388,6 +447,6 @@ You are the implementation orchestrator for Lanes and Lies (Bevy 0.18 + Lightyea
 1. Read CODEX.md fully.
 2. Read production/sprint-status.yaml and production/session-state/active.md.
 3. Tell me where we are, what's next, and whether parallelizable.
-4. If I say "implement next" — pick the next ready-for-dev story, read its full context (story + ADRs + GDD + control-manifest), implement it, write tests, commit, push, watch CI, mark Done.
+4. If I say "implement next" — first claim the next ready-for-dev story in sprint-status.yaml with status: in-progress and a unique owner, then read its full context (story + ADRs + GDD + control-manifest), implement it, write tests, commit, push, watch CI, mark Done, and clear owner.
 5. After every action, tell me: next concrete command, which window, parallelizable or not, how to know it worked.
 ```
