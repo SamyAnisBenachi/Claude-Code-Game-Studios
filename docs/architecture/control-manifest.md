@@ -287,16 +287,16 @@ Source: `docs/engine-reference/bevy/deprecated-apis.md`
 | 12 | On reconnect, new `LinkOf` entity spawns with new `PeerId` (not `ClientId` — renamed); old entity despawned; `SessionToken` is cross-reconnect identity bridge | ADR-011 | ⚠️ DIFFERS |
 | 13 | No `OnConnected` event — connection state uses marker components (`Connected`); detect via `Trigger<OnAdd, Connected>` observer on client entities | ADR-011 | ⚠️ DIFFERS |
 | 14 | Pre-connect messages NOT delivered to new `PeerId`: confirmed by entity-per-connection model — new entity starts with empty message queue | ADR-011 | ✅ CONFIRMED |
-| 15 | `Commands::trigger(SessionReady)` fires Observer in same `Update` frame — **PENDING CI** (test written: `server/tests/session_ready_observer_test.rs`) | ADR-012 | ⚠️ PENDING |
-| 16 | `Res<T>` inserted via `Commands::insert_resource()` before `Commands::trigger()` is visible to Observer — **PENDING CI** (test written: `server/tests/session_ready_observer_test.rs`) | ADR-012 | ⚠️ PENDING |
+| 15 | `Commands::trigger(SessionReady)` fires Observer in same `Update` frame — confirmed by `cargo test -p server session_ready_observer` from Developer PowerShell for VS 2026 | ADR-012 | ✅ CONFIRMED |
+| 16 | `Res<T>` inserted via `Commands::insert_resource()` before `Commands::trigger()` is visible to Observer — confirmed by `cargo test -p server session_ready_observer` from Developer PowerShell for VS 2026 | ADR-012 | ✅ CONFIRMED |
 | 17 | `Trigger<T>` is correct Observer parameter type in Bevy 0.18 — confirmed from Bevy 0.18 api_patterns | ADR-012 | ✅ CONFIRMED |
 | 18 | Component replication is opt-in: entity must have `Replicate::default()` AND component must be registered via `app.register_component::<T>()` | ADR-007 | ✅ CONFIRMED |
 | 19 | `ReplicationGroup` struct confirmed in prelude; `ReplicationGroup::new_id(id)` syntax confirmed | ADR-001 | ✅ CONFIRMED |
 | 20 | `LocalTimeline` is a struct in `lightyear::core::prelude` ("local timeline matching Time<Virtual>"); accessible as `Res<LocalTimeline>` | Engine reference | ✅ CONFIRMED |
 
-**Legend:** ✅ CONFIRMED — API exists as assumed | ⚠️ DIFFERS — API differs, resolution path documented in `tests/evidence/lightyear-026-verification.md` | ⚠️ PENDING — test written, CI run required
+**Legend:** ✅ CONFIRMED — API exists as assumed | ⚠️ DIFFERS — API differs, resolution path documented in `tests/evidence/lightyear-026-verification.md`
 
-Items 15 and 16 are PENDING CI execution. Run `cargo test -p server session_ready_observer` in a VS Developer Command Prompt or CI to resolve.
+Items 15 and 16 are resolved. Local Windows verification requires Developer PowerShell for VS 2026 because normal PowerShell does not load MSVC `link.exe`.
 
 **Do not merge any networking story with unverified or unresolved DIFFERS items.**
 

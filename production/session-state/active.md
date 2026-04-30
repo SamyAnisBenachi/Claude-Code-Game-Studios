@@ -28,7 +28,7 @@
 | S1-02 | Shared Card Types | `story-002-shared-card-types.md` | ✅ Done |
 | S1-03 | GameConfig POD Struct | `story-003-game-config-pod-struct.md` | ✅ Done |
 | S1-04 | Protocol Skeleton + CI Gates | `story-004-protocol-skeleton-ci-gates.md` | ✅ Done |
-| S1-05 | Lightyear 0.26 Spike ⭐ | `production/epics/lightyear-protocol-verification/story-001-lightyear-026-verification-spike.md` | ⚠️ PENDING CI (Items 15-16 test written, needs CI run) |
+| S1-05 | Lightyear 0.26 Spike ⭐ | `production/epics/lightyear-protocol-verification/story-001-lightyear-026-verification-spike.md` | ✅ ADR-012 items 15-16 verified locally |
 | S1-09 | ServerRng Type Definitions | `production/epics/server-rng/story-001-type-definitions-audit-infrastructure.md` | ✅ Done |
 
 **Machine-readable status :** `production/sprint-status.yaml`
@@ -159,14 +159,17 @@ M2 (7 GDDs) : 2 DESIGNED, 5 PAS COMMENCÉS
 https://github.com/SamyAnisBenachi/Claude-Code-Game-Studios/actions
 
 # Cargo (Windows)
+# Run from Developer PowerShell for VS 2026 so MSVC link.exe is on PATH.
+# .cargo/config.toml sets target-dir = "target/msvc-local".
 C:\Users\Sam\.cargo\bin\cargo.exe check --workspace
 C:\Users\Sam\.cargo\bin\cargo.exe test -p server --verbose
+C:\Users\Sam\.cargo\bin\cargo.exe test -p server session_ready_observer
 
 # gh CLI (installé, besoin auth)
 C:\Program Files\GitHub CLI\gh.exe
 
 # Rust installé via winget 2026-04-29
-# Smart App Control bloque les builds locaux → utiliser CI ou WSL2
+# Normal PowerShell still will not see MSVC link.exe; use Developer PowerShell for VS 2026 or CI.
 ```
 
 ---
@@ -201,12 +204,12 @@ C:\Program Files\GitHub CLI\gh.exe
 - **Story**: `production/epics/lightyear-protocol-verification/story-001-lightyear-026-verification-spike.md` — Lightyear 0.26 Verification Spike
 - **Files changed**:
   - `server/tests/session_ready_observer_test.rs` — ADR-012 open condition test (2 test functions)
-  - `tests/evidence/lightyear-026-verification.md` — all 20 items annotated (9 CONFIRMED, 7 DIFFERS, 2 PENDING CI, 2 CONFIRMED by architecture)
+  - `tests/evidence/lightyear-026-verification.md` — all 20 items annotated; ADR-012 items 15-16 now locally verified
   - `docs/architecture/control-manifest.md` — §Lightyear 0.26 Verification Checklist: all 20 ⬜ → ✅/⚠️
-- **Test written**: `server/tests/session_ready_observer_test.rs` — 2 tests (ADR-012 open condition); PENDING CI (local MSVC linker PATH issue pre-existing)
+- **Test written**: `server/tests/session_ready_observer_test.rs` — 2 tests (ADR-012 open condition); now verified locally from Developer PowerShell for VS 2026
 - **Key findings**: 7 API differences from ADR assumptions (channel syntax, direction model, send/receive methods, NetworkTarget identifier type, server send API, connection event naming); all have concrete resolution paths documented
-- **Blockers**: Items 15-16 (ADR-012 flush ordering) PENDING CI test execution — run `cargo test -p server session_ready_observer` in VS Developer Command Prompt or CI
-- **Next**: Push to CI for test execution, then `/story-done production/epics/lightyear-protocol-verification/story-001-lightyear-026-verification-spike.md` once CI confirms PASS on both ADR-012 tests
+- **Blockers**: None for ADR-012 items 15-16; `cargo test -p server session_ready_observer` passes from Developer PowerShell for VS 2026
+- **Next**: Networking follow-up stories may rely on the resolved ADR-012 observer ordering test
 
 ## Session Extract — /dev-story 2026-04-29
 - **Story**: `production/epics/card-data-pool/story-001-pool-state-core-api.md` — Pool State + Core API
@@ -330,7 +333,7 @@ C:\Program Files\GitHub CLI\gh.exe
 - Story: `production/epics/round-state-machine/story-001-state-and-events-scaffold.md` - State and Events Scaffold
 - Files changed: `server/src/core/rsm/state.rs`, `server/src/core/rsm/events.rs`, `server/src/core/rsm/plugin.rs`, `server/src/core/rsm/mod.rs`, `server/src/core/mod.rs`, `server/src/lib.rs`, `server/src/main.rs`, `shared/src/protocol.rs`, `client/src/state/mod.rs`, `server/tests/rsm_scaffold_test.rs`, `tests/unit/rsm/rsm_scaffold_test.rs`, `tests/evidence/rsm-story-001-check.md`
 - Test written: `server/tests/rsm_scaffold_test.rs` (2 tests), evidence mapping at `tests/unit/rsm/rsm_scaffold_test.rs`, smoke evidence at `tests/evidence/rsm-story-001-check.md`
-- Blockers: local `cargo check --workspace` blocked by missing MSVC `link.exe`; source-level Bevy API check confirmed `add_message`, `Messages<T>`, and `add_observer`
+- Blockers: previously blocked in normal PowerShell by missing MSVC `link.exe`; use Developer PowerShell for VS 2026 for local Cargo verification
 - Next: `/code-review server/src/core/rsm/state.rs server/src/core/rsm/events.rs server/src/core/rsm/plugin.rs server/tests/rsm_scaffold_test.rs` then run Cargo in a VS Developer Command Prompt or CI
 
 ## Session Extract - /dev-story 2026-04-30
@@ -357,3 +360,10 @@ C:\Program Files\GitHub CLI\gh.exe
 - Test Evidence: `server/tests/rsm_scaffold_test.rs`, `tests/unit/rsm/rsm_scaffold_test.rs`, `tests/evidence/rsm-story-001-check.md`
 - Implementation Commit: `2b66f35`
 - Next: S2-07 RSM Story 2 and S2-08 Economy Story 2 are unblocked now that S2-01 and S2-02 are Done
+
+## Session Extract - environment update 2026-04-30
+- Cargo local fixed: `.cargo/config.toml` sets `target-dir = "target/msvc-local"` so Cargo's generated build scripts/proc-macro DLLs stay in a repo-local target tree.
+- Verified command: from Developer PowerShell for VS 2026, `cargo test -p server session_ready_observer` -> 2 passed; 0 failed.
+- Scope: normal PowerShell still will not see MSVC `link.exe`; use Developer PowerShell for VS 2026 or CI for local verification.
+- Docs updated: `CODEX.md`, `docs/architecture/control-manifest.md`, `tests/evidence/lightyear-026-verification.md`.
+- Impact: ADR-012 Lightyear verification items 15-16 are no longer pending; GSS/RSM observer ordering can rely on the passing local test.

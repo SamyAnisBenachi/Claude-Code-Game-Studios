@@ -37,7 +37,9 @@
 use std::collections::HashMap;
 use std::ops::Deref;
 
-use bevy::asset::{io::Reader, Asset, AssetApp, AssetLoader, AssetServer, Assets, Handle, LoadContext};
+use bevy::asset::{
+    io::Reader, Asset, AssetApp, AssetLoader, AssetServer, Assets, Handle, LoadContext,
+};
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
 use serde::Deserialize;
@@ -112,8 +114,8 @@ impl AssetLoader for GameConfigLoader {
         use bevy::asset::AsyncReadExt as _;
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
-        let config: shared::config::GameConfig = ron::de::from_bytes(&bytes)
-            .map_err(GameConfigLoadError::Ron)?;
+        let config: shared::config::GameConfig =
+            ron::de::from_bytes(&bytes).map_err(GameConfigLoadError::Ron)?;
         Ok(GameConfigAsset(config))
     }
 
@@ -272,8 +274,8 @@ impl AssetLoader for CardCatalogLoader {
         use bevy::asset::AsyncReadExt as _;
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
-        let raw: Vec<CardDataJson> = serde_json::from_slice(&bytes)
-            .map_err(CardCatalogLoadError::Json)?;
+        let raw: Vec<CardDataJson> =
+            serde_json::from_slice(&bytes).map_err(CardCatalogLoadError::Json)?;
         let cards: HashMap<CardId, CardData> = raw
             .into_iter()
             .map(|j| {
@@ -456,10 +458,7 @@ pub fn validate_card_catalog(c: &CardCatalog) -> Result<(), String> {
     }
     for (key, card) in &c.cards {
         if key != &card.id {
-            return Err(format!(
-                "key {:?} != card.id {:?}",
-                key, card.id
-            ));
+            return Err(format!("key {:?} != card.id {:?}", key, card.id));
         }
     }
     Ok(())

@@ -234,7 +234,10 @@ impl ServerRng {
         let idx = self.seed_index;
         let seed = self.next_seed();
         self.audit_log.push(AuditEntry {
-            event_type: RngEvent::DrawShopSlot { player_id, slot_index },
+            event_type: RngEvent::DrawShopSlot {
+                player_id,
+                slot_index,
+            },
             seed_index: idx,
             result: None,
         });
@@ -365,7 +368,10 @@ mod tests {
         let first = &rng.audit_log()[0];
         assert_eq!(first.event_type, RngEvent::SessionInit);
         assert_eq!(first.seed_index, 0);
-        assert!(first.result.is_none(), "SessionInit must have result = None");
+        assert!(
+            first.result.is_none(),
+            "SessionInit must have result = None"
+        );
     }
 
     // RNG11: no raw seed bytes appear in any AuditEntry.result
@@ -393,11 +399,9 @@ mod tests {
         let log = rng.audit_log();
         for (i, entry) in log.iter().enumerate() {
             assert_eq!(
-                entry.seed_index,
-                i as u32,
+                entry.seed_index, i as u32,
                 "seed_index at position {} should be {}",
-                i,
-                i
+                i, i
             );
         }
     }
@@ -455,7 +459,11 @@ mod tests {
         let mut rng = ServerRng::from_seed(3);
         rng.assign_fake_objectives(1);
         let log = rng.audit_log();
-        assert_eq!(log.len(), 3, "sentinel + 2 entries from assign_fake_objectives");
+        assert_eq!(
+            log.len(),
+            3,
+            "sentinel + 2 entries from assign_fake_objectives"
+        );
         assert_eq!(
             log[1].event_type,
             RngEvent::AssignFakeObjectives { player_id: 1 }
@@ -650,8 +658,7 @@ mod tests {
 
         // Assert: B's first gameplay entry has seed_index == 1, not prior_final_index
         assert_eq!(
-            first_entry_in_b.seed_index,
-            1,
+            first_entry_in_b.seed_index, 1,
             "first gameplay entry in new session must have seed_index 1, not {}",
             prior_final_index
         );

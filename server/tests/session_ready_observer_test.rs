@@ -11,8 +11,8 @@
 
 use bevy::prelude::*;
 use std::sync::{
-    Arc,
     atomic::{AtomicBool, Ordering},
+    Arc,
 };
 
 #[derive(Event)]
@@ -42,13 +42,16 @@ fn test_session_ready_observer_fires_in_same_frame() {
         flag.store(true, Ordering::SeqCst);
     });
 
-    app.add_systems(Update, |mut commands: Commands, guard: Option<Res<TriggerFired>>| {
-        if guard.is_some() {
-            return;
-        }
-        commands.insert_resource(TriggerFired);
-        commands.trigger(SessionReady);
-    });
+    app.add_systems(
+        Update,
+        |mut commands: Commands, guard: Option<Res<TriggerFired>>| {
+            if guard.is_some() {
+                return;
+            }
+            commands.insert_resource(TriggerFired);
+            commands.trigger(SessionReady);
+        },
+    );
 
     // Act: one update tick — system queues trigger, commands flush, observer runs
     app.update();
@@ -85,19 +88,24 @@ fn test_session_ready_observer_resource_visible_after_commands_insert() {
 
     // Observer accesses Res<SessionConfig> — will panic if resource not present
     // when triggered (which would also constitute a test failure).
-    app.add_observer(move |_trigger: On<SessionReady>, config: Res<SessionConfig>| {
-        flag.store(config.value == 42, Ordering::SeqCst);
-    });
+    app.add_observer(
+        move |_trigger: On<SessionReady>, config: Res<SessionConfig>| {
+            flag.store(config.value == 42, Ordering::SeqCst);
+        },
+    );
 
-    app.add_systems(Update, |mut commands: Commands, guard: Option<Res<TriggerFired>>| {
-        if guard.is_some() {
-            return;
-        }
-        commands.insert_resource(TriggerFired);
-        // Order matters: insert_resource before trigger — this is what ADR-012 relies on.
-        commands.insert_resource(SessionConfig { value: 42 });
-        commands.trigger(SessionReady);
-    });
+    app.add_systems(
+        Update,
+        |mut commands: Commands, guard: Option<Res<TriggerFired>>| {
+            if guard.is_some() {
+                return;
+            }
+            commands.insert_resource(TriggerFired);
+            // Order matters: insert_resource before trigger — this is what ADR-012 relies on.
+            commands.insert_resource(SessionConfig { value: 42 });
+            commands.trigger(SessionReady);
+        },
+    );
 
     // Act: one update — system queues (insert_resource, trigger) in order,
     // commands flush in order: insert first, then observer fires.

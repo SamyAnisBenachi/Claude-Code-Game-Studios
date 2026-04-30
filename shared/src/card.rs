@@ -69,9 +69,21 @@ pub enum UnitType {
 #[serde(untagged)]
 pub enum Keyword {
     Simple(SimpleKeyword),
-    RangeX      { #[serde(rename = "kw")] kw: String, max_range: u8 },
-    ChargeXMove { #[serde(rename = "kw")] kw: String, cells: u8 },
-    ResistanceX { #[serde(rename = "kw")] kw: String, value: u8 },
+    RangeX {
+        #[serde(rename = "kw")]
+        kw: String,
+        max_range: u8,
+    },
+    ChargeXMove {
+        #[serde(rename = "kw")]
+        kw: String,
+        cells: u8,
+    },
+    ResistanceX {
+        #[serde(rename = "kw")]
+        kw: String,
+        value: u8,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]

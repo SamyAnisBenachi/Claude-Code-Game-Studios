@@ -4,7 +4,7 @@
 > **Date**: 2026-04-29
 > **Verified against**: lightyear 0.26.4 (docs.rs — 0.26.0 build failed on docs.rs; 0.26.4 is the latest 0.26.x patch)
 > **Sources**: `docs.rs/lightyear/0.26.4`, `docs.rs/lightyear_messages/0.26.4`, `docs.rs/lightyear_connection/0.26.4`, `liv-bevy-lightyear` skill `api_patterns.md`
-> **ADR-012 test**: Written at `server/tests/session_ready_observer_test.rs`. Result: **PENDING CI** — local environment has pre-existing MSVC linker PATH issue (`D:\_APP\Git\usr\bin\link.exe` shadows MSVC link.exe). Test code is correct; run `cargo test -p server session_ready_observer` in a VS Developer Command Prompt or CI to confirm.
+> **ADR-012 test**: Written at `server/tests/session_ready_observer_test.rs`. Result: ✅ PASS locally from Developer PowerShell for VS 2026 after `.cargo/config.toml` set `target-dir = "target/msvc-local"`; command: `cargo test -p server session_ready_observer` (2 passed, 0 failed). Normal PowerShell still does not load MSVC `link.exe`.
 
 ---
 
@@ -287,26 +287,24 @@ In the entity-per-connection model, each reconnect creates a new `LinkOf` entity
 ## Items 15–17: Bevy Observer / Trigger Semantics
 
 ### Item 15: `Commands::trigger(SessionReady)` fires Observer same frame
-⚠️ **PENDING TEST RESULT**
+✅ **CONFIRMED**
 
-Test written at `server/tests/session_ready_observer_test.rs` (`test_session_ready_observer_fires_in_same_frame`). Cannot execute locally due to pre-existing MSVC linker PATH issue. 
+Test written at `server/tests/session_ready_observer_test.rs` (`test_session_ready_observer_fires_in_same_frame`).
 
-**Expected: PASS.** In Bevy 0.18, `Commands::trigger(E)` adds a command that, when the command queue flushes, calls `world.trigger(E)` synchronously — dispatching all registered observers in the same flush cycle. This is the documented behavior of Bevy Observers introduced in 0.17.
+**Actual: PASS.** Verified locally from Developer PowerShell for VS 2026 with `cargo test -p server session_ready_observer` after `.cargo/config.toml` set `target-dir = "target/msvc-local"`.
 
-**Action required:** Run `cargo test -p server session_ready_observer` in CI or VS Developer Command Prompt to confirm.
+This confirms Bevy 0.18 applies `Commands::trigger(E)` in the command queue flush and dispatches registered observers in the same flush cycle.
 
 ---
 
 ### Item 16: Resource visible to Observer after `Commands::insert_resource()` before `Commands::trigger()`
-⚠️ **PENDING TEST RESULT**
+✅ **CONFIRMED**
 
 Test written at `server/tests/session_ready_observer_test.rs` (`test_session_ready_observer_resource_visible_after_commands_insert`).
 
-**Expected: PASS.** Commands in Bevy's command queue are applied in the order they are issued. When the queue flushes: `insert_resource(SessionConfig)` is applied first (command 0), then `trigger(SessionReady)` fires the observer (command 1). The observer can access `Res<SessionConfig>` without panic.
+**Actual: PASS.** Commands in Bevy's command queue are applied in the order they are issued. When the queue flushes: `insert_resource(SessionConfig)` is applied first (command 0), then `trigger(SessionReady)` fires the observer (command 1). The observer can access `Res<SessionConfig>` without panic.
 
-**If the test fails:** Adopt ADR-012 §Alternative 2 — replace `evaluate_session_ready` with an exclusive system using `World::insert_resource()` + `World::trigger()`, which provides unconditional same-tick guarantees without the command queue.
-
-**Action required:** Run in CI to confirm. Both tests must PASS before GSS implementation story begins.
+**Verification command:** `cargo test -p server session_ready_observer` from Developer PowerShell for VS 2026. Result: 2 passed; 0 failed.
 
 ---
 

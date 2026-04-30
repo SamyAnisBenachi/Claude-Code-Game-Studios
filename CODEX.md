@@ -227,15 +227,15 @@ For full details see: `tests/evidence/lightyear-026-verification.md`.
 
 | Level | What it proves | Available from | Command |
 |---|---|---|---|
-| **Compilation** | Code parses, types check | Always | `cargo check` (CI runs) |
+| **Compilation** | Code parses, types check | Always | `cargo check` in Developer PowerShell for VS 2026, or CI |
 | **Unit test** | One function's logic works | Sprint 2+ | `cargo test -p server <test_name>` |
 | **Integration test** | Multi-system interaction works | Sprint 2+ | `cargo test -p server --test <name>` |
 | **CI green** | All above pass on clean Linux | Always | `gh run watch <id>` |
-| **Server smoke run** | Server boots without crashing | Sprint 5+ | `cargo run -p server` (CI or WSL2) |
+| **Server smoke run** | Server boots without crashing | Sprint 5+ | `cargo run -p server` in Developer PowerShell for VS 2026, or CI |
 | **Multiplayer connect** | Client connects to server | Sprint 6+ | server up + WASM client in browser |
 | **Manual play** | A round can be played | **Sprint 7+** (Presentation Layer) | Trunk WASM build + 2 browsers |
 
-**⚠️ Local builds blocked by Windows Smart App Control. Trust CI as source of truth.**
+**Local Cargo on Windows**: `.cargo/config.toml` sets `target-dir = "target/msvc-local"`. Cargo tests work from **Developer PowerShell for VS 2026** where MSVC `link.exe` is on PATH. Normal PowerShell still will not see `link.exe`; use CI or Developer PowerShell.
 
 ---
 
@@ -400,9 +400,10 @@ git add <files>
 git commit -m "<S2-NN> impl: <title>"
 git push origin main
 
-# Cargo (CI runs these — but you can verify in WSL2 if needed)
+# Cargo (run from Developer PowerShell for VS 2026; normal PowerShell lacks link.exe)
 cargo check --workspace
 cargo test -p server --verbose
+cargo test -p server session_ready_observer
 cargo tree -p server --prefix none
 
 # Find ready stories
@@ -414,16 +415,15 @@ grep -A1 "ready-for-dev" production/sprint-status.yaml
 ## Right Now (as of 2026-04-30)
 
 **Stage**: Production
-**Sprint 1 Foundation**: 85% done (CardPool, GameConfig, RNG implemented)
-**Sprint 2 Core**: 3 must-have stories `ready-for-dev`:
+**Sprint 1 Foundation**: ~85% done (CardPool, GameConfig, RNG, Lightyear spike complete)
+**Sprint 2 Core**: S2-01 ✅ Done, S2-02 ✅ Done, S2-03 ✅ Done — check `production/sprint-status.yaml` for next `ready-for-dev` stories.
 
-1. **S2-01** RSM State + Events Scaffold (`production/epics/round-state-machine/story-001-state-and-events-scaffold.md`)
-2. **S2-02** Economy State + Pure API Scaffold (`production/epics/economy-system/story-001-state-and-pure-api-scaffold.md`)
-3. **S2-03** Card Pool Weighted Draw (`production/epics/card-data-pool/story-002-weighted-draw-functions.md`)
-
-These 3 are parallel-safe (different directories). User can launch 3 Codex windows and assign one each.
-
-**First-time recommendation**: Start with S2-01 alone first to validate the workflow, then parallelize S2-02 and S2-03 once S2-01 is in CI.
+**Local builds**: ✅ Working from Developer PowerShell for VS 2026
+```
+cd D:\_DEV\claude-code-game-studios
+cargo test -p server
+```
+Normal PowerShell lacks `link.exe` — use Developer PowerShell or CI.
 
 ---
 
