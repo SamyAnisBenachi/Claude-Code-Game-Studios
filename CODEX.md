@@ -92,8 +92,8 @@ Read sprint-status.yaml + active.md + last 10 git commits. Reply with:
 9. Read `docs/architecture/control-manifest.md` Foundation/Core/Feature rules
 10. Implement following Bevy 0.18 + Lightyear 0.26 constraints (see below)
 11. Write tests prescribed in story's `## Test Evidence` section
-12. Review `git status --short` and `git diff` to identify only this window's changes
-13. Stage explicit paths only; never use `git add .` or stage unrelated parallel-agent/user work
+12. Review `git status --short`, `git diff`, and `git diff --cached --name-status` to identify this window's changes and any already-staged work from other windows
+13. Prepare the commit with explicit paths/pathspecs only; never use `git add .`, and minimize unrelated parallel-agent/user work
 14. Commit: `<story-id> impl: <short title>`
 15. Push: `git push origin main`
 16. Watch CI: `gh run watch <id>`
@@ -139,13 +139,19 @@ Rules:
 
 Every Codex worker is responsible for committing its own completed work. Do not leave completed implementation changes uncommitted unless the user explicitly asks to pause before commit.
 
+Important reality: all Codex windows in this project share one working tree and one Git index. Perfect isolation is the goal, but small coordination-file overlap is acceptable when it is clearly reported. The rule is **minimize cross-agent contamination**, not "stop all work because the workspace is busy."
+
 Rules:
 - Commit at coherent checkpoints: one implementation commit after code/tests pass locally or are ready for CI, and one separate completion-tracking commit after CI is green.
 - For long or risky work, make small step commits only at stable boundaries and explain what each commit proves.
-- Before staging, always run `git status --short` and inspect relevant diffs.
+- Before staging or committing, always run `git status --short`, inspect relevant diffs, and check `git diff --cached --name-status` for already-staged files.
 - Stage explicit file paths only: `git add path/to/file1 path/to/file2`. Never use `git add .`, `git add -A`, or broad wildcards in a parallel-work session.
-- Commit only files this window created or intentionally modified. Never stage unrelated user work or another agent's files, even if they are required for the build.
-- If a file contains mixed changes from multiple agents, stop and ask the user how to split it instead of staging the whole file.
+- Prefer committing only files this window created or intentionally modified. If a tiny shared coordination file must be included (`sprint-status.yaml`, `active.md`, story completion notes), include it and call it out in the handoff.
+- If the index already contains staged files from another worker, do not panic and do not assume the work is ruined. Either:
+  - commit with explicit pathspecs for your owned files only (`git commit -m "..." -- path/to/owned1 path/to/owned2`) when practical, or
+  - ask the orchestrator to clean stale staged entries if the index contents are unclear.
+- Never run destructive cleanup (`git reset --hard`, checkout/revert of another worker's files) to achieve a clean commit.
+- If a file contains significant mixed code changes from multiple agents, stop and ask the orchestrator how to split it. For minor shared metadata overlap, prefer the smallest sensible commit and document the overlap.
 - Include commit details in the handoff: commit hash, commit subject, files changed, tests run, CI run ID/status, and any skipped verification.
 - If push fails because another worker pushed first, pull/rebase carefully, preserve other workers' commits and claims, re-run relevant checks, then push.
 
@@ -328,7 +334,7 @@ Stop and tell the user "go to Claude Code and run X" if:
 
 ## Commit Conventions
 
-Workers must stage only their own files with explicit paths before every commit.
+Workers must use explicit paths/pathspecs before every commit and should minimize unrelated files.
 
 ```
 <story-id> impl: <short imperative title>
