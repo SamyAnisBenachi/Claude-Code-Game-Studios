@@ -4,7 +4,18 @@
 > **GDD**: design/gdd/card-acquisition.md
 > **Architecture Module**: `server/feature/acquisition/`
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories card-acquisition`
+> **Stories**: 6 stories created 2026-04-30
+
+## Stories
+
+| # | Story | Type | Status | TR-IDs | ADR |
+|---|-------|------|--------|--------|-----|
+| 001 | [State Scaffold — ShopStates, PlayerHands, Phase Machine](story-001-state-scaffold.md) | Logic | Ready | TR-CA-001, TR-CA-006 | ADR-015 |
+| 002 | [Draft Initial — 9-Card Offering](story-002-draft-initial.md) | Integration | Ready | TR-CA-002 | ADR-015 |
+| 003 | [Shop Draw Pipeline — Auto-Refresh, Dedup, 50/50 Split](story-003-draw-pipeline.md) | Logic | Ready | TR-CA-003, TR-CA-005, TR-CA-010 | ADR-015 |
+| 004 | [Manual Refresh Cost Formula and Counter Reset](story-004-refresh-cost.md) | Logic | Ready | TR-CA-004 | ADR-015 |
+| 005 | [Purchase Flow, Dead Slot, and CA18 Atomicity](story-005-purchase-flow.md) | Integration | Ready | TR-CA-008, TR-CA-009 | ADR-015 |
+| 006 | [External Bypasses — PlayerHands Shared API](story-006-external-bypass.md) | Integration | Ready | TR-CA-007 | ADR-015 |
 
 ## Overview
 
