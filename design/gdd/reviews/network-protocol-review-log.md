@@ -1,5 +1,13 @@
 # Review Log — Network Protocol
 
+## Review — 2026-04-30 (R3) — Verdict: MAJOR REVISION NEEDED → Revised Inline
+Scope signal: XL
+Specialists: network-programmer, systems-designer, qa-lead, game-designer, creative-director
+Blocking items: 17 | Recommended: 9
+Summary: R3 surfaced the next layer below R2's structural fixes — gaps that became visible once the wire foundation was solid. The five structural categories: (1) `ResolutionEvent` enum incomplete (no CombatDamage, KeywordTriggered, DisplacementEvent — the protocol could not deliver the RESOLUTION replay at all); (2) `BoardSnapshot` missing Sadida Seeds and Sinistros (hard board-state desync on reconnect); (3) `PlayerSnapshot` missing `class_id` (reconnecting client loses class context); (4) `GoldAwardReason::PrismReward` contradicted Prism System Rule 11 and BLOCKING AC PS-15; (5) missing live-state messages for opponent placement submission and spawn range changes. All 17 blockers resolved inline. 10 new ResolutionEvent variants + 3 new enum types added. 6 new ACs (NP-30 through NP-35). OQ5 closed. R4 recommended as a lean re-review targeting ResoultionEvent schema and BoardSnapshot only.
+Prior verdict resolved: Yes — R2 (NEEDS REVISION) blockers all resolved inline before R2 ended; R3 found new blockers surfaced by downstream GDDs.
+Blockers resolved inline (17): CombatDamage/KeywordTriggered/DisplacementEvent/SubStepMarker/FinalBlowFired/AppearanceFired/DeathTriggerFired/EndOfTurnFired/SpawnRangeChanged added; DamageKind/DisplacementKind/KeywordPayload enums added; seeds+sinistros to BoardSnapshot; class_id to PlayerSnapshot; 7 keyword state fields + max_hp to UnitBoardState; max_hp to StructureBoardState; GoldAwardReason::PrismReward removed; CardSource→AcquisitionSource + FreeCardPick added; S2COpponentSubmitted added; AuctionSnapshot starting_price added; S2CGoldBroadcast reserved_gold rule; NP-19 rewritten; NP-23 ADVISORY→BLOCKING; NP-25/26 rewritten; NP-7/12 rewritten; integration annotations NP-13/17/24/28/29; NP-30-35 added; OQ5 closed; Interactions table stale labels fixed.
+
 ## Review — 2026-04-29 (R2) — Verdict: NEEDS REVISION → Revised Inline
 Scope signal: XL
 Specialists: network-programmer, systems-designer, game-designer, qa-lead, creative-director

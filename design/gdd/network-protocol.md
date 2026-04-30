@@ -1,8 +1,8 @@
 # Network Protocol
 
-> **Status**: In Review — revised 2026-04-29 (29 blockers resolved from /design-review R2)
+> **Status**: In Review — revised 2026-04-30 (R3 in-session: 17 blockers resolved — ResolutionEvent variants, BoardSnapshot, UnitBoardState keyword fields, schema completeness, AC gates)
 > **Author**: User + Agents
-> **Last Updated**: 2026-04-29
+> **Last Updated**: 2026-04-30
 > **Implements Pillar**: No idle spectating · Auction as signature
 
 ## Overview
@@ -81,7 +81,7 @@ enum PlayTarget {
 
 **Placement model:** `C2SSubmitPlacement` is a single batch — the player finalizes their entire selection in one message. Once sent, the submission cannot be retracted. Client UI manages local selection state; the server only sees the final batch.
 
-**C2SActivateCard acknowledgement model:** There is no dedicated `S2CCardActivated` acknowledgement. Per Rule 5, the client must not advance its local view until S2C confirms the action. For `C2SActivateCard`, confirmation arrives through the existing economy/hand messages: a successful instant card play produces `S2CGoldUpdate` and/or `S2CCardAcquired` as side effects. If neither arrives within a reasonable timeout, the client must treat the activation as rejected and revert local optimistic state. Cards with no observable side effects (e.g., a no-cost, no-draw Order) should include a `S2CGoldUpdate` (even if gold is unchanged — confirm as a no-op) to provide the required confirmation signal.
+**C2SActivateCard acknowledgement model:** There is no dedicated `S2CCardActivated` acknowledgement. Per Rule 5, the client must not advance its local view until S2C confirms the action. For `C2SActivateCard`, confirmation arrives through the existing economy/hand messages: a successful instant card play produces `S2CGoldUpdate` as side effects (reserve_mana changes for reserve spells like `prism_reserve`; mana changes for mana-cost instants). If `S2CGoldUpdate` does not arrive within `activate_timeout_ms` (client-side constant, default 3000ms), the client treats the activation as rejected and reverts local optimistic state. **Design decision:** Cards with no observable side effects (e.g., a no-cost, no-draw Order) MUST produce a `S2CGoldUpdate` with unchanged values as a no-op confirmation signal. This is an intentional architectural choice — the alternative (a dedicated `S2CCardActivated` message) was evaluated and rejected to keep the message surface small. Implementers must ensure every server-side instant-card handler sends `S2CGoldUpdate` even when values do not change.
 
 **`C2SSubmitPlacement` server validation:** The server validates the full batch before accepting: `sum(placements[i].reserve_amount) ≤ player.reserve_mana` AND `sum(card[i].cost - placements[i].reserve_amount) ≤ player.current_mana`. If any card is not in the player's hand, or any `lane`/`cell` value is out of range (1–5 / 1–8), the entire batch is silently discarded (Rule 4). Partial acceptance is not supported.
 
@@ -101,8 +101,9 @@ enum PlayTarget {
 | `S2CPhaseChanged` | Reliable | Broadcast | `{ phase: RoundPhase, round_number: u32, timer_duration_ms: u32 }` |
 | `S2CGameOver` | Reliable | Broadcast | `{ loser: Option<PlayerId>, round: u32, reason: GameOverReason }` — `None` = Draw (both players lose; reason = `Draw` for mutual destruction/disconnection/resolution timeout) |
 | `S2CGoldUpdate` | Reliable | Unicast | `{ gold: u32, current_mana: u32, reserve_mana: u32, mana_cap: u8 }` |
-| `S2CGoldBroadcast` | Reliable | Broadcast | `{ player_id: PlayerId, gold: u32, reserved_gold: u32 }` — opponent gold always visible; `gold - reserved_gold` = free gold (required for auction panel to display correct bidding headroom) |
-| `S2CCardAcquired` | Reliable | Unicast | `{ card_id: CardId, source: CardSource }` |
+| `S2CGoldBroadcast` | Reliable | Broadcast | `{ player_id: PlayerId, gold: u32, reserved_gold: u32 }` — opponent gold always visible; `gold - reserved_gold` = free gold (required for auction panel to display correct bidding headroom). **RULE: fires on any mutation of `gold` OR `reserved_gold` — including bid acceptance (which changes `reserved_gold` but not `gold`). Without this, the auction panel's free-gold display is stale after each bid.** |
+| `S2CCardAcquired` | Reliable | Unicast | `{ card_id: CardId, source: AcquisitionSource }` |
+| `S2COpponentSubmitted` | Reliable | Unicast (non-submitting player) | `{ player_id: PlayerId }` — sent when one player submits their placement; the other player receives this immediately so they can show "waiting for opponent" state. NOT sent to the player who submitted. |
 | `S2CShopSlots` | Reliable | Unicast | `{ slots: Vec<Option<CardId>> }` — `None` = empty slot (dedup exhaustion or pool exhaustion for that slot type) |
 | `S2CDraftOffering` | Reliable | Unicast | `{ card_ids: Vec<CardId> }` — exactly 9 cards at DRAFT_INITIAL (fewer only in stripped test fixtures) |
 | `S2CPoolUpdate` | Reliable | Unicast | `{ updates: Vec<(CardId, u8)> }` — delta `copies_remaining` |
@@ -168,8 +169,9 @@ enum PlayTarget {
 | **Card Data & Pool** | Shop slots per player, draft offering, pool delta per purchase | `S2CShopSlots`, `S2CDraftOffering`, `S2CPoolUpdate` (reliable unicast) |
 | **Board / Lane System** | Placement reveal data, resolution replay log, unit position / objective HP updates | `S2CPlacementReveal`, `S2CResolutionEvent` (reliable broadcast); `BoardPosition`, `ObjectiveHp` (component replication) |
 | **Server-side RNG** | RNG results via consuming systems | No direct protocol messages — consuming systems broadcast results after reading from RNG |
-| **Auction System** *(GDD not yet written)* | Bid accepted events, auction settled event, auction card selection | `S2CAuctionCard`, `S2CAuctionBidAccepted`, `S2CAuctionSettled` (reliable broadcast) |
-| **Combat Resolution** | Sub-step events, kill/objective gold-award events (embedded as `GoldAwarded` entries in batch) | `S2CResolutionEvent` (reliable broadcast). Gold awards embedded in batch — **no standalone `S2CGoldUpdate` during RESOLUTION**. `S2CGoldUpdate` fires for all non-RESOLUTION gold events only. |
+| **Auction System** | Bid accepted events, auction settled event, auction card selection | `S2CAuctionCard`, `S2CAuctionBidAccepted`, `S2CAuctionSettled` (reliable broadcast). Gold reservation changes on bid acceptance trigger `S2CGoldBroadcast` (reserved_gold rule). |
+| **Combat Resolution** | Sub-step events, kill/objective gold-award events (embedded as `GoldAwarded` entries in batch) | `S2CResolutionEvent` (reliable broadcast). Gold awards embedded in batch — **no standalone `S2CGoldUpdate` during RESOLUTION**. After batch delivery, server sends `S2CGoldBroadcast` to sync totals. `S2CGoldUpdate` fires for all non-RESOLUTION gold events only. |
+| **Keyword System** | Keyword trigger events, displacement events, keyword-effect card grants | `S2CResolutionEvent` variants: `KeywordTriggered`, `DisplacementEvent`, `AppearanceFired`, `DeathTriggerFired`, `FinalBlowFired`, `EndOfTurnFired`. Keyword-granted cards: `S2CCardAcquired { source: AcquisitionSource::KeywordEffect }`. |
 | **Game Session System** | Lobby phase messages, session metadata, opponent status changes | `S2CRoomCreated`, `S2CJoinAck`, `S2CJoinRejected`, `S2CSlotUpdated`, `S2CClassLocked`, `S2CClassesRevealed`, `S2CConfirmClassRejected`, `S2CSessionCancelled` (all reliable); `S2CHandshake`, `S2COpponentDisconnected`, `S2COpponentReconnected` (reliable) |
 
 ## Formulas
@@ -193,11 +195,12 @@ S2CGameSnapshot {
 
 PlayerSnapshot {
     player_id:         PlayerId,
+    class_id:          ClassId,      // PUBLIC — required for reconnect; S2CClassesRevealed is NOT re-sent on reconnect; without this field the reconnecting client cannot render class tokens, class-specific board state, or keyword interactions
     gold:              u32,
     current_mana:      u32,
     reserve_mana:      u32,
     spawn_range_cells: u8,           // cells available for Minion placement: 1–3
-    mana_cap:          u8,           // current mana cap (default 10; can increase to 11–12 via fake reward)
+    mana_cap:          u8,           // current mana cap (default 10; can increase to 11–12 via fake reward). SERVER INVARIANT: must not exceed 12.
     submitted:         bool,         // true if this player has submitted their PLACEMENT this round
 
     // Own player only (secret — stripped from opponent's copy):
@@ -231,6 +234,20 @@ BoardSnapshot {
     structures: Vec<StructureBoardState>,
     fields:     Vec<FieldBoardState>,
     prisms:     Vec<PrismBoardState>,   // required: component replication not re-sent on reconnect
+    seeds:      Vec<SeedBoardState>,    // Sadida Seed cell-markers; absent = reconnecting client sees no Seeds, board state desyncs
+    sinistros:  Vec<SinistroState>,     // Xelor Sinistro attachments on objectives; absent = reconnecting client misses ongoing damage per RESOLUTION
+}
+
+SeedBoardState {
+    lane: u8,
+    cell: u8,
+    // Seed persists indefinitely until consumed by Graines de Folie or destroyed. Max 1 per cell.
+}
+
+SinistroState {
+    owner: PlayerId,   // the Xelor player who played Sinistro
+    lane:  u8,         // objective lane this Sinistro is attached to
+    // Sinistro deals 1 damage/RESOLUTION to the opposing-lane objective. Destroyed if its parent objective takes damage.
 }
 
 PrismBoardState {
@@ -248,9 +265,18 @@ UnitBoardState {
     owner:      PlayerId,
     lane:       u8,
     cell:       u8,
+    max_hp:     u8,         // base HP + any permanent HP bonuses; required for INJURED state derivation (INJURED = current_hp < max_hp)
     current_hp: u8,
     atk:        u8,
-    ar:         u8,         // armor rating
+    ar:         u8,         // current AR including permanent Seed bonuses. SERVER INVARIANT: must not overflow u8 — enforce AR cap in server logic (document cap value in Edge Cases when determined)
+
+    // Keyword state — required by Keyword System Replication Contract for correct reconnect rendering
+    shield_active:           bool,              // SHIELD hex glyph; false after consumption
+    stun_active:             bool,              // STUN stars glyph; false if not stunned this round
+    silenced_until_round:    Option<u32>,       // SILENCE outline; Some(R) = silenced until round R; u32 matches round_number type
+    leader_bonus_atk:        u8,               // ATK bonus from LEADER snapshot (0 if no allied LEADER)
+    leader_bonus_hp:         u8,               // HP bonus from LEADER snapshot (0 if no allied LEADER)
+    bodyguard_protects:      Option<EntityId>, // BODYGUARD bond target; None = no active bond. Survives CHANGE LANE — cannot be derived from position alone.
 }
 
 TrapBoardState {
@@ -267,6 +293,7 @@ StructureBoardState {
     owner:        PlayerId,
     lane:         u8,
     cell:         u8,
+    max_hp:       u8,         // required for HP bar fractional fill rendering
     current_hp:   u8,
 }
 
@@ -290,9 +317,12 @@ auction_state: Option<AuctionSnapshot>,
 
 AuctionSnapshot {
     card_id:             CardId,
-    last_accepted_bid:   u32,           // last bid amount accepted; minimum valid next bid = last_accepted_bid + 1
+    starting_price:      u32,           // auction floor for this card's rarity (3g/4g/5g for Rare/Epic/Legendary)
+    last_accepted_bid:   u32,           // last bid amount accepted; minimum valid next bid = last_accepted_bid + 1.
+                                        // At zero bids: last_accepted_bid = 0. Use starting_price (not last_accepted_bid + 1) as
+                                        // the display floor — client MUST check: if last_accepted_bid == 0, minimum bid = starting_price.
     current_leader:      Option<PlayerId>,
-    timer_remaining_ms:  u32,           // milliseconds remaining on the auction timer
+    timer_remaining_ms:  u32,           // milliseconds remaining on the auction timer. NOTE: stale by network RTT by the time client renders it — this is a known accepted limitation for friend-game scope.
 }
 ```
 
@@ -315,6 +345,13 @@ TaggedEvent {
 }
 
 enum ResolutionEvent {
+    // ── Sub-step delimiters ──────────────────────────────────────────────────
+    SubStepMarker {
+        sub_step: u8,   // 1–6 at sub-step start; 7 = post-SS6 (END OF TURN triggers).
+                        // REQUIRED even for empty sub-steps: AnimQueue uses this to insert mandatory inter-step pauses.
+    },
+
+    // ── Movement ────────────────────────────────────────────────────────────
     UnitMoved {
         unit_id:   EntityId,
         from_lane: u8,
@@ -322,43 +359,106 @@ enum ResolutionEvent {
         from_cell: u8,
         to_cell:   u8,
     },
+
+    // ── Forced displacement (distinct from voluntary movement) ───────────────
+    DisplacementEvent {
+        unit_id:      EntityId,
+        attacker_id:  Option<EntityId>,  // None = spell effect with no board unit as caster
+        from_lane:    u8,
+        from_cell:    u8,
+        to_lane:      u8,
+        to_cell:      u8,               // actual final position after IRREMOVABLE block or board-edge clamp
+        kind:         DisplacementKind,
+        block_reason: Option<DisplacementBlockReason>,  // None = displacement completed normally
+        sub_step:     u8,
+        // INVARIANT: if block_reason = Some(IrremovableKeyword), to_cell == from_cell.
+        // If block_reason = Some(BoardEdgeClamped), to_cell is 1 or 8 (clamped, not original destination).
+        // A TrapTriggered event for the same unit may immediately follow if the unit lands on a trap cell mid-displacement.
+    },
+
+    // ── Combat damage ────────────────────────────────────────────────────────
+    CombatDamage {
+        attacker_id:        EntityId,
+        target_id:          EntityId,
+        lane:               u8,
+        damage:             u8,         // 0 = attack blocked by SHIELD
+        was_lethal:         bool,       // true = a UnitDied event for target_id follows immediately within this sub_step
+        is_counterattack:   bool,       // true = this damage is the return-strike (COUNTERATTACK keyword)
+        damage_source_kind: DamageKind,
+        sub_step:           u8,
+        // ORDERING INVARIANT: if was_lethal = true, the next event in the array for the same sub_step MUST be
+        // UnitDied { unit_id: target_id }. Client can rely on this for animation sequencing.
+    },
+
+    // ── Deaths ───────────────────────────────────────────────────────────────
     UnitDied {
         unit_id:   EntityId,
         lane:      u8,
         cell:      u8,
         killer_id: Option<EntityId>,  // None = damage-over-time, structure effect, or spell
     },
+    DeathTriggerFired {
+        unit_id:  EntityId,   // the unit whose DEATH keyword is triggering
+        sub_step: u8,
+        // Fired immediately before the DEATH keyword's secondary effects. Drives Arcane Gold pulse animation.
+        // ORDERING: SubStep → … → UnitDied → DeathTriggerFired → [secondary effects] within same sub_step.
+    },
+
+    // ── Keyword activations ──────────────────────────────────────────────────
+    KeywordTriggered {
+        source_unit_id: Option<EntityId>,  // None for board-global events (e.g., OutnumberedFlipped)
+        sub_step:       u8,
+        payload:        KeywordPayload,
+    },
+    AppearanceFired {
+        unit_id:  EntityId,
+        sub_step: u8,         // Drives Arcane Gold aura pulse when unit first acts on the board
+    },
+    FinalBlowFired {
+        killer_id: EntityId,
+        victim_id: EntityId,
+        sub_step:  u8,        // Fired in the sub-step where the kill occurs, BEFORE the corresponding UnitDied
+    },
+    EndOfTurnFired {
+        unit_id:  EntityId,   // sub_step 7 (post-SS6 sentinel)
+    },
+
+    // ── Economy events (embedded in batch) ───────────────────────────────────
+    GoldAwarded {
+        player_id: PlayerId,
+        amount:    u32,
+        reason:    GoldAwardReason,
+        // NOTE: RESOLUTION gold changes flow through GoldAwarded entries here, NOT through standalone S2CGoldBroadcast.
+        // After S2CResolutionEvent is fully delivered (before S2CPhaseChanged), the server sends S2CGoldBroadcast
+        // to sync both players' gold totals to their authoritative post-RESOLUTION values.
+    },
+    ManaCapIncreased {
+        player_id: PlayerId,
+        new_cap:   u8,        // SERVER INVARIANT: must not exceed 12
+    },
+    SpawnRangeChanged {
+        player_id:            PlayerId,
+        new_spawn_range_cells: u8,   // 1–3; increases when attacker destroys a fake objective
+        // This event is the ONLY delivery mechanism for spawn range changes for the connected player.
+        // Reconnecting clients receive spawn_range_cells in PlayerSnapshot instead.
+    },
+
+    // ── Traps ────────────────────────────────────────────────────────────────
     TrapTriggered {
         trap_id:            EntityId,
         triggering_unit_id: EntityId,
         lane:               u8,
         cell:               u8,
     },
-    ObjectiveDamaged {
-        target_player_id: PlayerId,
-        lane:             u8,
-        hp_before:        u8,
-        hp_after:         u8,
-        attacker_id:      Option<EntityId>,
+    TrapDestroyed {
+        trap_id:     EntityId,
+        lane:        u8,
+        cell:        u8,
+        card_id:     Option<CardId>,   // Some = own trap (identity known to owner); None = opponent's trap
+        attacker_id: Option<EntityId>, // None = destroyed by non-combat effect
     },
-    ObjectiveDestroyed {
-        target_player_id: PlayerId,
-        lane:             u8,
-        was_fake:         bool,   // both players learn real/fake status simultaneously at destruction
-    },
-    PrismCollected {
-        player_id: PlayerId,
-        lane:      u8,
-    },
-    GoldAwarded {
-        player_id: PlayerId,
-        amount:    u32,
-        reason:    GoldAwardReason,
-    },
-    ManaCapIncreased {
-        player_id: PlayerId,
-        new_cap:   u8,   // the player's mana_cap after the fake objective reward
-    },
+
+    // ── Structures ───────────────────────────────────────────────────────────
     StructureDamaged {
         structure_id: EntityId,
         lane:         u8,
@@ -373,19 +473,72 @@ enum ResolutionEvent {
         cell:         u8,
         attacker_id:  Option<EntityId>,
     },
-    TrapDestroyed {
-        trap_id:     EntityId,
-        lane:        u8,
-        cell:        u8,
-        card_id:     Option<CardId>,   // Some = own trap (identity known to owner); None = opponent's trap (identity not revealed on non-trigger destruction)
-        attacker_id: Option<EntityId>, // None = destroyed by non-combat effect (spell, structure)
+
+    // ── Objectives ───────────────────────────────────────────────────────────
+    ObjectiveDamaged {
+        target_player_id: PlayerId,
+        lane:             u8,
+        hp_before:        u8,
+        hp_after:         u8,
+        attacker_id:      Option<EntityId>,
+        // RENDERING CONTRACT: client MUST apply hp_after to the HP bar at AnimQueue playback time,
+        // not at batch receipt. HP bars decrement as the event is played back, not all at once.
+    },
+    ObjectiveDestroyed {
+        target_player_id: PlayerId,
+        lane:             u8,
+        was_fake:         bool,   // both players learn real/fake status simultaneously at destruction
+    },
+
+    // ── Prisms ───────────────────────────────────────────────────────────────
+    PrismCollected {
+        player_id: PlayerId,
+        lane:      u8,
     },
 }
 
 enum GoldAwardReason {
     KillReward,       // +1g per kill
     ObjectiveReward,  // +3g per objective destroyed (real or fake)
-    PrismReward,      // gold awarded on prism collection (if any — amount per prism defined in Prism System GDD)
+    // NOTE: PrismReward variant deliberately omitted. Prism System Rule 11 and BLOCKING AC PS-15
+    // confirm that prisms grant zero gold. This variant would be dead code — removed to prevent
+    // implementer confusion. See prism-system.md Rule 11.
+}
+
+enum DamageKind {
+    Melee,
+    Range,            // RANGE keyword — projectile impact VFX
+    FirstStrike,      // FIRST STRIKE — fires before standard melee
+    Spell,            // Spell card damage (prism_strike, etc.)
+    StructureEffect,  // Damage from a Structure's passive ability
+    SeedTrap,         // Sadida Seed damage on enemy walk-over
+}
+
+enum DisplacementKind {
+    Repel(u8),        // REPEL X — push target X cells away from caster
+    Attract(u8),      // ATTRACT X — pull target X cells toward caster
+    Teleport { dest_lane: u8, dest_cell: u8 },   // TELEPORT — direct repositioning; cross-lane allowed if card specifies
+}
+
+enum DisplacementBlockReason {
+    IrremovableKeyword,   // target has IRREMOVABLE; to_cell == from_cell
+    BoardEdgeClamped,     // displacement clamped at board edge (cell 1 or 8); to_cell is the edge cell
+}
+
+// KeywordPayload — per-keyword trigger payloads for KeywordTriggered events.
+// Defined in full by keyword-system.md Replication Contract (OQ-NP5).
+// Implementer MUST cross-reference keyword-system.md for the authoritative payload per keyword.
+enum KeywordPayload {
+    ShieldConsumed,
+    StunApplied { duration_rounds: u8 },
+    SilenceApplied { duration_rounds: u8 },
+    InjuredBonusActive { granted_keyword: u8 },  // u8 = keyword enum discriminant (avoid recursive type)
+    LeaderSnapshotTaken { leader_unit_id: EntityId },
+    OutnumberedFlipped { player_id: PlayerId, active: bool },  // board-global — source_unit_id is None
+    BodyguardBondCreated { bodyguard_id: EntityId, protected_id: EntityId },
+    BodyguardBondBroken { bodyguard_id: EntityId },
+    CounterattackFired,   // COUNTERATTACK reactive strike — paired with a CombatDamage(is_counterattack: true)
+    HasteActivated,       // HASTE — unit moves at SS2 in addition to SS5
 }
 ```
 
@@ -394,16 +547,19 @@ enum GoldAwardReason {
 ### D.3 — Supporting Enum Definitions
 
 ```
-enum CardSource {
+// Renamed from CardSource to AcquisitionSource to match entities.yaml registry.
+// All consumers (hand-ui, auction-system, prism-system, objective-system) must use this name.
+enum AcquisitionSource {
     ShopPurchase,
-    DraftSelection,
+    DraftInitial,     // 9-card pick at DRAFT_INITIAL (clarified from previous DraftSelection)
     AuctionWon,
-    PrismLane1,      // "1 damage to a chosen objective" spell added to hand
-    PrismLane2,      // "+1 reserve mana" spell added to hand
-    PrismLane3,      // random draw from shop pool
-    PrismLane4,      // "+1 reserve mana" spell added to hand (same reward as Lane 2)
-    PrismLane5,      // "1 damage to a chosen objective" spell added to hand
-    KeywordEffect,   // card added to hand by a keyword trigger (DEATH, FINAL BLOW, class ability)
+    FreeCardPick,     // random draw from pool as fake-objective destruction reward (objective-system.md Rule 10)
+    PrismLane1,       // "1 damage to a chosen objective" spell added to hand
+    PrismLane2,       // "+1 reserve mana" spell added to hand
+    PrismLane3,       // random draw from shop pool
+    PrismLane4,       // "+1 reserve mana" spell added to hand (same reward as Lane 2)
+    PrismLane5,       // "1 damage to a chosen objective" spell added to hand
+    KeywordEffect,    // card added to hand by a keyword trigger (DEATH, FINAL BLOW, class ability)
 }
 
 struct PlacedCard {   // element of S2CPlacementReveal.placements — same name as C2S payload struct; C2S has reserve_amount, S2C omits it (mana accounting is server-side)
@@ -454,6 +610,10 @@ enum BidRejectedReason {
 - **If both players disconnect simultaneously (same server tick)**: Neither player can receive `S2COpponentDisconnected`. The server enters RECONNECTING for both players. Grace windows run independently from each player's disconnect time. If either player reconnects, normal flow resumes — the reconnected player receives a snapshot, and `S2COpponentDisconnected { grace_remaining_ms }` is sent immediately to inform them of the other player's state. If neither reconnects within `disconnect_grace_seconds` from the later disconnect, the RSM declares the session a Draw and fires `S2CGameOver { loser: None, reason: GameOverReason::Draw }`.
 
 - **If `S2CAuctionCard` and `S2CPhaseChanged(DRAFT_AUCTION)` are enqueued in the same frame**: `S2CAuctionCard` MUST be enqueued on the reliable channel before `S2CPhaseChanged(DRAFT_AUCTION)`. The client must not enter the DRAFT_AUCTION UI state until it knows which card is being auctioned. This is an enqueue-order invariant enforced by the Auction System + Protocol integration, not by the channel itself.
+
+- **If `S2CDraftOffering` and `S2CPhaseChanged(DRAFT_INITIAL)` are enqueued in the same frame**: `S2CDraftOffering` MUST be enqueued before `S2CPhaseChanged(DRAFT_INITIAL)`. The client must not render the DRAFT_INITIAL shop panel until the 9-card offering is available. Analogous to the `S2CAuctionCard` invariant. An empty shop on the first round of the game is a first-impression failure.
+
+- **If `S2CResolutionEvent` has been delivered and the server is about to send `S2CPhaseChanged(DRAFT_SHOP)`**: The server MUST enqueue `S2CGoldBroadcast` (for both players, if their gold changed) AFTER `S2CResolutionEvent` and BEFORE `S2CPhaseChanged(DRAFT_SHOP)`. RESOLUTION-origin gold changes (kill rewards, objective rewards) travel inside `S2CResolutionEvent` as `GoldAwarded` entries. The post-batch `S2CGoldBroadcast` syncs authoritative totals to both players before the new DRAFT phase begins.
 
 - **If `C2SPlaceBid` arrives at the server after `S2CAuctionSettled` has already been dispatched (race on the last bid)**: The server does not send `S2CAuctionBidRejected` in this case — `S2CAuctionSettled` is the terminal signal and takes precedence. The server silently discards the late bid after settlement is final. The client should display the bid as "pending" until either `S2CAuctionBidAccepted` or `S2CAuctionSettled` resolves it.
 
@@ -525,29 +685,35 @@ N/A — This system renders nothing. The protocol delivers data consumed by UI s
 | NP-4 | **GIVEN** a client is IN_GAME and sends `C2SPurchaseCard` during PLACEMENT phase, **WHEN** the server processes it, **THEN** no S2C message is sent to that client in response and the player's gold is unchanged. | BLOCKING |
 | NP-5 | **GIVEN** a client sends `C2SSubmitPlacement` during DRAFT_SHOP phase AND `player.submitted` was `false` before the message arrived, **WHEN** the server processes it, **THEN** `player.submitted` remains `false` (unchanged) and no S2C message of any kind is sent in response. | BLOCKING |
 | NP-6 | **GIVEN** a player sends valid `C2SSubmitPlacement` during PLACEMENT, **WHEN** the server accepts it, **THEN** `player.submitted = true` in server state. No S2C message is sent to any player — the submission is recorded silently until `S2CPlacementReveal` fires. | BLOCKING |
-| NP-7 | **GIVEN** units are on the board, **WHEN** the server updates `BoardPosition` or `UnitStats`, **THEN** no reliable S2C message is generated for those updates — delivery occurs via Lightyear component replication only. (Integration test — requires a live Lightyear session; `World::new()` unit tests cannot verify channel assignment.) | BLOCKING |
+| NP-7 | **GIVEN** units are on the board, **WHEN** the server updates `BoardPosition` or `UnitStats`, **THEN** no S2C* message of any type is received by a test client on the reliable channel for that tick — delivery occurs via Lightyear component replication only. (Integration test — requires a live Lightyear session with a test client observing the reliable channel message stream.) | BLOCKING |
 | NP-8 | **GIVEN** RESOLUTION completes and the server sends phase-exit messages, **WHEN** messages are captured in the reliable channel stream, **THEN** `S2CResolutionEvent` precedes `S2CPhaseChanged(DRAFT_SHOP)` in the sequence. (Integration test — requires a live Lightyear session to inspect message ordering on the reliable channel.) | BLOCKING |
 | NP-9 | **GIVEN** a client reconnects mid-game, **WHEN** the server processes the new transport connection, **THEN** the first S2C message sent is `S2CGameSnapshot` — no `S2CPhaseChanged`, `S2CGoldUpdate`, or other game message precedes it. (Integration test — requires a live Lightyear session to inspect channel message ordering.) | BLOCKING |
 | NP-10 | **GIVEN** a client reconnects during PLACEMENT after having already submitted, **WHEN** `S2CGameSnapshot` is processed, **THEN** the reconnecting player's `PlayerSnapshot.submitted = true` and the placement UI is not re-presented. | BLOCKING |
 | NP-11 | **GIVEN** both players are IN_GAME, **WHEN** the server sends `S2CGoldUpdate` for Player A, **THEN** the server does not enqueue `S2CGoldUpdate` for Player B's `ClientId`. Gold is unicast to the owning player only. (Integration test — requires a live Lightyear session to verify delivery scope per `ClientId`.) | BLOCKING |
-| NP-12 | **GIVEN** a player's transport connection drops, **WHEN** Lightyear's `OnDisconnected` event fires, **THEN** `S2COpponentDisconnected` is sent to the remaining player within the same `Update` schedule run. (Integration test — requires a live Lightyear session. "Same `Update` schedule run" is the granularity; a one-tick delay is not acceptable.) | BLOCKING |
-| NP-13 | **GIVEN** a player has been disconnected for strictly more than `disconnect_grace_seconds`, **WHEN** the RSM evaluates disconnect trackers, **THEN** `S2CGameOver` is broadcast on the reliable channel. | BLOCKING |
+| NP-12 | **GIVEN** a player's transport connection drops, **WHEN** Lightyear's `OnDisconnected` event fires, **THEN** `S2COpponentDisconnected { grace_remaining_ms }` is received by the remaining player before the next `S2CPhaseChanged` or any other phase-affecting message is delivered on the reliable channel. (Integration test — requires a live Lightyear session.) | BLOCKING |
+| NP-13 | **GIVEN** a player has been disconnected for strictly more than `disconnect_grace_seconds`, **WHEN** the RSM evaluates disconnect trackers, **THEN** `S2CGameOver` is broadcast on the reliable channel. (Integration test — requires a live Lightyear session or a `disconnect_trackers` resource set to 0 in test setup to avoid real-time sleep.) | BLOCKING |
 | NP-14 | **GIVEN** `C2SSubmitPlacement` is sent twice by the same player in the same PLACEMENT phase, **WHEN** the server processes both, **THEN** the second submission is silently discarded — `player.submitted` remains `true` and no S2C message is sent in response to the second message. | BLOCKING |
 | NP-15 | **GIVEN** a client is IN_GAME and sends `C2SHello` again on the same connection, **WHEN** the server processes it, **THEN** no `S2CHandshake` is sent in response and the existing session is not disrupted. | BLOCKING |
 | NP-16 | **GIVEN** a two-player game is in progress and Player B reconnects, **WHEN** the server produces Player B's `S2CGameSnapshot`, **THEN** the snapshot does NOT contain: Player A's `hand`, `shop_slots`, `pool_snapshot`, or any `ObjectiveSnapshot.is_real = true` for Player A's objectives. | BLOCKING |
-| NP-17 | **GIVEN** a player disconnects and reconnects within `disconnect_grace_seconds`, **WHEN** the server processes the reconnect, **THEN** `S2COpponentReconnected` is broadcast to the remaining player. | BLOCKING |
+| NP-17 | **GIVEN** a player disconnects and reconnects within `disconnect_grace_seconds`, **WHEN** the server processes the reconnect, **THEN** `S2COpponentReconnected` is broadcast to the remaining player. (Integration test — requires two live clients and a transport drop+reconnect sequence.) | BLOCKING |
 | NP-18 | **GIVEN** the server is in DRAFT_AUCTION and a player reconnects, **WHEN** `S2CGameSnapshot` is received, **THEN** `auction_state` is non-null and contains: `card_id`, `last_accepted_bid`, `current_leader` (or `None` if no bids yet), and `timer_remaining_ms`. | BLOCKING |
-| NP-19 | **GIVEN** Player A's gold changes for any reason (purchase, kill reward, objective reward, prism reward, phase income — baseline + interest applied at end of RESOLUTION), **WHEN** the server processes the change, **THEN** `S2CGoldBroadcast { player_id: Player_A, gold: new_amount, reserved_gold: Player_A.reserved_gold }` is delivered to ALL connected players including Player B. (Satisfies AC M7 — opponent gold and reserved gold always visible; allows any client to compute `free_gold = gold - reserved_gold`.) | BLOCKING |
+| NP-19 | **GIVEN** Player A's gold changes due to a non-RESOLUTION event (shop purchase, phase income, auction settlement, bid reservation change), **WHEN** the server processes the change, **THEN** `S2CGoldBroadcast { player_id: Player_A, gold: new_amount, reserved_gold: Player_A.reserved_gold }` is delivered to ALL connected players including Player B. NOTE: RESOLUTION-origin gold changes (kill rewards, objective rewards) are carried inside `S2CResolutionEvent::GoldAwarded` entries — NOT via standalone `S2CGoldBroadcast` during RESOLUTION. A post-batch `S2CGoldBroadcast` fires after `S2CResolutionEvent` delivery and before `S2CPhaseChanged(DRAFT_SHOP)` to sync totals. | BLOCKING |
 | NP-20 | **GIVEN** a game is in PLACEMENT with at least 2 units on the board, **WHEN** a player reconnects and receives `S2CGameSnapshot`, **THEN** the snapshot contains: `round_number > 0`, `phase = PLACEMENT`, all board units present in `BoardSnapshot.units`, and the reconnecting player's `hand` is populated if they hold cards. (Integration test.) | BLOCKING |
 | NP-21 | **GIVEN** a client reconnects during PLACEMENT before having submitted, **WHEN** `S2CGameSnapshot` is processed, **THEN** `PlayerSnapshot.submitted = false` for the reconnecting player, and the placement UI is re-presented with `timer_remaining_ms` already counting down from its current value (in milliseconds). | BLOCKING |
 | NP-22 | **GIVEN** a client reconnects during PLACEMENT and the opponent has already submitted, **WHEN** `S2CGameSnapshot` is processed, **THEN** the opponent's `PlayerSnapshot.submitted = true` and the reconnecting client renders the "waiting for opponent" state. The snapshot is the sole authority — no further submission confirmation messages are sent. | BLOCKING |
-| NP-23 | **GIVEN** Player A acquires a card (from shop, auction, prism, or keyword effect), **WHEN** the server sends `S2CCardAcquired`, **THEN** it is NOT delivered to Player B's transport connection. Card acquisition is private to the owning player. | ADVISORY |
-| NP-24 | **GIVEN** the server receives `C2SHeartbeat` from Player A, **WHEN** the heartbeat is processed, **THEN** `disconnect_trackers[Player_A]` is reset to `disconnect_grace_seconds`. | BLOCKING |
-| NP-25 | **GIVEN** Player A is IN_GAME and has not sent `C2SHeartbeat` for strictly more than `disconnect_grace_seconds` (server-side tracking via `disconnect_trackers`), **WHEN** the RSM evaluates disconnect trackers, **THEN** `S2CGameOver { loser: Some(Player_A), reason: GameOverReason::Disconnection }` is broadcast. This covers the WASM half-open TCP case that `OnDisconnected` does not reliably detect. | BLOCKING |
-| NP-26 | **GIVEN** the server is in any RSM phase (DRAFT_INITIAL, DRAFT_SHOP, DRAFT_AUCTION, PLACEMENT, RESOLUTION, GAME_OVER), **WHEN** a `C2SHeartbeat` is received from a player, **THEN** the heartbeat is processed (timer reset) without triggering any other server state change. | BLOCKING |
+| NP-23 | **GIVEN** Player A acquires a card (from shop, auction, prism, or keyword effect), **WHEN** the server sends `S2CCardAcquired`, **THEN** it is NOT delivered to Player B's transport connection. Card acquisition is private to the owning player. (Integration test — requires two live clients to verify non-delivery to B.) | BLOCKING |
+| NP-24 | **GIVEN** the server receives `C2SHeartbeat` from Player A, **WHEN** the heartbeat is processed, **THEN** `disconnect_trackers[Player_A]` is reset to `disconnect_grace_seconds`. (Unit-testable if `C2SHeartbeat` dispatch is isolated; integration test if live Lightyear session is required for message delivery.) | BLOCKING |
+| NP-25 | **GIVEN** `disconnect_trackers[Player_A]` has been decremented to 0 (heartbeat not received; simulated via `Resource` injection in test setup to avoid real-time sleep), **WHEN** the RSM evaluates disconnect trackers, **THEN** `S2CGameOver { loser: Some(Player_A), reason: GameOverReason::Disconnection }` is broadcast on the reliable channel. | BLOCKING |
+| NP-26 | **GIVEN** the server is in any RSM phase (DRAFT_INITIAL, DRAFT_SHOP, DRAFT_AUCTION, PLACEMENT, RESOLUTION, GAME_OVER), **WHEN** a `C2SHeartbeat` is received from a player, **THEN** `disconnect_trackers[Player_A]` is reset, no S2C message of any type is sent in response, and the current RSM phase is unchanged. | BLOCKING |
 | NP-27 | **GIVEN** the server has advanced past LOBBY (RSM phase is DRAFT_INITIAL or later) and a client sends `C2SCreateRoom`, `C2SJoinRoom`, `C2SSelectClass`, or `C2SConfirmClass`, **WHEN** the server processes it, **THEN** the message is silently discarded per Rule 4 — no S2C response is sent and no state changes. | BLOCKING |
-| NP-28 | **GIVEN** both players have submitted their PLACEMENT and the server fires `S2CPlacementReveal`, **WHEN** the message is delivered, **THEN** ALL connected players receive it AND the `placements` field contains entries for BOTH players (both players' cards are in the reveal payload). | BLOCKING |
-| NP-29 | **GIVEN** a player sends `C2SPlaceBid` during DRAFT_AUCTION with `amount < player.gold` but `amount <= last_accepted_bid` (amount too low), **WHEN** the server processes it, **THEN** `S2CAuctionBidRejected { reason: BidRejectedReason::AmountTooLow }` is sent unicast to the bidding player and no auction state changes. | BLOCKING |
+| NP-28 | **GIVEN** both players have submitted their PLACEMENT and the server fires `S2CPlacementReveal`, **WHEN** the message is delivered, **THEN** ALL connected players receive it AND the `placements` field contains entries for BOTH players (both players' cards are in the reveal payload). (Integration test — requires two live clients to verify all-player delivery.) | BLOCKING |
+| NP-29 | **GIVEN** a player sends `C2SPlaceBid` during DRAFT_AUCTION with `amount < player.gold` but `amount <= last_accepted_bid` (amount too low), **WHEN** the server processes it, **THEN** `S2CAuctionBidRejected { reason: BidRejectedReason::AmountTooLow }` is sent unicast to the bidding player and no auction state changes. (Integration test — requires two live clients to confirm non-bidding player does NOT receive the rejection.) | BLOCKING |
+| NP-30 | **GIVEN** unit A deals non-lethal damage to unit B during RESOLUTION combat (B survives the hit), **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains a `CombatDamage { attacker_id: A, target_id: B, damage > 0, was_lethal: false }` entry at the correct sub_step, and no `UnitDied` entry follows it for unit B within that sub_step. | BLOCKING |
+| NP-31 | **GIVEN** a keyword effect activates on a unit during RESOLUTION (SHIELD consumed, STUN applied, SILENCE applied, LEADER snapshot, BODYGUARD bond, OUTNUMBERED flip, COUNTERATTACK fired), **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains a `KeywordTriggered { source_unit_id, sub_step, payload }` entry matching the keyword and sub_step, ordered before any secondary effects the keyword produces. | BLOCKING |
+| NP-32 | **GIVEN** a REPEL, ATTRACT, or TELEPORT keyword displaces a unit during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains a `DisplacementEvent` entry with correct `from_lane`, `from_cell`, `to_lane`, `to_cell`, and `kind`, and the unit's `BoardPosition` via component replication converges to `to_lane`/`to_cell` after the event. | BLOCKING |
+| NP-33 | **GIVEN** a fake objective is destroyed during RESOLUTION (attacker's spawn range expands), **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains a `SpawnRangeChanged { player_id: attacker, new_spawn_range_cells }` entry in addition to the `ObjectiveDestroyed` entry. | BLOCKING |
+| NP-34 | **GIVEN** Player A submits their PLACEMENT and Player B has not yet submitted, **WHEN** the server processes Player A's `C2SSubmitPlacement`, **THEN** `S2COpponentSubmitted { player_id: Player_A }` is delivered to Player B's transport connection within the same reliable channel message sequence. | BLOCKING |
+| NP-35 | **GIVEN** a reconnecting player's `S2CGameSnapshot` is delivered, **WHEN** the snapshot contains `class_id` for both players, **THEN** the client can render class-specific tokens and keyword interactions without requiring a re-dispatch of `S2CClassesRevealed`. | BLOCKING |
 
 ## Open Questions
 
@@ -559,4 +725,6 @@ N/A — This system renders nothing. The protocol delivers data consumed by UI s
 
 4. ~~**New constants in `game-config.md`**~~ — **RESOLVED (R2 2026-04-29):** `protocol_version`, `hello_timeout_ms`, `ack_timeout_ms`, `heartbeat_interval_ms` added to `game-config.md` struct, Tuning Knobs, Interactions table, and GCN-DEFAULTS AC. Registry updated. ✓
 
-5. **`PlayTarget::TargetUnit` extension** — If any Keyword System effect requires targeting a unit placed in the current PLACEMENT (not from prior rounds), `PlayTarget` must be extended. Provisional assumption: targeted spells can only reference prior-round units. **Owner:** Keyword System GDD. **Priority: MEDIUM — revisit when Keyword GDD is designed.**
+5. ~~**`PlayTarget::TargetUnit` extension**~~ — **RESOLVED (R3 2026-04-30):** Keyword System GDD (approved) confirms no keyword requires targeting current-PLACEMENT units. `PlayTarget` enum is stable. No extension needed.
+
+6. **Sang Méprise reconnect gap** — `S2CGameSnapshot` has no `sang_meprise_active` field. A Sacrier player who reconnects mid-RESOLUTION while Sang Méprise is active loses the reveal information they paid a card for. This is tracked as OQ-CS-2 in class-system.md. **Owner:** Network Protocol + Objective System. **Priority: LOW — friend-game scope, accepted for now.**

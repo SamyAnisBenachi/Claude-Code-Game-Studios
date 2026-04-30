@@ -292,6 +292,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - **Report**: docs/architecture/architecture-review-2026-04-30.md
 - **Files changed**: architecture-review-2026-04-30.md (new), architecture-traceability.md (updated), tr-registry.yaml (74 TRs populated), adr-004 (code samples fixed), adr-005 (dep reference fixed)
 
+## Session Extract — /design-review network-protocol.md R3 2026-04-30
+- **Verdict**: MAJOR REVISION NEEDED → Revised inline
+- **Blockers resolved**: 17
+- **Key fixes**: ResolutionEvent 10 new variants + 3 new enums; BoardSnapshot seeds + sinistros; PlayerSnapshot class_id; UnitBoardState 7 keyword state fields + max_hp; GoldAwardReason::PrismReward removed; AcquisitionSource rename + FreeCardPick; S2COpponentSubmitted; AuctionSnapshot starting_price; NP-19/NP-23/NP-25/NP-26 rewritten; NP-30–35 new ACs; OQ5 closed
+- **Systems index**: Network Protocol → In Review
+- **Recommended next**: /design-review design/gdd/network-protocol.md --depth lean (R4 re-review, fresh session after /clear)
+- **Also still Needs Revision**: keyword-system.md (C-B2), class-system.md (D-B1/D-B2), auction-system.md (D-B3), objective-system.md (D-B1), hand-ui.md (C-B4/5), entities.yaml (C-B6)
+
 ## Session Extract — /review-all-gdds 2026-04-30
 - **Verdict**: FAIL
 - **GDDs reviewed**: 20 (11 new since R5)
