@@ -373,7 +373,7 @@ All classes are public information — your opponent can see which class you cho
 **Key signature cards (Krosmics):**
 - *Fulgurance* — swaps the positions of 2 friendly units
 - *Sang Méprise* — reveals all dofus (real and fake) to both players this round
-- *Punition* — sacrifice one of your dofus to deal 3 damage to an enemy dofus; the sacrificed dofus loses 5 HP (destroyed if real). **Self-inflicted dofus destruction counts toward your own loss condition.**
+- *Punition* — sacrifice one of your dofus to deal 3 damage to each alive enemy dofus; the sacrificed dofus loses 5 HP (destroyed if real). **Self-inflicted dofus destruction counts toward your own loss condition.**
 - *Jet le Pied Volant* — COUNTERATTACK: charges 1 cell when any of your units or dofus takes damage
 
 **Key units:** Edass (INJURED: +2 ATK + FIRST STRIKE), Dureden Taillair (INJURED: +2 ATK + 1 MP), Bould Erdash (BODYGUARD 7/6)

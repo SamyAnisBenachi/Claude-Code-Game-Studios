@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-04-30"  # updated: class-system.md — 7 token entities, 8 formulas, 5 constants. prism-system.md — 2 items (prism_strike, prism_reserve), 2 constants (prism_strike_damage, prism_strike_mana_cost), 1 network_message (S2CCardAcquired)
+last_updated: "2026-04-30"  # updated: /consistency-check — fixed Punition AoE conflict in lanes-and-lies-gdd.md; 4 referenced_by gaps closed (board-rendering.md, prism-system.md); 3 new animation timing constants registered (board-rendering.md source)
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -873,6 +873,8 @@ constants:
     referenced_by:
       - design/gdd/board-lane-system.md
       - design/gdd/hud.md
+      - design/gdd/board-rendering.md
+      - design/gdd/prism-system.md
     value: 5
     unit: lanes
     added: 2026-04-28
@@ -883,6 +885,7 @@ constants:
     source: design/gdd/board-lane-system.md
     referenced_by:
       - design/gdd/board-lane-system.md
+      - design/gdd/board-rendering.md
     value: 8
     unit: cells
     added: 2026-04-28
@@ -989,6 +992,7 @@ constants:
       - design/gdd/game-config.md
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/combat-resolution.md
+      - design/gdd/board-rendering.md
     value: 10
     unit: seconds
     added: 2026-04-28
@@ -1254,6 +1258,42 @@ constants:
     value: 100
     unit: milliseconds
     notes: "ms between sequential objective-destruction reveal animations (F1 in card-animations.md). Must be added to game-config.md as stagger_cadence_ms. Safe range: 80–120. Below 80ms: sequential reveals perceptually merge into simultaneous burst. Above 120ms: reveals feel slow."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: resolution_sub_step_duration_ms
+    status: active
+    source: design/gdd/board-rendering.md
+    referenced_by:
+      - design/gdd/board-rendering.md
+      - design/gdd/card-animations.md
+    value: 600
+    unit: milliseconds
+    notes: "Duration of each RESOLUTION AnimGroup window. Damage number despawn must satisfy max(float_tween_duration_ms, fade_tween_duration_ms) ≤ this value. Default revised down 2026-04-30 (was 800ms). GameConfig field: board_sub_step_duration_ms. Safe range: 400–1000."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: pre_animation_pause_ms
+    status: active
+    source: design/gdd/board-rendering.md
+    referenced_by:
+      - design/gdd/board-rendering.md
+      - design/gdd/card-animations.md
+    value: 400
+    unit: milliseconds
+    notes: "Pause after S2CPlacementReveal reveal tween completes and before sub-step 1 fires. Gives players a beat to read the simultaneous reveal. GameConfig field: board_pre_anim_pause_ms. Safe range: 200–800."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: inter_step_pause_ms
+    status: active
+    source: design/gdd/board-rendering.md
+    referenced_by:
+      - design/gdd/board-rendering.md
+      - design/gdd/card-animations.md
+    value: 150
+    unit: milliseconds
+    notes: "Pause between consecutive RESOLUTION AnimGroups. Default revised down 2026-04-30 (was 200ms). GameConfig field: board_inter_step_pause_ms. Safe range: 100–300."
     added: "2026-04-30"
     revised: ""
 
