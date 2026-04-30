@@ -87,7 +87,7 @@ incompatible hand-access patterns.
 - `ShopStates` is the single source of truth for all shop state per player on the server.
 - `PlayerHands` is the single source of truth for each player's card hand on the server.
 - Only `card_acquisition_tick_system` writes `ResMut<ShopStates>`.
-- Economy calls (`spend_gold`, `refund_gold`) execute via direct `ResMut<EconomyState>` access
+- Economy calls (`spend_gold`, `refund_gold`) execute via direct `ResMut<PlayerEconomies>` access
   within `card_acquisition_tick_system` — not cross-frame messages — to enforce CA18 atomicity.
 - `ShopStates` must be testable with `World::new()` — no live Lightyear session required.
 
@@ -161,7 +161,7 @@ SERVER WORLD
 │    Writes:                                                           │
 │      ResMut<ShopStates>     (sole writer)                            │
 │      ResMut<PlayerHands>    (in DRAFT only; Prism/Obj write in RES)  │
-│      ResMut<EconomyState>   (spend_gold / refund_gold)               │
+│      ResMut<PlayerEconomies>   (spend_gold / refund_gold via api.rs) │
 │      ResMut<CardPool>       (distribute, is_available)               │
 │                                                                      │
 │    Per-frame execution order (code order):                           │
@@ -297,7 +297,7 @@ pub enum ShopRefreshTrigger {
 fn card_acquisition_tick_system(
     mut shop_states: ResMut<ShopStates>,
     mut hands: ResMut<PlayerHands>,
-    mut economy: ResMut<EconomyState>,
+    mut economy: ResMut<PlayerEconomies>,
     mut card_pool: ResMut<CardPool>,
     mut server_rng: ResMut<ServerRng>,
     game_config: Res<GameConfig>,
@@ -416,7 +416,7 @@ if economy.spend_gold(player_id, card_cost).is_ok() {
 ### Negative
 
 - `card_acquisition_tick_system` has a wide parameter list: two domain `ResMut` (ShopStates,
-  PlayerHands), `ResMut<EconomyState>`, `ResMut<CardPool>`, `ResMut<ServerRng>`, `Res<GameConfig>`,
+  PlayerHands), `ResMut<PlayerEconomies>`, `ResMut<CardPool>`, `ResMut<ServerRng>`, `Res<GameConfig>`,
   Bevy message readers, and two Lightyear C2S receivers. This is the cost of keeping CA18
   atomicity within a single system — the function cannot be split further without breaking it.
 - `PlayerHands` is a shared resource written by three systems across two mutually exclusive

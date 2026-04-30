@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -19,7 +19,7 @@ server (parallel to `RoundState` in ADR-009). A single system — `auction_tick_
 sole writer. Per-frame execution order is enforced by code order within that system: inbound
 control messages first, then bid drain (using Lightyear's `MessageReceiver<C2SAuctionBid>`),
 then timer decrement, then RESOLVING transition and settlement. Economy System gold operations
-(reserve, release, spend) are invoked via direct `ResMut<EconomyState>` access to enforce the
+(reserve, release, spend) are invoked via `api.rs` functions on `ResMut<PlayerEconomies>` to enforce the
 release-before-reserve invariant atomically within one system run. The `auction_snapshot()`
 function is a pure function on `&AuctionState`.
 
@@ -34,7 +34,7 @@ function is a pure function on `&AuctionState`.
 | **Knowledge Risk** | HIGH — Bevy 0.15–0.18 are all post-cutoff |
 | **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, `docs/engine-reference/bevy/breaking-changes.md`, `docs/engine-reference/bevy/deprecated-apis.md`, ADR-009, ADR-010 |
 | **Post-Cutoff APIs Used** | `#[derive(Resource)]`, `Res<T>` / `ResMut<T>` system params (stable); `#[derive(Message)]` + `MessageReader<T>` + `MessageWriter<T>` + `app.add_message::<T>()` (Bevy 0.17+ Message/Event split — `EventReader`/`EventWriter` removed); Lightyear 0.26 `MessageReceiver<T>` for C2S inbound messages (distinct from Bevy's `MessageReader<T>`); `Time::delta().as_millis()` for timer ticking |
-| **Verification Required** | (1) **Lightyear 0.26 C2S receiver type**: Confirm exact system param name for reading inbound C2S messages — expected `MessageReceiver<C2SAuctionBid>` from Lightyear's `ProtocolPlugin` registration, NOT Bevy's `MessageReader<T>`. Verify at Lightyear 0.26 docs before implementing the bid drain loop. (2) **`ResMut<AuctionState>` + `ResMut<EconomyState>` scheduling**: Confirm no other system holds `ResMut<EconomyState>` in the same `Update` frame as `auction_tick_system` during DRAFT_AUCTION. Economy income/interest systems run at DRAFT entry — mutually exclusive phases — but verify explicitly via schedule graph dump. (3) **`u32::try_from` for timer delta**: Use `u32::try_from(time.delta().as_millis()).unwrap_or(u32::MAX)` rather than `as u32` cast to avoid potential clippy lint on truncation (no runtime impact in practice — frame delta never exceeds ~100 ms). |
+| **Verification Required** | (1) **RESOLVED**: Lightyear 0.26 C2S receiver system param is `MessageReceiver<T>` with `receiver.receive_messages()` — confirmed in `docs/engine-reference/bevy/current-best-practices.md` (Lightyear 0.26 pattern). `MessageReceiver<C2SAuctionBid>` is correct; Bevy's `MessageReader<T>` is a distinct API and must not be used for Lightyear network messages. (2) **RESOLVED (implementation-time)**: Economy income/interest systems run at `DraftStarted` (DRAFT entry) — mutually exclusive with LIVE_BIDDING. `ResMut<PlayerEconomies>` held by `auction_tick_system` during DRAFT_AUCTION does not conflict. Verify via Bevy schedule graph dump when registering systems. (3) **RESOLVED**: `u32::try_from(time.delta().as_millis()).unwrap_or(u32::MAX)` is the form specified in the Decision text — no `as u32` cast. Implementation follows the specified form. |
 
 > **Critical API boundary — Lightyear vs Bevy messages:**
 > Bevy's `MessageReader<T>` / `MessageWriter<T>` are for Bevy's internal buffered message bus
@@ -95,8 +95,8 @@ state-access patterns.
 
 - `AuctionState` is the single source of truth for all auction state on the server.
 - Only `auction_tick_system` writes to `AuctionState` and drains C2S auction bids.
-- Economy calls (`reserve_gold`, `release_gold_reservation`, `spend_reserved_gold`) execute via
-  direct `ResMut<EconomyState>` access — not cross-frame messages — to enforce atomicity.
+- Economy calls (`api::reserve_gold`, `api::release_gold_reservation`, `api::spend_gold`) execute via
+  `api.rs` functions on `ResMut<PlayerEconomies>` — not cross-frame messages — to enforce atomicity.
 - `auction_snapshot()` is a pure function on `&AuctionState`. No ECS query needed.
 - `AuctionState` must be testable with `World::new()` — no live Lightyear session required.
 
@@ -115,7 +115,7 @@ Within each server frame, `auction_tick_system` executes in strict code order:
 4. If LIVE_BIDDING: `timer_remaining_ms = timer_remaining_ms.saturating_sub(u32::try_from(time.delta().as_millis()).unwrap_or(u32::MAX))`.
 5. If LIVE_BIDDING and `timer_remaining_ms == 0`: transition to RESOLVING. Execute settlement synchronously (Case A: winner exists; Case B: no bids). Write `MessageWriter<AuctionSettled>`. Return to IDLE.
 
-Economy System interactions use direct `ResMut<EconomyState>` — not message-passing — so the
+Economy System interactions use direct `ResMut<PlayerEconomies>` — not message-passing — so the
 release-before-reserve invariant is enforced by the sequential call order within one system body,
 with no system boundary between steps 1 and 2 of the handoff.
 
@@ -146,7 +146,7 @@ SERVER WORLD
 │                                                              │
 │    Writes:                                                   │
 │      ResMut<AuctionState>               (sole writer)        │
-│      ResMut<EconomyState>               (reserve/release/spend)│
+│      ResMut<PlayerEconomies>            (reserve/release/spend via api.rs)│
 │                                                              │
 │    Lightyear-side senders (network):                         │
 │      S2CAuctionCard         (reliable broadcast)             │
@@ -253,7 +253,7 @@ pub fn auction_snapshot(state: &AuctionState) -> Option<AuctionSnapshot> {
 
 fn auction_tick_system(
     mut auction: ResMut<AuctionState>,
-    mut economy: ResMut<EconomyState>,
+    mut economies: ResMut<PlayerEconomies>,
     round_state: Res<RoundState>,
     game_config: Res<GameConfig>,
     time: Res<Time>,
@@ -286,13 +286,17 @@ app.configure_sets(Update, AuctionSet::Tick.before(RsmSet::Tick));
 ### Economy Interface Used Within `auction_tick_system`
 
 ```rust
-// Called in this exact sequence on an accepted bid (Rule 5 atomicity):
+// Called in this exact sequence on an accepted bid (Rule 5 atomicity).
+// Both api.rs calls are sequential in the same function body — no system boundary between them.
+// prev_leader price is passed as the amount originally reserved.
 if let Some(prev_leader) = auction.current_leader {
-    economy.release_gold_reservation(prev_leader); // Step 1: release prev
+    if let Some(econ) = economies.0.get_mut(&prev_leader) {
+        api::release_gold_reservation(econ, auction.current_price); // Step 1: release prev
+    }
 }
-economy.reserve_gold(new_leader, bid_amount);      // Step 2: reserve new
-// Both calls are sequential lines in the same function body.
-// No system boundary, no await, no yield between them.
+if let Some(econ) = economies.0.get_mut(&new_leader) {
+    let _ = api::reserve_gold(econ, bid_amount); // Step 2: reserve new (pre-validated by can_afford_bid)
+}
 ```
 
 ---
@@ -325,7 +329,7 @@ economy.reserve_gold(new_leader, bid_amount);      // Step 2: reserve new
 
 ### Alternative 3: Message-Passing for Economy Calls
 
-- **Description**: Instead of direct `ResMut<EconomyState>` access, emit messages like
+- **Description**: Instead of direct `ResMut<PlayerEconomies>` access, emit messages like
   `ReserveGold { player, amount }` consumed by the Economy System in its own system.
 - **Pros**: Decouples Auction System from Economy System at the Rust module boundary.
 - **Cons**: Breaks the release-before-reserve invariant. If `ReleaseGoldReservation` and
@@ -352,18 +356,18 @@ economy.reserve_gold(new_leader, bid_amount);      // Step 2: reserve new
   silently drift.
 - `AuctionState::default()` starts in `AuctionPhase::Idle` — insert it as a resource at plugin
   init and the system is safe regardless of whether `AuctionPhaseEntered` has arrived yet.
-- `World::new()` tests can insert `AuctionState` and `EconomyState` as resources and run
+- `World::new()` tests can insert `AuctionState` and `PlayerEconomies` as resources and run
   `auction_tick_system` to test all 20 BLOCKING acceptance criteria without a live Lightyear
   session (once the Lightyear C2S receiver is abstracted behind a testable interface).
 
 ### Negative
 
-- `auction_tick_system` has a wide parameter list: two `ResMut` (AuctionState, EconomyState),
+- `auction_tick_system` has a wide parameter list: two `ResMut` (AuctionState, PlayerEconomies),
   four `Res` (RoundState, GameConfig, Time, CardPool), Bevy message readers/writers, and
   Lightyear senders/receivers. This is the cost of keeping the release-before-reserve invariant
   within a single system — the function cannot be decomposed further without breaking it.
-- Direct `ResMut<EconomyState>` access creates a compile-time coupling between
-  `server/feature/auction` and `server/feature/economy`. An interface trait could decouple them,
+- Direct `ResMut<PlayerEconomies>` access creates a compile-time coupling between
+  `server/feature/auction` and `server/core/economy`. An interface trait could decouple them,
   but adds complexity outside hackathon scope.
 - `AbortAuction` was absent from ADR-010's event catalog (despite being defined in ADR-009).
   This has been corrected as part of this ADR's authoring pass.
@@ -374,7 +378,7 @@ economy.reserve_gold(new_leader, bid_amount);      // Step 2: reserve new
 |------|-------------|--------|------------|
 | Lightyear 0.26 C2S receiver type is not `MessageReceiver<T>` | MEDIUM | Compilation failure | Verify exact system param name from Lightyear 0.26 docs before implementing bid drain. Isolate C2S reading behind a helper function returning `impl Iterator<Item = C2SAuctionBid>` to keep bid-validation logic testable regardless of Lightyear API shape. |
 | A second system accidentally drains `MessageReceiver<C2SAuctionBid>` | LOW | Silently lost bids — some players' bids are never validated | `auction_tick_system` is the sole system in the auction plugin. Code review gate: `MessageReceiver<C2SAuctionBid>` appears in exactly one system. |
-| `ResMut<EconomyState>` scheduling conflict with economy income systems | LOW | Bevy runtime panic | Economy income/interest systems run at DRAFT entry (mutually exclusive with LIVE_BIDDING). Verify via Bevy schedule graph dump. `AuctionSet::Tick.before(EconomySet::Tick)` ordering within `Update` provides compile-time enforcement. |
+| `ResMut<PlayerEconomies>` scheduling conflict with economy income systems | LOW | Bevy runtime panic | Economy income/interest systems run at DRAFT entry (mutually exclusive with LIVE_BIDDING). Verify via Bevy schedule graph dump. `AuctionSet::Tick.before(EconomySet::Tick)` ordering within `Update` provides compile-time enforcement. |
 | `as u32` truncation lint on `time.delta().as_millis()` | LOW | Clippy CI failure | Use `u32::try_from(time.delta().as_millis()).unwrap_or(u32::MAX)` to be explicit. No runtime impact (frame delta never exceeds ~100 ms). |
 
 ---
@@ -385,7 +389,7 @@ economy.reserve_gold(new_leader, bid_amount);      // Step 2: reserve new
 |------------|-------------|--------------------------|
 | `auction-system.md` | Rule 1 — `AuctionPhaseEntered` triggers auction; guard: non-IDLE receipt is discarded | `auction_tick_system` reads `MessageReader<AuctionPhaseEntered>`; guards on `auction.phase == AuctionPhase::Idle` |
 | `auction-system.md` | Rule 4 — Bid validation: 5 conditions must all pass | All 5 checks run inside bid drain loop in `auction_tick_system`, in the same code block |
-| `auction-system.md` | Rule 5 — Steps 1–2 (release → reserve) are atomic; reservation invariant | Sequential `economy.release_gold_reservation` → `economy.reserve_gold` within one function body; no system boundary between them |
+| `auction-system.md` | Rule 5 — Steps 1–2 (release → reserve) are atomic; reservation invariant | Sequential `api::release_gold_reservation` → `api::reserve_gold` within one function body; no system boundary between them; both called on `economies.0.get_mut(&player_id)` entries |
 | `auction-system.md` | Rule 6 — Timer tick order: drain bids BEFORE decrement | Code order: bid drain loop at step 3, `saturating_sub` at step 4 |
 | `auction-system.md` | Rule 7 — Resolution: spend, add card, broadcast S2CAuctionSettled, fire AuctionSettled | RESOLVING branch in `auction_tick_system`; all operations within same system run; `MessageWriter<AuctionSettled>` written to trigger RSM transition |
 | `auction-system.md` | Rule 8 — AbortAuction: cancel timer, release reservation, IDLE, no AuctionSettled | `MessageReader<AbortAuction>` handling at step 2; release reservation, `phase = Idle`, no `AuctionSettled` write |
@@ -464,5 +468,5 @@ Greenfield — no existing auction code in the codebase.
   `AuctionSettled` field names updated.
 - `design/gdd/round-state-machine.md` — RSM phase sequence; DRAFT_AUCTION entry/exit;
   `AbortAuction` on disconnect.
-- `design/gdd/economy-system.md` — `reserve_gold`, `release_gold_reservation`,
-  `spend_reserved_gold` API contracts used directly within `auction_tick_system`.
+- `design/gdd/economy-system.md` — `api::reserve_gold`, `api::release_gold_reservation`,
+  `api::spend_gold` API contracts used within `auction_tick_system` via `ResMut<PlayerEconomies>`.

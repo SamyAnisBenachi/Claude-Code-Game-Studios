@@ -73,7 +73,7 @@ Registered in the server `App` as a normal system — Bevy 0.18 auto-detects `&m
 1. Reads `MessageReader<BeginResolution>` — exits immediately if no message is present (idling outside RESOLUTION phase).
 2. Takes a stat snapshot (unit ATK, HP, AR, MP, keywords; LEADER bonuses) at resolution entry. This snapshot is immutable for the duration of the run.
 3. Executes sub-steps 1–6 as sequential function calls, accumulating a `ResolutionLog`.
-4. Applies all ECS mutations at their natural points (units move, die, gold updates via `ResMut<EconomyState>`).
+4. Applies all ECS mutations at their natural points (units move, die, gold updates via `world.resource_mut::<PlayerEconomies>()`).
 5. Broadcasts `S2CResolutionEvent { round, events: log.into_vec() }` via Lightyear.
 6. Writes `MessageWriter<ResolutionComplete>` to notify the RSM.
 

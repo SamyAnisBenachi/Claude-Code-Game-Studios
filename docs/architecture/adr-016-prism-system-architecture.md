@@ -42,14 +42,14 @@ The Prism System GDD (`prism-system.md`) is complete and reviewed, but three arc
 
 1. **State ownership**: Where does `PrismState` live as a Bevy type, and which system holds exclusive `ResMut` access?
 2. **Schedule slot formalization**: ADR-005 names `resolve_prism_draws` in the RESOLUTION schedule but does not define its system signature, resource parameters, or how it reads `PrismCollected` messages.
-3. **Hand-write API (GDD OQ1)**: The GDD explicitly bypasses Card Acquisition for prism rewards (`card-acquisition.md` line 80), yet both the Prism System and Card Acquisition must write to the same `HandState`. Without a resolved API boundary, either a `ResMut<HandState>` conflict occurs (Bevy scheduler panic) or both systems implement duplicate hand logic (drift risk).
+3. **Hand-write API (GDD OQ1)**: The GDD explicitly bypasses Card Acquisition for prism rewards (`card-acquisition.md` line 80), yet both the Prism System and Card Acquisition must write to the same `PlayerHands`. Without a resolved API boundary, either a `ResMut<PlayerHands>` conflict occurs (Bevy scheduler panic) or both systems implement duplicate hand logic (drift risk).
 
 A fourth concern — `PrismPresence` client replication for Board Rendering — is cross-cutting with the network layer and needs a documented component replication pattern.
 
 ### Constraints
 
 - `resolve_prism_draws` must run in the RESOLUTION `Update` set, after `resolve_ecaflip_triggers` and before `award_fake_objective_rewards` (ADR-005 contract, locked).
-- Only one Bevy system may hold `ResMut<HandState>` at a time — Bevy's scheduler prevents two systems with overlapping mutable access from running concurrently.
+- Only one Bevy system may hold `ResMut<PlayerHands>` at a time — Bevy's scheduler prevents two systems with overlapping mutable access from running concurrently.
 - `PrismState` mutations happen exclusively in `resolve_prism_draws`; no other system may write to it.
 - Bevy 0.18: `EventWriter`/`EventReader` do not exist. `PrismCollected` is `#[derive(Message)]` (server-internal), consumed via `MessageReader<PrismCollected>`.
 - No client-side RNG — all randomness (Lane 3 draw) is server-side via `ServerRng::next_seed()` per ADR-005.
@@ -58,7 +58,7 @@ A fourth concern — `PrismPresence` client replication for Board Rendering — 
 ### Requirements
 
 - Must own `PrismState` as a single-writer resource with no access conflicts.
-- Must provide a `hand_push()` API callable by both Prism System and Card Acquisition without concurrent `ResMut<HandState>` conflicts.
+- Must provide a `hand_push()` API callable by both Prism System and Card Acquisition without concurrent `ResMut<PlayerHands>` conflicts.
 - Must slot `resolve_prism_draws` into the ADR-005 RESOLUTION schedule with a concrete, correct system signature.
 - Must define how `PrismPresence` components are replicated to clients for board rendering.
 - Must support `S2CCardAcquired` reliable unicast to the owning player on each successful hand add.
@@ -88,13 +88,13 @@ pub struct PrismState {
 
 ### 2. Hand-Write API — Shared Module Function
 
-The `hand` module exposes a pure function `hand_push` that both the Prism System and Card Acquisition call. The function takes `&mut HandState` (not `ResMut<HandState>` — it is called from within a system that holds the `ResMut`). Because Bevy's scheduler runs systems serially when they share a mutable resource, Card Acquisition and `resolve_prism_draws` never run in the same frame step simultaneously.
+The `hand` module exposes a pure function `hand_push` that both the Prism System and Card Acquisition call. The function takes `&mut PlayerHands` (not `ResMut<PlayerHands>` — it is called from within a system that holds the `ResMut`). Because Bevy's scheduler runs systems serially when they share a mutable resource, Card Acquisition and `resolve_prism_draws` never run in the same frame step simultaneously.
 
 ```rust
 // server/feature/hand/mod.rs
 
 pub fn hand_push(
-    hand: &mut HandState,
+    hand: &mut PlayerHands,
     player: PlayerId,
     card_id: CardId,
 ) -> Result<(), HandFullError> {
@@ -106,7 +106,7 @@ pub fn hand_push(
 }
 ```
 
-**Scheduling guarantee**: `resolve_prism_draws` is the only RESOLUTION-phase system that holds `ResMut<HandState>`. Card Acquisition systems run in DRAFT phase only (they do not run during RESOLUTION). Bevy enforces `ResMut` exclusivity at the system scheduler level — no concurrent write access is possible.
+**Scheduling guarantee**: `resolve_prism_draws` is the only RESOLUTION-phase system that holds `ResMut<PlayerHands>`. Card Acquisition systems run in DRAFT phase only (they do not run during RESOLUTION). Bevy enforces `ResMut` exclusivity at the system scheduler level — no concurrent write access is possible.
 
 ### 3. resolve_prism_draws System Signature
 
@@ -115,7 +115,7 @@ pub fn hand_push(
 
 pub fn resolve_prism_draws(
     mut prism_state: ResMut<PrismState>,
-    mut hand: ResMut<HandState>,
+    mut hand: ResMut<PlayerHands>,
     server_rng: Res<ServerRng>,
     card_pool: Res<CardDataPool>,
     // ⚠ S2CCardAcquired send — Lightyear server→client unicast API to be confirmed.
@@ -189,7 +189,7 @@ RESOLUTION Update Set (ADR-005 schedule)
 │   ├─ IN:  Res<CurrentPhase>               phase guard
 │   │
 │   ├─ OWN: ResMut<PrismState>              sole writer — no other system writes this
-│   ├─ OWN: ResMut<HandState>               via hand_push() shared fn
+│   ├─ OWN: ResMut<PlayerHands>               via hand_push() shared fn
 │   ├─ OWN: Query<&mut PrismPresence>       update collected bool for replication
 │   │
 │   └─ OUT: S2CCardAcquired                 reliable unicast to owning player
@@ -204,7 +204,7 @@ RESOLUTION Update Set (ADR-005 schedule)
 // ── Hand module (shared API — stable internal contract) ──────────────────────
 // Called by: resolve_prism_draws (Prism System), Card Acquisition systems
 pub fn hand_push(
-    hand: &mut HandState,
+    hand: &mut PlayerHands,
     player: PlayerId,
     card_id: CardId,
 ) -> Result<(), HandFullError>;
@@ -225,15 +225,15 @@ pub fn hand_push(
 
 ### Alternative 1: Message-Based Hand Write
 
-- **Description**: `resolve_prism_draws` writes `AddCardToHand { player, card_id }` Messages. A centralized hand-writer system (owned by Card Acquisition) drains the buffer and writes to `HandState`.
-- **Pros**: Prism System never holds `ResMut<HandState>` — clean separation at the system level.
-- **Cons**: Requires scheduling the hand-writer after `resolve_prism_draws` in the RESOLUTION set. The hand-full pre-check (GDD Rule 7) must happen at message-write time or drain time. If at write time, Prism needs read access to `HandState` anyway (partially defeats isolation). If at drain time, the pre-check lives in Card Acquisition code — coupling two systems that should not know about each other. Adds a system and an ordering dependency for no gain in safety (Bevy already enforces `ResMut` exclusivity).
+- **Description**: `resolve_prism_draws` writes `AddCardToHand { player, card_id }` Messages. A centralized hand-writer system (owned by Card Acquisition) drains the buffer and writes to `PlayerHands`.
+- **Pros**: Prism System never holds `ResMut<PlayerHands>` — clean separation at the system level.
+- **Cons**: Requires scheduling the hand-writer after `resolve_prism_draws` in the RESOLUTION set. The hand-full pre-check (GDD Rule 7) must happen at message-write time or drain time. If at write time, Prism needs read access to `PlayerHands` anyway (partially defeats isolation). If at drain time, the pre-check lives in Card Acquisition code — coupling two systems that should not know about each other. Adds a system and an ordering dependency for no gain in safety (Bevy already enforces `ResMut` exclusivity).
 - **Rejection Reason**: Added scheduling complexity and hand-full coupling outweigh the isolation benefit. `hand_push()` as a shared function achieves equivalent safety via Bevy's scheduler.
 
 ### Alternative 2: Route Through Card Acquisition
 
-- **Description**: Prism System emits `AcquireCard { player, card_id, source: PrismLane(u8), bypass_ca: true }` Messages. Card Acquisition processes all AcquireCard messages and writes `HandState`.
-- **Pros**: Card Acquisition remains the sole system holding `ResMut<HandState>`.
+- **Description**: Prism System emits `AcquireCard { player, card_id, source: PrismLane(u8), bypass_ca: true }` Messages. Card Acquisition processes all AcquireCard messages and writes `PlayerHands`.
+- **Pros**: Card Acquisition remains the sole system holding `ResMut<PlayerHands>`.
 - **Cons**: Card Acquisition must distinguish bypass sources and skip its own validation for prism-sourced cards. This inverts the bypass contract (GDD: "Prism rewards bypass Card Acquisition entirely") — Card Acquisition becomes aware of the Prism System. The `bypass_ca: true` flag means CA contains conditional paths based on source, not capability.
 - **Rejection Reason**: Violates the explicit bypass contract in `card-acquisition.md` line 80 and the GDD. Creates implicit coupling between two feature systems that should not know about each other.
 
@@ -241,7 +241,7 @@ pub fn hand_push(
 
 - **Description**: Prism state and hand state colocated on player entities as components (`PrismStateComponent`, `HandComponent`). Systems query by player entity, avoiding `Resource`-level contention.
 - **Pros**: More idiomatic ECS design for per-player state.
-- **Cons**: The established architecture (ADR-002, ADR-013) uses `Resource` for centralized authoritative server state (`AuctionState`, `EconomyState`). Mixing component-based state for prism/hand while keeping resource-based for auction/economy creates architectural inconsistency. `HandState` is already defined as a Resource in card-acquisition architecture — migrating it to a Component would cascade to Card Acquisition, Economy, and Objective System.
+- **Cons**: The established architecture (ADR-002, ADR-013, ADR-019) uses `Resource` for centralized authoritative server state (`AuctionState`, `PlayerEconomies`). Mixing component-based state for prism/hand while keeping resource-based for auction/economy creates architectural inconsistency. `PlayerHands` is already defined as a Resource in card-acquisition architecture (ADR-015) — migrating it to a Component would cascade to Card Acquisition, Economy, and Objective System.
 - **Rejection Reason**: Inconsistent with established server-side state ownership patterns. Cascading refactor across multiple systems not in scope.
 
 ---
@@ -251,14 +251,14 @@ pub fn hand_push(
 ### Positive
 
 - `PrismState` has a single writer. No concurrent mutation is possible — Bevy enforces `ResMut` exclusivity at the scheduler level.
-- `hand_push()` is a pure function with no Bevy dependencies — unit-testable directly with a constructed `HandState` without a full Bevy `World`.
+- `hand_push()` is a pure function with no Bevy dependencies — unit-testable directly with a constructed `PlayerHands` without a full Bevy `World`.
 - The RESOLUTION schedule slot is unambiguous: `resolve_prism_draws` sits between `resolve_ecaflip_triggers` and `award_fake_objective_rewards` with explicit `.after()` / `.before()` constraints.
 - External systems (Board Rendering, HUD) depend only on `PrismPresence` component replication — they have no direct dependency on `PrismState`. The Prism System can be refactored without touching rendering or HUD code.
 - `PrismPresence` entities are first-class Lightyear-replicated objects — Board Rendering gets automatic change delivery without Prism System managing client subscriptions.
 
 ### Negative
 
-- `hand_push()` as a shared API means both Prism and Card Acquisition break simultaneously if `HandState` struct changes shape. The function must be treated as a stable internal API boundary. Changes to `HandState` require updating all callers.
+- `hand_push()` as a shared API means both Prism and Card Acquisition break simultaneously if `PlayerHands` struct changes shape. The function must be treated as a stable internal API boundary. Changes to `PlayerHands` require updating all callers.
 - Ten `PrismPresence` entities spawned at session start must be despawned on `GameOverEmitted` — session cleanup must include these entities explicitly.
 
 ### Risks
@@ -268,7 +268,7 @@ pub fn hand_push(
 | Lightyear 0.26 server→client unicast API differs from `server.send_message_to_target::<ReliableChannel, T>()` | MEDIUM | Compilation failure or wrong API usage | **Must resolve before writing `resolve_prism_draws`.** Verify against `docs.rs/lightyear/0.26`. `liv-bevy-lightyear` skill enforces correct Lightyear 0.26 patterns. |
 | `Replicate` component per-entity client scoping API differs in Lightyear 0.26 | MEDIUM | Wrong replication target (broadcast instead of unicast) | Verify Lightyear 0.26 `Replicate` + `NetworkTarget::Single` or equivalent. ADR-008 checklist item 2 tracks this. |
 | `MessageReader<PrismCollected>` drained by another system before `resolve_prism_draws` | LOW | Silent loss of prism collection events | Lightyear's `MessageReceiver<T>` (C2S) and Bevy's `MessageReader<T>` (internal) are distinct APIs. `PrismCollected` is server-internal — only `resolve_prism_draws` registers a `MessageReader<PrismCollected>`. Forbidden pattern below documents this. |
-| Card Acquisition systems scheduled into RESOLUTION `Update` set in future M2 | LOW | Concurrent `ResMut<HandState>` → Bevy panic | Document as scheduling invariant: Card Acquisition systems are DRAFT-only. Enforce via `.run_if(in_state(DraftPhase))` conditions on CA systems. |
+| Card Acquisition systems scheduled into RESOLUTION `Update` set in future M2 | LOW | Concurrent `ResMut<PlayerHands>` → Bevy panic | Document as scheduling invariant: Card Acquisition systems are DRAFT-only. Enforce via `.run_if(in_state(DraftPhase))` conditions on CA systems. |
 
 ---
 
@@ -303,7 +303,7 @@ pub fn hand_push(
 Greenfield implementation — no existing Prism System code. Implementation sequence:
 
 1. Define `PrismState` in `server/feature/prism/state.rs`; insert in `PrismPlugin::build()`.
-2. Define `hand_push()` in `server/feature/hand/mod.rs`; update Card Acquisition to call it instead of writing `HandState` directly (if CA already writes directly, this is a refactor of CA — coordinate with CA epic story).
+2. Define `hand_push()` in `server/feature/hand/mod.rs`; update Card Acquisition to call it instead of writing `PlayerHands` directly (if CA already writes directly, this is a refactor of CA — coordinate with CA epic story).
 3. Spawn 10 `PrismPresence` entities at session start; add `Replicate` with per-client scoping and `UnreliableChannel` (verify Lightyear 0.26 API first — Verification Required item 2).
 4. Confirm `app.add_message::<PrismCollected>()` registration — ownership of this call belongs to the producer (Board/Lane System plugin).
 5. **Resolve Lightyear server→client unicast API** (Verification Required item 1) before implementing `resolve_prism_draws`.
@@ -324,7 +324,7 @@ Greenfield implementation — no existing Prism System code. Implementation sequ
 ## Validation Criteria
 
 - [ ] `PrismState` compiles as `#[derive(Resource, Default)]` in Bevy 0.18 with no deprecated derives.
-- [ ] `hand_push()` unit test: `HandState` with 9 cards → `Ok(())`; 10 cards → `Err(HandFullError)`. No Bevy `World` required.
+- [ ] `hand_push()` unit test: `PlayerHands` with 9 cards → `Ok(())`; 10 cards → `Err(HandFullError)`. No Bevy `World` required.
 - [ ] `resolve_prism_draws` compiles with all listed system parameters in Bevy 0.18; no `EventReader`/`EventWriter` usage; `MessageReader<PrismCollected>` drains the buffer (confirmed server-internal Bevy Message).
 - [ ] Lightyear server→client unicast API verified and implemented correctly (Verification Required item 1 resolved).
 - [ ] `PrismPresence` entities replicated to correct clients: Board Rendering reads `collected: bool` for the right `(player, lane)` on the client.
