@@ -94,6 +94,14 @@ pub enum RngEvent {
     AssignFakeObjectives    { player_id: PlayerId },
     DrawInitialDraft        { player_id: PlayerId },
     DrawShopSlot            { player_id: PlayerId, slot_index: u8 },
+    // ── Keyword combat RNG (added by ADR-018 amendment) ──────────────────
+    /// RANGE equidistant target selection (SS3 and SS6 RESOLUTION sub-steps).
+    RangeEquidistantSelect  { player_id: PlayerId, lane: u8 },
+    /// TELEPORT random destination lane selection within triggering sub-step.
+    TeleportRandomDest      { player_id: PlayerId, lane: u8 },
+    /// Strich auto-CHANGE LANE: selects one of the two valid adjacent lanes.
+    StrichChangeLaneSelect  { player_id: PlayerId },
+    // ─────────────────────────────────────────────────────────────────────
     ResolveEcaflip          { lane: u8 },
     ResolvePrism            { player_id: PlayerId, lane: u8 },
     AwardFakeObjectiveReward{ player_id: PlayerId, lane: u8 },
@@ -134,12 +142,18 @@ The following order is binding. Any system that consumes RNG must do so at the p
 
 #### RESOLUTION phase (in this exact order)
 
+<!-- ADR-018 amendment: Orders 4-6 added for keyword combat RNG (range_equidistant_select,
+     teleport_random_dest, strich_change_lane_select). Former Orders 4-7 renumbered to 7-10. -->
+
 | Order | Event                          | Per-call seed count | Iteration order                                            |
 |-------|--------------------------------|---------------------|------------------------------------------------------------|
-| 4     | `ResolveEcaflip`               | per Ecaflip card    | ascending `lane`                                           |
-| 5     | `ResolvePrism`                 | per prism activation| ascending `player_id` → ascending `lane`                   |
-| 6     | `AwardFakeObjectiveReward`     | per destroyed fake  | ascending `player_id` → ascending `lane`                   |
-| 7     | `DrawFreeCard`                 | only if reward = free card | triggered conditionally by Order 6 (50/50 outcome)  |
+| 4     | `RangeEquidistantSelect`       | 1 per RANGE attack with equidistant targets | ascending `player_id` → ascending `lane` (SS3 RANGE+FIRST STRIKE, SS6 standard RANGE) |
+| 5     | `TeleportRandomDest`           | 1 per TELEPORT activation | ascending `player_id` → ascending `lane` (within triggering sub-step) |
+| 6     | `StrichChangeLaneSelect`       | 1 per Strich CHANGE LANE auto-activation | ascending `player_id` (after triggering sub-step) |
+| 7     | `ResolveEcaflip`               | per Ecaflip card    | ascending `lane`                                           |
+| 8     | `ResolvePrism`                 | per prism activation| ascending `player_id` → ascending `lane`                   |
+| 9     | `AwardFakeObjectiveReward`     | per destroyed fake  | ascending `player_id` → ascending `lane`                   |
+| 10    | `DrawFreeCard`                 | only if reward = free card | triggered conditionally by Order 9 (50/50 outcome) |
 
 **Inter-player ordering for concurrent events** (used wherever the table above says "ascending player_id then ..."):
 
@@ -270,7 +284,7 @@ We will know this ADR was the right call if: (a) every gameplay RNG bug discover
 - **ADR-001** — Hidden Objective Identity via Targeted Unicast. Consumes `AssignFakeObjectives` outcomes (Order 1) to populate `HiddenObjectives`; the unicast in ADR-001 carries those outcomes to the owning client.
 - **ADR-003** (workspace) — Defines the server crate where `ServerRng` lives.
 - **ADR-007** (pending) — Game Session lifecycle owns `ServerRng` creation/destruction.
-- `design/gdd/objective-system.md` — Consumer of Order 1 (`AssignFakeObjectives`) and Order 6 (`AwardFakeObjectiveReward`).
-- `design/gdd/card-data-pool.md` — Consumer of Orders 2 and 3 (draft and shop draws) and Order 7 (free card draw).
+- `design/gdd/objective-system.md` — Consumer of Order 1 (`AssignFakeObjectives`) and Order 9 (`AwardFakeObjectiveReward`).
+- `design/gdd/card-data-pool.md` — Consumer of Orders 2 and 3 (draft and shop draws) and Order 10 (free card draw).
 - `design/gdd/round-state-machine.md` — Defines the phase transitions (DRAFT_INITIAL, DRAFT_SHOP, DRAFT_AUCTION, RESOLUTION) referenced by the consumption order table.
 - `.claude/docs/technical-preferences.md` — "Forbidden Patterns" section: this ADR is the operational realisation of the "no client-side RNG" principle.

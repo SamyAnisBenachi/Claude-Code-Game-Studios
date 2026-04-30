@@ -176,32 +176,68 @@ pub enum UnitType {
     Neutral,
 }
 
-/// Keyword variants.
+/// All no-parameter keywords.
 ///
-/// No-parameter keywords are plain enum variants.
-/// Parameterized keywords carry their value inline.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[serde(untagged)]
-pub enum Keyword {
-    // No-parameter keywords
-    Simple(SimpleKeyword),
-    // Parameterized keywords
-    RangeX     { #[serde(rename = "kw")] kw: String, max_range: u8 },
-    ChargeXMove{ #[serde(rename = "kw")] kw: String, cells: u8 },
-    ResistanceX{ #[serde(rename = "kw")] kw: String, value: u8 },
-}
-
+/// **ADR-018 amendment (2026-04-30):** Extended from 8 to 20 variants.
+/// `Charge` removed and replaced by `Haste` (OQ-KS2).
+/// Variant names simplified (e.g. `AppearanceTrigger` → `Appearance`).
+/// `cards.json` must use the new names; any fixture using old names must be updated.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SimpleKeyword {
+    // ── Timing triggers ──────────────────────────────────────────────
+    Appearance,
+    Death,
+    FinalBlow,
+    Counterattack,
+    StartOfTurn,
+    EndOfTurn,
+    // ── Combat keywords ──────────────────────────────────────────────
     FirstStrike,
-    Charge,
-    AppearanceTrigger,
-    DeathTrigger,
-    FinalBlowTrigger,
-    CounterattackTrigger,
-    StartOfTurnTrigger,
-    EndOfTurnTrigger,
-    // Additional keywords added here as card content expands
+    Haste,           // Renamed from `Charge` (OQ-KS2). Removes summoning sickness.
+    Wall,
+    Bodyguard,
+    Irremovable,
+    Untargetable,
+    Shield,
+    Leader,
+    Outnumbered,
+    ArmorPiercing,
+    Silence,
+    Stun,
+    // ── Movement keywords (no-parameter) ─────────────────────────────
+    Teleport,
+    ChangeLane,
+    // Note: CHARGE X (movement), RANGE 1-X, RESISTANCE X, VULNERABILITY X,
+    // REPEL X, ATTRACT X are parameterized variants in `Keyword` below.
+}
+
+/// Keyword variants.
+///
+/// No-parameter keywords are plain enum variants wrapped in `Simple(SimpleKeyword)`.
+/// Parameterized keywords carry their value inline.
+///
+/// **ADR-018 amendment (2026-04-30):**
+/// Changed from `#[serde(untagged)]` to `#[serde(tag = "kw", content = "val")]`
+/// (adjacent tagging) to support `Simple(SimpleKeyword)` newtype correctly.
+/// `RangeX`/`ChargeXMove`/`ResistanceX` no longer carry a redundant `kw: String` field.
+/// Three new variants added: `VulnerabilityX`, `RepelX`, `AttractX`.
+///
+/// Serialization shape:
+///   `Simple(Shield)`          → `{ "kw": "Simple", "val": "Shield" }`
+///   `RangeX { max_range: 3 }` → `{ "kw": "RangeX", "val": { "max_range": 3 } }`
+///
+/// DO NOT use `#[serde(tag = "kw")]` (internally tagged) — it fails at runtime
+/// for newtype variants whose inner type serializes as a scalar (not a map).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(tag = "kw", content = "val")]
+pub enum Keyword {
+    Simple(SimpleKeyword),
+    RangeX         { max_range: u8 },   // RANGE 1-X
+    ChargeXMove    { cells: u8 },       // CHARGE X (movement keyword)
+    ResistanceX    { value: u8 },
+    VulnerabilityX { value: u8 },       // Added by ADR-018
+    RepelX         { distance: u8 },    // Added by ADR-018
+    AttractX       { distance: u8 },    // Added by ADR-018
 }
 
 /// Immutable definition of one card.
