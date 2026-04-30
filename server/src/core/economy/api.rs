@@ -50,11 +50,6 @@ pub fn apply_gold_award(economy: &mut PlayerEconomy, amount: u32) {
     economy.gold = economy.gold.saturating_add(amount);
 }
 
-/// Apply the per-DRAFT mana ramp.
-pub fn apply_mana_ramp(economy: &mut PlayerEconomy, round: u32) {
-    economy.current_mana = round.min(economy.mana_cap);
-}
-
 /// Add persistent reserve mana. Reserve has no cap.
 pub fn add_reserve(economy: &mut PlayerEconomy, amount: u32) {
     economy.reserve_mana = economy.reserve_mana.saturating_add(amount);

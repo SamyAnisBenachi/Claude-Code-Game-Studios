@@ -8,13 +8,16 @@
 
 use bevy::prelude::*;
 
-use crate::core::pool::state::PlayerPools;
+use crate::core::pool::state::{InitialDraftOffering, ManualRefreshCount, PlayerPools, ShopSlots};
 
 pub struct CardPoolPlugin;
 
 impl Plugin for CardPoolPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PlayerPools>();
+        app.init_resource::<PlayerPools>()
+            .init_resource::<ShopSlots>()
+            .init_resource::<InitialDraftOffering>()
+            .init_resource::<ManualRefreshCount>();
         // Additional resources and systems added in Stories 003–006.
     }
 }

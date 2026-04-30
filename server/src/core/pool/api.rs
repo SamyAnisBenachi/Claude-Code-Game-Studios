@@ -15,6 +15,7 @@ use shared::card::{CardCatalog, CardId, ClassId, Rarity, EPIC_POOL_COPIES, LEGEN
 use shared::config::GameConfig;
 
 use crate::core::pool::state::{DistributeError, PlayerPool, PoolFilter};
+use crate::foundation::rng::ServerRng;
 
 /// Formula 2 weight output for one eligible draw type.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -22,6 +23,63 @@ pub(crate) struct ComputedWeight {
     pub card_id: CardId,
     pub raw_weight: f32,
     pub normalized_weight: f32,
+}
+
+/// Atomic shop refresh: draws up to `slot_count` cards and distributes each
+/// successful draw before returning.
+///
+/// The returned Vec is compact. Its length may be below `slot_count` when the
+/// pool is partially exhausted. This pure helper does not perform the future
+/// Card Acquisition class/neutral split roll; the subscriber story owns that
+/// system-level policy.
+pub fn refresh_shop(
+    pool: &mut PlayerPool,
+    catalog: &CardCatalog,
+    _family_index: &HashMap<String, Vec<CardId>>,
+    rng: &mut ServerRng,
+    config: &GameConfig,
+    slot_count: usize,
+) -> Vec<CardId> {
+    let mut drawn: Vec<CardId> = Vec::with_capacity(slot_count);
+
+    for slot_index in 0..slot_count {
+        let mut eligible: Vec<CardId> = pool
+            .copies_remaining
+            .iter()
+            .filter_map(|(id, remaining)| {
+                if *remaining > 0 && !drawn.contains(id) && catalog.contains_key(id) {
+                    Some(*id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        eligible.sort_by_key(|id| id.0);
+
+        if eligible.is_empty() {
+            break;
+        }
+
+        let weights = compute_weights(&eligible, pool, config);
+        let seed = rng.draw_shop_slot(0, slot_index as u8);
+        let normalized_weights: Vec<f32> = weights
+            .iter()
+            .map(|weight| weight.normalized_weight)
+            .collect();
+        let Some(index) = weighted_cdf_select(&normalized_weights, seed) else {
+            break;
+        };
+        let Some(card_id) = eligible.get(index).copied() else {
+            break;
+        };
+
+        if pool.distribute(card_id).is_err() {
+            break;
+        }
+        drawn.push(card_id);
+    }
+
+    drawn
 }
 
 impl PlayerPool {
@@ -404,8 +462,9 @@ fn matches_filter(id: &CardId, catalog: &CardCatalog, filter: &PoolFilter) -> bo
 
 #[cfg(test)]
 mod tests {
-    use super::compute_weights;
-    use crate::core::pool::state::{DistributeError, PlayerPool, PoolFilter};
+    use super::{compute_weights, refresh_shop};
+    use crate::core::pool::state::{DistributeError, ManualRefreshCount, PlayerPool, PoolFilter};
+    use crate::foundation::rng::ServerRng;
     use shared::card::{CardCatalog, CardData, CardId, CardType, ClassId, Rarity, UnitType};
     use shared::config::GameConfig;
     use std::collections::HashMap;
@@ -1088,5 +1147,188 @@ mod tests {
             .expect("target weight exists");
 
         assert!((target.raw_weight - 0.65).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_refresh_shop_3_slots_full() {
+        let catalog = make_catalog(
+            (1..=10)
+                .map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Iop,
+                        None,
+                        Rarity::Common,
+                        CardType::Minion,
+                        Some(2),
+                    )
+                })
+                .collect(),
+        );
+        let mut pool = PlayerPool::initialize(&catalog, &default_config());
+        let before = pool.copies_remaining.clone();
+        let mut rng = ServerRng::from_seed(3);
+        let families = HashMap::new();
+
+        let slots = refresh_shop(
+            &mut pool,
+            &catalog,
+            &families,
+            &mut rng,
+            &default_config(),
+            3,
+        );
+        let distinct: std::collections::HashSet<CardId> = slots.iter().copied().collect();
+
+        assert_eq!(slots.len(), 3);
+        assert_eq!(distinct.len(), 3);
+        for id in slots {
+            assert!(before.get(&id).copied().unwrap_or(0) >= 1);
+            assert_eq!(pool.copies_remaining(id), before[&id] - 1);
+        }
+    }
+
+    #[test]
+    fn test_refresh_shop_9_slots_initial_draft() {
+        let catalog = make_catalog(
+            (1..=15)
+                .map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Iop,
+                        None,
+                        Rarity::Common,
+                        CardType::Minion,
+                        Some(2),
+                    )
+                })
+                .collect(),
+        );
+        let mut pool = PlayerPool::initialize(&catalog, &default_config());
+        let before = pool.copies_remaining.clone();
+        let mut rng = ServerRng::from_seed(9);
+        let families = HashMap::new();
+
+        let slots = refresh_shop(
+            &mut pool,
+            &catalog,
+            &families,
+            &mut rng,
+            &default_config(),
+            9,
+        );
+        let distinct: std::collections::HashSet<CardId> = slots.iter().copied().collect();
+
+        assert_eq!(slots.len(), 9);
+        assert_eq!(distinct.len(), 9);
+        for id in slots {
+            assert_eq!(pool.copies_remaining(id), before[&id] - 1);
+        }
+    }
+
+    #[test]
+    fn test_refresh_shop_partial_fill() {
+        let catalog = make_catalog(
+            (1..=5)
+                .map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Iop,
+                        None,
+                        Rarity::Common,
+                        CardType::Minion,
+                        Some(1),
+                    )
+                })
+                .collect(),
+        );
+        let mut pool = PlayerPool::initialize(&catalog, &default_config());
+        for id in [CardId(3), CardId(4), CardId(5)] {
+            pool.distribute(id).unwrap();
+        }
+        let mut rng = ServerRng::from_seed(2);
+        let families = HashMap::new();
+
+        let slots = refresh_shop(
+            &mut pool,
+            &catalog,
+            &families,
+            &mut rng,
+            &default_config(),
+            3,
+        );
+
+        assert_eq!(slots.len(), 2);
+        for id in slots {
+            assert_eq!(pool.copies_remaining(id), 0);
+        }
+    }
+
+    #[test]
+    fn test_refresh_shop_fully_exhausted_returns_empty() {
+        let catalog = make_catalog(
+            (1..=3)
+                .map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Iop,
+                        None,
+                        Rarity::Common,
+                        CardType::Minion,
+                        Some(1),
+                    )
+                })
+                .collect(),
+        );
+        let mut pool = PlayerPool::initialize(&catalog, &default_config());
+        for id in [CardId(1), CardId(2), CardId(3)] {
+            pool.distribute(id).unwrap();
+        }
+        let before = pool.copies_remaining.clone();
+        let mut rng = ServerRng::from_seed(0);
+        let families = HashMap::new();
+
+        let slots = refresh_shop(
+            &mut pool,
+            &catalog,
+            &families,
+            &mut rng,
+            &default_config(),
+            3,
+        );
+
+        assert!(slots.is_empty());
+        assert_eq!(pool.copies_remaining, before);
+    }
+
+    #[test]
+    fn test_manual_refresh_count_reset_on_draft_entry() {
+        let mut counts = ManualRefreshCount(HashMap::from([(shared::session::PlayerId(1), 3)]));
+
+        counts.reset_for_player(shared::session::PlayerId(1));
+
+        assert_eq!(counts.0[&shared::session::PlayerId(1)], 0);
+    }
+
+    #[test]
+    fn test_manual_refresh_count_reset_inserts_missing_player() {
+        let mut counts = ManualRefreshCount::default();
+
+        counts.reset_for_player(shared::session::PlayerId(7));
+
+        assert_eq!(counts.0[&shared::session::PlayerId(7)], 0);
+    }
+
+    #[test]
+    fn test_manual_refresh_count_reset_only_targets_one_player() {
+        let mut counts = ManualRefreshCount(HashMap::from([
+            (shared::session::PlayerId(1), 3),
+            (shared::session::PlayerId(2), 2),
+        ]));
+
+        counts.reset_for_player(shared::session::PlayerId(1));
+
+        assert_eq!(counts.0[&shared::session::PlayerId(1)], 0);
+        assert_eq!(counts.0[&shared::session::PlayerId(2)], 2);
     }
 }

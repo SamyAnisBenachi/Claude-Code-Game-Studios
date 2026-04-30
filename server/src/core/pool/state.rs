@@ -75,3 +75,32 @@ pub struct PlayerPool {
 pub struct PlayerPools {
     pub pools: HashMap<PlayerId, PlayerPool>,
 }
+
+/// Current compact shop slots per player.
+///
+/// Vec length may be below the requested slot count when the pool is partially
+/// exhausted. Callers render missing entries as empty slots.
+#[derive(bevy::prelude::Resource, Default)]
+pub struct ShopSlots(pub HashMap<PlayerId, Vec<CardId>>);
+
+/// Initial 9-card draft offerings per player.
+///
+/// Cleared after DRAFT_INITIAL by the future subscriber/system story.
+#[derive(bevy::prelude::Resource, Default)]
+pub struct InitialDraftOffering(pub HashMap<PlayerId, Vec<CardId>>);
+
+/// Manual shop refresh count per player for the active DRAFT phase.
+///
+/// Reset to 0 when the automatic DRAFT-entry refresh is processed.
+#[derive(bevy::prelude::Resource, Default)]
+pub struct ManualRefreshCount(pub HashMap<PlayerId, u32>);
+
+impl ManualRefreshCount {
+    /// Reset one player's manual refresh counter at DRAFT entry.
+    ///
+    /// Inserts a zero entry for players that have not refreshed yet so future
+    /// systems can read a stable value.
+    pub fn reset_for_player(&mut self, player: PlayerId) {
+        self.0.insert(player, 0);
+    }
+}

@@ -10,5 +10,9 @@ pub mod api;
 pub mod plugin;
 pub mod state;
 
+pub use api::refresh_shop;
 pub use plugin::CardPoolPlugin;
-pub use state::{DistributeError, PlayerPool, PlayerPools, PoolFilter};
+pub use state::{
+    DistributeError, InitialDraftOffering, ManualRefreshCount, PlayerPool, PlayerPools, PoolFilter,
+    ShopSlots,
+};
