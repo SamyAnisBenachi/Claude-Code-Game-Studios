@@ -36,7 +36,7 @@ All gameplay randomness in Lanes and Lies is computed server-side using a single
 
 **Depends On:**
 - ADR-003 — Workspace layout. `ServerRng` lives in `server/src/foundation/rng.rs`; the client crate has no path to construct or consume it.
-- ADR-007 (pending, after ADR-009) — Game Session lifecycle. The session system owns `ServerRng` creation immediately before `SessionReady` and destruction on `GameOverEmitted`.
+- ADR-012 — SessionReady Delivery. The Game Session System owns `ServerRng` creation (inserted via `Commands::insert_resource` immediately before `Commands::trigger(SessionReady)`) and destruction on `GameOverEmitted`. (Note: originally referenced as "ADR-007 pending" when this ADR was authored; ADR-012 is the accepted ADR that formalizes this contract.)
 
 **Enables:**
 - Objective System — fake-objective lane assignment at `DRAFT_INITIAL`

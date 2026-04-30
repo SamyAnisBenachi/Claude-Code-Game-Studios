@@ -273,6 +273,16 @@ C:\Program Files\GitHub CLI\gh.exe
 - **Tech debt logged**: None
 - **Next recommended**: S1-12 — Determinism Proof & Session Reset at `production/epics/server-rng/story-003-determinism-session-reset.md` (S1-10 now Done, blocker cleared)
 
+## Session Extract — /architecture-review 2026-04-30
+- **Verdict**: CONCERNS — M1 PASS / M2+M3 FAIL (ADRs not yet authored)
+- **Requirements**: ~217 total — ~95 covered, ~51 partial, ~71 gaps
+- **New TR-IDs registered**: 74 (TR-CDP-001..009, TR-GC-001..005, TR-RNG-001..006, TR-ECO-001..008, TR-BLS-001..010, TR-RSM-001..010, TR-NP-001..012, TR-GSS-001..010, TR-OBJ-001..010)
+- **GDD revision flags**: None — all GDD design assumptions consistent with verified engine behaviour
+- **Fixes applied**: ADR-004 invalid Bevy code samples replaced; ADR-005 stale dep reference fixed (ADR-007 → ADR-012)
+- **Top ADR gaps**: ADR-013 Auction State Machine, ADR-014 Combat Sub-Step Scheduling, ADR-015 Keyword Observer Architecture
+- **Report**: docs/architecture/architecture-review-2026-04-30.md
+- **Files changed**: architecture-review-2026-04-30.md (new), architecture-traceability.md (updated), tr-registry.yaml (74 TRs populated), adr-004 (code samples fixed), adr-005 (dep reference fixed)
+
 ## Session Extract — /review-all-gdds 2026-04-30
 - **Verdict**: FAIL
 - **GDDs reviewed**: 20 (11 new since R5)

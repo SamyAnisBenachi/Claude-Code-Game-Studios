@@ -418,32 +418,30 @@ fn validate_and_promote(
     configs: Res<Assets<GameConfig>>,
     catalogs: Res<Assets<CardCatalog>>,
     mut next_state: ResMut<NextState<AppState>>,
-    // TODO(S1-05/liv-bevy-018): EventWriter<AppExit> DOES NOT EXIST in Bevy 0.17+.
-    // Correct pattern in Bevy 0.18: commands.trigger(AppExit::error())
-    // OR: app.world_mut().send_event(AppExit::Error) if AppExit retained Event trait.
-    // Verify against Bevy 0.18 release notes before implementing.
-    // PLACEHOLDER — replace with verified pattern:
-    mut exit: EventWriter<AppExit>,  // ❌ UNVERIFIED — EventWriter removed in 0.17
+    // Bevy 0.17+ — AppExit is dispatched via MessageWriter<AppExit> (Message/Event split).
+    // Verify exact system param name against liv-bevy-018 skill api_patterns.md before
+    // implementing. Alternative: use std::process::exit(1) for fatal startup errors.
+    mut app_exit: MessageWriter<AppExit>,
 ) {
     let Some(cfg) = configs.get(&game_assets.game_config) else {
         error!("GameConfig handle did not resolve to an asset");
-        exit.write(AppExit::error());
+        app_exit.write(AppExit::Error(NonZeroU8::MIN));
         return;
     };
     if let Err(e) = validate_game_config(cfg) {
         error!("GameConfig validation failed: {e}");
-        exit.write(AppExit::error());
+        app_exit.write(AppExit::Error(NonZeroU8::MIN));
         return;
     }
 
     let Some(cat) = catalogs.get(&game_assets.card_catalog) else {
         error!("CardCatalog handle did not resolve to an asset");
-        exit.write(AppExit::error());
+        app_exit.write(AppExit::Error(NonZeroU8::MIN));
         return;
     };
     if let Err(e) = validate_card_catalog(cat) {
         error!("CardCatalog validation failed: {e}");
-        exit.write(AppExit::error());
+        app_exit.write(AppExit::Error(NonZeroU8::MIN));
         return;
     }
 
@@ -516,30 +514,28 @@ check at that point.
 **6. Hot-reload watcher (debug-only)**
 
 ```rust
+// Bevy 0.18: AssetEvent<T> uses the Observer pattern, not buffered EventReader.
+// Register this function as: app.observe(hot_reload_game_config)
+// The handler receives On<AssetEvent<T>> as its trigger parameter.
+// Verify exact Observer trigger type against liv-bevy-018 skill api_patterns.md.
 #[cfg(debug_assertions)]
 fn hot_reload_game_config(
-    // TODO(S1-05/liv-bevy-018): EventReader<AssetEvent<T>> DOES NOT EXIST in Bevy 0.17+.
-    // AssetEvent may be an Observer event in 0.18 — use app.observe(|t: On<AssetEvent<T>>| ...)
-    // OR it may retain buffered semantics under a new name — verify against Bevy 0.18 asset docs.
-    // PLACEHOLDER — replace with verified pattern:
-    mut events: EventReader<AssetEvent<GameConfig>>,  // ❌ UNVERIFIED — EventReader removed in 0.17
+    trigger: On<AssetEvent<GameConfig>>,
     game_assets: Res<GameAssets>,
     configs: Res<Assets<GameConfig>>,
     mut commands: Commands,
 ) {
-    for ev in events.read() {
-        let AssetEvent::Modified { id } = ev else { continue; };
-        if *id != game_assets.game_config.id() { continue; }
+    let AssetEvent::Modified { id } = trigger.event() else { return; };
+    if *id != game_assets.game_config.id() { return; }
 
-        let Some(new_cfg) = configs.get(&game_assets.game_config) else { continue; };
-        match validate_game_config(new_cfg) {
-            Ok(()) => {
-                commands.insert_resource(new_cfg.clone());
-                info!("GameConfig hot-reloaded successfully");
-            }
-            Err(e) => {
-                warn!("GameConfig hot-reload rejected (kept previous): {e}");
-            }
+    let Some(new_cfg) = configs.get(&game_assets.game_config) else { return; };
+    match validate_game_config(new_cfg) {
+        Ok(()) => {
+            commands.insert_resource(new_cfg.clone());
+            info!("GameConfig hot-reloaded successfully");
+        }
+        Err(e) => {
+            warn!("GameConfig hot-reload rejected (kept previous): {e}");
         }
     }
 }

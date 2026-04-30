@@ -22,35 +22,780 @@
 #   system-slug = short slug matching the GDD system name
 #   NNN = three-digit zero-padded sequence per system, starting at 001
 #
+# GDD AC-ID MAPPING: M1 GDDs use domain-specific AC-IDs (RSM-*, NP-*, BL-*, etc.)
+#   rather than TR-IDs in their bodies. This registry maps architecture.md's
+#   TR-[slug]-NNN convention to the corresponding GDD AC-ID for traceability.
+#   See `docs/architecture/architecture.md` Phase 5 for the full matrix.
+#
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 1
-last_updated: ""
+version: 2
+last_updated: "2026-04-30"
 
-requirements: []
+requirements:
 
-# --- EXAMPLE ENTRIES (remove when first real entries are added) ---
-#
-# - id: TR-combat-001
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Player takes damage from enemies based on attack power minus defence"
-#   created: 2026-03-10
-#   revised: ""
-#   status: active
-#
-# - id: TR-combat-002
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Combo window timing is 0.4 seconds between hits"
-#   created: 2026-03-10
-#   revised: "2026-04-01"
-#   status: active
-#
-# - id: TR-combat-003
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Old damage formula using raw stats"
-#   created: 2026-03-10
-#   revised: ""
-#   status: superseded-by: TR-combat-001
+  # ─── Card Data & Pool (TR-CDP) ─────────────────────────────────────────────
+  # GDD: design/gdd/card-data-pool.md
+  # ADR coverage: ADR-004 (loading), ADR-006 (schema + pool state)
+
+  - id: TR-CDP-001
+    system: card-data-pool
+    gdd: design/gdd/card-data-pool.md
+    gdd_ac_ids: [CP3a, CP3b, CP3c, CP3d]
+    requirement: "Load assets/data/cards.json into immutable CardCatalog at server startup; missing or malformed file is a fatal error that aborts startup"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CDP-002
+    system: card-data-pool
+    gdd: design/gdd/card-data-pool.md
+    gdd_ac_ids: [CP3c]
+    requirement: "Duplicate CardIds in cards.json are a fatal load-time error; HashMap form detects duplicates at deserialisation"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CDP-003
+    system: card-data-pool
+    gdd: design/gdd/card-data-pool.md
+    gdd_ac_ids: [CP2]
+    requirement: "pool_copies_override <= 0 is a soft error: log warning, use rarity default, continue startup without abort"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CDP-004
+    system: card-data-pool
+    gdd: design/gdd/card-data-pool.md
+    gdd_ac_ids: [CP5, CP5b, CP5c, CP6a, CP6b, CP7, CP-IC, CP-SHC, CP-SHN, CP-A, CP-B, CP-C, CP-C2, CP-C3]
+    requirement: "Pool API: is_available, copies_remaining, draw_initial_draft, draw_class_card, draw_neutral_family, draw_family_card, draw_auction_card, draw_random, distribute — all draw functions return Option<T> and never panic"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CDP-005
+    system: card-data-pool
+    gdd: design/gdd/card-data-pool.md
+    gdd_ac_ids: [CP-NW, CP9, CP10]
+    requirement: "Weighted shop draw (Formula 2): base_weight + ownership bonus clamped to shop_weight_cap, normalised to sum=1.0±1e-6; selection via CDF draw from seeded RNG"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CDP-006
+    system: card-data-pool
+    gdd: design/gdd/card-data-pool.md
+    gdd_ac_ids: [CP-A]
+    requirement: "Shared neutral auction pool (Rare + Legendary Neutrals only) is architecturally separate from each player's personal shop pool; draw_auction_card receives the shared pool as a parameter"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CDP-007
+    system: card-data-pool
+    gdd: design/gdd/card-data-pool.md
+    gdd_ac_ids: [CP1a, CP1b]
+    requirement: "CardCatalog is immutable for server lifetime (Res<CardCatalog>); PlayerPool is session-scoped per player in PlayerPools: HashMap<PlayerId, PlayerPool>"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CDP-008
+    system: card-data-pool
+    gdd: design/gdd/card-data-pool.md
+    gdd_ac_ids: [CP4]
+    requirement: "Rarity default copy counts: Common=6, Uncommon=5, Rare=4 read from GameConfig; Epic=1, Legendary=1 are compile-time constants (EPIC_POOL_COPIES, LEGENDARY_POOL_COPIES)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CDP-009
+    system: card-data-pool
+    gdd: design/gdd/card-data-pool.md
+    gdd_ac_ids: [CP11, CP12, CP13, CP14, CP15, CP16a, CP16b]
+    requirement: "Spawn range Formula F3: per-player advance cell count = min(1 + fakes_destroyed, 3); used by Board/Lane System to gate Minion placement"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Game Config (TR-GC) ───────────────────────────────────────────────────
+  # GDD: design/gdd/game-config.md
+  # ADR coverage: ADR-004 (loading + validation), ADR-003 (shared/ purity)
+
+  - id: TR-GC-001
+    system: game-config
+    gdd: design/gdd/game-config.md
+    gdd_ac_ids: [GC1, GC2b]
+    requirement: "All tuning knobs loaded from assets/config/game_config.ron via bevy_asset_loader LoadingState; Res<GameConfig> available to all systems after LoadingState completes"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GC-002
+    system: game-config
+    gdd: design/gdd/game-config.md
+    gdd_ac_ids: [GC2a, GC3]
+    requirement: "Load failure (missing file, parse error, validation failure) aborts server startup with logged error; no fallback defaults applied"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GC-003
+    system: game-config
+    gdd: design/gdd/game-config.md
+    gdd_ac_ids: [GC4, GCN-DEFAULTS]
+    requirement: "All fields use serde default; missing fields fall back to documented defaults without aborting"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GC-004
+    system: game-config
+    gdd: design/gdd/game-config.md
+    gdd_ac_ids: [GC5, GC6, GC7, GC8, GC9a, GC9b, GC9c, GC9d, GC9e, GC9f]
+    requirement: "Startup validation aborts on dangerous values: shop_weight_cap not in (0,1); shop_weight_per_card >= shop_weight_cap; fake_count not in [1,3]; objective_hp < 1; any timer = 0; auction_timer_reset >= auction_timer"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GC-005
+    system: game-config
+    gdd: design/gdd/game-config.md
+    gdd_ac_ids: [GC10, GC11, GC12]
+    requirement: "Debug-only hot-reload via AssetEvent<GameConfig>: re-validate before applying; reject invalid reload + retain previous config; system absent from release builds"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Server-side RNG (TR-RNG) ──────────────────────────────────────────────
+  # GDD: design/gdd/server-rng.md
+  # ADR coverage: ADR-005
+
+  - id: TR-RNG-001
+    system: server-rng
+    gdd: design/gdd/server-rng.md
+    gdd_ac_ids: [RNG1, RNG13]
+    requirement: "One ChaCha20Rng per game session, seeded from OsRng::from_entropy() at SessionReady; stored as ResMut<ServerRng>; destroyed on GameOverEmitted"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RNG-002
+    system: server-rng
+    gdd: design/gdd/server-rng.md
+    gdd_ac_ids: [RNG5]
+    requirement: "Single public operation next_seed() -> u64; advances RNG state and increments seed_index monotonically; called only through intent-named API methods"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RNG-003
+    system: server-rng
+    gdd: design/gdd/server-rng.md
+    gdd_ac_ids: [RNG6]
+    requirement: "Empty-pool draw still consumes seed and advances seed_index; result = None; seed index advance is unconditional"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RNG-004
+    system: server-rng
+    gdd: design/gdd/server-rng.md
+    gdd_ac_ids: [RNG8]
+    requirement: "Fixed consumption order (strict, per phase): DRAFT_INITIAL: AssignFakeObjectives → DrawInitialDraft; RESOLUTION: ResolveEcaflip → ResolvePrism → AwardFakeObjectiveReward → DrawFreeCard; SHOP: DrawShopSlot"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RNG-005
+    system: server-rng
+    gdd: design/gdd/server-rng.md
+    gdd_ac_ids: [RNG11, RNG12]
+    requirement: "Audit log entry per consumption: AuditEntry { event_type, seed_index, result: Option<String> }; entry 0 = session_init; inter-player ordering: ascending player_id → lane → cell"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RNG-006
+    system: server-rng
+    gdd: design/gdd/server-rng.md
+    gdd_ac_ids: [RNG14]
+    requirement: "Seeds and RNG state are never transmitted to clients in any S2C message; rand/rand_chacha absent from client/Cargo.toml for gameplay modules"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Economy System (TR-ECO) ───────────────────────────────────────────────
+  # GDD: design/gdd/economy-system.md
+  # ADR coverage: ADR-010 (DraftStarted subscriber contract)
+
+  - id: TR-ECO-001
+    system: economy-system
+    gdd: design/gdd/economy-system.md
+    gdd_ac_ids: [EC1, EC2, EC3]
+    requirement: "Three independent currency pools per player: current_mana (u32), reserve_mana (u32, no cap), gold (u32, no cap); auto-split spend drains current_mana first then reserve_mana"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-ECO-002
+    system: economy-system
+    gdd: design/gdd/economy-system.md
+    gdd_ac_ids: [EC9, EC10]
+    requirement: "Mana ramp Formula 1: current_mana = min(round_number, mana_cap) at DRAFT entry; mana_cap raised by fake-objective rewards capped at 12"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-ECO-003
+    system: economy-system
+    gdd: design/gdd/economy-system.md
+    gdd_ac_ids: [EC4, EC5]
+    requirement: "Spend validation: reject if current_mana + reserve_mana < cost; 'costs from reserve' cards: reject if reserve_mana < cost (current_mana does not substitute)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-ECO-004
+    system: economy-system
+    gdd: design/gdd/economy-system.md
+    gdd_ac_ids: [EC6, EC18]
+    requirement: "reserve_mana persists between rounds; current_mana is discarded at RESOLUTION end (reset to 0 before next DRAFT)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-ECO-005
+    system: economy-system
+    gdd: design/gdd/economy-system.md
+    gdd_ac_ids: [EC13, EC14, EC15]
+    requirement: "Gold income Formula: gold_new = gold_RESOLUTION_end + baseline + interest; interest = min(floor(gold_before_income / interest_threshold_gold), interest_max_bonus); applied at DRAFT entry via DraftStarted subscriber"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-ECO-006
+    system: economy-system
+    gdd: design/gdd/economy-system.md
+    gdd_ac_ids: [EC16, EC17, EC11]
+    requirement: "Kill reward (+1g default) and objective reward (+3g default) applied immediately during RESOLUTION; self-inflicted objective destruction skips gold reward"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-ECO-007
+    system: economy-system
+    gdd: design/gdd/economy-system.md
+    gdd_ac_ids: [EC21, EC22, EC23]
+    requirement: "Auction bid gold reservation: reserve_gold / release_gold_reservation / spend_gold API; can_afford_bid returns false if gold - reserved_gold < bid OR hand_size == 10"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-ECO-008
+    system: economy-system
+    gdd: design/gdd/economy-system.md
+    gdd_ac_ids: [EC24, EC25, EC26]
+    requirement: "Refresh cost escalation: first refresh = 1g, subsequent +1g each; counter resets at start of each DRAFT phase"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Board/Lane System (TR-BLS) ────────────────────────────────────────────
+  # GDD: design/gdd/board-lane-system.md
+  # ADR coverage: ADR-007 (placement buffer + reveal), ADR-010 (PlacementPhaseEntered)
+
+  - id: TR-BLS-001
+    system: board-lane-system
+    gdd: design/gdd/board-lane-system.md
+    gdd_ac_ids: [BL-1, BL-3, BL-25]
+    requirement: "5-lane x 8-cell server-authoritative grid; absolute cells 1–8; Player A advances +cell direction, Player B advances -cell direction"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BLS-002
+    system: board-lane-system
+    gdd: design/gdd/board-lane-system.md
+    gdd_ac_ids: [BL-1, BL-2, BL-4, BL-23, BL-24]
+    requirement: "F1 standard movement: new_cell = clamp(current_cell + direction * mp, 1, 8); computed in i16 intermediate to prevent u8 underflow"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BLS-003
+    system: board-lane-system
+    gdd: design/gdd/board-lane-system.md
+    gdd_ac_ids: [BL-5, BL-5b, BL-6, BL-6b, BL-7]
+    requirement: "F2 spawn range: Player A in [1, 1+fakes_destroyed]; Player B in [8-fakes_destroyed, 8]; Structures and Traps bypass this formula entirely"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BLS-004
+    system: board-lane-system
+    gdd: design/gdd/board-lane-system.md
+    gdd_ac_ids: [BL-8, BL-9, BL-29, BL-32, BL-33]
+    requirement: "Cell occupancy: Minion 1/lane/player; Trap 1/cell/player; Structure 1/cell/player; Field 1/lane/player; all enforced by placement validation"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BLS-005
+    system: board-lane-system
+    gdd: design/gdd/board-lane-system.md
+    gdd_ac_ids: [BL-14]
+    requirement: "PendingPlacements is a server-only Resource (plain Rust data, NOT ECS entities); commits atomically at sub-step 1; S2CPlacementReveal broadcast before entity spawn"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BLS-006
+    system: board-lane-system
+    gdd: design/gdd/board-lane-system.md
+    gdd_ac_ids: [BL-22, BL-27, BL-27b]
+    requirement: "Movement skips intermediate cells — only final cell of the sub-step is occupied; Trap traversal in intermediate cells does not trigger"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BLS-007
+    system: board-lane-system
+    gdd: design/gdd/board-lane-system.md
+    gdd_ac_ids: [BL-16, BL-17, BL-31]
+    requirement: "Trap triggers on any enemy entry (standard movement, CHARGE X, displacement keywords); removed after single trigger"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BLS-008
+    system: board-lane-system
+    gdd: design/gdd/board-lane-system.md
+    gdd_ac_ids: [BL-10, BL-11, BL-25]
+    requirement: "F3 objective cell detection: Player A at cell 8 / Player B at cell 1 fires UnitAtObjective(unit_id, lane) exactly once at sub-step 6 end"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BLS-009
+    system: board-lane-system
+    gdd: design/gdd/board-lane-system.md
+    gdd_ac_ids: [BL-12, BL-13, BL-18, BL-30]
+    requirement: "Prism collection occurs at player's own spawn cell after sub-step 5 standard movement only (not from TELEPORT, CHARGE-only, or displacement)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BLS-010
+    system: board-lane-system
+    gdd: design/gdd/board-lane-system.md
+    gdd_ac_ids: [BL-15, BL-19, BL-20, BL-23, BL-26, BL-28]
+    requirement: "Displacement keywords: REPEL clamped at spawn boundary; ATTRACT clamped to [1,8]; CHANGE LANE silent no-op at boundaries; IRREMOVABLE is a no-op; spawn range expansion from fake destruction takes effect at NEXT PLACEMENT"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Round State Machine (TR-RSM) ──────────────────────────────────────────
+  # GDD: design/gdd/round-state-machine.md
+  # ADR coverage: ADR-009 (phase Resource), ADR-010 (event bus + emission order)
+
+  - id: TR-RSM-001
+    system: round-state-machine
+    gdd: design/gdd/round-state-machine.md
+    gdd_ac_ids: [RSM-1, RSM-2]
+    requirement: "Phase enum: LOBBY · DRAFT_INITIAL · DRAFT_AUCTION · DRAFT_SHOP · PLACEMENT · RESOLUTION · GAME_OVER; stored in RoundState Resource; only advance_phase may write it"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RSM-002
+    system: round-state-machine
+    gdd: design/gdd/round-state-machine.md
+    gdd_ac_ids: [RSM-1]
+    requirement: "LOBBY → DRAFT_INITIAL guarded exclusively by SessionReady Observer trigger from Game Session System; no other system may initiate this transition"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RSM-003
+    system: round-state-machine
+    gdd: design/gdd/round-state-machine.md
+    gdd_ac_ids: [RSM-3, RSM-4, RSM-5, RSM-33]
+    requirement: "F1 auction round detection: is_auction_round(R) = (R mod 3 == 0); evaluated post-increment; round_number = 0 unreachable at any is_auction_round call site"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RSM-004
+    system: round-state-machine
+    gdd: design/gdd/round-state-machine.md
+    gdd_ac_ids: [RSM-6, RSM-7, RSM-10, RSM-11, RSM-32]
+    requirement: "F2 phase entry emission order: DraftStarted → ShopRefreshNeeded(per player) → AuctionPhaseEntered(auction rounds only) → BroadcastPhaseChanged (always last)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RSM-005
+    system: round-state-machine
+    gdd: design/gdd/round-state-machine.md
+    gdd_ac_ids: [RSM-8, RSM-33]
+    requirement: "round_number increments at RESOLUTION → DRAFT transition BEFORE economy events fire; round 1 = DRAFT_INITIAL entry"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RSM-006
+    system: round-state-machine
+    gdd: design/gdd/round-state-machine.md
+    gdd_ac_ids: [RSM-9]
+    requirement: "Interest snapshot taken at RESOLUTION end (after kill/objective rewards) by Economy System; applied to gold income at next DRAFT entry"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RSM-007
+    system: round-state-machine
+    gdd: design/gdd/round-state-machine.md
+    gdd_ac_ids: [RSM-15, RSM-16, RSM-17, RSM-18, RSM-19, RSM-30, RSM-38]
+    requirement: "Phase timers: PLACEMENT=placement_timer_seconds; DRAFT_SHOP=draft_shop_timer_seconds; DRAFT_INITIAL=draft_initial_timer_seconds; RESOLUTION safety timeout=resolution_max_duration_seconds (60s default → Draw); all-submitted triggers early exit"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RSM-008
+    system: round-state-machine
+    gdd: design/gdd/round-state-machine.md
+    gdd_ac_ids: [RSM-20, RSM-21, RSM-22]
+    requirement: "GAME_OVER detection: real_objectives_destroyed(player) >= 2 after RESOLUTION; mutual destruction = Draw; evaluated by RSM reading ObjectiveCounters Resource"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RSM-009
+    system: round-state-machine
+    gdd: design/gdd/round-state-machine.md
+    gdd_ac_ids: [RSM-26]
+    requirement: "S2CPhaseChanged broadcast on every phase transition via BroadcastPhaseChanged Message on ReliableChannel; always emitted last in the F2 sequence"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-RSM-010
+    system: round-state-machine
+    gdd: design/gdd/round-state-machine.md
+    gdd_ac_ids: [RSM-23, RSM-24, RSM-25, RSM-31, RSM-34, RSM-35, RSM-36, RSM-37]
+    requirement: "Disconnect: 30s grace via OnDisconnected + C2SHeartbeat gap; deferred until RESOLUTION exits naturally; concurrent trigger guard (first wins, second discarded); GameOverReason enum includes Disconnection and Draw"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Network Protocol (TR-NP) ──────────────────────────────────────────────
+  # GDD: design/gdd/network-protocol.md
+  # ADR coverage: ADR-002 (authority + phase-gate), ADR-008 (channels), ADR-011 (reconnect)
+
+  - id: TR-NP-001
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-1, NP-7]
+    requirement: "Server is sole authority; clients hold read-only state mirrors and express intent via C2S messages only; all game logic executes server-side"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-NP-002
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-7, NP-8]
+    requirement: "Exactly two Lightyear channels: ReliableChannel (all game-state, control, economy, hand, snapshot) and UnreliableChannel (C2SHeartbeat + S2CAuctionUpdate only); assignment permanent per message type"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-NP-003
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-1, NP-2, NP-3, NP-15]
+    requirement: "C2SHello first message on any connection; S2CHandshake on version match; S2CHandshakeRejected on mismatch; hello_timeout_ms watchdog (5000ms default) closes silent connections"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-NP-004
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-9, NP-10]
+    requirement: "SessionToken (u128) issued at first connect; client persists and presents in C2SHello for reconnect identity mapping; maps new ClientId to existing session slot"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-NP-005
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-4, NP-5, NP-27]
+    requirement: "Phase-gated message acceptance: invalid-phase C2S silently discarded with debug log; zero S2C response sent; client never learns of server-side rejection"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-NP-006
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-9, NP-16, NP-17, NP-18, NP-20, NP-21, NP-22]
+    requirement: "S2CGameSnapshot unicast per player on every connect/reconnect: opponent secrets stripped (hand, shop_slots, pool, is_fake=false); mandatory first S2C before any live message; deferred queue flushed after snapshot_sent=true"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-NP-007
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-6, NP-14]
+    requirement: "C2SSubmitPlacement is silent (no S2C ack); S2CPlacementReveal is sole placement-close signal; duplicate submissions from same player in same phase discarded silently"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-NP-008
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-24, NP-25, NP-26]
+    requirement: "C2SHeartbeat on UnreliableChannel every heartbeat_interval_ms (5000ms default); resets server-side disconnect_trackers[player]"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-NP-009
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-8]
+    requirement: "OQ-D ordering invariant: S2CResolutionEvent must be received before S2CPhaseChanged(DRAFT_SHOP) on the client; enforced by same-channel enqueue order on ReliableChannel; never split across channels"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-NP-010
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-11, NP-19, NP-23]
+    requirement: "S2CGoldUpdate unicast (own gold/mana/reserve); S2CGoldBroadcast reliable broadcast (both players' gold); reserved_gold field present in S2CGoldBroadcast for local_free_gold derivation"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-NP-011
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-28]
+    requirement: "S2CPlacementReveal is a single broadcast message containing both players' full placements atomically; no partial reveal possible"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-NP-012
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-12, NP-17]
+    requirement: "S2COpponentDisconnected unicast to remaining player with grace_remaining_ms; S2COpponentReconnected broadcast to all on reconnect completion"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Game Session System (TR-GSS) ──────────────────────────────────────────
+  # GDD: design/gdd/game-session-system.md
+  # ADR coverage: ADR-011 (reconnect + snapshot), ADR-012 (SessionReady delivery)
+
+  - id: TR-GSS-001
+    system: game-session-system
+    gdd: design/gdd/game-session-system.md
+    gdd_ac_ids: [GSS-1, GSS-2, GSS-34, GSS-35]
+    requirement: "Session creation via C2SCreateRoom; assigns session_id and generates 6-char alphanumeric room_code (no 0,O,1,I,L confusables)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GSS-002
+    system: game-session-system
+    gdd: design/gdd/game-session-system.md
+    gdd_ac_ids: [GSS-4, GSS-5, GSS-6, GSS-7, GSS-8, GSS-9]
+    requirement: "Session slot tables by mode: OneVOne=2, OneVOneVOne=3, TwoVTwo=4, ThreeVThree=6, TwoVTwoVTwo=6; team derived from slot index per F2"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GSS-003
+    system: game-session-system
+    gdd: design/gdd/game-session-system.md
+    gdd_ac_ids: [GSS-3, GSS-22, GSS-28, GSS-31]
+    requirement: "F4 SessionReady predicate: all_slots_filled AND all_classes_confirmed AND server_clock_now <= lobby_deadline (f64 seconds, not f32)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GSS-004
+    system: game-session-system
+    gdd: design/gdd/game-session-system.md
+    gdd_ac_ids: [GSS-17a, GSS-17b, GSS-18, GSS-19, GSS-27, GSS-32, GSS-33]
+    requirement: "Class lock and deferred reveal: S2CClassLocked unicast own lock; S2CClassesRevealed broadcast only when all slots locked"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GSS-005
+    system: game-session-system
+    gdd: design/gdd/game-session-system.md
+    gdd_ac_ids: [GSS-23, GSS-25, GSS-41]
+    requirement: "Disconnect during LOBBY = immediate session cancel (MVP); dual-signal detection: Lightyear OnDisconnected primary + lobby_heartbeat_timeout_seconds (15s default) fallback"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GSS-006
+    system: game-session-system
+    gdd: design/gdd/game-session-system.md
+    gdd_ac_ids: [GSS-26, GSS-38, GSS-39, GSS-40]
+    requirement: "Late-join rejected with S2CJoinRejected after SessionReady; one active session per player; C2SCreateRoom idempotent for own LOBBY_WAITING session"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GSS-007
+    system: game-session-system
+    gdd: design/gdd/game-session-system.md
+    gdd_ac_ids: [GSS-30]
+    requirement: "SessionReady fires SessionConfig resource (mode, player_count, team_map, class_map) and initialises ServerRng resource; GSS subscribes to GameOverEmitted for teardown of both resources"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GSS-008
+    system: game-session-system
+    gdd: design/gdd/game-session-system.md
+    gdd_ac_ids: [GSS-29]
+    requirement: "Session refused if ServerRng::from_entropy() fails when SessionReady would fire; transition to LOBBY_CANCELLED; broadcast S2CSessionCancelled"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GSS-009
+    system: game-session-system
+    gdd: design/gdd/game-session-system.md
+    gdd_ac_ids: [GSS-10, GSS-37]
+    requirement: "S2CSlotUpdated broadcast (full slot vector, not delta) on join/disconnect; joiner receives only S2CJoinAck; others receive only S2CSlotUpdated"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GSS-010
+    system: game-session-system
+    gdd: design/gdd/game-session-system.md
+    gdd_ac_ids: [GSS-11, GSS-12, GSS-13, GSS-14, GSS-36]
+    requirement: "Reject codes: SlotOccupied, SessionFull, RoomNotFound, InvalidSlot, AlreadyInSession, SessionInProgress, InvalidMode — all result in S2CJoinRejected unicast"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Objective System (TR-OBJ) ─────────────────────────────────────────────
+  # GDD: design/gdd/objective-system.md
+  # ADR coverage: ADR-001 (identity unicast), ADR-010 (ResolutionPhaseEntered subscriber)
+
+  - id: TR-OBJ-001
+    system: objective-system
+    gdd: design/gdd/objective-system.md
+    gdd_ac_ids: [OS-1]
+    requirement: "Each player has 5 objective slots (1 per lane); HP = objective_hp (default 5), AR = 0; real/fake identity immutable after DRAFT_INITIAL assignment"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-OBJ-002
+    system: objective-system
+    gdd: design/gdd/objective-system.md
+    gdd_ac_ids: [OS-2]
+    requirement: "F D5 fake assignment: 2 RNG seeds per player at DRAFT_INITIAL via remove-and-re-pick (no collision); ascending player_id ordering"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-OBJ-003
+    system: objective-system
+    gdd: design/gdd/objective-system.md
+    gdd_ac_ids: [OS-3, OS-4, OS-5, OS-16, OS-20]
+    requirement: "F D1 damage: HP_new = max(0, HP_current - amount) via saturating_sub; objectives cannot be healed; destruction fires once; amount=0 and already-destroyed are both no-ops"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-OBJ-004
+    system: objective-system
+    gdd: design/gdd/objective-system.md
+    gdd_ac_ids: [OS-7, OS-8, OS-14]
+    requirement: "Destruction consequence: mark destroyed; queue ObjectiveDestroyed; AwardGold +3 if attacker != owner; fake rewards if fake and attacker != owner; increment real_count if real"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-OBJ-005
+    system: objective-system
+    gdd: design/gdd/objective-system.md
+    gdd_ac_ids: [OS-12, OS-19, OS-26]
+    requirement: "F D4 fake reward: gen_range(0..2): 0=ManaCapIncreased, 1=FreeCardPick; FreeCardPick hand-full fallback = AwardGold +1 without consuming draw_random seed"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-OBJ-006
+    system: objective-system
+    gdd: design/gdd/objective-system.md
+    gdd_ac_ids: [OS-9, OS-10]
+    requirement: "F D2 loss condition: real_objectives_destroyed >= loss_threshold (2, fixed constant); checked by RSM at RESOLUTION end; mutual destruction = Draw"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-OBJ-007
+    system: objective-system
+    gdd: design/gdd/objective-system.md
+    gdd_ac_ids: [OS-17]
+    requirement: "ObjectiveHp is a replicated ECS component broadcast to both clients; ObjectiveIdentity is server-only in HiddenObjectives Resource and NEVER replicated (ADR-001)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-OBJ-008
+    system: objective-system
+    gdd: design/gdd/objective-system.md
+    gdd_ac_ids: [OS-13a, OS-13b, OS-24]
+    requirement: "ObjectiveDestroyed broadcast at RESOLUTION-end sync (NOT mid-sub-step); 500ms minimum reveal hold; Sang Méprise: S2CSangMepriseReveal reliable unicast to opponent only"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-OBJ-009
+    system: objective-system
+    gdd: design/gdd/objective-system.md
+    gdd_ac_ids: [OS-23a, OS-23b, OS-28]
+    requirement: "Session invariants: fake_count >= 1, fake_count <= lane_count - loss_threshold (max 3), objective_hp >= 1; asserted at DRAFT_INITIAL entry"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-OBJ-010
+    system: objective-system
+    gdd: design/gdd/objective-system.md
+    gdd_ac_ids: [OS-24, OS-25]
+    requirement: "take_damage(lane, attacker_player, amount) is sole damage interface; Garde-Temps routes lethal damage through same interface; ObjectiveCounters Resource read by RSM for GAME_OVER check without importing from feature/objective/"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── M2/M3 SYSTEMS — ADRs NOT YET AUTHORED ────────────────────────────────
+  # TRs for M2/M3 GDDs will be added when their governing ADRs are written.
+  # See docs/architecture/architecture-review-2026-04-30.md §Phase 3 for
+  # the full gap list and required ADR titles (ADR-013 through ADR-022).
+  #
+  # Systems pending TR registration:
+  #   M2: auction-system, combat-resolution, card-acquisition
+  #       board-rendering, hand-ui, shop-auction-ui, hud
+  #   M3: keyword-system, prism-system, class-system, card-animations

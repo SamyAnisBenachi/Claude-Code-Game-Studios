@@ -25,16 +25,15 @@ Two pillars pay this off. **No idle spectating** — even a lane that has gone q
 
 **Rule 1 — System ownership.** The Prism System owns:
 - A `PrismState` resource: `collected[lane: 1..=5][player: PlayerId] -> bool`. `false` = prism present and collectible; `true` = collected, not yet respawned. Naming aligns with `PrismBoardState.collected: bool` in network-protocol.md.
-- A transient per-RESOLUTION counter `collected_this_round[player]` (recomputed each RESOLUTION; not persisted).
-- Two static card definitions in `assets/data/cards.json`: `prism_strike` (Spell, cost 3 mana, target: `TargetObj { player_id, lane }`, effect: "deal 1 damage to chosen objective", bypasses lane position) and `prism_reserve` (Spell, cost 0 mana, target: `Instant`, effect: `add_reserve(player, 1)`).
+- Two static card definitions in `assets/data/cards.json`: `prism_strike` (Spell, cost 3 mana, target: `TargetObj { player_id, lane }`, effect: "deal 1 damage to chosen objective", bypasses lane position; self-targeting own objectives is legal — see Edge Cases) and `prism_reserve` (Spell, cost 0 mana, target: `Instant`, effect: `add_reserve(player, 1)`; playable during DRAFT phase only — see Rule 13).
 
 The Prism System does NOT own: hand storage (writes via Card Acquisition's hand-mutation API), Lane 1/5 spell damage routing (Objective System resolves the spell when played), Lane 2/4 reserve grant (Economy System resolves the spell when played), or board geometry/collection trigger (Board / Lane System emits `PrismCollected`).
 
 **Rule 2 — Initial state.** At session start: `collected[lane][player] = false` for all 5 lanes × all players. All 10 prism tokens are present at game start.
 
-**Rule 3 — Collection trigger contract.** The system consumes `PrismCollected(player, lane)` messages emitted by Board / Lane System during RESOLUTION sub-step 5. Receipt requires `collected[lane][player] == false`; if `true`, the event is a stale duplicate — silently discarded with a server-side warning log. (Defensive guard. Board / Lane System should never emit on a collected prism, but the check protects the audit log.)
+**Rule 3 — Collection trigger contract.** The system consumes `PrismCollected(player, lane)` messages emitted by Board / Lane System during RESOLUTION sub-step 5. In Bevy 0.18, `PrismCollected` is a `#[derive(Message)]` type (not an `Event`). Board / Lane System emits via `MessageWriter`; `resolve_prism_draws` consumes via `MessageReader`. The message buffer persists until drained in `resolve_prism_draws`. Receipt requires `collected[lane][player] == false`; if `true`, the message is a stale duplicate — silently discarded with a server-side warning log. (Defensive guard. Board / Lane System should never emit on a collected prism, but the check protects the audit log.)
 
-**Rule 4 — Reward routing per lane (deterministic lanes 1/2/4/5).** On a valid event for Lane L ∈ {1, 2, 4, 5}: set `collected[L][player] = true`, increment `collected_this_round[player]`, then call hand-add for the appropriate static card:
+**Rule 4 — Reward routing per lane (deterministic lanes 1/2/4/5).** On a valid event for Lane L ∈ {1, 2, 4, 5}: set `collected[L][player] = true`, then call hand-add for the appropriate static card:
 - L = 1 or 5 → `prism_strike`
 - L = 2 or 4 → `prism_reserve`
 
@@ -43,11 +42,11 @@ Hand-add invokes the same hand-write API used by Card Acquisition (e.g., `HandSt
 Lanes 1/2/4/5 consume **zero** RNG seeds.
 
 **Rule 5 — Reward routing (Lane 3, RNG draw).** On a valid event for Lane 3:
-1. **Hand-full pre-check**: if `hand[player].len() >= 10`, set `collected[3][player] = true`, increment `collected_this_round[player]`, do NOT call `next_seed()`, do NOT broadcast. The prism is still consumed.
+1. **Hand-full pre-check**: if `hand[player].len() >= 10`, set `collected[3][player] = true`, do NOT call `next_seed()`, do NOT broadcast. The prism is still consumed.
 2. Otherwise: call `ServerRng::next_seed()` (event_type `"draw_random"`), call `CardDataPool::draw_random(filter, seed)` where `filter = PoolFilter { card_type: Some(Minion | Spell), class: None, rarity: None, max_cost: None }` over the player's per-player pool.
    - On `Some(card_id)`: call `distribute(card_id)`, hand-add, broadcast `S2CCardAcquired { card_id, source: PrismLane3 }`. Audit log: `("draw_random", seed_index, Some(card_id))`.
    - On `None` (pool exhausted): no hand add, no broadcast. Audit log: `("draw_random", seed_index, None)`. Seed IS consumed.
-3. Set `collected[3][player] = true`, increment `collected_this_round[player]`.
+3. Set `collected[3][player] = true`.
 
 **Rule 6 — Inter-player and inter-lane ordering.** When multiple `PrismCollected` events are pending for the same RESOLUTION, `resolve_prism_draws` processes them in:
 1. Ascending `player_id`
@@ -56,7 +55,7 @@ Lanes 1/2/4/5 consume **zero** RNG seeds.
 This ordering applies to all reward delivery, audit log writes, `collected[]` mutations, and `S2CCardAcquired` broadcast emission. It is required for determinism (per ADR-005 / server-rng.md Rule 6).
 
 **Rule 7 — Hand-full handling.** Before any hand add (Rule 4 or Rule 5 step 2), check `hand[player].len() < 10`. If hand is full:
-- Lanes 1/2/4/5: spell card silently dropped. Prism state is still updated (`collected = true`, counter incremented). No broadcast. No refund. No queue.
+- Lanes 1/2/4/5: spell card silently dropped. Prism state is still updated (`collected = true`). No broadcast. No refund. No queue.
 - Lane 3: short-circuit at Rule 5 step 1 — seed is NOT consumed, prism is still consumed.
 
 Rationale: a full hand signals strategic abundance — the organic ceiling on WALL-park farming. Skipping seed consumption on Lane 3 hand-full keeps the audit log semantically clean (a `draw_random` entry means a card actually entered play). Non-deferred, non-refunded reward is consistent with auction "binding bid" model (you committed the unit's MP toward the spawn cell; that was the cost).
@@ -72,6 +71,8 @@ A unit that ended sub-step 5 at the spawn cell of a lane that is being respawned
 **Rule 11 — Prisms grant no gold.** The Prism System never calls into the Economy System for gold awards. The `GoldAwardReason::PrismReward` enum variant present in `network-protocol.md` (line 383) is unused and should be removed in a forthcoming Network Protocol revision (see OQ2).
 
 **Rule 12 — Lane symmetry is intentional.** Lanes 1 and 5 are mirrors (both grant `prism_strike`). Lanes 2 and 4 are mirrors (both grant `prism_reserve`). Lane 3 is unique (random draw). This symmetry is by design — the board has axial reflection over the central lane, and prism rewards reinforce that axis. It is not redundancy.
+
+**Rule 13 — Spell card play-phase constraint.** `prism_reserve` and `prism_strike` cards may be played from hand at any point during the DRAFT phase only. Attempting to play either card during PLACEMENT or RESOLUTION is rejected by the card-play validation system (owned by Card Acquisition / Round State Machine). On rejection: no state mutation occurs, no mana is deducted, no error message is sent to the client — the play attempt is silently discarded server-side.
 
 ### States and Transitions
 

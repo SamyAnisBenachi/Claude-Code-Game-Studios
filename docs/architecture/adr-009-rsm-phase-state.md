@@ -126,14 +126,14 @@ SERVER WORLD
 │  └── disconnect_trackers: HashMap<PlayerId, f32>         │
 │                                                          │
 │  rsm_tick_system                                         │
-│    reads:  MessageReader<AuctionSettled>                 │
+│    reads:  MessageReader<AuctionSettled>  (see ADR-013)  │
 │            MessageReader<ResolutionComplete>             │
 │            Lightyear OnConnected / OnDisconnected        │
 │    writes: ResMut<RoundState>                            │
 │    sends:  MessageSender<S2CPhaseChanged>  (ReliableChannel) │
 │            MessageSender<S2CGameOver>      (ReliableChannel) │
 │    fires:  MessageWriter<OnResolutionEnd>                │
-│            MessageWriter<StartAuction>                   │
+│            MessageWriter<AuctionPhaseEntered>            │
 │            MessageWriter<BeginResolution>                │
 │            MessageWriter<ApplyManaRamp>                  │
 │            MessageWriter<ApplyGoldIncome>                │
@@ -216,10 +216,12 @@ pub struct ClientPhaseView {
 // NOTE: These use #[derive(Message)] not #[derive(Event)] — see ADR-010 and
 // the Bevy 0.17+ Message/Event split. Register via app.add_message::<T>().
 
-#[derive(Message)] pub struct AuctionSettled { pub winner: Option<PlayerId>, pub winning_bid: u32 }
+// AuctionSettled: canonical shape per ADR-013 (field names updated from winning_bid)
+#[derive(Message)] pub struct AuctionSettled { pub winner: Option<PlayerId>, pub final_price: u32, pub card_id: CardId }
 #[derive(Message)] pub struct ResolutionComplete;
 #[derive(Message)] pub struct OnResolutionEnd;
-#[derive(Message)] pub struct StartAuction { pub round_number: u32 }
+// AuctionPhaseEntered: canonical name per ADR-013 (renamed from StartAuction per ADR-010)
+#[derive(Message)] pub struct AuctionPhaseEntered { pub round: u32 }
 #[derive(Message)] pub struct AbortAuction;
 #[derive(Message)] pub struct BeginResolution;
 #[derive(Message)] pub struct ApplyManaRamp { pub player: PlayerId }
