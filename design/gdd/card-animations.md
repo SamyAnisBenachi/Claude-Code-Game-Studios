@@ -124,6 +124,10 @@ Maximum acceptable latency from input to animation start.
 
 **Critical distinction:** The client never waits for a network round-trip to show response animation. "Button pressed" feedback is instantaneous; "server confirmed" feedback drives subsequent updates.
 
+**WASM note:** "0 frames" refers to 0 frames from the frame Bevy processes the input event — not from physical mouse-down. In WASM, browser input events arrive via the JS event loop with 16–50 ms of platform latency before Bevy sees them. This floor is not addressable at this layer; the 0-frame rule governs Bevy-side animation latency only.
+
+**Optimistic pending rollback:** All optimistic pending states are reversible on server rejection. Bid button disable is reversed on `S2CAuctionBidRejected` (buttons re-enable, matching the pattern for `S2CAuctionBidAccepted`). Card purchase slot desaturation is reversed on acquisition rejection. Neither state is final until the server confirmation event arrives.
+
 ---
 
 **Rule C-6 — Custom Lens Library.**
@@ -282,7 +286,7 @@ Anticipation (slight backwards before forward, squash before stretch) is **restr
 
 - **No idle animation on units at rest.** No breathing cycles, no hovering bob, no ambient particle. Units that are idle declare: "I am waiting for your decision." Motion would lie.
 - **No passive HUD animation.** Gold total, mana indicator, hand count do not pulse, glow, or shift unless their value just changed. Passive animation on resource counters creates false urgency.
-- **Cards in hand do not bob.** Fan is static at rest. Only the hovered card scales.
+- **Cards in hand do not bob.** Fan is static at rest. Only the hovered card scales. **De-hover spec:** when the cursor leaves a card, scale returns to 1.0× via `EaseOutQuad` at the same duration as hover-in (60–80 ms). If a new hover-in starts on another card before de-hover completes, the de-hover on the previous card is cancelled immediately (cancel-replace via `set_tweenable`) from its current scale value. At most one card may be in hover-scaled or hover-scaling state at any time — entering a new hover triggers cancel-replace on any other card's active hover animator.
 - **No phase-transition fanfare on routine rounds.** Phase banner slides in and out once. No pulse, no lingering, no particles.
 - **During PLACEMENT, the board is frozen.** No unit shuffle, no lane-indicator pulse, no "ready" state animation. The board is a static canvas the player is reading.
 - **No glow/bloom on unit sprites.** Style guide forbids it. Impact flashes are flat 1-frame color fills (Prism White / warm orange). The flash is the signal — glow adds nothing and breaks the cel-shaded contract.
@@ -431,7 +435,7 @@ The `damage_number_despawn` formula is defined as:
 |---|---|---|
 | Keyword System | `gdd/keyword-system.md` | Emits `DisplacementAnimRequested` (REPEL/ATTRACT), `TrapFlipRequested`, `AuraPulseRequested`. M3 scope — Board Rendering M2 placeholder tweens cover RESOLUTION until Keyword System is implemented. |
 | Combat Resolution | `gdd/combat-resolution.md` | Display contract only (no direct messages). Defines RESOLUTION animation budget and visual constants (Prism White, warm orange, 80–100 ms flip, 200–250 ms attack). Honoured by Card Animations from `GameConfig`. |
-| HUD | `gdd/hud.md` | Downstream. HUD may consume animation-driving events for gold/mana tick updates. HUD GDD (Not Started) should list Card Animations as a provider of gold counter tick animation. No reverse dependency. |
+| HUD | `gdd/hud.md` | Downstream. HUD may consume animation-driving events for gold/mana tick updates. HUD GDD (Designed — `hud.md`) should list Card Animations as a provider of gold counter tick animation. No reverse dependency. |
 
 **Downstream dependents of Card Animations:** None — terminal node in the dependency graph. All other systems fire events that Card Animations consumes; no system depends on Card Animations emitting anything.
 
@@ -529,7 +533,10 @@ Card Animations does not own any interactive panel, screen, or HUD element. It p
 | CA-17 | **GIVEN** an `AnimQueue` resource with `groups.len() == 0`, **WHEN** the `ResolutionExecuting` drain system runs and `Time<Virtual>` is advanced by `pre_animation_pause_ms`, **THEN** no tween-spawning commands are issued, no panic occurs, and `PendingPhaseChange` is drained (the buffered `S2CPhaseChanged` event is emitted after the pre-pause timer fires). Verified by asserting zero new `Animator` inserts and `PendingPhaseChange` is `None` after the tick. | BLOCKING |
 | CA-18 | **GIVEN** a unit entity requires two simultaneous `Tween<Transform>` animations (e.g., REPEL displacement and advance), **WHEN** a `Tracks<Transform>` wrapping both tweens is used, **THEN** `world.query::<&Animator<Transform>>().iter(&world).filter(|(e, _)| *e == target).count() == 1` (exactly one `Animator<Transform>` on the entity), AND both translation motions execute within one `AnimGroup` tick (verified by asserting non-zero Transform position delta on both axes after the tick). | BLOCKING |
 | CA-19 | **GIVEN** an `Animator<Transform>` reaches `TweenCompleted` on a unit entity, **WHEN** no new tween is requested, **THEN** the `Animator<Transform>` component remains on the entity. Verified via `World::get::<Animator<Transform>>(entity)` returning `Some(...)` after completion. | BLOCKING |
-| CA-20 | **GIVEN** the client app runs with `CardAnimationsPlugin`, **WHEN** each domain event is fired in a controlled test, **THEN** no "MessageReader has no receivers" warning is logged. *(Smoke test — confirms all messages registered.)* | ADVISORY |
+| CA-20 | **GIVEN** the client app runs with `CardAnimationsPlugin`, **WHEN** each domain event is fired in a controlled test, **THEN** no "EventReader has no receivers" warning is logged. *(Smoke test — confirms all events registered by upstream plugins before CardAnimationsPlugin runs.)* | ADVISORY |
+| CA-21 | **GIVEN** a PLACEMENT-phase animation (snap-back, drag-lift, or cell-highlight) is in `AnimatorState::Playing`, **WHEN** `S2CPhaseChanged(RESOLUTION)` is processed on the normal round transition path (not reconnect), **THEN** all in-flight PLACEMENT animators are no longer in `Playing` state in the same `App::update()` tick, and the entity's `Transform` is written to its board-cell base position in that same frame. Verified by querying `Animator` state post-update. | BLOCKING |
+| CA-22 | **GIVEN** a phase-change event that triggers multiple animations, **WHEN** the animation-spawning systems process the event in one `App::update()` tick, **THEN** at most 2 distinct UI regions (hand, auction panel, board, HUD — identified by top-level UI node ancestry) have new `Animator` inserts in that tick. DRAFT_INITIAL entry is compliant by design: panel slide fires in tick 1; card-draw animations fire after 350 ms (a separate tick). Verified by counting `Animator` inserts per region in a controlled phase-change test. | BLOCKING |
+| CA-23 | **GIVEN** a card in the player's hand during PLACEMENT phase, **WHEN** a drag-start input event is processed by `App::update()`, **THEN** the drag sprite entity has an `Animator` in `AnimatorState::Playing` in the same tick (0-frame Bevy-side latency). Note: WASM platform input latency (16–50 ms from physical mouse-down to Bevy event receipt) is a known floor not addressable at this layer; this AC validates Bevy-side responsiveness only. | BLOCKING |
 
 ## Open Questions
 

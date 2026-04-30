@@ -1,6 +1,6 @@
 # HUD
 
-> **Status**: In Design
+> **Status**: In Review — NEEDS RE-REVIEW (revised 2026-04-30)
 > **Author**: SamyAnisBenachi + Claude Code agents
 > **Last Updated**: 2026-04-30
 > **Implements Pillar**: No idle spectating · Simple surface
@@ -394,8 +394,8 @@ Phase label recedes via size and opacity alone (0.65×, 65% opacity). No backgro
 
 | Event | Sound feel | Notes |
 |---|---|---|
-| Phase label change (any transition) | Single dry medium-pitched wood-block tick — one hit, no reverb tail | Marks the moment without announcing it; silent for players not listening |
-| Objective dot darkening (DESTROYED) | Short low stone-thud — weight being removed from the table | Not mournful, not alarming; confirms permanent removal |
+| Phase label change (any transition except RESOLUTION) | Single dry medium-pitched wood-block tick — one hit, no reverb tail | Marks the moment without announcing it; silent for players not listening. **Exception: no tick fires on `S2CPhaseChanged(RESOLUTION)` — board audio owns all audio space during RESOLUTION (same policy as gold tween silence).** |
+| Objective dot darkening (DESTROYED) | Short low stone-thud — weight being removed from the table. **Silent during RESOLUTION** — board animation track owns all audio space; same silencing policy as gold tween silence. Stone-thud fires only when `phase ≠ RESOLUTION`. | Not mournful, not alarming; confirms permanent removal. |
 | Gold tween during RESOLUTION | **Silent** | Board animation track owns all audio space during RESOLUTION; coin ticks would compete with combat sounds |
 | GAME_OVER phase transition | Single resolved chord — two or three notes settling to tonic; no fanfare, no sting | Confirms finality without editorialising win/loss; win/loss musical differentiation belongs to the outcome screen, not HUD |
 | All other HUD events (mana update, reserve mana, phase label other than GAME_OVER) | **Silent** | Peripheral UI layer must not add audio noise to active decision phases |
@@ -434,7 +434,7 @@ Note this in the systems index for HUD when it is updated.
 
 ## Acceptance Criteria
 
-*18 BLOCKING (automatable, ECS World-based) · 3 ADVISORY (visual/manual check)*
+*25 BLOCKING (automatable, ECS World-based) · 4 ADVISORY (visual/manual check)*
 
 **Core structure**
 
@@ -456,7 +456,8 @@ confirmed by screenshot at 1280×720 and 1920×1080.
 HUD-03: Display format correctness — BLOCKING
 GIVEN HUD is in ECONOMY_BASIC mode,
 WHEN S2CGoldUpdate arrives with gold=8, current_mana=6, mana_cap=10,
-reserve_mana=2, and S2CGoldBroadcast arrives with opponent_gold=6,
+reserve_mana=2, and S2CGoldBroadcast arrives with player_id=opponent_id,
+gold=6, reserved_gold=0,
 THEN local gold label reads "8g", opponent gold label reads "6g",
 mana label reads "6 / 10", and reserve label reads "+2 reserve".
 
@@ -487,16 +488,20 @@ as real or fake; the only permitted dot states are ALIVE and DESTROYED.
 
 HUD-08: Opponent gold adaptive — BLOCKING
 GIVEN HUD is in ECONOMY_BASIC mode,
-WHEN S2CGoldBroadcast arrives with opponent_gold=7, opponent_reserved=3,
+WHEN S2CGoldBroadcast arrives with player_id=opponent_id, gold=7,
+reserved_gold=3,
 THEN opponent gold zone displays only "7g" with no reserved sub-label visible.
 GIVEN HUD enters ECONOMY_AUCTION mode via S2CPhaseChanged(DRAFT_AUCTION),
-THEN the same zone displays "7g" and "3g reserved" as two distinct label values.
+THEN the same zone displays "7g" and "3g reserved" as two distinct Text
+component entities (not a concatenated string on one label entity).
 
 HUD-09: RESOLUTION persistence — BLOCKING
 GIVEN HUD is visible and sister UIs are visible,
 WHEN S2CPhaseChanged fires for RESOLUTION,
-THEN HUD remains fully visible at unchanged visual weight, sister UIs hide,
+THEN HUD root remains `Visibility::Visible` at unchanged visual weight
 and gold label values update when S2CGoldUpdate messages arrive during resolution.
+(Sister-UI hiding requires an integration test across all presentation plugins —
+not verifiable in HudPlugin isolation.)
 
 HUD-10: GAME_OVER freeze — BLOCKING
 GIVEN HUD has gold=12g and 7 dots in their current states,
@@ -513,8 +518,15 @@ or elapsed time.
 HUD-12: Numeric tween duration — ADVISORY
 GIVEN HUD is in ECONOMY_BASIC mode,
 WHEN a gold or mana value changes,
-THEN the displayed value animates to the new number within 300ms; phase label,
-round counter, and scoreboard dot transitions are instantaneous (no tween).
+THEN the displayed value animates to the new number within 300ms; confirmed
+by elapsed-time measurement between S2CGoldUpdate receipt and final label value.
+
+HUD-12b: Phase label, round counter, and dot transitions are instantaneous — BLOCKING
+GIVEN HUD is in any visible mode,
+WHEN S2CPhaseChanged fires (any phase) or ObjectiveDestroyed fires,
+THEN the phase label text, round counter text, and affected dot visual state
+all reflect the new values within the same ECS tick — no tween, no deferred
+update, no animation component attached to these entities.
 
 HUD-13: Snapshot rebuild — BLOCKING
 GIVEN the HUD is in any state (including partially updated or stale),
@@ -547,8 +559,9 @@ value with no reserved sub-label, and HUD mode remains ECONOMY_BASIC.
 HUD-17: RESOLUTION → DRAFT_AUCTION — BLOCKING
 GIVEN HUD is in ECONOMY_BASIC mode,
 WHEN S2CPhaseChanged fires for DRAFT_AUCTION,
-THEN HUD enters ECONOMY_AUCTION, phase label reads "AUCTION", and both
-opponent gold zone and local gold zone gain their "Xg reserved" sub-labels.
+THEN HUD enters ECONOMY_AUCTION, phase label reads "AUCTION", both reserved
+sub-label entities are `Visibility::Visible`, and their text values are non-empty
+(populated from the most recent S2CGoldBroadcast reserved_gold values for each player).
 
 HUD-18: PLACEMENT → RESOLUTION — BLOCKING
 GIVEN HUD is in ECONOMY_BASIC mode with phase label "PLACEMENT",
@@ -567,23 +580,73 @@ and no subsequent message alters any displayed value.
 
 ```
 HUD-20: Same-tick S2CGoldUpdate + S2CGoldBroadcast tie-break — BLOCKING
-GIVEN S2CGoldUpdate with local_gold=15 and S2CGoldBroadcast with a
-conflicting local_gold field queue in the same ECS tick,
+GIVEN S2CGoldUpdate { gold: 15, current_mana: 0, reserve_mana: 0, mana_cap: 10 }
+and S2CGoldBroadcast { player_id: local_id, gold: 12, reserved_gold: 0 } arrive
+in the same ECS tick,
 WHEN all HUD update systems complete,
 THEN the local gold label reads "15g", confirming the system execution order
 declared in HudPlugin resolves the conflict in favour of S2CGoldUpdate.
 
 HUD-21: Mana cap denominator update — BLOCKING
+
 GIVEN the mana display reads "4 / 8",
 WHEN S2CGoldUpdate arrives with current_mana=4, mana_cap=10,
 THEN the mana label updates to "4 / 10"; numerator is unchanged;
 reserve label remains hidden if reserve_mana=0.
+
+HUD-22: Round counter format — BLOCKING
+GIVEN HUD is in any visible, non-LOBBY phase,
+WHEN S2CPhaseChanged arrives with round_number=9,
+THEN the round counter label component reads exactly "R9" (not "9", not
+"Round 9", not "R09"); verified by querying the Text component on the round
+counter entity.
+
+HUD-23: Round counter visible at GAME_OVER — BLOCKING
+GIVEN the round counter displayed "R14" during RESOLUTION,
+WHEN S2CPhaseChanged fires for GAME_OVER,
+THEN the round counter entity remains Visibility::Visible and its Text
+component reads "R14"; it is not hidden, despawned, or overwritten by the
+phase transition.
+
+HUD-24: HUD root hidden at LOBBY — BLOCKING
+GIVEN HUD has been initialized (all entities pre-spawned),
+WHEN no S2CPhaseChanged has been received (or the most recent phase was LOBBY),
+THEN the HUD root Node entity has Visibility::Hidden; this is distinct from
+HUD-05 which only asserts phase label text content.
+
+HUD-25: Cold-start placeholder display — BLOCKING
+GIVEN S2CPhaseChanged(DRAFT_INITIAL) has been received,
+WHEN no S2CGoldUpdate has yet arrived,
+THEN the local gold label reads "--g" and the mana label reads "-- / --";
+neither reads "0g" nor "0 / 0" (which are valid runtime values and must not
+be shown before the server has confirmed economy state).
+
+HUD-26: Duplicate ObjectiveDestroyed idempotency — BLOCKING
+GIVEN dots[opponent][2] (lane 3, 0-indexed) is already in DESTROYED state,
+WHEN ObjectiveDestroyed fires again with target_player_id=opponent, lane=3,
+THEN the dot entity's state is unchanged, no ECS component is re-written,
+and no panic, error event, or spurious output is emitted.
+
+HUD-27: FROZEN snapshot bypass — BLOCKING
+GIVEN HUD is in FROZEN mode (S2CPhaseChanged(GAME_OVER) was received and all
+labels show their final values),
+WHEN S2CGameSnapshot arrives (simulating reconnect at GAME_OVER),
+THEN the HUD runs a full rebuild from snapshot per Rule 13, then immediately
+re-enters FROZEN; all label values reflect the snapshot state; a subsequent
+S2CGoldUpdate with a different gold value does not alter the local gold label.
+
+HUD-28: Reserved sub-label uses distinct entities — ADVISORY
+GIVEN HUD has entered ECONOMY_AUCTION mode and S2CGoldBroadcast arrives
+with player_id=opponent_id, gold=7, reserved_gold=3,
+THEN querying all Text components on entities in the opponent gold zone returns
+at least two distinct entities — one reading "7g" and one reading "3g reserved"
+— confirming the zone is not implemented as a single concatenated label.
 ```
 
 ## Open Questions
 
 | ID | Question | Owner | Status |
 |---|---|---|---|
-| OQ-HUD-01 | **Disconnect/pause indicator.** When a player is in the 30-second disconnect grace window, the game is paused server-side. HUD has no message to consume for "session paused" state — `S2CSessionPaused` / `S2CSessionResumed` are not in the network registry. Without such a message, HUD cannot show a "Waiting for opponent…" badge. Should the Network Protocol GDD define this message, and should HUD own it or a separate notification layer? | Network Protocol GDD + Game Session System GDD | Open |
-| OQ-HUD-02 | **Local player real/fake opt-in display.** Section C Rule 7 hides real/fake on the local row to prevent screen-share leaks. A potential M3 settings flag could let the player reveal their own real/fake on their own scoreboard row (info they already know). Is this worth designing in M3, or cut entirely? | Design / M3 scope review | Open |
+| OQ-HUD-01 | **Disconnect/pause indicator — reclassified as gameplay correctness gap.** During the 30-second disconnect grace window, client-side phase timers (PLACEMENT, DRAFT_AUCTION) continue countdown. When PLACEMENT timer expires, Hand UI fires its timeout action locally — but the server is paused and may reject or ignore the placement. `S2CSessionPaused` / `S2CSessionResumed` must be defined in `network-protocol.md` before any timer-bearing phase can be safely implemented. HUD owns the "Waiting for opponent…" badge (not a separate layer). This OQ is **blocking on Network Protocol GDD** — not a UX deferral. | Network Protocol GDD (blocking) | Open — NP GDD amendment required |
+| OQ-HUD-02 | **Local player real/fake opt-in display — DESIGN REJECTED.** A settings flag would recreate the screen-share leak (the reason Rule 7 exists) for any player who enables it, and would create a behavioural distortion toward defensive real-objective protection rather than bluffing with fakes. Rule 7's screen-share protection rationale is sufficient; the opt-in undermines it by design. | Design | Closed — Rejected |
 | OQ-HUD-03 | **GAME_OVER summary screen.** Section C Rule 10 defers retroactive real/fake revelation to a post-game summary screen not yet specified. When is this GDD'd? Does HUD hand off any state to the summary screen, or does the summary screen rebuild from `S2CGameSnapshot`? | Future GDD (post-game flow / M3) | Open |
