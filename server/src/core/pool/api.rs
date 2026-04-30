@@ -11,10 +11,18 @@
 
 use std::collections::HashMap;
 
-use shared::card::{CardCatalog, CardId, Rarity, EPIC_POOL_COPIES, LEGENDARY_POOL_COPIES};
+use shared::card::{CardCatalog, CardId, ClassId, Rarity, EPIC_POOL_COPIES, LEGENDARY_POOL_COPIES};
 use shared::config::GameConfig;
 
-use crate::core::pool::state::{DistributeError, PlayerPool};
+use crate::core::pool::state::{DistributeError, PlayerPool, PoolFilter};
+
+/// Formula 2 weight output for one eligible draw type.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct ComputedWeight {
+    pub card_id: CardId,
+    pub raw_weight: f32,
+    pub normalized_weight: f32,
+}
 
 impl PlayerPool {
     /// Build a new pool from the catalog.
@@ -61,10 +69,10 @@ impl PlayerPool {
     /// is a load-bearing design pillar (card-data-pool.md Player Fantasy).
     fn rarity_copies(rarity: Rarity, config: &GameConfig) -> u32 {
         match rarity {
-            Rarity::Common    => config.common_pool_copies,
-            Rarity::Uncommon  => config.uncommon_pool_copies,
-            Rarity::Rare      => config.rare_pool_copies,
-            Rarity::Epic      => EPIC_POOL_COPIES,
+            Rarity::Common => config.common_pool_copies,
+            Rarity::Uncommon => config.uncommon_pool_copies,
+            Rarity::Rare => config.rare_pool_copies,
+            Rarity::Epic => EPIC_POOL_COPIES,
             Rarity::Legendary => LEGENDARY_POOL_COPIES,
         }
     }
@@ -90,9 +98,169 @@ impl PlayerPool {
     /// Derived: `initial_count[id] - copies_remaining[id]`. No separate field.
     /// Returns 0 for unknown `card_id`.
     pub fn total_acquired(&self, card_id: CardId) -> u32 {
-        let initial   = self.initial_count.get(&card_id).copied().unwrap_or(0);
+        let initial = self.initial_count.get(&card_id).copied().unwrap_or(0);
         let remaining = self.copies_remaining.get(&card_id).copied().unwrap_or(0);
         initial.saturating_sub(remaining)
+    }
+
+    // ─── Draw functions ─────────────────────────────────────────────────────
+
+    /// Draw distinct card IDs for the initial draft offering.
+    ///
+    /// Eligible set is catalog-based: cards from `class` plus all Neutral cards.
+    /// This function never calls `distribute()`, so copy counts are unchanged.
+    pub fn draw_initial_draft(
+        &self,
+        catalog: &CardCatalog,
+        class: ClassId,
+        count: u8,
+        seed: u64,
+    ) -> Vec<CardId> {
+        let mut eligible: Vec<CardId> = catalog
+            .iter()
+            .filter(|(_, card)| card.class == class || card.class == ClassId::Neutral)
+            .map(|(id, _)| *id)
+            .collect();
+        eligible.sort_by_key(|id| id.0);
+
+        use rand::seq::SliceRandom;
+        use rand::SeedableRng;
+        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(seed);
+        eligible.shuffle(&mut rng);
+        eligible.into_iter().take(count as usize).collect()
+    }
+
+    /// Weighted draw for a class shop slot.
+    ///
+    /// Eligible cards must match `player_class` and have at least one copy
+    /// remaining. Returns `None` when the class subset is exhausted.
+    pub fn draw_class_card(
+        &self,
+        catalog: &CardCatalog,
+        player_class: ClassId,
+        seed: u64,
+        config: &GameConfig,
+    ) -> Option<CardId> {
+        let mut eligible: Vec<CardId> = catalog
+            .iter()
+            .filter(|(id, card)| card.class == player_class && self.copies_remaining(**id) > 0)
+            .map(|(id, _)| *id)
+            .collect();
+        eligible.sort_by_key(|id| id.0);
+
+        let weights = compute_weights(&eligible, self, config);
+        let index = weighted_cdf_select(
+            &weights
+                .iter()
+                .map(|w| w.normalized_weight)
+                .collect::<Vec<_>>(),
+            seed,
+        )?;
+        eligible.get(index).copied()
+    }
+
+    /// Weighted draw over eligible Neutral families.
+    ///
+    /// The weight unit is the family, with `total_acquired` aggregated across
+    /// all cards in that family. Returns `None` when every neutral family is
+    /// exhausted.
+    pub fn draw_neutral_family(
+        &self,
+        catalog: &CardCatalog,
+        family_index: &HashMap<String, Vec<CardId>>,
+        seed: u64,
+        config: &GameConfig,
+    ) -> Option<String> {
+        let mut eligible: Vec<(String, u32)> = family_index
+            .iter()
+            .filter_map(|(family, ids)| {
+                let has_available_neutral = ids.iter().any(|id| {
+                    catalog.get(id).is_some_and(|card| {
+                        card.class == ClassId::Neutral && self.copies_remaining(*id) > 0
+                    })
+                });
+                if !has_available_neutral {
+                    return None;
+                }
+
+                let acquired = ids.iter().map(|id| self.total_acquired(*id)).sum();
+                Some((family.clone(), acquired))
+            })
+            .collect();
+        eligible.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let raw_weights = compute_raw_weights(
+            eligible.len(),
+            eligible.iter().map(|(_, acquired)| *acquired),
+            config,
+        );
+        let normalized = normalize_weights(&raw_weights);
+        let index = weighted_cdf_select(&normalized, seed)?;
+        eligible.get(index).map(|(family, _)| family.clone())
+    }
+
+    /// Uniformly draw one available card from a previously selected family.
+    pub fn draw_family_card(
+        &self,
+        family: &str,
+        catalog: &CardCatalog,
+        family_index: &HashMap<String, Vec<CardId>>,
+        seed: u64,
+    ) -> Option<CardId> {
+        let mut eligible: Vec<CardId> = family_index
+            .get(family)?
+            .iter()
+            .copied()
+            .filter(|id| {
+                catalog.get(id).is_some_and(|card| {
+                    card.class == ClassId::Neutral && self.copies_remaining(*id) > 0
+                })
+            })
+            .collect();
+        eligible.sort_by_key(|id| id.0);
+        uniform_select(&eligible, seed)
+    }
+
+    /// Uniformly draw from the shared neutral auction pool.
+    ///
+    /// Eligible cards are Neutral Rare and Neutral Legendary only. The auction
+    /// system owns when to call `distribute()` on the shared pool.
+    pub fn draw_auction_card(
+        auction_pool: &PlayerPool,
+        catalog: &CardCatalog,
+        seed: u64,
+    ) -> Option<CardId> {
+        let mut eligible: Vec<CardId> = catalog
+            .iter()
+            .filter(|(id, card)| {
+                card.class == ClassId::Neutral
+                    && matches!(card.rarity, Rarity::Rare | Rarity::Legendary)
+                    && auction_pool.copies_remaining(**id) > 0
+            })
+            .map(|(id, _)| *id)
+            .collect();
+        eligible.sort_by_key(|id| id.0);
+        uniform_select(&eligible, seed)
+    }
+
+    /// Uniformly draw an available card matching `filter`.
+    ///
+    /// This function is read-only and never calls `distribute()`.
+    pub fn draw_random(
+        &self,
+        catalog: &CardCatalog,
+        filter: &PoolFilter,
+        seed: u64,
+    ) -> Option<CardId> {
+        let mut eligible: Vec<CardId> = self
+            .copies_remaining
+            .iter()
+            .filter(|(_, remaining)| **remaining > 0)
+            .filter(|(id, _)| matches_filter(id, catalog, filter))
+            .map(|(id, _)| *id)
+            .collect();
+        eligible.sort_by_key(|id| id.0);
+        uniform_select(&eligible, seed)
     }
 
     // ─── Mutation ─────────────────────────────────────────────────────────────
@@ -105,11 +273,129 @@ impl PlayerPool {
     /// Never decrements below 0.
     pub fn distribute(&mut self, card_id: CardId) -> Result<(), DistributeError> {
         match self.copies_remaining.get_mut(&card_id) {
-            None              => Err(DistributeError::UnknownCard),
+            None => Err(DistributeError::UnknownCard),
             Some(n) if *n == 0 => Err(DistributeError::Exhausted),
-            Some(n)           => { *n -= 1; Ok(()) }
+            Some(n) => {
+                *n -= 1;
+                Ok(())
+            }
         }
     }
+}
+
+/// Compute Formula 2 raw and normalized weights for eligible card IDs.
+pub(crate) fn compute_weights(
+    eligible: &[CardId],
+    pool: &PlayerPool,
+    config: &GameConfig,
+) -> Vec<ComputedWeight> {
+    let raw_weights = compute_raw_weights(
+        eligible.len(),
+        eligible.iter().map(|id| pool.total_acquired(*id)),
+        config,
+    );
+    let normalized = normalize_weights(&raw_weights);
+
+    eligible
+        .iter()
+        .copied()
+        .zip(raw_weights.into_iter().zip(normalized))
+        .map(
+            |(card_id, (raw_weight, normalized_weight))| ComputedWeight {
+                card_id,
+                raw_weight,
+                normalized_weight,
+            },
+        )
+        .collect()
+}
+
+fn compute_raw_weights(
+    eligible_count: usize,
+    acquired_counts: impl IntoIterator<Item = u32>,
+    config: &GameConfig,
+) -> Vec<f32> {
+    if eligible_count == 0 {
+        return Vec::new();
+    }
+
+    let base_weight = 1.0_f32 / eligible_count as f32;
+    acquired_counts
+        .into_iter()
+        .map(|acquired| {
+            (base_weight + config.shop_weight_per_card * acquired as f32)
+                .clamp(0.0, config.shop_weight_cap)
+        })
+        .collect()
+}
+
+fn normalize_weights(raw_weights: &[f32]) -> Vec<f32> {
+    let total: f32 = raw_weights.iter().sum();
+    if total <= 0.0 {
+        return vec![0.0; raw_weights.len()];
+    }
+    raw_weights.iter().map(|weight| weight / total).collect()
+}
+
+fn weighted_cdf_select(normalized_weights: &[f32], seed: u64) -> Option<usize> {
+    if normalized_weights.is_empty() {
+        return None;
+    }
+
+    use rand::Rng;
+    use rand::SeedableRng;
+    let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(seed);
+    let draw = rng.gen_range(0.0_f32..1.0_f32);
+    let mut cumulative = 0.0_f32;
+
+    for (index, weight) in normalized_weights.iter().enumerate() {
+        cumulative += *weight;
+        if draw <= cumulative {
+            return Some(index);
+        }
+    }
+
+    Some(normalized_weights.len() - 1)
+}
+
+fn uniform_select(eligible: &[CardId], seed: u64) -> Option<CardId> {
+    if eligible.is_empty() {
+        return None;
+    }
+
+    use rand::Rng;
+    use rand::SeedableRng;
+    let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(seed);
+    let index = rng.gen_range(0..eligible.len());
+    eligible.get(index).copied()
+}
+
+fn matches_filter(id: &CardId, catalog: &CardCatalog, filter: &PoolFilter) -> bool {
+    let Some(card) = catalog.get(id) else {
+        return false;
+    };
+
+    if let Some(card_type) = filter.card_type {
+        if card.card_type != card_type {
+            return false;
+        }
+    }
+    if let Some(class) = filter.class {
+        if card.class != class {
+            return false;
+        }
+    }
+    if let Some(ref rarities) = filter.rarity {
+        if !rarities.contains(&card.rarity) {
+            return false;
+        }
+    }
+    if let Some(max_cost) = filter.max_cost {
+        if card.cost > max_cost {
+            return false;
+        }
+    }
+    true
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -118,22 +404,41 @@ impl PlayerPool {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use super::compute_weights;
+    use crate::core::pool::state::{DistributeError, PlayerPool, PoolFilter};
     use shared::card::{CardCatalog, CardData, CardId, CardType, ClassId, Rarity, UnitType};
     use shared::config::GameConfig;
-    use crate::core::pool::state::{DistributeError, PlayerPool};
+    use std::collections::HashMap;
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     fn make_card(id: u32, rarity: Rarity, override_copies: Option<i32>) -> CardData {
+        make_card_with(
+            id,
+            ClassId::Iop,
+            None,
+            rarity,
+            CardType::Minion,
+            override_copies,
+        )
+    }
+
+    fn make_card_with(
+        id: u32,
+        class: ClassId,
+        family: Option<&str>,
+        rarity: Rarity,
+        card_type: CardType,
+        override_copies: Option<i32>,
+    ) -> CardData {
         CardData {
             id: CardId(id),
             name_fr: format!("Carte {id}"),
             name_en: format!("Card {id}"),
-            class: ClassId::Iop,
-            family: None,
+            class,
+            family: family.map(String::from),
             rarity,
-            card_type: CardType::Minion,
+            card_type,
             unit_type: UnitType::Blade,
             cost: 1,
             atk: 1,
@@ -156,15 +461,22 @@ mod tests {
         // default: common=6, uncommon=5, rare=4, epic=1(const), legendary=1(const)
     }
 
+    fn family_index(entries: Vec<(&str, Vec<CardId>)>) -> HashMap<String, Vec<CardId>> {
+        entries
+            .into_iter()
+            .map(|(family, ids)| (family.to_string(), ids))
+            .collect()
+    }
+
     // ─── AC-1: initialize_catalog_length ──────────────────────────────────────
 
     #[test]
     fn test_pool_initialize_catalog_length() {
         let catalog = make_catalog(vec![
-            make_card(1, Rarity::Common,    None),
-            make_card(2, Rarity::Uncommon,  None),
-            make_card(3, Rarity::Rare,      None),
-            make_card(4, Rarity::Epic,      None),
+            make_card(1, Rarity::Common, None),
+            make_card(2, Rarity::Uncommon, None),
+            make_card(3, Rarity::Rare, None),
+            make_card(4, Rarity::Epic, None),
             make_card(5, Rarity::Legendary, None),
         ]);
         let pool = PlayerPool::initialize(&catalog, &default_config());
@@ -185,10 +497,10 @@ mod tests {
     #[test]
     fn test_pool_initialize_all_cards_have_copies() {
         let catalog = make_catalog(vec![
-            make_card(1, Rarity::Common,    None),
-            make_card(2, Rarity::Uncommon,  None),
-            make_card(3, Rarity::Rare,      None),
-            make_card(4, Rarity::Epic,      None),
+            make_card(1, Rarity::Common, None),
+            make_card(2, Rarity::Uncommon, None),
+            make_card(3, Rarity::Rare, None),
+            make_card(4, Rarity::Epic, None),
             make_card(5, Rarity::Legendary, None),
         ]);
         let pool = PlayerPool::initialize(&catalog, &default_config());
@@ -198,7 +510,10 @@ mod tests {
         assert_eq!(pool.copies_remaining(CardId(4)), 1); // Epic (const)
         assert_eq!(pool.copies_remaining(CardId(5)), 1); // Legendary (const)
         for id in [1u32, 2, 3, 4, 5] {
-            assert!(pool.copies_remaining(CardId(id)) >= 1, "card {id} must have >= 1 copy");
+            assert!(
+                pool.copies_remaining(CardId(id)) >= 1,
+                "card {id} must have >= 1 copy"
+            );
         }
     }
 
@@ -350,8 +665,8 @@ mod tests {
         pool.distribute(CardId(1)).unwrap(); // K = 3
 
         assert_eq!(*pool.initial_count.get(&CardId(1)).unwrap(), 4); // unchanged
-        assert_eq!(pool.copies_remaining(CardId(1)), 1);              // N - K
-        assert_eq!(pool.total_acquired(CardId(1)), 3);                // K
+        assert_eq!(pool.copies_remaining(CardId(1)), 1); // N - K
+        assert_eq!(pool.total_acquired(CardId(1)), 3); // K
     }
 
     #[test]
@@ -369,5 +684,409 @@ mod tests {
         pool.distribute(CardId(1)).unwrap();
         assert_eq!(pool.total_acquired(CardId(1)), 2);
         assert_eq!(pool.copies_remaining(CardId(1)), 0);
+    }
+
+    #[test]
+    fn test_draw_class_card_all_exhausted_returns_none() {
+        let catalog = make_catalog(vec![
+            make_card_with(
+                1,
+                ClassId::Iop,
+                None,
+                Rarity::Common,
+                CardType::Minion,
+                Some(1),
+            ),
+            make_card_with(
+                2,
+                ClassId::Iop,
+                None,
+                Rarity::Common,
+                CardType::Minion,
+                Some(1),
+            ),
+            make_card_with(
+                3,
+                ClassId::Neutral,
+                Some("Gobball"),
+                Rarity::Common,
+                CardType::Minion,
+                Some(1),
+            ),
+        ]);
+        let mut pool = PlayerPool::initialize(&catalog, &default_config());
+        pool.distribute(CardId(1)).unwrap();
+        pool.distribute(CardId(2)).unwrap();
+
+        for seed in 0..100 {
+            assert_eq!(
+                pool.draw_class_card(&catalog, ClassId::Iop, seed, &default_config()),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn test_draw_class_card_returns_correct_class() {
+        let catalog = make_catalog(
+            (1..=5)
+                .map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Iop,
+                        None,
+                        Rarity::Common,
+                        CardType::Minion,
+                        None,
+                    )
+                })
+                .chain(std::iter::once(make_card_with(
+                    100,
+                    ClassId::Neutral,
+                    Some("Gobball"),
+                    Rarity::Common,
+                    CardType::Minion,
+                    None,
+                )))
+                .collect(),
+        );
+        let pool = PlayerPool::initialize(&catalog, &default_config());
+
+        for seed in 0..20 {
+            let id = pool
+                .draw_class_card(&catalog, ClassId::Iop, seed, &default_config())
+                .expect("eligible Iop card should be drawn");
+            let card = catalog.get(&id).expect("drawn id must exist in catalog");
+            assert_eq!(card.class, ClassId::Iop);
+            assert!(pool.copies_remaining(id) >= 1);
+        }
+    }
+
+    #[test]
+    fn test_draw_neutral_family_then_draw_family_card() {
+        let catalog = make_catalog(vec![
+            make_card_with(
+                1,
+                ClassId::Neutral,
+                Some("Gobball"),
+                Rarity::Common,
+                CardType::Minion,
+                Some(2),
+            ),
+            make_card_with(
+                2,
+                ClassId::Neutral,
+                Some("Gobball"),
+                Rarity::Common,
+                CardType::Minion,
+                Some(2),
+            ),
+            make_card_with(
+                3,
+                ClassId::Neutral,
+                Some("Gobball"),
+                Rarity::Common,
+                CardType::Minion,
+                Some(2),
+            ),
+        ]);
+        let pool = PlayerPool::initialize(&catalog, &default_config());
+        let families = family_index(vec![("Gobball", vec![CardId(1), CardId(2), CardId(3)])]);
+
+        let family = pool
+            .draw_neutral_family(&catalog, &families, 1, &default_config())
+            .expect("Gobball family should be eligible");
+        assert_eq!(family, "Gobball");
+        let card_id = pool
+            .draw_family_card(&family, &catalog, &families, 2)
+            .expect("Gobball card should be drawable");
+        let card = catalog
+            .get(&card_id)
+            .expect("drawn id must exist in catalog");
+        assert_eq!(card.class, ClassId::Neutral);
+        assert_eq!(card.family.as_deref(), Some("Gobball"));
+        assert!(pool.copies_remaining(card_id) >= 1);
+    }
+
+    #[test]
+    fn test_normalized_weights_sum_to_one() {
+        let catalog = make_catalog(
+            (1..=25)
+                .map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Iop,
+                        None,
+                        Rarity::Common,
+                        CardType::Minion,
+                        Some(4),
+                    )
+                })
+                .collect(),
+        );
+        let mut pool = PlayerPool::initialize(&catalog, &default_config());
+        for id in [CardId(1), CardId(2), CardId(3)] {
+            pool.distribute(id).unwrap();
+            pool.distribute(id).unwrap();
+        }
+
+        let eligible: Vec<CardId> = (1..=25).map(CardId).collect();
+        let weights = compute_weights(&eligible, &pool, &default_config());
+        let total: f32 = weights.iter().map(|weight| weight.normalized_weight).sum();
+        assert!((total - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_draw_auction_card_exhausted_returns_none() {
+        let catalog = make_catalog(vec![
+            make_card_with(
+                1,
+                ClassId::Neutral,
+                Some("Gobball"),
+                Rarity::Rare,
+                CardType::Minion,
+                Some(1),
+            ),
+            make_card_with(
+                2,
+                ClassId::Neutral,
+                Some("Tofu"),
+                Rarity::Legendary,
+                CardType::Minion,
+                Some(1),
+            ),
+            make_card_with(
+                3,
+                ClassId::Neutral,
+                Some("Piwi"),
+                Rarity::Common,
+                CardType::Minion,
+                Some(1),
+            ),
+            make_card_with(
+                4,
+                ClassId::Neutral,
+                Some("Wabbit"),
+                Rarity::Epic,
+                CardType::Minion,
+                Some(1),
+            ),
+            make_card_with(
+                5,
+                ClassId::Iop,
+                None,
+                Rarity::Rare,
+                CardType::Minion,
+                Some(1),
+            ),
+        ]);
+        let mut pool = PlayerPool::initialize(&catalog, &default_config());
+        pool.distribute(CardId(1)).unwrap();
+        pool.distribute(CardId(2)).unwrap();
+
+        assert_eq!(PlayerPool::draw_auction_card(&pool, &catalog, 42), None);
+    }
+
+    #[test]
+    fn test_draw_random_exhausted_filter_returns_none() {
+        let catalog = make_catalog(vec![
+            make_card_with(
+                1,
+                ClassId::Neutral,
+                Some("Tofu"),
+                Rarity::Legendary,
+                CardType::Minion,
+                Some(1),
+            ),
+            make_card_with(
+                2,
+                ClassId::Neutral,
+                Some("Gobball"),
+                Rarity::Rare,
+                CardType::Minion,
+                Some(1),
+            ),
+        ]);
+        let mut pool = PlayerPool::initialize(&catalog, &default_config());
+        pool.distribute(CardId(1)).unwrap();
+        let before = pool.copies_remaining.clone();
+        let filter = PoolFilter {
+            class: Some(ClassId::Neutral),
+            rarity: Some(vec![Rarity::Legendary]),
+            ..Default::default()
+        };
+
+        assert_eq!(pool.draw_random(&catalog, &filter, 42), None);
+        assert_eq!(pool.copies_remaining, before);
+    }
+
+    #[test]
+    fn test_draw_initial_draft_9_distinct_ids() {
+        let catalog = make_catalog(
+            (1..=15)
+                .map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Iop,
+                        None,
+                        Rarity::Common,
+                        CardType::Minion,
+                        None,
+                    )
+                })
+                .chain((100..105).map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Neutral,
+                        Some("Gobball"),
+                        Rarity::Common,
+                        CardType::Minion,
+                        None,
+                    )
+                }))
+                .collect(),
+        );
+        let pool = PlayerPool::initialize(&catalog, &default_config());
+        let draft = pool.draw_initial_draft(&catalog, ClassId::Iop, 9, 42);
+        let distinct: std::collections::HashSet<CardId> = draft.iter().copied().collect();
+
+        assert_eq!(draft.len(), 9);
+        assert_eq!(distinct.len(), 9);
+    }
+
+    #[test]
+    fn test_draw_initial_draft_class_and_neutral_only() {
+        let catalog = make_catalog(
+            (1..=9)
+                .map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Iop,
+                        None,
+                        Rarity::Common,
+                        CardType::Minion,
+                        None,
+                    )
+                })
+                .chain((100..109).map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Neutral,
+                        Some("Gobball"),
+                        Rarity::Common,
+                        CardType::Minion,
+                        None,
+                    )
+                }))
+                .chain((200..209).map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Cra,
+                        None,
+                        Rarity::Common,
+                        CardType::Minion,
+                        None,
+                    )
+                }))
+                .collect(),
+        );
+        let pool = PlayerPool::initialize(&catalog, &default_config());
+        let draft = pool.draw_initial_draft(&catalog, ClassId::Iop, 9, 42);
+
+        assert_eq!(draft.len(), 9);
+        for id in draft {
+            let card = catalog.get(&id).expect("draft id must exist");
+            assert!(matches!(card.class, ClassId::Iop | ClassId::Neutral));
+        }
+    }
+
+    #[test]
+    fn test_draw_initial_draft_does_not_call_distribute() {
+        let catalog = make_catalog(
+            (1..=10)
+                .map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Iop,
+                        None,
+                        Rarity::Common,
+                        CardType::Minion,
+                        None,
+                    )
+                })
+                .collect(),
+        );
+        let pool = PlayerPool::initialize(&catalog, &default_config());
+        let before = pool.copies_remaining.clone();
+        let draft = pool.draw_initial_draft(&catalog, ClassId::Iop, 9, 42);
+
+        assert_eq!(draft.len(), 9);
+        assert_eq!(pool.copies_remaining, before);
+    }
+
+    #[test]
+    fn test_formula2_raw_weight_at_3_owned() {
+        let catalog = make_catalog(
+            (1..=25)
+                .map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Iop,
+                        None,
+                        Rarity::Common,
+                        CardType::Minion,
+                        Some(10),
+                    )
+                })
+                .collect(),
+        );
+        let mut pool = PlayerPool::initialize(&catalog, &default_config());
+        for _ in 0..3 {
+            pool.distribute(CardId(1)).unwrap();
+        }
+
+        let eligible: Vec<CardId> = (1..=25).map(CardId).collect();
+        let weights = compute_weights(&eligible, &pool, &default_config());
+        let target = weights
+            .iter()
+            .find(|weight| weight.card_id == CardId(1))
+            .expect("target weight exists");
+
+        assert!((target.raw_weight - 0.34).abs() < 1e-6);
+        assert!((target.normalized_weight - 0.2615).abs() < 1e-4);
+        for other in weights.iter().filter(|weight| weight.card_id != CardId(1)) {
+            assert!(target.normalized_weight > other.normalized_weight);
+        }
+    }
+
+    #[test]
+    fn test_formula2_weight_clamped_at_cap() {
+        let catalog = make_catalog(
+            (1..=25)
+                .map(|id| {
+                    make_card_with(
+                        id,
+                        ClassId::Iop,
+                        None,
+                        Rarity::Common,
+                        CardType::Minion,
+                        Some(10),
+                    )
+                })
+                .collect(),
+        );
+        let mut pool = PlayerPool::initialize(&catalog, &default_config());
+        for _ in 0..7 {
+            pool.distribute(CardId(1)).unwrap();
+        }
+
+        let eligible: Vec<CardId> = (1..=25).map(CardId).collect();
+        let weights = compute_weights(&eligible, &pool, &default_config());
+        let target = weights
+            .iter()
+            .find(|weight| weight.card_id == CardId(1))
+            .expect("target weight exists");
+
+        assert!((target.raw_weight - 0.65).abs() < 1e-6);
     }
 }
