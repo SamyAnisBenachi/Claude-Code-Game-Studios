@@ -30,7 +30,7 @@ The timer never stops. It only slows. Every accepted bid resets it — not by mu
 ### Core Rules
 
 **Rule 1 — Auction trigger**
-The Auction System receives a `StartAuction(round_number)` Bevy Message from the RSM on DRAFT_AUCTION entry. This is the sole trigger. The Auction System does not evaluate `is_auction_round` — that logic belongs to the RSM. **Guard:** If `StartAuction` arrives in any state other than `IDLE`, it is silently discarded and a server error is logged. This indicates a bug in the RSM.
+The Auction System receives an `AuctionPhaseEntered { round }` Bevy Message from the RSM on DRAFT_AUCTION entry. This is the sole trigger. The Auction System does not evaluate `is_auction_round` — that logic belongs to the RSM. **Guard:** If `AuctionPhaseEntered` arrives in any state other than `IDLE`, it is silently discarded and a server error is logged. This indicates a bug in the RSM.
 
 **Rule 2 — Card selection**
 On receiving `StartAuction`:
@@ -45,7 +45,7 @@ On receiving `StartAuction`:
 **Legendary pool stratification:** Legendary cards do not enter the auction draw pool until Round 6 (the second auction). At Round 3 (first auction), only Rare (and Epic, once designed) cards are eligible draws. Rationale: the minimum first bid on a Legendary is 6g, but typical round-3 gold after spending is 5–10g — making a round-3 Legendary effectively aspirational and likely to produce a no-bid outcome. The stratification ensures the first auction is always a meaningful economic decision, not an unreachable card. `draw_auction_card()` must filter by `round_number`: pass `eligible_rarities` based on this rule.
 
 **Rule 3 — Auction announcement (ordering invariant)**
-Before the RSM sends `S2CPhaseChanged(DRAFT_AUCTION)`, the Auction System broadcasts `S2CAuctionCard { card_id, starting_price }` on the reliable channel. This is an invariant — clients must know which card is being auctioned before they enter the DRAFT_AUCTION UI state. The RSM phase entry sequence (F2 Step 4/5) enforces this: `StartAuction` fires and the Auction System handles it fully before `S2CPhaseChanged` is sent.
+Before the RSM sends `S2CPhaseChanged(DRAFT_AUCTION)`, the Auction System broadcasts `S2CAuctionCard { card_id, starting_price }` on the reliable channel. This is an invariant — clients must know which card is being auctioned before they enter the DRAFT_AUCTION UI state. The RSM phase entry sequence (F2 Step 4/5) enforces this: `AuctionPhaseEntered` fires and the Auction System handles it fully before `S2CPhaseChanged` is sent.
 
 **Rule 4 — Bid validation**
 A `C2SPlaceBid { amount }` is accepted if and only if ALL of the following hold:
@@ -151,7 +151,7 @@ IDLE ──► SELECTING ──► LIVE_BIDDING ──► RESOLVING ──► ID
 
 | System | Direction | Interface |
 |---|---|---|
-| **Round State Machine** | Bidirectional | RSM → Auction: `StartAuction(round_number)` Bevy Message; `AbortAuction` Bevy Message. Auction → RSM: `AuctionSettled { winner: Option<PlayerId>, amount: u32 }` Bevy Message. `AuctionSettled` is NOT fired on AbortAuction. |
+| **Round State Machine** | Bidirectional | RSM → Auction: `AuctionPhaseEntered { round: u32 }` Bevy Message; `AbortAuction` Bevy Message. Auction → RSM: `AuctionSettled { winner: Option<PlayerId>, final_price: u32, card_id: CardId }` Bevy Message. `AuctionSettled` is NOT fired on AbortAuction. See ADR-013. |
 | **Economy System** | Auction → Economy | `can_afford_bid(player, amount)` — read-only bid check; `reserve_gold(player, amount)` — on new leader; `release_gold_reservation(player)` — on outbid or AbortAuction; `spend_reserved_gold(player)` — on win (deducts reserved, zeroes reservation; does not re-validate affordability). |
 | **Card Data & Pool** | Auction → Pool | `draw_auction_card()` — draws one neutral Rare/Epic/Legendary using the Server RNG SHOP chain, calls `distribute(card_id)` unconditionally at draw time. Card is permanently consumed from the shared neutral auction pool regardless of whether it is won or not. |
 | **Network Protocol / Lightyear** | Auction → Protocol | Broadcasts: `S2CAuctionCard` (before `S2CPhaseChanged`), `S2CAuctionBidAccepted`, `S2CAuctionSettled`. Unicasts: `S2CAuctionBidRejected` (bidder only), `S2CCardAcquired` (winner only). Receives: `C2SPlaceBid`. `S2CGoldBroadcast { player_id, gold, reserved_gold }` is fired by the Economy System on every auction-related gold mutation (`reserve_gold`, `release_gold_reservation`, `spend_reserved_gold`). The `reserved_gold` field is required so opponents can compute free gold (`gold - reserved_gold`) — the figure the Player Fantasy depends on. `S2CGoldBroadcast` now includes `reserved_gold: u32` (updated in network-protocol.md 2026-04-29 re-review). |
@@ -258,7 +258,7 @@ timer_remaining_ms = min(timer_remaining_ms + auction_timer_reset_seconds × 100
 
 | System | Relationship | Interface |
 |---|---|---|
-| **Round State Machine** | Upstream (hard) | RSM drives all phase transitions. Sends `StartAuction(round_number)` on DRAFT_AUCTION entry and `AbortAuction` on disconnect. Auction System returns `AuctionSettled` to trigger DRAFT_SHOP. |
+| **Round State Machine** | Upstream (hard) | RSM drives all phase transitions. Sends `AuctionPhaseEntered { round }` on DRAFT_AUCTION entry and `AbortAuction` on disconnect. Auction System returns `AuctionSettled { winner, final_price, card_id }` to trigger DRAFT_SHOP. See ADR-013. |
 | **Economy System** | Upstream (hard) | Auction System calls `can_afford_bid`, `reserve_gold`, `release_gold_reservation`, `spend_reserved_gold`. Economy System validates all gold operations — Auction System does not touch gold directly. |
 | **Card Data & Pool** | Upstream (hard) | Auction System calls `draw_auction_card()` to draw from the shared neutral pool (Rare/Epic/Legendary). Pool owns copy counts; Auction System is a consumer only. |
 | **Game Config** | Upstream (hard) | Reads `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds`, `auction_floor_rare`, `auction_floor_epic`, `auction_floor_legendary`, `legendary_pool_entry_round`. All fields registered in game-config.md (2026-04-29). |

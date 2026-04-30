@@ -82,7 +82,35 @@ state_ownership:
 #
 # pattern options: signal | direct_call | event_bus | shared_resource | rpc | none
 
-interfaces: []
+interfaces:
+  - contract: auction_phase_trigger
+    status: active
+    pattern: event_bus
+    producer: rsm-system
+    consumers:
+      - auction-system   # reads AuctionPhaseEntered to start auction
+    adr: docs/architecture/adr-013-auction-system-state.md
+    signal_signature: "AuctionPhaseEntered { round: u32 } — Bevy buffered Message, #[derive(Message)]"
+    referenced_by:
+      - docs/architecture/adr-013-auction-system-state.md
+      - docs/architecture/adr-010-rsm-event-bus.md
+    added: "2026-04-30"
+    revised: ""
+
+  - contract: auction_settlement
+    status: active
+    pattern: event_bus
+    producer: auction-system
+    consumers:
+      - rsm-system   # reads AuctionSettled to transition DRAFT_AUCTION → DRAFT_SHOP
+    adr: docs/architecture/adr-013-auction-system-state.md
+    signal_signature: "AuctionSettled { winner: Option<PlayerId>, final_price: u32, card_id: CardId } — Bevy buffered Message, #[derive(Message)]"
+    referenced_by:
+      - docs/architecture/adr-013-auction-system-state.md
+      - docs/architecture/adr-010-rsm-event-bus.md
+      - docs/architecture/adr-009-rsm-phase-state.md
+    added: "2026-04-30"
+    revised: ""
 
 # Example:
 #
@@ -142,7 +170,17 @@ performance_budgets: []
 # Register an API decision when the choice is non-obvious and other ADRs might
 # make a different choice for the same purpose without knowing this was decided.
 
-api_decisions: []
+api_decisions:
+  - purpose: auction_economy_reservation
+    status: active
+    api: "Direct ResMut<EconomyState> access within auction_tick_system"
+    not: "Cross-frame Bevy Messages (ReserveGold, ReleaseGoldReservation as separate messages)"
+    adr: docs/architecture/adr-013-auction-system-state.md
+    reason: "release_gold_reservation(prev_leader) and reserve_gold(new_leader) must be atomic within one system run — cross-frame messages would allow a one-frame intermediate state where two players simultaneously have non-zero reserved_gold, violating GDD Rule 5 invariant"
+    referenced_by:
+      - docs/architecture/adr-013-auction-system-state.md
+    added: "2026-04-30"
+    revised: ""
 
 # Example:
 #
@@ -168,7 +206,20 @@ api_decisions: []
 # Register a pattern when an ADR explicitly bans it AND other ADRs might
 # unknowingly use it (i.e., it's a tempting but wrong approach for this project).
 
-forbidden_patterns: []
+forbidden_patterns:
+  - pattern: multiple_c2s_auction_bid_readers
+    status: active
+    description: "Only auction_tick_system may drain Lightyear's MessageReceiver<C2SAuctionBid>. No standalone phase-gate handler or secondary system may also read this receiver in the same frame."
+    why: "Lightyear's MessageReceiver<T> can only be drained once per frame — the first system to read it consumes all messages. A second reader would silently starve the first of messages, causing bids to be lost without error."
+    adr: docs/architecture/adr-013-auction-system-state.md
+    added: "2026-04-30"
+
+  - pattern: resMut_auction_state_outside_tick_system
+    status: active
+    description: "ResMut<AuctionState> may only appear in auction_tick_system. All other systems must use Res<AuctionState> (read-only)."
+    why: "AuctionState is the single source of truth for auction phase. Multiple writers would create split-brain state and violate the Rule 5 reservation invariant, which relies on sequential execution within one system body."
+    adr: docs/architecture/adr-013-auction-system-state.md
+    added: "2026-04-30"
 
 # Example:
 #
