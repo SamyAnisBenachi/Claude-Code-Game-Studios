@@ -1,5 +1,23 @@
 # Board Rendering — Review Log
 
+## Review — 2026-04-30 (R5) — Verdict: APPROVED
+Scope signal: XL
+Specialists: none (lean mode)
+Blocking items: 2 | Recommended: 4
+Summary: R5 found two missed R4 items: (1) EC-RESOLUTION-REVEAL-STUCK still contained the stale "contract currently undefined — see OQ-BR-06 (BLOCKING)" sentence that R4 claimed to remove; the rate-limit note present in the other two recovery paths was also missing. (2) Rule 14's R4-added Tier-1 display priority feature had no test coverage — BR-STATUS-CONTRACT tests only count/overflow, not tier ordering. Both fixed in-session: stale text replaced with NP-43 reference + rate-limit note; BR-STATUS-TIER AC added. Four recommended items left open: OQ-BR-02 still marked OPEN despite BR-CAMERA-PROJ satisfying its closing condition; Lightyear detection API gap (BR-7 NOTE) untracked since OQ-BR-06 resolved; two stale dependency status labels; BR-RECONNECT-TIME missing hardware spec.
+Prior verdict resolved: Yes — R4 items remain closed; R5 surfaced one missed R4 edit and one missing AC for a R4-new feature.
+
+### R5 in-session resolutions (2 BLOCKING)
+1. EC-RESOLUTION-REVEAL-STUCK: removed "contract currently undefined" sentence; added rate-limit (NP-43) note matching EC-SUBSTEP-OOR and EC-PLACEMENT-STUCK
+2. BR-STATUS-TIER AC added: GIVEN 1 Tier-1 + 3 Tier-2 effects → Tier-1 in slot 0 regardless of insertion order; 2 Tier-2 visible + "+1" overflow; reads `display_tier` at runtime (no hard-coded keyword names)
+
+### Status disposition
+- All 2 R5 BLOCKING items resolved in-session. Document is APPROVED.
+- 4 recommended items deferred to epic start or next review pass (OQ-BR-02 closure, OQ-BR-11 creation, stale dependency labels, BR-RECONNECT-TIME hardware spec).
+- OQ-BR-03 (ResolutionEvent variants) and OQ-BR-05 (unit atlas sizing) remain open external gates — resolve before the Board Rendering epic is pointed.
+
+---
+
 ## Review — 2026-04-30 (R4) — Verdict: NEEDS REVISION → resolved in-session
 Scope signal: XL
 Specialists: game-designer, systems-designer, network-programmer, qa-lead, performance-analyst, gameplay-programmer (Bevy 0.18), creative-director (senior synthesis)
