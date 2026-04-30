@@ -44,63 +44,142 @@
 
 ## Implementation Notes
 
-*Derived from ADR-014 Decision §4 and GDD Formulas CS-1, CS-2, CS-3:*
+*Derived from ADR-014 Decision §4, ADR-019 §Key Interfaces, and GDD Formulas CS-1, CS-2, CS-3:*
 
 **File location**: `server/src/core/resolution/effects.rs` (class effect helpers called from `resolve_resolution` system body)
 
+**Resource architecture**: Xelor reserve formulas touch **economy state only** — NOT `PlayerSessions`.
+Per ADR-014, `PlayerSessions` owns only `class: ClassId` and `class_locked: bool`. Per ADR-019,
+`current_mana` and `reserve_mana` live in `PlayerEconomy` inside `ResMut<PlayerEconomies>`.
+All mutations go through `server/src/core/economy/api.rs` — direct field assignment outside
+that module is forbidden (ADR-019 constraint).
+
+Relevant `api.rs` functions used here:
+- `api::add_reserve(economy: &mut PlayerEconomy, amount: u32)` — adds to `reserve_mana`
+- `api::discard_current_mana(economy: &mut PlayerEconomy)` — sets `current_mana = 0`
+- `api::apply_spend(economy: &mut PlayerEconomy, cost: u32, from_reserve_only: bool)` — with
+  `from_reserve_only = true`, deducts from `reserve_mana` only; call with `cost = economy.reserve_mana`
+  to consume all reserve
+
 **CS-1 — Gelure**:
 ```rust
-/// reserve_new = reserve + current_mana;  current_mana_new = 0
-pub fn apply_gelure(sessions: &mut PlayerSessions, player_id: PlayerId) {
-    let p = sessions.players.get_mut(&player_id)
-        .expect("apply_gelure: player not in session");
-    p.reserve += p.current_mana;
-    p.current_mana = 0;
+/// CS-1: reserve_mana += current_mana; current_mana = 0
+/// No PlayerSessions access needed — economy fields only (ADR-019).
+pub fn apply_gelure(economies: &mut PlayerEconomies, player_id: PlayerId) {
+    let Some(economy) = economies.0.get_mut(&player_id) else {
+        warn!("apply_gelure: player {:?} not in economies", player_id);
+        return;
+    };
+    let amount = economy.current_mana;  // copy before mutable call
+    api::add_reserve(economy, amount);
+    api::discard_current_mana(economy);
 }
 ```
-Edge case: `current_mana = 0` is a no-op transfer (mathematically correct; no special case needed).
+Edge case: `current_mana = 0` → `add_reserve(0)` is a no-op; `discard_current_mana` on an
+already-zero field is harmless. No special case needed.
 
 **CS-2 — Xelorium**:
 ```rust
-/// self.reserve += opponent.current_mana;  opponent.current_mana = 0
-/// Called AFTER Xelorium's own mana cost is deducted (Economy Rule 4).
-/// Caster's cost deduction must happen before this call — do not combine.
-pub fn apply_xelorium(sessions: &mut PlayerSessions, caster_id: PlayerId) {
-    let opponent_id = sessions.opponent_of(caster_id);  // helper returning PlayerId
-    let stolen = sessions.players[&opponent_id].current_mana;
-    sessions.players.get_mut(&caster_id).expect("caster").reserve += stolen;
-    sessions.players.get_mut(&opponent_id).expect("opponent").current_mana = 0;
+/// CS-2: caster.reserve_mana += opponent.current_mana; opponent.current_mana = 0
+/// Called AFTER Xelorium's 4-mana cost is deducted by the calling site (Economy Rule 4).
+/// Takes explicit opponent_id — no PlayerSessions dependency (ADR-014 §4 pattern).
+/// Reads stolen amount and zeroes opponent in one borrow to avoid double-borrow conflict.
+pub fn apply_xelorium(
+    economies: &mut PlayerEconomies,
+    caster_id: PlayerId,
+    opponent_id: PlayerId,
+) {
+    let stolen = if let Some(e) = economies.0.get_mut(&opponent_id) {
+        let m = e.current_mana;
+        api::discard_current_mana(e);
+        m
+    } else {
+        warn!("apply_xelorium: opponent {:?} not in economies", opponent_id);
+        0
+    };
+    if let Some(e) = economies.0.get_mut(&caster_id) {
+        api::add_reserve(e, stolen);
+    }
 }
 ```
-`opponent_of()` must be implemented on `PlayerSessions` (derives opponent PlayerId from session map — in 1v1 it is the other key in the HashMap). Calling site in RESOLUTION must deduct Xelorium's 4-mana cost BEFORE calling `apply_xelorium`.
+Calling site must deduct Xelorium's 4-mana cost via `api::apply_spend(caster_economy, 4, false)`
+BEFORE calling `apply_xelorium`. The steal reads opponent's post-cost `current_mana`.
+Edge case: opponent `current_mana = 0` → `stolen = 0`; `add_reserve(0)` no-op; caster still pays cost.
 
 **CS-3 — Rollback**:
 ```rust
-/// n = self.reserve; reserve = 0; each friendly Minion charges n cells (STUN excluded)
+/// CS-3: n = reserve_mana; reserve_mana = 0; friendly Minions charge n cells (STUN excluded)
+/// Note field name: reserve_mana (ADR-019 PlayerEconomy), not reserve.
 pub fn apply_rollback(
-    sessions: &mut PlayerSessions,
+    economies: &mut PlayerEconomies,
     board: &mut BoardState,
     player_id: PlayerId,
 ) {
-    let p = sessions.players.get_mut(&player_id).expect("rollback: player not in session");
-    let n = p.reserve as i32;
-    p.reserve = 0;
+    // Scoped block releases economy borrow before board access.
+    let n = {
+        let Some(economy) = economies.0.get_mut(&player_id) else {
+            warn!("apply_rollback: player {:?} not in economies", player_id);
+            return;
+        };
+        let reserve = economy.reserve_mana;  // copy before mutable call
+        api::apply_spend(economy, reserve, true);  // from_reserve_only=true; cost=reserve zeros it
+        reserve as i32
+    };
+
     let direction = if player_id == board.player_a_id { 1i32 } else { -1i32 };
     for unit in board.friendly_minions_mut(player_id) {
-        if unit.has_status(StatusEffect::Stun) { continue; }  // STUN-blocked units skip
+        if unit.has_status(StatusEffect::Stun) { continue; }
         let new_cell = (unit.cell as i32 + direction * n).clamp(1, 8) as u8;
         unit.cell = new_cell;
     }
 }
 ```
-- Only Minion-type units charge; Structures and Traps are excluded by `friendly_minions_mut`.
-- `reserve = 0` unconditionally, even if n = 0.
-- HASTE units placed this round ARE eligible (HASTE removes summoning sickness; Rollback is movement, not action — GDD CS-AC-08 note, OQ-CS-3 closed).
+- `reserve_mana = 0` unconditionally: `api::apply_spend(economy, 0, true)` when n=0 is a no-op.
+- No `validate_spend` call needed: consuming exactly what is present cannot fail.
+- Only Minion-type units charge; Structures and Traps excluded by `friendly_minions_mut`.
+- HASTE units placed this round ARE eligible (GDD CS-AC-08 note, OQ-CS-3 closed).
 
-**Calling site ordering** (in `resolve_resolution`):
-- Sub-step 1: `apply_xelorium` (after cost deduction)
+**Calling site** (in `resolve_resolution`):
+
+Add `ResMut<PlayerEconomies>` to the system params. Derive `opponent_id` from the economies map
+before the card-effect dispatch loop (1v1: the other key in the HashMap):
+
+```rust
+fn resolve_resolution(
+    mut sessions:   ResMut<PlayerSessions>,   // still needed for class identity checks
+    mut economies:  ResMut<PlayerEconomies>,  // required for Xelor reserve formulas
+    mut board:      ResMut<BoardState>,
+    // ... other params
+    mut placements: MessageReader<PlacementsCommitted>,
+) {
+    for placement_batch in placements.read() {
+        let caster_id = placement_batch.player_id;
+        let opponent_id = economies.0.keys()
+            .copied()
+            .find(|&p| p != caster_id)
+            .expect("resolve_resolution: session has no opponent");
+
+        for card_play in &placement_batch.cards {
+            match card_play.effect {
+                CardEffect::Gelure => apply_gelure(&mut economies, caster_id),
+                CardEffect::Xelorium => {
+                    // Deduct cost before steal (Economy Rule 4)
+                    if let Some(e) = economies.0.get_mut(&caster_id) {
+                        api::apply_spend(e, XELORIUM_MANA_COST, false);
+                    }
+                    apply_xelorium(&mut economies, caster_id, opponent_id);
+                }
+                CardEffect::Rollback => apply_rollback(&mut economies, &mut board, caster_id),
+                // ...
+            }
+        }
+    }
+}
+```
+- Sub-step 1: `apply_gelure` and `apply_xelorium` (cost deducted inline before steal)
 - Sub-step 2: `apply_rollback` (after sub-step 1 completes)
-- `apply_gelure` fires at the card's placement-commit time, not a specific sub-step number — confirm with RESOLUTION sub-step spec from combat-resolution GDD.
+- `apply_gelure` fires at placement-commit time; confirm exact sub-step against combat-resolution GDD.
+- `XELORIUM_MANA_COST`: define as `const u32 = 4` in this file; sourced from `cards.json` card data.
 
 ---
 
@@ -110,7 +189,7 @@ pub fn apply_rollback(
 
 - Story 004: Garde-Temps reserve gate — separate formula, separate story
 - Story 005: Miss Nuit per-round trigger — separate formula
-- Economy System: `reserve`, `current_mana` field definitions in `PlayerSessionData` — provided by Economy ADR stories; this story calls those fields but does not define them
+- Economy System: `reserve_mana`, `current_mana` field definitions in `PlayerEconomy` — owned by `PlayerEconomies` resource (ADR-019); this story calls those fields via `api.rs` but does not define them
 - RESOLUTION system framework (`resolve_resolution` function skeleton) — provided by combat-resolution epic; this story adds helper functions called from within it
 
 ---
