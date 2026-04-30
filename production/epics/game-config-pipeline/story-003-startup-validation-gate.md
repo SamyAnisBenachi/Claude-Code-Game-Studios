@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Foundation
 > **Type**: Logic
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-04-30
 
 ## Context
 

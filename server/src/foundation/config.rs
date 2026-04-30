@@ -111,7 +111,6 @@ impl AssetLoader for GameConfigLoader {
         _settings: &Self::Settings,
         _load_context: &mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
-        use bevy::asset::AsyncReadExt as _;
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
         let config: shared::config::GameConfig =
@@ -216,6 +215,8 @@ pub enum CardCatalogLoadError {
     Io(#[from] std::io::Error),
     #[error("json: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("duplicate CardId in cards.json: {0:?}")]
+    DuplicateCardId(CardId),
 }
 
 /// Wire deserialization — cards.json is a flat array of card objects.
@@ -275,18 +276,18 @@ impl AssetLoader for CardCatalogLoader {
         _settings: &Self::Settings,
         _load_context: &mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
-        use bevy::asset::AsyncReadExt as _;
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
         let raw: Vec<CardDataJson> =
             serde_json::from_slice(&bytes).map_err(CardCatalogLoadError::Json)?;
-        let cards: HashMap<CardId, CardData> = raw
-            .into_iter()
-            .map(|j| {
-                let card: CardData = j.into();
-                (card.id, card)
-            })
-            .collect();
+        let mut cards = HashMap::new();
+        for json_card in raw {
+            let card: CardData = json_card.into();
+            let card_id = card.id;
+            if cards.insert(card_id, card).is_some() {
+                return Err(CardCatalogLoadError::DuplicateCardId(card_id));
+            }
+        }
         Ok(CardCatalog { cards })
     }
 
@@ -371,28 +372,29 @@ pub fn validate_and_promote(
     config_assets: Res<Assets<GameConfigAsset>>,
     catalog_assets: Res<Assets<CardCatalog>>,
     mut next_state: ResMut<NextState<AppState>>,
+    mut app_exit: MessageWriter<AppExit>,
 ) {
     let Some(cfg_asset) = config_assets.get(&game_assets.game_config) else {
         error!("validate_and_promote: GameConfigAsset handle not ready — this should not happen");
-        next_state.set(AppState::Lobby);
+        app_exit.write(AppExit::error());
         return;
     };
     let Some(catalog_asset) = catalog_assets.get(&game_assets.card_catalog) else {
         error!("validate_and_promote: CardCatalog handle not ready — this should not happen");
-        next_state.set(AppState::Lobby);
+        app_exit.write(AppExit::error());
         return;
     };
 
-    // Validate GameConfig
-    // TODO(Story 003): if Err, call AppExit::Error instead of continuing.
     if let Err(e) = validate_game_config(&cfg_asset.0) {
         error!("GameConfig validation failed: {e}");
+        app_exit.write(AppExit::error());
+        return;
     }
 
-    // Validate CardCatalog
-    // TODO(Story 003): if Err, call AppExit::Error instead of continuing.
     if let Err(e) = validate_card_catalog(catalog_asset) {
         error!("CardCatalog validation failed: {e}");
+        app_exit.write(AppExit::error());
+        return;
     }
 
     let card_count = catalog_asset.cards.len();
@@ -421,9 +423,15 @@ pub fn validate_and_promote(
 /// - `objective_hp` >= 1
 /// - `placement_timer_seconds` >= 1
 pub fn validate_game_config(c: &shared::config::GameConfig) -> Result<(), String> {
-    if !(0.0 < c.shop_weight_cap && c.shop_weight_cap < 1.0) {
+    if c.shop_weight_cap <= 0.0 {
         return Err(format!(
-            "shop_weight_cap must be in (0.0, 1.0); got {}",
+            "shop_weight_cap must be > 0.0; got {}",
+            c.shop_weight_cap
+        ));
+    }
+    if c.shop_weight_cap >= 1.0 {
+        return Err(format!(
+            "shop_weight_cap must be < 1.0; got {}",
             c.shop_weight_cap
         ));
     }
@@ -433,17 +441,38 @@ pub fn validate_game_config(c: &shared::config::GameConfig) -> Result<(), String
             c.shop_weight_per_card, c.shop_weight_cap
         ));
     }
-    if !(1..=3).contains(&c.fake_count) {
-        return Err(format!(
-            "fake_count must be in [1, 3]; got {}",
-            c.fake_count
-        ));
+    if c.common_pool_copies < 1 {
+        return Err("common_pool_copies must be >= 1".into());
+    }
+    if c.uncommon_pool_copies < 1 {
+        return Err("uncommon_pool_copies must be >= 1".into());
+    }
+    if c.rare_pool_copies < 1 {
+        return Err("rare_pool_copies must be >= 1".into());
+    }
+    if c.fake_count < 1 {
+        return Err(
+            "fake_count must be >= 1 - the bluffing mechanic is a load-bearing design pillar"
+                .into(),
+        );
+    }
+    if c.fake_count > 3 {
+        return Err(format!("fake_count must be <= 3; got {}", c.fake_count));
     }
     if c.objective_hp < 1 {
         return Err("objective_hp must be >= 1".into());
     }
     if c.placement_timer_seconds < 1 {
         return Err("placement_timer_seconds must be >= 1".into());
+    }
+    if c.auction_timer_seconds < 1 {
+        return Err("auction_timer_seconds must be >= 1".into());
+    }
+    if c.auction_timer_reset_seconds >= c.auction_timer_seconds {
+        return Err(format!(
+            "auction_timer_reset_seconds ({}) must be < auction_timer_seconds ({})",
+            c.auction_timer_reset_seconds, c.auction_timer_seconds
+        ));
     }
     Ok(())
 }
@@ -458,11 +487,14 @@ pub fn validate_game_config(c: &shared::config::GameConfig) -> Result<(), String
 /// - Every entry's HashMap key must match the card's own `id` field.
 pub fn validate_card_catalog(c: &CardCatalog) -> Result<(), String> {
     if c.cards.is_empty() {
-        return Err("CardCatalog is empty".into());
+        return Err("CardCatalog is empty - no cards to draft".into());
     }
     for (key, card) in &c.cards {
         if key != &card.id {
-            return Err(format!("key {:?} != card.id {:?}", key, card.id));
+            return Err(format!(
+                "CardCatalog key {:?} does not match CardData.id {:?}",
+                key, card.id
+            ));
         }
     }
     Ok(())
@@ -507,5 +539,241 @@ impl Plugin for ConfigPlugin {
             check_loading_done.run_if(in_state(AppState::Loading)),
         );
         app.add_systems(OnEnter(AppState::ConfigValidation), validate_and_promote);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::app::App;
+    use bevy::prelude::{MinimalPlugins, Update};
+    use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
+
+    fn game_config_error(mut edit: impl FnMut(&mut shared::config::GameConfig)) -> String {
+        let mut config = shared::config::GameConfig::default();
+        edit(&mut config);
+        validate_game_config(&config).expect_err("config should fail validation")
+    }
+
+    fn valid_card(id: u32) -> CardData {
+        CardData {
+            id: CardId(id),
+            name_fr: format!("Carte {id}"),
+            name_en: format!("Card {id}"),
+            class: ClassId::Iop,
+            family: Some("Test".to_string()),
+            rarity: Rarity::Common,
+            card_type: CardType::Minion,
+            unit_type: UnitType::Blade,
+            cost: 1,
+            atk: 1,
+            hp: 1,
+            mp: 1,
+            ar: 0,
+            keywords: vec![],
+            effect_text: String::new(),
+            art_id: format!("test_{id}"),
+            pool_copies_override: None,
+        }
+    }
+
+    fn catalog_with(cards: Vec<CardData>) -> CardCatalog {
+        CardCatalog {
+            cards: cards.into_iter().map(|card| (card.id, card)).collect(),
+        }
+    }
+
+    #[test]
+    fn test_game_config_validation_default_passes() {
+        assert_eq!(
+            validate_game_config(&shared::config::GameConfig::default()),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_shop_weight_cap_above_one() {
+        let err = game_config_error(|config| config.shop_weight_cap = 1.5);
+        assert!(err.contains("shop_weight_cap"));
+        assert!(err.contains("1.5"));
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_shop_weight_cap_zero() {
+        let err = game_config_error(|config| config.shop_weight_cap = 0.0);
+        assert!(err.contains("shop_weight_cap"));
+        assert!(err.contains("> 0.0"));
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_shop_weight_per_card_at_cap() {
+        let err = game_config_error(|config| {
+            config.shop_weight_cap = 0.10;
+            config.shop_weight_per_card = 0.10;
+        });
+        assert!(err.contains("shop_weight_per_card"));
+        assert!(err.contains("shop_weight_cap"));
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_zero_common_pool_copies() {
+        let err = game_config_error(|config| config.common_pool_copies = 0);
+        assert!(err.contains("common_pool_copies"));
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_zero_uncommon_pool_copies() {
+        let err = game_config_error(|config| config.uncommon_pool_copies = 0);
+        assert!(err.contains("uncommon_pool_copies"));
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_zero_rare_pool_copies() {
+        let err = game_config_error(|config| config.rare_pool_copies = 0);
+        assert!(err.contains("rare_pool_copies"));
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_fake_count_zero_with_design_message() {
+        let err = game_config_error(|config| config.fake_count = 0);
+        assert!(err.contains("fake_count"));
+        assert!(err.contains("load-bearing design pillar"));
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_fake_count_four() {
+        let err = game_config_error(|config| config.fake_count = 4);
+        assert!(err.contains("fake_count"));
+        assert!(err.contains("<= 3"));
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_objective_hp_zero() {
+        let err = game_config_error(|config| config.objective_hp = 0);
+        assert!(err.contains("objective_hp"));
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_placement_timer_zero() {
+        let err = game_config_error(|config| config.placement_timer_seconds = 0);
+        assert!(err.contains("placement_timer_seconds"));
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_auction_timer_zero() {
+        let err = game_config_error(|config| config.auction_timer_seconds = 0);
+        assert!(err.contains("auction_timer_seconds"));
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_auction_timer_reset_at_timer() {
+        let err = game_config_error(|config| {
+            config.auction_timer_seconds = 20;
+            config.auction_timer_reset_seconds = 20;
+        });
+        assert!(err.contains("auction_timer_reset_seconds"));
+        assert!(err.contains("20"));
+    }
+
+    #[test]
+    fn test_game_config_validation_card_catalog_valid_catalog_passes() {
+        let catalog = catalog_with(vec![valid_card(1)]);
+        assert_eq!(validate_card_catalog(&catalog), Ok(()));
+    }
+
+    #[test]
+    fn test_game_config_validation_card_catalog_empty_catalog_fails() {
+        let catalog = CardCatalog {
+            cards: HashMap::new(),
+        };
+        let err = validate_card_catalog(&catalog).expect_err("empty catalog should fail");
+        assert!(err.contains("empty"));
+    }
+
+    #[test]
+    fn test_game_config_validation_card_catalog_key_mismatch_fails() {
+        let card = valid_card(1);
+        let catalog = CardCatalog {
+            cards: HashMap::from([(CardId(99), card)]),
+        };
+        let err = validate_card_catalog(&catalog).expect_err("key mismatch should fail");
+        assert!(err.contains("CardCatalog key"));
+        assert!(err.contains("CardData.id"));
+    }
+
+    #[test]
+    fn test_game_config_validation_card_catalog_allows_non_positive_pool_override() {
+        let mut card = valid_card(1);
+        card.pool_copies_override = Some(-1);
+        let catalog = catalog_with(vec![card]);
+        assert_eq!(validate_card_catalog(&catalog), Ok(()));
+    }
+
+    #[test]
+    fn test_game_config_validation_promote_success_inserts_resources_and_enters_lobby() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.add_message::<AppExit>();
+        app.init_state::<AppState>();
+
+        let mut config_assets = Assets::<GameConfigAsset>::default();
+        let game_config = config_assets.add(GameConfigAsset(shared::config::GameConfig::default()));
+        let mut catalog_assets = Assets::<CardCatalog>::default();
+        let card_catalog = catalog_assets.add(catalog_with(vec![valid_card(1)]));
+
+        app.insert_resource(GameAssets {
+            game_config,
+            card_catalog,
+        });
+        app.insert_resource(config_assets);
+        app.insert_resource(catalog_assets);
+        app.add_systems(Update, validate_and_promote);
+
+        app.update();
+
+        assert!(app.world().contains_resource::<GameConfig>());
+        assert!(app.world().contains_resource::<CardCatalog>());
+        assert!(matches!(
+            app.world().resource::<NextState<AppState>>(),
+            NextState::Pending(AppState::Lobby)
+        ));
+        assert!(app.world().resource::<Messages<AppExit>>().is_empty());
+    }
+
+    #[test]
+    fn test_game_config_validation_promote_failure_writes_app_exit_and_does_not_promote() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.add_message::<AppExit>();
+        app.init_state::<AppState>();
+
+        let mut invalid_config = shared::config::GameConfig::default();
+        invalid_config.fake_count = 0;
+        let mut config_assets = Assets::<GameConfigAsset>::default();
+        let game_config = config_assets.add(GameConfigAsset(invalid_config));
+        let mut catalog_assets = Assets::<CardCatalog>::default();
+        let card_catalog = catalog_assets.add(catalog_with(vec![valid_card(1)]));
+
+        app.insert_resource(GameAssets {
+            game_config,
+            card_catalog,
+        });
+        app.insert_resource(config_assets);
+        app.insert_resource(catalog_assets);
+        app.add_systems(Update, validate_and_promote);
+
+        app.update();
+
+        assert!(!app.world().contains_resource::<GameConfig>());
+        assert!(!app.world().contains_resource::<CardCatalog>());
+        assert!(matches!(
+            app.world().resource::<NextState<AppState>>(),
+            NextState::Unchanged
+        ));
+
+        let exits = app.world().resource::<Messages<AppExit>>();
+        let mut cursor = exits.get_cursor();
+        let written: Vec<_> = cursor.read(exits).collect();
+        assert_eq!(written, vec![&AppExit::error()]);
     }
 }
