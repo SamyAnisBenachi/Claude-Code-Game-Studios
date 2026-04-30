@@ -1,7 +1,7 @@
 # Story 002: All Protocol Message Types
 
 > **Epic**: Lightyear Protocol & Verification Spike
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Config/Data
 > **Manifest Version**: 2026-04-29
@@ -149,7 +149,19 @@ ReliableChannel:   ALL other C2S* and S2C* messages
 
 **Story Type**: Config/Data
 **Required evidence**: `cargo check -p shared` output showing zero warnings → `tests/evidence/story-lyv-002-types-check.md`
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing in CI run `25169319842`
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-30
+**Criteria**: Passing via local worker verification and CI
+**Deviations**: None blocking. `shared/` remains dependency-pure, so protocol registration is represented as a dependency-free manifest for server/client Lightyear wiring to adapt in the plugin story.
+**Test Evidence**: `tests/evidence/story-lyv-002-types-check.md`; worker reported `cargo fmt --check`, `cargo check -p shared`, `cargo test -p shared`, and extra `cargo check -p server` passing.
+**Implementation Commit**: `759bd4a`
+**CI**: GitHub Actions run `25169319842` passed.
+**Code Review**: Lean mode skipped; CI green.
 
 ---
 

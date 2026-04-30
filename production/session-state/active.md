@@ -12,6 +12,8 @@
 > **Parallel session (2026-04-30):** Prism System GDD ✅ DESIGNED — design/gdd/prism-system.md. All 8 sections + Visual/Audio + UI Requirements + Open Questions complete (22 ACs, 17 BLOCKING). Registry: 2 items (prism_strike, prism_reserve), 2 constants (prism_strike_damage, prism_strike_mana_cost), 1 network_message (S2CCardAcquired). Systems index updated. /design-review pending (fresh session).
 >
 > Prior session (2026-04-29): Hand UI GDD ✅ DESIGNED — design/gdd/hand-ui.md. All 8 sections + Visual/Audio + UI Requirements + Open Questions complete (24 ACs). Systems index updated. /design-review pending (fresh session).
+>
+> **Session (2026-04-30):** /dev-story lyv-002 (All Protocol Message Types) — story already fully implemented in commit 759bd4a. All ACs verified against shared/src/protocol.rs. Evidence at tests/evidence/story-lyv-002-types-check.md. Next: /story-done production/epics/lightyear-protocol-verification/story-002-all-protocol-message-types.md
 
 ---
 
@@ -373,6 +375,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - Workers should push after local tests pass and hand off commit hash + CI run id/details; they do not need to wait on GitHub Actions by default.
 - The orchestrator window owns GitHub Actions monitoring, routing failures back to owners, and final `story-done` tracking once CI is green.
 
+## Session Extract - /story-done 2026-04-30
+- Verdict: COMPLETE
+- Story: `production/epics/lightyear-protocol-verification/story-002-all-protocol-message-types.md` - All Protocol Message Types
+- Criteria: Protocol catalogue implemented in `shared/src/protocol.rs`; worker local checks passed (`cargo fmt --check`, `cargo check -p shared`, `cargo test -p shared`, extra `cargo check -p server`).
+- Implementation Commit: `759bd4a`; CI run `25169319842` passed.
+- Notes: `shared/` remains dependency-pure; server/client plugin story owns adapting the protocol manifest to concrete Lightyear registration calls.
+- Tech debt logged: None
+- Next recommended: S2-05 Startup Validation Gate and S2-09 Server & Client Network Plugins are now ready-for-dev in `production/sprint-status.yaml`.
+
 ## Session Extract - sprint tracker refresh 2026-04-30
 - Sprint 2 must-haves S2-01, S2-02, and S2-03 are Done with green CI.
 - Unblocked Sprint 2 pull-forward stories are now claimable in `production/sprint-status.yaml`: S2-04 Card Pool Refresh Shop Slot Variants, S2-07 RSM advance_phase + F2 Ordering, and S2-08 Economy Initialisation + Draft Subscriber.
@@ -411,3 +422,10 @@ C:\Program Files\GitHub CLI\gh.exe
 - Notes: Implementation uses weighted draw selection directly; future class/neutral split policy remains with the subscriber story as scoped.
 - Tech debt logged: None
 - Next recommended: Card Pool Story 004 / ShopRefreshNeeded subscriber once sprint planning pulls it forward.
+
+## Session Extract — /story-done 2026-04-30
+- Verdict: COMPLETE (re-verification pass — story was already marked Complete by Codex)
+- Story: `production/epics/round-state-machine/story-002-advance-phase-and-f2-ordering.md` — advance_phase + F2 Ordering
+- Action: AC checkboxes checked off (16/16); Status and Completion Notes already correct; sprint-status already `done`
+- Tech debt logged: None
+- Next recommended: All Must Have stories done. Sprint close-out sequence: `/smoke-check sprint` → `/team-qa sprint` → `/gate-check`

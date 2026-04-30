@@ -53,21 +53,21 @@ stories:
     name: "S1 Carryover: Startup Validation Gate"
     file: "production/epics/game-config-pipeline/story-003-startup-validation-gate.md"
     priority: should-have
-    status: backlog
+    status: ready-for-dev
     owner: ""
     estimate_days: 1.0
-    blocker: "S1-07 must be Done (run /story-done first)"
+    blocker: ""
     completed: ""
 
   - id: "S2-06"
     name: "S1 Carryover: All Protocol Message Types"
     file: "production/epics/lightyear-protocol-verification/story-002-all-protocol-message-types.md"
     priority: nice-to-have
-    status: in-progress
-    owner: "codex-s2-06-protocol"
+    status: done
+    owner: ""
     estimate_days: 1.0
-    blocker: "S1-05 Done"
-    completed: ""
+    blocker: ""
+    completed: "2026-04-30"
 
   - id: "S2-07"
     name: "RSM Story 2: advance_phase + F2 Ordering"
@@ -93,10 +93,10 @@ stories:
     name: "S1 Carryover: Server & Client Network Plugins"
     file: "production/epics/lightyear-protocol-verification/story-003-server-client-network-plugins.md"
     priority: nice-to-have
-    status: backlog
+    status: ready-for-dev
     owner: ""
     estimate_days: 1.0
-    blocker: "S2-06 must be Done"
+    blocker: ""
     completed: ""
 
   - id: "S2-10"
