@@ -6,7 +6,7 @@
 
 | Total | Needed | In Progress | Done | Approved |
 |-------|--------|-------------|------|----------|
-| 51 | 51 | 0 | 0 | 0 |
+| 87 | 87 | 0 | 0 | 0 |
 
 ---
 
@@ -72,3 +72,44 @@
 | ASSET-049 | snd_prism_collect | Audio | ADVISORY | Needed | design/assets/specs/board-rendering-assets.md |
 | ASSET-050 | snd_objective_attack | Audio | ADVISORY | Needed | design/assets/specs/board-rendering-assets.md |
 | ASSET-051 | snd_trap_trigger | Audio | ADVISORY | Needed | design/assets/specs/board-rendering-assets.md |
+
+### System: hand-ui
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-052 | Card Display Face | Sprite / 2D Art | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-053 | Card Zoom Face | Sprite / 2D Art | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-054 | Drag Sprite | Sprite / 2D Art | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-055 | Card Frame Chrome (Hand) | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-056 | Mana Cost Diamond Badge | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-057 | ATK Stat Badge | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-058 | HP Stat Badge | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-059 | Type/Rarity Icon | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-060 | DRAFT_INITIAL Grid Panel | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-061 | Grid Slot Cell | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-062 | Grid Slot Empty Checkmark | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-063 | Submit Button | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-064 | Submit Pre-Validation Error Label | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-065 | Placement Timer Panel | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-066 | Timer Checkmark Glyph | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-067 | Reserve Mana Split Strip | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-068 | "Auction in Progress" Label | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-069 | Hand Full Notification | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-070 | "No Valid Targets" Overlay | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-071 | Fan Ghost Slot (Staged Card) | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-072 | Hand-Full Grid Lock Overlay | UI | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-073 | Card Purchase Bloom Flash | VFX | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-074 | Card Hover Gold Outline Pulse | VFX | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-075 | Fan Plate Prism White Border Glow | VFX | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-076 | Fan Plate Staged Gold Flash | VFX | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-077 | TargetUnit Hover Outline | VFX | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-078 | Card Lift SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-079 | Valid Targets Appear SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-080 | Successful Stage SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-081 | Snap-Back / Invalid Drop SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-082 | Instant Card Staged SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-083 | Submit SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-084 | Timer Urgency SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-085 | Card Acquired SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-086 | Hand Full SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-087 | Reserve Adjust Click SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
