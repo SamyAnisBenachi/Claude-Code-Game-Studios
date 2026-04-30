@@ -1,5 +1,13 @@
 # Review Log — Card Animations
 
+## Review — 2026-04-30 (Pass 5) — Verdict: APPROVED
+Scope signal: L
+Specialists: lean (single-session, no specialist agents)
+Blocking items: 0 | Recommended: 4
+Summary: Pass 5 found no new blocking items. The GDD is implementation-ready. One inline fix applied: V.3 audio section stale "1.5 s overlay hold" corrected to "400 ms settlement overlay" (OQ-CA-07 was resolved in Pass 4 but the text was not updated). Three cross-doc verifications deferred to pre-implementation sprint check: board-rendering.md F4 concurrent stagger formula, game-config.md sub-step minimum floor (451 ms), and shop-auction-ui.md settlement overlay duration sync. All 14 remaining OQs are Bevy 0.18 API verification gates correctly marked as pre-implementation blockers, not design gaps. Architecture (domain-event indirection, AnimGroup/AnimQueue, Decoration Test) confirmed sound after 4 prior revision rounds. PRE-LAUNCH BLOCKING: GAME_OVER 599 ms mitigation documented but intentionally deferred per friend-game scope.
+Prior verdict resolved: Yes — Pass 4 (2026-04-30) NEEDS REVISION resolved in-session
+
+
 ## Review — 2026-04-30 (Pass 4) — Verdict: NEEDS REVISION → resolved in-session
 Scope signal: L
 Specialists: game-designer · systems-designer · qa-lead · gameplay-programmer · audio-director · ux-designer · network-programmer · creative-director (senior synthesis)

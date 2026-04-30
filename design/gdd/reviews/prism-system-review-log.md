@@ -1,5 +1,13 @@
 # Review Log — Prism System
 
+## Review — 2026-04-30 (Pass 3) — Verdict: APPROVED (revisions accepted in-session, no re-review)
+Scope signal: L
+Specialists: lean (single-session, no specialist agents)
+Blocking items: 1 resolved | Recommended: 3 resolved
+Summary: Pass 3 found one blocker and three recommended revisions, all resolved in-session. The blocker: PS-09 used "silently dropped" wording inherited from Pass 1 (before `S2CPrismRewardDropped` was added in Pass 2), directly contradicting Rule 7's explicit notification requirement — would have caused the notification to be unimplemented in a test-first workflow. Recommended fixes: Rule 7 now explicitly states Lane 3 hand-full does NOT emit `S2CPrismRewardDropped` (implied but unstated); PS-12 rewritten with a `DiscardLog { entries: Vec<(PlayerId, u8)> }` resource for test inspectability (`tracing::warn!` not inspectable in World-based tests); OQ4 tagged as pre-implementation gate matching OQ1. GDD accepted as Approved. Pre-implementation gates (OQ1, OQ4, NP OQ1) and two pending NP GDD message registrations (`S2CPrismRespawned`, `S2CPrismRewardDropped`) remain as known gates before the Prism epic starts.
+Prior verdict resolved: Yes — Pass 2 (2026-04-30) MAJOR REVISION NEEDED resolved in-session
+
+
 ## Review — 2026-04-30 (Pass 2) — Verdict: MAJOR REVISION NEEDED → Revised In-Session
 
 Scope signal: L
