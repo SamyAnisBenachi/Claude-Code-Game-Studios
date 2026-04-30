@@ -24,7 +24,7 @@ Accepted
 | Field | Value |
 |-------|-------|
 | **Depends On** | ADR-002 (Accepted — authority model; `PlayerSessions` is a server-only Resource, never replicated or visible to client crate); ADR-003 (Accepted — workspace; `PlayerSessions` lives in `server/src/core/session/state.rs`); ADR-005 (Accepted — server RNG; Ecaflip dice effects consume from the RESOLUTION chain per §4 consumption order — no new `RngEvent` variants are introduced by this ADR, but class-effect stories will add them); ADR-006 (Accepted — `ClassId` enum lives in `shared/src/card.rs`; this ADR uses it and does not redefine it); ADR-009 (Accepted — RSM phases; `C2SClassChoice` is LOBBY-phase gated; `LobbyComplete` Message triggers class-locking); ADR-010 (Accepted — event bus; `LobbyComplete` follows the `#[derive(Message)]` bus pattern); ADR-012 (Accepted — session lifecycle; `PlayerSessions` is inserted at `SessionReady` and removed at `GameOverEmitted`) |
-| **Enables** | Economy System ADR (gold/mana/reserve fields added to `PlayerSessionData`; Xelor reserve formulas use `ResMut<PlayerSessions>`); Objective System ADR (`sang_meprise_active` lives in Objective resource, not here, but Sang Méprise class effect reads `PlayerSessions` to identify the caster); Combat Resolution ADR (Rollback movement, Seed walk-over, Sacrier Fulgurance — all read `player.class` via `Res<PlayerSessions>`); Card Acquisition ADR (`class_of()` provides the `ClassId` parameter to `PlayerPool::draw_class_card()` from ADR-006); all Class System epic stories (LOBBY-CS, CLASS-EFFECTS-*, TOKEN-SPAWN-*) |
+| **Enables** | Economy System (ADR-019 — `PlayerEconomies` owns gold/mana/reserve; Xelor reserve formulas call `api::add_reserve` via `ResMut<PlayerEconomies>`); Objective System (`sang_meprise_active` lives in Objective resource, not here, but Sang Méprise class effect reads `PlayerSessions` to identify the caster); Combat Resolution (Rollback movement, Seed walk-over, Sacrier Fulgurance — all read `player.class` via `Res<PlayerSessions>`); Card Acquisition (ADR-015 — `class_of()` provides the `ClassId` parameter to `PlayerPool::draw_class_card()` from ADR-006; hand state lives in `PlayerHands`); all Class System epic stories (LOBBY-CS, CLASS-EFFECTS-*, TOKEN-SPAWN-*) |
 | **Blocks** | No story implementing a class-specific card effect may merge until this ADR is Accepted. LOBBY class selection story blocked until `C2SClassChoice` handler and `PlayerSessions` are defined. Any story that reads `player.class` is blocked. |
 | **Ordering Note** | Must be Accepted before any class effect story (Xelor reserve, Sacrier reveals, Sadida seeds, Ecaflip dice, Miranda) is opened for implementation. ADR-006 provides the `ClassId` type this ADR depends on and must remain Accepted. |
 
@@ -67,7 +67,7 @@ Without these decisions, every class-effect story would make independent archite
 
 ### 1. PlayerSessions Resource
 
-`PlayerSessions` is a server-only `Resource` in `server/src/core/session/state.rs`. It is the single authoritative store for per-player session-identity state. `class: ClassId` and `class_locked: bool` are the first fields; future Economy, Card Acquisition, and Combat ADRs extend `PlayerSessionData` with `gold`, `current_mana`, `reserve`, and `hand` fields.
+`PlayerSessions` is a server-only `Resource` in `server/src/core/session/state.rs`. It owns only session-identity state: `class: ClassId` and `class_locked: bool`. Economy state (gold, mana, reserve) lives in `PlayerEconomies` (ADR-019). Card hand state lives in `PlayerHands` (ADR-015). `PlayerSessionData` is intentionally minimal and will not accumulate fields from other systems.
 
 ```rust
 // server/src/core/session/state.rs
@@ -82,10 +82,11 @@ use std::collections::HashMap;
 /// Inserted by the session lifecycle system immediately before SessionReady.
 /// Removed by the session lifecycle system on GameOverEmitted (ADR-012 contract).
 ///
-/// Future ADRs add fields to PlayerSessionData:
-///   Economy ADR  → gold: u32, current_mana: u32, reserve: u32
-///   Card Acq ADR → hand: Vec<CardId>
-/// Each subsystem owns only its declared fields; other fields are read-only.
+/// Intentionally minimal — session identity only. Related per-player state lives in
+/// separate, purpose-built resources:
+///   Economy state  → PlayerEconomies (ADR-019): gold, current_mana, reserve_mana, mana_cap
+///   Card hand      → PlayerHands     (ADR-015): Vec<CardId> per player, hand_push() API
+/// Do NOT add economy or hand fields here.
 #[derive(Resource, Default)]
 pub struct PlayerSessions {
     pub players: HashMap<PlayerId, PlayerSessionData>,
@@ -434,20 +435,20 @@ fn handle_class_choice(
 - `UnitBoardState.source_class` resolves NP-2 (Miranda-stolen token source tracking on reconnect).
 - `PlayerSnapshot.class_id` resolves NP-1 (opponent class display throughout the game, CS-AC-03).
 - Class effects as plain Rust functions preserve RESOLUTION sub-step ordering with no frame-delay risk.
-- `PlayerSessions` is extensible: Economy and Card Acquisition ADRs add fields to `PlayerSessionData` without changing the storage architecture.
+- `PlayerSessions` owns session identity only. Economy state lives in `PlayerEconomies` (ADR-019); card hand state lives in `PlayerHands` (ADR-015). Each per-player aggregate has its own resource, preventing a monolithic catch-all struct.
 - `#[derive(Default)]` on both `PlayerSessions` and `PlayerSessionData` enables `app.init_resource::<PlayerSessions>()` and simplifies test setup.
 
 ### Negative
 
 - Systems that mutate any field in `PlayerSessionData` must take `ResMut<PlayerSessions>`. In Bevy's multi-threaded executor, two systems sharing `ResMut<PlayerSessions>` without explicit ordering will panic in debug builds. All RESOLUTION sub-step systems that write `PlayerSessions` must be explicitly ordered (see Implementation Guidelines §5).
-- `PlayerSessions` grows over time as Economy, Card Acquisition, and Combat ADRs add fields. The struct becomes the canonical per-player session store. Mitigated by documenting field ownership per-ADR and enforcing it in code review.
+- `PlayerSessionData` is intentionally narrow (class + lock only). Economy and hand state are in `PlayerEconomies` (ADR-019) and `PlayerHands` (ADR-015) respectively — each with its own single-writer rule.
 - `ClassId::Neutral` as the "not yet chosen" sentinel overloads the enum variant with lifecycle meaning beyond card classification. Any system that operates on `player.class` at phase ≥ DRAFT_INITIAL must not encounter `Neutral` — protected by the `lock_all_classes()` + RSM gate, and by a `debug_assert` in `lock_all_classes`.
 
 ### Risks
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
-| Economy ADR introduces a separate `EconomyState` resource instead of adding fields to `PlayerSessions`, creating split per-player state | Medium | Medium | This ADR explicitly documents that Economy fields (`gold`, `current_mana`, `reserve`) are added to `PlayerSessionData`. Economy ADR author must read this ADR and extend the existing struct. Registry entry for `player_class` state ownership enforces the single-resource pattern. |
+| ~~Economy ADR introduces a separate `EconomyState` resource instead of adding fields to `PlayerSessions`~~ | — | — | **Resolved by ADR-019.** Economy state lives in `PlayerEconomies` (a separate resource by intentional design). `PlayerSessionData` owns only session identity. This is the correct architecture. |
 | Two RESOLUTION sub-step systems both take `ResMut<PlayerSessions>` without ordering, causing Bevy debug panic | Low | Medium | All RESOLUTION systems sharing `ResMut<PlayerSessions>` must be in an explicit `.before()`/`.after()` chain. Document in control manifest. |
 | `ClassId::Neutral` sentinel leaks into in-game code as a valid player class | Medium | Low | `all_classes_chosen()` gate refuses LOBBY→DRAFT_INITIAL if any player has `class == Neutral`. `debug_assert` in `lock_all_classes` fires if this invariant is violated. |
 | `SourceClass` component missing from a new token type's spawn function | Medium | Medium | Unit test spawning one of each token type, building the snapshot, and asserting `source_class.is_some()` for each. Add to regression suite. |
