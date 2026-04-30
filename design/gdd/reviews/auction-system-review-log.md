@@ -1,5 +1,15 @@
 # Review Log — Auction System
 
+## Review — 2026-04-30 (pass 3) — Verdict: NEEDS REVISION → Resolved in-session
+
+Scope signal: L
+Specialists: game-designer · systems-designer · economy-designer · network-programmer · ux-designer · creative-director (senior, Opus)
+Blocking items: 14 | Recommended: 12 | Nice-to-have: 2
+Summary: 14 specification defects resolved in-session — no design rework required. Key fixes: AuctionSnapshot `last_accepted_bid` sentinel harmonised to 0 (NP source of truth), `starting_price` field added to match NP R3; Rule 5 timer reset hardcode replaced with config reference (knob was non-functional); tick delta clamp added against lag-spike premature resolution; `saturating_sub` guards in `spend_reserved_gold` and bid validation; RESOLVING declared uninterruptible; M7-c added for outbid-player gold broadcast; AU8 split; AU20 reformulated for testability; bid buttons now require total-amount primary label; timer ease-out target clarified as fixed snapshot; leading-state UI three-way inconsistency resolved (buttons hidden). OQ7 deadline moved forward to before M2 implementation begins — all three current mitigation candidates found structurally flawed by economy-designer; creative-director accepted the finding. Design-level critiques (preset buttons, dead-zone wait loop) maintained as RECOMMENDED with M2 telemetry gates per creative-director adjudication — Pass 1 preset-button decision stands pending empirical data.
+Prior verdict resolved: Yes (pass 2 in-session revision + re-review condition met)
+
+---
+
 ## Review — 2026-04-29 (pass 2) — Verdict: NEEDS REVISION → Resolved in-session
 
 Scope signal: L
