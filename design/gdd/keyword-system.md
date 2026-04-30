@@ -1,6 +1,6 @@
 # Keyword System
 
-> **Status**: Needs Revision — R3 full review 2026-05-01: MAJOR REVISION NEEDED (decisions applied inline). D3: COUNTERATTACK simplified (any non-RANGE attack). D4: STUN = full shutdown (no COUNTERATTACK). D5: RANGE+WALL specified (RANGE targets WALL as nearest enemy). D6: FIRST STRIKE+WALL confirmed (FS can kill WALL in SS3). D7: KW-041 removed (1-cell-apart collision rule — enemy can never reach objective cell via ATTRACT). D8: LEADER snapshot timing changed to post-SS1. D9: BODYGUARD no-target enters with None bond. Replication Contract: silenced_until_round formula fixed (current_round+N-1), HASTE suppression note added, SILENCE client-clear note added. 12 new ACs. 5 new OQs (KS6–KS10). R4 re-review recommended.
+> **Status**: Needs Revision — R3 MAJOR REVISION IN PROGRESS. Decisions collected 2026-05-01. Edits applied inline. R4 re-review required.
 > **Author**: SamyAnisBenachi + Claude Code agents
 > **Last Updated**: 2026-05-01
 > **Implements Pillar**: Deep emergence · Simple surface · No idle spectating
@@ -51,7 +51,7 @@ Then RESOLUTION starts. And the player watches their clockwork fire.
 | CHARGE X | Sub-step 2 | Bonus movement; suppressed by STUN |
 | FIRST STRIKE | Sub-step 3 | Kills before retaliation |
 | RANGE + FIRST STRIKE | SS3 AND SS6 | Two separate attacks; SHIELD consumed in SS3 doesn't protect in SS6 |
-| COUNTERATTACK | SS3 or SS6 | Fires on any non-RANGE attack; suppressed when unit is STUNned |
+| COUNTERATTACK | SS3 or SS6 | Fires on any non-RANGE melee attack against this unit; no proximity restriction |
 | FINAL BLOW | SS3 or SS6 | In the sub-step of the kill, not consolidated to SS4 |
 | DEATH | Sub-step 4 | Sequential chains; lane order for simultaneous deaths |
 | Standard movement | Sub-step 5 | WALL blocks; STUN suppresses; cross-lane triggers after SS5 |
@@ -73,7 +73,7 @@ Then RESOLUTION starts. And the player watches their clockwork fire.
 
 **FINAL BLOW** — fires in the sub-step where the kill occurred (SS3 for FIRST STRIKE kills, SS6 for standard). If two sequential damage sources in the same sub-step kill a unit, the second source (the one that reduced HP to 0) receives FINAL BLOW credit.
 
-**COUNTERATTACK** — fires once per sub-step after all incoming damage to this unit in that sub-step is resolved (including SHIELD pre-check absorption). Fires even if SHIELD absorbed all damage — the unit was attacked regardless. Fires on any non-RANGE attack. RANGE attackers cannot trigger COUNTERATTACK. Does NOT fire when the unit is STUNned (STUN suppresses all keyword hooks including reactive triggers). **Retaliation damage:** runs the full combat modifier stack (steps 1–9; the original attacker's SHIELD pre-check applies to the COUNTERATTACK damage independently). **FINAL BLOW eligible:** if COUNTERATTACK retaliation reduces an attacker to 0 HP, FINAL BLOW fires for the COUNTERATTACK unit. **Chain (once):** if the original attacker also has COUNTERATTACK, they retaliate back once; the chain stops there (no counter-of-counter). **Multiple attackers:** if multiple non-RANGE attackers hit the unit in the same sub-step, the COUNTERATTACK unit retaliates against all of them simultaneously using pre-retaliation HP snapshots for each bilateral pair. For simultaneous retaliation kills, FINAL BLOW credit goes to the retaliating attacker in the lowest-numbered lane (same tiebreaker as simultaneous DEATH triggers).
+**COUNTERATTACK** — fires once per sub-step after all incoming damage to this unit in that sub-step is resolved (including SHIELD pre-check absorption). Fires even if SHIELD absorbed all damage — the unit was attacked regardless. Fires on any non-RANGE melee attack (same-cell contact OR collision-halted adjacent-cell contact). RANGE attackers cannot trigger COUNTERATTACK. Does NOT fire when the unit is STUNned. **Retaliation damage:** runs the full combat modifier stack (steps 1–9; the original attacker's SHIELD pre-check applies to the COUNTERATTACK damage independently). **FINAL BLOW eligible:** if COUNTERATTACK retaliation reduces an attacker to 0 HP, FINAL BLOW fires for the COUNTERATTACK unit. **Chain (once):** if the original attacker also has COUNTERATTACK, they retaliate back once; the chain stops there (no counter-of-counter). **Multiple attackers:** if multiple melee attackers hit the unit in the same sub-step, the COUNTERATTACK unit retaliates against all of them simultaneously using pre-retaliation HP snapshots for each bilateral pair.
 
 **INJURED** — a unit is INJURED when `current_HP < max_HP`. INJURED is a persistent state re-evaluated at each sub-step boundary. A unit damaged in SS3 is INJURED from SS4 onward for that RESOLUTION. SILENCE strips INJURED-granted keywords (e.g., FIRST STRIKE); INJURED itself is not a keyword and cannot be silenced.
 
@@ -89,9 +89,9 @@ Then RESOLUTION starts. And the player watches their clockwork fire.
 
 **HASTE** *(renamed from CHARGE)* — unit can act (move, attack) the round it enters play. Without HASTE: SS1 entry only, no SS2/SS3/SS5/SS6 participation this round. STUN applied in SS1 overrides HASTE.
 
-**RANGE 1-X** — attacks the nearest enemy in the forward direction within X cells; does not advance. Equidistant targets: server selects randomly (OQ-KS1 — needs RESOLUTION RNG seed slot in server-rng.md). RANGE + FIRST STRIKE: attacks in SS3 AND SS6. RANGE attacks bypass BODYGUARD. COUNTERATTACK cannot be triggered by RANGE attackers. **RANGE + WALL:** a WALL unit is a valid RANGE target — if WALL is the nearest enemy within range, the RANGE unit attacks the WALL. WALL's blocking behavior (enemies halt during movement) does not affect RANGE targeting; a RANGE unit does not advance. A RANGE unit may only fire at a cell past a WALL if all cells between the RANGE unit and that cell are empty (no WALL or other enemy in the way).
+**RANGE 1-X** — attacks the nearest enemy in the forward direction within X cells; does not advance. Equidistant targets: server selects randomly (`range_equidistant_select` seed slot — registered in ADR-005, OQ-KS1 RESOLVED). RANGE + FIRST STRIKE: attacks in SS3 AND SS6. RANGE attacks bypass BODYGUARD. COUNTERATTACK cannot be triggered by RANGE attackers. **RANGE + WALL:** WALL is a valid RANGE target. If WALL is the nearest enemy, RANGE attacks WALL. WALL's blocking behavior (movement halt in SS5) does not affect RANGE targeting — RANGE selects by cell proximity, not by whether the target blocks movement.
 
-**WALL** — stationary (MP=0, cannot self-move). Advancing enemies stop at WALL's cell and fight it in SS6 (WALL deals 0 damage). Not IRREMOVABLE by default — can be displaced by REPEL/ATTRACT/TELEPORT.
+**WALL** — stationary (MP=0, cannot self-move). Advancing enemies stop at WALL's cell and fight it in SS6 (WALL deals 0 damage). Not IRREMOVABLE by default — can be displaced by REPEL/ATTRACT/TELEPORT. **FIRST STRIKE + WALL:** a FIRST STRIKE unit can attack WALL in SS3. If FIRST STRIKE kills WALL in SS3, WALL is removed in SS4 and its blocking anchor is gone — advancing enemies no longer halt at its former cell in SS5. This is intentional counter-play (FIRST STRIKE + CHARGE X can clear a WALL anchor before standard movement resolves).
 
 **BODYGUARD** — on entry (SS1): controller chooses one other friendly unit on the board. That unit cannot be targeted by opponent Spells or Orders while this BODYGUARD is alive. RANGE attacks bypass BODYGUARD. Objective damage from movement is unaffected. Protection ends when BODYGUARD dies.
 
@@ -105,13 +105,13 @@ Then RESOLUTION starts. And the player watches their clockwork fire.
 
 **SILENCE** — strips all keywords and keyword-granted effects for the duration. Affects: FIRST STRIKE, HASTE, CHARGE X, RANGE, WALL movement-lock, BODYGUARD protection, UNTARGETABLE, RESISTANCE, VULNERABILITY, ARMOR-PIERCING, SHIELD, LEADER bonus grant, OUTNUMBERED condition, and all trigger hooks (DEATH/FINAL BLOW/COUNTERATTACK/INJURED bonuses). INJURED state cannot be silenced.
 
-**STUN** — unit cannot act this round: SS2 (CHARGE X), SS3 (FIRST STRIKE), SS5 (standard movement), SS6 (attacks) are all suppressed. STUN is a full keyword shutdown — it suppresses all keyword hooks including reactive triggers. A STUNned unit does NOT fire COUNTERATTACK even if it receives damage. Unit remains on board and takes damage normally. Lasts current RESOLUTION only.
+**STUN** — unit cannot act this round: SS2 (CHARGE X), SS3 (FIRST STRIKE), SS5 (standard movement), SS6 (attacks) are all suppressed. STUN also suppresses all reactive keyword hooks: a STUNned unit does NOT fire COUNTERATTACK when attacked, does NOT fire DEATH trigger when killed, and does NOT fire any other trigger-based keyword. Unit remains on board and takes incoming damage normally. Lasts current RESOLUTION only.
 
 **ARMOR-PIERCING** — attacker treats defender's AR as 0 for outgoing damage. RESISTANCE on the defender is applied independently (before AR step) and is unaffected. Attacker's own AR (including RPS bonus) is unaffected.
 
 **SHIELD** — absorbs all incoming damage from one sub-step (SS3 or SS6). Sub-step scoped: consumed once; does not protect in a different sub-step. Persists across rounds until triggered. Two simultaneous attackers in the same sub-step are both absorbed by one SHIELD consumption.
 
-**LEADER** — grants a stat bonus to all friendly units of the same family (bonus type and value per card). The LEADER unit itself also receives its own family bonus — it counts as a family member. **Snapshot timing:** snapshotted after SS1 completes (all APPEARANCE effects resolve), before SS2 begins. A LEADER placed this round in SS1 DOES grant its bonus in the same round. Persists even if LEADER dies in SS4. Recalculated fresh each round. A SILENCEd LEADER does not grant its bonus. The LEADER counts as a family member for "X [family] in play" effects. **LEADER stacking rule:** If two LEADER units of the same family are both alive when the SS1-end snapshot is taken, only the one placed earlier in the current session grants its bonus; the second LEADER's bonus is suppressed (bonuses do not stack). The earlier-placed LEADER is always deterministic from placement order. Two LEADERs of different families each grant their own family's bonus independently.
+**LEADER** — grants a stat bonus to all friendly units of the same family (bonus type and value per card). Snapshotted after SS1 completes (after all SS1 APPEARANCE effects resolve, before SS2 begins); persists even if LEADER dies in SS4. Recalculated fresh each round. A LEADER placed in SS1 of round R (with or without HASTE) IS included in the round R snapshot, because the snapshot is taken post-SS1 — the LEADER is already on the board. A SILENCEd LEADER does not grant its bonus. **LEADER stacking rule:** If two LEADER units of the same family are both alive when the SS1-end snapshot is taken, only the one placed earlier in the current session grants its bonus; the second LEADER's bonus is suppressed (bonuses do not stack). The earlier-placed LEADER is always deterministic from placement order. Two LEADERs of different families each grant their own family's bonus independently.
 
 **OUTNUMBERED** — this unit's OUTNUMBERED bonus is active when the controlling player has fewer units on the board (all lanes, Minions + Structures, excluding Traps and Fields) than the opponent. Evaluated at each sub-step boundary — after the preceding sub-step fully completes, before the current sub-step begins. Can activate or deactivate mid-RESOLUTION as deaths change counts. **Board count definition:** Traps are face-down and excluded. Fields are passive lane-wide effects with no HP and are excluded (same rationale as Traps — only entities that fight count). Maximum per player: 10 (5 lanes × 1 Minion + 5 lanes × 1 Structure cap — verify Structure-slot cap against `board-lane-system.md`; confirmed max = 10 for 1v1).
 
@@ -238,6 +238,10 @@ The `attract_destination` formula is defined as:
 
 **Example (enemy pull):** Caster (Player A) at Cell 5, enemy target (Player B) at Cell 7, ATTRACT 4. `effective_pull = min(4, max(0, |5 − 7| − 1)) = min(4, 1) = 1`. `attract_destination = 7 + sign(5 − 7) × 1 = 7 − 1 = 6`. Enemy lands at Cell 6 (1 cell short of caster) ✓ (1-cell-apart collision rule enforced).
 
+**Implementation note (Rust integer types):** `sign(caster_cell − target_cell)` where both are `u8`. In Rust, `u8 − u8` underflows when `target_cell > caster_cell` (panics in debug, wraps in release). Compute `(caster_cell as i32 − target_cell as i32)` in `i32`, apply `i32::signum()`, then use the result. Same class of defect as Formula 1 — same fix required.
+
+**Collision rule for enemy targets:** the "1-cell-apart" rule for opposing units applies. An enemy unit pulled by ATTRACT stops 1 cell short of the caster's cell — it cannot share the caster's cell. `attract_destination` as computed by the formula gives the mathematical destination; the server then applies the collision rule: if the target is an enemy and `attract_destination == caster_cell`, the actual destination is `caster_cell − advance_dir(caster.owner)` (1 cell short on the approach side). For friendly targets, the unit can stop at the caster's cell. TELEPORT is the only displacement that bypasses the 1-cell-apart rule (co-occupation explicitly allowed for TELEPORT).
+
 ---
 
 ### Formula 3: OUTNUMBERED Board Count
@@ -254,7 +258,7 @@ The `outnumbered` condition is defined as:
 | Opponent unit count | `count(alive_units(opponent))` | u8 | 0–10 | Same, for opponent. |
 | Output | `outnumbered` | bool | false/true | True only when strictly fewer; equal counts = false. |
 
-**Output Range:** `false` (not outnumbered) or `true` (outnumbered). Evaluated at each sub-step boundary — after the preceding sub-step fully completes, before the current sub-step begins. "Start of SS5" means "after all SS4 deaths and DEATH trigger chains have fully resolved." Can flip mid-RESOLUTION as units die. The server maintains a per-player `outnumbered_cache: bool` (internal state, not replicated) to detect transitions and emit `OutnumberedFlipped` only when the boolean changes.
+**Output Range:** `false` (not outnumbered) or `true` (outnumbered). Evaluated at each sub-step boundary — after the preceding sub-step fully completes, before the current sub-step begins. Cannot flip intra-sub-step (e.g., mid-SS4 death chain). The OUTNUMBERED state used in SS5 reflects the full board state after all SS4 deaths resolve. The server maintains a per-player `outnumbered_cache: bool` (internal state, not replicated) to detect transitions and emit `OutnumberedFlipped` only when the boolean changes.
 
 **Example:** Player has 2 Minions on board; opponent has 4 Minions + 1 Structure = 5 units. `2 < 5 = true`. OUTNUMBERED bonus is active.
 
