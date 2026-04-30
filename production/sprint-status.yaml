@@ -23,11 +23,11 @@ stories:
     name: "Economy Story 1: State + Pure API Scaffold"
     file: "production/epics/economy-system/story-001-state-and-pure-api-scaffold.md"
     priority: must-have
-    status: in-progress
-    owner: "codex-s2-02-economy"
+    status: done
+    owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-04-30"
 
   - id: "S2-03"
     name: "Card Pool Story 2: Weighted Draw Functions"

@@ -1,7 +1,7 @@
 # Story 001: State & Pure API Scaffold
 
 > **Epic**: Economy System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -29,12 +29,12 @@
 
 ## Acceptance Criteria
 
-- [ ] `server/src/core/economy/state.rs` exists and defines:
+- [x] `server/src/core/economy/state.rs` exists and defines:
   - `PlayerEconomy { gold: u32, current_mana: u32, reserve_mana: u32, mana_cap: u32, reserved_gold: u32 }` with `#[derive(Clone, Debug)]`
   - `PlayerEconomies(pub HashMap<PlayerId, PlayerEconomy>)` with `#[derive(Resource)]`
   - `InterestSnapshots(pub HashMap<PlayerId, u32>)` with `#[derive(Resource)]`
   - `SpendError` enum with variants: `InsufficientFunds`, `ReserveOnlyButCurrentProvided`, `HandFull`, `WrongPhase`, `PlayerNotFound`
-- [ ] `server/src/core/economy/api.rs` exists and exports all 10 pure API functions:
+- [x] `server/src/core/economy/api.rs` exists and exports all 10 pure API functions:
   - `validate_spend(economy: &PlayerEconomy, cost: u32, from_reserve_only: bool) -> Result<(), SpendError>`
   - `apply_spend(economy: &mut PlayerEconomy, cost: u32, from_reserve_only: bool)` — auto-split current-first if `from_reserve_only == false`; pure reserve deduction otherwise
   - `apply_gold_award(economy: &mut PlayerEconomy, amount: u32)`
@@ -46,21 +46,21 @@
   - `can_afford_bid(economy: &PlayerEconomy, amount: u32) -> bool` — `(gold - reserved_gold) >= amount`
   - `can_afford_shop(economy: &PlayerEconomy, cost: u32) -> bool` — `(gold - reserved_gold) >= cost`
   - `total_effective_mana(economy: &PlayerEconomy) -> u32` — `current_mana + reserve_mana`
-- [ ] **EC1**: GIVEN `current_mana = 2`, `reserve_mana = 3`, WHEN `validate_spend` and `apply_spend` called for cost 4 (`from_reserve_only = false`), THEN `current_mana = 0`, `reserve_mana = 1`
-- [ ] **EC2**: GIVEN `current_mana = 0`, `reserve_mana = 5`, WHEN `apply_spend` for cost 3 (`from_reserve_only = false`), THEN `current_mana = 0`, `reserve_mana = 2`
-- [ ] **EC3**: GIVEN `current_mana = 4`, `reserve_mana = 2`, WHEN `apply_spend` for cost 4 (`from_reserve_only = false`), THEN `current_mana = 0`, `reserve_mana = 2` (reserve untouched)
-- [ ] **EC4**: GIVEN `current_mana = 1`, `reserve_mana = 1`, WHEN `validate_spend` for cost 3, THEN returns `Err(SpendError::InsufficientFunds)`; neither pool modified
-- [ ] **EC5**: GIVEN `reserve_mana = 3`, `current_mana = 10`, WHEN `validate_spend` for cost 4 with `from_reserve_only = true`, THEN returns `Err(SpendError::InsufficientFunds)` (reserve insufficient; current does not substitute)
-- [ ] **EC7**: GIVEN `current_mana = 5`, WHEN `add_reserve(economy, 5)` then `discard_current_mana(economy)`, THEN `reserve_mana` increases by 5 and `current_mana = 0` (Gelure contract tested via API primitives)
-- [ ] **EC8**: GIVEN `current_mana = 0`, WHEN `add_reserve(economy, 0)` then `discard_current_mana(economy)`, THEN `reserve_mana` unchanged, no error (legal no-op)
-- [ ] **EC9**: GIVEN `mana_cap = 10`, WHEN `increment_mana_cap(economy, config)` called, THEN `mana_cap = 11`
-- [ ] **EC10**: GIVEN `mana_cap = 12`, WHEN `increment_mana_cap(economy, config)` called, THEN `mana_cap` remains 12
-- [ ] **EC11 (pure API half)**: GIVEN any `PlayerEconomy`, WHEN `apply_gold_award(economy, 0)` is called (simulating self-inflicted guard — the caller passes 0), THEN `gold` is unchanged (zero-amount award is a no-op)
-- [ ] Zero-cost card: GIVEN `current_mana = 3`, `reserve_mana = 2`, WHEN `apply_spend` for cost 0, THEN neither pool modified, returns `Ok(())`
-- [ ] `reserve_gold` returns `Err(SpendError::InsufficientFunds)` when `amount > gold - reserved_gold`
-- [ ] `release_gold_reservation` uses `saturating_sub` — releasing more than reserved clamps to 0, no panic
-- [ ] CI grep gate: `grep -rE "economy\.(gold|current_mana|reserve_mana|mana_cap|reserved_gold)\s*=" server/src/ | grep -v "core/economy/"` returns zero matches
-- [ ] `cargo check -p server` passes after adding these two files
+- [x] **EC1**: GIVEN `current_mana = 2`, `reserve_mana = 3`, WHEN `validate_spend` and `apply_spend` called for cost 4 (`from_reserve_only = false`), THEN `current_mana = 0`, `reserve_mana = 1`
+- [x] **EC2**: GIVEN `current_mana = 0`, `reserve_mana = 5`, WHEN `apply_spend` for cost 3 (`from_reserve_only = false`), THEN `current_mana = 0`, `reserve_mana = 2`
+- [x] **EC3**: GIVEN `current_mana = 4`, `reserve_mana = 2`, WHEN `apply_spend` for cost 4 (`from_reserve_only = false`), THEN `current_mana = 0`, `reserve_mana = 2` (reserve untouched)
+- [x] **EC4**: GIVEN `current_mana = 1`, `reserve_mana = 1`, WHEN `validate_spend` for cost 3, THEN returns `Err(SpendError::InsufficientFunds)`; neither pool modified
+- [x] **EC5**: GIVEN `reserve_mana = 3`, `current_mana = 10`, WHEN `validate_spend` for cost 4 with `from_reserve_only = true`, THEN returns `Err(SpendError::InsufficientFunds)` (reserve insufficient; current does not substitute)
+- [x] **EC7**: GIVEN `current_mana = 5`, WHEN `add_reserve(economy, 5)` then `discard_current_mana(economy)`, THEN `reserve_mana` increases by 5 and `current_mana = 0` (Gelure contract tested via API primitives)
+- [x] **EC8**: GIVEN `current_mana = 0`, WHEN `add_reserve(economy, 0)` then `discard_current_mana(economy)`, THEN `reserve_mana` unchanged, no error (legal no-op)
+- [x] **EC9**: GIVEN `mana_cap = 10`, WHEN `increment_mana_cap(economy, config)` called, THEN `mana_cap = 11`
+- [x] **EC10**: GIVEN `mana_cap = 12`, WHEN `increment_mana_cap(economy, config)` called, THEN `mana_cap` remains 12
+- [x] **EC11 (pure API half)**: GIVEN any `PlayerEconomy`, WHEN `apply_gold_award(economy, 0)` is called (simulating self-inflicted guard — the caller passes 0), THEN `gold` is unchanged (zero-amount award is a no-op)
+- [x] Zero-cost card: GIVEN `current_mana = 3`, `reserve_mana = 2`, WHEN `apply_spend` for cost 0, THEN neither pool modified, returns `Ok(())`
+- [x] `reserve_gold` returns `Err(SpendError::InsufficientFunds)` when `amount > gold - reserved_gold`
+- [x] `release_gold_reservation` uses `saturating_sub` — releasing more than reserved clamps to 0, no panic
+- [x] CI grep gate: `grep -rE "economy\.(gold|current_mana|reserve_mana|mana_cap|reserved_gold)\s*=" server/src/ | grep -v "core/economy/"` returns zero matches
+- [x] `cargo check -p server` passes after adding these two files
 
 ---
 
@@ -176,7 +176,16 @@ pub fn increment_mana_cap(economy: &mut PlayerEconomy, config: &GameConfig) {
 
 **Story Type**: Logic
 **Required evidence**: `tests/unit/economy/state_api_test.rs` — all test cases passing; covers EC1–EC11
-**Status**: [ ] Not yet created
+**Status**: [x] Created and verified by CI run 25161623746
+
+---
+
+## Completion Notes
+
+- Implemented `server/src/core/economy/state.rs`, `api.rs`, and `mod.rs`.
+- Added 17 embedded unit tests in `server/src/core/economy/api.rs`, with evidence mapping at `tests/unit/economy/state_api_test.rs`.
+- Added `GameConfig.mana_cap_max` with default/config value `12` so `increment_mana_cap` follows the story contract without hardcoding the cap.
+- Local focused test command `cargo test -p server economy::api::tests` was blocked before compilation by missing Windows MSVC `link.exe`; GitHub Actions passed on run `25161623746`.
 
 ---
 

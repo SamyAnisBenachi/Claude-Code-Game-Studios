@@ -340,3 +340,11 @@ C:\Program Files\GitHub CLI\gh.exe
 - Verification: CI green on run 25161381682 for commit `013f204`
 - Blockers: local `cargo test -p server weighted_draw --verbose` blocked by Windows/MSVC build-script failures before server tests ran; CI passed
 - Next: S2-04 Card Pool Story 3: Refresh Shop Slot Variants is unblocked once sprint tracker is read fresh
+
+## Session Extract - /story-done 2026-04-30
+- Story: `production/epics/economy-system/story-001-state-and-pure-api-scaffold.md` - State & Pure API Scaffold
+- Files changed: `server/src/core/economy/state.rs`, `server/src/core/economy/api.rs`, `server/src/core/economy/mod.rs`, `server/src/core/mod.rs`, `shared/src/config.rs`, `assets/config/game_config.ron`, `server/tests/game_config_defaults_test.rs`, `tests/unit/economy/state_api_test.rs`
+- Test written: embedded tests in `server/src/core/economy/api.rs` (17 tests), evidence mapping at `tests/unit/economy/state_api_test.rs`
+- Verification: CI green on run 25161623746 for commit `5d8655c`
+- Blockers: local `cargo test -p server economy::api::tests` blocked before compile by missing Windows MSVC `link.exe`; CI passed
+- Next: S2-08 Economy Story 2 is unblocked once S2-01 is Done
