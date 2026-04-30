@@ -36,7 +36,7 @@ stories:
     status: ready-for-dev
     owner: ""
     estimate_days: 1.0
-    blocker: "pool-001 must be Done (run /story-done first)"
+    blocker: ""
     completed: ""
 
   - id: "S2-04"

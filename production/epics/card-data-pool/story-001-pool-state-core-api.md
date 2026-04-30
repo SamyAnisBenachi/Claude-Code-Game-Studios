@@ -183,3 +183,10 @@ pub struct PlayerPools {
 
 - Depends on: Foundation `workspace-and-shared-types` epic (Story 001–004) — `shared/src/card.rs` with `CardId`, `CardData`, `Rarity`, `ClassId` must be DONE. Foundation `game-config-pipeline` epic — `GameConfig` with pool copy fields must be DONE and `Res<CardCatalog>` available.
 - Unlocks: Story 002 (weighted draw — needs `PlayerPool` struct and `distribute()`)
+
+## Completion Notes
+**Completed**: 2026-04-30
+**Criteria**: 10/10 passing
+**Deviations**: None — ADR-006 module layout followed (state.rs/api.rs/plugin.rs). CI grep gate PASS.
+**Test Evidence**: Logic — 21 embedded tests in `server/src/core/pool/api.rs` + evidence doc `tests/unit/pool/pool_state_test.rs`. CI green.
+**Code Review**: Skipped (Lean mode)
