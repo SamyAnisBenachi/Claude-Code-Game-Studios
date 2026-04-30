@@ -4,7 +4,18 @@
 > **GDD**: design/gdd/prism-system.md
 > **Architecture Module**: `server/feature/prism/`
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories prism-system`
+> **Stories**: 6 stories created 2026-05-01
+
+## Stories
+
+| # | Story | Type | Status | TR-IDs | ADR |
+|---|-------|------|--------|--------|-----|
+| 001 | [State Scaffold — PrismState, DiscardLog, AuditLog, PrismPresence](story-001-state-scaffold.md) | Logic | Ready | TR-PRI-007 | ADR-016 |
+| 002 | [Deterministic Lane Rewards — Lanes 1/2/4/5](story-002-deterministic-lanes.md) | Logic | Ready | TR-PRI-001, TR-PRI-002 | ADR-016 |
+| 003 | [Lane 3 RNG Draw Pipeline and Audit Log Ordering](story-003-lane3-rng.md) | Logic | Ready | TR-PRI-003, TR-PRI-004, TR-PRI-008 | ADR-005, ADR-016 |
+| 004 | [Hand-Full Rejection and Network Message Staging](story-004-hand-full-network.md) | Integration | Ready | TR-PRI-004 | ADR-008, ADR-016 |
+| 005 | [Full-Set Respawn Cycle and Multi-Player Independence](story-005-respawn-cycle.md) | Logic | Ready | TR-PRI-005, TR-PRI-006 | ADR-016 |
+| 006 | [Spell Card Play Path Integration](story-006-spell-play-path.md) | Integration | Ready | TR-PRI-001, TR-PRI-002 | ADR-016 |
 
 ## Overview
 
