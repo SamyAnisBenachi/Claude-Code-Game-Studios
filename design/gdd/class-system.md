@@ -1,6 +1,6 @@
 # Class System
 
-> **Status**: Approved (2026-04-30 pass 2 — 30 blockers resolved in-session; Shava Shavien tails-to-opponent kept by design decision)
+> **Status**: In Review (2026-04-30 pass 3 — 11 GDD-local blockers resolved in-session; see review log)
 > **Author**: SamyAnisBenachi + Claude Code agents
 > **Last Updated**: 2026-04-30
 > **Implements Pillar**: Deep emergence · Simple surface
@@ -113,7 +113,7 @@ The cross-class interaction matrix below names every class-mechanic that crosses
 | **Sablier** (swap reserve) | Xelor | Spell | `opponent.reserve -= 1` (saturating); `self.reserve += 1` | Economy System |
 | **Many de Brakmar** (drain reserve) | Xelor | APPEARANCE | `opponent.reserve -= 2` (saturating) | Economy System |
 | **Brûlure Temporelle** | Xelor | Spell | 2 damage to target + `self.reserve += 1` | Combat Resolution + Economy |
-| **Mummy passive** | Xelor | Whenever a Mummy takes damage during sub-step | `self.reserve += 1` (no cap — each hit adds 1 reserve) | Economy System |
+| **Mummy passive** | Xelor | Whenever a Mummy takes damage during sub-step | `self.reserve += 1` (no cap — each hit adds 1 reserve; Mummy's HP=2 is the de facto accumulation ceiling in normal combat) | Economy System |
 | **Garde-Temps** (reserve cost gate) | Xelor | Spell, costs 20 reserve | Server gates: play accepted iff `self.reserve >= 20`; on accept, deduct 20 reserve and destroy chosen enemy objective | Economy + Objective System |
 | **Rollback** (charge by reserve) | Xelor | Spell at sub-step 2 | `n := self.reserve`; `self.reserve := 0`; each friendly unit charges `n` cells (lane-clamped) | Keyword System (CHARGE X) + Economy |
 | **Sarcophage** | Xelor | Spell | Draw 1, or 2 if `self.reserve >= 5` | Card Acquisition |
@@ -203,7 +203,7 @@ for each friendly Minion u in self.units:  -- Minion-type only; Structures and T
 **Example:** Xelor (Player A) reserve = 4. Three units at cells 2, 3, 5 → destinations 6, 7, 8 (last one clamped).
 **Edge case (n = 0):** All units charge 0 cells; reserve stays 0; spell cost still paid. Client UI should warn before submission.
 **Timing:** Rollback fires at sub-step 2 (CHARGE X bonus movement). Units placed this round with HASTE are eligible for Rollback's movement (HASTE removed summoning sickness; Rollback is movement, not action). Units with STUN do NOT charge — STUN suppresses sub-step 2.
-**Strategic tradeoff (binding):** Spending reserve via Rollback in rounds 3+ effectively forecloses Garde-Temps access for the remainder of a standard 5-round game — recovering from 0 to 20 reserve in the remaining rounds is not achievable via normal accumulation paths. This is Xelor's central strategic decision: commit to Rollback for immediate board movement, or hold reserve for Garde-Temps later. Both are valid play-lines; neither is a mistake. Players must make this choice consciously by round 3.
+**Strategic tradeoff (binding in Mummy-light games):** Spending reserve via Rollback in rounds 3+ forecloses Garde-Temps access in standard accumulation paths — recovering from 0 to 20 reserve in 2 remaining rounds via Miss Nuit + Gelure + Sablier alone (no Mummy) yields ~15–19 reserve, falling short of the 20-threshold. This is Xelor's central strategic decision: commit to Rollback for immediate board movement, or hold reserve for Garde-Temps later. Both are valid play-lines; neither is a mistake. Players must make this choice consciously by round 3. **Mummy caveat:** In games with 2+ active Mummies, passive reserve from combat damage (+1 per hit, uncapped) can bridge the gap after a round-3 Rollback drain. Mummy's HP=2 is the de facto cap — tokens that die quickly in combat limit their reserve contribution naturally. Verify the tradeoff holds in high-Mummy-density games during M2 playtesting; adjust `garde_temps_reserve_cost` if both Rollback and Garde-Temps become trivially achievable in the same game.
 
 ### CS-4 — Garde-Temps (Xelor: 20-reserve gate, destroy enemy objective)
 
@@ -217,7 +217,7 @@ if playable:
   self.reserve_new = self.reserve - garde_temps_cost
   self.garde_temps_used_this_game += 1
   take_damage(lane=chosen_enemy_objective.lane, attacker=self, amount=chosen_enemy_objective.hp)
-  -- lethal damage regardless of current HP; full consequence path fires via objective-system.md Rule 9
+  -- lethal damage; `chosen_enemy_objective.hp` = GameConfig.objective_hp (max HP constant, see variable table); full consequence path fires via objective-system.md Rule 7
 else:
   reject_play  -- reserve/mana untouched; reject also if target already HP=0 or cap reached
 ```
@@ -231,8 +231,9 @@ else:
 | `garde_temps_per_game_cap` | u32 | 1 (GameConfig knob) | Max number of Garde-Temps activations per game per player |
 | `self.garde_temps_used_this_game` | u32 | 0 – cap | Counter incremented on each successful activation; persisted in session state |
 | `playable` | bool | {false, true} | Server-side acceptance gate |
+| `chosen_enemy_objective.hp` | u32 | `GameConfig.objective_hp` (default 5) | **Max HP constant from GameConfig — NOT the objective's current HP.** Always equals the max-HP constant regardless of how much damage the objective has already taken. This makes the call always lethal. Consistent with objective-system.md Edge Cases: "Treated as `take_damage(lane, attacker_player, objective_hp)`". |
 
-**Output Range:** On accept, `self.reserve_new = self.reserve − 20` (≥ 0 by gate); one enemy objective receives lethal `take_damage` (routes through objective-system.md Rule 9 consequence path). On reject, no state change.
+**Output Range:** On accept, `self.reserve_new = self.reserve − 20` (≥ 0 by gate); one enemy objective receives lethal `take_damage` (routes through objective-system.md Rule 7 consequence path — gold award, fake reward, real-objectives counter, and loss condition). On reject, no state change.
 **Example:** reserve = 23, garde_temps_used_this_game = 0 → playable = true → reserve_new = 3; objective take_damage fires.
 **Interface alignment:** Uses `take_damage()` not `destroy()` — consistent with objective-system.md Edge Cases ("If Garde-Temps targets an objective: Treated as `take_damage(lane, attacker_player, objective_hp)`) and with Punition below.
 **Note:** Garde-Temps' card-data `mana_cost` field is 0 (or absent); Economy System's "from reserve" path (Rule 4) is the only valid payment route. Server validates `reserve >= 20` BEFORE accepting the placement.
@@ -269,7 +270,7 @@ The Punition self-destroy + damage formula is defined as:
 has_eligible_real = ( count({o ∈ self.objectives | o.is_real ∧ o.is_alive}) >= 1 )
 if has_eligible_real:
   take_damage(lane=chosen_real_objective.lane, attacker=self, amount=chosen_real_objective.hp)
-  -- lethal self-damage; full consequence path fires via objective-system.md Rule 9
+  -- lethal self-damage; full consequence path fires via objective-system.md Rule 7
   for each o ∈ opponent.objectives where o.is_alive:
     take_damage(lane=o.lane, attacker=self, amount=3)
 else:
@@ -304,7 +305,7 @@ The Seed walk-over formula is defined per direction. **Walk-over definition (bin
 | `damage_to_unit` | u32 | 1 (pre-AR) | Damage dealt to enemy walker |
 
 **Output Range:** Friendly AR +1 per walk-over (a unit walking over multiple seeds in one movement gains +1 each — but `max 1 seed per cell` caps any single cell to one bonus). Enemy 1 damage pre-AR.
-**Counter:** The **PIERCE** keyword (defined in `keyword-system.md`) bypasses AR entirely, dealing full damage regardless of the target unit's AR value. PIERCE cards are the intended design counter to high-AR Sadida units. There is no numeric AR cap applied to units; PIERCE is the design ceiling. If the Keyword System does not yet define PIERCE or it is unavailable to the relevant card pool, this gap must be flagged as a pre-implementation blocker before Class System stories begin.
+**Counter:** The **ARMOR-PIERCING** keyword (defined in `keyword-system.md`) treats the defender's AR as 0 for that attacker, effectively dealing full damage regardless of AR value. ARMOR-PIERCING cards are the intended design counter to high-AR Sadida units. There is no numeric AR cap applied to units; ARMOR-PIERCING is the design ceiling. Pre-implementation gate: verify ARMOR-PIERCING cards are available in the relevant class pools before Class System stories begin.
 **Stacking rule:** **Max 1 seed per cell.** Attempting to place a second seed on an occupied cell discards the new placement; client UI tooltip informs the player.
 **Lifetime:** Seeds persist indefinitely. Removed only by: (a) explicit consume/convert (Graines de Folie, etc.), or (b) game session end. Seeds on cells with no walk-over remain dormant board hazards.
 
@@ -429,6 +430,16 @@ Cra's class rhythm — "Long and thin — fires from outside trade range. Range 
 
 **Cross-reference:** `keyword-system.md` — RANGE keyword definition and stacking rules. `combat-resolution.md` sub-step 6 — RANGE attack resolution formula (authoritative). This Class System section is the class-identity anchor; the mechanics live in those documents.
 
+**Binding tempo rule (Cra):** Cra's rhythm requires maintaining ≥ 1 RANGE unit in play to operate the range-control tempo. A Cra player with zero RANGE units on the board has lost their class mechanism — they are playing only from neutral cards. No special subsystem beyond RANGE keyword resolution is needed; the class identity is expressed through card selection.
+
+**Melee-push ruling:** If a Cra RANGE unit is pushed into melee contact with an opponent unit (cell distance < 2) by any effect (ATTRACT, Fulgurance, Rollback, etc.), the RANGE unit loses its RANGE attack eligibility for that sub-step and participates in normal melee resolution at sub-step 3. RANGE attack eligibility is recalculated at each sub-step boundary based on current cell distance. This is handled entirely by combat-resolution.md sub-step 6 pre-check; no special Cra-specific logic is required.
+
+### CS-13 — Iop Class Scope (Declarative)
+
+Iop's tempo signature — "aggro rush — short, loud, front-loaded" — is delivered through its card library (Authority, Heure de Gloire, Felida, Appel à la Baston, Katsu Mi). These cards use base mechanics already owned by Combat Resolution (CHARGE, FIRST STRIKE, BODYGUARD) and Keyword System. No Iop-specific formula is owned by the Class System GDD. Implementers building Iop mechanics read `cards.json` for card-by-card effect definitions.
+
+Class System's contribution for Iop: (1) class identity and tempo signature (Section B/C above), (2) shop-slot class filtering to Iop's 24-card library, (3) CS-AC-38 below. Iop is not a design gap — it is a class whose mechanics are fully composable from the base systems without requiring class-specific formula ownership.
+
 ---
 
 ## Edge Cases
@@ -438,7 +449,7 @@ Edge cases are grouped by category. Each entry follows the form **If [condition]
 #### Concurrency & simultaneity
 
 - **If both players play Sang Méprise in the same RESOLUTION** → Both submissions land at sub-step 1. The first reveal sets `sang_meprise_active = true` and unicasts the full alive-objectives vector to both players. The second is idempotent: server still pays the spell cost but issues no second reveal (state already set; client silently ignores). Reveal state is set-once-per-RESOLUTION; double-firing has no additional information yield.
-- **If Xelor plays Xelorium AND Gelure in the same PLACEMENT batch** → Both resolve at sub-step 1 in ascending trigger_index order. Xelorium fires first (reserve gains opponent.current_mana; opponent.current_mana := 0), then Gelure fires (reserve gains self residual current_mana; self.current_mana := 0). Both cards' mana costs are paid before effects fire. Legal high-burst combo, not a bug.
+- **If Xelor plays Xelorium AND Gelure in the same PLACEMENT batch** → Both resolve at sub-step 1 in ascending trigger_index order. Xelorium fires first (reserve gains opponent.current_mana; opponent.current_mana := 0), then Gelure fires (reserve gains self residual current_mana; self.current_mana := 0). Both cards' mana costs are paid before effects fire. Legal high-burst combo, not a bug. **Burst ceiling (by design):** `reserve_gain = opponent.current_mana + (self.current_mana − Xelorium_cost)`. Example at mana_cap=10, Xelorium cost=4, opponent at full mana: `10 + (10 − 4) = +16 reserve` in one round. Round-2 Garde-Temps is achievable via this combo if both cards are in hand simultaneously, Xelor pays the 4-mana cost, and the opponent has spent 0 mana before sub-step 1 — a converging set of conditions. This burst ceiling is intended; it is Xelor's highest-requirement, highest-yield play. Balancers should monitor whether the combo trivializes the Rollback↔Garde-Temps tradeoff in M2 playtesting.
 - **If two opponent cards commit in the same sub-step batch and one of them SILENCEs Miss Nuit** → Cards committing before the SILENCE trigger Miss Nuit's reserve gain (subject to `miss_nuit_cap`); cards committing after the SILENCE do not. Reserve already awarded before the SILENCE lands is **not** retroactively revoked. Ordering is ascending trigger_index within the batch — deterministic, no rollback semantics.
 - **If Punition simultaneously destroys the opponent's last alive real objective AND the Sacrier's own loss condition is met in the same sub-step** → Both players reach `real_objectives_destroyed >= 3` in sub-step 1. RSM evaluates both loss conditions simultaneously. Per RSM's mutual-destruction rule, the result is a **Draw** — not a Sacrier loss. This is the only scenario where Punition produces a Draw rather than a Sacrier loss or an opponent destruction.
 
@@ -452,6 +463,7 @@ Edge cases are grouped by category. Each entry follows the form **If [condition]
 
 - **If Sinistro is targeted by SILENCE** → Server rejects as InvalidTarget. SILENCE is a unit-only status (Keyword System); Sinistro is a spell-attached entity on a friendly objective, not a unit. To remove Sinistro, the opponent must damage or destroy its parent objective.
 - **If Jet le Pied Volant is SILENCEd mid-RESOLUTION** → Charges already triggered before SILENCE landed are not reversed. Damage to friendly units/objectives occurring after SILENCE does not trigger further charges. SILENCE wear-off (end-of-round keyword reset) restores the trigger next round.
+- **If Sinistro's parent objective is destroyed (HP → 0)** → Sinistro is destroyed in the same Rule 7 consequence path (objective-system.md), before the RESOLUTION-end sync. No RESOLUTION-end damage fires from a Sinistro that is destroyed this RESOLUTION — the end-of-RESOLUTION trigger check must gate on Sinistro still being alive. The client removes the Sinistro indicator as part of the objective-destruction animation (triggered by `SinistroDestroyed` event — see NP-6). Objective System Rule 7 must also include a Sinistro cleanup step when the parent objective is destroyed.
 
 #### Reserve-math edges
 
@@ -459,7 +471,7 @@ Edge cases are grouped by category. Each entry follows the form **If [condition]
 - **If Sablier is cast while opponent.reserve = 0** → `opponent.reserve = saturating_sub(0, 1) = 0`; `self.reserve += 1`. Xelor gains +1 even when the opponent has nothing to swap from. Asymmetric by design — the gain is the mechanic.
 - **If Garde-Temps reserve gate fails (reserve < 20)** → Server rejects the placement; spell cost is **not** deducted (validation precedes deduction, per Economy Rule 4). Implementers must not deduct optimistically.
 - **If Garde-Temps targets an already-destroyed (HP=0) objective** → `target_valid = false`; server rejects. The 20 reserve is NOT deducted. A player who selects a destroyed lane as target receives a rejection without penalty. Client UI should grey out already-destroyed lanes as invalid targets.
-- **If a Sadida unit with high MP traverses a fully-seeded lane (max seeds per cell)** → The unit gains +1 AR per seeded cell traversed. With all 4 cells on the Sadida player's side seeded and unit MP ≥ 4, a unit gains +4 AR from a single movement. This is the intended maximum from seed density. The `seed_ar_bonus` knob controls per-seed gain; actual AR accumulation depends on seed density × unit MP. Multiple seeds in one path are intended to stack. **The design counter to high-AR units is the PIERCE keyword** (see CS-7 counter note and `keyword-system.md`) — PIERCE bypasses AR entirely, restoring full damage. No numeric AR cap is applied; PIERCE is the design ceiling. Pre-implementation gate: verify PIERCE is defined and available in the relevant card pools before Class System stories begin.
+- **If a Sadida unit with high MP traverses a fully-seeded lane (max seeds per cell)** → The unit gains +1 AR per seeded cell traversed. With all 4 cells on the Sadida player's side seeded and unit MP ≥ 4, a unit gains +4 AR from a single movement. This is the intended maximum from seed density. The `seed_ar_bonus` knob controls per-seed gain; actual AR accumulation depends on seed density × unit MP. Multiple seeds in one path are intended to stack. **The design counter to high-AR units is the ARMOR-PIERCING keyword** (see CS-7 counter note and `keyword-system.md`) — ARMOR-PIERCING treats the defender's AR as 0 for that attacker, restoring full damage. No numeric AR cap is applied; ARMOR-PIERCING is the design ceiling. Pre-implementation gate: verify ARMOR-PIERCING cards are available in the relevant card pools before Class System stories begin.
 
 #### Card-data and cross-class legality
 
@@ -643,6 +655,48 @@ All criteria are BLOCKING unless marked ADVISORY. Format: GIVEN [state] / WHEN [
 
 **CS-AC-30** GIVEN a La Sacrifiée token (HP=2/ATK=2/MP=3) is in play in lane 4, WHEN La Sacrifiée is destroyed (HP → 0) during RESOLUTION, THEN each enemy unit present in lane 4 at the moment of destruction takes 1 damage (routed through the AR reduction pipeline; effective damage = max(0, 1 − unit.AR) per enemy unit in the lane).
 
+#### Miranda control transfer
+
+**CS-AC-31** GIVEN Miranda is in play in lane 3 and has transferred control of an adjacent enemy unit in lane 2, WHEN Miranda is destroyed (HP → 0) during RESOLUTION, THEN all units whose control was transferred by Miranda revert to their original controllers; revert fires before end-of-RESOLUTION sub-step processing concludes.
+
+**CS-AC-32** GIVEN Miranda steals a Sadida-controlled Madoll token (source_class=Sadida), WHEN any LEADER-bonus check fires for the Ecaflip player, THEN the stolen Madoll's `source_class` remains `Sadida`; the Ecaflip player's LEADER cards that specify `Sadida_Token` family do not boost the stolen Madoll.
+
+#### Sinistro destruction
+
+**CS-AC-33** GIVEN a Sinistro spell is attached to a friendly objective in lane 2, WHEN that objective takes any damage amount > 0 during RESOLUTION, THEN Sinistro is destroyed (removed from the objective); subsequent RESOLUTION cycles in lane 2 do not apply Sinistro's 1 damage to the enemy objective.
+
+#### Madoll passive
+
+**CS-AC-34** GIVEN a Madoll token (HP=3/ATK=1/MP=3) is in play, WHEN a Spell-type card's mana cost is evaluated for playability, THEN the effective cost is reduced by 1 (minimum 0); Trap-type and Order-type card costs are unaffected (per OQ-CS-4 ruling).
+
+#### Ecaflip — Craps edge cases
+
+**CS-AC-35** GIVEN Ecaflip plays Craps and all opponent objectives have HP=0 at the time of resolution (alive=0), WHEN the Craps distribution sub-formula runs, THEN no damage is applied, no integer division executes (the `alive == 0` guard fires before any division), and game state is unchanged. *(S1 crash guard — use `checked_div` or explicit early-return in Rust.)*
+
+#### Seed stacking
+
+**CS-AC-36** GIVEN a Seed already occupies cell 3 lane 2, WHEN a Sadida card attempts to place a second Seed on cell 3 lane 2, THEN the placement is discarded; the cell retains exactly 1 Seed; the placing unit's state is unchanged.
+
+#### Sacrier — Punition mutual destruction
+
+**CS-AC-37** GIVEN Sacrier has exactly 1 alive real objective (2 already destroyed) AND opponent also has exactly 1 alive real objective (2 already destroyed), WHEN Punition targets Sacrier's last real objective and opponent's last real objective HP reaches 0 from the 3-damage AOE in the same sub-step, THEN the RSM evaluates both loss conditions simultaneously and declares a **Draw** (not Sacrier loss, not opponent loss).
+
+#### Cra RANGE mechanics
+
+**CS-AC-38** GIVEN a Cra player's class slot generates a card during shop phase, THEN the drawn card belongs to Cra's 25-card class library; no Iop/Sacrier/Xelor/Ecaflip/Sadida cards may appear in the Cra class slot.
+
+**CS-AC-39** GIVEN a Cra RANGE unit at cell distance ≥ 2 from an opponent unit, WHEN RESOLUTION sub-step 6 runs, THEN the Cra unit fires its RANGE attack before any melee exchange (sub-step 3) resolves for that lane.
+
+**CS-AC-40** GIVEN a Cra RANGE unit is pushed to cell distance < 2 by an opponent effect (e.g., ATTRACT), WHEN RESOLUTION sub-step 6 runs, THEN the Cra unit does NOT fire a RANGE attack; it participates in melee resolution at sub-step 3 instead (RANGE eligibility recalculated at each sub-step boundary).
+
+#### Iop class filtering
+
+**CS-AC-41** GIVEN a player whose class is Iop, WHEN shop slots are generated, THEN the class slot samples exclusively from Iop's 24-card class library; no Cra/Sacrier/Xelor/Ecaflip/Sadida cards may appear in the Iop class slot.
+
+#### HASTE and Rollback
+
+**CS-AC-08b** GIVEN Xelor player with `reserve=3` and one unit placed this round with HASTE at cell 2, WHEN Rollback resolves at sub-step 2, THEN the HASTE unit moves to cell 5 (`clamp(2+3)=5`); `reserve=0`. *(Positive case for the OQ-CS-3 ruling: HASTE removes summoning sickness; Rollback is external movement, not an action.)*
+
 ## Open Questions
 
 | ID | Question | Owner | Status |
@@ -651,11 +705,12 @@ All criteria are BLOCKING unless marked ADVISORY. Format: GIVEN [state] / WHEN [
 | OQ-CS-2 | **Sang Méprise reconnect gap** — Resolved. NP GDD closed this via snapshot-field approach: `active_sang_meprise_reveals: Option<Vec<(PlayerId, LaneId, bool)>>` in `S2CGameSnapshot`. Client rebuilds reveal state from the snapshot field on reconnect; no re-unicast path is needed. The Class GDD Edge Cases section (disconnect section) is authoritative. | Network Protocol | **Closed — NP GDD resolution (snapshot field)** |
 | OQ-CS-3 | **Rollback and HASTE** — Closed. Ruling: HASTE units placed this round are eligible for Rollback movement. Rationale: HASTE removes summoning sickness for action; Rollback is external movement (sub-step 2), not an action. CS-AC-08 is correct as written. | Design | **Closed — HASTE units eligible** |
 | OQ-CS-4 | **Madoll passive cost-reduction scope** — Closed. Ruling: Spell-type cards only. Rationale: consistent with Krosmaga original and with the Keyword System's spell/trap/order type distinction. Trap and Order cards are NOT affected by Madoll's passive. | Design | **Closed — Spell-type only** |
-| NP-1 | **`PlayerSnapshot` missing `class_id` field** — `S2CGameSnapshot`'s `PlayerSnapshot` struct has no `class_id: ClassId` field. Class is publicly visible throughout the game (hard rule). NP GDD must add this field to both players' snapshots. CS-AC-03 depends on this field existing. | Network Protocol | Open — NP required change |
+| NP-1 | **`PlayerSnapshot` missing `class_id` field** — **RESOLVED** in NP GDD (Pass 3 verification): `PlayerSnapshot` already contains `class_id: ClassId`. CS-AC-03a annotation updated: NP-1 dependency is satisfied; remaining dependency is Lightyear unicast infrastructure only. | Network Protocol | **Closed — field present in NP GDD** |
 | NP-2 | **`UnitBoardState` missing `source_class` field** — Miranda-stolen tokens must retain `source_class` for LEADER bonus checks and client rendering. `UnitBoardState` needs `source_class: Option<ClassId>` (None for non-token units; Some(class) set at spawn, never mutated). Required for state reconstruction on crash/reconnect. | Network Protocol | Open — NP required change |
 | NP-3 | **`S2CResolutionEvent` missing `UnitSpawned` variant** — Tokens (Mummy, Madoll, Chacha Noir, La Gonflable, La Sacrifiée) spawn during RESOLUTION. Without a `UnitSpawned` event variant, clients animating resolution replay will encounter `UnitMoved` for entities that don't yet exist locally. Add `UnitSpawned { unit_id, card_id, owner, lane, cell, source: SpawnSource }` where `SpawnSource` ∈ {DeathTrigger, AppearanceTrigger, ClassTokenConversion}. | Network Protocol | Open — NP required change |
 | NP-4 | **No registered message type for Dé du Chateux single-lane reveal** — The single-lane unicast (Ecaflip-only, per Dé du Chateux roll ≤ threshold) cannot reuse `S2CSangMepriseReveal` (wrong payload shape, wrong semantic, wrong recipient scope). NP GDD must register `S2CSingleObjectiveReveal { player_id: PlayerId, lane: u8, is_fake: bool }` as a separate unicast message. | Network Protocol | Open — NP required change |
-| NP-5 | **Reserve mutations during RESOLUTION have no communication path** — `S2CGoldUpdate` is suppressed during RESOLUTION per NP GDD rules. Xelorium (sub-step 1), Rollback (sub-step 2), and Mummy passive (per-hit during combat sub-steps) reserve mutations have no specified event variant. Either add a `ReserveChanged { player_id, new_reserve }` variant to `S2CResolutionEvent`, or clarify that the NP suppression rule applies to gold-only updates and allows reserve-only unicasts. All three mutation sites must be covered, not just Xelorium and Rollback. | Network Protocol | Open — NP required change |
+| NP-5 | **Reserve mutations during RESOLUTION have no communication path** — `S2CGoldUpdate` is suppressed during RESOLUTION per NP GDD rules. Four mutation sites have no specified event variant: Xelorium (sub-step 1), Rollback (sub-step 2), Mummy passive (per-hit during combat sub-steps), and **Garde-Temps deduction** (sub-step 1, deducts 20 reserve on activation). All four sites must be covered. Either add a `ReserveChanged { player_id, new_reserve }` variant to `S2CResolutionEvent`, or clarify that the suppression rule applies to gold-only updates and allows reserve-only unicasts. | Network Protocol | Open — NP required change |
 | NP-6 | **Sinistro ResolutionEvent gaps** — Three missing protocol elements: (1) No `DamageKind` variant to discriminate Sinistro damage from spell damage during RESOLUTION replay; (2) Sinistro's sub-step assignment is unspecified (recommended: sub-step 6, after all combat); (3) No `SinistroDestroyed` event for the client to remove the Sinistro indicator mid-RESOLUTION when the parent objective takes damage. NP GDD must add all three. | Network Protocol | Open — NP required change |
 | NP-7 | **Miranda control transfer has no message** — `CardOwner` component replication is suppressed during RESOLUTION animation. `UnitMoved` carries no `controller_id` field. Client cannot render Miranda-stolen units with the correct team color during RESOLUTION replay. Miranda revert on death has no `released_units` payload. NP GDD must add: `ResolutionEvent::ControlTransferred { unit_id, new_owner }` and `MirandaRevertFired { released_units: Vec<EntityId> }`. | Network Protocol | Open — NP required change |
 | NP-8 | **Chacha Noir SpawnSource missing Replacement variant** — `SpawnSource ∈ {DeathTrigger, AppearanceTrigger, ClassTokenConversion}` is incomplete. Chacha Noir replaces a target unit (original dies, Chacha Noir spawns at its cell). Without `SpawnSource::Replacement { replaced_unit_id: EntityId }`, the client cannot causal-link the `UnitDied` and `UnitSpawned` events and will render them as unrelated animations rather than a replacement sequence. NP GDD must add this variant. | Network Protocol | Open — NP required change |
+| NP-9 | **`SeedPlaced` and `SeedConsumed` events missing from `S2CResolutionEvent`** — When Pollinisation, Sac de Graines, or Ronce DEATH places a Seed during RESOLUTION, no event notifies the client. Without `SeedPlaced { owner: PlayerId, lane: u8, cell: u8 }`, the client cannot animate seed appearance during RESOLUTION and seeds will appear as a visual jump on snapshot reconciliation. Similarly, Graines de Folie's seed conversion requires `SeedConsumed { lane: u8, cell: u8 }` events (paired with `UnitSpawned` at the same cell) to animate the conversion batch. NP GDD must add both event variants. | Network Protocol | Open — NP required change |

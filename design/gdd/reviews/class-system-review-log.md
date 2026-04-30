@@ -1,5 +1,13 @@
 # Review Log — Class System GDD
 
+## Review — 2026-04-30 (Pass 3) — Verdict: NEEDS REVISION → Revised In-Session
+
+Scope signal: M
+Specialists: game-designer, systems-designer, qa-lead, economy-designer, network-programmer, ux-designer, creative-director
+Blocking items: 11 GDD-local | Recommended: 15+ | Cross-doc BLOCKING tracked as NP/entities.yaml/Hand-UI debt
+Summary: Pass 3 surfaced issues requiring cross-document synthesis that Pass 2 missed. Key fixes: (1) PIERCE keyword replaced with ARMOR-PIERCING (PIERCE was never defined in keyword-system.md); (2) Mummy passive "no cap" invalidates the Rollback↔Garde-Temps tradeoff — CS-3 language revised to "binding in Mummy-light games" with Mummy caveat; (3) CS-4/CS-6 both referenced Rule 9 (display-only) instead of Rule 7 (consequence path) — fixed; (4) CS-4 `chosen_enemy_objective.hp` was undefined in variable table — added as GameConfig.objective_hp (max HP constant); (5) Sinistro orphan state on parent destruction was unspecified — edge case added; (6) CS-12 Cra was a stub — added binding tempo rule and melee-push ruling; (7) CS-13 Iop scope declared; (8) Xelorium+Gelure burst ceiling added with design confirmation; (9) 12 new ACs added including CS-AC-31/32 (Miranda), CS-AC-34 (Madoll passive), CS-AC-35 (Craps alive=0 crash guard), CS-AC-38–41 (Cra/Iop), CS-AC-08b (HASTE+Rollback). NP-1 closed; NP-5 updated (4th mutation site: Garde-Temps); NP-9 registered (SeedPlaced/SeedConsumed). UX BLOCKING items (Hand UI per-card states, class-picker UX spec, Garde-Temps exhausted NP message) tracked as downstream debt — not GDD-local.
+Prior verdict resolved: Yes — Pass 2 APPROVED confirmed; Pass 3 surfaced cross-doc synthesis issues not visible in isolated review.
+
 ## Review — 2026-04-30 (Pass 2) — Verdict: APPROVED
 
 Scope signal: XL
