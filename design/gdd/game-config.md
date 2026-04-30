@@ -72,6 +72,10 @@ pub struct GameConfig {
     pub auction_floor_legendary: u32,
     pub legendary_pool_entry_round: u32,
 
+    // Prism System
+    pub prism_strike_damage: u32,         // default 1; safe 1–3
+    pub prism_strike_mana_cost: u32,      // default 3; safe 1–5
+
     // Class mechanics
     pub xelor_sablier_steal: u32,
 

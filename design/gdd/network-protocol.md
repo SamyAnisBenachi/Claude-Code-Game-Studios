@@ -234,9 +234,13 @@ BoardSnapshot {
 }
 
 PrismBoardState {
+    player_id: PlayerId,  // identifies which player's prism; keyed on (player_id, lane)
     lane:      u8,
-    collected: bool,   // true = prism collected this game; false = still available
+    collected: bool,      // true = prism collected; false = still available
 }
+// BoardSnapshot.prisms = Vec<PrismBoardState>: one entry per (player_id, lane) pair.
+// 1v1: 10 entries (2 players × 5 lanes). 2v2: 20 entries (4 players × 5 lanes).
+// player_id field is required — without it the snapshot cannot reconstruct per-player prism state.
 
 UnitBoardState {
     unit_id:    EntityId,   // server-assigned NetworkId.id — use to look up local ECS Entity
