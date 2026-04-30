@@ -1,9 +1,9 @@
 use super::events::{
-    AuctionPhaseEntered, BroadcastPhaseChanged, DraftStarted, GameOverEmitted,
+    AuctionPhaseEntered, BroadcastPhaseChanged, DraftStarted, GameOverEmitted, LobbyComplete,
     PlacementPhaseEntered, ResolutionPhaseEntered, ShopRefreshNeeded,
 };
 use super::state::{PhaseAdvanceRequest, RoundPhase, RoundState};
-use crate::core::session::SessionConfig;
+use crate::core::session::{PlayerSessions, SessionConfig};
 use bevy::prelude::*;
 use shared::protocol::DraftPhase;
 
@@ -20,6 +20,8 @@ pub fn advance_phase(
     request: Option<Res<PhaseAdvanceRequest>>,
     session: Option<Res<SessionConfig>>,
     config: Option<Res<crate::foundation::config::GameConfig>>,
+    mut sessions: Option<ResMut<PlayerSessions>>,
+    mut lobby_complete: MessageWriter<LobbyComplete>,
     mut draft_started: MessageWriter<DraftStarted>,
     mut shop_refresh: MessageWriter<ShopRefreshNeeded>,
     mut auction_entered: MessageWriter<AuctionPhaseEntered>,
@@ -52,7 +54,15 @@ pub fn advance_phase(
 
     match rsm.phase {
         RoundPhase::Lobby => {
+            let Some(sessions) = sessions.as_deref_mut() else {
+                return;
+            };
+            if !sessions.all_classes_chosen() {
+                return;
+            }
+            sessions.lock_all_classes();
             rsm.phase = RoundPhase::DraftInitial;
+            lobby_complete.write(LobbyComplete);
             emit_draft_entry(
                 &mut rsm,
                 &session,

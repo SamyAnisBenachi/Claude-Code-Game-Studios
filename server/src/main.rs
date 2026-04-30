@@ -20,6 +20,7 @@
 mod core;
 mod feature;
 mod foundation;
+mod lobby;
 mod network;
 
 use bevy::prelude::*;
@@ -109,6 +110,7 @@ fn main() {
     app.add_plugins(foundation::config::ConfigPlugin);
 
     // Core — Round State Machine scaffold (ADR-009/ADR-010).
+    app.add_plugins(core::session::GameSessionPlugin);
     app.add_plugins(core::rsm::RsmPlugin);
     app.add_plugins(core::economy::EconomyPlugin);
 

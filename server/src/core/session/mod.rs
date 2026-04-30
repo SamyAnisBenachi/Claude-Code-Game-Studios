@@ -6,12 +6,14 @@
 pub mod config;
 pub mod events;
 pub mod plugin;
+pub mod snapshot;
 pub mod state;
 
 pub use config::{build_session_config, SessionConfig};
 pub use events::{SessionCancelled, SessionCancelledReason, SessionReady};
 pub use plugin::GameSessionPlugin;
+pub use snapshot::build_snapshot;
 pub use state::{
-    ClassSelections, LobbyDeadline, LobbyHeartbeats, LobbyState, RoomCode, SessionId, SessionSlot,
-    SessionSlots, SessionToken, TeamId,
+    ClassSelections, LobbyDeadline, LobbyHeartbeats, LobbyState, PlayerSessionData, PlayerSessions,
+    RoomCode, SessionId, SessionSlot, SessionSlots, SessionToken, TeamId,
 };

@@ -56,6 +56,7 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_c2s::<C2SHello>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SCreateRoom>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SJoinRoom>(registry, ProtocolChannel::Reliable);
+    register_c2s::<C2SClassChoice>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SSelectClass>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SConfirmClass>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SPurchaseCard>(registry, ProtocolChannel::Reliable);
@@ -267,6 +268,11 @@ pub struct C2SJoinRoom {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct C2SClassChoice {
+    pub class: ClassId,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct C2SSelectClass {
     pub class_id: ClassId,
 }
@@ -470,10 +476,17 @@ pub struct S2CSangMepriseReveal {
     pub identities: Vec<(u8, bool)>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct PlayerSnapshot {
+    pub player_id: PlayerId,
+    pub class_id: ClassId,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct S2CGameSnapshot {
     // TODO(GSS epic): expand to full S2CGameSnapshot schema.
     pub player_id: PlayerId,
+    pub players: Vec<PlayerSnapshot>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

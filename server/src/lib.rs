@@ -6,4 +6,5 @@
 pub mod core;
 pub mod feature;
 pub mod foundation;
+pub mod lobby;
 pub mod network;

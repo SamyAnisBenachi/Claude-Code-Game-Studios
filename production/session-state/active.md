@@ -477,3 +477,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Notes: Snapshot scaffold follows current `network-protocol.md` by carrying `starting_price` in addition to ADR-013's original fields.
 - Blockers: None
 - Next: `/code-review server/src/feature/auction/state.rs server/src/feature/auction/snapshot.rs tests/unit/auction/auction_state_scaffold_test.rs` then `/story-done production/epics/auction-system/story-001-auction-state-scaffold.md` after CI green
+
+## Session Extract - /dev-story 2026-04-30
+- Story: `production/epics/class-system/story-001-class-lifecycle.md` - Class Lifecycle / PlayerSessions Scaffold
+- Owner: `claude-cs-001-class-lifecycle`
+- Files changed: `shared/src/protocol.rs`, `server/src/core/session/state.rs`, `server/src/core/session/plugin.rs`, `server/src/core/session/snapshot.rs`, `server/src/core/session/mod.rs`, `server/src/core/rsm/events.rs`, `server/src/core/rsm/plugin.rs`, `server/src/core/rsm/transitions.rs`, `server/src/lobby/handler.rs`, `server/src/lobby/mod.rs`, `server/src/network/mod.rs`, `server/src/main.rs`, `server/src/lib.rs`, `server/tests/class_lifecycle_test.rs`, `server/tests/rsm_scaffold_test.rs`, `server/tests/rsm_transitions_test.rs`, `tests/unit/class/class_lifecycle_test.rs`, `production/sprint-status.yaml`
+- Test written: `server/tests/class_lifecycle_test.rs` (9 tests); evidence mapping at `tests/unit/class/class_lifecycle_test.rs`
+- Verification: `cargo test -p server --test class_lifecycle_test` -> 9 passed; `cargo test -p server --test rsm_transitions_test --test rsm_scaffold_test` -> 16 passed; `cargo check --workspace` passed with pre-existing warnings.
+- Notes: `systems-index` still reports Class System as In Review, and `control-manifest.md` still lists ADR-014 as pending despite ADR-014 and the epic/story being Ready/Accepted. Shared protocol remains dependency-light, so `C2SClassChoice` follows the existing serde-only Lightyear registration manifest rather than adding a `lightyear` dependency to `shared/`.
+- Blockers: None
+- Next: `/code-review server/src/core/session/state.rs server/src/lobby/handler.rs server/src/core/rsm/transitions.rs server/tests/class_lifecycle_test.rs` then `/story-done production/epics/class-system/story-001-class-lifecycle.md` after CI green

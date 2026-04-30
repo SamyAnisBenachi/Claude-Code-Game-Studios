@@ -109,6 +109,16 @@ stories:
     blocker: ""
     completed: ""
 
+  - id: "CS-001"
+    name: "Class Lifecycle / PlayerSessions Scaffold"
+    file: "production/epics/class-system/story-001-class-lifecycle.md"
+    priority: must-have
+    status: in-progress
+    owner: "claude-cs-001-class-lifecycle"
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""
+
   - id: "AUC-001"
     name: "AuctionState Types & Snapshot Scaffold"
     file: "production/epics/auction-system/story-001-auction-state-scaffold.md"

@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use server::core::rsm::{
     advance_phase, AuctionPhaseEntered, BroadcastPhaseChanged, DraftStarted, GameOverEmitted,
-    PhaseAdvanceRequest, PlacementPhaseEntered, ResolutionPhaseEntered, RoundPhase, RoundState,
-    ShopRefreshNeeded,
+    LobbyComplete, PhaseAdvanceRequest, PlacementPhaseEntered, ResolutionPhaseEntered, RoundPhase,
+    RoundState, ShopRefreshNeeded,
 };
-use server::core::session::SessionConfig;
+use server::core::session::{PlayerSessionData, PlayerSessions, SessionConfig};
 use server::foundation::config::GameConfig;
 use shared::card::ClassId;
 use shared::protocol::{DraftPhase, GameMode, GameOverReason};
@@ -29,9 +29,29 @@ fn session_config(players: &[PlayerId]) -> SessionConfig {
     }
 }
 
+fn player_sessions(players: &[PlayerId]) -> PlayerSessions {
+    let mut sessions = PlayerSessions::default();
+    for (index, player) in players.iter().copied().enumerate() {
+        sessions.players.insert(
+            player,
+            PlayerSessionData {
+                class: if index == 0 {
+                    ClassId::Iop
+                } else {
+                    ClassId::Cra
+                },
+                class_locked: false,
+            },
+        );
+    }
+    sessions
+}
+
 fn test_app(phase: RoundPhase, round_number: u32) -> App {
     let mut app = App::new();
-    app.add_message::<DraftStarted>()
+    let players = [PlayerId(1), PlayerId(2)];
+    app.add_message::<LobbyComplete>()
+        .add_message::<DraftStarted>()
         .add_message::<ShopRefreshNeeded>()
         .add_message::<AuctionPhaseEntered>()
         .add_message::<PlacementPhaseEntered>()
@@ -43,7 +63,8 @@ fn test_app(phase: RoundPhase, round_number: u32) -> App {
             round_number,
             ..RoundState::new()
         })
-        .insert_resource(session_config(&[PlayerId(1), PlayerId(2)]))
+        .insert_resource(session_config(&players))
+        .insert_resource(player_sessions(&players))
         .insert_resource(GameConfig(shared::config::GameConfig::default()))
         .add_systems(Update, advance_phase);
     app
@@ -83,10 +104,12 @@ fn rsm_transitions_lobby_to_draft_initial_emits_f2_order_payloads() {
     assert_eq!(rsm.round_number, 1);
 
     let drafts = read_messages::<DraftStarted>(&app);
+    let lobby_complete = read_messages::<LobbyComplete>(&app);
     let refreshes = read_messages::<ShopRefreshNeeded>(&app);
     let auctions = read_messages::<AuctionPhaseEntered>(&app);
     let broadcasts = read_messages::<BroadcastPhaseChanged>(&app);
 
+    assert_eq!(lobby_complete.len(), 1);
     assert_eq!(drafts.len(), 1);
     assert_eq!(drafts[0].round, 1);
     assert_eq!(drafts[0].phase, DraftPhase::Initial);

@@ -1,6 +1,6 @@
 use super::events::{
     AuctionPhaseEntered, AuctionSettled, BroadcastPhaseChanged, DraftStarted, GameOverEmitted,
-    PlacementPhaseEntered, ResolutionComplete, ResolutionPhaseEntered, SessionReady,
+    LobbyComplete, PlacementPhaseEntered, ResolutionComplete, ResolutionPhaseEntered, SessionReady,
     ShopRefreshNeeded,
 };
 use super::state::RoundState;
@@ -12,6 +12,7 @@ pub struct RsmPlugin;
 impl Plugin for RsmPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(RoundState::new())
+            .add_message::<LobbyComplete>()
             .add_message::<DraftStarted>()
             .add_message::<ShopRefreshNeeded>()
             .add_message::<AuctionPhaseEntered>()

@@ -1,6 +1,7 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
+use crate::lobby::handler::{handle_class_choice, PlayerConnectionMap};
 use bevy::prelude::*;
 use lightyear::prelude::server::*;
 use lightyear::prelude::*;
@@ -21,8 +22,9 @@ impl Plugin for ServerNetworkPlugin {
 
         register_lightyear_protocol(app);
 
-        app.add_systems(Startup, open_websocket_server)
-            .add_systems(Update, receive_c2s_messages)
+        app.init_resource::<PlayerConnectionMap>()
+            .add_systems(Startup, open_websocket_server)
+            .add_systems(Update, (receive_c2s_messages, handle_class_choice))
             .add_observer(log_client_connected)
             .add_observer(log_client_disconnected);
     }

@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use server::core::rsm::{
     AuctionPhaseEntered, AuctionSettled, BroadcastPhaseChanged, DraftStarted, GameOverEmitted,
-    PlacementPhaseEntered, ResolutionComplete, ResolutionPhaseEntered, RoundPhase, RoundState,
-    RsmPlugin, ShopRefreshNeeded,
+    LobbyComplete, PlacementPhaseEntered, ResolutionComplete, ResolutionPhaseEntered, RoundPhase,
+    RoundState, RsmPlugin, ShopRefreshNeeded,
 };
 
 #[test]
@@ -31,6 +31,7 @@ fn test_rsm_plugin_registers_round_state_and_messages() {
 
     let world = app.world();
     assert_eq!(world.resource::<RoundState>().phase, RoundPhase::Lobby);
+    assert!(world.get_resource::<Messages<LobbyComplete>>().is_some());
     assert!(world.get_resource::<Messages<DraftStarted>>().is_some());
     assert!(world
         .get_resource::<Messages<ShopRefreshNeeded>>()

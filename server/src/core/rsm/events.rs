@@ -7,6 +7,9 @@ use shared::session::PlayerId;
 pub use crate::core::session::SessionReady;
 
 #[derive(Message, Clone, Debug)]
+pub struct LobbyComplete;
+
+#[derive(Message, Clone, Debug)]
 pub struct DraftStarted {
     pub round: u32,
     pub phase: DraftPhase,
