@@ -136,7 +136,7 @@ WRITE ACCESS RULES
 ┌──────────────────────────────────────────────────────────────────┐
 │  PlacementBuffer commit system (PlacementPhaseEntered subscriber)│
 │    → calls spawn_unit per committed entry                        │
-│    → adds ReplicateTo after S2CPlacementReveal is enqueued       │
+│    → adds Replicate after S2CPlacementReveal is enqueued         │
 │                                                                  │
 │  resolve_combat (exclusive system — ADR-017)                     │
 │    → calls move_unit, remove_unit, change_lane_unit              │
@@ -164,9 +164,9 @@ FRAME SEQUENCE — PLACEMENT → RESOLUTION sub-step 1
 │    Sub-step 1: commit PlacementBuffer                            │
 │      for each pending placement:                                 │
 │        entity = spawn_unit(world, lane, cell, owner, ...)        │
-│        (entity has all components EXCEPT ReplicateTo)            │
+│        (entity has all components EXCEPT Replicate)              │
 │      enqueue S2CPlacementReveal on ReliableChannel               │
-│      add ReplicateTo to each spawned entity                      │
+│      add Replicate::to_clients(NetworkTarget::All) to each spawned entity                      │
 │      clear PlacementBuffer                                       │
 │                                                                  │
 │    Sub-steps 2–6: combat resolution (resolve_combat body)        │
@@ -293,7 +293,7 @@ pub fn validate_placement(
 // ─── Mutations (update both entity components AND BoardState index) ───────
 
 /// Spawn a unit entity from card data. Adds all Required Components.
-/// Does NOT add ReplicateTo — caller adds it after S2CPlacementReveal.
+/// Does NOT add Replicate — caller adds Replicate::to_clients(NetworkTarget::All) after S2CPlacementReveal.
 /// Updates position_index and minion_slots in BoardState.
 pub fn spawn_unit(
     world: &mut World,
@@ -421,7 +421,7 @@ pub fn is_at_objective_cell(player: PlayerId, cell: u8) -> bool {
 ### Positive
 
 - `get_units_at_cell(state, lane, cell)` is a HashMap lookup — O(1) regardless of total unit count. `resolve_combat` can issue any number of spatial queries without performance concern.
-- Unit ECS entities with `BoardPosition` components and `ReplicateTo` markers give Lightyear complete information to replicate live board state to both clients after sub-step 1. No manual per-event S2C broadcast needed for position updates.
+- Unit ECS entities with `BoardPosition` components and `Replicate::to_clients(NetworkTarget::All)` give Lightyear complete information to replicate live board state to both clients after sub-step 1. No manual per-event S2C broadcast needed for position updates.
 - The board API module (`board/api.rs`) is the single mutation path for spatial state. Any spatial inconsistency (position_index out of sync with components, orphaned Minion slots) is isolated to this module. Testing board correctness means testing this module.
 - `WorldNew()` tests can insert `BoardState` as a resource, call `spawn_unit`/`move_unit`/etc., and assert index state without a live Lightyear session. All BL-* acceptance criteria in the GDD are testable this way.
 - Spawn range (`spawn_range: [u8; 2]`) is part of `BoardState` — readable at O(1) during PLACEMENT validation without a separate resource lookup.
@@ -430,14 +430,14 @@ pub fn is_at_objective_cell(player: PlayerId, cell: u8) -> bool {
 
 - The `BoardState` index must be kept in sync with entity component state at all times. Any code that directly mutates a `BoardPosition` component without going through `board/api.rs` creates a silent inconsistency — the entity is at one position, the index says another. This is the same constraint as Economy's `api.rs` boundary and requires the same enforcement (CI grep + code review gate).
 - `remove_unit_from_board` does not despawn the entity immediately — the entity is removed from the index but may persist as a zombie in the ECS world for the remainder of the sub-step. Callers must explicitly despawn (via `commands.entity(e).despawn()`) after the sub-step that triggers the removal. This two-phase remove (index removal + later despawn) is necessary because despawning inside an exclusive system while queries are still open can panic. The cleanup system at `OnResolutionEnd` is the safety net.
-- Lightyear's `ReplicateTo` component API must be verified against Lightyear 0.26 docs. If the API differs from this ADR's assumption, the sub-step 1 commit path must be revised (see Verification Required item 1).
+- Lightyear 0.26 replication uses `Replicate::to_clients(NetworkTarget::All)` (not a `ReplicateTo` component — that name does not exist). The sub-step 1 commit path uses `commands.entity(e).insert(Replicate::to_clients(NetworkTarget::All))` after `S2CPlacementReveal` is enqueued.
 
 ### Risks
 
 | Risk | Probability | Impact | Mitigation |
 |------|------------|--------|------------|
 | `BoardPosition` component mutated directly (outside api.rs), causing index drift | Medium | Silent spatial query corruption — units appear at wrong cell to resolve_combat | CI grep for `.lane =`, `.cell =` on `BoardPosition` outside board/api.rs. Code review gate on every board PR. |
-| `ReplicateTo` added before `S2CPlacementReveal` is enqueued, leaking opponent placement | Low | Critical — breaks simultaneous-reveal invariant (ADR-007) | Sub-step 1 commit sequence is strictly ordered: reveal enqueue first, then `ReplicateTo`. Integration test that asserts no board entity is replicated before `S2CPlacementReveal` fires in the same frame. |
+| `Replicate::to_clients` added before `S2CPlacementReveal` is enqueued, leaking opponent placement | Low | Critical — breaks simultaneous-reveal invariant (ADR-007) | Sub-step 1 commit sequence is strictly ordered: reveal enqueue first, then `Replicate::to_clients(NetworkTarget::All)`. Integration test that asserts no board entity is replicated before `S2CPlacementReveal` fires in the same frame. |
 | `world.query()` in exclusive system causes panic if ECS world is in inconsistent state during resolve_combat | Low | Runtime panic | Exclusive systems in Bevy have exclusive world access — no other system runs concurrently. `world.query()` is safe in exclusive context. Verify with Bevy 0.18 engine-reference. |
 | BoardIndex out of sync after unexpected resolve_combat abort (timeout) | Low | Subsequent PLACEMENT round uses stale board state | `cleanup_board` on `OnResolutionEnd` sweeps inconsistencies as a safety net. Integration test: abort resolve_combat mid-sub-step and assert board state is consistent after cleanup. |
 
@@ -449,7 +449,7 @@ pub fn is_at_objective_cell(player: PlayerId, cell: u8) -> bool {
 | `board-lane-system.md` | Rule 3 — 1 Minion slot per player per lane | `minion_slots: HashMap<(PlayerId, lane), Option<Entity>>` in BoardState; `validate_placement` checks before accepting Minion |
 | `board-lane-system.md` | Rule 4 — Spawn range: fakes_destroyed 0–2 | `spawn_range: [u8; 2]` in BoardState; `validate_placement` applies Formula F2; `expand_spawn_range` increments on fake destruction |
 | `board-lane-system.md` | Rule 5 — Cell occupancy limits by card type | `validate_placement` checks position_index for same-type cell occupancy (Trap/Structure); Minion slot for Minion type |
-| `board-lane-system.md` | Rule 6 — Pending placement buffer commits atomically at sub-step 1 | `spawn_unit` called per buffer entry at sub-step 1; `ReplicateTo` added after `S2CPlacementReveal` enqueued (ADR-007 pattern) |
+| `board-lane-system.md` | Rule 6 — Pending placement buffer commits atomically at sub-step 1 | `spawn_unit` called per buffer entry at sub-step 1; `Replicate::to_clients(NetworkTarget::All)` added after `S2CPlacementReveal` enqueued (ADR-007 pattern) |
 | `board-lane-system.md` | Rule 7 — Board provides `get_units_at_cell`, `move_unit`, `remove_unit` etc. to Combat Resolution | Board API functions with those signatures; called from `resolve_combat` exclusive system |
 | `board-lane-system.md` | Rule 8 — Standard movement: `new_cell = clamp(current + direction × mp, 1, 8)` | `apply_movement_formula(current_cell, direction, mp) -> u8` — F1 exact implementation |
 | `board-lane-system.md` | Rule 9 — REPEL/ATTRACT/CHANGE LANE displacement | `move_unit` applies F1 with custom direction argument per GDD F1 table; `change_lane_unit` enforces lane bounds and Minion slot availability |
@@ -488,7 +488,7 @@ This is a greenfield system — no existing board implementation. Implementation
 - [ ] After `spawn_unit(world, lane=1, cell=1, PlayerA, ...)`: `get_units_at_cell(state, 1, 1)` returns the new entity; `is_minion_slot_occupied(state, PlayerA, 1)` returns true.
 - [ ] After `move_unit(state, world, entity, lane=1, new_cell=4)`: `get_units_at_cell(state, 1, 1)` is empty; `get_units_at_cell(state, 1, 4)` contains the entity; `entity.get::<BoardPosition>().cell == 4`.
 - [ ] After `remove_unit_from_board(state, entity, PlayerA, lane=1, Minion)`: `get_units_at_cell(state, 1, 4)` is empty; `is_minion_slot_occupied(state, PlayerA, 1)` returns false.
-- [ ] `ReplicateTo` is NOT present on unit entities immediately after `spawn_unit`. It is only added after `S2CPlacementReveal` is enqueued. Verified by asserting entity lacks `ReplicateTo` component before the reveal send, and has it after.
+- [ ] `Replicate` is NOT present on unit entities immediately after `spawn_unit`. It is only added (via `Replicate::to_clients(NetworkTarget::All)`) after `S2CPlacementReveal` is enqueued. Verified by asserting entity lacks `Replicate` component before the reveal send, and has it after.
 - [ ] `BoardPosition` component and `BoardState.position_index` agree for all alive units at every sub-step boundary in the integration test. No drift detected.
 - [ ] `expand_spawn_range(state, PlayerA)` called 3× clamps at 2 (max fakes destroyed). Unit test.
 - [ ] `change_lane_unit` to a lane that is out of bounds [1–5] is a silent no-op — entity remains in original lane and index unchanged.
