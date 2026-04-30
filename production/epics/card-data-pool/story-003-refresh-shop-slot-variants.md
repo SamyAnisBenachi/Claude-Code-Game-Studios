@@ -30,10 +30,10 @@
 
 *From EPIC.md deliverables and GDD §8, scoped to this story:*
 
-- [ ] **AC-1**: GIVEN a `PlayerPool` with >= 3 eligible cards and `slot_count = 3`, WHEN `refresh_shop(pool, catalog, rng_seed, config, 3)` is called, THEN the returned `Vec<CardId>` has length 3; each returned card had `copies_remaining >= 1` before the call; each returned card's `copies_remaining` is decremented by 1 after the call.
-- [ ] **AC-2**: GIVEN a `PlayerPool` with >= 9 distinct eligible cards and `slot_count = 9`, WHEN `refresh_shop(pool, catalog, rng_seed, config, 9)`, THEN returned `Vec<CardId>` has length 9; all 9 are distinct; each copy decremented.
-- [ ] **AC-3** (partial fill): GIVEN a `PlayerPool` where only 2 eligible cards have `copies_remaining >= 1` (all others == 0) and `slot_count = 3`, WHEN `refresh_shop(pool, catalog, rng_seed, config, 3)`, THEN returned `Vec<CardId>` has length 2 (partial fill); no panic; no placeholder `None`s in the `Vec` — callers use `Vec.len()` to detect partial fill.
-- [ ] **AC-4**: GIVEN `ManualRefreshCount[player] == 3` from a prior DRAFT phase, WHEN a new `ShopRefreshNeeded` is processed for that player at a DRAFT entry (by the system in Story 004), THEN `ManualRefreshCount[player] == 0` after processing. *(This story initialises the `ManualRefreshCount` resource and resets logic; the trigger is tested in Story 004 as an integration test.)*
+- [x] **AC-1**: GIVEN a `PlayerPool` with >= 3 eligible cards and `slot_count = 3`, WHEN `refresh_shop(pool, catalog, rng_seed, config, 3)` is called, THEN the returned `Vec<CardId>` has length 3; each returned card had `copies_remaining >= 1` before the call; each returned card's `copies_remaining` is decremented by 1 after the call.
+- [x] **AC-2**: GIVEN a `PlayerPool` with >= 9 distinct eligible cards and `slot_count = 9`, WHEN `refresh_shop(pool, catalog, rng_seed, config, 9)`, THEN returned `Vec<CardId>` has length 9; all 9 are distinct; each copy decremented.
+- [x] **AC-3** (partial fill): GIVEN a `PlayerPool` where only 2 eligible cards have `copies_remaining >= 1` (all others == 0) and `slot_count = 3`, WHEN `refresh_shop(pool, catalog, rng_seed, config, 3)`, THEN returned `Vec<CardId>` has length 2 (partial fill); no panic; no placeholder `None`s in the `Vec` — callers use `Vec.len()` to detect partial fill.
+- [x] **AC-4**: GIVEN `ManualRefreshCount[player] == 3` from a prior DRAFT phase, WHEN a new `ShopRefreshNeeded` is processed for that player at a DRAFT entry (by the system in Story 004), THEN `ManualRefreshCount[player] == 0` after processing. *(This story initialises the `ManualRefreshCount` resource and resets logic; the trigger is tested in Story 004 as an integration test.)*
 
 ---
 
