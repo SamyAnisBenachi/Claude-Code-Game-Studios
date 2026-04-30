@@ -1,5 +1,41 @@
 # Review Log — Hand UI
 
+## Review — 2026-04-30 (R2) — Verdict: NEEDS REVISION → revised in-session
+
+Scope signal: L (multi-system integration; 3 formulas; bidirectional Board Rendering interface; NP protocol dependencies)
+Specialists: game-designer, systems-designer, ux-designer, network-programmer, performance-analyst, qa-lead, creative-director
+Blocking items resolved: 6 | Recommended: 5 | Advisory: 8
+Prior verdict resolved: Yes — R1 (2026-04-30) APPROVED was premature; fresh-session re-review found new issues
+
+### Summary (creative-director)
+
+Fresh-session re-review caught what the in-session pass missed: two of the four player-fantasy pillars were being broken by current rules, and three protocol-level blockers made the spec literally unimplementable. Rule 9's auto-stage on timer expiry made the engine the commit agent (Pillar 1 broken); Rule 13's auto-decrement was specified but its trigger condition was unreachable under the default=0 invariant, making HU-26 vacuously true. Sold-out detection had contradictory outcomes from the same observable, and the activation lock could produce a guaranteed 3s freeze on silent server discard. All six resolved in-session: Rule 9 replaced with a 200ms grace window requiring explicit mouse-up; Rule 13 simplified to block-at-ceiling (no auto-decrement); sold-out ambiguity accepted (all non-arrival paths unified to timeout-revert); stale hand state documented as accepted failure; S2CActivationRejected added as a new OQ8 NP gate; HU-26 rewritten against the correct trigger. Recommended items addressed: Rule 5d (DRAFT_SHOP drag suppression), VA-10 (PASSIVE_LOCKED indicator), strip positioning spec, HU-24 drag sprite reset, HU-25/HU-04 AC precision fixes.
+
+### Changes Applied (R2)
+
+| Category | Item | Location |
+|---|---|---|
+| B1 | HU-26 rewritten (correct trigger: [ + ] path; "SHALL" language) | HU-26 AC |
+| B2 | Rule 13 auto-decrement removed; [ + ] blocks at ceiling; VA-9/audio cleaned | Rule 13, VA-9, Edge Cases |
+| B3 | Sold-out ambiguity accepted; Rule 14 unified; HU-10/10b/10c simplified; sold-out visual removed | Rule 14, VA-2, HU-10/10b/10c, Edge Cases |
+| B4 | Stale hand state documented in Rule 10 | Rule 10 |
+| B5 | Rule 5c + HU-28/28b updated with S2CActivationRejected; OQ8 added; Interactions updated | Rule 5c, HU-28/28b, Interactions, OQ8 |
+| B6 | Rule 9 rewritten (200ms grace window); HU-15/15b updated; Edge Case updated | Rule 9, HU-15/15b, Edge Cases |
+| Rec | Rule 5d: DRAFT_SHOP drag suppressed | Rule 5d |
+| Rec | VA-10: PASSIVE_LOCKED read-only indicator (70% opacity + label) | VA-10 |
+| Rec | Strip positioning spec (center-on-ghost-slot, overlap accepted) | Rule 13 |
+| Rec | HU-24 extended (drag sprite Visibility::Hidden on reconnect) | HU-24 |
+| Rec | HU-25 [ + ] disable corrected (3rd click, not 4th); HU-04 Animator<T> enumeration | HU-25, HU-04 |
+
+### Remaining Open Questions
+
+- OQ5: Card ID → visual asset mapping (ADR needed)
+- OQ6: Atlas sharing with Board Rendering (draw-call implications)
+- OQ7: Card art zoom resolution (120→240 upscale vs native 240 source)
+- OQ8: S2CActivationRejected not in NP GDD — BLOCKING gate for HU-28/HU-28b
+
+
+
 ## Review — 2026-04-30 — Verdict: APPROVED (revised in-session)
 
 Scope signal: L (multi-system integration; 3 formulas; Hand UI ↔ Board Rendering interface)
