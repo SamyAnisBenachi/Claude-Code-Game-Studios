@@ -6,6 +6,7 @@ description = "WASM Bevy client. Read-only view of server state. No game logic."
 
 [dependencies]
 shared = { path = "../shared" }
+serde = { workspace = true }
 # Bevy 0.18 high-level feature collection for 2D games (liv-bevy-018).
 # "2d" includes bevy_sprite, bevy_text, bevy_asset, bevy_ui, and bevy_render.
 # "webgl2" enables the WebGL2 backend for WASM targets.
