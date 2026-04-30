@@ -1,7 +1,7 @@
 # ADR-018: Keyword System — ECS State Architecture, Module Boundary, and Protocol Schema
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-04-30

@@ -569,11 +569,13 @@ formulas:
     variables:
       - reserve
       - garde_temps_reserve_cost
+      - garde_temps_used_this_game
+      - garde_temps_per_game_cap
     output_range: [false, true]
-    expression: "playable = (reserve >= garde_temps_reserve_cost); if playable: reserve -= garde_temps_reserve_cost"
-    notes: "Xelor-only. Costs 20 reserve (not current_mana). On success, chosen enemy objective HP → 0."
+    expression: "playable = (reserve >= garde_temps_reserve_cost) AND target_valid AND (garde_temps_used_this_game < garde_temps_per_game_cap); if playable: reserve -= garde_temps_reserve_cost; garde_temps_used_this_game += 1"
+    notes: "Xelor-only. Costs 20 reserve (not current_mana). Three-part gate: reserve >= cost AND target alive AND per-game cap not reached. On success, chosen enemy objective HP → 0. garde_temps_per_game_cap default 1. Counter owned by Game Session System."
     added: "2026-04-30"
-    revised: ""
+    revised: "2026-05-01"  # was: missing garde_temps_used_this_game/per_game_cap guard (class-system.md:240 flagged as required)
 
   - name: sang_meprise_reveal
     status: active
@@ -1211,6 +1213,18 @@ constants:
     unit: reserve_mana
     notes: "Reserve cost to play Garde-Temps (Xelor Krosmic). Must be added to game_config.ron. Safe range: 10–30. Below 10: too accessible. Above 30: unreachable in normal play."
     added: "2026-04-30"
+    revised: ""
+
+  - name: garde_temps_per_game_cap
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/game-config.md
+    value: 1
+    unit: activations_per_game
+    notes: "Max Garde-Temps activations per game per player. Must be added to game_config.ron. Safe range: 1–2. At 2: two objectives can be destroyed by reserve alone — dominant strategy risk if Mummy passive cap is also absent. Counter (garde_temps_used_this_game) owned by Game Session System. Part of garde_temps_gate formula guard."
+    added: "2026-05-01"
     revised: ""
 
   - name: miss_nuit_cap
