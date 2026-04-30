@@ -1,9 +1,10 @@
 # Control Manifest
 
 > **Engine**: Bevy 0.18 + Lightyear 0.26
-> **Last Updated**: 2026-04-29
-> **Manifest Version**: 2026-04-29
+> **Last Updated**: 2026-04-30
+> **Manifest Version**: 2026-04-30
 > **ADRs Covered**: ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ADR-006, ADR-007, ADR-008, ADR-009, ADR-010, ADR-011, ADR-012
+> **ADRs Pending (Proposed — not yet covered)**: ADR-013, ADR-014, ADR-015, ADR-016, ADR-017, ADR-018
 > **Status**: Active — regenerate with `/create-control-manifest` when ADRs change
 
 This manifest is a programmer's quick-reference extracted from all Accepted ADRs,
@@ -19,93 +20,200 @@ stories written against stale rules.
 ## Foundation Layer Rules
 
 *Applies to: GameConfig, ServerRng, Network Protocol types, Lightyear plugin setup,
-Cargo workspace structure*
+Cargo workspace structure, asset loading, session lifecycle*
 
 ### Required Patterns
 
-- **Load `game_config.ron` via `bevy_asset_loader` at server startup; fatal on missing or malformed file — no fallback, no defaults at runtime.** — ADR-004
-- **Abort startup if any dangerous `GameConfig` value is invalid:** `shop_weight_cap ∈ (0.0, 1.0)`, `shop_weight_per_card < shop_weight_cap`, `fake_count ∈ [1, 3]`, `objective_hp >= 1`, `placement_timer_seconds >= 1`. — ADR-004
-- **Debug hot-reload of `GameConfig` must re-validate before applying. Reject invalid reload with warning; retain previous config. Never apply an invalid config.** — ADR-004
-- **`CardCatalog` is immutable after load. Never mutate card definitions mid-session. Card data changes require server restart.** — ADR-004, ADR-006
-- **`pool_copies_override ≤ 0` in `CardData` is a soft error: log warning, use rarity default, continue startup. Never abort.** — ADR-004
-- **Epic and Legendary copy counts are compile-time constants (`EPIC_POOL_COPIES = 1`, `LEGENDARY_POOL_COPIES = 1`), never `GameConfig` fields.** — ADR-006
-- **`GameConfig` struct lives in `shared/config.rs` without `#[derive(Resource)]`. Server wraps it:** `app.insert_resource(config)` **in** `server/foundation/config.rs`. — ADR-003
-- **All game randomness uses a single per-session `ServerRng` resource backed by `ChaCha20Rng` from `rand_chacha 0.3`. Seeded once from `OsRng::from_entropy()` at session start. Never re-seed mid-session.** — ADR-005
-- **RNG consumption order is strict and binding (corrupts audit if violated):**
-  - DRAFT_INITIAL: (1) AssignFakeObjectives — 2 seeds/player, ascending `player_id`; (2) DrawInitialDraft — per player, ascending `player_id`
-  - Each DRAFT_SHOP/AUCTION: (3) DrawShopSlot — 2–3 seeds/slot, ascending `player_id` then `slot_index`
-  - RESOLUTION in order: (4) ResolveEcaflip — ascending `lane`; (5) ResolvePrism — ascending `player_id` then `lane`; (6) AwardFakeObjectiveReward — ascending `player_id` then `lane`; (7) DrawFreeCard — only if step 6 awarded free card
-  — ADR-005
+**Cargo workspace**
+
 - **Three-crate Cargo workspace only: `shared/`, `server/`, `client/`. No other crate split.** — ADR-003
+- **`shared/` uses `bevy = { default-features = false, features = ["serialize"] }` only.** — ADR-003
+- **`shared/` ban list: NO `#[derive(Resource)]`, NO Plugin impls, NO `App::add_systems`, NO Bevy queries.** — ADR-003
+- **`GameConfig` struct lives in `shared/config.rs` WITHOUT `#[derive(Resource)]`. Server wraps it:** `app.insert_resource(config)` **in** `server/foundation/config.rs`. — ADR-003
+- **Single `pub fn register_protocol(app: &mut App)` in `shared/src/protocol.rs`; called by BOTH `server/main.rs` and `client/main.rs` at startup.** — ADR-003
+- **No `pub use` shortcuts in `shared/` — keep module paths explicit.** — ADR-003
 - **Within `server/`: dependency direction is `feature/ → core/ → foundation/` only. No reverse imports.** — ADR-003
-- **Exactly two Lightyear channels: `ReliableChannel` (all game-state and control messages) and `UnreliableChannel` (heartbeat + auction timer only). Channel assignment is permanent per message type.** — ADR-008
-- **All channel definitions live in `shared/src/protocol.rs`. Both server and client compile against identical channel types.** — ADR-008
-- **`AssetLoader` impls must `#[derive(Default, TypePath)]` — required as of Bevy 0.18.** — ADR-004
+- **Within `client/`: `ui/ → state/ → network/ → shared/` only. No reverse imports.** — ADR-003
+- **Release profile:** `lto = "thin"`, `codegen-units = 1`, `strip = "symbols"`, `panic = "abort"`. — ADR-003
+- **Dev profile:** `opt-level = 1` (Bevy is unusable at 0). — ADR-003
+
+**Asset loading**
+
+- **Server uses `MinimalPlugins` (headless binary) — NEVER `DefaultPlugins`.** — ADR-004
+- **App state sequence: `AppState::Loading` → `AppState::ConfigValidation` → `AppState::Lobby` → `AppState::InSession`.** — ADR-004
+- **Load `game_config.ron` via `bevy_asset_loader` `LoadingState` at server startup; fatal on missing or malformed file — no fallback, no defaults at runtime.** — ADR-004
+- **Abort startup if any dangerous `GameConfig` value is invalid:** `shop_weight_cap ∈ (0.0, 1.0)`, `shop_weight_per_card < shop_weight_cap`, `fake_count ∈ [1, 3]`, `objective_hp >= 1`, `placement_timer_seconds >= 1`. Call `app_exit.write(AppExit::Error(NonZeroU8::MIN))` — NEVER `panic!`. — ADR-004
+- **`pool_copies_override ≤ 0` in `CardData` is a soft error: log `warn!`, use rarity default, continue startup. Never abort.** — ADR-004
+- **Debug hot-reload of `GameConfig` must re-validate before applying. Reject invalid reload with warning; retain previous config.** Gate the `add_systems` call itself behind `#[cfg(debug_assertions)]`. — ADR-004
+- **`CardCatalog` is immutable after load. Card data changes require server restart.** — ADR-004, ADR-006
+- **Every `impl AssetLoader` struct must `#[derive(Default, TypePath)]` — required in Bevy 0.18.** — ADR-004
 - **Add `ron = "0.8"` as a direct dep in `server/Cargo.toml`. It is no longer re-exported from `bevy_asset`.** — ADR-003, ADR-004
+- **Test fixtures construct `GameConfig` directly via struct literal and insert via `world.insert_resource(cfg)` — no asset loader needed in tests.** — ADR-004
+
+**Server-side RNG**
+
+- **All game randomness uses a single per-session `ServerRng` resource backed by `ChaCha20Rng` from `rand_chacha 0.3`. Seeded once from `OsRng::from_entropy()` at session start. Never re-seed mid-session.** — ADR-005
+- **`ServerRng` lives only in `server/src/foundation/rng.rs`. Expose intent-named methods only — never raw `next_u32`/`gen`.** — ADR-005
+- **Every RNG draw MUST write an `AuditEntry` in the same call as the draw (never async, never best-effort).** — ADR-005
+- **`ServerRng` inserted immediately before `commands.trigger(SessionReady)` (ADR-012); removed on `GameOverEmitted`.** — ADR-005
+- **RNG consumption order is strict and binding (corrupts audit if violated):**
+  - DRAFT_INITIAL: (1) `AssignFakeObjectives` — ascending `player_id`; (2) `DrawInitialDraft` — ascending `player_id`
+  - Each DRAFT_SHOP/AUCTION: (3) `DrawShopSlot` — ascending `player_id` → ascending `slot_index`
+  - RESOLUTION in order: (4) `ResolveEcaflip` — ascending `lane`; (5) `ResolvePrism` — ascending `player_id` → ascending `lane`; (6) `AwardFakeObjectiveReward` — ascending `player_id` → ascending `lane`; (7) `DrawFreeCard` — only if step 6 awarded free card
+  — ADR-005
+
+**Session lifecycle**
+
+- **`SessionReady` is a Bevy Observer trigger (`#[derive(Event)]`). Registered via `app.observe(on_session_ready)`. NOT registered with `app.add_message::<SessionReady>()`.** — ADR-012
+- **GSS Commands sequence (MUST be in this order in one Commands call):** `insert_resource(SessionConfig)` → `insert_resource(ServerRng)` → `trigger(SessionReady)`. — ADR-012
+- **Only ONE Observer registered for `SessionReady`** — the RSM's LOBBY→DRAFT_INITIAL handler. Downstream systems react to `DraftStarted`, not to `SessionReady`. — ADR-012
+- **`evaluate_session_ready` gated on `LobbyState::GameActive`** to prevent re-triggers after session start. — ADR-012
+- **If `ServerRng::from_entropy()` fails, do NOT emit `SessionReady`. Transition to `LOBBY_CANCELLED`.** — ADR-012
+- **`SessionConfig` is inserted once at `SessionReady` and never mutated. All Feature systems read it as `Res<SessionConfig>`.** — ADR-012
 
 ### Forbidden Approaches
 
-- **Never derive `Resource`, add plugin code, or use `#[cfg(feature = "server")]` branching in the `shared/` crate.** `shared/` must compile with `bevy = { default-features = false, features = ["serialize"] }` only. — ADR-003
-- **Never transmit RNG seeds to clients in any S2C message.** Seeds are server-only. — ADR-005
-- **Never use `rand::thread_rng()`, `StdRng`, or `SmallRng` in server game logic.** All game randomness goes through `ServerRng`. — ADR-005
-- **Never use any RNG on the client for gameplay purposes.** Client crate has no `rand`/`rand_chacha` game logic dependency. — ADR-005
-- **`client/` must never depend on `server/`. `server/` must never depend on `client/`.** Compiler enforces this. — ADR-003
-- **`foundation/` within `server/` must never import from `core/` or `feature/`.** Code-review enforced. — ADR-003
-- **Never put `rand` or `rand_chacha` in `client/Cargo.toml` for gameplay modules.** CI-gated. — ADR-003
-- **Never send `S2CAuctionUpdate` (timer/price) or `C2SHeartbeat` on `ReliableChannel`.** These are the only two message types that belong on `UnreliableChannel`. — ADR-008
+- **Never** have `client/Cargo.toml` depend on `server` crate. Compiler enforces this. — ADR-002, ADR-003
+- **Never** use `cfg(feature = "server")` in `protocol/` or `client/` to gate authority. — ADR-002, ADR-003
+- **Never** put a server-only `Resource` (`HiddenObjectives`, `ServerRng`, etc.) into `protocol/` or `client/` types. — ADR-002
+- **Never** add a dep to `shared/` without ADR amendment + technical-director approval. — ADR-003
+- **Never** derive `Resource`, add plugin code, or add heavy Bevy deps in the `shared/` crate. — ADR-003
+- **Never** put `rand_chacha` in `client/Cargo.toml`. — ADR-003, ADR-005
+- **Never** put `rand` in `client/Cargo.toml` for gameplay purposes. — ADR-003
+- **Never** use `rand::thread_rng()`, `StdRng`, or `SmallRng` in server game logic. — ADR-005
+- **Never** transmit RNG seeds, `seed_index`, or `audit_log` in any production S2C message. — ADR-005
+- **Never** re-seed `ServerRng` mid-session. — ADR-005
+- **Never** use `std::fs::read_to_string` in production server paths for config. — ADR-004
+- **Never** use `include_bytes!` for config/balance data (violates data-driven standard). — ADR-004
+- **Never** read `SessionReady` via `MessageReader<SessionReady>` — it fires as an Observer. — ADR-012
+- **Never** register a second Observer for `SessionReady`. — ADR-012
+- **Never** call `commands.trigger(SessionReady)` before both `insert_resource` calls in the same Commands queue. — ADR-012
 
 ### Performance Guardrails
 
 - **`GameConfig` + `CardCatalog` load time: < 100ms total at expected card count (~298 cards).** — ADR-004
 - **WASM bundle size: ≤ 50 MB after `--release + LTO + strip`.** CI-gated. — ADR-003
-- **`ServerRng` state: ~136 bytes. Audit log: < 32 KB per session. Zero network cost (never transmitted).** — ADR-005
-- **O(1) `CardCatalog` lookup by `CardId` via `HashMap`.** — ADR-006
+- **`cargo check -p client` incremental: < 5s.** — ADR-003
+- **`cargo tree -p shared` must NOT contain `bevy_ecs`, `bevy_render`, `bevy_ui`, `tokio`, or server-only Lightyear features.** CI-gated. — ADR-003
+- **`ServerRng` state: ~136 bytes. Audit log: < 32 KB per session. Zero network cost.** — ADR-005
 
 ---
 
 ## Core Layer Rules
 
-*Applies to: Round State Machine, Game Session System, Economy System, Card Data & Pool*
+*Applies to: Round State Machine, event bus, reconnect protocol, card data & pool, authority model, Lightyear channel config*
 
 ### Required Patterns
 
+**Client-server authority**
+
+- **Server is sole authority over all game state. Client is a read-only view that emits C2S input intents.** — ADR-002
+- **All `ClientState` mutation flows through `apply_s2c_to_client_state` — user input NEVER directly mutates `ClientState`.** — ADR-002
+- **Every C2S handler: (1) validate phase, (2) validate sender identity, (3) validate domain rules, (4) apply, (5) broadcast S2C. On any failure: `tracing::debug!` log + silent return. Zero S2C response on reject.** — ADR-002
+- **Snapshot-driven reconnect: on `OnConnected`, unicast `S2CGameSnapshot` before any other S2C; client treats it as full reset.** — ADR-002
+- **Server tick is the wall clock. Client `timer_remaining_ms` is presentation only — never feeds back to server.** — ADR-002
+
+**Lightyear channel configuration**
+
+- **Exactly two Lightyear channels: `ReliableChannel` (all game-state and control messages) and `UnreliableChannel` (heartbeat + auction timer only). Channel assignment is permanent per message type.** — ADR-008
+- **`C2SHeartbeat` and `S2CAuctionUpdate` → `UnreliableChannel`. All other messages → `ReliableChannel`.** — ADR-008
+- **OQ-D invariant: `S2CResolutionEvent` MUST be enqueued before `S2CPhaseChanged` on `ReliableChannel`. Enforce via Bevy system ordering `.before()`.** — ADR-008
+- **All channel definitions live in `shared/src/protocol.rs`.** — ADR-008
+- **`snapshot_sent` gate: on `OnConnected`, set `snapshot_sent[player] = false`. Snapshot system sends `S2CGameSnapshot` and sets it to `true`. Every unicast S2C system MUST check `snapshot_sent[player]` before enqueuing; if false → push to `deferred_queue[player]` instead.** — ADR-008, ADR-011
+- **Broadcast messages skip the `snapshot_sent` check** (reconnecting player isn't connected yet; snapshot covers their state). — ADR-011
+- **Verify before implementing any networking story:** `NetworkTarget` unicast variant, channel definition syntax, server receive API shape — against `docs.rs/lightyear/0.26`. See Lightyear Verification Checklist below. — ADR-008
+
+**Round State Machine (RSM) phase state**
+
 - **`RoundState` resource is the server's single source of truth for game phase. All systems read via `Res<RoundState>`.** — ADR-009
-- **Only `advance_phase` (in `server/core/rsm/transitions.rs`) may hold `ResMut<RoundState>`. No other system writes phase.** Enforced by CI grep: `grep -r "ResMut<RoundState>" server/src/ | grep -v transitions.rs` must return zero results. — ADR-009
-- **Use `MessageWriter::write()` to emit RSM phase messages. `EventWriter`/`EventReader` no longer exist in Bevy 0.17+.** — ADR-009, ADR-010
-- **Use `MessageReader::read()` to consume RSM phase messages. Register with `app.add_message::<T>()`. Do NOT use `app.add_event::<T>()` for buffered messages.** — ADR-010
-- **RSM emits all phase transitions as Bevy buffered Messages (`#[derive(Message)]`). `advance_phase` is the sole emitter. RSM has zero direct imports from `server/feature/`.** — ADR-010
-- **Emission ordering on any DRAFT entry is strict (GDD F2):**
-  1. `DraftStarted` (Economy reads — mana ramp + gold income)
-  2. `ShopRefreshNeeded { player }` per player (Card Pool reads — draw shop slots)
-  3. `AuctionPhaseEntered { round }` (if auction round — Auction System reads)
-  4. `BroadcastPhaseChanged` **← always last** (clients notified only after server state is ready)
+- **Only `advance_phase` (in `server/core/rsm/transitions.rs`) may hold `ResMut<RoundState>`. No other system writes phase.** — ADR-009
+- **Use `MessageWriter::write()` to emit RSM phase messages. Use `MessageReader::read()` to consume them. Register with `app.add_message::<T>()`. `EventWriter`/`EventReader` no longer exist in Bevy 0.17+.** — ADR-009, ADR-010
+- **Phase-gate pattern is required in every C2S message handler: `if round_state.phase != expected_phase { return; }`. Invalid phase → silent discard, `debug!` log only, zero S2C response.** — ADR-009, ADR-002
+- **System schedule order: `AuctionSystem` → `CombatResolutionSystem` → `rsm_tick_system` → `MessageSendSystems`.** — ADR-009
+- **`ClientPhaseView` resource on client — updated ONLY from `S2CPhaseChanged` messages, never drives transitions.** — ADR-009
+- **`AuctionSettled` and `ResolutionComplete` use `#[derive(Message)]` — NOT `#[derive(Event)]`.** — ADR-009
+- **`SessionReady` uses `#[derive(Event)]` + Observer — NOT a buffered Message.** — ADR-009, ADR-012
+
+**RSM event bus**
+
+- **RSM has zero direct imports from `server/feature/`. All phase-reactive logic triggered by event.** — ADR-010
+- **`advance_phase` never calls feature module functions directly.** — ADR-010
+- **Emission ordering on any DRAFT entry (STRICT — linear code order in `advance_phase` match arm, NOT Bevy system order):**
+  1. `DraftStarted` (Economy: mana ramp + gold income)
+  2. `ShopRefreshTriggered { player_id, trigger }` per player (replaces deprecated `ShopRefreshNeeded`)
+  3. `AuctionPhaseEntered { round }` (DRAFT_AUCTION rounds only)
+  4. `BroadcastPhaseChanged` ← **ALWAYS LAST — clients notified only after server state is ready**
   — ADR-010
-- **`BroadcastPhaseChanged` must always be the last event emitted in any phase transition arm.** — ADR-010
-- **Phase-gate pattern is required in every C2S message handler: `if round_state.phase != expected_phase { return; }`. Invalid phase → silently discard, `debug!` log only, zero S2C response.** — ADR-009, ADR-002
-- **`SessionReady` is delivered via Bevy Observer trigger (same-frame). GSS must insert `SessionConfig` and `ServerRng` via `Commands` BEFORE calling `Commands::trigger(SessionReady)`.** — ADR-012
-- **GSS `check_lobby_ready` system must be scheduled `.before(advance_phase)` via `.chain()` in `RsmPlugin::build()`.** — ADR-012
-- **`SessionConfig` is inserted once at `SessionReady` and never mutated. All Feature systems read it as `Res<SessionConfig>`.** — ADR-012
-- **If `ServerRng::from_entropy()` fails, do NOT emit `SessionReady`. Transition to `LOBBY_CANCELLED` and broadcast `S2CSessionCancelled`.** — ADR-012
-- **`SessionReady` fires at most once per session. Guard with `session_ready_fired: bool` flag.** — ADR-012
-- **Future systems reacting to session start must subscribe to `DraftStarted` (emitted by RSM), not to `SessionReady` directly.** — ADR-012
-- **`CardCatalog` is server-lifetime, immutable `Res<CardCatalog>`. `PlayerPool` is session-scoped per player, mutable, in `PlayerPools: HashMap<PlayerId, PlayerPool>`.** — ADR-006
-- **`distribute()` is the sole pool mutation function. `copies_remaining` never goes below 0.** — ADR-006
+- **PLACEMENT entry: `PlacementPhaseEntered` → `BroadcastPhaseChanged`.** — ADR-010
+- **RESOLUTION entry: `ResolutionPhaseEntered` → `BroadcastPhaseChanged`.** — ADR-010
+- **GAME_OVER entry: `GameOverEmitted` → `BroadcastPhaseChanged`.** — ADR-010
+- **`BroadcastPhaseChanged` must ALWAYS be the last event emitted in any phase transition arm.** — ADR-010
+- **Subscriber systems must be scheduled `.after(advance_phase)` to see current-frame messages.** — ADR-010
+- **Guard pattern for inbound RSM messages: validate `phase == expected_phase` before acting; stale → silent discard.** — ADR-010
+- **`ShopRefreshTriggered` (not `ShopRefreshNeeded`) is the canonical shop draw trigger.** Do NOT implement `ShopRefreshNeeded`. — ADR-010
+- **`AbortAuction` is in the event catalog for auction cleanup when GAME_OVER fires during DRAFT_AUCTION.** — ADR-010
+- **New phase-reactive systems MUST add their subscriber contract to ADR-010 before story opens.** — ADR-010
+
+**Reconnect protocol**
+
+- **`SessionToken = [u8; 16]` is the sole identity bridge across Lightyear transport reconnects (new `ClientId`/`PeerId` on every WebSocket connect).** — ADR-011
+- **`C2SHello` must be first message on any connection; hello timeout: 5000ms then close silently.** — ADR-011
+- **Mandatory reconnect send order (all `ReliableChannel`, all unicast):**
+  1. `S2CHandshake` (same token value)
+  2. `S2CGameSnapshot` (full state, secrets stripped per player)
+  3. `S2CObjectiveIdentities` (must explicitly re-send — NOT auto-replicated across transport reconnect)
+  4. `S2CPhaseChanged` (with live `timer_remaining_ms`, not the original phase duration)
+- **After step 4: set `snapshot_sent[player] = true`; flush `deferred_queue[player]` in enqueue order.** — ADR-011
+- **Reconnect snapshot system scheduled BEFORE all live-game message systems in `Update`.** — ADR-011
+- **Secret stripping rules (enforced server-side before unicast send):**
+  - Own player: all fields populated (hand, shop_slots, mana, reserve, objectives with `is_fake`)
+  - Opponent: `hand` = empty, `shop_slots` = empty; gold is visible (public by design)
+  - Own objectives: `hp` + `is_fake` from `HiddenObjectives`
+  - Opponent objectives: `hp` only — `is_fake` absent entirely
+  - Own trap: `card_id = Some(card_id)`; Opponent trap: `card_id = None`
+  — ADR-011
+- **`S2CGameSnapshot::for_player(player_id)` constructor handles stripping. Add a unit test asserting no player-B secrets appear in player-A's snapshot.** — ADR-011
+- **Session cleanup: remove `ReconnectTracker.token_map` entries on `C2SAcknowledgeResult` or `ack_timeout_ms` expiry.** — ADR-011
+
+**Card data and pool**
+
+- **`CardId` is a newtype `pub struct CardId(pub u32)` — no raw integer arithmetic on IDs.** — ADR-006
+- **`CardCatalog = HashMap<CardId, CardData>` — immutable for server lifetime; never mutated after initial load.** — ADR-006
+- **`PlayerPool` is session-scoped per player; `distribute()` is the SOLE pool mutation. `copies_remaining` never goes below 0.** — ADR-006
 - **All pool draw functions return `Option<T>`. Never panic on empty pool — return `None` and let caller handle it.** — ADR-006
 - **`total_acquired(id)` is derived: `initial_count[id] - copies_remaining[id]`. No separate stored field.** — ADR-006
-- **Timers tick only for the active phase. Reset the relevant timer immediately on phase entry before ticking.** — ADR-009
-- **`round_number` increments BEFORE economy events fire on RESOLUTION → DRAFT transition.** — ADR-009
+- **`EPIC_POOL_COPIES = 1` and `LEGENDARY_POOL_COPIES = 1` are Rust `const` — NOT `GameConfig` fields.** — ADR-006
+- **Pool draw functions accept explicit seeds from `ServerRng` — pool owns NO randomness source.** — ADR-006
+- **`FamilyIndex: HashMap<String, Vec<CardId>>` is server-only derived structure — NOT in `shared/`.** — ADR-006
 
 ### Forbidden Approaches
 
-- **Never use `#[derive(States)]` for `RoundPhase`.** Bevy States' `OnEnter`/`OnExit` schedules conflict with Lightyear's session lifecycle. — ADR-009
-- **Never use buffered `Events<T>` for `SessionReady`.** Observer is required for same-frame resource visibility. — ADR-012
-- **Never use `EventReader<SessionReady>` to consume session start.** Must use Observer (`app.observe(on_session_ready)`). — ADR-012
+- **Never** use `#[derive(States)]` for `RoundPhase`. Bevy States' `OnEnter`/`OnExit` schedules conflict with Lightyear's session lifecycle. — ADR-009
+- **Never** store phase state in ECS components on entities. — ADR-009
+- **Never** replicate `RoundPhase` as a Lightyear component (breaks OQ-D ordering invariant). — ADR-009
+- **`ResMut<RoundState>` must appear in exactly one system (`advance_phase`/`rsm_tick_system`).** Code-review enforced. — ADR-009
+- **`EventWriter<T>` / `EventReader<T>` / `Events<T>` do not exist in Bevy 0.17+. Never use them.** — ADR-009, ADR-010
+- **Never** call feature module functions directly from `advance_phase`. — ADR-010
+- **Never** use Observer for recurring RSM phase messages (`SessionReady` is the sole Observer exception). — ADR-010
+- **Never** split `S2CResolutionEvent` and `S2CPhaseChanged` onto different channels. — ADR-008
+- **Never** enqueue live unicast S2C to a reconnecting client before `snapshot_sent[player] = true`. — ADR-008, ADR-011
+- **Never** broadcast `S2CGameSnapshot` — always unicast per player with secrets stripped. — ADR-011
+- **Never** use delta-replay (resend all missed messages) for reconnect — full snapshot only. — ADR-011
+- **Never** use `EventReader<SessionReady>` to consume session start. Must use Observer. — ADR-012
+- **Never** allow optimistic client updates — `ClientState` mutates only on inbound S2C. — ADR-002
+- **Never** put client-side RNG for gameplay in the `client/` crate. — ADR-002, ADR-005
+- **Never** mutate `CardCatalog` after initial load. — ADR-006
+- **Never** use a shared global pool (TFT model) — each player's pool is independent. — ADR-006
+- **Never** use ECS components for pool state — use `Resource`-based `HashMap`. — ADR-006
+- **Never** send `S2CAuctionUpdate` or `C2SHeartbeat` on `ReliableChannel`. These are the only two `UnreliableChannel` message types. — ADR-008
 
 ### Performance Guardrails
 
-- **RSM tick budget: ≤ 5ms steady state; ≤ 15ms during RESOLUTION batch.** — ADR-009
-- **Server tick budget: ≤ 5ms steady state total on single Railway dyno.** — ADR-002
-- **`Res<RoundState>` phase check is O(1). Phase-gate pattern adds no measurable overhead.** — ADR-009
+- **Server tick budget: ≤ 5ms steady state; ≤ 15ms during RESOLUTION batch.** — ADR-002, ADR-009
+- **Client S2C processing + view update: ≤ 2ms per frame.** — ADR-002
+- **Network: < 1 KB per round per player including replication deltas.** — ADR-002
+- **Reconnect snapshot: target < 4 KB; hard limit < 16 KB unicast.** — ADR-002, ADR-011
+- **`snapshot_sent` check: O(1) HashMap lookup, ~5ns.** — ADR-011
 
 ---
 
@@ -115,33 +223,50 @@ Cargo workspace structure*
 
 ### Required Patterns
 
+**Placement buffer (ADR-007)**
+
 - **During PLACEMENT, submitted cards are buffered in `PendingPlacements` resource (plain Rust data, NOT ECS entities).** — ADR-007
-- **Unit ECS entities may ONLY be spawned AFTER `S2CPlacementReveal` is enqueued on `ReliableChannel`. This is a load-bearing invariant — violation leaks opponent placements.** — ADR-007
-- **`S2CPlacementReveal` and entity spawning happen in the same system invocation, in this order: (1) enqueue `S2CPlacementReveal`, (2) spawn entities.** — ADR-007
-- **Placement validation is all-or-nothing per player: if any card in the batch fails, silently discard the entire submission. No partial acceptance.** — ADR-007
+- **`close_placement_phase` MUST execute in this exact order:**
+  1. Build `S2CPlacementReveal` payload from `PendingPlacements`
+  2. Enqueue `S2CPlacementReveal` broadcast on `ReliableChannel` ← **THIS MUST BE FIRST**
+  3. `commands.spawn(...)` for placed units ← ONLY AFTER broadcast enqueued
+  4. Add spawned entities to Lightyear replication group
+  5. Emit `PlacementCommitted`
+  6. `PendingPlacements.submissions.clear()`
+  — ADR-007
+- **Mana deduction happens at PLACEMENT close, NOT at submission receipt.** — ADR-007
+- **`is_final: bool` on `PlayerSubmission`: set `true` after first accepted submission; subsequent submissions → silent discard.** — ADR-007
+- **`PendingPlacements` fully cleared on `PlacementPhaseEntered` (not on exit).** — ADR-007
+- **Placement validation is all-or-nothing per player: if any card fails any check, silently discard the entire submission. No partial acceptance.** — ADR-007
 - **Invalid placement submissions produce no S2C response to the client.** — ADR-007
-- **Mana deduction happens at PLACEMENT close, not at submission receipt.** — ADR-007
-- **`PendingPlacements` is fully cleared on entry to each new PLACEMENT phase.** — ADR-007
-- **Spawn range validation (Formula F2): Minions only; Structures and Traps bypass range entirely. Process concurrent events: ascending `player_id` → ascending `lane_index` → ascending `cell`.** — ADR-007
-- **`ObjectiveIdentity { is_fake: bool }` is held in server-only `HiddenObjectives` resource and never replicated as an ECS component.** — ADR-001
+- **`validate_spawn_range` (Formula F2): Minions only; Structures and Traps bypass range. Process concurrent events: ascending `player_id` → ascending `lane_index` → ascending `cell`.** — ADR-007
+- **`liv-bevy-018` and `liv-bevy-lightyear` skills mandatory on all files in `server/src/feature/board/`.** — ADR-007
+
+**Objective identity (ADR-001)**
+
 - **`ObjectiveHp { hp: u32 }` is a replicated ECS component, broadcast to both clients on every change.** — ADR-001
+- **`ObjectiveIdentity { is_fake: bool }` is held in server-only `HiddenObjectives` resource and NEVER replicated as an ECS component.** — ADR-001
 - **Send `S2CObjectiveIdentities` as reliable unicast per player at `DRAFT_INITIAL` after fake lane assignment.** — ADR-001
-- **Re-send `S2CObjectiveIdentities` on every reconnect. Reliable delivery is not guaranteed across transport reconnects.** — ADR-001
+- **Re-send `S2CObjectiveIdentities` on every reconnect (step 3 of mandatory reconnect sequence). Reliable delivery does not persist across transport reconnects.** — ADR-001, ADR-011
 - **`Sang Méprise` reveal: send one-shot reliable unicast `S2CSangMepriseReveal` to opponent only. Reveal persists in client local state for RESOLUTION duration only.** — ADR-001
-- **`ObjectiveCounters { real_destroyed, fake_destroyed }` is a server-side Resource. RSM reads it at RESOLUTION end for GAME_OVER evaluation. RSM never imports from `feature/objective/`.** — Architecture Phase 4
-- **[M2/M3 Feature systems] Every new Feature system that reacts to phase changes must subscribe to the relevant RSM event (e.g., `AuctionPhaseEntered`, `ResolutionPhaseEntered`). Never observe `RoundState` directly.** — ADR-010
+- **Client caches `S2CObjectiveIdentities` in a local resource — NOT an ECS component.** — ADR-001
+- **`ObjectiveCounters { real_destroyed, fake_destroyed }` is a server-side Resource. RSM reads it at RESOLUTION end for GAME_OVER evaluation.** — Architecture
+- **`[M2/M3]` Every new Feature system reacting to phase changes must subscribe to the relevant RSM event. Never observe `RoundState` directly.** — ADR-010
 
 ### Forbidden Approaches
 
-- **Never spawn ECS entity for a pending placement before `S2CPlacementReveal` is enqueued.** Violation leaks hidden placement data via Lightyear replication. — ADR-007
-- **Never replicate `ObjectiveIdentity` as an ECS component. Never use per-component Lightyear visibility workarounds.** — ADR-001
-- **Never send opponent `is_fake` values in any broadcast message.** Objective identity is owner-only. — ADR-001
-- **Never let Feature systems call Core/Foundation systems directly.** Feature layer communicates upward via Events (emitting `ObjectiveDestroyed`, `AwardGold`, etc.). — Architecture Phase 4
-- **Never let Feature systems import from `server/core/rsm/` directly.** Subscribe to RSM events only. — ADR-010
+- **Never** spawn ECS entity for a pending placement before `S2CPlacementReveal` is enqueued. Violation leaks hidden placement data via Lightyear replication. — ADR-007
+- **Never** split `S2CPlacementReveal` broadcast and entity spawn across two Bevy systems without an explicit `.before()` ordering constraint. — ADR-007
+- **Never** use `PlacementHidden` flag component workaround (silent-failure risk on visibility change). — ADR-007
+- **Never** rely on network timing to enforce simultaneous reveal ordering — must be structural. — ADR-007
+- **Never** replicate `ObjectiveIdentity` as an ECS component. — ADR-001
+- **Never** send opponent `is_fake` values in any broadcast message. — ADR-001
+- **Never** let Feature systems call Core/Foundation systems directly — communicate upward via events. — ADR-010
 
 ### Performance Guardrails
 
-- **`PendingPlacements` validation: O(N) where N = cards in submission. Must complete within single frame.** — ADR-007
+- **`PendingPlacements` per-frame: < 0.1ms (at most 2 submissions per phase).** — ADR-007
+- **`close_placement_phase`: < 0.5ms (runs once per PLACEMENT phase, ~once per 10s).** — ADR-007
 - **`S2CObjectiveIdentities` payload: ~6 bytes per player at 5 lanes + header. Zero bandwidth concern.** — ADR-001
 
 ---
@@ -153,20 +278,25 @@ Cargo workspace structure*
 ### Required Patterns
 
 - **All Presentation code lives in `client/` crate only. Zero game logic. Zero server state.** — ADR-002, ADR-003
-- **Spawn sprites using Required Components pattern (Bevy 0.18): `Sprite::from_image(handle)` + `Transform`. Never use `SpriteBundle`.** — Engine reference `deprecated-apis.md`
-- **Spawn UI using `Node { .. }` with inline `border_radius` field. Never use `NodeBundle`.** — Engine reference `deprecated-apis.md`
-- **`LineHeight` is a required component for `Text`, `Text2d`, and `TextSpan` as of Bevy 0.18. Insert explicitly if non-default value needed.** — Engine reference `breaking-changes.md`
-- **Use `ImageNode::new(handle)` not `UiImage::new(handle)` for UI images.** — Engine reference `deprecated-apis.md`
-- **`despawn()` replaces `despawn_recursive()` as of Bevy 0.16. Use `despawn_related::<Children>()` for children-only despawn.** — Engine reference `deprecated-apis.md`
-- **All Presentation reads go through client `ClientState` resources only. Never derive state from local simulation.** — ADR-002
-- **`liv-bevy-018` skill is mandatory on every file in `client/ui/`.** — Architecture Phase 2
+- **Spawn sprites using Required Components pattern (Bevy 0.18): `Sprite::from_image(handle)` + `Transform`. Never use `SpriteBundle`.** — deprecated-apis.md
+- **Spawn UI using `Node { .. }` with inline `border_radius` field. Never use `NodeBundle`.** — deprecated-apis.md
+- **Spawn camera: `commands.spawn((Camera2d, Transform::from_xyz(0., 0., 999.)))`. Never use `Camera2dBundle`.** — deprecated-apis.md
+- **`LineHeight` is a required component for `Text` in Bevy 0.18. Insert explicitly if non-default value needed.** — deprecated-apis.md
+- **Use `ImageNode::new(handle)` — NOT `UiImage::new(handle)` — for UI images.** — deprecated-apis.md
+- **`despawn()` replaces `despawn_recursive()` since Bevy 0.16.** — deprecated-apis.md
+- **`query.single()` returns `Result` since 0.16. Use `query.single()?` or `let Ok(x) = query.single()`.** — deprecated-apis.md
+- **All Presentation reads go through `ClientState` resources only. Never derive state from local simulation.** — ADR-002
+- **Reactive keyword triggers (APPEARANCE, DEATH, FINAL BLOW): use `#[derive(Event)]` + `commands.entity(unit).observe(...)`.** — current-best-practices.md
+- **`liv-bevy-018` skill is mandatory on every file in `client/ui/`.** — Architecture
 
 ### Forbidden Approaches
 
-- **Never use `SpriteBundle`, `Camera2dBundle`, `NodeBundle`, `TransformBundle`, `SpatialBundle`. All Bundles are deprecated as of Bevy 0.15.** — Engine reference `deprecated-apis.md`
-- **Never use `UiImage` (use `ImageNode`), `UiImageSize` (use `ImageNodeSize`), `TextFont { line_height }` (use `LineHeight` component).** — Engine reference `deprecated-apis.md`
-- **Never modify game state from the client crate. Client sends C2S inputs; server applies them.** — ADR-002
-- **Never reflect with brackets or braces: `#[reflect[..]]` or `#[reflect{..}]`. Use parentheses only: `#[reflect(..)]`.** — Engine reference `breaking-changes.md`
+- **Never** use `SpriteBundle`, `Camera2dBundle`, `NodeBundle`, `TransformBundle`, `SpatialBundle`. All Bundles deprecated since Bevy 0.15. — deprecated-apis.md
+- **Never** use `UiImage` (use `ImageNode`), `UiImageSize` (use `ImageNodeSize`), `TextFont { line_height }` (use `LineHeight` required component). — deprecated-apis.md
+- **Never** use `commands.entity(e).set_parent(p)` — use `commands.entity(e).insert(ChildOf(p))`. — deprecated-apis.md
+- **Never** modify game state from the client crate. Client sends C2S inputs; server applies them. — ADR-002
+- **Never** reflect with brackets or braces: `#[reflect[..]]` / `#[reflect{..}]`. Use parentheses only: `#[reflect(..)]`. — deprecated-apis.md
+- **Never** use `bevy_egui` in shipped build. All shipped UI uses `bevy_ui` only. — technical-preferences.md
 
 ---
 
@@ -175,7 +305,7 @@ Cargo workspace structure*
 ### Naming Conventions
 
 | Element | Convention | Example |
-|---|---|---|
+|---------|-----------|---------|
 | Structs / Enums / Components / Events / Plugins | `PascalCase` | `CardUnit`, `AuctionBidEvent`, `GamePlugin` |
 | Functions / Systems / Variables / Fields | `snake_case` | `resolve_combat`, `current_gold` |
 | Constants / Statics | `SCREAMING_SNAKE_CASE` | `OBJECTIVE_HP`, `MAX_HAND_SIZE` |
@@ -188,80 +318,77 @@ Cargo workspace structure*
 
 ### Performance Budgets
 
-| Target | Value |
-|---|---|
-| Framerate | 60 FPS (browser/WASM) |
-| Frame budget total | 16.67ms |
-| Game logic budget | < 2ms |
-| Render budget | < 12ms |
-| Server tick budget (steady state) | ≤ 5ms |
-| Network per round | < 1 KB |
-| WASM bundle (release) | ≤ 50 MB |
-| WASM heap | < 256 MB |
-| S2C snapshot size | < 16 KB unicast (32 KB max if chunked) |
+| Target | Value | Source |
+|--------|-------|--------|
+| Framerate | 60 FPS (browser/WASM) | technical-preferences.md |
+| Frame budget total | 16.67ms | technical-preferences.md |
+| Game logic budget | < 2ms per frame | technical-preferences.md |
+| Render budget | < 12ms per frame | technical-preferences.md |
+| Server steady state | ≤ 5ms per tick | ADR-002 |
+| Server RESOLUTION batch | ≤ 15ms | ADR-002 |
+| WASM bundle (release + LTO + strip) | ≤ 50 MB | ADR-003 |
+| WASM heap | < 256 MB | technical-preferences.md |
+| Network per round | < 1 KB per round per player | technical-preferences.md |
+| Reconnect snapshot | < 16 KB unicast | ADR-002, ADR-011 |
 
-### Client-Server Authority (All Layers)
+### Cross-Cutting Constraints
 
-- **Server is sole authority over all game state. Client is a read-only view.** — ADR-002
-- **No client-side prediction. No shared simulation. No optimistic UI updates.** — ADR-002
-- **All game logic (phase transitions, combat, economy, RNG, validation) runs on the headless server binary only.** — ADR-002
-- **On reconnect: server sends `S2CGameSnapshot` before any live messages. Client rebuilds state from snapshot.** — ADR-011
-- **Snapshot secret-stripping rules (enforced server-side before unicast send):**
-  - Own player: all fields populated (hand, shop_slots, mana, reserve, objectives with `is_fake`)
-  - Opponent: hand = empty, shop_slots = empty — gold is visible (public by design)
-  - Own objectives: `hp` + `is_fake` (from `HiddenObjectives`)
-  - Opponent objectives: `hp` only — `is_fake` field absent entirely
-  — ADR-011
-- **Live messages to reconnecting player are queued server-side until `snapshot_sent[player] = true`.** Systems sending unicast S2C must check `ReconnectTracker.snapshot_sent[player]` before enqueuing. — ADR-011
+These apply everywhere, regardless of layer:
 
-### Forbidden Patterns (All Layers)
-
-- **No client-side RNG for gameplay.** All randomness is server-side via `ServerRng`. — technical-preferences.md, ADR-005
-- **No game state on client.** Clients are views. All authoritative state lives on the Lightyear server. — technical-preferences.md, ADR-002
-- **No `unwrap()` in production paths.** Use `?` propagation or `expect("message")` with a diagnostic string. — technical-preferences.md
-- **No `bevy_egui` in shipped build.** `egui` is dev/debug only. All shipped UI uses `bevy_ui`. — technical-preferences.md
-- **No hardcoded balance values in systems.** Every tuning knob goes through `GameConfig` loaded from `assets/config/game_config.ron`. — technical-preferences.md
-- **No `cfg(feature = "server")` for authority gating.** Server-only types live in the `server/` crate; compiler enforces the boundary. — ADR-002
+1. **No `unwrap()` in production paths** — use `?` propagation or `expect("descriptive message")`. — technical-preferences.md
+2. **All balance values through `GameConfig`** loaded from `assets/config/game_config.ron` — never hardcode tuning numbers in systems. — technical-preferences.md
+3. **No `bevy_egui` in shipped build** — all shipped UI uses `bevy_ui` only. — technical-preferences.md
+4. **`EventWriter`/`EventReader` are gone in Bevy 0.17+**: use `MessageWriter<T>`/`MessageReader<T>` + `app.add_message::<T>()` for buffered game-loop signals; use `#[derive(Event)]` + `app.observe(..)` for one-shot reactive lifecycle triggers. — ADR-009, ADR-010
+5. **Every unicast S2C system checks `snapshot_sent[player]`** before enqueuing; if `false`, push to `deferred_queue[player]` instead. — ADR-008, ADR-011
+6. **Bevy `MessageWriter<T>` vs Lightyear `MessageSender<T>`** — these are from different crates and must not be confused. Bevy's `MessageWriter`/`MessageReader` is for server-internal bus messages registered via `app.add_message::<T>()`. Lightyear's `MessageSender`/`MessageReceiver` is for network C2S/S2C messages registered via Lightyear's `ProtocolPlugin`. — ADR-008, ADR-009
+7. **`NetworkTarget` unicast variant must be verified** against `docs.rs/lightyear/0.26.x` before any unicast implementation. See Lightyear Verification Checklist item 7. — ADR-001, ADR-008
 
 ### Approved Libraries
 
 | Crate | Version | Purpose |
-|---|---|---|
+|-------|---------|---------|
 | `bevy` | 0.18 | Core engine |
 | `lightyear` (`bevy_lightyear`) | 0.26 | Multiplayer networking |
 | `bevy_tweening` | 0.18 | UI and movement animations |
 | `bevy_asset_loader` | latest 0.18-compatible | Typed asset loading |
-| `rand` + `rand_chacha` | `0.9` / `0.3` | Server-side seeded RNG |
+| `rand` + `rand_chacha` | `0.9` / `0.3` | Server-side seeded RNG (server crate only) |
 | `serde` + `serde_json` | latest | Card data serialisation |
 | `ron` | `0.8` | Config files (`GameConfig`) |
 | `trunk` | latest | WASM build + dev server |
 | `wasm-bindgen` | latest | WASM/JS boundary |
 
-### Forbidden APIs (Bevy 0.14 → 0.18 — do not use)
+### Forbidden APIs — Bevy 0.14 → 0.18
 
 The following APIs are deprecated or removed in Bevy 0.15–0.18. Using them produces a compile error on Bevy 0.18.
 
-| Forbidden | Use Instead | Since |
-|---|---|---|
+| Forbidden | Use instead | Since |
+|-----------|-------------|-------|
 | `SpriteBundle` | `Sprite::from_image(..)` + `Transform` | 0.15 |
 | `Camera2dBundle` | `Camera2d` + `Transform` | 0.15 |
 | `NodeBundle` | `Node { .. }` | 0.15 |
 | `TransformBundle` | `Transform` alone | 0.15 |
 | `SpatialBundle` | `Transform` + `Visibility` | 0.15 |
-| Manual `GlobalTransform` insert | Don't — auto-inserted by `Transform` | 0.15 |
-| `query.single()` panicking | `query.single()?` or `let Ok(x) = query.single()` | 0.16 |
-| `EventWriter<T>` / `EventReader<T>` / `Events<T>` | `MessageWriter<T>` / `MessageReader<T>` + `app.add_message::<T>()` for buffered messages; `#[derive(Event)]` + `Observer` + `commands.trigger()` for one-shot triggers | 0.17 |
+| Manual `GlobalTransform` insert | Auto-inserted by `Transform` — do NOT add it | 0.15 |
+| `query.single()` panicking form | `query.single()?` or `let Ok(x) = query.single()` | 0.16 |
+| `EventWriter<T>` / `EventReader<T>` / `Events<T>` | `MessageWriter<T>` / `MessageReader<T>` + `app.add_message::<T>()` for buffered; `#[derive(Event)]` + `Observer` for one-shot | 0.17 |
+| `app.add_event::<T>()` | `app.add_message::<T>()` for buffered; `app.observe(..)` for reactive | 0.17 |
 | `commands.entity(e).set_parent(p)` | `commands.entity(e).insert(ChildOf(p))` | 0.16 |
 | `Parent` component | `ChildOf` component | 0.16 |
 | `commands.entity(e).despawn_recursive()` | `commands.entity(e).despawn()` | 0.16 |
+| `commands.entity(e).despawn_descendants()` | `commands.entity(e).despawn_related::<Children>()` | 0.16 |
 | `UiImage::new(handle)` | `ImageNode::new(handle)` | 0.16 |
+| `UiImageSize` | `ImageNodeSize` | 0.16 |
 | `TextFont { line_height: .. }` | `LineHeight` as separate required component | 0.18 |
 | `BorderRadius` as separate component | `Node { border_radius: .. }` field | 0.18 |
 | `entity.row()` | `entity.index()` | 0.18 |
 | `ron` from `bevy_scene`/`bevy_asset` | Add `ron = "0.8"` directly to `Cargo.toml` | 0.18 |
 | `AssetLoader` without `TypePath` | `#[derive(Default, TypePath)]` on loader struct | 0.18 |
 | `#[reflect[..]]` or `#[reflect{..}]` | `#[reflect(..)]` parentheses only | 0.18 |
-| `AnimationTarget { id, player }` | `AnimationTargetId` + `AnimatedBy` | 0.18 |
+| `AnimationTarget { id, player }` | `AnimationTargetId` + `AnimatedBy` components | 0.18 |
+| `FontAtlasSets` | Removed — font atlasing is internal | 0.18 |
+| Cargo feature `animation` | `gltf_animation` | 0.18 |
+| Cargo feature `bevy_sprite_picking_backend` | `sprite_picking` | 0.18 |
+| Cargo feature `bevy_ui_picking_backend` | `ui_picking` | 0.18 |
 
 Source: `docs/engine-reference/bevy/deprecated-apis.md`
 
@@ -274,25 +401,25 @@ Source: `docs/engine-reference/bevy/deprecated-apis.md`
 | # | Item | ADR | Status |
 |---|---|---|---|
 | 1 | Channel definition syntax: plain structs + `app.add_channel::<T>(ChannelSettings { mode, send_frequency, priority })` — no `#[derive(Channel)]` macro | ADR-008 | ⚠️ DIFFERS |
-| 2 | `ChannelMode` enum variants: `OrderedReliable(ReliableSettings)` ✅, `UnorderedUnreliable` ✅ (also: `UnorderedReliable`, `SequencedReliable`, `SequencedUnreliable`, `UnorderedUnreliableWithAcks`) | ADR-008 | ✅ CONFIRMED |
-| 3 | Direction is on message registration, NOT channel: `app.register_message::<T>().add_direction(NetworkDirection::...)` — `NetworkDirection` enum: `ServerToClient`, `ClientToServer`, `Bidirectional` | ADR-008 | ⚠️ DIFFERS |
+| 2 | `ChannelMode` enum variants: `OrderedReliable(ReliableSettings)` ✅, `UnorderedUnreliable` ✅ | ADR-008 | ✅ CONFIRMED |
+| 3 | Direction is on message registration, NOT channel: `app.register_message::<T>().add_direction(NetworkDirection::...)` | ADR-008 | ⚠️ DIFFERS |
 | 4 | `MessageSender<M>` and `MessageReceiver<M>` type names confirmed in prelude; both are **components** on entities (not standalone system params) | ADR-008 | ✅ CONFIRMED |
-| 5 | Client send: `sender.send::<Channel>(message)` — channel via generic type, no target param, no `send_to_server()` method | ADR-008 | ⚠️ DIFFERS |
-| 6 | Server receive: `receiver.receive() -> impl Iterator<Item = M>` — no `receive_messages()` method; also `receive_with_tick()`, `has_messages()`, `num_messages()` | ADR-008 | ⚠️ DIFFERS |
+| 5 | Client send: `sender.send::<Channel>(message)` — channel via generic type, no `send_to_server()` method | ADR-008 | ⚠️ DIFFERS |
+| 6 | Server receive: `receiver.receive() -> impl Iterator<Item = M>` — no `receive_messages()` method | ADR-008 | ⚠️ DIFFERS |
 | 7 | `NetworkTarget` = `type alias Target<PeerId>`. Unicast: `NetworkTarget::Single(PeerId)` — identifier is `PeerId` not `ClientId` | ADR-001, ADR-008 | ⚠️ DIFFERS |
-| 8 | `NetworkTarget::All` ✅ confirmed; also `AllExceptSingle(PeerId)`, `AllExcept(Vec<PeerId>)`, `Only(Vec<PeerId>)`, `None` | ADR-008 | ✅ CONFIRMED |
-| 9 | Server send API: `ServerMultiMessageSender` system param — `send::<M, C>(&msg, &server, &NetworkTarget)` (generics: Message first, Channel second; not `send_message_to_target`) | ADR-001, ADR-011 | ⚠️ DIFFERS |
-| 10 | `OrderedReliable` channel guarantees FIFO across all message types on the channel by definition; OQ-D invariant upheld by same-channel enqueue order | ADR-008 | ✅ CONFIRMED |
-| 11 | No built-in snapshot guarantee — application-level concern: enqueue snapshot first in `Update` tick + `snapshot_sent` flag per ADR-011 design | ADR-011 | ✅ CONFIRMED |
-| 12 | On reconnect, new `LinkOf` entity spawns with new `PeerId` (not `ClientId` — renamed); old entity despawned; `SessionToken` is cross-reconnect identity bridge | ADR-011 | ⚠️ DIFFERS |
-| 13 | No `OnConnected` event — connection state uses marker components (`Connected`); detect via `Trigger<OnAdd, Connected>` observer on client entities | ADR-011 | ⚠️ DIFFERS |
-| 14 | Pre-connect messages NOT delivered to new `PeerId`: confirmed by entity-per-connection model — new entity starts with empty message queue | ADR-011 | ✅ CONFIRMED |
-| 15 | `Commands::trigger(SessionReady)` fires Observer in same `Update` frame — confirmed by `cargo test -p server session_ready_observer` from Developer PowerShell for VS 2026 | ADR-012 | ✅ CONFIRMED |
-| 16 | `Res<T>` inserted via `Commands::insert_resource()` before `Commands::trigger()` is visible to Observer — confirmed by `cargo test -p server session_ready_observer` from Developer PowerShell for VS 2026 | ADR-012 | ✅ CONFIRMED |
+| 8 | `NetworkTarget::All` ✅; also `AllExceptSingle(PeerId)`, `AllExcept(Vec<PeerId>)`, `Only(Vec<PeerId>)`, `None` | ADR-008 | ✅ CONFIRMED |
+| 9 | Server send API: `ServerMultiMessageSender` system param — `send::<M, C>(&msg, &server, &NetworkTarget)` (generics: Message first, Channel second) | ADR-001, ADR-011 | ⚠️ DIFFERS |
+| 10 | `OrderedReliable` channel guarantees FIFO across all message types — OQ-D invariant upheld by same-channel enqueue order | ADR-008 | ✅ CONFIRMED |
+| 11 | No built-in snapshot guarantee — application-level concern: enqueue snapshot first in `Update` tick + `snapshot_sent` flag per ADR-011 | ADR-011 | ✅ CONFIRMED |
+| 12 | On reconnect, new `LinkOf` entity spawns with new `PeerId`; `SessionToken` is cross-reconnect identity bridge | ADR-011 | ⚠️ DIFFERS |
+| 13 | No `OnConnected` event — connection state uses marker components (`Connected`); detect via `Trigger<OnAdd, Connected>` observer | ADR-011 | ⚠️ DIFFERS |
+| 14 | Pre-connect messages NOT delivered to new `PeerId`: confirmed by entity-per-connection model | ADR-011 | ✅ CONFIRMED |
+| 15 | `Commands::trigger(SessionReady)` fires Observer in same `Update` frame — confirmed by `cargo test -p server session_ready_observer` | ADR-012 | ✅ CONFIRMED |
+| 16 | `Res<T>` inserted via `Commands::insert_resource()` before `Commands::trigger()` is visible to Observer — confirmed by `cargo test -p server session_ready_observer` | ADR-012 | ✅ CONFIRMED |
 | 17 | `Trigger<T>` is correct Observer parameter type in Bevy 0.18 — confirmed from Bevy 0.18 api_patterns | ADR-012 | ✅ CONFIRMED |
 | 18 | Component replication is opt-in: entity must have `Replicate::default()` AND component must be registered via `app.register_component::<T>()` | ADR-007 | ✅ CONFIRMED |
 | 19 | `ReplicationGroup` struct confirmed in prelude; `ReplicationGroup::new_id(id)` syntax confirmed | ADR-001 | ✅ CONFIRMED |
-| 20 | `LocalTimeline` is a struct in `lightyear::core::prelude` ("local timeline matching Time<Virtual>"); accessible as `Res<LocalTimeline>` | Engine reference | ✅ CONFIRMED |
+| 20 | `LocalTimeline` is a struct in `lightyear::core::prelude`; accessible as `Res<LocalTimeline>` | Engine reference | ✅ CONFIRMED |
 
 **Legend:** ✅ CONFIRMED — API exists as assumed | ⚠️ DIFFERS — API differs, resolution path documented in `tests/evidence/lightyear-026-verification.md`
 
@@ -307,7 +434,7 @@ Items 15 and 16 are resolved. Local Windows verification requires Developer Powe
 These skills are non-optional gates on specific file types:
 
 | File type | Skill | Why |
-|---|---|---|
+|-----------|-------|-----|
 | Any `.rs` importing `bevy` | `liv-bevy-018` | Enforces 0.18 API patterns; prevents deprecated Bundle/pre-0.15 patterns |
 | Any `.rs` importing `lightyear` | `liv-bevy-lightyear` | Lightyear 0.26 API; verification patterns for post-cutoff networking |
 | Both in same file | Activate **both** | Networking code uses both APIs simultaneously |
