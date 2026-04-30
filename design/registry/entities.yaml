@@ -985,6 +985,18 @@ constants:
     added: "2026-04-29"
     revised: ""
 
+  - name: legendary_pool_entry_round
+    status: active
+    source: design/gdd/auction-system.md
+    referenced_by:
+      - design/gdd/auction-system.md
+      - design/gdd/game-config.md
+    value: 6
+    unit: round_number
+    notes: "Legendaries do not enter the shared auction draw pool until this round. Default 6 = second auction (rounds: 3, 6, 9...). Ensures the first auction (Round 3, 5-10g typical budget) is not dominated by a 6g-floor Legendary. GameConfig field: legendary_pool_entry_round. Safe range: 3-9."
+    added: "2026-04-30"
+    revised: ""
+
   - name: placement_timer_seconds
     status: active
     source: design/gdd/game-config.md
@@ -1399,10 +1411,12 @@ network_messages:
     source: design/gdd/round-state-machine.md
     referenced_by:
       - design/gdd/round-state-machine.md
-    payload: "enum { ObjectivesDestroyed, Disconnection, Draw }"
-    notes: "Payload field of S2CGameOver. ObjectivesDestroyed = normal win condition; Disconnection = player exceeded disconnect_grace_seconds; Draw = mutual destruction or mutual disconnection same tick."
+      - design/gdd/network-protocol.md
+      - design/gdd/keyword-system.md
+    payload: "enum { ObjectivesDestroyed, Disconnection, Draw, ResolutionTimeout }"
+    notes: "Payload field of S2CGameOver. ObjectivesDestroyed = normal win condition; Disconnection = player exceeded disconnect_grace_seconds; Draw = mutual destruction or mutual disconnection same tick; ResolutionTimeout = RESOLUTION 60s safety timeout (distinct from Draw — client shows different result screen). Added ResolutionTimeout 2026-04-30 (R8 C-R8-1 fix, closes C-B2)."
     added: "2026-04-29"
-    revised: ""
+    revised: "2026-04-30"
 
   - name: ObjectiveDestroyed
     status: active
@@ -1494,6 +1508,7 @@ network_messages:
     source: design/gdd/network-protocol.md
     referenced_by:
       - design/gdd/network-protocol.md
+      - design/gdd/economy-system.md
       - design/gdd/auction-system.md
       - design/gdd/shop-auction-ui.md
       - design/gdd/hud.md
@@ -1509,7 +1524,7 @@ network_messages:
     referenced_by:
       - design/gdd/network-protocol.md
       - design/gdd/board-rendering.md
-      - design/ux/hud.md
+      - design/gdd/hud.md
       - docs/architecture/adr-003-cargo-workspace-structure.md
     payload: "{ identities: Vec<(LaneId, bool)> }"
     channel: reliable
@@ -1526,9 +1541,37 @@ network_messages:
       - design/gdd/prism-system.md
       - design/gdd/card-acquisition.md
       - design/gdd/objective-system.md
+      - design/gdd/auction-system.md
     payload: "{ card_id: CardId, source: AcquisitionSource }"
     channel: reliable
-    notes: "Unicast to owning player on each card added to hand from outside the shop purchase flow. AcquisitionSource enum variants: PrismLane1, PrismLane2, PrismLane3, PrismLane4, PrismLane5 (network-protocol.md lines 396-400). Full payload schema is OQ2 in prism-system.md — formal definition needed in network-protocol.md."
+    notes: "Unicast to owning player on each card added to hand from outside the shop purchase flow. AcquisitionSource enum — complete variant set defined in network-protocol.md:569-580: ShopPurchase, DraftInitial, AuctionWon, FreeCardPick, PrismLane1, PrismLane2, PrismLane3, PrismLane4, PrismLane5, KeywordEffect. prism-system.md OQ2 still requires formal S2CCardAcquired schema registration in NP."
+    added: "2026-04-30"
+    revised: "2026-04-30"
+
+  - name: S2CSangMepriseReveal
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/objective-system.md
+      - design/gdd/hud.md
+    payload: "{ revealed_objectives: Vec<(PlayerId, LaneId, bool)> }"
+    channel: reliable
+    scope: "broadcast (both players)"
+    notes: "Sacrier-only. Sent at sub-step 1 when Sang Méprise resolves. Reveals all alive objectives (both players) to both players for the current RESOLUTION only. Distinct from S2CObjectiveIdentities (permanent per-player secret). Reconnect gap: S2CGameSnapshot missing active_sang_meprise_reveals field — lock field name before Architecture (OQ-CS-2, NP OQ6). Registered 2026-04-30 (R8 C-B6 fix)."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: S2CSingleObjectiveReveal
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/objective-system.md
+    payload: "{ player_id: PlayerId, lane: LaneId, is_fake: bool }"
+    channel: reliable
+    scope: "unicast (opponent only)"
+    notes: "Ecaflip Krosmic (Dé du Chateux) only. Unicast to the Ecaflip player's opponent. Reveals a single objective — distinct from S2CSangMepriseReveal (full-board, both players). Triggered when die roll <= dé_chateux_reveal_threshold. Must be registered in network-protocol.md D.1 before Ecaflip story implementation (class-system.md NP-4). Registered 2026-04-30 (R8 C-NEW-1 fix)."
     added: "2026-04-30"
     revised: ""
 

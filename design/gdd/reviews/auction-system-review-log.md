@@ -1,5 +1,25 @@
 # Review Log — Auction System
 
+## Review — 2026-04-30 (pass 5, lean) — Verdict: APPROVED
+
+Scope signal: L
+Specialists: none (lean mode)
+Blocking items: 0 | Recommended: 3
+Summary: Fresh-session re-review confirming pass-4 in-session revisions. All 11 pass-4 blockers verified resolved. Three pre-implementation gates identified: (1) CardSource::AuctionWon vs AcquisitionSource enum name must be reconciled against network-protocol.md before story implementation (compilation risk); (2) RSM GDD requires a targeted update to document auction_max_duration_seconds as a second AbortAuction trigger per Rule 8; (3) OQ9 (AuctionExpired reachability) must be resolved by Gameplay Programmer before AU12 can be implemented. Recommended cleanups: migrate misplaced AU11 to Economy System GDD; promote CardSource naming inconsistency to a formal OQ; close OQ6 Card Data & Pool cross-GDD update. Document is complete, internally consistent, and fully implementable.
+Prior verdict resolved: Yes (pass 4 MAJOR REVISION NEEDED resolved in-session; this pass confirms resolution)
+
+---
+
+## Review — 2026-04-30 (pass 4) — Verdict: MAJOR REVISION NEEDED → Resolved in-session
+
+Scope signal: L
+Specialists: game-designer · systems-designer · economy-designer · network-programmer · ux-designer · qa-lead · creative-director (senior, Opus)
+Blocking items: 11 | Recommended: 8
+Summary: Pass 4 surfaced three categories of issues. (1) Pillar-threatening design: the interest formula rewards hoarding over spending, inverting "No idle spectating"; OQ7's only proposed mitigation ("max bid capped at opponent's free gold") creates "never bid first" dominant strategy worse than the original problem — both resolved by accepting economic dominance as valid win condition alongside bidding skill, with Player Fantasy reframed and M2 monitoring gate added. (2) Correctness bugs: client minimum bid off-by-one (snapshot derived `starting_price` vs server-required `starting_price + 1`), `spend_reserved_gold` annotation describing wrong failure mode (overflow vs. free-card bug), `AuctionPhaseEntered` vs `StartAuction` naming inconsistency throughout, `S2CCardAcquired` enum name conflict, `auction_max_duration_seconds` with no enforcement path, contradictory hand-full messages — all corrected. (3) AC coverage gaps: AU1-b split into server-side (testable now) + network integration (gate ADR-008), four new ACs added (AU12 AuctionExpired pending OQ9, AU21 Legendary stratification, AU22 1000ms clamp, AU23 duplicate guard), subtypes added throughout, AU19-a reframed as defensive regression guard. Creative-director verdict: MAJOR REVISION NEEDED (first time a pass 4 review hit MAJOR vs NEEDS REVISION — driven by pillar contradiction, not specification gaps).
+Prior verdict resolved: Yes (pass 3 in-session revision + pass 4 re-review condition met)
+
+---
+
 ## Review — 2026-04-30 (pass 3) — Verdict: NEEDS REVISION → Resolved in-session
 
 Scope signal: L

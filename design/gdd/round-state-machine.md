@@ -66,7 +66,7 @@ is_auction_round(R) = (R mod 3 == 0)
 Evaluated after `round_number` increments on RESOLUTION exit. Round 3 → true. Round 4 → false. Round 6 → true. Round 9 → true.
 
 **Rule 7 — DRAFT_AUCTION behavior:**
-On entry, the RSM sends `StartAuction(round_number)` to the Auction System. The Auction System owns the 20-second timer and all bid state. `AuctionSettled` is a Bevy buffered Event; the RSM system must be scheduled after the Auction System so the event is readable in the same or next frame. The RSM waits for `AuctionSettled` (winner or no-bid timeout), then transitions to DRAFT_SHOP.
+On entry, the RSM sends `AuctionPhaseEntered { round: round_number }` to the Auction System. The Auction System owns the 20-second timer and all bid state. `AuctionSettled` is a Bevy buffered Event; the RSM system must be scheduled after the Auction System so the event is readable in the same or next frame. The RSM waits for `AuctionSettled` (winner or no-bid timeout), then transitions to DRAFT_SHOP.
 
 **Rule 8 — DRAFT_SHOP timer:**
 `draft_shop_timer` starts on DRAFT_SHOP entry. Default: `draft_shop_timer_seconds = 30`. When timer reaches 0, RSM transitions to PLACEMENT. If all players signal ready before 0, RSM transitions immediately. Ready signal is available from t=0. Players may retract their ready signal at any time until the all-ready condition fires — retraction returns them to the normal shopping state with no penalty.
@@ -104,6 +104,7 @@ pub enum GameOverReason {
     ObjectivesDestroyed,  // Normal win condition
     Disconnection,        // A player exceeded disconnect_grace_seconds
     Draw,                 // Mutual destruction or mutual disconnection same tick
+    ResolutionTimeout,    // RESOLUTION 60s safety timeout (distinct from Draw; client shows different result screen)
 }
 
 **Rule 15 — Valid player actions per state:**
@@ -148,8 +149,8 @@ GAME_OVER is terminal — no transitions out.
 |---|---|---|
 | **Economy System** | RSM → Economy | Fires `apply_mana_ramp` and `apply_gold_income` on DRAFT entry; fires `interest_snapshot` at RESOLUTION end |
 | **Card Data & Pool** | RSM → Pool | Fires `refresh_shop(player)` on DRAFT_AUCTION or DRAFT_SHOP entry (after economy events) |
-| **Auction System** *(GDD not yet written)* | RSM ↔ Auction | Sends `StartAuction(round_number)` on DRAFT_AUCTION entry; waits for `AuctionSettled` signal before transitioning to DRAFT_SHOP |
-| **Combat Resolution** *(GDD not yet written)* | RSM ↔ Combat | Sends `BeginResolution` on RESOLUTION entry; waits for `ResolutionComplete` signal; kill and objective rewards fire inside Combat Resolution, not RSM |
+| **Auction System** | RSM ↔ Auction | Sends `AuctionPhaseEntered { round: u32 }` on DRAFT_AUCTION entry; waits for `AuctionSettled` signal before transitioning to DRAFT_SHOP |
+| **Combat Resolution** | RSM ↔ Combat | Sends `BeginResolution` on RESOLUTION entry; waits for `ResolutionComplete` signal; kill and objective rewards fire inside Combat Resolution, not RSM |
 | **Objective System** | RSM reads | Reads `real_objectives_destroyed(player)` at RESOLUTION end to evaluate GAME_OVER condition |
 | **Server-side RNG** | Combat/Objective call directly | RSM ensures random operations only occur inside RESOLUTION state; does not call RNG itself |
 | **Network Protocol / Lightyear** | RSM → all clients | Broadcasts `S2CPhaseChanged` on every transition; relies on Lightyear for delivery to all connected clients |
@@ -195,7 +196,7 @@ On entry into DRAFT_INITIAL, DRAFT_AUCTION, or DRAFT_SHOP (from RESOLUTION or ga
 | 1 | `apply_mana_ramp(player)` — `current_mana = min(R, mana_cap)` | All DRAFT phases | Players need mana set before they can evaluate card costs |
 | 2 | `apply_gold_income(player)` — `gold += baseline + interest` | All DRAFT phases | Players need gold credited before purchasing |
 | 3 | `refresh_shop(player)` | All DRAFT phases | Shop is populated after gold is known |
-| 4 | `StartAuction(round_number)` → Auction System | DRAFT_AUCTION only | Auction System must be ready before clients are notified of the phase; bids arriving before StartAuction is processed would reach an uninitialised Auction System |
+| 4 | `AuctionPhaseEntered { round: u32 }` → Auction System | DRAFT_AUCTION only | Auction System must be ready before clients are notified of the phase; bids arriving before `AuctionPhaseEntered` is processed would reach an uninitialised Auction System |
 | 5 | Broadcast `S2CPhaseChanged` (+ `S2CGameOver` if applicable) | All DRAFT phases | Clients are notified only after all server state is correct and the Auction System is ready |
 
 Exception for round 1 (DRAFT_INITIAL): Step 2 grants `starting_gold = 5` instead of `baseline + interest`. Steps 3–5 follow normally (no step 4 since DRAFT_INITIAL has no auction).
@@ -273,8 +274,8 @@ Per-round wall-clock time as seen by players. `T_res` is the server-determined R
 
 | System | Type | Interface | Notes |
 |---|---|---|---|
-| **Auction System** *(GDD not yet written)* | Hard | RSM → Auction: `StartAuction(round_number)`, `AbortAuction`; Auction → RSM: `AuctionSettled` | Bidirectional — RSM drives and waits; Auction System must support AbortAuction for disconnection edge case |
-| **Combat Resolution** *(GDD not yet written)* | Hard | RSM → Combat: `BeginResolution`; Combat → RSM: `ResolutionComplete` | Kill and objective rewards fire inside Combat Resolution; RSM receives only the completion signal |
+| **Auction System** | Hard | RSM → Auction: `AuctionPhaseEntered { round: u32 }`, `AbortAuction`; Auction → RSM: `AuctionSettled` | Bidirectional — RSM drives and waits; Auction System must support AbortAuction for disconnection edge case |
+| **Combat Resolution** | Hard | RSM → Combat: `BeginResolution`; Combat → RSM: `ResolutionComplete` | Kill and objective rewards fire inside Combat Resolution; RSM receives only the completion signal |
 | **Objective System** | Hard | RSM reads `real_objectives_destroyed(player)` at RESOLUTION end | RSM does not mutate objective state; read-only dependency |
 | **Network Protocol / Lightyear** | Hard | RSM emits `S2CPhaseChanged` via Lightyear broadcast on every transition | All clients depend on this for phase mirror; late-joiner sync is an open question (see Open Questions) |
 | **Game Session System** | Hard | Game Session System manages the LOBBY state and triggers DRAFT_INITIAL start; RSM takes over from DRAFT_INITIAL onward | Game Session System sets up player count, class selection, and mode config that RSM reads for LOBBY guard conditions |
@@ -371,13 +372,13 @@ The RSM drives the following UI elements via `S2CPhaseChanged` broadcasts. Each 
 | RSM-29 | GIVEN RESOLUTION is active, WHEN a player sends a placement submission, THEN the server rejects it. | BLOCKING |
 | RSM-30 | GIVEN DRAFT_INITIAL timer expires and Player A spent 3g of the 5g budget, WHEN PLACEMENT begins, THEN Player A's gold = 2g (5−3 = 2 carried over; unspent starting gold is **not** forfeited) and Player A has only the cards they purchased in hand. | BLOCKING |
 | RSM-31 | GIVEN PLACEMENT is active and both an all-submit event and a timer-expiry event arrive on the same server tick, WHEN the RSM processes them, THEN the RSM transitions to RESOLUTION exactly once — the second trigger is discarded. Double-transition would execute combat twice; this is a data-corruption scenario. | BLOCKING |
-| RSM-32 | GIVEN the RSM enters any DRAFT state, WHEN entry actions fire, THEN the execution sequence is strictly: (1) apply_mana_ramp, (2) apply_gold_income, (3) refresh_shop, (4) StartAuction if DRAFT_AUCTION, (5) S2CPhaseChanged — a purchase or bid message arriving before S2CPhaseChanged is broadcast is rejected by the phase guard. | BLOCKING |
+| RSM-32 | GIVEN the RSM enters any DRAFT state, WHEN entry actions fire, THEN the execution sequence is strictly: (1) apply_mana_ramp, (2) apply_gold_income, (3) refresh_shop, (4) `AuctionPhaseEntered { round: u32 }` if DRAFT_AUCTION, (5) S2CPhaseChanged — a purchase or bid message arriving before S2CPhaseChanged is broadcast is rejected by the phase guard. | BLOCKING |
 | RSM-33 | GIVEN LOBBY transitions to DRAFT_INITIAL, WHEN the RSM initialises its state, THEN round_number = 1. The value 0 must be unreachable at any is_auction_round call site. | BLOCKING |
 | RSM-34 | GIVEN DRAFT_SHOP is active and all players signal ready on the same server tick the draft_shop_timer reaches 0, WHEN the RSM processes both events, THEN PLACEMENT begins exactly once — the second trigger is discarded. | ADVISORY |
 | RSM-35 | GIVEN a player's heartbeat gap exceeds disconnect_grace_seconds during RESOLUTION, WHEN the RSM evaluates, THEN GAME_OVER is deferred until RESOLUTION exits naturally: the current combat sub-step completes, OnResolutionEnd fires, and GAME_OVER fires on that same RESOLUTION exit — not mid-sub-step. | BLOCKING |
-| RSM-36 | GIVEN GAME_OVER fires for any reason, WHEN S2CGameOver is broadcast, THEN: (a) reason = ObjectivesDestroyed if loss condition was met, (b) reason = Disconnection if a player exceeded disconnect_grace_seconds, (c) reason = Draw if mutual destruction or mutual disconnection on the same tick. The reason field must match the actual cause. | BLOCKING |
+| RSM-36 | GIVEN GAME_OVER fires for any reason, WHEN S2CGameOver is broadcast, THEN: (a) reason = ObjectivesDestroyed if loss condition was met, (b) reason = Disconnection if a player exceeded disconnect_grace_seconds, (c) reason = Draw if mutual destruction or mutual disconnection on the same tick, (d) reason = ResolutionTimeout if the RESOLUTION 60s safety timeout fired. The reason field must match the actual cause. | BLOCKING |
 | RSM-37 | GIVEN both players' Lightyear connections drop on the same server tick (mutual disconnection), WHEN the RSM evaluates disconnect trackers in a single pass, THEN S2CGameOver(reason=Draw) is broadcast — no single player is declared loser. | BLOCKING |
-| RSM-38 | GIVEN RESOLUTION is active and ResolutionComplete is not received within resolution_max_duration_seconds, WHEN the safety timeout fires, THEN OnResolutionEnd broadcasts, S2CGameOver(reason=Draw) broadcasts, and the RSM transitions to GAME_OVER. | ADVISORY |
+| RSM-38 | GIVEN RESOLUTION is active and ResolutionComplete is not received within resolution_max_duration_seconds, WHEN the safety timeout fires, THEN OnResolutionEnd broadcasts, `S2CGameOver(reason=ResolutionTimeout)` broadcasts, and the RSM transitions to GAME_OVER. | ADVISORY |
 
 ## Open Questions
 
@@ -389,4 +390,4 @@ The RSM drives the following UI elements via `S2CPhaseChanged` broadcasts. Each 
 
 4. **Late-joiner sync strategy** — Clients connecting mid-game receive `S2CPhaseChanged` for the current phase but need full game state (gold, round, board, hand). The RSM's per-transition broadcast is insufficient for a full state restore. Resolution belongs in the Network Protocol GDD; the RSM's `RoundState` resource must be structured to support full-snapshot delivery.
 
-5. ~~**`GAME_OVER` payload `GameOverReason` enum**~~ — **Resolved.** `GameOverReason` is defined in Rule 14 of this GDD: `ObjectivesDestroyed | Disconnection | Draw`. HUD GDD may render it; the type is owned here.
+5. ~~**`GAME_OVER` payload `GameOverReason` enum**~~ — **Resolved.** `GameOverReason` is defined in Rule 14 of this GDD: `ObjectivesDestroyed | Disconnection | Draw | ResolutionTimeout`. HUD GDD may render it; the type is owned here. *(ResolutionTimeout added 2026-04-30 per R8 cross-review — closes C-B2 / C-R8-1.)*
