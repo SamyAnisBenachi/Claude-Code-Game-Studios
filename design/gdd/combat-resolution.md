@@ -133,7 +133,7 @@ Applied in this order for each individual attack (one attacker, one defender):
 
 1. **SILENCE** — strip all keywords from the attacker for this combat
 2. **STUN** — if attacker is STUNned, attack does not execute; skip all remaining steps
-3. **LEADER bonus** — apply LEADER-granted ATK bonuses (snapshotted at round start; persist until end of RESOLUTION)
+3. **LEADER bonus** — apply LEADER-granted ATK bonuses (snapshotted post-SS1, after all APPEARANCE effects resolve; persist until end of RESOLUTION)
 4. **Type advantage (ATK)** — if attacker's type beats defender's type: `ATK_combat += 1`
 5. **VULNERABILITY X** — if defender has VULNERABILITY X: `ATK_effective = ATK_combat + X`
 6. **RESISTANCE X** — if defender has RESISTANCE X: `ATK_effective = ATK_effective - X` (floor 0)
@@ -149,7 +149,7 @@ Applied in this order for each individual attack (one attacker, one defender):
 
 **SHIELD** — Persists until consumed. A SHIELD that is not triggered in a round carries into subsequent rounds. SHIELD absorbs any damage source: melee, RANGE, FIRST STRIKE, spell.
 
-**LEADER** — Stat bonuses snapshotted at RESOLUTION entry. Persist until RESOLUTION ends regardless of LEADER death within that round. Recalculated each round.
+**LEADER** — Stat bonuses snapshotted post-SS1 (after all APPEARANCE effects resolve, before SS2 begins). A LEADER placed in SS1 via HASTE or APPEARANCE IS included in the snapshot — it is already on board when the post-SS1 snapshot fires. Persist until RESOLUTION ends regardless of LEADER death within that round. Recalculated each round.
 
 **OUTNUMBERED** — Board count (friendly vs. enemy units) evaluated at the start of each sub-step. A unit becomes OUTNUMBERED if the count at sub-step entry favors the opponent.
 
@@ -167,7 +167,7 @@ This ordering ensures OUTNUMBERED counts reflect the final board state after dea
 | State | Entry Trigger | Actions on Entry | Exit Trigger |
 |---|---|---|---|
 | PLACEMENT | RSM broadcasts `S2CPhaseChanged(PLACEMENT)` | PlacementBuffer opens; placement timer starts | All players submit OR timer expires |
-| RESOLUTION_EXECUTING | RSM fires `BeginResolution`; PlacementBuffer commits | Broadcast `S2CPlacementReveal`; snapshot unit stats and LEADER bonuses; execute sub-steps 1–6 | Sub-step 6 + all rewards applied |
+| RESOLUTION_EXECUTING | RSM fires `BeginResolution`; PlacementBuffer commits | Broadcast `S2CPlacementReveal`; execute SS1 (APPEARANCE); snapshot LEADER bonuses post-SS1; execute SS2–SS6 | Sub-step 6 + all rewards applied |
 | RESOLUTION_COMPLETE | Sub-step 6 complete | Fire `ResolutionComplete` to RSM; broadcast `S2CResolutionEvent` | RSM receipt |
 
 **Internal sub-step sequence (within RESOLUTION_EXECUTING):**
@@ -378,7 +378,7 @@ Where `ATK_effective` = attacker's ATK including active buffs (LEADER, spell buf
 
 **If INJURED grants FIRST STRIKE mid-RESOLUTION:** INJURED activates at the sub-step boundary after the damage that triggered it. A unit damaged in sub-step 3 does not retroactively attack in sub-step 3. It gains FIRST STRIKE from sub-step 4 onward — meaning FIRST STRIKE applies to sub-step 3 of the *next* round, not the current one.
 
-**If a LEADER dies in sub-step 4:** The LEADER bonus (snapshotted at RESOLUTION entry) remains active for sub-steps 5 and 6 of the same RESOLUTION. Next round: if LEADER is still dead, no bonus is applied.
+**If a LEADER dies in sub-step 4:** The LEADER bonus (snapshotted post-SS1) remains active for sub-steps 5 and 6 of the same RESOLUTION. Next round: if LEADER is still dead, no bonus is applied.
 
 **If SILENCE is applied to a unit with an INJURED-granted FIRST STRIKE:** SILENCE strips the FIRST STRIKE keyword. The INJURED flag remains (SILENCE does not cure INJURED). If SILENCE ends, INJURED-granted FIRST STRIKE can return.
 

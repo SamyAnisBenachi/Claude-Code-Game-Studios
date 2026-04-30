@@ -78,6 +78,21 @@ This epic is complete when:
 - `DiscardLog` resource and `AuditLog` resource accessible for test inspection (PS-12, PS-17)
 - `PrismPresence` component replication confirmed against Lightyear 0.26 API via `liv-bevy-lightyear`
 
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [PrismState Scaffold and Session Lifecycle](story-001-state-scaffold.md) | Logic | Ready | ADR-016 |
+| 002 | [Deterministic Lane Rewards — Lanes 1/2/4/5](story-002-deterministic-lanes.md) | Logic | Ready | ADR-016 |
+| 003 | [Lane 3 RNG Draw Pipeline and Audit Log Ordering](story-003-lane3-rng.md) | Logic | Ready | ADR-016, ADR-005 |
+| 004 | [Hand-Full Rejection and Network Message Staging](story-004-hand-full-network.md) | Integration | Ready | ADR-016, ADR-008 |
+| 005 | [Full-Set Respawn Cycle and Multi-Player Independence](story-005-respawn-cycle.md) | Logic | Ready | ADR-016 |
+| 006 | [Spell Card Play Path Integration](story-006-spell-play-path.md) | Integration | Ready | ADR-016 |
+
 ## Next Step
 
-Resolve the three pre-implementation gates above, then run `/create-stories prism-system`.
+Work through stories in order — each story's `Depends on:` field tells you what must be Done before you can start it.
+
+**Recommended sequence**: 001 → 002 → 003 → 004 / 005 (parallel) → 006
+
+Run `/story-readiness [story-path]` before picking up any story, then `/dev-story [story-path]` to implement.
