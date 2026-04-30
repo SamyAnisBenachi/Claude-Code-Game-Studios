@@ -15,6 +15,16 @@
 >
 > **Session (2026-04-30):** /dev-story lyv-002 (All Protocol Message Types) — story already fully implemented in commit 759bd4a. All ACs verified against shared/src/protocol.rs. Evidence at tests/evidence/story-lyv-002-types-check.md. Next: /story-done production/epics/lightyear-protocol-verification/story-002-all-protocol-message-types.md
 
+## Session Extract — /review-all-gdds 2026-04-30 (R8)
+- Verdict: FAIL
+- GDDs reviewed: 20
+- Flagged for revision: round-state-machine.md, network-protocol.md, class-system.md, auction-system.md, hand-ui.md, keyword-system.md, objective-system.md
+- Blocking issues: 13 — (1) GameOverReason 3-vs-4 split across RSM/NP/KS/registry; (2) S2CGoldUpdate payload 4-vs-5 fields; (3) auction→hand-ui dep gap; (4) StartAuction→AuctionPhaseEntered rename incomplete in RSM; (5) Sang Méprise snapshot field name unlocked; (6-8 carryover) S2CCardAcquired in hand-ui Rule 5c, S2CSangMepriseReveal + S2CSingleObjectiveReveal not in registry, C-NEW-4 trigger_index echo; (9-10) Garde-Temps destroy() vs take_damage(); (11) D-B4 disconnect-grace UX; (12) D-B5 Sang Méprise reconnect; (13) Xelor reserve 4-stacking-sources (Mummy passive no cap)
+- New design concerns: cognitive load 9+ systems during PLACEMENT (overloaded); Xelor dominant-strategy risk; Sadida seed AR stacking; three Player Fantasies unreconciled in master GDD
+- Resolved this cycle: C-B5 (hand-ui internal contradiction), D-B3 (auction wealth gap reframing)
+- Recommended next: 3-coordinated-edit batch: (1) registry single pass, (2) GameOverReason + S2CGoldUpdate reconciliation, (3) StartAuction rename in RSM
+- Report: design/gdd/gdd-cross-review-2026-04-30-r8.md
+
 ---
 
 ## Stage actuel : Pre-Production ✅
