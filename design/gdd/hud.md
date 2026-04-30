@@ -54,9 +54,9 @@ The HUD occupies four screen-edge zones, each anchored with `Val::Px(12.0)` from
 |---|---|
 | Top-left | Phase label (line 1) + round counter (line 2) |
 | Top-center | Scoreboard — 2 rows × 5 dots; top row = opponent; bottom row = local; dots aligned horizontally to lane midpoints 1–5 |
-| Top-right | Opponent gold (line 1); opponent reserved sub-label (line 2, DRAFT_AUCTION only) |
-| Bottom-left | Local gold (line 1); local reserved-gold sub-label (line 2, DRAFT_AUCTION only) |
-| Bottom-right | Local mana (line 1, format `current / mana_cap`); local reserve mana (line 2, hidden when reserve_mana == 0) |
+| Top-right | Own gold (line 1); own reserved-gold sub-label (line 2, DRAFT_AUCTION only); Opponent gold (line 3); opponent reserved sub-label (line 4, DRAFT_AUCTION only) |
+| Bottom-left | Local mana (line 1, format `current / mana_cap`); local reserve mana (line 2, hidden when reserve_mana == 0) |
+| Bottom-right | Unallocated — must remain clear of all HUD elements |
 
 Bottom-center is reserved for the Hand UI fan and must remain clear of all HUD elements. Center-screen is reserved for Shop/Auction UI panels and the DRAFT_INITIAL grid.
 
@@ -96,7 +96,7 @@ Each HUD readout is updated only by the message(s) below; HUD never redraws the 
 | DRAFT_AUCTION | `AUCTION` | `ECONOMY_AUCTION` |
 | PLACEMENT | `PLACEMENT` | `ECONOMY_BASIC` |
 | RESOLUTION | `RESOLUTION` | `ECONOMY_BASIC` |
-| GAME_OVER | `GAME OVER` (no round suffix) | `FROZEN` |
+| GAME_OVER | `GAME OVER` (phase label only — no round number appended; round counter element on line 2 remains visible per `round_counter_visible` predicate) | `FROZEN` |
 
 On `S2CPhaseChanged(DRAFT_AUCTION)`: HUD enters `ECONOMY_AUCTION` mode — opponent reserved sub-label and local reserved-gold sub-label become visible (their values populate from the next `S2CGoldBroadcast` payloads). On any phase exit from DRAFT_AUCTION: both reserved sub-labels hide. Phase label and round counter update atomically on the message — no fade, no animation.
 
@@ -118,7 +118,9 @@ Outside DRAFT_AUCTION (i.e. `ECONOMY_BASIC` mode), the opponent gold readout sho
 On `S2CPhaseChanged(RESOLUTION)`: HUD remains fully visible at exactly the same visual weight it held during PLACEMENT (no scaling up, no opacity shift, no contrast change — that would be a "moving target" violation of the player fantasy). Hand UI hides immediately (Hand UI Rule 12); Shop/Auction UI hides its panels. The HUD is the only persistent UI surface during RESOLUTION. Gold deltas (kill rewards, objective rewards, embedded `GoldAwarded` entries from `S2CResolutionEvent`) arrive as `S2CGoldUpdate` and `S2CGoldBroadcast` and update the readouts in real time per Rule 4. Numeric tweens are ≤300ms (see Rule 14). Dot darkenings on `ObjectiveDestroyed` fire instantly (Rule 6).
 
 **Rule 10 — GAME_OVER: HUD freezes, never reveals identity retroactively.**
-On `S2CPhaseChanged(GAME_OVER)`: phase label updates to `GAME OVER` (no round suffix). All readouts retain their last received state. The scoreboard does **not** retroactively reveal real/fake on either side — destroyed dots remain "destroyed", alive dots remain "alive", with no identity glyph added. A separate post-game summary screen (not owned by HUD) may reveal the full objective map, but the HUD's contract holds: the dots mean *alive vs destroyed*, end of match included. A win/loss overlay renders above the HUD; the HUD remains visible beneath it as a final-state record.
+On `S2CPhaseChanged(GAME_OVER)`: phase label updates to `GAME OVER`. All readouts retain their last received state; the round counter remains visible showing the final round number. The scoreboard does **not** retroactively reveal real/fake on either side — destroyed dots remain "destroyed", alive dots remain "alive", with no identity glyph added. A separate post-game summary screen (not owned by HUD) may reveal the full objective map, but the HUD's contract holds: the dots mean *alive vs destroyed*, end of match included. A win/loss overlay renders above the HUD; the HUD remains visible beneath it as a final-state record.
+
+**`S2CGameSnapshot` bypass for FROZEN mode.** If a snapshot arrives while the HUD is in FROZEN state (e.g., the local player disconnected and reconnected at GAME_OVER), the snapshot rebuild runs per Rule 13 regardless of FROZEN mode. After the rebuild completes, HUD immediately re-enters FROZEN. No incremental updates (`S2CGoldUpdate`, `ObjectiveDestroyed`) are accepted after re-entry. This ensures a reconnecting player sees the correct authoritative final state rather than a blank or stale display. This is the explicit tiebreak: **snapshots always win, then FROZEN re-applies**.
 
 **Rule 11 — Tie-break: `S2CGoldUpdate` vs `S2CGoldBroadcast` for local gold.**
 `S2CGoldUpdate` is the authoritative unicast update for the local player's economy (network-protocol.md). `S2CGoldBroadcast` is broadcast to all players for cross-player visibility. When both arrive in the same Bevy tick:
@@ -127,11 +129,13 @@ On `S2CPhaseChanged(GAME_OVER)`: phase label updates to `GAME OVER` (no round su
 3. The final value written to the local gold label is the value from `S2CGoldUpdate`.
 This ordering is enforced via `app.configure_sets` or explicit `.after()` dependency between two HUD systems and is a code contract, not an optional optimisation. The local reserved-gold sub-label is owned exclusively by `S2CGoldBroadcast` (Rule 4) — `S2CGoldUpdate` does not carry `reserved_gold` and never overwrites it.
 
+**Implementation note:** verify against Lightyear 0.26 message channel drain order. The `.after()` constraint governs which HUD system processes already-drained events first, but cannot reorder Lightyear's internal dispatch between two different message channels. If Lightyear drains `S2CGoldUpdate` events before `S2CGoldBroadcast` events in the same frame, the Bevy system ordering still produces the correct final value — but confirm this is the actual drain order during implementation. Do not assume the Bevy scheduling guarantee is sufficient without verifying Lightyear's channel scheduling.
+
 **Rule 12 — HUD never displays a timer.**
-The PLACEMENT timer is owned by Hand UI (hand-ui.md Rule 11). The DRAFT_INITIAL, DRAFT_SHOP, and DRAFT_AUCTION timers are owned by Shop/Auction UI (shop-auction-ui.md Rules 5 [DRAFT_INITIAL], DRAFT_SHOP Rule 5, Auction Panel Rule 3). The `timer_duration_ms` field of `S2CPhaseChanged` is read by those systems, not by HUD. The HUD's `MessageReader<S2CPhaseChanged>` discards the timer field — a comment in the system documents this to prevent future contributors from wiring a HUD timer.
+The PLACEMENT timer is owned by Hand UI (hand-ui.md Rule 11). The DRAFT_INITIAL, DRAFT_SHOP, and DRAFT_AUCTION timers are owned by Shop/Auction UI (shop-auction-ui.md Rules 5 [DRAFT_INITIAL], DRAFT_SHOP Rule 5, Auction Panel Rule 3). The `timer_duration_ms` field of `S2CPhaseChanged` is read by those systems, not by HUD. The HUD's `MessageReader<S2CPhaseChanged>` handler must destructure the message with `let S2CPhaseChanged { phase, round_number, .. } = msg;` — never binding `timer_duration_ms` at the call site. This is a compiler-level constraint, not a documentation note; a future contributor who adds a binding for `timer_duration_ms` in the HUD handler will see an unused-variable warning that enforces the boundary.
 
 **Rule 13 — Reconnect: `S2CGameSnapshot` rebuild.**
-On receipt of `S2CGameSnapshot`, the HUD reads the embedded economy and scoreboard state in a single synchronous pass and writes to all label entities and all dot entities before the next frame renders. Because all HUD entities are pre-pooled (Rule 1), the rebuild is a series of `Text` and `Visibility` writes with no spawn latency, no flicker. The snapshot is sufficient and authoritative — the HUD does not wait for subsequent `S2CGoldUpdate` or `S2CGoldBroadcast` to populate state after a reconnect. Phase label and round counter populate from the snapshot's `phase` and `round_number` fields, which advance the HUD into the correct mode (Rule 5) atomically.
+On receipt of `S2CGameSnapshot`, the HUD reads the embedded economy and scoreboard state in a single synchronous pass and writes to all label entities and all dot entities before the next frame renders. Because all HUD entities are pre-pooled (Rule 1), the rebuild is a series of `Text` and `Visibility` writes with no spawn latency, no flicker. The snapshot is sufficient and authoritative — the HUD does not wait for subsequent `S2CGoldUpdate` or `S2CGoldBroadcast` to populate state after a reconnect. Phase label and round counter populate from the snapshot's `phase` and `round_number` fields, which advance the HUD into the correct mode (Rule 5) atomically. **FROZEN mode exception:** if the snapshot arrives while HUD is in FROZEN state (GAME_OVER reconnect), the rebuild runs to completion, then HUD immediately re-enters FROZEN — see Rule 10.
 
 **Rule 14 — Animation budget.**
 Numeric value updates (gold, mana, reserve, reserved) tween over ≤300ms via `bevy_tweening` from previous to new value. Phase label, round counter, and dot state changes are **not** animated — text replaces in place, dot darkens instantly. No flashing, no pulsing, no urgency colours, no scale tweens larger than ±1 pixel. Animations that obscure or compete with the central decision (auction panel, hand fan, board) are forbidden.
@@ -146,7 +150,7 @@ Numeric value updates (gold, mana, reserve, reserved) tween over ≤300ms via `b
 | `DRAFT_AUCTION` | `ECONOMY_AUCTION` | All readouts visible; **opponent reserved + local reserved-gold sub-labels become visible** | In: from `RESOLUTION` (auction rounds 3, 6, 9…). Out: to `DRAFT_SHOP` — both reserved sub-labels hide |
 | `PLACEMENT` | `ECONOMY_BASIC` | Same as DRAFT_SHOP; sister Hand UI shows placement timer (HUD does not) | In: from `DRAFT_INITIAL` or `DRAFT_SHOP`. Out: to `RESOLUTION` |
 | `RESOLUTION` | `ECONOMY_BASIC` | HUD remains fully visible at unchanged weight; sister UIs hide | In: from `PLACEMENT`. Out: to `DRAFT_AUCTION`, `DRAFT_SHOP`, or `GAME_OVER` |
-| `GAME_OVER` | `FROZEN` | All readouts retain last state; phase label = `GAME OVER`; no further updates accepted | In: from `RESOLUTION`. Terminal — no out |
+| `GAME_OVER` | `FROZEN` | All readouts retain last state; phase label = `GAME OVER`; round counter remains visible showing final round number; no incremental updates (`S2CGoldUpdate`, `ObjectiveDestroyed`) accepted. `S2CGameSnapshot` bypasses FROZEN and triggers a full rebuild per Rule 10/13 tiebreak, then HUD immediately re-enters FROZEN. | In: from `RESOLUTION`. Terminal — no out |
 
 ### Interactions with Other Systems
 
@@ -212,13 +216,14 @@ Each toggleable HUD element has one boolean predicate that determines whether it
 | Local reserved-gold sub-label | `local_reserved_visible := phase == DRAFT_AUCTION` | `S2CPhaseChanged.phase` |
 | Opponent reserved-gold sub-label | `opp_reserved_visible := phase == DRAFT_AUCTION` | `S2CPhaseChanged.phase` |
 | All HUD elements (root visibility) | `hud_visible := phase != LOBBY` | `S2CPhaseChanged.phase` |
-| Phase label round suffix | `round_suffix_visible := phase != LOBBY AND phase != GAME_OVER` | `S2CPhaseChanged.phase` |
+| Round counter | `round_counter_visible := phase != LOBBY` | `S2CPhaseChanged.phase` |
 
 **Output Range:** all predicates evaluate to `bool`.
 **Notes:**
 - Predicates that depend on `phase` are re-evaluated on every `S2CPhaseChanged` message and on `S2CGameSnapshot` (Rule 13).
 - The `reserve_label_visible` predicate is re-evaluated on every `S2CGoldUpdate` (the only message that carries `reserve_mana`).
 - No predicate combines data from two messages — each is a single-field test, ensuring deterministic visibility transitions.
+- `round_counter_visible` evaluates to `true` during `GAME_OVER` — the round counter remains visible in FROZEN mode as part of the final-state record (design decision: players should be able to read "what round did it end?" from the frozen display).
 
 ### D.3 — Dot state mapping
 
@@ -247,13 +252,15 @@ The HUD is a read-only display layer; most "edge cases" reduce to defensive rend
 
 ### Reconnect and replay
 
-- **If `S2CGameSnapshot` arrives while phase is currently DRAFT_AUCTION**: rebuild HUD from snapshot. The snapshot's `PlayerSnapshot` includes `gold` and `reserved_gold` for both players. Treat the snapshot as a full authoritative overwrite — set both reserved sub-labels visible (per D.2 predicates evaluated against the snapshot's `phase`) and populate them from the snapshot. No reconciliation needed against pre-snapshot state.
+- **If `S2CGameSnapshot` arrives while phase is currently DRAFT_AUCTION**: rebuild HUD from snapshot. The snapshot's `PlayerSnapshot` will include `gold` and `reserved_gold` for both players once the pending NP GDD amendment is applied (see Dependencies — bidirectional consistency note). Treat the snapshot as a full authoritative overwrite — set both reserved sub-labels visible (per D.2 predicates evaluated against the snapshot's `phase`) and populate them from the snapshot. Note: `reserved_gold` values from the snapshot may be stale by seconds in an active auction; subsequent `S2CGoldBroadcast` messages will carry live values and correct the display. No reconciliation needed against pre-snapshot state.
+- **If `S2CGameSnapshot` arrives while phase is currently GAME_OVER** (player reconnected at end-of-game): the snapshot rebuild runs per Rule 13, overriding FROZEN mode. This is the explicit tiebreak — **snapshots always win, then FROZEN re-applies**. After the rebuild completes, HUD immediately re-enters FROZEN; no incremental updates are accepted afterward. The snapshot's `phase == GAME_OVER` field causes the GAME_OVER mode logic to apply during rebuild: phase label sets to `GAME OVER`, round counter remains visible.
 - **If `ObjectiveDestroyed` arrives for `(player, lane)` whose `destroyed[player][lane]` is already `true`**: no-op. Idempotent. Log a warning (likely a server replay or reconnect artifact). Do not re-trigger the dot transition.
 - **If two `S2CPhaseChanged` are processed in the same Bevy tick**: last-write-wins — the second message overwrites the first. RSM is a strict sequence; two phases in one tick implies a reconnect artifact, and the later message is authoritative.
 
 ### Same-tick message arrival
 
 - **If `S2CPhaseChanged`, `S2CGoldUpdate`, and `S2CGoldBroadcast` all arrive in the same Bevy tick** (canonical at DRAFT_INITIAL entry): process per Rule 11's system order — `S2CGoldBroadcast` runs first (writes opponent gold + opponent reserved sub-label), then `S2CGoldUpdate` runs (overwrites local gold/mana). `S2CPhaseChanged` may run in either order relative to the gold messages — it only writes the phase label and round, neither of which conflicts with gold.
+- **If `S2CGoldBroadcast` is processed before `S2CPhaseChanged(DRAFT_AUCTION)` in the same Bevy tick**: the reserved sub-label receives its `reserved_gold` value while still `Visibility::Hidden` (phase is still DRAFT_SHOP at that moment). When `S2CPhaseChanged(DRAFT_AUCTION)` runs and makes the sub-label visible, it displays the cached value from the broadcast. This is the accepted behaviour: the server sends `reserved_gold = 0` at DRAFT_AUCTION entry (no bids placed yet), so the sub-label correctly shows `0g reserved` on first appearance. No special handling required — the label entity holds the correct value even while hidden.
 - **If `S2CGoldUpdate` and `S2CGoldBroadcast` for the local player arrive same tick with different `gold` values**: `S2CGoldUpdate` wins for the local gold display (Rule 11). `S2CGoldBroadcast` updates only the local reserved-gold sub-label; its `gold` field is not displayed.
 
 ### Server invariant violations (defensive)
@@ -261,7 +268,7 @@ The HUD is a read-only display layer; most "edge cases" reduce to defensive rend
 - **If `S2CGoldBroadcast.reserved_gold > gold`**: clamp `local_free_gold` mental computation to 0 by displaying `gold = X, reserved = X` (saturating: clamp `reserved` to `gold` for display). Log a warning. The server invariant forbids this; the guard prevents misleading "negative free gold" implications.
 - **If `S2CGoldUpdate.mana_cap == 0`**: display `current_mana / 0` as received and log a warning. The HUD does no division — only string concatenation. The server invariant forbids `mana_cap == 0`; the guard prevents a crash, not a malformed display.
 - **If `S2CGoldUpdate.mana_cap < current_mana`**: display `current_mana / mana_cap` as-is. Overfull mana is a transient legal state during economy recalculation; HUD does not clamp the displayed `current_mana`. The server is authoritative.
-- **If `ObjectiveDestroyed.lane` is outside `1..=5` or `target_player_id` is unknown**: ignore the message; do not update `destroyed[][]`. Log a warning. HUD's read-only contract forbids reactive logic that could mask a server bug.
+- **If `ObjectiveDestroyed.lane` is outside `1..=5` or `target_player_id` is unknown**: validate bounds **before** computing the index. In Rust, `lane - 1` on a `u8` value of 0 underflows (panics in debug builds). The required guard is: `if !(1..=5).contains(&lane) { /* log warning, return */ }` — this check must precede any `dots[player][lane - 1]` access. Ignore the message; do not update `destroyed[][]`. HUD's read-only contract forbids reactive logic that could mask a server bug.
 - **If `S2CGoldBroadcast.player_id` matches neither `local_id` nor `opponent_id`**: ignore and log. Cannot occur in 1v1 mode under current GDD rules.
 
 ### Animation and visual transitions
@@ -294,7 +301,7 @@ The HUD is a read-only display layer; most "edge cases" reduce to defensive rend
 
 | System | GDD | Interface | Notes |
 |---|---|---|---|
-| Game Config | `game-config.md` | `lane_count` (5), `fake_count` (2), `mana_cap` (10), `objective_hp` (5) — constants | Used to size the pre-pooled `[[Entity; 5]; 2]` dot array and mana display denominator defaults at session start. If any constant changes at runtime, HUD learns through `S2CGoldUpdate` (mana_cap) or `S2CGameSnapshot` — not directly from config. |
+| Game Config | `game-config.md` | `lane_count` (5), `fake_count` (2), `mana_cap` (10), `objective_hp` (5) — constants | **Compile-time hard dependency on `lane_count`.** The `[[Entity; 5]; 2]` dot entity array and `[[bool; 5]; 2]` dot state array are sized at compile time to `lane_count`. If `lane_count` changes from 5 to 6, both arrays must be resized in code — a runtime config change alone will silently truncate the scoreboard (lane 6 `ObjectiveDestroyed` events will be rejected by the OOB guard, leaving a permanent ALIVE dot). Reclassify as upstream-hard for dot array sizing. `mana_cap` is learned at runtime via `S2CGoldUpdate`. |
 
 ### Sibling — horizontal (same Presentation layer; ownership boundaries must be respected)
 
@@ -314,6 +321,8 @@ If any of the upstream systems changes a message payload or phase name, this GDD
 - Any new `S2CGoldUpdate` field that affects mana display (e.g., `max_mana_override`) requires HUD Rule 3 + Rule 4 update.
 - Any new RSM phase requires a row in the Phase label strings table (Rule 5) and a row in the States and Transitions table.
 - Any new objective-tier message (e.g., partial-destruction) must be evaluated for HUD scoreboard impact.
+
+**Pending Network Protocol amendment (blocking):** `S2CGameSnapshot.PlayerSnapshot` does not currently include a `reserved_gold` field (verified against `network-protocol.md`). This GDD's Edge Cases section (Reconnect — DRAFT_AUCTION) requires `reserved_gold` to be available from the snapshot. A PR must add `reserved_gold: u32` to `PlayerSnapshot` in `network-protocol.md` before the HUD DRAFT_AUCTION reconnect path can be implemented. Until this is resolved, the DRAFT_AUCTION reconnect edge case and its associated AC are blocked on the NP GDD amendment.
 
 ## Tuning Knobs
 

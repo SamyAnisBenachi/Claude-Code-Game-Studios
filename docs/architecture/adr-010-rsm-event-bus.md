@@ -235,6 +235,15 @@ pub struct AuctionPhaseEntered {
     pub round: u32,
 }
 
+/// Written when the RSM transitions to GAME_OVER while DRAFT_AUCTION is active
+/// (player disconnect during auction — RSM GDD Rule 13 + Edge Cases).
+/// The Auction System reads this to cancel the timer, release any active gold
+/// reservation, and return to IDLE without firing AuctionSettled.
+/// The RSM has already committed to GAME_OVER before emitting AbortAuction.
+/// Added to catalog by ADR-013 (was missing from this catalog; defined in ADR-009).
+#[derive(Message, Clone, Debug)]
+pub struct AbortAuction;
+
 /// Written on entry into PLACEMENT.
 /// The Board/Lane System reads this to open the placement submission buffer
 /// and begin tracking per-player submission status.
@@ -351,6 +360,7 @@ All subscribers read via `MessageReader<T>`, not `EventReader<T>`.
 | `DraftStarted { phase: Auction \| Shop }` | Economy System | `apply_mana_ramp(all_players)` — sets `current_mana = min(round, mana_cap)`; then `apply_gold_income(all_players)` — grants `baseline + interest` (interest from prior RESOLUTION snapshot) | M1 |
 | `ShopRefreshNeeded { player }` | Card Pool | `refresh_shop(player)` — draws 3 weighted cards for that player's personal shop; for DRAFT_INITIAL, populates the initial 9-card offering | M1 |
 | `AuctionPhaseEntered { round }` | Auction System | Start the 20-second auction timer; initialise auction bid state; prepare the `S2CAuctionCard` broadcast. **[M2 — not yet implemented]** | M2 |
+| `AbortAuction` | Auction System | Cancel auction timer; release any active gold reservation; return to IDLE without firing `AuctionSettled`. Only emitted when GAME_OVER fires during DRAFT_AUCTION. **[M2 — not yet implemented]** | M2 |
 | `PlacementPhaseEntered { round }` | Board/Lane System | Open the placement submission buffer (`PendingPlacements` resource per ADR-007); start tracking `submissions_received: Set<PlayerId>`; begin accepting `C2SSubmitPlacement` messages | M1 |
 | `ResolutionPhaseEntered { round }` | Combat Resolution | Execute all six global combat sub-steps; emit `ResolutionComplete` when done. **[M2 — not yet implemented]** | M2 |
 | `ResolutionPhaseEntered { round }` | Objective System | Evaluate `real_objectives_destroyed(player)` across all lanes after combat sub-steps complete; make results available for RSM's GAME_OVER check | M1 |

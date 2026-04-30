@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: ""
+last_updated: "2026-04-30"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -43,7 +43,18 @@ last_updated: ""
 # interface: how other systems access this state (read-only property, method call,
 #   signal, shared resource, etc.) — this is the contract other ADRs depend on.
 
-state_ownership: []
+state_ownership:
+  - state: auction_state
+    status: active
+    owner_system: auction-system
+    adr: docs/architecture/adr-013-auction-system-state.md
+    interface: "Res<AuctionState> (read-only from all other systems); auction_snapshot(&AuctionState) -> Option<AuctionSnapshot> for reconnect handler; ResMut<AuctionState> in auction_tick_system ONLY"
+    write_access: auction_tick_system-only
+    referenced_by:
+      - docs/architecture/adr-013-auction-system-state.md
+      - docs/architecture/adr-009-rsm-phase-state.md   # rsm_tick_system reads AuctionSettled, not AuctionState directly
+    added: "2026-04-30"
+    revised: ""
 
 # Example:
 #

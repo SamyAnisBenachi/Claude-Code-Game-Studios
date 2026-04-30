@@ -84,10 +84,12 @@ A unit that ended sub-step 5 at the spawn cell of a lane that is being respawned
 
 | From | Trigger | To | When |
 |---|---|---|---|
+| *(Uninitialized)* | Session start — Rule 2 initialization | `Present` (all 10 tokens, all players) | Before first RESOLUTION; never changes except via `resolve_prism_draws` |
 | `Present` | Valid `PrismCollected(p, l)` consumed by Rule 4 or Rule 5 | `Collected` | Within `resolve_prism_draws` |
 | `Collected` (any lane, player p) | `count(Collected for p) == 5` after all reward delivery | `pending_respawn[p] = true` | End of Rule 6 reward loop |
 | `Collected` (all lanes for player p) | Respawn fires (Rule 9) | `Present` (all 5 lanes) | End of `resolve_prism_draws`, after broadcasts |
-| `Collected` (no respawn condition) | RESOLUTION ends, persists across rounds | Remains `Collected` | Until full-5 collection completes |
+
+Invariant: `Collected` state persists across all phases and rounds until `prism_respawn_due(player)` returns `true`. No phase transition (DRAFT, PLACEMENT) mutates prism state.
 
 `Present` and `Collected` persist across DRAFT, PLACEMENT, and PLACEMENT phases — only `resolve_prism_draws` mutates them.
 
@@ -166,6 +168,8 @@ The Prism System itself owns no balance formulas beyond F1. Two tuning constants
 
 **If a Player A WALL unit (MP=0) is parked at cell 1 of lane N**: every RESOLUTION's sub-step 5, the unit ends at cell 1. While `collected[N][player_a] == false`, every RESOLUTION fires `PrismCollected(player_a, N)` and delivers the lane-N reward. Once collected, no event fires until that prism respawns (i.e., until Player A collects all 5 of their own). This WALL-park farming is the canonical "tax stream" loop — locked by master GDD §3.4 + board-lane-system.md edge cases.
 
+**Counterplay for WALL-parking:** The expected counterplay is combat at the spawn cell. A WALL must have low HP/AR (its role is positional value, not combat durability) so that an opponent unit arriving at cell 1 destroys it in one RESOLUTION. An opponent who routes one unit into the WALL's lane forces a choice: the WALL farmer loses the prism source permanently (until they redeploy a new unit) OR they spend their own unit's slot to fight the threat. The balance mechanism is asymmetric only if the opponent unit's travel time is too long — this should be validated in Combat Resolution GDD (unit HP/AR of WALL archetype). Note that the WALL's card cost (drafted/auctioned) and its permanent consumption of one Minion slot across multiple rounds ARE the primary opportunity cost, not the opponent's ability to evict it. WALL-parking in a lane the opponent does not contest is an accepted dominant line; the system does not require active countermeasures in every lane simultaneously.
+
 **If a Player B unit reaches cell 1** (Player A's prism cell): no `PrismCollected` is emitted for Player B — prisms are owned by the player whose spawn cell they occupy. Player B's prism for that lane is at cell 8, not cell 1. Locked by board-lane-system.md AC BL-13.
 
 **If two teammates in 2v2 both have units that end sub-step 5 at their shared spawn cell of the same lane**: each player has their own prism at that cell (per master GDD §3.4 — "each player tracks their own 5 prisms independently"). Both `PrismCollected` events fire — one for each player. Prism state is keyed on `(player_id, lane)`, not `(team_id, lane)`. Both rewards are delivered (each unicast to its owning player); audit log orders them by ascending `player_id`.
@@ -209,15 +213,23 @@ The bidirectional consistency check: Board / Lane System lists Prism System unde
 | Knob | Config Key | Default | Safe Range | Too Low | Too High |
 |---|---|---|---|---|---|
 | `prism_strike_damage` | `game_config.prism_strike_damage` | 1 | 1–3 | Below 1 is meaningless (always 0 after `max(0, HP - 0)`). At 1: three spells kill a fresh 5-HP objective — a meaningful but slow burn that rewards sustained lane presence. | At 3: two `prism_strike` cards plus any other damage sources eliminate a real objective quickly; edges toward "lane 1/5 prisms dominate all strategy." |
-| `prism_strike_mana_cost` | `game_config.prism_strike_mana_cost` | 3 | 0–5 | At 0: free damage to any objective any round — eliminates the opportunity cost of playing `prism_strike` vs. a combat card. At 2 or below: the spell outperforms combat on damage-per-mana for early rounds. | At 4–5: the spell sits in hand unplayed for early rounds; players feel the prism-lane reward is taxed more than the farming cost justified. |
+| `prism_strike_mana_cost` | `game_config.prism_strike_mana_cost` | 3 | 1–5 | At 1: the spell effectively costs one unit's worth of mana per damage; early rounds it competes directly with cheap unit placement. At 2: the spell outperforms combat on damage-per-mana for most early rounds. Floor is 1 — a cost of 0 eliminates all opportunity cost and is not a valid balance target. | At 4–5: the spell sits in hand unplayed for early rounds; players feel the prism-lane reward is taxed more than the farming cost justified. |
 
 **Cross-referenced knobs (owned by other GDDs — not tunable here):**
 
 | Knob | Value | Source GDD | Relevance to Prism System |
 |---|---|---|---|
 | `objective_hp` | 5 | game-config.md | Determines how many `prism_strike` casts are needed to destroy an undefended objective (default: 5 casts) |
-| `hand_size_max` | 10 | (implicit, game-wide) | Drives the hand-full ceiling that caps WALL-park farming value; not a GameConfig field — hardcoded game rule |
+| `hand_size_max` | 10 | (implicit, game-wide) | Drives the hand-full ceiling that caps WALL-park farming value; not a GameConfig field — the named constant `HAND_SIZE_MAX: usize = 10` serves as the canonical source of truth across all systems (Economy, Prism, Objective) |
 | `lane_count` | 5 | board-lane-system.md | Structural constant; changing it requires a full Prism System redesign (5 prism types matched to 5 lanes) |
+
+**Reserve mana accumulation model (Xelor / dual-WALL interaction):**
+
+Reserve mana has no cap (by design — see economy-system.md OQ2 resolution). A player who WALLs Lanes 2 and 4 accumulates +2 reserve mana per completed 5-prism cycle. At maximum efficiency (WALL on all 5 lanes, one cycle per 5 rounds assuming all prisms are available): +2 reserve mana per 5 rounds from prisms alone. The Class System GDD must model the Xelor Garde-Temps (20 reserve cost) interaction explicitly and set a hard cap on Miss Nuit's per-round grant that accounts for prism contribution. Worked example: a non-Xelor player running dual-WALL with an 8-round game accumulates approximately +3–4 reserve from prisms (~1.5 cycles × 2 reserve/cycle). This is meaningful but not degenerate; the Minion slots consumed by 2 WALLs represent real opportunity cost. Xelor layering is the Class System's concern to model.
+
+**Lane 3 frequency model (Legendary draw rate):**
+
+Lane 3 uses `rarity: None` — all rarities are eligible. With pool sizes Common=6, Uncommon=5, Rare=4, Epic=1, Legendary=1 per player and a pool of approximately 250 Minion+Spell cards total across all rarities: expected Legendary frequency per draw ≈ 1/250 ≈ 0.4%. Across a 10-round game with one Lane 3 collection per respawn cycle (~2 cycles), expected Legendary draws via Lane 3 per game ≈ 0.8% — well below 1 per game. This rate is accepted as background RNG noise relative to the auction pathway (Legendaries available from round 6+ at bid 5g+). The draw rate increases in late game as pool depletes, but pool depletion itself means fewer eligible cards remain — the expected value of Lane 3 decreases, not increases, as the game progresses (depleted Commons/Uncommons mean less expected variety, not better cards).
 
 ## Visual/Audio Requirements
 
