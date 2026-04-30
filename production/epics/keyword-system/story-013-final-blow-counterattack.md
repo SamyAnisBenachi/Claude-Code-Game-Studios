@@ -1,7 +1,7 @@
 # Story 013: Timing Trigger — FINAL BLOW + COUNTERATTACK Dispatch
 
 > **Epic**: Keyword System
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30

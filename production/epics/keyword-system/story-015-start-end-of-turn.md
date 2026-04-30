@@ -1,7 +1,7 @@
 # Story 015: Timing Trigger — START OF TURN + END OF TURN
 
 > **Epic**: Keyword System
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30

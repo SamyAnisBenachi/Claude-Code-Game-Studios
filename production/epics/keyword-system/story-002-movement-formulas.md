@@ -1,7 +1,7 @@
 # Story 002: Movement Formulas — repel_destination + attract_destination
 
 > **Epic**: Keyword System
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30

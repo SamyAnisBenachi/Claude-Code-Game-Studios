@@ -1,7 +1,7 @@
 # Story 012: Timing Trigger — APPEARANCE + DEATH Chain Observer
 
 > **Epic**: Keyword System
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
