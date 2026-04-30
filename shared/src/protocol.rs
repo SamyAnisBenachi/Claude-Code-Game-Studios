@@ -4,6 +4,7 @@
 
 use crate::card::{CardId, ClassId};
 use crate::session::PlayerId;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 /// Ordered, guaranteed delivery.
@@ -34,8 +35,12 @@ pub enum ProtocolChannel {
 /// `app.add_channel::<C>(ChannelSettings { .. })` and
 /// `app.register_message::<M>().add_direction(NetworkDirection::...)`.
 pub trait ProtocolRegistry {
-    fn add_channel<C: 'static>(&mut self, channel: ProtocolChannel);
-    fn add_message<M: 'static>(&mut self, direction: ProtocolDirection, channel: ProtocolChannel);
+    fn add_channel<C: Send + Sync + 'static>(&mut self, channel: ProtocolChannel);
+    fn add_message<M: Serialize + DeserializeOwned + Send + Sync + 'static>(
+        &mut self,
+        direction: ProtocolDirection,
+        channel: ProtocolChannel,
+    );
 }
 
 /// Registers all protocol channels and message assignments.
@@ -88,17 +93,24 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_s2c::<S2CClassesRevealed>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CConfirmClassRejected>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CSessionCancelled>(registry, ProtocolChannel::Reliable);
+    register_s2c::<S2CObjectiveIdentities>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CSangMepriseReveal>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CGameSnapshot>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CHeartbeat>(registry, ProtocolChannel::Unreliable);
 }
 
-fn register_c2s<M: 'static>(registry: &mut impl ProtocolRegistry, channel: ProtocolChannel) {
+fn register_c2s<M: Serialize + DeserializeOwned + Send + Sync + 'static>(
+    registry: &mut impl ProtocolRegistry,
+    channel: ProtocolChannel,
+) {
     // Lightyear 0.26: message direction is set with add_direction, verified in tests/evidence/lightyear-026-verification.md item 3.
     registry.add_message::<M>(ProtocolDirection::ClientToServer, channel);
 }
 
-fn register_s2c<M: 'static>(registry: &mut impl ProtocolRegistry, channel: ProtocolChannel) {
+fn register_s2c<M: Serialize + DeserializeOwned + Send + Sync + 'static>(
+    registry: &mut impl ProtocolRegistry,
+    channel: ProtocolChannel,
+) {
     // Lightyear 0.26: message direction is set with add_direction, verified in tests/evidence/lightyear-026-verification.md item 3.
     registry.add_message::<M>(ProtocolDirection::ServerToClient, channel);
 }
@@ -446,6 +458,11 @@ pub struct S2CConfirmClassRejected {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct S2CSessionCancelled {
     pub reason: SessionCancelledReason,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct S2CObjectiveIdentities {
+    pub identities: Vec<(u8, bool)>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

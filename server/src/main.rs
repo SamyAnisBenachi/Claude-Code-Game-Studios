@@ -20,9 +20,9 @@
 mod core;
 mod feature;
 mod foundation;
+mod network;
 
 use bevy::prelude::*;
-// lightyear::prelude imported in Epic 4 (S1-05 spike) once API is verified against docs.rs
 
 // ---------------------------------------------------------------------------
 // Server-only Resources
@@ -110,7 +110,8 @@ fn main() {
     app.add_plugins(core::rsm::RsmPlugin);
     app.add_plugins(core::economy::EconomyPlugin);
 
-    // TODO(S1-05 Lightyear spike): register_protocol(&mut app) once API is verified.
+    // Networking - Lightyear 0.26 WebSocket server and shared protocol manifest.
+    app.add_plugins(network::ServerNetworkPlugin);
 
     // Insert server-only resources.
     // ADR-002: these are unreachable from client/ by crate isolation.
