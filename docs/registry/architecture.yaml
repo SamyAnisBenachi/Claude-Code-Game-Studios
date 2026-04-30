@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-04-30"  # updated by ADR-014, ADR-015, ADR-016, ADR-019, ADR-020
+last_updated: "2026-04-30"  # updated by ADR-014, ADR-015, ADR-016, ADR-019, ADR-020, ADR-021
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -162,6 +162,17 @@ state_ownership:
     added: "2026-04-30"
     revised: ""
 
+  - state: current_client_phase
+    status: active
+    owner_system: presentation-layer
+    adr: docs/architecture/adr-021-presentation-layer-architecture.md
+    interface: "Res<CurrentClientPhase> { phase: ClientPhase, round: u32 } — read-only for all presentation sub-plugins; written ONLY by phase_sink_system in PresentationSet::PhaseTransition. phase_sink_system is the sole system draining MessageReceiver<S2CPhaseChanged> (Lightyear) on the client."
+    write_access: phase_sink_system (PresentationPlugin) only — never written by sub-plugin systems
+    referenced_by:
+      - docs/architecture/adr-021-presentation-layer-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
 # Example:
 #
 # state_ownership:
@@ -272,6 +283,7 @@ interfaces:
     referenced_by:
       - docs/architecture/adr-017-combat-resolution-execution-architecture.md
       - docs/architecture/adr-002-client-server-authority.md
+      - docs/architecture/adr-021-presentation-layer-architecture.md   # consumed in PresentationSet::MessageDrain by Board Rendering + HUD sub-plugins
     added: "2026-04-30"
     revised: ""
 
@@ -285,6 +297,19 @@ interfaces:
     signal_signature: "C2SClassChoice { class: ClassId } — Lightyear reliable C2S message (#[derive(lightyear::prelude::Message)]); LOBBY-phase gated; silently discarded if class_locked == true or class == ClassId::Neutral"
     referenced_by:
       - docs/architecture/adr-014-class-system-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
+  - contract: s2c_phase_changed_client_drain
+    status: active
+    pattern: shared_resource
+    producer: Lightyear transport   # delivers S2CPhaseChanged to client
+    consumers:
+      - all-presentation-sub-plugins   # read Res<CurrentClientPhase> written by phase_sink_system
+    adr: docs/architecture/adr-021-presentation-layer-architecture.md
+    signal_signature: "phase_sink_system (PresentationSet::PhaseTransition) drains MessageReceiver<S2CPhaseChanged> (Lightyear) and writes Res<CurrentClientPhase> { phase: ClientPhase, round: u32 }. Sub-plugin systems never register MessageReceiver<S2CPhaseChanged> — they read Res<CurrentClientPhase> only."
+    referenced_by:
+      - docs/architecture/adr-021-presentation-layer-architecture.md
     added: "2026-04-30"
     revised: ""
 
@@ -359,10 +384,10 @@ performance_budgets:
 api_decisions:
   - purpose: auction_economy_reservation
     status: active
-    api: "Direct ResMut<EconomyState> access within auction_tick_system"
-    not: "Cross-frame Bevy Messages (ReserveGold, ReleaseGoldReservation as separate messages)"
+    api: "api::release_gold_reservation / api::reserve_gold called on economies.0.get_mut(&player_id) within auction_tick_system (ResMut<PlayerEconomies>)"
+    not: "Cross-frame Bevy Messages (ReserveGold, ReleaseGoldReservation as separate messages); direct field mutation on PlayerEconomy outside api.rs"
     adr: docs/architecture/adr-013-auction-system-state.md
-    reason: "release_gold_reservation(prev_leader) and reserve_gold(new_leader) must be atomic within one system run — cross-frame messages would allow a one-frame intermediate state where two players simultaneously have non-zero reserved_gold, violating GDD Rule 5 invariant"
+    reason: "release_gold_reservation and reserve_gold must be atomic within one system run — cross-frame messages would allow a one-frame intermediate state where two players simultaneously have non-zero reserved_gold, violating GDD Rule 5 invariant"
     referenced_by:
       - docs/architecture/adr-013-auction-system-state.md
     added: "2026-04-30"
@@ -456,6 +481,39 @@ api_decisions:
     reason: "GDD economy-system.md Rule 6 specifies snapshot at end of RESOLUTION 'after all kill/objective rewards have fired'. ResolutionPhaseEntered fires at start; ResolutionComplete fires after resolve_combat's six sub-steps complete. The snapshot must read ResolutionComplete."
     referenced_by:
       - docs/architecture/adr-019-economy-resource-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
+  - purpose: presentation_rendering_boundary
+    status: active
+    api: "World-space Sprite + Transform (Required Components, Bevy 0.18) for all board content — units, objectives, prisms, HP bars, spawn range indicators. bevy_ui Node for all overlay UI — HUD, Hand fan, Shop panels, Auction bid box, drag-sprite preview."
+    not: "bevy_ui Node for board content (units, objectives, HP bars); world-space Sprite for overlay UI panels; any approach that renders a world-space sprite above a bevy_ui panel (not achievable without custom render layers — bevy_ui always draws in a separate pass above world-space)"
+    adr: docs/architecture/adr-021-presentation-layer-architecture.md
+    reason: "Board content requires world-space coordinate math (BoardLayout.cell_to_world) and sprite batching across a TextureAtlas. bevy_ui has no concept of lane/cell coordinates. The bevy_ui-above-world-space rendering order is an engine constraint (separate render pass), not a design preference — it cannot be reversed without custom render layers."
+    referenced_by:
+      - docs/architecture/adr-021-presentation-layer-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
+  - purpose: presentation_plugin_composition
+    status: active
+    api: "PresentationPlugin composed of 5 ordered sub-plugins (CardAnimationsPlugin → BoardRenderingPlugin → HandUiPlugin → HudPlugin → ShopAuctionUiPlugin) with PresentationSet { PhaseTransition → MessageDrain → StateSync → AnimationTick }.chain() inside Update."
+    not: "Monolithic PresentationPlugin with no sub-plugins; event-driven-only coordination with no PresentationSet; any reordering of the 5 sub-plugin registration order"
+    adr: docs/architecture/adr-021-presentation-layer-architecture.md
+    reason: "Plugin registration order is a load-dependency contract: CardAnimations provides SpriteAlphaLens used by BoardRendering; BoardRendering inserts BoardLayout + CardAtlas read by HandUiPlugin. PresentationSet chain guarantees deterministic phase-boundary execution across all 5 sub-systems — without it, Bevy may process phase-change handlers in any order on the critical phase-boundary frame."
+    referenced_by:
+      - docs/architecture/adr-021-presentation-layer-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
+  - purpose: card_atlas_ownership
+    status: active
+    api: "Res<CardAtlas> { image: Handle<Image>, layout: Handle<TextureAtlasLayout> } — inserted by BoardRenderingPlugin on OnEnter(ClientState::InSession); read by HandUiPlugin. Frame index derived via shared CardAtlas::frame_index(card_id) method, never computed inline."
+    not: "Handle<TextureAtlas> (asset type removed in Bevy 0.15); per-plugin atlas load (duplicate GPU texture upload + binding-slot inconsistency); inline frame index computation per sub-system"
+    adr: docs/architecture/adr-021-presentation-layer-architecture.md
+    reason: "Handle<TextureAtlas> as an asset type was split in Bevy 0.15 — it no longer exists; the layout is now a separate Handle<TextureAtlasLayout>. A single shared CardAtlas resource eliminates duplicate GPU texture upload and guarantees both board unit sprites and hand card sprites use the same GPU texture binding slot, enabling sprite batching across both sub-systems."
+    referenced_by:
+      - docs/architecture/adr-021-presentation-layer-architecture.md
     added: "2026-04-30"
     revised: ""
 
@@ -580,6 +638,20 @@ forbidden_patterns:
     description: "Lightyear ReplicateTo must NOT be added to unit entities during or before the sub-step 1 spawn. ReplicateTo is added ONLY after S2CPlacementReveal is enqueued on the ReliableChannel."
     why: "ADR-007 establishes that the simultaneous-reveal invariant requires opponent placement data to be invisible until both players' placements are committed. Adding ReplicateTo before the reveal send allows Lightyear to propagate unit components to both clients before the reveal fires, breaking the hidden-information mechanic."
     adr: docs/architecture/adr-020-board-lane-state-architecture.md
+    added: "2026-04-30"
+
+  - pattern: multiple_s2c_phase_changed_readers_client
+    status: active
+    description: "Only phase_sink_system (registered by PresentationPlugin) may drain Lightyear's MessageReceiver<S2CPhaseChanged> on the client. No sub-plugin system (BoardRenderingPlugin, HandUiPlugin, HudPlugin, ShopAuctionUiPlugin, CardAnimationsPlugin) may register its own MessageReceiver<S2CPhaseChanged>."
+    why: "Lightyear's MessageReceiver<T> can only be drained once per frame — the first system to read it consumes all messages. A second reader would starve the first, causing phase change messages to be silently lost. This mirrors the server-side multiple_c2s_*_readers forbidden patterns. Sub-plugins read Res<CurrentClientPhase> instead."
+    adr: docs/architecture/adr-021-presentation-layer-architecture.md
+    added: "2026-04-30"
+
+  - pattern: board_content_in_bevy_ui
+    status: active
+    description: "Board content — unit sprites, objective sprites, prism tokens, HP bars, spawn range indicators — must NEVER be implemented as bevy_ui Node entities. All board content uses world-space Sprite + Transform (Bevy 0.18 Required Components API). The hand drag-sprite preview is a bevy_ui Node, not a world-space Sprite."
+    why: "Board content requires world-space coordinate math (BoardLayout.cell_to_world) and TextureAtlas sprite batching. bevy_ui Nodes have no concept of lane/cell world coordinates and break the batching model. Additionally, bevy_ui always renders above world-space content in a separate pass — placing board content in bevy_ui would invert the intended z-ordering (board behind UI panels)."
+    adr: docs/architecture/adr-021-presentation-layer-architecture.md
     added: "2026-04-30"
 
 # Example:
