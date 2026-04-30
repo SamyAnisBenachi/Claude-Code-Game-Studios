@@ -1,6 +1,6 @@
 # Network Protocol
 
-> **Status**: In Review — revised 2026-04-30 (R3 in-session: 17 blockers resolved — ResolutionEvent variants, BoardSnapshot, UnitBoardState keyword fields, schema completeness, AC gates)
+> **Status**: Approved — revised 2026-04-30 (R5 lean: 2 blockers resolved — Rule 8 C2SHeartbeat channel contradiction fixed; SeedBoardState owner: PlayerId added. R4 in-session: 23 blockers resolved — SubStepMarker 1-7 contract, reserved_gold in PlayerSnapshot+S2CGoldUpdate, GameOverReason/GrantedKeyword/HandshakeRejectedReason enums defined, PlacedCard renamed, C2SHeartbeat→unreliable channel, ObjectiveHp/BoardPosition RESOLUTION suppression rules, resistance_x/vulnerability_x in UnitBoardState, C2SRequestSnapshot defined, duplicate card_id validation, SessionToken entropy+localStorage, terminated-session handshake behavior, AuctionSnapshot bid-pending spec, HANDSHAKING rendering spec, simultaneous-reveal unreliable interaction, NP-6/NP-34 contradiction fixed, NP-31 split into per-keyword ACs, 10 new ACs NP-36–NP-45, SinistroState.damage field, OQ-6 priority→MEDIUM, OQ-7 HASTE reconnect added)
 > **Author**: User + Agents
 > **Last Updated**: 2026-04-30
 > **Implements Pillar**: No idle spectating · Auction as signature
@@ -21,9 +21,10 @@ Players never see the Network Protocol, but they feel it the instant it fails. T
 
 **Rule 2 — Channel assignment.** Every message uses exactly one channel tier:
 - **Reliable** (ordered, guaranteed): phase transitions, game-over, purchases, bids, placement submissions, resolution events, card acquisitions, economy updates, connection events, snapshot delivery
+- **Unreliable (liveness-only):** `C2SHeartbeat` — **MUST be unreliable, NOT on the reliable channel.** Using the reliable channel causes head-of-line blocking behind large `S2CResolutionEvent` batches, delaying heartbeat delivery and triggering false-positive disconnect-timer decrements.
 - **Unreliable / Component Replication** (best-effort, self-correcting): live unit positions (`BoardPosition`), unit stats for display (`UnitStats`), objective HP ticks (`ObjectiveHp`), prism presence (`PrismPresence`) — state that self-corrects on the next frame if a packet is dropped
 
-**Rule 3 — Protocol versioning and reconnect identity.** After the transport connection is established, the client sends `C2SHello` before any other message. On a fresh connect, `session_token` is `None`. On a reconnect, the client includes the `SessionToken` received in `S2CHandshake` at first connect — this is the sole mechanism by which the server maps the new `ClientId` (assigned by Lightyear on every WebSocket connect) back to the existing session slot. The server responds with `S2CHandshake` on version match, or `S2CHandshakeRejected` and closes the connection on mismatch or an unrecognised session token. No other C2S messages are processed until the handshake completes. If `C2SHello` is not received within `hello_timeout_ms` (default: 5000ms), the server closes the connection. `HANDSHAKING` is a protocol-layer state that precedes any RSM phase — the RSM does not observe it.
+**Rule 3 — Protocol versioning and reconnect identity.** After the transport connection is established, the client sends `C2SHello` before any other message. On a fresh connect, `session_token` is `None`. On a reconnect, the client includes the `SessionToken` received in `S2CHandshake` at first connect — this is the sole mechanism by which the server maps the new `ClientId` (assigned by Lightyear on every WebSocket connect) back to the existing session slot. The server responds with `S2CHandshake` on version match, or `S2CHandshakeRejected { reason: HandshakeRejectedReason }` and closes the connection on version mismatch, an unrecognised session token, or a token that maps to a terminated session. If the token is structurally valid but maps to a session already past GAME_OVER, the server sends `S2CHandshakeRejected { reason: HandshakeRejectedReason::SessionExpired }` — the client must clear its persisted `session_token` (`localStorage` key `'lanes_session_token'`) on receiving this reason. WASM clients MUST persist `session_token` in `localStorage` under key `'lanes_session_token'`; clear on `S2CGameOver` receipt or on `S2CHandshake` for a new `session_id`. No other C2S messages are processed until the handshake completes. If `C2SHello` is not received within `hello_timeout_ms` (default: 5000ms), the server closes the connection. `HANDSHAKING` is a protocol-layer state that precedes any RSM phase — the RSM does not observe it.
 
 **Rule 4 — Phase-gated message acceptance.** The server silently discards any C2S message not valid in the current RSM phase (see Valid C2S Messages table). Discards are logged server-side for diagnostics. No error message is sent to the client — this avoids timing attacks based on error response latency.
 
@@ -33,7 +34,7 @@ Players never see the Network Protocol, but they feel it the instant it fails. T
 
 **Rule 7 — Reconnect snapshot.** On any client connection (initial join or reconnect), before any other messages, the server sends `S2CGameSnapshot` containing complete authoritative game state. The client discards locally buffered messages received before snapshot processing completes and rebuilds its view from scratch.
 
-**Rule 8 — Disconnect detection.** Disconnect detection uses Lightyear's built-in `OnDisconnected` / `OnConnected` events **and** a mandatory application-layer `C2SHeartbeat`. WebSocket connections from WASM browsers can enter half-open TCP states (tab backgrounded, OS sleep, mobile radio switch) where `OnDisconnected` does not fire for 2–7 minutes. The client sends `C2SHeartbeat {}` every ~5 seconds on the reliable channel; the server resets `disconnect_trackers[player]` on each heartbeat received. The RSM owns the `disconnect_grace_seconds = 30s` threshold and the GAME_OVER transition. The protocol broadcasts `S2COpponentDisconnected { grace_remaining_ms }` on `OnDisconnected` so the remaining player sees the countdown.
+**Rule 8 — Disconnect detection.** Disconnect detection uses Lightyear's built-in `OnDisconnected` / `OnConnected` events **and** a mandatory application-layer `C2SHeartbeat`. WebSocket connections from WASM browsers can enter half-open TCP states (tab backgrounded, OS sleep, mobile radio switch) where `OnDisconnected` does not fire for 2–7 minutes. The client sends `C2SHeartbeat {}` every ~5 seconds on the unreliable channel (see Rule 2); the server resets `disconnect_trackers[player]` on each heartbeat received. The RSM owns the `disconnect_grace_seconds = 30s` threshold and the GAME_OVER transition. The protocol broadcasts `S2COpponentDisconnected { grace_remaining_ms }` on `OnDisconnected` so the remaining player sees the countdown.
 
 ---
 
@@ -47,9 +48,10 @@ Players never see the Network Protocol, but they feel it the instant it fails. T
 | `C2SActivateCard` | `{ card_id: CardId }` | DRAFT_INITIAL, DRAFT_SHOP | Play instant-effect card from hand during DRAFT (reserve spells, Gelure, etc.); no board target |
 | `C2SSignalReady` | `{ retract: bool }` | DRAFT_INITIAL, DRAFT_SHOP | `false` = signal ready; `true` = retract ready signal |
 | `C2SPlaceBid` | `{ amount: u32 }` | DRAFT_AUCTION | Server validates: `amount ≥ last_accepted_bid + 1`, `player.gold ≥ amount` |
-| `C2SSubmitPlacement` | `{ placements: Vec<PlacedCard> }` | PLACEMENT | Batch submit; marks player as submitted in RSM; empty list = zero new cards this round |
+| `C2SSubmitPlacement` | `{ placements: Vec<PlacedCardSubmit> }` | PLACEMENT | Batch submit; marks player as submitted in RSM; empty list = zero new cards this round |
 | `C2SAcknowledgeResult` | `{}` | GAME_OVER | Client confirms result rendered; server may clean up session |
-| `C2SHeartbeat` | `{}` | All phases | Sent every `heartbeat_interval_ms` (default 5000ms); server resets disconnect timer on receipt. Mandatory for WASM/WebSocket — `OnDisconnected` is unreliable in browser half-open TCP states. **Note:** WASM browsers stop `requestAnimationFrame` when the tab is backgrounded — the heartbeat cannot fire while the tab is invisible. Players who background the tab for >`disconnect_grace_seconds` will forfeit. Surface a "return to tab" warning on tab-restore via the Page Visibility API. |
+| `C2SHeartbeat` | `{}` | All phases | **Channel: Unreliable** (see Rule 2). Sent every `heartbeat_interval_ms` (default 5000ms); server resets disconnect timer on receipt. Mandatory for WASM/WebSocket — `OnDisconnected` is unreliable in browser half-open TCP states. **Note:** WASM browsers stop `requestAnimationFrame` when the tab is backgrounded — the heartbeat cannot fire while the tab is invisible. Players who background the tab for >`disconnect_grace_seconds` will forfeit. Surface a "return to tab" warning on tab-restore via the Page Visibility API. |
+| `C2SRequestSnapshot` | `{}` | All IN_GAME phases | Client-initiated desync recovery. Server responds with `S2CGameSnapshot` unicast (same path as reconnect). Rate-limited: server ignores if a snapshot was sent to this client within the last `snapshot_cooldown_ms` (default 5000ms). This is a recovery tool — clients must not poll for snapshots. Resolves OQ-BR-06 (cross-reference: `board-rendering.md`). |
 
 **LOBBY phase messages** — defined in `game-session-system.md`; listed here for phase-gating (Rule 4):
 
@@ -63,12 +65,14 @@ Players never see the Network Protocol, but they feel it the instant it fails. T
 The LOBBY phase is a protocol-layer state entered after `IN_GAME` handshake completes and before RSM transitions to `DRAFT_INITIAL`. All LOBBY C2S messages are phase-gated: messages arriving after LOBBY ends are silently discarded per Rule 4. Semantics owned by `game-session-system.md`.
 
 ```
-struct PlacedCard {
+struct PlacedCardSubmit {  // C2S payload — used in C2SSubmitPlacement.placements
     card_id:        CardId,
     target:         PlayTarget,
     reserve_amount: u32,  // mana drawn from reserve pool; card.cost - reserve_amount drawn from current-round mana
                           // 0 = pay all from current; card.cost = pay all from reserve; n = split
 }
+// NOTE: The S2C counterpart in S2CPlacementReveal.placements is PlacedCardReveal (see D.3).
+// They share the same name root but have different fields — keep in distinct modules (c2s:: / s2c::).
 
 enum PlayTarget {
     BoardCell  { lane: u8, cell: u8 },            // Minion (cell ≤ spawn_range), Trap, Structure
@@ -83,9 +87,9 @@ enum PlayTarget {
 
 **C2SActivateCard acknowledgement model:** There is no dedicated `S2CCardActivated` acknowledgement. Per Rule 5, the client must not advance its local view until S2C confirms the action. For `C2SActivateCard`, confirmation arrives through the existing economy/hand messages: a successful instant card play produces `S2CGoldUpdate` as side effects (reserve_mana changes for reserve spells like `prism_reserve`; mana changes for mana-cost instants). If `S2CGoldUpdate` does not arrive within `activate_timeout_ms` (client-side constant, default 3000ms), the client treats the activation as rejected and reverts local optimistic state. **Design decision:** Cards with no observable side effects (e.g., a no-cost, no-draw Order) MUST produce a `S2CGoldUpdate` with unchanged values as a no-op confirmation signal. This is an intentional architectural choice — the alternative (a dedicated `S2CCardActivated` message) was evaluated and rejected to keep the message surface small. Implementers must ensure every server-side instant-card handler sends `S2CGoldUpdate` even when values do not change.
 
-**`C2SSubmitPlacement` server validation:** The server validates the full batch before accepting: `sum(placements[i].reserve_amount) ≤ player.reserve_mana` AND `sum(card[i].cost - placements[i].reserve_amount) ≤ player.current_mana`. If any card is not in the player's hand, or any `lane`/`cell` value is out of range (1–5 / 1–8), the entire batch is silently discarded (Rule 4). Partial acceptance is not supported.
+**`C2SSubmitPlacement` server validation:** The server validates the full batch before accepting: `sum(placements[i].reserve_amount) ≤ player.reserve_mana` AND `sum(card[i].cost - placements[i].reserve_amount) ≤ player.current_mana`. If any card is not in the player's hand, or any `lane`/`cell` value is out of range (1–5 / 1–8), the entire batch is silently discarded (Rule 4). **If any `card_id` appears more than once in the batch, the entire batch is silently discarded** — validation runs against the original hand snapshot before applying any changes; a duplicated card_id passes the "in hand" check on first pass but must be caught by explicit dedup check. Partial acceptance is not supported.
 
-**Silence = pass at auction:** No `C2SPassBid` message. If a player does not bid, the timer runs to zero and the last bidder wins.
+**Silence = pass at auction:** No `C2SPassBid` message. If a player does not bid, the timer runs to zero and the last bidder wins. **Design note:** During DRAFT_AUCTION, a silent opponent is protocol-indistinguishable from a half-open connection — heartbeats stop firing on backgrounded WASM tabs, and the 30-second grace window exceeds the 20-second auction timer. This ambiguity is accepted at friend-game scope. See `shop-auction-ui.md` for the client rendering contract (no presence indicator).
 
 **Targeted spell provisional assumption:** `PlayTarget::TargetUnit` can only target units already on the board from prior rounds — not units in the current PLACEMENT buffer (unrevealed). If the Keyword System GDD requires targeting newly placed units, `PlayTarget` must be extended.
 
@@ -95,19 +99,19 @@ enum PlayTarget {
 
 | Message | Channel | Scope | Payload |
 |---|---|---|---|
-| `S2CHandshake` | Reliable | Unicast | `{ protocol_version: u32, session_id: SessionId, session_token: SessionToken }` — client must persist `session_token` for reconnect |
-| `S2CHandshakeRejected` | Reliable | Unicast | `{ server_version: u32, client_version: u32 }` |
+| `S2CHandshake` | Reliable | Unicast | `{ protocol_version: u32, session_id: SessionId, session_token: SessionToken }` — WASM clients MUST persist `session_token` in `localStorage` under key `'lanes_session_token'`; clear on `S2CGameOver` or on a new `S2CHandshake` for a different `session_id`. Session token MUST be generated from OS entropy (`rand::thread_rng()`), NOT the seeded gameplay RNG. |
+| `S2CHandshakeRejected` | Reliable | Unicast | `{ reason: HandshakeRejectedReason, server_version: u32, client_version: u32 }` — see `HandshakeRejectedReason` enum in D.3. `server_version`/`client_version` populated for `VersionMismatch` only; 0 for other reasons. |
 | `S2CGameSnapshot` | Reliable | Unicast | Full game state — see Section D |
 | `S2CPhaseChanged` | Reliable | Broadcast | `{ phase: RoundPhase, round_number: u32, timer_duration_ms: u32 }` |
-| `S2CGameOver` | Reliable | Broadcast | `{ loser: Option<PlayerId>, round: u32, reason: GameOverReason }` — `None` = Draw (both players lose; reason = `Draw` for mutual destruction/disconnection/resolution timeout) |
-| `S2CGoldUpdate` | Reliable | Unicast | `{ gold: u32, current_mana: u32, reserve_mana: u32, mana_cap: u8 }` |
-| `S2CGoldBroadcast` | Reliable | Broadcast | `{ player_id: PlayerId, gold: u32, reserved_gold: u32 }` — opponent gold always visible; `gold - reserved_gold` = free gold (required for auction panel to display correct bidding headroom). **RULE: fires on any mutation of `gold` OR `reserved_gold` — including bid acceptance (which changes `reserved_gold` but not `gold`). Without this, the auction panel's free-gold display is stale after each bid.** |
+| `S2CGameOver` | Reliable | Broadcast | `{ loser: Option<PlayerId>, round: u32, reason: GameOverReason }` — `loser=None` when no single player lost: Draw (mutual destruction or mutual disconnection) or ResolutionTimeout (60s safety timeout). See `GameOverReason` enum in round-state-machine.md Rule 14 (4 variants). |
+| `S2CGoldUpdate` | Reliable | Unicast | `{ gold: u32, current_mana: u32, reserve_mana: u32, mana_cap: u8 }` — `reserved_gold` is NOT included; use `S2CGoldBroadcast` for `reserved_gold`. (`S2CGoldBroadcast` is already the authoritative source for auction-panel affordability logic and HUD bidding-headroom — having `reserved_gold` in both messages creates a dual-source conflict.) |
+| `S2CGoldBroadcast` | Reliable | Broadcast | `{ player_id: PlayerId, gold: u32, reserved_gold: u32 }` — opponent gold always visible; `gold - reserved_gold` = free gold (required for auction panel to display correct bidding headroom). **RULE: fires on any mutation of `gold` OR `reserved_gold` — including bid acceptance (which changes `reserved_gold` but not `gold`). Without this, the auction panel's free-gold display is stale after each bid. Fires ONCE per bid-acceptance event, after all reservation mutations for that bid complete (release previous leader's reservation + reserve new leader's gold are treated as a single atomic change). RESOLUTION gold changes flow through `S2CResolutionEvent::GoldAwarded` — a post-batch `S2CGoldBroadcast` fires after `S2CResolutionEvent` delivery and before `S2CPhaseChanged(DRAFT_SHOP)` to sync totals.** |
 | `S2CCardAcquired` | Reliable | Unicast | `{ card_id: CardId, source: AcquisitionSource }` |
 | `S2COpponentSubmitted` | Reliable | Unicast (non-submitting player) | `{ player_id: PlayerId }` — sent when one player submits their placement; the other player receives this immediately so they can show "waiting for opponent" state. NOT sent to the player who submitted. |
 | `S2CShopSlots` | Reliable | Unicast | `{ slots: Vec<Option<CardId>> }` — `None` = empty slot (dedup exhaustion or pool exhaustion for that slot type) |
 | `S2CDraftOffering` | Reliable | Unicast | `{ card_ids: Vec<CardId> }` — exactly 9 cards at DRAFT_INITIAL (fewer only in stripped test fixtures) |
 | `S2CPoolUpdate` | Reliable | Unicast | `{ updates: Vec<(CardId, u8)> }` — delta `copies_remaining` |
-| `S2CPlacementReveal` | Reliable | Broadcast | `{ placements: Vec<PlacedCard> }` — atomic simultaneous reveal; both players receive this as the sole signal that placement is closed. Client MUST render from this payload, not from pre-arrived component replication, to honour the simultaneous-reveal guarantee. |
+| `S2CPlacementReveal` | Reliable | Broadcast | `{ placements: Vec<PlacedCardReveal> }` — atomic simultaneous reveal; both players receive this as the sole signal that placement is closed. Client MUST render from this payload, not from pre-arrived component replication. **Pre-arrived unreliable `BoardPosition` replication that contradicts placement positions MUST be discarded — the reveal payload is authoritative for all placement-related board positions.** Cross-reference: `board-rendering.md` Rule 7 (collect-then-reveal buffer). |
 | `S2CResolutionEvent` | Reliable | Broadcast | `{ events: Vec<TaggedEvent> }` — ordered sub-step replay log |
 | `S2CAuctionCard` | Reliable | Broadcast | `{ card_id: CardId, starting_price: u32 }` |
 | `S2CAuctionBidAccepted` | Reliable | Broadcast | `{ bidder: PlayerId, amount: u32, new_timer_ms: u32 }` |
@@ -139,6 +143,13 @@ enum PlayTarget {
 
 **Not replicated via components:** `gold`, `current_mana`, `reserve_mana`, hand, pool — delivered via unicast reliable S2C messages (`S2CGoldUpdate`, `S2CCardAcquired`, etc.) rather than Lightyear component replication. However, **opponent gold IS public** and included in `S2CGameSnapshot.PlayerSnapshot` and `S2CGoldBroadcast` — "not replicated via components" does not mean "private." Only hand, shop slots, pool, and real/fake objective identity are secret.
 
+**RESOLUTION rendering contract for unreliable components:** While `S2CResolutionEvent` animation is draining (`isResolutionAnimating = true` in client state):
+1. **`ObjectiveHp` replication is suppressed** — objective HP bars are driven exclusively by `ObjectiveDamaged.hp_after` at AnimQueue playback time. Applying replication simultaneously causes HP bar flicker (jump to final value, then decrement during animation).
+2. **`BoardPosition` replication is suppressed** — unit positions are driven exclusively by `UnitMoved` and `DisplacementEvent` events in the batch. Applying replication simultaneously causes units to teleport before their movement animations play.
+3. **`UnitStats` replication is advisory** — apply only after the unit's sub-step events have been consumed by the AnimQueue, not at batch receipt. These rules are client-side contracts but are specified here because they arise from the dual-delivery architecture.
+
+**`TrapIdentity` visibility:** Trap card identity must be hidden from the opponent. Proposed component split: `TrapPresence { has_trap: bool }` (broadcast) + `TrapIdentity { card_id: CardId }` (owner-only). See Open Question 2 for Lightyear 0.26 verification requirement.
+
 **Lane and cell validation contract:** All `lane` fields are 1-indexed (valid range 1–5). All `cell` fields are 1-indexed absolute (valid range 1–8). The server rejects any C2S message containing out-of-range lane or cell values with a silent discard (Rule 4). Clients must not send values outside these ranges.
 
 **`S2CPoolSnapshot` superseded:** `card-data-pool.md` references `S2CPoolSnapshot` as a standalone reconnect message. This GDD supersedes that reference — pool state is delivered within `S2CGameSnapshot.PlayerSnapshot.pool_snapshot`. There is no separate `S2CPoolSnapshot` message. The card-data-pool.md cross-reference should be updated accordingly.
@@ -154,7 +165,7 @@ enum PlayTarget {
 
 | Protocol State | Description | Enters from | Exits to |
 |---|---|---|---|
-| `HANDSHAKING` | Transport connected; `C2SHello` version check pending. No game state visible. | Transport connect | `IN_GAME` on `S2CHandshake`; connection close on version mismatch or `hello_timeout_ms` |
+| `HANDSHAKING` | Transport connected; `C2SHello` version check pending. No game state visible. **Client renders a "reconnecting…" loading indicator during this window.** WASM cold-start can consume 2–3 seconds before `C2SHello` fires; `hello_timeout_ms` safe minimum for WASM is ~4000ms (not the 2000ms listed in the safe range — 2000ms risks kicking slow cold-start clients). | Transport connect | `IN_GAME` on `S2CHandshake`; connection close on version mismatch or `hello_timeout_ms` |
 | `IN_GAME` | Handshake complete; all C2S/S2C traffic active. Covers all RSM phases from LOBBY → GAME_OVER. | `HANDSHAKING` success; `RECONNECTING` success | `RECONNECTING` on transport drop; terminal on `C2SAcknowledgeResult` after GAME_OVER |
 | `RECONNECTING` | Transport dropped. Server holds session for `disconnect_grace_seconds`. | `IN_GAME` on transport drop | `IN_GAME` on reconnect + snapshot delivery; terminal on grace period expiry → RSM GAME_OVER |
 
@@ -197,6 +208,7 @@ PlayerSnapshot {
     player_id:         PlayerId,
     class_id:          ClassId,      // PUBLIC — required for reconnect; S2CClassesRevealed is NOT re-sent on reconnect; without this field the reconnecting client cannot render class tokens, class-specific board state, or keyword interactions
     gold:              u32,
+    reserved_gold:     u32,          // PUBLIC — gold committed to current auction bid (free gold = gold - reserved_gold). Required for HUD bidding-headroom display on reconnect.
     current_mana:      u32,
     reserve_mana:      u32,
     spawn_range_cells: u8,           // cells available for Minion placement: 1–3
@@ -239,15 +251,16 @@ BoardSnapshot {
 }
 
 SeedBoardState {
+    owner: PlayerId,  // Sadida player who placed this seed; required for ownership-based rendering (consistent with TrapBoardState/SinistroState)
     lane: u8,
     cell: u8,
     // Seed persists indefinitely until consumed by Graines de Folie or destroyed. Max 1 per cell.
 }
 
 SinistroState {
-    owner: PlayerId,   // the Xelor player who played Sinistro
-    lane:  u8,         // objective lane this Sinistro is attached to
-    // Sinistro deals 1 damage/RESOLUTION to the opposing-lane objective. Destroyed if its parent objective takes damage.
+    owner:  PlayerId,  // the Xelor player who played Sinistro
+    lane:   u8,        // objective lane this Sinistro is attached to
+    damage: u8,        // damage dealt per RESOLUTION tick (default 1). See class-system.md Xelor Sinistro entity. Destroyed if its parent objective takes damage.
 }
 
 PrismBoardState {
@@ -268,9 +281,13 @@ UnitBoardState {
     max_hp:     u8,         // base HP + any permanent HP bonuses; required for INJURED state derivation (INJURED = current_hp < max_hp)
     current_hp: u8,
     atk:        u8,
-    ar:         u8,         // current AR including permanent Seed bonuses. SERVER INVARIANT: must not overflow u8 — enforce AR cap in server logic (document cap value in Edge Cases when determined)
+    ar:             u8,  // current AR including permanent Seed bonuses. SERVER INVARIANT: must not overflow u8 — enforce AR cap in server logic (document cap value in Edge Cases when determined)
+    resistance_x:   u8,  // RESISTANCE X keyword value; 0 = keyword not present. Required for reconnect damage-preview and keyword-badge display.
+    vulnerability_x: u8, // VULNERABILITY X keyword value; 0 = keyword not present. Required for reconnect damage-preview.
 
     // Keyword state — required by Keyword System Replication Contract for correct reconnect rendering
+    // NOTE: Keyword System Replication Contract uses `silenced_until_round: Option<u8>` — this is INCORRECT.
+    // The authoritative type is Option<u32> here (matches round_number). Keyword GDD must be updated to match.
     shield_active:           bool,              // SHIELD hex glyph; false after consumption
     stun_active:             bool,              // STUN stars glyph; false if not stunned this round
     silenced_until_round:    Option<u32>,       // SILENCE outline; Some(R) = silenced until round R; u32 matches round_number type
@@ -338,9 +355,9 @@ S2CResolutionEvent {
 }
 
 TaggedEvent {
-    sub_step: u8,       // 1–6, matches the 6 RESOLUTION sub-steps
-                        // SERVER CONTRACT: MUST NOT emit sub_step outside 1–6.
-                        // CLIENT CONTRACT: treat any out-of-range sub_step as a fatal desync — request a full snapshot immediately.
+    sub_step: u8,       // 1–7: sub-steps 1–6 = in-turn resolution; 7 = post-SS6 END OF TURN bucket (EndOfTurnFired events).
+                        // SERVER CONTRACT: MUST NOT emit sub_step outside 1–7.
+                        // CLIENT CONTRACT: treat 8+ as fatal desync — send C2SRequestSnapshot immediately.
     event:    ResolutionEvent,
 }
 
@@ -532,7 +549,7 @@ enum KeywordPayload {
     ShieldConsumed,
     StunApplied { duration_rounds: u8 },
     SilenceApplied { duration_rounds: u8 },
-    InjuredBonusActive { granted_keyword: u8 },  // u8 = keyword enum discriminant (avoid recursive type)
+    InjuredBonusActive { granted_keyword: GrantedKeyword },  // typed subset enum (see D.3) — avoids recursive KeywordPayload type without raw discriminants
     LeaderSnapshotTaken { leader_unit_id: EntityId },
     OutnumberedFlipped { player_id: PlayerId, active: bool },  // board-global — source_unit_id is None
     BodyguardBondCreated { bodyguard_id: EntityId, protected_id: EntityId },
@@ -562,14 +579,15 @@ enum AcquisitionSource {
     KeywordEffect,    // card added to hand by a keyword trigger (DEATH, FINAL BLOW, class ability)
 }
 
-struct PlacedCard {   // element of S2CPlacementReveal.placements — same name as C2S payload struct; C2S has reserve_amount, S2C omits it (mana accounting is server-side)
+struct PlacedCardReveal {  // element of S2CPlacementReveal.placements — S2C only; distinct from PlacedCardSubmit (C2S)
     card_id:  CardId,
     owner_id: PlayerId,
     target:   PlayTarget,
+    // reserve_amount omitted: mana accounting is server-side; clients never see the split
 }
 
 // Wire identity types
-type SessionToken = [u8; 16];   // UUID v4 (128-bit), server-generated at first connect, included in S2CHandshake
+type SessionToken = [u8; 16];   // UUID v4 (128-bit), server-generated from OS entropy; MUST NOT use gameplay RNG
 type EntityId = u64;            // server-assigned monotonic counter per session; mapped to local ECS Entity via HashMap<EntityId, Entity> on each client
 
 enum BidRejectedReason {
@@ -578,6 +596,30 @@ enum BidRejectedReason {
     AuctionExpired,     // server timer fired between client send and server receive — S2CAuctionSettled follows immediately
     AlreadyLeader,      // bidder == current_leader; self-bids are rejected (auction-system.md Rule 4)
     HandFull,           // bidder.hand_size == 10; must play a card before bidding (auction-system.md Rule 4)
+}
+
+enum HandshakeRejectedReason {
+    VersionMismatch,    // protocol_version mismatch — server_version and client_version fields populated
+    UnrecognisedToken,  // session_token not found in active sessions
+    SessionExpired,     // session_token recognised but session already past GAME_OVER — client must clear localStorage token
+}
+
+enum GameOverReason {
+    ObjectivesDestroyed,  // at least one player's real objectives destroyed; loser = Some(player) or None if simultaneous
+    Disconnection,        // player's disconnect_grace_seconds expired; loser = Some(player)
+    Draw,                 // mutual simultaneous objective destruction OR both players disconnected simultaneously
+    ResolutionTimeout,    // RESOLUTION 60s safety timeout (RSM Rule 10); loser = None. Distinct from Draw — client shows "round timed out" not "draw"
+}
+
+// Subset of keywords that INJURED can grant — avoids recursive KeywordPayload type.
+// Implementer MUST cross-reference keyword-system.md for the authoritative INJURED grant list.
+// This list is part of the wire protocol — extend only with explicit Keyword GDD approval.
+enum GrantedKeyword {
+    FirstStrike,
+    Counterattack,
+    Range,
+    Shield,
+    // Add here if keyword-system.md adds new INJURED-grantable keywords
 }
 ```
 
@@ -617,6 +659,10 @@ enum BidRejectedReason {
 
 - **If `C2SPlaceBid` arrives at the server after `S2CAuctionSettled` has already been dispatched (race on the last bid)**: The server does not send `S2CAuctionBidRejected` in this case — `S2CAuctionSettled` is the terminal signal and takes precedence. The server silently discards the late bid after settlement is final. The client should display the bid as "pending" until either `S2CAuctionBidAccepted` or `S2CAuctionSettled` resolves it.
 
+- **Bid-pending client state spec:** After `C2SPlaceBid` is sent and before `S2CAuctionBidAccepted` or `S2CAuctionSettled` arrives, the client MUST render a "bid pending" state on the auction panel — the bid amount is shown as in-flight, bid controls are disabled, and neither a "you won" nor "you lost" result is displayed. If the auction timer display reaches zero locally before `S2CAuctionSettled` arrives, the client renders "settling…" and continues waiting — no local result is finalized. This is the client-side spec for the highest-tension moment of the mechanic. See `shop-auction-ui.md` for the visual rendering contract. **Maximum observable latency window:** `2 × RTT_p99` (approximately 200ms for typical WebSocket connections) — this is the upper bound between bid send and confirmation; the UI should not show an error or timeout within this window.
+
+- **If the client reconnects during DRAFT_AUCTION and the auction timer is nearly expired:** `AuctionSnapshot.timer_remaining_ms` is stale by network RTT at the moment the client renders it. The reconnecting client's timer model is always more optimistic than reality (they think they have more time). A bid placed on a stale timer that the server has already expired produces `S2CAuctionBidRejected { reason: BidRejectedReason::AuctionExpired }` — this is correct server behavior. The client renders `AuctionExpired` as equivalent to the "settling…" bid-pending state above (not as an error), since the player's intent was valid at their local time.
+
 ## Dependencies
 
 ### Upstream Dependencies
@@ -652,7 +698,8 @@ enum BidRejectedReason {
 | Knob | Default | Safe Range | Too Low | Too High | Interacts With |
 |---|---|---|---|---|---|
 | `protocol_version` | 1 | N/A | — | — | Must match client and server exactly; any mismatch → `S2CHandshakeRejected`. Increment on any breaking wire change. This is a compatibility gate, not a balance knob. |
-| `hello_timeout_ms` | 5000 | 2000–15000 | Legitimate slow-starting clients (WASM cold start) kicked before sending `C2SHello` | Slow detection of port-scanning / connection-flooding | `disconnect_grace_seconds` — both are connection safety nets on different layers |
+| `hello_timeout_ms` | 5000 | **4000**–15000 | Legitimate slow-starting clients (WASM cold start) kicked before sending `C2SHello`. **Note: WASM cold-start consumes 2–3s; safe minimum for WASM is ~4000ms, not 2000ms.** | Slow detection of port-scanning / connection-flooding | `disconnect_grace_seconds` — both are connection safety nets on different layers |
+| `snapshot_cooldown_ms` | 5000 | 2000–10000 | Clients can flood the server with `C2SRequestSnapshot` requests | Legitimate desync recovery is too slow | `S2CGameSnapshot` — rate-limits client-initiated snapshot requests |
 | `ack_timeout_ms` | 10000 | 5000–30000 | Session cleans up before result screen finishes rendering | Dead sessions accumulate server-side memory | None — independent cleanup timer |
 | `snapshot_max_bytes` | 16384 | 8192–65536 | Truncation risk — pool snapshot alone is ~900 bytes; full late-game board adds several hundred more; 4096 would be exceeded in normal play | No practical concern — snapshot is sent once per connect, not in the hot path | Server safety limit only; not related to WASM bundle budget |
 | `heartbeat_interval_ms` | 5000 | 2000–15000 | Target client heartbeat send interval. Must be ≪ `disconnect_grace_seconds × 1000` (default: ≪ 30000ms). Too low: heartbeat traffic adds bandwidth. Too high: half-open connection detected late. | `disconnect_grace_seconds` — both are disconnect detection layers |
@@ -682,25 +729,28 @@ N/A — This system renders nothing. The protocol delivers data consumed by UI s
 | NP-1 | **GIVEN** a client connects and sends `C2SHello` with a matching `protocol_version`, **WHEN** the server processes it, **THEN** the server sends `S2CHandshake` as the first S2C message on that connection. No other S2C message is sent before the handshake completes. | BLOCKING |
 | NP-2 | **GIVEN** a client sends `C2SHello` with a mismatched `protocol_version`, **WHEN** the server processes it, **THEN** the server sends `S2CHandshakeRejected { server_version, client_version }` and closes the transport connection. | BLOCKING |
 | NP-3 | **GIVEN** a client connects and sends no `C2SHello` within `hello_timeout_ms` (5000ms), **WHEN** the timeout fires, **THEN** the server closes the transport connection without sending any S2C message. | BLOCKING |
-| NP-4 | **GIVEN** a client is IN_GAME and sends `C2SPurchaseCard` during PLACEMENT phase, **WHEN** the server processes it, **THEN** no S2C message is sent to that client in response and the player's gold is unchanged. | BLOCKING |
+| NP-4 | **GIVEN** a client is IN_GAME and sends `C2SPurchaseCard` during PLACEMENT phase, **WHEN** the server processes it, **THEN** no S2C message is sent to either player and the player's gold, hand, and shop_slots are all unchanged (full discard invariant, not just gold). | BLOCKING |
 | NP-5 | **GIVEN** a client sends `C2SSubmitPlacement` during DRAFT_SHOP phase AND `player.submitted` was `false` before the message arrived, **WHEN** the server processes it, **THEN** `player.submitted` remains `false` (unchanged) and no S2C message of any kind is sent in response. | BLOCKING |
-| NP-6 | **GIVEN** a player sends valid `C2SSubmitPlacement` during PLACEMENT, **WHEN** the server accepts it, **THEN** `player.submitted = true` in server state. No S2C message is sent to any player — the submission is recorded silently until `S2CPlacementReveal` fires. | BLOCKING |
+| NP-6 | **GIVEN** a player sends valid `C2SSubmitPlacement` during PLACEMENT, **WHEN** the server accepts it, **THEN** `player.submitted = true` in server state. No S2C message is sent **to the submitting player** — the submission is recorded silently until `S2CPlacementReveal` fires. (Note: `S2COpponentSubmitted` IS sent to the non-submitting player — see NP-34. NP-6 only asserts the submitting player's receive stream is silent.) | BLOCKING |
 | NP-7 | **GIVEN** units are on the board, **WHEN** the server updates `BoardPosition` or `UnitStats`, **THEN** no S2C* message of any type is received by a test client on the reliable channel for that tick — delivery occurs via Lightyear component replication only. (Integration test — requires a live Lightyear session with a test client observing the reliable channel message stream.) | BLOCKING |
 | NP-8 | **GIVEN** RESOLUTION completes and the server sends phase-exit messages, **WHEN** messages are captured in the reliable channel stream, **THEN** `S2CResolutionEvent` precedes `S2CPhaseChanged(DRAFT_SHOP)` in the sequence. (Integration test — requires a live Lightyear session to inspect message ordering on the reliable channel.) | BLOCKING |
 | NP-9 | **GIVEN** a client reconnects mid-game, **WHEN** the server processes the new transport connection, **THEN** the first S2C message sent is `S2CGameSnapshot` — no `S2CPhaseChanged`, `S2CGoldUpdate`, or other game message precedes it. (Integration test — requires a live Lightyear session to inspect channel message ordering.) | BLOCKING |
-| NP-10 | **GIVEN** a client reconnects during PLACEMENT after having already submitted, **WHEN** `S2CGameSnapshot` is processed, **THEN** the reconnecting player's `PlayerSnapshot.submitted = true` and the placement UI is not re-presented. | BLOCKING |
+| NP-10 | **GIVEN** a client reconnects during PLACEMENT after having already submitted, **WHEN** `S2CGameSnapshot` is processed, **THEN** the reconnecting player's `PlayerSnapshot.submitted = true`. (Server-observable assertion; BLOCKING.) | BLOCKING |
+| NP-10-UI | **GIVEN** NP-10 condition — `PlayerSnapshot.submitted = true` on reconnect, **THEN** the placement card-selection UI is not re-presented to the player. (UI rendering expectation — cannot be asserted headlessly; manual walkthrough evidence.) | ADVISORY |
 | NP-11 | **GIVEN** both players are IN_GAME, **WHEN** the server sends `S2CGoldUpdate` for Player A, **THEN** the server does not enqueue `S2CGoldUpdate` for Player B's `ClientId`. Gold is unicast to the owning player only. (Integration test — requires a live Lightyear session to verify delivery scope per `ClientId`.) | BLOCKING |
 | NP-12 | **GIVEN** a player's transport connection drops, **WHEN** Lightyear's `OnDisconnected` event fires, **THEN** `S2COpponentDisconnected { grace_remaining_ms }` is received by the remaining player before the next `S2CPhaseChanged` or any other phase-affecting message is delivered on the reliable channel. (Integration test — requires a live Lightyear session.) | BLOCKING |
 | NP-13 | **GIVEN** a player has been disconnected for strictly more than `disconnect_grace_seconds`, **WHEN** the RSM evaluates disconnect trackers, **THEN** `S2CGameOver` is broadcast on the reliable channel. (Integration test — requires a live Lightyear session or a `disconnect_trackers` resource set to 0 in test setup to avoid real-time sleep.) | BLOCKING |
 | NP-14 | **GIVEN** `C2SSubmitPlacement` is sent twice by the same player in the same PLACEMENT phase, **WHEN** the server processes both, **THEN** the second submission is silently discarded — `player.submitted` remains `true` and no S2C message is sent in response to the second message. | BLOCKING |
 | NP-15 | **GIVEN** a client is IN_GAME and sends `C2SHello` again on the same connection, **WHEN** the server processes it, **THEN** no `S2CHandshake` is sent in response and the existing session is not disrupted. | BLOCKING |
-| NP-16 | **GIVEN** a two-player game is in progress and Player B reconnects, **WHEN** the server produces Player B's `S2CGameSnapshot`, **THEN** the snapshot does NOT contain: Player A's `hand`, `shop_slots`, `pool_snapshot`, or any `ObjectiveSnapshot.is_real = true` for Player A's objectives. | BLOCKING |
-| NP-17 | **GIVEN** a player disconnects and reconnects within `disconnect_grace_seconds`, **WHEN** the server processes the reconnect, **THEN** `S2COpponentReconnected` is broadcast to the remaining player. (Integration test — requires two live clients and a transport drop+reconnect sequence.) | BLOCKING |
+| NP-16 | **GIVEN** a two-player game is in progress and Player B reconnects, **WHEN** the server produces Player B's `S2CGameSnapshot`, **THEN** the snapshot does NOT contain: Player A's `hand`, `shop_slots`, `pool_snapshot`, any `ObjectiveSnapshot.is_real = true` for Player A's objectives, or `TrapBoardState.card_id: Some(...)` for traps owned by Player A (opponent traps must have `card_id: None`). | BLOCKING |
+| NP-17 | **GIVEN** a player disconnects and reconnects within `disconnect_grace_seconds` (simulated via `disconnect_trackers` resource injection with value > 0 to skip real-time countdown), **WHEN** the server processes the reconnect, **THEN** `S2COpponentReconnected` is broadcast to the remaining player. (Integration test — requires two live clients and a transport drop+reconnect sequence.) | BLOCKING |
 | NP-18 | **GIVEN** the server is in DRAFT_AUCTION and a player reconnects, **WHEN** `S2CGameSnapshot` is received, **THEN** `auction_state` is non-null and contains: `card_id`, `last_accepted_bid`, `current_leader` (or `None` if no bids yet), and `timer_remaining_ms`. | BLOCKING |
 | NP-19 | **GIVEN** Player A's gold changes due to a non-RESOLUTION event (shop purchase, phase income, auction settlement, bid reservation change), **WHEN** the server processes the change, **THEN** `S2CGoldBroadcast { player_id: Player_A, gold: new_amount, reserved_gold: Player_A.reserved_gold }` is delivered to ALL connected players including Player B. NOTE: RESOLUTION-origin gold changes (kill rewards, objective rewards) are carried inside `S2CResolutionEvent::GoldAwarded` entries — NOT via standalone `S2CGoldBroadcast` during RESOLUTION. A post-batch `S2CGoldBroadcast` fires after `S2CResolutionEvent` delivery and before `S2CPhaseChanged(DRAFT_SHOP)` to sync totals. | BLOCKING |
 | NP-20 | **GIVEN** a game is in PLACEMENT with at least 2 units on the board, **WHEN** a player reconnects and receives `S2CGameSnapshot`, **THEN** the snapshot contains: `round_number > 0`, `phase = PLACEMENT`, all board units present in `BoardSnapshot.units`, and the reconnecting player's `hand` is populated if they hold cards. (Integration test.) | BLOCKING |
-| NP-21 | **GIVEN** a client reconnects during PLACEMENT before having submitted, **WHEN** `S2CGameSnapshot` is processed, **THEN** `PlayerSnapshot.submitted = false` for the reconnecting player, and the placement UI is re-presented with `timer_remaining_ms` already counting down from its current value (in milliseconds). | BLOCKING |
-| NP-22 | **GIVEN** a client reconnects during PLACEMENT and the opponent has already submitted, **WHEN** `S2CGameSnapshot` is processed, **THEN** the opponent's `PlayerSnapshot.submitted = true` and the reconnecting client renders the "waiting for opponent" state. The snapshot is the sole authority — no further submission confirmation messages are sent. | BLOCKING |
+| NP-21 | **GIVEN** a client reconnects during PLACEMENT before having submitted, **WHEN** `S2CGameSnapshot` is processed, **THEN** `PlayerSnapshot.submitted = false` for the reconnecting player AND `snapshot.timer_remaining_ms` is in range `(0, placement_timer_ms)` (non-zero, not already expired). (Server-observable assertions; BLOCKING.) | BLOCKING |
+| NP-21-UI | **GIVEN** NP-21 condition, **THEN** the placement card-selection UI is re-presented and the timer display counts down from `timer_remaining_ms`. (UI rendering expectation — ADVISORY; manual walkthrough evidence.) | ADVISORY |
+| NP-22 | **GIVEN** a client reconnects during PLACEMENT and the opponent has already submitted, **WHEN** `S2CGameSnapshot` is processed, **THEN** the opponent's `PlayerSnapshot.submitted = true`. The snapshot is the sole authority — no further submission confirmation messages are sent. (Server-observable assertion; BLOCKING.) | BLOCKING |
+| NP-22-UI | **GIVEN** NP-22 condition — opponent `submitted = true` on reconnect, **THEN** the client renders "waiting for opponent" state for that player. (UI rendering expectation — ADVISORY.) | ADVISORY |
 | NP-23 | **GIVEN** Player A acquires a card (from shop, auction, prism, or keyword effect), **WHEN** the server sends `S2CCardAcquired`, **THEN** it is NOT delivered to Player B's transport connection. Card acquisition is private to the owning player. (Integration test — requires two live clients to verify non-delivery to B.) | BLOCKING |
 | NP-24 | **GIVEN** the server receives `C2SHeartbeat` from Player A, **WHEN** the heartbeat is processed, **THEN** `disconnect_trackers[Player_A]` is reset to `disconnect_grace_seconds`. (Unit-testable if `C2SHeartbeat` dispatch is isolated; integration test if live Lightyear session is required for message delivery.) | BLOCKING |
 | NP-25 | **GIVEN** `disconnect_trackers[Player_A]` has been decremented to 0 (heartbeat not received; simulated via `Resource` injection in test setup to avoid real-time sleep), **WHEN** the RSM evaluates disconnect trackers, **THEN** `S2CGameOver { loser: Some(Player_A), reason: GameOverReason::Disconnection }` is broadcast on the reliable channel. | BLOCKING |
@@ -709,11 +759,28 @@ N/A — This system renders nothing. The protocol delivers data consumed by UI s
 | NP-28 | **GIVEN** both players have submitted their PLACEMENT and the server fires `S2CPlacementReveal`, **WHEN** the message is delivered, **THEN** ALL connected players receive it AND the `placements` field contains entries for BOTH players (both players' cards are in the reveal payload). (Integration test — requires two live clients to verify all-player delivery.) | BLOCKING |
 | NP-29 | **GIVEN** a player sends `C2SPlaceBid` during DRAFT_AUCTION with `amount < player.gold` but `amount <= last_accepted_bid` (amount too low), **WHEN** the server processes it, **THEN** `S2CAuctionBidRejected { reason: BidRejectedReason::AmountTooLow }` is sent unicast to the bidding player and no auction state changes. (Integration test — requires two live clients to confirm non-bidding player does NOT receive the rejection.) | BLOCKING |
 | NP-30 | **GIVEN** unit A deals non-lethal damage to unit B during RESOLUTION combat (B survives the hit), **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains a `CombatDamage { attacker_id: A, target_id: B, damage > 0, was_lethal: false }` entry at the correct sub_step, and no `UnitDied` entry follows it for unit B within that sub_step. | BLOCKING |
-| NP-31 | **GIVEN** a keyword effect activates on a unit during RESOLUTION (SHIELD consumed, STUN applied, SILENCE applied, LEADER snapshot, BODYGUARD bond, OUTNUMBERED flip, COUNTERATTACK fired), **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains a `KeywordTriggered { source_unit_id, sub_step, payload }` entry matching the keyword and sub_step, ordered before any secondary effects the keyword produces. | BLOCKING |
-| NP-32 | **GIVEN** a REPEL, ATTRACT, or TELEPORT keyword displaces a unit during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains a `DisplacementEvent` entry with correct `from_lane`, `from_cell`, `to_lane`, `to_cell`, and `kind`, and the unit's `BoardPosition` via component replication converges to `to_lane`/`to_cell` after the event. | BLOCKING |
-| NP-33 | **GIVEN** a fake objective is destroyed during RESOLUTION (attacker's spawn range expands), **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains a `SpawnRangeChanged { player_id: attacker, new_spawn_range_cells }` entry in addition to the `ObjectiveDestroyed` entry. | BLOCKING |
+| NP-31a | **GIVEN** a SHIELD keyword is consumed on a unit during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: Some(unit), sub_step, payload: KeywordPayload::ShieldConsumed }` at the sub_step where the attack was blocked. The preceding `CombatDamage` entry for that attack has `damage: 0`. | BLOCKING |
+| NP-31b | **GIVEN** a STUN is applied to a unit during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: Some(attacker), sub_step, payload: KeywordPayload::StunApplied { duration_rounds } }` at the sub_step where the stun is applied. | BLOCKING |
+| NP-31c | **GIVEN** a SILENCE is applied to a unit during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: Some(attacker), sub_step, payload: KeywordPayload::SilenceApplied { duration_rounds } }` and the target's `silenced_until_round` is populated in the next `S2CGameSnapshot` snapshot. | BLOCKING |
+| NP-31d | **GIVEN** a LEADER unit is present on the board during RESOLUTION sub-step 1, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: Some(leader), sub_step: 1, payload: KeywordPayload::LeaderSnapshotTaken { leader_unit_id } }`. | BLOCKING |
+| NP-31e | **GIVEN** a BODYGUARD bond is established during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: Some(bodyguard), sub_step, payload: KeywordPayload::BodyguardBondCreated { bodyguard_id, protected_id } }` at the sub_step of the attack that triggered the bond. | BLOCKING |
+| NP-31f | **GIVEN** the OUTNUMBERED condition flips for a player during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: None, sub_step, payload: KeywordPayload::OutnumberedFlipped { player_id, active } }` at the sub_step where unit counts changed. | BLOCKING |
+| NP-31g | **GIVEN** a COUNTERATTACK fires during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains both `KeywordTriggered { payload: CounterattackFired, sub_step }` AND a `CombatDamage { is_counterattack: true }` entry for the return strike, with `KeywordTriggered` appearing before `CombatDamage` in the array for that sub_step. | BLOCKING |
+| NP-32 | **GIVEN** a REPEL, ATTRACT, or TELEPORT keyword displaces a unit during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains a `DisplacementEvent` entry with correct `from_lane`, `from_cell`, `to_lane`, `to_cell`, and `kind`. (The "BoardPosition converges" assertion is advisory — unreliable replication is suppressed during RESOLUTION animation per the RESOLUTION rendering contract. Test only the event batch fields.) | BLOCKING |
+| NP-33 | **GIVEN** a fake objective is destroyed during RESOLUTION (attacker's spawn range expands), **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains both `ObjectiveDestroyed { was_fake: true }` AND `SpawnRangeChanged { player_id: attacker, new_spawn_range_cells }`, with `SpawnRangeChanged` appearing **after** `ObjectiveDestroyed` in the events array. | BLOCKING |
 | NP-34 | **GIVEN** Player A submits their PLACEMENT and Player B has not yet submitted, **WHEN** the server processes Player A's `C2SSubmitPlacement`, **THEN** `S2COpponentSubmitted { player_id: Player_A }` is delivered to Player B's transport connection within the same reliable channel message sequence. | BLOCKING |
-| NP-35 | **GIVEN** a reconnecting player's `S2CGameSnapshot` is delivered, **WHEN** the snapshot contains `class_id` for both players, **THEN** the client can render class-specific tokens and keyword interactions without requiring a re-dispatch of `S2CClassesRevealed`. | BLOCKING |
+| NP-35 | **GIVEN** a reconnecting player's `S2CGameSnapshot` is processed, **WHEN** both `PlayerSnapshot` entries in `players` are inspected, **THEN** `class_id` is non-zero/non-None for both players (server-observable assertion — confirms the field is populated, not that the UI renders correctly). | BLOCKING |
+
+| NP-36 | **GIVEN** a client was previously connected and received a `session_token` in `S2CHandshake`, **WHEN** the client disconnects and reconnects with `C2SHello { session_token: Some(token) }` containing that token, **THEN** the server maps the new `ClientId` to the existing session slot and sends `S2CGameSnapshot` with that player's private data populated (`hand`, `gold`, `pool_snapshot` non-empty if applicable). The server does NOT create a new session slot. (Integration test.) | BLOCKING |
+| NP-37 | **GIVEN** a client sends `C2SHello { session_token: Some(token) }` where the token is unrecognised or maps to a terminated session, **WHEN** the server processes it, **THEN** the server sends `S2CHandshakeRejected { reason: UnrecognisedToken }` or `SessionExpired` respectively and closes the transport connection. | BLOCKING |
+| NP-38 | **GIVEN** RESOLUTION completes and at least one player's gold changed, **WHEN** the server sends post-RESOLUTION messages, **THEN** `S2CGoldBroadcast` is received on the reliable channel AFTER `S2CResolutionEvent` and BEFORE `S2CPhaseChanged(DRAFT_SHOP)` in the message sequence. (Integration test — capture reliable channel stream.) | BLOCKING |
+| NP-39 | **GIVEN** the server is transitioning to DRAFT_AUCTION, **WHEN** messages are captured on the reliable channel, **THEN** `S2CAuctionCard` is received before `S2CPhaseChanged(DRAFT_AUCTION)` in the message sequence. (Integration test.) | BLOCKING |
+| NP-40 | **GIVEN** the server is transitioning to DRAFT_INITIAL, **WHEN** messages are captured on the reliable channel, **THEN** `S2CDraftOffering` is received before `S2CPhaseChanged(DRAFT_INITIAL)` in the message sequence. (Integration test.) | BLOCKING |
+| NP-41 | **GIVEN** a player reconnects mid-game, **WHEN** the server processes the reconnect, **THEN** `S2CObjectiveIdentities` is sent unicast to the reconnecting player after `S2CGameSnapshot` and before any `S2CPhaseChanged` or other phase-actionable message. (Integration test.) | BLOCKING |
+| NP-42 | **GIVEN** a player sends `C2SSubmitPlacement` with a batch where the same `card_id` appears more than once, **WHEN** the server processes it, **THEN** the entire batch is silently discarded, `player.submitted` remains `false`, and no S2C message is sent to either player. | BLOCKING |
+| NP-43 | **GIVEN** a client is IN_GAME and sends `C2SRequestSnapshot`, **WHEN** the server processes it AND at least `snapshot_cooldown_ms` has elapsed since the last snapshot was sent to this client, **THEN** `S2CGameSnapshot` is sent unicast to that client with current authoritative state. If `snapshot_cooldown_ms` has NOT elapsed, the request is silently ignored. | BLOCKING |
+| NP-44 | **GIVEN** the server is in LOBBY phase and a client sends `C2SCreateRoom` or `C2SJoinRoom`, **WHEN** the server processes it, **THEN** the message is accepted and processed (not discarded) — positive phase-gate test confirming LOBBY messages are valid in LOBBY. | BLOCKING |
+| NP-45 | **GIVEN** a player reconnects during PLACEMENT, DRAFT_SHOP, DRAFT_INITIAL, or RESOLUTION (any non-DRAFT_AUCTION phase), **WHEN** `S2CGameSnapshot` is received, **THEN** `auction_state` is `None`. | BLOCKING |
 
 ## Open Questions
 
@@ -727,4 +794,6 @@ N/A — This system renders nothing. The protocol delivers data consumed by UI s
 
 5. ~~**`PlayTarget::TargetUnit` extension**~~ — **RESOLVED (R3 2026-04-30):** Keyword System GDD (approved) confirms no keyword requires targeting current-PLACEMENT units. `PlayTarget` enum is stable. No extension needed.
 
-6. **Sang Méprise reconnect gap** — `S2CGameSnapshot` has no `sang_meprise_active` field. A Sacrier player who reconnects mid-RESOLUTION while Sang Méprise is active loses the reveal information they paid a card for. This is tracked as OQ-CS-2 in class-system.md. **Owner:** Network Protocol + Objective System. **Priority: LOW — friend-game scope, accepted for now.**
+6. **Sang Méprise reconnect gap** — `S2CGameSnapshot` has no `sang_meprise_active` field. A Sacrier player who reconnects mid-RESOLUTION while Sang Méprise is active loses the reveal information they paid a card for. This is tracked as OQ-CS-2 in class-system.md. **Owner:** Network Protocol + Objective System. **Priority: MEDIUM** (upgraded from LOW — card expenditure + information loss is a fairness issue, not just polish; must resolve before M3 implementation).
+
+7. **Mid-RESOLUTION reconnect + HASTE policy** — `UnitBoardState` has no `haste_active` field. A client reconnecting mid-RESOLUTION after sub-step 1 cannot determine which units had HASTE (and already acted in SS1) vs. units subject to summoning sickness. The AnimQueue cannot correctly fast-forward without this. **Two options:** (A) Add `haste_active: bool` to `UnitBoardState` — set to `true` for all units whose `card_id` has the HASTE keyword; (B) Accept that mid-RESOLUTION reconnect replays the entire RESOLUTION from SS1, requiring the server to buffer the full current RESOLUTION event log until phase exits. **Owner:** Network Protocol + Keyword System. **Priority: MEDIUM — must decide before RESOLUTION implementation begins.**

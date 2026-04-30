@@ -1,5 +1,20 @@
 # Review Log — Network Protocol
 
+## Review — 2026-04-30 (R5 lean) — Verdict: APPROVED
+Scope signal: L
+Specialists: none (lean mode)
+Blocking items: 2 | Recommended: 3
+Summary: Targeted residual check after R4's 23-blocker inline pass. Two blockers found and resolved inline: (1) Rule 8 retained stale "reliable channel" text for C2SHeartbeat, contradicting Rule 2 and the C2S table which both specify unreliable — an implementer following Rule 8 would have built heartbeat on the wrong channel; (2) SeedBoardState lacked `owner: PlayerId`, inconsistent with TrapBoardState and SinistroState patterns. Document is now implementation-ready modulo the 3 HIGH Lightyear 0.26 verification OQs (OQ-1/2/3) and 2 MEDIUM design OQs (OQ-6 Sang Méprise reconnect, OQ-7 HASTE reconnect policy). Remaining recommended items: BodyguardBondBroken has no AC; AR cap undocumented; activate_timeout_ms not in config docs. Cross-GDD follow-up: keyword-system.md silenced_until_round type; board-rendering.md OQ-BR-06 gate unlock.
+Prior verdict resolved: Yes — R4 (MAJOR REVISION NEEDED → revised inline) fully resolved.
+
+## Review — 2026-04-30 (R4) — Verdict: MAJOR REVISION NEEDED → Revised Inline
+Scope signal: L
+Specialists: network-programmer, systems-designer, qa-lead, game-designer, creative-director
+Blocking items: 23 | Recommended: 9
+Summary: R4 stress-tested the protocol against the systems it serves rather than reviewing in isolation. The four convergence findings (present in 3+ specialist reviews): SubStepMarker/TaggedEvent sub_step contract contradiction (crash risk), reserved_gold absent from PlayerSnapshot, GameOverReason/GrantedKeyword enums undefined, InjuredBonusActive raw discriminant on wire. Remaining blockers: C2SHeartbeat on reliable channel (false-positive disconnect), ObjectiveHp/BoardPosition RESOLUTION suppression rules missing (HP flicker + unit teleport), UnitBoardState missing resistance_x/vulnerability_x, PlacedCard dual-definition naming collision, C2SRequestSnapshot referenced but absent, NP-6/NP-34 AC contradiction, NP-31 untestable, session token reconnect path uncovered. Four player-fantasy spec gaps addressed: bid-pending state, auction silence ambiguity documented, simultaneous-reveal unreliable interaction, HANDSHAKING rendering spec. All 23 resolved inline. Cross-GDD edits required: keyword-system.md (silenced_until_round type), game-config.md (snapshot_cooldown_ms), board-rendering.md (OQ-BR-06), hud.md (reserved_gold). Creative-director verdict: R4 is a contract reconciliation pass — the protocol is sound; the specification needed to close behavioral gaps left to implementer interpretation.
+Prior verdict resolved: Yes — R3 (MAJOR REVISION NEEDED) blockers resolved inline before R3 ended; R4 found new blockers surfaced by downstream GDD cross-referencing.
+Blockers resolved inline (23): SubStepMarker 1–7 contract; reserved_gold in PlayerSnapshot+S2CGoldUpdate; GameOverReason/GrantedKeyword/HandshakeRejectedReason enums; PlacedCardSubmit/PlacedCardReveal rename; C2SHeartbeat→unreliable; ObjectiveHp+BoardPosition RESOLUTION suppression; resistance_x+vulnerability_x in UnitBoardState; C2SRequestSnapshot defined+rate-limited; duplicate card_id batch validation; SessionToken OS-entropy+localStorage+terminated-session path; bid-pending state spec; HANDSHAKING rendering+WASM floor; simultaneous-reveal interaction; auction silence documented; NP-4 broadened; NP-6/NP-34 contradiction fixed; NP-10/21/22/35 split; NP-31→NP-31a–g; NP-32/33 cleaned; NP-36–NP-45 added; SinistroState.damage field; S2CGoldBroadcast single-fire rule; OQ-6→MEDIUM; OQ-7 added; snapshot_cooldown_ms tuning knob.
+
 ## Review — 2026-04-30 (R3) — Verdict: MAJOR REVISION NEEDED → Revised Inline
 Scope signal: XL
 Specialists: network-programmer, systems-designer, qa-lead, game-designer, creative-director
