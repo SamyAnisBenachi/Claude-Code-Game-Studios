@@ -27,7 +27,7 @@ At every interaction:
 1. **Tell the user where we are** in the project
 2. **Tell them the next concrete command** to run (and in which Codex window)
 3. **Tell them if it's parallelizable** with other work
-4. **Tell them how they'll know it worked** (CI green, test passing, or manual playtest at later milestone)
+4. **Tell them how they'll know it worked** (local Cargo test for worker iteration; CI green for final authority; manual playtest at later milestone)
 5. **Implement** when asked
 6. **Claim work before coding** (`status: in-progress`, `owner: <window-id>`)
 7. **Update tracking files** when done (story Status, sprint-status.yaml, session-state/active.md)
@@ -92,18 +92,30 @@ Read sprint-status.yaml + active.md + last 10 git commits. Reply with:
 9. Read `docs/architecture/control-manifest.md` Foundation/Core/Feature rules
 10. Implement following Bevy 0.18 + Lightyear 0.26 constraints (see below)
 11. Write tests prescribed in story's `## Test Evidence` section
-12. Review `git status --short`, `git diff`, and `git diff --cached --name-status` to identify this window's changes and any already-staged work from other windows
-13. Prepare the commit with explicit paths/pathspecs only; never use `git add .`, and minimize unrelated parallel-agent/user work
-14. Commit: `<story-id> impl: <short title>`
-15. Push: `git push origin main`
-16. Watch CI: `gh run watch <id>`
-17. If CI fails → read failure log, fix, repeat
-18. If CI green → update story Status to Complete + add Completion Notes
-19. Update `sprint-status.yaml`: `status: done`, `owner: ""`, `completed: <YYYY-MM-DD>`
-20. Stage only story/status/session files changed by this completion update
-21. Commit completion tracking separately: `story-done <story-id>: <short title> COMPLETE`
-22. Push and watch CI again
-23. Tell user what unblocked + next recommended command, including commit hashes and CI run IDs
+12. Run the story-prescribed local Cargo test(s) from **Developer PowerShell for VS 2026** (example: `cargo test -p server <test_name>`). Normal PowerShell lacks `link.exe`.
+13. Review `git status --short`, `git diff`, and `git diff --cached --name-status` to identify this window's changes and any already-staged work from other windows
+14. Prepare the commit with explicit paths/pathspecs only; never use `git add .`, and minimize unrelated parallel-agent/user work
+15. Commit: `<story-id> impl: <short title>`
+16. Push: `git push origin main`
+17. Find/report the CI run id with `gh run list --limit 3`, but **do not wait for GitHub Actions by default**
+18. Handoff to the orchestrator: story id, owner id, local command/result, commit hash, pushed branch, CI run id if known, files changed, and any skipped verification
+19. Leave `sprint-status.yaml` as `in-progress` until CI is green and story-done/completion tracking is performed
+
+### Worker vs Orchestrator CI Policy
+
+Codex worker windows optimize for fast local iteration:
+- Run local Cargo tests from Developer PowerShell for VS 2026 before pushing.
+- Push implementation commits after local tests pass.
+- Do not sit idle watching GitHub Actions unless the user explicitly asks that worker to be the CI watcher.
+- Keep the story claimed (`status: in-progress`, `owner: ...`) after implementation push.
+- Report enough detail for the orchestrator to track CI and finish story-done.
+
+The orchestrator window owns final verification:
+- Periodically check `gh run list`.
+- Watch relevant CI runs when needed.
+- If CI fails, route the failure back to the owning worker with logs.
+- If CI is green, perform or request story-done/completion tracking.
+- Mark `sprint-status.yaml` `status: done`, clear `owner`, append `active.md`, commit `story-done <story-id>: <short title> COMPLETE`, push, and confirm CI green.
 
 ### Story Reservation Protocol
 
@@ -310,9 +322,9 @@ gh run watch <id> --exit-status
 gh run view <id> --log-failed   # if failed
 ```
 
-### CI green = your implementation is correct per the story contract.
+### CI green = final authority.
 
-If green → mark Done. If red → fix and re-push (don't skip / don't suppress).
+Workers use local Cargo tests for fast iteration and push after local pass. The orchestrator watches CI. If CI is green → mark Done. If red → route logs back to the owning worker, fix, and re-push (don't skip / don't suppress).
 
 ---
 
@@ -453,6 +465,6 @@ You are the implementation orchestrator for Lanes and Lies (Bevy 0.18 + Lightyea
 1. Read CODEX.md fully.
 2. Read production/sprint-status.yaml and production/session-state/active.md.
 3. Tell me where we are, what's next, and whether parallelizable.
-4. If I say "implement next" — first claim the next ready-for-dev story in sprint-status.yaml with status: in-progress and a unique owner, then read its full context (story + ADRs + GDD + control-manifest), implement it, write tests, commit, push, watch CI, mark Done, and clear owner.
+4. If I say "implement next" — first claim the next ready-for-dev story in sprint-status.yaml with status: in-progress and a unique owner, then read its full context (story + ADRs + GDD + control-manifest), implement it, write tests, run local Cargo tests from Developer PowerShell for VS 2026, commit, push, and hand off the CI run id/details to the orchestrator. Do not wait for GitHub Actions or mark Done unless explicitly assigned orchestrator/story-done duty.
 5. After every action, tell me: next concrete command, which window, parallelizable or not, how to know it worked.
 ```

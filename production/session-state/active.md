@@ -367,3 +367,8 @@ C:\Program Files\GitHub CLI\gh.exe
 - Scope: normal PowerShell still will not see MSVC `link.exe`; use Developer PowerShell for VS 2026 or CI for local verification.
 - Docs updated: `CODEX.md`, `docs/architecture/control-manifest.md`, `tests/evidence/lightyear-026-verification.md`.
 - Impact: ADR-012 Lightyear verification items 15-16 are no longer pending; GSS/RSM observer ordering can rely on the passing local test.
+
+## Session Extract - workflow update 2026-04-30
+- Worker Codex windows should use Developer PowerShell for VS 2026 for fast local Cargo iteration (`cargo test -p server ...`) before pushing.
+- Workers should push after local tests pass and hand off commit hash + CI run id/details; they do not need to wait on GitHub Actions by default.
+- The orchestrator window owns GitHub Actions monitoring, routing failures back to owners, and final `story-done` tracking once CI is green.
