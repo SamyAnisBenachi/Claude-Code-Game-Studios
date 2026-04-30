@@ -63,8 +63,8 @@ stories:
     name: "S1 Carryover: All Protocol Message Types"
     file: "production/epics/lightyear-protocol-verification/story-002-all-protocol-message-types.md"
     priority: nice-to-have
-    status: backlog
-    owner: ""
+    status: in-progress
+    owner: "codex-s2-06-protocol"
     estimate_days: 1.0
     blocker: "S1-05 Done"
     completed: ""
