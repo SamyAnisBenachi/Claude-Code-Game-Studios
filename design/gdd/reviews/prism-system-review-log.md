@@ -1,5 +1,15 @@
 # Review Log — Prism System
 
+## Review — 2026-04-30 (Pass 2) — Verdict: MAJOR REVISION NEEDED → Revised In-Session
+
+Scope signal: L
+Specialists: game-designer, systems-designer, economy-designer, network-programmer, qa-lead, creative-director (senior)
+Blocking items: 13 | Recommended: 10
+Summary: The pass-1 revision addressed 17 blockers but left three categories of problems. Specification: ghost `collected_this_round` counter reference, OQ3/OQ1 cross-reference error, and a states-table typo that flipped the phase invariant. Protocol: `PrismPresence` on unreliable channel with no reliable respawn signal (resolved by adding `S2CPrismRespawned`); server-rng.md audit table missing the Lane 3 hand-full conditional. Design: WALL counterplay timing unvalidated (resolved with numeric model + Combat Resolution pre-implementation gate); Lane 3 "deck-builder ramp" framing contradicted by Tuning Knobs analysis (framing corrected); hand-full silent drop punished successful WALL-farmers (resolved by adding `S2CPrismRewardDropped` notification). AC quality: PS-07 missing persistence sub-criterion, PS-17 audit artifact undefined, PS-20 using non-existent test primitive, PS-23 testing the wrong system's validator, PS-18/19 misclassified ADVISORY. OQ2 closed (S2CCardAcquired confirmed implemented in protocol.rs). OQ4 resolved via server-rng.md update. Two pre-implementation blockers remain: NP OQ1 (Lightyear unicast API) and OQ1 (hand-write API). Two new messages pending NP GDD registration: `S2CPrismRespawned` and `S2CPrismRewardDropped`.
+Prior verdict resolved: Partially — 13 of ~16 surviving issues from pass 1 addressed.
+
+---
+
 ## Review — 2026-04-30 — Verdict: MAJOR REVISION NEEDED → Revised In-Session
 
 Scope signal: L

@@ -439,3 +439,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Action: AC checkboxes checked off (16/16); Status and Completion Notes already correct; sprint-status already `done`
 - Tech debt logged: None
 - Next recommended: All Must Have stories done. Sprint close-out sequence: `/smoke-check sprint` → `/team-qa sprint` → `/gate-check`
+
+## Session Extract — /architecture-review 2026-04-30 Run 2
+- Verdict: CONCERNS — M1 PASS / Core M2/M3 CONCERNS / Presentation FAIL
+- ADRs reviewed: 18 (ADR-001..012 Accepted, ADR-013..018 Proposed)
+- Requirements: 170 total — 126 covered (74%), 9 partial (5%), 35 gaps (21%)
+- Blocking issues: 6 — B-1 ADR-015 H1 duplicate "ADR-014"; B-2 hand storage triple-named; B-3 EconomyState undefined (needs ADR-019); B-4 ADR-005/006 amendments missing; B-5 ADR-010 Prism row missing; B-6 ADR-013 template error
+- New TR-IDs registered: 0 (M2/M3 TRs documented but not yet appended to tr-registry.yaml; pending ADR Acceptance)
+- GDD revision flags: None (engine compatibility clean on new ADRs)
+- Top required ADRs: ADR-019 (Economy Resource), ADR-020 (Presentation Layer), ADR-006 amendment, ADR-005 amendment
+- Report: docs/architecture/architecture-review-2026-04-30b.md
+- Traceability index updated: docs/architecture/architecture-traceability.md

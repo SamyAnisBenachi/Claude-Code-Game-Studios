@@ -39,7 +39,7 @@ The Server-side RNG system is the single source of randomness for all non-determ
 | Card Data & Pool | Shop slot draw — class-side result | SHOP | 2 per slot: seed₁ = Phase 1 split roll (`gen_range(0..2)` → class), seed₂ = Phase 2 weighted card pick (Formula 1b) |
 | Card Data & Pool | Shop slot draw — neutral-side result | SHOP | 3 per slot: seed₁ = Phase 1 split roll (`gen_range(0..2)` → neutral), seed₂ = Phase 2 weighted family pick (Formula 1b), seed₃ = Phase 3 uniform card within family (`gen_range(0..family_size)`) |
 | Card Data & Pool | Auction card draw | SHOP | 1 per auction round per player |
-| Card Data & Pool | draw_random (prism Lane 3, draw effects) | RESOLUTION | 1 per draw event — uniform pick from filtered eligible subset (no weighting) |
+| Card Data & Pool | draw_random (prism Lane 3, draw effects) | RESOLUTION | 1 per draw event — uniform pick from filtered eligible subset (no weighting). **Exception:** 0 seeds consumed if the collecting player's hand is full at collection time (Prism Lane 3 only) — the hand-full pre-check in Prism System Rule 5 step 1 short-circuits before `next_seed()` is called. Replay tools must not assume a fixed 1 seed per Lane 3 `PrismCollected` event. |
 | Combat Resolution | Ecaflip dice trigger | RESOLUTION | 1 per trigger instance |
 | Combat Resolution | Ecaflip coin flip | RESOLUTION | 1 per flip instance |
 | Objective System | Fake objective reward (mana cap or card pick) | RESOLUTION | 1 per fake destroyed |
