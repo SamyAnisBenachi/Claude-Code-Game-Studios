@@ -4,6 +4,8 @@ use shared::card::CardId;
 use shared::protocol::{DraftPhase, GameOverReason};
 use shared::session::PlayerId;
 
+pub use crate::core::session::SessionReady;
+
 #[derive(Message, Clone, Debug)]
 pub struct DraftStarted {
     pub round: u32,
@@ -42,13 +44,6 @@ pub struct BroadcastPhaseChanged {
     pub round: u32,
     pub timer_ms: u32,
 }
-
-/// DELIVERY: Observer trigger per ADR-012, NOT a buffered Message - do not read
-/// via MessageReader; subscribe via app.observe(on_session_ready).
-///
-/// Bevy 0.18 exposes this as `App::add_observer(on_session_ready)`.
-#[derive(Event)]
-pub struct SessionReady;
 
 #[derive(Message, Clone, Debug)]
 pub struct AuctionSettled {

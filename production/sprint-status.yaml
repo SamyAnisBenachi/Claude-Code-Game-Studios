@@ -13,8 +13,8 @@ stories:
     name: "GSS Story 1: Lobby Scaffold"
     file: "production/epics/game-session-system/story-001-lobby-scaffold.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: in-progress
+    owner: "claude-s3-01-gss-lobby"
     estimate_days: 1.0
     blocker: ""
     completed: ""

@@ -1,12 +1,33 @@
+use std::collections::HashMap;
+
 use bevy::prelude::*;
 use server::core::rsm::{
     advance_phase, AuctionPhaseEntered, BroadcastPhaseChanged, DraftStarted, GameOverEmitted,
     PhaseAdvanceRequest, PlacementPhaseEntered, ResolutionPhaseEntered, RoundPhase, RoundState,
-    SessionConfig, ShopRefreshNeeded,
+    ShopRefreshNeeded,
 };
+use server::core::session::SessionConfig;
 use server::foundation::config::GameConfig;
-use shared::protocol::{DraftPhase, GameOverReason};
+use shared::card::ClassId;
+use shared::protocol::{DraftPhase, GameMode, GameOverReason};
 use shared::session::PlayerId;
+
+fn session_config(players: &[PlayerId]) -> SessionConfig {
+    let mut team_map = HashMap::new();
+    let mut class_map = HashMap::new();
+
+    for (index, player) in players.iter().copied().enumerate() {
+        team_map.insert(player, index as u8);
+        class_map.insert(player, ClassId::Iop);
+    }
+
+    SessionConfig {
+        mode: GameMode::OneVOne,
+        player_count: players.len() as u8,
+        team_map,
+        class_map,
+    }
+}
 
 fn test_app(phase: RoundPhase, round_number: u32) -> App {
     let mut app = App::new();
@@ -22,7 +43,7 @@ fn test_app(phase: RoundPhase, round_number: u32) -> App {
             round_number,
             ..RoundState::new()
         })
-        .insert_resource(SessionConfig::new(vec![PlayerId(1), PlayerId(2)]))
+        .insert_resource(session_config(&[PlayerId(1), PlayerId(2)]))
         .insert_resource(GameConfig(shared::config::GameConfig::default()))
         .add_systems(Update, advance_phase);
     app

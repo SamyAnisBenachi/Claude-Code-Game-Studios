@@ -2,7 +2,8 @@ use super::events::{
     AuctionPhaseEntered, BroadcastPhaseChanged, DraftStarted, GameOverEmitted,
     PlacementPhaseEntered, ResolutionPhaseEntered, ShopRefreshNeeded,
 };
-use super::state::{PhaseAdvanceRequest, RoundPhase, RoundState, SessionConfig};
+use super::state::{PhaseAdvanceRequest, RoundPhase, RoundState};
+use crate::core::session::SessionConfig;
 use bevy::prelude::*;
 use shared::protocol::DraftPhase;
 
@@ -167,8 +168,8 @@ fn emit_draft_entry(
     });
 
     if let Some(session) = session {
-        for player in &session.players {
-            shop_refresh.write(ShopRefreshNeeded { player: *player });
+        for player in session.players() {
+            shop_refresh.write(ShopRefreshNeeded { player });
         }
     }
 

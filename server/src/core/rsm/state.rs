@@ -48,17 +48,6 @@ impl RoundState {
 }
 
 #[derive(Resource, Clone, Debug)]
-pub struct SessionConfig {
-    pub players: Vec<PlayerId>,
-}
-
-impl SessionConfig {
-    pub fn new(players: Vec<PlayerId>) -> Self {
-        Self { players }
-    }
-}
-
-#[derive(Resource, Clone, Debug)]
 pub struct PhaseAdvanceRequest {
     pub expected_source: RoundPhase,
     pub game_over: Option<GameOverRequest>,

@@ -1,26 +1,48 @@
-// server/src/core/session/state.rs -- Session-scoped immutable configuration.
+// server/src/core/session/state.rs -- Lobby and session scaffold state.
 
 use std::collections::HashMap;
 
 use bevy::prelude::Resource;
 use shared::card::ClassId;
-use shared::protocol::GameMode;
 use shared::session::PlayerId;
+use uuid::Uuid;
 
 /// Team identifier assigned by the Game Session System at SessionReady.
 pub type TeamId = u8;
 
-/// Immutable session configuration inserted once when SessionReady fires.
-#[derive(Resource, Clone, Debug)]
-pub struct SessionConfig {
-    pub mode: GameMode,
-    pub player_count: u8,
-    pub team_map: HashMap<PlayerId, TeamId>,
-    pub class_map: HashMap<PlayerId, ClassId>,
+#[derive(Debug, Clone, PartialEq)]
+pub struct SessionSlot {
+    pub index: u8,
+    pub team: TeamId,
+    pub player: Option<PlayerId>,
+    pub class: Option<ClassId>,
 }
 
-impl SessionConfig {
-    pub fn players(&self) -> impl Iterator<Item = PlayerId> + '_ {
-        self.team_map.keys().copied()
-    }
+#[derive(Debug, Clone, PartialEq, Resource)]
+pub enum LobbyState {
+    LobbyWaiting,
+    LobbyReady,
+    GameActive,
+    LobbyCancelled,
+    GameOver,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SessionId(pub Uuid);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RoomCode(pub String);
+
+pub type SessionToken = [u8; 16];
+
+#[derive(Debug, Resource)]
+pub struct SessionSlots(pub Vec<SessionSlot>);
+
+#[derive(Debug, Resource)]
+pub struct ClassSelections(pub HashMap<PlayerId, ClassId>);
+
+#[derive(Debug, Clone, Copy, Resource)]
+pub struct LobbyDeadline(pub f64);
+
+#[derive(Debug, Resource)]
+pub struct LobbyHeartbeats(pub HashMap<PlayerId, f64>);
