@@ -1,6 +1,6 @@
 # Card Animations
 
-> **Status**: In Design
+> **Status**: Designed
 > **Author**: Sam + design-system skill
 > **Last Updated**: 2026-04-30
 > **Implements Pillar**: No idle spectating · Simple surface (animations as silent tutorial)
