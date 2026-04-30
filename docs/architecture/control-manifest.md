@@ -1,10 +1,10 @@
 # Control Manifest
 
 > **Engine**: Bevy 0.18 + Lightyear 0.26
-> **Last Updated**: 2026-04-30
-> **Manifest Version**: 2026-04-30
-> **ADRs Covered**: ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ADR-006, ADR-007, ADR-008, ADR-009, ADR-010, ADR-011, ADR-012
-> **ADRs Pending (Proposed — not yet covered)**: ADR-013, ADR-014, ADR-015, ADR-016, ADR-017, ADR-018
+> **Last Updated**: 2026-05-01
+> **Manifest Version**: 2026-05-01
+> **ADRs Covered**: ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ADR-006, ADR-007, ADR-008, ADR-009, ADR-010, ADR-011, ADR-012, ADR-017
+> **ADRs Pending (Proposed — not yet covered)**: ADR-013, ADR-014, ADR-015, ADR-016, ADR-018
 > **Status**: Active — regenerate with `/create-control-manifest` when ADRs change
 
 This manifest is a programmer's quick-reference extracted from all Accepted ADRs,
@@ -253,8 +253,23 @@ Cargo workspace structure, asset loading, session lifecycle*
 - **`ObjectiveCounters { real_destroyed, fake_destroyed }` is a server-side Resource. RSM reads it at RESOLUTION end for GAME_OVER evaluation.** — Architecture
 - **`[M2/M3]` Every new Feature system reacting to phase changes must subscribe to the relevant RSM event. Never observe `RoundState` directly.** — ADR-010
 
+**Combat Resolution (ADR-017)**
+
+- **`resolve_combat` is a Bevy exclusive system declared as `pub fn resolve_combat(world: &mut World)` and registered via `add_systems(Update, resolve_combat)`. Bevy 0.18 auto-detects `&mut World` as exclusive — no annotation needed.** — ADR-017
+- **On every invocation: read `MessageReader<BeginResolution>`. If no message is present, return immediately — zero ECS mutations, zero S2C sends.** — ADR-017
+- **S2CPlacementReveal MUST be enqueued via Lightyear BEFORE any sub-step 1 entity spawn or ECS mutation executes.** — ADR-017
+- **After all 6 sub-steps complete: enqueue `S2CResolutionEvent` via Lightyear FIRST, then write `ResolutionComplete` via `MessageWriter` SECOND. This ordering enforces the OQ-D delivery invariant (clients receive resolution log before phase change).** — ADR-017, ADR-008
+- **Internal iteration budget: maintain a monotonically increasing counter across all sub-step loops. If it exceeds 10,000, abort — emit `GameOver { loser: None, reason: Draw }` to the RSM event bus — and do NOT write `ResolutionComplete`.** — ADR-017
+- **`apply_combat_modifier_stack` is a pure function with signature `fn(attacker: &UnitSnapshot, defender: &UnitSnapshot) -> CombatResult`. No World access, no ECS queries. All BLOCKING modifier-stack CRs (CR-12 through CR-15, CR-42, CR-43) are unit-testable without any Bevy context.** — ADR-017
+- **API disambiguation: `BeginResolution` and `ResolutionComplete` use Bevy-internal `MessageWriter<T>`/`MessageReader<T>` (registered via `app.add_message::<T>()`). `S2CResolutionEvent` uses Lightyear `MessageSender<T>` (registered via Lightyear protocol plugin). Never confuse the two.** — ADR-017, ADR-008
+- **System schedule order: `resolve_combat` runs AFTER `placement_buffer_close_system` and AFTER the frame that enqueues `BeginResolution`, so `MessageReader<BeginResolution>` is populated when `resolve_combat` reads it.** — ADR-017, ADR-009
+
 ### Forbidden Approaches
 
+- **Never** call RSM functions directly from `resolve_combat` — communicate exclusively via `ResolutionComplete` (MessageWriter). — ADR-017
+- **Never** use streaming per-sub-step S2C delivery — `S2CResolutionEvent` is always a single batch sent after all 6 sub-steps complete. — ADR-017
+- **Never** write `ResolutionComplete` before `S2CResolutionEvent` is enqueued. — ADR-017
+- **Never** use `EventWriter<T>`/`EventReader<T>` inside `resolve_combat` — removed in Bevy 0.17+. — ADR-017, ADR-009
 - **Never** spawn ECS entity for a pending placement before `S2CPlacementReveal` is enqueued. Violation leaks hidden placement data via Lightyear replication. — ADR-007
 - **Never** split `S2CPlacementReveal` broadcast and entity spawn across two Bevy systems without an explicit `.before()` ordering constraint. — ADR-007
 - **Never** use `PlacementHidden` flag component workaround (silent-failure risk on visibility change). — ADR-007
@@ -265,6 +280,9 @@ Cargo workspace structure, asset loading, session lifecycle*
 
 ### Performance Guardrails
 
+- **`resolve_combat` idle exit (no `BeginResolution`): < 1ms.** — ADR-017
+- **`resolve_combat` full RESOLUTION batch (worst-case 5-lane contested round with keywords): ≤ 15ms.** — ADR-017, ADR-002
+- **`ResolutionLog` heap allocation: ~10 KB per resolution (100 events × 100 bytes). Reset each resolution — no accumulation across rounds.** — ADR-017
 - **`PendingPlacements` per-frame: < 0.1ms (at most 2 submissions per phase).** — ADR-007
 - **`close_placement_phase`: < 0.5ms (runs once per PLACEMENT phase, ~once per 10s).** — ADR-007
 - **`S2CObjectiveIdentities` payload: ~6 bytes per player at 5 lanes + header. Zero bandwidth concern.** — ADR-001

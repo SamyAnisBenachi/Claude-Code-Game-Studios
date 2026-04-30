@@ -4,12 +4,12 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Integration
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
 **GDD**: `design/gdd/combat-resolution.md`
-**Requirement**: `TR-CR-???` (TR-CR-001, TR-CR-014, TR-CR-015 partial — unregistered; register in `docs/architecture/tr-registry.yaml` before story-done)
+**Requirement**: TR-CR-013 (scaffold + idle-exit + iteration budget), TR-CR-014 (PlacementReveal timing), TR-CR-015 (ResolutionEvent ordering invariant), TR-CR-001 (sub-step 1 placement effects — partial)
 
 **ADR Governing Implementation**: ADR-017: Combat Resolution Execution Architecture
 **ADR Decision Summary**: `resolve_combat(world: &mut World)` is an exclusive Bevy system registered via `add_systems(Update, resolve_combat)`. It reads `MessageReader<BeginResolution>` (exits if none), executes sub-steps 1–6 as sequential function calls, writes `MessageWriter<ResolutionComplete>`, and broadcasts `S2CResolutionEvent` via Lightyear. The 60s RSM safety timeout and a 10,000-iteration internal budget guard against infinite loops.

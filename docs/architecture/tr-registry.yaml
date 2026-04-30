@@ -29,12 +29,15 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 3
-last_updated: "2026-04-30"
+version: 4
+last_updated: "2026-05-01"
 # Run 3 (/architecture-review 2026-04-30c): registered 80 new M2/M3 TRs covering
 # combat-resolution, card-acquisition, prism-system, keyword-system, card-animations,
 # board-rendering, hand-ui, shop-auction-ui, hud. TR-CS already populated by another
 # agent. Total: 80 M1 + 10 TR-AUC + 8 TR-CS + 80 new = 178 active TRs.
+# Run 4 (/story-readiness 2026-05-01): registered TR-CR-013, TR-CR-014, TR-CR-015
+# (combat-resolution scaffold, PlacementReveal timing, ResolutionEvent ordering invariant).
+# Total: 178 + 3 = 181 active TRs.
 
 requirements:
 
@@ -1084,6 +1087,33 @@ requirements:
     gdd_ac_ids: [CR-15]
     requirement: "Type advantage formula: ATK+1, AR+1 in bilateral matchup only; type_beats lookup from GameConfig"
     created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CR-013
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-41]
+    requirement: "resolve_combat exclusive system scaffold: reads MessageReader<BeginResolution> (exits immediately if absent with zero ECS mutations); executes sub-steps 1–6 as sequential function calls; writes MessageWriter<ResolutionComplete> only after S2CResolutionEvent is enqueued; internal iteration counter aborts at 10,000 and emits GameOver{Draw} without writing ResolutionComplete"
+    created: 2026-05-01
+    revised: ""
+    status: active
+
+  - id: TR-CR-014
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-30]
+    requirement: "S2CPlacementReveal is enqueued on ReliableChannel before any sub-step 1 entity spawn or ECS mutation; enforcement is by execution order within resolve_combat, not by Bevy system ordering; empty PendingPlacements still sends PlacementReveal (empty payload)"
+    created: 2026-05-01
+    revised: ""
+    status: active
+
+  - id: TR-CR-015
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-32]
+    requirement: "S2CResolutionEvent ordering invariant: ResolutionEvent is enqueued before ResolutionComplete is written; RSM can only enqueue S2CPhaseChanged(DRAFT_SHOP) after receiving ResolutionComplete; clients are guaranteed to receive the full resolution log before phase change"
+    created: 2026-05-01
     revised: ""
     status: active
 
