@@ -517,6 +517,28 @@ api_decisions:
     added: "2026-04-30"
     revised: ""
 
+  - purpose: keyword_timing_trigger_dispatch
+    status: active
+    api: "Global Bevy Observers registered in KeywordPlugin::build() via app.observe() for 5 timing triggers (APPEARANCE: UnitAppeared, DEATH: UnitDied, FINAL BLOW: FinalBlowDealt, START OF TURN: StartOfTurnTriggered, END OF TURN: EndOfTurnTriggered). COUNTERATTACK and INJURED use direct inline dispatch within resolve_combat. Observer handlers use Trigger<T> param type (not On<T>)."
+    not: "#[derive(Message)] + MessageWriter/Reader for timing triggers (buffered, frame-delayed — incompatible with synchronous RESOLUTION sub-step execution); entity-scoped observers registered at spawn time (world.entity_mut().observe() per unit); standalone Bevy systems for RESOLUTION-phase keyword effects (banned by ADR-014 forbidden pattern class_effect_as_standalone_bevy_system)"
+    adr: docs/architecture/adr-022-keyword-observer-architecture.md
+    reason: "Engine reference (current-best-practices.md) explicitly recommends Observers for APPEARANCE/DEATH/FINAL BLOW. Global observers with a keyword guard check are simpler than entity-scoped per-spawn registration. COUNTERATTACK requires a proximity precondition check against live board state before dispatch — inline conditional is more explicit. INJURED is a state scan, not a per-event trigger."
+    referenced_by:
+      - docs/architecture/adr-022-keyword-observer-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
+  - purpose: death_chain_dispatch
+    status: active
+    api: "Explicit ChainDeathBuffer (Res<ChainDeathBuffer>, VecDeque<(Entity, Option<Entity>)>) seeded with lane-ordered initial deaths at SS4 start; drained by resolve_combat's loop calling world.trigger_targets(UnitDied, entity) per entry. on_unit_died observer pushes chain deaths to ChainDeathBuffer when a DEATH effect reduces additional units to 0 HP."
+    not: "Recursive world.trigger_targets() calls inside the on_unit_died observer handler (borrow semantics unverified in Bevy 0.18 — Verification Required item 1 in ADR-022); any approach that defers DEATH chain processing to a subsequent frame"
+    adr: docs/architecture/adr-022-keyword-observer-architecture.md
+    reason: "GDD requires DEATH chains to be strictly sequential (A resolves completely before B fires). Explicit queue enforces lane order for simultaneous initial deaths, is always safe under Rust borrow semantics (sequential borrows in the loop body), and directly expresses the GDD contract without relying on unverified recursive trigger behaviour."
+    referenced_by:
+      - docs/architecture/adr-022-keyword-observer-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
 # Example:
 #
 # api_decisions:
@@ -652,6 +674,20 @@ forbidden_patterns:
     description: "Board content — unit sprites, objective sprites, prism tokens, HP bars, spawn range indicators — must NEVER be implemented as bevy_ui Node entities. All board content uses world-space Sprite + Transform (Bevy 0.18 Required Components API). The hand drag-sprite preview is a bevy_ui Node, not a world-space Sprite."
     why: "Board content requires world-space coordinate math (BoardLayout.cell_to_world) and TextureAtlas sprite batching. bevy_ui Nodes have no concept of lane/cell world coordinates and break the batching model. Additionally, bevy_ui always renders above world-space content in a separate pass — placing board content in bevy_ui would invert the intended z-ordering (board behind UI panels)."
     adr: docs/architecture/adr-021-presentation-layer-architecture.md
+    added: "2026-04-30"
+
+  - pattern: keyword_timing_trigger_as_message
+    status: active
+    description: "Keyword timing triggers (APPEARANCE, DEATH, FINAL BLOW, START OF TURN, END OF TURN) must NOT use #[derive(Message)] + MessageWriter<T> / MessageReader<T>. They must use #[derive(Event)] + world.trigger_targets() / commands.trigger_targets() (Observer pattern)."
+    why: "Bevy Messages are buffered and frame-delayed — MessageReader<T> is polled in the next system schedule frame. RESOLUTION timing triggers must fire synchronously within resolve_combat's single frame. A Message-based timing trigger would silently defer the effect to the next frame, breaking the sub-step ordering guarantees that KW-001 through KW-010b depend on."
+    adr: docs/architecture/adr-022-keyword-observer-architecture.md
+    added: "2026-04-30"
+
+  - pattern: observer_guard_omission
+    status: active
+    description: "Every keyword Observer handler (on_unit_appeared, on_unit_died, on_final_blow_dealt, on_start_of_turn, on_end_of_turn) MUST check keyword presence on the triggered entity as its FIRST operation and return early if the entity lacks the relevant keyword."
+    why: "Global observers (registered via app.observe()) fire for ALL entities that receive the trigger, regardless of keyword state. Without the guard, a unit without the DEATH keyword would have apply_death_trigger() called on it whenever any UnitDied event fires — silently applying no effect but wasting CPU and potentially emitting spurious KeywordTriggered messages. The guard is not enforced by the type system; it must be a code review gate."
+    adr: docs/architecture/adr-022-keyword-observer-architecture.md
     added: "2026-04-30"
 
 # Example:
