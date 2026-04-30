@@ -197,7 +197,7 @@ STAGING → HIDDEN           on RSM: PLACEMENT → RESOLUTION (timer expiry or a
 
 | System | Direction | What flows |
 |---|---|---|
-| **Network Protocol** | NP → Hand UI | `S2CDraftOffering` (9 card IDs for grid), `S2CCardAcquired` (hand additions on purchase), `S2CPhaseChanged` (drives state transitions), `S2CGameSnapshot` (reconnect rebuild), `S2CGoldUpdate` (resolves `C2SActivateCard` activation lock per Rule 5c) |
+| **Network Protocol** | NP → Hand UI | `S2CDraftOffering` (9 card IDs for grid), `S2CCardAcquired` (hand additions on purchase), `S2CPhaseChanged` (drives state transitions), `S2CGameSnapshot` (reconnect rebuild), `S2CGoldUpdate` (resolves `C2SActivateCard` activation lock per Rule 5c), `S2CActivationRejected` (immediate unlock on server discard — **pending NP registration, see OQ8**) |
 | **Network Protocol** | Hand UI → NP | `C2SPurchaseCard` (DRAFT_INITIAL grid buy), `C2SActivateCard` (DRAFT_SHOP Instant play), `C2SSubmitPlacement` (PLACEMENT batch commit) |
 | **Round State Machine** | RSM → Hand UI | Phase transitions via `S2CPhaseChanged` drive Hand UI state machine (Rule 3) |
 | **Board Rendering** | Hand UI → Board Rendering | `GhostPlacementChanged { target: Option<PlayTarget>, card_id: Option<CardId> }` intra-client message. `target` carries the full `PlayTarget` variant (BoardCell, TargetUnit, TargetObj, LaneWide, Instant) so Board Rendering can render variant-specific previews. `target: None` clears the ghost for that `card_id`. `target: Some(Instant)` is a no-op for Board Rendering (no board ghost) but is sent for protocol completeness. |
@@ -308,9 +308,7 @@ This formula is owned by **Board Rendering** via the `BoardLayout` resource. Han
 
 - **If client-side pre-validation fails on Submit press (Rule 10):** Submit does NOT lock; an inline Crimson error label appears beneath the button (e.g. `"Reserve overdrawn"`); no `C2SSubmitPlacement` is sent. The player must un-stage or adjust reserve splits to bring the batch within bounds, then re-press Submit. There is no auto-fix — the player resolves the conflict explicitly.
 
-- **If staging a new card forces a previously staged card's `reserve_amount` to auto-decrement** (per Rule 13 clamp recompute): the affected card's reserve strip flashes Crimson `#9C2000` for 200 ms to signal the auto-adjustment, and its `[N / cost]` display updates to the new value. The new card stages normally. The player may inspect the change and re-adjust manually.
-
-- **If the player presses `[ + ]` on a reserve strip when `player.reserve_mana` is fully committed across all staged cards:** the `[ + ]` button is already disabled (greyed out) per Rule 13 — the click is not processed. No state change; no error label.
+- **If the player presses `[ + ]` on a reserve strip when `player.reserve_mana` is fully committed across all staged cards:** the `[ + ]` button is already `Disabled` per Rule 13 — the click is not processed. No state change; no error label. The player must first press `[ − ]` on another staged card to free reserve before incrementing this one.
 
 ## Dependencies
 
@@ -342,7 +340,7 @@ This formula is owned by **Board Rendering** via the `BoardLayout` resource. Han
 | `placement_urgency_threshold_seconds` | 5 s | 3–8 s | Seconds remaining on placement timer when the timer shifts to urgent visual state. Must be < placement_timer_seconds (10s). At 3s: very short warning window. At 8s: player is always in urgent state; defeats purpose. | `GameConfig` |
 | `hand_full_notification_duration_ms` | 2000 ms | 1000–4000 ms | How long the "Hand full" notification shows before auto-dismissing during DRAFT_INITIAL. | Client render config |
 | `placement_animation_cap_ms` | 250 ms | — | Hard cap on any animation that runs during PLACEMENT (drag lift, snap-back). No placement-window animation may exceed this value — timer seconds are too valuable to consume with motion. Not independently tunable; enforced in implementation. | Fixed code constant |
-| `purchase_timeout_ms` | 3000 ms | 2000–5000 ms | Maximum time a DRAFT_INITIAL grid slot stays in "pending" state after `C2SPurchaseCard` before reverting to its pre-click state. Guards against narrow race conditions where a server response is dropped without a `S2CCardAcquired` or sold-out signal. See Rule 14. | Client render config |
+| `purchase_timeout_ms` | 3000 ms | 2000–5000 ms | Maximum time a DRAFT_INITIAL grid slot stays in "pending" state after `C2SPurchaseCard` before reverting to its pre-click state. Covers all non-arrival cases: dropped response, phase transition, or pool exhaustion (no sold-out signal exists). See Rule 14. | Client render config |
 | `activate_timeout_ms` | 3000 ms | 2000–5000 ms | Maximum time a hand card slot stays in "activation locked" state after `C2SActivateCard` before reverting. Guards against latency-induced double-click message storms. See Rule 5c. | Client render config |
 | `max_concurrent_animators` | 24 | — | Worst-case ceiling on concurrent `bevy_tweening::Animator<T>` components active during PLACEMENT (10 fan ghost transitions + drag lift + timer pulse + Instant plate pulse + up to ~10 board ghost transitions in Board Rendering). Exceeding this number indicates an unintended cascade — investigate before shipping. Not enforced at runtime; advisory ceiling for performance review. | Code constant (advisory) |
 
@@ -469,7 +467,7 @@ Hand UI is itself a UI system. This section documents the interaction surfaces t
 | Instant card drop zone | PLACEMENT | Fan plate highlight, drop confirmation |
 | PLACEMENT timer display | PLACEMENT | Timer position, urgency visual states |
 | "Hand full" notification | DRAFT_INITIAL | Notification placement, duration, dismissal |
-| Reserve Mana Split strip | PLACEMENT | Per-staged-card +/- control anatomy, disabled states, auto-adjust flash, position relative to fan ghost |
+| Reserve Mana Split strip | PLACEMENT | Per-staged-card +/- control anatomy, disabled states, position relative to fan ghost |
 | Submit pre-validation error | PLACEMENT | Inline error label position beneath Submit button, error copy variants ("Reserve overdrawn", "Mana overdrawn", "Out-of-range placement") |
 
 ### Input Model
@@ -491,7 +489,7 @@ Hand UI is itself a UI system. This section documents the interaction surfaces t
 
 ## Acceptance Criteria
 
-All criteria BLOCKING unless noted ADVISORY. Where an AC asserts visual properties (colour, chroma, opacity, animation), the BLOCKING gate is the underlying *state component* (e.g. `FanSlotState::Ghost`, `GridSlotState::SoldOut`, `NoValidTargetsOverlay` marker entity present); the visual rendering of that state is verified by lead sign-off as ADVISORY. This is the convention for every AC below that mixes state and visual assertions.
+All criteria BLOCKING unless noted ADVISORY. Where an AC asserts visual properties (colour, chroma, opacity, animation), the BLOCKING gate is the underlying *state component* (e.g. `FanSlotState::Ghost`, `GridSlotState::Pending`, `NoValidTargetsOverlay` marker entity present); the visual rendering of that state is verified by lead sign-off as ADVISORY. This is the convention for every AC below that mixes state and visual assertions.
 
 ### Hand Fan Display
 
@@ -519,7 +517,7 @@ All criteria BLOCKING unless noted ADVISORY. Where an AC asserts visual properti
 | HU-08 | **GIVEN** the player clicks a grid card during DRAFT_INITIAL, **WHEN** `S2CCardAcquired` confirms the purchase, **THEN** (a) the grid slot's `Visibility` becomes `Hidden` within one tick of receipt; (b) the corresponding fan slot becomes `Visible` and an `Animator<Transform>` interpolating to the computed fan position is attached; (c) after advancing virtual time by `card_draw_animation_ms`, the fan slot's `Transform.translation` equals the formula-computed fan position. | BLOCKING |
 | HU-09 | **GIVEN** the 10th card has been added to the hand during DRAFT_INITIAL, **WHEN** `S2CCardAcquired` delivers the 10th card, **THEN** within the same `App::update()` tick: (a) all remaining visible grid slots have a `GridSlotState::HandFullLocked` marker component; (b) clicks on locked grid slots produce no `C2SPurchaseCard` message. The 30% chroma / Ink Blue overlay rendering is ADVISORY. | BLOCKING |
 | HU-10 | **GIVEN** the player clicks a grid card and no `S2CCardAcquired` arrives (pool exhausted or server drop), **WHEN** `purchase_timeout_ms` (3000 ms) elapses, **THEN** (a) `player.gold` resource is unchanged; (b) the slot reverts from `GridSlotState::Pending` to `GridSlotState::Available`; (c) clicks on the slot are accepted again (player may retry). | BLOCKING |
-| HU-10b | **GIVEN** the player clicks a grid card and neither `S2CCardAcquired` nor a sold-out signal arrives within `purchase_timeout_ms`, **THEN** the slot reverts from pending state to its pre-click state and clicks are accepted again. | BLOCKING |
+| HU-10b | **GIVEN** the player clicks a grid card and `S2CCardAcquired` does not arrive within `purchase_timeout_ms` (simulating a dropped server response), **THEN** the slot reverts from `GridSlotState::Pending` to `GridSlotState::Available` and clicks are accepted again. (This is now identical to HU-10 by design — both non-arrival paths produce the same revert outcome.) | BLOCKING |
 | HU-10c | **GIVEN** the hand reaches 10 cards (locking grid) AND a previously clicked grid card is still in `GridSlotState::Pending` (purchase in flight), **THEN** the slot's state becomes `GridSlotState::HandFullLocked` (hand-full lock takes precedence — click suppressed, pending state cleared). | BLOCKING |
 
 ### PLACEMENT — Drag and Stage

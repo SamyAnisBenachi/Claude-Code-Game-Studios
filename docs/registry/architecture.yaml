@@ -568,6 +568,20 @@ forbidden_patterns:
     adr: docs/architecture/adr-019-economy-resource-architecture.md
     added: "2026-04-30"
 
+  - pattern: direct_board_position_write
+    status: active
+    description: "Code must NOT assign directly to BoardPosition fields (bp.lane = x, bp.cell = x) outside server/src/feature/board/api.rs. All BoardPosition mutations must go through move_unit() or change_lane_unit() in board/api.rs."
+    why: "Direct field assignment updates the entity component but not the BoardState.position_index HashMap. The mismatch causes resolve_combat to issue spatial queries against a stale index, returning wrong entities for a given (lane, cell). This is a silent correctness bug with no compile-time guard."
+    adr: docs/architecture/adr-020-board-lane-state-architecture.md
+    added: "2026-04-30"
+
+  - pattern: unit_entity_replicated_before_placement_reveal
+    status: active
+    description: "Lightyear ReplicateTo must NOT be added to unit entities during or before the sub-step 1 spawn. ReplicateTo is added ONLY after S2CPlacementReveal is enqueued on the ReliableChannel."
+    why: "ADR-007 establishes that the simultaneous-reveal invariant requires opponent placement data to be invisible until both players' placements are committed. Adding ReplicateTo before the reveal send allows Lightyear to propagate unit components to both clients before the reveal fires, breaking the hidden-information mechanic."
+    adr: docs/architecture/adr-020-board-lane-state-architecture.md
+    added: "2026-04-30"
+
 # Example:
 #
 # forbidden_patterns:
