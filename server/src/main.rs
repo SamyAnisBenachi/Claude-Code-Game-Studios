@@ -108,6 +108,7 @@ fn main() {
 
     // Core — Round State Machine scaffold (ADR-009/ADR-010).
     app.add_plugins(core::rsm::RsmPlugin);
+    app.add_plugins(core::economy::EconomyPlugin);
 
     // TODO(S1-05 Lightyear spike): register_protocol(&mut app) once API is verified.
 

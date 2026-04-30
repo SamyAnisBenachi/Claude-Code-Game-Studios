@@ -377,3 +377,12 @@ C:\Program Files\GitHub CLI\gh.exe
 - Sprint 2 must-haves S2-01, S2-02, and S2-03 are Done with green CI.
 - Unblocked Sprint 2 pull-forward stories are now claimable in `production/sprint-status.yaml`: S2-04 Card Pool Refresh Shop Slot Variants, S2-07 RSM advance_phase + F2 Ordering, and S2-08 Economy Initialisation + Draft Subscriber.
 - Workers may use `implement next` in separate Codex windows; each worker must claim exactly one ready story, run local Cargo tests from Developer PowerShell for VS 2026, commit/push its own files, and hand off CI details to the orchestrator.
+
+## Session Extract - /dev-story 2026-04-30
+- Story: `production/epics/economy-system/story-002-initialisation-draft-subscriber.md` - Initialisation & DraftStarted Subscriber
+- Owner: `codex-s2-08-economy`
+- Files changed: `server/src/core/economy/api.rs`, `server/src/core/economy/mod.rs`, `server/src/core/economy/plugin.rs`, `server/src/core/economy/system.rs`, `server/src/core/session/mod.rs`, `server/src/core/session/state.rs`, `server/src/core/mod.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/economy_draft_subscriber_test.rs`, `server/tests/economy_round_trace_test.rs`, `tests/unit/economy/draft_subscriber_test.rs`, `tests/integration/economy/round_trace_test.rs`
+- Test written: `server/tests/economy_draft_subscriber_test.rs` (7 tests) and `server/tests/economy_round_trace_test.rs` (1 test); evidence mappings at `tests/unit/economy/draft_subscriber_test.rs` and `tests/integration/economy/round_trace_test.rs`
+- Verification: `CARGO_INCREMENTAL=0 cargo test -p server --test economy_draft_subscriber_test --test economy_round_trace_test --verbose` -> 8 passed; cargo global cache last-use warning only
+- Blockers: None for S2-08 local tests. Scheduling `.after(advance_phase)` remains dependent on S2-07's in-progress RSM transition symbol landing.
+- Next: `/code-review server/src/core/economy/system.rs server/src/core/economy/plugin.rs server/src/core/session/state.rs server/tests/economy_draft_subscriber_test.rs server/tests/economy_round_trace_test.rs` then `/story-done production/epics/economy-system/story-002-initialisation-draft-subscriber.md` after CI green
