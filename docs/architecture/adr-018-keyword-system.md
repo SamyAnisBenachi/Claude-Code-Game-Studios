@@ -1,4 +1,4 @@
-# ADR-014: Keyword System — ECS State Architecture, Module Boundary, and Protocol Schema
+# ADR-018: Keyword System — ECS State Architecture, Module Boundary, and Protocol Schema
 
 ## Status
 Proposed

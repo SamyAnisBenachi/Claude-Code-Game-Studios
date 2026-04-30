@@ -101,6 +101,17 @@ state_ownership:
     added: "2026-04-30"
     revised: ""
 
+  - state: unit_keyword_state
+    status: active
+    owner_system: keyword-system
+    adr: docs/architecture/adr-018-keyword-system.md
+    interface: "UnitKeywordState component (read-only via Query<&UnitKeywordState> from all other systems; write via Query<&mut UnitKeywordState> in keyword module state_eval systems and keyword::effects::* functions called from within resolve_combat ONLY)"
+    write_access: keyword::state_eval systems (leader_snapshot_system, eval_outnumbered_system, bodyguard_cleanup_system) + keyword::effects::* called from resolve_combat exclusive system
+    referenced_by:
+      - docs/architecture/adr-018-keyword-system.md
+    added: "2026-04-30"
+    revised: ""
+
 # Example:
 #
 # state_ownership:
@@ -342,6 +353,39 @@ api_decisions:
     added: "2026-04-30"
     revised: ""
 
+  - purpose: keyword_state_storage
+    status: active
+    api: "Monolithic UnitKeywordState component on each board unit entity — all 6 persistent states (shield_active, stun_active, silenced_until_round, leader_bonus_atk, leader_bonus_hp, bodyguard_protects, outnumbered_active) co-located in one struct"
+    not: "Individual components per keyword state (ShieldActive, StunState, SilencedState, LeaderBonus, BodyguardBond as separate optional components)"
+    adr: docs/architecture/adr-018-keyword-system.md
+    reason: "Up to 10 units × 6 states × 12 sub-step boundaries = up to 720 archetype migrations per RESOLUTION round with individual components. Monolithic struct has O(1) component access with no structural changes. Direct 1:1 mapping to UnitBoardState network fields simplifies snapshot serialization."
+    referenced_by:
+      - docs/architecture/adr-018-keyword-system.md
+    added: "2026-04-30"
+    revised: ""
+
+  - purpose: bodyguard_bond_storage
+    status: active
+    api: "Option<Entity> field (bodyguard_protects) in UnitKeywordState on the BODYGUARD entity — typed Bevy Entity handle, stable across CHANGE LANE"
+    not: "Lane-scoped or cell-scoped attribute on any board/lane resource; separate BodyguardBond component; EntityId (protocol-crate u32) in server-side ECS storage"
+    adr: docs/architecture/adr-018-keyword-system.md
+    reason: "GDD explicitly forbids lane-scoped storage — bond must survive CHANGE LANE. Bevy Entity handles are stable within one ECS World session across position changes. Separate component adds dual-write complexity for marginal query ergonomics. protocol/ EntityId must never appear in server-side ECS types."
+    referenced_by:
+      - docs/architecture/adr-018-keyword-system.md
+    added: "2026-04-30"
+    revised: ""
+
+  - purpose: serde_keyword_enum
+    status: active
+    api: "#[serde(tag = \"kw\", content = \"val\")] adjacent tagging on the Keyword enum in shared/src/card.rs"
+    not: "#[serde(tag = \"kw\")] internal tagging (fails at runtime for Simple(SimpleKeyword) newtype when inner type serializes as a scalar); #[serde(untagged)] (ambiguous when multiple struct variants present)"
+    adr: docs/architecture/adr-018-keyword-system.md
+    reason: "Internal tagging requires all variant inner types to serialize as maps. SimpleKeyword unit variants serialize as plain strings — the internal tagger panics at runtime trying to merge the tag field into a non-map. Adjacent tagging handles unit, newtype, and struct variants uniformly."
+    referenced_by:
+      - docs/architecture/adr-018-keyword-system.md
+    added: "2026-04-30"
+    revised: ""
+
 # Example:
 #
 # api_decisions:
@@ -428,6 +472,13 @@ forbidden_patterns:
     description: "Class-specific card effects (Gelure, Xelorium, Rollback, Sang Méprise, Punition, Seed walk-over, Dé du Chateux, etc.) must NOT be registered as standalone Bevy systems or use buffered MessageWriter<T> within a RESOLUTION tick."
     why: "PlayerId is plain data, not a Bevy SystemParam — standalone systems cannot receive per-player context as function arguments. Buffered messages are frame-delayed and would decouple RESOLUTION sub-steps that must execute in the same frame (Xelorium at sub-step 1, Rollback at sub-step 2). All class effects are plain Rust helper functions called from within resolve_combat."
     adr: docs/architecture/adr-014-class-system-architecture.md
+    added: "2026-04-30"
+
+  - pattern: keyword_state_as_lane_attribute
+    status: active
+    description: "BODYGUARD bond and all keyword state must NOT be stored as lane-scoped or cell-scoped attributes on any board/lane resource. Keyword state belongs on the unit entity's UnitKeywordState component."
+    why: "Lane-scoped storage silently orphans the BODYGUARD bond when the protected unit executes CHANGE LANE — the entity reference is lost. GDD explicitly forbids this: 'BODYGUARD protection MUST be stored as a unit-to-unit entity bond, NOT as a lane-scoped attribute.' Entity references in UnitKeywordState are stable across position changes."
+    adr: docs/architecture/adr-018-keyword-system.md
     added: "2026-04-30"
 
 # Example:
