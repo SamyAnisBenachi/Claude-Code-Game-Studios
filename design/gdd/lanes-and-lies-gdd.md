@@ -25,6 +25,8 @@ The player should feel like a **cunning tactician in an information war** — ne
 3. **"My deck came online."** — The TFT weighting handed you a third Gobball that triggered your LEADER synergy and turned a losing lane into a wall. Archetype building should feel satisfying without being mandatory.
 4. **"Zero idle time."** — Even when the opponent is resolving their turn, you are watching the board, watching their gold, watching the price rise on the auction card. Spectating should feel like active intelligence gathering.
 
+**How the three system fantasies layer into this single identity:** The **auction** is the singular tense moment — a 20-second negotiation that punctuates every third round and crystallises the "I read them" feeling into a concrete gold stake. The **class system** is the silent rhythm underlying every other round — your Xelor reserve growing, your Sadida seeds spreading, your Sacrier threatening sacrifice — an authorship layer that makes "my deck came online" feel personal and repeatable. The **prism system** is the standing income that funds both: a persistent spatial commitment (hold lane 2+4 for reserve, hold lane 1+5 for strike power) that makes "I fooled them" extend beyond fake objectives to the entire economic map. All three sub-fantasies serve the same top-level identity: a cunning tactician who out-reads their opponent across multiple timescales simultaneously.
+
 ## Game Pillars
 
 | Pillar | Definition | Design Test |

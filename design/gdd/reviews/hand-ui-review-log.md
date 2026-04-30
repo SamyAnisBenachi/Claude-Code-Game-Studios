@@ -1,5 +1,14 @@
 # Review Log — Hand UI
 
+## Review — 2026-04-30 (R3) — Verdict: APPROVED
+Scope signal: L
+Specialists: lean (no specialist agents)
+Blocking items: 0 | Recommended: 4 (all resolved in-session)
+Summary: R3 lean re-review found no new blocking items. Four minor recommended fixes applied: HU-10/HU-10b duplicate ACs merged into one; S2CGoldUpdate-as-resolver assumption made explicit in Rule 5c (guarded for future gold-neutral instant cards); state machine annotated to close the GRID→PASSIVE_LOCKED gap; BoardLayout initialization constraint added to Dependencies. Document is implementation-ready; OQ5–OQ8 are pre-implementation gates, not design gaps.
+Prior verdict resolved: Yes — R2 NEEDS REVISION fully resolved.
+
+---
+
 ## Review — 2026-04-30 (R2) — Verdict: NEEDS REVISION → revised in-session
 
 Scope signal: L (multi-system integration; 3 formulas; bidirectional Board Rendering interface; NP protocol dependencies)

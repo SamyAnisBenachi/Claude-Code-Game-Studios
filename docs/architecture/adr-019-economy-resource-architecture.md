@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -18,7 +18,7 @@ Proposed
 | **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, `docs/engine-reference/bevy/breaking-changes.md`, `docs/engine-reference/bevy/deprecated-apis.md`, ADR-002, ADR-009, ADR-010, ADR-013, ADR-017 |
 | **Post-Cutoff APIs Used** | `#[derive(Resource)]` (stable); `Res<T>` / `ResMut<T>` (stable); `MessageReader<T>` / `MessageWriter<T>` (Bevy 0.17+ — replaces removed `EventReader`/`EventWriter`); `#[derive(Message)]` + `app.add_message::<T>()` (Bevy 0.17+); `On<SessionReady>` Observer trigger (Bevy 0.17+) |
 | **Post-Cutoff APIs NOT Used** | `EventWriter<T>`, `EventReader<T>`, `Events<T>` — these no longer exist in Bevy 0.17+. Do not use them. |
-| **Verification Required** | (1) `MessageReader<ResolutionComplete>` per-reader cursor: confirmed — each `MessageReader<T>` maintains an independent cursor (same model as the old `EventReader`); two independent readers in the same frame both observe the message without loss. (2) **UNRESOLVED — BLOCKING for Accepted status**: Confirm the correct pattern for emitting a `#[derive(Message)]` type from an exclusive system (`fn resolve_combat(world: &mut World)`). `MessageWriter<T>` is a system parameter and may not be directly accessible as a named `Resource` via `world.resource_mut()`. Candidate resolution: use a `PendingResolutionComplete(bool)` buffer resource set by `resolve_combat`, drained by a thin regular system using `MessageWriter<ResolutionComplete>` in the same frame. Must be verified against Bevy 0.18 engine-reference before this ADR moves to Accepted. (3) Confirm `EconomySystemSet::ResolutionEnd.before(RsmSystemSet::InputReader)` (SystemSet form, not function reference) prevents the RSM from transitioning to DRAFT before the interest snapshot is captured. |
+| **Verification Required** | (1) `MessageReader<ResolutionComplete>` per-reader cursor: confirmed — each `MessageReader<T>` maintains an independent cursor (same model as the old `EventReader`); two independent readers in the same frame both observe the message without loss. (2) **RESOLVED**: `MessageWriter<T>` is a Bevy system parameter — cannot be accessed via `world.resource_mut()` from an exclusive system. Accepted pattern: `resolve_combat` sets `world.resource_mut::<PendingResolutionComplete>().0 = true` at the end of sub-step 6. A thin regular system `drain_pending_resolution_complete` runs in `CombatSystemSet::PostResolution` (before `EconomySystemSet::ResolutionEnd`) and emits `MessageWriter<ResolutionComplete>` when the flag is set. All primitives confirmed in engine-reference docs — `world.resource_mut()` is a stable world API; `MessageWriter<T>` as a regular system param is the documented 0.17+ pattern. Engine specialist validated 2026-04-30. (3) Confirm `EconomySystemSet::ResolutionEnd.before(RsmSystemSet::InputReader)` (SystemSet form, not function reference) prevents the RSM from transitioning to DRAFT before the interest snapshot is captured. |
 
 ## ADR Dependencies
 
@@ -116,9 +116,12 @@ FRAME SEQUENCE — RESOLUTION ROUND N
 │      sub-step 4: kills → api::apply_gold_award (per kill)    │
 │      sub-step 5: objectives → api::apply_gold_award (per obj)│
 │      sub-step 6: cleanup                                     │
-│      writes MessageWriter<ResolutionComplete>                │
+│      sets PendingResolutionComplete(true)                    │
 │                                                              │
 │  Frame N+1 (regular Update, in order):                       │
+│    0. CombatSystemSet::PostResolution:                       │
+│         drain_pending_resolution_complete                    │
+│           → MessageWriter<ResolutionComplete>.write(...)     │
 │    1. EconomySystemSet::ResolutionEnd:                       │
 │         on_resolution_complete reads ResolutionComplete      │
 │           → discard_current_mana per player                  │
@@ -162,6 +165,13 @@ pub struct PlayerEconomies(pub HashMap<PlayerId, PlayerEconomy>);
 /// Consumed at the next DRAFT start to compute interest.
 #[derive(Resource, Default)]
 pub struct InterestSnapshots(pub HashMap<PlayerId, u32>);
+
+/// One-frame signal buffer set by resolve_combat (exclusive system) when all 6
+/// sub-steps complete. Drained by drain_pending_resolution_complete (regular system)
+/// which emits MessageWriter<ResolutionComplete> to the Bevy message bus.
+/// Registered via app.init_resource::<PendingResolutionComplete>() in the combat plugin.
+#[derive(Resource, Default)]
+pub struct PendingResolutionComplete(pub bool);
 ```
 
 ```rust
@@ -245,6 +255,30 @@ app.add_systems(
 ```
 
 ```rust
+// server/src/core/combat/system.rs — drain bridge between exclusive resolve_combat and message bus
+
+/// Drains the PendingResolutionComplete flag set by resolve_combat and emits
+/// MessageWriter<ResolutionComplete>. Bridges the exclusive-system/system-param gap:
+/// MessageWriter<T> is a system parameter that cannot be used directly in an exclusive system.
+pub fn drain_pending_resolution_complete(
+    mut pending: ResMut<PendingResolutionComplete>,
+    mut writer: MessageWriter<ResolutionComplete>,
+) {
+    if std::mem::take(&mut pending.0) {
+        writer.write(ResolutionComplete);
+    }
+}
+
+// Registration in combat plugin.rs:
+app.add_systems(
+    Update,
+    drain_pending_resolution_complete
+        .in_set(CombatSystemSet::PostResolution)
+        .before(EconomySystemSet::ResolutionEnd),  // must fire before snapshot + RSM transition
+);
+```
+
+```rust
 // resolve_combat (exclusive system) — economy write pattern for gold awards
 
 fn resolve_combat(world: &mut World) {
@@ -271,12 +305,10 @@ fn resolve_combat(world: &mut World) {
     // Sub-step 6: cleanup
     // ...
 
-    // Signal completion — pattern UNVERIFIED: MessageWriter<T> is a system parameter
-    // and may not be world.resource_mut()-injectable from an exclusive system.
-    // Candidate resolution: set world.resource_mut::<PendingResolutionComplete>().0 = true,
-    // then have a thin regular system drain it via MessageWriter<ResolutionComplete> in the same frame.
-    // This must be verified against Bevy 0.18 engine-reference before implementation (see Engine Compatibility).
-    world.resource_mut::<PendingResolutionComplete>().0 = true;  // placeholder pattern
+    // Signal completion via the PendingResolutionComplete buffer pattern (Engine Compatibility item 2, RESOLVED).
+    // MessageWriter<T> is a system parameter — not accessible from an exclusive system via world.resource_mut().
+    // drain_pending_resolution_complete (CombatSystemSet::PostResolution) reads this flag and emits the message.
+    world.resource_mut::<PendingResolutionComplete>().0 = true;
 }
 ```
 

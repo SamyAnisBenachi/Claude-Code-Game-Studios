@@ -1324,9 +1324,8 @@ network_messages:
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/network-protocol.md
     payload: "{ loser: Option<PlayerId>, round: u32, reason: GameOverReason }"
-    notes: "loser is None for Draw outcomes (mutual destruction, mutual disconnection, resolution timeout). Some(id) for single-loser outcomes (Disconnection, ObjectivesDestroyed)."
     channel: reliable
-    notes: "Broadcast in addition to S2CPhaseChanged(GAME_OVER). GameOverReason enum has three variants: ObjectivesDestroyed, Disconnection, Draw. See round-state-machine.md Rule 14 for full definition."
+    notes: "Broadcast in addition to S2CPhaseChanged(GAME_OVER). loser is None for Draw outcomes (mutual destruction, mutual disconnection, resolution timeout) and Some(id) for single-loser outcomes (Disconnection, ObjectivesDestroyed). GameOverReason enum has four variants: ObjectivesDestroyed, Disconnection, Draw, ResolutionTimeout. See round-state-machine.md Rule 14 for full definition."
     added: "2026-04-29"
     revised: ""
 

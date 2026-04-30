@@ -15,6 +15,31 @@
 >
 > **Session (2026-04-30):** /dev-story lyv-002 (All Protocol Message Types) — story already fully implemented in commit 759bd4a. All ACs verified against shared/src/protocol.rs. Evidence at tests/evidence/story-lyv-002-types-check.md. Next: /story-done production/epics/lightyear-protocol-verification/story-002-all-protocol-message-types.md
 
+## Session Extract — /architecture-review 2026-04-30 (Run 3)
+- Verdict: **CONCERNS** — improving (M1 PASS unchanged; Core M2/M3 mostly PASS pending stale-ref cleanup; Presentation FAIL)
+- ADRs reviewed: 20 (ADR-001..020). Status: 18 Accepted, 2 Proposed (ADR-018 Keyword, ADR-020 Board/Lane)
+- Status changes since Run 2 (2026-04-30b): ADR-013/014/015/016/017 Proposed→Accepted; ADR-019 Economy NEW Accepted; ADR-020 Board/Lane NEW Proposed
+- Prior blockers status: B-1 ✅ (ADR-015 H1), B-5 ✅ (ADR-010 Prism row), B-6 ✅ (ADR-013 dup row); **B-2 ❌ ESCALATED** (hand storage triple-named now CRITICAL — three Accepted ADRs conflict); B-3 ⚠️ partial (ADR-019 Accepted but stale `EconomyState` in 4 ADRs); B-4 ❌ (ADR-005/006 amendments still missing)
+- New TR-IDs registered: 80 (TR-CR×12, TR-CA×10, TR-PRI×8, TR-KW×12, TR-CAN×7, TR-BR×7, TR-HU×8, TR-SAU×6, TR-HUD×10). TR-CS pre-populated by another agent (8 entries). Total active: 178 TRs
+- Coverage: 140/182 covered (77%), 27 partial, 15 gaps. Run 2→3 delta: +71 newly registered TRs, +14% coverage
+- Top blocking issues: B-1' HC-1 hand storage (CRITICAL); B-3' SI-1 stale EconomyState (HIGH, ADR-015 line 300 load-bearing); B-4' HC-3 ADR-020 Lightyear `ReplicateTo` UNVERIFIED (HIGH); B-5' ADR-005/006 amendments for ADR-018 (HIGH); B-6' Presentation Layer ADR-021 missing (MEDIUM)
+- GDD revision flags: None new (R8/R9 flags still active)
+- Stale docs: architecture.md (last updated 2026-04-29, covers ADR-001..012 only); control-manifest.md (covers ADR-001..012 only, lists ADR-013..018 as pending)
+- Required new ADRs: (1) ADR-005 amendment seed slots; (2) ADR-006 amendment SimpleKeyword 20 variants; (3) ADR-021 Presentation Layer
+- Report: docs/architecture/architecture-review-2026-04-30c.md
+- Next: fix HC-1 (PlayerHands rename in ADR-014/016) → fix SI-1 (ripple `EconomyState`→`PlayerEconomies`) → WebFetch Lightyear 0.26 for ReplicateTo → land ADR-005/006 amendments → author ADR-021
+
+## Session Extract — /review-all-gdds 2026-04-30 (R9)
+- Verdict: FAIL
+- GDDs reviewed: 20
+- Flagged for revision: network-protocol.md, card-animations.md, class-system.md, round-state-machine.md, hand-ui.md, shop-auction-ui.md, keyword-system.md, entities.yaml
+- Blocking issues: 11 — (C-R9-1) S2CSingleObjectiveReveal unregistered in NP; (C-R9-2) CA Rule C-8 contradicts NP D.2 trigger_index ordering; (C-R9-3) S2CActivationRejected unregistered in NP/registry; (C-R9-4) entities.yaml S2CGameOver duplicate notes + 3-vs-4 stale; (C-R9-5) DRAFT_INITIAL grid dual-ownership hand-ui vs SAU; (C-R9-6) OQ-PLACEMENT-LOAD not filed in RSM; (C-R9-7) mummy_damage_reserve_cap missing; (C-R9-8) keyword-system:166 stale OQ ref; (D-R9-1) PLACEMENT cognitive overload 10 active systems; (D-R9-2) Xelor reserve dominant strategy (Mummy uncapped); (D-R9-3) DRAFT_AUCTION hand-full lockout = anti-pillar violation
+- Resolved this cycle (R8→R9): 18 items including C-B4, C-B6, C-NEW-2/3/7, C-R8-2/3/4/5/7/8/10/11/12/13, D-B1+C-NEW-5, D-B4, D-B5
+- New design concerns: No-idle-spectating pillar FAIL (D-R9-3); Deep emergence CONCERN (D-R9-2 Xelor reserve loop, D-R9-5 Sadida seed PIERCE unverified)
+- Quick-fixes applied (2026-04-30): C-R9-4+W14 (entities.yaml S2CGameOver merged notes + 4 variants), C-R9-8 (keyword-system:166 stale OQ ref stripped), C-R9-6 (RSM OQ-PLACEMENT-LOAD filed as OQ6), C-R9-5 (DRAFT_INITIAL ownership: SAU=rendering, hand-ui=fan animation — both GDDs annotated), D-R9-4+C-R9-W9 (master GDD §2 Player Fantasy layering paragraph added)
+- Recommended next: 3-file coordinated edit — (1) NP: register S2CSingleObjectiveReveal + S2CActivationRejected + add DRAFT_AUCTION to C2SActivateCard; (2) CA: Rule C-8 trigger_index update; (3) class-system: Mummy cap + Xelorium worked example + Hand UI dep
+- Report: design/gdd/gdd-cross-review-2026-04-30-r9.md
+
 ## Session Extract — /review-all-gdds 2026-04-30 (R8)
 - Verdict: FAIL
 - GDDs reviewed: 20
