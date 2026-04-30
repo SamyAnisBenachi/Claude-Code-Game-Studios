@@ -3,7 +3,15 @@
 > Lis ce fichier EN PREMIER dans toute nouvelle session.
 > Il contient l'état complet du projet au 2026-04-29.
 >
-> **Session active (2026-04-29):** Hand UI GDD ✅ DESIGNED — design/gdd/hand-ui.md. All 8 sections + Visual/Audio + UI Requirements + Open Questions complete (24 ACs). Systems index updated. /design-review pending (fresh session). Next: Shop/Auction UI GDD (already Designed by parallel session), HUD GDD.
+> **Session active (2026-04-30):** HUD GDD ✅ DESIGNED — design/gdd/hud.md. All 8 sections + Visual/Audio + UI Requirements + Open Questions complete (21 ACs, 18 BLOCKING). Registry: 10 referenced_by updated. Systems index updated. /design-review pending (fresh session). Next: /ux-design hud (fresh session).
+>
+> **Parallel session (2026-04-30):** Class System GDD — IN PROGRESS. design/gdd/class-system.md skeleton created. Working on Section A (Overview).
+>
+> **Parallel session (2026-04-30):** Card Animations GDD — IN PROGRESS. design/gdd/card-animations.md skeleton created. Working on Section A (Overview).
+>
+> **Parallel session (2026-04-30):** Prism System GDD — IN DESIGN. design/gdd/prism-system.md skeleton created. Starting Section A (Overview).
+>
+> Prior session (2026-04-29): Hand UI GDD ✅ DESIGNED — design/gdd/hand-ui.md. All 8 sections + Visual/Audio + UI Requirements + Open Questions complete (24 ACs). Systems index updated. /design-review pending (fresh session).
 
 ---
 

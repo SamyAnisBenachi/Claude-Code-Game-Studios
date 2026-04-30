@@ -1,9 +1,11 @@
 # Board Rendering
 
-> **Status**: Designed — /design-review 2026-04-30 MAJOR REVISION resolved in-session
+> **Status**: Designed — /design-review 2026-04-29 R2 MAJOR REVISION resolved in-session
 > **Author**: SamyAnisBenachi + Claude Code agents
-> **Last Updated**: 2026-04-30
+> **Last Updated**: 2026-04-29
 > **Implements Pillar**: No idle spectating · Simple surface · Deep emergence
+>
+> **R2 changes (2026-04-29):** Bevy 0.18 API Contract corrections (`get_entity` returns `Result`; `Sprite::from_color` for solid-color sprites; `TextureAtlas` is a component, not a `Handle<TextureAtlas>` asset). **Fog overlay system removed** — opponent commitment hiding is now server-side replication filtering of newly-placed-this-phase entities; the dramatic reveal beat is a 250ms scale-and-fade-in tween on each appearing opponent entity. F2 boundary epsilon + threshold-inversion validator added. F4 ceiling raised to 11.5s (objective reveals counted in-budget). New Rule 13 (SystemSet ordering) and Rule 14 (status-effect visual contract). Reconnect `S2CObjectiveIdentities` timeout = 5s. Player Fantasy revised to honest acknowledgement of veteran watch-time. `C2SRequestSnapshot` escalated as cross-doc dependency on `network-protocol.md`. ~16 BLOCKING items resolved.
 
 ## Overview
 
@@ -20,13 +22,13 @@ Hands lie. Bids lie. Two of the opponent's five objectives are counterfeits. But
 **The emotional target:** The player feels like the director and audience of a five-act play that writes itself in real time. PLACEMENT is the rehearsal — quiet, deliberate, full of secret intent. RESOLUTION is the curtain rising on all five stages at once: lanes erupt simultaneously, units clash, objectives crack and reveal what they really were. The player's eyes sweep left to right, drinking in five lanes of consequence in seconds. The board doesn't argue; it just plays the tape. Every position is a fact the opponent committed in ink. Every objective shatter is a verdict on a bluff. The board is where the lies end — and where the better reader wins.
 
 **What the player must feel:**
-- **Watching IS reading** — RESOLUTION is the savor-the-payoff phase. The player's input is locked, deliberately, so they can absorb the consequences of decisions already committed. Watching is not a non-action; it is the act of converting the round's hidden information into knowledge that informs the next PLACEMENT. The player who skims sub-steps 2–4 will misread the board next round. This is dramaturgy, not interactivity — and the design owes the player a tight, legible cut, not a long movie.
-- **Legibility as earned power** — a veteran looks at the same mid-RESOLUTION board as a newcomer and extracts three times more information in the same glance: unit type vocabulary (range vs melee silhouettes, class color), HP delta patterns across rounds, opponent placement tells, prism contest outcomes. The newcomer can still follow what happened and learn the vocabulary; the veteran reads three rounds ahead.
+- **Watching IS reading (with honest caveat)** — RESOLUTION is the savor-the-payoff phase. The player's input is locked, deliberately, so they can absorb the consequences of decisions already committed. Watching converts the round's hidden information into knowledge that informs the next PLACEMENT. **Honest trade-off:** for veterans by round 10+, the watch will become meditative rather than informational — they will read the round in the first 1–2 seconds and wait through the rest. We accept this for the friend-game scope: the savor-the-payoff frame is the game's emotional anchor, and a tap-to-skip mechanism would dilute it. If post-friend-game playtests show the watch becomes painful, a "long press to fast-forward" knob is the planned escape hatch (out of scope for M2).
+- **Legibility as earned power** — a veteran looks at the same mid-RESOLUTION board as a newcomer and extracts three times more information in the same glance: unit type vocabulary (range vs melee silhouettes, class color), HP delta patterns across rounds, opponent placement tells, prism contest outcomes. The newcomer can follow the spatial events (units moved, things died); strategic vocabulary is learned by playing, not from board legibility alone — the GDD makes no claim that the visual board teaches its own meta.
 - **The board makes me a better tactician** — not because the animations are beautiful, but because every sprite is exactly where it needs to be, every indicator is exactly the right size, and after twenty games the player reads the board faster than they think.
 
-**What to avoid:** Treating the board as decorative substrate or invisible plumbing. The board is a protagonist in the experience — the surface on which the entire information war resolves. Animations that obscure tactical state have failed. Status indicators that require hovering to be understood have failed. If the player cannot take in all five lanes simultaneously during RESOLUTION, the board has failed. Animation budgets that exceed ~5 seconds default per RESOLUTION have also failed — beyond that the savor-the-payoff phase becomes idle dead time.
+**What to avoid:** Treating the board as decorative substrate or invisible plumbing. The board is a protagonist in the experience — the surface on which the entire information war resolves. Animations that obscure tactical state have failed. Status indicators that require hovering to be understood have failed. Animation budgets that exceed the stated ceiling per RESOLUTION have also failed — beyond that the savor-the-payoff phase becomes idle dead time even for first-timers.
 
-*Pillar alignment: "No idle spectating" applies to PLACEMENT and DRAFT phases where decisions are live. RESOLUTION is the deliberate watch-the-tape phase — kept tight (≤5s default, ≤8.5s ceiling) so the watch never becomes idle. "Simple surface" — the visual rule is that positions are facts: one rule, infinitely deep.*
+*Pillar alignment: "No idle spectating" applies to PLACEMENT and DRAFT phases where decisions are live. RESOLUTION is the deliberate watch-the-tape phase — kept tight (≤5s default, **≤11.5s absolute ceiling** including objective-reveal sequence — see F4) so the watch never becomes structural dead time. The veteran-fatigue trade-off is acknowledged above. "Simple surface" — the visual rule is that positions are facts: one rule, infinitely deep.*
 
 ## Detailed Design
 
@@ -71,16 +73,17 @@ impl AnimQueue {
 
 This subsection enforces the post-cutoff Bevy 0.18 API patterns. All implementers MUST follow these — they are the most common implementation traps for code generated from training data ≤0.14.
 
-| Pattern | Required | Forbidden (pre-0.16) |
+| Pattern | Required | Forbidden / wrong |
 |---|---|---|
 | Despawn an entity (with or without children) | `commands.entity(e).despawn()` (recursive by default in 0.16+) | `despawn_recursive()`, `despawn_descendants()` |
-| Despawn an entity that may not exist | `if let Some(mut ec) = commands.get_entity(e) { ec.despawn(); }` | `commands.get_entity(e).map(EntityCommands::despawn)` (does not compile in 0.18) |
+| Despawn an entity that may not exist | `if let Ok(mut ec) = commands.get_entity(e) { ec.despawn(); }` (`get_entity` returns **`Result<EntityCommands, EntityDoesNotExistError>`** in 0.18, NOT `Option`) | `if let Some(mut ec) = commands.get_entity(e) { ... }` (won't compile in 0.18); `commands.get_entity(e).map(EntityCommands::despawn)` (also fails) |
 | Parent a child entity | `commands.entity(child).insert(ChildOf(parent))` or `with_children` | `set_parent()`, `Parent` component query |
 | Read network/intra-client messages | `MessageReader<T>` | `EventReader<T>` (removed in 0.17+) |
 | Write network/intra-client messages | `MessageWriter<T>` + `.write(...)` | `EventWriter<T>` + `.send(...)` (removed in 0.17+) |
 | Single-entity query | `let Ok(e) = q.single() else { return; }` | `let e = q.single();` (returns `Result` in 0.16+, panics if used as value) |
-| Sprite construction (no texture, e.g. fog) | `Sprite { color: Color::srgba(..), ..default() }` | `SpriteBundle` (deprecated 0.15+) |
-| Sprite color | `Color::srgba(r, g, b, a)` | `Color::rgba(...)` (renamed 0.15) |
+| Solid-color (untextured) sprite | `Sprite::from_color(Color::srgba(r, g, b, a), Vec2::new(w, h))` — uses Bevy's built-in 1×1 white-pixel asset internally | `Sprite { color: Color::srgba(..), ..default() }` (renders **invisible** in 0.18 — `image` field default is a null `Handle<Image>`) |
+| Sprite color tint | `Color::srgba(r, g, b, a)` (vertex-data tint, batches with siblings) | `Color::rgba(...)` (renamed 0.15); per-unit `Handle<ColorMaterial>` (breaks batching) |
+| Atlas frame on a sprite | `Sprite { image: atlas_image, texture_atlas: Some(TextureAtlas { layout: Handle<TextureAtlasLayout>, index }), .. }` — `TextureAtlas` is a runtime struct (component field), NOT an asset; the underlying texture is a `Handle<Image>`; the layout is a `Handle<TextureAtlasLayout>` | `Handle<TextureAtlas>` — this type was split in 0.15 and **does not exist** as an asset handle in 0.18 |
 | Hierarchy parenting | `ChildOf` component (0.16+) | `Parent` component (removed) |
 
 **Health bar child Z is local, not global.** The constant `Z_HEALTH_BARS = 3.1` is the **target world-space Z**. Because health bar entities are spawned as children of unit entities (whose `Transform.translation.z = 3.0`), the health bar child's `Transform.translation.z` must be `0.1` (LOCAL — added to parent's Z), not `3.1`. Any spawn site that sets `Transform::from_xyz(_, _, Z_HEALTH_BARS)` on a health bar child is incorrect. See AC BR-Z-LOCAL.
@@ -117,32 +120,53 @@ Hand UI uses `Res<BoardLayout>` for drag-to-cell snapping. Other Presentation sy
 | Layer | Z constant | Contents |
 |---|---|---|
 | `Z_FIELD_WASH` | 0.0 | Lane-wide translucent Field card overlays |
-| `Z_CELL_NODES` | 1.0 | Diamond-shaped cell node sprites |
+| `Z_CELL_NODES` | 1.0 | Diamond-shaped cell node sprites (spawn-highlight state is encoded as a `Sprite.color` tint on the cell node — no separate Z layer) |
 | `Z_TRAPS_STRUCTURES` | 2.0 | Trap face-down tiles; Structure tokens |
+| `Z_OBJECTIVES` | 2.5 | Standing objective sprites (always rendered; not hidden by anything) |
 | `Z_UNITS` | 3.0 | Unit sprites |
-| `Z_HEALTH_BARS` | 3.1 | Health bar child sprites (offset via Transform parent) |
-| `Z_GHOST_UNIT` | 3.5 | Ghost unit preview during PLACEMENT |
-| `Z_FOG` | 4.0 | PLACEMENT fog overlay sprites |
-| `Z_SPAWN_HIGHLIGHTS` | 4.1 | Spawn range highlight overlays |
+| `Z_HEALTH_BARS` | 3.1 | Health bar child sprites (LOCAL Z = 0.1 on child Transform; parent unit at Z_UNITS = 3.0; see BR-Z-LOCAL) |
+| `Z_GHOST_UNIT` | 3.5 | Ghost unit preview during PLACEMENT (local-player half only) |
 
-**Rule 5 — Draw call budget.** All unit sprites must come from a single `TextureAtlas` (one draw call for all units). Cell nodes, objectives, prisms, and tokens must share a second "board elements" atlas. Fog and ghost sprites are the only permitted per-frame translucent batches. Health bars must be child `Sprite` entities on the same unit atlas — custom materials per unit are forbidden (they break sprite batching, producing one draw call per unit). Target ceiling: ≤ 15 draw calls per frame for the entire board.
+**Removed in R2:** `Z_FOG`, `Z_SPAWN_HIGHLIGHTS`. The fog overlay system is gone (see Rule 7). Spawn highlights are encoded as `Sprite.color` tint on `Z_CELL_NODES` sprites — no separate sprite or Z layer.
+
+**Rule 5 — Draw call budget.** All unit sprites must come from a single unit `TextureAtlasLayout` (one draw call for all units, sharing one `Handle<Image>` for the underlying atlas image). Cell nodes, objectives, prisms, and tokens must share a second "board elements" atlas. The ghost unit, alpha-mid-reveal units (during reveal tween), and Field washes are the only permitted per-frame translucent batches. Health bars are child sprite entities — they MUST use the unit atlas's reserved 1×2 white-pixel frame (`hp_bar_white_pixel`, see Asset Requirements) so they batch with units; per-unit `Handle<ColorMaterial>` is forbidden (breaks batching). **Target ceiling: ≤ 15 draw calls per frame for the entire board.** Atlas-split fallback policy (per OQ-BR-05): each additional atlas raises the ceiling by 1 with technical-director approval.
 
 **Rule 6 — Health bars.** Each unit entity has two child sprite entities: a background bar and a fill bar. Fill width is driven by scaling `Transform.scale.x` proportional to `hp_current / hp_max`. Color thresholds: ≥ `health_bar_green_threshold` (0.6) → green; between `health_bar_red_threshold` (0.3) and green → yellow; < `health_bar_red_threshold` → red. Health bars are always visible on all units.
 
-**Rule 7 — Fog overlay (PLACEMENT phase only).** Two large `Sprite` entities cover each board half during PLACEMENT: one for the local player's half (`Visibility::Hidden`), one for the opponent's half (`Visibility::Visible`, `Color::srgba(0.05, 0.05, 0.2, 0.6)` — dark blue, ~60% opacity). Fog sprites are never despawned; toggled via `Visibility`. The fog lift on `S2CPlacementReveal` is a `bevy_tweening` alpha fade-out on `Sprite.color.alpha` via the project-local `SpriteAlphaLens` (custom `Lens<Sprite>` — bevy_tweening does not ship a sprite color lens), over `fog_lift_duration_ms` (default 350ms). Both halves lift simultaneously. The `pre_animation_pause_ms` clock starts at `ResolutionReveal` entry concurrently with the fog lift — it does NOT wait for fog lift completion.
+**Rule 7 — Commitment hiding via server-side replication filtering + reveal tween (REPLACES fog overlay system, R2 2026-04-29).**
+
+There is **no fog overlay**. The board (cells, lane labels, lane dividers, Field washes, standing objectives, prior-round persistent units/traps/structures) is fully visible to both players at all times — including during PLACEMENT. The grid is the place the opponent cannot lie; it must be readable.
+
+What IS hidden during PLACEMENT is the opponent's **newly-placed-this-phase commitments** (units, traps, structures placed via `C2SSubmitPlacement` during the current PLACEMENT). This hiding is enforced **server-side**, not client-side:
+
+- The server does NOT replicate newly-placed entities to the non-owner client until `S2CPlacementReveal` is sent (canonical end of PLACEMENT). The owner sees their own placements immediately on submission (drag-and-stage flow per `hand-ui.md`).
+- On `S2CPlacementReveal` receipt, all of the opponent's newly-placed entities arrive via Lightyear component replication in the same frame as the message.
+- Board Rendering applies a **reveal tween** to each newly-spawned opponent entity: scale from `unit_reveal_tween_start_scale` (0.4) → 1.0 + alpha fade 0 → 1 over `unit_reveal_tween_duration_ms` (default 250ms). All reveal tweens start in the same frame, producing the simultaneous "curtain rising on five lanes" beat.
+- The local player's own newly-placed units do **not** play the reveal tween — they were already visible during PLACEMENT (drag-and-stage; see `hand-ui.md`). The reveal tween fires ONLY on entities that were newly replicated in the `S2CPlacementReveal` frame (detected via Bevy's `Added<Replicated>` filter or equivalent on the spawn frame).
+- `pre_animation_pause_ms` (F4) begins **after** the reveal tween completes (i.e., reveal tween 250ms → pre-animation pause 400ms → sub-step 1). Sequential, not concurrent — the player gets a clean beat to absorb the reveal before sub-step 1 fires.
+
+**Reveal-tween invariants:**
+
+- The tween targets `Transform.scale` (uniform) via `bevy_tweening`'s built-in `TransformScaleLens` and `Sprite.color.alpha` via the project-local `SpriteAlphaLens` (custom `Lens<Sprite>` — bevy_tweening does not ship a sprite color lens; the lens is a deliverable of the reveal-tween implementation story).
+- Authoritative state (HP, position) is set from replicated components on spawn — the tween is purely visual flourish; if the tween is cancelled (e.g. by reconnect snapshot per Rule 11), the entity snaps to scale=1.0, alpha=1.0.
+- The reveal tween does NOT block input or state-machine transitions — it runs concurrently with the board entering `ResolutionReveal` state.
+
+**Why this replaces fog:** the fog overlay was a redundant client-side visual mask on top of server-side filtering. With server filtering doing the actual hiding, the fog only obscured information the player should be able to read (opponent's grid, prior-round persistent state, objective HP). The reveal tween preserves the dramatic moment without the legibility cost — and removes ~60 lines of fog-management code (sprite lifecycle, visibility toggling, alpha-tween setup).
+
+**M2 implementation note:** the reveal tween is BLOCKING for M2 because the simultaneous-reveal beat is the game's emotional anchor. Without it, opponent units pop into existence with no fanfare. A 250ms scale-up + fade-in is a minimal but sufficient flourish; richer choreography (lane-wave stagger, per-unit "pose" frames) is M3 polish.
 
 **Rule 8 — Ghost unit lifecycle.** The ghost unit is a client-local entity tagged with marker component `GhostUnit`; it has no `Replicated` component and is never known to the server. Hand UI communicates targeting via a `GhostPlacementChanged { target: Option<PlayTarget>, card_id: Option<CardId> }` message (see network-protocol.md for `PlayTarget` definition). Board Rendering reads this message each frame and spawns/moves/despawns ghost-preview entities accordingly per variant:
 
 | `target` variant | Board Rendering response |
 |---|---|
-| `Some(BoardCell { lane, cell })` | Spawn / move a `GhostUnit` entity at `cell_to_world(lane, cell)`. Ghost visual: same art as the real unit, `Sprite { color: Color::srgba(1.0, 1.0, 1.0, 0.5), .. }`, no HP bar, no status indicators. |
+| `Some(BoardCell { lane, cell })` | Spawn / move a `GhostUnit` entity at `cell_to_world(lane, cell)`. Ghost visual: same atlas frame as the real unit, with `Sprite::from_color(Color::srgba(1.0, 1.0, 1.0, 0.5), unit_size)` overlaid via tint OR (preferred) atlas-frame `Sprite` whose `Sprite.color = Color::srgba(1.0, 1.0, 1.0, 0.5)` (vertex-data alpha). No HP bar, no status indicators. |
 | `Some(TargetUnit { lane, unit_id })` | Apply `TargetUnitGhost` marker to the unit entity matching `unit_id` (Prism White outline pulse, 2 Hz). No new entity spawned. |
 | `Some(TargetObj { player_id, lane })` | Apply `ObjectiveTargetGhost` marker to the matching objective entity (gold inner glow, static). No new entity spawned. |
 | `Some(LaneWide { lane })` | Spawn / move a `LaneGhostWash` entity covering the entire column of `lane`. Translucent overlay matching the player's colour family. |
 | `Some(Instant)` | No-op for Board Rendering — Instant cards have no board ghost. Hand UI's fan slot ghost is the entire visual. |
 | `None` | Clear all ghost entities/markers for the corresponding `card_id`. |
 
-Only one ghost preview may exist per `card_id` at any time — replace any existing ghost-of-the-same-card before spawning a new one. On `S2CPlacementReveal`: despawn all ghost preview entities and clear all ghost marker components immediately; real unit entities for all newly placed cards appear simultaneously from replication data.
+Only one ghost preview may exist per `card_id` at any time — replace any existing ghost-of-the-same-card before spawning a new one. On `S2CPlacementReveal`: despawn all ghost preview entities and clear all ghost marker components immediately; real unit entities for all newly placed cards (own + opponent) appear from replication data in the same frame, and Rule 7's reveal tween fires on each newly-replicated **opponent** entity (the local player's own units do not reveal-tween — they were already on screen).
 
 **Reverse events to Hand UI (un-staging surface).** Board Rendering owns the ghost entities, so the click/drag gestures that un-stage a card originate here. Two events are written by Board Rendering and consumed by Hand UI:
 
@@ -165,9 +189,13 @@ Both events are intra-client `Message<T>` types (Bevy 0.18 `MessageWriter` / `Me
 
 **Animation is never replayed on reconnect.** When `snapshot.phase == RESOLUTION`, enter `DraftShop` immediately — the reconnecting client receives the authoritative final state directly via Lightyear component replication and the snapshot payload. The resolution animation playback is sacrificed in exchange for instant, deterministic recovery.
 
-**ADR-001 reconnect requirement.** After processing the snapshot, the client must wait for a re-sent `S2CObjectiveIdentities` unicast message (per ADR-001) to repopulate the `ObjectiveIdentityCache` before entering any actionable phase (DRAFT_SHOP, DRAFT_AUCTION, PLACEMENT). Without this, the player cannot evaluate which of their own objectives to defend. If the cache is empty when an actionable phase begins, hold in a `Reconnecting` sub-state and log a warning.
+**ADR-001 reconnect requirement.** Rule 11 entry point clears the `ObjectiveIdentityCache` resource explicitly (it is a Resource, not animation state — listed separately from `AnimQueue` etc. for clarity). After processing the snapshot, the client must wait for a re-sent `S2CObjectiveIdentities` unicast message (per ADR-001) to repopulate the cache before entering any actionable phase (DRAFT_SHOP, DRAFT_AUCTION, PLACEMENT). Without this, the player cannot evaluate which of their own objectives to defend. The client holds in a `Reconnecting` sub-state until the cache is populated.
 
-**ResolutionReveal stuck-state recovery.** If `S2CPlacementReveal` was received but `S2CResolutionEvent` does not arrive within 2000ms (server crash mid-resolution, lost message), the client requests a fresh `S2CGameSnapshot` from the server (single C2S `RequestSnapshot` call) and resets `BoardRenderState` to whatever the snapshot delivers. This is the only fallback — without it, the player is permanently stuck on a fog-lifted board with no animation, no input, no recovery. See network-protocol.md for the C2S `RequestSnapshot` contract (currently undefined — flagged as new OQ).
+**`S2CObjectiveIdentities` reconnect timeout (R2 2026-04-29).** If `S2CObjectiveIdentities` does not arrive within `objective_identities_reconnect_timeout_ms` (default **5000ms**) of the snapshot rebuild completing, the client logs an error and re-issues `C2SRequestSnapshot`. Repeats indefinitely (exponential backoff: 5s, 10s, 20s, 30s ceiling) until either identities arrive or the Lightyear heartbeat-disconnect (30s grace per `network-protocol.md` Rule 8) terminates the session. This prevents permanent block on a buggy server reconnect handler.
+
+**Snapshot phase-content invariant (R2 2026-04-29 — cross-doc dependency).** When `snapshot.phase == RESOLUTION` is sent, the server MUST include the post-resolution final state (final HP values, despawned units removed from `BoardSnapshot.units`, awarded gold in `PlayerSnapshot.gold`, updated `ObjectiveHp` values for any destroyed objectives this round). If the snapshot were sent with pre-resolution state, the reconnecting client lands on `DraftShop` with a desynced board. **This invariant must be added to `network-protocol.md` Rule 7 / `round-state-machine.md` Rule for snapshot construction.**
+
+**ResolutionReveal stuck-state recovery.** If `S2CPlacementReveal` was received but `S2CResolutionEvent` does not arrive within `resolution_reveal_timeout_ms` (default 2000ms — server crash mid-resolution, lost message), the client requests a fresh `S2CGameSnapshot` from the server (single `C2SRequestSnapshot` call) and resets `BoardRenderState` to whatever the snapshot delivers. This is the only message-loss fallback — for a true server crash, Lightyear's 30s heartbeat-disconnect is the actual last resort. The `C2SRequestSnapshot` contract is **currently undefined in `network-protocol.md`** — see OQ-BR-06 (BLOCKING for implementation).
 
 **2v2 reconnect symmetry.** When one player in a 2v2 match reconnects mid-RESOLUTION, the non-reconnecting clients keep animating uninterrupted (their `S2CResolutionEvent` is unaffected). The reconnecting client snapshots-then-fast-forwards to `DraftShop` per the rule above; it does not try to catch up to the live animation.
 

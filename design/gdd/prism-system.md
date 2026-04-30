@@ -1,6 +1,6 @@
 # Prism System
 
-> **Status**: In Design
+> **Status**: Designed — /design-review pending (fresh session)
 > **Author**: User + Agents
 > **Last Updated**: 2026-04-30
 > **Implements Pillar**: No idle spectating · Deep emergence · Simple surface
@@ -220,11 +220,11 @@ The bidirectional consistency check: Board / Lane System lists Prism System unde
 
 ## Visual/Audio Requirements
 
-[To be designed]
+*Deferred to Art Bible phase. Board Rendering GDD (`board-rendering.md`) already specifies the prism token sprite (`env_prism_idle_32x32`, 32×32), idle spin animation, and collection burst VFX. Card Animations GDD will own tweens for `prism_strike` projectile and `prism_reserve` reserve-bar ping. Run `/asset-spec system:prism-system` after the Art Bible is approved.*
 
 ## UI Requirements
 
-[To be designed]
+*No dedicated UI surface. Prism rewards are delivered as cards added to the Hand UI (owned by `hand-ui.md`). Any prism progress tracker or respawn counter is a HUD concern (`hud.md`). No action required here.*
 
 ## Acceptance Criteria
 

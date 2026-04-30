@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-04-30"  # updated: /consistency-check resolved 2 conflicts post-board-rendering revision — registered S2CObjectiveIdentities (was in ADR-001 only); board-rendering animation timing fields added to game-config.md
+last_updated: "2026-04-30"  # updated: hud.md authored — referenced_by added for 10 entries (local_free_gold, S2CGoldUpdate/Broadcast/PhaseChanged/GameSnapshot, ObjectiveDestroyed, mana_cap/lane_count/fake_count/disconnect_grace_seconds)
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -77,7 +77,38 @@ entities: []
 # Attribute fields: value_gold, weight, stackable, category, and any stat
 #   modifiers that another system (e.g., economy, crafting) might reference.
 
-items: []
+items:
+  - name: prism_strike
+    status: active
+    source: design/gdd/prism-system.md
+    referenced_by:
+      - design/gdd/prism-system.md
+      - design/gdd/objective-system.md
+    category: spell_card
+    mana_cost: 3           # prism_strike_mana_cost (GameConfig, default 3)
+    damage: 1              # prism_strike_damage (GameConfig, default 1)
+    target: TargetObj      # TargetObj { player_id: PlayerId, lane: u8 }
+    effect: "Deal 1 damage to chosen objective (real or fake). Bypasses lane position."
+    card_id: "prism_strike"
+    source_file: "assets/data/cards.json"
+    notes: "Original card (not Krosmaga Extension=1). Granted by Lane 1 or Lane 5 prism collection. mana_cost and damage are GameConfig-driven (prism_strike_mana_cost, prism_strike_damage). Single static card_id — stackable in hand. Self-targeting allowed (see prism-system.md OQ5)."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: prism_reserve
+    status: active
+    source: design/gdd/prism-system.md
+    referenced_by:
+      - design/gdd/prism-system.md
+      - design/gdd/economy-system.md
+    category: spell_card
+    mana_cost: 0
+    effect: "Add +1 to reserve mana. Instant — playable at any point during DRAFT phase."
+    card_id: "prism_reserve"
+    source_file: "assets/data/cards.json"
+    notes: "Original card (not Krosmaga Extension=1). Granted by Lane 2 or Lane 4 prism collection. Cost = 0 mana (no opportunity cost beyond lane commitment). Playing it calls add_reserve(player, 1) via Economy System. Single static card_id — stackable in hand."
+    added: "2026-04-30"
+    revised: ""
 
 # Example:
 #
@@ -596,6 +627,7 @@ constants:
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/board-lane-system.md
       - design/gdd/objective-system.md
+      - design/gdd/hud.md
     value: 2
     unit: count
     added: 2026-04-28
@@ -620,6 +652,7 @@ constants:
     source: design/gdd/board-lane-system.md
     referenced_by:
       - design/gdd/board-lane-system.md
+      - design/gdd/hud.md
     value: 5
     unit: lanes
     added: 2026-04-28
@@ -785,6 +818,7 @@ constants:
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/network-protocol.md
       - design/gdd/game-session-system.md
+      - design/gdd/hud.md
     value: 30  # was: 5 before 2026-04-29 (RSM design-review raised for WASM browser targets — OS interrupts cause 3-6s gaps)
     unit: seconds
     notes: "Strict greater-than condition. 30s is intentional for WASM/browser target — OS interrupts, antivirus, tab switches cause 3-6s gaps. Hard to abuse in a 10-15 min game. Safe range: 15-60."
@@ -906,6 +940,29 @@ constants:
     unit: gold
     notes: "Divisor in the interest formula: floor(g / interest_threshold_gold). Safe range: 5–10. Do not set below 5 — starting gold (5g) would immediately exceed the max-interest bracket, removing the miser/gambler tension."
     added: "2026-04-29"
+    revised: ""
+
+  - name: prism_strike_damage
+    status: active
+    source: design/gdd/prism-system.md
+    referenced_by:
+      - design/gdd/prism-system.md
+      - design/gdd/objective-system.md
+    value: 1
+    unit: damage
+    notes: "Damage dealt by the prism_strike spell card (Lane 1/5 prism reward). Must be added to game_config.ron as prism_strike_damage. Safe range: 1–3. At 1: 5 casts needed to destroy a fresh 5-HP objective. At 3: 2 casts + any other damage source eliminates an objective."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: prism_strike_mana_cost
+    status: active
+    source: design/gdd/prism-system.md
+    referenced_by:
+      - design/gdd/prism-system.md
+    value: 3
+    unit: mana
+    notes: "Mana cost to play the prism_strike spell card from hand. Must be added to game_config.ron as prism_strike_mana_cost. Safe range: 0–5. Default 3 keeps the spell competitive but not free (opportunity cost vs. combat cards)."
+    added: "2026-04-30"
     revised: ""
 
 
@@ -1126,6 +1183,20 @@ network_messages:
     channel: reliable
     scope: "unicast (owner)"
     notes: "Per-client objective identity reveal. Sent once at DRAFT_INITIAL to each player with their own (lane, is_fake) tuples. MUST be re-sent on reconnect after S2CGameSnapshot — reliable delivery guarantees in-session but not reconnect replay. Payload ~6 bytes/player. Source-of-truth: ADR-001. Board Rendering caches in ObjectiveIdentityCache resource; Rule 12 forbids reading it for standing-objective rendering; only used for Sang Méprise audio-suppression branch."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: S2CCardAcquired
+    status: active
+    source: design/gdd/network-protocol.md
+    referenced_by:
+      - design/gdd/network-protocol.md
+      - design/gdd/prism-system.md
+      - design/gdd/card-acquisition.md
+      - design/gdd/objective-system.md
+    payload: "{ card_id: CardId, source: AcquisitionSource }"
+    channel: reliable
+    notes: "Unicast to owning player on each card added to hand from outside the shop purchase flow. AcquisitionSource enum variants: PrismLane1, PrismLane2, PrismLane3, PrismLane4, PrismLane5 (network-protocol.md lines 396-400). Full payload schema is OQ2 in prism-system.md — formal definition needed in network-protocol.md."
     added: "2026-04-30"
     revised: ""
 
