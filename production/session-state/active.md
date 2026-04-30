@@ -316,3 +316,12 @@ C:\Program Files\GitHub CLI\gh.exe
 - **Re-review board-rendering** quand `network-protocol.md` est mis à jour avec `C2SRequestSnapshot` : `/design-review design/gdd/board-rendering.md` (commande à lancer dans une fenêtre fraîche). Source : board-rendering R2 verdict CONDITIONAL APPROVED, OQ-BR-06 cross-doc dependency.
 - **Re-review auction-system** après mise à jour NP `reserved_gold` (si pas déjà fait) : `/design-review design/gdd/auction-system.md`
 - **Re-review combat-resolution** quand NP ajoute variants `CombatDamage` + `KeywordTriggered` à `ResolutionEvent` enum (OQ5 combat-resolution).
+
+## Session Extract — /review-all-gdds 2026-04-30 R7
+- Verdict: FAIL
+- GDDs reviewed: 20 + master + systems-index
+- Flagged for revision: network-protocol, keyword-system, class-system, objective-system, hand-ui, auction-system, entities.yaml, round-state-machine, prism-system, game-config, combat-resolution, economy-system, card-animations, board-rendering, server-rng, shop-auction-ui, lanes-and-lies-gdd
+- Blocking issues (9): C-B2 ResolutionTimeout vs Draw; C-B4 hand-ui Rule 5c S2CCardAcquired; C-B5 hand-ui Tuning vs Dependencies contradiction; C-B6+C-NEW-1+C-NEW-3 registry single-pass; C-NEW-2 stale CardSource::AuctionWon; C-NEW-4 multi-Krosmic ordering not echoed by RSM/NP/CA; D-B1+C-NEW-5 Garde-Temps/Punition take_damage routing; D-B4 disconnect grace during DRAFT_AUCTION; D-B5 Sang Méprise reconnect-gap UX
+- Resolved this cycle: C-B1 (S2CResolutionEvent variants), C-B3 partial (AcquisitionSource rename — variants still incomplete), C-W1
+- Recommended next: address 9 blockers per file table in report (single registry pass closes 4 at once); /design-review re-runs for class-system, hand-ui, auction-system after fixes
+- Report: design/gdd/gdd-cross-review-2026-04-30-r7.md
