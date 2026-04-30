@@ -3,10 +3,10 @@
 > Lis ce fichier EN PREMIER dans toute nouvelle session.
 > Il contient l'état complet du projet au 2026-04-30.
 >
-> **⚠️ SESSION INTERROMPUE (2026-04-30) — /design-review keyword-system.md R3 — REPRENDRE ICI**
-> Verdict: MAJOR REVISION NEEDED. 9 design decisions collected. GDD edits NOT YET WRITTEN.
-> Reprendre avec: lire ce bloc, puis editer design/gdd/keyword-system.md selon les decisions ci-dessous.
-> Faire TOUTES les edits GDD, puis: systems-index update + review-log append + commit (git restore --staged . d'abord).
+> **✅ SESSION 2026-05-01 — /design-review keyword-system.md R3 — EDITS COMPLETE**
+> GDD edits applied, systems-index updated, review-log appended, committed.
+> keyword-system.md: Needs Revision (R3 inline). R4 re-review recommended in fresh session.
+> Next: /design-review design/gdd/keyword-system.md (R4) — or continue with other pending work.
 >
 ## /design-review keyword-system.md R3 — Session Interrupt State
 > Reprendre: lire les decisions ci-dessous, editer design/gdd/keyword-system.md, puis systems-index + review-log.

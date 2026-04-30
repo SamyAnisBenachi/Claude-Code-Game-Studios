@@ -1,5 +1,12 @@
 # Keyword System — Review Log
 
+## Review — 2026-05-01 (R3 full) — Verdict: MAJOR REVISION NEEDED → Revised Inline
+Scope signal: XL
+Specialists: game-designer, systems-designer, qa-lead, network-programmer, creative-director
+Blocking items: 25 found | Recommended: 12 | 9 design decisions applied inline
+Summary: R3 surfaced two pillar violations (SILENCE anticipation test is unachievable — accepted as known risk D1; OUTNUMBERED mid-RESOLUTION flip — kept by design D2) and foundational protocol/schema gaps. Key design decisions: COUNTERATTACK simplified to "any non-RANGE attack" removing the proximity condition (D3); STUN = full shutdown including reactive hooks so COUNTERATTACK does not fire when stunned (D4); RANGE targets WALL as nearest enemy (D5); FIRST STRIKE can kill WALL in SS3 (D6); KW-041 removed — fundamental 1-cell-apart collision rule confirmed (enemy units can never be on same cell as opposing player unit, ATTRACT enemy cap is 1 cell short of caster, Formula 2 updated with branching for friendly vs enemy targets) (D7); LEADER snapshot moved to post-SS1 so LEADER placed this round grants bonus this round (D8); BODYGUARD with no target enters with None bond (D9). Protocol: silenced_until_round formula corrected to current_round+N-1 (was producing 2-round SILENCE); HASTE suppression note added; SILENCE client-clear note added. 5 new OQs (KS6–KS10) for propagation to NP GDD and board-lane-system.md. Creative-director verdict: systemic pattern of GDD-authored-top-down without protocol/fantasy authoring constraints — R4 should be final revision pass. R4 re-review recommended (fresh session).
+Prior verdict resolved: Partially — R2 closed replication contract gaps; R3 closed design-rule and formula gaps. R4 will verify.
+
 ## Review — 2026-04-30 (R2 full) — Verdict: NEEDS REVISION → Revised Inline
 Scope signal: L
 Specialists: game-designer, systems-designer, qa-lead, network-programmer, creative-director
