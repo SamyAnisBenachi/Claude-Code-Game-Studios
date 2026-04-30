@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -17,7 +17,7 @@ Proposed
 | **Knowledge Risk** | MEDIUM — Bevy 0.17 replaced `EventWriter`/`EventReader` with `MessageWriter`/`MessageReader`; Bevy 0.16 changed `Query::single()` to return `Result`; `ClassId` already defined in `shared/src/card.rs` (ADR-006) and must NOT be redefined |
 | **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, `docs/engine-reference/bevy/breaking-changes.md`, `docs/engine-reference/bevy/current-best-practices.md`, `docs/architecture/adr-002-client-server-authority.md`, `docs/architecture/adr-006-card-data-schema.md`, `docs/architecture/adr-010-rsm-event-bus.md` |
 | **Post-Cutoff APIs Used** | `#[derive(Message, Serialize, Deserialize, Clone)]` for `C2SClassChoice` — this is **Lightyear's** `Message` trait from `lightyear::prelude`, NOT Bevy's `Message` trait from `bevy::prelude`; both exist in this project simultaneously and must not be confused. Lightyear 0.26 `MessageReceiver<C2SClassChoice>` with `.receive_messages()` for server-side handler (exact method name verified against `docs/engine-reference/bevy/current-best-practices.md` 2026-04-28). `#[derive(Resource)]` for `PlayerSessions` (stable since Bevy 0.12). |
-| **Verification Required** | (1) Confirm `MessageReceiver<C2SClassChoice>.receive_messages()` is still the correct method name in Lightyear 0.26.x patch releases — verify against `docs.rs/lightyear/0.26.x` before the LOBBY class-selection story merges. (2) Confirm `SourceClass` component does not require `#[derive(Reflect)]` for the project's snapshot serialisation path. (3) Verify `PlayerSessions` resource is inserted immediately before `SessionReady` trigger per ADR-012 contract. |
+| **Verification Required** | (1) **RESOLVED**: `MessageReceiver<C2SClassChoice>.receive_messages()` confirmed — same pattern as ADR-013 item 1 and `docs/engine-reference/bevy/current-best-practices.md` (Lightyear 0.26). Pin exact Lightyear patch version in `Cargo.toml`; wrap receiver call in `server/src/lobby/handler.rs` — one file to update if API shifts. (2) **RESOLVED**: `SourceClass` component does NOT require `#[derive(Reflect)]`. The ADR Decision §3 explicitly opts out: "Reflect intentionally NOT derived: server-only component; no scene serialisation or Bevy inspector usage in the headless server build." Snapshot serialisation uses a hand-written builder (`world.get::<SourceClass>(entity).map(|sc| sc.0)`) — no Reflect required. (3) **RESOLVED (implementation-time)**: `PlayerSessions` inserted immediately before `SessionReady` per ADR-012 lifecycle contract. Verified by lifecycle integration test (ADR-012 pattern) in Validation Criteria. |
 
 ## ADR Dependencies
 

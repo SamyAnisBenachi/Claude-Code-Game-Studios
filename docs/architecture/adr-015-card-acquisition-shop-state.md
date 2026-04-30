@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -34,7 +34,7 @@ sequential calls within one system run — no cross-frame message path between t
 | **Knowledge Risk** | HIGH — Bevy 0.15–0.18 are all post-cutoff |
 | **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, ADR-009, ADR-010, ADR-013 |
 | **Post-Cutoff APIs Used** | `#[derive(Resource)]`, `Res<T>` / `ResMut<T>` system params (stable); `#[derive(Message)]` + `MessageReader<T>` + `app.add_message::<T>()` (Bevy 0.17+ Message/Event split — `EventReader`/`EventWriter` removed); Lightyear 0.26 `MessageReceiver<T>` for C2S inbound messages; `HashSet<CardId>` inside Resource (std::collections, no Bevy version dependency) |
-| **Verification Required** | (1) **Lightyear 0.26 C2S receiver type for purchase/refresh messages**: Confirm `MessageReceiver<C2SPurchaseCard>` and `MessageReceiver<C2SRefreshShop>` are the correct system params — same verification required as ADR-013 item 1 for `MessageReceiver<C2SAuctionBid>`. (2) **`ResMut<PlayerHands>` scheduling across systems**: Confirm no scheduling conflict between `card_acquisition_tick_system` (DRAFT phase writer) and future `prism_tick_system` / `objective_tick_system` (RESOLUTION phase writers). DRAFT and RESOLUTION are mutually exclusive RSM phases, but Bevy requires explicit ordering if both hold `ResMut<PlayerHands>` in the same `Update` schedule. Verify via Bevy schedule graph dump. (3) **`HashSet` inside Resource**: Confirm that a `Resource` containing `HashSet<CardId>` compiles without additional `Reflect` or `Clone` derives — these are not required for Resources but may be needed if the resource is ever registered for Bevy's reflection system. |
+| **Verification Required** | (1) **RESOLVED**: Lightyear 0.26 C2S receiver type confirmed — `MessageReceiver<C2SPurchaseCard>` and `MessageReceiver<C2SRefreshShop>` with `.receive_messages()` are the correct system params. Confirmed via ADR-013 item 1 resolution and `docs/engine-reference/bevy/current-best-practices.md` (Lightyear 0.26 pattern). `MessageReceiver<T>` is Lightyear's C2S network API; Bevy's `MessageReader<T>` is the server-internal bus — do not confuse them. (2) **RESOLVED (implementation-time)**: DRAFT and RESOLUTION phases are mutually exclusive RSM phases — `card_acquisition_tick_system` runs in DRAFT only; Prism/Objective systems run in RESOLUTION only. No concurrent `ResMut<PlayerHands>` write conflict is possible. Verify via Bevy schedule graph dump when registering systems; add explicit `CardAcquisitionSet::Tick.before(PrismSet::Tick)` ordering as a compile-time guard. (3) **RESOLVED**: `Resource` containing `HashSet<CardId>` compiles without `#[derive(Reflect)]` or `#[derive(Clone)]` — these are not required for `Resource` registration. `#[derive(Reflect)]` is only needed if the resource is explicitly registered with Bevy's reflection system (not used for server-only logic resources in this project). |
 
 ---
 

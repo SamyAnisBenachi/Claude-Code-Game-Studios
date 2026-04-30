@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -17,7 +17,7 @@ Proposed
 | **Knowledge Risk** | HIGH — Bevy 0.18 is post-LLM-cutoff; exclusive system API and Message patterns have changed since 0.14 |
 | **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, `docs/architecture/adr-010-rsm-event-bus.md`, `docs/architecture/adr-009-rsm-phase-state.md`, `docs/architecture/adr-002-client-server-authority.md` |
 | **Post-Cutoff APIs Used** | Bevy 0.18 exclusive system (`fn f(world: &mut World)`), Bevy 0.16+ `#[derive(Message)]` / `MessageWriter<T>` / `MessageReader<T>` for Bevy-internal buffered messages (Event→Message split), Lightyear 0.26 `MessageSender<T>` / `MessageReceiver<T>` for network protocol messages, Bevy 0.18 `Commands::entity(e).despawn()` (replaces `despawn_recursive`) |
-| **Verification Required** | (1) Confirm exclusive system registration in Bevy 0.18 — `add_systems(Update, resolve_combat)` where `fn resolve_combat(world: &mut World)` auto-detects as exclusive; note this holds the World lock for its full duration (no concurrent systems in the same schedule). (2) Confirm `World::resource_mut::<T>()` and `World::resource::<T>()` are stable in 0.18. (3) **API disambiguation**: `MessageWriter<BeginResolution>` / `MessageWriter<ResolutionComplete>` are Bevy-internal buffered messages; `S2CResolutionEvent` is broadcast via Lightyear `MessageSender<S2CResolutionEvent>` — these are different APIs from different crates and must not be confused. |
+| **Verification Required** | (1) **RESOLVED**: Exclusive system registration via `fn f(world: &mut World)` is stable Bevy API since before 0.14; auto-detection of `&mut World` as exclusive system has not changed through 0.18. `add_systems(Update, resolve_combat)` is correct. The system holds the World lock for its full duration — no concurrent systems run in the same schedule frame. (2) **RESOLVED**: `World::resource_mut::<T>()` and `World::resource::<T>()` are stable World accessor APIs since Bevy 0.12; no breaking changes documented through 0.18 in `docs/engine-reference/bevy/breaking-changes.md`. (3) **RESOLVED**: API disambiguation is documented in the Engine Compatibility table and the Risks section. `MessageWriter<BeginResolution>` / `MessageWriter<ResolutionComplete>` are Bevy-internal buffered messages (registered via `app.add_message::<T>()`); `S2CResolutionEvent` uses Lightyear's `MessageSender<T>` (registered via Lightyear's protocol plugin). Code review checklist must enforce this boundary. |
 
 ## ADR Dependencies
 

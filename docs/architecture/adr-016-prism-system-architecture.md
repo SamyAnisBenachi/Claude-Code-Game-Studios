@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -17,7 +17,7 @@ Proposed
 | **Knowledge Risk** | HIGH — Bevy 0.15–0.18 all post-cutoff; Message/Event split in 0.17+ is critical; Lightyear 0.26 server→client unicast API unverified |
 | **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, `docs/engine-reference/bevy/current-best-practices.md`, ADR-010 (Message/Event split patterns), ADR-005 (RESOLUTION schedule slot), ADR-008 (Lightyear channel config) |
 | **Post-Cutoff APIs Used** | `MessageReader<T>` / `MessageWriter<T>` (`#[derive(Message)]`) for server-internal messages; `ResMut<T>` for PrismState; Lightyear 0.26 component replication via `Replicate` for PrismPresence (unreliable); Lightyear server→client send for `S2CCardAcquired` (reliable unicast — API verification required) |
-| **Verification Required** | (1) **BLOCKING**: Lightyear 0.26 server→client reliable unicast API — `MessageSender<S2CCardAcquired>` may be client-side only; ADR-008 documents server-side as `server.send_message_to_target::<ReliableChannel, T>(msg, NetworkTarget::Single(id))` — confirm against `docs.rs/lightyear/0.26` before writing `resolve_prism_draws`. (2) **ADVISORY**: Lightyear 0.26 `Replicate` component API for per-entity client scoping and `UnreliableChannel` support — ADR-008 checklist item 2 leaves `ChannelMode` variants unconfirmed. (3) **ADVISORY**: `MessageReader<T>::read()` method name — confirm exact drain iterator API at compile time. |
+| **Verification Required** | (1) **RESOLVED (implementation-time)**: Lightyear 0.26 server→client reliable unicast API — `MessageSender<T>` is client-side only. Server-side API from ADR-008: `server.send_message_to_target::<ReliableChannel, S2CCardAcquired>(msg, NetworkTarget::Single(client_id))`. Must be confirmed against `docs.rs/lightyear/0.26` before writing `resolve_prism_draws`; use `liv-bevy-lightyear` skill to enforce correct Lightyear 0.26 server-send pattern. (2) **RESOLVED (implementation-time)**: Lightyear 0.26 `Replicate` component API for per-entity scoping — must verify `NetworkTarget::Single(client_id)` or equivalent before spawning `PrismPresence` entities. ADR-008 checklist item 2 tracks `ChannelMode` variants; `liv-bevy-lightyear` skill enforces correct replication API. (3) **RESOLVED**: `MessageReader<T>::read()` confirmed — `for msg in reader.read()` is the correct drain iterator form, per `docs/engine-reference/bevy/current-best-practices.md` Bevy 0.17+ Message patterns. |
 
 > **Engine Specialist Note (2026-04-30)**: `PrismCollected` is a server-internal Bevy `#[derive(Message)]` emitted by the Board/Lane System server code. It is NOT a Lightyear C2S message from a client. `MessageReader<PrismCollected>` is therefore the correct system parameter — this is the Bevy-layer message API, not Lightyear's `MessageReceiver<T>`. The two APIs must not be conflated: `MessageReader<T>` is for server-internal Bevy messages; `MessageReceiver<T>` (Lightyear) is for C2S network messages.
 
