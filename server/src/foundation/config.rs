@@ -140,6 +140,8 @@ impl AssetLoader for GameConfigLoader {
 ///
 /// # Example
 /// ```rust,no_run
+/// # use bevy::prelude::*;
+/// # use server::foundation::config::GameConfig;
 /// fn my_system(config: Res<GameConfig>) {
 ///     info!("Starting gold: {}", config.starting_gold);
 /// }
@@ -169,6 +171,8 @@ impl Deref for GameConfig {
 ///
 /// # Example
 /// ```rust,no_run
+/// # use bevy::prelude::*;
+/// # use server::foundation::config::CardCatalog;
 /// fn my_system(catalog: Res<CardCatalog>) {
 ///     info!("{} cards loaded", catalog.cards.len());
 /// }
@@ -474,6 +478,9 @@ pub fn validate_card_catalog(c: &CardCatalog) -> Result<(), String> {
 ///
 /// # Example
 /// ```rust,no_run
+/// # use bevy::asset::AssetPlugin;
+/// # use bevy::prelude::*;
+/// # use server::foundation::config::ConfigPlugin;
 /// App::new()
 ///     .add_plugins(MinimalPlugins)
 ///     .add_plugins(AssetPlugin::default())
