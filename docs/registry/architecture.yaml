@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-04-30"  # updated by ADR-014, ADR-015, ADR-016, ADR-019
+last_updated: "2026-04-30"  # updated by ADR-014, ADR-015, ADR-016, ADR-019, ADR-020
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -133,6 +133,32 @@ state_ownership:
     write_access: on_resolution_complete (writer) + on_draft_started (consumer/remover) — no other system may read or write this resource
     referenced_by:
       - docs/architecture/adr-019-economy-resource-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
+  - state: board_state
+    status: active
+    owner_system: board-lane-system
+    adr: docs/architecture/adr-020-board-lane-state-architecture.md
+    interface: "Res<BoardState> (read-only for placement validation and spatial queries); ResMut<BoardState> permitted ONLY through board/api.rs functions: spawn_unit, move_unit, remove_unit_from_board, change_lane_unit, expand_spawn_range, cleanup_board. Direct HashMap entry mutation outside board/api.rs is forbidden."
+    write_access: board/api.rs functions called by (a) board tick systems (PlacementPhaseEntered, OnResolutionEnd subscribers), (b) resolve_combat exclusive system (movement/removal during RESOLUTION sub-steps), (c) Objective System (expand_spawn_range on fake obj destruction)
+    referenced_by:
+      - docs/architecture/adr-020-board-lane-state-architecture.md
+      - docs/architecture/adr-007-placement-buffer.md   # PlacementBuffer commits into board via spawn_unit at sub-step 1
+      - docs/architecture/adr-017-combat-resolution-execution-architecture.md   # resolve_combat calls board API functions
+      - docs/architecture/adr-018-keyword-system.md   # keyword effects use move_unit / change_lane_unit
+    added: "2026-04-30"
+    revised: ""
+
+  - state: board_unit_entities
+    status: active
+    owner_system: board-lane-system
+    adr: docs/architecture/adr-020-board-lane-state-architecture.md
+    interface: "Bevy ECS entities with Required Components: BoardPosition, UnitOwner, UnitCardRef, UnitType, UnitStats, CurrentHp, UnitKeywordState. Spawned via spawn_unit() in board/api.rs at RESOLUTION sub-step 1 commit. Lightyear ReplicateTo component added ONLY after S2CPlacementReveal is enqueued (per ADR-007 simultaneous-reveal invariant). BoardPosition component mutations ONLY via move_unit() — never direct field assignment."
+    write_access: board/api.rs exclusively; resolve_combat reads via world.query() + world.resource_mut::<BoardState>()
+    referenced_by:
+      - docs/architecture/adr-020-board-lane-state-architecture.md
+      - docs/architecture/adr-007-placement-buffer.md
     added: "2026-04-30"
     revised: ""
 

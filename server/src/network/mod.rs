@@ -29,6 +29,8 @@ impl Plugin for ServerNetworkPlugin {
 }
 
 pub fn register_lightyear_protocol(app: &mut App) {
+    app.register_required_components::<ClientOf, Transport>();
+
     let mut registry = LightyearProtocolRegistry { app };
     protocol::register_protocol(&mut registry);
 }
@@ -45,7 +47,8 @@ impl ProtocolRegistry for LightyearProtocolRegistry<'_> {
         };
 
         self.app
-            .add_channel::<C>(ChannelSettings { mode, ..default() });
+            .add_channel::<C>(ChannelSettings { mode, ..default() })
+            .add_direction(NetworkDirection::Bidirectional);
     }
 
     fn add_message<M: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + 'static>(
@@ -69,13 +72,14 @@ fn open_websocket_server(mut commands: Commands) {
         .unwrap_or(5000);
     let bind_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
     let config = ServerConfig::builder()
-        .with_bind_default(port)
+        .with_bind_address(bind_addr)
         .with_no_encryption();
 
     let server = commands
         .spawn((
             Name::new("Lanes and Lies WebSocket Server"),
             LocalAddr(bind_addr),
+            RawServer,
             WebSocketServerIo { config },
         ))
         .id();

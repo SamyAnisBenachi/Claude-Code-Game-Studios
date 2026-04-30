@@ -1,7 +1,7 @@
 # Story 004: End-to-End WebSocket Round-Trip Test
 
 > **Epic**: Lightyear Protocol & Verification Spike
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-04-29
@@ -26,29 +26,29 @@
 ## Acceptance Criteria
 
 **End-to-end heartbeat round-trip:**
-- [ ] Server binary starts, listens on `localhost:PORT`
-- [ ] Client (native build) connects to server over WebSocket
-- [ ] Client sends `C2SHeartbeat {}` on `UnreliableChannel`
-- [ ] Server receives `C2SHeartbeat` via its `MessageReceiver<C2SHeartbeat>` stub
-- [ ] Server sends `S2CHeartbeat {}` broadcast on `UnreliableChannel`
-- [ ] Client receives `S2CHeartbeat` via its message receiver
-- [ ] Test exits 0; CI job passes
+- [x] Server binary starts, listens on `localhost:PORT`
+- [x] Client (native build) connects to server over WebSocket
+- [x] Client sends `C2SHeartbeat {}` on `UnreliableChannel`
+- [x] Server receives `C2SHeartbeat` via its `MessageReceiver<C2SHeartbeat>` stub
+- [x] Server sends `S2CHeartbeat {}` broadcast on `UnreliableChannel`
+- [x] Client receives `S2CHeartbeat` via its message receiver
+- [x] Test exits 0; CI job passes
 
 **Reliable channel proof:**
-- [ ] Server sends a `S2CHandshakeRejected` (or any `ReliableChannel` message) to the client after connection
-- [ ] Client receives it — proves `ReliableChannel` is functional
-- [ ] Note: full handshake flow is owned by the GSS epic — only channel functionality is verified here
+- [x] Server sends a `S2CHandshakeRejected` (or any `ReliableChannel` message) to the client after connection
+- [x] Client receives it — proves `ReliableChannel` is functional
+- [x] Note: full handshake flow is owned by the GSS epic — only channel functionality is verified here
 
 **WASM bundle size:**
-- [ ] `cargo build -p client --target wasm32-unknown-unknown --release` completes
-- [ ] Output `.wasm` artefact size measured and documented in `tests/evidence/story-lyv-004-wasm-size.md`
-- [ ] Size ≤ 50 MB; if > 50 MB, document mitigation path (drop unused Bevy features, run `wasm-opt`) but do not block the story
+- [x] `cargo build -p client --target wasm32-unknown-unknown --release` completes
+- [x] Output `.wasm` artefact size measured and documented in `tests/evidence/story-lyv-004-wasm-size.md`
+- [x] Size ≤ 50 MB; if > 50 MB, document mitigation path (drop unused Bevy features, run `wasm-opt`) but do not block the story
 
 **DIFFERS resolution documentation:**
-- [ ] Any checklist items marked `⚠️ DIFFERS` in Story 001 that affected implementation in Stories 002–004 are documented with their resolution in `tests/evidence/lightyear-026-verification.md` — no open DIFFERS without a resolution path
+- [x] Any checklist items marked `⚠️ DIFFERS` in Story 001 that affected implementation in Stories 002–004 are documented with their resolution in `tests/evidence/lightyear-026-verification.md` — no open DIFFERS without a resolution path
 
 **ADR-012 open condition final status:**
-- [ ] `tests/evidence/lightyear-026-verification.md` records final ADR-012 status: either "RESOLVED — no apply_deferred needed" or "apply_deferred path documented in GSS epic story"
+- [x] `tests/evidence/lightyear-026-verification.md` records final ADR-012 status: either "RESOLVED — no apply_deferred needed" or "apply_deferred path documented in GSS epic story"
 
 ---
 
@@ -150,7 +150,7 @@ If Trunk produces a different output path, adjust accordingly.
 - `tests/integration/network/e2e_websocket_test.rs` — test passing
 - WASM bundle size measurement → `tests/evidence/story-lyv-004-wasm-size.md`
 - Final DIFFERS resolutions → `tests/evidence/lightyear-026-verification.md` (updated)
-**Status**: [ ] Not yet created
+**Status**: [x] Created
 
 ---
 

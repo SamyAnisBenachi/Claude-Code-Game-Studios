@@ -1,3 +1,4 @@
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
 use bevy::prelude::*;
@@ -26,6 +27,8 @@ impl Plugin for ClientNetworkPlugin {
 }
 
 pub fn register_lightyear_protocol(app: &mut App) {
+    app.register_required_components::<Client, Transport>();
+
     let mut registry = LightyearProtocolRegistry { app };
     protocol::register_protocol(&mut registry);
 }
@@ -42,7 +45,8 @@ impl ProtocolRegistry for LightyearProtocolRegistry<'_> {
         };
 
         self.app
-            .add_channel::<C>(ChannelSettings { mode, ..default() });
+            .add_channel::<C>(ChannelSettings { mode, ..default() })
+            .add_direction(NetworkDirection::Bidirectional);
     }
 
     fn add_message<M: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + 'static>(
@@ -67,6 +71,8 @@ fn connect_websocket_client(mut commands: Commands) {
         .spawn((
             Name::new("Lanes and Lies WebSocket Client"),
             Client::default(),
+            RawClient,
+            LocalAddr(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0)),
             WebSocketClientIo::from_url(ClientConfig::default(), server_url),
         ))
         .id();

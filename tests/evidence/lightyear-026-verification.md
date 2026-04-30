@@ -23,11 +23,11 @@ pub struct UnreliableChannel;
 app.add_channel::<ReliableChannel>(ChannelSettings {
     mode: ChannelMode::OrderedReliable(ReliableSettings::default()),
     ..default()
-});
+}).add_direction(NetworkDirection::Bidirectional);
 app.add_channel::<UnreliableChannel>(ChannelSettings {
     mode: ChannelMode::UnorderedUnreliable,
     ..default()
-});
+}).add_direction(NetworkDirection::Bidirectional);
 ```
 
 **`ChannelSettings` fields (0.26.4):**
@@ -35,9 +35,9 @@ app.add_channel::<UnreliableChannel>(ChannelSettings {
 - `send_frequency: Duration` — how often to send (default = every frame)
 - `priority: f32` — bandwidth priority
 
-**No `direction` field on `ChannelSettings`.** Direction is set on the MESSAGE registration, not the channel (see Item 3).
+**No `direction` field on `ChannelSettings`.** In Lightyear 0.26.4, direction is attached to the returned `ChannelRegistration` with `.add_direction(NetworkDirection::...)`, while each message type also needs its own `MessageRegistration::add_direction(...)` (see Item 3). Story 004 verified that omitting channel `add_direction` leaves `Transport` present but without channel senders/receivers.
 
-**Resolution for `shared/src/protocol.rs`:** Change channel definition from `#[derive(Channel)] pub struct ReliableChannel;` to a plain struct, registered via `app.add_channel::<T>(ChannelSettings { ... })` in the `ProtocolPlugin`.
+**Resolution for `shared/src/protocol.rs`:** Change channel definition from `#[derive(Channel)] pub struct ReliableChannel;` to a plain struct, registered via `app.add_channel::<T>(ChannelSettings { ... }).add_direction(NetworkDirection::Bidirectional)` in the protocol adapter.
 
 ---
 
@@ -62,7 +62,11 @@ The two variants used by ADR-008 (`OrderedReliable` and `UnorderedUnreliable`) a
 ### Item 3: `ChannelDirection` enum variants
 ⚠️ **DIFFERS** — `ChannelDirection` does NOT appear in `ChannelSettings` in 0.26.4.
 
-**Actual pattern:** Direction is configured on the **message registration**, not the channel:
+**Actual pattern:** Direction is configured on both protocol layers:
+- Channel direction is configured on `ChannelRegistration` returned by `app.add_channel::<C>(...)`; this installs channel senders/receivers on `Transport`.
+- Message direction is configured on `MessageRegistration` returned by `app.register_message::<M>()`; this installs `MessageSender<M>` / `MessageReceiver<M>` components.
+
+Message example:
 ```rust
 app.register_message::<C2SHello>()
     .add_direction(NetworkDirection::ClientToServer);
@@ -76,7 +80,7 @@ app.register_message::<ChatMessage>()
 
 `NetworkDirection` enum (confirmed in prelude): `ServerToClient`, `ClientToServer`, `Bidirectional`.
 
-**Resolution:** Remove any per-channel direction setting. Set direction per message type in `ProtocolPlugin::build()` using `add_direction(NetworkDirection::...)`.
+**Resolution:** Do not add a `direction` field to `ChannelSettings`. Use `.add_direction(NetworkDirection::Bidirectional)` on both shared channels, and set direction per message type in `ProtocolPlugin::build()` using `add_direction(NetworkDirection::...)`.
 
 ---
 
@@ -381,12 +385,35 @@ commands.spawn((
 
 ---
 
+## Story 004 Final Runtime Verification
+
+**Date:** 2026-04-30
+
+**Local command:** `cargo test -p server --test e2e_websocket_test e2e_websocket_heartbeat_roundtrip_and_reliable_channel`
+
+**Result:** PASS - 1 passed, 0 failed.
+
+**Verified runtime APIs/patterns:**
+- `ServerPlugins` and `ClientPlugins` with in-process Bevy `App::update()` loops.
+- WebSocket IO via `WebSocketServerIo` / `WebSocketClientIo`.
+- Raw connection markers `RawServer` / `RawClient` for non-netcode WebSocket links.
+- `ServerConfig::builder().with_bind_address(bind_addr).with_no_encryption()` so the listener matches `LocalAddr`.
+- Channel registration via `app.add_channel::<C>(ChannelSettings { ... }).add_direction(NetworkDirection::Bidirectional)`.
+- Message registration via `app.register_message::<M>().add_direction(NetworkDirection::...)`.
+- Client send via `MessageSender<C2SHeartbeat>::send::<UnreliableChannel>(...)`.
+- Server receive via `MessageReceiver<C2SHeartbeat>::receive()`.
+- Server broadcast via `ServerMultiMessageSender::send::<M, C>(..., &NetworkTarget::All)`.
+
+**ADR-012 open condition final status:** RESOLVED - no `apply_deferred` needed.
+
+---
+
 ## Resolution Paths for DIFFERS Items
 
 | Item | Correct API | Files to Update |
 |------|-------------|-----------------|
-| 1 | `app.add_channel::<T>(ChannelSettings { mode: ..., ..default() })` | `shared/src/protocol.rs`, `ProtocolPlugin` |
-| 3 | Direction on message: `app.register_message::<T>().add_direction(NetworkDirection::...)` | `shared/src/protocol.rs`, `ProtocolPlugin` |
+| 1 | `app.add_channel::<T>(ChannelSettings { mode: ..., ..default() }).add_direction(NetworkDirection::Bidirectional)` | `shared/src/protocol.rs`, protocol adapters |
+| 3 | Direction on channel registration and message registration via `.add_direction(NetworkDirection::...)` | `shared/src/protocol.rs`, protocol adapters |
 | 5 | `sender.send::<Channel>(message)` (channel via generic) | Server C2S handler stub |
 | 6 | `receiver.receive()` → `impl Iterator<Item = M>` | Server C2S handler stub |
 | 7 | `NetworkTarget::Single(PeerId)` (not ClientId) | All ADRs referencing `ClientId`, `shared/src/protocol.rs` |

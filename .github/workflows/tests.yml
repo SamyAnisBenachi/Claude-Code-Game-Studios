@@ -54,6 +54,11 @@ jobs:
           set -euo pipefail
           cargo check -p shared
 
+      - name: E2E WebSocket round-trip
+        run: |
+          set -euo pipefail
+          cargo test -p server --test e2e_websocket_test e2e_websocket_heartbeat_roundtrip_and_reliable_channel --verbose
+
       # Run all tests in the workspace
       # Note: client crate tests excluded (WASM target requires trunk, not cargo test)
       - name: Run server tests
@@ -214,7 +219,7 @@ jobs:
       - name: Check raw WASM artifact size (upper-bound proxy; Trunk bundle will be smaller)
         run: |
           set -euo pipefail
-          WASM=target/wasm32-unknown-unknown/release/client.wasm
+          WASM=target/msvc-local/wasm32-unknown-unknown/release/client.wasm
           if [ ! -f "$WASM" ]; then
             echo "FAIL: client.wasm not found at expected path"
             exit 1
