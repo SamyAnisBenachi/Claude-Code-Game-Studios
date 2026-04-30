@@ -4,6 +4,7 @@ use super::events::{
     ShopRefreshNeeded,
 };
 use super::state::RoundState;
+use super::transitions::advance_phase;
 use bevy::prelude::*;
 
 pub struct RsmPlugin;
@@ -20,6 +21,7 @@ impl Plugin for RsmPlugin {
             .add_message::<BroadcastPhaseChanged>()
             .add_message::<AuctionSettled>()
             .add_message::<ResolutionComplete>()
+            .add_systems(Update, advance_phase)
             .add_observer(on_session_ready);
     }
 }

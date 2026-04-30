@@ -4,3 +4,4 @@
 // remains in main.rs.
 
 pub mod core;
+pub mod foundation;

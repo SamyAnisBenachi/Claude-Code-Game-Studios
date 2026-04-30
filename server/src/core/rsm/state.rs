@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use shared::protocol::GameOverReason;
 use shared::session::PlayerId;
 use std::collections::{HashMap, HashSet};
 
@@ -44,6 +45,49 @@ impl RoundState {
             disconnect_trackers: HashMap::new(),
         }
     }
+}
+
+#[derive(Resource, Clone, Debug)]
+pub struct SessionConfig {
+    pub players: Vec<PlayerId>,
+}
+
+impl SessionConfig {
+    pub fn new(players: Vec<PlayerId>) -> Self {
+        Self { players }
+    }
+}
+
+#[derive(Resource, Clone, Debug)]
+pub struct PhaseAdvanceRequest {
+    pub expected_source: RoundPhase,
+    pub game_over: Option<GameOverRequest>,
+}
+
+impl PhaseAdvanceRequest {
+    pub fn new(expected_source: RoundPhase) -> Self {
+        Self {
+            expected_source,
+            game_over: None,
+        }
+    }
+
+    pub fn game_over(
+        expected_source: RoundPhase,
+        reason: GameOverReason,
+        loser: Option<PlayerId>,
+    ) -> Self {
+        Self {
+            expected_source,
+            game_over: Some(GameOverRequest { reason, loser }),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct GameOverRequest {
+    pub reason: GameOverReason,
+    pub loser: Option<PlayerId>,
 }
 
 impl Default for RoundState {
