@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -16,9 +16,9 @@ Proposed
 | **Domain** | Core / Gameplay / Networking |
 | **Knowledge Risk** | HIGH — Bevy 0.15–0.18 and Lightyear 0.26 all post-cutoff |
 | **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, `docs/engine-reference/bevy/breaking-changes.md`, `docs/engine-reference/bevy/deprecated-apis.md`, ADR-007 (placement buffer), ADR-017 (combat resolution exclusive system), ADR-018 (UnitKeywordState component) |
-| **Post-Cutoff APIs Used** | Required Components API (Bevy 0.15+ — replaces deprecated bundles); `commands.spawn((ComponentA, ComponentB))` without Bundle; `world.query::<Q>()` in exclusive system context; Lightyear 0.26 `ReplicateTo` marker component for entity replication scope |
+| **Post-Cutoff APIs Used** | Required Components API (Bevy 0.15+ — replaces deprecated bundles); `commands.spawn((ComponentA, ComponentB))` without Bundle; `world.query::<Q>()` in exclusive system context; Lightyear 0.26 `Replicate::to_clients(NetworkTarget)` component for entity replication scope |
 | **Post-Cutoff APIs NOT Used** | `SpriteBundle`, any `*Bundle` type — all deprecated in Bevy 0.15+. Do not spawn unit entities using Bundle structs. |
-| **Verification Required** | (1) **BLOCKING — UNVERIFIED**: `ReplicateTo(NetworkTarget::All)` as the Lightyear 0.26 API for entity replication scope. No project-held engine-reference confirms this name. The correct component may be named differently in the actual 0.26.0 release. Verify against Lightyear 0.26 release notes (`https://github.com/cBournhonesque/lightyear/releases` tag v0.26.0) before this ADR can be Accepted. (2) CONFIRMED: `world.query::<Q>()` in exclusive system (`fn resolve_combat(world: &mut World)`) is safe in Bevy 0.18 — no `unsafe` required. (3) Confirm `world.resource_mut::<BoardState>()` conflicts with any regular system holding `ResMut<BoardState>` are resolved by the exclusive system running outside the regular Update schedule. (4) ADVISORY: The `advance_phase` symbol referenced in `BoardPlugin` (`.after(advance_phase)`) must resolve to a concrete system identifier from the RSM module — confirm it is exported from `server::core::rsm`. |
+| **Verification Required** | (1) **VERIFIED 2026-04-30**: `ReplicateTo` does NOT exist in Lightyear 0.26.0. The correct API is `Replicate::to_clients(NetworkTarget::All)` — a `Replicate` component (in `lightyear_replication::send::components`) using `ReplicationMode::SingleServer(target)`. Adding this component also auto-inserts `Replicating` and `ReplicationGroup` via Bevy Required Components. All ADR references to `ReplicateTo` have been updated to `Replicate::to_clients(NetworkTarget::All)`. Verified against `lightyear_replication/src/send/components.rs` at tag 0.26.0. (2) CONFIRMED: `world.query::<Q>()` in exclusive system (`fn resolve_combat(world: &mut World)`) is safe in Bevy 0.18 — no `unsafe` required. (3) Confirm `world.resource_mut::<BoardState>()` conflicts with any regular system holding `ResMut<BoardState>` are resolved by the exclusive system running outside the regular Update schedule. (4) ADVISORY: The `advance_phase` symbol referenced in `BoardPlugin` (`.after(advance_phase)`) must resolve to a concrete system identifier from the RSM module — confirm it is exported from `server::core::rsm`. |
 
 ## ADR Dependencies
 
@@ -107,7 +107,7 @@ SERVER WORLD
 │  ├── UnitStats { atk: u8, mp: u8, ar: u8 }  [replicated]        │
 │  ├── CurrentHp(i32)                          [replicated]         │
 │  ├── UnitKeywordState     (ADR-018)          [replicated]         │
-│  └── ReplicateTo(NetworkTarget::All)  // Lightyear replication   │
+│  └── Replicate::to_clients(NetworkTarget::All)  // Lightyear  │
 │       Added at sub-step 1 commit — NOT at spawn of buffer        │
 └──────────────────────────────────────────────────────────────────┘
 
