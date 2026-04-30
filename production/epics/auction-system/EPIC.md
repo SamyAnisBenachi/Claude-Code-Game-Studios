@@ -108,4 +108,13 @@ This epic is complete when:
 
 ## Stories
 
-Not yet created — run `/create-stories auction-system`
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [AuctionState Types & Snapshot Scaffold](story-001-auction-state-scaffold.md) | Logic | Ready | ADR-013 |
+| 002 | [Auction Phase Entry — AuctionPhaseEntered & IDLE Guard](story-002-auction-phase-entry.md) | Logic | Ready | ADR-013 |
+| 003 | [AbortAuction — Cleanup Handler & RESOLVING Guard](story-003-auction-abort-handler.md) | Logic | Ready | ADR-013 |
+| 004 | [Bid Validation — 5-Condition Rejection Gate](story-004-bid-validation-gate.md) | Logic | Ready | ADR-013 |
+| 005 | [Accepted Bid — Gold Reservation Handoff & Timer Reset](story-005-accepted-bid-reservation.md) | Integration | Ready | ADR-013 |
+| 006 | [Resolution & Settlement — Case A/B & Post-Settlement Invariants](story-006-resolution-settlement.md) | Integration | Ready | ADR-013 |
+| 007 | [Plugin Registration & System Scheduling](story-007-auction-plugin-scheduling.md) | Config/Data | Ready | ADR-013 |
+| 008 | [Pool Integration — draw_auction_card, distribute, Legendary Stratification](story-008-pool-integration.md) | Integration | Ready | ADR-013 |
