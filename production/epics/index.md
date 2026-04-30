@@ -17,6 +17,8 @@
 | [board-lane-system](board-lane-system/EPIC.md) | Feature (M1) | `server/feature/board/` | board-lane-system | TBD | Ready |
 | [objective-system](objective-system/EPIC.md) | Feature (M1) | `server/feature/objective/` | objective-system | TBD | Ready |
 | [auction-system](auction-system/EPIC.md) | Feature (M2) | `server/feature/auction/` | auction-system | Not yet created | Ready |
+| [combat-resolution](combat-resolution/EPIC.md) | Feature (M2) | `server/feature/combat/` | combat-resolution | Not yet created | Ready |
+| [class-system](class-system/EPIC.md) | Feature (M3) | `server/feature/class/` | class-system | 10 stories | Ready |
 
 > ⭐ Sprint 1 Story 1.0 = `lightyear-protocol-verification` Story 001 (Lightyear 0.26 verification spike)
 
@@ -43,8 +45,8 @@
 | Foundation | **Stories complete — ready for sprint planning** | Pre-Production → Production gate requires Foundation + Core epics |
 | Core | **EPIC files written 2026-04-29 — run `/create-stories` per epic next** | Story authoring next; sprint planning after |
 | Feature (M1) | **EPIC files written 2026-04-30 — run `/create-stories` per epic next** | Board/Lane + Objective epics ready; M2/M3 epics paused pending ADRs |
-| Feature (M2) | **auction-system EPIC written 2026-04-30** — run `/create-stories auction-system` next; Combat Resolution, Card Acquisition, Presentation epics pending ADRs | ADR-013 ✅; remaining M2 ADRs needed before remaining epics |
-| Feature (M3) | Not started — write ADRs for Keyword, Prism, Class first | Same as M2 |
+| Feature (M2) | **auction-system + combat-resolution EPICs written 2026-04-30** — run `/create-stories` per epic next; Card Acquisition, Presentation epics pending ADRs | ADR-013 ✅ ADR-017 ✅; card-acquisition ADR needed before that epic |
+| Feature (M3) | **class-system EPIC written 2026-04-30** — run `/create-stories class-system` next; Keyword, Prism epics pending ADRs | ADR-014 ✅ (class-system); keyword/prism ADRs needed |
 | Presentation | Not started | — |
 
 ## Core Layer Coordination Notes
