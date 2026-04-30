@@ -1,8 +1,107 @@
 # Session State — Lanes and Lies
 
 > Lis ce fichier EN PREMIER dans toute nouvelle session.
-> Il contient l'état complet du projet au 2026-04-29.
+> Il contient l'état complet du projet au 2026-04-30.
 >
+> **⚠️ SESSION INTERROMPUE (2026-04-30) — /design-review keyword-system.md R3 — REPRENDRE ICI**
+> Verdict: MAJOR REVISION NEEDED. 9 design decisions collected. GDD edits NOT YET WRITTEN.
+> Reprendre avec: lire ce bloc, puis editer design/gdd/keyword-system.md selon les decisions ci-dessous.
+> Faire TOUTES les edits GDD, puis: systems-index update + review-log append + commit (git restore --staged . d'abord).
+>
+## /design-review keyword-system.md R3 — Session Interrupt State
+> Reprendre: lire les decisions ci-dessous, editer design/gdd/keyword-system.md, puis systems-index + review-log.
+
+### Verdict R3: MAJOR REVISION NEEDED (worse than R2)
+Specialists: game-designer, systems-designer, qa-lead, network-programmer, creative-director
+25 blocking items, 12 recommended. GDD edits NOT YET WRITTEN.
+
+### 9 Design Decisions (CONFIRMED BY USER — apply all to GDD):
+
+**D1 — SILENCE Player Fantasy**: Keep as-is (accepted risk). Design test stays. SILENCE VFX animation is the mitigation. No info mechanism needed.
+
+**D2 — OUTNUMBERED timing**: Keep current per-sub-step re-evaluation. Document the "flip risk" (OUTNUMBERED unit that kills its way to parity loses the bonus) in Tuning Knobs as a known design tension.
+
+**D3 — COUNTERATTACK rule**: SIMPLIFY. Fires on any non-RANGE attack. Remove "same-cell OR collision-halted adjacent" proximity condition entirely. Remove the tooltip exception — rule is now card-text-derivable from the name alone. Update keyword definition + all references.
+
+**D4 — STUN + COUNTERATTACK**: COUNTERATTACK does NOT fire when stunned. STUN = full shutdown including reactive hooks. Add to Edge Cases and STUN keyword definition.
+
+**D5 — RANGE + WALL**: RANGE targets nearest enemy normally. WALL is a valid RANGE target. RANGE cannot "shoot through" a WALL — if WALL is the nearest enemy, RANGE attacks WALL. WALL's blocking behavior (movement halt) does not affect RANGE targeting. Add to Edge Cases under both RANGE and WALL keywords.
+
+**D6 — FIRST STRIKE + WALL**: FIRST STRIKE CAN attack a WALL in SS3. If FS kills WALL in SS3, WALL is removed in SS4 and no longer blocks movement in SS5. Intentional counter-play (FIRST STRIKE + CHARGE X counters WALL lane anchors). Add to Edge Cases.
+
+**D7 — ATTRACT backfire (CRITICAL RULE CLARIFICATION)**: KW-041 is INVALID and must be REMOVED. Fundamental rule confirmed by user: "1 player unit and 1 enemy unit can NEVER be on the same cell. When they make contact they are always 1 cell apart." Therefore:
+- An enemy unit can never be ATTRACTed to the caster's own cell (1-cell-apart rule applies)
+- KW-041 premise was wrong — enemy cannot reach Cell 1 (Player A's objective)
+- Formula 2 description "stops at caster's cell" must change to "stops 1 cell short of caster's cell for enemy targets (collision rule applies)"
+- Remove the Edge Case: "Pulling an enemy to your own objective cell is valid"
+- Add to Edge Cases: "Collision rule applies to ATTRACT for enemy targets: an enemy unit pulled by ATTRACT stops 1 cell short of the caster's cell, never sharing the caster's cell. For friendly targets, the unit can stop at the caster's cell."
+- Add note: "PROPAGATE TO board-lane-system.md: the 1-cell-apart collision rule between opposing units must be formally defined there and referenced here."
+- TELEPORT is the only exception: "Co-occupation is allowed" (already stated) — TELEPORT bypasses collision rules.
+
+**D8 — LEADER snapshot timing**: CHANGE to post-SS1. Snapshot taken after all SS1 APPEARANCE effects resolve, before SS2 begins. A LEADER placed in SS1 of round R grants its bonus in round R (not deferred to R+1). Update LEADER keyword definition, States table, and Edge Cases. Remove KW-046 (which tested the now-incorrect "no bonus this round" behavior). Update KW-047 (still valid — two same-family LEADERs). Note: Combat Resolution GDD also needs updating (snapshot timing change). File a propagation note.
+
+**D9 — BODYGUARD no valid target**: Enters with no bond (bodyguard_protects = None). BODYGUARD always enters successfully. If no other friendly unit exists, bond is None, no protection provided. Add to Edge Cases.
+
+### GDD Edits Required (design/gdd/keyword-system.md):
+
+**Rules/definitions to change:**
+- COUNTERATTACK: Remove "same-cell OR collision-halted adjacent" → "any non-RANGE attack". Remove COUNTERATTACK tooltip note from UI Requirements.
+- STUN: Add "STUN suppresses all keyword hooks including reactive triggers (COUNTERATTACK does not fire when stunned)."
+- RANGE: Add RANGE+WALL interaction rule.
+- LEADER: Change snapshot timing from "RESOLUTION entry" to "after SS1 completes, before SS2 begins."
+- ATTRACT formula: Update cap description for enemy targets (1 cell short of caster cell).
+
+**Edge Cases to add:**
+- RANGE + WALL (D5)
+- FIRST STRIKE + WALL (D6)
+- STUN + COUNTERATTACK = no COUNTERATTACK (D4)
+- ATTRACT collision for enemy targets / "1-cell-apart" rule (D7)
+- BODYGUARD no valid target at entry → None bond (D9)
+- OUTNUMBERED flip risk (D2, in Tuning Knobs)
+- SILENCE + IRREMOVABLE (silenced IRREMOVABLE = displaceable)
+- SILENCE + UNTARGETABLE (silenced UNTARGETABLE = Spell/Order-targetable)
+- BODYGUARD+UNTARGETABLE immune to SILENCE (add to Dangerous Combinations)
+- LEADER grants itself its own bonus
+- DEATH chain bound wrong if DEATH triggers spawn units (remove "structural 9-link" certainty)
+- INJURED via APPEARANCE grants bonuses from SS2 (powerful synergy note for card authors)
+- BODYGUARD CHANGE LANE (BODYGUARD itself): bond persists
+
+**ACs to change/add/remove:**
+- Remove KW-041 (ATTRACT backfire — invalid premise)
+- Remove KW-046 (LEADER placed this round no bonus — now incorrect after D8)
+- Update KW-007 (INJURED timing still valid but LEADER snapshot language changes)
+- Add KW-029c: REPEL X=6 at Cell=1 (zero traversal boundary)
+- Add KW-029d: REPEL X=6 at Cell=8 for Player B (zero traversal boundary)
+- Add: SHIELD persisting across rounds
+- Add: DEATH chain re-entry prevention (already-dead set)
+- Add: IRREMOVABLE + CHANGE LANE (own movement allowed)
+- Add: STUN+COUNTERATTACK = does not fire
+- Add: FIRST STRIKE + WALL kills in SS3
+- Fix KW-035a: replace "GoldLedger" with actual resource name (leave as TODO for implementation)
+- Fix KW-054 inline comment "(2 > 1)" → "count(A)=2, count(B)=1, `2 < 1 = false`"
+
+**Protocol/schema fixes (Replication Contract):**
+- Fix SILENCE `silenced_until_round` formula: server computes `current_round + N - 1` (expiry-inclusive), client renders while `current_round <= silenced_until_round`. Add worked example for N=1.
+- Add to HASTE row: "SERVER MUST NOT emit HasteActivated for STUNned HASTE units."
+- Add to SILENCE row: "On SilenceApplied, client MUST clear all runtime INJURED-granted keyword state."
+- Add to COUNTERATTACK event note: "CounterattackFired payload must include target_id: EntityId." (NP GDD update required — add as OQ)
+- Add note: INJURED-RANGE GrantedKeyword::Range must carry {max_range: u8}. (NP GDD D.3 update required)
+
+**Formula updates:**
+- Formula 2 (ATTRACT): Add i32 intermediate arithmetic safety note (matching Formula 1). Update cap description for enemy targets.
+- OUTNUMBERED formula: Replace "evaluated at the start of each sub-step" → "evaluated at each sub-step boundary — after the preceding sub-step fully completes, before the current sub-step begins."
+
+**OQs to add:**
+- OQ-KS6: STUN suppresses ALL keyword hooks including reactive triggers (CONFIRMED: COUNTERATTACK does not fire while stunned). Update with ruling.
+- OQ-KS7: SilenceApplied event payload must include stripped_keywords list (NP GDD update required before SILENCE implementation).
+- OQ-KS8: CounterattackFired must include target_id for multi-attacker scenarios (NP GDD update required).
+- OQ-KS9: LEADER snapshot timing change (post-SS1) must propagate to Combat Resolution GDD.
+- OQ-KS10: Board-lane-system.md must formally define the "1-cell-apart" collision rule for opposing units (referenced in ATTRACT formula fix).
+
+**Status to update:** Change header from "Needs Revision" to "Needs Revision — R3 MAJOR REVISION, decisions collected, edits in progress (R4 pending)"
+
+---
+
 > **Session active (2026-04-30):** HUD GDD ✅ DESIGNED — design/gdd/hud.md. All 8 sections + Visual/Audio + UI Requirements + Open Questions complete (21 ACs, 18 BLOCKING). Registry: 10 referenced_by updated. Systems index updated. /design-review pending (fresh session). Next: /ux-design hud (fresh session).
 >
 > **Parallel session (2026-04-30):** Class System GDD ✅ DESIGNED — design/gdd/class-system.md. All 8 sections + UI Requirements + Open Questions complete (27 ACs, 26 BLOCKING). 7 token entities + 8 formulas + 5 constants registered. 4 OQs: Xelorium timing, Sang Méprise reconnect gap (NP), Rollback+HASTE, Madoll spell scope. Systems index updated. /design-review pending (fresh session).
