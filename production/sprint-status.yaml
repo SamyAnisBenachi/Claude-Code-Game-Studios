@@ -43,11 +43,11 @@ stories:
     name: "Card Pool Story 3: Refresh Shop Slot Variants"
     file: "production/epics/card-data-pool/story-003-refresh-shop-slot-variants.md"
     priority: should-have
-    status: in-progress
-    owner: "codex-s2-04-shop-slots"
+    status: done
+    owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-04-30"
 
   - id: "S2-05"
     name: "S1 Carryover: Startup Validation Gate"
@@ -73,21 +73,21 @@ stories:
     name: "RSM Story 2: advance_phase + F2 Ordering"
     file: "production/epics/round-state-machine/story-002-advance-phase-and-f2-ordering.md"
     priority: nice-to-have
-    status: in-progress
-    owner: "codex-s2-07-rsm"
+    status: done
+    owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-04-30"
 
   - id: "S2-08"
     name: "Economy Story 2: Initialisation + Draft Subscriber"
     file: "production/epics/economy-system/story-002-initialisation-draft-subscriber.md"
     priority: nice-to-have
-    status: in-progress
-    owner: "codex-s2-08-economy"
+    status: done
+    owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-04-30"
 
   - id: "S2-09"
     name: "S1 Carryover: Server & Client Network Plugins"

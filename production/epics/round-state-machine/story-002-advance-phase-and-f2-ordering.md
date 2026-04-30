@@ -1,7 +1,7 @@
 # Story 002: Advance Phase and F2 Ordering
 
 > **Epic**: Round State Machine
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -178,7 +178,18 @@ Each test uses `World::new()` + event injection. No live Lightyear session requi
 **Story Type**: Logic
 **Required evidence**: Automated unit tests — `tests/unit/rsm/rsm_transitions_test.rs` must pass; paste `cargo test -p server rsm_transitions` output into `tests/evidence/rsm-story-002-tests.md`
 **Gate Level**: BLOCKING — all tests listed in QA Test Cases must pass before this story is Done
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing in CI run `25167672501`
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-30
+**Criteria**: 16/16 passing
+**Deviations**: None blocking. The implementation uses Bevy 0.18 `MessageWriter`/`MessageReader` APIs and keeps `ResMut<RoundState>` isolated to `transitions.rs`, matching ADR-009/ADR-010 and CI gates.
+**Test Evidence**: Logic evidence at `tests/unit/rsm/rsm_transitions_test.rs` and `tests/evidence/rsm-story-002-tests.md`; runnable tests in `server/tests/rsm_transitions_test.rs` covered by `cargo test -p server` in CI run `25167672501`.
+**Implementation Commit**: `cb550b9`
+**Code Review**: Lean mode skipped; CI green.
 
 ---
 

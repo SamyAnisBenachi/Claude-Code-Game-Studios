@@ -1,7 +1,7 @@
 # Story 003: refresh_shop + Slot Variants
 
 > **Epic**: Card Data & Pool
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -144,7 +144,18 @@ pub struct ManualRefreshCount(pub HashMap<PlayerId, u32>);
 **Required evidence**:
 - `tests/unit/pool/refresh_shop_test.rs` — must exist and all tests must pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing in CI run `25167672501`
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-30
+**Criteria**: 4/4 passing
+**Deviations**: None blocking. `refresh_shop` uses the weighted draw path directly and leaves future class/neutral split policy to the subscriber story, matching the story note.
+**Test Evidence**: Logic evidence at `tests/unit/pool/refresh_shop_test.rs`; runnable tests embedded in `server/src/core/pool/api.rs` and covered by `cargo test -p server` in CI run `25167672501`.
+**Implementation Commits**: `901823d` (S2-04 pool refresh implementation), `e4ac84e` (integration repair + doctest CI fix)
+**Code Review**: Lean mode skipped; CI green.
 
 ---
 

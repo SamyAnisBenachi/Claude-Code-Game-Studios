@@ -1,7 +1,7 @@
 # Story 002: Initialisation & DraftStarted Subscriber
 
 > **Epic**: Economy System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -134,7 +134,18 @@ match event.phase {
 **Required evidence**:
 - `tests/unit/economy/draft_subscriber_test.rs` — unit tests covering EC12, EC6, EC13, EC15, round-1 guard, missing-snapshot path
 - `tests/integration/economy/round_trace_test.rs` — integration test simulating round 1 → 2 → 3 gold/mana trace; asserts `current_mana = min(R, 10)` at each DRAFT entry and `gold` evolves correctly through interest at each step; asserts `S2CGoldUpdate` enqueued per player per DRAFT entry
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing in CI run `25167672501`
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-30
+**Criteria**: 12/12 passing
+**Deviations**: None blocking. The observer path uses Bevy 0.18 observer registration for `SessionReady`, and `on_draft_started` is scheduled after `advance_phase` now that S2-07 landed.
+**Test Evidence**: Logic evidence at `tests/unit/economy/draft_subscriber_test.rs` and `tests/integration/economy/round_trace_test.rs`; runnable tests in `server/tests/economy_draft_subscriber_test.rs` and `server/tests/economy_round_trace_test.rs`, covered by `cargo test -p server` in CI run `25167672501`.
+**Implementation Commits**: `9396d32` (S2-08 implementation), `e4ac84e` (restored files after S2-04 scope cleanup + doctest CI fix)
+**Code Review**: Lean mode skipped; CI green.
 
 ---
 

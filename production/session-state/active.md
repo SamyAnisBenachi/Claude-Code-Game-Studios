@@ -386,3 +386,28 @@ C:\Program Files\GitHub CLI\gh.exe
 - Verification: `CARGO_INCREMENTAL=0 cargo test -p server --test economy_draft_subscriber_test --test economy_round_trace_test --verbose` -> 8 passed; cargo global cache last-use warning only
 - Blockers: None for S2-08 local tests. Scheduling `.after(advance_phase)` remains dependent on S2-07's in-progress RSM transition symbol landing.
 - Next: `/code-review server/src/core/economy/system.rs server/src/core/economy/plugin.rs server/src/core/session/state.rs server/tests/economy_draft_subscriber_test.rs server/tests/economy_round_trace_test.rs` then `/story-done production/epics/economy-system/story-002-initialisation-draft-subscriber.md` after CI green
+
+## Session Extract - /story-done 2026-04-30
+- Verdict: COMPLETE
+- Story: `production/epics/round-state-machine/story-002-advance-phase-and-f2-ordering.md` - Advance Phase and F2 Ordering
+- Criteria: 16/16 passing; `server/tests/rsm_transitions_test.rs` covered by CI run `25167672501`
+- Implementation Commit: `cb550b9`
+- Tech debt logged: None
+- Next recommended: RSM Story 003 once sprint planning pulls it forward.
+
+## Session Extract - /story-done 2026-04-30
+- Verdict: COMPLETE
+- Story: `production/epics/economy-system/story-002-initialisation-draft-subscriber.md` - Initialisation & DraftStarted Subscriber
+- Criteria: 12/12 passing; `server/tests/economy_draft_subscriber_test.rs` and `server/tests/economy_round_trace_test.rs` covered by CI run `25167672501`
+- Implementation Commit: `9396d32`; repair commit `e4ac84e` restored S2-08 files after S2-04 scope cleanup and fixed config doctests
+- Tech debt logged: None
+- Next recommended: Economy Story 003 once sprint planning pulls it forward.
+
+## Session Extract - /story-done 2026-04-30
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-data-pool/story-003-refresh-shop-slot-variants.md` - refresh_shop + Slot Variants
+- Criteria: 4/4 passing; refresh-shop tests embedded in `server/src/core/pool/api.rs` covered by CI run `25167672501`
+- Implementation Commit: `901823d`; repair commit `e4ac84e` fixed integration history and config doctests
+- Notes: Implementation uses weighted draw selection directly; future class/neutral split policy remains with the subscriber story as scoped.
+- Tech debt logged: None
+- Next recommended: Card Pool Story 004 / ShopRefreshNeeded subscriber once sprint planning pulls it forward.
