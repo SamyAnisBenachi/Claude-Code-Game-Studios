@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-04-30"  # updated: hud.md authored — referenced_by added for 10 entries (local_free_gold, S2CGoldUpdate/Broadcast/PhaseChanged/GameSnapshot, ObjectiveDestroyed, mana_cap/lane_count/fake_count/disconnect_grace_seconds)
+last_updated: "2026-04-30"  # updated: class-system.md — 7 token entities, 8 formulas, 5 constants. prism-system.md — 2 items (prism_strike, prism_reserve), 2 constants (prism_strike_damage, prism_strike_mana_cost), 1 network_message (S2CCardAcquired)
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -48,7 +48,104 @@ last_updated: "2026-04-30"  # updated: hud.md authored — referenced_by added f
 # Attribute fields: any key stats that could appear in another GDD
 #   (health, damage, drops, faction, etc.)
 
-entities: []
+entities:
+  - name: mummy_token
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/card-animations.md
+    class: Xelor
+    type: unit_token
+    source_cards: ["Corum (DEATH)", "Quartz (DEATH)", "Dévouement (transform)"]
+    notes: "Spawned as unit token by Xelor DEATH effects and Dévouement transformation. Stats per krosmaga-cards-reference.md. Cannot be drafted, auctioned, or drawn."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: sinistro_token
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/objective-system.md
+    class: Xelor
+    type: spell_attachment
+    source_cards: ["Sinistro (spell)", "Diod Dewit (APPEARANCE)"]
+    notes: "Attaches to a friendly objective. Deals 1 damage/RESOLUTION to opposing-lane objective. Destroyed if its parent objective takes damage. Not a unit — SILENCE does not apply."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: chacha_noir_token
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/card-animations.md
+    class: Ecaflip
+    type: unit_token
+    source_cards: ["Chacha/Bow Meow (transform)"]
+    notes: "Unit token replacing transformed target. Cannot be drafted or auctioned."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: graine_seed_token
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/combat-resolution.md
+      - design/gdd/card-animations.md
+    class: Sadida
+    type: cell_marker
+    source_cards: ["Pollinisation", "Sac de Graines", "Ronce (DEATH)", "Sylvine Folherbe"]
+    ar_bonus_friendly: 1
+    damage_enemy: 1
+    max_per_cell: 1
+    notes: "Cell-attached marker. +1 AR (permanent) to friendly walk-over; 1 damage to enemy walk-over. Persists until consumed/converted. Max 1 per cell."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: madoll_token
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/card-animations.md
+    class: Sadida
+    type: unit_token
+    hp: 3
+    atk: 1
+    mp: 3
+    source_cards: ["Graines de Folie (convert)", "Sylvine Folherbe (hand grant)"]
+    notes: "Spawned at Seed cells via Graines de Folie. Passive: spells cost 1 less while in play."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: la_gonflable_token
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/card-animations.md
+    class: Sadida
+    type: unit_token
+    source_cards: ["Sylvine Folherbe + Sadida class paths"]
+    notes: "END OF MOVEMENT: heals other friendly units in its lane for 2 HP."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: la_sacrifiee_token
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/card-animations.md
+    class: Sadida
+    type: unit_token
+    source_cards: ["Sacrifice Poupesque", "Sadida class paths"]
+    notes: "DEATH: 1 damage to enemy units in its lane."
+    added: "2026-04-30"
+    revised: ""
 
 # Example (remove when first real entry is added):
 #
@@ -414,6 +511,129 @@ formulas:
     expression: "gold - reserved_gold"
     notes: "gold and reserved_gold both sourced from S2CGoldBroadcast (not S2CGoldUpdate — reserved_gold is not a field of S2CGoldUpdate). Computed for both the local player and the opponent during DRAFT_AUCTION for the auction panel free-gold display. guaranteed non-negative by server invariant (reserved_gold <= gold); implementation should use saturating subtraction as a guard. Will also be referenced by HUD GDD for opponent free-gold display."
     added: "2026-04-29"
+    revised: ""
+
+  - name: gelure_transfer
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/economy-system.md
+    variables:
+      - current_mana
+      - reserve
+    output_range: [0, "mana_cap"]
+    expression: "reserve_new = reserve + current_mana; current_mana_new = 0"
+    notes: "Xelor-only. Consumes current_mana to add to reserve. Effect owner: Economy System. 0-cost cast."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: xelorium_steal
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/economy-system.md
+    variables:
+      - self_reserve
+      - opponent_current_mana
+    output_range: [0, "mana_cap"]
+    expression: "self.reserve_new = self.reserve + opponent.current_mana; opponent.current_mana_new = 0"
+    notes: "Xelor-only. Opponent reserve untouched. Resolves at sub-step 1. If opponent.current_mana=0, steal=0 but cost (4 mana) still paid."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: rollback_charge
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/economy-system.md
+      - design/gdd/combat-resolution.md
+    variables:
+      - reserve
+      - unit_cells
+    output_range: [1, 8]
+    expression: "n = reserve; reserve_new = 0; for each unit: destination = clamp(cell + direction * n, 1, 8)"
+    notes: "Xelor-only. Fires sub-step 2. STUNned units excluded. HASTE units eligible. n=0 legal (no movement, cost paid)."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: garde_temps_gate
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/economy-system.md
+      - design/gdd/objective-system.md
+    variables:
+      - reserve
+      - garde_temps_reserve_cost
+    output_range: [false, true]
+    expression: "playable = (reserve >= garde_temps_reserve_cost); if playable: reserve -= garde_temps_reserve_cost"
+    notes: "Xelor-only. Costs 20 reserve (not current_mana). On success, chosen enemy objective HP → 0."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: sang_meprise_reveal
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/objective-system.md
+      - design/gdd/network-protocol.md
+    variables:
+      - all_objective_slots
+    output_range: [0, 10]
+    expression: "reveal_set = { o | o.is_alive }; unicast(both_players, reveal_set)"
+    notes: "Sacrier-only. Reveals all alive objectives (both players) to both players for current RESOLUTION only. Reconnect gap: absent from S2CGameSnapshot (OQ-CS-2)."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: punition_aoe
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/objective-system.md
+    variables:
+      - self_alive_real_count
+      - opponent_alive_objectives
+    output_range: [3, 15]
+    expression: "destroy(chosen_self_real); for each alive opponent objective: take_damage(3)"
+    notes: "Sacrier-only. 3 damage per alive opponent objective (not distributed). Can self-eliminate if own real_destroyed >= 3. Rejected if no eligible real objectives."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: seed_walk_over
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/combat-resolution.md
+    variables:
+      - unit_ar
+      - seed_ar_bonus
+      - seed_enemy_damage
+    output_range: [0, "unbounded"]
+    expression: "friendly: unit.AR += seed_ar_bonus (permanent); enemy: take_damage(seed_enemy_damage)"
+    notes: "Sadida-only. Seed persists after walk-over. Max 1 per cell. AR gain permanent on unit stat block."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: miss_nuit_trigger
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/economy-system.md
+    variables:
+      - opponent_card_plays_this_round
+      - miss_nuit_cap
+    output_range: [0, 2]
+    expression: "if gain_this_round < miss_nuit_cap: self.reserve += 1; gain_this_round += 1"
+    notes: "Xelor-only. Counts spell + minion plays from hand only. Tokens excluded. Cap = miss_nuit_cap (GameConfig default 2). Resets at DRAFT entry."
+    added: "2026-04-30"
     revised: ""
 
 # Example:
@@ -962,6 +1182,78 @@ constants:
     value: 3
     unit: mana
     notes: "Mana cost to play the prism_strike spell card from hand. Must be added to game_config.ron as prism_strike_mana_cost. Safe range: 0–5. Default 3 keeps the spell competitive but not free (opportunity cost vs. combat cards)."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: garde_temps_reserve_cost
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/economy-system.md
+    value: 20
+    unit: reserve_mana
+    notes: "Reserve cost to play Garde-Temps (Xelor Krosmic). Must be added to game_config.ron. Safe range: 10–30. Below 10: too accessible. Above 30: unreachable in normal play."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: miss_nuit_cap
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/economy-system.md
+    value: 2
+    unit: reserve_per_round
+    notes: "Max reserve gain per round from Miss Nuit. Must be added to game_config.ron. Safe range: 1–4. Above 4: mass-token opponents flood Xelor reserve; Rollback trivially charged every round."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: dé_chateux_reveal_threshold
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/objective-system.md
+    value: 3
+    unit: die_value
+    notes: "Dé du Chateux reveals an enemy objective if roll <= this threshold. Default 3 = 50% chance. Must be added to game_config.ron. Safe range: 1–5."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: seed_ar_bonus
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/combat-resolution.md
+    value: 1
+    unit: ar_points
+    notes: "AR bonus granted permanently to a friendly unit walking over a Sadida Seed. Must be added to game_config.ron. Safe range: 1–2. Above 2: degenerate AR stacking mid-game."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: seed_enemy_damage
+    status: active
+    source: design/gdd/class-system.md
+    referenced_by:
+      - design/gdd/class-system.md
+      - design/gdd/combat-resolution.md
+    value: 1
+    unit: damage
+    notes: "Damage dealt to an enemy unit walking over a Sadida Seed. Must be added to game_config.ron. Safe range: 1–2. Above 2: too punishing for rush strategies against Sadida lanes."
+    added: "2026-04-30"
+    revised: ""
+
+  - name: stagger_cadence_ms
+    status: active
+    source: design/gdd/card-animations.md
+    referenced_by:
+      - design/gdd/card-animations.md
+      - design/gdd/game-config.md
+    value: 100
+    unit: milliseconds
+    notes: "ms between sequential objective-destruction reveal animations (F1 in card-animations.md). Must be added to game-config.md as stagger_cadence_ms. Safe range: 80–120. Below 80ms: sequential reveals perceptually merge into simultaneous burst. Above 120ms: reveals feel slow."
     added: "2026-04-30"
     revised: ""
 

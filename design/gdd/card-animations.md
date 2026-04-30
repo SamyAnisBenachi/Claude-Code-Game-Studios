@@ -435,20 +435,123 @@ The `damage_number_despawn` formula is defined as:
 
 ## Tuning Knobs
 
-[To be designed]
+| Knob | Config key | Default | Safe range | Too high | Too low |
+|---|---|---|---|---|---|
+| Card draw animation | `card_draw_animation_ms` | 280 ms | 150–400 ms | Competes with player's DRAFT_INITIAL decisions (sluggish) | Motion too abrupt — card appears without travel |
+| Snap-back duration | `snap_back_duration_ms` | 220 ms | 100–300 ms | Consumes meaningful PLACEMENT timer seconds; 250 ms hard cap enforced in code | Rejection feedback too abrupt |
+| Objective reveal stagger cadence | `stagger_cadence_ms` | 100 ms | 80–120 ms | Reveals feel slow; total reveal window inflates | Below 80 ms: perceptually merges into simultaneous burst, stagger loses purpose |
+| Damage number float duration | `float_tween_duration_ms` | 500 ms | 400–600 ms | Numbers linger, cluttering board during subsequent sub-steps | Numbers exit before player reads damage |
+| Damage number fade duration | `fade_tween_duration_ms` | 500 ms | 400–600 ms | Visible numbers stack; combined despawn_delay_ms must satisfy ≤ `resolution_sub_step_duration_ms` | Abrupt flicker disappearance |
+
+**Interaction constraint:** `max(float_tween_duration_ms, fade_tween_duration_ms)` must not exceed `resolution_sub_step_duration_ms`. Otherwise a sub-step's damage numbers are still visible when the next sub-step begins, creating overlap noise.
+
+**Cross-referenced knobs** (owned by upstream GDDs — do not redefine here):
+
+- `pre_animation_pause_ms` → `board-rendering.md` (default 400 ms, range 200–800 ms)
+- `resolution_sub_step_duration_ms` → `board-rendering.md` (default 600 ms, range 400–1000 ms)
+- `inter_step_pause_ms` → `board-rendering.md` (default 150 ms, range 100–300 ms)
+- `fog_lift_duration_ms` → `board-rendering.md`
+- Timer bar ease-out duration (120–150 ms), timer color cross-fade (300 ms), settlement panel transition (350 ms) → `shop-auction-ui.md`
 
 ## Visual/Audio Requirements
 
-[To be designed]
+Card Animations does not own any specific visual assets or audio cues — it owns *how* existing assets are moved and timed. The visual and audio contracts below define what the animation pipeline must honour.
+
+### V.1 — Visual Style Constraints
+
+- **No glow/bloom on unit sprites.** Cel-shaded contract (Ankama/Wakfu aesthetic). Impact flashes are flat 1-frame color fills only.
+- **Color palette is locked.** Animations must not use colors outside the registered palette: Prism White `#EEF4FF` (FIRST STRIKE / placement reveal), Warm Orange `#E07020` (standard combat impact), Crimson Slate (damage), Sky Blue `#3A8EDB` (Player A), Terracotta `#D45C22` (Player B), Arcane Gold `#F5C842` (UI accent), Ink Blue `#1A2D5A` (panels), Ivory (text). Flash colors in particular encode timing tier — Prism White = FIRST STRIKE; Warm Orange = standard. Using the wrong color for the wrong tier misinforms the player.
+- **Smear frames are texture-atlas frame swaps, not blur.** 1 frame pre-impact (limb stretched), 1 frame impact (Prism White / Warm Orange fill), 1 frame recover. Total 200–250 ms. No motion blur post-process.
+- **REPEL/ATTRACT displacement direction is strictly horizontal along the lane axis.** No diagonal or center-screen drift — the direction IS the rule explanation.
+- **`TransformScaleXLens` health bar color threshold swaps are instantaneous.** Color change (green→yellow at 0.6, yellow→red at 0.3) and scale drain begin in the same frame — not animated as a color transition.
+- **Damage numbers originate from unit torso position, not the health bar.** Float start position must be visually separated from the health bar to prevent occlusion.
+- **Duration hierarchy for significance signaling:** objective death > unit death > combat advance > damage number > UI tick. No decorative animation may exceed 300 ms or it claims equal significance to an objective destruction.
+
+### V.2 — Restraint Catalog (what must NOT animate)
+
+- Units at rest: no idle breathing, bobbing, or ambient particles
+- HUD resource counters: no passive pulse, glow, or shift except on value change
+- Cards in hand at rest: fan is static; only the hovered card scales
+- Phase transitions on routine rounds: phase banner slides once, no fanfare
+- Board during PLACEMENT: frozen — no unit shuffle, no lane-indicator pulse
+- Post-completion entities: completed-state `Animator<T>` components are inert; they must not produce residual motion
+
+### V.3 — Audio Requirements
+
+Card Animations does not own audio assets or trigger audio directly. All audio cues are owned by the systems that define the events (Board Rendering, Combat Resolution, Auction System, Shop/Auction UI). Card Animations provides the animation *timing* from which upstream systems can gate audio cue playback.
+
+**Audio timing contract (events that require audio gating):**
+- Placement reveal flip: audio fires on frame 2 of the 3-frame flip (the Prism White squash frame), not on frame 1
+- Unit advance: footstep-shuffle audio cued on tween start; per-lane offset acceptable (lane 1 fires first, ~20 ms stagger per lane for audio only — visual remains simultaneous)
+- Impact flash: audio fires on the impact frame (1-frame Prism White / Warm Orange fill)
+- Objective destruction: audio fires on the first frame of the 3-frame Prism White overlay
+- Damage numbers: no audio — number visibility is sufficient feedback
+
+> **📌 Asset Spec** — Visual animation requirements are defined. After the art bible is approved, run `/asset-spec system:card-animations` to produce per-asset visual descriptions, dimensions, and generation prompts from this section.
 
 ## UI Requirements
 
-[To be designed]
+Card Animations does not own any interactive panel, screen, or HUD element. It provides animation primitives invoked by upstream systems' UI layers. UI requirements are specified in the owning GDDs:
+
+- Card fan animations, drag/snap-back → `hand-ui.md`
+- Auction panel transitions, timer bar, gold counter → `shop-auction-ui.md`
+- Board fog-lift, objective reveal, unit advance → `board-rendering.md`
+- HUD gold/mana tick animation (once HUD GDD is authored) → `hud.md`
+
+**One UI contract owned by Card Animations:** At most two UI regions may animate simultaneously during any phase transition (Rule C-14: Motion Soup prevention). This is a behavioral contract this system enforces; it does not require a dedicated UI screen but does require coordination with upstream systems during integration.
 
 ## Acceptance Criteria
 
-[To be designed]
+| ID | Criterion | Type |
+|---|---|---|
+| CA-1 | **GIVEN** `CardAnimationsPlugin` is registered, **WHEN** `App::new()` builds with the plugin and executes one update, **THEN** the app completes without panic; each of the 5 custom lens types (`SpriteAlphaLens`, `BackgroundColorAlphaLens`, `SpriteColorLens`, `TransformScaleXLens`, `TextColorLens`) can be constructed in a `World`-based unit test and inserted into a `Tween` without compile or runtime error. | BLOCKING |
+| CA-2 | **GIVEN** board entities exist with `Animator<Transform>` or `Animator<Sprite>` in `AnimatorState::Playing`, **WHEN** `BoardRebuildRequested` fires, **THEN** no `Animator` component on any board entity remains in `AnimatorState::Playing` after the event is processed in the same frame. | BLOCKING |
+| CA-3 | **GIVEN** `PlacementRevealAnimReady` is received with 5 lane entries, **WHEN** one `App::update()` tick runs, **THEN** all 5 unit entities have `Animator` components with the same start-time tick, confirmed by querying animator state post-update. | BLOCKING |
+| CA-4 | **GIVEN** a PLACEMENT-phase animation (snap-back or drag-lift) is in `AnimatorState::Playing`, **WHEN** `BoardRebuildRequested` fires in the same frame, **THEN** the `Animator` is no longer in `AnimatorState::Playing` after that frame. | BLOCKING |
+| CA-4b | **GIVEN** CA-4's cancellation scenario, **WHEN** the frame renders, **THEN** no partially-tweened `Transform` visual position persists on screen. *(Screenshot evidence; manual QA only.)* | ADVISORY |
+| CA-5 | **GIVEN** an `AnimGroup` is executing and `S2CPhaseChanged(GAME_OVER)` arrives, **WHEN** time advances past the current `AnimGroup`'s duration, **THEN** remaining `AnimQueue` groups are skipped, `ResolutionObjectiveReveal` executes for any buffered `ObjectiveDestroyed` events, and no further state transition occurs before that. | BLOCKING |
+| CA-6 | **GIVEN** a unit entity has an `Animator<Transform>` in `TweenCompleted` state, **WHEN** a new tween is requested, **THEN** the entity retains its ECS entity ID (no despawn/respawn) AND the new animation begins within one `App::update()` tick. | BLOCKING |
+| CA-7 | **GIVEN** a unit needs a simultaneous advance `Tween<Transform>` and death `SpriteAlphaLens` fade in the same `AnimGroup`, **WHEN** both tweens are spawned, **THEN** both `Animator<Transform>` and `Animator<Sprite>` exist on the entity and are both in `AnimatorState::Playing` after one tick. | BLOCKING |
+| CA-8 | **GIVEN** a damage number entity spawned with `float_tween_duration_ms=500` and `fade_tween_duration_ms=500`, **WHEN** 500 ms of `Time<Virtual>` elapses, **THEN** the entity is despawned (`World::get_entity()` returns `None`). F2: `max(500, 500) = 500`. | BLOCKING |
+| CA-9 | **GIVEN** `float_tween_duration_ms=400` and `fade_tween_duration_ms=600`, **WHEN** 400 ms elapses, **THEN** entity still exists; **WHEN** 600 ms elapses, **THEN** entity is despawned. F2: `max(400, 600) = 600`. Entity must NOT be despawned early at float tween completion. | BLOCKING |
+| CA-10 | **GIVEN** `GameConfig.stagger_cadence_ms=100` and `ObjectiveDestroyed` events for lanes 3 and 5, **WHEN** the reveal sequence starts, **THEN** lane 3's animation starts at 0 ms (±16 ms frame tolerance) and lane 5's at 100 ms (±16 ms). Verified via animator start-time query. | BLOCKING |
+| CA-11 | **GIVEN** `GameConfig.stagger_cadence_ms=0` and two `ObjectiveDestroyed` events, **WHEN** the reveal sequence starts, **THEN** both reveal animations start in the same frame and no panic or undefined behavior occurs. F1: `reveal_start_ms[i] = 0` for all `i`. | BLOCKING |
+| CA-12 | **GIVEN** any animation is requested during PLACEMENT phase, **WHEN** the `Tween` is constructed, **THEN** the tween's duration is ≤ 250 ms (`placement_animation_cap_ms`). Verified by asserting tween duration in the animation spawn test. | BLOCKING |
+| CA-13 | **GIVEN** `TimerBarEaseRequested` is emitted, **WHEN** one `App::update()` tick runs, **THEN** the timer bar entity's `Animator` is in `AnimatorState::Playing` in the same frame as event receipt (0-frame latency). | BLOCKING |
+| CA-13b | **GIVEN** `TimerBarEaseRequested` is processing a tween, **WHEN** the tween is in flight, **THEN** bid preset buttons are in enabled state. *(Manual UI walkthrough; screenshot evidence.)* | ADVISORY |
+| CA-14 | **GIVEN** the compiled client source, **WHEN** the `card_animations` module is searched with `grep -r "MessageReader<S2C"`, **THEN** zero matches are found. All animation triggers come through domain events, not direct Lightyear subscriptions. | BLOCKING |
+| CA-15 | **GIVEN** a unit entity needs simultaneous REPEL displacement (`Tween<Transform>`) and placement-reveal flip (`SpriteColorLens` + `TransformScaleXLens`), **WHEN** both tweens are spawned, **THEN** all three animators exist on the entity simultaneously and are in `AnimatorState::Playing` after one tick. | BLOCKING |
+| CA-16 | **GIVEN** `GameConfig.stagger_cadence_ms=80` and `ObjectiveDestroyed` events for 5 lanes, **WHEN** the reveal sequence starts, **THEN** the `i=4` lane's animation starts at 320 ms (4 × 80 ms, ±16 ms tolerance). F1 verified for N=5. | BLOCKING |
+| CA-17 | **GIVEN** an empty `AnimQueue` (`N_groups=0`), **WHEN** the queue drain system runs, **THEN** no tweens are spawned, no panic occurs, and the system transitions from `ResolutionExecuting` after `pre_animation_pause_ms` elapses. | BLOCKING |
+| CA-18 | **GIVEN** a unit entity requires two simultaneous `Tween<Transform>` animations (e.g., REPEL displacement and advance), **WHEN** a `Tracks<Transform>` is used, **THEN** both translation motions execute within one `AnimGroup`, only one `Animator<Transform>` component exists on the entity, and no conflict occurs. | BLOCKING |
+| CA-19 | **GIVEN** an `Animator<Transform>` reaches `TweenCompleted` on a unit entity, **WHEN** no new tween is requested, **THEN** the `Animator<Transform>` component remains on the entity. Verified via `World::get::<Animator<Transform>>(entity)` returning `Some(...)` after completion. | BLOCKING |
+| CA-20 | **GIVEN** the client app runs with `CardAnimationsPlugin`, **WHEN** each domain event is fired in a controlled test, **THEN** no "MessageReader has no receivers" warning is logged. *(Smoke test — confirms all messages registered.)* | ADVISORY |
 
 ## Open Questions
 
-[To be designed]
+**OQ-CA-01 — `Animator::set_tweenable()` API in bevy_tweening 0.18** *(Owner: gameplay-programmer)*
+The `set_tweenable()` method is the cornerstone of the cancel-replace pattern (Rule C-7, board-rendering BR-16). Confirm: (a) method exists with this exact name in bevy_tweening 0.18, (b) it resets progress to 0 (not resume from current). If renamed or removed, the cancel-replace pattern requires a different implementation. **Must resolve before any story touching cancel-replace.**
+
+**OQ-CA-02 — `Tracks<T>` API in bevy_tweening 0.18** *(Owner: gameplay-programmer)*
+`Tracks` is required for same-entity parallel `Transform` animations (Rule C-7, CA-18). Confirm: (a) `Tracks<T>` is present in 0.18, (b) it wraps into an `Animator<T>` directly. If gone, workaround is child entities for the secondary transform. **Must resolve before any story touching REPEL + simultaneous advance.**
+
+**OQ-CA-03 — `TweenCompleted` signal in Bevy 0.18** *(Owner: gameplay-programmer)*
+bevy_tweening previously emitted a `TweenCompleted` event (`user_data: u64`) on tween completion. In Bevy 0.16+ the Event system changed (`EventWriter`/`EventReader` removed — `MessageWriter`/`MessageReader` only). Confirm how bevy_tweening 0.18 signals completion: Bevy `Message`, `Observer`, or internal callback. The `AnimQueue` drain uses `Time<Virtual>` timers (not completion callbacks) precisely to sidestep this uncertainty — this OQ informs whether completion callbacks are available for any use at all.
+
+**OQ-CA-04 — `TextColor` as a lens target** *(Owner: gameplay-programmer)*
+`TextColor` is a newtype wrapper around `Color` introduced in Bevy 0.15+. Confirm `TextColor` satisfies the `Component` bound required by bevy_tweening's `Lens<T>`. If not, damage-number fade must use a `Sprite` overlay entity instead of a `Text` entity, or a `Lens<Text>` impl that reaches into text sections.
+
+**OQ-CA-05 — `bevy_tweening = "0.18"` on crates.io** *(Owner: devops-engineer)*
+Confirm that `bevy_tweening = "0.18"` resolves to a published crate compatible with Bevy 0.18 (not just version-number matching). Verify before locking into `Cargo.toml`. **Highest priority OQ — blocks all implementation.**
+
+**OQ-CA-06 — Domain message registration coordination** *(Owner: lead-programmer)*
+~15 intra-client domain event types (Rule C-10) need `app.add_message::<T>()` calls. Decision needed: do these registrations live in `CardAnimationsPlugin`, in the upstream system's plugin, or in a shared `AnimationEventsPlugin`? Double-registration causes runtime panic. Agreed convention must be documented in the control manifest before any implementation.
+
+**OQ-CA-07 — "YOU WON" overlay duration (cross-system, Shop/Auction UI)** *(Owner: shop-auction-ui.md)*
+Game-designer analysis (Section C review) recommends reducing `SettlementOverlayRequested` hold from 1.5 s to 0.8 s and overlapping with the first 350 ms of panel transition. Total non-interactive window would drop from 1.85 s to 0.8 s (~57% reduction). This would reduce dead time from 6.2% of DRAFT_SHOP's 30 s timer to 2.7%. Decision belongs to Shop/Auction UI GDD. Forward to that GDD's next revision.
+
+**OQ-CA-08 — "NO BIDS" fade duration (cross-system, Shop/Auction UI)** *(Owner: shop-auction-ui.md)*
+Game-designer recommends reducing the "NO BIDS — CARD LOST" card fade from 400 ms to 250 ms total (200 ms desaturation + 50 ms collapse, or desaturate-and-hold until panel transition). The 400 ms is the most generous animation budget in DRAFT phase for the outcome with the least emotional weight. Decision belongs to Shop/Auction UI GDD.
+
+**OQ-CA-09 — RANGE projectile speed floor (cross-system, Combat Resolution)** *(Owner: combat-resolution.md)*
+At the current `projectile_speed_px_per_s` floor of 600 px/s, a cross-board RANGE projectile on an 8-cell board travels ~640 ms — exceeding the 600 ms `resolution_sub_step_duration_ms` cap by 40 ms. Game-designer recommends raising the floor to 850 px/s in `GameConfig` so maximum travel stays ≤ 600 ms. Alternatively, the 150 ms `inter_step_pause_ms` absorbs the 40 ms overflow. Decision belongs to Combat Resolution / Game Config.

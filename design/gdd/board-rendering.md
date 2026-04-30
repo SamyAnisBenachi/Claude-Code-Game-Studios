@@ -88,7 +88,7 @@ This subsection enforces the post-cutoff Bevy 0.18 API patterns. All implementer
 
 **Health bar child Z is local, not global.** The constant `Z_HEALTH_BARS = 3.1` is the **target world-space Z**. Because health bar entities are spawned as children of unit entities (whose `Transform.translation.z = 3.0`), the health bar child's `Transform.translation.z` must be `0.1` (LOCAL — added to parent's Z), not `3.1`. Any spawn site that sets `Transform::from_xyz(_, _, Z_HEALTH_BARS)` on a health bar child is incorrect. See AC BR-Z-LOCAL.
 
-**Custom `bevy_tweening` lens for fog alpha.** `bevy_tweening` ships with `TransformPositionLens`, `TransformRotationLens`, `TransformScaleLens` — but no `Sprite.color.alpha` lens. The fog lift (Rule 7) requires a custom `SpriteAlphaLens` implementing `Lens<Sprite>` that mutates `sprite.color.set_alpha(...)`. This lens is a deliverable of the fog lift implementation story.
+**Custom `bevy_tweening` lens for sprite alpha.** `bevy_tweening` ships with `TransformPositionLens`, `TransformRotationLens`, `TransformScaleLens` — but no `Sprite.color.alpha` lens. The reveal tween (Rule 7), unit-death fade, ghost-fade-on-deselect, and any other alpha-driven sprite tween require a custom `SpriteAlphaLens` implementing `Lens<Sprite>` that mutates `sprite.color.set_alpha(...)`. This lens is a deliverable of the reveal-tween implementation story; subsequent alpha tweens reuse it.
 
 **Tween cancel and replace.** To replace an active `Tween<Transform>` on an entity (Rule 9, edge case "co-occupant death"), call `animator.set_tweenable(new_tween)` on the existing `Animator<Transform>` component — do NOT despawn-and-respawn the entity (loses game-state components) and do NOT write `Transform.translation` directly while an active animator exists (BR-16 invariant).
 
@@ -205,23 +205,57 @@ Both events are intra-client `Message<T>` types (Bevy 0.18 `MessageWriter` / `Me
 
 **Trap face-down rendering** uses the same hidden-identity pattern but is currently unspecified pending NP-OQ-2 resolution (per-client component visibility in Lightyear 0.26). See OQ-BR-07.
 
+**Rule 13 — SystemSet ordering (NEW R2 2026-04-29).** Board Rendering systems run within an explicit `BoardRenderSet` enum so that Rule 9's "all tweens scheduled in a single frame" invariant is enforceable:
+
+```rust
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BoardRenderSet {
+    ReadMessages,        // consume S2CPlacementReveal, S2CResolutionEvent, S2CPhaseChanged, S2CGameSnapshot
+    ResolveStateMachine, // BoardRenderState transitions; populate AnimQueue / PendingPhaseChange / PendingResolutionScript
+    SpawnEntities,       // spawn newly-replicated units, ghost previews; commands queued
+    ScheduleTweens,      // build & insert Animator<Transform> / Animator<Sprite> for current AnimGroup or reveal tween
+    UpdateHpBars,        // apply F2 fill + color from replicated UnitStats (poll-based per OQ-BR-10 Approach A)
+    TickAnimations,      // bevy_tweening's component_animator_system runs HERE (configured via plugin ordering)
+}
+```
+
+Configured ordering: `ReadMessages → ResolveStateMachine → SpawnEntities → ScheduleTweens → UpdateHpBars → TickAnimations`. All in `Update`. The `bevy_tweening` `TweeningPlugin` is configured to place its tick systems in `BoardRenderSet::TickAnimations` so reveal tweens / Tweens scheduled in the same frame begin their first tick on the next frame's `TickAnimations` (predictable 1-frame latency). All systems writing `Animator<*>` MUST be in `BoardRenderSet::ScheduleTweens` (enforced by lint or code review). All HP bar updates MUST be in `UpdateHpBars` to avoid races with `TickAnimations`.
+
+**Rule 14 — Status effect visual contract (NEW R2 2026-04-29).** Status effects (HASTE, STUN, POISON, etc., owned by `keyword-system.md`) attach visibly to their owning unit:
+
+| Property | Value |
+|---|---|
+| Position | Top-right of unit sprite (offset `Vec2 { x: +unit_w/2 - 8.0, y: +unit_h/2 - 8.0 }`) |
+| Size | 16×16 px per icon |
+| Z layer | LOCAL Z = 0.05 on child Transform (parent unit at `Z_UNITS` = 3.0; child renders at global Z = 3.05, just above unit, below HP bar at 3.1) |
+| Atlas | board-elements atlas (status icons share the second atlas — no third atlas) |
+| Max simultaneous visible | 3 icons; 4+ active effects render an overflow `+N` badge in the 4th slot |
+| Layout | Horizontal stack: icon[0] at top-right corner; icons[1..2] offset left by 16px each; overflow badge at icon[3] slot |
+| Update mechanism | Bevy `Changed<StatusEffectsList>` filter on parent unit; child icons spawned/despawned to match. No tweening — instant on/off. |
+| Z stacking with co-occupancy | Status icons inherit parent unit's `Transform.translation.x` (including F3 co-occupancy offset); icons stay attached to their owning unit. |
+
+**Tooltips:** the Player Fantasy says "status indicators that require hovering to be understood have failed." Every status icon must be readable from its glyph alone; no tooltip is required for legibility. (A future polish pass may add hover tooltips for *deeper* info — e.g. exact remaining duration — but the icon must communicate the keyword without it.)
+
+**Cross-doc dependency:** the actual icon-to-keyword mapping is owned by `keyword-system.md`. Board Rendering provides the layout slots; the keyword GDD provides the icons.
+
 ---
 
 ### States and Transitions
 
 Board Rendering maintains a `BoardRenderState` enum driven exclusively by network events. It has no internal timers beyond animation duration.
 
-| State | Active when | Fog | Spawn highlights | Ghost unit | Anim queue | HP bars |
+| State | Active when | Spawn highlights | Ghost unit | Anim queue | HP bars | Reveal tween |
 |---|---|---|---|---|---|---|
 | `Idle` | Pre-handshake | — | — | — | — | — |
-| `Lobby` | Phase = LOBBY | Off | Off | Off | Off | Off |
-| `DraftInitial` | Phase = DRAFT_INITIAL | Off | On | Off | Off | On |
-| `DraftShop` / `DraftAuction` | Phase = DRAFT_SHOP or DRAFT_AUCTION | Off | On | Off | Off | On |
-| `Placement` | Phase = PLACEMENT | **Opponent half active** | On (own spawn cells) | On | Off | On |
-| `ResolutionReveal` | `S2CPlacementReveal` received | Lifting (fade-out tween) | Off | Despawned | Pending | On |
-| `ResolutionExecuting` | Animation queue draining | Off | Off | Off | Active | On (live-update) |
-| `ResolutionObjectiveReveal` | Queue exhausted; objective VFX playing | Off | Off | Off | Off | Frozen |
-| `GameOver` | Phase = GAME_OVER | Off | Off | Off | Off | Frozen |
+| `Lobby` | Phase = LOBBY | Off | Off | Off | Off | — |
+| `DraftInitial` | Phase = DRAFT_INITIAL | On | Off | Off | On | — |
+| `DraftShop` / `DraftAuction` | Phase = DRAFT_SHOP or DRAFT_AUCTION | On | Off | Off | On | — |
+| `Placement` | Phase = PLACEMENT | On (own spawn cells) | On | Off | On | — |
+| `ResolutionReveal` | `S2CPlacementReveal` received | Off | Despawned | Pending | On | **Active (250ms scale + alpha on newly-replicated opponent entities)** |
+| `Reconnecting` | Awaiting `S2CObjectiveIdentities` after snapshot | Off | Off | Off | On (no live-update) | — |
+| `ResolutionExecuting` | Animation queue draining | Off | Off | Active | On (live-update) | — |
+| `ResolutionObjectiveReveal` | Queue exhausted; objective VFX playing | Off | Off | Off | Frozen | — |
+| `GameOver` | Phase = GAME_OVER | Off | Off | Off | Frozen | — |
 
 **Valid transitions:**
 
@@ -254,7 +288,7 @@ Board Rendering maintains a `BoardRenderState` enum driven exclusively by networ
 | **Network Protocol** | Protocol → Rendering | `S2CPlacementReveal` → `ResolutionReveal` state; `S2CResolutionEvent` → animation queue population; `S2CPhaseChanged` → all `BoardRenderState` transitions; `S2CGameSnapshot` → full board rebuild |
 | **Round State Machine** (client mirror) | RSM → Rendering | Phase state is received via `S2CPhaseChanged` — Board Rendering has no direct RSM dependency, only network messages |
 | **Card Data & Pool** | Pool → Rendering | Card art `TextureAtlas` slice indices are looked up at unit spawn time by `card_id`; Board Rendering reads the card definition to select the correct atlas frame |
-| **Game Config** | Config → Rendering | `lane_count=5` and `cells_per_lane=8` confirm board grid dimensions at startup; animation timing constants (`resolution_sub_step_duration_ms`, `fog_lift_duration_ms`) loaded from `GameConfig` resource |
+| **Game Config** | Config → Rendering | `lane_count=5` and `cells_per_lane=8` confirm board grid dimensions at startup; animation timing constants (`resolution_sub_step_duration_ms`, `pre_animation_pause_ms`, `inter_step_pause_ms`, `unit_reveal_tween_duration_ms`, `objective_reveal_hold_ms`, `objective_reveal_anim_ms`, `resolution_reveal_timeout_ms`, `objective_identities_reconnect_timeout_ms`) loaded from `GameConfig` resource |
 | **Hand UI** | Hand UI → Rendering | `GhostPlacementChanged { target: Option<PlayTarget>, card_id: Option<CardId> }` message written by Hand UI; Board Rendering reads it to spawn/move/despawn the variant-appropriate ghost preview (see Rule 8 table). Hand UI reads `Res<BoardLayout>` for cell-position mapping. |
 | **Hand UI** | Rendering → Hand UI | `GhostClickedEvent { card_id }` and `GhostDragStartEvent { card_id }` intra-client messages emitted on player interaction with ghost preview entities (see Rule 8 reverse events); Hand UI consumes both to drive un-staging. |
 | **HUD** | Rendering → HUD | `BoardRenderState` transition events signal HUD to show/hide the placement timer ring; the timer ring is a HUD element (bevy_ui, fixed screen position), not a Board Rendering element |
@@ -303,7 +337,7 @@ cell_to_world(lane, cell) = Vec2 {
 The `health_bar_fill` formula is defined as:
 
 ```
-// PRECONDITION: hp_max >= 1
+// PRECONDITION 1: hp_max >= 1
 //   - hp_max == 0 produces 0.0/0.0 = NaN; clamp(NaN, 0.0, 1.0) = NaN;
 //     scale.x = NaN renders an invisible/degenerate sprite with no Bevy error.
 //   - The implementation MUST guard at intake (replication ingestion):
@@ -311,11 +345,26 @@ The `health_bar_fill` formula is defined as:
 //       if hp_max == 0 { warn!("UnitStats.hp_max=0 from server; clamped to 1"); }
 //   - Friend-game policy: silent clamp + warning, do NOT panic. Log captures the
 //     server-contract violation; client keeps rendering.
+//
+// PRECONDITION 2: health_bar_green_threshold > health_bar_red_threshold
+//   - If config injects green=0.5, red=0.6, the if-else falls through and
+//     everything below 0.5 fill is Red — Yellow band disappears.
+//   - The implementation MUST validate at config-load time:
+//       assert!(red_threshold < green_threshold,
+//           "HP threshold config invalid: red_threshold={} >= green_threshold={}",
+//           red_threshold, green_threshold);
+//   - This is an `assert!`, not `debug_assert!` — fires in release.
+//
+// FLOATING-POINT BOUNDARY: integer ratios at thresholds (e.g. 3/10=0.29999... f32)
+// drift below the conceptual boundary. Use a small epsilon to make boundaries
+// inclusive on the "good" side:
+//
+//   const HP_THRESHOLD_EPSILON: f32 = 1e-4;
 
 fill = clamp(hp_current as f32 / hp_max_safe as f32, 0.0, 1.0)
 
-bar_color = if fill >= health_bar_green_threshold { Green }
-            else if fill >= health_bar_red_threshold { Yellow }
+bar_color = if fill >= health_bar_green_threshold - HP_THRESHOLD_EPSILON { Green }
+            else if fill >= health_bar_red_threshold - HP_THRESHOLD_EPSILON { Yellow }
             else { Red }
 ```
 
@@ -332,12 +381,14 @@ bar_color = if fill >= health_bar_green_threshold { Green }
 
 **Zero-HP visual.** At `fill=0.0`, the HP bar's `Transform.scale.x = 0.0` renders the bar structurally invisible. This is intentional: a unit at 0 HP is dead and despawns synchronously in the same tick (sub-step 5 of RESOLUTION). The "HP bars always visible" invariant (Rule 6, BR-5) applies to all **live** units (`hp_current > 0`); a 0-HP unit in mid-despawn does not violate the invariant. See edge case "EC-HP-ZERO".
 
-**Examples:**
-- `hp_current=2, hp_max=5` → fill=0.40 → Yellow (below green, at or above red threshold)
+**Examples (all with `HP_THRESHOLD_EPSILON = 1e-4`):**
+- `hp_current=2, hp_max=5` → fill=0.40 → Yellow (≥ red 0.3 − ε; < green 0.6 − ε)
 - `hp_current=5, hp_max=5` → fill=1.00 → Green
-- `hp_current=1, hp_max=5` → fill=0.20 → Red (at red threshold boundary)
+- `hp_current=1, hp_max=5` → fill=0.2000... ≥ (0.3 − 1e-4) → **NO**, → Red (just below red threshold; epsilon does not bridge a 0.1 gap)
+- `hp_current=3, hp_max=10` → fill=0.29999...f32 → without epsilon: Red. **With epsilon (`fill ≥ 0.3 − 1e-4 = 0.2999`):** 0.29999 ≥ 0.2999 → Yellow. **This is the bug fix.**
 - `hp_current=0, hp_max=5` → fill=0.00 → Red, scale.x=0.0 (bar invisible; unit despawning same tick)
 - `hp_current=3, hp_max=0` (server bug) → hp_max clamped to 1 → fill=clamp(3.0, 0.0, 1.0)=1.0 → Green + warn!() logged
+- `green=0.5, red=0.6` (inverted config) → intake `assert!` fires at config load with diagnostic message → game refuses to start with bad config (R2 invariant)
 
 ---
 
@@ -372,34 +423,44 @@ This formula applies only in 2v2 mode. In 1v1 at most one unit per player per la
 
 ---
 
-### F4 — Resolution Animation Total Duration
+### F4 — Resolution Animation Total Duration (revised R2 2026-04-29)
 
-The `resolution_animation_duration` formula is defined as:
+The `resolution_animation_duration` formula now includes the reveal tween (Rule 7) and the objective-reveal sequence (Rule 12) so the **wall-clock time from `S2CPlacementReveal` to next-phase entry** is fully accounted for:
 
 ```
-total_ms = pre_animation_pause_ms
+total_ms = unit_reveal_tween_duration_ms                                // Rule 7 reveal tween
+         + pre_animation_pause_ms                                       // hold before sub-step 1
          + N_groups * (resolution_sub_step_duration_ms + inter_step_pause_ms)
+         + N_destroyed * (objective_reveal_hold_ms + objective_reveal_anim_ms)
 ```
 
 **Variables:**
 
 | Variable | Symbol | Type | Range | Description |
 |---|---|---|---|---|
-| Pre-animation pause | `pre_animation_pause_ms` | u32 | 200–800 | Hold after fog lift before sub-step 1 animation begins; default 400ms. **Runs concurrently with fog lift** — the pause clock starts at `ResolutionReveal` entry, not after fog lift completes. |
-| Sub-step duration | `resolution_sub_step_duration_ms` | u32 | 400–1000 | Active animation window per sub-step group; default 600ms (revised down from 800ms 2026-04-30 — keeps default match ≤5s) |
-| Inter-step pause | `inter_step_pause_ms` | u32 | 100–300 | Silent pause between consecutive groups; default 150ms (revised down from 200ms 2026-04-30) |
-| Group count | `N_groups` | u8 | 0–6 | Count of distinct `sub_step` values present in `S2CResolutionEvent`; sub-steps with no events contribute 0ms |
+| Unit reveal tween | `unit_reveal_tween_duration_ms` | u32 | 150–400 | Scale + alpha tween on opponent's newly-replicated entities at `ResolutionReveal` entry; default **250ms** (R2 new). Sequential before pre-animation pause. |
+| Pre-animation pause | `pre_animation_pause_ms` | u32 | 200–800 | Hold after reveal tween completes, before sub-step 1 begins; default 400ms. **Sequential** with reveal tween (R2 — was concurrent with fog lift). |
+| Sub-step duration | `resolution_sub_step_duration_ms` | u32 | 400–1000 | Active animation window per sub-step group; default 600ms |
+| Inter-step pause | `inter_step_pause_ms` | u32 | 100–300 | Silent pause between consecutive groups; default 150ms |
+| Group count | `N_groups` | u8 | 0–6 | Count of distinct `sub_step` values present in `S2CResolutionEvent` |
+| Objective reveal hold | `objective_reveal_hold_ms` | u32 | 300–800 | Silent suspense beat per destroyed objective; default 500ms |
+| Objective reveal anim | `objective_reveal_anim_ms` | u32 | 500–1000 | Reveal animation per destroyed objective (max of real/fake variants); default **800ms** |
+| N destroyed | `N_destroyed` | u8 | 0–5 | Count of objectives destroyed this RESOLUTION |
 
 **Output Range (defaults):**
-- Minimum: `pre_animation_pause_ms` (N_groups=0, see edge case below)
-- Typical (all 6 sub-steps active, defaults): 400 + 6×(600+150) = **4,900ms** (~4.9 s)
-- Maximum (all sub-steps, tuning ceiling): 800 + 6×(1000+300) = **8,600ms**
+- Minimum (N_groups=0, N_destroyed=0): 250 + 400 + 0 + 0 = **650ms**
+- Typical (N_groups=6, N_destroyed=0): 250 + 400 + 6×(600+150) + 0 = **5,150ms** (~5.15 s)
+- Typical with 1 destroy: 5,150 + 1×(500+800) = **6,450ms**
+- **Maximum (all sub-steps + 2 destroys, tuning ceiling): 400 + 800 + 6×(1000+300) + 2×(800+1000) = 11,400ms ≈ 11.5s**
+- Theoretical with 5 destroys (extremely rare — all objectives lost in one round): up to ~14.6s — flagged as out-of-scope; cap `N_destroyed` rendering to 2-per-RESOLUTION at the worst case (consolidate remaining as "+N more destroyed" summary, deferred polish).
 
-**Across a 20-round friend-game match** at default timings: 4.9s × 20 = ~98s = **1 minute 38 seconds** of watch time across the match (down from 128s pre-revision). Tuning ceiling: 8.6s × 20 = 172s = ~2:52. Objective reveals add 500ms × N_destroyed at default (`objective_reveal_hold_ms`). The Player Fantasy is calibrated against ≤5s default — going meaningfully higher requires a Player Fantasy revisit.
+**Across a 20-round friend-game match** at default timings (assume 1 destroy per ~5 rounds): ≈ 4 destroys × 1.3s = 5.2s extra → 20 × 5.15 + 5.2 ≈ **108s** total locked watch time, vs. the pre-R2 estimate of 98s. The additional 10s is the cost of the reveal tween (5s) + per-match objective reveals (~5s).
 
-**N_groups=0 behavior.** When `S2CResolutionEvent` arrives with an empty event list (no events fired in any sub-step — rare but possible if both players placed only structures or skipped placement): the pre-animation pause STILL runs (so the player gets the dramatic beat after fog lift), no Tweens are spawned, then transition directly from `ResolutionExecuting` → `ResolutionObjectiveReveal`. `total_ms = pre_animation_pause_ms`. This resolves the prior internal contradiction between the formula and the edge case.
+**Player Fantasy ceiling: ≤11.5s absolute (single RESOLUTION worst case).** Going beyond requires a Player Fantasy revisit. The "≤5s default" framing is preserved for typical rounds (no destroys). Veterans-fatigue trade-off acknowledged in Player Fantasy.
 
-**Example:** A round with events only in sub-steps 1, 5, 6 (N_groups=3, defaults): `total_ms = 400 + 3×(600+150) = 2,650ms`.
+**N_groups=0 behavior.** When `S2CResolutionEvent` arrives with an empty event list (no events fired in any sub-step — rare but possible if both players placed only structures or skipped placement): the reveal tween runs (if opponent had any new entities), then the pre-animation pause runs (the player gets the dramatic post-reveal beat), no sub-step Tweens are spawned, then transition directly from `ResolutionExecuting` → `ResolutionObjectiveReveal`. `total_ms = unit_reveal_tween_duration_ms + pre_animation_pause_ms` (plus objective reveals if any).
+
+**Example:** A round with events in sub-steps 1, 5, 6 (N_groups=3) and 0 destroys, defaults: `total_ms = 250 + 400 + 3×(600+150) = 2,900ms`.
 
 ## Edge Cases
 
@@ -411,9 +472,9 @@ total_ms = pre_animation_pause_ms
 
 **EC-RECONNECT-RESOLUTION — If `S2CGameSnapshot` arrives mid-RESOLUTION (reconnect):** discard all in-progress animation state (clear `AnimQueue`, `PendingPhaseChange`, `PendingResolutionScript`; cancel all active `Animator<*>` components), despawn all board entities, rebuild the full board from snapshot in one frame. **If `snapshot.phase == RESOLUTION`, target state is `DraftShop` regardless of whether any `S2CResolutionEvent` has been received** (animation is never replayed for reconnecting clients — the snapshot delivers the final state directly). After rebuild, hold in a `Reconnecting` sub-state until `S2CObjectiveIdentities` is re-received (per ADR-001), then enter the actionable phase.
 
-**EC-RESOLUTION-REVEAL-STUCK — If `S2CPlacementReveal` was received but `S2CResolutionEvent` does not arrive within 2000ms:** request a fresh `S2CGameSnapshot` via C2S `RequestSnapshot` and reset `BoardRenderState` to whatever the snapshot delivers. This is the only fallback for a server crash mid-resolution; without it the client is permanently stuck on a fog-lifted board with no input. The C2S `RequestSnapshot` contract is currently undefined — see new OQ-BR-06.
+**EC-RESOLUTION-REVEAL-STUCK — If `S2CPlacementReveal` was received but `S2CResolutionEvent` does not arrive within `resolution_reveal_timeout_ms` (default 2000ms):** request a fresh `S2CGameSnapshot` via `C2SRequestSnapshot` and reset `BoardRenderState` to whatever the snapshot delivers. This is the only message-loss fallback; without it the client is permanently stuck on a revealed-but-static board with no input. For true server crashes, Lightyear's 30s heartbeat-disconnect grace is the actual last resort. The `C2SRequestSnapshot` contract is currently undefined in `network-protocol.md` — see OQ-BR-06 (BLOCKING).
 
-**EC-NGROUPS-ZERO — If `S2CResolutionEvent` has N_groups=0 (no events):** still wait `pre_animation_pause_ms` (player gets the dramatic post-fog-lift beat), do not spawn any Tweens, then transition directly from `ResolutionExecuting` → `ResolutionObjectiveReveal`. `AnimQueue.total_duration_ms = pre_animation_pause_ms`. This resolves the prior contradiction between F4 and the legacy "advance directly" wording.
+**EC-NGROUPS-ZERO — If `S2CResolutionEvent` has N_groups=0 (no events):** the reveal tween still runs (Rule 7) if opponent had any newly-replicated entities; `pre_animation_pause_ms` then runs (player gets the dramatic post-reveal beat); no sub-step Tweens are spawned; transition directly from `ResolutionExecuting` → `ResolutionObjectiveReveal`. `AnimQueue.total_duration_ms = unit_reveal_tween_duration_ms + pre_animation_pause_ms` (plus objective reveals if any).
 
 **EC-OBJ-HP-ZERO — If `ObjectiveHp` replicates a value of 0 while `ResolutionExecuting` is active:** the HP bar clamps to 0 (F2 saturating clamp; scale.x=0 → bar invisible — acceptable since the objective despawns when `ObjectiveDestroyed` fires in `ResolutionObjectiveReveal`).
 
@@ -423,9 +484,9 @@ total_ms = pre_animation_pause_ms
 
 **EC-INVALID-GHOST — If the ghost unit is hovered to an invalid cell (outside spawn range, or Minion slot occupied):** the ghost stays at the last valid cell; the invalid cell node shows a brief red tint. The ghost does not move to the invalid cell.
 
-**EC-REVEAL-WAIT — If `S2CPlacementReveal` arrives before `S2CResolutionEvent`:** enter `ResolutionReveal` and begin the fog-lift tween. Wait for `S2CResolutionEvent` for up to 2000ms (see EC-RESOLUTION-REVEAL-STUCK for fallback). When the event arrives, transition to `ResolutionExecuting`. Log a warning if the wait exceeds 2000ms.
+**EC-REVEAL-WAIT — If `S2CPlacementReveal` arrives before `S2CResolutionEvent`:** enter `ResolutionReveal`, run the reveal tween (Rule 7) on newly-replicated opponent entities, then start `pre_animation_pause_ms`. Wait for `S2CResolutionEvent` for up to `resolution_reveal_timeout_ms` (default 2000ms — see EC-RESOLUTION-REVEAL-STUCK for fallback). When the event arrives, transition to `ResolutionExecuting`. Log a warning if the wait exceeds the timeout.
 
-**EC-EVENT-EARLY — If `S2CResolutionEvent` arrives before `S2CPlacementReveal`** (reliable channel ordering anomaly — see NP-OQ-3): store in `PendingResolutionScript`; do not begin any animation. When `S2CPlacementReveal` arrives, lift fog and consume the buffered script — enter `ResolutionExecuting` immediately with NO `pre_animation_pause_ms` hold (the buffered ordering already absorbed the dramatic beat). Log a warning.
+**EC-EVENT-EARLY — If `S2CResolutionEvent` arrives before `S2CPlacementReveal`** (reliable channel ordering anomaly — see NP-OQ-3): store in `PendingResolutionScript`; do not begin any animation. When `S2CPlacementReveal` arrives, run the reveal tween AND consume the buffered script — enter `ResolutionExecuting` after the reveal tween completes (still get the reveal beat — the buffered script doesn't change Rule 7's reveal sequence). The `pre_animation_pause_ms` IS still applied because the reveal tween itself isn't the dramatic pause; it's the entity appearance (R2 design decision: do not skip pre_animation_pause on EC-EVENT-EARLY — preserves Player Fantasy beat). `PendingResolutionScript` is cleared on consumption. Log a warning.
 
 **EC-PHASE-EARLY — If `S2CPhaseChanged(DRAFT_SHOP)` arrives before `S2CResolutionEvent`** (channel ordering anomaly that would silently drop the entire animation if not buffered): store in `PendingPhaseChange` (per Rule 10) regardless of current state. Continue waiting for `S2CResolutionEvent`. If the 2000ms ResolutionReveal timeout fires first, EC-RESOLUTION-REVEAL-STUCK fallback runs and snapshot recovery overrides the buffer. Without this rule the animation would be silently dropped on channel-ordering bugs.
 
@@ -450,7 +511,7 @@ total_ms = pre_animation_pause_ms
 | **Board / Lane System** (Approved) | Hard | Lightyear replicates `BoardPosition { lane, cell }` and `UnitStats { hp_current, hp_max, owner }` per unit entity to the client; Board Rendering queries these components each frame to drive sprite positions and HP bar fill |
 | **Objective System** (Approved) | Hard | Lightyear replicates `ObjectiveHp { hp }` per objective; `ObjectiveDestroyed { target_player_id, lane, was_fake }` reliable message drives the destruction reveal sequence in `ResolutionObjectiveReveal` |
 | **Combat Resolution** (Designed) | Hard | Resolution sub-step event data arrives via `S2CResolutionEvent` (owned by Network Protocol); Board Rendering has no direct interface with Combat Resolution |
-| **Network Protocol** (Approved) | Hard | `S2CPlacementReveal` → fog lift + unit reveal; `S2CResolutionEvent` → animation queue; `S2CPhaseChanged` → all `BoardRenderState` transitions; `S2CGameSnapshot` → full board rebuild on connect/reconnect |
+| **Network Protocol** (Approved) | Hard | `S2CPlacementReveal` → opponent entities arrive via Lightyear replication + reveal tween; `S2CResolutionEvent` → animation queue; `S2CPhaseChanged` → all `BoardRenderState` transitions; `S2CGameSnapshot` → full board rebuild on connect/reconnect; **`C2SRequestSnapshot` (currently undefined per OQ-BR-06)** → only client recovery path |
 | **Card Data & Pool** (Approved) | Hard | `TextureAtlas` asset loaded at startup; slice index looked up by `card_id` at unit spawn time; fallback to placeholder sprite if `card_id` is missing (EC-12) |
 | **Game Config** (Approved) | Hard | `lane_count=5` and `cells_per_lane=8` confirm board grid dimensions at startup; animation timing constants (`board_sub_step_duration_ms`, `board_fog_lift_ms`, `board_pre_anim_pause_ms`, `board_inter_step_pause_ms`, `board_objective_reveal_hold_ms`) and visual tuning (`board_fog_opacity`, `board_cell_width`, `board_lane_height`, `board_hp_*_threshold`, `board_co_occupancy_offset`, `board_prism_spin_speed`) loaded from `GameConfig` resource (added to game-config.md 2026-04-30) |
 
