@@ -1,5 +1,12 @@
 # Review Log — Card Animations
 
+## Review — 2026-04-30 (Pass 3) — Verdict: NEEDS REVISION → resolved in-session
+Scope signal: L
+Specialists: game-designer · systems-designer · qa-lead · gameplay-programmer · audio-director · ux-designer · network-programmer · creative-director (senior synthesis)
+Blocking items: 15 | Recommended: 15
+Summary: Pass 3 found 15 new blockers despite 37 resolved in prior passes. Architecture remains sound. Critical discoveries: ghost events (ResolutionGroupReady/FogLiftReady had no upstream emitters), DamageNumberSpawnRequested missing from domain event table, CA-21 assertion fundamentally wrong (BoardCell is a PlayTarget enum variant, not an ECS component), CA-24 contradicted Rule C-13, and 5 Card Animations config fields were absent from game-config.md (startup panic). Also: F2 variable range/assert ambiguity at 550ms boundary, V.1 duration hierarchy numerically inverted, GAME_OVER drain ownership undefined. All 15 blockers resolved in-session. GroupDrainedSignal introduced as sole CA emission (GAME_OVER path). User kept GAME_OVER 599ms compromise for friend-game scope. 14 OQs remain (5 Bevy API verification blocks all implementation).
+Prior verdict resolved: Yes — Pass 2 (2026-04-30) NEEDS REVISION resolved
+
 ## Review — 2026-04-30 (Pass 2) — Verdict: NEEDS REVISION
 Scope signal: L
 Specialists: game-designer, systems-designer, qa-lead, gameplay-programmer, performance-analyst, audio-director, ux-designer, network-programmer, creative-director (senior synthesis)
