@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/board-lane-system.md
 > **Architecture Module**: `server/feature/board/`
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories board-lane-system`
+> **Stories**: 10 stories created 2026-04-30
 
 ## Overview
 
@@ -55,6 +55,21 @@ This epic is complete when:
   `sender.send::<ReliableChannel>(S2CPlacementReveal)` in the same system
 - `liv-bevy-018` and `liv-bevy-lightyear` skills activated on all `.rs` files in this module
 
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [Board Grid Initialization](story-001-board-grid-initialization.md) | Logic | Ready | ADR-007 |
+| 002 | [Standard Unit Movement (F1)](story-002-standard-unit-movement.md) | Logic | Ready | ADR-007 |
+| 003 | [Spawn Range Validation (F2)](story-003-spawn-range-validation.md) | Logic | Ready | ADR-007 |
+| 004 | [Placement Occupancy Enforcement](story-004-placement-occupancy.md) | Logic | Ready | ADR-007 |
+| 005 | [Placement Buffer and Phase Integration](story-005-placement-buffer-phase-integration.md) | Integration | Ready | ADR-007, ADR-010 |
+| 006 | [CHARGE X Bonus Movement and Intermediate Cell Skip](story-006-charge-bonus-movement.md) | Logic | Ready | ADR-007 |
+| 007 | [Trap Trigger Mechanics](story-007-trap-trigger-mechanics.md) | Integration | Ready | ADR-007 |
+| 008 | [Objective Cell Detection (F3)](story-008-objective-cell-detection.md) | Logic | Ready | ADR-010 |
+| 009 | [Prism Collection](story-009-prism-collection.md) | Logic | Ready | ADR-010 |
+| 010 | [Displacement Keywords and Spawn Range Expansion](story-010-displacement-keywords.md) | Logic | Ready | ADR-007, ADR-010 |
+
 ## Next Step
 
-Run `/create-stories board-lane-system` to break this epic into implementable stories.
+Run `/story-readiness production/epics/board-lane-system/story-001-board-grid-initialization.md` then `/dev-story` to begin implementation. Work through stories in dependency order — each story's `Depends on:` field tells you what must be DONE before you can start it.

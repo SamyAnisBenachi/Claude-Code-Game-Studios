@@ -90,6 +90,17 @@ state_ownership:
     added: "2026-04-30"
     revised: ""
 
+  - state: player_class
+    status: active
+    owner_system: session-system
+    adr: docs/architecture/adr-014-class-system-architecture.md
+    interface: "Res<PlayerSessions>.class_of(player_id: PlayerId) -> ClassId (read-only for all systems); ResMut<PlayerSessions> in LOBBY handler (C2SClassChoice) and RSM gate (lock_all_classes) ONLY. Class is immutable after lock_all_classes() fires at LOBBY->DRAFT_INITIAL."
+    write_access: lobby_handler (class selection) + rsm_gate (lock_all_classes) — never again after DRAFT_INITIAL
+    referenced_by:
+      - docs/architecture/adr-014-class-system-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
 # Example:
 #
 # state_ownership:
@@ -203,6 +214,19 @@ interfaces:
     added: "2026-04-30"
     revised: ""
 
+  - contract: class_selection
+    status: active
+    pattern: rpc
+    producer: client   # C2SClassChoice Lightyear message
+    consumers:
+      - session-system   # LOBBY handler drains MessageReceiver<C2SClassChoice>; updates PlayerSessions
+    adr: docs/architecture/adr-014-class-system-architecture.md
+    signal_signature: "C2SClassChoice { class: ClassId } — Lightyear reliable C2S message (#[derive(lightyear::prelude::Message)]); LOBBY-phase gated; silently discarded if class_locked == true or class == ClassId::Neutral"
+    referenced_by:
+      - docs/architecture/adr-014-class-system-architecture.md
+    added: "2026-04-30"
+    revised: ""
+
 # Example:
 #
 # interfaces:
@@ -303,6 +327,18 @@ api_decisions:
     referenced_by:
       - docs/architecture/adr-017-combat-resolution-execution-architecture.md
       - docs/architecture/adr-010-rsm-event-bus.md
+      - docs/architecture/adr-014-class-system-architecture.md   # C2SClassChoice uses Lightyear Message; LobbyComplete uses Bevy Message
+    added: "2026-04-30"
+    revised: ""
+
+  - purpose: class_effect_dispatch
+    status: active
+    api: "Plain Rust functions (fn apply_gelure(sessions: &mut PlayerSessions, player_id: PlayerId)) called from within the RESOLUTION system body (fn resolve_combat(world: &mut World))"
+    not: "Standalone Bevy systems registered for class effects; buffered MessageWriter<ClassEffect*> within a RESOLUTION tick"
+    adr: docs/architecture/adr-014-class-system-architecture.md
+    reason: "PlayerId is plain data — not a Bevy SystemParam. Buffered messages are frame-delayed and would decouple RESOLUTION sub-steps (e.g., Xelorium sub-step 1 and Rollback sub-step 2 must execute in the same frame). Plain function calls within resolve_combat preserve sub-step ordering with no frame-delay risk."
+    referenced_by:
+      - docs/architecture/adr-014-class-system-architecture.md
     added: "2026-04-30"
     revised: ""
 
@@ -378,6 +414,20 @@ forbidden_patterns:
     description: "S2CResolutionEvent must NOT be sent as a stream of per-sub-step partial messages. A single batch message is sent after all 6 sub-steps complete."
     why: "The server completes all 6 sub-steps in ≤ 15 ms (one Bevy frame). Streaming messages would arrive in the same Lightyear batch — no latency benefit — while requiring clients to apply partial board mutations mid-resolution, complicating ClientState and the reconnect snapshot path."
     adr: docs/architecture/adr-017-combat-resolution-execution-architecture.md
+    added: "2026-04-30"
+
+  - pattern: multiple_c2s_class_choice_readers
+    status: active
+    description: "Only the LOBBY handler system may drain Lightyear's MessageReceiver<C2SClassChoice>. No secondary system or phase-gate handler may also read this receiver."
+    why: "Lightyear's MessageReceiver<T> can only be drained once per frame — the first system to read it consumes all messages. A second reader would silently starve the LOBBY handler, causing class selections to be lost without error."
+    adr: docs/architecture/adr-014-class-system-architecture.md
+    added: "2026-04-30"
+
+  - pattern: class_effect_as_standalone_bevy_system
+    status: active
+    description: "Class-specific card effects (Gelure, Xelorium, Rollback, Sang Méprise, Punition, Seed walk-over, Dé du Chateux, etc.) must NOT be registered as standalone Bevy systems or use buffered MessageWriter<T> within a RESOLUTION tick."
+    why: "PlayerId is plain data, not a Bevy SystemParam — standalone systems cannot receive per-player context as function arguments. Buffered messages are frame-delayed and would decouple RESOLUTION sub-steps that must execute in the same frame (Xelorium at sub-step 1, Rollback at sub-step 2). All class effects are plain Rust helper functions called from within resolve_combat."
+    adr: docs/architecture/adr-014-class-system-architecture.md
     added: "2026-04-30"
 
 # Example:
