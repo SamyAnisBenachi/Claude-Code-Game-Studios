@@ -1,5 +1,69 @@
 # Board Rendering — Review Log
 
+## Review — 2026-04-29 (R2) — Verdict: MAJOR REVISION NEEDED → resolved in-session
+Scope signal: XL
+Specialists: game-designer, systems-designer, qa-lead, ux-designer, performance-analyst, network-programmer, technical-artist, gameplay-programmer (`liv-bevy-018`), creative-director (senior synthesis)
+Blocking items: 16 surfaced | Recommended: ~25 | Resolved in-session: 16 BLOCKING + ~12 RECOMMENDED bundled
+Summary: Re-review of the GDD after the prior 2026-04-30 in-session pass (see entry below). Eight adversarial specialists surfaced 5 root-cause groups: (1) **Bevy 0.18 API errors in the GDD's own enforcement subsection** — `commands.get_entity` returns `Result` not `Option` (3 sites used `if let Some(...)` which won't compile); `Sprite { color, ..default() }` renders invisible in 0.18 (null `Handle<Image>` default); `Handle<TextureAtlas>` doesn't exist as an asset in 0.18 (split into `Handle<Image>` + `Handle<TextureAtlasLayout>`); ACs BR-3a/BR-2-ATLAS used the wrong type. (2) **F4 timing budget overshoots Player Fantasy ceiling** when objective reveals are added (worst case 11.1s vs 8.5s claimed). (3) **F2 floating-point boundary bug** (`3/10` as f32 = 0.29999... silently classified as Red instead of Yellow) + threshold-inversion vector (no `green > red` validator). (4) **`C2SRequestSnapshot` contract referenced by 4 recovery paths but absent from `network-protocol.md`** (verified by direct grep). (5) **Status-effect visual contract missing** despite Overview promise that "status effects must attach visibly". creative-director synthesis: not implementable as-written. Friend-game scope absorbs ~1/3 of blockers (testability rigor, perf certification, accessibility) but not API correctness, protocol contract gaps, or pillar honesty.
+Prior verdict resolved: Yes — prior 2026-04-30 entry's blockers stay closed; this R2 surfaces a different layer of issues (API correctness, formula bugs, cross-doc gaps).
+
+### R2 design decisions made by user
+- **F4 ceiling**: Raise to 11.5s and revise Player Fantasy honestly (NOT cap reveals; NOT add tap-to-skip).
+- **Watching-IS-reading**: Honest Player Fantasy revision (NOT add tap-to-accelerate; NOT add lane-stagger).
+- **Fog rule**: "Don't hide the board, just don't show opponent units placed before end of placing phase." → Result: fog overlay system removed entirely. Server-side replication filtering (already designed in Rule 8) is the actual hide mechanism; the dramatic reveal beat is now a 250ms scale + alpha tween on each newly-replicated opponent entity.
+- **Reconnect timeout**: 5 seconds for `S2CObjectiveIdentities` (with 5s/10s/20s/30s backoff schedule).
+
+### R2 in-session resolutions (16 BLOCKING)
+1. Bevy 0.18 API table corrected: `Some` → `Ok` for `get_entity` (3 sites); `Sprite::from_color` for solid-color sprites; `Handle<TextureAtlas>` removed → `Handle<Image>` + `Handle<TextureAtlasLayout>` pattern.
+2. Rule 4 Z layers: `Z_FOG` and `Z_SPAWN_HIGHLIGHTS` removed; `Z_OBJECTIVES` = 2.5 added; spawn highlights now `Sprite.color` tint on cell nodes.
+3. **Rule 7 fully rewritten** — fog overlay system removed; server-side replication filtering + 250ms reveal tween (custom `SpriteAlphaLens` + `TransformScaleLens`); local player's own units don't reveal-tween.
+4. Rule 8 ghost: sprite construction updated to atlas-frame + `Sprite.color` tint; reveal tween mention added on placement reveal.
+5. Rule 11 reconnect: 5s `S2CObjectiveIdentities` timeout + backoff added; cache-clear-on-reconnect made explicit; snapshot phase-content invariant documented as cross-doc dep.
+6. **Rule 13 (NEW)** SystemSet ordering: `BoardRenderSet { ReadMessages, ResolveStateMachine, SpawnEntities, ScheduleTweens, UpdateHpBars, TickAnimations }` with `chain()` ordering.
+7. **Rule 14 (NEW)** Status effect visual contract: top-right of unit, 16×16 px, board-elements atlas, max 3 + overflow `+N` badge, no tooltip required.
+8. F2 `HP_THRESHOLD_EPSILON = 1e-4`; intake `assert!(red < green)`; examples updated showing 3/10 boundary case fix.
+9. F4: reveal tween + objective reveal sequence now in formula; ceiling 11.5s; typical 5.15s; Player Fantasy raised correspondingly with honest watch-time acknowledgment.
+10. Player Fantasy: "Watching IS reading" honestly caveated for veteran fatigue; tap-to-skip flagged as out-of-M2 escape hatch; "newcomer learns vocabulary" claim relaxed.
+11. Tuning Knobs: `fog_*` removed; `unit_reveal_tween_*`, `resolution_reveal_timeout_ms`, `objective_identities_reconnect_timeout_ms`, `objective_reveal_anim_ms` added; co-occupancy/cell_width constraint clarified.
+12. Acceptance Criteria — major rewrite:
+    - BR-3a/3b/2-ATLAS rewritten for 0.18 atlas API.
+    - BR-3c new (HP bar atlas membership).
+    - BR-6/BR-7 rewritten for fog-removal / reveal-tween test.
+    - BR-FOG-OPACITY removed (struck through).
+    - BR-10 corrected to `if let Ok(...)`.
+    - BR-12 type-tightened to u32 millis.
+    - BR-13 reveal-tween-aware.
+    - BR-18 split into a (blocking sub-state), b (happy path), c (5s timeout + backoff).
+    - BR-19 rewritten without `World::inspect_entity` dep — positive component allowlist + explicit banned-`TypeId` enumeration.
+    - BR-EC-EARLY split into buffer + consume; pre-pause retained on consumption.
+    - BR-EC-STUCK tied to `resolution_reveal_timeout_ms` knob.
+    - 9 new ACs: BR-HP-EPSILON, BR-HP-THRESHOLD-INVERT, BR-COOCC-CONSTRAINT, BR-EC-LOBBY-SNAPSHOT, BR-INTERSTEP-PAUSE, BR-STATUS-CONTRACT, BR-STATUS-COOCCUPANCY, BR-RECONNECT-CACHE-CLEAR, BR-SYSTEMSET-ORDER.
+    - Implementation notes updated for `App::new().add_plugins(MinimalPlugins)` + `#[should_panic(...)]` pattern.
+13. Asset Requirements: fog row removed; `hp_bar_white_pixel_1x2` reserved unit-atlas frame added.
+14. Visual/Audio Requirements: "Fog lift" VFX row replaced with "Opponent unit reveal — simultaneous appearance".
+15. UI Requirements: Fog overlay row replaced with reveal-tween row.
+16. **OQ-BR-06 escalated to BLOCKING** for implementation. `C2SRequestSnapshot` confirmed absent from `network-protocol.md`. Required NP additions enumerated. **External cross-doc revision required before BR-EC-STUCK / BR-18c / BR-24 / EC-RESOLUTION-REVEAL-STUCK / EC-SUBSTEP-OOR can be implemented.**
+
+### Specialist disagreements (surfaced — not silently resolved)
+- **game-designer vs ux-designer on watching-IS-reading**: skip mechanism vs honest revision. **User picked honest Player Fantasy revision** (ux-designer's path).
+- **ux-designer vs creative-director on EC-INVALID-GHOST** ("stay at last valid" vs despawn): not addressed in R2; preserving prior behavior. Flagged for future polish.
+- **qa-lead vs creative-director on BR-Z-LOCAL** (impl-detail vs explicit invariant): kept as-written per creative-director.
+- **game-designer F5** (asymmetric fog → draft-pick perception): obsoleted by R2 fog removal.
+
+### Status disposition
+- 16 BLOCKING items resolved within `board-rendering.md`.
+- One BLOCKING dependency remains EXTERNAL: `network-protocol.md` must define `C2SRequestSnapshot` before recovery paths can be implemented (tracked as OQ-BR-06).
+- Recommended: re-review in fresh session **after** `network-protocol.md` revision lands, to confirm cross-doc consistency. Until then, status is "Designed (CONDITIONAL APPROVED pending OQ-BR-06)".
+
+### Cross-doc follow-ups for fresh session
+- `network-protocol.md`: define `C2SRequestSnapshot` (OQ-BR-06) — payload, server response invariant, rate-limit, valid-in-all-phases.
+- `network-protocol.md` / `round-state-machine.md`: document snapshot phase-content invariant for RESOLUTION reconnect (server holds post-resolution state).
+- `keyword-system.md`: provide status-effect icon mapping per Rule 14.
+- `combat-resolution.md`: complete `ResolutionEvent` enum variants (OQ-BR-03).
+- NP-OQ-3: confirm Lightyear 0.26 reliable channel ordering (affects EC-EVENT-EARLY / EC-PHASE-EARLY).
+
+---
+
 ## Review — 2026-04-30 — Verdict: MAJOR REVISION NEEDED → resolved in-session
 Scope signal: L
 Specialists: game-designer, systems-designer, gameplay-programmer (+liv-bevy-018), network-programmer, performance-analyst, qa-lead, creative-director (senior)
