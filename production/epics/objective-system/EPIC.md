@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/objective-system.md
 > **Architecture Module**: `server/feature/objective/`
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories objective-system`
+> **Stories**: 7 stories — see table below
 
 ## Overview
 
@@ -55,6 +55,20 @@ This epic is complete when:
   in a `Replicate` context or any S2C broadcast message
 - `liv-bevy-018` and `liv-bevy-lightyear` skills activated on all `.rs` files in this module
 
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [Objective State Model](story-001-objective-state-model.md) | Logic | Ready | ADR-001 |
+| 002 | [Fake Assignment & Config Guards](story-002-fake-assignment-and-config-guards.md) | Logic | Ready | ADR-001 |
+| 003 | [Identity Unicast Delivery](story-003-identity-unicast-delivery.md) | Integration | Ready | ADR-001 |
+| 004 | [Damage Interface](story-004-damage-interface.md) | Logic | Ready | ADR-001 |
+| 005 | [Destruction Consequence Path](story-005-destruction-consequence-path.md) | Logic | Ready | ADR-010, ADR-001 |
+| 006 | [D4 Fake Reward Draw](story-006-d4-fake-reward-draw.md) | Logic | Ready | ADR-001 |
+| 007 | [ResolutionPhaseEntered Subscription & RESOLUTION-end Sync](story-007-resolution-phase-subscription.md) | Integration | Ready | ADR-010, ADR-001 |
+
+Work through stories in order — each story's `Depends on:` field tells you what must be DONE before you can start it.
+
 ## Next Step
 
-Run `/create-stories objective-system` to break this epic into implementable stories.
+Run `/story-readiness production/epics/objective-system/story-001-objective-state-model.md` then `/dev-story` to begin implementation.

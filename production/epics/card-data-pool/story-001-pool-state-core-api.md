@@ -1,7 +1,7 @@
 # Story 001: Pool State + Core API
 
 > **Epic**: Card Data & Pool
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: 4–6 hours
