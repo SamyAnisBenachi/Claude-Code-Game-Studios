@@ -6,7 +6,7 @@
 
 | Total | Needed | In Progress | Done | Approved |
 |-------|--------|-------------|------|----------|
-| 87 | 87 | 0 | 0 | 0 |
+| 93 | 93 | 0 | 0 | 0 |
 
 ---
 
@@ -113,3 +113,14 @@
 | ASSET-085 | Card Acquired SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
 | ASSET-086 | Hand Full SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
 | ASSET-087 | Reserve Adjust Click SFX | Audio | Needed | design/assets/specs/hand-ui-assets.md |
+
+### System: hud
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-088 | HUD Zone Chip Background | Sprite / 2D Art | Needed | design/assets/specs/hud-assets.md |
+| ASSET-089 | Reserve Mana Diamond Icon | Sprite / 2D Art | Needed | design/assets/specs/hud-assets.md |
+| ASSET-090 | Project Display Font (Bold + Regular) | Font | Needed | design/assets/specs/hud-assets.md |
+| ASSET-091 | Phase Transition Tick SFX | Audio | Needed | design/assets/specs/hud-assets.md |
+| ASSET-092 | Scoreboard Dot Darkening Thud SFX | Audio | Needed | design/assets/specs/hud-assets.md |
+| ASSET-093 | GAME_OVER Resolved Chord SFX | Audio | Needed | design/assets/specs/hud-assets.md |
