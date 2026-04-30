@@ -1,7 +1,7 @@
 # Story 001: State and Events Scaffold
 
 > **Epic**: Round State Machine
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Config/Data
 > **Manifest Version**: 2026-04-29
@@ -31,20 +31,20 @@
 
 ## Acceptance Criteria
 
-- [ ] `server/src/core/rsm/state.rs` defines `RoundPhase` as a plain enum with exactly 7 variants: `Lobby`, `DraftInitial`, `DraftAuction`, `DraftShop`, `Placement`, `Resolution`, `GameOver`; derives `Debug`, `Clone`, `Copy`, `PartialEq`, `Eq`, `Hash` only — no `#[derive(States)]`
-- [ ] `RoundState` struct derives `Resource` and contains: `phase: RoundPhase`, `round_number: u32`, `placement_timer: Option<Timer>`, `draft_shop_timer: Option<Timer>`, `draft_initial_timer: Option<Timer>`, `auction_safety_timer: Option<Timer>`, `resolution_safety_timer: Option<Timer>`, `submissions_received: HashSet<PlayerId>`, `disconnect_trackers: HashMap<PlayerId, f32>`
-- [ ] `RoundState::default()` or `RoundState::new()` initialises `phase = RoundPhase::Lobby`, `round_number = 0`, all `Option<Timer>` fields as `None`, both collections empty
-- [ ] `shared/src/protocol.rs` (or `shared/src/lib.rs`) defines `DraftPhase` enum with variants `Initial`, `Auction`, `Shop`; derives `Serialize`, `Deserialize`, `Clone`, `Debug`, `PartialEq`, `Eq`
-- [ ] `shared/src/protocol.rs` defines `GameOverReason` enum with variants `ObjectivesDestroyed`, `Disconnection`, `Draw`; derives `Serialize`, `Deserialize`, `Clone`, `Debug`, `PartialEq`, `Eq`
-- [ ] `client/src/state/mod.rs` (or `client/src/rsm/view.rs`) defines `ClientPhaseView` resource with fields: `phase: RoundPhase`, `round_number: u32`, `timer_duration_ms: u32`; derives `Resource`, `Default`; doc comment states "Updated only by S2CPhaseChanged handler — never drives server transitions"
-- [ ] `server/src/core/rsm/events.rs` defines all 7 outbound message types: `DraftStarted { round: u32, phase: DraftPhase }`, `ShopRefreshNeeded { player: PlayerId }`, `AuctionPhaseEntered { round: u32 }`, `PlacementPhaseEntered { round: u32 }`, `ResolutionPhaseEntered { round: u32 }`, `GameOverEmitted { reason: GameOverReason, loser: Option<PlayerId> }`, `BroadcastPhaseChanged { phase: RoundPhase, round: u32, timer_ms: u32 }` — all derive `Message`, `Clone`, `Debug`
-- [ ] `server/src/core/rsm/events.rs` defines: `SessionReady` (marker struct — `#[derive(Event)]` — doc comment states "DELIVERY: Observer trigger per ADR-012, NOT a buffered Message — do not read via MessageReader; subscribe via app.observe(on_session_ready)"), `AuctionSettled { winner: Option<PlayerId>, final_price: u32, card_id: CardId }` (`#[derive(Message, Clone, Debug)]`), `ResolutionComplete` (marker struct — `#[derive(Message, Clone, Debug)]`)
-- [ ] `server/src/core/rsm/plugin.rs` defines `RsmPlugin` struct implementing Bevy `Plugin`; `build()` registers all 9 message types (all except `SessionReady`) via `app.add_message::<T>()`; inserts `RoundState` resource via `app.insert_resource(RoundState::new())`; `SessionReady` is registered via `app.observe(on_session_ready)` — NOT via `app.add_message::<SessionReady>()`
-- [ ] `server/src/core/rsm/mod.rs` re-exports: `pub use events::*;`, `pub use state::{RoundPhase, RoundState};`, `pub use plugin::RsmPlugin;`
-- [ ] CI grep gate: `grep -rE "EventWriter|EventReader|Events<|add_event" server/src/core/rsm/` returns zero matches
-- [ ] CI grep gate: `grep -r "derive(States)" server/src/core/rsm/` returns zero matches
-- [ ] `cargo check --workspace` clean with zero warnings on `server/src/core/rsm/**`
-- [ ] `tests/unit/rsm/rsm_scaffold_test.rs` passes: `World::new()` + `app.init_resource::<RoundState>()` succeeds without panic; `world.resource::<RoundState>().phase == RoundPhase::Lobby`; `world.resource::<RoundState>().round_number == 0`; all 9 message types (excluding `SessionReady`) can be added via `app.add_message::<T>()` and read back from the world without panic
+- [x] `server/src/core/rsm/state.rs` defines `RoundPhase` as a plain enum with exactly 7 variants: `Lobby`, `DraftInitial`, `DraftAuction`, `DraftShop`, `Placement`, `Resolution`, `GameOver`; derives `Debug`, `Clone`, `Copy`, `PartialEq`, `Eq`, `Hash` only — no `#[derive(States)]`
+- [x] `RoundState` struct derives `Resource` and contains: `phase: RoundPhase`, `round_number: u32`, `placement_timer: Option<Timer>`, `draft_shop_timer: Option<Timer>`, `draft_initial_timer: Option<Timer>`, `auction_safety_timer: Option<Timer>`, `resolution_safety_timer: Option<Timer>`, `submissions_received: HashSet<PlayerId>`, `disconnect_trackers: HashMap<PlayerId, f32>`
+- [x] `RoundState::default()` or `RoundState::new()` initialises `phase = RoundPhase::Lobby`, `round_number = 0`, all `Option<Timer>` fields as `None`, both collections empty
+- [x] `shared/src/protocol.rs` (or `shared/src/lib.rs`) defines `DraftPhase` enum with variants `Initial`, `Auction`, `Shop`; derives `Serialize`, `Deserialize`, `Clone`, `Debug`, `PartialEq`, `Eq`
+- [x] `shared/src/protocol.rs` defines `GameOverReason` enum with variants `ObjectivesDestroyed`, `Disconnection`, `Draw`; derives `Serialize`, `Deserialize`, `Clone`, `Debug`, `PartialEq`, `Eq`
+- [x] `client/src/state/mod.rs` (or `client/src/rsm/view.rs`) defines `ClientPhaseView` resource with fields: `phase: RoundPhase`, `round_number: u32`, `timer_duration_ms: u32`; derives `Resource`, `Default`; doc comment states "Updated only by S2CPhaseChanged handler — never drives server transitions"
+- [x] `server/src/core/rsm/events.rs` defines all 7 outbound message types: `DraftStarted { round: u32, phase: DraftPhase }`, `ShopRefreshNeeded { player: PlayerId }`, `AuctionPhaseEntered { round: u32 }`, `PlacementPhaseEntered { round: u32 }`, `ResolutionPhaseEntered { round: u32 }`, `GameOverEmitted { reason: GameOverReason, loser: Option<PlayerId> }`, `BroadcastPhaseChanged { phase: RoundPhase, round: u32, timer_ms: u32 }` — all derive `Message`, `Clone`, `Debug`
+- [x] `server/src/core/rsm/events.rs` defines: `SessionReady` (marker struct — `#[derive(Event)]` — doc comment states "DELIVERY: Observer trigger per ADR-012, NOT a buffered Message — do not read via MessageReader; subscribe via app.observe(on_session_ready)"), `AuctionSettled { winner: Option<PlayerId>, final_price: u32, card_id: CardId }` (`#[derive(Message, Clone, Debug)]`), `ResolutionComplete` (marker struct — `#[derive(Message, Clone, Debug)]`)
+- [x] `server/src/core/rsm/plugin.rs` defines `RsmPlugin` struct implementing Bevy `Plugin`; `build()` registers all 9 message types (all except `SessionReady`) via `app.add_message::<T>()`; inserts `RoundState` resource via `app.insert_resource(RoundState::new())`; `SessionReady` is registered via `app.observe(on_session_ready)` — NOT via `app.add_message::<SessionReady>()`
+- [x] `server/src/core/rsm/mod.rs` re-exports: `pub use events::*;`, `pub use state::{RoundPhase, RoundState};`, `pub use plugin::RsmPlugin;`
+- [x] CI grep gate: `grep -rE "EventWriter|EventReader|Events<|add_event" server/src/core/rsm/` returns zero matches
+- [x] CI grep gate: `grep -r "derive(States)" server/src/core/rsm/` returns zero matches
+- [x] `cargo check --workspace` clean with zero warnings on `server/src/core/rsm/**`
+- [x] `tests/unit/rsm/rsm_scaffold_test.rs` passes: `World::new()` + `app.init_resource::<RoundState>()` succeeds without panic; `world.resource::<RoundState>().phase == RoundPhase::Lobby`; `world.resource::<RoundState>().round_number == 0`; all 9 message types (excluding `SessionReady`) can be added via `app.add_message::<T>()` and read back from the world without panic
 
 ---
 
@@ -107,7 +107,7 @@
 
 **Story Type**: Config/Data
 **Required evidence**: Smoke check — `cargo check --workspace` output showing zero warnings on `server/src/core/rsm/**` — paste into `tests/evidence/rsm-story-001-check.md`
-**Status**: [ ] Not yet created
+**Status**: [x] Created and verified by CI run 25161983584
 
 ---
 
@@ -115,3 +115,13 @@
 
 - Depends on: workspace-and-shared-types Story 004 (protocol skeleton + CI gates) must be Done — `PlayerId`, `CardId`, and the shared protocol types must exist before `server/src/core/rsm/events.rs` can compile
 - Unlocks: Story 002 (advance_phase and F2 ordering)
+
+---
+
+## Completion Notes
+**Completed**: 2026-04-30
+**Criteria**: 14/14 passing in CI
+**Deviations**: Advisory only — Bevy 0.18 uses `App::add_observer(on_session_ready)` and `On<SessionReady>` instead of the older story wording `app.observe` / `Trigger`; confirmed by `CODEX.md`, ADR-010 notes, and existing Bevy 0.18 evidence.
+**Test Evidence**: Config/Data smoke evidence at `tests/evidence/rsm-story-001-check.md`; integration coverage in `server/tests/rsm_scaffold_test.rs`; evidence mapping at `tests/unit/rsm/rsm_scaffold_test.rs`; CI green on run 25161983584.
+**Code Review**: Skipped per lean-mode default; local acceptance/deviation pass completed.
+**Implementation Commit**: `2b66f35` — `S2-01 impl: RSM state and events scaffold`

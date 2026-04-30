@@ -348,3 +348,12 @@ C:\Program Files\GitHub CLI\gh.exe
 - Verification: CI green on run 25161623746 for commit `5d8655c`
 - Blockers: local `cargo test -p server economy::api::tests` blocked before compile by missing Windows MSVC `link.exe`; CI passed
 - Next: S2-08 Economy Story 2 is unblocked once S2-01 is Done
+
+## Session Extract - /story-done 2026-04-30
+- Story: `production/epics/round-state-machine/story-001-state-and-events-scaffold.md` - State and Events Scaffold
+- Verdict: COMPLETE WITH NOTES
+- Criteria: 14/14 passing in CI (current main run 25161983584)
+- Deviations: Advisory only - Bevy 0.18 uses `App::add_observer(on_session_ready)` and `On<SessionReady>` instead of older `app.observe` / `Trigger` wording.
+- Test Evidence: `server/tests/rsm_scaffold_test.rs`, `tests/unit/rsm/rsm_scaffold_test.rs`, `tests/evidence/rsm-story-001-check.md`
+- Implementation Commit: `2b66f35`
+- Next: S2-07 RSM Story 2 and S2-08 Economy Story 2 are unblocked now that S2-01 and S2-02 are Done

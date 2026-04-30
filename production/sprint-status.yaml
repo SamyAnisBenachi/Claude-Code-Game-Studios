@@ -6,18 +6,18 @@ goal: "Core layer pure-function foundation: RSM event bus, Economy API, Card Poo
 start: "2026-05-14"
 end: "2026-05-27"
 generated: "2026-04-29"
-updated: "2026-04-29"
+updated: "2026-04-30"
 
 stories:
   - id: "S2-01"
     name: "RSM Story 1: State + Events Scaffold"
     file: "production/epics/round-state-machine/story-001-state-and-events-scaffold.md"
     priority: must-have
-    status: in-progress
-    owner: "codex-s2-01-rsm"
+    status: done
+    owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-04-30"
 
   - id: "S2-02"
     name: "Economy Story 1: State + Pure API Scaffold"
