@@ -93,11 +93,11 @@ stories:
     name: "S1 Carryover: Server & Client Network Plugins"
     file: "production/epics/lightyear-protocol-verification/story-003-server-client-network-plugins.md"
     priority: nice-to-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-04-30"
 
   - id: "S2-10"
     name: "S1 Carryover: E2E WebSocket Round-Trip"

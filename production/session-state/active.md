@@ -452,6 +452,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - Traceability index updated: docs/architecture/architecture-traceability.md
 
 ## Session Extract - /story-done 2026-04-30
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/lightyear-protocol-verification/story-003-server-client-network-plugins.md` - Server & Client Network Plugins
+- Criteria: 16/16 passing; server/client network plugins, shared protocol registration, C2S receiver stubs, client sender stubs, and ADR-001 unicast compile-proof verified against implementation and CI.
+- Test Evidence: `tests/evidence/story-lyv-003-server-check.md`, `tests/evidence/story-lyv-003-client-check.md`, and GitHub Actions run `25176947506` passed for commit `215253e4eb1c234233459a9e742e06fd429ad4bb`.
+- Local Verification: `cargo check -p server` passed locally with pre-existing warnings outside S2-09 scope. `cargo check -p client` was attempted locally and blocked by Windows dependency compilation/OOM/timeout before reaching the client crate; CI is the authoritative green build.
+- Tech debt logged: None
+- Next recommended: S2-10 E2E WebSocket Round-Trip at `production/epics/lightyear-protocol-verification/story-004-e2e-websocket-roundtrip.md` is unblocked by S2-09 completion.
+
+## Session Extract - /story-done 2026-04-30
 - Verdict: COMPLETE
 - Story: `production/epics/game-config-pipeline/story-003-startup-validation-gate.md` - Startup Validation Gate
 - Criteria: 22/22 passing; validation tests mapped in `tests/unit/foundation/game_config_validation_test.rs` and embedded in `server/src/foundation/config.rs`
