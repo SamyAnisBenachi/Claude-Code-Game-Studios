@@ -12,4 +12,7 @@ pub use api::{
 };
 pub use plugin::EconomyPlugin;
 pub use state::{InterestSnapshots, PlayerEconomies, PlayerEconomy, SpendError};
-pub use system::{initialise_player_economies, on_draft_started, S2CGoldBroadcast, S2CGoldUpdate};
+pub use system::{
+    discard_current_mana_at_resolution_end, initialise_player_economies, on_draft_started,
+    on_resolution_phase_entered, EconomySystemSet, S2CGoldBroadcast, S2CGoldUpdate,
+};

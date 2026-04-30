@@ -83,8 +83,8 @@ stories:
     name: "Economy Story 3: Interest Snapshot & Resolution End"
     file: "production/epics/economy-system/story-003-interest-snapshot-resolution.md"
     priority: should-have
-    status: ready-for-dev
-    owner: ""
+    status: in-progress
+    owner: "claude-s3-08-economy-interest"
     estimate_days: 1.0
     blocker: ""
     completed: ""
