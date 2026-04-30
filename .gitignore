@@ -17,6 +17,9 @@ production/session-logs/
 # === Local machine config (Windows paths, custom linkers) ===
 .cargo/config.toml
 
+# === Codex local agent state ===
+.agents/
+
 # === Internal Planning (not for public) ===
 
 expansions/
