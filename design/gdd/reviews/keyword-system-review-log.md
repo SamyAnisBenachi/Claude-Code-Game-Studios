@@ -1,5 +1,12 @@
 # Keyword System — Review Log
 
+## Review — 2026-04-30 (R2 full) — Verdict: NEEDS REVISION → Revised Inline
+Scope signal: L
+Specialists: game-designer, systems-designer, qa-lead, network-programmer, creative-director
+Blocking items: 31 addressed inline | Recommended: 10
+Summary: First full specialist panel since R1 (which was accepted as Approved too early). Dominant issue: Replication Contract was never synced after NP GDD evolved through R3–R6 — 3 field type errors (STUN renamed, SILENCE type u8→u32, HASTE field absent), 2 stale OQs (NP4/NP5 resolved in NP GDD), 1 undefined type (KeywordKind→GrantedKeyword), and a broken INJURED derivation (UnitStats.max_hp doesn't exist in UnitStats). Additional fixes: LEADER stacking rule (no stack, earliest-placed); INJURED exhaustive grant list (4 variants: FS/CA/RANGE/SHIELD); SILENCE design intent framed as totalizing counter in Player Fantasy; SILENCE VFX + COUNTERATTACK tooltip exception in UI Requirements; SILENCE structured duration tracked as OQ-KS-new; REPEL X=0 authoring rule; ATTRACT lane-local precondition; OUTNUMBERED Fields excluded (confirmed); 16 new ACs (KW-042–KW-057). Creative-director adjudications: SILENCE scope intentional (keep rule, surface better); LEADER no-stack (earliest-placed); INJURED 4-variant closed list. R3 re-review recommended in fresh session.
+Prior verdict resolved: Yes — R1 accepted-as-Approved was premature; R2 found 31 additional blockers from NP GDD drift and AC coverage gaps.
+
 ## Review — 2026-04-30 — Verdict: NEEDS REVISION → revised in-session → Approved
 Scope signal: L
 Specialists: game-designer, systems-designer, network-programmer, qa-lead, creative-director
