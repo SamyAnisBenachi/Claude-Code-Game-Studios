@@ -29,8 +29,12 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 2
+version: 3
 last_updated: "2026-04-30"
+# Run 3 (/architecture-review 2026-04-30c): registered 80 new M2/M3 TRs covering
+# combat-resolution, card-acquisition, prism-system, keyword-system, card-animations,
+# board-rendering, hand-ui, shop-auction-ui, hud. TR-CS already populated by another
+# agent. Total: 80 M1 + 10 TR-AUC + 8 TR-CS + 80 new = 178 active TRs.
 
 requirements:
 
@@ -885,12 +889,860 @@ requirements:
     revised: ""
     status: active
 
-  # ─── M2/M3 REMAINING SYSTEMS — ADRs PENDING ───────────────────────────────
-  # TRs for remaining M2/M3 GDDs will be added when their governing ADRs are written.
-  # See docs/architecture/architecture-review-2026-04-30.md §Phase 3 for
-  # the full gap list and required ADR titles.
-  #
-  # Systems pending TR registration:
-  #   M2: combat-resolution, card-acquisition
-  #       board-rendering, hand-ui, shop-auction-ui, hud
-  #   M3: keyword-system, prism-system, class-system, card-animations
+  # ─── Class System (TR-CS) ─────────────────────────────────────────────────
+  # GDD: design/gdd/class-system.md
+  # ADR coverage: ADR-014 (class architecture, PlayerSessions, SourceClass, effect dispatch)
+
+  - id: TR-CS-001
+    system: class-system
+    gdd: design/gdd/class-system.md
+    gdd_ac_ids: [CS-AC-01, CS-AC-02, CS-AC-03a, CS-AC-03b]
+    requirement: "Class lifecycle: LOBBY selection via C2SClassChoice; PlayerSessions Resource (class: ClassId, class_locked: bool); all_classes_chosen() gate refuses LOBBY->DRAFT_INITIAL if any player has class=Neutral; lock_all_classes() atomic; PlayerSnapshot.class_id in S2CGameSnapshot (NP-1 resolved)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CS-002
+    system: class-system
+    gdd: design/gdd/class-system.md
+    gdd_ac_ids: [CS-AC-04, CS-AC-05, CS-AC-05b, CS-AC-06, CS-AC-07, CS-AC-08]
+    requirement: "Xelor reserve formulas — Gelure (CS-1): reserve_new = reserve + current_mana; current_mana_new = 0; Xelorium (CS-2): self.reserve += opponent.current_mana; opponent.current_mana = 0 at sub-step 1 post-cost-deduction; Rollback (CS-3): n = self.reserve; reserve = 0; friendly Minions charge n cells clamped [1,8], STUN-blocked units excluded"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CS-003
+    system: class-system
+    gdd: design/gdd/class-system.md
+    gdd_ac_ids: [CS-AC-09, CS-AC-10, CS-AC-10b]
+    requirement: "Garde-Temps reserve gate (CS-4): playable = (reserve >= garde_temps_cost) AND (garde_temps_used_this_game < garde_temps_per_game_cap) AND target_alive; on accept: reserve -= cost, counter +1, lethal take_damage on chosen enemy objective via objective-system interface; on reject: no state change; counter owned by Game Session System"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CS-004
+    system: class-system
+    gdd: design/gdd/class-system.md
+    gdd_ac_ids: [CS-AC-11, CS-AC-12]
+    requirement: "Miss Nuit per-round cap (CS-11): +1 reserve per opponent Spell/Minion card played from hand while Miss Nuit alive and unsilenced; capped at miss_nuit_cap (default 2) per round; token spawns, prism-draws, and own-card-plays excluded; miss_nuit_reserve_gained_this_round owned by Economy System"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CS-005
+    system: class-system
+    gdd: design/gdd/class-system.md
+    gdd_ac_ids: [CS-AC-13, CS-AC-14a, CS-AC-14b, CS-AC-15, CS-AC-16, CS-AC-17]
+    requirement: "Sacrier effects — Sang Meprise (CS-5): reliable unicast S2CSangMepriseReveal to both players with all alive objective is_fake status; sang_meprise_active cleared at RESOLUTION end; Punition (CS-6): sacrifice chosen alive real objective (lethal take_damage) then 3 damage each alive opponent objective; reject if no alive real; self-elimination triggers GAME_OVER via RSM"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CS-006
+    system: class-system
+    gdd: design/gdd/class-system.md
+    gdd_ac_ids: [CS-AC-18, CS-AC-19, CS-AC-20, CS-AC-21]
+    requirement: "Sadida Seed cell-hazard (CS-7): friendly walk-over -> unit.AR += 1 permanent, seed persists; enemy walk-over -> 1 damage pre-AR via Combat Resolution pipeline, seed persists; max 1 seed/cell enforced; Graines de Folie (CS-8): each board Seed removed and Madoll (HP=3/ATK=1/MP=3) spawned at seed cell; over-capacity spawn silently skipped, seed still consumed"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CS-007
+    system: class-system
+    gdd: design/gdd/class-system.md
+    gdd_ac_ids: [CS-AC-22, CS-AC-23, CS-AC-24, CS-AC-25]
+    requirement: "Ecaflip RNG effects — De du Chateux (CS-9): RESOLUTION RNG roll in [1,6]; deal roll damage to target via take_damage pipeline; reveal enemy objective in lane iff roll <= de_chateux_reveal_threshold (unicast to Ecaflip player only); Coin flip (CS-10): Chatar/Shava Shavien/Craps binary outcomes from RESOLUTION RNG; Craps: share=floor(total/alive) + ascending-lane remainder; alive==0 guard (no div-by-zero)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CS-008
+    system: class-system
+    gdd: design/gdd/class-system.md
+    gdd_ac_ids: [CS-AC-26, CS-AC-27, CS-AC-27b]
+    requirement: "Class card shop filtering: class slot calls draw_class_card(player_class) exclusively — no cross-class cards in class slot; cross-class draw legality — draw_random uniform draw bypasses class filter (Drheller, prism Lane 3); no runtime play-time gate on card_class field — cross-class cards in hand are always playable"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CS-009
+    system: class-system
+    gdd: design/gdd/class-system.md
+    gdd_ac_ids: [CS-AC-28, CS-AC-29, CS-AC-30]
+    requirement: "Token spawn: SourceClass(ClassId) component on all 7 token types at spawn, never mutated; TokenUnit marker on all tokens; UnitBoardState.source_class: Option<ClassId> derived from component at snapshot build (NP-2 resolved); Sinistro: 1 damage/RESOLUTION to opposing-lane objective; La Gonflable: END-OF-MOVEMENT +2 HP to other friendly units in lane (not self); La Sacrifiee: DEATH -> 1 damage each enemy unit in lane via AR pipeline"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Combat Resolution (TR-CR) ─────────────────────────────────────────────
+  # GDD: design/gdd/combat-resolution.md
+  # ADR coverage: ADR-017 (resolve_combat exclusive system, sub-step ordering)
+  # Registered: 2026-04-30 (Run 3 — /architecture-review)
+
+  - id: TR-CR-001
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-38]
+    requirement: "Sub-step 1 placement effects execute before DEATH triggers; PendingPlacements drains atomically into BoardState before any combat sub-step"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CR-002
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-2]
+    requirement: "Sub-step 3 FIRST STRIKE damage resolves before retaliation in sub-step 6; FINAL BLOW eligible from SS3 kill"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CR-003
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-9]
+    requirement: "Sub-step 5 step-by-step collision detection (path crossing, same-cell halting); deviation from Board/Lane spec documented in ADR-017"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CR-004
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-1]
+    requirement: "Sub-step 6 bilateral pair simultaneous damage uses pre-combat HP snapshots; two-pass algorithm computes all damage before applying"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CR-005
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-36]
+    requirement: "SHIELD canonical pre-check rule absorbs all sub-step damage once for simultaneous attackers; removed from per-attacker modifier stack step 10"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CR-006
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-20, CR-21]
+    requirement: "COUNTERATTACK fires after damage; melee contact only (not RANGE); chains once; multi-attacker simultaneous retaliation supported"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CR-007
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-22, CR-23]
+    requirement: "FINAL BLOW fires in kill sub-step (SS3 or SS6, not SS4); eligibility evaluated against attacker who delivered killing damage"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CR-008
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-16]
+    requirement: "Kill gold +1 awarded by resolve_combat at sub-step 4 via api::apply_gold_award; objective gold +3 at sub-step 5; both updates landed before InterestSnapshots capture (ADR-019 ordering)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CR-009
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-10, CR-27]
+    requirement: "Objective damage formula: bypasses AR; uses ATK_effective only; saturating_sub on objective HP"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CR-010
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-26]
+    requirement: "INJURED activates at sub-step boundary (SS3->SS4 transition); state re-evaluated, not retroactive within a sub-step"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CR-011
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [KW-027a, KW-027b]
+    requirement: "OUTNUMBERED counted at sub-step entry; per-player global board count (not per-lane); strict less-than comparison"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CR-012
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-15]
+    requirement: "Type advantage formula: ATK+1, AR+1 in bilateral matchup only; type_beats lookup from GameConfig"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Card Acquisition (TR-CA) ──────────────────────────────────────────────
+  # GDD: design/gdd/card-acquisition.md
+  # ADR coverage: ADR-015 (ShopStates + PlayerHands + tick system)
+  # Registered: 2026-04-30 (Run 3)
+
+  - id: TR-CA-001
+    system: card-acquisition
+    gdd: design/gdd/card-acquisition.md
+    gdd_ac_ids: [CA1, CA2]
+    requirement: "Hand size capped at 10 cards; server-authoritative PlayerHands resource; purchase rejected when hand_len() == 10"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CA-002
+    system: card-acquisition
+    gdd: design/gdd/card-acquisition.md
+    gdd_ac_ids: [CA3, CA4]
+    requirement: "DRAFT_INITIAL: 9-card display, 5g budget, 45s timer; class-filtered draws via ADR-014 boundary"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CA-003
+    system: card-acquisition
+    gdd: design/gdd/card-acquisition.md
+    gdd_ac_ids: [CA6, CA16]
+    requirement: "Personal Shop auto-refresh on DRAFT_SHOP entry via ShopRefreshTriggered Bevy Message (ADR-010 subscriber)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CA-004
+    system: card-acquisition
+    gdd: design/gdd/card-acquisition.md
+    gdd_ac_ids: [CA8, CA9, CA10]
+    requirement: "Manual refresh cost formula: refresh_base_cost + min(count, refresh_cap); counter resets at DRAFT entry"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CA-005
+    system: card-acquisition
+    gdd: design/gdd/card-acquisition.md
+    gdd_ac_ids: [CA12]
+    requirement: "Dedup against displayed_this_draft set: 20 retry limit; short-circuit if K >= N (pool exhausted)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CA-006
+    system: card-acquisition
+    gdd: design/gdd/card-acquisition.md
+    gdd_ac_ids: [CA7]
+    requirement: "DRAFT_AUCTION: shop visible but locked (no purchase, no refresh); CA tick system gates on phase"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CA-007
+    system: card-acquisition
+    gdd: design/gdd/card-acquisition.md
+    gdd_ac_ids: [CA17]
+    requirement: "External bypasses (Prism Lane 3, Objective fake reward, Auction win) write to PlayerHands directly via hand_push() shared API; CA tick system not in call chain"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CA-008
+    system: card-acquisition
+    gdd: design/gdd/card-acquisition.md
+    gdd_ac_ids: [CA18]
+    requirement: "Transactional spend+distribute+refund pattern: spend_gold, distribute via PlayerPool, refund_gold on distribute failure; sequential calls within one system run, no cross-frame messaging"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CA-009
+    system: card-acquisition
+    gdd: design/gdd/card-acquisition.md
+    gdd_ac_ids: [CA20]
+    requirement: "Dead slot fallback: when shop draw returns None mid-display, slot remains empty until manual refresh; pool returns None cleanly, never panics"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CA-010
+    system: card-acquisition
+    gdd: design/gdd/card-acquisition.md
+    gdd_ac_ids: [CA22]
+    requirement: "Class shop roll 50/50: weighted draw between class and neutral pools per Card Acquisition Rule 3; class filter enforced by ADR-014 boundary"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Prism System (TR-PRI) ─────────────────────────────────────────────────
+  # GDD: design/gdd/prism-system.md
+  # ADR coverage: ADR-016 (state ownership, schedule slot, hand_push API)
+  # Registered: 2026-04-30 (Run 3)
+
+  - id: TR-PRI-001
+    system: prism-system
+    gdd: design/gdd/prism-system.md
+    gdd_ac_ids: [PS-04]
+    requirement: "Lane 1/5 grant prism_strike (1 damage, 3 mana cost); pool-untracked card, instant"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-PRI-002
+    system: prism-system
+    gdd: design/gdd/prism-system.md
+    gdd_ac_ids: [PS-05]
+    requirement: "Lane 2/4 grant prism_reserve (0 cost, +1 reserve_mana); pool-untracked, instant"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-PRI-003
+    system: prism-system
+    gdd: design/gdd/prism-system.md
+    gdd_ac_ids: [PS-06]
+    requirement: "Lane 3 draw random card from PlayerPool via draw_random; uniform over Minion|Spell types; deterministic via ServerRng resolve_prism slot"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-PRI-004
+    system: prism-system
+    gdd: design/gdd/prism-system.md
+    gdd_ac_ids: [PS-07b]
+    requirement: "Hand-full short-circuits Lane 3 draw before seed consumption; hand_full check precedes draw_random call; emits S2CPrismRewardDropped"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-PRI-005
+    system: prism-system
+    gdd: design/gdd/prism-system.md
+    gdd_ac_ids: [PS-17]
+    requirement: "Full-set respawn: when all 5 prism lanes collected by a player, all 5 prisms respawn at that player's row; emits S2CPrismRespawned reliable broadcast"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-PRI-006
+    system: prism-system
+    gdd: design/gdd/prism-system.md
+    gdd_ac_ids: [PS-18]
+    requirement: "Respawned prism not collectible during the same RESOLUTION; collected_this_round_grace flag prevents same-round double draw"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-PRI-007
+    system: prism-system
+    gdd: design/gdd/prism-system.md
+    gdd_ac_ids: [PS-19]
+    requirement: "No gold awarded for prism collection; Economy not in call chain for prism reward distribution"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-PRI-008
+    system: prism-system
+    gdd: design/gdd/prism-system.md
+    gdd_ac_ids: [PS-20]
+    requirement: "Processing order: ascending player_id then ascending lane; deterministic across both players' simultaneous collections"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Keyword System (TR-KW) ────────────────────────────────────────────────
+  # GDD: design/gdd/keyword-system.md
+  # ADR coverage: ADR-018 (PROPOSED — pending ADR-005/006 amendments)
+  # Registered: 2026-04-30 (Run 3 — partial coverage acknowledged)
+
+  - id: TR-KW-001
+    system: keyword-system
+    gdd: design/gdd/keyword-system.md
+    gdd_ac_ids: [KW-001]
+    requirement: "HASTE (renamed from CHARGE) removes summoning sickness; SimpleKeyword::Haste in extended enum (ADR-006 amendment pending)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-KW-002
+    system: keyword-system
+    gdd: design/gdd/keyword-system.md
+    gdd_ac_ids: [KW-002]
+    requirement: "CHARGE X bonus movement applied at sub-step 2; cells parameter clamped per Board/Lane F1"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-KW-003
+    system: keyword-system
+    gdd: design/gdd/keyword-system.md
+    gdd_ac_ids: [KW-012]
+    requirement: "FIRST STRIKE attacks in sub-step 3; no retaliation until sub-step 6"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-KW-004
+    system: keyword-system
+    gdd: design/gdd/keyword-system.md
+    gdd_ac_ids: [KW-006]
+    requirement: "COUNTERATTACK fires after damage; same-cell or collision-halt adjacency; UnitKeywordState.counter_attack flag"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-KW-005
+    system: keyword-system
+    gdd: design/gdd/keyword-system.md
+    gdd_ac_ids: [KW-007]
+    requirement: "INJURED re-evaluated at sub-step boundaries, not retroactive within sub-step"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-KW-006
+    system: keyword-system
+    gdd: design/gdd/keyword-system.md
+    gdd_ac_ids: [KW-008a]
+    requirement: "SILENCE strips INJURED-granted keywords; UnitKeywordState.silenced_until_round Option<u8>; persistence across rounds"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-KW-007
+    system: keyword-system
+    gdd: design/gdd/keyword-system.md
+    gdd_ac_ids: [KW-015a]
+    requirement: "STUN suppresses all actions in SS2/SS3/SS5/SS6; UnitKeywordState.stun_active flag; one-sub-step scope"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-KW-008
+    system: keyword-system
+    gdd: design/gdd/keyword-system.md
+    gdd_ac_ids: [KW-024]
+    requirement: "SHIELD persists across rounds until consumed; absorbs all sub-step damage once for simultaneous attackers (CR-36)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-KW-009
+    system: keyword-system
+    gdd: design/gdd/keyword-system.md
+    gdd_ac_ids: [KW-018]
+    requirement: "WALL keyword: MP=0 unit; halts advancing enemy at adjacent cell; collision-halt rule applies"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-KW-010
+    system: keyword-system
+    gdd: design/gdd/keyword-system.md
+    gdd_ac_ids: [KW-027a, KW-027b]
+    requirement: "OUTNUMBERED: per-player global board count, strict less-than comparison; re-evaluated per sub-step"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-KW-011
+    system: keyword-system
+    gdd: design/gdd/keyword-system.md
+    gdd_ac_ids: [KW-016]
+    requirement: "RANGE target selection: nearest enemy in lane; equidistant tie-break via ServerRng range_equidistant_select slot (ADR-005 amendment pending)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-KW-012
+    system: keyword-system
+    gdd: design/gdd/keyword-system.md
+    gdd_ac_ids: [KW-019]
+    requirement: "BODYGUARD protection: unit-to-unit bond stored as UnitKeywordState.bodyguard_protects: Option<EntityId>; survives CHANGE LANE"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Card Animations (TR-CAN) ──────────────────────────────────────────────
+  # GDD: design/gdd/card-animations.md
+  # ADR coverage: NONE — Presentation Layer ADR (ADR-021) required
+  # Registered: 2026-04-30 (Run 3 — gap registration)
+
+  - id: TR-CAN-001
+    system: card-animations
+    gdd: design/gdd/card-animations.md
+    gdd_ac_ids: [CA-1]
+    requirement: "Decoration Test: animations must satisfy state change OR removal OR parallel OR input gating OR teach-by-showing rule"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CAN-002
+    system: card-animations
+    gdd: design/gdd/card-animations.md
+    gdd_ac_ids: [CA-2]
+    requirement: "Per-phase animation budget enforced: PLACEMENT hard cap 250 ms; RESOLUTION 600 ms per sub-step; AnimQueue Resource"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CAN-003
+    system: card-animations
+    gdd: design/gdd/card-animations.md
+    gdd_ac_ids: [CA-3]
+    requirement: "Input gating rules: bid buttons gated on settlement; card slides non-blocking; UI input map per phase"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CAN-004
+    system: card-animations
+    gdd: design/gdd/card-animations.md
+    gdd_ac_ids: [CA-4]
+    requirement: "Mandatory simultaneous-start parallelism for placement reveal; max 2 UI region tweens at once; AnimGroup drain"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CAN-005
+    system: card-animations
+    gdd: design/gdd/card-animations.md
+    gdd_ac_ids: [CA-21]
+    requirement: "Placement-reveal flip 80–100 ms; 5 lanes simultaneous; LaneCell + BoardLayout.cell_to_world() coordinate source"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CAN-006
+    system: card-animations
+    gdd: design/gdd/card-animations.md
+    gdd_ac_ids: [CA-5]
+    requirement: "Sub-step pause gates: 100 ms after SS1, SS5, SS6 settlement before next sub-step plays"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CAN-007
+    system: card-animations
+    gdd: design/gdd/card-animations.md
+    gdd_ac_ids: [CA-25]
+    requirement: "bevy_tweening 0.18 hard dependency; custom SpriteAlphaLens (no built-in alpha lens); 5 custom lenses defined; lifecycle managed via DamageNumberSpawnRequested + GroupDrainedSignal"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Board Rendering (TR-BR) ───────────────────────────────────────────────
+  # GDD: design/gdd/board-rendering.md
+  # ADR coverage: ADR-020 PROPOSED (server-side BoardState only); client BoardLayout missing
+  # Registered: 2026-04-30 (Run 3 — partial coverage acknowledged)
+
+  - id: TR-BR-001
+    system: board-rendering
+    gdd: design/gdd/board-rendering.md
+    gdd_ac_ids: [BR-1]
+    requirement: "RESOLUTION sub-step visual separation: AnimQueue Resource + Time<Virtual>-driven Timer for sub-step playback"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BR-002
+    system: board-rendering
+    gdd: design/gdd/board-rendering.md
+    gdd_ac_ids: [BR-2]
+    requirement: "BoardLayout client resource — single coordinate authority cell_to_world(lane, cell) -> Vec3; consumed by Hand UI cursor mapping"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BR-003
+    system: board-rendering
+    gdd: design/gdd/board-rendering.md
+    gdd_ac_ids: [BR-3]
+    requirement: "Z-order layer constants in client/src/ui/board/rendering_constants.rs; no inline literals; BoardPosition replication via Lightyear"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BR-004
+    system: board-rendering
+    gdd: design/gdd/board-rendering.md
+    gdd_ac_ids: [BR-7]
+    requirement: "WALL cell-blocking visual during SS5 collision: halts opponent travel-arc tween at adjacent cell"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BR-005
+    system: board-rendering
+    gdd: design/gdd/board-rendering.md
+    gdd_ac_ids: [BR-RECONNECT-TIME]
+    requirement: "PendingPhaseChange + PendingResolutionScript resources buffer messages received before snapshot completes"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BR-006
+    system: board-rendering
+    gdd: design/gdd/board-rendering.md
+    gdd_ac_ids: [BR-STATUS-TIER]
+    requirement: "Persistent state indicator glyphs (STUN, SHIELD, INJURED, LEADER, SILENCE) rendered with Tier-1 priority ordering"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BR-007
+    system: board-rendering
+    gdd: design/gdd/board-rendering.md
+    gdd_ac_ids: [BR-OUTNUMBERED]
+    requirement: "OUTNUMBERED indicator per-unit (revised from per-lane); requires keyword-system reconciliation (OQ-KS5)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Hand UI (TR-HU) ───────────────────────────────────────────────────────
+  # GDD: design/gdd/hand-ui.md
+  # ADR coverage: ADR-015 (hand state via PlayerHands); ADR-019 (mana display); presentation gap
+  # Registered: 2026-04-30 (Run 3)
+
+  - id: TR-HU-001
+    system: hand-ui
+    gdd: design/gdd/hand-ui.md
+    gdd_ac_ids: [HU-01]
+    requirement: "Hand fan pre-pooled: 10 card slots + 9 DRAFT_INITIAL grid slots; fixed entity count regardless of hand size"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HU-002
+    system: hand-ui
+    gdd: design/gdd/hand-ui.md
+    gdd_ac_ids: [HU-12, HU-13]
+    requirement: "PLACEMENT drag-to-stage state machine: Idle -> Dragging -> Staged -> Committed; cursor-to-cell mapping via Res<BoardLayout>"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HU-003
+    system: hand-ui
+    gdd: design/gdd/hand-ui.md
+    gdd_ac_ids: [HU-18, HU-19]
+    requirement: "Instant card staging: cards with Instant type stage and resolve same-frame; mana validated against PlayerEconomies"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HU-004
+    system: hand-ui
+    gdd: design/gdd/hand-ui.md
+    gdd_ac_ids: [HU-25, HU-26]
+    requirement: "Reserve mana split control: UI shows current_mana / mana_cap with reserve_mana iff > 0; consumed via S2CGoldUpdate"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HU-005
+    system: hand-ui
+    gdd: design/gdd/hand-ui.md
+    gdd_ac_ids: [HU-04]
+    requirement: "DRAFT_INITIAL grid overlay: 9-card display, 45s timer, budget = 5g shown via S2CGoldBroadcast"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HU-006
+    system: hand-ui
+    gdd: design/gdd/hand-ui.md
+    gdd_ac_ids: [HU-12d]
+    requirement: "TargetUnit hover feedback: Prism White outline on valid target cells/units during drag"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HU-007
+    system: hand-ui
+    gdd: design/gdd/hand-ui.md
+    gdd_ac_ids: [HU-22]
+    requirement: "PLACEMENT timer urgency: 5s threshold triggers visual urgency tween (color shift + pulse)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HU-008
+    system: hand-ui
+    gdd: design/gdd/hand-ui.md
+    gdd_ac_ids: [HU-17b]
+    requirement: "Submit pre-validation: client-side mana/reserve checks before C2SSubmitPlacement; server-side validation authoritative"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── Shop / Auction UI (TR-SAU) ────────────────────────────────────────────
+  # GDD: design/gdd/shop-auction-ui.md
+  # ADR coverage: ADR-013 (Auction System state); presentation gap for shop UI portion
+  # Registered: 2026-04-30 (Run 3)
+
+  - id: TR-SAU-001
+    system: shop-auction-ui
+    gdd: design/gdd/shop-auction-ui.md
+    gdd_ac_ids: [SAU-1]
+    requirement: "local_free_gold = gold - reserved_gold; computed from S2CGoldBroadcast (D.1 formula)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-SAU-002
+    system: shop-auction-ui
+    gdd: design/gdd/shop-auction-ui.md
+    gdd_ac_ids: [SAU-2]
+    requirement: "Bid increments rendered using AuctionState.starting_price + 1 step; cap = local_free_gold"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-SAU-003
+    system: shop-auction-ui
+    gdd: design/gdd/shop-auction-ui.md
+    gdd_ac_ids: [SAU-3]
+    requirement: "Settlement display via S2CAuctionSettled: winner banner, settled price, card moved to hand or pool returns"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-SAU-004
+    system: shop-auction-ui
+    gdd: design/gdd/shop-auction-ui.md
+    gdd_ac_ids: [SAU-DA7]
+    requirement: "Shop slots locked during DRAFT_AUCTION (CA Rule 4); UI shows lock icon overlay and disables hover state"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-SAU-005
+    system: shop-auction-ui
+    gdd: design/gdd/shop-auction-ui.md
+    gdd_ac_ids: [SAU-5]
+    requirement: "Optimistic bid pending state — local UI reflects bid before server S2CAuctionBidAccepted; reversal on S2CAuctionBidRejected"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-SAU-006
+    system: shop-auction-ui
+    gdd: design/gdd/shop-auction-ui.md
+    gdd_ac_ids: [SAU-6]
+    requirement: "Panel transitions (timings, input gating): DRAFT_INITIAL->DRAFT_AUCTION/SHOP requires presentation-layer ADR for full coverage"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── HUD (TR-HUD) ──────────────────────────────────────────────────────────
+  # GDD: design/gdd/hud.md
+  # ADR coverage: ADR-019 (gold/mana state) for partial; presentation gap for visibility/animation
+  # Registered: 2026-04-30 (Run 3)
+
+  - id: TR-HUD-001
+    system: hud
+    gdd: design/gdd/hud.md
+    gdd_ac_ids: [HUD-01]
+    requirement: "Gold label format adaptive: ECONOMY_BASIC vs ECONOMY_AUCTION (with reserved_gold); 18 entities total (TextSpan children for gold labels counted)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HUD-002
+    system: hud
+    gdd: design/gdd/hud.md
+    gdd_ac_ids: [HUD-02]
+    requirement: "Mana display: current_mana / mana_cap; reserve_mana shown iff > 0; sourced from S2CGoldUpdate"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HUD-003
+    system: hud
+    gdd: design/gdd/hud.md
+    gdd_ac_ids: [HUD-03]
+    requirement: "Phase label strings for 5 active phases + GAME_OVER; sourced from S2CPhaseChanged via Lightyear ReliableChannel"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HUD-004
+    system: hud
+    gdd: design/gdd/hud.md
+    gdd_ac_ids: [HUD-06]
+    requirement: "Scoreboard objective dot state machine: Hidden -> Real -> Fake -> Destroyed; never reveals real/fake before destruction"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HUD-005
+    system: hud
+    gdd: design/gdd/hud.md
+    gdd_ac_ids: [HUD-07]
+    requirement: "Real/fake never revealed on scoreboard prior to destruction; ObjectiveIdentity is server-only (ADR-001)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HUD-006
+    system: hud
+    gdd: design/gdd/hud.md
+    gdd_ac_ids: [HUD-09]
+    requirement: "RESOLUTION persistence: HUD visible while Hand UI / Shop-Auction UI hide; visibility-toggle order documented"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HUD-007
+    system: hud
+    gdd: design/gdd/hud.md
+    gdd_ac_ids: [HUD-20]
+    requirement: "S2CGoldUpdate / S2CGoldBroadcast tie-break: own gold from S2CGoldUpdate (private); opponent from S2CGoldBroadcast (public)"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HUD-008
+    system: hud
+    gdd: design/gdd/hud.md
+    gdd_ac_ids: [HUD-06b]
+    requirement: "Objective dot ALIVE->DESTROYED state change: no animation, instantaneous; sourced from S2CObjectiveDestroyed"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HUD-009
+    system: hud
+    gdd: design/gdd/hud.md
+    gdd_ac_ids: [HUD-10]
+    requirement: "FROZEN mode on GAME_OVER: HUD displays final state with no incremental updates; gold/mana labels stop tweening"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-HUD-010
+    system: hud
+    gdd: design/gdd/hud.md
+    gdd_ac_ids: [HUD-12]
+    requirement: "Numeric tween max 300 ms (gold/mana digit roll); skipped on FROZEN mode entry"
+    created: 2026-04-30
+    revised: ""
+    status: active
+
+  # ─── M2/M3 REGISTRATION COMPLETE — 2026-04-30 (Run 3) ──────────────────────
+  # All M1 + M2 + M3 systems now have TR entries. ADR coverage status:
+  #   100%: M1 (9 systems), Auction, Card Acquisition, Class System, Prism, Economy
+  #    67%: Combat Resolution (4 partial — ADR-018 dependent)
+  #     0%: Keyword (12 partial — ADR-018 Proposed), Card Animations (no ADR)
+  #     mixed: Board Rendering, Hand UI, Shop/Auction UI, HUD (presentation gaps)
+  # See architecture-review-2026-04-30c.md §Phase 3 for the full coverage matrix.
