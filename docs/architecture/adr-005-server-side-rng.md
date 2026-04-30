@@ -10,7 +10,13 @@ Accepted
 
 ## Last Verified
 
-2026-04-29
+2026-05-01
+
+## Amendments
+
+| Date | Source | Change |
+|------|--------|--------|
+| 2026-05-01 | ADR-018 keyword-system amendment | Added 3 keyword combat RNG seed slots to `RngEvent`: `RangeEquidistantSelect`, `TeleportRandomDest`, `StrichChangeLaneSelect`. Inserted as Orders 4–6 in the RESOLUTION consumption table; former Orders 4–7 renumbered to 7–10. Migration Plan steps 5–6 updated to reflect new order numbers. |
 
 ## Decision Makers
 
@@ -252,9 +258,10 @@ This is a greenfield decision; no migration from a prior implementation is requi
 2. Wire `ServerRng` insertion/removal into the Game Session lifecycle (blocked on ADR-007).
 3. Implement Objective System fake assignment (Order 1) — first real consumer; validates the API and audit log end-to-end.
 4. Implement Card Pool draft and shop draws (Orders 2, 3).
-5. Implement Combat resolution consumers (Orders 4, 5).
-6. Implement fake-objective reward + conditional free card draw (Orders 6, 7).
-7. Land the integration test that asserts a fixed-seed session produces a fixed audit-log sequence.
+5. Implement keyword combat RNG consumers (Orders 4–6): `RangeEquidistantSelect`, `TeleportRandomDest`, `StrichChangeLaneSelect`.
+6. Implement Ecaflip and Prism consumers (Orders 7, 8).
+7. Implement fake-objective reward + conditional free card draw (Orders 9, 10).
+8. Land the integration test that asserts a fixed-seed session produces a fixed audit-log sequence.
 
 Each step requires a passing test before the next is unlocked.
 

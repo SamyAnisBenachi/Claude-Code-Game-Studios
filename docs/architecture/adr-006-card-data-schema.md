@@ -7,7 +7,13 @@ Accepted
 2026-04-29
 
 ## Last Verified
-2026-04-29
+2026-05-01
+
+## Amendments
+
+| Date | Source | Change |
+|------|--------|--------|
+| 2026-05-01 | ADR-018 keyword-system amendment | `SimpleKeyword` enum extended from 8 to 20 variants (timing triggers + full combat/movement keyword set). `Charge` removed; replaced by `Haste` (OQ-KS2). `Keyword` enum changed from `#[serde(untagged)]` to adjacent tagging (`#[serde(tag = "kw", content = "val")]`); added `VulnerabilityX`, `RepelX`, `AttractX` variants. `cards.json` must use new variant names. |
 
 ## Decision Makers
 User + Lead Programmer + technical-director
