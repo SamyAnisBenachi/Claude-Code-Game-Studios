@@ -1,5 +1,43 @@
 # Board Rendering — Review Log
 
+## Review — 2026-04-30 (R3) — Verdict: NEEDS REVISION → resolved in-session
+Scope signal: XL
+Specialists: game-designer, systems-designer, performance-analyst, network-programmer, qa-lead, creative-director (senior synthesis)
+Blocking items: 14 | Recommended: 9 | Advisory: 3
+Summary: Three compounding failure categories surfaced in R3. First, R2 resolutions were never propagated to dependent docs: game-config.md retained dead fog fields and lacked 5 reveal-tween fields; network-protocol.md still missing C2SRequestSnapshot (OQ-BR-06 open since R2). Second, R2 introduced compile-breaking errors: AnimQueue E0201 (field + method with same name `total_duration_ms`) and F4 ceiling arithmetic error (wrote 11,400ms; correct ceiling is 12,600ms — 1.1s above the stated Player Fantasy promise). Third, several architectural invariants were asserted without specifying mechanisms: simultaneous reveal arrival guarantee, HP bar write-conflict freedom, draw-call ceiling under color-tinting, and PendingResolutionScript inverse-stuck path. All 14 blockers resolved in-session. OQ-BR-06 remains the single external gate for R4 approval.
+Prior verdict resolved: Yes — R2 items remain closed; R3 surfaces a different layer (cross-doc sync, compile bugs, unspecified invariants)
+
+### R3 design decisions made by user
+- **F4 ceiling**: Raise Player Fantasy ceiling to 12.6s (honest about actual worst-case). Ceiling values unchanged.
+- **Reveal tween simultaneity**: Collect-then-reveal buffer pattern — 1-frame buffer after S2CPlacementReveal, all tweens fire simultaneously on the next tick. Guarantees simultaneous beat regardless of Lightyear batching.
+- **OQ-BR-04**: Resolved as replicated `SpawnRange` component (Economy System replicates it; Board Rendering reads via `Changed<SpawnRange>`). Event-derived approach rejected (bypasses Economy System; breaks under future mechanics).
+
+### R3 in-session resolutions (14 BLOCKING)
+1. game-config.md: removed `board_fog_opacity` + `board_fog_lift_ms`; added `board_unit_reveal_tween_ms`, `board_unit_reveal_start_scale`, `board_reveal_timeout_ms`, `board_obj_id_reconnect_timeout_ms`, `board_obj_reveal_anim_ms`.
+2. AnimQueue E0201: renamed field `total_duration_ms_cached`; method `total_duration_ms()` preserved as public API.
+3. Rule 1: amended — C2SRequestSnapshot exception documented explicitly.
+4. F4 ceiling: corrected to 12,600ms ≈ 12.6s (was 11,400ms — arithmetic error).
+5. Player Fantasy: ceiling updated to ≤12.6s.
+6. Rule 7 (reveal tween): rewritten to collect-then-reveal buffer (1-frame delay, all tweens fire simultaneously on second tick after S2CPlacementReveal). Eliminates Lightyear replication-batching race.
+7. EC-PLACEMENT-STUCK (new): PendingResolutionScript inverse timeout added — when PlacementReveal never arrives, trigger C2SRequestSnapshot after resolution_reveal_timeout_ms. GATED AC added.
+8. Rule 6: HP bar write-conflict invariant added ("No Animator<Transform> on fill entity scale axis").
+9. Rule 5: draw-call breakdown table added — worst-case 12–17 calls under color-tinting; ceiling may be exceeded at full PLACEMENT state.
+10. Internal Constants: `UNIT_SPRITE_WIDTH = 48.0_f32` added (source for co-occupancy constraint formula).
+11. OQ-BR-04: RESOLVED — replicated SpawnRange component.
+12. BR-7: rewritten — collect-then-reveal buffer; Lightyear detection API to be verified against `liv-bevy-lightyear`.
+13. BR-17: apply_deferred clarification — two-system despawn+rebuild requires explicit flush or second app.update() verify.
+14. BR-19: poison-entity technique added (insert each banned component to register ComponentId before asserting its absence).
+15. BR-SYSTEMSET-ORDER: app.update() pre-run required before schedule graph inspection.
+16. BR-18c / BR-EC-STUCK: OQ-BR-06 GATED labels added inline.
+17. BR-HP-INVARIANT AC added (BLOCKING — no Animator<Transform> on HP bar fill scale).
+
+### Status disposition
+- All 14 R3 BLOCKING items resolved within board-rendering.md and game-config.md.
+- One BLOCKING dependency remains EXTERNAL: OQ-BR-06 (C2SRequestSnapshot in network-protocol.md). Status: "Needs Revision (CONDITIONAL pending OQ-BR-06)."
+- Re-review recommended after OQ-BR-06 is added to network-protocol.md.
+
+---
+
 ## Review — 2026-04-29 (R2) — Verdict: MAJOR REVISION NEEDED → resolved in-session
 Scope signal: XL
 Specialists: game-designer, systems-designer, qa-lead, ux-designer, performance-analyst, network-programmer, technical-artist, gameplay-programmer (`liv-bevy-018`), creative-director (senior synthesis)

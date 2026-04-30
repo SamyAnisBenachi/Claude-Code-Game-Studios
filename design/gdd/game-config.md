@@ -85,21 +85,24 @@ pub struct GameConfig {
     pub ack_timeout_ms: u32,
     pub heartbeat_interval_ms: u32,
 
-    // Board Rendering — animation timings (added 2026-04-30 per board-rendering.md /design-review revision)
-    pub board_pre_anim_pause_ms: u32,        // default 400; safe 200–800
-    pub board_sub_step_duration_ms: u32,     // default 600; safe 400–1000 (was 800; tightened 2026-04-30 to defend ≤5s match watch budget)
-    pub board_inter_step_pause_ms: u32,      // default 150; safe 100–300 (was 200; tightened 2026-04-30)
-    pub board_fog_lift_ms: u32,              // default 350; safe 200–600
-    pub board_objective_reveal_hold_ms: u32, // default 500; safe 300–800
+    // Board Rendering — animation timings (updated R3 2026-04-30: fog fields removed; reveal-tween fields added)
+    pub board_pre_anim_pause_ms: u32,              // default 400; safe 200–800
+    pub board_sub_step_duration_ms: u32,           // default 600; safe 400–1000
+    pub board_inter_step_pause_ms: u32,            // default 150; safe 100–300
+    pub board_objective_reveal_hold_ms: u32,       // default 500; safe 300–800
+    pub board_obj_reveal_anim_ms: u32,             // default 800; safe 500–1000 (R2 new — fake/real reveal VFX)
+    pub board_unit_reveal_tween_ms: u32,           // default 250; safe 150–400 (R2 new — opponent placement reveal tween)
+    pub board_reveal_timeout_ms: u32,              // default 2000; safe 1500–5000 (R2 new — ResolutionReveal stuck-state timeout)
+    pub board_obj_id_reconnect_timeout_ms: u32,    // default 5000; safe 3000–10000 (R2 new — S2CObjectiveIdentities reconnect timeout)
 
-    // Board Rendering — visual tuning (added 2026-04-30)
-    pub board_fog_opacity: f32,              // default 0.6; safe 0.4–0.8
-    pub board_cell_width: f32,               // default 64.0; safe 48–96 (world units)
-    pub board_lane_height: f32,              // default 80.0; safe 64–112 (world units)
-    pub board_hp_green_threshold: f32,       // default 0.6; safe 0.5–0.75
-    pub board_hp_red_threshold: f32,         // default 0.3; safe 0.2–0.4
-    pub board_co_occupancy_offset: f32,      // default 8.0; safe 4–16 (2v2 only)
-    pub board_prism_spin_speed: f32,         // default 0.5; safe 0.2–1.0 (rad/s)
+    // Board Rendering — visual tuning (updated R3 2026-04-30: fog opacity removed)
+    pub board_unit_reveal_start_scale: f32,        // default 0.4; safe 0.3–0.6 (R2 new — reveal tween start scale)
+    pub board_cell_width: f32,                     // default 64.0; safe 48–96 (world units)
+    pub board_lane_height: f32,                    // default 80.0; safe 64–112 (world units)
+    pub board_hp_green_threshold: f32,             // default 0.6; safe 0.5–0.75
+    pub board_hp_red_threshold: f32,               // default 0.3; safe 0.2–0.4
+    pub board_co_occupancy_offset: f32,            // default 8.0; safe 4–16 (2v2 only)
+    pub board_prism_spin_speed: f32,               // default 0.5; safe 0.2–1.0 (rad/s)
 }
 ```
 
