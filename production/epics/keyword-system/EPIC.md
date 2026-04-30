@@ -4,7 +4,28 @@
 > **GDD**: design/gdd/keyword-system.md
 > **Architecture Module**: `server/feature/keyword/` + `protocol/src/keyword.rs`
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories keyword-system`
+> **Stories**: 16 stories created (all BLOCKED — pending ADR-018 + ADR-022 Accepted)
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [Module Scaffold + UnitKeywordState + Protocol Types](story-001-module-scaffold.md) | Logic | Blocked | ADR-018 + ADR-022 |
+| 002 | [Movement Formulas — repel_destination + attract_destination](story-002-movement-formulas.md) | Logic | Blocked | ADR-018 |
+| 003 | [FIRST STRIKE + HASTE Keywords](story-003-first-strike-haste.md) | Logic | Blocked | ADR-018 |
+| 004 | [STUN State Management](story-004-stun-state.md) | Logic | Blocked | ADR-018 |
+| 005 | [SHIELD Sub-Step Scope](story-005-shield-scope.md) | Logic | Blocked | ADR-018 |
+| 006 | [SILENCE + INJURED State System](story-006-silence-injured.md) | Logic | Blocked | ADR-018 + ADR-022 |
+| 007 | [WALL + IRREMOVABLE + UNTARGETABLE](story-007-wall-displacement-immunity.md) | Logic | Blocked | ADR-018 |
+| 008 | [LEADER Snapshot System](story-008-leader-snapshot.md) | Logic | Blocked | ADR-018 |
+| 009 | [OUTNUMBERED Board Count Evaluation](story-009-outnumbered.md) | Logic | Blocked | ADR-018 |
+| 010 | [BODYGUARD Bond Management](story-010-bodyguard-bond.md) | Logic | Blocked | ADR-018 |
+| 011 | [RANGE Targeting + Modifier Stack](story-011-range-modifier-stack.md) | Logic | Blocked | ADR-018 |
+| 012 | [Timing Trigger — APPEARANCE + DEATH Chain](story-012-appearance-death-chain.md) | Logic | Blocked | ADR-022 |
+| 013 | [Timing Trigger — FINAL BLOW + COUNTERATTACK](story-013-final-blow-counterattack.md) | Logic | Blocked | ADR-022 |
+| 014 | [Timing Trigger — INJURED Bonus Activation](story-014-injured-bonus-timing.md) | Logic | Blocked | ADR-022 |
+| 015 | [Timing Trigger — START/END OF TURN](story-015-start-end-of-turn.md) | Logic | Blocked | ADR-022 |
+| 016 | [Displacement Keywords — REPEL + ATTRACT + TELEPORT + CHANGE LANE](story-016-displacement-keywords.md) | Logic | Blocked | ADR-018 |
 
 ## Overview
 
