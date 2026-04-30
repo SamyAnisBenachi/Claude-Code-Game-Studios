@@ -1,4 +1,4 @@
-# ADR-014: Card Acquisition Shop State Machine Architecture
+# ADR-015: Card Acquisition Shop State Machine Architecture
 
 ## Status
 
