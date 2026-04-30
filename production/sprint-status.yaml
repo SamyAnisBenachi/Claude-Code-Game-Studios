@@ -43,10 +43,10 @@ stories:
     name: "Card Pool Story 3: Refresh Shop Slot Variants"
     file: "production/epics/card-data-pool/story-003-refresh-shop-slot-variants.md"
     priority: should-have
-    status: backlog
+    status: ready-for-dev
     owner: ""
     estimate_days: 1.0
-    blocker: "S2-03 must be Done"
+    blocker: ""
     completed: ""
 
   - id: "S2-05"
@@ -73,20 +73,20 @@ stories:
     name: "RSM Story 2: advance_phase + F2 Ordering"
     file: "production/epics/round-state-machine/story-002-advance-phase-and-f2-ordering.md"
     priority: nice-to-have
-    status: backlog
+    status: ready-for-dev
     owner: ""
     estimate_days: 1.0
-    blocker: "S2-01 must be Done"
+    blocker: ""
     completed: ""
 
   - id: "S2-08"
     name: "Economy Story 2: Initialisation + Draft Subscriber"
     file: "production/epics/economy-system/story-002-initialisation-draft-subscriber.md"
     priority: nice-to-have
-    status: backlog
+    status: ready-for-dev
     owner: ""
     estimate_days: 0.5
-    blocker: "S2-01 and S2-02 must be Done"
+    blocker: ""
     completed: ""
 
   - id: "S2-09"
