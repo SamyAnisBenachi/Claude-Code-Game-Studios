@@ -263,6 +263,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - **Tech debt logged**: None
 - **Next recommended**: S1-07 — Asset Loading Pipeline at `production/epics/game-config-pipeline/story-002-asset-loading-pipeline.md` (now unblocked: S1-06 Done)
 
+## Session Extract — /architecture-review 2026-04-30
+- **Verdict**: CONCERNS — M1 PASS / M2+M3 FAIL (ADRs not yet authored)
+- **Requirements**: 80 M1 TRs — 80 covered (100%); ~120 M2/M3 gaps (0 ADRs exist)
+- **New TR-IDs registered**: 80 M1 TRs in tr-registry.yaml (populated by another agent; M2/M3 deferred until ADRs authored)
+- **ADR-013 authored**: auction-system-state.md (Proposed) — covers TR-AU-001..010
+- **Engine fixes applied**: current-best-practices.md + ADR-003 (invalid bevy_ecs feature removed); ADR-008 + ADR-009 (stale "pending" dependency notes removed)
+- **Top ADR gaps**: ADR-014 (Combat Resolution Sub-step Scheduler), ADR-015 (Card Acquisition + Hand Management), ADR-023 (Keyword Observer Architecture)
+- **Report**: docs/architecture/architecture-review-2026-04-30.md
+
 ## Session Extract — /story-done 2026-04-29
 - **Verdict**: COMPLETE
 - **Story**: `production/epics/server-rng/story-002-intent-named-api-invariants.md` — Intent-Named API & Consumption Invariants (S1-10)

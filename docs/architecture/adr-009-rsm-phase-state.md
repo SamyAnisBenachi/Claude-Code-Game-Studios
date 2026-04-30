@@ -50,7 +50,7 @@ components.
 | **Depends On** | ADR-002 (client-server authority model — server is authoritative; `RoundState` lives only on the server); ADR-008 (channel config — `S2CPhaseChanged` routes on `ReliableChannel`) |
 | **Enables** | All RSM-dependent system implementations: Economy System (reads phase for income timing), Auction System (waits for `StartAuction` event), Combat Resolution System (waits for `BeginResolution` event), Objective System (read-only at RESOLUTION end), Board/Lane System (listens for `OnResolutionEnd`) |
 | **Blocks** | Any story that gates gameplay behaviour on the current round phase. No phase-conditional system may be implemented until this ADR is Accepted and the `RoundState` resource shape is settled. |
-| **Ordering Note** | ADR-002 must be Accepted first (or provisionally accepted as in the current state of the registry) because this ADR's decision that `RoundState` lives only on the server presupposes an authoritative-server model. ADR-008 must be Accepted before any `S2CPhaseChanged` send code is written. |
+| **Ordering Note** | ADR-002 is Accepted (2026-04-29). ADR-008 is Accepted (2026-04-29). Both prerequisites are satisfied. |
 
 ## Context
 

@@ -189,7 +189,7 @@ bevy_asset_loader = "0.22"  # verify compatible version on crates.io
 # server/Cargo.toml
 [dependencies]
 shared = { path = "../shared" }
-bevy = { version = "0.18", default-features = false, features = ["bevy_ecs", "multi_threaded"] }
+bevy = { version = "0.18", default-features = false, features = ["multi_threaded"] }
 lightyear = { version = "0.26", features = ["server", "websocket"] }
 rand = "0.9"
 rand_chacha = "0.3"

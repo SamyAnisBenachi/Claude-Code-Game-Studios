@@ -60,7 +60,7 @@ See `liv-bevy-lightyear` skill for the complete 0.26 API reference.
 | **Depends On** | ADR-002 (client-server authority model — must be Accepted so channel authority direction is settled); ADR-003 (workspace layout — `shared/src/protocol.rs` is where channel definitions live) |
 | **Enables** | All networking implementation — every system that sends or receives Lightyear messages reads channel types from `shared/src/protocol.rs` |
 | **Blocks** | Any story that implements a Lightyear `MessageSender` or `MessageReceiver` system param. No networking code may be written until this ADR is Accepted. |
-| **Ordering Note** | ADR-002 and ADR-003 do not yet exist as written documents. Until they are written and Accepted, the channel definitions in this ADR should be treated as provisional on the authority model and workspace layout they establish. |
+| **Ordering Note** | ADR-002 and ADR-003 are both Accepted (2026-04-29). Channel definitions in this ADR are in effect. |
 
 ## Context
 

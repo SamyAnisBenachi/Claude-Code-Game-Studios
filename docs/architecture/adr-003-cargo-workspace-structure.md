@@ -301,8 +301,9 @@ version.workspace = true
 shared = { path = "../shared" }
 # Headless Bevy: ECS + multi-threading, no rendering / windowing / UI.
 bevy = { workspace = true, default-features = false, features = [
-    "bevy_ecs",
     "multi_threaded",
+    # Note: "bevy_ecs" is NOT a valid Bevy 0.18 feature. Removed 2026-04-30.
+    # Verified by CI commit 88971ec. Headless server only needs "multi_threaded".
 ] }
 # Lightyear server transport over WebSocket.
 lightyear = { workspace = true, default-features = false, features = [
