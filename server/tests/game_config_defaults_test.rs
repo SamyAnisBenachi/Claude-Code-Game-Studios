@@ -14,6 +14,7 @@ fn test_game_config_default_economy_values() {
     assert_eq!(config.objective_gold_reward, 3);
     assert_eq!(config.kill_gold_reward, 1);
     assert_eq!(config.mana_cap, 10);
+    assert_eq!(config.mana_cap_max, 12);
     assert_eq!(config.refresh_base_cost, 1);
 }
 
@@ -54,7 +55,10 @@ fn test_game_config_default_auction_timers() {
     assert_eq!(config.auction_timer_reset_seconds, 5);
     assert_eq!(config.auction_max_duration_seconds, 120);
     // ADR-004: auction_max_duration >= auction_timer + (20 * reset) = 20 + 100 = 120
-    assert!(config.auction_max_duration_seconds >= config.auction_timer_seconds + 20 * config.auction_timer_reset_seconds);
+    assert!(
+        config.auction_max_duration_seconds
+            >= config.auction_timer_seconds + 20 * config.auction_timer_reset_seconds
+    );
 }
 
 #[test]

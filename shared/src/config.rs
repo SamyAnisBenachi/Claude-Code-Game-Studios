@@ -27,6 +27,7 @@ pub struct GameConfig {
     pub objective_gold_reward: u32,
     pub kill_gold_reward: u32,
     pub mana_cap: u32,
+    pub mana_cap_max: u32,
     pub refresh_base_cost: u32,
 
     // Objectives / Spawn
@@ -80,6 +81,7 @@ impl Default for GameConfig {
             objective_gold_reward: 3,
             kill_gold_reward: 1,
             mana_cap: 10,
+            mana_cap_max: 12,
             refresh_base_cost: 1,
             objective_hp: 5,
             fake_count: 2,

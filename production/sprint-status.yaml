@@ -23,8 +23,8 @@ stories:
     name: "Economy Story 1: State + Pure API Scaffold"
     file: "production/epics/economy-system/story-001-state-and-pure-api-scaffold.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: in-progress
+    owner: "codex-s2-02-economy"
     estimate_days: 1.0
     blocker: ""
     completed: ""

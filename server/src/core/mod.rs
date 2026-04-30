@@ -1,3 +1,4 @@
 // Core layer: RSM, Game Session, Economy, Card Pool
 
+pub mod economy;
 pub mod pool;

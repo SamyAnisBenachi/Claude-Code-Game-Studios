@@ -17,6 +17,7 @@
     objective_gold_reward: 3,
     kill_gold_reward: 1,
     mana_cap: 10,
+    mana_cap_max: 12,
     refresh_base_cost: 1,
 
     // Objectives / Spawn
