@@ -1,6 +1,6 @@
 # Keyword System
 
-> **Status**: Designed (all sections complete — /design-review pending in fresh session)
+> **Status**: Approved (revised 2026-04-30 in /design-review session — 11 blockers + 9 recommended revisions resolved)
 > **Author**: SamyAnisBenachi + Claude Code agents
 > **Last Updated**: 2026-04-30
 > **Implements Pillar**: Deep emergence · Simple surface · No idle spectating
@@ -143,6 +143,30 @@ Then RESOLUTION starts. And the player watches their clockwork fire.
 
 ---
 
+### Replication Contract
+
+> **Authoritative source for client display of all persistent keyword states.** The server owns ground truth; the client must be able to render every glyph and bond defined in Visual/Audio Requirements and reconstruct all states after a mid-RESOLUTION reconnect. Each state below specifies its replication path. New variants introduced here MUST be added to `network-protocol.md` before implementation.
+
+| State | Replication Path | Lifetime | Reconnect Recovery |
+|---|---|---|---|
+| **SHIELD** | `UnitBoardState.shield_active: bool` field on `S2CGameSnapshot`; `KeywordTriggered { keyword: ShieldConsumed, sub_step }` event in `S2CResolutionEvent` when absorbed | Persists until consumed in SS3 or SS6 of any RESOLUTION | From snapshot |
+| **STUN** | `UnitBoardState.stun_active: bool`; `KeywordTriggered { keyword: StunApplied, sub_step }` event when applied | Current RESOLUTION only | From snapshot (visible to both players via stars glyph) |
+| **SILENCE** | `UnitBoardState.silenced_until_round: Option<u8>`; `KeywordTriggered { keyword: SilenceApplied, sub_step, duration_rounds }` event on application | Per-card `effect_text` duration (typically 1 RESOLUTION) | From snapshot |
+| **INJURED** | Derived client-side from `UnitStats.current_hp < UnitStats.max_hp` (no separate field needed); INJURED-granted keyword bonuses surface via `KeywordTriggered { keyword: InjuredBonusActive, granted_keyword: KeywordKind, sub_step }` | While `current_hp < max_hp` | From snapshot (HP comparison) |
+| **LEADER bonus** | `UnitBoardState.leader_bonus_atk: u8` and `leader_bonus_hp: u8` on every eligible family unit, written at RESOLUTION entry; `KeywordTriggered { keyword: LeaderSnapshotTaken, leader_unit_id }` emitted at RESOLUTION entry for client tint application | Persists for entire RESOLUTION even if LEADER dies in SS4; recalculated next round | From snapshot (the buffed stats reflect the snapshot; on reconnect the tint is reapplied to all units whose `leader_bonus_atk > 0`) |
+| **OUTNUMBERED** | Computed client-side from `S2CGameSnapshot` board counts at sub-step entry events; the server emits `KeywordTriggered { keyword: OutnumberedFlipped, player_id, active: bool, sub_step }` ONLY when the boolean transitions, to keep bandwidth low | Re-evaluated at sub-step boundaries | From snapshot (count both sides) |
+| **BODYGUARD bond** | `UnitBoardState.bodyguard_protects: Option<EntityId>` on the BODYGUARD unit; the protected unit carries no field (the bond is unidirectional, server-tracked). Bond established once via `KeywordTriggered { keyword: BodyguardBondCreated, bodyguard_id, protected_id, sub_step: 1 }`; broken via `KeywordTriggered { keyword: BodyguardBondBroken, bodyguard_id }` when BODYGUARD dies | Until BODYGUARD dies | From snapshot — client redraws connector procedurally between BODYGUARD's glyph and the protected unit's base ring |
+
+**Implementation contract:** BODYGUARD protection MUST be stored as a unit-to-unit entity bond (`Option<EntityId>` on the BODYGUARD's component), NOT as a lane-scoped attribute. This guarantees the bond survives any CHANGE LANE the protected unit may execute — the entity reference is stable across position changes.
+
+**OUTNUMBERED indicator note:** the visual indicator from `combat-resolution.md` is a per-lane arrow (legacy spec). The OUTNUMBERED rule is a global board count. To resolve this mismatch, the indicator must surface **per-unit** on each unit that carries the OUTNUMBERED keyword (not per-lane), reading from the global computed boolean. `combat-resolution.md` Visual section needs updating accordingly (added as recommended fix to that GDD's review backlog).
+
+**LEADER snapshot client display:** the Arcane Gold 20% opacity base ring tint specified in `combat-resolution.md` Visual section persists on every family unit whose `leader_bonus_atk > 0` until RESOLUTION ends. If the LEADER dies in SS4, the tint stays — the buffed stat field persists in the replicated component. Client does not require special "LEADER-died" logic; the field naturally clears at RESOLUTION end.
+
+**60-second RESOLUTION safety timeout:** if the timeout fires, the server broadcasts `S2CGameOver { loser: None, reason: ResolutionTimeout }` (new variant — see OQ-NP2 below). The client cancels all in-flight keyword animations and shows the timeout result screen. Distinct from a genuine mutual-objective `Draw`.
+
+---
+
 ### Interactions with Other Systems
 
 | System | Data In | Data Out | Interface Contract |
@@ -174,6 +198,8 @@ The `repel_destination` formula is defined as:
 | Output | `repel_destination` | u8 | 1–8 | Destination cell after clamping |
 
 **Output Range:** [1, 8] — always valid; pushing past Cell 1 or Cell 8 clamps at the board edge (unit is not destroyed or returned to hand).
+
+**Implementation note (Rust integer types):** the intermediate expression `target_cell + (−advance_dir) × X` can produce negative values (e.g., Player A at Cell 2, REPEL 6 → intermediate = −4). Compute the intermediate in `i32` (or at least `i16`), apply `clamp(_, 1, 8)`, then cast the clamped result to `u8`. A naive `u8` arithmetic implementation will underflow (saturate or panic in debug; wrap to 250+ in release) — same convention as `combat-resolution.md` `net_damage`. **Traversal iteration bound:** when iterating intermediate cells (for Trap-trigger purposes), iterate cells *strictly between* the start cell and the clamped final destination — exclusive of the start cell. A unit clamped to its current cell traverses zero cells.
 
 **Example:** Player A unit at Cell 6, REPEL 3. `advance_dir(Player A) = +1`. `repel_destination = clamp(6 + (−1) × 3, 1, 8) = clamp(3, 1, 8) = 3`.
 
@@ -213,7 +239,7 @@ The `outnumbered` condition is defined as:
 
 | Variable | Symbol | Type | Range | Description |
 |---|---|---|---|---|
-| Player unit count | `count(alive_units(player))` | u8 | 0–10 | All alive Minions + Structures owned by this player, across all lanes. Traps excluded (face-down; not participating in board count). |
+| Player unit count | `count(alive_units(player))` | u8 | 0–10 | All alive Minions + Structures owned by this player, across all lanes. Traps excluded (face-down; not participating in board count). Range assumes ≤ 10 board entities per player (5 lanes × Minions + per-lane Structure cap); verify against `board-lane-system.md` Structure-slot rule before implementation. |
 | Opponent unit count | `count(alive_units(opponent))` | u8 | 0–10 | Same, for opponent. |
 | Output | `outnumbered` | bool | false/true | True only when strictly fewer; equal counts = false. |
 
@@ -227,7 +253,7 @@ The `outnumbered` condition is defined as:
 
 RESISTANCE X, VULNERABILITY X, and ARMOR-PIERCING are evaluated within the `net_damage` formula (owned by `combat-resolution.md`, registered in `design/registry/entities.yaml`). They are not re-defined here; the full modifier stack is in `combat-resolution.md` Detailed Design — Combat Modifier Stack, steps 1–10.
 
-For reference: `RESISTANCE X` reduces incoming `ATK_raw` by X (floor 0) before the AR step. `VULNERABILITY X` increases incoming `ATK_raw` by X before the AR step. `ARMOR-PIERCING` sets `AR_effective = 0` after RESISTANCE is applied.
+For reference: `VULNERABILITY X` increases `ATK_effective` by X at modifier-stack step 5. `RESISTANCE X` then reduces `ATK_effective` by X (floor 0) at step 6, *after* LEADER bonus, type advantage, and VULNERABILITY have been applied — the term `ATK_effective` refers to the running value at that step in the stack, not the base card stat. `ARMOR-PIERCING` sets `AR_effective = 0` at step 7, independently of RESISTANCE (RESISTANCE is not bypassed by ARMOR-PIERCING). See `combat-resolution.md` Detailed Design — Combat Modifier Stack for the full step ordering.
 
 ## Edge Cases
 
@@ -254,6 +280,14 @@ For reference: `RESISTANCE X` reduces incoming `ATK_raw` by X (floor 0) before t
 **If a WALL unit has SHIELD:** SHIELD absorbs the first SS6 attack (no damage). The attacking unit remains at the WALL's cell. The second round's SS6 attack deals damage normally. WALL + SHIELD is a two-hit blocker by design.
 
 **If BODYGUARD is killed by a FINAL BLOW-triggering attacker:** BODYGUARD protection ends at the instant BODYGUARD's HP reaches 0, before FINAL BLOW resolves. The formerly-protected unit is exposed from that point forward, starting the next PLACEMENT phase.
+
+**INJURED classification:** INJURED is a *state*, not a keyword. The Timing Trigger Catalog lists it as a hook because cards can grant bonuses *while* INJURED, but the state itself is computed (`current_HP < max_HP`) and is never carried in the `cards.json` `keywords` array. SILENCE strips INJURED-granted bonuses (e.g., FIRST STRIKE while INJURED) but does not clear the INJURED state. The "~28 keywords" count in the Overview is approximate and does NOT include INJURED.
+
+**BODYGUARD bond storage:** BODYGUARD protection MUST be implemented as a unit-to-unit entity reference (`bodyguard_protects: Option<EntityId>` on the BODYGUARD's component), NOT as a lane-scoped attribute. The bond survives any CHANGE LANE the protected unit executes — the entity reference is stable across position changes. A naive lane-scoped storage would silently orphan the bond when the protected unit moves lanes; this is forbidden.
+
+**LEADER placed this round:** A LEADER unit placed in SS1 of round R (with or without HASTE) was not on the board at RESOLUTION entry, so its bonus is NOT included in the snapshot for round R. The LEADER grants no bonus this round; eligible family units begin receiving the bonus from round R+1's RESOLUTION onward (if the LEADER survives). HASTE does not interact with LEADER snapshot timing.
+
+**REPEL displacement Trap traversal:** REPEL follows the same Trap-traversal rules as ATTRACT. The unit traverses intermediate cells sequentially (strictly between start and final destination, exclusive of start). If a Trap on an intermediate cell kills the displaced unit, displacement ends at that cell. If a Trap STUNs the unit, displacement ends at that cell. Non-lethal, non-STUN Trap damage does NOT terminate displacement — the unit continues to its computed destination, and any subsequent intermediate Trap also fires.
 
 ## Dependencies
 
@@ -296,6 +330,26 @@ Combat Resolution is both an upstream dependency (sub-step structure) and has th
 | STUN duration | Hardcoded rule | 1 RESOLUTION | 1 RESOLUTION | Multi-round STUN is too punishing; do not increase without playtesting |
 
 **Future GameConfig candidates:** If COUNTERATTACK proximity rule ever needs to be tuned (`same-cell only` vs. `same-cell or collision-halted adjacent`), add `counterattack_requires_same_cell: bool` to `game_config.ron`. Currently hardcoded to `false`. If OUTNUMBERED threshold needs adjustment from strict `<` to `≤`, add `outnumbered_threshold_mode` similarly.
+
+### Dangerous Combinations (card-pool authoring guidance)
+
+Per-card values stay in safe ranges, but **specific keyword stacks become degenerate at high X**. Card-pool authors must consult this list before assigning combinations to a single card. None of these are forbidden; they are flagged as Legendary/Epic-only stat budgets that should not appear on common-rarity cards.
+
+| Combination | Failure mode | Author rule |
+|---|---|---|
+| **CHARGE 5–6 + HASTE + MP ≥ 1** | Round-1 objective damage from spawn (Cell 1 → Cell 8 in SS2 + SS5). | Reserve CHARGE 5+ to Legendary cards with HP ≤ 3 and no HASTE; OR HASTE units with CHARGE ≤ 2. |
+| **RANGE 5–6 + FIRST STRIKE + HASTE** | Cell-1 unit hits Cell 6–7 in SS3 of placement round, immune to COUNTERATTACK. | Reserve to Legendary; pair with low HP (≤ 3) and high cost (≥ 6 mana). |
+| **WALL + SHIELD + IRREMOVABLE + RESISTANCE X** | 2+ round lane stall with no displacement counter; opponent's only answer is high-ATK + ARMOR-PIERCING. | Forbid in card pool: at most 3 of these 4 keywords on any single WALL unit. |
+| **BODYGUARD + UNTARGETABLE on same unit** | Spell/Order targeting completely defeated for both this unit and the protected ally. | Reserve to Legendary; pair with high cost (≥ 7 mana). |
+| **LEADER + SILENCE-strip immunity (hypothetical IRREMOVABLE-class keyword)** | Permanent global buff impossible to counter. | Not currently in keyword set; flag if introduced. |
+
+### COUNTERATTACK player-readability note
+
+The COUNTERATTACK proximity rule (same-cell OR collision-halted adjacent contact, but NOT RANGE) cannot be derived from card text alone. Per the user-adjudicated decision: keep the current rule and surface it via a **client-side keyword tooltip** on first encounter. Tooltip copy: *"COUNTERATTACK: when this unit takes damage from a melee attacker (same cell or stopped adjacent from collision), it retaliates immediately. Does not trigger on RANGE attacks."* Ship the tooltip with Hand UI (when a player hovers a card with COUNTERATTACK in hand) and Board Rendering (when a player hovers a unit with COUNTERATTACK on the board). Card text remains short (`"COUNTERATTACK"` only); the tooltip does the explanatory work.
+
+### HASTE design-lever note
+
+The HASTE rename from CHARGE was adopted to disambiguate from CHARGE X (movement). The game-designer review flagged that "HASTE" does not self-describe its trigger condition (no-summoning-sickness) any better than the original CHARGE. **If playtest shows HASTE/CHARGE confusion persisting**, fold HASTE into a no-summoning-sickness default on all cards (i.e., remove summoning sickness as a default rule and use a `Slow` keyword for the exception), then rename CHARGE X → RUSH X. Reserve as a post-vertical-slice design lever — not a Day-1 change, since the rename has already cascaded into `cards.json` schema, OQ-KS2 audit, and downstream Hand UI / Card Animations contracts.
 
 ## Visual/Audio Requirements
 
@@ -384,13 +438,17 @@ No interactive elements. No modal dialogs. Keyword tooltips are not specified �
 | KW-001 | GIVEN a unit with an APPEARANCE trigger enters the board in SS1, WHEN sub-step 1 resolves, THEN the APPEARANCE effect executes before any DEATH trigger chains that result from APPEARANCE-caused kills. | BLOCKING |
 | KW-002 | GIVEN two units in different lanes are killed in the same sub-step, WHEN sub-step 4 removes dead units, THEN DEATH triggers fire in lane order (Lane 1 before Lane 5); Lane 2 unit's DEATH trigger resolves completely before Lane 4 unit's begins. | BLOCKING |
 | KW-003 | GIVEN unit A has a DEATH trigger that deals lethal damage to unit B (also has a DEATH trigger), WHEN unit A is removed in SS4, THEN A's DEATH trigger resolves completely, then B is removed, then B's DEATH trigger fires. | BLOCKING |
-| KW-004 | GIVEN a unit with FINAL BLOW is killed by a FIRST STRIKE attacker in SS3, WHEN the killing blow reduces HP to 0, THEN FINAL BLOW fires in SS3 (not SS4); a unit killed in SS6 by standard combat triggers FINAL BLOW in SS6. | BLOCKING |
+| KW-004a | GIVEN a unit with FINAL BLOW is killed by a FIRST STRIKE attacker in SS3, WHEN the killing blow reduces HP to 0 in SS3, THEN FINAL BLOW fires in SS3 and NOT in SS4. | BLOCKING |
+| KW-004b | GIVEN a unit with FINAL BLOW is killed by standard combat in SS6, WHEN the killing blow reduces HP to 0 in SS6, THEN FINAL BLOW fires in SS6 and NOT in SS4. | BLOCKING |
 | KW-005 | GIVEN a COUNTERATTACK unit receives damage from a RANGE attacker that did not advance to the COUNTERATTACK unit's cell, WHEN the RANGE attack resolves, THEN COUNTERATTACK does NOT fire. | BLOCKING |
 | KW-006 | GIVEN a COUNTERATTACK unit is halted at an adjacent cell from a sub-step 5 collision, WHEN the two units exchange melee damage in SS6, THEN COUNTERATTACK fires. | BLOCKING |
-| KW-007 | GIVEN a unit with full HP receives damage in SS3 (reducing HP below max_HP), WHEN SS3 resolves, THEN INJURED-granted keywords are NOT active during SS3; INJURED is active from SS4 onward in the same RESOLUTION. | BLOCKING |
-| KW-008 | GIVEN a unit is INJURED and subsequently SILENCEd, WHEN SILENCE applies, THEN INJURED-granted keywords are stripped, but the INJURED state itself persists. | BLOCKING |
-| KW-009 | GIVEN a unit with START OF TURN is alive at the start of round R+1, WHEN the DRAFT phase begins after mana ramp + gold income, THEN START OF TURN fires; a unit that entered play on round R does NOT trigger START OF TURN on round R. | BLOCKING |
-| KW-010 | GIVEN a unit with END OF TURN is alive at the end of RESOLUTION, WHEN SS6 completes, THEN END OF TURN fires before the RSM round counter increments; a unit that entered play this round and survived can trigger END OF TURN. | BLOCKING |
+| KW-007 | GIVEN unit X has max_HP=4, current_HP=4, and gains FIRST STRIKE when INJURED; X receives 2 damage in SS3 (reducing HP to 2), WHEN SS3 resolves, THEN X does NOT receive the INJURED-granted FIRST STRIKE during SS3; INJURED activates at the SS3→SS4 boundary, granting the bonus from SS4 onward in the same RESOLUTION. | BLOCKING |
+| KW-008a | GIVEN a unit is INJURED (current_HP < max_HP) and gains FIRST STRIKE from INJURED, WHEN SILENCE is applied, THEN the INJURED-granted FIRST STRIKE is stripped and the unit no longer attacks in SS3. | BLOCKING |
+| KW-008b | GIVEN a unit is INJURED and then SILENCEd, WHEN SILENCE applies, THEN the `injured` state flag on the unit remains true — SILENCE does not clear the INJURED state. | BLOCKING |
+| KW-009a | GIVEN a unit with START OF TURN is alive at the start of round R+1, WHEN the DRAFT phase begins after mana ramp + gold income are applied, THEN the START OF TURN effect fires. | BLOCKING |
+| KW-009b | GIVEN a unit with START OF TURN enters play on round R, WHEN round R's DRAFT phase begins, THEN START OF TURN does NOT fire for that unit on round R; it fires on round R+1 if the unit survives. | BLOCKING |
+| KW-010a | GIVEN a unit with END OF TURN is alive when SS6 completes, WHEN RESOLUTION ends, THEN END OF TURN fires before the RSM round counter increments. | BLOCKING |
+| KW-010b | GIVEN a unit with END OF TURN entered play on round R and survives SS6, WHEN RESOLUTION ends for round R, THEN END OF TURN fires — a unit that entered play this round is eligible. | BLOCKING |
 
 ### Combat Keywords
 
@@ -398,52 +456,66 @@ No interactive elements. No modal dialogs. Keyword tooltips are not specified �
 |---|---|---|
 | KW-011 | GIVEN a FIRST STRIKE unit is in the same cell as a standard enemy unit, WHEN SS3 resolves, THEN the FIRST STRIKE unit deals damage in SS3; the enemy does NOT deal damage in SS3; if the enemy survives, it attacks in SS6. | BLOCKING |
 | KW-012 | GIVEN two FIRST STRIKE units are co-located, WHEN SS3 resolves, THEN both deal damage simultaneously using pre-combat HP snapshots; neither's damage is computed after seeing the other's result. | BLOCKING |
-| KW-013 | GIVEN a unit with HASTE is placed in SS1, WHEN RESOLUTION proceeds, THEN the unit advances in SS5, attacks in SS6 (and SS3 if FIRST STRIKE), executes CHARGE X in SS2 if present — all in the same round it entered play. | BLOCKING |
-| KW-014 | GIVEN a unit with HASTE has STUN applied via an SS1 APPEARANCE trigger, WHEN RESOLUTION proceeds, THEN the unit skips SS2, SS3, SS5, and SS6; HASTE does not override STUN. | BLOCKING |
-| KW-015 | GIVEN a STUNned unit is in the path of an enemy attack, WHEN SS3 or SS6 resolves, THEN the STUNned unit takes incoming damage normally; it does not attack, move, or advance; STUN expires at end of current RESOLUTION. | BLOCKING |
+| KW-013 | GIVEN a unit with HASTE (no STUN, no FIRST STRIKE, no CHARGE X) is placed in SS1, WHEN RESOLUTION proceeds, THEN the unit participates in SS5 movement and SS6 attacks in the same round it entered play. (FIRST STRIKE+HASTE and CHARGE X+HASTE combos are covered by KW-034 and KW-013-extension scenarios in card-pool tests.) | BLOCKING |
+| KW-014 | GIVEN a unit with HASTE has STUN applied via an SS1 APPEARANCE trigger, WHEN RESOLUTION proceeds, THEN the unit skips SS2, SS3, SS5, and SS6; HASTE does not override STUN. (Combat-keyword angle on the same invariant as KW-034 cross-keyword test; one implementation test suffices.) | BLOCKING |
+| KW-015a | GIVEN a STUNned unit is in the path of an enemy attack in SS3 or SS6, WHEN the attack resolves, THEN the STUNned unit takes incoming damage according to the normal damage formula; it does not attack or advance. | BLOCKING |
+| KW-015b | GIVEN a unit was STUNned during RESOLUTION R, WHEN RESOLUTION R+1 begins, THEN the STUN state is cleared; the unit participates in SS2, SS3, SS5, and SS6 normally. | BLOCKING |
 | KW-016 | GIVEN a RANGE 1-X unit has an enemy BODYGUARD protecting another unit within range, WHEN the RANGE unit selects its target, THEN RANGE selects by proximity (nearest cell); BODYGUARD's Spell/Order protection does not intercept RANGE targeting. | BLOCKING |
 | KW-017 | GIVEN a unit with RANGE and FIRST STRIKE, WHEN RESOLUTION executes, THEN the unit attacks in SS3 AND again in SS6; SHIELD consumed in SS3 does NOT protect the same unit in SS6. | BLOCKING |
 | KW-018 | GIVEN a WALL unit is at Cell 4 and an enemy unit has MP sufficient to reach or pass Cell 4, WHEN SS5 movement resolves, THEN the enemy unit stops at Cell 4 and fights WALL in SS6; WALL deals 0 damage. | BLOCKING |
-| KW-019 | GIVEN unit B is protected by BODYGUARD unit G; G is killed in SS4, WHEN G's removal is processed, THEN unit B is no longer protected from opponent Spells and Orders immediately. | BLOCKING |
-| KW-020 | GIVEN an IRREMOVABLE unit is the target of REPEL X, ATTRACT X, or TELEPORT, WHEN the displacement effect is applied, THEN the IRREMOVABLE unit does not change position; IRREMOVABLE does not prevent the unit's own movement. | BLOCKING |
+| KW-019 | GIVEN unit B is protected by BODYGUARD unit G; G receives lethal damage and its HP reaches 0 in SS3 or SS6, WHEN G's HP is reduced to 0, THEN unit B's Spell/Order protection ends at that instant — not at SS4 removal; starting from the next PLACEMENT phase, B is targetable by opponent Spells and Orders. | BLOCKING |
+| KW-020a | GIVEN an IRREMOVABLE unit is the target of REPEL X, WHEN REPEL resolves, THEN the unit's cell position does not change; IRREMOVABLE does not prevent the unit's own movement (MP, CHARGE X, CHANGE LANE). | BLOCKING |
+| KW-020b | GIVEN an IRREMOVABLE unit is the target of ATTRACT X, WHEN ATTRACT resolves, THEN the unit's cell position does not change. | BLOCKING |
+| KW-020c | GIVEN an IRREMOVABLE unit is the target of TELEPORT, WHEN TELEPORT resolves, THEN the unit's cell position does not change. | BLOCKING |
 | KW-021 | GIVEN an UNTARGETABLE unit is in combat range of an enemy RANGE unit, WHEN SS6 resolves, THEN the RANGE attack hits the UNTARGETABLE unit normally; UNTARGETABLE only blocks Spell/Order targeting. | BLOCKING |
 | KW-022 | GIVEN a defender with RESISTANCE 2 is attacked by a unit with ARMOR-PIERCING, WHEN the modifier stack resolves, THEN RESISTANCE 2 reduces ATK_effective by 2 first; ARMOR-PIERCING sets AR_defender to 0 independently; RESISTANCE is not bypassed by ARMOR-PIERCING. | BLOCKING |
 | KW-023 | GIVEN a SILENCEd unit has COUNTERATTACK, DEATH trigger, FIRST STRIKE, and is INJURED, WHEN SILENCE applies, THEN all keyword hooks are stripped; the unit does not counterattack or trigger on death; INJURED state persists. | BLOCKING |
-| KW-024 | GIVEN a SHIELD unit is attacked by two enemies simultaneously in SS6 and by a RANGE+FIRST STRIKE attacker in SS3, WHEN both sub-steps resolve, THEN SHIELD absorbs all SS6 damage and is consumed; the SS3 attack is unaffected if it is in a different sub-step. | BLOCKING |
+| KW-024 | GIVEN a unit with SHIELD is attacked by a RANGE+FIRST STRIKE attacker in SS3, then by two enemy melee units simultaneously in SS6, WHEN RESOLUTION executes, THEN SHIELD absorbs the SS3 attack and is consumed in SS3 (chronological order); in SS6, SHIELD is no longer active and both melee attackers deal full damage. | BLOCKING |
 | KW-025 | GIVEN a LEADER unit is alive at RESOLUTION entry (bonus snapshotted) and is killed in SS4, WHEN SS6 resolves, THEN the ATK bonus remains active for all eligible family units in SS6. | BLOCKING |
 | KW-026 | GIVEN a LEADER unit is SILENCEd at RESOLUTION entry, WHEN the bonus snapshot is computed, THEN the SILENCEd LEADER grants no bonus to family units for this RESOLUTION. | BLOCKING |
-| KW-027 | GIVEN Player A has 3 units and Player B has 3 units at SS2 entry, WHEN OUTNUMBERED is evaluated, THEN 3 < 3 = false — bonus is NOT active. GIVEN Player A has 2 and Player B has 4, THEN 2 < 4 = true — bonus IS active. | BLOCKING |
+| KW-027a | GIVEN Player A has 3 units on board and Player B has 3 units on board at SS2 entry, WHEN OUTNUMBERED is evaluated for Player A, THEN the result is false — the bonus is NOT active (equal counts do not qualify). | BLOCKING |
+| KW-027b | GIVEN Player A has 2 units on board and Player B has 4 units on board at SS2 entry, WHEN OUTNUMBERED is evaluated for Player A, THEN the result is true — the bonus IS active. | BLOCKING |
 
 ### Movement Keywords
 
 | # | Criterion | Type |
 |---|---|---|
 | KW-028 | GIVEN a unit with CHARGE 2 is in a lane where an enemy WALL is 1 cell ahead, WHEN SS2 resolves, THEN the unit is blocked at the WALL's cell and does not pass through it. | BLOCKING |
-| KW-029 | GIVEN (A) Player A unit at Cell 2 REPELled 3 cells: result = 1; (B) IRREMOVABLE unit REPELled: no displacement; (C) WALL unit REPELled: WALL moves to repel_destination, WHEN REPEL resolves for each, THEN each scenario produces its expected outcome. | BLOCKING |
+| KW-029a | GIVEN a Player A unit at Cell 2 is REPELled 3 cells by a Player B effect, WHEN the `repel_destination` formula resolves, THEN the unit lands at Cell `clamp(2 + (−1)×3, 1, 8) = 1` (clamped at board edge). | BLOCKING |
+| KW-029b | GIVEN a WALL unit at Cell 5 is REPELled 2 cells by a Player B unit (push toward Cell 8), WHEN REPEL resolves, THEN WALL moves to `repel_destination = clamp(5 + (+1)×2, 1, 8) = 7`. | BLOCKING |
 | KW-030 | GIVEN caster at Cell 3, target at Cell 7, ATTRACT 6, WHEN ATTRACT resolves, THEN effective_pull = min(6, 4) = 4; target lands at Cell 3 (co-located with caster, NOT past Cell 3). | BLOCKING |
-| KW-031 | GIVEN a unit is TELEPORTed to a cell occupied by an enemy unit, WHEN TELEPORT resolves, THEN no APPEARANCE trigger fires; no COUNTERATTACK fires; IRREMOVABLE blocks the teleport entirely. | BLOCKING |
+| KW-031a | GIVEN a unit is TELEPORTed to a cell occupied by an enemy unit, WHEN TELEPORT resolves, THEN no APPEARANCE trigger fires on the teleported unit. | BLOCKING |
+| KW-031b | GIVEN a unit is TELEPORTed to a cell occupied by an enemy unit, WHEN TELEPORT resolves, THEN no COUNTERATTACK fires from the enemy unit at that cell. | BLOCKING |
 | KW-032 | GIVEN a unit attempts CHANGE LANE to an adjacent lane that already has a friendly Minion, WHEN CHANGE LANE resolves, THEN the lane change does not execute; the unit remains in its current lane; no error state is created. | BLOCKING |
-| KW-033 | GIVEN Strich is in Lane 3 and an enemy enters Lane 3 in SS1, WHEN SS1 completes, THEN Strich auto-triggers CHANGE LANE; server selects randomly if both adjacent lanes are valid; if neither is valid, CHANGE LANE is rejected silently. | BLOCKING |
+| KW-033a | GIVEN Strich is in Lane 3 and exactly one adjacent lane (Lane 2 or Lane 4) is valid (the other is full with a friendly Minion), WHEN an enemy unit enters Lane 3 in SS1, THEN Strich automatically executes CHANGE LANE to the only valid adjacent lane. | BLOCKING |
+| KW-033b | GIVEN Strich is in Lane 3, both Lane 2 and Lane 4 are valid, and the seeded RNG selects Lane 2, WHEN an enemy unit enters Lane 3 in SS1, THEN Strich moves to Lane 2. (BLOCKED — requires `strich_change_lane_select` seed slot per OQ-KS1 resolution before this AC can be implemented as a deterministic test.) | BLOCKING |
+| KW-033c | GIVEN Strich is in Lane 3 and both adjacent lanes (Lane 2, Lane 4) already contain a friendly Minion, WHEN an enemy unit enters Lane 3 in SS1, THEN CHANGE LANE is rejected; Strich remains in Lane 3; no error state is created. | BLOCKING |
 
 ### Cross-Keyword Interactions
 
 | # | Criterion | Type |
 |---|---|---|
-| KW-034 | GIVEN a HASTE unit has STUN applied in SS1, WHEN RESOLUTION proceeds, THEN the STUNned HASTE unit skips SS2, SS3, SS5, and SS6; HASTE does not partially override STUN. | BLOCKING |
-| KW-035 | GIVEN unit A (FIRST STRIKE) kills unit B (has DEATH trigger and FINAL BLOW) in SS3, THEN FINAL BLOW fires in SS3; DEATH trigger fires in SS4; kill gold is awarded at SS4. | BLOCKING |
-| KW-036 | GIVEN a WALL unit is SILENCEd, WHEN SS5 resolves, THEN the SILENCEd WALL loses its blocking behavior; advancing enemies no longer halt at its cell; unit still has MP=0 and does not self-move. | ADVISORY |
-| KW-037 | GIVEN a unit has SHIELD and is attacked by a RANGE+FIRST STRIKE unit in SS3 (consuming SHIELD), WHEN SS6 executes the second attack, THEN the SS6 attack deals full damage — SHIELD consumed in SS3 does not protect in SS6. | ADVISORY |
-| KW-038 | GIVEN unit X is BODYGUARD-protected and an enemy RANGE unit's proximity selection identifies X as the nearest enemy, WHEN the RANGE attack resolves, THEN BODYGUARD does not intercept; X can be hit by RANGE regardless of BODYGUARD. | ADVISORY |
-| KW-039 | GIVEN a LEADER is unsILENCEd at RESOLUTION entry (bonus snapshotted), then SILENCEd during SS3, WHEN SS6 resolves, THEN the snapshot bonus remains active; mid-RESOLUTION SILENCE does not retroactively invalidate a legally-taken snapshot. | ADVISORY |
-| KW-040 | GIVEN a DEATH trigger chain changes board counts mid-chain in SS4, WHEN OUTNUMBERED is evaluated for SS5, THEN the count reflects the full board state after all SS4 deaths resolve — not any intermediate count during the chain. | ADVISORY |
+| KW-034 | GIVEN a HASTE unit has STUN applied in SS1, WHEN RESOLUTION proceeds, THEN the STUNned HASTE unit skips SS2, SS3, SS5, and SS6; HASTE does not partially override STUN. (Canonical cross-keyword test for HASTE+STUN; KW-014 covers the same invariant from the combat-keyword angle.) | BLOCKING |
+| KW-035a | GIVEN unit A (FIRST STRIKE) kills unit B (has DEATH trigger and FINAL BLOW) in SS3, WHEN SS3 resolves, THEN the game state records B's FINAL BLOW effect as applied in SS3 (FINAL BLOW gold or stat bonus credited before SS4 begins); B's removal is NOT processed until SS4. (Verify by asserting on resource/component state at SS3 completion, not on event-emission ordering — ECS schedule ordering is fragile.) | BLOCKING |
+| KW-035b | GIVEN unit B has a DEATH trigger and was killed in SS3 by FIRST STRIKE, WHEN SS4 resolves, THEN unit B is removed from the board AND B's DEATH trigger effect executes; kill gold is added to the attacker's gold total in SS4. | BLOCKING |
+| KW-036 | GIVEN a WALL unit is SILENCEd, WHEN SS5 resolves, THEN the SILENCEd WALL loses its blocking behavior; advancing enemies no longer halt at its cell; unit still has MP=0 and does not self-move. | BLOCKING |
+| KW-037 | GIVEN unit X has SHIELD, and a RANGE+FIRST STRIKE attacker hits X in SS3 (consuming SHIELD), WHEN SS6 executes the RANGE unit's second attack, THEN the SS6 attack applies full damage to X — SHIELD is no longer present in SS6 (consumed in SS3); X's HP after SS6 = HP-after-SS3 minus SS6 net damage. | BLOCKING |
+| KW-038 | GIVEN unit X is BODYGUARD-protected and an enemy RANGE unit's proximity selection identifies X as the nearest enemy, WHEN the RANGE attack resolves, THEN BODYGUARD does not intercept; X can be hit by RANGE regardless of BODYGUARD. | BLOCKING |
+| KW-039 | GIVEN a LEADER is un-SILENCEd at RESOLUTION entry (bonus snapshotted), then SILENCEd during SS3, WHEN SS6 resolves, THEN the snapshot bonus remains active for all eligible family units; mid-RESOLUTION SILENCE does not retroactively invalidate a legally-taken snapshot. | BLOCKING |
+| KW-040 | GIVEN a DEATH trigger chain changes board counts mid-chain in SS4, WHEN OUTNUMBERED is evaluated for SS5, THEN the count reflects the full board state after all SS4 deaths resolve — not any intermediate count during the chain. | BLOCKING |
 | KW-041 | GIVEN Player A uses ATTRACT to pull a Player B unit to Player A's Cell 1, WHEN SS6 objective damage resolves, THEN the Player B unit deals its ATK as damage to Player A's objective — ATTRACT does not grant immunity from backfire positioning. | ADVISORY |
 
 ## Open Questions
 
 | # | Question | Owner | Action Required |
 |---|---|---|---|
-| OQ-KS1 | RANGE equidistant target selection and TELEPORT random destination both require server-side RNG. No seed slot exists in the RESOLUTION RNG chain for either use case. One seed slot should cover both. | Server-side RNG + Network Protocol | Add seed slot to `server-rng.md` seed table before RANGE or TELEPORT implementation. Resolves OQ3 in `combat-resolution.md`. |
+| OQ-KS1 | Three distinct keyword RNG events need separate seed slots in the RESOLUTION chain (the original "one slot covers both" claim was incorrect — different sub-step ordering creates non-determinism). Required slots: (a) `range_equidistant_select` — fires in SS3 for RANGE+FIRST STRIKE attackers, SS6 for standard RANGE attackers, when multiple targets are equidistant; (b) `teleport_random_dest` — fires within whatever sub-step a TELEPORT card text triggers, when destination is randomised; (c) `strich_change_lane_select` — fires after the triggering sub-step when both adjacent lanes are valid. Inter-player ordering follows `server-rng.md` Rule 6 (ascending player_id, then ascending lane). | Server-side RNG + Network Protocol | Register all three slots in `server-rng.md` Rule 5 RESOLUTION chain with explicit `event_type` strings before any keyword implementation. Resolves OQ3 in `combat-resolution.md`. |
 | OQ-KS2 | HASTE rename (from CHARGE): all Extension=1 cards with the CHARGE combat keyword must be audited and updated to `"Haste"` in `cards.json`. Schema field update required in `card-data-pool.md`. | Card Data & Pool + Game Designer | Audit before any card data encoding begins. |
 | OQ-KS3 | OQ4 in `combat-resolution.md` (COUNTERATTACK proximity) is now resolved: fires for both same-cell AND collision-halted adjacent contact. | Combat Resolution GDD | Update `combat-resolution.md` OQ4 status to Resolved. |
-| OQ-KS4 | ATTRACT and REPEL traversal triggers Traps on intermediate cells. The Trap GDD (part of `card-data-pool.md` OQ1 original designs) must specify that Traps fire on cell entry regardless of how the unit entered. | Trap design | Include in Trap card design spec when original Trap cards are authored. |
-| OQ-NP1 | `S2CResolutionEvent` needs a `DisplacementEvent { unit_id, keyword: DisplacementKind, from_cell, to_cell, sub_step }` variant for REPEL/ATTRACT/TELEPORT animation on client. Currently unregistered. | Network Protocol GDD | Add variant to `S2CResolutionEvent` enum in `network-protocol.md` before Board Rendering implementation. |
+| OQ-KS4 | ATTRACT and REPEL traversal triggers Traps on intermediate cells (cells strictly between the start cell and the final destination, exclusive of start). Non-lethal/non-STUN Trap damage does NOT terminate displacement; only kill or STUN do. The Trap GDD (part of `card-data-pool.md` OQ1 original designs) must specify that Traps fire on cell entry regardless of how the unit entered. | Trap design | Include in Trap card design spec when original Trap cards are authored. |
+| OQ-KS5 | `combat-resolution.md` Visual section currently specifies an OUTNUMBERED indicator scoped per-lane (Crimson Slate arrow on the lane line). The OUTNUMBERED rule is a global board count, not per-lane. The indicator must move to per-unit (on each unit carrying the OUTNUMBERED keyword) reading from the global boolean. | Combat Resolution Visual + Board Rendering | Update `combat-resolution.md` Visual subsection before Board Rendering implementation. |
+| OQ-NP1 | `S2CResolutionEvent` needs a `DisplacementEvent { unit_id, attacker_id: Option<EntityId>, keyword: DisplacementKind, from_cell, to_cell, sub_step, was_blocked: bool }` variant for REPEL/ATTRACT/TELEPORT animation on client. `to_cell` reflects the *actual* final position (after Trap interruption or IRREMOVABLE blocking), not the formula-computed destination. `was_blocked = true` when IRREMOVABLE rejected the displacement (client plays the Void flat flash instead of a slide animation). Currently unregistered. | Network Protocol GDD | Add variant to `S2CResolutionEvent` enum in `network-protocol.md` before Board Rendering implementation. |
+| OQ-NP2 | `GameOverReason` enum needs a `ResolutionTimeout` variant distinct from `Draw`. The 60-second RESOLUTION safety timeout (combat-resolution.md CR-41) currently uses `Draw`, conflating it with mutual-objective destruction. The client should be able to show a different result-screen message when the timeout fires. | Network Protocol GDD | Add `ResolutionTimeout` variant to `GameOverReason` in `network-protocol.md`. |
+| OQ-NP3 | DEATH chain link order is animation-load-bearing (combat-resolution.md requires sequential, non-overlapping death pulses for chained units), but `UnitDied { unit_id, lane, cell, killer_id }` does not encode chain position. Either (a) document `killer_id = Some(triggering_unit_id)` semantics for trigger kills, or (b) add `caused_by_death_trigger_of: Option<EntityId>` to the variant. | Network Protocol GDD | Resolve in `network-protocol.md` before Card Animations implementation. |
+| OQ-NP4 | `S2CGameSnapshot.UnitBoardState` needs new fields per the Replication Contract subsection: `shield_active: bool`, `stun_active: bool`, `silenced_until_round: Option<u8>`, `leader_bonus_atk: u8`, `leader_bonus_hp: u8`, `bodyguard_protects: Option<EntityId>`. All fields are public information (visible to both players via existing glyphs/indicators); no per-client scoping needed. | Network Protocol GDD | Extend `UnitBoardState` schema in `network-protocol.md` before client snapshot rendering. |
+| OQ-NP5 | `S2CResolutionEvent` needs a `KeywordTriggered { unit_id, keyword: KeywordKind, sub_step, payload: KeywordPayload }` variant — referenced by `combat-resolution.md` OQ5 and now load-bearing for the Replication Contract subsection above (LEADER snapshot taken, BODYGUARD bond created/broken, OUTNUMBERED flipped, SILENCE applied, STUN applied, SHIELD consumed, INJURED-bonus-active). `KeywordPayload` is an enum carrying per-keyword fields. | Network Protocol GDD | Define enum + payload variants in `network-protocol.md`. |

@@ -375,6 +375,7 @@ formulas:
     source: design/gdd/shop-auction-ui.md
     referenced_by:
       - design/gdd/shop-auction-ui.md
+      - design/gdd/hud.md
     variables:
       - gold
       - reserved_gold
@@ -568,6 +569,7 @@ constants:
       - design/gdd/game-config.md
       - design/gdd/lanes-and-lies-gdd.md
       - design/gdd/economy-system.md
+      - design/gdd/hud.md
     value: 10
     unit: mana
     added: 2026-04-28
@@ -933,6 +935,7 @@ network_messages:
     referenced_by:
       - design/gdd/round-state-machine.md
       - design/gdd/network-protocol.md
+      - design/gdd/hud.md
     payload: "{ phase: RoundPhase, round_number: u32, timer_duration_ms: u32 }"
     channel: reliable
     notes: "Broadcast on every RSM phase transition, after all server-side entry actions have fired. Payload defined in network-protocol.md. timer_duration_ms=0 for RESOLUTION and GAME_OVER."
@@ -945,6 +948,7 @@ network_messages:
     referenced_by:
       - design/gdd/network-protocol.md
       - design/gdd/round-state-machine.md
+      - design/gdd/hud.md
     payload: "{ protocol_version, round_number, phase, timer_remaining_ms, players: Vec<PlayerSnapshot>, board: BoardSnapshot, auction_state: Option<AuctionSnapshot> }"
     channel: reliable
     notes: "Unicast per player on every connect and reconnect. Opponent secret fields stripped. Full schema in network-protocol.md Section D.1. Resolves RSM Open Question 4 (late-joiner sync)."
@@ -957,6 +961,7 @@ network_messages:
     referenced_by:
       - design/gdd/network-protocol.md
       - design/gdd/economy-system.md
+      - design/gdd/hud.md
     payload: "{ gold: u32, current_mana: u32, reserve_mana: u32, mana_cap: u8 }"
     channel: reliable
     notes: "Unicast to owning player only. Sent on gold/mana change events: purchase, draft entry, mana cap increase, baseline/interest income, auction spend. EXCEPTION: kill rewards and objective rewards during RESOLUTION are NOT sent via S2CGoldUpdate — they are embedded as GoldAwarded entries in S2CResolutionEvent. S2CGoldUpdate resumes for all non-RESOLUTION gold events. Never broadcast."
@@ -1016,6 +1021,7 @@ network_messages:
     referenced_by:
       - design/gdd/objective-system.md
       - design/gdd/network-protocol.md
+      - design/gdd/hud.md
     payload: "{ target_player_id: PlayerId, lane: LaneId, was_fake: bool }"
     channel: reliable
     notes: "Broadcast to both players at RESOLUTION-end sync when an objective's HP reaches 0. target_player_id identifies whose objective was destroyed (required when multiple objectives fall same RESOLUTION). Reveals real/fake identity to attacker. Triggers Board Rendering to clear the correct slot. Not a mid-sub-step push — batched at RESOLUTION end."
@@ -1101,6 +1107,7 @@ network_messages:
       - design/gdd/network-protocol.md
       - design/gdd/auction-system.md
       - design/gdd/shop-auction-ui.md
+      - design/gdd/hud.md
     payload: "{ player_id: PlayerId, gold: u32, reserved_gold: u32 }"
     channel: reliable
     notes: "Broadcast to all players on any gold mutation. reserved_gold = amount locked by the player's current auction bid (0 outside DRAFT_AUCTION by invariant). free_gold = gold - reserved_gold. Used by auction panel to display both players' available gold. See formula local_free_gold in shop-auction-ui.md."
