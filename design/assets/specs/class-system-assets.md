@@ -14,12 +14,28 @@ Resolve these before beginning art production.
 
 | Flag | Affected Assets | Resolution Path |
 |------|-----------------|-----------------|
-| **F-CS-1** Art Bible §4.4 is missing Ecaflip and Sadida class colors; Eniripsa is listed but not a playable class in this game. AD proposed Ecaflip `#D4A017`, Sadida `#5C7A3E`; TA canonical Wakfu references: Ecaflip `#E8C020`, Sadida `#5C9E3A`. AD must confirm hex and patch §4.4 before any Ecaflip/Sadida art begins. | ASSET-098, 099, 101, 102, 103, 104, 105, 110, 111 | AD patches art bible §4.4 |
-| **F-CS-2** Figurines at 192×288 × 5 frames do not fit in any existing atlas. A new `atlas_figurines` (1024×1024, ~4 MB heap) is recommended. | ASSET-094 to 099 | AD + TA budget approval |
+| ~~**F-CS-1**~~ **RESOLVED** Ecaflip confirmed `#E8C020` (Bright Coin Gold), Sadida confirmed `#5C9E3A` (Leaf Green) — TA canonical Wakfu references adopted. Art Bible §4.4 patched. All asset hex values updated below. Eniripsa remains in §4.4 as lore-reference only; not a playable class. | ASSET-098, 099, 101, 102, 103, 104, 105, 110, 111 | ✅ AD confirmed — §4.4 updated |
+| ~~**F-CS-2**~~ **APPROVED** `atlas_figurines` approved as 6th atlas at **2048×1024** (not 1024×1024 — that fits only 15 frames; 6 classes × 5 frames = 30 frames of 192×288 require 2048×1024). ~8 MB heap. Full spec below. | ASSET-094 to 099 | ✅ AD + TA approved — see Atlas Specification section |
 | **F-CS-3** Class Picker Panel Background dimensions depend on the UX spec. Do not begin art production until `/ux-design class-picker` is run and canvas dimensions are locked. | ASSET-112 | Run `/ux-design class-picker` |
 | **F-CS-4** ✅ RESOLVED — Rollback Zero-Reserve Warning is a pure `bevy_ui` Node (zero asset budget). Background is flat solid `#E87C1E`; border is 1px top/bottom only; ⚠ glyph and warning text are `Text` nodes. No texture detail or gradient. ASSET-119 PNG cancelled. | ASSET-119 | ✅ Resolved |
 | **F-CS-5** Bevy 0.18 audio API uses `AudioPlayer` + `PlaybackSettings` — verify against 0.18 release notes before audio production. Same risk as hand-ui-assets.md FLAG-2. | ASSET-123 to 127 | Engine programmer verification |
 | **Silhouette test** Sadida token trio (ASSET-102, 103, 104) and all six class icons (ASSET-106 to 111) must pass the 64px / 32px silhouette-differentiation test before full art production begins. | ASSET-102, 103, 104, 106–111 | Art director sign-off |
+
+---
+
+## Atlas Specification: atlas_figurines (F-CS-2 Resolution)
+
+| Field | Value |
+|-------|-------|
+| **Atlas name** | `atlas_figurines` |
+| **Contents** | All 6 class figurine idle animation strips — ASSET-094 (Iop), ASSET-095 (Cra), ASSET-096 (Sacrier), ASSET-097 (Xelor), ASSET-098 (Ecaflip), ASSET-099 (Sadida) |
+| **Dimensions** | 2048×1024 px (both dimensions POT; minimum size that fits 30 frames) |
+| **Tile size** | 192×288 px per frame |
+| **Layout** | 10 columns × 3 rows = 30 frame slots; with 2px padding: floor(2048/194) = 10 cols, floor(1024/290) = 3 rows |
+| **Max sprites** | 30 frames — 6 classes × 5 frames each. Current content fills all slots. A second atlas sheet is required if a 7th class figurine is added. |
+| **Format** | PNG-32 (RGBA), straight alpha, sRGB 8-bit, no ICC profiles |
+| **Memory budget** | ~8 MB heap (2048 × 1024 × 4 bytes) |
+| **Engine notes** | `TextureAtlas` tile_size `UVec2::new(192, 288)`. Each figurine occupies 5 consecutive frame indices in a single row. Index 0 = rest pose, indices 1–4 = idle micro-loop. Animation state driven by `bevy_tweening` or `AnimationPlayer`; HP numeral on pedestal base is runtime `bevy_ui` text — not baked. |
 
 ---
 
@@ -143,18 +159,18 @@ Ankama Wakfu Krosmaga style 2D game figurine sprite, Xelor time-mage chibi-heroi
 | Naming | `char_ecaflip_figurine_idle_192x288.png` |
 | Atlas | `atlas_figurines` (new) |
 | Frames | 5 — coin-flip or ear-twitch idle, 3–4px amplitude |
-| Flags | F-CS-1 (Ecaflip color unconfirmed — AD `#D4A017` vs TA `#E8C020`), F-CS-2 |
+| Flags | F-CS-2 |
 
 **Visual Description:**
-A lithe cat-eared humanoid at heroic proportions on a pedestal bearing a coin glyph, tossing a large gold coin upward with one hand while the other rests on the hip with a smirk. A long striped tail curls upward and to the left as a curved silhouette anchor. Warm yellow-gold `#D4A017` fur-trim and coin accents over warm cream base. ⚠️ AD sign-off required on Ecaflip color before production.
+A lithe cat-eared humanoid at heroic proportions on a pedestal bearing a coin glyph, tossing a large gold coin upward with one hand while the other rests on the hip with a smirk. A long striped tail curls upward and to the left as a curved silhouette anchor. Bright coin gold `#E8C020` fur-trim and coin accents over warm cream base.
 
 **Art Bible Anchors:**
 - §5.4: heroic adult, pedestal; Ecaflip — tossing a coin upward, mischievous grin
-- §4.4: ⚠️ Ecaflip color not in art bible — AD sign-off required (F-CS-1)
+- §4.4: Ecaflip — Bright Coin Gold `#E8C020`, accent lucky cream
 - §5.2: cat-eared, coin/dice motif, tail curling upward
 
 **Generation Prompt:**
-Ankama Wakfu Krosmaga style 2D game figurine sprite, Ecaflip cat-person chibi-heroic character, 1:5 head-to-body ratio, circular stone pedestal engraved with coin glyph, cat ears, tossing oversized gold coin upward, other hand on hip, mischievous grin, striped tail curling upward-left, flat cel-shaded, warm yellow-gold #D4A017 fur and coin, warm cream body, Void black #0D0D14 2px outlines, white background — negative: serious expression, photorealistic, flat vector, 3D render
+Ankama Wakfu Krosmaga style 2D game figurine sprite, Ecaflip cat-person chibi-heroic character, 1:5 head-to-body ratio, circular stone pedestal engraved with coin glyph, cat ears, tossing oversized gold coin upward, other hand on hip, mischievous grin, striped tail curling upward-left, flat cel-shaded, bright coin gold #E8C020 fur and coin, warm cream body, Void black #0D0D14 2px outlines, white background — negative: serious expression, photorealistic, flat vector, 3D render
 
 **Status:** Needed
 
@@ -170,18 +186,18 @@ Ankama Wakfu Krosmaga style 2D game figurine sprite, Ecaflip cat-person chibi-he
 | Naming | `char_sadida_figurine_idle_192x288.png` |
 | Atlas | `atlas_figurines` (new) |
 | Frames | 5 — leaf/vine sway idle, ≤4px amplitude |
-| Flags | F-CS-1 (Sadida color unconfirmed — AD `#5C7A3E` vs TA `#5C9E3A`), F-CS-2 |
+| Flags | F-CS-2 |
 
 **Visual Description:**
-A grounded broad-footed heroic figure on a pedestal bearing a sprouting-seed glyph, one hand extended palm-up with a seedling sprouting from the palm — vines trail from wrist to pedestal. A small marionette-puppet dangles at the figure's side as secondary class signal. Earthy green-brown `#5C7A3E` layered clothing with vine-cord `#8B6914` belt and trim. ⚠️ AD sign-off required on Sadida color before production.
+A grounded broad-footed heroic figure on a pedestal bearing a sprouting-seed glyph, one hand extended palm-up with a seedling sprouting from the palm — vines trail from wrist to pedestal. A small marionette-puppet dangles at the figure's side as secondary class signal. Leaf green `#5C9E3A` layered clothing with vine-cord `#8B6914` belt and trim.
 
 **Art Bible Anchors:**
 - §5.4: heroic adult, pedestal; Sadida — surrounded by sprouting seeds
-- §4.4: ⚠️ Sadida color not in art bible — AD sign-off required (F-CS-1)
+- §4.4: Sadida — Leaf Green `#5C9E3A`, accent vine brown `#8B6914`
 - §5.2: nature/plant motif, vine or puppet, grounded earthy pose
 
 **Generation Prompt:**
-Ankama Wakfu Krosmaga style 2D game figurine sprite, Sadida nature-witch chibi-heroic character, 1:5 head-to-body ratio, circular stone pedestal engraved with sprouting seed glyph, one hand extended palm-up with seedling sprouting, vines trailing from wrist to pedestal, small marionette puppet dangling at side, wide-planted feet, calm nurturing expression, flat cel-shaded, earthy green-brown #5C7A3E clothing, vine-cord brown #8B6914 trim, Void black #0D0D14 2px outlines, white background — negative: aggressive pose, photorealistic, flat vector, 3D render
+Ankama Wakfu Krosmaga style 2D game figurine sprite, Sadida nature-witch chibi-heroic character, 1:5 head-to-body ratio, circular stone pedestal engraved with sprouting seed glyph, one hand extended palm-up with seedling sprouting, vines trailing from wrist to pedestal, small marionette puppet dangling at side, wide-planted feet, calm nurturing expression, flat cel-shaded, leaf green #5C9E3A clothing, vine-cord brown #8B6914 trim, Void black #0D0D14 2px outlines, white background — negative: aggressive pose, photorealistic, flat vector, 3D render
 
 **Status:** Needed
 
@@ -224,18 +240,16 @@ Ankama Wakfu Krosmaga style 2D game token sprite, chibi Egyptian mummy unit, 1:1
 | Naming | `char_chacha_noir_idle_64x96.png` |
 | Atlas | `atlas_units` |
 | Frames | 1 |
-| Flags | F-CS-1 (Ecaflip color `#D4A017` unconfirmed — applied to eyes/claws only) |
-
 **Visual Description:**
-A shadow-form transformed Bow Meow — small feline unit with entirely near-black silhouette body and wisps of dark smoke trailing from outline edges. Ecaflip warm yellow-gold `#D4A017` glowing eyes (wide, slightly manic) and matching gold claw-tips are the only color relief. Silhouette reads immediately as a cat — pointed ears, arched back, tail raised — with shadow-smoke distortion signaling supernatural nature.
+A shadow-form transformed Bow Meow — small feline unit with entirely near-black silhouette body and wisps of dark smoke trailing from outline edges. Ecaflip bright coin gold `#E8C020` glowing eyes (wide, slightly manic) and matching gold claw-tips are the only color relief. Silhouette reads immediately as a cat — pointed ears, arched back, tail raised — with shadow-smoke distortion signaling supernatural nature.
 
 **Art Bible Anchors:**
 - §3.1/§5.1: chibi proportions; cat-shape must read at 64px
-- §4.4: ⚠️ Ecaflip `#D4A017` flagged — applied to glowing eyes/claws only
+- §4.4: Ecaflip `#E8C020` — applied to glowing eyes/claws only; confirmed
 - §4: Void `#0D0D14` — body is near-void; slightly lighter smoke edge for silhouette separation
 
 **Generation Prompt:**
-Ankama Wakfu Krosmaga style 2D game token sprite, chibi shadow-cat Chacha Noir, entirely near-black shadow body with dark smoke wisps at silhouette edges, pointed cat ears, arched back, tail raised, slight crouch, glowing warm yellow-gold #D4A017 wide manic eyes and gold claw-tips, flat cel-shaded, slightly lighter dark outline for silhouette separation, 64×96 board scale, white background — negative: friendly cute pet, photorealistic, 3D render
+Ankama Wakfu Krosmaga style 2D game token sprite, chibi shadow-cat Chacha Noir, entirely near-black shadow body with dark smoke wisps at silhouette edges, pointed cat ears, arched back, tail raised, slight crouch, glowing bright coin gold #E8C020 wide manic eyes and gold claw-tips, flat cel-shaded, slightly lighter dark outline for silhouette separation, 64×96 board scale, white background — negative: friendly cute pet, photorealistic, 3D render
 
 **Status:** Needed
 
@@ -251,18 +265,18 @@ Ankama Wakfu Krosmaga style 2D game token sprite, chibi shadow-cat Chacha Noir, 
 | Naming | `char_madoll_idle_64x96.png` |
 | Atlas | `atlas_units` |
 | Frames | 1 |
-| Flags | F-CS-1 (Sadida color `#5C7A3E` unconfirmed). Must pass silhouette differentiation test vs. ASSET-103 and ASSET-104 at 64px. |
+| Flags | Must pass silhouette differentiation test vs. ASSET-103 and ASSET-104 at 64px. |
 
 **Visual Description:**
-A small stuffed ragdoll marionette — oversized round head with messy yarn-hair tuft, button eyes, stitched mouth-smile, visible thread joints at shoulders and knees. Pose is passive and slightly asymmetrical (one arm lower, head tilted) communicating support-unit. Sadida earthy green-brown `#5C7A3E` fabric body with vine-cord `#8B6914` stitching; handmade and endearing, not threatening.
+A small stuffed ragdoll marionette — oversized round head with messy yarn-hair tuft, button eyes, stitched mouth-smile, visible thread joints at shoulders and knees. Pose is passive and slightly asymmetrical (one arm lower, head tilted) communicating support-unit. Sadida leaf green `#5C9E3A` fabric body with vine-cord `#8B6914` stitching; handmade and endearing, not threatening.
 
 **Art Bible Anchors:**
 - §3.1/§5.1: chibi 1:1.5; wide-head/dangling-arm silhouette reads at 64px
-- §4.4: ⚠️ Sadida `#5C7A3E` — AD sign-off required
+- §4.4: Sadida `#5C9E3A` — confirmed Leaf Green
 - §9: ally/support token — smaller and simpler than hero figurines
 
 **Generation Prompt:**
-Ankama Wakfu Krosmaga style 2D game token sprite, chibi stuffed ragdoll marionette Sadida Madoll, 1:1.5 ratio, oversized round head with yarn hair tuft, button eyes, stitched smile, thread-joint shoulders and knees, one arm hanging lower, head tilted softly, passive stance, flat cel-shaded, earthy green-brown #5C7A3E fabric, vine-cord brown #8B6914 stitching, Void black #0D0D14 2px outlines, 64×96 board scale, white background — negative: aggressive pose, photorealistic, adult proportions, 3D render
+Ankama Wakfu Krosmaga style 2D game token sprite, chibi stuffed ragdoll marionette Sadida Madoll, 1:1.5 ratio, oversized round head with yarn hair tuft, button eyes, stitched smile, thread-joint shoulders and knees, one arm hanging lower, head tilted softly, passive stance, flat cel-shaded, leaf green #5C9E3A fabric, vine-cord brown #8B6914 stitching, Void black #0D0D14 2px outlines, 64×96 board scale, white background — negative: aggressive pose, photorealistic, adult proportions, 3D render
 
 **Status:** Needed
 
@@ -278,18 +292,18 @@ Ankama Wakfu Krosmaga style 2D game token sprite, chibi stuffed ragdoll marionet
 | Naming | `char_la_gonflable_idle_64x96.png` |
 | Atlas | `atlas_units` |
 | Frames | 1 |
-| Flags | F-CS-1 (Sadida color unconfirmed). Must be distinguishable from ASSET-102 and ASSET-104 at 64px by spherical silhouette. |
+| Flags | Must be distinguishable from ASSET-102 and ASSET-104 at 64px by spherical silhouette. |
 
 **Visual Description:**
-A round, heavily inflated balloon-creature — near-perfect sphere body with stubby inflated limbs barely protruding and a round balloon-head with a content closed-eye smile on top. Sadida earthy greens with a lighter sky-suffused `#7AB055` highlight on the inflated belly dome; small vine-leaf patterns on surface. Floats slightly above the ground baseline.
+A round, heavily inflated balloon-creature — near-perfect sphere body with stubby inflated limbs barely protruding and a round balloon-head with a content closed-eye smile on top. Sadida leaf green `#5C9E3A` base with a lighter `#7AB055` highlight on the inflated belly dome; small vine-leaf patterns on surface. Floats slightly above the ground baseline.
 
 **Art Bible Anchors:**
 - §3.1: round sphere = defensive/supportive archetype — visually distinct from warrior triangle forms
-- §4.4: ⚠️ Sadida `#5C7A3E` base, lighter `#7AB055` inflate highlight — flagged
+- §4.4: Sadida `#5C9E3A` base confirmed, lighter `#7AB055` inflate highlight
 - §1: perfect sphere silhouette reads instantly at 64px; must differentiate from ASSET-102 and ASSET-104
 
 **Generation Prompt:**
-Ankama Wakfu Krosmaga style 2D game token sprite, chibi inflatable balloon creature Sadida La Gonflable, near-perfect sphere body with stubby inflated arm and leg nubs, round balloon head, content closed-eyes smile, floating slightly above ground, small vine-leaf patterns on surface, flat cel-shaded, earthy green #5C7A3E with lighter inflate highlight #7AB055 on belly dome, Void black #0D0D14 2px outlines, 64×96 board scale, white background — negative: aggressive sharp silhouette, photorealistic, 3D render
+Ankama Wakfu Krosmaga style 2D game token sprite, chibi inflatable balloon creature Sadida La Gonflable, near-perfect sphere body with stubby inflated arm and leg nubs, round balloon head, content closed-eyes smile, floating slightly above ground, small vine-leaf patterns on surface, flat cel-shaded, leaf green #5C9E3A with lighter inflate highlight #7AB055 on belly dome, Void black #0D0D14 2px outlines, 64×96 board scale, white background — negative: aggressive sharp silhouette, photorealistic, 3D render
 
 **Status:** Needed
 
@@ -305,18 +319,18 @@ Ankama Wakfu Krosmaga style 2D game token sprite, chibi inflatable balloon creat
 | Naming | `char_la_sacrifiee_idle_64x96.png` |
 | Atlas | `atlas_units` |
 | Frames | 1 |
-| Flags | F-CS-1 (Sadida color unconfirmed). Must be distinguishable from ASSET-102 at 64px via X-eye and reaching-gesture silhouette. |
+| Flags | Must be distinguishable from ASSET-102 at 64px via X-eye and reaching-gesture silhouette. |
 
 **Visual Description:**
 Closely derived from the Madoll ragdoll design (ASSET-102) but with damage-state visual language: a cracked X-stitch eye, bandage wrapping on one arm, tear-drop stitching under the eyes, thread-bare patches with exposed cotton batting at joints, and one hand slightly outstretched in a reaching "last act" gesture. Same Sadida palette as Madoll for token family cohesion; reads as fragile and tragic, not grotesque.
 
 **Art Bible Anchors:**
 - §3.1/§5.1: chibi 1:1.5; X-eye and reaching hand must differentiate this from ASSET-102 at 64px
-- §4.4: ⚠️ Sadida `#5C7A3E` — same palette as Madoll for visual family cohesion, flagged
+- §4.4: Sadida `#5C9E3A` — same palette as Madoll for visual family cohesion; confirmed
 - §9: ally token — tragic not monstrous
 
 **Generation Prompt:**
-Ankama Wakfu Krosmaga style 2D game token sprite, chibi damaged stuffed ragdoll Sadida La Sacrifiée, 1:1.5 ratio, cracked X-stitch eye replacing one button eye, bandage wrapping on one arm, tear-drop stitching under eyes, thread-bare worn patches, exposed cotton batting at joints, one arm outstretched in reaching gesture, slight forward lean, flat cel-shaded, earthy green-brown #5C7A3E worn fabric, Void black #0D0D14 2px outlines, 64×96 board scale, white background — negative: healthy intact appearance, photorealistic, 3D render
+Ankama Wakfu Krosmaga style 2D game token sprite, chibi damaged stuffed ragdoll Sadida La Sacrifiée, 1:1.5 ratio, cracked X-stitch eye replacing one button eye, bandage wrapping on one arm, tear-drop stitching under eyes, thread-bare worn patches, exposed cotton batting at joints, one arm outstretched in reaching gesture, slight forward lean, flat cel-shaded, leaf green #5C9E3A worn fabric, Void black #0D0D14 2px outlines, 64×96 board scale, white background — negative: healthy intact appearance, photorealistic, 3D render
 
 **Status:** Needed
 
@@ -333,19 +347,17 @@ Ankama Wakfu Krosmaga style 2D game token sprite, chibi damaged stuffed ragdoll 
 | Atlas | `atlas_board` (1024×1024) — two separate atlas entries |
 | Frames | 6 total: 5-frame idle pulse strip + 1 active frame |
 | Engine Notes | Idle strip: `TextureAtlas` tile_size `UVec2::new(32, 32)`, columns=5. Active frame: single sprite swap on walk-over trigger. Max 1 seed per cell enforced at runtime (CS-7). |
-| Flags | F-CS-1 (Sadida glow color `#5C7A3E` unconfirmed) |
-
 **Visual Description:**
-A teardrop-seed shape intaglio-etched into the cobblestone board surface — carved into stone like a stamp, filled with Sadida earthy green `#5C7A3E` glow from within. Mirrors the Prism Cell (§6.4) etched-into-stone visual language but uses an organic teardrop rather than a geometric star. Idle: 2s soft pulse, 30–70% opacity. Active frame: glow intensifies to `#8AC86A` with a tiny seedling-sprout surging upward, then returns to idle.
+A teardrop-seed shape intaglio-etched into the cobblestone board surface — carved into stone like a stamp, filled with Sadida leaf green `#5C9E3A` glow from within. Mirrors the Prism Cell (§6.4) etched-into-stone visual language but uses an organic teardrop rather than a geometric star. Idle: 2s soft pulse, 30–70% opacity. Active frame: glow intensifies to `#8AC86A` with a tiny seedling-sprout surging upward, then returns to idle.
 
 **Art Bible Anchors:**
 - §6.4: Prism Cell etched-into-stone language — same treatment, organic shape variant
-- §4.4: ⚠️ Sadida `#5C7A3E` glow — flagged
+- §4.4: Sadida `#5C9E3A` glow — confirmed Leaf Green
 - §3.1: teardrop organic shape deliberately avoids geometric star (Prism) and diamond (reserve) reads
 - §9.2: green here is Sadida class mechanic — context distinguishes from Cra class color
 
 **Generation Prompt:**
-Ankama Wakfu Krosmaga style 2D game board cell floor marker, 32×32 px, teardrop seed shape intaglio-etched into dark cobblestone tile surface, soft green glow from within etched cavity, earthy green #5C7A3E base glow, organic hand-carved look, flat cel-shaded, Void dark stone surrounding tile, small seedling sprout icon at center, top-down board perspective, distinct from geometric Prism Cell star marker — negative: photorealistic, 3D render, blue or red glow, geometric crystal shape, bright neon
+Ankama Wakfu Krosmaga style 2D game board cell floor marker, 32×32 px, teardrop seed shape intaglio-etched into dark cobblestone tile surface, soft green glow from within etched cavity, leaf green #5C9E3A base glow, organic hand-carved look, flat cel-shaded, Void dark stone surrounding tile, small seedling sprout icon at center, top-down board perspective, distinct from geometric Prism Cell star marker — negative: photorealistic, 3D render, blue or red glow, geometric crystal shape, bright neon
 
 **Status:** Needed
 
@@ -465,18 +477,16 @@ Ankama Wakfu Krosmaga 2D UI icon, flat class glyph, pocket watch face straight-o
 | Naming | `ui_class_icon_ecaflip_default_32x32.png` |
 | Atlas | `atlas_ui_hud` |
 | Frames | 1 |
-| Flags | F-CS-1 (Ecaflip color `#D4A017` unconfirmed) |
-
 **Visual Description:**
-Gold coin at a slight 3/4-view tilt (ellipse silhouette to differentiate from a flat circle) with a cat paw-print embossed on the visible face. Three-color flat: warm gold coin `#D4A017`, darker amber paw emboss `#A07010`, cream rim highlight `#F5E4AA`; Void `#0D0D14` 2px outline. The paw emboss disambiguates from any generic coin icon. ⚠️ Color requires AD sign-off.
+Gold coin at a slight 3/4-view tilt (ellipse silhouette to differentiate from a flat circle) with a cat paw-print embossed on the visible face. Three-color flat: bright coin gold `#E8C020`, darker amber paw emboss `#A07010`, cream rim highlight `#F5E4AA`; Void `#0D0D14` 2px outline. The paw emboss disambiguates from any generic coin icon.
 
 **Art Bible Anchors:**
 - §7.5: class icon spec
-- §4.4: ⚠️ Ecaflip color not in art bible — AD sign-off required
+- §4.4: Ecaflip — Bright Coin Gold `#E8C020`; confirmed
 - §5.2: coin/dice motif as defining class object
 
 **Generation Prompt:**
-Ankama Wakfu Krosmaga 2D UI icon, flat class glyph, gold coin slight 3/4-tilt ellipse, cat paw-print embossed on visible face, 3-color flat: warm gold #D4A017, amber paw emboss #A07010, cream rim #F5E4AA, Void black #0D0D14 2px outline, 32×32, white background, legible at 24px — negative: flat circle no tilt, gradients, glow, 3D render
+Ankama Wakfu Krosmaga 2D UI icon, flat class glyph, gold coin slight 3/4-tilt ellipse, cat paw-print embossed on visible face, 3-color flat: bright coin gold #E8C020, amber paw emboss #A07010, cream rim #F5E4AA, Void black #0D0D14 2px outline, 32×32, white background, legible at 24px — negative: flat circle no tilt, gradients, glow, 3D render
 
 **Status:** Needed
 
@@ -492,18 +502,16 @@ Ankama Wakfu Krosmaga 2D UI icon, flat class glyph, gold coin slight 3/4-tilt el
 | Naming | `ui_class_icon_sadida_default_32x32.png` |
 | Atlas | `atlas_ui_hud` |
 | Frames | 1 |
-| Flags | F-CS-1 (Sadida color `#5C7A3E` unconfirmed) |
-
 **Visual Description:**
-Seedling sprout — single stem with two symmetrical leaf-pairs spreading outward and a teardrop seed shape at the base (echoing ASSET-105 Graine marker for visual family cohesion). Three-color flat: earthy green `#5C7A3E` stem/leaves, darker brown-green `#3D5528` seed base, lighter `#7AB055` leaf highlight; Void `#0D0D14` 2px outline. The Y-shape silhouette is unique among the six class icons. ⚠️ Color requires AD sign-off.
+Seedling sprout — single stem with two symmetrical leaf-pairs spreading outward and a teardrop seed shape at the base (echoing ASSET-105 Graine marker for visual family cohesion). Three-color flat: leaf green `#5C9E3A` stem/leaves, darker brown-green `#3D5528` seed base, lighter `#7AB055` leaf highlight; Void `#0D0D14` 2px outline. The Y-shape silhouette is unique among the six class icons.
 
 **Art Bible Anchors:**
 - §7.5: class icon spec
-- §4.4: ⚠️ Sadida color not in art bible — AD sign-off required
+- §4.4: Sadida — Leaf Green `#5C9E3A`; confirmed
 - §6.4/ASSET-105: teardrop seed base creates visual family cohesion across Sadida board elements
 
 **Generation Prompt:**
-Ankama Wakfu Krosmaga 2D UI icon, flat class glyph, seedling sprout with single stem, two symmetrical leaf pairs, teardrop seed base, 3-color flat: earthy green #5C7A3E stem and leaves, darker brown-green #3D5528 seed base, lighter green highlight #7AB055, Void black #0D0D14 2px outline, 32×32, white background, Y-branch silhouette, legible at 24px — negative: full tree, complex plant, blue or purple colors, gradients, glow, 3D render
+Ankama Wakfu Krosmaga 2D UI icon, flat class glyph, seedling sprout with single stem, two symmetrical leaf pairs, teardrop seed base, 3-color flat: leaf green #5C9E3A stem and leaves, darker brown-green #3D5528 seed base, lighter green highlight #7AB055, Void black #0D0D14 2px outline, 32×32, white background, Y-branch silhouette, legible at 24px — negative: full tree, complex plant, blue or purple colors, gradients, glow, 3D render
 
 **Status:** Needed
 

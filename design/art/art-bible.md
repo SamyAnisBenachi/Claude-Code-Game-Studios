@@ -258,6 +258,8 @@ Canonical Wakfu/Dofus class colors — these match player expectations from the 
 | **Iop** | Warm Orange-Red | Flame yellow | `#E05A00` | More saturated and redder than Auction Amber; players learn the saturation difference |
 | **Eniripsa** | Soft Pink-Violet | Healing green | `#C45FA0` | Only class using pink — immediately distinct |
 | **Cra** | Forest Green | Quiver brown | `#2A6B3C` | Deep green — the one class using green; firmly "archer precision", not "objective is real" |
+| **Ecaflip** | Bright Coin Gold | Lucky cream | `#E8C020` | Gambler/luck class; warm bright gold differentiates from Arcane Gold (`#F5C842`) by warmth and from Auction Amber (`#E87C1E`) by hue |
+| **Sadida** | Leaf Green | Vine brown | `#5C9E3A` | Nature/puppet class; medium-bright leaf green differentiates from Cra's deep forest green (`#2A6B3C`) by luminance and saturation |
 
 ---
 
@@ -570,6 +572,7 @@ Organized by asset category and phase frequency to minimize GPU texture swaps.
 | `atlas_ui_hud` | HUD chips, icons, objective dots, auction chrome | 1024×1024 |
 | `atlas_board` | Board tiles, lane dividers, movement arrows, edge stripes | 1024×1024 |
 | `atlas_vfx` | Combat flash frames, bid-pulse ring, damage number glyphs | 1024×1024 |
+| `atlas_figurines` | Class figurine idle animation strips (192×288 per frame, 5 frames, all 6 classes) | 2048×1024 |
 
 Units packed into `atlas_units` regardless of class — class identity is carried by sprite color, not atlas separation.
 
@@ -639,6 +642,7 @@ Total WASM heap: 256 MB. Art allocation target: **~96 MB**.
 | Card art | 2 × 2048×2048 | ~32 MB |
 | UI elements | 1 × 2048×2048 | ~16 MB |
 | Environment / board | 1 × 2048×2048 | ~16 MB |
+| Class figurines | 1 × 2048×1024 | ~8 MB |
 | Engine + code heap (reserved) | — | ~160 MB |
 
 **TA flag:** Environment framing (stone arches, ivy, torches from Section 6.2) must be **tiled and atlased** — a single full-resolution painterly scene would consume the entire environment budget in one asset.
