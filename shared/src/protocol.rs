@@ -364,6 +364,7 @@ pub struct S2CGoldUpdate {
 pub struct S2CGoldBroadcast {
     pub player_id: PlayerId,
     pub gold: u32,
+    pub reserved_gold: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

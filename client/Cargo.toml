@@ -36,6 +36,10 @@ name = "hud_plugin_scaffold_test"
 path = "../tests/unit/hud/hud_plugin_scaffold_test.rs"
 
 [[test]]
+name = "hud_gold_mana_display_test"
+path = "../tests/unit/hud/gold_mana_display_test.rs"
+
+[[test]]
 name = "card_animations_tween_lifecycle_test"
 path = "../tests/unit/card-animations/tween_lifecycle_test.rs"
 

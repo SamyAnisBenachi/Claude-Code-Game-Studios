@@ -1,10 +1,19 @@
 use bevy::prelude::*;
+use lightyear::prelude::MessageReceiver;
+use shared::protocol::{S2CGoldBroadcast, S2CGoldUpdate};
+use shared::session::PlayerId;
 
 use crate::state::ClientState;
 
 pub const HUD_DOT_ROWS: usize = 2;
 pub const HUD_DOTS_PER_ROW: usize = 5;
 pub const HUD_ENTITY_COUNT: usize = 18;
+
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum HudSystemSet {
+    MessageDrain,
+    StateSync,
+}
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct HudConfig {
@@ -21,6 +30,12 @@ impl Default for HudConfig {
             hud_tween_duration_ms: 300,
         }
     }
+}
+
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudPlayerIds {
+    pub local_id: PlayerId,
+    pub opponent_id: PlayerId,
 }
 
 #[derive(Resource, Debug, Clone, Copy)]
@@ -78,6 +93,14 @@ impl Default for GoldDisplayState {
     }
 }
 
+#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ManaDisplayState {
+    pub current_mana: u32,
+    pub mana_cap: u32,
+    pub reserve_mana: u32,
+    pub is_populated: bool,
+}
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScoreboardDot {
     pub row: ScoreboardRow,
@@ -101,8 +124,25 @@ impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<ClientState>()
             .init_resource::<HudConfig>()
+            .configure_sets(
+                Update,
+                (HudSystemSet::MessageDrain, HudSystemSet::StateSync)
+                    .chain()
+                    .run_if(in_state(ClientState::InSession)),
+            )
             .add_systems(OnEnter(ClientState::InSession), spawn_hud)
-            .add_systems(OnExit(ClientState::InSession), despawn_hud);
+            .add_systems(OnExit(ClientState::InSession), despawn_hud)
+            .add_systems(
+                Update,
+                (
+                    handle_gold_broadcast_system
+                        .in_set(HudSystemSet::MessageDrain)
+                        .before(handle_gold_update_system),
+                    handle_gold_update_system.in_set(HudSystemSet::MessageDrain),
+                    sync_gold_text_system.in_set(HudSystemSet::StateSync),
+                    sync_mana_text_system.in_set(HudSystemSet::StateSync),
+                ),
+            );
     }
 }
 
@@ -165,12 +205,10 @@ fn spawn_hud(mut commands: Commands, config: Res<HudConfig>, existing: Option<Re
         config.hud_margin_px,
         22.0,
     );
-    let mana_label = spawn_text_label(
+    let mana_label = spawn_mana_label(
         &mut commands,
         root,
         "HUD Mana Label",
-        "",
-        ManaLabel,
         bottom_left_node(config.hud_margin_px, 0.0),
     );
     let reserve_label = spawn_text_label(
@@ -218,6 +256,28 @@ fn spawn_text_label<M: Component>(
             HudEntity,
             marker,
             Text::new(text),
+            hud_text_font(18.0),
+            TextColor(Color::srgb(0.92, 0.94, 0.96)),
+            node,
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
+fn spawn_mana_label(
+    commands: &mut Commands,
+    parent: Entity,
+    name: &'static str,
+    node: Node,
+) -> Entity {
+    commands
+        .spawn((
+            Name::new(name),
+            HudEntity,
+            ManaLabel,
+            ManaDisplayState::default(),
+            Text::new("-- / --"),
             hud_text_font(18.0),
             TextColor(Color::srgb(0.92, 0.94, 0.96)),
             node,
@@ -307,6 +367,163 @@ fn spawn_scoreboard_dots(
                 .id()
         })
     })
+}
+
+pub fn handle_gold_broadcast_system(
+    player_ids: Option<Res<HudPlayerIds>>,
+    mut receivers: Query<&mut MessageReceiver<S2CGoldBroadcast>>,
+    mut gold_labels: Query<(&GoldLabelOwner, &mut GoldDisplayState)>,
+) {
+    let Some(player_ids) = player_ids else {
+        drain_gold_broadcasts(&mut receivers);
+        return;
+    };
+
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            for (owner, mut state) in &mut gold_labels {
+                match (*owner, message.player_id) {
+                    (GoldLabelOwner::Opponent, player_id)
+                        if player_id == player_ids.opponent_id =>
+                    {
+                        state.gold = message.gold as f32;
+                        state.reserved_gold = message.reserved_gold as f32;
+                        state.is_populated = true;
+                    }
+                    (GoldLabelOwner::Local, player_id) if player_id == player_ids.local_id => {
+                        state.reserved_gold = message.reserved_gold as f32;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+pub fn handle_gold_update_system(
+    mut receivers: Query<&mut MessageReceiver<S2CGoldUpdate>>,
+    mut gold_labels: Query<(&GoldLabelOwner, &mut GoldDisplayState)>,
+    mut mana_labels: Query<&mut ManaDisplayState, With<ManaLabel>>,
+) {
+    let mut last_update = None;
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            last_update = Some(message);
+        }
+    }
+
+    let Some(message) = last_update else {
+        return;
+    };
+
+    if message.mana_cap == 0 {
+        warn!("HUD: mana_cap=0 received - server invariant violated");
+    }
+
+    let Ok(mut mana_state) = mana_labels.single_mut() else {
+        return;
+    };
+
+    for (owner, mut state) in &mut gold_labels {
+        if *owner == GoldLabelOwner::Local {
+            apply_gold_update_message(&message, &mut state, &mut mana_state);
+        }
+    }
+}
+
+fn drain_gold_broadcasts(receivers: &mut Query<&mut MessageReceiver<S2CGoldBroadcast>>) {
+    for mut receiver in receivers.iter_mut() {
+        for _message in receiver.receive() {}
+    }
+}
+
+pub fn apply_gold_update_batch<I>(
+    messages: I,
+    own_gold: &mut GoldDisplayState,
+    mana_state: &mut ManaDisplayState,
+) -> Option<S2CGoldUpdate>
+where
+    I: IntoIterator<Item = S2CGoldUpdate>,
+{
+    let message = messages.into_iter().last()?;
+    apply_gold_update_message(&message, own_gold, mana_state);
+    Some(message)
+}
+
+pub fn apply_gold_update_message(
+    message: &S2CGoldUpdate,
+    own_gold: &mut GoldDisplayState,
+    mana_state: &mut ManaDisplayState,
+) {
+    own_gold.gold = message.gold as f32;
+    own_gold.is_populated = true;
+    mana_state.current_mana = message.current_mana;
+    mana_state.mana_cap = message.mana_cap as u32;
+    mana_state.reserve_mana = message.reserve_mana;
+    mana_state.is_populated = true;
+}
+
+pub fn sync_gold_text_system(
+    mut gold_labels: Query<
+        (&GoldDisplayState, &mut Text, Option<&Children>),
+        Changed<GoldDisplayState>,
+    >,
+    mut spans: Query<&mut TextSpan>,
+) {
+    for (state, mut text, children) in &mut gold_labels {
+        text.0 = format_gold_text(state);
+
+        if let Some(children) = children {
+            for child in children.iter() {
+                if let Ok(mut span) = spans.get_mut(child) {
+                    span.0.clear();
+                }
+            }
+        }
+    }
+}
+
+pub fn sync_mana_text_system(
+    mut mana_labels: Query<
+        (&ManaDisplayState, &mut Text),
+        (With<ManaLabel>, Changed<ManaDisplayState>),
+    >,
+    mut reserve_labels: Query<
+        (&mut Text, &mut Visibility),
+        (With<ReserveManaLabel>, Without<ManaLabel>),
+    >,
+) {
+    let Ok((state, mut mana_text)) = mana_labels.single_mut() else {
+        return;
+    };
+    let Ok((mut reserve_text, mut reserve_visibility)) = reserve_labels.single_mut() else {
+        return;
+    };
+
+    if !state.is_populated {
+        mana_text.0 = "-- / --".to_string();
+        reserve_text.0.clear();
+        *reserve_visibility = Visibility::Hidden;
+        return;
+    }
+
+    mana_text.0 = format!("{} / {}", state.current_mana, state.mana_cap);
+
+    if state.reserve_mana > 0 {
+        reserve_text.0 = format!("+{} reserve", state.reserve_mana);
+        *reserve_visibility = Visibility::Visible;
+    } else {
+        reserve_text.0.clear();
+        *reserve_visibility = Visibility::Hidden;
+    }
+}
+
+fn format_gold_text(state: &GoldDisplayState) -> String {
+    if state.is_populated {
+        format!("{}g", state.gold as u32)
+    } else {
+        "--g".to_string()
+    }
 }
 
 fn hud_text_font(font_size: f32) -> TextFont {
