@@ -1,9 +1,14 @@
 use bevy::prelude::*;
 use shared::card::{CardData, Keyword, SimpleKeyword};
+use shared::keyword::KeywordPayload;
+use shared::protocol::EntityId;
 
 use crate::core::board::{UnitCardRef, UnitStats};
 use crate::feature::keyword::components::{EnteredPlayRound, UnitKeywordState};
+use crate::feature::keyword::events::KeywordTriggered;
 use crate::foundation::config::CardCatalog;
+
+pub const STUN_DURATION_ROUNDS: u8 = 1;
 
 /// RESOLUTION sub-steps where summoning sickness and STUN gate unit actions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -113,6 +118,48 @@ pub fn apply_first_strike(attacker: Entity, target: Entity, world: &mut World) -
         target_retaliated_in_ss3,
         applied: true,
     }
+}
+
+/// Applies one-RESOLUTION STUN state immediately and emits the protocol payload.
+pub fn apply_stun(
+    unit: Entity,
+    source_unit_id: Option<EntityId>,
+    sub_step: u8,
+    world: &mut World,
+) -> bool {
+    let Some(mut kw_state) = world.get_mut::<UnitKeywordState>(unit) else {
+        return false;
+    };
+
+    kw_state.stun_active = true;
+    drop(kw_state);
+
+    if let Some(mut messages) = world.get_resource_mut::<Messages<KeywordTriggered>>() {
+        messages.write(KeywordTriggered {
+            source_unit_id,
+            sub_step,
+            payload: KeywordPayload::StunApplied {
+                duration_rounds: STUN_DURATION_ROUNDS,
+            },
+        });
+    }
+
+    true
+}
+
+/// Clears STUN at RESOLUTION end. This is called structurally, not time-based.
+pub fn clear_stun_state_at_resolution_end(world: &mut World) -> usize {
+    let mut query = world.query::<&mut UnitKeywordState>();
+    let mut cleared = 0;
+
+    for mut kw_state in query.iter_mut(world) {
+        if kw_state.stun_active {
+            kw_state.stun_active = false;
+            cleared += 1;
+        }
+    }
+
+    cleared
 }
 
 /// True when a unit may act in a gated RESOLUTION sub-step.
