@@ -31,7 +31,9 @@ source of truth for story status.
 - HAND-UI-001 worker: completed on branch
   `work/hand-ui-001-plugin-scaffold` at `9f28a2a`; cherry-picked into `main` at
   `7c603e0`. Window can be cleared.
-- HUD-003 worker: assumed launched from the current orchestrator batch.
+- HUD-003 worker: completed on branch
+  `work/hud-003-phase-label-round-counter` at `52a3605`; cherry-picked into
+  `main` at `ce76a88`. Window can be cleared.
 - CARD-ANIM-006 worker: completed on branch
   `work/card-anim-006-objective-stagger-reveal` at `effcef2`; cherry-picked into
   `main` at `8d641b9`. Window can be cleared.
@@ -77,6 +79,12 @@ None currently tracked here.
   `7c603e0`. Local `hand_ui_plugin_scaffold_test`, `cargo check -p client`,
   `cargo fmt --all -- --check`, and `git diff --check` passed after
   integration.
+- HUD-003: Phase Label/Round Counter implemented on branch
+  `work/hud-003-phase-label-round-counter` at `52a3605`; cherry-picked into
+  `main` at `ce76a88` after resolving the `client/Cargo.toml` test-target
+  conflict by keeping both HAND-UI-001 and HUD-003 test entries. Local HUD phase,
+  gold/mana, and plugin scaffold tests, `cargo check -p client`, `cargo fmt -p
+  client -- --check`, and `git diff --check` passed after integration.
 - KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
   `7543293`; cherry-picked into `main` at `b8b1287` because the branch was
   based before recent tracking and BOARD-002 commits. Local `stun_test`,
@@ -149,6 +157,7 @@ None currently tracked here.
 8. HUD-002
 9. CARD-ANIM-006
 10. HAND-UI-001
+11. HUD-003
 
 Run only one story-done at a time.
 
@@ -166,6 +175,7 @@ Run only one story-done at a time.
 - HUD-002: implemented and integrated; pending story-done.
 - CARD-ANIM-006: implemented and integrated; pending story-done.
 - HAND-UI-001: implemented and integrated; pending story-done.
+- HUD-003: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
@@ -173,8 +183,8 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-- HUD-003: Phase Label/Round Counter; unblocked by HUD-001 story-done. Run
-  readiness before launch.
+None currently queued in this file. Recompute from story dependencies before
+launching the next batch.
 
 ## Resolved Design Gates
 
