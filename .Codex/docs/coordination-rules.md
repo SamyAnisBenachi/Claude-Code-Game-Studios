@@ -14,6 +14,9 @@ Workers must:
 
 - Create or use their assigned worktree before editing implementation files.
 - Commit only their story changes.
+- Use detailed commit messages. The subject stays short, but the body must
+  include Summary, Files, Verification, and Notes so another agent can
+  understand the commit from git history without reopening the full context.
 - Push their story branch with `git push -u origin work/<story-id>-<short-slug>`.
 - Report branch name, commit hash, files changed, local checks, and CI run id if
   available.
@@ -29,6 +32,9 @@ The orchestrator must:
   - `production/sprint-status.yaml`
   - `production/session-state/active.md`
   - story completion notes
+- Write integration, story-done, and tracking commits with detailed bodies:
+  original worker commit or story, files changed, local checks, CI status if
+  known, blockers/advisories, and any skipped verification.
 
 Existing workers already launched in the shared checkout may finish normally.
 All new implementation workers should use this worktree flow.

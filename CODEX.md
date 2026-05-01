@@ -210,6 +210,7 @@ Rules:
 - Never run destructive cleanup (`git reset --hard`, checkout/revert of another worker's files) to achieve a clean commit.
 - If a file contains significant mixed code changes from multiple agents, stop and ask the orchestrator how to split it. For minor shared metadata overlap, prefer the smallest sensible commit and document the overlap.
 - Include commit details in the handoff: commit hash, commit subject, files changed, tests run, CI run ID/status, and any skipped verification.
+- Use detailed commit messages. The subject may stay short, but the body must give enough context for another agent to understand the commit from `git log` alone.
 - If push fails because another worker pushed first, pull/rebase carefully, preserve other workers' commits and claims, re-run relevant checks, then push.
 - In worktree mode, do not rebase/merge `main` on your own unless necessary to fix a conflict in your branch. If a conflict occurs, report it to the orchestrator with `git status --short` and the conflicted files.
 
@@ -397,7 +398,17 @@ Workers must use explicit paths/pathspecs before every commit and should minimiz
 ```
 <story-id> impl: <short imperative title>
 
-<optional body — only for non-trivial commits>
+Summary:
+- <what changed in behavior or architecture>
+
+Files:
+- <important files/directories touched>
+
+Verification:
+- <local tests/checks run, with pass/fail result>
+
+Notes:
+- <blockers, skipped checks, stale docs, merge/cherry-pick source, or "none">
 
 Co-Authored-By: Codex <noreply@openai.com>
 ```
@@ -409,6 +420,28 @@ Examples:
 
 For story-done updates, use a separate commit:
 - `story-done S2-01: RSM Scaffold COMPLETE`
+
+### Detailed Commit Message Requirements
+
+Do not rely on the subject line alone for implementation, integration,
+story-done, or tracking commits. Another agent should be able to skim
+`git log --oneline` plus `git show --no-patch --format=fuller <sha>` and recover
+the useful context without opening the whole diff.
+
+Minimum body fields:
+- `Summary`: one to three bullets describing the actual behavior/state change.
+- `Files`: key files or directories touched; group broad areas instead of listing every generated artifact.
+- `Verification`: exact local commands and results, or `Not run` with reason.
+- `Notes`: blockers, deferred checks, CI not waited on, branch/cherry-pick source, advisory deviations, or `None`.
+
+Commit type guidance:
+- Worker implementation commits include story id, branch/worktree source, owned files, tests, and blockers/skipped checks.
+- Orchestrator integration commits include original worker commit/branch, merge or cherry-pick method, root verification, and any conflict or push issue.
+- Story-done commits include verdict, acceptance/test evidence, files updated, and why `sprint-status.yaml` was or was not touched.
+- Tracker-only commits include exactly what state changed and which window/action it affects.
+
+Only omit the body for trivial formatting-only commits that touch no production,
+code, test, or tracking state.
 
 ---
 
@@ -512,5 +545,6 @@ You are the implementation orchestrator for Lanes and Lies (Bevy 0.18 + Lightyea
 2. Read production/sprint-status.yaml and production/session-state/active.md.
 3. Tell me where we are, what's next, and whether parallelizable.
 4. If I say "implement next" — use a dedicated worktree/branch (`work/<story-id>-<short-slug>`), claim the story in that branch, read full context (story + ADRs + GDD + control-manifest), implement it, write tests, run local Cargo tests from Developer PowerShell for VS 2026, commit, push the branch, and hand off branch/commit/CI details to the orchestrator. Do not push main, wait for GitHub Actions, or mark Done unless explicitly assigned orchestrator/story-done duty.
-5. After every action, tell me: next concrete command, which window, parallelizable or not, how to know it worked.
+5. Use detailed commit messages with a body containing Summary, Files, Verification, and Notes.
+6. After every action, tell me: next concrete command, which window, parallelizable or not, how to know it worked.
 ```
