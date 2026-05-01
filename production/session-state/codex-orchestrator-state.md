@@ -71,6 +71,10 @@ None currently tracked here.
   Local draw pipeline suite, full server tests, `cargo check -p server`, and
   `cargo fmt --all` passed. `cargo check --workspace` was blocked on stale HUD
   BorderColor issue in the branch base; main has fixed it at `cbce522`.
+- CA-006: Card Acquisition External Bypass implemented on branch
+  `work/ca-006-external-bypass` at `6af1137`; merged into `main`. Local
+  `card_acquisition_external_bypass_test` and `cargo check -p server` passed
+  after integration.
 - S3-08: Economy Interest Snapshot & Resolution End implemented on branch
   `work/s3-08-economy-interest-snapshot` at `db61102`; merged into `main` at
   `4961356`. Local `economy_interest_snapshot_test`, `cargo check -p server`,
@@ -104,6 +108,7 @@ None currently tracked here.
 7. CARD-ANIM-002
 8. BOARD-001
 9. CA-003
+10. CA-006
 
 Run only one story-done at a time.
 
@@ -111,7 +116,7 @@ Run only one story-done at a time.
 
 - CA-004 / CA-005: depend on CA-003 implementation, now available but should
   wait for CA-003 story-done unless explicitly pulled in worktree mode.
-- CA-006: depends only on CA-001 and can be launched in worktree mode if needed.
+- CA-006: implemented and merged; pending story-done.
 - KW-004: waits for KW-003 story-done if the story depends on first-strike
   behavior; otherwise can be launched in worktree mode after checking story
   dependencies.
