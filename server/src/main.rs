@@ -26,23 +26,6 @@ mod network;
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 
-// ---------------------------------------------------------------------------
-// Server-only Resources
-// ADR-002: these types MUST NOT appear in shared/ or client/.
-// They live here so the linker enforces the boundary at compile time.
-// ---------------------------------------------------------------------------
-
-/// Per-session hidden objective assignments.
-/// ADR-001: objective identity is sent as a unicast S2CObjectiveIdentities
-/// message at DRAFT_INITIAL, never as a replicated ECS component.
-/// ADR-002: opponent must never receive another player's ObjectiveIdentity.
-#[derive(Resource, Default)]
-pub struct HiddenObjectives {
-    // TODO(Epic 5 — objective-system story): populate per-player is_fake map.
-    // Key: PlayerId, Value: Vec<(ObjectiveId, bool /* is_fake */)>
-    _placeholder: (),
-}
-
 // ServerRng is defined in foundation::rng — see server/src/foundation/rng.rs
 // ADR-005: ChaCha20 seeded from OS entropy, full audit log, per-session resource.
 
@@ -121,9 +104,11 @@ fn main() {
     // Networking - Lightyear 0.26 WebSocket server and shared protocol manifest.
     app.add_plugins(network::ServerNetworkPlugin);
 
-    // Insert server-only resources.
-    // ADR-002: these are unreachable from client/ by crate isolation.
-    app.insert_resource(HiddenObjectives::default());
+    // Objective System - replicated objective HP plus server-only identities.
+    app.add_plugins(feature::objective::ObjectivePlugin);
+
+    // Insert server-only RNG.
+    // ADR-002: unreachable from client/ by crate isolation.
     app.insert_resource(foundation::rng::ServerRng::new());
 
     // TODO(Epic 4 — S1-05 Lightyear spike):

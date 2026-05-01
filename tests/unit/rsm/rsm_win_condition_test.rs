@@ -45,7 +45,8 @@ fn app_with_resolution_state(round_number: u32, destroyed: &[(PlayerId, u32)]) -
         ..RoundState::new()
     };
     app.insert_resource(ObjectiveCounters {
-        destroyed_per_player: destroyed.iter().copied().collect(),
+        real_destroyed: destroyed.iter().copied().collect(),
+        fake_destroyed: Default::default(),
     });
     app
 }

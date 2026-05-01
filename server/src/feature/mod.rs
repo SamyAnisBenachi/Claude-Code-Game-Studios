@@ -5,3 +5,4 @@ pub mod auction;
 pub mod board;
 pub mod combat;
 pub mod keyword;
+pub mod objective;

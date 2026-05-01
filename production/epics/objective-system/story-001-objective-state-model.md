@@ -1,7 +1,7 @@
 # Story 001: Objective State Model
 
 > **Epic**: Objective System
-> **Status**: Ready
+> **Status**: In Progress
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01

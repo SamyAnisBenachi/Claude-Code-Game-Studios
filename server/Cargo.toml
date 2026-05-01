@@ -17,7 +17,7 @@ bevy = { version = "0.18", default-features = false, features = ["multi_threaded
 # layer that requires both "client" and "server" features to compile, even in a
 # server-only binary. "raw_connection" maps WebSocket links to Connected entities
 # without netcode, which is the verified localhost WebSocket path for S3-06.
-lightyear = { version = "0.26", default-features = false, features = ["client", "server", "websocket", "raw_connection"] }
+lightyear = { version = "0.26", default-features = false, features = ["client", "server", "websocket", "raw_connection", "replication"] }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
 ron = { workspace = true }
@@ -104,6 +104,10 @@ path = "../tests/unit/session/class_reveal_test.rs"
 [[test]]
 name = "rsm_win_condition_test"
 path = "../tests/unit/rsm/rsm_win_condition_test.rs"
+
+[[test]]
+name = "objective_state_test"
+path = "../tests/unit/objective/objective_state_test.rs"
 
 [[test]]
 name = "rsm_f2_ordering_test"
