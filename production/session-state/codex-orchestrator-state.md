@@ -30,8 +30,6 @@ source of truth for story status.
 
 - CARD-ANIM-002 worker: Tween Cancel/Replace Lifecycle, launched in worktree
   mode after CARD-ANIM-001 closure.
-- HUD-001 worker: HUD Plugin Scaffold, legacy shared-tree worker from before the
-  worktree switch.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -56,6 +54,9 @@ stale/incomplete until explicitly relaunched or closed:
   and `git diff --check` passed for S3-05 files.
 - S3-06: E2E WebSocket Roundtrip implemented at `a32a3df`; local websocket
   test and WASM client release build passed.
+- HUD-001: HUD Plugin Scaffold implemented at `b04748b`; `git diff --check` and
+  `cargo fmt --check` passed. Local client test was blocked by native
+  `aws-lc-sys` dependency compilation; document this in story-done.
 
 ## Recently Closed
 
@@ -77,6 +78,7 @@ stale/incomplete until explicitly relaunched or closed:
 3. S3-05
 4. CA-002
 5. KW-003
+6. HUD-001
 
 Run only one story-done at a time.
 
@@ -106,6 +108,11 @@ Run only one story-done at a time.
   001/002 and RSM `ResolutionPhaseEntered`, now available.
 - CARD-ANIM-004: AnimQueue resolution drain; depends on CARD-ANIM-001 done.
 - CARD-ANIM-009: CI boundary enforcement; depends on CARD-ANIM-001 done.
+- HUD-002: Gold/Mana Display; depends on HUD-001 implementation, now available
+  but should wait for HUD-001 story-done unless explicitly pulled in worktree
+  mode with caveat.
+- HUD-003: Phase Label/Round Counter; depends on HUD-001 implementation, now
+  available but should wait for HUD-001 story-done unless explicitly pulled.
 
 ## Resolved Design Gates
 
@@ -117,8 +124,6 @@ Run only one story-done at a time.
 
 ## Current Dirty-Tree Notes
 
-As of the last check after S3-05 handoff, root dirty files are limited to
-legacy HUD/client and manually generated asset work:
-`client/Cargo.toml`, `client/src/state/mod.rs`, `client/src/ui/mod.rs`,
-`client/src/ui/hud/`, `tests/unit/hud/`, `assets/art/`, and `.codex-tmp/`.
-Use worktree mode for all new code workers.
+As of the last check after HUD-001 handoff, root dirty files are limited to
+untracked `.codex-tmp/` and manually generated `assets/art/`. Use worktree mode
+for all new code workers.
