@@ -6,10 +6,11 @@ use bevy::prelude::*;
 use bevy_tweening::lens::Lens;
 use bevy_tweening::{Tween, TweenAnim, TweeningPlugin};
 use client::card_animations::{
-    AuctionPanelTransitionRequested, AuraPulseRequested, BackgroundColorAlphaLens,
-    BoardRebuildRequested, CardAcquiredAnimReady, CardAnimationsPlugin, DamageNumberSpawnRequested,
-    DisplacementAnimRequested, GoldTickRequested, GroupDrainedSignal, HandHideRequested,
-    HandShowRequested, ObjectiveDestroyedAnimReady, PlacementCancelAllAnimsRequested,
+    AnimQueue, AnimationTimingConfig, AuctionPanelTransitionRequested, AuraPulseRequested,
+    BackgroundColorAlphaLens, BoardRebuildRequested, CardAcquiredAnimReady, CardAnimationsPlugin,
+    DamageNumberSpawnRequested, DisplacementAnimRequested, GoldTickRequested, GroupDrainedSignal,
+    HandHideRequested, HandShowRequested, ObjectiveDestroyedAnimReady,
+    PendingObjectiveDestroyedEvents, PendingPhaseChange, PlacementCancelAllAnimsRequested,
     PlacementRevealAnimReady, SettlementOverlayRequested, SnapBackRequested, SpriteAlphaLens,
     SpriteColorLens, StagedObjectiveRevealQueue, TextColorLens, TimerBarEaseRequested,
     TransformScaleXLens, TrapFlipRequested,
@@ -26,6 +27,16 @@ fn plugin_builds_and_registers_resources_and_messages() {
     assert!(app
         .world()
         .get_resource::<StagedObjectiveRevealQueue>()
+        .is_some());
+    assert!(app
+        .world()
+        .get_resource::<AnimationTimingConfig>()
+        .is_some());
+    assert!(app.world().get_resource::<AnimQueue>().is_some());
+    assert!(app.world().get_resource::<PendingPhaseChange>().is_some());
+    assert!(app
+        .world()
+        .get_resource::<PendingObjectiveDestroyedEvents>()
         .is_some());
     assert!(app
         .world()
