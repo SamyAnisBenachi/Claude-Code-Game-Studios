@@ -820,3 +820,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `KW-003` entry exists in `production/sprint-status.yaml`; file left unchanged.
 - Next recommended: Keyword Story 004 STUN State (`production/epics/keyword-system/story-004-stun-state.md`) after readiness refresh, because its story text also contains stale ADR-018 Proposed/BLOCKED wording.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE
+- Story: `production/epics/hud/story-001-hud-plugin-scaffold.md` - HUD Plugin Scaffold and Pre-Pooled Entity Tree
+- Criteria: 4/4 passing; HUD-01, HUD-24, HUD-11, and the no-`ui_picking` client build gate verified.
+- Test Evidence: `tests/unit/hud/hud_plugin_scaffold_test.rs`; `cargo test -p client --test hud_plugin_scaffold_test --target-dir target\codex-hud-test` passed 4/4.
+- Verification: `cargo check -p client --target-dir target\codex-hud-test`, `cargo fmt -- --check`, `git diff --check`, and `cargo build -p client` passed.
+- Notes: Implementation commits `b04748b`, `cbce522`, and test harness fix `95b58ae` are included in `main` at `c8a8210`; no blocking deviations found.
+- Tech debt logged: None
+- Sprint status: No `HUD-001` entry exists in `production/sprint-status.yaml`; file left unchanged.
+- Next recommended: HUD-002 Gold and Mana Display (`production/epics/hud/story-002-gold-mana-display.md`) or HUD-003 Phase Label/Round Counter (`production/epics/hud/story-003-phase-label-round-counter.md`) after readiness check.

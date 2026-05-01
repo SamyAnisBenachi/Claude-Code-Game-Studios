@@ -40,11 +40,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- HUD-001: HUD Plugin Scaffold implemented at `b04748b`; `git diff --check` and
-  `cargo fmt --check` passed. Local client test was initially blocked by native
-  `aws-lc-sys` dependency compilation, then by stale Bevy 0.18 test harness
-  assumptions. Orchestrator fixed the test harness; `hud_plugin_scaffold_test`
-  and `cargo check -p client` now pass locally.
 - CARD-ANIM-002: Tween Cancel/Replace Lifecycle implemented on branch
   `work/card-anim-002-tween-cancel-replace` at `1354d5a`; merged into `main` at
   `e9103d9`. Local plugin scaffold + tween lifecycle tests and
@@ -79,6 +74,9 @@ None currently tracked here.
 
 ## Recently Closed
 
+- HUD-001: implemented at `b04748b`; Bevy 0.18 BorderColor fix at `cbce522`;
+  test harness fix at `95b58ae`; story-done closed after
+  `hud_plugin_scaffold_test` and `cargo check -p client` passed locally.
 - CA-001: implemented at `05dc190`; story-done committed and pushed at
   `c4c3fa9`.
 - AUC-003: implemented at `44afdb5`; story-done committed and pushed at
@@ -108,14 +106,13 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HUD-001
-2. S3-08
-3. CARD-ANIM-002
-4. BOARD-001
-5. CA-003
-6. CA-006
-7. CARD-ANIM-004
-8. CARD-ANIM-009
+1. S3-08
+2. CARD-ANIM-002
+3. BOARD-001
+4. CA-003
+5. CA-006
+6. CARD-ANIM-004
+7. CARD-ANIM-009
 
 Run only one story-done at a time.
 
@@ -127,8 +124,8 @@ Run only one story-done at a time.
 - KW-004: unblocked by KW-003 story-done; run readiness first because its story
   text may still contain stale ADR-018 Proposed/BLOCKED wording.
 - CARD-ANIM-009: implemented and integrated; pending story-done.
-- HAND-UI-001: can launch after HUD-001 handoff or in worktree mode if it
-  clearly avoids HUD files.
+- HAND-UI-001: unblocked by HUD-001 story-done; use worktree mode for any new
+  implementation.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
@@ -144,11 +141,10 @@ Run only one story-done at a time.
 - CARD-ANIM-008: Input Gating; depends on CARD-ANIM-002 implementation, now
   available but should wait for CARD-ANIM-002 story-done unless explicitly
   pulled in worktree mode.
-- HUD-002: Gold/Mana Display; depends on HUD-001 implementation, now available
-  but should wait for HUD-001 story-done unless explicitly pulled in worktree
-  mode with caveat.
-- HUD-003: Phase Label/Round Counter; depends on HUD-001 implementation, now
-  available but should wait for HUD-001 story-done unless explicitly pulled.
+- HUD-002: Gold/Mana Display; unblocked by HUD-001 story-done. Run readiness
+  before launch.
+- HUD-003: Phase Label/Round Counter; unblocked by HUD-001 story-done. Run
+  readiness before launch.
 
 ## Resolved Design Gates
 

@@ -1,7 +1,7 @@
 # Story 001: HUD Plugin Scaffold and Pre-Pooled Entity Tree
 
 > **Epic**: HUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -29,10 +29,10 @@
 
 *From GDD `design/gdd/hud.md`, scoped to this story:*
 
-- [ ] **HUD-01** (BLOCKING): Exactly 18 HUD entities exist in the `World` after `HudPlugin` initialises, before any S2C message is received: 1 phase label, 1 round counter, 1 own gold label parent, 1 own gold `TextSpan` child (text `""`), 1 opponent gold label parent, 1 opponent gold `TextSpan` child (text `""`), 1 mana label, 1 reserve mana label, and 10 scoreboard dot entities. No new HUD entities are spawned when subsequent update messages arrive.
-- [ ] **HUD-24** (BLOCKING): HUD root `Node` entity has `Visibility::Hidden` when no `S2CPhaseChanged` has been received (LOBBY state).
-- [ ] **HUD-11** (BLOCKING): No `bevy::time::Timer` component on any HUD entity at any time; no `Text` or `TextSpan` content matching the pattern `\d+(ms|s|sec)` appears in any HUD entity.
-- [ ] **CI gate** (ADVISORY): `cargo build -p client` without `ui_picking` feature compiles without panic — enforced by CI build matrix, not a unit test.
+- [x] **HUD-01** (BLOCKING): Exactly 18 HUD entities exist in the `World` after `HudPlugin` initialises, before any S2C message is received: 1 phase label, 1 round counter, 1 own gold label parent, 1 own gold `TextSpan` child (text `""`), 1 opponent gold label parent, 1 opponent gold `TextSpan` child (text `""`), 1 mana label, 1 reserve mana label, and 10 scoreboard dot entities. No new HUD entities are spawned when subsequent update messages arrive.
+- [x] **HUD-24** (BLOCKING): HUD root `Node` entity has `Visibility::Hidden` when no `S2CPhaseChanged` has been received (LOBBY state).
+- [x] **HUD-11** (BLOCKING): No `bevy::time::Timer` component on any HUD entity at any time; no `Text` or `TextSpan` content matching the pattern `\d+(ms|s|sec)` appears in any HUD entity.
+- [x] **CI gate** (ADVISORY): `cargo build -p client` without `ui_picking` feature compiles without panic — enforced by CI build matrix, not a unit test.
 
 ---
 
@@ -94,7 +94,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/hud/hud_plugin_scaffold_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -102,3 +102,12 @@
 
 - Depends on: None (foundation story — no prior HUD story required). `ClientState::InSession` AppState must exist.
 - Unlocks: Stories 002, 003, 004, 005, 006, 007, 008, 009, 010 (all require the entity pool)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 4/4 passing
+**Deviations**: None
+**Test Evidence**: Logic: `tests/unit/hud/hud_plugin_scaffold_test.rs`; `cargo test -p client --test hud_plugin_scaffold_test --target-dir target\codex-hud-test` passed 4/4.
+**Additional Verification**: `cargo check -p client --target-dir target\codex-hud-test`, `cargo fmt -- --check`, `git diff --check`, and `cargo build -p client` without `ui_picking` passed.
+**Code Review**: Skipped - Lean mode.
