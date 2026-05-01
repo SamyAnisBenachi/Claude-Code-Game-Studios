@@ -1,11 +1,13 @@
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
-use client::state::ClientState;
+use client::state::{ClientState, CurrentClientPhase};
 use client::ui::hand::{
-    compute_fan_slot_layout, FanLayoutMetrics, FanSlotIndex, HandFanLayoutConfig,
-    HandFanLayoutState, HandFanViewport, HandSubmitButton, HandSubmitInteractionState,
-    HandUiEntities, HandUiPlugin, HAND_FAN_SLOT_COUNT,
+    compute_fan_slot_layout, FanLayoutMetrics, FanSlotIndex, HandContents, HandFanLayoutConfig,
+    HandFanLayoutState, HandFanViewport, HandSubmitInteractionState, HandUiEntities, HandUiPlugin,
+    HAND_FAN_SLOT_COUNT,
 };
+use shared::card::CardId;
+use shared::protocol::RoundPhase;
 
 const EPSILON: f32 = 0.001;
 
@@ -49,17 +51,10 @@ fn hu_03_single_card_early_return_centers_without_arc_or_tilt() {
 #[test]
 fn hu_03b_zero_cards_skips_formula_hides_slots_and_keeps_submit_active() {
     let mut app = app_with_hand_ui_in_session(0);
-    let submit = app
-        .world_mut()
-        .spawn((
-            HandSubmitButton,
-            HandSubmitInteractionState::Inactive,
-            Text::new("stale"),
-            Visibility::Hidden,
-        ))
-        .id();
 
+    set_phase(&mut app, RoundPhase::Placement);
     app.update();
+    let submit = app.world().resource::<HandUiEntities>().submit_button;
 
     for slot in fan_slot_entities(&mut app) {
         assert_eq!(
@@ -124,11 +119,19 @@ fn app_with_hand_ui_in_session(hand_count: usize) -> App {
         height_px: 600.0,
     });
     app.insert_resource(HandFanLayoutState { hand_count });
+    app.insert_resource(HandContents {
+        cards: (0..hand_count).map(|index| CardId(index as u32)).collect(),
+    });
+    app.world_mut().resource_mut::<CurrentClientPhase>().phase = RoundPhase::Placement;
     app.world_mut()
         .resource_mut::<NextState<ClientState>>()
         .set(ClientState::InSession);
     app.update();
     app
+}
+
+fn set_phase(app: &mut App, phase: RoundPhase) {
+    app.world_mut().resource_mut::<CurrentClientPhase>().phase = phase;
 }
 
 fn qa_metrics() -> FanLayoutMetrics {

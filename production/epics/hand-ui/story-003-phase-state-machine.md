@@ -1,7 +1,8 @@
 # Story 003: Phase State Machine — Visibility & Input Gating
 
 > **Epic**: Hand UI
-> **Status**: Ready
+> **Status**: In Progress
+> **Owner**: codex-hand-ui-003-phase-state-machine
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -105,7 +106,7 @@ Implement a dedicated `hand_ui_phase_transition_system` in `PresentationSet::Pha
 **Required evidence**:
 - `tests/unit/hand-ui/phase_state_machine_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing locally on worker branch
 
 ---
 
