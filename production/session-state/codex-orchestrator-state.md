@@ -40,10 +40,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- KW-003: First Strike and Haste implemented at `874d86b`; local
-  `first_strike_haste_test` and `cargo check -p server` passed. Story text still
-  has stale ADR-018 Proposed/BLOCKED wording; completion review must document
-  that ADR-018 is Accepted in the 2026-05-01 manifest.
 - HUD-001: HUD Plugin Scaffold implemented at `b04748b`; `git diff --check` and
   `cargo fmt --check` passed. Local client test was blocked by native
   `aws-lc-sys` dependency compilation; document this in story-done.
@@ -98,17 +94,19 @@ None currently tracked here.
 - CA-002: Card Acquisition Draft Initial implemented at `2c6c65b`; story-done
   committed at `79d5024`. `production/sprint-status.yaml` has no CA-002 entry,
   so the closeout updated only the story file and session state.
+- KW-003: First Strike and Haste implemented at `874d86b`; story-done was
+  absorbed into asset commit `bee8b47`. `production/sprint-status.yaml` has no
+  KW-003 entry, so the closeout updated only the story file and session state.
 
 ## Story-Done Queue
 
-1. KW-003
-2. HUD-001
-3. S3-08
-4. CARD-ANIM-002
-5. BOARD-001
-6. CA-003
-7. CA-006
-8. CARD-ANIM-004
+1. HUD-001
+2. S3-08
+3. CARD-ANIM-002
+4. BOARD-001
+5. CA-003
+6. CA-006
+7. CARD-ANIM-004
 
 Run only one story-done at a time.
 
@@ -155,6 +153,6 @@ Run only one story-done at a time.
 
 ## Current Dirty-Tree Notes
 
-As of the last check after HUD-001 handoff, root dirty files are limited to
-untracked `.codex-tmp/` and manually generated `assets/art/`. Use worktree mode
-for all new code workers.
+As of the asset sorting pass, generated art assets were moved into `assets/art/`
+and committed. `.codex-tmp/` is ignored as a local scratch workspace. Use
+worktree mode for all new code workers.
