@@ -32,7 +32,7 @@ pub enum JoinRoomOutcome {
     Joined {
         ack: S2CJoinAck,
         slot_update: S2CSlotUpdated,
-        participants: Vec<PlayerId>,
+        slot_update_recipients: Vec<PlayerId>,
     },
     Rejected(S2CJoinRejected),
 }
@@ -179,13 +179,21 @@ pub fn join_room(
         return join_rejected(JoinRejectedReason::RoomNotFound);
     };
 
-    if session.state != LobbyState::LobbyWaiting {
-        return join_rejected(JoinRejectedReason::SessionNotJoinable);
+    match session.state {
+        LobbyState::LobbyWaiting => {}
+        LobbyState::GameActive | LobbyState::GameOver => {
+            return join_rejected(JoinRejectedReason::SessionInProgress);
+        }
+        LobbyState::LobbyReady | LobbyState::LobbyCancelled => {
+            return join_rejected(JoinRejectedReason::SessionNotJoinable);
+        }
     }
 
     if session.slots.0.iter().all(|slot| slot.player.is_some()) {
         return join_rejected(JoinRejectedReason::SessionFull);
     }
+
+    let slot_update_recipients = occupied_players(&session.slots);
 
     let Some(slot) = session
         .slots
@@ -206,7 +214,6 @@ pub fn join_room(
     active_sessions.0.insert(player_id, session.session_id);
 
     let slots = protocol_slots(&session.slots);
-    let participants = occupied_players(&session.slots);
 
     JoinRoomOutcome::Joined {
         ack: S2CJoinAck {
@@ -215,7 +222,7 @@ pub fn join_room(
             slots: slots.clone(),
         },
         slot_update: S2CSlotUpdated { slots },
-        participants,
+        slot_update_recipients,
     }
 }
 
@@ -329,7 +336,7 @@ fn send_join_room_outcome(
         JoinRoomOutcome::Joined {
             ack,
             slot_update,
-            participants,
+            slot_update_recipients,
         } => {
             let _ = sender.send::<S2CJoinAck, ReliableChannel>(
                 ack,
@@ -337,7 +344,7 @@ fn send_join_room_outcome(
                 &NetworkTarget::Single(peer_id),
             );
 
-            let target_peers = participants
+            let target_peers = slot_update_recipients
                 .iter()
                 .filter_map(|player_id| peer_for_player(connections, *player_id))
                 .collect::<Vec<_>>();

@@ -69,12 +69,12 @@ fn test_create_then_join_room_happy_path_updates_slots_and_active_sessions() {
 
     let joined = join_room(&mut rooms, &mut active, player_b, "ABCDEF", 1, 12.0);
 
-    let (ack, slot_update, participants) = match joined {
+    let (ack, slot_update, slot_update_recipients) = match joined {
         JoinRoomOutcome::Joined {
             ack,
             slot_update,
-            participants,
-        } => (ack, slot_update, participants),
+            slot_update_recipients,
+        } => (ack, slot_update, slot_update_recipients),
         JoinRoomOutcome::Rejected(rejection) => {
             panic!("join should succeed, got {:?}", rejection.reason)
         }
@@ -85,7 +85,8 @@ fn test_create_then_join_room_happy_path_updates_slots_and_active_sessions() {
     assert_eq!(ack.slots.len(), 2);
     assert_eq!(ack.slots[1].player_id, Some(player_b));
     assert_eq!(slot_update.slots, ack.slots);
-    assert_eq!(participants, vec![player_a, player_b]);
+    assert_eq!(slot_update_recipients, vec![player_a]);
+    assert!(!slot_update_recipients.contains(&player_b));
     assert_eq!(active.0.get(&player_b), Some(&id));
 
     let session = rooms.get(id).expect("joined room exists");
@@ -202,7 +203,7 @@ fn test_join_rejection_paths_are_distinct() {
     let occupied = join_room(&mut rooms, &mut active, joiner, "ABCDEF", 0, 4.0);
     assert_join_rejection(occupied, JoinRejectedReason::SlotOccupied);
 
-    rooms.get_mut(id).expect("created room exists").state = LobbyState::GameActive;
+    rooms.get_mut(id).expect("created room exists").state = LobbyState::LobbyReady;
     let not_joinable = join_room(&mut rooms, &mut active, joiner, "ABCDEF", 1, 5.0);
     assert_join_rejection(not_joinable, JoinRejectedReason::SessionNotJoinable);
 
@@ -216,6 +217,25 @@ fn test_join_rejection_paths_are_distinct() {
     );
     let already_in_session = join_room(&mut rooms, &mut active, other_owner, "ABCDEF", 1, 7.0);
     assert_join_rejection(already_in_session, JoinRejectedReason::AlreadyInSession);
+}
+
+#[test]
+fn test_join_after_session_start_returns_session_in_progress() {
+    let mut rooms = RoomSessions::default();
+    let mut active = ActiveSessions::default();
+    let owner = player(1);
+    let joiner = player(2);
+    let id = session_id(1);
+
+    create_fixed_room(&mut rooms, &mut active, owner, id, "ABCDEF", 1.0);
+    rooms.get_mut(id).expect("created room exists").state = LobbyState::GameActive;
+
+    let rejected = join_room(&mut rooms, &mut active, joiner, "ABCDEF", 1, 2.0);
+
+    assert_join_rejection(rejected, JoinRejectedReason::SessionInProgress);
+    assert_eq!(active.0.get(&joiner), None);
+    let session = rooms.get(id).expect("created room still exists");
+    assert_eq!(session.slots.0[1].player, None);
 }
 
 #[test]
