@@ -12,11 +12,19 @@ source of truth for story status.
 
 - Do not block new implementation work on GitHub Actions unless CI reports a red
   failure that needs repair.
+- New workers use one Git worktree and one branch per story:
+  `D:\_DEV\claude-code-game-studios-worktrees\<story-id>` on
+  `work/<story-id>-<short-slug>`.
 - Workers run local Developer PowerShell checks, commit explicit owned paths,
-  push, and report commit hash plus CI run if available.
+  push their story branch, and report branch name, commit hash plus CI run if
+  available.
+- The root checkout stays reserved for orchestrator integration merges,
+  story-done, CI triage, and state tracking.
 - Story-done windows are serialized because they edit shared production files.
 - Keep commits scoped. If the pre-commit hook blocks due to mixed files, unstage
   and re-add explicit owned paths.
+- Existing shared-tree workers already launched before the worktree switch may
+  finish normally; do not migrate them mid-story.
 
 ## Live Windows Confirmed By User
 

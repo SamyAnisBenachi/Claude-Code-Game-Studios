@@ -33,6 +33,20 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 @.Codex/docs/coordination-rules.md
 
+## Parallel Worker Isolation
+
+Implementation workers must use one Git worktree and one branch per story. The
+root checkout `D:\_DEV\claude-code-game-studios` is reserved for orchestration,
+integration merges, and serialized story-done updates.
+
+- Worker branch format: `work/<story-id>-<short-slug>`
+- Worker path format: `D:\_DEV\claude-code-game-studios-worktrees\<story-id>`
+- Workers push their branch, not `main`
+- The orchestrator merges worker branches into `main`
+- `/story-done`, `production/sprint-status.yaml`, and
+  `production/session-state/active.md` updates are serialized by the
+  orchestrator
+
 ## Collaboration Protocol
 
 **User-driven collaboration, not autonomous execution.**

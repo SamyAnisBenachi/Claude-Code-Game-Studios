@@ -36,6 +36,45 @@ You are NOT the designer. If a story has design ambiguity → STOP and tell the 
 
 ---
 
+## Default Parallel Workflow: Worktree Isolation
+
+For parallel implementation, the default workflow is now **one story = one Git worktree = one branch**.
+
+The main repository checkout at `D:\_DEV\claude-code-game-studios` is the orchestrator/integration checkout. Worker agents must not implement code there unless the user explicitly says the task is an orchestrator task.
+
+Default paths:
+
+```text
+D:\_DEV\claude-code-game-studios                         # orchestrator/main
+D:\_DEV\claude-code-game-studios-worktrees\<story-id>    # worker worktree
+```
+
+Default branch naming:
+
+```text
+work/<story-id>-<short-slug>
+```
+
+Worker rules:
+- Create a dedicated worktree before editing implementation files.
+- Work only inside that worktree path.
+- Commit to the story branch, not `main`.
+- Push the story branch with `git push -u origin work/<story-id>-<short-slug>`.
+- Do not merge into `main`.
+- Do not run `/story-done`.
+- Report branch name, commit hash, local checks, files changed, and CI run id if one exists.
+
+Orchestrator rules:
+- Assign story ids and branch names.
+- Merge worker branches into `main`.
+- Push `main`.
+- Serialize `/story-done` because it edits shared tracking files.
+- Resolve merge conflicts or route them back to the owning worker.
+
+Existing workers already launched in the shared checkout may finish normally. All new worker prompts should use worktree isolation.
+
+---
+
 ## Bootstrap — Read First, Always
 
 In this exact order:
@@ -83,9 +122,9 @@ Read sprint-status.yaml + active.md + last 10 git commits. Reply with:
 
 1. Find next `ready-for-dev` story in `sprint-status.yaml`
 2. If multiple ready, recommend the foundational one first
-3. **Reserve it before reading/implementing:** edit that story in `sprint-status.yaml` to `status: in-progress`, set `owner` to a unique window id, and save the file
-4. Re-read `sprint-status.yaml`; if another owner already claimed the story, pick a different `ready-for-dev` story instead
-5. Tell the user: claimed story, owner id, next command/window, parallelizable?, how to know the claim worked
+3. If this is a worker implementation task, create a dedicated worktree/branch for the story before editing code. Use branch `work/<story-id>-<short-slug>`.
+4. Claim the story in that branch before implementation: edit that story in `sprint-status.yaml` to `status: in-progress`, set `owner` to a unique window id, and save the file. The remote branch is the live reservation; the main tracker updates when the orchestrator merges the branch.
+5. Tell the user: story, branch, owner id, next command/window, parallelizable?, how to know the claim worked
 6. Read story file fully
 7. Read every ADR referenced
 8. Read the GDD section the story points to
@@ -96,7 +135,7 @@ Read sprint-status.yaml + active.md + last 10 git commits. Reply with:
 13. Review `git status --short`, `git diff`, and `git diff --cached --name-status` to identify this window's changes and any already-staged work from other windows
 14. Prepare the commit with explicit paths/pathspecs only; never use `git add .`, and minimize unrelated parallel-agent/user work
 15. Commit: `<story-id> impl: <short title>`
-16. Push: `git push origin main`
+16. Push the worker branch: `git push -u origin work/<story-id>-<short-slug>`
 17. Find/report the CI run id with `gh run list --limit 3`, but **do not wait for GitHub Actions by default**
 18. Handoff to the orchestrator: story id, owner id, local command/result, commit hash, pushed branch, CI run id if known, files changed, and any skipped verification
 19. Leave `sprint-status.yaml` as `in-progress` until CI is green and story-done/completion tracking is performed
@@ -105,12 +144,15 @@ Read sprint-status.yaml + active.md + last 10 git commits. Reply with:
 
 Codex worker windows optimize for fast local iteration:
 - Run local Cargo tests from Developer PowerShell for VS 2026 before pushing.
-- Push implementation commits after local tests pass.
+- Push implementation commits to the story branch after local tests pass.
+- Do not push directly to `origin/main`; the orchestrator owns main merges.
 - Do not sit idle watching GitHub Actions unless the user explicitly asks that worker to be the CI watcher.
 - Keep the story claimed (`status: in-progress`, `owner: ...`) after implementation push.
 - Report enough detail for the orchestrator to track CI and finish story-done.
 
 The orchestrator window owns final verification:
+- Fetch and merge worker branches into `main`.
+- Push `origin/main` after integration checks.
 - Periodically check `gh run list`.
 - Watch relevant CI runs when needed.
 - If CI fails, route the failure back to the owning worker with logs.
@@ -120,8 +162,8 @@ The orchestrator window owns final verification:
 ### Story Reservation Protocol
 
 Before any Codex window starts implementation, it must claim exactly one story.
-This is the only approved direct edit to `sprint-status.yaml` outside `/story-done`;
-it is a temporary coordination claim, not a completion update.
+In worktree mode, the remote story branch is the live reservation and the `sprint-status.yaml` claim travels with that branch until orchestrator merge.
+This is a temporary coordination claim, not a completion update.
 
 **Claim format in `production/sprint-status.yaml`:**
 
@@ -141,6 +183,7 @@ Rules:
 - Treat `in-progress` stories as unavailable, even if they look parallel-safe.
 - Never use generic "implement next" in multiple windows without this claim step.
 - Do not claim more than one story per Codex window.
+- In worktree mode, create and push a unique remote branch early. If branch creation or push fails because the branch already exists, stop and ask the orchestrator for another story.
 - Use a stable owner id from story id + purpose; if that id is already present, append a short timestamp.
 - If you abandon a story before code changes, restore `status: ready-for-dev` and `owner: ""`, then tell the user.
 - If you discover a blocker after claiming, set `status: blocked`, fill `blocker`, clear `owner`, and tell the user the required Claude Code command (`/story-readiness`, `/quick-design`, or `/architecture-decision`).
@@ -151,7 +194,9 @@ Rules:
 
 Every Codex worker is responsible for committing its own completed work. Do not leave completed implementation changes uncommitted unless the user explicitly asks to pause before commit.
 
-Important reality: all Codex windows in this project share one working tree and one Git index. Perfect isolation is the goal, but small coordination-file overlap is acceptable when it is clearly reported. The rule is **minimize cross-agent contamination**, not "stop all work because the workspace is busy."
+Important reality for legacy/current workers: some Codex windows may still share one working tree and one Git index. Perfect isolation is the goal, but small coordination-file overlap is acceptable when it is clearly reported. The rule is **minimize cross-agent contamination**, not "stop all work because the workspace is busy."
+
+For new workers, use worktree isolation. The shared-tree hygiene rules below are fallback rules for old workers or orchestrator/story-done tasks.
 
 Rules:
 - Commit at coherent checkpoints: one implementation commit after code/tests pass locally or are ready for CI, and one separate completion-tracking commit after CI is green.
@@ -166,6 +211,7 @@ Rules:
 - If a file contains significant mixed code changes from multiple agents, stop and ask the orchestrator how to split it. For minor shared metadata overlap, prefer the smallest sensible commit and document the overlap.
 - Include commit details in the handoff: commit hash, commit subject, files changed, tests run, CI run ID/status, and any skipped verification.
 - If push fails because another worker pushed first, pull/rebase carefully, preserve other workers' commits and claims, re-run relevant checks, then push.
+- In worktree mode, do not rebase/merge `main` on your own unless necessary to fix a conflict in your branch. If a conflict occurs, report it to the orchestrator with `git status --short` and the conflicted files.
 
 ### "What can I run in parallel?"
 
@@ -271,9 +317,9 @@ The user is non-technical. Tell them honestly when they can SEE / PLAY something
 
 ## Parallelism Rules
 
-Multiple Codex sessions can implement multiple stories simultaneously IF they don't touch the same files.
+Multiple Codex sessions can implement multiple stories simultaneously IF they use separate worktrees/branches and the stories do not touch the same files.
 
-Parallel work requires story claims first. When asked "what can run in parallel?", report both file overlap and reservation state:
+Parallel work requires story assignments/claims first. When asked "what can run in parallel?", report file overlap, branch/worktree assignment, and reservation state:
 - `ready-for-dev` + empty `owner` = available
 - `in-progress` + non-empty `owner` = already claimed
 - `blocked` = do not implement until blocker is resolved
@@ -298,7 +344,7 @@ These get touched by every story-done — serialize when updating:
 - `production/sprint-status.yaml`
 - `production/session-state/active.md`
 
-→ Solution: each Codex session claims first, implements one story, then commits separately; git handles merge.
+→ Solution: workers implement on story branches; orchestrator serializes merges and story-done updates on `main`.
 
 ---
 
@@ -465,6 +511,6 @@ You are the implementation orchestrator for Lanes and Lies (Bevy 0.18 + Lightyea
 1. Read CODEX.md fully.
 2. Read production/sprint-status.yaml and production/session-state/active.md.
 3. Tell me where we are, what's next, and whether parallelizable.
-4. If I say "implement next" — first claim the next ready-for-dev story in sprint-status.yaml with status: in-progress and a unique owner, then read its full context (story + ADRs + GDD + control-manifest), implement it, write tests, run local Cargo tests from Developer PowerShell for VS 2026, commit, push, and hand off the CI run id/details to the orchestrator. Do not wait for GitHub Actions or mark Done unless explicitly assigned orchestrator/story-done duty.
+4. If I say "implement next" — use a dedicated worktree/branch (`work/<story-id>-<short-slug>`), claim the story in that branch, read full context (story + ADRs + GDD + control-manifest), implement it, write tests, run local Cargo tests from Developer PowerShell for VS 2026, commit, push the branch, and hand off branch/commit/CI details to the orchestrator. Do not push main, wait for GitHub Actions, or mark Done unless explicitly assigned orchestrator/story-done duty.
 5. After every action, tell me: next concrete command, which window, parallelizable or not, how to know it worked.
 ```
