@@ -28,7 +28,6 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- BOARD-001 story-done: assumed launched from the current orchestrator batch.
 - HAND-UI-001 worker: assumed launched from the current orchestrator batch.
 - HUD-003 worker: assumed launched from the current orchestrator batch.
 - CARD-ANIM-006 worker: completed on branch
@@ -76,10 +75,6 @@ None currently tracked here.
   based before recent tracking and BOARD-002 commits. Local `stun_test`,
   `cargo check -p server`, `cargo check -p shared`, `cargo fmt --all -- --check`,
   and `git diff --check` passed.
-- BOARD-001: Board Grid Initialization implemented on branch
-  `work/board-001-grid-initialization` at `7d38a34`; merged into `main` at
-  `6e5d80b`. Local `board_grid_initialization_test`, `cargo check -p server`,
-  and `cargo fmt -p server --check` passed.
 - BOARD-002: Standard Unit Movement implemented on branch
   `work/board-002-standard-unit-movement` at `4a76028`; cherry-picked into
   `main` at `0d8e41c`. Local `standard_movement_test`, `cargo check -p server`,
@@ -96,6 +91,9 @@ None currently tracked here.
 
 ## Recently Closed
 
+- BOARD-001: Board Grid Initialization implemented on branch
+  `work/board-001-grid-initialization` at `7d38a34`; merged into `main` at
+  `6e5d80b`; story-done committed at `e58533d`.
 - HUD-001: implemented at `b04748b`; Bevy 0.18 BorderColor fix at `cbce522`;
   test harness fix at `95b58ae`; story-done closed after
   `hud_plugin_scaffold_test` and `cargo check -p client` passed locally.
@@ -134,16 +132,15 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. BOARD-001
-2. CA-003
-3. CA-006
-4. CARD-ANIM-004
-5. CARD-ANIM-009
-6. BOARD-002
-7. KW-004
-8. CARD-ANIM-008
-9. HUD-002
-10. CARD-ANIM-006
+1. CA-003
+2. CA-006
+3. CARD-ANIM-004
+4. CARD-ANIM-009
+5. BOARD-002
+6. KW-004
+7. CARD-ANIM-008
+8. HUD-002
+9. CARD-ANIM-006
 
 Run only one story-done at a time.
 
