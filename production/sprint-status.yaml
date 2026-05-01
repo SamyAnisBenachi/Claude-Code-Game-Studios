@@ -23,11 +23,11 @@ stories:
     name: "GSS Story 2: Room Create and Join"
     file: "production/epics/game-session-system/story-002-room-create-join.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: "codex-s3-02-room-create-join"
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-01"
 
   - id: "S3-03"
     name: "GSS Story 3: Class Selection and Reveal"

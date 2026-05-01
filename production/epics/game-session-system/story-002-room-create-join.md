@@ -1,7 +1,7 @@
 # Story 002: Room Create and Join
 
 > **Epic**: Game Session System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-04-29
@@ -27,7 +27,7 @@
 
 ## Acceptance Criteria
 
-- [ ] `handle_create_room` system exists in `server/src/core/session/system.rs` and:
+- [x] `handle_create_room` system exists in `server/src/core/session/system.rs` and:
   - Generates a 6-character alphanumeric uppercase room code (e.g. `"G7TK2M"`) using server-side generation (no client input)
   - Assigns a new `SessionId` (UUID v4)
   - Initialises `SessionSlots` per `GameMode` (2 slots for `OneVOne`)
@@ -36,7 +36,7 @@
   - Sends `S2CRoomCreated { session_id, room_code, slots }` unicast to the creating player on `ReliableChannel`
   - Idempotent retry: if the requesting `PlayerId` already owns a session in `LobbyState::LobbyWaiting`, returns `S2CRoomCreated` with the existing `session_id` and `room_code` — does not create a second session
   - If the requesting `PlayerId` already owns a session in any state other than `LobbyState::LobbyWaiting`, sends `S2CCreateRoomRejected { reason: AlreadyInSession }` and returns
-- [ ] `handle_join_room` system exists in `server/src/core/session/system.rs` and:
+- [x] `handle_join_room` system exists in `server/src/core/session/system.rs` and:
   - Looks up the session by `RoomCode`; sends `S2CJoinRejected { reason: RoomNotFound }` if not found
   - Sends `S2CJoinRejected { reason: SessionFull }` if all slots are occupied
   - Sends `S2CJoinRejected { reason: SessionNotJoinable }` if `LobbyState` is not `LobbyWaiting`
@@ -44,11 +44,11 @@
   - On success: assigns the joining player to the first empty slot, inserts `PlayerId` into `LobbyHeartbeats` at `now`
   - On success: sends `S2CJoinAck { session_id, room_code, slots }` unicast to the joining player on `ReliableChannel`
   - On success: broadcasts `S2CSlotUpdated { slots }` (full `Vec<SessionSlot>`) to all session participants including the joining player on `ReliableChannel`
-- [ ] A server-level `ActiveSessions(HashMap<PlayerId, SessionId>)` resource exists, is initialised at server startup, and is updated by both `handle_create_room` and `handle_join_room`
-- [ ] Room code generation produces only uppercase alphanumeric characters (A–Z, 0–9) and is exactly 6 characters
-- [ ] `GameSessionPlugin` registers both handlers in the Bevy `Update` schedule
-- [ ] `cargo check -p server` passes with zero warnings
-- [ ] Integration test in `tests/integration/session/room_create_join_test.rs` covers:
+- [x] A server-level `ActiveSessions(HashMap<PlayerId, SessionId>)` resource exists, is initialised at server startup, and is updated by both `handle_create_room` and `handle_join_room`
+- [x] Room code generation produces only uppercase alphanumeric characters (A–Z, 0–9) and is exactly 6 characters
+- [x] `GameSessionPlugin` registers both handlers in the Bevy `Update` schedule
+- [x] `cargo check -p server` passes with zero warnings
+- [x] Integration test in `tests/integration/session/room_create_join_test.rs` covers:
   - Happy path: create room → join room → assert both players in slots, `LobbyState == LobbyWaiting`
   - Idempotent create: same player sends `C2SCreateRoom` twice → same `session_id` returned
   - Full session rejection: third player attempts to join a two-player session → `SessionFull`
@@ -120,7 +120,7 @@
 
 **Story Type**: Integration
 **Required evidence**: `tests/integration/session/room_create_join_test.rs` — all test cases passing
-**Status**: [ ] Not yet created
+**Status**: [x] Passing locally (`cargo test --test room_create_join_test`: 7 passed; `cargo check -p server`: passed with zero warnings)
 
 ---
 
@@ -128,3 +128,11 @@
 
 - Depends on: Story 001 (all session types — `SessionSlot`, `LobbyState`, `SessionId`, `RoomCode`, `SessionSlots`, etc.)
 - Unlocks: Story 003 (class selection requires room + slot setup), Story 005 (disconnect cancel requires participant tracking established here)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 7/7 passing
+**Deviations**: Advisory only - story manifest v2026-04-29 is older than current control manifest v2026-05-01. Current GDD/registry supersedes the story wording for slot updates: joiner receives only `S2CJoinAck`; existing occupants receive `S2CSlotUpdated`. Implementation matches the current rule.
+**Test Evidence**: Integration test at `tests/integration/session/room_create_join_test.rs`; `cargo test --test room_create_join_test` passed 7/7 and `cargo check -p server` passed with zero warnings.
+**Code Review**: Skipped - Lean mode.

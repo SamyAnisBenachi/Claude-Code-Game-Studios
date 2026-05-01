@@ -696,3 +696,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `KW-001` set to `done` in `production/sprint-status.yaml`; existing in-progress claims for `S3-02`, `S3-04`, `S3-06`, and `S3-08` preserved.
 - Next recommended: Keyword Story 002 Movement Formulas at `production/epics/keyword-system/story-002-movement-formulas.md` after readiness check.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/game-session-system/story-002-room-create-join.md` - Room Create and Join
+- Criteria: 7/7 passing; create room, join room, ActiveSessions guard, room code generation, plugin registration, `cargo check -p server`, and integration coverage verified.
+- Test Evidence: `tests/integration/session/room_create_join_test.rs`; `cargo test --test room_create_join_test` -> 7 passed, 0 failed; `cargo check -p server` passed with zero warnings.
+- Notes: Advisory only - story manifest v2026-04-29 is older than current control manifest v2026-05-01. Current GDD/registry supersedes the story wording for slot updates: joiner receives only `S2CJoinAck`; existing occupants receive `S2CSlotUpdated`; implementation matches the current rule.
+- Tech debt logged: None
+- Sprint status: `S3-02` set to `done` in `production/sprint-status.yaml`; existing in-progress claims for `S3-04`, `S3-06`, and `S3-08` preserved; `S3-03` preserved as `ready-for-dev`.
+- Next recommended: S3-03 Class Selection and Reveal at `production/epics/game-session-system/story-003-class-selection-reveal.md` after readiness check.
