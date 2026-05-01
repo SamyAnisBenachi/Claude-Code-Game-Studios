@@ -46,7 +46,8 @@ source of truth for story status.
   per user rule, assume launched unless contradicted. Completed on branch
   `work/hand-ui-003-phase-state-machine` at `c6e5504`; cherry-picked into
   `main` at `614e68e`. Worker checks passed; root `cargo fmt -p client --
-  --check` and `git diff --check HEAD~1..HEAD` passed. Window can be cleared.
+  --check` and `git diff --check HEAD~1..HEAD` passed; story-done committed at
+  `d55a3d5`. Window can be cleared.
 - HUD-005 worker: launch prompt issued while CA-005 story-done is active; per
   user rule, assume launched unless contradicted. Completed on branch
   `work/hud-005-phase-transitions` at `5061728`; cherry-picked into `main` at
@@ -85,19 +86,23 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed.
-- HAND-UI-003: Phase State Machine implemented on branch
-  `work/hand-ui-003-phase-state-machine` at `c6e5504`; cherry-picked into
-  `main` at `614e68e`. Worker reported targeted Hand UI tests and
-  `cargo check -p client` passing. Root `cargo fmt -p client -- --check` and
-  `git diff --check HEAD~1..HEAD` passed.
 - BOARD-005: Placement Buffer Phase Integration implemented locally on branch
   `work/board-005-placement-buffer-phase-integration` at `4946ea2`; cherry-picked
   into `main` at `86ecbcb`. Root `cargo fmt -p server -- --check`,
   `cargo test -p server --test placement_buffer_test --test placement_occupancy_test
   --test spawn_range_validation_test --test resolve_combat_scaffold_test`,
   `cargo check -p server`, and `git diff --check HEAD~1..HEAD` passed.
+- RSM-005: Disconnect Handling implemented locally on branch
+  `work/rsm-005-disconnect-handling` at `8007ad1`; worker push was blocked by
+  external GitHub transfer approval, so root cherry-picked/rebased it onto
+  `main` at `e4fb6a4`. Root `cargo fmt -p server -- --check`,
+  `cargo test -p server rsm_disconnect`, `cargo check -p server`, and
+  `git diff --check HEAD~1..HEAD` passed.
 ## Recently Closed
 
+- HAND-UI-003: Phase State Machine implemented on branch
+  `work/hand-ui-003-phase-state-machine` at `c6e5504`; cherry-picked into
+  `main` at `614e68e`; story-done committed at `d55a3d5`.
 - HUD-005: Phase Transitions implemented on branch
   `work/hud-005-phase-transitions` at `5061728`; cherry-picked into `main` at
   `9104400`; story-done committed at `3230dce`.
@@ -199,19 +204,19 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HAND-UI-003
-2. BOARD-005
-3. ECO-005
-4. BOARD-006
+1. BOARD-005
+2. ECO-005
+3. BOARD-006
+4. RSM-005
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- HAND-UI-003: implemented and integrated; pending story-done.
 - BOARD-005: implemented and integrated; pending story-done.
 - ECO-005: implemented and integrated; pending story-done.
 - BOARD-006: implemented and integrated; pending story-done.
+- RSM-005: implemented and integrated; pending story-done.
 - AUC-004: story dependency on economy-system story-005 is implemented but not
   formally closed; still verify OQ9 pre-implementation gate before launch.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
@@ -222,10 +227,10 @@ Run only one story-done at a time.
 Batch launched:
 - ECO-005: integrated, pending story-done.
 - BOARD-006: integrated, pending story-done.
-- RSM-005: still awaiting worker result.
+- RSM-005: integrated, pending story-done.
 
 No story-done window is currently active in this tracker. The next serialized
-closure is HAND-UI-003.
+closure is BOARD-005.
 
 ## Resolved Design Gates
 
