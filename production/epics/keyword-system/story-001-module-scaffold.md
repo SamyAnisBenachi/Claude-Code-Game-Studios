@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature (M3)
 > **Type**: Logic
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -14,8 +14,6 @@
 
 **ADR Governing Implementation**: ADR-018 (Keyword System — ECS State Architecture) + ADR-022 (Timing Trigger Observer Architecture)
 **ADR Decision Summary**: All 6 persistent keyword states co-located in a single `UnitKeywordState` component per board unit entity. Module tree at `server/feature/keyword/` with `effects.rs` called by combat resolution. Five timing triggers dispatched via global Bevy Observers; COUNTERATTACK and INJURED dispatched inline. Protocol types in `protocol/src/keyword.rs`.
-
-**BLOCKED**: ADR-018 is Proposed — run `/architecture-decision` to advance it to Accepted before opening this story. ADR-022 is also Proposed and must be Accepted. Additionally, ADR-006 amendment (extend `SimpleKeyword` enum; rename `Charge`→`Haste`; add `VulnerabilityX`/`RepelX`/`AttractX`; change serde to adjacent tag) and 5 Verification Required items from ADR-022 must be resolved.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
 **Engine Notes**:
