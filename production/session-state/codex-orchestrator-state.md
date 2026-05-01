@@ -28,8 +28,6 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- CARD-ANIM-009 story-done: launch prompt issued after CARD-ANIM-004 closure;
-  per user rule, assume launched unless contradicted.
 - CA-004 worker: completed on branch `work/ca-004-refresh-cost` at `f26f738`;
   cherry-picked into `main` at `5cb53a8`. Window can be cleared.
 - BOARD-004 worker: completed on branch `work/BOARD-004-placement-occupancy`
@@ -48,10 +46,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- CARD-ANIM-009: CI Boundary Enforcement implemented on branch
-  `work/card-anim-009-ci-boundary-enforcement` at `55b5331`; cherry-picked into
-  `main` at `75e11ea` because the branch was based before the asset-sorting
-  commits. Local grep boundary check and `git diff --check` passed.
 - CARD-ANIM-008: Input Gating implemented on branch
   `work/card-anim-008-input-gating` at `0d75fb0`; cherry-picked into `main` at
   `9308bf3` because the branch was based before recent tracking and feature
@@ -113,6 +107,9 @@ None currently tracked here.
 
 ## Recently Closed
 
+- CARD-ANIM-009: CI Boundary Enforcement implemented on branch
+  `work/card-anim-009-ci-boundary-enforcement` at `55b5331`; cherry-picked into
+  `main` at `75e11ea`; story-done committed at `30bff20`.
 - CARD-ANIM-004: AnimQueue Resolution Drain implemented on branch
   `work/card-anim-004-animqueue-resolution-drain` at `2ecd58f`; merged into
   `main` at `b7204e5`; story-done committed at `aec3b7f`.
@@ -166,18 +163,17 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. CARD-ANIM-009
-2. BOARD-002
-3. KW-004
-4. CARD-ANIM-008
-5. HUD-002
-6. CARD-ANIM-006
-7. HUD-003
-8. KW-005
-9. BOARD-003
-10. HAND-UI-002
-11. CA-004
-12. BOARD-004
+1. BOARD-002
+2. KW-004
+3. CARD-ANIM-008
+4. HUD-002
+5. CARD-ANIM-006
+6. HUD-003
+7. KW-005
+8. BOARD-003
+9. HAND-UI-002
+10. CA-004
+11. BOARD-004
 
 Run only one story-done at a time.
 
@@ -191,7 +187,6 @@ Run only one story-done at a time.
 - KW-004: unblocked by KW-003 story-done; run readiness first because its story
   text may still contain stale ADR-018 Proposed/BLOCKED wording. Implemented and
   integrated; pending story-done.
-- CARD-ANIM-009: implemented and integrated; pending story-done.
 - CARD-ANIM-008: implemented and integrated; pending story-done. Manual CA-13b
   and CA-22 evidence remains deferred until the dependent UI exists.
 - HUD-002: implemented and integrated; pending story-done.
@@ -210,8 +205,7 @@ Run only one story-done at a time.
 Batch launched:
 - CA-005: `production/epics/card-acquisition/story-005-purchase-flow.md`
 
-CARD-ANIM-009 story-done is the active serialized closure. Do not launch another
-story-done until it returns.
+The serialized story-done slot is free. Next queued closure is BOARD-002.
 
 ## Resolved Design Gates
 
