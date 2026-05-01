@@ -1,7 +1,7 @@
 # Story 001: Keyword System Module Scaffold
 
 > **Epic**: Keyword System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -34,17 +34,17 @@
 
 *This is a scaffold story — no behavioral GDD ACs. The scaffold is "done" when all downstream stories can compile against its interface.*
 
-- [ ] `server/feature/keyword/` module tree exists with all files: `mod.rs`, `components.rs`, `events.rs`, `observers.rs`, `resources.rs`, `effects.rs`, `state_eval.rs`, `movement.rs`
-- [ ] `UnitKeywordState` component defined in `components.rs` with all 6 fields: `shield_active: bool`, `stun_active: bool`, `silenced_until_round: Option<u32>`, `leader_bonus_atk: u8`, `leader_bonus_hp: u8`, `bodyguard_protects: Option<Entity>`, `outnumbered_active: bool`
-- [ ] `KeywordPlugin::build()` registers: 5 global observers (`on_unit_appeared`, `on_unit_died`, `on_final_blow_dealt`, `on_start_of_turn`, `on_end_of_turn`), `ChainDeathBuffer` resource, `start_of_turn_dispatch_system`, `app.add_message::<KeywordTriggered>()`
-- [ ] `events.rs` defines: `UnitAppeared { sub_step: u8 }`, `UnitDied { attacker: Option<Entity> }`, `FinalBlowDealt { killed: Entity, sub_step: u8 }`, `StartOfTurnTriggered`, `EndOfTurnTriggered` — all `#[derive(Event)]`
-- [ ] `resources.rs` defines: `ChainDeathBuffer(pub VecDeque<(Entity, Option<Entity>)>)` with `#[derive(Resource, Default)]`
-- [ ] `protocol/src/keyword.rs` defines: `KeywordKind`, `KeywordPayload`, `InjuredGrantedKeyword` (4 variants: `FirstStrike, Counterattack, Range, Shield`), `DisplacementEvent`, `DisplacementKind` — all `#[derive(Serialize, Deserialize)]`
-- [ ] All effect functions in `effects.rs` stubbed with `todo!()`: `apply_first_strike`, `check_shield_absorb`, `apply_bodyguard_bond`, `apply_repel`, `apply_attract`, `apply_teleport`, `apply_change_lane`, `check_irremovable`, `check_counterattack_proximity`, `apply_counterattack`
-- [ ] All observer handler bodies in `observers.rs` stubbed with `todo!()`: `on_unit_appeared`, `on_unit_died`, `on_final_blow_dealt`, `on_start_of_turn`, `on_end_of_turn`, `start_of_turn_dispatch_system`
-- [ ] State eval functions in `state_eval.rs` stubbed with `todo!()`: `leader_snapshot_system`, `eval_outnumbered_system`, `eval_injured_bonuses`, `bodyguard_cleanup_system`
-- [ ] Movement formulas in `movement.rs` stubbed with `todo!()`: `repel_destination(target_cell: u8, owner: PlayerSide, x: u8) -> u8`, `attract_destination(caster_cell: u8, target_cell: u8, x: u8) -> u8`
-- [ ] Integration smoke test confirms `app.add_message::<KeywordTriggered>()` is registered and a test `MessageWriter::write()` does not panic
+- [x] `server/feature/keyword/` module tree exists with all files: `mod.rs`, `components.rs`, `events.rs`, `observers.rs`, `resources.rs`, `effects.rs`, `state_eval.rs`, `movement.rs`
+- [x] `UnitKeywordState` component defined in `components.rs` with all 6 fields: `shield_active: bool`, `stun_active: bool`, `silenced_until_round: Option<u32>`, `leader_bonus_atk: u8`, `leader_bonus_hp: u8`, `bodyguard_protects: Option<Entity>`, `outnumbered_active: bool`
+- [x] `KeywordPlugin::build()` registers: 5 global observers (`on_unit_appeared`, `on_unit_died`, `on_final_blow_dealt`, `on_start_of_turn`, `on_end_of_turn`), `ChainDeathBuffer` resource, `start_of_turn_dispatch_system`, `app.add_message::<KeywordTriggered>()`
+- [x] `events.rs` defines: `UnitAppeared { sub_step: u8 }`, `UnitDied { attacker: Option<Entity> }`, `FinalBlowDealt { killed: Entity, sub_step: u8 }`, `StartOfTurnTriggered`, `EndOfTurnTriggered` — all `#[derive(Event)]`
+- [x] `resources.rs` defines: `ChainDeathBuffer(pub VecDeque<(Entity, Option<Entity>)>)` with `#[derive(Resource, Default)]`
+- [x] `protocol/src/keyword.rs` defines: `KeywordKind`, `KeywordPayload`, `InjuredGrantedKeyword` (4 variants: `FirstStrike, Counterattack, Range, Shield`), `DisplacementEvent`, `DisplacementKind` — all `#[derive(Serialize, Deserialize)]`
+- [x] All effect functions in `effects.rs` stubbed with `todo!()`: `apply_first_strike`, `check_shield_absorb`, `apply_bodyguard_bond`, `apply_repel`, `apply_attract`, `apply_teleport`, `apply_change_lane`, `check_irremovable`, `check_counterattack_proximity`, `apply_counterattack`
+- [x] All observer handler bodies in `observers.rs` stubbed with `todo!()`: `on_unit_appeared`, `on_unit_died`, `on_final_blow_dealt`, `on_start_of_turn`, `on_end_of_turn`, `start_of_turn_dispatch_system`
+- [x] State eval functions in `state_eval.rs` stubbed with `todo!()`: `leader_snapshot_system`, `eval_outnumbered_system`, `eval_injured_bonuses`, `bodyguard_cleanup_system`
+- [x] Movement formulas in `movement.rs` stubbed with `todo!()`: `repel_destination(target_cell: u8, owner: PlayerSide, x: u8) -> u8`, `attract_destination(caster_cell: u8, target_cell: u8, x: u8) -> u8`
+- [x] Integration smoke test confirms `app.add_message::<KeywordTriggered>()` is registered and a test `MessageWriter::write()` does not panic
 
 ---
 
@@ -97,7 +97,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/integration/keyword/plugin_smoke_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -110,3 +110,11 @@
   - ADR-006 amendment merged (extended `SimpleKeyword` enum)
   - ADR-022 Verification Required × 5 resolved
 - Unlocks: Stories 002–016 (all downstream stories depend on scaffold)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 11/11 passing
+**Deviations**: Advisory only - protocol keyword types live in `shared/src/keyword.rs` because this workspace uses `shared/`, `server/`, and `client/` crates rather than a standalone `protocol/` crate; current GDD/ADR/control-manifest wording supports the implementation. `docs/architecture/tr-registry.yaml` has stale wording for TR-KW-006 and TR-KW-012; registry was not edited during closure.
+**Test Evidence**: Logic story evidence at `tests/integration/keyword/plugin_smoke_test.rs`; `cargo test -p server --test keyword_plugin_smoke_test` passed with 2/2 tests; `cargo check --workspace` passed with warnings only.
+**Code Review**: Skipped - lean review mode.

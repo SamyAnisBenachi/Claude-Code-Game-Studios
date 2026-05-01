@@ -686,3 +686,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `AUC-002` set to `done` in `production/sprint-status.yaml`; existing in-progress claims for `S3-02` and `KW-001` preserved.
 - Next recommended: AUC-003 AbortAuction Handler (`production/epics/auction-system/story-003-auction-abort-handler.md`) and AUC-004 Bid Validation Gate (`production/epics/auction-system/story-004-bid-validation-gate.md`) are ready candidates.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/keyword-system/story-001-module-scaffold.md` - Keyword System Module Scaffold
+- Criteria: 11/11 passing; scaffold files, keyword component, observer/message/resource registration, protocol keyword payload types, stubs, and smoke evidence verified.
+- Test Evidence: `tests/integration/keyword/plugin_smoke_test.rs`; `cargo test -p server --test keyword_plugin_smoke_test` -> 2 passed, 0 failed. `cargo check --workspace` passed with warnings only.
+- Notes: Advisory only - protocol keyword types live in `shared/src/keyword.rs` in this three-crate workspace; `docs/architecture/tr-registry.yaml` has stale wording for TR-KW-006 and TR-KW-012 and was intentionally not edited.
+- Tech debt logged: None
+- Sprint status: `KW-001` set to `done` in `production/sprint-status.yaml`; existing in-progress claims for `S3-02`, `S3-04`, `S3-06`, and `S3-08` preserved.
+- Next recommended: Keyword Story 002 Movement Formulas at `production/epics/keyword-system/story-002-movement-formulas.md` after readiness check.
