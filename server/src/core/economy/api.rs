@@ -84,6 +84,23 @@ pub fn release_gold_reservation(economy: &mut PlayerEconomy, amount: u32) {
     economy.reserved_gold = economy.reserved_gold.saturating_sub(amount);
 }
 
+/// Validate an auction bid against hand capacity and unreserved gold.
+pub fn validate_auction_bid(
+    economy: &PlayerEconomy,
+    bid_amount: u32,
+    hand_size: u32,
+) -> Result<(), SpendError> {
+    if hand_size >= 10 {
+        return Err(SpendError::HandFull);
+    }
+
+    if !can_afford_bid(economy, bid_amount) {
+        return Err(SpendError::InsufficientFunds);
+    }
+
+    Ok(())
+}
+
 /// Discard all current-round mana.
 pub fn discard_current_mana(economy: &mut PlayerEconomy) {
     economy.current_mana = 0;
