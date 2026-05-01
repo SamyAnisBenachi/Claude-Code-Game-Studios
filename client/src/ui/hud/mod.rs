@@ -39,6 +39,15 @@ pub struct HudPlayerIds {
     pub opponent_id: PlayerId,
 }
 
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudMode {
+    #[default]
+    Hidden,
+    EconomyBasic,
+    EconomyAuction,
+    Frozen,
+}
+
 #[derive(Resource, Debug, Clone, Copy)]
 pub struct HudEntities {
     pub root: Entity,
@@ -126,6 +135,7 @@ impl Plugin for HudPlugin {
         app.init_state::<ClientState>()
             .init_resource::<CurrentClientPhase>()
             .init_resource::<HudConfig>()
+            .init_resource::<HudMode>()
             .configure_sets(
                 Update,
                 (
@@ -141,6 +151,9 @@ impl Plugin for HudPlugin {
             .add_systems(
                 Update,
                 (
+                    hud_phase_transition_system
+                        .in_set(HudSystemSet::PhaseTransition)
+                        .before(update_phase_label_round_counter_system),
                     update_phase_label_round_counter_system.in_set(HudSystemSet::PhaseTransition),
                     handle_gold_broadcast_system
                         .in_set(HudSystemSet::MessageDrain)
@@ -150,6 +163,53 @@ impl Plugin for HudPlugin {
                     sync_mana_text_system.in_set(HudSystemSet::StateSync),
                 ),
             );
+    }
+}
+
+pub fn hud_phase_transition_system(
+    current: Res<CurrentClientPhase>,
+    entities: Option<Res<HudEntities>>,
+    mut mode: ResMut<HudMode>,
+    mut visibility: Query<&mut Visibility>,
+    gold_states: Query<&GoldDisplayState>,
+    mut gold_texts: Query<&mut Text>,
+    mut gold_spans: Query<&mut TextSpan>,
+) {
+    if !current.is_changed() {
+        return;
+    }
+
+    let Some(entities) = entities else {
+        return;
+    };
+
+    match current.phase {
+        RoundPhase::Lobby | RoundPhase::Handshaking => {
+            *mode = HudMode::Hidden;
+            set_visibility(&mut visibility, entities.root, Visibility::Hidden);
+        }
+        RoundPhase::DraftInitial
+        | RoundPhase::DraftShop
+        | RoundPhase::Placement
+        | RoundPhase::Resolution => {
+            *mode = HudMode::EconomyBasic;
+            set_hud_visible(&entities, &mut visibility);
+            sync_gold_label_basic_format(
+                entities.own_gold_parent,
+                entities.own_gold_span,
+                &gold_states,
+                &mut gold_texts,
+                &mut gold_spans,
+            );
+            sync_gold_label_basic_format(
+                entities.opponent_gold_parent,
+                entities.opponent_gold_span,
+                &gold_states,
+                &mut gold_texts,
+                &mut gold_spans,
+            );
+        }
+        RoundPhase::DraftAuction | RoundPhase::GameOver => {}
     }
 }
 
@@ -572,6 +632,53 @@ fn format_gold_text(state: &GoldDisplayState) -> String {
         format!("{}g", state.gold as u32)
     } else {
         "--g".to_string()
+    }
+}
+
+fn set_hud_visible(entities: &HudEntities, visibility: &mut Query<&mut Visibility>) {
+    for entity in [
+        entities.root,
+        entities.phase_label,
+        entities.round_counter,
+        entities.own_gold_parent,
+        entities.own_gold_span,
+        entities.opponent_gold_parent,
+        entities.opponent_gold_span,
+        entities.mana_label,
+    ] {
+        set_visibility(visibility, entity, Visibility::Visible);
+    }
+
+    for row in entities.dots {
+        for dot in row {
+            set_visibility(visibility, dot, Visibility::Visible);
+        }
+    }
+}
+
+fn set_visibility(
+    visibility: &mut Query<&mut Visibility>,
+    entity: Entity,
+    target_visibility: Visibility,
+) {
+    if let Ok(mut current_visibility) = visibility.get_mut(entity) {
+        *current_visibility = target_visibility;
+    }
+}
+
+fn sync_gold_label_basic_format(
+    parent: Entity,
+    span: Entity,
+    gold_states: &Query<&GoldDisplayState>,
+    gold_texts: &mut Query<&mut Text>,
+    gold_spans: &mut Query<&mut TextSpan>,
+) {
+    if let (Ok(state), Ok(mut text)) = (gold_states.get(parent), gold_texts.get_mut(parent)) {
+        text.0 = format_gold_text(state);
+    }
+
+    if let Ok(mut span_text) = gold_spans.get_mut(span) {
+        span_text.0.clear();
     }
 }
 

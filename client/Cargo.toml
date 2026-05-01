@@ -52,6 +52,10 @@ name = "hud_phase_label_round_counter_test"
 path = "../tests/unit/hud/phase_label_round_counter_test.rs"
 
 [[test]]
+name = "hud_phase_transitions_test"
+path = "../tests/unit/hud/phase_transitions_test.rs"
+
+[[test]]
 name = "card_animations_tween_lifecycle_test"
 path = "../tests/unit/card-animations/tween_lifecycle_test.rs"
 
