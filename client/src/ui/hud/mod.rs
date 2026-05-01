@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use lightyear::prelude::MessageReceiver;
-use shared::protocol::{S2CGoldBroadcast, S2CGoldUpdate};
+use shared::protocol::{RoundPhase, S2CGoldBroadcast, S2CGoldUpdate};
 use shared::session::PlayerId;
 
-use crate::state::ClientState;
+use crate::state::{ClientState, CurrentClientPhase};
 
 pub const HUD_DOT_ROWS: usize = 2;
 pub const HUD_DOTS_PER_ROW: usize = 5;
@@ -11,6 +11,7 @@ pub const HUD_ENTITY_COUNT: usize = 18;
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HudSystemSet {
+    PhaseTransition,
     MessageDrain,
     StateSync,
 }
@@ -123,10 +124,15 @@ pub struct HudPlugin;
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<ClientState>()
+            .init_resource::<CurrentClientPhase>()
             .init_resource::<HudConfig>()
             .configure_sets(
                 Update,
-                (HudSystemSet::MessageDrain, HudSystemSet::StateSync)
+                (
+                    HudSystemSet::PhaseTransition,
+                    HudSystemSet::MessageDrain,
+                    HudSystemSet::StateSync,
+                )
                     .chain()
                     .run_if(in_state(ClientState::InSession)),
             )
@@ -135,6 +141,7 @@ impl Plugin for HudPlugin {
             .add_systems(
                 Update,
                 (
+                    update_phase_label_round_counter_system.in_set(HudSystemSet::PhaseTransition),
                     handle_gold_broadcast_system
                         .in_set(HudSystemSet::MessageDrain)
                         .before(handle_gold_update_system),
@@ -397,6 +404,48 @@ pub fn handle_gold_broadcast_system(
                 }
             }
         }
+    }
+}
+
+pub fn update_phase_label_round_counter_system(
+    current: Res<CurrentClientPhase>,
+    entities: Option<Res<HudEntities>>,
+    mut texts: Query<&mut Text>,
+) {
+    if !current.is_changed() {
+        return;
+    }
+
+    let Some(entities) = entities else {
+        return;
+    };
+    let Some(label) = phase_label_text(current.phase) else {
+        if current.phase != RoundPhase::Lobby {
+            warn!("HUD: unsupported phase label for {:?}", current.phase);
+        }
+        return;
+    };
+
+    if let Ok(mut phase_text) = texts.get_mut(entities.phase_label) {
+        phase_text.0.clear();
+        phase_text.0.push_str(label);
+    }
+
+    if let Ok(mut round_text) = texts.get_mut(entities.round_counter) {
+        round_text.0 = format!("R{}", current.round);
+    }
+}
+
+pub fn phase_label_text(phase: RoundPhase) -> Option<&'static str> {
+    match phase {
+        RoundPhase::Lobby => None,
+        RoundPhase::DraftInitial => Some("DRAFT INITIAL"),
+        RoundPhase::DraftShop => Some("DRAFT"),
+        RoundPhase::DraftAuction => Some("AUCTION"),
+        RoundPhase::Placement => Some("PLACEMENT"),
+        RoundPhase::Resolution => Some("RESOLUTION"),
+        RoundPhase::GameOver => Some("GAME OVER"),
+        RoundPhase::Handshaking => None,
     }
 }
 
