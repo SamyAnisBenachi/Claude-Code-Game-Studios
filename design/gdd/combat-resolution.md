@@ -149,7 +149,7 @@ Applied in this order for each individual attack (one attacker, one defender):
 
 **SHIELD** — Persists until consumed. A SHIELD that is not triggered in a round carries into subsequent rounds. SHIELD absorbs any damage source: melee, RANGE, FIRST STRIKE, spell.
 
-**LEADER** — Stat bonuses snapshotted post-SS1 (after all APPEARANCE effects resolve, before SS2 begins). A LEADER placed in SS1 via HASTE or APPEARANCE IS included in the snapshot — it is already on board when the post-SS1 snapshot fires. Persist until RESOLUTION ends regardless of LEADER death within that round. Recalculated each round.
+**LEADER** — Stat bonuses snapshotted post-SS1 (after all APPEARANCE effects resolve, before SS2 begins). A LEADER that enters during SS1 (placed with or without HASTE, or created by an APPEARANCE effect) IS included in the snapshot if it is still alive when the post-SS1 snapshot fires. Persist until RESOLUTION ends regardless of LEADER death within that round. Recalculated each round.
 
 **OUTNUMBERED** — Board count (friendly vs. enemy units) evaluated at the start of each sub-step. A unit becomes OUTNUMBERED if the count at sub-step entry favors the opponent.
 
@@ -210,7 +210,7 @@ The `net_damage` formula is defined as:
 | Variable | Symbol | Type | Range | Description |
 |---|---|---|---|---|
 | Base attack | `ATK_base` | u8 | 0–20 | Unit's card stat before modifiers |
-| LEADER bonus ATK | `ATK_leader` | u8 | 0–5 | Granted by a living LEADER of the same family (snapshotted at round start) |
+| LEADER bonus ATK | `ATK_leader` | u8 | 0–5 | Granted by a living LEADER of the same family (snapshotted post-SS1, after all APPEARANCE effects resolve) |
 | Type advantage ATK | `ATK_type` | u8 | 0 or 1 | +1 if attacker's type beats defender's type |
 | VULNERABILITY X | `ATK_vuln` | u8 | 0–5 | Defender keyword: incoming ATK increased by X |
 | RESISTANCE X | `ATK_resist` | u8 | 0–5 | Defender keyword: incoming ATK decreased by X |
@@ -669,7 +669,7 @@ Hand cards, shop slots, and all placement controls must be non-interactive and v
 | CR-30 | GIVEN S2CPlacementReveal is broadcast, WHEN RESOLUTION begins, THEN PlacementReveal is sent before any sub-step 1 effects execute and contains both players' full placements in one atomic message. | BLOCKING |
 | CR-31 | GIVEN a unit with CHARGE X, WHEN sub-step 2 executes, THEN the unit advances X additional cells (subject to WALL-blocking and crossing rules); WHEN sub-step 5 executes, THEN the unit additionally advances its MP value as a separate movement. | BLOCKING |
 | CR-32 | GIVEN RESOLUTION completes all 6 sub-steps, WHEN RESOLUTION_COMPLETE fires, THEN S2CResolutionEvent MUST contain: exactly one SubStepEntry per executed sub-step, one CombatDamage record per damage application (including non-lethal hits), one UnitRemovedRecord per killed unit, one GoldAwarded record per gold event, and one KeywordTriggered record per APPEARANCE/DEATH/COUNTERATTACK/FINAL BLOW activation — all in chronological (sub_step, trigger_index) order. S2CPhaseChanged(DRAFT_SHOP) must NOT be observed by any client before S2CResolutionEvent is received. | BLOCKING |
-| CR-33 | GIVEN a LEADER unit (grants +1 ATK to family units) is killed in sub-step 4 of round N, WHEN round N sub-steps 5 and 6 execute, THEN family units' ATK_effective includes the +1 LEADER bonus; WHEN round N+1 RESOLUTION begins with LEADER still dead, THEN family units' ATK_effective equals ATK_base only (verified by asserting damage dealt equals ATK_base-derived formula with no LEADER term). | BLOCKING |
+| CR-33 | GIVEN a LEADER unit (grants +1 ATK to family units) is killed in sub-step 4 of round N, WHEN round N sub-steps 5 and 6 execute, THEN family units' ATK_effective includes the +1 LEADER bonus; WHEN round N+1 post-SS1 LEADER snapshot is computed with LEADER still dead, THEN family units' ATK_effective equals ATK_base only (verified by asserting damage dealt equals ATK_base-derived formula with no LEADER term). | BLOCKING |
 | CR-34 | GIVEN a unit gains FIRST STRIKE via INJURED (activated at sub-step boundary after sub-step 3 damage), WHEN sub-step 3 of the NEXT round executes, THEN the unit attacks as a FIRST STRIKE unit. | BLOCKING |
 
 | CR-35 | GIVEN two melee units that halted on adjacent cells after a path-crossing collision in sub-step 5, WHEN sub-step 6 combat resolves, THEN COUNTERATTACK fires for any unit with the COUNTERATTACK keyword when it receives damage (collision-halt adjacency satisfies melee contact per the proximity definition). | BLOCKING |
