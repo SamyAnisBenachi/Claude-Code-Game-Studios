@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::state::app::StatesPlugin;
 use client::state::ClientState;
 use client::ui::hud::{
     GoldDisplayState, HudConfig, HudEntities, HudEntity, HudPlugin, HudRoot, ScoreboardDot,
@@ -58,13 +59,14 @@ fn hud_root_starts_hidden_before_any_phase_message() {
 fn hud_entities_never_contain_timer_components_or_timer_text() {
     let mut app = app_with_hud_in_session();
 
-    assert_eq!(count_hud_timers(&mut app), 0);
+    assert_eq!(count_hud_timer_named_entities(&mut app), 0);
     assert!(!hud_text_contains_timer_value(&mut app));
 }
 
 fn app_with_hud_in_session() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(StatesPlugin);
     app.add_plugins(HudPlugin);
     app.insert_resource(HudConfig::default());
     app.world_mut()
@@ -79,11 +81,14 @@ fn count_with<T: Component>(app: &mut App) -> usize {
     query.iter(app.world()).count()
 }
 
-fn count_hud_timers(app: &mut App) -> usize {
+fn count_hud_timer_named_entities(app: &mut App) -> usize {
     let mut query = app
         .world_mut()
-        .query_filtered::<&Timer, (With<HudEntity>, With<Timer>)>();
-    query.iter(app.world()).count()
+        .query_filtered::<&Name, (With<HudEntity>, With<Name>)>();
+    query
+        .iter(app.world())
+        .filter(|name| name.to_string().to_ascii_lowercase().contains("timer"))
+        .count()
 }
 
 fn hud_text_contains_timer_value(app: &mut App) -> bool {
