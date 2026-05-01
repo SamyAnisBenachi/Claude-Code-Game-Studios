@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use server::core::economy::{
     apply_gold_award, EconomyPlugin, InterestSnapshots, PlayerEconomies, PlayerEconomy,
 };
-use server::core::rsm::{DraftStarted, ResolutionPhaseEntered, RsmPlugin};
+use server::core::rsm::{DraftStarted, ResolutionComplete, RoundPhase, RoundState, RsmPlugin};
 use server::core::session::SessionConfig;
 use server::foundation::config::GameConfig;
 use shared::card::ClassId;
@@ -59,9 +59,8 @@ fn insert_economy(app: &mut App, player: PlayerId, economy: PlayerEconomy) {
         .insert(player, economy);
 }
 
-fn write_resolution_entered(app: &mut App, round: u32) {
-    app.world_mut()
-        .write_message(ResolutionPhaseEntered { round });
+fn write_resolution_complete(app: &mut App) {
+    app.world_mut().write_message(ResolutionComplete);
     app.update();
 }
 
@@ -76,7 +75,7 @@ fn test_resolution_snapshot_captures_gold_at_resolution_end() {
     let mut app = app_with_economy(&players);
     insert_economy(&mut app, player(1), economy(8, 3, 0));
 
-    write_resolution_entered(&mut app, 1);
+    write_resolution_complete(&mut app);
 
     let snapshots = app.world().resource::<InterestSnapshots>();
     assert_eq!(snapshots.0.get(&player(1)).copied(), Some(8));
@@ -88,7 +87,7 @@ fn test_resolution_snapshot_gold_ten_yields_max_interest_next_draft() {
     let mut app = app_with_economy(&players);
     insert_economy(&mut app, player(1), economy(10, 0, 0));
 
-    write_resolution_entered(&mut app, 1);
+    write_resolution_complete(&mut app);
     assert_eq!(
         app.world()
             .resource::<InterestSnapshots>()
@@ -112,7 +111,7 @@ fn test_resolution_discards_current_mana() {
     let mut app = app_with_economy(&players);
     insert_economy(&mut app, player(1), economy(5, 4, 2));
 
-    write_resolution_entered(&mut app, 1);
+    write_resolution_complete(&mut app);
 
     let economies = app.world().resource::<PlayerEconomies>();
     let economy = economies.0.get(&player(1)).expect("player economy exists");
@@ -130,7 +129,7 @@ fn test_resolution_snapshot_overwrites_stale_value() {
         .0
         .insert(player(1), 3);
 
-    write_resolution_entered(&mut app, 1);
+    write_resolution_complete(&mut app);
 
     let snapshots = app.world().resource::<InterestSnapshots>();
     assert_eq!(snapshots.0.get(&player(1)).copied(), Some(9));
@@ -142,7 +141,7 @@ fn test_zero_gold_snapshot_gives_baseline_only_next_draft() {
     let mut app = app_with_economy(&players);
     insert_economy(&mut app, player(1), economy(0, 0, 0));
 
-    write_resolution_entered(&mut app, 1);
+    write_resolution_complete(&mut app);
     assert_eq!(
         app.world()
             .resource::<InterestSnapshots>()
@@ -175,7 +174,7 @@ fn test_kill_reward_cross_threshold_uses_post_award_gold() {
         apply_gold_award(economy, 1);
     }
 
-    write_resolution_entered(&mut app, 1);
+    write_resolution_complete(&mut app);
     assert_eq!(
         app.world()
             .resource::<InterestSnapshots>()
@@ -190,4 +189,34 @@ fn test_kill_reward_cross_threshold_uses_post_award_gold() {
     let economies = app.world().resource::<PlayerEconomies>();
     let economy = economies.0.get(&player(1)).expect("player economy exists");
     assert_eq!(economy.gold, 14);
+}
+
+#[test]
+fn test_resolution_complete_snapshot_is_consumed_before_rsm_enters_next_draft() {
+    let players = [player(1)];
+    let mut app = app_with_economy(&players);
+    insert_economy(&mut app, player(1), economy(10, 4, 0));
+
+    {
+        let mut rsm = app.world_mut().resource_mut::<RoundState>();
+        rsm.phase = RoundPhase::Resolution;
+        rsm.round_number = 1;
+    }
+
+    app.world_mut().write_message(ResolutionComplete);
+    app.update();
+
+    let rsm = app.world().resource::<RoundState>();
+    assert_eq!(rsm.phase, RoundPhase::DraftShop);
+    assert_eq!(rsm.round_number, 2);
+
+    let economies = app.world().resource::<PlayerEconomies>();
+    let economy = economies.0.get(&player(1)).expect("player economy exists");
+    assert_eq!(economy.gold, 14);
+    assert_eq!(economy.current_mana, 2);
+    assert!(!app
+        .world()
+        .resource::<InterestSnapshots>()
+        .0
+        .contains_key(&player(1)));
 }

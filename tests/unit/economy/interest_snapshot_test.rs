@@ -11,3 +11,4 @@
 // - Snapshot overwrite: test_resolution_snapshot_overwrites_stale_value
 // - Gold = 0: test_zero_gold_snapshot_gives_baseline_only_next_draft
 // - Kill-reward threshold: test_kill_reward_cross_threshold_uses_post_award_gold
+// - ADR-019 ordering: test_resolution_complete_snapshot_is_consumed_before_rsm_enters_next_draft

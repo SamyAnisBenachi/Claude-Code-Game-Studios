@@ -6,7 +6,7 @@ use shared::session::PlayerId;
 
 use crate::core::economy::api;
 use crate::core::economy::state::{InterestSnapshots, PlayerEconomies, PlayerEconomy};
-use crate::core::rsm::{DraftStarted, ResolutionPhaseEntered, SessionReady};
+use crate::core::rsm::{DraftStarted, ResolutionComplete, SessionReady};
 use crate::core::session::SessionConfig;
 use crate::foundation::config::GameConfig;
 
@@ -52,34 +52,19 @@ pub fn initialise_player_economies(
     }
 }
 
-pub fn on_resolution_phase_entered(
-    mut resolution_entered: MessageReader<ResolutionPhaseEntered>,
-    economies: Res<PlayerEconomies>,
+pub fn on_resolution_complete(
+    mut resolution_complete: MessageReader<ResolutionComplete>,
+    mut economies: ResMut<PlayerEconomies>,
     mut interest_snapshots: ResMut<InterestSnapshots>,
     session: Res<SessionConfig>,
 ) {
-    for _event in resolution_entered.read() {
-        for player in session.players() {
-            let Some(economy) = economies.0.get(&player) else {
-                continue;
-            };
-
-            interest_snapshots.0.insert(player, economy.gold);
-        }
-    }
-}
-
-pub fn discard_current_mana_at_resolution_end(
-    mut resolution_entered: MessageReader<ResolutionPhaseEntered>,
-    mut economies: ResMut<PlayerEconomies>,
-    session: Res<SessionConfig>,
-) {
-    for _event in resolution_entered.read() {
+    for _event in resolution_complete.read() {
         for player in session.players() {
             let Some(economy) = economies.0.get_mut(&player) else {
                 continue;
             };
 
+            interest_snapshots.0.insert(player, economy.gold);
             api::discard_current_mana(economy);
         }
     }

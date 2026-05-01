@@ -5,10 +5,10 @@ use bevy::prelude::*;
 
 use crate::core::economy::state::{InterestSnapshots, PlayerEconomies};
 use crate::core::economy::system::{
-    discard_current_mana_at_resolution_end, initialise_player_economies, on_draft_started,
-    on_resolution_phase_entered, EconomySystemSet, S2CGoldBroadcast, S2CGoldUpdate,
+    initialise_player_economies, on_draft_started, on_resolution_complete, EconomySystemSet,
+    S2CGoldBroadcast, S2CGoldUpdate,
 };
-use crate::core::rsm::advance_phase;
+use crate::core::rsm::{advance_phase, rsm_input_reader};
 use crate::core::session::SessionConfig;
 
 pub struct EconomyPlugin;
@@ -23,14 +23,10 @@ impl Plugin for EconomyPlugin {
             .add_systems(Update, on_draft_started.after(advance_phase))
             .add_systems(
                 Update,
-                (
-                    on_resolution_phase_entered,
-                    discard_current_mana_at_resolution_end,
-                )
+                on_resolution_complete
                     .in_set(EconomySystemSet::ResolutionEnd)
-                    .after(advance_phase)
+                    .before(rsm_input_reader)
                     .run_if(resource_exists::<SessionConfig>),
-                // TODO M2: also order .after(ObjectiveSystemSet::ProcessDestructions).after(CombatSystemSet::ProcessKills).before(ResolutionCompleteEmitter)
             );
     }
 }
