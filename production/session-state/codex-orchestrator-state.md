@@ -28,7 +28,7 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- HAND-UI-001 story-done: assumed launched from the current orchestrator batch.
+- CARD-ANIM-004 story-done: assumed launched after HAND-UI-001 closure.
 - CA-004 worker: assumed launched from the current orchestrator batch.
 - BOARD-004 worker: assumed launched from the current orchestrator batch.
 
@@ -68,11 +68,6 @@ None currently tracked here.
   `main` at `8d641b9`. Local objective stagger, anim queue, and plugin scaffold
   tests, `cargo check -p client`, `cargo fmt -p client -- --check`, and
   `git diff --check` passed after integration.
-- HAND-UI-001: Plugin Scaffold implemented on branch
-  `work/hand-ui-001-plugin-scaffold` at `9f28a2a`; cherry-picked into `main` at
-  `7c603e0`. Local `hand_ui_plugin_scaffold_test`, `cargo check -p client`,
-  `cargo fmt --all -- --check`, and `git diff --check` passed after
-  integration.
 - HUD-003: Phase Label/Round Counter implemented on branch
   `work/hud-003-phase-label-round-counter` at `52a3605`; cherry-picked into
   `main` at `ce76a88` after resolving the `client/Cargo.toml` test-target
@@ -102,8 +97,12 @@ None currently tracked here.
   `work/board-002-standard-unit-movement` at `4a76028`; cherry-picked into
   `main` at `0d8e41c`. Local `standard_movement_test`, `cargo check -p server`,
   `cargo fmt -p server -- --check`, and `git diff --check` passed.
+
 ## Recently Closed
 
+- HAND-UI-001: Plugin Scaffold implemented on branch
+  `work/hand-ui-001-plugin-scaffold` at `9f28a2a`; cherry-picked into `main` at
+  `7c603e0`; story-done committed at `342b343`.
 - CA-006: Card Acquisition External Bypass implemented on branch
   `work/ca-006-external-bypass` at `6af1137`; merged into `main`; story-done
   committed at `1ddd7b6`.
@@ -158,11 +157,10 @@ None currently tracked here.
 5. CARD-ANIM-008
 6. HUD-002
 7. CARD-ANIM-006
-8. HAND-UI-001
-9. HUD-003
-10. KW-005
-11. BOARD-003
-12. HAND-UI-002
+8. HUD-003
+9. KW-005
+10. BOARD-003
+11. HAND-UI-002
 
 Run only one story-done at a time.
 
@@ -179,7 +177,6 @@ Run only one story-done at a time.
   and CA-22 evidence remains deferred until the dependent UI exists.
 - HUD-002: implemented and integrated; pending story-done.
 - CARD-ANIM-006: implemented and integrated; pending story-done.
-- HAND-UI-001: implemented and integrated; pending story-done.
 - HUD-003: implemented and integrated; pending story-done.
 - KW-005: implemented and integrated; pending story-done.
 - BOARD-003: implemented and integrated; pending story-done.
@@ -195,7 +192,7 @@ Batch launched:
 - CA-004: `production/epics/card-acquisition/story-004-refresh-cost.md`
 - BOARD-004: `production/epics/board-lane-system/story-004-placement-occupancy.md`
 
-HAND-UI-001 story-done is the active serialized closure. Do not launch another
+CARD-ANIM-004 story-done is the active serialized closure. Do not launch another
 story-done until it returns. Do not launch CA-005 until CA-004 is integrated.
 
 ## Resolved Design Gates
