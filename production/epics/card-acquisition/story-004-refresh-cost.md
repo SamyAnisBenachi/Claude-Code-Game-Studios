@@ -1,7 +1,7 @@
 # Story 004: Manual Refresh Cost Formula and Counter Reset
 
 > **Epic**: Card Acquisition
-> **Status**: In Progress
+> **Status**: Complete
 > **Owner**: codex-ca-004-refresh-cost
 > **Layer**: Feature (M2)
 > **Type**: Logic
@@ -33,12 +33,12 @@
 
 *From GDD `design/gdd/card-acquisition.md`, scoped to this story:*
 
-- [ ] **CA8** — GIVEN `refresh_base_cost=1`, `refresh_cap=1`, `refresh_count_this_draft=0`, WHEN manual refresh fires, THEN gold decrements by 1g and `refresh_count_this_draft` becomes 1.
-- [ ] **CA9** — GIVEN `refresh_base_cost=1`, `refresh_cap=1`, `refresh_count_this_draft=1`, WHEN second manual refresh fires, THEN gold decrements by 2g (`1 + min(1,1) = 2`).
-- [ ] **CA10** — GIVEN `refresh_base_cost=1`, `refresh_cap=1`, `refresh_count_this_draft=5`, WHEN refresh fires, THEN gold decrements by 2g (`1 + min(5,1) = 2`) — cap confirmed regardless of count.
-- [ ] **CA11** — GIVEN `gold < refresh_cost` for the next refresh, WHEN `C2SRefreshShop` arrives, THEN rejected, gold unchanged, `refresh_count_this_draft` unchanged.
-- [ ] **CA15** — GIVEN round N DRAFT_SHOP saw 3 refreshes, WHEN round N+1 DRAFT_SHOP begins and the player triggers their first manual refresh, THEN gold decrements by `refresh_base_cost` (1g at default) and `refresh_count_this_draft` is 1 — confirming it reset to 0 at the new phase entry.
-- [ ] **CA22** — GIVEN round N DRAFT_AUCTION saw auto-refresh fire (auction round) followed by round N DRAFT_SHOP (no second refresh), WHEN round N+1 DRAFT_AUCTION entry fires, THEN the first manual refresh in round N+1 DRAFT_SHOP decrements gold by `refresh_base_cost` and `refresh_count_this_draft` is 1 — confirming the counter was 0 at the new DRAFT_AUCTION entry, not carried from round N.
+- [x] **CA8** — GIVEN `refresh_base_cost=1`, `refresh_cap=1`, `refresh_count_this_draft=0`, WHEN manual refresh fires, THEN gold decrements by 1g and `refresh_count_this_draft` becomes 1.
+- [x] **CA9** — GIVEN `refresh_base_cost=1`, `refresh_cap=1`, `refresh_count_this_draft=1`, WHEN second manual refresh fires, THEN gold decrements by 2g (`1 + min(1,1) = 2`).
+- [x] **CA10** — GIVEN `refresh_base_cost=1`, `refresh_cap=1`, `refresh_count_this_draft=5`, WHEN refresh fires, THEN gold decrements by 2g (`1 + min(5,1) = 2`) — cap confirmed regardless of count.
+- [x] **CA11** — GIVEN `gold < refresh_cost` for the next refresh, WHEN `C2SRefreshShop` arrives, THEN rejected, gold unchanged, `refresh_count_this_draft` unchanged.
+- [x] **CA15** — GIVEN round N DRAFT_SHOP saw 3 refreshes, WHEN round N+1 DRAFT_SHOP begins and the player triggers their first manual refresh, THEN gold decrements by `refresh_base_cost` (1g at default) and `refresh_count_this_draft` is 1 — confirming it reset to 0 at the new phase entry.
+- [x] **CA22** — GIVEN round N DRAFT_AUCTION saw auto-refresh fire (auction round) followed by round N DRAFT_SHOP (no second refresh), WHEN round N+1 DRAFT_AUCTION entry fires, THEN the first manual refresh in round N+1 DRAFT_SHOP decrements gold by `refresh_base_cost` and `refresh_count_this_draft` is 1 — confirming the counter was 0 at the new DRAFT_AUCTION entry, not carried from round N.
 
 ---
 
@@ -129,7 +129,7 @@ for msg in refresh_messages.receive_messages() {
 **Story Type**: Logic
 **Required evidence**: `tests/unit/card_acquisition/refresh_cost_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passed on 2026-05-01
 
 ---
 
@@ -145,3 +145,14 @@ for msg in refresh_messages.receive_messages() {
 - 2026-05-01: Revalidated against control manifest version 2026-05-01.
   ADR-015 remains accepted, `TR-CA-004` remains active, CA Story 003 is complete,
   and no implementation requirements changed.
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 6/6 passing (CA8, CA9, CA10, CA11, CA15, CA22)
+**Test Evidence**: Logic evidence at `tests/unit/card_acquisition/refresh_cost_test.rs`; `cargo test -p server --test card_acquisition_refresh_cost_test` passed 6/6.
+**Verification**: `cargo test -p server --test card_acquisition_state_scaffold_test --test card_acquisition_draw_pipeline_test --test card_acquisition_refresh_cost_test` passed 17/17; `cargo test -p server --test game_config_defaults_test` passed 7/7; `cargo check -p server` passed.
+**Implementation**: Worker branch `work/ca-004-refresh-cost` contains worker commit `f26f738`; main integration commit `5cb53a8` is included in current `main`.
+**Deviations**: None blocking. Scope note: implementation also updated GameConfig defaults, `assets/config/game_config.ron`, `server/Cargo.toml`, and test wiring needed for the refresh-cost evidence.
+**Code Review**: Skipped (lean mode).

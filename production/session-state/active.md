@@ -1016,3 +1016,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no HAND-UI-002 row exists in `production/sprint-status.yaml`.
 - Next recommended: Hand UI Story 003 Phase State Machine (`production/epics/hand-ui/story-003-phase-state-machine.md`).
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-acquisition/story-004-refresh-cost.md` - Manual Refresh Cost Formula and Counter Reset
+- Criteria: 6/6 passing; CA8, CA9, CA10, CA11, CA15, and CA22 covered by `tests/unit/card_acquisition/refresh_cost_test.rs`.
+- Test Evidence: `cargo test -p server --test card_acquisition_refresh_cost_test` passed 6/6; CA regression bundle passed 17/17; `cargo test -p server --test game_config_defaults_test` passed 7/7; `cargo check -p server` passed.
+- Verification: worker branch `work/ca-004-refresh-cost` contains worker commit `f26f738`; main integration commit `5cb53a8` is included in current `main`.
+- Notes: No blocking GDD or ADR deviation found. Scope note only: implementation also updated GameConfig defaults, `assets/config/game_config.ron`, `server/Cargo.toml`, and test wiring required for the refresh-cost evidence.
+- Tech debt logged: None
+- Sprint status: No `CA-004` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Card Acquisition Story 005 Purchase Flow (`production/epics/card-acquisition/story-005-purchase-flow.md`) after readiness check, or continue the user-directed serialized story-done queue.
