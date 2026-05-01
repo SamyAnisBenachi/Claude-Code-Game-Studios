@@ -1006,3 +1006,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `BOARD-003` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Board Story 004 placement occupancy validation (`production/epics/board-lane-system/story-004-placement-occupancy.md`) after readiness check, or continue the user-directed serialized story-done queue.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hand-ui/story-002-fan-layout-formula.md` - Story 002: Fan Layout Formula - Card Position & Rotation
+- Criteria: 4/4 passing; HU-02, HU-02b, HU-03, and HU-03b covered by `tests/unit/hand-ui/fan_layout_formula_test.rs`.
+- Evidence: `cargo test -p client --test hand_ui_fan_layout_formula_test` passed 5/5; `cargo test -p client --test hand_ui_plugin_scaffold_test` passed 3/3; `cargo check -p client` passed.
+- Deviations: Advisory docs/config notes only; no blockers.
+- Tech debt logged: None
+- Sprint status: Unchanged; no HAND-UI-002 row exists in `production/sprint-status.yaml`.
+- Next recommended: Hand UI Story 003 Phase State Machine (`production/epics/hand-ui/story-003-phase-state-machine.md`).

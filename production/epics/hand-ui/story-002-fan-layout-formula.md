@@ -1,7 +1,7 @@
 # Story 002: Fan Layout Formula — Card Position & Rotation
 
 > **Epic**: Hand UI
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -125,7 +125,7 @@ All tuning values are read from `Res<GameConfig>` — never hardcoded in the sys
 **Required evidence**:
 - `tests/unit/hand-ui/fan_layout_formula_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -133,3 +133,14 @@ All tuning values are read from `Res<GameConfig>` — never hardcoded in the sys
 
 - Depends on: Story 001 (pre-pooled fan slot entities must exist before positions can be applied)
 - Unlocks: Story 005 (PLACEMENT staging core reads fan positions)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 4/4 passing
+**Deviations**:
+- Advisory: Story metadata references `TR-HU-001`, but the current registry maps `TR-HU-001` to HU-01 pre-pooling while this story verifies HU-02, HU-02b, HU-03, and HU-03b from `design/gdd/hand-ui.md`.
+- Advisory: The integrated client reads fan tuning from `Res<HandFanLayoutConfig>` because shared/client `GameConfig` does not currently expose fan layout fields. The layout system still reads a resource and tests override it, but it is not wired to `Res<GameConfig>`.
+**Test Evidence**: Logic test `tests/unit/hand-ui/fan_layout_formula_test.rs`; `cargo test -p client --test hand_ui_fan_layout_formula_test` passed 5/5; `cargo test -p client --test hand_ui_plugin_scaffold_test` passed 3/3; `cargo check -p client` passed.
+**Code Review**: Skipped - lean mode.
+**Scope**: Implementation already integrated on `main` via `047aff9`; worker commit `da0fe3a` is present on `work/hand-ui-002-fan-layout-formula`. `production/sprint-status.yaml` unchanged because no HAND-UI-002 row exists.
