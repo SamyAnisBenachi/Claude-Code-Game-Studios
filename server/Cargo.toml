@@ -58,6 +58,10 @@ name = "card_acquisition_draft_initial_test"
 path = "../tests/integration/card_acquisition/draft_initial_test.rs"
 
 [[test]]
+name = "card_acquisition_draw_pipeline_test"
+path = "../tests/unit/card_acquisition/draw_pipeline_test.rs"
+
+[[test]]
 name = "keyword_plugin_smoke_test"
 path = "../tests/integration/keyword/plugin_smoke_test.rs"
 
