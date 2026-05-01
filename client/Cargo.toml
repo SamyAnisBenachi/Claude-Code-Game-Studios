@@ -42,3 +42,7 @@ path = "../tests/unit/card-animations/tween_lifecycle_test.rs"
 [[test]]
 name = "card_animations_anim_queue_test"
 path = "../tests/unit/card-animations/anim_queue_test.rs"
+
+[[test]]
+name = "card_animations_input_gating_test"
+path = "../tests/integration/card-animations/input_gating_test.rs"

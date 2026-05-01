@@ -30,8 +30,33 @@ pub struct HandShowRequested;
 #[derive(Message, Clone, Debug, Default, PartialEq)]
 pub struct AuctionPanelTransitionRequested;
 
-#[derive(Message, Clone, Debug, Default, PartialEq)]
-pub struct TimerBarEaseRequested;
+#[derive(Message, Clone, Copy, Debug, PartialEq)]
+pub struct TimerBarEaseRequested {
+    pub target_width_percent: f32,
+}
+
+impl Default for TimerBarEaseRequested {
+    fn default() -> Self {
+        Self {
+            target_width_percent: 100.0,
+        }
+    }
+}
+
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HandCardDragStarted {
+    pub card: Entity,
+}
+
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HandCardHoverEntered {
+    pub card: Entity,
+}
+
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HandCardHoverExited {
+    pub card: Entity,
+}
 
 #[derive(Message, Clone, Debug, Default, PartialEq)]
 pub struct GoldTickRequested;
