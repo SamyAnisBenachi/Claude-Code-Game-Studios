@@ -173,11 +173,11 @@ stories:
     name: "Keyword Movement Formulas"
     file: "production/epics/keyword-system/story-002-movement-formulas.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: "codex-kw-002-movement-formulas"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-01"
 
   - id: "CA-001"
     name: "Card Acquisition State Scaffold"

@@ -746,3 +746,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `CS-002` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
 - Next recommended: S3-05 RSM Story 4: Win Condition and Game Over at `production/epics/round-state-machine/story-004-win-condition-and-game-over.md`; S3-04, S3-06, S3-08, KW-002, and CARD-ANIM-001 remain in progress.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/keyword-system/story-002-movement-formulas.md` - Movement Formulas - repel_destination + attract_destination
+- Criteria: 8/8 passing; REPEL clamp behavior, signed intermediate arithmetic, ATTRACT friendly co-location, ATTRACT enemy one-cell-short rule, no overshoot, board bounds, and determinism verified.
+- Test Evidence: `tests/unit/keyword/movement_formulas_test.rs`; executable suite `server/tests/movement_formulas_test.rs`; `cargo test -p server --test movement_formulas_test` -> 11 passed, 0 failed.
+- Notes: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01. Story traceability was patched from stale `TR-KW-002` to `TR-BLS-010`; the old TR maps to CHARGE/HASTE, while this story matches KW-029/KW-030 REPEL/ATTRACT formulas and ADR-018.
+- Tech debt logged: None
+- Sprint status: `KW-002` set to `done` in `production/sprint-status.yaml`; existing in-progress claims for `S3-04`, `S3-06`, `S3-08`, and `CARD-ANIM-001` preserved.
+- Next recommended: S3-05 RSM Story 4: Win Condition and Game Over at `production/epics/round-state-machine/story-004-win-condition-and-game-over.md`; S3-04 and S3-06 remain in progress.

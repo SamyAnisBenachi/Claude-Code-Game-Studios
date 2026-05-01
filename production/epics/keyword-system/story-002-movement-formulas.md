@@ -1,7 +1,7 @@
 # Story 002: Movement Formulas — repel_destination + attract_destination
 
 > **Epic**: Keyword System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -9,13 +9,13 @@
 ## Context
 
 **GDD**: `design/gdd/keyword-system.md`
-**Requirement**: TR-KW-002 — CHARGE X bonus movement applied at sub-step 2; cells parameter clamped per Board/Lane F1
+**Requirement**: TR-BLS-010 — Displacement keywords: REPEL clamped at spawn boundary; ATTRACT clamped to [1,8]; CHANGE LANE silent no-op at boundaries; IRREMOVABLE is a no-op; spawn range expansion from fake destruction takes effect at NEXT PLACEMENT
 *(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)*
 
 **ADR Governing Implementation**: ADR-018 (Keyword System — ECS State Architecture, movement.rs section)
 **ADR Decision Summary**: Movement keywords REPEL X and ATTRACT X are implemented as pure functions in `server/feature/keyword/movement.rs`. Both use i32 intermediate arithmetic to prevent u8 underflow, clamp to [1, 8], and return u8. No world access — pure function call from effects.rs.
 
-**BLOCKED**: ADR-018 is Proposed — must be Accepted before opening this story. Story 001 (module scaffold) must also be Done.
+**Unblocked at completion review**: ADR-018 is Accepted and Story 001 (module scaffold) is Complete.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: LOW (pure functions, no Bevy API)
 **Engine Notes**: Pure functions — no Bevy API surface. Rust integer arithmetic only. Intermediate computation must use i32 to prevent u8 underflow/overflow.
@@ -30,14 +30,14 @@
 
 *From GDD `design/gdd/keyword-system.md` Formulas and Acceptance Criteria, scoped to movement formula correctness:*
 
-- [ ] KW-029a: `repel_destination(target_cell=2, owner=PlayerA, x=3)` → `clamp(2 + (-1)*3, 1, 8) = 1` (clamped at board edge)
-- [ ] KW-029b: `repel_destination(target_cell=5, owner=PlayerB_pushed_by_PlayerA, x=2)` → WALL pushed toward Cell 8: `clamp(5 + (+1)*2, 1, 8) = 7`
-- [ ] KW-030: `attract_destination(caster_cell=3, target_cell=7, x=6)` → `effective_pull = min(6, |3-7|) = 4`; `result = 7 + sign(3-7)*4 = 7 + (-1)*4 = 3` (co-located with caster; NOT past Cell 3)
-- [ ] `repel_destination` with intermediate negative value (e.g., Player A at Cell 1, REPEL 6) → intermediate = `1 + (-1)*6 = -5`; clamped to 1 (must use i32 intermediate — u8 underflow would produce wrong result)
-- [ ] `attract_destination(caster_cell=5, target_cell=5, x=3)` → `effective_pull = min(3, 0) = 0`; result = 5 (already co-located; `sign(0)` does not affect output)
-- [ ] `repel_destination` output always in [1, 8] regardless of x value or target_cell
-- [ ] `attract_destination` output always between target_cell and caster_cell inclusive (target never overshoots caster)
-- [ ] Both functions are pure (same inputs always produce same output; no side effects)
+- [x] KW-029a: `repel_destination(target_cell=2, owner=PlayerA, x=3)` → `clamp(2 + (-1)*3, 1, 8) = 1` (clamped at board edge)
+- [x] KW-029b: `repel_destination(target_cell=5, owner=PlayerB_pushed_by_PlayerA, x=2)` → WALL pushed toward Cell 8: `clamp(5 + (+1)*2, 1, 8) = 7`
+- [x] KW-030: `attract_destination(caster_cell=3, target_cell=7, x=6)` → `effective_pull = min(6, |3-7|) = 4`; `result = 7 + sign(3-7)*4 = 3` (co-located with caster; NOT past Cell 3)
+- [x] `repel_destination` with intermediate negative value (e.g., Player A at Cell 1, REPEL 6) → intermediate = `1 + (-1)*6 = -5`; clamped to 1 (must use i32 intermediate — u8 underflow would produce wrong result)
+- [x] `attract_destination(caster_cell=5, target_cell=5, x=3)` → `effective_pull = min(3, 0) = 0`; result = 5 (already co-located; `sign(0)` does not affect output)
+- [x] `repel_destination` output always in [1, 8] regardless of x value or target_cell
+- [x] `attract_destination` output always between target_cell and caster_cell inclusive (target never overshoots caster)
+- [x] Both functions are pure (same inputs always produce same output; no side effects)
 
 ---
 
@@ -125,7 +125,7 @@ Both are `pub` — called by `apply_repel()` and `apply_attract()` in `effects.r
 **Story Type**: Logic
 **Required evidence**: `tests/unit/keyword/movement_formulas_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -133,3 +133,12 @@ Both are `pub` — called by `apply_repel()` and `apply_attract()` in `effects.r
 
 - Depends on: Story 001 (module scaffold — `movement.rs` file exists)
 - Unlocks: Story 016 (displacement keywords use these formulas)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 8/8 passing
+**Traceability**: Updated story requirement from stale `TR-KW-002` to `TR-BLS-010`. `TR-KW-002` currently maps to CHARGE/HASTE bonus movement in `docs/architecture/tr-registry.yaml`, while this story implements REPEL/ATTRACT movement formulas matching KW-029/KW-030 and ADR-018.
+**Deviations**: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01; current GDD includes separate friendly/enemy ATTRACT handling, covered by the implemented formula tests.
+**Test Evidence**: Logic story evidence at `tests/unit/keyword/movement_formulas_test.rs`; executable Cargo harness `server/tests/movement_formulas_test.rs`; `cargo test -p server --test movement_formulas_test` passed with 11/11 tests.
+**Code Review**: Skipped - lean review mode.
