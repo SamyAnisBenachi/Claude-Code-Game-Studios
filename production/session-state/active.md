@@ -940,3 +940,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `KW-004` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Keyword Story 005 SHIELD Scope (`production/epics/keyword-system/story-005-shield-scope.md`) after readiness check, or continue the serialized story-done queue already in progress.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-animations/story-008-input-gating.md` - Input-gating: timer bar, drag latency, bid button state, de-hover cancel-replace
+- Criteria: 3/3 blocking passing (CA-13, CA-23, CA-24); advisory manual evidence for CA-13b and CA-22 deferred until bid-button UI and DRAFT_INITIAL animation sequencing UI exist.
+- Test Evidence: `tests/integration/card-animations/input_gating_test.rs`; `cargo test -p client --test card_animations_input_gating_test` passed 6/6. Scaffold regression `cargo test -p client --test card_animations_plugin_scaffold_test` passed 8/8. `cargo check -p client` passed.
+- Verification: worker branch `work/card-anim-008-input-gating` contains `0d75fb0`; main integration commit `9308bf3` is included in current `main`. `0d75fb0` is not an ancestor of `HEAD`, but it has the same stable patch-id as `9308bf3`.
+- Notes: Manual CA-13b and CA-22 evidence remains pending in `production/qa/evidence/input-gating-evidence.md` because the required UI surfaces do not exist yet. Advisory only - story/GDD wording still says `Animator<T>` / `AnimatorState` and `bevy_tweening 0.18`, while the compiled workspace uses `TweenAnim` / `PlaybackState` / `TweenState` from `bevy_tweening 0.15`.
+- Tech debt logged: None
+- Sprint status: No `CARD-ANIM-008` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Card Animations Story 006 Multi-objective stagger reveal (`production/epics/card-animations/story-006-objective-stagger-reveal.md`) after readiness check, or continue the serialized story-done queue.

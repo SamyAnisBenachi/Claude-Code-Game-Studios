@@ -1,7 +1,7 @@
 # Story 008: Input-gating: timer bar, drag latency, bid button state, de-hover cancel-replace
 
 > **Epic**: Card Animations
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -29,11 +29,11 @@
 
 *From GDD `design/gdd/card-animations.md`, scoped to this story:*
 
-- [ ] **CA-13** — GIVEN `TimerBarEaseRequested` is emitted, WHEN one `App::update()` tick runs, THEN the timer bar entity's `Animator` is in `AnimatorState::Playing` in the same frame as event receipt (0-frame latency). **[BLOCKING]**
-- [ ] **CA-13b** — GIVEN `TimerBarEaseRequested` is processing a tween, WHEN the tween is in flight, THEN bid preset buttons are in enabled state. *(Manual UI walkthrough; screenshot evidence.)* **[ADVISORY]**
-- [ ] **CA-22** — The "≤ 2 animated UI regions per phase transition" rule is enforced by upstream event sequencing design — not a Card Animations runtime guard. Verified by: (a) code review of upstream plugin event-emit timing confirming sequencing invariants, (b) manual playtest walkthrough at DRAFT_INITIAL entry confirming panel and card-draw animations do not fire simultaneously. **[ADVISORY]**
-- [ ] **CA-23** — GIVEN a card in hand during PLACEMENT phase, WHEN a drag-start input event is processed by `App::update()`, THEN the drag sprite entity has an `Animator` in `AnimatorState::Playing` in the same tick (0-frame Bevy-side latency). **[BLOCKING]**
-- [ ] **CA-24** — GIVEN card A has an active `Animator<Transform>` in `Playing` (de-hover return-to-1.0× tween), WHEN a hover-in event fires on card B before A's tween completes, THEN: (a) card A's `Animator<Transform>` remains in `Playing` — new return-to-1.0× tween installed via `set_tweenable` (cancel-replace, NOT stop), AND (b) card A's `Transform.scale.x` is in range (1.0, 1.12] exclusive (no instant snap to 1.0 — scale still at intermediate value), AND (c) card B's `Animator<Transform>` is in `Playing`, AND (d) query `With<HandCard>` + `With<Animator<Transform>>` filtered for `Playing` returns exactly 2 entities (A returning, B hovering). **[BLOCKING]**
+- [x] **CA-13** — GIVEN `TimerBarEaseRequested` is emitted, WHEN one `App::update()` tick runs, THEN the timer bar entity's `Animator` is in `AnimatorState::Playing` in the same frame as event receipt (0-frame latency). **[BLOCKING]**
+- [ ] **CA-13b** — GIVEN `TimerBarEaseRequested` is processing a tween, WHEN the tween is in flight, THEN bid preset buttons are in enabled state. *(Manual UI walkthrough; screenshot evidence.)* **[ADVISORY - DEFERRED]**
+- [ ] **CA-22** — The "≤ 2 animated UI regions per phase transition" rule is enforced by upstream event sequencing design — not a Card Animations runtime guard. Verified by: (a) code review of upstream plugin event-emit timing confirming sequencing invariants, (b) manual playtest walkthrough at DRAFT_INITIAL entry confirming panel and card-draw animations do not fire simultaneously. **[ADVISORY - DEFERRED]**
+- [x] **CA-23** — GIVEN a card in hand during PLACEMENT phase, WHEN a drag-start input event is processed by `App::update()`, THEN the drag sprite entity has an `Animator` in `AnimatorState::Playing` in the same tick (0-frame Bevy-side latency). **[BLOCKING]**
+- [x] **CA-24** — GIVEN card A has an active `Animator<Transform>` in `Playing` (de-hover return-to-1.0× tween), WHEN a hover-in event fires on card B before A's tween completes, THEN: (a) card A's `Animator<Transform>` remains in `Playing` — new return-to-1.0× tween installed via `set_tweenable` (cancel-replace, NOT stop), AND (b) card A's `Transform.scale.x` is in range (1.0, 1.12] exclusive (no instant snap to 1.0 — scale still at intermediate value), AND (c) card B's `Animator<Transform>` is in `Playing`, AND (d) query `With<HandCard>` + `With<Animator<Transform>>` filtered for `Playing` returns exactly 2 entities (A returning, B hovering). **[BLOCKING]**
 
 ---
 
@@ -120,7 +120,7 @@ Manual check: Panel slide and card-draws do not animate simultaneously at DRAFT_
 - Integration: `tests/integration/card-animations/input_gating_test.rs` — must exist and pass
 - Visual: `production/qa/evidence/input-gating-evidence.md` (CA-13b + CA-22 screenshots + lead sign-off)
 
-**Status**: [ ] Not yet created
+**Status**: [x] Automated integration evidence created and passing; CA-13b and CA-22 manual UI walkthrough evidence deferred until bid-button UI and DRAFT_INITIAL animation sequencing UI exist.
 
 ---
 
@@ -128,3 +128,11 @@ Manual check: Panel slide and card-draws do not animate simultaneously at DRAFT_
 
 - Depends on: [Story 002](story-002-tween-cancel-replace-lifecycle.md) must be DONE (cancel-replace contract; OQ-CA-01 resolved for test harness)
 - Unlocks: None
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 3/3 blocking passing (CA-13, CA-23, CA-24); 2 advisory manual criteria deferred (CA-13b, CA-22) until bid-button UI and DRAFT_INITIAL animation sequencing UI exist.
+**Deviations**: Advisory only - story/GDD wording still says `Animator<T>` / `AnimatorState` and `bevy_tweening 0.18`, while the compiled workspace uses `TweenAnim` / `PlaybackState` / `TweenState` from `bevy_tweening 0.15`. Advisory only - worker commit `0d75fb0` is not an ancestor of `HEAD`, but it has the same stable patch-id as main integration commit `9308bf3`, and `9308bf3` is included in current `main`.
+**Test Evidence**: Integration test file at `tests/integration/card-animations/input_gating_test.rs`; `cargo test -p client --test card_animations_input_gating_test` passed 6/6. Scaffold regression `cargo test -p client --test card_animations_plugin_scaffold_test` passed 8/8. `cargo check -p client` passed. Manual evidence file exists at `production/qa/evidence/input-gating-evidence.md` with CA-13b and CA-22 marked pending.
+**Code Review**: Skipped - Lean mode.
