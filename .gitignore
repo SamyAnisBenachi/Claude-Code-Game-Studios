@@ -19,6 +19,7 @@ production/session-logs/
 
 # === Codex local agent state ===
 .agents/
+.codex-tmp/
 
 # === Internal Planning (not for public) ===
 
