@@ -8,6 +8,7 @@ use crate::core::rsm::{
     advance_phase, BeginResolution, PendingPhaseAdvance, PhaseAdvanceRequest, ResolutionComplete,
     RoundPhase,
 };
+use crate::feature::board::BoardSystemSet;
 
 pub const DEFAULT_ITERATION_BUDGET: u32 = 10_000;
 
@@ -36,7 +37,8 @@ impl Plugin for CombatPlugin {
                 Update,
                 resolve_combat
                     .in_set(CombatSystemSet::Resolve)
-                    .after(advance_phase),
+                    .after(advance_phase)
+                    .after(BoardSystemSet::PlacementClose),
             )
             .add_systems(
                 Update,
@@ -202,8 +204,6 @@ pub fn resolve_combat(world: &mut World) {
             round: begin_resolution.round,
         });
 
-    enqueue_placement_reveal(world);
-
     let iteration_limit = world.resource::<CombatIterationBudget>().limit();
     if run_sub_step_scaffold(world, iteration_limit).is_err() {
         world
@@ -238,15 +238,6 @@ fn read_begin_resolution(world: &mut World) -> Option<BeginResolution> {
             cursor.0.read(messages).last().copied()
         },
     )
-}
-
-fn enqueue_placement_reveal(world: &mut World) {
-    world
-        .resource_mut::<CombatNetworkOutbox>()
-        .push_placement_reveal(S2CPlacementReveal { placements: vec![] });
-    world
-        .resource_mut::<CombatResolutionTrace>()
-        .push(CombatTraceEntry::PlacementRevealEnqueued);
 }
 
 fn enqueue_resolution_event(world: &mut World) {

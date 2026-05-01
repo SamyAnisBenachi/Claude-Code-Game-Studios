@@ -62,7 +62,7 @@ fn resolve_combat_idle_without_begin_resolution_touches_no_story_state() {
 }
 
 #[test]
-fn resolve_combat_enqueues_reveal_before_substeps_and_completion_after_resolution_event() {
+fn resolve_combat_runs_substeps_and_completion_after_resolution_event() {
     let mut app = app_with_combat();
     send_begin_resolution(&mut app, 7);
 
@@ -71,17 +71,14 @@ fn resolve_combat_enqueues_reveal_before_substeps_and_completion_after_resolutio
     let outbox = app.world().resource::<CombatNetworkOutbox>();
     assert_eq!(
         outbox.message_kinds(),
-        vec![
-            CombatNetworkMessageKind::PlacementReveal,
-            CombatNetworkMessageKind::ResolutionEvent,
-        ]
+        vec![CombatNetworkMessageKind::ResolutionEvent]
     );
 
     let trace = app.world().resource::<CombatResolutionTrace>().entries();
-    let reveal_index = trace
+    let begin_index = trace
         .iter()
-        .position(|entry| *entry == CombatTraceEntry::PlacementRevealEnqueued)
-        .expect("placement reveal should be traced");
+        .position(|entry| *entry == CombatTraceEntry::BeginResolutionRead { round: 7 })
+        .expect("begin resolution should be traced");
     let sub_step_one_index = trace
         .iter()
         .position(|entry| *entry == CombatTraceEntry::SubStepStarted(1))
@@ -95,7 +92,7 @@ fn resolve_combat_enqueues_reveal_before_substeps_and_completion_after_resolutio
         .position(|entry| *entry == CombatTraceEntry::ResolutionCompleteQueued)
         .expect("completion should be traced");
 
-    assert!(reveal_index < sub_step_one_index);
+    assert!(begin_index < sub_step_one_index);
     assert!(resolution_event_index < completion_index);
     assert_eq!(read_messages::<ResolutionComplete>(&app).len(), 1);
 }
