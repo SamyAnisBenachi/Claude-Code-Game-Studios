@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Logic
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -150,3 +150,11 @@ Valid cells by fakes count (from GDD Formula F2 table):
 
 - Depends on: Story 001 must be DONE (`SpawnRangeState` resource initialized)
 - Unlocks: Story 005 (placement buffer pipeline calls `validate_spawn_range`)
+
+---
+
+## Readiness Refresh
+
+- 2026-05-01: Revalidated against control manifest version 2026-05-01.
+  ADR-007 remains accepted, `TR-BLS-003` remains active, Story 001 is complete,
+  and no implementation requirements changed.
