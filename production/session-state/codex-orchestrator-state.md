@@ -73,6 +73,11 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
+- ECO-005: Auction Reservation and Bid Validation implemented locally on branch
+  `work/eco-005-auction-reservation-bid-validation` at `f8b69bc`; cherry-picked
+  into `main` at `2108143`. Root `cargo fmt -p server -- --check`,
+  `cargo test -p server --test auction_reservation_test`, `cargo check -p server`,
+  and `git diff --check HEAD~1..HEAD` passed.
 - HAND-UI-003: Phase State Machine implemented on branch
   `work/hand-ui-003-phase-state-machine` at `c6e5504`; cherry-picked into
   `main` at `614e68e`. Worker reported targeted Hand UI tests and
@@ -189,6 +194,7 @@ None currently tracked here.
 
 1. HAND-UI-003
 2. BOARD-005
+3. ECO-005
 
 Run only one story-done at a time.
 
@@ -196,8 +202,9 @@ Run only one story-done at a time.
 
 - HAND-UI-003: implemented and integrated; pending story-done.
 - BOARD-005: implemented and integrated; pending story-done.
-- AUC-004: do not start yet; story depends on economy-system story-005 and has
-  OQ9 pre-implementation gate.
+- ECO-005: implemented and integrated; pending story-done.
+- AUC-004: story dependency on economy-system story-005 is implemented but not
+  formally closed; still verify OQ9 pre-implementation gate before launch.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
   API alignment with Card Acquisition are confirmed.
 
