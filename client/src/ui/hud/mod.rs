@@ -300,7 +300,7 @@ fn spawn_scoreboard_dots(
                         ..default()
                     },
                     BackgroundColor(Color::srgba(0.84, 0.88, 0.92, 0.88)),
-                    BorderColor(Color::srgba(0.96, 0.98, 1.0, 0.95)),
+                    BorderColor::all(Color::srgba(0.96, 0.98, 1.0, 0.95)),
                     Visibility::Hidden,
                     ChildOf(parent),
                 ))
