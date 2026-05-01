@@ -28,11 +28,8 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- BOARD-004 story-done: launch prompt issued after CA-004 closure; per user
+- CA-005 story-done: launch prompt issued after BOARD-004 closure; per user
   rule, assume launched unless contradicted.
-- BOARD-004 worker: completed on branch `work/BOARD-004-placement-occupancy`
-  at `224708d`; cherry-picked into `main` at `0c69612`. Window can be
-  cleared.
 - CA-005 worker: initial readiness run returned NEEDS WORK on stale manifest
   version and missing performance budget. Story fixed at `94267fb`; worker
   completed on branch `work/ca-005-purchase-flow` at `415384a`;
@@ -73,14 +70,11 @@ None currently tracked here.
   `38a5489`. Local objective state and RSM win-condition tests passed after
   integration (`11/11` total), plus `cargo check -p server`, `cargo fmt --all
   -- --check`, and `git diff --check HEAD~1..HEAD`.
-- BOARD-004: Placement Occupancy implemented on branch
-  `work/BOARD-004-placement-occupancy` at `224708d`; cherry-picked into `main`
-  at `0c69612`. Local placement occupancy, board grid, spawn range, standard
-  movement, room create/join, and class reveal tests passed after integration
-  (`41/41` total), plus `cargo check -p server`, `cargo fmt --all -- --check`,
-  and `git diff --check HEAD~1..HEAD`.
 ## Recently Closed
 
+- BOARD-004: Placement Occupancy implemented on branch
+  `work/BOARD-004-placement-occupancy` at `224708d`; cherry-picked into `main`
+  at `0c69612`; story-done committed at `9cfd0ad`.
 - CA-004: Manual Refresh Cost implemented on branch `work/ca-004-refresh-cost`
   at `f26f738`; cherry-picked into `main` at `5cb53a8`; story-done committed
   at `dd6332e`.
@@ -167,10 +161,9 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. BOARD-004
-2. CA-005
-3. COMBAT-001
-4. OBJECTIVE-001
+1. CA-005
+2. COMBAT-001
+3. OBJECTIVE-001
 
 Run only one story-done at a time.
 
@@ -179,7 +172,6 @@ Run only one story-done at a time.
 - CA-005: implemented and integrated; pending story-done.
 - COMBAT-001: implemented and integrated; pending story-done.
 - OBJECTIVE-001: implemented and integrated; pending story-done.
-- BOARD-004: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
@@ -190,7 +182,7 @@ Run only one story-done at a time.
 Batch launched:
 None currently active.
 
-BOARD-004 story-done is the active serialized closure. Do not launch another
+CA-005 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
 
 ## Resolved Design Gates
