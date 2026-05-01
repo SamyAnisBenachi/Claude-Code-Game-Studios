@@ -28,9 +28,9 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- CA-003 story-done: assumed launched from the current orchestrator batch.
+- CA-006 story-done: assumed launched after CA-003 closure.
 - BOARD-003 worker: readiness returned NEEDS WORK due stale story manifest
-  metadata; fixed at `6c56f8c`. Needs relaunch against current `main`.
+  metadata; fixed at `6c56f8c`. Assumed relaunched against current `main`.
 - HAND-UI-002 worker: assumed launched from the current orchestrator batch.
 - KW-005 worker: assumed launched from the current orchestrator batch.
 
@@ -90,11 +90,6 @@ None currently tracked here.
   `work/board-002-standard-unit-movement` at `4a76028`; cherry-picked into
   `main` at `0d8e41c`. Local `standard_movement_test`, `cargo check -p server`,
   `cargo fmt -p server -- --check`, and `git diff --check` passed.
-- CA-003: Card Acquisition Draw Pipeline implemented on branch
-  `work/ca-003-draw-pipeline` at `c6200f0`; merged into `main` at `98cb52a`.
-  Local draw pipeline suite, full server tests, `cargo check -p server`, and
-  `cargo fmt --all` passed. `cargo check --workspace` was blocked on stale HUD
-  BorderColor issue in the branch base; main has fixed it at `cbce522`.
 - CA-006: Card Acquisition External Bypass implemented on branch
   `work/ca-006-external-bypass` at `6af1137`; merged into `main`. Local
   `card_acquisition_external_bypass_test` and `cargo check -p server` passed
@@ -102,6 +97,9 @@ None currently tracked here.
 
 ## Recently Closed
 
+- CA-003: Card Acquisition Draw Pipeline implemented on branch
+  `work/ca-003-draw-pipeline` at `c6200f0`; merged into `main` at `98cb52a`;
+  story-done committed at `74f7aff`.
 - BOARD-001: Board Grid Initialization implemented on branch
   `work/board-001-grid-initialization` at `7d38a34`; merged into `main` at
   `6e5d80b`; story-done committed at `e58533d`.
@@ -143,24 +141,22 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. CA-003
-2. CA-006
-3. CARD-ANIM-004
-4. CARD-ANIM-009
-5. BOARD-002
-6. KW-004
-7. CARD-ANIM-008
-8. HUD-002
-9. CARD-ANIM-006
-10. HAND-UI-001
-11. HUD-003
+1. CA-006
+2. CARD-ANIM-004
+3. CARD-ANIM-009
+4. BOARD-002
+5. KW-004
+6. CARD-ANIM-008
+7. HUD-002
+8. CARD-ANIM-006
+9. HAND-UI-001
+10. HUD-003
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- CA-004 / CA-005: depend on CA-003 implementation, now available but should
-  wait for CA-003 story-done unless explicitly pulled in worktree mode.
+- CA-004 / CA-005: unblocked by CA-003 story-done; run readiness before launch.
 - CA-006: implemented and merged; pending story-done.
 - KW-004: unblocked by KW-003 story-done; run readiness first because its story
   text may still contain stale ADR-018 Proposed/BLOCKED wording. Implemented and
@@ -185,8 +181,8 @@ Batch launched:
 - HAND-UI-002: `production/epics/hand-ui/story-002-fan-layout-formula.md`
 - KW-005: `production/epics/keyword-system/story-005-shield-scope.md`
 
-Do not launch another story-done until CA-003 closure returns. New code workers
-can continue in worktree mode if dependencies are checked first.
+CA-006 story-done is the active serialized closure. New code workers can
+continue in worktree mode if dependencies are checked first.
 
 ## Resolved Design Gates
 
