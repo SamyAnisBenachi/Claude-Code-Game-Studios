@@ -33,11 +33,11 @@ stories:
     name: "GSS Story 3: Class Selection and Reveal"
     file: "production/epics/game-session-system/story-003-class-selection-reveal.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: "codex-s3-03-class-reveal"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-01"
 
   - id: "S3-04"
     name: "RSM Story 3: Timers and Input Reader"

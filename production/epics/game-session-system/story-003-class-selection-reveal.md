@@ -1,7 +1,7 @@
 # Story 003: Class Selection and Reveal
 
 > **Epic**: Game Session System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -27,22 +27,22 @@
 
 ## Acceptance Criteria
 
-- [ ] `handle_select_class` system exists in `server/src/core/session/system.rs` and:
+- [x] `handle_select_class` system exists in `server/src/core/session/system.rs` and:
   - Updates a `ClassPreviews(HashMap<PlayerId, ClassId>)` server-side resource (preview state, not persisted to `SessionSlot`)
   - Does NOT send any S2C message (preview is server-side only)
   - Does NOT write to `ClassSelections`
   - Sends `S2CSelectClassRejected { reason: SessionNotInLobby }` if `LobbyState != LobbyWaiting`
-- [ ] `handle_confirm_class` system exists in `server/src/core/session/system.rs` and:
+- [x] `handle_confirm_class` system exists in `server/src/core/session/system.rs` and:
   - Rejects with `S2CClassLockRejected { reason: AlreadyLocked }` if `ClassSelections` already contains this `PlayerId` (idempotent guard — player cannot re-lock with a different class)
   - Rejects with `S2CClassLockRejected { reason: SessionNotInLobby }` if `LobbyState != LobbyWaiting`
   - On success: writes `SessionSlot.class = Some(class_id)` for the player's slot AND inserts `class_id` into `ClassSelections[player_id]` in the same system call
   - On success: sends `S2CClassLocked { player_id, class_id }` unicast to the locking player on `ReliableChannel`
   - After writing: checks if all occupied slots in `SessionSlots` have `class = Some(_)`; if true, broadcasts `S2CClassesRevealed { class_map: HashMap<PlayerId, ClassId> }` to all session participants on `ReliableChannel`
   - `S2CClassesRevealed` is sent exactly once — the idempotent guard (`AlreadyLocked` rejection on re-confirm) prevents a second broadcast
-- [ ] `ClassPreviews(HashMap<PlayerId, ClassId>)` newtype resource is defined in `server/src/core/session/state.rs`
-- [ ] `GameSessionPlugin` registers both handlers in the Bevy `Update` schedule
-- [ ] `cargo check -p server` passes with zero warnings
-- [ ] Unit tests in `tests/unit/session/class_reveal_test.rs` pass — see QA Test Cases
+- [x] `ClassPreviews(HashMap<PlayerId, ClassId>)` newtype resource is defined in `server/src/core/session/state.rs`
+- [x] `GameSessionPlugin` registers both handlers in the Bevy `Update` schedule
+- [x] `cargo check -p server` passes with zero warnings
+- [x] Unit tests in `tests/unit/session/class_reveal_test.rs` pass — see QA Test Cases
 
 ---
 
@@ -100,7 +100,7 @@
 
 **Story Type**: Logic
 **Required evidence**: `tests/unit/session/class_reveal_test.rs` — all test cases passing
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing locally (8/8 tests)
 
 ---
 
@@ -109,3 +109,13 @@
 - Depends on: Story 001 (session types — `SessionSlots`, `ClassSelections`, `LobbyState`)
 - Depends on: Story 002 (room create/join — session must exist and be in `LobbyWaiting` state for class selection to proceed)
 - Unlocks: Story 004 (F4 predicate reads `ClassSelections` — all slots must be confirmable before readiness can be evaluated)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 6/6 passing
+**Deviations**:
+- Advisory: story wording for rejection messages is stale against the current GDD/protocol. Current implementation uses `S2CConfirmClassRejected { reason: ClassAlreadyConfirmed }`, and same-class duplicate confirms are silent no-ops per current GDD.
+- Advisory: story manifest v2026-04-29 is older than current control manifest v2026-05-01.
+**Test Evidence**: Logic story covered by `tests/unit/session/class_reveal_test.rs`; `cargo test -p server --test class_reveal_test` passed 8/8; `cargo check -p server` passed with zero warnings.
+**Code Review**: Skipped - Lean mode.

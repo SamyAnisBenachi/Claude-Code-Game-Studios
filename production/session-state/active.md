@@ -706,3 +706,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `S3-02` set to `done` in `production/sprint-status.yaml`; existing in-progress claims for `S3-04`, `S3-06`, and `S3-08` preserved; `S3-03` preserved as `ready-for-dev`.
 - Next recommended: S3-03 Class Selection and Reveal at `production/epics/game-session-system/story-003-class-selection-reveal.md` after readiness check.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/game-session-system/story-003-class-selection-reveal.md` - Class Selection and Reveal
+- Criteria: 6/6 passing; select preview, confirm lock, deferred reveal, idempotence/re-lock handling, plugin wiring, and class preview resource verified.
+- Test Evidence: `tests/unit/session/class_reveal_test.rs`; `cargo test -p server --test class_reveal_test` -> 8 passed, 0 failed. `cargo check -p server` passed with zero warnings.
+- Notes: Advisory only - story manifest v2026-04-29 is older than current control manifest v2026-05-01. Story rejection-message wording is stale; current implementation follows current GDD/protocol with `S2CConfirmClassRejected { reason: ClassAlreadyConfirmed }` and silent same-class duplicate confirms.
+- Tech debt logged: None
+- Sprint status: `S3-03` set to `done` in `production/sprint-status.yaml`; existing in-progress claims for `S3-04`, `S3-06`, and `S3-08` preserved.
+- Next recommended: S3-05 RSM Story 4: Win Condition and Game Over at `production/epics/round-state-machine/story-004-win-condition-and-game-over.md`; S3-04 and S3-06 are still in progress.
