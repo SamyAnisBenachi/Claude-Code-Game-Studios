@@ -1071,3 +1071,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no Objective Story 1 row exists in `production/sprint-status.yaml`.
 - Next recommended: Objective Story 002 Fake Assignment & Config Guards (`production/epics/objective-system/story-002-fake-assignment-and-config-guards.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hud/story-005-phase-transitions.md` - Phase Transitions and RESOLUTION Persistence
+- Criteria: 4/4 passing; HUD-15, HUD-16, HUD-18, and HUD-09 covered by `tests/unit/hud/phase_transitions_test.rs`.
+- Test Evidence: `cargo test -p client --test hud_phase_transitions_test` passed 5/5. HUD regression slice passed 21/21. `cargo check -p client` passed.
+- Verification: `client/src/ui/hud/mod.rs` keeps phase transitions in `HudSystemSet::PhaseTransition`, reads `Res<CurrentClientPhase>`, uses `HudMode` as the mode resource, mutates `Visibility` directly, and leaves `InheritedVisibility` untouched.
+- Notes: Advisory only - full sister-UI hiding is explicitly out of scope for isolated `HudPlugin` verification, and lean mode skipped the external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged; no `HUD-005` row exists in `production/sprint-status.yaml`.
+- Next recommended: HUD Story 006 ECONOMY_AUCTION Inline Gold Format (`production/epics/hud/story-006-economy-auction-inline-gold.md`) after readiness check.

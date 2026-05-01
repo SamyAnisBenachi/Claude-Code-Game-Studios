@@ -1,7 +1,7 @@
 # Story 005: Phase Transitions and RESOLUTION Persistence
 
 > **Epic**: HUD
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -116,7 +116,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/hud/phase_transitions_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -124,3 +124,11 @@
 
 - Depends on: Story 001 (entity pool), Story 002 (GoldDisplayState for HUD-09 verification), Story 003 (phase label text for HUD-15)
 - Unlocks: Story 006 (ECONOMY_AUCTION builds on the mode state machine), Story 007 (GAME_OVER adds FROZEN mode)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 4/4 passing (HUD-15, HUD-16, HUD-18, HUD-09).
+**Deviations**: Advisory only - full sister-UI hiding is explicitly out of scope for isolated `HudPlugin` verification, and lean mode skipped the external QA/code-review gates.
+**Test Evidence**: Logic test file at `tests/unit/hud/phase_transitions_test.rs`; `cargo test -p client --test hud_phase_transitions_test` passed 5/5. HUD regression slice `cargo test -p client --test hud_plugin_scaffold_test --test hud_gold_mana_display_test --test hud_phase_label_round_counter_test --test hud_phase_transitions_test` passed 21/21. `cargo check -p client` passed.
+**Code Review**: Skipped - Lean mode.
