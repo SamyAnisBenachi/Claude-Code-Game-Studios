@@ -44,8 +44,12 @@ pub enum PurchaseAttemptResult {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RefreshAttemptResult {
+    Refreshed,
     AcceptedOutOfScope,
     DiscardedWrongPhase,
+    PlayerEconomyMissing,
+    InsufficientGold,
+    DrawUnavailable,
 }
 
 #[derive(Clone, Debug)]
@@ -180,7 +184,47 @@ pub fn card_acquisition_tick_system(
             let Some(player_id) = resolve_player(remote, connections) else {
                 continue;
             };
-            let _ = process_refresh_shop_request(&mut shop_states, player_id);
+
+            let dispatch = match (
+                economies.as_mut(),
+                pools.as_deref(),
+                sessions.as_deref(),
+                catalog.as_deref(),
+                config.as_deref(),
+                server_rng.as_deref_mut(),
+            ) {
+                (
+                    Some(economies),
+                    Some(pools),
+                    Some(sessions),
+                    Some(catalog),
+                    Some(config),
+                    Some(server_rng),
+                ) => {
+                    let (_result, message) = process_manual_refresh_shop_request(
+                        &mut shop_states,
+                        &mut *economies,
+                        pools,
+                        sessions,
+                        catalog,
+                        config,
+                        server_rng,
+                        player_id,
+                    );
+                    message
+                        .map(|message| prepare_shop_slots_dispatch(player_id, message, connections))
+                }
+                _ => {
+                    let _ = process_refresh_shop_request(&mut shop_states, player_id);
+                    None
+                }
+            };
+
+            if let (Some(dispatch), Some(server), Some(sender)) =
+                (dispatch.as_ref(), server, sender.as_mut())
+            {
+                send_shop_slots(sender, server, dispatch);
+            }
         }
     }
 
@@ -355,6 +399,61 @@ pub fn process_refresh_shop_request(
     }
 
     RefreshAttemptResult::DiscardedWrongPhase
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn process_manual_refresh_shop_request(
+    shop_states: &mut ShopStates,
+    economies: &mut PlayerEconomies,
+    pools: &PlayerPools,
+    sessions: &PlayerSessions,
+    catalog: &CardCatalog,
+    config: &GameConfig,
+    server_rng: &mut ServerRng,
+    player_id: PlayerId,
+) -> (RefreshAttemptResult, Option<S2CShopSlots>) {
+    let refresh_cost = match shop_states.players.get(&player_id) {
+        Some(shop) if shop.phase == ShopPhase::ShopActive => {
+            manual_refresh_cost(config, shop.refresh_count_this_draft)
+        }
+        _ => return (RefreshAttemptResult::DiscardedWrongPhase, None),
+    };
+
+    let Some(economy) = economies.0.get_mut(&player_id) else {
+        return (RefreshAttemptResult::PlayerEconomyMissing, None);
+    };
+
+    if economy_api::spend_gold(economy, refresh_cost).is_err() {
+        return (RefreshAttemptResult::InsufficientGold, None);
+    }
+
+    let Some(message) = build_manual_shop_slots(
+        shop_states,
+        pools,
+        sessions,
+        catalog,
+        config,
+        server_rng,
+        player_id,
+    ) else {
+        let Some(economy) = economies.0.get_mut(&player_id) else {
+            return (RefreshAttemptResult::DrawUnavailable, None);
+        };
+        economy_api::refund_gold(economy, refresh_cost);
+        return (RefreshAttemptResult::DrawUnavailable, None);
+    };
+
+    if let Some(shop) = shop_states.players.get_mut(&player_id) {
+        shop.refresh_count_this_draft = shop.refresh_count_this_draft.saturating_add(1);
+    }
+
+    (RefreshAttemptResult::Refreshed, Some(message))
+}
+
+pub fn manual_refresh_cost(config: &GameConfig, refresh_count_this_draft: u32) -> u32 {
+    config
+        .refresh_base_cost
+        .saturating_add(refresh_count_this_draft.min(config.refresh_cap))
 }
 
 pub fn process_purchase_card(
