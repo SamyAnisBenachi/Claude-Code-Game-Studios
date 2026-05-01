@@ -611,3 +611,12 @@ C:\Program Files\GitHub CLI\gh.exe
 - Notes: `systems-index` still reports Class System as In Review, and `control-manifest.md` still lists ADR-014 as pending despite ADR-014 and the epic/story being Ready/Accepted. Shared protocol remains dependency-light, so `C2SClassChoice` follows the existing serde-only Lightyear registration manifest rather than adding a `lightyear` dependency to `shared/`.
 - Blockers: None
 - Next: `/code-review server/src/core/session/state.rs server/src/lobby/handler.rs server/src/core/rsm/transitions.rs server/tests/class_lifecycle_test.rs` then `/story-done production/epics/class-system/story-001-class-lifecycle.md` after CI green
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/class-system/story-001-class-lifecycle.md` - Class Lifecycle / PlayerSessions Scaffold
+- Criteria: 3/3 passing; class choice, lobby gate locking, and snapshot `class_id` verified against current code.
+- Test Evidence: `tests/unit/class/class_lifecycle_test.rs`; executable coverage in `server/tests/class_lifecycle_test.rs`.
+- Verification: `cargo test -p server --test class_lifecycle_test` -> 9 passed; `cargo test -p server --test rsm_transitions_test --test rsm_scaffold_test` -> 16 passed. GitHub Actions run `25194696023` passed on `main` at `17e3fc352ad1f843daafba4fa8ac484847311f9e`; implementation commit `91539e1` is an ancestor.
+- Notes: Advisory only - story manifest `2026-04-30` is older than current control manifest `2026-05-01`; shared protocol remains serde-only/dependency-light rather than deriving Lightyear `Message` directly in `shared/`.
+- Tech debt logged: None
