@@ -47,7 +47,12 @@ source of truth for story status.
 - HUD-005 worker: launch prompt issued while CA-005 story-done is active; per
   user rule, assume launched unless contradicted.
 - BOARD-005 worker: launch prompt issued while CA-005 story-done is active; per
-  user rule, assume launched unless contradicted.
+  user rule, assume launched unless contradicted. Initial readiness returned
+  NEEDS WORK only because the story embedded manifest version was stale
+  (`2026-04-29` vs current `2026-05-01`); dependencies and ADRs passed.
+  Story manifest was refreshed, so this window should retry readiness and then
+  implement if READY. Correct ADR file is
+  `docs/architecture/adr-007-placement-buffer.md`.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
