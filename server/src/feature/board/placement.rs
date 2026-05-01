@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use lightyear::prelude::{NetworkTarget, Replicate};
+use lightyear::prelude::{NetworkTarget, Replicate, Server, ServerMultiMessageSender};
 use shared::card::{CardData, CardType};
-use shared::protocol::{PlacedCard, PlayTarget, S2CPlacementReveal};
+use shared::protocol::{PlacedCard, PlayTarget, ReliableChannel, S2CPlacementReveal};
 use shared::session::PlayerId;
 
 use crate::core::board::{BoardPosition, UnitCardRef, UnitOwner, UnitStats};
@@ -59,32 +59,6 @@ pub struct PlacementSubmissionReceived {
 pub struct PlacementCommitted {
     pub round_number: u32,
     pub committed_placements: HashMap<PlayerId, Vec<PlacedCard>>,
-}
-
-/// Testable stand-in for the future Lightyear network dispatch layer.
-///
-/// Messages pushed here represent `S2CPlacementReveal` enqueued on the reliable
-/// channel. The close system pushes before it spawns any ECS unit entity.
-#[derive(Resource, Default, Debug, Clone)]
-pub struct PlacementRevealOutbox {
-    messages: Vec<S2CPlacementReveal>,
-}
-
-impl PlacementRevealOutbox {
-    /// Append a placement reveal in enqueue order.
-    pub fn push(&mut self, message: S2CPlacementReveal) {
-        self.messages.push(message);
-    }
-
-    /// Read enqueued reveal messages.
-    pub fn messages(&self) -> &[S2CPlacementReveal] {
-        &self.messages
-    }
-
-    /// Clear all recorded reveal messages.
-    pub fn clear(&mut self) {
-        self.messages.clear();
-    }
 }
 
 /// Instrumentation for the reveal-before-spawn invariant.
@@ -368,7 +342,8 @@ pub fn close_placement_phase(
     mut occupancy: ResMut<BoardOccupancy>,
     mut economies: Option<ResMut<PlayerEconomies>>,
     catalog: Option<Res<CardCatalog>>,
-    mut outbox: ResMut<PlacementRevealOutbox>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
     mut trace: ResMut<PlacementCommitTrace>,
     mut committed: MessageWriter<PlacementCommitted>,
 ) {
@@ -377,6 +352,9 @@ pub fn close_placement_phase(
     };
 
     let Some(catalog) = catalog.as_deref() else {
+        return;
+    };
+    let (Ok(server), Some(sender)) = (server.single(), sender.as_mut()) else {
         return;
     };
 
@@ -397,7 +375,12 @@ pub fn close_placement_phase(
             .collect(),
     };
 
-    outbox.push(reveal);
+    if sender
+        .send::<S2CPlacementReveal, ReliableChannel>(&reveal, server, &NetworkTarget::All)
+        .is_err()
+    {
+        return;
+    }
     trace.push(PlacementCommitTraceEntry::PlacementRevealEnqueued);
 
     for (_, placements) in &committed_sequence {

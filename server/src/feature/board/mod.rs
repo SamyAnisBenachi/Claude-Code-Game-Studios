@@ -17,8 +17,7 @@ pub use placement::{
     is_minion_slot_available, is_structure_slot_available, is_trap_slot_available,
     placement_buffer_open, process_placement_submission, requires_spawn_range_validation,
     validate_spawn_range, PendingPlacements, PlacementCommitTrace, PlacementCommitTraceEntry,
-    PlacementCommitted, PlacementRevealOutbox, PlacementSubmissionReceived,
-    PlacementSubmissionResult, PlayerSubmission,
+    PlacementCommitted, PlacementSubmissionReceived, PlacementSubmissionResult, PlayerSubmission,
 };
 pub use plugin::{BoardPlugin, BoardSystemSet};
 pub use state::{
