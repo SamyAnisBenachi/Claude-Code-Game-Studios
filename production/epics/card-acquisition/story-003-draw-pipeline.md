@@ -1,7 +1,7 @@
 # Story 003: Shop Draw Pipeline — Auto-Refresh, Dedup, and 50/50 Split
 
 > **Epic**: Card Acquisition
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M2)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -34,10 +34,10 @@
 
 *From GDD `design/gdd/card-acquisition.md`, scoped to this story:*
 
-- [ ] **CA6** — GIVEN DRAFT_SHOP begins and auto-refresh fires, WHEN `S2CShopSlots` is sent, THEN all non-null slot IDs are absent from `displayed_this_draft` before the refresh, all are added to `displayed_this_draft` after, and all non-null IDs within the same message are mutually distinct (no intra-message duplicates).
-- [ ] **CA12** — GIVEN all eligible cards for a slot type are already in `displayed_this_draft` (K ≥ N), WHEN auto-refresh or manual refresh assigns this slot, THEN the slot is set to empty without any retry attempts.
-- [ ] **CA16** — GIVEN a player triggers a manual refresh after already receiving auto-refresh slots this DRAFT phase, WHEN `S2CShopSlots` is sent, THEN none of the 3 new card IDs match any card ID sent in any prior `S2CShopSlots` message since this DRAFT phase began.
-- [ ] **CA19** — GIVEN N = 0 (no eligible cards exist for a slot type — test fixture only), WHEN any refresh assigns this slot, THEN slot is set to empty immediately with no probability computation or retry.
+- [x] **CA6** — GIVEN DRAFT_SHOP begins and auto-refresh fires, WHEN `S2CShopSlots` is sent, THEN all non-null slot IDs are absent from `displayed_this_draft` before the refresh, all are added to `displayed_this_draft` after, and all non-null IDs within the same message are mutually distinct (no intra-message duplicates).
+- [x] **CA12** — GIVEN all eligible cards for a slot type are already in `displayed_this_draft` (K ≥ N), WHEN auto-refresh or manual refresh assigns this slot, THEN the slot is set to empty without any retry attempts.
+- [x] **CA16** — GIVEN a player triggers a manual refresh after already receiving auto-refresh slots this DRAFT phase, WHEN `S2CShopSlots` is sent, THEN none of the 3 new card IDs match any card ID sent in any prior `S2CShopSlots` message since this DRAFT phase began.
+- [x] **CA19** — GIVEN N = 0 (no eligible cards exist for a slot type — test fixture only), WHEN any refresh assigns this slot, THEN slot is set to empty immediately with no probability computation or retry.
 
 ---
 
@@ -122,7 +122,7 @@ Step 5 — On success: add candidate to displayed_this_draft, assign to current_
 **Required evidence**: `tests/unit/card_acquisition/draw_pipeline_test.rs` — must exist and pass
 *(Testable via `World::new()` + injected `ShopRefreshTriggered` messages — no Lightyear session required)*
 
-**Status**: [ ] Not yet created
+**Status**: [x] Verified locally with `cargo test -p server --test card_acquisition_draw_pipeline_test`
 
 ---
 
@@ -130,3 +130,11 @@ Step 5 — On success: add candidate to displayed_this_draft, assign to current_
 
 - Depends on: Story 001 (`state-scaffold`) must be Done — `ShopStates`, `ShopRefreshTriggered`, `ShopRefreshTrigger` must be defined
 - Unlocks: Story 004 (`refresh-cost`) and Story 005 (`purchase-flow`) both depend on this draw pipeline being in place
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 4/4 passing (CA6, CA12, CA16, CA19)
+**Deviations**: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01; no blocking GDD/ADR drift found.
+**Test Evidence**: Logic evidence at `tests/unit/card_acquisition/draw_pipeline_test.rs`; `cargo test -p server --test card_acquisition_draw_pipeline_test` passed 5/5 tests. `cargo check -p server` also passed.
+**Code Review**: Skipped - lean review mode; local implementation review found no blocking GDD/ADR deviations.

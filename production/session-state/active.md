@@ -863,3 +863,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `BOARD-001` entry exists in `production/sprint-status.yaml`; file left unchanged.
 - Next recommended: Board Story 002 Standard Unit Movement at `production/epics/board-lane-system/story-002-standard-unit-movement.md` after readiness check.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-acquisition/story-003-draw-pipeline.md` - Shop Draw Pipeline - Auto-Refresh, Dedup, and 50/50 Split
+- Criteria: 4/4 passing; CA6, CA12, CA16, and CA19 verified against the merged CA-003 implementation.
+- Test Evidence: `tests/unit/card_acquisition/draw_pipeline_test.rs`; `cargo test -p server --test card_acquisition_draw_pipeline_test` passed 5/5 tests.
+- Verification: `cargo check -p server` passed. Implementation commit `c6200f0` and merge commit `98cb52a` are included in current `main`.
+- Notes: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01; no blocking GDD/ADR drift found.
+- Tech debt logged: None
+- Sprint status: No `CA-003` entry exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Card Acquisition Story 004 (`production/epics/card-acquisition/story-004-refresh-cost.md`) and Story 005 (`production/epics/card-acquisition/story-005-purchase-flow.md`) are unblocked by CA-003.
