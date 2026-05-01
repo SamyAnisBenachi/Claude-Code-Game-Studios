@@ -59,6 +59,10 @@ None currently tracked here.
   `e9103d9`. Local plugin scaffold + tween lifecycle tests and
   `cargo check -p client` passed. Merge conflict in `client/Cargo.toml` resolved
   by keeping both HUD-001 and CARD-ANIM-002 test targets.
+- BOARD-001: Board Grid Initialization implemented on branch
+  `work/board-001-grid-initialization` at `7d38a34`; merged into `main` at
+  `6e5d80b`. Local `board_grid_initialization_test`, `cargo check -p server`,
+  and `cargo fmt -p server --check` passed.
 - S3-08: Economy Interest Snapshot & Resolution End implemented on branch
   `work/s3-08-economy-interest-snapshot` at `db61102`; merged into `main` at
   `4961356`. Local `economy_interest_snapshot_test`, `cargo check -p server`,
@@ -90,6 +94,7 @@ None currently tracked here.
 5. HUD-001
 6. S3-08
 7. CARD-ANIM-002
+8. BOARD-001
 
 Run only one story-done at a time.
 
@@ -112,7 +117,9 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-- BOARD-001: Board Grid Initialization; no dependencies.
+- BOARD-002: Standard Unit Movement; depends on BOARD-001 implementation, now
+  available but should wait for BOARD-001 story-done unless explicitly pulled in
+  worktree mode.
 - CARD-ANIM-004: AnimQueue resolution drain; depends on CARD-ANIM-001 done.
 - CARD-ANIM-009: CI boundary enforcement; depends on CARD-ANIM-001 done.
 - CARD-ANIM-008: Input Gating; depends on CARD-ANIM-002 implementation, now
