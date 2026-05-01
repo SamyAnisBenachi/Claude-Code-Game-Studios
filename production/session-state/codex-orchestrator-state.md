@@ -207,9 +207,10 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-No new worker batch is queued in this tracker. The last batch
-(`HAND-UI-003`, `HUD-005`, `BOARD-005`) has been integrated into `main` and is
-now waiting only for serialized story-done closure.
+Batch launched:
+- ECO-005: `production/epics/economy-system/story-005-auction-reservation-bid-validation.md`
+- RSM-005: `production/epics/round-state-machine/story-005-disconnect-handling.md`
+- BOARD-006: `production/epics/board-lane-system/story-006-charge-bonus-movement.md`
 
 No story-done window is currently active in this tracker. The next serialized
 closure is HUD-005.
