@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use bevy::prelude::*;
 use lightyear::prelude::*;
 use shared::card::ClassId;
@@ -7,10 +5,7 @@ use shared::protocol::C2SClassChoice;
 use shared::session::PlayerId;
 
 use crate::core::rsm::{RoundPhase, RoundState};
-use crate::core::session::PlayerSessions;
-
-#[derive(Resource, Default)]
-pub struct PlayerConnectionMap(pub HashMap<PeerId, PlayerId>);
+use crate::core::session::{PlayerConnectionMap, PlayerSessions};
 
 /// Sole drainer for `MessageReceiver<C2SClassChoice>`.
 pub fn handle_class_choice(

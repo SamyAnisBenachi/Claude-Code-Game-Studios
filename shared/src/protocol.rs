@@ -87,6 +87,7 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_s2c::<S2COpponentDisconnected>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2COpponentReconnected>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CRoomCreated>(registry, ProtocolChannel::Reliable);
+    register_s2c::<S2CCreateRoomRejected>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CJoinAck>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CJoinRejected>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CSlotUpdated>(registry, ProtocolChannel::Reliable);
@@ -167,7 +168,14 @@ pub enum JoinRejectedReason {
     RoomNotFound,
     InvalidSlot,
     AlreadyInSession,
+    SessionNotJoinable,
     SessionInProgress,
+    InvalidMode,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CreateRoomRejectedReason {
+    AlreadyInSession,
     InvalidMode,
 }
 
@@ -245,6 +253,7 @@ pub enum ResolutionEvent {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct SessionSlot {
     pub slot: u8,
+    pub team: u8,
     pub player_id: Option<PlayerId>,
     pub class_id: Option<ClassId>,
     pub class_confirmed: bool,
@@ -425,13 +434,20 @@ pub struct S2COpponentReconnected {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct S2CRoomCreated {
+    pub session_id: String,
     pub room_code: String,
     pub mode: GameMode,
     pub slots: Vec<SessionSlot>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct S2CCreateRoomRejected {
+    pub reason: CreateRoomRejectedReason,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct S2CJoinAck {
+    pub session_id: String,
     pub mode: GameMode,
     pub slots: Vec<SessionSlot>,
 }

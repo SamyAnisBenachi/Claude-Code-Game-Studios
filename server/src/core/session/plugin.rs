@@ -3,13 +3,20 @@
 use bevy::prelude::*;
 use shared::card::ClassId;
 
-use crate::core::session::{PlayerSessionData, PlayerSessions, SessionConfig, SessionReady};
+use crate::core::session::{
+    handle_create_room, handle_join_room, ActiveSessions, PlayerConnectionMap, PlayerSessionData,
+    PlayerSessions, RoomSessions, SessionConfig, SessionReady,
+};
 
 pub struct GameSessionPlugin;
 
 impl Plugin for GameSessionPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PlayerSessions>();
+        app.init_resource::<PlayerSessions>()
+            .init_resource::<ActiveSessions>()
+            .init_resource::<PlayerConnectionMap>()
+            .init_resource::<RoomSessions>()
+            .add_systems(Update, (handle_create_room, handle_join_room));
     }
 }
 

@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::Resource;
+use lightyear::prelude::PeerId;
 use shared::card::ClassId;
 use shared::session::PlayerId;
 use uuid::Uuid;
@@ -18,7 +19,7 @@ pub struct SessionSlot {
     pub class: Option<ClassId>,
 }
 
-#[derive(Debug, Clone, PartialEq, Resource)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Resource)]
 pub enum LobbyState {
     LobbyWaiting,
     LobbyReady,
@@ -35,7 +36,7 @@ pub struct RoomCode(pub String);
 
 pub type SessionToken = [u8; 16];
 
-#[derive(Debug, Resource)]
+#[derive(Debug, Clone, PartialEq, Resource)]
 pub struct SessionSlots(pub Vec<SessionSlot>);
 
 #[derive(Debug, Resource)]
@@ -100,8 +101,72 @@ impl PlayerSessions {
     }
 }
 
-#[derive(Debug, Clone, Copy, Resource)]
+#[derive(Debug, Clone, Copy, PartialEq, Resource)]
 pub struct LobbyDeadline(pub f64);
 
-#[derive(Debug, Resource)]
+#[derive(Debug, Clone, PartialEq, Resource)]
 pub struct LobbyHeartbeats(pub HashMap<PlayerId, f64>);
+
+/// Server-level one-active-session guard.
+///
+/// Maps each player currently occupying a room slot to the session they are in.
+/// Cleanup is owned by later disconnect/game-over stories.
+#[derive(Debug, Default, Resource)]
+pub struct ActiveSessions(pub HashMap<PlayerId, SessionId>);
+
+/// Transient network connection identity for each stable session player.
+#[derive(Debug, Default, Resource)]
+pub struct PlayerConnectionMap(pub HashMap<PeerId, PlayerId>);
+
+/// All room records currently known to this server process.
+#[derive(Debug, Default, Resource)]
+pub struct RoomSessions {
+    by_id: HashMap<SessionId, RoomSession>,
+    by_code: HashMap<RoomCode, SessionId>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RoomSession {
+    pub session_id: SessionId,
+    pub room_code: RoomCode,
+    pub owner: PlayerId,
+    pub mode: shared::protocol::GameMode,
+    pub state: LobbyState,
+    pub slots: SessionSlots,
+    pub lobby_deadline: LobbyDeadline,
+    pub heartbeats: LobbyHeartbeats,
+}
+
+impl RoomSessions {
+    pub fn len(&self) -> usize {
+        self.by_id.len()
+    }
+
+    pub fn contains_room_code(&self, room_code: &RoomCode) -> bool {
+        self.by_code.contains_key(room_code)
+    }
+
+    pub fn get(&self, session_id: SessionId) -> Option<&RoomSession> {
+        self.by_id.get(&session_id)
+    }
+
+    pub fn get_mut(&mut self, session_id: SessionId) -> Option<&mut RoomSession> {
+        self.by_id.get_mut(&session_id)
+    }
+
+    pub fn get_by_code(&self, room_code: &RoomCode) -> Option<&RoomSession> {
+        let session_id = self.by_code.get(room_code).copied()?;
+        self.by_id.get(&session_id)
+    }
+
+    pub fn get_mut_by_code(&mut self, room_code: &RoomCode) -> Option<&mut RoomSession> {
+        let session_id = self.by_code.get(room_code).copied()?;
+        self.by_id.get_mut(&session_id)
+    }
+
+    pub fn insert(&mut self, session: RoomSession) {
+        self.by_code
+            .insert(session.room_code.clone(), session.session_id);
+        self.by_id.insert(session.session_id, session);
+    }
+}

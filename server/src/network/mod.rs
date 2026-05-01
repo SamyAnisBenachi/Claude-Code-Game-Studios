@@ -1,15 +1,16 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
-use crate::lobby::handler::{handle_class_choice, PlayerConnectionMap};
+use crate::core::session::PlayerConnectionMap;
+use crate::lobby::handler::handle_class_choice;
 use bevy::prelude::*;
 use lightyear::prelude::server::*;
 use lightyear::prelude::*;
 use shared::protocol::{
-    self, C2SAcknowledgeResult, C2SActivateCard, C2SConfirmClass, C2SCreateRoom, C2SHeartbeat,
-    C2SHello, C2SJoinRoom, C2SPlaceBid, C2SPurchaseCard, C2SRefreshShop, C2SSelectClass,
-    C2SSignalReady, C2SSubmitPlacement, ProtocolChannel, ProtocolDirection, ProtocolRegistry,
-    ReliableChannel, S2CObjectiveIdentities,
+    self, C2SAcknowledgeResult, C2SActivateCard, C2SConfirmClass, C2SHeartbeat, C2SHello,
+    C2SPlaceBid, C2SPurchaseCard, C2SRefreshShop, C2SSelectClass, C2SSignalReady,
+    C2SSubmitPlacement, ProtocolChannel, ProtocolDirection, ProtocolRegistry, ReliableChannel,
+    S2CObjectiveIdentities,
 };
 
 pub struct ServerNetworkPlugin;
@@ -100,8 +101,6 @@ fn log_client_disconnected(trigger: On<Add, Disconnected>, clients: Query<&Remot
 
 fn receive_c2s_messages(
     hello: Query<&mut MessageReceiver<C2SHello>>,
-    create_room: Query<&mut MessageReceiver<C2SCreateRoom>>,
-    join_room: Query<&mut MessageReceiver<C2SJoinRoom>>,
     select_class: Query<&mut MessageReceiver<C2SSelectClass>>,
     confirm_class: Query<&mut MessageReceiver<C2SConfirmClass>>,
     purchase_card: Query<&mut MessageReceiver<C2SPurchaseCard>>,
@@ -114,8 +113,6 @@ fn receive_c2s_messages(
     heartbeat: Query<&mut MessageReceiver<C2SHeartbeat>>,
 ) {
     log_received("C2SHello", hello);
-    log_received("C2SCreateRoom", create_room);
-    log_received("C2SJoinRoom", join_room);
     log_received("C2SSelectClass", select_class);
     log_received("C2SConfirmClass", confirm_class);
     log_received("C2SPurchaseCard", purchase_card);
