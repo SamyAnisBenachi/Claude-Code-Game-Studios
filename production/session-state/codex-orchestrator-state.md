@@ -28,12 +28,11 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- CA-005 story-done: launch prompt issued after BOARD-004 closure; per user
-  rule, assume launched unless contradicted.
 - CA-005 worker: initial readiness run returned NEEDS WORK on stale manifest
   version and missing performance budget. Story fixed at `94267fb`; worker
   completed on branch `work/ca-005-purchase-flow` at `415384a`;
-  cherry-picked into `main` at `c6141bc`. Window can be cleared.
+  cherry-picked into `main` at `c6141bc`; story-done committed at `a770db2`.
+  Window can be cleared.
 - OBJECTIVE-001 worker: initial readiness run returned NEEDS WORK on stale
   manifest and too-few acceptance criteria. Story fixed at `10d738f`; worker
   completed locally on branch `work/objective-001-state-model` at `0ca676d`;
@@ -59,12 +58,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- CA-005: Purchase Flow, Dead Slot, and CA18 Atomicity implemented on branch
-  `work/ca-005-purchase-flow` at `415384a`; cherry-picked into `main` at
-  `c6141bc`. Local acquisition purchase atomicity, state scaffold, draft
-  initial, refresh cost, and draw pipeline tests passed after integration
-  (`26/26` total), plus `cargo check -p server`, `cargo fmt --all -- --check`,
-  and `git diff --check HEAD~1..HEAD`.
 - COMBAT-001: Resolve Combat Scaffold implemented locally on branch
   `work/combat-001-resolve-combat-scaffold` at `311c6f0`; cherry-picked into
   `main` at `01f831e`. Local resolve combat scaffold, RSM transitions, and
@@ -78,6 +71,9 @@ None currently tracked here.
   -- --check`, and `git diff --check HEAD~1..HEAD`.
 ## Recently Closed
 
+- CA-005: Purchase Flow, Dead Slot, and CA18 Atomicity implemented on branch
+  `work/ca-005-purchase-flow` at `415384a`; cherry-picked into `main` at
+  `c6141bc`; story-done committed at `a770db2`.
 - BOARD-004: Placement Occupancy implemented on branch
   `work/BOARD-004-placement-occupancy` at `224708d`; cherry-picked into `main`
   at `0c69612`; story-done committed at `9cfd0ad`.
@@ -167,9 +163,8 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. CA-005
-2. COMBAT-001
-3. OBJECTIVE-001
+1. COMBAT-001
+2. OBJECTIVE-001
 
 Run only one story-done at a time.
 
@@ -190,8 +185,8 @@ Batch launched:
 - HUD-005: `production/epics/hud/story-005-phase-transitions.md`
 - BOARD-005: `production/epics/board-lane-system/story-005-placement-buffer-phase-integration.md`
 
-CA-005 story-done is the active serialized closure. Do not launch another
-story-done until it returns.
+No story-done window is currently active in this tracker. The next serialized
+closure is COMBAT-001.
 
 ## Resolved Design Gates
 
