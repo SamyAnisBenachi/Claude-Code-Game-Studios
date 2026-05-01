@@ -635,7 +635,7 @@ enum DisplacementBlockReason {
 enum KeywordPayload {
     ShieldConsumed,
     StunApplied { duration_rounds: u8 },
-    SilenceApplied { duration_rounds: u8 },
+    SilenceApplied { duration_rounds: u8, stripped_keywords: Vec<KeywordKind> },  // OQ-KS7 RESOLVED R4: stripped_keywords tells client which glyph indicators to clear
     InjuredBonusActive { granted_keyword: GrantedKeyword },  // typed subset enum (see D.3) — avoids recursive KeywordPayload type without raw discriminants
     LeaderSnapshotTaken { leader_unit_id: EntityId },
     OutnumberedFlipped { player_id: PlayerId, active: bool },  // board-global — source_unit_id is None

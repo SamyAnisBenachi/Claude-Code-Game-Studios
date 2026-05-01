@@ -32,7 +32,7 @@
     "hp": 5,
     "mp": 2,
     "ar": 1,
-    "keywords": ["Charge", {"kw": "ResistanceX", "value": 1}],
+    "keywords": ["Haste", {"kw": "ResistanceX", "value": 1}],
     "effect_text": "Quand cette unité reçoit des dégâts, elle gagne +1 ATQ.",
     "art_id": "sacrier_foot_002",
     "pool_copies_override": null
