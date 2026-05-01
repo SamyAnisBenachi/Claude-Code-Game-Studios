@@ -42,6 +42,8 @@ stale/incomplete until explicitly relaunched or closed:
 ## Recently Implemented, Needs Formal Story-Done
 
 - CARD-ANIM-001: implemented at `23fad70`.
+- CA-002: Card Acquisition Draft Initial implemented at `2c6c65b`; local draft
+  initial tests, state scaffold tests, and `cargo check -p server` passed.
 - S3-04: RSM Timers + Input Reader implemented at `eff5cf9`; local RSM/economy
   suite, full server tests, cargo check, and single-writer grep passed.
 - S3-06: E2E WebSocket Roundtrip implemented at `a32a3df`; local websocket
@@ -63,14 +65,16 @@ stale/incomplete until explicitly relaunched or closed:
 1. CARD-ANIM-001
 2. S3-06
 3. S3-04
+4. CA-002
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
 - S3-08: wait until S3-05 reports back; both can touch RSM/economy ordering.
-- CA-002 / CA-003 / CA-006: wait for CA-001 story-done and local acquisition
-  changes to settle.
+- CA-003 / CA-006: CA-002 is implemented but not story-done. CA-003 depends only
+  on CA-001 and can be launched in worktree mode if it avoids unmerged root
+  dirty files; story-done remains serialized.
 - KW-003: unblocked by KW-002 story-done; safe to launch after current RSM
   dirty tree settles or in a new clean window that avoids RSM files.
 - CARD-ANIM-002 / CARD-ANIM-004: wait for CARD-ANIM-001 story-done.
@@ -83,7 +87,6 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-- CA-002: Card Acquisition Draft Initial; depends only on CA-001 done.
 - KW-003: First Strike + Haste; depends on KW-001 done and ADR-006 Haste schema
   repair already merged.
 - BOARD-001: Board Grid Initialization; no dependencies.
