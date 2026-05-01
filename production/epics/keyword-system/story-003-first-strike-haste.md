@@ -30,12 +30,12 @@
 
 *From GDD `design/gdd/keyword-system.md` Acceptance Criteria, Combat Keywords section:*
 
-- [ ] KW-011: GIVEN a FIRST STRIKE unit is in the same cell as a standard enemy unit, WHEN SS3 resolves, THEN the FIRST STRIKE unit deals damage in SS3; the enemy does NOT deal damage in SS3; if the enemy survives, it attacks in SS6
-- [ ] KW-012: GIVEN two FIRST STRIKE units are co-located, WHEN SS3 resolves, THEN both deal damage simultaneously using pre-combat HP snapshots; neither's damage is computed after seeing the other's result
-- [ ] KW-013: GIVEN a unit with HASTE (no STUN, no FIRST STRIKE, no CHARGE X) is placed in SS1, WHEN RESOLUTION proceeds, THEN the unit participates in SS5 movement and SS6 attacks in the same round it entered play
-- [ ] KW-014: GIVEN a unit with HASTE has STUN applied via an SS1 APPEARANCE trigger, WHEN RESOLUTION proceeds, THEN the unit skips SS2, SS3, SS5, and SS6; HASTE does not override STUN
-- [ ] KW-042: GIVEN a unit with HASTE and FIRST STRIKE is placed in SS1 of round R, WHEN RESOLUTION proceeds through SS3, THEN the unit executes its FIRST STRIKE attack in SS3 of round R; it attacks again in SS6 if applicable
-- [ ] KW-043: GIVEN a unit with HASTE and CHARGE X (movement keyword) is placed in SS1 of round R at Cell 1, WHEN RESOLUTION proceeds, THEN the unit advances X extra cells in SS2 AND participates in SS5/SS6 — HASTE removes summoning sickness for SS2 as well as SS5/SS6
+- [x] KW-011: GIVEN a FIRST STRIKE unit is in the same cell as a standard enemy unit, WHEN SS3 resolves, THEN the FIRST STRIKE unit deals damage in SS3; the enemy does NOT deal damage in SS3; if the enemy survives, it attacks in SS6
+- [x] KW-012: GIVEN two FIRST STRIKE units are co-located, WHEN SS3 resolves, THEN both deal damage simultaneously using pre-combat HP snapshots; neither's damage is computed after seeing the other's result
+- [x] KW-013: GIVEN a unit with HASTE (no STUN, no FIRST STRIKE, no CHARGE X) is placed in SS1, WHEN RESOLUTION proceeds, THEN the unit participates in SS5 movement and SS6 attacks in the same round it entered play
+- [x] KW-014: GIVEN a unit with HASTE has STUN applied via an SS1 APPEARANCE trigger, WHEN RESOLUTION proceeds, THEN the unit skips SS2, SS3, SS5, and SS6; HASTE does not override STUN
+- [x] KW-042: GIVEN a unit with HASTE and FIRST STRIKE is placed in SS1 of round R, WHEN RESOLUTION proceeds through SS3, THEN the unit executes its FIRST STRIKE attack in SS3 of round R; it attacks again in SS6 if applicable
+- [x] KW-043: GIVEN a unit with HASTE and CHARGE X (movement keyword) is placed in SS1 of round R at Cell 1, WHEN RESOLUTION proceeds, THEN the unit advances X extra cells in SS2 AND participates in SS5/SS6 — HASTE removes summoning sickness for SS2 as well as SS5/SS6
 
 ---
 
@@ -135,7 +135,7 @@ apply_hp_delta(unit_b, -damage_a_to_b, world);
 ## Completion Notes
 
 **Completed**: 2026-05-01
-**Criteria**: 6/6 passing
-**Deviations**: Advisory only — story text says ADR-018 is Proposed/BLOCKED and embeds manifest v2026-04-30; current control manifest is v2026-05-01 and ADR-018 is Accepted. This was treated as stale story text, not a blocker.
-**Test Evidence**: Logic test evidence exists at `tests/unit/keyword/first_strike_haste_test.rs`; executable suite `server/tests/first_strike_haste_test.rs`; `cargo test -p server --test first_strike_haste_test` passed 7/7.
+**Criteria**: 6/6 passing (KW-011, KW-012, KW-013, KW-014, KW-042, KW-043).
+**Deviations**: Advisory only - story text says ADR-018 is Proposed/BLOCKED and embeds manifest v2026-04-30; current control manifest is v2026-05-01 and ADR-018 is Accepted. This was treated as stale story text, not a blocker. Full combat timeline integration remains owned by Combat Resolution Story 005; this story verifies the keyword-side logic.
+**Test Evidence**: Logic test evidence exists at `tests/unit/keyword/first_strike_haste_test.rs`; executable suite `server/tests/first_strike_haste_test.rs`; `cargo test -p server --test first_strike_haste_test` passed 7/7. Shared card schema coverage also passed with `cargo test -p shared card::tests` (3/3).
 **Code Review**: Skipped — lean review mode.
