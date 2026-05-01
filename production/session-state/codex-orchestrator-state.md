@@ -78,6 +78,13 @@ None currently tracked here.
   into `main` at `2108143`. Root `cargo fmt -p server -- --check`,
   `cargo test -p server --test auction_reservation_test`, `cargo check -p server`,
   and `git diff --check HEAD~1..HEAD` passed.
+- BOARD-006: Charge Bonus Movement implemented locally on branch
+  `work/board-006-charge-bonus-movement` at `874f28e`; worker push was blocked
+  by external GitHub transfer approval, so root cherry-picked and amended the
+  integration commit into `main` at `a04022b`. Root `cargo fmt -p server --
+  --check`, `cargo test -p server --test charge_movement_test --test
+  standard_movement_test`, `cargo check -p server`, and
+  `git diff --check HEAD~1..HEAD` passed.
 - HAND-UI-003: Phase State Machine implemented on branch
   `work/hand-ui-003-phase-state-machine` at `c6e5504`; cherry-picked into
   `main` at `614e68e`. Worker reported targeted Hand UI tests and
@@ -195,6 +202,7 @@ None currently tracked here.
 1. HAND-UI-003
 2. BOARD-005
 3. ECO-005
+4. BOARD-006
 
 Run only one story-done at a time.
 
@@ -203,6 +211,7 @@ Run only one story-done at a time.
 - HAND-UI-003: implemented and integrated; pending story-done.
 - BOARD-005: implemented and integrated; pending story-done.
 - ECO-005: implemented and integrated; pending story-done.
+- BOARD-006: implemented and integrated; pending story-done.
 - AUC-004: story dependency on economy-system story-005 is implemented but not
   formally closed; still verify OQ9 pre-implementation gate before launch.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
@@ -211,9 +220,9 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- ECO-005: `production/epics/economy-system/story-005-auction-reservation-bid-validation.md`
-- RSM-005: `production/epics/round-state-machine/story-005-disconnect-handling.md`
-- BOARD-006: `production/epics/board-lane-system/story-006-charge-bonus-movement.md`
+- ECO-005: integrated, pending story-done.
+- BOARD-006: integrated, pending story-done.
+- RSM-005: still awaiting worker result.
 
 No story-done window is currently active in this tracker. The next serialized
 closure is HAND-UI-003.
