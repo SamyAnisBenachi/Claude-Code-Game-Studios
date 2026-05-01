@@ -154,6 +154,17 @@ If Trunk produces a different output path, adjust accordingly.
 
 ---
 
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 15/15 passing.
+**Deviations**: Advisory only - story manifest v2026-04-29 is older than current control manifest v2026-05-01; no blocking drift found for ADR-008 channel verification or the WASM size guardrail.
+**Test Evidence**: Integration test at `tests/integration/network/e2e_websocket_test.rs`; WASM size evidence at `tests/evidence/story-lyv-004-wasm-size.md`; DIFFERS and ADR-012 final status at `tests/evidence/lightyear-026-verification.md`.
+**Verification**: `cargo test -p server --test e2e_websocket_test e2e_websocket_heartbeat_roundtrip_and_reliable_channel --verbose` -> 1 passed, 0 failed. `cargo build -p client --target wasm32-unknown-unknown --release` -> passed; local `client.wasm` measured 20,905,154 bytes, under the 50,000,000 byte budget.
+**Code Review**: Skipped - lean mode.
+
+---
+
 ## Dependencies
 
 - Depends on: Story 003 (server + client plugins must be wired before connection test can run)

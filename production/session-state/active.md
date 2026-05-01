@@ -766,3 +766,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `CARD-ANIM-001` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
 - Next recommended: Continue in-progress Sprint 3 must-haves S3-04 and S3-06 before opening S3-05, because S3-05's story file depends on S3-04 being Done.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/lightyear-protocol-verification/story-004-e2e-websocket-roundtrip.md` - End-to-End WebSocket Round-Trip Test
+- Criteria: 15/15 passing; E2E WebSocket heartbeat round-trip, ReliableChannel proof, release WASM build, bundle size, DIFFERS resolution documentation, and ADR-012 final status verified.
+- Test Evidence: `tests/integration/network/e2e_websocket_test.rs`; `tests/evidence/story-lyv-004-wasm-size.md`; `tests/evidence/lightyear-026-verification.md`.
+- Verification: `cargo test -p server --test e2e_websocket_test e2e_websocket_heartbeat_roundtrip_and_reliable_channel --verbose` -> 1 passed, 0 failed. `cargo build -p client --target wasm32-unknown-unknown --release` -> passed; local `client.wasm` measured 20,905,154 bytes.
+- Notes: Advisory only - story manifest v2026-04-29 is older than current control manifest v2026-05-01; no blocking drift found.
+- Tech debt logged: None
+- Sprint status: `S3-06` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
+- Next recommended: Continue S3-04 RSM Story 3 (`production/epics/round-state-machine/story-003-timers-and-input-reader.md`) before opening S3-05, because S3-05 depends on S3-04 being Done.
