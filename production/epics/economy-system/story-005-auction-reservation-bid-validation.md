@@ -1,7 +1,7 @@
 # Story 005: Auction Reservation & Bid Validation
 
 > **Epic**: Economy System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -28,7 +28,7 @@
 
 ## Acceptance Criteria
 
-- [ ] `server/src/core/economy/api.rs` contains `validate_auction_bid` function:
+- [x] `server/src/core/economy/api.rs` contains `validate_auction_bid` function:
   ```rust
   pub fn validate_auction_bid(
       economy: &PlayerEconomy,
@@ -39,21 +39,21 @@
   - Returns `Err(SpendError::HandFull)` if `hand_size >= 10`
   - Returns `Err(SpendError::InsufficientFunds)` if `!can_afford_bid(economy, bid_amount)`
   - Returns `Ok(())` otherwise
-- [ ] `reserve_gold(economy: &mut PlayerEconomy, amount: u32) -> Result<(), SpendError>` (defined in Story 001, verified here):
+- [x] `reserve_gold(economy: &mut PlayerEconomy, amount: u32) -> Result<(), SpendError>` (defined in Story 001, verified here):
   - Returns `Err(InsufficientFunds)` when `amount > gold - reserved_gold`
   - On `Ok`: `reserved_gold += amount`; `debug_assert!(reserved_gold <= gold)` passes
-- [ ] `release_gold_reservation(economy: &mut PlayerEconomy, amount: u32)` (defined in Story 001, verified here):
+- [x] `release_gold_reservation(economy: &mut PlayerEconomy, amount: u32)` (defined in Story 001, verified here):
   - Uses `saturating_sub`: `reserved_gold = reserved_gold.saturating_sub(amount)`; never panics regardless of input
-- [ ] `can_afford_bid(economy: &PlayerEconomy, amount: u32) -> bool` returns `(gold - reserved_gold) >= amount` using `saturating_sub` for the difference
-- [ ] `can_afford_shop(economy: &PlayerEconomy, cost: u32) -> bool` returns `(gold - reserved_gold) >= cost` — same formula as `can_afford_bid`, separate named function
-- [ ] **EC21**: GIVEN `gold = 3`, `reserved_gold = 0`, WHEN `validate_auction_bid(economy, 5, hand_size=0)`, THEN returns `Err(InsufficientFunds)`; `gold` unchanged
-- [ ] **EC22**: GIVEN `gold = 10`, `hand_size = 10`, WHEN `validate_auction_bid(economy, 1, hand_size=10)`, THEN returns `Err(HandFull)` (hand check fires before affordability check)
-- [ ] **EC23**: GIVEN `gold = 8`, `reserved_gold = 5`, WHEN `can_afford_shop(economy, 4)`, THEN returns `false` (`8 - 5 = 3 < 4`); WHEN `can_afford_shop(economy, 3)`, THEN returns `true`
-- [ ] Reservation lifecycle: GIVEN `gold = 10`, WHEN `reserve_gold(economy, 7)` (Ok); then `release_gold_reservation(economy, 7)`; THEN `reserved_gold = 0`
-- [ ] Outbid release: GIVEN `reserved_gold = 5`, WHEN `release_gold_reservation(economy, 5)`, THEN `reserved_gold = 0`; then `can_afford_shop(economy, 8)` returns `true` (reservation released, full gold available)
-- [ ] Auction win spend: GIVEN `gold = 8`, `reserved_gold = 5` (winning bid), WHEN `release_gold_reservation(economy, 5)` then `apply_spend_gold(economy, 5)` (using `apply_gold_award` with negative — or a separate `spend_gold` helper per M2 Auction System contract), THEN `gold = 3`, `reserved_gold = 0`
-- [ ] `release_gold_reservation` overflow guard: GIVEN `reserved_gold = 2`, WHEN `release_gold_reservation(economy, 100)`, THEN `reserved_gold = 0` (no panic, saturating)
-- [ ] `cargo check -p server` passes after all additions
+- [x] `can_afford_bid(economy: &PlayerEconomy, amount: u32) -> bool` returns `(gold - reserved_gold) >= amount` using `saturating_sub` for the difference
+- [x] `can_afford_shop(economy: &PlayerEconomy, cost: u32) -> bool` returns `(gold - reserved_gold) >= cost` — same formula as `can_afford_bid`, separate named function
+- [x] **EC21**: GIVEN `gold = 3`, `reserved_gold = 0`, WHEN `validate_auction_bid(economy, 5, hand_size=0)`, THEN returns `Err(InsufficientFunds)`; `gold` unchanged
+- [x] **EC22**: GIVEN `gold = 10`, `hand_size = 10`, WHEN `validate_auction_bid(economy, 1, hand_size=10)`, THEN returns `Err(HandFull)` (hand check fires before affordability check)
+- [x] **EC23**: GIVEN `gold = 8`, `reserved_gold = 5`, WHEN `can_afford_shop(economy, 4)`, THEN returns `false` (`8 - 5 = 3 < 4`); WHEN `can_afford_shop(economy, 3)`, THEN returns `true`
+- [x] Reservation lifecycle: GIVEN `gold = 10`, WHEN `reserve_gold(economy, 7)` (Ok); then `release_gold_reservation(economy, 7)`; THEN `reserved_gold = 0`
+- [x] Outbid release: GIVEN `reserved_gold = 5`, WHEN `release_gold_reservation(economy, 5)`, THEN `reserved_gold = 0`; then `can_afford_shop(economy, 8)` returns `true` (reservation released, full gold available)
+- [x] Auction win spend: GIVEN `gold = 8`, `reserved_gold = 5` (winning bid), WHEN `release_gold_reservation(economy, 5)` then `apply_spend_gold(economy, 5)` (using `apply_gold_award` with negative — or a separate `spend_gold` helper per M2 Auction System contract), THEN `gold = 3`, `reserved_gold = 0`
+- [x] `release_gold_reservation` overflow guard: GIVEN `reserved_gold = 2`, WHEN `release_gold_reservation(economy, 100)`, THEN `reserved_gold = 0` (no panic, saturating)
+- [x] `cargo check -p server` passes after all additions
 
 ---
 
@@ -131,7 +131,7 @@ This aligns with the GDD's `spend_gold(player, bid_amount)` language. Add `spend
 
 **Story Type**: Logic
 **Required evidence**: `tests/unit/economy/auction_reservation_test.rs` — covers EC21, EC22, EC23, reservation lifecycle, release overflow, bid sequence simulation
-**Status**: [ ] Not yet created
+**Status**: [x] Created and verified with `cargo test -p server --test auction_reservation_test`
 
 ---
 
@@ -140,3 +140,12 @@ This aligns with the GDD's `spend_gold(player, bid_amount)` language. Add `spend
 - Depends on: Story 001 (all API functions `reserve_gold`, `release_gold_reservation`, `can_afford_bid`, `can_afford_shop` defined; `SpendError` enum with `HandFull` variant exists)
 - Note: This story adds `validate_auction_bid` and `spend_gold` to `api.rs` — these extend Story 001's module, no new files needed
 - Unlocks: M2 Auction System (can implement bid handling knowing Economy API is complete and tested)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 13/13 passing.
+**Deviations**: None blocking. Prior review verdict: COMPLETE WITH NOTES.
+**Test Evidence**: `cargo test -p server --test auction_reservation_test` passed. `cargo check -p server` passed.
+**Code Review**: Complete - prior review found Verdict: COMPLETE WITH NOTES.
+**Sprint Status**: Unchanged - no S4/ECO-005 row exists in `production/sprint-status.yaml`.

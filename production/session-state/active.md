@@ -1104,3 +1104,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no `BOARD-005` row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the user-directed serialized story-done queue with ECO-005 or BOARD-006, or run readiness on Board Story 007 after Board Story 006 closes.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/economy-system/story-005-auction-reservation-bid-validation.md` - Auction Reservation & Bid Validation
+- Criteria: 13/13 passing; auction bid validation, reservation lifecycle, shop affordability under active reservation, outbid release, auction win spend, release overflow guard, and server check covered.
+- Test Evidence: `cargo test -p server --test auction_reservation_test` passed. `cargo check -p server` passed.
+- Verification: Closure-only update from the already reviewed result; no implementation or test files changed in this closure commit.
+- Notes: Prior review found Verdict: COMPLETE WITH NOTES with 13/13 acceptance criteria passing.
+- Tech debt logged: None
+- Sprint status: Unchanged; no S4/ECO-005 row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the user-directed serialized story-done queue or run readiness on the next Sprint 4 economy/auction story.
