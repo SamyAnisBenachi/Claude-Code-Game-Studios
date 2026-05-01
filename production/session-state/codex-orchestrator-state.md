@@ -40,11 +40,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- CARD-ANIM-002: Tween Cancel/Replace Lifecycle implemented on branch
-  `work/card-anim-002-tween-cancel-replace` at `1354d5a`; merged into `main` at
-  `e9103d9`. Local plugin scaffold + tween lifecycle tests and
-  `cargo check -p client` passed. Merge conflict in `client/Cargo.toml` resolved
-  by keeping both HUD-001 and CARD-ANIM-002 test targets.
 - CARD-ANIM-004: AnimQueue Resolution Drain implemented on branch
   `work/card-anim-004-animqueue-resolution-drain` at `2ecd58f`; merged into
   `main` at `b7204e5`. Local anim queue + plugin scaffold tests,
@@ -111,17 +106,19 @@ None currently tracked here.
   cleanup finalized in a follow-up closure commit. `production/sprint-status.yaml`
   has no KW-003 entry, so the closeout updated only the story file and session
   state.
+- CARD-ANIM-002: Tween Cancel/Replace Lifecycle implemented at `1354d5a` and
+  merged into `main` at `e9103d9`; story-done closed after lifecycle tests,
+  paired scaffold+lifecycle tests, and `cargo check -p client` passed locally.
 
 ## Story-Done Queue
 
-1. CARD-ANIM-002
-2. BOARD-001
-3. CA-003
-4. CA-006
-5. CARD-ANIM-004
-6. CARD-ANIM-009
-7. BOARD-002
-8. KW-004
+1. BOARD-001
+2. CA-003
+3. CA-006
+4. CARD-ANIM-004
+5. CARD-ANIM-009
+6. BOARD-002
+7. KW-004
 
 Run only one story-done at a time.
 

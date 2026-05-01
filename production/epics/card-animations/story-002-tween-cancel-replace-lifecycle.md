@@ -1,7 +1,7 @@
 # Story 002: Tween cancel-replace lifecycle
 
 > **Epic**: Card Animations
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -29,11 +29,11 @@
 
 *From GDD `design/gdd/card-animations.md`, scoped to this story:*
 
-- [ ] **CA-2** — GIVEN board entities exist with `Animator<Transform>` or `Animator<Sprite>` in `AnimatorState::Playing`, WHEN `BoardRebuildRequested` is written and `App::update()` is called once, THEN (a) no entity that had a Playing animator is in `AnimatorState::Playing` after the tick, AND (b) those entities STILL HAVE their `Animator<T>` components present — verified by `world.get::<Animator<Transform>>(entity).is_some()`. Clause (b) confirms cancel-in-place rather than removal. **[BLOCKING]**
-- [ ] **CA-4** — GIVEN a PLACEMENT-phase animation is in `AnimatorState::Playing`, WHEN `BoardRebuildRequested` fires in the same frame, THEN the `Animator` is no longer in `AnimatorState::Playing` after that frame. **[BLOCKING]**
-- [ ] **CA-6** — GIVEN a unit entity has an `Animator<Transform>` in `TweenCompleted` state, WHEN a new tween is requested, THEN the entity retains its ECS entity ID (no despawn/respawn) AND the new animation begins within one `App::update()` tick. **[BLOCKING]**
-- [ ] **CA-7** — GIVEN a unit needs a simultaneous advance `Tween<Transform>` and death `SpriteAlphaLens` fade in the same `AnimGroup`, WHEN both tweens are spawned, THEN both `Animator<Transform>` and `Animator<Sprite>` exist on the entity and are both in `AnimatorState::Playing` after one tick. **[BLOCKING]**
-- [ ] **CA-19** — GIVEN an `Animator<Transform>` reaches `TweenCompleted` on a unit entity, WHEN no new tween is requested, THEN the `Animator<Transform>` component remains on the entity. **[BLOCKING]**
+- [x] **CA-2** — GIVEN board entities exist with `Animator<Transform>` or `Animator<Sprite>` in `AnimatorState::Playing`, WHEN `BoardRebuildRequested` is written and `App::update()` is called once, THEN (a) no entity that had a Playing animator is in `AnimatorState::Playing` after the tick, AND (b) those entities STILL HAVE their `Animator<T>` components present — verified by `world.get::<Animator<Transform>>(entity).is_some()`. Clause (b) confirms cancel-in-place rather than removal. **[BLOCKING]**
+- [x] **CA-4** — GIVEN a PLACEMENT-phase animation is in `AnimatorState::Playing`, WHEN `BoardRebuildRequested` fires in the same frame, THEN the `Animator` is no longer in `AnimatorState::Playing` after that frame. **[BLOCKING]**
+- [x] **CA-6** — GIVEN a unit entity has an `Animator<Transform>` in `TweenCompleted` state, WHEN a new tween is requested, THEN the entity retains its ECS entity ID (no despawn/respawn) AND the new animation begins within one `App::update()` tick. **[BLOCKING]**
+- [x] **CA-7** — GIVEN a unit needs a simultaneous advance `Tween<Transform>` and death `SpriteAlphaLens` fade in the same `AnimGroup`, WHEN both tweens are spawned, THEN both `Animator<Transform>` and `Animator<Sprite>` exist on the entity and are both in `AnimatorState::Playing` after one tick. **[BLOCKING]**
+- [x] **CA-19** — GIVEN an `Animator<Transform>` reaches `TweenCompleted` on a unit entity, WHEN no new tween is requested, THEN the `Animator<Transform>` component remains on the entity. **[BLOCKING]**
 
 ---
 
@@ -112,7 +112,7 @@
 **Required evidence**:
 - Logic: `tests/unit/card-animations/tween_lifecycle_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passed locally with `cargo test -p client --test card_animations_tween_lifecycle_test --target-dir target\codex-card-anim-002-test`
 
 ---
 
@@ -120,3 +120,11 @@
 
 - Depends on: [Story 001](story-001-plugin-scaffold-custom-lenses.md) must be DONE (lens infrastructure; OQ-CA-01 resolved for test harness)
 - Unlocks: [Story 005](story-005-placement-reveal-parallelism.md), [Story 007](story-007-damage-number-lifecycle.md), [Story 008](story-008-input-gating.md)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 5/5 passing. CA-2, CA-4, CA-6, CA-7, and CA-19 are covered by `tests/unit/card-animations/tween_lifecycle_test.rs`.
+**Deviations**: Advisory only: story/GDD/ADR wording still says `Animator<T>` / `AnimatorState` and `bevy_tweening 0.18`; the compiled workspace API is `TweenAnim` with `PlaybackState`/`TweenState` from `bevy_tweening v0.15.0`, the Bevy 0.18-compatible crate version used here. Advisory only: current `TR-CAN-007` registry text maps to CA-25/scaffold-style lifecycle wording, while this story closes the GDD-scoped CA-2, CA-4, CA-6, CA-7, and CA-19 criteria.
+**Test Evidence**: Logic: `tests/unit/card-animations/tween_lifecycle_test.rs`; `cargo test -p client --test card_animations_tween_lifecycle_test --target-dir target\codex-card-anim-002-test` passed 5/5. Paired scaffold+lifecycle command passed 8/8 and 5/5. `cargo check -p client --target-dir target\codex-card-anim-002-test` passed.
+**Code Review**: Skipped - Lean mode.

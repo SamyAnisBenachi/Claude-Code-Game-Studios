@@ -842,3 +842,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `S3-08` set to `done` in `production/sprint-status.yaml`; existing claims preserved.
 - Next recommended: Sprint 3 Must Have and pulled-forward S3-08 are complete; run `/smoke-check sprint` then `/team-qa sprint`, or pick S3-07 Card Pool Story 4 if continuing Should Have work.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-animations/story-002-tween-cancel-replace-lifecycle.md` - Tween cancel-replace lifecycle
+- Criteria: 5/5 passing; CA-2, CA-4, CA-6, CA-7, and CA-19 verified against the merged CARD-ANIM-002 implementation.
+- Test Evidence: `tests/unit/card-animations/tween_lifecycle_test.rs`; `cargo test -p client --test card_animations_tween_lifecycle_test --target-dir target\codex-card-anim-002-test` passed 5/5.
+- Verification: paired scaffold+lifecycle tests passed 8/8 and 5/5; `cargo check -p client --target-dir target\codex-card-anim-002-test` passed. Implementation commit `1354d5a` and merge commit `e9103d9` are included in current `main`.
+- Notes: Advisory only - story/GDD/ADR wording still says `Animator<T>` / `AnimatorState` and `bevy_tweening 0.18`; the compiled workspace API is `TweenAnim` with `PlaybackState`/`TweenState` from `bevy_tweening v0.15.0`. Advisory only - current `TR-CAN-007` registry text maps to CA-25/scaffold-style lifecycle wording, while this story closes CA-2, CA-4, CA-6, CA-7, and CA-19.
+- Tech debt logged: None
+- Sprint status: No `CARD-ANIM-002` entry exists in `production/sprint-status.yaml`; file left unchanged.
+- Next recommended: Continue the serialized story-done queue with BOARD-001, or close CARD-ANIM-004 if staying in Card Animations.
