@@ -1,7 +1,7 @@
 # Story 002: Standard Unit Movement Formula (F1)
 
 > **Epic**: Board / Lane System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -30,10 +30,10 @@
 
 *From GDD `design/gdd/board-lane-system.md`, scoped to this story:*
 
-- [ ] **BL-1**: GIVEN Player A's unit is in lane 1 at cell 1 with MP=3, WHEN sub-step 5 fires, THEN unit position = cell 4.
-- [ ] **BL-2**: GIVEN Player A's unit is in lane 1 at cell 6 with MP=3, WHEN sub-step 5 fires, THEN unit position = cell 8 (clamped — does not overshoot).
-- [ ] **BL-3**: GIVEN Player B's unit is in lane 1 at cell 5 with MP=2, WHEN sub-step 5 fires, THEN unit position = cell 3.
-- [ ] **BL-4**: GIVEN Player A's WALL unit (MP=0) is in lane 1 at cell 1, WHEN sub-step 5 fires, THEN unit position = cell 1 (no movement).
+- [x] **BL-1**: GIVEN Player A's unit is in lane 1 at cell 1 with MP=3, WHEN sub-step 5 fires, THEN unit position = cell 4.
+- [x] **BL-2**: GIVEN Player A's unit is in lane 1 at cell 6 with MP=3, WHEN sub-step 5 fires, THEN unit position = cell 8 (clamped — does not overshoot).
+- [x] **BL-3**: GIVEN Player B's unit is in lane 1 at cell 5 with MP=2, WHEN sub-step 5 fires, THEN unit position = cell 3.
+- [x] **BL-4**: GIVEN Player A's WALL unit (MP=0) is in lane 1 at cell 1, WHEN sub-step 5 fires, THEN unit position = cell 1 (no movement).
 
 ---
 
@@ -120,7 +120,7 @@ Units at the objective cell (cell 8 for PlayerA, cell 1 for PlayerB) remain ther
 **Story Type**: Logic
 **Required evidence**: `tests/unit/board-lane-system/standard_movement_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passed locally with `cargo test -p server --test standard_movement_test`
 
 ---
 
@@ -128,3 +128,11 @@ Units at the objective cell (cell 8 for PlayerA, cell 1 for PlayerB) remain ther
 
 - Depends on: Story 001 must be DONE (`BoardConfig` resource with direction constants)
 - Unlocks: Stories 006, 008, 009, 010 (all use `apply_f1` or the movement endpoint)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 4/4 passing. BL-1, BL-2, BL-3, and BL-4 are covered by `tests/unit/board-lane-system/standard_movement_test.rs`; the suite also covers the i16 intermediate clamp boundary for Player B.
+**Deviations**: Advisory only: story manifest v2026-04-29 is older than current control manifest v2026-05-01. Advisory only: implementation uses the current project ECS components (`BoardPosition`, `UnitStats`, `UnitOwner`) instead of the story's older placeholder component names; Formula F1 behavior and `BoardConfig` direction/bounds usage match the current GDD and TR registry.
+**Test Evidence**: Logic: `tests/unit/board-lane-system/standard_movement_test.rs`; `cargo test -p server --test standard_movement_test` passed 5/5. `cargo check -p server` passed.
+**Code Review**: Skipped - Lean mode.

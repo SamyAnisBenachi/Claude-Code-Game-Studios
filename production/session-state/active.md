@@ -918,3 +918,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `CARD-ANIM-009` entry exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Card Animations Story 006 Multi-objective stagger reveal (`production/epics/card-animations/story-006-objective-stagger-reveal.md`) or Story 008 Input-gating (`production/epics/card-animations/story-008-input-gating.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-lane-system/story-002-standard-unit-movement.md` - Standard Unit Movement Formula (F1)
+- Criteria: 4/4 passing; BL-1, BL-2, BL-3, and BL-4 covered by `tests/unit/board-lane-system/standard_movement_test.rs`.
+- Test Evidence: `tests/unit/board-lane-system/standard_movement_test.rs`; `cargo test -p server --test standard_movement_test` passed 5/5.
+- Verification: `cargo check -p server` passed. Worker commit `4a76028` has the same BOARD-002 implementation diff as main integration commit `0d8e41c`; `0d8e41c` is included in current `main`.
+- Notes: Advisory only - story manifest v2026-04-29 is older than current control manifest v2026-05-01. Advisory only - implementation uses current project ECS components (`BoardPosition`, `UnitStats`, `UnitOwner`) instead of the story's older placeholder component names.
+- Tech debt logged: None
+- Sprint status: No `BOARD-002` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Continue in-progress Board Story 003 Spawn Range Validation, or use the now-unlocked Board Story 006 CHARGE X bonus movement after readiness check.
