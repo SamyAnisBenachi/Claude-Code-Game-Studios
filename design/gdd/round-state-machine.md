@@ -22,7 +22,7 @@ The Round State Machine is not something the player interacts with — it is the
 - `round_number: u32` — starts at 1, increments at each new DRAFT
 - `placement_timer` and `draft_shop_timer` — server-side countdown in seconds
 - `submissions_received: Set<PlayerId>` — which players have submitted placement this round
-- `disconnect_trackers: Map<PlayerId, f32>` — seconds since last heartbeat per player
+- `disconnect_trackers: Map<PlayerId, u32>` — milliseconds remaining before GAME_OVER per player (decremented each tick; reset to `disconnect_grace_seconds × 1000` on heartbeat receipt or `OnConnected`)
 
 The RSM does **not** own: card state, gold/mana balances, auction bid state, combat logic, or objective HP. It signals those systems; they own their own state.
 
@@ -68,11 +68,21 @@ Evaluated after `round_number` increments on RESOLUTION exit. Round 3 → true. 
 **Rule 7 — DRAFT_AUCTION behavior:**
 On entry, the RSM sends `AuctionPhaseEntered { round: round_number }` to the Auction System. The Auction System owns the 20-second timer and all bid state. `AuctionSettled` is a Bevy buffered Event; the RSM system must be scheduled after the Auction System so the event is readable in the same or next frame. The RSM waits for `AuctionSettled` (winner or no-bid timeout), then transitions to DRAFT_SHOP.
 
+**IDLE invariant:** The Auction System MUST be in IDLE state when `AuctionPhaseEntered` fires. The RSM is the sole orchestrator of DRAFT_AUCTION entry — correct RSM state-machine operation guarantees this. If Auction System is not IDLE at this call site, that is a server bug (not a runtime edge case to handle silently). The implementation MUST assert `auction_system.state == IDLE` before sending `AuctionPhaseEntered` and panic with a clear message if the assertion fails. This prevents the client-visibility failure mode where `S2CPhaseChanged(DRAFT_AUCTION)` is sent with no auction actually running (the "No idle spectating" pillar violation).
+
 **Rule 8 — DRAFT_SHOP timer:**
 `draft_shop_timer` starts on DRAFT_SHOP entry. Default: `draft_shop_timer_seconds = 30`. When timer reaches 0, RSM transitions to PLACEMENT. If all players signal ready before 0, RSM transitions immediately. Ready signal is available from t=0. Players may retract their ready signal at any time until the all-ready condition fires — retraction returns them to the normal shopping state with no penalty.
 
 **Rule 9 — PLACEMENT timer:**
-`placement_timer` starts on PLACEMENT entry. Default: `placement_timer_seconds = 10`. When timer reaches 0, PLACEMENT ends. Players who did not submit are treated as playing zero cards (existing board state unchanged, no refund). If all players submit early, RSM transitions to RESOLUTION immediately.
+`placement_timer` starts on PLACEMENT entry. The RSM selects the timer duration based on the prior phase:
+- **Standard PLACEMENT** (prior phase was DRAFT_SHOP or DRAFT_INITIAL): `placement_timer_seconds = 10`
+- **Auction-followup PLACEMENT** (prior phase was DRAFT_AUCTION): `auction_followup_placement_timer_seconds = 12`
+
+The distinction is necessary because DRAFT_AUCTION imposes peak cognitive load (20–50s of sustained bid attention). A 10s PLACEMENT immediately after auction is panic input, not deliberate commitment — it violates the Player Fantasy ("the hand hovering over submit"). The extra 2s on auction-followup rounds recovers the deliberation window at minimum cost to pacing.
+
+When timer reaches 0, PLACEMENT ends. Players who did not submit are treated as playing zero cards (existing board state unchanged, no refund). If all players submit early, RSM transitions to RESOLUTION immediately.
+
+**Design note on zero-card non-submission:** Deliberate non-submission is permitted. The natural tempo cost (no new units, board unchanged, hand cards retained) is the design's intended sanction — there is no additional gold penalty or forfeit. This is an intended strategic axis, not an oversight.
 
 **Rule 10 — RESOLUTION:**
 On entry, RSM signals the Combat Resolution System to execute all six global sub-steps. No player input is accepted. `ResolutionComplete` is a Bevy buffered Event; the RSM system must be scheduled after Combat Resolution in the app schedule so the event is readable in the same or next frame.
@@ -84,6 +94,8 @@ On entry, RSM signals the Combat Resolution System to execute all six global sub
 **Rule 11 — GAME_OVER detection:**
 After RESOLUTION completes and after the interest snapshot (Rule 4) is taken, the RSM evaluates: for each player, if `real_objectives_destroyed(player) >= 2`. If any player meets the condition, transition to GAME_OVER. If multiple players meet the condition simultaneously (mutual destruction in the same RESOLUTION), the result is a **Draw** — all qualifying players are declared losers; no winner is announced.
 
+**Ordering at objectives-triggered GAME_OVER:** The interest snapshot DOES fire at end-of-RESOLUTION even when GAME_OVER follows. Order: (1) interest snapshot fires (Rule 4), (2) `OnResolutionEnd` broadcasts, (3) GAME_OVER condition evaluates, (4) `S2CGameOver` + `S2CPhaseChanged(GAME_OVER)` broadcast. The snapshot is preserved for post-game stats even though no new round begins — the data is harmlessly orphaned by the Economy System. Contrast with mid-RESOLUTION disconnect GAME_OVER (Rule 13 / Edge Cases): interest snapshot does NOT fire in that path, since RESOLUTION never reached its natural end.
+
 **Rule 11a — trigger_index assignment (PLACEMENT → RESOLUTION handoff):**
 Before signalling Combat Resolution to begin, the RSM assigns a monotonically increasing `trigger_index` (u32, starting at 0) to each submitted placement in the combined batch (both players). Assignment order: Player A's placements in submission order, then Player B's placements in submission order. The resulting `(player_id, placement_index, trigger_index)` map is passed to Combat Resolution, which embeds `trigger_index` in every `TaggedEvent` emitted to `S2CResolutionEvent`. This ensures deterministic ordering of same-sub-step effects across both players' actions — including multi-Krosmic batches (e.g., Xelorium + Gelure at sub-step 1). See `network-protocol.md` D.2 `TaggedEvent.trigger_index` for the wire contract and `class-system.md` Edge Cases ("ascending trigger_index order") for the class-level concurrency specification.
 
@@ -91,14 +103,30 @@ Before signalling Combat Resolution to begin, the RSM assigns a monotonically in
 Ends when all players submit (early exit) OR `draft_initial_timer_seconds` expires. Unspent starting gold carries over to round 1 DRAFT — the 5g budget is a ceiling, not use-it-or-lose-it. RSM then transitions to PLACEMENT with round_number = 1.
 
 **Rule 13 — Disconnection:**
-The RSM updates `disconnect_trackers` using Lightyear's `OnDisconnected` and `OnConnected` connection events (not a custom heartbeat message). If time since last `OnConnected` event > `disconnect_grace_seconds` (default: **30s**), RSM immediately transitions to GAME_OVER, declaring that player the loser. In team modes: that player's team loses. If reconnected within the grace period, game continues normally.
+The RSM owns `disconnect_trackers: Map<PlayerId, u32>` (milliseconds remaining before GAME_OVER). Disconnect detection uses a **hybrid model** matching `network-protocol.md` Rule 8:
+
+- `disconnect_trackers[player]` is decremented each server tick by `delta_time_ms`
+- On receipt of `C2SHeartbeat` from a player, `disconnect_trackers[player]` is reset to `disconnect_grace_seconds × 1000`. Heartbeats arrive every ~5000ms on the unreliable channel (see NP GDD Tuning Knob `heartbeat_interval_ms`). The heartbeat mechanism is **required** for WASM/browser targets — WebSocket connections can enter half-open TCP states (tab backgrounded, OS sleep) where Lightyear's `OnDisconnected` does not fire for 2–7 minutes.
+- On Lightyear `OnConnected` event for a previously tracked player (reconnect): `disconnect_trackers[player]` is immediately reset to `disconnect_grace_seconds × 1000`.
+- On Lightyear `OnDisconnected` event: begin decrementing. If `OnDisconnected` fires promptly, the tracker starts counting down immediately; if it fires late (WASM half-open), the heartbeat absence already detected the gap.
+
+When `disconnect_trackers[player] == 0` (strictly: decremented below 1), the RSM transitions to GAME_OVER declaring that player the loser. In team modes: that player's team loses.
 
 **Browser note:** 30s is intentional for a WASM/browser target. OS interrupts, antivirus scans, Windows Update prompts, and tab switches routinely cause 3–6s Lightyear connection gaps with no player action; a 5s window would produce false forfeits. 30s is hard to abuse in a 10–15 minute game while still catching genuine disconnections.
 
 **Disconnection during RESOLUTION:** The RSM defers the GAME_OVER transition until RESOLUTION exits naturally. The current combat sub-step completes, `OnResolutionEnd` fires, the interest snapshot fires (if applicable), and only then is GAME_OVER set. This preserves a clean RESOLUTION→GAME_OVER transition and prevents Board/Lane state from leaking.
 
 **Rule 14 — Phase broadcast:**
-Every state transition broadcasts `S2CPhaseChanged` to all connected clients after the new state is entered and all entry actions have fired. Sent on the Lightyear **reliable** channel — phase changes must not be dropped. Payload: `{ phase, round_number, timer_duration_ms }`. For DRAFT_AUCTION, `timer_duration_ms = 0` (the Auction System drives its own countdown; clients must not render an RSM-owned timer for DRAFT_AUCTION). Clients hold a read-only `ClientPhaseView` resource for UI only and have no authority to trigger transitions.
+Every state transition broadcasts `S2CPhaseChanged` to all connected clients after the new state is entered and all entry actions have fired. Sent on the Lightyear **reliable** channel — phase changes must not be dropped. Payload: `{ phase, round_number, timer_duration_ms: Option<u32> }`.
+
+- `Some(ms)` = RSM-owned countdown started with this duration (DRAFT_INITIAL, DRAFT_SHOP, PLACEMENT)
+- `None` = no RSM-owned timer for this phase (DRAFT_AUCTION, RESOLUTION, GAME_OVER)
+
+For DRAFT_AUCTION, `timer_duration_ms = None` — the Auction System drives its own countdown; clients must not render an RSM-owned timer for DRAFT_AUCTION. `None` is the correct sentinel (not `Some(0)`, which would mean "timer just expired, transition imminent" — per `S2CGameSnapshot.timer_remaining_ms: Option<u32>` encoding in `network-protocol.md` D.1).
+
+**Cross-GDD note:** `network-protocol.md` S2CPhaseChanged entry currently lists `timer_duration_ms: u32`. It must be updated to `timer_duration_ms: Option<u32>` to match this rule. Owner: whoever implements the first RSM story must update both GDDs.
+
+Clients hold a read-only `ClientPhaseView` resource for UI only and have no authority to trigger transitions.
 
 **GAME_OVER message:** In addition to `S2CPhaseChanged(GAME_OVER)`, the RSM also broadcasts a separate `S2CGameOver` message on the reliable channel. Payload: `{ loser: Option<PlayerId>, round: u32, reason: GameOverReason }` — `None` = Draw (no winner; e.g., mutual destruction, mutual disconnection, or resolution timeout). The `GameOverReason` enum is defined here (server-side type, rendered by HUD):
 
@@ -204,6 +232,17 @@ On entry into DRAFT_INITIAL, DRAFT_AUCTION, or DRAFT_SHOP (from RESOLUTION or ga
 
 Exception for round 1 (DRAFT_INITIAL): Step 2 grants `starting_gold = 5` instead of `baseline + interest`. Steps 3–5 follow normally (no step 4 since DRAFT_INITIAL has no auction).
 
+**F2 Bevy Scheduling Invariants:** The five steps span multiple Bevy systems. Without explicit `.before()`/`.after()` scheduling pins, Bevy 0.18's Update schedule does not guarantee this order — see `network-protocol.md` Edge Cases (Bevy scheduling note): "Failure to pin this ordering produces a silent runtime bug." Required scheduling constraints:
+
+| System pair | Constraint |
+|---|---|
+| Economy System (apply_mana_ramp) | `.before(Economy System apply_gold_income)` |
+| Economy System (apply_gold_income) | `.before(Card Pool refresh_shop)` |
+| Card Pool (refresh_shop) | `.before(Auction System receive AuctionPhaseEntered)` |
+| Auction System (DRAFT_AUCTION init) | `.before(Network Protocol dispatch S2CPhaseChanged)` |
+
+These constraints must be registered as a Bevy `SystemSet` ordering on the server's `Update` schedule. The Auction System `AuctionSettled` event reader and Combat Resolution `ResolutionComplete` reader follow the same pattern — see Rule 7 and Rule 10.
+
 ---
 
 ### F3 — Round Timing Reference
@@ -295,7 +334,8 @@ All RSM timer constants are loaded from `GameConfig` (`assets/config/game_config
 | `draft_shop_timer_seconds` | 30 | 20–45 | Players miss optimal purchases; especially punishing on auction rounds (less shop time after auction) | Pacing sags; experienced players finish in ~10s and wait | `placement_timer_seconds` — total round length = this + 10s; on auction rounds add ≥20s |
 | `disconnect_grace_seconds` | 30 | 15–60 | Browser OS events (tab switches, antivirus, Windows Update) cause 3–6s gaps; values below 15s produce false forfeits on the target platform | Window is abusable for intentional lag stalling — keep ≤60s | None — independent timer |
 | `resolution_max_duration_seconds` | 60 | 30–180 | Aborts combat resolution mid-execution; must be set well above the realistic max for a full board resolution | Server hangs in RESOLUTION longer before safety Draw fires | Combat Resolution sub-step count — realistic max depends on board complexity; must never fire in normal play |
-| `auction_max_duration_seconds` | 120 | 60–300 | Aborts a legitimately long auction if bids keep arriving; must be set well above max realistic auction duration | Deadlock hangs a session longer before safety recovery | `auction_timer_seconds` + `auction_timer_reset_seconds` — realistic max is `auction_timer + (est. max bids × auction_timer_reset)` |
+| `auction_max_duration_seconds` | 300 | **120**–600 | Aborts a legitimately long auction if bids keep arriving. **Safe range minimum is 120** — the formula minimum is `auction_timer_seconds + (20 × auction_timer_reset_seconds) = 120s`, but 20 bids is conservative for a contested high-stakes auction. Default raised to 300 to prevent the safety trigger from firing during a legitimately running auction. **If the auction timer is still active when this safety fires, the current `AuctionSettled` leader wins (auction settled, not aborted).** The `AuctionAborted` / no-bid path fires only when `AuctionSettled` never arrives at all (Auction System deadlock or crash). | Deadlock hangs a session longer before safety recovery | `auction_timer_seconds` + `auction_timer_reset_seconds` — set ≥ `auction_timer + (max expected bids × auction_timer_reset)` |
+| `auction_followup_placement_timer_seconds` | 12 | 10–15 | Placement timer for the round immediately following DRAFT_AUCTION (see Rule 9). Too low: auction-fatigued players panic-place instead of deliberating, violating Player Fantasy. | Pacing drag on auction rounds | `placement_timer_seconds` — this knob applies instead of (not in addition to) the base placement timer on auction-followup rounds |
 
 **Cross-referenced constants (owned by Game Config — not tunable here):**
 
@@ -352,9 +392,10 @@ The RSM drives the following UI elements via `S2CPhaseChanged` broadcasts. Each 
 | RSM-6 | GIVEN DRAFT_INITIAL begins, WHEN entry actions complete, THEN each player's `current_mana = 1` and gold = 5, and each player's shop is populated with 9 cards before S2CPhaseChanged is broadcast. | BLOCKING |
 | RSM-7 | GIVEN DRAFT_SHOP entry for round_number = 3 and mana_cap ≥ 3, WHEN economy events fire, THEN `current_mana = 3`. If mana_cap = 2, `current_mana = 2`. Formula is `min(round_number, mana_cap)` — not a flat value. | BLOCKING |
 | RSM-8 | GIVEN RESOLUTION completes for round N with no loss condition, WHEN the RSM transitions to the next DRAFT, THEN round_number = N+1 at the moment `apply_mana_ramp` is called. Evidence: `current_mana = min(N+1, mana_cap)`, not `min(N, mana_cap)`. | BLOCKING |
-| RSM-9 | GIVEN a player holds 8 gold at RESOLUTION end, WHEN the next DRAFT begins, THEN that player receives gold income including interest = 1 (floor(8/5) = 1), applied before any shop purchases are accepted. | BLOCKING |
+| RSM-9 | GIVEN the RSM enters any DRAFT phase, WHEN the first player purchase message arrives, THEN `apply_gold_income` has already been called for that player (player's gold balance reflects the new round's income before the purchase is evaluated). Ordering evidence: a purchase sent before S2CPhaseChanged is broadcast must be rejected by the phase guard. (Interest formula correctness is tested in Economy System GDD EC13 — this AC tests RSM timing, not economy math.) | BLOCKING |
 | RSM-10 | GIVEN DRAFT_SHOP begins at any round_number, WHEN a player attempts a purchase, THEN the purchase is accepted only after `apply_mana_ramp`, `apply_gold_income`, and `refresh_shop` have all fired — a purchase message arriving before S2CPhaseChanged is delivered must be rejected. | BLOCKING |
 | RSM-11 | GIVEN RESOLUTION completes and round_number mod 3 = 0, WHEN the RSM enters DRAFT_AUCTION, THEN each player's personal shop is populated with a fresh card set, and shop purchases and manual refresh are rejected until DRAFT_SHOP begins. | BLOCKING |
+| RSM-11b | GIVEN the RSM transitions from DRAFT_AUCTION to DRAFT_SHOP, WHEN DRAFT_SHOP entry actions fire, THEN `refresh_shop` is NOT called — the shop slots populated at DRAFT_AUCTION entry are unchanged and the same cards are available for purchase. (A re-roll here would break the informed-bid design of Rule 5; test by asserting slot contents before and after the DRAFT_AUCTION → DRAFT_SHOP transition are identical.) | BLOCKING |
 | RSM-12 | GIVEN DRAFT_AUCTION is active and the Auction System emits `AuctionSettled`, WHEN the RSM receives the signal, THEN it transitions to DRAFT_SHOP and broadcasts `S2CPhaseChanged(DRAFT_SHOP)`. | BLOCKING |
 | RSM-13 | GIVEN DRAFT_SHOP is active and a player's gold ≥ the card's cost, WHEN the player submits a purchase, THEN the server accepts it and deducts the cost from the player's gold. | BLOCKING |
 | RSM-14 | GIVEN DRAFT_SHOP is active and a player's gold < the card's cost, WHEN the player submits a purchase, THEN the server rejects it and the player's gold is unchanged. | BLOCKING |
@@ -373,15 +414,19 @@ The RSM drives the following UI elements via `S2CPhaseChanged` broadcasts. Each 
 | RSM-27 | GIVEN PLACEMENT is active, WHEN a player sends a shop purchase or manual refresh message, THEN the server rejects it. | BLOCKING |
 | RSM-28 | GIVEN DRAFT_AUCTION is active, WHEN a player sends a shop purchase or manual refresh message, THEN the server rejects it. | BLOCKING |
 | RSM-29 | GIVEN RESOLUTION is active, WHEN a player sends a placement submission, THEN the server rejects it. | BLOCKING |
+| RSM-29b | GIVEN Player A submits 2 placements and Player B submits 1 placement in the same PLACEMENT phase, WHEN the RSM produces the trigger_index assignment map before calling BeginResolution, THEN Player A's placements have trigger_index = 0 and 1, Player B's placement has trigger_index = 2, trigger_index values are contiguous starting from 0, and no index is repeated or skipped. (Rule 11a — deterministic combat ordering.) | BLOCKING |
+| RSM-29c | GIVEN the PLACEMENT phase ends (timer or all-submit), WHEN the RSM enters RESOLUTION on an auction-followup round (prior phase was DRAFT_AUCTION), THEN `placement_timer_used_ms` was `auction_followup_placement_timer_seconds × 1000` (default: 12000ms). On a non-auction-followup round, `placement_timer_used_ms` was `placement_timer_seconds × 1000` (default: 10000ms). | BLOCKING |
 | RSM-30 | GIVEN DRAFT_INITIAL timer expires and Player A spent 3g of the 5g budget, WHEN PLACEMENT begins, THEN Player A's gold = 2g (5−3 = 2 carried over; unspent starting gold is **not** forfeited) and Player A has only the cards they purchased in hand. | BLOCKING |
 | RSM-31 | GIVEN PLACEMENT is active and both an all-submit event and a timer-expiry event arrive on the same server tick, WHEN the RSM processes them, THEN the RSM transitions to RESOLUTION exactly once — the second trigger is discarded. Double-transition would execute combat twice; this is a data-corruption scenario. | BLOCKING |
 | RSM-32 | GIVEN the RSM enters any DRAFT state, WHEN entry actions fire, THEN the execution sequence is strictly: (1) apply_mana_ramp, (2) apply_gold_income, (3) refresh_shop, (4) `AuctionPhaseEntered { round: u32 }` if DRAFT_AUCTION, (5) S2CPhaseChanged — a purchase or bid message arriving before S2CPhaseChanged is broadcast is rejected by the phase guard. | BLOCKING |
 | RSM-33 | GIVEN LOBBY transitions to DRAFT_INITIAL, WHEN the RSM initialises its state, THEN round_number = 1. The value 0 must be unreachable at any is_auction_round call site. | BLOCKING |
-| RSM-34 | GIVEN DRAFT_SHOP is active and all players signal ready on the same server tick the draft_shop_timer reaches 0, WHEN the RSM processes both events, THEN PLACEMENT begins exactly once — the second trigger is discarded. | ADVISORY |
+| RSM-33a | GIVEN round_number is somehow 0 at an is_auction_round call site (fault injection via direct Resource mutation in test), WHEN is_auction_round is evaluated, THEN the server panics with a clear error message OR the value is structurally unreachable by construction (document which). `0 mod 3 = 0` would trigger a phantom DRAFT_AUCTION — this guard must be enforced at the call site, not just at initialization. | BLOCKING |
+| RSM-34 | GIVEN DRAFT_SHOP is active and all players signal ready on the same server tick the draft_shop_timer reaches 0, WHEN the RSM processes both events, THEN PLACEMENT begins exactly once — the second trigger is discarded. Double-transition would reset submissions_received and placement_timer — same class of state-corruption invariant as RSM-31. | BLOCKING |
 | RSM-35 | GIVEN a player's heartbeat gap exceeds disconnect_grace_seconds during RESOLUTION, WHEN the RSM evaluates, THEN GAME_OVER is deferred until RESOLUTION exits naturally: the current combat sub-step completes, OnResolutionEnd fires, and GAME_OVER fires on that same RESOLUTION exit — not mid-sub-step. | BLOCKING |
+| RSM-35b | GIVEN RESOLUTION ends with a normal objectives-triggered GAME_OVER condition, WHEN the RSM processes the RESOLUTION exit, THEN the interest snapshot fires BEFORE the GAME_OVER transition is taken (order: (1) interest snapshot, (2) OnResolutionEnd, (3) GAME_OVER evaluation, (4) S2CGameOver broadcast). Evidence: inject a snapshot observer and verify it fires before S2CGameOver is enqueued on the reliable channel. | BLOCKING |
 | RSM-36 | GIVEN GAME_OVER fires for any reason, WHEN S2CGameOver is broadcast, THEN: (a) reason = ObjectivesDestroyed if loss condition was met, (b) reason = Disconnection if a player exceeded disconnect_grace_seconds, (c) reason = Draw if mutual destruction or mutual disconnection on the same tick, (d) reason = ResolutionTimeout if the RESOLUTION 60s safety timeout fired. The reason field must match the actual cause. | BLOCKING |
 | RSM-37 | GIVEN both players' Lightyear connections drop on the same server tick (mutual disconnection), WHEN the RSM evaluates disconnect trackers in a single pass, THEN S2CGameOver(reason=Draw) is broadcast — no single player is declared loser. | BLOCKING |
-| RSM-38 | GIVEN RESOLUTION is active and ResolutionComplete is not received within resolution_max_duration_seconds, WHEN the safety timeout fires, THEN OnResolutionEnd broadcasts, `S2CGameOver(reason=ResolutionTimeout)` broadcasts, and the RSM transitions to GAME_OVER. | ADVISORY |
+| RSM-38 | GIVEN RESOLUTION is active and ResolutionComplete is not received within resolution_max_duration_seconds, WHEN the safety timeout fires, THEN OnResolutionEnd broadcasts, `S2CGameOver(reason=ResolutionTimeout)` broadcasts, and the RSM transitions to GAME_OVER. Test method: inject GameConfig with `resolution_max_duration_seconds = 1`, enter RESOLUTION state without spawning a ResolutionComplete sender, advance Bevy time past 1s via `app.update()` loop, assert GAME_OVER(ResolutionTimeout). No real-time sleep required — same Resource-injection pattern as RSM-25. | BLOCKING |
 
 ## Open Questions
 
@@ -391,8 +436,8 @@ The RSM drives the following UI elements via `S2CPhaseChanged` broadcasts. Each 
 
 3. **Auction card count in multiplayer modes** — Master GDD Open Question 3: 1 card per auction in 1v1; what about 2v2/3v3? If multiple auction cards run sequentially, DRAFT_AUCTION becomes a multi-step loop. RSM design is sound for 1v1. Extension to multi-card auctions must be handled in the Auction System GDD.
 
-4. **Late-joiner sync strategy** — Clients connecting mid-game receive `S2CPhaseChanged` for the current phase but need full game state (gold, round, board, hand). The RSM's per-transition broadcast is insufficient for a full state restore. Resolution belongs in the Network Protocol GDD; the RSM's `RoundState` resource must be structured to support full-snapshot delivery.
+4. ~~**Late-joiner sync strategy**~~ — **Resolved (2026-05-01).** `network-protocol.md` (Approved) defines `S2CGameSnapshot` (Section D.1) with the full reconnect/late-joiner state schema: `round_number`, `phase`, `timer_remaining_ms: Option<u32>`, `PlayerSnapshot` (gold, mana, hand, pool), `BoardSnapshot`, `auction_state: Option<AuctionSnapshot>`. The RSM must expose `phase`, `round_number`, and current timer remaining as fields on a readable `RoundState` resource so the snapshot assembly system can read them. See `network-protocol.md` Rule 7, NP-9, NP-20 for the delivery contract. ✓
 
 5. ~~**`GAME_OVER` payload `GameOverReason` enum**~~ — **Resolved.** `GameOverReason` is defined in Rule 14 of this GDD: `ObjectivesDestroyed | Disconnection | Draw | ResolutionTimeout`. HUD GDD may render it; the type is owned here. *(ResolutionTimeout added 2026-04-30 per R8 cross-review — closes C-B2 / C-R8-1.)*
 
-6. **`OQ-PLACEMENT-LOAD` — PLACEMENT cognitive load on auction-followup rounds** — PLACEMENT (10s) requires 10 concurrent active systems during auction-followup rounds (hand fan with up to 10 cards, per-card reserve strips, spawn-range highlights, timer, gold/mana/reserve HUD, lane/objective HP, staged-card overlay, class-specific overlays, 7 token types, opponent gold ticker). Comfortable cognitive threshold: 4. Current state: OVERLOADED. **M2 telemetry gate:** if `% missed placements on auction-followup rounds > 25%` OR `% cards staged in final 2s > 30%` → raise `placement_timer_seconds` to 12s for the round immediately following any auction win, OR collapse class-state overlays to a togglable side panel. Add `auction_followup_placement_timer_seconds` knob to GameConfig (default 12, safe range 10–15). *(Opened 2026-04-30 per R9 cross-review — closes C-R9-6.)*
+6. ~~**`OQ-PLACEMENT-LOAD` — PLACEMENT cognitive load on auction-followup rounds**~~ — **Resolved (2026-05-01).** `auction_followup_placement_timer_seconds` promoted to first-class Tuning Knob (default 12s, safe range 10–15). Rule 9 updated with prior-phase-aware timer selection logic. RSM-29c AC added. *(Opened 2026-04-30 per R9 cross-review. Closed R2 design-review 2026-05-01.)* ✓

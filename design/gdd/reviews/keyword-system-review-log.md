@@ -1,5 +1,19 @@
 # Keyword System — Review Log
 
+## Review — 2026-05-01 (R6 lean re-review) — Verdict: APPROVED
+Scope signal: XL
+Specialists: none (lean mode — single-session analysis)
+Blocking items: 0 | Recommended: 3 found + applied
+Summary: R6 lean pass on an already-APPROVED document. No new blocking items found. Formula boundary analysis (F1/F2/F3), AC coverage scan (all 82 ACs), replication contract, and dependency graph all pass clean. Three documentation hygiene items applied inline: (1) KW-041 struck-through row added between KW-040 and KW-042 — removed in R3 per D7 (1-cell-apart collision rule / ATTRACT enemy branching) but had no annotation, identical pattern to the KW-046 fix in R5; (2) OQ-NP2 header column formatted with strikethrough to match all other resolved OQs (body already said RESOLVED 2026-04-30); (3) OQ-KS3 R6 verification note added — combat-resolution.md is now Approved, verify OQ4 was struck through before COUNTERATTACK implementation. No design decisions. Implementation-ready.
+Prior verdict resolved: Yes — R5 APPROVED status confirmed; R6 found no regressions.
+
+## Review — 2026-05-01 (R5 lean re-review) — Verdict: APPROVED
+Scope signal: XL
+Specialists: none (lean mode — single-session analysis)
+Blocking items: 1 found + applied | Recommended: 3 found + applied
+Summary: R5 lean re-review of post-R5 file. R5 had closed OQ-KS6 (STUN/DEATH), OQ-KS7, OQ-KS8. One blocker remained: SILENCE+HASTE same-SS1 timing rule was unspecified — mirrors the existing explicit STUN+HASTE rule, same timing context, required an Edge Case entry and a BLOCKING AC (KW-082). Three recommended items also applied: (1) Formula 2 had a redundant post-formula collision check that was unreachable given the enemy-branch effective_pull formula — clarified to remove dead code; (2) KW-046 was removed in R3 per D8 but had no annotation — struck-through row added with rationale; (3) INJURED-granted keywords restoration after SILENCE expiry was implicit but unstated — Edge Case added. All creative decisions settled across R1–R5; no new design questions raised.
+Prior verdict resolved: Yes — R5 closed all R4 blockers; R5 lean re-review verified and closed the final 4 items.
+
 ## Review — 2026-05-01 (R4 full + R5 inline) — Verdict: NEEDS REVISION → Revised Inline
 Scope signal: XL
 Specialists: game-designer, systems-designer, qa-lead, network-programmer, creative-director

@@ -1,0 +1,110 @@
+# Epic: HUD
+
+> **Layer**: Presentation
+> **GDD**: design/gdd/hud.md
+> **Architecture Module**: `client/src/ui/hud/` — `HudPlugin` within `PresentationPlugin`
+> **Status**: Ready
+> **Stories**: 10 stories created 2026-05-01
+
+## Overview
+
+This epic implements the `HudPlugin` — the client-side persistent readout layer that
+surfaces economic and tactical state to both players at all times. The HUD owns four
+screen-edge zones (top-left phase/round, top-center scoreboard, top-right gold, bottom-left
+mana), pre-pools all 18 entities at session start, and reacts to four server signals:
+`S2CGoldUpdate` (own economy), `S2CGoldBroadcast` (both players' gold), `S2CPhaseChanged`
+(round + phase via `Res<CurrentClientPhase>`), and a Bevy Observer for `HudObjectiveUpdate`
+(re-emitted by Board Rendering after draining `ObjectiveDestroyed`). It rebuilds fully from
+`S2CGameSnapshot` on reconnect. The HUD produces zero client-to-server messages and never
+asserts game state — it is read-only and server-authoritative.
+
+`HudPlugin` is registered 4th in `PresentationPlugin` (after `CardAnimationsPlugin`,
+`BoardRenderingPlugin`, `HandUiPlugin`). Its systems slot into the `PresentationSet`
+(PhaseTransition → MessageDrain → StateSync → AnimationTick) defined by ADR-021.
+Gold/mana numerics tween via `bevy_tweening` using the cancel-and-replace contract from
+ADR-021; dot state flips and phase/round labels are instantaneous (StateSync, no AnimationTick).
+
+## Governing ADRs
+
+| ADR | Decision Summary | Engine Risk |
+|-----|-----------------|-------------|
+| ADR-021: Presentation Layer Architecture | PRIMARY — `HudPlugin` 4th in `PresentationPlugin`; `PresentationSet` (PhaseTransition → MessageDrain → StateSync → AnimationTick); 18 pre-pooled entities; `PickingBehavior` guard behind `#[cfg(feature = "ui_picking")]`; bevy_tweening cancel-and-replace via `Animator::set_tweenable()` | HIGH |
+| ADR-002: Client-Server Authority | HUD is read-only; zero C2S messages; all state received as S2C messages; no client-side game logic | LOW |
+| ADR-001: Objective Identity Unicast | `ObjectiveIdentity` is server-only; `HudObjectiveUpdate` strips `was_fake` at Board Rendering boundary — HUD scoreboard architecturally cannot reveal real/fake | LOW |
+| ADR-008: Lightyear Channel Config | `S2CGoldUpdate`, `S2CGoldBroadcast`, `S2CPhaseChanged`, `S2CGameSnapshot` all on `ReliableChannel`; drained via `MessageReceiver<T>` in `MessageDrain` set; single-drain constraint: one reader per message type per frame | HIGH |
+| ADR-011: Reconnect + Snapshot | `S2CGameSnapshot` triggers full HUD rebuild (all 18 entities rewritten, no respawn); deferred queue flushed after snapshot; FROZEN mode tiebreak — snapshot always wins, FROZEN re-applies | HIGH |
+
+## GDD Requirements
+
+| TR-ID | Requirement | ADR Coverage |
+|-------|-------------|--------------|
+| TR-HUD-001 | Gold label format adaptive (ECONOMY_BASIC `Xg` / ECONOMY_AUCTION `Xg (Yr)`); 18 pre-pooled entities: 6 label parents + 2 TextSpan children (gold label `(Yr)` spans) + 10 scoreboard dots | ADR-021 ✅ |
+| TR-HUD-002 | Mana display `current_mana / mana_cap`; reserve mana label visible iff `reserve_mana > 0`; sourced from `S2CGoldUpdate` in `MessageDrain` set | ADR-021 ✅ |
+| TR-HUD-003 | Phase label strings for DRAFT\_INITIAL / DRAFT\_SHOP / DRAFT\_AUCTION / PLACEMENT / RESOLUTION / GAME\_OVER; sourced via `Res<CurrentClientPhase>` (never direct `MessageReceiver<S2CPhaseChanged>`) | ADR-021 ✅ |
+| TR-HUD-004 | Scoreboard dot state machine: all 10 dots ALIVE at session start; `HudObjectiveUpdate` Bevy Observer transitions single dot ALIVE → DESTROYED; `HudPlugin` registers `app.observe(handle_hud_objective_update)` | ADR-021 ✅ |
+| TR-HUD-005 | Real/fake identity never rendered on scoreboard; `was_fake` stripped by Board Rendering before triggering `HudObjectiveUpdate` | ADR-001 ✅ |
+| TR-HUD-006 | RESOLUTION persistence: HUD root `Visibility::Visible` while Hand UI and Shop/Auction UI hide; enforced by `PresentationSet` ordering — all phase handlers run together in `PhaseTransition` | ADR-021 ✅ |
+| TR-HUD-007 | `S2CGoldUpdate` / `S2CGoldBroadcast` tie-break: `handle_gold_broadcast_system` scheduled `.before(handle_gold_update_system)` within `MessageDrain`; own `GoldDisplayState.gold` always wins from `S2CGoldUpdate` | ADR-021 ✅ |
+| TR-HUD-008 | Dot ALIVE → DESTROYED: instantaneous state flip via Observer; handled in `StateSync` set; no tween, no `Animator<T>` attached to dot entities | ADR-021 ✅ |
+| TR-HUD-009 | FROZEN mode on GAME\_OVER: incremental updates (`S2CGoldUpdate`, `HudObjectiveUpdate`) rejected after `phase == GAME_OVER`; `S2CGameSnapshot` bypasses FROZEN (snapshot always wins), then FROZEN re-applies | ADR-021 ⚠️ partial — pattern via `Res<CurrentClientPhase>` phase check; FROZEN behavior is GDD Rule 10 + Rule 13 spec; no dedicated ADR for freeze semantics |
+| TR-HUD-010 | Numeric tween ≤ 300ms; in-flight cancel-and-replace via `Animator::set_tweenable()` — never despawn + respawn; snap to authoritative value on GAME\_OVER entry | ADR-021 ✅ |
+
+**10 / 10 TRs covered** (9 fully by Accepted ADRs; TR-HUD-009 partial — follow GDD Rules 10 and 13 directly for FROZEN behavior).
+
+## Pre-Implementation Gates
+
+The following open questions from `design/gdd/hud.md` must be resolved before the
+corresponding stories can be implemented (not blockers for epic creation):
+
+| OQ | Blocks | Owner |
+|----|--------|-------|
+| OQ-HUD-01 — `S2CSessionPaused` / `S2CSessionResumed` undefined in network-protocol.md | "Waiting for opponent…" pause overlay story | Network Protocol GDD |
+| OQ-HUD-04 — `LANE_MIDPOINT_X` sharing mechanism (Board Rendering → HUD) | Dot horizontal alignment story | Tech Lead / Board Rendering epic |
+| OQ-HUD-05 — `HudObjectiveUpdate` trigger type crate location | Observer registration story | Tech Lead / Lead Programmer |
+
+Stories for OQ-HUD-01 / OQ-HUD-04 / OQ-HUD-05 will be flagged **BLOCKED** in the story file until the respective OQ resolves. All other stories are implementable from the GDD and ADRs as-is.
+
+## Key Bevy 0.18 API Notes
+
+> ⚠️ `liv-bevy-018` skill is **mandatory** on every `.rs` file in this epic.
+
+- **TextSpan children**: gold label uses parent `Text`/`TextFont`/`TextColor` entity + child `TextSpan`/`TextFont`/`TextColor` entity for `(Yr)` suffix — Bevy 0.18 multi-span pattern. Empty string `""` in ECONOMY\_BASIC mode (never despawn the child entity).
+- **BorderRadius inside Node**: scoreboard dots use `Node { border_radius: BorderRadius::all(Val::Px(r)), width: Val::Px(d), height: Val::Px(d), .. }` — standalone `BorderRadius` component does not exist in 0.18.
+- **LineHeight required component**: any `Text` entity needs `LineHeight` if custom line spacing is needed; omit only if default is acceptable.
+- **PickingBehavior guard**: `#[cfg(feature = "ui_picking")]` on HUD root `Node` insertion — inserting without feature compiled panics (unregistered component). If `ui_picking` absent from `Cargo.toml`, root Node is already non-interactive.
+- **GoldDisplayState backing field**: tween targets `f32` fields in `GoldDisplayState`; a change-detection system reads the current value and writes formatted strings to `Text`/`TextSpan`. Do NOT implement as `Lens<GoldDisplayState>` directly — three simultaneous writers on same component.
+- **Observer not EventReader**: `app.observe(handle_hud_objective_update)` — never `EventReader<HudObjectiveUpdate>` and never `MessageReader<ObjectiveDestroyed>` (Board Rendering is the sole drain of that Lightyear channel).
+- **`HudConfig` not `GameConfig`**: `hud_tween_duration_ms` and layout constants live in a client-side `HudConfig` struct — cosmetic preferences, not server-authoritative game parameters.
+
+## Definition of Done
+
+This epic is complete when:
+- All stories are implemented, reviewed, and closed via `/story-done`
+- All acceptance criteria from `design/gdd/hud.md` (28 BLOCKING + 4 ADVISORY) are verified
+- All Logic and Integration stories have passing test files in `tests/unit/hud/` or `tests/integration/hud/`
+- Visual/UI stories have screenshot evidence + lead sign-off in `production/qa/evidence/`
+- HUD-20 (same-tick tie-break) uses `App::new()` with `HudPlugin` registered — not `World::new()` — to verify plugin system ordering (GDD AC note)
+- `cargo build -p client` without `ui_picking` feature compiles without panic (ADR-021 validation criterion)
+- OQ-HUD-04 resolved: dot horizontal alignment verified against `BoardLayout` / `LANE_MIDPOINT_X` at 1280×720 and 1920×1080
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [HUD Plugin Scaffold and Pre-Pooled Entity Tree](story-001-hud-plugin-scaffold.md) | Logic | Ready | ADR-021 |
+| 002 | [Gold and Mana Display (ECONOMY_BASIC)](story-002-gold-mana-display.md) | Logic | Ready | ADR-021 |
+| 003 | [Phase Label, Round Counter, and Instantaneous Transitions](story-003-phase-label-round-counter.md) | Logic | Ready | ADR-021 |
+| 004 | [Scoreboard Dot Observer and State Machine](story-004-scoreboard-dot-observer.md) | Integration | Blocked (OQ-HUD-05) | ADR-021, ADR-001 |
+| 005 | [Phase Transitions and RESOLUTION Persistence](story-005-phase-transitions.md) | Logic | Ready | ADR-021 |
+| 006 | [ECONOMY_AUCTION Inline Gold Format and TextSpan](story-006-economy-auction-inline-gold.md) | UI | Ready | ADR-021 |
+| 007 | [GAME_OVER Freeze Mode](story-007-game-over-freeze.md) | Logic | Ready | ADR-021 |
+| 008 | [Reconnect Snapshot Rebuild](story-008-reconnect-snapshot-rebuild.md) | Integration | Ready | ADR-021, ADR-011 |
+| 009 | [Same-Tick Gold Tie-Break (Plugin-Level Integration)](story-009-same-tick-tie-break.md) | Integration | Ready | ADR-021 |
+| 010 | [Numeric Tween Animation](story-010-numeric-tween-animation.md) | Visual/Feel | Ready | ADR-021 |
+
+**10 stories total: 5 Logic · 1 UI · 3 Integration · 1 Visual/Feel**
+Story 004 blocked on OQ-HUD-05 (HudObjectiveUpdate trigger type crate location).
+
+## Next Step
+
+Run `/story-readiness production/epics/hud/story-001-hud-plugin-scaffold.md` to begin implementation. Work through stories in dependency order — each story's `Depends on:` field tells you what must be DONE first.

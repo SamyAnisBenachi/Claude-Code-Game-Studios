@@ -1,5 +1,12 @@
 # Review Log — Network Protocol
 
+## Review — 2026-05-01 (R7 lean) — Verdict: APPROVED
+Scope signal: L
+Specialists: none (lean mode)
+Blocking items: 4 resolved inline | Recommended: 4 (3 deferred to implementation, 1 applied as cleanup)
+Summary: R7 confirmed R6's inline pass and found 4 residual blockers missed in previous cycles: two Prism System messages (S2CPrismRespawned, S2CPrismRewardDropped) pending NP GDD registration since prism-system.md approval — added to S2C table, Interactions, Downstream Dependents, and ACs NP-56/57; EndOfTurnFired incorrectly listed in inner-sub_step invariant (struct has no inner field) — removed from list with clarifying NOTE; NP-52 and NP-53 misclassified as ADVISORY despite MUST language in rules — both promoted to BLOCKING. Stale Downstream Dependents status labels updated to Approved. OQ-1/2/3 remain as HIGH pre-implementation gates (Lightyear 0.26 verification). Document is implementation-ready.
+Prior verdict resolved: Yes — R6 NEEDS REVISION (14 blockers) fully resolved inline before R7.
+
 ## Review — 2026-04-30 (R6 full) — Verdict: NEEDS REVISION → Revised Inline
 Scope signal: L
 Specialists: network-programmer, systems-designer, qa-lead, game-designer, creative-director

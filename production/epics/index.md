@@ -1,8 +1,8 @@
 # Epics Index
 
-**Last Updated:** 2026-04-30
+**Last Updated:** 2026-05-01
 **Engine:** Bevy 0.18 + Lightyear 0.26
-**Layer in progress:** Feature (M1 + M2 + M3)
+**Layer in progress:** Feature (M1 + M2 + M3) + Presentation
 
 | Epic | Layer | Architecture Module | GDD(s) | Stories | Status |
 |------|-------|---------------------|--------|---------|--------|
@@ -22,6 +22,9 @@
 | [class-system](class-system/EPIC.md) | Feature (M3) | `server/feature/class/` | class-system | 10 stories | Ready |
 | [prism-system](prism-system/EPIC.md) | Feature (M3) | `server/feature/prism/` | prism-system | Not yet created | Ready |
 | [keyword-system](keyword-system/EPIC.md) | Feature (M3) | `server/feature/keyword/` + `protocol/src/keyword.rs` | keyword-system | Not yet created | Ready — 7 pre-impl gates to clear first |
+| [hud](hud/EPIC.md) | Presentation | `client/src/ui/hud/` | hud | Not yet created | Ready |
+| [card-animations](card-animations/EPIC.md) | Presentation | `client/src/ui/anim/` | card-animations | Not yet created | Ready — 2 cargo check gates before first story |
+| [hand-ui](hand-ui/EPIC.md) | Presentation | `client/src/presentation/hand/` | hand-ui | Not yet created | Ready — OQ8 gates activation-lock story |
 
 > ⭐ Sprint 1 Story 1.0 = `lightyear-protocol-verification` Story 001 (Lightyear 0.26 verification spike)
 
@@ -50,7 +53,7 @@
 | Feature (M1) | **EPIC files written 2026-04-30 — run `/create-stories` per epic next** | Board/Lane + Objective epics ready; M2/M3 epics paused pending ADRs |
 | Feature (M2) | **auction-system + card-acquisition + combat-resolution EPICs written 2026-04-30** — run `/create-stories` per epic next; Presentation epics pending ADRs | ADR-013 ✅ ADR-015 ✅ ADR-017 ✅ |
 | Feature (M3) | **class-system + prism-system + keyword-system EPICs written 2026-04-30** — run `/create-stories class-system` next; prism-system + keyword-system have pre-impl gates to clear first (keyword: ADR-018/022 must be Accepted; prism: 3 gates) | ADR-014 ✅ (class-system); ADR-016 ✅ (prism-system); ADR-018/022 ⚠️ Proposed (keyword) |
-| Presentation | Not started | — |
+| Presentation | **card-animations + hand-ui + hud EPICs written 2026-05-01** — run `/create-stories hud`, `/create-stories hand-ui`, or `/create-stories card-animations` next; board-rendering + shop-auction-ui epics pending | ADR-021 ✅ (Presentation Layer Architecture) |
 
 ## Core Layer Coordination Notes
 
