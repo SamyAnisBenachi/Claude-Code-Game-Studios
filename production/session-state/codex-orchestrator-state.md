@@ -40,8 +40,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- CA-002: Card Acquisition Draft Initial implemented at `2c6c65b`; local draft
-  initial tests, state scaffold tests, and `cargo check -p server` passed.
 - KW-003: First Strike and Haste implemented at `874d86b`; local
   `first_strike_haste_test` and `cargo check -p server` passed. Story text still
   has stale ADR-018 Proposed/BLOCKED wording; completion review must document
@@ -97,18 +95,20 @@ None currently tracked here.
   `ec6f433`/`61e45ad`; story-done committed at `1045dbc`.
 - S3-05: RSM Win Condition and Game Over implemented at `5bf6bde`; story-done
   committed at `4d745a8`.
+- CA-002: Card Acquisition Draft Initial implemented at `2c6c65b`; story-done
+  committed at `79d5024`. `production/sprint-status.yaml` has no CA-002 entry,
+  so the closeout updated only the story file and session state.
 
 ## Story-Done Queue
 
-1. CA-002
-2. KW-003
-3. HUD-001
-4. S3-08
-5. CARD-ANIM-002
-6. BOARD-001
-7. CA-003
-8. CA-006
-9. CARD-ANIM-004
+1. KW-003
+2. HUD-001
+3. S3-08
+4. CARD-ANIM-002
+5. BOARD-001
+6. CA-003
+7. CA-006
+8. CARD-ANIM-004
 
 Run only one story-done at a time.
 
