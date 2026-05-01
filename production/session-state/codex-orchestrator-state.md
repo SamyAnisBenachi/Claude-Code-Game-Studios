@@ -28,8 +28,8 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-No active code/story-done windows confirmed beyond agents the user launched from
-the last prompts.
+- HUD-002 worker: assumed launched from the last prompt; awaiting worker output.
+- CARD-ANIM-002 story-done: completed at `43a2678`; window can be cleared.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
