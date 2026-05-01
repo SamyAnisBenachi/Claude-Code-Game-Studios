@@ -28,7 +28,8 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- S3-06 story-done window.
+No active code/story-done windows confirmed beyond agents the user launched from
+the last prompts.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -50,8 +51,6 @@ None currently tracked here.
 - S3-05: RSM Win Condition and Game Over implemented at `5bf6bde`; local RSM
   win-condition and F2 ordering tests passed, RSM feature-import grep passed,
   and `git diff --check` passed for S3-05 files.
-- S3-06: E2E WebSocket Roundtrip implemented at `a32a3df`; local websocket
-  test and WASM client release build passed.
 - HUD-001: HUD Plugin Scaffold implemented at `b04748b`; `git diff --check` and
   `cargo fmt --check` passed. Local client test was blocked by native
   `aws-lc-sys` dependency compilation; document this in story-done.
@@ -77,17 +76,20 @@ None currently tracked here.
   story-done committed and pushed at `765ecfc`.
 - CARD-ANIM-001: implemented at `23fad70`; story-done committed and pushed at
   `ab7d56f`.
+- S3-06: E2E WebSocket Roundtrip implemented at `a32a3df`; HUD Bevy 0.18 WASM
+  blocker fixed at `cbce522`; story-done committed and pushed at `57159e9`.
+  Note: sprint-status marks S3-06 done but still has owner
+  `codex-s3-06-websocket`; clean this in a later tracker hygiene pass if needed.
 
 ## Story-Done Queue
 
-1. S3-06
-2. S3-04
-3. S3-05
-4. CA-002
-5. KW-003
-6. HUD-001
-7. S3-08
-8. CARD-ANIM-002
+1. S3-04
+2. S3-05
+3. CA-002
+4. KW-003
+5. HUD-001
+6. S3-08
+7. CARD-ANIM-002
 
 Run only one story-done at a time.
 
