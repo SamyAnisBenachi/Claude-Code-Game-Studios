@@ -48,6 +48,9 @@ None currently tracked here.
   that ADR-018 is Accepted in the 2026-05-01 manifest.
 - S3-04: RSM Timers + Input Reader implemented at `eff5cf9`; local RSM/economy
   suite, full server tests, cargo check, and single-writer grep passed.
+  Story-done initially blocked because RSM still emitted superseded
+  `ShopRefreshNeeded`; orchestrator fix replaced it with `ShopRefreshTriggered`
+  while keeping `core/rsm` free of `feature` imports.
 - S3-05: RSM Win Condition and Game Over implemented at `5bf6bde`; local RSM
   win-condition and F2 ordering tests passed, RSM feature-import grep passed,
   and `git diff --check` passed for S3-05 files.
