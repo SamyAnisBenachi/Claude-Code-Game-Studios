@@ -57,6 +57,11 @@ None currently tracked here.
   `e9103d9`. Local plugin scaffold + tween lifecycle tests and
   `cargo check -p client` passed. Merge conflict in `client/Cargo.toml` resolved
   by keeping both HUD-001 and CARD-ANIM-002 test targets.
+- CARD-ANIM-004: AnimQueue Resolution Drain implemented on branch
+  `work/card-anim-004-animqueue-resolution-drain` at `2ecd58f`; merged into
+  `main` at `b7204e5`. Local anim queue + plugin scaffold tests,
+  `cargo check -p client`, and `cargo fmt -p client -- --check` passed after
+  integration.
 - BOARD-001: Board Grid Initialization implemented on branch
   `work/board-001-grid-initialization` at `7d38a34`; merged into `main` at
   `6e5d80b`. Local `board_grid_initialization_test`, `cargo check -p server`,
@@ -105,6 +110,7 @@ None currently tracked here.
 7. BOARD-001
 8. CA-003
 9. CA-006
+10. CARD-ANIM-004
 
 Run only one story-done at a time.
 
