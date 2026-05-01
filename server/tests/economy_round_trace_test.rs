@@ -52,7 +52,7 @@ fn test_economy_round_trace_rounds_one_to_three() {
     app.insert_resource(session_config(&players));
 
     app.world_mut().trigger(SessionReady);
-    write_draft_started(&mut app, 1, DraftPhase::Initial);
+    app.update();
 
     {
         let economies = app.world().resource::<PlayerEconomies>();

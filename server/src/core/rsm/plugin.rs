@@ -1,10 +1,10 @@
 use super::events::{
-    AbortAuction, AuctionPhaseEntered, AuctionSettled, BroadcastPhaseChanged, DraftStarted,
-    GameOverEmitted, LobbyComplete, PlacementPhaseEntered, ResolutionComplete,
-    ResolutionPhaseEntered, SessionReady, ShopRefreshNeeded,
+    AbortAuction, AuctionPhaseEntered, AuctionSettled, BroadcastPhaseChanged, DraftReadySignal,
+    DraftStarted, GameOverEmitted, LobbyComplete, PlacementPhaseEntered, PlacementSubmitted,
+    ResolutionComplete, ResolutionPhaseEntered, ShopRefreshNeeded,
 };
-use super::state::RoundState;
-use super::transitions::advance_phase;
+use super::state::{PendingPhaseAdvance, RoundState};
+use super::transitions::{advance_phase, on_session_ready, rsm_input_reader, tick_rsm_timers};
 use bevy::prelude::*;
 
 pub struct RsmPlugin;
@@ -12,6 +12,7 @@ pub struct RsmPlugin;
 impl Plugin for RsmPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(RoundState::new())
+            .init_resource::<PendingPhaseAdvance>()
             .add_message::<LobbyComplete>()
             .add_message::<DraftStarted>()
             .add_message::<ShopRefreshNeeded>()
@@ -23,9 +24,12 @@ impl Plugin for RsmPlugin {
             .add_message::<BroadcastPhaseChanged>()
             .add_message::<AuctionSettled>()
             .add_message::<ResolutionComplete>()
-            .add_systems(Update, advance_phase)
+            .add_message::<DraftReadySignal>()
+            .add_message::<PlacementSubmitted>()
+            .add_systems(
+                Update,
+                (rsm_input_reader, tick_rsm_timers, advance_phase).chain(),
+            )
             .add_observer(on_session_ready);
     }
 }
-
-fn on_session_ready(_: On<SessionReady>) {}

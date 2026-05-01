@@ -63,3 +63,18 @@ pub struct AuctionSettled {
 
 #[derive(Message, Clone, Debug)]
 pub struct ResolutionComplete;
+
+/// Internal server signal emitted after the network layer resolves the sender
+/// to a stable session player. The shared C2S payload stays Bevy-free.
+#[derive(Message, Clone, Copy, Debug)]
+pub struct DraftReadySignal {
+    pub player: PlayerId,
+    pub ready: bool,
+}
+
+/// Internal server signal emitted after a valid placement submission is accepted
+/// by the input layer. Placement contents are owned by Board/Lane stories.
+#[derive(Message, Clone, Copy, Debug)]
+pub struct PlacementSubmitted {
+    pub player: PlayerId,
+}

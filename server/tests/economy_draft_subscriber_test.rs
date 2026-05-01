@@ -101,10 +101,6 @@ fn test_economy_draft_round_one_initial_adds_no_gold() {
     let players = [player(1), player(2)];
     let mut app = app_with_economy(&players);
     app.world_mut().trigger(SessionReady);
-    app.world_mut().write_message(DraftStarted {
-        round: 1,
-        phase: DraftPhase::Initial,
-    });
 
     app.update();
 
@@ -192,10 +188,6 @@ fn test_economy_draft_writes_gold_update_and_broadcast_per_player() {
     let players = [player(1), player(2)];
     let mut app = app_with_economy(&players);
     app.world_mut().trigger(SessionReady);
-    app.world_mut().write_message(DraftStarted {
-        round: 1,
-        phase: DraftPhase::Initial,
-    });
 
     app.update();
 

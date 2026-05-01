@@ -20,7 +20,7 @@ impl Plugin for EconomyPlugin {
             .add_message::<S2CGoldUpdate>()
             .add_message::<S2CGoldBroadcast>()
             .add_observer(initialise_player_economies)
-            .add_systems(Update, on_draft_started)
+            .add_systems(Update, on_draft_started.after(advance_phase))
             .add_systems(
                 Update,
                 (

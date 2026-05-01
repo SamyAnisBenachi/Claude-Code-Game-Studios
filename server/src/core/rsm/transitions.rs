@@ -1,9 +1,10 @@
 use super::events::{
-    AuctionPhaseEntered, BroadcastPhaseChanged, DraftStarted, GameOverEmitted, LobbyComplete,
-    PlacementPhaseEntered, ResolutionPhaseEntered, ShopRefreshNeeded,
+    AuctionPhaseEntered, AuctionSettled, BroadcastPhaseChanged, DraftReadySignal, DraftStarted,
+    GameOverEmitted, LobbyComplete, PlacementPhaseEntered, PlacementSubmitted, ResolutionComplete,
+    ResolutionPhaseEntered, ShopRefreshNeeded,
 };
-use super::state::{PhaseAdvanceRequest, RoundPhase, RoundState};
-use crate::core::session::{PlayerSessions, SessionConfig};
+use super::state::{PendingPhaseAdvance, PhaseAdvanceRequest, RoundPhase, RoundState};
+use crate::core::session::{PlayerSessions, SessionConfig, SessionReady};
 use bevy::prelude::*;
 use shared::protocol::DraftPhase;
 
@@ -15,9 +16,121 @@ pub fn is_auction_round(round_number: u32) -> bool {
     round_number % 3 == 0
 }
 
+pub fn rsm_input_reader(
+    mut rsm: ResMut<RoundState>,
+    session: Option<Res<SessionConfig>>,
+    mut pending: ResMut<PendingPhaseAdvance>,
+    mut auction_settled: MessageReader<AuctionSettled>,
+    mut resolution_complete: MessageReader<ResolutionComplete>,
+    mut ready_signals: MessageReader<DraftReadySignal>,
+    mut placement_submitted: MessageReader<PlacementSubmitted>,
+) {
+    for _event in auction_settled.read() {
+        if rsm.phase != RoundPhase::DraftAuction {
+            continue;
+        }
+        pending.request(PhaseAdvanceRequest::new(RoundPhase::DraftAuction));
+    }
+
+    for _event in resolution_complete.read() {
+        if rsm.phase != RoundPhase::Resolution {
+            continue;
+        }
+        pending.request(PhaseAdvanceRequest::new(RoundPhase::Resolution));
+    }
+
+    for signal in ready_signals.read() {
+        if !matches!(rsm.phase, RoundPhase::DraftInitial | RoundPhase::DraftShop) {
+            continue;
+        }
+        if !player_is_in_session(signal.player, session.as_deref()) {
+            continue;
+        }
+
+        if signal.ready {
+            rsm.draft_ready_players.insert(signal.player);
+        } else {
+            rsm.draft_ready_players.remove(&signal.player);
+        }
+
+        if all_players_seen(&rsm.draft_ready_players, session.as_deref()) {
+            pending.request(PhaseAdvanceRequest::new(rsm.phase));
+        }
+    }
+
+    for submission in placement_submitted.read() {
+        if rsm.phase != RoundPhase::Placement {
+            continue;
+        }
+        if !player_is_in_session(submission.player, session.as_deref()) {
+            continue;
+        }
+
+        rsm.submissions_received.insert(submission.player);
+        if all_players_seen(&rsm.submissions_received, session.as_deref()) {
+            pending.request(PhaseAdvanceRequest::new(RoundPhase::Placement));
+        }
+    }
+}
+
+pub fn tick_rsm_timers(
+    mut rsm: ResMut<RoundState>,
+    time: Res<Time>,
+    mut pending: ResMut<PendingPhaseAdvance>,
+) {
+    if pending.is_requested() {
+        return;
+    }
+
+    let elapsed = time.delta();
+    let finished = match rsm.phase {
+        RoundPhase::DraftInitial => tick_timer(rsm.draft_initial_timer.as_mut(), elapsed),
+        RoundPhase::DraftShop => tick_timer(rsm.draft_shop_timer.as_mut(), elapsed),
+        RoundPhase::Placement => tick_timer(rsm.placement_timer.as_mut(), elapsed),
+        RoundPhase::Lobby
+        | RoundPhase::DraftAuction
+        | RoundPhase::Resolution
+        | RoundPhase::GameOver => false,
+    };
+
+    if finished {
+        pending.request(PhaseAdvanceRequest::new(rsm.phase));
+    }
+}
+
+pub fn on_session_ready(
+    _trigger: On<SessionReady>,
+    mut rsm: ResMut<RoundState>,
+    session: Option<Res<SessionConfig>>,
+    config: Option<Res<crate::foundation::config::GameConfig>>,
+    mut sessions: Option<ResMut<PlayerSessions>>,
+    mut lobby_complete: MessageWriter<LobbyComplete>,
+    mut draft_started: MessageWriter<DraftStarted>,
+    mut shop_refresh: MessageWriter<ShopRefreshNeeded>,
+    mut auction_entered: MessageWriter<AuctionPhaseEntered>,
+    mut broadcast: MessageWriter<BroadcastPhaseChanged>,
+) {
+    if rsm.phase != RoundPhase::Lobby {
+        return;
+    }
+
+    enter_draft_initial(
+        &mut rsm,
+        &session,
+        &config,
+        sessions.as_deref_mut(),
+        &mut lobby_complete,
+        &mut draft_started,
+        &mut shop_refresh,
+        &mut auction_entered,
+        &mut broadcast,
+    );
+}
+
 pub fn advance_phase(
     mut rsm: ResMut<RoundState>,
     request: Option<Res<PhaseAdvanceRequest>>,
+    mut pending: Option<ResMut<PendingPhaseAdvance>>,
     session: Option<Res<SessionConfig>>,
     config: Option<Res<crate::foundation::config::GameConfig>>,
     mut sessions: Option<ResMut<PlayerSessions>>,
@@ -30,6 +143,11 @@ pub fn advance_phase(
     mut game_over_emitted: MessageWriter<GameOverEmitted>,
     mut broadcast: MessageWriter<BroadcastPhaseChanged>,
 ) {
+    let request = pending
+        .as_deref_mut()
+        .and_then(PendingPhaseAdvance::take)
+        .or_else(|| request.map(|request| request.as_ref().clone()));
+
     let Some(request) = request else {
         return;
     };
@@ -54,30 +172,27 @@ pub fn advance_phase(
 
     match rsm.phase {
         RoundPhase::Lobby => {
-            let Some(sessions) = sessions.as_deref_mut() else {
-                return;
-            };
-            if !sessions.all_classes_chosen() {
-                return;
-            }
-            sessions.lock_all_classes();
-            rsm.phase = RoundPhase::DraftInitial;
-            lobby_complete.write(LobbyComplete);
-            emit_draft_entry(
+            enter_draft_initial(
                 &mut rsm,
                 &session,
                 &config,
-                DraftPhase::Initial,
+                sessions.as_deref_mut(),
+                &mut lobby_complete,
                 &mut draft_started,
                 &mut shop_refresh,
-                None,
                 &mut auction_entered,
                 &mut broadcast,
             );
         }
         RoundPhase::DraftInitial => {
             rsm.phase = RoundPhase::Placement;
+            rsm.draft_initial_timer = None;
+            rsm.draft_shop_timer = None;
+            rsm.draft_ready_players.clear();
             rsm.submissions_received.clear();
+            rsm.placement_timer = config
+                .as_ref()
+                .map(|config| once_timer(config.placement_timer_seconds));
             placement_entered.write(PlacementPhaseEntered {
                 round: rsm.round_number,
             });
@@ -89,6 +204,10 @@ pub fn advance_phase(
         }
         RoundPhase::DraftAuction => {
             rsm.phase = RoundPhase::DraftShop;
+            rsm.draft_ready_players.clear();
+            rsm.draft_shop_timer = config
+                .as_ref()
+                .map(|config| once_timer(config.draft_shop_timer_seconds));
             emit_draft_entry(
                 &mut rsm,
                 &session,
@@ -103,7 +222,12 @@ pub fn advance_phase(
         }
         RoundPhase::DraftShop => {
             rsm.phase = RoundPhase::Placement;
+            rsm.draft_shop_timer = None;
+            rsm.draft_ready_players.clear();
             rsm.submissions_received.clear();
+            rsm.placement_timer = config
+                .as_ref()
+                .map(|config| once_timer(config.placement_timer_seconds));
             placement_entered.write(PlacementPhaseEntered {
                 round: rsm.round_number,
             });
@@ -115,6 +239,7 @@ pub fn advance_phase(
         }
         RoundPhase::Placement => {
             rsm.phase = RoundPhase::Resolution;
+            rsm.placement_timer = None;
             resolution_entered.write(ResolutionPhaseEntered {
                 round: rsm.round_number,
             });
@@ -138,9 +263,14 @@ pub fn advance_phase(
             let next_round = rsm.round_number;
             let draft_phase = if enters_auction {
                 rsm.phase = RoundPhase::DraftAuction;
+                rsm.draft_shop_timer = None;
                 DraftPhase::Auction
             } else {
                 rsm.phase = RoundPhase::DraftShop;
+                rsm.draft_ready_players.clear();
+                rsm.draft_shop_timer = config
+                    .as_ref()
+                    .map(|config| once_timer(config.draft_shop_timer_seconds));
                 DraftPhase::Shop
             };
             emit_draft_entry(
@@ -159,6 +289,48 @@ pub fn advance_phase(
             return;
         }
     }
+}
+
+fn enter_draft_initial(
+    rsm: &mut RoundState,
+    session: &Option<Res<SessionConfig>>,
+    config: &Option<Res<crate::foundation::config::GameConfig>>,
+    sessions: Option<&mut PlayerSessions>,
+    lobby_complete: &mut MessageWriter<LobbyComplete>,
+    draft_started: &mut MessageWriter<DraftStarted>,
+    shop_refresh: &mut MessageWriter<ShopRefreshNeeded>,
+    auction_entered: &mut MessageWriter<AuctionPhaseEntered>,
+    broadcast: &mut MessageWriter<BroadcastPhaseChanged>,
+) {
+    if let Some(sessions) = sessions {
+        if !sessions.all_classes_chosen() {
+            return;
+        }
+        sessions.lock_all_classes();
+    }
+
+    rsm.phase = RoundPhase::DraftInitial;
+    rsm.round_number = 1;
+    rsm.draft_ready_players.clear();
+    rsm.submissions_received.clear();
+    rsm.draft_shop_timer = None;
+    rsm.placement_timer = None;
+    rsm.draft_initial_timer = config
+        .as_ref()
+        .map(|config| once_timer(config.draft_initial_timer_seconds));
+
+    lobby_complete.write(LobbyComplete);
+    emit_draft_entry(
+        rsm,
+        session,
+        config,
+        DraftPhase::Initial,
+        draft_started,
+        shop_refresh,
+        None,
+        auction_entered,
+        broadcast,
+    );
 }
 
 fn emit_draft_entry(
@@ -210,4 +382,37 @@ fn draft_timer_ms(
 
 fn seconds_to_ms(seconds: u32) -> u32 {
     seconds.saturating_mul(1000)
+}
+
+fn once_timer(seconds: u32) -> Timer {
+    Timer::from_seconds(seconds as f32, TimerMode::Once)
+}
+
+fn tick_timer(timer: Option<&mut Timer>, elapsed: std::time::Duration) -> bool {
+    let Some(timer) = timer else {
+        return false;
+    };
+
+    timer.tick(elapsed);
+    timer.just_finished()
+}
+
+fn all_players_seen(
+    players_seen: &std::collections::HashSet<shared::session::PlayerId>,
+    session: Option<&SessionConfig>,
+) -> bool {
+    let Some(session) = session else {
+        return false;
+    };
+    let expected = usize::from(session.player_count);
+    expected > 0 && players_seen.len() >= expected
+}
+
+fn player_is_in_session(
+    player: shared::session::PlayerId,
+    session: Option<&SessionConfig>,
+) -> bool {
+    session
+        .map(|session| session.team_map.contains_key(&player))
+        .unwrap_or(false)
 }
