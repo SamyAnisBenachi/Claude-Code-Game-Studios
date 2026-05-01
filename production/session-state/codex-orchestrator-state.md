@@ -28,7 +28,9 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- HAND-UI-001 worker: assumed launched from the current orchestrator batch.
+- HAND-UI-001 worker: completed on branch
+  `work/hand-ui-001-plugin-scaffold` at `9f28a2a`; cherry-picked into `main` at
+  `7c603e0`. Window can be cleared.
 - HUD-003 worker: assumed launched from the current orchestrator batch.
 - CARD-ANIM-006 worker: completed on branch
   `work/card-anim-006-objective-stagger-reveal` at `effcef2`; cherry-picked into
@@ -70,6 +72,11 @@ None currently tracked here.
   `main` at `8d641b9`. Local objective stagger, anim queue, and plugin scaffold
   tests, `cargo check -p client`, `cargo fmt -p client -- --check`, and
   `git diff --check` passed after integration.
+- HAND-UI-001: Plugin Scaffold implemented on branch
+  `work/hand-ui-001-plugin-scaffold` at `9f28a2a`; cherry-picked into `main` at
+  `7c603e0`. Local `hand_ui_plugin_scaffold_test`, `cargo check -p client`,
+  `cargo fmt --all -- --check`, and `git diff --check` passed after
+  integration.
 - KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
   `7543293`; cherry-picked into `main` at `b8b1287` because the branch was
   based before recent tracking and BOARD-002 commits. Local `stun_test`,
@@ -141,6 +148,7 @@ None currently tracked here.
 7. CARD-ANIM-008
 8. HUD-002
 9. CARD-ANIM-006
+10. HAND-UI-001
 
 Run only one story-done at a time.
 
@@ -157,8 +165,7 @@ Run only one story-done at a time.
   and CA-22 evidence remains deferred until the dependent UI exists.
 - HUD-002: implemented and integrated; pending story-done.
 - CARD-ANIM-006: implemented and integrated; pending story-done.
-- HAND-UI-001: unblocked by HUD-001 story-done; use worktree mode for any new
-  implementation.
+- HAND-UI-001: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
@@ -166,8 +173,6 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-- HAND-UI-001: plugin scaffold; unblocked by HUD-001 story-done. Use worktree
-  mode.
 - HUD-003: Phase Label/Round Counter; unblocked by HUD-001 story-done. Run
   readiness before launch.
 
