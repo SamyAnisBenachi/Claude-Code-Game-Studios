@@ -641,7 +641,7 @@ enum KeywordPayload {
     OutnumberedFlipped { player_id: PlayerId, active: bool },  // board-global — source_unit_id is None
     BodyguardBondCreated { bodyguard_id: EntityId, protected_id: EntityId },
     BodyguardBondBroken { bodyguard_id: EntityId },
-    CounterattackFired,   // COUNTERATTACK reactive strike — paired with a CombatDamage(is_counterattack: true)
+    CounterattackFired { target_id: EntityId },   // OQ-KS8 RESOLVED R4: target_id required for multi-attacker animation (one event per retaliation target)
     HasteActivated,       // HASTE — unit moves at SS2 in addition to SS5
 }
 ```
@@ -696,6 +696,37 @@ enum GameOverReason {
     Disconnection,        // player's disconnect_grace_seconds expired; loser = Some(player)
     Draw,                 // mutual simultaneous objective destruction OR both players disconnected simultaneously
     ResolutionTimeout,    // RESOLUTION 60s safety timeout (RSM Rule 10); loser = None. Distinct from Draw — client shows "round timed out" not "draw"
+}
+
+// Keyword discriminant used in SilenceApplied.stripped_keywords.
+// Enumerates all keywords that SILENCE can strip (keyword-system.md Rule: SILENCE section).
+// This list is part of the wire protocol — extend only with explicit Keyword GDD approval.
+enum KeywordKind {
+    FirstStrike,
+    Haste,
+    ChargeX,          // CHARGE X (movement sub-step 2 advance)
+    Range,
+    Wall,
+    Bodyguard,
+    Irremovable,
+    Untargetable,
+    ResistanceX,
+    VulnerabilityX,
+    ArmorPiercing,
+    Shield,
+    Leader,
+    Outnumbered,
+    Repel,
+    Attract,
+    Teleport,
+    ChangeLane,
+    Death,            // trigger keyword
+    FinalBlow,        // trigger keyword
+    Counterattack,    // trigger keyword
+    Injured,          // trigger keyword (bonus-granting state)
+    Appearance,       // trigger keyword
+    StartOfTurn,      // trigger keyword
+    EndOfTurn,        // trigger keyword
 }
 
 // Subset of keywords that INJURED can grant — avoids recursive KeywordPayload type.
@@ -853,11 +884,11 @@ N/A — This system renders nothing. The protocol delivers data consumed by UI s
 | NP-30 | **GIVEN** unit A deals non-lethal damage to unit B during RESOLUTION combat (B survives the hit), **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains a `CombatDamage { attacker_id: A, target_id: B, damage > 0, was_lethal: false }` entry at the correct sub_step, and no `UnitDied` entry follows it for unit B within that sub_step. | BLOCKING |
 | NP-31a | **GIVEN** a SHIELD keyword is consumed on a unit during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: Some(unit), sub_step, payload: KeywordPayload::ShieldConsumed }` at the sub_step where the attack was blocked. The preceding `CombatDamage` entry for that attack has `damage: 0`. | BLOCKING |
 | NP-31b | **GIVEN** a STUN is applied to a unit during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: Some(attacker), sub_step, payload: KeywordPayload::StunApplied { duration_rounds } }` at the sub_step where the stun is applied. | BLOCKING |
-| NP-31c | **GIVEN** a SILENCE is applied to a unit during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: Some(attacker), sub_step, payload: KeywordPayload::SilenceApplied { duration_rounds } }` and the target's `silenced_until_round` is populated in the next `S2CGameSnapshot` snapshot. | BLOCKING |
+| NP-31c | **GIVEN** a SILENCE is applied to a unit during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: Some(attacker), sub_step, payload: KeywordPayload::SilenceApplied { duration_rounds, stripped_keywords } }` where `stripped_keywords` lists every `KeywordKind` active on the target at silence application, the target's `silenced_until_round` is populated in the next `S2CGameSnapshot` snapshot, and the client clears all glyph indicators for the listed keywords (including any INJURED-granted bonuses). | BLOCKING |
 | NP-31d | **GIVEN** a LEADER unit is present on the board during RESOLUTION sub-step 1, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: Some(leader), sub_step: 1, payload: KeywordPayload::LeaderSnapshotTaken { leader_unit_id } }`. | BLOCKING |
 | NP-31e | **GIVEN** a BODYGUARD bond is established during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: Some(bodyguard), sub_step, payload: KeywordPayload::BodyguardBondCreated { bodyguard_id, protected_id } }` at the sub_step of the attack that triggered the bond. | BLOCKING |
 | NP-31f | **GIVEN** the OUTNUMBERED condition flips for a player during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: None, sub_step, payload: KeywordPayload::OutnumberedFlipped { player_id, active } }` at the sub_step where unit counts changed. | BLOCKING |
-| NP-31g | **GIVEN** a COUNTERATTACK fires during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains both `KeywordTriggered { payload: CounterattackFired, sub_step }` AND a `CombatDamage { is_counterattack: true }` entry for the return strike, with `KeywordTriggered` appearing before `CombatDamage` in the array for that sub_step. | BLOCKING |
+| NP-31g | **GIVEN** a COUNTERATTACK fires during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains both `KeywordTriggered { payload: CounterattackFired { target_id }, sub_step }` AND a `CombatDamage { is_counterattack: true, target_id: <same target_id> }` entry for the return strike, with `KeywordTriggered` appearing before `CombatDamage` in the array for that sub_step. In multi-attacker scenarios, the server emits **one `CounterattackFired` event per retaliation target** (one per attacker), each with its own `target_id`. | BLOCKING |
 | NP-32 | **GIVEN** a REPEL, ATTRACT, or TELEPORT keyword displaces a unit during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains a `DisplacementEvent` entry with correct `from_lane`, `from_cell`, `to_lane`, `to_cell`, and `kind`. (The "BoardPosition converges" assertion is advisory — unreliable replication is suppressed during RESOLUTION animation per the RESOLUTION rendering contract. Test only the event batch fields.) | BLOCKING |
 | NP-33 | **GIVEN** a fake objective is destroyed during RESOLUTION (attacker's spawn range expands), **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains both `ObjectiveDestroyed { was_fake: true }` AND `SpawnRangeChanged { player_id: attacker, new_spawn_range_cells }`, with `SpawnRangeChanged` appearing **after** `ObjectiveDestroyed` in the events array. | BLOCKING |
 | NP-34 | **GIVEN** Player A submits their PLACEMENT and Player B has not yet submitted, **WHEN** the server processes Player A's `C2SSubmitPlacement`, **THEN** `S2COpponentSubmitted { player_id: Player_A }` is delivered to Player B's transport connection within the same reliable channel message sequence. | BLOCKING |
