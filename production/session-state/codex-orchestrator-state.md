@@ -28,7 +28,10 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- S3-05 worker: RSM Win Condition and Game Over.
+- CARD-ANIM-002 worker: Tween Cancel/Replace Lifecycle, launched in worktree
+  mode after CARD-ANIM-001 closure.
+- HUD-001 worker: HUD Plugin Scaffold, legacy shared-tree worker from before the
+  worktree switch.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -48,6 +51,9 @@ stale/incomplete until explicitly relaunched or closed:
   that ADR-018 is Accepted in the 2026-05-01 manifest.
 - S3-04: RSM Timers + Input Reader implemented at `eff5cf9`; local RSM/economy
   suite, full server tests, cargo check, and single-writer grep passed.
+- S3-05: RSM Win Condition and Game Over implemented at `5bf6bde`; local RSM
+  win-condition and F2 ordering tests passed, RSM feature-import grep passed,
+  and `git diff --check` passed for S3-05 files.
 - S3-06: E2E WebSocket Roundtrip implemented at `a32a3df`; local websocket
   test and WASM client release build passed.
 
@@ -68,14 +74,16 @@ stale/incomplete until explicitly relaunched or closed:
 
 1. S3-06
 2. S3-04
-3. CA-002
-4. KW-003
+3. S3-05
+4. CA-002
+5. KW-003
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- S3-08: wait until S3-05 reports back; both can touch RSM/economy ordering.
+- S3-08: unblocked now that S3-05 implementation reported back; launch in
+  worktree mode only.
 - CA-003 / CA-006: CA-002 is implemented but not story-done. CA-003 depends only
   on CA-001 and can be launched in worktree mode if it avoids unmerged root
   dirty files; story-done remains serialized.
@@ -94,7 +102,8 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 - BOARD-001: Board Grid Initialization; no dependencies.
-- CARD-ANIM-002: Tween cancel/replace lifecycle; depends on CARD-ANIM-001 done.
+- S3-08: Economy Interest Snapshot & Resolution End; depends on economy stories
+  001/002 and RSM `ResolutionPhaseEntered`, now available.
 - CARD-ANIM-004: AnimQueue resolution drain; depends on CARD-ANIM-001 done.
 - CARD-ANIM-009: CI boundary enforcement; depends on CARD-ANIM-001 done.
 
@@ -108,5 +117,8 @@ Run only one story-done at a time.
 
 ## Current Dirty-Tree Notes
 
-As of the last check after S3-04 handoff, `git status --short --branch` is clean
-and synced with `origin/main`.
+As of the last check after S3-05 handoff, root dirty files are limited to
+legacy HUD/client and manually generated asset work:
+`client/Cargo.toml`, `client/src/state/mod.rs`, `client/src/ui/mod.rs`,
+`client/src/ui/hud/`, `tests/unit/hud/`, `assets/art/`, and `.codex-tmp/`.
+Use worktree mode for all new code workers.
