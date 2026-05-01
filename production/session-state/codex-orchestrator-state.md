@@ -31,7 +31,9 @@ source of truth for story status.
 - CARD-ANIM-004 story-done: assumed launched after HAND-UI-001 closure.
 - CA-004 worker: completed on branch `work/ca-004-refresh-cost` at `f26f738`;
   cherry-picked into `main` at `5cb53a8`. Window can be cleared.
-- BOARD-004 worker: assumed launched from the current orchestrator batch.
+- BOARD-004 worker: completed on branch `work/BOARD-004-placement-occupancy`
+  at `224708d`; cherry-picked into `main` at `0c69612`. Window can be
+  cleared.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -94,6 +96,12 @@ None currently tracked here.
   acquisition scaffold/draw/refresh suite, game-config defaults test,
   `cargo check -p server`, `cargo fmt --all -- --check`, and `git diff --check`
   passed after integration.
+- BOARD-004: Placement Occupancy implemented on branch
+  `work/BOARD-004-placement-occupancy` at `224708d`; cherry-picked into `main`
+  at `0c69612`. Local placement occupancy, board grid, spawn range, standard
+  movement, room create/join, and class reveal tests passed after integration
+  (`41/41` total), plus `cargo check -p server`, `cargo fmt --all -- --check`,
+  and `git diff --check HEAD~1..HEAD`.
 - KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
   `7543293`; cherry-picked into `main` at `b8b1287` because the branch was
   based before recent tracking and BOARD-002 commits. Local `stun_test`,
@@ -168,12 +176,14 @@ None currently tracked here.
 10. BOARD-003
 11. HAND-UI-002
 12. CA-004
+13. BOARD-004
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
 - CA-004: implemented and integrated; pending story-done.
+- BOARD-004: implemented and integrated; pending story-done.
 - CA-005: unblocked by CA-003 story-done and CA-004 integration; run readiness
   before launch.
 - KW-004: unblocked by KW-003 story-done; run readiness first because its story
@@ -195,8 +205,8 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-Batch launched:
-- BOARD-004: `production/epics/board-lane-system/story-004-placement-occupancy.md`
+Current implementation batch: all known worker outputs from this batch have been
+integrated or queued for story-done.
 
 CARD-ANIM-004 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
