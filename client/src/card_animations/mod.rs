@@ -4,9 +4,11 @@ pub mod lenses;
 pub mod queue;
 
 use bevy::prelude::*;
-use bevy_tweening::TweeningPlugin;
+use bevy_tweening::{AnimationSystem, TweenAnim, TweeningPlugin};
 
-pub use animators::{make_tween_anim, replace_tweenable};
+pub use animators::{
+    cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, PlacementPhaseAnimator,
+};
 pub use events::*;
 pub use lenses::{
     BackgroundColorAlphaLens, SpriteAlphaLens, SpriteColorLens, TextColorLens, TransformScaleXLens,
@@ -38,6 +40,25 @@ impl Plugin for CardAnimationsPlugin {
             .add_message::<DisplacementAnimRequested>()
             .add_message::<TrapFlipRequested>()
             .add_message::<AuraPulseRequested>()
-            .add_message::<GroupDrainedSignal>();
+            .add_message::<GroupDrainedSignal>()
+            .add_systems(
+                Update,
+                cancel_board_rebuild_tweens.before(AnimationSystem::AnimationUpdate),
+            );
+    }
+}
+
+fn cancel_board_rebuild_tweens(
+    mut rebuilds: MessageReader<BoardRebuildRequested>,
+    mut animators: Query<&mut TweenAnim>,
+) {
+    if rebuilds.read().next().is_none() {
+        return;
+    }
+
+    for mut animator in &mut animators {
+        if let Err(error) = cancel_tween_anim_in_place(&mut animator) {
+            warn!("Failed to cancel tween during board rebuild: {error}");
+        }
     }
 }
