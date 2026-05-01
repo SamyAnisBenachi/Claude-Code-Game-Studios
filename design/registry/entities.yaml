@@ -1493,6 +1493,19 @@ network_messages:
     added: "2026-04-29"
     revised: ""
 
+  - name: S2CActivationRejected
+    status: active
+    source: design/gdd/network-protocol.md
+    referenced_by:
+      - design/gdd/network-protocol.md
+      - design/gdd/class-system.md
+    payload: "{ entity_id: EntityId, reason: ActivationRejectedReason }"
+    channel: reliable
+    scope: "unicast (activating player)"
+    notes: "Sent when C2SActivateCard is rejected: WrongPhase, EntityNotFound, NotInHand, InsufficientMana, InsufficientReserve, InvalidTarget, ActivationLimitReached. Used by clients to roll back optimistic activation UI; successful activation remains confirmed by S2CGoldUpdate."
+    added: "2026-05-01"
+    revised: ""
+
   - name: S2CDraftOffering
     status: active
     source: design/gdd/card-acquisition.md
