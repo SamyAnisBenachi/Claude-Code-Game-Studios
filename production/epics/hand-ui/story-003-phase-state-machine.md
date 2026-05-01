@@ -1,7 +1,7 @@
 # Story 003: Phase State Machine — Visibility & Input Gating
 
 > **Epic**: Hand UI
-> **Status**: In Progress
+> **Status**: Complete
 > **Owner**: codex-hand-ui-003-phase-state-machine
 > **Layer**: Presentation
 > **Type**: Logic
@@ -32,15 +32,15 @@
 
 *From GDD `design/gdd/hand-ui.md` Rules 3 and 12, scoped to this story:*
 
-- [ ] **HU-04**: GIVEN RSM transitions to RESOLUTION (i.e. `Res<CurrentClientPhase>` is updated to `RESOLUTION`), WHEN the HandUiPlugin phase-transition system runs, THEN after exactly one `App::update()` tick:
+- [x] **HU-04**: GIVEN RSM transitions to RESOLUTION (i.e. `Res<CurrentClientPhase>` is updated to `RESOLUTION`), WHEN the HandUiPlugin phase-transition system runs, THEN after exactly one `App::update()` tick:
   - (a) The fan root entity, Submit button entity, and timer entity all have `Visibility::Hidden`
   - (b) No `Animator<Transform>`, `Animator<BackgroundColor>`, or `Animator<Style>` component exists on any Hand UI entity — **Implementer note**: enumerate the complete list of `Animator<T>` specializations used in this epic at implementation time and add them all to this assertion.
 
-- [ ] **HU-05**: GIVEN Hand UI is in RESOLUTION (`HIDDEN` state, all elements invisible), WHEN `Res<CurrentClientPhase>` updates to `DRAFT_SHOP`, THEN:
+- [x] **HU-05**: GIVEN Hand UI is in RESOLUTION (`HIDDEN` state, all elements invisible), WHEN `Res<CurrentClientPhase>` updates to `DRAFT_SHOP`, THEN:
   - The fan root entity has `Visibility::Visible`
   - Each rendered fan card slot's `card_id` component matches the current hand contents from the most recently delivered `S2CCardAcquired` messages or snapshot
 
-- [ ] **HU-06**: GIVEN `Res<CurrentClientPhase>` is `DRAFT_AUCTION` (Hand UI is in `PASSIVE_LOCKED` state), WHEN the player clicks a card in the hand fan, THEN no `C2SActivateCard` message is written to the outbound Lightyear queue (input fully suppressed in `PASSIVE_LOCKED`).
+- [x] **HU-06**: GIVEN `Res<CurrentClientPhase>` is `DRAFT_AUCTION` (Hand UI is in `PASSIVE_LOCKED` state), WHEN the player clicks a card in the hand fan, THEN no `C2SActivateCard` message is written to the outbound Lightyear queue (input fully suppressed in `PASSIVE_LOCKED`).
 
 ---
 
@@ -106,7 +106,7 @@ Implement a dedicated `hand_ui_phase_transition_system` in `PresentationSet::Pha
 **Required evidence**:
 - `tests/unit/hand-ui/phase_state_machine_test.rs` — must exist and pass
 
-**Status**: [x] Created and passing locally on worker branch
+**Status**: [x] Created and passing locally
 
 ---
 
@@ -114,3 +114,16 @@ Implement a dedicated `hand_ui_phase_transition_system` in `PresentationSet::Pha
 
 - Depends on: Story 001 (pre-pooled entities must exist to toggle visibility on)
 - Unlocks: Story 004 (DRAFT_INITIAL grid entry), Story 005 (PLACEMENT staging), Story 013 (reconnect rebuild)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 3/3 passing; HU-04, HU-05, and HU-06 are covered by `tests/unit/hand-ui/phase_state_machine_test.rs`.
+**Test Evidence**: `cargo test -p client --test hand_ui_phase_state_machine_test` passed 3/3; `cargo check -p client` passed.
+**Code Review**: Skipped - lean mode.
+**Deviations / Advisories**:
+- `TR-HU-001` currently maps to HU-01 pre-pooling, while this story closes HU-04, HU-05, and HU-06. The current GDD criteria are directly covered by tests.
+- ADR-021's global `PresentationSet` / `phase_sink_system` wiring is not present in this story. Hand UI uses its local `HandUiSystemSet`, reads `Res<CurrentClientPhase>`, and does not drain `MessageReceiver<S2CPhaseChanged>` directly.
+- HU-06 is verified through the current local `HandUiOutboundMessages` outbox, not a real Lightyear outbound sender.
+- `production/sprint-status.yaml` was left unchanged because no `HAND-UI-003` row exists.

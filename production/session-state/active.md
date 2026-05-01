@@ -1082,3 +1082,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no `HUD-005` row exists in `production/sprint-status.yaml`.
 - Next recommended: HUD Story 006 ECONOMY_AUCTION Inline Gold Format (`production/epics/hud/story-006-economy-auction-inline-gold.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hand-ui/story-003-phase-state-machine.md` - Story 003: Phase State Machine - Visibility & Input Gating
+- Criteria: 3/3 passing; HU-04, HU-05, and HU-06 covered by `tests/unit/hand-ui/phase_state_machine_test.rs`.
+- Test Evidence: `cargo test -p client --test hand_ui_phase_state_machine_test` passed 3/3. `cargo check -p client` passed.
+- Verification: `client/src/ui/hand/mod.rs` implements `HandUiMode`, phase-driven visibility changes, tween cancellation via the current `TweenAnim` abstraction, and PASSIVE_LOCKED click suppression. Hand UI reads `Res<CurrentClientPhase>` and does not drain `MessageReceiver<S2CPhaseChanged>` directly.
+- Notes: Advisory only - `TR-HU-001` maps to HU-01 pre-pooling while this story closes current GDD criteria HU-04/HU-05/HU-06. Advisory only - global ADR-021 `PresentationSet` / `phase_sink_system` wiring is outside this story; local Hand UI scheduling is used. HU-06 is verified through `HandUiOutboundMessages`, not a real Lightyear outbound sender.
+- Tech debt logged: None
+- Sprint status: Unchanged; no `HAND-UI-003` row exists in `production/sprint-status.yaml`.
+- Next recommended: Hand UI Story 004 DRAFT_INITIAL Grid (`production/epics/hand-ui/story-004-draft-initial-grid.md`) or Story 005 PLACEMENT Entry (`production/epics/hand-ui/story-005-placement-submit-core.md`) after readiness check.
