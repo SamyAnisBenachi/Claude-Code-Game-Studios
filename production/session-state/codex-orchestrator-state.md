@@ -30,14 +30,14 @@ source of truth for story status.
 
 - CARD-ANIM-002 worker: Tween Cancel/Replace Lifecycle, launched in worktree
   mode after CARD-ANIM-001 closure.
+- S3-06 story-done window.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
 These are marked `in-progress` in `production/sprint-status.yaml`, but the user
 confirmed no corresponding agent window is currently running. Treat them as
 stale/incomplete until explicitly relaunched or closed:
-
-- S3-08: Economy Interest Snapshot (`claude-s3-08-economy-interest`)
+None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
@@ -57,6 +57,10 @@ stale/incomplete until explicitly relaunched or closed:
 - HUD-001: HUD Plugin Scaffold implemented at `b04748b`; `git diff --check` and
   `cargo fmt --check` passed. Local client test was blocked by native
   `aws-lc-sys` dependency compilation; document this in story-done.
+- S3-08: Economy Interest Snapshot & Resolution End implemented on branch
+  `work/s3-08-economy-interest-snapshot` at `db61102`; merged into `main` at
+  `4961356`. Local `economy_interest_snapshot_test`, `cargo check -p server`,
+  and `cargo fmt --check` passed.
 
 ## Recently Closed
 
@@ -79,13 +83,12 @@ stale/incomplete until explicitly relaunched or closed:
 4. CA-002
 5. KW-003
 6. HUD-001
+7. S3-08
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- S3-08: unblocked now that S3-05 implementation reported back; launch in
-  worktree mode only.
 - CA-003 / CA-006: CA-002 is implemented but not story-done. CA-003 depends only
   on CA-001 and can be launched in worktree mode if it avoids unmerged root
   dirty files; story-done remains serialized.
@@ -104,8 +107,6 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 - BOARD-001: Board Grid Initialization; no dependencies.
-- S3-08: Economy Interest Snapshot & Resolution End; depends on economy stories
-  001/002 and RSM `ResolutionPhaseEntered`, now available.
 - CARD-ANIM-004: AnimQueue resolution drain; depends on CARD-ANIM-001 done.
 - CARD-ANIM-009: CI boundary enforcement; depends on CARD-ANIM-001 done.
 - HUD-002: Gold/Mana Display; depends on HUD-001 implementation, now available
