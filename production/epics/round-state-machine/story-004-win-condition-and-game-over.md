@@ -1,7 +1,7 @@
 # Story 004: Win Condition and Game Over
 
 > **Epic**: Round State Machine
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -130,7 +130,7 @@ Each test uses `World::new()` + event injection. No live Lightyear session or Ob
 **Story Type**: Logic
 **Required evidence**: Automated unit tests — `tests/unit/rsm/rsm_win_condition_test.rs` and `tests/integration/rsm/rsm_f2_ordering_test.rs` must pass; paste `cargo test -p server rsm_win_condition rsm_f2_ordering` output into `tests/evidence/rsm-story-004-tests.md`
 **Gate Level**: BLOCKING — all tests listed in QA Test Cases must pass before this story is Done
-**Status**: [ ] Not yet created
+**Status**: [x] Verified - `cargo test -p server --test rsm_win_condition_test --test rsm_f2_ordering_test` passed locally on 2026-05-01; evidence exists at `tests/evidence/rsm-story-004-tests.md`.
 
 ---
 
@@ -138,3 +138,13 @@ Each test uses `World::new()` + event injection. No live Lightyear session or Ob
 
 - Depends on: Story 003 (timers and input reader) must be Done — `rsm_input_reader` must exist before win condition evaluation can be added to it
 - Unlocks: Story 005 (disconnect handling)
+
+## Completion Notes
+**Completed**: 2026-05-01
+**Criteria**: 9/9 accepted for this RSM story. The downstream Game Session draw subscriber checkbox is documented as out of scope by this story and remains owned by `production/epics/game-session-system/story-006-game-over-teardown.md`.
+**Deviations**:
+- Advisory: story manifest v2026-04-29 is older than current control manifest v2026-05-01.
+- Advisory: story text references `TR-RSM-08`, while the current registry ID is `TR-RSM-008`.
+**Test Evidence**: Logic evidence at `tests/unit/rsm/rsm_win_condition_test.rs`, `tests/integration/rsm/rsm_f2_ordering_test.rs`, and `tests/evidence/rsm-story-004-tests.md`.
+**Verification**: `cargo test -p server --test rsm_win_condition_test --test rsm_f2_ordering_test` passed 8/8 tests; `cargo check -p server` passed; `server/src/core/rsm/` has no `use server::feature` imports.
+**Code Review**: Skipped - lean review mode.

@@ -53,11 +53,11 @@ stories:
     name: "RSM Story 4: Win Condition and Game Over"
     file: "production/epics/round-state-machine/story-004-win-condition-and-game-over.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-01"
 
   - id: "S3-06"
     name: "Carryover: E2E WebSocket Round-Trip"

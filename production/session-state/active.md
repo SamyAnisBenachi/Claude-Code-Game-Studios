@@ -788,3 +788,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `S3-04` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
 - Next recommended: S3-05 RSM Story 4: Win Condition and Game Over at `production/epics/round-state-machine/story-004-win-condition-and-game-over.md`.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/round-state-machine/story-004-win-condition-and-game-over.md` - Win Condition and Game Over
+- Criteria: 9/9 accepted for this RSM story; objective counters, ResolutionComplete win evaluation, single-loser/draw/no-loss paths, auction-round guard, GAME_OVER event ordering, grep gate, F2 ordering test, and unit evidence verified.
+- Test Evidence: `tests/unit/rsm/rsm_win_condition_test.rs`; `tests/integration/rsm/rsm_f2_ordering_test.rs`; evidence pointer at `tests/evidence/rsm-story-004-tests.md`.
+- Verification: `cargo test -p server --test rsm_win_condition_test --test rsm_f2_ordering_test` passed 8/8 tests; `cargo check -p server` passed; `server/src/core/rsm/` has no `use server::feature` imports.
+- Notes: Advisory only - story manifest v2026-04-29 is older than current control manifest v2026-05-01. Story text references `TR-RSM-08`; current registry uses `TR-RSM-008`. The downstream Game Session draw subscriber item is out of scope here and remains owned by GSS Story 006.
+- Tech debt logged: None
+- Sprint status: `S3-05` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
+- Next recommended: all Sprint 3 must-have stories are complete. Continue in-progress S3-08 if pulling should-have work forward, otherwise run `/smoke-check sprint` then `/team-qa sprint`.
