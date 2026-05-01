@@ -4,7 +4,7 @@
 > **Status**: Blocked
 > **Layer**: Feature (M3)
 > **Type**: Integration
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -15,7 +15,7 @@
 **ADR Governing Implementation**: ADR-018 (Keyword System — ECS State Architecture, `effects.rs` section) + ADR-022 (Timing Trigger Observer Architecture, inline COUNTERATTACK/INJURED dispatch — for completeness check)
 **ADR Decision Summary**: FIRST STRIKE (`apply_first_strike`) and WALL (`has_keyword(SimpleKeyword::Wall)` + 0 damage in SS6, collision halt in SS5) are both implemented in `effects.rs` and called by `server/feature/combat/`. This story tests the R3 cross-keyword interaction: a FIRST STRIKE unit CAN attack a WALL in SS3; if the WALL dies in SS3, it is removed in SS4 and no longer halts advancing enemies in SS5. This is intentional counter-play.
 
-**BLOCKED**: ADR-018 is Proposed. Stories 001 (scaffold), 003 (FIRST STRIKE), and 007 (WALL collision logic) must be Done. Both FIRST STRIKE and WALL effect implementations must be in place before this integration story can be opened.
+**BLOCKED (real dependency blockers remain)**: Revalidated against control manifest version 2026-05-01. ADR-018 and ADR-022 are Accepted, so the stale ADR blocker is cleared. This story remains blocked until Stories 007 (WALL collision logic) and 012 (DEATH chain — normal SS4 death processing) are Done. Stories 001 and 003 are Complete.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
 **Engine Notes**: SS3 applies FIRST STRIKE attacks; SS4 removes dead units (HP ≤ 0); SS5 checks WALL presence for movement halt. The ordering guarantee is structural — SS3 → SS4 → SS5 executes in sequence inside `resolve_combat`. No special coordination code is needed: WALL is simply absent from `BoardState` in SS5 if it died in SS3 and was removed in SS4.

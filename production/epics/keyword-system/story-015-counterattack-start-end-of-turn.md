@@ -4,7 +4,7 @@
 > **Status**: Blocked
 > **Layer**: Feature (M3)
 > **Type**: Integration
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -15,7 +15,7 @@
 **ADR Governing Implementation**: ADR-022 (Part 5 — COUNTERATTACK inline dispatch; Part 1 — START OF TURN and END OF TURN observers)
 **ADR Decision Summary**: COUNTERATTACK dispatched inline from `resolve_combat` after damage resolves in SS3/SS6. Fires on any non-RANGE melee attack (same-cell OR collision-halted adjacent-cell contact); RANGE excluded. STUN suppresses COUNTERATTACK. START OF TURN dispatched via `start_of_turn_dispatch_system` (normal Bevy system reading `MessageReader<DraftPhaseEntered>`); END OF TURN via `EndOfTurnTriggered` Observer fired on all alive units after SS6.
 
-**BLOCKED**: ADR-018 is Proposed. ADR-022 is Accepted. Stories 001 (scaffold — registers `on_start_of_turn`, `on_end_of_turn` observer stubs, `start_of_turn_dispatch_system`), 005 (SHIELD — for KW-057 SHIELD via INJURED), 011 (RANGE — for KW-056 RANGE via INJURED), and 014 (APPEARANCE + INJURED inline — `eval_injured_bonuses` must be implemented) must be Done.
+**BLOCKED (real dependency blockers remain)**: Revalidated against control manifest version 2026-05-01. ADR-018 and ADR-022 are Accepted and ADR-022 verification is resolved in the current manifest, so the stale ADR blocker is cleared. This story remains blocked until Stories 011 (RANGE — for KW-056 RANGE via INJURED) and 014 (APPEARANCE + INJURED inline — `eval_injured_bonuses`) are Done. Stories 001 and 005 are Complete.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
 **Engine Notes**:

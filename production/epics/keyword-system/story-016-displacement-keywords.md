@@ -4,7 +4,7 @@
 > **Status**: Blocked
 > **Layer**: Feature (M3)
 > **Type**: Logic
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -15,7 +15,7 @@
 **ADR Governing Implementation**: ADR-018 (Keyword System — ECS State Architecture, `effects.rs` and `movement.rs` sections)
 **ADR Decision Summary**: Displacement effect functions live in `server/feature/keyword/effects.rs` and are called by `server/feature/combat/` as plain function calls. Pure formula functions (`repel_destination`, `attract_destination`) live in `movement.rs` and are tested in Story 002. This story implements the effect callers: `apply_repel`, `apply_attract`, `apply_teleport`, `apply_change_lane`, and CHARGE X's SS2 execution. `check_irremovable()` (Story 007) is called before any displacement.
 
-**BLOCKED**: ADR-018 is Proposed — advance to Accepted before opening. Stories 001 (scaffold — stubs all effect functions), 002 (movement formula pure functions), and 007 (IRREMOVABLE — `check_irremovable` must be callable) must be Done.
+**BLOCKED (real blockers remain)**: Revalidated against control manifest version 2026-05-01. ADR-018 is Accepted, so the stale ADR blocker is cleared. This story remains blocked until Story 007 (IRREMOVABLE — `check_irremovable` must be callable) is Done. KW-051 and KW-052 also remain blocked by OQ-KS4 Trap design, which requires Trap behavior to be defined before those ACs can be implemented. Stories 001 and 002 are Complete.
 
 > ⚠️ **KW-033b is permanently BLOCKED** until `strich_change_lane_select` seed slot is registered in ADR-005 RNG consumption order table. Do not attempt to implement KW-033b.
 

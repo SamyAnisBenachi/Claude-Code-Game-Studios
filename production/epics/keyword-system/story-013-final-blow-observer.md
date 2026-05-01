@@ -1,10 +1,10 @@
 # Story 013: FINAL BLOW Observer (on_final_blow_dealt)
 
 > **Epic**: Keyword System
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Feature (M3)
 > **Type**: Logic
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -15,12 +15,12 @@
 **ADR Governing Implementation**: ADR-022 (Keyword System — Timing Trigger Observer Architecture, Part 1 & Part 2)
 **ADR Decision Summary**: FINAL BLOW dispatched via `on_final_blow_dealt` global Observer fired on the ATTACKER entity (not the killed unit). Fires in the sub-step of the kill — SS3 for FIRST STRIKE kills, SS6 for standard kills. Not deferred to SS4. If two sequential damage sources in the same sub-step kill a unit, the second source (the one that reduced HP to 0) receives FINAL BLOW credit.
 
-**BLOCKED**: ADR-018 is Proposed. ADR-022 is Accepted. Story 001 (scaffold, which registers `on_final_blow_dealt`) must be Done.
+**Readiness Refresh (2026-05-01)**: Revalidated against control manifest version 2026-05-01. ADR-018 and ADR-022 are Accepted, ADR-022 verification is resolved in the current manifest, and Story 001 is Complete. The stale ADR-018 blocker is cleared.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
 **Engine Notes**:
 - `world.trigger_targets(FinalBlowDealt { killed, sub_step }, attacker)` — fired on the ATTACKER entity (not the killed unit); Observer fires synchronously within `resolve_combat` (ADR-017 exclusive system)
-- `Trigger<FinalBlowDealt>` — CONFIRMED correct observer param type (ADR-022 item 2 resolved)
+- `On<FinalBlowDealt>` — CONFIRMED correct observer param type (ADR-022 item 2 resolved; control manifest 2026-05-01)
 - `MessageWriter<KeywordTriggered>` inside Observer — CONFIRMED valid (ADR-022 item 4 resolved)
 - The killed unit (`FinalBlowDealt.killed`) is still present in `BoardState.units` at the point `FinalBlowDealt` fires — it is only removed in SS4. The observer can query the killed unit's state.
 
@@ -68,7 +68,7 @@ if target_hp_after_damage == 0 {
 **on_final_blow_dealt handler:**
 ```rust
 pub fn on_final_blow_dealt(
-    trigger: Trigger<FinalBlowDealt>,
+    trigger: On<FinalBlowDealt>,
     units: Query<&UnitKeywordState>,
     mut keyword_triggered: MessageWriter<KeywordTriggered>,
 ) {

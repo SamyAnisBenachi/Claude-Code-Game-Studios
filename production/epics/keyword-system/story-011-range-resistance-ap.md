@@ -1,10 +1,10 @@
 # Story 011: RANGE + RESISTANCE / ARMOR-PIERCING / VULNERABILITY
 
 > **Epic**: Keyword System
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Feature (M3)
 > **Type**: Logic
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -17,7 +17,7 @@
 **ADR Governing Implementation**: ADR-018 (Keyword System — ECS State Architecture, `effects.rs` section)
 **ADR Decision Summary**: Keyword effect functions live in `server/feature/keyword/effects.rs` and are called by `server/feature/combat/` as plain function calls. RANGE target selection, RESISTANCE reduction, VULNERABILITY increase, and ARMOR-PIERCING AR-zero-out are all stateless — evaluated per-attack from the unit's card definition via `CardCatalog`, not stored in `UnitKeywordState`.
 
-**BLOCKED**: ADR-018 is Proposed — run `/architecture-decision` to advance it to Accepted before opening this story. Also requires ADR-006 amendment (`Keyword::RangeX { max_range: u8 }`, `Keyword::ResistanceX { value: u8 }`, `Keyword::VulnerabilityX { value: u8 }`) merged and Story 001 (scaffold) Done.
+**Readiness Refresh (2026-05-01)**: Revalidated against control manifest version 2026-05-01. ADR-018 is Accepted, the ADR-006 keyword schema amendment is reflected in the current manifest, and Story 001 is Complete. The stale ADR-018 blocker is cleared. The `TR-KW-???` placeholders for RESISTANCE, VULNERABILITY, and ARMOR-PIERCING remain a traceability follow-up before Story Done; they do not change this story's implementation behavior.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
 **Engine Notes**: RANGE target selection iterates the lane's cell positions — reads `BoardState` via `world.get::<UnitBoardPosition>(entity)`. No `EventWriter`/`EventReader` — RNG tie-break uses `ServerRng` resource via `world.resource_mut::<ServerRng>()` inside the exclusive `resolve_combat` system (ADR-017 pattern). Verify `world.resource_mut` access pattern against Bevy 0.18 exclusive-system API.

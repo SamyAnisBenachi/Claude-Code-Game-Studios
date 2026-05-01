@@ -1,22 +1,19 @@
 # Story 004: F4 Predicate and SessionReady Trigger
 
 > **Epic**: Game Session System
-> **Status**: Blocked — pending ADR-012 verification (Commands::trigger ordering invariant must be confirmed before this story is READY)
+> **Status**: Ready
 > **Layer**: Core
 > **Type**: Logic
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
-## Blocked Condition
+## Readiness Refresh
 
-**This story cannot begin implementation until the following verification is complete:**
-
-ADR-012 Verification Required checklist items 1–4 (all four must be confirmed against Bevy 0.18 docs/source):
-1. `Commands::trigger(SessionReady)` runs the registered observer in the **same** `Update` tick (not deferred to next frame).
-2. A resource inserted via `Commands::insert_resource` in the same system that calls `Commands::trigger` is visible to the observer handler — i.e., Commands flush order guarantees inserts before observer dispatch.
-3. The observer handler signature `fn(trigger: Trigger<SessionReady>, config: Res<SessionConfig>, rng: Res<ServerRng>, ...)` is valid in Bevy 0.18.
-4. `World::trigger()` is the correct fallback API for an exclusive system if item (2) cannot be confirmed.
-
-**Resolution path**: Assign a spike task to verify all four items against `docs.rs/bevy/0.18` or the Bevy 0.18 source. Document results in `docs/architecture/adr-012-session-ready-delivery.md` under "Last Verified" (update the date and add inline implementation notes). If items (1) and (2) are confirmed, implement using `Commands::trigger`. If item (2) fails, implement as an exclusive system using `World::trigger` (ADR-012 Alternative 2 — identical observable behaviour, different call site). Update this story's Status to Ready after verification is documented.
+2026-05-01: Revalidated against control manifest version 2026-05-01. The stale
+ADR-012 verification blocker is cleared by the current manifest rules:
+`SessionReady` uses `#[derive(Event)]` plus `commands.trigger(SessionReady)`,
+GSS inserts `SessionConfig` then `ServerRng` before triggering, and exactly one
+RSM observer handles `SessionReady`. Implement against those rules; do not use
+buffered messages for `SessionReady`.
 
 ---
 
@@ -59,7 +56,7 @@ ADR-012 Verification Required checklist items 1–4 (all four must be confirmed 
     6. `commands.insert_resource(LobbyState::GameActive)` — prevents re-evaluation on subsequent ticks
 - [ ] If ADR-012 item (2) verification fails: `evaluate_session_ready` is implemented as `fn evaluate_session_ready_exclusive(world: &mut World)` using `world.insert_resource` and `world.trigger` — same observable behaviour, documented in a comment referencing ADR-012 Alternative 2
 - [ ] `on_session_ready` observer exists in `server/src/core/rsm/system.rs` and:
-  - Signature: `fn on_session_ready(_trigger: Trigger<SessionReady>, config: Res<SessionConfig>, _rng: Res<ServerRng>, mut phase: ResMut<RoundPhase>, ...)`
+  - Signature: `fn on_session_ready(_trigger: On<SessionReady>, config: Res<SessionConfig>, _rng: Res<ServerRng>, mut phase: ResMut<RoundPhase>, ...)`
   - Sets `RoundPhase` to `DraftInitial`
   - Sets `round_number = 1`
   - Broadcasts `S2CPhaseChanged { phase: DraftInitial, round: 1, timer_remaining_ms: config.draft_initial_timer_ms }` to all connected players on `ReliableChannel`
@@ -137,7 +134,7 @@ ADR-012 Verification Required checklist items 1–4 (all four must be confirmed 
 - `tests/unit/session/single_fire_test.rs` (single-fire invariant) — passing
 - `tests/unit/session/rng_init_failure_test.rs` (GSS-29) — passing
 - `tests/integration/session/lobby_to_draft_initial_test.rs` (RSM-1) — passing
-- ADR-012 verification checklist items 1–4 documented with results (date + findings) in `docs/architecture/adr-012-session-ready-delivery.md`
+- Control manifest 2026-05-01 alignment documented in this story's Readiness Refresh
 **Status**: [ ] Not yet created
 
 ---
@@ -147,5 +144,5 @@ ADR-012 Verification Required checklist items 1–4 (all four must be confirmed 
 - Depends on: Story 001 (session types), Story 002 (slot state), Story 003 (ClassSelections populated by confirm)
 - Depends on: round-state-machine epic (ADR-009 — `RoundPhase`, `advance_phase` must be defined before `on_session_ready` can set them)
 - Depends on: server-rng epic (ADR-005 — `ServerRng::new()` must exist)
-- Depends on: ADR-012 verification spike (Blocked condition above)
+- Depends on: ADR-012 accepted and control manifest 2026-05-01 alignment (Readiness Refresh above)
 - Unlocks: Story 006 (game-over teardown subscribes to `GameOverEmitted` which requires the RSM to be active, which requires DRAFT_INITIAL to have begun)

@@ -1,10 +1,10 @@
 # Story 012: DEATH Chain Observer (on_unit_died)
 
 > **Epic**: Keyword System
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Feature (M3)
 > **Type**: Integration
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -15,12 +15,12 @@
 **ADR Governing Implementation**: ADR-022 (Keyword System — Timing Trigger Observer Architecture, Part 3: DEATH Chain Explicit Queue Architecture)
 **ADR Decision Summary**: DEATH triggers dispatched via `on_unit_died` global Observer; simultaneous deaths seeded into `ChainDeathBuffer` (`VecDeque`) in lane order (Lane 1 first) and drained sequentially — A's effect completes before B fires. Recursive `world.trigger_targets()` inside the observer handler is explicitly rejected; the explicit queue is always safe. `ChainDeathBuffer` cleared at SS4 start before seeding.
 
-**BLOCKED**: ADR-018 is Proposed (provides `UnitKeywordState` component and module structure that this story builds on). ADR-022 is Accepted. Story 001 (scaffold, which registers `on_unit_died` and `ChainDeathBuffer`) must be Done.
+**Readiness Refresh (2026-05-01)**: Revalidated against control manifest version 2026-05-01. ADR-018 and ADR-022 are Accepted, ADR-022 verification is resolved in the current manifest, and Story 001 is Complete. The stale ADR-018 blocker is cleared.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
 **Engine Notes**:
 - `world.trigger_targets(UnitDied { attacker }, entity)` — CONFIRMED valid `World` method in Bevy 0.18 (ADR-022 Verification Required item 1 resolved)
-- `Trigger<UnitDied>` — CONFIRMED correct observer param type (not `On<UnitDied>`) (ADR-022 item 2 resolved)
+- `On<UnitDied>` — CONFIRMED correct observer param type (not `Trigger<UnitDied>`) (ADR-022 item 2 resolved; control manifest 2026-05-01)
 - `ResMut<ChainDeathBuffer>` inside Observer handler — CONFIRMED valid (ADR-022 item 3 resolved); borrow ends before next `trigger_targets()` call
 - Sequential borrow safety: `pop_front()` returns owned value; `ChainDeathBuffer` borrow ends before `world.trigger_targets()` call
 
@@ -82,7 +82,7 @@ fn execute_ss4(world: &mut World) {
 **on_unit_died handler (ADR-022 Part 4 guard pattern):**
 ```rust
 pub fn on_unit_died(
-    trigger: Trigger<UnitDied>,
+    trigger: On<UnitDied>,
     units: Query<(&UnitKeywordState, &UnitBoardOwner)>,
     mut chain_buffer: ResMut<ChainDeathBuffer>,
     mut keyword_triggered: MessageWriter<KeywordTriggered>,

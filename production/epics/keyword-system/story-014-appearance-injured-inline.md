@@ -1,10 +1,10 @@
 # Story 014: APPEARANCE Observer + INJURED Inline Dispatch (eval_injured_bonuses)
 
 > **Epic**: Keyword System
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Feature (M3)
 > **Type**: Logic
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -15,14 +15,14 @@
 **ADR Governing Implementation**: ADR-022 (Keyword System — Timing Trigger Observer Architecture, Part 1 & Part 2 for APPEARANCE; Part 5 for INJURED inline dispatch)
 **ADR Decision Summary**: APPEARANCE dispatched via `on_unit_appeared` global Observer, fired per entity after board commit from `PlacementBuffer` in SS1. INJURED is NOT an observer — it is a state re-evaluation called inline at sub-step boundaries by `eval_injured_bonuses()` in `state_eval.rs`. `eval_injured_bonuses()` scans all board units and updates any INJURED-granted keyword bonuses.
 
-**BLOCKED**: ADR-018 is Proposed. ADR-022 is Accepted. Story 001 (scaffold — registers `on_unit_appeared` observer stub and stubs `eval_injured_bonuses`) must be Done.
+**Readiness Refresh (2026-05-01)**: Revalidated against control manifest version 2026-05-01. ADR-018 and ADR-022 are Accepted, ADR-022 verification is resolved in the current manifest, and Story 001 is Complete. The stale ADR-018 blocker is cleared.
 
 > ⚠️ **Story 006 (SILENCE + INJURED) depends on this story.** Story 006 tests how SILENCE strips INJURED-granted keyword bonuses; those bonuses are granted by `eval_injured_bonuses` implemented here. Story 006 must NOT be opened until this story is Done.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
 **Engine Notes**:
 - `world.trigger_targets(UnitAppeared { sub_step: 1 }, entity)` — CONFIRMED valid `World` method in Bevy 0.18 (ADR-022 item 1 resolved); fires synchronously within `resolve_combat`
-- `Trigger<UnitAppeared>` — CONFIRMED correct observer param type (ADR-022 item 2 resolved)
+- `On<UnitAppeared>` — CONFIRMED correct observer param type (ADR-022 item 2 resolved; control manifest 2026-05-01)
 - `eval_injured_bonuses(world: &mut World)` — called inline at SS3→SS4, SS5, and SS6 sub-step boundaries by `resolve_combat`
 - `max_hp` server-side: INJURED derivation requires `current_hp < max_hp`. `max_hp` must be accessible server-side as a component field (coordinate with combat-resolution.md — `UnitStats` component must include or cache `max_hp`)
 
@@ -58,7 +58,7 @@ world.trigger_targets(UnitAppeared { sub_step: 1 }, entity);
 **on_unit_appeared handler:**
 ```rust
 pub fn on_unit_appeared(
-    trigger: Trigger<UnitAppeared>,
+    trigger: On<UnitAppeared>,
     units: Query<(&UnitKeywordState, &CardId)>,
     card_catalog: Res<CardCatalog>,
     mut keyword_triggered: MessageWriter<KeywordTriggered>,
