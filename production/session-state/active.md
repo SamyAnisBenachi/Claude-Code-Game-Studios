@@ -726,3 +726,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `CA-001` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
 - Next recommended: S3-05 RSM Story 4: Win Condition and Game Over at `production/epics/round-state-machine/story-004-win-condition-and-game-over.md`; Card Acquisition Story 002 is also unlocked at `production/epics/card-acquisition/story-002-draft-initial.md` if pulling CA work forward.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/auction-system/story-003-auction-abort-handler.md` - Auction Abort Handler
+- Criteria: 2/3 passing; AU9 and AU19-b covered. AU19-a deferred until Story 006 settlement implementation; current handler no-ops in RESOLVING so abort does not interrupt settlement.
+- Test Evidence: `tests/unit/auction/auction_abort_handler_test.rs`; `cargo test -p server --test auction_abort_handler_test` -> 3 passed, 0 failed, 1 ignored.
+- Notes: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01; RSM GDD has conflicting `auction_max_duration_seconds` language versus Auction GDD/TR-AUC-008.
+- Tech debt logged: None
+- Sprint status: `AUC-003` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
+- Next recommended: AUC-004 Bid Validation Gate at `production/epics/auction-system/story-004-bid-validation-gate.md`; enable the AU19-a settlement guard after AUC-006 lands.

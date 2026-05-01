@@ -1,7 +1,7 @@
 # Story 003: AbortAuction — Cleanup Handler & RESOLVING Guard
 
 > **Epic**: Auction System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -33,9 +33,11 @@
 
 *From GDD `design/gdd/auction-system.md`, scoped to this story:*
 
-- [ ] **AU9**: `GIVEN` the Auction System is in LIVE_BIDDING with `current_leader == Some(Player_A)` and `Player_A.reserved_gold == 5`, `WHEN` `AbortAuction` is received, `THEN` `Player_A.reserved_gold == 0`, `auction_state.phase == IDLE`, and `Messages<AuctionSettled>` contains zero events
-- [ ] **AU19-b**: `GIVEN` the Auction System is in SELECTING, `WHEN` `AbortAuction` is received, `THEN` Auction System returns to IDLE and `AuctionSettled` is NOT fired (reservation vacuously absent in SELECTING)
-- [ ] **AU19-a**: `GIVEN` the Auction System is artificially placed in RESOLVING state with a current leader (injected directly), `WHEN` `AbortAuction` is received, `THEN` `AbortAuction` is a no-op — RESOLVING completes normally: gold deducted, card added to hand, `AuctionSettled` IS fired, system transitions to IDLE
+- [x] **AU9**: `GIVEN` the Auction System is in LIVE_BIDDING with `current_leader == Some(Player_A)` and `Player_A.reserved_gold == 5`, `WHEN` `AbortAuction` is received, `THEN` `Player_A.reserved_gold == 0`, `auction_state.phase == IDLE`, and `Messages<AuctionSettled>` contains zero events
+- [x] **AU19-b**: `GIVEN` the Auction System is in SELECTING, `WHEN` `AbortAuction` is received, `THEN` Auction System returns to IDLE and `AuctionSettled` is NOT fired (reservation vacuously absent in SELECTING)
+- [ ] **AU19-a** *(Deferred until Story 006 settlement implementation)*: `GIVEN` the Auction System is artificially placed in RESOLVING state with a current leader (injected directly), `WHEN` `AbortAuction` is received, `THEN` `AbortAuction` is a no-op — RESOLVING completes normally: gold deducted, card added to hand, `AuctionSettled` IS fired, system transitions to IDLE
+
+**Deferred note:** AU19-a remains pending until Story 006 implements full resolution settlement. Current coverage verifies that `AbortAuction` does not interrupt `AuctionPhase::Resolving`.
 
 ---
 
@@ -150,7 +152,7 @@ Test: RESOLVING is uninterruptible — AbortAuction does not interrupt settlemen
 **Story Type**: Logic
 **Required evidence**: `tests/unit/auction/auction_abort_handler_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing with 1 deferred settlement guard (`cargo test -p server --test auction_abort_handler_test`: 3 passed, 0 failed, 1 ignored)
 
 ---
 
@@ -161,3 +163,14 @@ Test: RESOLVING is uninterruptible — AbortAuction does not interrupt settlemen
 - Depends on: `round-state-machine` story-001 DONE (provides `AbortAuction` Bevy Message)
 - Note: AU19-a test requires Story 006 (resolution) to be implemented first — write it last among Story 003 tests
 - Unlocks: Story 007 (Plugin Registration) — AbortAuction handler must be in place before plugin is final
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 2/3 passing; AU19-a deferred until Story 006 because full RESOLVING settlement is not implemented yet. The current handler leaves RESOLVING uninterruptible by no-oping on `AbortAuction`.
+**Test Evidence**: Logic unit test at `tests/unit/auction/auction_abort_handler_test.rs`; `cargo test -p server --test auction_abort_handler_test` passed 3/3 executable tests with 1 ignored settlement guard.
+**Deviations**:
+- Advisory: story manifest v2026-04-30 is older than current control manifest v2026-05-01.
+- Advisory: RSM GDD currently contains conflicting `auction_max_duration_seconds` language versus Auction GDD/TR-AUC-008; Auction implementation follows TR-AUC-008 for `AbortAuction`.
+**Code Review**: Skipped by lean review mode.
