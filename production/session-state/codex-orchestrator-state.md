@@ -53,6 +53,10 @@ None currently tracked here.
   `main` at `b7204e5`. Local anim queue + plugin scaffold tests,
   `cargo check -p client`, and `cargo fmt -p client -- --check` passed after
   integration.
+- CARD-ANIM-009: CI Boundary Enforcement implemented on branch
+  `work/card-anim-009-ci-boundary-enforcement` at `55b5331`; cherry-picked into
+  `main` at `75e11ea` because the branch was based before the asset-sorting
+  commits. Local grep boundary check and `git diff --check` passed.
 - BOARD-001: Board Grid Initialization implemented on branch
   `work/board-001-grid-initialization` at `7d38a34`; merged into `main` at
   `6e5d80b`. Local `board_grid_initialization_test`, `cargo check -p server`,
@@ -109,6 +113,7 @@ None currently tracked here.
 5. CA-003
 6. CA-006
 7. CARD-ANIM-004
+8. CARD-ANIM-009
 
 Run only one story-done at a time.
 
@@ -119,8 +124,7 @@ Run only one story-done at a time.
 - CA-006: implemented and merged; pending story-done.
 - KW-004: unblocked by KW-003 story-done; run readiness first because its story
   text may still contain stale ADR-018 Proposed/BLOCKED wording.
-- CARD-ANIM-002 / CARD-ANIM-004 / CARD-ANIM-009: unblocked by
-  CARD-ANIM-001 story-done; launch in worktree mode.
+- CARD-ANIM-009: implemented and integrated; pending story-done.
 - HAND-UI-001: can launch after HUD-001 handoff or in worktree mode if it
   clearly avoids HUD files.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
