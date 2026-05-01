@@ -36,8 +36,9 @@ source of truth for story status.
   at `224708d`; cherry-picked into `main` at `0c69612`. Window can be
   cleared.
 - CA-005 worker: initial readiness run returned NEEDS WORK on stale manifest
-  version and missing performance budget. Story fixed at `94267fb`; relaunch
-  prompt issued, assume launched unless contradicted.
+  version and missing performance budget. Story fixed at `94267fb`; worker
+  completed on branch `work/ca-005-purchase-flow` at `415384a`;
+  cherry-picked into `main` at `c6141bc`. Window can be cleared.
 - COMBAT-001 worker: launch prompt issued after CARD-ANIM-009 closure window;
   per user rule, assume launched unless contradicted.
 
@@ -93,6 +94,12 @@ None currently tracked here.
   acquisition scaffold/draw/refresh suite, game-config defaults test,
   `cargo check -p server`, `cargo fmt --all -- --check`, and `git diff --check`
   passed after integration.
+- CA-005: Purchase Flow, Dead Slot, and CA18 Atomicity implemented on branch
+  `work/ca-005-purchase-flow` at `415384a`; cherry-picked into `main` at
+  `c6141bc`. Local acquisition purchase atomicity, state scaffold, draft
+  initial, refresh cost, and draw pipeline tests passed after integration
+  (`26/26` total), plus `cargo check -p server`, `cargo fmt --all -- --check`,
+  and `git diff --check HEAD~1..HEAD`.
 - BOARD-004: Placement Occupancy implemented on branch
   `work/BOARD-004-placement-occupancy` at `224708d`; cherry-picked into `main`
   at `0c69612`. Local placement occupancy, board grid, spawn range, standard
@@ -172,16 +179,15 @@ None currently tracked here.
 7. HAND-UI-002
 8. CA-004
 9. BOARD-004
+10. CA-005
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
 - CA-004: implemented and integrated; pending story-done.
+- CA-005: implemented and integrated; pending story-done.
 - BOARD-004: implemented and integrated; pending story-done.
-- CA-005: unblocked by CA-003 story-done and CA-004 integration. Initial
-  readiness gaps fixed in `94267fb`; worker relaunch prompt issued with
-  readiness-first instruction. Await worker output.
 - CARD-ANIM-008: implemented and integrated; pending story-done. Manual CA-13b
   and CA-22 evidence remains deferred until the dependent UI exists.
 - HUD-002: implemented and integrated; pending story-done.
@@ -198,7 +204,6 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- CA-005: `production/epics/card-acquisition/story-005-purchase-flow.md`
 - COMBAT-001: `production/epics/combat-resolution/story-001-resolve-combat-scaffold.md`
 
 CARD-ANIM-008 story-done is the active serialized closure. Do not launch another
