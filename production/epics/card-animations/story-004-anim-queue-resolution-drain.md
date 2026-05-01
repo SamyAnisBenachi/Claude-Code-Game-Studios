@@ -1,7 +1,7 @@
 # Story 004: AnimQueue RESOLUTION drain + GAME_OVER skip path + empty-queue handling
 
 > **Epic**: Card Animations
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -106,7 +106,7 @@
 **Required evidence**:
 - Logic: `tests/unit/card-animations/anim_queue_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing via `cargo test -p client --test card_animations_anim_queue_test`
 
 ---
 
@@ -114,3 +114,11 @@
 
 - Depends on: [Story 001](story-001-plugin-scaffold-custom-lenses.md) must be DONE (plugin scaffold, `AnimQueue` Resource, `StagedObjectiveRevealQueue` registered)
 - Unlocks: [Story 006](story-006-objective-stagger-reveal.md) (multi-objective stagger uses `StagedObjectiveRevealQueue` from this story)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 4/4 passing
+**Deviations**: Advisory only - story/GDD wording still says `Animator<T>` / `AnimatorState` and `bevy_tweening 0.18`, while the compiled workspace uses `TweenAnim` / `PlaybackState` / `TweenState` from `bevy_tweening 0.15`. Advisory only - `TR-CAN-006` registry text says 100 ms pause, while current GDD/code use 150 ms inter-step pause; this did not affect the four scoped ACs.
+**Test Evidence**: Logic test file at `tests/unit/card-animations/anim_queue_test.rs`; `cargo test -p client --test card_animations_anim_queue_test` passed 4/4.
+**Code Review**: Skipped - Lean mode.

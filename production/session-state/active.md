@@ -896,3 +896,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No Hand UI entry exists in `production/sprint-status.yaml`; file left unchanged.
 - Next recommended: Hand UI Story 002 Fan Layout Formula (`production/epics/hand-ui/story-002-fan-layout-formula.md`) is already In Progress and has passing evidence available; continue its story-done queue or run `/story-readiness` on Story 003 Phase State Machine.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-animations/story-004-anim-queue-resolution-drain.md` - AnimQueue RESOLUTION drain + GAME_OVER skip path + empty-queue handling
+- Criteria: 4/4 passing; GAME_OVER skip, objective reveal on skip, 599/600 ms boundary behavior, and empty queue pending-phase drain verified.
+- Test Evidence: `tests/unit/card-animations/anim_queue_test.rs`; `cargo test -p client --test card_animations_anim_queue_test` passed 4/4.
+- Verification: `client/src/card_animations/queue.rs` implements `resolution_executing_system`, GAME_OVER skip staging, `GroupDrainedSignal`, and empty-queue drain; `client/src/card_animations/mod.rs` registers `GroupDrainedSignal` and orders objective reveal after queue drain. No direct S2C readers or old Bevy `EventWriter`/`EventReader` patterns found in `client/src/card_animations`.
+- Notes: Advisory only - story/GDD wording still says `Animator<T>` / `AnimatorState` and `bevy_tweening 0.18`, while the compiled workspace uses `TweenAnim` / `PlaybackState` / `TweenState` from `bevy_tweening 0.15`. Advisory only - `TR-CAN-006` registry text says 100 ms pause, while current GDD/code use 150 ms inter-step pause; this did not affect the four scoped ACs.
+- Tech debt logged: None
+- Sprint status: No `CARD-ANIM-004` entry exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Card Animations Story 006 Multi-objective stagger reveal (`production/epics/card-animations/story-006-objective-stagger-reveal.md`) is unlocked by this story.
