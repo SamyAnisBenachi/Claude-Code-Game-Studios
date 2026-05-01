@@ -28,8 +28,8 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- BOARD-003 story-done: launch prompt issued after KW-005 closure; per user
-  rule, assume launched unless contradicted.
+- HAND-UI-002 story-done: launch prompt issued after BOARD-003 closure; per
+  user rule, assume launched unless contradicted.
 - CA-004 worker: completed on branch `work/ca-004-refresh-cost` at `f26f738`;
   cherry-picked into `main` at `5cb53a8`. Window can be cleared.
 - BOARD-004 worker: completed on branch `work/BOARD-004-placement-occupancy`
@@ -58,11 +58,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- BOARD-003: Spawn Range Validation implemented on branch
-  `work/BOARD-003-spawn-range-validation` at `bf39342`; cherry-picked into
-  `main` at `9c38083`. Local `spawn_range_validation_test`,
-  `cargo check -p server`, `cargo fmt -p server -- --check`, and
-  `git diff --check` passed after integration.
 - HAND-UI-002: Fan Layout Formula implemented on branch
   `work/hand-ui-002-fan-layout-formula` at `da0fe3a`; cherry-picked into
   `main` at `047aff9`. Local `hand_ui_fan_layout_formula_test`,
@@ -98,6 +93,9 @@ None currently tracked here.
   and `git diff --check HEAD~1..HEAD`.
 ## Recently Closed
 
+- BOARD-003: Spawn Range Validation implemented on branch
+  `work/BOARD-003-spawn-range-validation` at `bf39342`; cherry-picked into
+  `main` at `9c38083`; story-done committed at `cb642a6`.
 - KW-005: Shield Scope implemented on branch `work/kw-005-shield-scope` at
   `a1a824b`; cherry-picked into `main` at `0b610fd`; story-done committed at
   `f055051`.
@@ -175,13 +173,12 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. BOARD-003
-2. HAND-UI-002
-3. CA-004
-4. BOARD-004
-5. CA-005
-6. COMBAT-001
-7. OBJECTIVE-001
+1. HAND-UI-002
+2. CA-004
+3. BOARD-004
+4. CA-005
+5. COMBAT-001
+6. OBJECTIVE-001
 
 Run only one story-done at a time.
 
@@ -192,7 +189,6 @@ Run only one story-done at a time.
 - COMBAT-001: implemented and integrated; pending story-done.
 - OBJECTIVE-001: implemented and integrated; pending story-done.
 - BOARD-004: implemented and integrated; pending story-done.
-- BOARD-003: implemented and integrated; pending story-done.
 - HAND-UI-002: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
@@ -204,7 +200,7 @@ Run only one story-done at a time.
 Batch launched:
 None currently active.
 
-BOARD-003 story-done is the active serialized closure. Do not launch another
+HAND-UI-002 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
 
 ## Resolved Design Gates
