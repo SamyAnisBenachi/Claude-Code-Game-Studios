@@ -39,8 +39,11 @@ pub type SessionToken = [u8; 16];
 #[derive(Debug, Clone, PartialEq, Resource)]
 pub struct SessionSlots(pub Vec<SessionSlot>);
 
-#[derive(Debug, Resource)]
+#[derive(Debug, Default, Resource)]
 pub struct ClassSelections(pub HashMap<PlayerId, ClassId>);
+
+#[derive(Debug, Default, Resource)]
+pub struct ClassPreviews(pub HashMap<PlayerId, ClassId>);
 
 /// Authoritative per-player class identity for one game session.
 #[derive(Debug, Resource, Default)]

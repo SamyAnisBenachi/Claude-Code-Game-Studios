@@ -4,17 +4,19 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use lightyear::prelude::*;
+use shared::card::ClassId;
 use shared::protocol::{
-    self, C2SCreateRoom, C2SJoinRoom, CreateRoomRejectedReason, GameMode, JoinRejectedReason,
-    ReliableChannel, S2CCreateRoomRejected, S2CJoinAck, S2CJoinRejected, S2CRoomCreated,
-    S2CSlotUpdated,
+    self, C2SConfirmClass, C2SCreateRoom, C2SJoinRoom, C2SSelectClass, ConfirmClassRejectedReason,
+    CreateRoomRejectedReason, GameMode, JoinRejectedReason, ReliableChannel, S2CClassLocked,
+    S2CClassesRevealed, S2CConfirmClassRejected, S2CCreateRoomRejected, S2CJoinAck,
+    S2CJoinRejected, S2CRoomCreated, S2CSlotUpdated,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
 
 use crate::core::session::{
-    ActiveSessions, LobbyDeadline, LobbyHeartbeats, LobbyState, PlayerConnectionMap, RoomCode,
-    RoomSession, RoomSessions, SessionId, SessionSlot, SessionSlots,
+    ActiveSessions, ClassPreviews, ClassSelections, LobbyDeadline, LobbyHeartbeats, LobbyState,
+    PlayerConnectionMap, RoomCode, RoomSession, RoomSessions, SessionId, SessionSlot, SessionSlots,
 };
 use crate::foundation::config::GameConfig;
 
@@ -35,6 +37,23 @@ pub enum JoinRoomOutcome {
         slot_update_recipients: Vec<PlayerId>,
     },
     Rejected(S2CJoinRejected),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SelectClassOutcome {
+    PreviewUpdated,
+    Ignored,
+}
+
+#[derive(Debug, Clone)]
+pub enum ConfirmClassOutcome {
+    Locked {
+        locked: S2CClassLocked,
+        revealed: Option<S2CClassesRevealed>,
+        reveal_recipients: Vec<PlayerId>,
+    },
+    Rejected(S2CConfirmClassRejected),
+    Ignored,
 }
 
 /// Sole drainer for `MessageReceiver<C2SCreateRoom>`.
@@ -111,6 +130,64 @@ pub fn handle_join_room(
 
             if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
                 send_join_room_outcome(sender, server, &connections.0, remote.0, &outcome);
+            }
+        }
+    }
+}
+
+/// Sole drainer for `MessageReceiver<C2SSelectClass>`.
+pub fn handle_select_class(
+    connections: Res<PlayerConnectionMap>,
+    rooms: Res<RoomSessions>,
+    active_sessions: Res<ActiveSessions>,
+    mut previews: ResMut<ClassPreviews>,
+    mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SSelectClass>)>,
+) {
+    for (remote, mut receiver) in receivers.iter_mut() {
+        for msg in receiver.receive() {
+            let Some(player_id) = connections.0.get(&remote.0).copied() else {
+                continue;
+            };
+
+            let _ = select_class(
+                &rooms,
+                &active_sessions,
+                &mut previews,
+                player_id,
+                msg.class_id,
+            );
+        }
+    }
+}
+
+/// Sole drainer for `MessageReceiver<C2SConfirmClass>`.
+pub fn handle_confirm_class(
+    connections: Res<PlayerConnectionMap>,
+    active_sessions: Res<ActiveSessions>,
+    mut rooms: ResMut<RoomSessions>,
+    mut selections: ResMut<ClassSelections>,
+    mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SConfirmClass>)>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
+) {
+    let server = server.single().ok();
+
+    for (remote, mut receiver) in receivers.iter_mut() {
+        for msg in receiver.receive() {
+            let Some(player_id) = connections.0.get(&remote.0).copied() else {
+                continue;
+            };
+
+            let outcome = confirm_class(
+                &mut rooms,
+                &active_sessions,
+                &mut selections,
+                player_id,
+                msg.class_id,
+            );
+
+            if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
+                send_confirm_class_outcome(sender, server, &connections.0, remote.0, &outcome);
             }
         }
     }
@@ -226,6 +303,101 @@ pub fn join_room(
     }
 }
 
+pub fn select_class(
+    rooms: &RoomSessions,
+    active_sessions: &ActiveSessions,
+    previews: &mut ClassPreviews,
+    player_id: PlayerId,
+    class_id: ClassId,
+) -> SelectClassOutcome {
+    if class_id == ClassId::Neutral {
+        return SelectClassOutcome::Ignored;
+    }
+
+    let Some(session_id) = active_sessions.0.get(&player_id).copied() else {
+        return SelectClassOutcome::Ignored;
+    };
+    let Some(session) = rooms.get(session_id) else {
+        return SelectClassOutcome::Ignored;
+    };
+
+    if session.state != LobbyState::LobbyWaiting || !session_has_player(&session.slots, player_id) {
+        return SelectClassOutcome::Ignored;
+    }
+
+    previews.0.insert(player_id, class_id);
+    SelectClassOutcome::PreviewUpdated
+}
+
+pub fn confirm_class(
+    rooms: &mut RoomSessions,
+    active_sessions: &ActiveSessions,
+    selections: &mut ClassSelections,
+    player_id: PlayerId,
+    class_id: ClassId,
+) -> ConfirmClassOutcome {
+    if class_id == ClassId::Neutral {
+        return ConfirmClassOutcome::Ignored;
+    }
+
+    if let Some(confirmed) = selections.0.get(&player_id).copied() {
+        return if confirmed == class_id {
+            ConfirmClassOutcome::Ignored
+        } else {
+            class_lock_rejected()
+        };
+    }
+
+    let Some(session_id) = active_sessions.0.get(&player_id).copied() else {
+        return ConfirmClassOutcome::Ignored;
+    };
+    let Some(session) = rooms.get_mut(session_id) else {
+        return ConfirmClassOutcome::Ignored;
+    };
+
+    if session.state != LobbyState::LobbyWaiting {
+        return ConfirmClassOutcome::Ignored;
+    }
+
+    {
+        let Some(slot) = session
+            .slots
+            .0
+            .iter_mut()
+            .find(|slot| slot.player == Some(player_id))
+        else {
+            return ConfirmClassOutcome::Ignored;
+        };
+
+        if let Some(confirmed) = slot.class {
+            selections.0.insert(player_id, confirmed);
+            return if confirmed == class_id {
+                ConfirmClassOutcome::Ignored
+            } else {
+                class_lock_rejected()
+            };
+        }
+
+        slot.class = Some(class_id);
+    }
+
+    selections.0.insert(player_id, class_id);
+
+    let revealed =
+        all_slots_locked(&session.slots).then(|| classes_revealed_message(&session.slots));
+    let reveal_recipients = if revealed.is_some() {
+        occupied_players(&session.slots)
+    } else {
+        Vec::new()
+    };
+
+    ConfirmClassOutcome::Locked {
+        locked: S2CClassLocked { class_id },
+        revealed,
+        reveal_recipients,
+    }
+}
+
 pub fn initialise_slots(mode: GameMode, creator: PlayerId) -> SessionSlots {
     match mode {
         GameMode::OneVOne => SessionSlots(vec![
@@ -295,6 +467,33 @@ fn occupied_players(slots: &SessionSlots) -> Vec<PlayerId> {
     slots.0.iter().filter_map(|slot| slot.player).collect()
 }
 
+fn session_has_player(slots: &SessionSlots, player_id: PlayerId) -> bool {
+    slots.0.iter().any(|slot| slot.player == Some(player_id))
+}
+
+fn all_slots_locked(slots: &SessionSlots) -> bool {
+    slots
+        .0
+        .iter()
+        .all(|slot| slot.player.is_some() && slot.class.is_some())
+}
+
+fn classes_revealed_message(slots: &SessionSlots) -> S2CClassesRevealed {
+    let mut player_class_map = slots
+        .0
+        .iter()
+        .filter_map(|slot| Some((slot.player?, slot.class?)))
+        .collect::<Vec<_>>();
+    player_class_map.sort_by_key(|(player_id, _)| player_id.0);
+    S2CClassesRevealed { player_class_map }
+}
+
+fn class_lock_rejected() -> ConfirmClassOutcome {
+    ConfirmClassOutcome::Rejected(S2CConfirmClassRejected {
+        reason: ConfirmClassRejectedReason::ClassAlreadyConfirmed,
+    })
+}
+
 fn join_rejected(reason: JoinRejectedReason) -> JoinRoomOutcome {
     JoinRoomOutcome::Rejected(S2CJoinRejected { reason })
 }
@@ -322,6 +521,51 @@ fn send_create_room_outcome(
                 &NetworkTarget::Single(peer_id),
             );
         }
+    }
+}
+
+fn send_confirm_class_outcome(
+    sender: &mut ServerMultiMessageSender,
+    server: &Server,
+    connections: &HashMap<PeerId, PlayerId>,
+    peer_id: PeerId,
+    outcome: &ConfirmClassOutcome,
+) {
+    match outcome {
+        ConfirmClassOutcome::Locked {
+            locked,
+            revealed,
+            reveal_recipients,
+        } => {
+            let _ = sender.send::<S2CClassLocked, ReliableChannel>(
+                locked,
+                server,
+                &NetworkTarget::Single(peer_id),
+            );
+
+            if let Some(revealed) = revealed {
+                let target_peers = reveal_recipients
+                    .iter()
+                    .filter_map(|player_id| peer_for_player(connections, *player_id))
+                    .collect::<Vec<_>>();
+
+                if !target_peers.is_empty() {
+                    let _ = sender.send::<S2CClassesRevealed, ReliableChannel>(
+                        revealed,
+                        server,
+                        &NetworkTarget::Only(target_peers),
+                    );
+                }
+            }
+        }
+        ConfirmClassOutcome::Rejected(msg) => {
+            let _ = sender.send::<S2CConfirmClassRejected, ReliableChannel>(
+                msg,
+                server,
+                &NetworkTarget::Single(peer_id),
+            );
+        }
+        ConfirmClassOutcome::Ignored => {}
     }
 }
 

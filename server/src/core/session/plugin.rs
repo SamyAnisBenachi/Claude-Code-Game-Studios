@@ -4,7 +4,8 @@ use bevy::prelude::*;
 use shared::card::ClassId;
 
 use crate::core::session::{
-    handle_create_room, handle_join_room, ActiveSessions, PlayerConnectionMap, PlayerSessionData,
+    handle_confirm_class, handle_create_room, handle_join_room, handle_select_class,
+    ActiveSessions, ClassPreviews, ClassSelections, PlayerConnectionMap, PlayerSessionData,
     PlayerSessions, RoomSessions, SessionConfig, SessionReady,
 };
 
@@ -14,9 +15,19 @@ impl Plugin for GameSessionPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<PlayerSessions>()
             .init_resource::<ActiveSessions>()
+            .init_resource::<ClassPreviews>()
+            .init_resource::<ClassSelections>()
             .init_resource::<PlayerConnectionMap>()
             .init_resource::<RoomSessions>()
-            .add_systems(Update, (handle_create_room, handle_join_room));
+            .add_systems(
+                Update,
+                (
+                    handle_create_room,
+                    handle_join_room,
+                    handle_select_class,
+                    handle_confirm_class,
+                ),
+            );
     }
 }
 

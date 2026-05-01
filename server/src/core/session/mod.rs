@@ -15,12 +15,13 @@ pub use events::{SessionCancelled, SessionCancelledReason, SessionReady};
 pub use plugin::GameSessionPlugin;
 pub use snapshot::build_snapshot;
 pub use state::{
-    ActiveSessions, ClassSelections, LobbyDeadline, LobbyHeartbeats, LobbyState,
+    ActiveSessions, ClassPreviews, ClassSelections, LobbyDeadline, LobbyHeartbeats, LobbyState,
     PlayerConnectionMap, PlayerSessionData, PlayerSessions, RoomCode, RoomSession, RoomSessions,
     SessionId, SessionSlot, SessionSlots, SessionToken, TeamId,
 };
 pub use system::{
-    create_room, generate_unique_room_code, handle_create_room, handle_join_room, initialise_slots,
-    join_room, normalise_room_code, protocol_slots, room_code_from_bytes, CreateRoomOutcome,
-    JoinRoomOutcome, ROOM_CODE_LEN,
+    confirm_class, create_room, generate_unique_room_code, handle_confirm_class,
+    handle_create_room, handle_join_room, handle_select_class, initialise_slots, join_room,
+    normalise_room_code, protocol_slots, room_code_from_bytes, select_class, ConfirmClassOutcome,
+    CreateRoomOutcome, JoinRoomOutcome, SelectClassOutcome, ROOM_CODE_LEN,
 };
