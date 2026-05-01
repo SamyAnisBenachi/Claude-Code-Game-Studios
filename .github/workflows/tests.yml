@@ -20,6 +20,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check Card Animations S2C boundary
+        run: |
+          set -euo pipefail
+          if [ ! -d client/src/card_animations ]; then
+            echo "FAIL: client/src/card_animations/ not found; boundary check target missing"
+            exit 1
+          fi
+          if grep -rnE "Message(Reader|Receiver)<S2C" client/src/card_animations/ 2>/dev/null; then
+            echo "FAIL: direct S2C subscription in client/src/card_animations/ - see GDD Rule C-14"
+            exit 1
+          fi
+          echo "PASS: Card Animations has no direct S2C subscriptions"
+
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
