@@ -3,15 +3,12 @@
 // ADR-003: client/ crate — Presentation layer only
 // Build: trunk build --release (WASM → Vercel)
 
-mod network;
-mod state;
-mod ui;
-
 use bevy::prelude::*;
+use client::network::ClientNetworkPlugin;
 
 fn main() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
-    app.add_plugins(network::ClientNetworkPlugin);
+    app.add_plugins(ClientNetworkPlugin);
     app.run();
 }
