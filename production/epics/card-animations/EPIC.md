@@ -76,11 +76,11 @@ This epic is complete when:
 |---|-------|------|--------|-----|
 | 001 | [CardAnimationsPlugin scaffold + 5 custom lenses + cargo-check gates](story-001-plugin-scaffold-custom-lenses.md) | Logic | Ready | ADR-021 |
 | 002 | [Tween cancel-replace lifecycle](story-002-tween-cancel-replace-lifecycle.md) | Logic | Ready | ADR-021 |
-| 003 | [Simultaneous-track animation (Tracks\<Transform\>)](story-003-simultaneous-track-animation.md) | Logic | Blocked | ADR-021 |
+| 003 | [Simultaneous Transform controller animation](story-003-simultaneous-track-animation.md) | Logic | Ready | ADR-021 |
 | 004 | [AnimQueue RESOLUTION drain + GAME_OVER skip path](story-004-anim-queue-resolution-drain.md) | Logic | Ready | ADR-021 |
-| 005 | [Placement-reveal parallelism + PLACEMENT 250ms budget + PlacementCancelAllAnimsRequested](story-005-placement-reveal-parallelism.md) | Integration | Blocked | ADR-021 |
+| 005 | [Placement-reveal parallelism + PLACEMENT 250ms budget + PlacementCancelAllAnimsRequested](story-005-placement-reveal-parallelism.md) | Integration | Ready | ADR-021 |
 | 006 | [Multi-objective stagger reveal (F1 formula)](story-006-objective-stagger-reveal.md) | Logic | Ready | ADR-021 |
-| 007 | [Damage number lifecycle (F2 despawn timer)](story-007-damage-number-lifecycle.md) | Logic | Blocked | ADR-021 |
+| 007 | [Damage number lifecycle (F2 despawn timer)](story-007-damage-number-lifecycle.md) | Logic | Ready | ADR-021 |
 | 008 | [Input-gating: timer bar, drag latency, bid button state, de-hover cancel-replace](story-008-input-gating.md) | Integration | Ready | ADR-021 |
 | 009 | [CI boundary enforcement (no direct S2C subscription)](story-009-ci-boundary-enforcement.md) | Integration | Ready | ADR-021 |
 
@@ -88,8 +88,8 @@ This epic is complete when:
 
 Run `/story-readiness production/epics/card-animations/story-001-plugin-scaffold-custom-lenses.md` then `/dev-story` to begin implementation. Work through stories in dependency order — each story's `Depends on:` field specifies what must be DONE before it can start.
 
-**Unblocking sequence for blocked stories:**
-1. OQ-CA-05 (bevy_tweening 0.18 on crates.io) + OQ-CA-01 (AnimatorState enum) → resolved by Story 001
-2. OQ-CA-02 (Tracks\<T\> API) → unblocks Story 003
-3. board-rendering.md PlacementRevealAnimReady payload + LaneCell definition → unblocks Story 005
-4. OQ-CA-11 (jitter table F3) + DespawnAfter component + CA-25 pre-impl gates → unblocks Story 007
+**Blocker-clear note (2026-05-02):**
+1. OQ-CA-01/OQ-CA-05 resolved by Story 001/002 evidence: implementation uses `bevy_tweening v0.15.0` for Bevy 0.18, with `TweenAnim`, `PlaybackState`, and `TweenState`.
+2. OQ-CA-02 resolved: `Tracks<T>` is removed; Story 003 now uses independent `TweenAnim` controller entities with `AnimTarget::component`.
+3. Story 005 unblocked: `board-rendering.md` defines `PlacementRevealAnimReady`, `PlacementRevealEntry`, `LaneCell`, and confirms `BoardLayout.cell_to_world(lane, cell) -> Vec2`.
+4. Story 007 unblocked: F3 jitter table, `DamageNumberSpawnRequested` payload, `Text2d` layout, and `DespawnAfter(Timer)` are defined in the GDDs.

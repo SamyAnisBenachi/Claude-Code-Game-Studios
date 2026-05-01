@@ -2,7 +2,7 @@
 
 > **Status**: Designed — /design-review 2026-04-30 R5 NEEDS REVISION applied in-session. 2 blockers resolved. Recommended: address 4 recommended items (OQ-BR-02 close, OQ-BR-11 creation, stale dependency labels, BR-RECONNECT-TIME spec) in a future pass or at epic start.
 > **Author**: SamyAnisBenachi + Claude Code agents
-> **Last Updated**: 2026-04-30
+> **Last Updated**: 2026-05-02
 > **Implements Pillar**: No idle spectating · Simple surface · Deep emergence
 >
 > **R5 changes (2026-04-30):** EC-RESOLUTION-REVEAL-STUCK stale OQ-BR-06 sentence removed (R4 missed this location); rate-limit (NP-43) note added matching EC-SUBSTEP-OOR/EC-PLACEMENT-STUCK pattern. BR-STATUS-TIER AC added (BLOCKING) — tests Tier-1 display priority ordering introduced in R4; BR-STATUS-CONTRACT alone did not cover tier ordering.
@@ -73,6 +73,36 @@ impl AnimQueue {
 **Timer mechanism.** Sub-step advancement uses Bevy `Timer` components on `AnimQueue`, ticked by `Time<Virtual>` (pausable, manipulable in tests via injected delta). Wall-clock time and `Time<Real>` are NOT used — `Time<Virtual>` enables `App::update()` test patterns where the test injects time deltas to verify timing invariants headlessly (see ACs BR-7, BR-14, BR-15, BR-20).
 
 **`ObjectiveIdentityCache`** — `Resource<HashMap<(PlayerId, Lane), bool>>` holding `is_fake` per objective, populated from `S2CObjectiveIdentities` (unicast at DRAFT_INITIAL and re-sent on reconnect per ADR-001). Board Rendering does **not** read this cache for standing-objective rendering (Rule 12 — all standing objectives render identically). The cache is kept here only to suppress the "surprise" audio sting on fake reveal when Sang Méprise was active (see OQ-BR-01).
+
+**`LaneCell`** — presentation-side component attached to every board entity that can receive PLACEMENT-phase animation cancellation or snap-to-cell behavior:
+
+```rust
+#[derive(Component, Clone, Copy, Debug, Eq, PartialEq)]
+struct LaneCell {
+    lane: u8, // 1..=5
+    cell: u8, // 1..=8
+}
+```
+
+`LaneCell` mirrors the entity's committed visual cell for presentation recovery. It is not authoritative game state. Board Rendering updates it whenever a board entity is spawned, rebuilt from snapshot, or moved to a committed cell. Card Animations reads it on `PlacementCancelAllAnimsRequested` to snap `Transform.translation.xy` to `BoardLayout.cell_to_world(lane, cell)` while preserving the entity's existing Z.
+
+**`PlacementRevealAnimReady` payload** — intra-client message emitted by Board Rendering after the one-frame collect-then-reveal buffer has identified all entities participating in the placement reveal batch:
+
+```rust
+#[derive(Message, Clone, Debug, Default, PartialEq)]
+struct PlacementRevealAnimReady {
+    entries: Vec<PlacementRevealEntry>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct PlacementRevealEntry {
+    unit: Entity,
+    lane: u8,
+    cell: u8,
+}
+```
+
+`unit` is the ECS entity Card Animations targets. `lane` and `cell` duplicate `LaneCell` for deterministic test fixtures and audit logging; the entity still carries `LaneCell` as the snap/cancel source. Board Rendering emits one `PlacementRevealAnimReady` per reveal batch, and all entries in that batch must be handled in a single Card Animations system pass. Entry order is ascending lane then cell for reproducible tests, but simultaneity must not rely on order.
 
 ### Bevy 0.18 API Contract
 
@@ -166,6 +196,7 @@ What IS hidden during PLACEMENT is the opponent's **newly-placed-this-phase comm
 - The server does NOT replicate newly-placed entities to the non-owner client until `S2CPlacementReveal` is sent (canonical end of PLACEMENT). The owner sees their own placements immediately on submission (drag-and-stage flow per `hand-ui.md`).
 - On `S2CPlacementReveal` receipt, all of the opponent's newly-placed entities arrive via Lightyear component replication. Due to potential Lightyear replication batching across multiple client ticks, Board Rendering uses a **collect-then-reveal buffer**: all entities marked as newly-replicated are collected for exactly **one frame** after `S2CPlacementReveal` is received. On the following frame, all collected entities fire their reveal tweens simultaneously — regardless of whether Lightyear delivered them across one or two frames. This guarantees the simultaneous "curtain rising on five lanes" beat even if replication batching splits delivery across ticks.
 - Board Rendering applies a **reveal tween** to each newly-collected opponent entity: scale from `unit_reveal_tween_start_scale` (0.4) → 1.0 + alpha fade 0 → 1 over `unit_reveal_tween_duration_ms` (default 250ms). All reveal tweens start in the same frame (the frame after `S2CPlacementReveal`), producing the simultaneous reveal beat.
+- In the same reveal-start frame, Board Rendering emits exactly one `PlacementRevealAnimReady { entries }` message for Card Animations. `entries` contains every unit entity in the reveal batch as `PlacementRevealEntry { unit, lane, cell }`. Card Animations consumes this message to apply placement-reveal flip/squash animation in one pass; Board Rendering remains the owner of the collect-then-reveal timing and entity identification.
 - The local player's own newly-placed units do **not** play the reveal tween — they were already visible during PLACEMENT (drag-and-stage; see `hand-ui.md`). The buffer collects ONLY entities without a local owner (opponent-owned entities). Detection mechanism: opponent entity vs. local entity ownership checked via replicated `owner: PlayerId` component, not via `Added<Replicated>` alone (verify exact Lightyear 0.26 newly-replicated detection API with `liv-bevy-lightyear` — see OQ-BR-06 extension).
 - `pre_animation_pause_ms` (F4) begins **after** the reveal tween completes (i.e., 1-frame buffer + reveal tween 250ms → pre-animation pause 400ms → sub-step 1). Sequential, not concurrent — the player gets a clean beat to absorb the reveal before sub-step 1 fires.
 
