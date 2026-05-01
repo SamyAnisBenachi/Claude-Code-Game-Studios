@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature (M2)
 > **Type**: Integration
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -26,6 +26,8 @@
 - Required: Three pre-purchase checks executed in order: (1) phase gate, (2) `hand_len < 10`, (3) `pool.is_available(card_id)`
 - Required: Rejected purchase leaves slot displayed (dead slot persists until manual refresh)
 - Forbidden: Cross-frame message path between `spend_gold` and `refund_gold` — must be sequential in same function body
+
+**Performance Budget**: Purchase processing must be O(queued purchase messages) per frame. Each message may inspect only the player's capped hand state, the three current shop slots, and constant-time economy/card-pool state needed for the selected card. Do not scan the full card pool, all players, or all hands in the gameplay-loop path.
 
 ---
 
