@@ -1,7 +1,7 @@
 # Story 005: Phase Transitions and RESOLUTION Persistence
 
 > **Epic**: HUD
-> **Status**: Ready
+> **Status**: In Progress
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
