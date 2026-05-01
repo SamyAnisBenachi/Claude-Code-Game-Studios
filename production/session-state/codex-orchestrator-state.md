@@ -43,7 +43,10 @@ source of truth for story status.
   blocked by credentials, so root cherry-picked it into `main` at `01f831e`;
   story-done committed at `9589116`. Window can be cleared.
 - HAND-UI-003 worker: launch prompt issued while CA-005 story-done is active;
-  per user rule, assume launched unless contradicted.
+  per user rule, assume launched unless contradicted. Completed on branch
+  `work/hand-ui-003-phase-state-machine` at `c6e5504`; cherry-picked into
+  `main` at `614e68e`. Worker checks passed; root `cargo fmt -p client --
+  --check` and `git diff --check HEAD~1..HEAD` passed. Window can be cleared.
 - HUD-005 worker: launch prompt issued while CA-005 story-done is active; per
   user rule, assume launched unless contradicted. Completed on branch
   `work/hud-005-phase-transitions` at `5061728`; cherry-picked into `main` at
@@ -76,6 +79,11 @@ None currently tracked here.
   `9104400`. Worker reported `cargo fmt -p client -- --check`,
   `cargo test -p client --test hud_phase_transitions_test`, full
   `cargo test -p client`, and `cargo check -p client` passing. Root
+  `git diff --check HEAD~1..HEAD` passed.
+- HAND-UI-003: Phase State Machine implemented on branch
+  `work/hand-ui-003-phase-state-machine` at `c6e5504`; cherry-picked into
+  `main` at `614e68e`. Worker reported targeted Hand UI tests and
+  `cargo check -p client` passing. Root `cargo fmt -p client -- --check` and
   `git diff --check HEAD~1..HEAD` passed.
 ## Recently Closed
 
@@ -176,6 +184,7 @@ None currently tracked here.
 
 1. OBJECTIVE-001
 2. HUD-005
+3. HAND-UI-003
 
 Run only one story-done at a time.
 
@@ -183,6 +192,7 @@ Run only one story-done at a time.
 
 - OBJECTIVE-001: implemented and integrated; pending story-done.
 - HUD-005: implemented and integrated; pending story-done.
+- HAND-UI-003: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
