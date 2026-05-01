@@ -28,7 +28,7 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- HUD-002 story-done: launch prompt issued after CARD-ANIM-008 closure; per
+- CARD-ANIM-006 story-done: launch prompt issued after HUD-002 closure; per
   user rule, assume launched unless contradicted.
 - CA-004 worker: completed on branch `work/ca-004-refresh-cost` at `f26f738`;
   cherry-picked into `main` at `5cb53a8`. Window can be cleared.
@@ -53,12 +53,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- HUD-002: Gold/Mana Display implemented on branch
-  `work/hud-002-gold-mana-display` at `0c00a44`; cherry-picked into `main` at
-  `3eaf578` from the local worktree because the worker did not push the branch.
-  Local `hud_gold_mana_display_test`, `hud_plugin_scaffold_test`,
-  `cargo check -p client`, `cargo fmt -p client -- --check`, and
-  `git diff --check` passed after integration.
 - CARD-ANIM-006: Objective Stagger Reveal implemented on branch
   `work/card-anim-006-objective-stagger-reveal` at `effcef2`; cherry-picked into
   `main` at `8d641b9`. Local objective stagger, anim queue, and plugin scaffold
@@ -109,6 +103,9 @@ None currently tracked here.
   and `git diff --check HEAD~1..HEAD`.
 ## Recently Closed
 
+- HUD-002: Gold/Mana Display implemented on branch
+  `work/hud-002-gold-mana-display` at `0c00a44`; cherry-picked into `main` at
+  `3eaf578`; story-done committed at `4e16bf9`.
 - CARD-ANIM-008: Input Gating implemented on branch
   `work/card-anim-008-input-gating` at `0d75fb0`; cherry-picked into `main` at
   `9308bf3`; story-done committed at `d0365d9`.
@@ -174,16 +171,15 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HUD-002
-2. CARD-ANIM-006
-3. HUD-003
-4. KW-005
-5. BOARD-003
-6. HAND-UI-002
-7. CA-004
-8. BOARD-004
-9. CA-005
-10. COMBAT-001
+1. CARD-ANIM-006
+2. HUD-003
+3. KW-005
+4. BOARD-003
+5. HAND-UI-002
+6. CA-004
+7. BOARD-004
+8. CA-005
+9. COMBAT-001
 
 Run only one story-done at a time.
 
@@ -193,7 +189,6 @@ Run only one story-done at a time.
 - CA-005: implemented and integrated; pending story-done.
 - COMBAT-001: implemented and integrated; pending story-done.
 - BOARD-004: implemented and integrated; pending story-done.
-- HUD-002: implemented and integrated; pending story-done.
 - CARD-ANIM-006: implemented and integrated; pending story-done.
 - HUD-003: implemented and integrated; pending story-done.
 - KW-005: implemented and integrated; pending story-done.
@@ -209,7 +204,7 @@ Run only one story-done at a time.
 Batch launched:
 None currently active.
 
-HUD-002 story-done is the active serialized closure. Do not launch another
+CARD-ANIM-006 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
 
 ## Resolved Design Gates
