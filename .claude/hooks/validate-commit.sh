@@ -28,6 +28,24 @@ fi
 
 WARNINGS=""
 
+# Always show staged files so agent can verify before committing
+STAGED_COUNT=$(echo "$STAGED" | wc -l | tr -d ' ')
+echo "=== STAGED FILES ($STAGED_COUNT) ===" >&2
+echo "$STAGED" >&2
+echo "==============================" >&2
+
+# Multi-agent collision check: block if files span too many domains
+if [ "$STAGED_COUNT" -gt 5 ]; then
+    DOMAINS=$(echo "$STAGED" | sed 's|/[^/]*$||' | sort -u | wc -l | tr -d ' ')
+    if [ "$DOMAINS" -gt 3 ]; then
+        echo "" >&2
+        echo "BLOCKED: $STAGED_COUNT files across $DOMAINS directories detected." >&2
+        echo "This looks like a multi-agent staging collision." >&2
+        echo "Run: git restore --staged . && git add <only your files> && git status --short" >&2
+        exit 2
+    fi
+fi
+
 # Check design documents for required sections
 DESIGN_FILES=$(echo "$STAGED" | grep -E '^design/gdd/')
 if [ -n "$DESIGN_FILES" ]; then
