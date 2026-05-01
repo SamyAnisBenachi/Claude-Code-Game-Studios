@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/keyword-system.md
 > **Architecture Module**: `server/feature/keyword/` + `protocol/src/keyword.rs`
 > **Status**: Ready
-> **Stories**: 16 stories created (all BLOCKED — pending ADR-018 + ADR-022 Accepted)
+> **Stories**: 17 stories created (all BLOCKED pending ADR-018 Accepted; ADR-022 ✅ Accepted 2026-04-30)
 
 ## Stories
 
@@ -20,12 +20,13 @@
 | 008 | [LEADER Snapshot System](story-008-leader-snapshot.md) | Logic | Blocked | ADR-018 |
 | 009 | [OUTNUMBERED Board Count Evaluation](story-009-outnumbered.md) | Logic | Blocked | ADR-018 |
 | 010 | [BODYGUARD Bond Management](story-010-bodyguard-bond.md) | Logic | Blocked | ADR-018 |
-| 011 | [RANGE Targeting + Modifier Stack](story-011-range-modifier-stack.md) | Logic | Blocked | ADR-018 |
-| 012 | [Timing Trigger — APPEARANCE + DEATH Chain](story-012-appearance-death-chain.md) | Logic | Blocked | ADR-022 |
-| 013 | [Timing Trigger — FINAL BLOW + COUNTERATTACK](story-013-final-blow-counterattack.md) | Logic | Blocked | ADR-022 |
-| 014 | [Timing Trigger — INJURED Bonus Activation](story-014-injured-bonus-timing.md) | Logic | Blocked | ADR-022 |
-| 015 | [Timing Trigger — START/END OF TURN](story-015-start-end-of-turn.md) | Logic | Blocked | ADR-022 |
-| 016 | [Displacement Keywords — REPEL + ATTRACT + TELEPORT + CHANGE LANE](story-016-displacement-keywords.md) | Logic | Blocked | ADR-018 |
+| 011 | [RANGE + RESISTANCE / ARMOR-PIERCING / VULNERABILITY](story-011-range-resistance-ap.md) | Logic | Blocked | ADR-018 |
+| 012 | [DEATH Chain Observer (on_unit_died)](story-012-death-chain-observer.md) | Integration | Blocked | ADR-022 |
+| 013 | [FINAL BLOW Observer (on_final_blow_dealt)](story-013-final-blow-observer.md) | Logic | Blocked | ADR-022 |
+| 014 | [APPEARANCE Observer + INJURED Inline Dispatch](story-014-appearance-injured-inline.md) | Logic | Blocked | ADR-022 |
+| 015 | [COUNTERATTACK + INJURED Cross-Keywords + START/END OF TURN](story-015-counterattack-start-end-of-turn.md) | Integration | Blocked | ADR-022 |
+| 016 | [Displacement Keywords — CHARGE X, REPEL, ATTRACT, TELEPORT, CHANGE LANE](story-016-displacement-keywords.md) | Logic | Blocked | ADR-018 |
+| 017 | [FIRST STRIKE × WALL Integration](story-017-first-strike-wall-integration.md) | Integration | Blocked | ADR-018 + ADR-022 |
 
 ## Overview
 
@@ -52,7 +53,7 @@ live in `protocol/src/keyword.rs` and are consumed by `S2CResolutionEvent`.
 | ADR | Decision Summary | Status | Engine Risk |
 |-----|-----------------|--------|-------------|
 | ADR-018: Keyword System — ECS State Architecture | Monolithic `UnitKeywordState` component; `server/feature/keyword/` module tree with `components.rs`, `effects.rs`, `state_eval.rs`, `movement.rs`; extended `Keyword`/`SimpleKeyword` enum (ADR-006 amendment); `KeywordKind`/`KeywordPayload`/`DisplacementEvent` in `protocol/src/keyword.rs` | **Proposed** | HIGH |
-| ADR-022: Keyword System — Timing Trigger Observer Architecture | 5 Observer-dispatched timing triggers; `ChainDeathBuffer` for sequential lane-ordered DEATH chain; COUNTERATTACK and INJURED as inline proximity-gated / scan-based dispatch; `start_of_turn_dispatch_system` as normal Bevy system for DRAFT-phase dispatch | **Proposed** | HIGH |
+| ADR-022: Keyword System — Timing Trigger Observer Architecture | 5 Observer-dispatched timing triggers; `ChainDeathBuffer` for sequential lane-ordered DEATH chain; COUNTERATTACK and INJURED as inline proximity-gated / scan-based dispatch; `start_of_turn_dispatch_system` as normal Bevy system for DRAFT-phase dispatch | **Accepted** ✅ 2026-04-30 | HIGH |
 
 ## GDD Requirements
 
