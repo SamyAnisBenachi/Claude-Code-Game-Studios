@@ -620,3 +620,4 @@ C:\Program Files\GitHub CLI\gh.exe
 - Verification: `cargo test -p server --test class_lifecycle_test` -> 9 passed; `cargo test -p server --test rsm_transitions_test --test rsm_scaffold_test` -> 16 passed. GitHub Actions run `25194696023` passed on `main` at `17e3fc352ad1f843daafba4fa8ac484847311f9e`; implementation commit `91539e1` is an ancestor.
 - Notes: Advisory only - story manifest `2026-04-30` is older than current control manifest `2026-05-01`; shared protocol remains serde-only/dependency-light rather than deriving Lightyear `Message` directly in `shared/`.
 - Tech debt logged: None
+- Next recommended: Continue in-progress Sprint 3 must-haves (S3-04, S3-06, AUC-001) before pulling dependent ready-for-dev stories.
