@@ -43,11 +43,11 @@ stories:
     name: "RSM Story 3: Timers and Input Reader"
     file: "production/epics/round-state-machine/story-003-timers-and-input-reader.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: "claude-s3-04-rsm-timers"
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-01"
 
   - id: "S3-05"
     name: "RSM Story 4: Win Condition and Game Over"

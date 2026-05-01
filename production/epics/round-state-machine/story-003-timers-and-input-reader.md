@@ -1,7 +1,7 @@
 # Story 003: Timers and Input Reader
 
 > **Epic**: Round State Machine
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -124,7 +124,7 @@ Each test uses `World::new()` + event injection + `Time` resource injection. No 
 **Story Type**: Logic
 **Required evidence**: Automated unit tests — `tests/unit/rsm/rsm_timers_test.rs` must pass; paste `cargo test -p server rsm_timers` output into `tests/evidence/rsm-story-003-tests.md`
 **Gate Level**: BLOCKING — all tests listed in QA Test Cases must pass before this story is Done
-**Status**: [ ] Not yet created
+**Status**: [x] Verified - `cargo test -p server rsm_timers` passed on 2026-05-01; executable coverage lives in `server/tests/rsm_timers_test.rs` with evidence pointer at `tests/unit/rsm/rsm_timers_test.rs`.
 
 ---
 
@@ -132,3 +132,13 @@ Each test uses `World::new()` + event injection + `Time` resource injection. No 
 
 - Depends on: Story 002 (advance_phase and F2 ordering) must be Done — `advance_phase` match arms must exist before the input reader and timer systems can call into them
 - Unlocks: Story 004 (win condition and game over)
+
+## Completion Notes
+**Completed**: 2026-05-01
+**Criteria**: 10/10 passing.
+**Deviations**:
+- Advisory: story manifest v2026-04-29 is older than current control manifest v2026-05-01.
+- Advisory: story text uses stale Bevy observer wording (`Trigger<SessionReady>` / `app.observe`); implementation uses the verified Bevy 0.18 API (`On<SessionReady>` / `add_observer`).
+**Test Evidence**: Logic evidence at `tests/unit/rsm/rsm_timers_test.rs`; executable suite `server/tests/rsm_timers_test.rs`; `cargo test -p server rsm_timers` passed with 10/10 RSM timer tests plus the timer default test. `cargo test -p server --test rsm_timers_test --test rsm_transitions_test` passed 24/24, including `ShopRefreshTriggered` draft-entry coverage. `cargo check -p server` passed.
+**Blocker Check**: `ShopRefreshNeeded` search under `server` and `tests` returned no matches; RSM now emits `ShopRefreshTriggered`.
+**Code Review**: Skipped - Lean mode.

@@ -777,3 +777,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `S3-06` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
 - Next recommended: Continue S3-04 RSM Story 3 (`production/epics/round-state-machine/story-003-timers-and-input-reader.md`) before opening S3-05, because S3-05 depends on S3-04 being Done.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/round-state-machine/story-003-timers-and-input-reader.md` - Timers and Input Reader
+- Criteria: 10/10 passing; timer activation, ready/submission early exits, stale inbound guards, SessionReady entry, and timer defaults verified.
+- Test Evidence: `tests/unit/rsm/rsm_timers_test.rs`; executable suite `server/tests/rsm_timers_test.rs`; `cargo test -p server rsm_timers` passed with 10/10 RSM timer tests plus the timer default test.
+- Verification: `cargo test -p server --test rsm_timers_test` passed 10/10; `cargo test -p server rsm_timers` passed the 10 RSM timer tests plus the timer default test; `cargo test -p server --test rsm_timers_test --test rsm_transitions_test` passed 24/24; `cargo check -p server` passed. `ShopRefreshNeeded` search under `server` and `tests` returned no matches; RSM emits `ShopRefreshTriggered`.
+- Notes: Advisory only - story manifest v2026-04-29 is older than current control manifest v2026-05-01, and story text has stale observer wording (`Trigger`/`observe`) while implementation uses verified Bevy 0.18 `On`/`add_observer`.
+- Tech debt logged: None
+- Sprint status: `S3-04` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
+- Next recommended: S3-05 RSM Story 4: Win Condition and Game Over at `production/epics/round-state-machine/story-004-win-condition-and-game-over.md`.
