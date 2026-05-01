@@ -28,15 +28,10 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- HAND-UI-001 worker: completed on branch
-  `work/hand-ui-001-plugin-scaffold` at `9f28a2a`; cherry-picked into `main` at
-  `7c603e0`. Window can be cleared.
-- HUD-003 worker: completed on branch
-  `work/hud-003-phase-label-round-counter` at `52a3605`; cherry-picked into
-  `main` at `ce76a88`. Window can be cleared.
-- CARD-ANIM-006 worker: completed on branch
-  `work/card-anim-006-objective-stagger-reveal` at `effcef2`; cherry-picked into
-  `main` at `8d641b9`. Window can be cleared.
+- CA-003 story-done: assumed launched from the current orchestrator batch.
+- BOARD-003 worker: assumed launched from the current orchestrator batch.
+- HAND-UI-002 worker: assumed launched from the current orchestrator batch.
+- KW-005 worker: assumed launched from the current orchestrator batch.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -183,8 +178,13 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-None currently queued in this file. Recompute from story dependencies before
-launching the next batch.
+Batch launched:
+- BOARD-003: `production/epics/board-lane-system/story-003-spawn-range-validation.md`
+- HAND-UI-002: `production/epics/hand-ui/story-002-fan-layout-formula.md`
+- KW-005: `production/epics/keyword-system/story-005-shield-scope.md`
+
+Do not launch another story-done until CA-003 closure returns. New code workers
+can continue in worktree mode if dependencies are checked first.
 
 ## Resolved Design Gates
 
