@@ -1,7 +1,7 @@
 # Story 003: Phase Label, Round Counter, and Instantaneous Transitions
 
 > **Epic**: HUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -104,7 +104,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/hud/phase_label_round_counter_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -112,3 +112,11 @@
 
 - Depends on: Story 001 (entity pool, `HudEntities` resource)
 - Unlocks: Story 005 (phase transitions build on the phase strings), Story 007 (GAME_OVER builds on phase label)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 4/4 passing (HUD-05, HUD-22, HUD-12b label/round portion, HUD-11 timer boundary).
+**Deviations**: Advisory only - worker commit `52a3605` exists on `work/hud-003-phase-label-round-counter` but is not a direct ancestor of current `main`; main integration commit `ce76a88` is included in `main` and carries the HUD-003 source/test implementation. Advisory only - `TR-HUD-003` currently maps to older registry AC metadata while this story verifies current story-scoped GDD criteria HUD-05, HUD-22, HUD-12b, and HUD-11; current behavior is covered by tests. Advisory only - the shared `PresentationPlugin`/`phase_sink_system` wiring is not present yet, so HUD-003 verifies the HUD sub-plugin contract through `Res<CurrentClientPhase>` and the phase-message application helper.
+**Test Evidence**: Logic test file at `tests/unit/hud/phase_label_round_counter_test.rs`; `cargo test -p client --test hud_phase_label_round_counter_test` passed 6/6. Regression `cargo test -p client --test hud_plugin_scaffold_test --test hud_gold_mana_display_test --test hud_phase_label_round_counter_test` passed 16/16. `cargo check -p client` passed.
+**Code Review**: Skipped - Lean mode.

@@ -973,3 +973,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `CARD-ANIM-006` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Continue the user-directed serialized story-done queue, or run readiness on Sprint 4 `S4-01` before starting new implementation work.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hud/story-003-phase-label-round-counter.md` - Phase Label, Round Counter, and Instantaneous Transitions
+- Criteria: 4/4 passing; HUD-05, HUD-22, HUD-12b label/round portion, and HUD-11 covered by `tests/unit/hud/phase_label_round_counter_test.rs`.
+- Test Evidence: `tests/unit/hud/phase_label_round_counter_test.rs`; `cargo test -p client --test hud_phase_label_round_counter_test` passed 6/6. HUD regression `cargo test -p client --test hud_plugin_scaffold_test --test hud_gold_mana_display_test --test hud_phase_label_round_counter_test` passed 16/16. `cargo check -p client` passed.
+- Verification: worker branch `work/hud-003-phase-label-round-counter` contains worker commit `52a3605`; main integration commit `ce76a88` is included in current `main`. `52a3605` is not an ancestor of `HEAD`, but the HUD-003 source/test implementation is integrated through `ce76a88`.
+- Notes: Advisory only - `TR-HUD-003` registry metadata points at older HUD AC numbering, while this story closes current story-scoped GDD criteria HUD-05, HUD-22, HUD-12b, and HUD-11. Advisory only - shared `PresentationPlugin`/`phase_sink_system` wiring is not present yet; HUD-003 verifies the HUD sub-plugin reads `Res<CurrentClientPhase>` and does not drain `MessageReceiver<S2CPhaseChanged>` directly.
+- Tech debt logged: None
+- Sprint status: No `HUD-003` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Continue the user-directed serialized story-done queue, or run readiness on Sprint 4 `S4-01` before starting new implementation work.
