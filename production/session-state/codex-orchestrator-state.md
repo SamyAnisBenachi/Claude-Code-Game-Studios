@@ -38,6 +38,8 @@ source of truth for story status.
 - CA-005 worker: initial readiness run returned NEEDS WORK on stale manifest
   version and missing performance budget. Story fixed at `94267fb`; relaunch
   prompt issued, assume launched unless contradicted.
+- COMBAT-001 worker: launch prompt issued after CARD-ANIM-009 closure window;
+  per user rule, assume launched unless contradicted.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -206,6 +208,7 @@ Run only one story-done at a time.
 
 Batch launched:
 - CA-005: `production/epics/card-acquisition/story-005-purchase-flow.md`
+- COMBAT-001: `production/epics/combat-resolution/story-001-resolve-combat-scaffold.md`
 
 BOARD-002 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
