@@ -2,4 +2,5 @@
 
 pub mod acquisition;
 pub mod auction;
+pub mod board;
 pub mod keyword;
