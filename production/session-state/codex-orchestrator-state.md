@@ -63,6 +63,11 @@ None currently tracked here.
   `work/board-001-grid-initialization` at `7d38a34`; merged into `main` at
   `6e5d80b`. Local `board_grid_initialization_test`, `cargo check -p server`,
   and `cargo fmt -p server --check` passed.
+- CA-003: Card Acquisition Draw Pipeline implemented on branch
+  `work/ca-003-draw-pipeline` at `c6200f0`; merged into `main` at `98cb52a`.
+  Local draw pipeline suite, full server tests, `cargo check -p server`, and
+  `cargo fmt --all` passed. `cargo check --workspace` was blocked on stale HUD
+  BorderColor issue in the branch base; main has fixed it at `cbce522`.
 - S3-08: Economy Interest Snapshot & Resolution End implemented on branch
   `work/s3-08-economy-interest-snapshot` at `db61102`; merged into `main` at
   `4961356`. Local `economy_interest_snapshot_test`, `cargo check -p server`,
@@ -95,14 +100,15 @@ None currently tracked here.
 6. S3-08
 7. CARD-ANIM-002
 8. BOARD-001
+9. CA-003
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- CA-003 / CA-006: CA-002 is implemented but not story-done. CA-003 depends only
-  on CA-001 and can be launched in worktree mode if it avoids unmerged root
-  dirty files; story-done remains serialized.
+- CA-004 / CA-005: depend on CA-003 implementation, now available but should
+  wait for CA-003 story-done unless explicitly pulled in worktree mode.
+- CA-006: depends only on CA-001 and can be launched in worktree mode if needed.
 - KW-004: waits for KW-003 story-done if the story depends on first-strike
   behavior; otherwise can be launched in worktree mode after checking story
   dependencies.
