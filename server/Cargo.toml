@@ -78,6 +78,10 @@ name = "keyword_plugin_smoke_test"
 path = "../tests/integration/keyword/plugin_smoke_test.rs"
 
 [[test]]
+name = "shield_test"
+path = "../tests/unit/keyword/shield_test.rs"
+
+[[test]]
 name = "class_reveal_test"
 path = "../tests/unit/session/class_reveal_test.rs"
 

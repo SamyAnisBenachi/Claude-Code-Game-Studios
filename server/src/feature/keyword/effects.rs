@@ -42,6 +42,8 @@ pub struct DamageResult {
     pub attacker_hp_after: Option<u8>,
     pub target_hp_after: Option<u8>,
     pub target_retaliated_in_ss3: bool,
+    pub attacker_shield_absorbed: bool,
+    pub target_shield_absorbed: bool,
     pub applied: bool,
 }
 
@@ -57,6 +59,8 @@ impl DamageResult {
             attacker_hp_after: None,
             target_hp_after: None,
             target_retaliated_in_ss3: false,
+            attacker_shield_absorbed: false,
+            target_shield_absorbed: false,
             applied: false,
         }
     }
@@ -67,6 +71,34 @@ impl DamageResult {
 
     pub fn target_defeated(&self) -> bool {
         self.target_hp_after == Some(0)
+    }
+}
+
+/// Damage application summary for one target receiving simultaneous attacks in a sub-step.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SubStepDamageResult {
+    pub target: Entity,
+    pub sub_step: u8,
+    pub target_hp_before: Option<u8>,
+    pub target_hp_after: Option<u8>,
+    pub damage_to_target: u8,
+    pub per_attacker_damage: Vec<(Entity, u8)>,
+    pub shield_absorbed: bool,
+    pub applied: bool,
+}
+
+impl SubStepDamageResult {
+    fn not_applied(target: Entity, sub_step: u8) -> Self {
+        Self {
+            target,
+            sub_step,
+            target_hp_before: None,
+            target_hp_after: None,
+            damage_to_target: 0,
+            per_attacker_damage: Vec::new(),
+            shield_absorbed: false,
+            applied: false,
+        }
     }
 }
 
@@ -89,9 +121,22 @@ pub fn apply_first_strike(attacker: Entity, target: Entity, world: &mut World) -
     let target_retaliated_in_ss3 =
         unit_has_card_simple_keyword(target, SimpleKeyword::FirstStrike, world)
             && !is_stunned(target, world);
-    let damage_to_target = combat_damage(attacker, target, &attacker_stats, &target_stats, world);
+    let target_shield_absorbed =
+        consume_shield_for_sub_step(target, ActionSubStep::FirstStrike.number(), world);
+    let attacker_shield_absorbed = target_retaliated_in_ss3
+        && consume_shield_for_sub_step(attacker, ActionSubStep::FirstStrike.number(), world);
+
+    let damage_to_target = if target_shield_absorbed {
+        0
+    } else {
+        combat_damage(attacker, target, &attacker_stats, &target_stats, world)
+    };
     let damage_to_attacker = if target_retaliated_in_ss3 {
-        combat_damage(target, attacker, &target_stats, &attacker_stats, world)
+        if attacker_shield_absorbed {
+            0
+        } else {
+            combat_damage(target, attacker, &target_stats, &attacker_stats, world)
+        }
     } else {
         0
     };
@@ -116,6 +161,83 @@ pub fn apply_first_strike(attacker: Entity, target: Entity, world: &mut World) -
         attacker_hp_after: Some(attacker_hp_after),
         target_hp_after: Some(target_hp_after),
         target_retaliated_in_ss3,
+        attacker_shield_absorbed,
+        target_shield_absorbed,
+        applied: true,
+    }
+}
+
+/// Applies all simultaneous incoming attacks to one target for one sub-step.
+///
+/// SHIELD is checked once before any damage is computed. If it absorbs, every
+/// valid attacker contributes zero damage and the shield is consumed once.
+pub fn apply_simultaneous_attacks_to_target(
+    target: Entity,
+    attackers: &[Entity],
+    sub_step: u8,
+    world: &mut World,
+) -> SubStepDamageResult {
+    let Some(target_stats) = world.get::<UnitStats>(target).copied() else {
+        return SubStepDamageResult::not_applied(target, sub_step);
+    };
+
+    let attacker_stats = attackers
+        .iter()
+        .filter_map(|attacker| {
+            world
+                .get::<UnitStats>(*attacker)
+                .copied()
+                .map(|stats| (*attacker, stats))
+        })
+        .collect::<Vec<_>>();
+
+    if attacker_stats.is_empty() {
+        return SubStepDamageResult {
+            target,
+            sub_step,
+            target_hp_before: Some(target_stats.hp),
+            target_hp_after: Some(target_stats.hp),
+            damage_to_target: 0,
+            per_attacker_damage: Vec::new(),
+            shield_absorbed: false,
+            applied: false,
+        };
+    }
+
+    let shield_absorbed = consume_shield_for_sub_step(target, sub_step, world);
+    let per_attacker_damage = if shield_absorbed {
+        attacker_stats
+            .iter()
+            .map(|(attacker, _)| (*attacker, 0))
+            .collect::<Vec<_>>()
+    } else {
+        attacker_stats
+            .iter()
+            .map(|(attacker, stats)| {
+                (
+                    *attacker,
+                    combat_damage(*attacker, target, stats, &target_stats, world),
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    let damage_to_target = per_attacker_damage
+        .iter()
+        .fold(0u8, |total, (_, damage)| total.saturating_add(*damage));
+    let target_hp_after = target_stats.hp.saturating_sub(damage_to_target);
+
+    if let Some(mut stats) = world.get_mut::<UnitStats>(target) {
+        stats.hp = target_hp_after;
+    }
+
+    SubStepDamageResult {
+        target,
+        sub_step,
+        target_hp_before: Some(target_stats.hp),
+        target_hp_after: Some(target_hp_after),
+        damage_to_target,
+        per_attacker_damage,
+        shield_absorbed,
         applied: true,
     }
 }
@@ -246,8 +368,38 @@ pub fn unit_has_active_simple_keyword(
     !is_silenced(unit, current_round, world) && unit_has_card_simple_keyword(unit, keyword, world)
 }
 
-pub fn check_shield_absorb(_unit: Entity, _sub_step: u8, _world: &World) -> bool {
-    todo!()
+pub fn check_shield_absorb(kw_state: &mut UnitKeywordState, sub_step: u8) -> bool {
+    if !matches!(sub_step, 3 | 6) || !kw_state.shield_active {
+        return false;
+    }
+
+    kw_state.shield_active = false;
+    true
+}
+
+pub fn consume_shield_for_sub_step(unit: Entity, sub_step: u8, world: &mut World) -> bool {
+    let Some(mut kw_state) = world.get_mut::<UnitKeywordState>(unit) else {
+        return false;
+    };
+
+    let absorbed = check_shield_absorb(&mut kw_state, sub_step);
+    drop(kw_state);
+
+    if absorbed {
+        emit_shield_consumed_event(unit, sub_step, world);
+    }
+
+    absorbed
+}
+
+pub fn emit_shield_consumed_event(unit: Entity, sub_step: u8, world: &mut World) {
+    if let Some(mut messages) = world.get_resource_mut::<Messages<KeywordTriggered>>() {
+        messages.write(KeywordTriggered {
+            source_unit_id: Some(unit.to_bits() as EntityId),
+            sub_step,
+            payload: KeywordPayload::ShieldConsumed,
+        });
+    }
 }
 
 pub fn apply_bodyguard_bond(_bodyguard: Entity, _protected: Entity, _world: &mut World) {
