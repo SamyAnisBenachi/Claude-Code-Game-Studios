@@ -31,7 +31,9 @@ source of truth for story status.
 - BOARD-001 story-done: assumed launched from the current orchestrator batch.
 - HAND-UI-001 worker: assumed launched from the current orchestrator batch.
 - HUD-003 worker: assumed launched from the current orchestrator batch.
-- CARD-ANIM-006 worker: assumed launched from the current orchestrator batch.
+- CARD-ANIM-006 worker: completed on branch
+  `work/card-anim-006-objective-stagger-reveal` at `effcef2`; cherry-picked into
+  `main` at `8d641b9`. Window can be cleared.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -63,6 +65,11 @@ None currently tracked here.
   `3eaf578` from the local worktree because the worker did not push the branch.
   Local `hud_gold_mana_display_test`, `hud_plugin_scaffold_test`,
   `cargo check -p client`, `cargo fmt -p client -- --check`, and
+  `git diff --check` passed after integration.
+- CARD-ANIM-006: Objective Stagger Reveal implemented on branch
+  `work/card-anim-006-objective-stagger-reveal` at `effcef2`; cherry-picked into
+  `main` at `8d641b9`. Local objective stagger, anim queue, and plugin scaffold
+  tests, `cargo check -p client`, `cargo fmt -p client -- --check`, and
   `git diff --check` passed after integration.
 - KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
   `7543293`; cherry-picked into `main` at `b8b1287` because the branch was
@@ -136,6 +143,7 @@ None currently tracked here.
 7. KW-004
 8. CARD-ANIM-008
 9. HUD-002
+10. CARD-ANIM-006
 
 Run only one story-done at a time.
 
@@ -151,6 +159,7 @@ Run only one story-done at a time.
 - CARD-ANIM-008: implemented and integrated; pending story-done. Manual CA-13b
   and CA-22 evidence remains deferred until the dependent UI exists.
 - HUD-002: implemented and integrated; pending story-done.
+- CARD-ANIM-006: implemented and integrated; pending story-done.
 - HAND-UI-001: unblocked by HUD-001 story-done; use worktree mode for any new
   implementation.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
@@ -164,8 +173,6 @@ Run only one story-done at a time.
   mode.
 - HUD-003: Phase Label/Round Counter; unblocked by HUD-001 story-done. Run
   readiness before launch.
-- CARD-ANIM-006: Ready after CARD-ANIM-001; run readiness before launch because
-  CARD-ANIM-002/004/008/009 are already implemented or pending closure.
 
 ## Resolved Design Gates
 
