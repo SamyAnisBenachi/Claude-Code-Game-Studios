@@ -28,7 +28,10 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-None currently confirmed.
+- BOARD-001 story-done: assumed launched from the current orchestrator batch.
+- HAND-UI-001 worker: assumed launched from the current orchestrator batch.
+- HUD-003 worker: assumed launched from the current orchestrator batch.
+- CARD-ANIM-006 worker: assumed launched from the current orchestrator batch.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
