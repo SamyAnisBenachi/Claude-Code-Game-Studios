@@ -34,6 +34,8 @@ source of truth for story status.
 - BOARD-004 worker: completed on branch `work/BOARD-004-placement-occupancy`
   at `224708d`; cherry-picked into `main` at `0c69612`. Window can be
   cleared.
+- CA-005 worker: launch prompt issued after BOARD-004 integration; per user
+  rule, assume launched unless contradicted.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -184,8 +186,8 @@ Run only one story-done at a time.
 
 - CA-004: implemented and integrated; pending story-done.
 - BOARD-004: implemented and integrated; pending story-done.
-- CA-005: unblocked by CA-003 story-done and CA-004 integration; run readiness
-  before launch.
+- CA-005: unblocked by CA-003 story-done and CA-004 integration; worker prompt
+  issued with readiness-first instruction. Await worker output.
 - KW-004: unblocked by KW-003 story-done; run readiness first because its story
   text may still contain stale ADR-018 Proposed/BLOCKED wording. Implemented and
   integrated; pending story-done.
@@ -205,8 +207,8 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-Current implementation batch: all known worker outputs from this batch have been
-integrated or queued for story-done.
+Batch launched:
+- CA-005: `production/epics/card-acquisition/story-005-purchase-flow.md`
 
 CARD-ANIM-004 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
