@@ -1,7 +1,7 @@
 # Story 002: Token Spawn Scaffold — SourceClass Component
 
 > **Epic**: Class System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -34,12 +34,12 @@
 
 *From GDD `design/gdd/class-system.md`, token registry section and NP-2 resolution:*
 
-- [ ] Each of the 7 token types spawns with a `SourceClass(ClassId::*)` component matching its class: Mummy→Xelor, Chacha Noir→Ecaflip, Seed→Sadida, Madoll→Sadida, La Gonflable→Sadida, La Sacrifiée→Sadida, Sinistro→Xelor.
-- [ ] All 7 token types also carry the `TokenUnit` marker component.
-- [ ] Standard (non-token) class and neutral card units have NO `SourceClass` component.
-- [ ] `UnitBoardState.source_class` is `Some(ClassId::*)` for each token in a built snapshot — value matches the `SourceClass` component at spawn time.
-- [ ] `UnitBoardState.source_class` is `None` for standard (non-token) units in the snapshot.
-- [ ] A Miranda-stolen token retains its original `SourceClass(ClassId::*)` component — it is never overwritten by the new controller's class. `UnitBoardState.source_class` is unchanged after control transfer.
+- [x] Each of the 7 token types spawns with a `SourceClass(ClassId::*)` component matching its class: Mummy→Xelor, Chacha Noir→Ecaflip, Seed→Sadida, Madoll→Sadida, La Gonflable→Sadida, La Sacrifiée→Sadida, Sinistro→Xelor.
+- [x] All 7 token types also carry the `TokenUnit` marker component.
+- [x] Standard (non-token) class and neutral card units have NO `SourceClass` component.
+- [x] `UnitBoardState.source_class` is `Some(ClassId::*)` for each token in a built snapshot — value matches the `SourceClass` component at spawn time.
+- [x] `UnitBoardState.source_class` is `None` for standard (non-token) units in the snapshot.
+- [x] A Miranda-stolen token retains its original `SourceClass(ClassId::*)` component — it is never overwritten by the new controller's class. `UnitBoardState.source_class` is unchanged after control transfer.
 
 ---
 
@@ -163,7 +163,7 @@ let source_class: Option<ClassId> = world.get::<SourceClass>(unit_entity).map(|s
 **Story Type**: Logic
 **Required evidence**: `tests/unit/class/token_spawn_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -172,3 +172,13 @@ let source_class: Option<ClassId> = world.get::<SourceClass>(unit_entity).map(|s
 - Depends on: Story 001 (PlayerSessions, `class_of()` API) — must be DONE
 - Depends on: `workspace-and-shared-types` story (ClassId enum in shared/src/card.rs) — must be DONE
 - Unlocks: Story 007 (Sadida Seeds — uses `spawn_seed`, `spawn_madoll`); Story 010 (Token passives — uses all 7 spawn fns + SourceClass queries)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 6/6 passing
+**Deviations**: Advisory only. Story manifest is `2026-04-30`; current control manifest is `2026-05-01`. Current `TR-CS-009` also includes token passive behaviors, but this story intentionally closes only the spawn/snapshot scaffold portion; passive behaviors remain scoped to Story 010.
+**Test Evidence**: Logic evidence mapping at `tests/unit/class/token_spawn_test.rs`; executable suite at `server/tests/token_spawn_test.rs`. `cargo test -p server --test token_spawn_test` passed: 5 passed, 0 failed.
+**Code Review**: Skipped (lean review mode)

@@ -736,3 +736,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `AUC-003` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
 - Next recommended: AUC-004 Bid Validation Gate at `production/epics/auction-system/story-004-bid-validation-gate.md`; enable the AU19-a settlement guard after AUC-006 lands.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/class-system/story-002-token-spawn-scaffold.md` - Token Spawn Scaffold / SourceClass Component
+- Criteria: 6/6 passing; all token `SourceClass` mappings, `TokenUnit`, standard-unit `None`, snapshot derivation, and Miranda-style owner transfer preservation verified.
+- Test Evidence: `tests/unit/class/token_spawn_test.rs`; executable suite `server/tests/token_spawn_test.rs`; `cargo test -p server --test token_spawn_test` -> 5 passed, 0 failed.
+- Notes: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01. Current `TR-CS-009` also includes token passive behaviors; this story closes only the spawn/snapshot scaffold portion and leaves passives to Story 010.
+- Tech debt logged: None
+- Sprint status: `CS-002` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
+- Next recommended: S3-05 RSM Story 4: Win Condition and Game Over at `production/epics/round-state-machine/story-004-win-condition-and-game-over.md`; S3-04, S3-06, S3-08, KW-002, and CARD-ANIM-001 remain in progress.

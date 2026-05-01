@@ -123,11 +123,11 @@ stories:
     name: "Class Token Spawn Scaffold"
     file: "production/epics/class-system/story-002-token-spawn-scaffold.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: "codex-cs-002-token-spawn"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-01"
 
   - id: "AUC-001"
     name: "AuctionState Types & Snapshot Scaffold"
