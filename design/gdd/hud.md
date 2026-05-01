@@ -2,12 +2,12 @@
 
 > **Status**: Approved — 2026-04-30 (Pass 4: 1 blocker resolved — HUD-01 entity count corrected 16→18 [TextSpan children]; 4 recommended fixes: GoldDisplayState is_populated unified in Rule 1, Rule 11 .before() terminology, OQ-HUD-01 pre-implementation gate note, LOBBY audio row + D.1 type note)
 > **Author**: SamyAnisBenachi + Claude Code agents
-> **Last Updated**: 2026-04-30
+> **Last Updated**: 2026-05-02
 > **Implements Pillar**: No idle spectating · Simple surface
 
 ## Overview
 
-The HUD is the client-side persistent readout layer that surfaces the game's economic and tactical state to both players at all times. Where Hand UI owns the hand fan and the PLACEMENT timer, Shop/Auction UI owns the shop slots and the DRAFT/auction timers, and Board Rendering owns the lanes, units, and in-cell objective sprites, the HUD owns what is left over and always-on: the local player's **gold**, **current mana / mana cap**, and **reserve mana**; the opponent's **gold**; the **round number** and a compact **phase label**; and the **objective scoreboard** — five status dots per side summarising which of the ten visible objectives are still standing without revealing which were real or fake. The HUD subscribes to four server-to-client signals — `S2CGoldUpdate` (unicast, own economy), `S2CGoldBroadcast` (broadcast, both players' gold + reserved_gold), `S2CPhaseChanged` (round + phase), and `HudObjectiveUpdate` (a Bevy Event re-emitted by Board Rendering after it drains `ObjectiveDestroyed` from Lightyear; see Rule 6 and Interactions) — and rebuilds its full display from `S2CGameSnapshot` on reconnect. It produces no client-to-server messages: the HUD is read-only, server-authoritative, and never asserts state.
+The HUD is the client-side persistent readout layer that surfaces the game's economic and tactical state to both players at all times. Where Hand UI owns the hand fan and the PLACEMENT timer, Shop/Auction UI owns the shop slots and the DRAFT/auction timers, and Board Rendering owns the lanes, units, and in-cell objective sprites, the HUD owns what is left over and always-on: the local player's **gold**, **current mana / mana cap**, and **reserve mana**; the opponent's **gold**; the **round number** and a compact **phase label**; and the **objective scoreboard** — five status dots per side summarising which of the ten visible objectives are still standing without revealing which were real or fake. The HUD subscribes to three server-to-client signals — `S2CGoldUpdate` (unicast, own economy), `S2CGoldBroadcast` (broadcast, both players' gold + reserved_gold), and `S2CPhaseChanged` (round + phase) — plus the client-internal Bevy `Message` `HudObjectiveUpdate` written by Board Rendering after it drains `ObjectiveDestroyed` from Lightyear; see Rule 6 and Interactions. It rebuilds its full display from `S2CGameSnapshot` on reconnect. It produces no client-to-server messages: the HUD is read-only, server-authoritative, and never asserts state.
 
 During DRAFT_AUCTION, each gold label switches to an **inline parenthetical format** — `11g (4r)` — showing total gold and reserved gold on the same line. The player computes free gold (`11 − 4 = 7`) from one glance at one label without refocusing. Outside DRAFT_AUCTION, labels read `11g`. The top-right zone is always two lines (own gold on line 1, opponent gold on line 2) in every phase — no sub-labels, no format-switching of zone height.
 
@@ -57,7 +57,7 @@ The HUD occupies four screen-edge zones, each anchored with `Val::Px(12.0)` from
 | Zone | Contents |
 |---|---|
 | Top-left | Phase label (line 1) + round counter (line 2) |
-| Top-center | Scoreboard — 2 rows × 5 dots; top row = opponent; bottom row = local; dots aligned horizontally to lane midpoints 1–5 (shared layout constant `LANE_MIDPOINT_X: [f32; 5]` owned by board rendering — see Dependencies) |
+| Top-center | Scoreboard — 2 rows × 5 dots; top row = opponent; bottom row = local; dots aligned horizontally to lane midpoints 1–5 using the session-scoped `BoardLayout` resource owned by Board Rendering — see Dependencies |
 | Top-right | Own gold (line 1); Opponent gold (line 2). Always 2 lines. During DRAFT_AUCTION, each label switches to inline parenthetical format `Xg (Yr)` — no zone height change (see Rule 3) |
 | Bottom-left | Local mana (line 1, format `current / mana_cap`); local reserve mana (line 2, hidden when reserve_mana == 0). Vertical height is always reserved for 2 lines to prevent layout shift when the reserve mana label appears |
 
@@ -81,12 +81,12 @@ Mana label always shows two numbers separated by ` / `, even when `current_mana 
 **Rule 4 — Update triggers (per-message contract).**
 Each HUD readout is updated only by the message(s) below; HUD never redraws the full readout tree, only the affected text/visibility:
 
-| Message / Event | Updates |
+| Message / Signal | Updates |
 |---|---|
 | `S2CGoldUpdate { gold, current_mana, reserve_mana, mana_cap }` | Own gold label `GoldDisplayState.gold` (triggers label re-render); own mana label numerator + denominator; reserve mana label visibility + value |
 | `S2CGoldBroadcast { player_id, gold, reserved_gold }` | If `player_id == opponent_id`: opponent gold label `GoldDisplayState { gold, reserved_gold }` (full refresh). If `player_id == local_id`: own gold label `GoldDisplayState.reserved_gold` only (see Rule 11) |
 | `S2CPhaseChanged { phase, round_number, timer_duration_ms }` | Phase label, round counter, mode transitions per Rule 5. **`timer_duration_ms` is explicitly ignored** — see Rule 12 |
-| `HudObjectiveUpdate { target_player_id, lane }` (Bevy Event) | Single dot at `(target_player_id, lane)` transitions ALIVE → DESTROYED. Note: this is a Bevy Event re-emitted by Board Rendering — see Rule 6 and Interactions |
+| `HudObjectiveUpdate { target_player_id, lane }` (client-internal Bevy `Message`) | Single dot at `(target_player_id, lane)` transitions ALIVE → DESTROYED. Note: this is written by Board Rendering after it drains `ObjectiveDestroyed` — see Rule 6 and Interactions |
 | `S2CGameSnapshot` | Full HUD rebuild (Rule 13) |
 
 **Rule 5 — Phase label strings + mode transitions.**
@@ -111,7 +111,7 @@ Two horizontal rows of 5 dot entities are pre-spawned. Indexed by `(player_id, l
 
 ALIVE → DESTROYED is an instantaneous state flip on `HudObjectiveUpdate` receipt. No tween, no animation. Board Rendering owns the in-cell objective shatter animation; the HUD scoreboard is a permanent record, not a reaction surface.
 
-**ObjectiveDestroyed fanout architecture.** HUD does NOT subscribe to `MessageReader<ObjectiveDestroyed>` (Lightyear channel). Board Rendering is the **sole drain** of `ObjectiveDestroyed` via its own `MessageReader`. After draining, Board Rendering triggers `HudObjectiveUpdate { target_player_id: PlayerId, lane: u8 }` via `commands.trigger(HudObjectiveUpdate { .. })` (Bevy 0.18 Observer trigger — stripping `was_fake` before triggering, architecturally enforcing Rule 7). HudPlugin registers an Observer via `app.observe(handle_hud_objective_update)`. Using an Observer guarantees same-frame delivery with no 2-frame event buffer window — a missed trigger cannot produce a permanently stale scoreboard dot. This eliminates the double-drain bug that would occur if two `MessageReader` instances attempted to drain the same Lightyear channel. The `HudObjectiveUpdate` trigger type is defined in a shared crate accessible to both Board Rendering and HudPlugin (see OQ-HUD-05 for location decision).
+**ObjectiveDestroyed fanout architecture.** HUD does NOT subscribe to `MessageReceiver<ObjectiveDestroyed>` (Lightyear channel). Board Rendering is the **sole drain** of `ObjectiveDestroyed` via its own `MessageReceiver`. After draining, Board Rendering writes `HudObjectiveUpdate { target_player_id: PlayerId, lane: u8 }` through `MessageWriter<HudObjectiveUpdate>`, stripping `was_fake` before writing and architecturally enforcing Rule 7. `HudPlugin` reads only `MessageReader<HudObjectiveUpdate>` in an explicitly ordered presentation system. `HudObjectiveUpdate` is registered once with `app.add_message::<HudObjectiveUpdate>()` from the client presentation composition layer before Board Rendering writes or HUD reads the message. The Board Rendering write system and HUD read/apply system must be ordered so the dot state transition occurs in the same ECS tick. This eliminates the double-drain bug that would occur if two systems attempted to drain the same Lightyear channel. The `HudObjectiveUpdate` message type lives in the client crate's presentation/UI shared module, accessible to both Board Rendering and HudPlugin (OQ-HUD-05 resolved).
 
 **Rule 7 — Real/fake identity is never shown on the scoreboard.**
 The HUD's scoreboard renders all 5 dots identically per side regardless of real/fake assignment. `HudObjectiveUpdate` carries only `target_player_id` and `lane` — it strips `was_fake` at the Board Rendering boundary, so HUD cannot read this field even if future contributors wanted to. The scoreboard's contract with the player is *alive vs destroyed*, not *real vs fake* — that distinction belongs to the destruction reveal animation owned by Board Rendering, and to the destroyed-attacker's awareness in their own UI feedback (handled outside HUD scope).
@@ -173,8 +173,8 @@ Single subscriber: `HudPlugin`'s `MessageReader<S2CGoldBroadcast>`. Update granu
 **`S2CPhaseChanged` (phase + round — network-protocol.md, source: round-state-machine.md).**
 Single subscriber: `HudPlugin`'s `MessageReader<S2CPhaseChanged>`. Update granularity: phase label text + round counter text + mode transition (Rule 5) + gold label format switch (ECONOMY_BASIC ↔ ECONOMY_AUCTION). The `timer_duration_ms` field is discarded (Rule 12).
 
-**`HudObjectiveUpdate { target_player_id: PlayerId, lane: u8 }` (Bevy 0.18 Observer trigger, fired by Board Rendering).**
-Observer: `HudPlugin` registers via `app.observe(handle_hud_objective_update)`. Board Rendering is the sole `MessageReader<ObjectiveDestroyed>` drain on the Lightyear channel. After draining, Board Rendering triggers `HudObjectiveUpdate` via `commands.trigger(..)` (stripping `was_fake`). Update granularity in HUD: one dot entity, indexed `dots[target_player_id][lane - 1]` after bounds validation. The `was_fake` field never reaches HUD — Rule 7 is architecturally enforced. See Rule 6 for Observer and fanout architecture detail.
+**`HudObjectiveUpdate { target_player_id: PlayerId, lane: u8 }` (client-internal Bevy `Message`, written by Board Rendering).**
+Registration: the client presentation composition layer calls `app.add_message::<HudObjectiveUpdate>()` once before Board Rendering writes or HUD reads the message. Board Rendering is the sole `MessageReceiver<ObjectiveDestroyed>` drain on the Lightyear channel. After draining, Board Rendering writes `HudObjectiveUpdate` via `MessageWriter<HudObjectiveUpdate>` (stripping `was_fake`). `HudPlugin` reads it through `MessageReader<HudObjectiveUpdate>`. Update granularity in HUD: one dot entity, indexed `dots[target_player_id][lane - 1]` after bounds validation. The `was_fake` field never reaches HUD — Rule 7 is architecturally enforced. See Rule 6 for message fanout architecture detail.
 
 **`S2CGameSnapshot` (reconnect — network-protocol.md).**
 Single subscriber: `HudPlugin`'s `MessageReader<S2CGameSnapshot>`. Triggers full HUD state rebuild per Rule 13. After rebuild, the HUD waits for the next phase/economy/objective messages to drive incremental updates as normal.
@@ -183,17 +183,17 @@ Single subscriber: `HudPlugin`'s `MessageReader<S2CGameSnapshot>`. Triggers full
 HUD MUST NOT:
 - Display any countdown timer (Rule 12)
 - Subscribe to `C2S*` messages (HUD produces no input messages)
-- Subscribe directly to `MessageReader<ObjectiveDestroyed>` (Board Rendering is the sole drain — see Rule 6)
+- Subscribe directly to `MessageReceiver<ObjectiveDestroyed>` (Board Rendering is the sole Lightyear drain — see Rule 6)
 - Write to any client state other than its own labels and dots
 - Compute derived values that could disagree with server (e.g., HUD must not track gold as a delta accumulator — it sets the value from each authoritative message)
 - Animate beyond Rule 14's budget
 
 **Registry references (cross-system facts this section consumes):**
 - `S2CGoldUpdate`, `S2CGoldBroadcast`, `S2CPhaseChanged`, `S2CGameSnapshot`, `ObjectiveDestroyed` — all registered in `network_messages` section of `entities.yaml`
-- `HudObjectiveUpdate` — Bevy 0.18 Observer trigger type defined in a shared crate (see OQ-HUD-05 for location decision); not a Lightyear channel message
+- `HudObjectiveUpdate` — client-internal Bevy `Message` defined in the client crate's presentation/UI shared module; not a Lightyear channel message
 - `local_free_gold` formula (shop-auction-ui.md) — referenced implicitly via inline gold label
 - `mana_cap`, `objective_hp`, `lane_count`, `fake_count` — registered constants from game-config.md / board-lane-system.md / objective-system.md
-- `LANE_MIDPOINT_X: [f32; 5]` — shared layout constant from Board Rendering (see Dependencies)
+- `BoardLayout` — session-scoped layout resource inserted by `BoardRenderingPlugin` and read by HUD for scoreboard dot horizontal alignment
 
 ## Formulas
 
@@ -249,7 +249,7 @@ Each scoreboard dot has a state derived from a single per-player-per-lane boolea
 | `destroyed[player][lane]` | `[[bool; 5]; 2]` (HUD-local state) | Set true on `HudObjectiveUpdate { target_player_id: player, lane }`; reset to false on `S2CGameSnapshot` rebuild per the snapshot's objective state |
 
 **Output Range:** `{ ALIVE, DESTROYED }`.
-**Note:** No real/fake distinction enters this formula. The `was_fake` field of `ObjectiveDestroyed` is stripped by Board Rendering before re-emitting `HudObjectiveUpdate` (Rule 7).
+**Note:** No real/fake distinction enters this formula. The `was_fake` field of `ObjectiveDestroyed` is stripped by Board Rendering before writing `HudObjectiveUpdate` (Rule 7).
 
 ## Edge Cases
 
@@ -305,11 +305,11 @@ The HUD is a read-only display layer; most "edge cases" reduce to defensive rend
 |---|---|---|---|
 | Economy System | `economy-system.md` | `S2CGoldUpdate { gold, current_mana, reserve_mana, mana_cap }` — unicast to local player | → HUD reads |
 | Round State Machine | `round-state-machine.md` | `S2CPhaseChanged { phase, round_number, timer_duration_ms }` — broadcast | → HUD reads |
-| Objective System | `objective-system.md` | `ObjectiveDestroyed` (drained by Board Rendering, re-emitted as `HudObjectiveUpdate`) | → HUD reads (via Board Rendering re-broadcast) |
+| Objective System | `objective-system.md` | `ObjectiveDestroyed` (drained by Board Rendering, then written as `HudObjectiveUpdate`) | → HUD reads via Board Rendering's client-internal message |
 | Network Protocol | `network-protocol.md` | Defines all four message envelopes above; `S2CGameSnapshot` for reconnect | → HUD reads |
 | Game Session System | `game-session-system.md` | Provides `local_id` from LOBBY handshake; sends `S2CGameSnapshot` on reconnect | → HUD reads |
 | Game Config | `game-config.md` | `lane_count` (5) — **compile-time hard dependency.** The `[[Entity; 5]; 2]` dot entity array and `[[bool; 5]; 2]` dot state array are sized at compile time to `lane_count`. If `lane_count` changes from 5 to 6, both arrays must be resized in code — a runtime config change alone will silently truncate the scoreboard. `mana_cap` is learned at runtime via `S2CGoldUpdate`. | → HUD reads |
-| Board Rendering | `board-rendering.md` | `LANE_MIDPOINT_X: [f32; 5]` — shared layout constant (exact type TBD) that provides the screen-space X-coordinates of lane midpoints for scoreboard dot alignment. Board Rendering owns these coordinates; HUD must read them to align dots over the correct lane columns. `HudObjectiveUpdate` Bevy Event re-emitted by Board Rendering after draining `ObjectiveDestroyed`. | → HUD reads |
+| Board Rendering | `board-rendering.md` | `BoardLayout` — session-scoped resource inserted by `BoardRenderingPlugin` and read by HudPlugin for scoreboard dot horizontal alignment. Board Rendering owns the lane/cell coordinate model; HUD must derive dot positions from `Res<BoardLayout>` rather than a duplicated `LANE_MIDPOINT_X` array or local uniform-spacing fallback. `HudObjectiveUpdate` client-internal Bevy `Message` written by Board Rendering after draining `ObjectiveDestroyed`. | → HUD reads |
 
 ### Downstream — none
 
@@ -321,7 +321,7 @@ If any of the upstream systems changes a message payload or phase name, this GDD
 - Any new `S2CGoldUpdate` field that affects mana display (e.g., `max_mana_override`) requires HUD Rule 3 + Rule 4 update.
 - Any new RSM phase requires a row in the Phase label strings table (Rule 5) and a row in the States and Transitions table.
 - Any new objective-tier message (e.g., partial-destruction) must be evaluated for HUD scoreboard impact.
-- **`LANE_MIDPOINT_X` constant**: if Board Rendering changes lane layout, HUD dot positions must be re-verified.
+- **`BoardLayout` lane alignment**: if Board Rendering changes lane layout, HUD dot positions must be re-verified against the `BoardLayout`-derived lane midpoint helper.
 
 **RESOLVED (2026-04-30):** `S2CGameSnapshot.PlayerSnapshot` now includes `reserved_gold: u32` (added in NP GDD Pass 4). The HUD DRAFT_AUCTION reconnect path is implementable.
 
@@ -386,7 +386,7 @@ Dot diameter: approximately **1.5× the cap-height of the round counter numeral*
 
 ### Dot Alignment
 
-Scoreboard dots are positioned so each dot's horizontal center aligns with `LANE_MIDPOINT_X[lane - 1]` — the screen-space X-coordinate of that lane's midpoint, as defined by Board Rendering. At implementation time, this constant must be readable by HudPlugin (shared crate constant or a shared `BoardLayout` resource). Without this alignment, the scoreboard dot for lane 3 will not appear above the lane 3 column on screen.
+Scoreboard dots are positioned so each dot's horizontal center aligns with the lane midpoint derived from `Res<BoardLayout>`, the session-scoped layout resource inserted by `BoardRenderingPlugin` per ADR-021. `BoardLayout` is the single source of truth; HudPlugin must not define a separate `LANE_MIDPOINT_X: [f32; 5]` constant or fall back to local uniform spacing. If the concrete UI positioning path needs screen-space pixels, the projection/conversion helper belongs beside `BoardLayout` in the client presentation shared module so Board Rendering and HUD use the same coordinate model. Without this alignment, the scoreboard dot for lane 3 will not appear above the lane 3 column on screen.
 
 ### Phase Label
 
@@ -421,9 +421,9 @@ The HUD's UI architecture is fully specified in Section C (Detailed Design). Thi
 - `LineHeight` is auto-required in Bevy 0.18; override explicitly if line spacing needs adjustment.
 - System order: `handle_gold_broadcast_system` runs **before** `handle_gold_update_system` in the HUD plugin's system set, enforcing the Rule 11 tie-break.
 - `timer_duration_ms` from `S2CPhaseChanged` is discarded using `let S2CPhaseChanged { phase, round_number, .. } = msg;` — document with a code comment explaining the boundary.
-- HUD registers a Bevy Observer for `HudObjectiveUpdate` via `app.observe(handle_hud_objective_update)`, NOT `EventReader<HudObjectiveUpdate>` and NOT `MessageReader<ObjectiveDestroyed>`. Board Rendering triggers `HudObjectiveUpdate` via `commands.trigger(..)` after draining `ObjectiveDestroyed`. Observer guarantees same-frame delivery with no 2-frame event buffer window.
+- HUD reads `HudObjectiveUpdate` through `MessageReader<HudObjectiveUpdate>`, NOT `EventReader<HudObjectiveUpdate>`, NOT `EventWriter<HudObjectiveUpdate>`, and NOT `MessageReceiver<ObjectiveDestroyed>`. Board Rendering writes `HudObjectiveUpdate` through `MessageWriter<HudObjectiveUpdate>` after draining `ObjectiveDestroyed`. Explicit presentation-system ordering guarantees the HUD dot state flip in the same ECS tick as the Board Rendering write.
 - `hud_tween_duration_ms` lives in a client-side `HudConfig` struct (not in `GameConfig` — it is a cosmetic preference, not a server-authoritative game parameter).
-- Dot horizontal position: read `LANE_MIDPOINT_X[lane - 1]` from the shared Board Rendering constant to align dots over lane columns. The exact mechanism (shared `const`, `Resource`, or `bevy_ui` layout token) is implementation-defined but must be coordinated with Board Rendering.
+- Dot horizontal position: read `Res<BoardLayout>` and use the BoardLayout-owned lane midpoint/projection helper to align dots over lane columns. Do not introduce a separate `LANE_MIDPOINT_X` constant, local array, or uniform-spacing fallback in HudPlugin.
 
 ### Screen compatibility targets
 
@@ -486,7 +486,7 @@ GAME_OVER→"GAME OVER"; LOBBY produces no visible phase label (HUD hidden).
 
 HUD-06: Scoreboard dot alive→destroyed — BLOCKING
 GIVEN both players start with 5 objectives each (all 10 dots ALIVE),
-WHEN HudObjectiveUpdate fires for opponent at lane 3,
+WHEN HudObjectiveUpdate is written for opponent at lane 3,
 THEN opponent dot index 2 (0-indexed) changes to DESTROYED; all other 9
 dots remain ALIVE; no real/fake identifier is applied to any dot.
 
@@ -545,7 +545,7 @@ value stabilising (manual tick-step or elapsed-timer measurement).
 
 HUD-12b: Phase label, round counter, and dot transitions are instantaneous — BLOCKING
 GIVEN HUD is in any visible mode,
-WHEN S2CPhaseChanged fires (any phase) or HudObjectiveUpdate fires,
+WHEN S2CPhaseChanged fires (any phase) or HudObjectiveUpdate is written,
 THEN the phase label text, round counter text, and affected dot visual state
 all reflect the new values within the same ECS tick — no tween, no deferred
 update, no animation component attached to these entities.
@@ -602,7 +602,7 @@ WHEN S2CPhaseChanged fires for GAME_OVER,
 AND the following are subsequently emitted and processed in the same test world:
   S2CGoldUpdate { gold: 999, current_mana: 0, reserve_mana: 0, mana_cap: 10 },
   S2CGoldBroadcast { player_id: local_id, gold: 888, reserved_gold: 0 },
-  commands.trigger(HudObjectiveUpdate { target_player_id: opponent, lane: 1 }),
+  a `HudObjectiveUpdate { target_player_id: opponent, lane: 1 }` message written through the Bevy Message path,
 THEN: (a) phase label reads "GAME OVER"; (b) HudMode resource reads FROZEN;
 (c) own GoldDisplayState.gold remains 12.0 (not 999 or 888); (d) opponent
 dot for lane 1 retains its pre-GAME_OVER dot state.
@@ -672,7 +672,7 @@ S2CGoldUpdate { gold: 0 } MUST then produce "0g", not "--g".
 
 HUD-26: Duplicate HudObjectiveUpdate idempotency — BLOCKING
 GIVEN destroyed[opponent][2] (lane 3, 0-indexed) is already true,
-WHEN HudObjectiveUpdate fires again with target_player_id=opponent, lane=3,
+WHEN HudObjectiveUpdate is written again with target_player_id=opponent, lane=3,
 THEN the dot entity's state component has the same value it held before the
 second event arrived (verified by reading the component from the World before
 and after the second event); no panic, error event, or spurious output is
@@ -716,5 +716,5 @@ on a server bug or test fixture anomaly.)
 | OQ-HUD-01 | **Disconnect/pause indicator — reclassified as gameplay correctness gap.** During the 30-second disconnect grace window, client-side phase timers continue countdown. When PLACEMENT timer expires, Hand UI fires its timeout action locally — but the server is paused. `S2CSessionPaused` / `S2CSessionResumed` must be defined in `network-protocol.md` before any timer-bearing phase can be safely implemented. HUD owns the "Waiting for opponent…" badge. This OQ is **blocking on Network Protocol GDD**. **Pre-implementation gate:** NP GDD must reach Approved status before the pause overlay can be implemented. Until then, implement HUD without the pause overlay badge — treat the disconnect grace window as invisible to the HUD. | Network Protocol GDD (blocking) | Open — NP GDD amendment required |
 | OQ-HUD-02 | **Local player real/fake opt-in display — DESIGN REJECTED.** A settings flag would recreate the screen-share leak (the reason Rule 7 exists). | Design | Closed — Rejected |
 | OQ-HUD-03 | **GAME_OVER summary screen.** Rule 10 defers retroactive real/fake revelation to a post-game summary screen. When is this GDD'd? Does HUD hand off any state to the summary screen, or does the summary screen rebuild from `S2CGameSnapshot`? | Future GDD (post-game flow / M3) | Open |
-| OQ-HUD-04 | **`LANE_MIDPOINT_X` constant sharing.** How does HudPlugin read Board Rendering's lane midpoint X-coordinates for dot alignment? Options: a `const` in a shared crate, a `BoardLayout` resource inserted by Board Rendering plugin, or a layout token in `entities.yaml`. Must be resolved before HUD implementation begins. | Board Rendering / Tech Lead | Open |
-| OQ-HUD-05 | **`HudObjectiveUpdate` trigger type definition location.** Should `HudObjectiveUpdate { target_player_id, lane }` (Bevy 0.18 Observer trigger type) be defined in a shared `hud_types` crate, in the Board Rendering crate, or inline in HudPlugin? The trigger type crosses plugin boundaries — both Board Rendering (which calls `commands.trigger(..)`) and HudPlugin (which calls `app.observe(..)`) must reference it. | Tech Lead / Lead Programmer | Open |
+| OQ-HUD-04 | **Scoreboard dot lane alignment source.** HudPlugin reads the session-scoped `BoardLayout` resource inserted by `BoardRenderingPlugin` and uses the BoardLayout-owned lane midpoint/projection helper for dot horizontal centers. Do not define a separate `LANE_MIDPOINT_X` constant, local `[f32; 5]`, or uniform-spacing fallback in HudPlugin. | Board Rendering / Tech Lead | Closed — Resolved 2026-05-02 |
+| OQ-HUD-05 | **`HudObjectiveUpdate` message type definition location.** `HudObjectiveUpdate { target_player_id, lane }` is a client-internal Bevy `Message` defined in the client crate's presentation/UI shared module. It is registered once with `app.add_message::<HudObjectiveUpdate>()`; Board Rendering writes it with `MessageWriter`, and HudPlugin reads it with `MessageReader`. It is not a Lightyear replicated component, not an Observer trigger, and not defined in the workspace `shared/` crate. | Tech Lead / Lead Programmer | Closed — Resolved 2026-05-01 |
