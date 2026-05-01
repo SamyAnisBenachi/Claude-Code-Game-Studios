@@ -51,7 +51,8 @@ source of truth for story status.
   user rule, assume launched unless contradicted. Completed on branch
   `work/hud-005-phase-transitions` at `5061728`; cherry-picked into `main` at
   `9104400`. Worker checks passed; root re-check hit long client compile
-  timeout, not a test failure. Window can be cleared.
+  timeout, not a test failure; story-done committed at `3230dce`. Window can
+  be cleared.
 - BOARD-005 worker: launch prompt issued while CA-005 story-done is active; per
   user rule, assume launched unless contradicted. Initial readiness returned
   NEEDS WORK only because the story embedded manifest version was stale
@@ -72,12 +73,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- HUD-005: Phase Transitions implemented on branch
-  `work/hud-005-phase-transitions` at `5061728`; cherry-picked into `main` at
-  `9104400`. Worker reported `cargo fmt -p client -- --check`,
-  `cargo test -p client --test hud_phase_transitions_test`, full
-  `cargo test -p client`, and `cargo check -p client` passing. Root
-  `git diff --check HEAD~1..HEAD` passed.
 - HAND-UI-003: Phase State Machine implemented on branch
   `work/hand-ui-003-phase-state-machine` at `c6e5504`; cherry-picked into
   `main` at `614e68e`. Worker reported targeted Hand UI tests and
@@ -91,6 +86,9 @@ None currently tracked here.
   `cargo check -p server`, and `git diff --check HEAD~1..HEAD` passed.
 ## Recently Closed
 
+- HUD-005: Phase Transitions implemented on branch
+  `work/hud-005-phase-transitions` at `5061728`; cherry-picked into `main` at
+  `9104400`; story-done committed at `3230dce`.
 - OBJECTIVE-001: Objective State Model implemented locally on branch
   `work/objective-001-state-model` at `0ca676d`; cherry-picked into `main` at
   `38a5489`; story-done committed at `0b847cb`.
@@ -189,15 +187,13 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HUD-005
-2. HAND-UI-003
-3. BOARD-005
+1. HAND-UI-003
+2. BOARD-005
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- HUD-005: implemented and integrated; pending story-done.
 - HAND-UI-003: implemented and integrated; pending story-done.
 - BOARD-005: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
@@ -213,7 +209,7 @@ Batch launched:
 - BOARD-006: `production/epics/board-lane-system/story-006-charge-bonus-movement.md`
 
 No story-done window is currently active in this tracker. The next serialized
-closure is HUD-005.
+closure is HAND-UI-003.
 
 ## Resolved Design Gates
 
