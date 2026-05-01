@@ -1,7 +1,7 @@
 # Story 001: Board Grid Initialization
 
 > **Epic**: Board / Lane System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -30,9 +30,9 @@
 
 *From GDD `design/gdd/board-lane-system.md`, scoped to this story:*
 
-- [ ] **BL-21**: GIVEN a game initialises, WHEN the board is set up, THEN each player has exactly 5 Minion slots (one per lane), all initially empty.
-- [ ] **NEW-001a**: GIVEN the server starts a game session, WHEN the board is initialized, THEN a `BoardGrid` resource exists with exactly 5 lanes and 8 cells per lane (cells numbered 1–8 inclusive, not 0-indexed).
-- [ ] **NEW-001b**: GIVEN the board is initialized, WHEN `BoardConfig` is queried, THEN `player_a_direction = +1i16` and `player_b_direction = -1i16` are accessible for use by the F1 movement formula.
+- [x] **BL-21**: GIVEN a game initialises, WHEN the board is set up, THEN each player has exactly 5 Minion slots (one per lane), all initially empty.
+- [x] **NEW-001a**: GIVEN the server starts a game session, WHEN the board is initialized, THEN a `BoardGrid` resource exists with exactly 5 lanes and 8 cells per lane (cells numbered 1–8 inclusive, not 0-indexed).
+- [x] **NEW-001b**: GIVEN the board is initialized, WHEN `BoardConfig` is queried, THEN `player_a_direction = +1i16` and `player_b_direction = -1i16` are accessible for use by the F1 movement formula.
 
 ---
 
@@ -161,7 +161,7 @@ The `liv-bevy-018` skill is mandatory on all `.rs` files in `server/src/feature/
 **Story Type**: Logic
 **Required evidence**: `tests/unit/board-lane-system/board_grid_initialization_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passed locally with `cargo test -p server --test board_grid_initialization_test`
 
 ---
 
@@ -169,3 +169,11 @@ The `liv-bevy-018` skill is mandatory on all `.rs` files in `server/src/feature/
 
 - Depends on: None
 - Unlocks: Stories 002, 003, 004 (all require BoardConfig and BoardOccupancy resources)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 3/3 passing. BL-21, NEW-001a, and NEW-001b are covered by `tests/unit/board-lane-system/board_grid_initialization_test.rs`.
+**Deviations**: Advisory only: story manifest v2026-04-29 is older than current control manifest v2026-05-01. Advisory only: current `TR-BLS-001` registry text maps primarily to the grid and direction requirements; BL-21 minion-slot initialization remains covered by the GDD acceptance criteria and story-scoped unit test.
+**Test Evidence**: Logic: `tests/unit/board-lane-system/board_grid_initialization_test.rs`; `cargo test -p server --test board_grid_initialization_test` passed 4/4.
+**Code Review**: Skipped - Lean mode.

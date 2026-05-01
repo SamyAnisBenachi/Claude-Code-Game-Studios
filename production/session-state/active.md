@@ -853,3 +853,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `CARD-ANIM-002` entry exists in `production/sprint-status.yaml`; file left unchanged.
 - Next recommended: Continue the serialized story-done queue with BOARD-001, or close CARD-ANIM-004 if staying in Card Animations.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-lane-system/story-001-board-grid-initialization.md` - Board Grid Initialization
+- Criteria: 3/3 passing; BL-21, NEW-001a, and NEW-001b covered by `tests/unit/board-lane-system/board_grid_initialization_test.rs`.
+- Test Evidence: `tests/unit/board-lane-system/board_grid_initialization_test.rs`; `cargo test -p server --test board_grid_initialization_test` passed 4/4.
+- Notes: Advisory only - story manifest v2026-04-29 is older than current control manifest v2026-05-01. Current `TR-BLS-001` registry text maps primarily to grid and direction requirements, while BL-21 remains covered by the GDD acceptance criteria and story-scoped unit test.
+- Tech debt logged: None
+- Sprint status: No `BOARD-001` entry exists in `production/sprint-status.yaml`; file left unchanged.
+- Next recommended: Board Story 002 Standard Unit Movement at `production/epics/board-lane-system/story-002-standard-unit-movement.md` after readiness check.
