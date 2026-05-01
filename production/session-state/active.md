@@ -1027,3 +1027,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `CA-004` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Card Acquisition Story 005 Purchase Flow (`production/epics/card-acquisition/story-005-purchase-flow.md`) after readiness check, or continue the user-directed serialized story-done queue.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-lane-system/story-004-placement-occupancy.md` - Placement Occupancy Enforcement
+- Criteria: 5/5 passing; BL-8, BL-9, BL-29, BL-32, and BL-33 covered by `tests/unit/board-lane-system/placement_occupancy_test.rs`.
+- Test Evidence: `cargo test -p server --test placement_occupancy_test` passed 10/10; board regression tests passed (`board_grid_initialization_test` 4/4, `spawn_range_validation_test` 7/7, `standard_movement_test` 5/5); session regressions passed (`room_create_join_test` 7/7, `class_reveal_test` 8/8); `cargo check -p server` passed.
+- Verification: worker branch `work/BOARD-004-placement-occupancy` contains worker commit `224708d`; main integration commit `0c69612` is included in current `main`. The worker and integration commits have the same stable patch-id.
+- Notes: No blocking GDD or ADR deviation found. Scope note only: implementation also updated board occupancy storage/exports, `SessionConfig`/`GameMode` support, `server/Cargo.toml`, and the board initialization regression test to support the occupancy API and 2v2 team-capacity evidence.
+- Tech debt logged: None
+- Sprint status: No `BOARD-004` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Board Story 005 placement buffer phase integration (`production/epics/board-lane-system/story-005-placement-buffer-phase-integration.md`) after readiness check, or continue the user-directed serialized story-done queue.

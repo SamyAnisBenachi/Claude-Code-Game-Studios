@@ -1,7 +1,7 @@
 # Story 004: Placement Occupancy Enforcement
 
 > **Epic**: Board / Lane System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -155,7 +155,7 @@ Fields per lane are per-player, not per-team. Each player may have one Field per
 **Story Type**: Logic
 **Required evidence**: `tests/unit/board-lane-system/placement_occupancy_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -171,3 +171,17 @@ Fields per lane are per-player, not per-team. Each player may have one Field per
 - 2026-05-01: Revalidated against control manifest version 2026-05-01.
   ADR-007 remains accepted, `TR-BLS-004` remains active, Story 001 is complete,
   and no implementation requirements changed.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 5/5 passing (BL-8, BL-9, BL-29, BL-32, BL-33)
+**Test Evidence**: Logic evidence at `tests/unit/board-lane-system/placement_occupancy_test.rs`; `cargo test -p server --test placement_occupancy_test` passed 10/10.
+**Verification**: `cargo test -p server --test board_grid_initialization_test` passed 4/4; `cargo test -p server --test spawn_range_validation_test` passed 7/7; `cargo test -p server --test standard_movement_test` passed 5/5; `cargo test -p server --test room_create_join_test` passed 7/7; `cargo test -p server --test class_reveal_test` passed 8/8; `cargo check -p server` passed.
+**Implementation**: Worker branch `work/BOARD-004-placement-occupancy` contains worker commit `224708d`; main integration commit `0c69612` is included in current `main`. The worker and integration commits have the same stable patch-id.
+**Deviations**: None blocking. Scope note: implementation also updated `BoardOccupancy` backing storage, board exports, `SessionConfig`/`GameMode` support, `server/Cargo.toml`, and the board initialization regression test to support the occupancy API and 2v2 team-capacity evidence.
+**Code Review**: Skipped - lean mode.
+**Sprint Status**: Unchanged; no `BOARD-004` row exists in `production/sprint-status.yaml`.
