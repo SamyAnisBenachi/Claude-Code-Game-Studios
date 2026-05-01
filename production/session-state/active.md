@@ -799,3 +799,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `S3-05` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
 - Next recommended: all Sprint 3 must-have stories are complete. Continue in-progress S3-08 if pulling should-have work forward, otherwise run `/smoke-check sprint` then `/team-qa sprint`.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-acquisition/story-002-draft-initial.md` - Draft Initial - 9-Card Offering
+- Criteria: 4/4 passing; CA3, CA4, CA5, and CA21 verified against current `main` implementation. Implementation commit `2c6c65b` is included in current HEAD.
+- Test Evidence: `tests/integration/card_acquisition/draft_initial_test.rs`; `cargo test -p server --test card_acquisition_draft_initial_test` passed 5/5 tests.
+- Notes: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01; no blocking drift found. Current `TR-CA-002` maps only CA3/CA4, while the current GDD also contains the CA5 and CA21 criteria closed by this story.
+- Tech debt logged: None
+- Sprint status: No `CA-002` entry exists in `production/sprint-status.yaml`; file left unchanged.
+- Next recommended: Card Acquisition Story 003 (`production/epics/card-acquisition/story-003-draw-pipeline.md`) is ready and unlocks Stories 004 and 005.

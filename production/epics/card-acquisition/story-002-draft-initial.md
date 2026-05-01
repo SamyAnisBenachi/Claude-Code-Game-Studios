@@ -1,7 +1,7 @@
 # Story 002: Draft Initial — 9-Card Offering
 
 > **Epic**: Card Acquisition
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M2)
 > **Type**: Integration
 > **Manifest Version**: 2026-04-30
@@ -32,10 +32,10 @@
 
 *From GDD `design/gdd/card-acquisition.md`, scoped to this story:*
 
-- [ ] **CA3** — GIVEN DRAFT_INITIAL begins, WHEN `draw_initial_draft()` completes and `S2CDraftOffering` is sent, THEN the offering contains exactly 9 distinct card IDs with no duplicates within the 9.
-- [ ] **CA4** — GIVEN a player has 5g at DRAFT_INITIAL and buys one 3g Rare, WHEN the timer expires, THEN the player's gold at round 1 DRAFT start is 2g (5−3 carried over; unused budget is not forfeited).
-- [ ] **CA5** — GIVEN DRAFT_INITIAL is active, WHEN `C2SRefreshShop` is received, THEN server silently discards the message, gold unchanged, `refresh_count_this_draft` unchanged, no S2C error response.
-- [ ] **CA21** — GIVEN DRAFT_INITIAL begins for a 2-player game, WHEN `S2CDraftOffering` is sent, THEN exactly one `S2CDraftOffering` is received by the target player and zero are received by the opponent (unicast verified at network layer).
+- [x] **CA3** — GIVEN DRAFT_INITIAL begins, WHEN `draw_initial_draft()` completes and `S2CDraftOffering` is sent, THEN the offering contains exactly 9 distinct card IDs with no duplicates within the 9.
+- [x] **CA4** — GIVEN a player has 5g at DRAFT_INITIAL and buys one 3g Rare, WHEN the timer expires, THEN the player's gold at round 1 DRAFT start is 2g (5−3 carried over; unused budget is not forfeited).
+- [x] **CA5** — GIVEN DRAFT_INITIAL is active, WHEN `C2SRefreshShop` is received, THEN server silently discards the message, gold unchanged, `refresh_count_this_draft` unchanged, no S2C error response.
+- [x] **CA21** — GIVEN DRAFT_INITIAL begins for a 2-player game, WHEN `S2CDraftOffering` is sent, THEN exactly one `S2CDraftOffering` is received by the target player and zero are received by the opponent (unicast verified at network layer).
 
 ---
 
@@ -112,7 +112,7 @@ ShopRefreshTrigger::DraftInitial => {
 **Story Type**: Integration
 **Required evidence**: `tests/integration/card_acquisition/draft_initial_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Verified locally with `cargo test -p server --test card_acquisition_draft_initial_test`
 
 ---
 
@@ -120,3 +120,11 @@ ShopRefreshTrigger::DraftInitial => {
 
 - Depends on: Story 001 (`state-scaffold`) must be Done — `ShopStates`, `PlayerHands`, `ShopRefreshTriggered` must be defined
 - Unlocks: None directly — Story 004 (refresh cost) also depends on Story 003; Story 005 (purchase) depends on Stories 001 + 003
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 4/4 passing (CA3, CA4, CA5, CA21)
+**Deviations**: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01; no blocking drift found. `TR-CA-002` currently lists CA3/CA4, while this story also closes CA5 and CA21 from the current Card Acquisition GDD.
+**Test Evidence**: Integration evidence at `tests/integration/card_acquisition/draft_initial_test.rs`; `cargo test -p server --test card_acquisition_draft_initial_test` passed 5/5 tests.
+**Code Review**: Skipped - lean review mode; local implementation review found no blocking GDD/ADR deviations.
