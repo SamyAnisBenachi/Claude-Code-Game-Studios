@@ -28,6 +28,8 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
+- BOARD-002 story-done: launch prompt issued after CARD-ANIM-009 closure; per
+  user rule, assume launched unless contradicted.
 - CA-004 worker: completed on branch `work/ca-004-refresh-cost` at `f26f738`;
   cherry-picked into `main` at `5cb53a8`. Window can be cleared.
 - BOARD-004 worker: completed on branch `work/BOARD-004-placement-occupancy`
@@ -205,7 +207,8 @@ Run only one story-done at a time.
 Batch launched:
 - CA-005: `production/epics/card-acquisition/story-005-purchase-flow.md`
 
-The serialized story-done slot is free. Next queued closure is BOARD-002.
+BOARD-002 story-done is the active serialized closure. Do not launch another
+story-done until it returns.
 
 ## Resolved Design Gates
 
