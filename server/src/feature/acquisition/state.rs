@@ -58,6 +58,10 @@ impl ShopStates {
 
 impl PlayerShopState {
     pub fn displays_card(&self, card_id: CardId) -> bool {
+        if self.phase == ShopPhase::DraftInitial {
+            return self.displayed_this_draft.contains(&card_id);
+        }
+
         self.current_slots
             .iter()
             .any(|slot| slot.is_some_and(|displayed| displayed == card_id))

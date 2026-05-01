@@ -54,6 +54,10 @@ name = "card_acquisition_state_scaffold_test"
 path = "../tests/unit/card_acquisition/state_scaffold_test.rs"
 
 [[test]]
+name = "card_acquisition_draft_initial_test"
+path = "../tests/integration/card_acquisition/draft_initial_test.rs"
+
+[[test]]
 name = "keyword_plugin_smoke_test"
 path = "../tests/integration/keyword/plugin_smoke_test.rs"
 

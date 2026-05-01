@@ -16,6 +16,8 @@ pub use messages::{ShopRefreshTrigger, ShopRefreshTriggered};
 pub use plugin::CardAcquisitionPlugin;
 pub use state::{PlayerShopState, ShopPhase, ShopStates};
 pub use system::{
-    apply_shop_refresh_trigger, card_acquisition_tick_system, process_purchase_card,
-    process_refresh_shop_request, CardAcquisitionSet, PurchaseAttemptResult, RefreshAttemptResult,
+    apply_shop_refresh_trigger, build_draft_initial_offering, card_acquisition_tick_system,
+    prepare_draft_offering_dispatch, process_purchase_card, process_refresh_shop_request,
+    CardAcquisitionSet, DraftOfferingDispatch, PurchaseAttemptResult, RefreshAttemptResult,
+    DRAFT_INITIAL_OFFERING_COUNT,
 };
