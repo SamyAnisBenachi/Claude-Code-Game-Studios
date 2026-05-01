@@ -43,6 +43,12 @@ source of truth for story status.
   `work/combat-001-resolve-combat-scaffold` at `311c6f0`; worker push was
   blocked by credentials, so root cherry-picked it into `main` at `01f831e`.
   Window can be cleared.
+- HAND-UI-003 worker: launch prompt issued while CA-005 story-done is active;
+  per user rule, assume launched unless contradicted.
+- HUD-005 worker: launch prompt issued while CA-005 story-done is active; per
+  user rule, assume launched unless contradicted.
+- BOARD-005 worker: launch prompt issued while CA-005 story-done is active; per
+  user rule, assume launched unless contradicted.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -180,7 +186,9 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-None currently active.
+- HAND-UI-003: `production/epics/hand-ui/story-003-phase-state-machine.md`
+- HUD-005: `production/epics/hud/story-005-phase-transitions.md`
+- BOARD-005: `production/epics/board-lane-system/story-005-placement-buffer-phase-integration.md`
 
 CA-005 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
