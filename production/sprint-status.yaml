@@ -128,3 +128,13 @@ stories:
     estimate_days: 1.0
     blocker: ""
     completed: "2026-05-01"
+
+  - id: "KW-001"
+    name: "Keyword System Module Scaffold"
+    file: "production/epics/keyword-system/story-001-module-scaffold.md"
+    priority: must-have
+    status: in-progress
+    owner: "codex-kw-001-keyword-scaffold"
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""

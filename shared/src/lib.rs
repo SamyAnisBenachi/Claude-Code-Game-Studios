@@ -4,5 +4,6 @@
 
 pub mod card;
 pub mod config;
+pub mod keyword;
 pub mod protocol;
 pub mod session;
