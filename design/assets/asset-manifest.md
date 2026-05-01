@@ -1,12 +1,12 @@
 # Asset Manifest
 
-> Last updated: 2026-04-30
+> Last updated: 2026-05-01
 
 ## Progress Summary
 
 | Total | Needed | In Progress | Done | Approved |
 |-------|--------|-------------|------|----------|
-| 93 | 93 | 0 | 0 | 0 |
+| 127 | 127 | 0 | 0 | 0 |
 
 ---
 
@@ -124,3 +124,42 @@
 | ASSET-091 | Phase Transition Tick SFX | Audio | Needed | design/assets/specs/hud-assets.md |
 | ASSET-092 | Scoreboard Dot Darkening Thud SFX | Audio | Needed | design/assets/specs/hud-assets.md |
 | ASSET-093 | GAME_OVER Resolved Chord SFX | Audio | Needed | design/assets/specs/hud-assets.md |
+
+### System: class-system
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-094 | Figurine: Iop | Sprite / 2D Art | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-095 | Figurine: Cra | Sprite / 2D Art | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-096 | Figurine: Sacrier | Sprite / 2D Art | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-097 | Figurine: Xelor | Sprite / 2D Art | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-098 | Figurine: Ecaflip ⚠️ F-CS-1 | Sprite / 2D Art | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-099 | Figurine: Sadida ⚠️ F-CS-1 | Sprite / 2D Art | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-100 | Token Sprite: Mummy / Momie (Xelor) | Sprite / 2D Art | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-101 | Token Sprite: Chacha Noir (Ecaflip) ⚠️ F-CS-1 | Sprite / 2D Art | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-102 | Token Sprite: Madoll / La Folle (Sadida) ⚠️ F-CS-1 | Sprite / 2D Art | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-103 | Token Sprite: La Gonflable (Sadida) ⚠️ F-CS-1 | Sprite / 2D Art | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-104 | Token Sprite: La Sacrifiée (Sadida) ⚠️ F-CS-1 | Sprite / 2D Art | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-105 | Graine / Seed Cell Floor Marker (Sadida) ⚠️ F-CS-1 | Environment | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-106 | Class Icon: Iop | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-107 | Class Icon: Cra | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-108 | Class Icon: Sacrier | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-109 | Class Icon: Xelor | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-110 | Class Icon: Ecaflip ⚠️ F-CS-1 | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-111 | Class Icon: Sadida ⚠️ F-CS-1 | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-112 | Class Picker Panel Background ⚠️ F-CS-3 | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-113 | Class Option Tile (reusable frame) | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-114 | Class Locked Indicator Badge | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-115 | "Waiting for Opponent" Placeholder Tile | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-116 | Sinistro Objective Indicator Icon | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-117 | Garde-Temps Exhausted Badge | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-118 | Reserve Insufficient Indicator Glyph | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-119 | Rollback Zero-Reserve Inline Warning ⚠️ F-CS-4 | UI | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-120 | Sang Méprise Reveal Marker — Real variant | VFX / Particles | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-121 | Sang Méprise Reveal Marker — Fake variant | VFX / Particles | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-122 | Xelorium Drain Flash | VFX / Particles | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-123 | Class Select Hover SFX | Audio | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-124 | Class Confirm / Ready SFX | Audio | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-125 | Opponent Class Reveal SFX | Audio | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-126 | Reserve Gain SFX | Audio | Needed | design/assets/specs/class-system-assets.md |
+| ASSET-127 | Ready Retract SFX | Audio | Needed | design/assets/specs/class-system-assets.md |

@@ -6,18 +6,18 @@ goal: "Complete the remaining Core Sprint B backbone: lobby/class flow, RSM time
 start: "2026-05-28"
 end: "2026-06-10"
 generated: "2026-04-30"
-updated: "2026-04-30"
+updated: "2026-05-01"
 
 stories:
   - id: "S3-01"
     name: "GSS Story 1: Lobby Scaffold"
     file: "production/epics/game-session-system/story-001-lobby-scaffold.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: "claude-s3-01-gss-lobby"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-01"
 
   - id: "S3-02"
     name: "GSS Story 2: Room Create and Join"
@@ -113,18 +113,18 @@ stories:
     name: "Class Lifecycle / PlayerSessions Scaffold"
     file: "production/epics/class-system/story-001-class-lifecycle.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: "claude-cs-001-class-lifecycle"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-01"
 
   - id: "AUC-001"
     name: "AuctionState Types & Snapshot Scaffold"
     file: "production/epics/auction-system/story-001-auction-state-scaffold.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: "claude-auc-001-auction-state"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-01"

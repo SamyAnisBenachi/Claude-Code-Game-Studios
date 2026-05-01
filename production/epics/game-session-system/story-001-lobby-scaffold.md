@@ -1,7 +1,7 @@
 # Story 001: Lobby Scaffold
 
 > **Epic**: Game Session System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Config/Data
 > **Manifest Version**: 2026-04-29
@@ -26,7 +26,7 @@
 
 ## Acceptance Criteria
 
-- [ ] `server/src/core/session/state.rs` exists and contains all of the following:
+- [x] `server/src/core/session/state.rs` exists and contains all of the following:
   - `SessionSlot { index: u8, team: TeamId, player: Option<PlayerId>, class: Option<ClassId> }` — derives `Debug, Clone, PartialEq`
   - `LobbyState` enum with exactly 5 variants: `LobbyWaiting`, `LobbyReady`, `GameActive`, `LobbyCancelled`, `GameOver` — derives `Debug, Clone, PartialEq, Resource`
   - `SessionId(Uuid)` newtype — derives `Debug, Clone, Copy, PartialEq, Eq, Hash`
@@ -36,20 +36,20 @@
   - `ClassSelections(HashMap<PlayerId, ClassId>)` newtype resource — derives `Debug, Resource`
   - `LobbyDeadline(f64)` newtype resource — derives `Debug, Clone, Copy, Resource`
   - `LobbyHeartbeats(HashMap<PlayerId, f64>)` newtype resource — derives `Debug, Resource`
-- [ ] `server/src/core/session/config.rs` exists and contains:
+- [x] `server/src/core/session/config.rs` exists and contains:
   - `SessionConfig { mode: GameMode, player_count: u8, team_map: HashMap<PlayerId, TeamId>, class_map: HashMap<PlayerId, ClassId> }` — derives `Debug, Clone, Resource`
   - `build_session_config(slots: &SessionSlots, selections: &ClassSelections) -> SessionConfig` — panics if any occupied slot has `class = None`
-- [ ] `server/src/core/session/events.rs` exists and contains:
+- [x] `server/src/core/session/events.rs` exists and contains:
   - `SessionReady` zero-sized struct — `#[derive(Event)]` — doc comment explicitly states: "DELIVERY: Observer trigger (same-frame). NOT a buffered Event. Subscribe via `app.observe(on_session_ready)`. Adding `EventReader<SessionReady>` will silently never fire."
   - `SessionCancelled { reason: SessionCancelledReason }` — `#[derive(Event)]`
   - `SessionCancelledReason` enum with at least: `PlayerDisconnected`, `HeartbeatTimeout`, `LobbyTimeout`, `RngInitFailure` variants
-- [ ] `server/src/core/session/plugin.rs` exists and contains a skeleton `GameSessionPlugin` struct with `impl Plugin for GameSessionPlugin` that compiles (systems can be empty stubs in this story)
-- [ ] `server/src/core/session/mod.rs` exists and re-exports `state`, `config`, `events`, `plugin`
-- [ ] `build_session_config` panics with a descriptive message when called with a slot that has `player = Some(_)` but `class = None`
-- [ ] `build_session_config` sets `player_count` equal to the number of occupied slots (those with `player = Some(_)`)
-- [ ] `SessionReady` doc comment is present and contains the literal text "EventReader<SessionReady> will silently never fire" (CI grep gate)
-- [ ] `cargo check -p server` passes with zero warnings on all new files
-- [ ] Smoke test in `tests/unit/session/scaffold_test.rs` passes: constructs each new type, verifies `LobbyState::LobbyWaiting != LobbyState::GameActive`, calls `build_session_config` with a valid two-slot setup and asserts `player_count == 2`
+- [x] `server/src/core/session/plugin.rs` exists and contains a skeleton `GameSessionPlugin` struct with `impl Plugin for GameSessionPlugin` that compiles (systems can be empty stubs in this story)
+- [x] `server/src/core/session/mod.rs` exists and re-exports `state`, `config`, `events`, `plugin`
+- [x] `build_session_config` panics with a descriptive message when called with a slot that has `player = Some(_)` but `class = None`
+- [x] `build_session_config` sets `player_count` equal to the number of occupied slots (those with `player = Some(_)`)
+- [x] `SessionReady` doc comment is present and contains the literal text "EventReader<SessionReady> will silently never fire" (CI grep gate)
+- [x] `cargo check -p server` passes with zero warnings on all new files
+- [x] Smoke test in `tests/unit/session/scaffold_test.rs` passes: constructs each new type, verifies `LobbyState::LobbyWaiting != LobbyState::GameActive`, calls `build_session_config` with a valid two-slot setup and asserts `player_count == 2`
 
 ---
 
@@ -116,7 +116,7 @@
 
 **Story Type**: Config/Data
 **Required evidence**: `tests/unit/session/scaffold_test.rs` — all smoke checks passing; `cargo check -p server` output showing zero warnings
-**Status**: [ ] Not yet created
+**Status**: [x] Complete. Evidence pointer exists at `tests/unit/session/scaffold_test.rs`; executable test is crate-wired at `server/tests/session_scaffold_test.rs`.
 
 ---
 
@@ -125,3 +125,11 @@
 - Depends on: `workspace-and-shared-types` Story 004 (protocol skeleton — `PlayerId`, `ClassId`, `TeamId`, `GameMode`, `SessionId` types)
 - Depends on: `game-config-pipeline` (all tuning knobs read from `Res<GameConfig>` — GameConfig struct must exist before plugin compiles)
 - Unlocks: Stories 002, 003, 004, 005, 006, 007 (all depend on the types defined here)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 10/10 passing
+**Deviations**: Advisory only -- story manifest version 2026-04-29 is older than current control manifest version 2026-05-01. Test evidence is split between `tests/unit/session/scaffold_test.rs` (evidence pointer) and `server/tests/session_scaffold_test.rs` (executable Cargo test). `cargo check -p server` passes; current warnings are pre-existing outside the S3-01 session scaffold files.
+**Test Evidence**: `cargo test -p server --test session_scaffold_test` passed locally (9/9); `cargo check -p server` passed locally; GitHub Actions run `25194696023` passed for commit `17e3fc352ad1f843daafba4fa8ac484847311f9e`.
+**Code Review**: Skipped -- Lean mode.

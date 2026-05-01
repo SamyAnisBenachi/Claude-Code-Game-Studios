@@ -1,7 +1,7 @@
-# Story 016: Displacement Keywords — REPEL + ATTRACT + TELEPORT + CHANGE LANE
+# Story 016: Displacement Keywords (CHARGE X, REPEL, ATTRACT, TELEPORT, CHANGE LANE)
 
 > **Epic**: Keyword System
-> **Status**: Ready
+> **Status**: Blocked
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -9,23 +9,33 @@
 ## Context
 
 **GDD**: `design/gdd/keyword-system.md`
-**Requirement**: TR-KW-002 (CHARGE X bonus movement at SS2); TR-KW-??? (REPEL X — untraced); TR-KW-??? (ATTRACT X — untraced); TR-KW-??? (TELEPORT — untraced); TR-KW-??? (CHANGE LANE — untraced)
-*(Run `/architecture-review` to register REPEL, ATTRACT, TELEPORT, CHANGE LANE TRs)*
+**Requirement**: `TR-KW-002` — CHARGE X bonus movement applied at sub-step 2; cells parameter clamped per Board/Lane F1. `TR-KW-???` — REPEL, ATTRACT, TELEPORT, and CHANGE LANE effect dispatchers have no registered TR-ID. Run `/architecture-review` to register missing TRs before marking this story Done.
+*(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)*
 
-**ADR Governing Implementation**: ADR-018 (effects.rs, movement.rs)
-**ADR Decision Summary**: `apply_repel()` and `apply_attract()` call the pure `repel_destination()` / `attract_destination()` formulas from `movement.rs` (Story 002), then handle IRREMOVABLE check, `DisplacementEvent` emission, and Trap traversal hooks (Trap traversal calls are stubs pending OQ-KS4). TELEPORT: no APPEARANCE, no COUNTERATTACK, co-occupation allowed. CHANGE LANE: rejected silently if destination lane has friendly Minion.
+**ADR Governing Implementation**: ADR-018 (Keyword System — ECS State Architecture, `effects.rs` and `movement.rs` sections)
+**ADR Decision Summary**: Displacement effect functions live in `server/feature/keyword/effects.rs` and are called by `server/feature/combat/` as plain function calls. Pure formula functions (`repel_destination`, `attract_destination`) live in `movement.rs` and are tested in Story 002. This story implements the effect callers: `apply_repel`, `apply_attract`, `apply_teleport`, `apply_change_lane`, and CHARGE X's SS2 execution. `check_irremovable()` (Story 007) is called before any displacement.
 
-**BLOCKED**: ADR-018 Proposed. Story 001 (scaffold), Story 002 (movement formulas), and Story 007 (IRREMOVABLE check) must be Done.
-KW-033b additionally BLOCKED pending ADR-005 `strich_change_lane_select` seed slot registration.
-KW-051/KW-052 additionally BLOCKED pending OQ-KS4 Trap design completion.
+**BLOCKED**: ADR-018 is Proposed — advance to Accepted before opening. Stories 001 (scaffold — stubs all effect functions), 002 (movement formula pure functions), and 007 (IRREMOVABLE — `check_irremovable` must be callable) must be Done.
+
+> ⚠️ **KW-033b is permanently BLOCKED** until `strich_change_lane_select` seed slot is registered in ADR-005 RNG consumption order table. Do not attempt to implement KW-033b.
+
+> ⚠️ **KW-051 and KW-052 are BLOCKED** until OQ-KS4 (Trap design) is resolved. Trap card design spec must be authored and Trap behavior defined in `card-data-pool.md` before these ACs can be implemented.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
-**Engine Notes**: Displacement effects modify board position data (cell + lane) — coordinate with board-lane-system epic's position update API. CHANGE LANE lane-slot validation requires reading board occupancy from `BoardState` resource.
+**Engine Notes**:
+- `apply_repel/apply_attract/apply_teleport` take `world: &mut World` (exclusive system access per ADR-017)
+- `apply_change_lane` queries `BoardState` for lane-slot availability before moving
+- Strich CHANGE LANE: triggered from `on_unit_appeared` observer when enemy enters Strich's lane in SS1
+- CHARGE X in SS2: called inline from `resolve_combat`'s SS2 pass for each unit with `ChargeXMove { cells }` keyword (not STUNned, not summoning-sickness-blocked)
 
 **Control Manifest Rules (Feature layer)**:
-- Required: All randomness (Strich lane selection) must use server-side seeded RNG via `ServerRng` resource (ADR-005)
-- Required: REPEL 0 and ATTRACT 0 are forbidden by card authoring rule — server silently skips if `x == 0` (no DisplacementEvent emitted)
-- Forbidden: Never trigger APPEARANCE on TELEPORTed unit — TELEPORT is NOT a board entry from PlacementBuffer (ADR-007)
+- Required: Call `check_irremovable(target, world)` before any `apply_repel`, `apply_attract`, or `apply_teleport` — if IRREMOVABLE, emit `DisplacementEvent { was_blocked: true }` and return (Story 007)
+- Required: CHARGE X applies F1 formula with WALL-blocking and collision rules identical to SS5
+- Required: ATTRACT enemy target: apply 1-cell-apart collision rule (`effective_pull = min(X, max(0, |caster_cell − target_cell| − 1))`) — enemy stops 1 cell short of caster (GDD Formula 2 enemy-target branch)
+- Required: TELEPORT bypasses spawn-range restrictions and 1-cell-apart collision rule; co-occupation allowed
+- Forbidden: Never trigger APPEARANCE or COUNTERATTACK from TELEPORT (GDD)
+- Forbidden: Never allow CHANGE LANE to a lane that already has a friendly Minion — silent no-op (KW-032)
+- Forbidden: Never use `strich_change_lane_select` seed slot until registered in ADR-005 (KW-033b BLOCKED)
 
 ---
 
@@ -33,138 +43,110 @@ KW-051/KW-052 additionally BLOCKED pending OQ-KS4 Trap design completion.
 
 *From GDD `design/gdd/keyword-system.md` Acceptance Criteria:*
 
-- [ ] KW-028: GIVEN a unit with CHARGE 2 is in a lane where an enemy WALL is 1 cell ahead, WHEN SS2 resolves, THEN the unit is blocked at the WALL's cell and does not pass through it (CHARGE X uses same WALL-blocking and collision rules as SS5)
-- [ ] KW-029a: GIVEN Player A unit at Cell 2 is REPELled 3 cells, WHEN `repel_destination` resolves, THEN unit lands at Cell 1 (clamped); `DisplacementEvent { from_cell: 2, to_cell: 1, kind: Repel }` emitted
-- [ ] KW-029b: GIVEN WALL unit at Cell 5 is REPELled 2 cells toward Cell 8, WHEN REPEL resolves, THEN WALL moves to Cell 7; `DisplacementEvent { from_cell: 5, to_cell: 7 }` emitted
-- [ ] KW-030: GIVEN caster at Cell 3, target at Cell 7, ATTRACT 4, WHEN ATTRACT resolves, THEN target lands at Cell 3; `DisplacementEvent { from_cell: 7, to_cell: 3 }` emitted
-- [ ] KW-031a: GIVEN a unit is TELEPORTed to a cell occupied by an enemy unit, WHEN TELEPORT resolves, THEN no APPEARANCE trigger fires on the teleported unit
-- [ ] KW-031b: GIVEN a unit is TELEPORTed to a cell occupied by an enemy unit, WHEN TELEPORT resolves, THEN no COUNTERATTACK fires from the enemy unit at that cell
-- [ ] KW-032: GIVEN a unit attempts CHANGE LANE to an adjacent lane that already has a friendly Minion, WHEN CHANGE LANE resolves, THEN the lane change does not execute; unit remains in current lane; no error state created
-- [ ] KW-033a: GIVEN Strich in Lane 3; exactly one adjacent lane valid; enemy enters Lane 3 in SS1, WHEN SS1 resolves, THEN Strich automatically executes CHANGE LANE to the only valid adjacent lane
-- [ ] KW-033c: GIVEN Strich in Lane 3; both adjacent lanes (Lane 2, Lane 4) have friendly Minions, WHEN enemy enters Lane 3 in SS1, THEN CHANGE LANE rejected silently; Strich stays in Lane 3
-- [ ] KW-041: GIVEN Player A uses ATTRACT to pull a Player B unit to Player A's Cell 1, WHEN SS6 objective damage resolves, THEN Player A's objective HP decreases by the Player B unit's ATK (ATTRACT does not grant immunity from backfire positioning)
-- [ ] `DisplacementEvent { was_blocked: true }` emitted for IRREMOVABLE units (no position change; client plays Void flash)
-- [ ] REPEL 0 and ATTRACT 0: server silently skips (no effect, no DisplacementEvent emitted)
+### CHARGE X (SS2)
+- [ ] KW-028: GIVEN a unit with CHARGE 2 is in a lane where an enemy WALL is 1 cell ahead, WHEN SS2 resolves, THEN the unit is blocked at the WALL's cell and does not pass through it; the same WALL-blocking and collision rules as SS5 apply to CHARGE X movement
 
-> **BLOCKED ACs** (annotated — do not implement until gates resolve):
-> - KW-033b: Strich both-lanes-valid RNG — BLOCKED until `strich_change_lane_select` seed slot registered in ADR-005
-> - KW-051: REPEL through Trap lethal — BLOCKED until OQ-KS4 Trap design completed
-> - KW-052: ATTRACT through Trap lethal — BLOCKED until OQ-KS4 Trap design completed
+### REPEL (effect application — pure formula tested in Story 002)
+- [ ] KW-029c / KW-067: GIVEN a Player A unit at Cell 1 is REPELled 6 cells (maximum X), WHEN `apply_repel` resolves, THEN destination = `clamp(1 + (−1)×6, 1, 8) = 1`; unit stays at Cell 1; zero intermediate cells traversed (no Trap triggers at Cell 1 itself); KW-067 is the R3 reinforcement of this rule — one test satisfies both
+- [ ] KW-029d: GIVEN a Player B unit at Cell 8 is REPELled 6 cells, WHEN `apply_repel` resolves, THEN destination = `clamp(8 + (+1)×6, 1, 8) = 8`; unit stays at Cell 8; zero intermediate cells traversed
+- [ ] **KW-051 — BLOCKED until OQ-KS4 (Trap design) resolved**: GIVEN a unit is REPELled through a cell containing a lethal Trap, displacement halts at Trap cell; unit dies at Trap cell. Do not implement until Trap behavior is defined in `card-data-pool.md`.
+
+### ATTRACT (effect application — enemy target collision rule, not covered in Story 002)
+- [ ] KW-030b / KW-068: GIVEN Player A caster at Cell 3 ATTRACTs an enemy (Player B) target at Cell 7 with ATTRACT 6, WHEN `apply_attract` resolves (enemy target branch), THEN `effective_pull = min(6, max(0, |3−7|−1)) = min(6, 3) = 3`; enemy target lands at Cell 4 (1 cell short of caster — collision rule enforced); KW-068 tests the same rule with different numbers — one implementation satisfies both
+- [ ] **KW-052 — BLOCKED until OQ-KS4 (Trap design) resolved**: GIVEN a unit is ATTRACTed through a Trap cell, displacement halts at Trap cell. Do not implement until Trap behavior is defined.
+
+### TELEPORT
+- [ ] KW-031a: GIVEN a unit is TELEPORTed to a cell occupied by an enemy unit, WHEN TELEPORT resolves, THEN no APPEARANCE trigger fires for the teleported unit — TELEPORT is not a board entry from PlacementBuffer
+- [ ] KW-031b: GIVEN a unit is TELEPORTed to a cell occupied by an enemy unit, WHEN TELEPORT resolves, THEN no COUNTERATTACK fires from the unit at the destination — TELEPORT does not constitute a melee attack
+
+### CHANGE LANE
+- [ ] KW-032: GIVEN a unit attempts CHANGE LANE to an adjacent lane that already has a friendly Minion, WHEN CHANGE LANE resolves, THEN the lane change does NOT execute; unit remains in current lane; no error state; no network event emitted (silent no-op)
+- [ ] KW-033a: GIVEN Strich is in Lane 3; exactly one adjacent lane (Lane 2 or Lane 4) is valid (the other is full with a friendly Minion), WHEN an enemy unit enters Lane 3 in SS1, THEN Strich automatically executes CHANGE LANE to the only valid adjacent lane
+- [ ] **KW-033b — PERMANENTLY BLOCKED**: requires `strich_change_lane_select` seed slot registered in ADR-005. Do not implement.
+- [ ] KW-033c: GIVEN Strich is in Lane 3; both adjacent lanes (Lane 2 and Lane 4) already contain a friendly Minion, WHEN an enemy unit enters Lane 3 in SS1, THEN CHANGE LANE is rejected; Strich remains in Lane 3; no error state
 
 ---
 
 ## Implementation Notes
 
-*Derived from ADR-018 effects.rs, movement.rs, and GDD Movement Keyword Catalog:*
+*Derived from ADR-018 effects.rs interface and GDD Movement Keyword Catalog:*
 
-**apply_repel (effects.rs):**
+**CHARGE X execution (SS2 inline):**
 ```rust
-pub fn apply_repel(target: Entity, distance: u8, owner: PlayerSide, world: &mut World) -> u8 {
-    if distance == 0 { return current_cell; } // card authoring rule: REPEL 0 no-op
-    if keyword::effects::check_irremovable(target, world) {
-        emit_displacement_event(target, DisplacementKind::Repel, current_cell, current_cell, true, world);
-        return current_cell;
-    }
-    let dest = keyword::movement::repel_destination(current_cell, owner, distance);
-    // TODO (OQ-KS4): iterate intermediate cells for Trap triggers
-    update_unit_position(target, dest, world);
-    emit_displacement_event(target, DisplacementKind::Repel, current_cell, dest, false, world);
-    dest
-}
+// In execute_ss2(world): for each unit with ChargeXMove { cells } not STUNned/sickness-blocked:
+let dest = board_f1_formula(current_cell, advance_dir, charge_cells);
+apply_movement_with_wall_check(unit, dest, world);  // same WALL logic as SS5
 ```
 
-**apply_attract (effects.rs) — same pattern with attract_destination.**
-
-**apply_teleport (effects.rs):**
-- No IRREMOVABLE check override (IRREMOVABLE blocks; same `check_irremovable()` call)
-- No APPEARANCE trigger (TELEPORT ≠ board entry from PlacementBuffer)
-- No COUNTERATTACK trigger at destination (TELEPORT is not a melee advance)
-- Cross-lane TELEPORT allowed only if card text specifies destination lane
-- Co-occupation allowed at destination cell
-- Spawn-range restrictions do NOT apply (PLACEMENT rule only)
-
-**apply_change_lane (effects.rs):**
+**apply_attract — enemy vs friendly branch (KW-030b):**
 ```rust
-pub fn apply_change_lane(unit: Entity, target_lane: u8, world: &mut World) -> bool {
-    // 1. Check destination lane for friendly Minion occupancy (BoardState query)
-    let occupied = board_state_has_friendly_minion(target_lane, unit_owner, world);
-    if occupied { return false; } // rejected silently
-    // 2. Update unit lane (not cell — same cell, different lane)
-    update_unit_lane(unit, target_lane, world);
-    true
-}
+let dest = if target_owner == caster_owner {
+    // Friendly: full pull, co-occupation allowed
+    movement::attract_destination(caster_cell, target_cell, distance)
+} else {
+    // Enemy: 1-cell-apart collision rule
+    let adj_dist = distance.min(target_cell.abs_diff(caster_cell).saturating_sub(1));
+    movement::attract_destination(caster_cell, target_cell, adj_dist)
+};
 ```
 
-**CHARGE X (SS2) — same blocking rules as SS5 (KW-028):**
-- CHARGE X advance in SS2 uses same cell-by-cell movement logic as SS5
-- WALL collision halts CHARGE X advance at WALL's cell
-- STUN suppresses CHARGE X (checked before SS2 execution)
+**apply_teleport — no APPEARANCE, no COUNTERATTACK (KW-031a/b):**
+No `world.trigger_targets(UnitAppeared, ..)` call. No `check_and_apply_counterattack` at destination. Set position directly. Co-occupation allowed.
 
-**Strich auto-CHANGE LANE (KW-033a/c):**
-- Triggered when enemy unit enters Strich's lane in SS1 (via APPEARANCE event)
-- Check adjacent lanes: if 0 valid → rejected (KW-033c); if 1 valid → change to it (KW-033a); if 2 valid → use `strich_change_lane_select` RNG (KW-033b — BLOCKED)
+**apply_change_lane — slot validation (KW-032):**
+```rust
+if board::api::lane_has_friendly_minion(dest_lane, owner, world) { return false; }
+board::api::move_unit_to_lane(unit, dest_lane, world);
+```
 
-**ATTRACT backfire (KW-041):**
-- No special handling needed — unit position updated to Player A's Cell 1 by `apply_attract()`
-- SS6 objective damage logic in combat-resolution epic reads unit positions at SS6; unit at Cell 1 (Player A's side) will trigger objective damage for Player A
-- No immunity granted by being displaced there
+**Strich CHANGE LANE (KW-033a/c) — called from on_unit_appeared:**
+Count valid adjacent lanes (lane ± 1 without friendly Minion). If 1 valid: call `apply_change_lane`. If 0: no-op. If 2: BLOCKED (KW-033b).
 
 ---
 
 ## Out of Scope
 
-- KW-033b: Strich + RNG tie-break — BLOCKED (annotated above)
-- KW-051, KW-052: REPEL/ATTRACT Trap traversal lethal — BLOCKED (Trap traversal stub exists; full implementation after OQ-KS4)
-- Story 002: repel_destination() and attract_destination() pure functions (called from here)
-- Story 007: check_irremovable() (called from here)
+- Story 002: `repel_destination()` and `attract_destination()` pure function tests (KW-029a/b, KW-030a)
+- Story 007: `check_irremovable()` implementation
+- KW-033b: PERMANENTLY BLOCKED (strich_change_lane_select seed slot pending ADR-005)
+- KW-051/KW-052: BLOCKED until OQ-KS4 Trap design resolved
 
 ---
 
 ## QA Test Cases
 
-- **AC-1**: KW-028 — CHARGE X blocked by WALL in SS2
-  - Given: unit with CHARGE 2 at Cell 1; WALL at Cell 2
-  - When: SS2 executes
-  - Then: unit halted at Cell 2 (WALL's cell); CHARGE X advance stops; no SS2 pass-through
-  - Edge cases: CHARGE X beyond WALL range still halts at WALL
+*Automated test specs (Logic story):*
 
-- **AC-2**: KW-029a/b — REPEL displacement + DisplacementEvent
-  - Given: Player A unit at Cell 2; REPEL 3 effect (target_owner=PlayerA, advance_dir=+1, negated=-1)
-  - When: apply_repel executes
-  - Then: unit moves to Cell 1; `DisplacementEvent { from_cell: 2, to_cell: 1, kind: Repel, was_blocked: false }` emitted
+- **KW-028**: CHARGE X blocked by WALL
+  - Given: Player A unit (CHARGE 2) at Cell 2; Player B WALL at Cell 3; advance_dir = +1
+  - When: SS2 CHARGE X movement runs (attempting Cell 4)
+  - Then: unit stops at Cell 3 (WALL cell); WALL not displaced; CHARGE X did not overshoot
 
-- **AC-3**: KW-030 — ATTRACT displacement
-  - Given: caster at Cell 3; target (PlayerB) at Cell 7; ATTRACT 4
-  - When: apply_attract executes
-  - Then: target moves to Cell 3; `DisplacementEvent { from_cell: 7, to_cell: 3, kind: Attract }` emitted
+- **KW-029c/d**: REPEL clamping at board edges
+  - Given: Player A unit at Cell 1; REPEL 6 by Player B
+  - When: `apply_repel` runs
+  - Then: dest = Cell 1 (clamped); unit position unchanged; zero intermediate cells; `DisplacementEvent { from_cell: 1, to_cell: 1 }` emitted (or no event if no movement)
+  - Edge cases: Player B at Cell 8, REPEL 6 → same result (Cell 8)
 
-- **AC-4**: KW-031a — TELEPORT does not trigger APPEARANCE
-  - Given: unit TELEPORTed to enemy-occupied Cell 5
-  - When: apply_teleport executes
-  - Then: unit position updated; no `UnitAppeared` event fired; no APPEARANCE effect triggered
-  - Edge cases: unit entering via PlacementBuffer in SS1 DOES trigger APPEARANCE — TELEPORT explicitly does not
+- **KW-030b**: ATTRACT enemy stops 1 cell short
+  - Given: Player A caster at Cell 3; Player B enemy at Cell 7; ATTRACT 6
+  - When: `apply_attract` runs (enemy branch)
+  - Then: `adjusted_dist = min(6, max(0, 4-1)) = 3`; enemy lands at Cell 4 (not Cell 3); `DisplacementEvent { from_cell: 7, to_cell: 4 }` emitted
 
-- **AC-5**: KW-031b — TELEPORT does not trigger COUNTERATTACK
-  - Given: COUNTERATTACK unit at Cell 5; another unit TELEPORTed to Cell 5
-  - When: apply_teleport executes
-  - Then: COUNTERATTACK does NOT fire; no proximity contact via melee advance occurred
-  - Edge cases: `check_and_apply_counterattack()` must NOT be called by apply_teleport
+- **KW-031a/b**: TELEPORT — no APPEARANCE, no COUNTERATTACK
+  - Given: Player A unit teleported to Cell 5; Player B unit (COUNTERATTACK) already at Cell 5
+  - When: `apply_teleport` runs
+  - Then: no `UnitAppeared` event fired for teleporting unit; no COUNTERATTACK fired from Player B unit; both units now at Cell 5
 
-- **AC-6**: KW-032 — CHANGE LANE rejected if destination full
-  - Given: unit in Lane 3; Lane 2 already has a friendly Minion
-  - When: apply_change_lane(unit, lane=2) called
-  - Then: returns false; unit stays in Lane 3; no position update; no error emitted
+- **KW-032**: CHANGE LANE rejected if lane full
+  - Given: Player A unit in Lane 2 attempting CHANGE LANE to Lane 3; friendly Minion already in Lane 3
+  - When: `apply_change_lane(unit, Lane 3)` runs
+  - Then: returns false; unit still in Lane 2; board state unchanged
 
-- **AC-7**: KW-033a — Strich auto-CHANGE LANE (one valid adjacent lane)
-  - Given: Strich in Lane 3; Lane 2 valid (no friendly Minion); Lane 4 occupied (friendly Minion); enemy enters Lane 3 in SS1
-  - When: SS1 resolves
-  - Then: Strich moves to Lane 2; `apply_change_lane(strich, lane=2)` returns true
-
-- **AC-8**: KW-041 — ATTRACT backfire (no immunity)
-  - Given: Player A ATTRACT pulls Player B unit to Player A's Cell 1
-  - When: SS6 objective damage resolves
-  - Then: Player A's objective HP decremented by Player B unit's net ATK value
-  - Edge cases: intentional design — no special immunity granted by displacement
+- **KW-033a**: Strich CHANGE LANE to only valid adjacent lane
+  - Given: Strich in Lane 3; Lane 2 full; Lane 4 empty; enemy unit enters Lane 3 in SS1
+  - When: `on_unit_appeared` fires; Strich CHANGE LANE check runs
+  - Then: `apply_change_lane(strich, Lane 4)` succeeds; Strich now in Lane 4
 
 ---
 
@@ -179,10 +161,5 @@ pub fn apply_change_lane(unit: Entity, target_lane: u8, world: &mut World) -> bo
 
 ## Dependencies
 
-- Depends on: Story 001 (scaffold), Story 002 (movement formulas — repel/attract_destination), Story 007 (IRREMOVABLE check — check_irremovable)
-- Depends on: board-lane-system epic (position update API, BoardState lane occupancy)
-- Unlocks: Story 010 (BODYGUARD bond survives CHANGE LANE — KW-053 test)
-
-**Permanently BLOCKED sub-stories:**
-- KW-033b: awaiting ADR-005 `strich_change_lane_select` seed slot
-- KW-051/052: awaiting OQ-KS4 Trap design
+- Depends on: Story 001 (scaffold), Story 002 (movement formula pure functions), Story 007 (IRREMOVABLE) must be Done
+- Unlocks: Story 017 (FIRST STRIKE × WALL uses displacement-adjacent movement path)

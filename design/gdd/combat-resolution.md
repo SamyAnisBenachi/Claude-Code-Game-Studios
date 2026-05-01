@@ -535,7 +535,7 @@ All indicators attach to the unit entity (survive movement). They must never ani
 | LEADER | Arcane Gold crown glyph, 8×8px | Above unit head |
 | LEADER family buff | Arcane Gold 20% opacity base ring tint on buffed allies | On base ring |
 | SILENCE | Outline desaturates Void → grey `#666666` | Unit outline |
-| OUTNUMBERED | Crimson Slate arrow-down on player's lane-line side | Lane edge (per lane) |
+| OUTNUMBERED | Crimson Slate arrow-down glyph | Per-unit (on each unit carrying OUTNUMBERED keyword), reading from global board-count boolean |
 
 LEADER bonus tint fades over 300ms after LEADER dies — the bonus persists this round per rules, so the fading tint correctly shows "bonus outlasted its source."
 

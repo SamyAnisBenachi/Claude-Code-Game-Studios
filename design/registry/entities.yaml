@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-05-01"  # /consistency-check run — all registry entries verified against all GDDs; no new conflicts detected; all prior fixes (PS-22, garde_temps_gate, garde_temps_per_game_cap) confirmed present in HEAD
+last_updated: "2026-05-01"  # /consistency-check run — LEADER snapshot post-SS1 conflict resolved (CR synced to KS R3); OUTNUMBERED visual per-unit (OQ-KS5 closed); outnumbered formula referenced_by gap closed (combat-resolution.md added)
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.

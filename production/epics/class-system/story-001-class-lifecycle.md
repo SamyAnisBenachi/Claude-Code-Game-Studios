@@ -1,7 +1,7 @@
 # Story 001: Class Lifecycle — PlayerSessions Scaffold
 
 > **Epic**: Class System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -34,9 +34,9 @@
 
 *From GDD `design/gdd/class-system.md`, scoped to this story:*
 
-- [ ] **CS-AC-01** GIVEN a lobby with two players, WHEN Player A selects Xelor and clicks Ready, THEN Player A's `class` field is locked to `Xelor` on the server and subsequent class-change messages from Player A are rejected.
-- [ ] **CS-AC-02** GIVEN both players have locked their class, WHEN the RSM transitions LOBBY → DRAFT_INITIAL, THEN every active player's `class` field is `Some(C)` — no player may have `class = None` (`ClassId::Neutral`).
-- [ ] **CS-AC-03a** GIVEN both players' classes are locked and the RSM has transitioned to DRAFT_INITIAL, WHEN any player receives `S2CGameSnapshot`, THEN the `PlayerSnapshot` for each player contains a `class_id` field equal to that player's locked class.
+- [x] **CS-AC-01** GIVEN a lobby with two players, WHEN Player A selects Xelor and clicks Ready, THEN Player A's `class` field is locked to `Xelor` on the server and subsequent class-change messages from Player A are rejected.
+- [x] **CS-AC-02** GIVEN both players have locked their class, WHEN the RSM transitions LOBBY → DRAFT_INITIAL, THEN every active player's `class` field is `Some(C)` — no player may have `class = None` (`ClassId::Neutral`).
+- [x] **CS-AC-03a** GIVEN both players' classes are locked and the RSM has transitioned to DRAFT_INITIAL, WHEN any player receives `S2CGameSnapshot`, THEN the `PlayerSnapshot` for each player contains a `class_id` field equal to that player's locked class.
 
 ---
 
@@ -135,7 +135,7 @@ pub struct PlayerSessionData {
 **Story Type**: Logic
 **Required evidence**: `tests/unit/class/class_lifecycle_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -144,3 +144,12 @@ pub struct PlayerSessionData {
 - Depends on: `workspace-and-shared-types` story-001 (provides `ClassId` in `shared/src/card.rs`) + `workspace-and-shared-types` story-002 (provides `C2SClassChoice` message type in `shared/src/protocol.rs`) — both must be DONE
 - Depends on: `round-state-machine` story-001 (RSM State + Events Scaffold — provides `LobbyComplete` Message on ADR-010 event bus) — must be DONE
 - Unlocks: Story 002 (`class_of()` needed for token spawn validation); Stories 003–009 (all class effects read `PlayerSessions`)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 3/3 passing
+**Deviations**: Advisory only. Story manifest is `2026-04-30`; current control manifest is `2026-05-01`. `C2SClassChoice` uses the repo's dependency-light shared protocol manifest rather than deriving Lightyear's `Message` directly in `shared/`, preserving the existing shared-crate purity rule.
+**Test Evidence**: Logic evidence at `tests/unit/class/class_lifecycle_test.rs`; executable tests in `server/tests/class_lifecycle_test.rs`.
+**Verification**: `cargo test -p server --test class_lifecycle_test` passed 9/9 locally; `cargo test -p server --test rsm_transitions_test --test rsm_scaffold_test` passed 16/16 locally. GitHub Actions run `25194696023` passed on `main` at `17e3fc352ad1f843daafba4fa8ac484847311f9e`, with implementation commit `91539e1` verified as an ancestor.
+**Code Review**: Skipped - lean/default review mode; no blocking findings found during story-done verification.
