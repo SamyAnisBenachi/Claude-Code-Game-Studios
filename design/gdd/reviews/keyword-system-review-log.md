@@ -1,5 +1,12 @@
 # Keyword System — Review Log
 
+## Review — 2026-05-01 (R4 full + R5 inline) — Verdict: NEEDS REVISION → Revised Inline
+Scope signal: XL
+Specialists: game-designer, systems-designer, qa-lead, network-programmer, creative-director
+Blocking items: 19 found | Recommended: 8 | False positives dismissed: 2 (GD-1 D3 already applied; GD-5 re-opens confirmed D2)
+Summary: R4 found 19 real blockers across 4 tiers. All 9 R3 design decisions (D2–D9) correctly verified. Three tiers of issues: (1) 7 hard implementation traps — Formula 2 piecewise, REPEL lane precondition, outnumbered_cache contract, snapshot write-time, SilenceApplied payload, CounterattackFired target_id; (2) 5 design-rule gaps — COUNTERATTACK chain HP, DEATH trigger kill-gold, TELEPORT co-occupation, STUN+DEATH exception, Player Fantasy SILENCE test achievability; (3) 7 test-plan defects — duplicate AC, blocked ACs carrying BLOCKING gate, undefined fixture, 7 coverage gaps. R5 inline pass applied all 19 blockers. New design ruling: STUN does NOT suppress DEATH (DEATH is not an action-based hook). OQ-KS6, KS7, KS8 closed. 7 new BLOCKING ACs (KW-075–KW-081). Creative-director verdict: R5 re-review recommended in fresh session — all creative decisions settled, remaining work is verification pass only.
+Prior verdict resolved: Yes — R3 closed design-rule gaps; R4+R5 closed protocol contract gaps and test plan integrity.
+
 ## Review — 2026-05-01 (R3 full) — Verdict: MAJOR REVISION NEEDED → Revised Inline
 Scope signal: XL
 Specialists: game-designer, systems-designer, qa-lead, network-programmer, creative-director
