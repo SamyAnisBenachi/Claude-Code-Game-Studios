@@ -13,7 +13,7 @@
     "hp": 3,
     "mp": 2,
     "ar": 0,
-    "keywords": ["FirstStrike"],
+    "keywords": [{ "kw": "Simple", "val": "FirstStrike" }],
     "effect_text": "",
     "art_id": "iop_knight_001",
     "pool_copies_override": null
@@ -32,7 +32,10 @@
     "hp": 5,
     "mp": 2,
     "ar": 1,
-    "keywords": ["Haste", {"kw": "ResistanceX", "value": 1}],
+    "keywords": [
+      { "kw": "Simple", "val": "Haste" },
+      { "kw": "ResistanceX", "val": { "value": 1 } }
+    ],
     "effect_text": "Quand cette unité reçoit des dégâts, elle gagne +1 ATQ.",
     "art_id": "sacrier_foot_002",
     "pool_copies_override": null
@@ -51,7 +54,7 @@
     "hp": 0,
     "mp": 0,
     "ar": 0,
-    "keywords": [{"kw": "RangeX", "max_range": 5}],
+    "keywords": [{ "kw": "RangeX", "val": { "max_range": 5 } }],
     "effect_text": "Inflige 3 dégâts à une unité ennemie ciblée.",
     "art_id": "cra_piercing_shot_003",
     "pool_copies_override": null
@@ -70,7 +73,7 @@
     "hp": 0,
     "mp": 0,
     "ar": 0,
-    "keywords": ["AppearanceTrigger"],
+    "keywords": [{ "kw": "Simple", "val": "Appearance" }],
     "effect_text": "Piège : retire 2 PA à l'unité ennemie qui le déclenche.",
     "art_id": "xelor_time_trap_004",
     "pool_copies_override": null
@@ -89,7 +92,7 @@
     "hp": 4,
     "mp": 0,
     "ar": 2,
-    "keywords": ["DeathTrigger"],
+    "keywords": [{ "kw": "Simple", "val": "Death" }],
     "effect_text": "À la mort : place un Goball Fantôme sur cette case.",
     "art_id": "gobball_sturdy_005",
     "pool_copies_override": null
@@ -108,7 +111,7 @@
     "hp": 0,
     "mp": 0,
     "ar": 0,
-    "keywords": ["StartOfTurnTrigger"],
+    "keywords": [{ "kw": "Simple", "val": "StartOfTurn" }],
     "effect_text": "Début de tour : toutes vos unités sur la voie gagnent +1 PV.",
     "art_id": "sadida_rose_field_006",
     "pool_copies_override": 2
@@ -127,7 +130,7 @@
     "hp": 0,
     "mp": 0,
     "ar": 0,
-    "keywords": ["FinalBlowTrigger"],
+    "keywords": [{ "kw": "Simple", "val": "FinalBlow" }],
     "effect_text": "Tirez deux cartes. Gardez-en une, défaussez l'autre.",
     "art_id": "ecaflip_decree_007",
     "pool_copies_override": -1
@@ -146,7 +149,10 @@
     "hp": 3,
     "mp": 3,
     "ar": 0,
-    "keywords": [{"kw": "ChargeXMove", "cells": 2}, "CounterattackTrigger"],
+    "keywords": [
+      { "kw": "ChargeXMove", "val": { "cells": 2 } },
+      { "kw": "Simple", "val": "Counterattack" }
+    ],
     "effect_text": "Face A : unité. Face B (après 1 mort infligée) : +2 ATQ, +1 PM.",
     "art_id": "iop_double_face_008",
     "pool_copies_override": null

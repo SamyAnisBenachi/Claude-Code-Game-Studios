@@ -62,40 +62,42 @@ pub enum UnitType {
 
 /// Keyword variants.
 ///
-/// No-parameter keywords are plain enum variants.
-/// Parameterized keywords carry their value inline.
-/// `#[serde(untagged)]` allows JSON: `"FirstStrike"` or `{"kw":"RangeX","max_range":3}`.
+/// No-parameter keywords are wrapped in `Simple(SimpleKeyword)`.
+/// Parameterized keywords carry their value in the adjacent `val` object.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[serde(untagged)]
+#[serde(tag = "kw", content = "val")]
 pub enum Keyword {
     Simple(SimpleKeyword),
-    RangeX {
-        #[serde(rename = "kw")]
-        kw: String,
-        max_range: u8,
-    },
-    ChargeXMove {
-        #[serde(rename = "kw")]
-        kw: String,
-        cells: u8,
-    },
-    ResistanceX {
-        #[serde(rename = "kw")]
-        kw: String,
-        value: u8,
-    },
+    RangeX { max_range: u8 },
+    ChargeXMove { cells: u8 },
+    ResistanceX { value: u8 },
+    VulnerabilityX { value: u8 },
+    RepelX { distance: u8 },
+    AttractX { distance: u8 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SimpleKeyword {
+    Appearance,
+    Death,
+    FinalBlow,
+    Counterattack,
+    StartOfTurn,
+    EndOfTurn,
     FirstStrike,
-    Charge,
-    AppearanceTrigger,
-    DeathTrigger,
-    FinalBlowTrigger,
-    CounterattackTrigger,
-    StartOfTurnTrigger,
-    EndOfTurnTrigger,
+    Haste,
+    Wall,
+    Bodyguard,
+    Irremovable,
+    Untargetable,
+    Shield,
+    Leader,
+    Outnumbered,
+    ArmorPiercing,
+    Silence,
+    Stun,
+    Teleport,
+    ChangeLane,
 }
 
 /// Immutable definition of one card. Loaded from `assets/data/cards.json`.
@@ -132,3 +134,83 @@ pub type CardCatalog = std::collections::HashMap<CardId, CardData>;
 /// Their scarcity is a load-bearing design pillar (card-data-pool.md Player Fantasy).
 pub const EPIC_POOL_COPIES: u32 = 1;
 pub const LEGENDARY_POOL_COPIES: u32 = 1;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn keyword_adjacent_tag_round_trips_all_variants() {
+        let keywords = vec![
+            Keyword::Simple(SimpleKeyword::Shield),
+            Keyword::RangeX { max_range: 3 },
+            Keyword::ChargeXMove { cells: 2 },
+            Keyword::ResistanceX { value: 1 },
+            Keyword::VulnerabilityX { value: 2 },
+            Keyword::RepelX { distance: 4 },
+            Keyword::AttractX { distance: 5 },
+        ];
+
+        let encoded = serde_json::to_value(&keywords).expect("keywords should serialize");
+        assert_eq!(
+            encoded,
+            json!([
+                { "kw": "Simple", "val": "Shield" },
+                { "kw": "RangeX", "val": { "max_range": 3 } },
+                { "kw": "ChargeXMove", "val": { "cells": 2 } },
+                { "kw": "ResistanceX", "val": { "value": 1 } },
+                { "kw": "VulnerabilityX", "val": { "value": 2 } },
+                { "kw": "RepelX", "val": { "distance": 4 } },
+                { "kw": "AttractX", "val": { "distance": 5 } }
+            ])
+        );
+
+        let decoded: Vec<Keyword> =
+            serde_json::from_value(encoded).expect("keywords should deserialize");
+        assert_eq!(decoded, keywords);
+    }
+
+    #[test]
+    fn all_simple_keywords_round_trip_through_simple_keyword_variant() {
+        let simple_keywords = [
+            SimpleKeyword::Appearance,
+            SimpleKeyword::Death,
+            SimpleKeyword::FinalBlow,
+            SimpleKeyword::Counterattack,
+            SimpleKeyword::StartOfTurn,
+            SimpleKeyword::EndOfTurn,
+            SimpleKeyword::FirstStrike,
+            SimpleKeyword::Haste,
+            SimpleKeyword::Wall,
+            SimpleKeyword::Bodyguard,
+            SimpleKeyword::Irremovable,
+            SimpleKeyword::Untargetable,
+            SimpleKeyword::Shield,
+            SimpleKeyword::Leader,
+            SimpleKeyword::Outnumbered,
+            SimpleKeyword::ArmorPiercing,
+            SimpleKeyword::Silence,
+            SimpleKeyword::Stun,
+            SimpleKeyword::Teleport,
+            SimpleKeyword::ChangeLane,
+        ];
+
+        for simple_keyword in simple_keywords {
+            let keyword = Keyword::Simple(simple_keyword);
+            let encoded = serde_json::to_string(&keyword).expect("simple keyword should serialize");
+            let decoded: Keyword =
+                serde_json::from_str(&encoded).expect("simple keyword should deserialize");
+            assert_eq!(decoded, keyword);
+        }
+    }
+
+    #[test]
+    fn cards_fixture_uses_current_keyword_schema() {
+        let cards: Vec<CardData> =
+            serde_json::from_str(include_str!("../../assets/data/cards.json"))
+                .expect("cards.json should deserialize with adjacent-tag keywords");
+
+        assert!(!cards.is_empty());
+    }
+}
