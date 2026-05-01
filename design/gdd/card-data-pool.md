@@ -2,7 +2,7 @@
 
 > **Status**: Approved (post-revision)
 > **Author**: User + Agents
-> **Last Updated**: 2026-04-29
+> **Last Updated**: 2026-05-01
 > **Implements Pillar**: Krosmaga Foundation — adapts existing cards, doesn't reinvent
 
 ## Overview
@@ -83,7 +83,7 @@ No-parameter keywords are plain strings; parameterized keywords are objects:
 ```json
 "keywords": [
   "FirstStrike",
-  "Charge",
+  "Haste",
   { "kw": "RangeX",      "max_range": 2 },
   { "kw": "ChargeXMove", "cells": 1 },
   { "kw": "ResistanceX", "value": 1 },
