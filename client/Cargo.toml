@@ -15,6 +15,10 @@ lightyear = { version = "0.26", default-features = false, features = ["client", 
 bevy_tweening = { workspace = true, default-features = false, features = ["bevy_sprite", "bevy_ui", "bevy_text"] }
 # bevy_asset_loader = "0.22"  # TODO: verify 0.18-compatible version on crates.io
 
+[features]
+default = []
+ui_picking = ["bevy/ui_picking"]
+
 [lib]
 name = "client"
 path = "src/lib.rs"
@@ -26,3 +30,7 @@ path = "src/main.rs"
 [[test]]
 name = "card_animations_plugin_scaffold_test"
 path = "../tests/unit/card-animations/plugin_scaffold_test.rs"
+
+[[test]]
+name = "hud_plugin_scaffold_test"
+path = "../tests/unit/hud/hud_plugin_scaffold_test.rs"
