@@ -20,7 +20,8 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-No active implementation windows confirmed by user after the S3-04 handoff.
+- S3-05 worker: RSM Win Condition and Game Over.
+- CARD-ANIM-001 story-done window.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -59,6 +60,7 @@ Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
+- S3-08: wait until S3-05 reports back; both can touch RSM/economy ordering.
 - CA-002 / CA-003 / CA-006: wait for CA-001 story-done and local acquisition
   changes to settle.
 - KW-003: unblocked by KW-002 story-done; safe to launch after current RSM
@@ -70,6 +72,14 @@ Run only one story-done at a time.
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
   API alignment with Card Acquisition are confirmed.
+
+## Next Parallel Launch Candidates
+
+- CA-002: Card Acquisition Draft Initial; depends only on CA-001 done.
+- KW-003: First Strike + Haste; depends on KW-001 done and ADR-006 Haste schema
+  repair already merged.
+- BOARD-001: Board Grid Initialization; no dependencies.
+- HUD-001: HUD Plugin Scaffold; presentation/client-side and no prior HUD story.
 
 ## Resolved Design Gates
 
