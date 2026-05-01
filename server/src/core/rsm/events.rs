@@ -18,9 +18,22 @@ pub struct DraftStarted {
     pub phase: DraftPhase,
 }
 
-#[derive(Message, Clone, Debug)]
-pub struct ShopRefreshNeeded {
-    pub player: PlayerId,
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ShopRefreshTriggered {
+    pub player_id: PlayerId,
+    pub trigger: ShopRefreshTrigger,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShopRefreshTrigger {
+    /// DRAFT_INITIAL entry: draw the initial draft offering.
+    DraftInitial,
+    /// DRAFT_AUCTION entry: draw and lock auction-round shop slots.
+    AuctionLock,
+    /// DRAFT_SHOP entry on non-auction rounds: draw active shop slots.
+    ShopOpen,
+    /// DRAFT_AUCTION -> DRAFT_SHOP: unlock existing auction slots.
+    ShopUnlock,
 }
 
 #[derive(Message, Clone, Debug)]

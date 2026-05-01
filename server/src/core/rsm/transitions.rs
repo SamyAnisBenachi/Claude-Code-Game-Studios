@@ -1,7 +1,7 @@
 use super::events::{
     AuctionPhaseEntered, AuctionSettled, BroadcastPhaseChanged, DraftReadySignal, DraftStarted,
     GameOverEmitted, LobbyComplete, PlacementPhaseEntered, PlacementSubmitted, ResolutionComplete,
-    ResolutionPhaseEntered, ShopRefreshNeeded,
+    ResolutionPhaseEntered, ShopRefreshTrigger, ShopRefreshTriggered,
 };
 use super::state::{PendingPhaseAdvance, PhaseAdvanceRequest, RoundPhase, RoundState};
 use crate::core::objective_contract::ObjectiveCounters;
@@ -115,7 +115,7 @@ pub fn on_session_ready(
     mut sessions: Option<ResMut<PlayerSessions>>,
     mut lobby_complete: MessageWriter<LobbyComplete>,
     mut draft_started: MessageWriter<DraftStarted>,
-    mut shop_refresh: MessageWriter<ShopRefreshNeeded>,
+    mut shop_refresh: MessageWriter<ShopRefreshTriggered>,
     mut auction_entered: MessageWriter<AuctionPhaseEntered>,
     mut broadcast: MessageWriter<BroadcastPhaseChanged>,
 ) {
@@ -145,7 +145,7 @@ pub fn advance_phase(
     mut sessions: Option<ResMut<PlayerSessions>>,
     mut lobby_complete: MessageWriter<LobbyComplete>,
     mut draft_started: MessageWriter<DraftStarted>,
-    mut shop_refresh: MessageWriter<ShopRefreshNeeded>,
+    mut shop_refresh: MessageWriter<ShopRefreshTriggered>,
     mut auction_entered: MessageWriter<AuctionPhaseEntered>,
     mut placement_entered: MessageWriter<PlacementPhaseEntered>,
     mut resolution_entered: MessageWriter<ResolutionPhaseEntered>,
@@ -224,6 +224,7 @@ pub fn advance_phase(
                 DraftPhase::Shop,
                 &mut draft_started,
                 &mut shop_refresh,
+                ShopRefreshTrigger::ShopUnlock,
                 None,
                 &mut auction_entered,
                 &mut broadcast,
@@ -289,6 +290,11 @@ pub fn advance_phase(
                 draft_phase,
                 &mut draft_started,
                 &mut shop_refresh,
+                if enters_auction {
+                    ShopRefreshTrigger::AuctionLock
+                } else {
+                    ShopRefreshTrigger::ShopOpen
+                },
                 enters_auction.then_some(next_round),
                 &mut auction_entered,
                 &mut broadcast,
@@ -307,7 +313,7 @@ fn enter_draft_initial(
     sessions: Option<&mut PlayerSessions>,
     lobby_complete: &mut MessageWriter<LobbyComplete>,
     draft_started: &mut MessageWriter<DraftStarted>,
-    shop_refresh: &mut MessageWriter<ShopRefreshNeeded>,
+    shop_refresh: &mut MessageWriter<ShopRefreshTriggered>,
     auction_entered: &mut MessageWriter<AuctionPhaseEntered>,
     broadcast: &mut MessageWriter<BroadcastPhaseChanged>,
 ) {
@@ -336,6 +342,7 @@ fn enter_draft_initial(
         DraftPhase::Initial,
         draft_started,
         shop_refresh,
+        ShopRefreshTrigger::DraftInitial,
         None,
         auction_entered,
         broadcast,
@@ -348,7 +355,8 @@ fn emit_draft_entry(
     config: &Option<Res<crate::foundation::config::GameConfig>>,
     draft_phase: DraftPhase,
     draft_started: &mut MessageWriter<DraftStarted>,
-    shop_refresh: &mut MessageWriter<ShopRefreshNeeded>,
+    shop_refresh: &mut MessageWriter<ShopRefreshTriggered>,
+    refresh_trigger: ShopRefreshTrigger,
     auction_round: Option<u32>,
     auction_entered: &mut MessageWriter<AuctionPhaseEntered>,
     broadcast: &mut MessageWriter<BroadcastPhaseChanged>,
@@ -360,7 +368,10 @@ fn emit_draft_entry(
 
     if let Some(session) = session {
         for player in session.players() {
-            shop_refresh.write(ShopRefreshNeeded { player });
+            shop_refresh.write(ShopRefreshTriggered {
+                player_id: player,
+                trigger: refresh_trigger,
+            });
         }
     }
 
