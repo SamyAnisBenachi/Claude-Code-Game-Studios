@@ -207,13 +207,12 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-Batch launched:
-- HAND-UI-003: `production/epics/hand-ui/story-003-phase-state-machine.md`
-- HUD-005: `production/epics/hud/story-005-phase-transitions.md`
-- BOARD-005: `production/epics/board-lane-system/story-005-placement-buffer-phase-integration.md`
+No new worker batch is queued in this tracker. The last batch
+(`HAND-UI-003`, `HUD-005`, `BOARD-005`) has been integrated into `main` and is
+now waiting only for serialized story-done closure.
 
 No story-done window is currently active in this tracker. The next serialized
-closure is OBJECTIVE-001.
+closure is HUD-005.
 
 ## Resolved Design Gates
 
