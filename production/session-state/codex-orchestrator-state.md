@@ -49,6 +49,13 @@ None currently tracked here.
   `work/card-anim-009-ci-boundary-enforcement` at `55b5331`; cherry-picked into
   `main` at `75e11ea` because the branch was based before the asset-sorting
   commits. Local grep boundary check and `git diff --check` passed.
+- CARD-ANIM-008: Input Gating implemented on branch
+  `work/card-anim-008-input-gating` at `0d75fb0`; cherry-picked into `main` at
+  `9308bf3` because the branch was based before recent tracking and feature
+  commits. Local input gating test, plugin scaffold test, full `cargo test -p
+  client`, `cargo check -p client`, `cargo fmt -p client -- --check`, and
+  `git diff --check` passed. Manual CA-13b and CA-22 evidence remains pending
+  until bid-button UI and DRAFT_INITIAL animation sequencing UI exist.
 - KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
   `7543293`; cherry-picked into `main` at `b8b1287` because the branch was
   based before recent tracking and BOARD-002 commits. Local `stun_test`,
@@ -119,6 +126,7 @@ None currently tracked here.
 5. CARD-ANIM-009
 6. BOARD-002
 7. KW-004
+8. CARD-ANIM-008
 
 Run only one story-done at a time.
 
@@ -131,6 +139,8 @@ Run only one story-done at a time.
   text may still contain stale ADR-018 Proposed/BLOCKED wording. Implemented and
   integrated; pending story-done.
 - CARD-ANIM-009: implemented and integrated; pending story-done.
+- CARD-ANIM-008: implemented and integrated; pending story-done. Manual CA-13b
+  and CA-22 evidence remains deferred until the dependent UI exists.
 - HAND-UI-001: unblocked by HUD-001 story-done; use worktree mode for any new
   implementation.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
@@ -140,16 +150,14 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-- BOARD-002: implemented and integrated; pending story-done.
-- CARD-ANIM-004: AnimQueue resolution drain; depends on CARD-ANIM-001 done.
-- CARD-ANIM-009: CI boundary enforcement; depends on CARD-ANIM-001 done.
-- CARD-ANIM-008: Input Gating; depends on CARD-ANIM-002 implementation, now
-  available but should wait for CARD-ANIM-002 story-done unless explicitly
-  pulled in worktree mode.
+- HAND-UI-001: plugin scaffold; unblocked by HUD-001 story-done. Use worktree
+  mode.
 - HUD-002: Gold/Mana Display; unblocked by HUD-001 story-done. Run readiness
   before launch.
 - HUD-003: Phase Label/Round Counter; unblocked by HUD-001 story-done. Run
   readiness before launch.
+- CARD-ANIM-006: Ready after CARD-ANIM-001; run readiness before launch because
+  CARD-ANIM-002/004/008/009 are already implemented or pending closure.
 
 ## Resolved Design Gates
 
