@@ -58,6 +58,10 @@ None currently tracked here.
   `work/board-001-grid-initialization` at `7d38a34`; merged into `main` at
   `6e5d80b`. Local `board_grid_initialization_test`, `cargo check -p server`,
   and `cargo fmt -p server --check` passed.
+- BOARD-002: Standard Unit Movement implemented on branch
+  `work/board-002-standard-unit-movement` at `4a76028`; cherry-picked into
+  `main` at `0d8e41c`. Local `standard_movement_test`, `cargo check -p server`,
+  `cargo fmt -p server -- --check`, and `git diff --check` passed.
 - CA-003: Card Acquisition Draw Pipeline implemented on branch
   `work/ca-003-draw-pipeline` at `c6200f0`; merged into `main` at `98cb52a`.
   Local draw pipeline suite, full server tests, `cargo check -p server`, and
@@ -111,6 +115,7 @@ None currently tracked here.
 4. CA-006
 5. CARD-ANIM-004
 6. CARD-ANIM-009
+7. BOARD-002
 
 Run only one story-done at a time.
 
@@ -131,9 +136,7 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-- BOARD-002: Standard Unit Movement; depends on BOARD-001 implementation, now
-  available but should wait for BOARD-001 story-done unless explicitly pulled in
-  worktree mode.
+- BOARD-002: implemented and integrated; pending story-done.
 - CARD-ANIM-004: AnimQueue resolution drain; depends on CARD-ANIM-001 done.
 - CARD-ANIM-009: CI boundary enforcement; depends on CARD-ANIM-001 done.
 - CARD-ANIM-008: Input Gating; depends on CARD-ANIM-002 implementation, now
