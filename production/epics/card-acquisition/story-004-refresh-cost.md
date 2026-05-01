@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature (M2)
 > **Type**: Logic
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -136,3 +136,11 @@ for msg in refresh_messages.receive_messages() {
 
 - Depends on: Story 003 (`draw-pipeline`) must be Done — manual refresh delegates to the draw pipeline; counter increments after successful gold spend + draw
 - Unlocks: None — this story is a leaf dependency; purchase flow (Story 005) does not depend on manual refresh cost
+
+---
+
+## Readiness Refresh
+
+- 2026-05-01: Revalidated against control manifest version 2026-05-01.
+  ADR-015 remains accepted, `TR-CA-004` remains active, CA Story 003 is complete,
+  and no implementation requirements changed.

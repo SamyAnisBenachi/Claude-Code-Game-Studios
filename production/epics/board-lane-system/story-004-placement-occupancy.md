@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Logic
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -163,3 +163,11 @@ Fields per lane are per-player, not per-team. Each player may have one Field per
 
 - Depends on: Story 001 must be DONE (`BoardOccupancy` resource initialized)
 - Unlocks: Story 005 (placement buffer pipeline calls these occupancy functions)
+
+---
+
+## Readiness Refresh
+
+- 2026-05-01: Revalidated against control manifest version 2026-05-01.
+  ADR-007 remains accepted, `TR-BLS-004` remains active, Story 001 is complete,
+  and no implementation requirements changed.
