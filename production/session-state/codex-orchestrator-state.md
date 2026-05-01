@@ -28,8 +28,8 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- HAND-UI-002 story-done: launch prompt issued after BOARD-003 closure; per
-  user rule, assume launched unless contradicted.
+- CA-004 story-done: launch prompt issued after HAND-UI-002 closure; per user
+  rule, assume launched unless contradicted.
 - CA-004 worker: completed on branch `work/ca-004-refresh-cost` at `f26f738`;
   cherry-picked into `main` at `5cb53a8`. Window can be cleared.
 - BOARD-004 worker: completed on branch `work/BOARD-004-placement-occupancy`
@@ -58,11 +58,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- HAND-UI-002: Fan Layout Formula implemented on branch
-  `work/hand-ui-002-fan-layout-formula` at `da0fe3a`; cherry-picked into
-  `main` at `047aff9`. Local `hand_ui_fan_layout_formula_test`,
-  `hand_ui_plugin_scaffold_test`, `cargo check -p client`, `cargo fmt -p client
-  -- --check`, and `git diff --check` passed after integration.
 - CA-004: Manual Refresh Cost implemented on branch `work/ca-004-refresh-cost`
   at `f26f738`; cherry-picked into `main` at `5cb53a8`. Local refresh-cost,
   acquisition scaffold/draw/refresh suite, game-config defaults test,
@@ -93,6 +88,9 @@ None currently tracked here.
   and `git diff --check HEAD~1..HEAD`.
 ## Recently Closed
 
+- HAND-UI-002: Fan Layout Formula implemented on branch
+  `work/hand-ui-002-fan-layout-formula` at `da0fe3a`; cherry-picked into
+  `main` at `047aff9`; story-done committed at `b4ca7e9`.
 - BOARD-003: Spawn Range Validation implemented on branch
   `work/BOARD-003-spawn-range-validation` at `bf39342`; cherry-picked into
   `main` at `9c38083`; story-done committed at `cb642a6`.
@@ -173,12 +171,11 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HAND-UI-002
-2. CA-004
-3. BOARD-004
-4. CA-005
-5. COMBAT-001
-6. OBJECTIVE-001
+1. CA-004
+2. BOARD-004
+3. CA-005
+4. COMBAT-001
+5. OBJECTIVE-001
 
 Run only one story-done at a time.
 
@@ -189,7 +186,6 @@ Run only one story-done at a time.
 - COMBAT-001: implemented and integrated; pending story-done.
 - OBJECTIVE-001: implemented and integrated; pending story-done.
 - BOARD-004: implemented and integrated; pending story-done.
-- HAND-UI-002: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
@@ -200,7 +196,7 @@ Run only one story-done at a time.
 Batch launched:
 None currently active.
 
-HAND-UI-002 story-done is the active serialized closure. Do not launch another
+CA-004 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
 
 ## Resolved Design Gates
