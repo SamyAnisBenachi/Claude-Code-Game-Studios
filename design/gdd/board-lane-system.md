@@ -2,7 +2,7 @@
 
 > **Status**: Approved — /design-review complete 2026-04-28; all blocking items resolved
 > **Author**: User + Agents
-> **Last Updated**: 2026-04-28
+> **Last Updated**: 2026-05-01
 > **Implements Pillar**: Simple surface · Deep emergence · No idle spectating
 
 ## Overview

@@ -154,6 +154,16 @@ Specialists: game-designer, systems-designer, qa-lead, network-programmer, creat
 ## Stage actuel : Pre-Production ✅
 `production/stage.txt` = `Pre-Production`
 
+## Session Extract — /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/auction-system/story-001-auction-state-scaffold.md` — AuctionState Types & Snapshot Scaffold
+- Criteria: 5/5 passing (AU10-a/b/c/d/e all covered by unit tests)
+- Test evidence: `tests/unit/auction/auction_state_scaffold_test.rs` — exists at required path; 7 tests; CI confirmed passing
+- Advisory deviations: `starting_price` field added to `AuctionState`/`AuctionSnapshot` per story's own verification note; manifest version stale by 1 day (no blocking rules delta)
+- Tech debt logged: None
+- Sprint status: `AUC-001` already `done` in `production/sprint-status.yaml`
+- Next recommended: S3-02 GSS Story 2 (Room Create and Join), S3-03 GSS Story 3 (Class Selection and Reveal), S3-05 RSM Story 4 (Win Condition and Game Over)
+
 ---
 
 ## Sprint 1 — État des stories
@@ -620,6 +630,7 @@ C:\Program Files\GitHub CLI\gh.exe
 - Verification: `cargo test -p server --test class_lifecycle_test` -> 9 passed; `cargo test -p server --test rsm_transitions_test --test rsm_scaffold_test` -> 16 passed. GitHub Actions run `25194696023` passed on `main` at `17e3fc352ad1f843daafba4fa8ac484847311f9e`; implementation commit `91539e1` is an ancestor.
 - Notes: Advisory only - story manifest `2026-04-30` is older than current control manifest `2026-05-01`; shared protocol remains serde-only/dependency-light rather than deriving Lightyear `Message` directly in `shared/`.
 - Tech debt logged: None
+- Next recommended: Continue in-progress Sprint 3 must-haves (S3-04, S3-06, AUC-001) before pulling dependent ready-for-dev stories.
 
 ## Session Extract - /story-done 2026-05-01
 - Verdict: COMPLETE WITH NOTES
