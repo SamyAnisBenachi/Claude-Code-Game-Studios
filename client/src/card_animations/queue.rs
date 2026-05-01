@@ -9,12 +9,14 @@ use super::{events::GroupDrainedSignal, make_tween_anim};
 const DEFAULT_PRE_ANIMATION_PAUSE_MS: u64 = 400;
 const DEFAULT_INTER_STEP_PAUSE_MS: u64 = 150;
 const DEFAULT_OBJECTIVE_REVEAL_MS: u64 = 400;
+const DEFAULT_STAGGER_CADENCE_MS: u64 = 100;
 
 #[derive(Resource, Clone, Copy, Debug, Eq, PartialEq)]
 pub struct AnimationTimingConfig {
     pub pre_animation_pause_ms: u64,
     pub inter_step_pause_ms: u64,
     pub objective_reveal_ms: u64,
+    pub stagger_cadence_ms: u64,
 }
 
 impl Default for AnimationTimingConfig {
@@ -23,6 +25,7 @@ impl Default for AnimationTimingConfig {
             pre_animation_pause_ms: DEFAULT_PRE_ANIMATION_PAUSE_MS,
             inter_step_pause_ms: DEFAULT_INTER_STEP_PAUSE_MS,
             objective_reveal_ms: DEFAULT_OBJECTIVE_REVEAL_MS,
+            stagger_cadence_ms: DEFAULT_STAGGER_CADENCE_MS,
         }
     }
 }
@@ -255,6 +258,7 @@ pub struct StagedObjectiveReveal {
     pub entity: Option<Entity>,
     timer: Timer,
     ready_immediately: bool,
+    staged_this_frame: bool,
 }
 
 impl StagedObjectiveReveal {
@@ -264,6 +268,7 @@ impl StagedObjectiveReveal {
             entity: Some(entity),
             timer,
             ready_immediately: false,
+            staged_this_frame: false,
         }
     }
 
@@ -273,6 +278,7 @@ impl StagedObjectiveReveal {
             entity: Some(entity),
             timer: Timer::new(Duration::ZERO, TimerMode::Once),
             ready_immediately: true,
+            staged_this_frame: false,
         }
     }
 
@@ -282,7 +288,39 @@ impl StagedObjectiveReveal {
             entity: None,
             timer,
             ready_immediately: false,
+            staged_this_frame: false,
         }
+    }
+
+    fn staged(lane: u8, entity: Entity, delay: Duration) -> Self {
+        if delay.is_zero() {
+            return Self::immediate(lane, entity);
+        }
+
+        Self {
+            lane,
+            entity: Some(entity),
+            timer: Timer::new(delay, TimerMode::Once),
+            ready_immediately: false,
+            staged_this_frame: true,
+        }
+    }
+
+    fn tick(&mut self, delta: Duration) {
+        if self.ready_immediately {
+            return;
+        }
+
+        if self.staged_this_frame {
+            self.staged_this_frame = false;
+            return;
+        }
+
+        self.timer.tick(delta);
+    }
+
+    fn is_ready(&self) -> bool {
+        self.ready_immediately || self.timer.is_finished()
     }
 }
 
@@ -320,15 +358,15 @@ impl StagedObjectiveRevealQueue {
     fn pop_ready(&mut self, delta: Duration) -> Vec<StagedObjectiveReveal> {
         let mut ready = Vec::new();
 
-        while let Some(reveal) = self.reveals.front_mut() {
-            if !reveal.ready_immediately {
-                reveal.timer.tick(delta);
-            }
+        for reveal in &mut self.reveals {
+            reveal.tick(delta);
+        }
 
-            if !reveal.ready_immediately && !reveal.timer.is_finished() {
-                break;
-            }
-
+        while self
+            .reveals
+            .front()
+            .is_some_and(StagedObjectiveReveal::is_ready)
+        {
             if let Some(reveal) = self.reveals.pop_front() {
                 ready.push(reveal);
             }
@@ -370,7 +408,7 @@ pub fn resolution_executing_system(
     }
 
     if pending_phase.phase() == Some(RoundPhase::GameOver) {
-        stage_objective_reveals(&mut pending_objectives, &mut staged_objectives);
+        stage_objective_reveals(&mut pending_objectives, &mut staged_objectives, &timings);
         drain_pending_phase(&mut pending_phase);
         drained_signals.write(GroupDrainedSignal);
         queue.clear_after_drain();
@@ -378,6 +416,7 @@ pub fn resolution_executing_system(
     }
 
     if queue.current_index + 1 >= queue.groups.len() {
+        stage_objective_reveals(&mut pending_objectives, &mut staged_objectives, &timings);
         drain_pending_phase(&mut pending_phase);
         queue.clear_after_drain();
         return;
@@ -463,9 +502,19 @@ fn drain_empty_queue(
 fn stage_objective_reveals(
     pending_objectives: &mut PendingObjectiveDestroyedEvents,
     staged_objectives: &mut StagedObjectiveRevealQueue,
+    timings: &AnimationTimingConfig,
 ) {
-    for event in pending_objectives.drain_sorted_by_lane() {
-        staged_objectives.push_reveal(StagedObjectiveReveal::immediate(event.lane, event.entity));
+    for (index, event) in pending_objectives
+        .drain_sorted_by_lane()
+        .into_iter()
+        .enumerate()
+    {
+        let delay_ms = index as u64 * timings.stagger_cadence_ms;
+        staged_objectives.push_reveal(StagedObjectiveReveal::staged(
+            event.lane,
+            event.entity,
+            Duration::from_millis(delay_ms),
+        ));
     }
 }
 
