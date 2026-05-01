@@ -46,11 +46,6 @@ None currently tracked here.
   `first_strike_haste_test` and `cargo check -p server` passed. Story text still
   has stale ADR-018 Proposed/BLOCKED wording; completion review must document
   that ADR-018 is Accepted in the 2026-05-01 manifest.
-- S3-04: RSM Timers + Input Reader implemented at `eff5cf9`; local RSM/economy
-  suite, full server tests, cargo check, and single-writer grep passed.
-  Story-done initially blocked because RSM still emitted superseded
-  `ShopRefreshNeeded`; orchestrator fix replaced it with `ShopRefreshTriggered`
-  while keeping `core/rsm` free of `feature` imports.
 - S3-05: RSM Win Condition and Game Over implemented at `5bf6bde`; local RSM
   win-condition and F2 ordering tests passed, RSM feature-import grep passed,
   and `git diff --check` passed for S3-05 files.
@@ -96,19 +91,20 @@ None currently tracked here.
   blocker fixed at `cbce522`; story-done committed and pushed at `57159e9`.
   Note: sprint-status marks S3-06 done but still has owner
   `codex-s3-06-websocket`; clean this in a later tracker hygiene pass if needed.
+- S3-04: RSM Timers + Input Reader implemented at `eff5cf9`; blocker fixed at
+  `ec6f433`/`61e45ad`; story-done committed at `1045dbc`.
 
 ## Story-Done Queue
 
-1. S3-04
-2. S3-05
-3. CA-002
-4. KW-003
-5. HUD-001
-6. S3-08
-7. CARD-ANIM-002
-8. BOARD-001
-9. CA-003
-10. CA-006
+1. S3-05
+2. CA-002
+3. KW-003
+4. HUD-001
+5. S3-08
+6. CARD-ANIM-002
+7. BOARD-001
+8. CA-003
+9. CA-006
 
 Run only one story-done at a time.
 
