@@ -148,3 +148,13 @@ stories:
     estimate_days: 1.0
     blocker: ""
     completed: "2026-05-01"
+
+  - id: "CA-001"
+    name: "Card Acquisition State Scaffold"
+    file: "production/epics/card-acquisition/story-001-state-scaffold.md"
+    priority: must-have
+    status: in-progress
+    owner: "codex-ca-001-state-scaffold"
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""

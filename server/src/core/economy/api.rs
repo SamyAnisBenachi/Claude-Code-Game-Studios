@@ -106,6 +106,25 @@ pub fn can_afford_shop(economy: &PlayerEconomy, cost: u32) -> bool {
     economy.gold.saturating_sub(economy.reserved_gold) >= cost
 }
 
+/// Spend unreserved persistent gold for a shop purchase or manual refresh.
+pub fn spend_gold(economy: &mut PlayerEconomy, cost: u32) -> Result<(), SpendError> {
+    if !can_afford_shop(economy, cost) {
+        return Err(SpendError::InsufficientFunds);
+    }
+
+    economy.gold = economy.gold.saturating_sub(cost);
+    debug_assert!(
+        economy.reserved_gold <= economy.gold,
+        "reserved_gold must never exceed gold after shop spend"
+    );
+    Ok(())
+}
+
+/// Refund persistent gold after an atomic purchase rollback.
+pub fn refund_gold(economy: &mut PlayerEconomy, amount: u32) {
+    economy.gold = economy.gold.saturating_add(amount);
+}
+
 /// Total mana available for normal card costs.
 pub fn total_effective_mana(economy: &PlayerEconomy) -> u32 {
     economy.current_mana.saturating_add(economy.reserve_mana)
@@ -313,6 +332,36 @@ mod tests {
         release_gold_reservation(&mut econ, 5);
 
         assert_eq!(econ.reserved_gold, 0);
+    }
+
+    #[test]
+    fn test_spend_gold_deducts_unreserved_gold() {
+        let mut econ = economy(8, 0, 0, 10, 2);
+
+        assert_eq!(spend_gold(&mut econ, 4), Ok(()));
+
+        assert_eq!(econ.gold, 4);
+        assert_eq!(econ.reserved_gold, 2);
+    }
+
+    #[test]
+    fn test_spend_gold_respects_reserved_gold() {
+        let mut econ = economy(8, 0, 0, 10, 6);
+
+        assert_eq!(spend_gold(&mut econ, 3), Err(SpendError::InsufficientFunds));
+
+        assert_eq!(econ.gold, 8);
+        assert_eq!(econ.reserved_gold, 6);
+    }
+
+    #[test]
+    fn test_refund_gold_adds_back_to_persistent_gold() {
+        let mut econ = economy(4, 0, 0, 10, 2);
+
+        refund_gold(&mut econ, 3);
+
+        assert_eq!(econ.gold, 7);
+        assert_eq!(econ.reserved_gold, 2);
     }
 
     #[test]

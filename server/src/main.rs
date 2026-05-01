@@ -114,6 +114,7 @@ fn main() {
     app.add_plugins(core::session::GameSessionPlugin);
     app.add_plugins(core::rsm::RsmPlugin);
     app.add_plugins(core::economy::EconomyPlugin);
+    app.add_plugins(feature::acquisition::CardAcquisitionPlugin);
 
     // Networking - Lightyear 0.26 WebSocket server and shared protocol manifest.
     app.add_plugins(network::ServerNetworkPlugin);

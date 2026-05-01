@@ -9,8 +9,8 @@ pub mod system;
 #[allow(unused_imports)]
 pub use api::{
     add_reserve, apply_gold_award, apply_mana_ramp, apply_spend, can_afford_bid, can_afford_shop,
-    discard_current_mana, increment_mana_cap, release_gold_reservation, reserve_gold,
-    total_effective_mana, validate_spend,
+    discard_current_mana, increment_mana_cap, refund_gold, release_gold_reservation, reserve_gold,
+    spend_gold, total_effective_mana, validate_spend,
 };
 pub use plugin::EconomyPlugin;
 // Scaffold API consumed by downstream stories.

@@ -46,6 +46,10 @@ name = "auction_phase_entry_test"
 path = "../tests/unit/auction/auction_phase_entry_test.rs"
 
 [[test]]
+name = "card_acquisition_state_scaffold_test"
+path = "../tests/unit/card_acquisition/state_scaffold_test.rs"
+
+[[test]]
 name = "keyword_plugin_smoke_test"
 path = "../tests/integration/keyword/plugin_smoke_test.rs"
 
