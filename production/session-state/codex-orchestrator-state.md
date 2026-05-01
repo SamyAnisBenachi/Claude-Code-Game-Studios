@@ -20,7 +20,8 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- AUC-003 story-done is the only currently active external agent window.
+- S3-04 resume worker: RSM Timers + Input Reader.
+- S3-06 resume worker: E2E WebSocket Roundtrip.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -28,13 +29,10 @@ These are marked `in-progress` in `production/sprint-status.yaml`, but the user
 confirmed no corresponding agent window is currently running. Treat them as
 stale/incomplete until explicitly relaunched or closed:
 
-- S3-04: RSM Timers + Input Reader (`claude-s3-04-rsm-timers`)
-- S3-06: E2E WebSocket Roundtrip (`codex-s3-06-websocket`)
 - S3-08: Economy Interest Snapshot (`claude-s3-08-economy-interest`)
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- KW-002: implemented at `7fe9b5d`; tracking claim pushed at `699c227`.
 - CARD-ANIM-001: implemented at `23fad70`.
 
 ## Recently Closed
@@ -45,11 +43,12 @@ stale/incomplete until explicitly relaunched or closed:
   `579db68`.
 - CS-002: implemented at `20b24fa`; story-done committed and pushed at
   `bd3487a`.
+- KW-002: implemented at `7fe9b5d`; tracking claim pushed at `699c227`;
+  story-done committed and pushed at `765ecfc`.
 
 ## Story-Done Queue
 
-1. KW-002
-2. CARD-ANIM-001
+1. CARD-ANIM-001
 
 Run only one story-done at a time.
 
@@ -58,7 +57,8 @@ Run only one story-done at a time.
 - S3-05: wait for S3-04 to complete; same RSM area.
 - CA-002 / CA-003 / CA-006: wait for CA-001 story-done and local acquisition
   changes to settle.
-- KW-003: wait for KW-002 story-done.
+- KW-003: unblocked by KW-002 story-done; safe to launch after current RSM
+  dirty tree settles or in a new clean window that avoids RSM files.
 - CARD-ANIM-002 / CARD-ANIM-004: wait for CARD-ANIM-001 story-done.
 - HUD-001 / HAND-UI-001: hold until presentation scaffold churn from
   CARD-ANIM-001 is closed.
@@ -77,6 +77,10 @@ Run only one story-done at a time.
 
 ## Current Dirty-Tree Notes
 
-As of the last check, the working tree contains story-done CA-001 files and
-active RSM/Auction changes from workers. Do not launch new workers touching RSM,
-Auction, or Card Acquisition until the current windows report back.
+As of the last check, the working tree contains active worker changes in
+`server/src/core/economy/plugin.rs`, `server/src/core/rsm/events.rs`,
+`server/src/core/rsm/mod.rs`, `server/src/core/rsm/plugin.rs`,
+`server/src/core/rsm/state.rs`, `server/src/core/rsm/transitions.rs`, and
+`server/src/core/rsm/system.rs`. Treat these as active S3-04/S3-06 worker output
+until the user reports the worker handoff. Do not launch another RSM story
+against the same files.
