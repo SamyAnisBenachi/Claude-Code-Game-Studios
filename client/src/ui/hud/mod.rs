@@ -4,6 +4,7 @@ use shared::protocol::{RoundPhase, S2CGoldBroadcast, S2CGoldUpdate};
 use shared::session::PlayerId;
 
 use crate::state::{ClientState, CurrentClientPhase};
+use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
 pub const HUD_DOT_ROWS: usize = 2;
 pub const HUD_DOTS_PER_ROW: usize = 5;
@@ -136,6 +137,7 @@ impl Plugin for HudPlugin {
             .init_resource::<CurrentClientPhase>()
             .init_resource::<HudConfig>()
             .init_resource::<HudMode>()
+            .add_message::<HudObjectiveUpdate>()
             .configure_sets(
                 Update,
                 (
@@ -159,8 +161,10 @@ impl Plugin for HudPlugin {
                         .in_set(HudSystemSet::MessageDrain)
                         .before(handle_gold_update_system),
                     handle_gold_update_system.in_set(HudSystemSet::MessageDrain),
+                    handle_hud_objective_update_system.in_set(HudSystemSet::MessageDrain),
                     sync_gold_text_system.in_set(HudSystemSet::StateSync),
                     sync_mana_text_system.in_set(HudSystemSet::StateSync),
+                    sync_scoreboard_dot_layout_system.in_set(HudSystemSet::StateSync),
                 ),
             );
     }
@@ -419,15 +423,15 @@ fn spawn_scoreboard_dots(
                     Node {
                         position_type: PositionType::Absolute,
                         top: Val::Px(config.hud_margin_px + row as f32 * 20.0),
-                        left: Val::Percent(42.0 + lane_index as f32 * 4.0),
+                        left: Val::Px(0.0),
                         width: Val::Px(config.hud_dot_diameter_px),
                         height: Val::Px(config.hud_dot_diameter_px),
                         border: UiRect::all(Val::Px(1.0)),
                         border_radius: BorderRadius::all(Val::Px(config.hud_dot_diameter_px * 0.5)),
                         ..default()
                     },
-                    BackgroundColor(Color::srgba(0.84, 0.88, 0.92, 0.88)),
-                    BorderColor::all(Color::srgba(0.96, 0.98, 1.0, 0.95)),
+                    BackgroundColor(alive_dot_fill()),
+                    BorderColor::all(alive_dot_border()),
                     Visibility::Hidden,
                     ChildOf(parent),
                 ))
@@ -464,6 +468,77 @@ pub fn handle_gold_broadcast_system(
                 }
             }
         }
+    }
+}
+
+pub fn handle_hud_objective_update_system(
+    mut updates: MessageReader<HudObjectiveUpdate>,
+    entities: Option<Res<HudEntities>>,
+    player_ids: Option<Res<HudPlayerIds>>,
+    mut dots: Query<(
+        &mut ScoreboardDotState,
+        &mut BackgroundColor,
+        &mut BorderColor,
+    )>,
+) {
+    let Some(entities) = entities else {
+        for _update in updates.read() {}
+        return;
+    };
+    let Some(player_ids) = player_ids else {
+        for _update in updates.read() {}
+        return;
+    };
+
+    for update in updates.read() {
+        if !(1..=HUD_DOTS_PER_ROW as u8).contains(&update.lane) {
+            warn!(
+                "HUD: OOB lane {} in HudObjectiveUpdate - ignored",
+                update.lane
+            );
+            continue;
+        }
+
+        let Some(row_index) = scoreboard_row_index(update.target_player_id, &player_ids) else {
+            warn!(
+                "HUD: unknown player {:?} in HudObjectiveUpdate - ignored",
+                update.target_player_id
+            );
+            continue;
+        };
+
+        let lane_index = usize::from(update.lane - 1);
+        let dot = entities.dots[row_index][lane_index];
+        if let Ok((mut state, mut background, mut border)) = dots.get_mut(dot) {
+            state.destroyed = true;
+            *background = BackgroundColor(Color::NONE);
+            *border = BorderColor::all(destroyed_dot_border());
+        }
+    }
+}
+
+pub fn sync_scoreboard_dot_layout_system(
+    layout: Option<Res<BoardLayout>>,
+    config: Res<HudConfig>,
+    mut warned_missing_layout: Local<bool>,
+    mut dots: Query<(&ScoreboardDot, &mut Node)>,
+) {
+    let Some(layout) = layout else {
+        if !*warned_missing_layout {
+            warn!("HUD: BoardLayout missing; scoreboard dot alignment skipped");
+            *warned_missing_layout = true;
+        }
+        return;
+    };
+    *warned_missing_layout = false;
+
+    for (dot, mut node) in &mut dots {
+        let lane = dot.lane_index as u8 + 1;
+        let Some(center_x) = layout.scoreboard_lane_center_x(lane) else {
+            warn!("HUD: invalid scoreboard lane {} - ignored", lane);
+            continue;
+        };
+        node.left = Val::Px(center_x - config.hud_dot_diameter_px * 0.5);
     }
 }
 
@@ -664,6 +739,28 @@ fn set_visibility(
     if let Ok(mut current_visibility) = visibility.get_mut(entity) {
         *current_visibility = target_visibility;
     }
+}
+
+fn scoreboard_row_index(target_player_id: PlayerId, player_ids: &HudPlayerIds) -> Option<usize> {
+    if target_player_id == player_ids.opponent_id {
+        Some(0)
+    } else if target_player_id == player_ids.local_id {
+        Some(1)
+    } else {
+        None
+    }
+}
+
+fn alive_dot_fill() -> Color {
+    Color::srgba(0.84, 0.88, 0.92, 0.88)
+}
+
+fn alive_dot_border() -> Color {
+    Color::srgba(0.96, 0.98, 1.0, 0.95)
+}
+
+fn destroyed_dot_border() -> Color {
+    Color::srgba(0.30, 0.32, 0.35, 0.70)
 }
 
 fn sync_gold_label_basic_format(

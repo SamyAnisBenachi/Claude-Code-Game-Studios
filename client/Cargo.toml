@@ -60,6 +60,10 @@ name = "hud_phase_transitions_test"
 path = "../tests/unit/hud/phase_transitions_test.rs"
 
 [[test]]
+name = "scoreboard_dot_message_test"
+path = "../tests/integration/hud/scoreboard_dot_message_test.rs"
+
+[[test]]
 name = "card_animations_tween_lifecycle_test"
 path = "../tests/unit/card-animations/tween_lifecycle_test.rs"
 
