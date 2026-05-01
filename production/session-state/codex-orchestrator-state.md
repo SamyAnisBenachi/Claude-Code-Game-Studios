@@ -95,8 +95,10 @@ None currently tracked here.
   committed at `79d5024`. `production/sprint-status.yaml` has no CA-002 entry,
   so the closeout updated only the story file and session state.
 - KW-003: First Strike and Haste implemented at `874d86b`; story-done was
-  absorbed into asset commit `bee8b47`. `production/sprint-status.yaml` has no
-  KW-003 entry, so the closeout updated only the story file and session state.
+  absorbed into asset commit `bee8b47`, with acceptance checkbox/test-note
+  cleanup finalized in a follow-up closure commit. `production/sprint-status.yaml`
+  has no KW-003 entry, so the closeout updated only the story file and session
+  state.
 
 ## Story-Done Queue
 
@@ -115,9 +117,8 @@ Run only one story-done at a time.
 - CA-004 / CA-005: depend on CA-003 implementation, now available but should
   wait for CA-003 story-done unless explicitly pulled in worktree mode.
 - CA-006: implemented and merged; pending story-done.
-- KW-004: waits for KW-003 story-done if the story depends on first-strike
-  behavior; otherwise can be launched in worktree mode after checking story
-  dependencies.
+- KW-004: unblocked by KW-003 story-done; run readiness first because its story
+  text may still contain stale ADR-018 Proposed/BLOCKED wording.
 - CARD-ANIM-002 / CARD-ANIM-004 / CARD-ANIM-009: unblocked by
   CARD-ANIM-001 story-done; launch in worktree mode.
 - HAND-UI-001: can launch after HUD-001 handoff or in worktree mode if it
