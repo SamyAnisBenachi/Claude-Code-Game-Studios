@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Logic
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -32,7 +32,9 @@
 
 *From GDD `design/gdd/objective-system.md`, scoped to this story:*
 
-- [ ] OS-1 (BLOCKING): GIVEN a new game session starts and DRAFT_INITIAL fires, WHEN objective state is queried for any player, THEN that player has exactly 5 objective slots, each with HP = `objective_hp` (default 5), AR = 0, and the data structures are ready to receive a real/fake identity assignment.
+- [ ] **OS-1a (slot count)**: GIVEN a new game session starts and DRAFT_INITIAL fires, WHEN objective state is queried for any player, THEN that player has exactly 5 objective slots, one per lane.
+- [ ] **OS-1b (initial stats)**: GIVEN objective slots are initialized, WHEN their visible state is queried, THEN each slot has `ObjectiveHp.hp == objective_hp` from `GameConfig` and no armor component is present (AR = 0).
+- [ ] **OS-1c (server-only hidden state)**: GIVEN objective initialization completes, WHEN server resources are inspected, THEN `HiddenObjectives` and `ObjectiveCounters` exist, counters start at 0, and no objective identity component is inserted into replicated ECS state.
 
 ---
 
