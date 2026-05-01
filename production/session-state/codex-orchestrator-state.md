@@ -28,10 +28,8 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- CA-004 story-done: launch prompt issued after HAND-UI-002 closure; per user
+- BOARD-004 story-done: launch prompt issued after CA-004 closure; per user
   rule, assume launched unless contradicted.
-- CA-004 worker: completed on branch `work/ca-004-refresh-cost` at `f26f738`;
-  cherry-picked into `main` at `5cb53a8`. Window can be cleared.
 - BOARD-004 worker: completed on branch `work/BOARD-004-placement-occupancy`
   at `224708d`; cherry-picked into `main` at `0c69612`. Window can be
   cleared.
@@ -58,11 +56,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- CA-004: Manual Refresh Cost implemented on branch `work/ca-004-refresh-cost`
-  at `f26f738`; cherry-picked into `main` at `5cb53a8`. Local refresh-cost,
-  acquisition scaffold/draw/refresh suite, game-config defaults test,
-  `cargo check -p server`, `cargo fmt --all -- --check`, and `git diff --check`
-  passed after integration.
 - CA-005: Purchase Flow, Dead Slot, and CA18 Atomicity implemented on branch
   `work/ca-005-purchase-flow` at `415384a`; cherry-picked into `main` at
   `c6141bc`. Local acquisition purchase atomicity, state scaffold, draft
@@ -88,6 +81,9 @@ None currently tracked here.
   and `git diff --check HEAD~1..HEAD`.
 ## Recently Closed
 
+- CA-004: Manual Refresh Cost implemented on branch `work/ca-004-refresh-cost`
+  at `f26f738`; cherry-picked into `main` at `5cb53a8`; story-done committed
+  at `dd6332e`.
 - HAND-UI-002: Fan Layout Formula implemented on branch
   `work/hand-ui-002-fan-layout-formula` at `da0fe3a`; cherry-picked into
   `main` at `047aff9`; story-done committed at `b4ca7e9`.
@@ -171,17 +167,15 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. CA-004
-2. BOARD-004
-3. CA-005
-4. COMBAT-001
-5. OBJECTIVE-001
+1. BOARD-004
+2. CA-005
+3. COMBAT-001
+4. OBJECTIVE-001
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- CA-004: implemented and integrated; pending story-done.
 - CA-005: implemented and integrated; pending story-done.
 - COMBAT-001: implemented and integrated; pending story-done.
 - OBJECTIVE-001: implemented and integrated; pending story-done.
@@ -196,7 +190,7 @@ Run only one story-done at a time.
 Batch launched:
 None currently active.
 
-CA-004 story-done is the active serialized closure. Do not launch another
+BOARD-004 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
 
 ## Resolved Design Gates
