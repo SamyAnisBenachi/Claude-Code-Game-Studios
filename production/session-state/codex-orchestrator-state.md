@@ -21,7 +21,6 @@ source of truth for story status.
 ## Live Windows Confirmed By User
 
 - S3-04 resume worker: RSM Timers + Input Reader.
-- S3-06 resume worker: E2E WebSocket Roundtrip.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -34,6 +33,8 @@ stale/incomplete until explicitly relaunched or closed:
 ## Recently Implemented, Needs Formal Story-Done
 
 - CARD-ANIM-001: implemented at `23fad70`.
+- S3-06: E2E WebSocket Roundtrip implemented at `a32a3df`; local websocket
+  test and WASM client release build passed.
 
 ## Recently Closed
 
@@ -49,6 +50,7 @@ stale/incomplete until explicitly relaunched or closed:
 ## Story-Done Queue
 
 1. CARD-ANIM-001
+2. S3-06
 
 Run only one story-done at a time.
 
@@ -80,7 +82,9 @@ Run only one story-done at a time.
 As of the last check, the working tree contains active worker changes in
 `server/src/core/economy/plugin.rs`, `server/src/core/rsm/events.rs`,
 `server/src/core/rsm/mod.rs`, `server/src/core/rsm/plugin.rs`,
-`server/src/core/rsm/state.rs`, `server/src/core/rsm/transitions.rs`, and
-`server/src/core/rsm/system.rs`. Treat these as active S3-04/S3-06 worker output
-until the user reports the worker handoff. Do not launch another RSM story
-against the same files.
+`server/src/core/rsm/state.rs`, `server/src/core/rsm/transitions.rs`,
+`server/src/core/rsm/system.rs`, `server/tests/economy_draft_subscriber_test.rs`,
+`server/tests/economy_round_trace_test.rs`, `server/tests/rsm_timers_test.rs`,
+and `tests/unit/rsm/rsm_timers_test.rs`. Treat these as active S3-04 worker
+output until the user reports the worker handoff. Do not launch another RSM
+story against the same files.
