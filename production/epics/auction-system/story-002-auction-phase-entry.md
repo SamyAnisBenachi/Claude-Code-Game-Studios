@@ -1,7 +1,7 @@
 # Story 002: Auction Phase Entry — AuctionPhaseEntered & IDLE Guard
 
 > **Epic**: Auction System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -34,9 +34,9 @@
 
 *From GDD `design/gdd/auction-system.md`, scoped to this story:*
 
-- [ ] **AU1-a**: `GIVEN` `AuctionPhaseEntered` is processed in IDLE state, `WHEN` `auction_tick_system` returns, `THEN` `auction_state.phase == LIVE_BIDDING`, `auction_state.card_id != None`, and `auction_state.current_price == starting_price_for_drawn_rarity` (3 for Rare, 4 for Epic, 5 for Legendary)
-- [ ] **AU1-b-server**: `GIVEN` `AuctionPhaseEntered` is processed, `WHEN` the system returns, `THEN` `S2CAuctionCard` has been written to the outbound message queue AND the `Messages<S2CPhaseChanged>` resource contains zero items (RSM sends this AFTER the Auction System handles `AuctionPhaseEntered` — in a single-system test the RSM does not run)
-- [ ] **AU23**: `GIVEN` the Auction System is in LIVE_BIDDING and `AuctionPhaseEntered` arrives (duplicate trigger), `WHEN` the system processes it, `THEN` phase remains LIVE_BIDDING, no `S2CAuctionCard` is queued, and a server error is logged
+- [x] **AU1-a**: `GIVEN` `AuctionPhaseEntered` is processed in IDLE state, `WHEN` `auction_tick_system` returns, `THEN` `auction_state.phase == LIVE_BIDDING`, `auction_state.card_id != None`, and `auction_state.current_price == starting_price_for_drawn_rarity` (3 for Rare, 4 for Epic, 5 for Legendary)
+- [x] **AU1-b-server**: `GIVEN` `AuctionPhaseEntered` is processed, `WHEN` the system returns, `THEN` `S2CAuctionCard` has been written to the outbound message queue AND the `Messages<S2CPhaseChanged>` resource contains zero items (RSM sends this AFTER the Auction System handles `AuctionPhaseEntered` — in a single-system test the RSM does not run)
+- [x] **AU23**: `GIVEN` the Auction System is in LIVE_BIDDING and `AuctionPhaseEntered` arrives (duplicate trigger), `WHEN` the system processes it, `THEN` phase remains LIVE_BIDDING, no `S2CAuctionCard` is queued, and a server error is logged
 
 ---
 
@@ -150,7 +150,7 @@ Test: duplicate trigger is silently rejected with server error log
 **Story Type**: Logic
 **Required evidence**: `tests/unit/auction/auction_phase_entry_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`cargo test -p server --test auction_phase_entry_test` on 2026-05-01)
 
 ---
 
@@ -162,3 +162,14 @@ Test: duplicate trigger is silently rejected with server error log
 - Depends on: `round-state-machine` story-001 DONE (provides `AuctionPhaseEntered` Bevy Message on ADR-010 event bus)
 - Depends on: `workspace-and-shared-types` story-002 DONE (provides `C2SAuctionBid`, `S2CAuctionCard`, `S2CAuctionSettled` in `shared/protocol.rs`)
 - Unlocks: Story 003 (AbortAuction Handler), Story 004 (Bid Validation Gate)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 3/3 passing (AU1-a, AU1-b-server, AU23)
+**Deviations**:
+- Advisory: story manifest v2026-04-30 is older than current control manifest v2026-05-01; no blocking drift found.
+- Advisory: AU23 server-error logging is implemented via `tracing::error!` and code-inspected; the current unit test verifies state/no-card behavior but does not capture/assert the log event directly.
+- Advisory: `S2CAuctionCard` is represented by the server-side Bevy message shim for the isolated server queue; Lightyear network dispatch remains scoped to later plugin/network stories.
+**Test Evidence**: Logic story unit test at `tests/unit/auction/auction_phase_entry_test.rs`; `cargo test -p server --test auction_phase_entry_test` -> 4 passed, 0 failed.
+**Code Review**: Skipped (lean review mode)

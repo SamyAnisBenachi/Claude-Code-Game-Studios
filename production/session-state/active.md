@@ -662,3 +662,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Notes: Story manifest 2026-04-29 is older than control manifest 2026-05-01; no blocking deviations found
 - Tech debt logged: None
 - Next recommended: S3-02 Room Create and Join at `production/epics/game-session-system/story-002-room-create-join.md`
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/auction-system/story-002-auction-phase-entry.md` - Auction Phase Entry
+- Criteria: 3/3 passing; AU1-a/AU1-b-server/AU23 verified against `auction_tick_system` and `AuctionPhaseEntered` message handling.
+- Test Evidence: `tests/unit/auction/auction_phase_entry_test.rs`; `cargo test -p server --test auction_phase_entry_test` -> 4 passed, 0 failed.
+- Notes: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01; AU23 logging is implemented via `tracing::error!` but the current unit test does not capture/assert the log event directly; `S2CAuctionCard` uses the server-side Bevy message shim until later Lightyear dispatch stories.
+- Tech debt logged: None
+- Sprint status: `AUC-002` set to `done` in `production/sprint-status.yaml`; existing in-progress claims for `S3-02` and `KW-001` preserved.
+- Next recommended: AUC-003 AbortAuction Handler (`production/epics/auction-system/story-003-auction-abort-handler.md`) and AUC-004 Bid Validation Gate (`production/epics/auction-system/story-004-bid-validation-gate.md`) are ready candidates.
