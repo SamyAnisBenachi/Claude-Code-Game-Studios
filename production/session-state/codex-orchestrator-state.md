@@ -29,7 +29,6 @@ source of truth for story status.
 ## Live Windows Confirmed By User
 
 - S3-05 worker: RSM Win Condition and Game Over.
-- CARD-ANIM-001 story-done window.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -41,7 +40,6 @@ stale/incomplete until explicitly relaunched or closed:
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- CARD-ANIM-001: implemented at `23fad70`.
 - CA-002: Card Acquisition Draft Initial implemented at `2c6c65b`; local draft
   initial tests, state scaffold tests, and `cargo check -p server` passed.
 - KW-003: First Strike and Haste implemented at `874d86b`; local
@@ -63,14 +61,15 @@ stale/incomplete until explicitly relaunched or closed:
   `bd3487a`.
 - KW-002: implemented at `7fe9b5d`; tracking claim pushed at `699c227`;
   story-done committed and pushed at `765ecfc`.
+- CARD-ANIM-001: implemented at `23fad70`; story-done committed and pushed at
+  `ab7d56f`.
 
 ## Story-Done Queue
 
-1. CARD-ANIM-001
-2. S3-06
-3. S3-04
-4. CA-002
-5. KW-003
+1. S3-06
+2. S3-04
+3. CA-002
+4. KW-003
 
 Run only one story-done at a time.
 
@@ -83,9 +82,10 @@ Run only one story-done at a time.
 - KW-004: waits for KW-003 story-done if the story depends on first-strike
   behavior; otherwise can be launched in worktree mode after checking story
   dependencies.
-- CARD-ANIM-002 / CARD-ANIM-004: wait for CARD-ANIM-001 story-done.
-- HUD-001 / HAND-UI-001: hold until presentation scaffold churn from
-  CARD-ANIM-001 is closed.
+- CARD-ANIM-002 / CARD-ANIM-004 / CARD-ANIM-009: unblocked by
+  CARD-ANIM-001 story-done; launch in worktree mode.
+- HAND-UI-001: can launch after HUD-001 handoff or in worktree mode if it
+  clearly avoids HUD files.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
@@ -94,7 +94,9 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 - BOARD-001: Board Grid Initialization; no dependencies.
-- HUD-001: HUD Plugin Scaffold; presentation/client-side and no prior HUD story.
+- CARD-ANIM-002: Tween cancel/replace lifecycle; depends on CARD-ANIM-001 done.
+- CARD-ANIM-004: AnimQueue resolution drain; depends on CARD-ANIM-001 done.
+- CARD-ANIM-009: CI boundary enforcement; depends on CARD-ANIM-001 done.
 
 ## Resolved Design Gates
 
