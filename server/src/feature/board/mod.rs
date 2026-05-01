@@ -10,7 +10,10 @@ pub mod plugin;
 pub mod state;
 
 pub use movement::{advance_direction, apply_f1, apply_standard_movement};
-pub use placement::{requires_spawn_range_validation, validate_spawn_range};
+pub use placement::{
+    is_field_slot_available, is_minion_slot_available, is_structure_slot_available,
+    is_trap_slot_available, requires_spawn_range_validation, validate_spawn_range,
+};
 pub use plugin::BoardPlugin;
 pub use state::{
     BoardCell, BoardConfig, BoardGrid, BoardOccupancy, LaneId, PrismState, SpawnRangeState,

@@ -49,8 +49,8 @@ impl Default for BoardGrid {
 /// Server-only occupancy state used by placement validation.
 #[derive(Resource, Debug, Clone, PartialEq, Eq)]
 pub struct BoardOccupancy {
-    /// Per-player minion slot occupancy indexed as `[player_index][lane_index]`.
-    pub minion_slots: [[Option<Entity>; BOARD_LANE_COUNT]; BOARD_PLAYER_COUNT],
+    /// Minion occupancy keyed by `(player, lane)`.
+    pub minion_slots: HashMap<(PlayerId, LaneId), Entity>,
     /// Trap occupancy keyed by `(player, lane, absolute_cell)`.
     pub traps: HashMap<(PlayerId, LaneId, u8), Entity>,
     /// Structure occupancy keyed by `(player, lane, absolute_cell)`.
@@ -62,7 +62,7 @@ pub struct BoardOccupancy {
 impl Default for BoardOccupancy {
     fn default() -> Self {
         Self {
-            minion_slots: [[None; BOARD_LANE_COUNT]; BOARD_PLAYER_COUNT],
+            minion_slots: HashMap::new(),
             traps: HashMap::new(),
             structures: HashMap::new(),
             fields: HashMap::new(),

@@ -2,7 +2,7 @@ use shared::card::CardType;
 use shared::session::PlayerId;
 
 use crate::core::session::SessionConfig;
-use crate::feature::board::BoardConfig;
+use crate::feature::board::{BoardConfig, BoardOccupancy, LaneId};
 
 const PLAYER_A_TEAM_ID: u8 = 0;
 const PLAYER_B_TEAM_ID: u8 = 1;
@@ -48,4 +48,64 @@ pub fn validate_spawn_range(
         }
         _ => false,
     }
+}
+
+/// Returns whether `player` has an open Minion slot in `lane`.
+///
+/// Occupancy is per-player. Team capacity is derived from the current session's
+/// team map so 1v1 has one slot per team lane and 2v2 has two.
+pub fn is_minion_slot_available(
+    occupancy: &BoardOccupancy,
+    player: PlayerId,
+    lane: LaneId,
+    session_config: &SessionConfig,
+) -> bool {
+    let Some(team) = session_config.team_map.get(&player).copied() else {
+        return false;
+    };
+
+    if occupancy.minion_slots.contains_key(&(player, lane)) {
+        return false;
+    }
+
+    let team_capacity = session_config
+        .team_map
+        .values()
+        .filter(|candidate| **candidate == team)
+        .count();
+
+    let team_count = occupancy
+        .minion_slots
+        .keys()
+        .filter(|(slot_player, slot_lane)| {
+            *slot_lane == lane && session_config.team_map.get(slot_player).copied() == Some(team)
+        })
+        .count();
+
+    team_count < team_capacity
+}
+
+/// Returns whether `player` may place a Trap at `(lane, cell)`.
+pub fn is_trap_slot_available(
+    occupancy: &BoardOccupancy,
+    player: PlayerId,
+    lane: LaneId,
+    cell: u8,
+) -> bool {
+    !occupancy.traps.contains_key(&(player, lane, cell))
+}
+
+/// Returns whether `player` may place a Structure at `(lane, cell)`.
+pub fn is_structure_slot_available(
+    occupancy: &BoardOccupancy,
+    player: PlayerId,
+    lane: LaneId,
+    cell: u8,
+) -> bool {
+    !occupancy.structures.contains_key(&(player, lane, cell))
+}
+
+/// Returns whether `player` may place a Field in `lane`.
+pub fn is_field_slot_available(occupancy: &BoardOccupancy, player: PlayerId, lane: LaneId) -> bool {
+    !occupancy.fields.contains_key(&(player, lane))
 }
