@@ -907,3 +907,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `CARD-ANIM-004` entry exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Card Animations Story 006 Multi-objective stagger reveal (`production/epics/card-animations/story-006-objective-stagger-reveal.md`) is unlocked by this story.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-animations/story-009-ci-boundary-enforcement.md` - CI boundary enforcement (no direct S2C subscription in card_animations/)
+- Criteria: 1/1 passing; CA-14 covered by the `Check Card Animations S2C boundary` step in `.github/workflows/tests.yml`.
+- Test Evidence: Integration CI config in `.github/workflows/tests.yml`; local grep found no `Message(Reader|Receiver)<S2C` in `client/src/card_animations/`. CI was not waited on per instruction.
+- Verification: main integration commit `75e11ea` is included in `main`; worker commit `55b5331` is not an ancestor of `HEAD`, but its `.github/workflows/tests.yml` content is identical to `75e11ea`.
+- Notes: Advisory only - story references `TR-CAN-001`, which currently maps to CA-1 rather than CA-14. Advisory only - GDD text still mentions legacy `EventReader<S2C` and `src/card_animations/`; implemented CI targets actual path `client/src/card_animations/` and checks both `MessageReader` and Lightyear `MessageReceiver` S2C subscriptions.
+- Tech debt logged: None
+- Sprint status: No `CARD-ANIM-009` entry exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Card Animations Story 006 Multi-objective stagger reveal (`production/epics/card-animations/story-006-objective-stagger-reveal.md`) or Story 008 Input-gating (`production/epics/card-animations/story-008-input-gating.md`) after readiness check.

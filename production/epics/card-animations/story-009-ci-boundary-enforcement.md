@@ -1,7 +1,7 @@
 # Story 009: CI boundary enforcement (no direct S2C subscription in card_animations/)
 
 > **Epic**: Card Animations
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -29,7 +29,7 @@
 
 *From GDD `design/gdd/card-animations.md`, scoped to this story:*
 
-- [ ] **CA-14** — GIVEN the CI pipeline runs on every merge to main, WHEN `grep -rn "MessageReader<S2C" src/card_animations/` is run against the repository, THEN exit code is 1 (no matches found). Story is not Done until this CI step exists in the pipeline configuration AND the pipeline passes. Note: `EventReader<S2C` half of the original pattern dropped (QA lead recommendation) — `EventReader<T>` does not exist in Bevy 0.17+ and would never match. ADVISORY until CI established on main; auto-promotes to BLOCKING once CI is green. **[ADVISORY → BLOCKING when CI established]**
+- [x] **CA-14** — GIVEN the CI pipeline runs on every merge to main, WHEN `grep -rn "MessageReader<S2C" src/card_animations/` is run against the repository, THEN exit code is 1 (no matches found). Story is not Done until this CI step exists in the pipeline configuration AND the pipeline passes. Note: `EventReader<S2C` half of the original pattern dropped (QA lead recommendation) — `EventReader<T>` does not exist in Bevy 0.17+ and would never match. ADVISORY until CI established on main; auto-promotes to BLOCKING once CI is green. **[ADVISORY → BLOCKING when CI established]**
 
 ---
 
@@ -83,7 +83,7 @@ Manual check: CI grep step passes on every merge to main
 **Required evidence**:
 - Integration: CI pipeline configuration entry (e.g., `.github/workflows/ci.yml` grep step present and passing on main)
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created in `.github/workflows/tests.yml`; local boundary grep passed against `client/src/card_animations/`
 
 ---
 
@@ -91,3 +91,11 @@ Manual check: CI grep step passes on every merge to main
 
 - Depends on: [Story 001](story-001-plugin-scaffold-custom-lenses.md) must be DONE (`src/card_animations/` module exists for grep to run against)
 - Unlocks: None
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 1/1 passing. CA-14 is covered by the `Check Card Animations S2C boundary` step in `.github/workflows/tests.yml`.
+**Deviations**: Advisory only - story references `TR-CAN-001`, which currently maps to CA-1 rather than CA-14 in `docs/architecture/tr-registry.yaml`. Advisory only - current GDD text still mentions legacy `EventReader<S2C` and `src/card_animations/`; the implemented CI check targets the real `client/src/card_animations/` path and checks both `MessageReader` and Lightyear `MessageReceiver` S2C subscriptions.
+**Test Evidence**: Integration CI config at `.github/workflows/tests.yml`; local grep found no `Message(Reader|Receiver)<S2C` matches in `client/src/card_animations/`. CI was not waited on per instruction.
+**Code Review**: Skipped - Lean mode.
