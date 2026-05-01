@@ -1,3 +1,6 @@
+// Scaffold API consumed by downstream stories.
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 use shared::protocol::GameOverReason;
 use shared::session::PlayerId;

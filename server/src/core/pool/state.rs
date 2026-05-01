@@ -7,6 +7,9 @@
 // must return matches in api.rs only. Direct field mutation outside api.rs is
 // forbidden and caught by the CI grep gate at story close.
 
+// Scaffold API consumed by downstream stories.
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 use shared::card::{CardId, CardType, ClassId, Rarity};

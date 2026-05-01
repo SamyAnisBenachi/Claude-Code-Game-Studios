@@ -10,8 +10,14 @@ pub mod api;
 pub mod plugin;
 pub mod state;
 
+// Scaffold API consumed by downstream stories.
+#[allow(unused_imports)]
 pub use api::refresh_shop;
+// Scaffold API consumed by downstream stories.
+#[allow(unused_imports)]
 pub use plugin::CardPoolPlugin;
+// Scaffold API consumed by downstream stories.
+#[allow(unused_imports)]
 pub use state::{
     DistributeError, InitialDraftOffering, ManualRefreshCount, PlayerPool, PlayerPools, PoolFilter,
     ShopSlots,

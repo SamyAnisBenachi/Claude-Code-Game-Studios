@@ -1,3 +1,6 @@
+// Scaffold API consumed by downstream stories.
+#![allow(dead_code)]
+
 use super::state::RoundPhase;
 use bevy::prelude::*;
 use shared::card::CardId;

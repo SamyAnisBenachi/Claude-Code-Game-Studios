@@ -10,6 +10,8 @@ use bevy::prelude::*;
 
 use crate::core::pool::state::{InitialDraftOffering, ManualRefreshCount, PlayerPools, ShopSlots};
 
+// Scaffold API consumed by downstream stories.
+#[allow(dead_code)]
 pub struct CardPoolPlugin;
 
 impl Plugin for CardPoolPlugin {

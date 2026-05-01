@@ -3,6 +3,9 @@
 // All economy field writes live here. Other systems call these functions rather
 // than assigning currency fields directly.
 
+// Scaffold API consumed by downstream stories.
+#![allow(dead_code)]
+
 use shared::config::GameConfig;
 
 use crate::core::economy::state::{PlayerEconomy, SpendError};

@@ -72,7 +72,8 @@ pub struct HiddenObjectives {
 // TODO(S1-05 Lightyear spike): verify exact Lightyear 0.26 channel + message registration
 // API against docs.rs/lightyear/0.26 before implementing. Checklist items 1-6 must be
 // signed off first. Stub lives here (not shared/) per ADR-003 fallback.
-
+// Scaffold API consumed by downstream stories.
+#[allow(dead_code)]
 fn handle_c2s_message() {
     // TODO(Epic 4 — S1-05 Lightyear spike):
     //   1. Resolve Lightyear ClientId → PlayerId via SessionRegistry.

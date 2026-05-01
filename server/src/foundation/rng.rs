@@ -8,6 +8,9 @@
 // ChaCha20Rng is never exposed outside this file.
 // PlayerId is a placeholder until shared/ defines the canonical type (TODO).
 
+// Scaffold API consumed by downstream stories.
+#![allow(dead_code)]
+
 use bevy::prelude::Resource;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;

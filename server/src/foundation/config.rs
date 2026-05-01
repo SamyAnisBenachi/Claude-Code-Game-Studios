@@ -59,6 +59,8 @@ use shared::card::{CardData, CardId};
 /// - `ConfigValidation`: both assets have loaded; `validate_and_promote` runs.
 /// - `Lobby`: game is ready; `Res<GameConfig>` and `Res<CardCatalog>` are live.
 /// - `InSession`: a match is in progress (wired in later epics).
+// Scaffold API consumed by downstream stories.
+#[allow(dead_code)]
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AppState {
     #[default]
@@ -181,6 +183,8 @@ pub struct CardCatalog {
     pub cards: HashMap<CardId, CardData>,
 }
 
+// Scaffold API consumed by downstream stories.
+#[allow(dead_code)]
 impl CardCatalog {
     /// Number of card definitions in the catalog.
     pub fn len(&self) -> usize {

@@ -20,6 +20,8 @@ pub struct PlayerEconomy {
     /// Current per-player mana ceiling.
     pub mana_cap: u32,
     /// Gold reserved by an active auction bid.
+    // Scaffold API consumed by downstream stories.
+    #[allow(dead_code)]
     pub reserved_gold: u32,
 }
 
@@ -32,6 +34,8 @@ pub struct PlayerEconomies(pub HashMap<PlayerId, PlayerEconomy>);
 pub struct InterestSnapshots(pub HashMap<PlayerId, u32>);
 
 /// Errors returned by economy validation APIs.
+// Scaffold API consumed by downstream stories.
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SpendError {
     /// Player does not have enough available currency.

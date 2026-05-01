@@ -9,6 +9,9 @@
 //   copies_remaining(), total_acquired().
 // Draw functions (draw_class_card, draw_neutral_family, etc.) — Story 002.
 
+// Scaffold API consumed by downstream stories.
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 use shared::card::{CardCatalog, CardId, ClassId, Rarity, EPIC_POOL_COPIES, LEGENDARY_POOL_COPIES};
