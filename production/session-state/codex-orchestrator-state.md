@@ -39,8 +39,10 @@ source of truth for story status.
   version and missing performance budget. Story fixed at `94267fb`; worker
   completed on branch `work/ca-005-purchase-flow` at `415384a`;
   cherry-picked into `main` at `c6141bc`. Window can be cleared.
-- COMBAT-001 worker: launch prompt issued after CARD-ANIM-009 closure window;
-  per user rule, assume launched unless contradicted.
+- COMBAT-001 worker: completed locally on branch
+  `work/combat-001-resolve-combat-scaffold` at `311c6f0`; worker push was
+  blocked by credentials, so root cherry-picked it into `main` at `01f831e`.
+  Window can be cleared.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -100,6 +102,12 @@ None currently tracked here.
   initial, refresh cost, and draw pipeline tests passed after integration
   (`26/26` total), plus `cargo check -p server`, `cargo fmt --all -- --check`,
   and `git diff --check HEAD~1..HEAD`.
+- COMBAT-001: Resolve Combat Scaffold implemented locally on branch
+  `work/combat-001-resolve-combat-scaffold` at `311c6f0`; cherry-picked into
+  `main` at `01f831e`. Local resolve combat scaffold, RSM transitions, and
+  class lifecycle tests passed after integration (`26/26` total), plus
+  `cargo check -p server`, `cargo fmt --all -- --check`, and
+  `git diff --check HEAD~1..HEAD`.
 - BOARD-004: Placement Occupancy implemented on branch
   `work/BOARD-004-placement-occupancy` at `224708d`; cherry-picked into `main`
   at `0c69612`. Local placement occupancy, board grid, spawn range, standard
@@ -180,6 +188,7 @@ None currently tracked here.
 8. CA-004
 9. BOARD-004
 10. CA-005
+11. COMBAT-001
 
 Run only one story-done at a time.
 
@@ -187,6 +196,7 @@ Run only one story-done at a time.
 
 - CA-004: implemented and integrated; pending story-done.
 - CA-005: implemented and integrated; pending story-done.
+- COMBAT-001: implemented and integrated; pending story-done.
 - BOARD-004: implemented and integrated; pending story-done.
 - CARD-ANIM-008: implemented and integrated; pending story-done. Manual CA-13b
   and CA-22 evidence remains deferred until the dependent UI exists.
@@ -204,7 +214,7 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- COMBAT-001: `production/epics/combat-resolution/story-001-resolve-combat-scaffold.md`
+None currently active after COMBAT-001 integration, unless a new worker prompt is issued.
 
 CARD-ANIM-008 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
