@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use server::core::rsm::{AuctionPhaseEntered, BroadcastPhaseChanged};
+use server::core::economy::PlayerEconomies;
+use server::core::rsm::{AbortAuction, AuctionPhaseEntered, BroadcastPhaseChanged};
 use server::feature::auction::{
     auction_tick_system, AuctionCardDrawFixture, AuctionPhase, AuctionState, S2CAuctionCard,
 };
@@ -47,9 +48,11 @@ fn app_for_card(card: CardData) -> App {
     let card_id = card.id;
     let mut app = App::new();
     app.add_message::<AuctionPhaseEntered>()
+        .add_message::<AbortAuction>()
         .add_message::<S2CAuctionCard>()
         .add_message::<BroadcastPhaseChanged>()
         .insert_resource(AuctionState::default())
+        .insert_resource(PlayerEconomies::default())
         .insert_resource(AuctionCardDrawFixture::with_card(card_id))
         .insert_resource(catalog_with(card))
         .insert_resource(GameConfig(shared::config::GameConfig::default()))

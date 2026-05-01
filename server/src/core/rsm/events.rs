@@ -29,6 +29,9 @@ pub struct AuctionPhaseEntered {
 }
 
 #[derive(Message, Clone, Debug)]
+pub struct AbortAuction;
+
+#[derive(Message, Clone, Debug)]
 pub struct PlacementPhaseEntered {
     pub round: u32,
 }

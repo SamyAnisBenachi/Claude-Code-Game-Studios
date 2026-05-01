@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use shared::card::{CardId, Rarity};
 
-use crate::core::rsm::AuctionPhaseEntered;
+use crate::core::economy::{api, PlayerEconomies};
+use crate::core::rsm::{AbortAuction, AuctionPhaseEntered};
 use crate::foundation::config::{CardCatalog, GameConfig};
 
 use super::state::{AuctionPhase, AuctionState};
@@ -36,6 +37,8 @@ impl AuctionCardDrawFixture {
 pub fn auction_tick_system(
     mut auction: ResMut<AuctionState>,
     mut phase_entered: MessageReader<AuctionPhaseEntered>,
+    mut abort: MessageReader<AbortAuction>,
+    mut economies: ResMut<PlayerEconomies>,
     draw_fixture: Option<Res<AuctionCardDrawFixture>>,
     catalog: Res<CardCatalog>,
     config: Res<GameConfig>,
@@ -74,6 +77,28 @@ pub fn auction_tick_system(
             card_id,
             starting_price,
         });
+    }
+
+    for _event in abort.read() {
+        handle_abort_auction(&mut auction, &mut economies);
+    }
+}
+
+fn handle_abort_auction(auction: &mut AuctionState, economies: &mut PlayerEconomies) {
+    match auction.phase {
+        AuctionPhase::Idle | AuctionPhase::Resolving => {}
+        AuctionPhase::Selecting | AuctionPhase::LiveBidding => {
+            if let Some(leader) = auction.current_leader {
+                if let Some(economy) = economies.0.get_mut(&leader) {
+                    let reserved_gold = economy.reserved_gold;
+                    if reserved_gold > 0 {
+                        api::release_gold_reservation(economy, reserved_gold);
+                    }
+                }
+            }
+
+            reset_to_idle(auction);
+        }
     }
 }
 

@@ -149,6 +149,16 @@ stories:
     blocker: ""
     completed: "2026-05-01"
 
+  - id: "AUC-003"
+    name: "Auction Abort Handler"
+    file: "production/epics/auction-system/story-003-auction-abort-handler.md"
+    priority: must-have
+    status: in-progress
+    owner: "codex-auc-003-abort-handler"
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""
+
   - id: "KW-001"
     name: "Keyword System Module Scaffold"
     file: "production/epics/keyword-system/story-001-module-scaffold.md"

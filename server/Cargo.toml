@@ -46,6 +46,10 @@ name = "auction_phase_entry_test"
 path = "../tests/unit/auction/auction_phase_entry_test.rs"
 
 [[test]]
+name = "auction_abort_handler_test"
+path = "../tests/unit/auction/auction_abort_handler_test.rs"
+
+[[test]]
 name = "card_acquisition_state_scaffold_test"
 path = "../tests/unit/card_acquisition/state_scaffold_test.rs"
 

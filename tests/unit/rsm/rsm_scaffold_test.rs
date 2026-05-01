@@ -6,6 +6,7 @@
 // Coverage:
 // - RoundState inserts cleanly into a fresh Bevy App and initializes to Lobby.
 // - All timers initialize to None and tracking collections are empty.
-// - RsmPlugin registers RoundState and all 9 buffered Message resources.
+// - RsmPlugin registers RoundState and all buffered Message resources,
+//   including the Auction abort cleanup signal.
 // - SessionReady is intentionally excluded from Messages<T>; it is an Observer
 //   Event registered via app.observe(on_session_ready).
