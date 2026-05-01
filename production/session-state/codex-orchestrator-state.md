@@ -46,9 +46,6 @@ None currently tracked here.
   `first_strike_haste_test` and `cargo check -p server` passed. Story text still
   has stale ADR-018 Proposed/BLOCKED wording; completion review must document
   that ADR-018 is Accepted in the 2026-05-01 manifest.
-- S3-05: RSM Win Condition and Game Over implemented at `5bf6bde`; local RSM
-  win-condition and F2 ordering tests passed, RSM feature-import grep passed,
-  and `git diff --check` passed for S3-05 files.
 - HUD-001: HUD Plugin Scaffold implemented at `b04748b`; `git diff --check` and
   `cargo fmt --check` passed. Local client test was blocked by native
   `aws-lc-sys` dependency compilation; document this in story-done.
@@ -98,19 +95,20 @@ None currently tracked here.
   `codex-s3-06-websocket`; clean this in a later tracker hygiene pass if needed.
 - S3-04: RSM Timers + Input Reader implemented at `eff5cf9`; blocker fixed at
   `ec6f433`/`61e45ad`; story-done committed at `1045dbc`.
+- S3-05: RSM Win Condition and Game Over implemented at `5bf6bde`; story-done
+  committed at `4d745a8`.
 
 ## Story-Done Queue
 
-1. S3-05
-2. CA-002
-3. KW-003
-4. HUD-001
-5. S3-08
-6. CARD-ANIM-002
-7. BOARD-001
-8. CA-003
-9. CA-006
-10. CARD-ANIM-004
+1. CA-002
+2. KW-003
+3. HUD-001
+4. S3-08
+5. CARD-ANIM-002
+6. BOARD-001
+7. CA-003
+8. CA-006
+9. CARD-ANIM-004
 
 Run only one story-done at a time.
 
