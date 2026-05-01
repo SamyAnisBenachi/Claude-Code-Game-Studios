@@ -28,7 +28,6 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- CARD-ANIM-004 story-done: assumed launched after HAND-UI-001 closure.
 - CA-004 worker: completed on branch `work/ca-004-refresh-cost` at `f26f738`;
   cherry-picked into `main` at `5cb53a8`. Window can be cleared.
 - BOARD-004 worker: completed on branch `work/BOARD-004-placement-occupancy`
@@ -46,11 +45,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- CARD-ANIM-004: AnimQueue Resolution Drain implemented on branch
-  `work/card-anim-004-animqueue-resolution-drain` at `2ecd58f`; merged into
-  `main` at `b7204e5`. Local anim queue + plugin scaffold tests,
-  `cargo check -p client`, and `cargo fmt -p client -- --check` passed after
-  integration.
 - CARD-ANIM-009: CI Boundary Enforcement implemented on branch
   `work/card-anim-009-ci-boundary-enforcement` at `55b5331`; cherry-picked into
   `main` at `75e11ea` because the branch was based before the asset-sorting
@@ -116,6 +110,9 @@ None currently tracked here.
 
 ## Recently Closed
 
+- CARD-ANIM-004: AnimQueue Resolution Drain implemented on branch
+  `work/card-anim-004-animqueue-resolution-drain` at `2ecd58f`; merged into
+  `main` at `b7204e5`; story-done committed at `aec3b7f`.
 - HAND-UI-001: Plugin Scaffold implemented on branch
   `work/hand-ui-001-plugin-scaffold` at `9f28a2a`; cherry-picked into `main` at
   `7c603e0`; story-done committed at `342b343`.
@@ -166,19 +163,18 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. CARD-ANIM-004
-2. CARD-ANIM-009
-3. BOARD-002
-4. KW-004
-5. CARD-ANIM-008
-6. HUD-002
-7. CARD-ANIM-006
-8. HUD-003
-9. KW-005
-10. BOARD-003
-11. HAND-UI-002
-12. CA-004
-13. BOARD-004
+1. CARD-ANIM-009
+2. BOARD-002
+3. KW-004
+4. CARD-ANIM-008
+5. HUD-002
+6. CARD-ANIM-006
+7. HUD-003
+8. KW-005
+9. BOARD-003
+10. HAND-UI-002
+11. CA-004
+12. BOARD-004
 
 Run only one story-done at a time.
 
@@ -210,8 +206,7 @@ Run only one story-done at a time.
 Batch launched:
 - CA-005: `production/epics/card-acquisition/story-005-purchase-flow.md`
 
-CARD-ANIM-004 story-done is the active serialized closure. Do not launch another
-story-done until it returns.
+The serialized story-done slot is free. Next queued closure is CARD-ANIM-009.
 
 ## Resolved Design Gates
 
