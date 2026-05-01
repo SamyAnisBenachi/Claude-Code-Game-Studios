@@ -1060,3 +1060,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no `COMBAT-001` row exists in `production/sprint-status.yaml`.
 - Next recommended: Combat Resolution Story 002 modifier stack (`production/epics/combat-resolution/story-002-combat-modifier-stack.md`) or Story 003 sub-step 1 placement/appearance (`production/epics/combat-resolution/story-003-substep1-placement-appearance.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/objective-system/story-001-objective-state-model.md` - Objective State Model
+- Criteria: 3/3 passing; OS-1a, OS-1b, and OS-1c covered by `tests/unit/objective/objective_state_test.rs`.
+- Test Evidence: `cargo test -p server --test objective_state_test` passed 4/4. `cargo check -p server` passed.
+- Verification: `server/src/feature/objective/` defines and registers `ObjectiveHp`, `ObjectiveSlot`, and `HiddenObjectives`; objective spawn creates five replicated HP slots per player at configured HP; `ObjectiveCounters` is exposed through `server/src/core/objective_contract.rs` for RSM-safe reads.
+- Notes: Advisory only - `ObjectiveCounters` lives in core and is re-exported by the objective feature to satisfy the RSM no-Feature-import layering rule. Advisory only - Objective System GDD Rule 4 still contains older replicated-identity wording; current TR-OBJ-007 and ADR-001 are followed.
+- Tech debt logged: None
+- Sprint status: Unchanged; no Objective Story 1 row exists in `production/sprint-status.yaml`.
+- Next recommended: Objective Story 002 Fake Assignment & Config Guards (`production/epics/objective-system/story-002-fake-assignment-and-config-guards.md`) after readiness check.

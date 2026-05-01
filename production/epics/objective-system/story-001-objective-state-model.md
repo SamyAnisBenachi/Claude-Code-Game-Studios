@@ -1,7 +1,7 @@
 # Story 001: Objective State Model
 
 > **Epic**: Objective System
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -116,7 +116,7 @@ The `HiddenObjectives` Resource is populated by Story 002 (fake lane assignment)
 **Story Type**: Logic
 **Required evidence**: `tests/unit/objective/objective_state_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`cargo test -p server --test objective_state_test`)
 
 ---
 
@@ -124,3 +124,13 @@ The `HiddenObjectives` Resource is populated by Story 002 (fake lane assignment)
 
 - Depends on: None — this is the foundation story for the Objective System
 - Unlocks: Story 002 (fake assignment needs data structures), Story 004 (damage interface needs ObjectiveHp + HiddenObjectives)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 3/3 passing
+**Test Evidence**: Logic unit test at `tests/unit/objective/objective_state_test.rs`; local `cargo test -p server --test objective_state_test` passed 4/4. `cargo check -p server` passed.
+**Deviations**: Advisory only: `ObjectiveCounters` lives in `server/src/core/objective_contract.rs` and is re-exported by the objective feature so RSM can read counters without importing Feature-layer modules. Advisory only: Objective System GDD Rule 4 still contains older replicated-identity wording; current TR-OBJ-007 and ADR-001 are followed by the implementation.
+**Code Review**: Skipped by lean review mode.
+**Scope**: Implementation touched the objective feature module, the RSM-safe core counter contract, server plugin wiring, Cargo test registration, and unit test evidence. `production/sprint-status.yaml` was left unchanged because it has no entry for this story.
