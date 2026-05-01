@@ -483,6 +483,56 @@ This library catalogs the reusable interaction patterns extracted from all Lanes
 
 ---
 
+### PTN-DSP-009 — Card Frame Container
+
+**Category**: Data Display
+**Used In**: `design/ux/class-picker.md` (class picker card)
+
+**Description**: A Krosmaga-style decorative card frame that groups a portrait, title, descriptive text, and a list of named items into a single cohesive visual unit. The frame uses a class-tinted border to signal identity. It is a container — its contents are specified by the screen using it, not by this pattern.
+
+**Specification**:
+- Shape: Rounded rectangle with a slightly tapered top edge (evokes a playing card)
+- Border: 2px solid, class-tinted color (from art bible class color palette); brightens to a gold pulse on commitment events
+- Background: Dark semi-opaque fill (Void `#1A1520` at 90% opacity) to float above the lobby background
+- Portrait zone: Upper ~50% of the card — image fills the zone with object-fit: cover
+- Text zone: Lower ~50% — vertically stacked: title (large), subtitle/description (small), item list, position indicator
+- Lock overlay: When the card represents a committed/locked choice, a padlock icon fades in over the portrait (center, 50% opacity)
+- Reduced-motion: Lock overlay appears instantly; border pulse replaced by static gold border
+- Accessibility: The card frame is decorative — all content inside must be text-based; the frame itself carries `role="presentation"`
+
+**When to Use**: Presenting a single selectable identity (class, character, game mode) with a portrait and supporting text in a Krosmaga-aesthetic context.
+
+**When NOT to Use**: Grids of many items (use a card grid pattern instead). Non-identity data (use a panel or stat display). Contexts where the art bible calls for a non-card visual language.
+
+**Reference**: `design/ux/class-picker.md` — Class card frame
+
+---
+
+### PTN-DSP-010 — Dot Position Indicator
+
+**Category**: Data Display
+**Used In**: `design/ux/class-picker.md` (class carousel position)
+
+**Description**: A row of small circular dots indicating position within an ordered set. One dot is filled (current position); all others are empty. Communicates both current index and total count without numeric labels.
+
+**Specification**:
+- Dot count: Matches total items in the set (e.g., 6 dots for 6 classes)
+- Current dot: Filled, slightly larger (14px diameter) — size difference is the shape backup for colorblind users
+- Other dots: Empty circle with visible border, smaller (10px diameter), same color family at 40% opacity
+- Color: Prism White — consistent regardless of class-tinted context; does not change per class
+- Layout: Horizontal row, evenly spaced, centred within the card frame
+- Updates: Current dot transitions instantly on item change — no animation needed
+- Accessibility: The row carries `role="group"` with `aria-label="Item X of Y"` on the filled dot; non-interactive (display only). Never relies on color alone — size difference is the primary non-color signal.
+- Keyboard: Not focusable. Navigation is handled by the carousel arrow buttons (PTN-INP-002).
+
+**When to Use**: Any carousel (PTN-INP-002) or single-item viewer with ≤ 12 items where the player benefits from knowing their position and total count.
+
+**When NOT to Use**: Sets larger than ~12 (dots become too small to distinguish). Sets where the player does not need to know the total count. Scrollable lists (use a scroll progress indicator instead).
+
+**Reference**: `design/ux/class-picker.md` — Class position indicator
+
+---
+
 ## Gaps & Patterns Needed
 
 Anticipated patterns for planned systems with no spec yet. Document when the relevant screen is authored.

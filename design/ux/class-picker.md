@@ -330,6 +330,6 @@ All cross-fades become instant cuts. Gold border pulse replaced by static gold b
 | # | Question | Owner | Priority | Status |
 |---|---|---|---|---|
 | OQ-CP-1 | Should `C2SSelectClass` be sent on every carousel navigation step for future opponent-preview feature, or suppressed entirely until `C2SConfirmClass`? Current spec suppresses it — revisit if opponent class preview is added. | ux-designer / lead-programmer | Low | Open |
-| OQ-CP-2 | Two new interaction patterns flagged for the library: **Card Frame Container** and **Dot Position Indicator**. Add to `design/ux/interaction-patterns.md` before class picker stories begin. | ux-designer | Medium | Open — pattern library update needed |
+| OQ-CP-2 | Two new interaction patterns flagged for the library: **Card Frame Container** and **Dot Position Indicator**. Add to `design/ux/interaction-patterns.md` before class picker stories begin. | ux-designer | Medium | **Closed** — PTN-DSP-009 and PTN-DSP-010 added |
 | OQ-MM-1 | *(Resolved here)* Show one-line tempo signature + 4 Krosmic names with hover tooltips. No paragraph summaries. | — | — | **Closed** |
 | OQ-MM-2 | *(Resolved here)* Opponent class NOT shown before both commit. Opponent slot shows "Ready ✓" only. | — | — | **Closed** |
