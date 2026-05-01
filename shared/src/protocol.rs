@@ -498,11 +498,35 @@ pub struct PlayerSnapshot {
     pub class_id: ClassId,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnitBoardLocation {
+    BoardCell { lane: u8, cell: u8 },
+    ObjectiveAttachment { lane: u8 },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UnitStatsSnapshot {
+    pub hp: u8,
+    pub atk: u8,
+    pub mp: u8,
+    pub ar: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UnitBoardState {
+    pub unit_id: EntityId,
+    pub owner_id: PlayerId,
+    pub location: UnitBoardLocation,
+    pub stats: Option<UnitStatsSnapshot>,
+    pub source_class: Option<ClassId>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct S2CGameSnapshot {
     // TODO(GSS epic): expand to full S2CGameSnapshot schema.
     pub player_id: PlayerId,
     pub players: Vec<PlayerSnapshot>,
+    pub units: Vec<UnitBoardState>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

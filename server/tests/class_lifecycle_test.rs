@@ -205,7 +205,7 @@ fn test_snapshot_contains_locked_class_id() {
         (player(2), ClassId::Xelor, true),
     ]));
 
-    let snapshot = build_snapshot(player_a, &world).expect("snapshot builds");
+    let snapshot = build_snapshot(player_a, &mut world).expect("snapshot builds");
     let player_snapshot = snapshot
         .players
         .iter()

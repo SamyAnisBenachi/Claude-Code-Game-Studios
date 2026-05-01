@@ -119,6 +119,16 @@ stories:
     blocker: ""
     completed: "2026-05-01"
 
+  - id: "CS-002"
+    name: "Class Token Spawn Scaffold"
+    file: "production/epics/class-system/story-002-token-spawn-scaffold.md"
+    priority: must-have
+    status: in-progress
+    owner: "codex-cs-002-token-spawn"
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""
+
   - id: "AUC-001"
     name: "AuctionState Types & Snapshot Scaffold"
     file: "production/epics/auction-system/story-001-auction-state-scaffold.md"
