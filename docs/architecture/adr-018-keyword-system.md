@@ -15,7 +15,7 @@ Accepted
 | **Knowledge Risk** | HIGH — 4 versions of breaking changes post-LLM-cutoff (0.15–0.18) |
 | **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, ADR-002, ADR-005, ADR-006, ADR-009, ADR-010, `design/gdd/keyword-system.md` |
 | **Post-Cutoff APIs Used** | `#[derive(Message)]` + `MessageWriter<T>` / `MessageReader<T>` (Bevy 0.17+ Message/Event split); `#[derive(Component)]` with `Option<Entity>` field (Entity handle semantics Bevy 0.18); component lifecycle hooks (`on_remove`) — NOT used here; manual query scan used instead |
-| **Verification Required** | (1) Confirm `app.add_message::<KeywordTriggered>()` is registered in `KeywordPlugin` — missing registration panics at first write. (2) Confirm `#[serde(tag = "kw", content = "val")]` round-trips correctly for all `Keyword` variants in a unit test before merging ADR-006 amendment. (3) Verify `&Entities` system param API in Bevy 0.18 for the BODYGUARD stale-reference cleanup system. |
+| **Verification Required** | (1) ✅ VERIFIED 2026-05-01: `app.add_message::<T>()` is the correct Bevy 0.17+ registration API — `EventWriter`/`EventReader` removed in 0.17; `#[derive(Message)]` + `MessageWriter<T>` / `MessageReader<T>` + `app.add_message::<T>()` is the replacement (confirmed: `breaking-changes.md`, `current-best-practices.md`). Missing registration panics at first write — gate remains in `KeywordPlugin` implementation checklist. (2) ⏳ DESIGN VERIFIED; TEST REQUIRED: `#[serde(tag = "kw", content = "val")]` adjacent tagging is the correct serde approach — internal tagging (`#[serde(tag)]` alone) fails at runtime for newtype variants whose inner type serializes as a scalar (not a map). Design rationale confirmed. Round-trip unit test for all 7 `Keyword` variants is a pre-implementation gate before ADR-006 amendment merges. (3) ✅ VERIFIED 2026-05-01: `&Entities` is a valid Bevy 0.18 system param; `entities.contains(entity)` O(1) alive check is unchanged. Only relevant 0.18 changes to `Entities` are `flush()` removed and `entity.row()` → `entity.index()` — neither used in `bodyguard_cleanup_system` (confirmed: `deprecated-apis.md`). Full symbol path `bevy::ecs::entity::Entities` unchanged. |
 
 ## ADR Dependencies
 
@@ -547,8 +547,8 @@ Pre-implementation gates:
       variants
 - [ ] ADR-005 updated with 3 new RESOLUTION seed slots (`range_equidistant_select`,
       `teleport_random_dest`, `strich_change_lane_select`)
-- [ ] `app.add_message::<KeywordTriggered>()` registration confirmed in `KeywordPlugin`
-- [ ] `&Entities` system param verified against Bevy 0.18 docs before `bodyguard_cleanup_system` merges
+- [x] `app.add_message::<KeywordTriggered>()` registration confirmed — Bevy 0.17+ API verified 2026-05-01
+- [x] `&Entities` system param verified against Bevy 0.18 docs — `contains()` unchanged; `flush()` and `entity.row()` are the only removed APIs (not used here) — verified 2026-05-01
 
 ## Related Decisions
 
