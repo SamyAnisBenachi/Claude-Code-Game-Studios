@@ -37,7 +37,7 @@ source of truth for story status.
   manifest and too-few acceptance criteria. Story fixed at `10d738f`; worker
   completed locally on branch `work/objective-001-state-model` at `0ca676d`;
   push was blocked by credentials, so root cherry-picked it into `main` at
-  `38a5489`. Window can be cleared.
+  `38a5489`; story-done committed at `0b847cb`. Window can be cleared.
 - COMBAT-001 worker: completed locally on branch
   `work/combat-001-resolve-combat-scaffold` at `311c6f0`; worker push was
   blocked by credentials, so root cherry-picked it into `main` at `01f831e`;
@@ -72,11 +72,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- OBJECTIVE-001: Objective State Model implemented locally on branch
-  `work/objective-001-state-model` at `0ca676d`; cherry-picked into `main` at
-  `38a5489`. Local objective state and RSM win-condition tests passed after
-  integration (`11/11` total), plus `cargo check -p server`, `cargo fmt --all
-  -- --check`, and `git diff --check HEAD~1..HEAD`.
 - HUD-005: Phase Transitions implemented on branch
   `work/hud-005-phase-transitions` at `5061728`; cherry-picked into `main` at
   `9104400`. Worker reported `cargo fmt -p client -- --check`,
@@ -96,6 +91,9 @@ None currently tracked here.
   `cargo check -p server`, and `git diff --check HEAD~1..HEAD` passed.
 ## Recently Closed
 
+- OBJECTIVE-001: Objective State Model implemented locally on branch
+  `work/objective-001-state-model` at `0ca676d`; cherry-picked into `main` at
+  `38a5489`; story-done committed at `0b847cb`.
 - COMBAT-001: Resolve Combat Scaffold implemented locally on branch
   `work/combat-001-resolve-combat-scaffold` at `311c6f0`; cherry-picked into
   `main` at `01f831e`; story-done committed at `9589116`.
@@ -191,16 +189,14 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. OBJECTIVE-001
-2. HUD-005
-3. HAND-UI-003
-4. BOARD-005
+1. HUD-005
+2. HAND-UI-003
+3. BOARD-005
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- OBJECTIVE-001: implemented and integrated; pending story-done.
 - HUD-005: implemented and integrated; pending story-done.
 - HAND-UI-003: implemented and integrated; pending story-done.
 - BOARD-005: implemented and integrated; pending story-done.
