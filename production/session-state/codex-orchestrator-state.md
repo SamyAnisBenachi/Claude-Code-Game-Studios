@@ -29,7 +29,8 @@ source of truth for story status.
 ## Live Windows Confirmed By User
 
 - CA-003 story-done: assumed launched from the current orchestrator batch.
-- BOARD-003 worker: assumed launched from the current orchestrator batch.
+- BOARD-003 worker: readiness returned NEEDS WORK due stale story manifest
+  metadata; fixed at `6c56f8c`. Needs relaunch against current `main`.
 - HAND-UI-002 worker: assumed launched from the current orchestrator batch.
 - KW-005 worker: assumed launched from the current orchestrator batch.
 
@@ -180,6 +181,7 @@ Run only one story-done at a time.
 
 Batch launched:
 - BOARD-003: `production/epics/board-lane-system/story-003-spawn-range-validation.md`
+  readiness metadata refreshed at `6c56f8c`; relaunch needed.
 - HAND-UI-002: `production/epics/hand-ui/story-002-fan-layout-formula.md`
 - KW-005: `production/epics/keyword-system/story-005-shield-scope.md`
 
