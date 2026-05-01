@@ -28,13 +28,7 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- CA-006 story-done: assumed launched after CA-003 closure.
-- BOARD-003 worker: completed on branch `work/BOARD-003-spawn-range-validation`
-  at `bf39342`; cherry-picked into `main` at `9c38083`. Window can be cleared.
-- HAND-UI-002 worker: completed on branch `work/hand-ui-002-fan-layout-formula`
-  at `da0fe3a`; cherry-picked into `main` at `047aff9`. Window can be cleared.
-- KW-005 worker: completed on branch `work/kw-005-shield-scope` at `a1a824b`;
-  cherry-picked into `main` at `0b610fd`. Window can be cleared.
+None currently confirmed.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -106,13 +100,11 @@ None currently tracked here.
   `work/board-002-standard-unit-movement` at `4a76028`; cherry-picked into
   `main` at `0d8e41c`. Local `standard_movement_test`, `cargo check -p server`,
   `cargo fmt -p server -- --check`, and `git diff --check` passed.
-- CA-006: Card Acquisition External Bypass implemented on branch
-  `work/ca-006-external-bypass` at `6af1137`; merged into `main`. Local
-  `card_acquisition_external_bypass_test` and `cargo check -p server` passed
-  after integration.
-
 ## Recently Closed
 
+- CA-006: Card Acquisition External Bypass implemented on branch
+  `work/ca-006-external-bypass` at `6af1137`; merged into `main`; story-done
+  committed at `1ddd7b6`.
 - CA-003: Card Acquisition Draw Pipeline implemented on branch
   `work/ca-003-draw-pipeline` at `c6200f0`; merged into `main` at `98cb52a`;
   story-done committed at `74f7aff`.
@@ -157,26 +149,24 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. CA-006
-2. CARD-ANIM-004
-3. CARD-ANIM-009
-4. BOARD-002
-5. KW-004
-6. CARD-ANIM-008
-7. HUD-002
-8. CARD-ANIM-006
-9. HAND-UI-001
-10. HUD-003
-11. KW-005
-12. BOARD-003
-13. HAND-UI-002
+1. CARD-ANIM-004
+2. CARD-ANIM-009
+3. BOARD-002
+4. KW-004
+5. CARD-ANIM-008
+6. HUD-002
+7. CARD-ANIM-006
+8. HAND-UI-001
+9. HUD-003
+10. KW-005
+11. BOARD-003
+12. HAND-UI-002
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
 - CA-004 / CA-005: unblocked by CA-003 story-done; run readiness before launch.
-- CA-006: implemented and merged; pending story-done.
 - KW-004: unblocked by KW-003 story-done; run readiness first because its story
   text may still contain stale ADR-018 Proposed/BLOCKED wording. Implemented and
   integrated; pending story-done.
@@ -198,8 +188,8 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 No code worker currently active in this state file.
-CA-006 story-done is the active serialized closure. New code workers can
-continue in worktree mode if dependencies are checked first.
+No story-done currently active in this state file. New code workers can continue
+in worktree mode if dependencies are checked first.
 
 ## Resolved Design Gates
 
