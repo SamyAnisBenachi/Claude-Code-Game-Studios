@@ -43,6 +43,8 @@ source of truth for story status.
   `work/combat-001-resolve-combat-scaffold` at `311c6f0`; worker push was
   blocked by credentials, so root cherry-picked it into `main` at `01f831e`.
   Window can be cleared.
+- OBJECTIVE-001 worker: launch prompt issued after COMBAT-001 integration; per
+  user rule, assume launched unless contradicted.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -214,7 +216,7 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-None currently active after COMBAT-001 integration, unless a new worker prompt is issued.
+- OBJECTIVE-001: `production/epics/objective-system/story-001-objective-state-model.md`
 
 CARD-ANIM-008 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
