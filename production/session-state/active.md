@@ -3,6 +3,20 @@
 > Lis ce fichier EN PREMIER dans toute nouvelle session.
 > Il contient l'état complet du projet au 2026-04-30.
 >
+> **✅ SESSION 2026-05-01 (continued) — /design-review network-protocol.md (R7) + round-state-machine.md (R2) — COMPLETE**
+>
+> **network-protocol.md** — R7 lean: APPROVED (revisions accepted inline)
+> 4 blockers resolved: S2CPrismRespawned + S2CPrismRewardDropped added to S2C table + NP-56/57 ACs; EndOfTurnFired removed from inner-sub_step invariant list; NP-52/NP-53 reclassified BLOCKING. Systems-index updated. Review log appended.
+>
+> **round-state-machine.md** — R2 full (5 specialists): APPROVED (revisions accepted inline)
+> 13 blockers resolved: Rule 13 hybrid heartbeat model; F2 Bevy scheduling table; Rule 14 Option<u32> timer; Rule 7 IDLE invariant; auction_max_duration 120→300; RSM-34/38 BLOCKING; auction_followup_placement_timer_seconds Tuning Knob; 6 new ACs (RSM-11b, 29b, 29c, 33a, 35b, rewritten RSM-9). OQ-4 and OQ-6 resolved. Systems-index updated. Review log appended.
+>
+> **⚠️ Pending cross-GDD item:** NP GDD S2CPhaseChanged.timer_duration_ms must change u32→Option<u32> (flagged in RSM Rule 14 cross-GDD note). Owner: first RSM implementer.
+>
+> **All M1 Foundation GDDs are now Approved.**
+>
+> Next recommended: /consistency-check (to apply S2CPhaseChanged type fix + surface any cross-GDD drift) OR /review-all-gdds (holistic M1+M2+M3 review)
+>
 > **✅ SESSION 2026-05-01 — /ux-design class-picker — COMPLETE**
 > UX spec written section-by-section: design/ux/class-picker.md
 > Status: Complete — pending /ux-review

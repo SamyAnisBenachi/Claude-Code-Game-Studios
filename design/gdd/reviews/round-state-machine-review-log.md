@@ -1,5 +1,12 @@
 # Review Log — Round State Machine
 
+## Review — 2026-05-01 (R2 full) — Verdict: APPROVED
+Scope signal: M
+Specialists: game-designer, systems-designer, network-programmer, qa-lead, creative-director
+Blocking items: 13 resolved inline | Recommended: 14 noted
+Summary: R2 surfaced issues invisible to R1 because the Network Protocol GDD was still in revision when R1 ran. The four convergence findings (flagged by 2+ specialists): Rule 13's "(not a custom heartbeat message)" parenthetical directly contradicts NP Rule 8 and made RSM-23/25 untestable; F2 phase entry has no Bevy scheduling pins (silent runtime bug class per NP GDD's own warning); S2CPhaseChanged.timer_duration_ms uses u32 with 0 as sentinel while S2CGameSnapshot uses Option<u32> for the same semantic; RSM-34 and RSM-38 were misclassified as ADVISORY despite being fully testable Logic story invariants. Additional blockers: Rule 7 Auction System IDLE invariant not enforced (S2CPhaseChanged could fire with no auction running); auction_max_duration_seconds safe range lower bound contradicted the formula minimum stated in the same document; five missing ACs (trigger_index ordering, slot persistence, R=0 guard, GAME_OVER snapshot ordering, auction-followup timer). Creative-director verdict: fundamentally sound state machine; prior approval was premature due to NP GDD dependency gap. All corrections are bounded — no redesign required. RSM and NP should be re-verified together when either changes.
+Prior verdict resolved: Yes — R1 APPROVED (2026-04-29) was a correct post-revision approval but lacked cross-verification with the not-yet-approved NP GDD.
+
 ## Review — 2026-04-29 — Verdict: APPROVED (post-revision)
 
 **Scope signal:** L
