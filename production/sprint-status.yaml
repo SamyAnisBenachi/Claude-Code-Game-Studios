@@ -169,6 +169,16 @@ stories:
     blocker: ""
     completed: "2026-05-01"
 
+  - id: "KW-002"
+    name: "Keyword Movement Formulas"
+    file: "production/epics/keyword-system/story-002-movement-formulas.md"
+    priority: must-have
+    status: in-progress
+    owner: "codex-kw-002-movement-formulas"
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""
+
   - id: "CA-001"
     name: "Card Acquisition State Scaffold"
     file: "production/epics/card-acquisition/story-001-state-scaffold.md"
