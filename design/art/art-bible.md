@@ -2,7 +2,7 @@
 
 > **Status**: All 9 Sections Complete · Art Director Sign-Off Pending
 > **Last Updated**: 2026-04-29
-> **Art Director Sign-Off**: Pending (lean mode — AD-ART-BIBLE skipped)
+> **Art Director Sign-Off**: APPROVED 2026-05-01 (lean mode — friend-game scope; formal AD-ART-BIBLE ceremony waived per project-scope.md)
 > **Visual Authority**: Reference images in `design/art-references/` are authoritative. Krosmaga card frames (`krosmaga-screenshot-1.jpg`, `krosmaga-screenshot-2.jpg`) are the canonical source for card anatomy. Text description is commentary.
 > **References**: `design/art-references/` — 8 Ankama/Wakfu concept slides + 10 Krosmaga in-game screenshots + character sprite sheet
 

@@ -14,7 +14,7 @@
 
 This library catalogs the reusable interaction patterns extracted from all Lanes and Lies UX specs. When designing a new screen or flow, reference these patterns by ID rather than reinventing behavior. New patterns introduced by future specs are added here at the time of spec completion.
 
-**Total patterns: 18**
+**Total patterns: 20**
 
 ---
 
@@ -40,6 +40,8 @@ This library catalogs the reusable interaction patterns extracted from all Lanes
 | PTN-DSP-007 | Class Figurine Display | Data Display | hud, main-menu (lobby) |
 | PTN-DSP-008 | Horizontal Card Row | Data Display | hud |
 | PTN-OVR-001 | Player Slot | Overlay / Modal | main-menu (lobby) |
+| PTN-DSP-009 | Card Frame Container | Data Display | class-picker |
+| PTN-DSP-010 | Dot Position Indicator | Data Display | class-picker |
 
 ---
 
