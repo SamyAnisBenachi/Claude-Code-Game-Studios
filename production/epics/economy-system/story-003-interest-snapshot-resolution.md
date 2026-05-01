@@ -1,7 +1,7 @@
 # Story 003: Interest Snapshot & Resolution End
 
 > **Epic**: Economy System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -100,7 +100,7 @@ Alternatively, merge into one system `resolve_economy_at_resolution_end` that bo
 
 **Story Type**: Logic
 **Required evidence**: `tests/unit/economy/interest_snapshot_test.rs` — test cases covering EC13, EC14, EC18, overwrite behaviour, gold = 0 case, and kill-cross-threshold scenario
-**Status**: [ ] Not yet created
+**Status**: [x] Verified - executable tests live in `server/tests/economy_interest_snapshot_test.rs`; evidence pointer exists at `tests/unit/economy/interest_snapshot_test.rs`; `cargo test -p server --test economy_interest_snapshot_test` passed 7/7 locally on 2026-05-01.
 
 ---
 
@@ -110,3 +110,14 @@ Alternatively, merge into one system `resolve_economy_at_resolution_end` that bo
 - Depends on: Story 002 (`system.rs` file established; `EconomyPlugin` exists for scheduling)
 - Depends on: RSM epic — `ResolutionPhaseEntered` event type defined in `server/core/rsm/events.rs`
 - Unlocks: Story 002 integration test (round trace requires snapshot to be written at RESOLUTION end for rounds 2+); M2 Combat and Objective epics that fire awards before the snapshot
+
+## Completion Notes
+**Completed**: 2026-05-01
+**Criteria**: 10/10 accepted against current architecture. The original story text named `ResolutionPhaseEntered`, `on_resolution_phase_entered`, and a separate mana-discard system; current ADR-019/control-manifest rules supersede that wording and require `MessageReader<ResolutionComplete>` with `on_resolution_complete` scheduled before `rsm_input_reader`.
+**Deviations**:
+- Advisory: story manifest v2026-04-29 is older than current control manifest v2026-05-01.
+- Advisory: implementation uses the current `ResolutionComplete` contract instead of the story's stale `ResolutionPhaseEntered` trigger. This is required by the current control manifest because `ResolutionPhaseEntered` fires before kill/objective gold awards.
+- Advisory: implementation combines snapshot and mana discard in `on_resolution_complete`; the story explicitly allowed the merged approach in Implementation Notes.
+**Test Evidence**: Logic evidence at `tests/unit/economy/interest_snapshot_test.rs`; executable suite `server/tests/economy_interest_snapshot_test.rs`.
+**Verification**: `cargo test -p server --test economy_interest_snapshot_test` passed 7/7; `cargo check -p server` passed; `cargo fmt --check` passed. Implementation commit `db61102` is included in current `main`.
+**Code Review**: Skipped - lean review mode.

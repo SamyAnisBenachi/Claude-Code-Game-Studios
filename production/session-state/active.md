@@ -831,3 +831,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `HUD-001` entry exists in `production/sprint-status.yaml`; file left unchanged.
 - Next recommended: HUD-002 Gold and Mana Display (`production/epics/hud/story-002-gold-mana-display.md`) or HUD-003 Phase Label/Round Counter (`production/epics/hud/story-003-phase-label-round-counter.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/economy-system/story-003-interest-snapshot-resolution.md` - Interest Snapshot & Resolution End
+- Criteria: 10/10 accepted against current architecture; snapshot, max-interest, mana discard, stale overwrite, zero-gold baseline, kill-threshold crossing, and same-frame RSM handoff are covered.
+- Test Evidence: `tests/unit/economy/interest_snapshot_test.rs`; executable suite `server/tests/economy_interest_snapshot_test.rs`; `cargo test -p server --test economy_interest_snapshot_test` passed 7/7.
+- Verification: `cargo check -p server` passed; `cargo fmt --check` passed; implementation commit `db61102` is included in current `main`.
+- Notes: Advisory only - story manifest v2026-04-29 is older than current control manifest v2026-05-01. Current ADR-019/control-manifest requires `MessageReader<ResolutionComplete>` and `on_resolution_complete.before(rsm_input_reader)`, superseding the story's stale `ResolutionPhaseEntered` trigger wording.
+- Tech debt logged: None
+- Sprint status: `S3-08` set to `done` in `production/sprint-status.yaml`; existing claims preserved.
+- Next recommended: Sprint 3 Must Have and pulled-forward S3-08 are complete; run `/smoke-check sprint` then `/team-qa sprint`, or pick S3-07 Card Pool Story 4 if continuing Should Have work.

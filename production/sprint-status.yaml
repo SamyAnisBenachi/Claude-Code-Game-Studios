@@ -83,11 +83,11 @@ stories:
     name: "Economy Story 3: Interest Snapshot & Resolution End"
     file: "production/epics/economy-system/story-003-interest-snapshot-resolution.md"
     priority: should-have
-    status: in-progress
+    status: done
     owner: "claude-s3-08-economy-interest"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-01"
 
   - id: "S3-09"
     name: "GSS Story 4: F4 Predicate and SessionReady Trigger"
