@@ -874,3 +874,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `CA-003` entry exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Card Acquisition Story 004 (`production/epics/card-acquisition/story-004-refresh-cost.md`) and Story 005 (`production/epics/card-acquisition/story-005-purchase-flow.md`) are unblocked by CA-003.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-acquisition/story-006-external-bypass.md` - External Bypasses - PlayerHands Shared API
+- Criteria: 1/1 passing; CA17 covered by direct `PlayerHands::push_card()` boundary test with unchanged gold and no `C2SPurchaseCard` receiver path.
+- Test Evidence: `tests/integration/card_acquisition/external_bypass_test.rs`; `cargo test -p server --test card_acquisition_external_bypass_test` passed 1/1 test.
+- Verification: implementation commit `6af1137` is included in current `main`.
+- Notes: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01. Current registry/control-manifest wording uses `hand_push()` in places while implementation uses `PlayerHands::push_card()`; CA17 behavior matches the GDD/ADR intent.
+- Tech debt logged: None
+- Sprint status: No `CA-006` entry exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Continue the serialized story-done queue with CARD-ANIM-004, or run readiness on Card Acquisition Story 004/005 if continuing that epic.

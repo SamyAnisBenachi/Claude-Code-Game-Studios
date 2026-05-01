@@ -1,7 +1,7 @@
 # Story 006: External Bypasses — PlayerHands Shared API
 
 > **Epic**: Card Acquisition
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M2)
 > **Type**: Integration
 > **Manifest Version**: 2026-04-30
@@ -33,7 +33,7 @@
 
 *From GDD `design/gdd/card-acquisition.md`, scoped to this story:*
 
-- [ ] **CA17** — GIVEN a Lane 3 prism is collected during RESOLUTION, WHEN the Prism System processes the reward, THEN `hand.len() == hand_len_before + 1`, `gold == gold_before`, and no `C2SPurchaseCard` event was written to the message queue.
+- [x] **CA17** — GIVEN a Lane 3 prism is collected during RESOLUTION, WHEN the Prism System processes the reward, THEN `hand.len() == hand_len_before + 1`, `gold == gold_before`, and no `C2SPurchaseCard` event was written to the message queue.
 
 ---
 
@@ -95,7 +95,7 @@ app.configure_sets(Update,
 **Story Type**: Integration
 **Required evidence**: `tests/integration/card_acquisition/external_bypass_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Verified locally with `cargo test -p server --test card_acquisition_external_bypass_test`
 
 ---
 
@@ -103,3 +103,11 @@ app.configure_sets(Update,
 
 - Depends on: Story 001 (`state-scaffold`) must be Done — `PlayerHands::push_card()` must be defined and public
 - Unlocks: Prism System epic stories (prism-system) and Objective System stories that write to `PlayerHands` — they can begin once this story confirms the shared API contract
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 1/1 passing (CA17)
+**Deviations**: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01. Current registry/control-manifest wording uses `hand_push()` in places while ADR-015/story implementation uses `PlayerHands::push_card()`; behavior matches CA17.
+**Test Evidence**: Integration evidence at `tests/integration/card_acquisition/external_bypass_test.rs`; `cargo test -p server --test card_acquisition_external_bypass_test` passed 1/1 test.
+**Code Review**: Skipped - lean review mode; local implementation review found no blocking GDD/ADR deviations.
