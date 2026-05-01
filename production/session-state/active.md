@@ -3,10 +3,12 @@
 > Lis ce fichier EN PREMIER dans toute nouvelle session.
 > Il contient l'état complet du projet au 2026-04-30.
 >
-> **✅ SESSION 2026-05-01 — /design-review keyword-system.md R3 — EDITS COMPLETE**
-> GDD edits applied, systems-index updated, review-log appended, committed.
-> keyword-system.md: Needs Revision (R3 inline). R4 re-review recommended in fresh session.
-> Next: /design-review design/gdd/keyword-system.md (R4) — or continue with other pending work.
+> **✅ SESSION 2026-05-01 — /ux-design class-picker — COMPLETE**
+> UX spec written section-by-section: design/ux/class-picker.md
+> Status: Complete — pending /ux-review
+> OQ-MM-1 and OQ-MM-2 from main-menu.md resolved.
+> 2 new patterns flagged for interaction-patterns.md: Card Frame Container, Dot Position Indicator.
+> Next: /ux-review design/ux/class-picker.md — OR — /design-review design/gdd/keyword-system.md (R4)
 >
 ## /design-review keyword-system.md R3 — Session Interrupt State
 > Reprendre: lire les decisions ci-dessous, editer design/gdd/keyword-system.md, puis systems-index + review-log.
@@ -113,6 +115,17 @@ Specialists: game-designer, systems-designer, qa-lead, network-programmer, creat
 > Prior session (2026-04-29): Hand UI GDD ✅ DESIGNED — design/gdd/hand-ui.md. All 8 sections + Visual/Audio + UI Requirements + Open Questions complete (24 ACs). Systems index updated. /design-review pending (fresh session).
 >
 > **Session (2026-04-30):** /dev-story lyv-002 (All Protocol Message Types) — story already fully implemented in commit 759bd4a. All ACs verified against shared/src/protocol.rs. Evidence at tests/evidence/story-lyv-002-types-check.md. Next: /story-done production/epics/lightyear-protocol-verification/story-002-all-protocol-message-types.md
+
+## Session Extract — /architecture-review 2026-05-01 (Run 4)
+- Verdict: **PASS** — first PASS verdict in project history
+- ADRs reviewed: 22 (ADR-001..022). Status: **22/22 Accepted** (Run 3: 18+2 Proposed)
+- New ADRs since Run 3: ADR-021 (Presentation Layer, Accepted), ADR-022 (Keyword Observer, Accepted)
+- ADR promotions: ADR-018 Proposed→Accepted (ADR-005/006 amendments landed), ADR-020 Proposed→Accepted (ReplicateTo verified)
+- All Run 3 blockers resolved: B-1'(HC-1) ✅ B-2'(HC-2) ✅ B-3'(SI-1) ✅ B-4'(HC-3) ✅ B-5'(B-4) ✅ B-6'(ADR-021) ✅ B-7' partial (control-manifest fresh; architecture.md still stale)
+- TR registry: version 4, 181 active TRs; coverage ~100% (was 77% Run 3)
+- Open items: SC-1 `Trigger<T>` vs `On<T>` in observer param (MEDIUM — pre-impl gate before KW-001); SC-2 architecture.md stale (MEDIUM); OQ-KS9 LEADER timing → combat-resolution.md (LOW)
+- Report: docs/architecture/architecture-review-2026-05-01.md
+- Next: SC-1 verification (cargo check Trigger<T> stub before first keyword story); architecture.md refresh; /gate-check pre-production when ready
 
 ## Session Extract — /architecture-review 2026-04-30 (Run 3)
 - Verdict: **CONCERNS** — improving (M1 PASS unchanged; Core M2/M3 mostly PASS pending stale-ref cleanup; Presentation FAIL)
