@@ -984,3 +984,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `HUD-003` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Continue the user-directed serialized story-done queue, or run readiness on Sprint 4 `S4-01` before starting new implementation work.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/keyword-system/story-005-shield-scope.md` - SHIELD Sub-Step Scope
+- Criteria: 7/7 passing; KW-024, KW-037, same-sub-step simultaneous absorption, persistence until triggered, SS3-to-SS6 consumption, SS6-to-next-round consumption, and `ShieldConsumed` event emission covered by `tests/unit/keyword/shield_test.rs`.
+- Test Evidence: `tests/unit/keyword/shield_test.rs`; `cargo test -p server --test shield_test` passed 7/7. `cargo test -p server --test keyword_plugin_smoke_test` passed 2/2. `cargo check -p server` passed.
+- Verification: worker branch `work/kw-005-shield-scope` contains worker commit `a1a824b`; main integration commit `0b610fd` is included in current `main` and has the same stable patch-id as `a1a824b`.
+- Notes: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01. Advisory only - story text still says ADR-018 was Proposed/BLOCKED, while current ADR-018 is Accepted. Advisory only - ADR-018 contains an older immutable `check_shield_absorb` signature snippet; implementation uses the mutable signature required to consume SHIELD and matches the story/GDD behavior.
+- Tech debt logged: None
+- Sprint status: No `KW-005` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Keyword Story 013 FINAL BLOW + COUNTERATTACK Dispatch (`production/epics/keyword-system/story-013-final-blow-counterattack.md`) after readiness check, or continue the serialized story-done queue.

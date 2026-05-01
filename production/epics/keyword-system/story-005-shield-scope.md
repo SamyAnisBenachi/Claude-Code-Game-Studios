@@ -1,7 +1,7 @@
 # Story 005: SHIELD Sub-Step Scope
 
 > **Epic**: Keyword System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -111,7 +111,7 @@ if keyword::effects::check_shield_absorb(&mut kw_state, sub_step) {
 **Story Type**: Logic
 **Required evidence**: `tests/unit/keyword/shield_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Passed 2026-05-01 (`cargo test -p server --test shield_test`)
 
 ---
 
@@ -119,3 +119,11 @@ if keyword::effects::check_shield_absorb(&mut kw_state, sub_step) {
 
 - Depends on: Story 001 (scaffold)
 - Unlocks: Story 013 (COUNTERATTACK+SHIELD cross-test KW-050)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 7/7 passing. KW-024, KW-037, simultaneous same-sub-step absorption, persistence across untriggered rounds, SS3-to-SS6 consumption, SS6-to-next-round consumption, and `KeywordTriggered { payload: ShieldConsumed, sub_step }` emission are covered by `tests/unit/keyword/shield_test.rs`.
+**Deviations**: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01. Advisory only - story text still says ADR-018 was Proposed/BLOCKED, while current ADR-018 is Accepted. Advisory only - ADR-018 contains an older immutable `check_shield_absorb` signature snippet, while the story-scoped behavior requires and implements mutable shield consumption.
+**Test Evidence**: Logic evidence at `tests/unit/keyword/shield_test.rs`; `cargo test -p server --test shield_test` passed 7/7. Regression evidence: `cargo test -p server --test keyword_plugin_smoke_test` passed 2/2; `cargo check -p server` passed.
+**Code Review**: Skipped - lean mode.
