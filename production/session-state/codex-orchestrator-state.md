@@ -28,7 +28,8 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- HUD-002 worker: assumed launched from the last prompt; awaiting worker output.
+- HUD-002 worker: completed locally at `0c00a44`; cherry-picked into `main` at
+  `3eaf578`. Window can be cleared.
 - CARD-ANIM-002 story-done: completed at `43a2678`; window can be cleared.
 
 ## Tracker In-Progress But No Live Window Confirmed
@@ -56,6 +57,12 @@ None currently tracked here.
   client`, `cargo check -p client`, `cargo fmt -p client -- --check`, and
   `git diff --check` passed. Manual CA-13b and CA-22 evidence remains pending
   until bid-button UI and DRAFT_INITIAL animation sequencing UI exist.
+- HUD-002: Gold/Mana Display implemented on branch
+  `work/hud-002-gold-mana-display` at `0c00a44`; cherry-picked into `main` at
+  `3eaf578` from the local worktree because the worker did not push the branch.
+  Local `hud_gold_mana_display_test`, `hud_plugin_scaffold_test`,
+  `cargo check -p client`, `cargo fmt -p client -- --check`, and
+  `git diff --check` passed after integration.
 - KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
   `7543293`; cherry-picked into `main` at `b8b1287` because the branch was
   based before recent tracking and BOARD-002 commits. Local `stun_test`,
@@ -127,6 +134,7 @@ None currently tracked here.
 6. BOARD-002
 7. KW-004
 8. CARD-ANIM-008
+9. HUD-002
 
 Run only one story-done at a time.
 
@@ -141,6 +149,7 @@ Run only one story-done at a time.
 - CARD-ANIM-009: implemented and integrated; pending story-done.
 - CARD-ANIM-008: implemented and integrated; pending story-done. Manual CA-13b
   and CA-22 evidence remains deferred until the dependent UI exists.
+- HUD-002: implemented and integrated; pending story-done.
 - HAND-UI-001: unblocked by HUD-001 story-done; use worktree mode for any new
   implementation.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
@@ -152,8 +161,6 @@ Run only one story-done at a time.
 
 - HAND-UI-001: plugin scaffold; unblocked by HUD-001 story-done. Use worktree
   mode.
-- HUD-002: Gold/Mana Display; unblocked by HUD-001 story-done. Run readiness
-  before launch.
 - HUD-003: Phase Label/Round Counter; unblocked by HUD-001 story-done. Run
   readiness before launch.
 - CARD-ANIM-006: Ready after CARD-ANIM-001; run readiness before launch because
