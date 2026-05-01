@@ -629,3 +629,12 @@ C:\Program Files\GitHub CLI\gh.exe
 - Notes: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01; no blocking drift found. Snapshot includes `starting_price` to match current `network-protocol.md`.
 - Tech debt logged: None
 - Next recommended: AUC-002 Auction Phase Entry (`production/epics/auction-system/story-002-auction-phase-entry.md`) or AUC-003 AbortAuction Handler (`production/epics/auction-system/story-003-auction-abort-handler.md`) are ready.
+
+## Session Extract -- /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/game-session-system/story-001-lobby-scaffold.md` -- Lobby Scaffold
+- Criteria: 10/10 passing; `server/tests/session_scaffold_test.rs` passed locally (9/9), with evidence pointer at `tests/unit/session/scaffold_test.rs`
+- Verification: `cargo check -p server` passed locally with pre-existing warnings outside S3-01; GitHub Actions run `25194696023` passed for commit `17e3fc352ad1f843daafba4fa8ac484847311f9e`
+- Notes: Story manifest 2026-04-29 is older than control manifest 2026-05-01; no blocking deviations found
+- Tech debt logged: None
+- Next recommended: S3-02 Room Create and Join at `production/epics/game-session-system/story-002-room-create-join.md`
