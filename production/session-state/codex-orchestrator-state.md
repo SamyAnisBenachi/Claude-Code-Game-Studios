@@ -28,7 +28,9 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-None currently confirmed.
+- HAND-UI-001 story-done: assumed launched from the current orchestrator batch.
+- CA-004 worker: assumed launched from the current orchestrator batch.
+- BOARD-004 worker: assumed launched from the current orchestrator batch.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -167,6 +169,8 @@ Run only one story-done at a time.
 ## Launch Blocks / Wait Conditions
 
 - CA-004 / CA-005: unblocked by CA-003 story-done; run readiness before launch.
+  CA-004 launched in the current batch. Do not launch CA-005 in parallel with
+  CA-004 because both likely touch card acquisition shop state/system files.
 - KW-004: unblocked by KW-003 story-done; run readiness first because its story
   text may still contain stale ADR-018 Proposed/BLOCKED wording. Implemented and
   integrated; pending story-done.
@@ -187,9 +191,12 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-No code worker currently active in this state file.
-No story-done currently active in this state file. New code workers can continue
-in worktree mode if dependencies are checked first.
+Batch launched:
+- CA-004: `production/epics/card-acquisition/story-004-refresh-cost.md`
+- BOARD-004: `production/epics/board-lane-system/story-004-placement-occupancy.md`
+
+HAND-UI-001 story-done is the active serialized closure. Do not launch another
+story-done until it returns. Do not launch CA-005 until CA-004 is integrated.
 
 ## Resolved Design Gates
 
