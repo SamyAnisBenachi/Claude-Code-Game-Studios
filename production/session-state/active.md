@@ -1093,3 +1093,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no `HAND-UI-003` row exists in `production/sprint-status.yaml`.
 - Next recommended: Hand UI Story 004 DRAFT_INITIAL Grid (`production/epics/hand-ui/story-004-draft-initial-grid.md`) or Story 005 PLACEMENT Entry (`production/epics/hand-ui/story-005-placement-submit-core.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-lane-system/story-005-placement-buffer-phase-integration.md` - Placement Buffer and Phase Integration
+- Criteria: 4/4 passing; BL-14, ADR-007-LC-1, ADR-007-LC-2, and ADR-007-LC-3 covered by `tests/integration/board-lane-system/placement_buffer_test.rs`.
+- Test Evidence: `cargo test -p server --test placement_buffer_test` passed 3/3; `cargo check -p server` passed; `cargo test -p server --test placement_occupancy_test --test spawn_range_validation_test` passed 17/17; `cargo fmt -p server -- --check` passed.
+- Verification: `close_placement_phase` sends `S2CPlacementReveal` through `ServerMultiMessageSender` on `ReliableChannel` before spawning entities with `Replicate::to_clients(NetworkTarget::All)`; the live WebSocket test receives the reveal on a client before asserting replicated spawn trace order.
+- Notes: Advisory only - `production/qa/evidence/placement-buffer-evidence.md` records automated evidence only; no manual lead sign-off is claimed. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged; no `BOARD-005` row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the user-directed serialized story-done queue with ECO-005 or BOARD-006, or run readiness on Board Story 007 after Board Story 006 closes.
