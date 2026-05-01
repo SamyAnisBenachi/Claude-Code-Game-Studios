@@ -44,6 +44,10 @@ stale/incomplete until explicitly relaunched or closed:
 - CARD-ANIM-001: implemented at `23fad70`.
 - CA-002: Card Acquisition Draft Initial implemented at `2c6c65b`; local draft
   initial tests, state scaffold tests, and `cargo check -p server` passed.
+- KW-003: First Strike and Haste implemented at `874d86b`; local
+  `first_strike_haste_test` and `cargo check -p server` passed. Story text still
+  has stale ADR-018 Proposed/BLOCKED wording; completion review must document
+  that ADR-018 is Accepted in the 2026-05-01 manifest.
 - S3-04: RSM Timers + Input Reader implemented at `eff5cf9`; local RSM/economy
   suite, full server tests, cargo check, and single-writer grep passed.
 - S3-06: E2E WebSocket Roundtrip implemented at `a32a3df`; local websocket
@@ -66,6 +70,7 @@ stale/incomplete until explicitly relaunched or closed:
 2. S3-06
 3. S3-04
 4. CA-002
+5. KW-003
 
 Run only one story-done at a time.
 
@@ -75,8 +80,9 @@ Run only one story-done at a time.
 - CA-003 / CA-006: CA-002 is implemented but not story-done. CA-003 depends only
   on CA-001 and can be launched in worktree mode if it avoids unmerged root
   dirty files; story-done remains serialized.
-- KW-003: unblocked by KW-002 story-done; safe to launch after current RSM
-  dirty tree settles or in a new clean window that avoids RSM files.
+- KW-004: waits for KW-003 story-done if the story depends on first-strike
+  behavior; otherwise can be launched in worktree mode after checking story
+  dependencies.
 - CARD-ANIM-002 / CARD-ANIM-004: wait for CARD-ANIM-001 story-done.
 - HUD-001 / HAND-UI-001: hold until presentation scaffold churn from
   CARD-ANIM-001 is closed.
@@ -87,8 +93,6 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-- KW-003: First Strike + Haste; depends on KW-001 done and ADR-006 Haste schema
-  repair already merged.
 - BOARD-001: Board Grid Initialization; no dependencies.
 - HUD-001: HUD Plugin Scaffold; presentation/client-side and no prior HUD story.
 
