@@ -14,10 +14,10 @@ Accepted
 |-------|-------|
 | **Engine** | Bevy 0.18 |
 | **Domain** | Core / Feature State Management |
-| **Knowledge Risk** | HIGH — Bevy 0.15–0.18 all post-cutoff; Message/Event split in 0.17+ is critical; Lightyear 0.26 server→client unicast API unverified |
-| **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, `docs/engine-reference/bevy/current-best-practices.md`, ADR-010 (Message/Event split patterns), ADR-005 (RESOLUTION schedule slot), ADR-008 (Lightyear channel config) |
-| **Post-Cutoff APIs Used** | `MessageReader<T>` / `MessageWriter<T>` (`#[derive(Message)]`) for server-internal messages; `ResMut<T>` for PrismState; Lightyear 0.26 component replication via `Replicate` for PrismPresence (unreliable); Lightyear server→client send for `S2CCardAcquired` (reliable unicast — API verification required) |
-| **Verification Required** | (1) **RESOLVED (implementation-time)**: Lightyear 0.26 server→client reliable unicast API — `MessageSender<T>` is client-side only. Server-side API from ADR-008: `server.send_message_to_target::<ReliableChannel, S2CCardAcquired>(msg, NetworkTarget::Single(client_id))`. Must be confirmed against `docs.rs/lightyear/0.26` before writing `resolve_prism_draws`; use `liv-bevy-lightyear` skill to enforce correct Lightyear 0.26 server-send pattern. (2) **RESOLVED (implementation-time)**: Lightyear 0.26 `Replicate` component API for per-entity scoping — must verify `NetworkTarget::Single(client_id)` or equivalent before spawning `PrismPresence` entities. ADR-008 checklist item 2 tracks `ChannelMode` variants; `liv-bevy-lightyear` skill enforces correct replication API. (3) **RESOLVED**: `MessageReader<T>::read()` confirmed — `for msg in reader.read()` is the correct drain iterator form, per `docs/engine-reference/bevy/current-best-practices.md` Bevy 0.17+ Message patterns. |
+| **Knowledge Risk** | HIGH — Bevy 0.15–0.18 all post-cutoff; Message/Event split in 0.17+ is critical; Lightyear 0.26 server→client targeted-send API verified for Prism on 2026-05-02 |
+| **References Consulted** | `docs/engine-reference/bevy/VERSION.md`, `docs/engine-reference/bevy/current-best-practices.md`, ADR-010 (Message/Event split patterns), ADR-005 (RESOLUTION schedule slot), ADR-008 (Lightyear channel config), `tests/evidence/lightyear-026-verification.md`, local Lightyear 0.26.4 crate source |
+| **Post-Cutoff APIs Used** | `MessageReader<T>` / `MessageWriter<T>` (`#[derive(Message)]`) for server-internal messages; `ResMut<T>` for PrismState; Lightyear 0.26 component replication via `Replicate::to_clients(NetworkTarget::All)` for public PrismPresence; Lightyear server→client targeted send via `ServerMultiMessageSender::send::<Message, ReliableChannel>(&msg, server, &NetworkTarget::...)` |
+| **Verification Required** | (1) **RESOLVED 2026-05-02**: Lightyear 0.26.4 server→client targeted send uses `ServerMultiMessageSender`, not a `ConnectionManager` or server-handle method. Generic order is `<Message, Channel>`; unicast target is `NetworkTarget::Single(peer_id)` where the identifier type is `PeerId`, not `ClientId`; all-player delivery uses `NetworkTarget::All`. (2) **RESOLVED for PrismPresence**: Prism visibility is public board state, so use `Replicate::to_clients(NetworkTarget::All)`; no owner-only per-entity scoping is required for PrismPresence. (3) **RESOLVED**: `MessageReader<T>::read()` confirmed — `for msg in reader.read()` is the correct drain iterator form, per `docs/engine-reference/bevy/current-best-practices.md` Bevy 0.17+ Message patterns. |
 
 > **Engine Specialist Note (2026-04-30)**: `PrismCollected` is a server-internal Bevy `#[derive(Message)]` emitted by the Board/Lane System server code. It is NOT a Lightyear C2S message from a client. `MessageReader<PrismCollected>` is therefore the correct system parameter — this is the Bevy-layer message API, not Lightyear's `MessageReceiver<T>`. The two APIs must not be conflated: `MessageReader<T>` is for server-internal Bevy messages; `MessageReceiver<T>` (Lightyear) is for C2S network messages.
 
@@ -30,7 +30,7 @@ Accepted
 | **Depends On** | ADR-005 (defines `resolve_prism_draws` by name in the RESOLUTION schedule — this ADR formalizes its system signature and resource parameters); ADR-010 (RSM event bus — `ResolutionPhaseEntered` gates RESOLUTION systems; Prism subscriber contract must be added to ADR-010 Subscriber Contracts table before any Prism story is marked Done); ADR-008 (Lightyear channel config — `S2CCardAcquired` reliable unicast channel assignment; `PrismPresence` unreliable channel); ADR-006 (card data schema — static `prism_strike` and `prism_reserve` definitions in `assets/data/cards.json`) |
 | **Enables** | Prism System epic implementation stories; HUD epic (prism progress / respawn counter per `hud.md`); Card Animations epic (prism collection burst VFX, PrismPresence state change); Board Rendering epic (PrismPresence component replication to clients) |
 | **Blocks** | Prism System epic implementation stories — none may start until this ADR is Accepted |
-| **Ordering Note** | ADR-005 must be Accepted (already is). ADR-010 Subscriber Contracts table must be updated to add the `ResolutionPhaseEntered → Prism System` row before any Prism story is marked Done. The Lightyear server→client unicast API (Verification Required item 1) must be resolved before `resolve_prism_draws` is coded. |
+| **Ordering Note** | ADR-005 must be Accepted (already is). ADR-010 Subscriber Contracts table must be updated to add the `ResolutionPhaseEntered → Prism System` row before any Prism story is marked Done. Lightyear targeted-send Verification Required item 1 is resolved; `resolve_prism_draws` must use the verified `ServerMultiMessageSender` API. |
 
 ---
 
@@ -61,7 +61,7 @@ A fourth concern — `PrismPresence` client replication for Board Rendering — 
 - Must provide a `hand_push()` API callable by both Prism System and Card Acquisition without concurrent `ResMut<PlayerHands>` conflicts.
 - Must slot `resolve_prism_draws` into the ADR-005 RESOLUTION schedule with a concrete, correct system signature.
 - Must define how `PrismPresence` components are replicated to clients for board rendering.
-- Must support `S2CCardAcquired` reliable unicast to the owning player on each successful hand add.
+- Must support `S2CCardAcquired` reliable unicast to the owning player on each successful hand add, `S2CPrismRewardDropped` reliable unicast to the owning player on Lanes 1/2/4/5 hand-full, and `S2CPrismRespawned` reliable all-player delivery on full-set respawn.
 - Must handle the `PrismCollected` message buffer correctly across multiple collections per RESOLUTION.
 
 ---
@@ -118,11 +118,13 @@ pub fn resolve_prism_draws(
     mut hand: ResMut<PlayerHands>,
     server_rng: Res<ServerRng>,
     card_pool: Res<CardDataPool>,
-    // ⚠ S2CCardAcquired send — Lightyear server→client unicast API to be confirmed.
-    // Likely: a Res<LightyearServer> or similar, calling
-    //   server.send_message_to_target::<ReliableChannel, S2CCardAcquired>(msg, target)
-    // NOT MessageSender<S2CCardAcquired> (that is the client-side sender).
-    // Resolve against docs.rs/lightyear/0.26 before implementation (Verification Required item 1).
+    mut s2c_sender: ServerMultiMessageSender,
+    server: Query<&Server>,
+    // Use server.single() before sends. Owner-only sends use:
+    //   s2c_sender.send::<S2CCardAcquired, ReliableChannel>(
+    //       &msg, server, &NetworkTarget::Single(owner_peer_id),
+    //   )
+    // Respawn all-player delivery uses NetworkTarget::All.
     mut prism_presence: Query<(&PrismLaneKey, &mut PrismPresence)>,
     mut prism_collected: MessageReader<PrismCollected>,
     phase: Res<CurrentPhase>,
@@ -169,7 +171,7 @@ pub struct PrismPresence {
 
 `resolve_prism_draws` updates `PrismPresence.collected` on the matching entity after each `PrismState` mutation. Lightyear picks up the component change and delivers it to clients on the next frame via `UnreliableChannel`. Board Rendering reads `PrismPresence` on the client to control prism token visibility.
 
-> **Verification required (ADR-014 item 2)**: Confirm Lightyear 0.26 `Replicate` component API for per-entity client scoping. The exact configuration for unicast replication to a specific client (`NetworkTarget::Single(client_id)` or equivalent) must be verified against Lightyear 0.26 docs before spawning these entities.
+> **Replication note (Verification Required item 2 resolved for Prism)**: PrismPresence is public board state. Spawn it with `Replicate::to_clients(NetworkTarget::All)`. Owner-only per-entity scoping is not needed for PrismPresence.
 
 ### Architecture Diagram
 
@@ -192,8 +194,10 @@ RESOLUTION Update Set (ADR-005 schedule)
 │   ├─ OWN: ResMut<PlayerHands>               via hand_push() shared fn
 │   ├─ OWN: Query<&mut PrismPresence>       update collected bool for replication
 │   │
-│   └─ OUT: S2CCardAcquired                 reliable unicast to owning player
-│           (Lightyear server API — TBD, see Verification Required item 1)
+│   ├─ OUT: S2CCardAcquired                 reliable unicast to owning player
+│   ├─ OUT: S2CPrismRewardDropped           reliable unicast to owning player
+│   └─ OUT: S2CPrismRespawned               reliable all-player delivery
+│           via ServerMultiMessageSender::send::<M, ReliableChannel>(...)
 │
 └─ award_fake_objective_rewards  [Objective System]
 ```
@@ -215,7 +219,12 @@ pub fn hand_push(
 
 // ── Network output ───────────────────────────────────────────────────────────
 // S2CCardAcquired { card_id: CardId, source: AcquisitionSource::PrismLane(u8) }
-// Reliable unicast to owning player — Lightyear server send API to be confirmed.
+// Reliable unicast to owning player:
+//   ServerMultiMessageSender::send::<S2CCardAcquired, ReliableChannel>(
+//       &msg, server, &NetworkTarget::Single(owner_peer_id),
+//   )
+// S2CPrismRewardDropped follows the same owner-only target.
+// S2CPrismRespawned uses NetworkTarget::All on ReliableChannel.
 // PrismPresence { collected: bool } — unreliable component replication per (player, lane).
 ```
 
@@ -265,8 +274,8 @@ pub fn hand_push(
 
 | Risk | Probability | Impact | Mitigation |
 |------|------------|--------|------------|
-| Lightyear 0.26 server→client unicast API differs from `server.send_message_to_target::<ReliableChannel, T>()` | MEDIUM | Compilation failure or wrong API usage | **Must resolve before writing `resolve_prism_draws`.** Verify against `docs.rs/lightyear/0.26`. `liv-bevy-lightyear` skill enforces correct Lightyear 0.26 patterns. |
-| `Replicate` component per-entity client scoping API differs in Lightyear 0.26 | MEDIUM | Wrong replication target (broadcast instead of unicast) | Verify Lightyear 0.26 `Replicate` + `NetworkTarget::Single` or equivalent. ADR-008 checklist item 2 tracks this. |
+| Player-to-peer lookup is stale after reconnect | MEDIUM | Owner-only Prism messages target an old `PeerId` or are lost | Use the ADR-011 session-token identity bridge and current connection map at send time; if `snapshot_sent[player]` is false or no current `PeerId` exists, use the deferred queue path instead of sending immediately. |
+| `PrismPresence` replication target is accidentally narrowed | LOW | Opponent does not see a public prism respawn/state change | PrismPresence is public board state; spawn with `Replicate::to_clients(NetworkTarget::All)`. Owner-only targeting applies to `S2CCardAcquired` and `S2CPrismRewardDropped`, not PrismPresence. |
 | `MessageReader<PrismCollected>` drained by another system before `resolve_prism_draws` | LOW | Silent loss of prism collection events | Lightyear's `MessageReceiver<T>` (C2S) and Bevy's `MessageReader<T>` (internal) are distinct APIs. `PrismCollected` is server-internal — only `resolve_prism_draws` registers a `MessageReader<PrismCollected>`. Forbidden pattern below documents this. |
 | Card Acquisition systems scheduled into RESOLUTION `Update` set in future M2 | LOW | Concurrent `ResMut<PlayerHands>` → Bevy panic | Document as scheduling invariant: Card Acquisition systems are DRAFT-only. Enforce via `.run_if(in_state(DraftPhase))` conditions on CA systems. |
 
@@ -279,9 +288,9 @@ pub fn hand_push(
 | `prism-system.md` | Rule 1 — `PrismState` resource ownership | Defines `PrismState` as `#[derive(Resource, Default)]`; `ResMut<PrismState>` exclusive to `resolve_prism_draws` |
 | `prism-system.md` | Rule 3 — `PrismCollected` as Bevy Message, consumed by `MessageReader` | System signature includes `MessageReader<PrismCollected>`; confirmed server-internal (not Lightyear C2S) |
 | `prism-system.md` | OQ1 — Hand-write API resolution | Resolves to `hand_push()` shared module function; both Prism and Card Acquisition call it; no dual-ResMut conflict |
-| `prism-system.md` | Rules 8–9 — Respawn timing (after all broadcasts, within `resolve_prism_draws`) | Single-system ownership: respawn fires at end of `resolve_prism_draws` function body, after broadcast loop, per GDD Rule 9 |
+| `prism-system.md` | Rules 8–9 — Respawn timing (after all reward messages, within `resolve_prism_draws`) | Single-system ownership: respawn fires at end of `resolve_prism_draws` function body, after reward-message emission, per GDD Rule 9 |
 | `prism-system.md` | States and Transitions — `PrismPresence` client replication | Defines 10 `PrismPresence` entities + Lightyear `Replicate` for Board Rendering |
-| `prism-system.md` | AC PS-20 — `S2CCardAcquired` reliable unicast | Lightyear server reliable send (API TBD); channel assignment per ADR-008 |
+| `prism-system.md` | AC PS-20 — `S2CCardAcquired` reliable unicast | Lightyear server reliable send via `ServerMultiMessageSender::send::<S2CCardAcquired, ReliableChannel>(&msg, server, &NetworkTarget::Single(owner_peer_id))`; channel assignment per ADR-008 |
 | `server-rng.md` | Rule 5 — Schedule slot between `resolve_ecaflip_triggers` and `award_fake_objective_rewards` | Formalizes `.after(resolve_ecaflip_triggers).before(award_fake_objective_rewards)` system registration |
 | `round-state-machine.md` | Rule 10 — RESOLUTION phase structure | `resolve_prism_draws` gated on `ResolutionPhaseEntered` (phase guard + scheduling); ADR-010 subscriber row to be added |
 | `card-acquisition.md` | Line 80 — Prism bypasses Card Acquisition | `hand_push()` is shared module fn; Prism calls it directly without routing through CA |
@@ -294,7 +303,7 @@ pub fn hand_push(
 - **CPU**: `resolve_prism_draws` processes at most 10 `PrismCollected` messages per RESOLUTION (5 lanes × 2 players in 1v1). Max 4 `hand_push()` calls and 2 `ServerRng::next_seed()` calls per RESOLUTION. O(n_players × lanes_collected) — negligible.
 - **Memory**: `PrismState` ≈ 20 bytes (10 bools + 2 bools). 10 `PrismPresence` component entities ≈ 1 byte replicated payload each. No memory concern.
 - **Load Time**: 10 entity spawns at session start — immeasurable overhead.
-- **Network**: At most 10 `S2CCardAcquired` messages per RESOLUTION (reliable unicast, ~32 bytes each) + 10 `PrismPresence` unreliable updates. Well within the < 1 KB per-round budget (technical-preferences.md).
+- **Network**: At most 10 `S2CCardAcquired` / `S2CPrismRewardDropped` messages per RESOLUTION (reliable owner-only, ~32 bytes each) + at most 2 `S2CPrismRespawned` reliable all-player messages + 10 `PrismPresence` unreliable updates. Well within the < 1 KB per-round budget (technical-preferences.md).
 
 ---
 
@@ -304,9 +313,9 @@ Greenfield implementation — no existing Prism System code. Implementation sequ
 
 1. Define `PrismState` in `server/feature/prism/state.rs`; insert in `PrismPlugin::build()`.
 2. Define `hand_push()` in `server/feature/hand/mod.rs`; update Card Acquisition to call it instead of writing `PlayerHands` directly (if CA already writes directly, this is a refactor of CA — coordinate with CA epic story).
-3. Spawn 10 `PrismPresence` entities at session start; add `Replicate` with per-client scoping and `UnreliableChannel` (verify Lightyear 0.26 API first — Verification Required item 2).
+3. Spawn 10 `PrismPresence` entities at session start; add `Replicate::to_clients(NetworkTarget::All)` for public board-state replication.
 4. Confirm `app.add_message::<PrismCollected>()` registration — ownership of this call belongs to the producer (Board/Lane System plugin).
-5. **Resolve Lightyear server→client unicast API** (Verification Required item 1) before implementing `resolve_prism_draws`.
+5. Use the resolved Lightyear server→client targeted send API (`ServerMultiMessageSender::send::<M, ReliableChannel>(&msg, server, &NetworkTarget::...)`) when implementing `resolve_prism_draws`.
 6. Implement `resolve_prism_draws` following GDD Rules 3–9, using `hand_push()`, `ServerRng::next_seed()`, and `CardDataPool::draw_random()`.
 7. Register `resolve_prism_draws` with `.after(resolve_ecaflip_triggers).before(award_fake_objective_rewards)`.
 8. Update ADR-010 Subscriber Contracts table: add `ResolutionPhaseEntered → Prism System` row.
@@ -326,7 +335,7 @@ Greenfield implementation — no existing Prism System code. Implementation sequ
 - [ ] `PrismState` compiles as `#[derive(Resource, Default)]` in Bevy 0.18 with no deprecated derives.
 - [ ] `hand_push()` unit test: `PlayerHands` with 9 cards → `Ok(())`; 10 cards → `Err(HandFullError)`. No Bevy `World` required.
 - [ ] `resolve_prism_draws` compiles with all listed system parameters in Bevy 0.18; no `EventReader`/`EventWriter` usage; `MessageReader<PrismCollected>` drains the buffer (confirmed server-internal Bevy Message).
-- [ ] Lightyear server→client unicast API verified and implemented correctly (Verification Required item 1 resolved).
+- [ ] Lightyear server→client targeted send API implemented with `ServerMultiMessageSender::send::<M, ReliableChannel>(&msg, server, &NetworkTarget::...)` (Verification Required item 1 resolved).
 - [ ] `PrismPresence` entities replicated to correct clients: Board Rendering reads `collected: bool` for the right `(player, lane)` on the client.
 - [ ] `resolve_prism_draws` does not execute outside RESOLUTION phase (AC PS-08 baseline — phase guard + run_if scheduling).
 - [ ] `S2CCardAcquired` delivered on reliable channel to owning player only (not broadcast) — verifiable via Lightyear outbound queue inspection.

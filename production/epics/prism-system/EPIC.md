@@ -57,13 +57,15 @@ is replicated via `PrismPresence` components on the unreliable channel; `S2CCard
 
 ## Pre-Implementation Gates
 
-These must be resolved before any story in this epic can be marked **Ready**:
+These gates were resolved before Prism implementation work begins. No Prism runtime code was changed as part of the gate-clearing pass.
 
 | Gate | Item | Owner | Status |
 |------|------|-------|--------|
-| OQ4 | `server-rng.md` Rule 3 caller table needs conditional note: "0 seeds consumed if hand is full at Lane 3 collection time" — prevents audit-replay misalignment | Server-side RNG GDD | Open |
-| NP OQ1 | Lightyear 0.26 server-side unicast API (`send_message_to_target::<ReliableChannel, _>(msg, NetworkTarget::Single(client_id))`) must be verified against `docs.rs/lightyear/0.26`; use `liv-bevy-lightyear` skill | Network programmer | Open |
-| NP GDD | Register `S2CPrismRespawned { player_id: PlayerId }` and `S2CPrismRewardDropped { player_id: PlayerId, lane: u8 }` in `network-protocol.md` | Network Protocol GDD | Open — documentation task |
+| OQ4 | `server-rng.md` Rule 3 caller table needs conditional note: "0 seeds consumed if hand is full at Lane 3 collection time" — prevents audit-replay misalignment | Server-side RNG GDD | Resolved — `design/gdd/server-rng.md` Rule 3 documents the Lane 3 hand-full exception |
+| NP OQ1 | Lightyear 0.26 server-side targeted send API for `S2CPrismRespawned` and `S2CPrismRewardDropped` | Network programmer | Resolved 2026-05-02 — verified Lightyear 0.26.4 API: `ServerMultiMessageSender::send::<Message, ReliableChannel>(&msg, server, &NetworkTarget::Single(peer_id))`; use `NetworkTarget::All` for `S2CPrismRespawned` and `NetworkTarget::Single(owner_peer_id)` for `S2CPrismRewardDropped` |
+| NP GDD | Register `S2CPrismRespawned { player_id: PlayerId }` and `S2CPrismRewardDropped { player_id: PlayerId, lane: u8 }` in `network-protocol.md` | Network Protocol GDD | Resolved — both messages are documented in the S2C table and covered by NP-56 / NP-57 |
+
+**Gate Resolution Note (2026-05-02):** All six Prism stories remain **Ready** after this documentation update. Remaining dependencies are normal story sequencing dependencies, not pre-implementation blockers.
 
 ## Definition of Done
 

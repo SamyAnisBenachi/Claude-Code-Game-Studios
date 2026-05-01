@@ -17,10 +17,10 @@
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
 **Engine Notes**:
-- Lightyear 0.26 server→client unicast API: `server.send_message_to_target::<ReliableChannel, T>(msg, NetworkTarget::Single(peer_id))` — exact API must be verified against `docs.rs/lightyear/0.26` before implementation (ADR-016 Verification Required item 1; ADR-008 checklist item 9)
-- `NetworkTarget::Single(PeerId)` — confirmed in ADR-008 checklist item 7 (⚠️ DIFFERS — `PeerId` not `ClientId`; resolve via `liv-bevy-lightyear` skill)
+- Lightyear 0.26.4 server→client targeted send API is verified: use `ServerMultiMessageSender::send::<T, ReliableChannel>(&msg, server, &NetworkTarget::Single(peer_id))` for owner-only Prism messages (ADR-016 Verification Required item 1; ADR-008 checklist item 9)
+- `NetworkTarget::Single(PeerId)` — verified against local Lightyear 0.26.4 source and `tests/evidence/lightyear-026-verification.md`; target type is `PeerId`, not `ClientId`
 - `snapshot_sent[player]` gate: before any unicast S2C, check if snapshot has been sent; if not, push to `deferred_queue[player]` instead (ADR-008, ADR-011 requirement)
-- If Lightyear 0.26 does not expose a unit-testable outbound buffer in `World::new()` tests, this story's ACs reclassify as Integration requiring `App::new()` test — confirm approach per OQ1 resolution in prism-system.md
+- If Lightyear 0.26 does not expose a unit-testable outbound buffer in `World::new()` tests, this story's ACs reclassify as Integration requiring an `App::new()` Lightyear test; the send API itself is already resolved
 
 **Control Manifest Rules (Feature layer — from ADR-008, ADR-011):**
 - Required: `S2CCardAcquired` → `ReliableChannel`, reliable unicast to owning player only
@@ -54,9 +54,10 @@ match hand_push(&mut hands, player, card_id) {
         // PS-20: S2CCardAcquired — reliable unicast to owning player
         // Check snapshot_sent gate before enqueuing (ADR-008 / ADR-011)
         if snapshot_sent[player] {
-            server.send_message_to_target::<ReliableChannel, S2CCardAcquired>(
-                S2CCardAcquired { card_id, source: AcquisitionSource::PrismLane(lane) },
-                NetworkTarget::Single(peer_id_of(player)),
+            s2c_sender.send::<S2CCardAcquired, ReliableChannel>(
+                &S2CCardAcquired { card_id, source: AcquisitionSource::PrismLane(lane) },
+                server,
+                &NetworkTarget::Single(peer_id_of(player)),
             );
         } else {
             deferred_queue[player].push(DeferredMessage::CardAcquired { card_id, source: ... });
@@ -66,9 +67,10 @@ match hand_push(&mut hands, player, card_id) {
         // PS-09: S2CPrismRewardDropped — reliable unicast, Lanes 1/2/4/5 ONLY
         // collected[lane][player] is already true (set before hand_push call)
         if snapshot_sent[player] {
-            server.send_message_to_target::<ReliableChannel, S2CPrismRewardDropped>(
-                S2CPrismRewardDropped { player_id: player, lane },
-                NetworkTarget::Single(peer_id_of(player)),
+            s2c_sender.send::<S2CPrismRewardDropped, ReliableChannel>(
+                &S2CPrismRewardDropped { player_id: player, lane },
+                server,
+                &NetworkTarget::Single(peer_id_of(player)),
             );
         } else {
             deferred_queue[player].push(DeferredMessage::PrismRewardDropped { player_id: player, lane });
@@ -89,9 +91,9 @@ match hand_push(&mut hands, player, card_id) {
 }
 ```
 
-**`S2CPrismRespawned` registration note**: Both `S2CPrismRewardDropped` and `S2CPrismRespawned` must be registered in `network-protocol.md` before this story is marked Done (pre-implementation gate — EPIC.md NP GDD row). Registration is a documentation task; the messages can be implemented before the doc update but not marked Done until the doc is updated.
+**`S2CPrismRespawned` registration note**: Both `S2CPrismRewardDropped` and `S2CPrismRespawned` are registered in `network-protocol.md` and covered by NP-56 / NP-57. The NP GDD pre-implementation gate is resolved.
 
-**Lightyear server→client send API**: The exact server-side send API (likely `ServerMultiMessageSender` system param per ADR-008 checklist item 9) must be verified against `docs.rs/lightyear/0.26` before writing this code. Use `liv-bevy-lightyear` skill when implementing.
+**Lightyear server→client send API**: Resolved 2026-05-02. Use the `ServerMultiMessageSender` system param and call `send::<Message, ReliableChannel>(&msg, server, &NetworkTarget::Single(peer_id))`. Use `liv-bevy-lightyear` skill when implementing.
 
 ---
 
@@ -141,6 +143,6 @@ match hand_push(&mut hands, player, card_id) {
 
 - Depends on: Story 002 (`deterministic-lanes`) must be Done — `hand_push()` call sites in `resolve_prism_draws` must exist
 - Depends on: Story 003 (`lane3-rng`) must be Done — Lane 3 `hand_push()` call site in `resolve_prism_draws` must exist
-- Depends on: Pre-implementation gate NP OQ1 — Lightyear 0.26 server→client unicast API verified (ADR-016)
-- Depends on: Pre-implementation gate NP GDD — `S2CPrismRewardDropped` registered in `network-protocol.md`
+- Depends on: Pre-implementation gate NP OQ1 — resolved 2026-05-02; Lightyear 0.26.4 server→client targeted send API verified
+- Depends on: Pre-implementation gate NP GDD — resolved; `S2CPrismRewardDropped` registered in `network-protocol.md`
 - Unlocks: None from within Prism epic — this is the networking completion story; Story 005 (respawn) can proceed independently

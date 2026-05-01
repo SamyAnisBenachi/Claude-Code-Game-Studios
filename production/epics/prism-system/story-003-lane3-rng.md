@@ -95,7 +95,7 @@ Lane 3 branch inside the `resolve_prism_draws` message loop (extending Story 002
 
 **Ordering guarantee** (PS-17): The message sort by `(player_id, lane)` from Story 002's event collection ensures `AuditLog` entries are appended in the correct order. The Lane 3 audit entry is written during the loop iteration for that (player, lane) pair, so order is preserved automatically.
 
-**`server-rng.md` Rule 3 conditional note** (pre-implementation gate OQ4): The server-rng.md caller table needs a note: "0 seeds consumed for Lane 3 if player hand is full at collection time." This must be added to `server-rng.md` before this story is implemented. Without it, audit replay tools that assume fixed seed count per Lane 3 event will misalign.
+**`server-rng.md` Rule 3 conditional note** (pre-implementation gate OQ4): Resolved 2026-05-02. `design/gdd/server-rng.md` Rule 3 documents that Lane 3 consumes 0 seeds if the collecting player's hand is full at collection time and warns replay tools not to assume a fixed 1 seed per Lane 3 `PrismCollected` event.
 
 ---
 
@@ -152,5 +152,5 @@ Lane 3 branch inside the `resolve_prism_draws` message loop (extending Story 002
 
 - Depends on: Story 001 (`state-scaffold`) must be Done — `AuditLog`, `PrismState` must be defined
 - Depends on: Story 002 (`deterministic-lanes`) must be Done — `resolve_prism_draws` message loop structure exists; this story adds the Lane 3 branch
-- Depends on: Pre-implementation gate OQ4 — `server-rng.md` Rule 3 conditional note must be added before this story starts
+- Depends on: Pre-implementation gate OQ4 — resolved 2026-05-02; `server-rng.md` Rule 3 conditional note exists
 - Unlocks: Story 004 (`hand-full-network`) — S2CCardAcquired staging for Lane 3 successful draws; Story 005 (`respawn-cycle`) — uses full `resolve_prism_draws` function

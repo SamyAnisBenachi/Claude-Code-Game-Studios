@@ -54,7 +54,7 @@ Round State Machine phase state, RSM event bus, session lifecycle, reconnect pro
 - **Exactly one Observer for `SessionReady` — the RSM's `on_session_ready` handler.** Other systems react to `DraftStarted`, not `SessionReady`. — source: ADR-012
 - **`evaluate_session_ready` runs only while in LOBBY state.** Gate on `LobbyState::GameActive` to prevent re-trigger. — source: ADR-012
 - **`ObjectiveIdentity { is_fake }` is NEVER in the Lightyear replication graph.** Server holds `HiddenObjectives` as a server-only resource. — source: ADR-001
-- **At `DRAFT_INITIAL`: send `S2CObjectiveIdentities` via `NetworkTarget::Single(client_id)` on `ReliableChannel` — one unicast per player.** — source: ADR-001
+- **At `DRAFT_INITIAL`: send `S2CObjectiveIdentities` via `ServerMultiMessageSender::send::<S2CObjectiveIdentities, ReliableChannel>(&msg, server, &NetworkTarget::Single(peer_id))` — one unicast per player.** Lightyear 0.26 uses `PeerId`, not `ClientId`. — source: ADR-001, Lightyear 0.26 verification
 - **Mandatory reconnect send order (all `ReliableChannel`, all unicast):** 1. `S2CHandshake`, 2. `S2CGameSnapshot`, 3. `S2CObjectiveIdentities`, 4. `S2CPhaseChanged`. Then set `snapshot_sent = true` and flush deferred queue. — source: ADR-011
 - **`S2CObjectiveIdentities` must be explicitly re-sent on every reconnect.** Lightyear reliable delivery does not replay across transport reconnects. — source: ADR-001, ADR-011
 - **`hello_timeout_ms` watchdog: 5000ms default.** Close connection silently if no `C2SHello` within the window. — source: ADR-011
@@ -187,6 +187,7 @@ auction state, class system, card acquisition shop state, economy system, board/
 - **`PrismCollected` is a server-internal Bevy `#[derive(Message)]` — NOT a Lightyear C2S message.** Use `MessageReader<PrismCollected>`, NOT Lightyear's `MessageReceiver<PrismCollected>`. — source: ADR-016
 - **`hand_push()` is a shared module function.** Both Prism System and Card Acquisition call it. CA is DRAFT-only; Prism is RESOLUTION-only — no concurrent write conflict. — source: ADR-016
 - **`resolve_prism_draws` scheduled:** `.after(resolve_ecaflip_triggers).before(award_fake_objective_rewards)` within the RESOLUTION `Update` set. — source: ADR-016
+- **Prism S2C sends use Lightyear 0.26 `ServerMultiMessageSender`.** Owner-only sends (`S2CCardAcquired`, `S2CPrismRewardDropped`) target `NetworkTarget::Single(owner_peer_id)`; all-player respawn sends target `NetworkTarget::All`. — source: ADR-016, ADR-008
 - **`resolve_combat` is an exclusive Bevy system: `fn resolve_combat(world: &mut World)`.** Bevy 0.18 auto-detects `&mut World`. All 6 sub-steps execute in a single frame invocation. — source: ADR-017
 - **Stats snapshot taken at RESOLUTION entry; immutable for the full algorithm run.** — source: ADR-017
 - **`apply_combat_modifier_stack` is a pure function — no World access.** All modifier-stack CRs testable without Bevy context. — source: ADR-017
@@ -382,7 +383,8 @@ Source: `docs/engine-reference/bevy/deprecated-apis.md`, `docs/engine-reference/
 |------|---------|-------------|
 | Buffered inter-system signal (game loop, recurring) | `#[derive(Message)]` + `MessageWriter<T>` / `MessageReader<T>` | `app.add_message::<T>()` |
 | One-shot reactive lifecycle trigger | `#[derive(Event)]` + `world.trigger_targets(event, entity)` + observer handler `fn(trigger: On<T>, ...)` | `app.observe(handler_fn)` |
-| Lightyear C2S inbound (server receives from client) | `MessageReceiver<T>` with `.receive_messages()` | Via Lightyear `ProtocolPlugin` |
-| Lightyear S2C outbound (client sends to server) | `MessageSender<T>` with `.send_to_server(msg)` | Via Lightyear `ProtocolPlugin` |
+| Lightyear C2S inbound (server receives from client) | `MessageReceiver<T>` with `.receive()` | Via Lightyear protocol registration |
+| Lightyear C2S outbound (client sends to server) | `MessageSender<T>` with `.send::<ReliableChannel>(msg)` or `.send::<UnreliableChannel>(msg)` | Via Lightyear protocol registration |
+| Lightyear S2C outbound (server sends to clients) | `ServerMultiMessageSender::send::<M, C>(&msg, server, &NetworkTarget::Single(peer_id) / NetworkTarget::All)` | Via Lightyear protocol registration |
 
 > **Critical boundary**: Bevy's `MessageReader<T>` (internal bus, registered via `app.add_message`) and Lightyear's `MessageReceiver<T>` (network layer, registered via Lightyear protocol) are DISTINCT APIs. Using the wrong one compiles but produces no messages at runtime.

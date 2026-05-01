@@ -13,16 +13,16 @@
 *(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)*
 
 **ADR Governing Implementation**: ADR-016: Prism System Architecture — State Ownership, Schedule Slot, and Hand-Write API
-**ADR Decision Summary**: After all `PrismCollected` events are processed in Rule 6 order, `resolve_prism_draws` runs a respawn check (GDD Rule 8): for each player, if all 5 `collected[lane][player]` are `true`, set `pending_respawn[player] = true`. After all reward broadcasts are complete, fire respawn (Rule 9): reset all 5 lanes to `false` and emit `S2CPrismRespawned { player_id }` reliable unicast to BOTH players. Respawn fires AFTER all broadcasts — newly respawned prisms cannot be collected in the same RESOLUTION. Each player's respawn cycle is fully independent (keyed on `player_id`, not team or session).
+**ADR Decision Summary**: After all `PrismCollected` events are processed in Rule 6 order, `resolve_prism_draws` runs a respawn check (GDD Rule 8): for each player, if all 5 `collected[lane][player]` are `true`, set `pending_respawn[player] = true`. After all reward messages are complete, fire respawn (Rule 9): reset all 5 lanes to `false` and emit `S2CPrismRespawned { player_id }` on `ReliableChannel` to all connected players via `NetworkTarget::All`. Respawn fires AFTER all reward messages — newly respawned prisms cannot be collected in the same RESOLUTION. Each player's respawn cycle is fully independent (keyed on `player_id`, not team or session).
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
 **Engine Notes**:
-- `S2CPrismRespawned { player_id: PlayerId }` — reliable unicast to BOTH players (per GDD Rule 9: both players receive the notification, unlike `S2CCardAcquired` which is owning-player-only)
-- Lightyear 0.26 `NetworkTarget::All` or unicast ×2 — verify correct pattern via `liv-bevy-lightyear`; per ADR-008, `S2CPrismRespawned` must be registered in `network-protocol.md` before story Done
+- `S2CPrismRespawned { player_id: PlayerId }` — reliable all-player delivery via `ServerMultiMessageSender::send::<S2CPrismRespawned, ReliableChannel>(&msg, server, &NetworkTarget::All)` (per GDD Rule 9: both players receive the notification, unlike `S2CCardAcquired` which is owning-player-only)
+- Lightyear 0.26.4 `NetworkTarget::All` verified; `S2CPrismRespawned` is registered in `network-protocol.md` and covered by NP-56
 - `PrismPresence` component entities for all 5 lanes of the respawned player must have their `collected` field set to `false` after `PrismState` reset — Lightyear picks up the component change for client replication on next frame
 
 **Control Manifest Rules (Feature layer — from ADR-016):**
-- Required: Rule 8 (respawn detection) runs AFTER all reward broadcasts in the same RESOLUTION — pending_respawn is a transient flag, not a persisted state
+- Required: Rule 8 (respawn detection) runs AFTER all reward messages in the same RESOLUTION — pending_respawn is a transient flag, not a persisted state
 - Required: Rule 9 (respawn fire) clears `pending_respawn[player]` to `false` after mutating `collected[]`
 - Required: `S2CPrismRespawned` sent to BOTH players (not unicast to respawning player only)
 - Required: Each player's respawn cycle checked independently — `count(collected[lane][p] == true) == 5` per player
@@ -34,8 +34,8 @@
 
 *From GDD `design/gdd/prism-system.md`, scoped to this story:*
 
-- [ ] **PS-05** — GIVEN a player has collected all 5 of their own prism tokens (in same or across multiple RESOLUTIONs), WHEN `resolve_prism_draws` finishes delivering all reward broadcasts for that RESOLUTION, THEN all 5 prism tokens for that player reset to `collected = false` at end of `resolve_prism_draws`, and the opponent's prism state is unchanged.
-- [ ] **PS-13** — GIVEN a player collects their 5th prism token in RESOLUTION N, WHEN `resolve_prism_draws` completes all reward broadcasts for RESOLUTION N, THEN the full respawn (all 5 tokens reset to `collected = false`) occurs AFTER the last broadcast — any unit at a spawn cell in that same RESOLUTION does NOT collect the freshly respawned token within RESOLUTION N.
+- [ ] **PS-05** — GIVEN a player has collected all 5 of their own prism tokens (in same or across multiple RESOLUTIONs), WHEN `resolve_prism_draws` finishes delivering all reward messages for that RESOLUTION, THEN all 5 prism tokens for that player reset to `collected = false` at end of `resolve_prism_draws`, and the opponent's prism state is unchanged.
+- [ ] **PS-13** — GIVEN a player collects their 5th prism token in RESOLUTION N, WHEN `resolve_prism_draws` completes all reward messages for RESOLUTION N, THEN the full respawn (all 5 tokens reset to `collected = false`) occurs AFTER the last reward message — any unit at a spawn cell in that same RESOLUTION does NOT collect the freshly respawned token within RESOLUTION N.
 - [ ] **PS-14** — GIVEN a player's prism set respawns after full collection, WHEN the respawn state is inspected, THEN no additional reward (card, gold, mana, or otherwise) is granted by the respawn event itself — it is a state reset only.
 - [ ] **PS-16** — GIVEN a 2v2 game where Player A and Player B are on the same team, WHEN Player A collects the Lane 3 prism keyed on `(player_A_id, lane_3)`, THEN Player B's prism token at `(player_B_id, lane_3)` is unaffected, and Player A's respawn cycle runs on Player A's individual count (0–5) independently.
 - [ ] **PS-21** — GIVEN Player A collects their 5th prism (triggering full respawn) AND Player B has collected 3 of 5 in the same RESOLUTION, WHEN `resolve_prism_draws` completes, THEN Player A's prisms all reset to uncollected, Player B retains 3 collected, and Player B's respawn does not trigger.
@@ -50,7 +50,7 @@
 Add to the end of `resolve_prism_draws`, after the reward delivery loop:
 
 ```rust
-// Rule 8: respawn detection — runs AFTER all reward broadcasts
+// Rule 8: respawn detection — runs AFTER all reward messages
 for player in all_players() {
     let idx = player_idx(player);
     if prism_state.collected[idx].iter().all(|&c| c) {
@@ -58,7 +58,7 @@ for player in all_players() {
     }
 }
 
-// Rule 9: respawn fire — after all reward broadcasts
+// Rule 9: respawn fire — after all reward messages
 for player in all_players() {
     let idx = player_idx(player);
     if prism_state.pending_respawn[idx] {
@@ -73,11 +73,11 @@ for player in all_players() {
             }
         }
 
-        // Emit S2CPrismRespawned to BOTH players (not unicast to one)
-        // Verify NetworkTarget::All vs dual unicast via liv-bevy-lightyear
-        server.send_message_to_target::<ReliableChannel, S2CPrismRespawned>(
-            S2CPrismRespawned { player_id: player },
-            NetworkTarget::All,  // ← verify correct variant
+        // Emit S2CPrismRespawned to all connected players (not owning player only)
+        s2c_sender.send::<S2CPrismRespawned, ReliableChannel>(
+            &S2CPrismRespawned { player_id: player },
+            server,
+            &NetworkTarget::All,
         );
     }
 }
@@ -87,7 +87,7 @@ for player in all_players() {
 
 **PS-24 multi-player note**: In 2v2, each player has their own prism state keyed on `(player_id, lane)`. When two teammates have units at the same lane's spawn cells simultaneously, Board/Lane System emits `PrismCollected(player_a, lane)` and `PrismCollected(player_b, lane)` as distinct events. `resolve_prism_draws` processes them independently (sorted by ascending `player_id`). Each player's `collected[lane-1][player]` is set to `true` independently. This requires verifying that Board/Lane System actually emits two distinct events — the test exercises the Prism System side only.
 
-**`S2CPrismRespawned` registration**: Must be added to `network-protocol.md` before this story is marked Done (same NP GDD pre-implementation gate as Story 004's `S2CPrismRewardDropped`).
+**`S2CPrismRespawned` registration**: Registered in `network-protocol.md`; the NP GDD pre-implementation gate is resolved.
 
 ---
 
@@ -110,10 +110,10 @@ for player in all_players() {
   - Then: `player_a.collected == [false, false, false, false, false]`; `player_b.collected == [true, true, false, false, false]` (unchanged); `S2CPrismRespawned { player_id: player_a }` staged for both players
   - Edge cases: both players complete their full set in the same RESOLUTION (two independent respawns fire; two `S2CPrismRespawned` staged)
 
-- **PS-13**: Respawn fires AFTER reward broadcasts (timing)
+- **PS-13**: Respawn fires AFTER reward messages (timing)
   - Given: `player_a` has 4 lanes collected; this RESOLUTION `player_a` collects Lane 5 (5th); no new `PrismCollected` for respawned lanes arrives (Board/Lane System already ran sub-step 5)
-  - When: `resolve_prism_draws` processes the Lane 5 event, delivers reward broadcast, then fires respawn
-  - Then: `player_a.collected` resets to all false AFTER reward broadcast is staged; reward loop completes before `pending_respawn` check runs; order of operations verifiable by inspecting state at each step
+  - When: `resolve_prism_draws` processes the Lane 5 event, delivers the reward message, then fires respawn
+  - Then: `player_a.collected` resets to all false AFTER the reward message is staged; reward loop completes before `pending_respawn` check runs; order of operations verifiable by inspecting state at each step
   - Edge cases: both respawn and reward for the 5th lane complete in same `resolve_prism_draws` call — reward staged first, then respawn
 
 - **PS-14**: Respawn = no reward
@@ -154,5 +154,5 @@ for player in all_players() {
 - Depends on: Story 001 (`state-scaffold`) must be Done — `PrismState.pending_respawn` field must be defined
 - Depends on: Story 002 (`deterministic-lanes`) must be Done — reward delivery loop in `resolve_prism_draws` must exist (respawn appends to the end of that function)
 - Depends on: Story 003 (`lane3-rng`) must be Done — full `resolve_prism_draws` function body complete
-- Depends on: Pre-implementation gate NP GDD — `S2CPrismRespawned` registered in `network-protocol.md`
+- Depends on: Pre-implementation gate NP GDD — resolved; `S2CPrismRespawned` registered in `network-protocol.md`
 - Unlocks: None — this is a leaf story in the Prism epic dependency chain; Story 006 (spell play path) has no dependency on respawn

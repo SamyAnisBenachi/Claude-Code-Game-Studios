@@ -20,7 +20,7 @@
 - `PrismState`: `#[derive(Resource, Default)]` — stable across Bevy 0.15–0.18; no deprecated derives
 - `DiscardLog`, `AuditLog`: `#[derive(Resource, Default)]` — same
 - `PrismPresence`: `#[derive(Component, Clone, Serialize, Deserialize)]` — Lightyear-replicated component
-- `Replicate` component for PrismPresence entities: Lightyear 0.26 per-entity client scoping API must be verified against `docs.rs/lightyear/0.26` before spawning (ADR-016 Verification Required item 2)
+- `Replicate` component for PrismPresence entities: Prism visibility is public board state, so spawn replicated entities with `Replicate::to_clients(NetworkTarget::All)` per Lightyear 0.26 / ADR-020; no owner-only per-entity scoping is required for PrismPresence
 - Session lifecycle: insert resources in PrismPlugin reaction to `SessionReady`; despawn `PrismPresence` entities and remove resources on `GameOverEmitted`
 - `app.add_message::<PrismCollected>()` is owned by the Board/Lane System plugin — confirm this registration exists before `resolve_prism_draws` can compile
 
@@ -94,7 +94,7 @@ pub struct PrismPresence {
 
 **Session lifecycle** in `PrismPlugin::build()`:
 - Insert `PrismState::default()`, `DiscardLog::default()`, `AuditLog::default()` at session start
-- Spawn 10 `PrismPresence` entities (player × lane pairs) with `Replicate` targeting `UnreliableChannel` — Lightyear 0.26 API must be verified before this step
+- Spawn 10 `PrismPresence` entities (player × lane pairs) with `Replicate::to_clients(NetworkTarget::All)`; `PrismPresence` changes travel on the unreliable replication path
 - Remove all three resources + despawn 10 entities on `GameOverEmitted`
 
 **Initial state** per GDD Rule 2: `collected[lane][player] = false` for all 5 lanes × all players. Achieved by `PrismState::default()` (array of bools default to `false`).

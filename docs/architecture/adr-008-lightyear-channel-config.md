@@ -47,7 +47,7 @@ See `liv-bevy-lightyear` skill for the complete 0.26 API reference.
 | **Domain** | Networking |
 | **Knowledge Risk** | HIGH — the entire Lightyear 0.26 API is post-cutoff (released January 2026). Channel registration syntax, `MessageSender`/`MessageReceiver` types, and `NetworkTarget` variants must be verified against current docs before implementation. |
 | **References Consulted** | `docs/engine-reference/bevy/current-best-practices.md` (Lightyear 0.26 message patterns), `docs/engine-reference/bevy/VERSION.md`, ADR-001 (unicast target shape) |
-| **Post-Cutoff APIs Used** | `ReliableChannel`, `UnreliableChannel` channel definitions; `MessageSender<T>`, `MessageReceiver<T>` system params; `NetworkTarget::Single(ClientId)` unicast target; `ChannelSettings` / channel registration macro (exact syntax unverified) |
+| **Post-Cutoff APIs Used** | `ReliableChannel`, `UnreliableChannel` channel definitions; `MessageSender<T>`, `MessageReceiver<T>` system params; `ServerMultiMessageSender` server S2C targeted-send system param; `NetworkTarget::Single(PeerId)` unicast target; `NetworkTarget::All` all-player target; `ChannelSettings` / channel registration macro |
 | **Verification Required** | See Implementation Guidelines — full numbered checklist in that section |
 
 > **Note**: Knowledge Risk is HIGH. This ADR must be re-validated if the project upgrades
@@ -200,6 +200,8 @@ S2CShopSlots                   Reliable        Unicast   Card data must not be d
 S2CDraftOffering               Reliable        Unicast   Card data must not be dropped
 S2CPoolUpdate                  Reliable        Unicast   Pool delta must not be dropped
 S2CCardAcquired                Reliable        Unicast   Hand state must not be dropped
+S2CPrismRewardDropped          Reliable        Unicast   Owner-only hand-full prism drop notice
+S2CPrismRespawned              Reliable        Broadcast Full-set respawn notice for all clients
 S2CAuctionCard                 Reliable        Broadcast Card selection must arrive before
                                                          DRAFT_AUCTION UI activates
 S2CAuctionBidAccepted          Reliable        Broadcast Bid state must be consistent
@@ -235,15 +237,15 @@ The following checklist MUST be completed before writing any networking code. Th
 
 4. [ ] **`MessageSender<T>` / `MessageReceiver<T>` system param names** — `current-best-practices.md` uses `MessageSender<T>` and `MessageReceiver<T>`. Verify these are the canonical 0.26 system params (not `MessageChannel`, `NetworkWriter`, or similar names from earlier Lightyear versions).
 
-5. [ ] **`send_to_server` method on `MessageSender`** — `current-best-practices.md` shows `sender.send_to_server(msg)`. Verify this method exists on `MessageSender` in 0.26 and that it routes on the channel associated with the message type.
+5. [x] **`send` method on `MessageSender`** — verified in Lightyear 0.26.4 evidence: client sends use `sender.send::<ChannelType>(msg)`. There is no `send_to_server(msg)` method in the verified API.
 
-6. [ ] **`receive_messages` method on `MessageReceiver`** — `current-best-practices.md` shows `receiver.receive_messages()` returning `(ClientId, T)` pairs. Verify the exact return type and iteration pattern in 0.26.
+6. [x] **`receive` method on `MessageReceiver`** — verified in Lightyear 0.26.4 evidence: use `receiver.receive()`; do not use the older `receive_messages()` sketch.
 
-7. [ ] **`NetworkTarget::Single(ClientId)` unicast shape** — ADR-001 documents that the exact variant may be `NetworkTarget::Single(ClientId)` or `NetworkTarget::Only(vec![client_id])`. Check `docs.rs/lightyear/0.26` `NetworkTarget` enum and confirm the correct unicast shape. This is required for all unicast S2C messages (`S2CGameSnapshot`, `S2CGoldUpdate`, `S2CObjectiveIdentities`, etc.).
+7. [x] **`NetworkTarget::Single(PeerId)` unicast shape** — verified in Lightyear 0.26.4 source/evidence. `NetworkTarget` is a `Target<PeerId>` alias; use `NetworkTarget::Single(peer_id)` for unicast. The identifier type is `PeerId`, not `ClientId`.
 
-8. [ ] **`NetworkTarget::All` / `NetworkTarget::AllExcept` broadcast shapes** — Verify the exact broadcast target variant names for `S2CPhaseChanged`, `S2CResolutionEvent`, and other broadcast messages.
+8. [x] **`NetworkTarget::All` / `NetworkTarget::AllExcept*` broadcast shapes** — verified in Lightyear 0.26.4 source/evidence. Use `NetworkTarget::All` for all connected clients; `AllExceptSingle(PeerId)` and `AllExcept(Vec<PeerId>)` exist for exclusion cases.
 
-9. [ ] **Server-side unicast send API** — Verify the exact method to send a message targeting a specific `ClientId` from a server system. Expected shape based on ADR-001: `server.send_message_to_target::<ChannelType, MessageType>(msg, NetworkTarget::Single(id))`. Confirm method name, generics order, and receiver type in 0.26.
+9. [x] **Server-side targeted send API** — verified in Lightyear 0.26.4 source/evidence. Use `ServerMultiMessageSender::send::<MessageType, ChannelType>(&msg, server, &NetworkTarget::Single(peer_id))` for unicast and the same method with `NetworkTarget::All` for all-player delivery. Generic order is message first, channel second; there is no `server.send_message_to_target` method.
 
 10. [ ] **In-order delivery guarantee within a single reliable channel, across different message types** — The OQ-D invariant (see below) depends on `S2CResolutionEvent` and `S2CPhaseChanged` being delivered in enqueue order when both are on `ReliableChannel`. Verify that Lightyear 0.26 guarantees FIFO ordering for all message types on the same `OrderedReliable` channel, not just per-type. This is acceptance criterion NP-8 in the Network Protocol GDD and is BLOCKING for the resolution/phase handoff.
 
@@ -328,7 +330,7 @@ Note: `S2CAuctionBidAccepted` is on `ReliableChannel` because it changes the aut
 | Risk | Probability | Impact | Mitigation |
 |------|------------|--------|------------|
 | Lightyear 0.26 channel definition syntax differs from expected `#[derive(Channel)]` pattern | HIGH | High — compilation failure on first build | Implementation checklist item 1 must be resolved before any networking code is written. Spike against `docs.rs/lightyear/0.26` before coding starts. |
-| `NetworkTarget::Single` variant name is wrong | MEDIUM | High — all unicast messages route to wrong clients or fail at runtime | Checklist item 7 (ADR-001 also flags this). Write a minimal channel send test before integrating into game systems. |
+| `NetworkTarget::Single` or server targeted-send API drifts in a future Lightyear upgrade | LOW | High — all unicast messages route to wrong clients or fail at runtime | Checklist items 7–9 are resolved for Lightyear 0.26.4; re-run the verification evidence if upgrading Lightyear. Keep a minimal channel send compile test in networking code. |
 | In-order cross-type delivery on `ReliableChannel` is not guaranteed by Lightyear 0.26 | MEDIUM | Critical — breaks OQ-D invariant; resolution events arrive after phase change on client | Checklist item 10. If not guaranteed, add `sequence_id: u32` to `S2CResolutionEvent` and `S2CPhaseChanged` and implement client reorder buffer. |
 | Snapshot delivery sequencing fails under concurrent system execution | LOW | High — live game messages arrive before snapshot on reconnect; client renders corrupt state | Checklist item 11. Enforce with Bevy system ordering (`.before()`) and `snapshot_sent` per-connection flag. |
 | WASM WebSocket transport silently upgrades unreliable to reliable | LOW | Low — heartbeat and timer ticks work correctly regardless; only the performance optimisation is lost | Checklist item 12. Accept the cost if confirmed — correctness is unaffected. |
@@ -379,7 +381,7 @@ This is a greenfield decision — no existing networking code requires migration
 
 ## Related
 
-- `docs/architecture/adr-001-objective-identity-unicast.md` — Establishes `NetworkTarget::Single(ClientId)` as the unicast pattern used by the majority of unicast S2C messages in this ADR's assignment table. Also documents the `NetworkTarget` variant name uncertainty (checklist item 7 here).
+- `docs/architecture/adr-001-objective-identity-unicast.md` — Establishes owner-only unicast as the pattern used by the majority of unicast S2C messages in this ADR's assignment table. Lightyear 0.26.4 resolves the concrete target as `NetworkTarget::Single(PeerId)`.
 - ADR-002 (pending) — Client-server authority model. This ADR assumes the server is authoritative and all channel sends originate from the server for S2C and from the client for C2S. If ADR-002 changes this model, channel direction assignments in `ChannelSettings` must be updated.
 - ADR-003 (pending) — Workspace layout. This ADR assumes `shared/src/protocol.rs` as the file where channel definitions live. If ADR-003 defines a different layout, update the file references in Key Interfaces and Implementation Guidelines.
 - `design/gdd/network-protocol.md` — Full message catalogue, payload schemas, and acceptance criteria (NP-7 through NP-29) that this ADR's channel assignments must satisfy.
