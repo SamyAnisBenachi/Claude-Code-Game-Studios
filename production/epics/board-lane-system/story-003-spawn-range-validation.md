@@ -1,7 +1,7 @@
 # Story 003: Spawn Range Validation (F2)
 
 > **Epic**: Board / Lane System
-> **Status**: Ready
+> **Status**: In Progress
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01

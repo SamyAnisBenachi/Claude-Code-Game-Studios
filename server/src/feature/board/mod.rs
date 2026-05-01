@@ -5,10 +5,12 @@
 #![allow(dead_code, unused_imports)]
 
 pub mod movement;
+pub mod placement;
 pub mod plugin;
 pub mod state;
 
 pub use movement::{advance_direction, apply_f1, apply_standard_movement};
+pub use placement::{requires_spawn_range_validation, validate_spawn_range};
 pub use plugin::BoardPlugin;
 pub use state::{
     BoardCell, BoardConfig, BoardGrid, BoardOccupancy, LaneId, PrismState, SpawnRangeState,

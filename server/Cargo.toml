@@ -66,6 +66,10 @@ name = "standard_movement_test"
 path = "../tests/unit/board-lane-system/standard_movement_test.rs"
 
 [[test]]
+name = "spawn_range_validation_test"
+path = "../tests/unit/board-lane-system/spawn_range_validation_test.rs"
+
+[[test]]
 name = "card_acquisition_draw_pipeline_test"
 path = "../tests/unit/card_acquisition/draw_pipeline_test.rs"
 
