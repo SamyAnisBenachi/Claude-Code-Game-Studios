@@ -995,3 +995,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `KW-005` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Keyword Story 013 FINAL BLOW + COUNTERATTACK Dispatch (`production/epics/keyword-system/story-013-final-blow-counterattack.md`) after readiness check, or continue the serialized story-done queue.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-lane-system/story-003-spawn-range-validation.md` - Spawn Range Validation (F2)
+- Criteria: 5/5 passing; BL-5, BL-5b, BL-6, BL-6b, and BL-7 covered by `tests/unit/board-lane-system/spawn_range_validation_test.rs`.
+- Test Evidence: `tests/unit/board-lane-system/spawn_range_validation_test.rs`; `cargo test -p server --test spawn_range_validation_test` passed 7/7. `cargo check -p server` passed.
+- Verification: worker branch `work/BOARD-003-spawn-range-validation` contains worker commit `bf39342`; main integration commit `9c38083` is included in current `main`. `bf39342` is not an ancestor of `main`, but the BOARD-003 source/test/story diff matches `9c38083`.
+- Notes: No blocking GDD or ADR deviation found. Implementation uses current `SessionConfig.team_map` plus structural `BoardConfig` spawn cells instead of the story's simplified `PlayerId::A/B` sample; defaults remain Player A cell 1 and Player B cell 8, and tests cover the required F2 behavior.
+- Tech debt logged: None
+- Sprint status: No `BOARD-003` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Board Story 004 placement occupancy validation (`production/epics/board-lane-system/story-004-placement-occupancy.md`) after readiness check, or continue the user-directed serialized story-done queue.

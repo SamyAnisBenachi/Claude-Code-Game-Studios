@@ -1,7 +1,7 @@
 # Story 003: Spawn Range Validation (F2)
 
 > **Epic**: Board / Lane System
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -142,7 +142,7 @@ Valid cells by fakes count (from GDD Formula F2 table):
 **Story Type**: Logic
 **Required evidence**: `tests/unit/board-lane-system/spawn_range_validation_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -158,3 +158,22 @@ Valid cells by fakes count (from GDD Formula F2 table):
 - 2026-05-01: Revalidated against control manifest version 2026-05-01.
   ADR-007 remains accepted, `TR-BLS-003` remains active, Story 001 is complete,
   and no implementation requirements changed.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 5/5 passing (BL-5, BL-5b, BL-6, BL-6b, BL-7)
+**Deviations**: None blocking. Note: implementation uses current `SessionConfig.team_map`
+and structural `BoardConfig` spawn cells instead of the story's simplified
+`PlayerId::A/B` sample; default cells remain Player A = 1 and Player B = 8,
+and tests cover the required F2 behavior.
+**Test Evidence**: Logic test at `tests/unit/board-lane-system/spawn_range_validation_test.rs`;
+`cargo test -p server --test spawn_range_validation_test` passed 7/7 and
+`cargo check -p server` passed.
+**Code Review**: Skipped - lean mode.
+**Integration**: Worker branch `work/BOARD-003-spawn-range-validation` contains
+`bf39342`; main integration commit `9c38083` is included in current `main`.
+`bf39342` is not an ancestor of `main`, but the BOARD-003 source/test/story diff
+matches `9c38083`.
