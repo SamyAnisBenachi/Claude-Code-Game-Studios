@@ -58,7 +58,10 @@ source of truth for story status.
   (`2026-04-29` vs current `2026-05-01`); dependencies and ADRs passed.
   Story manifest was refreshed, so this window should retry readiness and then
   implement if READY. Correct ADR file is
-  `docs/architecture/adr-007-placement-buffer.md`.
+  `docs/architecture/adr-007-placement-buffer.md`. Completed locally on branch
+  `work/board-005-placement-buffer-phase-integration` at `4946ea2`; worker push
+  was blocked by credentials, so root cherry-picked it into `main` at `86ecbcb`.
+  Window can be cleared.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -85,6 +88,12 @@ None currently tracked here.
   `main` at `614e68e`. Worker reported targeted Hand UI tests and
   `cargo check -p client` passing. Root `cargo fmt -p client -- --check` and
   `git diff --check HEAD~1..HEAD` passed.
+- BOARD-005: Placement Buffer Phase Integration implemented locally on branch
+  `work/board-005-placement-buffer-phase-integration` at `4946ea2`; cherry-picked
+  into `main` at `86ecbcb`. Root `cargo fmt -p server -- --check`,
+  `cargo test -p server --test placement_buffer_test --test placement_occupancy_test
+  --test spawn_range_validation_test --test resolve_combat_scaffold_test`,
+  `cargo check -p server`, and `git diff --check HEAD~1..HEAD` passed.
 ## Recently Closed
 
 - COMBAT-001: Resolve Combat Scaffold implemented locally on branch
@@ -185,6 +194,7 @@ None currently tracked here.
 1. OBJECTIVE-001
 2. HUD-005
 3. HAND-UI-003
+4. BOARD-005
 
 Run only one story-done at a time.
 
@@ -193,6 +203,7 @@ Run only one story-done at a time.
 - OBJECTIVE-001: implemented and integrated; pending story-done.
 - HUD-005: implemented and integrated; pending story-done.
 - HAND-UI-003: implemented and integrated; pending story-done.
+- BOARD-005: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
