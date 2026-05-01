@@ -1,7 +1,7 @@
 # Story 001: CardAnimationsPlugin scaffold + 5 custom lenses + cargo-check gates
 
 > **Epic**: Card Animations
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -32,8 +32,8 @@ Also resolve: OQ-CA-05 (`bevy_tweening = "0.18"` on crates.io — highest-priori
 
 *From GDD `design/gdd/card-animations.md`, scoped to this story:*
 
-- [ ] **CA-1** — GIVEN `CardAnimationsPlugin` is registered, WHEN `App::new()` builds with the plugin and executes one update, THEN the app completes without panic; each of the 5 custom lens types (`SpriteAlphaLens`, `BackgroundColorAlphaLens`, `SpriteColorLens`, `TransformScaleXLens`, `TextColorLens`) can be constructed in a `World`-based unit test and inserted into a `Tween` without compile or runtime error. **[BLOCKING]**
-- [ ] **CA-20** — GIVEN the client app runs with `CardAnimationsPlugin`, WHEN each domain event type registered by upstream plugins is fired in a controlled test, THEN no missing-consumer panic or warning is logged. (Smoke test — confirms all `Message` types registered before `CardAnimationsPlugin` readers run.) **[ADVISORY]**
+- [x] **CA-1** — GIVEN `CardAnimationsPlugin` is registered, WHEN `App::new()` builds with the plugin and executes one update, THEN the app completes without panic; each of the 5 custom lens types (`SpriteAlphaLens`, `BackgroundColorAlphaLens`, `SpriteColorLens`, `TransformScaleXLens`, `TextColorLens`) can be constructed in a `World`-based unit test and inserted into a `Tween` without compile or runtime error. **[BLOCKING]**
+- [x] **CA-20** — GIVEN the client app runs with `CardAnimationsPlugin`, WHEN each domain event type registered by upstream plugins is fired in a controlled test, THEN no missing-consumer panic or warning is logged. (Smoke test — confirms all `Message` types registered before `CardAnimationsPlugin` readers run.) **[ADVISORY]**
 
 ---
 
@@ -105,7 +105,7 @@ Manual check: All domain Message types fire without consumer error
 **Required evidence**:
 - Logic: `tests/unit/card-animations/plugin_scaffold_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passed locally with `cargo test -p client --test card_animations_plugin_scaffold_test --target-dir target\codex-card-animations-test`
 
 ---
 
@@ -113,3 +113,11 @@ Manual check: All domain Message types fire without consumer error
 
 - Depends on: None — first story; resolves all ADR-021 cargo-check gates and OQ-CA-01/05
 - Unlocks: [Story 002](story-002-tween-cancel-replace-lifecycle.md), [Story 004](story-004-anim-queue-resolution-drain.md)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 2/2 passing. CA-1 covered by the plugin/lens unit tests; CA-20 covered for the scaffolded registered domain messages.
+**Deviations**: Advisory only: current `design/gdd/card-animations.md` also names `TimerColorZoneRequested` and `NoBidsTransitionRequested`, but those message stubs are not present in the Story 001 scaffold. Advisory only: story/GDD/TR text says `bevy_tweening 0.18`, while the workspace pins `bevy_tweening = "0.15"` as the Bevy 0.18-compatible release.
+**Test Evidence**: Logic: `tests/unit/card-animations/plugin_scaffold_test.rs`; `cargo test -p client --test card_animations_plugin_scaffold_test --target-dir target\codex-card-animations-test` passed 8/8 tests.
+**Code Review**: Skipped - Lean mode.

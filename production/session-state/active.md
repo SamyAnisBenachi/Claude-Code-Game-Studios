@@ -756,3 +756,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `KW-002` set to `done` in `production/sprint-status.yaml`; existing in-progress claims for `S3-04`, `S3-06`, `S3-08`, and `CARD-ANIM-001` preserved.
 - Next recommended: S3-05 RSM Story 4: Win Condition and Game Over at `production/epics/round-state-machine/story-004-win-condition-and-game-over.md`; S3-04 and S3-06 remain in progress.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-animations/story-001-plugin-scaffold-custom-lenses.md` - CardAnimationsPlugin scaffold + 5 custom lenses + cargo-check gates
+- Criteria: 2/2 passing; CA-1 covered by plugin/lens unit tests, CA-20 covered for scaffolded registered domain messages.
+- Test Evidence: `tests/unit/card-animations/plugin_scaffold_test.rs`; `cargo test -p client --test card_animations_plugin_scaffold_test --target-dir target\codex-card-animations-test` -> 8 passed, 0 failed.
+- Notes: Advisory only - current GDD also names `TimerColorZoneRequested` and `NoBidsTransitionRequested`, but those message stubs are not present in the Story 001 scaffold. Advisory only - story/GDD/TR text says `bevy_tweening 0.18`, while the workspace pins `bevy_tweening = "0.15"` as the Bevy 0.18-compatible release.
+- Tech debt logged: None
+- Sprint status: `CARD-ANIM-001` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
+- Next recommended: Continue in-progress Sprint 3 must-haves S3-04 and S3-06 before opening S3-05, because S3-05's story file depends on S3-04 being Done.

@@ -193,8 +193,8 @@ stories:
     name: "CardAnimationsPlugin scaffold + custom lenses"
     file: "production/epics/card-animations/story-001-plugin-scaffold-custom-lenses.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: "codex-card-anim-001-scaffold-lenses"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-01"
