@@ -54,6 +54,11 @@ None currently tracked here.
   `work/card-anim-009-ci-boundary-enforcement` at `55b5331`; cherry-picked into
   `main` at `75e11ea` because the branch was based before the asset-sorting
   commits. Local grep boundary check and `git diff --check` passed.
+- KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
+  `7543293`; cherry-picked into `main` at `b8b1287` because the branch was
+  based before recent tracking and BOARD-002 commits. Local `stun_test`,
+  `cargo check -p server`, `cargo check -p shared`, `cargo fmt --all -- --check`,
+  and `git diff --check` passed.
 - BOARD-001: Board Grid Initialization implemented on branch
   `work/board-001-grid-initialization` at `7d38a34`; merged into `main` at
   `6e5d80b`. Local `board_grid_initialization_test`, `cargo check -p server`,
@@ -116,6 +121,7 @@ None currently tracked here.
 5. CARD-ANIM-004
 6. CARD-ANIM-009
 7. BOARD-002
+8. KW-004
 
 Run only one story-done at a time.
 
@@ -125,7 +131,8 @@ Run only one story-done at a time.
   wait for CA-003 story-done unless explicitly pulled in worktree mode.
 - CA-006: implemented and merged; pending story-done.
 - KW-004: unblocked by KW-003 story-done; run readiness first because its story
-  text may still contain stale ADR-018 Proposed/BLOCKED wording.
+  text may still contain stale ADR-018 Proposed/BLOCKED wording. Implemented and
+  integrated; pending story-done.
 - CARD-ANIM-009: implemented and integrated; pending story-done.
 - HAND-UI-001: unblocked by HUD-001 story-done; use worktree mode for any new
   implementation.
