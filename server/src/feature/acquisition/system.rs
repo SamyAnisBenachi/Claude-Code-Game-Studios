@@ -13,7 +13,7 @@ use shared::protocol::{
 use shared::session::PlayerId;
 
 use crate::core::economy::{api as economy_api, PlayerEconomies};
-use crate::core::pool::{PlayerPool, PlayerPools};
+use crate::core::pool::{DistributeError, PlayerPool, PlayerPools};
 use crate::core::session::PlayerConnectionMap;
 use crate::core::session::PlayerSessions;
 use crate::foundation::config::{CardCatalog, GameConfig};
@@ -37,9 +37,13 @@ pub enum PurchaseAttemptResult {
     DiscardedWrongPhase,
     HandFull,
     CardNotDisplayed,
+    CardUnavailable,
     CardMissingFromCatalog,
     PlayerEconomyMissing,
+    PlayerPoolMissing,
     InsufficientGold,
+    DistributeExhausted,
+    DistributeUnknownCard,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -72,12 +76,33 @@ enum ShopSlotType {
     Neutral,
 }
 
+pub trait PurchasePool {
+    fn is_available(&self, card_id: CardId) -> bool;
+    fn distribute(&mut self, card_id: CardId) -> Result<(), DistributeError>;
+}
+
+impl PurchasePool for PlayerPool {
+    fn is_available(&self, card_id: CardId) -> bool {
+        PlayerPool::is_available(self, card_id)
+    }
+
+    fn distribute(&mut self, card_id: CardId) -> Result<(), DistributeError> {
+        PlayerPool::distribute(self, card_id)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PurchaseDisplay {
+    DraftInitialOffering,
+    ShopSlot(usize),
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn card_acquisition_tick_system(
     mut shop_states: ResMut<ShopStates>,
     mut hands: ResMut<PlayerHands>,
     mut economies: Option<ResMut<PlayerEconomies>>,
-    pools: Option<Res<PlayerPools>>,
+    mut pools: Option<ResMut<PlayerPools>>,
     sessions: Option<Res<PlayerSessions>>,
     mut server_rng: Option<ResMut<ServerRng>>,
     catalog: Option<Res<CardCatalog>>,
@@ -234,17 +259,28 @@ pub fn card_acquisition_tick_system(
             let Some(player_id) = resolve_player(remote, connections) else {
                 continue;
             };
-            let (Some(catalog), Some(economies)) = (catalog, economies.as_mut()) else {
+            let (Some(catalog), Some(economies), Some(pools)) =
+                (catalog, economies.as_mut(), pools.as_deref_mut())
+            else {
                 continue;
             };
-            let _ = process_purchase_card(
+            let (_result, update) = process_purchase_card(
                 &mut shop_states,
                 &mut hands,
                 &mut *economies,
+                pools,
                 catalog,
                 player_id,
                 message.card_id,
             );
+
+            let dispatch =
+                update.map(|message| prepare_shop_slots_dispatch(player_id, message, connections));
+            if let (Some(dispatch), Some(server), Some(sender)) =
+                (dispatch.as_ref(), server, sender.as_mut())
+            {
+                send_shop_slots(sender, server, dispatch);
+            }
         }
     }
 }
@@ -460,49 +496,136 @@ pub fn process_purchase_card(
     shop_states: &mut ShopStates,
     hands: &mut PlayerHands,
     economies: &mut PlayerEconomies,
+    pools: &mut PlayerPools,
     catalog: &CardCatalog,
     player_id: PlayerId,
     card_id: CardId,
-) -> PurchaseAttemptResult {
+) -> (PurchaseAttemptResult, Option<S2CShopSlots>) {
+    let Some(pool) = pools.pools.get_mut(&player_id) else {
+        return (PurchaseAttemptResult::PlayerPoolMissing, None);
+    };
+
+    process_purchase_card_with_pool(
+        shop_states,
+        hands,
+        economies,
+        pool,
+        catalog,
+        player_id,
+        card_id,
+    )
+}
+
+pub fn process_purchase_card_with_pool(
+    shop_states: &mut ShopStates,
+    hands: &mut PlayerHands,
+    economies: &mut PlayerEconomies,
+    pool: &mut impl PurchasePool,
+    catalog: &CardCatalog,
+    player_id: PlayerId,
+    card_id: CardId,
+) -> (PurchaseAttemptResult, Option<S2CShopSlots>) {
     let Some(player_shop) = shop_states.players.get(&player_id) else {
-        return PurchaseAttemptResult::DiscardedWrongPhase;
+        return (PurchaseAttemptResult::DiscardedWrongPhase, None);
     };
 
     if !matches!(
         player_shop.phase,
         ShopPhase::DraftInitial | ShopPhase::ShopActive
     ) {
-        return PurchaseAttemptResult::DiscardedWrongPhase;
+        return (PurchaseAttemptResult::DiscardedWrongPhase, None);
     }
 
     if hands.hand_len(player_id) >= MAX_HAND_SIZE {
-        return PurchaseAttemptResult::HandFull;
+        return (PurchaseAttemptResult::HandFull, None);
     }
 
-    if !player_shop.displays_card(card_id) {
-        return PurchaseAttemptResult::CardNotDisplayed;
+    let Some(display) = purchase_display(player_shop, card_id) else {
+        return (PurchaseAttemptResult::CardNotDisplayed, None);
+    };
+
+    if !pool.is_available(card_id) {
+        return (PurchaseAttemptResult::CardUnavailable, None);
     }
 
     let Some(card) = catalog.cards.get(&card_id) else {
-        return PurchaseAttemptResult::CardMissingFromCatalog;
+        return (PurchaseAttemptResult::CardMissingFromCatalog, None);
     };
 
     let Some(economy) = economies.0.get_mut(&player_id) else {
-        return PurchaseAttemptResult::PlayerEconomyMissing;
+        return (PurchaseAttemptResult::PlayerEconomyMissing, None);
     };
 
     if economy_api::spend_gold(economy, card.cost).is_err() {
-        return PurchaseAttemptResult::InsufficientGold;
+        return (PurchaseAttemptResult::InsufficientGold, None);
     }
 
-    hands.push_card(player_id, card_id);
-    PurchaseAttemptResult::Purchased
+    match pool.distribute(card_id) {
+        Ok(()) => {
+            hands.push_card(player_id, card_id);
+            let slots_update = remove_purchased_display(shop_states, player_id, card_id, display);
+            (PurchaseAttemptResult::Purchased, slots_update)
+        }
+        Err(error) => {
+            economy_api::refund_gold(economy, card.cost);
+            tracing::error!(
+                player_id = player_id.0,
+                card_id = card_id.0,
+                ?error,
+                "card acquisition purchase distribution failed; gold refunded"
+            );
+            let result = match error {
+                DistributeError::Exhausted => PurchaseAttemptResult::DistributeExhausted,
+                DistributeError::UnknownCard => PurchaseAttemptResult::DistributeUnknownCard,
+            };
+            (result, None)
+        }
+    }
 }
 
 fn reset_for_new_draft(player_state: &mut super::state::PlayerShopState) {
     player_state.displayed_this_draft.clear();
     player_state.current_slots = [None; SHOP_SLOT_COUNT];
     player_state.refresh_count_this_draft = 0;
+}
+
+fn purchase_display(player_shop: &PlayerShopState, card_id: CardId) -> Option<PurchaseDisplay> {
+    match player_shop.phase {
+        ShopPhase::DraftInitial => player_shop
+            .displayed_this_draft
+            .contains(&card_id)
+            .then_some(PurchaseDisplay::DraftInitialOffering),
+        ShopPhase::ShopActive => player_shop
+            .current_slots
+            .iter()
+            .position(|slot| slot.is_some_and(|displayed| displayed == card_id))
+            .map(PurchaseDisplay::ShopSlot),
+        ShopPhase::Inactive | ShopPhase::AuctionLock => None,
+    }
+}
+
+fn remove_purchased_display(
+    shop_states: &mut ShopStates,
+    player_id: PlayerId,
+    card_id: CardId,
+    display: PurchaseDisplay,
+) -> Option<S2CShopSlots> {
+    let player_shop = shop_states.players.get_mut(&player_id)?;
+
+    match display {
+        PurchaseDisplay::DraftInitialOffering => {
+            player_shop.displayed_this_draft.remove(&card_id);
+            None
+        }
+        PurchaseDisplay::ShopSlot(slot_index) => {
+            if slot_index < player_shop.current_slots.len() {
+                player_shop.current_slots[slot_index] = None;
+            }
+            Some(S2CShopSlots {
+                slots: player_shop.current_slots.to_vec(),
+            })
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

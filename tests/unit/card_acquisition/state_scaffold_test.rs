@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
 use server::core::economy::{PlayerEconomies, PlayerEconomy};
+use server::core::pool::{PlayerPool, PlayerPools};
 use server::feature::acquisition::{
     apply_shop_refresh_trigger, process_purchase_card, process_refresh_shop_request,
     CardAcquisitionPlugin, PlayerHands, PlayerShopState, PurchaseAttemptResult,
@@ -60,6 +61,15 @@ fn shop_state(phase: ShopPhase, displayed: CardId) -> PlayerShopState {
 
 fn hand_with_len(len: u32) -> Vec<CardId> {
     (1..=len).map(CardId).collect()
+}
+
+fn pools_for(player: PlayerId, catalog: &CardCatalog) -> PlayerPools {
+    PlayerPools {
+        pools: HashMap::from([(
+            player,
+            PlayerPool::initialize(&catalog.cards, &shared::config::GameConfig::default()),
+        )]),
+    }
 }
 
 #[test]
@@ -141,11 +151,13 @@ fn purchase_at_nine_cards_adds_tenth_card_and_spends_gold() {
     };
     let mut economies = PlayerEconomies(HashMap::from([(player, economy(5))]));
     let catalog = catalog_with(vec![card(42, 2)]);
+    let mut pools = pools_for(player, &catalog);
 
-    let result = process_purchase_card(
+    let (result, update) = process_purchase_card(
         &mut shops,
         &mut hands,
         &mut economies,
+        &mut pools,
         &catalog,
         player,
         card_id,
@@ -158,6 +170,10 @@ fn purchase_at_nine_cards_adds_tenth_card_and_spends_gold() {
         Some(&card_id)
     );
     assert_eq!(economies.0.get(&player).expect("economy exists").gold, 3);
+    assert_eq!(
+        update.expect("shop purchase should emit slot update").slots,
+        vec![None, None, None]
+    );
 }
 
 #[test]
@@ -173,17 +189,20 @@ fn purchase_at_hand_cap_is_rejected_without_gold_or_slot_change() {
     };
     let mut economies = PlayerEconomies(HashMap::from([(player, economy(5))]));
     let catalog = catalog_with(vec![card(42, 2)]);
+    let mut pools = pools_for(player, &catalog);
 
-    let result = process_purchase_card(
+    let (result, update) = process_purchase_card(
         &mut shops,
         &mut hands,
         &mut economies,
+        &mut pools,
         &catalog,
         player,
         card_id,
     );
 
     assert_eq!(result, PurchaseAttemptResult::HandFull);
+    assert!(update.is_none());
     assert_eq!(hands.hand_len(player), 10);
     assert_eq!(economies.0.get(&player).expect("economy exists").gold, 5);
     assert_eq!(
@@ -208,11 +227,13 @@ fn auction_lock_discards_purchase_and_refresh_without_state_changes() {
     };
     let mut economies = PlayerEconomies(HashMap::from([(player, economy(5))]));
     let catalog = catalog_with(vec![card(42, 2)]);
+    let mut pools = pools_for(player, &catalog);
 
-    let purchase_result = process_purchase_card(
+    let (purchase_result, update) = process_purchase_card(
         &mut shops,
         &mut hands,
         &mut economies,
+        &mut pools,
         &catalog,
         player,
         card_id,
@@ -220,6 +241,7 @@ fn auction_lock_discards_purchase_and_refresh_without_state_changes() {
     let refresh_result = process_refresh_shop_request(&mut shops, player);
 
     assert_eq!(purchase_result, PurchaseAttemptResult::DiscardedWrongPhase);
+    assert!(update.is_none());
     assert_eq!(refresh_result, RefreshAttemptResult::DiscardedWrongPhase);
     assert_eq!(
         shops

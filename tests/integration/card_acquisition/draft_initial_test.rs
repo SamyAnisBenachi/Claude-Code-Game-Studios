@@ -174,17 +174,20 @@ fn test_draft_initial_purchase_carries_unspent_gold() {
     let mut hands = PlayerHands::default();
     let mut economies = PlayerEconomies(HashMap::from([(player, economy(5))]));
     let catalog = catalog_with(vec![card(42, ClassId::Iop, 3)]);
+    let mut pools = pools_for(player, &catalog);
 
-    let result = process_purchase_card(
+    let (result, update) = process_purchase_card(
         &mut shops,
         &mut hands,
         &mut economies,
+        &mut pools,
         &catalog,
         player,
         card_id,
     );
 
     assert_eq!(result, PurchaseAttemptResult::Purchased);
+    assert!(update.is_none());
     assert_eq!(hands.hand_len(player), 1);
     assert_eq!(economies.0.get(&player).expect("economy exists").gold, 2);
 }

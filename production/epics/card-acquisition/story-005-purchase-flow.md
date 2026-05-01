@@ -1,7 +1,8 @@
 # Story 005: Purchase Flow, Dead Slot, and CA18 Atomicity
 
 > **Epic**: Card Acquisition
-> **Status**: Ready
+> **Status**: In Progress
+> **Owner**: codex-ca-005-purchase-flow
 > **Layer**: Feature (M2)
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -128,7 +129,7 @@ for msg in purchase_messages.receive_messages() {
 **Required evidence**: `tests/integration/card_acquisition/purchase_atomicity_test.rs` — must exist and pass
 *(Integration test must inject `Err(DistributeError::Exhausted)` via pool test double and assert gold is fully restored)*
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and verified locally with `cargo test -p server --test card_acquisition_purchase_atomicity_test` on 2026-05-01
 
 ---
 
