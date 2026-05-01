@@ -962,3 +962,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `HUD-002` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: `S3-07` Card Pool Story 4 remains the active Sprint 3 should-have backlog item, or continue the serialized story-done queue.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-animations/story-006-objective-stagger-reveal.md` - Multi-objective stagger reveal (F1 formula)
+- Criteria: 3/3 passing; CA-10, CA-11, and CA-16 covered by `tests/unit/card-animations/objective_stagger_test.rs`.
+- Test Evidence: `tests/unit/card-animations/objective_stagger_test.rs`; `cargo test -p client --test card_animations_objective_stagger_test` passed 3/3. Queue regression `cargo test -p client --test card_animations_anim_queue_test` passed 4/4. Scaffold regression `cargo test -p client --test card_animations_plugin_scaffold_test` passed 8/8. `cargo check -p client` passed.
+- Verification: worker branch `work/card-anim-006-objective-stagger-reveal` contains worker commit `effcef2`; main integration commit `8d641b9` is included in current `main` and has no diff against `effcef2`.
+- Notes: Advisory only - `TR-CAN-001` and `TR-CAN-004` registry entries map to older CA-1/CA-4 wording, while this story verifies story-scoped GDD criteria CA-10, CA-11, and CA-16. Advisory only - story/GDD wording still says `Animator<T>` / `AnimatorState` and `bevy_tweening 0.18`, while the compiled workspace uses `TweenAnim` / `PlaybackState` / `TweenState`.
+- Tech debt logged: None
+- Sprint status: No `CARD-ANIM-006` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Continue the user-directed serialized story-done queue, or run readiness on Sprint 4 `S4-01` before starting new implementation work.

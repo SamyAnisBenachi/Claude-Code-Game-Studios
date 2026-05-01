@@ -1,7 +1,7 @@
 # Story 006: Multi-objective stagger reveal (F1 formula)
 
 > **Epic**: Card Animations
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -97,7 +97,7 @@
 **Required evidence**:
 - Logic: `tests/unit/card-animations/objective_stagger_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing via `cargo test -p client --test card_animations_objective_stagger_test`
 
 ---
 
@@ -105,3 +105,11 @@
 
 - Depends on: [Story 004](story-004-anim-queue-resolution-drain.md) must be DONE (`StagedObjectiveRevealQueue` Resource inserted; `ResolutionObjectiveReveal` system scaffolded)
 - Unlocks: None (final RESOLUTION animation story in this epic)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 3/3 passing
+**Deviations**: Advisory only - `TR-CAN-001` and `TR-CAN-004` registry entries map to older CA-1/CA-4 wording, while this story verifies story-scoped GDD criteria CA-10, CA-11, and CA-16. Advisory only - story/GDD wording still says `Animator<T>` / `AnimatorState` and `bevy_tweening 0.18`, while the compiled workspace uses `TweenAnim` / `PlaybackState` / `TweenState`.
+**Test Evidence**: Logic test file at `tests/unit/card-animations/objective_stagger_test.rs`; `cargo test -p client --test card_animations_objective_stagger_test` passed 3/3. Regression tests `cargo test -p client --test card_animations_anim_queue_test` passed 4/4 and `cargo test -p client --test card_animations_plugin_scaffold_test` passed 8/8. `cargo check -p client` passed.
+**Code Review**: Skipped - Lean mode.
