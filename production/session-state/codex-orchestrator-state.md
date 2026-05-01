@@ -31,7 +31,8 @@ source of truth for story status.
 - CA-006 story-done: assumed launched after CA-003 closure.
 - BOARD-003 worker: completed on branch `work/BOARD-003-spawn-range-validation`
   at `bf39342`; cherry-picked into `main` at `9c38083`. Window can be cleared.
-- HAND-UI-002 worker: assumed launched from the current orchestrator batch.
+- HAND-UI-002 worker: completed on branch `work/hand-ui-002-fan-layout-formula`
+  at `da0fe3a`; cherry-picked into `main` at `047aff9`. Window can be cleared.
 - KW-005 worker: completed on branch `work/kw-005-shield-scope` at `a1a824b`;
   cherry-picked into `main` at `0b610fd`. Window can be cleared.
 
@@ -91,6 +92,11 @@ None currently tracked here.
   `main` at `9c38083`. Local `spawn_range_validation_test`,
   `cargo check -p server`, `cargo fmt -p server -- --check`, and
   `git diff --check` passed after integration.
+- HAND-UI-002: Fan Layout Formula implemented on branch
+  `work/hand-ui-002-fan-layout-formula` at `da0fe3a`; cherry-picked into
+  `main` at `047aff9`. Local `hand_ui_fan_layout_formula_test`,
+  `hand_ui_plugin_scaffold_test`, `cargo check -p client`, `cargo fmt -p client
+  -- --check`, and `git diff --check` passed after integration.
 - KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
   `7543293`; cherry-picked into `main` at `b8b1287` because the branch was
   based before recent tracking and BOARD-002 commits. Local `stun_test`,
@@ -163,6 +169,7 @@ None currently tracked here.
 10. HUD-003
 11. KW-005
 12. BOARD-003
+13. HAND-UI-002
 
 Run only one story-done at a time.
 
@@ -182,6 +189,7 @@ Run only one story-done at a time.
 - HUD-003: implemented and integrated; pending story-done.
 - KW-005: implemented and integrated; pending story-done.
 - BOARD-003: implemented and integrated; pending story-done.
+- HAND-UI-002: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
@@ -189,9 +197,7 @@ Run only one story-done at a time.
 
 ## Next Parallel Launch Candidates
 
-Batch launched:
-- HAND-UI-002: `production/epics/hand-ui/story-002-fan-layout-formula.md`
-
+No code worker currently active in this state file.
 CA-006 story-done is the active serialized closure. New code workers can
 continue in worktree mode if dependencies are checked first.
 
