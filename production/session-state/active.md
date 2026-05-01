@@ -1038,3 +1038,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `BOARD-004` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Board Story 005 placement buffer phase integration (`production/epics/board-lane-system/story-005-placement-buffer-phase-integration.md`) after readiness check, or continue the user-directed serialized story-done queue.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-acquisition/story-005-purchase-flow.md` - Story 005: Purchase Flow, Dead Slot, and CA18 Atomicity
+- Criteria: 4/4 passing; CA13, CA14, CA18, and CA20 covered by `tests/integration/card_acquisition/purchase_atomicity_test.rs`.
+- Test Evidence: `cargo test -p server --test card_acquisition_purchase_atomicity_test` passed 4/4; CA regression bundle passed 22/22; `cargo check -p server` passed.
+- Verification: worker branch `work/ca-005-purchase-flow` contains worker commit `415384a`; main integration commit `c6141bc` is included in current `main`; the worker and integration commits have identical trees for the CA-005 changed files.
+- Notes: No blocking GDD or ADR deviation found. Advisory only: `TR-CA-009` maps to CA20 but its registry requirement text describes dead-slot/draw-None fallback rather than the current GDD CA20 phase-transition criterion; story/GDD CA20 is covered, and CA13 covers dead-slot purchase rejection.
+- Tech debt logged: None
+- Sprint status: No `CA-005` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Card Acquisition epic close-out evidence is ready; continue with sprint/epic smoke or the user-directed serialized story-done queue.

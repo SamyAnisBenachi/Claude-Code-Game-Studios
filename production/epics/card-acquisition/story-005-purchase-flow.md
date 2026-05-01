@@ -1,7 +1,7 @@
 # Story 005: Purchase Flow, Dead Slot, and CA18 Atomicity
 
 > **Epic**: Card Acquisition
-> **Status**: In Progress
+> **Status**: Complete
 > **Owner**: codex-ca-005-purchase-flow
 > **Layer**: Feature (M2)
 > **Type**: Integration
@@ -137,3 +137,12 @@ for msg in purchase_messages.receive_messages() {
 
 - Depends on: Story 001 (`state-scaffold`) and Story 003 (`draw-pipeline`) must both be Done — purchase flow reads `ShopStates` and modifies `PlayerHands`; `current_slots` updated during purchase depend on draw pipeline having populated them
 - Unlocks: None — this story is the last logic story; the epic definition of done requires all CA stories to be complete
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 4/4 passing (CA13, CA14, CA18, CA20)
+**Deviations**: No blocking GDD or ADR deviation found. Advisory only: `TR-CA-009` maps to CA20 but its registry requirement text describes dead-slot/draw-None fallback rather than the current GDD CA20 phase-transition criterion. The story/GDD CA20 behavior is covered, and CA13 covers dead-slot purchase rejection.
+**Test Evidence**: `cargo test -p server --test card_acquisition_purchase_atomicity_test` passed 4/4. CA regression bundle (`card_acquisition_state_scaffold_test`, `card_acquisition_draft_initial_test`, `card_acquisition_refresh_cost_test`, `card_acquisition_draw_pipeline_test`) passed 22/22. `cargo check -p server` passed.
+**Code Review**: Skipped - lean mode.
+**Integration Verification**: Worker branch `work/ca-005-purchase-flow` contains worker commit `415384a`; main integration commit `c6141bc` is included in current `main`; the worker and integration commits have identical trees for the CA-005 changed files.
