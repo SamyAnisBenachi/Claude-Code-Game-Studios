@@ -809,3 +809,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `CA-002` entry exists in `production/sprint-status.yaml`; file left unchanged.
 - Next recommended: Card Acquisition Story 003 (`production/epics/card-acquisition/story-003-draw-pipeline.md`) is ready and unlocks Stories 004 and 005.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/keyword-system/story-003-first-strike-haste.md` - FIRST STRIKE + HASTE Keywords
+- Criteria: 6/6 passing; FIRST STRIKE standard-target timing, simultaneous FIRST STRIKE snapshots, HASTE same-round movement/attack, STUN-over-HASTE, HASTE+FIRST STRIKE, and HASTE+CHARGE X covered.
+- Test Evidence: `tests/unit/keyword/first_strike_haste_test.rs`; executable suite `server/tests/first_strike_haste_test.rs`; `cargo test -p server --test first_strike_haste_test` passed 7/7.
+- Verification: implementation commit `874d86b545bade516e6ef46d7bd07c143d34f7e9` is included in `main`.
+- Notes: Advisory only - story text says ADR-018 is Proposed/BLOCKED and uses manifest v2026-04-30; current control manifest is v2026-05-01 and ADR-018 is Accepted, so this was stale text rather than a blocker.
+- Tech debt logged: None
+- Sprint status: No `KW-003` entry exists in `production/sprint-status.yaml`; file left unchanged.
+- Next recommended: Keyword Story 004 STUN State (`production/epics/keyword-system/story-004-stun-state.md`) after readiness refresh, because its story text also contains stale ADR-018 Proposed/BLOCKED wording.

@@ -1,7 +1,7 @@
 # Story 003: FIRST STRIKE + HASTE Keywords
 
 > **Epic**: Keyword System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -122,7 +122,7 @@ apply_hp_delta(unit_b, -damage_a_to_b, world);
 **Story Type**: Logic
 **Required evidence**: `tests/unit/keyword/first_strike_haste_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -131,3 +131,11 @@ apply_hp_delta(unit_b, -damage_a_to_b, world);
 - Depends on: Story 001 (scaffold — `effects.rs` exists with stub)
 - Depends on: ADR-006 amendment merged (`SimpleKeyword::Haste` available)
 - Unlocks: Story 012 (FINAL BLOW from FIRST STRIKE kill), Story 013 (COUNTERATTACK after FIRST STRIKE)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 6/6 passing
+**Deviations**: Advisory only — story text says ADR-018 is Proposed/BLOCKED and embeds manifest v2026-04-30; current control manifest is v2026-05-01 and ADR-018 is Accepted. This was treated as stale story text, not a blocker.
+**Test Evidence**: Logic test evidence exists at `tests/unit/keyword/first_strike_haste_test.rs`; executable suite `server/tests/first_strike_haste_test.rs`; `cargo test -p server --test first_strike_haste_test` passed 7/7.
+**Code Review**: Skipped — lean review mode.
