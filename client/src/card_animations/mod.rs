@@ -1,5 +1,6 @@
 pub mod animators;
 pub mod events;
+pub mod input_gating;
 pub mod lenses;
 pub mod queue;
 
@@ -10,6 +11,12 @@ pub use animators::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, PlacementPhaseAnimator,
 };
 pub use events::*;
+pub use input_gating::{
+    hand_card_drag_start_system, hand_card_hover_enter_system, hand_card_hover_exit_system,
+    timer_bar_ease_system, BidPresetButton, HandCard, HandCardScaleAnimation,
+    HandCardScaleDirection, HandDragSprite, InputGatingAnimationConfig, NodeWidthPercentLens,
+    TimerBar,
+};
 pub use lenses::{
     BackgroundColorAlphaLens, SpriteAlphaLens, SpriteColorLens, TextColorLens, TransformScaleXLens,
 };
@@ -29,6 +36,7 @@ impl Plugin for CardAnimationsPlugin {
         }
 
         app.init_resource::<AnimationTimingConfig>()
+            .init_resource::<InputGatingAnimationConfig>()
             .init_resource::<AnimQueue>()
             .init_resource::<PendingPhaseChange>()
             .init_resource::<PendingObjectiveDestroyedEvents>()
@@ -44,6 +52,9 @@ impl Plugin for CardAnimationsPlugin {
             .add_message::<HandShowRequested>()
             .add_message::<AuctionPanelTransitionRequested>()
             .add_message::<TimerBarEaseRequested>()
+            .add_message::<HandCardDragStarted>()
+            .add_message::<HandCardHoverEntered>()
+            .add_message::<HandCardHoverExited>()
             .add_message::<GoldTickRequested>()
             .add_message::<SettlementOverlayRequested>()
             .add_message::<DisplacementAnimRequested>()
@@ -53,6 +64,14 @@ impl Plugin for CardAnimationsPlugin {
             .add_systems(
                 Update,
                 (
+                    (
+                        timer_bar_ease_system,
+                        hand_card_drag_start_system,
+                        hand_card_hover_exit_system,
+                        hand_card_hover_enter_system,
+                    )
+                        .chain()
+                        .before(AnimationSystem::AnimationUpdate),
                     cancel_board_rebuild_tweens
                         .before(resolution_executing_system)
                         .before(AnimationSystem::AnimationUpdate),

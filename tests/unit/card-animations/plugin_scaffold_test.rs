@@ -9,7 +9,8 @@ use client::card_animations::{
     AnimQueue, AnimationTimingConfig, AuctionPanelTransitionRequested, AuraPulseRequested,
     BackgroundColorAlphaLens, BoardRebuildRequested, CardAcquiredAnimReady, CardAnimationsPlugin,
     DamageNumberSpawnRequested, DisplacementAnimRequested, GoldTickRequested, GroupDrainedSignal,
-    HandHideRequested, HandShowRequested, ObjectiveDestroyedAnimReady,
+    HandCardDragStarted, HandCardHoverEntered, HandCardHoverExited, HandHideRequested,
+    HandShowRequested, InputGatingAnimationConfig, ObjectiveDestroyedAnimReady,
     PendingObjectiveDestroyedEvents, PendingPhaseChange, PlacementCancelAllAnimsRequested,
     PlacementRevealAnimReady, SettlementOverlayRequested, SnapBackRequested, SpriteAlphaLens,
     SpriteColorLens, StagedObjectiveRevealQueue, TextColorLens, TimerBarEaseRequested,
@@ -31,6 +32,10 @@ fn plugin_builds_and_registers_resources_and_messages() {
     assert!(app
         .world()
         .get_resource::<AnimationTimingConfig>()
+        .is_some());
+    assert!(app
+        .world()
+        .get_resource::<InputGatingAnimationConfig>()
         .is_some());
     assert!(app.world().get_resource::<AnimQueue>().is_some());
     assert!(app.world().get_resource::<PendingPhaseChange>().is_some());
@@ -105,7 +110,17 @@ fn all_domain_messages_are_registered_and_writable() {
         .write(AuctionPanelTransitionRequested);
     app.world_mut()
         .resource_mut::<Messages<TimerBarEaseRequested>>()
-        .write(TimerBarEaseRequested);
+        .write(TimerBarEaseRequested::default());
+    let card = app.world_mut().spawn_empty().id();
+    app.world_mut()
+        .resource_mut::<Messages<HandCardDragStarted>>()
+        .write(HandCardDragStarted { card });
+    app.world_mut()
+        .resource_mut::<Messages<HandCardHoverEntered>>()
+        .write(HandCardHoverEntered { card });
+    app.world_mut()
+        .resource_mut::<Messages<HandCardHoverExited>>()
+        .write(HandCardHoverExited { card });
     app.world_mut()
         .resource_mut::<Messages<GoldTickRequested>>()
         .write(GoldTickRequested);
