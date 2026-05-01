@@ -71,7 +71,7 @@ Spawn range is **global** — it applies to all 5 lanes simultaneously.
 | Structure | 1 per player per **cell** | Any of player's 20 home cells |
 | Field | 1 per player per **lane** | Lane-wide; no cell |
 
-Multiple units from different players (or 2v2 teammates) **may share a cell**. Allied units sharing a cell are visually rendered side-by-side (Board Rendering concern); in data they occupy the same absolute cell.
+Multiple units from different players (or 2v2 teammates) **may share a cell**. Allied units sharing a cell are visually rendered side-by-side (Board Rendering concern); in data they occupy the same absolute cell. Exception: ATTRACT displacement cannot place an opposing unit onto the caster's cell — see Rule 9a.
 
 **Rule 6 — Pending placement buffer:**
 During the PLACEMENT phase, submitted placements are validated and held in a per-player pending buffer — they are **not immediately committed to the board**. This preserves the simultaneous-reveal invariant: neither player can observe the other's placement until RESOLUTION begins. The buffer commits atomically at the start of sub-step 1 when RESOLUTION begins. Partial submissions (received before timer expiry) commit; unsubmitted slots are treated as no card played.
@@ -100,10 +100,26 @@ A unit at cell 8 (objective cell for Player A) with MP=3 stays at cell 8 — it 
 
 **Rule 9 — Displacement keyword rules:**
 - **REPEL X**: pushes target X cells toward their own spawn. Clamped: cannot push a unit past its own spawn cell.
-- **ATTRACT X**: pulls target X cells toward the caster. Clamped to board bounds [1, 8].
+- **ATTRACT X**: pulls target X cells toward the caster. Clamped to board bounds [1, 8]. Enemy targets halt 1 cell short of the caster's cell — see Rule 9a.
 - **TELEPORT**: repositions a unit to a specified cell. Target cell range is defined per-card (card-level specification, not board-level).
 - **CHANGE LANE**: moves unit to the adjacent lane (±1). Clamped to lanes 1–5. A unit in lane 1 cannot CHANGE LANE leftward; lane 5 cannot CHANGE LANE rightward — the attempt is a silent no-op.
 - **IRREMOVABLE**: REPEL, ATTRACT, and CHANGE LANE have no effect. The displacement is silently discarded; the unit does not move.
+
+**Rule 9a — ATTRACT: opposing unit co-occupation prohibition (1-cell-apart rule):**
+When ATTRACT pulls an enemy unit toward the caster, the enemy unit cannot land on the caster's cell — it halts 1 cell short on the approach side. This is the authoritative board-level definition of the spatial constraint; the Keyword System GDD (Formula 2 in `keyword-system.md`) encodes the same rule as the canonical implementation formula:
+
+```
+effective_pull    = min(X, max(0, |caster_cell − target_cell| − 1))
+attract_destination = target_cell + sign(caster_cell − target_cell) × effective_pull
+```
+
+**Scope — this rule applies only to ATTRACT displacement of enemy targets.** It does NOT restrict:
+- **Standard movement (sub-step 5) and CHARGE X (sub-step 2):** opposing units may naturally share a cell after simultaneous independent movement — this is the condition that triggers standard combat in sub-step 6.
+- **TELEPORT:** may place a unit on any valid cell regardless of enemy occupancy; TELEPORT explicitly bypasses this rule.
+- **REPEL:** pushes away from the caster — the caster's cell is never the REPEL destination.
+- **Friendly ATTRACT targets:** same-player units may stop at the caster's cell (Rule 5 co-occupation is permitted).
+
+---
 
 **Rule 10 — Trap trigger:**
 A Trap triggers when an **enemy** unit enters the Trap's cell, regardless of how the unit entered (standard movement, CHARGE X movement, or forced displacement via REPEL/ATTRACT). Trigger fires immediately when the unit occupies the cell, before the current sub-step completes. A triggered Trap is removed from the board.
@@ -194,7 +210,7 @@ new_cell = clamp(current_cell as i16 + direction as i16 * mp as i16, 1, 8) as u8
 | Standard movement (sub-step 5) | `advance_direction(unit.owner)` |
 | CHARGE X bonus movement (sub-step 2) | `advance_direction(unit.owner)` |
 | REPEL X | `−advance_direction(target.owner)` (opposite of target's advance direction) |
-| ATTRACT X | `sign(caster_cell − target_cell)` (toward caster; if `caster_cell == target_cell`, sign = 0 → no movement) |
+| ATTRACT X | `sign(caster_cell − target_cell)` (toward caster; enemy target: halts 1 cell short of caster — see Rule 9a; if `caster_cell == target_cell`, sign = 0 → no movement) |
 
 The same formula applies to all four use cases using the appropriate `direction` from the table above.
 
@@ -417,7 +433,7 @@ Most Board/Lane parameters are structural constants — they define the physical
 | BL-21 | GIVEN a game initialises, WHEN the board is set up, THEN each player has exactly 5 Minion slots (one per lane), all initially empty. | BLOCKING |
 | BL-22 | GIVEN a unit entity in lane 1 with `ChargeBonus(2)` and `MovementPoints(3)` components at cell 1 (set via direct ECS World state, not card pool lookup), WHEN resolution runs, THEN unit ends sub-step 2 at cell 3 AND ends sub-step 5 at cell 6. F1 is applied independently at each sub-step using the unit's current cell as input. | BLOCKING |
 | BL-23 | GIVEN an IRREMOVABLE unit is targeted by REPEL, WHEN REPEL fires, THEN the unit does not move and no error is raised. | BLOCKING |
-| BL-24 | GIVEN Player B's unit (the caster) is at cell 8, and ATTRACT 5 targets Player A's unit at cell 5 (direction = sign(8 − 5) = +1 per F1 direction table), WHEN ATTRACT fires, THEN Player A's unit moves to cell 8 (clamp(5 + 5, 1, 8) = 8, clamped at board boundary). | BLOCKING |
+| BL-24 | GIVEN Player B's unit (the caster) is at cell 8, and ATTRACT 5 targets Player A's unit at cell 5, WHEN ATTRACT fires, THEN Player A's unit moves to cell 7 — 1 cell short of the caster's cell (Rule 9a, enemy target): `effective_pull = min(5, max(0, \|8−5\|−1)) = min(5, 2) = 2`; `attract_destination = 5 + sign(8−5) × 2 = 7`. | BLOCKING |
 | BL-25 | GIVEN Player B's unit is at cell 1 at end of sub-step 6, WHEN sub-step 6 completes, THEN the Board emits `UnitAtObjective(unit_id, lane)` for Player B's unit. | BLOCKING |
 | BL-26 | GIVEN a fake objective is destroyed during RESOLUTION sub-step 6, WHEN the next PLACEMENT phase begins, THEN Player A's spawn range is expanded by 1 cell — the expansion does NOT apply to the current round's already-committed placements. | BLOCKING |
 | BL-27 | GIVEN an enemy Trap is at cell 3 and Player A's unit is at cell 1 with MP=3, WHEN sub-step 5 fires, THEN the unit moves to cell 4 and the Trap at cell 3 does NOT trigger. | BLOCKING |
@@ -428,6 +444,7 @@ Most Board/Lane parameters are structural constants — they define the physical
 | BL-31 | GIVEN Player A has a Trap at (lane 2, cell 3), Player B's unit X is in lane 1 at cell 3 and Player B's unit Y is in lane 3 at cell 3, and both CHANGE LANE to lane 2 in the same inter-sub-step pass (both arrive at cell 3), THEN the Trap triggers exactly once — triggered by unit X (lower original lane = 1 wins the tiebreak). The Trap is removed. Unit Y enters lane 2 at cell 3 and is not affected. | BLOCKING |
 | BL-32 | GIVEN Player A has a Field active in lane 2, WHEN Player B submits a Field to lane 2, THEN Player B's placement is accepted AND both Fields are present in lane 2 occupancy state simultaneously (each player may have one Field per lane independently). | BLOCKING |
 | BL-33 | GIVEN a 2v2 game and Team A's Player 1 already has a Minion in lane 1, WHEN Team A's Player 2 submits a Minion to lane 1, THEN the placement is accepted (team has used 1 of 2 allowed slots). WHEN Team A's Player 2 also submits their own second Minion to lane 1 (personal slot already occupied), THEN the second placement is rejected and gold is not deducted. | BLOCKING |
+| BL-34 | GIVEN Player A's unit (the caster) is at cell 3, and ATTRACT 6 targets an enemy (Player B) unit at cell 7, WHEN ATTRACT fires, THEN the enemy unit moves to cell 4 — 1 cell short of the caster's cell (Rule 9a, 1-cell-apart collision rule): `effective_pull = min(6, max(0, \|3−7\|−1)) = min(6, 3) = 3`; `attract_destination = 7 + sign(3−7) × 3 = 4`. | BLOCKING |
 
 ## Open Questions
 
