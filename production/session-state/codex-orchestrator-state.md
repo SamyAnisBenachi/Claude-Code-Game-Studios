@@ -28,7 +28,7 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- KW-004 story-done: launch prompt issued after BOARD-002 closure; per user
+- CARD-ANIM-008 story-done: launch prompt issued after KW-004 closure; per user
   rule, assume launched unless contradicted.
 - CA-004 worker: completed on branch `work/ca-004-refresh-cost` at `f26f738`;
   cherry-picked into `main` at `5cb53a8`. Window can be cleared.
@@ -99,14 +99,11 @@ None currently tracked here.
   movement, room create/join, and class reveal tests passed after integration
   (`41/41` total), plus `cargo check -p server`, `cargo fmt --all -- --check`,
   and `git diff --check HEAD~1..HEAD`.
-- KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
-  `7543293`; cherry-picked into `main` at `b8b1287` because the branch was
-  based before recent tracking and BOARD-002 commits. Local `stun_test`,
-  `cargo check -p server`, `cargo check -p shared`, `cargo fmt --all -- --check`,
-  and `git diff --check` passed.
-
 ## Recently Closed
 
+- KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
+  `7543293`; cherry-picked into `main` at `b8b1287`; story-done committed at
+  `87eb37c`.
 - BOARD-002: Standard Unit Movement implemented on branch
   `work/board-002-standard-unit-movement` at `4a76028`; cherry-picked into
   `main` at `0d8e41c`; story-done committed at `ffe0ca6`.
@@ -166,16 +163,15 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. KW-004
-2. CARD-ANIM-008
-3. HUD-002
-4. CARD-ANIM-006
-5. HUD-003
-6. KW-005
-7. BOARD-003
-8. HAND-UI-002
-9. CA-004
-10. BOARD-004
+1. CARD-ANIM-008
+2. HUD-002
+3. CARD-ANIM-006
+4. HUD-003
+5. KW-005
+6. BOARD-003
+7. HAND-UI-002
+8. CA-004
+9. BOARD-004
 
 Run only one story-done at a time.
 
@@ -186,9 +182,6 @@ Run only one story-done at a time.
 - CA-005: unblocked by CA-003 story-done and CA-004 integration. Initial
   readiness gaps fixed in `94267fb`; worker relaunch prompt issued with
   readiness-first instruction. Await worker output.
-- KW-004: unblocked by KW-003 story-done; run readiness first because its story
-  text may still contain stale ADR-018 Proposed/BLOCKED wording. Implemented and
-  integrated; pending story-done.
 - CARD-ANIM-008: implemented and integrated; pending story-done. Manual CA-13b
   and CA-22 evidence remains deferred until the dependent UI exists.
 - HUD-002: implemented and integrated; pending story-done.
@@ -208,7 +201,7 @@ Batch launched:
 - CA-005: `production/epics/card-acquisition/story-005-purchase-flow.md`
 - COMBAT-001: `production/epics/combat-resolution/story-001-resolve-combat-scaffold.md`
 
-KW-004 story-done is the active serialized closure. Do not launch another
+CARD-ANIM-008 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
 
 ## Resolved Design Gates
