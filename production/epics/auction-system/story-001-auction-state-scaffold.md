@@ -1,7 +1,7 @@
 # Story 001: AuctionState Types & Snapshot Scaffold
 
 > **Epic**: Auction System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -33,11 +33,11 @@
 
 *From GDD `design/gdd/auction-system.md`, scoped to this story:*
 
-- [ ] **AU10-a**: `auction_snapshot()` returns `None` exactly when `phase == AuctionPhase::Idle`
-- [ ] **AU10-b**: `auction_snapshot()` in `LIVE_BIDDING` with no bids placed returns `Some(AuctionSnapshot)` where `last_accepted_bid == 0` (sentinel — NOT `starting_price`)
-- [ ] **AU10-c**: `auction_snapshot()` in `LIVE_BIDDING` with bids placed returns `Some(AuctionSnapshot)` where `last_accepted_bid == last_accepted_bid_amount` and `current_leader == Some(leader_id)`
-- [ ] **AU10-d**: `timer_remaining_ms` in snapshot matches the injected value exactly (no transformation)
-- [ ] **AU10-e**: `AuctionState::default()` starts with `phase == AuctionPhase::Idle` and all fields zeroed/None
+- [x] **AU10-a**: `auction_snapshot()` returns `None` exactly when `phase == AuctionPhase::Idle`
+- [x] **AU10-b**: `auction_snapshot()` in `LIVE_BIDDING` with no bids placed returns `Some(AuctionSnapshot)` where `last_accepted_bid == 0` (sentinel — NOT `starting_price`)
+- [x] **AU10-c**: `auction_snapshot()` in `LIVE_BIDDING` with bids placed returns `Some(AuctionSnapshot)` where `last_accepted_bid == last_accepted_bid_amount` and `current_leader == Some(leader_id)`
+- [x] **AU10-d**: `timer_remaining_ms` in snapshot matches the injected value exactly (no transformation)
+- [x] **AU10-e**: `AuctionState::default()` starts with `phase == AuctionPhase::Idle` and all fields zeroed/None
 
 ---
 
@@ -146,7 +146,7 @@ Test: default state is Idle
 **Story Type**: Logic
 **Required evidence**: `tests/unit/auction/auction_state_scaffold_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`cargo test -p server --test auction_state_scaffold_test`)
 
 ---
 
@@ -154,3 +154,13 @@ Test: default state is Idle
 
 - Depends on: `workspace-and-shared-types` story-002 DONE (provides `CardId`, `PlayerId` in `shared/protocol.rs`)
 - Unlocks: Story 002 (Auction Phase Entry), Story 003 (AbortAuction Handler)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 5/5 passing
+**Test Evidence**: Logic unit test at `tests/unit/auction/auction_state_scaffold_test.rs`; local `cargo test -p server --test auction_state_scaffold_test` passed 7/7. GitHub Actions run 25194696023 passed on `main` at `17e3fc352ad1f843daafba4fa8ac484847311f9e`; implementation commit `b7180f6` is an ancestor of that run head.
+**Deviations**: Advisory only: story manifest version 2026-04-30 is older than current control manifest 2026-05-01. No blocking implementation drift found; `AuctionSnapshot.starting_price` matches current `network-protocol.md`.
+**Code Review**: Skipped by lean review mode; local Bevy 0.18 review found no blocking issues for this scaffold.
+**Scope**: Implementation touched auction state/snapshot files, module wiring, Cargo test target, and test evidence. Extra wiring/status files were valid support for compiling and tracking this story; no scope creep found.
