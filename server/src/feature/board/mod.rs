@@ -9,7 +9,9 @@ pub mod placement;
 pub mod plugin;
 pub mod state;
 
-pub use movement::{advance_direction, apply_f1, apply_standard_movement};
+pub use movement::{
+    advance_direction, apply_charge_movement, apply_f1, apply_standard_movement, ChargeBonus,
+};
 pub use placement::{
     close_placement_phase, get_units_at_cell, handle_placement_submission, is_field_slot_available,
     is_minion_slot_available, is_structure_slot_available, is_trap_slot_available,

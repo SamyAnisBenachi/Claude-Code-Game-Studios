@@ -4,7 +4,7 @@ use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 use server::core::board::{BoardPosition, UnitOwner, UnitStats};
 use server::core::session::SessionConfig;
-use server::feature::board::{apply_f1, apply_standard_movement, BoardConfig};
+use server::feature::board::{apply_f1, apply_standard_movement, BoardConfig, BoardOccupancy};
 use shared::card::ClassId;
 use shared::protocol::GameMode;
 use shared::session::PlayerId;
@@ -29,6 +29,7 @@ fn world_with_board_config() -> World {
     let mut world = World::new();
     world.insert_resource(BoardConfig::default());
     world.insert_resource(session_config());
+    world.insert_resource(BoardOccupancy::default());
     world
 }
 
@@ -107,4 +108,27 @@ fn test_bl_4_wall_units_with_zero_movement_points_do_not_move() {
 
     assert_eq!(unit_cell(&world, player_a_wall), 1);
     assert_eq!(unit_cell(&world, player_b_wall), 8);
+}
+
+#[test]
+fn test_bl_27_standard_movement_skips_intermediate_trap_cell() {
+    let mut world = world_with_board_config();
+    let trap = world.spawn_empty().id();
+    world
+        .resource_mut::<BoardOccupancy>()
+        .traps
+        .insert((player(2), 1, 3), trap);
+    let unit = spawn_unit(&mut world, player(1), 1, 1, 3);
+
+    run_standard_movement(&mut world);
+
+    assert_eq!(unit_cell(&world, unit), 4);
+    assert_eq!(
+        world
+            .resource::<BoardOccupancy>()
+            .traps
+            .get(&(player(2), 1, 3))
+            .copied(),
+        Some(trap)
+    );
 }

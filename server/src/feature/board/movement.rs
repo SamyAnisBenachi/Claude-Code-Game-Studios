@@ -1,4 +1,4 @@
-use bevy::prelude::{Query, Res};
+use bevy::prelude::{Component, Query, Res};
 use shared::session::PlayerId;
 
 use crate::core::board::{BoardPosition, UnitOwner, UnitStats};
@@ -7,6 +7,10 @@ use crate::feature::board::BoardConfig;
 
 const PLAYER_A_TEAM_ID: u8 = 0;
 const PLAYER_B_TEAM_ID: u8 = 1;
+
+/// Bonus movement cells applied during RESOLUTION sub-step 2.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ChargeBonus(pub u8);
 
 /// Applies Formula F1 to compute the new cell after one movement sub-step.
 pub fn apply_f1(current_cell: u8, direction: i16, mp: u8, cell_min: u8, cell_max: u8) -> u8 {
@@ -45,6 +49,31 @@ pub fn apply_standard_movement(
             position.cell,
             direction,
             stats.mp,
+            board_config.cell_min,
+            board_config.cell_max,
+        );
+    }
+}
+
+/// Advances units with CHARGE X by their bonus movement amount.
+///
+/// Combat Resolution owns when sub-step 2 fires. This system intentionally
+/// updates only the final destination cell for the sub-step; intermediate cells
+/// are not represented as occupied by this movement pass.
+pub fn apply_charge_movement(
+    board_config: Res<BoardConfig>,
+    session_config: Res<SessionConfig>,
+    mut units: Query<(&mut BoardPosition, &ChargeBonus, &UnitOwner)>,
+) {
+    for (mut position, charge, owner) in &mut units {
+        let Some(direction) = advance_direction(owner.0, &session_config, &board_config) else {
+            continue;
+        };
+
+        position.cell = apply_f1(
+            position.cell,
+            direction,
+            charge.0,
             board_config.cell_min,
             board_config.cell_max,
         );

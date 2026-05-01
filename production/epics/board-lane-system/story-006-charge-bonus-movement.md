@@ -1,7 +1,7 @@
 # Story 006: CHARGE X Bonus Movement and Intermediate Cell Skip
 
 > **Epic**: Board / Lane System
-> **Status**: Ready
+> **Status**: In Progress
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
