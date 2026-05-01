@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use server::feature::board::{
     BoardConfig, BoardGrid, BoardOccupancy, BoardPlugin, PrismState, SpawnRangeState,
-    BOARD_CELLS_PER_LANE, BOARD_LANE_COUNT, BOARD_PLAYER_COUNT,
+    BOARD_CELLS_PER_LANE, BOARD_LANE_COUNT,
 };
 
 #[test]
@@ -58,11 +58,7 @@ fn bl_21_minion_slots_start_empty_for_both_players() {
 
     let occupancy = world.resource::<BoardOccupancy>();
 
-    assert_eq!(occupancy.minion_slots.len(), BOARD_PLAYER_COUNT);
-    for player_slots in &occupancy.minion_slots {
-        assert_eq!(player_slots.len(), BOARD_LANE_COUNT);
-        assert!(player_slots.iter().all(Option::is_none));
-    }
+    assert!(occupancy.minion_slots.is_empty());
     assert!(occupancy.traps.is_empty());
     assert!(occupancy.structures.is_empty());
     assert!(occupancy.fields.is_empty());

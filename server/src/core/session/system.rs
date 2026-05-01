@@ -414,6 +414,32 @@ pub fn initialise_slots(mode: GameMode, creator: PlayerId) -> SessionSlots {
                 class: None,
             },
         ]),
+        GameMode::TwoVTwo => SessionSlots(vec![
+            SessionSlot {
+                index: 0,
+                team: 0,
+                player: Some(creator),
+                class: None,
+            },
+            SessionSlot {
+                index: 1,
+                team: 0,
+                player: None,
+                class: None,
+            },
+            SessionSlot {
+                index: 2,
+                team: 1,
+                player: None,
+                class: None,
+            },
+            SessionSlot {
+                index: 3,
+                team: 1,
+                player: None,
+                class: None,
+            },
+        ]),
     }
 }
 

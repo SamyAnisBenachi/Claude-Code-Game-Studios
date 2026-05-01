@@ -124,6 +124,7 @@ pub type AcquisitionSource = CardSource;
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GameMode {
     OneVOne,
+    TwoVTwo,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
