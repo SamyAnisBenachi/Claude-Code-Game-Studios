@@ -885,3 +885,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `CA-006` entry exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Continue the serialized story-done queue with CARD-ANIM-004, or run readiness on Card Acquisition Story 004/005 if continuing that epic.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hand-ui/story-001-plugin-scaffold.md` - HandUiPlugin Scaffold - Pre-Pooled Entity Spawning
+- Criteria: 1/1 passing; HU-01 covered by `tests/unit/hand-ui/plugin_scaffold_test.rs`.
+- Test Evidence: `tests/unit/hand-ui/plugin_scaffold_test.rs`; `cargo test -p client --test hand_ui_plugin_scaffold_test` passed 3/3.
+- Verification: `cargo check -p client` passed; client source grep found no `NodeBundle`, `SpriteBundle`, `set_parent`, `despawn_recursive`, or ungated `PickingBehavior`.
+- Notes: Advisory only - `PresentationPlugin` / `BoardRenderingPlugin` composition is not present in `client/src/` yet, so ADR-021's final registration-order contract is not verifiable in this story. HU-01 scoped pre-pooling behavior is verified.
+- Tech debt logged: None
+- Sprint status: No Hand UI entry exists in `production/sprint-status.yaml`; file left unchanged.
+- Next recommended: Hand UI Story 002 Fan Layout Formula (`production/epics/hand-ui/story-002-fan-layout-formula.md`) is already In Progress and has passing evidence available; continue its story-done queue or run `/story-readiness` on Story 003 Phase State Machine.

@@ -1,7 +1,7 @@
 # Story 001: HandUiPlugin Scaffold — Pre-Pooled Entity Spawning
 
 > **Epic**: Hand UI
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -32,7 +32,7 @@
 
 *From GDD `design/gdd/hand-ui.md`, scoped to this story:*
 
-- [ ] **HU-01**: GIVEN the game session starts with 0 cards in hand, WHEN Hand UI initializes (on `OnEnter(ClientState::InSession)`), THEN 10 pre-pooled fan card slot entities and 9 pre-pooled DRAFT_INITIAL grid slot entities exist in the scene (all `Visibility::Hidden`), AND the pre-pooled drag sprite entity exists (`Visibility::Hidden`), with no runtime spawn or despawn occurring during a normal session. (Reconnect rebuild per Story HU-013 may despawn-and-rebuild the drag sprite state, but NOT the fan or grid slots.)
+- [x] **HU-01**: GIVEN the game session starts with 0 cards in hand, WHEN Hand UI initializes (on `OnEnter(ClientState::InSession)`), THEN 10 pre-pooled fan card slot entities and 9 pre-pooled DRAFT_INITIAL grid slot entities exist in the scene (all `Visibility::Hidden`), AND the pre-pooled drag sprite entity exists (`Visibility::Hidden`), with no runtime spawn or despawn occurring during a normal session. (Reconnect rebuild per Story HU-013 may despawn-and-rebuild the drag sprite state, but NOT the fan or grid slots.)
 
 ---
 
@@ -88,7 +88,7 @@
 **Required evidence**:
 - `tests/unit/hand-ui/plugin_scaffold_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -96,3 +96,12 @@
 
 - Depends on: None — Foundation story; this is the first story in the epic
 - Unlocks: Story 002 (fan layout), Story 003 (phase state machine), Story 004 (DRAFT_INITIAL grid)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 1/1 passing
+**Deviations**: Advisory only - `PresentationPlugin` / `BoardRenderingPlugin` composition is not present in `client/src/` yet, so ADR-021's final registration-order contract is not verifiable in this story. HU-01 scoped pre-pooling behavior is verified.
+**Test Evidence**: Logic: `tests/unit/hand-ui/plugin_scaffold_test.rs`; `cargo test -p client --test hand_ui_plugin_scaffold_test` passed 3/3.
+**Additional Verification**: `cargo check -p client` passed. Client source grep found no `NodeBundle`, `SpriteBundle`, `set_parent`, `despawn_recursive`, or ungated `PickingBehavior`.
+**Code Review**: Skipped - Lean mode.
