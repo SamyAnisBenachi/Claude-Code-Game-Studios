@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use server::core::rsm::{
     AbortAuction, AuctionPhaseEntered, AuctionSettled, BroadcastPhaseChanged, DraftStarted,
     GameOverEmitted, LobbyComplete, PlacementPhaseEntered, ResolutionComplete,
-    ResolutionPhaseEntered, RoundPhase, RoundState, RsmPlugin, ShopRefreshNeeded,
+    ResolutionPhaseEntered, RoundPhase, RoundState, RsmPlugin, ShopRefreshTriggered,
 };
 
 #[test]
@@ -34,7 +34,7 @@ fn test_rsm_plugin_registers_round_state_and_messages() {
     assert!(world.get_resource::<Messages<LobbyComplete>>().is_some());
     assert!(world.get_resource::<Messages<DraftStarted>>().is_some());
     assert!(world
-        .get_resource::<Messages<ShopRefreshNeeded>>()
+        .get_resource::<Messages<ShopRefreshTriggered>>()
         .is_some());
     assert!(world
         .get_resource::<Messages<AuctionPhaseEntered>>()

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use server::core::rsm::{
     advance_phase, BroadcastPhaseChanged, DraftStarted, ResolutionComplete, RoundPhase, RoundState,
-    RsmPlugin, ShopRefreshNeeded,
+    RsmPlugin, ShopRefreshTriggered,
 };
 use server::core::session::SessionConfig;
 use server::foundation::config::GameConfig;
@@ -40,12 +40,15 @@ fn record_draft_started(mut messages: MessageReader<DraftStarted>, mut log: ResM
     }
 }
 
-fn record_shop_refresh(mut messages: MessageReader<ShopRefreshNeeded>, mut log: ResMut<OrderLog>) {
+fn record_shop_refresh(
+    mut messages: MessageReader<ShopRefreshTriggered>,
+    mut log: ResMut<OrderLog>,
+) {
     for message in messages.read() {
-        match message.player.0 {
-            1 => log.0.push("ShopRefreshNeeded:p1"),
-            2 => log.0.push("ShopRefreshNeeded:p2"),
-            _ => log.0.push("ShopRefreshNeeded:other"),
+        match message.player_id.0 {
+            1 => log.0.push("ShopRefreshTriggered:p1"),
+            2 => log.0.push("ShopRefreshTriggered:p2"),
+            _ => log.0.push("ShopRefreshTriggered:other"),
         }
     }
 }
@@ -90,8 +93,8 @@ fn rsm_f2_ordering_draft_entry_subscribers_process_broadcast_last() {
         log.0,
         vec![
             "DraftStarted",
-            "ShopRefreshNeeded:p1",
-            "ShopRefreshNeeded:p2",
+            "ShopRefreshTriggered:p1",
+            "ShopRefreshTriggered:p2",
             "BroadcastPhaseChanged",
         ]
     );

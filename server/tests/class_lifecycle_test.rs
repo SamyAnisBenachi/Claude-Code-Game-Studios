@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use server::core::rsm::{
     advance_phase, AuctionPhaseEntered, BroadcastPhaseChanged, DraftStarted, GameOverEmitted,
     LobbyComplete, PhaseAdvanceRequest, PlacementPhaseEntered, ResolutionPhaseEntered, RoundPhase,
-    RoundState, ShopRefreshNeeded,
+    RoundState, ShopRefreshTriggered,
 };
 use server::core::session::{build_snapshot, PlayerSessionData, PlayerSessions, SessionConfig};
 use server::foundation::config::GameConfig;
@@ -53,7 +53,7 @@ fn app_with_sessions(sessions: PlayerSessions) -> App {
     let mut app = App::new();
     app.add_message::<LobbyComplete>()
         .add_message::<DraftStarted>()
-        .add_message::<ShopRefreshNeeded>()
+        .add_message::<ShopRefreshTriggered>()
         .add_message::<AuctionPhaseEntered>()
         .add_message::<PlacementPhaseEntered>()
         .add_message::<ResolutionPhaseEntered>()

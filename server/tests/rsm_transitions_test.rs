@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use server::core::rsm::{
     advance_phase, AuctionPhaseEntered, BroadcastPhaseChanged, DraftStarted, GameOverEmitted,
     LobbyComplete, PhaseAdvanceRequest, PlacementPhaseEntered, ResolutionPhaseEntered, RoundPhase,
-    RoundState, ShopRefreshNeeded,
+    RoundState, ShopRefreshTrigger, ShopRefreshTriggered,
 };
 use server::core::session::{PlayerSessionData, PlayerSessions, SessionConfig};
 use server::foundation::config::GameConfig;
@@ -52,7 +52,7 @@ fn test_app(phase: RoundPhase, round_number: u32) -> App {
     let players = [PlayerId(1), PlayerId(2)];
     app.add_message::<LobbyComplete>()
         .add_message::<DraftStarted>()
-        .add_message::<ShopRefreshNeeded>()
+        .add_message::<ShopRefreshTriggered>()
         .add_message::<AuctionPhaseEntered>()
         .add_message::<PlacementPhaseEntered>()
         .add_message::<ResolutionPhaseEntered>()
@@ -105,7 +105,7 @@ fn rsm_transitions_lobby_to_draft_initial_emits_f2_order_payloads() {
 
     let drafts = read_messages::<DraftStarted>(&app);
     let lobby_complete = read_messages::<LobbyComplete>(&app);
-    let refreshes = read_messages::<ShopRefreshNeeded>(&app);
+    let refreshes = read_messages::<ShopRefreshTriggered>(&app);
     let auctions = read_messages::<AuctionPhaseEntered>(&app);
     let broadcasts = read_messages::<BroadcastPhaseChanged>(&app);
 
@@ -114,9 +114,12 @@ fn rsm_transitions_lobby_to_draft_initial_emits_f2_order_payloads() {
     assert_eq!(drafts[0].round, 1);
     assert_eq!(drafts[0].phase, DraftPhase::Initial);
     assert_eq!(
-        refreshes.iter().map(|e| e.player).collect::<Vec<_>>(),
+        refreshes.iter().map(|e| e.player_id).collect::<Vec<_>>(),
         vec![PlayerId(1), PlayerId(2)]
     );
+    assert!(refreshes
+        .iter()
+        .all(|e| e.trigger == ShopRefreshTrigger::DraftInitial));
     assert!(auctions.is_empty());
     assert_eq!(broadcasts.len(), 1);
     assert_eq!(broadcasts[0].phase, RoundPhase::DraftInitial);
@@ -153,7 +156,7 @@ fn rsm_transitions_resolution_to_draft_auction_emits_auction_before_broadcast() 
 
     let rsm = app.world().resource::<RoundState>();
     let drafts = read_messages::<DraftStarted>(&app);
-    let refreshes = read_messages::<ShopRefreshNeeded>(&app);
+    let refreshes = read_messages::<ShopRefreshTriggered>(&app);
     let auctions = read_messages::<AuctionPhaseEntered>(&app);
     let broadcasts = read_messages::<BroadcastPhaseChanged>(&app);
 
@@ -162,6 +165,9 @@ fn rsm_transitions_resolution_to_draft_auction_emits_auction_before_broadcast() 
     assert_eq!(drafts[0].round, 3);
     assert_eq!(drafts[0].phase, DraftPhase::Auction);
     assert_eq!(refreshes.len(), 2);
+    assert!(refreshes
+        .iter()
+        .all(|e| e.trigger == ShopRefreshTrigger::AuctionLock));
     assert_eq!(auctions.len(), 1);
     assert_eq!(auctions[0].round, 3);
     assert_eq!(broadcasts[0].phase, RoundPhase::DraftAuction);
@@ -177,12 +183,15 @@ fn rsm_transitions_draft_auction_to_draft_shop_emits_shop_entry() {
 
     let rsm = app.world().resource::<RoundState>();
     let drafts = read_messages::<DraftStarted>(&app);
-    let refreshes = read_messages::<ShopRefreshNeeded>(&app);
+    let refreshes = read_messages::<ShopRefreshTriggered>(&app);
     let broadcasts = read_messages::<BroadcastPhaseChanged>(&app);
 
     assert_eq!(rsm.phase, RoundPhase::DraftShop);
     assert_eq!(drafts[0].phase, DraftPhase::Shop);
     assert_eq!(refreshes.len(), 2);
+    assert!(refreshes
+        .iter()
+        .all(|e| e.trigger == ShopRefreshTrigger::ShopUnlock));
     assert_eq!(broadcasts[0].phase, RoundPhase::DraftShop);
     assert_eq!(broadcasts[0].timer_ms, 30_000);
 }
@@ -194,9 +203,12 @@ fn rsm_transitions_draft_entry_shop_refresh_fans_out_once_per_player() {
 
     app.update();
 
-    let refreshes = read_messages::<ShopRefreshNeeded>(&app);
+    let refreshes = read_messages::<ShopRefreshTriggered>(&app);
     assert_eq!(refreshes.len(), 2);
-    assert_ne!(refreshes[0].player, refreshes[1].player);
+    assert_ne!(refreshes[0].player_id, refreshes[1].player_id);
+    assert!(refreshes
+        .iter()
+        .all(|e| e.trigger == ShopRefreshTrigger::ShopOpen));
 }
 
 #[test]
