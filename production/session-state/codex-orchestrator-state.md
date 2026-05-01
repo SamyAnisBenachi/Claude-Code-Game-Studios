@@ -28,8 +28,8 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- BOARD-002 story-done: launch prompt issued after CARD-ANIM-009 closure; per
-  user rule, assume launched unless contradicted.
+- KW-004 story-done: launch prompt issued after BOARD-002 closure; per user
+  rule, assume launched unless contradicted.
 - CA-004 worker: completed on branch `work/ca-004-refresh-cost` at `f26f738`;
   cherry-picked into `main` at `5cb53a8`. Window can be cleared.
 - BOARD-004 worker: completed on branch `work/BOARD-004-placement-occupancy`
@@ -104,13 +104,12 @@ None currently tracked here.
   based before recent tracking and BOARD-002 commits. Local `stun_test`,
   `cargo check -p server`, `cargo check -p shared`, `cargo fmt --all -- --check`,
   and `git diff --check` passed.
-- BOARD-002: Standard Unit Movement implemented on branch
-  `work/board-002-standard-unit-movement` at `4a76028`; cherry-picked into
-  `main` at `0d8e41c`. Local `standard_movement_test`, `cargo check -p server`,
-  `cargo fmt -p server -- --check`, and `git diff --check` passed.
 
 ## Recently Closed
 
+- BOARD-002: Standard Unit Movement implemented on branch
+  `work/board-002-standard-unit-movement` at `4a76028`; cherry-picked into
+  `main` at `0d8e41c`; story-done committed at `ffe0ca6`.
 - CARD-ANIM-009: CI Boundary Enforcement implemented on branch
   `work/card-anim-009-ci-boundary-enforcement` at `55b5331`; cherry-picked into
   `main` at `75e11ea`; story-done committed at `30bff20`.
@@ -167,17 +166,16 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. BOARD-002
-2. KW-004
-3. CARD-ANIM-008
-4. HUD-002
-5. CARD-ANIM-006
-6. HUD-003
-7. KW-005
-8. BOARD-003
-9. HAND-UI-002
-10. CA-004
-11. BOARD-004
+1. KW-004
+2. CARD-ANIM-008
+3. HUD-002
+4. CARD-ANIM-006
+5. HUD-003
+6. KW-005
+7. BOARD-003
+8. HAND-UI-002
+9. CA-004
+10. BOARD-004
 
 Run only one story-done at a time.
 
@@ -210,7 +208,7 @@ Batch launched:
 - CA-005: `production/epics/card-acquisition/story-005-purchase-flow.md`
 - COMBAT-001: `production/epics/combat-resolution/story-001-resolve-combat-scaffold.md`
 
-BOARD-002 story-done is the active serialized closure. Do not launch another
+KW-004 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
 
 ## Resolved Design Gates
