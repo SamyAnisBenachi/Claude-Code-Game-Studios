@@ -1,10 +1,14 @@
 use super::events::{
     AbortAuction, AuctionPhaseEntered, AuctionSettled, BeginResolution, BroadcastPhaseChanged,
     DraftReadySignal, DraftStarted, GameOverEmitted, LobbyComplete, PlacementPhaseEntered,
-    PlacementSubmitted, ResolutionComplete, ResolutionPhaseEntered, ShopRefreshTriggered,
+    PlacementSubmitted, PlayerDisconnected, PlayerReconnected, ResolutionComplete,
+    ResolutionPhaseEntered, ShopRefreshTriggered,
 };
 use super::state::{PendingPhaseAdvance, RoundState};
-use super::transitions::{advance_phase, on_session_ready, rsm_input_reader, tick_rsm_timers};
+use super::transitions::{
+    advance_phase, on_lightyear_connected, on_lightyear_disconnected, on_session_ready,
+    rsm_input_reader, tick_disconnect_timers, tick_rsm_timers,
+};
 use crate::core::objective_contract::ObjectiveCounters;
 use bevy::prelude::*;
 
@@ -27,12 +31,22 @@ impl Plugin for RsmPlugin {
             .add_message::<BroadcastPhaseChanged>()
             .add_message::<AuctionSettled>()
             .add_message::<ResolutionComplete>()
+            .add_message::<PlayerDisconnected>()
+            .add_message::<PlayerReconnected>()
             .add_message::<DraftReadySignal>()
             .add_message::<PlacementSubmitted>()
             .add_systems(
                 Update,
-                (rsm_input_reader, tick_rsm_timers, advance_phase).chain(),
+                (
+                    tick_disconnect_timers,
+                    rsm_input_reader,
+                    tick_rsm_timers,
+                    advance_phase,
+                )
+                    .chain(),
             )
-            .add_observer(on_session_ready);
+            .add_observer(on_session_ready)
+            .add_observer(on_lightyear_connected)
+            .add_observer(on_lightyear_disconnected);
     }
 }

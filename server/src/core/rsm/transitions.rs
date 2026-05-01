@@ -1,12 +1,16 @@
 use super::events::{
-    AuctionPhaseEntered, AuctionSettled, BeginResolution, BroadcastPhaseChanged, DraftReadySignal,
-    DraftStarted, GameOverEmitted, LobbyComplete, PlacementPhaseEntered, PlacementSubmitted,
-    ResolutionComplete, ResolutionPhaseEntered, ShopRefreshTrigger, ShopRefreshTriggered,
+    AbortAuction, AuctionPhaseEntered, AuctionSettled, BeginResolution, BroadcastPhaseChanged,
+    DraftReadySignal, DraftStarted, GameOverEmitted, LobbyComplete, PlacementPhaseEntered,
+    PlacementSubmitted, PlayerDisconnected, PlayerReconnected, ResolutionComplete,
+    ResolutionPhaseEntered, ShopRefreshTrigger, ShopRefreshTriggered,
 };
-use super::state::{PendingPhaseAdvance, PhaseAdvanceRequest, RoundPhase, RoundState};
+use super::state::{
+    GameOverRequest, PendingPhaseAdvance, PhaseAdvanceRequest, RoundPhase, RoundState,
+};
 use crate::core::objective_contract::ObjectiveCounters;
-use crate::core::session::{PlayerSessions, SessionConfig, SessionReady};
+use crate::core::session::{PlayerConnectionMap, PlayerSessions, SessionConfig, SessionReady};
 use bevy::prelude::*;
+use lightyear::prelude::{Connected, Disconnected, RemoteId};
 use shared::protocol::{DraftPhase, GameOverReason};
 use shared::session::PlayerId;
 
@@ -39,6 +43,16 @@ pub fn rsm_input_reader(
         if rsm.phase != RoundPhase::Resolution {
             continue;
         }
+
+        if let Some(outcome) = rsm.pending_disconnect_outcome.take() {
+            pending.request(PhaseAdvanceRequest::game_over(
+                RoundPhase::Resolution,
+                outcome.reason,
+                outcome.loser,
+            ));
+            continue;
+        }
+
         pending.request(
             evaluate_objective_win_condition(&objective_counters, session.as_deref())
                 .map(|(reason, loser)| {
@@ -80,6 +94,110 @@ pub fn rsm_input_reader(
             pending.request(PhaseAdvanceRequest::new(RoundPhase::Placement));
         }
     }
+}
+
+pub fn tick_disconnect_timers(
+    mut rsm: ResMut<RoundState>,
+    time: Res<Time>,
+    config: Option<Res<crate::foundation::config::GameConfig>>,
+    session: Option<Res<SessionConfig>>,
+    mut pending: ResMut<PendingPhaseAdvance>,
+    mut disconnected: MessageReader<PlayerDisconnected>,
+    mut reconnected: MessageReader<PlayerReconnected>,
+    mut abort_auction: MessageWriter<AbortAuction>,
+) {
+    for event in disconnected.read() {
+        if player_is_in_session(event.player, session.as_deref()) {
+            rsm.disconnect_trackers.insert(event.player, 0.0);
+        }
+    }
+
+    for event in reconnected.read() {
+        rsm.disconnect_trackers.remove(&event.player);
+    }
+
+    if rsm.phase == RoundPhase::GameOver || pending.is_requested() {
+        return;
+    }
+
+    let delta = time.delta_secs();
+    for elapsed in rsm.disconnect_trackers.values_mut() {
+        *elapsed += delta;
+    }
+
+    if rsm.pending_disconnect_outcome.is_some() {
+        return;
+    }
+
+    let grace_seconds = config
+        .as_ref()
+        .map(|config| config.disconnect_grace_seconds as f32)
+        .unwrap_or_else(|| shared::config::GameConfig::default().disconnect_grace_seconds as f32);
+    let breaching_players = rsm
+        .disconnect_trackers
+        .iter()
+        .filter(|(player, elapsed)| {
+            player_is_in_session(**player, session.as_deref()) && **elapsed > grace_seconds
+        })
+        .map(|(player, _)| *player)
+        .collect::<Vec<_>>();
+
+    let Some(outcome) = disconnect_game_over_outcome(&breaching_players) else {
+        return;
+    };
+
+    if rsm.phase == RoundPhase::Resolution {
+        rsm.pending_disconnect_outcome = Some(outcome);
+        return;
+    }
+
+    if rsm.phase == RoundPhase::DraftAuction {
+        abort_auction.write(AbortAuction);
+    }
+
+    pending.request(PhaseAdvanceRequest::game_over(
+        rsm.phase,
+        outcome.reason,
+        outcome.loser,
+    ));
+}
+
+pub fn on_lightyear_connected(
+    trigger: On<Add, Connected>,
+    clients: Query<&RemoteId>,
+    connections: Option<Res<PlayerConnectionMap>>,
+    mut reconnected: MessageWriter<PlayerReconnected>,
+) {
+    let Ok(remote) = clients.get(trigger.entity) else {
+        return;
+    };
+    let Some(connections) = connections else {
+        return;
+    };
+    let Some(player) = connections.0.get(&remote.0).copied() else {
+        return;
+    };
+
+    reconnected.write(PlayerReconnected { player });
+}
+
+pub fn on_lightyear_disconnected(
+    trigger: On<Add, Disconnected>,
+    clients: Query<&RemoteId>,
+    connections: Option<Res<PlayerConnectionMap>>,
+    mut disconnected: MessageWriter<PlayerDisconnected>,
+) {
+    let Ok(remote) = clients.get(trigger.entity) else {
+        return;
+    };
+    let Some(connections) = connections else {
+        return;
+    };
+    let Some(player) = connections.0.get(&remote.0).copied() else {
+        return;
+    };
+
+    disconnected.write(PlayerDisconnected { player });
 }
 
 pub fn tick_rsm_timers(
@@ -439,6 +557,20 @@ fn player_is_in_session(
     session
         .map(|session| session.team_map.contains_key(&player))
         .unwrap_or(false)
+}
+
+fn disconnect_game_over_outcome(breaching_players: &[PlayerId]) -> Option<GameOverRequest> {
+    match breaching_players {
+        [] => None,
+        [loser] => Some(GameOverRequest {
+            reason: GameOverReason::Disconnect,
+            loser: Some(*loser),
+        }),
+        _ => Some(GameOverRequest {
+            reason: GameOverReason::Draw,
+            loser: None,
+        }),
+    }
 }
 
 fn evaluate_objective_win_condition(

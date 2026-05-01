@@ -82,6 +82,16 @@ pub struct AuctionSettled {
 #[derive(Message, Clone, Debug)]
 pub struct ResolutionComplete;
 
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlayerDisconnected {
+    pub player: PlayerId,
+}
+
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlayerReconnected {
+    pub player: PlayerId,
+}
+
 /// Internal server signal emitted after the network layer resolves the sender
 /// to a stable session player. The shared C2S payload stays Bevy-free.
 #[derive(Message, Clone, Copy, Debug)]

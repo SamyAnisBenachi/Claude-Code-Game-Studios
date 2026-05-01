@@ -33,6 +33,7 @@ pub struct RoundState {
     pub draft_ready_players: HashSet<PlayerId>,
     pub submissions_received: HashSet<PlayerId>,
     pub disconnect_trackers: HashMap<PlayerId, f32>,
+    pub pending_disconnect_outcome: Option<GameOverRequest>,
 }
 
 impl RoundState {
@@ -48,6 +49,7 @@ impl RoundState {
             draft_ready_players: HashSet::new(),
             submissions_received: HashSet::new(),
             disconnect_trackers: HashMap::new(),
+            pending_disconnect_outcome: None,
         }
     }
 }
@@ -78,7 +80,7 @@ impl PhaseAdvanceRequest {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GameOverRequest {
     pub reason: GameOverReason,
     pub loser: Option<PlayerId>,

@@ -1,7 +1,7 @@
 # Story 005: Disconnect Handling
 
 > **Epic**: Round State Machine
-> **Status**: Ready
+> **Status**: In Progress
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01

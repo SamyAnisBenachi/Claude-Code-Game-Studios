@@ -13,7 +13,10 @@ pub use state::{
 };
 // Scaffold API consumed by downstream stories.
 #[allow(unused_imports)]
-pub use system::{on_session_ready, rsm_input_reader, tick_rsm_timers};
+pub use system::{
+    on_lightyear_connected, on_lightyear_disconnected, on_session_ready, rsm_input_reader,
+    tick_disconnect_timers, tick_rsm_timers,
+};
 // Scaffold API consumed by downstream stories.
 #[allow(unused_imports)]
 pub use transitions::{advance_phase, is_auction_round};

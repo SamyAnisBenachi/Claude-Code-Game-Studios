@@ -118,6 +118,10 @@ name = "rsm_win_condition_test"
 path = "../tests/unit/rsm/rsm_win_condition_test.rs"
 
 [[test]]
+name = "rsm_disconnect_test"
+path = "../tests/unit/rsm/rsm_disconnect_test.rs"
+
+[[test]]
 name = "objective_state_test"
 path = "../tests/unit/objective/objective_state_test.rs"
 
