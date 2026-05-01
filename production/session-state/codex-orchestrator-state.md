@@ -40,12 +40,15 @@ source of truth for story status.
   `38a5489`. Window can be cleared.
 - COMBAT-001 worker: completed locally on branch
   `work/combat-001-resolve-combat-scaffold` at `311c6f0`; worker push was
-  blocked by credentials, so root cherry-picked it into `main` at `01f831e`.
-  Window can be cleared.
+  blocked by credentials, so root cherry-picked it into `main` at `01f831e`;
+  story-done committed at `9589116`. Window can be cleared.
 - HAND-UI-003 worker: launch prompt issued while CA-005 story-done is active;
   per user rule, assume launched unless contradicted.
 - HUD-005 worker: launch prompt issued while CA-005 story-done is active; per
-  user rule, assume launched unless contradicted.
+  user rule, assume launched unless contradicted. Completed on branch
+  `work/hud-005-phase-transitions` at `5061728`; cherry-picked into `main` at
+  `9104400`. Worker checks passed; root re-check hit long client compile
+  timeout, not a test failure. Window can be cleared.
 - BOARD-005 worker: launch prompt issued while CA-005 story-done is active; per
   user rule, assume launched unless contradicted. Initial readiness returned
   NEEDS WORK only because the story embedded manifest version was stale
@@ -63,19 +66,22 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- COMBAT-001: Resolve Combat Scaffold implemented locally on branch
-  `work/combat-001-resolve-combat-scaffold` at `311c6f0`; cherry-picked into
-  `main` at `01f831e`. Local resolve combat scaffold, RSM transitions, and
-  class lifecycle tests passed after integration (`26/26` total), plus
-  `cargo check -p server`, `cargo fmt --all -- --check`, and
-  `git diff --check HEAD~1..HEAD`.
 - OBJECTIVE-001: Objective State Model implemented locally on branch
   `work/objective-001-state-model` at `0ca676d`; cherry-picked into `main` at
   `38a5489`. Local objective state and RSM win-condition tests passed after
   integration (`11/11` total), plus `cargo check -p server`, `cargo fmt --all
   -- --check`, and `git diff --check HEAD~1..HEAD`.
+- HUD-005: Phase Transitions implemented on branch
+  `work/hud-005-phase-transitions` at `5061728`; cherry-picked into `main` at
+  `9104400`. Worker reported `cargo fmt -p client -- --check`,
+  `cargo test -p client --test hud_phase_transitions_test`, full
+  `cargo test -p client`, and `cargo check -p client` passing. Root
+  `git diff --check HEAD~1..HEAD` passed.
 ## Recently Closed
 
+- COMBAT-001: Resolve Combat Scaffold implemented locally on branch
+  `work/combat-001-resolve-combat-scaffold` at `311c6f0`; cherry-picked into
+  `main` at `01f831e`; story-done committed at `9589116`.
 - CA-005: Purchase Flow, Dead Slot, and CA18 Atomicity implemented on branch
   `work/ca-005-purchase-flow` at `415384a`; cherry-picked into `main` at
   `c6141bc`; story-done committed at `a770db2`.
@@ -168,16 +174,15 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. COMBAT-001
-2. OBJECTIVE-001
+1. OBJECTIVE-001
+2. HUD-005
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- CA-005: implemented and integrated; pending story-done.
-- COMBAT-001: implemented and integrated; pending story-done.
 - OBJECTIVE-001: implemented and integrated; pending story-done.
+- HUD-005: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
@@ -191,7 +196,7 @@ Batch launched:
 - BOARD-005: `production/epics/board-lane-system/story-005-placement-buffer-phase-integration.md`
 
 No story-done window is currently active in this tracker. The next serialized
-closure is COMBAT-001.
+closure is OBJECTIVE-001.
 
 ## Resolved Design Gates
 
