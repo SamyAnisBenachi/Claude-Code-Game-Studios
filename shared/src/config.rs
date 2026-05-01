@@ -29,6 +29,7 @@ pub struct GameConfig {
     pub mana_cap: u32,
     pub mana_cap_max: u32,
     pub refresh_base_cost: u32,
+    pub refresh_cap: u32,
 
     // Objectives / Spawn
     pub objective_hp: u32,
@@ -83,6 +84,7 @@ impl Default for GameConfig {
             mana_cap: 10,
             mana_cap_max: 12,
             refresh_base_cost: 1,
+            refresh_cap: 1,
             objective_hp: 5,
             fake_count: 2,
             fake_objective_spawn_advance: 1,

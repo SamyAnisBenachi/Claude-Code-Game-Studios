@@ -19,6 +19,7 @@
     mana_cap: 10,
     mana_cap_max: 12,
     refresh_base_cost: 1,
+    refresh_cap: 1,
 
     // Objectives / Spawn
     objective_hp: 5,

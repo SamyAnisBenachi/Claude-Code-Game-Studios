@@ -1,7 +1,8 @@
 # Story 004: Manual Refresh Cost Formula and Counter Reset
 
 > **Epic**: Card Acquisition
-> **Status**: Ready
+> **Status**: In Progress
+> **Owner**: codex-ca-004-refresh-cost
 > **Layer**: Feature (M2)
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01

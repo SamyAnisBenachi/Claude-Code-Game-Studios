@@ -16,6 +16,7 @@ fn test_game_config_default_economy_values() {
     assert_eq!(config.mana_cap, 10);
     assert_eq!(config.mana_cap_max, 12);
     assert_eq!(config.refresh_base_cost, 1);
+    assert_eq!(config.refresh_cap, 1);
 }
 
 #[test]
