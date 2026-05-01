@@ -28,8 +28,6 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- CARD-ANIM-002 worker: Tween Cancel/Replace Lifecycle, launched in worktree
-  mode after CARD-ANIM-001 closure.
 - S3-06 story-done window.
 
 ## Tracker In-Progress But No Live Window Confirmed
@@ -57,6 +55,11 @@ None currently tracked here.
 - HUD-001: HUD Plugin Scaffold implemented at `b04748b`; `git diff --check` and
   `cargo fmt --check` passed. Local client test was blocked by native
   `aws-lc-sys` dependency compilation; document this in story-done.
+- CARD-ANIM-002: Tween Cancel/Replace Lifecycle implemented on branch
+  `work/card-anim-002-tween-cancel-replace` at `1354d5a`; merged into `main` at
+  `e9103d9`. Local plugin scaffold + tween lifecycle tests and
+  `cargo check -p client` passed. Merge conflict in `client/Cargo.toml` resolved
+  by keeping both HUD-001 and CARD-ANIM-002 test targets.
 - S3-08: Economy Interest Snapshot & Resolution End implemented on branch
   `work/s3-08-economy-interest-snapshot` at `db61102`; merged into `main` at
   `4961356`. Local `economy_interest_snapshot_test`, `cargo check -p server`,
@@ -84,6 +87,7 @@ None currently tracked here.
 5. KW-003
 6. HUD-001
 7. S3-08
+8. CARD-ANIM-002
 
 Run only one story-done at a time.
 
@@ -109,6 +113,9 @@ Run only one story-done at a time.
 - BOARD-001: Board Grid Initialization; no dependencies.
 - CARD-ANIM-004: AnimQueue resolution drain; depends on CARD-ANIM-001 done.
 - CARD-ANIM-009: CI boundary enforcement; depends on CARD-ANIM-001 done.
+- CARD-ANIM-008: Input Gating; depends on CARD-ANIM-002 implementation, now
+  available but should wait for CARD-ANIM-002 story-done unless explicitly
+  pulled in worktree mode.
 - HUD-002: Gold/Mana Display; depends on HUD-001 implementation, now available
   but should wait for HUD-001 story-done unless explicitly pulled in worktree
   mode with caveat.
