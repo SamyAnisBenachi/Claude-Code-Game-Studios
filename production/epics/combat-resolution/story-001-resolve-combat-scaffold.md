@@ -1,7 +1,7 @@
 # Story 001: resolve_combat Scaffold + Safety Timeout
 
 > **Epic**: Combat Resolution
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -126,7 +126,7 @@ pub fn resolve_combat(world: &mut World) {
 **Story Type**: Integration
 **Required evidence**: `tests/integration/combat/resolve_combat_scaffold_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`cargo test -p server --test resolve_combat_scaffold_test`, 3/3)
 
 ---
 
@@ -134,3 +134,12 @@ pub fn resolve_combat(world: &mut World) {
 
 - Depends on: None — first story in this epic
 - Unlocks: Story 002 (UnitSnapshot struct used by modifier stack), Story 003 (SS1 runs inside resolve_combat)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 4/4 passing
+**Deviations**: Advisory only - scaffold uses `CombatNetworkOutbox` rather than direct Lightyear `MessageSender`; `S2CPlacementReveal` and `S2CResolutionEvent` are registered on `ReliableChannel`, and actual network dispatch remains for later wiring stories.
+**Test Evidence**: Integration evidence at `tests/integration/combat/resolve_combat_scaffold_test.rs`; `cargo test -p server --test resolve_combat_scaffold_test` passed 3/3. `cargo check -p server` passed.
+**Code Review**: Skipped - lean mode.
+**Sprint Status**: Unchanged; no `COMBAT-001` row exists in `production/sprint-status.yaml`.

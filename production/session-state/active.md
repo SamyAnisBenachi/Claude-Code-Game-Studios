@@ -1049,3 +1049,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `CA-005` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Card Acquisition epic close-out evidence is ready; continue with sprint/epic smoke or the user-directed serialized story-done queue.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/combat-resolution/story-001-resolve-combat-scaffold.md` - resolve_combat Scaffold + Safety Timeout
+- Criteria: 4/4 passing; CR-30 placement reveal ordering, CR-32 resolution-event ordering, CR-41 iteration budget overflow, and idle exit behavior covered by `tests/integration/combat/resolve_combat_scaffold_test.rs`.
+- Test Evidence: `cargo test -p server --test resolve_combat_scaffold_test` passed 3/3. `cargo check -p server` passed.
+- Verification: `server/src/feature/combat/mod.rs` implements the exclusive `resolve_combat` scaffold, pending completion bridge, iteration budget guard, and combat network outbox trace. RSM wiring reads `ResolutionComplete` before advancing from RESOLUTION.
+- Notes: Advisory only - scaffold uses `CombatNetworkOutbox` rather than direct Lightyear `MessageSender`; `S2CPlacementReveal` and `S2CResolutionEvent` are registered on `ReliableChannel`, and actual network dispatch remains for later wiring stories.
+- Tech debt logged: None
+- Sprint status: Unchanged; no `COMBAT-001` row exists in `production/sprint-status.yaml`.
+- Next recommended: Combat Resolution Story 002 modifier stack (`production/epics/combat-resolution/story-002-combat-modifier-stack.md`) or Story 003 sub-step 1 placement/appearance (`production/epics/combat-resolution/story-003-substep1-placement-appearance.md`) after readiness check.
