@@ -29,8 +29,8 @@ source of truth for story status.
 ## Live Windows Confirmed By User
 
 - CA-006 story-done: assumed launched after CA-003 closure.
-- BOARD-003 worker: readiness returned NEEDS WORK due stale story manifest
-  metadata; fixed at `6c56f8c`. Assumed relaunched against current `main`.
+- BOARD-003 worker: completed on branch `work/BOARD-003-spawn-range-validation`
+  at `bf39342`; cherry-picked into `main` at `9c38083`. Window can be cleared.
 - HAND-UI-002 worker: assumed launched from the current orchestrator batch.
 - KW-005 worker: completed on branch `work/kw-005-shield-scope` at `a1a824b`;
   cherry-picked into `main` at `0b610fd`. Window can be cleared.
@@ -86,6 +86,11 @@ None currently tracked here.
   `a1a824b`; cherry-picked into `main` at `0b610fd`. Local `shield_test`,
   `keyword_plugin_smoke_test`, `cargo check -p server`, `cargo fmt --all --
   --check`, and `git diff --check` passed after integration.
+- BOARD-003: Spawn Range Validation implemented on branch
+  `work/BOARD-003-spawn-range-validation` at `bf39342`; cherry-picked into
+  `main` at `9c38083`. Local `spawn_range_validation_test`,
+  `cargo check -p server`, `cargo fmt -p server -- --check`, and
+  `git diff --check` passed after integration.
 - KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
   `7543293`; cherry-picked into `main` at `b8b1287` because the branch was
   based before recent tracking and BOARD-002 commits. Local `stun_test`,
@@ -157,6 +162,7 @@ None currently tracked here.
 9. HAND-UI-001
 10. HUD-003
 11. KW-005
+12. BOARD-003
 
 Run only one story-done at a time.
 
@@ -175,6 +181,7 @@ Run only one story-done at a time.
 - HAND-UI-001: implemented and integrated; pending story-done.
 - HUD-003: implemented and integrated; pending story-done.
 - KW-005: implemented and integrated; pending story-done.
+- BOARD-003: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
@@ -183,8 +190,6 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- BOARD-003: `production/epics/board-lane-system/story-003-spawn-range-validation.md`
-  readiness metadata refreshed at `6c56f8c`; relaunch needed.
 - HAND-UI-002: `production/epics/hand-ui/story-002-fan-layout-formula.md`
 
 CA-006 story-done is the active serialized closure. New code workers can
