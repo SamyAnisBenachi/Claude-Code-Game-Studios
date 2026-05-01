@@ -28,9 +28,7 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- HUD-002 worker: completed locally at `0c00a44`; cherry-picked into `main` at
-  `3eaf578`. Window can be cleared.
-- CARD-ANIM-002 story-done: completed at `43a2678`; window can be cleared.
+None currently confirmed.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
