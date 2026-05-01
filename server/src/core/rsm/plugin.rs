@@ -5,6 +5,7 @@ use super::events::{
 };
 use super::state::{PendingPhaseAdvance, RoundState};
 use super::transitions::{advance_phase, on_session_ready, rsm_input_reader, tick_rsm_timers};
+use crate::core::objective_contract::ObjectiveCounters;
 use bevy::prelude::*;
 
 pub struct RsmPlugin;
@@ -13,6 +14,7 @@ impl Plugin for RsmPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(RoundState::new())
             .init_resource::<PendingPhaseAdvance>()
+            .init_resource::<ObjectiveCounters>()
             .add_message::<LobbyComplete>()
             .add_message::<DraftStarted>()
             .add_message::<ShopRefreshNeeded>()

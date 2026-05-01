@@ -2,6 +2,7 @@
 
 pub mod board;
 pub mod economy;
+pub mod objective_contract;
 pub mod pool;
 pub mod rsm;
 pub mod session;

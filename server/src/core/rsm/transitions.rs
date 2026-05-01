@@ -4,9 +4,11 @@ use super::events::{
     ResolutionPhaseEntered, ShopRefreshNeeded,
 };
 use super::state::{PendingPhaseAdvance, PhaseAdvanceRequest, RoundPhase, RoundState};
+use crate::core::objective_contract::ObjectiveCounters;
 use crate::core::session::{PlayerSessions, SessionConfig, SessionReady};
 use bevy::prelude::*;
-use shared::protocol::DraftPhase;
+use shared::protocol::{DraftPhase, GameOverReason};
+use shared::session::PlayerId;
 
 pub fn is_auction_round(round_number: u32) -> bool {
     debug_assert!(
@@ -19,6 +21,7 @@ pub fn is_auction_round(round_number: u32) -> bool {
 pub fn rsm_input_reader(
     mut rsm: ResMut<RoundState>,
     session: Option<Res<SessionConfig>>,
+    objective_counters: Res<ObjectiveCounters>,
     mut pending: ResMut<PendingPhaseAdvance>,
     mut auction_settled: MessageReader<AuctionSettled>,
     mut resolution_complete: MessageReader<ResolutionComplete>,
@@ -36,7 +39,13 @@ pub fn rsm_input_reader(
         if rsm.phase != RoundPhase::Resolution {
             continue;
         }
-        pending.request(PhaseAdvanceRequest::new(RoundPhase::Resolution));
+        pending.request(
+            evaluate_objective_win_condition(&objective_counters, session.as_deref())
+                .map(|(reason, loser)| {
+                    PhaseAdvanceRequest::game_over(RoundPhase::Resolution, reason, loser)
+                })
+                .unwrap_or_else(|| PhaseAdvanceRequest::new(RoundPhase::Resolution)),
+        );
     }
 
     for signal in ready_signals.read() {
@@ -415,4 +424,21 @@ fn player_is_in_session(
     session
         .map(|session| session.team_map.contains_key(&player))
         .unwrap_or(false)
+}
+
+fn evaluate_objective_win_condition(
+    objective_counters: &ObjectiveCounters,
+    session: Option<&SessionConfig>,
+) -> Option<(GameOverReason, Option<PlayerId>)> {
+    let session = session?;
+    let qualifying_players = session
+        .players()
+        .filter(|player| objective_counters.real_objectives_destroyed(*player) >= 2)
+        .collect::<Vec<_>>();
+
+    match qualifying_players.as_slice() {
+        [] => None,
+        [loser] => Some((GameOverReason::ObjectivesDestroyed, Some(*loser))),
+        _ => Some((GameOverReason::Draw, None)),
+    }
 }
