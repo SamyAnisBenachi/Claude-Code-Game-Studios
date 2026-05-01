@@ -116,6 +116,7 @@ fn main() {
     app.add_plugins(core::economy::EconomyPlugin);
     app.add_plugins(feature::board::BoardPlugin);
     app.add_plugins(feature::acquisition::CardAcquisitionPlugin);
+    app.add_plugins(feature::combat::CombatPlugin);
 
     // Networking - Lightyear 0.26 WebSocket server and shared protocol manifest.
     app.add_plugins(network::ServerNetworkPlugin);

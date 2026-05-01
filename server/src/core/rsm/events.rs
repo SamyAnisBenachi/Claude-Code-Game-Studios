@@ -54,6 +54,11 @@ pub struct ResolutionPhaseEntered {
     pub round: u32,
 }
 
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BeginResolution {
+    pub round: u32,
+}
+
 #[derive(Message, Clone, Debug)]
 pub struct GameOverEmitted {
     pub reason: GameOverReason,

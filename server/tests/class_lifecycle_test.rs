@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use server::core::rsm::{
-    advance_phase, AuctionPhaseEntered, BroadcastPhaseChanged, DraftStarted, GameOverEmitted,
-    LobbyComplete, PhaseAdvanceRequest, PlacementPhaseEntered, ResolutionPhaseEntered, RoundPhase,
-    RoundState, ShopRefreshTriggered,
+    advance_phase, AuctionPhaseEntered, BeginResolution, BroadcastPhaseChanged, DraftStarted,
+    GameOverEmitted, LobbyComplete, PhaseAdvanceRequest, PlacementPhaseEntered,
+    ResolutionPhaseEntered, RoundPhase, RoundState, ShopRefreshTriggered,
 };
 use server::core::session::{build_snapshot, PlayerSessionData, PlayerSessions, SessionConfig};
 use server::foundation::config::GameConfig;
@@ -57,6 +57,7 @@ fn app_with_sessions(sessions: PlayerSessions) -> App {
         .add_message::<AuctionPhaseEntered>()
         .add_message::<PlacementPhaseEntered>()
         .add_message::<ResolutionPhaseEntered>()
+        .add_message::<BeginResolution>()
         .add_message::<GameOverEmitted>()
         .add_message::<BroadcastPhaseChanged>()
         .insert_resource(RoundState {

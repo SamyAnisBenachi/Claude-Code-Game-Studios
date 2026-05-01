@@ -1,7 +1,7 @@
 # Story 001: resolve_combat Scaffold + Safety Timeout
 
 > **Epic**: Combat Resolution
-> **Status**: Ready
+> **Status**: In Progress
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01

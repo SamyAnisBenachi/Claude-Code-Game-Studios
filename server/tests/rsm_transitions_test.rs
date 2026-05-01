@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use server::core::rsm::{
-    advance_phase, AuctionPhaseEntered, BroadcastPhaseChanged, DraftStarted, GameOverEmitted,
-    LobbyComplete, PhaseAdvanceRequest, PlacementPhaseEntered, ResolutionPhaseEntered, RoundPhase,
-    RoundState, ShopRefreshTrigger, ShopRefreshTriggered,
+    advance_phase, AuctionPhaseEntered, BeginResolution, BroadcastPhaseChanged, DraftStarted,
+    GameOverEmitted, LobbyComplete, PhaseAdvanceRequest, PlacementPhaseEntered,
+    ResolutionPhaseEntered, RoundPhase, RoundState, ShopRefreshTrigger, ShopRefreshTriggered,
 };
 use server::core::session::{PlayerSessionData, PlayerSessions, SessionConfig};
 use server::foundation::config::GameConfig;
@@ -56,6 +56,7 @@ fn test_app(phase: RoundPhase, round_number: u32) -> App {
         .add_message::<AuctionPhaseEntered>()
         .add_message::<PlacementPhaseEntered>()
         .add_message::<ResolutionPhaseEntered>()
+        .add_message::<BeginResolution>()
         .add_message::<GameOverEmitted>()
         .add_message::<BroadcastPhaseChanged>()
         .insert_resource(RoundState {
@@ -262,11 +263,13 @@ fn rsm_transitions_placement_to_resolution_emits_resolution_then_broadcast_paylo
 
     let rsm = app.world().resource::<RoundState>();
     let resolutions = read_messages::<ResolutionPhaseEntered>(&app);
+    let begin_resolution = read_messages::<BeginResolution>(&app);
     let broadcasts = read_messages::<BroadcastPhaseChanged>(&app);
 
     assert_eq!(rsm.phase, RoundPhase::Resolution);
     assert_eq!(resolutions.len(), 1);
     assert_eq!(resolutions[0].round, 2);
+    assert_eq!(begin_resolution, vec![BeginResolution { round: 2 }]);
     assert_eq!(broadcasts[0].phase, RoundPhase::Resolution);
     assert_eq!(broadcasts[0].timer_ms, 60_000);
 }

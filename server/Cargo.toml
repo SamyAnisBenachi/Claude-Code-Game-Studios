@@ -108,3 +108,7 @@ path = "../tests/unit/rsm/rsm_win_condition_test.rs"
 [[test]]
 name = "rsm_f2_ordering_test"
 path = "../tests/integration/rsm/rsm_f2_ordering_test.rs"
+
+[[test]]
+name = "resolve_combat_scaffold_test"
+path = "../tests/integration/combat/resolve_combat_scaffold_test.rs"

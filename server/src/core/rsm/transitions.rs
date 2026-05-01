@@ -1,7 +1,7 @@
 use super::events::{
-    AuctionPhaseEntered, AuctionSettled, BroadcastPhaseChanged, DraftReadySignal, DraftStarted,
-    GameOverEmitted, LobbyComplete, PlacementPhaseEntered, PlacementSubmitted, ResolutionComplete,
-    ResolutionPhaseEntered, ShopRefreshTrigger, ShopRefreshTriggered,
+    AuctionPhaseEntered, AuctionSettled, BeginResolution, BroadcastPhaseChanged, DraftReadySignal,
+    DraftStarted, GameOverEmitted, LobbyComplete, PlacementPhaseEntered, PlacementSubmitted,
+    ResolutionComplete, ResolutionPhaseEntered, ShopRefreshTrigger, ShopRefreshTriggered,
 };
 use super::state::{PendingPhaseAdvance, PhaseAdvanceRequest, RoundPhase, RoundState};
 use crate::core::objective_contract::ObjectiveCounters;
@@ -149,6 +149,7 @@ pub fn advance_phase(
     mut auction_entered: MessageWriter<AuctionPhaseEntered>,
     mut placement_entered: MessageWriter<PlacementPhaseEntered>,
     mut resolution_entered: MessageWriter<ResolutionPhaseEntered>,
+    mut begin_resolution: MessageWriter<BeginResolution>,
     mut game_over_emitted: MessageWriter<GameOverEmitted>,
     mut broadcast: MessageWriter<BroadcastPhaseChanged>,
 ) {
@@ -251,6 +252,9 @@ pub fn advance_phase(
             rsm.phase = RoundPhase::Resolution;
             rsm.placement_timer = None;
             resolution_entered.write(ResolutionPhaseEntered {
+                round: rsm.round_number,
+            });
+            begin_resolution.write(BeginResolution {
                 round: rsm.round_number,
             });
             broadcast.write(BroadcastPhaseChanged {
