@@ -41,8 +41,10 @@ None currently tracked here.
 ## Recently Implemented, Needs Formal Story-Done
 
 - HUD-001: HUD Plugin Scaffold implemented at `b04748b`; `git diff --check` and
-  `cargo fmt --check` passed. Local client test was blocked by native
-  `aws-lc-sys` dependency compilation; document this in story-done.
+  `cargo fmt --check` passed. Local client test was initially blocked by native
+  `aws-lc-sys` dependency compilation, then by stale Bevy 0.18 test harness
+  assumptions. Orchestrator fixed the test harness; `hud_plugin_scaffold_test`
+  and `cargo check -p client` now pass locally.
 - CARD-ANIM-002: Tween Cancel/Replace Lifecycle implemented on branch
   `work/card-anim-002-tween-cancel-replace` at `1354d5a`; merged into `main` at
   `e9103d9`. Local plugin scaffold + tween lifecycle tests and
