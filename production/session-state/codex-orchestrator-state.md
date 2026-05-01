@@ -39,6 +39,11 @@ source of truth for story status.
   version and missing performance budget. Story fixed at `94267fb`; worker
   completed on branch `work/ca-005-purchase-flow` at `415384a`;
   cherry-picked into `main` at `c6141bc`. Window can be cleared.
+- OBJECTIVE-001 worker: initial readiness run returned NEEDS WORK on stale
+  manifest and too-few acceptance criteria. Story fixed at `10d738f`; worker
+  completed locally on branch `work/objective-001-state-model` at `0ca676d`;
+  push was blocked by credentials, so root cherry-picked it into `main` at
+  `38a5489`. Window can be cleared.
 - COMBAT-001 worker: completed locally on branch
   `work/combat-001-resolve-combat-scaffold` at `311c6f0`; worker push was
   blocked by credentials, so root cherry-picked it into `main` at `01f831e`.
@@ -84,6 +89,11 @@ None currently tracked here.
   class lifecycle tests passed after integration (`26/26` total), plus
   `cargo check -p server`, `cargo fmt --all -- --check`, and
   `git diff --check HEAD~1..HEAD`.
+- OBJECTIVE-001: Objective State Model implemented locally on branch
+  `work/objective-001-state-model` at `0ca676d`; cherry-picked into `main` at
+  `38a5489`. Local objective state and RSM win-condition tests passed after
+  integration (`11/11` total), plus `cargo check -p server`, `cargo fmt --all
+  -- --check`, and `git diff --check HEAD~1..HEAD`.
 - BOARD-004: Placement Occupancy implemented on branch
   `work/BOARD-004-placement-occupancy` at `224708d`; cherry-picked into `main`
   at `0c69612`. Local placement occupancy, board grid, spawn range, standard
@@ -173,6 +183,7 @@ None currently tracked here.
 5. BOARD-004
 6. CA-005
 7. COMBAT-001
+8. OBJECTIVE-001
 
 Run only one story-done at a time.
 
@@ -181,6 +192,7 @@ Run only one story-done at a time.
 - CA-004: implemented and integrated; pending story-done.
 - CA-005: implemented and integrated; pending story-done.
 - COMBAT-001: implemented and integrated; pending story-done.
+- OBJECTIVE-001: implemented and integrated; pending story-done.
 - BOARD-004: implemented and integrated; pending story-done.
 - KW-005: implemented and integrated; pending story-done.
 - BOARD-003: implemented and integrated; pending story-done.
