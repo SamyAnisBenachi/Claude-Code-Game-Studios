@@ -38,6 +38,13 @@ pub fn repel_destination(target_cell: u8, owner: PlayerSide, x: u8) -> u8 {
     clamp_cell(destination)
 }
 
+/// Standard forward movement using the same signed arithmetic as board F1.
+pub fn advance_destination(current_cell: u8, owner: PlayerSide, cells: u8) -> u8 {
+    let destination = current_cell as i32 + owner.advance_dir() * cells as i32;
+
+    clamp_cell(destination)
+}
+
 /// Formula 2 friendly/default form from ADR-018.
 ///
 /// Friendly targets may stop on the caster's cell. Enemy targets should use

@@ -1,5 +1,5 @@
 use bevy::prelude::Component;
-use shared::card::ClassId;
+use shared::card::{CardId, ClassId};
 use shared::session::PlayerId;
 
 /// Absolute board cell occupied by a live unit or cell marker.
@@ -18,6 +18,10 @@ pub struct ObjectiveAttachment {
 /// Current controller for a unit-like board entity.
 #[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct UnitOwner(pub PlayerId);
+
+/// Card definition backing a live board unit.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct UnitCardRef(pub CardId);
 
 /// Current controller for a seed marker.
 #[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]

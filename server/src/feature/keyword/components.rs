@@ -14,3 +14,7 @@ pub struct UnitKeywordState {
     pub bodyguard_protects: Option<Entity>,
     pub outnumbered_active: bool,
 }
+
+/// Round number in which a live board unit entered play.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EnteredPlayRound(pub u32);

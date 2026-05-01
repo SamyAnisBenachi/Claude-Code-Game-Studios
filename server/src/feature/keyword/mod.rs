@@ -16,7 +16,7 @@ use observers::{
     start_of_turn_dispatch_system,
 };
 
-pub use components::UnitKeywordState;
+pub use components::{EnteredPlayRound, UnitKeywordState};
 pub use events::{
     EndOfTurnTriggered, FinalBlowDealt, KeywordTriggered, StartOfTurnTriggered, UnitAppeared,
     UnitDied,

@@ -6,7 +6,7 @@ pub mod spawn;
 
 pub use components::{
     BoardPosition, ClassTokenKind, ObjectiveAttachment, SeedMarker, SeedOwner, SourceClass,
-    TokenUnit, UnitOwner, UnitStats,
+    TokenUnit, UnitCardRef, UnitOwner, UnitStats,
 };
 pub use snapshot::{build_unit_board_state, build_unit_board_states};
 pub use spawn::{
