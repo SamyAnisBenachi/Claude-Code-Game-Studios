@@ -32,7 +32,8 @@ source of truth for story status.
 - BOARD-003 worker: readiness returned NEEDS WORK due stale story manifest
   metadata; fixed at `6c56f8c`. Assumed relaunched against current `main`.
 - HAND-UI-002 worker: assumed launched from the current orchestrator batch.
-- KW-005 worker: assumed launched from the current orchestrator batch.
+- KW-005 worker: completed on branch `work/kw-005-shield-scope` at `a1a824b`;
+  cherry-picked into `main` at `0b610fd`. Window can be cleared.
 
 ## Tracker In-Progress But No Live Window Confirmed
 
@@ -81,6 +82,10 @@ None currently tracked here.
   conflict by keeping both HAND-UI-001 and HUD-003 test entries. Local HUD phase,
   gold/mana, and plugin scaffold tests, `cargo check -p client`, `cargo fmt -p
   client -- --check`, and `git diff --check` passed after integration.
+- KW-005: Shield Scope implemented on branch `work/kw-005-shield-scope` at
+  `a1a824b`; cherry-picked into `main` at `0b610fd`. Local `shield_test`,
+  `keyword_plugin_smoke_test`, `cargo check -p server`, `cargo fmt --all --
+  --check`, and `git diff --check` passed after integration.
 - KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
   `7543293`; cherry-picked into `main` at `b8b1287` because the branch was
   based before recent tracking and BOARD-002 commits. Local `stun_test`,
@@ -151,6 +156,7 @@ None currently tracked here.
 8. CARD-ANIM-006
 9. HAND-UI-001
 10. HUD-003
+11. KW-005
 
 Run only one story-done at a time.
 
@@ -168,6 +174,7 @@ Run only one story-done at a time.
 - CARD-ANIM-006: implemented and integrated; pending story-done.
 - HAND-UI-001: implemented and integrated; pending story-done.
 - HUD-003: implemented and integrated; pending story-done.
+- KW-005: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
   OQ9 pre-implementation gate.
 - Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
@@ -179,7 +186,6 @@ Batch launched:
 - BOARD-003: `production/epics/board-lane-system/story-003-spawn-range-validation.md`
   readiness metadata refreshed at `6c56f8c`; relaunch needed.
 - HAND-UI-002: `production/epics/hand-ui/story-002-fan-layout-formula.md`
-- KW-005: `production/epics/keyword-system/story-005-shield-scope.md`
 
 CA-006 story-done is the active serialized closure. New code workers can
 continue in worktree mode if dependencies are checked first.
