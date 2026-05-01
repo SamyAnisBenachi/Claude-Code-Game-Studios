@@ -1,7 +1,7 @@
 # Story 002: Gold and Mana Display (ECONOMY_BASIC)
 
 > **Epic**: HUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -110,7 +110,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/hud/gold_mana_display_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -118,3 +118,11 @@
 
 - Depends on: Story 001 (entity pool + `GoldDisplayState` component + `HudEntities` resource)
 - Unlocks: Story 006 (ECONOMY_AUCTION format builds on this), Story 009 (tie-break uses these systems)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 6/6 passing (HUD-03, HUD-04, HUD-21, HUD-25, HUD-31, Multi-update collapse).
+**Deviations**: Advisory only - worker commit `0c00a44` is not an ancestor of current `main`, but main integration commit `3eaf578` is included in `main` and carries the HUD-002 implementation. Advisory only - `TR-HUD-001` / `TR-HUD-002` registry entries map to `HUD-01` / `HUD-02`, while this story verifies the story-scoped GDD acceptance criteria `HUD-03`, `HUD-04`, `HUD-21`, `HUD-25`, and `HUD-31`; current GDD behavior is covered by tests.
+**Test Evidence**: Logic test file at `tests/unit/hud/gold_mana_display_test.rs`; `cargo test -p client --test hud_gold_mana_display_test` passed 6/6. Regression `cargo test -p client --test hud_plugin_scaffold_test` passed 4/4. `cargo check -p client` passed.
+**Code Review**: Skipped - Lean mode.

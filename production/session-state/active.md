@@ -951,3 +951,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `CARD-ANIM-008` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Card Animations Story 006 Multi-objective stagger reveal (`production/epics/card-animations/story-006-objective-stagger-reveal.md`) after readiness check, or continue the serialized story-done queue.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hud/story-002-gold-mana-display.md` - Gold and Mana Display (ECONOMY_BASIC)
+- Criteria: 6/6 passing; HUD-03, HUD-04, HUD-21, HUD-25, HUD-31, and Multi-update collapse covered by `tests/unit/hud/gold_mana_display_test.rs`.
+- Test Evidence: `tests/unit/hud/gold_mana_display_test.rs`; `cargo test -p client --test hud_gold_mana_display_test` passed 6/6. Scaffold regression `cargo test -p client --test hud_plugin_scaffold_test` passed 4/4. `cargo check -p client` passed.
+- Verification: worker branch `work/hud-002-gold-mana-display` contains worker commit `0c00a44`; main integration commit `3eaf578` is included in current `main`. `0c00a44` is not an ancestor of `HEAD`, but the integrated HUD-002 implementation is present through `3eaf578`.
+- Notes: Advisory only - `TR-HUD-001` / `TR-HUD-002` registry entries map to `HUD-01` / `HUD-02`, while this story verifies story-scoped GDD criteria `HUD-03`, `HUD-04`, `HUD-21`, `HUD-25`, and `HUD-31`; current GDD behavior is covered by tests.
+- Tech debt logged: None
+- Sprint status: No `HUD-002` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: `S3-07` Card Pool Story 4 remains the active Sprint 3 should-have backlog item, or continue the serialized story-done queue.
