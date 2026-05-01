@@ -67,16 +67,15 @@ None currently tracked here.
   `work/ca-006-external-bypass` at `6af1137`; merged into `main`. Local
   `card_acquisition_external_bypass_test` and `cargo check -p server` passed
   after integration.
-- S3-08: Economy Interest Snapshot & Resolution End implemented on branch
-  `work/s3-08-economy-interest-snapshot` at `db61102`; merged into `main` at
-  `4961356`. Local `economy_interest_snapshot_test`, `cargo check -p server`,
-  and `cargo fmt --check` passed.
 
 ## Recently Closed
 
 - HUD-001: implemented at `b04748b`; Bevy 0.18 BorderColor fix at `cbce522`;
   test harness fix at `95b58ae`; story-done closed after
   `hud_plugin_scaffold_test` and `cargo check -p client` passed locally.
+- S3-08: Economy Interest Snapshot & Resolution End implemented on branch
+  `work/s3-08-economy-interest-snapshot` at `db61102`; merged into `main` at
+  `4961356`; story-done committed at `4f838b6`.
 - CA-001: implemented at `05dc190`; story-done committed and pushed at
   `c4c3fa9`.
 - AUC-003: implemented at `44afdb5`; story-done committed and pushed at
@@ -106,13 +105,12 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. S3-08
-2. CARD-ANIM-002
-3. BOARD-001
-4. CA-003
-5. CA-006
-6. CARD-ANIM-004
-7. CARD-ANIM-009
+1. CARD-ANIM-002
+2. BOARD-001
+3. CA-003
+4. CA-006
+5. CARD-ANIM-004
+6. CARD-ANIM-009
 
 Run only one story-done at a time.
 
