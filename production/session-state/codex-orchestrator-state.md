@@ -28,8 +28,8 @@ source of truth for story status.
 
 ## Live Windows Confirmed By User
 
-- KW-005 story-done: launch prompt issued after HUD-003 closure; per user rule,
-  assume launched unless contradicted.
+- BOARD-003 story-done: launch prompt issued after KW-005 closure; per user
+  rule, assume launched unless contradicted.
 - CA-004 worker: completed on branch `work/ca-004-refresh-cost` at `f26f738`;
   cherry-picked into `main` at `5cb53a8`. Window can be cleared.
 - BOARD-004 worker: completed on branch `work/BOARD-004-placement-occupancy`
@@ -58,10 +58,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- KW-005: Shield Scope implemented on branch `work/kw-005-shield-scope` at
-  `a1a824b`; cherry-picked into `main` at `0b610fd`. Local `shield_test`,
-  `keyword_plugin_smoke_test`, `cargo check -p server`, `cargo fmt --all --
-  --check`, and `git diff --check` passed after integration.
 - BOARD-003: Spawn Range Validation implemented on branch
   `work/BOARD-003-spawn-range-validation` at `bf39342`; cherry-picked into
   `main` at `9c38083`. Local `spawn_range_validation_test`,
@@ -102,6 +98,9 @@ None currently tracked here.
   and `git diff --check HEAD~1..HEAD`.
 ## Recently Closed
 
+- KW-005: Shield Scope implemented on branch `work/kw-005-shield-scope` at
+  `a1a824b`; cherry-picked into `main` at `0b610fd`; story-done committed at
+  `f055051`.
 - HUD-003: Phase Label/Round Counter implemented on branch
   `work/hud-003-phase-label-round-counter` at `52a3605`; cherry-picked into
   `main` at `ce76a88`; story-done committed at `a3bbf92`.
@@ -176,14 +175,13 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. KW-005
-2. BOARD-003
-3. HAND-UI-002
-4. CA-004
-5. BOARD-004
-6. CA-005
-7. COMBAT-001
-8. OBJECTIVE-001
+1. BOARD-003
+2. HAND-UI-002
+3. CA-004
+4. BOARD-004
+5. CA-005
+6. COMBAT-001
+7. OBJECTIVE-001
 
 Run only one story-done at a time.
 
@@ -194,7 +192,6 @@ Run only one story-done at a time.
 - COMBAT-001: implemented and integrated; pending story-done.
 - OBJECTIVE-001: implemented and integrated; pending story-done.
 - BOARD-004: implemented and integrated; pending story-done.
-- KW-005: implemented and integrated; pending story-done.
 - BOARD-003: implemented and integrated; pending story-done.
 - HAND-UI-002: implemented and integrated; pending story-done.
 - AUC-004: do not start yet; story depends on economy-system story-005 and has
@@ -207,7 +204,7 @@ Run only one story-done at a time.
 Batch launched:
 None currently active.
 
-KW-005 story-done is the active serialized closure. Do not launch another
+BOARD-003 story-done is the active serialized closure. Do not launch another
 story-done until it returns.
 
 ## Resolved Design Gates
