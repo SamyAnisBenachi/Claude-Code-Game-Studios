@@ -17,7 +17,7 @@ Resolve these before beginning art production.
 | **F-CS-1** Art Bible §4.4 is missing Ecaflip and Sadida class colors; Eniripsa is listed but not a playable class in this game. AD proposed Ecaflip `#D4A017`, Sadida `#5C7A3E`; TA canonical Wakfu references: Ecaflip `#E8C020`, Sadida `#5C9E3A`. AD must confirm hex and patch §4.4 before any Ecaflip/Sadida art begins. | ASSET-098, 099, 101, 102, 103, 104, 105, 110, 111 | AD patches art bible §4.4 |
 | **F-CS-2** Figurines at 192×288 × 5 frames do not fit in any existing atlas. A new `atlas_figurines` (1024×1024, ~4 MB heap) is recommended. | ASSET-094 to 099 | AD + TA budget approval |
 | **F-CS-3** Class Picker Panel Background dimensions depend on the UX spec. Do not begin art production until `/ux-design class-picker` is run and canvas dimensions are locked. | ASSET-112 | Run `/ux-design class-picker` |
-| **F-CS-4** Rollback Zero-Reserve Warning may be a pure `bevy_ui` node (zero asset budget). Confirm with UI programmer before producing ASSET-119. | ASSET-119 | UI programmer decision |
+| **F-CS-4** ✅ RESOLVED — Rollback Zero-Reserve Warning is a pure `bevy_ui` Node (zero asset budget). Background is flat solid `#E87C1E`; border is 1px top/bottom only; ⚠ glyph and warning text are `Text` nodes. No texture detail or gradient. ASSET-119 PNG cancelled. | ASSET-119 | ✅ Resolved |
 | **F-CS-5** Bevy 0.18 audio API uses `AudioPlayer` + `PlaybackSettings` — verify against 0.18 release notes before audio production. Same risk as hand-ui-assets.md FLAG-2. | ASSET-123 to 127 | Engine programmer verification |
 | **Silhouette test** Sadida token trio (ASSET-102, 103, 104) and all six class icons (ASSET-106 to 111) must pass the 64px / 32px silhouette-differentiation test before full art production begins. | ASSET-102, 103, 104, 106–111 | Art director sign-off |
 
@@ -704,26 +704,25 @@ Ankama Wakfu Krosmaga 2D game UI micro-glyph, 24×24px, diamond shape with bold 
 
 | Field | Value |
 |-------|-------|
-| Category | UI |
-| Dimensions | 160×24 px |
-| Format | PNG-32 straight alpha, sRGB 8-bit |
-| Naming | `ui_rollback_warning_panel_default_160x24.png` |
-| Atlas | `atlas_ui_hud` |
-| Frames | 1 (static backing panel; warning text is runtime `bevy_ui` Text node) |
-| Engine Notes | GDD: visible without hover. Spawn as persistent `Sprite` child of staged-card entity when `reserve == 0` AND Rollback is staged. *(F-CS-4: confirm with UI programmer if pure `bevy_ui` Node + BackgroundColor suffices — if so, this asset is zero-budget.)* |
+| Category | UI — bevy_ui Node (zero asset budget) |
+| Dimensions | 160×24 px logical (set via `Node { width, height }`) |
+| Format | N/A — no PNG required |
+| Naming | N/A |
+| Atlas | N/A |
+| Frames | N/A |
+| Engine Notes | **F-CS-4 RESOLVED — pure `bevy_ui` Node.** Background is flat solid `#E87C1E` → `BackgroundColor`. Border is 1px top/bottom only → `Node { border: UiRect { top: Val::Px(1.), bottom: Val::Px(1.), ..default() } }` + `BorderColor(#0D0D14)`. ⚠ glyph → `Text::new("⚠")` with Void text color. Warning text → sibling `Text` node with Ivory text color. No texture detail or gradient anywhere — zero asset budget. Spawn as `Node` child of staged-card entity (not `Sprite`); visible without hover when `reserve == 0` AND Rollback is staged. |
 
 **Visual Description:**
-A full-width horizontal strip (160×24 px) with Auction Amber `#E87C1E` background and Void `#0D0D14` thin 1px top/bottom border. Left: a small triangle warning glyph (⚠, ~14px) in Void. Right: warning text in Ivory `#F7F0DC`. Always-visible — never hover-triggered.
+A full-width horizontal strip (160×24 px) with Auction Amber `#E87C1E` background and Void `#0D0D14` thin 1px top/bottom border. Left: ⚠ glyph as `Text` node in Void. Right: warning text in Ivory `#F7F0DC`. Always-visible — never hover-triggered. Fully implementable as a `bevy_ui` Node hierarchy — no PNG asset needed.
 
 **Art Bible Anchors:**
 - §4: Auction Amber `#E87C1E` — warning/escalation color
 - §4: Ivory `#F7F0DC` text on saturated backgrounds
 - §1: inline visible warning is the correct hierarchy for time-pressure UI
 
-**Generation Prompt:**
-Ankama Wakfu Krosmaga 2D game UI inline warning strip, 160×24px, Auction Amber #E87C1E background, Void black #0D0D14 thin 1px top/bottom border, left-aligned small triangle warning icon in Void black, text "No reserve — Rollback will have no effect." in ivory #F7F0DC small legible font, flat, always-visible non-hover strip, white background — negative: modal popup, rounded corners, red background, 3D render
+**Generation Prompt:** N/A — zero-asset, bevy_ui implementation only.
 
-**Status:** Needed
+**Status:** No art needed — bevy_ui Node
 
 ---
 
