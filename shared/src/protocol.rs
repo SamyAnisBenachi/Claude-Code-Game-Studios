@@ -374,7 +374,7 @@ pub struct S2CCardAcquired {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct S2CShopSlots {
-    pub slots: Vec<CardId>,
+    pub slots: Vec<Option<CardId>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
