@@ -48,6 +48,10 @@ name = "hand_ui_fan_layout_formula_test"
 path = "../tests/unit/hand-ui/fan_layout_formula_test.rs"
 
 [[test]]
+name = "hand_ui_phase_state_machine_test"
+path = "../tests/unit/hand-ui/phase_state_machine_test.rs"
+
+[[test]]
 name = "hud_phase_label_round_counter_test"
 path = "../tests/unit/hud/phase_label_round_counter_test.rs"
 
