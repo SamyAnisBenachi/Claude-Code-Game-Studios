@@ -29,7 +29,8 @@ source of truth for story status.
 ## Live Windows Confirmed By User
 
 - CARD-ANIM-004 story-done: assumed launched after HAND-UI-001 closure.
-- CA-004 worker: assumed launched from the current orchestrator batch.
+- CA-004 worker: completed on branch `work/ca-004-refresh-cost` at `f26f738`;
+  cherry-picked into `main` at `5cb53a8`. Window can be cleared.
 - BOARD-004 worker: assumed launched from the current orchestrator batch.
 
 ## Tracker In-Progress But No Live Window Confirmed
@@ -88,6 +89,11 @@ None currently tracked here.
   `main` at `047aff9`. Local `hand_ui_fan_layout_formula_test`,
   `hand_ui_plugin_scaffold_test`, `cargo check -p client`, `cargo fmt -p client
   -- --check`, and `git diff --check` passed after integration.
+- CA-004: Manual Refresh Cost implemented on branch `work/ca-004-refresh-cost`
+  at `f26f738`; cherry-picked into `main` at `5cb53a8`. Local refresh-cost,
+  acquisition scaffold/draw/refresh suite, game-config defaults test,
+  `cargo check -p server`, `cargo fmt --all -- --check`, and `git diff --check`
+  passed after integration.
 - KW-004: STUN State implemented on branch `work/kw-004-stun-state` at
   `7543293`; cherry-picked into `main` at `b8b1287` because the branch was
   based before recent tracking and BOARD-002 commits. Local `stun_test`,
@@ -161,14 +167,15 @@ None currently tracked here.
 9. KW-005
 10. BOARD-003
 11. HAND-UI-002
+12. CA-004
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- CA-004 / CA-005: unblocked by CA-003 story-done; run readiness before launch.
-  CA-004 launched in the current batch. Do not launch CA-005 in parallel with
-  CA-004 because both likely touch card acquisition shop state/system files.
+- CA-004: implemented and integrated; pending story-done.
+- CA-005: unblocked by CA-003 story-done and CA-004 integration; run readiness
+  before launch.
 - KW-004: unblocked by KW-003 story-done; run readiness first because its story
   text may still contain stale ADR-018 Proposed/BLOCKED wording. Implemented and
   integrated; pending story-done.
@@ -189,11 +196,10 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- CA-004: `production/epics/card-acquisition/story-004-refresh-cost.md`
 - BOARD-004: `production/epics/board-lane-system/story-004-placement-occupancy.md`
 
 CARD-ANIM-004 story-done is the active serialized closure. Do not launch another
-story-done until it returns. Do not launch CA-005 until CA-004 is integrated.
+story-done until it returns.
 
 ## Resolved Design Gates
 
