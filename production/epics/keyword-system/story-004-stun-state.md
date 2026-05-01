@@ -1,7 +1,7 @@
 # Story 004: STUN State Management
 
 > **Epic**: Keyword System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -30,9 +30,9 @@
 
 *From GDD `design/gdd/keyword-system.md` Acceptance Criteria, Combat Keywords section:*
 
-- [ ] KW-015a: GIVEN a STUNned unit is in the path of an enemy attack in SS3 or SS6, WHEN the attack resolves, THEN the STUNned unit takes incoming damage according to the normal damage formula; it does not attack or advance
-- [ ] KW-015b: GIVEN a unit was STUNned during RESOLUTION R, WHEN RESOLUTION R+1 begins, THEN the STUN state is cleared; the unit participates in SS2, SS3, SS5, and SS6 normally
-- [ ] KW-034: GIVEN a HASTE unit has STUN applied in SS1, WHEN RESOLUTION proceeds, THEN the STUNned HASTE unit skips SS2, SS3, SS5, and SS6; HASTE does not partially override STUN
+- [x] KW-015a: GIVEN a STUNned unit is in the path of an enemy attack in SS3 or SS6, WHEN the attack resolves, THEN the STUNned unit takes incoming damage according to the normal damage formula; it does not attack or advance
+- [x] KW-015b: GIVEN a unit was STUNned during RESOLUTION R, WHEN RESOLUTION R+1 begins, THEN the STUN state is cleared; the unit participates in SS2, SS3, SS5, and SS6 normally
+- [x] KW-034: GIVEN a HASTE unit has STUN applied in SS1, WHEN RESOLUTION proceeds, THEN the STUNned HASTE unit skips SS2, SS3, SS5, and SS6; HASTE does not partially override STUN
 
 ---
 
@@ -102,7 +102,7 @@ if kw_state.stun_active { continue; } // skip all SS actions
 **Story Type**: Logic
 **Required evidence**: `tests/unit/keyword/stun_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -111,3 +111,10 @@ if kw_state.stun_active { continue; } // skip all SS actions
 - Depends on: Story 001 (scaffold)
 - Depends on: Story 003 (HASTE keyword, for KW-034 cross-test)
 - Unlocks: No direct story unlocks (STUN application is used by Story 016 displacement keywords for STUN-on-trap-traversal)
+
+## Completion Notes
+**Completed**: 2026-05-01
+**Criteria**: 3/3 passing (KW-015a, KW-015b, KW-034)
+**Deviations**: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01. Advisory only - story text still says ADR-018 is Proposed/BLOCKED while current architecture has ADR-018 Accepted. Advisory only - current `TR-KW-007` registry wording says "one-sub-step scope", while the GDD acceptance criteria, ADR-018, and implemented tests verify the intended one-RESOLUTION STUN lifecycle.
+**Test Evidence**: Logic unit test at `tests/unit/keyword/stun_test.rs`; executable wrapper at `server/tests/stun_test.rs`; `cargo test -p server --test stun_test` passed 4/4.
+**Code Review**: Skipped - lean mode.

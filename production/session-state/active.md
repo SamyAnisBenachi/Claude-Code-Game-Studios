@@ -929,3 +929,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: No `BOARD-002` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
 - Next recommended: Continue in-progress Board Story 003 Spawn Range Validation, or use the now-unlocked Board Story 006 CHARGE X bonus movement after readiness check.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/keyword-system/story-004-stun-state.md` - STUN State Management
+- Criteria: 3/3 passing; KW-015a, KW-015b, and KW-034 covered by `tests/unit/keyword/stun_test.rs`.
+- Test Evidence: `tests/unit/keyword/stun_test.rs`; executable suite `server/tests/stun_test.rs`; `cargo test -p server --test stun_test` passed 4/4.
+- Verification: `cargo check -p server` passed; `cargo check -p shared` passed. Worker commit `7543293` exists on `work/kw-004-stun-state`; main integration commit `b8b1287` is included in current `main`.
+- Notes: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01. Story text still said ADR-018 was Proposed/BLOCKED, while current architecture has ADR-018 Accepted. Current `TR-KW-007` registry wording says "one-sub-step scope", while the GDD acceptance criteria, ADR-018, and tests close the one-RESOLUTION STUN lifecycle.
+- Tech debt logged: None
+- Sprint status: No `KW-004` row exists in `production/sprint-status.yaml`; file left unchanged per user instruction.
+- Next recommended: Keyword Story 005 SHIELD Scope (`production/epics/keyword-system/story-005-shield-scope.md`) after readiness check, or continue the serialized story-done queue already in progress.
