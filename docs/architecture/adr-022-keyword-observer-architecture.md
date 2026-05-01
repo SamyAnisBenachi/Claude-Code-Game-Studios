@@ -14,8 +14,8 @@ Accepted
 | **Domain** | Core / ECS — Observer Pattern |
 | **Knowledge Risk** | HIGH — Bevy 0.17 introduced the Event/Observer split (post-cutoff); Bevy 0.18 stable |
 | **References Consulted** | `docs/engine-reference/bevy/breaking-changes.md`, `docs/engine-reference/bevy/current-best-practices.md`, `docs/engine-reference/bevy/VERSION.md`, ADR-017, ADR-018 |
-| **Post-Cutoff APIs Used** | `#[derive(Event)]` + `world.trigger_targets()` / `commands.trigger_targets()` + `app.observe()` (Bevy 0.17+ Observer split); `Trigger<T>` as observer trigger param type (Bevy 0.17+); deferred `commands.trigger_targets()` for DRAFT-phase dispatch |
-| **Verification Resolved** | All 5 items resolved 2026-04-30 against `current-best-practices.md` and `breaking-changes.md`. **(1) `world.trigger_targets(event, entity)` CONFIRMED** as a valid `World` method in Bevy 0.18. It fires observers synchronously within the exclusive system call; `commands.trigger_targets()` is the deferred alternative and requires `world.flush()` — incompatible with synchronous RESOLUTION sub-step semantics. `world.trigger_targets()` is the correct path. **(2) `Trigger<T>` CONFIRMED** as the correct observer handler parameter type. `current-best-practices.md` explicitly uses `trigger: Trigger<UnitDied>`. Note: `breaking-changes.md` line 142 shows `On<T>` in a comment example — this is an inconsistency in the reference docs; `Trigger<T>` is the stable canonical form. All ADR handler signatures use `Trigger<T>` correctly. **(3) `ResMut<T>` CONFIRMED** usable inside Observer handlers. Standard system params work in observer handlers by Bevy design. The drain loop in `execute_ss4()` drops the `ChainDeathBuffer` borrow (via `pop_front()` returning an owned value) before `trigger_targets()` is called — no simultaneous borrow conflict. Validate with integration smoke test during first keyword implementation story. **(4) `MessageWriter<T>` CONFIRMED** usable inside Observer handlers by the same reasoning as item 3 — it is a standard system param; messages are buffered and no re-entrancy conflict arises. Validate with smoke test (fire `UnitDied`, assert `KeywordTriggered` message emitted). **(5) `commands.trigger_targets()` CONFIRMED** — `breaking-changes.md` line 139 lists `commands.trigger() / trigger_targets()`. `DraftPhaseEntered` must be registered with `app.add_message::<DraftPhaseEntered>()` in the RSM plugin (the emitter), not in `KeywordPlugin` (the reader) — `KeywordPlugin` only reads via `MessageReader<DraftPhaseEntered>`. |
+| **Post-Cutoff APIs Used** | `#[derive(Event)]` + `world.trigger_targets()` / `commands.trigger_targets()` + `app.observe()` (Bevy 0.17+ Observer split); `On<T>` as observer handler param type (Bevy 0.17+); deferred `commands.trigger_targets()` for DRAFT-phase dispatch |
+| **Verification Resolved** | All 5 items resolved 2026-04-30 (item 2 corrected 2026-05-01) against `breaking-changes.md`. **(1) `world.trigger_targets(event, entity)` CONFIRMED** as a valid `World` method in Bevy 0.18. It fires observers synchronously within the exclusive system call; `commands.trigger_targets()` is the deferred alternative and requires `world.flush()` — incompatible with synchronous RESOLUTION sub-step semantics. `world.trigger_targets()` is the correct path. **(2) `On<T>` CONFIRMED** as the correct observer handler parameter type for Bevy 0.17+. `breaking-changes.md` line 140 (Bevy 0.17 section) explicitly uses `On<UnitDied>` in the observer example. `current-best-practices.md` line 86 previously showed `Trigger<UnitDied>` — that was a stale value; the file has been corrected to `On<T>`. All ADR handler signatures updated to `On<T>`. **(3) `ResMut<T>` CONFIRMED** usable inside Observer handlers. Standard system params work in observer handlers by Bevy design. The drain loop in `execute_ss4()` drops the `ChainDeathBuffer` borrow (via `pop_front()` returning an owned value) before `trigger_targets()` is called — no simultaneous borrow conflict. Validate with integration smoke test during first keyword implementation story. **(4) `MessageWriter<T>` CONFIRMED** usable inside Observer handlers by the same reasoning as item 3 — it is a standard system param; messages are buffered and no re-entrancy conflict arises. Validate with smoke test (fire `UnitDied`, assert `KeywordTriggered` message emitted). **(5) `commands.trigger_targets()` CONFIRMED** — `breaking-changes.md` line 139 lists `commands.trigger() / trigger_targets()`. `DraftPhaseEntered` must be registered with `app.add_message::<DraftPhaseEntered>()` in the RSM plugin (the emitter), not in `KeywordPlugin` (the reader) — `KeywordPlugin` only reads via `MessageReader<DraftPhaseEntered>`. |
 
 ## ADR Dependencies
 
@@ -194,7 +194,7 @@ impl Plugin for KeywordPlugin {
 ```rust
 // Example guard pattern (on_unit_died):
 pub fn on_unit_died(
-    trigger: Trigger<UnitDied>,          // Trigger<T>, not On<T> — see Verification Required (2)
+    trigger: On<UnitDied>,
     units: Query<(&UnitKeywordState, &UnitBoardOwner)>,
     mut chain_buffer: ResMut<ChainDeathBuffer>,   // see Verification Required (3)
     mut keyword_triggered: MessageWriter<KeywordTriggered>, // see Verification Required (4)
@@ -212,26 +212,26 @@ Handler signatures for the other four:
 // server/feature/keyword/observers.rs
 
 pub fn on_unit_appeared(
-    trigger: Trigger<UnitAppeared>,
+    trigger: On<UnitAppeared>,
     units: Query<(&UnitKeywordState, &CardId)>,
     card_catalog: Res<CardCatalog>,
     mut keyword_triggered: MessageWriter<KeywordTriggered>,
 ) { ... }
 
 pub fn on_final_blow_dealt(
-    trigger: Trigger<FinalBlowDealt>,
+    trigger: On<FinalBlowDealt>,
     units: Query<&UnitKeywordState>,
     mut keyword_triggered: MessageWriter<KeywordTriggered>,
 ) { ... }
 
 pub fn on_start_of_turn(
-    trigger: Trigger<StartOfTurnTriggered>,
+    trigger: On<StartOfTurnTriggered>,
     units: Query<(&UnitKeywordState, &UnitBoardOwner)>,
     // economy / hand resources per card effect
 ) { ... }
 
 pub fn on_end_of_turn(
-    trigger: Trigger<EndOfTurnTriggered>,
+    trigger: On<EndOfTurnTriggered>,
     units: Query<(&UnitKeywordState, &UnitBoardOwner)>,
     mut keyword_triggered: MessageWriter<KeywordTriggered>,
 ) { ... }
@@ -402,7 +402,7 @@ commands.trigger_targets(StartOfTurnTriggered, entity);
 | Guard check omitted in a new observer handler | MEDIUM | Effects over-fire for units without the keyword (silent) | Code review checklist: every observer handler must have guard as first operation |
 | `ChainDeathBuffer` not cleared before SS4 starts | LOW | Stale deaths pollute current round | `execute_ss4()` clears at entry before `extend()`; integration test asserts buffer is empty at RESOLUTION end |
 | `world.trigger_targets()` does not exist in Bevy 0.18 (requires `commands + flush`) | LOW | Compile error blocking all keyword implementation | RESOLVED 2026-04-30 — `world.trigger_targets()` confirmed as valid `World` method; synchronous exclusive-system path is correct |
-| `Trigger<T>` is not the correct param type for observers in Bevy 0.18 | LOW | Compile error | RESOLVED 2026-04-30 — `Trigger<T>` confirmed correct; `On<T>` in breaking-changes.md is a doc inconsistency |
+| Observer handler param type: `On<T>` vs `Trigger<T>` | LOW | Compile error | RESOLVED 2026-05-01 — `On<T>` confirmed correct per `breaking-changes.md` line 140 (Bevy 0.17 section). `Trigger<T>` is the pre-0.17 form. All handler signatures and reference docs updated. |
 | `ResMut<T>` or `MessageWriter<T>` not usable inside Observer handler from exclusive system | LOW | Compile error or silent message loss | RESOLVED architecturally 2026-04-30 — standard system params work in observers; sequential borrow pattern in drain loop is safe. Smoke test required during first keyword story: fire `UnitDied`, assert `KeywordTriggered` emitted |
 | `commands.trigger_targets()` flush timing leaves a gap before START OF TURN effects read | LOW | State mismatch on START OF TURN effects | Schedule `apply_deferred` after `start_of_turn_dispatch_system` in system set; verify with integration test |
 

@@ -83,7 +83,7 @@ fn handle_placement(mut reader: MessageReader<UnitPlaced>, /* ... */) {
 #[derive(Event)]
 struct UnitDied { attacker: Entity }
 
-commands.entity(unit_entity).observe(|trigger: Trigger<UnitDied>, /* ... */| {
+commands.entity(unit_entity).observe(|trigger: On<UnitDied>, /* ... */| {
     // DEATH trigger — fires immediately when unit HP reaches 0
 });
 ```
