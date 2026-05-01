@@ -1,7 +1,7 @@
 # Story 001: HandUiPlugin Scaffold — Pre-Pooled Entity Spawning
 
 > **Epic**: Hand UI
-> **Status**: Ready
+> **Status**: In Progress
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
