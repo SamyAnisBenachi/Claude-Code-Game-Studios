@@ -716,3 +716,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `S3-03` set to `done` in `production/sprint-status.yaml`; existing in-progress claims for `S3-04`, `S3-06`, and `S3-08` preserved.
 - Next recommended: S3-05 RSM Story 4: Win Condition and Game Over at `production/epics/round-state-machine/story-004-win-condition-and-game-over.md`; S3-04 and S3-06 are still in progress.
+
+## Session Extract - /story-done 2026-05-01
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-acquisition/story-001-state-scaffold.md` - State Scaffold: ShopStates, PlayerHands, Phase Machine
+- Criteria: 3/3 passing; CA1, CA2, and CA7 verified against `process_purchase_card`, `process_refresh_shop_request`, `ShopStates`, and `PlayerHands`.
+- Test Evidence: `tests/unit/card_acquisition/state_scaffold_test.rs`; `cargo test -p server --test card_acquisition_state_scaffold_test` -> 6 passed, 0 failed.
+- Notes: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01. Current implementation schedules CA after concrete systems `advance_phase` and `auction_tick_system`; named `RsmSet::Tick` and `AuctionSet::Tick` sets are not present in the current codebase, but behavior matches the intended order.
+- Tech debt logged: None
+- Sprint status: `CA-001` set to `done` in `production/sprint-status.yaml`; existing in-progress claims preserved.
+- Next recommended: S3-05 RSM Story 4: Win Condition and Game Over at `production/epics/round-state-machine/story-004-win-condition-and-game-over.md`; Card Acquisition Story 002 is also unlocked at `production/epics/card-acquisition/story-002-draft-initial.md` if pulling CA work forward.

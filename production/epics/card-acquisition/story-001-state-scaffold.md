@@ -1,7 +1,7 @@
 # Story 001: State Scaffold — ShopStates, PlayerHands, Phase Machine
 
 > **Epic**: Card Acquisition
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M2)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -147,7 +147,7 @@ app.configure_sets(Update, CardAcquisitionSet::Tick.after(AuctionSet::Tick));
 **Story Type**: Logic
 **Required evidence**: `tests/unit/card_acquisition/state_scaffold_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Verified - `cargo test -p server --test card_acquisition_state_scaffold_test` passed on 2026-05-01
 
 ---
 
@@ -155,3 +155,13 @@ app.configure_sets(Update, CardAcquisitionSet::Tick.after(AuctionSet::Tick));
 
 - Depends on: None — this is the foundational story for the epic
 - Unlocks: Stories 002, 003, 005, 006 (all depend on `ShopStates` + `PlayerHands` existing)
+
+## Completion Notes
+
+**Completed**: 2026-05-01
+**Criteria**: 3/3 passing (CA1, CA2, CA7)
+**Deviations**:
+- Advisory: story manifest v2026-04-30 is older than current control manifest v2026-05-01.
+- Advisory: implementation orders `CardAcquisitionSet::Tick` after concrete systems `advance_phase` and `auction_tick_system`; the story/control text names `RsmSet::Tick` and `AuctionSet::Tick`, which do not exist in the current codebase. Behavior matches the intended scheduling order.
+**Test Evidence**: Logic unit test at `tests/unit/card_acquisition/state_scaffold_test.rs`; `cargo test -p server --test card_acquisition_state_scaffold_test` passed 6/6.
+**Code Review**: Skipped - Lean mode.
