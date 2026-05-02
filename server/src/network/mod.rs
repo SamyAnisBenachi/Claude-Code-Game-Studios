@@ -1,16 +1,15 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
-use crate::core::rsm::{advance_phase, tick_disconnect_timers, PlayerHeartbeat};
+use crate::core::rsm::{advance_phase, tick_disconnect_timers};
 use crate::core::session::PlayerConnectionMap;
 use crate::lobby::handler::handle_class_choice;
 use bevy::prelude::*;
 use lightyear::prelude::server::*;
 use lightyear::prelude::*;
 use shared::protocol::{
-    self, C2SAcknowledgeResult, C2SActivateCard, C2SHeartbeat, C2SHello, C2SSignalReady,
-    C2SSubmitPlacement, ProtocolChannel, ProtocolDirection, ProtocolRegistry, ReliableChannel,
-    S2CObjectiveIdentities,
+    self, C2SAcknowledgeResult, C2SActivateCard, C2SHello, C2SSignalReady, C2SSubmitPlacement,
+    ProtocolChannel, ProtocolDirection, ProtocolRegistry, ReliableChannel, S2CObjectiveIdentities,
 };
 
 pub mod rsm_dispatch;
@@ -26,7 +25,6 @@ impl Plugin for ServerNetworkPlugin {
         register_lightyear_protocol(app);
 
         app.init_resource::<PlayerConnectionMap>()
-            .add_message::<PlayerHeartbeat>()
             .add_systems(Startup, open_websocket_server)
             .add_systems(
                 Update,
@@ -115,16 +113,12 @@ fn receive_c2s_messages(
     signal_ready: Query<&mut MessageReceiver<C2SSignalReady>>,
     submit_placement: Query<&mut MessageReceiver<C2SSubmitPlacement>>,
     acknowledge_result: Query<&mut MessageReceiver<C2SAcknowledgeResult>>,
-    heartbeat: Query<(&RemoteId, &mut MessageReceiver<C2SHeartbeat>)>,
-    connections: Option<Res<PlayerConnectionMap>>,
-    mut heartbeat_writer: MessageWriter<PlayerHeartbeat>,
 ) {
     log_received("C2SHello", hello);
     log_received("C2SActivateCard", activate_card);
     log_received("C2SSignalReady", signal_ready);
     log_received("C2SSubmitPlacement", submit_placement);
     log_received("C2SAcknowledgeResult", acknowledge_result);
-    forward_heartbeats(heartbeat, connections.as_deref(), &mut heartbeat_writer);
 }
 
 fn log_received<M: std::fmt::Debug + Send + Sync + 'static>(
@@ -134,24 +128,6 @@ fn log_received<M: std::fmt::Debug + Send + Sync + 'static>(
     for mut receiver in receivers.iter_mut() {
         for msg in receiver.receive() {
             debug!("Received {}: {:?}", label, msg);
-        }
-    }
-}
-
-fn forward_heartbeats(
-    mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SHeartbeat>)>,
-    connections: Option<&PlayerConnectionMap>,
-    heartbeats: &mut MessageWriter<PlayerHeartbeat>,
-) {
-    for (remote, mut receiver) in receivers.iter_mut() {
-        for msg in receiver.receive() {
-            debug!("Received C2SHeartbeat: {:?}", msg);
-            let Some(player) =
-                connections.and_then(|connections| connections.0.get(&remote.0).copied())
-            else {
-                continue;
-            };
-            heartbeats.write(PlayerHeartbeat { player });
         }
     }
 }

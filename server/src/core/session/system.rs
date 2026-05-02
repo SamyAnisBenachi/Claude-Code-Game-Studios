@@ -6,18 +6,21 @@ use bevy::prelude::*;
 use lightyear::prelude::*;
 use shared::card::ClassId;
 use shared::protocol::{
-    self, C2SConfirmClass, C2SCreateRoom, C2SJoinRoom, C2SSelectClass, ConfirmClassRejectedReason,
-    CreateRoomRejectedReason, GameMode, JoinRejectedReason, ReliableChannel, S2CClassLocked,
-    S2CClassesRevealed, S2CConfirmClassRejected, S2CCreateRoomRejected, S2CJoinAck,
-    S2CJoinRejected, S2CRoomCreated, S2CSessionCancelled, S2CSlotUpdated,
+    self, C2SConfirmClass, C2SCreateRoom, C2SHeartbeat, C2SJoinRoom, C2SSelectClass,
+    ConfirmClassRejectedReason, CreateRoomRejectedReason, GameMode, JoinRejectedReason,
+    ReliableChannel, S2CClassLocked, S2CClassesRevealed, S2CConfirmClassRejected,
+    S2CCreateRoomRejected, S2CJoinAck, S2CJoinRejected, S2CRoomCreated, S2CSessionCancelled,
+    S2CSlotUpdated,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
 
+use crate::core::rsm::PlayerHeartbeat;
 use crate::core::session::{
     build_session_config, ActiveSessions, ClassPreviews, ClassSelections, LobbyDeadline,
     LobbyHeartbeats, LobbyState, PlayerConnectionMap, RoomCode, RoomSession, RoomSessions,
-    SessionId, SessionNetworkOutbox, SessionReady, SessionSlot, SessionSlots,
+    SessionCancelledReason, SessionId, SessionNetworkOutbox, SessionReady, SessionSlot,
+    SessionSlots,
 };
 use crate::foundation::config::GameConfig;
 use crate::foundation::rng::ServerRng;
@@ -122,12 +125,15 @@ pub fn evaluate_session_ready(
     let rng_factory = rng_factory.as_deref().copied().unwrap_or_default();
     let Ok(server_rng) = rng_factory.create() else {
         commands.insert_resource(LobbyState::LobbyCancelled);
+        let recipients = occupied_players(&slots);
         broadcast_session_cancelled(
             &server,
             sender.as_mut(),
             connections.as_deref(),
             outbox.as_deref_mut(),
-            crate::core::session::SessionCancelledReason::RngInitFailure,
+            SessionCancelledReason::RngInitFailure,
+            &recipients,
+            None,
         );
         return;
     };
@@ -295,6 +301,245 @@ pub fn handle_confirm_class(
             }
         }
     }
+}
+
+pub fn handle_lobby_disconnect(
+    trigger: On<Add, Disconnected>,
+    mut commands: Commands,
+    clients: Query<&RemoteId>,
+    connections: Res<PlayerConnectionMap>,
+    mut rooms: ResMut<RoomSessions>,
+    mut active_sessions: ResMut<ActiveSessions>,
+    mut lobby_state: Option<ResMut<LobbyState>>,
+    slots: Option<Res<SessionSlots>>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
+    mut outbox: Option<ResMut<SessionNetworkOutbox>>,
+) {
+    // Lightyear 0.26.4 reports disconnects by adding the `Disconnected`
+    // marker component to the connection entity; `RemoteId` stores the `PeerId`.
+    let Ok(remote) = clients.get(trigger.entity) else {
+        return;
+    };
+    let Some(player_id) = connections.0.get(&remote.0).copied() else {
+        return;
+    };
+
+    let players = if rooms.len() == 0 {
+        cancel_global_lobby(
+            lobby_state.as_deref_mut(),
+            slots.as_deref(),
+            &mut active_sessions,
+            Some(player_id),
+        )
+    } else {
+        cancel_lobby_for_player(&mut rooms, &mut active_sessions, player_id)
+    };
+
+    let Some(players) = players else {
+        return;
+    };
+
+    cancel_lobby_resources(&mut commands, lobby_state.as_deref_mut());
+    broadcast_session_cancelled(
+        &server,
+        sender.as_mut(),
+        Some(&connections),
+        outbox.as_deref_mut(),
+        SessionCancelledReason::PlayerDisconnected,
+        &players,
+        Some(player_id),
+    );
+}
+
+/// Sole drainer for `MessageReceiver<C2SHeartbeat>`.
+pub fn handle_lobby_heartbeat(
+    time: Res<Time>,
+    connections: Res<PlayerConnectionMap>,
+    active_sessions: Res<ActiveSessions>,
+    mut rooms: ResMut<RoomSessions>,
+    mut lobby_heartbeats: Option<ResMut<LobbyHeartbeats>>,
+    mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SHeartbeat>)>,
+    mut heartbeats: MessageWriter<PlayerHeartbeat>,
+) {
+    let now = time.elapsed().as_secs_f64();
+
+    for (remote, mut receiver) in receivers.iter_mut() {
+        for msg in receiver.receive() {
+            debug!("Received C2SHeartbeat: {:?}", msg);
+            let Some(player_id) = connections.0.get(&remote.0).copied() else {
+                continue;
+            };
+
+            heartbeats.write(PlayerHeartbeat { player: player_id });
+
+            if let Some(heartbeats) = lobby_heartbeats.as_deref_mut() {
+                heartbeats.0.insert(player_id, now);
+            }
+
+            let Some(session_id) = active_sessions.0.get(&player_id).copied() else {
+                continue;
+            };
+            let Some(session) = rooms.get_mut(session_id) else {
+                continue;
+            };
+            if matches!(
+                session.state,
+                LobbyState::LobbyWaiting | LobbyState::LobbyReady
+            ) {
+                session.heartbeats.0.insert(player_id, now);
+            }
+        }
+    }
+}
+
+pub fn tick_lobby_heartbeats(
+    mut commands: Commands,
+    time: Res<Time>,
+    config: Option<Res<GameConfig>>,
+    mut rooms: ResMut<RoomSessions>,
+    mut active_sessions: ResMut<ActiveSessions>,
+    mut lobby_state: Option<ResMut<LobbyState>>,
+    slots: Option<Res<SessionSlots>>,
+    heartbeats: Option<Res<LobbyHeartbeats>>,
+    connections: Option<Res<PlayerConnectionMap>>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
+    mut outbox: Option<ResMut<SessionNetworkOutbox>>,
+) {
+    let now = time.elapsed().as_secs_f64();
+    let timeout = config
+        .as_ref()
+        .map(|config| config.lobby_heartbeat_timeout_seconds)
+        .unwrap_or_else(|| shared::config::GameConfig::default().lobby_heartbeat_timeout_seconds);
+
+    let Some((players, timed_out_player)) = find_lobby_heartbeat_timeout(
+        &rooms,
+        &active_sessions,
+        lobby_state.as_deref(),
+        slots.as_deref(),
+        heartbeats.as_deref(),
+        now,
+        f64::from(timeout),
+    )
+    .and_then(|timed_out_player| {
+        if rooms.len() == 0 {
+            cancel_global_lobby(
+                lobby_state.as_deref_mut(),
+                slots.as_deref(),
+                &mut active_sessions,
+                Some(timed_out_player),
+            )
+            .map(|players| (players, timed_out_player))
+        } else {
+            cancel_lobby_for_player(&mut rooms, &mut active_sessions, timed_out_player)
+                .map(|players| (players, timed_out_player))
+        }
+    }) else {
+        return;
+    };
+
+    cancel_lobby_resources(&mut commands, lobby_state.as_deref_mut());
+    broadcast_session_cancelled(
+        &server,
+        sender.as_mut(),
+        connections.as_deref(),
+        outbox.as_deref_mut(),
+        SessionCancelledReason::HeartbeatTimeout,
+        &players,
+        Some(timed_out_player),
+    );
+}
+
+pub fn lobby_timeout_check(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut rooms: ResMut<RoomSessions>,
+    mut active_sessions: ResMut<ActiveSessions>,
+    mut lobby_state: Option<ResMut<LobbyState>>,
+    slots: Option<Res<SessionSlots>>,
+    selections: Option<Res<ClassSelections>>,
+    deadline: Option<Res<LobbyDeadline>>,
+    connections: Option<Res<PlayerConnectionMap>>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
+    mut outbox: Option<ResMut<SessionNetworkOutbox>>,
+) {
+    let now = time.elapsed().as_secs_f64();
+
+    let players = if rooms.len() == 0 {
+        if !global_lobby_deadline_expired(
+            lobby_state.as_deref(),
+            slots.as_deref(),
+            selections.as_deref(),
+            deadline.as_deref().copied(),
+            now,
+        ) {
+            return;
+        }
+
+        cancel_global_lobby(
+            lobby_state.as_deref_mut(),
+            slots.as_deref(),
+            &mut active_sessions,
+            None,
+        )
+    } else {
+        find_lobby_timeout(&rooms, now).and_then(|session_id| {
+            cancel_lobby_by_session(&mut rooms, &mut active_sessions, session_id)
+        })
+    };
+
+    let Some(players) = players else {
+        return;
+    };
+
+    cancel_lobby_resources(&mut commands, lobby_state.as_deref_mut());
+    broadcast_session_cancelled(
+        &server,
+        sender.as_mut(),
+        connections.as_deref(),
+        outbox.as_deref_mut(),
+        SessionCancelledReason::LobbyTimeout,
+        &players,
+        None,
+    );
+}
+
+pub fn cancel_lobby_for_player(
+    rooms: &mut RoomSessions,
+    active_sessions: &mut ActiveSessions,
+    player_id: PlayerId,
+) -> Option<Vec<PlayerId>> {
+    let session_id = active_sessions.0.get(&player_id).copied()?;
+    cancel_lobby_by_session(rooms, active_sessions, session_id)
+}
+
+pub fn cancel_lobby_by_session(
+    rooms: &mut RoomSessions,
+    active_sessions: &mut ActiveSessions,
+    session_id: SessionId,
+) -> Option<Vec<PlayerId>> {
+    let session = rooms.get_mut(session_id)?;
+    if !matches!(
+        session.state,
+        LobbyState::LobbyWaiting | LobbyState::LobbyReady
+    ) {
+        return None;
+    }
+
+    let players = occupied_players(&session.slots);
+    if players.is_empty() {
+        return None;
+    }
+
+    session.state = LobbyState::LobbyCancelled;
+    session.heartbeats.0.clear();
+    for player in &players {
+        active_sessions.0.remove(player);
+    }
+
+    Some(players)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -597,6 +842,123 @@ fn occupied_players(slots: &SessionSlots) -> Vec<PlayerId> {
     slots.0.iter().filter_map(|slot| slot.player).collect()
 }
 
+fn find_lobby_heartbeat_timeout(
+    rooms: &RoomSessions,
+    active_sessions: &ActiveSessions,
+    lobby_state: Option<&LobbyState>,
+    slots: Option<&SessionSlots>,
+    heartbeats: Option<&LobbyHeartbeats>,
+    now: f64,
+    timeout_seconds: f64,
+) -> Option<PlayerId> {
+    if rooms.len() == 0 {
+        if lobby_state != Some(&LobbyState::LobbyWaiting) {
+            return None;
+        }
+        let slots = slots?;
+        let heartbeats = heartbeats?;
+        return occupied_players(slots).into_iter().find(|player| {
+            active_sessions.0.contains_key(player)
+                && heartbeats
+                    .0
+                    .get(player)
+                    .map(|last_seen| now - *last_seen > timeout_seconds)
+                    .unwrap_or(true)
+        });
+    }
+
+    rooms.session_ids().into_iter().find_map(|session_id| {
+        let session = rooms.get(session_id)?;
+        if session.state != LobbyState::LobbyWaiting {
+            return None;
+        }
+        occupied_players(&session.slots).into_iter().find(|player| {
+            session
+                .heartbeats
+                .0
+                .get(player)
+                .map(|last_seen| now - *last_seen > timeout_seconds)
+                .unwrap_or(true)
+        })
+    })
+}
+
+fn find_lobby_timeout(rooms: &RoomSessions, now: f64) -> Option<SessionId> {
+    rooms.session_ids().into_iter().find(|session_id| {
+        rooms
+            .get(*session_id)
+            .map(|session| {
+                session.state == LobbyState::LobbyWaiting
+                    && now > session.lobby_deadline.0
+                    && !all_slots_locked(&session.slots)
+            })
+            .unwrap_or(false)
+    })
+}
+
+fn global_lobby_deadline_expired(
+    lobby_state: Option<&LobbyState>,
+    slots: Option<&SessionSlots>,
+    selections: Option<&ClassSelections>,
+    deadline: Option<LobbyDeadline>,
+    now: f64,
+) -> bool {
+    let (Some(LobbyState::LobbyWaiting), Some(slots), Some(selections), Some(deadline)) =
+        (lobby_state, slots, selections, deadline)
+    else {
+        return false;
+    };
+
+    now > deadline.0 && !f4_session_ready(slots, selections, now, deadline)
+}
+
+fn cancel_global_lobby(
+    lobby_state: Option<&mut LobbyState>,
+    slots: Option<&SessionSlots>,
+    active_sessions: &mut ActiveSessions,
+    required_player: Option<PlayerId>,
+) -> Option<Vec<PlayerId>> {
+    let Some(lobby_state) = lobby_state else {
+        return None;
+    };
+    if !matches!(
+        *lobby_state,
+        LobbyState::LobbyWaiting | LobbyState::LobbyReady
+    ) {
+        return None;
+    }
+
+    let slots = slots?;
+    let players = occupied_players(slots);
+    if players.is_empty() {
+        return None;
+    }
+    if let Some(required_player) = required_player {
+        if !players.contains(&required_player) || !active_sessions.0.contains_key(&required_player)
+        {
+            return None;
+        }
+    }
+
+    *lobby_state = LobbyState::LobbyCancelled;
+    for player in &players {
+        active_sessions.0.remove(player);
+    }
+
+    Some(players)
+}
+
+fn cancel_lobby_resources(commands: &mut Commands, lobby_state: Option<&mut LobbyState>) {
+    if let Some(lobby_state) = lobby_state {
+        *lobby_state = LobbyState::LobbyCancelled;
+    }
+    commands.remove_resource::<LobbyHeartbeats>();
+    commands.remove_resource::<ClassPreviews>();
+    commands.remove_resource::<ClassSelections>();
+    commands.remove_resource::<LobbyDeadline>();
+    commands.remove_resource::<SessionSlots>();
+}
+
 fn session_has_player(slots: &SessionSlots, player_id: PlayerId) -> bool {
     slots.0.iter().any(|slot| slot.player == Some(player_id))
 }
@@ -746,18 +1108,20 @@ fn broadcast_session_cancelled(
     sender: Option<&mut ServerMultiMessageSender>,
     connections: Option<&PlayerConnectionMap>,
     outbox: Option<&mut SessionNetworkOutbox>,
-    reason: crate::core::session::SessionCancelledReason,
+    reason: SessionCancelledReason,
+    recipients: &[PlayerId],
+    exclude_player: Option<PlayerId>,
 ) {
     let message = S2CSessionCancelled {
         reason: match reason {
-            crate::core::session::SessionCancelledReason::LobbyTimeout => {
+            SessionCancelledReason::LobbyTimeout => {
                 shared::protocol::SessionCancelledReason::LobbyTimeout
             }
-            crate::core::session::SessionCancelledReason::PlayerDisconnected
-            | crate::core::session::SessionCancelledReason::HeartbeatTimeout => {
+            SessionCancelledReason::PlayerDisconnected
+            | SessionCancelledReason::HeartbeatTimeout => {
                 shared::protocol::SessionCancelledReason::PlayerDisconnected
             }
-            crate::core::session::SessionCancelledReason::RngInitFailure => {
+            SessionCancelledReason::RngInitFailure => {
                 shared::protocol::SessionCancelledReason::ServerRngFail
             }
         },
@@ -777,7 +1141,14 @@ fn broadcast_session_cancelled(
         return;
     };
 
-    let target_peers = connections.0.keys().copied().collect::<Vec<_>>();
+    let target_peers = connections
+        .0
+        .iter()
+        .filter_map(|(peer_id, player_id)| {
+            (recipients.contains(player_id) && Some(*player_id) != exclude_player)
+                .then_some(*peer_id)
+        })
+        .collect::<Vec<_>>();
     if target_peers.is_empty() {
         return;
     }
