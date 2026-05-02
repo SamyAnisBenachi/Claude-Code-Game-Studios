@@ -1,13 +1,20 @@
 use bevy::prelude::*;
 use lightyear::prelude::{NetworkTarget, Replicate};
 use shared::protocol::DraftPhase;
+use shared::session::PlayerId;
 
 use crate::core::rsm::{DraftStarted, GameOverEmitted};
+use crate::core::rsm::{RoundPhase, RoundState};
 use crate::core::session::SessionConfig;
+use crate::feature::acquisition::{hand_push, PlayerHands};
 use crate::feature::prism::{
     AuditLog, DiscardLog, PrismCollected, PrismLaneKey, PrismPresence, PrismState, MAX_PLAYERS,
     PRISM_LANE_COUNT,
 };
+use crate::foundation::config::CardCatalog;
+
+const PRISM_STRIKE_CARD_KEY: &str = "prism_strike";
+const PRISM_RESERVE_CARD_KEY: &str = "prism_reserve";
 
 /// Initializes session-scoped Prism resources and replicated presence entities.
 pub fn initialize_prism_session(
@@ -66,17 +73,148 @@ pub fn cleanup_prism_session(
     commands.remove_resource::<AuditLog>();
 }
 
-/// Scaffold Prism resolver.
+/// Resolves deterministic Prism lane rewards for Lanes 1/2/4/5.
 ///
-/// Reward routing, stale-message discard, RNG draws, and respawn mutation land in
-/// follow-up Prism stories. This scaffold intentionally drains no-op collection
-/// input without touching Economy state, preserving existing collected flags when
-/// the buffer is empty.
+/// Lane 3 RNG draws, hand-full network notification, and full-set respawn are
+/// implemented by later Prism stories. This resolver still drains all collection
+/// input so stale messages cannot leak into a later frame.
 pub fn resolve_prism_draws(
-    _prism_state: Option<ResMut<PrismState>>,
-    _discard_log: Option<ResMut<DiscardLog>>,
+    mut prism_state: Option<ResMut<PrismState>>,
+    mut hands: Option<ResMut<PlayerHands>>,
+    card_catalog: Option<Res<CardCatalog>>,
+    mut discard_log: Option<ResMut<DiscardLog>>,
     _audit_log: Option<ResMut<AuditLog>>,
+    round_state: Option<Res<RoundState>>,
+    session: Option<Res<SessionConfig>>,
+    mut prism_presence: Query<(&PrismLaneKey, &mut PrismPresence)>,
     mut collected: MessageReader<PrismCollected>,
 ) {
-    for _message in collected.read() {}
+    let mut events = collected.read().copied().collect::<Vec<_>>();
+    if events.is_empty() {
+        return;
+    }
+
+    if !matches!(
+        round_state.as_deref().map(|state| state.phase),
+        Some(RoundPhase::Resolution)
+    ) {
+        return;
+    }
+
+    let (Some(prism_state), Some(hands), Some(card_catalog), Some(discard_log)) = (
+        prism_state.as_deref_mut(),
+        hands.as_deref_mut(),
+        card_catalog.as_deref(),
+        discard_log.as_deref_mut(),
+    ) else {
+        warn!("PrismCollected messages discarded because Prism resources are not ready");
+        return;
+    };
+
+    events.sort_by_key(|event| (event.player_id.0, event.lane));
+
+    for event in events {
+        let Some(player_index) = player_index(event.player_id, session.as_deref()) else {
+            warn!(
+                player_id = event.player_id.0,
+                lane = event.lane,
+                "PrismCollected discarded for unknown player"
+            );
+            continue;
+        };
+
+        let Some(lane_index) = lane_index(event.lane) else {
+            warn!(
+                player_id = event.player_id.0,
+                lane = event.lane,
+                "PrismCollected discarded for invalid lane"
+            );
+            continue;
+        };
+
+        if prism_state.collected[player_index][lane_index] {
+            warn!(
+                player_id = event.player_id.0,
+                lane = event.lane,
+                "stale PrismCollected discarded"
+            );
+            discard_log.entries.push((event.player_id, event.lane));
+            continue;
+        }
+
+        let card_key = match deterministic_lane_card_key(event.lane) {
+            Some(card_key) => card_key,
+            None => continue,
+        };
+        let Some(card_id) = card_id_for_key(card_catalog, card_key) else {
+            warn!(
+                player_id = event.player_id.0,
+                lane = event.lane,
+                card_key,
+                "PrismCollected discarded because static reward card is missing from CardCatalog"
+            );
+            continue;
+        };
+
+        prism_state.collected[player_index][lane_index] = true;
+        set_presence_collected(&mut prism_presence, event.player_id, event.lane, true);
+
+        if hand_push(hands, event.player_id, card_id).is_err() {
+            warn!(
+                player_id = event.player_id.0,
+                lane = event.lane,
+                card_id = card_id.0,
+                "Prism deterministic reward dropped because player hand is full"
+            );
+        }
+    }
+}
+
+fn deterministic_lane_card_key(lane: u8) -> Option<&'static str> {
+    match lane {
+        1 | 5 => Some(PRISM_STRIKE_CARD_KEY),
+        2 | 4 => Some(PRISM_RESERVE_CARD_KEY),
+        3 => None,
+        _ => None,
+    }
+}
+
+fn card_id_for_key(card_catalog: &CardCatalog, card_key: &str) -> Option<shared::card::CardId> {
+    let mut matches = card_catalog
+        .cards
+        .iter()
+        .filter_map(|(card_id, card)| (card.art_id == card_key).then_some(*card_id))
+        .collect::<Vec<_>>();
+    matches.sort_by_key(|card_id| card_id.0);
+    matches.first().copied()
+}
+
+fn lane_index(lane: u8) -> Option<usize> {
+    let index = usize::from(lane.checked_sub(1)?);
+    (index < PRISM_LANE_COUNT).then_some(index)
+}
+
+fn player_index(player: PlayerId, session: Option<&SessionConfig>) -> Option<usize> {
+    if let Some(session) = session {
+        return session
+            .players()
+            .take(MAX_PLAYERS)
+            .position(|candidate| candidate == player);
+    }
+
+    let index = usize::try_from(player.0.checked_sub(1)?).ok()?;
+    (index < MAX_PLAYERS).then_some(index)
+}
+
+fn set_presence_collected(
+    prism_presence: &mut Query<(&PrismLaneKey, &mut PrismPresence)>,
+    player: PlayerId,
+    lane: u8,
+    collected: bool,
+) {
+    for (key, mut presence) in prism_presence.iter_mut() {
+        if key.player == player && key.lane == lane {
+            presence.collected = collected;
+        }
+    }
 }

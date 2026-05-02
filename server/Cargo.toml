@@ -62,6 +62,10 @@ name = "prism_state_scaffold_test"
 path = "../tests/unit/prism/state_scaffold_test.rs"
 
 [[test]]
+name = "prism_deterministic_lanes_test"
+path = "../tests/unit/prism/deterministic_lanes_test.rs"
+
+[[test]]
 name = "card_acquisition_draft_initial_test"
 path = "../tests/integration/card_acquisition/draft_initial_test.rs"
 

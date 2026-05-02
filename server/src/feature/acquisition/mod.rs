@@ -11,7 +11,7 @@ pub mod plugin;
 pub mod state;
 pub mod system;
 
-pub use hands::{PlayerHands, MAX_HAND_SIZE};
+pub use hands::{hand_push, HandFullError, PlayerHands, MAX_HAND_SIZE};
 pub use messages::{ShopRefreshTrigger, ShopRefreshTriggered};
 pub use plugin::CardAcquisitionPlugin;
 pub use state::{PlayerShopState, ShopPhase, ShopStates};

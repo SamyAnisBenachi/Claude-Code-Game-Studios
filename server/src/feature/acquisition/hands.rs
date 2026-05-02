@@ -6,6 +6,9 @@ use shared::session::PlayerId;
 
 pub const MAX_HAND_SIZE: usize = 10;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandFullError;
+
 /// Server-authoritative player hand state.
 ///
 /// Card Acquisition writes this resource during DRAFT phases. Future Prism and
@@ -23,4 +26,17 @@ impl PlayerHands {
     pub fn push_card(&mut self, player: PlayerId, card_id: CardId) {
         self.hands.entry(player).or_default().push(card_id);
     }
+}
+
+pub fn hand_push(
+    hands: &mut PlayerHands,
+    player: PlayerId,
+    card_id: CardId,
+) -> Result<(), HandFullError> {
+    if hands.hand_len(player) >= MAX_HAND_SIZE {
+        return Err(HandFullError);
+    }
+
+    hands.push_card(player, card_id);
+    Ok(())
 }
