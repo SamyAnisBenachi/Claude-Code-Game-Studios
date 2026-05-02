@@ -1,7 +1,7 @@
 # Story 006: Network Dispatch Wiring
 
 > **Epic**: Round State Machine
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-04-29
@@ -128,7 +128,7 @@ Integration tests that verify the full `BroadcastPhaseChanged` → `S2CPhaseChan
 **Story Type**: Integration
 **Required evidence**: Integration tests — `tests/integration/rsm/rsm_network_dispatch_test.rs` must pass; paste `cargo test -p server rsm_network_dispatch` output into `tests/evidence/rsm-story-006-tests.md`; for RSM-38 if deferred, paste deferral explanation into `tests/evidence/rsm-story-006-rsm38-deferral.md`
 **Gate Level**: BLOCKING for RSM-26; ADVISORY for RSM-38
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -137,3 +137,15 @@ Integration tests that verify the full `BroadcastPhaseChanged` → `S2CPhaseChan
 - Depends on: Story 005 (disconnect handling) must be Done — full RSM system chain must be complete before network dispatch integration can be validated end-to-end
 - **Prerequisite (RSM-26 test harness)**: S1-05 (Lightyear 0.26 Verification Spike, `production/epics/workspace-and-shared-types/story-005-lightyear-verification-spike.md` or equivalent) must be Done before RSM-26 can be tested. The pattern for inspecting Lightyear's outbound message queue in a headless `World::new()` test is unverifiable until S1-05 establishes the verified Lightyear 0.26 API. Do not begin Story 006 implementation until S1-05 is Done.
 - Unlocks: Epic Definition of Done — all 38 RSM acceptance criteria covered; downstream epics (Economy System, Card Data & Pool, Board/Lane System) can begin implementing their `DraftStarted` / `ShopRefreshNeeded` / `PlacementPhaseEntered` / `ResolutionPhaseEntered` subscribers
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 11/11 passing.
+**Deviations**:
+- Advisory: story manifest version `2026-04-29` is older than current control manifest version `2026-05-01`.
+- Advisory: story-era timeout wording references `GameOverReason::Draw`; current GDD and implementation use `GameOverReason::ResolutionTimeout`.
+- Advisory: broader `S2CPhaseChanged.timer_duration_ms` `u32` vs `Option<u32>` design drift remains outside this dispatch-wiring closure.
+**Test Evidence**: `tests/integration/rsm/rsm_network_dispatch_test.rs` passed 3/3; `tests/evidence/rsm-story-006-tests.md` exists; `cargo check --workspace` passed.
+**Code Review**: Skipped - lean review mode.
+**Sprint Status**: Not updated - no `RSM-006` row exists in `production/sprint-status.yaml`.

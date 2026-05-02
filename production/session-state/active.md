@@ -1236,3 +1236,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no explicit `AUC-004` / Auction Story 004 row exists in `production/sprint-status.yaml`.
 - Next recommended: Auction Story 005 Accepted Bid (`production/epics/auction-system/story-005-accepted-bid-reservation.md`) after readiness check, or continue the serialized closure queue for already implemented stories.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/round-state-machine/story-006-network-dispatch-wiring.md` - Story 006: Network Dispatch Wiring
+- Criteria: 11/11 passing; RSM-26 dispatch and RSM-38 timeout coverage verified by `tests/integration/rsm/rsm_network_dispatch_test.rs`.
+- Test Evidence: `cargo test -p server --test rsm_network_dispatch_test` passed 3/3. `cargo check --workspace` passed. `tests/evidence/rsm-story-006-tests.md` exists.
+- Verification: `server/src/network/rsm_dispatch.rs` converts each `BroadcastPhaseChanged` into one `S2CPhaseChanged`, sends it with `ServerMultiMessageSender` on `ReliableChannel` to `NetworkTarget::All`, and preserves the test outbox seam. `server/src/network/mod.rs` schedules dispatch `.after(advance_phase)`. No Lightyear sender or legacy Bevy event API usage exists in `server/src/core/rsm/`.
+- Notes: Advisory only - story manifest version is `2026-04-29` while current control manifest is `2026-05-01`. Advisory only - story-era timeout wording references `Draw`, while current GDD and implementation use `ResolutionTimeout`. Advisory only - broader `S2CPhaseChanged.timer_duration_ms` `u32` vs `Option<u32>` design drift remains outside this dispatch-wiring closure. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no `RSM-006` row exists in `production/sprint-status.yaml`.
+- Next recommended: Card Pool Story 004 (`production/epics/card-data-pool/story-004-shop-refresh-subscriber-session-ready.md`) or GSS Story 006 (`production/epics/game-session-system/story-006-game-over-teardown.md`) after readiness check.
