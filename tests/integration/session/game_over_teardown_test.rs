@@ -1,0 +1,201 @@
+use std::collections::HashMap;
+
+use bevy::prelude::*;
+use server::core::rsm::{GameOverEmitted, RsmPlugin};
+use server::core::session::{
+    ActiveSessions, ClassPreviews, ClassSelections, DeferredMessage, GameSessionPlugin,
+    LobbyDeadline, LobbyHeartbeats, LobbyState, ReconnectTracker, RoomCode, RoomSession,
+    RoomSessions, SessionConfig, SessionId, SessionSlot, SessionSlots,
+};
+use server::foundation::rng::ServerRng;
+use shared::card::{CardId, ClassId};
+use shared::protocol::{GameMode, GameOverReason};
+use shared::session::PlayerId;
+use uuid::Uuid;
+
+fn player(id: u64) -> PlayerId {
+    PlayerId(id)
+}
+
+fn session_id(value: u128) -> SessionId {
+    SessionId(Uuid::from_u128(value))
+}
+
+fn session_slots() -> SessionSlots {
+    SessionSlots(vec![
+        SessionSlot {
+            index: 0,
+            team: 0,
+            player: Some(player(1)),
+            class: Some(ClassId::Iop),
+        },
+        SessionSlot {
+            index: 1,
+            team: 1,
+            player: Some(player(2)),
+            class: Some(ClassId::Cra),
+        },
+    ])
+}
+
+fn class_selections() -> ClassSelections {
+    ClassSelections(HashMap::from([
+        (player(1), ClassId::Iop),
+        (player(2), ClassId::Cra),
+    ]))
+}
+
+fn session_config() -> SessionConfig {
+    SessionConfig {
+        mode: GameMode::OneVOne,
+        player_count: 2,
+        team_map: HashMap::from([(player(1), 0), (player(2), 1)]),
+        class_map: HashMap::from([(player(1), ClassId::Iop), (player(2), ClassId::Cra)]),
+    }
+}
+
+fn room_sessions() -> RoomSessions {
+    let mut rooms = RoomSessions::default();
+    rooms.insert(RoomSession {
+        session_id: session_id(1),
+        room_code: RoomCode("ABCDEF".to_string()),
+        owner: player(1),
+        mode: GameMode::OneVOne,
+        state: LobbyState::GameActive,
+        slots: session_slots(),
+        lobby_deadline: LobbyDeadline(90.0),
+        heartbeats: LobbyHeartbeats(HashMap::from([(player(1), 0.0), (player(2), 0.0)])),
+    });
+    rooms
+}
+
+fn active_sessions() -> ActiveSessions {
+    ActiveSessions(HashMap::from([
+        (player(1), session_id(1)),
+        (player(2), session_id(1)),
+        (player(9), session_id(9)),
+    ]))
+}
+
+fn game_active_app() -> App {
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.add_plugins(RsmPlugin);
+    app.add_plugins(GameSessionPlugin);
+    app.insert_resource(LobbyState::GameActive);
+    app.insert_resource(session_config());
+    app.insert_resource(ServerRng::new());
+    app.insert_resource(session_slots());
+    app.insert_resource(class_selections());
+    app.insert_resource(ClassPreviews(HashMap::from([(player(1), ClassId::Iop)])));
+    app.insert_resource(LobbyDeadline(90.0));
+    app.insert_resource(LobbyHeartbeats(HashMap::from([
+        (player(1), 0.0),
+        (player(2), 0.0),
+    ])));
+    app.insert_resource(active_sessions());
+    app.insert_resource(room_sessions());
+    app
+}
+
+fn emit_game_over(app: &mut App) {
+    app.world_mut().write_message(GameOverEmitted {
+        loser: Some(player(1)),
+        round: 5,
+        reason: GameOverReason::ObjectivesDestroyed,
+    });
+    app.update();
+}
+
+#[test]
+fn game_over_teardown_removes_session_resources_and_broadcasts_result() {
+    let mut app = game_active_app();
+
+    emit_game_over(&mut app);
+
+    assert!(!app.world().contains_resource::<SessionConfig>());
+    assert!(!app.world().contains_resource::<ServerRng>());
+    assert!(!app.world().contains_resource::<SessionSlots>());
+    assert!(!app.world().contains_resource::<ClassSelections>());
+    assert!(!app.world().contains_resource::<ClassPreviews>());
+    assert!(!app.world().contains_resource::<LobbyDeadline>());
+    assert!(!app.world().contains_resource::<LobbyHeartbeats>());
+    assert_eq!(*app.world().resource::<LobbyState>(), LobbyState::GameOver);
+
+    let outbox = app
+        .world()
+        .resource::<server::core::session::SessionNetworkOutbox>();
+    assert_eq!(outbox.game_over().len(), 1);
+    assert_eq!(outbox.game_over()[0].loser, Some(player(1)));
+    assert_eq!(outbox.game_over()[0].round, 5);
+    assert_eq!(
+        outbox.game_over()[0].reason,
+        GameOverReason::ObjectivesDestroyed
+    );
+}
+
+#[test]
+fn game_over_teardown_cleans_active_sessions_and_room_state() {
+    let mut app = game_active_app();
+
+    emit_game_over(&mut app);
+
+    let active = app.world().resource::<ActiveSessions>();
+    assert!(!active.0.contains_key(&player(1)));
+    assert!(!active.0.contains_key(&player(2)));
+    assert_eq!(active.0.get(&player(9)), Some(&session_id(9)));
+
+    let rooms = app.world().resource::<RoomSessions>();
+    let room = rooms
+        .get(session_id(1))
+        .expect("session room remains inspectable");
+    assert_eq!(room.state, LobbyState::GameOver);
+    assert!(room.heartbeats.0.is_empty());
+}
+
+#[test]
+fn game_over_teardown_cleans_reconnect_tracker_if_present() {
+    let mut app = game_active_app();
+    app.insert_resource(ReconnectTracker {
+        snapshot_sent: HashMap::from([(player(1), true), (player(2), true), (player(9), true)]),
+        deferred_queue: HashMap::from([
+            (player(1), vec![DeferredMessage::CardAcquired(CardId(10))]),
+            (player(2), vec![DeferredMessage::CardAcquired(CardId(20))]),
+            (player(9), vec![DeferredMessage::CardAcquired(CardId(90))]),
+        ]),
+        token_map: HashMap::from([
+            ([1; 16], (session_id(1), player(1))),
+            ([2; 16], (session_id(1), player(2))),
+            ([9; 16], (session_id(9), player(9))),
+        ]),
+    });
+
+    emit_game_over(&mut app);
+
+    let tracker = app.world().resource::<ReconnectTracker>();
+    assert_eq!(tracker.token_map.len(), 1);
+    assert!(tracker.token_map.contains_key(&[9; 16]));
+    assert!(!tracker.deferred_queue.contains_key(&player(1)));
+    assert!(!tracker.deferred_queue.contains_key(&player(2)));
+    assert!(tracker.deferred_queue.contains_key(&player(9)));
+    assert!(!tracker.snapshot_sent.contains_key(&player(1)));
+    assert!(!tracker.snapshot_sent.contains_key(&player(2)));
+    assert_eq!(tracker.snapshot_sent.get(&player(9)), Some(&true));
+}
+
+#[test]
+fn game_over_teardown_is_idempotent_when_already_game_over() {
+    let mut app = game_active_app();
+    app.insert_resource(LobbyState::GameOver);
+
+    emit_game_over(&mut app);
+
+    assert_eq!(*app.world().resource::<LobbyState>(), LobbyState::GameOver);
+    assert!(app
+        .world()
+        .resource::<server::core::session::SessionNetworkOutbox>()
+        .game_over()
+        .is_empty());
+    assert!(app.world().contains_resource::<SessionConfig>());
+    assert!(app.world().contains_resource::<ServerRng>());
+}

@@ -57,10 +57,11 @@ pub struct BeginResolution {
     pub round: u32,
 }
 
-#[derive(Message, Clone, Debug)]
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GameOverEmitted {
     pub reason: GameOverReason,
     pub loser: Option<PlayerId>,
+    pub round: u32,
 }
 
 #[derive(Message, Clone, Debug)]

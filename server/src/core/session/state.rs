@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 use bevy::prelude::Resource;
 use lightyear::prelude::PeerId;
-use shared::card::ClassId;
-use shared::protocol::S2CSessionCancelled;
+use shared::card::{CardId, ClassId};
+use shared::protocol::{S2CGameOver, S2CSessionCancelled};
 use shared::session::PlayerId;
 use uuid::Uuid;
 
@@ -111,10 +111,27 @@ pub struct LobbyDeadline(pub f64);
 #[derive(Debug, Clone, PartialEq, Resource)]
 pub struct LobbyHeartbeats(pub HashMap<PlayerId, f64>);
 
+#[derive(Debug, Clone)]
+pub enum DeferredMessage {
+    GameOver(S2CGameOver),
+    SessionCancelled(S2CSessionCancelled),
+    CardAcquired(CardId),
+}
+
+/// Per-session reconnect state. Story 007 owns snapshot construction; game-over
+/// teardown only cleans this resource up if it is present.
+#[derive(Debug, Default, Resource)]
+pub struct ReconnectTracker {
+    pub snapshot_sent: HashMap<PlayerId, bool>,
+    pub deferred_queue: HashMap<PlayerId, Vec<DeferredMessage>>,
+    pub token_map: HashMap<SessionToken, (SessionId, PlayerId)>,
+}
+
 /// Testable network dispatch log for Game Session System S2C messages.
 #[derive(Debug, Default, Clone, Resource)]
 pub struct SessionNetworkOutbox {
     session_cancelled: Vec<S2CSessionCancelled>,
+    game_over: Vec<S2CGameOver>,
 }
 
 impl SessionNetworkOutbox {
@@ -122,8 +139,16 @@ impl SessionNetworkOutbox {
         self.session_cancelled.push(message);
     }
 
+    pub fn push_game_over(&mut self, message: S2CGameOver) {
+        self.game_over.push(message);
+    }
+
     pub fn session_cancelled(&self) -> &[S2CSessionCancelled] {
         &self.session_cancelled
+    }
+
+    pub fn game_over(&self) -> &[S2CGameOver] {
+        &self.game_over
     }
 }
 

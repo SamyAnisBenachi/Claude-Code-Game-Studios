@@ -331,6 +331,7 @@ pub fn advance_phase(
         game_over_emitted.write(GameOverEmitted {
             reason: game_over.reason,
             loser: game_over.loser,
+            round: rsm.round_number,
         });
         broadcast.write(BroadcastPhaseChanged {
             phase: RoundPhase::GameOver,

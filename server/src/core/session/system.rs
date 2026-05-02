@@ -1,6 +1,6 @@
 // server/src/core/session/system.rs -- Room create/join handlers.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
 use lightyear::prelude::*;
@@ -9,18 +9,18 @@ use shared::protocol::{
     self, C2SConfirmClass, C2SCreateRoom, C2SHeartbeat, C2SJoinRoom, C2SSelectClass,
     ConfirmClassRejectedReason, CreateRoomRejectedReason, GameMode, JoinRejectedReason,
     ReliableChannel, S2CClassLocked, S2CClassesRevealed, S2CConfirmClassRejected,
-    S2CCreateRoomRejected, S2CJoinAck, S2CJoinRejected, S2CRoomCreated, S2CSessionCancelled,
-    S2CSlotUpdated,
+    S2CCreateRoomRejected, S2CGameOver, S2CJoinAck, S2CJoinRejected, S2CRoomCreated,
+    S2CSessionCancelled, S2CSlotUpdated,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
 
-use crate::core::rsm::PlayerHeartbeat;
+use crate::core::rsm::{GameOverEmitted, PlayerHeartbeat};
 use crate::core::session::{
     build_session_config, ActiveSessions, ClassPreviews, ClassSelections, LobbyDeadline,
-    LobbyHeartbeats, LobbyState, PlayerConnectionMap, RoomCode, RoomSession, RoomSessions,
-    SessionCancelledReason, SessionId, SessionNetworkOutbox, SessionReady, SessionSlot,
-    SessionSlots,
+    LobbyHeartbeats, LobbyState, PlayerConnectionMap, ReconnectTracker, RoomCode, RoomSession,
+    RoomSessions, SessionCancelledReason, SessionConfig, SessionId, SessionNetworkOutbox,
+    SessionReady, SessionSlot, SessionSlots,
 };
 use crate::foundation::config::GameConfig;
 use crate::foundation::rng::ServerRng;
@@ -164,6 +164,120 @@ pub fn all_classes_confirmed(slots: &SessionSlots, selections: &ClassSelections)
             (Some(player), Some(class_id)) => selections.0.get(&player) == Some(&class_id),
             _ => false,
         })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn handle_game_over_teardown(
+    mut commands: Commands,
+    mut game_over_events: MessageReader<GameOverEmitted>,
+    lobby_state: Option<Res<LobbyState>>,
+    session_config: Option<Res<SessionConfig>>,
+    server_rng: Option<Res<ServerRng>>,
+    slots: Option<Res<SessionSlots>>,
+    selections: Option<Res<ClassSelections>>,
+    previews: Option<Res<ClassPreviews>>,
+    deadline: Option<Res<LobbyDeadline>>,
+    heartbeats: Option<Res<LobbyHeartbeats>>,
+    mut cleanup_state: ParamSet<(
+        Option<ResMut<ActiveSessions>>,
+        Option<ResMut<RoomSessions>>,
+        Option<ResMut<ReconnectTracker>>,
+    )>,
+    connections: Option<Res<PlayerConnectionMap>>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
+    mut outbox: Option<ResMut<SessionNetworkOutbox>>,
+) {
+    if matches!(lobby_state.as_deref(), Some(LobbyState::GameOver)) {
+        for _ in game_over_events.read() {}
+        return;
+    }
+
+    let mut game_over = None;
+    for event in game_over_events.read() {
+        if game_over.is_none() {
+            game_over = Some(*event);
+        }
+    }
+    let Some(game_over) = game_over else {
+        return;
+    };
+
+    let players = session_players(session_config.as_deref(), slots.as_deref());
+    let message = S2CGameOver {
+        loser: game_over.loser,
+        round: game_over.round,
+        reason: game_over.reason,
+    };
+
+    broadcast_game_over(
+        &server,
+        sender.as_mut(),
+        connections.as_deref(),
+        outbox.as_deref_mut(),
+        message,
+        &players,
+    );
+
+    let mut session_ids = HashSet::new();
+    {
+        if let Some(mut active_sessions) = cleanup_state.p0() {
+            for player in &players {
+                if let Some(session_id) = active_sessions.0.get(player).copied() {
+                    session_ids.insert(session_id);
+                }
+            }
+
+            for player in &players {
+                active_sessions.0.remove(player);
+            }
+        }
+    }
+
+    {
+        if let Some(mut rooms) = cleanup_state.p1() {
+            if session_ids.is_empty() {
+                session_ids.extend(session_ids_for_players(&rooms, &players));
+            }
+
+            for session_id in &session_ids {
+                if let Some(session) = rooms.get_mut(*session_id) {
+                    session.state = LobbyState::GameOver;
+                    session.heartbeats.0.clear();
+                }
+            }
+        }
+    }
+
+    {
+        let mut reconnect_tracker = cleanup_state.p2();
+        cleanup_reconnect_tracker(reconnect_tracker.as_deref_mut(), &session_ids, &players);
+    }
+
+    if session_config.is_some() {
+        commands.remove_resource::<SessionConfig>();
+    }
+    if server_rng.is_some() {
+        commands.remove_resource::<ServerRng>();
+    }
+
+    commands.insert_resource(LobbyState::GameOver);
+
+    if slots.is_some() {
+        commands.remove_resource::<SessionSlots>();
+    }
+    if selections.is_some() {
+        commands.remove_resource::<ClassSelections>();
+    }
+    if previews.is_some() {
+        commands.remove_resource::<ClassPreviews>();
+    }
+    if deadline.is_some() {
+        commands.remove_resource::<LobbyDeadline>();
+    }
+    if heartbeats.is_some() {
+        commands.remove_resource::<LobbyHeartbeats>();
+    }
 }
 
 /// Sole drainer for `MessageReceiver<C2SCreateRoom>`.
@@ -840,6 +954,99 @@ fn room_created_message(session: &RoomSession) -> S2CRoomCreated {
 
 fn occupied_players(slots: &SessionSlots) -> Vec<PlayerId> {
     slots.0.iter().filter_map(|slot| slot.player).collect()
+}
+
+fn session_players(
+    session_config: Option<&SessionConfig>,
+    slots: Option<&SessionSlots>,
+) -> Vec<PlayerId> {
+    let mut players = session_config
+        .map(|config| config.players().collect::<Vec<_>>())
+        .unwrap_or_default();
+
+    if players.is_empty() {
+        if let Some(slots) = slots {
+            players = occupied_players(slots);
+        }
+    }
+
+    players.sort_by_key(|player| player.0);
+    players.dedup();
+    players
+}
+
+fn session_ids_for_players(rooms: &RoomSessions, players: &[PlayerId]) -> HashSet<SessionId> {
+    rooms
+        .session_ids()
+        .into_iter()
+        .filter(|session_id| {
+            rooms
+                .get(*session_id)
+                .map(|session| {
+                    occupied_players(&session.slots)
+                        .into_iter()
+                        .any(|player| players.contains(&player))
+                })
+                .unwrap_or(false)
+        })
+        .collect()
+}
+
+fn cleanup_reconnect_tracker(
+    tracker: Option<&mut ReconnectTracker>,
+    session_ids: &HashSet<SessionId>,
+    players: &[PlayerId],
+) {
+    let Some(tracker) = tracker else {
+        return;
+    };
+
+    tracker.token_map.retain(|_, (session_id, player)| {
+        !session_ids.contains(session_id) && !players.contains(player)
+    });
+    tracker
+        .deferred_queue
+        .retain(|player, _| !players.contains(player));
+    for player in players {
+        tracker.snapshot_sent.remove(player);
+    }
+}
+
+fn broadcast_game_over(
+    server: &Query<&Server>,
+    sender: Option<&mut ServerMultiMessageSender>,
+    connections: Option<&PlayerConnectionMap>,
+    outbox: Option<&mut SessionNetworkOutbox>,
+    message: S2CGameOver,
+    recipients: &[PlayerId],
+) {
+    if let Some(outbox) = outbox {
+        outbox.push_game_over(message.clone());
+    }
+
+    let Some(sender) = sender else {
+        return;
+    };
+    let Some(server) = server.single().ok() else {
+        return;
+    };
+    let Some(connections) = connections else {
+        return;
+    };
+
+    let target_peers = recipients
+        .iter()
+        .filter_map(|player_id| peer_for_player(&connections.0, *player_id))
+        .collect::<Vec<_>>();
+    if target_peers.is_empty() {
+        return;
+    }
+
+    let _ = sender.send::<S2CGameOver, ReliableChannel>(
+        &message,
+        server,
+        &NetworkTarget::Only(target_peers),
+    );
 }
 
 fn find_lobby_heartbeat_timeout(
