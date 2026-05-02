@@ -1,12 +1,14 @@
 use bevy::prelude::*;
-use lightyear::prelude::{NetworkTarget, Replicate};
-use shared::protocol::DraftPhase;
+use lightyear::prelude::{NetworkTarget, PeerId, Replicate, Server, ServerMultiMessageSender};
+use shared::protocol::{
+    CardSource, DraftPhase, ReliableChannel, S2CCardAcquired, S2CPrismRewardDropped,
+};
 use shared::session::PlayerId;
 
 use crate::core::pool::{PlayerPools, PoolFilter};
 use crate::core::rsm::{DraftStarted, GameOverEmitted};
 use crate::core::rsm::{RoundPhase, RoundState};
-use crate::core::session::SessionConfig;
+use crate::core::session::{DeferredMessage, PlayerConnectionMap, ReconnectTracker, SessionConfig};
 use crate::feature::acquisition::{hand_push, PlayerHands, MAX_HAND_SIZE};
 use crate::feature::prism::{
     AuditLog, DiscardLog, PrismAuditEntry, PrismCollected, PrismLaneKey, PrismPresence, PrismState,
@@ -18,6 +20,44 @@ use shared::card::CardType;
 
 const PRISM_STRIKE_CARD_KEY: &str = "prism_strike";
 const PRISM_RESERVE_CARD_KEY: &str = "prism_reserve";
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PrismCardAcquiredDispatch {
+    pub player_id: PlayerId,
+    pub peer_id: Option<PeerId>,
+    pub message: S2CCardAcquired,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PrismRewardDroppedDispatch {
+    pub player_id: PlayerId,
+    pub peer_id: Option<PeerId>,
+    pub message: S2CPrismRewardDropped,
+}
+
+#[derive(Resource, Default, Clone, Debug)]
+pub struct PrismNetworkOutbox {
+    card_acquired: Vec<PrismCardAcquiredDispatch>,
+    reward_dropped: Vec<PrismRewardDroppedDispatch>,
+}
+
+impl PrismNetworkOutbox {
+    pub fn push_card_acquired(&mut self, dispatch: PrismCardAcquiredDispatch) {
+        self.card_acquired.push(dispatch);
+    }
+
+    pub fn push_reward_dropped(&mut self, dispatch: PrismRewardDroppedDispatch) {
+        self.reward_dropped.push(dispatch);
+    }
+
+    pub fn card_acquired(&self) -> &[PrismCardAcquiredDispatch] {
+        &self.card_acquired
+    }
+
+    pub fn reward_dropped(&self) -> &[PrismRewardDroppedDispatch] {
+        &self.reward_dropped
+    }
+}
 
 /// Initializes session-scoped Prism resources and replicated presence entities.
 pub fn initialize_prism_session(
@@ -91,6 +131,11 @@ pub fn resolve_prism_draws(
     mut player_pools: Option<ResMut<PlayerPools>>,
     round_state: Option<Res<RoundState>>,
     session: Option<Res<SessionConfig>>,
+    connections: Option<Res<PlayerConnectionMap>>,
+    mut reconnect_tracker: Option<ResMut<ReconnectTracker>>,
+    mut network_outbox: Option<ResMut<PrismNetworkOutbox>>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
     mut prism_presence: Query<(&PrismLaneKey, &mut PrismPresence)>,
     mut collected: MessageReader<PrismCollected>,
 ) {
@@ -117,6 +162,15 @@ pub fn resolve_prism_draws(
     };
 
     events.sort_by_key(|event| (event.player_id.0, event.lane));
+
+    let server = server.single().ok();
+    let mut network = PrismNetworkContext {
+        reconnect_tracker: reconnect_tracker.as_deref_mut(),
+        outbox: network_outbox.as_deref_mut(),
+        connections: connections.as_deref(),
+        server,
+        sender: sender.as_mut(),
+    };
 
     for event in events {
         let Some(player_index) = player_index(event.player_id, session.as_deref()) else {
@@ -152,7 +206,7 @@ pub fn resolve_prism_draws(
 
         match event.lane {
             1 | 2 | 4 | 5 => {
-                resolve_deterministic_lane_reward(hands, card_catalog, event);
+                resolve_deterministic_lane_reward(hands, card_catalog, event, &mut network);
             }
             3 => {
                 let (Some(audit_log), Some(server_rng), Some(player_pools)) = (
@@ -175,6 +229,7 @@ pub fn resolve_prism_draws(
                     server_rng,
                     player_pools,
                     event,
+                    &mut network,
                 );
             }
             _ => {}
@@ -186,6 +241,7 @@ fn resolve_deterministic_lane_reward(
     hands: &mut PlayerHands,
     card_catalog: &CardCatalog,
     event: PrismCollected,
+    network: &mut PrismNetworkContext<'_, '_, '_>,
 ) {
     let Some(card_key) = deterministic_lane_card_key(event.lane) else {
         return;
@@ -200,13 +256,21 @@ fn resolve_deterministic_lane_reward(
         return;
     };
 
-    if hand_push(hands, event.player_id, card_id).is_err() {
-        warn!(
-            player_id = event.player_id.0,
-            lane = event.lane,
-            card_id = card_id.0,
-            "Prism deterministic reward dropped because player hand is full"
-        );
+    match hand_push(hands, event.player_id, card_id) {
+        Ok(()) => {
+            if let Some(source) = prism_card_source(event.lane) {
+                network.stage_card_acquired(event.player_id, card_id, source);
+            }
+        }
+        Err(_) => {
+            warn!(
+                player_id = event.player_id.0,
+                lane = event.lane,
+                card_id = card_id.0,
+                "Prism deterministic reward dropped because player hand is full"
+            );
+            network.stage_reward_dropped(event.player_id, event.lane);
+        }
     }
 }
 
@@ -217,6 +281,7 @@ fn resolve_lane3_rng_reward(
     server_rng: &mut ServerRng,
     player_pools: &mut PlayerPools,
     event: PrismCollected,
+    network: &mut PrismNetworkContext<'_, '_, '_>,
 ) {
     if hands.hand_len(event.player_id) >= MAX_HAND_SIZE {
         return;
@@ -270,13 +335,123 @@ fn resolve_lane3_rng_reward(
         return;
     }
 
-    if hand_push(hands, event.player_id, card_id).is_err() {
-        warn!(
-            player_id = event.player_id.0,
-            lane = event.lane,
-            card_id = card_id.0,
-            "Prism Lane 3 reward dropped after draw because player hand became full"
+    match hand_push(hands, event.player_id, card_id) {
+        Ok(()) => {
+            if let Some(source) = prism_card_source(event.lane) {
+                network.stage_card_acquired(event.player_id, card_id, source);
+            }
+        }
+        Err(_) => {
+            warn!(
+                player_id = event.player_id.0,
+                lane = event.lane,
+                card_id = card_id.0,
+                "Prism Lane 3 reward dropped after draw because player hand became full"
+            );
+        }
+    }
+}
+
+struct PrismNetworkContext<'a, 'w, 's> {
+    reconnect_tracker: Option<&'a mut ReconnectTracker>,
+    outbox: Option<&'a mut PrismNetworkOutbox>,
+    connections: Option<&'a PlayerConnectionMap>,
+    server: Option<&'a Server>,
+    sender: Option<&'a mut ServerMultiMessageSender<'w, 's>>,
+}
+
+impl PrismNetworkContext<'_, '_, '_> {
+    fn stage_card_acquired(
+        &mut self,
+        player_id: PlayerId,
+        card_id: shared::card::CardId,
+        source: CardSource,
+    ) {
+        let deferred = DeferredMessage::CardAcquired { card_id, source };
+        if self.defer_if_snapshot_pending(player_id, deferred) {
+            return;
+        }
+
+        let message = S2CCardAcquired { card_id, source };
+        let peer_id = self.peer_for_player(player_id);
+        if let Some(outbox) = self.outbox.as_deref_mut() {
+            outbox.push_card_acquired(PrismCardAcquiredDispatch {
+                player_id,
+                peer_id,
+                message: message.clone(),
+            });
+        }
+
+        let (Some(server), Some(sender), Some(peer_id)) =
+            (self.server, self.sender.as_deref_mut(), peer_id)
+        else {
+            return;
+        };
+
+        let _ = sender.send::<S2CCardAcquired, ReliableChannel>(
+            &message,
+            server,
+            &NetworkTarget::Single(peer_id),
         );
+    }
+
+    fn stage_reward_dropped(&mut self, player_id: PlayerId, lane: u8) {
+        let deferred = DeferredMessage::PrismRewardDropped { player_id, lane };
+        if self.defer_if_snapshot_pending(player_id, deferred) {
+            return;
+        }
+
+        let message = S2CPrismRewardDropped { player_id, lane };
+        let peer_id = self.peer_for_player(player_id);
+        if let Some(outbox) = self.outbox.as_deref_mut() {
+            outbox.push_reward_dropped(PrismRewardDroppedDispatch {
+                player_id,
+                peer_id,
+                message: message.clone(),
+            });
+        }
+
+        let (Some(server), Some(sender), Some(peer_id)) =
+            (self.server, self.sender.as_deref_mut(), peer_id)
+        else {
+            return;
+        };
+
+        let _ = sender.send::<S2CPrismRewardDropped, ReliableChannel>(
+            &message,
+            server,
+            &NetworkTarget::Single(peer_id),
+        );
+    }
+
+    fn defer_if_snapshot_pending(&mut self, player_id: PlayerId, message: DeferredMessage) -> bool {
+        let Some(tracker) = self.reconnect_tracker.as_deref_mut() else {
+            return false;
+        };
+
+        if tracker
+            .snapshot_sent
+            .get(&player_id)
+            .copied()
+            .unwrap_or(false)
+        {
+            return false;
+        }
+
+        tracker
+            .deferred_queue
+            .entry(player_id)
+            .or_default()
+            .push(message);
+        true
+    }
+
+    fn peer_for_player(&self, player_id: PlayerId) -> Option<PeerId> {
+        self.connections.and_then(|connections| {
+            connections.0.iter().find_map(|(peer_id, mapped_player)| {
+                (*mapped_player == player_id).then_some(*peer_id)
+            })
+        })
     }
 }
 
@@ -285,6 +460,17 @@ fn deterministic_lane_card_key(lane: u8) -> Option<&'static str> {
         1 | 5 => Some(PRISM_STRIKE_CARD_KEY),
         2 | 4 => Some(PRISM_RESERVE_CARD_KEY),
         3 => None,
+        _ => None,
+    }
+}
+
+fn prism_card_source(lane: u8) -> Option<CardSource> {
+    match lane {
+        1 => Some(CardSource::PrismLane1),
+        2 => Some(CardSource::PrismLane2),
+        3 => Some(CardSource::PrismLane3),
+        4 => Some(CardSource::PrismLane4),
+        5 => Some(CardSource::PrismLane5),
         _ => None,
     }
 }

@@ -4,7 +4,7 @@ use lightyear::prelude::*;
 use crate::core::rsm::advance_phase;
 use crate::feature::prism::{
     cleanup_prism_session, initialize_prism_session, resolve_prism_draws, PrismCollected,
-    PrismPresence,
+    PrismNetworkOutbox, PrismPresence,
 };
 
 /// Prism System schedule labels.
@@ -21,7 +21,8 @@ impl Plugin for PrismPlugin {
     fn build(&self, app: &mut App) {
         app.register_component::<PrismPresence>();
 
-        app.add_message::<PrismCollected>()
+        app.init_resource::<PrismNetworkOutbox>()
+            .add_message::<PrismCollected>()
             .add_message::<crate::core::rsm::DraftStarted>()
             .add_message::<crate::core::rsm::GameOverEmitted>()
             .configure_sets(

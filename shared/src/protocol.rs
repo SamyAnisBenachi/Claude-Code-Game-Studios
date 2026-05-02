@@ -75,6 +75,7 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_s2c::<S2CGoldUpdate>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CGoldBroadcast>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CCardAcquired>(registry, ProtocolChannel::Reliable);
+    register_s2c::<S2CPrismRewardDropped>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CShopSlots>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CDraftOffering>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CPoolUpdate>(registry, ProtocolChannel::Reliable);
@@ -370,10 +371,16 @@ pub struct S2CGoldBroadcast {
     pub reserved_gold: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct S2CCardAcquired {
     pub card_id: CardId,
     pub source: CardSource,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct S2CPrismRewardDropped {
+    pub player_id: PlayerId,
+    pub lane: u8,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -9,6 +9,7 @@ use server::core::session::{
 };
 use server::foundation::rng::ServerRng;
 use shared::card::{CardId, ClassId};
+use shared::protocol::CardSource;
 use shared::protocol::{GameMode, GameOverReason};
 use shared::session::PlayerId;
 use uuid::Uuid;
@@ -159,9 +160,27 @@ fn game_over_teardown_cleans_reconnect_tracker_if_present() {
     app.insert_resource(ReconnectTracker {
         snapshot_sent: HashMap::from([(player(1), true), (player(2), true), (player(9), true)]),
         deferred_queue: HashMap::from([
-            (player(1), vec![DeferredMessage::CardAcquired(CardId(10))]),
-            (player(2), vec![DeferredMessage::CardAcquired(CardId(20))]),
-            (player(9), vec![DeferredMessage::CardAcquired(CardId(90))]),
+            (
+                player(1),
+                vec![DeferredMessage::CardAcquired {
+                    card_id: CardId(10),
+                    source: CardSource::ShopPurchase,
+                }],
+            ),
+            (
+                player(2),
+                vec![DeferredMessage::CardAcquired {
+                    card_id: CardId(20),
+                    source: CardSource::ShopPurchase,
+                }],
+            ),
+            (
+                player(9),
+                vec![DeferredMessage::CardAcquired {
+                    card_id: CardId(90),
+                    source: CardSource::ShopPurchase,
+                }],
+            ),
         ]),
         token_map: HashMap::from([
             ([1; 16], (session_id(1), player(1))),

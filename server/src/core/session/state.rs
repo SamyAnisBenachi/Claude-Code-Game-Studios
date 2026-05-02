@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 use bevy::prelude::Resource;
 use lightyear::prelude::PeerId;
-use shared::card::{CardId, ClassId};
-use shared::protocol::{S2CGameOver, S2CSessionCancelled};
+use shared::card::ClassId;
+use shared::protocol::{CardSource, S2CGameOver, S2CSessionCancelled};
 use shared::session::PlayerId;
 use uuid::Uuid;
 
@@ -115,7 +115,14 @@ pub struct LobbyHeartbeats(pub HashMap<PlayerId, f64>);
 pub enum DeferredMessage {
     GameOver(S2CGameOver),
     SessionCancelled(S2CSessionCancelled),
-    CardAcquired(CardId),
+    CardAcquired {
+        card_id: shared::card::CardId,
+        source: CardSource,
+    },
+    PrismRewardDropped {
+        player_id: PlayerId,
+        lane: u8,
+    },
 }
 
 /// Per-session reconnect state. Story 007 owns snapshot construction; game-over

@@ -163,6 +163,7 @@ fn game_over_cleans_prism_resources_and_presence_entities() {
         .write(GameOverEmitted {
             reason: GameOverReason::Draw,
             loser: None,
+            round: 1,
         });
     app.update();
 
