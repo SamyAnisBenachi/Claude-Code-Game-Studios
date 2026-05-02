@@ -106,11 +106,11 @@ None currently tracked here.
   `work/gss-004-f4-session-ready` at `9708147`; root cherry-picked it into
   `main` at `4d8cf60`. Worker checks passed full affected session/RSM/economy
   regression set plus full `cargo test -p server`; grep gates confirmed exactly
-  one `On<SessionReady>` observer path. Story-done on 2026-05-02 returned
-  BLOCKED: current GDD/TR require F4 to pass when
-  `server_clock_now <= lobby_deadline`, but implementation uses strict `<` and
-  fails exact-deadline equality. Needs one-line predicate repair plus boundary
-  test before rerunning story-done.
+  one `On<SessionReady>` observer path. Story-done on 2026-05-02 initially
+  returned BLOCKED on exact-deadline equality. Repair `3c64b84` changed F4 to
+  pass when `server_clock_now <= lobby_deadline` and added boundary coverage.
+  Rerun returned COMPLETE WITH NOTES and is awaiting approval to write closure
+  files.
 - PRISM-001: Prism State Scaffold implemented on branch
   `work/prism-001-state-scaffold` at `6ecd421`; root cherry-picked it into
   `main` at `e093804`. Worker checks passed `cargo fmt -p server -- --check`,
@@ -292,7 +292,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. GSS-004 repair + story-done
+1. GSS-004 closure write
 2. PRISM-001
 3. HUD-004
 4. CARD-ANIM-007
@@ -306,10 +306,9 @@ Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- GSS-004: implemented and integrated but story-done is BLOCKED. Repair F4
-  deadline equality (`now <= lobby_deadline`) and add exact-boundary test before
-  rerunning closure. Do not launch further SessionReady/RSM session stories until
-  closure confirms the single-observer gate.
+- GSS-004: implemented, repaired, and story-done verdict is COMPLETE WITH NOTES,
+  but closure files are not written yet. Do not launch further SessionReady/RSM
+  session stories until closure confirms the single-observer gate.
 - PRISM-001: implemented and integrated; pending story-done. PRISM-002 is also
   implemented and integrated, but PRISM-003+ should wait until PRISM-001/002 close.
 - HUD-004: implemented and integrated; pending story-done before launching HUD
@@ -330,8 +329,8 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- GSS-004: integrated but story-done BLOCKED; repair should stay in the same
-  window.
+- GSS-004: integrated and repaired; story-done verdict COMPLETE WITH NOTES but
+  awaiting approval to write closure files.
 - PRISM-001: integrated, pending story-done.
 - HUD-004: integrated, pending story-done.
 - CARD-ANIM-007: integrated, pending story-done.
@@ -342,7 +341,7 @@ Batch launched:
 - RSM-006: integrated, pending story-done.
 
 Current active windows by user default-launch rule:
-- GSS-004 repair/story-done remains open after the F4 exact-deadline blocker.
+- GSS-004 story-done remains open for closure-file approval/write.
 - CS-003, BOARD-007, and HUD-007 are considered launched from the latest prompts.
 AUC-004 and RSM-006 have returned and are integrated. Do not launch PRISM-003
 until PRISM-001 and PRISM-002 close.
