@@ -149,6 +149,21 @@ None currently tracked here.
   HUD regression slice 29/29, and `cargo check -p client`. Root
   `cargo check -p client` and `git diff --check HEAD~4..HEAD` passed after
   integration.
+- AUC-004: Bid Validation Gate implemented locally on branch
+  `work/auc-004-bid-validation-gate` at `59e086f`; root cherry-picked it into
+  `main` at `5bd635e`. Worker resolved OQ9 as reachable and covered
+  `LIVE_BIDDING` with `timer_remaining_ms == 0`. Root tests passed:
+  `cargo test -p server --test auction_bid_validation_gate_test --test
+  rsm_network_dispatch_test --test rsm_transitions_test`,
+  `cargo test -p server rsm_disconnect`, `cargo check -p server`, and
+  `git diff --check HEAD~2..HEAD`.
+- RSM-006: Network Dispatch Wiring implemented on branch
+  `work/rsm-006-network-dispatch-wiring` at `151d9e6`; root cherry-picked it
+  into `main` at `894ea6b`. Worker checks passed `cargo fmt -p server --
+  --check`, `cargo test -p server --test rsm_network_dispatch_test`,
+  `cargo test -p server rsm_disconnect`, `cargo test -p server --test
+  rsm_transitions_test`, `cargo check -p server`, and RSM grep gates. Root
+  repeated the affected tests/checks after integration.
 ## Recently Closed
 
 - CARD-ANIM-003: Simultaneous Track Animation implemented on branch
@@ -280,6 +295,8 @@ None currently tracked here.
 5. PRISM-002
 6. HUD-006
 7. CARD-ANIM-005
+8. AUC-004
+9. RSM-006
 
 Run only one story-done at a time.
 
@@ -295,11 +312,12 @@ Run only one story-done at a time.
 - CARD-ANIM-005: implemented and integrated; pending story-done.
 - PRISM-002: implemented and integrated; pending story-done.
 - HUD-006: implemented and integrated; pending story-done.
-- AUC-004: ECO-005 is formally closed; still verify OQ9 pre-implementation gate
-  before launch.
-- RSM-006, GSS-005+, and other RSM/session/disconnect work are unblocked by
-  RSM-005 closure, but should be launched carefully because GSS-004 still awaits
-  story-done confirmation of the SessionReady single-observer gate.
+- AUC-004: implemented and integrated; pending story-done.
+- RSM-006: implemented and integrated; pending story-done.
+- AUC-005+ follow normal sequencing after AUC-004 story-done.
+- GSS-005+ and other RSM/session/disconnect work should still be staged
+  carefully because GSS-004 awaits story-done confirmation of the SessionReady
+  single-observer gate.
 - Prism gates are resolved; PRISM-003+ follow normal sequencing after PRISM-001
   and PRISM-002 story-done.
 
@@ -313,10 +331,12 @@ Batch launched:
 - PRISM-002: integrated, pending story-done.
 - HUD-006: integrated, pending story-done.
 - CARD-ANIM-005: integrated, pending story-done.
+- AUC-004: integrated, pending story-done.
+- RSM-006: integrated, pending story-done.
 
 User corrected active window state after CARD-ANIM-005 returned; CARD-ANIM-003
-story-done has now closed. Active implementation windows are AUC-004, RSM-006
-if relaunched, and CS-003 if launched from the latest prompt. Do not launch
+story-done has now closed. AUC-004 and RSM-006 have returned and are integrated.
+Only CS-003 remains possibly active from the last parallel prompt. Do not launch
 PRISM-003 until PRISM-001 and PRISM-002 close.
 
 ## Resolved Design Gates
