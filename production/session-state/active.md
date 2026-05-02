@@ -1356,3 +1356,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no matching row exists in `production/sprint-status.yaml`.
 - Next recommended: Objective Story 003 identity unicast (`production/epics/objective-system/story-003-identity-unicast-delivery.md`) after readiness check, or continue the serialized closure queue with PRISM-004 per user direction.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/prism-system/story-004-hand-full-network.md` - Story 004: Hand-Full Rejection and Network Message Staging
+- Criteria: 3/3 passing; PS-09, PS-20, and PS-23 covered by `tests/integration/prism/hand_full_network_test.rs`.
+- Test Evidence: `cargo test -p server --test prism_hand_full_network_test` passed 7/7. `cargo check -p server` passed. `cargo fmt --all -- --check` passed.
+- Verification: `resolve_prism_draws` uses `hand_push()` for deterministic and Lane 3 success paths, stages `S2CCardAcquired` and `S2CPrismRewardDropped` through `PrismNetworkOutbox`, defers owner messages through `ReconnectTracker.deferred_queue` when `snapshot_sent[player]` is false, and sends live owner-only messages via `ServerMultiMessageSender` on `ReliableChannel` to `NetworkTarget::Single(peer_id)`.
+- Notes: Advisory only - `TR-PRI-004` in `docs/architecture/tr-registry.yaml` still says Lane 3 hand-full emits `S2CPrismRewardDropped`; current `design/gdd/prism-system.md` Rule 7 and Story 004 say Lane 3 hand-full does not emit that message, and implementation follows the current GDD. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no `PRISM-004` row exists in `production/sprint-status.yaml`.
+- Next recommended: Hand UI Story 005 PLACEMENT Entry - Submit Button & Core Stage/Unstage (`production/epics/hand-ui/story-005-placement-submit-core.md`) after tracker update and queue handoff.

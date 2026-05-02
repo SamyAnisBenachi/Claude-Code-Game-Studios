@@ -1,7 +1,7 @@
 # Story 004: Hand-Full Rejection and Network Message Staging
 
 > **Epic**: Prism System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -135,9 +135,18 @@ match hand_push(&mut hands, player, card_id) {
 **Required evidence**: `tests/integration/prism/hand_full_network_test.rs` — must exist and pass
 *(If Lightyear 0.26 outbound buffer is accessible in `World::new()`, test can use that. Otherwise, use `App::new()` with the Lightyear plugin; use `liv-bevy-lightyear` skill to confirm the correct test approach for outbound message inspection.)*
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`cargo test -p server --test prism_hand_full_network_test` on 2026-05-03)
 
 ---
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Criteria**: 3/3 passing (PS-09, PS-20, PS-23)
+**Deviations**: Advisory only - `TR-PRI-004` in `docs/architecture/tr-registry.yaml` still says Lane 3 hand-full emits `S2CPrismRewardDropped`; current `design/gdd/prism-system.md` Rule 7 and Story 004 say Lane 3 hand-full does not emit that message, and implementation follows the current GDD.
+**Test Evidence**: Integration evidence at `tests/integration/prism/hand_full_network_test.rs`; `cargo test -p server --test prism_hand_full_network_test` passed 7/7; `cargo check -p server` passed; `cargo fmt --all -- --check` passed.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Unchanged per user instruction; no `PRISM-004` row exists in `production/sprint-status.yaml`.
 
 ## Dependencies
 
