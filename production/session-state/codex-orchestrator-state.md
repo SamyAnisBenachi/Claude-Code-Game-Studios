@@ -102,11 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- PRISM-001: Prism State Scaffold implemented on branch
-  `work/prism-001-state-scaffold` at `6ecd421`; root cherry-picked it into
-  `main` at `e093804`. Worker checks passed `cargo fmt -p server -- --check`,
-  `cargo test -p server --test prism_state_scaffold_test`, `cargo check -p server`,
-  and board/objective adjacent regression tests.
 - HUD-004: Scoreboard Dot Observer implemented on branch
   `work/hud-004-scoreboard-dot-observer` at `fd9b4e8`; root cherry-picked it
   into `main` at `c30fc6a`. Worker checks passed
@@ -178,6 +173,9 @@ None currently tracked here.
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
   `work/gss-004-f4-session-ready` at `9708147`; cherry-picked into `main` at
   `4d8cf60`; repair committed at `3c64b84`; story-done committed at `36ed875`.
+- PRISM-001: Prism State Scaffold implemented on branch
+  `work/prism-001-state-scaffold` at `6ecd421`; root cherry-picked it into
+  `main` at `e093804`; story-done committed at `671caa2`.
 - CARD-ANIM-003: Simultaneous Track Animation implemented on branch
   `work/card-anim-003-simultaneous-track-animation` at `4f4d7c5`; cherry-picked
   into `main` at `066c1cd` after resolving a public export conflict with
@@ -300,28 +298,26 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. PRISM-001
+1. PRISM-002
 2. HUD-004
 3. CARD-ANIM-007
-4. PRISM-002
-5. HUD-006
-6. CARD-ANIM-005
-7. AUC-004
-8. RSM-006
-9. CS-003
-10. HUD-007
+4. HUD-006
+5. CARD-ANIM-005
+6. AUC-004
+7. RSM-006
+8. CS-003
+9. HUD-007
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- PRISM-001: implemented and integrated; pending story-done. PRISM-002 is also
-  implemented and integrated, but PRISM-003+ should wait until PRISM-001/002 close.
+- PRISM-002: implemented and integrated; pending story-done. PRISM-003+ should
+  wait until PRISM-002 closes.
 - HUD-004: implemented and integrated; pending story-done before launching HUD
   stories that depend on scoreboard objective dots.
 - CARD-ANIM-007: implemented and integrated; pending story-done.
 - CARD-ANIM-005: implemented and integrated; pending story-done.
-- PRISM-002: implemented and integrated; pending story-done.
 - HUD-006: implemented and integrated; pending story-done.
 - AUC-004: implemented and integrated; pending story-done.
 - RSM-006: implemented and integrated; pending story-done.
@@ -337,10 +333,9 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- PRISM-001: integrated, pending story-done.
+- PRISM-002: integrated, pending story-done.
 - HUD-004: integrated, pending story-done.
 - CARD-ANIM-007: integrated, pending story-done.
-- PRISM-002: integrated, pending story-done.
 - HUD-006: integrated, pending story-done.
 - CARD-ANIM-005: integrated, pending story-done.
 - AUC-004: integrated, pending story-done.
@@ -349,7 +344,8 @@ Batch launched:
 - HUD-007: integrated, pending story-done.
 
 Current active windows by user default-launch rule:
-- PRISM-001 story-done is considered active if launched from the latest prompt.
+- PRISM-001 story-done returned and was committed at `671caa2`; window can be
+  cleared. PRISM-002 is now the next serialized story-done candidate.
   Do not launch another story-done until it returns.
 - BOARD-007 is considered active from the latest prompt after manifest refresh
   commit `35bec31`.
