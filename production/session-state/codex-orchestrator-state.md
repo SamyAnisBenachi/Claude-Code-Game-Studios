@@ -102,14 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- HUD-009: Same-Tick Gold Tie-Break implemented on branch
-  `work/hud-009-same-tick-gold-tie-break` at `ed3d7fd`; root cherry-picked and
-  amended it into `main` at `fdadbe6` after worker push was blocked by approval
-  policy. Root checks passed `cargo fmt -p client -- --check`,
-  `cargo test -p client --test same_tick_tie_break_test --test
-  hud_gold_mana_display_test --test hud_economy_auction_inline_gold_test --test
-  hud_phase_transitions_test` 18/18, `cargo check -p client`, and `git diff
-  --check HEAD~1..HEAD`.
 - HUD-010: Numeric Tween Animation implemented on branch
   `work/hud-010-numeric-tween-animation` at `92f8677`; root cherry-picked and
   amended it into `main` at `609be61`. Root checks passed `cargo fmt -p client
@@ -200,6 +192,13 @@ None currently tracked here.
   check -p server`. Completion notes document stale `TR-PRI-004`
   `S2CPrismRewardDropped` wording and central `ServerRng.audit_log()` stub
   behavior as advisory.
+- HUD-009: Same-Tick Gold Tie-Break implemented on branch
+  `work/hud-009-same-tick-gold-tie-break` at `ed3d7fd`; root cherry-picked and
+  amended it into `main` at `fdadbe6`; story-done committed at `7f3ecfa`.
+  Verification passed `cargo test -p client --test same_tick_tie_break_test`
+  3/3, `cargo check -p client`, and `cargo fmt -p client -- --check`.
+  Completion notes document direct Bevy HUD message injection after the
+  Lightyear drain seam as advisory.
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
   `work/gss-004-f4-session-ready` at `9708147`; cherry-picked into `main` at
   `4d8cf60`; repair committed at `3c64b84`; story-done committed at `36ed875`.
@@ -341,11 +340,10 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HUD-009
-2. HUD-010
-3. HAND-UI-004
-4. GSS-005
-5. GSS-006
+1. HUD-010
+2. HAND-UI-004
+3. GSS-005
+4. GSS-006
 
 Run only one story-done at a time.
 
@@ -355,7 +353,6 @@ Run only one story-done at a time.
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
   closed. PRISM-004 can run next in the Prism chain because it depends on the
   Lane 3 call site.
-- HUD-009: implemented and integrated; pending story-done.
 - HUD-010: implemented and integrated; pending story-done.
 - HAND-UI-004: implemented and integrated; pending story-done.
 - GSS-005: implemented and integrated; pending story-done.
@@ -376,7 +373,6 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- HUD-009: integrated, pending story-done.
 - HUD-010: integrated, pending story-done.
 - HAND-UI-004: integrated, pending story-done.
 - GSS-005: integrated, pending story-done.
@@ -405,8 +401,9 @@ Current active windows by user default-launch rule:
   story-done returned and was committed at `cae0e45`; window can be cleared.
   BOARD-007 story-done returned and was committed at `dc8b80a`; window can be
   cleared. PRISM-003 story-done returned and was committed at `b4d9e04`;
-  window can be cleared. HUD-009 is now the next serialized story-done
-  candidate.
+  window can be cleared. HUD-009 story-done returned and was committed at
+  `7f3ecfa`; window can be cleared. HUD-010 is now the next serialized
+  story-done candidate.
 - HAND-UI-004 returned, integrated at `561d2fd`, and now only needs serialized
   story-done.
 - GSS-005 returned, integrated at `15fe812`, and now only needs serialized
