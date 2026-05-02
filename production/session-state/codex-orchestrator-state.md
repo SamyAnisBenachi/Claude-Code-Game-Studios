@@ -107,7 +107,12 @@ None currently tracked here.
   external GitHub transfer approval, so root cherry-picked/rebased it onto
   `main` at `e4fb6a4`. Root `cargo fmt -p server -- --check`,
   `cargo test -p server rsm_disconnect`, `cargo check -p server`, and
-  `git diff --check HEAD~1..HEAD` passed.
+  `git diff --check HEAD~1..HEAD` passed. Story-done on 2026-05-02 returned
+  BLOCKED: current GDD/TR require C2SHeartbeat gap handling to reset/drive RSM
+  disconnect tracking, required evidence file
+  `tests/evidence/rsm-story-005-tests.md` is missing, and implementation still
+  follows story-era elapsed-seconds semantics instead of the current
+  milliseconds-remaining model.
 - CARD-ANIM-003: Simultaneous Track Animation implemented on branch
   `work/card-anim-003-simultaneous-track-animation` at `4f4d7c5`; worker pushed
   branch but did not run story-done. Worker checks passed:
@@ -255,7 +260,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. RSM-005
+1. RSM-005 repair + story-done
 2. CARD-ANIM-003
 3. GSS-004
 4. PRISM-001
@@ -266,7 +271,10 @@ Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- RSM-005: implemented and integrated; pending story-done.
+- RSM-005: implemented and integrated but story-done is BLOCKED. Repair must add
+  heartbeat-gap handling from `C2SHeartbeat`, add
+  `tests/evidence/rsm-story-005-tests.md`, and align story/code notes with the
+  current milliseconds-remaining disconnect model before closure.
 - CARD-ANIM-003: implemented on worker branch; pending root integration check and
   story-done after the current serialized closures.
 - GSS-004: implemented and integrated; pending story-done. Do not launch further
@@ -284,15 +292,16 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- RSM-005: integrated, pending story-done.
+- RSM-005: integrated but story-done BLOCKED; repair should stay in the same
+  window.
 - GSS-004: integrated, pending story-done.
 - PRISM-001: integrated, pending story-done.
 - HUD-004: integrated, pending story-done.
 - CARD-ANIM-003: worker branch implemented, pending story-done.
 - CARD-ANIM-007: integrated, pending story-done.
 
-No story-done window is currently active in this tracker. The next serialized
-closure is RSM-005.
+RSM-005 repair/story-done is currently expected to be active. Do not launch
+RSM-006, GSS-005+, or other RSM/session/disconnect work until it closes.
 
 ## Resolved Design Gates
 
