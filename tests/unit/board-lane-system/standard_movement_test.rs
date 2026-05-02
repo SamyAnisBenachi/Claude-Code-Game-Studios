@@ -4,7 +4,9 @@ use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 use server::core::board::{BoardPosition, UnitOwner, UnitStats};
 use server::core::session::SessionConfig;
-use server::feature::board::{apply_f1, apply_standard_movement, BoardConfig, BoardOccupancy};
+use server::feature::board::{
+    apply_f1, apply_standard_movement, BoardConfig, BoardOccupancy, TrapTrigger,
+};
 use shared::card::ClassId;
 use shared::protocol::GameMode;
 use shared::session::PlayerId;
@@ -30,6 +32,7 @@ fn world_with_board_config() -> World {
     world.insert_resource(BoardConfig::default());
     world.insert_resource(session_config());
     world.insert_resource(BoardOccupancy::default());
+    world.insert_resource(Messages::<TrapTrigger>::default());
     world
 }
 
@@ -54,6 +57,12 @@ fn unit_cell(world: &World, entity: Entity) -> u8 {
         .get::<BoardPosition>(entity)
         .expect("unit should have a board position")
         .cell
+}
+
+fn trap_trigger_count(world: &World) -> usize {
+    let messages = world.resource::<Messages<TrapTrigger>>();
+    let mut cursor = messages.get_cursor();
+    cursor.read(messages).count()
 }
 
 #[test]
@@ -123,6 +132,7 @@ fn test_bl_27_standard_movement_skips_intermediate_trap_cell() {
     run_standard_movement(&mut world);
 
     assert_eq!(unit_cell(&world, unit), 4);
+    assert_eq!(trap_trigger_count(&world), 0);
     assert_eq!(
         world
             .resource::<BoardOccupancy>()
