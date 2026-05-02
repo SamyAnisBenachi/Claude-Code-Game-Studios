@@ -1,7 +1,7 @@
 # Story 004: DRAFT_INITIAL Grid — Display & Purchase Flow
 
 > **Epic**: Hand UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -31,26 +31,26 @@
 
 *From GDD `design/gdd/hand-ui.md` Rules 4 and 14, scoped to this story:*
 
-- [ ] **HU-07**: GIVEN DRAFT_INITIAL begins and `S2CDraftOffering` is received with 9 card IDs, WHEN the grid renders, THEN exactly 9 grid slot entities have `Visibility::Visible` AND each slot's bound card data (name component, mana cost component) matches its corresponding card ID in the offering. Art rendering (atlas sprite display) is ADVISORY — lead sign-off required.
+- [x] **HU-07**: GIVEN DRAFT_INITIAL begins and `S2CDraftOffering` is received with 9 card IDs, WHEN the grid renders, THEN exactly 9 grid slot entities have `Visibility::Visible` AND each slot's bound card data (name component, mana cost component) matches its corresponding card ID in the offering. Art rendering (atlas sprite display) is ADVISORY — lead sign-off required.
 
-- [ ] **HU-08**: GIVEN the player clicks a grid card during DRAFT_INITIAL, WHEN `S2CCardAcquired` confirms the purchase, THEN:
+- [x] **HU-08**: GIVEN the player clicks a grid card during DRAFT_INITIAL, WHEN `S2CCardAcquired` confirms the purchase, THEN:
   - (a) The grid slot's `Visibility` becomes `Hidden` within one tick of receipt
   - (b) The corresponding fan slot becomes `Visibility::Visible` and an `Animator<Transform>` interpolating to the computed fan position (Formula 1) is attached
   - (c) After advancing `Time<Virtual>` by `card_draw_animation_ms` (default 280 ms), the fan slot's `Transform.translation` equals the formula-computed fan position for the updated hand count
 
-- [ ] **HU-09**: GIVEN the 10th card has been added to the hand during DRAFT_INITIAL, WHEN `S2CCardAcquired` delivers the 10th card, THEN within the same `App::update()` tick:
+- [x] **HU-09**: GIVEN the 10th card has been added to the hand during DRAFT_INITIAL, WHEN `S2CCardAcquired` delivers the 10th card, THEN within the same `App::update()` tick:
   - (a) All remaining visible grid slots receive a `GridSlotState::HandFullLocked` marker component
   - (b) Clicks on `GridSlotState::HandFullLocked` slots produce no `C2SPurchaseCard` message (input suppressed)
   - The 30% chroma / Ink Blue overlay rendering is ADVISORY.
 
-- [ ] **HU-10**: GIVEN the player clicks a grid card and no `S2CCardAcquired` arrives (covering all non-arrival cases: dropped server response, phase transition, pool exhaustion — server silently rejects), WHEN `purchase_timeout_ms` (3000 ms) elapses, THEN:
+- [x] **HU-10**: GIVEN the player clicks a grid card and no `S2CCardAcquired` arrives (covering all non-arrival cases: dropped server response, phase transition, pool exhaustion — server silently rejects), WHEN `purchase_timeout_ms` (3000 ms) elapses, THEN:
   - (a) The `PlayerEconomies` gold value is unchanged (no gold deducted)
   - (b) The slot reverts from `GridSlotState::Pending` to `GridSlotState::Available`
   - (c) A subsequent click on the slot produces a fresh `C2SPurchaseCard` message (player may retry)
 
-- [ ] **HU-10c**: GIVEN the hand reaches 10 cards (locking grid) AND a previously clicked grid card is still in `GridSlotState::Pending` (purchase in flight), THEN the slot's state becomes `GridSlotState::HandFullLocked` (hand-full lock takes precedence — click suppressed, pending state cleared regardless of in-flight request).
+- [x] **HU-10c**: GIVEN the hand reaches 10 cards (locking grid) AND a previously clicked grid card is still in `GridSlotState::Pending` (purchase in flight), THEN the slot's state becomes `GridSlotState::HandFullLocked` (hand-full lock takes precedence — click suppressed, pending state cleared regardless of in-flight request).
 
-- [ ] **HU-30**: GIVEN the 10th card is acquired during DRAFT_INITIAL, WHEN the hand-full lock fires, THEN:
+- [x] **HU-30**: GIVEN the 10th card is acquired during DRAFT_INITIAL, WHEN the hand-full lock fires, THEN:
   - The pre-pooled `HandFullNotification` entity (see Story 001) becomes `Visibility::Visible` and receives a `NotificationTimer { remaining_ms: hand_full_notification_duration_ms }` component
   - After the timer elapses (verifiable via `Time<Virtual>` advance), the entity becomes `Visibility::Hidden` and the timer component is removed
   - *(Note: This entity is PRE-POOLED at session start — it is NOT spawned at runtime. This is consistent with ADR-021 Impl Guideline 3: no per-round spawn/despawn. Add it to the pre-pool count in Story 001 if not already included.)*
@@ -129,7 +129,7 @@
 **Required evidence**:
 - `tests/integration/hand-ui/draft_initial_grid_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -137,3 +137,13 @@
 
 - Depends on: Story 001 (pre-pooled grid slot entities), Story 003 (DRAFT_INITIAL phase entry handled)
 - Unlocks: None directly — parallel with Stories 005–013
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 6/6 passing; HU-07, HU-08, HU-09, HU-10, HU-10c, and HU-30 are covered by `tests/integration/hand-ui/draft_initial_grid_test.rs`.
+**Test Evidence**: `cargo test -p client --test hand_ui_draft_initial_grid_test` passed 5/5. `cargo check -p client` passed.
+**Verification**: `client/src/ui/hand/mod.rs` populates pre-pooled grid slots from draft offerings, sends local purchase intents through `HandUiOutboundMessages`, applies pending purchase timeouts with `Time<Virtual>`, hides confirmed grid slots, animates acquired cards into fan slots with `TweenAnim`, locks visible grid slots at hand-full, and toggles the pre-pooled hand-full notification through `NotificationTimer`.
+**Deviations**: Advisory only - live Lightyear wiring is not verified here; the current implementation uses local Bevy messages/outbox (`HandUiDraftOfferingReceived`, `HandUiCardAcquiredReceived`, `HandUiOutboundMessages`) rather than real `MessageReceiver<S2CDraftOffering>` / `MessageSender<C2SPurchaseCard>`. Advisory only - `CardAtlas` art/frame lookup is not implemented; `CardAtlas` currently exists only in architecture docs, and HU-07 marks art rendering advisory. Advisory only - current `TR-HU-005` registry text also mentions the 45s timer and 5g budget via `S2CGoldBroadcast`; this story's acceptance criteria cover the grid display and purchase flow only.
+**Code Review**: Skipped - lean mode.

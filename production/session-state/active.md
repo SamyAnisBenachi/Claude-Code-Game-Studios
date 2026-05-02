@@ -1313,3 +1313,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no `HUD-010` row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the serialized closure queue with Hand UI Story 004 (`production/epics/hand-ui/story-004-draft-initial-grid.md`) if its implementation is ready for closure.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hand-ui/story-004-draft-initial-grid.md` - Story 004: DRAFT_INITIAL Grid - Display & Purchase Flow
+- Criteria: 6/6 passing; HU-07, HU-08, HU-09, HU-10, HU-10c, and HU-30 covered by `tests/integration/hand-ui/draft_initial_grid_test.rs`.
+- Test Evidence: `cargo test -p client --test hand_ui_draft_initial_grid_test` passed 5/5. `cargo check -p client` passed.
+- Verification: `client/src/ui/hand/mod.rs` populates pre-pooled grid slots from draft offerings, sends local purchase intents through `HandUiOutboundMessages`, applies pending purchase timeouts with `Time<Virtual>`, hides confirmed grid slots, animates acquired cards into fan slots with `TweenAnim`, locks visible grid slots at hand-full, and toggles the pre-pooled hand-full notification through `NotificationTimer`.
+- Notes: Advisory only - live Lightyear wiring is not verified here; the implementation uses local Bevy messages/outbox rather than real `MessageReceiver<S2CDraftOffering>` / `MessageSender<C2SPurchaseCard>`. Advisory only - `CardAtlas` art/frame lookup is not implemented; HU-07 marks art rendering advisory. Advisory only - current `TR-HU-005` registry text also mentions the 45s timer and 5g budget via `S2CGoldBroadcast`; this story's acceptance criteria cover the grid display and purchase flow only. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no explicit `HAND-UI-004` / `Hand UI Story 004` row exists in `production/sprint-status.yaml`.
+- Next recommended: Hand UI Story 005 PLACEMENT Entry - Submit Button & Core Stage/Unstage (`production/epics/hand-ui/story-005-placement-submit-core.md`) after readiness check.
