@@ -6,8 +6,8 @@ use bevy_tweening::{
     TweenState,
 };
 use client::card_animations::{
-    make_tween_anim, AnimationTimingConfig, CardAnimationsPlugin, DamageNumber,
-    DamageNumberSpawnRequested, DespawnAfter, TextColorLens, DAMAGE_NUMBER_JITTER_TABLE,
+    damage_number_jitter, make_tween_anim, AnimationTimingConfig, CardAnimationsPlugin,
+    DamageNumber, DamageNumberSpawnRequested, DespawnAfter, TextColorLens,
 };
 
 fn app_with_card_animations() -> App {
@@ -186,6 +186,27 @@ fn damage_number_spawn_request_creates_world_space_text_and_controllers() {
 }
 
 #[test]
+fn damage_number_jitter_matches_gdd_f3_table() {
+    let expected = [
+        Vec2::new(0.0, 0.0),
+        Vec2::new(14.0, 6.0),
+        Vec2::new(-14.0, 6.0),
+        Vec2::new(8.0, 18.0),
+        Vec2::new(-8.0, 18.0),
+        Vec2::new(20.0, -2.0),
+        Vec2::new(-20.0, -2.0),
+        Vec2::new(0.0, 24.0),
+    ];
+
+    for (event_id, expected_offset) in expected.iter().copied().enumerate() {
+        assert_eq!(damage_number_jitter(event_id as u32), expected_offset);
+    }
+
+    assert_eq!(damage_number_jitter(8), expected[0]);
+    assert_eq!(damage_number_jitter(15), expected[7]);
+}
+
+#[test]
 fn simultaneous_damage_numbers_use_distinct_entities_and_deterministic_jitter() {
     let mut app = app_with_card_animations();
     let target_transform = Transform::from_xyz(10.0, 20.0, 0.0);
@@ -216,8 +237,8 @@ fn simultaneous_damage_numbers_use_distinct_entities_and_deterministic_jitter() 
         })
         .collect::<Vec<_>>();
 
-    let expected_0 = target_transform.translation + DAMAGE_NUMBER_JITTER_TABLE[0].extend(0.0);
-    let expected_1 = target_transform.translation + DAMAGE_NUMBER_JITTER_TABLE[1].extend(0.0);
+    let expected_0 = target_transform.translation;
+    let expected_1 = target_transform.translation + Vec3::new(14.0, 6.0, 0.0);
     assert!(positions.contains(&expected_0));
     assert!(positions.contains(&expected_1));
 }

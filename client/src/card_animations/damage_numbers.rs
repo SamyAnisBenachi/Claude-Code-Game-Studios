@@ -15,10 +15,10 @@ pub const DAMAGE_NUMBER_JITTER_TABLE: [Vec2; 8] = [
     Vec2::new(0.0, 0.0),
     Vec2::new(14.0, 6.0),
     Vec2::new(-14.0, 6.0),
-    Vec2::new(20.0, 14.0),
-    Vec2::new(-20.0, 14.0),
-    Vec2::new(8.0, 22.0),
-    Vec2::new(-8.0, 22.0),
+    Vec2::new(8.0, 18.0),
+    Vec2::new(-8.0, 18.0),
+    Vec2::new(20.0, -2.0),
+    Vec2::new(-20.0, -2.0),
     Vec2::new(0.0, 24.0),
 ];
 
