@@ -1,8 +1,10 @@
 use bevy::prelude::*;
+use bevy_tweening::TweenAnim;
 use lightyear::prelude::MessageReceiver;
 use shared::protocol::{RoundPhase, S2CGoldBroadcast, S2CGoldUpdate};
 use shared::session::PlayerId;
 
+use crate::card_animations::cancel_tween_anim_in_place;
 use crate::state::{ClientState, CurrentClientPhase};
 use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
@@ -174,10 +176,12 @@ pub fn hud_phase_transition_system(
     current: Res<CurrentClientPhase>,
     entities: Option<Res<HudEntities>>,
     mut mode: ResMut<HudMode>,
+    mut commands: Commands,
     mut visibility: Query<&mut Visibility>,
     gold_states: Query<&GoldDisplayState>,
     mut gold_texts: Query<&mut Text>,
     mut gold_spans: Query<&mut TextSpan>,
+    mut gold_animators: Query<(Entity, &mut TweenAnim), With<GoldLabelOwner>>,
 ) {
     if !current.is_changed() {
         return;
@@ -235,7 +239,32 @@ pub fn hud_phase_transition_system(
                 &mut gold_spans,
             );
         }
-        RoundPhase::GameOver => {}
+        RoundPhase::GameOver => {
+            let render_mode = if *mode == HudMode::EconomyAuction {
+                HudMode::EconomyAuction
+            } else {
+                HudMode::EconomyBasic
+            };
+            *mode = HudMode::Frozen;
+            set_hud_visible(&entities, &mut visibility);
+            cancel_hud_gold_tweens(&mut commands, &mut gold_animators);
+            sync_gold_label_for_mode(
+                entities.own_gold_parent,
+                entities.own_gold_span,
+                render_mode,
+                &gold_states,
+                &mut gold_texts,
+                &mut gold_spans,
+            );
+            sync_gold_label_for_mode(
+                entities.opponent_gold_parent,
+                entities.opponent_gold_span,
+                render_mode,
+                &gold_states,
+                &mut gold_texts,
+                &mut gold_spans,
+            );
+        }
     }
 }
 
@@ -463,10 +492,16 @@ fn spawn_scoreboard_dots(
 }
 
 pub fn handle_gold_broadcast_system(
+    mode: Res<HudMode>,
     player_ids: Option<Res<HudPlayerIds>>,
     mut receivers: Query<&mut MessageReceiver<S2CGoldBroadcast>>,
     mut gold_labels: Query<(&GoldLabelOwner, &mut GoldDisplayState)>,
 ) {
+    if *mode == HudMode::Frozen {
+        drain_gold_broadcasts(&mut receivers);
+        return;
+    }
+
     let Some(player_ids) = player_ids else {
         drain_gold_broadcasts(&mut receivers);
         return;
@@ -495,6 +530,7 @@ pub fn handle_gold_broadcast_system(
 }
 
 pub fn handle_hud_objective_update_system(
+    mode: Res<HudMode>,
     mut updates: MessageReader<HudObjectiveUpdate>,
     entities: Option<Res<HudEntities>>,
     player_ids: Option<Res<HudPlayerIds>>,
@@ -504,6 +540,11 @@ pub fn handle_hud_objective_update_system(
         &mut BorderColor,
     )>,
 ) {
+    if *mode == HudMode::Frozen {
+        for _update in updates.read() {}
+        return;
+    }
+
     let Some(entities) = entities else {
         for _update in updates.read() {}
         return;
@@ -608,10 +649,16 @@ pub fn phase_label_text(phase: RoundPhase) -> Option<&'static str> {
 }
 
 pub fn handle_gold_update_system(
+    mode: Res<HudMode>,
     mut receivers: Query<&mut MessageReceiver<S2CGoldUpdate>>,
     mut gold_labels: Query<(&GoldLabelOwner, &mut GoldDisplayState)>,
     mut mana_labels: Query<&mut ManaDisplayState, With<ManaLabel>>,
 ) {
+    if *mode == HudMode::Frozen {
+        drain_gold_updates(&mut receivers);
+        return;
+    }
+
     let mut last_update = None;
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
@@ -639,6 +686,12 @@ pub fn handle_gold_update_system(
 }
 
 fn drain_gold_broadcasts(receivers: &mut Query<&mut MessageReceiver<S2CGoldBroadcast>>) {
+    for mut receiver in receivers.iter_mut() {
+        for _message in receiver.receive() {}
+    }
+}
+
+fn drain_gold_updates(receivers: &mut Query<&mut MessageReceiver<S2CGoldUpdate>>) {
     for mut receiver in receivers.iter_mut() {
         for _message in receiver.receive() {}
     }
@@ -778,6 +831,18 @@ fn set_hud_visible(entities: &HudEntities, visibility: &mut Query<&mut Visibilit
         for dot in row {
             set_visibility(visibility, dot, Visibility::Visible);
         }
+    }
+}
+
+fn cancel_hud_gold_tweens(
+    commands: &mut Commands,
+    animators: &mut Query<(Entity, &mut TweenAnim), With<GoldLabelOwner>>,
+) {
+    for (entity, mut animator) in animators.iter_mut() {
+        if let Err(error) = cancel_tween_anim_in_place(&mut animator) {
+            warn!("Failed to cancel HUD gold tween on entity {entity:?}: {error}");
+        }
+        commands.entity(entity).remove::<TweenAnim>();
     }
 }
 
