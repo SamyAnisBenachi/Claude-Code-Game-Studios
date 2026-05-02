@@ -4,8 +4,13 @@ use bevy::ecs::query::QueryFilter;
 use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
 use bevy_tweening::{lens::TransformPositionLens, Tween, TweenAnim};
+use lightyear::prelude::MessageSender;
 use shared::card::{CardCatalog, CardId};
-use shared::protocol::{C2SActivateCard, C2SPurchaseCard, RoundPhase};
+use shared::protocol::{
+    C2SActivateCard, C2SPurchaseCard, C2SSubmitPlacement, PlacedCard, PlayTarget, ReliableChannel,
+    RoundPhase,
+};
+use shared::session::PlayerId;
 
 use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
@@ -131,6 +136,35 @@ impl HandUiMode {
 pub struct HandUiOutboundMessages {
     pub activate_cards: Vec<C2SActivateCard>,
     pub purchase_cards: Vec<C2SPurchaseCard>,
+    pub submit_placements: Vec<C2SSubmitPlacement>,
+}
+
+#[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
+pub struct PendingPlacements {
+    pub placements: Vec<PlacedCard>,
+}
+
+impl PendingPlacements {
+    pub fn staged_count(&self) -> usize {
+        self.placements.len()
+    }
+
+    fn clear(&mut self) {
+        self.placements.clear();
+    }
+
+    fn stage_or_update(&mut self, placement: PlacedCard) {
+        if let Some(existing) = self
+            .placements
+            .iter_mut()
+            .find(|existing| existing.card_id == placement.card_id)
+        {
+            *existing = placement;
+            return;
+        }
+
+        self.placements.push(placement);
+    }
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
@@ -151,6 +185,24 @@ pub struct HandUiDraftOfferingReceived {
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandUiCardAcquiredReceived {
     pub card_id: CardId,
+}
+
+#[derive(Message, Debug, Clone, PartialEq, Eq)]
+pub struct HandUiPlacementDropResolved {
+    pub card: Entity,
+    pub owner_id: PlayerId,
+    pub target: Option<PlayTarget>,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandSubmitButtonClicked {
+    pub button: Entity,
+}
+
+#[derive(Message, Debug, Clone, PartialEq, Eq)]
+pub struct GhostPlacementChanged {
+    pub target: Option<PlayTarget>,
+    pub card_id: Option<CardId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -196,6 +248,9 @@ impl FanSlotLayout {
 pub struct HandSubmitButton;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConfirmationModal;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandFanRoot;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -209,6 +264,15 @@ pub enum HandSubmitInteractionState {
     Active,
     Inactive,
 }
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FanSlotState {
+    Active,
+    Ghost,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReserveStripForFanSlot(pub u8);
 
 #[derive(Resource, Debug, Clone, Copy)]
 pub struct HandUiEntities {
@@ -282,10 +346,14 @@ impl Plugin for HandUiPlugin {
             .init_resource::<HandContents>()
             .init_resource::<HandUiMode>()
             .init_resource::<HandUiOutboundMessages>()
+            .init_resource::<PendingPlacements>()
             .add_message::<HandFanCardClicked>()
             .add_message::<HandGridCardClicked>()
             .add_message::<HandUiDraftOfferingReceived>()
             .add_message::<HandUiCardAcquiredReceived>()
+            .add_message::<HandUiPlacementDropResolved>()
+            .add_message::<HandSubmitButtonClicked>()
+            .add_message::<GhostPlacementChanged>()
             .configure_sets(
                 Update,
                 (
@@ -309,6 +377,8 @@ impl Plugin for HandUiPlugin {
                     (
                         handle_grid_card_click_system,
                         handle_hand_fan_card_click_system,
+                        handle_placement_drop_resolved_system,
+                        handle_submit_button_click_system,
                     )
                         .chain()
                         .in_set(HandUiSystemSet::Input),
@@ -381,13 +451,15 @@ pub fn hand_ui_phase_transition_system(
     hand_contents: Res<HandContents>,
     mut mode: ResMut<HandUiMode>,
     mut layout_state: ResMut<HandFanLayoutState>,
+    mut pending_placements: ResMut<PendingPlacements>,
     entities: Option<Res<HandUiEntities>>,
     mut commands: Commands,
     mut visibility_query: Query<&mut Visibility>,
     mut submit_buttons: Query<(&mut Text, &mut HandSubmitInteractionState), With<HandSubmitButton>>,
     mut animators: Query<(Entity, &mut TweenAnim), With<HandUiEntity>>,
 ) {
-    if !current.is_changed() && !hand_contents.is_changed() {
+    let phase_changed = current.is_changed();
+    if !phase_changed && !hand_contents.is_changed() {
         return;
     }
 
@@ -396,12 +468,17 @@ pub fn hand_ui_phase_transition_system(
     };
 
     let next_mode = HandUiMode::from_phase(current.phase);
+    let entering_staging = phase_changed && next_mode == HandUiMode::Staging;
     *mode = next_mode;
     layout_state.hand_count = if next_mode.shows_fan_slots() {
         hand_contents.cards.len().min(HAND_FAN_SLOT_COUNT)
     } else {
         0
     };
+
+    if phase_changed {
+        pending_placements.clear();
+    }
 
     if next_mode == HandUiMode::Hidden {
         cancel_hand_ui_tweens(&mut commands, &mut animators);
@@ -450,16 +527,23 @@ pub fn hand_ui_phase_transition_system(
         if next_mode.shows_fan_slots() {
             if let Some(card_id) = hand_contents.cards.get(index).copied() {
                 commands.entity(entity).insert(HandSlotCard(card_id));
+                if entering_staging {
+                    commands.entity(entity).insert(FanSlotState::Active);
+                }
             } else {
-                commands.entity(entity).remove::<HandSlotCard>();
+                commands
+                    .entity(entity)
+                    .remove::<(HandSlotCard, FanSlotState)>();
             }
         } else {
             set_visibility(entity, Visibility::Hidden, &mut visibility_query);
-            commands.entity(entity).remove::<HandSlotCard>();
+            commands
+                .entity(entity)
+                .remove::<(HandSlotCard, FanSlotState)>();
         }
     }
 
-    if next_mode == HandUiMode::Staging {
+    if entering_staging {
         for (mut text, mut interaction_state) in &mut submit_buttons {
             text.0.clear();
             text.0.push_str("Submit (0 cards)");
@@ -656,6 +740,102 @@ pub fn handle_hand_fan_card_click_system(
     }
 }
 
+pub fn handle_placement_drop_resolved_system(
+    mode: Res<HandUiMode>,
+    entities: Option<Res<HandUiEntities>>,
+    mut drops: MessageReader<HandUiPlacementDropResolved>,
+    mut pending_placements: ResMut<PendingPlacements>,
+    mut ghost_writer: MessageWriter<GhostPlacementChanged>,
+    mut commands: Commands,
+    mut visibility_sets: ParamSet<(
+        Query<&mut Visibility>,
+        Query<(&ReserveStripForFanSlot, &mut Visibility)>,
+    )>,
+    fan_slots: Query<(&FanSlotIndex, &HandSlotCard), With<FanSlotIndex>>,
+    mut submit_buttons: Query<&mut Text, With<HandSubmitButton>>,
+) {
+    let Some(entities) = entities else {
+        for _drop in drops.read() {}
+        return;
+    };
+
+    for drop in drops.read() {
+        if *mode != HandUiMode::Staging {
+            continue;
+        }
+
+        set_visibility(
+            entities.drag_sprite,
+            Visibility::Hidden,
+            &mut visibility_sets.p0(),
+        );
+
+        let Ok((slot_index, card)) = fan_slots.get(drop.card) else {
+            continue;
+        };
+
+        let Some(target) = drop.target.clone() else {
+            commands.entity(drop.card).insert(FanSlotState::Active);
+            continue;
+        };
+
+        let placement = PlacedCard {
+            card_id: card.0,
+            owner_id: drop.owner_id,
+            target: target.clone(),
+        };
+        pending_placements.stage_or_update(placement);
+        ghost_writer.write(GhostPlacementChanged {
+            target: Some(target),
+            card_id: Some(card.0),
+        });
+        commands.entity(drop.card).insert(FanSlotState::Ghost);
+        set_submit_count_text(&mut submit_buttons, pending_placements.staged_count());
+        set_reserve_strip_visibility(&mut visibility_sets.p1(), slot_index.0, Visibility::Visible);
+    }
+}
+
+pub fn handle_submit_button_click_system(
+    mode: Res<HandUiMode>,
+    entities: Option<Res<HandUiEntities>>,
+    mut clicks: MessageReader<HandSubmitButtonClicked>,
+    pending_placements: Res<PendingPlacements>,
+    mut submit_buttons: Query<(&mut Text, &mut HandSubmitInteractionState), With<HandSubmitButton>>,
+    mut submit_senders: Query<&mut MessageSender<C2SSubmitPlacement>>,
+    mut outbound: ResMut<HandUiOutboundMessages>,
+) {
+    let Some(entities) = entities else {
+        for _click in clicks.read() {}
+        return;
+    };
+
+    for click in clicks.read() {
+        if *mode != HandUiMode::Staging || click.button != entities.submit_button {
+            continue;
+        }
+
+        let Ok((mut text, mut interaction_state)) = submit_buttons.get_mut(entities.submit_button)
+        else {
+            continue;
+        };
+
+        if *interaction_state != HandSubmitInteractionState::Active {
+            continue;
+        }
+
+        let msg = C2SSubmitPlacement {
+            placements: pending_placements.placements.clone(),
+        };
+        if let Ok(mut sender) = submit_senders.single_mut() {
+            sender.send::<ReliableChannel>(msg.clone());
+        }
+        outbound.submit_placements.push(msg);
+        *interaction_state = HandSubmitInteractionState::Inactive;
+        text.0.clear();
+        text.0.push_str("Submitted");
+    }
+}
+
 pub fn tick_pending_purchase_timeouts_system(
     mode: Res<HandUiMode>,
     time: Res<Time<Virtual>>,
@@ -736,6 +916,7 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
                 HandUiEntity,
                 HandCard,
                 FanSlotIndex(index as u8),
+                FanSlotState::Active,
                 hidden_slot_node(),
                 Transform::default(),
                 Visibility::Hidden,
@@ -859,6 +1040,28 @@ fn set_visibility(
 ) {
     if let Ok(mut current) = visibility_query.get_mut(entity) {
         *current = visibility;
+    }
+}
+
+fn set_submit_count_text(
+    submit_buttons: &mut Query<&mut Text, With<HandSubmitButton>>,
+    count: usize,
+) {
+    for mut text in submit_buttons.iter_mut() {
+        text.0.clear();
+        text.0.push_str(&format!("Submit ({count} cards)"));
+    }
+}
+
+fn set_reserve_strip_visibility(
+    reserve_strips: &mut Query<(&ReserveStripForFanSlot, &mut Visibility)>,
+    slot_index: u8,
+    visibility: Visibility,
+) {
+    for (reserve_slot, mut reserve_visibility) in reserve_strips.iter_mut() {
+        if reserve_slot.0 == slot_index {
+            *reserve_visibility = visibility;
+        }
     }
 }
 
