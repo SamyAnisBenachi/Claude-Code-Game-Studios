@@ -104,11 +104,16 @@ None currently tracked here.
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
 - CARD-ANIM-003: Simultaneous Track Animation implemented on branch
   `work/card-anim-003-simultaneous-track-animation` at `4f4d7c5`; worker pushed
-  branch but did not run story-done. Worker checks passed:
+  branch but did not run story-done. Root cherry-picked it into `main` at
+  `066c1cd` after resolving a single export conflict in
+  `client/src/card_animations/mod.rs` with CARD-ANIM-005. Worker checks passed:
   `cargo fmt -p client -- --check`,
   `cargo test -p client --test card_animations_tracks_animation_test`,
   existing card animation regressions 26/26, `cargo check -p client`, and
   boundary grep against direct S2C readers/EventReader/EventWriter/Tracks usage.
+  Root `cargo check -p client`, `cargo test -p client --test
+  card_animations_tracks_animation_test`, and `git diff --check` passed after
+  integration.
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
   `work/gss-004-f4-session-ready` at `9708147`; root cherry-picked it into
   `main` at `4d8cf60`. Worker checks passed full affected session/RSM/economy
@@ -289,8 +294,9 @@ Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- CARD-ANIM-003: implemented on worker branch; pending root integration check and
-  story-done after the current serialized closures.
+- CARD-ANIM-003: implemented and integrated; pending story-done. Previous
+  story-done attempt blocked because worker branch was not yet on main; rerun is
+  expected to pass the evidence target.
 - GSS-004: implemented and integrated; pending story-done. Do not launch further
   SessionReady/RSM session stories until closure confirms the single-observer gate.
 - PRISM-001: implemented and integrated; pending story-done. PRISM-002 is also
