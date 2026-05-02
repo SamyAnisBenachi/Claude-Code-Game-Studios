@@ -102,13 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- CS-003: Xelor Reserve Formulas implemented on branch
-  `work/cs-003-xelor-reserve-formulas` at `e5aabd6`; root cherry-picked it into
-  `main` at `3440b21`. Worker checks passed `cargo fmt -p server -- --check`,
-  `cargo test -p server --test xelor_reserve_test`,
-  `cargo test -p server --test class_lifecycle_test`,
-  `cargo test -p server --test token_spawn_test`, and `cargo check -p server`.
-  Root repeated class lifecycle/token/xelor tests plus `cargo check -p server`.
 - HUD-007: Game Over Freeze implemented on branch
   `work/hud-007-game-over-freeze` at `926d35d`; root cherry-picked it into
   `main` at `862704f`. Worker checks passed `cargo fmt -p client -- --check`,
@@ -203,6 +196,13 @@ None currently tracked here.
   passed `cargo test -p server --test rsm_network_dispatch_test` 3/3 and
   `cargo check --workspace`. Completion notes document stale manifest,
   ResolutionTimeout wording, and `timer_duration_ms` doc drift as advisory.
+- CS-003: Xelor Reserve Formulas implemented on branch
+  `work/cs-003-xelor-reserve-formulas` at `e5aabd6`; root cherry-picked it into
+  `main` at `3440b21`; story-done committed at `b940f70`. Verification passed
+  `cargo test -p server --test xelor_reserve_test` 6/6, `cargo check -p
+  server`, and `cargo fmt -p server -- --check`. Completion notes document
+  stale manifest, stale file-path wording, and missing separate evidence doc as
+  advisory only.
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
   `work/gss-004-f4-session-ready` at `9708147`; cherry-picked into `main` at
   `4d8cf60`; repair committed at `3c64b84`; story-done committed at `36ed875`.
@@ -344,15 +344,14 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. CS-003
-2. HUD-007
-3. BOARD-007
-4. PRISM-003
-5. HUD-009
-6. HUD-010
-7. HAND-UI-004
-8. GSS-005
-9. GSS-006
+1. HUD-007
+2. BOARD-007
+3. PRISM-003
+4. HUD-009
+5. HUD-010
+6. HAND-UI-004
+7. GSS-005
+8. GSS-006
 
 Run only one story-done at a time.
 
@@ -362,7 +361,6 @@ Run only one story-done at a time.
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
   implemented/integrated and pending story-done. PRISM-004 can run after
   PRISM-003 story-done because it depends on the Lane 3 call site.
-- CS-003: implemented and integrated; pending story-done.
 - HUD-007: implemented and integrated; pending story-done.
 - BOARD-007: implemented and integrated; pending story-done.
 - PRISM-003: implemented and integrated; pending story-done.
@@ -387,7 +385,6 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- CS-003: integrated, pending story-done.
 - HUD-007: integrated, pending story-done.
 - BOARD-007: integrated, pending story-done.
 - PRISM-003: integrated, pending story-done.
@@ -415,8 +412,9 @@ Current active windows by user default-launch rule:
   window can be cleared. CARD-ANIM-005 story-done returned and was committed
   at `265f34b`; window can be cleared. AUC-004 story-done returned and was
   committed at `75b8998`; window can be cleared. RSM-006 story-done returned
-  and was committed at `2f07c94`; window can be cleared. CS-003 is now the next
-  serialized story-done candidate.
+  and was committed at `2f07c94`; window can be cleared. CS-003 story-done
+  returned and was committed at `b940f70`; window can be cleared. HUD-007 is
+  now the next serialized story-done candidate.
 - HAND-UI-004 returned, integrated at `561d2fd`, and now only needs serialized
   story-done.
 - GSS-005 returned, integrated at `15fe812`, and now only needs serialized
