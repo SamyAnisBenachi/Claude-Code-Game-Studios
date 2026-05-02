@@ -156,6 +156,17 @@ None currently tracked here.
   hud_gold_mana_display_test --test hud_economy_auction_inline_gold_test --test
   hud_phase_transitions_test` 18/18, `cargo check -p client`, and `git diff
   --check HEAD~1..HEAD`.
+- HUD-010: Numeric Tween Animation implemented on branch
+  `work/hud-010-numeric-tween-animation` at `92f8677`; root cherry-picked and
+  amended it into `main` at `609be61`. Root checks passed `cargo fmt -p client
+  -- --check`, `cargo test -p client --test hud_numeric_tween_animation_test
+  --test hud_gold_mana_display_test --test
+  hud_economy_auction_inline_gold_test --test hud_game_over_freeze_test --test
+  hud_phase_transitions_test` 21/21, extra HUD regression slice
+  `same_tick_tie_break_test`, `hud_phase_label_round_counter_test`,
+  `hud_plugin_scaffold_test`, and `scoreboard_dot_message_test` 17/17,
+  `cargo check -p client`, and `git diff --check HEAD~1..HEAD`. Uses the
+  current bevy_tweening 0.15 TweenAnim / PlaybackState / TweenState pattern.
 - HAND-UI-004: DRAFT_INITIAL Grid Flow implemented on branch
   `work/hand-ui-004-draft-initial-grid` at `b2ad5db`; root cherry-picked it
   into `main` at `561d2fd`. Root checks passed `cargo fmt -p client --
@@ -340,9 +351,10 @@ None currently tracked here.
 5. BOARD-007
 6. PRISM-003
 7. HUD-009
-8. HAND-UI-004
-9. GSS-005
-10. GSS-006
+8. HUD-010
+9. HAND-UI-004
+10. GSS-005
+11. GSS-006
 
 Run only one story-done at a time.
 
@@ -359,6 +371,7 @@ Run only one story-done at a time.
 - BOARD-007: implemented and integrated; pending story-done.
 - PRISM-003: implemented and integrated; pending story-done.
 - HUD-009: implemented and integrated; pending story-done.
+- HUD-010: implemented and integrated; pending story-done.
 - HAND-UI-004: implemented and integrated; pending story-done.
 - GSS-005: implemented and integrated; pending story-done.
 - GSS-006: implemented and integrated; pending story-done. Do not launch
@@ -385,6 +398,7 @@ Batch launched:
 - BOARD-007: integrated, pending story-done.
 - PRISM-003: integrated, pending story-done.
 - HUD-009: integrated, pending story-done.
+- HUD-010: integrated, pending story-done.
 - HAND-UI-004: integrated, pending story-done.
 - GSS-005: integrated, pending story-done.
 - GSS-006: integrated, pending story-done.
@@ -413,6 +427,8 @@ Current active windows by user default-launch rule:
   story-done.
 - GSS-006 returned, integrated at `d5f835e`, and now only needs serialized
   story-done after GSS-005.
+- HUD-010 returned, integrated at `609be61`, and now only needs serialized
+  story-done after HUD-009.
 - OBJ-002 returned NEEDS WORK only on stale manifest. Manifest refreshed to
   `2026-05-01` in `b8b9f26`; relaunch readiness/implementation and then treat
   it as active unless the user says it was not launched.
