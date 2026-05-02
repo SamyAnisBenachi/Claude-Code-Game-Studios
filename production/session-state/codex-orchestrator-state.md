@@ -334,6 +334,8 @@ Run only one story-done at a time.
   Correct unblock path is GSS-005 -> GSS-006 -> GSS-007. Story gates were
   refreshed in `e5edbc2`; run GSS-005 first because GSS-006/007 share session
   files and should be staged carefully.
+- GSS-005 readiness returned NEEDS WORK on stale TR mapping and missing
+  performance note. Fixed in `9210438`; relaunch GSS-005 from latest origin/main.
 - GSS-005+ and other RSM/session/disconnect work are unblocked by GSS-004
   closure, but still stage carefully because RSM-006 is implemented and pending
   story-done.
