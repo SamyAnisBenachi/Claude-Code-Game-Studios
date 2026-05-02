@@ -185,6 +185,8 @@ pub enum BidRejectedReason {
     InsufficientGold,
     AmountTooLow,
     AuctionExpired,
+    AlreadyLeader,
+    HandFull,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -399,26 +401,26 @@ pub struct S2CResolutionEvent {
     pub events: Vec<TaggedEvent>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct S2CAuctionCard {
     pub card_id: CardId,
     pub starting_price: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct S2CAuctionBidAccepted {
     pub bidder: PlayerId,
     pub amount: u32,
     pub new_timer_ms: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct S2CAuctionSettled {
     pub winner: Option<PlayerId>,
     pub amount: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct S2CAuctionBidRejected {
     pub reason: BidRejectedReason,
 }

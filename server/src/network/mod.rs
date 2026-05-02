@@ -8,9 +8,9 @@ use bevy::prelude::*;
 use lightyear::prelude::server::*;
 use lightyear::prelude::*;
 use shared::protocol::{
-    self, C2SAcknowledgeResult, C2SActivateCard, C2SHeartbeat, C2SHello, C2SPlaceBid,
-    C2SSignalReady, C2SSubmitPlacement, ProtocolChannel, ProtocolDirection, ProtocolRegistry,
-    ReliableChannel, S2CObjectiveIdentities,
+    self, C2SAcknowledgeResult, C2SActivateCard, C2SHeartbeat, C2SHello, C2SSignalReady,
+    C2SSubmitPlacement, ProtocolChannel, ProtocolDirection, ProtocolRegistry, ReliableChannel,
+    S2CObjectiveIdentities,
 };
 
 pub struct ServerNetworkPlugin;
@@ -110,7 +110,6 @@ fn receive_c2s_messages(
     hello: Query<&mut MessageReceiver<C2SHello>>,
     activate_card: Query<&mut MessageReceiver<C2SActivateCard>>,
     signal_ready: Query<&mut MessageReceiver<C2SSignalReady>>,
-    place_bid: Query<&mut MessageReceiver<C2SPlaceBid>>,
     submit_placement: Query<&mut MessageReceiver<C2SSubmitPlacement>>,
     acknowledge_result: Query<&mut MessageReceiver<C2SAcknowledgeResult>>,
     heartbeat: Query<(&RemoteId, &mut MessageReceiver<C2SHeartbeat>)>,
@@ -120,7 +119,6 @@ fn receive_c2s_messages(
     log_received("C2SHello", hello);
     log_received("C2SActivateCard", activate_card);
     log_received("C2SSignalReady", signal_ready);
-    log_received("C2SPlaceBid", place_bid);
     log_received("C2SSubmitPlacement", submit_placement);
     log_received("C2SAcknowledgeResult", acknowledge_result);
     forward_heartbeats(heartbeat, connections.as_deref(), &mut heartbeat_writer);
