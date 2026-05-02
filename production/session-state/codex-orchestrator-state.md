@@ -166,6 +166,13 @@ None currently tracked here.
   `cargo test -p server --test class_lifecycle_test`,
   `cargo test -p server --test token_spawn_test`, and `cargo check -p server`.
   Root repeated class lifecycle/token/xelor tests plus `cargo check -p server`.
+- HUD-007: Game Over Freeze implemented on branch
+  `work/hud-007-game-over-freeze` at `926d35d`; root cherry-picked it into
+  `main` at `862704f`. Worker checks passed `cargo fmt -p client -- --check`,
+  `cargo test -p client --test hud_game_over_freeze_test`, HUD regression bundle
+  31/31, and `cargo check -p client`. Root repeated
+  `cargo test -p client --test hud_game_over_freeze_test`,
+  `cargo check -p client`, and `git diff --check HEAD~1..HEAD`.
 ## Recently Closed
 
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
@@ -302,6 +309,7 @@ None currently tracked here.
 7. AUC-004
 8. RSM-006
 9. CS-003
+10. HUD-007
 
 Run only one story-done at a time.
 
@@ -318,6 +326,7 @@ Run only one story-done at a time.
 - AUC-004: implemented and integrated; pending story-done.
 - RSM-006: implemented and integrated; pending story-done.
 - CS-003: implemented and integrated; pending story-done.
+- HUD-007: implemented and integrated; pending story-done.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
 - GSS-005+ and other RSM/session/disconnect work are unblocked by GSS-004
   closure, but still stage carefully because RSM-006 is implemented and pending
@@ -337,11 +346,13 @@ Batch launched:
 - AUC-004: integrated, pending story-done.
 - RSM-006: integrated, pending story-done.
 - CS-003: integrated, pending story-done.
+- HUD-007: integrated, pending story-done.
 
 Current active windows by user default-launch rule:
-- BOARD-007 and HUD-007 are considered active from the latest prompts.
-AUC-004, RSM-006, GSS-004, and CS-003 have returned and are integrated/closed as
-noted above. Do not launch PRISM-003 until PRISM-001 and PRISM-002 close.
+- BOARD-007 is considered active from the latest prompt.
+AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
+integrated/closed as noted above. Do not launch PRISM-003 until PRISM-001 and
+PRISM-002 close.
 
 ## Resolved Design Gates
 
