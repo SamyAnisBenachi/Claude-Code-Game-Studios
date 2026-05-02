@@ -441,6 +441,11 @@ fn matches_filter(id: &CardId, catalog: &CardCatalog, filter: &PoolFilter) -> bo
             return false;
         }
     }
+    if let Some(ref card_types) = filter.card_types {
+        if !card_types.contains(&card.card_type) {
+            return false;
+        }
+    }
     if let Some(class) = filter.class {
         if card.class != class {
             return false;

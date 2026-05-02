@@ -3,15 +3,18 @@ use lightyear::prelude::{NetworkTarget, Replicate};
 use shared::protocol::DraftPhase;
 use shared::session::PlayerId;
 
+use crate::core::pool::{PlayerPools, PoolFilter};
 use crate::core::rsm::{DraftStarted, GameOverEmitted};
 use crate::core::rsm::{RoundPhase, RoundState};
 use crate::core::session::SessionConfig;
-use crate::feature::acquisition::{hand_push, PlayerHands};
+use crate::feature::acquisition::{hand_push, PlayerHands, MAX_HAND_SIZE};
 use crate::feature::prism::{
-    AuditLog, DiscardLog, PrismCollected, PrismLaneKey, PrismPresence, PrismState, MAX_PLAYERS,
-    PRISM_LANE_COUNT,
+    AuditLog, DiscardLog, PrismAuditEntry, PrismCollected, PrismLaneKey, PrismPresence, PrismState,
+    MAX_PLAYERS, PRISM_LANE_COUNT,
 };
 use crate::foundation::config::CardCatalog;
+use crate::foundation::rng::ServerRng;
+use shared::card::CardType;
 
 const PRISM_STRIKE_CARD_KEY: &str = "prism_strike";
 const PRISM_RESERVE_CARD_KEY: &str = "prism_reserve";
@@ -83,7 +86,9 @@ pub fn resolve_prism_draws(
     mut hands: Option<ResMut<PlayerHands>>,
     card_catalog: Option<Res<CardCatalog>>,
     mut discard_log: Option<ResMut<DiscardLog>>,
-    _audit_log: Option<ResMut<AuditLog>>,
+    mut audit_log: Option<ResMut<AuditLog>>,
+    mut server_rng: Option<ResMut<ServerRng>>,
+    mut player_pools: Option<ResMut<PlayerPools>>,
     round_state: Option<Res<RoundState>>,
     session: Option<Res<SessionConfig>>,
     mut prism_presence: Query<(&PrismLaneKey, &mut PrismPresence)>,
@@ -142,31 +147,136 @@ pub fn resolve_prism_draws(
             continue;
         }
 
-        let card_key = match deterministic_lane_card_key(event.lane) {
-            Some(card_key) => card_key,
-            None => continue,
-        };
-        let Some(card_id) = card_id_for_key(card_catalog, card_key) else {
-            warn!(
-                player_id = event.player_id.0,
-                lane = event.lane,
-                card_key,
-                "PrismCollected discarded because static reward card is missing from CardCatalog"
-            );
-            continue;
-        };
-
         prism_state.collected[player_index][lane_index] = true;
         set_presence_collected(&mut prism_presence, event.player_id, event.lane, true);
 
-        if hand_push(hands, event.player_id, card_id).is_err() {
-            warn!(
-                player_id = event.player_id.0,
-                lane = event.lane,
-                card_id = card_id.0,
-                "Prism deterministic reward dropped because player hand is full"
-            );
+        match event.lane {
+            1 | 2 | 4 | 5 => {
+                resolve_deterministic_lane_reward(hands, card_catalog, event);
+            }
+            3 => {
+                let (Some(audit_log), Some(server_rng), Some(player_pools)) = (
+                    audit_log.as_deref_mut(),
+                    server_rng.as_deref_mut(),
+                    player_pools.as_deref_mut(),
+                ) else {
+                    warn!(
+                        player_id = event.player_id.0,
+                        lane = event.lane,
+                        "Prism Lane 3 draw skipped because RNG or pool resources are not ready"
+                    );
+                    continue;
+                };
+
+                resolve_lane3_rng_reward(
+                    hands,
+                    card_catalog,
+                    audit_log,
+                    server_rng,
+                    player_pools,
+                    event,
+                );
+            }
+            _ => {}
         }
+    }
+}
+
+fn resolve_deterministic_lane_reward(
+    hands: &mut PlayerHands,
+    card_catalog: &CardCatalog,
+    event: PrismCollected,
+) {
+    let Some(card_key) = deterministic_lane_card_key(event.lane) else {
+        return;
+    };
+    let Some(card_id) = card_id_for_key(card_catalog, card_key) else {
+        warn!(
+            player_id = event.player_id.0,
+            lane = event.lane,
+            card_key,
+            "PrismCollected discarded because static reward card is missing from CardCatalog"
+        );
+        return;
+    };
+
+    if hand_push(hands, event.player_id, card_id).is_err() {
+        warn!(
+            player_id = event.player_id.0,
+            lane = event.lane,
+            card_id = card_id.0,
+            "Prism deterministic reward dropped because player hand is full"
+        );
+    }
+}
+
+fn resolve_lane3_rng_reward(
+    hands: &mut PlayerHands,
+    card_catalog: &CardCatalog,
+    audit_log: &mut AuditLog,
+    server_rng: &mut ServerRng,
+    player_pools: &mut PlayerPools,
+    event: PrismCollected,
+) {
+    if hands.hand_len(event.player_id) >= MAX_HAND_SIZE {
+        return;
+    }
+
+    let Some(pool) = player_pools.pools.get_mut(&event.player_id) else {
+        warn!(
+            player_id = event.player_id.0,
+            lane = event.lane,
+            "Prism Lane 3 draw skipped because player pool is missing"
+        );
+        return;
+    };
+
+    let Ok(rng_player_id) = u32::try_from(event.player_id.0) else {
+        warn!(
+            player_id = event.player_id.0,
+            lane = event.lane,
+            "Prism Lane 3 draw skipped because player id exceeds current RNG API width"
+        );
+        return;
+    };
+
+    let seed_index = server_rng.current_seed_index();
+    let seed = server_rng.resolve_prism(rng_player_id, event.lane);
+    let filter = PoolFilter {
+        card_types: Some(vec![CardType::Minion, CardType::Spell]),
+        ..Default::default()
+    };
+    let result = pool.draw_random(&card_catalog.cards, &filter, seed);
+
+    audit_log.entries.push(PrismAuditEntry {
+        player_id: event.player_id,
+        lane: event.lane,
+        seed_index,
+        result,
+    });
+
+    let Some(card_id) = result else {
+        return;
+    };
+
+    if let Err(error) = pool.distribute(card_id) {
+        warn!(
+            player_id = event.player_id.0,
+            lane = event.lane,
+            card_id = card_id.0,
+            ?error,
+            "Prism Lane 3 draw result could not be distributed"
+        );
+        return;
+    }
+
+    if hand_push(hands, event.player_id, card_id).is_err() {
+        warn!(
+            player_id = event.player_id.0,
+            lane = event.lane,
+            card_id = card_id.0,
+            "Prism Lane 3 reward dropped after draw because player hand became full"
+        );
     }
 }
 

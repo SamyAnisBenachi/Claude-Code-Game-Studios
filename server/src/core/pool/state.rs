@@ -35,6 +35,8 @@ pub enum DistributeError {
 pub struct PoolFilter {
     /// Restrict to one card type (e.g., Minion only).
     pub card_type: Option<CardType>,
+    /// Restrict to any of several card types (e.g., Prism Lane 3 Minion or Spell).
+    pub card_types: Option<Vec<CardType>>,
     /// Restrict to a specific class or Neutral.
     pub class: Option<ClassId>,
     /// Restrict to specific rarities.
