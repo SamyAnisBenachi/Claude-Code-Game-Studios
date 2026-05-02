@@ -171,6 +171,14 @@ None currently tracked here.
   prism_state_scaffold_test --test prism_deterministic_lanes_test` passed 16/16,
   `cargo check -p server`, and `git diff --check HEAD~1..HEAD`. Network
   staging remains PRISM-004.
+- HUD-009: Same-Tick Gold Tie-Break implemented on branch
+  `work/hud-009-same-tick-gold-tie-break` at `ed3d7fd`; root cherry-picked and
+  amended it into `main` at `fdadbe6` after worker push was blocked by approval
+  policy. Root checks passed `cargo fmt -p client -- --check`,
+  `cargo test -p client --test same_tick_tie_break_test --test
+  hud_gold_mana_display_test --test hud_economy_auction_inline_gold_test --test
+  hud_phase_transitions_test` 18/18, `cargo check -p client`, and `git diff
+  --check HEAD~1..HEAD`.
 ## Recently Closed
 
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
@@ -316,6 +324,7 @@ None currently tracked here.
 7. HUD-007
 8. BOARD-007
 9. PRISM-003
+10. HUD-009
 
 Run only one story-done at a time.
 
@@ -341,6 +350,7 @@ Run only one story-done at a time.
 - HUD-007: implemented and integrated; pending story-done.
 - BOARD-007: implemented and integrated; pending story-done.
 - PRISM-003: implemented and integrated; pending story-done.
+- HUD-009: implemented and integrated; pending story-done.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
 - HUD-008 returned READY but blocked on missing full `S2CGameSnapshot` schema.
   Correct unblock path is GSS-005 -> GSS-006 -> GSS-007. Story gates were
@@ -366,6 +376,7 @@ Batch launched:
 - HUD-007: integrated, pending story-done.
 - BOARD-007: integrated, pending story-done.
 - PRISM-003: integrated, pending story-done.
+- HUD-009: integrated, pending story-done.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
