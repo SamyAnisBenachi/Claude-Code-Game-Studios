@@ -1,7 +1,7 @@
 # Story 005: Lobby Disconnect — Dual-Signal Cancel
 
 > **Epic**: Game Session System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -137,7 +137,7 @@ The implementation pattern changes significantly depending on which it is. Docum
 **Required evidence**:
 - `tests/unit/session/dual_signal_disconnect_test.rs` — all test cases passing
 - `tests/unit/session/lobby_timeout_test.rs` — all test cases passing
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing locally
 
 ---
 
@@ -147,3 +147,12 @@ The implementation pattern changes significantly depending on which it is. Docum
 - Depends on: Story 002 (room create/join establishes `SessionParticipants` and `ActiveSessions`)
 - Depends on: lightyear-protocol-verification epic (ADR-011 checklist items 12–14 for `OnDisconnected` API verification)
 - Unlocks: Story 007 (reconnect — requires dual-signal disconnect detection to be in place before reconnect can be robustly tested)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 9/9 top-level acceptance criteria passing.
+**Deviations**: None blocking. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates. Scope note: the implementation uses Cargo integration-test wrappers under `server/tests/` to execute the required `tests/unit/session/` evidence files.
+**Repair**: `lobby_timeout_check` now cancels when `now > lobby_deadline.0` and F4 is false. Regression coverage added for the fully filled/class-locked-after-deadline case that previously remained `LobbyWaiting`.
+**Test Evidence**: Integration story covered by `tests/unit/session/dual_signal_disconnect_test.rs` and `tests/unit/session/lobby_timeout_test.rs`; `cargo fmt -p server -- --check`, `cargo test -p server --test dual_signal_disconnect_test --test lobby_timeout_test`, and `cargo check -p server` passed on 2026-05-02.
+**Code Review**: Skipped - Lean mode.

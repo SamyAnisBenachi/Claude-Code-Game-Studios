@@ -599,7 +599,7 @@ pub fn lobby_timeout_check(
             None,
         )
     } else {
-        find_lobby_timeout(&rooms, now).and_then(|session_id| {
+        find_lobby_timeout(&rooms, selections.as_deref(), now).and_then(|session_id| {
             cancel_lobby_by_session(&mut rooms, &mut active_sessions, session_id)
         })
     };
@@ -1090,14 +1090,19 @@ fn find_lobby_heartbeat_timeout(
     })
 }
 
-fn find_lobby_timeout(rooms: &RoomSessions, now: f64) -> Option<SessionId> {
+fn find_lobby_timeout(
+    rooms: &RoomSessions,
+    selections: Option<&ClassSelections>,
+    now: f64,
+) -> Option<SessionId> {
+    let selections = selections?;
     rooms.session_ids().into_iter().find(|session_id| {
         rooms
             .get(*session_id)
             .map(|session| {
                 session.state == LobbyState::LobbyWaiting
                     && now > session.lobby_deadline.0
-                    && !all_slots_locked(&session.slots)
+                    && !f4_session_ready(&session.slots, selections, now, session.lobby_deadline)
             })
             .unwrap_or(false)
     })

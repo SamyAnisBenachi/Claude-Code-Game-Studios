@@ -1324,3 +1324,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no explicit `HAND-UI-004` / `Hand UI Story 004` row exists in `production/sprint-status.yaml`.
 - Next recommended: Hand UI Story 005 PLACEMENT Entry - Submit Button & Core Stage/Unstage (`production/epics/hand-ui/story-005-placement-submit-core.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/game-session-system/story-005-lobby-disconnect-dual-signal.md` - Story 005: Lobby Disconnect - Dual-Signal Cancel
+- Criteria: 9/9 top-level acceptance criteria passing; disconnect observer, heartbeat fallback, lobby timeout, shared cancel cleanup, first-signal-wins, plugin registration, and verification commands all passed.
+- Test Evidence: `cargo fmt -p server -- --check` passed; `cargo test -p server --test dual_signal_disconnect_test --test lobby_timeout_test` passed 8/8; `cargo check -p server` passed.
+- Verification: `lobby_timeout_check` now evaluates the room-session timeout path as `now > lobby_deadline.0 && !f4_session_ready(...)`; regression coverage proves a fully filled/class-locked lobby still cancels after the deadline because F4 is false once the deadline has passed.
+- Notes: Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates. `production/sprint-status.yaml` has no matching row for this story; Sprint 4 lists S4-11 in the markdown plan only.
+- Tech debt logged: None
+- Next recommended: GSS Story 006 Game-Over Teardown (`production/epics/game-session-system/story-006-game-over-teardown.md`) or GSS Story 007 Reconnect Snapshot (`production/epics/game-session-system/story-007-reconnect-snapshot.md`) after readiness check.
