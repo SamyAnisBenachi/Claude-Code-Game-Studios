@@ -1,7 +1,7 @@
 # Story 005: Placement-reveal parallelism + PLACEMENT 250ms budget + PlacementCancelAllAnimsRequested
 
 > **Epic**: Card Animations
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -106,7 +106,7 @@ Manual check: No visual artifact after PLACEMENT animation cancellation
 - Integration: `tests/integration/card-animations/placement_reveal_test.rs` — must exist and pass
 - Visual: `production/qa/evidence/placement-reveal-evidence.md` (CA-4b screenshot + sign-off)
 
-**Status**: [ ] Not yet created
+**Status**: [x] Integration evidence passed. Visual evidence pending for advisory CA-4b.
 
 ---
 
@@ -114,3 +114,11 @@ Manual check: No visual artifact after PLACEMENT animation cancellation
 
 - Depends on: [Story 002](story-002-tween-cancel-replace-lifecycle.md) DONE; `board-rendering.md` `PlacementRevealAnimReady` payload schema defined; `LaneCell` component defined; OQ-CA-01 resolved (`PlaybackState` test API)
 - Unlocks: None directly
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 3/4 automated criteria passing. CA-3, CA-12, and CA-21 are covered by integration tests; CA-4b remains advisory manual visual evidence.
+**Deviations**: None blocking. Advisory only: no `production/qa/evidence/placement-reveal-evidence.md` screenshot/sign-off found for CA-4b.
+**Test Evidence**: Integration: `tests/integration/card-animations/placement_reveal_test.rs`; `cargo test -p client --test card_animations_placement_reveal_test` passed 9/9. `cargo check -p client` passed.
+**Code Review**: Skipped - lean review mode.

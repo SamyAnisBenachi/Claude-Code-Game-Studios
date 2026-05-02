@@ -1214,3 +1214,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no explicit `HUD-006` row exists in `production/sprint-status.yaml`.
 - Next recommended: HUD Story 007 GAME_OVER Freeze Mode (`production/epics/hud/story-007-game-over-freeze.md`) after readiness check, or continue the serialized closure queue for implemented presentation stories.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-animations/story-005-placement-reveal-parallelism.md` - Story 005: Placement-reveal parallelism + PLACEMENT 250ms budget + PlacementCancelAllAnimsRequested
+- Criteria: 3/4 automated criteria passing; CA-3, CA-12, and CA-21 covered by `tests/integration/card-animations/placement_reveal_test.rs`. CA-4b remains advisory manual visual evidence.
+- Test Evidence: `cargo test -p client --test card_animations_placement_reveal_test` passed 9/9. `cargo check -p client` passed.
+- Verification: `client/src/card_animations/placement.rs` starts all reveal entries from one message pass, clamps PLACEMENT animation durations through `placement_phase_duration`, and cancels `PlacementPhaseAnimator` controllers before snapping targets to `BoardLayout.cell_to_world` while preserving Z.
+- Notes: No blocking GDD or ADR deviation found. Advisory only - no `production/qa/evidence/placement-reveal-evidence.md` screenshot/sign-off exists for CA-4b. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no `CARD-ANIM-005` row exists in `production/sprint-status.yaml`.
+- Next recommended: Add CA-4b visual evidence when a playable placement-to-resolution flow is available, or continue the serialized closure queue for implemented presentation stories.
