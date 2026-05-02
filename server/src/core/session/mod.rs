@@ -13,7 +13,7 @@ pub mod system;
 pub use config::{build_session_config, SessionConfig};
 pub use events::{SessionCancelled, SessionCancelledReason, SessionReady};
 pub use plugin::GameSessionPlugin;
-pub use snapshot::build_snapshot;
+pub use snapshot::{build_game_snapshot, build_snapshot};
 pub use state::{
     ActiveSessions, ClassPreviews, ClassSelections, DeferredMessage, LobbyDeadline,
     LobbyHeartbeats, LobbyState, PlayerConnectionMap, PlayerSessionData, PlayerSessions,

@@ -181,11 +181,13 @@ fn test_game_snapshot_includes_token_source_class() {
 
     let snapshot = build_snapshot(player_a, &mut world).expect("snapshot builds");
     let token_state = snapshot
+        .board
         .units
         .iter()
         .find(|unit| unit.unit_id == token.to_bits())
         .expect("token state exists");
     let standard_state = snapshot
+        .board
         .units
         .iter()
         .find(|unit| unit.unit_id == standard.to_bits())

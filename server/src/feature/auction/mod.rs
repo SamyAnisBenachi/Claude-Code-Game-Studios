@@ -7,7 +7,8 @@ pub mod snapshot;
 pub mod state;
 pub mod system;
 
-pub use snapshot::{auction_snapshot, AuctionSnapshot};
+pub use shared::protocol::AuctionSnapshot;
+pub use snapshot::auction_snapshot;
 pub use state::{AuctionPhase, AuctionState};
 pub use system::{
     auction_tick_system, process_bid_batch, AuctionBid, AuctionCardDrawFixture,

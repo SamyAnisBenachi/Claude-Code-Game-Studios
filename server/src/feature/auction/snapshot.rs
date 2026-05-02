@@ -1,22 +1,6 @@
-use shared::card::CardId;
-use shared::session::PlayerId;
+use shared::protocol::AuctionSnapshot;
 
 use crate::feature::auction::state::{AuctionPhase, AuctionState};
-
-/// Reconnect-safe read model for the current auction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AuctionSnapshot {
-    /// Card currently being auctioned.
-    pub card_id: CardId,
-    /// Auction floor for the selected card's rarity.
-    pub starting_price: u32,
-    /// Zero when no bid has been accepted; otherwise the last accepted bid.
-    pub last_accepted_bid: u32,
-    /// Current auction leader, or `None` before the first accepted bid.
-    pub current_leader: Option<PlayerId>,
-    /// Authoritative remaining auction timer, in milliseconds.
-    pub timer_remaining_ms: u32,
-}
 
 /// Build a reconnect snapshot from auction state.
 ///

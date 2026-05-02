@@ -507,6 +507,52 @@ pub struct S2CSangMepriseReveal {
 pub struct PlayerSnapshot {
     pub player_id: PlayerId,
     pub class_id: ClassId,
+    pub gold: u32,
+    pub reserved_gold: u32,
+    pub current_mana: u32,
+    pub reserve_mana: u32,
+    pub spawn_range_cells: u8,
+    pub mana_cap: u8,
+    pub submitted: bool,
+    pub hand: Vec<CardId>,
+    pub shop_slots: Vec<Option<CardId>>,
+    pub pool_snapshot: Vec<(CardId, u8)>,
+    pub objectives: Vec<ObjectiveSnapshot>,
+    pub opponent_objectives: Vec<OpponentObjectiveSnapshot>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ObjectiveSnapshot {
+    pub lane: u8,
+    pub hp: u8,
+    pub is_real: bool,
+    pub is_destroyed: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OpponentObjectiveSnapshot {
+    pub lane: u8,
+    pub hp: u8,
+    pub is_destroyed: bool,
+    pub was_fake: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ObjectiveReveal {
+    pub player_id: PlayerId,
+    pub lane: u8,
+    pub is_fake: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
+pub struct BoardSnapshot {
+    pub units: Vec<UnitBoardState>,
+    pub traps: Vec<TrapBoardState>,
+    pub structures: Vec<StructureBoardState>,
+    pub fields: Vec<FieldBoardState>,
+    pub prisms: Vec<PrismBoardState>,
+    pub seeds: Vec<SeedBoardState>,
+    pub sinistros: Vec<SinistroState>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -528,16 +574,80 @@ pub struct UnitBoardState {
     pub unit_id: EntityId,
     pub owner_id: PlayerId,
     pub location: UnitBoardLocation,
+    pub card_id: Option<CardId>,
     pub stats: Option<UnitStatsSnapshot>,
     pub source_class: Option<ClassId>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct S2CGameSnapshot {
-    // TODO(GSS epic): expand to full S2CGameSnapshot schema.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TrapBoardState {
+    pub trap_id: EntityId,
+    pub owner: PlayerId,
+    pub lane: u8,
+    pub cell: u8,
+    pub card_id: Option<CardId>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StructureBoardState {
+    pub structure_id: EntityId,
+    pub card_id: Option<CardId>,
+    pub owner: PlayerId,
+    pub lane: u8,
+    pub cell: u8,
+    pub max_hp: u8,
+    pub current_hp: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FieldBoardState {
+    pub field_id: EntityId,
+    pub card_id: Option<CardId>,
+    pub owner: PlayerId,
+    pub lane: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PrismBoardState {
     pub player_id: PlayerId,
+    pub lane: u8,
+    pub collected: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SeedBoardState {
+    pub owner: PlayerId,
+    pub lane: u8,
+    pub cell: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SinistroState {
+    pub owner: PlayerId,
+    pub lane: u8,
+    pub damage: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionSnapshot {
+    pub card_id: CardId,
+    pub starting_price: u32,
+    pub last_accepted_bid: u32,
+    pub current_leader: Option<PlayerId>,
+    pub timer_remaining_ms: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct S2CGameSnapshot {
+    pub protocol_version: u32,
+    pub recipient_player_id: PlayerId,
+    pub round_number: u32,
+    pub phase: RoundPhase,
+    pub timer_remaining_ms: Option<u32>,
     pub players: Vec<PlayerSnapshot>,
-    pub units: Vec<UnitBoardState>,
+    pub board: BoardSnapshot,
+    pub auction_state: Option<AuctionSnapshot>,
+    pub active_sang_meprise_reveals: Option<Vec<ObjectiveReveal>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

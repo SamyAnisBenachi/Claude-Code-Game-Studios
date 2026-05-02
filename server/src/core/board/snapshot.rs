@@ -3,7 +3,7 @@ use shared::protocol::{EntityId, UnitBoardLocation, UnitBoardState, UnitStatsSna
 use shared::session::PlayerId;
 
 use crate::core::board::{
-    BoardPosition, ObjectiveAttachment, SeedOwner, SourceClass, UnitOwner, UnitStats,
+    BoardPosition, ObjectiveAttachment, SeedOwner, SourceClass, UnitCardRef, UnitOwner, UnitStats,
 };
 
 pub fn build_unit_board_state(entity: Entity, world: &World) -> Option<UnitBoardState> {
@@ -18,11 +18,13 @@ pub fn build_unit_board_state(entity: Entity, world: &World) -> Option<UnitBoard
             ar: stats.ar,
         });
     let source_class = world.get::<SourceClass>(entity).map(|source| source.0);
+    let card_id = world.get::<UnitCardRef>(entity).map(|card| card.0);
 
     Some(UnitBoardState {
         unit_id: entity.to_bits() as EntityId,
         owner_id,
         location,
+        card_id,
         stats,
         source_class,
     })
