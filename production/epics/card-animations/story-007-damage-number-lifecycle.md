@@ -1,7 +1,7 @@
 # Story 007: Damage number lifecycle (F2 despawn timer)
 
 > **Epic**: Card Animations
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -29,9 +29,9 @@
 
 *From GDD `design/gdd/card-animations.md`, scoped to this story:*
 
-- [ ] **CA-8** — GIVEN a damage number entity pre-spawned with `float_tween_duration_ms=500`, `fade_tween_duration_ms=500`, and `DespawnAfter(Timer::new(Duration::from_millis(500), TimerMode::Once))`, WHEN `Time<Virtual>` is advanced by 500 ms and `App::update()` runs, THEN the entity is despawned (`World::get_entity()` returns `Err`). F2: `max(500, 500)=500`. Despawn timer set at spawn time from F2 — NOT from tween-completion event. **[BLOCKING]**
-- [ ] **CA-9** — GIVEN `float_tween_duration_ms=400`, `fade_tween_duration_ms=600`, and `DespawnAfter(Timer::new(Duration::from_millis(600), TimerMode::Once))`, WHEN `Time<Virtual>` is advanced by 400 ms and `App::update()` runs, THEN entity still exists; WHEN advanced a further 200 ms (total 600 ms) and `App::update()` runs, THEN entity is despawned. F2: `max(400, 600)=600`. Entity must NOT be despawned at float tween's 400 ms completion. **[BLOCKING]**
-- [ ] **CA-25** — GIVEN `DamageNumberSpawnRequested { target: entity, damage_value: 15, event_id: 0 }` is written, WHEN `App::update()` runs, THEN (a) exactly one entity with `DamageNumber` marker exists, AND (b) the entity has world-space text components `Text2d`, `TextFont`, `TextColor`, `LineHeight`, and `Transform`, AND (c) float and fade `TweenAnim` controllers are in `PlaybackState::Playing`, AND (d) entity carries `DespawnAfter(Timer)` initialized from F2 (`max(float_tween_duration_ms, fade_tween_duration_ms)`). F3 applies `jitter_table[event_id % 8]` to the spawn origin. **[BLOCKING]**
+- [x] **CA-8** — GIVEN a damage number entity pre-spawned with `float_tween_duration_ms=500`, `fade_tween_duration_ms=500`, and `DespawnAfter(Timer::new(Duration::from_millis(500), TimerMode::Once))`, WHEN `Time<Virtual>` is advanced by 500 ms and `App::update()` runs, THEN the entity is despawned (`World::get_entity()` returns `Err`). F2: `max(500, 500)=500`. Despawn timer set at spawn time from F2 — NOT from tween-completion event. **[BLOCKING]**
+- [x] **CA-9** — GIVEN `float_tween_duration_ms=400`, `fade_tween_duration_ms=600`, and `DespawnAfter(Timer::new(Duration::from_millis(600), TimerMode::Once))`, WHEN `Time<Virtual>` is advanced by 400 ms and `App::update()` runs, THEN entity still exists; WHEN advanced a further 200 ms (total 600 ms) and `App::update()` runs, THEN entity is despawned. F2: `max(400, 600)=600`. Entity must NOT be despawned at float tween's 400 ms completion. **[BLOCKING]**
+- [x] **CA-25** — GIVEN `DamageNumberSpawnRequested { target: entity, damage_value: 15, event_id: 0 }` is written, WHEN `App::update()` runs, THEN (a) exactly one entity with `DamageNumber` marker exists, AND (b) the entity has world-space text components `Text2d`, `TextFont`, `TextColor`, `LineHeight`, and `Transform`, AND (c) float and fade `TweenAnim` controllers are in `PlaybackState::Playing`, AND (d) entity carries `DespawnAfter(Timer)` initialized from F2 (`max(float_tween_duration_ms, fade_tween_duration_ms)`). F3 applies `jitter_table[event_id % 8]` to the spawn origin. **[BLOCKING]**
 
 ---
 
@@ -99,7 +99,7 @@
 **Required evidence**:
 - Logic: `tests/unit/card-animations/damage_number_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing via `cargo test -p client --test card_animations_damage_number_test`
 
 ---
 
@@ -107,3 +107,11 @@
 
 - Depends on: [Story 002](story-002-tween-cancel-replace-lifecycle.md) DONE (concurrent controller contract); `DespawnAfter` component defined in GDD; OQ-CA-11 resolved; CA-25 design gates cleared (payload schema, text entity layout)
 - Unlocks: None
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 3/3 passing
+**Deviations**: None blocking. Advisory only - `TR-CAN-007` registry/epic wording still contains broader/stale `bevy_tweening 0.18` language, while the current GDD compatibility note and implementation use `bevy_tweening v0.15.0` with `TweenAnim`, `PlaybackState`, and `TweenState`.
+**Test Evidence**: Logic test file at `tests/unit/card-animations/damage_number_test.rs`; `cargo test -p client --test card_animations_damage_number_test` passed 5/5.
+**Code Review**: Skipped - Lean mode.

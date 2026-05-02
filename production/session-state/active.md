@@ -1192,3 +1192,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no `HUD-004` row exists in `production/sprint-status.yaml`.
 - Next recommended: HUD Story 006 ECONOMY_AUCTION Inline Gold Format (`production/epics/hud/story-006-economy-auction-inline-gold.md`) or HUD Story 007 GAME_OVER Freeze Mode (`production/epics/hud/story-007-game-over-freeze.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-animations/story-007-damage-number-lifecycle.md` - Story 007: Damage number lifecycle (F2 despawn timer)
+- Criteria: 3/3 passing; CA-8, CA-9, and CA-25 covered by `tests/unit/card-animations/damage_number_test.rs`.
+- Test Evidence: `cargo test -p client --test card_animations_damage_number_test` passed 5/5.
+- Verification: `client/src/card_animations/damage_numbers.rs` spawns world-space `Text2d` damage numbers with `DamageNumber`, `DespawnAfter(Timer)`, deterministic F3 jitter, and separate `TweenAnim` controllers targeting `Transform` and `TextColor`; `client/src/card_animations/queue.rs` computes F2 via `max(float_tween_duration_ms, fade_tween_duration_ms)` and enforces the strict sub-step budget.
+- Notes: No blocking GDD or ADR deviation found. Advisory only - `TR-CAN-007` registry/epic wording still contains broader/stale `bevy_tweening 0.18` language, while the current GDD compatibility note and implementation use `bevy_tweening v0.15.0` with `TweenAnim`, `PlaybackState`, and `TweenState`. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no `CARD-ANIM-007` row exists in `production/sprint-status.yaml`.
+- Next recommended: Card Animations Story 009 CI boundary enforcement (`production/epics/card-animations/story-009-ci-boundary-enforcement.md`) after readiness check, or close the remaining implemented card-animation stories in the serialized story-done queue.
