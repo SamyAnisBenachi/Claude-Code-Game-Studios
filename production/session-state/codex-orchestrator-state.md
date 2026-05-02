@@ -102,17 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- HUD-010: Numeric Tween Animation implemented on branch
-  `work/hud-010-numeric-tween-animation` at `92f8677`; root cherry-picked and
-  amended it into `main` at `609be61`. Root checks passed `cargo fmt -p client
-  -- --check`, `cargo test -p client --test hud_numeric_tween_animation_test
-  --test hud_gold_mana_display_test --test
-  hud_economy_auction_inline_gold_test --test hud_game_over_freeze_test --test
-  hud_phase_transitions_test` 21/21, extra HUD regression slice
-  `same_tick_tie_break_test`, `hud_phase_label_round_counter_test`,
-  `hud_plugin_scaffold_test`, and `scoreboard_dot_message_test` 17/17,
-  `cargo check -p client`, and `git diff --check HEAD~1..HEAD`. Uses the
-  current bevy_tweening 0.15 TweenAnim / PlaybackState / TweenState pattern.
 - HAND-UI-004: DRAFT_INITIAL Grid Flow implemented on branch
   `work/hand-ui-004-draft-initial-grid` at `b2ad5db`; root cherry-picked it
   into `main` at `561d2fd`. Root checks passed `cargo fmt -p client --
@@ -199,6 +188,14 @@ None currently tracked here.
   3/3, `cargo check -p client`, and `cargo fmt -p client -- --check`.
   Completion notes document direct Bevy HUD message injection after the
   Lightyear drain seam as advisory.
+- HUD-010: Numeric Tween Animation implemented on branch
+  `work/hud-010-numeric-tween-animation` at `92f8677`; root cherry-picked and
+  amended it into `main` at `609be61`; story-done committed at `d23ce6f`.
+  Verification passed `cargo test -p client --test
+  hud_numeric_tween_animation_test`, the focused HUD regression slice, `cargo
+  check -p client`, `cargo fmt -p client -- --check`, and `git diff --check
+  HEAD~1..HEAD`. Completion notes document missing screenshot/sign-off evidence
+  for layout legibility as advisory.
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
   `work/gss-004-f4-session-ready` at `9708147`; cherry-picked into `main` at
   `4d8cf60`; repair committed at `3c64b84`; story-done committed at `36ed875`.
@@ -340,10 +337,9 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HUD-010
-2. HAND-UI-004
-3. GSS-005
-4. GSS-006
+1. HAND-UI-004
+2. GSS-005
+3. GSS-006
 
 Run only one story-done at a time.
 
@@ -353,7 +349,6 @@ Run only one story-done at a time.
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
   closed. PRISM-004 can run next in the Prism chain because it depends on the
   Lane 3 call site.
-- HUD-010: implemented and integrated; pending story-done.
 - HAND-UI-004: implemented and integrated; pending story-done.
 - GSS-005: implemented and integrated; pending story-done.
 - GSS-006: implemented and integrated; pending story-done. Do not launch
@@ -373,10 +368,17 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- HUD-010: integrated, pending story-done.
 - HAND-UI-004: integrated, pending story-done.
 - GSS-005: integrated, pending story-done.
 - GSS-006: integrated, pending story-done.
+
+Active implementation workers by default-launch rule:
+- OBJ-002: launched after HUD-010 closure prompt; expected branch
+  `work/objective-002-fake-assignment-config-guards`.
+- PRISM-004: launched after PRISM-003 closure; expected branch
+  `work/prism-004-hand-full-network`.
+- HAND-UI-005: launched after HUD-010 closure prompt; expected branch
+  `work/hand-ui-005-placement-submit-core`.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -411,7 +413,8 @@ Current active windows by user default-launch rule:
 - GSS-006 returned, integrated at `d5f835e`, and now only needs serialized
   story-done after GSS-005.
 - HUD-010 returned, integrated at `609be61`, and now only needs serialized
-  story-done after HUD-009.
+  story-done after HUD-009; story-done committed at `d23ce6f`. Window can be
+  cleared. HAND-UI-004 is now the next serialized story-done candidate.
 - OBJ-002 returned NEEDS WORK only on stale manifest. Manifest refreshed to
   `2026-05-01` in `b8b9f26`; relaunch readiness/implementation and then treat
   it as active unless the user says it was not launched.
