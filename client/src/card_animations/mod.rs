@@ -11,7 +11,8 @@ use bevy_tweening::{AnimationSystem, TweenAnim, TweeningPlugin};
 
 pub use animators::{
     cancel_tween_anim_in_place, make_tween_anim, placement_phase_duration, replace_tweenable,
-    PlacementPhaseAnimator, PLACEMENT_ANIMATION_CAP_MS,
+    spawn_sprite_tween_controller, spawn_transform_tween_controller, PlacementPhaseAnimator,
+    PLACEMENT_ANIMATION_CAP_MS,
 };
 pub use damage_numbers::{
     damage_number_jitter, despawn_damage_numbers_after_timer, spawn_damage_numbers, DamageNumber,
@@ -26,6 +27,7 @@ pub use input_gating::{
 };
 pub use lenses::{
     BackgroundColorAlphaLens, SpriteAlphaLens, SpriteColorLens, TextColorLens, TransformScaleXLens,
+    TransformTranslationXLens, TransformTranslationYLens,
 };
 pub use placement::{
     placement_cancel_all_anims_system, placement_cell_highlight_system, placement_reveal_system,

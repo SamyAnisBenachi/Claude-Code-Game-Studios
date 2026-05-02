@@ -1,7 +1,7 @@
 use std::{any::TypeId, time::Duration};
 
 use bevy::{math::curve::EaseFunction, prelude::*};
-use bevy_tweening::{PlaybackState, Tween, TweenAnim, Tweenable, TweeningError};
+use bevy_tweening::{AnimTarget, PlaybackState, Tween, TweenAnim, Tweenable, TweeningError};
 
 use super::lenses::{SpriteAlphaLens, TransformScaleXLens};
 
@@ -16,6 +16,32 @@ pub fn placement_phase_duration(duration_ms: u64) -> Duration {
 
 pub fn make_tween_anim(tweenable: impl Tweenable + 'static) -> TweenAnim {
     TweenAnim::new(tweenable).with_destroy_on_completed(false)
+}
+
+pub fn spawn_transform_tween_controller(
+    commands: &mut Commands,
+    target: Entity,
+    tweenable: impl Tweenable + 'static,
+) -> Entity {
+    commands
+        .spawn((
+            make_tween_anim(tweenable),
+            AnimTarget::component::<Transform>(target),
+        ))
+        .id()
+}
+
+pub fn spawn_sprite_tween_controller(
+    commands: &mut Commands,
+    target: Entity,
+    tweenable: impl Tweenable + 'static,
+) -> Entity {
+    commands
+        .spawn((
+            make_tween_anim(tweenable),
+            AnimTarget::component::<Sprite>(target),
+        ))
+        .id()
 }
 
 pub fn replace_tweenable(
