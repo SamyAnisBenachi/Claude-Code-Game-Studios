@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-01
+Updated: 2026-05-02
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -25,6 +25,26 @@ source of truth for story status.
   and re-add explicit owned paths.
 - Existing shared-tree workers already launched before the worktree switch may
   finish normally; do not migrate them mid-story.
+
+## Orchestrator Response Protocol
+
+After every agent return from the user, the orchestrator must automatically:
+
+1. Classify the returned window as `clear`, `keep open for repair/commit`, or
+   `relaunch with corrected prompt`.
+2. Update the durable orchestration state when implementation, closure, blockers,
+   or unlocks changed.
+3. Identify every newly unlocked story or blocker-clear task.
+4. Provide new parallel launch prompts immediately, or state `nothing safe to
+   launch in parallel` with the reason.
+
+Standing throughput rule: keep exactly one serialized story-done window active
+when closure work exists, and keep two to four implementation/blocker-clear
+workers active whenever READY stories do not overlap on likely files or
+architectural ownership.
+
+Do not wait for the user to ask what can run in parallel. Assume prompts the
+orchestrator provides are launched unless the user explicitly says otherwise.
 
 ## Live Windows Confirmed By User
 
