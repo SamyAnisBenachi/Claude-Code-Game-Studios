@@ -102,13 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- OBJ-002: Fake Assignment and Config Guards implemented on branch
-  `work/objective-002-fake-assignment-config-guards` at `24bf21b`; root
-  cherry-picked and amended it into `main` at `536ccc8`. Root checks passed
-  `cargo fmt -p server -- --check`, `cargo test -p server --test
-  fake_assignment_test --test objective_state_test` 9/9, `cargo check
-  --workspace`, and `git diff --check HEAD~1..HEAD`. Scope is objective fake
-  assignment/config validation only; no protocol or presentation files touched.
 - PRISM-004: Hand-Full Prism Network Staging implemented on branch
   `work/prism-004-hand-full-network` at `e823d66`; root cherry-picked and
   amended it into `main` at `8c77982`. Root checks passed `cargo fmt --all --
@@ -144,6 +137,14 @@ None currently tracked here.
   `S2CGameOver.loser: Option<PlayerId>` for draw support and live Lightyear
   delivery being code-verified while the integration test covers the outbox
   path. `production/sprint-status.yaml` had no matching row.
+- OBJ-002: Fake Assignment and Config Guards implemented on branch
+  `work/objective-002-fake-assignment-config-guards` at `24bf21b`; root
+  integration landed at `536ccc8`; story-done closure committed at `88f3fe2`.
+  Verification passed `cargo test -p server --test fake_assignment_test` 5/5
+  and `git diff --check` for the closure files. Completion notes document the
+  advisory split between pre-Lobby `validate_game_config` invalid-config exits
+  and the Objective System DRAFT_INITIAL defensive guard. `production/sprint-
+  status.yaml` had no matching row.
 - HAND-UI-004: DRAFT_INITIAL Grid Flow implemented on branch
   `work/hand-ui-004-draft-initial-grid` at `b2ad5db`; root cherry-picked it
   into `main` at `561d2fd`; story-done committed at `f610054`. Verification
@@ -357,9 +358,8 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. OBJ-002
-2. PRISM-004
-3. HAND-UI-005
+1. PRISM-004
+2. HAND-UI-005
 
 Run only one story-done at a time.
 
@@ -387,12 +387,10 @@ Batch launched:
 - GSS-006: closed at `a49e422`.
 
 Active implementation workers by default-launch rule:
-- OBJ-002: integrated at `536ccc8`; pending serialized story-done after current
-  closure queue.
 - PRISM-004: integrated at `8c77982`; pending serialized story-done after
-  OBJ-002.
+  current closure queue.
 - HAND-UI-005: integrated at `1c798f0`; pending serialized story-done after
-  OBJ-002 and PRISM-004.
+  PRISM-004.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -430,13 +428,12 @@ Current active windows by user default-launch rule:
   story-done after HUD-009; story-done committed at `d23ce6f`. Window can be
   cleared. HAND-UI-004 is now the next serialized story-done candidate.
 - OBJ-002 returned NEEDS WORK only on stale manifest. Manifest refreshed to
-  `2026-05-01` in `b8b9f26`; relaunch readiness/implementation and then treat
-  it as active unless the user says it was not launched; implementation
-  integrated at `536ccc8` and now pending story-done.
+  `2026-05-01` in `b8b9f26`; implementation integrated at `536ccc8`;
+  story-done committed at `88f3fe2`. Window can be cleared.
 - PRISM-004 returned, integrated at `8c77982`, and now only needs serialized
-  story-done after OBJ-002.
+  story-done.
 - HAND-UI-005 returned, integrated at `1c798f0`, and now only needs serialized
-  story-done after OBJ-002 and PRISM-004.
+  story-done after PRISM-004.
 AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
 integrated/closed as noted above.
 
