@@ -102,14 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- PRISM-003: Lane 3 RNG Draw Pipeline implemented on branch
-  `work/prism-003-lane3-rng` at `4d5acf1`; root cherry-picked and amended it
-  into `main` at `611baee`. Root repeated checks because worker output was
-  truncated: `cargo fmt -p server -- --check`,
-  `cargo test -p server --test prism_lane3_rng_test --test
-  prism_state_scaffold_test --test prism_deterministic_lanes_test` passed 16/16,
-  `cargo check -p server`, and `git diff --check HEAD~1..HEAD`. Network
-  staging remains PRISM-004.
 - HUD-009: Same-Tick Gold Tie-Break implemented on branch
   `work/hud-009-same-tick-gold-tie-break` at `ed3d7fd`; root cherry-picked and
   amended it into `main` at `fdadbe6` after worker push was blocked by approval
@@ -201,6 +193,13 @@ None currently tracked here.
   `cargo fmt -p server -- --check`. Completion notes document the BL-31
   `World::run_system_once` harness choice as advisory because it directly
   covers the lane-change commit system.
+- PRISM-003: Lane 3 RNG Draw Pipeline implemented on branch
+  `work/prism-003-lane3-rng` at `4d5acf1`; root cherry-picked and amended it
+  into `main` at `611baee`; story-done committed at `b4d9e04`. Verification
+  passed `cargo test -p server --test prism_lane3_rng_test` 4/4 and `cargo
+  check -p server`. Completion notes document stale `TR-PRI-004`
+  `S2CPrismRewardDropped` wording and central `ServerRng.audit_log()` stub
+  behavior as advisory.
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
   `work/gss-004-f4-session-ready` at `9708147`; cherry-picked into `main` at
   `4d8cf60`; repair committed at `3c64b84`; story-done committed at `36ed875`.
@@ -342,12 +341,11 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. PRISM-003
-2. HUD-009
-3. HUD-010
-4. HAND-UI-004
-5. GSS-005
-6. GSS-006
+1. HUD-009
+2. HUD-010
+3. HAND-UI-004
+4. GSS-005
+5. GSS-006
 
 Run only one story-done at a time.
 
@@ -355,9 +353,8 @@ Run only one story-done at a time.
 
 - PRISM-003 is unblocked by PRISM-001/002 closure. Remaining Prism story
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
-  implemented/integrated and pending story-done. PRISM-004 can run after
-  PRISM-003 story-done because it depends on the Lane 3 call site.
-- PRISM-003: implemented and integrated; pending story-done.
+  closed. PRISM-004 can run next in the Prism chain because it depends on the
+  Lane 3 call site.
 - HUD-009: implemented and integrated; pending story-done.
 - HUD-010: implemented and integrated; pending story-done.
 - HAND-UI-004: implemented and integrated; pending story-done.
@@ -379,7 +376,6 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- PRISM-003: integrated, pending story-done.
 - HUD-009: integrated, pending story-done.
 - HUD-010: integrated, pending story-done.
 - HAND-UI-004: integrated, pending story-done.
@@ -398,7 +394,7 @@ Current active windows by user default-launch rule:
 - HUD-008 returned with no code changes; window can be cleared. It remains
   blocked until GSS-007 expands/builds `S2CGameSnapshot`.
 - PRISM-003 returned, integrated at `611baee`, and now only needs serialized
-  story-done.
+  story-done; story-done committed at `b4d9e04`. Window can be cleared.
 - CARD-ANIM-007 story-done returned and was committed at `35ee469`; window can
   be cleared. HUD-006 story-done returned and was committed at `cc205e3`;
   window can be cleared. CARD-ANIM-005 story-done returned and was committed
@@ -408,7 +404,9 @@ Current active windows by user default-launch rule:
   returned and was committed at `b940f70`; window can be cleared. HUD-007
   story-done returned and was committed at `cae0e45`; window can be cleared.
   BOARD-007 story-done returned and was committed at `dc8b80a`; window can be
-  cleared. PRISM-003 is now the next serialized story-done candidate.
+  cleared. PRISM-003 story-done returned and was committed at `b4d9e04`;
+  window can be cleared. HUD-009 is now the next serialized story-done
+  candidate.
 - HAND-UI-004 returned, integrated at `561d2fd`, and now only needs serialized
   story-done.
 - GSS-005 returned, integrated at `15fe812`, and now only needs serialized
