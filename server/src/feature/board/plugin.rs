@@ -4,7 +4,7 @@ use crate::core::rsm::advance_phase;
 use crate::feature::board::{
     close_placement_phase, handle_placement_submission, placement_buffer_open, BoardConfig,
     BoardGrid, BoardOccupancy, PendingPlacements, PlacementCommitTrace, PlacementCommitted,
-    PlacementSubmissionReceived, PrismState, SpawnRangeState,
+    PlacementSubmissionReceived, PrismState, SpawnRangeState, TrapTrigger,
 };
 
 /// Board/Lane system ordering labels.
@@ -29,6 +29,7 @@ impl Plugin for BoardPlugin {
             .insert_resource(BoardConfig::default())
             .add_message::<PlacementSubmissionReceived>()
             .add_message::<PlacementCommitted>()
+            .add_message::<TrapTrigger>()
             .add_message::<crate::core::rsm::PlacementPhaseEntered>()
             .add_message::<crate::core::rsm::PlacementSubmitted>()
             .add_message::<crate::core::rsm::ResolutionPhaseEntered>()

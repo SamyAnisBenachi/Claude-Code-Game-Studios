@@ -10,7 +10,9 @@ pub mod plugin;
 pub mod state;
 
 pub use movement::{
-    advance_direction, apply_charge_movement, apply_f1, apply_standard_movement, ChargeBonus,
+    advance_direction, apply_charge_movement, apply_f1, apply_standard_movement,
+    check_trap_trigger, commit_lane_change_destinations, commit_unit_destination, ChargeBonus,
+    LaneChangeDestination, TrapTrigger,
 };
 pub use placement::{
     close_placement_phase, get_units_at_cell, handle_placement_submission, is_field_slot_available,
