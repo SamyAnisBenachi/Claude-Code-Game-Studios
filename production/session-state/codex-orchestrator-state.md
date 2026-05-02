@@ -163,6 +163,14 @@ None currently tracked here.
   `trap_trigger_test` 4/4, affected board regression slice 30/30, `cargo check
   -p server`, and `git diff --check HEAD~1..HEAD`. No Prism collection or RSM
   dispatch code touched.
+- PRISM-003: Lane 3 RNG Draw Pipeline implemented on branch
+  `work/prism-003-lane3-rng` at `4d5acf1`; root cherry-picked and amended it
+  into `main` at `611baee`. Root repeated checks because worker output was
+  truncated: `cargo fmt -p server -- --check`,
+  `cargo test -p server --test prism_lane3_rng_test --test
+  prism_state_scaffold_test --test prism_deterministic_lanes_test` passed 16/16,
+  `cargo check -p server`, and `git diff --check HEAD~1..HEAD`. Network
+  staging remains PRISM-004.
 ## Recently Closed
 
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
@@ -307,13 +315,16 @@ None currently tracked here.
 6. CS-003
 7. HUD-007
 8. BOARD-007
+9. PRISM-003
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
 - PRISM-003 is unblocked by PRISM-001/002 closure. Remaining Prism story
-  manifests were refreshed to 2026-05-01 in `7834e88`; launch PRISM-003 next.
+  manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
+  implemented/integrated and pending story-done. PRISM-004 can run after
+  PRISM-003 story-done because it depends on the Lane 3 call site.
 - CARD-ANIM-007: implemented and integrated; pending story-done.
 - CARD-ANIM-005: implemented and integrated; pending story-done.
 - HUD-006: implemented and integrated; pending story-done.
@@ -322,6 +333,7 @@ Run only one story-done at a time.
 - CS-003: implemented and integrated; pending story-done.
 - HUD-007: implemented and integrated; pending story-done.
 - BOARD-007: implemented and integrated; pending story-done.
+- PRISM-003: implemented and integrated; pending story-done.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
 - HUD-008 returned READY but blocked on missing full `S2CGameSnapshot` schema.
   Correct unblock path is GSS-005 -> GSS-006 -> GSS-007. Story gates were
@@ -346,6 +358,7 @@ Batch launched:
 - CS-003: integrated, pending story-done.
 - HUD-007: integrated, pending story-done.
 - BOARD-007: integrated, pending story-done.
+- PRISM-003: integrated, pending story-done.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -358,6 +371,8 @@ Current active windows by user default-launch rule:
   story-done.
 - HUD-008 returned with no code changes; window can be cleared. It remains
   blocked until GSS-007 expands/builds `S2CGameSnapshot`.
+- PRISM-003 returned, integrated at `611baee`, and now only needs serialized
+  story-done.
 - OBJ-002 returned NEEDS WORK only on stale manifest. Manifest refreshed to
   `2026-05-01` in `b8b9f26`; relaunch readiness/implementation and then treat
   it as active unless the user says it was not launched.
