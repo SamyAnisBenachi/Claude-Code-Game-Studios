@@ -1,7 +1,7 @@
 # Story 003: Lane 3 RNG Draw Pipeline and Audit Log Ordering
 
 > **Epic**: Prism System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -144,9 +144,18 @@ Lane 3 branch inside the `resolve_prism_draws` message loop (extending Story 002
 **Required evidence**: `tests/unit/prism/lane3_rng_test.rs` — must exist and pass
 *(Testable via `World::new()` with injected `PrismCollected` messages and a mock `CardDataPool` returning `None` or `Some(card_id)`)* 
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`cargo test -p server --test prism_lane3_rng_test` on 2026-05-02)
 
 ---
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 4/4 passing (PS-03, PS-10, PS-11, PS-17)
+**Deviations**: Advisory only - `TR-PRI-004` in `docs/architecture/tr-registry.yaml` still says Lane 3 hand-full emits `S2CPrismRewardDropped`; current `design/gdd/prism-system.md` Rule 7 and Story 004 say Lane 3 hand-full does not emit that message, and the implementation follows the current GDD. Advisory only - story-required Prism `AuditLog` records `Some(card_id)` / `None`; broader ADR-005 `ServerRng.audit_log()` still records stub `result: None` for `resolve_prism`, so reconcile if the central RNG log becomes the post-game authority.
+**Test Evidence**: Logic unit evidence at `tests/unit/prism/lane3_rng_test.rs`; `cargo test -p server --test prism_lane3_rng_test` passed 4/4; `cargo check -p server` passed.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Not updated; no `PRISM-003` row exists in `production/sprint-status.yaml`.
 
 ## Dependencies
 

@@ -1280,3 +1280,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no `BOARD-007` row exists in `production/sprint-status.yaml`.
 - Next recommended: Board Story 008 Objective Cell Detection (`production/epics/board-lane-system/story-008-objective-cell-detection.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/prism-system/story-003-lane3-rng.md` - Story 003: Lane 3 RNG Draw Pipeline and Audit Log Ordering
+- Criteria: 4/4 passing; PS-03, PS-10, PS-11, and PS-17 covered by `tests/unit/prism/lane3_rng_test.rs`.
+- Test Evidence: `cargo test -p server --test prism_lane3_rng_test` passed 4/4. `cargo check -p server` passed.
+- Verification: `server/src/feature/prism/system.rs` hand-full pre-check returns before `ServerRng::resolve_prism`, successful Lane 3 draws use a Minion/Spell `PoolFilter`, `PrismAuditEntry` records `Some(card_id)` or `None`, and pending `PrismCollected` messages are sorted by ascending player id and lane before reward processing.
+- Notes: Advisory only - `TR-PRI-004` in `docs/architecture/tr-registry.yaml` still says Lane 3 hand-full emits `S2CPrismRewardDropped`; current `design/gdd/prism-system.md` Rule 7 and Story 004 say Lane 3 hand-full does not emit that message, and implementation follows the current GDD. Advisory only - story-required Prism `AuditLog` records `Some(card_id)` / `None`; broader ADR-005 `ServerRng.audit_log()` still records stub `result: None` for `resolve_prism`, so reconcile if the central RNG log becomes the post-game authority. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no `PRISM-003` row exists in `production/sprint-status.yaml`.
+- Next recommended: Prism Story 004 Hand-Full Rejection and Network Message Staging (`production/epics/prism-system/story-004-hand-full-network.md`) after readiness check, or Prism Story 005 Full-Set Respawn Cycle (`production/epics/prism-system/story-005-respawn-cycle.md`) after Story 004 closure.
