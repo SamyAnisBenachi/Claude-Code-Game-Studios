@@ -326,6 +326,12 @@ Run only one story-done at a time.
   implemented/integrated and pending story-done. PRISM-004 can run after
   PRISM-003 story-done because it depends on the Lane 3 call site.
 - CARD-ANIM-007: implemented and integrated; pending story-done.
+  Story-done returned BLOCKED: jitter table in
+  `client/src/card_animations/damage_numbers.rs` differs from approved GDD F3
+  entries for indexes 3-6, and the current test imports the implementation
+  constant instead of asserting the literal approved 8-entry table. Keep the
+  story-done window open for a scoped repair to damage_numbers.rs and
+  damage_number_test.rs, then rerun closure.
 - CARD-ANIM-005: implemented and integrated; pending story-done.
 - HUD-006: implemented and integrated; pending story-done.
 - AUC-004: implemented and integrated; pending story-done.
