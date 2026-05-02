@@ -72,6 +72,10 @@ name = "scoreboard_dot_message_test"
 path = "../tests/integration/hud/scoreboard_dot_message_test.rs"
 
 [[test]]
+name = "same_tick_tie_break_test"
+path = "../tests/integration/hud/same_tick_tie_break_test.rs"
+
+[[test]]
 name = "card_animations_tween_lifecycle_test"
 path = "../tests/unit/card-animations/tween_lifecycle_test.rs"
 

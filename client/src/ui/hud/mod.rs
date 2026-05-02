@@ -114,6 +114,12 @@ pub struct ManaDisplayState {
     pub is_populated: bool,
 }
 
+#[derive(Message, Debug, Clone)]
+pub struct HudGoldBroadcastMessage(pub S2CGoldBroadcast);
+
+#[derive(Message, Debug, Clone)]
+pub struct HudGoldUpdateMessage(pub S2CGoldUpdate);
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScoreboardDot {
     pub row: ScoreboardRow,
@@ -140,6 +146,8 @@ impl Plugin for HudPlugin {
             .init_resource::<HudConfig>()
             .init_resource::<HudMode>()
             .add_message::<HudObjectiveUpdate>()
+            .add_message::<HudGoldBroadcastMessage>()
+            .add_message::<HudGoldUpdateMessage>()
             .configure_sets(
                 Update,
                 (
@@ -159,7 +167,13 @@ impl Plugin for HudPlugin {
                         .in_set(HudSystemSet::PhaseTransition)
                         .before(update_phase_label_round_counter_system),
                     update_phase_label_round_counter_system.in_set(HudSystemSet::PhaseTransition),
+                    drain_gold_broadcast_receiver_system
+                        .in_set(HudSystemSet::MessageDrain)
+                        .before(handle_gold_broadcast_system),
                     handle_gold_broadcast_system
+                        .in_set(HudSystemSet::MessageDrain)
+                        .before(handle_gold_update_system),
+                    drain_gold_update_receiver_system
                         .in_set(HudSystemSet::MessageDrain)
                         .before(handle_gold_update_system),
                     handle_gold_update_system.in_set(HudSystemSet::MessageDrain),
@@ -491,39 +505,57 @@ fn spawn_scoreboard_dots(
     })
 }
 
+pub fn drain_gold_broadcast_receiver_system(
+    mut receivers: Query<&mut MessageReceiver<S2CGoldBroadcast>>,
+    mut writer: MessageWriter<HudGoldBroadcastMessage>,
+) {
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            writer.write(HudGoldBroadcastMessage(message));
+        }
+    }
+}
+
+pub fn drain_gold_update_receiver_system(
+    mut receivers: Query<&mut MessageReceiver<S2CGoldUpdate>>,
+    mut writer: MessageWriter<HudGoldUpdateMessage>,
+) {
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            writer.write(HudGoldUpdateMessage(message));
+        }
+    }
+}
+
 pub fn handle_gold_broadcast_system(
     mode: Res<HudMode>,
     player_ids: Option<Res<HudPlayerIds>>,
-    mut receivers: Query<&mut MessageReceiver<S2CGoldBroadcast>>,
+    mut messages: MessageReader<HudGoldBroadcastMessage>,
     mut gold_labels: Query<(&GoldLabelOwner, &mut GoldDisplayState)>,
 ) {
     if *mode == HudMode::Frozen {
-        drain_gold_broadcasts(&mut receivers);
+        drain_hud_gold_broadcast_messages(&mut messages);
         return;
     }
 
     let Some(player_ids) = player_ids else {
-        drain_gold_broadcasts(&mut receivers);
+        drain_hud_gold_broadcast_messages(&mut messages);
         return;
     };
 
-    for mut receiver in &mut receivers {
-        for message in receiver.receive() {
-            let reserved_gold = clamped_reserved_gold(&message);
-            for (owner, mut state) in &mut gold_labels {
-                match (*owner, message.player_id) {
-                    (GoldLabelOwner::Opponent, player_id)
-                        if player_id == player_ids.opponent_id =>
-                    {
-                        state.gold = message.gold as f32;
-                        state.reserved_gold = reserved_gold;
-                        state.is_populated = true;
-                    }
-                    (GoldLabelOwner::Local, player_id) if player_id == player_ids.local_id => {
-                        state.reserved_gold = reserved_gold;
-                    }
-                    _ => {}
+    for message in messages.read().map(|message| &message.0) {
+        let reserved_gold = clamped_reserved_gold(message);
+        for (owner, mut state) in &mut gold_labels {
+            match (*owner, message.player_id) {
+                (GoldLabelOwner::Opponent, player_id) if player_id == player_ids.opponent_id => {
+                    state.gold = message.gold as f32;
+                    state.reserved_gold = reserved_gold;
+                    state.is_populated = true;
                 }
+                (GoldLabelOwner::Local, player_id) if player_id == player_ids.local_id => {
+                    state.reserved_gold = reserved_gold;
+                }
+                _ => {}
             }
         }
     }
@@ -650,20 +682,18 @@ pub fn phase_label_text(phase: RoundPhase) -> Option<&'static str> {
 
 pub fn handle_gold_update_system(
     mode: Res<HudMode>,
-    mut receivers: Query<&mut MessageReceiver<S2CGoldUpdate>>,
+    mut messages: MessageReader<HudGoldUpdateMessage>,
     mut gold_labels: Query<(&GoldLabelOwner, &mut GoldDisplayState)>,
     mut mana_labels: Query<&mut ManaDisplayState, With<ManaLabel>>,
 ) {
     if *mode == HudMode::Frozen {
-        drain_gold_updates(&mut receivers);
+        drain_hud_gold_update_messages(&mut messages);
         return;
     }
 
     let mut last_update = None;
-    for mut receiver in &mut receivers {
-        for message in receiver.receive() {
-            last_update = Some(message);
-        }
+    for message in messages.read().map(|message| &message.0) {
+        last_update = Some(message);
     }
 
     let Some(message) = last_update else {
@@ -685,16 +715,12 @@ pub fn handle_gold_update_system(
     }
 }
 
-fn drain_gold_broadcasts(receivers: &mut Query<&mut MessageReceiver<S2CGoldBroadcast>>) {
-    for mut receiver in receivers.iter_mut() {
-        for _message in receiver.receive() {}
-    }
+fn drain_hud_gold_broadcast_messages(messages: &mut MessageReader<HudGoldBroadcastMessage>) {
+    for _message in messages.read() {}
 }
 
-fn drain_gold_updates(receivers: &mut Query<&mut MessageReceiver<S2CGoldUpdate>>) {
-    for mut receiver in receivers.iter_mut() {
-        for _message in receiver.receive() {}
-    }
+fn drain_hud_gold_update_messages(messages: &mut MessageReader<HudGoldUpdateMessage>) {
+    for _message in messages.read() {}
 }
 
 pub fn apply_gold_update_batch<I>(
