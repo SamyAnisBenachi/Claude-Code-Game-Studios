@@ -1269,3 +1269,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no explicit `HUD-007` row exists in `production/sprint-status.yaml`.
 - Next recommended: HUD Story 008 Reconnect Snapshot Rebuild (`production/epics/hud/story-008-reconnect-snapshot-rebuild.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-lane-system/story-007-trap-trigger-mechanics.md` - Story 007: Trap Trigger Mechanics
+- Criteria: 4/4 passing; BL-16, BL-17, BL-31, and NEW-007a covered by `tests/integration/board-lane-system/trap_trigger_test.rs`.
+- Test Evidence: `cargo test -p server --test trap_trigger_test` passed 4/4. `cargo fmt -p server -- --check` passed.
+- Verification: `server/src/feature/board/movement.rs` emits buffered `TrapTrigger` messages via `MessageWriter`, removes triggered Trap occupancy, despawns triggered Trap entities with `despawn()`, and commits standard movement, CHARGE movement, displacement destinations, and lane-change destinations through final-cell trap checks. `server/src/feature/board/plugin.rs` registers `TrapTrigger` with `app.add_message::<TrapTrigger>()`.
+- Notes: No blocking GDD or ADR deviation found. Advisory only - BL-31 is verified with `World::run_system_once` against `commit_lane_change_destinations` rather than the story note's suggested `App::new()` + `BoardPlugin` harness. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no `BOARD-007` row exists in `production/sprint-status.yaml`.
+- Next recommended: Board Story 008 Objective Cell Detection (`production/epics/board-lane-system/story-008-objective-cell-detection.md`) after readiness check.

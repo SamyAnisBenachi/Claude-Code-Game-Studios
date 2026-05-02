@@ -1,7 +1,7 @@
 # Story 007: Trap Trigger Mechanics
 
 > **Epic**: Board / Lane System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -30,10 +30,10 @@
 
 *From GDD `design/gdd/board-lane-system.md`, scoped to this story:*
 
-- [ ] **BL-16**: GIVEN a unit enters a cell containing an enemy Trap via standard movement, WHEN it arrives, THEN the Trap triggers AND the Trap entity is removed from the board.
-- [ ] **BL-17**: GIVEN a unit is REPEL'd into a cell containing an enemy Trap, WHEN it arrives, THEN the Trap triggers AND the Trap entity is removed from the board (displacement counts as enemy entry).
-- [ ] **BL-31**: GIVEN Player A has a Trap at (lane 2, cell 3), Player B's unit X is in lane 1 at cell 3 and Player B's unit Y is in lane 3 at cell 3, and both CHANGE LANE to lane 2 in the same inter-sub-step pass (both arrive at cell 3), THEN the Trap triggers exactly once — triggered by unit X (lower original lane = 1 wins the tiebreak). The Trap is removed. Unit Y enters lane 2 at cell 3 and is not affected.
-- [ ] **NEW-007a**: GIVEN a unit with CHARGE 2 is at (lane 1, cell 2) and an enemy Trap is at (lane 1, cell 4), WHEN sub-step 2 fires, THEN the unit moves to cell 4 (2+2) and the Trap triggers and is removed from the board (CHARGE X landing on a Trap triggers it).
+- [x] **BL-16**: GIVEN a unit enters a cell containing an enemy Trap via standard movement, WHEN it arrives, THEN the Trap triggers AND the Trap entity is removed from the board.
+- [x] **BL-17**: GIVEN a unit is REPEL'd into a cell containing an enemy Trap, WHEN it arrives, THEN the Trap triggers AND the Trap entity is removed from the board (displacement counts as enemy entry).
+- [x] **BL-31**: GIVEN Player A has a Trap at (lane 2, cell 3), Player B's unit X is in lane 1 at cell 3 and Player B's unit Y is in lane 3 at cell 3, and both CHANGE LANE to lane 2 in the same inter-sub-step pass (both arrive at cell 3), THEN the Trap triggers exactly once — triggered by unit X (lower original lane = 1 wins the tiebreak). The Trap is removed. Unit Y enters lane 2 at cell 3 and is not affected.
+- [x] **NEW-007a**: GIVEN a unit with CHARGE 2 is at (lane 1, cell 2) and an enemy Trap is at (lane 1, cell 4), WHEN sub-step 2 fires, THEN the unit moves to cell 4 (2+2) and the Trap triggers and is removed from the board (CHARGE X landing on a Trap triggers it).
 
 ---
 
@@ -121,7 +121,7 @@ if let Some(trap_entity) = check_trap_trigger(&occupancy, unit_owner, lane, new_
 **Story Type**: Integration
 **Required evidence**: `tests/integration/board-lane-system/trap_trigger_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Exists and passed (`cargo test -p server --test trap_trigger_test`, 4/4)
 
 ---
 
@@ -129,3 +129,11 @@ if let Some(trap_entity) = check_trap_trigger(&occupancy, unit_owner, lane, new_
 
 - Depends on: Story 002 must be DONE (standard movement), Story 006 must be DONE (CHARGE X movement)
 - Unlocks: Nothing in this epic (terminal for Trap interaction)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 4/4 passing (BL-16, BL-17, BL-31, NEW-007a)
+**Deviations**: Advisory only - BL-31 is verified with `World::run_system_once` against the lane-change commit system rather than the story note's suggested `App::new()` + `BoardPlugin` harness. `TrapTrigger` registration is separately verified in `BoardPlugin`.
+**Test Evidence**: Integration test file `tests/integration/board-lane-system/trap_trigger_test.rs`; `cargo test -p server --test trap_trigger_test` passed 4/4. `cargo fmt -p server -- --check` also passed.
+**Code Review**: Skipped - Lean mode.
