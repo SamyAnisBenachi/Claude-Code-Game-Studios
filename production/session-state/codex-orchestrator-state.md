@@ -63,6 +63,7 @@ source of truth for story status.
   `docs/architecture/adr-007-placement-buffer.md`. Completed locally on branch
   `work/board-005-placement-buffer-phase-integration` at `4946ea2`; worker push
   was blocked by credentials, so root cherry-picked it into `main` at `86ecbcb`.
+  Repair committed at `9175598`; story-done committed at `1dbd2cf`.
   Window can be cleared.
 
 ## Tracker In-Progress But No Live Window Confirmed
@@ -74,11 +75,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- ECO-005: Auction Reservation and Bid Validation implemented locally on branch
-  `work/eco-005-auction-reservation-bid-validation` at `f8b69bc`; cherry-picked
-  into `main` at `2108143`. Root `cargo fmt -p server -- --check`,
-  `cargo test -p server --test auction_reservation_test`, `cargo check -p server`,
-  and `git diff --check HEAD~1..HEAD` passed.
 - BOARD-006: Charge Bonus Movement implemented locally on branch
   `work/board-006-charge-bonus-movement` at `874f28e`; worker push was blocked
   by external GitHub transfer approval, so root cherry-picked and amended the
@@ -86,20 +82,38 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed.
-- BOARD-005: Placement Buffer Phase Integration implemented locally on branch
-  `work/board-005-placement-buffer-phase-integration` at `4946ea2`; cherry-picked
-  into `main` at `86ecbcb`. Root `cargo fmt -p server -- --check`,
-  `cargo test -p server --test placement_buffer_test --test placement_occupancy_test
-  --test spawn_range_validation_test --test resolve_combat_scaffold_test`,
-  `cargo check -p server`, and `git diff --check HEAD~1..HEAD` passed.
 - RSM-005: Disconnect Handling implemented locally on branch
   `work/rsm-005-disconnect-handling` at `8007ad1`; worker push was blocked by
   external GitHub transfer approval, so root cherry-picked/rebased it onto
   `main` at `e4fb6a4`. Root `cargo fmt -p server -- --check`,
   `cargo test -p server rsm_disconnect`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed.
+- CARD-ANIM-003: Simultaneous Track Animation implemented on branch
+  `work/card-anim-003-simultaneous-track-animation` at `4f4d7c5`; worker pushed
+  branch but did not run story-done. Worker checks passed:
+  `cargo fmt -p client -- --check`,
+  `cargo test -p client --test card_animations_tracks_animation_test`,
+  existing card animation regressions 26/26, `cargo check -p client`, and
+  boundary grep against direct S2C readers/EventReader/EventWriter/Tracks usage.
+- GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
+  `work/gss-004-f4-session-ready` at `9708147`; root cherry-picked it into
+  `main` at `4d8cf60`. Worker checks passed full affected session/RSM/economy
+  regression set plus full `cargo test -p server`; grep gates confirmed exactly
+  one `On<SessionReady>` observer path.
+- PRISM-001: Prism State Scaffold implemented on branch
+  `work/prism-001-state-scaffold` at `6ecd421`; root cherry-picked it into
+  `main` at `e093804`. Worker checks passed `cargo fmt -p server -- --check`,
+  `cargo test -p server --test prism_state_scaffold_test`, `cargo check -p server`,
+  and board/objective adjacent regression tests.
 ## Recently Closed
 
+- ECO-005: Auction Reservation and Bid Validation implemented locally on branch
+  `work/eco-005-auction-reservation-bid-validation` at `f8b69bc`; cherry-picked
+  into `main` at `2108143`; story-done committed at `2f745bb`.
+- BOARD-005: Placement Buffer Phase Integration implemented locally on branch
+  `work/board-005-placement-buffer-phase-integration` at `4946ea2`; cherry-picked
+  into `main` at `86ecbcb`; Lightyear ReliableChannel repair committed at
+  `9175598`; story-done committed at `1dbd2cf`.
 - HAND-UI-003: Phase State Machine implemented on branch
   `work/hand-ui-003-phase-state-machine` at `c6e5504`; cherry-picked into
   `main` at `614e68e`; story-done committed at `d55a3d5`.
@@ -204,33 +218,40 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. BOARD-005
-2. ECO-005
-3. BOARD-006
-4. RSM-005
+1. BOARD-006
+2. RSM-005
+3. CARD-ANIM-003
+4. GSS-004
+5. PRISM-001
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- BOARD-005: implemented and integrated; pending story-done.
-- ECO-005: implemented and integrated; pending story-done.
 - BOARD-006: implemented and integrated; pending story-done.
 - RSM-005: implemented and integrated; pending story-done.
-- AUC-004: story dependency on economy-system story-005 is implemented but not
-  formally closed; still verify OQ9 pre-implementation gate before launch.
-- Prism stories: blocked until NP OQ1 Lightyear 0.26 unicast API and hand-write
-  API alignment with Card Acquisition are confirmed.
+- CARD-ANIM-003: implemented on worker branch; pending root integration check and
+  story-done after the current serialized closures.
+- GSS-004: implemented and integrated; pending story-done. Do not launch further
+  SessionReady/RSM session stories until closure confirms the single-observer gate.
+- PRISM-001: implemented and integrated; pending story-done before launching
+  PRISM-002+.
+- AUC-004: ECO-005 is formally closed; still verify OQ9 pre-implementation gate
+  before launch.
+- Prism gates are resolved; PRISM-002+ follow normal sequencing after PRISM-001
+  story-done.
 
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- ECO-005: integrated, pending story-done.
 - BOARD-006: integrated, pending story-done.
 - RSM-005: integrated, pending story-done.
+- GSS-004: integrated, pending story-done.
+- PRISM-001: integrated, pending story-done.
+- CARD-ANIM-003: worker branch implemented, pending story-done.
 
-No story-done window is currently active in this tracker. The next serialized
-closure is BOARD-005.
+BOARD-006 story-done is currently expected to be active from user launch. The
+next serialized closure after it returns is RSM-005.
 
 ## Resolved Design Gates
 
