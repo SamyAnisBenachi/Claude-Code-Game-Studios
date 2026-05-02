@@ -335,6 +335,10 @@ Run only one story-done at a time.
 - HUD-007: implemented and integrated; pending story-done.
 - BOARD-007: implemented and integrated; pending story-done.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
+- HUD-008 returned READY but blocked on missing full `S2CGameSnapshot` schema.
+  Correct unblock path is GSS-005 -> GSS-006 -> GSS-007. Story gates were
+  refreshed in `e5edbc2`; run GSS-005 first because GSS-006/007 share session
+  files and should be staged carefully.
 - GSS-005+ and other RSM/session/disconnect work are unblocked by GSS-004
   closure, but still stage carefully because RSM-006 is implemented and pending
   story-done.
@@ -361,7 +365,8 @@ Current active windows by user default-launch rule:
   Do not launch another story-done until it returns.
 - BOARD-007 returned, integrated at `fd13f2a`, and now only needs serialized
   story-done.
-- HUD-008 is considered active from the latest prompt.
+- HUD-008 returned with no code changes; window can be cleared. It remains
+  blocked until GSS-007 expands/builds `S2CGameSnapshot`.
 - OBJ-002 returned NEEDS WORK only on stale manifest. Manifest refreshed to
   `2026-05-01` in `b8b9f26`; relaunch readiness/implementation and then treat
   it as active unless the user says it was not launched.
