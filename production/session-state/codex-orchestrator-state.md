@@ -331,7 +331,8 @@ Run only one story-done at a time.
   entries for indexes 3-6, and the current test imports the implementation
   constant instead of asserting the literal approved 8-entry table. Keep the
   story-done window open for a scoped repair to damage_numbers.rs and
-  damage_number_test.rs, then rerun closure.
+  damage_number_test.rs, then rerun closure. Repair committed at `2b5ea8e`;
+  code/tests now match the current GDD F3 table and no GDD edit was made.
 - CARD-ANIM-005: implemented and integrated; pending story-done.
 - HUD-006: implemented and integrated; pending story-done.
 - AUC-004: implemented and integrated; pending story-done.
