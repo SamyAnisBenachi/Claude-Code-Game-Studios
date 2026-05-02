@@ -102,17 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- RSM-005: Disconnect Handling implemented locally on branch
-  `work/rsm-005-disconnect-handling` at `8007ad1`; worker push was blocked by
-  external GitHub transfer approval, so root cherry-picked/rebased it onto
-  `main` at `e4fb6a4`. Root `cargo fmt -p server -- --check`,
-  `cargo test -p server rsm_disconnect`, `cargo check -p server`, and
-  `git diff --check HEAD~1..HEAD` passed. Story-done on 2026-05-02 returned
-  BLOCKED: current GDD/TR require C2SHeartbeat gap handling to reset/drive RSM
-  disconnect tracking, required evidence file
-  `tests/evidence/rsm-story-005-tests.md` is missing, and implementation still
-  follows story-era elapsed-seconds semantics instead of the current
-  milliseconds-remaining model.
 - CARD-ANIM-003: Simultaneous Track Animation implemented on branch
   `work/card-anim-003-simultaneous-track-animation` at `4f4d7c5`; worker pushed
   branch but did not run story-done. Worker checks passed:
@@ -144,8 +133,27 @@ None currently tracked here.
   existing card animation regressions, and `cargo check -p client`. Root
   `cargo check -p client` and `git diff --check HEAD~1..HEAD` also passed after
   integration.
+- PRISM-002: Deterministic Lane Rewards implemented on branch
+  `work/prism-002-deterministic-lanes` at `8e9aaed`; root cherry-picked it into
+  `main` at `65cb5a6`. Worker checks passed `cargo fmt -p server -- --check`,
+  `cargo test -p server --test prism_deterministic_lanes_test`,
+  `cargo test -p server --test prism_state_scaffold_test`, and
+  `cargo check -p server`. Root `cargo check -p server` and
+  `git diff --check HEAD~4..HEAD` passed after integration.
+- HUD-006: Economy Auction Inline Gold implemented on branch
+  `work/hud-006-economy-auction-inline-gold` at `6d6d90b`; root cherry-picked
+  it into `main` at `92906d5`. Worker checks passed
+  `cargo fmt -p client -- --check`,
+  `cargo test -p client --test hud_economy_auction_inline_gold_test`,
+  HUD regression slice 29/29, and `cargo check -p client`. Root
+  `cargo check -p client` and `git diff --check HEAD~4..HEAD` passed after
+  integration.
 ## Recently Closed
 
+- RSM-005: Disconnect Handling implemented locally on branch
+  `work/rsm-005-disconnect-handling` at `8007ad1`; cherry-picked/rebased into
+  `main` at `e4fb6a4`; repair committed at `b86b81b`; story-done committed at
+  `9e9aa2f`.
 - BOARD-006: Charge Bonus Movement implemented locally on branch
   `work/board-006-charge-bonus-movement` at `874f28e`; cherry-picked into
   `main` at `a04022b`; story-done committed at `86612b7`.
@@ -260,48 +268,52 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. RSM-005 repair + story-done
-2. CARD-ANIM-003
-3. GSS-004
-4. PRISM-001
-5. HUD-004
-6. CARD-ANIM-007
+1. CARD-ANIM-003
+2. GSS-004
+3. PRISM-001
+4. HUD-004
+5. CARD-ANIM-007
+6. PRISM-002
+7. HUD-006
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- RSM-005: implemented and integrated but story-done is BLOCKED. Repair must add
-  heartbeat-gap handling from `C2SHeartbeat`, add
-  `tests/evidence/rsm-story-005-tests.md`, and align story/code notes with the
-  current milliseconds-remaining disconnect model before closure.
 - CARD-ANIM-003: implemented on worker branch; pending root integration check and
   story-done after the current serialized closures.
 - GSS-004: implemented and integrated; pending story-done. Do not launch further
   SessionReady/RSM session stories until closure confirms the single-observer gate.
-- PRISM-001: implemented and integrated; pending story-done before launching
-  PRISM-002+.
+- PRISM-001: implemented and integrated; pending story-done. PRISM-002 is also
+  implemented and integrated, but PRISM-003+ should wait until PRISM-001/002 close.
 - HUD-004: implemented and integrated; pending story-done before launching HUD
   stories that depend on scoreboard objective dots.
 - CARD-ANIM-007: implemented and integrated; pending story-done.
+- PRISM-002: implemented and integrated; pending story-done.
+- HUD-006: implemented and integrated; pending story-done.
 - AUC-004: ECO-005 is formally closed; still verify OQ9 pre-implementation gate
   before launch.
-- Prism gates are resolved; PRISM-002+ follow normal sequencing after PRISM-001
-  story-done.
+- RSM-006, GSS-005+, and other RSM/session/disconnect work are unblocked by
+  RSM-005 closure, but should be launched carefully because GSS-004 still awaits
+  story-done confirmation of the SessionReady single-observer gate.
+- Prism gates are resolved; PRISM-003+ follow normal sequencing after PRISM-001
+  and PRISM-002 story-done.
 
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- RSM-005: integrated but story-done BLOCKED; repair should stay in the same
-  window.
 - GSS-004: integrated, pending story-done.
 - PRISM-001: integrated, pending story-done.
 - HUD-004: integrated, pending story-done.
 - CARD-ANIM-003: worker branch implemented, pending story-done.
 - CARD-ANIM-007: integrated, pending story-done.
+- PRISM-002: integrated, pending story-done.
+- HUD-006: integrated, pending story-done.
 
-RSM-005 repair/story-done is currently expected to be active. Do not launch
-RSM-006, GSS-005+, or other RSM/session/disconnect work until it closes.
+No story-done window is currently active in this tracker. The next serialized
+closure is CARD-ANIM-003. Safe implementation candidates after the current
+worker batch are AUC-004 readiness/implementation, RSM-006 readiness, and
+PRISM-003 after PRISM story-done catches up.
 
 ## Resolved Design Gates
 
