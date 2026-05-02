@@ -1,7 +1,7 @@
 # Story 006: CHARGE X Bonus Movement and Intermediate Cell Skip
 
 > **Epic**: Board / Lane System
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -110,7 +110,7 @@ pub fn apply_charge_movement(
 **Story Type**: Logic
 **Required evidence**: `tests/unit/board-lane-system/charge_movement_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Evidence exists and passed on 2026-05-02
 
 ---
 
@@ -118,3 +118,11 @@ pub fn apply_charge_movement(
 
 - Depends on: Story 002 must be DONE (`apply_f1` function implemented)
 - Unlocks: Stories 007 (CHARGE X landing Trap trigger), 009 (CHARGE pass prism non-collection BL-30)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 3/3 passing
+**Deviations**: None blocking. Advisory only: trap "no trigger" behavior is verified by unchanged trap occupancy; explicit `TrapTrigger` event absence is not asserted because positive trap trigger mechanics are Story 007 scope.
+**Test Evidence**: Logic evidence at `tests/unit/board-lane-system/charge_movement_test.rs`; BL-27 standard movement coverage at `tests/unit/board-lane-system/standard_movement_test.rs`. `cargo test -p server --test charge_movement_test --test standard_movement_test` passed. `cargo check -p server` passed.
+**Code Review**: Skipped - lean mode.

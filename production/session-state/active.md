@@ -1115,3 +1115,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no S4/ECO-005 row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the user-directed serialized story-done queue or run readiness on the next Sprint 4 economy/auction story.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-lane-system/story-006-charge-bonus-movement.md` - Story 006: CHARGE X Bonus Movement and Intermediate Cell Skip
+- Criteria: 3/3 passing; BL-22 and BL-27b covered by `tests/unit/board-lane-system/charge_movement_test.rs`, BL-27 covered by `tests/unit/board-lane-system/standard_movement_test.rs`.
+- Test Evidence: `cargo test -p server --test charge_movement_test --test standard_movement_test` passed 10/10. `cargo check -p server` passed.
+- Verification: `server/src/feature/board/movement.rs` defines `ChargeBonus`, reuses `apply_f1` for CHARGE and standard movement, reads owner direction from `SessionConfig`, and updates only the final `BoardPosition.cell` for each movement sub-step.
+- Notes: No blocking GDD or ADR deviation found. Advisory only - trap "no trigger" behavior is verified by unchanged trap occupancy; explicit `TrapTrigger` event absence is not asserted because positive trap trigger mechanics are Story 007 scope. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged; no Board Story 006 row exists in `production/sprint-status.yaml`.
+- Next recommended: Board Story 007 Trap Trigger Mechanics (`production/epics/board-lane-system/story-007-trap-trigger-mechanics.md`) after readiness check, or Board Story 009 Prism Collection if trap integration is deferred.
