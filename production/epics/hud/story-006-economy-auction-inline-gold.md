@@ -1,7 +1,7 @@
 # Story 006: ECONOMY_AUCTION Inline Gold Format and TextSpan Rendering
 
 > **Epic**: HUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-01
@@ -29,10 +29,10 @@
 
 *From GDD `design/gdd/hud.md`, scoped to this story:*
 
-- [ ] **HUD-17** (BLOCKING): GIVEN HUD in ECONOMY_BASIC with `GoldDisplayState.gold=11` (own) and `GoldDisplayState.gold=8` (opponent), WHEN `S2CPhaseChanged(DRAFT_AUCTION)` fires, THEN `HudMode = ECONOMY_AUCTION`; phase label reads `"AUCTION"`; own gold label parent `Text == "11g"` and its TextSpan child `Text == " (0r)"`; opponent gold label parent `Text == "8g"` and its TextSpan child `Text == " (0r)"`. (Server invariant: `reserved_gold == 0` at auction entry — `0r` is correct.)
-- [ ] **HUD-08** (BLOCKING): GIVEN HUD in ECONOMY_BASIC, WHEN `S2CGoldBroadcast{player_id=opponent_id, gold=7, reserved_gold=0}` arrives, THEN opponent gold label reads `"7g"` with no parenthetical suffix. GIVEN HUD in ECONOMY_AUCTION, WHEN `S2CGoldBroadcast{player_id=opponent_id, gold=7, reserved_gold=3}` arrives, THEN opponent gold label parent `Text == "7g"` and child `TextSpan == " (3r)"`.
-- [ ] **HUD-29** (BLOCKING): GIVEN HUD in ECONOMY_AUCTION with own `"11g (4r)"` and opponent `"8g (2r)"`, WHEN `S2CPhaseChanged(DRAFT_SHOP)` fires, THEN `HudMode = ECONOMY_BASIC`; own gold label parent `Text == "11g"` and child TextSpan `Text == ""`; opponent gold label parent `Text == "8g"` and child TextSpan `Text == ""`.
-- [ ] **HUD-28** (ADVISORY): GIVEN HUD in ECONOMY_AUCTION and `S2CGoldBroadcast{player_id=opponent_id, gold=7, reserved_gold=3}` processed, THEN querying opponent gold parent entity returns `Text == "7g"`; its single child has `TextSpan == " (3r)"`. No top-level HUD entity outside this tree represents opponent reserved gold.
+- [x] **HUD-17** (BLOCKING): GIVEN HUD in ECONOMY_BASIC with `GoldDisplayState.gold=11` (own) and `GoldDisplayState.gold=8` (opponent), WHEN `S2CPhaseChanged(DRAFT_AUCTION)` fires, THEN `HudMode = ECONOMY_AUCTION`; phase label reads `"AUCTION"`; own gold label parent `Text == "11g"` and its TextSpan child `Text == " (0r)"`; opponent gold label parent `Text == "8g"` and its TextSpan child `Text == " (0r)"`. (Server invariant: `reserved_gold == 0` at auction entry — `0r` is correct.)
+- [x] **HUD-08** (BLOCKING): GIVEN HUD in ECONOMY_BASIC, WHEN `S2CGoldBroadcast{player_id=opponent_id, gold=7, reserved_gold=0}` arrives, THEN opponent gold label reads `"7g"` with no parenthetical suffix. GIVEN HUD in ECONOMY_AUCTION, WHEN `S2CGoldBroadcast{player_id=opponent_id, gold=7, reserved_gold=3}` arrives, THEN opponent gold label parent `Text == "7g"` and child `TextSpan == " (3r)"`.
+- [x] **HUD-29** (BLOCKING): GIVEN HUD in ECONOMY_AUCTION with own `"11g (4r)"` and opponent `"8g (2r)"`, WHEN `S2CPhaseChanged(DRAFT_SHOP)` fires, THEN `HudMode = ECONOMY_BASIC`; own gold label parent `Text == "11g"` and child TextSpan `Text == ""`; opponent gold label parent `Text == "8g"` and child TextSpan `Text == ""`.
+- [x] **HUD-28** (ADVISORY): GIVEN HUD in ECONOMY_AUCTION and `S2CGoldBroadcast{player_id=opponent_id, gold=7, reserved_gold=3}` processed, THEN querying opponent gold parent entity returns `Text == "7g"`; its single child has `TextSpan == " (3r)"`. No top-level HUD entity outside this tree represents opponent reserved gold.
 
 ---
 
@@ -99,7 +99,7 @@
 **Story Type**: UI
 **Required evidence**: `production/qa/evidence/economy-auction-inline-gold-evidence.md` + walkthrough doc
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`production/qa/evidence/economy-auction-inline-gold-evidence.md`; `cargo test -p client --test hud_economy_auction_inline_gold_test`)
 
 ---
 
@@ -107,3 +107,12 @@
 
 - Depends on: Story 002 (`GoldDisplayState` backing fields), Story 003 (phase label for `"AUCTION"` string), Story 005 (phase mode state machine)
 - Unlocks: Story 009 (tie-break test uses ECONOMY_AUCTION format context)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 4/4 passing; HUD-17, HUD-08, HUD-29, and HUD-28 are covered by `tests/unit/hud/economy_auction_inline_gold_test.rs`.
+**Test Evidence**: `production/qa/evidence/economy-auction-inline-gold-evidence.md`; local `cargo test -p client --test hud_economy_auction_inline_gold_test` passed 4/4.
+**Verification**: `client/src/ui/hud/mod.rs` implements `HudMode::EconomyAuction`, writes reserved gold through existing child `TextSpan` entities, clears spans on return to basic mode without despawning them, and clamps invalid reserved-gold display values to total gold.
+**Notes**: Advisory only - manual visual walkthrough remains pending until a playable auction UI flow exists. `production/sprint-status.yaml` was left unchanged because it has no explicit `HUD-006` entry.

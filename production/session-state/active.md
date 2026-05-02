@@ -1203,3 +1203,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no `CARD-ANIM-007` row exists in `production/sprint-status.yaml`.
 - Next recommended: Card Animations Story 009 CI boundary enforcement (`production/epics/card-animations/story-009-ci-boundary-enforcement.md`) after readiness check, or close the remaining implemented card-animation stories in the serialized story-done queue.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hud/story-006-economy-auction-inline-gold.md` - Story 006: ECONOMY_AUCTION Inline Gold Format and TextSpan Rendering
+- Criteria: 4/4 passing; HUD-17, HUD-08, HUD-29, and HUD-28 covered by `tests/unit/hud/economy_auction_inline_gold_test.rs`.
+- Test Evidence: `production/qa/evidence/economy-auction-inline-gold-evidence.md`; `cargo test -p client --test hud_economy_auction_inline_gold_test` passed 4/4.
+- Verification: `client/src/ui/hud/mod.rs` switches to `HudMode::EconomyAuction` on DRAFT_AUCTION, renders reserved gold through the existing child `TextSpan`, clears the span text on basic-mode return without despawning, and clamps reserved gold to total gold for display.
+- Notes: Advisory only - manual visual walkthrough remains pending until a playable auction UI flow exists. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no explicit `HUD-006` row exists in `production/sprint-status.yaml`.
+- Next recommended: HUD Story 007 GAME_OVER Freeze Mode (`production/epics/hud/story-007-game-over-freeze.md`) after readiness check, or continue the serialized closure queue for implemented presentation stories.
