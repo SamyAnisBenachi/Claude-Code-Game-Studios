@@ -1181,3 +1181,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no PRISM-002 row exists in `production/sprint-status.yaml`.
 - Next recommended: Prism Story 003 Lane 3 RNG Draw Pipeline and Audit Log Ordering (`production/epics/prism-system/story-003-lane3-rng.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hud/story-004-scoreboard-dot-observer.md` - Story 004: Scoreboard Dot Message and State Machine
+- Criteria: 6/6 passing; HUD-02, HUD-06, HUD-07, HUD-12b dot portion, HUD-26, and HUD-30 covered by `tests/integration/hud/scoreboard_dot_message_test.rs`.
+- Test Evidence: `cargo test -p client --test scoreboard_dot_message_test` passed 4/4. `cargo check -p client` passed.
+- Verification: `HudObjectiveUpdate` is a Bevy `Message` defined in `client/src/ui/shared.rs`, registered with `app.add_message::<HudObjectiveUpdate>()`, consumed by `MessageReader<HudObjectiveUpdate>`, and applied to `ScoreboardDotState` with a lane bounds guard before indexing. Dot alignment is derived from `BoardLayout::scoreboard_lane_center_x`.
+- Notes: Advisory only - `TR-HUD-004` registry text still describes stale Hidden/Real/Fake/Destroyed wording while the current GDD and story require ALIVE/DESTROYED only. Advisory only - `BoardRenderingPlugin` / the real `ObjectiveDestroyed` drain is not present in `client/src` yet, so cross-plugin fanout is verified through the ordered Bevy `MessageWriter<HudObjectiveUpdate>` integration harness. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no `HUD-004` row exists in `production/sprint-status.yaml`.
+- Next recommended: HUD Story 006 ECONOMY_AUCTION Inline Gold Format (`production/epics/hud/story-006-economy-auction-inline-gold.md`) or HUD Story 007 GAME_OVER Freeze Mode (`production/epics/hud/story-007-game-over-freeze.md`) after readiness check.

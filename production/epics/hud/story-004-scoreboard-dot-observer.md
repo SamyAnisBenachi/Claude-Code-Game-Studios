@@ -1,7 +1,7 @@
 # Story 004: Scoreboard Dot Message and State Machine
 
 > **Epic**: HUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -53,12 +53,12 @@ Rationale: ADR-021 already requires `BoardLayout` to be available to all present
 
 *From GDD `design/gdd/hud.md`, scoped to this story — OQ-HUD-04 and OQ-HUD-05 are resolved:*
 
-- [ ] **HUD-02 — dot alignment slice** (BLOCKING for this story): GIVEN `HudPlugin` spawns the 10 scoreboard dot entities and `BoardLayout` is present, WHEN the HUD layout sync runs, THEN each dot's horizontal center is derived from `Res<BoardLayout>` for its lane; HudPlugin defines no duplicate `LANE_MIDPOINT_X` array and has no uniform-spacing fallback.
-- [ ] **HUD-06** (BLOCKING): GIVEN all 10 dots ALIVE, WHEN `HudObjectiveUpdate{target_player_id=opponent, lane=3}` is written, THEN opponent dot index 2 (0-indexed) transitions to DESTROYED; all other 9 dots remain ALIVE; no real/fake identifier applied to any dot.
-- [ ] **HUD-07** (BLOCKING): GIVEN HUD initialized and any message/phase sequence processed (including GAME_OVER), WHEN HUD entity subtree inspected, THEN: (a) no `Text`/`TextSpan` content contains `"REAL"`, `"FAKE"`, or any `ObjectiveIdentity` discriminant; (b) no entity carries `ObjectiveIdentity` or equivalent real/fake marker; (c) only valid dot-state flag values are `ALIVE (false)` and `DESTROYED (true)`.
-- [ ] **HUD-12b — dot portion** (BLOCKING): `HudObjectiveUpdate` is written → dot visual state reflects new value within the same ECS tick. No `Animator<T>` component on dot entities.
-- [ ] **HUD-26** (BLOCKING): GIVEN `destroyed[opponent][2]` already `true`, WHEN `HudObjectiveUpdate{target_player_id=opponent, lane=3}` is written again, THEN dot entity state component has same value as before; no panic, error, or spurious output.
-- [ ] **HUD-30** (BLOCKING): GIVEN HUD in any visible mode, WHEN `HudObjectiveUpdate{lane=0}` or `HudObjectiveUpdate{lane=6}` is written, THEN no dot entity state changes, no array index access is performed, no panic occurs, and a warning is logged.
+- [x] **HUD-02 — dot alignment slice** (BLOCKING for this story): GIVEN `HudPlugin` spawns the 10 scoreboard dot entities and `BoardLayout` is present, WHEN the HUD layout sync runs, THEN each dot's horizontal center is derived from `Res<BoardLayout>` for its lane; HudPlugin defines no duplicate `LANE_MIDPOINT_X` array and has no uniform-spacing fallback.
+- [x] **HUD-06** (BLOCKING): GIVEN all 10 dots ALIVE, WHEN `HudObjectiveUpdate{target_player_id=opponent, lane=3}` is written, THEN opponent dot index 2 (0-indexed) transitions to DESTROYED; all other 9 dots remain ALIVE; no real/fake identifier applied to any dot.
+- [x] **HUD-07** (BLOCKING): GIVEN HUD initialized and any message/phase sequence processed (including GAME_OVER), WHEN HUD entity subtree inspected, THEN: (a) no `Text`/`TextSpan` content contains `"REAL"`, `"FAKE"`, or any `ObjectiveIdentity` discriminant; (b) no entity carries `ObjectiveIdentity` or equivalent real/fake marker; (c) only valid dot-state flag values are `ALIVE (false)` and `DESTROYED (true)`.
+- [x] **HUD-12b — dot portion** (BLOCKING): `HudObjectiveUpdate` is written → dot visual state reflects new value within the same ECS tick. No `Animator<T>` component on dot entities.
+- [x] **HUD-26** (BLOCKING): GIVEN `destroyed[opponent][2]` already `true`, WHEN `HudObjectiveUpdate{target_player_id=opponent, lane=3}` is written again, THEN dot entity state component has same value as before; no panic, error, or spurious output.
+- [x] **HUD-30** (BLOCKING): GIVEN HUD in any visible mode, WHEN `HudObjectiveUpdate{lane=0}` or `HudObjectiveUpdate{lane=6}` is written, THEN no dot entity state changes, no array index access is performed, no panic occurs, and a warning is logged.
 
 ---
 
@@ -165,7 +165,7 @@ Rationale: ADR-021 already requires `BoardLayout` to be available to all present
 **Story Type**: Integration
 **Required evidence**: `tests/integration/hud/scoreboard_dot_message_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created — OQ-HUD-04 and OQ-HUD-05 resolved; story is ready for implementation
+**Status**: [x] Created and passing
 
 ---
 
@@ -173,3 +173,11 @@ Rationale: ADR-021 already requires `BoardLayout` to be available to all present
 
 - Depends on: Story 001 (entity pool, `HudEntities.dots` array); OQ-HUD-05 resolved (client-internal Bevy `Message` in client presentation/UI shared module); OQ-HUD-04 resolved (`BoardLayout` source for dot horizontal alignment)
 - Unlocks: Story 007 (FROZEN mode gates the dot updates), Story 008 (snapshot rebuilds dot states)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 6/6 passing (HUD-02, HUD-06, HUD-07, HUD-12b dot portion, HUD-26, HUD-30).
+**Deviations**: Advisory only - `TR-HUD-004` registry text still describes stale Hidden/Real/Fake/Destroyed wording while the current GDD and story require only ALIVE/DESTROYED. Advisory only - `BoardRenderingPlugin` / the real `ObjectiveDestroyed` drain is not present in `client/src` yet, so cross-plugin fanout is verified through the ordered Bevy `MessageWriter<HudObjectiveUpdate>` integration harness.
+**Test Evidence**: Integration test file at `tests/integration/hud/scoreboard_dot_message_test.rs`; `cargo test -p client --test scoreboard_dot_message_test` passed 4/4. `cargo check -p client` passed.
+**Code Review**: Skipped - Lean mode.
