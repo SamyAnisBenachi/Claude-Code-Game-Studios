@@ -321,9 +321,9 @@ Batch launched:
 - HUD-006: integrated, pending story-done.
 - CARD-ANIM-005: integrated, pending story-done.
 
-User reports only two new active windows remain after CARD-ANIM-005 returned;
-those are assumed to be AUC-004 and RSM-006. The next serialized closure is
-CARD-ANIM-003. Do not launch PRISM-003 until PRISM-001 and PRISM-002 close.
+User corrected active window state after CARD-ANIM-005 returned: active windows
+are AUC-004 and CARD-ANIM-003 story-done. RSM-006 is not active unless relaunched.
+Do not launch PRISM-003 until PRISM-001 and PRISM-002 close.
 
 ## Resolved Design Gates
 
