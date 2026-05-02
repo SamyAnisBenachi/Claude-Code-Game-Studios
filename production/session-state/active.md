@@ -1148,3 +1148,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no `CARD-ANIM-003` row exists in `production/sprint-status.yaml`.
 - Next recommended: Card Animations Story 005 placement reveal parallelism (`production/epics/card-animations/story-005-placement-reveal-parallelism.md`) or Story 007 damage number lifecycle (`production/epics/card-animations/story-007-damage-number-lifecycle.md`) if those implemented branches need formal closure.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/game-session-system/story-004-f4-session-ready.md` - Story 004: F4 Predicate and SessionReady Trigger
+- Criteria: 12/12 passing; F4 exact-deadline behavior is covered by `tests/unit/session/session_ready_test.rs::test_session_ready_f4_true_on_exact_lobby_deadline`, and the SessionReady trigger path is covered by the required GSS-004 unit/integration bundle.
+- Test Evidence: `cargo fmt -p server -- --check` passed; `cargo test -p server --test session_ready_test --test single_fire_test --test rng_init_failure_test --test lobby_to_draft_initial_test` passed; `cargo check -p server` passed.
+- Verification: Repair commit `3c64b84` changes F4 to `server_clock_now <= lobby_deadline`, preserves Bevy 0.18 `add_observer(on_session_ready)`, and adds no second `SessionReady` observer.
+- Notes: Advisory only - story acceptance text still contains older `<` wording, while current TR-GSS-003/GDD require `<=`. Advisory only - story/ADR wording still references `app.observe(on_session_ready)`, while current implementation uses Bevy 0.18 `add_observer(on_session_ready)` as required.
+- Tech debt logged: None
+- Sprint status: `S3-09` in `production/sprint-status.yaml` marked `done` with completed date `2026-05-02`.
+- Next recommended: Continue the user-directed serialized story-done queue or run readiness on the next queued Sprint 4 story.

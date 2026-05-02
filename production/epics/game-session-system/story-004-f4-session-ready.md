@@ -1,7 +1,7 @@
 # Story 004: F4 Predicate and SessionReady Trigger
 
 > **Epic**: Game Session System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -135,7 +135,7 @@ buffered messages for `SessionReady`.
 - `tests/unit/session/rng_init_failure_test.rs` (GSS-29) — passing
 - `tests/integration/session/lobby_to_draft_initial_test.rs` (RSM-1) — passing
 - Control manifest 2026-05-01 alignment documented in this story's Readiness Refresh
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing locally
 
 ---
 
@@ -146,3 +146,13 @@ buffered messages for `SessionReady`.
 - Depends on: server-rng epic (ADR-005 — `ServerRng::new()` must exist)
 - Depends on: ADR-012 accepted and control manifest 2026-05-01 alignment (Readiness Refresh above)
 - Unlocks: Story 006 (game-over teardown subscribes to `GameOverEmitted` which requires the RSM to be active, which requires DRAFT_INITIAL to have begun)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 12/12 passing.
+**Deviations**:
+- Advisory: story acceptance text still says `now < lobby_deadline.0`, but the current source of truth in TR-GSS-003 and `design/gdd/game-session-system.md` requires `server_clock_now <= lobby_deadline`. Implementation follows the current GDD/TR rule after repair commit `3c64b84`.
+- Advisory: story/ADR grep wording says `app.observe(on_session_ready)`, while the current Bevy 0.18 implementation preserves `add_observer(on_session_ready)` as required for this closure. No second `SessionReady` observer was added.
+**Test Evidence**: Logic story covered by `tests/unit/session/session_ready_test.rs`, `tests/unit/session/single_fire_test.rs`, `tests/unit/session/rng_init_failure_test.rs`, and `tests/integration/session/lobby_to_draft_initial_test.rs`; `cargo fmt -p server -- --check`, the required GSS-004 test bundle, and `cargo check -p server` passed on 2026-05-02.
+**Code Review**: Skipped - Lean mode.

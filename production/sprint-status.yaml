@@ -6,7 +6,7 @@ goal: "Complete the remaining Core Sprint B backbone: lobby/class flow, RSM time
 start: "2026-05-28"
 end: "2026-06-10"
 generated: "2026-04-30"
-updated: "2026-05-01"
+updated: "2026-05-02"
 
 stories:
   - id: "S3-01"
@@ -93,11 +93,11 @@ stories:
     name: "GSS Story 4: F4 Predicate and SessionReady Trigger"
     file: "production/epics/game-session-system/story-004-f4-session-ready.md"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 1.5
-    blocker: "Run /story-readiness after refreshing ADR-012 evidence in the story file"
-    completed: ""
+    blocker: ""
+    completed: "2026-05-02"
 
   - id: "S3-10"
     name: "Card Pool Story 5: Manual Refresh + Cost Escalation"
