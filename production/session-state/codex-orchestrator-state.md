@@ -133,6 +133,14 @@ None currently tracked here.
   existing card animation regressions, and `cargo check -p client`. Root
   `cargo check -p client` and `git diff --check HEAD~1..HEAD` also passed after
   integration.
+- CARD-ANIM-005: Placement Reveal Parallelism implemented locally on branch
+  `work/card-anim-005-placement-reveal-parallelism` at `0c1d5fe`; root
+  cherry-picked it into `main` at `5ccb988`. Worker checks passed
+  `cargo fmt -p client -- --check`,
+  `cargo test -p client --test card_animations_placement_reveal_test`,
+  existing card animation regressions 30/30, and `cargo check -p client`.
+  Root `cargo check -p client` and `git diff --check HEAD~1..HEAD` also passed
+  after integration.
 - PRISM-002: Deterministic Lane Rewards implemented on branch
   `work/prism-002-deterministic-lanes` at `8e9aaed`; root cherry-picked it into
   `main` at `65cb5a6`. Worker checks passed `cargo fmt -p server -- --check`,
@@ -275,6 +283,7 @@ None currently tracked here.
 5. CARD-ANIM-007
 6. PRISM-002
 7. HUD-006
+8. CARD-ANIM-005
 
 Run only one story-done at a time.
 
@@ -289,6 +298,7 @@ Run only one story-done at a time.
 - HUD-004: implemented and integrated; pending story-done before launching HUD
   stories that depend on scoreboard objective dots.
 - CARD-ANIM-007: implemented and integrated; pending story-done.
+- CARD-ANIM-005: implemented and integrated; pending story-done.
 - PRISM-002: implemented and integrated; pending story-done.
 - HUD-006: implemented and integrated; pending story-done.
 - AUC-004: ECO-005 is formally closed; still verify OQ9 pre-implementation gate
@@ -309,11 +319,11 @@ Batch launched:
 - CARD-ANIM-007: integrated, pending story-done.
 - PRISM-002: integrated, pending story-done.
 - HUD-006: integrated, pending story-done.
+- CARD-ANIM-005: integrated, pending story-done.
 
-No story-done window is currently active in this tracker. The next serialized
-closure is CARD-ANIM-003. Safe implementation candidates after the current
-worker batch are AUC-004 readiness/implementation, RSM-006 readiness, and
-PRISM-003 after PRISM story-done catches up.
+User reports only two new active windows remain after CARD-ANIM-005 returned;
+those are assumed to be AUC-004 and RSM-006. The next serialized closure is
+CARD-ANIM-003. Do not launch PRISM-003 until PRISM-001 and PRISM-002 close.
 
 ## Resolved Design Gates
 
