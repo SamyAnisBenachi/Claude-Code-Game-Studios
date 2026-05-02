@@ -102,13 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- HUD-004: Scoreboard Dot Observer implemented on branch
-  `work/hud-004-scoreboard-dot-observer` at `fd9b4e8`; root cherry-picked it
-  into `main` at `c30fc6a`. Worker checks passed
-  `cargo fmt -p client -- --check`,
-  `cargo test -p client --test scoreboard_dot_message_test`, HUD regression
-  slice 21/21, and `cargo check -p client`. Root `cargo check -p client` and
-  `git diff --check HEAD~1..HEAD` also passed after integration.
 - CARD-ANIM-007: Damage Number Lifecycle implemented locally on branch
   `work/card-anim-007-damage-number-lifecycle` at `d49d274`; root cherry-picked
   it into `main` at `ca890fc`. Worker checks passed `cargo fmt -p client --
@@ -181,6 +174,9 @@ None currently tracked here.
 - PRISM-002: Deterministic Lane Rewards implemented on branch
   `work/prism-002-deterministic-lanes` at `8e9aaed`; root cherry-picked it into
   `main` at `65cb5a6`; story-done committed at `2d1a4bf`.
+- HUD-004: Scoreboard Dot Observer implemented on branch
+  `work/hud-004-scoreboard-dot-observer` at `fd9b4e8`; root cherry-picked it
+  into `main` at `c30fc6a`; story-done committed at `3c85ae1`.
 - CARD-ANIM-003: Simultaneous Track Animation implemented on branch
   `work/card-anim-003-simultaneous-track-animation` at `4f4d7c5`; cherry-picked
   into `main` at `066c1cd` after resolving a public export conflict with
@@ -303,15 +299,14 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HUD-004
-2. CARD-ANIM-007
-3. HUD-006
-4. CARD-ANIM-005
-5. AUC-004
-6. RSM-006
-7. CS-003
-8. HUD-007
-9. BOARD-007
+1. CARD-ANIM-007
+2. HUD-006
+3. CARD-ANIM-005
+4. AUC-004
+5. RSM-006
+6. CS-003
+7. HUD-007
+8. BOARD-007
 
 Run only one story-done at a time.
 
@@ -319,8 +314,6 @@ Run only one story-done at a time.
 
 - PRISM-003 is unblocked by PRISM-001/002 closure. Remaining Prism story
   manifests were refreshed to 2026-05-01 in `7834e88`; launch PRISM-003 next.
-- HUD-004: implemented and integrated; pending story-done before launching HUD
-  stories that depend on scoreboard objective dots.
 - CARD-ANIM-007: implemented and integrated; pending story-done.
 - CARD-ANIM-005: implemented and integrated; pending story-done.
 - HUD-006: implemented and integrated; pending story-done.
@@ -345,7 +338,6 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- HUD-004: integrated, pending story-done.
 - CARD-ANIM-007: integrated, pending story-done.
 - HUD-006: integrated, pending story-done.
 - CARD-ANIM-005: integrated, pending story-done.
@@ -358,8 +350,9 @@ Batch launched:
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
   cleared. PRISM-002 story-done returned and was committed at `2d1a4bf`;
-  window can be cleared. HUD-004 is now the next serialized story-done
-  candidate.
+  window can be cleared. HUD-004 story-done returned and was committed at
+  `3c85ae1`; window can be cleared. CARD-ANIM-007 is now the next serialized
+  story-done candidate.
   Do not launch another story-done until it returns.
 - BOARD-007 returned, integrated at `fd13f2a`, and now only needs serialized
   story-done.
@@ -369,8 +362,7 @@ Current active windows by user default-launch rule:
   `2026-05-01` in `b8b9f26`; relaunch readiness/implementation and then treat
   it as active unless the user says it was not launched.
 AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
-integrated/closed as noted above. Do not launch PRISM-003 until PRISM-001 and
-PRISM-002 close.
+integrated/closed as noted above.
 
 ## Resolved Design Gates
 
