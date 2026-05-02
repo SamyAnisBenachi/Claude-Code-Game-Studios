@@ -198,22 +198,44 @@ pub fn hud_phase_transition_system(
         | RoundPhase::Resolution => {
             *mode = HudMode::EconomyBasic;
             set_hud_visible(&entities, &mut visibility);
-            sync_gold_label_basic_format(
+            sync_gold_label_for_mode(
                 entities.own_gold_parent,
                 entities.own_gold_span,
+                HudMode::EconomyBasic,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
             );
-            sync_gold_label_basic_format(
+            sync_gold_label_for_mode(
                 entities.opponent_gold_parent,
                 entities.opponent_gold_span,
+                HudMode::EconomyBasic,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
             );
         }
-        RoundPhase::DraftAuction | RoundPhase::GameOver => {}
+        RoundPhase::DraftAuction => {
+            *mode = HudMode::EconomyAuction;
+            set_hud_visible(&entities, &mut visibility);
+            sync_gold_label_for_mode(
+                entities.own_gold_parent,
+                entities.own_gold_span,
+                HudMode::EconomyAuction,
+                &gold_states,
+                &mut gold_texts,
+                &mut gold_spans,
+            );
+            sync_gold_label_for_mode(
+                entities.opponent_gold_parent,
+                entities.opponent_gold_span,
+                HudMode::EconomyAuction,
+                &gold_states,
+                &mut gold_texts,
+                &mut gold_spans,
+            );
+        }
+        RoundPhase::GameOver => {}
     }
 }
 
@@ -385,7 +407,7 @@ fn spawn_gold_label(
             Name::new(format!("{name} Reserved Span")),
             HudEntity,
             TextSpan::new(""),
-            hud_text_font(12.0),
+            hud_text_font(18.0 * 0.65),
             TextColor(Color::srgba(0.95, 0.90, 0.70, 0.65)),
             Visibility::Hidden,
             ChildOf(parent_entity),
@@ -452,17 +474,18 @@ pub fn handle_gold_broadcast_system(
 
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            let reserved_gold = clamped_reserved_gold(&message);
             for (owner, mut state) in &mut gold_labels {
                 match (*owner, message.player_id) {
                     (GoldLabelOwner::Opponent, player_id)
                         if player_id == player_ids.opponent_id =>
                     {
                         state.gold = message.gold as f32;
-                        state.reserved_gold = message.reserved_gold as f32;
+                        state.reserved_gold = reserved_gold;
                         state.is_populated = true;
                     }
                     (GoldLabelOwner::Local, player_id) if player_id == player_ids.local_id => {
-                        state.reserved_gold = message.reserved_gold as f32;
+                        state.reserved_gold = reserved_gold;
                     }
                     _ => {}
                 }
@@ -648,6 +671,7 @@ pub fn apply_gold_update_message(
 }
 
 pub fn sync_gold_text_system(
+    mode: Res<HudMode>,
     mut gold_labels: Query<
         (&GoldDisplayState, &mut Text, Option<&Children>),
         Changed<GoldDisplayState>,
@@ -660,7 +684,7 @@ pub fn sync_gold_text_system(
         if let Some(children) = children {
             for child in children.iter() {
                 if let Ok(mut span) = spans.get_mut(child) {
-                    span.0.clear();
+                    span.0 = format_reserved_gold_span(state, *mode);
                 }
             }
         }
@@ -707,6 +731,32 @@ fn format_gold_text(state: &GoldDisplayState) -> String {
         format!("{}g", state.gold as u32)
     } else {
         "--g".to_string()
+    }
+}
+
+fn format_reserved_gold_span(state: &GoldDisplayState, mode: HudMode) -> String {
+    if mode == HudMode::EconomyAuction && state.is_populated {
+        format!(" ({}r)", display_reserved_gold(state))
+    } else {
+        String::new()
+    }
+}
+
+fn display_reserved_gold(state: &GoldDisplayState) -> u32 {
+    let gold = state.gold.max(0.0) as u32;
+    let reserved_gold = state.reserved_gold.max(0.0) as u32;
+    reserved_gold.min(gold)
+}
+
+fn clamped_reserved_gold(message: &S2CGoldBroadcast) -> f32 {
+    if message.reserved_gold > message.gold {
+        warn!(
+            "HUD: reserved_gold {} exceeds gold {} for {:?}; clamping display value",
+            message.reserved_gold, message.gold, message.player_id
+        );
+        message.gold as f32
+    } else {
+        message.reserved_gold as f32
     }
 }
 
@@ -763,19 +813,24 @@ fn destroyed_dot_border() -> Color {
     Color::srgba(0.30, 0.32, 0.35, 0.70)
 }
 
-fn sync_gold_label_basic_format(
+fn sync_gold_label_for_mode(
     parent: Entity,
     span: Entity,
+    mode: HudMode,
     gold_states: &Query<&GoldDisplayState>,
     gold_texts: &mut Query<&mut Text>,
     gold_spans: &mut Query<&mut TextSpan>,
 ) {
-    if let (Ok(state), Ok(mut text)) = (gold_states.get(parent), gold_texts.get_mut(parent)) {
+    let state = gold_states.get(parent).ok();
+
+    if let (Some(state), Ok(mut text)) = (state, gold_texts.get_mut(parent)) {
         text.0 = format_gold_text(state);
     }
 
     if let Ok(mut span_text) = gold_spans.get_mut(span) {
-        span_text.0.clear();
+        span_text.0 = state
+            .map(|state| format_reserved_gold_span(state, mode))
+            .unwrap_or_default();
     }
 }
 
