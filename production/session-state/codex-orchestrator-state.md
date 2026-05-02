@@ -110,14 +110,6 @@ None currently tracked here.
   existing card animation regressions 30/30, and `cargo check -p client`.
   Root `cargo check -p client` and `git diff --check HEAD~1..HEAD` also passed
   after integration.
-- HUD-006: Economy Auction Inline Gold implemented on branch
-  `work/hud-006-economy-auction-inline-gold` at `6d6d90b`; root cherry-picked
-  it into `main` at `92906d5`. Worker checks passed
-  `cargo fmt -p client -- --check`,
-  `cargo test -p client --test hud_economy_auction_inline_gold_test`,
-  HUD regression slice 29/29, and `cargo check -p client`. Root
-  `cargo check -p client` and `git diff --check HEAD~4..HEAD` passed after
-  integration.
 - AUC-004: Bid Validation Gate implemented locally on branch
   `work/auc-004-bid-validation-gate` at `59e086f`; root cherry-picked it into
   `main` at `5bd635e`. Worker resolved OQ9 as reachable and covered
@@ -208,6 +200,9 @@ None currently tracked here.
   `work/card-anim-007-damage-number-lifecycle` at `d49d274`; root cherry-picked
   it into `main` at `ca890fc`; repaired against the current GDD F3 jitter table
   at `2b5ea8e`; story-done committed at `35ee469`.
+- HUD-006: Economy Auction Inline Gold implemented on branch
+  `work/hud-006-economy-auction-inline-gold` at `6d6d90b`; root cherry-picked
+  it into `main` at `92906d5`; story-done committed at `cc205e3`.
 - CARD-ANIM-003: Simultaneous Track Animation implemented on branch
   `work/card-anim-003-simultaneous-track-animation` at `4f4d7c5`; cherry-picked
   into `main` at `066c1cd` after resolving a public export conflict with
@@ -330,17 +325,16 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HUD-006
-2. CARD-ANIM-005
-3. AUC-004
-4. RSM-006
-5. CS-003
-6. HUD-007
-7. BOARD-007
-8. PRISM-003
-9. HUD-009
-10. HAND-UI-004
-11. GSS-005
+1. CARD-ANIM-005
+2. AUC-004
+3. RSM-006
+4. CS-003
+5. HUD-007
+6. BOARD-007
+7. PRISM-003
+8. HUD-009
+9. HAND-UI-004
+10. GSS-005
 
 Run only one story-done at a time.
 
@@ -351,7 +345,6 @@ Run only one story-done at a time.
   implemented/integrated and pending story-done. PRISM-004 can run after
   PRISM-003 story-done because it depends on the Lane 3 call site.
 - CARD-ANIM-005: implemented and integrated; pending story-done.
-- HUD-006: implemented and integrated; pending story-done.
 - AUC-004: implemented and integrated; pending story-done.
 - RSM-006: implemented and integrated; pending story-done.
 - CS-003: implemented and integrated; pending story-done.
@@ -380,7 +373,6 @@ Run only one story-done at a time.
 
 Batch launched:
 - CARD-ANIM-007: integrated, pending story-done.
-- HUD-006: integrated, pending story-done.
 - CARD-ANIM-005: integrated, pending story-done.
 - AUC-004: integrated, pending story-done.
 - RSM-006: integrated, pending story-done.
@@ -406,7 +398,9 @@ Current active windows by user default-launch rule:
 - PRISM-003 returned, integrated at `611baee`, and now only needs serialized
   story-done.
 - CARD-ANIM-007 story-done returned and was committed at `35ee469`; window can
-  be cleared. HUD-006 is now the next serialized story-done candidate.
+  be cleared. HUD-006 story-done returned and was committed at `cc205e3`;
+  window can be cleared. CARD-ANIM-005 is now the next serialized story-done
+  candidate.
 - HAND-UI-004 returned, integrated at `561d2fd`, and now only needs serialized
   story-done.
 - GSS-005 returned, integrated at `15fe812`, and now only needs serialized
