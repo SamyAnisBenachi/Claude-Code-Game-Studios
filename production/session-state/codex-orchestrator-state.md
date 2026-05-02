@@ -168,6 +168,15 @@ None currently tracked here.
   31/31, and `cargo check -p client`. Root repeated
   `cargo test -p client --test hud_game_over_freeze_test`,
   `cargo check -p client`, and `git diff --check HEAD~1..HEAD`.
+- BOARD-007: Trap Trigger Mechanics implemented on branch
+  `work/board-007-trap-trigger-mechanics` at `2daaa76`; root cherry-picked and
+  amended it into `main` at `fd13f2a`. Worker checks passed
+  `cargo fmt -p server -- --check`,
+  `cargo test -p server --test trap_trigger_test`, board movement/placement
+  regressions 34/34, and `cargo check -p server`. Root repeated fmt,
+  `trap_trigger_test` 4/4, affected board regression slice 30/30, `cargo check
+  -p server`, and `git diff --check HEAD~1..HEAD`. No Prism collection or RSM
+  dispatch code touched.
 ## Recently Closed
 
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
@@ -307,6 +316,7 @@ None currently tracked here.
 7. RSM-006
 8. CS-003
 9. HUD-007
+10. BOARD-007
 
 Run only one story-done at a time.
 
@@ -323,6 +333,7 @@ Run only one story-done at a time.
 - RSM-006: implemented and integrated; pending story-done.
 - CS-003: implemented and integrated; pending story-done.
 - HUD-007: implemented and integrated; pending story-done.
+- BOARD-007: implemented and integrated; pending story-done.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
 - GSS-005+ and other RSM/session/disconnect work are unblocked by GSS-004
   closure, but still stage carefully because RSM-006 is implemented and pending
@@ -342,13 +353,14 @@ Batch launched:
 - RSM-006: integrated, pending story-done.
 - CS-003: integrated, pending story-done.
 - HUD-007: integrated, pending story-done.
+- BOARD-007: integrated, pending story-done.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
   cleared. PRISM-002 is now the next serialized story-done candidate.
   Do not launch another story-done until it returns.
-- BOARD-007 is considered active from the latest prompt after manifest refresh
-  commit `35bec31`.
+- BOARD-007 returned, integrated at `fd13f2a`, and now only needs serialized
+  story-done.
 - HUD-008 is considered active from the latest prompt.
 - OBJ-002 returned NEEDS WORK only on stale manifest. Manifest refreshed to
   `2026-05-01` in `b8b9f26`; relaunch readiness/implementation and then treat
