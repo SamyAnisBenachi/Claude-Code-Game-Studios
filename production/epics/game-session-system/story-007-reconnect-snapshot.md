@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Core
 > **Type**: Integration
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
 ## Pre-conditions
 
@@ -17,6 +17,8 @@ Key items that directly gate this story:
 - Item 4: `OnConnected` fires synchronously in the Bevy `Update` schedule, not deferred.
 - Item 5: Messages enqueued before `OnConnected` processes are not delivered to the new `ClientId`.
 - Items 12–14: `OnDisconnected` API shape and semantics (also required by Story 005).
+
+**2026-05-02 API alignment**: Current compiled Lightyear 0.26.4 usage in this repo observes connection state through `Connected` / `Disconnected` marker components with Bevy observers (`On<Add, Connected>` and `On<Add, Disconnected>`). Implement the "OnConnected"/"OnDisconnected" acceptance wording via that verified marker-component observer path, not via legacy `EventReader`/`EventWriter` APIs.
 
 ---
 

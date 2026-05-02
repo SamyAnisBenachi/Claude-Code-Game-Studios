@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Core
 > **Type**: Integration
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
 ## Pre-conditions
 
@@ -14,6 +14,8 @@
 - Item 14: `OnDisconnected` fires at most once per transport disconnect, even for half-open WebSocket states (no spurious duplicate fires during browser sleep).
 
 If any of these items cannot be confirmed, the `handle_lobby_disconnect` fallback path (dual-signal via heartbeat gap) still functions correctly — but the primary `OnDisconnected` path must be marked as "unverified" in a code comment until confirmed.
+
+**2026-05-02 API alignment**: Current compiled Lightyear 0.26.4 usage in this repo observes connection state through `Connected` / `Disconnected` marker components with Bevy observers (`On<Add, Connected>` and `On<Add, Disconnected>`). Implement the "OnDisconnected" acceptance wording via that verified marker-component observer path, not via legacy `EventReader`/`EventWriter` APIs.
 
 **Note**: `lobby_heartbeat_timeout_seconds` value reads from `Res<GameConfig>`. The GDD documents an open question (OQ-8) about whether this field name is `lobby_heartbeat_timeout_seconds` or a different variant. Verify the exact field name in `shared/src/config.rs` (implemented in workspace-and-shared-types Story 003) before using it. The default value is 15s per EPIC.md.
 
