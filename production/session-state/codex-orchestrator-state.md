@@ -102,15 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- BOARD-007: Trap Trigger Mechanics implemented on branch
-  `work/board-007-trap-trigger-mechanics` at `2daaa76`; root cherry-picked and
-  amended it into `main` at `fd13f2a`. Worker checks passed
-  `cargo fmt -p server -- --check`,
-  `cargo test -p server --test trap_trigger_test`, board movement/placement
-  regressions 34/34, and `cargo check -p server`. Root repeated fmt,
-  `trap_trigger_test` 4/4, affected board regression slice 30/30, `cargo check
-  -p server`, and `git diff --check HEAD~1..HEAD`. No Prism collection or RSM
-  dispatch code touched.
 - PRISM-003: Lane 3 RNG Draw Pipeline implemented on branch
   `work/prism-003-lane3-rng` at `4d5acf1`; root cherry-picked and amended it
   into `main` at `611baee`. Root repeated checks because worker output was
@@ -203,6 +194,13 @@ None currently tracked here.
   pack 14/14, and `cargo check -p client`. Completion notes document that the
   test covers post-GAME_OVER update rejection but not the exact story example
   values `999/888`.
+- BOARD-007: Trap Trigger Mechanics implemented on branch
+  `work/board-007-trap-trigger-mechanics` at `2daaa76`; root cherry-picked and
+  amended it into `main` at `fd13f2a`; story-done committed at `dc8b80a`.
+  Verification passed `cargo test -p server --test trap_trigger_test` 4/4 and
+  `cargo fmt -p server -- --check`. Completion notes document the BL-31
+  `World::run_system_once` harness choice as advisory because it directly
+  covers the lane-change commit system.
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
   `work/gss-004-f4-session-ready` at `9708147`; cherry-picked into `main` at
   `4d8cf60`; repair committed at `3c64b84`; story-done committed at `36ed875`.
@@ -344,13 +342,12 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. BOARD-007
-2. PRISM-003
-3. HUD-009
-4. HUD-010
-5. HAND-UI-004
-6. GSS-005
-7. GSS-006
+1. PRISM-003
+2. HUD-009
+3. HUD-010
+4. HAND-UI-004
+5. GSS-005
+6. GSS-006
 
 Run only one story-done at a time.
 
@@ -360,7 +357,6 @@ Run only one story-done at a time.
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
   implemented/integrated and pending story-done. PRISM-004 can run after
   PRISM-003 story-done because it depends on the Lane 3 call site.
-- BOARD-007: implemented and integrated; pending story-done.
 - PRISM-003: implemented and integrated; pending story-done.
 - HUD-009: implemented and integrated; pending story-done.
 - HUD-010: implemented and integrated; pending story-done.
@@ -383,7 +379,6 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- BOARD-007: integrated, pending story-done.
 - PRISM-003: integrated, pending story-done.
 - HUD-009: integrated, pending story-done.
 - HUD-010: integrated, pending story-done.
@@ -399,7 +394,7 @@ Current active windows by user default-launch rule:
   story-done candidate.
   Do not launch another story-done until it returns.
 - BOARD-007 returned, integrated at `fd13f2a`, and now only needs serialized
-  story-done.
+  story-done; story-done committed at `dc8b80a`. Window can be cleared.
 - HUD-008 returned with no code changes; window can be cleared. It remains
   blocked until GSS-007 expands/builds `S2CGameSnapshot`.
 - PRISM-003 returned, integrated at `611baee`, and now only needs serialized
@@ -412,7 +407,8 @@ Current active windows by user default-launch rule:
   and was committed at `2f07c94`; window can be cleared. CS-003 story-done
   returned and was committed at `b940f70`; window can be cleared. HUD-007
   story-done returned and was committed at `cae0e45`; window can be cleared.
-  BOARD-007 is now the next serialized story-done candidate.
+  BOARD-007 story-done returned and was committed at `dc8b80a`; window can be
+  cleared. PRISM-003 is now the next serialized story-done candidate.
 - HAND-UI-004 returned, integrated at `561d2fd`, and now only needs serialized
   story-done.
 - GSS-005 returned, integrated at `15fe812`, and now only needs serialized
