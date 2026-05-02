@@ -32,7 +32,7 @@ pub struct RoundState {
     pub resolution_safety_timer: Option<Timer>,
     pub draft_ready_players: HashSet<PlayerId>,
     pub submissions_received: HashSet<PlayerId>,
-    pub disconnect_trackers: HashMap<PlayerId, f32>,
+    pub disconnect_trackers: HashMap<PlayerId, u32>,
     pub pending_disconnect_outcome: Option<GameOverRequest>,
 }
 

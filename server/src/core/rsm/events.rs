@@ -105,6 +105,11 @@ pub struct PlayerReconnected {
     pub player: PlayerId,
 }
 
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlayerHeartbeat {
+    pub player: PlayerId,
+}
+
 /// Internal server signal emitted after the network layer resolves the sender
 /// to a stable session player. The shared C2S payload stays Bevy-free.
 #[derive(Message, Clone, Copy, Debug)]

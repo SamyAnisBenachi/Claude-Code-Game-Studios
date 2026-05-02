@@ -1,6 +1,7 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
+use crate::core::rsm::{tick_disconnect_timers, PlayerHeartbeat};
 use crate::core::session::PlayerConnectionMap;
 use crate::lobby::handler::handle_class_choice;
 use bevy::prelude::*;
@@ -23,8 +24,15 @@ impl Plugin for ServerNetworkPlugin {
         register_lightyear_protocol(app);
 
         app.init_resource::<PlayerConnectionMap>()
+            .add_message::<PlayerHeartbeat>()
             .add_systems(Startup, open_websocket_server)
-            .add_systems(Update, (receive_c2s_messages, handle_class_choice))
+            .add_systems(
+                Update,
+                (
+                    receive_c2s_messages.before(tick_disconnect_timers),
+                    handle_class_choice,
+                ),
+            )
             .add_observer(log_client_connected)
             .add_observer(log_client_disconnected);
     }
@@ -105,7 +113,9 @@ fn receive_c2s_messages(
     place_bid: Query<&mut MessageReceiver<C2SPlaceBid>>,
     submit_placement: Query<&mut MessageReceiver<C2SSubmitPlacement>>,
     acknowledge_result: Query<&mut MessageReceiver<C2SAcknowledgeResult>>,
-    heartbeat: Query<&mut MessageReceiver<C2SHeartbeat>>,
+    heartbeat: Query<(&RemoteId, &mut MessageReceiver<C2SHeartbeat>)>,
+    connections: Option<Res<PlayerConnectionMap>>,
+    mut heartbeat_writer: MessageWriter<PlayerHeartbeat>,
 ) {
     log_received("C2SHello", hello);
     log_received("C2SActivateCard", activate_card);
@@ -113,7 +123,7 @@ fn receive_c2s_messages(
     log_received("C2SPlaceBid", place_bid);
     log_received("C2SSubmitPlacement", submit_placement);
     log_received("C2SAcknowledgeResult", acknowledge_result);
-    log_received("C2SHeartbeat", heartbeat);
+    forward_heartbeats(heartbeat, connections.as_deref(), &mut heartbeat_writer);
 }
 
 fn log_received<M: std::fmt::Debug + Send + Sync + 'static>(
@@ -123,6 +133,24 @@ fn log_received<M: std::fmt::Debug + Send + Sync + 'static>(
     for mut receiver in receivers.iter_mut() {
         for msg in receiver.receive() {
             debug!("Received {}: {:?}", label, msg);
+        }
+    }
+}
+
+fn forward_heartbeats(
+    mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SHeartbeat>)>,
+    connections: Option<&PlayerConnectionMap>,
+    heartbeats: &mut MessageWriter<PlayerHeartbeat>,
+) {
+    for (remote, mut receiver) in receivers.iter_mut() {
+        for msg in receiver.receive() {
+            debug!("Received C2SHeartbeat: {:?}", msg);
+            let Some(player) =
+                connections.and_then(|connections| connections.0.get(&remote.0).copied())
+            else {
+                continue;
+            };
+            heartbeats.write(PlayerHeartbeat { player });
         }
     }
 }

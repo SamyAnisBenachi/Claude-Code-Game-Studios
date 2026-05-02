@@ -2,7 +2,7 @@ use super::events::RsmNetworkOutbox;
 use super::events::{
     AbortAuction, AuctionPhaseEntered, AuctionSettled, BeginResolution, BroadcastPhaseChanged,
     DraftReadySignal, DraftStarted, GameOverEmitted, LobbyComplete, PlacementPhaseEntered,
-    PlacementSubmitted, PlayerDisconnected, PlayerReconnected, ResolutionComplete,
+    PlacementSubmitted, PlayerDisconnected, PlayerHeartbeat, PlayerReconnected, ResolutionComplete,
     ResolutionPhaseEntered, ShopRefreshTrigger, ShopRefreshTriggered,
 };
 use super::state::{
@@ -108,43 +108,53 @@ pub fn tick_disconnect_timers(
     mut pending: ResMut<PendingPhaseAdvance>,
     mut disconnected: MessageReader<PlayerDisconnected>,
     mut reconnected: MessageReader<PlayerReconnected>,
+    mut heartbeats: MessageReader<PlayerHeartbeat>,
     mut abort_auction: MessageWriter<AbortAuction>,
 ) {
+    let session = session.as_deref();
+    let grace_ms = disconnect_grace_ms(&config);
+
     for event in disconnected.read() {
-        if player_is_in_session(event.player, session.as_deref()) {
-            rsm.disconnect_trackers.insert(event.player, 0.0);
+        if player_is_in_session(event.player, session) {
+            rsm.disconnect_trackers
+                .entry(event.player)
+                .or_insert(grace_ms);
         }
     }
 
     for event in reconnected.read() {
-        rsm.disconnect_trackers.remove(&event.player);
+        if player_is_in_session(event.player, session) {
+            rsm.disconnect_trackers.insert(event.player, grace_ms);
+        }
+    }
+
+    for event in heartbeats.read() {
+        if player_is_in_session(event.player, session) {
+            rsm.disconnect_trackers.insert(event.player, grace_ms);
+        }
     }
 
     if rsm.phase == RoundPhase::GameOver || pending.is_requested() {
         return;
     }
 
-    let delta = time.delta_secs();
-    for elapsed in rsm.disconnect_trackers.values_mut() {
-        *elapsed += delta;
+    let delta_ms = elapsed_millis(time.delta());
+    let mut breaching_players = Vec::new();
+    for (player, remaining_ms) in rsm.disconnect_trackers.iter_mut() {
+        if !player_is_in_session(*player, session) {
+            continue;
+        }
+
+        let before = *remaining_ms;
+        *remaining_ms = remaining_ms.saturating_sub(delta_ms);
+        if delta_ms > before {
+            breaching_players.push(*player);
+        }
     }
 
     if rsm.pending_disconnect_outcome.is_some() {
         return;
     }
-
-    let grace_seconds = config
-        .as_ref()
-        .map(|config| config.disconnect_grace_seconds as f32)
-        .unwrap_or_else(|| shared::config::GameConfig::default().disconnect_grace_seconds as f32);
-    let breaching_players = rsm
-        .disconnect_trackers
-        .iter()
-        .filter(|(player, elapsed)| {
-            player_is_in_session(**player, session.as_deref()) && **elapsed > grace_seconds
-        })
-        .map(|(player, _)| *player)
-        .collect::<Vec<_>>();
 
     let Some(outcome) = disconnect_game_over_outcome(&breaching_players) else {
         return;
@@ -476,6 +486,7 @@ fn enter_draft_initial(
     rsm.draft_initial_timer = config
         .as_ref()
         .map(|config| once_timer(config.draft_initial_timer_seconds));
+    reset_disconnect_trackers_for_session(rsm, session, config);
 
     lobby_complete.write(LobbyComplete);
     emit_draft_entry(
@@ -545,6 +556,35 @@ fn draft_timer_ms(
 
 fn seconds_to_ms(seconds: u32) -> u32 {
     seconds.saturating_mul(1000)
+}
+
+fn disconnect_grace_ms(config: &Option<Res<crate::foundation::config::GameConfig>>) -> u32 {
+    seconds_to_ms(
+        config
+            .as_ref()
+            .map(|config| config.disconnect_grace_seconds)
+            .unwrap_or_else(|| shared::config::GameConfig::default().disconnect_grace_seconds),
+    )
+}
+
+fn elapsed_millis(duration: std::time::Duration) -> u32 {
+    u32::try_from(duration.as_millis()).unwrap_or(u32::MAX)
+}
+
+fn reset_disconnect_trackers_for_session(
+    rsm: &mut RoundState,
+    session: &Option<Res<SessionConfig>>,
+    config: &Option<Res<crate::foundation::config::GameConfig>>,
+) {
+    let Some(session) = session else {
+        return;
+    };
+
+    let grace_ms = disconnect_grace_ms(config);
+    rsm.disconnect_trackers.clear();
+    for player in session.players() {
+        rsm.disconnect_trackers.insert(player, grace_ms);
+    }
 }
 
 fn protocol_round_phase(phase: RoundPhase) -> shared::protocol::RoundPhase {
