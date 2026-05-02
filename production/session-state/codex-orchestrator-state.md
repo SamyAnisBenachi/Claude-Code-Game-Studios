@@ -102,14 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- CARD-ANIM-005: Placement Reveal Parallelism implemented locally on branch
-  `work/card-anim-005-placement-reveal-parallelism` at `0c1d5fe`; root
-  cherry-picked it into `main` at `5ccb988`. Worker checks passed
-  `cargo fmt -p client -- --check`,
-  `cargo test -p client --test card_animations_placement_reveal_test`,
-  existing card animation regressions 30/30, and `cargo check -p client`.
-  Root `cargo check -p client` and `git diff --check HEAD~1..HEAD` also passed
-  after integration.
 - AUC-004: Bid Validation Gate implemented locally on branch
   `work/auc-004-bid-validation-gate` at `59e086f`; root cherry-picked it into
   `main` at `5bd635e`. Worker resolved OQ9 as reachable and covered
@@ -193,6 +185,13 @@ None currently tracked here.
   schema/building remains GSS-007/HUD-008 unblock work.
 ## Recently Closed
 
+- CARD-ANIM-005: Placement Reveal Parallelism implemented locally on branch
+  `work/card-anim-005-placement-reveal-parallelism` at `0c1d5fe`; root
+  cherry-picked it into `main` at `5ccb988`; story-done committed at
+  `265f34b`. Verification passed `cargo test -p client --test
+  card_animations_placement_reveal_test` 9/9 and `cargo check -p client`.
+  Completion notes document missing visual screenshot/sign-off evidence for
+  CA-4b as advisory only.
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
   `work/gss-004-f4-session-ready` at `9708147`; cherry-picked into `main` at
   `4d8cf60`; repair committed at `3c64b84`; story-done committed at `36ed875`.
@@ -334,17 +333,16 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. CARD-ANIM-005
-2. AUC-004
-3. RSM-006
-4. CS-003
-5. HUD-007
-6. BOARD-007
-7. PRISM-003
-8. HUD-009
-9. HAND-UI-004
-10. GSS-005
-11. GSS-006
+1. AUC-004
+2. RSM-006
+3. CS-003
+4. HUD-007
+5. BOARD-007
+6. PRISM-003
+7. HUD-009
+8. HAND-UI-004
+9. GSS-005
+10. GSS-006
 
 Run only one story-done at a time.
 
@@ -354,7 +352,6 @@ Run only one story-done at a time.
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
   implemented/integrated and pending story-done. PRISM-004 can run after
   PRISM-003 story-done because it depends on the Lane 3 call site.
-- CARD-ANIM-005: implemented and integrated; pending story-done.
 - AUC-004: implemented and integrated; pending story-done.
 - RSM-006: implemented and integrated; pending story-done.
 - CS-003: implemented and integrated; pending story-done.
@@ -381,8 +378,6 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- CARD-ANIM-007: integrated, pending story-done.
-- CARD-ANIM-005: integrated, pending story-done.
 - AUC-004: integrated, pending story-done.
 - RSM-006: integrated, pending story-done.
 - CS-003: integrated, pending story-done.
@@ -409,8 +404,9 @@ Current active windows by user default-launch rule:
   story-done.
 - CARD-ANIM-007 story-done returned and was committed at `35ee469`; window can
   be cleared. HUD-006 story-done returned and was committed at `cc205e3`;
-  window can be cleared. CARD-ANIM-005 is now the next serialized story-done
-  candidate.
+  window can be cleared. CARD-ANIM-005 story-done returned and was committed
+  at `265f34b`; window can be cleared. AUC-004 is now the next serialized
+  story-done candidate.
 - HAND-UI-004 returned, integrated at `561d2fd`, and now only needs serialized
   story-done.
 - GSS-005 returned, integrated at `15fe812`, and now only needs serialized
