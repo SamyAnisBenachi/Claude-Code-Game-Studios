@@ -1159,3 +1159,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: `S3-09` in `production/sprint-status.yaml` marked `done` with completed date `2026-05-02`.
 - Next recommended: Continue the user-directed serialized story-done queue or run readiness on the next queued Sprint 4 story.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/prism-system/story-001-state-scaffold.md` - Story 001: PrismState Scaffold and Session Lifecycle
+- Criteria: 3/3 passing; PS-08, PS-07b, and PS-15 covered by `tests/unit/prism/state_scaffold_test.rs`.
+- Test Evidence: `cargo test -p server --test prism_state_scaffold_test` passed 6/6. Supplemental `cargo test -p server --test prism_deterministic_lanes_test` passed 6/6.
+- Verification: `server/src/feature/prism/` defines `PrismState`, `DiscardLog`, `AuditLog`, `PrismPresence`, `PrismCollected`, lifecycle init/cleanup, Bevy `MessageReader`/`add_message` usage, and public `Replicate::to_clients(NetworkTarget::All)` presence replication.
+- Notes: No blocking GDD or ADR deviation found. Advisory only - story manifest version is 2026-04-30 while current control manifest is 2026-05-01. Advisory only - deterministic lane reward implementation and tests are already present but belong to Story 002 closure. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged; no Prism Story 001 row exists in `production/sprint-status.yaml`.
+- Next recommended: Prism Story 002 Deterministic Lane Rewards (`production/epics/prism-system/story-002-deterministic-lanes.md`) after readiness check, or run `/story-done` on it if the already-present implementation is ready for closure.

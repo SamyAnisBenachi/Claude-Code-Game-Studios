@@ -1,7 +1,7 @@
 # Story 001: PrismState Scaffold and Session Lifecycle
 
 > **Epic**: Prism System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -36,9 +36,9 @@
 
 *From GDD `design/gdd/prism-system.md`, scoped to this story:*
 
-- [ ] **PS-08** — GIVEN `resolve_prism_draws` is called with no `PrismCollected` message in the `MessageReader` buffer for a given `(player, lane)`, WHEN the function runs, THEN `collected[lane][player]` remains `false` and no reward is granted for that lane.
-- [ ] **PS-07b** — GIVEN a prism token was collected in RESOLUTION N (`collected[lane][player] == true`) AND no full-set respawn has occurred, WHEN RESOLUTION N+1's sub-step 5 completes with the same WALL unit still at that spawn cell (no PrismCollected message emitted for that lane), THEN `collected[lane][player]` remains `true`, no `PrismCollected` message fires for that lane, and no reward is granted — confirming per-lane collected state persists across RESOLUTIONs until full-set respawn.
-- [ ] **PS-15** — GIVEN any prism token is collected (any lane, any player), WHEN the player's resource totals are read after RESOLUTION, THEN the player's gold total is unchanged — prisms grant zero gold. Economy System not in call chain.
+- [x] **PS-08** — GIVEN `resolve_prism_draws` is called with no `PrismCollected` message in the `MessageReader` buffer for a given `(player, lane)`, WHEN the function runs, THEN `collected[lane][player]` remains `false` and no reward is granted for that lane.
+- [x] **PS-07b** — GIVEN a prism token was collected in RESOLUTION N (`collected[lane][player] == true`) AND no full-set respawn has occurred, WHEN RESOLUTION N+1's sub-step 5 completes with the same WALL unit still at that spawn cell (no PrismCollected message emitted for that lane), THEN `collected[lane][player]` remains `true`, no `PrismCollected` message fires for that lane, and no reward is granted — confirming per-lane collected state persists across RESOLUTIONs until full-set respawn.
+- [x] **PS-15** — GIVEN any prism token is collected (any lane, any player), WHEN the player's resource totals are read after RESOLUTION, THEN the player's gold total is unchanged — prisms grant zero gold. Economy System not in call chain.
 
 ---
 
@@ -142,7 +142,7 @@ pub struct PrismPresence {
 **Story Type**: Logic
 **Required evidence**: `tests/unit/prism/state_scaffold_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`cargo test -p server --test prism_state_scaffold_test`)
 
 ---
 
@@ -151,3 +151,12 @@ pub struct PrismPresence {
 - Depends on: None — foundational story; all other Prism System stories depend on this one
 - Depends on (external): Card Acquisition Story 001 (`state-scaffold`) must be Done — `PlayerHands` and `hand_push()` shared API must be defined and public before Prism System stories beyond this one can be implemented
 - Unlocks: Stories 002, 003, 004, 005, 006
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 3/3 passing; PS-08, PS-07b, and PS-15 covered by `tests/unit/prism/state_scaffold_test.rs`.
+**Deviations**: Advisory only - story manifest version is 2026-04-30 while the current control manifest is 2026-05-01. Advisory only - exact ADR-016 schedule-slot wiring is deferred to Story 002; Story 001 verifies the scaffold and `RoundState::Resolution` guard behavior.
+**Test Evidence**: Logic evidence found at `tests/unit/prism/state_scaffold_test.rs`; `cargo test -p server --test prism_state_scaffold_test` passed 6/6. Supplemental `cargo test -p server --test prism_deterministic_lanes_test` passed 6/6 and covers the gold-invariance path once deterministic lanes are active.
+**Code Review**: Skipped - Lean mode.
+**Scope**: Deterministic lane reward implementation and `tests/unit/prism/deterministic_lanes_test.rs` are present but belong to Story 002 closure.
