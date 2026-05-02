@@ -182,6 +182,15 @@ None currently tracked here.
   session_ready_observer_test` 11/11, `cargo check -p server`, grep gate for no
   EventReader/EventWriter/Events in touched session/network paths, and `git diff
   --check HEAD~1..HEAD`.
+- GSS-006: Game-Over Teardown implemented on branch
+  `work/gss-006-game-over-teardown` at `37a237c`; root cherry-picked and
+  amended it into `main` at `d5f835e`. Root checks passed `cargo fmt -p server
+  -- --check`, `cargo test -p server --test game_over_teardown_test --test
+  session_ready_test --test dual_signal_disconnect_test --test
+  rsm_win_condition_test` 18/18, `cargo check -p server`, grep gate for no
+  EventReader/EventWriter/Events< in touched session/RSM/network paths, and
+  `git diff --check HEAD~1..HEAD`. Scope is teardown only; reconnect snapshot
+  schema/building remains GSS-007/HUD-008 unblock work.
 ## Recently Closed
 
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
@@ -335,6 +344,7 @@ None currently tracked here.
 8. HUD-009
 9. HAND-UI-004
 10. GSS-005
+11. GSS-006
 
 Run only one story-done at a time.
 
@@ -353,19 +363,18 @@ Run only one story-done at a time.
 - PRISM-003: implemented and integrated; pending story-done.
 - HUD-009: implemented and integrated; pending story-done.
 - HAND-UI-004: implemented and integrated; pending story-done.
-- GSS-005: implemented and integrated; pending story-done. GSS-006 can be
-  launched after this integration because it is next in the GSS unblock chain
-  for HUD-008; keep story-done serialized separately.
+- GSS-005: implemented and integrated; pending story-done.
+- GSS-006: implemented and integrated; pending story-done. Do not launch
+  GSS-007 until GSS-005 and GSS-006 closure are clean, because GSS-007 is the
+  reconnect snapshot schema/builder unblock for HUD-008 and touches the same
+  session/protocol ownership.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
 - HUD-008 returned READY but blocked on missing full `S2CGameSnapshot` schema.
-  Correct unblock path is GSS-005 -> GSS-006 -> GSS-007. Story gates were
-  refreshed in `e5edbc2`; run GSS-005 first because GSS-006/007 share session
-  files and should be staged carefully.
-- GSS-005 readiness returned NEEDS WORK on stale TR mapping and missing
-  performance note. Fixed in `9210438`; relaunch GSS-005 from latest origin/main.
-- GSS-005+ and other RSM/session/disconnect work are unblocked by GSS-004
-  closure, but still stage carefully because RSM-006 is implemented and pending
-  story-done.
+  Correct unblock path is GSS-005 -> GSS-006 -> GSS-007. GSS-005 and GSS-006
+  are implemented/integrated and pending story-done; launch GSS-007 only after
+  those closures settle.
+- Other RSM/session/disconnect work should be staged carefully because RSM-006,
+  GSS-005, and GSS-006 are implemented and pending story-done.
 - Prism gates are resolved; PRISM-003+ follow normal sequencing after PRISM-001
   and PRISM-002 story-done.
 
@@ -383,6 +392,7 @@ Batch launched:
 - HUD-009: integrated, pending story-done.
 - HAND-UI-004: integrated, pending story-done.
 - GSS-005: integrated, pending story-done.
+- GSS-006: integrated, pending story-done.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -405,6 +415,8 @@ Current active windows by user default-launch rule:
   story-done.
 - GSS-005 returned, integrated at `15fe812`, and now only needs serialized
   story-done.
+- GSS-006 returned, integrated at `d5f835e`, and now only needs serialized
+  story-done after GSS-005.
 - OBJ-002 returned NEEDS WORK only on stale manifest. Manifest refreshed to
   `2026-05-01` in `b8b9f26`; relaunch readiness/implementation and then treat
   it as active unless the user says it was not launched.
