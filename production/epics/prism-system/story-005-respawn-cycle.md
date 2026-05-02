@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature (M3)
 > **Type**: Logic
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
