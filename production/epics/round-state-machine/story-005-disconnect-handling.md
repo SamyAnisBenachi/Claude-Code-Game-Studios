@@ -1,7 +1,7 @@
 # Story 005: Disconnect Handling
 
 > **Epic**: Round State Machine
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -169,7 +169,7 @@ Each test uses `World::new()` + simulated Lightyear disconnect events (stub `OnD
 **Story Type**: Logic
 **Required evidence**: Automated unit tests — `tests/unit/rsm/rsm_disconnect_test.rs` must pass; paste `cargo test -p server rsm_disconnect` output into `tests/evidence/rsm-story-005-tests.md`
 **Gate Level**: BLOCKING — all tests listed in QA Test Cases must pass before this story is Done
-**Status**: [ ] Not yet created
+**Status**: [x] Created - see `tests/evidence/rsm-story-005-tests.md`
 
 ---
 
@@ -177,3 +177,11 @@ Each test uses `World::new()` + simulated Lightyear disconnect events (stub `OnD
 
 - Depends on: Story 004 (win condition and game over) must be Done — `rsm_input_reader` must handle `pending_disconnect_outcome` before win condition check; `GameOverEmitted` and `advance_phase` GAME_OVER path must be implemented
 - Unlocks: Story 006 (network dispatch wiring)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 10/10 passing against current TR-RSM-010 and GDD Rule 13. The story-era acceptance text references elapsed `f32` seconds and reconnect removal, but the current source of truth requires `disconnect_trackers: Map<PlayerId, u32>` milliseconds remaining with heartbeat and reconnect resets.
+**Deviations**: Advisory only - the implementation intentionally follows the current TR/GDD countdown model instead of the stale story-era elapsed-seconds model. RSM-006 phase/network dispatch remains out of scope.
+**Test Evidence**: Logic evidence recorded in `tests/evidence/rsm-story-005-tests.md`; automated tests in `tests/unit/rsm/rsm_disconnect_test.rs` pass.
+**Code Review**: Skipped - lean review mode.

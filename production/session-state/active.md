@@ -1126,3 +1126,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no Board Story 006 row exists in `production/sprint-status.yaml`.
 - Next recommended: Board Story 007 Trap Trigger Mechanics (`production/epics/board-lane-system/story-007-trap-trigger-mechanics.md`) after readiness check, or Board Story 009 Prism Collection if trap integration is deferred.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/round-state-machine/story-005-disconnect-handling.md` - Story 005: Disconnect Handling
+- Criteria: 10/10 passing against current TR-RSM-010 and GDD Rule 13; the implementation follows the current heartbeat-driven millisecond countdown model rather than the stale story-era elapsed-seconds text.
+- Test Evidence: `cargo test -p server rsm_disconnect` passed 11/11; evidence recorded in `tests/evidence/rsm-story-005-tests.md`. `cargo fmt -p server -- --check`, `cargo check -p server`, the WebSocket heartbeat regression, and `cargo test -p server rsm_` all passed.
+- Verification: `RoundState.disconnect_trackers` is `HashMap<PlayerId, u32>`; `C2SHeartbeat` is resolved through `PlayerConnectionMap` and forwarded to RSM as `PlayerHeartbeat`; Lightyear 0.26 `Connected`/`Disconnected` marker observers are preserved; RSM-006 network dispatch remains untouched.
+- Notes: Advisory only - story text still references the older elapsed `f32`/remove-on-reconnect model, while the current GDD/TR requires countdown reset behavior. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged; no RSM Story 005 row exists in `production/sprint-status.yaml`.
+- Next recommended: RSM Story 006 Network Dispatch Wiring (`production/epics/round-state-machine/story-006-network-dispatch-wiring.md`) after readiness check.
