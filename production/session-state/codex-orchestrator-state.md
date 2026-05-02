@@ -102,13 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- HAND-UI-004: DRAFT_INITIAL Grid Flow implemented on branch
-  `work/hand-ui-004-draft-initial-grid` at `b2ad5db`; root cherry-picked it
-  into `main` at `561d2fd`. Root checks passed `cargo fmt -p client --
-  --check`, `cargo test -p client --test hand_ui_draft_initial_grid_test
-  --test hand_ui_plugin_scaffold_test --test hand_ui_fan_layout_formula_test
-  --test hand_ui_phase_state_machine_test` 16/16, `cargo check -p client`, and
-  `git diff --check HEAD~1..HEAD`.
 - GSS-005: Lobby Disconnect Dual-Signal Cancel implemented on branch
   `work/gss-005-lobby-disconnect-dual-signal` at `77640bf`; root cherry-picked
   and amended it into `main` at `15fe812`. Root checks passed
@@ -136,8 +129,23 @@ None currently tracked here.
   fake_assignment_test --test objective_state_test` 9/9, `cargo check
   --workspace`, and `git diff --check HEAD~1..HEAD`. Scope is objective fake
   assignment/config validation only; no protocol or presentation files touched.
+- PRISM-004: Hand-Full Prism Network Staging implemented on branch
+  `work/prism-004-hand-full-network` at `e823d66`; root cherry-picked and
+  amended it into `main` at `8c77982`. Root checks passed `cargo fmt --all --
+  --check`, `cargo test -p server --test prism_hand_full_network_test` 7/7,
+  Prism regressions 16/16, session/RSM/card acquisition regressions 12/12,
+  `cargo check --workspace`, and `git diff --check HEAD~1..HEAD`. Scope adds
+  Prism reliable unicast/deferred staging; reconnect snapshot builder remains
+  GSS-007.
 ## Recently Closed
 
+- HAND-UI-004: DRAFT_INITIAL Grid Flow implemented on branch
+  `work/hand-ui-004-draft-initial-grid` at `b2ad5db`; root cherry-picked it
+  into `main` at `561d2fd`; story-done committed at `f610054`. Verification
+  passed `cargo test -p client --test hand_ui_draft_initial_grid_test` 5/5 and
+  `cargo check -p client`. Completion notes document local Bevy message/outbox
+  usage instead of live Lightyear wiring, missing CardAtlas lookup, and
+  TR-HU-005 timer/budget scope drift as advisory.
 - CARD-ANIM-005: Placement Reveal Parallelism implemented locally on branch
   `work/card-anim-005-placement-reveal-parallelism` at `0c1d5fe`; root
   cherry-picked it into `main` at `5ccb988`; story-done committed at
@@ -344,9 +352,10 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HAND-UI-004
-2. GSS-005
-3. GSS-006
+1. GSS-005
+2. GSS-006
+3. OBJ-002
+4. PRISM-004
 
 Run only one story-done at a time.
 
@@ -356,7 +365,6 @@ Run only one story-done at a time.
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
   closed. PRISM-004 can run next in the Prism chain because it depends on the
   Lane 3 call site.
-- HAND-UI-004: implemented and integrated; pending story-done.
 - GSS-005: implemented and integrated; pending story-done.
 - GSS-006: implemented and integrated; pending story-done. Do not launch
   GSS-007 until GSS-005 and GSS-006 closure are clean, because GSS-007 is the
@@ -375,15 +383,14 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- HAND-UI-004: integrated, pending story-done.
 - GSS-005: integrated, pending story-done.
 - GSS-006: integrated, pending story-done.
 
 Active implementation workers by default-launch rule:
 - OBJ-002: integrated at `536ccc8`; pending serialized story-done after current
   closure queue.
-- PRISM-004: launched after PRISM-003 closure; expected branch
-  `work/prism-004-hand-full-network`.
+- PRISM-004: integrated at `8c77982`; pending serialized story-done after
+  GSS-005, GSS-006, and OBJ-002.
 - HAND-UI-005: launched after HUD-010 closure prompt; expected branch
   `work/hand-ui-005-placement-submit-core`.
 
@@ -414,7 +421,7 @@ Current active windows by user default-launch rule:
   `7f3ecfa`; window can be cleared. HUD-010 is now the next serialized
   story-done candidate.
 - HAND-UI-004 returned, integrated at `561d2fd`, and now only needs serialized
-  story-done.
+  story-done; story-done committed at `f610054`. Window can be cleared.
 - GSS-005 returned, integrated at `15fe812`, and now only needs serialized
   story-done.
 - GSS-006 returned, integrated at `d5f835e`, and now only needs serialized
@@ -424,7 +431,10 @@ Current active windows by user default-launch rule:
   cleared. HAND-UI-004 is now the next serialized story-done candidate.
 - OBJ-002 returned NEEDS WORK only on stale manifest. Manifest refreshed to
   `2026-05-01` in `b8b9f26`; relaunch readiness/implementation and then treat
-  it as active unless the user says it was not launched.
+  it as active unless the user says it was not launched; implementation
+  integrated at `536ccc8` and now pending story-done.
+- PRISM-004 returned, integrated at `8c77982`, and now only needs serialized
+  story-done after GSS-005, GSS-006, and OBJ-002.
 AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
 integrated/closed as noted above.
 
