@@ -11,6 +11,7 @@ use server::feature::objective::{
     HiddenObjectives, ObjectiveCounters, ObjectiveHp, ObjectivePlugin, ObjectiveSlot,
 };
 use server::foundation::config::GameConfig;
+use server::foundation::rng::ServerRng;
 use shared::card::ClassId;
 use shared::protocol::{DraftPhase, GameMode};
 use shared::session::PlayerId;
@@ -39,7 +40,8 @@ fn app_with_objectives(objective_hp: u32) -> App {
     .add_message::<DraftStarted>()
     .add_plugins(ObjectivePlugin)
     .insert_resource(session_config([PlayerId(1), PlayerId(2)]))
-    .insert_resource(config_with_objective_hp(objective_hp));
+    .insert_resource(config_with_objective_hp(objective_hp))
+    .insert_resource(ServerRng::from_seed(7));
 
     app.world_mut()
         .resource_mut::<Messages<DraftStarted>>()
@@ -137,7 +139,7 @@ fn test_hidden_resources_exist_and_counters_start_zero() {
     let app = app_with_objectives(5);
 
     let hidden = app.world().resource::<HiddenObjectives>();
-    assert!(hidden.identities.is_empty());
+    assert_eq!(hidden.identities.len(), 10);
 
     let counters = app.world().resource::<ObjectiveCounters>();
     for player in [PlayerId(1), PlayerId(2)] {
