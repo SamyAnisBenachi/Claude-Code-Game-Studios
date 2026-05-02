@@ -1291,3 +1291,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no `PRISM-003` row exists in `production/sprint-status.yaml`.
 - Next recommended: Prism Story 004 Hand-Full Rejection and Network Message Staging (`production/epics/prism-system/story-004-hand-full-network.md`) after readiness check, or Prism Story 005 Full-Set Respawn Cycle (`production/epics/prism-system/story-005-respawn-cycle.md`) after Story 004 closure.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hud/story-009-same-tick-tie-break.md` - Story 009: Same-Tick Gold Tie-Break (Plugin-Level Integration)
+- Criteria: 2/2 passing; HUD-20 and own reserved_gold isolation covered by `tests/integration/hud/same_tick_tie_break_test.rs`.
+- Test Evidence: `cargo test -p client --test same_tick_tie_break_test` passed 3/3. `cargo check -p client` passed. `cargo fmt -p client -- --check` passed.
+- Verification: `HudPlugin::build()` registers `handle_gold_broadcast_system.before(handle_gold_update_system)` in `HudSystemSet::MessageDrain`; local broadcasts update only `GoldDisplayState.reserved_gold`, while `S2CGoldUpdate` owns local `GoldDisplayState.gold`.
+- Notes: Advisory only - the test injects `HudGoldBroadcastMessage` / `HudGoldUpdateMessage` directly into Bevy messages after the Lightyear drain seam. It verifies plugin-level handler ordering and field ownership, but does not instantiate real Lightyear receiver entities. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no `HUD-009` row exists in `production/sprint-status.yaml`.
+- Next recommended: HUD Story 008 Reconnect Snapshot Rebuild (`production/epics/hud/story-008-reconnect-snapshot-rebuild.md`) after readiness check, or continue the serialized closure queue for HUD Story 010 Numeric Tween Animation if its implementation is ready for closure.

@@ -1,7 +1,7 @@
 # Story 009: Same-Tick Gold Tie-Break (Plugin-Level Integration)
 
 > **Epic**: HUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -29,8 +29,8 @@
 
 *From GDD `design/gdd/hud.md`, scoped to this story:*
 
-- [ ] **HUD-20** (BLOCKING): GIVEN `S2CGoldUpdate{gold=15, current_mana=0, reserve_mana=0, mana_cap=10}` and `S2CGoldBroadcast{player_id=local_id, gold=12, reserved_gold=0}` arrive in the same ECS tick, WHEN all HUD `MessageDrain` systems complete, THEN `GoldDisplayState.gold` on the own gold label entity reads `15.0` (from `S2CGoldUpdate`), confirming that the `.before()` ordering declared in `HudPlugin::build()` is in effect. **This test MUST use `App::new()` with `HudPlugin` registered, NOT `World::new()`.**
-- [ ] **Own `reserved_gold` unaffected by `S2CGoldBroadcast.gold`** (BLOCKING): In the same-tick scenario, `S2CGoldBroadcast{player_id=local_id, gold=12, reserved_gold=0}` MUST NOT overwrite `GoldDisplayState.gold`. The broadcast's `gold` field is ignored for the own label — only `reserved_gold` is written.
+- [x] **HUD-20** (BLOCKING): GIVEN `S2CGoldUpdate{gold=15, current_mana=0, reserve_mana=0, mana_cap=10}` and `S2CGoldBroadcast{player_id=local_id, gold=12, reserved_gold=0}` arrive in the same ECS tick, WHEN all HUD `MessageDrain` systems complete, THEN `GoldDisplayState.gold` on the own gold label entity reads `15.0` (from `S2CGoldUpdate`), confirming that the `.before()` ordering declared in `HudPlugin::build()` is in effect. **This test MUST use `App::new()` with `HudPlugin` registered, NOT `World::new()`.**
+- [x] **Own `reserved_gold` unaffected by `S2CGoldBroadcast.gold`** (BLOCKING): In the same-tick scenario, `S2CGoldBroadcast{player_id=local_id, gold=12, reserved_gold=0}` MUST NOT overwrite `GoldDisplayState.gold`. The broadcast's `gold` field is ignored for the own label — only `reserved_gold` is written.
 
 ---
 
@@ -91,7 +91,7 @@
 **Story Type**: Integration
 **Required evidence**: `tests/integration/hud/same_tick_tie_break_test.rs` — must use `App::new()` with `HudPlugin` registered; must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`cargo test -p client --test same_tick_tie_break_test`)
 
 ---
 
@@ -99,3 +99,15 @@
 
 - Depends on: Story 002 (`GoldDisplayState`, both handler systems implemented), Story 006 (format context — though tie-break test uses ECONOMY_BASIC)
 - Unlocks: None (standalone integration correctness story)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 2/2 passing; HUD-20 and own reserved_gold isolation are covered by `tests/integration/hud/same_tick_tie_break_test.rs`.
+**Test Evidence**: `cargo test -p client --test same_tick_tie_break_test` passed 3/3. `cargo check -p client` passed. `cargo fmt -p client -- --check` passed.
+**Verification**: `HudPlugin::build()` registers `handle_gold_broadcast_system.before(handle_gold_update_system)` in `HudSystemSet::MessageDrain`. `handle_gold_broadcast_system` writes only `GoldDisplayState.reserved_gold` for the local label, while `handle_gold_update_system` writes local `GoldDisplayState.gold`; the integration test uses `App::new()` with `HudPlugin` registered.
+**Notes**: Advisory only - the test injects `HudGoldBroadcastMessage` / `HudGoldUpdateMessage` directly into Bevy messages after the Lightyear drain seam. It verifies plugin-level handler ordering and field ownership, but does not instantiate real Lightyear receiver entities. Lean mode skipped external QA/code-review gates.
+**Tech Debt**: None logged.
+**Sprint Status**: Unchanged per user instruction; no explicit `HUD-009` row exists in `production/sprint-status.yaml`.
+**Next Recommended**: HUD Story 008 Reconnect Snapshot Rebuild (`production/epics/hud/story-008-reconnect-snapshot-rebuild.md`) after readiness check, or continue the serialized closure queue for HUD Story 010 Numeric Tween Animation if its implementation is ready for closure.
