@@ -341,10 +341,11 @@ Batch launched:
 - AUC-004: integrated, pending story-done.
 - RSM-006: integrated, pending story-done.
 
-User corrected active window state after CARD-ANIM-005 returned; CARD-ANIM-003
-story-done has now closed. AUC-004 and RSM-006 have returned and are integrated.
-Only CS-003 remains possibly active from the last parallel prompt. Do not launch
-PRISM-003 until PRISM-001 and PRISM-002 close.
+Current active windows by user default-launch rule:
+- GSS-004 repair/story-done remains open after the F4 exact-deadline blocker.
+- CS-003, BOARD-007, and HUD-007 are considered launched from the latest prompts.
+AUC-004 and RSM-006 have returned and are integrated. Do not launch PRISM-003
+until PRISM-001 and PRISM-002 close.
 
 ## Resolved Design Gates
 
