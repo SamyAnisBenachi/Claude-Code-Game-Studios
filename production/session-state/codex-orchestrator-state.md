@@ -102,13 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- RSM-006: Network Dispatch Wiring implemented on branch
-  `work/rsm-006-network-dispatch-wiring` at `151d9e6`; root cherry-picked it
-  into `main` at `894ea6b`. Worker checks passed `cargo fmt -p server --
-  --check`, `cargo test -p server --test rsm_network_dispatch_test`,
-  `cargo test -p server rsm_disconnect`, `cargo test -p server --test
-  rsm_transitions_test`, `cargo check -p server`, and RSM grep gates. Root
-  repeated the affected tests/checks after integration.
 - CS-003: Xelor Reserve Formulas implemented on branch
   `work/cs-003-xelor-reserve-formulas` at `e5aabd6`; root cherry-picked it into
   `main` at `3440b21`. Worker checks passed `cargo fmt -p server -- --check`,
@@ -204,6 +197,12 @@ None currently tracked here.
   with 1 ignored future settlement test, `cargo fmt -p server -- --check`, and
   `cargo check -p server`. Completion notes document stale
   `C2SAuctionBid`/`C2SPlaceBid` wording as advisory.
+- RSM-006: Network Dispatch Wiring implemented on branch
+  `work/rsm-006-network-dispatch-wiring` at `151d9e6`; root cherry-picked it
+  into `main` at `894ea6b`; story-done committed at `2f07c94`. Verification
+  passed `cargo test -p server --test rsm_network_dispatch_test` 3/3 and
+  `cargo check --workspace`. Completion notes document stale manifest,
+  ResolutionTimeout wording, and `timer_duration_ms` doc drift as advisory.
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
   `work/gss-004-f4-session-ready` at `9708147`; cherry-picked into `main` at
   `4d8cf60`; repair committed at `3c64b84`; story-done committed at `36ed875`.
@@ -345,16 +344,15 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. RSM-006
-2. CS-003
-3. HUD-007
-4. BOARD-007
-5. PRISM-003
-6. HUD-009
-7. HUD-010
-8. HAND-UI-004
-9. GSS-005
-10. GSS-006
+1. CS-003
+2. HUD-007
+3. BOARD-007
+4. PRISM-003
+5. HUD-009
+6. HUD-010
+7. HAND-UI-004
+8. GSS-005
+9. GSS-006
 
 Run only one story-done at a time.
 
@@ -364,7 +362,6 @@ Run only one story-done at a time.
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
   implemented/integrated and pending story-done. PRISM-004 can run after
   PRISM-003 story-done because it depends on the Lane 3 call site.
-- RSM-006: implemented and integrated; pending story-done.
 - CS-003: implemented and integrated; pending story-done.
 - HUD-007: implemented and integrated; pending story-done.
 - BOARD-007: implemented and integrated; pending story-done.
@@ -382,15 +379,14 @@ Run only one story-done at a time.
   Correct unblock path is GSS-005 -> GSS-006 -> GSS-007. GSS-005 and GSS-006
   are implemented/integrated and pending story-done; launch GSS-007 only after
   those closures settle.
-- Other RSM/session/disconnect work should be staged carefully because RSM-006,
-  GSS-005, and GSS-006 are implemented and pending story-done.
+- Other RSM/session/disconnect work should be staged carefully because GSS-005
+  and GSS-006 are implemented and pending story-done.
 - Prism gates are resolved; PRISM-003+ follow normal sequencing after PRISM-001
   and PRISM-002 story-done.
 
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- RSM-006: integrated, pending story-done.
 - CS-003: integrated, pending story-done.
 - HUD-007: integrated, pending story-done.
 - BOARD-007: integrated, pending story-done.
@@ -418,7 +414,8 @@ Current active windows by user default-launch rule:
   be cleared. HUD-006 story-done returned and was committed at `cc205e3`;
   window can be cleared. CARD-ANIM-005 story-done returned and was committed
   at `265f34b`; window can be cleared. AUC-004 story-done returned and was
-  committed at `75b8998`; window can be cleared. RSM-006 is now the next
+  committed at `75b8998`; window can be cleared. RSM-006 story-done returned
+  and was committed at `2f07c94`; window can be cleared. CS-003 is now the next
   serialized story-done candidate.
 - HAND-UI-004 returned, integrated at `561d2fd`, and now only needs serialized
   story-done.
