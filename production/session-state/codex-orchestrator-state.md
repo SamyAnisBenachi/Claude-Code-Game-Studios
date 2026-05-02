@@ -137,6 +137,14 @@ None currently tracked here.
   `cargo check --workspace`, and `git diff --check HEAD~1..HEAD`. Scope adds
   Prism reliable unicast/deferred staging; reconnect snapshot builder remains
   GSS-007.
+- HAND-UI-005: Placement Submit Core implemented on branch
+  `work/hand-ui-005-placement-submit-core` at `c547056c`; root cherry-picked
+  and amended it into `main` at `1c798f0`. Root checks passed `cargo fmt -p
+  client -- --check`, `cargo test -p client --test
+  hand_ui_placement_submit_core_test` 5/5, prior Hand UI regressions 16/16,
+  `cargo check --workspace`, and `git diff --check HEAD~1..HEAD`. Scope stays
+  in the existing Hand UI local message/outbox pattern; no direct Lightyear
+  drains were added.
 ## Recently Closed
 
 - HAND-UI-004: DRAFT_INITIAL Grid Flow implemented on branch
@@ -356,6 +364,7 @@ None currently tracked here.
 2. GSS-006
 3. OBJ-002
 4. PRISM-004
+5. HAND-UI-005
 
 Run only one story-done at a time.
 
@@ -391,8 +400,8 @@ Active implementation workers by default-launch rule:
   closure queue.
 - PRISM-004: integrated at `8c77982`; pending serialized story-done after
   GSS-005, GSS-006, and OBJ-002.
-- HAND-UI-005: launched after HUD-010 closure prompt; expected branch
-  `work/hand-ui-005-placement-submit-core`.
+- HAND-UI-005: integrated at `1c798f0`; pending serialized story-done after
+  GSS-005, GSS-006, OBJ-002, and PRISM-004.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -435,6 +444,8 @@ Current active windows by user default-launch rule:
   integrated at `536ccc8` and now pending story-done.
 - PRISM-004 returned, integrated at `8c77982`, and now only needs serialized
   story-done after GSS-005, GSS-006, and OBJ-002.
+- HAND-UI-005 returned, integrated at `1c798f0`, and now only needs serialized
+  story-done after GSS-005, GSS-006, OBJ-002, and PRISM-004.
 AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
 integrated/closed as noted above.
 
