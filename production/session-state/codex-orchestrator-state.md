@@ -179,6 +179,17 @@ None currently tracked here.
   --test hand_ui_plugin_scaffold_test --test hand_ui_fan_layout_formula_test
   --test hand_ui_phase_state_machine_test` 16/16, `cargo check -p client`, and
   `git diff --check HEAD~1..HEAD`.
+- GSS-005: Lobby Disconnect Dual-Signal Cancel implemented on branch
+  `work/gss-005-lobby-disconnect-dual-signal` at `77640bf`; root cherry-picked
+  and amended it into `main` at `15fe812`. Root checks passed
+  `cargo fmt -p server -- --check`,
+  `cargo test -p server --test dual_signal_disconnect_test --test
+  lobby_timeout_test --test room_create_join_test --test class_reveal_test
+  --test session_ready_test` 25/25,
+  `cargo test -p server --test class_lifecycle_test --test
+  session_ready_observer_test` 11/11, `cargo check -p server`, grep gate for no
+  EventReader/EventWriter/Events in touched session/network paths, and `git diff
+  --check HEAD~1..HEAD`.
 ## Recently Closed
 
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
@@ -329,6 +340,7 @@ None currently tracked here.
 8. PRISM-003
 9. HUD-009
 10. HAND-UI-004
+11. GSS-005
 
 Run only one story-done at a time.
 
@@ -348,6 +360,9 @@ Run only one story-done at a time.
 - PRISM-003: implemented and integrated; pending story-done.
 - HUD-009: implemented and integrated; pending story-done.
 - HAND-UI-004: implemented and integrated; pending story-done.
+- GSS-005: implemented and integrated; pending story-done. GSS-006 can be
+  launched after this integration because it is next in the GSS unblock chain
+  for HUD-008; keep story-done serialized separately.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
 - HUD-008 returned READY but blocked on missing full `S2CGameSnapshot` schema.
   Correct unblock path is GSS-005 -> GSS-006 -> GSS-007. Story gates were
@@ -375,6 +390,7 @@ Batch launched:
 - PRISM-003: integrated, pending story-done.
 - HUD-009: integrated, pending story-done.
 - HAND-UI-004: integrated, pending story-done.
+- GSS-005: integrated, pending story-done.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -392,6 +408,8 @@ Current active windows by user default-launch rule:
 - CARD-ANIM-007 story-done returned and was committed at `35ee469`; window can
   be cleared. HUD-006 is now the next serialized story-done candidate.
 - HAND-UI-004 returned, integrated at `561d2fd`, and now only needs serialized
+  story-done.
+- GSS-005 returned, integrated at `15fe812`, and now only needs serialized
   story-done.
 - OBJ-002 returned NEEDS WORK only on stale manifest. Manifest refreshed to
   `2026-05-01` in `b8b9f26`; relaunch readiness/implementation and then treat
