@@ -122,6 +122,10 @@ name = "shield_test"
 path = "../tests/unit/keyword/shield_test.rs"
 
 [[test]]
+name = "xelor_reserve_test"
+path = "../tests/unit/class/xelor_reserve_test.rs"
+
+[[test]]
 name = "class_reveal_test"
 path = "../tests/unit/session/class_reveal_test.rs"
 
