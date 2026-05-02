@@ -64,6 +64,10 @@ name = "hud_economy_auction_inline_gold_test"
 path = "../tests/unit/hud/economy_auction_inline_gold_test.rs"
 
 [[test]]
+name = "hud_game_over_freeze_test"
+path = "../tests/unit/hud/game_over_freeze_test.rs"
+
+[[test]]
 name = "scoreboard_dot_message_test"
 path = "../tests/integration/hud/scoreboard_dot_message_test.rs"
 
