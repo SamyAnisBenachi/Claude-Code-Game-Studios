@@ -271,7 +271,8 @@ fn rsm_transitions_placement_to_resolution_emits_resolution_then_broadcast_paylo
     assert_eq!(resolutions[0].round, 2);
     assert_eq!(begin_resolution, vec![BeginResolution { round: 2 }]);
     assert_eq!(broadcasts[0].phase, RoundPhase::Resolution);
-    assert_eq!(broadcasts[0].timer_ms, 60_000);
+    assert_eq!(broadcasts[0].timer_ms, 0);
+    assert!(rsm.resolution_safety_timer.is_some());
 }
 
 #[test]

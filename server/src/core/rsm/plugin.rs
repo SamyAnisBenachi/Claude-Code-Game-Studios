@@ -37,6 +37,11 @@ impl Plugin for RsmPlugin {
             .add_message::<PlayerHeartbeat>()
             .add_message::<DraftReadySignal>()
             .add_message::<PlacementSubmitted>()
+            // Full transition chain:
+            // AuctionSystem -> CombatResolutionSystem -> rsm_input_reader ->
+            // advance_phase -> [subscriber systems] -> network::dispatch_phase_changed.
+            // Network dispatch is registered in ServerNetworkPlugin so core RSM
+            // never imports Lightyear send APIs.
             .add_systems(
                 Update,
                 (
