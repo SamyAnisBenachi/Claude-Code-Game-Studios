@@ -105,6 +105,13 @@ None currently tracked here.
   `main` at `e093804`. Worker checks passed `cargo fmt -p server -- --check`,
   `cargo test -p server --test prism_state_scaffold_test`, `cargo check -p server`,
   and board/objective adjacent regression tests.
+- HUD-004: Scoreboard Dot Observer implemented on branch
+  `work/hud-004-scoreboard-dot-observer` at `fd9b4e8`; root cherry-picked it
+  into `main` at `c30fc6a`. Worker checks passed
+  `cargo fmt -p client -- --check`,
+  `cargo test -p client --test scoreboard_dot_message_test`, HUD regression
+  slice 21/21, and `cargo check -p client`. Root `cargo check -p client` and
+  `git diff --check HEAD~1..HEAD` also passed after integration.
 ## Recently Closed
 
 - ECO-005: Auction Reservation and Bid Validation implemented locally on branch
@@ -223,6 +230,7 @@ None currently tracked here.
 3. CARD-ANIM-003
 4. GSS-004
 5. PRISM-001
+6. HUD-004
 
 Run only one story-done at a time.
 
@@ -236,6 +244,8 @@ Run only one story-done at a time.
   SessionReady/RSM session stories until closure confirms the single-observer gate.
 - PRISM-001: implemented and integrated; pending story-done before launching
   PRISM-002+.
+- HUD-004: implemented and integrated; pending story-done before launching HUD
+  stories that depend on scoreboard objective dots.
 - AUC-004: ECO-005 is formally closed; still verify OQ9 pre-implementation gate
   before launch.
 - Prism gates are resolved; PRISM-002+ follow normal sequencing after PRISM-001
@@ -248,6 +258,7 @@ Batch launched:
 - RSM-005: integrated, pending story-done.
 - GSS-004: integrated, pending story-done.
 - PRISM-001: integrated, pending story-done.
+- HUD-004: integrated, pending story-done.
 - CARD-ANIM-003: worker branch implemented, pending story-done.
 
 BOARD-006 story-done is currently expected to be active from user launch. The
