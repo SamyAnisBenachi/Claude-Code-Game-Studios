@@ -1,7 +1,7 @@
 # Story 006: Game-Over Teardown
 
 > **Epic**: Game Session System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -116,3 +116,11 @@
 - Depends on: Story 004 (F4 + SessionReady — `SessionConfig` and `ServerRng` are inserted here; they must exist before teardown can remove them)
 - Depends on: round-state-machine epic — `GameOverEmitted` event type definition (ADR-010 RSM event bus)
 - Unlocks: Story 007 (reconnect story documents `ReconnectTracker` cleanup; teardown here is the canonical cleanup path that reconnect must not conflict with)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 7/7 passing.
+**Deviations**: None blocking. Advisory only: story-era wording says `S2CGameOver.loser: PlayerId`, while current ADR/protocol source uses `Option<PlayerId>` for draw outcomes; implementation follows the current source of truth. Advisory only: live Lightyear peer delivery is code-verified through `ServerMultiMessageSender` on `ReliableChannel`, while the integration test verifies the outbox path rather than a full transport session.
+**Test Evidence**: Integration evidence at `tests/integration/session/game_over_teardown_test.rs`; `cargo test -p server --test game_over_teardown_test` passed 4/4. `cargo check -p server` passed with zero warnings.
+**Code Review**: Skipped — Lean mode.

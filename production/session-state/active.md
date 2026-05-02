@@ -1334,3 +1334,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Notes: Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates. `production/sprint-status.yaml` has no matching row for this story; Sprint 4 lists S4-11 in the markdown plan only.
 - Tech debt logged: None
 - Next recommended: GSS Story 006 Game-Over Teardown (`production/epics/game-session-system/story-006-game-over-teardown.md`) or GSS Story 007 Reconnect Snapshot (`production/epics/game-session-system/story-007-reconnect-snapshot.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/game-session-system/story-006-game-over-teardown.md` - Story 006: Game-Over Teardown
+- Criteria: 7/7 acceptance criteria passing; teardown subscriber, reliable game-over broadcast, session resource removal, `ActiveSessions` cleanup, `ReconnectTracker` cleanup, idempotency, plugin scheduling, and verification commands all passed.
+- Test Evidence: `cargo test -p server --test game_over_teardown_test` passed 4/4. `cargo check -p server` passed with zero warnings.
+- Verification: `handle_game_over_teardown` consumes `MessageReader<GameOverEmitted>`, broadcasts `S2CGameOver` through `ServerMultiMessageSender` on `ReliableChannel`, removes `SessionConfig`, `ServerRng`, and remaining session resources after broadcast, transitions `LobbyState` to `GameOver`, and is scheduled `.after(advance_phase)`.
+- Notes: Advisory only - story-era wording says `S2CGameOver.loser: PlayerId`, while current ADR/protocol source uses `Option<PlayerId>` for draw outcomes; implementation follows the current source of truth. Advisory only - live Lightyear peer delivery is code-verified, while the integration test verifies the outbox path rather than a full transport session. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no matching row exists in `production/sprint-status.yaml`.
+- Next recommended: GSS Story 007 Reconnect Snapshot (`production/epics/game-session-system/story-007-reconnect-snapshot.md`) after readiness check.
