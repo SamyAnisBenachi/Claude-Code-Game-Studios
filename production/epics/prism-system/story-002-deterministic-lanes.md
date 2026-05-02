@@ -1,7 +1,7 @@
 # Story 002: Deterministic Lane Rewards — Lanes 1/2/4/5
 
 > **Epic**: Prism System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -35,10 +35,10 @@
 
 *From GDD `design/gdd/prism-system.md`, scoped to this story:*
 
-- [ ] **PS-01** — GIVEN a player's unit occupies their own spawn cell in Lane 1 or Lane 5 at the end of RESOLUTION sub-step 5 AND the prism token for that lane is present, WHEN `resolve_prism_draws` runs, THEN exactly one `prism_strike` spell card is added to that player's hand and the prism token is marked collected.
-- [ ] **PS-02** — GIVEN a player's unit occupies their own spawn cell in Lane 2 or Lane 4 at the end of RESOLUTION sub-step 5 AND the prism token is present, WHEN `resolve_prism_draws` runs, THEN exactly one `prism_reserve` spell card is added to that player's hand and the prism token is marked collected.
-- [ ] **PS-07** — GIVEN a WALL unit (MP=0) is parked at a player's own spawn cell in any lane AND the prism token for that lane is present, WHEN RESOLUTION sub-step 5 completes (zero movement; unit remains at spawn cell), THEN the prism token is collected and the lane reward is granted.
-- [ ] **PS-12** — GIVEN `resolve_prism_draws` receives a `PrismCollected` message for a (player, lane) pair whose token is already marked collected (stale duplicate), WHEN the message is evaluated, THEN: (a) no reward granted, (b) no seed consumed, (c) no client message sent, AND (d) `world.resource::<DiscardLog>().entries` contains exactly one entry `(player_id, lane)`.
+- [x] **PS-01** — GIVEN a player's unit occupies their own spawn cell in Lane 1 or Lane 5 at the end of RESOLUTION sub-step 5 AND the prism token for that lane is present, WHEN `resolve_prism_draws` runs, THEN exactly one `prism_strike` spell card is added to that player's hand and the prism token is marked collected.
+- [x] **PS-02** — GIVEN a player's unit occupies their own spawn cell in Lane 2 or Lane 4 at the end of RESOLUTION sub-step 5 AND the prism token is present, WHEN `resolve_prism_draws` runs, THEN exactly one `prism_reserve` spell card is added to that player's hand and the prism token is marked collected.
+- [x] **PS-07** — GIVEN a WALL unit (MP=0) is parked at a player's own spawn cell in any lane AND the prism token for that lane is present, WHEN RESOLUTION sub-step 5 completes (zero movement; unit remains at spawn cell), THEN the prism token is collected and the lane reward is granted.
+- [x] **PS-12** — GIVEN `resolve_prism_draws` receives a `PrismCollected` message for a (player, lane) pair whose token is already marked collected (stale duplicate), WHEN the message is evaluated, THEN: (a) no reward granted, (b) no seed consumed, (c) no client message sent, AND (d) `world.resource::<DiscardLog>().entries` contains exactly one entry `(player_id, lane)`.
 
 ---
 
@@ -156,7 +156,7 @@ pub fn resolve_prism_draws(
 **Story Type**: Logic
 **Required evidence**: `tests/unit/prism/deterministic_lanes_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Passed 2026-05-02 via `cargo test -p server --test prism_deterministic_lanes_test`
 
 ---
 
@@ -165,3 +165,12 @@ pub fn resolve_prism_draws(
 - Depends on: Story 001 (`state-scaffold`) must be Done — `PrismState`, `DiscardLog`, `PlayerHands`, `hand_push()` must be defined
 - Depends on (external): Card Acquisition Story 001 must be Done — `hand_push()` shared API must exist
 - Unlocks: Story 003 (Lane 3 builds on top of `resolve_prism_draws`), Story 004 (hand-full path uses same system)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 4/4 passing (PS-01, PS-02, PS-07, PS-12)
+**Test Evidence**: Logic story covered by `tests/unit/prism/deterministic_lanes_test.rs`; `cargo test -p server --test prism_deterministic_lanes_test` passed 6/6.
+**Verification**: `cargo check -p server` passed.
+**Deviations**: Advisory only - story manifest version is 2026-04-30 while current control manifest is 2026-05-01. Advisory only - the exact ADR-016 schedule slot `.after(resolve_ecaflip_triggers).before(award_fake_objective_rewards)` is documented but not yet represented by concrete system labels in code because those neighboring systems are not present.
+**Code Review**: Skipped - Lean mode.

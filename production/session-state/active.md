@@ -1170,3 +1170,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no Prism Story 001 row exists in `production/sprint-status.yaml`.
 - Next recommended: Prism Story 002 Deterministic Lane Rewards (`production/epics/prism-system/story-002-deterministic-lanes.md`) after readiness check, or run `/story-done` on it if the already-present implementation is ready for closure.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/prism-system/story-002-deterministic-lanes.md` - Story 002: Deterministic Lane Rewards - Lanes 1/2/4/5
+- Criteria: 4/4 passing; PS-01, PS-02, PS-07, and PS-12 covered by `tests/unit/prism/deterministic_lanes_test.rs`.
+- Test Evidence: `cargo test -p server --test prism_deterministic_lanes_test` passed 6/6. `cargo check -p server` passed.
+- Verification: `resolve_prism_draws` sorts pending `PrismCollected` messages by ascending player id and lane, routes Lanes 1/5 to `prism_strike`, routes Lanes 2/4 to `prism_reserve`, marks `PrismPresence` collected, and records stale duplicates in `DiscardLog` without reward or RNG consumption.
+- Notes: Advisory only - story manifest version is 2026-04-30 while current control manifest is 2026-05-01. Advisory only - the exact ADR-016 schedule slot `.after(resolve_ecaflip_triggers).before(award_fake_objective_rewards)` is documented but not yet represented by concrete system labels in code because those neighboring systems are not present. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no PRISM-002 row exists in `production/sprint-status.yaml`.
+- Next recommended: Prism Story 003 Lane 3 RNG Draw Pipeline and Audit Log Ordering (`production/epics/prism-system/story-003-lane3-rng.md`) after readiness check.
