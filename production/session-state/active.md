@@ -1345,3 +1345,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no matching row exists in `production/sprint-status.yaml`.
 - Next recommended: GSS Story 007 Reconnect Snapshot (`production/epics/game-session-system/story-007-reconnect-snapshot.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/objective-system/story-002-fake-assignment-and-config-guards.md` - Story 002: Fake Assignment & Config Guards
+- Criteria: 4/4 passing; OS-2, OS-23a, OS-23b, and OS-28 covered by `tests/unit/objective/fake_assignment_test.rs`.
+- Test Evidence: `cargo test -p server --test fake_assignment_test` passed 5/5. Supporting config guard verification via `cargo test -p server game_config` passed.
+- Verification: `assign_fake_objectives` clears and repopulates `HiddenObjectives`, sorts players by ascending `player_id`, consumes `ServerRng::assign_fake_objectives` in that order, assigns distinct fake lanes, and records all five lanes per player. `validate_objective_config` rejects `fake_count = 0`, `fake_count > lane_count - loss_threshold`, and `objective_hp = 0`; global `validate_game_config` also rejects those values before Lobby promotion.
+- Notes: Advisory only - story wording mentions a `LOBBY_CANCELLED` / `S2CSessionCancelled` path for invalid objective config, but current implementation splits responsibility between pre-Lobby config validation and the Objective System DRAFT_INITIAL guard. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no matching row exists in `production/sprint-status.yaml`.
+- Next recommended: Objective Story 003 identity unicast (`production/epics/objective-system/story-003-identity-unicast-delivery.md`) after readiness check, or continue the serialized closure queue with PRISM-004 per user direction.

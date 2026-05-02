@@ -1,7 +1,7 @@
 # Story 002: Fake Assignment & Config Guards
 
 > **Epic**: Objective System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -132,7 +132,7 @@ If any assertion fails, do NOT emit `SessionReady`; transition to LOBBY_CANCELLE
 **Story Type**: Logic
 **Required evidence**: `tests/unit/objective/fake_assignment_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`cargo test -p server --test fake_assignment_test`)
 
 ---
 
@@ -140,3 +140,13 @@ If any assertion fails, do NOT emit `SessionReady`; transition to LOBBY_CANCELLE
 
 - Depends on: Story 001 must be DONE (`HiddenObjectives` Resource must exist)
 - Unlocks: Story 003 (identity unicast delivers the fake assignment result)
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 4/4 passing
+**Test Evidence**: Logic unit test at `tests/unit/objective/fake_assignment_test.rs`; local `cargo test -p server --test fake_assignment_test` passed 5/5. Supporting config guard verification via `cargo test -p server game_config` passed.
+**Deviations**: Advisory only: story wording mentions a `LOBBY_CANCELLED` / `S2CSessionCancelled` path for invalid objective config, but current implementation splits responsibility. Global `validate_game_config` exits before Lobby on invalid `fake_count` / `objective_hp`, while Objective System has a defensive DRAFT_INITIAL guard that logs and refuses objective initialization if invalid config reaches it.
+**Code Review**: Skipped by lean review mode.
+**Scope**: Implementation is in the expected objective/config/RNG/test areas. `production/sprint-status.yaml` was left unchanged because it has no matching row for this story.
