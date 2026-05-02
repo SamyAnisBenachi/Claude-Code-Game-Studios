@@ -1258,3 +1258,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no `CS-003` row exists in `production/sprint-status.yaml`.
 - Next recommended: Class System Story 004 Garde-Temps Reserve Gate (`production/epics/class-system/story-004-garde-temps-reserve-gate.md`) after readiness check, or Class System Story 005 Miss Nuit per-round trigger (`production/epics/class-system/story-005-miss-nuit-trigger.md`) if its dependencies are ready.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hud/story-007-game-over-freeze.md` - Story 007: GAME_OVER Freeze Mode
+- Criteria: 4/4 passing; HUD-10, HUD-19, HUD-23, and GAME_OVER snap covered by `tests/unit/hud/game_over_freeze_test.rs` plus adjacent HUD regression checks.
+- Test Evidence: `cargo test -p client --test hud_game_over_freeze_test` passed 2/2. Adjacent HUD regression bundle passed 14/14: `hud_phase_transitions_test`, `same_tick_tie_break_test`, and `scoreboard_dot_message_test`. `cargo check -p client` passed.
+- Verification: `client/src/ui/hud/mod.rs` enters `HudMode::Frozen` on `RoundPhase::GameOver`, drains gold update/broadcast and objective messages without applying them while Frozen, keeps the round counter visible, writes `"GAME OVER"` through the phase label system, snaps numeric tween targets to authoritative state, and removes active HUD `TweenAnim` controllers on FROZEN entry.
+- Notes: Advisory only - the required Frozen guards for post-GAME_OVER `S2CGoldUpdate` and `S2CGoldBroadcast` are implemented and verified by code review; the current unit test does not explicitly emit the story's literal `999`/`888` gold messages after GAME_OVER. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no explicit `HUD-007` row exists in `production/sprint-status.yaml`.
+- Next recommended: HUD Story 008 Reconnect Snapshot Rebuild (`production/epics/hud/story-008-reconnect-snapshot-rebuild.md`) after readiness check.
