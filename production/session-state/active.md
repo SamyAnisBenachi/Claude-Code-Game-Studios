@@ -1225,3 +1225,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no `CARD-ANIM-005` row exists in `production/sprint-status.yaml`.
 - Next recommended: Add CA-4b visual evidence when a playable placement-to-resolution flow is available, or continue the serialized closure queue for implemented presentation stories.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/auction-system/story-004-bid-validation-gate.md` - Story 004: Bid Validation - 5-Condition Rejection Gate
+- Criteria: 7/7 passing; AU2, AU3, AU16, AU17, AU12, AU18, and AU13 covered by `tests/unit/auction/bid_validation_gate_test.rs`.
+- Test Evidence: `cargo test -p server --test auction_bid_validation_gate_test` passed 9/9. Adjacent auction/economy regression bundle passed 14 executable tests with 1 ignored future settlement guard. `cargo fmt -p server -- --check` and `cargo check -p server` passed.
+- Verification: `process_bid_batch` rejects expired, too-low, current-leader, insufficient-gold, and hand-full bids with the expected `BidRejectedReason`, silently discards non-`LiveBidding` bids, and preserves same-tick arrival order so duplicate amount bids accept first and reject second.
+- Notes: Advisory only - story manifest v2026-04-30 is older than current control manifest v2026-05-01. Advisory only - story/TR/ADR wording still references `C2SAuctionBid`; current GDD/protocol/code use `C2SPlaceBid`. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no explicit `AUC-004` / Auction Story 004 row exists in `production/sprint-status.yaml`.
+- Next recommended: Auction Story 005 Accepted Bid (`production/epics/auction-system/story-005-accepted-bid-reservation.md`) after readiness check, or continue the serialized closure queue for already implemented stories.

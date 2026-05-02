@@ -1,7 +1,7 @@
 # Story 004: Bid Validation — 5-Condition Rejection Gate
 
 > **Epic**: Auction System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -36,13 +36,13 @@
 
 *From GDD `design/gdd/auction-system.md`, scoped to this story:*
 
-- [ ] **AU2**: `GIVEN` LIVE_BIDDING and `bidder == current_leader`, `WHEN` `C2SAuctionBid` arrives, `THEN` `S2CAuctionBidRejected { reason: AlreadyLeader }` unicast to bidder; no state changes
-- [ ] **AU3**: `GIVEN` LIVE_BIDDING and `bidder.hand_size == 10`, `WHEN` `C2SAuctionBid` arrives, `THEN` `S2CAuctionBidRejected { reason: HandFull }` unicast; no state changes
-- [ ] **AU16**: `GIVEN` LIVE_BIDDING and `bidder.gold.saturating_sub(bidder.reserved_gold) < bid_amount`, `WHEN` `C2SAuctionBid { amount: bid_amount }` arrives, `THEN` `S2CAuctionBidRejected { reason: InsufficientGold }` unicast; no state changes
-- [ ] **AU17**: `GIVEN` LIVE_BIDDING with `current_price = P`, `WHEN` `C2SAuctionBid { amount: P }` arrives (at-price), `THEN` `S2CAuctionBidRejected { reason: AmountTooLow }` unicast; no state changes. Also verify `amount = P - 1`
-- [ ] **AU12** *(conditional on OQ9)*: `GIVEN` OQ9 resolves "AuctionExpired is reachable" AND the system is in LIVE_BIDDING with `timer_remaining_ms = 0` (injected), `WHEN` `C2SAuctionBid` arrives, `THEN` `S2CAuctionBidRejected { reason: AuctionExpired }` unicast; no state changes. *If OQ9 resolves "unreachable," close this AC with a note — no test written*
-- [ ] **AU18**: `GIVEN` the Auction System is in IDLE and a stale `C2SAuctionBid` arrives, `THEN` no `S2CAuctionBidRejected` queued, no state changes, no error logged (silent discard — distinct from `AuctionExpired`)
-- [ ] **AU13**: `GIVEN` two `C2SAuctionBid` messages with the same `amount = P` injected in the receiver queue before the system runs, `WHEN` the bid drain processes them in arrival order, `THEN` first bid accepted (`current_price` raised to P), second rejected with `AmountTooLow` (P is not >= P+1)
+- [x] **AU2**: `GIVEN` LIVE_BIDDING and `bidder == current_leader`, `WHEN` `C2SAuctionBid` arrives, `THEN` `S2CAuctionBidRejected { reason: AlreadyLeader }` unicast to bidder; no state changes
+- [x] **AU3**: `GIVEN` LIVE_BIDDING and `bidder.hand_size == 10`, `WHEN` `C2SAuctionBid` arrives, `THEN` `S2CAuctionBidRejected { reason: HandFull }` unicast; no state changes
+- [x] **AU16**: `GIVEN` LIVE_BIDDING and `bidder.gold.saturating_sub(bidder.reserved_gold) < bid_amount`, `WHEN` `C2SAuctionBid { amount: bid_amount }` arrives, `THEN` `S2CAuctionBidRejected { reason: InsufficientGold }` unicast; no state changes
+- [x] **AU17**: `GIVEN` LIVE_BIDDING with `current_price = P`, `WHEN` `C2SAuctionBid { amount: P }` arrives (at-price), `THEN` `S2CAuctionBidRejected { reason: AmountTooLow }` unicast; no state changes. Also verify `amount = P - 1`
+- [x] **AU12** *(conditional on OQ9)*: `GIVEN` OQ9 resolves "AuctionExpired is reachable" AND the system is in LIVE_BIDDING with `timer_remaining_ms = 0` (injected), `WHEN` `C2SAuctionBid` arrives, `THEN` `S2CAuctionBidRejected { reason: AuctionExpired }` unicast; no state changes. *If OQ9 resolves "unreachable," close this AC with a note — no test written*
+- [x] **AU18**: `GIVEN` the Auction System is in IDLE and a stale `C2SAuctionBid` arrives, `THEN` no `S2CAuctionBidRejected` queued, no state changes, no error logged (silent discard — distinct from `AuctionExpired`)
+- [x] **AU13**: `GIVEN` two `C2SAuctionBid` messages with the same `amount = P` injected in the receiver queue before the system runs, `WHEN` the bid drain processes them in arrival order, `THEN` first bid accepted (`current_price` raised to P), second rejected with `AmountTooLow` (P is not >= P+1)
 
 ---
 
@@ -205,7 +205,7 @@ Test: two bids at same amount in same tick — first accepted, second rejected
 **Story Type**: Logic
 **Required evidence**: `tests/unit/auction/bid_validation_gate_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`cargo test -p server --test auction_bid_validation_gate_test`: 9 passed, 0 failed)
 
 ---
 
@@ -215,3 +215,19 @@ Test: two bids at same amount in same tick — first accepted, second rejected
 - Depends on: `economy-system` story-005 DONE (provides `can_afford_bid` in `economy/api.rs`)
 - Depends on: `workspace-and-shared-types` story-002 DONE (provides `C2SAuctionBid`, `BidRejectedReason`, `S2CAuctionBidRejected`)
 - Unlocks: Story 005 (Accepted Bid — reservation handoff and timer reset)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 7/7 passing; AU2, AU3, AU16, AU17, AU12, AU18, and AU13 are covered by `tests/unit/auction/bid_validation_gate_test.rs`.
+**Test Evidence**: Logic unit test at `tests/unit/auction/bid_validation_gate_test.rs`; `cargo test -p server --test auction_bid_validation_gate_test` passed 9/9. Adjacent regression bundle `cargo test -p server --test auction_phase_entry_test --test auction_abort_handler_test --test auction_reservation_test` passed 14 executable tests with 1 ignored future settlement guard. `cargo fmt -p server -- --check` and `cargo check -p server` passed.
+**Deviations**:
+- Advisory: story manifest v2026-04-30 is older than current control manifest v2026-05-01.
+- Advisory: story/TR/ADR wording still references `C2SAuctionBid`; current GDD, protocol, and implementation use `C2SPlaceBid`.
+- Advisory: implementation drains `C2SPlaceBid` and silently discards non-`LiveBidding` bids inside `process_bid_batch`; AU18 behavior matches the requirement with no rejection and no state change.
+**Code Review**: Skipped by lean review mode; local Bevy 0.18 and Lightyear review found no blocking issue.
+**Scope**: Implementation commit `5bd635e` touched the auction system, protocol registration/types, the generic network logger, Cargo test registration, and the required unit test. No scope creep found for this story.
+**Sprint Status**: Unchanged per user instruction; no explicit `AUC-004` / Auction Story 004 row exists in `production/sprint-status.yaml`.
+**Tech Debt**: None logged.
+**Next recommended**: Auction Story 005 Accepted Bid (`production/epics/auction-system/story-005-accepted-bid-reservation.md`) after readiness check, or continue the serialized closure queue for already implemented stories.
