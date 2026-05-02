@@ -102,18 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- CARD-ANIM-003: Simultaneous Track Animation implemented on branch
-  `work/card-anim-003-simultaneous-track-animation` at `4f4d7c5`; worker pushed
-  branch but did not run story-done. Root cherry-picked it into `main` at
-  `066c1cd` after resolving a single export conflict in
-  `client/src/card_animations/mod.rs` with CARD-ANIM-005. Worker checks passed:
-  `cargo fmt -p client -- --check`,
-  `cargo test -p client --test card_animations_tracks_animation_test`,
-  existing card animation regressions 26/26, `cargo check -p client`, and
-  boundary grep against direct S2C readers/EventReader/EventWriter/Tracks usage.
-  Root `cargo check -p client`, `cargo test -p client --test
-  card_animations_tracks_animation_test`, and `git diff --check` passed after
-  integration.
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
   `work/gss-004-f4-session-ready` at `9708147`; root cherry-picked it into
   `main` at `4d8cf60`. Worker checks passed full affected session/RSM/economy
@@ -163,6 +151,10 @@ None currently tracked here.
   integration.
 ## Recently Closed
 
+- CARD-ANIM-003: Simultaneous Track Animation implemented on branch
+  `work/card-anim-003-simultaneous-track-animation` at `4f4d7c5`; cherry-picked
+  into `main` at `066c1cd` after resolving a public export conflict with
+  CARD-ANIM-005; story-done committed at `e46f704`.
 - RSM-005: Disconnect Handling implemented locally on branch
   `work/rsm-005-disconnect-handling` at `8007ad1`; cherry-picked/rebased into
   `main` at `e4fb6a4`; repair committed at `b86b81b`; story-done committed at
@@ -281,22 +273,18 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. CARD-ANIM-003
-2. GSS-004
-3. PRISM-001
-4. HUD-004
-5. CARD-ANIM-007
-6. PRISM-002
-7. HUD-006
-8. CARD-ANIM-005
+1. GSS-004
+2. PRISM-001
+3. HUD-004
+4. CARD-ANIM-007
+5. PRISM-002
+6. HUD-006
+7. CARD-ANIM-005
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- CARD-ANIM-003: implemented and integrated; pending story-done. Previous
-  story-done attempt blocked because worker branch was not yet on main; rerun is
-  expected to pass the evidence target.
 - GSS-004: implemented and integrated; pending story-done. Do not launch further
   SessionReady/RSM session stories until closure confirms the single-observer gate.
 - PRISM-001: implemented and integrated; pending story-done. PRISM-002 is also
@@ -321,15 +309,15 @@ Batch launched:
 - GSS-004: integrated, pending story-done.
 - PRISM-001: integrated, pending story-done.
 - HUD-004: integrated, pending story-done.
-- CARD-ANIM-003: worker branch implemented, pending story-done.
 - CARD-ANIM-007: integrated, pending story-done.
 - PRISM-002: integrated, pending story-done.
 - HUD-006: integrated, pending story-done.
 - CARD-ANIM-005: integrated, pending story-done.
 
-User corrected active window state after CARD-ANIM-005 returned: active windows
-are AUC-004 and CARD-ANIM-003 story-done. RSM-006 is not active unless relaunched.
-Do not launch PRISM-003 until PRISM-001 and PRISM-002 close.
+User corrected active window state after CARD-ANIM-005 returned; CARD-ANIM-003
+story-done has now closed. Active implementation windows are AUC-004, RSM-006
+if relaunched, and CS-003 if launched from the latest prompt. Do not launch
+PRISM-003 until PRISM-001 and PRISM-002 close.
 
 ## Resolved Design Gates
 
