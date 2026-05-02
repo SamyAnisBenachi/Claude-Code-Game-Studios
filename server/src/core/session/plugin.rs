@@ -5,11 +5,11 @@ use shared::card::ClassId;
 
 use crate::core::rsm::{advance_phase, on_session_ready, PlayerHeartbeat};
 use crate::core::session::{
-    evaluate_session_ready, handle_confirm_class, handle_create_room, handle_join_room,
-    handle_lobby_disconnect, handle_lobby_heartbeat, handle_select_class, lobby_timeout_check,
-    tick_lobby_heartbeats, ActiveSessions, ClassPreviews, ClassSelections, PlayerConnectionMap,
-    PlayerSessionData, PlayerSessions, RoomSessions, ServerRngFactory, SessionConfig,
-    SessionNetworkOutbox, SessionSystemSet,
+    evaluate_session_ready, handle_confirm_class, handle_create_room, handle_game_over_teardown,
+    handle_join_room, handle_lobby_disconnect, handle_lobby_heartbeat, handle_select_class,
+    lobby_timeout_check, tick_lobby_heartbeats, ActiveSessions, ClassPreviews, ClassSelections,
+    PlayerConnectionMap, PlayerSessionData, PlayerSessions, RoomSessions, ServerRngFactory,
+    SessionConfig, SessionNetworkOutbox, SessionSystemSet,
 };
 
 pub struct GameSessionPlugin;
@@ -50,6 +50,7 @@ impl Plugin for GameSessionPlugin {
                     .after(lobby_timeout_check)
                     .before(advance_phase),
             )
+            .add_systems(Update, handle_game_over_teardown.after(advance_phase))
             .add_observer(on_session_ready)
             .add_observer(handle_lobby_disconnect);
     }
