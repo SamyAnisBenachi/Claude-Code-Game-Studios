@@ -1302,3 +1302,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no `HUD-009` row exists in `production/sprint-status.yaml`.
 - Next recommended: HUD Story 008 Reconnect Snapshot Rebuild (`production/epics/hud/story-008-reconnect-snapshot-rebuild.md`) after readiness check, or continue the serialized closure queue for HUD Story 010 Numeric Tween Animation if its implementation is ready for closure.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hud/story-010-numeric-tween-animation.md` - Story 010: Numeric Tween Animation
+- Criteria: 2/3 covered and passing; HUD-12 numeric tween duration and cancel-and-replace covered by `tests/unit/hud/numeric_tween_animation_test.rs`. Layout screenshot evidence remains advisory and untested.
+- Test Evidence: `cargo test -p client --test hud_numeric_tween_animation_test` passed 4/4. Adjacent HUD regression bundle passed 21/21: `hud_gold_mana_display_test`, `hud_economy_auction_inline_gold_test`, `hud_game_over_freeze_test`, `hud_phase_transitions_test`, and `hud_numeric_tween_animation_test`. `cargo check -p client`, `cargo fmt -p client -- --check`, and `git diff --check HEAD~1..HEAD` passed.
+- Verification: `client/src/ui/hud/mod.rs` implements separate `GoldTweenTarget` and `ManaTweenTarget` backing components, lens-driven `f32` interpolation, `TweenAnim::set_tweenable()` cancel-and-replace, `StateSync` text rendering from tween targets, and `HudConfig.hud_tween_duration_ms` clamped to `<= 300ms`.
+- Notes: Advisory only - no manual screenshot/sign-off evidence exists at `production/qa/evidence/numeric-tween-evidence.md`, so the 1280x720 and 1920x1080 layout-legibility criterion remains untested. Lean mode skipped external QA/code-review gates. Story wording references `Animator<T>` / `bevy_tweening 0.18`; current implementation uses the Bevy 0.18-compatible `bevy_tweening 0.15` API with `TweenAnim`.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no `HUD-010` row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the serialized closure queue with Hand UI Story 004 (`production/epics/hand-ui/story-004-draft-initial-grid.md`) if its implementation is ready for closure.
