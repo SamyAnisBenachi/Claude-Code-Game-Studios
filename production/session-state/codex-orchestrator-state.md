@@ -349,7 +349,14 @@ Batch launched:
 - HUD-007: integrated, pending story-done.
 
 Current active windows by user default-launch rule:
-- BOARD-007 is considered active from the latest prompt.
+- PRISM-001 story-done is considered active if launched from the latest prompt.
+  Do not launch another story-done until it returns.
+- BOARD-007 is considered active from the latest prompt after manifest refresh
+  commit `35bec31`.
+- HUD-008 is considered active from the latest prompt.
+- OBJ-002 returned NEEDS WORK only on stale manifest. Manifest refreshed to
+  `2026-05-01` in `b8b9f26`; relaunch readiness/implementation and then treat
+  it as active unless the user says it was not launched.
 AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
 integrated/closed as noted above. Do not launch PRISM-003 until PRISM-001 and
 PRISM-002 close.
