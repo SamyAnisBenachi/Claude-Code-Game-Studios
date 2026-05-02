@@ -1,7 +1,7 @@
 # Story 003: Xelor Reserve Formulas — Gelure, Xelorium, Rollback
 
 > **Epic**: Class System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -237,7 +237,21 @@ fn resolve_resolution(
 **Story Type**: Logic
 **Required evidence**: `tests/unit/class/xelor_reserve_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 6/6 passing.
+**Deviations**:
+- Advisory: story manifest version `2026-04-30` is older than current control manifest version `2026-05-01`.
+- Advisory: story notes still point to `server/src/core/resolution/effects.rs`; implementation lives in `server/src/feature/class/resolution/effects.rs`, matching the current feature-layer organization.
+- Advisory: no separate `tests/evidence/class-story-003-tests.md` exists; the story's required Logic evidence is the unit test file itself.
+**Test Evidence**: `tests/unit/class/xelor_reserve_test.rs` passed 6/6; `cargo check -p server` passed; `cargo fmt -p server -- --check` passed.
+**Code Review**: Skipped - lean review mode.
+**Sprint Status**: Not updated - no `CS-003` row exists in `production/sprint-status.yaml`.
 
 ---
 

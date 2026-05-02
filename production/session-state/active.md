@@ -1247,3 +1247,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no `RSM-006` row exists in `production/sprint-status.yaml`.
 - Next recommended: Card Pool Story 004 (`production/epics/card-data-pool/story-004-shop-refresh-subscriber-session-ready.md`) or GSS Story 006 (`production/epics/game-session-system/story-006-game-over-teardown.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/class-system/story-003-xelor-reserve-formulas.md` - Story 003: Xelor Reserve Formulas - Gelure, Xelorium, Rollback
+- Criteria: 6/6 passing; CS-AC-04, CS-AC-05, CS-AC-05b, CS-AC-06, CS-AC-07, and CS-AC-08 covered by `tests/unit/class/xelor_reserve_test.rs`.
+- Test Evidence: `cargo test -p server --test xelor_reserve_test` passed 6/6. `cargo check -p server` passed. `cargo fmt -p server -- --check` passed.
+- Verification: `server/src/feature/class/resolution/effects.rs` implements `apply_gelure`, `pay_xelorium_cost`, `apply_xelorium`, and `apply_rollback` as synchronous helper functions over `PlayerEconomies` and board ECS state. Rollback consumes reserve through economy API, moves only friendly Minion/token units, clamps cells through supplied movement rules, and skips STUNned units.
+- Notes: Advisory only - story manifest version is `2026-04-30` while current control manifest is `2026-05-01`. Advisory only - story notes point to `server/src/core/resolution/effects.rs`, while implementation lives in `server/src/feature/class/resolution/effects.rs` under the current feature-layer organization. Advisory only - no separate `tests/evidence/class-story-003-tests.md` exists; the required Logic evidence is the unit test file itself. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no `CS-003` row exists in `production/sprint-status.yaml`.
+- Next recommended: Class System Story 004 Garde-Temps Reserve Gate (`production/epics/class-system/story-004-garde-temps-reserve-gate.md`) after readiness check, or Class System Story 005 Miss Nuit per-round trigger (`production/epics/class-system/story-005-miss-nuit-trigger.md`) if its dependencies are ready.
