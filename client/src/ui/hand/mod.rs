@@ -1,14 +1,20 @@
-use bevy::prelude::*;
-use bevy_tweening::TweenAnim;
-use shared::card::CardId;
-use shared::protocol::{C2SActivateCard, RoundPhase};
+use std::time::Duration;
 
-use crate::card_animations::{cancel_tween_anim_in_place, HandCard, HandDragSprite};
+use bevy::ecs::query::QueryFilter;
+use bevy::math::curve::EaseFunction;
+use bevy::prelude::*;
+use bevy_tweening::{lens::TransformPositionLens, Tween, TweenAnim};
+use shared::card::{CardCatalog, CardId};
+use shared::protocol::{C2SActivateCard, C2SPurchaseCard, RoundPhase};
+
+use crate::card_animations::{
+    cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
+};
 use crate::state::{ClientState, CurrentClientPhase};
 
 pub const HAND_FAN_SLOT_COUNT: usize = 10;
 pub const DRAFT_INITIAL_GRID_SLOT_COUNT: usize = 9;
-pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT + DRAFT_INITIAL_GRID_SLOT_COUNT + 4;
+pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT + DRAFT_INITIAL_GRID_SLOT_COUNT + 5;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct HandFanLayoutConfig {
@@ -47,6 +53,33 @@ impl Default for HandFanViewport {
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandFanLayoutState {
     pub hand_count: usize,
+}
+
+#[derive(Resource, Default, Debug, Clone)]
+pub struct HandCardCatalog {
+    pub cards: CardCatalog,
+}
+
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandUiTimingConfig {
+    pub card_draw_animation_ms: u64,
+    pub purchase_timeout_ms: u64,
+    pub hand_full_notification_duration_ms: u64,
+}
+
+impl Default for HandUiTimingConfig {
+    fn default() -> Self {
+        Self {
+            card_draw_animation_ms: 280,
+            purchase_timeout_ms: 3_000,
+            hand_full_notification_duration_ms: 2_000,
+        }
+    }
+}
+
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandUiEconomyView {
+    pub gold: u32,
 }
 
 #[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
@@ -97,11 +130,27 @@ impl HandUiMode {
 #[derive(Resource, Default, Debug, Clone)]
 pub struct HandUiOutboundMessages {
     pub activate_cards: Vec<C2SActivateCard>,
+    pub purchase_cards: Vec<C2SPurchaseCard>,
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandFanCardClicked {
     pub card: Entity,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandGridCardClicked {
+    pub card: Entity,
+}
+
+#[derive(Message, Debug, Clone, PartialEq, Eq)]
+pub struct HandUiDraftOfferingReceived {
+    pub card_ids: Vec<CardId>,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandUiCardAcquiredReceived {
+    pub card_id: CardId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -153,6 +202,9 @@ pub struct HandFanRoot;
 pub struct HandTimer;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandFullNotification;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HandSubmitInteractionState {
     Active,
     Inactive,
@@ -166,6 +218,7 @@ pub struct HandUiEntities {
     pub drag_sprite: Entity,
     pub submit_button: Entity,
     pub timer: Entity,
+    pub hand_full_notification: Entity,
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -180,9 +233,36 @@ pub struct GridSlotIndex(pub u8);
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandSlotCard(pub CardId);
 
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GridSlotCard(pub CardId);
+
+#[derive(Component, Debug, Clone, PartialEq, Eq)]
+pub struct GridSlotCardName(pub String);
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GridSlotManaCost(pub u32);
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GridSlotState {
+    Available,
+    Pending,
+    HandFullLocked,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PendingPurchaseTimer {
+    pub remaining_ms: u64,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NotificationTimer {
+    pub remaining_ms: u64,
+}
+
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HandUiSystemSet {
     PhaseTransition,
+    MessageDrain,
     Input,
     StateSync,
 }
@@ -196,14 +276,21 @@ impl Plugin for HandUiPlugin {
             .init_resource::<HandFanLayoutConfig>()
             .init_resource::<HandFanViewport>()
             .init_resource::<HandFanLayoutState>()
+            .init_resource::<HandCardCatalog>()
+            .init_resource::<HandUiTimingConfig>()
+            .init_resource::<HandUiEconomyView>()
             .init_resource::<HandContents>()
             .init_resource::<HandUiMode>()
             .init_resource::<HandUiOutboundMessages>()
             .add_message::<HandFanCardClicked>()
+            .add_message::<HandGridCardClicked>()
+            .add_message::<HandUiDraftOfferingReceived>()
+            .add_message::<HandUiCardAcquiredReceived>()
             .configure_sets(
                 Update,
                 (
                     HandUiSystemSet::PhaseTransition,
+                    HandUiSystemSet::MessageDrain,
                     HandUiSystemSet::Input,
                     HandUiSystemSet::StateSync,
                 )
@@ -216,8 +303,22 @@ impl Plugin for HandUiPlugin {
                 Update,
                 (
                     hand_ui_phase_transition_system.in_set(HandUiSystemSet::PhaseTransition),
-                    handle_hand_fan_card_click_system.in_set(HandUiSystemSet::Input),
-                    apply_fan_layout_system.in_set(HandUiSystemSet::StateSync),
+                    (handle_draft_offering_system, handle_card_acquired_system)
+                        .chain()
+                        .in_set(HandUiSystemSet::MessageDrain),
+                    (
+                        handle_grid_card_click_system,
+                        handle_hand_fan_card_click_system,
+                    )
+                        .chain()
+                        .in_set(HandUiSystemSet::Input),
+                    (
+                        tick_pending_purchase_timeouts_system,
+                        apply_fan_layout_system,
+                        tick_hand_full_notification_system,
+                    )
+                        .chain()
+                        .in_set(HandUiSystemSet::StateSync),
                 ),
             );
     }
@@ -327,17 +428,22 @@ pub fn hand_ui_phase_transition_system(
         &mut visibility_query,
     );
 
-    for (index, entity) in entities.grid_slots.iter().copied().enumerate() {
+    for entity in entities.grid_slots.iter().copied() {
+        if next_mode != HandUiMode::Grid {
+            set_visibility(entity, Visibility::Hidden, &mut visibility_query);
+            clear_grid_slot(&mut commands, entity);
+        }
+    }
+
+    if next_mode != HandUiMode::Grid {
         set_visibility(
-            entity,
-            visibility_for(next_mode == HandUiMode::Grid),
+            entities.hand_full_notification,
+            Visibility::Hidden,
             &mut visibility_query,
         );
-        if next_mode != HandUiMode::Grid {
-            commands.entity(entity).remove::<HandSlotCard>();
-        } else if let Some(card_id) = hand_contents.cards.get(index).copied() {
-            commands.entity(entity).insert(HandSlotCard(card_id));
-        }
+        commands
+            .entity(entities.hand_full_notification)
+            .remove::<NotificationTimer>();
     }
 
     for (index, entity) in entities.fan_slots.iter().copied().enumerate() {
@@ -362,6 +468,173 @@ pub fn hand_ui_phase_transition_system(
     }
 }
 
+pub fn handle_draft_offering_system(
+    mode: Res<HandUiMode>,
+    catalog: Res<HandCardCatalog>,
+    entities: Option<Res<HandUiEntities>>,
+    mut offerings: MessageReader<HandUiDraftOfferingReceived>,
+    mut commands: Commands,
+    mut visibility_query: Query<&mut Visibility>,
+) {
+    let Some(entities) = entities else {
+        for _offering in offerings.read() {}
+        return;
+    };
+
+    for offering in offerings.read() {
+        for (index, entity) in entities.grid_slots.iter().copied().enumerate() {
+            let Some(card_id) = offering.card_ids.get(index).copied() else {
+                set_visibility(entity, Visibility::Hidden, &mut visibility_query);
+                clear_grid_slot(&mut commands, entity);
+                continue;
+            };
+
+            let Some(card) = catalog.cards.get(&card_id) else {
+                warn!("Draft offering referenced unknown card id {card_id:?}");
+                set_visibility(entity, Visibility::Hidden, &mut visibility_query);
+                clear_grid_slot(&mut commands, entity);
+                continue;
+            };
+
+            commands.entity(entity).insert((
+                GridSlotCard(card_id),
+                GridSlotCardName(card.name_en.clone()),
+                GridSlotManaCost(card.cost),
+                GridSlotState::Available,
+            ));
+            commands.entity(entity).remove::<PendingPurchaseTimer>();
+            set_visibility(
+                entity,
+                visibility_for(*mode == HandUiMode::Grid),
+                &mut visibility_query,
+            );
+        }
+    }
+}
+
+pub fn handle_card_acquired_system(
+    mode: Res<HandUiMode>,
+    config: Res<HandFanLayoutConfig>,
+    viewport: Res<HandFanViewport>,
+    timing: Res<HandUiTimingConfig>,
+    entities: Option<Res<HandUiEntities>>,
+    mut acquisitions: MessageReader<HandUiCardAcquiredReceived>,
+    mut hand_contents: ResMut<HandContents>,
+    mut layout_state: ResMut<HandFanLayoutState>,
+    mut commands: Commands,
+    mut grid_slots: ParamSet<(
+        Query<(Entity, &GridSlotCard, &mut Visibility), With<GridSlotIndex>>,
+        Query<(Entity, &Visibility, Option<&GridSlotCard>), With<GridSlotIndex>>,
+    )>,
+    mut fan_slots: Query<
+        (
+            &mut Visibility,
+            &mut Transform,
+            &mut Node,
+            Option<&mut TweenAnim>,
+        ),
+        (With<FanSlotIndex>, Without<GridSlotIndex>),
+    >,
+    mut notification: Query<
+        &mut Visibility,
+        (
+            With<HandFullNotification>,
+            Without<GridSlotIndex>,
+            Without<FanSlotIndex>,
+        ),
+    >,
+) {
+    let Some(entities) = entities else {
+        for _acquisition in acquisitions.read() {}
+        return;
+    };
+
+    for acquisition in acquisitions.read() {
+        hide_acquired_grid_slot(&mut commands, &mut grid_slots.p0(), acquisition.card_id);
+
+        if hand_contents.cards.len() < HAND_FAN_SLOT_COUNT {
+            hand_contents.cards.push(acquisition.card_id);
+        }
+
+        let hand_count = hand_contents.cards.len().min(HAND_FAN_SLOT_COUNT);
+        layout_state.hand_count = if mode.shows_fan_slots() {
+            hand_count
+        } else {
+            0
+        };
+
+        if hand_count > 0 {
+            let fan_index = hand_count - 1;
+            let fan_entity = entities.fan_slots[fan_index];
+            if let Ok((mut visibility, mut transform, mut node, animator)) =
+                fan_slots.get_mut(fan_entity)
+            {
+                let metrics = config.metrics_for_viewport(*viewport);
+                if let Some(layout) = compute_fan_slot_layout(fan_index, hand_count, metrics) {
+                    *visibility = Visibility::Visible;
+                    transform.rotation = layout.bevy_rotation();
+                    node.left = Val::Px(layout.card_x);
+                    node.top = Val::Px(layout.card_y);
+                    commands
+                        .entity(fan_entity)
+                        .insert(HandSlotCard(acquisition.card_id));
+                    install_card_draw_animation(
+                        &mut commands,
+                        fan_entity,
+                        animator,
+                        transform.translation,
+                        Vec3::new(layout.card_x, layout.card_y, transform.translation.z),
+                        timing.card_draw_animation_ms,
+                    );
+                }
+            }
+        }
+
+        if hand_contents.cards.len() >= HAND_FAN_SLOT_COUNT {
+            lock_visible_grid_slots(&mut commands, &mut grid_slots.p1());
+            activate_hand_full_notification(
+                &mut commands,
+                entities.hand_full_notification,
+                &mut notification,
+                timing.hand_full_notification_duration_ms,
+            );
+        }
+    }
+}
+
+pub fn handle_grid_card_click_system(
+    mode: Res<HandUiMode>,
+    timing: Res<HandUiTimingConfig>,
+    mut clicks: MessageReader<HandGridCardClicked>,
+    mut grid_cards: Query<(&GridSlotCard, Option<&GridSlotState>), With<GridSlotIndex>>,
+    mut commands: Commands,
+    mut outbound: ResMut<HandUiOutboundMessages>,
+) {
+    for click in clicks.read() {
+        if *mode != HandUiMode::Grid {
+            continue;
+        }
+
+        let Ok((card, state)) = grid_cards.get_mut(click.card) else {
+            continue;
+        };
+
+        if state != Some(&GridSlotState::Available) {
+            continue;
+        }
+
+        outbound
+            .purchase_cards
+            .push(C2SPurchaseCard { card_id: card.0 });
+        commands.entity(click.card).insert((
+            GridSlotState::Pending,
+            PendingPurchaseTimer {
+                remaining_ms: timing.purchase_timeout_ms,
+            },
+        ));
+    }
+}
+
 pub fn handle_hand_fan_card_click_system(
     mode: Res<HandUiMode>,
     mut clicks: MessageReader<HandFanCardClicked>,
@@ -380,6 +653,57 @@ pub fn handle_hand_fan_card_click_system(
         outbound
             .activate_cards
             .push(C2SActivateCard { card_id: card.0 });
+    }
+}
+
+pub fn tick_pending_purchase_timeouts_system(
+    mode: Res<HandUiMode>,
+    time: Res<Time<Virtual>>,
+    mut pending_slots: Query<(Entity, &mut GridSlotState, &mut PendingPurchaseTimer)>,
+    mut commands: Commands,
+) {
+    if *mode != HandUiMode::Grid {
+        return;
+    }
+
+    let delta_ms = elapsed_ms(time.delta());
+    if delta_ms == 0 {
+        return;
+    }
+
+    for (entity, mut state, mut timer) in &mut pending_slots {
+        if *state != GridSlotState::Pending {
+            commands.entity(entity).remove::<PendingPurchaseTimer>();
+            continue;
+        }
+
+        timer.remaining_ms = timer.remaining_ms.saturating_sub(delta_ms);
+        if timer.remaining_ms == 0 {
+            *state = GridSlotState::Available;
+            commands.entity(entity).remove::<PendingPurchaseTimer>();
+        }
+    }
+}
+
+pub fn tick_hand_full_notification_system(
+    time: Res<Time<Virtual>>,
+    mut notifications: Query<
+        (Entity, &mut Visibility, &mut NotificationTimer),
+        With<HandFullNotification>,
+    >,
+    mut commands: Commands,
+) {
+    let delta_ms = elapsed_ms(time.delta());
+    if delta_ms == 0 {
+        return;
+    }
+
+    for (entity, mut visibility, mut timer) in &mut notifications {
+        timer.remaining_ms = timer.remaining_ms.saturating_sub(delta_ms);
+        if timer.remaining_ms == 0 {
+            *visibility = Visibility::Hidden;
+            commands.entity(entity).remove::<NotificationTimer>();
+        }
     }
 }
 
@@ -469,6 +793,18 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
         ))
         .id();
 
+    let hand_full_notification = commands
+        .spawn((
+            Name::new("Hand UI Hand Full Notification"),
+            HandUiEntity,
+            HandFullNotification,
+            Text::new("Hand full"),
+            hidden_control_node(120.0, 28.0, 168.0),
+            Visibility::Hidden,
+            ChildOf(fan_root),
+        ))
+        .id();
+
     commands.insert_resource(HandUiEntities {
         fan_root,
         fan_slots,
@@ -476,6 +812,7 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
         drag_sprite,
         submit_button,
         timer,
+        hand_full_notification,
     });
 }
 
@@ -523,6 +860,89 @@ fn set_visibility(
     if let Ok(mut current) = visibility_query.get_mut(entity) {
         *current = visibility;
     }
+}
+
+fn clear_grid_slot(commands: &mut Commands, entity: Entity) {
+    commands.entity(entity).remove::<(
+        GridSlotCard,
+        GridSlotCardName,
+        GridSlotManaCost,
+        GridSlotState,
+        PendingPurchaseTimer,
+    )>();
+}
+
+fn hide_acquired_grid_slot(
+    commands: &mut Commands,
+    grid_slots: &mut Query<(Entity, &GridSlotCard, &mut Visibility), With<GridSlotIndex>>,
+    card_id: CardId,
+) {
+    for (entity, card, mut visibility) in grid_slots.iter_mut() {
+        if card.0 != card_id {
+            continue;
+        }
+
+        *visibility = Visibility::Hidden;
+        clear_grid_slot(commands, entity);
+        break;
+    }
+}
+
+fn install_card_draw_animation(
+    commands: &mut Commands,
+    entity: Entity,
+    animator: Option<Mut<TweenAnim>>,
+    start: Vec3,
+    end: Vec3,
+    duration_ms: u64,
+) {
+    let tween = Tween::new(
+        EaseFunction::QuadraticOut,
+        Duration::from_millis(duration_ms),
+        TransformPositionLens { start, end },
+    );
+
+    if let Some(mut animator) = animator {
+        if let Err(error) = replace_tweenable(&mut animator, tween) {
+            warn!("Failed to replace Hand UI card draw tween on entity {entity:?}: {error}");
+        }
+    } else {
+        commands.entity(entity).insert(make_tween_anim(tween));
+    }
+}
+
+fn lock_visible_grid_slots(
+    commands: &mut Commands,
+    grid_slots: &mut Query<(Entity, &Visibility, Option<&GridSlotCard>), With<GridSlotIndex>>,
+) {
+    for (entity, visibility, card) in grid_slots.iter_mut() {
+        if *visibility != Visibility::Visible || card.is_none() {
+            continue;
+        }
+
+        commands
+            .entity(entity)
+            .insert(GridSlotState::HandFullLocked);
+        commands.entity(entity).remove::<PendingPurchaseTimer>();
+    }
+}
+
+fn activate_hand_full_notification<F: QueryFilter>(
+    commands: &mut Commands,
+    entity: Entity,
+    notifications: &mut Query<&mut Visibility, F>,
+    duration_ms: u64,
+) {
+    if let Ok(mut visibility) = notifications.get_mut(entity) {
+        *visibility = Visibility::Visible;
+    }
+    commands.entity(entity).insert(NotificationTimer {
+        remaining_ms: duration_ms,
+    });
+}
+
+fn elapsed_ms(duration: Duration) -> u64 {
+    u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
 }
 
 fn cancel_hand_ui_tweens(
