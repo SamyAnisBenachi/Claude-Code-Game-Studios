@@ -81,7 +81,7 @@ None currently tracked here.
   integration commit into `main` at `a04022b`. Root `cargo fmt -p server --
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
-  `git diff --check HEAD~1..HEAD` passed.
+  `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
 - RSM-005: Disconnect Handling implemented locally on branch
   `work/rsm-005-disconnect-handling` at `8007ad1`; worker push was blocked by
   external GitHub transfer approval, so root cherry-picked/rebased it onto
@@ -112,8 +112,18 @@ None currently tracked here.
   `cargo test -p client --test scoreboard_dot_message_test`, HUD regression
   slice 21/21, and `cargo check -p client`. Root `cargo check -p client` and
   `git diff --check HEAD~1..HEAD` also passed after integration.
+- CARD-ANIM-007: Damage Number Lifecycle implemented locally on branch
+  `work/card-anim-007-damage-number-lifecycle` at `d49d274`; root cherry-picked
+  it into `main` at `ca890fc`. Worker checks passed `cargo fmt -p client --
+  --check`, `cargo test -p client --test card_animations_damage_number_test`,
+  existing card animation regressions, and `cargo check -p client`. Root
+  `cargo check -p client` and `git diff --check HEAD~1..HEAD` also passed after
+  integration.
 ## Recently Closed
 
+- BOARD-006: Charge Bonus Movement implemented locally on branch
+  `work/board-006-charge-bonus-movement` at `874f28e`; cherry-picked into
+  `main` at `a04022b`; story-done committed at `86612b7`.
 - ECO-005: Auction Reservation and Bid Validation implemented locally on branch
   `work/eco-005-auction-reservation-bid-validation` at `f8b69bc`; cherry-picked
   into `main` at `2108143`; story-done committed at `2f745bb`.
@@ -225,18 +235,17 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. BOARD-006
-2. RSM-005
-3. CARD-ANIM-003
-4. GSS-004
-5. PRISM-001
-6. HUD-004
+1. RSM-005
+2. CARD-ANIM-003
+3. GSS-004
+4. PRISM-001
+5. HUD-004
+6. CARD-ANIM-007
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- BOARD-006: implemented and integrated; pending story-done.
 - RSM-005: implemented and integrated; pending story-done.
 - CARD-ANIM-003: implemented on worker branch; pending root integration check and
   story-done after the current serialized closures.
@@ -246,6 +255,7 @@ Run only one story-done at a time.
   PRISM-002+.
 - HUD-004: implemented and integrated; pending story-done before launching HUD
   stories that depend on scoreboard objective dots.
+- CARD-ANIM-007: implemented and integrated; pending story-done.
 - AUC-004: ECO-005 is formally closed; still verify OQ9 pre-implementation gate
   before launch.
 - Prism gates are resolved; PRISM-002+ follow normal sequencing after PRISM-001
@@ -254,15 +264,15 @@ Run only one story-done at a time.
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- BOARD-006: integrated, pending story-done.
 - RSM-005: integrated, pending story-done.
 - GSS-004: integrated, pending story-done.
 - PRISM-001: integrated, pending story-done.
 - HUD-004: integrated, pending story-done.
 - CARD-ANIM-003: worker branch implemented, pending story-done.
+- CARD-ANIM-007: integrated, pending story-done.
 
-BOARD-006 story-done is currently expected to be active from user launch. The
-next serialized closure after it returns is RSM-005.
+No story-done window is currently active in this tracker. The next serialized
+closure is RSM-005.
 
 ## Resolved Design Gates
 
