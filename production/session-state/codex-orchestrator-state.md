@@ -102,15 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- GSS-006: Game-Over Teardown implemented on branch
-  `work/gss-006-game-over-teardown` at `37a237c`; root cherry-picked and
-  amended it into `main` at `d5f835e`. Root checks passed `cargo fmt -p server
-  -- --check`, `cargo test -p server --test game_over_teardown_test --test
-  session_ready_test --test dual_signal_disconnect_test --test
-  rsm_win_condition_test` 18/18, `cargo check -p server`, grep gate for no
-  EventReader/EventWriter/Events< in touched session/RSM/network paths, and
-  `git diff --check HEAD~1..HEAD`. Scope is teardown only; reconnect snapshot
-  schema/building remains GSS-007/HUD-008 unblock work.
 - OBJ-002: Fake Assignment and Config Guards implemented on branch
   `work/objective-002-fake-assignment-config-guards` at `24bf21b`; root
   cherry-picked and amended it into `main` at `536ccc8`. Root checks passed
@@ -145,6 +136,14 @@ None currently tracked here.
   Verification passed `cargo fmt -p server -- --check`, `cargo test -p server
   --test dual_signal_disconnect_test --test lobby_timeout_test` 8/8, and
   `cargo check -p server`. `production/sprint-status.yaml` had no matching row.
+- GSS-006: Game-Over Teardown implemented on branch
+  `work/gss-006-game-over-teardown` at `37a237c`; root integration landed at
+  `d5f835e`; story-done closure committed at `a49e422`. Verification passed
+  `cargo test -p server --test game_over_teardown_test` 4/4 and `cargo check
+  -p server`. Completion notes record advisory wording drift around
+  `S2CGameOver.loser: Option<PlayerId>` for draw support and live Lightyear
+  delivery being code-verified while the integration test covers the outbox
+  path. `production/sprint-status.yaml` had no matching row.
 - HAND-UI-004: DRAFT_INITIAL Grid Flow implemented on branch
   `work/hand-ui-004-draft-initial-grid` at `b2ad5db`; root cherry-picked it
   into `main` at `561d2fd`; story-done committed at `f610054`. Verification
@@ -358,10 +357,9 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. GSS-006
-2. OBJ-002
-3. PRISM-004
-4. HAND-UI-005
+1. OBJ-002
+2. PRISM-004
+3. HAND-UI-005
 
 Run only one story-done at a time.
 
@@ -372,17 +370,13 @@ Run only one story-done at a time.
   closed. PRISM-004 can run next in the Prism chain because it depends on the
   Lane 3 call site.
 - GSS-005: closed at `19071b5`.
-- GSS-006: implemented and integrated; pending story-done. Do not launch
-  GSS-007 until GSS-006 closure is clean, because GSS-007 is the
-  reconnect snapshot schema/builder unblock for HUD-008 and touches the same
-  session/protocol ownership.
+- GSS-006: closed at `a49e422`.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
 - HUD-008 returned READY but blocked on missing full `S2CGameSnapshot` schema.
-  Correct unblock path is GSS-005 -> GSS-006 -> GSS-007. GSS-005 is closed and
-  GSS-006 is implemented/integrated pending story-done; launch GSS-007 only
-  after GSS-006 closure settles.
+  Correct unblock path is GSS-005 -> GSS-006 -> GSS-007. GSS-005 and GSS-006
+  are closed, so GSS-007 is now the next valid unblock worker for HUD-008.
 - Other RSM/session/disconnect work should be staged carefully because GSS-005
-  just closed and GSS-006 is implemented and pending story-done.
+  and GSS-006 just closed; avoid overlapping GSS-007 snapshot ownership.
 - Prism gates are resolved; PRISM-003+ follow normal sequencing after PRISM-001
   and PRISM-002 story-done.
 
@@ -390,15 +384,15 @@ Run only one story-done at a time.
 
 Batch launched:
 - GSS-005: closed at `19071b5`.
-- GSS-006: integrated, pending story-done.
+- GSS-006: closed at `a49e422`.
 
 Active implementation workers by default-launch rule:
 - OBJ-002: integrated at `536ccc8`; pending serialized story-done after current
   closure queue.
 - PRISM-004: integrated at `8c77982`; pending serialized story-done after
-  GSS-006 and OBJ-002.
+  OBJ-002.
 - HAND-UI-005: integrated at `1c798f0`; pending serialized story-done after
-  GSS-006, OBJ-002, and PRISM-004.
+  OBJ-002 and PRISM-004.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -430,8 +424,8 @@ Current active windows by user default-launch rule:
   story-done; story-done committed at `f610054`. Window can be cleared.
 - GSS-005 returned, integrated at `15fe812`, repaired/closed at `19071b5`, and
   its window can be cleared.
-- GSS-006 returned, integrated at `d5f835e`, and now only needs serialized
-  story-done.
+- GSS-006 returned, integrated at `d5f835e`, closed at `a49e422`, and its
+  window can be cleared.
 - HUD-010 returned, integrated at `609be61`, and now only needs serialized
   story-done after HUD-009; story-done committed at `d23ce6f`. Window can be
   cleared. HAND-UI-004 is now the next serialized story-done candidate.
@@ -440,9 +434,9 @@ Current active windows by user default-launch rule:
   it as active unless the user says it was not launched; implementation
   integrated at `536ccc8` and now pending story-done.
 - PRISM-004 returned, integrated at `8c77982`, and now only needs serialized
-  story-done after GSS-006 and OBJ-002.
+  story-done after OBJ-002.
 - HAND-UI-005 returned, integrated at `1c798f0`, and now only needs serialized
-  story-done after GSS-006, OBJ-002, and PRISM-004.
+  story-done after OBJ-002 and PRISM-004.
 AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
 integrated/closed as noted above.
 
