@@ -64,6 +64,10 @@ name = "card_animations_tween_lifecycle_test"
 path = "../tests/unit/card-animations/tween_lifecycle_test.rs"
 
 [[test]]
+name = "card_animations_tracks_animation_test"
+path = "../tests/unit/card-animations/tracks_animation_test.rs"
+
+[[test]]
 name = "card_animations_anim_queue_test"
 path = "../tests/unit/card-animations/anim_queue_test.rs"
 

@@ -54,6 +54,30 @@ impl Lens<Transform> for TransformScaleXLens {
 }
 
 #[derive(Clone, Debug)]
+pub struct TransformTranslationXLens {
+    pub start: f32,
+    pub end: f32,
+}
+
+impl Lens<Transform> for TransformTranslationXLens {
+    fn lerp(&mut self, mut target: Mut<Transform>, ratio: f32) {
+        target.translation.x = lerp_f32(self.start, self.end, ratio);
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct TransformTranslationYLens {
+    pub start: f32,
+    pub end: f32,
+}
+
+impl Lens<Transform> for TransformTranslationYLens {
+    fn lerp(&mut self, mut target: Mut<Transform>, ratio: f32) {
+        target.translation.y = lerp_f32(self.start, self.end, ratio);
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct TextColorLens {
     pub start: Color,
     pub end: Color,

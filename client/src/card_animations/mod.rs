@@ -8,7 +8,8 @@ use bevy::prelude::*;
 use bevy_tweening::{AnimationSystem, TweenAnim, TweeningPlugin};
 
 pub use animators::{
-    cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, PlacementPhaseAnimator,
+    cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, spawn_sprite_tween_controller,
+    spawn_transform_tween_controller, PlacementPhaseAnimator,
 };
 pub use events::*;
 pub use input_gating::{
@@ -19,6 +20,7 @@ pub use input_gating::{
 };
 pub use lenses::{
     BackgroundColorAlphaLens, SpriteAlphaLens, SpriteColorLens, TextColorLens, TransformScaleXLens,
+    TransformTranslationXLens, TransformTranslationYLens,
 };
 pub use queue::{
     resolution_executing_system, resolution_objective_reveal_system, AnimGroup, AnimQueue,
