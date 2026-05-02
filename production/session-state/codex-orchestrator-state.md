@@ -102,13 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- CARD-ANIM-007: Damage Number Lifecycle implemented locally on branch
-  `work/card-anim-007-damage-number-lifecycle` at `d49d274`; root cherry-picked
-  it into `main` at `ca890fc`. Worker checks passed `cargo fmt -p client --
-  --check`, `cargo test -p client --test card_animations_damage_number_test`,
-  existing card animation regressions, and `cargo check -p client`. Root
-  `cargo check -p client` and `git diff --check HEAD~1..HEAD` also passed after
-  integration.
 - CARD-ANIM-005: Placement Reveal Parallelism implemented locally on branch
   `work/card-anim-005-placement-reveal-parallelism` at `0c1d5fe`; root
   cherry-picked it into `main` at `5ccb988`. Worker checks passed
@@ -179,6 +172,13 @@ None currently tracked here.
   hud_gold_mana_display_test --test hud_economy_auction_inline_gold_test --test
   hud_phase_transitions_test` 18/18, `cargo check -p client`, and `git diff
   --check HEAD~1..HEAD`.
+- HAND-UI-004: DRAFT_INITIAL Grid Flow implemented on branch
+  `work/hand-ui-004-draft-initial-grid` at `b2ad5db`; root cherry-picked it
+  into `main` at `561d2fd`. Root checks passed `cargo fmt -p client --
+  --check`, `cargo test -p client --test hand_ui_draft_initial_grid_test
+  --test hand_ui_plugin_scaffold_test --test hand_ui_fan_layout_formula_test
+  --test hand_ui_phase_state_machine_test` 16/16, `cargo check -p client`, and
+  `git diff --check HEAD~1..HEAD`.
 ## Recently Closed
 
 - GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
@@ -193,6 +193,10 @@ None currently tracked here.
 - HUD-004: Scoreboard Dot Observer implemented on branch
   `work/hud-004-scoreboard-dot-observer` at `fd9b4e8`; root cherry-picked it
   into `main` at `c30fc6a`; story-done committed at `3c85ae1`.
+- CARD-ANIM-007: Damage Number Lifecycle implemented locally on branch
+  `work/card-anim-007-damage-number-lifecycle` at `d49d274`; root cherry-picked
+  it into `main` at `ca890fc`; repaired against the current GDD F3 jitter table
+  at `2b5ea8e`; story-done committed at `35ee469`.
 - CARD-ANIM-003: Simultaneous Track Animation implemented on branch
   `work/card-anim-003-simultaneous-track-animation` at `4f4d7c5`; cherry-picked
   into `main` at `066c1cd` after resolving a public export conflict with
@@ -315,16 +319,16 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. CARD-ANIM-007
-2. HUD-006
-3. CARD-ANIM-005
-4. AUC-004
-5. RSM-006
-6. CS-003
-7. HUD-007
-8. BOARD-007
-9. PRISM-003
-10. HUD-009
+1. HUD-006
+2. CARD-ANIM-005
+3. AUC-004
+4. RSM-006
+5. CS-003
+6. HUD-007
+7. BOARD-007
+8. PRISM-003
+9. HUD-009
+10. HAND-UI-004
 
 Run only one story-done at a time.
 
@@ -334,14 +338,6 @@ Run only one story-done at a time.
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
   implemented/integrated and pending story-done. PRISM-004 can run after
   PRISM-003 story-done because it depends on the Lane 3 call site.
-- CARD-ANIM-007: implemented and integrated; pending story-done.
-  Story-done returned BLOCKED: jitter table in
-  `client/src/card_animations/damage_numbers.rs` differs from approved GDD F3
-  entries for indexes 3-6, and the current test imports the implementation
-  constant instead of asserting the literal approved 8-entry table. Keep the
-  story-done window open for a scoped repair to damage_numbers.rs and
-  damage_number_test.rs, then rerun closure. Repair committed at `2b5ea8e`;
-  code/tests now match the current GDD F3 table and no GDD edit was made.
 - CARD-ANIM-005: implemented and integrated; pending story-done.
 - HUD-006: implemented and integrated; pending story-done.
 - AUC-004: implemented and integrated; pending story-done.
@@ -351,6 +347,7 @@ Run only one story-done at a time.
 - BOARD-007: implemented and integrated; pending story-done.
 - PRISM-003: implemented and integrated; pending story-done.
 - HUD-009: implemented and integrated; pending story-done.
+- HAND-UI-004: implemented and integrated; pending story-done.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
 - HUD-008 returned READY but blocked on missing full `S2CGameSnapshot` schema.
   Correct unblock path is GSS-005 -> GSS-006 -> GSS-007. Story gates were
@@ -377,6 +374,7 @@ Batch launched:
 - BOARD-007: integrated, pending story-done.
 - PRISM-003: integrated, pending story-done.
 - HUD-009: integrated, pending story-done.
+- HAND-UI-004: integrated, pending story-done.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -390,6 +388,10 @@ Current active windows by user default-launch rule:
 - HUD-008 returned with no code changes; window can be cleared. It remains
   blocked until GSS-007 expands/builds `S2CGameSnapshot`.
 - PRISM-003 returned, integrated at `611baee`, and now only needs serialized
+  story-done.
+- CARD-ANIM-007 story-done returned and was committed at `35ee469`; window can
+  be cleared. HUD-006 is now the next serialized story-done candidate.
+- HAND-UI-004 returned, integrated at `561d2fd`, and now only needs serialized
   story-done.
 - OBJ-002 returned NEEDS WORK only on stale manifest. Manifest refreshed to
   `2026-05-01` in `b8b9f26`; relaunch readiness/implementation and then treat
