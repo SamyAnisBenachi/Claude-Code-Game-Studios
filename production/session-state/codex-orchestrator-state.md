@@ -102,15 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
-  `work/gss-004-f4-session-ready` at `9708147`; root cherry-picked it into
-  `main` at `4d8cf60`. Worker checks passed full affected session/RSM/economy
-  regression set plus full `cargo test -p server`; grep gates confirmed exactly
-  one `On<SessionReady>` observer path. Story-done on 2026-05-02 initially
-  returned BLOCKED on exact-deadline equality. Repair `3c64b84` changed F4 to
-  pass when `server_clock_now <= lobby_deadline` and added boundary coverage.
-  Rerun returned COMPLETE WITH NOTES and is awaiting approval to write closure
-  files.
 - PRISM-001: Prism State Scaffold implemented on branch
   `work/prism-001-state-scaffold` at `6ecd421`; root cherry-picked it into
   `main` at `e093804`. Worker checks passed `cargo fmt -p server -- --check`,
@@ -168,8 +159,18 @@ None currently tracked here.
   `cargo test -p server rsm_disconnect`, `cargo test -p server --test
   rsm_transitions_test`, `cargo check -p server`, and RSM grep gates. Root
   repeated the affected tests/checks after integration.
+- CS-003: Xelor Reserve Formulas implemented on branch
+  `work/cs-003-xelor-reserve-formulas` at `e5aabd6`; root cherry-picked it into
+  `main` at `3440b21`. Worker checks passed `cargo fmt -p server -- --check`,
+  `cargo test -p server --test xelor_reserve_test`,
+  `cargo test -p server --test class_lifecycle_test`,
+  `cargo test -p server --test token_spawn_test`, and `cargo check -p server`.
+  Root repeated class lifecycle/token/xelor tests plus `cargo check -p server`.
 ## Recently Closed
 
+- GSS-004: F4 SessionReady Predicate and Trigger implemented on branch
+  `work/gss-004-f4-session-ready` at `9708147`; cherry-picked into `main` at
+  `4d8cf60`; repair committed at `3c64b84`; story-done committed at `36ed875`.
 - CARD-ANIM-003: Simultaneous Track Animation implemented on branch
   `work/card-anim-003-simultaneous-track-animation` at `4f4d7c5`; cherry-picked
   into `main` at `066c1cd` after resolving a public export conflict with
@@ -292,23 +293,20 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. GSS-004 closure write
-2. PRISM-001
-3. HUD-004
-4. CARD-ANIM-007
-5. PRISM-002
-6. HUD-006
-7. CARD-ANIM-005
-8. AUC-004
-9. RSM-006
+1. PRISM-001
+2. HUD-004
+3. CARD-ANIM-007
+4. PRISM-002
+5. HUD-006
+6. CARD-ANIM-005
+7. AUC-004
+8. RSM-006
+9. CS-003
 
 Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- GSS-004: implemented, repaired, and story-done verdict is COMPLETE WITH NOTES,
-  but closure files are not written yet. Do not launch further SessionReady/RSM
-  session stories until closure confirms the single-observer gate.
 - PRISM-001: implemented and integrated; pending story-done. PRISM-002 is also
   implemented and integrated, but PRISM-003+ should wait until PRISM-001/002 close.
 - HUD-004: implemented and integrated; pending story-done before launching HUD
@@ -319,18 +317,17 @@ Run only one story-done at a time.
 - HUD-006: implemented and integrated; pending story-done.
 - AUC-004: implemented and integrated; pending story-done.
 - RSM-006: implemented and integrated; pending story-done.
+- CS-003: implemented and integrated; pending story-done.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
-- GSS-005+ and other RSM/session/disconnect work should still be staged
-  carefully because GSS-004 awaits story-done confirmation of the SessionReady
-  single-observer gate.
+- GSS-005+ and other RSM/session/disconnect work are unblocked by GSS-004
+  closure, but still stage carefully because RSM-006 is implemented and pending
+  story-done.
 - Prism gates are resolved; PRISM-003+ follow normal sequencing after PRISM-001
   and PRISM-002 story-done.
 
 ## Next Parallel Launch Candidates
 
 Batch launched:
-- GSS-004: integrated and repaired; story-done verdict COMPLETE WITH NOTES but
-  awaiting approval to write closure files.
 - PRISM-001: integrated, pending story-done.
 - HUD-004: integrated, pending story-done.
 - CARD-ANIM-007: integrated, pending story-done.
@@ -339,12 +336,12 @@ Batch launched:
 - CARD-ANIM-005: integrated, pending story-done.
 - AUC-004: integrated, pending story-done.
 - RSM-006: integrated, pending story-done.
+- CS-003: integrated, pending story-done.
 
 Current active windows by user default-launch rule:
-- GSS-004 story-done remains open for closure-file approval/write.
-- CS-003, BOARD-007, and HUD-007 are considered launched from the latest prompts.
-AUC-004 and RSM-006 have returned and are integrated. Do not launch PRISM-003
-until PRISM-001 and PRISM-002 close.
+- BOARD-007 and HUD-007 are considered active from the latest prompts.
+AUC-004, RSM-006, GSS-004, and CS-003 have returned and are integrated/closed as
+noted above. Do not launch PRISM-003 until PRISM-001 and PRISM-002 close.
 
 ## Resolved Design Gates
 
