@@ -15,9 +15,9 @@ use bevy::prelude::Resource;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
-// TODO: import PlayerId from shared/ when defined there.
-// Using a local alias to avoid blocking this story on PlayerId definition.
 type PlayerId = u32;
+
+const OBJECTIVE_LANE_COUNT: u8 = 5;
 
 /// Identifies which random event consumed an RNG seed.
 /// One variant per call site — no generic "Misc" catch-all (ADR-005 §5).
@@ -117,11 +117,11 @@ impl ServerRng {
         }
     }
 
-    /// Test-only constructor — deterministic seed.
+    /// Test/debug constructor — deterministic seed.
     ///
     /// Uses `ChaCha20Rng::seed_from_u64(seed)` so tests are fully deterministic.
     /// Same sentinel behaviour as `new()`.
-    #[cfg(test)]
+    #[cfg(any(test, debug_assertions))]
     pub fn from_seed(seed: u64) -> Self {
         let rng = ChaCha20Rng::seed_from_u64(seed);
         let mut audit_log = Vec::new();
@@ -193,24 +193,26 @@ impl ServerRng {
     /// Assign fake objective lanes for one player.
     ///
     /// Consumes 2 seeds per call (GDD seed table, DRAFT_INITIAL order 1).
-    /// Returns `(0, 0)` as stub — Objective System epic implements real assignment.
+    /// Returns two distinct one-indexed objective lanes.
     /// Callers MUST iterate ascending `player_id` (ADR-005 §4 ordering contract).
     pub fn assign_fake_objectives(&mut self, player_id: PlayerId) -> (u8, u8) {
-        let idx1 = self.seed_index;
-        let _seed1 = self.next_seed();
+        let mut lanes = (1..=OBJECTIVE_LANE_COUNT).collect::<Vec<_>>();
+        let first = self.draw_fake_lane(player_id, &mut lanes);
+        let second = self.draw_fake_lane(player_id, &mut lanes);
+        (first, second)
+    }
+
+    fn draw_fake_lane(&mut self, player_id: PlayerId, lanes: &mut Vec<u8>) -> u8 {
+        let seed_index = self.seed_index;
+        let seed = self.next_seed();
+        let lane_index = seed as usize % lanes.len();
+        let fake_lane = lanes.remove(lane_index);
         self.audit_log.push(AuditEntry {
             event_type: RngEvent::AssignFakeObjectives { player_id },
-            seed_index: idx1,
-            result: None,
+            seed_index,
+            result: Some(format!("lane={fake_lane},is_fake=true")),
         });
-        let idx2 = self.seed_index;
-        let _seed2 = self.next_seed();
-        self.audit_log.push(AuditEntry {
-            event_type: RngEvent::AssignFakeObjectives { player_id },
-            seed_index: idx2,
-            result: None,
-        });
-        (0, 0)
+        fake_lane
     }
 
     /// Draw seed for a player's initial draft hand.

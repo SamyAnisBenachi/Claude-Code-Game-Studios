@@ -170,6 +170,10 @@ name = "objective_state_test"
 path = "../tests/unit/objective/objective_state_test.rs"
 
 [[test]]
+name = "fake_assignment_test"
+path = "../tests/unit/objective/fake_assignment_test.rs"
+
+[[test]]
 name = "rsm_f2_ordering_test"
 path = "../tests/integration/rsm/rsm_f2_ordering_test.rs"
 
