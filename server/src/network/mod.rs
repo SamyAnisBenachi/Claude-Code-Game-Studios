@@ -1,7 +1,7 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
-use crate::core::rsm::{tick_disconnect_timers, PlayerHeartbeat};
+use crate::core::rsm::{advance_phase, tick_disconnect_timers, PlayerHeartbeat};
 use crate::core::session::PlayerConnectionMap;
 use crate::lobby::handler::handle_class_choice;
 use bevy::prelude::*;
@@ -12,6 +12,8 @@ use shared::protocol::{
     C2SSubmitPlacement, ProtocolChannel, ProtocolDirection, ProtocolRegistry, ReliableChannel,
     S2CObjectiveIdentities,
 };
+
+pub mod rsm_dispatch;
 
 pub struct ServerNetworkPlugin;
 
@@ -31,6 +33,7 @@ impl Plugin for ServerNetworkPlugin {
                 (
                     receive_c2s_messages.before(tick_disconnect_timers),
                     handle_class_choice,
+                    rsm_dispatch::dispatch_phase_changed.after(advance_phase),
                 ),
             )
             .add_observer(log_client_connected)

@@ -228,14 +228,20 @@ pub fn tick_rsm_timers(
         RoundPhase::DraftInitial => tick_timer(rsm.draft_initial_timer.as_mut(), elapsed),
         RoundPhase::DraftShop => tick_timer(rsm.draft_shop_timer.as_mut(), elapsed),
         RoundPhase::Placement => tick_timer(rsm.placement_timer.as_mut(), elapsed),
-        RoundPhase::Lobby
-        | RoundPhase::DraftAuction
-        | RoundPhase::Resolution
-        | RoundPhase::GameOver => false,
+        RoundPhase::Resolution => tick_timer(rsm.resolution_safety_timer.as_mut(), elapsed),
+        RoundPhase::Lobby | RoundPhase::DraftAuction | RoundPhase::GameOver => false,
     };
 
     if finished {
-        pending.request(PhaseAdvanceRequest::new(rsm.phase));
+        if rsm.phase == RoundPhase::Resolution {
+            pending.request(PhaseAdvanceRequest::game_over(
+                RoundPhase::Resolution,
+                GameOverReason::ResolutionTimeout,
+                None,
+            ));
+        } else {
+            pending.request(PhaseAdvanceRequest::new(rsm.phase));
+        }
     }
 }
 
@@ -317,6 +323,11 @@ pub fn advance_phase(
 
     if let Some(game_over) = &request.game_over {
         rsm.phase = RoundPhase::GameOver;
+        rsm.placement_timer = None;
+        rsm.draft_shop_timer = None;
+        rsm.draft_initial_timer = None;
+        rsm.resolution_safety_timer = None;
+        rsm.auction_safety_timer = None;
         game_over_emitted.write(GameOverEmitted {
             reason: game_over.reason,
             loser: game_over.loser,
@@ -400,6 +411,9 @@ pub fn advance_phase(
         RoundPhase::Placement => {
             rsm.phase = RoundPhase::Resolution;
             rsm.placement_timer = None;
+            rsm.resolution_safety_timer = config
+                .as_ref()
+                .map(|config| once_timer(config.resolution_max_duration_seconds));
             resolution_entered.write(ResolutionPhaseEntered {
                 round: rsm.round_number,
             });
@@ -409,14 +423,11 @@ pub fn advance_phase(
             broadcast.write(BroadcastPhaseChanged {
                 phase: RoundPhase::Resolution,
                 round: rsm.round_number,
-                timer_ms: seconds_to_ms(
-                    config
-                        .as_ref()
-                        .map_or(0, |c| c.resolution_max_duration_seconds),
-                ),
+                timer_ms: 0,
             });
         }
         RoundPhase::Resolution => {
+            rsm.resolution_safety_timer = None;
             rsm.round_number += 1;
             debug_assert!(
                 rsm.round_number >= 1,
