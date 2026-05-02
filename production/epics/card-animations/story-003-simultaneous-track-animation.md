@@ -1,7 +1,7 @@
 # Story 003: Simultaneous Transform controller animation
 
 > **Epic**: Card Animations
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -29,8 +29,8 @@
 
 *From GDD `design/gdd/card-animations.md`, scoped to this story:*
 
-- [ ] **CA-15** — GIVEN a unit entity needs simultaneous REPEL displacement (`Tween<Transform>`) and placement-reveal flip (`SpriteColorLens` + `TransformScaleXLens`), WHEN both tweens are spawned, THEN the relevant `TweenAnim` controllers exist simultaneously and are in `PlaybackState::Playing` after one tick. **[BLOCKING]**
-- [ ] **CA-18** — GIVEN a unit entity at `Transform::IDENTITY` requires two simultaneous `Tween<Transform>` animations implemented as separate `TweenAnim` controller entities targeting the unit via `AnimTarget::component::<Transform>(target)` (tween A: X 0→100, 600 ms via X-only translation lens; tween B: Y 0→60, 600 ms via Y-only translation lens), WHEN `Time<Virtual>` is advanced by 16 ms and `App::update()` runs, THEN: (a) exactly two `TweenAnim` controllers target the unit's `Transform` and both are in `PlaybackState::Playing`, AND (b) `Transform.translation.x` is in range (0.0, 100.0) exclusive, AND (c) `Transform.translation.y` is in range (0.0, 60.0) exclusive. **[BLOCKING]**
+- [x] **CA-15** — GIVEN a unit entity needs simultaneous REPEL displacement (`Tween<Transform>`) and placement-reveal flip (`SpriteColorLens` + `TransformScaleXLens`), WHEN both tweens are spawned, THEN the relevant `TweenAnim` controllers exist simultaneously and are in `PlaybackState::Playing` after one tick. **[BLOCKING]**
+- [x] **CA-18** — GIVEN a unit entity at `Transform::IDENTITY` requires two simultaneous `Tween<Transform>` animations implemented as separate `TweenAnim` controller entities targeting the unit via `AnimTarget::component::<Transform>(target)` (tween A: X 0→100, 600 ms via X-only translation lens; tween B: Y 0→60, 600 ms via Y-only translation lens), WHEN `Time<Virtual>` is advanced by 16 ms and `App::update()` runs, THEN: (a) exactly two `TweenAnim` controllers target the unit's `Transform` and both are in `PlaybackState::Playing`, AND (b) `Transform.translation.x` is in range (0.0, 100.0) exclusive, AND (c) `Transform.translation.y` is in range (0.0, 60.0) exclusive. **[BLOCKING]**
 
 ---
 
@@ -83,7 +83,7 @@
 **Required evidence**:
 - Logic: `tests/unit/card-animations/tracks_animation_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing via `cargo test -p client --test card_animations_tracks_animation_test`
 
 ---
 
@@ -91,3 +91,11 @@
 
 - Depends on: [Story 002](story-002-tween-cancel-replace-lifecycle.md) DONE (cancel-replace contract established); OQ-CA-01 resolved (`PlaybackState` test API); OQ-CA-02 resolved (`Tracks<T>` removed, independent controller design selected)
 - Unlocks: None directly (enables REPEL/ATTRACT displacement animation implementation)
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 2/2 passing
+**Deviations**: None blocking. Advisory only - `TR-CAN-004` registry text is broader than this story's scoped CA-15/CA-18 checks; this closure verifies the same-component parallel controller slice required by the story and current GDD Rule C-7.
+**Test Evidence**: Logic test file at `tests/unit/card-animations/tracks_animation_test.rs`; `cargo test -p client --test card_animations_tracks_animation_test` passed 4/4. `cargo fmt -p client -- --check` passed. `cargo check -p client` passed. Boundary grep found no `Tracks<`, legacy event APIs, direct S2C readers, or forbidden bundle APIs in the checked card animation paths.
+**Code Review**: Skipped - Lean mode.

@@ -1137,3 +1137,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no RSM Story 005 row exists in `production/sprint-status.yaml`.
 - Next recommended: RSM Story 006 Network Dispatch Wiring (`production/epics/round-state-machine/story-006-network-dispatch-wiring.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-02
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-animations/story-003-simultaneous-track-animation.md` - Story 003: Simultaneous Transform controller animation
+- Criteria: 2/2 passing; CA-15 and CA-18 covered by `tests/unit/card-animations/tracks_animation_test.rs`.
+- Test Evidence: `cargo test -p client --test card_animations_tracks_animation_test` passed 4/4. `cargo fmt -p client -- --check` passed. `cargo check -p client` passed.
+- Verification: `client/src/card_animations/animators.rs` spawns separate `TweenAnim` controller entities with `AnimTarget::component::<Transform>` and `AnimTarget::component::<Sprite>`; `client/src/card_animations/lenses.rs` provides X-only and Y-only translation lenses for same-`Transform` parallelism.
+- Notes: No blocking GDD or ADR deviation found. Advisory only - `TR-CAN-004` registry text is broader than this story's scoped CA-15/CA-18 checks. Lean mode skipped external QA/code-review gates.
+- Tech debt logged: None
+- Sprint status: Unchanged; no `CARD-ANIM-003` row exists in `production/sprint-status.yaml`.
+- Next recommended: Card Animations Story 005 placement reveal parallelism (`production/epics/card-animations/story-005-placement-reveal-parallelism.md`) or Story 007 damage number lifecycle (`production/epics/card-animations/story-007-damage-number-lifecycle.md`) if those implemented branches need formal closure.
