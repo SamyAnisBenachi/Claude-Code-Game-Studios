@@ -77,6 +77,7 @@ fn all_domain_messages_are_registered_and_writable() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(CardAnimationsPlugin);
+    let card = app.world_mut().spawn_empty().id();
 
     app.world_mut()
         .resource_mut::<Messages<PlacementRevealAnimReady>>()
@@ -86,7 +87,11 @@ fn all_domain_messages_are_registered_and_writable() {
         .write(ObjectiveDestroyedAnimReady);
     app.world_mut()
         .resource_mut::<Messages<DamageNumberSpawnRequested>>()
-        .write(DamageNumberSpawnRequested);
+        .write(DamageNumberSpawnRequested {
+            target: card,
+            damage_value: 15,
+            event_id: 0,
+        });
     app.world_mut()
         .resource_mut::<Messages<BoardRebuildRequested>>()
         .write(BoardRebuildRequested);
@@ -111,7 +116,6 @@ fn all_domain_messages_are_registered_and_writable() {
     app.world_mut()
         .resource_mut::<Messages<TimerBarEaseRequested>>()
         .write(TimerBarEaseRequested::default());
-    let card = app.world_mut().spawn_empty().id();
     app.world_mut()
         .resource_mut::<Messages<HandCardDragStarted>>()
         .write(HandCardDragStarted { card });

@@ -76,5 +76,9 @@ name = "card_animations_objective_stagger_test"
 path = "../tests/unit/card-animations/objective_stagger_test.rs"
 
 [[test]]
+name = "card_animations_damage_number_test"
+path = "../tests/unit/card-animations/damage_number_test.rs"
+
+[[test]]
 name = "card_animations_input_gating_test"
 path = "../tests/integration/card-animations/input_gating_test.rs"

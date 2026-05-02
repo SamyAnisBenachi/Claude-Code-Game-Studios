@@ -8,15 +8,22 @@ use super::{events::GroupDrainedSignal, make_tween_anim};
 
 const DEFAULT_PRE_ANIMATION_PAUSE_MS: u64 = 400;
 const DEFAULT_INTER_STEP_PAUSE_MS: u64 = 150;
+const DEFAULT_RESOLUTION_SUB_STEP_DURATION_MS: u64 = 600;
 const DEFAULT_OBJECTIVE_REVEAL_MS: u64 = 400;
 const DEFAULT_STAGGER_CADENCE_MS: u64 = 100;
+const DEFAULT_DAMAGE_NUMBER_FLOAT_TWEEN_MS: u64 = 500;
+const DEFAULT_DAMAGE_NUMBER_FADE_TWEEN_MS: u64 = 500;
+const DAMAGE_NUMBER_BUDGET_BUFFER_MS: u64 = 50;
 
 #[derive(Resource, Clone, Copy, Debug, Eq, PartialEq)]
 pub struct AnimationTimingConfig {
     pub pre_animation_pause_ms: u64,
     pub inter_step_pause_ms: u64,
+    pub resolution_sub_step_duration_ms: u64,
     pub objective_reveal_ms: u64,
     pub stagger_cadence_ms: u64,
+    pub damage_number_float_tween_ms: u64,
+    pub damage_number_fade_tween_ms: u64,
 }
 
 impl Default for AnimationTimingConfig {
@@ -24,13 +31,46 @@ impl Default for AnimationTimingConfig {
         Self {
             pre_animation_pause_ms: DEFAULT_PRE_ANIMATION_PAUSE_MS,
             inter_step_pause_ms: DEFAULT_INTER_STEP_PAUSE_MS,
+            resolution_sub_step_duration_ms: DEFAULT_RESOLUTION_SUB_STEP_DURATION_MS,
             objective_reveal_ms: DEFAULT_OBJECTIVE_REVEAL_MS,
             stagger_cadence_ms: DEFAULT_STAGGER_CADENCE_MS,
+            damage_number_float_tween_ms: DEFAULT_DAMAGE_NUMBER_FLOAT_TWEEN_MS,
+            damage_number_fade_tween_ms: DEFAULT_DAMAGE_NUMBER_FADE_TWEEN_MS,
         }
     }
 }
 
 impl AnimationTimingConfig {
+    pub fn assert_damage_number_budget(self) {
+        let despawn_delay_ms = self.damage_number_despawn_delay_ms();
+        assert!(
+            despawn_delay_ms + DAMAGE_NUMBER_BUDGET_BUFFER_MS
+                < self.resolution_sub_step_duration_ms,
+            "damage number lifecycle budget invalid: max(float_tween_duration_ms={}, fade_tween_duration_ms={}) + {}ms must be strictly less than resolution_sub_step_duration_ms={}",
+            self.damage_number_float_tween_ms,
+            self.damage_number_fade_tween_ms,
+            DAMAGE_NUMBER_BUDGET_BUFFER_MS,
+            self.resolution_sub_step_duration_ms
+        );
+    }
+
+    pub fn damage_number_float_duration(self) -> Duration {
+        Duration::from_millis(self.damage_number_float_tween_ms)
+    }
+
+    pub fn damage_number_fade_duration(self) -> Duration {
+        Duration::from_millis(self.damage_number_fade_tween_ms)
+    }
+
+    pub fn damage_number_despawn_delay(self) -> Duration {
+        Duration::from_millis(self.damage_number_despawn_delay_ms())
+    }
+
+    pub fn damage_number_despawn_delay_ms(self) -> u64 {
+        self.damage_number_float_tween_ms
+            .max(self.damage_number_fade_tween_ms)
+    }
+
     fn pre_animation_pause(self) -> Duration {
         Duration::from_millis(self.pre_animation_pause_ms)
     }

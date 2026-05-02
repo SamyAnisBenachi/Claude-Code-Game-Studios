@@ -6,8 +6,22 @@ pub struct PlacementRevealAnimReady;
 #[derive(Message, Clone, Debug, Default, PartialEq)]
 pub struct ObjectiveDestroyedAnimReady;
 
-#[derive(Message, Clone, Debug, Default, PartialEq)]
-pub struct DamageNumberSpawnRequested;
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DamageNumberSpawnRequested {
+    pub target: Entity,
+    pub damage_value: u32,
+    pub event_id: u32,
+}
+
+impl Default for DamageNumberSpawnRequested {
+    fn default() -> Self {
+        Self {
+            target: Entity::PLACEHOLDER,
+            damage_value: 0,
+            event_id: 0,
+        }
+    }
+}
 
 #[derive(Message, Clone, Debug, Default, PartialEq)]
 pub struct BoardRebuildRequested;

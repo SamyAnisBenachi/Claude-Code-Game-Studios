@@ -1,4 +1,5 @@
 pub mod animators;
+pub mod damage_numbers;
 pub mod events;
 pub mod input_gating;
 pub mod lenses;
@@ -9,6 +10,10 @@ use bevy_tweening::{AnimationSystem, TweenAnim, TweeningPlugin};
 
 pub use animators::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, PlacementPhaseAnimator,
+};
+pub use damage_numbers::{
+    damage_number_jitter, despawn_damage_numbers_after_timer, spawn_damage_numbers, DamageNumber,
+    DespawnAfter, DAMAGE_NUMBER_JITTER_TABLE,
 };
 pub use events::*;
 pub use input_gating::{
@@ -31,6 +36,8 @@ pub struct CardAnimationsPlugin;
 
 impl Plugin for CardAnimationsPlugin {
     fn build(&self, app: &mut App) {
+        AnimationTimingConfig::default().assert_damage_number_budget();
+
         if !app.is_plugin_added::<TweeningPlugin>() {
             app.add_plugins(TweeningPlugin);
         }
@@ -64,6 +71,9 @@ impl Plugin for CardAnimationsPlugin {
             .add_systems(
                 Update,
                 (
+                    (despawn_damage_numbers_after_timer, spawn_damage_numbers)
+                        .chain()
+                        .before(AnimationSystem::AnimationUpdate),
                     (
                         timer_bar_ease_system,
                         hand_card_drag_start_system,
@@ -85,8 +95,10 @@ impl Plugin for CardAnimationsPlugin {
 }
 
 fn cancel_board_rebuild_tweens(
+    mut commands: Commands,
     mut rebuilds: MessageReader<BoardRebuildRequested>,
     mut animators: Query<&mut TweenAnim>,
+    damage_numbers: Query<Entity, With<DamageNumber>>,
     mut queue: ResMut<AnimQueue>,
     mut staged_objectives: ResMut<StagedObjectiveRevealQueue>,
     mut pending_objectives: ResMut<PendingObjectiveDestroyedEvents>,
@@ -98,6 +110,10 @@ fn cancel_board_rebuild_tweens(
     queue.reset();
     staged_objectives.clear();
     pending_objectives.clear();
+
+    for entity in &damage_numbers {
+        commands.entity(entity).despawn();
+    }
 
     for mut animator in &mut animators {
         if let Err(error) = cancel_tween_anim_in_place(&mut animator) {
