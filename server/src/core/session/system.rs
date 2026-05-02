@@ -145,7 +145,7 @@ pub fn f4_session_ready(
     now: f64,
     lobby_deadline: LobbyDeadline,
 ) -> bool {
-    all_slots_filled(slots) && all_classes_confirmed(slots, selections) && now < lobby_deadline.0
+    all_slots_filled(slots) && all_classes_confirmed(slots, selections) && now <= lobby_deadline.0
 }
 
 pub fn all_slots_filled(slots: &SessionSlots) -> bool {

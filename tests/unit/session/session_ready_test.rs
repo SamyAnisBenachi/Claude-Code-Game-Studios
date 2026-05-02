@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use server::core::rsm::{RoundPhase, RoundState, RsmNetworkOutbox, RsmPlugin};
 use server::core::session::{
-    ClassSelections, GameSessionPlugin, LobbyDeadline, LobbyHeartbeats, LobbyState, SessionConfig,
-    SessionSlot, SessionSlots,
+    f4_session_ready, ClassSelections, GameSessionPlugin, LobbyDeadline, LobbyHeartbeats,
+    LobbyState, SessionConfig, SessionSlot, SessionSlots,
 };
 use server::foundation::rng::ServerRng;
 use shared::card::ClassId;
@@ -56,6 +56,19 @@ fn ready_app() -> App {
         (player(2), 0.0),
     ])));
     app
+}
+
+#[test]
+fn test_session_ready_f4_true_on_exact_lobby_deadline() {
+    let slots = ready_slots();
+    let selections = ready_selections();
+
+    assert!(f4_session_ready(
+        &slots,
+        &selections,
+        1.0,
+        LobbyDeadline(1.0)
+    ));
 }
 
 #[test]
