@@ -129,6 +129,13 @@ None currently tracked here.
   EventReader/EventWriter/Events< in touched session/RSM/network paths, and
   `git diff --check HEAD~1..HEAD`. Scope is teardown only; reconnect snapshot
   schema/building remains GSS-007/HUD-008 unblock work.
+- OBJ-002: Fake Assignment and Config Guards implemented on branch
+  `work/objective-002-fake-assignment-config-guards` at `24bf21b`; root
+  cherry-picked and amended it into `main` at `536ccc8`. Root checks passed
+  `cargo fmt -p server -- --check`, `cargo test -p server --test
+  fake_assignment_test --test objective_state_test` 9/9, `cargo check
+  --workspace`, and `git diff --check HEAD~1..HEAD`. Scope is objective fake
+  assignment/config validation only; no protocol or presentation files touched.
 ## Recently Closed
 
 - CARD-ANIM-005: Placement Reveal Parallelism implemented locally on branch
@@ -373,8 +380,8 @@ Batch launched:
 - GSS-006: integrated, pending story-done.
 
 Active implementation workers by default-launch rule:
-- OBJ-002: launched after HUD-010 closure prompt; expected branch
-  `work/objective-002-fake-assignment-config-guards`.
+- OBJ-002: integrated at `536ccc8`; pending serialized story-done after current
+  closure queue.
 - PRISM-004: launched after PRISM-003 closure; expected branch
   `work/prism-004-hand-full-network`.
 - HAND-UI-005: launched after HUD-010 closure prompt; expected branch
