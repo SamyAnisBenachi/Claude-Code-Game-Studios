@@ -1,3 +1,4 @@
+use super::events::RsmNetworkOutbox;
 use super::events::{
     AbortAuction, AuctionPhaseEntered, AuctionSettled, BeginResolution, BroadcastPhaseChanged,
     DraftReadySignal, DraftStarted, GameOverEmitted, LobbyComplete, PlacementPhaseEntered,
@@ -8,10 +9,13 @@ use super::state::{
     GameOverRequest, PendingPhaseAdvance, PhaseAdvanceRequest, RoundPhase, RoundState,
 };
 use crate::core::objective_contract::ObjectiveCounters;
-use crate::core::session::{PlayerConnectionMap, PlayerSessions, SessionConfig, SessionReady};
+use crate::core::session::{
+    LobbyHeartbeats, PlayerConnectionMap, PlayerSessions, SessionConfig, SessionReady,
+};
+use crate::foundation::rng::ServerRng;
 use bevy::prelude::*;
 use lightyear::prelude::{Connected, Disconnected, RemoteId};
-use shared::protocol::{DraftPhase, GameOverReason};
+use shared::protocol::{DraftPhase, GameOverReason, S2CPhaseChanged};
 use shared::session::PlayerId;
 
 pub fn is_auction_round(round_number: u32) -> bool {
@@ -227,10 +231,14 @@ pub fn tick_rsm_timers(
 
 pub fn on_session_ready(
     _trigger: On<SessionReady>,
+    mut commands: Commands,
     mut rsm: ResMut<RoundState>,
-    session: Option<Res<SessionConfig>>,
+    session: Res<SessionConfig>,
+    _rng: Res<ServerRng>,
     config: Option<Res<crate::foundation::config::GameConfig>>,
+    lobby_heartbeats: Option<Res<LobbyHeartbeats>>,
     mut sessions: Option<ResMut<PlayerSessions>>,
+    mut network_outbox: Option<ResMut<RsmNetworkOutbox>>,
     mut lobby_complete: MessageWriter<LobbyComplete>,
     mut draft_started: MessageWriter<DraftStarted>,
     mut shop_refresh: MessageWriter<ShopRefreshTriggered>,
@@ -241,6 +249,7 @@ pub fn on_session_ready(
         return;
     }
 
+    let session = Some(session);
     enter_draft_initial(
         &mut rsm,
         &session,
@@ -252,6 +261,18 @@ pub fn on_session_ready(
         &mut auction_entered,
         &mut broadcast,
     );
+
+    if lobby_heartbeats.is_some() {
+        commands.remove_resource::<LobbyHeartbeats>();
+    }
+
+    if let Some(outbox) = network_outbox.as_deref_mut() {
+        outbox.push_phase_changed(S2CPhaseChanged {
+            phase: protocol_round_phase(rsm.phase),
+            round_number: rsm.round_number,
+            timer_duration_ms: draft_timer_ms(DraftPhase::Initial, &config),
+        });
+    }
 }
 
 pub fn advance_phase(
@@ -524,6 +545,18 @@ fn draft_timer_ms(
 
 fn seconds_to_ms(seconds: u32) -> u32 {
     seconds.saturating_mul(1000)
+}
+
+fn protocol_round_phase(phase: RoundPhase) -> shared::protocol::RoundPhase {
+    match phase {
+        RoundPhase::Lobby => shared::protocol::RoundPhase::Lobby,
+        RoundPhase::DraftInitial => shared::protocol::RoundPhase::DraftInitial,
+        RoundPhase::DraftAuction => shared::protocol::RoundPhase::DraftAuction,
+        RoundPhase::DraftShop => shared::protocol::RoundPhase::DraftShop,
+        RoundPhase::Placement => shared::protocol::RoundPhase::Placement,
+        RoundPhase::Resolution => shared::protocol::RoundPhase::Resolution,
+        RoundPhase::GameOver => shared::protocol::RoundPhase::GameOver,
+    }
 }
 
 fn once_timer(seconds: u32) -> Timer {

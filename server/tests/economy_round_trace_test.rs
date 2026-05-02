@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use server::core::economy::{EconomyPlugin, InterestSnapshots, PlayerEconomies, S2CGoldUpdate};
-use server::core::rsm::{DraftStarted, RsmPlugin, SessionReady};
-use server::core::session::SessionConfig;
+use server::core::rsm::{DraftStarted, RsmPlugin};
+use server::core::session::{GameSessionPlugin, SessionConfig, SessionReady};
 use server::foundation::config::GameConfig;
+use server::foundation::rng::ServerRng;
 use shared::card::ClassId;
 use shared::protocol::{DraftPhase, GameMode};
 use shared::session::PlayerId;
@@ -47,9 +48,11 @@ fn test_economy_round_trace_rounds_one_to_three() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(RsmPlugin);
+    app.add_plugins(GameSessionPlugin);
     app.add_plugins(EconomyPlugin);
     app.insert_resource(GameConfig(shared::config::GameConfig::default()));
     app.insert_resource(session_config(&players));
+    app.insert_resource(ServerRng::new());
 
     app.world_mut().trigger(SessionReady);
     app.update();

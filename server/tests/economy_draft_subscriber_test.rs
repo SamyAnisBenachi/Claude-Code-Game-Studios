@@ -5,9 +5,10 @@ use server::core::economy::{
     EconomyPlugin, InterestSnapshots, PlayerEconomies, PlayerEconomy, S2CGoldBroadcast,
     S2CGoldUpdate,
 };
-use server::core::rsm::{DraftStarted, RsmPlugin, SessionReady};
-use server::core::session::SessionConfig;
+use server::core::rsm::{DraftStarted, RsmPlugin};
+use server::core::session::{GameSessionPlugin, SessionConfig, SessionReady};
 use server::foundation::config::GameConfig;
+use server::foundation::rng::ServerRng;
 use shared::card::ClassId;
 use shared::protocol::{DraftPhase, GameMode};
 use shared::session::PlayerId;
@@ -47,9 +48,11 @@ fn app_with_economy(players: &[PlayerId]) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(RsmPlugin);
+    app.add_plugins(GameSessionPlugin);
     app.add_plugins(EconomyPlugin);
     app.insert_resource(GameConfig(shared::config::GameConfig::default()));
     app.insert_resource(session_config(players));
+    app.insert_resource(ServerRng::new());
     app
 }
 
@@ -84,12 +87,13 @@ fn test_economy_draft_initialises_players_on_session_ready() {
     let mut app = app_with_economy(&players);
 
     app.world_mut().trigger(SessionReady);
+    app.update();
 
     let economies = app.world().resource::<PlayerEconomies>();
     for player in players {
         let economy = economies.0.get(&player).expect("player economy exists");
         assert_eq!(economy.gold, 5);
-        assert_eq!(economy.current_mana, 0);
+        assert_eq!(economy.current_mana, 1);
         assert_eq!(economy.reserve_mana, 0);
         assert_eq!(economy.mana_cap, 10);
         assert_eq!(economy.reserved_gold, 0);

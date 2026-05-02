@@ -3,10 +3,12 @@
 use bevy::prelude::*;
 use shared::card::ClassId;
 
+use crate::core::rsm::{advance_phase, on_session_ready};
 use crate::core::session::{
-    handle_confirm_class, handle_create_room, handle_join_room, handle_select_class,
-    ActiveSessions, ClassPreviews, ClassSelections, PlayerConnectionMap, PlayerSessionData,
-    PlayerSessions, RoomSessions, SessionConfig, SessionReady,
+    evaluate_session_ready, handle_confirm_class, handle_create_room, handle_join_room,
+    handle_select_class, ActiveSessions, ClassPreviews, ClassSelections, PlayerConnectionMap,
+    PlayerSessionData, PlayerSessions, RoomSessions, ServerRngFactory, SessionConfig,
+    SessionNetworkOutbox, SessionSystemSet,
 };
 
 pub struct GameSessionPlugin;
@@ -19,6 +21,8 @@ impl Plugin for GameSessionPlugin {
             .init_resource::<ClassSelections>()
             .init_resource::<PlayerConnectionMap>()
             .init_resource::<RoomSessions>()
+            .init_resource::<ServerRngFactory>()
+            .init_resource::<SessionNetworkOutbox>()
             .add_systems(
                 Update,
                 (
@@ -27,14 +31,20 @@ impl Plugin for GameSessionPlugin {
                     handle_select_class,
                     handle_confirm_class,
                 ),
-            );
+            )
+            .add_systems(
+                Update,
+                evaluate_session_ready
+                    .in_set(SessionSystemSet::LobbyEval)
+                    .before(advance_phase),
+            )
+            .add_observer(on_session_ready);
     }
 }
 
-// Called by DraftStarted { phase: Initial } subscriber - NOT a SessionReady observer.
-// Wired up in the class-selection story (S3-03) via RSM-owned DraftStarted signal.
+// Called by a future DraftStarted { phase: Initial } subscriber - NOT a
+// SessionReady observer. RSM is the only SessionReady observer path.
 pub fn initialise_player_sessions(
-    _trigger: On<SessionReady>,
     session: Res<SessionConfig>,
     mut sessions: ResMut<PlayerSessions>,
 ) {

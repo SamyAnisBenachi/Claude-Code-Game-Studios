@@ -98,10 +98,11 @@ fn test_session_ready_is_zero_sized_observer_trigger() {
 }
 
 #[test]
-fn test_session_ready_doc_comment_contains_grep_gate_literal() {
+fn test_session_ready_doc_comment_keeps_single_observer_registration_literal() {
     let source = include_str!("../src/core/session/events.rs");
 
-    assert!(source.contains("EventReader<SessionReady> will silently never fire"));
+    assert!(source.contains("app.observe(on_session_ready)"));
+    assert!(!source.contains("EventReader<SessionReady>"));
 }
 
 #[test]

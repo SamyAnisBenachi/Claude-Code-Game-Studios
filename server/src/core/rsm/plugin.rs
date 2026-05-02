@@ -6,8 +6,8 @@ use super::events::{
 };
 use super::state::{PendingPhaseAdvance, RoundState};
 use super::transitions::{
-    advance_phase, on_lightyear_connected, on_lightyear_disconnected, on_session_ready,
-    rsm_input_reader, tick_disconnect_timers, tick_rsm_timers,
+    advance_phase, on_lightyear_connected, on_lightyear_disconnected, rsm_input_reader,
+    tick_disconnect_timers, tick_rsm_timers,
 };
 use crate::core::objective_contract::ObjectiveCounters;
 use bevy::prelude::*;
@@ -19,6 +19,7 @@ impl Plugin for RsmPlugin {
         app.insert_resource(RoundState::new())
             .init_resource::<PendingPhaseAdvance>()
             .init_resource::<ObjectiveCounters>()
+            .init_resource::<super::events::RsmNetworkOutbox>()
             .add_message::<LobbyComplete>()
             .add_message::<DraftStarted>()
             .add_message::<ShopRefreshTriggered>()
@@ -45,7 +46,6 @@ impl Plugin for RsmPlugin {
                 )
                     .chain(),
             )
-            .add_observer(on_session_ready)
             .add_observer(on_lightyear_connected)
             .add_observer(on_lightyear_disconnected);
     }

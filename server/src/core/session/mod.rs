@@ -17,11 +17,13 @@ pub use snapshot::build_snapshot;
 pub use state::{
     ActiveSessions, ClassPreviews, ClassSelections, LobbyDeadline, LobbyHeartbeats, LobbyState,
     PlayerConnectionMap, PlayerSessionData, PlayerSessions, RoomCode, RoomSession, RoomSessions,
-    SessionId, SessionSlot, SessionSlots, SessionToken, TeamId,
+    SessionId, SessionNetworkOutbox, SessionSlot, SessionSlots, SessionToken, TeamId,
 };
 pub use system::{
-    confirm_class, create_room, generate_unique_room_code, handle_confirm_class,
-    handle_create_room, handle_join_room, handle_select_class, initialise_slots, join_room,
-    normalise_room_code, protocol_slots, room_code_from_bytes, select_class, ConfirmClassOutcome,
-    CreateRoomOutcome, JoinRoomOutcome, SelectClassOutcome, ROOM_CODE_LEN,
+    all_classes_confirmed, all_slots_filled, confirm_class, create_room, evaluate_session_ready,
+    f4_session_ready, generate_unique_room_code, handle_confirm_class, handle_create_room,
+    handle_join_room, handle_select_class, initialise_slots, join_room, normalise_room_code,
+    protocol_slots, room_code_from_bytes, select_class, ConfirmClassOutcome, CreateRoomOutcome,
+    JoinRoomOutcome, SelectClassOutcome, ServerRngFactory, ServerRngInitError, SessionSystemSet,
+    ROOM_CODE_LEN,
 };

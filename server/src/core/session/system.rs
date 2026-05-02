@@ -9,19 +9,54 @@ use shared::protocol::{
     self, C2SConfirmClass, C2SCreateRoom, C2SJoinRoom, C2SSelectClass, ConfirmClassRejectedReason,
     CreateRoomRejectedReason, GameMode, JoinRejectedReason, ReliableChannel, S2CClassLocked,
     S2CClassesRevealed, S2CConfirmClassRejected, S2CCreateRoomRejected, S2CJoinAck,
-    S2CJoinRejected, S2CRoomCreated, S2CSlotUpdated,
+    S2CJoinRejected, S2CRoomCreated, S2CSessionCancelled, S2CSlotUpdated,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
 
 use crate::core::session::{
-    ActiveSessions, ClassPreviews, ClassSelections, LobbyDeadline, LobbyHeartbeats, LobbyState,
-    PlayerConnectionMap, RoomCode, RoomSession, RoomSessions, SessionId, SessionSlot, SessionSlots,
+    build_session_config, ActiveSessions, ClassPreviews, ClassSelections, LobbyDeadline,
+    LobbyHeartbeats, LobbyState, PlayerConnectionMap, RoomCode, RoomSession, RoomSessions,
+    SessionId, SessionNetworkOutbox, SessionReady, SessionSlot, SessionSlots,
 };
 use crate::foundation::config::GameConfig;
+use crate::foundation::rng::ServerRng;
 
 pub const ROOM_CODE_LEN: usize = 6;
 const ROOM_CODE_ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SessionSystemSet {
+    LobbyEval,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ServerRngInitError;
+
+#[derive(Resource, Clone, Copy)]
+pub struct ServerRngFactory {
+    factory: fn() -> Result<ServerRng, ServerRngInitError>,
+}
+
+impl ServerRngFactory {
+    pub const fn new(factory: fn() -> Result<ServerRng, ServerRngInitError>) -> Self {
+        Self { factory }
+    }
+
+    pub fn create(self) -> Result<ServerRng, ServerRngInitError> {
+        (self.factory)()
+    }
+}
+
+impl Default for ServerRngFactory {
+    fn default() -> Self {
+        Self::new(default_server_rng)
+    }
+}
+
+fn default_server_rng() -> Result<ServerRng, ServerRngInitError> {
+    Ok(ServerRng::new())
+}
 
 #[derive(Debug, Clone)]
 pub enum CreateRoomOutcome {
@@ -54,6 +89,75 @@ pub enum ConfirmClassOutcome {
     },
     Rejected(S2CConfirmClassRejected),
     Ignored,
+}
+
+pub fn evaluate_session_ready(
+    mut commands: Commands,
+    time: Res<Time>,
+    lobby_state: Option<Res<LobbyState>>,
+    slots: Option<Res<SessionSlots>>,
+    selections: Option<Res<ClassSelections>>,
+    deadline: Option<Res<LobbyDeadline>>,
+    rng_factory: Option<Res<ServerRngFactory>>,
+    connections: Option<Res<PlayerConnectionMap>>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
+    mut outbox: Option<ResMut<SessionNetworkOutbox>>,
+) {
+    let (Some(lobby_state), Some(slots), Some(selections), Some(deadline)) =
+        (lobby_state, slots, selections, deadline)
+    else {
+        return;
+    };
+
+    if *lobby_state != LobbyState::LobbyWaiting {
+        return;
+    }
+
+    if !f4_session_ready(&slots, &selections, time.elapsed().as_secs_f64(), *deadline) {
+        return;
+    }
+
+    let session_config = build_session_config(&slots, &selections);
+    let rng_factory = rng_factory.as_deref().copied().unwrap_or_default();
+    let Ok(server_rng) = rng_factory.create() else {
+        commands.insert_resource(LobbyState::LobbyCancelled);
+        broadcast_session_cancelled(
+            &server,
+            sender.as_mut(),
+            connections.as_deref(),
+            outbox.as_deref_mut(),
+            crate::core::session::SessionCancelledReason::RngInitFailure,
+        );
+        return;
+    };
+
+    commands.insert_resource(session_config);
+    commands.insert_resource(server_rng);
+    commands.trigger(SessionReady);
+    commands.remove_resource::<LobbyHeartbeats>();
+    commands.insert_resource(LobbyState::GameActive);
+}
+
+pub fn f4_session_ready(
+    slots: &SessionSlots,
+    selections: &ClassSelections,
+    now: f64,
+    lobby_deadline: LobbyDeadline,
+) -> bool {
+    all_slots_filled(slots) && all_classes_confirmed(slots, selections) && now < lobby_deadline.0
+}
+
+pub fn all_slots_filled(slots: &SessionSlots) -> bool {
+    !slots.0.is_empty() && slots.0.iter().all(|slot| slot.player.is_some())
+}
+
+pub fn all_classes_confirmed(slots: &SessionSlots, selections: &ClassSelections) -> bool {
+    !slots.0.is_empty()
+        && slots.0.iter().all(|slot| match (slot.player, slot.class) {
+            (Some(player), Some(class_id)) => selections.0.get(&player) == Some(&class_id),
+            _ => false,
+        })
 }
 
 /// Sole drainer for `MessageReceiver<C2SCreateRoom>`.
@@ -635,6 +739,54 @@ fn send_join_room_outcome(
             );
         }
     }
+}
+
+fn broadcast_session_cancelled(
+    server: &Query<&Server>,
+    sender: Option<&mut ServerMultiMessageSender>,
+    connections: Option<&PlayerConnectionMap>,
+    outbox: Option<&mut SessionNetworkOutbox>,
+    reason: crate::core::session::SessionCancelledReason,
+) {
+    let message = S2CSessionCancelled {
+        reason: match reason {
+            crate::core::session::SessionCancelledReason::LobbyTimeout => {
+                shared::protocol::SessionCancelledReason::LobbyTimeout
+            }
+            crate::core::session::SessionCancelledReason::PlayerDisconnected
+            | crate::core::session::SessionCancelledReason::HeartbeatTimeout => {
+                shared::protocol::SessionCancelledReason::PlayerDisconnected
+            }
+            crate::core::session::SessionCancelledReason::RngInitFailure => {
+                shared::protocol::SessionCancelledReason::ServerRngFail
+            }
+        },
+    };
+
+    if let Some(outbox) = outbox {
+        outbox.push_session_cancelled(message.clone());
+    }
+
+    let Some(sender) = sender else {
+        return;
+    };
+    let Some(server) = server.single().ok() else {
+        return;
+    };
+    let Some(connections) = connections else {
+        return;
+    };
+
+    let target_peers = connections.0.keys().copied().collect::<Vec<_>>();
+    if target_peers.is_empty() {
+        return;
+    }
+
+    let _ = sender.send::<S2CSessionCancelled, ReliableChannel>(
+        &message,
+        server,
+        &NetworkTarget::Only(target_peers),
+    );
 }
 
 fn peer_for_player(connections: &HashMap<PeerId, PlayerId>, player_id: PlayerId) -> Option<PeerId> {

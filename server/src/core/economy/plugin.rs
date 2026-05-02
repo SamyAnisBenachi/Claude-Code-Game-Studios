@@ -5,8 +5,7 @@ use bevy::prelude::*;
 
 use crate::core::economy::state::{InterestSnapshots, PlayerEconomies};
 use crate::core::economy::system::{
-    initialise_player_economies, on_draft_started, on_resolution_complete, EconomySystemSet,
-    S2CGoldBroadcast, S2CGoldUpdate,
+    on_draft_started, on_resolution_complete, EconomySystemSet, S2CGoldBroadcast, S2CGoldUpdate,
 };
 use crate::core::rsm::{advance_phase, rsm_input_reader};
 use crate::core::session::SessionConfig;
@@ -19,7 +18,6 @@ impl Plugin for EconomyPlugin {
             .init_resource::<InterestSnapshots>()
             .add_message::<S2CGoldUpdate>()
             .add_message::<S2CGoldBroadcast>()
-            .add_observer(initialise_player_economies)
             .add_systems(Update, on_draft_started.after(advance_phase))
             .add_systems(
                 Update,

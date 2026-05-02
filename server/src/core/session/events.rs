@@ -4,7 +4,7 @@ use bevy::prelude::Event;
 
 /// Fired once when all lobby conditions are satisfied.
 ///
-/// DELIVERY: Observer trigger (same-frame). NOT a buffered Event. Subscribe via `app.observe(on_session_ready)`. Adding EventReader<SessionReady> will silently never fire.
+/// DELIVERY: Observer trigger (same-frame). NOT a buffered Event. Subscribe via `app.observe(on_session_ready)`.
 ///
 /// Bevy 0.18 code registers observers with `App::add_observer(...)`; the
 /// `app.observe` wording above is retained for the S3-01/ADR-012 grep gate.

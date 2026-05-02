@@ -4,10 +4,8 @@
 use super::state::RoundPhase;
 use bevy::prelude::*;
 use shared::card::CardId;
-use shared::protocol::{DraftPhase, GameOverReason};
+use shared::protocol::{DraftPhase, GameOverReason, S2CPhaseChanged};
 use shared::session::PlayerId;
-
-pub use crate::core::session::SessionReady;
 
 #[derive(Message, Clone, Debug)]
 pub struct LobbyComplete;
@@ -70,6 +68,21 @@ pub struct BroadcastPhaseChanged {
     pub phase: RoundPhase,
     pub round: u32,
     pub timer_ms: u32,
+}
+
+#[derive(Resource, Default, Clone, Debug)]
+pub struct RsmNetworkOutbox {
+    phase_changed: Vec<S2CPhaseChanged>,
+}
+
+impl RsmNetworkOutbox {
+    pub fn push_phase_changed(&mut self, message: S2CPhaseChanged) {
+        self.phase_changed.push(message);
+    }
+
+    pub fn phase_changed(&self) -> &[S2CPhaseChanged] {
+        &self.phase_changed
+    }
 }
 
 #[derive(Message, Clone, Debug)]

@@ -19,6 +19,5 @@ pub use state::{InterestSnapshots, PlayerEconomies, PlayerEconomy, SpendError};
 // Scaffold API consumed by downstream stories.
 #[allow(unused_imports)]
 pub use system::{
-    initialise_player_economies, on_draft_started, on_resolution_complete, EconomySystemSet,
-    S2CGoldBroadcast, S2CGoldUpdate,
+    on_draft_started, on_resolution_complete, EconomySystemSet, S2CGoldBroadcast, S2CGoldUpdate,
 };

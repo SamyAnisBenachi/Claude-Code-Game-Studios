@@ -114,6 +114,22 @@ name = "class_reveal_test"
 path = "../tests/unit/session/class_reveal_test.rs"
 
 [[test]]
+name = "session_ready_test"
+path = "../tests/unit/session/session_ready_test.rs"
+
+[[test]]
+name = "single_fire_test"
+path = "../tests/unit/session/single_fire_test.rs"
+
+[[test]]
+name = "rng_init_failure_test"
+path = "../tests/unit/session/rng_init_failure_test.rs"
+
+[[test]]
+name = "lobby_to_draft_initial_test"
+path = "../tests/integration/session/lobby_to_draft_initial_test.rs"
+
+[[test]]
 name = "rsm_win_condition_test"
 path = "../tests/unit/rsm/rsm_win_condition_test.rs"
 

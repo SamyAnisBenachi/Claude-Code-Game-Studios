@@ -4,10 +4,11 @@ use std::time::Duration;
 use bevy::prelude::*;
 use server::core::rsm::{
     AuctionSettled, BroadcastPhaseChanged, DraftReadySignal, DraftStarted, PlacementSubmitted,
-    ResolutionComplete, ResolutionPhaseEntered, RoundPhase, RoundState, RsmPlugin, SessionReady,
+    ResolutionComplete, ResolutionPhaseEntered, RoundPhase, RoundState, RsmPlugin,
 };
-use server::core::session::SessionConfig;
+use server::core::session::{GameSessionPlugin, SessionConfig, SessionReady};
 use server::foundation::config::GameConfig;
+use server::foundation::rng::ServerRng;
 use shared::card::{CardId, ClassId};
 use shared::protocol::{DraftPhase, GameMode};
 use shared::session::PlayerId;
@@ -37,8 +38,10 @@ fn app_with_rsm(phase: RoundPhase, round_number: u32) -> App {
     let players = [player(1), player(2)];
     let mut app = App::new();
     app.add_plugins(RsmPlugin);
+    app.add_plugins(GameSessionPlugin);
     app.insert_resource(GameConfig(shared::config::GameConfig::default()));
     app.insert_resource(session_config(&players));
+    app.insert_resource(ServerRng::new());
     app.insert_resource(Time::<()>::default());
     *app.world_mut().resource_mut::<RoundState>() = RoundState {
         phase,

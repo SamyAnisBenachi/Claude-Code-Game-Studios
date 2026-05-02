@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use bevy::prelude::Resource;
 use lightyear::prelude::PeerId;
 use shared::card::ClassId;
+use shared::protocol::S2CSessionCancelled;
 use shared::session::PlayerId;
 use uuid::Uuid;
 
@@ -109,6 +110,22 @@ pub struct LobbyDeadline(pub f64);
 
 #[derive(Debug, Clone, PartialEq, Resource)]
 pub struct LobbyHeartbeats(pub HashMap<PlayerId, f64>);
+
+/// Testable network dispatch log for Game Session System S2C messages.
+#[derive(Debug, Default, Clone, Resource)]
+pub struct SessionNetworkOutbox {
+    session_cancelled: Vec<S2CSessionCancelled>,
+}
+
+impl SessionNetworkOutbox {
+    pub fn push_session_cancelled(&mut self, message: S2CSessionCancelled) {
+        self.session_cancelled.push(message);
+    }
+
+    pub fn session_cancelled(&self) -> &[S2CSessionCancelled] {
+        &self.session_cancelled
+    }
+}
 
 /// Server-level one-active-session guard.
 ///

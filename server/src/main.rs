@@ -107,10 +107,6 @@ fn main() {
     // Objective System - replicated objective HP plus server-only identities.
     app.add_plugins(feature::objective::ObjectivePlugin);
 
-    // Insert server-only RNG.
-    // ADR-002: unreachable from client/ by crate isolation.
-    app.insert_resource(foundation::rng::ServerRng::new());
-
     // TODO(Epic 4 — S1-05 Lightyear spike):
     // Add lightyear ServerPlugin with WebSocket transport config.
     // Verify exact plugin name and config struct against Lightyear 0.26 docs

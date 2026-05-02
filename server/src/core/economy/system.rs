@@ -6,7 +6,7 @@ use shared::session::PlayerId;
 
 use crate::core::economy::api;
 use crate::core::economy::state::{InterestSnapshots, PlayerEconomies, PlayerEconomy};
-use crate::core::rsm::{DraftStarted, ResolutionComplete, SessionReady};
+use crate::core::rsm::{DraftStarted, ResolutionComplete};
 use crate::core::session::SessionConfig;
 use crate::foundation::config::GameConfig;
 
@@ -30,26 +30,6 @@ pub struct S2CGoldUpdate {
 pub struct S2CGoldBroadcast {
     pub player: PlayerId,
     pub gold: u32,
-}
-
-pub fn initialise_player_economies(
-    _trigger: On<SessionReady>,
-    session: Res<SessionConfig>,
-    config: Res<GameConfig>,
-    mut economies: ResMut<PlayerEconomies>,
-) {
-    for player in session.players() {
-        economies.0.insert(
-            player,
-            PlayerEconomy {
-                gold: config.starting_gold,
-                current_mana: 0,
-                reserve_mana: 0,
-                mana_cap: config.mana_cap,
-                reserved_gold: 0,
-            },
-        );
-    }
 }
 
 pub fn on_resolution_complete(
@@ -85,9 +65,13 @@ pub fn on_draft_started(
 
     for event in draft_started.read() {
         for player in session.players() {
-            let Some(economy) = economies.0.get_mut(&player) else {
-                continue;
-            };
+            let economy = economies.0.entry(player).or_insert_with(|| PlayerEconomy {
+                gold: config.starting_gold,
+                current_mana: 0,
+                reserve_mana: 0,
+                mana_cap: config.mana_cap,
+                reserved_gold: 0,
+            });
 
             api::apply_mana_ramp(economy, event.round);
 
