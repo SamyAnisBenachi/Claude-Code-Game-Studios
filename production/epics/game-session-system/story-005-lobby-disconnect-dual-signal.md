@@ -24,7 +24,7 @@ If any of these items cannot be confirmed, the `handle_lobby_disconnect` fallbac
 ## Context
 
 **GDD**: `design/gdd/game-session-system.md`
-**Requirement**: TR-GSS-06 (lobby cancel on player disconnect during LOBBY — MVP: immediate cancel)
+**Requirement**: TR-GSS-005 (lobby cancel on player disconnect during LOBBY — MVP: immediate cancel)
 
 **ADR Governing Implementation**: ADR-011 (Reconnect Flow — LOBBY is explicitly out of scope for reconnect-with-grace; any disconnect in LOBBY is immediate cancel), ADR-008 (Lightyear Channel Config — `S2CSessionCancelled` on `ReliableChannel`)
 **ADR Decision Summary**: LOBBY disconnect does not have a grace window at MVP. `OnDisconnected` is the primary cancel signal; `C2SHeartbeat` gap is the fallback. First signal wins — if the session is already `LobbyCancelled`, subsequent cancel attempts are no-ops. `S2CSessionCancelled` is broadcast to all remaining connected session participants.
@@ -37,6 +37,8 @@ If any of these items cannot be confirmed, the `handle_lobby_disconnect` fallbac
 - Required: All session resources (`SessionSlots`, `ClassSelections`, `ClassPreviews`, `LobbyDeadline`, `LobbyHeartbeats`, `LobbyState`) are removed from the world on cancel.
 - Required: `ActiveSessions` map entry for the disconnecting player is removed on cancel.
 - Forbidden: Reconnect-with-grace during LOBBY. This is a post-MVP feature; do not add grace window logic here.
+
+**Performance note**: The added Update-loop work must stay lobby-only and O(players) over current session participants/heartbeats. It must early-return outside LOBBY states and avoid broad world scans so it has no impact on active gameplay phases.
 
 ---
 
