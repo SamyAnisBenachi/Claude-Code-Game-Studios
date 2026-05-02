@@ -1,5 +1,11 @@
+use std::time::Duration;
+
+use bevy::ecs::change_detection::Mut;
+use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
-use bevy_tweening::TweenAnim;
+use bevy_tweening::{
+    lens::Lens, AnimationSystem, PlaybackState, Tween, TweenAnim, TweenState, TweeningPlugin,
+};
 use lightyear::prelude::MessageReceiver;
 use shared::protocol::{RoundPhase, S2CGoldBroadcast, S2CGoldUpdate};
 use shared::session::PlayerId;
@@ -106,12 +112,81 @@ impl Default for GoldDisplayState {
     }
 }
 
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
+pub struct GoldTweenTarget {
+    pub gold: f32,
+    pub reserved_gold: f32,
+    pub is_populated: bool,
+}
+
+impl Default for GoldTweenTarget {
+    fn default() -> Self {
+        Self {
+            gold: 0.0,
+            reserved_gold: 0.0,
+            is_populated: false,
+        }
+    }
+}
+
 #[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ManaDisplayState {
     pub current_mana: u32,
     pub mana_cap: u32,
     pub reserve_mana: u32,
     pub is_populated: bool,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
+pub struct ManaTweenTarget {
+    pub current_mana: f32,
+    pub mana_cap: f32,
+    pub reserve_mana: f32,
+    pub is_populated: bool,
+}
+
+impl Default for ManaTweenTarget {
+    fn default() -> Self {
+        Self {
+            current_mana: 0.0,
+            mana_cap: 0.0,
+            reserve_mana: 0.0,
+            is_populated: false,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct GoldTweenLens {
+    pub start_gold: f32,
+    pub end_gold: f32,
+    pub start_reserved_gold: f32,
+    pub end_reserved_gold: f32,
+}
+
+impl Lens<GoldTweenTarget> for GoldTweenLens {
+    fn lerp(&mut self, mut target: Mut<GoldTweenTarget>, ratio: f32) {
+        target.gold = lerp_f32(self.start_gold, self.end_gold, ratio);
+        target.reserved_gold = lerp_f32(self.start_reserved_gold, self.end_reserved_gold, ratio);
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ManaTweenLens {
+    pub start_current_mana: f32,
+    pub end_current_mana: f32,
+    pub start_mana_cap: f32,
+    pub end_mana_cap: f32,
+    pub start_reserve_mana: f32,
+    pub end_reserve_mana: f32,
+}
+
+impl Lens<ManaTweenTarget> for ManaTweenLens {
+    fn lerp(&mut self, mut target: Mut<ManaTweenTarget>, ratio: f32) {
+        target.current_mana = lerp_f32(self.start_current_mana, self.end_current_mana, ratio);
+        target.mana_cap = lerp_f32(self.start_mana_cap, self.end_mana_cap, ratio);
+        target.reserve_mana = lerp_f32(self.start_reserve_mana, self.end_reserve_mana, ratio);
+    }
 }
 
 #[derive(Message, Debug, Clone)]
@@ -141,6 +216,10 @@ pub struct HudPlugin;
 
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
+        if !app.is_plugin_added::<TweeningPlugin>() {
+            app.add_plugins(TweeningPlugin);
+        }
+
         app.init_state::<ClientState>()
             .init_resource::<CurrentClientPhase>()
             .init_resource::<HudConfig>()
@@ -178,8 +257,12 @@ impl Plugin for HudPlugin {
                         .before(handle_gold_update_system),
                     handle_gold_update_system.in_set(HudSystemSet::MessageDrain),
                     handle_hud_objective_update_system.in_set(HudSystemSet::MessageDrain),
-                    sync_gold_text_system.in_set(HudSystemSet::StateSync),
-                    sync_mana_text_system.in_set(HudSystemSet::StateSync),
+                    sync_gold_text_system
+                        .in_set(HudSystemSet::StateSync)
+                        .after(AnimationSystem::AnimationUpdate),
+                    sync_mana_text_system
+                        .in_set(HudSystemSet::StateSync)
+                        .after(AnimationSystem::AnimationUpdate),
                     sync_scoreboard_dot_layout_system.in_set(HudSystemSet::StateSync),
                 ),
             );
@@ -195,7 +278,13 @@ pub fn hud_phase_transition_system(
     gold_states: Query<&GoldDisplayState>,
     mut gold_texts: Query<&mut Text>,
     mut gold_spans: Query<&mut TextSpan>,
-    mut gold_animators: Query<(Entity, &mut TweenAnim), With<GoldLabelOwner>>,
+    mut numeric_animators: Query<
+        (Entity, &mut TweenAnim),
+        Or<(With<GoldLabelOwner>, With<ManaLabel>)>,
+    >,
+    mut gold_tween_targets: Query<&mut GoldTweenTarget>,
+    mana_states: Query<&ManaDisplayState, With<ManaLabel>>,
+    mut mana_tween_targets: Query<&mut ManaTweenTarget, With<ManaLabel>>,
 ) {
     if !current.is_changed() {
         return;
@@ -261,7 +350,14 @@ pub fn hud_phase_transition_system(
             };
             *mode = HudMode::Frozen;
             set_hud_visible(&entities, &mut visibility);
-            cancel_hud_gold_tweens(&mut commands, &mut gold_animators);
+            snap_numeric_tween_targets(
+                &entities,
+                &gold_states,
+                &mut gold_tween_targets,
+                &mana_states,
+                &mut mana_tween_targets,
+            );
+            cancel_hud_numeric_tweens(&mut commands, &mut numeric_animators);
             sync_gold_label_for_mode(
                 entities.own_gold_parent,
                 entities.own_gold_span,
@@ -413,6 +509,7 @@ fn spawn_mana_label(
             HudEntity,
             ManaLabel,
             ManaDisplayState::default(),
+            ManaTweenTarget::default(),
             Text::new("-- / --"),
             hud_text_font(18.0),
             TextColor(Color::srgb(0.92, 0.94, 0.96)),
@@ -437,6 +534,7 @@ fn spawn_gold_label(
             HudEntity,
             owner,
             GoldDisplayState::default(),
+            GoldTweenTarget::default(),
             Text::new("--g"),
             hud_text_font(18.0),
             TextColor(Color::srgb(0.95, 0.90, 0.70)),
@@ -528,10 +626,18 @@ pub fn drain_gold_update_receiver_system(
 }
 
 pub fn handle_gold_broadcast_system(
+    mut commands: Commands,
     mode: Res<HudMode>,
+    config: Res<HudConfig>,
     player_ids: Option<Res<HudPlayerIds>>,
     mut messages: MessageReader<HudGoldBroadcastMessage>,
-    mut gold_labels: Query<(&GoldLabelOwner, &mut GoldDisplayState)>,
+    mut gold_labels: Query<(
+        Entity,
+        &GoldLabelOwner,
+        &mut GoldDisplayState,
+        &mut GoldTweenTarget,
+        Option<&mut TweenAnim>,
+    )>,
 ) {
     if *mode == HudMode::Frozen {
         drain_hud_gold_broadcast_messages(&mut messages);
@@ -545,15 +651,31 @@ pub fn handle_gold_broadcast_system(
 
     for message in messages.read().map(|message| &message.0) {
         let reserved_gold = clamped_reserved_gold(message);
-        for (owner, mut state) in &mut gold_labels {
+        for (entity, owner, mut state, mut target, animator) in &mut gold_labels {
             match (*owner, message.player_id) {
                 (GoldLabelOwner::Opponent, player_id) if player_id == player_ids.opponent_id => {
                     state.gold = message.gold as f32;
                     state.reserved_gold = reserved_gold;
                     state.is_populated = true;
+                    start_gold_tween(
+                        &mut commands,
+                        entity,
+                        &config,
+                        &state,
+                        &mut target,
+                        animator,
+                    );
                 }
                 (GoldLabelOwner::Local, player_id) if player_id == player_ids.local_id => {
                     state.reserved_gold = reserved_gold;
+                    start_gold_tween(
+                        &mut commands,
+                        entity,
+                        &config,
+                        &state,
+                        &mut target,
+                        animator,
+                    );
                 }
                 _ => {}
             }
@@ -681,10 +803,29 @@ pub fn phase_label_text(phase: RoundPhase) -> Option<&'static str> {
 }
 
 pub fn handle_gold_update_system(
+    mut commands: Commands,
     mode: Res<HudMode>,
+    config: Res<HudConfig>,
     mut messages: MessageReader<HudGoldUpdateMessage>,
-    mut gold_labels: Query<(&GoldLabelOwner, &mut GoldDisplayState)>,
-    mut mana_labels: Query<&mut ManaDisplayState, With<ManaLabel>>,
+    mut gold_labels: Query<
+        (
+            Entity,
+            &GoldLabelOwner,
+            &mut GoldDisplayState,
+            &mut GoldTweenTarget,
+            Option<&mut TweenAnim>,
+        ),
+        Without<ManaLabel>,
+    >,
+    mut mana_labels: Query<
+        (
+            Entity,
+            &mut ManaDisplayState,
+            &mut ManaTweenTarget,
+            Option<&mut TweenAnim>,
+        ),
+        (With<ManaLabel>, Without<GoldDisplayState>),
+    >,
 ) {
     if *mode == HudMode::Frozen {
         drain_hud_gold_update_messages(&mut messages);
@@ -704,15 +845,34 @@ pub fn handle_gold_update_system(
         warn!("HUD: mana_cap=0 received - server invariant violated");
     }
 
-    let Ok(mut mana_state) = mana_labels.single_mut() else {
+    let Ok((mana_entity, mut mana_state, mut mana_target, mana_animator)) =
+        mana_labels.single_mut()
+    else {
         return;
     };
 
-    for (owner, mut state) in &mut gold_labels {
+    for (entity, owner, mut state, mut target, animator) in &mut gold_labels {
         if *owner == GoldLabelOwner::Local {
             apply_gold_update_message(&message, &mut state, &mut mana_state);
+            start_gold_tween(
+                &mut commands,
+                entity,
+                &config,
+                &state,
+                &mut target,
+                animator,
+            );
         }
     }
+
+    start_mana_tween(
+        &mut commands,
+        mana_entity,
+        &config,
+        &mana_state,
+        &mut mana_target,
+        mana_animator,
+    );
 }
 
 fn drain_hud_gold_broadcast_messages(messages: &mut MessageReader<HudGoldBroadcastMessage>) {
@@ -751,19 +911,27 @@ pub fn apply_gold_update_message(
 
 pub fn sync_gold_text_system(
     mode: Res<HudMode>,
-    mut gold_labels: Query<
-        (&GoldDisplayState, &mut Text, Option<&Children>),
-        Changed<GoldDisplayState>,
-    >,
+    mut gold_labels: Query<(
+        &GoldDisplayState,
+        &mut GoldTweenTarget,
+        &mut Text,
+        Option<&Children>,
+        Option<&TweenAnim>,
+    )>,
     mut spans: Query<&mut TextSpan>,
 ) {
-    for (state, mut text, children) in &mut gold_labels {
-        text.0 = format_gold_text(state);
+    for (state, mut target, mut text, children, animator) in &mut gold_labels {
+        if !is_hud_tween_active(animator) {
+            sync_gold_tween_target_to_authoritative(state, &mut target);
+        }
+
+        let display = gold_display_state_from_target(&target);
+        text.0 = format_gold_text(&display);
 
         if let Some(children) = children {
             for child in children.iter() {
                 if let Ok(mut span) = spans.get_mut(child) {
-                    span.0 = format_reserved_gold_span(state, *mode);
+                    span.0 = format_reserved_gold_span(&display, *mode);
                 }
             }
         }
@@ -772,32 +940,45 @@ pub fn sync_gold_text_system(
 
 pub fn sync_mana_text_system(
     mut mana_labels: Query<
-        (&ManaDisplayState, &mut Text),
-        (With<ManaLabel>, Changed<ManaDisplayState>),
+        (
+            &ManaDisplayState,
+            &mut ManaTweenTarget,
+            &mut Text,
+            Option<&TweenAnim>,
+        ),
+        With<ManaLabel>,
     >,
     mut reserve_labels: Query<
         (&mut Text, &mut Visibility),
         (With<ReserveManaLabel>, Without<ManaLabel>),
     >,
 ) {
-    let Ok((state, mut mana_text)) = mana_labels.single_mut() else {
+    let Ok((state, mut target, mut mana_text, animator)) = mana_labels.single_mut() else {
         return;
     };
     let Ok((mut reserve_text, mut reserve_visibility)) = reserve_labels.single_mut() else {
         return;
     };
 
-    if !state.is_populated {
+    if !is_hud_tween_active(animator) {
+        sync_mana_tween_target_to_authoritative(state, &mut target);
+    }
+
+    if !target.is_populated {
         mana_text.0 = "-- / --".to_string();
         reserve_text.0.clear();
         *reserve_visibility = Visibility::Hidden;
         return;
     }
 
-    mana_text.0 = format!("{} / {}", state.current_mana, state.mana_cap);
+    mana_text.0 = format!(
+        "{} / {}",
+        display_numeric_value(target.current_mana),
+        display_numeric_value(target.mana_cap)
+    );
 
-    if state.reserve_mana > 0 {
-        reserve_text.0 = format!("+{} reserve", state.reserve_mana);
+    if display_numeric_value(target.reserve_mana) > 0 {
+        reserve_text.0 = format!("+{} reserve", display_numeric_value(target.reserve_mana));
         *reserve_visibility = Visibility::Visible;
     } else {
         reserve_text.0.clear();
@@ -825,6 +1006,10 @@ fn display_reserved_gold(state: &GoldDisplayState) -> u32 {
     let gold = state.gold.max(0.0) as u32;
     let reserved_gold = state.reserved_gold.max(0.0) as u32;
     reserved_gold.min(gold)
+}
+
+fn display_numeric_value(value: f32) -> u32 {
+    value.max(0.0) as u32
 }
 
 fn clamped_reserved_gold(message: &S2CGoldBroadcast) -> f32 {
@@ -860,13 +1045,13 @@ fn set_hud_visible(entities: &HudEntities, visibility: &mut Query<&mut Visibilit
     }
 }
 
-fn cancel_hud_gold_tweens(
+fn cancel_hud_numeric_tweens(
     commands: &mut Commands,
-    animators: &mut Query<(Entity, &mut TweenAnim), With<GoldLabelOwner>>,
+    animators: &mut Query<(Entity, &mut TweenAnim), Or<(With<GoldLabelOwner>, With<ManaLabel>)>>,
 ) {
     for (entity, mut animator) in animators.iter_mut() {
         if let Err(error) = cancel_tween_anim_in_place(&mut animator) {
-            warn!("Failed to cancel HUD gold tween on entity {entity:?}: {error}");
+            warn!("Failed to cancel HUD numeric tween on entity {entity:?}: {error}");
         }
         commands.entity(entity).remove::<TweenAnim>();
     }
@@ -923,6 +1108,150 @@ fn sync_gold_label_for_mode(
             .map(|state| format_reserved_gold_span(state, mode))
             .unwrap_or_default();
     }
+}
+
+fn snap_numeric_tween_targets(
+    entities: &HudEntities,
+    gold_states: &Query<&GoldDisplayState>,
+    gold_targets: &mut Query<&mut GoldTweenTarget>,
+    mana_states: &Query<&ManaDisplayState, With<ManaLabel>>,
+    mana_targets: &mut Query<&mut ManaTweenTarget, With<ManaLabel>>,
+) {
+    for entity in [entities.own_gold_parent, entities.opponent_gold_parent] {
+        if let (Ok(state), Ok(mut target)) = (gold_states.get(entity), gold_targets.get_mut(entity))
+        {
+            sync_gold_tween_target_to_authoritative(state, &mut target);
+        }
+    }
+
+    if let (Ok(state), Ok(mut target)) = (
+        mana_states.get(entities.mana_label),
+        mana_targets.get_mut(entities.mana_label),
+    ) {
+        sync_mana_tween_target_to_authoritative(state, &mut target);
+    }
+}
+
+fn sync_gold_tween_target_to_authoritative(state: &GoldDisplayState, target: &mut GoldTweenTarget) {
+    target.gold = state.gold;
+    target.reserved_gold = state.reserved_gold;
+    target.is_populated = state.is_populated;
+}
+
+fn sync_mana_tween_target_to_authoritative(state: &ManaDisplayState, target: &mut ManaTweenTarget) {
+    target.current_mana = state.current_mana as f32;
+    target.mana_cap = state.mana_cap as f32;
+    target.reserve_mana = state.reserve_mana as f32;
+    target.is_populated = state.is_populated;
+}
+
+fn gold_display_state_from_target(target: &GoldTweenTarget) -> GoldDisplayState {
+    GoldDisplayState {
+        gold: target.gold,
+        reserved_gold: target.reserved_gold,
+        is_populated: target.is_populated,
+    }
+}
+
+fn start_gold_tween(
+    commands: &mut Commands,
+    entity: Entity,
+    config: &HudConfig,
+    state: &GoldDisplayState,
+    target: &mut GoldTweenTarget,
+    animator: Option<Mut<TweenAnim>>,
+) {
+    if !state.is_populated || !target.is_populated {
+        sync_gold_tween_target_to_authoritative(state, target);
+        return;
+    }
+
+    let tween = gold_tween(config, target, state);
+    target.is_populated = state.is_populated;
+    start_or_replace_hud_tween(commands, entity, animator, tween);
+}
+
+fn start_mana_tween(
+    commands: &mut Commands,
+    entity: Entity,
+    config: &HudConfig,
+    state: &ManaDisplayState,
+    target: &mut ManaTweenTarget,
+    animator: Option<Mut<TweenAnim>>,
+) {
+    if !state.is_populated || !target.is_populated {
+        sync_mana_tween_target_to_authoritative(state, target);
+        return;
+    }
+
+    let tween = mana_tween(config, target, state);
+    target.is_populated = state.is_populated;
+    start_or_replace_hud_tween(commands, entity, animator, tween);
+}
+
+fn gold_tween(config: &HudConfig, target: &GoldTweenTarget, state: &GoldDisplayState) -> Tween {
+    Tween::new(
+        EaseFunction::CubicOut,
+        hud_tween_duration(config),
+        GoldTweenLens {
+            start_gold: target.gold,
+            end_gold: state.gold,
+            start_reserved_gold: target.reserved_gold,
+            end_reserved_gold: state.reserved_gold,
+        },
+    )
+}
+
+fn mana_tween(config: &HudConfig, target: &ManaTweenTarget, state: &ManaDisplayState) -> Tween {
+    Tween::new(
+        EaseFunction::CubicOut,
+        hud_tween_duration(config),
+        ManaTweenLens {
+            start_current_mana: target.current_mana,
+            end_current_mana: state.current_mana as f32,
+            start_mana_cap: target.mana_cap,
+            end_mana_cap: state.mana_cap as f32,
+            start_reserve_mana: target.reserve_mana,
+            end_reserve_mana: state.reserve_mana as f32,
+        },
+    )
+}
+
+fn start_or_replace_hud_tween(
+    commands: &mut Commands,
+    entity: Entity,
+    animator: Option<Mut<TweenAnim>>,
+    tween: Tween,
+) {
+    if let Some(mut animator) = animator {
+        animator.destroy_on_completion = false;
+        animator.playback_state = PlaybackState::Playing;
+        if let Err(error) = animator.set_tweenable(tween) {
+            warn!("Failed to replace HUD tween on entity {entity:?}: {error}");
+        }
+        return;
+    }
+
+    commands
+        .entity(entity)
+        .insert(TweenAnim::new(tween).with_destroy_on_completed(false));
+}
+
+fn hud_tween_duration(config: &HudConfig) -> Duration {
+    Duration::from_millis(u64::from(config.hud_tween_duration_ms.min(300).max(1)))
+}
+
+fn is_hud_tween_active(animator: Option<&TweenAnim>) -> bool {
+    animator
+        .map(|animator| {
+            animator.playback_state == PlaybackState::Playing
+                && animator.tween_state() == TweenState::Active
+        })
+        .unwrap_or(false)
+}
+
+fn lerp_f32(start: f32, end: f32, ratio: f32) -> f32 {
+    start + (end - start) * ratio
 }
 
 fn hud_text_font(font_size: f32) -> TextFont {
