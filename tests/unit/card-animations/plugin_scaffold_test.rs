@@ -8,13 +8,13 @@ use bevy_tweening::{Tween, TweenAnim, TweeningPlugin};
 use client::card_animations::{
     AnimQueue, AnimationTimingConfig, AuctionPanelTransitionRequested, AuraPulseRequested,
     BackgroundColorAlphaLens, BoardRebuildRequested, CardAcquiredAnimReady, CardAnimationsPlugin,
-    DamageNumberSpawnRequested, DisplacementAnimRequested, GoldTickRequested, GroupDrainedSignal,
-    HandCardDragStarted, HandCardHoverEntered, HandCardHoverExited, HandHideRequested,
-    HandShowRequested, InputGatingAnimationConfig, ObjectiveDestroyedAnimReady,
-    PendingObjectiveDestroyedEvents, PendingPhaseChange, PlacementCancelAllAnimsRequested,
-    PlacementRevealAnimReady, SettlementOverlayRequested, SnapBackRequested, SpriteAlphaLens,
-    SpriteColorLens, StagedObjectiveRevealQueue, TextColorLens, TimerBarEaseRequested,
-    TransformScaleXLens, TrapFlipRequested,
+    CellHighlightRequested, DamageNumberSpawnRequested, DisplacementAnimRequested,
+    GoldTickRequested, GroupDrainedSignal, HandCardDragStarted, HandCardHoverEntered,
+    HandCardHoverExited, HandHideRequested, HandShowRequested, InputGatingAnimationConfig,
+    ObjectiveDestroyedAnimReady, PendingObjectiveDestroyedEvents, PendingPhaseChange,
+    PlacementCancelAllAnimsRequested, PlacementRevealAnimReady, SettlementOverlayRequested,
+    SnapBackRequested, SpriteAlphaLens, SpriteColorLens, StagedObjectiveRevealQueue, TextColorLens,
+    TimerBarEaseRequested, TransformScaleXLens, TrapFlipRequested,
 };
 
 #[test]
@@ -53,6 +53,10 @@ fn plugin_builds_and_registers_resources_and_messages() {
         .is_some());
     assert!(app
         .world()
+        .get_resource::<Messages<CellHighlightRequested>>()
+        .is_some());
+    assert!(app
+        .world()
         .get_resource::<Messages<AuraPulseRequested>>()
         .is_some());
 }
@@ -81,7 +85,7 @@ fn all_domain_messages_are_registered_and_writable() {
 
     app.world_mut()
         .resource_mut::<Messages<PlacementRevealAnimReady>>()
-        .write(PlacementRevealAnimReady);
+        .write(PlacementRevealAnimReady::default());
     app.world_mut()
         .resource_mut::<Messages<ObjectiveDestroyedAnimReady>>()
         .write(ObjectiveDestroyedAnimReady);
@@ -103,7 +107,10 @@ fn all_domain_messages_are_registered_and_writable() {
         .write(CardAcquiredAnimReady);
     app.world_mut()
         .resource_mut::<Messages<SnapBackRequested>>()
-        .write(SnapBackRequested);
+        .write(SnapBackRequested::default());
+    app.world_mut()
+        .resource_mut::<Messages<CellHighlightRequested>>()
+        .write(CellHighlightRequested { target: card });
     app.world_mut()
         .resource_mut::<Messages<HandHideRequested>>()
         .write(HandHideRequested);

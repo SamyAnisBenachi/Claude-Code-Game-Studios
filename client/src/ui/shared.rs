@@ -46,6 +46,17 @@ impl BoardLayout {
     }
 }
 
+/// Presentation-side committed board cell marker.
+///
+/// Board Rendering owns updates to this marker when entities are spawned,
+/// rebuilt, or moved. Card Animations reads it only to snap visuals back to the
+/// committed cell during PLACEMENT animation cancellation.
+#[derive(Component, Clone, Copy, Debug, Eq, PartialEq)]
+pub struct LaneCell {
+    pub lane: u8,
+    pub cell: u8,
+}
+
 #[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct HudObjectiveUpdate {
     pub target_player_id: PlayerId,

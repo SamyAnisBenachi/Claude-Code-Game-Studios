@@ -5,8 +5,14 @@ use bevy_tweening::{PlaybackState, Tween, TweenAnim, Tweenable, TweeningError};
 
 use super::lenses::{SpriteAlphaLens, TransformScaleXLens};
 
+pub const PLACEMENT_ANIMATION_CAP_MS: u64 = 250;
+
 #[derive(Component, Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct PlacementPhaseAnimator;
+
+pub fn placement_phase_duration(duration_ms: u64) -> Duration {
+    Duration::from_millis(duration_ms.min(PLACEMENT_ANIMATION_CAP_MS))
+}
 
 pub fn make_tween_anim(tweenable: impl Tweenable + 'static) -> TweenAnim {
     TweenAnim::new(tweenable).with_destroy_on_completed(false)

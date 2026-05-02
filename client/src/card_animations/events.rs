@@ -1,7 +1,16 @@
 use bevy::prelude::*;
 
 #[derive(Message, Clone, Debug, Default, PartialEq)]
-pub struct PlacementRevealAnimReady;
+pub struct PlacementRevealAnimReady {
+    pub entries: Vec<PlacementRevealEntry>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PlacementRevealEntry {
+    pub unit: Entity,
+    pub lane: u8,
+    pub cell: u8,
+}
 
 #[derive(Message, Clone, Debug, Default, PartialEq)]
 pub struct ObjectiveDestroyedAnimReady;
@@ -32,8 +41,33 @@ pub struct PlacementCancelAllAnimsRequested;
 #[derive(Message, Clone, Debug, Default, PartialEq)]
 pub struct CardAcquiredAnimReady;
 
-#[derive(Message, Clone, Debug, Default, PartialEq)]
-pub struct SnapBackRequested;
+#[derive(Message, Clone, Debug, PartialEq)]
+pub struct SnapBackRequested {
+    pub target: Entity,
+    pub end_position: UiRect,
+}
+
+impl Default for SnapBackRequested {
+    fn default() -> Self {
+        Self {
+            target: Entity::PLACEHOLDER,
+            end_position: UiRect::default(),
+        }
+    }
+}
+
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CellHighlightRequested {
+    pub target: Entity,
+}
+
+impl Default for CellHighlightRequested {
+    fn default() -> Self {
+        Self {
+            target: Entity::PLACEHOLDER,
+        }
+    }
+}
 
 #[derive(Message, Clone, Debug, Default, PartialEq)]
 pub struct HandHideRequested;

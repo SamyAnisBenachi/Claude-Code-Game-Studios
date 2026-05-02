@@ -3,13 +3,15 @@ pub mod damage_numbers;
 pub mod events;
 pub mod input_gating;
 pub mod lenses;
+pub mod placement;
 pub mod queue;
 
 use bevy::prelude::*;
 use bevy_tweening::{AnimationSystem, TweenAnim, TweeningPlugin};
 
 pub use animators::{
-    cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, PlacementPhaseAnimator,
+    cancel_tween_anim_in_place, make_tween_anim, placement_phase_duration, replace_tweenable,
+    PlacementPhaseAnimator, PLACEMENT_ANIMATION_CAP_MS,
 };
 pub use damage_numbers::{
     damage_number_jitter, despawn_damage_numbers_after_timer, spawn_damage_numbers, DamageNumber,
@@ -25,6 +27,10 @@ pub use input_gating::{
 pub use lenses::{
     BackgroundColorAlphaLens, SpriteAlphaLens, SpriteColorLens, TextColorLens, TransformScaleXLens,
 };
+pub use placement::{
+    placement_cancel_all_anims_system, placement_cell_highlight_system, placement_reveal_system,
+    placement_snap_back_system,
+};
 pub use queue::{
     resolution_executing_system, resolution_objective_reveal_system, AnimGroup, AnimQueue,
     AnimQueueEvent, AnimationTimingConfig, PendingObjectiveDestroyedEvent,
@@ -33,6 +39,11 @@ pub use queue::{
 };
 
 pub struct CardAnimationsPlugin;
+
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CardAnimationsSet {
+    React,
+}
 
 impl Plugin for CardAnimationsPlugin {
     fn build(&self, app: &mut App) {
@@ -55,6 +66,7 @@ impl Plugin for CardAnimationsPlugin {
             .add_message::<PlacementCancelAllAnimsRequested>()
             .add_message::<CardAcquiredAnimReady>()
             .add_message::<SnapBackRequested>()
+            .add_message::<CellHighlightRequested>()
             .add_message::<HandHideRequested>()
             .add_message::<HandShowRequested>()
             .add_message::<AuctionPanelTransitionRequested>()
@@ -68,9 +80,21 @@ impl Plugin for CardAnimationsPlugin {
             .add_message::<TrapFlipRequested>()
             .add_message::<AuraPulseRequested>()
             .add_message::<GroupDrainedSignal>()
+            .configure_sets(
+                Update,
+                CardAnimationsSet::React.before(AnimationSystem::AnimationUpdate),
+            )
             .add_systems(
                 Update,
                 (
+                    (
+                        placement_reveal_system,
+                        placement_snap_back_system,
+                        placement_cell_highlight_system,
+                        placement_cancel_all_anims_system,
+                    )
+                        .chain()
+                        .in_set(CardAnimationsSet::React),
                     (despawn_damage_numbers_after_timer, spawn_damage_numbers)
                         .chain()
                         .before(AnimationSystem::AnimationUpdate),

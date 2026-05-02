@@ -86,3 +86,7 @@ path = "../tests/unit/card-animations/damage_number_test.rs"
 [[test]]
 name = "card_animations_input_gating_test"
 path = "../tests/integration/card-animations/input_gating_test.rs"
+
+[[test]]
+name = "card_animations_placement_reveal_test"
+path = "../tests/integration/card-animations/placement_reveal_test.rs"

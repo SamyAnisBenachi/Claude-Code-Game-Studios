@@ -13,7 +13,7 @@ use super::{
     events::{
         HandCardDragStarted, HandCardHoverEntered, HandCardHoverExited, TimerBarEaseRequested,
     },
-    make_tween_anim, replace_tweenable, PlacementPhaseAnimator,
+    make_tween_anim, placement_phase_duration, replace_tweenable, PlacementPhaseAnimator,
 };
 
 const TIMER_BAR_EASE_MS: u64 = 150;
@@ -21,7 +21,8 @@ const DRAG_LIFT_MS: u64 = 120;
 const HAND_CARD_HOVER_MS: u64 = 120;
 const HAND_CARD_DEHOVER_MS: u64 = 120;
 const HAND_CARD_DEHOVER_MIN_MS: u64 = 40;
-const PLACEMENT_ANIMATION_CAP_MS: u64 = 250;
+const SNAP_BACK_MS: u64 = 220;
+const CELL_HIGHLIGHT_MS: u64 = 120;
 const REST_SCALE: f32 = 1.0;
 const HOVER_SCALE: f32 = 1.12;
 const DRAG_LIFT_OFFSET_PX: f32 = -4.0;
@@ -33,6 +34,8 @@ pub struct InputGatingAnimationConfig {
     pub hand_card_hover_ms: u64,
     pub hand_card_dehover_ms: u64,
     pub hand_card_dehover_min_ms: u64,
+    pub snap_back_duration_ms: u64,
+    pub cell_highlight_ms: u64,
     pub rest_scale: f32,
     pub hover_scale: f32,
     pub drag_lift_offset_px: f32,
@@ -46,6 +49,8 @@ impl Default for InputGatingAnimationConfig {
             hand_card_hover_ms: HAND_CARD_HOVER_MS,
             hand_card_dehover_ms: HAND_CARD_DEHOVER_MS,
             hand_card_dehover_min_ms: HAND_CARD_DEHOVER_MIN_MS,
+            snap_back_duration_ms: SNAP_BACK_MS,
+            cell_highlight_ms: CELL_HIGHLIGHT_MS,
             rest_scale: REST_SCALE,
             hover_scale: HOVER_SCALE,
             drag_lift_offset_px: DRAG_LIFT_OFFSET_PX,
@@ -262,7 +267,7 @@ fn drag_lift_tween(node: &Node, duration_ms: u64, offset_px: f32) -> Tween {
 
     Tween::new(
         EaseFunction::QuadraticOut,
-        placement_duration(duration_ms),
+        placement_phase_duration(duration_ms),
         UiPositionLens { start, end },
     )
 }
@@ -271,7 +276,7 @@ fn hand_card_hover_tween(start: Vec3, config: &InputGatingAnimationConfig) -> Tw
     let target = Vec3::splat(config.hover_scale);
     Tween::new(
         EaseFunction::QuadraticOut,
-        placement_duration(config.hand_card_hover_ms),
+        placement_phase_duration(config.hand_card_hover_ms),
         TransformScaleLens { start, end: target },
     )
 }
@@ -281,7 +286,7 @@ fn hand_card_return_tween(start: Vec3, config: &InputGatingAnimationConfig) -> T
     let duration_ms = config
         .hand_card_dehover_ms
         .max(config.hand_card_dehover_min_ms)
-        .min(PLACEMENT_ANIMATION_CAP_MS);
+        .min(super::PLACEMENT_ANIMATION_CAP_MS);
     Tween::new(
         EaseFunction::QuadraticOut,
         Duration::from_millis(duration_ms),
@@ -336,10 +341,6 @@ fn should_keep_or_start_return(
             scale_animation.map(|animation| animation.direction),
             Some(HandCardScaleDirection::Hovering | HandCardScaleDirection::Returning)
         )
-}
-
-fn placement_duration(duration_ms: u64) -> Duration {
-    Duration::from_millis(duration_ms.min(PLACEMENT_ANIMATION_CAP_MS))
 }
 
 fn node_position(node: &Node) -> UiRect {
