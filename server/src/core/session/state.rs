@@ -162,6 +162,10 @@ impl RoomSessions {
         self.by_id.len()
     }
 
+    pub fn session_ids(&self) -> Vec<SessionId> {
+        self.by_id.keys().copied().collect()
+    }
+
     pub fn contains_room_code(&self, room_code: &RoomCode) -> bool {
         self.by_code.contains_key(room_code)
     }

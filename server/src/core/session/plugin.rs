@@ -3,10 +3,11 @@
 use bevy::prelude::*;
 use shared::card::ClassId;
 
-use crate::core::rsm::{advance_phase, on_session_ready};
+use crate::core::rsm::{advance_phase, on_session_ready, PlayerHeartbeat};
 use crate::core::session::{
     evaluate_session_ready, handle_confirm_class, handle_create_room, handle_join_room,
-    handle_select_class, ActiveSessions, ClassPreviews, ClassSelections, PlayerConnectionMap,
+    handle_lobby_disconnect, handle_lobby_heartbeat, handle_select_class, lobby_timeout_check,
+    tick_lobby_heartbeats, ActiveSessions, ClassPreviews, ClassSelections, PlayerConnectionMap,
     PlayerSessionData, PlayerSessions, RoomSessions, ServerRngFactory, SessionConfig,
     SessionNetworkOutbox, SessionSystemSet,
 };
@@ -23,6 +24,7 @@ impl Plugin for GameSessionPlugin {
             .init_resource::<RoomSessions>()
             .init_resource::<ServerRngFactory>()
             .init_resource::<SessionNetworkOutbox>()
+            .add_message::<PlayerHeartbeat>()
             .add_systems(
                 Update,
                 (
@@ -34,11 +36,22 @@ impl Plugin for GameSessionPlugin {
             )
             .add_systems(
                 Update,
+                (
+                    handle_lobby_heartbeat,
+                    tick_lobby_heartbeats,
+                    lobby_timeout_check,
+                )
+                    .chain(),
+            )
+            .add_systems(
+                Update,
                 evaluate_session_ready
                     .in_set(SessionSystemSet::LobbyEval)
+                    .after(lobby_timeout_check)
                     .before(advance_phase),
             )
-            .add_observer(on_session_ready);
+            .add_observer(on_session_ready)
+            .add_observer(handle_lobby_disconnect);
     }
 }
 
