@@ -1,7 +1,7 @@
 # Story 007: PLACEMENT Instant Card Staging
 
 > **Epic**: Hand UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -30,12 +30,12 @@
 
 *From GDD `design/gdd/hand-ui.md` Rules 6 (step 2 Instant subcase) and 7, scoped to this story:*
 
-- [ ] **HU-18**: GIVEN the player drag-starts an Instant card during PLACEMENT, WHEN the drag sprite becomes visible, THEN:
+- [x] **HU-18**: GIVEN the player drag-starts an Instant card during PLACEMENT, WHEN the drag sprite becomes visible, THEN:
   - (a) The fan plate entity receives a `FanPlateHighlighted` marker component
   - (b) The `BoardCellHighlighted` marker set on all board cell entities is empty (Instant cards do NOT highlight board cells)
   - Prism White border pulse rendering (`#EEF4FF` 3px at 60% opacity, 0.5Hz) is ADVISORY.
 
-- [ ] **HU-19**: GIVEN the player drops an Instant card on the highlighted fan plate zone, WHEN the drop fires, THEN:
+- [x] **HU-19**: GIVEN the player drops an Instant card on the highlighted fan plate zone, WHEN the drop fires, THEN:
   - (a) The card stages with `PlayTarget::Instant` in the local pending queue
   - (b) `GhostPlacementChanged { target: Some(PlayTarget::Instant), card_id: Some(card_id) }` Bevy-internal message is written
   - (c) The Submit count increments by 1 (Submit text updates to "Submit (N cards)")
@@ -102,7 +102,22 @@
 **Required evidence**:
 - `tests/unit/hand-ui/placement_instant_staging_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Verdict**: COMPLETE
+**Criteria**: 2/2 passing; HU-18 and HU-19 are covered by `tests/unit/hand-ui/placement_instant_staging_test.rs`.
+**Test Evidence**: `cargo test -p client --test hand_ui_placement_instant_staging_test` passed 3/3 locally. Main integration at `d3a16d1` also passed `cargo fmt -p client -- --check`, `cargo test -p client --test hand_ui_placement_submit_core_test`, `cargo test -p client --test hand_ui_placement_drag_highlights_test`, `cargo check -p client`, and `cargo check -p client --features ui_picking`.
+**Verification**: Instant placement drags show the drag sprite, clear all `BoardCellHighlighted` markers, add `FanPlateHighlighted` to the fan plate, stage valid plate drops as `PlayTarget::Instant`, write `GhostPlacementChanged { target: Some(PlayTarget::Instant), card_id: Some(card_id) }`, update Submit text to `"Submit (1 cards)"`, and restore invalid outside-plate drops without ghost messages.
+**Deviations**: None blocking.
+**Code Review**: Skipped - Lean mode.
+**Tech Debt**: None logged.
+**Sprint Status**: Unchanged per user instruction; no matching `HAND-UI-007` row exists in `production/sprint-status.yaml`.
+**Next Recommended**: Hand UI Story 008 PLACEMENT Un-staging (`production/epics/hand-ui/story-008-placement-unstaging.md`) after readiness check.
 
 ---
 

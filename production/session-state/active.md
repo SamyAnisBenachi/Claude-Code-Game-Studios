@@ -1488,3 +1488,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no matching BOARD-008 row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the serialized closure queue after sprint/status review; Board Story 009 Prism Collection remains ready but should be readiness-checked before implementation.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE
+- Story: `production/epics/hand-ui/story-007-placement-instant-staging.md` - Story 007: PLACEMENT Instant Card Staging
+- Criteria: 2/2 passing; HU-18 and HU-19 covered by `tests/unit/hand-ui/placement_instant_staging_test.rs`.
+- Test Evidence: `cargo test -p client --test hand_ui_placement_instant_staging_test` passed 3/3 locally. Main integration at `d3a16d1` also passed `cargo fmt -p client -- --check`, `cargo test -p client --test hand_ui_placement_submit_core_test`, `cargo test -p client --test hand_ui_placement_drag_highlights_test`, `cargo check -p client`, and `cargo check -p client --features ui_picking`.
+- Verification: Hand UI Instant placement drags show the drag sprite, clear board-cell highlights, add `FanPlateHighlighted` to the fan plate, stage valid plate drops as `PlayTarget::Instant`, emit `GhostPlacementChanged { target: Some(PlayTarget::Instant), card_id: Some(card_id) }`, increment Submit text, and cancel outside-plate drops without ghost messages.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or `ui_picking` guard deviation found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per user instruction; no matching `HAND-UI-007` row exists in `production/sprint-status.yaml`.
+- Next recommended: Hand UI Story 008 PLACEMENT Un-staging (`production/epics/hand-ui/story-008-placement-unstaging.md`) after readiness check.
