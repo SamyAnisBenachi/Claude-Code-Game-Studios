@@ -146,12 +146,10 @@ use lightyear::prelude::*;
 
 /// Ordered, guaranteed delivery.
 /// All game-state, economy, hand, phase, snapshot, and control messages.
-#[derive(Channel)]
 pub struct ReliableChannel;
 
 /// Best-effort, no ordering guarantee.
 /// High-frequency messages where a dropped packet is superseded by the next.
-#[derive(Channel)]
 pub struct UnreliableChannel;
 
 // Channel settings — exact ChannelSettings struct fields must be verified
@@ -159,14 +157,14 @@ pub struct UnreliableChannel;
 // Guidelines checklist item 1).
 //
 // Expected shape (verify):
-//   ChannelSettings {
+//   app.add_channel::<ReliableChannel>(ChannelSettings {
 //       mode: ChannelMode::OrderedReliable(ReliableSettings::default()),
-//       direction: ChannelDirection::Bidirectional,
-//   }
-//   ChannelSettings {
+//       ..default()
+//   }).add_direction(NetworkDirection::Bidirectional);
+//   app.add_channel::<UnreliableChannel>(ChannelSettings {
 //       mode: ChannelMode::UnorderedUnreliable,
-//       direction: ChannelDirection::Bidirectional,
-//   }
+//       ..default()
+//   }).add_direction(NetworkDirection::Bidirectional);
 ```
 
 ```
@@ -229,7 +227,7 @@ The following checklist MUST be completed before writing any networking code. Th
 
 **Lightyear 0.26 Verification Checklist**
 
-1. [ ] **Channel definition syntax** — Verify whether channels are defined with a derive macro (`#[derive(Channel)]`), a `ChannelSettings` struct registration, or a builder pattern. Check `lightyear::prelude` exports in `docs.rs/lightyear/0.26`. The shape shown in Key Interfaces above is the expected pattern but is unverified against the released crate.
+1. [x] **Channel definition syntax** — Verified against Lightyear 0.26.4 evidence. Channels are plain empty structs; `#[derive(Channel)]` does not exist. Register each channel with `app.add_channel::<T>(ChannelSettings { mode, ..default() }).add_direction(NetworkDirection::Bidirectional)`. Evidence: `tests/evidence/lightyear-026-verification.md` items 1-3, `shared/src/protocol.rs::register_protocol`, `server/src/network/mod.rs::LightyearProtocolRegistry::add_channel`, and local crate source `lightyear_transport-0.26.4/src/channel/registry.rs` / `builder.rs`.
 
 2. [ ] **`ChannelMode` enum variants** — Verify the exact variants for ordered-reliable and unreliable modes. Expected: `ChannelMode::OrderedReliable(ReliableSettings::default())` and `ChannelMode::UnorderedUnreliable`. Confirm these exist in 0.26 and have not been renamed.
 

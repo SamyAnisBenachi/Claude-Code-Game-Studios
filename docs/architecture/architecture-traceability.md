@@ -7,7 +7,8 @@
 > Full review report (Run 4): `docs/architecture/architecture-review-2026-05-01.md`
 > Full review report (Run 3): `docs/architecture/architecture-review-2026-04-30c.md`
 > Prior reports: Run 2 (`architecture-review-2026-04-30b.md`), Run 1 (`architecture-review-2026-04-30.md`)
-> Stable TR-IDs: `docs/architecture/tr-registry.yaml` (fully registered, 181 TRs)
+> Stable TR-IDs: `docs/architecture/tr-registry.yaml` (fully registered, 182 TRs)
+> CDP-006 trace repair (2026-05-03): registered TR-CDP-010 for draft/shop network payload dispatch; registry now has 182 active TRs.
 
 ---
 
@@ -40,7 +41,7 @@ All 9 M1 systems have full ADR coverage. Zero gaps.
 
 | System | TR Range | TR Count | ADRs | GDD AC-IDs |
 |---|---|---|---|---|
-| Card Data & Pool | TR-CDP-001..009 | 9 | ADR-004, ADR-006 | CP1a..CP-C3 |
+| Card Data & Pool | TR-CDP-001..010 | 10 | ADR-004, ADR-006, ADR-008, ADR-011 | CP1a..CP-C3, CP-NET-01 |
 | Game Config | TR-GC-001..005 | 5 | ADR-004, ADR-003 | GC1..GC12 |
 | Server-side RNG | TR-RNG-001..006 | 6 | ADR-005 | RNG1..RNG15 |
 | Economy System | TR-ECO-001..008 | 8 | ADR-010 | EC1..EC26 |

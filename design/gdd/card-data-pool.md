@@ -426,6 +426,12 @@ Knobs that affect this system but are owned by the master GDD (Section 7):
 | CP16 | **GIVEN** a 2v2 game where Player A destroys 1 of the opponent's fake objectives, **WHEN** Player B's spawn range is evaluated, **THEN** `spawn_rows = {1, 2}` for Player B (team-shared counter). | BLOCKING |
 | CP16b | **GIVEN** a 1v1 game where Player A has `fakes_destroyed = 1` and Player B has `fakes_destroyed = 0`, **WHEN** Player B's spawn range is evaluated, **THEN** `spawn_rows = {1}` (B's counter is independent of A's). | BLOCKING |
 
+### Network Payloads
+
+| # | Criterion | Type |
+|---|---|---|
+| CP-NET-01 | **GIVEN** authoritative `InitialDraftOffering` or `ShopSlots` state has been populated for a player, **WHEN** the network dispatch path prepares client-facing payloads, **THEN** `S2CDraftOffering` carries that player's DRAFT_INITIAL card IDs and `S2CShopSlots` carries that player's current shop slots, including empty slots, on reliable unicast to only that owning player. | BLOCKING |
+
 ## Open Questions
 
 | # | Question | Owner | Notes |

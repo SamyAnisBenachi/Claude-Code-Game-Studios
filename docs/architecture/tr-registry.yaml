@@ -40,6 +40,8 @@ last_updated: "2026-05-03"
 # Total: 178 + 3 = 181 active TRs.
 # Run 5 (/dev-story trace repair 2026-05-03): revised TR-CR-001 to cover the full
 # SS1 APPEARANCE bundle (CR-24, CR-38, CR-39, CR-40). Active count unchanged.
+# Run 6 (/dev-story CDP-006 trace repair 2026-05-03): registered TR-CDP-010
+# for card-pool draft/shop network payload dispatch. Total: 182 active TRs.
 
 requirements:
 
@@ -125,6 +127,15 @@ requirements:
     gdd_ac_ids: [CP11, CP12, CP13, CP14, CP15, CP16a, CP16b]
     requirement: "Spawn range Formula F3: per-player advance cell count = min(1 + fakes_destroyed, 3); used by Board/Lane System to gate Minion placement"
     created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-CDP-010
+    system: card-data-pool
+    gdd: design/gdd/card-data-pool.md
+    gdd_ac_ids: [CP-NET-01]
+    requirement: "Card pool draft/shop network payloads: S2CDraftOffering carries the 9-card DRAFT_INITIAL offering; S2CShopSlots carries per-player shop slots including empty slots; both are reliable unicast to the owning player after authoritative state is populated and before client phase/UI use"
+    created: 2026-05-03
     revised: ""
     status: active
 
