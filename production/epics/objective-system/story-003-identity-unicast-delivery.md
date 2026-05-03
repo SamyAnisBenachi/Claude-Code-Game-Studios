@@ -4,19 +4,21 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Integration
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
 **GDD**: `design/gdd/objective-system.md`
 **Requirement**: `TR-OBJ-007` — `ObjectiveHp` is a replicated ECS component broadcast to both clients; `ObjectiveIdentity` is server-only in `HiddenObjectives` Resource and NEVER replicated; identity is delivered via reliable unicast `S2CObjectiveIdentities` at DRAFT_INITIAL and re-sent on every reconnect.
 
-**ADR Governing Implementation**: [ADR-001: Hidden Objective Identity via Targeted Unicast, Not Component Replication](docs/architecture/adr-001-objective-identity-unicast.md)
+**ADR Governing Implementation**:
+- [ADR-001: Hidden Objective Identity via Targeted Unicast, Not Component Replication](docs/architecture/adr-001-objective-identity-unicast.md)
+- [ADR-011: Reconnect Flow and Game Snapshot Protocol](docs/architecture/adr-011-reconnect-snapshot.md)
 
 **ADR Decision Summary**: After fake lane assignment at DRAFT_INITIAL, the server sends `S2CObjectiveIdentities { identities: Vec<(LaneId, bool)> }` as a reliable unicast per player — only to the owning player's `PeerId`, never broadcast. On reconnect, the server re-sends this message as part of the session resume handshake. The `HiddenObjectives` Resource is the single source of truth; the client caches the received message in a local resource.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
-**Engine Notes**: Lightyear 0.26 unicast API (checklist item 9, ⚠️ DIFFERS from older patterns): `ServerMultiMessageSender` system param — `send::<M, C>(&msg, &server, &NetworkTarget)` where M = message type, C = channel type. `NetworkTarget::Single(PeerId)` confirmed (item 7, note: uses `PeerId` not the older `ClientId`). Channel: `ReliableChannel` — identity data must not be dropped and must arrive before any placement input is accepted. Verify `ServerMultiMessageSender` import path against `docs.rs/lightyear/0.26` before implementing. Items 15 and 16 (PENDING CI): verify `Res<T>` visibility through Commands before implementing the reconnect path.
+**Engine Notes**: Lightyear 0.26 unicast API is verified in `tests/evidence/lightyear-026-verification.md` and ADR-011 evidence. Use `ServerMultiMessageSender` with `send::<M, C>(&msg, &server, &NetworkTarget)` where M = message type and C = channel type. `NetworkTarget::Single(PeerId)` is the current target shape; do not use older `ClientId` naming in new code. Channel: `ReliableChannel` — identity data must not be dropped and must arrive before any placement input is accepted.
 
 **Control Manifest Rules (Feature layer)**:
 - Required: Send `S2CObjectiveIdentities` as reliable unicast to each player immediately after fake assignment at DRAFT_INITIAL (ADR-001)
@@ -31,7 +33,11 @@
 
 *From GDD `design/gdd/objective-system.md`, scoped to this story:*
 
-- [ ] OS-17 (ADVISORY): GIVEN two connected clients (owner and attacker), WHEN the attacker's state for an opponent's intact objective is queried, THEN `ObjectiveHp` is present AND the attacker does NOT receive `S2CObjectiveIdentities` for the opponent's lanes. (ADVISORY — two-client integration test requiring a live Lightyear session, not a `World::new()` unit test. Pre-sprint decision required: if a pure-function unit test asserting message dispatch per-PeerId is feasible, it becomes BLOCKING; otherwise ADVISORY with manual evidence document.)
+- [ ] OS-17 (ADVISORY): GIVEN two connected clients (owner and attacker), WHEN the attacker's state for an opponent's intact objective is queried, THEN `ObjectiveHp` is present AND the attacker does NOT receive `S2CObjectiveIdentities` for the opponent's lanes. (ADVISORY — two-client live Lightyear evidence may supplement the focused dispatch tests below.)
+- [ ] OS-17a (BLOCKING): GIVEN fake assignment has populated `HiddenObjectives` for both players, WHEN identity delivery runs at DRAFT_INITIAL, THEN exactly one reliable `S2CObjectiveIdentities` unicast is enqueued per player to that player's own `PeerId`.
+- [ ] OS-17b (BLOCKING): GIVEN Player A and Player B have distinct fake lanes, WHEN Player A's `S2CObjectiveIdentities` payload is built, THEN it contains exactly Player A's five `(LaneId, is_fake)` entries and contains no Player B `is_fake` values.
+- [ ] OS-17c (BLOCKING): GIVEN a reconnecting player's snapshot flow sends `S2CHandshake` and `S2CGameSnapshot`, WHEN the reconnect identity step runs, THEN `S2CObjectiveIdentities` is re-sent from `HiddenObjectives` before `S2CPhaseChanged` and before `snapshot_sent[player]` is marked true.
+- [ ] OS-17d (BLOCKING): GIVEN protocol/component registration is inspected, WHEN the Objective System plugin is initialized, THEN `S2CObjectiveIdentities` is registered as a server-to-client reliable message and no `ObjectiveIdentity` ECS component is registered for Lightyear replication.
 
 ---
 
@@ -67,9 +73,7 @@ multi_sender.send::<S2CObjectiveIdentities, ReliableChannel>(
 );
 ```
 
-On reconnect: after `S2CGameSnapshot` is sent and `snapshot_sent[player] = true`, re-send `S2CObjectiveIdentities` for the reconnecting player's own lanes from `HiddenObjectives`. Per ADR-011: systems sending unicast S2C must check `ReconnectTracker.snapshot_sent[player]` before enqueuing.
-
-Confirm exact `NetworkTarget::Single` vs `NetworkTarget::Only` spelling against `docs/engine-reference/lightyear/` before implementing — checklist item 7 shows a DIFFERS flag on this item.
+On reconnect: re-send `S2CObjectiveIdentities` for the reconnecting player's own lanes from `HiddenObjectives` as step 3 of the mandatory ADR-011 sequence: `S2CHandshake`, `S2CGameSnapshot`, `S2CObjectiveIdentities`, then `S2CPhaseChanged`. Mark `snapshot_sent[player] = true` only after those reconnect messages are enqueued, then flush deferred live messages.
 
 ---
 
@@ -88,6 +92,7 @@ Confirm exact `NetworkTarget::Single` vs `NetworkTarget::Only` spelling against 
   - Setup: Start a two-client Lightyear test session; complete DRAFT_INITIAL
   - Verify: Player A's client has received `S2CObjectiveIdentities` containing 5 entries (their own lanes); Player B has NOT received any message that discloses Player A's `is_fake` values
   - Pass condition: Capture outbound messages from server per-PeerId; assert exactly one `S2CObjectiveIdentities` per player sent to their own PeerId only; assert no broadcast `S2CObjectiveIdentities` message exists
+- **OS-17a/b/c/d** (BLOCKING): Focused dispatch tests may use the server's message outbox/test sender helper instead of a live Lightyear transport, provided the assertions cover target `PeerId`, payload stripping, reconnect order, and non-replication of `ObjectiveIdentity`.
 
 ---
 
