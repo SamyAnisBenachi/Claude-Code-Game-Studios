@@ -46,6 +46,21 @@ architectural ownership.
 Do not wait for the user to ask what can run in parallel. Assume prompts the
 orchestrator provides are launched unless the user explicitly says otherwise.
 
+Parallelism policy: maximize safe throughput even across future sprints. Do not
+limit launch candidates to the current sprint if future Ready stories are
+unblocked and have disjoint likely file ownership. Target 4 implementation
+workers plus 1 docs/QA/tracker worker plus 1 serialized story-done window. Keep
+only one story-done active because story-done edits shared production files.
+
+Prompt formatting policy: every launch prompt shown to the user must start with
+three red triangles and a number, for example
+`🔺🔺🔺 PROMPT 1 -- HAND-UI-007 Placement Instant Staging`. Provide at least
+three numbered prompts in a batch when three safe parallel tasks exist; if fewer
+than three are safe, state why. Keep the existing status color convention:
+`🟢` action/result, `🔵` verification, `🟡` attention/blocker, `🟣` queue/next.
+Each prompt must include branch, worktree, scope limits, story-done prohibition,
+shared tracker prohibition, and detailed commit-body requirements.
+
 ## Live Windows Confirmed By User
 
 - CA-005 worker: initial readiness run returned NEEDS WORK on stale manifest
@@ -444,6 +459,10 @@ Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
+- Sprint 4 QA plan missing: resolved at `8578890` with
+  `production/qa/qa-plan-sprint-4-2026-05-03.md`. S4-14 Economy Network
+  Dispatch can now run story-readiness, but `production/sprint-status.yaml`
+  still tracks Sprint 3 until the Sprint 4 handoff/reconcile is committed.
 - PRISM-003 is unblocked by PRISM-001/002 closure. Remaining Prism story
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
   closed. PRISM-004 is closed at `e7776b0`; PRISM-005 is closed at `ef6b4ad`.
@@ -467,9 +486,14 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-None currently tracked here.
+- HAND-UI-007, BOARD-008, OBJECTIVE-004, and COMBAT-002 prompts were provided
+  for parallel launch. Per default-launch rule, treat them as active unless the
+  user explicitly says otherwise.
 
 Current active windows by user default-launch rule:
+- Sprint 4 QA plan returned and was committed at `8578890`; window can be
+  cleared. Next Sprint 4 critical item is S4-14 Economy Network Dispatch
+  readiness/implementation.
 - CDP-005 / S3-10 story-done returned and was committed at `28c9f79`; window
   can be cleared. Sprint 3 tracker is now 19/19 complete.
 - AUC-005 story-done returned and was committed at `2b61243`; window can be
