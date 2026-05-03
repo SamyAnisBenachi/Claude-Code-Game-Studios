@@ -1378,3 +1378,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no matching Hand UI Story 005 row exists in `production/sprint-status.yaml`.
 - Next recommended: Hand UI Story 006 PLACEMENT Drag Highlights (`production/epics/hand-ui/story-006-placement-drag-highlights.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/game-session-system/story-007-reconnect-snapshot.md` - Story 007: Reconnect and Game Snapshot
+- Criteria: 12/12 acceptance criteria passing; ADR-011 reconnect handshake, snapshot ordering, timeout/rejection, deferred queue flush, opponent reconnect broadcast, cleanup, and unicast guard requirements verified.
+- Test Evidence: `cargo fmt --all -- --check`; `cargo test -p server --test snapshot_secret_strip_test`; `cargo test -p server --test reconnect_snapshot_test`; `cargo test -p server --test game_over_teardown_test`; `cargo test -p server --test prism_hand_full_network_test`; `cargo check -p server`; `cargo check --workspace`; `git diff --check`.
+- Verification: `server/src/core/session/reconnect.rs` implements the `C2SHello` reconnect token path, `S2CHandshake` -> `S2CGameSnapshot` -> `S2CObjectiveIdentities` -> `S2CPhaseChanged` dispatch order, silent hello timeout closure, rejection without session existence leakage, and deferred queue flush after `snapshot_sent=true`. Acquisition, auction, and prism unicast paths now defer reconnecting player messages until snapshot completion. Sang Meprise reveal state is restored in the reconnect snapshot and re-sent when tracked.
+- Notes: Advisory only - Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates. Live Lightyear peer delivery is code-verified through the server send paths and covered by outbox/guard integration tests rather than a full transport reconnect session.
+- Tech debt logged: None
+- Sprint status: Unchanged; no matching GSS-007 row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the serialized closure queue with the next ready story after sprint/status review.

@@ -1,7 +1,7 @@
 # Story 007: Reconnect and Game Snapshot
 
 > **Epic**: Game Session System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -44,7 +44,7 @@ Key items that directly gate this story:
 
 ## Acceptance Criteria
 
-- [ ] `handle_reconnect` system exists in `server/src/core/session/system.rs` (or `reconnect.rs`) and:
+- [x] `handle_reconnect` system exists in `server/src/core/session/system.rs` (or `reconnect.rs`) and:
   - Triggers on `OnConnected` (or equivalent Lightyear 0.26 API)
   - Starts a `hello_timeout_ms` (default 5000ms from `GameConfig`) watchdog countdown for the new `ClientId`
   - On receiving `C2SHello { session_token: Some(token) }`:
@@ -59,27 +59,27 @@ Key items that directly gate this story:
       4. `S2CPhaseChanged { phase, round, timer_remaining_ms }` (live timer value, not original duration)
     - Sets `ReconnectTracker.snapshot_sent[player] = true` after step 4 is enqueued
   - On receiving `C2SHello { session_token: None }`: this is a fresh connect — defer to room create/join flow (Story 002); this system does not handle fresh connects beyond routing them
-- [ ] `build_game_snapshot` function exists (in `session/reconnect.rs` or `session/system.rs`) and:
+- [x] `build_game_snapshot` function exists (in `session/reconnect.rs` or `session/system.rs`) and:
   - Reads: `Res<RoundState>`, `Res<SessionConfig>`, `Res<PlayerEconomy>`, `Res<HiddenObjectives>`, `Res<BoardGrid>` (all board entity state), `Res<PlayerPool>`
   - Constructs `S2CGameSnapshot` with `round_number`, `phase`, `timer_remaining_ms` (live), `players` (two `PlayerSnapshot` entries), `board` (`BoardSnapshot`), `auction_state` (`Some(AuctionSnapshot)` only when phase is `DRAFT_AUCTION`, else `None`)
   - Applies secret stripping for the recipient player per ADR-011 §Key Interfaces `PlayerSnapshot` rules:
     - Own entry: all fields populated (`hand`, `shop_slots`, `pool_snapshot`, `objectives` with correct `is_real`)
     - Opponent entry: `hand`, `shop_slots`, `pool_snapshot` are empty `Vec`; all `ObjectiveSnapshot.is_real = false`
     - `TrapBoardState.card_id`: `Some(card_id)` for own traps, `None` for opponent traps
-- [ ] `flush_deferred_queue` system exists and:
+- [x] `flush_deferred_queue` system exists and:
   - Runs in `SystemSet::LiveMessages` (after `SystemSet::ReconnectHandshake`)
   - For each player where `snapshot_sent[player] == true` and `deferred_queue[player]` is non-empty: sends all queued messages in their original enqueue order, then clears the queue
-- [ ] `hello_timeout_watchdog` system exists and:
+- [x] `hello_timeout_watchdog` system exists and:
   - Tracks pending `ClientId`s that have sent no `C2SHello` within `hello_timeout_ms`
   - Closes the transport connection silently (no S2C message sent) on timeout
-- [ ] `S2COpponentReconnected { player_id: PlayerId }` is broadcast to all other connected session participants after `snapshot_sent[player] = true`
-- [ ] `ReconnectTracker` resource is initialised at session start (Story 004, `on_session_ready`) with token entries for all session players, all `snapshot_sent = true` (initial connects are not reconnects), empty `deferred_queues`
-- [ ] `ReconnectTracker.token_map` entries for this session are cleaned up in `handle_game_over_teardown` (Story 006) — this story's integration test must verify the cleanup happens
-- [ ] `SystemSet::ReconnectHandshake` is defined and scheduled before `SystemSet::LiveMessages` in the server's `Update` schedule
-- [ ] All existing unicast S2C message systems have been audited and patched to check `snapshot_sent[player]` before enqueuing (with a comment referencing this requirement)
-- [ ] `cargo check -p server` passes with zero warnings
-- [ ] Unit test `tests/unit/session/snapshot_secret_strip_test.rs` passes — NP-16
-- [ ] Integration test `tests/integration/session/reconnect_snapshot_test.rs` passes — NP-9, NP-17, deferred queue correctness
+- [x] `S2COpponentReconnected { player_id: PlayerId }` is broadcast to all other connected session participants after `snapshot_sent[player] = true`
+- [x] `ReconnectTracker` resource is initialised at session start (Story 004, `on_session_ready`) with token entries for all session players, all `snapshot_sent = true` (initial connects are not reconnects), empty `deferred_queues`
+- [x] `ReconnectTracker.token_map` entries for this session are cleaned up in `handle_game_over_teardown` (Story 006) — this story's integration test must verify the cleanup happens
+- [x] `SystemSet::ReconnectHandshake` is defined and scheduled before `SystemSet::LiveMessages` in the server's `Update` schedule
+- [x] All existing unicast S2C message systems have been audited and patched to check `snapshot_sent[player]` before enqueuing (with a comment referencing this requirement)
+- [x] `cargo check -p server` passes with zero warnings
+- [x] Unit test `tests/unit/session/snapshot_secret_strip_test.rs` passes — NP-16
+- [x] Integration test `tests/integration/session/reconnect_snapshot_test.rs` passes — NP-9, NP-17, deferred queue correctness
 
 ---
 
@@ -157,7 +157,7 @@ Key items that directly gate this story:
 - `tests/unit/session/snapshot_secret_strip_test.rs` (NP-16) — passing
 - `tests/integration/session/reconnect_snapshot_test.rs` (NP-9, NP-17, deferred queue) — passing
 - ADR-011 Engine Compatibility checklist items 1–14 all documented with verified results in `docs/architecture/adr-011-reconnect-snapshot.md`
-**Status**: [ ] Not yet created
+**Status**: [x] Complete
 
 ---
 
@@ -172,3 +172,12 @@ Key items that directly gate this story:
 - Depends on: round-state-machine epic (`RoundState`, `RoundPhase`, phase timer fields read by `build_game_snapshot`)
 - Depends on: objective-system epic (`HiddenObjectives` resource read for `S2CObjectiveIdentities` re-send)
 - Depends on: lightyear-protocol-verification epic — all 14 ADR-011 checklist items confirmed (S1-05 spike complete)
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Criteria**: 12/12 passing.
+**Deviations**: None blocking. Advisory only: Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates; live Lightyear peer delivery is code-verified through the server send paths and covered by outbox/guard integration tests rather than a full transport reconnect session.
+**Test Evidence**: `cargo fmt --all -- --check`; `cargo test -p server --test snapshot_secret_strip_test`; `cargo test -p server --test reconnect_snapshot_test`; `cargo test -p server --test game_over_teardown_test`; `cargo test -p server --test prism_hand_full_network_test`; `cargo check -p server`; `cargo check --workspace`; `git diff --check`.
+**Code Review**: Skipped in Lean mode.
+**Implementation Commit**: `32643e9` (`GSS-007 repair: reconnect handshake and guard flow`).
