@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Logic
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -21,11 +21,13 @@
 **Engine Notes**: `MessageWriter<T>::write()` for emitting `AwardGold` and `ManaCapIncreased` — `EventWriter` no longer exists in Bevy 0.17+. Register these with `app.add_message::<T>()`. Destruction sets `ObjectiveSlot.destroyed = true` — mutate via `Commands` or `Query<&mut ObjectiveSlot>`. `loss_threshold = 2` is a compile-time constant `const LOSS_THRESHOLD: u32 = 2` — do NOT derive it from `fake_count`. `liv-bevy-018` mandatory.
 
 **Control Manifest Rules (Feature layer)**:
-- Required: Feature systems communicate upward via Events — never call Economy System directly (ADR-010)
+- Required: Feature systems communicate upward through Bevy buffered Messages where a cross-system signal is needed; never call Economy System directly (ADR-010)
+- Required: Use `#[derive(Message)]`, `MessageWriter<T>::write()`, and `app.add_message::<T>()` for buffered signals; `EventWriter`/`EventReader`/`Events<T>` do not exist in Bevy 0.17+ (ADR-009, ADR-010)
 - Required: `ObjectiveCounters { real_destroyed, fake_destroyed }` is a server-side Resource; RSM reads it for GAME_OVER without importing from `feature/objective/` (control manifest)
-- Required: Use `MessageWriter::write()` not `EventWriter::send()` — `EventWriter` does not exist in Bevy 0.17+ (ADR-009, ADR-010)
+- Required: If consequence logic is invoked from an exclusive RESOLUTION system, do not use `MessageWriter<T>` as an exclusive-system param; route effects through world resources or a bridge drained by a regular system (control manifest 2026-05-01)
 - Forbidden: Never let Feature systems call Core/Foundation systems directly (architecture)
 - Forbidden: `loss_threshold` must NOT be derived from `fake_count` — it is always the fixed constant `2` (GDD D2 formula note)
+- Performance Guardrail: RESOLUTION work, including objective consequence processing, must stay within the 15 ms worst-case combat-resolution frame budget.
 
 ---
 
