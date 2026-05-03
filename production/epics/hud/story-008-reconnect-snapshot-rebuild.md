@@ -1,7 +1,7 @@
 # Story 008: Reconnect Snapshot Rebuild
 
 > **Epic**: HUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -29,9 +29,9 @@
 
 *From GDD `design/gdd/hud.md`, scoped to this story:*
 
-- [ ] **HUD-13** (BLOCKING): GIVEN HUD in any state (partially updated, stale, or mid-round), WHEN `S2CGameSnapshot` is received, THEN every HUD zone reflects the snapshot values within the same frame; no entity is despawned or re-spawned (pre-pooled entities reused).
+- [x] **HUD-13** (BLOCKING): GIVEN HUD in any state (partially updated, stale, or mid-round), WHEN `S2CGameSnapshot` is received, THEN every HUD zone reflects the snapshot values within the same frame; no entity is despawned or re-spawned (pre-pooled entities reused).
 - [ ] **HUD-14** (ADVISORY): GIVEN a player reconnects mid-match, WHEN `S2CGameSnapshot` is received, THEN no frame is observed where any zone shows a blank or stale value; confirmed by screenshot at the reconnect moment.
-- [ ] **HUD-27** (BLOCKING): GIVEN HUD in FROZEN mode (`S2CPhaseChanged(GAME_OVER)` received), WHEN `S2CGameSnapshot` arrives (simulating reconnect at GAME_OVER), THEN: (a) full rebuild runs from snapshot; (b) after rebuild, `HudMode == Frozen` immediately; (c) all label values reflect snapshot state; (d) a subsequent `S2CGoldUpdate` with a different gold value does NOT alter `GoldDisplayState.gold`.
+- [x] **HUD-27** (BLOCKING): GIVEN HUD in FROZEN mode (`S2CPhaseChanged(GAME_OVER)` received), WHEN `S2CGameSnapshot` arrives (simulating reconnect at GAME_OVER), THEN: (a) full rebuild runs from snapshot; (b) after rebuild, `HudMode == Frozen` immediately; (c) all label values reflect snapshot state; (d) a subsequent `S2CGoldUpdate` with a different gold value does NOT alter `GoldDisplayState.gold`.
 
 ---
 
@@ -91,7 +91,7 @@
 **Story Type**: Integration
 **Required evidence**: `tests/integration/hud/reconnect_snapshot_rebuild_test.rs` — must exist and pass. Advisory: `production/qa/evidence/reconnect-snapshot-evidence.md` (screenshot).
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`cargo test -p client --test reconnect_snapshot_rebuild_test`). Advisory screenshot evidence not yet created.
 
 ---
 
@@ -99,3 +99,15 @@
 
 - Depends on: Story 001 (entity pool), Story 002 (GoldDisplayState), Story 003 (phase label), Story 004 (dot state — snapshot writes dot state directly), Story 007 (FROZEN mode — snapshot bypasses it)
 - Unlocks: None (final integration story for reconnect path)
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 2/3 directly covered and passing; HUD-13 and HUD-27 are covered by `tests/integration/hud/reconnect_snapshot_rebuild_test.rs`. HUD-14 remains advisory and untested because `production/qa/evidence/reconnect-snapshot-evidence.md` does not exist.
+**Test Evidence**: `cargo test -p client --test reconnect_snapshot_rebuild_test` passed 3/3. `cargo check -p client` passed. `cargo fmt -p client -- --check` passed.
+**Verification**: `client/src/ui/hud/mod.rs` drains `S2CGameSnapshot` through `MessageReceiver<S2CGameSnapshot>` into `HudGameSnapshotMessage`, handles the last snapshot in `HudSystemSet::MessageDrain`, writes cached `HudEntities` without respawning, updates mode/visibility/phase/round/gold/mana/dots, and runs before incremental gold and objective handlers.
+**Notes**: Advisory only - HUD-14 screenshot/manual evidence is still missing. Advisory only - story references `TR-HUD-009`, whose current registry text focuses on FROZEN mode; the broader snapshot rebuild requirement remains present in current `design/gdd/hud.md` Rule 13 and the HUD-13/HUD-27 acceptance criteria. Lean mode skipped external QA/code-review gates.
+**Tech Debt**: None logged.
+**Sprint Status**: Unchanged per user instruction; no explicit `HUD-008` row exists in `production/sprint-status.yaml`.
+**Next Recommended**: Create `production/qa/evidence/reconnect-snapshot-evidence.md` for HUD-14 visual sign-off, then continue the serialized closure queue with Hand UI Story 006 PLACEMENT Drag Highlights (`production/epics/hand-ui/story-006-placement-drag-highlights.md`) after readiness check.

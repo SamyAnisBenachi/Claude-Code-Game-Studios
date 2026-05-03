@@ -1389,3 +1389,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no matching GSS-007 row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the serialized closure queue with the next ready story after sprint/status review.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hud/story-008-reconnect-snapshot-rebuild.md` - Story 008: Reconnect Snapshot Rebuild
+- Criteria: 2/3 directly covered and passing; HUD-13 and HUD-27 covered by `tests/integration/hud/reconnect_snapshot_rebuild_test.rs`. HUD-14 screenshot evidence remains advisory and untested.
+- Test Evidence: `cargo test -p client --test reconnect_snapshot_rebuild_test` passed 3/3. `cargo check -p client` passed. `cargo fmt -p client -- --check` passed.
+- Verification: `client/src/ui/hud/mod.rs` drains `S2CGameSnapshot` through `MessageReceiver<S2CGameSnapshot>`, processes the last snapshot in `HudSystemSet::MessageDrain`, updates cached HUD entity handles without respawn, writes phase/round/gold/mana/dots, reapplies FROZEN for GAME_OVER snapshots, and runs before incremental gold/objective handlers.
+- Notes: Advisory only - no manual screenshot/sign-off evidence exists at `production/qa/evidence/reconnect-snapshot-evidence.md`. Advisory only - current `TR-HUD-009` registry text is narrower than the story, but the broader rebuild requirement remains present in current HUD GDD Rule 13 and the story acceptance criteria. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no matching HUD Story 008 row exists in `production/sprint-status.yaml`.
+- Next recommended: Create `production/qa/evidence/reconnect-snapshot-evidence.md` for HUD-14 visual sign-off, then continue the serialized closure queue with Hand UI Story 006 PLACEMENT Drag Highlights (`production/epics/hand-ui/story-006-placement-drag-highlights.md`) after readiness check.
