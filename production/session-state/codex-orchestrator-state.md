@@ -107,6 +107,20 @@ None currently tracked here.
   checks. Notes: worker initially hit disk-full OS error 112, cleared generated
   target artifacts, and reran successfully; root integration checks passed.
   No `/story-done` has run yet.
+- PRISM-005: Respawn Cycle implemented on branch
+  `work/prism-005-respawn-cycle` at worker commit `1c4ccbe`; root
+  integration landed on main at `edb0a43`. The implementation registers
+  `S2CPrismRespawned`, detects full-set completion after reward delivery,
+  resets only the completed player's five prism tokens and `PrismPresence`
+  rows, broadcasts respawn to all clients, and preserves per-player
+  independence including 2v2 same-team cases. Verification passed `cargo fmt
+  -p server -- --check`, `cargo fmt --all -- --check`, `cargo test -p server
+  --test prism_respawn_cycle_test` 5/5, Prism regressions
+  (`prism_state_scaffold_test`, `prism_deterministic_lanes_test`,
+  `prism_lane3_rng_test`, `prism_hand_full_network_test`) 23/23, `cargo check
+  -p server`, `cargo check --workspace`, and diff checks. Notes: worker
+  initially hit disk-full errors, cleared generated target caches, and reran
+  successfully; root integration checks passed. No `/story-done` has run yet.
 ## Recently Closed
 
 - HUD-008: Reconnect Snapshot HUD Rebuild implemented on branch
@@ -387,6 +401,8 @@ None currently tracked here.
 
 1. AUC-005: `production/epics/auction-system/story-005-accepted-bid-reservation.md`
    after integration commit `ecdbf4a`.
+2. PRISM-005: `production/epics/prism-system/story-005-respawn-cycle.md`
+   after integration commit `edb0a43`.
 
 Run only one story-done at a time.
 
@@ -416,8 +432,6 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- PRISM-005: assumed launched from the previous parallel prompt batch; awaiting
-  worker return unless the user says it was not launched.
 - HAND-UI-006: assumed launched from the previous parallel prompt batch;
   awaiting worker return unless the user says it was not launched.
 - OBJECTIVE-003: assumed launched from the previous parallel prompt batch;
@@ -429,6 +443,9 @@ Current active windows by user default-launch rule:
 - AUC-005 returned, integrated into `main` at `ecdbf4a`, pushed to origin/main,
   and now needs the next serialized `/story-done`. The implementation window
   can be cleared.
+- PRISM-005 returned, integrated into `main` at `edb0a43`, pushed to
+  origin/main, and now needs serialized `/story-done` after AUC-005. The
+  implementation window can be cleared.
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
   cleared. PRISM-002 story-done returned and was committed at `2d1a4bf`;
   window can be cleared. HUD-004 story-done returned and was committed at
