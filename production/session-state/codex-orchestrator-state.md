@@ -116,16 +116,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- BOARD-008: Objective Cell Detection readiness docs committed on worker branch
-  `work/board-008-objective-cell-detection` at `7e8cf00`; implementation
-  committed at `23ebe01` and pushed to origin; root integration landed on main
-  at `e4f76da` and `bb260c7`. Verification passed `cargo fmt -p server --
-  --check`, `cargo test -p server --test objective_detection_test` 5/5,
-  `cargo test -p server --test board_grid_initialization_test` 4/4, `cargo
-  check -p server`, and diff checks. `/story-done` initially returned BLOCKED
-  because production resolution sub-step 6 did not call
-  `detect_objective_presence`; repair commit `b27db7d` now wires the SS6 hook
-  and adds integration evidence in `resolve_combat_scaffold_test`.
 - HAND-UI-007: Placement Instant Staging implemented on branch
   `work/hand-ui-007-placement-instant-staging` at worker commit `7c3e76b`;
   root integration landed on main at `d3a16d1` and was pushed to origin.
@@ -149,6 +139,15 @@ None currently tracked here.
   No `/story-done` has run yet.
 ## Recently Closed
 
+- BOARD-008: Objective Cell Detection readiness docs committed on worker branch
+  `work/board-008-objective-cell-detection` at `7e8cf00`; implementation
+  landed on main at `e4f76da` and `bb260c7`; initial `/story-done` was blocked
+  by missing production SS6 wiring; repair landed at `b27db7d`; story-done
+  closure committed at `57232e6`. Verification passed `cargo test -p server
+  --test objective_detection_test` 5/5, `cargo test -p server --test
+  resolve_combat_scaffold_test
+  resolve_combat_ss6_emits_unit_at_objective_messages` 1/1, and `cargo check
+  -p server`. `production/sprint-status.yaml` had no matching BOARD-008 row.
 - ECO-006 / S4-14: Economy Network Dispatch readiness docs committed on worker
   branch `work/eco-006-network-dispatch-wiring` at `6645baa`; implementation
   committed at `f63c397`; root integration landed on main at `648790b` and
@@ -498,16 +497,13 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. BOARD-008:
-   `production/epics/board-lane-system/story-008-objective-cell-detection.md`
-   after repair commit `b27db7d`.
-2. HAND-UI-007:
+1. HAND-UI-007:
    `production/epics/hand-ui/story-007-placement-instant-staging.md`
    after integration commit `d3a16d1`.
-3. OBJECTIVE-004:
+2. OBJECTIVE-004:
    `production/epics/objective-system/story-004-damage-interface.md`
    after integration commit `033c212`.
-4. COMBAT-002:
+3. COMBAT-002:
    `production/epics/combat-resolution/story-002-combat-modifier-stack.md`
    after integration commit `0e5ac46`.
 
@@ -550,11 +546,8 @@ Active implementation workers by default-launch rule:
 Current active windows by user default-launch rule:
 - ECO-006 / S4-14 story-done returned and was committed at `c5739fa`; window
   can be cleared.
-- BOARD-008 returned, integrated into main at `bb260c7`, pushed to origin/main,
-  and can be cleared as an implementation worker. Story-done blocker was
-  repaired at `b27db7d`: production sub-step 6 now calls
-  `detect_objective_presence` and integration evidence proves SS6 emits
-  `UnitAtObjective`. Rerun serialized `/story-done`.
+- BOARD-008 story-done returned and was committed at `57232e6`; window can be
+  cleared.
 - HAND-UI-007 returned, integrated into main at `d3a16d1`, pushed to
   origin/main, and can be cleared. It now needs serialized `/story-done` after
   BOARD-008.
