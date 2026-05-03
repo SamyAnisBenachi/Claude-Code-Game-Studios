@@ -116,12 +116,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- HAND-UI-009: Placement Timer implemented on branch
-  `work/hand-ui-009-placement-timer` at worker commit `7a8c173`; root
-  integration landed on main at `a72bb0f`. Verification passed `cargo test -p
-  client --test hand_ui_placement_timer_test` 4/4, surrounding Hand UI
-  placement regressions 17/17, `cargo check -p client`, and diff checks. No
-  `/story-done` has run yet.
 - COMBAT-003: SS1 Placement Appearance trace repair landed on main at
   `e5c28d5`; implementation landed on main at `7fdf4fd`. Verification passed
   `cargo test -p server --test substep1_placement_test` 4/4, `cargo test -p
@@ -135,6 +129,12 @@ None currently tracked here.
   diff checks. No `/story-done` has run yet.
 ## Recently Closed
 
+- HAND-UI-009: Placement Timer implemented on branch
+  `work/hand-ui-009-placement-timer` at worker commit `7a8c173`; root
+  integration landed on main at `a72bb0f`; story-done closure committed at
+  `8344521`. Verification passed `cargo test -p client --test
+  hand_ui_placement_timer_test` 4/4 and `cargo check -p client`.
+  `production/sprint-status.yaml` had no matching HAND-UI-009 row.
 - HAND-UI-008: Placement Unstaging implemented on branch
   `work/hand-ui-008-placement-unstaging` at worker commit `743d660`; root
   integration landed on main at `552f80f`; story-done closure committed at
@@ -533,13 +533,10 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HAND-UI-009:
-   `production/epics/hand-ui/story-009-placement-timer.md`
-   after integration commit `a72bb0f`.
-2. COMBAT-003:
+1. COMBAT-003:
    `production/epics/combat-resolution/story-003-substep1-placement-appearance.md`
    after integration commit `7fdf4fd`.
-3. OBJECTIVE-005:
+2. OBJECTIVE-005:
    `production/epics/objective-system/story-005-destruction-consequence-path.md`
    after integration commit `cf93a8d`.
 
@@ -596,9 +593,9 @@ Current active windows by user default-launch rule:
   serialized `/story-done` after COMBAT-003.
 - COMBAT-003 returned, integrated into main at `e5c28d5` and `7fdf4fd`,
   verified, and is on origin/main. Window can be cleared. It now needs
-  serialized `/story-done` after HAND-UI-009.
-- HAND-UI-009 returned, integrated into main at `a72bb0f`, verified, and is on
-  origin/main. Window can be cleared. It now needs serialized `/story-done`.
+  serialized `/story-done`.
+- HAND-UI-009 story-done returned and was committed at `8344521`; window can
+  be cleared.
 - HAND-UI-008 story-done returned and was committed at `90c2c3a`; window can
   be cleared.
 - BOARD-009 story-done returned and was committed at `394d6c3`; window can be
