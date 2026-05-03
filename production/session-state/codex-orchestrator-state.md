@@ -95,21 +95,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- OBJECTIVE-003: Identity Unicast Delivery implemented on branch
-  `work/objective-003-identity-unicast-delivery`; readiness docs landed on
-  main at `b3fbe3e`, and root implementation integration landed at `aa84947`
-  from worker commit `e72f30d`. The implementation sends owner-only
-  `S2CObjectiveIdentities` on DRAFT_INITIAL, builds payloads only from the
-  owning player's `HiddenObjectives`, defers identities through
-  `ReconnectTracker.snapshot_sent`, and keeps `ObjectiveIdentity` server-only.
-  Verification passed `cargo fmt -p server -- --check`, `cargo test -p server
-  --test objective_identity_unicast_test` 4/4, objective/reconnect
-  regressions (`objective_state_test`, `fake_assignment_test`,
-  `reconnect_snapshot_test`) 15/15, `cargo check -p server`, and diff checks.
-  Notes: no shared/protocol source changes were needed, so workspace check was
-  not required by the story condition; worker reported disk-full OS error 112
-  during first rebuild, then reran successfully after target cleanup. No
-  `/story-done` has run yet.
 - CDP-004: Shop Refresh Subscriber SessionReady implemented on branch
   `work/cdp-004-shop-refresh-session-ready`; readiness docs landed on main at
   `daad9bf`, and root implementation integration landed at `a8f2d75` from
@@ -125,6 +110,18 @@ None currently tracked here.
   not required. No `/story-done` has run yet.
 ## Recently Closed
 
+- OBJECTIVE-003: Identity Unicast Delivery implemented on branch
+  `work/objective-003-identity-unicast-delivery`; readiness docs landed on
+  main at `b3fbe3e`, root implementation integration landed at `aa84947`, and
+  story-done closure committed at `4327b7b`. Verification passed `cargo fmt -p
+  server -- --check`, `cargo test -p server --test
+  objective_identity_unicast_test --test reconnect_snapshot_test` 10/10,
+  `cargo test -p server --test objective_state_test` 4/4, objective/reconnect
+  regressions, `cargo check -p server`, and diff checks. Completion notes
+  document advisory GDD drift where older prose still mentions
+  `ObjectiveIdentity` owner replication, while current TR/ADR require reliable
+  unicast and never-replication. `production/sprint-status.yaml` had no
+  matching row.
 - PRISM-005: Respawn Cycle implemented on branch
   `work/prism-005-respawn-cycle` at worker commit `1c4ccbe`; root
   integration landed on main at `edb0a43`; story-done closure committed at
@@ -426,9 +423,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. OBJECTIVE-003: `production/epics/objective-system/story-003-identity-unicast-delivery.md`
-   after integration commit `aa84947`.
-2. CDP-004: `production/epics/card-data-pool/story-004-shop-refresh-subscriber-session-ready.md`
+1. CDP-004: `production/epics/card-data-pool/story-004-shop-refresh-subscriber-session-ready.md`
    after integration commit `a8f2d75`.
 
 Run only one story-done at a time.
@@ -466,9 +461,8 @@ Current active windows by user default-launch rule:
   cleared.
 - PRISM-005 story-done returned and was committed at `ef6b4ad`; window can be
   cleared.
-- OBJECTIVE-003 returned, integrated into `main` at `aa84947`, pushed to
-  origin/main, and now needs serialized `/story-done` after PRISM-005. The
-  implementation window can be cleared.
+- OBJECTIVE-003 story-done returned and was committed at `4327b7b`; window can
+  be cleared.
 - CDP-004 returned, integrated into `main` at `a8f2d75`, pushed to origin/main,
   and now needs serialized `/story-done` after OBJECTIVE-003. The
   implementation window can be cleared.
