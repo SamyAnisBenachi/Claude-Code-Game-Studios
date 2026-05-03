@@ -102,14 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- HAND-UI-005: Placement Submit Core implemented on branch
-  `work/hand-ui-005-placement-submit-core` at `c547056c`; root cherry-picked
-  and amended it into `main` at `1c798f0`. Root checks passed `cargo fmt -p
-  client -- --check`, `cargo test -p client --test
-  hand_ui_placement_submit_core_test` 5/5, prior Hand UI regressions 16/16,
-  `cargo check --workspace`, and `git diff --check HEAD~1..HEAD`. Scope stays
-  in the existing Hand UI local message/outbox pattern; no direct Lightyear
-  drains were added.
 - GSS-007: Reconnect Snapshot Schema Builder implemented on branch
   `work/gss-007-reconnect-snapshot-schema-builder` at `8d3a91b`; root
   cherry-picked and amended it into `main` at `8e7c5b5`. Root checks passed
@@ -133,6 +125,14 @@ None currently tracked here.
   made.
 ## Recently Closed
 
+- HAND-UI-005: Placement Submit Core implemented on branch
+  `work/hand-ui-005-placement-submit-core` at `c547056c`; root integration
+  landed at `1c798f0`; story-done closure committed at `c8222d2`. Verification
+  passed `cargo test -p client --test hand_ui_placement_submit_core_test` 5/5,
+  `cargo check -p client`, and `cargo fmt -p client -- --check`. Completion
+  notes document the advisory that coverage verifies the Hand UI local
+  message/outbox seam and optional `MessageSender<C2SSubmitPlacement>` path,
+  not a full live Lightyear transport session.
 - PRISM-004: Hand-Full Prism Network Staging implemented on branch
   `work/prism-004-hand-full-network` at `e823d66`; root integration landed at
   `8c77982`; story-done closure committed at `e7776b0`. Verification passed
@@ -379,9 +379,8 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HAND-UI-005
-2. GSS-007
-3. HUD-008
+1. GSS-007
+2. HUD-008
 
 Run only one story-done at a time.
 
@@ -412,12 +411,10 @@ Batch launched:
 - HUD-008: integrated at `d8971f4`; pending story-done.
 
 Active implementation workers by default-launch rule:
-- HAND-UI-005: integrated at `1c798f0`; pending serialized story-done after
-  current closure queue.
 - GSS-007: integrated at `8e7c5b5`; pending serialized story-done after
-  HAND-UI-005.
+  current closure queue.
 - HUD-008: integrated at `d8971f4`; pending serialized story-done after
-  HAND-UI-005 and GSS-007.
+  GSS-007.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -461,12 +458,12 @@ Current active windows by user default-launch rule:
   story-done committed at `88f3fe2`. Window can be cleared.
 - PRISM-004 returned, integrated at `8c77982`, story-done committed at
   `e7776b0`. Window can be cleared.
-- HAND-UI-005 returned, integrated at `1c798f0`, and now only needs serialized
-  story-done.
+- HAND-UI-005 returned, integrated at `1c798f0`, story-done committed at
+  `c8222d2`. Window can be cleared.
 - GSS-007 returned, integrated at `8e7c5b5`, and now only needs serialized
-  story-done after HAND-UI-005.
+  story-done.
 - HUD-008 returned, integrated at `d8971f4`, and now only needs serialized
-  story-done after HAND-UI-005 and GSS-007.
+  story-done after GSS-007.
 AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
 integrated/closed as noted above.
 
