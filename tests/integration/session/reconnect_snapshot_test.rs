@@ -178,7 +178,10 @@ fn reconnect_hello_sends_snapshot_sequence_and_restores_sang_meprise() {
     let ReconnectDispatch::ObjectiveIdentities { message, .. } = &result.dispatches[2] else {
         unreachable!("checked above");
     };
-    assert_eq!(message.identities.len(), usize::from(OBJECTIVE_LANE_COUNT));
+    assert_eq!(
+        message.identities,
+        vec![(1, false), (2, false), (3, false), (4, false), (5, false)]
+    );
 
     let ReconnectDispatch::OpponentReconnected {
         recipients,

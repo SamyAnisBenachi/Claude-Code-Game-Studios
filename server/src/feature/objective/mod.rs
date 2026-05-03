@@ -10,4 +10,7 @@ pub mod system;
 pub use crate::core::objective_contract::ObjectiveCounters;
 pub use plugin::ObjectivePlugin;
 pub use state::{HiddenObjectives, ObjectiveHp, ObjectiveSlot, OBJECTIVE_LANE_COUNT};
-pub use system::initialize_objectives_on_draft_initial;
+pub use system::{
+    deliver_objective_identities_on_ready, initialize_objectives_on_draft_initial,
+    ObjectiveIdentitiesReady, ObjectiveNetworkOutbox,
+};

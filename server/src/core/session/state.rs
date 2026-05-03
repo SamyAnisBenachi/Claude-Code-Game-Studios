@@ -7,7 +7,8 @@ use lightyear::prelude::PeerId;
 use shared::card::ClassId;
 use shared::protocol::{
     CardSource, S2CAuctionBidAccepted, S2CAuctionBidRejected, S2CCardAcquired, S2CDraftOffering,
-    S2CGameOver, S2CGoldUpdate, S2CPrismRewardDropped, S2CSessionCancelled, S2CShopSlots,
+    S2CGameOver, S2CGoldUpdate, S2CObjectiveIdentities, S2CPrismRewardDropped, S2CSessionCancelled,
+    S2CShopSlots,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
@@ -119,6 +120,7 @@ pub enum DeferredMessage {
     GameOver(S2CGameOver),
     SessionCancelled(S2CSessionCancelled),
     GoldUpdate(S2CGoldUpdate),
+    ObjectiveIdentities(S2CObjectiveIdentities),
     DraftOffering(S2CDraftOffering),
     ShopSlots(S2CShopSlots),
     AuctionBidRejected(S2CAuctionBidRejected),

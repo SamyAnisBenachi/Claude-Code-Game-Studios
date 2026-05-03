@@ -3,7 +3,9 @@ use lightyear::prelude::*;
 
 use crate::core::rsm::advance_phase;
 use crate::feature::objective::{
-    initialize_objectives_on_draft_initial, HiddenObjectives, ObjectiveCounters, ObjectiveHp,
+    deliver_objective_identities_on_ready, initialize_objectives_on_draft_initial,
+    HiddenObjectives, ObjectiveCounters, ObjectiveHp, ObjectiveIdentitiesReady,
+    ObjectiveNetworkOutbox,
 };
 
 /// Objective System schedule labels.
@@ -11,6 +13,8 @@ use crate::feature::objective::{
 pub enum ObjectiveSystemSet {
     /// Session-entry objective initialization.
     Initialize,
+    /// Owner-only hidden objective identity delivery.
+    IdentityDelivery,
 }
 
 /// Registers objective state resources, replication, and DRAFT_INITIAL setup.
@@ -20,12 +24,24 @@ impl Plugin for ObjectivePlugin {
     fn build(&self, app: &mut App) {
         app.register_component::<ObjectiveHp>();
 
-        app.init_resource::<HiddenObjectives>()
+        app.add_message::<ObjectiveIdentitiesReady>()
+            .init_resource::<HiddenObjectives>()
             .init_resource::<ObjectiveCounters>()
-            .configure_sets(Update, ObjectiveSystemSet::Initialize.after(advance_phase))
+            .init_resource::<ObjectiveNetworkOutbox>()
+            .configure_sets(
+                Update,
+                (
+                    ObjectiveSystemSet::Initialize.after(advance_phase),
+                    ObjectiveSystemSet::IdentityDelivery.after(ObjectiveSystemSet::Initialize),
+                ),
+            )
             .add_systems(
                 Update,
                 initialize_objectives_on_draft_initial.in_set(ObjectiveSystemSet::Initialize),
+            )
+            .add_systems(
+                Update,
+                deliver_objective_identities_on_ready.in_set(ObjectiveSystemSet::IdentityDelivery),
             );
     }
 }

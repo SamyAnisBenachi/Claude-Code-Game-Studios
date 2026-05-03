@@ -424,6 +424,13 @@ fn send_deferred_message(
             let _ =
                 sender.send::<S2CGoldUpdate, ReliableChannel>(message, server, &single(peer_id));
         }
+        DeferredMessage::ObjectiveIdentities(message) => {
+            let _ = sender.send::<S2CObjectiveIdentities, ReliableChannel>(
+                message,
+                server,
+                &single(peer_id),
+            );
+        }
         DeferredMessage::DraftOffering(message) => {
             let _ =
                 sender.send::<S2CDraftOffering, ReliableChannel>(message, server, &single(peer_id));
