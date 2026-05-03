@@ -135,6 +135,11 @@ None currently tracked here.
   server --test resolve_combat_scaffold_test` 4/4, `cargo test -p server
   --test modifier_stack_test` 7/7, `cargo check -p server`, and diff checks.
   No `/story-done` has run yet.
+- OBJECTIVE-005: Destruction Consequence Path readiness repair landed on main
+  at `e903c69`; implementation landed on main at `cf93a8d`. Verification
+  passed `cargo test -p server --test consequence_path_test` 7/7, `cargo test
+  -p server --test damage_interface_test` 7/7, `cargo check -p server`, and
+  diff checks. No `/story-done` has run yet.
 ## Recently Closed
 
 - AUC-006: Resolution & Settlement readiness repair landed on main at
@@ -538,6 +543,9 @@ None currently tracked here.
 3. COMBAT-003:
    `production/epics/combat-resolution/story-003-substep1-placement-appearance.md`
    after integration commit `7fdf4fd`.
+4. OBJECTIVE-005:
+   `production/epics/objective-system/story-005-destruction-consequence-path.md`
+   after integration commit `cf93a8d`.
 
 Run only one story-done at a time.
 
@@ -571,12 +579,15 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- None known at this checkpoint. COMBAT-003, HAND-UI-009, HAND-UI-008,
-  AUC-006, BOARD-009, COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007
-  have returned and are integrated or closed as noted; do not relaunch their
-  implementation workers.
+- None known at this checkpoint. OBJECTIVE-005, COMBAT-003, HAND-UI-009,
+  HAND-UI-008, AUC-006, BOARD-009, COMBAT-002, OBJECTIVE-004, BOARD-008, and
+  HAND-UI-007 have returned and are integrated or closed as noted; do not
+  relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
+- OBJECTIVE-005 returned, integrated into main at `e903c69` and `cf93a8d`,
+  verified, and is on origin/main. Window can be cleared. It now needs
+  serialized `/story-done` after COMBAT-003.
 - COMBAT-003 returned, integrated into main at `e5c28d5` and `7fdf4fd`,
   verified, and is on origin/main. Window can be cleared. It now needs
   serialized `/story-done` after HAND-UI-009.
