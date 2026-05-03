@@ -129,7 +129,7 @@ No new steady-state loop budget is introduced beyond the existing Card Acquisiti
 - Existing reconnect regression coverage in `tests/integration/session/reconnect_snapshot_test.rs` may be referenced as supporting evidence, but the story-specific test file above is required.
 - Lightyear 0.26.4 verification checklist items #1, #7, and #9 must remain checked before merge.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing via `cargo test -p server --test shop_dispatch_test`.
 
 ---
 
