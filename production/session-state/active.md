@@ -1411,3 +1411,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no matching `AUC-005` row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the serialized closure queue with Prism Story 005 Respawn Cycle (`production/epics/prism-system/story-005-respawn-cycle.md`).
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/prism-system/story-005-respawn-cycle.md` - Story 005: Full-Set Respawn Cycle and Multi-Player Independence
+- Criteria: 6/6 passing; PS-05, PS-13, PS-14, PS-16, PS-21, and PS-24 covered by `tests/unit/prism/respawn_cycle_test.rs`.
+- Test Evidence: `cargo test -p server --test prism_respawn_cycle_test` passed 5/5. Prism regressions passed 23/23. `cargo check -p server` and `cargo check --workspace` passed.
+- Verification: `resolve_prism_draws` runs respawn at the end after reward staging, clears `pending_respawn` after reset, resets `PrismPresence` for the respawned player, and sends `S2CPrismRespawned` to `NetworkTarget::All`.
+- Notes: Advisory only - `TR-PRI-006` still mentions a `collected_this_round_grace` flag, while current GDD, ADR-016, and the story specify same-round prevention as a structural timing guarantee. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no matching `PRISM-005` row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the serialized closure queue with Objective Story 003 Identity Unicast Delivery (`production/epics/objective-system/story-003-identity-unicast-delivery.md`).

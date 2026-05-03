@@ -1,7 +1,7 @@
 # Story 005: Full-Set Respawn Cycle and Multi-Player Independence
 
 > **Epic**: Prism System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature (M3)
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -34,12 +34,12 @@
 
 *From GDD `design/gdd/prism-system.md`, scoped to this story:*
 
-- [ ] **PS-05** — GIVEN a player has collected all 5 of their own prism tokens (in same or across multiple RESOLUTIONs), WHEN `resolve_prism_draws` finishes delivering all reward messages for that RESOLUTION, THEN all 5 prism tokens for that player reset to `collected = false` at end of `resolve_prism_draws`, and the opponent's prism state is unchanged.
-- [ ] **PS-13** — GIVEN a player collects their 5th prism token in RESOLUTION N, WHEN `resolve_prism_draws` completes all reward messages for RESOLUTION N, THEN the full respawn (all 5 tokens reset to `collected = false`) occurs AFTER the last reward message — any unit at a spawn cell in that same RESOLUTION does NOT collect the freshly respawned token within RESOLUTION N.
-- [ ] **PS-14** — GIVEN a player's prism set respawns after full collection, WHEN the respawn state is inspected, THEN no additional reward (card, gold, mana, or otherwise) is granted by the respawn event itself — it is a state reset only.
-- [ ] **PS-16** — GIVEN a 2v2 game where Player A and Player B are on the same team, WHEN Player A collects the Lane 3 prism keyed on `(player_A_id, lane_3)`, THEN Player B's prism token at `(player_B_id, lane_3)` is unaffected, and Player A's respawn cycle runs on Player A's individual count (0–5) independently.
-- [ ] **PS-21** — GIVEN Player A collects their 5th prism (triggering full respawn) AND Player B has collected 3 of 5 in the same RESOLUTION, WHEN `resolve_prism_draws` completes, THEN Player A's prisms all reset to uncollected, Player B retains 3 collected, and Player B's respawn does not trigger.
-- [ ] **PS-24** — GIVEN a 2v2 game where Player A and Player B are on the same team AND both have units that end sub-step 5 at their shared spawn cell of the same lane, WHEN RESOLUTION sub-step 5 completes, THEN two distinct `PrismCollected` messages are emitted (one per player), two distinct rewards are delivered (each unicast to its owning player), and both `collected[lane][player_A]` and `collected[lane][player_B]` are set to `true` independently.
+- [x] **PS-05** — GIVEN a player has collected all 5 of their own prism tokens (in same or across multiple RESOLUTIONs), WHEN `resolve_prism_draws` finishes delivering all reward messages for that RESOLUTION, THEN all 5 prism tokens for that player reset to `collected = false` at end of `resolve_prism_draws`, and the opponent's prism state is unchanged.
+- [x] **PS-13** — GIVEN a player collects their 5th prism token in RESOLUTION N, WHEN `resolve_prism_draws` completes all reward messages for RESOLUTION N, THEN the full respawn (all 5 tokens reset to `collected = false`) occurs AFTER the last reward message — any unit at a spawn cell in that same RESOLUTION does NOT collect the freshly respawned token within RESOLUTION N.
+- [x] **PS-14** — GIVEN a player's prism set respawns after full collection, WHEN the respawn state is inspected, THEN no additional reward (card, gold, mana, or otherwise) is granted by the respawn event itself — it is a state reset only.
+- [x] **PS-16** — GIVEN a 2v2 game where Player A and Player B are on the same team, WHEN Player A collects the Lane 3 prism keyed on `(player_A_id, lane_3)`, THEN Player B's prism token at `(player_B_id, lane_3)` is unaffected, and Player A's respawn cycle runs on Player A's individual count (0–5) independently.
+- [x] **PS-21** — GIVEN Player A collects their 5th prism (triggering full respawn) AND Player B has collected 3 of 5 in the same RESOLUTION, WHEN `resolve_prism_draws` completes, THEN Player A's prisms all reset to uncollected, Player B retains 3 collected, and Player B's respawn does not trigger.
+- [x] **PS-24** — GIVEN a 2v2 game where Player A and Player B are on the same team AND both have units that end sub-step 5 at their shared spawn cell of the same lane, WHEN RESOLUTION sub-step 5 completes, THEN two distinct `PrismCollected` messages are emitted (one per player), two distinct rewards are delivered (each unicast to its owning player), and both `collected[lane][player_A]` and `collected[lane][player_B]` are set to `true` independently.
 
 ---
 
@@ -145,9 +145,19 @@ for player in all_players() {
 **Story Type**: Logic
 **Required evidence**: `tests/unit/prism/respawn_cycle_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Criteria**: 6/6 passing (PS-05, PS-13, PS-14, PS-16, PS-21, PS-24)
+**Deviations**:
+- Advisory: `TR-PRI-006` in `docs/architecture/tr-registry.yaml` still mentions a `collected_this_round_grace` flag, while the current GDD, ADR-016, and story specify same-round prevention as a structural timing guarantee.
+**Test Evidence**: `cargo test -p server --test prism_respawn_cycle_test` passed 5/5; Prism regressions passed 23/23; `cargo check -p server` passed; `cargo check --workspace` passed.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Not updated; no matching `PRISM-005` row exists in `production/sprint-status.yaml`.
 
 ## Dependencies
 
