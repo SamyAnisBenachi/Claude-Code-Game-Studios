@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Logic
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -121,3 +121,11 @@ Units at the objective cell remain there until killed (standard movement via F1 
 
 - Depends on: Story 002 must be DONE (unit cells set by movement; F3 formula reads cell position)
 - Unlocks: Nothing in this epic — consumed by Objective System [M2]
+
+---
+
+## Readiness Refresh
+
+- 2026-05-01: Revalidated against control manifest version 2026-05-01.
+  ADR-010 remains accepted, `TR-BLS-008` remains active, Story 002 is complete,
+  and no implementation requirements changed.
