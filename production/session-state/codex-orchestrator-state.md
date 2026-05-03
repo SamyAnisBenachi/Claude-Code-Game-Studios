@@ -116,13 +116,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- HAND-UI-008: Placement Unstaging implemented on branch
-  `work/hand-ui-008-placement-unstaging` at worker commit `743d660`; root
-  integration landed on main at `552f80f`. Verification passed `cargo fmt -p
-  client -- --check`, `cargo test -p client --test
-  hand_ui_placement_unstaging_test` 4/4, placement submit/instant/drag
-  regressions 13/13, `cargo check -p client`, and diff checks. No
-  `/story-done` has run yet.
 - HAND-UI-009: Placement Timer implemented on branch
   `work/hand-ui-009-placement-timer` at worker commit `7a8c173`; root
   integration landed on main at `a72bb0f`. Verification passed `cargo test -p
@@ -142,6 +135,12 @@ None currently tracked here.
   diff checks. No `/story-done` has run yet.
 ## Recently Closed
 
+- HAND-UI-008: Placement Unstaging implemented on branch
+  `work/hand-ui-008-placement-unstaging` at worker commit `743d660`; root
+  integration landed on main at `552f80f`; story-done closure committed at
+  `90c2c3a`. Verification passed `cargo test -p client --test
+  hand_ui_placement_unstaging_test` 4/4 and `cargo check -p client`.
+  `production/sprint-status.yaml` had no matching HAND-UI-008 row.
 - AUC-006: Resolution & Settlement readiness repair landed on main at
   `6f9b54a`; implementation landed on main at `5461de6`; story-done closure
   committed at `61e69b4`. Verification passed `cargo test -p server --test
@@ -534,16 +533,13 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HAND-UI-008:
-   `production/epics/hand-ui/story-008-placement-unstaging.md`
-   after integration commit `552f80f`.
-2. HAND-UI-009:
+1. HAND-UI-009:
    `production/epics/hand-ui/story-009-placement-timer.md`
    after integration commit `a72bb0f`.
-3. COMBAT-003:
+2. COMBAT-003:
    `production/epics/combat-resolution/story-003-substep1-placement-appearance.md`
    after integration commit `7fdf4fd`.
-4. OBJECTIVE-005:
+3. OBJECTIVE-005:
    `production/epics/objective-system/story-005-destruction-consequence-path.md`
    after integration commit `cf93a8d`.
 
@@ -592,10 +588,9 @@ Current active windows by user default-launch rule:
   verified, and is on origin/main. Window can be cleared. It now needs
   serialized `/story-done` after HAND-UI-009.
 - HAND-UI-009 returned, integrated into main at `a72bb0f`, verified, and is on
-  origin/main. Window can be cleared. It now needs serialized `/story-done`
-  after HAND-UI-008.
-- HAND-UI-008 returned, integrated into main at `552f80f`, verified, and is on
   origin/main. Window can be cleared. It now needs serialized `/story-done`.
+- HAND-UI-008 story-done returned and was committed at `90c2c3a`; window can
+  be cleared.
 - BOARD-009 story-done returned and was committed at `394d6c3`; window can be
   cleared.
 - AUC-006 story-done returned and was committed at `61e69b4`; window can be
