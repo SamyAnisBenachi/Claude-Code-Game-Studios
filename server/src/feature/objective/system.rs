@@ -3,6 +3,7 @@ use lightyear::prelude::{NetworkTarget, PeerId, Replicate, Server, ServerMultiMe
 use shared::protocol::{DraftPhase, ReliableChannel, S2CObjectiveIdentities};
 use shared::session::PlayerId;
 
+use crate::core::economy::AwardGold;
 use crate::core::rsm::DraftStarted;
 use crate::core::session::{
     defer_unicast_for_reconnect, DeferredMessage, PlayerConnectionMap, ReconnectTracker,
@@ -17,6 +18,7 @@ use crate::foundation::config::GameConfig;
 use crate::foundation::rng::ServerRng;
 
 const LOSS_THRESHOLD: u32 = 2;
+const DEFAULT_OBJECTIVE_GOLD_REWARD: u32 = 3;
 
 /// Local signal emitted after hidden objective identities are ready to send.
 #[derive(Message, Clone, Debug, PartialEq, Eq)]
@@ -178,8 +180,7 @@ pub fn take_damage(world: &mut World, lane: LaneId, attacker_player: PlayerId, a
     };
 
     if hp_after == 0 && hp_before > 0 {
-        mark_objective_destroyed(world, entity);
-        trigger_consequence_path(world, defending_player, lane);
+        apply_consequence_path(world, lane, attacker_player, defending_player);
     }
 }
 
@@ -229,21 +230,88 @@ fn mark_objective_destroyed(world: &mut World, objective: Entity) {
 }
 
 #[allow(dead_code)]
-fn trigger_consequence_path(world: &mut World, defending_player: PlayerId, lane: LaneId) {
-    let was_fake = world
+pub fn apply_consequence_path(
+    world: &mut World,
+    lane: LaneId,
+    attacker_player: PlayerId,
+    defending_player: PlayerId,
+) {
+    if let Some((entity, already_destroyed)) = objective_entity(world, defending_player, lane) {
+        if already_destroyed {
+            return;
+        }
+        mark_objective_destroyed(world, entity);
+    }
+
+    let was_fake = objective_was_fake(world, defending_player, lane);
+
+    queue_objective_destroyed(world, defending_player, lane, was_fake);
+
+    if attacker_player != defending_player {
+        emit_award_gold(world, attacker_player);
+
+        if was_fake {
+            increment_fake_destroyed(world, attacker_player);
+        }
+    }
+
+    if !was_fake {
+        increment_real_destroyed(world, defending_player);
+    }
+}
+
+fn objective_was_fake(world: &World, defending_player: PlayerId, lane: LaneId) -> bool {
+    world
         .get_resource::<HiddenObjectives>()
         .and_then(|hidden| hidden.identities.get(&(defending_player, lane)).copied())
-        .map_or(false, |is_fake| is_fake);
+        .unwrap_or(false)
+}
 
-    let Some(mut pending_events) = world.get_resource_mut::<PendingObjectiveEvents>() else {
-        return;
-    };
+fn queue_objective_destroyed(
+    world: &mut World,
+    defending_player: PlayerId,
+    lane: LaneId,
+    was_fake: bool,
+) {
+    if let Some(mut pending_events) = world.get_resource_mut::<PendingObjectiveEvents>() {
+        pending_events.queue.push(ObjectiveDestroyed {
+            target_player_id: defending_player,
+            lane,
+            was_fake,
+        });
+    }
+}
 
-    pending_events.queue.push(ObjectiveDestroyed {
-        target_player_id: defending_player,
-        lane,
-        was_fake,
-    });
+fn emit_award_gold(world: &mut World, player: PlayerId) {
+    let amount = world
+        .get_resource::<GameConfig>()
+        .map_or(DEFAULT_OBJECTIVE_GOLD_REWARD, |config| {
+            config.objective_gold_reward
+        });
+
+    if let Some(mut messages) = world.get_resource_mut::<Messages<AwardGold>>() {
+        messages.write(AwardGold { player, amount });
+    }
+}
+
+fn increment_fake_destroyed(world: &mut World, player: PlayerId) {
+    if let Some(mut counters) = world.get_resource_mut::<ObjectiveCounters>() {
+        counters
+            .fake_destroyed
+            .entry(player)
+            .and_modify(|count| *count = count.saturating_add(1))
+            .or_insert(1);
+    }
+}
+
+fn increment_real_destroyed(world: &mut World, player: PlayerId) {
+    if let Some(mut counters) = world.get_resource_mut::<ObjectiveCounters>() {
+        counters
+            .real_destroyed
+            .entry(player)
+            .and_modify(|count| *count = count.saturating_add(1))
+            .or_insert(1);
+    }
 }
 
 pub fn prepare_objective_identity_dispatch(

@@ -226,6 +226,10 @@ name = "damage_interface_test"
 path = "../tests/unit/objective/damage_interface_test.rs"
 
 [[test]]
+name = "consequence_path_test"
+path = "../tests/unit/objective/consequence_path_test.rs"
+
+[[test]]
 name = "objective_identity_unicast_test"
 path = "../tests/integration/objective/identity_unicast_test.rs"
 
