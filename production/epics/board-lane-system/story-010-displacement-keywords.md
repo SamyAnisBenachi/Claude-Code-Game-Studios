@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Logic
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -21,6 +21,7 @@
 **Control Manifest Rules (this layer)**:
 - Required: Displacement keyword functions reuse `apply_f1` — do not duplicate movement arithmetic
 - Required: Spawn range expansion deferred to next PLACEMENT phase — never applied mid-RESOLUTION
+- Required: Spawn range fake-destruction count remains clamped at 2 per current manifest rule `expand_spawn_range(state, player)`
 - Required: IRREMOVABLE check must be the first guard in every displacement function — silent discard on match
 - Required: CHANGE LANE silent no-op at boundary lanes (lane 1 and lane 5) and when destination lane is full
 - Forbidden: No hardcoded direction values — REPEL/ATTRACT direction computed at call site per GDD F1 table
