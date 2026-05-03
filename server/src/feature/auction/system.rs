@@ -1,22 +1,24 @@
 use std::collections::HashSet;
 
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use lightyear::prelude::{
     MessageReceiver, NetworkTarget, PeerId, RemoteId, Server, ServerMultiMessageSender,
 };
 use shared::card::{CardId, Rarity};
 use shared::protocol::{
-    BidRejectedReason, C2SPlaceBid, ReliableChannel, S2CAuctionBidAccepted, S2CAuctionBidRejected,
+    BidRejectedReason, C2SPlaceBid, CardSource, ReliableChannel, S2CAuctionBidAccepted,
+    S2CAuctionBidRejected, S2CAuctionSettled, S2CCardAcquired,
 };
 use shared::session::PlayerId;
 
 use crate::core::economy::system::{gold_broadcast, S2CGoldBroadcast};
 use crate::core::economy::{api, PlayerEconomies};
-use crate::core::rsm::{AbortAuction, AuctionPhaseEntered};
+use crate::core::rsm::{AbortAuction, AuctionPhaseEntered, AuctionSettled};
 use crate::core::session::{
     defer_unicast_for_reconnect, DeferredMessage, PlayerConnectionMap, ReconnectTracker,
 };
-use crate::feature::acquisition::{PlayerHands, MAX_HAND_SIZE};
+use crate::feature::acquisition::{hand_push, PlayerHands, MAX_HAND_SIZE};
 use crate::foundation::config::{CardCatalog, GameConfig};
 
 use super::state::{AuctionPhase, AuctionState};
@@ -48,6 +50,13 @@ impl AuctionCardDrawFixture {
     }
 }
 
+#[derive(SystemParam)]
+pub struct AuctionMessageWriters<'w> {
+    auction_cards: MessageWriter<'w, S2CAuctionCard>,
+    gold_broadcasts: MessageWriter<'w, S2CGoldBroadcast>,
+    settled: MessageWriter<'w, AuctionSettled>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AuctionBid {
     pub bidder: PlayerId,
@@ -69,10 +78,24 @@ pub struct AuctionAcceptedDispatch {
     pub message: S2CAuctionBidAccepted,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AuctionCardAcquiredDispatch {
+    pub player_id: PlayerId,
+    pub peer_id: Option<PeerId>,
+    pub message: S2CCardAcquired,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AuctionSettledDispatch {
+    pub message: S2CAuctionSettled,
+}
+
 #[derive(Resource, Clone, Debug, Default)]
 pub struct AuctionNetworkOutbox {
     rejected: Vec<AuctionRejectionDispatch>,
     accepted: Vec<AuctionAcceptedDispatch>,
+    card_acquired: Vec<AuctionCardAcquiredDispatch>,
+    settled: Vec<AuctionSettledDispatch>,
 }
 
 impl AuctionNetworkOutbox {
@@ -84,6 +107,14 @@ impl AuctionNetworkOutbox {
         self.accepted.push(dispatch);
     }
 
+    pub fn push_card_acquired(&mut self, dispatch: AuctionCardAcquiredDispatch) {
+        self.card_acquired.push(dispatch);
+    }
+
+    pub fn push_settled(&mut self, dispatch: AuctionSettledDispatch) {
+        self.settled.push(dispatch);
+    }
+
     pub fn rejected(&self) -> &[AuctionRejectionDispatch] {
         &self.rejected
     }
@@ -92,9 +123,20 @@ impl AuctionNetworkOutbox {
         &self.accepted
     }
 
+    pub fn card_acquired(&self) -> &[AuctionCardAcquiredDispatch] {
+        &self.card_acquired
+    }
+
+    pub fn settled(&self) -> &[AuctionSettledDispatch] {
+        &self.settled
+    }
+
     pub fn extend(&mut self, other: &AuctionNetworkOutbox) {
         self.rejected.extend(other.rejected.iter().cloned());
         self.accepted.extend(other.accepted.iter().cloned());
+        self.card_acquired
+            .extend(other.card_acquired.iter().cloned());
+        self.settled.extend(other.settled.iter().cloned());
     }
 }
 
@@ -103,7 +145,7 @@ pub fn auction_tick_system(
     mut phase_entered: MessageReader<AuctionPhaseEntered>,
     mut abort: MessageReader<AbortAuction>,
     mut economies: ResMut<PlayerEconomies>,
-    hands: Option<Res<PlayerHands>>,
+    mut hands: Option<ResMut<PlayerHands>>,
     draw_fixture: Option<Res<AuctionCardDrawFixture>>,
     catalog: Res<CardCatalog>,
     config: Res<GameConfig>,
@@ -113,8 +155,7 @@ pub fn auction_tick_system(
     mut bid_receivers: Query<(&RemoteId, &mut MessageReceiver<C2SPlaceBid>)>,
     server: Query<&Server>,
     mut sender: Option<ServerMultiMessageSender>,
-    mut auction_cards: MessageWriter<S2CAuctionCard>,
-    mut gold_broadcasts: MessageWriter<S2CGoldBroadcast>,
+    mut writers: AuctionMessageWriters,
 ) {
     for event in phase_entered.read() {
         if auction.phase != AuctionPhase::Idle {
@@ -145,7 +186,7 @@ pub fn auction_tick_system(
         auction.timer_remaining_ms = config.auction_timer_seconds.saturating_mul(1000);
         auction.phase = AuctionPhase::LiveBidding;
 
-        auction_cards.write(S2CAuctionCard {
+        writers.auction_cards.write(S2CAuctionCard {
             card_id,
             starting_price,
         });
@@ -168,13 +209,24 @@ pub fn auction_tick_system(
         &mut frame_gold_broadcasts,
     );
 
-    for broadcast in frame_gold_broadcasts {
-        gold_broadcasts.write(broadcast);
-    }
-
     if let Some(time) = time.as_deref() {
         let raw_delta_ms = u32::try_from(time.delta().as_millis()).unwrap_or(u32::MAX);
         decrement_live_bidding_timer(&mut auction, raw_delta_ms);
+    }
+
+    if let Some(settled) = settle_expired_auction(
+        &mut auction,
+        &mut economies,
+        hands.as_deref_mut(),
+        connections.as_deref(),
+        &mut frame_outbox,
+        &mut frame_gold_broadcasts,
+    ) {
+        writers.settled.write(settled);
+    }
+
+    for broadcast in frame_gold_broadcasts {
+        writers.gold_broadcasts.write(broadcast);
     }
 
     let pending_players = defer_auction_outbox_for_reconnect(
@@ -255,6 +307,145 @@ pub fn decrement_live_bidding_timer(auction: &mut AuctionState, raw_delta_ms: u3
 
     let safe_delta_ms = raw_delta_ms.min(1000);
     auction.timer_remaining_ms = auction.timer_remaining_ms.saturating_sub(safe_delta_ms);
+}
+
+pub fn settle_expired_auction(
+    auction: &mut AuctionState,
+    economies: &mut PlayerEconomies,
+    hands: Option<&mut PlayerHands>,
+    connections: Option<&PlayerConnectionMap>,
+    outbox: &mut AuctionNetworkOutbox,
+    gold_broadcasts: &mut Vec<S2CGoldBroadcast>,
+) -> Option<AuctionSettled> {
+    if auction.phase != AuctionPhase::LiveBidding || auction.timer_remaining_ms != 0 {
+        return None;
+    }
+
+    auction.phase = AuctionPhase::Resolving;
+    let card_id = auction.card_id.unwrap_or_else(|| {
+        tracing::error!("auction settlement reached without an auction card");
+        CardId(0)
+    });
+
+    let settled = match auction.current_leader {
+        Some(winner) => {
+            let bid_amount = auction.current_price;
+            if let Some(economy) = economies.0.get_mut(&winner) {
+                settle_winner_economy(winner, economy, bid_amount);
+                gold_broadcasts.push(gold_broadcast(winner, economy));
+            } else {
+                tracing::error!(
+                    winner = winner.0,
+                    bid_amount,
+                    "auction settlement winner economy missing"
+                );
+            }
+
+            award_auction_card(winner, card_id, hands, connections, outbox);
+            outbox.push_settled(AuctionSettledDispatch {
+                message: S2CAuctionSettled {
+                    winner: Some(winner),
+                    amount: bid_amount,
+                },
+            });
+
+            AuctionSettled {
+                winner: Some(winner),
+                final_price: bid_amount,
+                card_id,
+            }
+        }
+        None => {
+            outbox.push_settled(AuctionSettledDispatch {
+                message: S2CAuctionSettled {
+                    winner: None,
+                    amount: 0,
+                },
+            });
+
+            AuctionSettled {
+                winner: None,
+                final_price: 0,
+                card_id,
+            }
+        }
+    };
+
+    reset_to_idle(auction);
+    Some(settled)
+}
+
+fn settle_winner_economy(
+    winner: PlayerId,
+    economy: &mut crate::core::economy::PlayerEconomy,
+    bid_amount: u32,
+) {
+    if economy.gold < economy.reserved_gold {
+        tracing::error!(
+            winner = winner.0,
+            gold = economy.gold,
+            reserved_gold = economy.reserved_gold,
+            "CRITICAL: gold < reserved_gold at auction resolution; session corrupt"
+        );
+    }
+    debug_assert!(
+        economy.gold >= economy.reserved_gold,
+        "gold invariant violated at auction resolution"
+    );
+
+    if economy.reserved_gold != bid_amount {
+        tracing::error!(
+            winner = winner.0,
+            bid_amount,
+            reserved_gold = economy.reserved_gold,
+            "CRITICAL: auction resolution reservation does not match winning bid"
+        );
+    }
+
+    let reserved_gold = economy.reserved_gold;
+    api::release_gold_reservation(economy, reserved_gold);
+    if api::spend_gold(economy, bid_amount).is_err() {
+        tracing::error!(
+            winner = winner.0,
+            bid_amount,
+            "CRITICAL: auction settlement spend failed after reservation release"
+        );
+    }
+}
+
+fn award_auction_card(
+    winner: PlayerId,
+    card_id: CardId,
+    hands: Option<&mut PlayerHands>,
+    connections: Option<&PlayerConnectionMap>,
+    outbox: &mut AuctionNetworkOutbox,
+) {
+    let Some(hands) = hands else {
+        tracing::error!(
+            winner = winner.0,
+            card_id = card_id.0,
+            "auction settlement could not award card because PlayerHands is missing"
+        );
+        return;
+    };
+
+    if hand_push(hands, winner, card_id).is_err() {
+        tracing::error!(
+            winner = winner.0,
+            card_id = card_id.0,
+            "auction settlement winner hand full; card discarded"
+        );
+        return;
+    }
+
+    outbox.push_card_acquired(AuctionCardAcquiredDispatch {
+        player_id: winner,
+        peer_id: peer_for_player(connections, winner),
+        message: S2CCardAcquired {
+            card_id,
+            source: CardSource::AuctionWon,
+        },
+    });
 }
 
 fn handle_abort_auction(auction: &mut AuctionState, economies: &mut PlayerEconomies) {
@@ -391,6 +582,30 @@ fn send_outbox_dispatches(
             &target,
         );
     }
+
+    for dispatch in outbox.card_acquired() {
+        if pending_players.contains(&dispatch.player_id) {
+            continue;
+        }
+
+        let Some(peer_id) = dispatch.peer_id else {
+            continue;
+        };
+        let _ = sender.send::<S2CCardAcquired, ReliableChannel>(
+            &dispatch.message,
+            server,
+            &NetworkTarget::Single(peer_id),
+        );
+    }
+
+    for dispatch in outbox.settled() {
+        let target = accepted_bid_target(connections, pending_players);
+        let Some(target) = target else {
+            continue;
+        };
+        let _ =
+            sender.send::<S2CAuctionSettled, ReliableChannel>(&dispatch.message, server, &target);
+    }
 }
 
 pub fn defer_auction_outbox_for_reconnect(
@@ -416,6 +631,14 @@ pub fn defer_auction_outbox_for_reconnect(
                 DeferredMessage::AuctionBidAccepted(dispatch.message.clone()),
             );
         }
+    }
+
+    for dispatch in outbox.card_acquired() {
+        let _ = defer_unicast_for_reconnect(
+            tracker.as_deref_mut(),
+            dispatch.player_id,
+            DeferredMessage::CardAcquiredMessage(dispatch.message.clone()),
+        );
     }
 
     pending_players
@@ -457,6 +680,16 @@ fn accepted_bid_target(
         .filter_map(|(peer_id, player)| (!pending_players.contains(player)).then_some(*peer_id))
         .collect::<Vec<_>>();
     (!peers.is_empty()).then_some(NetworkTarget::Only(peers))
+}
+
+fn peer_for_player(
+    connections: Option<&PlayerConnectionMap>,
+    player_id: PlayerId,
+) -> Option<PeerId> {
+    connections?
+        .0
+        .iter()
+        .find_map(|(peer_id, mapped_player)| (*mapped_player == player_id).then_some(*peer_id))
 }
 
 fn reset_to_idle(auction: &mut AuctionState) {

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use server::core::economy::{PlayerEconomies, S2CGoldBroadcast};
-use server::core::rsm::{AbortAuction, AuctionPhaseEntered, BroadcastPhaseChanged};
+use server::core::rsm::{AbortAuction, AuctionPhaseEntered, AuctionSettled, BroadcastPhaseChanged};
 use server::feature::auction::{
     auction_tick_system, AuctionCardDrawFixture, AuctionPhase, AuctionState, S2CAuctionCard,
 };
@@ -49,6 +49,7 @@ fn app_for_card(card: CardData) -> App {
     let mut app = App::new();
     app.add_message::<AuctionPhaseEntered>()
         .add_message::<AbortAuction>()
+        .add_message::<AuctionSettled>()
         .add_message::<S2CAuctionCard>()
         .add_message::<S2CGoldBroadcast>()
         .add_message::<BroadcastPhaseChanged>()
