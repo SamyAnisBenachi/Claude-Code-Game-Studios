@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::time::Duration;
 
 use bevy::ecs::query::QueryFilter;
@@ -5,10 +6,10 @@ use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
 use bevy_tweening::{lens::TransformPositionLens, Tween, TweenAnim};
 use lightyear::prelude::MessageSender;
-use shared::card::{CardCatalog, CardId};
+use shared::card::{CardCatalog, CardId, CardType};
 use shared::protocol::{
-    C2SActivateCard, C2SPurchaseCard, C2SSubmitPlacement, PlacedCard, PlayTarget, ReliableChannel,
-    RoundPhase,
+    C2SActivateCard, C2SPurchaseCard, C2SSubmitPlacement, EntityId, PlacedCard, PlayTarget,
+    ReliableChannel, RoundPhase,
 };
 use shared::session::PlayerId;
 
@@ -16,10 +17,11 @@ use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
 };
 use crate::state::{ClientState, CurrentClientPhase};
+use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 pub const HAND_FAN_SLOT_COUNT: usize = 10;
 pub const DRAFT_INITIAL_GRID_SLOT_COUNT: usize = 9;
-pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT + DRAFT_INITIAL_GRID_SLOT_COUNT + 5;
+pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT + DRAFT_INITIAL_GRID_SLOT_COUNT + 6;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct HandFanLayoutConfig {
@@ -167,6 +169,106 @@ impl PendingPlacements {
     }
 }
 
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlacementBoardView {
+    pub local_player_id: PlayerId,
+    pub opponent_player_id: PlayerId,
+    pub spawn_edge: BoardSpawnEdge,
+    pub spawn_range_cells: u8,
+}
+
+impl Default for PlacementBoardView {
+    fn default() -> Self {
+        Self {
+            local_player_id: PlayerId(1),
+            opponent_player_id: PlayerId(2),
+            spawn_edge: BoardSpawnEdge::LowCells,
+            spawn_range_cells: 1,
+        }
+    }
+}
+
+impl PlacementBoardView {
+    fn is_spawn_cell(self, lane: u8, cell: u8) -> bool {
+        if !(1..=BOARD_LANE_COUNT).contains(&lane) {
+            return false;
+        }
+
+        let range = self.spawn_range_cells.clamp(1, BOARD_CELL_COUNT);
+        match self.spawn_edge {
+            BoardSpawnEdge::LowCells => (1..=range).contains(&cell),
+            BoardSpawnEdge::HighCells => {
+                let first_cell = BOARD_CELL_COUNT - range + 1;
+                (first_cell..=BOARD_CELL_COUNT).contains(&cell)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoardSpawnEdge {
+    LowCells,
+    HighCells,
+}
+
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq)]
+pub struct ActivePlacementDrag {
+    pub card: Option<Entity>,
+    pub card_id: Option<CardId>,
+    pub owner_id: Option<PlayerId>,
+    pub target_kind: Option<PlacementTargetKind>,
+    pub cursor_world_position: Option<Vec2>,
+}
+
+impl ActivePlacementDrag {
+    fn start(
+        &mut self,
+        card: Entity,
+        card_id: CardId,
+        owner_id: PlayerId,
+        target_kind: PlacementTargetKind,
+    ) {
+        self.card = Some(card);
+        self.card_id = Some(card_id);
+        self.owner_id = Some(owner_id);
+        self.target_kind = Some(target_kind);
+        self.cursor_world_position = None;
+    }
+
+    fn clear(&mut self) {
+        *self = Self::default();
+    }
+
+    fn is_active(self) -> bool {
+        self.card.is_some() && self.target_kind.is_some()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlacementTargetKind {
+    Minion,
+    TargetObj,
+    LaneWide,
+    TargetUnit,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandPlacementTargetKind(pub PlacementTargetKind);
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandUiPlacementDragStarted {
+    pub card: Entity,
+    pub owner_id: PlayerId,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq)]
+pub struct HandUiPlacementCursorMoved {
+    pub world_position: Option<Vec2>,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandUiPlacementDragEnded;
+
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandFanCardClicked {
     pub card: Entity,
@@ -272,6 +374,33 @@ pub enum FanSlotState {
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardCellHighlighted;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardCellOccupied;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ObjectiveCell {
+    pub player_id: PlayerId,
+    pub lane: u8,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ObjectiveAlive;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlacementTargetUnit {
+    pub owner_id: PlayerId,
+    pub unit_id: EntityId,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TargetUnitHover;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NoValidTargetsOverlay;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReserveStripForFanSlot(pub u8);
 
 #[derive(Resource, Debug, Clone, Copy)]
@@ -283,6 +412,7 @@ pub struct HandUiEntities {
     pub submit_button: Entity,
     pub timer: Entity,
     pub hand_full_notification: Entity,
+    pub no_valid_targets_overlay: Entity,
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -347,10 +477,15 @@ impl Plugin for HandUiPlugin {
             .init_resource::<HandUiMode>()
             .init_resource::<HandUiOutboundMessages>()
             .init_resource::<PendingPlacements>()
+            .init_resource::<PlacementBoardView>()
+            .init_resource::<ActivePlacementDrag>()
             .add_message::<HandFanCardClicked>()
             .add_message::<HandGridCardClicked>()
             .add_message::<HandUiDraftOfferingReceived>()
             .add_message::<HandUiCardAcquiredReceived>()
+            .add_message::<HandUiPlacementDragStarted>()
+            .add_message::<HandUiPlacementCursorMoved>()
+            .add_message::<HandUiPlacementDragEnded>()
             .add_message::<HandUiPlacementDropResolved>()
             .add_message::<HandSubmitButtonClicked>()
             .add_message::<GhostPlacementChanged>()
@@ -375,6 +510,9 @@ impl Plugin for HandUiPlugin {
                         .chain()
                         .in_set(HandUiSystemSet::MessageDrain),
                     (
+                        handle_placement_drag_started_system,
+                        handle_placement_cursor_moved_system,
+                        handle_placement_drag_ended_system,
                         handle_grid_card_click_system,
                         handle_hand_fan_card_click_system,
                         handle_placement_drop_resolved_system,
@@ -383,6 +521,7 @@ impl Plugin for HandUiPlugin {
                         .chain()
                         .in_set(HandUiSystemSet::Input),
                     (
+                        apply_placement_drag_highlights_system,
                         tick_pending_purchase_timeouts_system,
                         apply_fan_layout_system,
                         tick_hand_full_notification_system,
@@ -452,6 +591,7 @@ pub fn hand_ui_phase_transition_system(
     mut mode: ResMut<HandUiMode>,
     mut layout_state: ResMut<HandFanLayoutState>,
     mut pending_placements: ResMut<PendingPlacements>,
+    mut active_drag: ResMut<ActivePlacementDrag>,
     entities: Option<Res<HandUiEntities>>,
     mut commands: Commands,
     mut visibility_query: Query<&mut Visibility>,
@@ -478,6 +618,7 @@ pub fn hand_ui_phase_transition_system(
 
     if phase_changed {
         pending_placements.clear();
+        active_drag.clear();
     }
 
     if next_mode == HandUiMode::Hidden {
@@ -501,6 +642,11 @@ pub fn hand_ui_phase_transition_system(
     );
     set_visibility(
         entities.drag_sprite,
+        Visibility::Hidden,
+        &mut visibility_query,
+    );
+    set_visibility(
+        entities.no_valid_targets_overlay,
         Visibility::Hidden,
         &mut visibility_query,
     );
@@ -740,11 +886,59 @@ pub fn handle_hand_fan_card_click_system(
     }
 }
 
+pub fn handle_placement_drag_started_system(
+    mode: Res<HandUiMode>,
+    catalog: Res<HandCardCatalog>,
+    mut starts: MessageReader<HandUiPlacementDragStarted>,
+    mut active_drag: ResMut<ActivePlacementDrag>,
+    hand_cards: Query<(&HandSlotCard, Option<&HandPlacementTargetKind>), With<FanSlotIndex>>,
+) {
+    for start in starts.read() {
+        if *mode != HandUiMode::Staging {
+            active_drag.clear();
+            continue;
+        }
+
+        let Ok((card, target_kind)) = hand_cards.get(start.card) else {
+            active_drag.clear();
+            continue;
+        };
+
+        let Some(target_kind) = resolve_placement_target_kind(card.0, target_kind, &catalog) else {
+            active_drag.clear();
+            continue;
+        };
+
+        active_drag.start(start.card, card.0, start.owner_id, target_kind);
+    }
+}
+
+pub fn handle_placement_cursor_moved_system(
+    mut moves: MessageReader<HandUiPlacementCursorMoved>,
+    mut active_drag: ResMut<ActivePlacementDrag>,
+) {
+    for cursor_move in moves.read() {
+        if active_drag.is_active() {
+            active_drag.cursor_world_position = cursor_move.world_position;
+        }
+    }
+}
+
+pub fn handle_placement_drag_ended_system(
+    mut ends: MessageReader<HandUiPlacementDragEnded>,
+    mut active_drag: ResMut<ActivePlacementDrag>,
+) {
+    for _end in ends.read() {
+        active_drag.clear();
+    }
+}
+
 pub fn handle_placement_drop_resolved_system(
     mode: Res<HandUiMode>,
     entities: Option<Res<HandUiEntities>>,
     mut drops: MessageReader<HandUiPlacementDropResolved>,
     mut pending_placements: ResMut<PendingPlacements>,
+    mut active_drag: ResMut<ActivePlacementDrag>,
     mut ghost_writer: MessageWriter<GhostPlacementChanged>,
     mut commands: Commands,
     mut visibility_sets: ParamSet<(
@@ -764,6 +958,7 @@ pub fn handle_placement_drop_resolved_system(
             continue;
         }
 
+        active_drag.clear();
         set_visibility(
             entities.drag_sprite,
             Visibility::Hidden,
@@ -834,6 +1029,87 @@ pub fn handle_submit_button_click_system(
         text.0.clear();
         text.0.push_str("Submitted");
     }
+}
+
+pub fn apply_placement_drag_highlights_system(
+    mode: Res<HandUiMode>,
+    board_layout: Option<Res<BoardLayout>>,
+    board_view: Res<PlacementBoardView>,
+    catalog: Res<HandCardCatalog>,
+    active_drag: Res<ActivePlacementDrag>,
+    pending_placements: Res<PendingPlacements>,
+    mut commands: Commands,
+    board_cells: Query<(
+        Entity,
+        &LaneCell,
+        Option<&BoardCellOccupied>,
+        Option<&ObjectiveCell>,
+    )>,
+    highlighted_cells: Query<Entity, With<BoardCellHighlighted>>,
+    objectives: Query<(Entity, &ObjectiveCell, Option<&ObjectiveAlive>)>,
+    target_units: Query<(Entity, &PlacementTargetUnit, &GlobalTransform)>,
+    hovered_units: Query<Entity, With<TargetUnitHover>>,
+    mut overlays: Query<&mut Visibility, With<NoValidTargetsOverlay>>,
+) {
+    if *mode != HandUiMode::Staging || !active_drag.is_active() {
+        cleanup_placement_highlights(
+            &mut commands,
+            &highlighted_cells,
+            &hovered_units,
+            &mut overlays,
+        );
+        return;
+    }
+
+    let Some(board_layout) = board_layout else {
+        cleanup_placement_highlights(
+            &mut commands,
+            &highlighted_cells,
+            &hovered_units,
+            &mut overlays,
+        );
+        warn!("BoardLayout missing; placement drag highlights skipped");
+        return;
+    };
+
+    let desired_highlights = match active_drag.target_kind {
+        Some(PlacementTargetKind::Minion) => {
+            set_no_valid_targets_overlay(&mut overlays, Visibility::Hidden);
+            sync_target_unit_hover(&mut commands, &hovered_units, None);
+            minion_highlight_cells(
+                &board_layout,
+                *board_view,
+                &catalog,
+                &pending_placements,
+                &board_cells,
+            )
+        }
+        Some(PlacementTargetKind::TargetObj) => {
+            set_no_valid_targets_overlay(&mut overlays, Visibility::Hidden);
+            sync_target_unit_hover(&mut commands, &hovered_units, None);
+            target_objective_highlight_cells(*board_view, &objectives)
+        }
+        Some(PlacementTargetKind::LaneWide) => {
+            set_no_valid_targets_overlay(&mut overlays, Visibility::Hidden);
+            sync_target_unit_hover(&mut commands, &hovered_units, None);
+            lane_wide_highlight_cells(&board_layout, &board_cells)
+        }
+        Some(PlacementTargetKind::TargetUnit) => {
+            sync_board_cell_highlights(&mut commands, &highlighted_cells, &BTreeSet::new());
+            sync_target_unit_highlights(
+                &mut commands,
+                &board_layout,
+                active_drag.cursor_world_position,
+                &target_units,
+                &hovered_units,
+                &mut overlays,
+            );
+            return;
+        }
+        None => BTreeSet::new(),
+    };
+
+    sync_board_cell_highlights(&mut commands, &highlighted_cells, &desired_highlights);
 }
 
 pub fn tick_pending_purchase_timeouts_system(
@@ -986,6 +1262,17 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
         ))
         .id();
 
+    let no_valid_targets_overlay = commands
+        .spawn((
+            Name::new("Hand UI No Valid Targets Overlay"),
+            HandUiEntity,
+            NoValidTargetsOverlay,
+            hidden_control_node(180.0, 28.0, 208.0),
+            Visibility::Hidden,
+            ChildOf(fan_root),
+        ))
+        .id();
+
     commands.insert_resource(HandUiEntities {
         fan_root,
         fan_slots,
@@ -994,6 +1281,7 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
         submit_button,
         timer,
         hand_full_notification,
+        no_valid_targets_overlay,
     });
 }
 
@@ -1062,6 +1350,206 @@ fn set_reserve_strip_visibility(
         if reserve_slot.0 == slot_index {
             *reserve_visibility = visibility;
         }
+    }
+}
+
+fn resolve_placement_target_kind(
+    card_id: CardId,
+    target_kind: Option<&HandPlacementTargetKind>,
+    catalog: &HandCardCatalog,
+) -> Option<PlacementTargetKind> {
+    if let Some(target_kind) = target_kind {
+        return Some(target_kind.0);
+    }
+
+    let card = catalog.cards.get(&card_id)?;
+    match card.card_type {
+        CardType::Minion => Some(PlacementTargetKind::Minion),
+        CardType::Field => Some(PlacementTargetKind::LaneWide),
+        CardType::Spell
+        | CardType::Trap
+        | CardType::Structure
+        | CardType::Order
+        | CardType::DoubleFace => None,
+    }
+}
+
+fn minion_highlight_cells(
+    board_layout: &BoardLayout,
+    board_view: PlacementBoardView,
+    catalog: &HandCardCatalog,
+    pending_placements: &PendingPlacements,
+    board_cells: &Query<(
+        Entity,
+        &LaneCell,
+        Option<&BoardCellOccupied>,
+        Option<&ObjectiveCell>,
+    )>,
+) -> BTreeSet<Entity> {
+    let staged_minion_cells = staged_minion_cells(catalog, pending_placements);
+    board_cells
+        .iter()
+        .filter_map(|(entity, lane_cell, occupied, objective)| {
+            let valid_cell = board_layout
+                .cell_to_world(lane_cell.lane, lane_cell.cell)
+                .is_some()
+                && board_view.is_spawn_cell(lane_cell.lane, lane_cell.cell)
+                && occupied.is_none()
+                && objective.is_none()
+                && !staged_minion_cells.contains(&(lane_cell.lane, lane_cell.cell));
+
+            valid_cell.then_some(entity)
+        })
+        .collect()
+}
+
+fn target_objective_highlight_cells(
+    board_view: PlacementBoardView,
+    objectives: &Query<(Entity, &ObjectiveCell, Option<&ObjectiveAlive>)>,
+) -> BTreeSet<Entity> {
+    objectives
+        .iter()
+        .filter_map(|(entity, objective, alive)| {
+            (objective.player_id == board_view.opponent_player_id && alive.is_some())
+                .then_some(entity)
+        })
+        .collect()
+}
+
+fn lane_wide_highlight_cells(
+    board_layout: &BoardLayout,
+    board_cells: &Query<(
+        Entity,
+        &LaneCell,
+        Option<&BoardCellOccupied>,
+        Option<&ObjectiveCell>,
+    )>,
+) -> BTreeSet<Entity> {
+    board_cells
+        .iter()
+        .filter_map(|(entity, lane_cell, _occupied, objective)| {
+            let valid_cell = board_layout
+                .cell_to_world(lane_cell.lane, lane_cell.cell)
+                .is_some()
+                && objective.is_none();
+
+            valid_cell.then_some(entity)
+        })
+        .collect()
+}
+
+fn staged_minion_cells(
+    catalog: &HandCardCatalog,
+    pending_placements: &PendingPlacements,
+) -> BTreeSet<(u8, u8)> {
+    pending_placements
+        .placements
+        .iter()
+        .filter_map(|placement| {
+            let card = catalog.cards.get(&placement.card_id)?;
+            let PlayTarget::BoardCell { lane, cell } = &placement.target else {
+                return None;
+            };
+
+            (card.card_type == CardType::Minion).then_some((*lane, *cell))
+        })
+        .collect()
+}
+
+fn cleanup_placement_highlights(
+    commands: &mut Commands,
+    highlighted_cells: &Query<Entity, With<BoardCellHighlighted>>,
+    hovered_units: &Query<Entity, With<TargetUnitHover>>,
+    overlays: &mut Query<&mut Visibility, With<NoValidTargetsOverlay>>,
+) {
+    sync_board_cell_highlights(commands, highlighted_cells, &BTreeSet::new());
+    sync_target_unit_hover(commands, hovered_units, None);
+    set_no_valid_targets_overlay(overlays, Visibility::Hidden);
+}
+
+fn sync_board_cell_highlights(
+    commands: &mut Commands,
+    highlighted_cells: &Query<Entity, With<BoardCellHighlighted>>,
+    desired: &BTreeSet<Entity>,
+) {
+    let current = highlighted_cells.iter().collect::<BTreeSet<_>>();
+
+    for entity in current.difference(desired) {
+        commands.entity(*entity).remove::<BoardCellHighlighted>();
+    }
+
+    for entity in desired.difference(&current) {
+        commands.entity(*entity).insert(BoardCellHighlighted);
+    }
+}
+
+fn sync_target_unit_highlights(
+    commands: &mut Commands,
+    board_layout: &BoardLayout,
+    cursor_world_position: Option<Vec2>,
+    target_units: &Query<(Entity, &PlacementTargetUnit, &GlobalTransform)>,
+    hovered_units: &Query<Entity, With<TargetUnitHover>>,
+    overlays: &mut Query<&mut Visibility, With<NoValidTargetsOverlay>>,
+) {
+    let mut hovered = None;
+    let mut valid_count = 0;
+
+    for (entity, _target_unit, transform) in target_units.iter() {
+        valid_count += 1;
+        if hovered.is_none()
+            && cursor_world_position
+                .map(|cursor| cursor_over_unit(cursor, transform, board_layout))
+                .unwrap_or(false)
+        {
+            hovered = Some(entity);
+        }
+    }
+
+    if valid_count == 0 {
+        sync_target_unit_hover(commands, hovered_units, None);
+        set_no_valid_targets_overlay(overlays, Visibility::Visible);
+        return;
+    }
+
+    set_no_valid_targets_overlay(overlays, Visibility::Hidden);
+    sync_target_unit_hover(commands, hovered_units, hovered);
+}
+
+fn cursor_over_unit(
+    cursor_world_position: Vec2,
+    transform: &GlobalTransform,
+    board_layout: &BoardLayout,
+) -> bool {
+    let unit_position = transform.translation().truncate();
+    let half_width = board_layout.cell_width * 0.5;
+    let half_height = board_layout.lane_height * 0.5;
+
+    (cursor_world_position.x - unit_position.x).abs() <= half_width
+        && (cursor_world_position.y - unit_position.y).abs() <= half_height
+}
+
+fn sync_target_unit_hover(
+    commands: &mut Commands,
+    hovered_units: &Query<Entity, With<TargetUnitHover>>,
+    desired: Option<Entity>,
+) {
+    for entity in hovered_units.iter() {
+        if Some(entity) != desired {
+            commands.entity(entity).remove::<TargetUnitHover>();
+        }
+    }
+
+    if let Some(entity) = desired {
+        commands.entity(entity).insert(TargetUnitHover);
+    }
+}
+
+fn set_no_valid_targets_overlay(
+    overlays: &mut Query<&mut Visibility, With<NoValidTargetsOverlay>>,
+    visibility: Visibility,
+) {
+    for mut overlay_visibility in overlays.iter_mut() {
+        *overlay_visibility = visibility;
     }
 }
 
