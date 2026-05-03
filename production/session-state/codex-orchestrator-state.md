@@ -134,6 +134,12 @@ None currently tracked here.
   `ResMut<AuctionState>` grep with exactly one source match, and diff checks.
   This was one of the Sprint 5 out-of-plan pull-forward items and has now
   returned READY plus integrated; it still needs `/story-done`.
+- HAND-UI-011: Reserve Mana Strip implementation landed on main at `bd8c15b`.
+  Verification passed `cargo test -p client --test
+  hand_ui_reserve_mana_strip_test` 3/3, placement submit/plugin/unstaging
+  regressions 12/12, `cargo check -p client`, `cargo check --workspace`, and
+  diff checks. This was one of the Sprint 5 out-of-plan pull-forward items and
+  has now returned READY plus integrated; it still needs `/story-done`.
 ## Recently Closed
 
 - HAND-UI-009: Placement Timer implemented on branch
@@ -549,6 +555,9 @@ None currently tracked here.
 3. AUC-007:
    `production/epics/auction-system/story-007-auction-plugin-scheduling.md`
    after integration commit `ea5d88d`.
+4. HAND-UI-011:
+   `production/epics/hand-ui/story-011-reserve-mana-strip.md`
+   after integration commit `bd8c15b`.
 
 Run only one story-done at a time.
 
@@ -564,7 +573,7 @@ Run only one story-done at a time.
   Treat those items as Sprint 5 in-flight only after their worker readiness
   repairs return READY and are reconciled during integration/story-done.
   AUC-007 has returned READY and is integrated at `f96a524`/`ea5d88d`;
-  it remains pending story-done.
+  HAND-UI-011 is integrated at `bd8c15b`; both remain pending story-done.
 - Sprint 4 QA plan missing: resolved at `8578890` with
   `production/qa/qa-plan-sprint-4-2026-05-03.md`. S4-14 Economy Network
   Dispatch can now run story-readiness, but `production/sprint-status.yaml`
@@ -593,12 +602,15 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- None known at this checkpoint. AUC-007, OBJECTIVE-005, COMBAT-003,
-  HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009, COMBAT-002, OBJECTIVE-004,
-  BOARD-008, and HAND-UI-007 have returned and are integrated or closed as
-  noted; do not relaunch their implementation workers.
+- None known at this checkpoint. HAND-UI-011, AUC-007, OBJECTIVE-005,
+  COMBAT-003, HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009, COMBAT-002,
+  OBJECTIVE-004, BOARD-008, and HAND-UI-007 have returned and are integrated
+  or closed as noted; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
+- HAND-UI-011 returned, integrated into main at `bd8c15b`, verified, and is on
+  origin/main after orchestrator push. Window can be cleared. It now needs
+  serialized `/story-done` after AUC-007.
 - AUC-007 returned, integrated into main at `f96a524` and `ea5d88d`,
   verified, and is on origin/main after orchestrator push. Window can be
   cleared. It now needs serialized `/story-done` after OBJECTIVE-005.
