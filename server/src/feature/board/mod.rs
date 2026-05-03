@@ -12,8 +12,8 @@ pub mod state;
 
 pub use movement::{
     advance_direction, apply_charge_movement, apply_f1, apply_standard_movement,
-    check_trap_trigger, commit_lane_change_destinations, commit_unit_destination, ChargeBonus,
-    LaneChangeDestination, TrapTrigger,
+    check_prism_collection, check_trap_trigger, commit_lane_change_destinations,
+    commit_unit_destination, own_prism_cell, ChargeBonus, LaneChangeDestination, TrapTrigger,
 };
 pub use objective::{detect_objective_presence, is_at_objective, UnitAtObjective};
 pub use placement::{

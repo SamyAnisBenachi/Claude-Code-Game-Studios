@@ -8,6 +8,7 @@ use server::feature::board::{
     apply_charge_movement, apply_standard_movement, BoardConfig, BoardOccupancy, ChargeBonus,
     TrapTrigger,
 };
+use server::feature::prism::PrismCollected;
 use shared::card::ClassId;
 use shared::protocol::GameMode;
 use shared::session::PlayerId;
@@ -34,6 +35,7 @@ fn world_with_board_config() -> World {
     world.insert_resource(session_config());
     world.insert_resource(BoardOccupancy::default());
     world.insert_resource(Messages::<TrapTrigger>::default());
+    world.insert_resource(Messages::<PrismCollected>::default());
     world
 }
 

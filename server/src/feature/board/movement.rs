@@ -4,6 +4,7 @@ use shared::session::PlayerId;
 use crate::core::board::{BoardPosition, UnitOwner, UnitStats};
 use crate::core::session::SessionConfig;
 use crate::feature::board::{BoardConfig, BoardOccupancy, LaneId};
+use crate::feature::prism::{PrismCollected, PrismLaneKey, PrismPresence};
 
 const PLAYER_A_TEAM_ID: u8 = 0;
 const PLAYER_B_TEAM_ID: u8 = 1;
@@ -69,6 +70,47 @@ pub fn check_trap_trigger(
         .min_by_key(|(trap_owner, _)| trap_owner.0)
 }
 
+/// Resolves the spawn-side prism cell for the owning player's team side.
+pub fn own_prism_cell(
+    player: PlayerId,
+    session_config: &SessionConfig,
+    board_config: &BoardConfig,
+) -> Option<u8> {
+    match session_config.team_map.get(&player).copied() {
+        Some(PLAYER_A_TEAM_ID) => Some(board_config.player_a_spawn_cell),
+        Some(PLAYER_B_TEAM_ID) => Some(board_config.player_b_spawn_cell),
+        _ => None,
+    }
+}
+
+/// Checks a sub-step 5 endpoint and emits a collection message when a prism is present.
+///
+/// Prism reward delivery and collected-state mutation are owned by the Prism System.
+pub fn check_prism_collection(
+    owner: PlayerId,
+    final_cell: u8,
+    config: &BoardConfig,
+    session_config: &SessionConfig,
+    lane: LaneId,
+    prism_presence: &Query<(&PrismLaneKey, &PrismPresence)>,
+    writer: &mut MessageWriter<PrismCollected>,
+) {
+    if own_prism_cell(owner, session_config, config) != Some(final_cell) {
+        return;
+    }
+
+    let prism_is_present = prism_presence
+        .iter()
+        .any(|(key, presence)| key.player == owner && key.lane == lane && !presence.collected);
+
+    if prism_is_present {
+        writer.write(PrismCollected {
+            player_id: owner,
+            lane,
+        });
+    }
+}
+
 /// Advances all surviving standard units by their movement points.
 ///
 /// Combat Resolution owns when sub-step 5 fires. This system only applies the
@@ -79,6 +121,8 @@ pub fn apply_standard_movement(
     session_config: Res<SessionConfig>,
     mut occupancy: ResMut<BoardOccupancy>,
     mut trap_triggers: MessageWriter<TrapTrigger>,
+    mut prism_collected: MessageWriter<PrismCollected>,
+    prism_presence: Query<(&PrismLaneKey, &PrismPresence)>,
     mut units: Query<(Entity, &mut BoardPosition, &UnitStats, &UnitOwner)>,
 ) {
     for (unit_entity, mut position, stats, owner) in &mut units {
@@ -93,20 +137,29 @@ pub fn apply_standard_movement(
             board_config.cell_min,
             board_config.cell_max,
         );
-        if destination_cell == position.cell {
-            continue;
+
+        if destination_cell != position.cell {
+            position.cell = destination_cell;
+            trigger_trap_after_entry(
+                &mut commands,
+                &mut occupancy,
+                &session_config,
+                &mut trap_triggers,
+                unit_entity,
+                owner.0,
+                position.lane,
+                position.cell,
+            );
         }
 
-        position.cell = destination_cell;
-        trigger_trap_after_entry(
-            &mut commands,
-            &mut occupancy,
-            &session_config,
-            &mut trap_triggers,
-            unit_entity,
+        check_prism_collection(
             owner.0,
-            position.lane,
             position.cell,
+            &board_config,
+            &session_config,
+            position.lane,
+            &prism_presence,
+            &mut prism_collected,
         );
     }
 }

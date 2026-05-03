@@ -9,6 +9,7 @@ use server::feature::board::{
     commit_unit_destination, BoardConfig, BoardOccupancy, ChargeBonus, LaneChangeDestination,
     TrapTrigger,
 };
+use server::feature::prism::PrismCollected;
 use shared::card::ClassId;
 use shared::protocol::GameMode;
 use shared::session::PlayerId;
@@ -41,6 +42,7 @@ fn world_with_board_config() -> World {
     world.insert_resource(session_config());
     world.insert_resource(BoardOccupancy::default());
     world.insert_resource(Messages::<TrapTrigger>::default());
+    world.insert_resource(Messages::<PrismCollected>::default());
     world
 }
 
