@@ -26,6 +26,10 @@
     fake_count: 2,
     fake_objective_spawn_advance: 1,
 
+    // Combat Resolution
+    type_advantage_atk_bonus: 1,
+    type_advantage_ar_bonus: 1,
+
     // Timers — RSM phase durations
     draft_initial_timer_seconds: 45,
     draft_shop_timer_seconds: 30,

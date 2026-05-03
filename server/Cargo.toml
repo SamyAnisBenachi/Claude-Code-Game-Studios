@@ -228,3 +228,7 @@ path = "../tests/integration/rsm/rsm_network_dispatch_test.rs"
 [[test]]
 name = "resolve_combat_scaffold_test"
 path = "../tests/integration/combat/resolve_combat_scaffold_test.rs"
+
+[[test]]
+name = "modifier_stack_test"
+path = "../tests/unit/combat/modifier_stack_test.rs"

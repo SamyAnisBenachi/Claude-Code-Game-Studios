@@ -38,6 +38,13 @@ fn test_game_config_default_objective_values() {
 }
 
 #[test]
+fn test_game_config_default_combat_values() {
+    let config = GameConfig::default();
+    assert_eq!(config.type_advantage_atk_bonus, 1);
+    assert_eq!(config.type_advantage_ar_bonus, 1);
+}
+
+#[test]
 fn test_game_config_default_rsm_timers() {
     let config = GameConfig::default();
     assert_eq!(config.draft_initial_timer_seconds, 45);

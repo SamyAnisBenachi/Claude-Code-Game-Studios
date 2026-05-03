@@ -53,6 +53,10 @@ pub struct GameConfig {
     pub fake_count: u32,
     pub fake_objective_spawn_advance: u32,
 
+    // Combat Resolution
+    pub type_advantage_atk_bonus: u8,
+    pub type_advantage_ar_bonus: u8,
+
     // Timers — RSM phase durations
     pub draft_initial_timer_seconds: u32,
     pub draft_shop_timer_seconds: u32,
@@ -165,6 +169,7 @@ No partial states. `GameConfig` is either fully available or the server is not r
 | **Economy System** | `starting_gold`, `gold_baseline_per_round`, `interest_threshold_gold`, `interest_max_bonus`, `objective_gold_reward`, `kill_gold_reward`, `mana_cap`, `refresh_base_cost` |
 | **Objective System** | `objective_hp`, `fake_count` |
 | **Board / Lane System** | `fake_objective_spawn_advance` |
+| **Combat Resolution** | `type_advantage_atk_bonus`, `type_advantage_ar_bonus` |
 | **Auction System** | `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds`, `auction_floor_rare`, `auction_floor_epic`, `auction_floor_legendary`, `legendary_pool_entry_round` |
 | **Board Rendering** | `board_pre_anim_pause_ms`, `board_sub_step_duration_ms`, `board_inter_step_pause_ms`, `board_fog_lift_ms`, `board_objective_reveal_hold_ms`, `board_fog_opacity`, `board_cell_width`, `board_lane_height`, `board_hp_green_threshold`, `board_hp_red_threshold`, `board_co_occupancy_offset`, `board_prism_spin_speed` |
 | **Round State Machine** | `placement_timer_seconds`, `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `resolution_max_duration_seconds`, `auction_max_duration_seconds`, `disconnect_grace_seconds` |
@@ -270,6 +275,9 @@ This is the authoritative list of all `GameConfig` fields and their design-inten
 | `objective_hp` | 5 | 3–8 | Lower = faster games and fewer comebacks; higher = more durability and comeback potential | **validated: ≥ 1** |
 | `fake_count` | 2 | 1–3 | More fakes = more bluff space; fewer = more direct information war | **validated: ≥ 1 and ≤ 3** |
 | `fake_objective_spawn_advance` | 1 | 1–2 | Rows of spawn range unlocked per fake destroyed (used in Formula 3 of card-data-pool.md). At 2: Row 3 reachable after the first fake is destroyed. | — |
+| **Combat Resolution** | | | | |
+| `type_advantage_atk_bonus` | 1 | 0–3 | ATK bonus applied when the attacker's unit type beats the defender's type in the combat triangle | — |
+| `type_advantage_ar_bonus` | 1 | 0–3 | Combat-only AR bonus returned by the modifier stack for the two-pass bilateral combat algorithm | — |
 | **Timers — RSM phases** | | | | |
 | `draft_initial_timer_seconds` | 45 | 30–90 | Round 1 DRAFT_INITIAL duration; early exit expected at ~25–30s when all players submit | — |
 | `draft_shop_timer_seconds` | 30 | 20–60 | Per-round DRAFT_SHOP duration; early exit when all players signal ready | — |
@@ -326,7 +334,7 @@ None. `GameConfig` is not exposed in any player-facing UI. The values it holds a
 | GC2b | **GIVEN** a Bevy `App` configured with the server startup plugin and no `game_config.ron` at `assets/config/game_config.ron`, **WHEN** the loading state runs, **THEN** the `App` does not advance to the `InGame` state and `Res<GameConfig>` is not present in the `World`. | BLOCKING (Integration) |
 | GC3 | **GIVEN** a file at the expected config path containing deliberately malformed RON (e.g., `GameConfig( mana_cap: `), **WHEN** `load_game_config()` is called, **THEN** it returns `Err(e)` where `e.to_string()` contains `"assets/config/game_config.ron"` AND contains content beyond the path alone (a line/column position, or a non-empty parse error description). | BLOCKING |
 | GC4 | **GIVEN** a `game_config.ron` that omits the `mana_cap` field (all other fields valid), **WHEN** `load_game_config()` is called, **THEN** it returns `Ok(config)` where `config.mana_cap == 10` (the design-intent default from the Tuning Knobs table). | BLOCKING |
-| GCN-DEFAULTS | **GIVEN** `GameConfig::default()` is constructed, **THEN** every field equals the Tuning Knobs table value: `common_pool_copies == 6`, `uncommon_pool_copies == 5`, `rare_pool_copies == 4`, `shop_weight_per_card == 0.10`, `shop_weight_cap == 0.65`, `starting_gold == 5`, `gold_baseline_per_round == 2`, `interest_threshold_gold == 5`, `interest_max_bonus == 2`, `objective_gold_reward == 3`, `kill_gold_reward == 1`, `mana_cap == 10`, `refresh_base_cost == 1`, `objective_hp == 5`, `fake_count == 2`, `fake_objective_spawn_advance == 1`, `draft_initial_timer_seconds == 45`, `draft_shop_timer_seconds == 30`, `placement_timer_seconds == 10`, `resolution_max_duration_seconds == 60`, `auction_max_duration_seconds == 120`, `disconnect_grace_seconds == 30`, `auction_timer_seconds == 20`, `auction_timer_reset_seconds == 5`, `xelor_sablier_steal == 1`, `protocol_version == 1`, `hello_timeout_ms == 5000`, `ack_timeout_ms == 10000`, `heartbeat_interval_ms == 5000`, `lobby_heartbeat_timeout_seconds == 15`. | BLOCKING |
+| GCN-DEFAULTS | **GIVEN** `GameConfig::default()` is constructed, **THEN** every field equals the Tuning Knobs table value: `common_pool_copies == 6`, `uncommon_pool_copies == 5`, `rare_pool_copies == 4`, `shop_weight_per_card == 0.10`, `shop_weight_cap == 0.65`, `starting_gold == 5`, `gold_baseline_per_round == 2`, `interest_threshold_gold == 5`, `interest_max_bonus == 2`, `objective_gold_reward == 3`, `kill_gold_reward == 1`, `mana_cap == 10`, `refresh_base_cost == 1`, `objective_hp == 5`, `fake_count == 2`, `fake_objective_spawn_advance == 1`, `type_advantage_atk_bonus == 1`, `type_advantage_ar_bonus == 1`, `draft_initial_timer_seconds == 45`, `draft_shop_timer_seconds == 30`, `placement_timer_seconds == 10`, `resolution_max_duration_seconds == 60`, `auction_max_duration_seconds == 120`, `disconnect_grace_seconds == 30`, `auction_timer_seconds == 20`, `auction_timer_reset_seconds == 5`, `xelor_sablier_steal == 1`, `protocol_version == 1`, `hello_timeout_ms == 5000`, `ack_timeout_ms == 10000`, `heartbeat_interval_ms == 5000`, `lobby_heartbeat_timeout_seconds == 15`. | BLOCKING |
 
 ### Validation
 

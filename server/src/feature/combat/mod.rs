@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+pub mod modifier_stack;
+
 use bevy::ecs::message::MessageCursor;
 use bevy::prelude::*;
 use shared::protocol::{GameOverReason, S2CPlacementReveal, S2CResolutionEvent, TaggedEvent};

@@ -36,6 +36,10 @@ pub struct GameConfig {
     pub fake_count: u32,
     pub fake_objective_spawn_advance: u32,
 
+    // Combat Resolution
+    pub type_advantage_atk_bonus: u8,
+    pub type_advantage_ar_bonus: u8,
+
     // Timers — RSM phase durations
     pub draft_initial_timer_seconds: u32,
     pub draft_shop_timer_seconds: u32,
@@ -88,6 +92,8 @@ impl Default for GameConfig {
             objective_hp: 5,
             fake_count: 2,
             fake_objective_spawn_advance: 1,
+            type_advantage_atk_bonus: 1,
+            type_advantage_ar_bonus: 1,
             draft_initial_timer_seconds: 45,
             draft_shop_timer_seconds: 30,
             placement_timer_seconds: 10,
