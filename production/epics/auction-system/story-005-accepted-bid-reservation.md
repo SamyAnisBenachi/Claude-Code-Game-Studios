@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Integration
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -28,7 +28,7 @@
 - Required: First bid skip — if `current_leader == None` before this bid, skip `release_gold_reservation` entirely (do not call with None; this is a no-op path, not an error)
 - Forbidden: Do NOT access gold fields directly — all gold operations go through `economy/api.rs` functions on `ResMut<PlayerEconomies>`
 - Guardrail: Timer reset must never exceed `auction_timer_seconds * 1000` — the `min()` cap is mandatory
-- Note: ADR-013 is Accepted but not yet incorporated in the control manifest (v2026-04-30 lists it as pending)
+- Note: ADR-013 is incorporated in control manifest v2026-05-01. Current protocol/GDD naming uses `C2SPlaceBid`; any `MessageReceiver<C2SAuctionBid>` wording in ADR-derived references maps to `MessageReceiver<C2SPlaceBid>` at implementation time.
 
 ---
 
@@ -105,7 +105,7 @@ Test: prev leader's reservation released; new leader's gold reserved
                         current_leader: Some(PlayerId(1)), timer_remaining_ms: 10000 }
          Player 1 (PlayerId(1)): gold=10, reserved_gold=5
          Player 2 (PlayerId(2)): gold=10, reserved_gold=0, hand_size=3
-         C2SAuctionBid { bidder: PlayerId(2), amount: 6 } injected (passes all 5 conditions)
+         C2SPlaceBid { amount: 6 } injected for PlayerId(2) (passes all 5 conditions)
   When: app.update() runs auction_tick_system
   Then: Player 1.reserved_gold == 0
         Player 2.reserved_gold == 6
