@@ -62,6 +62,10 @@ name = "auction_reservation_test"
 path = "../tests/unit/economy/auction_reservation_test.rs"
 
 [[test]]
+name = "economy_network_dispatch_test"
+path = "../tests/integration/economy/network_dispatch_test.rs"
+
+[[test]]
 name = "card_acquisition_state_scaffold_test"
 path = "../tests/unit/card_acquisition/state_scaffold_test.rs"
 
