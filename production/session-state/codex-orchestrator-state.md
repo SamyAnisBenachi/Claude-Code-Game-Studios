@@ -95,18 +95,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- AUC-005: Accepted Bid Reservation implemented on branch
-  `work/auc-005-accepted-bid-reservation`. Readiness metadata landed on main at
-  `a55b6a0`; implementation landed on main at `ecdbf4a`. Verification passed
-  `cargo fmt -p server -- --check`, `cargo test -p server --test
-  accepted_bid_reservation_test` 5/5, `cargo test -p server --test
-  auction_state_scaffold_test` 7/7, adjacent auction/economy regressions
-  (`auction_phase_entry_test`, `auction_abort_handler_test`,
-  `auction_bid_validation_gate_test`, `auction_reservation_test`) 23 passed
-  with 1 existing ignored settlement test, `cargo check -p server`, and diff
-  checks. Notes: worker initially hit disk-full OS error 112, cleared generated
-  target artifacts, and reran successfully; root integration checks passed.
-  No `/story-done` has run yet.
 - PRISM-005: Respawn Cycle implemented on branch
   `work/prism-005-respawn-cycle` at worker commit `1c4ccbe`; root
   integration landed on main at `edb0a43`. The implementation registers
@@ -123,6 +111,19 @@ None currently tracked here.
   successfully; root integration checks passed. No `/story-done` has run yet.
 ## Recently Closed
 
+- AUC-005: Accepted Bid Reservation implemented on branch
+  `work/auc-005-accepted-bid-reservation`. Readiness metadata landed on main at
+  `a55b6a0`; implementation landed on main at `ecdbf4a`; story-done closure
+  committed at `2b61243`. Verification passed `cargo fmt -p server --
+  --check`, `cargo test -p server --test accepted_bid_reservation_test` 5/5,
+  `cargo test -p server --test auction_state_scaffold_test` 7/7, adjacent
+  auction/economy regressions (`auction_phase_entry_test`,
+  `auction_abort_handler_test`, `auction_bid_validation_gate_test`,
+  `auction_reservation_test`) 23 passed with 1 existing ignored settlement
+  test, `cargo check -p server`, and diff checks. Completion notes document
+  advisory extracted-seam evidence instead of an `App::new()` harness and
+  advisory broadcast ownership wording drift. `production/sprint-status.yaml`
+  had no matching row.
 - HUD-008: Reconnect Snapshot HUD Rebuild implemented on branch
   `work/hud-008-reconnect-snapshot-rebuild` at `778828d`; root integration
   landed at `d8971f4`; story-done closure committed at `07f477f`.
@@ -399,9 +400,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. AUC-005: `production/epics/auction-system/story-005-accepted-bid-reservation.md`
-   after integration commit `ecdbf4a`.
-2. PRISM-005: `production/epics/prism-system/story-005-respawn-cycle.md`
+1. PRISM-005: `production/epics/prism-system/story-005-respawn-cycle.md`
    after integration commit `edb0a43`.
 
 Run only one story-done at a time.
@@ -410,12 +409,12 @@ Run only one story-done at a time.
 
 - PRISM-003 is unblocked by PRISM-001/002 closure. Remaining Prism story
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
-  closed. PRISM-004 is closed at `e7776b0`; PRISM-005 can follow normal Prism
-  sequencing if dependencies/readiness are clean.
+  closed. PRISM-004 is closed at `e7776b0`; PRISM-005 is integrated and queued
+  for story-done.
 - GSS-005: closed at `19071b5`.
 - GSS-006: closed at `a49e422`.
 - GSS-007: closed at `7378e28`.
-- AUC-006+ follow normal sequencing after AUC-005 story-done.
+- AUC-005 is closed at `2b61243`; AUC-006+ follow normal sequencing.
 - HUD-008: closed at `07f477f`. The original snapshot schema blocker was
   removed by integrated and closed GSS-007 code.
 - Other RSM/session/disconnect work should avoid reopening the GSS-007
@@ -440,9 +439,8 @@ Active implementation workers by default-launch rule:
   worker return unless the user says it was not launched.
 
 Current active windows by user default-launch rule:
-- AUC-005 returned, integrated into `main` at `ecdbf4a`, pushed to origin/main,
-  and now needs the next serialized `/story-done`. The implementation window
-  can be cleared.
+- AUC-005 story-done returned and was committed at `2b61243`; window can be
+  cleared.
 - PRISM-005 returned, integrated into `main` at `edb0a43`, pushed to
   origin/main, and now needs serialized `/story-done` after AUC-005. The
   implementation window can be cleared.
