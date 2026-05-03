@@ -98,6 +98,7 @@ fn main() {
     app.add_plugins(core::rsm::RsmPlugin);
     app.add_plugins(core::economy::EconomyPlugin);
     app.add_plugins(feature::board::BoardPlugin);
+    app.add_plugins(feature::auction::AuctionPlugin);
     app.add_plugins(feature::acquisition::CardAcquisitionPlugin);
     app.add_plugins(feature::combat::CombatPlugin);
     app.add_plugins(feature::prism::PrismPlugin);

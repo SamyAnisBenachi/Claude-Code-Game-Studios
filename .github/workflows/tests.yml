@@ -33,6 +33,32 @@ jobs:
           fi
           echo "PASS: Card Animations has no direct S2C subscriptions"
 
+      - name: Check auction source invariants
+        run: |
+          set -euo pipefail
+          deprecated_matches=$(grep -rE "EventWriter|EventReader|Events<|add_event" server/src/feature/auction/ 2>/dev/null || true)
+          if [ -n "$deprecated_matches" ]; then
+            echo "FAIL: deprecated Bevy event API found in server/src/feature/auction/"
+            echo "$deprecated_matches"
+            exit 1
+          fi
+
+          auction_state_writers=$(grep -rE "ResMut<AuctionState>" server/src/feature/auction/ 2>/dev/null || true)
+          writer_count=$(printf "%s\n" "$auction_state_writers" | sed '/^$/d' | wc -l)
+          if [ "$writer_count" -ne "1" ]; then
+            echo "FAIL: expected exactly one ResMut<AuctionState> in auction source, found $writer_count"
+            printf "%s\n" "$auction_state_writers" | sed '/^$/d'
+            exit 1
+          fi
+
+          if ! printf "%s\n" "$auction_state_writers" | grep -q "server/src/feature/auction/system.rs:"; then
+            echo "FAIL: sole ResMut<AuctionState> must be auction_tick_system in system.rs"
+            printf "%s\n" "$auction_state_writers" | sed '/^$/d'
+            exit 1
+          fi
+
+          echo "PASS: auction source invariants hold"
+
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:

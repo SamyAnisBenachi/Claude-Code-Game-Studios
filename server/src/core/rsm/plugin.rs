@@ -12,6 +12,12 @@ use super::transitions::{
 use crate::core::objective_contract::ObjectiveCounters;
 use bevy::prelude::*;
 
+/// Round State Machine schedule labels.
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RsmSet {
+    Tick,
+}
+
 pub struct RsmPlugin;
 
 impl Plugin for RsmPlugin {
@@ -50,7 +56,8 @@ impl Plugin for RsmPlugin {
                     tick_rsm_timers,
                     advance_phase,
                 )
-                    .chain(),
+                    .chain()
+                    .in_set(RsmSet::Tick),
             )
             .add_observer(on_lightyear_connected)
             .add_observer(on_lightyear_disconnected);

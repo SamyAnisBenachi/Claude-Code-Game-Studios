@@ -5,7 +5,7 @@ pub mod system;
 pub mod transitions;
 
 pub use events::*;
-pub use plugin::RsmPlugin;
+pub use plugin::{RsmPlugin, RsmSet};
 // Scaffold API consumed by downstream stories.
 #[allow(unused_imports)]
 pub use state::{

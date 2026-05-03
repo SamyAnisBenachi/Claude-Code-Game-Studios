@@ -14,6 +14,7 @@ pub mod system;
 pub use config::{build_session_config, SessionConfig};
 pub use events::{SessionCancelled, SessionCancelledReason, SessionReady};
 pub use plugin::GameSessionPlugin;
+pub use reconnect::handle_reconnect as reconnect_snapshot_system;
 pub use reconnect::{
     defer_unicast_for_reconnect, flush_deferred_queue, handle_reconnect, hello_timeout_watchdog,
     initialise_reconnect_tracker, on_reconnect_connected, process_reconnect_hello, ReconnectClose,

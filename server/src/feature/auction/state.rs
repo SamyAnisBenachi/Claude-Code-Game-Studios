@@ -4,7 +4,7 @@ use shared::session::PlayerId;
 
 /// Server-authoritative auction state machine state.
 ///
-/// `auction_tick_system` is the only system that may hold `ResMut<AuctionState>`
+/// `auction_tick_system` is the only system that may mutably access this resource
 /// once auction processing is implemented.
 #[derive(Resource, Debug, Clone)]
 pub struct AuctionState {
