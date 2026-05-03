@@ -1,7 +1,7 @@
 # Story 009: PLACEMENT Timer — Urgency, Grace Window & Submit Checkmark
 
 > **Epic**: Hand UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -30,22 +30,22 @@
 
 *From GDD `design/gdd/hand-ui.md` Rules 9, 11 and ACs HU-15/15b/22/23, scoped to this story:*
 
-- [ ] **HU-15**: GIVEN the player has 2 cards staged and the PLACEMENT timer reaches 0 while a third card is mid-drag (lifted from fan, not yet dropped), WHEN the 200ms grace window elapses without a mouse-up on a valid target, THEN:
+- [x] **HU-15**: GIVEN the player has 2 cards staged and the PLACEMENT timer reaches 0 while a third card is mid-drag (lifted from fan, not yet dropped), WHEN the 200ms grace window elapses without a mouse-up on a valid target, THEN:
   - `C2SSubmitPlacement` is sent with exactly the 2 staged placements (the in-flight card is NOT included)
   - The in-flight drag cancels: drag sprite hidden, fan slot returns to `FanSlotState::Active`
   - The third card is not in the placements vec
 
-- [ ] **HU-15b**: GIVEN the player has 2 cards staged and the PLACEMENT timer reaches 0 while a third Minion card is mid-drag over a valid highlighted board cell, WHEN the player releases mouse-up on that valid cell during the 200ms grace window, THEN:
+- [x] **HU-15b**: GIVEN the player has 2 cards staged and the PLACEMENT timer reaches 0 while a third Minion card is mid-drag over a valid highlighted board cell, WHEN the player releases mouse-up on that valid cell during the 200ms grace window, THEN:
   - The third card stages to that cell (same as a normal valid drop, per Story 005 HU-13)
   - `C2SSubmitPlacement` is sent with all 3 placements (including the grace-window drop)
 
-- [ ] **HU-22**: GIVEN the placement timer remaining crosses the 5-second threshold (from > 5s to ≤ 5s), WHEN one tick fires, THEN:
+- [x] **HU-22**: GIVEN the placement timer remaining crosses the 5-second threshold (from > 5s to ≤ 5s), WHEN one tick fires, THEN:
   - The timer entity enters `TimerState::Urgent`
   - A single `TimerUrgencyAudio` Bevy-internal message is written exactly once
   - No second `TimerUrgencyAudio` message is written in subsequent ticks while the timer continues to count down
   - Amber color rendering (`#E87C1E`) and pulse animation are ADVISORY (lead sign-off). The state component and single-shot event are BLOCKING.
 
-- [ ] **HU-23**: GIVEN the player submits at 7 seconds remaining (pre-validation passes), WHEN `C2SSubmitPlacement` fires, THEN:
+- [x] **HU-23**: GIVEN the player submits at 7 seconds remaining (pre-validation passes), WHEN `C2SSubmitPlacement` fires, THEN:
   - (a) The timer entity continues decrementing each frame (timer does not stop on submit)
   - (b) A `TimerSubmittedCheckmark` marker entity has `Visibility::Visible` adjacent to the timer numeral
 
@@ -119,7 +119,7 @@
 **Required evidence**:
 - `tests/integration/hand-ui/placement_timer_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -127,3 +127,18 @@
 
 - Depends on: Story 005 (PLACEMENT entry initializes timer; submit path triggered by grace window resolution)
 - Unlocks: None (timer is a self-contained PLACEMENT feature)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 4/4 passing; HU-15, HU-15b, HU-22, and HU-23 are covered by `tests/integration/hand-ui/placement_timer_test.rs`.
+**Test Evidence**: `cargo test -p client --test hand_ui_placement_timer_test` passed 4/4. `cargo check -p client` passed.
+**Verification**: `client/src/ui/hand/mod.rs` maintains `PlacementTimer` with remaining time, urgency single-shot state, grace-window state, and submitted state; registers `TimerUrgencyAudio` as a Bevy-internal message; decrements via `Time<Virtual>`; emits urgency once when crossing the 5s threshold; resolves the 200ms grace window by either staging a valid drop before submit or cancelling the active drag before submit; sends `C2SSubmitPlacement` through the existing submit path; shows `TimerSubmittedCheckmark`; and prevents duplicate timer-expiry submits after manual submit.
+**Deviations**: Advisory only - `TR-HU-007` in `docs/architecture/tr-registry.yaml` maps only to HU-22 timer urgency, while this story also closes HU-15, HU-15b, and HU-23 from the current Hand UI GDD. Advisory only - HU-22 Amber color rendering and pulse animation remain lead-signoff concerns; the blocking state component and single-shot Bevy message are automated. Advisory only - implementation uses the current local `HandUiSystemSet::StateSync`; ADR-021's global `PresentationSet` wiring is not present in the current client architecture.
+**Code Review**: Skipped - Lean mode.
+**Tech Debt**: None logged.
+**Sprint Status**: Unchanged per user instruction; no matching `HAND-UI-009` row exists in `production/sprint-status.yaml`.
+**Next Recommended**: Continue the serialized closure queue with Combat Resolution Story 003 (`production/epics/combat-resolution/story-003-substep1-placement-appearance.md`) after readiness/status review.

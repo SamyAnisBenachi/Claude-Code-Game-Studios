@@ -1554,3 +1554,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per user instruction; no matching `HAND-UI-008` row exists in `production/sprint-status.yaml`.
 - Next recommended: Hand UI Story 009 PLACEMENT Timer (`production/epics/hand-ui/story-009-placement-timer.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hand-ui/story-009-placement-timer.md` - Story 009: PLACEMENT Timer - Urgency, Grace Window & Submit Checkmark
+- Criteria: 4/4 passing; HU-15, HU-15b, HU-22, and HU-23 covered by `tests/integration/hand-ui/placement_timer_test.rs`.
+- Test Evidence: `cargo test -p client --test hand_ui_placement_timer_test` passed 4/4. `cargo check -p client` passed.
+- Verification: Hand UI maintains `PlacementTimer` with remaining time, urgency single-shot state, grace-window state, and submitted state; registers `TimerUrgencyAudio` as a Bevy-internal message; decrements via `Time<Virtual>`; emits urgency once when crossing the 5s threshold; resolves the 200ms grace window by either staging a valid drop before submit or cancelling the active drag before submit; sends `C2SSubmitPlacement` through the existing submit path; shows `TimerSubmittedCheckmark`; and prevents duplicate timer-expiry submits after manual submit.
+- Notes: Advisory only - `TR-HU-007` in `docs/architecture/tr-registry.yaml` maps only to HU-22 timer urgency, while this story also closes HU-15, HU-15b, and HU-23 from the current Hand UI GDD. Advisory only - HU-22 Amber color rendering and pulse animation remain lead-signoff concerns; the blocking state component and single-shot Bevy message are automated. Advisory only - implementation uses the current local `HandUiSystemSet::StateSync`; ADR-021's global `PresentationSet` wiring is not present in the current client architecture. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per user instruction; no matching `HAND-UI-009` row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the serialized closure queue with Combat Resolution Story 003 (`production/epics/combat-resolution/story-003-substep1-placement-appearance.md`) after readiness/status review.
