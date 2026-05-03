@@ -1455,3 +1455,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no matching `HAND-UI-006` row exists in `production/sprint-status.yaml`.
 - Next recommended: Run a fresh sprint/status scan to choose the next ready implementation batch.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-data-pool/story-005-manual-refresh-cost-escalation.md` - Story 005: Manual Refresh Cost Escalation Integration
+- Criteria: 7/7 passing; AC-1 through AC-7 covered by `tests/integration/pool/manual_refresh_test.rs`.
+- Test Evidence: `cargo test -p server --test pool_manual_refresh_test` passed 7/7.
+- Verification: `process_manual_refresh_shop_request` computes cost from `GameConfig.refresh_base_cost + min(refresh_count_this_draft, refresh_cap)`, spends through Economy API before drawing, refunds on draw failure, emits slots only on success, and increments `refresh_count_this_draft` only after a successful refresh. `apply_shop_refresh_trigger` resets the counter on `DraftInitial`, `AuctionLock`, `ShopOpen`, and `ShopUnlock`.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviation found. AC-5 directly tests `AuctionLock`; code inspection confirms the same non-`ShopActive` gate covers `Inactive` and `DraftInitial`. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Updated `S3-10` to `done`, `completed: "2026-05-03"`, and top-level `updated: "2026-05-03"`.
+- Next recommended: Run a fresh sprint/status scan to choose the next ready implementation batch.

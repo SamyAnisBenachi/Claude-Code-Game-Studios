@@ -103,11 +103,11 @@ stories:
     name: "Card Pool Story 5: Manual Refresh + Cost Escalation"
     file: "production/epics/card-data-pool/story-005-manual-refresh-cost-escalation.md"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-03"
 
   - id: "CS-001"
     name: "Class Lifecycle / PlayerSessions Scaffold"

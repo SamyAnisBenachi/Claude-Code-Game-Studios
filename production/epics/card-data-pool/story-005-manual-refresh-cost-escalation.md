@@ -1,7 +1,7 @@
 # Story 005: Manual Refresh Cost Escalation Integration
 
 > **Epic**: Card Data & Pool
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -232,6 +232,9 @@ counter.
 **Status**: [x] Created and passing locally with
 `cargo test -p server --test pool_manual_refresh_test` on 2026-05-03
 
+**/story-done verification**: [x] Re-run on 2026-05-03:
+`cargo test -p server --test pool_manual_refresh_test` passed 7/7.
+
 ---
 
 ## Dependencies
@@ -257,3 +260,16 @@ No new steady-state budget is expected beyond one C2S receiver drain per frame.
 Manual refresh runs only on player request, draws at most three slots, and stays
 within the server steady-state game-logic budget of 5 ms. Wrong-phase and
 insufficient-gold requests return before pool drawing.
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Criteria**: 7/7 passing.
+**Deviations**: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviations found.
+AC-5 directly tests `AuctionLock`; code inspection confirms the same
+non-`ShopActive` phase gate covers `Inactive` and `DraftInitial`.
+**Test Evidence**: Integration test at
+`tests/integration/pool/manual_refresh_test.rs`; `cargo test -p server --test
+pool_manual_refresh_test` passed 7/7 on 2026-05-03.
+**Code Review**: Skipped - Lean mode skipped QL-TEST-COVERAGE and
+LP-CODE-REVIEW gates.
