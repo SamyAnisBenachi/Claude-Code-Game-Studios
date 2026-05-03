@@ -110,7 +110,15 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-None currently queued here.
+- ECO-006 / S4-14: Economy Network Dispatch readiness docs committed on worker
+  branch `work/eco-006-network-dispatch-wiring` at `6645baa`; implementation
+  committed at `f63c397` and pushed to origin. Worker verification passed
+  `cargo fmt -p server -- --check`, `cargo test -p server --test
+  economy_network_dispatch_test` 4/4, `cargo check --workspace`,
+  `UnreliableChannel` grep gate in `server/src/network/economy_dispatch.rs`,
+  and diff checks. Notes: implementation clamps internal `u32` mana cap to the
+  protocol `u8` boundary before sending `S2CGoldUpdate`; no merge to main and
+  no `/story-done` have run yet.
 ## Recently Closed
 
 - CDP-005 / S3-10: Manual Refresh + Cost Escalation readiness docs landed on
@@ -491,6 +499,9 @@ Active implementation workers by default-launch rule:
   user explicitly says otherwise.
 
 Current active windows by user default-launch rule:
+- ECO-006 / S4-14 worker was repaired, committed at `f63c397`, pushed to
+  `origin/work/eco-006-network-dispatch-wiring`, and can be cleared. It still
+  needs root integration before serialized `/story-done`.
 - Sprint 4 QA plan returned and was committed at `8578890`; window can be
   cleared. Next Sprint 4 critical item is S4-14 Economy Network Dispatch
   readiness/implementation.
