@@ -21,7 +21,11 @@ use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUN
 
 pub const HAND_FAN_SLOT_COUNT: usize = 10;
 pub const DRAFT_INITIAL_GRID_SLOT_COUNT: usize = 9;
-pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT + DRAFT_INITIAL_GRID_SLOT_COUNT + 7;
+pub const RESERVE_STRIP_ENTITY_COUNT: usize = 4;
+pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT
+    + DRAFT_INITIAL_GRID_SLOT_COUNT
+    + 7
+    + HAND_FAN_SLOT_COUNT * RESERVE_STRIP_ENTITY_COUNT;
 const HAND_DRAG_SPRITE_SCALE: f32 = 1.10;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
@@ -105,6 +109,7 @@ impl Default for PlacementTimerConfig {
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandUiEconomyView {
     pub gold: u32,
+    pub reserve_mana: u32,
 }
 
 #[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
@@ -179,7 +184,9 @@ impl PendingPlacements {
             .iter_mut()
             .find(|existing| existing.card_id == placement.card_id)
         {
+            let reserve_amount = existing.reserve_amount;
             *existing = placement;
+            existing.reserve_amount = reserve_amount;
             return;
         }
 
@@ -199,6 +206,55 @@ impl PendingPlacements {
             .iter()
             .position(|placement| placement.card_id == card_id)?;
         Some(self.placements.remove(index))
+    }
+
+    fn reserve_amount_for(&self, card_id: CardId) -> Option<u32> {
+        self.placements
+            .iter()
+            .find(|placement| placement.card_id == card_id)
+            .map(|placement| placement.reserve_amount)
+    }
+
+    fn reserve_committed_by_other_cards(&self, card_id: CardId) -> u32 {
+        self.placements
+            .iter()
+            .filter(|placement| placement.card_id != card_id)
+            .map(|placement| placement.reserve_amount)
+            .sum()
+    }
+
+    fn increment_reserve_amount(&mut self, card_id: CardId, ceiling: u32) -> bool {
+        let Some(placement) = self
+            .placements
+            .iter_mut()
+            .find(|placement| placement.card_id == card_id)
+        else {
+            return false;
+        };
+
+        if placement.reserve_amount >= ceiling {
+            return false;
+        }
+
+        placement.reserve_amount += 1;
+        true
+    }
+
+    fn decrement_reserve_amount(&mut self, card_id: CardId) -> bool {
+        let Some(placement) = self
+            .placements
+            .iter_mut()
+            .find(|placement| placement.card_id == card_id)
+        else {
+            return false;
+        };
+
+        if placement.reserve_amount == 0 {
+            return false;
+        }
+
+        placement.reserve_amount -= 1;
+        true
     }
 }
 
@@ -547,11 +603,30 @@ pub struct NoValidTargetsOverlay;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReserveStripForFanSlot(pub u8);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReserveStripAction {
+    Decrement,
+    Increment,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReserveStripButton {
+    pub slot_index: u8,
+    pub action: ReserveStripAction,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReserveStripButtonDisabled;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReserveStripValueText(pub u8);
+
 #[derive(Resource, Debug, Clone, Copy)]
 pub struct HandUiEntities {
     pub fan_root: Entity,
     pub fan_slots: [Entity; HAND_FAN_SLOT_COUNT],
     pub grid_slots: [Entity; DRAFT_INITIAL_GRID_SLOT_COUNT],
+    pub reserve_strips: [Entity; HAND_FAN_SLOT_COUNT],
     pub drag_sprite: Entity,
     pub submit_button: Entity,
     pub timer: Entity,
@@ -674,6 +749,7 @@ impl Plugin for HandUiPlugin {
                         handle_grid_card_click_system,
                         handle_hand_fan_card_click_system,
                         handle_placement_drop_resolved_system,
+                        handle_reserve_strip_button_interactions_system,
                         handle_submit_button_click_system,
                     )
                         .chain()
@@ -683,6 +759,8 @@ impl Plugin for HandUiPlugin {
                         apply_placement_drag_highlights_system,
                         tick_pending_purchase_timeouts_system,
                         apply_fan_layout_system,
+                        apply_reserve_strip_layout_system,
+                        sync_reserve_strip_state_system,
                         tick_hand_full_notification_system,
                     )
                         .chain()
@@ -742,6 +820,57 @@ pub fn apply_fan_layout_system(
         node.left = Val::Px(layout.card_x);
         node.top = Val::Px(layout.card_y);
     }
+}
+
+pub fn apply_reserve_strip_layout_system(
+    viewport: Res<HandFanViewport>,
+    fan_slots: Query<(&FanSlotIndex, &Node), With<FanSlotIndex>>,
+    mut reserve_strips: Query<(&ReserveStripForFanSlot, &mut Node), Without<FanSlotIndex>>,
+) {
+    for (reserve_slot, mut reserve_node) in &mut reserve_strips {
+        let Some((_slot_index, fan_node)) = fan_slots
+            .iter()
+            .find(|(slot_index, _fan_node)| slot_index.0 == reserve_slot.0)
+        else {
+            continue;
+        };
+
+        if let Some(left) = val_px(fan_node.left) {
+            reserve_node.left = Val::Px(left);
+        }
+
+        if let Some(top) = val_px(fan_node.top) {
+            reserve_node.bottom = Val::Px((viewport.height_px - top + 8.0).max(0.0));
+        }
+    }
+}
+
+pub fn sync_reserve_strip_state_system(
+    mode: Res<HandUiMode>,
+    economy: Res<HandUiEconomyView>,
+    catalog: Res<HandCardCatalog>,
+    pending_placements: Res<PendingPlacements>,
+    mut commands: Commands,
+    fan_slots: Query<(&FanSlotIndex, Option<&HandSlotCard>, Option<&FanSlotState>)>,
+    mut reserve_strips: Query<(&ReserveStripForFanSlot, &mut Visibility)>,
+    buttons: Query<(
+        Entity,
+        &ReserveStripButton,
+        Option<&ReserveStripButtonDisabled>,
+    )>,
+    mut value_texts: Query<(&ReserveStripValueText, &mut Text)>,
+) {
+    sync_reserve_strip_entities(
+        *mode,
+        &economy,
+        &catalog,
+        &pending_placements,
+        &mut commands,
+        &fan_slots,
+        &mut reserve_strips,
+        &buttons,
+        &mut value_texts,
+    );
 }
 
 pub fn hand_ui_phase_transition_system(
@@ -1382,6 +1511,7 @@ pub fn handle_ghost_drag_ended_system(
 
 pub fn handle_placement_drop_resolved_system(
     mode: Res<HandUiMode>,
+    catalog: Res<HandCardCatalog>,
     entities: Option<Res<HandUiEntities>>,
     mut drops: MessageReader<HandUiPlacementDropResolved>,
     mut pending_placements: ResMut<PendingPlacements>,
@@ -1434,6 +1564,7 @@ pub fn handle_placement_drop_resolved_system(
             card_id: card.0,
             owner_id: drop.owner_id,
             target: target.clone(),
+            reserve_amount: 0,
         };
         pending_placements.stage_or_update(placement);
         ghost_writer.write(GhostPlacementChanged {
@@ -1445,7 +1576,12 @@ pub fn handle_placement_drop_resolved_system(
             let mut submit_texts = submit_button_sets.p0();
             set_submit_count_text(&mut submit_texts, pending_placements.staged_count());
         }
-        set_reserve_strip_visibility(&mut visibility_sets.p1(), slot_index.0, Visibility::Visible);
+        let cost = card_cost_or_default(&catalog, card.0);
+        set_reserve_strip_visibility(
+            &mut visibility_sets.p1(),
+            slot_index.0,
+            visibility_for(cost > 0),
+        );
 
         if placement_timer.in_grace_window && !placement_timer.submitted {
             let mut submit_buttons = submit_button_sets.p1();
@@ -1460,6 +1596,78 @@ pub fn handle_placement_drop_resolved_system(
                 &mut visibility_sets.p0(),
             );
         }
+    }
+}
+
+pub fn handle_reserve_strip_button_interactions_system(
+    mode: Res<HandUiMode>,
+    economy: Res<HandUiEconomyView>,
+    catalog: Res<HandCardCatalog>,
+    mut commands: Commands,
+    mut interactions: Query<
+        (
+            Entity,
+            &Interaction,
+            &ReserveStripButton,
+            Option<&ReserveStripButtonDisabled>,
+        ),
+        Changed<Interaction>,
+    >,
+    mut pending_placements: ResMut<PendingPlacements>,
+    fan_slots: Query<(&FanSlotIndex, Option<&HandSlotCard>, Option<&FanSlotState>)>,
+    mut reserve_strips: Query<(&ReserveStripForFanSlot, &mut Visibility)>,
+    buttons: Query<(
+        Entity,
+        &ReserveStripButton,
+        Option<&ReserveStripButtonDisabled>,
+    )>,
+    mut value_texts: Query<(&ReserveStripValueText, &mut Text)>,
+) {
+    for (_entity, interaction, button, disabled) in &mut interactions {
+        if *interaction != Interaction::Pressed
+            || *mode != HandUiMode::Staging
+            || disabled.is_some()
+        {
+            continue;
+        }
+
+        let Some(card_id) =
+            staged_card_for_slot(button.slot_index, &fan_slots, &pending_placements)
+        else {
+            continue;
+        };
+
+        let cost = card_cost_or_default(&catalog, card_id);
+        if cost == 0 {
+            continue;
+        }
+
+        match button.action {
+            ReserveStripAction::Increment => {
+                let ceiling = reserve_ceiling_for_card(
+                    &pending_placements,
+                    card_id,
+                    cost,
+                    economy.reserve_mana,
+                );
+                pending_placements.increment_reserve_amount(card_id, ceiling);
+            }
+            ReserveStripAction::Decrement => {
+                pending_placements.decrement_reserve_amount(card_id);
+            }
+        }
+
+        sync_reserve_strip_entities(
+            *mode,
+            &economy,
+            &catalog,
+            &pending_placements,
+            &mut commands,
+            &fan_slots,
+            &mut reserve_strips,
+            &buttons,
+            &mut value_texts,
+        );
     }
 }
 
@@ -1720,6 +1928,9 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
             .id()
     });
 
+    let reserve_strips =
+        std::array::from_fn(|index| spawn_reserve_strip(&mut commands, fan_root, index as u8));
+
     let drag_sprite = commands
         .spawn((
             Name::new("Hand UI Drag Sprite"),
@@ -1797,6 +2008,7 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
         fan_root,
         fan_slots,
         grid_slots,
+        reserve_strips,
         drag_sprite,
         submit_button,
         timer,
@@ -1804,6 +2016,72 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
         hand_full_notification,
         no_valid_targets_overlay,
     });
+}
+
+fn spawn_reserve_strip(commands: &mut Commands, fan_root: Entity, slot_index: u8) -> Entity {
+    let strip = commands
+        .spawn((
+            Name::new(format!("Hand UI Reserve Strip {slot_index}")),
+            HandUiEntity,
+            ReserveStripForFanSlot(slot_index),
+            reserve_strip_node(),
+            Visibility::Hidden,
+            ChildOf(fan_root),
+        ))
+        .id();
+
+    spawn_reserve_strip_button(
+        commands,
+        strip,
+        slot_index,
+        ReserveStripAction::Decrement,
+        "-",
+        0.0,
+    );
+
+    commands.spawn((
+        Name::new(format!("Hand UI Reserve Strip Value {slot_index}")),
+        HandUiEntity,
+        ReserveStripValueText(slot_index),
+        Text::new("0 / 0"),
+        reserve_strip_child_node(28.0, 48.0),
+        Visibility::Visible,
+        ChildOf(strip),
+    ));
+
+    let plus = spawn_reserve_strip_button(
+        commands,
+        strip,
+        slot_index,
+        ReserveStripAction::Increment,
+        "+",
+        80.0,
+    );
+    commands.entity(plus).insert(ReserveStripButtonDisabled);
+
+    strip
+}
+
+fn spawn_reserve_strip_button(
+    commands: &mut Commands,
+    parent: Entity,
+    slot_index: u8,
+    action: ReserveStripAction,
+    label: &'static str,
+    left_px: f32,
+) -> Entity {
+    commands
+        .spawn((
+            Name::new(format!("Hand UI Reserve Strip {action:?} {slot_index}")),
+            HandUiEntity,
+            ReserveStripButton { slot_index, action },
+            Interaction::None,
+            Text::new(label),
+            reserve_strip_child_node(left_px, 24.0),
+            Visibility::Visible,
+            ChildOf(parent),
+        ))
+        .id()
 }
 
 fn despawn_hand_ui(mut commands: Commands, entities: Option<Res<HandUiEntities>>) {
@@ -1830,6 +2108,28 @@ fn hidden_control_node(width_px: f32, height_px: f32, bottom_px: f32) -> Node {
         width: Val::Px(width_px),
         height: Val::Px(height_px),
         bottom: Val::Px(bottom_px),
+        ..default()
+    }
+}
+
+fn reserve_strip_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(0.0),
+        bottom: Val::Px(0.0),
+        width: Val::Px(104.0),
+        height: Val::Px(24.0),
+        ..default()
+    }
+}
+
+fn reserve_strip_child_node(left_px: f32, width_px: f32) -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(left_px),
+        bottom: Val::Px(0.0),
+        width: Val::Px(width_px),
+        height: Val::Px(24.0),
         ..default()
     }
 }
@@ -1943,6 +2243,133 @@ fn set_reserve_strip_visibility(
             *reserve_visibility = visibility;
         }
     }
+}
+
+fn sync_reserve_strip_entities(
+    mode: HandUiMode,
+    economy: &HandUiEconomyView,
+    catalog: &HandCardCatalog,
+    pending_placements: &PendingPlacements,
+    commands: &mut Commands,
+    fan_slots: &Query<(&FanSlotIndex, Option<&HandSlotCard>, Option<&FanSlotState>)>,
+    reserve_strips: &mut Query<(&ReserveStripForFanSlot, &mut Visibility)>,
+    buttons: &Query<(
+        Entity,
+        &ReserveStripButton,
+        Option<&ReserveStripButtonDisabled>,
+    )>,
+    value_texts: &mut Query<(&ReserveStripValueText, &mut Text)>,
+) {
+    for (reserve_slot, mut visibility) in reserve_strips.iter_mut() {
+        let slot_index = reserve_slot.0;
+        let card_id = (mode == HandUiMode::Staging)
+            .then(|| staged_card_for_slot(slot_index, fan_slots, pending_placements))
+            .flatten();
+        let cost = card_id
+            .map(|card_id| card_cost_or_default(catalog, card_id))
+            .unwrap_or(0);
+        let reserve_amount = card_id
+            .and_then(|card_id| pending_placements.reserve_amount_for(card_id))
+            .unwrap_or(0);
+        let ceiling = card_id
+            .map(|card_id| {
+                reserve_ceiling_for_card(pending_placements, card_id, cost, economy.reserve_mana)
+            })
+            .unwrap_or(0);
+        let is_visible = card_id.is_some() && cost > 0;
+
+        *visibility = visibility_for(is_visible);
+        set_reserve_value_text(value_texts, slot_index, reserve_amount, cost);
+        set_reserve_button_disabled(
+            commands,
+            buttons,
+            slot_index,
+            ReserveStripAction::Increment,
+            !is_visible || reserve_amount >= ceiling,
+        );
+        set_reserve_button_disabled(
+            commands,
+            buttons,
+            slot_index,
+            ReserveStripAction::Decrement,
+            false,
+        );
+    }
+}
+
+fn set_reserve_value_text(
+    value_texts: &mut Query<(&ReserveStripValueText, &mut Text)>,
+    slot_index: u8,
+    reserve_amount: u32,
+    cost: u32,
+) {
+    for (value_slot, mut text) in value_texts.iter_mut() {
+        if value_slot.0 == slot_index {
+            text.0 = format!("{reserve_amount} / {cost}");
+        }
+    }
+}
+
+fn set_reserve_button_disabled(
+    commands: &mut Commands,
+    buttons: &Query<(
+        Entity,
+        &ReserveStripButton,
+        Option<&ReserveStripButtonDisabled>,
+    )>,
+    slot_index: u8,
+    action: ReserveStripAction,
+    disabled: bool,
+) {
+    for (entity, button, disabled_marker) in buttons.iter() {
+        if button.slot_index != slot_index || button.action != action {
+            continue;
+        }
+
+        if disabled && disabled_marker.is_none() {
+            commands.entity(entity).insert(ReserveStripButtonDisabled);
+        } else if !disabled && disabled_marker.is_some() {
+            commands
+                .entity(entity)
+                .remove::<ReserveStripButtonDisabled>();
+        }
+    }
+}
+
+fn staged_card_for_slot(
+    slot_index: u8,
+    fan_slots: &Query<(&FanSlotIndex, Option<&HandSlotCard>, Option<&FanSlotState>)>,
+    pending_placements: &PendingPlacements,
+) -> Option<CardId> {
+    fan_slots.iter().find_map(|(fan_slot, card, slot_state)| {
+        if fan_slot.0 != slot_index || slot_state != Some(&FanSlotState::Ghost) {
+            return None;
+        }
+
+        let card_id = card?.0;
+        pending_placements
+            .reserve_amount_for(card_id)
+            .is_some()
+            .then_some(card_id)
+    })
+}
+
+fn card_cost_or_default(catalog: &HandCardCatalog, card_id: CardId) -> u32 {
+    catalog
+        .cards
+        .get(&card_id)
+        .map(|card| card.cost)
+        .unwrap_or(1)
+}
+
+fn reserve_ceiling_for_card(
+    pending_placements: &PendingPlacements,
+    card_id: CardId,
+    cost: u32,
+    reserve_mana: u32,
+) -> u32 {
+    let other_committed = pending_placements.reserve_committed_by_other_cards(card_id);
+    cost.min(reserve_mana.saturating_sub(other_committed))
 }
 
 fn unstage_card(

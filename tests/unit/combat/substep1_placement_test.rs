@@ -55,6 +55,7 @@ fn placed(card_id: CardId, owner_id: PlayerId, lane: u8, cell: u8) -> PlacedCard
         card_id,
         owner_id,
         target: PlayTarget::BoardCell { lane, cell },
+        reserve_amount: 0,
     }
 }
 

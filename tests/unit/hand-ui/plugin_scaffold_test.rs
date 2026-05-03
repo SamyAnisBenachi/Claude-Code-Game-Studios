@@ -6,7 +6,8 @@ use client::card_animations::HandDragSprite;
 use client::state::ClientState;
 use client::ui::hand::{
     FanSlotIndex, GridSlotIndex, HandUiEntities, HandUiEntity, HandUiPlugin,
-    DRAFT_INITIAL_GRID_SLOT_COUNT, HAND_FAN_SLOT_COUNT, HAND_UI_ENTITY_COUNT,
+    ReserveStripForFanSlot, DRAFT_INITIAL_GRID_SLOT_COUNT, HAND_FAN_SLOT_COUNT,
+    HAND_UI_ENTITY_COUNT,
 };
 
 #[test]
@@ -22,6 +23,7 @@ fn hand_ui_initializes_prepooled_hidden_entities_on_session_entry() {
     assert_eq!(count_with::<HandDragSprite>(&mut app), 1);
     assert_all_hidden::<FanSlotIndex>(&mut app);
     assert_all_hidden::<GridSlotIndex>(&mut app);
+    assert_all_hidden::<ReserveStripForFanSlot>(&mut app);
     assert_all_hidden::<HandDragSprite>(&mut app);
     assert_indices(
         fan_indices(&mut app),

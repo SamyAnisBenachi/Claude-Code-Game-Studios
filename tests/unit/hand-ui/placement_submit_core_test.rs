@@ -209,6 +209,7 @@ fn placement(card_id: CardId, target: PlayTarget) -> PlacedCard {
         card_id,
         owner_id: PlayerId(7),
         target,
+        reserve_amount: 0,
     }
 }
 

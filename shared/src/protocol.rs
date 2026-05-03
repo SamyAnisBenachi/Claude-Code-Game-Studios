@@ -215,6 +215,7 @@ pub struct PlacedCard {
     pub card_id: CardId,
     pub owner_id: PlayerId,
     pub target: PlayTarget,
+    pub reserve_amount: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

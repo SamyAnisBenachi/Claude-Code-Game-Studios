@@ -240,7 +240,10 @@ fn app_with_hand_ui_in_draft_initial() -> App {
     app.insert_resource(HandCardCatalog {
         cards: test_catalog(1..=18),
     });
-    app.insert_resource(HandUiEconomyView { gold: 5 });
+    app.insert_resource(HandUiEconomyView {
+        gold: 5,
+        reserve_mana: 0,
+    });
     app.insert_resource(HandUiTimingConfig {
         card_draw_animation_ms: 280,
         purchase_timeout_ms: 3_000,

@@ -64,6 +64,10 @@ name = "hand_ui_placement_instant_staging_test"
 path = "../tests/unit/hand-ui/placement_instant_staging_test.rs"
 
 [[test]]
+name = "hand_ui_reserve_mana_strip_test"
+path = "../tests/unit/hand-ui/reserve_mana_strip_test.rs"
+
+[[test]]
 name = "hand_ui_placement_unstaging_test"
 path = "../tests/integration/hand-ui/placement_unstaging_test.rs"
 

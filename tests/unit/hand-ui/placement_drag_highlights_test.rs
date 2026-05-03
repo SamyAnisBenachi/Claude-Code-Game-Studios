@@ -38,6 +38,7 @@ fn hu_12_minion_highlights_spawn_cells_minus_occupied_and_staged_minions() {
             card_id: CardId(10),
             owner_id: PlayerId(1),
             target: PlayTarget::BoardCell { lane: 1, cell: 2 },
+            reserve_amount: 0,
         });
     app.update();
 

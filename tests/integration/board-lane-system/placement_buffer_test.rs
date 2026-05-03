@@ -83,6 +83,7 @@ fn placed_minion(owner_id: PlayerId, card_id: CardId, lane: u8, cell: u8) -> Pla
         card_id,
         owner_id,
         target: PlayTarget::BoardCell { lane, cell },
+        reserve_amount: 0,
     }
 }
 
