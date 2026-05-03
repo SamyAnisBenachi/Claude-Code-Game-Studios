@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use lightyear::prelude::{NetworkTarget, PeerId, Replicate, Server, ServerMultiMessageSender};
 use shared::protocol::{
-    CardSource, DraftPhase, ReliableChannel, S2CCardAcquired, S2CPrismRewardDropped,
+    CardSource, DraftPhase, ReliableChannel, S2CCardAcquired, S2CPrismRespawned,
+    S2CPrismRewardDropped,
 };
 use shared::session::PlayerId;
 
@@ -38,19 +39,44 @@ pub struct PrismRewardDroppedDispatch {
     pub message: S2CPrismRewardDropped,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PrismRespawnedDispatch {
+    pub player_id: PlayerId,
+    pub message: S2CPrismRespawned,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PrismNetworkDispatch {
+    CardAcquired(PrismCardAcquiredDispatch),
+    RewardDropped(PrismRewardDroppedDispatch),
+    Respawned(PrismRespawnedDispatch),
+}
+
 #[derive(Resource, Default, Clone, Debug)]
 pub struct PrismNetworkOutbox {
     card_acquired: Vec<PrismCardAcquiredDispatch>,
     reward_dropped: Vec<PrismRewardDroppedDispatch>,
+    respawned: Vec<PrismRespawnedDispatch>,
+    sequence: Vec<PrismNetworkDispatch>,
 }
 
 impl PrismNetworkOutbox {
     pub fn push_card_acquired(&mut self, dispatch: PrismCardAcquiredDispatch) {
+        self.sequence
+            .push(PrismNetworkDispatch::CardAcquired(dispatch.clone()));
         self.card_acquired.push(dispatch);
     }
 
     pub fn push_reward_dropped(&mut self, dispatch: PrismRewardDroppedDispatch) {
+        self.sequence
+            .push(PrismNetworkDispatch::RewardDropped(dispatch.clone()));
         self.reward_dropped.push(dispatch);
+    }
+
+    pub fn push_respawned(&mut self, dispatch: PrismRespawnedDispatch) {
+        self.sequence
+            .push(PrismNetworkDispatch::Respawned(dispatch.clone()));
+        self.respawned.push(dispatch);
     }
 
     pub fn card_acquired(&self) -> &[PrismCardAcquiredDispatch] {
@@ -59,6 +85,14 @@ impl PrismNetworkOutbox {
 
     pub fn reward_dropped(&self) -> &[PrismRewardDroppedDispatch] {
         &self.reward_dropped
+    }
+
+    pub fn respawned(&self) -> &[PrismRespawnedDispatch] {
+        &self.respawned
+    }
+
+    pub fn sequence(&self) -> &[PrismNetworkDispatch] {
+        &self.sequence
     }
 }
 
@@ -119,11 +153,7 @@ pub fn cleanup_prism_session(
     commands.remove_resource::<AuditLog>();
 }
 
-/// Resolves deterministic Prism lane rewards for Lanes 1/2/4/5.
-///
-/// Lane 3 RNG draws, hand-full network notification, and full-set respawn are
-/// implemented by later Prism stories. This resolver still drains all collection
-/// input so stale messages cannot leak into a later frame.
+/// Resolves Prism lane rewards, network staging, and full-set respawns.
 pub fn resolve_prism_draws(
     mut prism_state: Option<ResMut<PrismState>>,
     mut hands: Option<ResMut<PlayerHands>>,
@@ -238,6 +268,13 @@ pub fn resolve_prism_draws(
             _ => {}
         }
     }
+
+    resolve_prism_respawns(
+        prism_state,
+        session.as_deref(),
+        &mut prism_presence,
+        &mut network,
+    );
 }
 
 fn resolve_deterministic_lane_reward(
@@ -427,6 +464,26 @@ impl PrismNetworkContext<'_, '_, '_> {
         );
     }
 
+    fn stage_prism_respawned(&mut self, player_id: PlayerId) {
+        let message = S2CPrismRespawned { player_id };
+        if let Some(outbox) = self.outbox.as_deref_mut() {
+            outbox.push_respawned(PrismRespawnedDispatch {
+                player_id,
+                message: message.clone(),
+            });
+        }
+
+        let (Some(server), Some(sender)) = (self.server, self.sender.as_deref_mut()) else {
+            return;
+        };
+
+        let _ = sender.send::<S2CPrismRespawned, ReliableChannel>(
+            &message,
+            server,
+            &NetworkTarget::All,
+        );
+    }
+
     fn defer_if_snapshot_pending(&mut self, player_id: PlayerId, message: DeferredMessage) -> bool {
         defer_unicast_for_reconnect(self.reconnect_tracker.as_deref_mut(), player_id, message)
     }
@@ -487,6 +544,54 @@ fn player_index(player: PlayerId, session: Option<&SessionConfig>) -> Option<usi
     (index < MAX_PLAYERS).then_some(index)
 }
 
+fn prism_players(session: Option<&SessionConfig>) -> Vec<(usize, PlayerId)> {
+    if let Some(session) = session {
+        return session
+            .players()
+            .take(MAX_PLAYERS)
+            .enumerate()
+            .collect::<Vec<_>>();
+    }
+
+    (0..MAX_PLAYERS)
+        .map(|index| {
+            (
+                index,
+                PlayerId(u64::try_from(index + 1).unwrap_or(u64::MAX)),
+            )
+        })
+        .collect()
+}
+
+fn resolve_prism_respawns(
+    prism_state: &mut PrismState,
+    session: Option<&SessionConfig>,
+    prism_presence: &mut Query<(&PrismLaneKey, &mut PrismPresence)>,
+    network: &mut PrismNetworkContext<'_, '_, '_>,
+) {
+    let players = prism_players(session);
+
+    for (player_index, _) in &players {
+        if prism_state.collected[*player_index]
+            .iter()
+            .all(|collected| *collected)
+        {
+            prism_state.pending_respawn[*player_index] = true;
+        }
+    }
+
+    for (player_index, player) in players {
+        if !prism_state.pending_respawn[player_index] {
+            continue;
+        }
+
+        prism_state.collected[player_index] = [false; PRISM_LANE_COUNT];
+        prism_state.pending_respawn[player_index] = false;
+        set_player_presence_collected(prism_presence, player, false);
+        network.stage_prism_respawned(player);
+    }
+}
+
 fn set_presence_collected(
     prism_presence: &mut Query<(&PrismLaneKey, &mut PrismPresence)>,
     player: PlayerId,
@@ -495,6 +600,18 @@ fn set_presence_collected(
 ) {
     for (key, mut presence) in prism_presence.iter_mut() {
         if key.player == player && key.lane == lane {
+            presence.collected = collected;
+        }
+    }
+}
+
+fn set_player_presence_collected(
+    prism_presence: &mut Query<(&PrismLaneKey, &mut PrismPresence)>,
+    player: PlayerId,
+    collected: bool,
+) {
+    for (key, mut presence) in prism_presence.iter_mut() {
+        if key.player == player {
             presence.collected = collected;
         }
     }

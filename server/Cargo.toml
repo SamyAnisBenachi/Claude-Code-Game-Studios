@@ -82,6 +82,10 @@ name = "prism_hand_full_network_test"
 path = "../tests/integration/prism/hand_full_network_test.rs"
 
 [[test]]
+name = "prism_respawn_cycle_test"
+path = "../tests/unit/prism/respawn_cycle_test.rs"
+
+[[test]]
 name = "card_acquisition_draft_initial_test"
 path = "../tests/integration/card_acquisition/draft_initial_test.rs"
 

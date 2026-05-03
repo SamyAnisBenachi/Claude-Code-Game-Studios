@@ -5,8 +5,8 @@ use shared::session::PlayerId;
 /// Number of prism lanes owned by each player.
 pub const PRISM_LANE_COUNT: usize = 5;
 
-/// Current scaffold capacity for authoritative player-indexed prism state.
-pub const MAX_PLAYERS: usize = 2;
+/// Current capacity for authoritative player-indexed prism state.
+pub const MAX_PLAYERS: usize = 4;
 
 /// Server-authoritative prism collection state.
 #[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]

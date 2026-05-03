@@ -17,5 +17,6 @@ pub use plugin::{PrismPlugin, PrismSystemSet};
 pub use state::{AuditLog, DiscardLog, PrismAuditEntry, PrismState, MAX_PLAYERS, PRISM_LANE_COUNT};
 pub use system::{
     cleanup_prism_session, initialize_prism_session, resolve_prism_draws,
-    PrismCardAcquiredDispatch, PrismNetworkOutbox, PrismRewardDroppedDispatch,
+    PrismCardAcquiredDispatch, PrismNetworkDispatch, PrismNetworkOutbox, PrismRespawnedDispatch,
+    PrismRewardDroppedDispatch,
 };
