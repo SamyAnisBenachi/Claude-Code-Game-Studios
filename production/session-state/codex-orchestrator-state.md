@@ -102,17 +102,17 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- HUD-008: Reconnect Snapshot HUD Rebuild implemented on branch
-  `work/hud-008-reconnect-snapshot-rebuild` at `778828d`; root cherry-picked
-  and amended it into `main` at `d8971f4`. Root checks passed `cargo fmt -p
-  client -- --check`, `cargo test -p client --test
-  reconnect_snapshot_rebuild_test` 3/3, HUD regression slice 27/27,
-  `cargo check -p client`, and `git diff --check HEAD~1..HEAD`. Scope uses the
-  GSS-007 snapshot contract already integrated on main; no shared/protocol
-  files changed and no HUD-008 story/status/session-state closure updates were
-  made.
 ## Recently Closed
 
+- HUD-008: Reconnect Snapshot HUD Rebuild implemented on branch
+  `work/hud-008-reconnect-snapshot-rebuild` at `778828d`; root integration
+  landed at `d8971f4`; story-done closure committed at `07f477f`.
+  Verification passed `cargo test -p client --test
+  reconnect_snapshot_rebuild_test`, `cargo check -p client`, `cargo fmt -p
+  client -- --check`, and `git diff --check`. Completion notes document
+  advisory TR-HUD-009 registry narrowness versus broader HUD rebuild behavior
+  in the current HUD GDD, plus missing screenshot/manual evidence for HUD-14.
+  `production/sprint-status.yaml` had no matching row.
 - GSS-007: Reconnect Snapshot implemented on branch
   `work/gss-007-reconnect-snapshot-schema-builder` at `8d3a91b`; root
   integration landed at `8e7c5b5`; repair committed at `32643e9`; story-done
@@ -380,7 +380,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HUD-008
+None currently queued.
 
 Run only one story-done at a time.
 
@@ -394,9 +394,8 @@ Run only one story-done at a time.
 - GSS-006: closed at `a49e422`.
 - GSS-007: closed at `7378e28`.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
-- HUD-008: implemented/integrated at `d8971f4`; pending story-done after
-  GSS-007. The original snapshot schema blocker was removed by integrated and
-  closed GSS-007 code.
+- HUD-008: closed at `07f477f`. The original snapshot schema blocker was
+  removed by integrated and closed GSS-007 code.
 - Other RSM/session/disconnect work should avoid reopening the GSS-007
   reconnect snapshot contract unless it is explicitly scoped.
 - Prism gates are resolved; PRISM-003+ follow normal sequencing after PRISM-001
@@ -408,11 +407,10 @@ Batch launched:
 - GSS-005: closed at `19071b5`.
 - GSS-006: closed at `a49e422`.
 - GSS-007: closed at `7378e28`.
-- HUD-008: integrated at `d8971f4`; pending story-done.
+- HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- HUD-008: integrated at `d8971f4`; pending serialized story-done after current
-  closure queue.
+None currently tracked here.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -425,7 +423,8 @@ Current active windows by user default-launch rule:
   story-done; story-done committed at `dc8b80a`. Window can be cleared.
 - HUD-008 initially returned with no code changes while blocked on
   `S2CGameSnapshot`; after GSS-007 integration it returned implemented and is
-  integrated at `d8971f4`, pending serialized story-done after GSS-007.
+  integrated at `d8971f4`; story-done committed at `07f477f`. Window can be
+  cleared.
 - PRISM-003 returned, integrated at `611baee`, and now only needs serialized
   story-done; story-done committed at `b4d9e04`. Window can be cleared.
 - CARD-ANIM-007 story-done returned and was committed at `35ee469`; window can
@@ -459,8 +458,8 @@ Current active windows by user default-launch rule:
   `c8222d2`. Window can be cleared.
 - GSS-007 returned, integrated at `8e7c5b5`, repaired at `32643e9`,
   story-done committed at `7378e28`. Window can be cleared.
-- HUD-008 returned, integrated at `d8971f4`, and now only needs serialized
-  story-done.
+- HUD-008 returned, integrated at `d8971f4`, story-done committed at
+  `07f477f`. Window can be cleared.
 AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
 integrated/closed as noted above.
 
