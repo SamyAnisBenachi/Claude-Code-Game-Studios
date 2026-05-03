@@ -129,6 +129,12 @@ None currently tracked here.
   client --test hand_ui_placement_timer_test` 4/4, surrounding Hand UI
   placement regressions 17/17, `cargo check -p client`, and diff checks. No
   `/story-done` has run yet.
+- COMBAT-003: SS1 Placement Appearance trace repair landed on main at
+  `e5c28d5`; implementation landed on main at `7fdf4fd`. Verification passed
+  `cargo test -p server --test substep1_placement_test` 4/4, `cargo test -p
+  server --test resolve_combat_scaffold_test` 4/4, `cargo test -p server
+  --test modifier_stack_test` 7/7, `cargo check -p server`, and diff checks.
+  No `/story-done` has run yet.
 ## Recently Closed
 
 - AUC-006: Resolution & Settlement readiness repair landed on main at
@@ -529,6 +535,9 @@ None currently tracked here.
 2. HAND-UI-009:
    `production/epics/hand-ui/story-009-placement-timer.md`
    after integration commit `a72bb0f`.
+3. COMBAT-003:
+   `production/epics/combat-resolution/story-003-substep1-placement-appearance.md`
+   after integration commit `7fdf4fd`.
 
 Run only one story-done at a time.
 
@@ -562,12 +571,15 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- None known at this checkpoint. HAND-UI-009, HAND-UI-008, AUC-006,
-  BOARD-009, COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have
-  returned and are integrated or closed as noted; do not relaunch their
+- None known at this checkpoint. COMBAT-003, HAND-UI-009, HAND-UI-008,
+  AUC-006, BOARD-009, COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007
+  have returned and are integrated or closed as noted; do not relaunch their
   implementation workers.
 
 Current active windows by user default-launch rule:
+- COMBAT-003 returned, integrated into main at `e5c28d5` and `7fdf4fd`,
+  verified, and is on origin/main. Window can be cleared. It now needs
+  serialized `/story-done` after HAND-UI-009.
 - HAND-UI-009 returned, integrated into main at `a72bb0f`, verified, and is on
   origin/main. Window can be cleared. It now needs serialized `/story-done`
   after HAND-UI-008.
