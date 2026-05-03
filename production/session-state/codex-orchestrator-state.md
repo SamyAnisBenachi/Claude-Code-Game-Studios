@@ -116,31 +116,22 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
+- COMBAT-002: Combat Modifier Stack implemented on branch
+  `work/combat-002-combat-modifier-stack` at worker commit `76ed813`; root
+  integration landed on main at `0e5ac46` and was pushed to origin.
+  Verification passed `cargo fmt --all -- --check`, `cargo test -p server
+  --test modifier_stack_test` 7/7, `cargo test -p server --test
+  game_config_defaults_test` 8/8, `cargo test -p server --test
+  resolve_combat_scaffold_test` 3/3, `cargo check -p server`, and diff checks.
+  No `/story-done` has run yet.
 - BOARD-009: Prism Collection readiness docs landed on main at `7dab817`;
   implementation landed on main at `105e6b0`. Verification passed `cargo fmt
   --all -- --check`, `cargo test -p server --test prism_collection_test` 6/6,
   `cargo test -p server --test standard_movement_test --test
   charge_movement_test --test trap_trigger_test` 14/14, `cargo check -p
   server`, and diff checks. No `/story-done` has run yet.
-- AUC-006: Resolution Settlement readiness docs landed on main at `6f9b54a`;
-  implementation landed on main at `5461de6`. Verification passed `cargo fmt
-  --all -- --check`, `cargo test -p server --test
-  auction_resolution_settlement_test` 3/3, `cargo test -p server --test
-  auction_resolution_settlement_integration_test` 1/1, affected
-  auction/economy regressions 28 passed with 1 existing ignored test,
-  `cargo test -p server --test reconnect_snapshot_test` 6/6, `cargo check -p
-  server`, and diff checks. No `/story-done` has run yet.
 ## Recently Closed
 
-- COMBAT-002: Combat Modifier Stack implemented on branch
-  `work/combat-002-combat-modifier-stack` at worker commit `76ed813`; root
-  integration landed on main at `0e5ac46`; story-done closure is included in
-  current local closure/tracker commit. Verification passed `cargo test -p
-  server --test modifier_stack_test` 7/7, `cargo test -p server --test
-  game_config_defaults_test` 8/8, `cargo test -p server --test
-  resolve_combat_scaffold_test` 4/4, `cargo fmt --all -- --check`, `cargo
-  check -p server`, and diff checks. `production/sprint-status.yaml` had no
-  matching COMBAT-002 row.
 - OBJECTIVE-004: Damage Interface implemented on branch
   `work/objective-004-damage-interface` at worker commit `33e0b9c`; root
   integration landed on main at `033c212`; story-done closure committed at
@@ -512,12 +503,12 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. BOARD-009:
+1. COMBAT-002:
+   `production/epics/combat-resolution/story-002-combat-modifier-stack.md`
+   after integration commit `0e5ac46`.
+2. BOARD-009:
    `production/epics/board-lane-system/story-009-prism-collection.md`
    after integration commit `105e6b0`.
-2. AUC-006:
-   `production/epics/auction-system/story-006-resolution-settlement.md`
-   after integration commit `5461de6`.
 
 Run only one story-done at a time.
 
@@ -553,8 +544,10 @@ Active implementation workers by default-launch rule:
 - HAND-UI-008 Placement Unstaging prompt was provided for parallel launch. Per
   default-launch rule, treat it as active unless the user explicitly says
   otherwise.
-- HAND-UI-007, BOARD-008, OBJECTIVE-004, COMBAT-002, BOARD-009, and AUC-006
-  have returned and are integrated or closed as noted; do not relaunch their
+- AUC-006 returned NEEDS WORK on readiness and should be relaunched with a
+  readiness repair prompt before implementation.
+- HAND-UI-007, BOARD-008, OBJECTIVE-004, COMBAT-002, and BOARD-009 have
+  returned and are integrated or closed as noted; do not relaunch their
   implementation workers.
 
 Current active windows by user default-launch rule:
@@ -566,14 +559,14 @@ Current active windows by user default-launch rule:
   be cleared.
 - OBJECTIVE-004 story-done returned and was committed at `b9c6114`; window can
   be cleared.
-- COMBAT-002 story-done changes are included in current local closure/tracker
-  commit; window can be cleared.
+- COMBAT-002 returned, integrated into main at `0e5ac46`, pushed to
+  origin/main, and can be cleared. It now needs serialized `/story-done`.
 - BOARD-009 returned, integrated into main at `7dab817` and `105e6b0`, pushed
   to origin/main, and can be cleared. It now needs serialized `/story-done`
   after COMBAT-002.
-- AUC-006 returned, integrated into main at `6f9b54a` and `5461de6`, pushed to
-  origin/main, and can be cleared. It now needs serialized `/story-done` after
-  BOARD-009.
+- AUC-006 readiness returned NEEDS WORK because of stale manifest,
+  implementation gate naming drift, and missing performance note. Window can be
+  cleared and relaunched with a readiness repair + implement prompt.
 - Sprint 4 QA plan returned and was committed at `8578890`; window can be
   cleared. Next Sprint 4 critical item is S4-14 Economy Network Dispatch
   readiness/implementation.
