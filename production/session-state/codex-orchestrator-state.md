@@ -116,12 +116,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- COMBAT-003: SS1 Placement Appearance trace repair landed on main at
-  `e5c28d5`; implementation landed on main at `7fdf4fd`. Verification passed
-  `cargo test -p server --test substep1_placement_test` 4/4, `cargo test -p
-  server --test resolve_combat_scaffold_test` 4/4, `cargo test -p server
-  --test modifier_stack_test` 7/7, `cargo check -p server`, and diff checks.
-  No `/story-done` has run yet.
 - OBJECTIVE-005: Destruction Consequence Path readiness repair landed on main
   at `e903c69`; implementation landed on main at `cf93a8d`. Verification
   passed `cargo test -p server --test consequence_path_test` 7/7, `cargo test
@@ -156,6 +150,11 @@ None currently tracked here.
   it still needs `/story-done`.
 ## Recently Closed
 
+- COMBAT-003: SS1 Placement Appearance trace repair landed on main at
+  `e5c28d5`; implementation landed on main at `7fdf4fd`; story-done closure
+  committed at `bcc73bb`. Verification passed `cargo test -p server --test
+  substep1_placement_test` 4/4, `cargo check -p server`, and diff checks.
+  `production/sprint-status.yaml` had no matching COMBAT-003 row.
 - HAND-UI-009: Placement Timer implemented on branch
   `work/hand-ui-009-placement-timer` at worker commit `7a8c173`; root
   integration landed on main at `a72bb0f`; story-done closure committed at
@@ -560,22 +559,19 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. COMBAT-003:
-   `production/epics/combat-resolution/story-003-substep1-placement-appearance.md`
-   after integration commit `7fdf4fd`.
-2. OBJECTIVE-005:
+1. OBJECTIVE-005:
    `production/epics/objective-system/story-005-destruction-consequence-path.md`
    after integration commit `cf93a8d`.
-3. AUC-007:
+2. AUC-007:
    `production/epics/auction-system/story-007-auction-plugin-scheduling.md`
    after integration commit `ea5d88d`.
-4. HAND-UI-011:
+3. HAND-UI-011:
    `production/epics/hand-ui/story-011-reserve-mana-strip.md`
    after integration commit `bd8c15b`.
-5. BOARD-010:
+4. BOARD-010:
    `production/epics/board-lane-system/story-010-displacement-keywords.md`
    after integration commit `e49f5a2`.
-6. CDP-006:
+5. CDP-006:
    `production/epics/card-data-pool/story-006-network-dispatch-wiring.md`
    after integration commit `4d21482`.
 
@@ -625,7 +621,7 @@ Batch launched:
 
 Active implementation workers by default-launch rule:
 - None known at this checkpoint. CDP-006, BOARD-010, HAND-UI-011, AUC-007,
-  OBJECTIVE-005, COMBAT-003, HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009,
+  OBJECTIVE-005, HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009,
   COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have returned and
   are integrated or closed as noted; do not relaunch their implementation
   workers.
@@ -645,10 +641,9 @@ Current active windows by user default-launch rule:
   cleared. It now needs serialized `/story-done` after OBJECTIVE-005.
 - OBJECTIVE-005 returned, integrated into main at `e903c69` and `cf93a8d`,
   verified, and is on origin/main. Window can be cleared. It now needs
-  serialized `/story-done` after COMBAT-003.
-- COMBAT-003 returned, integrated into main at `e5c28d5` and `7fdf4fd`,
-  verified, and is on origin/main. Window can be cleared. It now needs
   serialized `/story-done`.
+- COMBAT-003 story-done returned and was committed at `bcc73bb`; window can
+  be cleared.
 - HAND-UI-009 story-done returned and was committed at `8344521`; window can
   be cleared.
 - HAND-UI-008 story-done returned and was committed at `90c2c3a`; window can
