@@ -1565,3 +1565,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per user instruction; no matching `HAND-UI-009` row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the serialized closure queue with Combat Resolution Story 003 (`production/epics/combat-resolution/story-003-substep1-placement-appearance.md`) after readiness/status review.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE
+- Story: `production/epics/combat-resolution/story-003-substep1-placement-appearance.md` - Story 003: Sub-step 1 - Placement Commit + APPEARANCE Triggers
+- Criteria: 4/4 passing; CR-24, CR-38, CR-39, and CR-40 covered by `tests/unit/combat/substep1_placement_test.rs`.
+- Test Evidence: `cargo test -p server --test substep1_placement_test` passed 4/4. `cargo check -p server` passed.
+- Verification: Current `main` after integrated commit `7fdf4fd` keeps `server/src/feature/combat/mod.rs` unchanged from the COMBAT-003 implementation; SS1 enqueues `S2CPlacementReveal` before placement spawns, fires APPEARANCE before SS2, defers DEATH triggers until all SS1 APPEARANCE effects finish, applies queued CHANGE LANE before SS2, and applies STUN immediately so CHARGE X and standard movement helpers suppress movement.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviation found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per user instruction; no matching COMBAT-003 row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the serialized closure queue with Objective Story 005 (`production/epics/objective-system/story-005-destruction-consequence-path.md`).

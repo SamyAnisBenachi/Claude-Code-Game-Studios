@@ -1,7 +1,7 @@
 # Story 003: Sub-step 1 — Placement Commit + APPEARANCE Triggers
 
 > **Epic**: Combat Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -28,10 +28,10 @@
 
 *From GDD `design/gdd/combat-resolution.md`, scoped to this story:*
 
-- [ ] **CR-24**: GIVEN a unit with an APPEARANCE ability enters play in sub-step 1, WHEN sub-step 1 executes, THEN the APPEARANCE ability fires before sub-step 2 begins
-- [ ] **CR-38**: GIVEN unit A's APPEARANCE trigger deals lethal damage to unit B in sub-step 1, AND unit C also has an APPEARANCE trigger in sub-step 1, WHEN sub-step 1 executes, THEN unit C's APPEARANCE fires before unit B's DEATH trigger; unit B's DEATH trigger fires only after ALL sub-step 1 APPEARANCE effects complete
-- [ ] **CR-39**: GIVEN a unit with a CHANGE LANE trigger activates in sub-step 1, WHEN all sub-step 1 effects complete, THEN the CHANGE LANE executes before sub-step 2 begins; the unit's new lane position is used for sub-step 2 CHARGE X movement
-- [ ] **CR-40**: GIVEN unit A's APPEARANCE trigger applies STUN to unit B (which has CHARGE X) in sub-step 1, WHEN sub-step 2 executes, THEN unit B does NOT advance via CHARGE X (STUN suppresses sub-step 2); WHEN sub-step 5 executes, THEN unit B does NOT advance (STUN suppresses sub-step 5)
+- [x] **CR-24**: GIVEN a unit with an APPEARANCE ability enters play in sub-step 1, WHEN sub-step 1 executes, THEN the APPEARANCE ability fires before sub-step 2 begins
+- [x] **CR-38**: GIVEN unit A's APPEARANCE trigger deals lethal damage to unit B in sub-step 1, AND unit C also has an APPEARANCE trigger in sub-step 1, WHEN sub-step 1 executes, THEN unit C's APPEARANCE fires before unit B's DEATH trigger; unit B's DEATH trigger fires only after ALL sub-step 1 APPEARANCE effects complete
+- [x] **CR-39**: GIVEN a unit with a CHANGE LANE trigger activates in sub-step 1, WHEN all sub-step 1 effects complete, THEN the CHANGE LANE executes before sub-step 2 begins; the unit's new lane position is used for sub-step 2 CHARGE X movement
+- [x] **CR-40**: GIVEN unit A's APPEARANCE trigger applies STUN to unit B (which has CHARGE X) in sub-step 1, WHEN sub-step 2 executes, THEN unit B does NOT advance via CHARGE X (STUN suppresses sub-step 2); WHEN sub-step 5 executes, THEN unit B does NOT advance (STUN suppresses sub-step 5)
 
 ---
 
@@ -99,7 +99,7 @@ SS1 execution order (within apply_placements):
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combat/substep1_placement_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -107,3 +107,12 @@ SS1 execution order (within apply_placements):
 
 - Depends on: Story 001 (`apply_placements` function signature defined in scaffold)
 - Unlocks: Story 004 (movement uses board state established by SS1), Story 005 (SS3 attacks units placed in SS1)
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 4/4 passing
+**Deviations**: None
+**Test Evidence**: Logic evidence at `tests/unit/combat/substep1_placement_test.rs`; `cargo test -p server --test substep1_placement_test` passed 4/4
+**Code Review**: Skipped -- lean mode
+**Verification**: Current `main` was reviewed after integrated commit `7fdf4fd`; `server/src/feature/combat/mod.rs` is unchanged since that commit. Later `main` changes only updated the test fixture for `PlacedCard.reserve_amount` and registered unrelated tests.
