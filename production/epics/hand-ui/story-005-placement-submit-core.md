@@ -1,7 +1,7 @@
 # Story 005: PLACEMENT Entry — Submit Button & Core Stage/Unstage
 
 > **Epic**: Hand UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -141,7 +141,7 @@
 **Required evidence**:
 - `tests/unit/hand-ui/placement_submit_core_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -149,3 +149,15 @@
 
 - Depends on: Story 001 (pre-pooled fan slots), Story 002 (fan positions), Story 003 (PLACEMENT phase entry)
 - Unlocks: Story 006 (drag highlights), Story 007 (Instant staging), Story 008 (un-staging), Story 009 (timer + grace window), Story 010 (pre-validation), Story 011 (reserve strip)
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 5/5 passing; HU-11, HU-13, HU-14, HU-16, and HU-17 are covered by `tests/unit/hand-ui/placement_submit_core_test.rs`.
+**Test Evidence**: `cargo test -p client --test hand_ui_placement_submit_core_test` passed 5/5. `cargo check -p client` passed. `cargo fmt -p client -- --check` passed.
+**Verification**: `client/src/ui/hand/mod.rs` registers `GhostPlacementChanged` as a Bevy-internal message, resets `PendingPlacements` and activates the Submit button on PLACEMENT entry, stages valid drops into `PendingPlacements`, emits ghost messages, restores invalid drops without ghost messages, and locks the Submit button after the first `C2SSubmitPlacement` send.
+**Notes**: Advisory only - the unit test verifies the Hand UI local message/outbox seam and optional `MessageSender<C2SSubmitPlacement>` path, not a full live Lightyear transport session. Advisory only - current `TR-HU-002` also mentions cursor-to-cell mapping via `BoardLayout`; this story intentionally scopes that work to core stage/submit behavior, while drag highlight and target mapping are deferred to Story 006. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+**Tech Debt**: None logged.
+**Sprint Status**: Unchanged per user instruction; no matching Hand UI Story 005 row exists in `production/sprint-status.yaml`.
+**Next Recommended**: Hand UI Story 006 PLACEMENT Drag Highlights (`production/epics/hand-ui/story-006-placement-drag-highlights.md`) after readiness check.

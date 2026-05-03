@@ -1367,3 +1367,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no `PRISM-004` row exists in `production/sprint-status.yaml`.
 - Next recommended: Hand UI Story 005 PLACEMENT Entry - Submit Button & Core Stage/Unstage (`production/epics/hand-ui/story-005-placement-submit-core.md`) after tracker update and queue handoff.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hand-ui/story-005-placement-submit-core.md` - Story 005: PLACEMENT Entry - Submit Button & Core Stage/Unstage
+- Criteria: 5/5 passing; HU-11, HU-13, HU-14, HU-16, and HU-17 covered by `tests/unit/hand-ui/placement_submit_core_test.rs`.
+- Test Evidence: `cargo test -p client --test hand_ui_placement_submit_core_test` passed 5/5. `cargo check -p client` passed. `cargo fmt -p client -- --check` passed.
+- Verification: `client/src/ui/hand/mod.rs` registers `GhostPlacementChanged` as a Bevy-internal message, resets `PendingPlacements` and activates the Submit button on PLACEMENT entry, stages valid drops into `PendingPlacements`, emits ghost messages, restores invalid drops without ghost messages, and locks the Submit button after the first `C2SSubmitPlacement` send.
+- Notes: Advisory only - the unit test verifies the Hand UI local message/outbox seam and optional `MessageSender<C2SSubmitPlacement>` path, not a full live Lightyear transport session. Advisory only - current `TR-HU-002` also mentions cursor-to-cell mapping via `BoardLayout`; this story intentionally scopes that work to core stage/submit behavior, while drag highlight and target mapping are deferred to Story 006. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no matching Hand UI Story 005 row exists in `production/sprint-status.yaml`.
+- Next recommended: Hand UI Story 006 PLACEMENT Drag Highlights (`production/epics/hand-ui/story-006-placement-drag-highlights.md`) after readiness check.
