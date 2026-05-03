@@ -116,7 +116,9 @@ None currently tracked here.
   at `e4f76da` and `bb260c7`. Verification passed `cargo fmt -p server --
   --check`, `cargo test -p server --test objective_detection_test` 5/5,
   `cargo test -p server --test board_grid_initialization_test` 4/4, `cargo
-  check -p server`, and diff checks. No `/story-done` has run yet.
+  check -p server`, and diff checks. `/story-done` returned BLOCKED because
+  production resolution sub-step 6 does not call `detect_objective_presence`;
+  repair must add the SS6 hook and integration-style evidence before closure.
 - HAND-UI-007: Placement Instant Staging implemented on branch
   `work/hand-ui-007-placement-instant-staging` at worker commit `7c3e76b`;
   root integration landed on main at `d3a16d1` and was pushed to origin.
@@ -481,13 +483,16 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. BOARD-008:
+1. BOARD-008 repair:
+   add the production SS6 objective detection hook and integration evidence
+   before rerunning `/story-done`.
+2. BOARD-008:
    `production/epics/board-lane-system/story-008-objective-cell-detection.md`
-   after integration commit `bb260c7`.
-2. HAND-UI-007:
+   after the repair commit lands.
+3. HAND-UI-007:
    `production/epics/hand-ui/story-007-placement-instant-staging.md`
    after integration commit `d3a16d1`.
-3. OBJECTIVE-004:
+4. OBJECTIVE-004:
    `production/epics/objective-system/story-004-damage-interface.md`
    after integration commit `033c212`.
 
@@ -531,7 +536,10 @@ Current active windows by user default-launch rule:
 - ECO-006 / S4-14 story-done returned and was committed at `c5739fa`; window
   can be cleared.
 - BOARD-008 returned, integrated into main at `bb260c7`, pushed to origin/main,
-  and can be cleared. It now needs serialized `/story-done`.
+  and can be cleared as an implementation worker, but story-done is BLOCKED.
+  Required repair: wire `detect_objective_presence` into the production
+  resolution sub-step 6 flow and add integration-style evidence proving SS6
+  emits `UnitAtObjective`.
 - HAND-UI-007 returned, integrated into main at `d3a16d1`, pushed to
   origin/main, and can be cleared. It now needs serialized `/story-done` after
   BOARD-008.
@@ -541,7 +549,10 @@ Current active windows by user default-launch rule:
 - COMBAT-002 implementation returned with checks passing, but the
   implementation commit was blocked by an approval usage-limit failure during
   elevated staging. Keep that window open and retry only the explicit owned-path
-  staging/commit step; do not relaunch implementation.
+  staging/commit step; do not relaunch implementation. Because BOARD-008 repair
+  also touches `server/src/feature/combat/mod.rs`, prefer committing and
+  integrating COMBAT-002 before starting the BOARD-008 repair if both windows
+  are available.
 - Sprint 4 QA plan returned and was committed at `8578890`; window can be
   cleared. Next Sprint 4 critical item is S4-14 Economy Network Dispatch
   readiness/implementation.
