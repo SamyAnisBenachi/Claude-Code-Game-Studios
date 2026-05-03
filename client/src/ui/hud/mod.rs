@@ -7,7 +7,10 @@ use bevy_tweening::{
     lens::Lens, AnimationSystem, PlaybackState, Tween, TweenAnim, TweenState, TweeningPlugin,
 };
 use lightyear::prelude::MessageReceiver;
-use shared::protocol::{RoundPhase, S2CGoldBroadcast, S2CGoldUpdate};
+use shared::protocol::{
+    OpponentObjectiveSnapshot, PlayerSnapshot, RoundPhase, S2CGameSnapshot, S2CGoldBroadcast,
+    S2CGoldUpdate,
+};
 use shared::session::PlayerId;
 
 use crate::card_animations::cancel_tween_anim_in_place;
@@ -195,6 +198,9 @@ pub struct HudGoldBroadcastMessage(pub S2CGoldBroadcast);
 #[derive(Message, Debug, Clone)]
 pub struct HudGoldUpdateMessage(pub S2CGoldUpdate);
 
+#[derive(Message, Debug, Clone)]
+pub struct HudGameSnapshotMessage(pub S2CGameSnapshot);
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScoreboardDot {
     pub row: ScoreboardRow,
@@ -227,6 +233,7 @@ impl Plugin for HudPlugin {
             .add_message::<HudObjectiveUpdate>()
             .add_message::<HudGoldBroadcastMessage>()
             .add_message::<HudGoldUpdateMessage>()
+            .add_message::<HudGameSnapshotMessage>()
             .configure_sets(
                 Update,
                 (
@@ -246,6 +253,14 @@ impl Plugin for HudPlugin {
                         .in_set(HudSystemSet::PhaseTransition)
                         .before(update_phase_label_round_counter_system),
                     update_phase_label_round_counter_system.in_set(HudSystemSet::PhaseTransition),
+                    drain_game_snapshot_receiver_system
+                        .in_set(HudSystemSet::MessageDrain)
+                        .before(handle_game_snapshot_system),
+                    handle_game_snapshot_system
+                        .in_set(HudSystemSet::MessageDrain)
+                        .before(handle_gold_broadcast_system)
+                        .before(handle_gold_update_system)
+                        .before(handle_hud_objective_update_system),
                     drain_gold_broadcast_receiver_system
                         .in_set(HudSystemSet::MessageDrain)
                         .before(handle_gold_broadcast_system),
@@ -625,6 +640,98 @@ pub fn drain_gold_update_receiver_system(
     }
 }
 
+pub fn drain_game_snapshot_receiver_system(
+    mut receivers: Query<&mut MessageReceiver<S2CGameSnapshot>>,
+    mut writer: MessageWriter<HudGameSnapshotMessage>,
+) {
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            writer.write(HudGameSnapshotMessage(message));
+        }
+    }
+}
+
+pub fn handle_game_snapshot_system(
+    mut commands: Commands,
+    mut messages: MessageReader<HudGameSnapshotMessage>,
+    entities: Option<Res<HudEntities>>,
+    mut current: ResMut<CurrentClientPhase>,
+    mut mode: ResMut<HudMode>,
+    mut visibility: Query<&mut Visibility>,
+    mut gold_labels: Query<(
+        Entity,
+        &GoldLabelOwner,
+        &mut GoldDisplayState,
+        &mut GoldTweenTarget,
+        Option<&Children>,
+        Option<&mut TweenAnim>,
+    )>,
+    mut mana_labels: Query<
+        (
+            Entity,
+            &mut ManaDisplayState,
+            &mut ManaTweenTarget,
+            Option<&mut TweenAnim>,
+        ),
+        (With<ManaLabel>, Without<GoldDisplayState>),
+    >,
+    mut texts: Query<&mut Text>,
+    mut spans: Query<&mut TextSpan>,
+    mut dots: Query<(
+        &mut ScoreboardDotState,
+        &mut BackgroundColor,
+        &mut BorderColor,
+    )>,
+) {
+    let mut last_snapshot = None;
+    for message in messages.read().map(|message| &message.0) {
+        last_snapshot = Some(message);
+    }
+
+    let Some(snapshot) = last_snapshot else {
+        return;
+    };
+    let Some(entities) = entities else {
+        return;
+    };
+    let Some((own, opponent)) = snapshot_hud_players(snapshot) else {
+        warn!(
+            "HUD: snapshot for {:?} does not contain exactly one local and one opponent player",
+            snapshot.recipient_player_id
+        );
+        return;
+    };
+
+    commands.insert_resource(HudPlayerIds {
+        local_id: own.player_id,
+        opponent_id: opponent.player_id,
+    });
+
+    current.phase = snapshot.phase;
+    current.round = snapshot.round_number;
+
+    let next_mode = hud_mode_for_phase(snapshot.phase);
+    *mode = next_mode;
+    if next_mode == HudMode::Hidden {
+        set_visibility(&mut visibility, entities.root, Visibility::Hidden);
+    } else {
+        set_hud_visible(&entities, &mut visibility);
+    }
+
+    write_phase_label_and_round(&entities, snapshot.phase, snapshot.round_number, &mut texts);
+    write_snapshot_gold_states(
+        own,
+        opponent,
+        &mut commands,
+        &mut gold_labels,
+        next_mode,
+        &mut texts,
+        &mut spans,
+    );
+    write_snapshot_mana_state(own, &entities, &mut commands, &mut mana_labels);
+    write_snapshot_dot_states(own, opponent, &entities, &mut dots);
+}
+
 pub fn handle_gold_broadcast_system(
     mut commands: Commands,
     mode: Res<HudMode>,
@@ -999,6 +1106,270 @@ fn format_reserved_gold_span(state: &GoldDisplayState, mode: HudMode) -> String 
         format!(" ({}r)", display_reserved_gold(state))
     } else {
         String::new()
+    }
+}
+
+fn snapshot_hud_players(snapshot: &S2CGameSnapshot) -> Option<(&PlayerSnapshot, &PlayerSnapshot)> {
+    let own = snapshot
+        .players
+        .iter()
+        .find(|player| player.player_id == snapshot.recipient_player_id)?;
+    let opponent = snapshot
+        .players
+        .iter()
+        .find(|player| player.player_id != snapshot.recipient_player_id)?;
+
+    Some((own, opponent))
+}
+
+fn hud_mode_for_phase(phase: RoundPhase) -> HudMode {
+    match phase {
+        RoundPhase::Lobby | RoundPhase::Handshaking => HudMode::Hidden,
+        RoundPhase::DraftAuction => HudMode::EconomyAuction,
+        RoundPhase::GameOver => HudMode::Frozen,
+        RoundPhase::DraftInitial
+        | RoundPhase::DraftShop
+        | RoundPhase::Placement
+        | RoundPhase::Resolution => HudMode::EconomyBasic,
+    }
+}
+
+fn write_phase_label_and_round(
+    entities: &HudEntities,
+    phase: RoundPhase,
+    round_number: u32,
+    texts: &mut Query<&mut Text>,
+) {
+    if let Some(label) = phase_label_text(phase) {
+        if let Ok(mut phase_text) = texts.get_mut(entities.phase_label) {
+            phase_text.0.clear();
+            phase_text.0.push_str(label);
+        }
+    }
+
+    if let Ok(mut round_text) = texts.get_mut(entities.round_counter) {
+        round_text.0 = format!("R{round_number}");
+    }
+}
+
+fn write_snapshot_gold_states(
+    own: &PlayerSnapshot,
+    opponent: &PlayerSnapshot,
+    commands: &mut Commands,
+    gold_labels: &mut Query<(
+        Entity,
+        &GoldLabelOwner,
+        &mut GoldDisplayState,
+        &mut GoldTweenTarget,
+        Option<&Children>,
+        Option<&mut TweenAnim>,
+    )>,
+    mode: HudMode,
+    texts: &mut Query<&mut Text>,
+    spans: &mut Query<&mut TextSpan>,
+) {
+    for (entity, owner, mut state, mut target, children, animator) in gold_labels.iter_mut() {
+        let player = match *owner {
+            GoldLabelOwner::Local => own,
+            GoldLabelOwner::Opponent => opponent,
+        };
+        state.gold = player.gold as f32;
+        state.reserved_gold =
+            clamped_reserved_gold_fields(player.player_id, player.gold, player.reserved_gold);
+        state.is_populated = true;
+        sync_gold_tween_target_to_authoritative(&state, &mut target);
+        remove_hud_tween(commands, entity, animator);
+
+        if let Ok(mut text) = texts.get_mut(entity) {
+            text.0 = format_gold_text(&state);
+        }
+        if let Some(children) = children {
+            for child in children.iter() {
+                if let Ok(mut span) = spans.get_mut(child) {
+                    span.0 = format_reserved_gold_span(&state, mode);
+                }
+            }
+        }
+    }
+}
+
+fn write_snapshot_mana_state(
+    own: &PlayerSnapshot,
+    entities: &HudEntities,
+    commands: &mut Commands,
+    mana_labels: &mut Query<
+        (
+            Entity,
+            &mut ManaDisplayState,
+            &mut ManaTweenTarget,
+            Option<&mut TweenAnim>,
+        ),
+        (With<ManaLabel>, Without<GoldDisplayState>),
+    >,
+) {
+    let Ok((entity, mut state, mut target, animator)) = mana_labels.get_mut(entities.mana_label)
+    else {
+        return;
+    };
+
+    state.current_mana = own.current_mana;
+    state.mana_cap = own.mana_cap as u32;
+    state.reserve_mana = own.reserve_mana;
+    state.is_populated = true;
+    sync_mana_tween_target_to_authoritative(&state, &mut target);
+    remove_hud_tween(commands, entity, animator);
+}
+
+fn write_snapshot_dot_states(
+    own: &PlayerSnapshot,
+    opponent: &PlayerSnapshot,
+    entities: &HudEntities,
+    dots: &mut Query<(
+        &mut ScoreboardDotState,
+        &mut BackgroundColor,
+        &mut BorderColor,
+    )>,
+) {
+    write_player_objective_dots(entities.dots[1], &own.objectives, dots);
+    write_opponent_objective_dots(entities.dots[0], opponent, own, dots);
+}
+
+fn write_player_objective_dots(
+    row: [Entity; HUD_DOTS_PER_ROW],
+    objectives: &[shared::protocol::ObjectiveSnapshot],
+    dots: &mut Query<(
+        &mut ScoreboardDotState,
+        &mut BackgroundColor,
+        &mut BorderColor,
+    )>,
+) {
+    reset_dot_row(row, dots);
+    for objective in objectives {
+        if !(1..=HUD_DOTS_PER_ROW as u8).contains(&objective.lane) {
+            warn!(
+                "HUD: OOB lane {} in snapshot objective - ignored",
+                objective.lane
+            );
+            continue;
+        }
+        write_dot_destroyed(
+            row[usize::from(objective.lane - 1)],
+            objective.is_destroyed,
+            dots,
+        );
+    }
+}
+
+fn write_opponent_objective_dots(
+    row: [Entity; HUD_DOTS_PER_ROW],
+    opponent: &PlayerSnapshot,
+    own: &PlayerSnapshot,
+    dots: &mut Query<(
+        &mut ScoreboardDotState,
+        &mut BackgroundColor,
+        &mut BorderColor,
+    )>,
+) {
+    reset_dot_row(row, dots);
+
+    if !own.opponent_objectives.is_empty() {
+        for objective in &own.opponent_objectives {
+            write_opponent_dot(row, objective, dots);
+        }
+        return;
+    }
+
+    for objective in &opponent.objectives {
+        if !(1..=HUD_DOTS_PER_ROW as u8).contains(&objective.lane) {
+            warn!(
+                "HUD: OOB lane {} in opponent snapshot objective - ignored",
+                objective.lane
+            );
+            continue;
+        }
+        write_dot_destroyed(
+            row[usize::from(objective.lane - 1)],
+            objective.is_destroyed,
+            dots,
+        );
+    }
+}
+
+fn write_opponent_dot(
+    row: [Entity; HUD_DOTS_PER_ROW],
+    objective: &OpponentObjectiveSnapshot,
+    dots: &mut Query<(
+        &mut ScoreboardDotState,
+        &mut BackgroundColor,
+        &mut BorderColor,
+    )>,
+) {
+    if !(1..=HUD_DOTS_PER_ROW as u8).contains(&objective.lane) {
+        warn!(
+            "HUD: OOB lane {} in snapshot opponent objective - ignored",
+            objective.lane
+        );
+        return;
+    }
+    write_dot_destroyed(
+        row[usize::from(objective.lane - 1)],
+        objective.is_destroyed,
+        dots,
+    );
+}
+
+fn reset_dot_row(
+    row: [Entity; HUD_DOTS_PER_ROW],
+    dots: &mut Query<(
+        &mut ScoreboardDotState,
+        &mut BackgroundColor,
+        &mut BorderColor,
+    )>,
+) {
+    for dot in row {
+        write_dot_destroyed(dot, false, dots);
+    }
+}
+
+fn write_dot_destroyed(
+    entity: Entity,
+    destroyed: bool,
+    dots: &mut Query<(
+        &mut ScoreboardDotState,
+        &mut BackgroundColor,
+        &mut BorderColor,
+    )>,
+) {
+    if let Ok((mut state, mut background, mut border)) = dots.get_mut(entity) {
+        state.destroyed = destroyed;
+        if destroyed {
+            *background = BackgroundColor(Color::NONE);
+            *border = BorderColor::all(destroyed_dot_border());
+        } else {
+            *background = BackgroundColor(alive_dot_fill());
+            *border = BorderColor::all(alive_dot_border());
+        }
+    }
+}
+
+fn remove_hud_tween(commands: &mut Commands, entity: Entity, animator: Option<Mut<TweenAnim>>) {
+    if let Some(mut animator) = animator {
+        if let Err(error) = cancel_tween_anim_in_place(&mut animator) {
+            warn!("Failed to cancel HUD snapshot tween on entity {entity:?}: {error}");
+        }
+        commands.entity(entity).remove::<TweenAnim>();
+    }
+}
+
+fn clamped_reserved_gold_fields(player_id: PlayerId, gold: u32, reserved_gold: u32) -> f32 {
+    if reserved_gold > gold {
+        warn!(
+            "HUD: snapshot reserved_gold {} exceeds gold {} for {:?}; clamping display value",
+            reserved_gold, gold, player_id
+        );
+        gold as f32
+    } else {
+        reserved_gold as f32
     }
 }
 
