@@ -95,20 +95,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- PRISM-005: Respawn Cycle implemented on branch
-  `work/prism-005-respawn-cycle` at worker commit `1c4ccbe`; root
-  integration landed on main at `edb0a43`. The implementation registers
-  `S2CPrismRespawned`, detects full-set completion after reward delivery,
-  resets only the completed player's five prism tokens and `PrismPresence`
-  rows, broadcasts respawn to all clients, and preserves per-player
-  independence including 2v2 same-team cases. Verification passed `cargo fmt
-  -p server -- --check`, `cargo fmt --all -- --check`, `cargo test -p server
-  --test prism_respawn_cycle_test` 5/5, Prism regressions
-  (`prism_state_scaffold_test`, `prism_deterministic_lanes_test`,
-  `prism_lane3_rng_test`, `prism_hand_full_network_test`) 23/23, `cargo check
-  -p server`, `cargo check --workspace`, and diff checks. Notes: worker
-  initially hit disk-full errors, cleared generated target caches, and reran
-  successfully; root integration checks passed. No `/story-done` has run yet.
 - OBJECTIVE-003: Identity Unicast Delivery implemented on branch
   `work/objective-003-identity-unicast-delivery`; readiness docs landed on
   main at `b3fbe3e`, and root implementation integration landed at `aa84947`
@@ -126,6 +112,18 @@ None currently tracked here.
   `/story-done` has run yet.
 ## Recently Closed
 
+- PRISM-005: Respawn Cycle implemented on branch
+  `work/prism-005-respawn-cycle` at worker commit `1c4ccbe`; root
+  integration landed on main at `edb0a43`; story-done closure committed at
+  `ef6b4ad`. Verification passed `cargo fmt -p server -- --check`, `cargo fmt
+  --all -- --check`, `cargo test -p server --test prism_respawn_cycle_test`
+  5/5, Prism regressions (`prism_state_scaffold_test`,
+  `prism_deterministic_lanes_test`, `prism_lane3_rng_test`,
+  `prism_hand_full_network_test`) 23/23, `cargo check -p server`, `cargo check
+  --workspace`, and diff checks. Completion notes document advisory
+  `TR-PRI-006` wording drift around `collected_this_round_grace` versus the
+  current structural timing guarantee. `production/sprint-status.yaml` had no
+  matching row.
 - AUC-005: Accepted Bid Reservation implemented on branch
   `work/auc-005-accepted-bid-reservation`. Readiness metadata landed on main at
   `a55b6a0`; implementation landed on main at `ecdbf4a`; story-done closure
@@ -415,9 +413,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. PRISM-005: `production/epics/prism-system/story-005-respawn-cycle.md`
-   after integration commit `edb0a43`.
-2. OBJECTIVE-003: `production/epics/objective-system/story-003-identity-unicast-delivery.md`
+1. OBJECTIVE-003: `production/epics/objective-system/story-003-identity-unicast-delivery.md`
    after integration commit `aa84947`.
 
 Run only one story-done at a time.
@@ -426,8 +422,7 @@ Run only one story-done at a time.
 
 - PRISM-003 is unblocked by PRISM-001/002 closure. Remaining Prism story
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
-  closed. PRISM-004 is closed at `e7776b0`; PRISM-005 is integrated and queued
-  for story-done.
+  closed. PRISM-004 is closed at `e7776b0`; PRISM-005 is closed at `ef6b4ad`.
 - GSS-005: closed at `19071b5`.
 - GSS-006: closed at `a49e422`.
 - GSS-007: closed at `7378e28`.
@@ -456,9 +451,8 @@ Active implementation workers by default-launch rule:
 Current active windows by user default-launch rule:
 - AUC-005 story-done returned and was committed at `2b61243`; window can be
   cleared.
-- PRISM-005 returned, integrated into `main` at `edb0a43`, pushed to
-  origin/main, and now needs serialized `/story-done` after AUC-005. The
-  implementation window can be cleared.
+- PRISM-005 story-done returned and was committed at `ef6b4ad`; window can be
+  cleared.
 - OBJECTIVE-003 returned, integrated into `main` at `aa84947`, pushed to
   origin/main, and now needs serialized `/story-done` after PRISM-005. The
   implementation window can be cleared.
