@@ -1,7 +1,7 @@
 # Story 006: Network Dispatch Wiring
 
 > **Epic**: Economy System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -155,7 +155,7 @@ These are the current wire message shapes from `shared/src/protocol.rs`. The int
 **Required evidence**:
 - `tests/integration/economy/network_dispatch_test.rs` — unicast isolation, broadcast delivery, missing-connection safety
 - `tests/evidence/story-eco-006-dispatch-test-approach.md` — documents chosen Lightyear in-process test pattern (MessageSender spy vs. live Lightyear)
-**Status**: [ ] Not yet created
+**Status**: [x] Complete - integration evidence created and verified
 
 ---
 
@@ -173,3 +173,13 @@ These are the current wire message shapes from `shared/src/protocol.rs`. The int
 
 **Refreshed**: 2026-05-03 against Control Manifest Version 2026-05-01.
 **Changes**: Replaced placeholder TR wording with active TR-NP-010/TR-HUD-007 trace, updated stale `MessageSender`/`ConnectionId` wording to verified `ServerMultiMessageSender`/`PeerId`, clarified internal Bevy messages vs. shared wire payloads, added the reserved-gold field present in `shared/src/protocol.rs`, and documented the no-live-WebSocket test approach.
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Verdict**: COMPLETE
+**Criteria**: 9/9 passing; all acceptance criteria covered by static verification, `cargo check --workspace`, and `tests/integration/economy/network_dispatch_test.rs`.
+**Deviations**: None blocking. Note: `EconomyNetworkOutbox` is present as a headless test adapter while live server sends still use `ServerMultiMessageSender::send::<M, ReliableChannel>`.
+**Test Evidence**: `cargo test -p server --test economy_network_dispatch_test` passed 4/4. `cargo check --workspace` passed. `Select-String` channel gate found zero `UnreliableChannel` matches in `server/src/network/economy_dispatch.rs`. Evidence doc exists at `tests/evidence/story-eco-006-dispatch-test-approach.md`.
+**Code Review**: Skipped by lean review mode.
+**Sprint Status**: Unchanged; no explicit ECO-006 or S4-14 entry exists in `production/sprint-status.yaml`.

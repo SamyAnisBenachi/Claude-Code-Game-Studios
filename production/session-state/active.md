@@ -1466,3 +1466,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Updated `S3-10` to `done`, `completed: "2026-05-03"`, and top-level `updated: "2026-05-03"`.
 - Next recommended: Run a fresh sprint/status scan to choose the next ready implementation batch.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE
+- Story: `production/epics/economy-system/story-006-network-dispatch-wiring.md` - Story 006: Network Dispatch Wiring
+- Criteria: 9/9 passing; AC-1 through AC-9 covered by static verification, `tests/integration/economy/network_dispatch_test.rs`, `cargo check --workspace`, and the explicit channel grep.
+- Test Evidence: `cargo test -p server --test economy_network_dispatch_test` passed 4/4. `cargo check --workspace` passed. `Select-String` found zero `UnreliableChannel` matches in `server/src/network/economy_dispatch.rs`.
+- Verification: Economy network dispatch converts internal `server::core::economy` messages into shared protocol payloads, resolves `PlayerId` to `PeerId` through `PlayerConnectionMap`, unicasts private `S2CGoldUpdate` on `ReliableChannel`, broadcasts public `S2CGoldBroadcast` on `ReliableChannel`, warns and skips missing unicast peers, and keeps Lightyear imports out of economy core.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviation found. `EconomyNetworkOutbox` is an intentional headless test adapter while live server sends still use `ServerMultiMessageSender::send::<M, ReliableChannel>`. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Unchanged; no explicit ECO-006 or S4-14 entry exists in `production/sprint-status.yaml`.
+- Next recommended: Run a fresh sprint/status scan to choose the next ready implementation batch.
