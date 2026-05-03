@@ -108,6 +108,18 @@ None currently tracked here.
   focused Session/RSM/GameOver regression targets, `cargo check -p server`, and
   diff checks. Notes: no shared/protocol files changed, so workspace check was
   not required. No `/story-done` has run yet.
+- HAND-UI-006: Placement Drag Highlights implemented on branch
+  `work/hand-ui-006-placement-drag-highlights` at worker commit `4381693`;
+  root integration landed on main at `4491ecd`. The implementation adds
+  placement drag highlight state, marker components, `TargetUnit` hover
+  handling, no-valid-target overlay visibility, and cleanup on drag end/drop.
+  Verification passed `cargo fmt -p client -- --check`, `cargo test -p client
+  --test hand_ui_placement_drag_highlights_test` 5/5, Hand UI regressions
+  (`hand_ui_placement_submit_core_test`, `hand_ui_draft_initial_grid_test`,
+  `hand_ui_phase_state_machine_test`) 13/13, `cargo check -p client`, and diff
+  checks. Notes: no networking/protocol files changed, so Lightyear checks were
+  not needed; worker reported disk-space OS error 112 in the standalone
+  worktree and verified with the root target dir. No `/story-done` has run yet.
 ## Recently Closed
 
 - OBJECTIVE-003: Identity Unicast Delivery implemented on branch
@@ -425,6 +437,8 @@ None currently tracked here.
 
 1. CDP-004: `production/epics/card-data-pool/story-004-shop-refresh-subscriber-session-ready.md`
    after integration commit `a8f2d75`.
+2. HAND-UI-006: `production/epics/hand-ui/story-006-placement-drag-highlights.md`
+   after integration commit `4491ecd`.
 
 Run only one story-done at a time.
 
@@ -453,8 +467,7 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- HAND-UI-006: assumed launched from the previous parallel prompt batch;
-  awaiting worker return unless the user says it was not launched.
+None currently tracked here.
 
 Current active windows by user default-launch rule:
 - AUC-005 story-done returned and was committed at `2b61243`; window can be
@@ -465,6 +478,9 @@ Current active windows by user default-launch rule:
   be cleared.
 - CDP-004 returned, integrated into `main` at `a8f2d75`, pushed to origin/main,
   and now needs serialized `/story-done` after OBJECTIVE-003. The
+  implementation window can be cleared.
+- HAND-UI-006 returned, integrated into `main` at `4491ecd`, pushed to
+  origin/main, and now needs serialized `/story-done` after CDP-004. The
   implementation window can be cleared.
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
   cleared. PRISM-002 story-done returned and was committed at `2d1a4bf`;
