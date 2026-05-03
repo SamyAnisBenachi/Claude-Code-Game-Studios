@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-02
+Updated: 2026-05-03
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -95,13 +95,18 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- BOARD-006: Charge Bonus Movement implemented locally on branch
-  `work/board-006-charge-bonus-movement` at `874f28e`; worker push was blocked
-  by external GitHub transfer approval, so root cherry-picked and amended the
-  integration commit into `main` at `a04022b`. Root `cargo fmt -p server --
-  --check`, `cargo test -p server --test charge_movement_test --test
-  standard_movement_test`, `cargo check -p server`, and
-  `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
+- AUC-005: Accepted Bid Reservation implemented on branch
+  `work/auc-005-accepted-bid-reservation`. Readiness metadata landed on main at
+  `a55b6a0`; implementation landed on main at `ecdbf4a`. Verification passed
+  `cargo fmt -p server -- --check`, `cargo test -p server --test
+  accepted_bid_reservation_test` 5/5, `cargo test -p server --test
+  auction_state_scaffold_test` 7/7, adjacent auction/economy regressions
+  (`auction_phase_entry_test`, `auction_abort_handler_test`,
+  `auction_bid_validation_gate_test`, `auction_reservation_test`) 23 passed
+  with 1 existing ignored settlement test, `cargo check -p server`, and diff
+  checks. Notes: worker initially hit disk-full OS error 112, cleared generated
+  target artifacts, and reran successfully; root integration checks passed.
+  No `/story-done` has run yet.
 ## Recently Closed
 
 - HUD-008: Reconnect Snapshot HUD Rebuild implemented on branch
@@ -380,7 +385,8 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-None currently queued.
+1. AUC-005: `production/epics/auction-system/story-005-accepted-bid-reservation.md`
+   after integration commit `ecdbf4a`.
 
 Run only one story-done at a time.
 
@@ -393,7 +399,7 @@ Run only one story-done at a time.
 - GSS-005: closed at `19071b5`.
 - GSS-006: closed at `a49e422`.
 - GSS-007: closed at `7378e28`.
-- AUC-005+ follow normal sequencing after AUC-004 story-done.
+- AUC-006+ follow normal sequencing after AUC-005 story-done.
 - HUD-008: closed at `07f477f`. The original snapshot schema blocker was
   removed by integrated and closed GSS-007 code.
 - Other RSM/session/disconnect work should avoid reopening the GSS-007
@@ -410,9 +416,19 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-None currently tracked here.
+- PRISM-005: assumed launched from the previous parallel prompt batch; awaiting
+  worker return unless the user says it was not launched.
+- HAND-UI-006: assumed launched from the previous parallel prompt batch;
+  awaiting worker return unless the user says it was not launched.
+- OBJECTIVE-003: assumed launched from the previous parallel prompt batch;
+  awaiting worker return unless the user says it was not launched.
+- CDP-004: assumed launched from the previous parallel prompt batch; awaiting
+  worker return unless the user says it was not launched.
 
 Current active windows by user default-launch rule:
+- AUC-005 returned, integrated into `main` at `ecdbf4a`, pushed to origin/main,
+  and now needs the next serialized `/story-done`. The implementation window
+  can be cleared.
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
   cleared. PRISM-002 story-done returned and was committed at `2d1a4bf`;
   window can be cleared. HUD-004 story-done returned and was committed at
