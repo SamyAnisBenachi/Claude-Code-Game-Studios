@@ -95,19 +95,17 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- CDP-005: Manual Refresh + Cost Escalation readiness docs landed on main at
-  `037788b`; root implementation integration landed on main at `a3719fc` from
-  worker branch `work/cdp-005-manual-refresh-cost-escalation` commits
-  `42099ed` and `2769690`. The story now matches manifest `2026-05-01` and the
-  implementation adds Card Data & Pool integration evidence for the existing
-  Card Acquisition manual refresh path. Verification passed `cargo test -p
-  server --test pool_manual_refresh_test` 7/7, `cargo test -p server --test
-  card_acquisition_refresh_cost_test --test pool_session_ready_test --test
-  pool_manual_refresh_test` 18/18, `cargo check -p server`, and diff checks.
-  Notes: no production handler ownership moved; current Lightyear C2S path
-  remains `MessageReceiver<C2SRefreshShop>` in `card_acquisition_tick_system`.
+None currently queued here.
 ## Recently Closed
 
+- CDP-005 / S3-10: Manual Refresh + Cost Escalation readiness docs landed on
+  main at `037788b`; root implementation integration landed on main at
+  `a3719fc`; story-done closure committed at `28c9f79`. Verification passed
+  `cargo test -p server --test pool_manual_refresh_test` 7/7, `cargo test -p
+  server --test card_acquisition_refresh_cost_test --test pool_session_ready_test
+  --test pool_manual_refresh_test` 18/18 during integration, and `git diff
+  --check` during closure. `production/sprint-status.yaml` moved S3-10 to
+  `done` with `completed: "2026-05-03"`, making Sprint 3 19/19 complete.
 - HAND-UI-006: Placement Drag Highlights implemented on branch
   `work/hand-ui-006-placement-drag-highlights` at worker commit `4381693`;
   root integration landed on main at `4491ecd`; story-done closure committed
@@ -440,9 +438,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. CDP-005:
-   `production/epics/card-data-pool/story-005-manual-refresh-cost-escalation.md`
-   after integration commit `a3719fc`.
+None currently queued.
 
 Run only one story-done at a time.
 
@@ -474,9 +470,8 @@ Active implementation workers by default-launch rule:
 None currently tracked here.
 
 Current active windows by user default-launch rule:
-- CDP-005 returned, integrated into `main` at `a3719fc`, pushed to
-  origin/main, and now needs serialized `/story-done`. The implementation
-  window can be cleared.
+- CDP-005 / S3-10 story-done returned and was committed at `28c9f79`; window
+  can be cleared. Sprint 3 tracker is now 19/19 complete.
 - AUC-005 story-done returned and was committed at `2b61243`; window can be
   cleared.
 - PRISM-005 story-done returned and was committed at `ef6b4ad`; window can be
