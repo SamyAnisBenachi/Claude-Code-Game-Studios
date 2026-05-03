@@ -33,6 +33,20 @@ pub struct S2CGoldBroadcast {
     pub reserved_gold: u32,
 }
 
+/// Domain signal for persistent gold awarded during RESOLUTION.
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AwardGold {
+    pub player: PlayerId,
+    pub amount: u32,
+}
+
+/// Domain signal for a fake-objective mana cap reward.
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ManaCapIncreased {
+    pub player: PlayerId,
+    pub amount: u32,
+}
+
 pub fn gold_broadcast(player_id: PlayerId, economy: &PlayerEconomy) -> S2CGoldBroadcast {
     S2CGoldBroadcast {
         player_id,

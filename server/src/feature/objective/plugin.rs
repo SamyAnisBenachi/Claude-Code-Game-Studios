@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use lightyear::prelude::*;
 
+use crate::core::economy::{AwardGold, ManaCapIncreased};
 use crate::core::rsm::advance_phase;
 use crate::feature::objective::{
     deliver_objective_identities_on_ready, initialize_objectives_on_draft_initial,
@@ -25,6 +26,8 @@ impl Plugin for ObjectivePlugin {
         app.register_component::<ObjectiveHp>();
 
         app.add_message::<ObjectiveIdentitiesReady>()
+            .add_message::<AwardGold>()
+            .add_message::<ManaCapIncreased>()
             .init_resource::<HiddenObjectives>()
             .init_resource::<ObjectiveCounters>()
             .init_resource::<PendingObjectiveEvents>()
