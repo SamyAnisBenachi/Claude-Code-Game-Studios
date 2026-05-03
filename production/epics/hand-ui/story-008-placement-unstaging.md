@@ -1,7 +1,7 @@
 # Story 008: PLACEMENT Un-Staging — Board Ghosts & Instant Fan Slot
 
 > **Epic**: Hand UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -29,17 +29,17 @@
 
 *From GDD `design/gdd/hand-ui.md` Rule 8, scoped to this story:*
 
-- [ ] **HU-21**: GIVEN a card is staged with a `BoardCell`, `TargetUnit`, `TargetObj`, or `LaneWide` target (board ghost active), WHEN Board Rendering writes a `GhostClickedEvent { card_id }` for that card's id, THEN Hand UI:
+- [x] **HU-21**: GIVEN a card is staged with a `BoardCell`, `TargetUnit`, `TargetObj`, or `LaneWide` target (board ghost active), WHEN Board Rendering writes a `GhostClickedEvent { card_id }` for that card's id, THEN Hand UI:
   - (a) Removes the card from the local pending queue
   - (b) Writes `GhostPlacementChanged { target: None, card_id: Some(card_id) }` to the Bevy message bus
   - (c) The fan slot for that card enters `FanSlotState::Active`
   - (d) The Submit count decrements by 1 (Submit text updates accordingly)
 
-- [ ] **HU-21b**: GIVEN a card is staged with a board target (BoardCell, TargetUnit, TargetObj, or LaneWide), WHEN Board Rendering writes a `GhostDragStartEvent { card_id }` (player mouse-down on the board ghost) AND the player subsequently releases the mouse inside the hand fan zone (as determined by `Res<FanZoneBounds>` or equivalent), THEN Hand UI runs the same un-stage operation as HU-21. Submit count decrements.
+- [x] **HU-21b**: GIVEN a card is staged with a board target (BoardCell, TargetUnit, TargetObj, or LaneWide), WHEN Board Rendering writes a `GhostDragStartEvent { card_id }` (player mouse-down on the board ghost) AND the player subsequently releases the mouse inside the hand fan zone (as determined by `Res<FanZoneBounds>` or equivalent), THEN Hand UI runs the same un-stage operation as HU-21. Submit count decrements.
   - *Implementer note: Expose `Res<FanZoneBounds>` (a screen-space rect) to allow the test to inject a valid release position.*
   - *If released outside the fan zone: the ghost returns to its board position — no un-stage.*
 
-- [ ] **HU-21c**: GIVEN a card is staged with `PlayTarget::Instant` (no board ghost; only a dimmed fan slot ghost), WHEN the player clicks the dimmed fan slot for that card, THEN Hand UI runs the same un-stage operation as HU-21. Submit count decrements.
+- [x] **HU-21c**: GIVEN a card is staged with `PlayTarget::Instant` (no board ghost; only a dimmed fan slot ghost), WHEN the player clicks the dimmed fan slot for that card, THEN Hand UI runs the same un-stage operation as HU-21. Submit count decrements.
 
 ---
 
@@ -101,7 +101,7 @@
 **Required evidence**:
 - `tests/integration/hand-ui/placement_unstaging_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -109,3 +109,18 @@
 
 - Depends on: Story 005 (staging core — un-stage reverses staging), Story 006 (board targets staged here), Story 007 (Instant staging — HU-21c un-stages Instants)
 - Unlocks: None directly (final piece of the staging state machine)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 3/3 passing; HU-21, HU-21b, and HU-21c are covered by `tests/integration/hand-ui/placement_unstaging_test.rs`.
+**Test Evidence**: `cargo test -p client --test hand_ui_placement_unstaging_test` passed 4/4. `cargo check -p client` passed.
+**Verification**: `client/src/ui/hand/mod.rs` registers `GhostPlacementChanged`, `GhostClickedEvent`, and `GhostDragStartEvent` as Bevy-internal messages, drains board ghost click and drag-start messages, exposes testable `FanZoneBounds`, un-stages Instant fan-slot ghosts through the fan click path, removes staged cards from `PendingPlacements`, emits `GhostPlacementChanged { target: None, card_id: Some(card_id) }`, restores `FanSlotState::Active`, updates Submit count text, and hides the reserve strip.
+**Deviations**: Advisory only - `TR-HU-002` in `docs/architecture/tr-registry.yaml` still maps to HU-12/HU-13 drag-to-stage text, not HU-21/HU-21b/HU-21c un-staging. Current `design/gdd/hand-ui.md` Rule 8 contains the verified HU-21 criteria, so this is a registry traceability gap, not an implementation blocker. Advisory only - implementation uses the existing local `HandUiSystemSet::MessageDrain`; ADR-021's global `PresentationSet` wiring is not present in the current client architecture.
+**Code Review**: Skipped - Lean mode.
+**Tech Debt**: None logged.
+**Sprint Status**: Unchanged per user instruction; no matching `HAND-UI-008` row exists in `production/sprint-status.yaml`.
+**Next Recommended**: Hand UI Story 009 PLACEMENT Timer (`production/epics/hand-ui/story-009-placement-timer.md`) after readiness check.

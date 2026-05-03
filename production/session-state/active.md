@@ -1543,3 +1543,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per user instruction; no matching `AUC-006` row exists in `production/sprint-status.yaml`.
 - Next recommended: Auction Story 007 Plugin Registration & System Scheduling (`production/epics/auction-system/story-007-auction-plugin-scheduling.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hand-ui/story-008-placement-unstaging.md` - Story 008: PLACEMENT Un-Staging - Board Ghosts & Instant Fan Slot
+- Criteria: 3/3 passing; HU-21, HU-21b, and HU-21c covered by `tests/integration/hand-ui/placement_unstaging_test.rs`.
+- Test Evidence: `cargo test -p client --test hand_ui_placement_unstaging_test` passed 4/4. `cargo check -p client` passed.
+- Verification: Hand UI drains board ghost click and drag-start Bevy messages, exposes testable `FanZoneBounds`, un-stages Instant fan-slot ghosts through the fan click path, removes staged cards from `PendingPlacements`, emits `GhostPlacementChanged { target: None, card_id: Some(card_id) }`, restores `FanSlotState::Active`, updates Submit count text, and hides the reserve strip.
+- Notes: Advisory only - `TR-HU-002` in `docs/architecture/tr-registry.yaml` still maps to HU-12/HU-13 drag-to-stage text, not HU-21/HU-21b/HU-21c un-staging. Current `design/gdd/hand-ui.md` Rule 8 contains the verified HU-21 criteria, so this is a registry traceability gap, not an implementation blocker. Advisory only - implementation uses the existing local `HandUiSystemSet::MessageDrain`; ADR-021's global `PresentationSet` wiring is not present in the current client architecture. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per user instruction; no matching `HAND-UI-008` row exists in `production/sprint-status.yaml`.
+- Next recommended: Hand UI Story 009 PLACEMENT Timer (`production/epics/hand-ui/story-009-placement-timer.md`) after readiness check.
