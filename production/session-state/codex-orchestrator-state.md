@@ -102,18 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- GSS-007: Reconnect Snapshot Schema Builder implemented on branch
-  `work/gss-007-reconnect-snapshot-schema-builder` at `8d3a91b`; root
-  cherry-picked and amended it into `main` at `8e7c5b5`. Root checks passed
-  `cargo fmt --all -- --check`, `cargo test -p server --test
-  snapshot_secret_strip_test` 2/2, session regressions 12/12,
-  `cargo test -p server --test token_spawn_test --test
-  prism_hand_full_network_test` 12/12, `cargo check -p server`, `cargo check
-  --workspace`, and `git diff --check HEAD~1..HEAD`. Initial verification was
-  blocked by D: disk exhaustion; generated `target/codex-*` artifacts were
-  removed and the full check then passed. Scope unblocks HUD-008 by providing
-  the Game Session/shared protocol snapshot schema and builder; HUD-008 itself
-  is not implemented.
 - HUD-008: Reconnect Snapshot HUD Rebuild implemented on branch
   `work/hud-008-reconnect-snapshot-rebuild` at `778828d`; root cherry-picked
   and amended it into `main` at `d8971f4`. Root checks passed `cargo fmt -p
@@ -125,6 +113,19 @@ None currently tracked here.
   made.
 ## Recently Closed
 
+- GSS-007: Reconnect Snapshot implemented on branch
+  `work/gss-007-reconnect-snapshot-schema-builder` at `8d3a91b`; root
+  integration landed at `8e7c5b5`; repair committed at `32643e9`; story-done
+  closure committed at `7378e28`. The repair filled the ADR-011 reconnect
+  handshake flow, timeout/rejection handling, deferred queue flush, opponent
+  reconnect broadcast, Sang Meprise restore, reconnect guard regressions, and
+  missing `reconnect_snapshot_test` evidence. Verification passed `cargo fmt
+  --all -- --check`, `cargo test -p server --test snapshot_secret_strip_test`,
+  `cargo test -p server --test reconnect_snapshot_test`, `cargo test -p server
+  --test game_over_teardown_test`, `cargo test -p server --test
+  prism_hand_full_network_test`, `cargo check -p server`, `cargo check
+  --workspace`, and diff checks. HUD-008 files were not touched by the repair
+  or closure.
 - HAND-UI-005: Placement Submit Core implemented on branch
   `work/hand-ui-005-placement-submit-core` at `c547056c`; root integration
   landed at `1c798f0`; story-done closure committed at `c8222d2`. Verification
@@ -379,8 +380,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. GSS-007
-2. HUD-008
+1. HUD-008
 
 Run only one story-done at a time.
 
@@ -392,13 +392,13 @@ Run only one story-done at a time.
   sequencing if dependencies/readiness are clean.
 - GSS-005: closed at `19071b5`.
 - GSS-006: closed at `a49e422`.
-- GSS-007: implemented/integrated at `8e7c5b5`; pending story-done.
+- GSS-007: closed at `7378e28`.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
 - HUD-008: implemented/integrated at `d8971f4`; pending story-done after
-  HAND-UI-005 and GSS-007. The original snapshot schema blocker was removed by
-  integrated GSS-007 code.
-- Other RSM/session/disconnect work should be staged carefully because GSS-005
-  and GSS-006 just closed; avoid overlapping GSS-007 snapshot ownership.
+  GSS-007. The original snapshot schema blocker was removed by integrated and
+  closed GSS-007 code.
+- Other RSM/session/disconnect work should avoid reopening the GSS-007
+  reconnect snapshot contract unless it is explicitly scoped.
 - Prism gates are resolved; PRISM-003+ follow normal sequencing after PRISM-001
   and PRISM-002 story-done.
 
@@ -407,14 +407,12 @@ Run only one story-done at a time.
 Batch launched:
 - GSS-005: closed at `19071b5`.
 - GSS-006: closed at `a49e422`.
-- GSS-007: integrated at `8e7c5b5`; pending story-done.
+- GSS-007: closed at `7378e28`.
 - HUD-008: integrated at `d8971f4`; pending story-done.
 
 Active implementation workers by default-launch rule:
-- GSS-007: integrated at `8e7c5b5`; pending serialized story-done after
-  current closure queue.
-- HUD-008: integrated at `d8971f4`; pending serialized story-done after
-  GSS-007.
+- HUD-008: integrated at `d8971f4`; pending serialized story-done after current
+  closure queue.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -427,8 +425,7 @@ Current active windows by user default-launch rule:
   story-done; story-done committed at `dc8b80a`. Window can be cleared.
 - HUD-008 initially returned with no code changes while blocked on
   `S2CGameSnapshot`; after GSS-007 integration it returned implemented and is
-  integrated at `d8971f4`, pending serialized story-done after HAND-UI-005 and
-  GSS-007.
+  integrated at `d8971f4`, pending serialized story-done after GSS-007.
 - PRISM-003 returned, integrated at `611baee`, and now only needs serialized
   story-done; story-done committed at `b4d9e04`. Window can be cleared.
 - CARD-ANIM-007 story-done returned and was committed at `35ee469`; window can
@@ -460,10 +457,10 @@ Current active windows by user default-launch rule:
   `e7776b0`. Window can be cleared.
 - HAND-UI-005 returned, integrated at `1c798f0`, story-done committed at
   `c8222d2`. Window can be cleared.
-- GSS-007 returned, integrated at `8e7c5b5`, and now only needs serialized
-  story-done.
+- GSS-007 returned, integrated at `8e7c5b5`, repaired at `32643e9`,
+  story-done committed at `7378e28`. Window can be cleared.
 - HUD-008 returned, integrated at `d8971f4`, and now only needs serialized
-  story-done after GSS-007.
+  story-done.
 AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
 integrated/closed as noted above.
 
