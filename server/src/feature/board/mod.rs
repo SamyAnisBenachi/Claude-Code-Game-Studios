@@ -5,6 +5,7 @@
 #![allow(dead_code, unused_imports)]
 
 pub mod movement;
+pub mod objective;
 pub mod placement;
 pub mod plugin;
 pub mod state;
@@ -14,6 +15,7 @@ pub use movement::{
     check_trap_trigger, commit_lane_change_destinations, commit_unit_destination, ChargeBonus,
     LaneChangeDestination, TrapTrigger,
 };
+pub use objective::{detect_objective_presence, is_at_objective, UnitAtObjective};
 pub use placement::{
     close_placement_phase, get_units_at_cell, handle_placement_submission, is_field_slot_available,
     is_minion_slot_available, is_structure_slot_available, is_trap_slot_available,
