@@ -1,7 +1,7 @@
 # Story 004: PlayerPools Draft Entry Init + ShopRefreshTriggered Handoff
 
 > **Epic**: Card Data & Pool
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -87,29 +87,29 @@ scheduled after the Card Pool lifecycle set so the same-frame
 
 ## Acceptance Criteria
 
-- [ ] **AC-1**: GIVEN `DraftStarted { phase: DraftPhase::Initial }`,
+- [x] **AC-1**: GIVEN `DraftStarted { phase: DraftPhase::Initial }`,
   `Res<SessionConfig>` with 2 player IDs, `Res<CardCatalog>` fixture, and
   `Res<GameConfig>`, WHEN the Card Pool draft-entry subscriber runs, THEN
   `Res<PlayerPools>` contains entries for both players, each
   `copies_remaining.len() == catalog.cards.len()`, and every copy count is
   `>= 1`.
-- [ ] **AC-2**: GIVEN an existing non-empty `PlayerPools` resource from a prior
+- [x] **AC-2**: GIVEN an existing non-empty `PlayerPools` resource from a prior
   session, WHEN the next `DraftStarted { phase: DraftPhase::Initial }` is
   processed, THEN the old pool map is cleared before inserting the new
   session's players.
-- [ ] **AC-3**: GIVEN `DraftStarted { phase: DraftPhase::Auction }` or
+- [x] **AC-3**: GIVEN `DraftStarted { phase: DraftPhase::Auction }` or
   `DraftStarted { phase: DraftPhase::Shop }`, WHEN the Card Pool subscriber
   runs, THEN `PlayerPools` is unchanged. Later draft entries do not rebuild
   per-player pools.
-- [ ] **AC-4**: GIVEN a minimal app with RSM, Card Pool, and Card Acquisition
+- [x] **AC-4**: GIVEN a minimal app with RSM, Card Pool, and Card Acquisition
   plugins, WHEN `DraftStarted { phase: Initial }` and
   `ShopRefreshTriggered { trigger: DraftInitial }` are written in the same
   frame, THEN Card Pool initialization runs before Card Acquisition tick
   consumes the refresh trigger.
-- [ ] **AC-5**: GIVEN `GameOverEmitted` is written after a session, WHEN the
+- [x] **AC-5**: GIVEN `GameOverEmitted` is written after a session, WHEN the
   Card Pool teardown subscriber runs, THEN `PlayerPools`, `ShopSlots`,
   `InitialDraftOffering`, and `ManualRefreshCount` are empty.
-- [ ] **AC-6**: GIVEN `CardPoolPlugin` is added to `App::new()` with minimal
+- [x] **AC-6**: GIVEN `CardPoolPlugin` is added to `App::new()` with minimal
   Bevy plugins, WHEN the app updates once, THEN registration is valid and no
   second `SessionReady` observer or `ShopRefreshNeeded` message is registered.
 
@@ -200,9 +200,18 @@ four Card Pool resources. Do not remove and reinsert resources.
 - `tests/integration/pool/session_ready_test.rs`
 - Cargo test target: `cargo test -p server --test pool_session_ready_test`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Criteria**: 6/6 passing (AC-1 through AC-6)
+**Deviations**: None blocking. Implementation uses Bevy 0.18 `MessageReader` / `MessageWriter`, initializes `PlayerPools` from `DraftStarted { phase: Initial }`, clears session-scoped pool resources on `GameOverEmitted`, and schedules Card Acquisition after `CardPoolSet::Lifecycle`.
+**Test Evidence**: `cargo test -p server --test pool_session_ready_test` passed 5/5; `cargo check -p server` passed.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Updated `S3-07` to `done` with `completed: "2026-05-03"`.
 
 ## Dependencies
 

@@ -6,7 +6,7 @@ goal: "Complete the remaining Core Sprint B backbone: lobby/class flow, RSM time
 start: "2026-05-28"
 end: "2026-06-10"
 generated: "2026-04-30"
-updated: "2026-05-02"
+updated: "2026-05-03"
 
 stories:
   - id: "S3-01"
@@ -73,11 +73,11 @@ stories:
     name: "Card Pool Story 4: ShopRefreshNeeded Subscriber + SessionReady Init"
     file: "production/epics/card-data-pool/story-004-shop-refresh-subscriber-session-ready.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-03"
 
   - id: "S3-08"
     name: "Economy Story 3: Interest Snapshot & Resolution End"

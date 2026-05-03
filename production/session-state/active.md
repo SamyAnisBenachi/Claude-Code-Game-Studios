@@ -1433,3 +1433,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no matching `OBJECTIVE-003` row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the serialized closure queue with CDP Story 004 Shop Refresh Subscriber SessionReady (`production/epics/card-data-pool/story-004-shop-refresh-subscriber-session-ready.md`).
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-data-pool/story-004-shop-refresh-subscriber-session-ready.md` - Story 004: PlayerPools Draft Entry Init + ShopRefreshTriggered Handoff
+- Criteria: 6/6 passing; AC-1 through AC-6 covered by `tests/integration/pool/session_ready_test.rs`.
+- Test Evidence: `cargo test -p server --test pool_session_ready_test` passed 5/5. `cargo check -p server` passed.
+- Verification: Card Pool initializes `PlayerPools` from `DraftStarted { phase: Initial }`, clears pool-owned session resources on `GameOverEmitted`, and schedules Card Acquisition after `CardPoolSet::Lifecycle` so same-frame `ShopRefreshTriggered` reads initialized pools.
+- Notes: No blocking deviation found. Implementation uses Bevy 0.18 `MessageReader` / `MessageWriter`; lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Updated `S3-07` to `done`, `completed: "2026-05-03"`, and top-level `updated: "2026-05-03"`.
+- Next recommended: Continue the serialized closure queue with Hand UI Story 006 Placement Drag Highlights (`production/epics/hand-ui/story-006-placement-drag-highlights.md`).
