@@ -1,7 +1,7 @@
 # Story 008: Objective Cell Detection (F3)
 
 > **Epic**: Board / Lane System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -30,9 +30,9 @@
 
 *From GDD `design/gdd/board-lane-system.md`, scoped to this story:*
 
-- [ ] **BL-10**: GIVEN Player A's unit is at cell 8 at end of sub-step 6, WHEN sub-step 6 completes, THEN the Board emits `UnitAtObjective(unit_id, lane)` exactly once for that unit.
-- [ ] **BL-11**: GIVEN Player A's unit at cell 8 survives round N, WHEN round N+1 sub-step 6 fires, THEN the unit is still at cell 8 and attacks the objective again (UnitAtObjective fires again for round N+1).
-- [ ] **BL-25**: GIVEN Player B's unit is at cell 1 at end of sub-step 6, WHEN sub-step 6 completes, THEN the Board emits `UnitAtObjective(unit_id, lane)` for Player B's unit.
+- [x] **BL-10**: GIVEN Player A's unit is at cell 8 at end of sub-step 6, WHEN sub-step 6 completes, THEN the Board emits `UnitAtObjective(unit_id, lane)` exactly once for that unit.
+- [x] **BL-11**: GIVEN Player A's unit at cell 8 survives round N, WHEN round N+1 sub-step 6 fires, THEN the unit is still at cell 8 and attacks the objective again (UnitAtObjective fires again for round N+1).
+- [x] **BL-25**: GIVEN Player B's unit is at cell 1 at end of sub-step 6, WHEN sub-step 6 completes, THEN the Board emits `UnitAtObjective(unit_id, lane)` for Player B's unit.
 
 ---
 
@@ -113,7 +113,7 @@ Units at the objective cell remain there until killed (standard movement via F1 
 **Story Type**: Logic
 **Required evidence**: `tests/unit/board-lane-system/objective_detection_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Exists and passed (`cargo test -p server --test objective_detection_test`, 5/5). Repair evidence also passed via `cargo test -p server --test resolve_combat_scaffold_test resolve_combat_ss6_emits_unit_at_objective_messages`.
 
 ---
 
@@ -129,3 +129,12 @@ Units at the objective cell remain there until killed (standard movement via F1 
 - 2026-05-01: Revalidated against control manifest version 2026-05-01.
   ADR-010 remains accepted, `TR-BLS-008` remains active, Story 002 is complete,
   and no implementation requirements changed.
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Criteria**: 3/3 passing. BL-10, BL-11, and BL-25 are covered by `tests/unit/board-lane-system/objective_detection_test.rs`; repair evidence confirms `detect_objective_presence` is wired into production combat sub-step 6.
+**Deviations**: None blocking. The repair commit `b27db7d` added the production SS6 hook and integration evidence after initial integration `bb260c7`.
+**Test Evidence**: Logic: `tests/unit/board-lane-system/objective_detection_test.rs`; `cargo test -p server --test objective_detection_test` passed 5/5. Integration repair evidence: `cargo test -p server --test resolve_combat_scaffold_test resolve_combat_ss6_emits_unit_at_objective_messages` passed 1/1. `cargo check -p server` passed.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Unchanged per user instruction; no matching BOARD-008 row exists in `production/sprint-status.yaml`.

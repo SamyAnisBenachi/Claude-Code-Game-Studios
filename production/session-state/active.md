@@ -1477,3 +1477,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged; no explicit ECO-006 or S4-14 entry exists in `production/sprint-status.yaml`.
 - Next recommended: Run a fresh sprint/status scan to choose the next ready implementation batch.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE
+- Story: `production/epics/board-lane-system/story-008-objective-cell-detection.md` - Story 008: Objective Cell Detection (F3)
+- Criteria: 3/3 passing; BL-10, BL-11, and BL-25 covered by `tests/unit/board-lane-system/objective_detection_test.rs`.
+- Test Evidence: `cargo test -p server --test objective_detection_test` passed 5/5. Repair evidence `cargo test -p server --test resolve_combat_scaffold_test resolve_combat_ss6_emits_unit_at_objective_messages` passed 1/1. `cargo check -p server` passed.
+- Verification: `UnitAtObjective` derives `Message`, `BoardPlugin` registers it with `app.add_message::<UnitAtObjective>()`, `detect_objective_presence` writes objective hits through `MessageWriter`, and repair commit `b27db7d` wires objective detection into production combat sub-step 6.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviation found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no matching BOARD-008 row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the serialized closure queue after sprint/status review; Board Story 009 Prism Collection remains ready but should be readiness-checked before implementation.
