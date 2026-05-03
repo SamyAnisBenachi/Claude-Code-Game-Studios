@@ -4,12 +4,12 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Logic
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
 **GDD**: `design/gdd/combat-resolution.md`
-**Requirement**: `TR-CR-???` (TR-CR-004 — unregistered)
+**Requirement**: `TR-CR-001` (CR-24, CR-38, CR-39, CR-40 — SS1 APPEARANCE bundle)
 
 **ADR Governing Implementation**: ADR-017: Combat Resolution Execution Architecture
 **ADR Decision Summary**: Sub-step 1 is a sequential function call within `resolve_combat`. All PlacementBuffer cards enter the board simultaneously; APPEARANCE triggers fire immediately; DEATH from APPEARANCE effects is deferred until all SS1 APPEARANCE effects complete; cross-lane triggers (CHANGE LANE, Strich) execute after SS1 and before SS2.

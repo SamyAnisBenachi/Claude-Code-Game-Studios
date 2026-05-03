@@ -29,8 +29,8 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 4
-last_updated: "2026-05-01"
+version: 5
+last_updated: "2026-05-03"
 # Run 3 (/architecture-review 2026-04-30c): registered 80 new M2/M3 TRs covering
 # combat-resolution, card-acquisition, prism-system, keyword-system, card-animations,
 # board-rendering, hand-ui, shop-auction-ui, hud. TR-CS already populated by another
@@ -38,6 +38,8 @@ last_updated: "2026-05-01"
 # Run 4 (/story-readiness 2026-05-01): registered TR-CR-013, TR-CR-014, TR-CR-015
 # (combat-resolution scaffold, PlacementReveal timing, ResolutionEvent ordering invariant).
 # Total: 178 + 3 = 181 active TRs.
+# Run 5 (/dev-story trace repair 2026-05-03): revised TR-CR-001 to cover the full
+# SS1 APPEARANCE bundle (CR-24, CR-38, CR-39, CR-40). Active count unchanged.
 
 requirements:
 
@@ -985,10 +987,10 @@ requirements:
   - id: TR-CR-001
     system: combat-resolution
     gdd: design/gdd/combat-resolution.md
-    gdd_ac_ids: [CR-38]
-    requirement: "Sub-step 1 placement effects execute before DEATH triggers; PendingPlacements drains atomically into BoardState before any combat sub-step"
+    gdd_ac_ids: [CR-24, CR-38, CR-39, CR-40]
+    requirement: "Sub-step 1 placement effects drain PendingPlacements atomically into BoardState, fire APPEARANCE triggers before sub-step 2, defer DEATH from APPEARANCE damage until all SS1 APPEARANCE effects complete, execute CHANGE LANE/cross-lane effects before sub-step 2, and apply STUN immediately so SS2 CHARGE X and SS5 movement are suppressed"
     created: 2026-04-30
-    revised: ""
+    revised: 2026-05-03
     status: active
 
   - id: TR-CR-002

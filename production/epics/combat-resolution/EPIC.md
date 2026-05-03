@@ -22,25 +22,25 @@ Combat Resolution implements the server-side deterministic 6-step algorithm that
 
 ## GDD Requirements
 
-> ⚠️ **No TR-IDs registered** — `docs/architecture/tr-registry.yaml` has no `system: combat-resolution` entries. Requirements below use `TR-CR-???` placeholders. Register stable IDs before `/create-stories` assigns them to stories.
+> Trace source: `docs/architecture/tr-registry.yaml` version 5. Keep this table aligned with active registry IDs.
 
 | TR-ID | Requirement | ADR Coverage |
 |-------|-------------|--------------|
-| TR-CR-001 | Execution scaffold: `resolve_combat(world: &mut World)` exclusive system registered via `add_systems(Update, resolve_combat)`; reads `MessageReader<BeginResolution>`, exits if none present; executes sub-steps 1–6; writes `MessageWriter<ResolutionComplete>`; broadcasts `S2CResolutionEvent` via Lightyear (CR-30, CR-32, CR-41) | ADR-017 ✅ |
-| TR-CR-002 | Combat modifier stack pure function: `apply_combat_modifier_stack(attacker, defender) -> CombatResult`; applies SILENCE→STUN→LEADER→type-advantage-ATK→VULNERABILITY→RESISTANCE→ARMOR-PIERCING→type-advantage-AR in that order; all intermediate arithmetic in i32; `net_damage = max(0, ATK_effective − AR_effective)` (CR-12, CR-13, CR-14, CR-15, CR-42, CR-43) | ADR-017 ✅ |
-| TR-CR-003 | Two-pass bilateral algorithm: Pass 1 (A→B) computes `net_damage_A_to_B` + `AR_attacker_combat_A`; Pass 2 (B→A) uses `AR_base_A + AR_attacker_combat_A` as defender AR; both HP mutations applied simultaneously from pre-combat snapshots | ADR-017 ✅ |
-| TR-CR-004 | Sub-step 1: all played cards enter board simultaneously; APPEARANCE triggers fire immediately; cross-lane triggers (CHANGE LANE) execute after all SS1 effects complete and before SS2; STUN applied by APPEARANCE takes effect immediately (CR-24, CR-38, CR-39, CR-40) | ADR-017 ✅ |
-| TR-CR-005 | Sub-step 2: CHARGE X bonus movement; STUNned units skip; collision rules same as SS5; distinct from the CHARGE combat keyword (CR-31) | ADR-017 ✅ |
-| TR-CR-006 | Sub-step 3: FIRST STRIKE attacks fire simultaneously across all lanes; multi-source sequential in lane order; dead units NOT removed until SS4; STUN suppresses SS3 attack (CR-1, CR-2, CR-4, CR-22, CR-37) | ADR-017 ✅ |
-| TR-CR-007 | Sub-step 4: all units at 0 HP removed; DEATH trigger chains fire sequentially in lane order; kill gold log drained here for SS3 kills; FINAL BLOW fires in the sub-step of the kill, not consolidated to SS4 (CR-16, CR-22, CR-23, CR-25, CR-26) | ADR-017 ✅ |
-| TR-CR-008 | Sub-step 5: destination formula F1 computed once at SS5 entry (`clamp(current_cell + direction × MP, 1, 8)`); tick-by-tick enemy collision loop detects WALL halt (CR-8) and path-crossing halt (CR-9); friendly units + Traps + Prisms not checked in collision loop; STUN suppresses SS5 movement (CR-5, CR-8, CR-9, CR-31, CR-44) | ADR-017 ✅ ADR-002 ✅ |
-| TR-CR-009 | Sub-step 6: bilateral pair combat (2-pass simultaneous); multi-source sequential in lane order; RANGE targeting (nearest forward enemy, equidistant random from `range_equidistant_select` seed); objective damage at Cell 8 after all unit combat; kill gold log drained here for SS6 kills; GAME_OVER check fires when objective HP reaches 0 (CR-3, CR-6, CR-10, CR-11, CR-17, CR-18, CR-19, CR-27, CR-28, CR-29, CR-35, CR-36, CR-45) | ADR-017 ✅ |
-| TR-CR-010 | SHIELD pre-check: runs before modifier stack; negates all damage from all attackers in same sub-step simultaneously; consumed once; persists between rounds until consumed; COUNTERATTACK fires after pre-check regardless of absorption (CR-6, CR-7, CR-29, CR-36) | ADR-017 ✅ |
-| TR-CR-011 | COUNTERATTACK: melee-only (same-cell or collision-halt adjacent); fires once per sub-step after all incoming damage is resolved; runs full modifier stack; FINAL BLOW eligible; chains once if attacker also has COUNTERATTACK; multiple attackers retaliates simultaneously using pre-retaliation HP snapshots (CR-20, CR-21, CR-35) | ADR-017 ✅ |
-| TR-CR-012 | Persistent keyword states: INJURED evaluated at sub-step boundary (SS4 onward, not mid-SS3); OUTNUMBERED re-evaluated at each sub-step entry from post-removal board state; LEADER snapshot taken at RESOLUTION entry, persists through RESOLUTION even if LEADER dies; STUN suppresses all outgoing actions but not passive SHIELD (CR-5, CR-26, CR-33, CR-34, CR-40) | ADR-017 ✅ |
-| TR-CR-013 | Kill-log attribution: internal `kill_log: Vec<KillRecord>` appended at lethal HP reduction; drained at SS4 (SS3 kills) and post-SS6-combat cleanup (SS6 kills); each drain emits one `GoldAwarded` entry in `ResolutionLog`; objective destruction awards +3g to attacker, NOT +1 kill gold (CR-16, CR-17) | ADR-017 ✅ |
-| TR-CR-014 | Iteration budget guard: monotonic internal counter across all sub-step loops; if > 10,000 iterations, abort and RSM broadcasts `S2CGameOver { loser: None, reason: Draw }`; RSM 60s safety timeout remains as outer backstop (CR-41) | ADR-017 ✅ |
-| TR-CR-015 | S2CResolutionEvent batch delivery: single reliable-broadcast Lightyear message after all 6 sub-steps complete; `events: Vec<ResolutionEvent>` in chronological `(sub_step, trigger_index)` order; `S2CPhaseChanged(DRAFT_SHOP)` must not be observable before `S2CResolutionEvent` is received; `S2CPlacementReveal` broadcast before sub-step 1 executes (CR-30, CR-32) | ADR-017 ✅ ADR-008 ✅ |
+| TR-CR-001 | Sub-step 1 placement effects: PendingPlacements drains atomically into BoardState; APPEARANCE triggers fire before SS2; DEATH from APPEARANCE damage is deferred until all SS1 APPEARANCE effects complete; CHANGE LANE/cross-lane effects execute before SS2; STUN applied by APPEARANCE suppresses SS2 CHARGE X and SS5 movement (CR-24, CR-38, CR-39, CR-40) | ADR-017 |
+| TR-CR-002 | Sub-step 3 FIRST STRIKE damage resolves before retaliation in sub-step 6; FINAL BLOW is eligible from SS3 kills (CR-2) | ADR-017, ADR-022 |
+| TR-CR-003 | Sub-step 5 step-by-step collision detection handles path crossing and same-cell halting; deviation from Board/Lane skip-intermediate rule documented in ADR-017 (CR-9) | ADR-017 |
+| TR-CR-004 | Sub-step 6 bilateral pair simultaneous damage uses pre-combat HP snapshots; two-pass algorithm computes all damage before applying (CR-1) | ADR-017 |
+| TR-CR-005 | SHIELD canonical pre-check absorbs all sub-step damage once for simultaneous attackers; removed from modifier stack step 10 (CR-36) | ADR-017, ADR-018 |
+| TR-CR-006 | COUNTERATTACK fires after damage; melee contact only, chains once, and supports multi-attacker simultaneous retaliation (CR-20, CR-21) | ADR-018, ADR-022 |
+| TR-CR-007 | FINAL BLOW fires in the kill sub-step, not SS4; eligibility is evaluated against the attacker who delivered lethal damage (CR-22, CR-23) | ADR-018, ADR-022 |
+| TR-CR-008 | Kill gold +1 is awarded by `resolve_combat`; objective gold +3 lands before economy interest snapshots (CR-16) | ADR-017, ADR-019 |
+| TR-CR-009 | Objective damage bypasses AR, uses ATK_effective only, and mutates objective HP with `saturating_sub` (CR-10, CR-27) | ADR-017 |
+| TR-CR-010 | INJURED activates at sub-step boundaries; state is re-evaluated and not retroactive within a sub-step (CR-26) | ADR-018 |
+| TR-CR-011 | OUTNUMBERED is counted at sub-step entry using per-player global board count and strict less-than comparison (KW-027a, KW-027b) | ADR-018 |
+| TR-CR-012 | Type advantage formula grants ATK+1 and AR+1 in bilateral matchups only, from `GameConfig.type_beats` (CR-15) | ADR-017 |
+| TR-CR-013 | `resolve_combat` exclusive-system scaffold reads `BeginResolution`, exits idle without mutations, executes SS1-SS6, writes `ResolutionComplete` only after `S2CResolutionEvent`, and aborts at 10,000 iterations with `GameOver{Draw}` (CR-41) | ADR-017 |
+| TR-CR-014 | `S2CPlacementReveal` is enqueued before any SS1 entity spawn or ECS mutation; empty PendingPlacements still sends an empty reveal (CR-30) | ADR-007, ADR-017, ADR-020 |
+| TR-CR-015 | `S2CResolutionEvent` is enqueued before `ResolutionComplete`; RSM phase change can only follow after `ResolutionComplete`, guaranteeing clients receive the full log before phase change (CR-32) | ADR-008, ADR-017 |
 
 ## Definition of Done
 
@@ -57,7 +57,7 @@ This epic is complete when:
 
 Before the first story can be marked Ready for implementation:
 
-1. **Register TR-CR-001..015** in `docs/architecture/tr-registry.yaml` — stories cannot reference stable IDs until this is done
+1. **DONE 2026-05-01 / revised 2026-05-03**: `TR-CR-001..015` are registered in `docs/architecture/tr-registry.yaml`
 2. **`type_advantage_atk_bonus` and `type_advantage_ar_bonus`** must be added to `game-config.md` and `assets/config/game_config.ron` (OQ2 from GDD — action required before combat story begins)
 3. **Update `network-protocol.md` D.2** to reference the canonical `ResolutionEvent` enum from ADR-017 (OQ5 close)
 4. **Verify `UnitId` vs `EntityId` naming** across `network-protocol.md` D.2 and ADR-017 — must match before code is written (OQ5 gate)
