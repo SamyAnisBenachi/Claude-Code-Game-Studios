@@ -61,6 +61,12 @@ than three are safe, state why. Keep the existing status color convention:
 Each prompt must include branch, worktree, scope limits, story-done prohibition,
 shared tracker prohibition, and detailed commit-body requirements.
 
+Window instruction policy: use uppercase `CLEAR` or `REPONDRE`. `CLEAR` means
+the user should close that window; do not add redundant wording like "do not
+respond" after `CLEAR`. `REPONDRE` means the next prompt belongs in that same
+existing window. If a prompt follows a `CLEAR` instruction, it is for a new
+agent/window unless a specific `REPONDRE` line says otherwise.
+
 ## Live Windows Confirmed By User
 
 - CA-005 worker: initial readiness run returned NEEDS WORK on stale manifest
