@@ -1,7 +1,7 @@
 # Story 006: PLACEMENT Drag — Highlight Sets & TargetUnit
 
 > **Epic**: Hand UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -30,20 +30,20 @@
 
 *From GDD `design/gdd/hand-ui.md` Rule 6 (drag over board), scoped to this story:*
 
-- [ ] **HU-12**: GIVEN the player drag-starts a Minion card during PLACEMENT, WHEN the cursor enters the board area, THEN the highlighted-cell set (queryable via `BoardCellHighlighted` marker component on board cell entities) equals exactly:
+- [x] **HU-12**: GIVEN the player drag-starts a Minion card during PLACEMENT, WHEN the cursor enters the board area, THEN the highlighted-cell set (queryable via `BoardCellHighlighted` marker component on board cell entities) equals exactly:
   - (player's valid spawn cells for this round) minus (cells with prior-round board units) minus (cells already targeted by staged Minions in the local pending queue)
   - Sky Blue overlay rendering (`#3A8EDB` at 50%) is ADVISORY (lead sign-off).
 
-- [ ] **HU-12b**: GIVEN the player drag-starts a TargetObj card during PLACEMENT, WHEN the cursor enters the board area, THEN the highlighted-cell set equals exactly the surviving opponent objective cells (one per surviving lane; destroyed objectives produce no highlight for that lane).
+- [x] **HU-12b**: GIVEN the player drag-starts a TargetObj card during PLACEMENT, WHEN the cursor enters the board area, THEN the highlighted-cell set equals exactly the surviving opponent objective cells (one per surviving lane; destroyed objectives produce no highlight for that lane).
 
-- [ ] **HU-12c**: GIVEN the player drag-starts a LaneWide (Field) card during PLACEMENT, WHEN the cursor enters the board area, THEN the highlighted-cell set equals all cells of all 5 lane columns (full board excluding objective cells).
+- [x] **HU-12c**: GIVEN the player drag-starts a LaneWide (Field) card during PLACEMENT, WHEN the cursor enters the board area, THEN the highlighted-cell set equals all cells of all 5 lane columns (full board excluding objective cells).
 
-- [ ] **HU-12d**: GIVEN the player drag-starts a TargetUnit card during a round where ≥ 1 valid target unit exists on the board, WHEN the cursor hovers over a valid target unit entity, THEN:
+- [x] **HU-12d**: GIVEN the player drag-starts a TargetUnit card during a round where ≥ 1 valid target unit exists on the board, WHEN the cursor hovers over a valid target unit entity, THEN:
   - The hovered unit entity receives a `TargetUnitHover` marker component
   - No `BoardCellHighlighted` marker components are added to any board cell entity
   - Prism White outline pulse rendering is ADVISORY.
 
-- [ ] **HU-20**: GIVEN the player drag-starts a TargetUnit card during a round where NO valid target units exist on the board, WHEN the drag sprite moves over the board, THEN:
+- [x] **HU-20**: GIVEN the player drag-starts a TargetUnit card during a round where NO valid target units exist on the board, WHEN the drag sprite moves over the board, THEN:
   - (a) The `BoardCellHighlighted` marker set remains empty
   - (b) A `NoValidTargetsOverlay` marker entity exists with `Visibility::Visible`
   - (c) Dropping anywhere returns the card to its original fan slot via the normal invalid-drop path (Story 005 HU-14)
@@ -124,9 +124,18 @@
 **Required evidence**:
 - `tests/unit/hand-ui/placement_drag_highlights_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Criteria**: 5/5 passing (HU-12, HU-12b, HU-12c, HU-12d, HU-20)
+**Deviations**: None blocking. Sky Blue overlay rendering, Prism White outline pulse rendering, and full-dim overlay visual sign-off remain advisory presentation evidence.
+**Test Evidence**: `cargo test -p client --test hand_ui_placement_drag_highlights_test` passed 5/5; `cargo check -p client` passed; `cargo fmt -p client -- --check` passed.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Not updated; no matching `HAND-UI-006` row exists in `production/sprint-status.yaml`.
 
 ## Dependencies
 

@@ -1444,3 +1444,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Updated `S3-07` to `done`, `completed: "2026-05-03"`, and top-level `updated: "2026-05-03"`.
 - Next recommended: Continue the serialized closure queue with Hand UI Story 006 Placement Drag Highlights (`production/epics/hand-ui/story-006-placement-drag-highlights.md`).
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hand-ui/story-006-placement-drag-highlights.md` - Story 006: PLACEMENT Drag - Highlight Sets & TargetUnit
+- Criteria: 5/5 passing; HU-12, HU-12b, HU-12c, HU-12d, and HU-20 covered by `tests/unit/hand-ui/placement_drag_highlights_test.rs`.
+- Test Evidence: `cargo test -p client --test hand_ui_placement_drag_highlights_test` passed 5/5. `cargo check -p client` passed. `cargo fmt -p client -- --check` passed.
+- Verification: Hand UI placement drag now manages board-cell highlight markers for Minion, TargetObj, and LaneWide cards; uses `TargetUnitHover` for unit-targeting without cell highlights; displays `NoValidTargetsOverlay` when TargetUnit has no valid targets; and cleans highlight/hover/overlay state on drag end or invalid drop.
+- Notes: No blocking GDD/ADR deviation found. Visual overlay and outline pulse rendering sign-off remains advisory. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no matching `HAND-UI-006` row exists in `production/sprint-status.yaml`.
+- Next recommended: Run a fresh sprint/status scan to choose the next ready implementation batch.
