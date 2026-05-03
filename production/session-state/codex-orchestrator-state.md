@@ -102,14 +102,6 @@ None currently tracked here.
   --check`, `cargo test -p server --test charge_movement_test --test
   standard_movement_test`, `cargo check -p server`, and
   `git diff --check HEAD~1..HEAD` passed; story-done committed at `86612b7`.
-- PRISM-004: Hand-Full Prism Network Staging implemented on branch
-  `work/prism-004-hand-full-network` at `e823d66`; root cherry-picked and
-  amended it into `main` at `8c77982`. Root checks passed `cargo fmt --all --
-  --check`, `cargo test -p server --test prism_hand_full_network_test` 7/7,
-  Prism regressions 16/16, session/RSM/card acquisition regressions 12/12,
-  `cargo check --workspace`, and `git diff --check HEAD~1..HEAD`. Scope adds
-  Prism reliable unicast/deferred staging; reconnect snapshot builder remains
-  GSS-007.
 - HAND-UI-005: Placement Submit Core implemented on branch
   `work/hand-ui-005-placement-submit-core` at `c547056c`; root cherry-picked
   and amended it into `main` at `1c798f0`. Root checks passed `cargo fmt -p
@@ -120,6 +112,14 @@ None currently tracked here.
   drains were added.
 ## Recently Closed
 
+- PRISM-004: Hand-Full Prism Network Staging implemented on branch
+  `work/prism-004-hand-full-network` at `e823d66`; root integration landed at
+  `8c77982`; story-done closure committed at `e7776b0`. Verification passed
+  `cargo test -p server --test prism_hand_full_network_test` 7/7, `cargo check
+  -p server`, `cargo fmt --all -- --check`, and `git diff --check`.
+  Completion notes document the advisory TR-PRI-004 registry drift where Lane 3
+  hand-full still says to emit `S2CPrismRewardDropped`, while current GDD/story
+  behavior says it must not emit that message.
 - GSS-005: Lobby Disconnect Dual-Signal Cancel implemented on branch
   `work/gss-005-lobby-disconnect-dual-signal` at `77640bf`; root integration
   landed at `15fe812`, story-done initially blocked on room-session timeout
@@ -358,8 +358,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. PRISM-004
-2. HAND-UI-005
+1. HAND-UI-005
 
 Run only one story-done at a time.
 
@@ -367,8 +366,8 @@ Run only one story-done at a time.
 
 - PRISM-003 is unblocked by PRISM-001/002 closure. Remaining Prism story
   manifests were refreshed to 2026-05-01 in `7834e88`; PRISM-003 is now
-  closed. PRISM-004 can run next in the Prism chain because it depends on the
-  Lane 3 call site.
+  closed. PRISM-004 is closed at `e7776b0`; PRISM-005 can follow normal Prism
+  sequencing if dependencies/readiness are clean.
 - GSS-005: closed at `19071b5`.
 - GSS-006: closed at `a49e422`.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
@@ -387,10 +386,8 @@ Batch launched:
 - GSS-006: closed at `a49e422`.
 
 Active implementation workers by default-launch rule:
-- PRISM-004: integrated at `8c77982`; pending serialized story-done after
-  current closure queue.
 - HAND-UI-005: integrated at `1c798f0`; pending serialized story-done after
-  PRISM-004.
+  current closure queue.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -430,10 +427,10 @@ Current active windows by user default-launch rule:
 - OBJ-002 returned NEEDS WORK only on stale manifest. Manifest refreshed to
   `2026-05-01` in `b8b9f26`; implementation integrated at `536ccc8`;
   story-done committed at `88f3fe2`. Window can be cleared.
-- PRISM-004 returned, integrated at `8c77982`, and now only needs serialized
-  story-done.
+- PRISM-004 returned, integrated at `8c77982`, story-done committed at
+  `e7776b0`. Window can be cleared.
 - HAND-UI-005 returned, integrated at `1c798f0`, and now only needs serialized
-  story-done after PRISM-004.
+  story-done.
 AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
 integrated/closed as noted above.
 
