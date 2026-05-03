@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Config/Data
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -28,7 +28,7 @@
 - Forbidden: `ResMut<AuctionState>` must appear in exactly ONE system — code review gate enforced on every auction PR (CI grep gate)
 - Forbidden: `MessageReceiver<C2SAuctionBid>` must appear in exactly ONE system — same code review gate
 - Forbidden: `EventWriter<T>` / `EventReader<T>` / `Events<T>` / `add_event` — zero occurrences in `server/src/feature/auction/` (CI grep gate)
-- Note: ADR-013 is Accepted but not yet incorporated in the control manifest (v2026-04-30 lists it as pending)
+- Note: ADR-013 is incorporated in control manifest v2026-05-01; auction resource, scheduling, and forbidden API rules are covered by current manifest entries.
 
 ---
 
