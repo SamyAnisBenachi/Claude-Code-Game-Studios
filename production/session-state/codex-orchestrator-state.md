@@ -122,9 +122,10 @@ None currently tracked here.
   at `e4f76da` and `bb260c7`. Verification passed `cargo fmt -p server --
   --check`, `cargo test -p server --test objective_detection_test` 5/5,
   `cargo test -p server --test board_grid_initialization_test` 4/4, `cargo
-  check -p server`, and diff checks. `/story-done` returned BLOCKED because
-  production resolution sub-step 6 does not call `detect_objective_presence`;
-  repair must add the SS6 hook and integration-style evidence before closure.
+  check -p server`, and diff checks. `/story-done` initially returned BLOCKED
+  because production resolution sub-step 6 did not call
+  `detect_objective_presence`; repair commit `b27db7d` now wires the SS6 hook
+  and adds integration evidence in `resolve_combat_scaffold_test`.
 - HAND-UI-007: Placement Instant Staging implemented on branch
   `work/hand-ui-007-placement-instant-staging` at worker commit `7c3e76b`;
   root integration landed on main at `d3a16d1` and was pushed to origin.
@@ -497,19 +498,16 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. BOARD-008 repair:
-   add the production SS6 objective detection hook and integration evidence
-   before rerunning `/story-done`.
-2. BOARD-008:
+1. BOARD-008:
    `production/epics/board-lane-system/story-008-objective-cell-detection.md`
-   after the repair commit lands.
-3. HAND-UI-007:
+   after repair commit `b27db7d`.
+2. HAND-UI-007:
    `production/epics/hand-ui/story-007-placement-instant-staging.md`
    after integration commit `d3a16d1`.
-4. OBJECTIVE-004:
+3. OBJECTIVE-004:
    `production/epics/objective-system/story-004-damage-interface.md`
    after integration commit `033c212`.
-5. COMBAT-002:
+4. COMBAT-002:
    `production/epics/combat-resolution/story-002-combat-modifier-stack.md`
    after integration commit `0e5ac46`.
 
@@ -553,10 +551,10 @@ Current active windows by user default-launch rule:
 - ECO-006 / S4-14 story-done returned and was committed at `c5739fa`; window
   can be cleared.
 - BOARD-008 returned, integrated into main at `bb260c7`, pushed to origin/main,
-  and can be cleared as an implementation worker, but story-done is BLOCKED.
-  Required repair: wire `detect_objective_presence` into the production
-  resolution sub-step 6 flow and add integration-style evidence proving SS6
-  emits `UnitAtObjective`.
+  and can be cleared as an implementation worker. Story-done blocker was
+  repaired at `b27db7d`: production sub-step 6 now calls
+  `detect_objective_presence` and integration evidence proves SS6 emits
+  `UnitAtObjective`. Rerun serialized `/story-done`.
 - HAND-UI-007 returned, integrated into main at `d3a16d1`, pushed to
   origin/main, and can be cleared. It now needs serialized `/story-done` after
   BOARD-008.
