@@ -544,16 +544,15 @@ Run only one story-done at a time.
 
 ## Launch Blocks / Wait Conditions
 
-- Sprint 5 not yet planned: after Sprint 4 completion, several Ready stories
-  were launched as pull-forward before a formal Sprint 5 plan existed. Treat
-  these as `out-of-plan pull-forward` until Sprint 5 planning/reconciliation
-  explicitly accepts, reorders, or defers them:
+- Sprint 5 plan exists at `production/sprints/sprint-5.md` and was committed
+  at `e8455f1`. It explicitly includes a revalidation note for pull-forward
+  launched before the formal Sprint 5 plan existed:
   - AUC-007 Auction Plugin Scheduling
   - HAND-UI-011 Reserve Mana Strip
   - BOARD-010 Displacement Keywords
   - CDP-006 Network Dispatch Wiring
-  These require explicit revalidation during Sprint 5 planning before being
-  counted as normal Sprint 5 scope.
+  Treat those items as Sprint 5 in-flight only after their worker readiness
+  repairs return READY and are reconciled during integration/story-done.
 - Sprint 4 QA plan missing: resolved at `8578890` with
   `production/qa/qa-plan-sprint-4-2026-05-03.md`. S4-14 Economy Network
   Dispatch can now run story-readiness, but `production/sprint-status.yaml`
