@@ -95,20 +95,19 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- HAND-UI-006: Placement Drag Highlights implemented on branch
-  `work/hand-ui-006-placement-drag-highlights` at worker commit `4381693`;
-  root integration landed on main at `4491ecd`. The implementation adds
-  placement drag highlight state, marker components, `TargetUnit` hover
-  handling, no-valid-target overlay visibility, and cleanup on drag end/drop.
-  Verification passed `cargo fmt -p client -- --check`, `cargo test -p client
-  --test hand_ui_placement_drag_highlights_test` 5/5, Hand UI regressions
-  (`hand_ui_placement_submit_core_test`, `hand_ui_draft_initial_grid_test`,
-  `hand_ui_phase_state_machine_test`) 13/13, `cargo check -p client`, and diff
-  checks. Notes: no networking/protocol files changed, so Lightyear checks were
-  not needed; worker reported disk-space OS error 112 in the standalone
-  worktree and verified with the root target dir. No `/story-done` has run yet.
+None currently queued here.
 ## Recently Closed
 
+- HAND-UI-006: Placement Drag Highlights implemented on branch
+  `work/hand-ui-006-placement-drag-highlights` at worker commit `4381693`;
+  root integration landed on main at `4491ecd`; story-done closure committed
+  at `c772af1`. Verification passed `cargo fmt -p client -- --check`, `cargo
+  test -p client --test hand_ui_placement_drag_highlights_test` 5/5, Hand UI
+  regressions (`hand_ui_placement_submit_core_test`,
+  `hand_ui_draft_initial_grid_test`, `hand_ui_phase_state_machine_test`)
+  13/13, `cargo check -p client`, and diff checks. Completion notes document
+  advisory visual overlay and outline pulse evidence. `production/sprint-
+  status.yaml` had no matching row.
 - CDP-004: Shop Refresh Subscriber SessionReady implemented on branch
   `work/cdp-004-shop-refresh-session-ready`; readiness docs landed on main at
   `daad9bf`, root implementation integration landed at `a8f2d75`, and
@@ -431,8 +430,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HAND-UI-006: `production/epics/hand-ui/story-006-placement-drag-highlights.md`
-   after integration commit `4491ecd`.
+None currently queued.
 
 Run only one story-done at a time.
 
@@ -472,9 +470,8 @@ Current active windows by user default-launch rule:
   be cleared.
 - CDP-004 story-done returned and was committed at `ea00d32`; window can be
   cleared.
-- HAND-UI-006 returned, integrated into `main` at `4491ecd`, pushed to
-  origin/main, and now needs serialized `/story-done` after CDP-004. The
-  implementation window can be cleared.
+- HAND-UI-006 story-done returned and was committed at `c772af1`; window can be
+  cleared.
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
   cleared. PRISM-002 story-done returned and was committed at `2d1a4bf`;
   window can be cleared. HUD-004 story-done returned and was committed at
