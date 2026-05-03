@@ -138,6 +138,10 @@ name = "pool_session_ready_test"
 path = "../tests/integration/pool/session_ready_test.rs"
 
 [[test]]
+name = "pool_manual_refresh_test"
+path = "../tests/integration/pool/manual_refresh_test.rs"
+
+[[test]]
 name = "keyword_plugin_smoke_test"
 path = "../tests/integration/keyword/plugin_smoke_test.rs"
 

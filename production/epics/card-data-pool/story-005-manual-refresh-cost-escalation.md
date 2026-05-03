@@ -229,7 +229,8 @@ counter.
 - `tests/integration/pool/manual_refresh_test.rs`
 - Cargo test target: `cargo test -p server --test pool_manual_refresh_test`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing locally with
+`cargo test -p server --test pool_manual_refresh_test` on 2026-05-03
 
 ---
 
