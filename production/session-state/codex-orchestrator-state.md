@@ -124,6 +124,12 @@ None currently tracked here.
   --test hand_ui_placement_instant_staging_test` 3/3, placement submit and drag
   highlight regressions 10/10, `cargo check -p client`, `cargo check -p client
   --features ui_picking`, and diff checks. No `/story-done` has run yet.
+- OBJECTIVE-004: Damage Interface implemented on branch
+  `work/objective-004-damage-interface` at worker commit `33e0b9c`; root
+  integration landed on main at `033c212` and was pushed to origin.
+  Verification passed `cargo fmt -p server -- --check`, `cargo test -p server
+  --test damage_interface_test` 7/7, `cargo check -p server`, and diff checks.
+  No `/story-done` has run yet.
 ## Recently Closed
 
 - ECO-006 / S4-14: Economy Network Dispatch readiness docs committed on worker
@@ -481,6 +487,9 @@ None currently tracked here.
 2. HAND-UI-007:
    `production/epics/hand-ui/story-007-placement-instant-staging.md`
    after integration commit `d3a16d1`.
+3. OBJECTIVE-004:
+   `production/epics/objective-system/story-004-damage-interface.md`
+   after integration commit `033c212`.
 
 Run only one story-done at a time.
 
@@ -513,11 +522,10 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- OBJECTIVE-004 and COMBAT-002 prompts were provided for parallel launch. Per
-  default-launch rule, treat them as active unless the user explicitly says
-  otherwise.
-- HAND-UI-007 and BOARD-008 have returned and are integrated into main; do not
-  relaunch their implementation workers.
+- COMBAT-002 prompt was provided for parallel launch. Per default-launch rule,
+  treat it as active unless the user explicitly says otherwise.
+- HAND-UI-007, BOARD-008, and OBJECTIVE-004 have returned and are integrated
+  into main; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
 - ECO-006 / S4-14 story-done returned and was committed at `c5739fa`; window
@@ -527,6 +535,9 @@ Current active windows by user default-launch rule:
 - HAND-UI-007 returned, integrated into main at `d3a16d1`, pushed to
   origin/main, and can be cleared. It now needs serialized `/story-done` after
   BOARD-008.
+- OBJECTIVE-004 returned, integrated into main at `033c212`, pushed to
+  origin/main, and can be cleared. It now needs serialized `/story-done` after
+  HAND-UI-007.
 - COMBAT-002 implementation returned with checks passing, but the
   implementation commit was blocked by an approval usage-limit failure during
   elevated staging. Keep that window open and retry only the explicit owned-path
