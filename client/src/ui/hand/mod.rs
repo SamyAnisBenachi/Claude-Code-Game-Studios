@@ -168,6 +168,21 @@ impl PendingPlacements {
 
         self.placements.push(placement);
     }
+
+    fn target_for(&self, card_id: CardId) -> Option<&PlayTarget> {
+        self.placements
+            .iter()
+            .find(|placement| placement.card_id == card_id)
+            .map(|placement| &placement.target)
+    }
+
+    fn remove_staged(&mut self, card_id: CardId) -> Option<PlacedCard> {
+        let index = self
+            .placements
+            .iter()
+            .position(|placement| placement.card_id == card_id)?;
+        Some(self.placements.remove(index))
+    }
 }
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
@@ -245,6 +260,57 @@ impl ActivePlacementDrag {
     }
 }
 
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq)]
+pub struct ActiveGhostUnstageDrag {
+    pub card_id: Option<CardId>,
+    pub cursor_screen_position: Option<Vec2>,
+}
+
+impl ActiveGhostUnstageDrag {
+    fn start(&mut self, card_id: CardId) {
+        self.card_id = Some(card_id);
+        self.cursor_screen_position = None;
+    }
+
+    fn clear(&mut self) {
+        *self = Self::default();
+    }
+
+    fn is_active(self) -> bool {
+        self.card_id.is_some()
+    }
+}
+
+#[derive(Resource, Debug, Clone, Copy, PartialEq)]
+pub struct FanZoneBounds {
+    pub x_min: f32,
+    pub x_max: f32,
+    pub y_min: f32,
+    pub y_max: f32,
+}
+
+impl Default for FanZoneBounds {
+    fn default() -> Self {
+        Self {
+            x_min: 0.0,
+            x_max: 800.0,
+            y_min: 340.0,
+            y_max: 600.0,
+        }
+    }
+}
+
+impl FanZoneBounds {
+    fn contains(self, position: Vec2) -> bool {
+        let x_min = self.x_min.min(self.x_max);
+        let x_max = self.x_min.max(self.x_max);
+        let y_min = self.y_min.min(self.y_max);
+        let y_max = self.y_min.max(self.y_max);
+
+        (x_min..=x_max).contains(&position.x) && (y_min..=y_max).contains(&position.y)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlacementTargetKind {
     Minion,
@@ -307,6 +373,16 @@ pub struct HandSubmitButtonClicked {
 pub struct GhostPlacementChanged {
     pub target: Option<PlayTarget>,
     pub card_id: Option<CardId>,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GhostClickedEvent {
+    pub card_id: CardId,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GhostDragStartEvent {
+    pub card_id: CardId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -487,6 +563,8 @@ impl Plugin for HandUiPlugin {
             .init_resource::<PendingPlacements>()
             .init_resource::<PlacementBoardView>()
             .init_resource::<ActivePlacementDrag>()
+            .init_resource::<ActiveGhostUnstageDrag>()
+            .init_resource::<FanZoneBounds>()
             .add_message::<HandFanCardClicked>()
             .add_message::<HandGridCardClicked>()
             .add_message::<HandUiDraftOfferingReceived>()
@@ -497,6 +575,8 @@ impl Plugin for HandUiPlugin {
             .add_message::<HandUiPlacementDropResolved>()
             .add_message::<HandSubmitButtonClicked>()
             .add_message::<GhostPlacementChanged>()
+            .add_message::<GhostClickedEvent>()
+            .add_message::<GhostDragStartEvent>()
             .configure_sets(
                 Update,
                 (
@@ -514,13 +594,19 @@ impl Plugin for HandUiPlugin {
                 Update,
                 (
                     hand_ui_phase_transition_system.in_set(HandUiSystemSet::PhaseTransition),
-                    (handle_draft_offering_system, handle_card_acquired_system)
+                    (
+                        handle_draft_offering_system,
+                        handle_card_acquired_system,
+                        handle_ghost_clicked_unstage_system,
+                        handle_ghost_drag_started_system,
+                    )
                         .chain()
                         .in_set(HandUiSystemSet::MessageDrain),
                     (
                         handle_placement_drag_started_system,
                         handle_placement_cursor_moved_system,
                         handle_placement_drag_ended_system,
+                        handle_ghost_drag_ended_system,
                         handle_grid_card_click_system,
                         handle_hand_fan_card_click_system,
                         handle_placement_drop_resolved_system,
@@ -600,6 +686,7 @@ pub fn hand_ui_phase_transition_system(
     mut layout_state: ResMut<HandFanLayoutState>,
     mut pending_placements: ResMut<PendingPlacements>,
     mut active_drag: ResMut<ActivePlacementDrag>,
+    mut active_ghost_drag: ResMut<ActiveGhostUnstageDrag>,
     entities: Option<Res<HandUiEntities>>,
     mut commands: Commands,
     mut visibility_query: Query<&mut Visibility>,
@@ -627,6 +714,7 @@ pub fn hand_ui_phase_transition_system(
     if phase_changed {
         pending_placements.clear();
         active_drag.clear();
+        active_ghost_drag.clear();
         commands
             .entity(entities.fan_root)
             .remove::<FanPlateHighlighted>();
@@ -843,6 +931,63 @@ pub fn handle_card_acquired_system(
     }
 }
 
+pub fn handle_ghost_clicked_unstage_system(
+    mode: Res<HandUiMode>,
+    mut clicks: MessageReader<GhostClickedEvent>,
+    mut pending_placements: ResMut<PendingPlacements>,
+    mut ghost_writer: MessageWriter<GhostPlacementChanged>,
+    mut commands: Commands,
+    fan_slots: Query<(Entity, &FanSlotIndex, &HandSlotCard), With<FanSlotIndex>>,
+    mut reserve_strips: Query<(&ReserveStripForFanSlot, &mut Visibility)>,
+    mut submit_buttons: Query<&mut Text, With<HandSubmitButton>>,
+) {
+    for click in clicks.read() {
+        if *mode != HandUiMode::Staging {
+            continue;
+        }
+
+        let should_unstage = pending_placements
+            .target_for(click.card_id)
+            .map(is_board_ghost_target)
+            .unwrap_or(false);
+
+        if should_unstage {
+            unstage_card(
+                click.card_id,
+                &mut pending_placements,
+                &mut ghost_writer,
+                &mut commands,
+                &fan_slots,
+                &mut reserve_strips,
+                &mut submit_buttons,
+            );
+        }
+    }
+}
+
+pub fn handle_ghost_drag_started_system(
+    mode: Res<HandUiMode>,
+    mut starts: MessageReader<GhostDragStartEvent>,
+    pending_placements: Res<PendingPlacements>,
+    mut active_drag: ResMut<ActivePlacementDrag>,
+    mut active_ghost_drag: ResMut<ActiveGhostUnstageDrag>,
+) {
+    for start in starts.read() {
+        let should_track = *mode == HandUiMode::Staging
+            && pending_placements
+                .target_for(start.card_id)
+                .map(is_board_ghost_target)
+                .unwrap_or(false);
+
+        if should_track {
+            active_drag.clear();
+            active_ghost_drag.start(start.card_id);
+        } else {
+            active_ghost_drag.clear();
+        }
+    }
+}
+
 pub fn handle_grid_card_click_system(
     mode: Res<HandUiMode>,
     timing: Res<HandUiTimingConfig>,
@@ -879,21 +1024,47 @@ pub fn handle_grid_card_click_system(
 pub fn handle_hand_fan_card_click_system(
     mode: Res<HandUiMode>,
     mut clicks: MessageReader<HandFanCardClicked>,
-    hand_cards: Query<&HandSlotCard, With<FanSlotIndex>>,
+    mut pending_placements: ResMut<PendingPlacements>,
+    mut ghost_writer: MessageWriter<GhostPlacementChanged>,
+    mut commands: Commands,
+    hand_cards: Query<(Entity, &FanSlotIndex, &HandSlotCard, Option<&FanSlotState>)>,
+    fan_slots: Query<(Entity, &FanSlotIndex, &HandSlotCard), With<FanSlotIndex>>,
+    mut reserve_strips: Query<(&ReserveStripForFanSlot, &mut Visibility)>,
+    mut submit_buttons: Query<&mut Text, With<HandSubmitButton>>,
     mut outbound: ResMut<HandUiOutboundMessages>,
 ) {
     for click in clicks.read() {
-        if !mode.allows_activation() {
-            continue;
-        }
-
-        let Ok(card) = hand_cards.get(click.card) else {
+        let Ok((_entity, _slot_index, card, slot_state)) = hand_cards.get(click.card) else {
             continue;
         };
 
-        outbound
-            .activate_cards
-            .push(C2SActivateCard { card_id: card.0 });
+        if mode.allows_activation() {
+            outbound
+                .activate_cards
+                .push(C2SActivateCard { card_id: card.0 });
+            continue;
+        }
+
+        if *mode != HandUiMode::Staging || slot_state != Some(&FanSlotState::Ghost) {
+            continue;
+        }
+
+        let is_instant_ghost = pending_placements
+            .target_for(card.0)
+            .map(|target| matches!(target, PlayTarget::Instant))
+            .unwrap_or(false);
+
+        if is_instant_ghost {
+            unstage_card(
+                card.0,
+                &mut pending_placements,
+                &mut ghost_writer,
+                &mut commands,
+                &fan_slots,
+                &mut reserve_strips,
+                &mut submit_buttons,
+            );
+        }
     }
 }
 
@@ -939,10 +1110,15 @@ pub fn handle_placement_drag_started_system(
 pub fn handle_placement_cursor_moved_system(
     mut moves: MessageReader<HandUiPlacementCursorMoved>,
     mut active_drag: ResMut<ActivePlacementDrag>,
+    mut active_ghost_drag: ResMut<ActiveGhostUnstageDrag>,
 ) {
     for cursor_move in moves.read() {
         if active_drag.is_active() {
             active_drag.cursor_world_position = cursor_move.world_position;
+        }
+
+        if active_ghost_drag.is_active() {
+            active_ghost_drag.cursor_screen_position = cursor_move.world_position;
         }
     }
 }
@@ -980,6 +1156,41 @@ pub fn handle_placement_drag_ended_system(
         }
 
         active_drag.clear();
+    }
+}
+
+pub fn handle_ghost_drag_ended_system(
+    mode: Res<HandUiMode>,
+    fan_zone_bounds: Res<FanZoneBounds>,
+    mut ends: MessageReader<HandUiPlacementDragEnded>,
+    mut active_ghost_drag: ResMut<ActiveGhostUnstageDrag>,
+    mut pending_placements: ResMut<PendingPlacements>,
+    mut ghost_writer: MessageWriter<GhostPlacementChanged>,
+    mut commands: Commands,
+    fan_slots: Query<(Entity, &FanSlotIndex, &HandSlotCard), With<FanSlotIndex>>,
+    mut reserve_strips: Query<(&ReserveStripForFanSlot, &mut Visibility)>,
+    mut submit_buttons: Query<&mut Text, With<HandSubmitButton>>,
+) {
+    for _end in ends.read() {
+        let should_unstage = *mode == HandUiMode::Staging
+            && active_ghost_drag
+                .cursor_screen_position
+                .map(|position| fan_zone_bounds.contains(position))
+                .unwrap_or(false);
+
+        if let (true, Some(card_id)) = (should_unstage, active_ghost_drag.card_id) {
+            unstage_card(
+                card_id,
+                &mut pending_placements,
+                &mut ghost_writer,
+                &mut commands,
+                &fan_slots,
+                &mut reserve_strips,
+                &mut submit_buttons,
+            );
+        }
+
+        active_ghost_drag.clear();
     }
 }
 
@@ -1433,6 +1644,52 @@ fn set_reserve_strip_visibility(
             *reserve_visibility = visibility;
         }
     }
+}
+
+fn unstage_card(
+    card_id: CardId,
+    pending_placements: &mut PendingPlacements,
+    ghost_writer: &mut MessageWriter<GhostPlacementChanged>,
+    commands: &mut Commands,
+    fan_slots: &Query<(Entity, &FanSlotIndex, &HandSlotCard), With<FanSlotIndex>>,
+    reserve_strips: &mut Query<(&ReserveStripForFanSlot, &mut Visibility)>,
+    submit_buttons: &mut Query<&mut Text, With<HandSubmitButton>>,
+) -> bool {
+    let Some((slot_entity, slot_index)) = fan_slot_for_card(fan_slots, card_id) else {
+        return false;
+    };
+
+    if pending_placements.remove_staged(card_id).is_none() {
+        return false;
+    }
+
+    ghost_writer.write(GhostPlacementChanged {
+        target: None,
+        card_id: Some(card_id),
+    });
+    commands.entity(slot_entity).insert(FanSlotState::Active);
+    set_submit_count_text(submit_buttons, pending_placements.staged_count());
+    set_reserve_strip_visibility(reserve_strips, slot_index, Visibility::Hidden);
+    true
+}
+
+fn fan_slot_for_card(
+    fan_slots: &Query<(Entity, &FanSlotIndex, &HandSlotCard), With<FanSlotIndex>>,
+    card_id: CardId,
+) -> Option<(Entity, u8)> {
+    fan_slots.iter().find_map(|(entity, slot_index, card)| {
+        (card.0 == card_id).then_some((entity, slot_index.0))
+    })
+}
+
+fn is_board_ghost_target(target: &PlayTarget) -> bool {
+    matches!(
+        target,
+        PlayTarget::BoardCell { .. }
+            | PlayTarget::TargetUnit { .. }
+            | PlayTarget::TargetObj { .. }
+            | PlayTarget::LaneWide { .. }
+    )
 }
 
 fn resolve_placement_target_kind(
