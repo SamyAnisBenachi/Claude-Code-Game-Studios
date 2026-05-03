@@ -110,6 +110,19 @@ None currently tracked here.
   not required by the story condition; worker reported disk-full OS error 112
   during first rebuild, then reran successfully after target cleanup. No
   `/story-done` has run yet.
+- CDP-004: Shop Refresh Subscriber SessionReady implemented on branch
+  `work/cdp-004-shop-refresh-session-ready`; readiness docs landed on main at
+  `daad9bf`, and root implementation integration landed at `a8f2d75` from
+  worker commit `64a6010`. The implementation adds `CardPoolSet::Lifecycle`,
+  initializes `PlayerPools` from `DraftStarted::Initial`, cleans pool-owned
+  session resources on `GameOverEmitted`, and schedules Card Acquisition after
+  Card Pool lifecycle so same-frame `ShopRefreshTriggered` sees initialized
+  pools. Verification passed `cargo fmt -p server -- --check`, `cargo test -p
+  server --test pool_session_ready_test` 5/5, `cargo test -p server --lib
+  core::pool::` 39/39, the focused Card Acquisition regression targets, the
+  focused Session/RSM/GameOver regression targets, `cargo check -p server`, and
+  diff checks. Notes: no shared/protocol files changed, so workspace check was
+  not required. No `/story-done` has run yet.
 ## Recently Closed
 
 - PRISM-005: Respawn Cycle implemented on branch
@@ -415,6 +428,8 @@ None currently tracked here.
 
 1. OBJECTIVE-003: `production/epics/objective-system/story-003-identity-unicast-delivery.md`
    after integration commit `aa84947`.
+2. CDP-004: `production/epics/card-data-pool/story-004-shop-refresh-subscriber-session-ready.md`
+   after integration commit `a8f2d75`.
 
 Run only one story-done at a time.
 
@@ -445,8 +460,6 @@ Batch launched:
 Active implementation workers by default-launch rule:
 - HAND-UI-006: assumed launched from the previous parallel prompt batch;
   awaiting worker return unless the user says it was not launched.
-- CDP-004: assumed launched from the previous parallel prompt batch; awaiting
-  worker return unless the user says it was not launched.
 
 Current active windows by user default-launch rule:
 - AUC-005 story-done returned and was committed at `2b61243`; window can be
@@ -455,6 +468,9 @@ Current active windows by user default-launch rule:
   cleared.
 - OBJECTIVE-003 returned, integrated into `main` at `aa84947`, pushed to
   origin/main, and now needs serialized `/story-done` after PRISM-005. The
+  implementation window can be cleared.
+- CDP-004 returned, integrated into `main` at `a8f2d75`, pushed to origin/main,
+  and now needs serialized `/story-done` after OBJECTIVE-003. The
   implementation window can be cleared.
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
   cleared. PRISM-002 story-done returned and was committed at `2d1a4bf`;
