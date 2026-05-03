@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::core::pool::CardPoolSet;
 use crate::core::rsm::advance_phase;
 use crate::core::session::SessionSystemSet;
 use crate::feature::auction::auction_tick_system;
@@ -19,6 +20,7 @@ impl Plugin for CardAcquisitionPlugin {
             .configure_sets(
                 Update,
                 CardAcquisitionSet::Tick
+                    .after(CardPoolSet::Lifecycle)
                     .after(auction_tick_system)
                     .after(advance_phase),
             )

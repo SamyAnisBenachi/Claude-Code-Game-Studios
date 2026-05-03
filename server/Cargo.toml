@@ -134,6 +134,10 @@ name = "card_acquisition_purchase_atomicity_test"
 path = "../tests/integration/card_acquisition/purchase_atomicity_test.rs"
 
 [[test]]
+name = "pool_session_ready_test"
+path = "../tests/integration/pool/session_ready_test.rs"
+
+[[test]]
 name = "keyword_plugin_smoke_test"
 path = "../tests/integration/keyword/plugin_smoke_test.rs"
 
