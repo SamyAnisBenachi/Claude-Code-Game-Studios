@@ -112,13 +112,13 @@ None currently tracked here.
 
 - ECO-006 / S4-14: Economy Network Dispatch readiness docs committed on worker
   branch `work/eco-006-network-dispatch-wiring` at `6645baa`; implementation
-  committed at `f63c397` and pushed to origin. Worker verification passed
-  `cargo fmt -p server -- --check`, `cargo test -p server --test
-  economy_network_dispatch_test` 4/4, `cargo check --workspace`,
-  `UnreliableChannel` grep gate in `server/src/network/economy_dispatch.rs`,
-  and diff checks. Notes: implementation clamps internal `u32` mana cap to the
-  protocol `u8` boundary before sending `S2CGoldUpdate`; no merge to main and
-  no `/story-done` have run yet.
+  committed at `f63c397` and pushed to origin; root integration landed on main
+  at `648790b` and `83317cb`. Verification passed `cargo fmt -p server --
+  --check`, `cargo test -p server --test economy_network_dispatch_test` 4/4,
+  `cargo check --workspace`, `UnreliableChannel` grep gate in
+  `server/src/network/economy_dispatch.rs`, and diff checks. Notes:
+  implementation clamps internal `u32` mana cap to the protocol `u8` boundary
+  before sending `S2CGoldUpdate`. No `/story-done` has run yet.
 ## Recently Closed
 
 - CDP-005 / S3-10: Manual Refresh + Cost Escalation readiness docs landed on
@@ -461,7 +461,9 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-None currently queued.
+1. ECO-006 / S4-14:
+   `production/epics/economy-system/story-006-network-dispatch-wiring.md`
+   after integration commit `83317cb`.
 
 Run only one story-done at a time.
 
@@ -500,8 +502,8 @@ Active implementation workers by default-launch rule:
 
 Current active windows by user default-launch rule:
 - ECO-006 / S4-14 worker was repaired, committed at `f63c397`, pushed to
-  `origin/work/eco-006-network-dispatch-wiring`, and can be cleared. It still
-  needs root integration before serialized `/story-done`.
+  `origin/work/eco-006-network-dispatch-wiring`, integrated into main at
+  `83317cb`, and can be cleared. It now needs serialized `/story-done`.
 - Sprint 4 QA plan returned and was committed at `8578890`; window can be
   cleared. Next Sprint 4 critical item is S4-14 Economy Network Dispatch
   readiness/implementation.
