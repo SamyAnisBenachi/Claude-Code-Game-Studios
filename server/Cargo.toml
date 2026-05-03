@@ -54,6 +54,10 @@ name = "auction_bid_validation_gate_test"
 path = "../tests/unit/auction/bid_validation_gate_test.rs"
 
 [[test]]
+name = "accepted_bid_reservation_test"
+path = "../tests/integration/auction/accepted_bid_reservation_test.rs"
+
+[[test]]
 name = "auction_reservation_test"
 path = "../tests/unit/economy/auction_reservation_test.rs"
 

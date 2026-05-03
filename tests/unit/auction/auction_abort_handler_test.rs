@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use server::core::economy::{PlayerEconomies, PlayerEconomy};
+use server::core::economy::{PlayerEconomies, PlayerEconomy, S2CGoldBroadcast};
 use server::core::rsm::{AbortAuction, AuctionPhaseEntered, AuctionSettled};
 use server::feature::auction::{auction_tick_system, AuctionPhase, AuctionState, S2CAuctionCard};
 use server::foundation::config::{CardCatalog, GameConfig};
@@ -30,6 +30,7 @@ fn app_with_state(state: AuctionState, economies: PlayerEconomies) -> App {
         .add_message::<AbortAuction>()
         .add_message::<AuctionSettled>()
         .add_message::<S2CAuctionCard>()
+        .add_message::<S2CGoldBroadcast>()
         .insert_resource(state)
         .insert_resource(economies)
         .insert_resource(CardCatalog {

@@ -28,8 +28,17 @@ pub struct S2CGoldUpdate {
 /// Internal server event consumed by the later network dispatch story.
 #[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct S2CGoldBroadcast {
-    pub player: PlayerId,
+    pub player_id: PlayerId,
     pub gold: u32,
+    pub reserved_gold: u32,
+}
+
+pub fn gold_broadcast(player_id: PlayerId, economy: &PlayerEconomy) -> S2CGoldBroadcast {
+    S2CGoldBroadcast {
+        player_id,
+        gold: economy.gold,
+        reserved_gold: economy.reserved_gold,
+    }
 }
 
 pub fn on_resolution_complete(
@@ -92,10 +101,7 @@ pub fn on_draft_started(
                 reserve_mana: economy.reserve_mana,
                 mana_cap: economy.mana_cap,
             });
-            gold_broadcasts.write(S2CGoldBroadcast {
-                player,
-                gold: economy.gold,
-            });
+            gold_broadcasts.write(gold_broadcast(player, economy));
         }
     }
 }

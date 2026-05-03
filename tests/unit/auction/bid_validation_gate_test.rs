@@ -75,7 +75,16 @@ fn process(
 ) -> AuctionNetworkOutbox {
     let config = GameConfig(shared::config::GameConfig::default());
     let mut outbox = AuctionNetworkOutbox::default();
-    process_bid_batch(auction, economies, hands, &config, bids, &mut outbox);
+    let mut gold_broadcasts = Vec::new();
+    process_bid_batch(
+        auction,
+        economies,
+        hands,
+        &config,
+        bids,
+        &mut outbox,
+        &mut gold_broadcasts,
+    );
     outbox
 }
 

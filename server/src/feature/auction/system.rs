@@ -10,6 +10,7 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+use crate::core::economy::system::{gold_broadcast, S2CGoldBroadcast};
 use crate::core::economy::{api, PlayerEconomies};
 use crate::core::rsm::{AbortAuction, AuctionPhaseEntered};
 use crate::core::session::{
@@ -106,13 +107,14 @@ pub fn auction_tick_system(
     draw_fixture: Option<Res<AuctionCardDrawFixture>>,
     catalog: Res<CardCatalog>,
     config: Res<GameConfig>,
+    time: Option<Res<Time>>,
     connections: Option<Res<PlayerConnectionMap>>,
     mut reconnect_tracker: Option<ResMut<ReconnectTracker>>,
     mut bid_receivers: Query<(&RemoteId, &mut MessageReceiver<C2SPlaceBid>)>,
     server: Query<&Server>,
     mut sender: Option<ServerMultiMessageSender>,
-    mut network_outbox: Option<ResMut<AuctionNetworkOutbox>>,
     mut auction_cards: MessageWriter<S2CAuctionCard>,
+    mut gold_broadcasts: MessageWriter<S2CGoldBroadcast>,
 ) {
     for event in phase_entered.read() {
         if auction.phase != AuctionPhase::Idle {
@@ -155,6 +157,7 @@ pub fn auction_tick_system(
 
     let bids = drain_bids(&mut bid_receivers, connections.as_deref());
     let mut frame_outbox = AuctionNetworkOutbox::default();
+    let mut frame_gold_broadcasts = Vec::new();
     process_bid_batch(
         &mut auction,
         &mut economies,
@@ -162,10 +165,16 @@ pub fn auction_tick_system(
         &config,
         bids,
         &mut frame_outbox,
+        &mut frame_gold_broadcasts,
     );
 
-    if let Some(outbox) = network_outbox.as_deref_mut() {
-        outbox.extend(&frame_outbox);
+    for broadcast in frame_gold_broadcasts {
+        gold_broadcasts.write(broadcast);
+    }
+
+    if let Some(time) = time.as_deref() {
+        let raw_delta_ms = u32::try_from(time.delta().as_millis()).unwrap_or(u32::MAX);
+        decrement_live_bidding_timer(&mut auction, raw_delta_ms);
     }
 
     let pending_players = defer_auction_outbox_for_reconnect(
@@ -192,6 +201,7 @@ pub fn process_bid_batch(
     config: &GameConfig,
     bids: impl IntoIterator<Item = AuctionBid>,
     outbox: &mut AuctionNetworkOutbox,
+    gold_broadcasts: &mut Vec<S2CGoldBroadcast>,
 ) {
     for bid in bids {
         if auction.phase != AuctionPhase::LiveBidding {
@@ -234,8 +244,17 @@ pub fn process_bid_batch(
             continue;
         }
 
-        accept_bid(auction, economies, config, bid, outbox);
+        accept_bid(auction, economies, config, bid, outbox, gold_broadcasts);
     }
+}
+
+pub fn decrement_live_bidding_timer(auction: &mut AuctionState, raw_delta_ms: u32) {
+    if auction.phase != AuctionPhase::LiveBidding {
+        return;
+    }
+
+    let safe_delta_ms = raw_delta_ms.min(1000);
+    auction.timer_remaining_ms = auction.timer_remaining_ms.saturating_sub(safe_delta_ms);
 }
 
 fn handle_abort_auction(auction: &mut AuctionState, economies: &mut PlayerEconomies) {
@@ -262,13 +281,13 @@ fn accept_bid(
     config: &GameConfig,
     bid: AuctionBid,
     outbox: &mut AuctionNetworkOutbox,
+    gold_broadcasts: &mut Vec<S2CGoldBroadcast>,
 ) {
+    let previous_bid_amount = auction.current_price;
     if let Some(previous_leader) = auction.current_leader {
         if let Some(economy) = economies.0.get_mut(&previous_leader) {
-            let reserved_gold = economy.reserved_gold;
-            if reserved_gold > 0 {
-                api::release_gold_reservation(economy, reserved_gold);
-            }
+            api::release_gold_reservation(economy, previous_bid_amount);
+            gold_broadcasts.push(gold_broadcast(previous_leader, economy));
         }
     }
 
@@ -289,6 +308,7 @@ fn accept_bid(
         );
         return;
     }
+    gold_broadcasts.push(gold_broadcast(bid.bidder, economy));
 
     auction.current_price = bid.amount;
     auction.current_leader = Some(bid.bidder);
