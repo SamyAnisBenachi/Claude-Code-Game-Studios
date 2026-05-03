@@ -119,6 +119,13 @@ None currently tracked here.
   `server/src/network/economy_dispatch.rs`, and diff checks. Notes:
   implementation clamps internal `u32` mana cap to the protocol `u8` boundary
   before sending `S2CGoldUpdate`. No `/story-done` has run yet.
+- BOARD-008: Objective Cell Detection readiness docs committed on worker branch
+  `work/board-008-objective-cell-detection` at `7e8cf00`; implementation
+  committed at `23ebe01` and pushed to origin; root integration landed on main
+  at `e4f76da` and `bb260c7`. Verification passed `cargo fmt -p server --
+  --check`, `cargo test -p server --test objective_detection_test` 5/5,
+  `cargo test -p server --test board_grid_initialization_test` 4/4, `cargo
+  check -p server`, and diff checks. No `/story-done` has run yet.
 ## Recently Closed
 
 - CDP-005 / S3-10: Manual Refresh + Cost Escalation readiness docs landed on
@@ -464,6 +471,9 @@ None currently tracked here.
 1. ECO-006 / S4-14:
    `production/epics/economy-system/story-006-network-dispatch-wiring.md`
    after integration commit `83317cb`.
+2. BOARD-008:
+   `production/epics/board-lane-system/story-008-objective-cell-detection.md`
+   after integration commit `bb260c7`.
 
 Run only one story-done at a time.
 
@@ -504,6 +514,8 @@ Current active windows by user default-launch rule:
 - ECO-006 / S4-14 worker was repaired, committed at `f63c397`, pushed to
   `origin/work/eco-006-network-dispatch-wiring`, integrated into main at
   `83317cb`, and can be cleared. It now needs serialized `/story-done`.
+- BOARD-008 returned, integrated into main at `bb260c7`, pushed to origin/main,
+  and can be cleared. It now needs serialized `/story-done` after ECO-006.
 - Sprint 4 QA plan returned and was committed at `8578890`; window can be
   cleared. Next Sprint 4 critical item is S4-14 Economy Network Dispatch
   readiness/implementation.
