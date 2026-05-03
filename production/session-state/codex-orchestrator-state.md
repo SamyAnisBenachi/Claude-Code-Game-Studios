@@ -146,6 +146,14 @@ None currently tracked here.
   regressions 24/24, `cargo check -p server`, and diff checks. This was one
   of the Sprint 5 out-of-plan pull-forward items and has now returned READY
   plus integrated; it still needs `/story-done`.
+- CDP-006: Network Dispatch Wiring readiness/trace repair landed on main at
+  `e03dfcb`; test/evidence implementation landed on main at `4d21482`.
+  Verification passed `cargo fmt --all -- --check`, `cargo test -p server
+  --test shop_dispatch_test` 5/5, `cargo test -p server --test
+  reconnect_snapshot_test acquisition_unicast_helpers_defer_while_snapshot_pending`
+  1/1, `cargo check -p server`, and diff checks. This was one of the Sprint 5
+  out-of-plan pull-forward items and has now returned READY plus integrated;
+  it still needs `/story-done`.
 ## Recently Closed
 
 - HAND-UI-009: Placement Timer implemented on branch
@@ -567,6 +575,9 @@ None currently tracked here.
 5. BOARD-010:
    `production/epics/board-lane-system/story-010-displacement-keywords.md`
    after integration commit `e49f5a2`.
+6. CDP-006:
+   `production/epics/card-data-pool/story-006-network-dispatch-wiring.md`
+   after integration commit `4d21482`.
 
 Run only one story-done at a time.
 
@@ -583,7 +594,8 @@ Run only one story-done at a time.
   repairs return READY and are reconciled during integration/story-done.
   AUC-007 has returned READY and is integrated at `f96a524`/`ea5d88d`;
   HAND-UI-011 is integrated at `bd8c15b`; BOARD-010 is integrated at
-  `40b3176`/`e49f5a2`; all three remain pending story-done.
+  `40b3176`/`e49f5a2`; CDP-006 is integrated at `e03dfcb`/`4d21482`;
+  all four remain pending story-done.
 - Sprint 4 QA plan missing: resolved at `8578890` with
   `production/qa/qa-plan-sprint-4-2026-05-03.md`. S4-14 Economy Network
   Dispatch can now run story-readiness, but `production/sprint-status.yaml`
@@ -612,12 +624,16 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- None known at this checkpoint. BOARD-010, HAND-UI-011, AUC-007,
+- None known at this checkpoint. CDP-006, BOARD-010, HAND-UI-011, AUC-007,
   OBJECTIVE-005, COMBAT-003, HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009,
-  COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have returned and are
-  integrated or closed as noted; do not relaunch their implementation workers.
+  COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have returned and
+  are integrated or closed as noted; do not relaunch their implementation
+  workers.
 
 Current active windows by user default-launch rule:
+- CDP-006 returned, integrated into main at `e03dfcb` and `4d21482`,
+  verified, and is on origin/main after orchestrator push. Window can be
+  cleared. It now needs serialized `/story-done` after BOARD-010.
 - BOARD-010 returned, integrated into main at `40b3176` and `e49f5a2`,
   verified, and is on origin/main after orchestrator push. Window can be
   cleared. It now needs serialized `/story-done` after HAND-UI-011.
