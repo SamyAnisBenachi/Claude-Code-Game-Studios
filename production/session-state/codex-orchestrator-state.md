@@ -95,19 +95,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- CDP-004: Shop Refresh Subscriber SessionReady implemented on branch
-  `work/cdp-004-shop-refresh-session-ready`; readiness docs landed on main at
-  `daad9bf`, and root implementation integration landed at `a8f2d75` from
-  worker commit `64a6010`. The implementation adds `CardPoolSet::Lifecycle`,
-  initializes `PlayerPools` from `DraftStarted::Initial`, cleans pool-owned
-  session resources on `GameOverEmitted`, and schedules Card Acquisition after
-  Card Pool lifecycle so same-frame `ShopRefreshTriggered` sees initialized
-  pools. Verification passed `cargo fmt -p server -- --check`, `cargo test -p
-  server --test pool_session_ready_test` 5/5, `cargo test -p server --lib
-  core::pool::` 39/39, the focused Card Acquisition regression targets, the
-  focused Session/RSM/GameOver regression targets, `cargo check -p server`, and
-  diff checks. Notes: no shared/protocol files changed, so workspace check was
-  not required. No `/story-done` has run yet.
 - HAND-UI-006: Placement Drag Highlights implemented on branch
   `work/hand-ui-006-placement-drag-highlights` at worker commit `4381693`;
   root integration landed on main at `4491ecd`. The implementation adds
@@ -122,6 +109,15 @@ None currently tracked here.
   worktree and verified with the root target dir. No `/story-done` has run yet.
 ## Recently Closed
 
+- CDP-004: Shop Refresh Subscriber SessionReady implemented on branch
+  `work/cdp-004-shop-refresh-session-ready`; readiness docs landed on main at
+  `daad9bf`, root implementation integration landed at `a8f2d75`, and
+  story-done closure committed at `ea00d32`. Verification passed `cargo fmt -p
+  server -- --check`, `cargo test -p server --test pool_session_ready_test`
+  5/5, `cargo test -p server --lib core::pool::` 39/39, focused Card
+  Acquisition regressions, focused Session/RSM/GameOver regressions, `cargo
+  check -p server`, and diff checks. Completion moved `S3-07` to done in
+  `production/sprint-status.yaml` with `completed: "2026-05-03"`.
 - OBJECTIVE-003: Identity Unicast Delivery implemented on branch
   `work/objective-003-identity-unicast-delivery`; readiness docs landed on
   main at `b3fbe3e`, root implementation integration landed at `aa84947`, and
@@ -435,9 +431,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. CDP-004: `production/epics/card-data-pool/story-004-shop-refresh-subscriber-session-ready.md`
-   after integration commit `a8f2d75`.
-2. HAND-UI-006: `production/epics/hand-ui/story-006-placement-drag-highlights.md`
+1. HAND-UI-006: `production/epics/hand-ui/story-006-placement-drag-highlights.md`
    after integration commit `4491ecd`.
 
 Run only one story-done at a time.
@@ -476,9 +470,8 @@ Current active windows by user default-launch rule:
   cleared.
 - OBJECTIVE-003 story-done returned and was committed at `4327b7b`; window can
   be cleared.
-- CDP-004 returned, integrated into `main` at `a8f2d75`, pushed to origin/main,
-  and now needs serialized `/story-done` after OBJECTIVE-003. The
-  implementation window can be cleared.
+- CDP-004 story-done returned and was committed at `ea00d32`; window can be
+  cleared.
 - HAND-UI-006 returned, integrated into `main` at `4491ecd`, pushed to
   origin/main, and now needs serialized `/story-done` after CDP-004. The
   implementation window can be cleared.
