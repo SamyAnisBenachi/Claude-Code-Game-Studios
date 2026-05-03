@@ -1532,3 +1532,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per user instruction; no matching `BOARD-009` row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the serialized closure queue after a fresh sprint/status scan.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/auction-system/story-006-resolution-settlement.md` - Story 006: Resolution & Settlement - Case A/B & Post-Settlement Invariants
+- Criteria: 4/4 passing; AU7-a, AU7-b, AU8, and AU14 covered by `tests/unit/auction/resolution_settlement_test.rs` and `tests/integration/auction/resolution_settlement_test.rs`.
+- Test Evidence: `cargo test -p server --test auction_resolution_settlement_test` passed 3/3. `cargo test -p server --test auction_resolution_settlement_integration_test` passed 1/1. `cargo check -p server` passed.
+- Verification: `settle_expired_auction` completes settlement synchronously, releases the winner reservation before `spend_gold`, writes `AuctionSettled` for winner and no-bid paths, queues `S2CAuctionSettled`, sends `S2CCardAcquired` only when `hand_push` succeeds, and resets `AuctionState` to `Idle`.
+- Notes: Advisory only - AU14's integration test uses direct `App` setup with `auction_tick_system` and economy resources rather than `AuctionPlugin + EconomyPlugin`, because Auction plugin registration is explicitly Story 007 and no `AuctionPlugin` exists yet. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per user instruction; no matching `AUC-006` row exists in `production/sprint-status.yaml`.
+- Next recommended: Auction Story 007 Plugin Registration & System Scheduling (`production/epics/auction-system/story-007-auction-plugin-scheduling.md`) after readiness check.

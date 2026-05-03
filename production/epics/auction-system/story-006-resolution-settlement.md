@@ -1,7 +1,7 @@
 # Story 006: Resolution & Settlement — Case A/B & Post-Settlement Invariants
 
 > **Epic**: Auction System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -41,10 +41,10 @@
 
 *From GDD `design/gdd/auction-system.md`, scoped to this story:*
 
-- [ ] **AU7-a**: `GIVEN` `timer_remaining_ms == 0` with `current_leader != None` and `hand_size < 10`, `WHEN` resolution fires, `THEN`: `leader.gold` decremented by bid amount, `leader.reserved_gold == 0` (zeroed, not just decremented), `hand_size` increases by 1, `S2CCardAcquired` unicast to leader, `S2CAuctionSettled { winner: Some(leader), amount }` broadcast, `AuctionSettled` Bevy Message written, `auction_state.phase == IDLE`
-- [ ] **AU7-b**: `GIVEN` `timer_remaining_ms == 0` with `current_leader != None` and `leader.hand_size == 10` (injected artificially), `WHEN` resolution fires, `THEN`: the reservation is released and the winning bid is spent via Economy API, `hand_size` remains 10 (card NOT added), no `S2CCardAcquired` queued, `S2CAuctionSettled { winner: Some(leader), amount }` broadcast, server error logged. *(DEPENDENCY: requires `hand_size` field on player struct — mark DEFERRED if struct not yet implemented)*
-- [ ] **AU8**: `GIVEN` `timer_remaining_ms == 0` with `current_leader == None` (no bids), `WHEN` resolution fires, `THEN`: no gold values change for any player, `S2CAuctionSettled { winner: None, amount: 0 }` broadcast, `AuctionSettled` Bevy Message written, `auction_state.phase == IDLE`
-- [ ] **AU14** *(Integration)*: `GIVEN` a complete prior auction ending in a win (reserved gold spent, reservation zeroed), `WHEN` a new `AuctionPhaseEntered` triggers SELECTING for the next round, `THEN` `reserved_gold == 0` for all players at SELECTING entry — no stale reservation carried from prior auction
+- [x] **AU7-a**: `GIVEN` `timer_remaining_ms == 0` with `current_leader != None` and `hand_size < 10`, `WHEN` resolution fires, `THEN`: `leader.gold` decremented by bid amount, `leader.reserved_gold == 0` (zeroed, not just decremented), `hand_size` increases by 1, `S2CCardAcquired` unicast to leader, `S2CAuctionSettled { winner: Some(leader), amount }` broadcast, `AuctionSettled` Bevy Message written, `auction_state.phase == IDLE`
+- [x] **AU7-b**: `GIVEN` `timer_remaining_ms == 0` with `current_leader != None` and `leader.hand_size == 10` (injected artificially), `WHEN` resolution fires, `THEN`: the reservation is released and the winning bid is spent via Economy API, `hand_size` remains 10 (card NOT added), no `S2CCardAcquired` queued, `S2CAuctionSettled { winner: Some(leader), amount }` broadcast, server error logged. *(DEPENDENCY: requires `hand_size` field on player struct — mark DEFERRED if struct not yet implemented)*
+- [x] **AU8**: `GIVEN` `timer_remaining_ms == 0` with `current_leader == None` (no bids), `WHEN` resolution fires, `THEN`: no gold values change for any player, `S2CAuctionSettled { winner: None, amount: 0 }` broadcast, `AuctionSettled` Bevy Message written, `auction_state.phase == IDLE`
+- [x] **AU14** *(Integration)*: `GIVEN` a complete prior auction ending in a win (reserved gold spent, reservation zeroed), `WHEN` a new `AuctionPhaseEntered` triggers SELECTING for the next round, `THEN` `reserved_gold == 0` for all players at SELECTING entry — no stale reservation carried from prior auction
 
 ---
 
@@ -195,7 +195,7 @@ Test: post-settlement stale reservation invariant across two auctions
 - `tests/unit/auction/resolution_settlement_test.rs` — AU7-a, AU7-b, AU8 (unit tests, `World::new()`)
 - `tests/integration/auction/resolution_settlement_test.rs` — AU14 (Integration, `App::new()` with two plugins)
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -205,3 +205,13 @@ Test: post-settlement stale reservation invariant across two auctions
 - Depends on: `economy-system` story-005 DONE (provides `release_gold_reservation` and `spend_gold` confirmed API names per OQ4)
 - Depends on: `workspace-and-shared-types` story-002 DONE (provides `CardSource`, `AcquisitionSource` alias, `S2CCardAcquired`, `S2CAuctionSettled`)
 - Unlocks: Story 007 (Plugin Registration & Scheduling — all auction_tick_system steps must be in place)
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Criteria**: 4/4 passing (AU7-a, AU7-b, AU8, AU14)
+**Deviations**:
+- Advisory: AU14's integration test uses direct `App` setup with `auction_tick_system` and economy resources rather than `AuctionPlugin + EconomyPlugin`, because Auction plugin registration is explicitly Story 007 and no `AuctionPlugin` exists yet. The tested behavior matches the GDD requirement.
+**Test Evidence**: `cargo test -p server --test auction_resolution_settlement_test` passed 3/3; `cargo test -p server --test auction_resolution_settlement_integration_test` passed 1/1; `cargo check -p server` passed.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Not updated; no matching `AUC-006` row exists in `production/sprint-status.yaml`.
