@@ -1400,3 +1400,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no matching HUD Story 008 row exists in `production/sprint-status.yaml`.
 - Next recommended: Create `production/qa/evidence/reconnect-snapshot-evidence.md` for HUD-14 visual sign-off, then continue the serialized closure queue with Hand UI Story 006 PLACEMENT Drag Highlights (`production/epics/hand-ui/story-006-placement-drag-highlights.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/auction-system/story-005-accepted-bid-reservation.md` - Story 005: Accepted Bid - Gold Reservation Handoff & Timer Reset
+- Criteria: 7/7 passing; AU4, AU20, M7-a, M7-c, AU5, AU6, and AU22 covered by `tests/integration/auction/accepted_bid_reservation_test.rs`.
+- Test Evidence: `cargo test -p server --test accepted_bid_reservation_test` passed 5/5. `cargo check -p server` passed.
+- Verification: `server/src/feature/auction/system.rs` performs release-before-reserve ordering, applies timer reset with `saturating_add(...).min(cap)`, clamps raw tick delta to 1000ms before `saturating_sub`, and dispatches accepted bid messages through `ReliableChannel` with `NetworkTarget::All` when reconnect deferral does not apply.
+- Notes: Advisory only - the integration evidence tests the extracted `process_bid_batch` and timer seams rather than an `App::new()` harness with both plugins. Advisory only - implementation enqueues `S2CGoldBroadcast` from the auction acceptance path after Economy API calls; behavior matches AU/M7 outcomes, but story wording says the Economy System/API should fire those broadcasts. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no matching `AUC-005` row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the serialized closure queue with Prism Story 005 Respawn Cycle (`production/epics/prism-system/story-005-respawn-cycle.md`).

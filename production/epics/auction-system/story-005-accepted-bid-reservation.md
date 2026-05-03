@@ -1,7 +1,7 @@
 # Story 005: Accepted Bid — Gold Reservation Handoff & Timer Reset
 
 > **Epic**: Auction System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -36,13 +36,13 @@
 
 *From GDD `design/gdd/auction-system.md`, scoped to this story:*
 
-- [ ] **AU4**: `GIVEN` Player A has `gold=10, reserved_gold=5` (current leader) and Player B has `gold=10, reserved_gold=0`, `WHEN` Player B's bid of 6g is accepted, `THEN` `Player_A.reserved_gold == 0` AND `Player_B.reserved_gold == 6`
-- [ ] **AU20**: `GIVEN` Player A is current leader with `reserved_gold = A_amt`, `WHEN` Player B's bid is accepted, `THEN` pre-bid snapshot (`A=A_amt, B=0`) and post-bid snapshot (`A=0, B=B_amt`) are both explicitly asserted in the test
-- [ ] **M7-a**: `GIVEN` an accepted bid, `WHEN` the Economy System fires `S2CGoldBroadcast` for the new leader, `THEN` the broadcast includes `reserved_gold == bid_amount` (not 0 or absent)
-- [ ] **M7-c**: `GIVEN` Player A is outbid by Player B, `WHEN` `release_gold_reservation(Player_A)` fires, `THEN` `S2CGoldBroadcast { player_id: Player_A, reserved_gold: 0 }` is dispatched — distinct from and in addition to the M7-a broadcast for Player B. Both must fire on the same outbid event
-- [ ] **AU5**: `GIVEN` an accepted bid with `timer_remaining_ms=3000`, `auction_timer_seconds=20`, `auction_timer_reset_seconds=5` (inject as test constants), `THEN` `timer_remaining_ms = min(3000+5000, 20000) = 8000`
-- [ ] **AU6**: `GIVEN` an accepted bid with `timer_remaining_ms=17000`, same config, `THEN` `timer_remaining_ms = min(17000+5000, 20000) = 20000` (capped)
-- [ ] **AU22**: `GIVEN` LIVE_BIDDING with `timer_remaining_ms=T` and `tick_delta_ms=5000` (lag spike injected), `WHEN` the timer decrement step runs, `THEN` `timer_remaining_ms` decrements by at most 1000ms, not 5000ms. Assert `new_timer == T.saturating_sub(1000)`
+- [x] **AU4**: `GIVEN` Player A has `gold=10, reserved_gold=5` (current leader) and Player B has `gold=10, reserved_gold=0`, `WHEN` Player B's bid of 6g is accepted, `THEN` `Player_A.reserved_gold == 0` AND `Player_B.reserved_gold == 6`
+- [x] **AU20**: `GIVEN` Player A is current leader with `reserved_gold = A_amt`, `WHEN` Player B's bid is accepted, `THEN` pre-bid snapshot (`A=A_amt, B=0`) and post-bid snapshot (`A=0, B=B_amt`) are both explicitly asserted in the test
+- [x] **M7-a**: `GIVEN` an accepted bid, `WHEN` the Economy System fires `S2CGoldBroadcast` for the new leader, `THEN` the broadcast includes `reserved_gold == bid_amount` (not 0 or absent)
+- [x] **M7-c**: `GIVEN` Player A is outbid by Player B, `WHEN` `release_gold_reservation(Player_A)` fires, `THEN` `S2CGoldBroadcast { player_id: Player_A, reserved_gold: 0 }` is dispatched — distinct from and in addition to the M7-a broadcast for Player B. Both must fire on the same outbid event
+- [x] **AU5**: `GIVEN` an accepted bid with `timer_remaining_ms=3000`, `auction_timer_seconds=20`, `auction_timer_reset_seconds=5` (inject as test constants), `THEN` `timer_remaining_ms = min(3000+5000, 20000) = 8000`
+- [x] **AU6**: `GIVEN` an accepted bid with `timer_remaining_ms=17000`, same config, `THEN` `timer_remaining_ms = min(17000+5000, 20000) = 20000` (capped)
+- [x] **AU22**: `GIVEN` LIVE_BIDDING with `timer_remaining_ms=T` and `tick_delta_ms=5000` (lag spike injected), `WHEN` the timer decrement step runs, `THEN` `timer_remaining_ms` decrements by at most 1000ms, not 5000ms. Assert `new_timer == T.saturating_sub(1000)`
 
 ---
 
@@ -190,7 +190,7 @@ Test: tick_delta = 5000ms results in only 1000ms decrement
 **Story Type**: Integration
 **Required evidence**: `tests/integration/auction/accepted_bid_reservation_test.rs` — must exist and pass (uses `App::new()` with AuctionPlugin + EconomyPlugin for M7-a, M7-c; unit tests for AU4/AU5/AU6/AU20/AU22)
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -199,3 +199,14 @@ Test: tick_delta = 5000ms results in only 1000ms decrement
 - Depends on: Story 004 DONE (bid drain loop structure in place; acceptance path follows validation)
 - Depends on: `economy-system` story-005 DONE (provides `reserve_gold`, `release_gold_reservation`, and their `S2CGoldBroadcast` firing in `economy/api.rs`)
 - Unlocks: Story 006 (Resolution & Settlement — timer reaching 0 triggers RESOLVING)
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Criteria**: 7/7 passing (AU4, AU20, M7-a, M7-c, AU5, AU6, AU22)
+**Deviations**:
+- Advisory: `tests/integration/auction/accepted_bid_reservation_test.rs` is at the required path and passes, but it tests the extracted `process_bid_batch` and timer seams rather than an `App::new()` harness with both plugins.
+- Advisory: implementation enqueues `S2CGoldBroadcast` from the auction acceptance path after Economy API calls. The behavior matches AU/M7 outcomes, but story wording says the Economy System/API should fire those broadcasts.
+**Test Evidence**: `cargo test -p server --test accepted_bid_reservation_test` passed 5/5; `cargo check -p server` passed.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Not updated; no matching `AUC-005` row exists in `production/sprint-status.yaml`.
