@@ -110,15 +110,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- ECO-006 / S4-14: Economy Network Dispatch readiness docs committed on worker
-  branch `work/eco-006-network-dispatch-wiring` at `6645baa`; implementation
-  committed at `f63c397` and pushed to origin; root integration landed on main
-  at `648790b` and `83317cb`. Verification passed `cargo fmt -p server --
-  --check`, `cargo test -p server --test economy_network_dispatch_test` 4/4,
-  `cargo check --workspace`, `UnreliableChannel` grep gate in
-  `server/src/network/economy_dispatch.rs`, and diff checks. Notes:
-  implementation clamps internal `u32` mana cap to the protocol `u8` boundary
-  before sending `S2CGoldUpdate`. No `/story-done` has run yet.
 - BOARD-008: Objective Cell Detection readiness docs committed on worker branch
   `work/board-008-objective-cell-detection` at `7e8cf00`; implementation
   committed at `23ebe01` and pushed to origin; root integration landed on main
@@ -126,8 +117,24 @@ None currently tracked here.
   --check`, `cargo test -p server --test objective_detection_test` 5/5,
   `cargo test -p server --test board_grid_initialization_test` 4/4, `cargo
   check -p server`, and diff checks. No `/story-done` has run yet.
+- HAND-UI-007: Placement Instant Staging implemented on branch
+  `work/hand-ui-007-placement-instant-staging` at worker commit `7c3e76b`;
+  root integration landed on main at `d3a16d1` and was pushed to origin.
+  Verification passed `cargo fmt -p client -- --check`, `cargo test -p client
+  --test hand_ui_placement_instant_staging_test` 3/3, placement submit and drag
+  highlight regressions 10/10, `cargo check -p client`, `cargo check -p client
+  --features ui_picking`, and diff checks. No `/story-done` has run yet.
 ## Recently Closed
 
+- ECO-006 / S4-14: Economy Network Dispatch readiness docs committed on worker
+  branch `work/eco-006-network-dispatch-wiring` at `6645baa`; implementation
+  committed at `f63c397`; root integration landed on main at `648790b` and
+  `83317cb`; story-done closure committed at `c5739fa`. Verification passed
+  `cargo test -p server --test economy_network_dispatch_test` 4/4, `cargo
+  check --workspace`, `git diff --check`, and the `UnreliableChannel` grep gate
+  in `server/src/network/economy_dispatch.rs`. Completion notes document the
+  protocol-boundary `mana_cap` clamp from internal `u32` to wire `u8`.
+  `production/sprint-status.yaml` had no matching ECO-006 / S4-14 row.
 - CDP-005 / S3-10: Manual Refresh + Cost Escalation readiness docs landed on
   main at `037788b`; root implementation integration landed on main at
   `a3719fc`; story-done closure committed at `28c9f79`. Verification passed
@@ -468,12 +475,12 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. ECO-006 / S4-14:
-   `production/epics/economy-system/story-006-network-dispatch-wiring.md`
-   after integration commit `83317cb`.
-2. BOARD-008:
+1. BOARD-008:
    `production/epics/board-lane-system/story-008-objective-cell-detection.md`
    after integration commit `bb260c7`.
+2. HAND-UI-007:
+   `production/epics/hand-ui/story-007-placement-instant-staging.md`
+   after integration commit `d3a16d1`.
 
 Run only one story-done at a time.
 
@@ -506,16 +513,24 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- HAND-UI-007, BOARD-008, OBJECTIVE-004, and COMBAT-002 prompts were provided
-  for parallel launch. Per default-launch rule, treat them as active unless the
-  user explicitly says otherwise.
+- OBJECTIVE-004 and COMBAT-002 prompts were provided for parallel launch. Per
+  default-launch rule, treat them as active unless the user explicitly says
+  otherwise.
+- HAND-UI-007 and BOARD-008 have returned and are integrated into main; do not
+  relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
-- ECO-006 / S4-14 worker was repaired, committed at `f63c397`, pushed to
-  `origin/work/eco-006-network-dispatch-wiring`, integrated into main at
-  `83317cb`, and can be cleared. It now needs serialized `/story-done`.
+- ECO-006 / S4-14 story-done returned and was committed at `c5739fa`; window
+  can be cleared.
 - BOARD-008 returned, integrated into main at `bb260c7`, pushed to origin/main,
-  and can be cleared. It now needs serialized `/story-done` after ECO-006.
+  and can be cleared. It now needs serialized `/story-done`.
+- HAND-UI-007 returned, integrated into main at `d3a16d1`, pushed to
+  origin/main, and can be cleared. It now needs serialized `/story-done` after
+  BOARD-008.
+- COMBAT-002 implementation returned with checks passing, but the
+  implementation commit was blocked by an approval usage-limit failure during
+  elevated staging. Keep that window open and retry only the explicit owned-path
+  staging/commit step; do not relaunch implementation.
 - Sprint 4 QA plan returned and was committed at `8578890`; window can be
   cleared. Next Sprint 4 critical item is S4-14 Economy Network Dispatch
   readiness/implementation.
