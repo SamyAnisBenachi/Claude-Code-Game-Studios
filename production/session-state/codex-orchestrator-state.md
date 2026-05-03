@@ -132,6 +132,14 @@ None currently tracked here.
   Verification passed `cargo fmt -p server -- --check`, `cargo test -p server
   --test damage_interface_test` 7/7, `cargo check -p server`, and diff checks.
   No `/story-done` has run yet.
+- COMBAT-002: Combat Modifier Stack implemented on branch
+  `work/combat-002-combat-modifier-stack` at worker commit `76ed813`; root
+  integration landed on main at `0e5ac46` and was pushed to origin.
+  Verification passed `cargo fmt --all -- --check`, `cargo test -p server
+  --test modifier_stack_test` 7/7, `cargo test -p server --test
+  game_config_defaults_test` 8/8, `cargo test -p server --test
+  resolve_combat_scaffold_test` 3/3, `cargo check -p server`, and diff checks.
+  No `/story-done` has run yet.
 ## Recently Closed
 
 - ECO-006 / S4-14: Economy Network Dispatch readiness docs committed on worker
@@ -495,6 +503,9 @@ None currently tracked here.
 4. OBJECTIVE-004:
    `production/epics/objective-system/story-004-damage-interface.md`
    after integration commit `033c212`.
+5. COMBAT-002:
+   `production/epics/combat-resolution/story-002-combat-modifier-stack.md`
+   after integration commit `0e5ac46`.
 
 Run only one story-done at a time.
 
@@ -527,10 +538,10 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- COMBAT-002 prompt was provided for parallel launch. Per default-launch rule,
-  treat it as active unless the user explicitly says otherwise.
-- HAND-UI-007, BOARD-008, and OBJECTIVE-004 have returned and are integrated
-  into main; do not relaunch their implementation workers.
+- No currently known implementation worker remains active after COMBAT-002
+  returned and was integrated. BOARD-008 repair is the next unblocked code task.
+- HAND-UI-007, BOARD-008, OBJECTIVE-004, and COMBAT-002 have returned and are
+  integrated into main; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
 - ECO-006 / S4-14 story-done returned and was committed at `c5739fa`; window
@@ -546,13 +557,9 @@ Current active windows by user default-launch rule:
 - OBJECTIVE-004 returned, integrated into main at `033c212`, pushed to
   origin/main, and can be cleared. It now needs serialized `/story-done` after
   HAND-UI-007.
-- COMBAT-002 implementation returned with checks passing, but the
-  implementation commit was blocked by an approval usage-limit failure during
-  elevated staging. Keep that window open and retry only the explicit owned-path
-  staging/commit step; do not relaunch implementation. Because BOARD-008 repair
-  also touches `server/src/feature/combat/mod.rs`, prefer committing and
-  integrating COMBAT-002 before starting the BOARD-008 repair if both windows
-  are available.
+- COMBAT-002 returned, integrated into main at `0e5ac46`, pushed to
+  origin/main, and can be cleared. It now needs serialized `/story-done` after
+  OBJECTIVE-004. BOARD-008 repair is no longer blocked by COMBAT-002.
 - Sprint 4 QA plan returned and was committed at `8578890`; window can be
   cleared. Next Sprint 4 critical item is S4-14 Economy Network Dispatch
   readiness/implementation.
