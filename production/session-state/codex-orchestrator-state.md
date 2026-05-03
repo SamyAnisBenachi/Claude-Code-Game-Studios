@@ -122,6 +122,15 @@ None currently tracked here.
   removed and the full check then passed. Scope unblocks HUD-008 by providing
   the Game Session/shared protocol snapshot schema and builder; HUD-008 itself
   is not implemented.
+- HUD-008: Reconnect Snapshot HUD Rebuild implemented on branch
+  `work/hud-008-reconnect-snapshot-rebuild` at `778828d`; root cherry-picked
+  and amended it into `main` at `d8971f4`. Root checks passed `cargo fmt -p
+  client -- --check`, `cargo test -p client --test
+  reconnect_snapshot_rebuild_test` 3/3, HUD regression slice 27/27,
+  `cargo check -p client`, and `git diff --check HEAD~1..HEAD`. Scope uses the
+  GSS-007 snapshot contract already integrated on main; no shared/protocol
+  files changed and no HUD-008 story/status/session-state closure updates were
+  made.
 ## Recently Closed
 
 - PRISM-004: Hand-Full Prism Network Staging implemented on branch
@@ -372,6 +381,7 @@ None currently tracked here.
 
 1. HAND-UI-005
 2. GSS-007
+3. HUD-008
 
 Run only one story-done at a time.
 
@@ -385,11 +395,9 @@ Run only one story-done at a time.
 - GSS-006: closed at `a49e422`.
 - GSS-007: implemented/integrated at `8e7c5b5`; pending story-done.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
-- HUD-008 returned READY but was blocked on missing full `S2CGameSnapshot`
-  schema. Correct unblock path was GSS-005 -> GSS-006 -> GSS-007. GSS-005 and
-  GSS-006 are closed, and GSS-007 is now integrated/pending story-done, so
-  HUD-008 can be relaunched once we accept the GSS-007 integrated snapshot
-  contract as stable enough or after GSS-007 closure for stricter sequencing.
+- HUD-008: implemented/integrated at `d8971f4`; pending story-done after
+  HAND-UI-005 and GSS-007. The original snapshot schema blocker was removed by
+  integrated GSS-007 code.
 - Other RSM/session/disconnect work should be staged carefully because GSS-005
   and GSS-006 just closed; avoid overlapping GSS-007 snapshot ownership.
 - Prism gates are resolved; PRISM-003+ follow normal sequencing after PRISM-001
@@ -401,12 +409,15 @@ Batch launched:
 - GSS-005: closed at `19071b5`.
 - GSS-006: closed at `a49e422`.
 - GSS-007: integrated at `8e7c5b5`; pending story-done.
+- HUD-008: integrated at `d8971f4`; pending story-done.
 
 Active implementation workers by default-launch rule:
 - HAND-UI-005: integrated at `1c798f0`; pending serialized story-done after
   current closure queue.
 - GSS-007: integrated at `8e7c5b5`; pending serialized story-done after
   HAND-UI-005.
+- HUD-008: integrated at `d8971f4`; pending serialized story-done after
+  HAND-UI-005 and GSS-007.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -417,9 +428,10 @@ Current active windows by user default-launch rule:
   Do not launch another story-done until it returns.
 - BOARD-007 returned, integrated at `fd13f2a`, and now only needs serialized
   story-done; story-done committed at `dc8b80a`. Window can be cleared.
-- HUD-008 returned with no code changes; window can be cleared. It was blocked
-  until GSS-007 expanded/built `S2CGameSnapshot`; GSS-007 is now integrated at
-  `8e7c5b5` and pending story-done.
+- HUD-008 initially returned with no code changes while blocked on
+  `S2CGameSnapshot`; after GSS-007 integration it returned implemented and is
+  integrated at `d8971f4`, pending serialized story-done after HAND-UI-005 and
+  GSS-007.
 - PRISM-003 returned, integrated at `611baee`, and now only needs serialized
   story-done; story-done committed at `b4d9e04`. Window can be cleared.
 - CARD-ANIM-007 story-done returned and was committed at `35ee469`; window can
@@ -453,6 +465,8 @@ Current active windows by user default-launch rule:
   story-done.
 - GSS-007 returned, integrated at `8e7c5b5`, and now only needs serialized
   story-done after HAND-UI-005.
+- HUD-008 returned, integrated at `d8971f4`, and now only needs serialized
+  story-done after HAND-UI-005 and GSS-007.
 AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
 integrated/closed as noted above.
 
