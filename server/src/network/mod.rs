@@ -12,6 +12,7 @@ use shared::protocol::{
     ProtocolChannel, ProtocolDirection, ProtocolRegistry, ReliableChannel, S2CObjectiveIdentities,
 };
 
+pub mod economy_dispatch;
 pub mod rsm_dispatch;
 
 pub struct ServerNetworkPlugin;
@@ -23,6 +24,8 @@ impl Plugin for ServerNetworkPlugin {
         });
 
         register_lightyear_protocol(app);
+
+        app.add_plugins(economy_dispatch::EconomyNetworkPlugin);
 
         app.init_resource::<PlayerConnectionMap>()
             .add_systems(Startup, open_websocket_server)
