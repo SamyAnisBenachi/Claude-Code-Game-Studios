@@ -116,13 +116,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- HAND-UI-007: Placement Instant Staging implemented on branch
-  `work/hand-ui-007-placement-instant-staging` at worker commit `7c3e76b`;
-  root integration landed on main at `d3a16d1` and was pushed to origin.
-  Verification passed `cargo fmt -p client -- --check`, `cargo test -p client
-  --test hand_ui_placement_instant_staging_test` 3/3, placement submit and drag
-  highlight regressions 10/10, `cargo check -p client`, `cargo check -p client
-  --features ui_picking`, and diff checks. No `/story-done` has run yet.
 - OBJECTIVE-004: Damage Interface implemented on branch
   `work/objective-004-damage-interface` at worker commit `33e0b9c`; root
   integration landed on main at `033c212` and was pushed to origin.
@@ -139,6 +132,13 @@ None currently tracked here.
   No `/story-done` has run yet.
 ## Recently Closed
 
+- HAND-UI-007: Placement Instant Staging implemented on branch
+  `work/hand-ui-007-placement-instant-staging` at worker commit `7c3e76b`;
+  root integration landed on main at `d3a16d1`; story-done closure committed
+  at `6fe4313`. Verification passed `cargo test -p client --test
+  hand_ui_placement_instant_staging_test`, `cargo check -p client --features
+  ui_picking`, and `git diff --check`. `production/sprint-status.yaml` had no
+  matching HAND-UI-007 row.
 - BOARD-008: Objective Cell Detection readiness docs committed on worker branch
   `work/board-008-objective-cell-detection` at `7e8cf00`; implementation
   landed on main at `e4f76da` and `bb260c7`; initial `/story-done` was blocked
@@ -497,13 +497,10 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HAND-UI-007:
-   `production/epics/hand-ui/story-007-placement-instant-staging.md`
-   after integration commit `d3a16d1`.
-2. OBJECTIVE-004:
+1. OBJECTIVE-004:
    `production/epics/objective-system/story-004-damage-interface.md`
    after integration commit `033c212`.
-3. COMBAT-002:
+2. COMBAT-002:
    `production/epics/combat-resolution/story-002-combat-modifier-stack.md`
    after integration commit `0e5ac46`.
 
@@ -538,8 +535,10 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- No currently known implementation worker remains active after COMBAT-002
-  returned and was integrated. BOARD-008 repair is the next unblocked code task.
+- BOARD-009 Prism Collection, AUC-006 Resolution Settlement, and HAND-UI-008
+  Placement Unstaging prompts were provided for parallel launch. Per
+  default-launch rule, treat them as active unless the user explicitly says
+  otherwise.
 - HAND-UI-007, BOARD-008, OBJECTIVE-004, and COMBAT-002 have returned and are
   integrated into main; do not relaunch their implementation workers.
 
@@ -548,9 +547,8 @@ Current active windows by user default-launch rule:
   can be cleared.
 - BOARD-008 story-done returned and was committed at `57232e6`; window can be
   cleared.
-- HAND-UI-007 returned, integrated into main at `d3a16d1`, pushed to
-  origin/main, and can be cleared. It now needs serialized `/story-done` after
-  BOARD-008.
+- HAND-UI-007 story-done returned and was committed at `6fe4313`; window can
+  be cleared.
 - OBJECTIVE-004 returned, integrated into main at `033c212`, pushed to
   origin/main, and can be cleared. It now needs serialized `/story-done` after
   HAND-UI-007.
