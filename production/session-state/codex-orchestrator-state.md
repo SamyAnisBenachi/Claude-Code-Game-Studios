@@ -109,6 +109,21 @@ None currently tracked here.
   -p server`, `cargo check --workspace`, and diff checks. Notes: worker
   initially hit disk-full errors, cleared generated target caches, and reran
   successfully; root integration checks passed. No `/story-done` has run yet.
+- OBJECTIVE-003: Identity Unicast Delivery implemented on branch
+  `work/objective-003-identity-unicast-delivery`; readiness docs landed on
+  main at `b3fbe3e`, and root implementation integration landed at `aa84947`
+  from worker commit `e72f30d`. The implementation sends owner-only
+  `S2CObjectiveIdentities` on DRAFT_INITIAL, builds payloads only from the
+  owning player's `HiddenObjectives`, defers identities through
+  `ReconnectTracker.snapshot_sent`, and keeps `ObjectiveIdentity` server-only.
+  Verification passed `cargo fmt -p server -- --check`, `cargo test -p server
+  --test objective_identity_unicast_test` 4/4, objective/reconnect
+  regressions (`objective_state_test`, `fake_assignment_test`,
+  `reconnect_snapshot_test`) 15/15, `cargo check -p server`, and diff checks.
+  Notes: no shared/protocol source changes were needed, so workspace check was
+  not required by the story condition; worker reported disk-full OS error 112
+  during first rebuild, then reran successfully after target cleanup. No
+  `/story-done` has run yet.
 ## Recently Closed
 
 - AUC-005: Accepted Bid Reservation implemented on branch
@@ -402,6 +417,8 @@ None currently tracked here.
 
 1. PRISM-005: `production/epics/prism-system/story-005-respawn-cycle.md`
    after integration commit `edb0a43`.
+2. OBJECTIVE-003: `production/epics/objective-system/story-003-identity-unicast-delivery.md`
+   after integration commit `aa84947`.
 
 Run only one story-done at a time.
 
@@ -433,8 +450,6 @@ Batch launched:
 Active implementation workers by default-launch rule:
 - HAND-UI-006: assumed launched from the previous parallel prompt batch;
   awaiting worker return unless the user says it was not launched.
-- OBJECTIVE-003: assumed launched from the previous parallel prompt batch;
-  awaiting worker return unless the user says it was not launched.
 - CDP-004: assumed launched from the previous parallel prompt batch; awaiting
   worker return unless the user says it was not launched.
 
@@ -443,6 +458,9 @@ Current active windows by user default-launch rule:
   cleared.
 - PRISM-005 returned, integrated into `main` at `edb0a43`, pushed to
   origin/main, and now needs serialized `/story-done` after AUC-005. The
+  implementation window can be cleared.
+- OBJECTIVE-003 returned, integrated into `main` at `aa84947`, pushed to
+  origin/main, and now needs serialized `/story-done` after PRISM-005. The
   implementation window can be cleared.
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
   cleared. PRISM-002 story-done returned and was committed at `2d1a4bf`;
