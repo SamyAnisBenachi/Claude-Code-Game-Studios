@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use bevy::prelude::*;
 use lightyear::prelude::{
     MessageReceiver, NetworkTarget, PeerId, RemoteId, Server, ServerMultiMessageSender,
@@ -10,7 +12,9 @@ use shared::session::PlayerId;
 
 use crate::core::economy::{api, PlayerEconomies};
 use crate::core::rsm::{AbortAuction, AuctionPhaseEntered};
-use crate::core::session::PlayerConnectionMap;
+use crate::core::session::{
+    defer_unicast_for_reconnect, DeferredMessage, PlayerConnectionMap, ReconnectTracker,
+};
 use crate::feature::acquisition::{PlayerHands, MAX_HAND_SIZE};
 use crate::foundation::config::{CardCatalog, GameConfig};
 
@@ -103,6 +107,7 @@ pub fn auction_tick_system(
     catalog: Res<CardCatalog>,
     config: Res<GameConfig>,
     connections: Option<Res<PlayerConnectionMap>>,
+    mut reconnect_tracker: Option<ResMut<ReconnectTracker>>,
     mut bid_receivers: Query<(&RemoteId, &mut MessageReceiver<C2SPlaceBid>)>,
     server: Query<&Server>,
     mut sender: Option<ServerMultiMessageSender>,
@@ -163,8 +168,20 @@ pub fn auction_tick_system(
         outbox.extend(&frame_outbox);
     }
 
+    let pending_players = defer_auction_outbox_for_reconnect(
+        &frame_outbox,
+        connections.as_deref(),
+        reconnect_tracker.as_deref_mut(),
+    );
+
     if let (Some(server), Some(sender)) = (server.single().ok(), sender.as_mut()) {
-        send_outbox_dispatches(sender, server, &frame_outbox);
+        send_outbox_dispatches(
+            sender,
+            server,
+            &frame_outbox,
+            connections.as_deref(),
+            &pending_players,
+        );
     }
 }
 
@@ -325,8 +342,14 @@ fn send_outbox_dispatches(
     sender: &mut ServerMultiMessageSender,
     server: &Server,
     outbox: &AuctionNetworkOutbox,
+    connections: Option<&PlayerConnectionMap>,
+    pending_players: &HashSet<PlayerId>,
 ) {
     for dispatch in outbox.rejected() {
+        if pending_players.contains(&dispatch.player_id) {
+            continue;
+        }
+
         let Some(peer_id) = dispatch.peer_id else {
             continue;
         };
@@ -338,12 +361,82 @@ fn send_outbox_dispatches(
     }
 
     for dispatch in outbox.accepted() {
+        let target = accepted_bid_target(connections, pending_players);
+        let Some(target) = target else {
+            continue;
+        };
         let _ = sender.send::<S2CAuctionBidAccepted, ReliableChannel>(
             &dispatch.message,
             server,
-            &NetworkTarget::All,
+            &target,
         );
     }
+}
+
+pub fn defer_auction_outbox_for_reconnect(
+    outbox: &AuctionNetworkOutbox,
+    connections: Option<&PlayerConnectionMap>,
+    mut tracker: Option<&mut ReconnectTracker>,
+) -> HashSet<PlayerId> {
+    let pending_players = pending_reconnect_players(tracker.as_deref(), connections);
+
+    for dispatch in outbox.rejected() {
+        let _ = defer_unicast_for_reconnect(
+            tracker.as_deref_mut(),
+            dispatch.player_id,
+            DeferredMessage::AuctionBidRejected(dispatch.message.clone()),
+        );
+    }
+
+    for dispatch in outbox.accepted() {
+        for player in &pending_players {
+            let _ = defer_unicast_for_reconnect(
+                tracker.as_deref_mut(),
+                *player,
+                DeferredMessage::AuctionBidAccepted(dispatch.message.clone()),
+            );
+        }
+    }
+
+    pending_players
+}
+
+fn pending_reconnect_players(
+    tracker: Option<&ReconnectTracker>,
+    connections: Option<&PlayerConnectionMap>,
+) -> HashSet<PlayerId> {
+    let Some(tracker) = tracker else {
+        return HashSet::new();
+    };
+
+    tracker
+        .snapshot_sent
+        .iter()
+        .filter_map(|(player, sent)| {
+            (!*sent
+                && connections
+                    .map(|connections| connections.0.values().any(|mapped| mapped == player))
+                    .unwrap_or(true))
+            .then_some(*player)
+        })
+        .collect()
+}
+
+fn accepted_bid_target(
+    connections: Option<&PlayerConnectionMap>,
+    pending_players: &HashSet<PlayerId>,
+) -> Option<NetworkTarget> {
+    if pending_players.is_empty() {
+        return Some(NetworkTarget::All);
+    }
+
+    let connections = connections?;
+    let peers = connections
+        .0
+        .iter()
+        .filter_map(|(peer_id, player)| (!pending_players.contains(player)).then_some(*peer_id))
+        .collect::<Vec<_>>();
+    (!peers.is_empty()).then_some(NetworkTarget::Only(peers))
 }
 
 fn reset_to_idle(auction: &mut AuctionState) {

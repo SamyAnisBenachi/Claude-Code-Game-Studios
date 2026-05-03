@@ -166,6 +166,10 @@ name = "snapshot_secret_strip_test"
 path = "../tests/unit/session/snapshot_secret_strip_test.rs"
 
 [[test]]
+name = "reconnect_snapshot_test"
+path = "../tests/integration/session/reconnect_snapshot_test.rs"
+
+[[test]]
 name = "rsm_win_condition_test"
 path = "../tests/unit/rsm/rsm_win_condition_test.rs"
 

@@ -14,8 +14,10 @@ use shared::session::PlayerId;
 
 use crate::core::economy::{api as economy_api, PlayerEconomies};
 use crate::core::pool::{DistributeError, PlayerPool, PlayerPools};
-use crate::core::session::PlayerConnectionMap;
-use crate::core::session::PlayerSessions;
+use crate::core::session::{
+    defer_unicast_for_reconnect, DeferredMessage, PlayerConnectionMap, PlayerSessions,
+    ReconnectTracker,
+};
 use crate::foundation::config::{CardCatalog, GameConfig};
 use crate::foundation::rng::ServerRng;
 
@@ -108,6 +110,7 @@ pub fn card_acquisition_tick_system(
     catalog: Option<Res<CardCatalog>>,
     config: Option<Res<GameConfig>>,
     connections: Option<Res<PlayerConnectionMap>>,
+    mut reconnect_tracker: Option<ResMut<ReconnectTracker>>,
     mut shop_refreshes: MessageReader<ShopRefreshTriggered>,
     mut refresh_receivers: Query<(&RemoteId, &mut MessageReceiver<C2SRefreshShop>)>,
     mut purchase_receivers: Query<(&RemoteId, &mut MessageReceiver<C2SPurchaseCard>)>,
@@ -148,10 +151,12 @@ pub fn card_acquisition_tick_system(
                 }
             };
 
-            if let (Some(dispatch), Some(server), Some(sender)) =
-                (dispatch.as_ref(), server, sender.as_mut())
-            {
-                send_draft_offering(sender, server, dispatch);
+            if let Some(dispatch) = dispatch.as_ref() {
+                if !defer_draft_offering(reconnect_tracker.as_deref_mut(), dispatch) {
+                    if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
+                        send_draft_offering(sender, server, dispatch);
+                    }
+                }
             }
             continue;
         }
@@ -192,10 +197,12 @@ pub fn card_acquisition_tick_system(
                 }
             };
 
-            if let (Some(dispatch), Some(server), Some(sender)) =
-                (dispatch.as_ref(), server, sender.as_mut())
-            {
-                send_shop_slots(sender, server, dispatch);
+            if let Some(dispatch) = dispatch.as_ref() {
+                if !defer_shop_slots(reconnect_tracker.as_deref_mut(), dispatch) {
+                    if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
+                        send_shop_slots(sender, server, dispatch);
+                    }
+                }
             }
             continue;
         }
@@ -245,10 +252,12 @@ pub fn card_acquisition_tick_system(
                 }
             };
 
-            if let (Some(dispatch), Some(server), Some(sender)) =
-                (dispatch.as_ref(), server, sender.as_mut())
-            {
-                send_shop_slots(sender, server, dispatch);
+            if let Some(dispatch) = dispatch.as_ref() {
+                if !defer_shop_slots(reconnect_tracker.as_deref_mut(), dispatch) {
+                    if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
+                        send_shop_slots(sender, server, dispatch);
+                    }
+                }
             }
         }
     }
@@ -276,10 +285,12 @@ pub fn card_acquisition_tick_system(
 
             let dispatch =
                 update.map(|message| prepare_shop_slots_dispatch(player_id, message, connections));
-            if let (Some(dispatch), Some(server), Some(sender)) =
-                (dispatch.as_ref(), server, sender.as_mut())
-            {
-                send_shop_slots(sender, server, dispatch);
+            if let Some(dispatch) = dispatch.as_ref() {
+                if !defer_shop_slots(reconnect_tracker.as_deref_mut(), dispatch) {
+                    if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
+                        send_shop_slots(sender, server, dispatch);
+                    }
+                }
             }
         }
     }
@@ -848,6 +859,17 @@ fn send_draft_offering(
     );
 }
 
+pub fn defer_draft_offering(
+    tracker: Option<&mut ReconnectTracker>,
+    dispatch: &DraftOfferingDispatch,
+) -> bool {
+    defer_unicast_for_reconnect(
+        tracker,
+        dispatch.player_id,
+        DeferredMessage::DraftOffering(dispatch.message.clone()),
+    )
+}
+
 fn send_shop_slots(
     sender: &mut ServerMultiMessageSender,
     server: &Server,
@@ -862,6 +884,17 @@ fn send_shop_slots(
         server,
         &NetworkTarget::Single(peer_id),
     );
+}
+
+pub fn defer_shop_slots(
+    tracker: Option<&mut ReconnectTracker>,
+    dispatch: &ShopSlotsDispatch,
+) -> bool {
+    defer_unicast_for_reconnect(
+        tracker,
+        dispatch.player_id,
+        DeferredMessage::ShopSlots(dispatch.message.clone()),
+    )
 }
 
 fn peer_for_player(

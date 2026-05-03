@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::core::rsm::advance_phase;
+use crate::core::session::SessionSystemSet;
 use crate::feature::auction::auction_tick_system;
 
 use super::hands::PlayerHands;
@@ -23,7 +24,9 @@ impl Plugin for CardAcquisitionPlugin {
             )
             .add_systems(
                 Update,
-                card_acquisition_tick_system.in_set(CardAcquisitionSet::Tick),
+                card_acquisition_tick_system
+                    .in_set(CardAcquisitionSet::Tick)
+                    .in_set(SessionSystemSet::LiveMessages),
             );
     }
 }

@@ -10,7 +10,7 @@ Accepted
 
 ## Last Verified
 
-2026-04-29
+2026-05-03
 
 ## Decision Makers
 
@@ -46,6 +46,29 @@ marker components. All API patterns in this ADR must be verified before implemen
 
 See `liv-bevy-lightyear` skill (`references/api_patterns.md`, `references/architecture.md`)
 for the complete verified 0.26 API reference.
+
+## Verified Implementation Checklist
+
+Detailed evidence is recorded in
+`docs/architecture/adr-011-reconnect-snapshot-evidence.md`; source API evidence
+is recorded in `tests/evidence/lightyear-026-verification.md`.
+
+| Item | Result | Implementation Note |
+|------|--------|---------------------|
+| 1. Reconnect uses a new transport identity | Verified | Lightyear 0.26 uses `PeerId` on a new connection entity. |
+| 2. Unicast target shape | Verified | Server unicast uses `NetworkTarget::Single(PeerId)`. |
+| 3. Reliable enqueue order | Verified | Reconnect messages use `ReliableChannel` ordered delivery. |
+| 4. Connected signal shape | Verified with API update | Bevy observer `On<Add, Connected>` replaces legacy `OnConnected`. |
+| 5. Old-connection messages do not deliver to the new identity | Verified | New `PeerId` begins with a separate reliable queue. |
+| 6. Two-channel setup | Verified | `ReliableChannel` and `UnreliableChannel` are registered. |
+| 7. S2C reconnect messages on reliable channel | Verified | Handshake, snapshot, identities, phase, and reconnect notices are reliable. |
+| 8. `C2SHello` first-message contract | Implemented | `handle_reconnect` is the sole `C2SHello` drainer. |
+| 9. Token identity bridge | Implemented | `ReconnectTracker.token_map` maps token to session slot. |
+| 10. Snapshot-first reconnect sequence | Implemented | Dispatch order is handshake, snapshot, identities, phase. |
+| 11. Deferred live messages | Implemented | `defer_unicast_for_reconnect` queues while `snapshot_sent == false`. |
+| 12. Disconnect API naming | Verified with API update | Lightyear 0.26 uses `Connected` / `Disconnected` marker components. |
+| 13. Timeout closure | Implemented | `hello_timeout_watchdog` closes peers that do not send `C2SHello`. |
+| 14. Reconnect restore edge cases | Implemented | Sang Meprise reveal restore is included in snapshot and re-send flow. |
 
 ---
 

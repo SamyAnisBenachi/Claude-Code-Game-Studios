@@ -31,6 +31,8 @@ const ROOM_CODE_ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SessionSystemSet {
     LobbyEval,
+    ReconnectHandshake,
+    LiveMessages,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,6 +105,7 @@ pub fn evaluate_session_ready(
     deadline: Option<Res<LobbyDeadline>>,
     rng_factory: Option<Res<ServerRngFactory>>,
     connections: Option<Res<PlayerConnectionMap>>,
+    active_sessions: Option<Res<ActiveSessions>>,
     server: Query<&Server>,
     mut sender: Option<ServerMultiMessageSender>,
     mut outbox: Option<ResMut<SessionNetworkOutbox>>,
@@ -138,7 +141,13 @@ pub fn evaluate_session_ready(
         return;
     };
 
+    let reconnect_tracker = crate::core::session::initialise_reconnect_tracker(
+        &session_config,
+        Some(slots.as_ref()),
+        active_sessions.as_deref(),
+    );
     commands.insert_resource(session_config);
+    commands.insert_resource(reconnect_tracker);
     commands.insert_resource(server_rng);
     commands.trigger(SessionReady);
     commands.remove_resource::<LobbyHeartbeats>();
@@ -1009,6 +1018,7 @@ fn cleanup_reconnect_tracker(
         .retain(|player, _| !players.contains(player));
     for player in players {
         tracker.snapshot_sent.remove(player);
+        tracker.sang_meprise_sent_to.remove(player);
     }
 }
 

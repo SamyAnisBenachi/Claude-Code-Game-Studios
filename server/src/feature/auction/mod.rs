@@ -11,6 +11,7 @@ pub use shared::protocol::AuctionSnapshot;
 pub use snapshot::auction_snapshot;
 pub use state::{AuctionPhase, AuctionState};
 pub use system::{
-    auction_tick_system, process_bid_batch, AuctionBid, AuctionCardDrawFixture,
-    AuctionNetworkOutbox, S2CAuctionCard,
+    auction_tick_system, defer_auction_outbox_for_reconnect, process_bid_batch,
+    AuctionAcceptedDispatch, AuctionBid, AuctionCardDrawFixture, AuctionNetworkOutbox,
+    AuctionRejectionDispatch, S2CAuctionCard,
 };

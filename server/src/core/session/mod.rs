@@ -6,6 +6,7 @@
 pub mod config;
 pub mod events;
 pub mod plugin;
+pub mod reconnect;
 pub mod snapshot;
 pub mod state;
 pub mod system;
@@ -13,12 +14,17 @@ pub mod system;
 pub use config::{build_session_config, SessionConfig};
 pub use events::{SessionCancelled, SessionCancelledReason, SessionReady};
 pub use plugin::GameSessionPlugin;
+pub use reconnect::{
+    defer_unicast_for_reconnect, flush_deferred_queue, handle_reconnect, hello_timeout_watchdog,
+    initialise_reconnect_tracker, on_reconnect_connected, process_reconnect_hello, ReconnectClose,
+    ReconnectDispatch, ReconnectProcessResult,
+};
 pub use snapshot::{build_game_snapshot, build_snapshot};
 pub use state::{
     ActiveSessions, ClassPreviews, ClassSelections, DeferredMessage, LobbyDeadline,
-    LobbyHeartbeats, LobbyState, PlayerConnectionMap, PlayerSessionData, PlayerSessions,
-    ReconnectTracker, RoomCode, RoomSession, RoomSessions, SessionId, SessionNetworkOutbox,
-    SessionSlot, SessionSlots, SessionToken, TeamId,
+    LobbyHeartbeats, LobbyState, PendingHello, PlayerConnectionMap, PlayerSessionData,
+    PlayerSessions, ReconnectNetworkOutbox, ReconnectTracker, RoomCode, RoomSession, RoomSessions,
+    SessionId, SessionNetworkOutbox, SessionSlot, SessionSlots, SessionToken, TeamId,
 };
 pub use system::{
     all_classes_confirmed, all_slots_filled, cancel_lobby_by_session, cancel_lobby_for_player,

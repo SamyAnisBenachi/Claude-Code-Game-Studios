@@ -5,11 +5,13 @@ use shared::card::ClassId;
 
 use crate::core::rsm::{advance_phase, on_session_ready, PlayerHeartbeat};
 use crate::core::session::{
-    evaluate_session_ready, handle_confirm_class, handle_create_room, handle_game_over_teardown,
-    handle_join_room, handle_lobby_disconnect, handle_lobby_heartbeat, handle_select_class,
-    lobby_timeout_check, tick_lobby_heartbeats, ActiveSessions, ClassPreviews, ClassSelections,
-    PlayerConnectionMap, PlayerSessionData, PlayerSessions, RoomSessions, ServerRngFactory,
-    SessionConfig, SessionNetworkOutbox, SessionSystemSet,
+    evaluate_session_ready, flush_deferred_queue, handle_confirm_class, handle_create_room,
+    handle_game_over_teardown, handle_join_room, handle_lobby_disconnect, handle_lobby_heartbeat,
+    handle_reconnect, handle_select_class, hello_timeout_watchdog, lobby_timeout_check,
+    on_reconnect_connected, tick_lobby_heartbeats, ActiveSessions, ClassPreviews, ClassSelections,
+    PlayerConnectionMap, PlayerSessionData, PlayerSessions, ReconnectNetworkOutbox,
+    ReconnectTracker, RoomSessions, ServerRngFactory, SessionConfig, SessionNetworkOutbox,
+    SessionSystemSet,
 };
 
 pub struct GameSessionPlugin;
@@ -21,10 +23,19 @@ impl Plugin for GameSessionPlugin {
             .init_resource::<ClassPreviews>()
             .init_resource::<ClassSelections>()
             .init_resource::<PlayerConnectionMap>()
+            .init_resource::<ReconnectTracker>()
+            .init_resource::<ReconnectNetworkOutbox>()
             .init_resource::<RoomSessions>()
             .init_resource::<ServerRngFactory>()
             .init_resource::<SessionNetworkOutbox>()
             .add_message::<PlayerHeartbeat>()
+            .configure_sets(
+                Update,
+                (
+                    SessionSystemSet::ReconnectHandshake,
+                    SessionSystemSet::LiveMessages.after(SessionSystemSet::ReconnectHandshake),
+                ),
+            )
             .add_systems(
                 Update,
                 (
@@ -50,8 +61,19 @@ impl Plugin for GameSessionPlugin {
                     .after(lobby_timeout_check)
                     .before(advance_phase),
             )
+            .add_systems(
+                Update,
+                (handle_reconnect, hello_timeout_watchdog)
+                    .chain()
+                    .in_set(SessionSystemSet::ReconnectHandshake),
+            )
+            .add_systems(
+                Update,
+                flush_deferred_queue.in_set(SessionSystemSet::LiveMessages),
+            )
             .add_systems(Update, handle_game_over_teardown.after(advance_phase))
             .add_observer(on_session_ready)
+            .add_observer(on_reconnect_connected)
             .add_observer(handle_lobby_disconnect);
     }
 }

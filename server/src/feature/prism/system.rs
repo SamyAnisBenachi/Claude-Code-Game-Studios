@@ -8,7 +8,10 @@ use shared::session::PlayerId;
 use crate::core::pool::{PlayerPools, PoolFilter};
 use crate::core::rsm::{DraftStarted, GameOverEmitted};
 use crate::core::rsm::{RoundPhase, RoundState};
-use crate::core::session::{DeferredMessage, PlayerConnectionMap, ReconnectTracker, SessionConfig};
+use crate::core::session::{
+    defer_unicast_for_reconnect, DeferredMessage, PlayerConnectionMap, ReconnectTracker,
+    SessionConfig,
+};
 use crate::feature::acquisition::{hand_push, PlayerHands, MAX_HAND_SIZE};
 use crate::feature::prism::{
     AuditLog, DiscardLog, PrismAuditEntry, PrismCollected, PrismLaneKey, PrismPresence, PrismState,
@@ -425,25 +428,7 @@ impl PrismNetworkContext<'_, '_, '_> {
     }
 
     fn defer_if_snapshot_pending(&mut self, player_id: PlayerId, message: DeferredMessage) -> bool {
-        let Some(tracker) = self.reconnect_tracker.as_deref_mut() else {
-            return false;
-        };
-
-        if tracker
-            .snapshot_sent
-            .get(&player_id)
-            .copied()
-            .unwrap_or(false)
-        {
-            return false;
-        }
-
-        tracker
-            .deferred_queue
-            .entry(player_id)
-            .or_default()
-            .push(message);
-        true
+        defer_unicast_for_reconnect(self.reconnect_tracker.as_deref_mut(), player_id, message)
     }
 
     fn peer_for_player(&self, player_id: PlayerId) -> Option<PeerId> {

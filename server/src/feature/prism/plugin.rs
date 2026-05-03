@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use lightyear::prelude::*;
 
 use crate::core::rsm::advance_phase;
+use crate::core::session::SessionSystemSet;
 use crate::feature::prism::{
     cleanup_prism_session, initialize_prism_session, resolve_prism_draws, PrismCollected,
     PrismNetworkOutbox, PrismPresence,
@@ -38,6 +39,11 @@ impl Plugin for PrismPlugin {
                     .chain()
                     .in_set(PrismSystemSet::Lifecycle),
             )
-            .add_systems(Update, resolve_prism_draws.in_set(PrismSystemSet::Resolve));
+            .add_systems(
+                Update,
+                resolve_prism_draws
+                    .in_set(PrismSystemSet::Resolve)
+                    .in_set(SessionSystemSet::LiveMessages),
+            );
     }
 }

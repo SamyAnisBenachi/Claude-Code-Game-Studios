@@ -50,6 +50,7 @@ fn app_with_prism(snapshot_sent: bool) -> App {
         snapshot_sent: HashMap::from([(player_a, snapshot_sent), (player_b, snapshot_sent)]),
         deferred_queue: HashMap::new(),
         token_map: HashMap::new(),
+        ..Default::default()
     });
     app
 }

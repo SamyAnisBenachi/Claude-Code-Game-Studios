@@ -71,7 +71,10 @@ pub fn build_game_snapshot(
         players: player_snapshots,
         board,
         auction_state,
-        active_sang_meprise_reveals: None,
+        active_sang_meprise_reveals: crate::core::session::reconnect::active_sang_meprise_reveals(
+            world,
+            recipient_player_id,
+        ),
     })
 }
 

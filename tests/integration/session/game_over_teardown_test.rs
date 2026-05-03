@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
 use server::core::rsm::{GameOverEmitted, RsmPlugin};
@@ -187,6 +187,8 @@ fn game_over_teardown_cleans_reconnect_tracker_if_present() {
             ([2; 16], (session_id(1), player(2))),
             ([9; 16], (session_id(9), player(9))),
         ]),
+        sang_meprise_sent_to: HashSet::from([player(1), player(2), player(9)]),
+        ..Default::default()
     });
 
     emit_game_over(&mut app);
@@ -200,6 +202,9 @@ fn game_over_teardown_cleans_reconnect_tracker_if_present() {
     assert!(!tracker.snapshot_sent.contains_key(&player(1)));
     assert!(!tracker.snapshot_sent.contains_key(&player(2)));
     assert_eq!(tracker.snapshot_sent.get(&player(9)), Some(&true));
+    assert!(!tracker.sang_meprise_sent_to.contains(&player(1)));
+    assert!(!tracker.sang_meprise_sent_to.contains(&player(2)));
+    assert!(tracker.sang_meprise_sent_to.contains(&player(9)));
 }
 
 #[test]

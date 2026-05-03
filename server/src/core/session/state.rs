@@ -1,11 +1,14 @@
 // server/src/core/session/state.rs -- Lobby and session scaffold state.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use bevy::prelude::Resource;
+use bevy::prelude::{Entity, Resource};
 use lightyear::prelude::PeerId;
 use shared::card::ClassId;
-use shared::protocol::{CardSource, S2CGameOver, S2CSessionCancelled};
+use shared::protocol::{
+    CardSource, S2CAuctionBidAccepted, S2CAuctionBidRejected, S2CCardAcquired, S2CDraftOffering,
+    S2CGameOver, S2CGoldUpdate, S2CPrismRewardDropped, S2CSessionCancelled, S2CShopSlots,
+};
 use shared::session::PlayerId;
 use uuid::Uuid;
 
@@ -115,6 +118,13 @@ pub struct LobbyHeartbeats(pub HashMap<PlayerId, f64>);
 pub enum DeferredMessage {
     GameOver(S2CGameOver),
     SessionCancelled(S2CSessionCancelled),
+    GoldUpdate(S2CGoldUpdate),
+    DraftOffering(S2CDraftOffering),
+    ShopSlots(S2CShopSlots),
+    AuctionBidRejected(S2CAuctionBidRejected),
+    AuctionBidAccepted(S2CAuctionBidAccepted),
+    CardAcquiredMessage(S2CCardAcquired),
+    PrismRewardDroppedMessage(S2CPrismRewardDropped),
     CardAcquired {
         card_id: shared::card::CardId,
         source: CardSource,
@@ -132,6 +142,54 @@ pub struct ReconnectTracker {
     pub snapshot_sent: HashMap<PlayerId, bool>,
     pub deferred_queue: HashMap<PlayerId, Vec<DeferredMessage>>,
     pub token_map: HashMap<SessionToken, (SessionId, PlayerId)>,
+    pub pending_hellos: HashMap<PeerId, PendingHello>,
+    pub sang_meprise_sent_to: HashSet<PlayerId>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PendingHello {
+    pub entity: Entity,
+    pub remaining_ms: u32,
+}
+
+/// Testable reconnect dispatch log. The reconnect systems append every ordered
+/// send and close request here before attempting the live Lightyear send.
+#[derive(Debug, Default, Resource)]
+pub struct ReconnectNetworkOutbox {
+    dispatches: Vec<crate::core::session::reconnect::ReconnectDispatch>,
+    closes: Vec<crate::core::session::reconnect::ReconnectClose>,
+}
+
+impl ReconnectNetworkOutbox {
+    pub fn push_dispatch(&mut self, dispatch: crate::core::session::reconnect::ReconnectDispatch) {
+        self.dispatches.push(dispatch);
+    }
+
+    pub fn extend_dispatches(
+        &mut self,
+        dispatches: impl IntoIterator<Item = crate::core::session::reconnect::ReconnectDispatch>,
+    ) {
+        self.dispatches.extend(dispatches);
+    }
+
+    pub fn push_close(&mut self, close: crate::core::session::reconnect::ReconnectClose) {
+        self.closes.push(close);
+    }
+
+    pub fn extend_closes(
+        &mut self,
+        closes: impl IntoIterator<Item = crate::core::session::reconnect::ReconnectClose>,
+    ) {
+        self.closes.extend(closes);
+    }
+
+    pub fn dispatches(&self) -> &[crate::core::session::reconnect::ReconnectDispatch] {
+        &self.dispatches
+    }
+
+    pub fn closes(&self) -> &[crate::core::session::reconnect::ReconnectClose] {
+        &self.closes
+    }
 }
 
 /// Testable network dispatch log for Game Session System S2C messages.
