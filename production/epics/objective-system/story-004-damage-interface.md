@@ -1,7 +1,7 @@
 # Story 004: Damage Interface
 
 > **Epic**: Objective System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
@@ -145,7 +145,7 @@ Garde-Temps routing (OS-25): the caller passes `config.objective_hp` as `amount`
 **Story Type**: Logic
 **Required evidence**: `tests/unit/objective/damage_interface_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -153,3 +153,15 @@ Garde-Temps routing (OS-25): the caller passes `config.objective_hp` as `amount`
 
 - Depends on: Story 001 must be DONE (`ObjectiveHp`, `HiddenObjectives`, `ObjectiveCounters` types must exist)
 - Unlocks: Story 005 (consequence path is triggered by this story's destruction detection)
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Verdict**: COMPLETE
+**Criteria**: 7/7 passing (OS-3, OS-4, OS-5, OS-6, OS-16, OS-20, OS-25)
+**Deviations**: None
+**Advisories**: Story manifest `2026-04-29` is older than current control manifest `2026-05-01`; lean review found no applicable rule conflict.
+**Test Evidence**: Logic unit test `tests/unit/objective/damage_interface_test.rs` exists and `cargo test -p server --test damage_interface_test` passed 7/7.
+**Code Review**: Skipped - lean mode.
+**QA Coverage Gate**: Skipped - lean mode.
+**Verification**: `cargo fmt -p server -- --check`; `cargo test -p server --test damage_interface_test`; `cargo check -p server`; `git diff --check 033c212^..033c212`.

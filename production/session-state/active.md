@@ -1499,3 +1499,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per user instruction; no matching `HAND-UI-007` row exists in `production/sprint-status.yaml`.
 - Next recommended: Hand UI Story 008 PLACEMENT Un-staging (`production/epics/hand-ui/story-008-placement-unstaging.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE
+- Story: `production/epics/objective-system/story-004-damage-interface.md` - Story 004: Damage Interface
+- Criteria: 7/7 passing; OS-3, OS-4, OS-5, OS-6, OS-16, OS-20, and OS-25 covered by `tests/unit/objective/damage_interface_test.rs`.
+- Test Evidence: `cargo test -p server --test damage_interface_test` passed 7/7. `cargo fmt -p server -- --check`, `cargo check -p server`, and `git diff --check 033c212^..033c212` also passed.
+- Verification: `take_damage(world, lane, attacker_player, amount)` is exported as the Objective System damage interface, uses unsigned `u32` damage, short-circuits `amount == 0`, resolves the opposing objective by lane, applies `saturating_sub`, marks the objective destroyed before queuing `ObjectiveDestroyed`, and repeated lethal calls no-op after the first destruction.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviation found. Advisory only - story manifest `2026-04-29` is older than current control manifest `2026-05-01`; no applicable rule conflict found in lean review. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per user instruction; no matching `OBJECTIVE-004` row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the serialized closure queue after a fresh sprint/status scan.
