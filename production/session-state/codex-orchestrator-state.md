@@ -116,22 +116,37 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- COMBAT-002: Combat Modifier Stack implemented on branch
-  `work/combat-002-combat-modifier-stack` at worker commit `76ed813`; root
-  integration landed on main at `0e5ac46` and was pushed to origin.
-  Verification passed `cargo fmt --all -- --check`, `cargo test -p server
-  --test modifier_stack_test` 7/7, `cargo test -p server --test
-  game_config_defaults_test` 8/8, `cargo test -p server --test
-  resolve_combat_scaffold_test` 3/3, `cargo check -p server`, and diff checks.
+- AUC-006: Resolution & Settlement readiness repair landed on main at
+  `6f9b54a`; implementation landed on main at `5461de6`. Verification passed
+  `cargo fmt --all -- --check`, `cargo test -p server --test
+  auction_resolution_settlement_test` 3/3, `cargo test -p server --test
+  auction_resolution_settlement_integration_test` 1/1, affected
+  auction/economy regressions, `cargo test -p server --test
+  reconnect_snapshot_test` 6/6, `cargo check -p server`, and diff checks.
   No `/story-done` has run yet.
-- BOARD-009: Prism Collection readiness docs landed on main at `7dab817`;
-  implementation landed on main at `105e6b0`. Verification passed `cargo fmt
-  --all -- --check`, `cargo test -p server --test prism_collection_test` 6/6,
-  `cargo test -p server --test standard_movement_test --test
-  charge_movement_test --test trap_trigger_test` 14/14, `cargo check -p
-  server`, and diff checks. No `/story-done` has run yet.
+- HAND-UI-008: Placement Unstaging implemented on branch
+  `work/hand-ui-008-placement-unstaging` at worker commit `743d660`; root
+  integration landed on main at `552f80f`. Verification passed `cargo fmt -p
+  client -- --check`, `cargo test -p client --test
+  hand_ui_placement_unstaging_test` 4/4, placement submit/instant/drag
+  regressions 13/13, `cargo check -p client`, and diff checks. No
+  `/story-done` has run yet.
 ## Recently Closed
 
+- BOARD-009: Prism Collection readiness docs landed on main at `7dab817`;
+  implementation landed on main at `105e6b0`; story-done closure committed at
+  `394d6c3`. Verification passed `cargo test -p server --test
+  prism_collection_test` 6/6, related movement/trap regressions 14/14, and
+  `cargo check -p server`. `production/sprint-status.yaml` had no matching
+  BOARD-009 row.
+- COMBAT-002: Combat Modifier Stack implemented on branch
+  `work/combat-002-combat-modifier-stack` at worker commit `76ed813`; root
+  integration landed on main and story-done closure was finalized at
+  `fcf6615`. Verification passed `cargo test -p server --test
+  modifier_stack_test` 7/7, `cargo test -p server --test
+  game_config_defaults_test` 8/8, `cargo test -p server --test
+  resolve_combat_scaffold_test` 3/3, `cargo check -p server`, and formatting
+  checks. `production/sprint-status.yaml` had no matching COMBAT-002 row.
 - OBJECTIVE-004: Damage Interface implemented on branch
   `work/objective-004-damage-interface` at worker commit `33e0b9c`; root
   integration landed on main at `033c212`; story-done closure committed at
@@ -503,12 +518,12 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. COMBAT-002:
-   `production/epics/combat-resolution/story-002-combat-modifier-stack.md`
-   after integration commit `0e5ac46`.
-2. BOARD-009:
-   `production/epics/board-lane-system/story-009-prism-collection.md`
-   after integration commit `105e6b0`.
+1. AUC-006:
+   `production/epics/auction-system/story-006-resolution-settlement.md`
+   after integration commit `5461de6`.
+2. HAND-UI-008:
+   `production/epics/hand-ui/story-008-placement-unstaging.md`
+   after integration commit `552f80f`.
 
 Run only one story-done at a time.
 
@@ -541,39 +556,18 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- HAND-UI-008 Placement Unstaging prompt was provided for parallel launch. Per
-  default-launch rule, treat it as active unless the user explicitly says
-  otherwise.
-- AUC-006 returned NEEDS WORK on readiness and should be relaunched with a
-  readiness repair prompt before implementation.
-- HAND-UI-007, BOARD-008, OBJECTIVE-004, COMBAT-002, and BOARD-009 have
-  returned and are integrated or closed as noted; do not relaunch their
-  implementation workers.
+- None known at this checkpoint. HAND-UI-008, AUC-006, BOARD-009,
+  COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have returned and are
+  integrated or closed as noted; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
-- ECO-006 / S4-14 story-done returned and was committed at `c5739fa`; window
-  can be cleared.
-- BOARD-008 story-done returned and was committed at `57232e6`; window can be
+- HAND-UI-008 returned, integrated into main at `552f80f`, verified, and is on
+  origin/main. Window can be cleared. It now needs serialized `/story-done`
+  after AUC-006.
+- BOARD-009 story-done returned and was committed at `394d6c3`; window can be
   cleared.
-- HAND-UI-007 story-done returned and was committed at `6fe4313`; window can
-  be cleared.
-- OBJECTIVE-004 story-done returned and was committed at `b9c6114`; window can
-  be cleared.
-- COMBAT-002 returned, integrated into main at `0e5ac46`, pushed to
+- AUC-006 returned, integrated into main at `6f9b54a` and `5461de6`, pushed to
   origin/main, and can be cleared. It now needs serialized `/story-done`.
-- BOARD-009 returned, integrated into main at `7dab817` and `105e6b0`, pushed
-  to origin/main, and can be cleared. It now needs serialized `/story-done`
-  after COMBAT-002.
-- AUC-006 readiness returned NEEDS WORK because of stale manifest,
-  implementation gate naming drift, and missing performance note. Window can be
-  cleared and relaunched with a readiness repair + implement prompt.
-- Sprint 4 QA plan returned and was committed at `8578890`; window can be
-  cleared. Next Sprint 4 critical item is S4-14 Economy Network Dispatch
-  readiness/implementation.
-- CDP-005 / S3-10 story-done returned and was committed at `28c9f79`; window
-  can be cleared. Sprint 3 tracker is now 19/19 complete.
-- AUC-005 story-done returned and was committed at `2b61243`; window can be
-  cleared.
 - PRISM-005 story-done returned and was committed at `ef6b4ad`; window can be
   cleared.
 - OBJECTIVE-003 story-done returned and was committed at `4327b7b`; window can
