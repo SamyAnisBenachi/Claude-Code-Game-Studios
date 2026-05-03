@@ -1,181 +1,204 @@
-# Story 004: ShopRefreshNeeded Subscriber + SessionReady Init
+# Story 004: PlayerPools Draft Entry Init + ShopRefreshTriggered Handoff
 
 > **Epic**: Card Data & Pool
 > **Status**: Ready
 > **Layer**: Core
 > **Type**: Integration
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
+
+## Readiness Refresh
+
+2026-05-03: Revalidated against control manifest version 2026-05-01.
+This sprint-status path is canonical for Card Data & Pool Story 004. The
+duplicate `story-004-session-ready-observer-shop-subscriber.md` file is stale
+and is not the implementation source for this story.
+
+Current architecture supersedes the original `ShopRefreshNeeded` wording:
+
+- `SessionReady` has exactly one observer, the RSM `on_session_ready` handler.
+  Card Pool must not register a second `SessionReady` observer.
+- RSM emits `DraftStarted` and per-player `ShopRefreshTriggered` messages on
+  draft entry.
+- Card Pool initializes `PlayerPools` from `DraftStarted { phase: Initial }`
+  after `advance_phase` and before Card Acquisition consumes
+  `ShopRefreshTriggered` in the same frame.
+- Card Acquisition owns draft offerings, shop slots, deduplication, network
+  dispatch, and manual refresh cost escalation. Card Pool owns only the
+  per-player pool resource lifecycle and pool API.
+
+QL-STORY-READY skipped - Lean mode.
+
+---
 
 ## Context
 
 **GDD**: `design/gdd/card-data-pool.md`
-**Requirements**: `TR-CDP-04` (PlayerPool per-player init), `TR-CDP-09` (ShopRefreshNeeded subscriber)
-*(TR-IDs are informal — `docs/architecture/tr-registry.yaml` is unpopulated.)*
+
+**Requirements**:
+- `TR-CDP-007`: `CardCatalog` is immutable for server lifetime; `PlayerPool`
+  is session-scoped per player in `PlayerPools`.
+- `TR-CDP-004`: Pool API supplies `draw_initial_draft`, shop draw helpers,
+  `is_available`, and `distribute` for downstream systems.
+- `TR-CA-002` and `TR-CA-003`: Card Acquisition consumes
+  `ShopRefreshTriggered` to build draft offerings and shop slots from the pool.
 
 **ADRs Governing Implementation**:
-- [ADR-006: Card Data Schema and Pool State Architecture](../../../docs/architecture/adr-006-card-data-schema.md) — pool initialization from `SessionReady`; per-player isolation
-- [ADR-010: RSM Phase Event Bus](../../../docs/architecture/adr-010-rsm-event-bus.md) — `ShopRefreshNeeded { player }` is a `#[derive(Message)]` type; subscriber uses `MessageReader<ShopRefreshNeeded>`; must run `.after(advance_phase)`; `SessionReady` uses Observer pattern
+- [ADR-006: Card Data Schema and Pool State Architecture](../../../docs/architecture/adr-006-card-data-schema.md) -
+  `PlayerPools: HashMap<PlayerId, PlayerPool>` is per-session mutable state.
+- [ADR-010: RSM Phase Event Bus](../../../docs/architecture/adr-010-rsm-event-bus.md) -
+  `DraftStarted` and `ShopRefreshTriggered` are Bevy buffered Messages.
+- [ADR-012: SessionReady Delivery](../../../docs/architecture/adr-012-session-ready-delivery.md) -
+  only the RSM observes `SessionReady`; downstream systems react to
+  `DraftStarted`.
+- [ADR-015: Card Acquisition Shop State Machine Architecture](../../../docs/architecture/adr-015-card-acquisition-shop-state.md) -
+  Card Acquisition is the `ShopRefreshTriggered` consumer and owns shop state.
 
-**ADR Decision Summary**: `SessionReady` fires as a Bevy Observer (same-frame trigger); Card Pool observes it to initialize `PlayerPools`. `ShopRefreshNeeded { player }` is a buffered Bevy Message read via `MessageReader` — NOT `EventReader`. System must be scheduled `.after(advance_phase)`. Per-player fan-out: RSM writes one `ShopRefreshNeeded` per player; Card Pool processes N messages per frame.
+**ADR Decision Summary**: `CardPoolPlugin` registers default-empty pool
+resources plus a `DraftStarted` subscriber. On `DraftPhase::Initial`, the
+subscriber rebuilds `PlayerPools` from `Res<SessionConfig>`,
+`Res<CardCatalog>`, and `Res<GameConfig>`. The subscriber runs every frame in
+`Update`, scheduled after `advance_phase`. Card Acquisition's tick set is
+scheduled after the Card Pool lifecycle set so the same-frame
+`ShopRefreshTriggered` branch sees initialized pools.
 
-**Engine**: Bevy 0.18 | **Risk**: MEDIUM (post-cutoff Bevy 0.17+ Message API; Observer pattern)
+**Engine**: Bevy 0.18 | **Risk**: MEDIUM
+
 **Engine Notes**:
-- `EventWriter`/`EventReader` no longer exist in Bevy 0.17+. Use `MessageWriter<T>`/`MessageReader<T>` + `app.add_message::<T>()`.
-- `SessionReady` uses `#[derive(Event)]` + `app.observe(on_session_ready_init)` — NOT `add_message`.
-- `query.single()` returns `Result` in Bevy 0.16+ — use `let Ok(x) = query.single() else { return; }`.
-- Verify exact `MessageReader::read()` iterator API against Bevy 0.18 docs before implementing. `liv-bevy-018` skill is mandatory.
+- Use `#[derive(Message)]` messages with `MessageReader<T>` and
+  `MessageReader::read()`. Do not use `EventReader`.
+- Use `DraftPhase::Initial` from `shared::protocol` to select the one-time
+  pool initialization path.
+- No `SessionReady` observer is added in this story. The only valid observer
+  remains RSM `on_session_ready`.
+- `liv-bevy-018` is mandatory for all Bevy `.rs` changes.
 
 **Control Manifest Rules (Core layer)**:
-- Required: `SessionReady` must be observed via `app.observe()`. Never use `MessageReader<SessionReady>` — it will never fire.
-- Required: `ShopRefreshNeeded` subscriber must run `.after(advance_phase)` in the scheduling chain.
-- Required: `SessionConfig` must be present in `World` before `SessionReady` fires (ADR-012 contract).
-- Forbidden: `EventReader<ShopRefreshNeeded>` — compile error on Bevy 0.18.
-- Forbidden: Spawning `SessionReady` as a buffered Message — it is an Observer Event.
-- Guardrail: Per-player fan-out must complete within single frame (Bevy 2-frame message lifetime).
+- Required: `SessionReady` is observed exactly once by RSM; other systems react
+  to `DraftStarted`.
+- Required: all RSM subscribers are scheduled after `advance_phase`.
+- Required: Core modules do not import Feature modules. If Card Acquisition
+  needs to run after Card Pool lifecycle, the Feature plugin depends on an
+  exported Core pool system set.
+- Forbidden: `EventReader<SessionReady>`, `MessageReader<SessionReady>`, and
+  `app.add_message::<SessionReady>()`.
+- Forbidden: old `ShopRefreshNeeded` type usage in new code.
 
 ---
 
 ## Acceptance Criteria
 
-*From ADR-006 and ADR-010 subscriber contracts, scoped to this story:*
-
-- [ ] **AC-1**: GIVEN `SessionReady` Observer fires in a Bevy `World` with `Res<SessionConfig>` containing 2 player IDs, `Res<CardCatalog>` (fixture), and `Res<GameConfig>`, WHEN `on_session_ready_init` runs, THEN `Res<PlayerPools>` is inserted containing entries for both player IDs, each with `copies_remaining.len() == catalog.len()` and all values `>= 1`.
-- [ ] **AC-2**: GIVEN `ShopRefreshNeeded { player: A }` and `ShopRefreshNeeded { player: B }` written to the Bevy `World` in the same frame, WHEN `on_shop_refresh_needed` processes both, THEN `ShopSlots[A]` and `ShopSlots[B]` are independently populated — Player A's draw does NOT change `PlayerPool[B].copies_remaining`.
-- [ ] **AC-3**: GIVEN `ShopRefreshNeeded { player: P }` with `Res<RoundState>.phase == DraftInitial`, WHEN `on_shop_refresh_needed` runs, THEN `InitialDraftOffering[P]` is populated with up to 9 entries AND `ShopSlots[P]` is NOT written for this player.
-- [ ] **AC-4**: GIVEN `ShopRefreshNeeded { player: P }` with `Res<RoundState>.phase == DraftShop`, WHEN `on_shop_refresh_needed` runs, THEN `ShopSlots[P]` is populated with up to 3 entries AND `InitialDraftOffering[P]` is NOT written for this player.
-- [ ] **AC-5**: GIVEN `CardPoolPlugin` registered in a minimal `App::new()` with mock `Res<CardCatalog>` and `Res<GameConfig>` inserted before startup, WHEN `app.update()` runs, THEN no panic occurs (plugin registration is valid).
+- [ ] **AC-1**: GIVEN `DraftStarted { phase: DraftPhase::Initial }`,
+  `Res<SessionConfig>` with 2 player IDs, `Res<CardCatalog>` fixture, and
+  `Res<GameConfig>`, WHEN the Card Pool draft-entry subscriber runs, THEN
+  `Res<PlayerPools>` contains entries for both players, each
+  `copies_remaining.len() == catalog.cards.len()`, and every copy count is
+  `>= 1`.
+- [ ] **AC-2**: GIVEN an existing non-empty `PlayerPools` resource from a prior
+  session, WHEN the next `DraftStarted { phase: DraftPhase::Initial }` is
+  processed, THEN the old pool map is cleared before inserting the new
+  session's players.
+- [ ] **AC-3**: GIVEN `DraftStarted { phase: DraftPhase::Auction }` or
+  `DraftStarted { phase: DraftPhase::Shop }`, WHEN the Card Pool subscriber
+  runs, THEN `PlayerPools` is unchanged. Later draft entries do not rebuild
+  per-player pools.
+- [ ] **AC-4**: GIVEN a minimal app with RSM, Card Pool, and Card Acquisition
+  plugins, WHEN `DraftStarted { phase: Initial }` and
+  `ShopRefreshTriggered { trigger: DraftInitial }` are written in the same
+  frame, THEN Card Pool initialization runs before Card Acquisition tick
+  consumes the refresh trigger.
+- [ ] **AC-5**: GIVEN `GameOverEmitted` is written after a session, WHEN the
+  Card Pool teardown subscriber runs, THEN `PlayerPools`, `ShopSlots`,
+  `InitialDraftOffering`, and `ManualRefreshCount` are empty.
+- [ ] **AC-6**: GIVEN `CardPoolPlugin` is added to `App::new()` with minimal
+  Bevy plugins, WHEN the app updates once, THEN registration is valid and no
+  second `SessionReady` observer or `ShopRefreshNeeded` message is registered.
 
 ---
 
 ## Implementation Notes
 
-*From ADR-006 and ADR-010 Implementation Guidelines:*
+**New system module**: `server/src/core/pool/system.rs`
 
-**`on_session_ready_init`** — Observer handler:
 ```rust
-fn on_session_ready_init(
-    _trigger: Trigger<SessionReady>,
-    catalog:  Res<CardCatalog>,
-    config:   Res<GameConfig>,
-    session:  Res<SessionConfig>,
+pub fn initialize_player_pools_on_draft_started(
+    mut draft_started: MessageReader<DraftStarted>,
+    session: Option<Res<SessionConfig>>,
+    catalog: Option<Res<CardCatalog>>,
+    config: Option<Res<GameConfig>>,
     mut pools: ResMut<PlayerPools>,
-) {
-    for player_id in session.team_map.keys() {
-        let pool = PlayerPool::initialize(&catalog, &config);
-        pools.pools.insert(*player_id, pool);
-    }
-}
-```
-Registration: `app.observe(on_session_ready_init)` in `CardPoolPlugin::build()`.
-
-**`on_shop_refresh_needed`** — `MessageReader` subscriber:
-```rust
-fn on_shop_refresh_needed(
-    mut reader:   MessageReader<ShopRefreshNeeded>,
-    round_state:  Res<RoundState>,
-    mut pools:    ResMut<PlayerPools>,
-    catalog:      Res<CardCatalog>,
-    family_index: Res<FamilyIndex>,
-    mut rng:      ResMut<ServerRng>,
-    config:       Res<GameConfig>,
-    mut shop_slots:     ResMut<ShopSlots>,
-    mut draft_offering: ResMut<InitialDraftOffering>,
-    mut refresh_count:  ResMut<ManualRefreshCount>,
-) {
-    for msg in reader.read() {
-        let slot_count = if round_state.phase == RoundPhase::DraftInitial { 9 } else { 3 };
-        let player_id = msg.player;
-
-        let Some(pool) = pools.pools.get_mut(&player_id) else {
-            tracing::warn!(?player_id, "ShopRefreshNeeded for unknown player — skipping");
-            continue;
-        };
-
-        let cards = refresh_shop(pool, &catalog, &family_index, &mut rng, &config, slot_count);
-
-        if round_state.phase == RoundPhase::DraftInitial {
-            draft_offering.0.insert(player_id, cards);
-        } else {
-            shop_slots.0.insert(player_id, cards);
-        }
-
-        // Reset manual refresh counter on automatic DRAFT refresh
-        refresh_count.0.insert(player_id, 0);
-    }
-}
+)
 ```
 
-**Scheduling** in `CardPoolPlugin::build()`:
-```rust
-app.add_systems(Update, on_shop_refresh_needed.after(advance_phase));
-```
+The system should ignore non-initial draft phases and missing resources without
+panicking. On the first `DraftPhase::Initial` message, clear `pools.pools`, sort
+`session.players()` by `PlayerId`, and insert a freshly initialized
+`PlayerPool` for each player.
 
-**`CardPoolPlugin`** must register:
-- `app.init_resource::<PlayerPools>()`
-- `app.init_resource::<ShopSlots>()`
-- `app.init_resource::<InitialDraftOffering>()`
-- `app.init_resource::<ManualRefreshCount>()`
-- `app.add_message::<ShopRefreshNeeded>()` — only if RSM plugin hasn't registered it already (coordinate with RSM epic)
-- `app.observe(on_session_ready_init)`
+**Scheduling**:
 
-**Message lifetime**: Bevy buffered messages exist for 2 frames. The `on_shop_refresh_needed` system must run every frame in `Update`. Missing a `ShopRefreshNeeded` message is a silent shop-fail bug — do NOT gate this system on a condition that might skip frames.
+- Export a core-owned `CardPoolSet::Lifecycle`.
+- In `CardPoolPlugin`, configure `CardPoolSet::Lifecycle.after(advance_phase)`.
+- Put `initialize_player_pools_on_draft_started` and the teardown subscriber in
+  `CardPoolSet::Lifecycle`.
+- In `CardAcquisitionPlugin`, schedule `CardAcquisitionSet::Tick` after
+  `CardPoolSet::Lifecycle`. This keeps the dependency direction legal because
+  Feature may import Core, but Core must not import Feature.
 
-**Soft-error on missing player**: If `ShopRefreshNeeded.player` has no `PlayerPool` entry (pool not yet initialized), log a warning and continue — do NOT panic. This handles the edge case where a message arrives before `SessionReady` fires.
+**Teardown**:
+
+Use a `MessageReader<GameOverEmitted>` subscriber that calls `.clear()` on the
+four Card Pool resources. Do not remove and reinsert resources.
 
 ---
 
 ## Out of Scope
 
-*Handled by neighbouring stories — do not implement here:*
-
-- [Story 003]: `refresh_shop()` function — must be DONE first
-- [Story 005]: `on_manual_refresh` system and `ManualRefreshCount` escalation logic
-- [Story 006]: Network dispatch — sending `S2CShopSlots` / `S2CDraftOffering` after population
-- Epic 1 (RSM): `ShopRefreshNeeded` message type definition and emission from `advance_phase` — coordinate: this story registers the subscriber only; if the type isn't defined yet, stub it locally and coordinate with RSM story
+- Manual refresh cost escalation and rejected refresh handling. That is Card
+  Acquisition Story 004 and sprint Card Pool Story 005.
+- Drawing draft offerings or shop slots from `ShopRefreshTriggered`. Current
+  architecture assigns that to Card Acquisition.
+- Network dispatch for `S2CDraftOffering` or `S2CShopSlots`.
+- Adding a `SessionReady` observer in Card Pool.
+- Editing duplicate stale Card Data & Pool Story 004 files.
 
 ---
 
 ## QA Test Cases
 
-*Written by QA Lead at story creation. Implement against these — do not invent new test cases.*
-
-- **AC-1** — `test_session_ready_initializes_player_pools`
-  - Given: Bevy `World` with `Res<SessionConfig>` (2 players: A, B), `Res<CardCatalog>` (fixture with 5 cards), `Res<GameConfig>` (defaults)
-  - When: `commands.trigger(SessionReady)` called; `app.update()` runs; `on_session_ready_init` fires
-  - Then: `Res<PlayerPools>` inserted; `pools[A].copies_remaining.len() == 5`; `pools[B].copies_remaining.len() == 5`; all copies >= 1
-  - Edge cases: Session with 1 player → pool for 1 player created; trigger fired twice → second trigger is a no-op (guard in plugin or idempotent init)
-
-- **AC-2** — `test_per_player_pool_isolation`
-  - Given: `PlayerPools` with Player A (5 eligible cards, `copies_remaining=4`) and Player B (same cards); `ShopRefreshNeeded` written for both A and B in same frame
-  - When: `on_shop_refresh_needed` processes both messages
-  - Then: `ShopSlots[A]` and `ShopSlots[B]` both populated; `PlayerPool[A].copies_remaining` decreased by A's draw count; `PlayerPool[B].copies_remaining` decreased by B's draw count independently — no cross-contamination
-  - Edge cases: Same seed for A and B → they may draw the same card type but from their own independent pools
-
-- **AC-3** — `test_draft_initial_writes_to_offering_not_shop`
-  - Given: `Res<RoundState>.phase == RoundPhase::DraftInitial`; `ShopRefreshNeeded { player: P }` written; `PlayerPool[P]` has >= 9 eligible cards
-  - When: `on_shop_refresh_needed` processes message
-  - Then: `InitialDraftOffering[P]` populated with up to 9 entries; `ShopSlots[P]` is either not present or unchanged from prior state
-  - Edge cases: Partial initial offering (< 9 eligible) → `InitialDraftOffering[P].len() < 9`; no panic
-
-- **AC-4** — `test_draft_shop_writes_to_shop_slots_not_offering`
-  - Given: `Res<RoundState>.phase == RoundPhase::DraftShop`; `ShopRefreshNeeded { player: P }` written; `PlayerPool[P]` has >= 3 eligible cards
-  - When: `on_shop_refresh_needed` processes message
-  - Then: `ShopSlots[P]` populated with up to 3 entries; `InitialDraftOffering[P]` is not modified
-  - Edge cases: Pool has 1 eligible card → `ShopSlots[P].len() == 1`; no panic
-
-- **AC-5** — `test_plugin_registers_cleanly`
-  - Given: `App::new()` with `CardPoolPlugin` added; `Res<CardCatalog>` (empty fixture) and `Res<GameConfig>` inserted before build
-  - When: `app.update()` called once
-  - Then: No panic; `Res<PlayerPools>` exists in world (initialized to empty); `Res<ShopSlots>` exists; `Res<ManualRefreshCount>` exists
-  - Edge cases: Plugin added twice → should not double-register resources (use `init_resource` not `insert_resource`)
+- **AC-1 / AC-2** - `test_draft_initial_initializes_player_pools`
+  - Given: app with `CardPoolPlugin`, `SessionConfig` for players 1 and 2,
+    catalog fixture, config fixture, and stale pool data.
+  - When: write `DraftStarted { phase: DraftPhase::Initial }` and update.
+  - Then: only players 1 and 2 exist in `PlayerPools`; each pool mirrors the
+    catalog length with positive copy counts.
+- **AC-3** - `test_non_initial_draft_does_not_reinitialize_pools`
+  - Given: prefilled `PlayerPools`.
+  - When: write `DraftStarted { phase: DraftPhase::Shop }` and update.
+  - Then: the pool map is unchanged.
+- **AC-4** - `test_pool_init_precedes_card_acquisition_refresh`
+  - Given: app with `CardPoolPlugin` and `CardAcquisitionPlugin`.
+  - When: write initial `DraftStarted` and `ShopRefreshTriggered` in one frame.
+  - Then: the draft offering path can read initialized `PlayerPools`.
+- **AC-5** - `test_game_over_clears_pool_session_resources`
+  - Given: all four Card Pool resources contain data.
+  - When: write `GameOverEmitted`.
+  - Then: all four resources are empty.
+- **AC-6** - `test_card_pool_plugin_registers_cleanly`
+  - Given: `App::new()` with `MinimalPlugins` and `CardPoolPlugin`.
+  - When: update once.
+  - Then: plugin registration succeeds and `Messages<DraftStarted>` /
+    `Messages<GameOverEmitted>` are available through RSM registration in
+    integration tests.
 
 ---
 
 ## Test Evidence
 
 **Story Type**: Integration
+
 **Required evidence**:
-- `tests/integration/pool/session_ready_test.rs` — must exist and all tests must pass
+- `tests/integration/pool/session_ready_test.rs`
+- Cargo test target: `cargo test -p server --test pool_session_ready_test`
 
 **Status**: [ ] Not yet created
 
@@ -183,8 +206,22 @@ app.add_systems(Update, on_shop_refresh_needed.after(advance_phase));
 
 ## Dependencies
 
-- Depends on: Story 003 (refresh_shop) must be **DONE**
-- Depends on: Epic 1 (RSM) — `ShopRefreshNeeded` message type and `advance_phase` scheduling — must be **DONE** or stubbed locally for tests
-- Depends on: Epic 2 (Game Session System) — `SessionReady` Observer event and `SessionConfig` — must define `SessionReady` (coordinate: use the same type, don't define a local one)
-- Depends on: Foundation `server-rng` epic — `Res<ServerRng>` must be available
-- Unlocks: Story 005 (Manual Refresh — depends on `ShopSlots` and `ManualRefreshCount` being managed); Story 006 (Network Dispatch — reads `ShopSlots` / `InitialDraftOffering`)
+- Depends on: Card Data & Pool Story 003 is complete; pool API and
+  `refresh_shop` helpers exist.
+- Depends on: Game Session System Story 004 is complete; `SessionReady`,
+  `SessionConfig`, and RSM `on_session_ready` are implemented.
+- Depends on: Round State Machine Story 003 is complete; `DraftStarted`,
+  `ShopRefreshTriggered`, and `advance_phase` exist.
+- Depends on: Card Acquisition Stories 002 and 003 are complete; the consumer
+  of `ShopRefreshTriggered` exists and needs initialized `PlayerPools`.
+- Unlocks: Card Pool Story 005 and later network/reconnect polish that assumes
+  pool resources are session-scoped and cleared on game over.
+
+---
+
+## Performance Budget
+
+No steady-state gameplay cost is expected. Initialization runs once per session
+and is O(players * catalog size). The per-frame subscribers only drain small
+message buffers and return immediately when no relevant message exists, staying
+within the server steady-state budget of 5 ms.
