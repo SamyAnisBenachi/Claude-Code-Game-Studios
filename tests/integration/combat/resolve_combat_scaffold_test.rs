@@ -1,15 +1,36 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use bevy::prelude::*;
+use server::core::board::{BoardPosition, UnitOwner, UnitStats};
 use server::core::rsm::{
     BeginResolution, BroadcastPhaseChanged, GameOverEmitted, ResolutionComplete, RoundPhase,
     RoundState, RsmPlugin,
 };
+use server::core::session::SessionConfig;
+use server::feature::board::{BoardPlugin, UnitAtObjective};
 use server::feature::combat::{
     CombatIterationBudget, CombatNetworkMessageKind, CombatNetworkOutbox, CombatPlugin,
     CombatResolutionTrace, CombatTraceEntry, PendingResolutionComplete,
 };
-use shared::protocol::GameOverReason;
+use shared::card::ClassId;
+use shared::protocol::{GameMode, GameOverReason};
+use shared::session::PlayerId;
+
+fn player(id: u64) -> PlayerId {
+    PlayerId(id)
+}
+
+fn session_config() -> SessionConfig {
+    let player_a = player(1);
+    let player_b = player(2);
+
+    SessionConfig {
+        mode: GameMode::OneVOne,
+        player_count: 2,
+        team_map: HashMap::from([(player_a, 0), (player_b, 1)]),
+        class_map: HashMap::from([(player_a, ClassId::Iop), (player_b, ClassId::Cra)]),
+    }
+}
 
 fn app_with_combat() -> App {
     let mut app = App::new();
@@ -29,6 +50,13 @@ fn app_with_rsm_and_combat() -> App {
     app
 }
 
+fn app_with_board_and_combat() -> App {
+    let mut app = App::new();
+    app.add_plugins((BoardPlugin, CombatPlugin));
+    app.insert_resource(session_config());
+    app
+}
+
 fn read_messages<T: Message + Clone>(app: &App) -> Vec<T> {
     let messages = app.world().resource::<Messages<T>>();
     let mut cursor = messages.get_cursor();
@@ -37,6 +65,16 @@ fn read_messages<T: Message + Clone>(app: &App) -> Vec<T> {
 
 fn send_begin_resolution(app: &mut App, round: u32) {
     app.world_mut().write_message(BeginResolution { round });
+}
+
+fn spawn_unit(app: &mut App, owner: PlayerId, lane: u8, cell: u8) -> Entity {
+    app.world_mut()
+        .spawn((
+            BoardPosition { lane, cell },
+            UnitOwner(owner),
+            UnitStats::new(1, 1, 0, 0),
+        ))
+        .id()
 }
 
 #[test]
@@ -95,6 +133,42 @@ fn resolve_combat_runs_substeps_and_completion_after_resolution_event() {
     assert!(begin_index < sub_step_one_index);
     assert!(resolution_event_index < completion_index);
     assert_eq!(read_messages::<ResolutionComplete>(&app).len(), 1);
+}
+
+#[test]
+fn resolve_combat_ss6_emits_unit_at_objective_messages() {
+    let mut app = app_with_board_and_combat();
+    let player_a_unit = spawn_unit(&mut app, player(1), 1, 8);
+    let player_b_unit = spawn_unit(&mut app, player(2), 3, 1);
+    spawn_unit(&mut app, player(1), 2, 7);
+
+    app.update();
+    assert!(read_messages::<UnitAtObjective>(&app).is_empty());
+
+    send_begin_resolution(&mut app, 8);
+    app.update();
+
+    let hits = read_messages::<UnitAtObjective>(&app);
+    assert_eq!(hits.len(), 2);
+    assert!(hits.contains(&UnitAtObjective {
+        unit_id: player_a_unit,
+        lane: 1,
+    }));
+    assert!(hits.contains(&UnitAtObjective {
+        unit_id: player_b_unit,
+        lane: 3,
+    }));
+
+    let trace = app.world().resource::<CombatResolutionTrace>().entries();
+    let sub_step_six_index = trace
+        .iter()
+        .position(|entry| *entry == CombatTraceEntry::SubStepStarted(6))
+        .expect("sub-step 6 should be traced");
+    let completion_index = trace
+        .iter()
+        .position(|entry| *entry == CombatTraceEntry::ResolutionCompleteQueued)
+        .expect("completion should be traced");
+    assert!(sub_step_six_index < completion_index);
 }
 
 #[test]

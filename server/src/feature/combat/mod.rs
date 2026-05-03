@@ -3,6 +3,7 @@
 pub mod modifier_stack;
 
 use bevy::ecs::message::MessageCursor;
+use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 use shared::protocol::{GameOverReason, S2CPlacementReveal, S2CResolutionEvent, TaggedEvent};
 
@@ -10,7 +11,10 @@ use crate::core::rsm::{
     advance_phase, BeginResolution, PendingPhaseAdvance, PhaseAdvanceRequest, ResolutionComplete,
     RoundPhase,
 };
-use crate::feature::board::BoardSystemSet;
+use crate::core::session::SessionConfig;
+use crate::feature::board::{
+    detect_objective_presence, BoardConfig, BoardSystemSet, UnitAtObjective,
+};
 
 pub const DEFAULT_ITERATION_BUDGET: u32 = 10_000;
 
@@ -261,9 +265,26 @@ fn run_sub_step_scaffold(world: &mut World, iteration_limit: u32) -> Result<(), 
         world
             .resource_mut::<CombatResolutionTrace>()
             .push(CombatTraceEntry::SubStepStarted(sub_step));
+
+        if sub_step == 6 {
+            run_objective_detection_if_ready(world);
+        }
     }
 
     Ok(())
+}
+
+fn run_objective_detection_if_ready(world: &mut World) {
+    if !world.contains_resource::<BoardConfig>()
+        || !world.contains_resource::<SessionConfig>()
+        || !world.contains_resource::<Messages<UnitAtObjective>>()
+    {
+        return;
+    }
+
+    world
+        .run_system_once(detect_objective_presence)
+        .expect("objective detection should run during combat sub-step 6");
 }
 
 fn request_draw_game_over(world: &mut World) {
