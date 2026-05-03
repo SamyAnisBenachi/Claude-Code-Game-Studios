@@ -1422,3 +1422,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None
 - Sprint status: Unchanged per user instruction; no matching `PRISM-005` row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the serialized closure queue with Objective Story 003 Identity Unicast Delivery (`production/epics/objective-system/story-003-identity-unicast-delivery.md`).
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/objective-system/story-003-identity-unicast-delivery.md` - Story 003: Identity Unicast Delivery
+- Criteria: 5/5 passing; OS-17 advisory, OS-17a, OS-17b, OS-17c, and OS-17d covered by `tests/integration/objective/identity_unicast_test.rs` plus reconnect regression coverage.
+- Test Evidence: `cargo test -p server --test objective_identity_unicast_test --test reconnect_snapshot_test` passed 10/10. `cargo test -p server --test objective_state_test` passed 4/4. `cargo check -p server` passed.
+- Verification: Objective identity delivery sends owner-only reliable `S2CObjectiveIdentities` at DRAFT_INITIAL, builds payloads only from each owning player's `HiddenObjectives`, defers through `ReconnectTracker.snapshot_sent`, and keeps `ObjectiveIdentity` server-only with no replicated ECS component.
+- Notes: Advisory only - `design/gdd/objective-system.md` still has older prose saying `ObjectiveIdentity` is replicated to the owner. Current OS-17/OQ4 text, `TR-OBJ-007`, and ADR-001 require reliable unicast and never-replication, which the implementation follows. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None
+- Sprint status: Unchanged per user instruction; no matching `OBJECTIVE-003` row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the serialized closure queue with CDP Story 004 Shop Refresh Subscriber SessionReady (`production/epics/card-data-pool/story-004-shop-refresh-subscriber-session-ready.md`).

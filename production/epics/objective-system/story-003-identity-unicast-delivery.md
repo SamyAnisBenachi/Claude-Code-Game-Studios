@@ -1,7 +1,7 @@
 # Story 003: Identity Unicast Delivery
 
 > **Epic**: Objective System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -33,11 +33,11 @@
 
 *From GDD `design/gdd/objective-system.md`, scoped to this story:*
 
-- [ ] OS-17 (ADVISORY): GIVEN two connected clients (owner and attacker), WHEN the attacker's state for an opponent's intact objective is queried, THEN `ObjectiveHp` is present AND the attacker does NOT receive `S2CObjectiveIdentities` for the opponent's lanes. (ADVISORY — two-client live Lightyear evidence may supplement the focused dispatch tests below.)
-- [ ] OS-17a (BLOCKING): GIVEN fake assignment has populated `HiddenObjectives` for both players, WHEN identity delivery runs at DRAFT_INITIAL, THEN exactly one reliable `S2CObjectiveIdentities` unicast is enqueued per player to that player's own `PeerId`.
-- [ ] OS-17b (BLOCKING): GIVEN Player A and Player B have distinct fake lanes, WHEN Player A's `S2CObjectiveIdentities` payload is built, THEN it contains exactly Player A's five `(LaneId, is_fake)` entries and contains no Player B `is_fake` values.
-- [ ] OS-17c (BLOCKING): GIVEN a reconnecting player's snapshot flow sends `S2CHandshake` and `S2CGameSnapshot`, WHEN the reconnect identity step runs, THEN `S2CObjectiveIdentities` is re-sent from `HiddenObjectives` before `S2CPhaseChanged` and before `snapshot_sent[player]` is marked true.
-- [ ] OS-17d (BLOCKING): GIVEN protocol/component registration is inspected, WHEN the Objective System plugin is initialized, THEN `S2CObjectiveIdentities` is registered as a server-to-client reliable message and no `ObjectiveIdentity` ECS component is registered for Lightyear replication.
+- [x] OS-17 (ADVISORY): GIVEN two connected clients (owner and attacker), WHEN the attacker's state for an opponent's intact objective is queried, THEN `ObjectiveHp` is present AND the attacker does NOT receive `S2CObjectiveIdentities` for the opponent's lanes. (ADVISORY — two-client live Lightyear evidence may supplement the focused dispatch tests below.)
+- [x] OS-17a (BLOCKING): GIVEN fake assignment has populated `HiddenObjectives` for both players, WHEN identity delivery runs at DRAFT_INITIAL, THEN exactly one reliable `S2CObjectiveIdentities` unicast is enqueued per player to that player's own `PeerId`.
+- [x] OS-17b (BLOCKING): GIVEN Player A and Player B have distinct fake lanes, WHEN Player A's `S2CObjectiveIdentities` payload is built, THEN it contains exactly Player A's five `(LaneId, is_fake)` entries and contains no Player B `is_fake` values.
+- [x] OS-17c (BLOCKING): GIVEN a reconnecting player's snapshot flow sends `S2CHandshake` and `S2CGameSnapshot`, WHEN the reconnect identity step runs, THEN `S2CObjectiveIdentities` is re-sent from `HiddenObjectives` before `S2CPhaseChanged` and before `snapshot_sent[player]` is marked true.
+- [x] OS-17d (BLOCKING): GIVEN protocol/component registration is inspected, WHEN the Objective System plugin is initialized, THEN `S2CObjectiveIdentities` is registered as a server-to-client reliable message and no `ObjectiveIdentity` ECS component is registered for Lightyear replication.
 
 ---
 
@@ -101,9 +101,19 @@ On reconnect: re-send `S2CObjectiveIdentities` for the reconnecting player's own
 **Story Type**: Integration
 **Required evidence**: `tests/integration/objective/identity_unicast_test.rs` OR `production/qa/evidence/identity-unicast-evidence.md` with manual walkthrough
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Criteria**: 5/5 passing (OS-17 advisory, OS-17a, OS-17b, OS-17c, OS-17d)
+**Deviations**:
+- Advisory: `design/gdd/objective-system.md` still has older prose saying `ObjectiveIdentity` is replicated to the owner. Current OS-17/OQ4 text, `TR-OBJ-007`, and ADR-001 require reliable unicast and never-replication, which the implementation follows.
+**Test Evidence**: `cargo test -p server --test objective_identity_unicast_test --test reconnect_snapshot_test` passed 10/10; `cargo test -p server --test objective_state_test` passed 4/4; `cargo check -p server` passed.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Not updated; no matching `OBJECTIVE-003` row exists in `production/sprint-status.yaml`.
 
 ## Dependencies
 
