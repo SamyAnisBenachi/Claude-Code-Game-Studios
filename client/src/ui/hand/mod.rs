@@ -21,7 +21,7 @@ use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUN
 
 pub const HAND_FAN_SLOT_COUNT: usize = 10;
 pub const DRAFT_INITIAL_GRID_SLOT_COUNT: usize = 9;
-pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT + DRAFT_INITIAL_GRID_SLOT_COUNT + 6;
+pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT + DRAFT_INITIAL_GRID_SLOT_COUNT + 7;
 const HAND_DRAG_SPRITE_SCALE: f32 = 1.10;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
@@ -81,6 +81,23 @@ impl Default for HandUiTimingConfig {
             card_draw_animation_ms: 280,
             purchase_timeout_ms: 3_000,
             hand_full_notification_duration_ms: 2_000,
+        }
+    }
+}
+
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlacementTimerConfig {
+    pub placement_duration_ms: u32,
+    pub urgency_threshold_ms: u32,
+    pub grace_window_ms: u32,
+}
+
+impl Default for PlacementTimerConfig {
+    fn default() -> Self {
+        Self {
+            placement_duration_ms: 10_000,
+            urgency_threshold_ms: 5_000,
+            grace_window_ms: 200,
         }
     }
 }
@@ -182,6 +199,37 @@ impl PendingPlacements {
             .iter()
             .position(|placement| placement.card_id == card_id)?;
         Some(self.placements.remove(index))
+    }
+}
+
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlacementTimer {
+    pub remaining_ms: u32,
+    pub urgency_fired: bool,
+    pub in_grace_window: bool,
+    pub grace_remaining_ms: u32,
+    pub submitted: bool,
+}
+
+impl Default for PlacementTimer {
+    fn default() -> Self {
+        Self {
+            remaining_ms: 0,
+            urgency_fired: false,
+            in_grace_window: false,
+            grace_remaining_ms: 0,
+            submitted: false,
+        }
+    }
+}
+
+impl PlacementTimer {
+    fn reset_for_placement(&mut self, duration_ms: u32) {
+        self.remaining_ms = duration_ms;
+        self.urgency_fired = false;
+        self.in_grace_window = false;
+        self.grace_remaining_ms = 0;
+        self.submitted = false;
     }
 }
 
@@ -364,6 +412,9 @@ pub struct HandUiPlacementDropResolved {
     pub target: Option<PlayTarget>,
 }
 
+#[derive(Message, Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TimerUrgencyAudio;
+
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandSubmitButtonClicked {
     pub button: Entity,
@@ -437,6 +488,15 @@ pub struct HandFanRoot;
 pub struct HandTimer;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimerState {
+    Normal,
+    Urgent,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TimerSubmittedCheckmark;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandFullNotification;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -495,6 +555,7 @@ pub struct HandUiEntities {
     pub drag_sprite: Entity,
     pub submit_button: Entity,
     pub timer: Entity,
+    pub submitted_checkmark: Entity,
     pub hand_full_notification: Entity,
     pub no_valid_targets_overlay: Entity,
 }
@@ -556,11 +617,13 @@ impl Plugin for HandUiPlugin {
             .init_resource::<HandFanLayoutState>()
             .init_resource::<HandCardCatalog>()
             .init_resource::<HandUiTimingConfig>()
+            .init_resource::<PlacementTimerConfig>()
             .init_resource::<HandUiEconomyView>()
             .init_resource::<HandContents>()
             .init_resource::<HandUiMode>()
             .init_resource::<HandUiOutboundMessages>()
             .init_resource::<PendingPlacements>()
+            .init_resource::<PlacementTimer>()
             .init_resource::<PlacementBoardView>()
             .init_resource::<ActivePlacementDrag>()
             .init_resource::<ActiveGhostUnstageDrag>()
@@ -574,6 +637,7 @@ impl Plugin for HandUiPlugin {
             .add_message::<HandUiPlacementDragEnded>()
             .add_message::<HandUiPlacementDropResolved>()
             .add_message::<HandSubmitButtonClicked>()
+            .add_message::<TimerUrgencyAudio>()
             .add_message::<GhostPlacementChanged>()
             .add_message::<GhostClickedEvent>()
             .add_message::<GhostDragStartEvent>()
@@ -615,6 +679,7 @@ impl Plugin for HandUiPlugin {
                         .chain()
                         .in_set(HandUiSystemSet::Input),
                     (
+                        tick_placement_timer_system,
                         apply_placement_drag_highlights_system,
                         tick_pending_purchase_timeouts_system,
                         apply_fan_layout_system,
@@ -682,9 +747,11 @@ pub fn apply_fan_layout_system(
 pub fn hand_ui_phase_transition_system(
     current: Res<CurrentClientPhase>,
     hand_contents: Res<HandContents>,
+    timer_config: Res<PlacementTimerConfig>,
     mut mode: ResMut<HandUiMode>,
     mut layout_state: ResMut<HandFanLayoutState>,
     mut pending_placements: ResMut<PendingPlacements>,
+    mut placement_timer: ResMut<PlacementTimer>,
     mut active_drag: ResMut<ActivePlacementDrag>,
     mut active_ghost_drag: ResMut<ActiveGhostUnstageDrag>,
     entities: Option<Res<HandUiEntities>>,
@@ -692,6 +759,7 @@ pub fn hand_ui_phase_transition_system(
     mut visibility_query: Query<&mut Visibility>,
     mut submit_buttons: Query<(&mut Text, &mut HandSubmitInteractionState), With<HandSubmitButton>>,
     mut animators: Query<(Entity, &mut TweenAnim), With<HandUiEntity>>,
+    mut timer_states: Query<&mut TimerState, With<HandTimer>>,
 ) {
     let phase_changed = current.is_changed();
     if !phase_changed && !hand_contents.is_changed() {
@@ -713,6 +781,9 @@ pub fn hand_ui_phase_transition_system(
 
     if phase_changed {
         pending_placements.clear();
+        placement_timer.in_grace_window = false;
+        placement_timer.grace_remaining_ms = 0;
+        placement_timer.submitted = false;
         active_drag.clear();
         active_ghost_drag.clear();
         commands
@@ -739,6 +810,13 @@ pub fn hand_ui_phase_transition_system(
         visibility_for(next_mode == HandUiMode::Staging),
         &mut visibility_query,
     );
+    if phase_changed {
+        set_visibility(
+            entities.submitted_checkmark,
+            Visibility::Hidden,
+            &mut visibility_query,
+        );
+    }
     set_visibility(
         entities.drag_sprite,
         Visibility::Hidden,
@@ -789,11 +867,119 @@ pub fn hand_ui_phase_transition_system(
     }
 
     if entering_staging {
+        placement_timer.reset_for_placement(timer_config.placement_duration_ms);
+        if let Ok(mut timer_state) = timer_states.get_mut(entities.timer) {
+            *timer_state = TimerState::Normal;
+        }
+
         for (mut text, mut interaction_state) in &mut submit_buttons {
             text.0.clear();
             text.0.push_str("Submit (0 cards)");
             *interaction_state = HandSubmitInteractionState::Active;
         }
+    }
+}
+
+pub fn tick_placement_timer_system(
+    mode: Res<HandUiMode>,
+    time: Res<Time<Virtual>>,
+    timer_config: Res<PlacementTimerConfig>,
+    entities: Option<Res<HandUiEntities>>,
+    mut placement_timer: ResMut<PlacementTimer>,
+    mut active_drag: ResMut<ActivePlacementDrag>,
+    pending_placements: Res<PendingPlacements>,
+    mut urgency_writer: MessageWriter<TimerUrgencyAudio>,
+    mut commands: Commands,
+    mut visibility_query: Query<&mut Visibility>,
+    mut text_sets: ParamSet<(
+        Query<&mut Text, With<HandTimer>>,
+        Query<(&mut Text, &mut HandSubmitInteractionState), With<HandSubmitButton>>,
+    )>,
+    mut timer_states: Query<&mut TimerState, With<HandTimer>>,
+    mut submit_senders: Query<&mut MessageSender<C2SSubmitPlacement>>,
+    mut outbound: ResMut<HandUiOutboundMessages>,
+) {
+    let Some(entities) = entities else {
+        return;
+    };
+
+    if *mode != HandUiMode::Staging {
+        return;
+    }
+
+    let mut elapsed_ms = u32::try_from(time.delta().as_millis()).unwrap_or(u32::MAX);
+    let previous_remaining_ms = placement_timer.remaining_ms;
+
+    if placement_timer.remaining_ms > 0 {
+        let consumed_ms = placement_timer.remaining_ms.min(elapsed_ms);
+        placement_timer.remaining_ms -= consumed_ms;
+        elapsed_ms -= consumed_ms;
+    }
+
+    if previous_remaining_ms > timer_config.urgency_threshold_ms
+        && placement_timer.remaining_ms <= timer_config.urgency_threshold_ms
+        && !placement_timer.urgency_fired
+    {
+        placement_timer.urgency_fired = true;
+        if let Ok(mut timer_state) = timer_states.get_mut(entities.timer) {
+            *timer_state = TimerState::Urgent;
+        }
+        urgency_writer.write(TimerUrgencyAudio);
+    }
+
+    if placement_timer.remaining_ms == 0
+        && !placement_timer.submitted
+        && !placement_timer.in_grace_window
+    {
+        if active_drag.is_active() {
+            placement_timer.in_grace_window = true;
+            placement_timer.grace_remaining_ms = timer_config.grace_window_ms;
+        } else {
+            let mut submit_buttons = text_sets.p1();
+            submit_pending_placements(
+                &pending_placements,
+                entities.submit_button,
+                entities.submitted_checkmark,
+                &mut submit_buttons,
+                &mut submit_senders,
+                &mut outbound,
+                &mut placement_timer,
+                &mut visibility_query,
+            );
+        }
+    }
+
+    if placement_timer.in_grace_window && !placement_timer.submitted {
+        placement_timer.grace_remaining_ms = placement_timer
+            .grace_remaining_ms
+            .saturating_sub(elapsed_ms);
+
+        if placement_timer.grace_remaining_ms == 0 {
+            cancel_active_placement_drag(
+                &mut active_drag,
+                &mut commands,
+                entities.drag_sprite,
+                entities.fan_root,
+                &mut visibility_query,
+            );
+
+            let mut submit_buttons = text_sets.p1();
+            submit_pending_placements(
+                &pending_placements,
+                entities.submit_button,
+                entities.submitted_checkmark,
+                &mut submit_buttons,
+                &mut submit_senders,
+                &mut outbound,
+                &mut placement_timer,
+                &mut visibility_query,
+            );
+        }
+    }
+
+    {
+        let mut timer_texts = text_sets.p0();
+        set_timer_text(&mut timer_texts, placement_timer.remaining_ms);
     }
 }
 
@@ -1199,6 +1385,7 @@ pub fn handle_placement_drop_resolved_system(
     entities: Option<Res<HandUiEntities>>,
     mut drops: MessageReader<HandUiPlacementDropResolved>,
     mut pending_placements: ResMut<PendingPlacements>,
+    mut placement_timer: ResMut<PlacementTimer>,
     mut active_drag: ResMut<ActivePlacementDrag>,
     mut ghost_writer: MessageWriter<GhostPlacementChanged>,
     mut commands: Commands,
@@ -1207,7 +1394,12 @@ pub fn handle_placement_drop_resolved_system(
         Query<(&ReserveStripForFanSlot, &mut Visibility)>,
     )>,
     fan_slots: Query<(&FanSlotIndex, &HandSlotCard), With<FanSlotIndex>>,
-    mut submit_buttons: Query<&mut Text, With<HandSubmitButton>>,
+    mut submit_button_sets: ParamSet<(
+        Query<&mut Text, With<HandSubmitButton>>,
+        Query<(&mut Text, &mut HandSubmitInteractionState), With<HandSubmitButton>>,
+    )>,
+    mut submit_senders: Query<&mut MessageSender<C2SSubmitPlacement>>,
+    mut outbound: ResMut<HandUiOutboundMessages>,
 ) {
     let Some(entities) = entities else {
         for _drop in drops.read() {}
@@ -1249,8 +1441,25 @@ pub fn handle_placement_drop_resolved_system(
             card_id: Some(card.0),
         });
         commands.entity(drop.card).insert(FanSlotState::Ghost);
-        set_submit_count_text(&mut submit_buttons, pending_placements.staged_count());
+        {
+            let mut submit_texts = submit_button_sets.p0();
+            set_submit_count_text(&mut submit_texts, pending_placements.staged_count());
+        }
         set_reserve_strip_visibility(&mut visibility_sets.p1(), slot_index.0, Visibility::Visible);
+
+        if placement_timer.in_grace_window && !placement_timer.submitted {
+            let mut submit_buttons = submit_button_sets.p1();
+            submit_pending_placements(
+                &pending_placements,
+                entities.submit_button,
+                entities.submitted_checkmark,
+                &mut submit_buttons,
+                &mut submit_senders,
+                &mut outbound,
+                &mut placement_timer,
+                &mut visibility_sets.p0(),
+            );
+        }
     }
 }
 
@@ -1262,6 +1471,8 @@ pub fn handle_submit_button_click_system(
     mut submit_buttons: Query<(&mut Text, &mut HandSubmitInteractionState), With<HandSubmitButton>>,
     mut submit_senders: Query<&mut MessageSender<C2SSubmitPlacement>>,
     mut outbound: ResMut<HandUiOutboundMessages>,
+    mut placement_timer: ResMut<PlacementTimer>,
+    mut visibility_query: Query<&mut Visibility>,
 ) {
     let Some(entities) = entities else {
         for _click in clicks.read() {}
@@ -1273,25 +1484,28 @@ pub fn handle_submit_button_click_system(
             continue;
         }
 
-        let Ok((mut text, mut interaction_state)) = submit_buttons.get_mut(entities.submit_button)
-        else {
-            continue;
+        let submit_is_active = {
+            let Ok((_text, interaction_state)) = submit_buttons.get_mut(entities.submit_button)
+            else {
+                continue;
+            };
+            *interaction_state == HandSubmitInteractionState::Active
         };
 
-        if *interaction_state != HandSubmitInteractionState::Active {
+        if !submit_is_active {
             continue;
         }
 
-        let msg = C2SSubmitPlacement {
-            placements: pending_placements.placements.clone(),
-        };
-        if let Ok(mut sender) = submit_senders.single_mut() {
-            sender.send::<ReliableChannel>(msg.clone());
-        }
-        outbound.submit_placements.push(msg);
-        *interaction_state = HandSubmitInteractionState::Inactive;
-        text.0.clear();
-        text.0.push_str("Submitted");
+        submit_pending_placements(
+            &pending_placements,
+            entities.submit_button,
+            entities.submitted_checkmark,
+            &mut submit_buttons,
+            &mut submit_senders,
+            &mut outbound,
+            &mut placement_timer,
+            &mut visibility_query,
+        );
     }
 }
 
@@ -1536,8 +1750,21 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
             Name::new("Hand UI Placement Timer"),
             HandUiEntity,
             HandTimer,
+            TimerState::Normal,
             Text::new(""),
             hidden_control_node(64.0, 28.0, 128.0),
+            Visibility::Hidden,
+            ChildOf(fan_root),
+        ))
+        .id();
+
+    let submitted_checkmark = commands
+        .spawn((
+            Name::new("Hand UI Timer Submitted Checkmark"),
+            HandUiEntity,
+            TimerSubmittedCheckmark,
+            Text::new("OK"),
+            hidden_control_node(24.0, 28.0, 128.0),
             Visibility::Hidden,
             ChildOf(fan_root),
         ))
@@ -1573,6 +1800,7 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
         drag_sprite,
         submit_button,
         timer,
+        submitted_checkmark,
         hand_full_notification,
         no_valid_targets_overlay,
     });
@@ -1632,6 +1860,77 @@ fn set_submit_count_text(
         text.0.clear();
         text.0.push_str(&format!("Submit ({count} cards)"));
     }
+}
+
+fn set_timer_text(timer_texts: &mut Query<&mut Text, With<HandTimer>>, remaining_ms: u32) {
+    let seconds = if remaining_ms == 0 {
+        0
+    } else {
+        remaining_ms.saturating_add(999) / 1000
+    };
+
+    for mut text in timer_texts.iter_mut() {
+        text.0.clear();
+        text.0.push_str(&seconds.to_string());
+    }
+}
+
+fn submit_pending_placements(
+    pending_placements: &PendingPlacements,
+    submit_button: Entity,
+    submitted_checkmark: Entity,
+    submit_buttons: &mut Query<
+        (&mut Text, &mut HandSubmitInteractionState),
+        With<HandSubmitButton>,
+    >,
+    submit_senders: &mut Query<&mut MessageSender<C2SSubmitPlacement>>,
+    outbound: &mut HandUiOutboundMessages,
+    placement_timer: &mut PlacementTimer,
+    visibility_query: &mut Query<&mut Visibility>,
+) -> bool {
+    if placement_timer.submitted {
+        return false;
+    }
+
+    let Ok((mut text, mut interaction_state)) = submit_buttons.get_mut(submit_button) else {
+        return false;
+    };
+
+    if *interaction_state != HandSubmitInteractionState::Active {
+        return false;
+    }
+
+    let msg = C2SSubmitPlacement {
+        placements: pending_placements.placements.clone(),
+    };
+    if let Ok(mut sender) = submit_senders.single_mut() {
+        sender.send::<ReliableChannel>(msg.clone());
+    }
+    outbound.submit_placements.push(msg);
+    placement_timer.submitted = true;
+    placement_timer.in_grace_window = false;
+    placement_timer.grace_remaining_ms = 0;
+    *interaction_state = HandSubmitInteractionState::Inactive;
+    text.0.clear();
+    text.0.push_str("Submitted");
+    set_visibility(submitted_checkmark, Visibility::Visible, visibility_query);
+    true
+}
+
+fn cancel_active_placement_drag(
+    active_drag: &mut ActivePlacementDrag,
+    commands: &mut Commands,
+    drag_sprite: Entity,
+    fan_root: Entity,
+    visibility_query: &mut Query<&mut Visibility>,
+) {
+    if let Some(card) = active_drag.card {
+        commands.entity(card).insert(FanSlotState::Active);
+    }
+
+    active_drag.clear();
+    set_visibility(drag_sprite, Visibility::Hidden, visibility_query);
+    commands.entity(fan_root).remove::<FanPlateHighlighted>();
 }
 
 fn set_reserve_strip_visibility(
