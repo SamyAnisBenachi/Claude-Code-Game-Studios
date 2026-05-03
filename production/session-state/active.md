@@ -1521,3 +1521,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per user instruction.
 - Next recommended: Run `/story-readiness` for AUC-006 before implementation.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE
+- Story: `production/epics/board-lane-system/story-009-prism-collection.md` - Story 009: Prism Collection
+- Criteria: 4/4 passing; BL-12, BL-13, BL-18, and BL-30 covered by `tests/unit/board-lane-system/prism_collection_test.rs`.
+- Test Evidence: `cargo test -p server --test prism_collection_test` passed 6/6. `cargo test -p server --test standard_movement_test --test charge_movement_test --test trap_trigger_test` passed 14/14. `cargo check -p server` passed.
+- Verification: `apply_standard_movement` emits `PrismCollected` only from the sub-step 5 endpoint check, reads `PrismPresence` to suppress already-collected prism duplicates, respects each player's own spawn-side prism cell, and leaves CHARGE-only and TELEPORT/displacement arrivals without prism collection.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviation found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per user instruction; no matching `BOARD-009` row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the serialized closure queue after a fresh sprint/status scan.

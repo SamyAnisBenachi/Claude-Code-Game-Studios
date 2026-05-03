@@ -1,7 +1,7 @@
 # Story 009: Prism Collection
 
 > **Epic**: Board / Lane System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -30,10 +30,10 @@
 
 *From GDD `design/gdd/board-lane-system.md`, scoped to this story:*
 
-- [ ] **BL-12**: GIVEN Player A's WALL unit ends sub-step 5 at cell 1 (Player A's prism cell), WHEN the prism check runs, THEN `PrismCollected(Player A, lane)` fires and the prism token is removed.
-- [ ] **BL-13**: GIVEN Player B's unit reaches cell 1, WHEN the prism check runs, THEN no `PrismCollected` fires for Player B — Player B's prism is at cell 8, not cell 1.
-- [ ] **BL-18**: GIVEN a unit is TELEPORT'd to its own spawn cell (cell 1 for Player A), THEN no prism is collected — TELEPORT is not sub-step 5 standard movement.
-- [ ] **BL-30**: GIVEN Player A's unit has `ChargeBonus(2)` and `MovementPoints(2)` and is at cell 1 (the prism cell) at the start of sub-step 2 in lane 3, WHEN sub-steps 2 and 5 both fire, THEN no `PrismCollected` event is emitted — the unit ends at cell 5 (1+2+2), not at the prism cell. Prism collection requires ending sub-step 5 at the prism cell.
+- [x] **BL-12**: GIVEN Player A's WALL unit ends sub-step 5 at cell 1 (Player A's prism cell), WHEN the prism check runs, THEN `PrismCollected(Player A, lane)` fires and the prism token is removed.
+- [x] **BL-13**: GIVEN Player B's unit reaches cell 1, WHEN the prism check runs, THEN no `PrismCollected` fires for Player B — Player B's prism is at cell 8, not cell 1.
+- [x] **BL-18**: GIVEN a unit is TELEPORT'd to its own spawn cell (cell 1 for Player A), THEN no prism is collected — TELEPORT is not sub-step 5 standard movement.
+- [x] **BL-30**: GIVEN Player A's unit has `ChargeBonus(2)` and `MovementPoints(2)` and is at cell 1 (the prism cell) at the start of sub-step 2 in lane 3, WHEN sub-steps 2 and 5 both fire, THEN no `PrismCollected` event is emitted — the unit ends at cell 5 (1+2+2), not at the prism cell. Prism collection requires ending sub-step 5 at the prism cell.
 
 ---
 
@@ -119,7 +119,7 @@ pub fn check_prism_collection(
 **Story Type**: Logic
 **Required evidence**: `tests/unit/board-lane-system/prism_collection_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Exists and passed (`cargo test -p server --test prism_collection_test`, 6/6).
 
 ---
 
@@ -127,3 +127,14 @@ pub fn check_prism_collection(
 
 - Depends on: Story 002 must be DONE (standard movement), Story 006 must be DONE (CHARGE movement — needed for BL-30 compound sub-step scenario)
 - Unlocks: Nothing in this epic — consumed by Prism System [M3]
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Criteria**: 4/4 passing. BL-12, BL-13, BL-18, and BL-30 are covered by `tests/unit/board-lane-system/prism_collection_test.rs`.
+**Deviations**: None.
+**Test Evidence**: Logic: `tests/unit/board-lane-system/prism_collection_test.rs`; `cargo test -p server --test prism_collection_test` passed 6/6. Movement regressions also passed via `cargo test -p server --test standard_movement_test --test charge_movement_test --test trap_trigger_test`. `cargo check -p server` passed.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Unchanged per user instruction; no matching BOARD-009 row exists in `production/sprint-status.yaml`.
