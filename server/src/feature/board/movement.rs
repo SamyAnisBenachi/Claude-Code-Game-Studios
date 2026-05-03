@@ -1,4 +1,7 @@
-use bevy::prelude::{Commands, Component, Entity, Message, MessageWriter, Query, Res, ResMut};
+use bevy::ecs::system::ParamSet;
+use bevy::prelude::{
+    Commands, Component, Entity, Message, MessageReader, MessageWriter, Query, Res, ResMut, With,
+};
 use shared::session::PlayerId;
 
 use crate::core::board::{BoardPosition, UnitOwner, UnitStats};
@@ -12,6 +15,33 @@ const PLAYER_B_TEAM_ID: u8 = 1;
 /// Bonus movement cells applied during RESOLUTION sub-step 2.
 #[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ChargeBonus(pub u8);
+
+/// Marker for units that silently ignore displacement keyword effects.
+#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Irremovable;
+
+/// Board-owned REPEL displacement request.
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RepelDisplacement {
+    pub target: Entity,
+    pub amount: u8,
+}
+
+/// Board-owned ATTRACT displacement request.
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AttractDisplacement {
+    pub caster: Entity,
+    pub target: Entity,
+    pub amount: u8,
+}
+
+/// Board-owned CHANGE LANE displacement request.
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ChangeLaneDisplacement {
+    pub target: Entity,
+    /// Positive values move toward higher lane numbers; negative values move lower.
+    pub delta: i8,
+}
 
 /// Internal board message emitted when a Trap fires on enemy entry.
 #[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,6 +58,62 @@ pub struct TrapTrigger {
 pub fn apply_f1(current_cell: u8, direction: i16, mp: u8, cell_min: u8, cell_max: u8) -> u8 {
     let new_cell = current_cell as i16 + direction * mp as i16;
     new_cell.clamp(cell_min as i16, cell_max as i16) as u8
+}
+
+/// Applies REPEL X by pushing the target toward its own spawn side.
+pub fn apply_repel(
+    target_cell: u8,
+    target_owner: PlayerId,
+    repel_amount: u8,
+    session_config: &SessionConfig,
+    board_config: &BoardConfig,
+) -> Option<u8> {
+    let direction = -advance_direction(target_owner, session_config, board_config)?;
+    Some(apply_f1(
+        target_cell,
+        direction,
+        repel_amount,
+        board_config.cell_min,
+        board_config.cell_max,
+    ))
+}
+
+/// Applies ATTRACT X by pulling the target toward the caster's current cell.
+pub fn apply_attract(
+    caster_cell: u8,
+    target_cell: u8,
+    attract_amount: u8,
+    board_config: &BoardConfig,
+) -> u8 {
+    let direction = (caster_cell as i16 - target_cell as i16).signum();
+    apply_f1(
+        target_cell,
+        direction,
+        attract_amount,
+        board_config.cell_min,
+        board_config.cell_max,
+    )
+}
+
+/// Applies CHANGE LANE bounds and same-owner minion occupancy checks.
+pub fn apply_change_lane(
+    unit_lane: LaneId,
+    delta: i8,
+    occupancy: &BoardOccupancy,
+    unit_owner: PlayerId,
+    board_config: &BoardConfig,
+) -> LaneId {
+    let new_lane = unit_lane as i16 + delta as i16;
+    if new_lane < 1 || new_lane > i16::from(board_config.lane_count) {
+        return unit_lane;
+    }
+
+    let new_lane = new_lane as LaneId;
+    if occupancy.minion_slots.contains_key(&(unit_owner, new_lane)) {
+        return unit_lane;
+    }
+
+    new_lane
 }
 
 /// Resolves the board-advance direction for the owning player's team side.
@@ -207,6 +293,158 @@ pub fn apply_charge_movement(
     }
 }
 
+/// Executes queued REPEL displacements.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_repel_displacements(
+    mut commands: Commands,
+    mut displacements: MessageReader<RepelDisplacement>,
+    board_config: Res<BoardConfig>,
+    session_config: Res<SessionConfig>,
+    mut occupancy: ResMut<BoardOccupancy>,
+    mut trap_triggers: MessageWriter<TrapTrigger>,
+    irremovable: Query<(), With<Irremovable>>,
+    mut units: Query<(&mut BoardPosition, &UnitOwner)>,
+) {
+    for displacement in displacements.read() {
+        if irremovable.get(displacement.target).is_ok() {
+            continue;
+        }
+
+        let Ok((mut position, owner)) = units.get_mut(displacement.target) else {
+            continue;
+        };
+        let Some(destination_cell) = apply_repel(
+            position.cell,
+            owner.0,
+            displacement.amount,
+            &session_config,
+            &board_config,
+        ) else {
+            continue;
+        };
+        let destination_lane = position.lane;
+
+        commit_unit_destination(
+            &mut commands,
+            &mut occupancy,
+            &session_config,
+            &mut trap_triggers,
+            displacement.target,
+            owner.0,
+            &mut position,
+            destination_lane,
+            destination_cell,
+        );
+    }
+}
+
+/// Executes queued ATTRACT displacements.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_attract_displacements(
+    mut commands: Commands,
+    mut displacements: MessageReader<AttractDisplacement>,
+    board_config: Res<BoardConfig>,
+    session_config: Res<SessionConfig>,
+    mut occupancy: ResMut<BoardOccupancy>,
+    mut trap_triggers: MessageWriter<TrapTrigger>,
+    irremovable: Query<(), With<Irremovable>>,
+    mut units: ParamSet<(
+        Query<&BoardPosition>,
+        Query<(&mut BoardPosition, &UnitOwner)>,
+    )>,
+) {
+    for displacement in displacements.read() {
+        if irremovable.get(displacement.target).is_ok() {
+            continue;
+        }
+
+        let caster_cell = {
+            let caster_positions = units.p0();
+            let Ok(caster_position) = caster_positions.get(displacement.caster) else {
+                continue;
+            };
+            caster_position.cell
+        };
+        let mut target_positions = units.p1();
+        let Ok((mut target_position, owner)) = target_positions.get_mut(displacement.target) else {
+            continue;
+        };
+        let destination_cell = apply_attract(
+            caster_cell,
+            target_position.cell,
+            displacement.amount,
+            &board_config,
+        );
+        let destination_lane = target_position.lane;
+
+        commit_unit_destination(
+            &mut commands,
+            &mut occupancy,
+            &session_config,
+            &mut trap_triggers,
+            displacement.target,
+            owner.0,
+            &mut target_position,
+            destination_lane,
+            destination_cell,
+        );
+    }
+}
+
+/// Executes queued CHANGE LANE displacements.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_change_lane_displacements(
+    mut commands: Commands,
+    mut displacements: MessageReader<ChangeLaneDisplacement>,
+    session_config: Res<SessionConfig>,
+    board_config: Res<BoardConfig>,
+    mut occupancy: ResMut<BoardOccupancy>,
+    mut trap_triggers: MessageWriter<TrapTrigger>,
+    irremovable: Query<(), With<Irremovable>>,
+    mut units: Query<(&mut BoardPosition, &UnitOwner)>,
+) {
+    for displacement in displacements.read() {
+        if irremovable.get(displacement.target).is_ok() {
+            continue;
+        }
+
+        let Ok((mut position, owner)) = units.get_mut(displacement.target) else {
+            continue;
+        };
+        let original_lane = position.lane;
+        let destination_lane = apply_change_lane(
+            original_lane,
+            displacement.delta,
+            &occupancy,
+            owner.0,
+            &board_config,
+        );
+        if destination_lane == original_lane {
+            continue;
+        }
+
+        let destination_cell = position.cell;
+        commit_unit_destination(
+            &mut commands,
+            &mut occupancy,
+            &session_config,
+            &mut trap_triggers,
+            displacement.target,
+            owner.0,
+            &mut position,
+            destination_lane,
+            destination_cell,
+        );
+        move_minion_slot(
+            &mut occupancy,
+            owner.0,
+            original_lane,
+            destination_lane,
+            displacement.target,
+        );
+    }
+}
+
 /// Commits same-cell lane movement in deterministic original-lane order.
 ///
 /// Keyword/card logic owns deciding which units should CHANGE LANE. Board owns
@@ -321,4 +559,23 @@ fn trigger_trap_after_entry(
         lane,
         cell,
     });
+}
+
+fn move_minion_slot(
+    occupancy: &mut BoardOccupancy,
+    unit_owner: PlayerId,
+    original_lane: LaneId,
+    destination_lane: LaneId,
+    unit_entity: Entity,
+) {
+    if occupancy
+        .minion_slots
+        .get(&(unit_owner, original_lane))
+        .is_some_and(|entity| *entity == unit_entity)
+    {
+        occupancy.minion_slots.remove(&(unit_owner, original_lane));
+    }
+    occupancy
+        .minion_slots
+        .insert((unit_owner, destination_lane), unit_entity);
 }

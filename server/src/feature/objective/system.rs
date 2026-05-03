@@ -9,7 +9,7 @@ use crate::core::session::{
     defer_unicast_for_reconnect, DeferredMessage, PlayerConnectionMap, ReconnectTracker,
     SessionConfig,
 };
-use crate::feature::board::LaneId;
+use crate::feature::board::{FakeObjectiveDestroyed, LaneId};
 use crate::feature::objective::{
     HiddenObjectives, ObjectiveCounters, ObjectiveDestroyed, ObjectiveHp, ObjectiveSlot,
     PendingObjectiveEvents, OBJECTIVE_LANE_COUNT,
@@ -251,6 +251,7 @@ pub fn apply_consequence_path(
         emit_award_gold(world, attacker_player);
 
         if was_fake {
+            emit_fake_objective_destroyed(world, attacker_player);
             increment_fake_destroyed(world, attacker_player);
         }
     }
@@ -291,6 +292,14 @@ fn emit_award_gold(world: &mut World, player: PlayerId) {
 
     if let Some(mut messages) = world.get_resource_mut::<Messages<AwardGold>>() {
         messages.write(AwardGold { player, amount });
+    }
+}
+
+fn emit_fake_objective_destroyed(world: &mut World, player: PlayerId) {
+    if let Some(mut messages) = world.get_resource_mut::<Messages<FakeObjectiveDestroyed>>() {
+        messages.write(FakeObjectiveDestroyed {
+            destroyed_by: player,
+        });
     }
 }
 

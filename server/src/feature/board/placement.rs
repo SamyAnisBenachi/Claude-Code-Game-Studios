@@ -54,6 +54,12 @@ pub struct PlacementSubmissionReceived {
     pub placements: Vec<PlacedCard>,
 }
 
+/// Internal signal emitted when a player destroys an opposing fake objective.
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FakeObjectiveDestroyed {
+    pub destroyed_by: PlayerId,
+}
+
 /// Internal signal emitted after reveal enqueue and entity spawn complete.
 #[derive(Message, Clone, Debug, PartialEq, Eq)]
 pub struct PlacementCommitted {
@@ -219,6 +225,27 @@ pub fn placement_buffer_open(
 ) {
     if phase_entered.read().next().is_some() {
         pending.submissions.clear();
+    }
+}
+
+/// Expands each player's spawn range after fake objective destruction.
+pub fn update_spawn_range(
+    mut destroyed: MessageReader<FakeObjectiveDestroyed>,
+    session: Option<Res<SessionConfig>>,
+    mut spawn_ranges: ResMut<SpawnRangeState>,
+) {
+    let Some(session) = session.as_deref() else {
+        for _ in destroyed.read() {}
+        return;
+    };
+
+    for event in destroyed.read() {
+        let Some(index) = spawn_range_index_for(event.destroyed_by, session) else {
+            continue;
+        };
+        spawn_ranges.fakes_destroyed[index] = spawn_ranges.fakes_destroyed[index]
+            .saturating_add(1)
+            .min(MAX_FAKE_OBJECTIVES_DESTROYED);
     }
 }
 
@@ -534,9 +561,13 @@ fn fakes_destroyed_for(
     player: PlayerId,
     session: &SessionConfig,
 ) -> Option<u8> {
+    spawn_range_index_for(player, session).map(|index| spawn_ranges.fakes_destroyed[index])
+}
+
+fn spawn_range_index_for(player: PlayerId, session: &SessionConfig) -> Option<usize> {
     match session.team_map.get(&player).copied() {
-        Some(PLAYER_A_TEAM_ID) => Some(spawn_ranges.fakes_destroyed[0]),
-        Some(PLAYER_B_TEAM_ID) => Some(spawn_ranges.fakes_destroyed[1]),
+        Some(PLAYER_A_TEAM_ID) => Some(0),
+        Some(PLAYER_B_TEAM_ID) => Some(1),
         _ => None,
     }
 }

@@ -11,17 +11,21 @@ pub mod plugin;
 pub mod state;
 
 pub use movement::{
-    advance_direction, apply_charge_movement, apply_f1, apply_standard_movement,
-    check_prism_collection, check_trap_trigger, commit_lane_change_destinations,
-    commit_unit_destination, own_prism_cell, ChargeBonus, LaneChangeDestination, TrapTrigger,
+    advance_direction, apply_attract, apply_attract_displacements, apply_change_lane,
+    apply_change_lane_displacements, apply_charge_movement, apply_f1, apply_repel,
+    apply_repel_displacements, apply_standard_movement, check_prism_collection, check_trap_trigger,
+    commit_lane_change_destinations, commit_unit_destination, own_prism_cell, AttractDisplacement,
+    ChangeLaneDisplacement, ChargeBonus, Irremovable, LaneChangeDestination, RepelDisplacement,
+    TrapTrigger,
 };
 pub use objective::{detect_objective_presence, is_at_objective, UnitAtObjective};
 pub use placement::{
     close_placement_phase, get_units_at_cell, handle_placement_submission, is_field_slot_available,
     is_minion_slot_available, is_structure_slot_available, is_trap_slot_available,
     placement_buffer_open, process_placement_submission, requires_spawn_range_validation,
-    validate_spawn_range, PendingPlacements, PlacementCommitTrace, PlacementCommitTraceEntry,
-    PlacementCommitted, PlacementSubmissionReceived, PlacementSubmissionResult, PlayerSubmission,
+    update_spawn_range, validate_spawn_range, FakeObjectiveDestroyed, PendingPlacements,
+    PlacementCommitTrace, PlacementCommitTraceEntry, PlacementCommitted,
+    PlacementSubmissionReceived, PlacementSubmissionResult, PlayerSubmission,
 };
 pub use plugin::{BoardPlugin, BoardSystemSet};
 pub use state::{

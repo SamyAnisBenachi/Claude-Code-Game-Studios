@@ -130,6 +130,10 @@ name = "prism_collection_test"
 path = "../tests/unit/board-lane-system/prism_collection_test.rs"
 
 [[test]]
+name = "displacement_keywords_test"
+path = "../tests/unit/board-lane-system/displacement_keywords_test.rs"
+
+[[test]]
 name = "placement_buffer_test"
 path = "../tests/integration/board-lane-system/placement_buffer_test.rs"
 

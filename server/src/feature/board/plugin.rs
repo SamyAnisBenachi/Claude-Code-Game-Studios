@@ -2,9 +2,12 @@ use bevy::prelude::*;
 
 use crate::core::rsm::advance_phase;
 use crate::feature::board::{
-    close_placement_phase, handle_placement_submission, placement_buffer_open, BoardConfig,
-    BoardGrid, BoardOccupancy, PendingPlacements, PlacementCommitTrace, PlacementCommitted,
-    PlacementSubmissionReceived, PrismState, SpawnRangeState, TrapTrigger, UnitAtObjective,
+    apply_attract_displacements, apply_change_lane_displacements, apply_repel_displacements,
+    close_placement_phase, handle_placement_submission, placement_buffer_open, update_spawn_range,
+    AttractDisplacement, BoardConfig, BoardGrid, BoardOccupancy, ChangeLaneDisplacement,
+    FakeObjectiveDestroyed, PendingPlacements, PlacementCommitTrace, PlacementCommitted,
+    PlacementSubmissionReceived, PrismState, RepelDisplacement, SpawnRangeState, TrapTrigger,
+    UnitAtObjective,
 };
 
 /// Board/Lane system ordering labels.
@@ -13,6 +16,8 @@ pub enum BoardSystemSet {
     PlacementBufferOpen,
     PlacementSubmission,
     PlacementClose,
+    SpawnRangeUpdate,
+    Displacement,
 }
 
 /// Registers server-only board resources.
@@ -29,6 +34,10 @@ impl Plugin for BoardPlugin {
             .insert_resource(BoardConfig::default())
             .add_message::<PlacementSubmissionReceived>()
             .add_message::<PlacementCommitted>()
+            .add_message::<FakeObjectiveDestroyed>()
+            .add_message::<RepelDisplacement>()
+            .add_message::<AttractDisplacement>()
+            .add_message::<ChangeLaneDisplacement>()
             .add_message::<TrapTrigger>()
             .add_message::<UnitAtObjective>()
             .add_message::<crate::core::rsm::PlacementPhaseEntered>()
@@ -40,6 +49,8 @@ impl Plugin for BoardPlugin {
                     BoardSystemSet::PlacementBufferOpen,
                     BoardSystemSet::PlacementSubmission,
                     BoardSystemSet::PlacementClose,
+                    BoardSystemSet::SpawnRangeUpdate,
+                    BoardSystemSet::Displacement,
                 )
                     .chain()
                     .after(advance_phase),
@@ -55,6 +66,19 @@ impl Plugin for BoardPlugin {
             .add_systems(
                 Update,
                 close_placement_phase.in_set(BoardSystemSet::PlacementClose),
+            )
+            .add_systems(
+                Update,
+                update_spawn_range.in_set(BoardSystemSet::SpawnRangeUpdate),
+            )
+            .add_systems(
+                Update,
+                (
+                    apply_repel_displacements,
+                    apply_attract_displacements,
+                    apply_change_lane_displacements,
+                )
+                    .in_set(BoardSystemSet::Displacement),
             );
     }
 }
