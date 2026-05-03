@@ -123,6 +123,12 @@ None currently tracked here.
   hand_ui_placement_unstaging_test` 4/4, placement submit/instant/drag
   regressions 13/13, `cargo check -p client`, and diff checks. No
   `/story-done` has run yet.
+- HAND-UI-009: Placement Timer implemented on branch
+  `work/hand-ui-009-placement-timer` at worker commit `7a8c173`; root
+  integration landed on main at `a72bb0f`. Verification passed `cargo test -p
+  client --test hand_ui_placement_timer_test` 4/4, surrounding Hand UI
+  placement regressions 17/17, `cargo check -p client`, and diff checks. No
+  `/story-done` has run yet.
 ## Recently Closed
 
 - AUC-006: Resolution & Settlement readiness repair landed on main at
@@ -520,6 +526,9 @@ None currently tracked here.
 1. HAND-UI-008:
    `production/epics/hand-ui/story-008-placement-unstaging.md`
    after integration commit `552f80f`.
+2. HAND-UI-009:
+   `production/epics/hand-ui/story-009-placement-timer.md`
+   after integration commit `a72bb0f`.
 
 Run only one story-done at a time.
 
@@ -553,11 +562,15 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- None known at this checkpoint. HAND-UI-008, AUC-006, BOARD-009,
-  COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have returned and are
-  integrated or closed as noted; do not relaunch their implementation workers.
+- None known at this checkpoint. HAND-UI-009, HAND-UI-008, AUC-006,
+  BOARD-009, COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have
+  returned and are integrated or closed as noted; do not relaunch their
+  implementation workers.
 
 Current active windows by user default-launch rule:
+- HAND-UI-009 returned, integrated into main at `a72bb0f`, verified, and is on
+  origin/main. Window can be cleared. It now needs serialized `/story-done`
+  after HAND-UI-008.
 - HAND-UI-008 returned, integrated into main at `552f80f`, verified, and is on
   origin/main. Window can be cleared. It now needs serialized `/story-done`.
 - BOARD-009 story-done returned and was committed at `394d6c3`; window can be
