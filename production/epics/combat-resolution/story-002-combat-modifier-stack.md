@@ -1,7 +1,7 @@
 # Story 002: Combat Modifier Stack — Pure Function
 
 > **Epic**: Combat Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-04-30
@@ -182,7 +182,7 @@ b.hp = b.hp.saturating_sub(result_a.net_damage);
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combat/modifier_stack_test.rs` — must exist and pass without Bevy `World`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (`cargo test -p server --test modifier_stack_test`, 7/7)
 
 ---
 
@@ -190,3 +190,14 @@ b.hp = b.hp.saturating_sub(result_a.net_damage);
 
 - Depends on: Story 001 (UnitSnapshot struct defined in scaffold)
 - Unlocks: Story 005 (SS3 FIRST STRIKE calls modifier stack), Story 007 (SS6 standard combat calls modifier stack)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-03
+**Criteria**: 6/6 passing
+**Deviations**: None blocking. Advisory only - story manifest `2026-04-30` is older than current control manifest `2026-05-01`; no applicable Feature-layer rule conflict found in lean review.
+**Test Evidence**: Logic evidence at `tests/unit/combat/modifier_stack_test.rs`; `cargo test -p server --test modifier_stack_test` passed 7/7. `cargo test -p server --test game_config_defaults_test` passed 8/8. `cargo test -p server --test resolve_combat_scaffold_test` passed 4/4. `cargo fmt --all -- --check`, `cargo check -p server`, and `git diff --check 0e5ac46^..0e5ac46` passed.
+**Code Review**: Skipped - lean mode.
+**Sprint Status**: Unchanged per user instruction.

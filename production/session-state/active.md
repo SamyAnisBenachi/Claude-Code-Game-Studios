@@ -1510,3 +1510,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per user instruction; no matching `OBJECTIVE-004` row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the serialized closure queue after a fresh sprint/status scan.
+
+## Session Extract - /story-done 2026-05-03
+- Verdict: COMPLETE
+- Story: `production/epics/combat-resolution/story-002-combat-modifier-stack.md` - Story 002: Combat Modifier Stack - Pure Function
+- Criteria: 6/6 passing; CR-12, CR-13, CR-14, CR-15, CR-42, and CR-43 covered by `tests/unit/combat/modifier_stack_test.rs`.
+- Test Evidence: `cargo test -p server --test modifier_stack_test` passed 7/7. `cargo test -p server --test game_config_defaults_test` passed 8/8. `cargo test -p server --test resolve_combat_scaffold_test` passed 4/4. `cargo fmt --all -- --check`, `cargo check -p server`, and `git diff --check 0e5ac46^..0e5ac46` passed.
+- Verification: `apply_combat_modifier_stack` is pure Rust with no Bevy `World` access, computes intermediate arithmetic in `i32`, reads type-advantage bonuses from `GameConfig`, floors damage at zero, applies RESISTANCE/VULNERABILITY/ARMOR-PIERCING/SILENCE/type advantage in the specified order, and leaves base attacker stats unaffected.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviation found. Advisory only - story manifest `2026-04-30` is older than current control manifest `2026-05-01`; no applicable rule conflict found in lean review. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per user instruction.
+- Next recommended: Run `/story-readiness` for AUC-006 before implementation.
