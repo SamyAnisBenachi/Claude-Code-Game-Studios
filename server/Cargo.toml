@@ -244,3 +244,7 @@ path = "../tests/integration/combat/resolve_combat_scaffold_test.rs"
 [[test]]
 name = "modifier_stack_test"
 path = "../tests/unit/combat/modifier_stack_test.rs"
+
+[[test]]
+name = "substep1_placement_test"
+path = "../tests/unit/combat/substep1_placement_test.rs"
