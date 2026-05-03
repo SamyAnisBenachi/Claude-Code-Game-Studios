@@ -17,7 +17,7 @@ bevy_tweening = { workspace = true, default-features = false, features = ["bevy_
 
 [features]
 default = []
-ui_picking = ["bevy/ui_picking"]
+ui_picking = ["bevy/ui_picking", "bevy/bevy_picking"]
 
 [lib]
 name = "client"
@@ -58,6 +58,10 @@ path = "../tests/unit/hand-ui/placement_submit_core_test.rs"
 [[test]]
 name = "hand_ui_placement_drag_highlights_test"
 path = "../tests/unit/hand-ui/placement_drag_highlights_test.rs"
+
+[[test]]
+name = "hand_ui_placement_instant_staging_test"
+path = "../tests/unit/hand-ui/placement_instant_staging_test.rs"
 
 [[test]]
 name = "hand_ui_draft_initial_grid_test"

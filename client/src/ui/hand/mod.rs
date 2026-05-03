@@ -22,6 +22,7 @@ use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUN
 pub const HAND_FAN_SLOT_COUNT: usize = 10;
 pub const DRAFT_INITIAL_GRID_SLOT_COUNT: usize = 9;
 pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT + DRAFT_INITIAL_GRID_SLOT_COUNT + 6;
+const HAND_DRAG_SPRITE_SCALE: f32 = 1.10;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct HandFanLayoutConfig {
@@ -250,6 +251,7 @@ pub enum PlacementTargetKind {
     TargetObj,
     LaneWide,
     TargetUnit,
+    Instant,
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -375,6 +377,12 @@ pub enum FanSlotState {
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BoardCellHighlighted;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FanPlateDropZone;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FanPlateHighlighted;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BoardCellOccupied;
@@ -619,6 +627,9 @@ pub fn hand_ui_phase_transition_system(
     if phase_changed {
         pending_placements.clear();
         active_drag.clear();
+        commands
+            .entity(entities.fan_root)
+            .remove::<FanPlateHighlighted>();
     }
 
     if next_mode == HandUiMode::Hidden {
@@ -889,15 +900,22 @@ pub fn handle_hand_fan_card_click_system(
 pub fn handle_placement_drag_started_system(
     mode: Res<HandUiMode>,
     catalog: Res<HandCardCatalog>,
+    entities: Option<Res<HandUiEntities>>,
     mut starts: MessageReader<HandUiPlacementDragStarted>,
     mut active_drag: ResMut<ActivePlacementDrag>,
     hand_cards: Query<(&HandSlotCard, Option<&HandPlacementTargetKind>), With<FanSlotIndex>>,
+    mut visibility_query: Query<&mut Visibility>,
 ) {
     for start in starts.read() {
         if *mode != HandUiMode::Staging {
             active_drag.clear();
             continue;
         }
+
+        let Some(entities) = &entities else {
+            active_drag.clear();
+            continue;
+        };
 
         let Ok((card, target_kind)) = hand_cards.get(start.card) else {
             active_drag.clear();
@@ -910,6 +928,11 @@ pub fn handle_placement_drag_started_system(
         };
 
         active_drag.start(start.card, card.0, start.owner_id, target_kind);
+        set_visibility(
+            entities.drag_sprite,
+            Visibility::Visible,
+            &mut visibility_query,
+        );
     }
 }
 
@@ -925,10 +948,37 @@ pub fn handle_placement_cursor_moved_system(
 }
 
 pub fn handle_placement_drag_ended_system(
+    mode: Res<HandUiMode>,
+    viewport: Res<HandFanViewport>,
+    entities: Option<Res<HandUiEntities>>,
     mut ends: MessageReader<HandUiPlacementDragEnded>,
     mut active_drag: ResMut<ActivePlacementDrag>,
+    fan_plates: Query<&Node, With<FanPlateDropZone>>,
+    mut drops: MessageWriter<HandUiPlacementDropResolved>,
 ) {
     for _end in ends.read() {
+        if *mode == HandUiMode::Staging
+            && active_drag.target_kind == Some(PlacementTargetKind::Instant)
+        {
+            let target = entities
+                .as_ref()
+                .and_then(|entities| fan_plates.get(entities.fan_root).ok())
+                .and_then(|node| {
+                    active_drag
+                        .cursor_world_position
+                        .filter(|cursor| cursor_over_fan_plate(*cursor, node, *viewport))
+                })
+                .map(|_cursor| PlayTarget::Instant);
+
+            if let (Some(card), Some(owner_id)) = (active_drag.card, active_drag.owner_id) {
+                drops.write(HandUiPlacementDropResolved {
+                    card,
+                    owner_id,
+                    target,
+                });
+            }
+        }
+
         active_drag.clear();
     }
 }
@@ -964,6 +1014,9 @@ pub fn handle_placement_drop_resolved_system(
             Visibility::Hidden,
             &mut visibility_sets.p0(),
         );
+        commands
+            .entity(entities.fan_root)
+            .remove::<FanPlateHighlighted>();
 
         let Ok((slot_index, card)) = fan_slots.get(drop.card) else {
             continue;
@@ -1046,17 +1099,32 @@ pub fn apply_placement_drag_highlights_system(
         Option<&ObjectiveCell>,
     )>,
     highlighted_cells: Query<Entity, With<BoardCellHighlighted>>,
+    highlighted_fan_plates: Query<Entity, With<FanPlateHighlighted>>,
     objectives: Query<(Entity, &ObjectiveCell, Option<&ObjectiveAlive>)>,
     target_units: Query<(Entity, &PlacementTargetUnit, &GlobalTransform)>,
     hovered_units: Query<Entity, With<TargetUnitHover>>,
     mut overlays: Query<&mut Visibility, With<NoValidTargetsOverlay>>,
+    entities: Option<Res<HandUiEntities>>,
 ) {
     if *mode != HandUiMode::Staging || !active_drag.is_active() {
         cleanup_placement_highlights(
             &mut commands,
             &highlighted_cells,
+            &highlighted_fan_plates,
             &hovered_units,
             &mut overlays,
+        );
+        return;
+    }
+
+    if active_drag.target_kind == Some(PlacementTargetKind::Instant) {
+        set_no_valid_targets_overlay(&mut overlays, Visibility::Hidden);
+        sync_target_unit_hover(&mut commands, &hovered_units, None);
+        sync_board_cell_highlights(&mut commands, &highlighted_cells, &BTreeSet::new());
+        sync_fan_plate_highlight(
+            &mut commands,
+            &highlighted_fan_plates,
+            entities.as_ref().map(|entities| entities.fan_root),
         );
         return;
     }
@@ -1065,6 +1133,7 @@ pub fn apply_placement_drag_highlights_system(
         cleanup_placement_highlights(
             &mut commands,
             &highlighted_cells,
+            &highlighted_fan_plates,
             &hovered_units,
             &mut overlays,
         );
@@ -1074,6 +1143,7 @@ pub fn apply_placement_drag_highlights_system(
 
     let desired_highlights = match active_drag.target_kind {
         Some(PlacementTargetKind::Minion) => {
+            sync_fan_plate_highlight(&mut commands, &highlighted_fan_plates, None);
             set_no_valid_targets_overlay(&mut overlays, Visibility::Hidden);
             sync_target_unit_hover(&mut commands, &hovered_units, None);
             minion_highlight_cells(
@@ -1085,16 +1155,19 @@ pub fn apply_placement_drag_highlights_system(
             )
         }
         Some(PlacementTargetKind::TargetObj) => {
+            sync_fan_plate_highlight(&mut commands, &highlighted_fan_plates, None);
             set_no_valid_targets_overlay(&mut overlays, Visibility::Hidden);
             sync_target_unit_hover(&mut commands, &hovered_units, None);
             target_objective_highlight_cells(*board_view, &objectives)
         }
         Some(PlacementTargetKind::LaneWide) => {
+            sync_fan_plate_highlight(&mut commands, &highlighted_fan_plates, None);
             set_no_valid_targets_overlay(&mut overlays, Visibility::Hidden);
             sync_target_unit_hover(&mut commands, &hovered_units, None);
             lane_wide_highlight_cells(&board_layout, &board_cells)
         }
         Some(PlacementTargetKind::TargetUnit) => {
+            sync_fan_plate_highlight(&mut commands, &highlighted_fan_plates, None);
             sync_board_cell_highlights(&mut commands, &highlighted_cells, &BTreeSet::new());
             sync_target_unit_highlights(
                 &mut commands,
@@ -1106,9 +1179,11 @@ pub fn apply_placement_drag_highlights_system(
             );
             return;
         }
+        Some(PlacementTargetKind::Instant) => BTreeSet::new(),
         None => BTreeSet::new(),
     };
 
+    sync_fan_plate_highlight(&mut commands, &highlighted_fan_plates, None);
     sync_board_cell_highlights(&mut commands, &highlighted_cells, &desired_highlights);
 }
 
@@ -1173,6 +1248,7 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
             Name::new("Hand UI Fan Root"),
             HandUiEntity,
             HandFanRoot,
+            FanPlateDropZone,
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(0.0),
@@ -1184,6 +1260,11 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
             Visibility::Hidden,
         ))
         .id();
+
+    #[cfg(feature = "ui_picking")]
+    commands
+        .entity(fan_root)
+        .insert(bevy::picking::Pickable::IGNORE);
 
     let fan_slots = std::array::from_fn(|index| {
         commands
@@ -1220,6 +1301,7 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
             HandUiEntity,
             HandDragSprite,
             hidden_slot_node(),
+            Transform::from_scale(Vec3::splat(HAND_DRAG_SPRITE_SCALE)),
             Visibility::Hidden,
             ChildOf(fan_root),
         ))
@@ -1366,11 +1448,8 @@ fn resolve_placement_target_kind(
     match card.card_type {
         CardType::Minion => Some(PlacementTargetKind::Minion),
         CardType::Field => Some(PlacementTargetKind::LaneWide),
-        CardType::Spell
-        | CardType::Trap
-        | CardType::Structure
-        | CardType::Order
-        | CardType::DoubleFace => None,
+        CardType::Order => Some(PlacementTargetKind::Instant),
+        CardType::Spell | CardType::Trap | CardType::Structure | CardType::DoubleFace => None,
     }
 }
 
@@ -1459,10 +1538,12 @@ fn staged_minion_cells(
 fn cleanup_placement_highlights(
     commands: &mut Commands,
     highlighted_cells: &Query<Entity, With<BoardCellHighlighted>>,
+    highlighted_fan_plates: &Query<Entity, With<FanPlateHighlighted>>,
     hovered_units: &Query<Entity, With<TargetUnitHover>>,
     overlays: &mut Query<&mut Visibility, With<NoValidTargetsOverlay>>,
 ) {
     sync_board_cell_highlights(commands, highlighted_cells, &BTreeSet::new());
+    sync_fan_plate_highlight(commands, highlighted_fan_plates, None);
     sync_target_unit_hover(commands, hovered_units, None);
     set_no_valid_targets_overlay(overlays, Visibility::Hidden);
 }
@@ -1480,6 +1561,60 @@ fn sync_board_cell_highlights(
 
     for entity in desired.difference(&current) {
         commands.entity(*entity).insert(BoardCellHighlighted);
+    }
+}
+
+fn sync_fan_plate_highlight(
+    commands: &mut Commands,
+    highlighted_fan_plates: &Query<Entity, With<FanPlateHighlighted>>,
+    desired: Option<Entity>,
+) {
+    for entity in highlighted_fan_plates.iter() {
+        if Some(entity) != desired {
+            commands.entity(entity).remove::<FanPlateHighlighted>();
+        }
+    }
+
+    if let Some(entity) = desired {
+        commands.entity(entity).insert(FanPlateHighlighted);
+    }
+}
+
+fn cursor_over_fan_plate(
+    cursor_screen_position: Vec2,
+    node: &Node,
+    viewport: HandFanViewport,
+) -> bool {
+    let Some(left) = val_px(node.left) else {
+        return false;
+    };
+    let Some(right) = val_px(node.right) else {
+        return false;
+    };
+    let Some(bottom) = val_px(node.bottom) else {
+        return false;
+    };
+    let Some(height) = val_px(node.height) else {
+        return false;
+    };
+
+    if viewport.width_px <= left + right || viewport.height_px <= bottom || height <= 0.0 {
+        return false;
+    }
+
+    let min_x = left;
+    let max_x = viewport.width_px - right;
+    let max_y = viewport.height_px - bottom;
+    let min_y = (max_y - height).max(0.0);
+
+    (min_x..=max_x).contains(&cursor_screen_position.x)
+        && (min_y..=max_y).contains(&cursor_screen_position.y)
+}
+
+fn val_px(value: Val) -> Option<f32> {
+    match value {
+        Val::Px(px) => Some(px),
+        _ => None,
     }
 }
 
