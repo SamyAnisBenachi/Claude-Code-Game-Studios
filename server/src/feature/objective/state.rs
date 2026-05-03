@@ -36,3 +36,17 @@ pub struct HiddenObjectives {
     /// Hidden identity keyed by `(owning_player, lane)`.
     pub identities: HashMap<(PlayerId, LaneId), bool>,
 }
+
+/// Objective destruction payload queued for the RESOLUTION-end sync.
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ObjectiveDestroyed {
+    pub target_player_id: PlayerId,
+    pub lane: LaneId,
+    pub was_fake: bool,
+}
+
+/// Destruction events accumulated during objective damage resolution.
+#[derive(Resource, Default, Clone, Debug, PartialEq, Eq)]
+pub struct PendingObjectiveEvents {
+    pub queue: Vec<ObjectiveDestroyed>,
+}

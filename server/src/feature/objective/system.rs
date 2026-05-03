@@ -8,8 +8,10 @@ use crate::core::session::{
     defer_unicast_for_reconnect, DeferredMessage, PlayerConnectionMap, ReconnectTracker,
     SessionConfig,
 };
+use crate::feature::board::LaneId;
 use crate::feature::objective::{
-    HiddenObjectives, ObjectiveCounters, ObjectiveHp, ObjectiveSlot, OBJECTIVE_LANE_COUNT,
+    HiddenObjectives, ObjectiveCounters, ObjectiveDestroyed, ObjectiveHp, ObjectiveSlot,
+    PendingObjectiveEvents, OBJECTIVE_LANE_COUNT,
 };
 use crate::foundation::config::GameConfig;
 use crate::foundation::rng::ServerRng;
@@ -147,6 +149,101 @@ pub fn deliver_objective_identities_on_ready(
             }
         }
     }
+}
+
+/// Applies objective damage through the sole Objective System damage entry point.
+///
+/// `amount` is unsigned by design: objectives do not have a healing interface.
+// Scaffold API consumed by downstream combat and spell stories.
+#[allow(dead_code)]
+pub fn take_damage(world: &mut World, lane: LaneId, attacker_player: PlayerId, amount: u32) {
+    if amount == 0 {
+        return;
+    }
+
+    let Some(defending_player) = defending_player_for_attacker(world, attacker_player) else {
+        return;
+    };
+
+    let Some((entity, already_destroyed)) = objective_entity(world, defending_player, lane) else {
+        return;
+    };
+
+    if already_destroyed {
+        return;
+    }
+
+    let Some((hp_before, hp_after)) = apply_objective_hp_damage(world, entity, amount) else {
+        return;
+    };
+
+    if hp_after == 0 && hp_before > 0 {
+        mark_objective_destroyed(world, entity);
+        trigger_consequence_path(world, defending_player, lane);
+    }
+}
+
+#[allow(dead_code)]
+fn defending_player_for_attacker(world: &World, attacker_player: PlayerId) -> Option<PlayerId> {
+    let session = world.get_resource::<SessionConfig>()?;
+    let attacker_team = session.team_map.get(&attacker_player).copied()?;
+
+    session.players().find(|player| {
+        session
+            .team_map
+            .get(player)
+            .copied()
+            .is_some_and(|team| team != attacker_team)
+    })
+}
+
+#[allow(dead_code)]
+fn objective_entity(
+    world: &mut World,
+    defending_player: PlayerId,
+    lane: LaneId,
+) -> Option<(Entity, bool)> {
+    let mut objectives = world.query::<(Entity, &ObjectiveSlot)>();
+    objectives.iter(world).find_map(|(entity, slot)| {
+        (slot.player == defending_player && slot.lane == lane).then_some((entity, slot.destroyed))
+    })
+}
+
+#[allow(dead_code)]
+fn apply_objective_hp_damage(
+    world: &mut World,
+    objective: Entity,
+    amount: u32,
+) -> Option<(u32, u32)> {
+    let mut hp = world.get_mut::<ObjectiveHp>(objective)?;
+    let hp_before = hp.hp;
+    hp.hp = hp_before.saturating_sub(amount);
+    Some((hp_before, hp.hp))
+}
+
+#[allow(dead_code)]
+fn mark_objective_destroyed(world: &mut World, objective: Entity) {
+    if let Some(mut slot) = world.get_mut::<ObjectiveSlot>(objective) {
+        slot.destroyed = true;
+    }
+}
+
+#[allow(dead_code)]
+fn trigger_consequence_path(world: &mut World, defending_player: PlayerId, lane: LaneId) {
+    let was_fake = world
+        .get_resource::<HiddenObjectives>()
+        .and_then(|hidden| hidden.identities.get(&(defending_player, lane)).copied())
+        .map_or(false, |is_fake| is_fake);
+
+    let Some(mut pending_events) = world.get_resource_mut::<PendingObjectiveEvents>() else {
+        return;
+    };
+
+    pending_events.queue.push(ObjectiveDestroyed {
+        target_player_id: defending_player,
+        lane,
+        was_fake,
+    });
 }
 
 pub fn prepare_objective_identity_dispatch(

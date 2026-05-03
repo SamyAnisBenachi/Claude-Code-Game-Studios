@@ -210,6 +210,10 @@ name = "fake_assignment_test"
 path = "../tests/unit/objective/fake_assignment_test.rs"
 
 [[test]]
+name = "damage_interface_test"
+path = "../tests/unit/objective/damage_interface_test.rs"
+
+[[test]]
 name = "objective_identity_unicast_test"
 path = "../tests/integration/objective/identity_unicast_test.rs"
 

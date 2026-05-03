@@ -5,7 +5,7 @@ use crate::core::rsm::advance_phase;
 use crate::feature::objective::{
     deliver_objective_identities_on_ready, initialize_objectives_on_draft_initial,
     HiddenObjectives, ObjectiveCounters, ObjectiveHp, ObjectiveIdentitiesReady,
-    ObjectiveNetworkOutbox,
+    ObjectiveNetworkOutbox, PendingObjectiveEvents,
 };
 
 /// Objective System schedule labels.
@@ -27,6 +27,7 @@ impl Plugin for ObjectivePlugin {
         app.add_message::<ObjectiveIdentitiesReady>()
             .init_resource::<HiddenObjectives>()
             .init_resource::<ObjectiveCounters>()
+            .init_resource::<PendingObjectiveEvents>()
             .init_resource::<ObjectiveNetworkOutbox>()
             .configure_sets(
                 Update,
