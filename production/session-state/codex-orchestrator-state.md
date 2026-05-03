@@ -110,6 +110,18 @@ None currently tracked here.
   `cargo check --workspace`, and `git diff --check HEAD~1..HEAD`. Scope stays
   in the existing Hand UI local message/outbox pattern; no direct Lightyear
   drains were added.
+- GSS-007: Reconnect Snapshot Schema Builder implemented on branch
+  `work/gss-007-reconnect-snapshot-schema-builder` at `8d3a91b`; root
+  cherry-picked and amended it into `main` at `8e7c5b5`. Root checks passed
+  `cargo fmt --all -- --check`, `cargo test -p server --test
+  snapshot_secret_strip_test` 2/2, session regressions 12/12,
+  `cargo test -p server --test token_spawn_test --test
+  prism_hand_full_network_test` 12/12, `cargo check -p server`, `cargo check
+  --workspace`, and `git diff --check HEAD~1..HEAD`. Initial verification was
+  blocked by D: disk exhaustion; generated `target/codex-*` artifacts were
+  removed and the full check then passed. Scope unblocks HUD-008 by providing
+  the Game Session/shared protocol snapshot schema and builder; HUD-008 itself
+  is not implemented.
 ## Recently Closed
 
 - PRISM-004: Hand-Full Prism Network Staging implemented on branch
@@ -359,6 +371,7 @@ None currently tracked here.
 ## Story-Done Queue
 
 1. HAND-UI-005
+2. GSS-007
 
 Run only one story-done at a time.
 
@@ -370,10 +383,13 @@ Run only one story-done at a time.
   sequencing if dependencies/readiness are clean.
 - GSS-005: closed at `19071b5`.
 - GSS-006: closed at `a49e422`.
+- GSS-007: implemented/integrated at `8e7c5b5`; pending story-done.
 - AUC-005+ follow normal sequencing after AUC-004 story-done.
-- HUD-008 returned READY but blocked on missing full `S2CGameSnapshot` schema.
-  Correct unblock path is GSS-005 -> GSS-006 -> GSS-007. GSS-005 and GSS-006
-  are closed, so GSS-007 is now the next valid unblock worker for HUD-008.
+- HUD-008 returned READY but was blocked on missing full `S2CGameSnapshot`
+  schema. Correct unblock path was GSS-005 -> GSS-006 -> GSS-007. GSS-005 and
+  GSS-006 are closed, and GSS-007 is now integrated/pending story-done, so
+  HUD-008 can be relaunched once we accept the GSS-007 integrated snapshot
+  contract as stable enough or after GSS-007 closure for stricter sequencing.
 - Other RSM/session/disconnect work should be staged carefully because GSS-005
   and GSS-006 just closed; avoid overlapping GSS-007 snapshot ownership.
 - Prism gates are resolved; PRISM-003+ follow normal sequencing after PRISM-001
@@ -384,10 +400,13 @@ Run only one story-done at a time.
 Batch launched:
 - GSS-005: closed at `19071b5`.
 - GSS-006: closed at `a49e422`.
+- GSS-007: integrated at `8e7c5b5`; pending story-done.
 
 Active implementation workers by default-launch rule:
 - HAND-UI-005: integrated at `1c798f0`; pending serialized story-done after
   current closure queue.
+- GSS-007: integrated at `8e7c5b5`; pending serialized story-done after
+  HAND-UI-005.
 
 Current active windows by user default-launch rule:
 - PRISM-001 story-done returned and was committed at `671caa2`; window can be
@@ -398,8 +417,9 @@ Current active windows by user default-launch rule:
   Do not launch another story-done until it returns.
 - BOARD-007 returned, integrated at `fd13f2a`, and now only needs serialized
   story-done; story-done committed at `dc8b80a`. Window can be cleared.
-- HUD-008 returned with no code changes; window can be cleared. It remains
-  blocked until GSS-007 expands/builds `S2CGameSnapshot`.
+- HUD-008 returned with no code changes; window can be cleared. It was blocked
+  until GSS-007 expanded/built `S2CGameSnapshot`; GSS-007 is now integrated at
+  `8e7c5b5` and pending story-done.
 - PRISM-003 returned, integrated at `611baee`, and now only needs serialized
   story-done; story-done committed at `b4d9e04`. Window can be cleared.
 - CARD-ANIM-007 story-done returned and was committed at `35ee469`; window can
@@ -431,6 +451,8 @@ Current active windows by user default-launch rule:
   `e7776b0`. Window can be cleared.
 - HAND-UI-005 returned, integrated at `1c798f0`, and now only needs serialized
   story-done.
+- GSS-007 returned, integrated at `8e7c5b5`, and now only needs serialized
+  story-done after HAND-UI-005.
 AUC-004, RSM-006, GSS-004, CS-003, and HUD-007 have returned and are
 integrated/closed as noted above.
 
