@@ -1,145 +1,233 @@
-# Story 005: Manual Refresh + Cost Escalation
+# Story 005: Manual Refresh Cost Escalation Integration
 
 > **Epic**: Card Data & Pool
 > **Status**: Ready
 > **Layer**: Core
 > **Type**: Integration
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
+
+## Readiness Refresh
+
+2026-05-03: Revalidated against control manifest version 2026-05-01.
+The original story text used stale names from the pre-ADR-015 shop model:
+
+- `C2SShopRefresh` is now `C2SRefreshShop` in `shared/src/protocol.rs`.
+- Lightyear C2S inbound uses `MessageReceiver<C2SRefreshShop>`, not Bevy
+  `MessageReader<C2SShopRefresh>`.
+- Manual refresh counter state now lives on `PlayerShopState` as
+  `refresh_count_this_draft`; the older `ManualRefreshCount` resource remains
+  a Card Pool session resource but is not the manual refresh authority.
+- Card Acquisition owns shop slots, refresh deduplication, Lightyear dispatch,
+  and the manual refresh cost formula. Card Data & Pool owns the player pool API
+  that the refresh path draws from.
+
+QL-STORY-READY skipped - Lean mode.
+
+---
 
 ## Context
 
-**GDD**: `design/gdd/card-data-pool.md`
-**Requirement**: `TR-CDP-09` (manual refresh aspect)
-*(TR-IDs are informal — `docs/architecture/tr-registry.yaml` is unpopulated.)*
+**GDDs**:
+- `design/gdd/card-data-pool.md`
+- `design/gdd/card-acquisition.md`
+- `design/gdd/economy-system.md`
+
+**Requirements**:
+- `TR-CA-004`: Manual refresh cost formula:
+  `refresh_base_cost + min(count, refresh_cap)`; counter resets at DRAFT entry.
+- `TR-ECO-008`: Refresh cost escalation: first refresh uses base cost, later
+  refreshes escalate, and the counter resets at the start of each DRAFT phase.
+- `TR-CDP-004`: Pool API draw helpers return `Option<CardId>` and never panic.
 
 **ADRs Governing Implementation**:
-- [ADR-006: Card Data Schema and Pool State Architecture](../../../docs/architecture/adr-006-card-data-schema.md) — `ManualRefreshCount`; refresh cost formula; phase-gate to `DraftShop`
-- [ADR-010: RSM Phase Event Bus](../../../docs/architecture/adr-010-rsm-event-bus.md) — `C2SShopRefresh` is a client→server Lightyear message; phase-gate pattern required
+- [ADR-006: Card Data Schema and Pool State Architecture](../../../docs/architecture/adr-006-card-data-schema.md) -
+  `PlayerPools` is authoritative per-player pool state; draw helpers never
+  panic on empty pools.
+- [ADR-010: RSM Phase Event Bus](../../../docs/architecture/adr-010-rsm-event-bus.md) -
+  `ShopRefreshTriggered` is a Bevy buffered Message emitted on DRAFT entry.
+- [ADR-015: Card Acquisition Shop State Machine Architecture](../../../docs/architecture/adr-015-card-acquisition-shop-state.md) -
+  Card Acquisition owns `ShopStates`, `PlayerHands`, manual refresh, and
+  shop-slot network dispatch.
 
-**ADR Decision Summary**: `on_manual_refresh` subscribes to `MessageReader<C2SShopRefresh>`. Phase-gate: silently discard if `phase != DraftShop` (debug log only — zero S2C response per control manifest). Cost formula: `refresh_base_cost + ManualRefreshCount[player]` gold. Calls Economy `validate_spend` + `apply_spend` before drawing new cards. Counter increments only on successful spend. Reset to 0 at each DRAFT entry (owned by Story 004).
+**ADR Decision Summary**: `card_acquisition_tick_system` is the single shop
+state writer. It drains Lightyear `MessageReceiver<C2SRefreshShop>` values,
+maps `RemoteId` to `PlayerId` through `PlayerConnectionMap`, phase-gates to
+`ShopPhase::ShopActive`, computes cost from `Res<GameConfig>`, spends gold via
+Economy API before drawing, draws replacement slots from `PlayerPools`, sends
+`S2CShopSlots` only on success, and increments `refresh_count_this_draft` only
+after successful spend and draw.
 
-**Engine**: Bevy 0.18 | **Risk**: MEDIUM (Bevy 0.18 MessageReader API; cross-system Economy call; Lightyear C2S message shape)
+**Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
+
 **Engine Notes**:
-- `EventWriter`/`EventReader` no longer exist in Bevy 0.17+. Use `MessageReader<C2SShopRefresh>` + `app.add_message::<C2SShopRefresh>()`.
-- `C2SShopRefresh` is a Lightyear C2S message — confirm exact deserialized event type with `liv-bevy-lightyear` skill before implementing.
-- `liv-bevy-018` mandatory on all `.rs` files; `liv-bevy-lightyear` mandatory on this system (lightyear message handling).
+- Use Bevy `MessageReader<ShopRefreshTriggered>` only for the RSM internal
+  DRAFT-entry bus.
+- Use Lightyear `MessageReceiver<C2SRefreshShop>` for client-to-server manual
+  refresh requests. Do not register this as a Bevy message.
+- The request payload has no player field; resolve player identity from
+  `RemoteId` and `PlayerConnectionMap`.
+- `liv-bevy-018` is mandatory for Bevy `.rs` changes.
+- `liv-bevy-lightyear` is mandatory for the Lightyear message receiver path.
 
-**Control Manifest Rules (Core layer)**:
-- Required: Phase-gate pattern in every C2S handler — `if phase != DraftShop { debug!(...); continue; }`. Invalid phase → silently discard, debug log only, **zero S2C response**.
-- Required: `validate_spend` called BEFORE `apply_spend`. Never deduct gold without first confirming the player can afford it.
-- Required: `ManualRefreshCount[player]` incremented ONLY after successful spend.
-- Required: `refresh_base_cost` read from `GameConfig` — never hardcoded.
-- Forbidden: `refresh_shop()` called before `apply_spend()` succeeds.
+**Control Manifest Rules (Core and Feature layers)**:
+- Required: every C2S handler resolves sender identity, phase-gates, validates,
+  then mutates authoritative state.
+- Required: invalid C2S inputs are silently discarded; no error response to
+  clients.
+- Required: `GameConfig.refresh_base_cost` and `GameConfig.refresh_cap` are read
+  from `Res<GameConfig>`; no hardcoded tuning values.
+- Required: all `PlayerEconomy` mutations go through
+  `server/src/core/economy/api.rs`.
+- Required: Card Acquisition is the sole steady-state writer for `ShopStates`.
+- Forbidden: Bevy `MessageReader<C2SRefreshShop>` or `app.add_message` for
+  Lightyear C2S traffic.
 - Forbidden: `unwrap()` in production paths.
 
 ---
 
 ## Acceptance Criteria
 
-*From EPIC.md deliverables and Economy GDD §8 criteria EC24/EC25/EC26:*
+*From Card Acquisition GDD CA8/CA9/CA10/CA11/CA15/CA22 and Economy GDD
+EC24/EC25/EC26, scoped to the Card Data & Pool integration path.*
 
-- [ ] **AC-1 (EC24)**: GIVEN `ManualRefreshCount[player] == 0` and player has sufficient gold, WHEN `C2SShopRefresh` received during `DraftShop` phase, THEN gold deducted == `refresh_base_cost` (1g); `ManualRefreshCount[player]` incremented to 1; `ShopSlots[player]` updated with up to 3 new cards.
-- [ ] **AC-2**: GIVEN `ManualRefreshCount[player] == 1`, WHEN second `C2SShopRefresh` received during `DraftShop`, THEN cost == `refresh_base_cost + 1` (2g); `ManualRefreshCount[player]` incremented to 2.
-- [ ] **AC-3 (EC25)**: GIVEN `ManualRefreshCount[player] == 2`, WHEN third `C2SShopRefresh`, THEN cost == `refresh_base_cost + 2` (3g); `ManualRefreshCount[player]` incremented to 3.
-- [ ] **AC-4 (EC26)**: GIVEN player gold < required refresh cost, WHEN `C2SShopRefresh` received during `DraftShop`, THEN `ShopSlots[player]` unchanged; player gold unchanged; no S2C response enqueued; `ManualRefreshCount[player]` unchanged.
-- [ ] **AC-5**: GIVEN `C2SShopRefresh` received while `Res<RoundState>.phase != DraftShop` (e.g., Placement or DraftInitial), WHEN `on_manual_refresh` runs, THEN message silently discarded — no shop refresh, no Economy call, no S2C response, `debug!` log only.
-- [ ] **AC-6**: GIVEN `ManualRefreshCount[player] == 3` from previous DRAFT phase, WHEN a new DRAFT auto-refresh fires via `ShopRefreshNeeded` (Story 004's system), THEN `ManualRefreshCount[player] == 0` (reset by Story 004 — tested here as integration).
+- [ ] **AC-1 (first refresh succeeds)**: GIVEN `refresh_count_this_draft == 0`,
+  `refresh_base_cost == 1`, player gold is sufficient, and shop phase is
+  `ShopActive`, WHEN a Lightyear `C2SRefreshShop` request is processed, THEN
+  gold decreases by 1, replacement shop slots are produced from the player's
+  pool, an `S2CShopSlots` payload exists, and `refresh_count_this_draft == 1`.
+- [ ] **AC-2 (escalated refresh succeeds)**: GIVEN
+  `refresh_count_this_draft == 1`, `refresh_base_cost == 1`, and
+  `refresh_cap == 1`, WHEN a second manual refresh is processed, THEN gold
+  decreases by 2 and `refresh_count_this_draft == 2`.
+- [ ] **AC-3 (cap is honored)**: GIVEN `refresh_count_this_draft > refresh_cap`,
+  WHEN manual refresh is processed, THEN cost is
+  `refresh_base_cost + refresh_cap`, not an unbounded counter value.
+- [ ] **AC-4 (insufficient gold is silent no-op)**: GIVEN player gold is less
+  than required refresh cost, WHEN `C2SRefreshShop` is processed, THEN gold,
+  shop slots, and `refresh_count_this_draft` are unchanged and no `S2CShopSlots`
+  payload is produced.
+- [ ] **AC-5 (wrong phase is silent no-op)**: GIVEN the player's shop phase is
+  `Inactive`, `DraftInitial`, or `AuctionLock`, WHEN `C2SRefreshShop` is
+  processed, THEN no Economy call succeeds, no pool draw runs, no slots change,
+  no `S2CShopSlots` payload is produced, and the counter is unchanged.
+- [ ] **AC-6 (draw failure refunds)**: GIVEN gold spend succeeds but the pool
+  integration cannot produce replacement slots, WHEN manual refresh is
+  processed, THEN spent gold is refunded, no `S2CShopSlots` payload is
+  produced, and the counter is unchanged.
+- [ ] **AC-7 (draft-entry reset)**: GIVEN a previous DRAFT phase left
+  `refresh_count_this_draft > 0`, WHEN a new DRAFT-entry
+  `ShopRefreshTriggered` (`DraftInitial`, `AuctionLock`, `ShopOpen`, or
+  `ShopUnlock`) is applied, THEN `refresh_count_this_draft == 0` before the
+  next manual refresh cost is computed.
 
 ---
 
 ## Implementation Notes
 
-*From ADR-006 EPIC deliverables:*
+**Primary implementation surface**:
+- `server/src/feature/acquisition/system.rs`
+- Existing helper functions to use in tests:
+  - `manual_refresh_cost`
+  - `process_manual_refresh_shop_request`
+  - `apply_shop_refresh_trigger`
 
-**Cost formula**: `cost = config.manual_refresh_base_cost + ManualRefreshCount[player]`
-- 1st refresh: `ManualRefreshCount == 0` → cost = `refresh_base_cost` (e.g., 1g)
-- 2nd refresh: `ManualRefreshCount == 1` → cost = 2g
-- 3rd refresh: `ManualRefreshCount == 2` → cost = 3g
+**Lightyear receiver surface**:
 
-**`on_manual_refresh` control flow**:
-```
-1. for msg in reader.read():
-2.   phase gate: if phase != DraftShop → debug!(...); continue
-3.   n = ManualRefreshCount[player].unwrap_or(0)
-4.   cost = config.manual_refresh_base_cost + n
-5.   validate_spend(economy[player], cost) → if Err → continue (no S2C, no mutation)
-6.   apply_spend(economy[player], cost)
-7.   ManualRefreshCount[player] = n + 1
-8.   slots = refresh_shop(pool[player], catalog, family_index, &mut rng, config, 3)
-9.   ShopSlots[player] = slots
-   // S2CShopSlots dispatch is Story 006's responsibility
-```
-
-**Economy integration**: `validate_spend` and `apply_spend` are from the Economy System epic API (`server/src/core/economy/api.rs`). Coordinate exact signatures with the Economy epic. The key invariant: validate BEFORE spend, spend BEFORE draw.
-
-**`C2SShopRefresh` message type**: Defined in `shared/src/protocol.rs`. `liv-bevy-lightyear` skill must verify that Lightyear 0.26 delivers this as a `MessageReader<C2SShopRefresh>` system parameter.
-
-**`manual_refresh_base_cost`** is a `GameConfig` tuning knob (default 1g). Add to `assets/config/game_config.ron` alongside pool copy counts.
-
-**Registration in `CardPoolPlugin`**:
 ```rust
-app.add_systems(Update, on_manual_refresh.after(advance_phase));
+Query<(&RemoteId, &mut MessageReceiver<C2SRefreshShop>)>
 ```
+
+The system should iterate `receiver.receive()`, resolve the sender to a
+`PlayerId`, and drop requests from unknown senders without panicking.
+
+**Manual refresh control flow**:
+
+```rust
+for _ in receiver.receive() {
+    let Some(player_id) = resolve_player(remote, connections) else {
+        continue;
+    };
+    let (result, slots) = process_manual_refresh_shop_request(..., player_id);
+    if let Some(slots) = slots {
+        send S2CShopSlots to that player's peer or defer for reconnect;
+    }
+}
+```
+
+**Cost formula**:
+
+```rust
+refresh_base_cost + refresh_count_this_draft.min(refresh_cap)
+```
+
+Use `saturating_add` to avoid overflow if a bad config or corrupted counter is
+ever present.
+
+**Economy invariant**: Spend before draw. If draw fails after spend, refund
+immediately in the same function body. Rejected refreshes do not increment the
+counter.
 
 ---
 
 ## Out of Scope
 
-*Handled by neighbouring stories — do not implement here:*
-
-- [Story 004]: `ManualRefreshCount` resource declaration and reset at DRAFT entry — Story 004 owns the reset; this story only increments
-- [Story 006]: Sending `S2CShopSlots` to client — this story writes to `ShopSlots` resource; network dispatch is Story 006's responsibility
-- Economy System epic: `validate_spend` and `apply_spend` — this story calls them; does not implement them
+- Changing Card Pool draw algorithms or pool copy-count formulas.
+- Implementing purchase flow atomicity; Card Acquisition Story 005 owns that.
+- Changing Lightyear protocol registration beyond the existing
+  `C2SRefreshShop` registration.
+- Updating `production/session-state/active.md` or `production/sprint-status.yaml`.
+- Editing duplicate stale Card Data & Pool Story 004 files.
 
 ---
 
 ## QA Test Cases
 
-*Written by QA Lead at story creation. Implement against these — do not invent new test cases.*
+- **AC-1** - `test_first_manual_refresh_costs_base_gold`
+  - Given: `ShopPhase::ShopActive`, `refresh_count_this_draft == 0`,
+    `PlayerEconomy.gold == 10`, and a populated `PlayerPools` fixture.
+  - When: `process_manual_refresh_shop_request` runs.
+  - Then: gold is 9, counter is 1, and `S2CShopSlots` contains up to 3 slots.
 
-- **AC-1** — `test_first_manual_refresh_costs_base_gold`
-  - Given: `ManualRefreshCount[A] == 0`; `PlayerEconomy[A].gold == 10`; `config.manual_refresh_base_cost == 1`; phase == DraftShop; `C2SShopRefresh { player: A }` written
-  - When: `on_manual_refresh` processes message
-  - Then: `PlayerEconomy[A].gold == 9`; `ManualRefreshCount[A] == 1`; `ShopSlots[A]` has up to 3 new entries
-  - Edge cases: `manual_refresh_base_cost == 2` → first refresh costs 2g
+- **AC-2** - `test_second_manual_refresh_cost_escalated`
+  - Given: `refresh_count_this_draft == 1`, base 1, cap 1, and gold 10.
+  - When: manual refresh runs.
+  - Then: gold is 8 and counter is 2.
 
-- **AC-2** — `test_second_manual_refresh_cost_escalated`
-  - Given: `ManualRefreshCount[A] == 1`; `PlayerEconomy[A].gold == 10`; `config.manual_refresh_base_cost == 1`; phase == DraftShop
-  - When: `C2SShopRefresh` processed
-  - Then: `PlayerEconomy[A].gold == 8` (2g deducted); `ManualRefreshCount[A] == 2`
-  - Edge cases: Cost is additive — `refresh_base_cost + ManualRefreshCount` (not multiplicative)
+- **AC-3** - `test_refresh_cap_limits_cost`
+  - Given: `refresh_count_this_draft == 5`, base 1, cap 1, and gold 10.
+  - When: manual refresh runs.
+  - Then: gold is 8, confirming cost 2.
 
-- **AC-3** — `test_third_manual_refresh_cost_escalated`
-  - Given: `ManualRefreshCount[A] == 2`; `PlayerEconomy[A].gold == 10`; phase == DraftShop
-  - When: `C2SShopRefresh` processed
-  - Then: `PlayerEconomy[A].gold == 7` (3g); `ManualRefreshCount[A] == 3`
-  - Edge cases: nth refresh → cost == `base_cost + (n-1)` for all n ≥ 1
+- **AC-4** - `test_insufficient_gold_no_refresh`
+  - Given: gold is below the computed cost.
+  - When: manual refresh runs.
+  - Then: gold, slots, and counter are unchanged; no slots payload is returned.
 
-- **AC-4** — `test_insufficient_gold_no_refresh`
-  - Given: `ManualRefreshCount[A] == 0`; `PlayerEconomy[A].gold == 0`; `config.manual_refresh_base_cost == 1`; phase == DraftShop
-  - When: `C2SShopRefresh` processed
-  - Then: `PlayerEconomy[A].gold == 0` (unchanged); `ManualRefreshCount[A] == 0` (unchanged); `ShopSlots[A]` unchanged
-  - Edge cases: gold == cost → succeeds; gold == cost - 1 → fails; verify no S2C message enqueued on failure
+- **AC-5** - `test_wrong_phase_discards_refresh`
+  - Given: phase is not `ShopActive`.
+  - When: manual refresh runs.
+  - Then: result is `DiscardedWrongPhase`; no state changes occur.
 
-- **AC-5** — `test_wrong_phase_discards_message`
-  - Given: `Res<RoundState>.phase == RoundPhase::Placement`; `C2SShopRefresh { player: A }` written; `PlayerEconomy[A].gold == 10`
-  - When: `on_manual_refresh` processes message
-  - Then: `PlayerEconomy[A].gold == 10` (Economy not called); `ShopSlots[A]` unchanged; `ManualRefreshCount[A]` unchanged
-  - Edge cases: DraftInitial → discarded; DraftAuction → discarded; Resolution → discarded; only DraftShop allows refresh
+- **AC-6** - `test_draw_failure_refunds_gold`
+  - Given: gold is sufficient but required pool/session/catalog data cannot
+    produce slots.
+  - When: manual refresh runs.
+  - Then: gold is refunded and counter is unchanged.
 
-- **AC-6** — `test_draft_entry_resets_refresh_count` *(joint with Story 004)*
-  - Given: `ManualRefreshCount[A] == 3`; `ShopRefreshNeeded { player: A }` written (simulating new DRAFT entry)
-  - When: `on_shop_refresh_needed` (Story 004) processes message
-  - Then: `ManualRefreshCount[A] == 0` post-processing
-  - Edge cases: Next `C2SShopRefresh` after reset costs `base_cost + 0 = base_cost` again
+- **AC-7** - `test_draft_entry_resets_refresh_count`
+  - Given: `refresh_count_this_draft == 3`.
+  - When: each relevant `ShopRefreshTriggered` variant is applied.
+  - Then: `refresh_count_this_draft == 0`.
 
 ---
 
 ## Test Evidence
 
 **Story Type**: Integration
+
 **Required evidence**:
-- `tests/integration/pool/manual_refresh_test.rs` — must exist and all tests must pass
+- `tests/integration/pool/manual_refresh_test.rs`
+- Cargo test target: `cargo test -p server --test pool_manual_refresh_test`
 
 **Status**: [ ] Not yet created
 
@@ -147,7 +235,24 @@ app.add_systems(Update, on_manual_refresh.after(advance_phase));
 
 ## Dependencies
 
-- Depends on: Story 004 (ShopRefreshNeeded + SessionReady Init) must be **DONE** — `ManualRefreshCount` resource and `ShopSlots` population required
-- Depends on: Economy System epic — `validate_spend` and `apply_spend` API must be defined and callable
-- Depends on: `C2SShopRefresh` message type defined in `shared/src/protocol.rs` (workspace-and-shared-types Foundation epic)
-- Unlocks: Story 006 (Network Dispatch — reads `ShopSlots` updated by this story)
+- Depends on: Card Data & Pool Story 004 is complete; `PlayerPools` lifecycle
+  and teardown are implemented.
+- Depends on: Card Acquisition Story 003 is complete; draw pipeline can produce
+  shop slots from `PlayerPools`.
+- Depends on: Card Acquisition Story 004 is complete; refresh formula and reset
+  model exist.
+- Depends on: Economy API is callable through
+  `server/src/core/economy/api.rs`.
+- Depends on: `C2SRefreshShop` exists and is registered in
+  `shared/src/protocol.rs`.
+- Unlocks: Pool manual refresh integration evidence for code review and story
+  closure.
+
+---
+
+## Performance Budget
+
+No new steady-state budget is expected beyond one C2S receiver drain per frame.
+Manual refresh runs only on player request, draws at most three slots, and stays
+within the server steady-state game-logic budget of 5 ms. Wrong-phase and
+insufficient-gold requests return before pool drawing.
