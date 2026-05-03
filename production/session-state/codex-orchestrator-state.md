@@ -95,7 +95,17 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-None currently queued here.
+- CDP-005: Manual Refresh + Cost Escalation readiness docs landed on main at
+  `037788b`; root implementation integration landed on main at `a3719fc` from
+  worker branch `work/cdp-005-manual-refresh-cost-escalation` commits
+  `42099ed` and `2769690`. The story now matches manifest `2026-05-01` and the
+  implementation adds Card Data & Pool integration evidence for the existing
+  Card Acquisition manual refresh path. Verification passed `cargo test -p
+  server --test pool_manual_refresh_test` 7/7, `cargo test -p server --test
+  card_acquisition_refresh_cost_test --test pool_session_ready_test --test
+  pool_manual_refresh_test` 18/18, `cargo check -p server`, and diff checks.
+  Notes: no production handler ownership moved; current Lightyear C2S path
+  remains `MessageReceiver<C2SRefreshShop>` in `card_acquisition_tick_system`.
 ## Recently Closed
 
 - HAND-UI-006: Placement Drag Highlights implemented on branch
@@ -430,7 +440,9 @@ None currently queued here.
 
 ## Story-Done Queue
 
-None currently queued.
+1. CDP-005:
+   `production/epics/card-data-pool/story-005-manual-refresh-cost-escalation.md`
+   after integration commit `a3719fc`.
 
 Run only one story-done at a time.
 
@@ -462,6 +474,9 @@ Active implementation workers by default-launch rule:
 None currently tracked here.
 
 Current active windows by user default-launch rule:
+- CDP-005 returned, integrated into `main` at `a3719fc`, pushed to
+  origin/main, and now needs serialized `/story-done`. The implementation
+  window can be cleared.
 - AUC-005 story-done returned and was committed at `2b61243`; window can be
   cleared.
 - PRISM-005 story-done returned and was committed at `ef6b4ad`; window can be
