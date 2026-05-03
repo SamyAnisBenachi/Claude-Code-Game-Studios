@@ -116,14 +116,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- AUC-006: Resolution & Settlement readiness repair landed on main at
-  `6f9b54a`; implementation landed on main at `5461de6`. Verification passed
-  `cargo fmt --all -- --check`, `cargo test -p server --test
-  auction_resolution_settlement_test` 3/3, `cargo test -p server --test
-  auction_resolution_settlement_integration_test` 1/1, affected
-  auction/economy regressions, `cargo test -p server --test
-  reconnect_snapshot_test` 6/6, `cargo check -p server`, and diff checks.
-  No `/story-done` has run yet.
 - HAND-UI-008: Placement Unstaging implemented on branch
   `work/hand-ui-008-placement-unstaging` at worker commit `743d660`; root
   integration landed on main at `552f80f`. Verification passed `cargo fmt -p
@@ -133,6 +125,13 @@ None currently tracked here.
   `/story-done` has run yet.
 ## Recently Closed
 
+- AUC-006: Resolution & Settlement readiness repair landed on main at
+  `6f9b54a`; implementation landed on main at `5461de6`; story-done closure
+  committed at `61e69b4`. Verification passed `cargo test -p server --test
+  auction_resolution_settlement_test` 3/3, `cargo test -p server --test
+  auction_resolution_settlement_integration_test` 1/1, `cargo check -p
+  server`, and diff checks. `production/sprint-status.yaml` had no matching
+  AUC-006 row.
 - BOARD-009: Prism Collection readiness docs landed on main at `7dab817`;
   implementation landed on main at `105e6b0`; story-done closure committed at
   `394d6c3`. Verification passed `cargo test -p server --test
@@ -518,10 +517,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. AUC-006:
-   `production/epics/auction-system/story-006-resolution-settlement.md`
-   after integration commit `5461de6`.
-2. HAND-UI-008:
+1. HAND-UI-008:
    `production/epics/hand-ui/story-008-placement-unstaging.md`
    after integration commit `552f80f`.
 
@@ -539,7 +535,8 @@ Run only one story-done at a time.
 - GSS-005: closed at `19071b5`.
 - GSS-006: closed at `a49e422`.
 - GSS-007: closed at `7378e28`.
-- AUC-005 is closed at `2b61243`; AUC-006+ follow normal sequencing.
+- AUC-005 is closed at `2b61243`; AUC-006 is closed at `61e69b4`;
+  AUC-007+ follow normal sequencing.
 - HUD-008: closed at `07f477f`. The original snapshot schema blocker was
   removed by integrated and closed GSS-007 code.
 - Other RSM/session/disconnect work should avoid reopening the GSS-007
@@ -562,12 +559,11 @@ Active implementation workers by default-launch rule:
 
 Current active windows by user default-launch rule:
 - HAND-UI-008 returned, integrated into main at `552f80f`, verified, and is on
-  origin/main. Window can be cleared. It now needs serialized `/story-done`
-  after AUC-006.
+  origin/main. Window can be cleared. It now needs serialized `/story-done`.
 - BOARD-009 story-done returned and was committed at `394d6c3`; window can be
   cleared.
-- AUC-006 returned, integrated into main at `6f9b54a` and `5461de6`, pushed to
-  origin/main, and can be cleared. It now needs serialized `/story-done`.
+- AUC-006 story-done returned and was committed at `61e69b4`; window can be
+  cleared.
 - PRISM-005 story-done returned and was committed at `ef6b4ad`; window can be
   cleared.
 - OBJECTIVE-003 story-done returned and was committed at `4327b7b`; window can
