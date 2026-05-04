@@ -1719,3 +1719,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-09 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
 - Next recommended: Combat Story 8 RANGE Targeting (`production/epics/combat-resolution/story-008-range-targeting.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-rendering/story-001-plugin-scaffold-board-layout-card-atlas.md` - Story 001: Plugin Scaffold, BoardLayout, and CardAtlas
+- Criteria: 8/8 passing; plugin registration, session resource lifecycle, CardAtlas handles, BoardLayout coordinate formula, invalid-input asserts, phase receiver ownership, and PresentationPlugin dependency verified by `tests/unit/board_rendering/plugin_scaffold_test.rs`.
+- Test Evidence: `cargo test -p client --test board_rendering_plugin_scaffold_test` passed 9/9. `cargo test -p client --test hand_ui_placement_drag_highlights_test --test card_animations_placement_reveal_test` passed 14/14. `cargo check -p client` passed. `git diff --check` passed.
+- Verification: Current `main` includes integrated commit `b5abcd5`; `BoardRenderingPlugin` inserts/removes `BoardLayout` and `CardAtlas` on `ClientState::InSession` boundaries, `CardAtlas` carries `Handle<Image>` plus `Handle<TextureAtlasLayout>`, and Presentation registration uses the completed `PresentationPlugin`, `PresentationSet`, `phase_sink_system`, and `CurrentClientPhase` path from PRESENTATION-001.
+- Notes: Advisory only - `TR-BR-002` in `docs/architecture/tr-registry.yaml` says `cell_to_world(lane, cell) -> Vec3`, while the current Board Rendering GDD F1 formula and ADR-021 specify `Vec2`; implementation follows the current GDD/ADR and existing Presentation consumers. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Scope: No scope creep found into snapshots, unit spawning, new tweens, resolution animation queue, shop/auction UI, or visual asset generation.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching BOARD-RENDERING-001 row exists in `production/sprint-status.yaml`.
+- Next recommended: Board Rendering Story 002 (`production/epics/board-rendering/story-002-board-grid-camera-and-layer-constants.md`) after readiness check, or continue Sprint 5 Must Have Combat Story 8 if the current sprint priority remains unchanged.
