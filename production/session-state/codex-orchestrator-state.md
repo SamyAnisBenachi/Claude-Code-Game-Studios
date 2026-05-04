@@ -181,7 +181,17 @@ None currently tracked here.
   current-mana split spec, `PlacedCard` protocol shape is drifted between C2S
   and S2C reveal, and Hand UI lacks `current_mana` in its economy view. Do
   not implement HAND-UI-010 until the server/protocol/client data blockers are
-  split or resolved.
+  split or resolved. Follow-up blocker split returned read-only with no edits:
+  docs-only readiness repair is not enough; create prerequisite implementation
+  stories/repairs for (1) protocol shape split between submit/internal/reveal
+  placement payloads, (2) server split-budget validation, duplicate card
+  rejection, mandatory hand validation, target validation, and explicit
+  reserve/current deduction, (3) C2S placement wiring from network message to
+  `PlacementSubmissionReceived`, (4) client Hand UI `current_mana` economy
+  mirror, and only then (5) HAND-UI-010 client validation gating for manual,
+  timer, grace-expiry, and grace-drop submit paths. Do not run protocol split or
+  combat-file changes casually in parallel with combat spine work; client
+  economy mirror is the safest parallel slice after protocol API is stable.
 - Shop/Auction UI UX readiness check returned that `design/ux/shop-auction-ui.md`
   is missing. It is advisory for Story 001 scaffold/formulas, but blocks
   visual/layout implementation and exact tooltip/layout work.
@@ -943,6 +953,8 @@ Current active windows by user default-launch rule:
   cleared.
 - HAND-UI-010 readiness returned BLOCKED; window can be cleared and should
   not be relaunched until server/protocol/client data blockers are addressed.
+  HAND-UI-010 blocker split returned read-only and confirmed new prerequisite
+  implementation stories are needed; blocker split window can be cleared.
 - Shop/Auction UX readiness check returned; window can be cleared.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
