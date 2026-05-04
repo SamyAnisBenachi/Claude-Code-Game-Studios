@@ -4,12 +4,12 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Logic
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
 **GDD**: `design/gdd/combat-resolution.md`
-**Requirement**: `TR-CR-???` (TR-CR-006 — unregistered)
+**Requirement**: `TR-CR-002` (CR-1, CR-2 - FIRST STRIKE SS3 damage and simultaneous HP snapshots), `TR-CR-007` (CR-22 - FINAL BLOW fires in the kill sub-step), `TR-CR-020` (CR-4 - RANGE + FIRST STRIKE emits SS3 and SS6 damage events), `TR-CR-021` (CR-37 - lane-order multi-source FIRST STRIKE damage and FINAL BLOW credit)
 
 **ADR Governing Implementation**: ADR-017: Combat Resolution Execution Architecture
 **ADR Decision Summary**: SS3 is a sequential function call within `resolve_combat`. All FIRST STRIKE units deal damage simultaneously using pre-combat HP snapshots. Multi-source damage on one target applies sequentially in lane order (Lane 1 first). Dead units from SS3 damage are NOT removed until SS4 — their FIRST STRIKE attack still resolves in SS3. `apply_combat_modifier_stack` (Story 002) is used for each individual attack.
@@ -20,6 +20,7 @@
 **Control Manifest Rules (Feature layer)**:
 - Required: Pre-combat HP snapshots taken before any SS3 damage is applied; `apply_combat_modifier_stack` used for every individual attack; lane-order tiebreak for multi-source; dead units stay on board until SS4
 - Forbidden: Never remove a dead unit in SS3; never apply HP mutations before all snapshot reads complete for bilateral pairs
+- Performance: SS3 contributes to ADR-017's <= 15 ms RESOLUTION budget; collection, targeting, and damage application must remain bounded by lane count and live unit count.
 
 ---
 
@@ -63,7 +64,7 @@ SS3 execution (execute_first_strike):
 
 **STUN suppresses SS3 (CR-5)**: Check `if snapshot.is_stunned { continue; }` at the top of the FS loop.
 
-**RANGE + FS targets**: Reuse the RANGE target selection formula from Story 008. SS3 RANGE attacks do NOT cause the RANGE unit to advance — it stays at its current cell.
+**RANGE + FS targets (minimal SS3 scope)**: This story owns the SS3 FIRST STRIKE pass for RANGE + FIRST STRIKE units when there is a single nearest forward enemy within range, plus the CR-4 proof that this attacker can emit separate SS3 and SS6 `CombatDamage` entries during RESOLUTION. Full RANGE targeting remains Story 008: equidistant RNG, full forward-only matrix coverage, WALL-specific targeting, and target reacquisition after SS4 removal.
 
 ---
 
@@ -71,7 +72,7 @@ SS3 execution (execute_first_strike):
 
 - Story 006: SS4 dead unit removal and kill gold drain (kill_log populated here, drained in SS4)
 - Story 007: SHIELD pre-check and COUNTERATTACK response after SS3 damage
-- Story 008: RANGE target selection logic (shared, defined there)
+- Story 008: Full RANGE targeting matrix beyond the single-nearest SS3 RANGE + FIRST STRIKE case defined above
 
 ---
 
