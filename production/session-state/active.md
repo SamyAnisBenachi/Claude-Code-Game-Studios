@@ -1708,3 +1708,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per user instruction; no matching `PRESENTATION-001` row exists in `production/sprint-status.yaml`.
 - Next recommended: Combat Story 7 Standard Combat + SHIELD + COUNTERATTACK (`production/epics/combat-resolution/story-007-substep6-combat-shield-counterattack.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/combat-resolution/story-007-substep6-combat-shield-counterattack.md` - Story 007: Sub-step 6 - Standard Combat + SHIELD + COUNTERATTACK
+- Criteria: 7/7 passing; CR-6, CR-7, CR-20, CR-21, CR-29, CR-35, and CR-36 covered by `tests/unit/combat/substep6_combat_shield_counterattack_test.rs`.
+- Test Evidence: `cargo test -p server --test substep6_combat_shield_counterattack_test` passed 7/7. `cargo test -p server --test movement_collision_test --test substep3_first_strike_test --test substep4_dead_removal_test` passed 13/13. `cargo check -p server` passed. `git diff --check` passed.
+- Verification: Current `main` includes integrated commit `2c8f752`; SS6 standard unit-vs-unit combat runs through `execute_standard_combat`, SHIELD absorbs grouped incoming damage once per sub-step and persists until consumed, COUNTERATTACK fires for same-cell and collision-halt adjacent melee contact after incoming damage or SHIELD absorption, and RANGE attackers at distance do not trigger COUNTERATTACK.
+- Notes: Advisory only - current GDD CR-21 wording still says COUNTERATTACK fires before the SHIELD absorption check, while active `TR-CR-006`, this story, and ADR-017 specify after incoming damage or SHIELD absorption. Implementation follows the active TR/story contract. No Story 008 RANGE targeting scope creep found; this closure only verifies the narrow RANGE + FIRST STRIKE support needed by CR-20 and CR-29. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-09 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
+- Next recommended: Combat Story 8 RANGE Targeting (`production/epics/combat-resolution/story-008-range-targeting.md`) after readiness check.

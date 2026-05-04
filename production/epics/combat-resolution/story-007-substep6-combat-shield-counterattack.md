@@ -1,7 +1,7 @@
 # Story 007: Sub-step 6 — Standard Combat + SHIELD + COUNTERATTACK
 
 > **Epic**: Combat Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -131,7 +131,7 @@ Post-SS6 cleanup pass:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combat/substep6_combat_shield_counterattack_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passed
 
 ---
 
@@ -139,3 +139,13 @@ Post-SS6 cleanup pass:
 
 - Depends on: Story 002 (modifier stack), Story 004 (post-SS5 positions), Story 006 (dead units from SS4 removed before SS6)
 - Unlocks: Story 008 (RANGE targeting is part of SS6), Story 009 (objective damage follows SS6 combat)
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 7/7 passing. CR-6, CR-7, CR-20, CR-21, CR-29, CR-35, and CR-36 are covered by `tests/unit/combat/substep6_combat_shield_counterattack_test.rs`.
+**Test Evidence**: `cargo test -p server --test substep6_combat_shield_counterattack_test` passed 7/7. Regression slice `cargo test -p server --test movement_collision_test --test substep3_first_strike_test --test substep4_dead_removal_test` passed 13/13. `cargo check -p server` and `git diff --check` passed.
+**Verification**: Current `main` includes integrated commit `2c8f752`; SS6 standard unit-vs-unit combat runs through `execute_standard_combat`, SHIELD absorbs grouped incoming damage once per sub-step and persists until consumed, COUNTERATTACK fires for same-cell and collision-halt adjacent melee contact after incoming damage or SHIELD absorption, and RANGE attackers at distance do not trigger COUNTERATTACK.
+**Notes**: No blocking GDD, ADR, Bevy 0.18, or implementation deviation found. Advisory only - current GDD CR-21 wording still says COUNTERATTACK fires before the SHIELD absorption check, while active `TR-CR-006`, this story, and ADR-017 specify after incoming damage or SHIELD absorption; implementation follows the active TR/story contract. No Story 008 RANGE targeting scope creep found; this closure only verifies the narrow RANGE + FIRST STRIKE support needed by CR-20 and CR-29. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+**Tech Debt Logged**: None.

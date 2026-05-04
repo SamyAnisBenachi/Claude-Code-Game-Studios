@@ -105,10 +105,13 @@ stories:
     name: "Combat Story 7: Standard Combat + SHIELD + COUNTERATTACK"
     file: "production/epics/combat-resolution/story-007-substep6-combat-shield-counterattack.md"
     priority: must-have
-    status: not-started
+    status: done
     owner: "worker"
     estimate_days: 1.00
     blocker: ""
+    completed: "2026-05-04"
+    notes:
+      - "COMPLETE WITH NOTES: SS6 standard combat, SHIELD consumption/persistence, and COUNTERATTACK melee eligibility verified. Advisory only - current GDD CR-21 wording says before SHIELD absorption, while active TR/story/ADR specify after incoming damage or SHIELD absorption; implementation follows active TR/story. No Story 008 RANGE targeting scope creep found."
 
   - id: "S5-10"
     name: "Combat Story 8: RANGE Targeting"
