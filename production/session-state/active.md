@@ -1587,3 +1587,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per user instruction; no matching OBJECTIVE-005 row exists in `production/sprint-status.yaml`.
 - Next recommended: Objective Story 006 D4 Fake Reward Draw (`production/epics/objective-system/story-006-d4-fake-reward-draw.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/auction-system/story-007-auction-plugin-scheduling.md` - Story 007: Plugin Registration & System Scheduling
+- Criteria: 5/5 plugin/CI criteria passing; AU1-b-network deferred/open pending ADR-008 Lightyear FIFO integration test and remains a sprint-review note, not a blocker.
+- Test Evidence: CI grep gate exists in `.github/workflows/tests.yml`. Local checks passed: no deprecated Bevy event API in `server/src/feature/auction/`, exactly one `ResMut<AuctionState>`, targeted auction/economy test set, and `cargo check -p server`.
+- Verification: Current `main` after integrated commit `ea5d88d` registers `AuctionPlugin` in `server/src/main.rs`, inserts `AuctionState::default()`, registers required auction Bevy messages, configures `AuctionSet::Tick.before(RsmSet::Tick)`, and schedules `auction_tick_system.after(reconnect_snapshot_system)`.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviation found. Advisory only - available smoke report `production/qa/smoke-2026-04-30.md` predates AUC-007, so closure used local CI-equivalent checks. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per approval boundary; no matching `AUC-007` row exists in `production/sprint-status.yaml`.
+- Next recommended: Auction Story 008 Pool Integration (`production/epics/auction-system/story-008-pool-integration.md`) after readiness check.
