@@ -193,10 +193,11 @@ None currently tracked here.
 - Presentation Layer Story 001 readiness returned READY. Traceability decision:
   ADR-021 plus current control manifest is sufficient because this is ADR-only
   presentation infrastructure and the TR registry is scoped to GDD technical
-  requirements; no TR-PRES entry is required. Workflow note: the written story
-  still says `Ready-for-Readiness` because the pass was read-only. Before
-  `/dev-story`, commit the Presentation planning files and preserve the
-  ADR-only traceability exception in the implementation prompt.
+  requirements; no TR-PRES entry is required. Planning was committed at
+  `514c1ad`; worker implementation returned local commit `e783a27` without a
+  branch push, so root cherry-picked only that commit and pushed it to
+  `origin/main` as `1c5c40f`. Next action: run `/story-done` for
+  `production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md`.
 - Board Rendering Story 001 readiness returned NEEDS WORK. No trace,
   dependency, ADR, or manifest blocker was found. Required fixes are docs-only:
   add an explicit ADR-021 presentation performance/no-impact note and clarify
@@ -289,6 +290,18 @@ None currently tracked here.
   `/story-done` for
   `production/epics/objective-system/story-006-d4-fake-reward-draw.md`. Do not
   relaunch the OBJECTIVE-006 implementation worker.
+- PRESENTATION-001 readiness/planning landed at `514c1ad`; worker
+  implementation returned local commit `e783a27` on
+  `work/presentation-001-plugin-set-phase-sink`, but branch push was rejected.
+  The worker branch was behind current `origin/main`, so root cherry-picked
+  only the presentation commit and pushed it to `origin/main` as `1c5c40f`.
+  Verification passed `cargo fmt -p client -- --check`,
+  `cargo test -p client --test presentation_plugin_scaffold_test` 3/3,
+  adjacent HUD/Hand/Card Animations regressions 16/16,
+  `cargo check -p client`, `git diff --check`, and the grep guard for exactly
+  one `MessageReceiver<S2CPhaseChanged>` in `client/src`. Next action: run
+  `/story-done` for the Presentation Layer Story 001. Do not relaunch the
+  PRESENTATION-001 worker.
 - COMBAT-004: Movement + Collision readiness repair landed on main at
   `c2fc0d3`; implementation landed on main at `408c34a`; story-done closure
   committed at `52caa45`; follow-up story scope clarification committed at
@@ -771,8 +784,8 @@ Run only one story-done at a time.
   Shop/Auction UI 001 implementation. Board Rendering Story 001 has only
   docs-only readiness gaps and should be repaired/rerun, but still depends on
   the shared Presentation story before implementation. Presentation Layer
-  Story 001 readiness returned READY, but its planning files are currently
-  uncommitted until the user approves committing that changeset.
+  Story 001 planning landed at `514c1ad` and implementation landed at
+  `1c5c40f`; story-done is pending.
   Commit `22b6830` (`docs: repair board rendering scaffold readiness`) is now
   on `origin/main`, but the user has not yet pasted that agent's official
   return. Do not classify that window or launch BR-001 implementation until
@@ -814,7 +827,10 @@ Active implementation workers by default-launch rule:
 
 Current active windows by user default-launch rule:
 - COMBAT-006 implementation worker returned, root integrated and pushed commit
-  `ea43240`; window can be cleared. Story-done for COMBAT-006 is now pending.
+  `ea43240`; window can be cleared. `origin/main` now also contains
+  `e3e1cd7` (`story-done S5-08: COMBAT-006 closure`), but the user has not
+  pasted that story-done window output yet. Do not relaunch the prompt; wait
+  for the official pasted return before classifying the window.
 - OBJECTIVE-006 implementation worker returned; root cherry-picked and pushed
   only the objective commit as `d46e812` because the worker branch was behind
   current main. Window can be cleared. Story-done for OBJECTIVE-006 is now
@@ -839,9 +855,9 @@ Current active windows by user default-launch rule:
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
   and recommends a new shared Presentation Layer story. Window can be cleared.
 - Presentation Layer Story 001 readiness returned READY; window can be cleared.
-  Next action is committing the Presentation planning changeset, then launching
-  `/dev-story` for the Presentation Layer story with the ADR-only traceability
-  exception included.
+  Presentation implementation worker returned local commit `e783a27`; root
+  cherry-picked and pushed it as `1c5c40f`. Window can be cleared. Story-done
+  for Presentation Layer Story 001 is now pending.
 - Board Rendering Story 001 readiness returned NEEDS WORK on missing
   presentation performance/no-impact note and ambiguous invalid
   `cell_to_world` bounds/assert wording. Use `REPONDRE` in that same window
