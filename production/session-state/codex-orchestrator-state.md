@@ -145,6 +145,18 @@ None currently tracked here.
 
 ## Recent Planning / Readiness Updates
 
+- COMBAT-010 / S5-19 Persistent Keyword States readiness returned BLOCKED on
+  stale LEADER timing and trace/story gaps. Follow-up read-only analysis found
+  the current Combat/Keyword GDDs authoritative: LEADER snapshot is post-SS1,
+  before SS2, after all SS1 APPEARANCE effects resolve; ADR-018 and
+  `docs/architecture/control-manifest.md` are stale derivatives from the older
+  before-SS1 rule. This was already decided by OQ-KS9 and committed at
+  `f8ceafd` on 2026-05-01. Required repair sequence before `/dev-story`:
+  update ADR-018 Part 5 for post-SS1/pre-SS2 LEADER snapshot, update ADR-018
+  Part 6 and the control manifest so OUTNUMBERED recomputes only after SS4
+  `ChainDeathBuffer` drains, then repair Story 010 manifest/TR/LEADER timing,
+  add OUTNUMBERED boundary/flip AC, add the ADR-017 `<= 15 ms` RESOLUTION
+  budget note, and keep S2CResolutionEvent completeness in COMBAT-011.
 - COMBAT-009 / S5-11 Objective Damage + GAME_OVER readiness repair returned
   READY and was pushed at `05aca93`, updating
   `production/epics/combat-resolution/story-009-objective-damage-gameover.md`.
@@ -926,7 +938,10 @@ Current active windows by user default-launch rule:
   `16398c6`; root fast-forwarded and pushed `main` to that commit. Worker
   window can be cleared. Story-done returned COMPLETE and was pushed at
   `dc91402`, updating the story, active session state, and S5-11 sprint row.
-  Story-done window can be cleared. No COMBAT-010/011 work has started.
+  Story-done window can be cleared. COMBAT-010 readiness/blocker analysis
+  returned BLOCKED on stale LEADER timing; use `REPONDRE` in that window for a
+  docs-only ADR/control-manifest/Story 010 repair sequence. COMBAT-011 remains
+  blocked behind COMBAT-010.
 - COMBAT-008 readiness repair returned READY and was pushed at `b26f007`.
   Readiness window can be cleared. COMBAT-008 implementation worker returned at
   `dd7bd50`; root fast-forwarded and pushed `main` to that commit. Worker
