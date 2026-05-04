@@ -1,10 +1,14 @@
 # Story 003: Initial Draft & Refresh Shop
 
 > **Epic**: Card Data & Pool
-> **Status**: Ready
+> **Status**: Retired - superseded
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-29
+
+> **Retired**: 2026-05-04 during S5-22 hygiene cleanup.
+> **Canonical story**: [Story 003: refresh_shop + Slot Variants](story-003-refresh-shop-slot-variants.md)
+> **Reason**: Older duplicate remained marked Ready after the canonical story completed; retained for historical reference only.
 
 ## Context
 

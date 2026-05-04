@@ -3,7 +3,7 @@
 > **Layer**: Core
 > **GDD**: design/gdd/card-data-pool.md
 > **Architecture Module**: `server/core/pool/` (full module — `state.rs`, `api.rs`, `system.rs`, `plugin.rs`); the `CardCatalog` lookup type is consumed from `shared/` (Foundation epic)
-> **Status**: Ready
+> **Status**: Complete
 > **Stories**: 6 stories — see `## Stories` table below
 
 ## Overview
@@ -179,12 +179,24 @@ pub fn total_acquired(pool: &PlayerPool, catalog: &CardCatalog, id: CardId) -> u
 
 | # | Story | Type | Status | ADR |
 |---|-------|------|--------|-----|
-| 001 | [Pool State + Core API](story-001-pool-state-core-api.md) | Logic | Ready | ADR-006 |
-| 002 | [Weighted Draw Functions](story-002-weighted-draw-functions.md) | Logic | Ready | ADR-006 |
-| 003 | [refresh_shop + Slot Variants](story-003-refresh-shop-slot-variants.md) | Logic | Ready | ADR-006 |
-| 004 | [ShopRefreshNeeded Subscriber + SessionReady Init](story-004-shop-refresh-subscriber-session-ready.md) | Integration | Ready | ADR-006, ADR-010 |
-| 005 | [Manual Refresh + Cost Escalation](story-005-manual-refresh-cost-escalation.md) | Integration | Ready | ADR-006, ADR-010 |
-| 006 | [Network Dispatch Wiring](story-006-network-dispatch-wiring.md) | Integration | Ready (2 ACs DEFERRED) | ADR-010, ADR-008 |
+| 001 | [Pool State + Core API](story-001-pool-state-core-api.md) | Logic | Complete | ADR-006 |
+| 002 | [Weighted Draw Functions](story-002-weighted-draw-functions.md) | Logic | Complete | ADR-006 |
+| 003 | [refresh_shop + Slot Variants](story-003-refresh-shop-slot-variants.md) | Logic | Complete | ADR-006 |
+| 004 | [ShopRefreshNeeded Subscriber + SessionReady Init](story-004-shop-refresh-subscriber-session-ready.md) | Integration | Complete | ADR-006, ADR-010 |
+| 005 | [Manual Refresh + Cost Escalation](story-005-manual-refresh-cost-escalation.md) | Integration | Complete | ADR-006, ADR-010 |
+| 006 | [Network Dispatch Wiring](story-006-network-dispatch-wiring.md) | Integration | Complete | ADR-010, ADR-008 |
+
+## Superseded Duplicate Story Files
+
+S5-22 hygiene cleanup on 2026-05-04 retired older duplicate story files that were still marked Ready. The files remain in place as historical records; implementation planning and status tracking should use the canonical files below.
+
+| Retired duplicate | Canonical story |
+|-------------------|-----------------|
+| [State & API Scaffold](story-001-state-and-api-scaffold.md) | [Pool State + Core API](story-001-pool-state-core-api.md) |
+| [Weighted Draw](story-002-weighted-draw.md) | [Weighted Draw Functions](story-002-weighted-draw-functions.md) |
+| [Initial Draft & Refresh Shop](story-003-initial-draft-and-refresh-shop.md) | [refresh_shop + Slot Variants](story-003-refresh-shop-slot-variants.md) |
+| [SessionReady Observer & Shop Refresh Subscriber](story-004-session-ready-observer-shop-subscriber.md) | [ShopRefreshNeeded Subscriber + SessionReady Init](story-004-shop-refresh-subscriber-session-ready.md) |
+| [Network Dispatch](story-006-network-dispatch.md) | [Network Dispatch Wiring](story-006-network-dispatch-wiring.md) |
 
 **Dependency order**: 001 → 002 → 003 → 004 → 005 → 006. Story 001 can start immediately in parallel with other foundation/core epics.
 

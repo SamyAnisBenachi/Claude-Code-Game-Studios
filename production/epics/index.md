@@ -13,7 +13,7 @@
 | [round-state-machine](round-state-machine/EPIC.md) | Core | `server/core/rsm/` | round-state-machine | TBD — see hint | Ready |
 | [game-session-system](game-session-system/EPIC.md) | Core | `server/core/session/` (+ `on_session_ready` in `server/core/rsm/`) | game-session-system | TBD — see hint | Ready |
 | [economy-system](economy-system/EPIC.md) | Core | `server/core/economy/` | economy-system | TBD — see hint | Ready |
-| [card-data-pool](card-data-pool/EPIC.md) | Core | `server/core/pool/` | card-data-pool | TBD — see hint | Ready |
+| [card-data-pool](card-data-pool/EPIC.md) | Core | `server/core/pool/` | card-data-pool | 6 stories | Complete |
 | [board-lane-system](board-lane-system/EPIC.md) | Feature (M1) | `server/feature/board/` | board-lane-system | TBD | Ready |
 | [objective-system](objective-system/EPIC.md) | Feature (M1) | `server/feature/objective/` | objective-system | TBD | Ready |
 | [auction-system](auction-system/EPIC.md) | Feature (M2) | `server/feature/auction/` | auction-system | Not yet created | Ready |
@@ -42,7 +42,7 @@
 | round-state-machine | TBD | — | — | — |
 | game-session-system | TBD | — | — | — |
 | economy-system | TBD | — | — | — |
-| card-data-pool | TBD | — | — | — |
+| card-data-pool | 6 | 3 | 3 | 0 |
 | **Foundation total** | **15** | **4** | **7** | **4** |
 
 > Core layer story counts will populate after `/create-stories` is run on each Core epic.
