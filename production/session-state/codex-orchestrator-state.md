@@ -181,10 +181,19 @@ None currently tracked here.
   `cell_to_world` invalid bounds/assert behavior inline (`lane 1..=5`,
   `cell 1..=8`, release `assert!`). The correct window action is `REPONDRE`
   with a readiness repair prompt, not `CLEAR`.
-- Full-game art coverage prompts were given for asset coverage, card art
-  coverage, and UI/VFX/audio coverage. By user default-launch rule, treat
-  those audit windows as launched unless the user says otherwise. Do not make
-  asset-generation decisions until those audit reports return.
+- Full-game asset coverage audit returned with verdict that coverage is not
+  complete enough for full-game asset generation. No files were edited. Key
+  blockers: manifest has 127 assets all `Needed`; main menu/lobby,
+  settings/accessibility, game-over/result, combat VFX/audio, auction audio,
+  keyword/status icons, Prism VFX/audio, and several UI interaction patterns
+  are missing or underspecified; `design/ux/shop-auction-ui.md` is missing;
+  accessibility conflicts need decisions, especially auction bid confirmation
+  vs one-click preset bids; font choice and engine feasibility for 9-slice,
+  blending, ImageScaleMode, particles, and OGG loops are not locked; manifest
+  inconsistencies include ASSET-119, ASSET-071, class atlas dimensions, auction
+  border over-baking, and board cell variant tinting. The full-game asset audit
+  window can be cleared. Card art coverage and UI/audio/VFX coverage audit
+  windows are still pending unless the user provides their returns.
 
 ## Recently Closed
 
@@ -704,9 +713,10 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- Full-game asset coverage audit, full card art coverage audit, and full
-  UI/audio/VFX coverage audit are assumed launched from prompts. Await user
-  reports before revising asset specs or generating art.
+- Full-game asset coverage audit returned and can be cleared. Full card art
+  coverage audit and full UI/audio/VFX coverage audit are still assumed
+  launched/pending. Await those reports before revising asset specs or
+  generating art.
 - HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009, COMBAT-002, OBJECTIVE-004,
   BOARD-008, and HAND-UI-007 have returned and are integrated or closed as
   noted; do not relaunch their implementation workers.
@@ -736,8 +746,9 @@ Current active windows by user default-launch rule:
   `cell_to_world` bounds/assert wording. Use `REPONDRE` in that same window
   to repair the story, rerun readiness, and commit/push docs-only changes; do
   not create a worker or implement code until it returns READY.
-- Full-game art coverage audit, card art coverage audit, and UI/audio/VFX
-  coverage audit prompts are assumed launched and pending return.
+- Full-game asset coverage audit returned: verdict says asset coverage is not
+  complete enough for full-game asset generation; window can be cleared. Card
+  art coverage and UI/audio/VFX coverage audits remain pending.
 - COMBAT-004 story-done returned and was committed at `52caa45`; follow-up
   scope clarification committed at `3ef7bab`; window can be cleared.
 - CDP-006 story-done returned and was committed at `199a9b3`; window can be
