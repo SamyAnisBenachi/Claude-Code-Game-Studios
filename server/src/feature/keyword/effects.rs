@@ -365,7 +365,12 @@ pub fn unit_has_active_simple_keyword(
     current_round: u32,
     world: &World,
 ) -> bool {
-    !is_silenced(unit, current_round, world) && unit_has_card_simple_keyword(unit, keyword, world)
+    if is_silenced(unit, current_round, world) {
+        return false;
+    }
+
+    unit_has_card_simple_keyword(unit, keyword, world)
+        || unit_has_injured_granted_simple_keyword(unit, keyword, world)
 }
 
 pub fn check_shield_absorb(kw_state: &mut UnitKeywordState, sub_step: u8) -> bool {
@@ -470,4 +475,16 @@ fn is_silenced(unit: Entity, current_round: u32, world: &World) -> bool {
         .get::<UnitKeywordState>(unit)
         .and_then(|state| state.silenced_until_round)
         .is_some_and(|until_round| current_round <= until_round)
+}
+
+fn unit_has_injured_granted_simple_keyword(
+    unit: Entity,
+    keyword: SimpleKeyword,
+    world: &World,
+) -> bool {
+    let Some(state) = world.get::<UnitKeywordState>(unit) else {
+        return false;
+    };
+
+    matches!(keyword, SimpleKeyword::FirstStrike) && state.injured_first_strike_active
 }

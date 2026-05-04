@@ -33,6 +33,9 @@ use crate::feature::keyword::effects::{
     apply_stun, can_execute_first_strike, can_execute_standard_attack,
     can_execute_standard_movement, charge_x_cells_for_sub_step, consume_shield_for_sub_step,
 };
+use crate::feature::keyword::state_eval::{
+    eval_injured_bonuses_at_boundary, eval_outnumbered_for_sub_step, snapshot_leader_bonuses,
+};
 use crate::feature::keyword::{ChainDeathBuffer, UnitDied};
 use crate::feature::objective::{
     take_damage as apply_objective_damage, ObjectiveDestroyed, ObjectiveHp, ObjectiveSlot,
@@ -515,9 +518,61 @@ fn run_sub_step_scaffold(
             }
             _ => {}
         }
+
+        if sub_step == 1 {
+            snapshot_leader_state(world, current_round);
+        }
+        if let Some(next_sub_step) = boundary_sub_step(sub_step) {
+            evaluate_persistent_state_boundary(world, current_round, next_sub_step);
+        }
     }
 
     Ok(())
+}
+
+fn boundary_sub_step(completed_sub_step: u8) -> Option<u8> {
+    match completed_sub_step {
+        1 => Some(2),
+        2 => Some(3),
+        3 => Some(4),
+        4 => Some(5),
+        5 | 6 => Some(6),
+        _ => None,
+    }
+}
+
+fn snapshot_leader_state(world: &mut World, current_round: u32) {
+    for leader in snapshot_leader_bonuses(world, current_round) {
+        world
+            .resource_mut::<CombatResolutionTrace>()
+            .push(CombatTraceEntry::KeywordTriggered {
+                unit: leader,
+                keyword: KeywordKind::Leader,
+                sub_step: 1,
+            });
+    }
+}
+
+fn evaluate_persistent_state_boundary(world: &mut World, current_round: u32, next_sub_step: u8) {
+    for unit in eval_outnumbered_for_sub_step(world, next_sub_step) {
+        world
+            .resource_mut::<CombatResolutionTrace>()
+            .push(CombatTraceEntry::KeywordTriggered {
+                unit,
+                keyword: KeywordKind::Outnumbered,
+                sub_step: next_sub_step,
+            });
+    }
+
+    for unit in eval_injured_bonuses_at_boundary(world, current_round, next_sub_step) {
+        world
+            .resource_mut::<CombatResolutionTrace>()
+            .push(CombatTraceEntry::KeywordTriggered {
+                unit,
+                keyword: KeywordKind::Injured,
+                sub_step: next_sub_step,
+            });
+    }
 }
 
 fn execute_charge_x(

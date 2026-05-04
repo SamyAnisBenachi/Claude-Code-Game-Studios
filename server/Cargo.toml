@@ -296,3 +296,7 @@ path = "../tests/unit/combat/range_targeting_test.rs"
 [[test]]
 name = "objective_damage_gameover_test"
 path = "../tests/unit/combat/objective_damage_gameover_test.rs"
+
+[[test]]
+name = "persistent_states_test"
+path = "../tests/unit/combat/persistent_states_test.rs"

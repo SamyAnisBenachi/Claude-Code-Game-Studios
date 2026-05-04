@@ -13,6 +13,10 @@ pub struct UnitKeywordState {
     pub leader_bonus_hp: u8,
     pub bodyguard_protects: Option<Entity>,
     pub outnumbered_active: bool,
+    /// Local COMBAT-010 grant marker until card data grows structured INJURED bonuses.
+    pub injured_grants_first_strike: bool,
+    /// Cached boundary result; INJURED itself is still derived from HP < max HP.
+    pub injured_first_strike_active: bool,
 }
 
 /// Round number in which a live board unit entered play.
