@@ -249,8 +249,7 @@ fn spawn_target_unit(
     let position = app
         .world()
         .resource::<BoardLayout>()
-        .cell_to_world(lane, cell)
-        .expect("test target unit cell should be valid");
+        .cell_to_world(lane, cell);
     let transform = Transform::from_xyz(position.x, position.y, 0.0);
     app.world_mut()
         .spawn((
@@ -274,8 +273,7 @@ fn move_cursor_to_cell(app: &mut App, lane: u8, cell: u8) {
     let position = app
         .world()
         .resource::<BoardLayout>()
-        .cell_to_world(lane, cell)
-        .expect("test cursor cell should be valid");
+        .cell_to_world(lane, cell);
     app.world_mut().write_message(HandUiPlacementCursorMoved {
         world_position: Some(position),
     });
