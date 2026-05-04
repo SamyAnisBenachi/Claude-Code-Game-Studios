@@ -116,12 +116,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- BOARD-010: Displacement Keywords readiness repair landed on main at
-  `40b3176`; implementation landed on main at `e49f5a2`. Verification passed
-  `cargo test -p server --test displacement_keywords_test` 9/9, board/objective
-  regressions 24/24, `cargo check -p server`, and diff checks. This was one
-  of the Sprint 5 out-of-plan pull-forward items and has now returned READY
-  plus integrated; it still needs `/story-done`.
 - CDP-006: Network Dispatch Wiring readiness/trace repair landed on main at
   `e03dfcb`; test/evidence implementation landed on main at `4d21482`.
   Verification passed `cargo fmt --all -- --check`, `cargo test -p server
@@ -132,6 +126,14 @@ None currently tracked here.
   it still needs `/story-done`.
 ## Recently Closed
 
+- BOARD-010: Displacement Keywords readiness repair landed on main at
+  `40b3176`; initial implementation landed on main at `e49f5a2`; enemy
+  ATTRACT repair landed at `61e7042`; story-done closure committed at
+  `6021787`. Verification passed `cargo test -p server --test
+  displacement_keywords_test` 9/9, `cargo check -p server`, and diff checks.
+  `production/sprint-status.yaml` had no matching BOARD-010 row. Stale story
+  BL-24/QA wording was recorded as an advisory while implementation/tests
+  follow current GDD one-cell-short behavior.
 - HAND-UI-011: Reserve Mana Strip implementation landed on main at `bd8c15b`;
   story-done closure committed at `d203c3b`. Verification passed `cargo test
   -p client --test hand_ui_reserve_mana_strip_test` 3/3, `cargo check -p
@@ -559,10 +561,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. BOARD-010:
-   `production/epics/board-lane-system/story-010-displacement-keywords.md`
-   after integration commit `e49f5a2`.
-2. CDP-006:
+1. CDP-006:
    `production/epics/card-data-pool/story-006-network-dispatch-wiring.md`
    after integration commit `4d21482`.
 
@@ -581,9 +580,9 @@ Run only one story-done at a time.
   repairs return READY and are reconciled during integration/story-done.
   AUC-007 has returned READY, integrated at `f96a524`/`ea5d88d`, and closed
   at `a5eaadc`; HAND-UI-011 is integrated at `bd8c15b` and closed at
-  `d203c3b`; BOARD-010 is integrated at `40b3176`/`e49f5a2`; CDP-006 is
-  integrated at `e03dfcb`/`4d21482`; the remaining two remain pending
-  story-done.
+  `d203c3b`; BOARD-010 is integrated at `40b3176`/`e49f5a2`, repaired at
+  `61e7042`, and closed at `6021787`; CDP-006 is integrated at
+  `e03dfcb`/`4d21482`; only CDP-006 remains pending story-done.
 - Sprint 4 QA plan missing: resolved at `8578890` with
   `production/qa/qa-plan-sprint-4-2026-05-03.md`. S4-14 Economy Network
   Dispatch can now run story-readiness, but `production/sprint-status.yaml`
@@ -612,7 +611,7 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- None known at this checkpoint. CDP-006, BOARD-010,
+- None known at this checkpoint. CDP-006,
   HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009,
   COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have returned and
   are integrated or closed as noted; do not relaunch their implementation
@@ -621,10 +620,9 @@ Active implementation workers by default-launch rule:
 Current active windows by user default-launch rule:
 - CDP-006 returned, integrated into main at `e03dfcb` and `4d21482`,
   verified, and is on origin/main after orchestrator push. Window can be
-  cleared. It now needs serialized `/story-done` after BOARD-010.
-- BOARD-010 returned, integrated into main at `40b3176` and `e49f5a2`,
-  verified, and is on origin/main after orchestrator push. Window can be
   cleared. It now needs serialized `/story-done`.
+- BOARD-010 story-done returned and was committed at `6021787`; window can be
+  cleared.
 - HAND-UI-011 story-done returned and was committed at `d203c3b`; window can
   be cleared.
 - AUC-007 story-done returned and was committed at `a5eaadc`; window can be
