@@ -145,6 +145,15 @@ None currently tracked here.
 
 ## Recent Planning / Readiness Updates
 
+- COMBAT-009 / S5-11 Objective Damage + GAME_OVER readiness repair returned
+  READY and was pushed at `05aca93`, updating
+  `production/epics/combat-resolution/story-009-objective-damage-gameover.md`.
+  The repair updated manifest `2026-05-01`, fixed stale TR placeholder wording,
+  aligned GAME_OVER ownership to current RSM/ResolutionComplete/economy ordering,
+  refreshed event/log wording to current protocol names, expanded dependencies
+  on completed COMBAT-007/008 and OBJECTIVE-005/006/007, and confirmed expected
+  evidence path `tests/unit/combat/objective_damage_gameover_test.rs`. `/dev-story`
+  is safe next with explicit authorization.
 - COMBAT-008 / S5-10 RANGE Targeting readiness repair returned READY and was
   pushed at `b26f007`, updating `docs/architecture/tr-registry.yaml`,
   `production/epics/combat-resolution/EPIC.md`, and
@@ -912,6 +921,9 @@ Active implementation workers by default-launch rule:
   noted; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
+- COMBAT-009 readiness repair returned READY and was pushed at `05aca93`.
+  Readiness window can be cleared. Next action is a new COMBAT-009 `/dev-story`
+  implementation worker.
 - COMBAT-008 readiness repair returned READY and was pushed at `b26f007`.
   Readiness window can be cleared. COMBAT-008 implementation worker returned at
   `dd7bd50`; root fast-forwarded and pushed `main` to that commit. Worker
