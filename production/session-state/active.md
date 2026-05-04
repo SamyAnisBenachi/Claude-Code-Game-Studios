@@ -1609,3 +1609,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per approval boundary; no matching `HAND-UI-011` row exists in `production/sprint-status.yaml`.
 - Next recommended: Hand UI Story 010 Submit Pre-Validation (`production/epics/hand-ui/story-010-submit-prevalidation.md`) after readiness check, or continue the Sprint 5 Must Have combat spine if that remains the priority.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-lane-system/story-010-displacement-keywords.md` - Story 010: Displacement Keywords and Spawn Range Expansion
+- Criteria: 10/10 passing; BL-15, BL-19, BL-20, BL-23, BL-24, BL-26, BL-28, NEW-010a, NEW-010b, and NEW-010c covered by `tests/unit/board-lane-system/displacement_keywords_test.rs`.
+- Test Evidence: `cargo test -p server --test displacement_keywords_test` passed 9/9. `cargo check -p server` passed.
+- Verification: Current `main` includes repair commit `61e7042`; REPEL clamps at each player's spawn boundary, CHANGE LANE silently no-ops at lane boundaries and same-owner full slots, IRREMOVABLE units ignore displacement, fake objective destruction expands `SpawnRangeState` with clamp-to-2 behavior for the next PLACEMENT validation, and enemy ATTRACT stops one cell short of the caster per current GDD BL-24.
+- Notes: Advisory only - the story's inline BL-24 acceptance text and QA wording are stale; implementation and tests follow current GDD BL-24 enemy ATTRACT one-cell-short behavior. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per approval boundary; no matching `BOARD-010` row exists in `production/sprint-status.yaml`.
+- Next recommended: Continue the Sprint 5 queue from `production/sprints/sprint-5.md`, or run a fresh sprint/status scan before pulling the next story.

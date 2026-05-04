@@ -1,7 +1,7 @@
 # Story 010: Displacement Keywords and Spawn Range Expansion
 
 > **Epic**: Board / Lane System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -33,16 +33,16 @@
 
 *From GDD `design/gdd/board-lane-system.md`, scoped to this story:*
 
-- [ ] **BL-15**: GIVEN REPEL 3 targets Player A's unit at cell 2, WHEN REPEL fires, THEN unit moves to cell 1 (clamped at spawn — does not go to cell −1).
-- [ ] **BL-19**: GIVEN Strich is in lane 5 and an enemy unit enters lane 5, WHEN Strich's auto-switch fires, THEN Strich stays in lane 5 — no valid lane to switch to.
-- [ ] **BL-20**: GIVEN Strich's adjacent lanes are both occupied by the player's own Minions, WHEN Strich's auto-switch fires, THEN Strich stays in its current lane.
-- [ ] **BL-23**: GIVEN an IRREMOVABLE unit is targeted by REPEL, WHEN REPEL fires, THEN the unit does not move and no error is raised.
-- [ ] **BL-24**: GIVEN Player B's unit (the caster) is at cell 8, and ATTRACT 5 targets Player A's unit at cell 5 (direction = sign(8 − 5) = +1 per F1 direction table), WHEN ATTRACT fires, THEN Player A's unit moves to cell 8 (clamp(5 + 5, 1, 8) = 8, clamped at board boundary).
-- [ ] **BL-26**: GIVEN a fake objective is destroyed during RESOLUTION sub-step 6, WHEN the next PLACEMENT phase begins, THEN `SpawnRangeState.fakes_destroyed[PlayerA.index()]` is incremented by 1 AND the spawn range expansion does NOT apply to the current round's already-committed placements.
-- [ ] **BL-28**: GIVEN any unit is in lane 1, WHEN CHANGE LANE leftward fires, THEN unit stays in lane 1 — no error raised.
-- [ ] **NEW-010a**: GIVEN Player A's unit (caster) is at cell 2, and ATTRACT 3 targets Player B's unit at cell 6 (direction = sign(2 − 6) = −1), WHEN ATTRACT fires, THEN Player B's unit moves to cell 3 (clamp(6 + (−1 × 3), 1, 8) = 3).
-- [ ] **NEW-010b**: GIVEN REPEL 3 targets Player B's unit at cell 7, WHEN REPEL fires, THEN unit moves to cell 8 (clamped at Player B's spawn boundary — does not overshoot past cell 8).
-- [ ] **NEW-010c (BL-26 observable)**: GIVEN a fake objective is destroyed during RESOLUTION, WHEN `PlacementPhaseEntered` fires for the next round AND `validate_spawn_range` is called for PlayerA at cell 2 with the updated state, THEN the validation returns `true` (cell 2 is now valid). Verify by querying `SpawnRangeState.fakes_destroyed[PlayerA.index()]` after `PlacementPhaseEntered` — it must equal the incremented count.
+- [x] **BL-15**: GIVEN REPEL 3 targets Player A's unit at cell 2, WHEN REPEL fires, THEN unit moves to cell 1 (clamped at spawn — does not go to cell −1).
+- [x] **BL-19**: GIVEN Strich is in lane 5 and an enemy unit enters lane 5, WHEN Strich's auto-switch fires, THEN Strich stays in lane 5 — no valid lane to switch to.
+- [x] **BL-20**: GIVEN Strich's adjacent lanes are both occupied by the player's own Minions, WHEN Strich's auto-switch fires, THEN Strich stays in its current lane.
+- [x] **BL-23**: GIVEN an IRREMOVABLE unit is targeted by REPEL, WHEN REPEL fires, THEN the unit does not move and no error is raised.
+- [x] **BL-24**: GIVEN Player B's unit (the caster) is at cell 8, and ATTRACT 5 targets Player A's unit at cell 5 (direction = sign(8 − 5) = +1 per F1 direction table), WHEN ATTRACT fires, THEN Player A's unit moves to cell 8 (clamp(5 + 5, 1, 8) = 8, clamped at board boundary).
+- [x] **BL-26**: GIVEN a fake objective is destroyed during RESOLUTION sub-step 6, WHEN the next PLACEMENT phase begins, THEN `SpawnRangeState.fakes_destroyed[PlayerA.index()]` is incremented by 1 AND the spawn range expansion does NOT apply to the current round's already-committed placements.
+- [x] **BL-28**: GIVEN any unit is in lane 1, WHEN CHANGE LANE leftward fires, THEN unit stays in lane 1 — no error raised.
+- [x] **NEW-010a**: GIVEN Player A's unit (caster) is at cell 2, and ATTRACT 3 targets Player B's unit at cell 6 (direction = sign(2 − 6) = −1), WHEN ATTRACT fires, THEN Player B's unit moves to cell 3 (clamp(6 + (−1 × 3), 1, 8) = 3).
+- [x] **NEW-010b**: GIVEN REPEL 3 targets Player B's unit at cell 7, WHEN REPEL fires, THEN unit moves to cell 8 (clamped at Player B's spawn boundary — does not overshoot past cell 8).
+- [x] **NEW-010c (BL-26 observable)**: GIVEN a fake objective is destroyed during RESOLUTION, WHEN `PlacementPhaseEntered` fires for the next round AND `validate_spawn_range` is called for PlayerA at cell 2 with the updated state, THEN the validation returns `true` (cell 2 is now valid). Verify by querying `SpawnRangeState.fakes_destroyed[PlayerA.index()]` after `PlacementPhaseEntered` — it must equal the incremented count.
 
 ---
 
@@ -202,7 +202,7 @@ Expansion takes effect at next PLACEMENT because F2 validation (Story 003) only 
 **Story Type**: Logic
 **Required evidence**: `tests/unit/board-lane-system/displacement_keywords_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Exists and passed (`cargo test -p server --test displacement_keywords_test`, 9/9).
 
 ---
 
@@ -210,3 +210,14 @@ Expansion takes effect at next PLACEMENT because F2 validation (Story 003) only 
 
 - Depends on: Story 002 must be DONE (`apply_f1` function)
 - Unlocks: Nothing in this epic — terminal for displacement keyword execution
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 10/10 passing. BL-15, BL-19, BL-20, BL-23, BL-24, BL-26, BL-28, NEW-010a, NEW-010b, and NEW-010c are covered by `tests/unit/board-lane-system/displacement_keywords_test.rs`.
+**Deviations**: Advisory only - this story's inline BL-24 acceptance text and QA wording are stale; implementation and tests follow current GDD BL-24 enemy ATTRACT one-cell-short behavior (`apply_attract(8, 5, 5, true, &config) == 7`).
+**Test Evidence**: Logic: `tests/unit/board-lane-system/displacement_keywords_test.rs`; `cargo test -p server --test displacement_keywords_test` passed 9/9. `cargo check -p server` passed.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Unchanged; no matching BOARD-010 row exists in `production/sprint-status.yaml`.
