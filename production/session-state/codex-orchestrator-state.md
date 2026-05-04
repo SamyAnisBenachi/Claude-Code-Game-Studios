@@ -138,17 +138,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- COMBAT-005 worker returned implemented on branch
-  `work/combat-005-first-strike` at worker commit `912fa45`; root
-  cherry-picked and pushed the implementation to `origin/main` at `e1733be`.
-  Worker changed `server/src/feature/combat/mod.rs`, `server/Cargo.toml`,
-  and `tests/unit/combat/substep3_first_strike_test.rs`. Root verification
-  passed `cargo fmt -p server -- --check`, `cargo test -p server --test
-  substep3_first_strike_test` 5/5, adjacent combat regressions 20/20,
-  `cargo check -p server`, and `git diff --check HEAD~1..HEAD`.
-  `/story-done` returned COMPLETE WITH NOTES and is awaiting approval to write
-  `production/epics/combat-resolution/story-005-substep3-first-strike.md`,
-  `production/session-state/active.md`, and matching sprint row S5-07.
 - AUC-008 worker returned implemented on branch
   `work/auc-008-pool-integration` at worker commit `d1e8cba`; root
   cherry-picked and pushed the implementation to `origin/main` at `c6a1d86`.
@@ -235,6 +224,14 @@ None currently tracked here.
 
 ## Recently Closed
 
+- COMBAT-005: First Strike readiness repair landed at `90ebdfb`; worker
+  implementation returned at `912fa45`; root integrated and pushed it at
+  `e1733be`; story-done closure committed at `621fef5`. Verification passed
+  `cargo test -p server --test substep3_first_strike_test` 5/5, `cargo check
+  -p server`, root focused/adjacent checks, and diff checks. Story-done
+  updated `production/epics/combat-resolution/story-005-substep3-first-strike.md`,
+  `production/session-state/active.md`, and sprint-status row S5-07. Advisory:
+  SS4 dead removal/gold chain remains COMBAT-006 scope.
 - COMBAT-004: Movement + Collision readiness repair landed on main at
   `c2fc0d3`; implementation landed on main at `408c34a`; story-done closure
   committed at `52caa45`; follow-up story scope clarification committed at
@@ -684,12 +681,8 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-- COMBAT-005 / `production/epics/combat-resolution/story-005-substep3-first-strike.md`
-  is integrated at `e1733be`; `/story-done` returned COMPLETE WITH NOTES and
-  is awaiting approval to write closure files.
 - AUC-008 / `production/epics/auction-system/story-008-pool-integration.md`
-  is integrated at `c6a1d86` and needs serialized `/story-done` after
-  COMBAT-005 closure finishes.
+  is integrated at `c6a1d86` and needs serialized `/story-done`.
 
 Run only one story-done at a time.
 
@@ -760,11 +753,8 @@ Active implementation workers by default-launch rule:
   noted; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
-- COMBAT-005 implementation worker returned complete at `912fa45`; worker
-  push was blocked by approval review, but the commit is locally visible from
-  root. Root integrated and pushed it at `e1733be`. Window can be cleared.
-  COMBAT-005 story-done returned COMPLETE WITH NOTES and needs `REPONDRE`
-  approval in that story-done window.
+- COMBAT-005 story-done returned, wrote closure files, and pushed closure at
+  `621fef5`; window can be cleared.
 - AUC-008 readiness repair returned READY and was committed at `c20e503`;
   that readiness window can be cleared. AUC-008 implementation worker returned
   complete at `d1e8cba`; root integrated and pushed it at `c6a1d86`. Window
