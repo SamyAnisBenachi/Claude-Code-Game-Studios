@@ -9,6 +9,7 @@
 ## Context
 
 **GDD**: `design/gdd/shop-auction-ui.md`
+**UX Spec**: `design/ux/shop-auction-ui.md` (root/lifecycle constraints only; exact pixel layout remains out of scope for this Logic story)
 **Requirement**: `TR-SAU-001`, `TR-SAU-002`, `TR-SAU-006`
 **ADR Governing Implementation**: [ADR-021: Presentation Layer Architecture](../../../docs/architecture/adr-021-presentation-layer-architecture.md), [ADR-019: Economy Resource Architecture](../../../docs/architecture/adr-019-economy-resource-architecture.md)
 
@@ -33,7 +34,7 @@ Shared ADR-021 infrastructure (`PresentationPlugin`, `PresentationSet`, `phase_s
 - Register the plugin fifth in `PresentationPlugin`.
 - Do not drain `MessageReceiver<S2CPhaseChanged>` here.
 - Keep formulas pure and unit-testable outside a live Lightyear session.
-- Treat exact pixel layout as provisional until `design/ux/shop-auction-ui.md` exists.
+- Use `design/ux/shop-auction-ui.md` for root names, panel lifecycle, and layout constraints; exact pixel layout and visual/accessibility evidence remain out of scope for this Logic story.
 
 ## Out of Scope
 
@@ -68,5 +69,6 @@ Shared ADR-021 infrastructure (`PresentationPlugin`, `PresentationSet`, `phase_s
 
 ## Dependencies
 
-- Depends on: `production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md` - shared `PresentationPlugin`, `PresentationSet`, `phase_sink_system`, and `CurrentClientPhase` path must be complete before ShopAuctionUiPlugin is implemented or registered.
+- Depends on: `production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md` - shared `PresentationPlugin`, `PresentationSet`, `phase_sink_system`, and `CurrentClientPhase` path must be complete before ShopAuctionUiPlugin is implemented or registered. Complete on `main` as of `d303155`.
+- Sequencing note: launch after `production/epics/board-rendering/story-001-plugin-scaffold-board-layout-card-atlas.md` so `BoardRenderingPlugin`, `BoardLayout`, and `CardAtlas` exist before `ShopAuctionUiPlugin` is registered fifth in `PresentationPlugin`.
 - Unlocks: Stories 002, 003, 004, 005, 006, 007, 008, 009.

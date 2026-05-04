@@ -3,7 +3,7 @@
 > **Layer**: Presentation
 > **GDD**: design/gdd/shop-auction-ui.md
 > **Architecture Module**: `client/src/ui/shop_auction/` - `ShopAuctionUiPlugin` (sub-plugin #5 inside `PresentationPlugin`)
-> **Status**: Ready - story set drafted for S5-21; Story 001 depends on Presentation Layer Story 001
+> **Status**: Ready - story set drafted for S5-21; Story 001 launches after Presentation Layer Story 001 and Board Rendering Story 001
 > **Stories**: 9 stories created 2026-05-04 - 8 Ready, 1 Blocked by UX evidence/layout gate
 
 ## Overview
@@ -13,6 +13,8 @@ Shop / Auction UI implements the client-side bevy_ui panels for every M2 economi
 `ShopAuctionUiPlugin` is registered fifth in `PresentationPlugin`, after Card Animations, Board Rendering, Hand UI, and HUD. It reads `Res<CurrentClientPhase>` from the shared phase sink, never drains `MessageReceiver<S2CPhaseChanged>` directly, and uses bevy_ui `Node`/`Text`/`ImageNode` entities rather than world-space sprites.
 
 Shared ADR-021 infrastructure is owned by [Presentation Layer Story 001](../presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md). Shop/Auction UI Story 001 must not implement `PresentationPlugin`, `PresentationSet`, or `phase_sink_system`; it depends on those surfaces before implementation.
+
+Presentation Layer Story 001 is complete on `main` as of `d303155`. Shop/Auction UI Story 001 should still launch after Board Rendering Story 001 so the ADR-021 registration order can include `BoardRenderingPlugin` before `ShopAuctionUiPlugin`.
 
 ## Governing ADRs
 
@@ -58,19 +60,20 @@ Shared ADR-021 infrastructure is owned by [Presentation Layer Story 001](../pres
 - `client/src/ui/shop_auction/` and `ShopAuctionUiPlugin` do not exist yet.
 - No client-side panel node tree exists for draft offering, shop, auction, footer, toast, timer, or settlement overlays.
 - No Shop/Auction UI S2C message drains are present in client code.
-- No shared `PresentationPlugin`/`phase_sink_system` implementation is visible yet; Shop/Auction UI Story 001 depends on Presentation Layer Story 001 for this cross-epic infrastructure.
-- The GDD calls for `design/ux/shop-auction-ui.md` before exact layout and tooltip implementation; that UX file is not present. Story 009 is blocked on this gate.
-- The GDD status line says post-review re-review is pending. Story-readiness should re-check the current GDD before implementation starts.
+- `PresentationPlugin`/`phase_sink_system` infrastructure exists on `main`; Story 001 must reuse it, not redefine it locally.
+- `design/ux/shop-auction-ui.md` exists. Story 009 remains the visual evidence/layout gate, while earlier stories cite the UX spec for root/lifecycle constraints as needed.
+- The Shop/Auction UI GDD status has been reconciled to Approved; story-readiness should treat the GDD as approved unless later design changes reopen it.
 
 ## Pre-Implementation Gates
 
 | Gate | Blocks | Required Resolution |
 |------|--------|---------------------|
-| UX spec missing: `design/ux/shop-auction-ui.md` | Story 009 and exact tooltip/layout details in Stories 002, 003, 004, 007 | Run `/ux-design shop-auction-ui` or approve a scoped implementation layout |
-| Presentation Layer scaffold missing | Story 001 | Complete or readiness-approve Presentation Layer Story 001 before implementing Shop/Auction UI Story 001 |
+| UX spec available: `design/ux/shop-auction-ui.md` | Visual evidence/layout work remains in Story 009 | Cite the UX spec in UI/layout stories; keep exact pixel evidence out of Story 001 |
+| Presentation Layer scaffold complete | Story 001 no longer blocked by shared phase infrastructure | Reuse `PresentationPlugin`, `PresentationSet`, `phase_sink_system`, and `CurrentClientPhase`; do not redefine them locally |
+| Board Rendering scaffold ordering | Story 001 launch sequencing | Complete Board Rendering Story 001 before Shop/Auction UI Story 001 so `ShopAuctionUiPlugin` can register fifth after `BoardRenderingPlugin` |
 | Auction System server dispatch stability | Stories 004-007 | Auction card, accepted/rejected, settled, and gold broadcast ordering must be stable |
 | Card Acquisition server dispatch stability | Stories 002-003 | Draft offering, shop slots, card acquired, purchase/refresh confirmations must be stable |
-| GDD re-review pending | All stories at story-readiness | Confirm no post-review changes alter ACs before `/dev-story` |
+| GDD approval reconciled | No current blocker for Story 001 scaffold/formulas | Re-open only if a future design change alters Story 001 acceptance criteria |
 | OQ9 leader idle window validation | Playtest/evidence follow-up | Escalate if "YOU ARE LEADING" state feels like dead time |
 
 ## Definition of Done
@@ -116,4 +119,4 @@ Recommended Sprint 6 sequence:
 
 ## Next Step
 
-Run `/story-readiness production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md` before Shop/Auction UI Story 001 implementation. Then run `/story-readiness production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md`. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file.
+After Board Rendering Story 001 is complete, run `/story-readiness production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md` before implementation. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file.

@@ -178,7 +178,7 @@ gold += GameConfig.gold_baseline_per_round + interest
 | **Objective System** | Objectives → Economy | Calls `apply_gold_award(player, objective_reward)` on destruction; calls `increment_mana_cap(player)` on fake destroy mana reward |
 | **Prism System** | Prism → Economy | Hands player a "+1 reserve" spell card (Lane 2/4 only); playing that card calls `add_reserve(player, 1)` |
 | **Class System (Xelor)** | Class → Economy | Xelor spells call `add_reserve(player, n)` and spend via normal Rule 4 validation |
-| **HUD / Board Rendering** | Economy → UI | Broadcasts `current_mana`, `reserve_mana`, `gold`, `mana_cap` for display each round |
+| **HUD / Shop/Auction UI / Board Rendering** | Economy → UI | Broadcasts `current_mana`, `reserve_mana`, `gold`, `mana_cap`, and auction `reserved_gold` projection for display and affordability each round |
 
 ## Formulas
 
@@ -310,13 +310,14 @@ mana_cap_achieved = GameConfig.mana_cap + fake_objective_mana_rewards
 | **Round State Machine** | Upstream (coordination) | Triggers: mana reset at DRAFT start, interest+baseline application at DRAFT start, mana discard at RESOLUTION end |
 | **Card Acquisition (Shop)** | Downstream (hard) | Calls `spend_gold(player, amount)` for shop purchases; Economy validates |
 | **Auction System** | Downstream (hard) | Calls `can_afford_bid(player, amount)`; `reserve_gold(player, amount)`; `release_gold_reservation(player)`; `spend_gold(player, bid_amount)` on win |
+| **Shop / Auction UI** | Downstream (read-only) | Consumes `S2CGoldBroadcast { gold, reserved_gold }` to compute `local_free_gold = gold - reserved_gold` for auction display and bid affordability |
 | **Combat Resolution** | Downstream (hard) | Calls `apply_gold_award(player, kill_gold_reward)` per kill during RESOLUTION |
 | **Objective System** | Downstream (hard) | Calls `apply_gold_award(player, objective_gold_reward)` on objective destruction; calls `increment_mana_cap(player)` on fake destruction mana reward |
 | **Prism System** | Downstream (soft) | Lane 2/4 prism grants "+1 reserve" spell card; playing it calls `add_reserve(player, 1)` |
 | **Class System** | Downstream (soft) | Xelor spells call `add_reserve(player, n)` and interact with reserve via normal Rule 4 spend validation |
 | **HUD / Board Rendering** | Downstream (read-only) | Reads `current_mana`, `reserve_mana`, `gold`, `mana_cap` per player for display |
 
-**Bidirectionality:** Game Config GDD lists Economy System as a downstream consumer ✓. Round State Machine (not yet authored) must list Economy as a dependency when written. All other downstream GDDs must list Economy System when written.
+**Bidirectionality:** Game Config GDD lists Economy System as a downstream consumer ✓. Shop/Auction UI lists Economy System as the source for `S2CGoldBroadcast` / free-gold display ✓. Round State Machine (not yet authored) must list Economy as a dependency when written. All other downstream GDDs must list Economy System when written.
 
 ## Tuning Knobs
 
@@ -344,7 +345,7 @@ None specific to this system. Economy state is displayed by the HUD — see HUD 
 
 ## UI Requirements
 
-Economy data (gold, mana, reserve, mana_cap) is read by the HUD for display. UI requirements for mana bars, gold counter, reserve counter, and interest threshold indicators are owned by the HUD GDD. Economy System only owns the data; it does not own any UI directly.
+Economy data (gold, mana, reserve, mana_cap) is read by the HUD for display. Shop/Auction UI also consumes gold plus `reserved_gold` projection to display auction free gold and gate bid affordability. UI requirements for mana bars, gold counter, reserve counter, interest threshold indicators, and auction free-gold panels are owned by the consuming UI GDDs. Economy System only owns the data; it does not own any UI directly.
 
 **📌 UX Flag — Economy System:** This system feeds the HUD. In Phase 4 (Pre-Production), run `/ux-design` for the HUD screen before writing epics. Stories referencing mana/gold display should cite `design/ux/hud.md`, not this GDD.
 

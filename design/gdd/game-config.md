@@ -171,6 +171,7 @@ No partial states. `GameConfig` is either fully available or the server is not r
 | **Board / Lane System** | `fake_objective_spawn_advance` |
 | **Combat Resolution** | `type_advantage_atk_bonus`, `type_advantage_ar_bonus` |
 | **Auction System** | `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds`, `auction_floor_rare`, `auction_floor_epic`, `auction_floor_legendary`, `legendary_pool_entry_round` |
+| **Shop / Auction UI** | `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `auction_timer_seconds`, `auction_timer_reset_seconds`, `refresh_base_cost`, `refresh_cap` |
 | **Board Rendering** | `board_pre_anim_pause_ms`, `board_sub_step_duration_ms`, `board_inter_step_pause_ms`, `board_fog_lift_ms`, `board_objective_reveal_hold_ms`, `board_fog_opacity`, `board_cell_width`, `board_lane_height`, `board_hp_green_threshold`, `board_hp_red_threshold`, `board_co_occupancy_offset`, `board_prism_spin_speed` |
 | **Round State Machine** | `placement_timer_seconds`, `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `resolution_max_duration_seconds`, `auction_max_duration_seconds`, `disconnect_grace_seconds` |
 | **Card Animations** | `card_draw_animation_ms`, `snap_back_duration_ms`, `stagger_cadence_ms`, `impact_flash_audio_offset_ms`, `board_pre_anim_pause_ms`, `board_sub_step_duration_ms`, `board_inter_step_pause_ms` |
@@ -239,12 +240,13 @@ These invariants are preconditions that other systems rely on being true before 
 | **Objective System** | Downstream (hard) | Reads: `objective_hp`, `fake_count` |
 | **Board / Lane System** | Downstream (hard) | Reads: `fake_objective_spawn_advance` |
 | **Auction System** | Downstream (hard) | Reads: `auction_timer_seconds`, `auction_timer_reset_seconds`, `auction_max_duration_seconds`, `auction_floor_rare`, `auction_floor_epic`, `auction_floor_legendary` |
+| **Shop / Auction UI** | Downstream (read-only) | Reads display and interaction values: `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `auction_timer_seconds`, `auction_timer_reset_seconds`, `refresh_base_cost`, `refresh_cap` |
 | **Round State Machine** | Downstream (hard) | Reads: `placement_timer_seconds`, `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `resolution_max_duration_seconds`, `auction_max_duration_seconds`, `disconnect_grace_seconds` |
 | **Game Session System** | Downstream (hard) | Reads: `lobby_timeout_seconds` (for lobby deadline), `lobby_heartbeat_timeout_seconds` (for LOBBY heartbeat-gap detection). Note: `disconnect_grace_seconds` is RSM-owned and does NOT apply during LOBBY. |
 | **Class System** | Downstream (soft) | Reads: `xelor_sablier_steal` (Xelor-specific; other classes have no dedicated config knobs at this time) |
 | **Network Protocol** | Downstream (hard) | Reads: `protocol_version`, `hello_timeout_ms`, `ack_timeout_ms`, `heartbeat_interval_ms`, `disconnect_grace_seconds` |
 
-**Bidirectionality:** `card-data-pool.md` ✓, `board-lane-system.md` ✓, `round-state-machine.md` ✓, `economy-system.md` ✓ — all list Game Config as an upstream dependency. `economy-system.md` must add `interest_threshold_gold` to its dependency table when the economy GDD is next revised. GDDs not yet authored (Objective System, Auction System, Class System) must list Game Config when written.
+**Bidirectionality:** `card-data-pool.md` ✓, `board-lane-system.md` ✓, `round-state-machine.md` ✓, `economy-system.md` ✓, `shop-auction-ui.md` ✓ — all list Game Config as an upstream dependency. GDDs not yet authored must list Game Config when written.
 
 GameConfig has no peer dependencies. It reads from disk only and is the bottom of the dependency stack.
 

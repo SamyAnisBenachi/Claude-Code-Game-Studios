@@ -1,8 +1,8 @@
 # Shop / Auction UI
 
-> **Status**: In Review (post-/design-review revision 2026-04-30 pass 3: 28 BLOCKING items resolved; re-review pending in fresh session)
+> **Status**: Approved (/design-review 2026-04-30 pass 4, lean: no new blocking items)
 > **Author**: SamyAnisBenachi + Claude Code agents
-> **Last Updated**: 2026-04-30 (pass 3)
+> **Last Updated**: 2026-05-04 (readiness hygiene: approval status and dependency notes reconciled)
 > **Implements Pillar**: No idle spectating · Auction as signature · Simple surface
 
 ## Overview
@@ -32,7 +32,7 @@ The other moment this system owns: buying nothing. You close DRAFT_SHOP with you
 **DRAFT_INITIAL Panel**
 *(Ownership: this GDD owns the 3×3 grid slot entities and rendering. Hand UI GDD owns fan animation on card acquisition confirmation.)*
 
-**Rule 1 — Activation.** Panel activation requires **both** `S2CPhaseChanged(DRAFT_INITIAL)` and `S2CDraftOffering { card_ids }`. The client buffers whichever arrives first and activates only when both are present (same pattern as DRAFT_AUCTION Rule 1 — cross-type FIFO ordering is not assumed). Timer initialization requires `S2CPhaseChanged { timer_duration_ms }` — the panel must not activate on `S2CDraftOffering` alone. Before both messages arrive, the panel is blank. The panel header reads permanently: **"DRAFT OFFERING — ONE TIME ONLY · NO REFRESH"**. On a player's first session, a dismissible callout tooltip appears **above the 3×3 grid** (anchored to the panel header, not overlaid on card slots — must not occlude card art): *"These 9 cards are your only offering. No refresh. 5g to spend."* Dismiss mechanic: click anywhere outside the tooltip box (or a dedicated "Got it" button if the UX spec requires one). The tooltip must not occlude any card slot — if the player must dismiss before they can read the cards, the tutorial defeats the decision. Tooltip disappears on first explicit dismiss and does not reappear. Exact anchor point and dismiss UX deferred to UX spec (see OQ2). No disabled refresh button exists — the affordance is absent, not locked, to avoid teaching the wrong mental model.
+**Rule 1 — Activation.** Panel activation requires **both** `S2CPhaseChanged(DRAFT_INITIAL)` and `S2CDraftOffering { card_ids }`. The client buffers whichever arrives first and activates only when both are present (same pattern as DRAFT_AUCTION Rule 1 — cross-type FIFO ordering is not assumed). Timer initialization requires `S2CPhaseChanged { timer_duration_ms }` — the panel must not activate on `S2CDraftOffering` alone. Before both messages arrive, the panel is blank. The panel header reads permanently: **"DRAFT OFFERING — ONE TIME ONLY · NO REFRESH"**. On a player's first session, a dismissible callout tooltip appears **above the 3×3 grid** (anchored to the panel header, not overlaid on card slots — must not occlude card art): *"These 9 cards are your only offering. No refresh. 5g to spend."* Dismiss mechanic: explicit button, click outside, or Esc per `design/ux/shop-auction-ui.md`. The tooltip must not occlude any card slot — if the player must dismiss before they can read the cards, the tutorial defeats the decision. Tooltip disappears on first explicit dismiss and does not reappear. Persistence storage remains open in OQ2. No disabled refresh button exists — the affordance is absent, not locked, to avoid teaching the wrong mental model.
 
 **Rule 2 — Grid layout.** 9 cards in a 3×3 grid. Sort order: rarity descending (Legendary → Epic → Rare → Uncommon → Common), then cost descending within rarity. This resolves Card Acquisition Open Question 5.
 
@@ -433,8 +433,8 @@ draft_timer_color_zone(timer_remaining_ms) =
 **Bidirectionality notes:**
 - card-acquisition.md lists Shop/Auction UI as downstream ✓
 - auction-system.md lists Shop/Auction UI as downstream ✓
-- economy-system.md should be updated to list Shop/Auction UI as a `S2CGoldBroadcast` consumer
-- game-config.md should be updated to list Shop/Auction UI as a downstream consumer of `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `auction_timer_seconds`, `refresh_base_cost`, `refresh_cap`
+- economy-system.md lists Shop/Auction UI as a `S2CGoldBroadcast` / free-gold consumer ✓
+- game-config.md lists Shop/Auction UI as a downstream consumer of `draft_initial_timer_seconds`, `draft_shop_timer_seconds`, `auction_timer_seconds`, `auction_timer_reset_seconds`, `refresh_base_cost`, and `refresh_cap` ✓
 
 ## Tuning Knobs
 
@@ -606,7 +606,7 @@ Horizontal pill, full panel width, 12px tall (1080p ref), 6px rounded ends, 1px 
 
 The Shop/Auction UI is implemented as a `bevy_ui` node tree overlay coexisting with Board Rendering in screen space.
 
-**Layout contract with Board Rendering:** The board occupies the majority of the screen (center + top). The Shop/Auction UI panel area sits at the bottom of the screen. Exact pixel split to be defined by the UX spec (`design/ux/shop-auction-ui.md`). The board must not be occluded in any Shop/Auction UI panel state.
+**Layout contract with Board Rendering:** The board occupies the majority of the screen (center + top) during DRAFT_INITIAL and DRAFT_SHOP. DRAFT_AUCTION is the explicit exception: the auction panel replaces the board zone per `design/ux/shop-auction-ui.md`. Exact pixel split and visual evidence are owned by the UX spec and Story 009, not the Story 001 scaffold/formula work.
 
 **Node tree structure (intent):**
 - `ShopAuctionUiRoot` — full-screen z-layer above board; pointer-events active only in the panel area
@@ -646,7 +646,7 @@ Settlement overlays are bounded to the auction-panel area only; they may dim the
 - Gold counters: update only on `S2CGoldUpdate`/`S2CGoldBroadcast`, not continuously.
 - All panels inactive during RESOLUTION use `Display::None` (see UI Requirements note above) — zero layout participation cost.
 
-📌 **UX Flag — Shop/Auction UI:** This system has UI requirements. Run `/ux-design` for the `shop-auction-ui` screen before writing epics. Stories referencing this UI must cite `design/ux/shop-auction-ui.md`, not this GDD directly.
+📌 **UX Flag — Shop/Auction UI:** This system has UI requirements. `design/ux/shop-auction-ui.md` exists and must be cited by implementation stories that touch panel layout, interaction states, visual evidence, or accessibility. Formula/scaffold stories may cite both this GDD's TR requirements and the UX spec's root/lifecycle constraints.
 
 ## Acceptance Criteria
 
@@ -760,11 +760,11 @@ All BLOCKING criteria require an automated test in `tests/unit/shop_auction_ui/`
 | # | Question | Owner | Priority |
 |---|---|---|---|
 | OQ1 | ~~Bid input text field implementation.~~ **RESOLVED** — Bid input changed to preset buttons with total-commitment-primary labels ("8g (+1)") per pass-3 review. No free-form text field. **Fantasy tradeoff acknowledged:** preset stride was chosen for friend-scope implementation simplicity. The cost: +2g/+4g squeeze-bids are not expressible from a single action. This GDD's Player Fantasy has been updated to match the preset system; `auction-system.md` Player Fantasy section also requires a future update to remove "calibrate next bluff at exact moment it costs the most." | — | Closed 2026-04-30 |
-| OQ2 | **DRAFT_INITIAL tooltip placement and dismiss persistence.** The tooltip anchor point and dismiss mechanic are constrained by Rule 1 (above header, non-occluding) but exact positioning and dismiss UX must be specified in `design/ux/shop-auction-ui.md` before implementation. Additionally, the tooltip dismiss persistence flag storage (browser `localStorage` for WASM target, or a player preferences resource?) must be resolved during WASM client architecture review. | UX Designer + Engine Programmer | Before M2 UI story implementation |
+| OQ2 | **DRAFT_INITIAL tooltip placement and dismiss persistence.** Placement/dismiss UX is now specified in `design/ux/shop-auction-ui.md` (above grid/header, non-occluding, dismiss by explicit button/outside click/Esc). Persistence storage remains open in UX OQ-SAU-UX-1 and is not part of Story 001 scaffold/formulas. | UX Designer + Engine Programmer | Before tooltip implementation |
 | OQ3 | ~~`S2CGoldBroadcast` must include `reserved_gold`.~~ **RESOLVED** — `network-protocol.md` already includes `{ player_id: PlayerId, gold: u32, reserved_gold: u32 }` (NP line 104, added 2026-04-29). No further update needed. | — | Closed 2026-04-30 |
-| OQ4 | **Screen layout split with Board Rendering.** Exact pixel/percentage allocation between the board area and the Shop/Auction UI bottom panel is undefined. **Prereq:** UX spec needs hand-tray vertical extent (from `hand-ui.md`) and HUD chip position (from `hud.md` — now authored, In Review as of 2026-04-30). Must be specified in the UX spec (`/ux-design shop-auction-ui`) before any layout implementation begins. | UX Designer | Before `/ux-design` is run |
+| OQ4 | **Screen layout split with Board Rendering.** Layout zones and the DRAFT_AUCTION board-takeover exception are specified in `design/ux/shop-auction-ui.md`. Exact hand tray extent remains open in UX OQ-SAU-UX-2 and is deferred to visual/layout evidence work, not Story 001 scaffold/formulas. | UX Designer | Before Story 009 visual evidence |
 | OQ5 | ~~`C2SSignalReady` message registration.~~ **RESOLVED** — `network-protocol.md` already registers `C2SSignalReady { retract: bool }` for both DRAFT_INITIAL and DRAFT_SHOP (NP line 48). GDD updated 2026-04-30 to add Ready button to DRAFT_INITIAL panel (matches RSM Rule 12 + Player Inputs table). | — | Closed 2026-04-30 |
 | OQ6 | **Lightyear reliable channel cross-type FIFO ordering** is unverified — see `network-protocol.md` OQ3. This GDD has been authored to **not depend** on cross-type FIFO (Rule 1 buffers both `S2CAuctionCard` and `S2CPhaseChanged` until both arrive). If NP OQ3 resolves with strict FIFO guarantees, the buffer becomes a no-op for the common case but remains a correctness guard. No further GDD changes required regardless of NP OQ3 outcome. | Network Programmer (informational only) | Track NP OQ3; informational |
-| OQ7 | **Bidirectional dependency updates pending** — `economy-system.md` should list this GDD as `S2CGoldBroadcast` consumer; `game-config.md` should list this GDD as downstream consumer of timer + refresh knobs. Self-flagged in Dependencies section "Bidirectionality notes" (lines for economy-system / game-config). | Whoever next edits those GDDs | Before M2 UI story implementation |
+| OQ7 | ~~Bidirectional dependency updates pending.~~ **RESOLVED 2026-05-04** — `economy-system.md` now lists Shop/Auction UI as a `S2CGoldBroadcast` / free-gold consumer, and `game-config.md` now lists Shop/Auction UI as a downstream consumer of timer and refresh knobs. | — | Closed |
 | OQ8 | **`S2CShopSlots` buffer application timing.** Rule 1a (DRAFT_SHOP, auction rounds) says "shop slots already populated — no new `S2CShopSlots` arrives." Edge Case says buffer arriving during DRAFT_AUCTION applies at transition completion. **Resolution:** Apply the buffered `S2CShopSlots` to `ShopPanel` entity content before the transition animation begins (pre-populate while it is still occluded by the descending AuctionPanel). The player never sees an empty ShopPanel — the animation reveals a fully-populated panel. ShopPanel data is ready at animation-start; timer starts at animation-complete. | — | Resolved 2026-04-30 |
 | OQ9 | **YOU-ARE-LEADING idle window vs "No idle spectating" pillar.** When the local player is the auction leader, all three bid buttons are hidden and no action is available for potentially 15 of 20 seconds. **Reclassified HIGH RISK (pass-3 creative-director review):** The price display, opponent gold display, and timer are static reads — none change unless the opponent acts. If the opponent is also idle, the leader watches a timer bar drain with zero new information arriving. The "predatory patience" frame requires active information resolution; a static display with no incoming signals does not qualify. **Keep as-is for now** — keep the current hidden-button design, document the risk. **Validation trigger:** if playtesting yields any report of the leader window as "boring" or "dead time" rather than "tense," escalate immediately — this is a Pillar 1 failure mode. Potential remediation: a leader action mechanic (e.g., "raise own bid preemptively") or a passive opponent-activity micro-signal. | Designer | HIGH RISK — validate in first playtest |
