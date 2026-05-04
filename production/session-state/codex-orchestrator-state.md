@@ -254,6 +254,16 @@ None currently tracked here.
   hand shaders, Hand UI audio, and shared display fonts. Next production batch
   recommendation: board functional placeholder pack, hand current-card pack,
   shared font/shader pack, then minimal board/hand audio.
+- Board Blocking Asset Batch returned BLOCKED. The agent could not access GPT
+  Image 2 through an integrated image-generation path and fell back to the
+  imagegen CLI/API route, which requires `OPENAI_API_KEY`; `OPENAI_API_KEY` was
+  missing and `python`/`py`/`uv` were not available on PATH. No placeholders,
+  PNGs, commits, or pushes were created. Blocked target assets: ASSET-024,
+  ASSET-025, ASSET-026, ASSET-029, ASSET-030, ASSET-033, ASSET-034,
+  ASSET-035, ASSET-039, ASSET-040, and ASSET-044. Remaining spec flags:
+  ASSET-026 separate sprite vs runtime tint, ASSET-035 `ui_` prefix on a
+  world-space board sprite, ASSET-039 64x96 canvas with 48x64 centered art,
+  and ASSET-044 1x2 HP bar odd-width exception.
 
 ## Recently Closed
 
@@ -330,9 +340,13 @@ None currently tracked here.
   `cargo fmt -p server -- --check`,
   `cargo test -p server --test substep6_combat_shield_counterattack_test` 7/7,
   adjacent combat regressions 13/13, `cargo check -p server`, and
-  `git diff --check`. Next action: run `/story-done` for
-  `production/epics/combat-resolution/story-007-substep6-combat-shield-counterattack.md`.
-  Do not relaunch the COMBAT-007 implementation worker.
+  `git diff --check`. Story-done returned COMPLETE WITH NOTES and was pushed at
+  `ee1a036`, updating
+  `production/epics/combat-resolution/story-007-substep6-combat-shield-counterattack.md`,
+  `production/session-state/active.md`, and sprint-status row S5-09. Advisory:
+  current GDD CR-21 wording says COUNTERATTACK fires before SHIELD absorption,
+  while active TR-CR-006, the story, and ADR-017 specify after incoming damage
+  or SHIELD absorption; implementation follows active TR/story contract.
 - BOARD-RENDERING-001 worker returned at `43ace3e` on
   `work/board-rendering-001-plugin-scaffold-layout-atlas`. The worker branch
   was behind current `origin/main`, so root cherry-picked only the board
@@ -340,9 +354,11 @@ None currently tracked here.
   passed `cargo fmt -p client -- --check`,
   `cargo test -p client --test board_rendering_plugin_scaffold_test` 9/9,
   touched adjacent tests 14/14, `cargo check -p client`, and `git diff --check`.
-  Next action: run `/story-done` for
-  `production/epics/board-rendering/story-001-plugin-scaffold-board-layout-card-atlas.md`.
-  Do not relaunch the BOARD-RENDERING-001 implementation worker.
+  Story-done returned COMPLETE WITH NOTES and was pushed at `e2d81d9`, updating
+  `production/epics/board-rendering/story-001-plugin-scaffold-board-layout-card-atlas.md`
+  and `production/session-state/active.md`; no sprint-status row existed.
+  Advisory: TR-BR-002 registry wording says Vec3, while current GDD/ADR and
+  implementation use Vec2.
 - COMBAT-004: Movement + Collision readiness repair landed on main at
   `c2fc0d3`; implementation landed on main at `408c34a`; story-done closure
   committed at `52caa45`; follow-up story scope clarification committed at
@@ -869,10 +885,11 @@ Active implementation workers by default-launch rule:
 Current active windows by user default-launch rule:
 - BOARD-RENDERING-001 implementation worker returned; root cherry-picked and
   pushed only the board rendering commit as `b5abcd5` because the branch was
-  behind current main. Window can be cleared. Story-done for
-  BOARD-RENDERING-001 is now pending.
+  behind current main; story-done returned and pushed closure at `e2d81d9`.
+  Window can be cleared.
 - COMBAT-007 implementation worker returned, root integrated and pushed commit
-  `2c8f752`; window can be cleared. Story-done for COMBAT-007 is now pending.
+  `2c8f752`; story-done returned and pushed closure at `ee1a036`. Window can
+  be cleared.
 - COMBAT-006 implementation worker returned, root integrated and pushed commit
   `ea43240`; story-done returned and pushed closure at `e3e1cd7`. Window can
   be cleared.
@@ -919,6 +936,9 @@ Current active windows by user default-launch rule:
 - Asset audit existing runtime files returned read-only with NON-COMPLIANT
   verdict and no edits; window can be cleared. The trailing `/review on my
   current changes` is not applicable to that audit because it made no changes.
+- Board Blocking Asset Batch returned BLOCKED because no integrated GPT Image 2
+  path was available and the CLI/API path lacked `OPENAI_API_KEY`; no files
+  were generated. Window can be cleared unless rerun in an image-capable agent.
 - COMBAT-004 story-done returned and was committed at `52caa45`; follow-up
   scope clarification committed at `3ef7bab`; window can be cleared.
 - CDP-006 story-done returned and was committed at `199a9b3`; window can be
