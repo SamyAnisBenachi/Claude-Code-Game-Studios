@@ -11,13 +11,17 @@
 **GDD**: `design/gdd/combat-resolution.md`
 **Requirements**:
 - `TR-CR-009` — CR-10 / CR-27 objective damage: bypasses AR, uses `ATK_effective`, and clamps objective HP with `saturating_sub`.
+- `TR-CR-008` — CR-17 adjacent economy timing: objective gold lands before the economy interest snapshot and is not kill gold.
+- `TR-ECO-006` — CR-17 cross-system reward contract: objective reward is +3g by default; self-inflicted objective destruction skips gold reward.
 - `TR-OBJ-004` — objective destruction consequence: mark destroyed, queue `ObjectiveDestroyed`, award +3g if attacker != owner, dispatch fake rewards, increment real objective count if real.
 - `TR-OBJ-006` — objective loss counter: `real_objectives_destroyed >= loss_threshold (2)`, mutual destruction = Draw.
 - `TR-OBJ-010` — `take_damage(lane, attacker_player, amount)` is the sole objective damage interface; `ObjectiveCounters` is the RSM-readable contract.
 - `TR-RSM-008` — GAME_OVER detection is evaluated by the RSM reading `ObjectiveCounters` after `ResolutionComplete`.
 
+**Trace Coverage**: CR-11 is a story-local objective eligibility rule built on completed COMBAT-005/006/007/008 removal and SS6 combat behavior: only units still alive after SS6 unit combat are collected for objective damage. CR-17 is covered by `TR-CR-008`, `TR-ECO-006`, and `TR-OBJ-004`. CR-18 and CR-19 are covered by `TR-OBJ-006`, `TR-OBJ-010`, and `TR-RSM-008`.
+
 **ADR Governing Implementation**: ADR-017: Combat Resolution Execution Architecture + ADR-002: Client-Server Authority + ADR-010: RSM Phase Event Bus + ADR-019: Economy System Resource Architecture + ADR-001: Hidden Objective Identity
-**ADR Decision Summary**: After all unit-vs-unit combat in SS6 resolves, any unit at Cell 8 (Player A) or Cell 1 (Player B) deals its `ATK_effective` to the objective in that lane via Objective System `take_damage`. Objective destruction awards +3g through the economy API, not +1 kill gold. Combat Resolution completes normally: it records the Story 009 local log entries, queues/drains `ResolutionComplete` through the current completion bridge, and leaves objectives-triggered GAME_OVER evaluation to the RSM. Economy consumes `ResolutionComplete` first to snapshot interest after kill/objective rewards; the RSM then reads `ObjectiveCounters` and emits `GameOverEmitted` for single-loser or Draw outcomes.
+**ADR Decision Summary**: After all unit-vs-unit combat in SS6 resolves, any unit at Cell 8 (Player A) or Cell 1 (Player B) deals its `ATK_effective` to the objective in that lane via Objective System `take_damage`. Objective destruction awards +3g through the economy API, not +1 kill gold. Combat Resolution completes normally: it records the Story 009 objective damage/destruction/gold entries and GAME_OVER handoff evidence, queues/drains `ResolutionComplete` through the current completion bridge, and leaves objectives-triggered GAME_OVER evaluation to the RSM. Economy consumes `ResolutionComplete` first to snapshot interest after kill/objective rewards; the RSM then reads `ObjectiveCounters` and emits `GameOverEmitted` for single-loser or Draw outcomes.
 
 **Engine**: Bevy 0.18 | **Risk**: HIGH
 **Engine Notes**: Objective HP mutations route through `objective-system`'s `take_damage` interface (ADR-010 boundary — Combat Resolution calls into Objective System via the API boundary, not directly). Gold award uses `EconomySystem::apply_gold_award`. Normal completion uses the ADR-019 `PendingResolutionComplete` bridge: `resolve_combat` sets the pending flag, `drain_pending_resolution_complete` writes `ResolutionComplete`, Economy snapshots interest before `rsm_input_reader`, and the RSM owns `GameOverEmitted`. Direct `S2CGameOver` broadcast is not a Combat Resolution responsibility.
@@ -54,10 +58,10 @@ Objective damage pass (runs AFTER all unit-vs-unit SS6 combat):
    a. Compute ATK_effective (include LEADER bonus + active spell buffs; no AR modifiers)
    b. Call objective_system.take_damage(lane, attacking_player, atk_effective)
       → Objective System applies: HP_new = max(0, HP_current - atk_effective)
-      → If HP → 0: ObjectiveDestroyed fires, gold awarded, fake rewards dispatched
-   c. Log: ObjectiveDamage { attacker_id, lane, damage_amount, objective_hp_after }
-   d. If destroyed: Log: ObjectiveDestroyed { lane, owner, is_fake }
-                    Log: GoldAwarded { player: attacker, amount: 3, reason: ObjectiveDestroyed }
+      → If HP → 0: ObjectiveDestroyed is queued, gold awarded, fake rewards dispatched
+   c. Log: ObjectiveDamaged { target_player_id, lane, hp_before, hp_after, attacker_id: Some(attacker_id) }
+   d. If destroyed: Log: ObjectiveDestroyed { target_player_id, lane, was_fake }
+                    Log: GoldAwarded { player_id: attacker, amount: 3, reason: ObjectiveReward }
                          (only if attacker != owner — no self-destruction reward)
 
 3. Completion and GAME_OVER handoff:
@@ -72,7 +76,7 @@ Objective damage pass (runs AFTER all unit-vs-unit SS6 combat):
 
 **CR-19 (simultaneous Draw)**: Process ALL objective destruction consequences in the SS6 pass before completing resolution. If both players have `real_objectives_destroyed >= 2`, the RSM detects the Draw after `ResolutionComplete`. Combat Resolution must not short-circuit on the first destruction.
 
-**Fake objectives**: `is_fake` is only known server-side (ADR-001). `ObjectiveDestroyed { is_fake: bool }` in the ResolutionLog is populated server-side. Client-visible identity filtering remains owned by Objective System / protocol projection. Combat Resolution just passes through the server-side `is_fake` value from the `ObjectiveDestroyed` event into local log data where required.
+**Fake objectives**: fake/real identity is only known server-side (ADR-001). `ObjectiveDestroyed { target_player_id, lane, was_fake }` in the ResolutionLog is populated from server-side Objective System data. Client-visible identity filtering remains owned by Objective System / protocol projection. Combat Resolution just passes through the server-side `was_fake` value from the `ObjectiveDestroyed` event into local log data where required.
 
 ---
 
@@ -82,7 +86,7 @@ Objective damage pass (runs AFTER all unit-vs-unit SS6 combat):
 - Objective System epic: `take_damage` API, fake reward dispatch, `ObjectiveCounters` update — owned by that system
 - RSM win-condition implementation: `ObjectiveCounters` evaluation and `GameOverEmitted` are owned by Round State Machine Story 004
 - Game Session / network dispatch: reliable `S2CGameOver` broadcast is owned outside Combat Resolution
-- COMBAT-011: full `S2CResolutionEvent` completeness, chronological ordering, and client-observable ordering verification. Story 009 may add local `ObjectiveDamage`, `ObjectiveDestroyed`, and `GoldAwarded` log records only as needed for its objective-damage behavior.
+- COMBAT-011: full `S2CResolutionEvent` completeness, chronological ordering, and client-observable ordering verification. Story 009 owns emitting the objective-damage/destruction/gold log entries and GAME_OVER handoff evidence required by this story; COMBAT-011 verifies those entries are globally complete and ordered with all other resolution events.
 
 ---
 
@@ -93,17 +97,17 @@ Objective damage pass (runs AFTER all unit-vs-unit SS6 combat):
 - **CR-10** (objective damage applied, unit remains):
   - Given: Unit at cell 8 (Player A), ATK=3; objective HP=5
   - When: SS6 objective pass runs
-  - Then: objective HP = 2; `ObjectiveDamage { damage_amount: 3, objective_hp_after: 2 }` in log; unit still in snapshots (not removed)
+  - Then: objective HP = 2; `ObjectiveDamaged { hp_before: 5, hp_after: 2, attacker_id: Some(unit_id) }` in log; unit still in snapshots (not removed)
 
 - **CR-11** (FS unit killed in SS3 → no objective damage):
   - Given: FS unit at cell 8, killed in SS3 (HP=0), removed in SS4
   - When: SS6 objective pass checks cell 8
-  - Then: no `ObjectiveDamage` entry for this unit; objective HP unchanged
+  - Then: no `ObjectiveDamaged` entry for this unit; objective HP unchanged
 
 - **CR-17** (+3g not +1g):
   - Given: Unit destroys objective in SS6
   - When: post-destruction gold processing runs
-  - Then: `GoldAwarded { amount: 3, reason: ObjectiveDestroyed }` in log; no `GoldAwarded { amount: 1, reason: Kill }` for objective
+  - Then: `GoldAwarded { amount: 3, reason: ObjectiveReward }` in log; no `GoldAwarded { amount: 1, reason: KillReward }` for objective
   - Edge case: self-inflicted destruction → no gold awarded (attacker == owner)
 
 - **CR-18** (loss condition):
