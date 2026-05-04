@@ -1642,3 +1642,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-06 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
 - Next recommended: Combat Story 5 FIRST STRIKE Attacks (`production/epics/combat-resolution/story-005-substep3-first-strike.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/combat-resolution/story-005-substep3-first-strike.md` - Story 005: Sub-step 3 - FIRST STRIKE Attacks
+- Criteria: 5/5 passing; CR-1, CR-2, CR-4, CR-22, and CR-37 covered by `tests/unit/combat/substep3_first_strike_test.rs`.
+- Test Evidence: `cargo test -p server --test substep3_first_strike_test` passed 5/5. `cargo check -p server` passed.
+- Verification: Current `main` after integrated commit `e1733be` collects SS3 FIRST STRIKE attacks from snapshot data, uses `apply_combat_modifier_stack` per attack, applies HP loss with `saturating_sub`, emits SS3/SS6 RANGE+FIRST STRIKE `CombatDamage` trace entries, records lethal SS3 kill credit, and emits FINAL BLOW in SS3 while leaving killed units present for SS4.
+- Notes: Advisory only - CR-2 and CR-37 include later SS4 DEATH/gold-award effects in current GDD wording. COMBAT-005 seeds lethal state/kill credit and leaves dead units present; COMBAT-006 owns SS4 removal, DEATH chains, and kill-gold emission. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-07 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
+- Next recommended: Combat Story 6 Dead Removal + DEATH Chains + Kill Gold (`production/epics/combat-resolution/story-006-substep4-dead-removal.md`) after readiness check.

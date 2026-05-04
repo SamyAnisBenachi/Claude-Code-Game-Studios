@@ -1,7 +1,7 @@
 # Story 005: Sub-step 3 — FIRST STRIKE Attacks
 
 > **Epic**: Combat Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -28,11 +28,11 @@
 
 *From GDD `design/gdd/combat-resolution.md`, scoped to this story:*
 
-- [ ] **CR-1**: GIVEN a unit with FIRST STRIKE in any lane, WHEN sub-step 3 executes, THEN that unit deals net_damage to any enemy unit sharing its cell before sub-step 5 movement occurs
-- [ ] **CR-2**: GIVEN two FIRST STRIKE units sharing a cell, WHEN sub-step 3 executes, THEN both deal damage simultaneously (HP snapshots taken before either mutation is applied); if both receive lethal damage, both die and both DEATH triggers fire (in SS4)
-- [ ] **CR-4**: GIVEN a unit with RANGE 1-X AND FIRST STRIKE, WHEN RESOLUTION executes, THEN a damage event is emitted in sub-step 3 (FIRST STRIKE pass) AND separately in sub-step 6 (standard combat pass) — two distinct `CombatDamage` entries in the log
-- [ ] **CR-22**: GIVEN a unit kills another unit in sub-step 3 (FIRST STRIKE), WHEN FINAL BLOW fires, THEN it fires in sub-step 3 (before sub-step 4); the killed unit is still present on the board during FINAL BLOW resolution
-- [ ] **CR-37**: GIVEN unit X (Lane 2, FS) and unit Y (Lane 4, FS) both target unit Z (HP=4, AR=0) in sub-step 3, WHEN sub-step 3 resolves, THEN Lane 2 damage applied first (Z HP → 1), then Lane 4 damage (Z HP → 0, killed); FINAL BLOW credit to Lane 4 unit's controller
+- [x] **CR-1**: GIVEN a unit with FIRST STRIKE in any lane, WHEN sub-step 3 executes, THEN that unit deals net_damage to any enemy unit sharing its cell before sub-step 5 movement occurs
+- [x] **CR-2**: GIVEN two FIRST STRIKE units sharing a cell, WHEN sub-step 3 executes, THEN both deal damage simultaneously (HP snapshots taken before either mutation is applied); if both receive lethal damage, both die and both DEATH triggers fire (in SS4)
+- [x] **CR-4**: GIVEN a unit with RANGE 1-X AND FIRST STRIKE, WHEN RESOLUTION executes, THEN a damage event is emitted in sub-step 3 (FIRST STRIKE pass) AND separately in sub-step 6 (standard combat pass) — two distinct `CombatDamage` entries in the log
+- [x] **CR-22**: GIVEN a unit kills another unit in sub-step 3 (FIRST STRIKE), WHEN FINAL BLOW fires, THEN it fires in sub-step 3 (before sub-step 4); the killed unit is still present on the board during FINAL BLOW resolution
+- [x] **CR-37**: GIVEN unit X (Lane 2, FS) and unit Y (Lane 4, FS) both target unit Z (HP=4, AR=0) in sub-step 3, WHEN sub-step 3 resolves, THEN Lane 2 damage applied first (Z HP → 1), then Lane 4 damage (Z HP → 0, killed); FINAL BLOW credit to Lane 4 unit's controller
 
 ---
 
@@ -112,7 +112,7 @@ SS3 execution (execute_first_strike):
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combat/substep3_first_strike_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -120,3 +120,13 @@ SS3 execution (execute_first_strike):
 
 - Depends on: Story 002 (calls `apply_combat_modifier_stack`), Story 003 (units placed in SS1), Story 004 (positions from SS2 used for SS3 targeting)
 - Unlocks: Story 006 (SS4 drains kill_log populated here)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 5/5 passing (CR-1, CR-2, CR-4, CR-22, CR-37)
+**Deviations**: Advisory only - CR-2 and CR-37 include later SS4 DEATH/gold-award effects in current GDD wording. COMBAT-005 seeds lethal state/kill credit and leaves dead units present; COMBAT-006 owns SS4 removal, DEATH chains, and kill-gold emission.
+**Test Evidence**: Logic: `tests/unit/combat/substep3_first_strike_test.rs` exists and passed 5/5 via `cargo test -p server --test substep3_first_strike_test`. `cargo check -p server` passed.
+**Code Review**: Skipped - lean mode.

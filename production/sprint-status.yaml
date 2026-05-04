@@ -81,10 +81,13 @@ stories:
     name: "Combat Story 5: FIRST STRIKE Attacks"
     file: "production/epics/combat-resolution/story-005-substep3-first-strike.md"
     priority: must-have
-    status: not-started
+    status: done
     owner: "worker"
     estimate_days: 1.00
     blocker: ""
+    completed: "2026-05-04"
+    notes:
+      - "COMPLETE WITH NOTES: SS3 FIRST STRIKE damage, simultaneous HP snapshots, RANGE+FIRST STRIKE dual CombatDamage trace entries, FINAL BLOW timing, and lane-order kill credit verified. SS4 removal/DEATH/gold emission remains owned by S5-08."
 
   - id: "S5-08"
     name: "Combat Story 6: Dead Removal + DEATH Chains + Kill Gold"
