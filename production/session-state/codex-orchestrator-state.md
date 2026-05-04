@@ -141,7 +141,22 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-None currently tracked here.
+- COMBAT-010 / S5-19 Persistent Keyword States is integrated on `origin/main`
+  and needs serialized `/story-done`. Readiness repair was pushed at `6326dc9`.
+  Worker branch `work/combat-010-persistent-keyword-states` returned at
+  `7ab44a1`, pushed to `origin/work/combat-010-persistent-keyword-states`, and
+  root fast-forwarded `main` to the same commit. Changed files:
+  `server/Cargo.toml`, `server/src/feature/combat/mod.rs`,
+  `server/src/feature/keyword/{components.rs,effects.rs,state_eval.rs}`, and
+  `tests/unit/combat/persistent_states_test.rs`. Root verification passed:
+  `cargo fmt -p server -- --check`,
+  `cargo test -p server --test persistent_states_test` 5/5, adjacent combat
+  regressions (`objective_damage_gameover_test`, `range_targeting_test`,
+  `substep4_dead_removal_test`, `substep1_placement_test`) 19/19,
+  `cargo check -p server`, and `git diff --check`. Queue exactly one
+  `/story-done` for
+  `production/epics/combat-resolution/story-010-persistent-keyword-states.md`;
+  do not relaunch the implementation worker.
 
 ## Recent Planning / Readiness Updates
 
@@ -942,9 +957,11 @@ Current active windows by user default-launch rule:
   window can be cleared. Story-done returned COMPLETE and was pushed at
   `dc91402`, updating the story, active session state, and S5-11 sprint row.
   Story-done window can be cleared. COMBAT-010 readiness repair returned READY
-  and was pushed at `6326dc9`; readiness window can be cleared. Next action is a
-  new COMBAT-010 `/dev-story` implementation worker. COMBAT-011 remains blocked
-  behind COMBAT-010.
+  and was pushed at `6326dc9`; readiness window can be cleared. COMBAT-010
+  implementation worker returned at `7ab44a1`; root fast-forwarded and pushed
+  `main` to that commit. Worker window can be cleared. A serialized
+  `/story-done` window is now needed. COMBAT-011 remains blocked behind
+  COMBAT-010 story-done.
 - COMBAT-008 readiness repair returned READY and was pushed at `b26f007`.
   Readiness window can be cleared. COMBAT-008 implementation worker returned at
   `dd7bd50`; root fast-forwarded and pushed `main` to that commit. Worker
