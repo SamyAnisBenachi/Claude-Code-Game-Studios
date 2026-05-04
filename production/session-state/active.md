@@ -1764,3 +1764,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-11 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
 - Next recommended: Review COMBAT-010 Persistent Keyword States and COMBAT-011 ResolutionEvent Log Completeness readiness before starting either.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE
+- Story: `production/epics/combat-resolution/story-010-persistent-keyword-states.md` - Story 010: Persistent Keyword States - INJURED, LEADER, OUTNUMBERED
+- Criteria: 4/4 passing; CR-26, CR-33, CR-34, and KW-040 covered by `tests/unit/combat/persistent_states_test.rs`.
+- Test Evidence: `cargo test -p server --test persistent_states_test` passed 5/5. Requested adjacent regression command passed 19/19 across `objective_damage_gameover_test`, `range_targeting_test`, `substep4_dead_removal_test`, and `substep1_placement_test`. `cargo check -p server` passed. `git diff --check` passed.
+- Verification: Current `main` includes integrated implementation commit `7ab44a1`; INJURED activates at the completed-sub-step boundary and persists into the next round, LEADER bonuses snapshot post-SS1/pre-SS2 after SS1 APPEARANCE effects and persist through SS5/SS6 even if the LEADER dies in SS4, and OUTNUMBERED recomputes only after the SS4 `ChainDeathBuffer` drain before SS5.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or keyword-state deviation found. Full ordered `S2CResolutionEvent` completeness remains COMBAT-011 scope. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-19 in `production/sprint-status.yaml` to `done` with completion date 2026-05-05.
+- Next recommended: Combat Story 11 ResolutionEvent Log Completeness (`production/epics/combat-resolution/story-011-resolution-event-log.md`) after readiness check.

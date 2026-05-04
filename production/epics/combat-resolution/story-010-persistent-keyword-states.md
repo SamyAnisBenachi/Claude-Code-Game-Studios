@@ -1,7 +1,7 @@
 # Story 010: Persistent Keyword States — INJURED, LEADER, OUTNUMBERED
 
 > **Epic**: Combat Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -122,7 +122,7 @@ INJURED is NOT a keyword — SILENCE strips keywords granted BY INJURED (e.g., F
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combat/persistent_states_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Exists and passes (`cargo test -p server --test persistent_states_test`)
 
 ---
 
@@ -130,3 +130,15 @@ INJURED is NOT a keyword — SILENCE strips keywords granted BY INJURED (e.g., F
 
 - Depends on: Story 003 (SS1 placement/APPEARANCE complete before LEADER snapshot), Story 005 (SS3 damage activates INJURED), Story 006 (SS4 dead removal and `ChainDeathBuffer`), Story 007 (SS6 context for LEADER snapshot verification)
 - Unlocks: Story 011 (log completeness can now include keyword trigger entries for persistent states)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 4/4 passing.
+**Verification**: Current `main` includes integrated implementation commit `7ab44a1`. CR-26, CR-33, CR-34, and KW-040 are covered by `tests/unit/combat/persistent_states_test.rs`; adjacent combat regression coverage also passed for objective damage/gameover, RANGE targeting, SS4 dead removal, and SS1 placement/APPEARANCE.
+**Test Evidence**: `cargo test -p server --test persistent_states_test` passed 5/5. Requested adjacent regression command passed 19/19. `cargo check -p server` passed. `git diff --check` passed.
+**Deviations**: None blocking. Full ordered `S2CResolutionEvent` completeness remains out of scope for COMBAT-011.
+**Code Review**: Lean mode; QL-TEST-COVERAGE and LP-CODE-REVIEW gates skipped per `production/review-mode.txt`.
+**Tech Debt**: None logged.

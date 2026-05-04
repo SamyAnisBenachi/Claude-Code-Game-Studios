@@ -6,7 +6,7 @@ goal: "Close integrated work, reconcile in-flight pull-forward, and complete the
 start: "2026-05-04"
 end: "2026-05-15"
 generated: "2026-05-04"
-updated: "2026-05-04"
+updated: "2026-05-05"
 
 notes:
   - "AUC-007 AU1-b-network remains deferred/open sprint-review note pending ADR-008 FIFO integration evidence."
@@ -214,10 +214,13 @@ stories:
     name: "Combat Story 10: Persistent Keyword States"
     file: "production/epics/combat-resolution/story-010-persistent-keyword-states.md"
     priority: nice-to-have
-    status: not-started
+    status: done
     owner: "unassigned"
     estimate_days: 1.00
     blocker: ""
+    completed: "2026-05-05"
+    notes:
+      - "COMPLETE: CR-26, CR-33, CR-34, and KW-040 verified by persistent_states_test. INJURED boundary/persistence, post-SS1 LEADER snapshot persistence/recompute, and post-SS4 ChainDeathBuffer OUTNUMBERED flip behavior pass; full S2CResolutionEvent ordering remains COMBAT-011 scope."
 
   - id: "S5-20"
     name: "Combat Story 11: ResolutionEvent Log Completeness"
