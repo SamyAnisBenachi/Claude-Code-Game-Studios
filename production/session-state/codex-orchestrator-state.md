@@ -116,11 +116,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- OBJECTIVE-005: Destruction Consequence Path readiness repair landed on main
-  at `e903c69`; implementation landed on main at `cf93a8d`. Verification
-  passed `cargo test -p server --test consequence_path_test` 7/7, `cargo test
-  -p server --test damage_interface_test` 7/7, `cargo check -p server`, and
-  diff checks. No `/story-done` has run yet.
 - AUC-007: Auction Plugin Scheduling readiness repair landed on main at
   `f96a524`; implementation landed on main at `ea5d88d`. Verification passed
   `cargo check -p server`, focused auction tests 31/31 with 1 pre-existing
@@ -150,6 +145,11 @@ None currently tracked here.
   it still needs `/story-done`.
 ## Recently Closed
 
+- OBJECTIVE-005: Destruction Consequence Path readiness repair landed on main
+  at `e903c69`; implementation landed on main at `cf93a8d`; story-done
+  closure committed at `b5ecd56`. Verification passed `cargo test -p server
+  --test consequence_path_test` 7/7, `cargo check -p server`, and diff checks.
+  `production/sprint-status.yaml` had no matching OBJECTIVE-005 row.
 - COMBAT-003: SS1 Placement Appearance trace repair landed on main at
   `e5c28d5`; implementation landed on main at `7fdf4fd`; story-done closure
   committed at `bcc73bb`. Verification passed `cargo test -p server --test
@@ -559,19 +559,16 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. OBJECTIVE-005:
-   `production/epics/objective-system/story-005-destruction-consequence-path.md`
-   after integration commit `cf93a8d`.
-2. AUC-007:
+1. AUC-007:
    `production/epics/auction-system/story-007-auction-plugin-scheduling.md`
    after integration commit `ea5d88d`.
-3. HAND-UI-011:
+2. HAND-UI-011:
    `production/epics/hand-ui/story-011-reserve-mana-strip.md`
    after integration commit `bd8c15b`.
-4. BOARD-010:
+3. BOARD-010:
    `production/epics/board-lane-system/story-010-displacement-keywords.md`
    after integration commit `e49f5a2`.
-5. CDP-006:
+4. CDP-006:
    `production/epics/card-data-pool/story-006-network-dispatch-wiring.md`
    after integration commit `4d21482`.
 
@@ -621,7 +618,7 @@ Batch launched:
 
 Active implementation workers by default-launch rule:
 - None known at this checkpoint. CDP-006, BOARD-010, HAND-UI-011, AUC-007,
-  OBJECTIVE-005, HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009,
+  HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009,
   COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have returned and
   are integrated or closed as noted; do not relaunch their implementation
   workers.
@@ -638,10 +635,9 @@ Current active windows by user default-launch rule:
   serialized `/story-done` after AUC-007.
 - AUC-007 returned, integrated into main at `f96a524` and `ea5d88d`,
   verified, and is on origin/main after orchestrator push. Window can be
-  cleared. It now needs serialized `/story-done` after OBJECTIVE-005.
-- OBJECTIVE-005 returned, integrated into main at `e903c69` and `cf93a8d`,
-  verified, and is on origin/main. Window can be cleared. It now needs
-  serialized `/story-done`.
+  cleared. It now needs serialized `/story-done`.
+- OBJECTIVE-005 story-done returned and was committed at `b5ecd56`; window can
+  be cleared.
 - COMBAT-003 story-done returned and was committed at `bcc73bb`; window can
   be cleared.
 - HAND-UI-009 story-done returned and was committed at `8344521`; window can
