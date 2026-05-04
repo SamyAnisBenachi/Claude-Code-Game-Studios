@@ -1598,3 +1598,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per approval boundary; no matching `AUC-007` row exists in `production/sprint-status.yaml`.
 - Next recommended: Auction Story 008 Pool Integration (`production/epics/auction-system/story-008-pool-integration.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/hand-ui/story-011-reserve-mana-strip.md` - Story 011: Reserve Mana Split Strip - Per-Staged-Card Controls
+- Criteria: 3/3 passing; HU-25, HU-26, and HU-27 covered by `tests/unit/hand-ui/reserve_mana_strip_test.rs`.
+- Test Evidence: `cargo test -p client --test hand_ui_reserve_mana_strip_test` passed 3/3. `cargo check -p client` passed.
+- Verification: Current `main` includes integrated commit `bd8c15b`; reserve strip plus clicks increment to the per-card ceiling, disabled plus buttons ignore further clicks, other staged cards reduce the ceiling without auto-decrementing, and cost-0 cards keep the reserve strip hidden with no click effect.
+- Notes: Advisory only - `TR-HU-004` in `docs/architecture/tr-registry.yaml` does not currently describe the reserve strip behavior covered by HU-25/HU-26/HU-27; current `design/gdd/hand-ui.md` Rule 13 is the verified behavior source. Advisory only - VA-9 specifies a 96 px strip width while the implementation uses 104 px; logic criteria pass and visual sizing can be reconciled in UI polish if needed. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per approval boundary; no matching `HAND-UI-011` row exists in `production/sprint-status.yaml`.
+- Next recommended: Hand UI Story 010 Submit Pre-Validation (`production/epics/hand-ui/story-010-submit-prevalidation.md`) after readiness check, or continue the Sprint 5 Must Have combat spine if that remains the priority.

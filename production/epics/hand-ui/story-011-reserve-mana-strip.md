@@ -1,7 +1,7 @@
 # Story 011: Reserve Mana Split Strip — Per-Staged-Card Controls
 
 > **Epic**: Hand UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -30,18 +30,18 @@
 
 *From GDD `design/gdd/hand-ui.md` Rule 13, scoped to this story:*
 
-- [ ] **HU-25**: GIVEN a card with `cost = 5` is staged AND `player.reserve_mana = 3`, WHEN the player clicks `[ + ]` on its reserve strip:
+- [x] **HU-25**: GIVEN a card with `cost = 5` is staged AND `player.reserve_mana = 3`, WHEN the player clicks `[ + ]` on its reserve strip:
   - First click: `reserve_amount` increments to 1; `[ + ]` remains Enabled (ceiling = min(5, 3) = 3; 1 < 3)
   - Second click: `reserve_amount` increments to 2; `[ + ]` remains Enabled (2 < 3)
   - Third click: `reserve_amount` increments to 3; `[ + ]` immediately enters `Disabled` state (3 == min(5, 3) = ceiling)
   - Fourth click on now-Disabled `[ + ]`: no state change; `reserve_amount` remains 3
 
-- [ ] **HU-26**: GIVEN card A is staged with `reserve_amount = 2` AND `player.reserve_mana = 3`, WHEN card B (`cost ≥ 2`) is staged (default `reserve_amount = 0`) AND the player presses `[ + ]` on card B's reserve strip ONCE:
+- [x] **HU-26**: GIVEN card A is staged with `reserve_amount = 2` AND `player.reserve_mana = 3`, WHEN card B (`cost ≥ 2`) is staged (default `reserve_amount = 0`) AND the player presses `[ + ]` on card B's reserve strip ONCE:
   - (a) Card B's `reserve_amount` increments to 1 (ceiling = `player.reserve_mana − sum_other = 3 − 2 = 1`)
   - (b) Card B's `[ + ]` button immediately enters `Disabled` state (1 == ceiling of 1)
   - (c) Card A's `reserve_amount` remains 2 (no auto-decrement of other staged cards occurs)
 
-- [ ] **HU-27**: GIVEN a card with `cost = 0` is staged, WHEN the staged ghost renders, THEN the reserve strip entity for that card has `Visibility::Hidden` (no decision to make — free cards have no reserve split).
+- [x] **HU-27**: GIVEN a card with `cost = 0` is staged, WHEN the staged ghost renders, THEN the reserve strip entity for that card has `Visibility::Hidden` (no decision to make — free cards have no reserve split).
 
 ---
 
@@ -104,7 +104,7 @@
 **Required evidence**:
 - `tests/unit/hand-ui/reserve_mana_strip_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -112,3 +112,13 @@
 
 - Depends on: Story 005 (staging core — reserve strip shown/hidden by staging state)
 - Unlocks: Story 010 (pre-validation reads reserve_amount values set by this strip)
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 3/3 passing (HU-25, HU-26, HU-27)
+**Deviations**:
+- Advisory: `TR-HU-004` in `docs/architecture/tr-registry.yaml` does not currently describe the reserve strip behavior covered by HU-25/HU-26/HU-27. Current `design/gdd/hand-ui.md` Rule 13 is the verified behavior source.
+- Advisory: VA-9 specifies a 96 px strip width; the implementation uses 104 px. The logic criteria pass; visual sizing can be reconciled in UI polish if needed.
+**Test Evidence**: Logic: `tests/unit/hand-ui/reserve_mana_strip_test.rs`; `cargo test -p client --test hand_ui_reserve_mana_strip_test` passed 3/3.
+**Code Review**: Skipped - lean mode.
