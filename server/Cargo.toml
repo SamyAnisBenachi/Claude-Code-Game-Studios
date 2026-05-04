@@ -250,6 +250,10 @@ name = "objective_identity_unicast_test"
 path = "../tests/integration/objective/identity_unicast_test.rs"
 
 [[test]]
+name = "objective_resolution_sync_test"
+path = "../tests/integration/objective/resolution_sync_test.rs"
+
+[[test]]
 name = "rsm_f2_ordering_test"
 path = "../tests/integration/rsm/rsm_f2_ordering_test.rs"
 

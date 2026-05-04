@@ -254,6 +254,11 @@ pub enum ResolutionEvent {
         lane: u8,
         cell: u8,
     },
+    ObjectiveDestroyed {
+        target_player_id: PlayerId,
+        lane: u8,
+        was_fake: bool,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
