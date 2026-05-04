@@ -179,10 +179,7 @@ fn snap_transform_xy_to_entry(
         warn!("BoardLayout missing; placement reveal snap skipped");
         return;
     };
-    let Some(world_xy) = board_layout.cell_to_world(lane, cell) else {
-        warn!("Invalid placement reveal cell lane={lane}, cell={cell}; snap skipped");
-        return;
-    };
+    let world_xy = board_layout.cell_to_world(lane, cell);
 
     transform.translation.x = world_xy.x;
     transform.translation.y = world_xy.y;
@@ -204,13 +201,7 @@ fn snap_target_to_committed_cell(
         );
         return;
     };
-    let Some(world_xy) = board_layout.cell_to_world(lane_cell.lane, lane_cell.cell) else {
-        warn!(
-            "Invalid LaneCell lane={}, cell={} on {:?}; snap skipped",
-            lane_cell.lane, lane_cell.cell, target_entity
-        );
-        return;
-    };
+    let world_xy = board_layout.cell_to_world(lane_cell.lane, lane_cell.cell);
 
     transform.translation.x = world_xy.x;
     transform.translation.y = world_xy.y;

@@ -2452,10 +2452,8 @@ fn minion_highlight_cells(
     board_cells
         .iter()
         .filter_map(|(entity, lane_cell, occupied, objective)| {
-            let valid_cell = board_layout
-                .cell_to_world(lane_cell.lane, lane_cell.cell)
-                .is_some()
-                && board_view.is_spawn_cell(lane_cell.lane, lane_cell.cell)
+            let _world_xy = board_layout.cell_to_world(lane_cell.lane, lane_cell.cell);
+            let valid_cell = board_view.is_spawn_cell(lane_cell.lane, lane_cell.cell)
                 && occupied.is_none()
                 && objective.is_none()
                 && !staged_minion_cells.contains(&(lane_cell.lane, lane_cell.cell));
@@ -2490,10 +2488,8 @@ fn lane_wide_highlight_cells(
     board_cells
         .iter()
         .filter_map(|(entity, lane_cell, _occupied, objective)| {
-            let valid_cell = board_layout
-                .cell_to_world(lane_cell.lane, lane_cell.cell)
-                .is_some()
-                && objective.is_none();
+            let _world_xy = board_layout.cell_to_world(lane_cell.lane, lane_cell.cell);
+            let valid_cell = objective.is_none();
 
             valid_cell.then_some(entity)
         })

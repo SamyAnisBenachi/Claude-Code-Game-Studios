@@ -26,15 +26,20 @@ impl Default for BoardLayout {
 }
 
 impl BoardLayout {
-    pub fn cell_to_world(&self, lane: u8, cell: u8) -> Option<Vec2> {
-        if !(1..=BOARD_LANE_COUNT).contains(&lane) || !(1..=BOARD_CELL_COUNT).contains(&cell) {
-            return None;
-        }
+    pub fn cell_to_world(&self, lane: u8, cell: u8) -> Vec2 {
+        assert!(
+            (1..=BOARD_LANE_COUNT).contains(&lane),
+            "BoardLayout::cell_to_world invalid lane={lane}; valid lanes are 1..={BOARD_LANE_COUNT}"
+        );
+        assert!(
+            (1..=BOARD_CELL_COUNT).contains(&cell),
+            "BoardLayout::cell_to_world invalid cell={cell}; valid cells are 1..={BOARD_CELL_COUNT}"
+        );
 
-        Some(Vec2 {
+        Vec2 {
             x: self.board_origin.x + f32::from(cell - 1) * self.cell_width,
             y: self.board_origin.y - f32::from(lane - 1) * self.lane_height,
-        })
+        }
     }
 
     pub fn scoreboard_lane_center_x(&self, lane: u8) -> Option<f32> {

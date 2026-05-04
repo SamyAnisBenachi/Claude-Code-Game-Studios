@@ -120,7 +120,7 @@ fn placement_reveal_payload_starts_all_entries_same_update() {
                 .expect("unit should keep Transform")
                 .translation
                 .truncate(),
-            layout.cell_to_world(entry.lane, entry.cell).unwrap()
+            layout.cell_to_world(entry.lane, entry.cell)
         );
     }
 }
@@ -299,14 +299,14 @@ fn placement_cancel_stops_animators_and_snaps_targets_to_lane_cells() {
             .get::<Transform>(direct_target)
             .unwrap()
             .translation,
-        layout.cell_to_world(1, 2).unwrap().extend(3.5)
+        layout.cell_to_world(1, 2).extend(3.5)
     );
     assert_eq!(
         app.world()
             .get::<Transform>(explicit_target)
             .unwrap()
             .translation,
-        layout.cell_to_world(2, 3).unwrap().extend(4.5)
+        layout.cell_to_world(2, 3).extend(4.5)
     );
 
     let explicit_animator = app.world().get::<TweenAnim>(explicit_controller).unwrap();

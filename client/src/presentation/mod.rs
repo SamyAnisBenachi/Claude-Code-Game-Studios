@@ -7,7 +7,11 @@ use crate::state::{apply_phase_changed_message, ClientState};
 use crate::ui::hand::{HandUiPlugin, HandUiSystemSet};
 use crate::ui::hud::{HudPlugin, HudSystemSet};
 
+pub mod board_rendering;
+
+pub use crate::presentation::board_rendering::{BoardRenderingPlugin, CardAtlas};
 pub use crate::state::CurrentClientPhase;
+pub use crate::ui::shared::{BoardLayout, LaneCell};
 
 pub struct PresentationPlugin;
 
@@ -26,7 +30,7 @@ impl Plugin for PresentationPlugin {
 
         // ADR-021 registration order is a contract.
         app.add_plugins(CardAnimationsPlugin);
-        // BoardRenderingPlugin slot: register here once that story creates it.
+        app.add_plugins(BoardRenderingPlugin);
         app.add_plugins(HandUiPlugin);
         app.add_plugins(HudPlugin);
         // ShopAuctionUiPlugin slot: register here once that story creates it.
