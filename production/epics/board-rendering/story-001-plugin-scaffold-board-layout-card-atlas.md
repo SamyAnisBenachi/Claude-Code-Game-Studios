@@ -21,7 +21,7 @@
 - [ ] `CardAtlas` is inserted on session entry as a shared resource with `Handle<Image>` plus `Handle<TextureAtlasLayout>`.
 - [ ] `BoardLayout::cell_to_world(1, 1)` returns `board_origin`.
 - [ ] `BoardLayout::cell_to_world(1, 2)` returns `board_origin + Vec2::new(cell_width, 0.0)`.
-- [ ] Invalid lane/cell values fail loudly through the agreed GDD assertion path; downstream systems do not silently ignore invalid coordinates.
+- [ ] Invalid lane/cell values assert in release builds through the agreed GDD path: valid lanes are `1..=5`, valid cells are `1..=8`, and invalid values such as `lane=0`, `lane=6`, `cell=0`, or `cell=9` are not silently ignored.
 - [ ] No `MessageReceiver<S2CPhaseChanged>` is registered by this plugin; phase is read through `Res<CurrentClientPhase>` only.
 
 ## Implementation Notes
@@ -30,6 +30,7 @@
 - Use Bevy 0.18 Required Components API. Do not introduce `*Bundle` types.
 - `CardAtlas` must use the Bevy 0.18 pattern: `Handle<Image>` plus `Handle<TextureAtlasLayout>` inside `Sprite.texture_atlas`.
 - Keep `BoardLayout` as the single coordinate authority. Do not hardcode lane/cell positions in later stories.
+- ADR-021 performance budget: presentation steady-state target is `< 1 ms` per frame and phase-boundary spikes target `< 3 ms`. This scaffold is expected to have no per-frame rendering impact beyond session-entry resource insertion/removal.
 - If retaining the existing `client/src/ui/shared.rs` type, update its contract in this story so all current consumers compile against the canonical API.
 
 ## Out of Scope
