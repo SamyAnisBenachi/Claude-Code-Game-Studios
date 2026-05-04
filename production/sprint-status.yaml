@@ -186,10 +186,13 @@ stories:
     name: "Server RNG Story 3: Determinism Proof & Session Reset"
     file: "production/epics/server-rng/story-003-determinism-session-reset.md"
     priority: should-have
-    status: not-started
+    status: done
     owner: "unassigned"
     estimate_days: 0.75
     blocker: ""
+    completed: "2026-05-04"
+    notes:
+      - "COMPLETE WITH NOTES: determinism, RNG13 session reset, and RNG15 overflow wrap verified; advisory only - RNG source comments still use shorthand TR-RNG-04/RNG13/RNG15 while story/registry trace is correct."
 
   - id: "S5-19"
     name: "Combat Story 10: Persistent Keyword States"

@@ -1,7 +1,7 @@
 # Story 003: Determinism Proof & Session Reset
 
 > **Epic**: Server-side RNG
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -167,3 +167,13 @@ This ensures RNG15 doesn't panic. The GDD Edge Cases section documents this: "If
 
 - Depends on: Story 002 (intent-named API must exist for scripted sequence test)
 - Unlocks: Epic `server-rng` **complete** → all three Foundation epics (workspace, game-config-pipeline, server-rng) done
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 10/10 passing
+**Deviations**: Advisory only - RNG source comments still use shorthand `TR-RNG-04`, `RNG13`, and `RNG15` while story/registry trace is correct (`TR-RNG-004`, `TR-RNG-001`, `TR-RNG-007`).
+**Test Evidence**: Logic evidence file present at `tests/unit/foundation/server_rng_determinism_test.rs`; runnable tests embedded in `server/src/foundation/rng.rs`.
+**Verification**: `cargo test -p server foundation::rng::tests` passed 19 tests; `cargo check -p server` passed.
+**Code Review**: Skipped - Lean mode.

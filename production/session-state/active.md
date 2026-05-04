@@ -1664,3 +1664,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-14 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
 - Next recommended: Objective Story 6 D4 Fake Reward Draw (`production/epics/objective-system/story-006-d4-fake-reward-draw.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/server-rng/story-003-determinism-session-reset.md` - Story 003: Determinism Proof & Session Reset
+- Criteria: 10/10 passing; determinism, RNG13 session reset, RNG15 overflow wrap, and deferred RNG8/RNG9/RNG10/RNG14 documentation covered by `server/src/foundation/rng.rs` tests and comments.
+- Test Evidence: `tests/unit/foundation/server_rng_determinism_test.rs` exists; runnable tests are embedded in `server/src/foundation/rng.rs`. `cargo test -p server foundation::rng::tests` passed 19/19. `cargo check -p server` passed.
+- Verification: `ServerRng::from_seed` creates a fresh `SessionInit` sentinel at seed index 0, starts gameplay at seed index 1, keeps first gameplay seed index independent from prior sessions, uses `wrapping_add` for overflow, and records the overflow audit entry with `seed_index = u32::MAX`.
+- Notes: Advisory only - RNG source comments still use shorthand `TR-RNG-04`, `RNG13`, and `RNG15` while the story/registry trace is correct (`TR-RNG-004`, `TR-RNG-001`, `TR-RNG-007`). Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-18 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
+- Next recommended: Continue Sprint 5 Must Have combat spine with Combat Story 6 Dead Removal + DEATH Chains + Kill Gold (`production/epics/combat-resolution/story-006-substep4-dead-removal.md`) after readiness check.
