@@ -311,6 +311,17 @@ None currently tracked here.
   COMPLETE and was pushed at `d303155`, updating the story file and
   `production/session-state/active.md`. No sprint-status row existed. Do not
   relaunch the PRESENTATION-001 worker.
+- COMBAT-007 / S5-09 readiness repair returned READY and was pushed at
+  `041e92f`, updating `docs/architecture/tr-registry.yaml`, the combat epic,
+  and story 007 trace/manifest. Worker implementation returned at `2c8f752`
+  on `work/combat-007-standard-combat-shield-counterattack`; root
+  fast-forwarded and pushed that commit to `origin/main`. Verification passed
+  `cargo fmt -p server -- --check`,
+  `cargo test -p server --test substep6_combat_shield_counterattack_test` 7/7,
+  adjacent combat regressions 13/13, `cargo check -p server`, and
+  `git diff --check`. Next action: run `/story-done` for
+  `production/epics/combat-resolution/story-007-substep6-combat-shield-counterattack.md`.
+  Do not relaunch the COMBAT-007 implementation worker.
 - COMBAT-004: Movement + Collision readiness repair landed on main at
   `c2fc0d3`; implementation landed on main at `408c34a`; story-done closure
   committed at `52caa45`; follow-up story scope clarification committed at
@@ -835,6 +846,8 @@ Active implementation workers by default-launch rule:
   noted; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
+- COMBAT-007 implementation worker returned, root integrated and pushed commit
+  `2c8f752`; window can be cleared. Story-done for COMBAT-007 is now pending.
 - COMBAT-006 implementation worker returned, root integrated and pushed commit
   `ea43240`; story-done returned and pushed closure at `e3e1cd7`. Window can
   be cleared.
