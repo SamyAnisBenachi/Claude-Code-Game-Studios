@@ -141,7 +141,23 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-None currently tracked here.
+- COMBAT-009 / S5-11 Objective Damage + GAME_OVER is integrated on
+  `origin/main` and needs serialized `/story-done`. Readiness repair was pushed
+  at `05aca93`, with duplicate/latest docs repair at `aa41f36`. Worker branch
+  `work/combat-009-objective-damage-gameover` returned at `16398c6`, pushed to
+  `origin/work/combat-009-objective-damage-gameover`, and root fast-forwarded
+  `main` to the same commit. Changed files: `server/src/feature/combat/mod.rs`,
+  `server/Cargo.toml`, and
+  `tests/unit/combat/objective_damage_gameover_test.rs`. Root verification
+  passed: `cargo fmt -p server -- --check`,
+  `cargo test -p server --test objective_damage_gameover_test` 6/6, regression
+  slice (`consequence_path_test`, `fake_reward_test`,
+  `objective_resolution_sync_test`, `range_targeting_test`,
+  `substep4_dead_removal_test`, `substep6_combat_shield_counterattack_test`)
+  36/36, `cargo check -p server`, and `git diff --check`. Queue exactly one
+  `/story-done` for
+  `production/epics/combat-resolution/story-009-objective-damage-gameover.md`;
+  do not relaunch the implementation worker.
 
 ## Recent Planning / Readiness Updates
 
@@ -922,8 +938,9 @@ Active implementation workers by default-launch rule:
 
 Current active windows by user default-launch rule:
 - COMBAT-009 readiness repair returned READY and was pushed at `05aca93`.
-  Readiness window can be cleared. Next action is a new COMBAT-009 `/dev-story`
-  implementation worker.
+  Readiness window can be cleared. COMBAT-009 implementation worker returned at
+  `16398c6`; root fast-forwarded and pushed `main` to that commit. Worker
+  window can be cleared. A serialized `/story-done` window is now needed.
 - COMBAT-008 readiness repair returned READY and was pushed at `b26f007`.
   Readiness window can be cleared. COMBAT-008 implementation worker returned at
   `dd7bd50`; root fast-forwarded and pushed `main` to that commit. Worker
