@@ -34,6 +34,7 @@ use crate::feature::keyword::effects::{
 };
 use crate::feature::keyword::{ChainDeathBuffer, UnitDied};
 use crate::foundation::config::{CardCatalog, GameConfig as ServerGameConfig};
+use crate::foundation::rng::ServerRng;
 
 use self::modifier_stack::{apply_combat_modifier_stack, UnitSnapshot};
 
@@ -534,11 +535,7 @@ fn collect_first_strike_attacks(world: &mut World, current_round: u32) -> Vec<Co
 
 fn collect_standard_combat_attacks(world: &mut World, current_round: u32) -> Vec<CombatAttack> {
     collect_combat_attacks(world, CombatAttackPhase::Standard, |unit, world| {
-        unit.snapshot.hp > 0
-            && can_execute_standard_attack(unit.entity, current_round, world)
-            && (unit.range_max.is_none()
-                || (unit.range_max.is_some()
-                    && can_execute_first_strike(unit.entity, current_round, world)))
+        unit.snapshot.hp > 0 && can_execute_standard_attack(unit.entity, current_round, world)
     })
 }
 
@@ -555,13 +552,31 @@ fn collect_combat_attacks(
     };
     let config = combat_config(world);
     let units = collect_combat_units(world);
-
-    units
+    let mut attackers = units
         .iter()
         .filter(|unit| can_attack(unit, world))
+        .collect::<Vec<_>>();
+    attackers.sort_by_key(|unit| {
+        (
+            unit.snapshot.player.0,
+            unit.snapshot.lane,
+            unit.snapshot.cell,
+            unit.snapshot.unit_id,
+        )
+    });
+
+    let mut rng = world.get_resource_mut::<ServerRng>();
+    attackers
+        .into_iter()
         .filter_map(|attacker| {
-            let defender =
-                select_combat_target(attacker, &units, &session_config, &board_config, phase)?;
+            let defender = select_combat_target(
+                attacker,
+                &units,
+                &session_config,
+                &board_config,
+                phase,
+                rng.as_mut().map(|rng| &mut **rng),
+            )?;
             let result =
                 apply_combat_modifier_stack(&attacker.snapshot, &defender.snapshot, &config);
             Some(CombatAttack {
@@ -1051,9 +1066,10 @@ fn select_combat_target<'a>(
     session_config: &SessionConfig,
     board_config: &BoardConfig,
     phase: CombatAttackPhase,
+    rng: Option<&mut ServerRng>,
 ) -> Option<&'a CombatUnit> {
     if attacker.range_max.is_some() {
-        select_single_nearest_range_target(attacker, units, session_config, board_config)
+        select_range_target(attacker, units, session_config, board_config, rng)
     } else {
         select_melee_target(
             attacker,
@@ -1084,11 +1100,12 @@ fn select_melee_target<'a>(
         .min_by_key(|candidate| candidate.entity.index())
 }
 
-fn select_single_nearest_range_target<'a>(
+fn select_range_target<'a>(
     attacker: &CombatUnit,
     units: &'a [CombatUnit],
     session_config: &SessionConfig,
     board_config: &BoardConfig,
+    rng: Option<&mut ServerRng>,
 ) -> Option<&'a CombatUnit> {
     let max_range = attacker.range_max?;
     let direction = advance_direction(attacker.snapshot.player, session_config, board_config)?;
@@ -1111,20 +1128,31 @@ fn select_single_nearest_range_target<'a>(
     candidates.sort_by_key(|(candidate, distance)| {
         (
             *distance,
-            candidate.snapshot.lane,
             candidate.snapshot.cell,
-            candidate.entity.index(),
+            candidate.snapshot.unit_id,
         )
     });
 
     let nearest_distance = candidates.first().map(|(_, distance)| *distance)?;
-    let mut nearest = candidates
+    let nearest = candidates
         .into_iter()
         .filter(|(_, distance)| *distance == nearest_distance)
-        .map(|(candidate, _)| candidate);
+        .map(|(candidate, _)| candidate)
+        .collect::<Vec<_>>();
 
-    let selected = nearest.next()?;
-    nearest.next().is_none().then_some(selected)
+    if nearest.len() == 1 {
+        return nearest.first().copied();
+    }
+
+    let seed = rng?.range_equidistant_select(
+        rng_player_id(attacker.snapshot.player),
+        attacker.snapshot.lane,
+    );
+    nearest.get(seed as usize % nearest.len()).copied()
+}
+
+fn rng_player_id(player: PlayerId) -> u32 {
+    u32::try_from(player.0).unwrap_or(u32::MAX)
 }
 
 fn snapshots_are_enemies(

@@ -35,6 +35,8 @@ pub enum RngEvent {
     DrawShopSlot { player_id: PlayerId, slot_index: u8 },
     /// Shared auction-card draw for one auction round.
     DrawAuctionCard { round: u32 },
+    /// RANGE equidistant target selection during RESOLUTION.
+    RangeEquidistantSelect { player_id: PlayerId, lane: u8 },
     /// Ecaflip dice trigger — ascending lane order.
     ResolveEcaflip { lane: u8 },
     /// Prism activation resolution — ascending player_id then lane.
@@ -266,9 +268,25 @@ impl ServerRng {
         seed
     }
 
+    /// Draw seed for one RANGE equidistant target selection.
+    ///
+    /// Consumes 1 seed only when a RANGE attack has two or more nearest valid
+    /// targets. Callers MUST process attackers in ascending `player_id`, then
+    /// lane, then cell order for RESOLUTION audit determinism.
+    pub fn range_equidistant_select(&mut self, player_id: PlayerId, lane: u8) -> u64 {
+        let idx = self.seed_index;
+        let seed = self.next_seed();
+        self.audit_log.push(AuditEntry {
+            event_type: RngEvent::RangeEquidistantSelect { player_id, lane },
+            seed_index: idx,
+            result: None,
+        });
+        seed
+    }
+
     /// Draw seed for an Ecaflip dice trigger on a lane.
     ///
-    /// Consumes 1 seed (RESOLUTION order 4). Returns raw seed.
+    /// Consumes 1 seed (RESOLUTION order 7). Returns raw seed.
     /// Callers MUST iterate ascending `lane` index.
     pub fn resolve_ecaflip(&mut self, lane: u8) -> u64 {
         let idx = self.seed_index;
@@ -283,7 +301,7 @@ impl ServerRng {
 
     /// Draw seed for a Prism activation on a lane.
     ///
-    /// Consumes 1 seed (RESOLUTION order 5). Returns raw seed.
+    /// Consumes 1 seed (RESOLUTION order 8). Returns raw seed.
     /// Callers MUST iterate ascending `player_id` then ascending `lane`.
     pub fn resolve_prism(&mut self, player_id: PlayerId, lane: u8) -> u64 {
         let idx = self.seed_index;
@@ -298,7 +316,7 @@ impl ServerRng {
 
     /// Draw seed for a fake-objective-destroyed reward roll.
     ///
-    /// Consumes 1 seed (RESOLUTION order 6). Returns raw seed.
+    /// Consumes 1 seed (RESOLUTION order 9). Returns raw seed.
     /// Callers MUST iterate ascending `player_id` then ascending `lane`.
     pub fn award_fake_objective_reward(&mut self, player_id: PlayerId, lane: u8) -> u64 {
         let idx = self.seed_index;
@@ -313,7 +331,7 @@ impl ServerRng {
 
     /// Draw seed for a conditional free-card draw.
     ///
-    /// Consumes 1 seed (RESOLUTION order 7, only when order 6 awarded a free card).
+    /// Consumes 1 seed (RESOLUTION order 10, only when order 9 awarded a free card).
     /// Returns raw seed.
     pub fn draw_free_card(&mut self, player_id: PlayerId) -> u64 {
         let idx = self.seed_index;
@@ -520,9 +538,9 @@ mod tests {
     // (structural — verified by the module's visibility rules; no runtime assertion needed)
     // Verified: next_seed() is private; rng/seed_index/audit_log fields are private.
 
-    // All 8 intent-named methods exist and push exactly one entry per next_seed() call
+    // All intent-named methods exist and push exactly one entry per next_seed() call
     #[test]
-    fn test_all_eight_methods_push_one_entry_each() {
+    fn test_all_intent_named_methods_push_one_entry_each() {
         let mut rng = ServerRng::from_seed(0);
         let baseline = rng.audit_log().len(); // 1 (sentinel)
         rng.assign_fake_objectives(1); // +2 entries
@@ -533,16 +551,18 @@ mod tests {
         assert_eq!(rng.audit_log().len(), baseline + 4);
         rng.draw_auction_card(3); // +1
         assert_eq!(rng.audit_log().len(), baseline + 5);
-        rng.resolve_ecaflip(0); // +1
+        rng.range_equidistant_select(1, 1); // +1
         assert_eq!(rng.audit_log().len(), baseline + 6);
-        rng.resolve_prism(1, 0); // +1
+        rng.resolve_ecaflip(0); // +1
         assert_eq!(rng.audit_log().len(), baseline + 7);
-        rng.award_fake_objective_reward(1, 0); // +1
+        rng.resolve_prism(1, 0); // +1
         assert_eq!(rng.audit_log().len(), baseline + 8);
-        rng.draw_free_card(1); // +1
+        rng.award_fake_objective_reward(1, 0); // +1
         assert_eq!(rng.audit_log().len(), baseline + 9);
-        // seed_index: 1 (start) + 2 + seven one-seed methods = 10
-        assert_eq!(rng.current_seed_index(), 10);
+        rng.draw_free_card(1); // +1
+        assert_eq!(rng.audit_log().len(), baseline + 10);
+        // seed_index: 1 (start) + 2 + eight one-seed methods = 11
+        assert_eq!(rng.current_seed_index(), 11);
     }
 
     // -------------------------------------------------------------------------
@@ -566,7 +586,8 @@ mod tests {
             rng.draw_shop_slot(1, slot);
             rng.draw_shop_slot(2, slot);
         }
-        // RESOLUTION (orders 4-7)
+        // RESOLUTION (orders 4-10)
+        rng.range_equidistant_select(1, 1);
         rng.resolve_ecaflip(1);
         rng.resolve_prism(1, 2);
         rng.award_fake_objective_reward(1, 3);
