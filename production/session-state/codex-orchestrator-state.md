@@ -265,21 +265,24 @@ None currently tracked here.
   `assets/config/game_config.ron`; `assets/audio`, `assets/vfx`, and
   `assets/shaders` directories are missing. Only 17 manifest rows have
   file-presence credit, and all 55 PNGs are temporary placeholders, not
-  production-approved final art. P0 missing groups: Board Rendering blocking
-  visuals/SFX, current 8-card display/zoom pairs plus four type/rarity icons,
-  hand shaders, Hand UI audio, and shared display fonts. Next production batch
-  recommendation: board functional placeholder pack, hand current-card pack,
-  shared font/shader pack, then minimal board/hand audio.
-- Board Blocking Asset Batch returned BLOCKED. The agent could not access GPT
-  Image 2 through an integrated image-generation path and fell back to the
-  imagegen CLI/API route, which requires `OPENAI_API_KEY`; `OPENAI_API_KEY` was
-  missing and `python`/`py`/`uv` were not available on PATH. No placeholders,
-  PNGs, commits, or pushes were created. Blocked target assets: ASSET-024,
-  ASSET-025, ASSET-026, ASSET-029, ASSET-030, ASSET-033, ASSET-034,
-  ASSET-035, ASSET-039, ASSET-040, and ASSET-044. Remaining spec flags:
-  ASSET-026 separate sprite vs runtime tint, ASSET-035 `ui_` prefix on a
-  world-space board sprite, ASSET-039 64x96 canvas with 48x64 centered art,
-  and ASSET-044 1x2 HP bar odd-width exception.
+  production-approved final art. P0 missing groups after the board PNG batch:
+  Board Rendering blocking SFX, current 8-card display/zoom pairs plus four
+  type/rarity icons, hand shaders, Hand UI audio, and shared display fonts. Next
+  production batch recommendation: hand current-card pack, shared font/shader
+  pack, then minimal board/hand audio.
+- Board Blocking Asset Batch completed and was pushed at `9f8060b`
+  (`BR-M2 assets: add blocking board sprites`). It generated 17 PNGs under
+  `assets/art/board`, `assets/art/ui/board`, `assets/art/characters`, and
+  `assets/art/vfx/board`: lane labels 01-05, idle/active cell nodes,
+  unknown/real objectives, facedown trap, Player A/B unit bases, unit
+  placeholder, HP white pixel, and objective real flash frames 01-03. Validation
+  passed: all PNG dimensions matched spec, files are `Format32bppArgb`, alpha
+  was verified, HP pixel is fully opaque, `git diff --check` passed, and final
+  status was clean. No code, audio, card art, production session files, or
+  sprint-status files were touched. Manifest statuses were not changed. Remaining
+  non-blocking spec flags: ASSET-026 separate sprite vs runtime tint, ASSET-035
+  `ui_` prefix on a world-space board sprite, ASSET-039 64x96 canvas despite
+  manifest/spec naming saying 48x64, and ASSET-044 odd-width HP bar exception.
 - Audio production handoff returned and was committed at `64cfd7f`, creating
   `design/assets/production-handoffs/audio-production-queue-2026-05-04.md`.
   It covers 37 audio assets grouped as board/objective blocking SFX, Hand UI
@@ -959,9 +962,11 @@ Current active windows by user default-launch rule:
 - Asset audit existing runtime files returned read-only with NON-COMPLIANT
   verdict and no edits; window can be cleared. The trailing `/review on my
   current changes` is not applicable to that audit because it made no changes.
-- Board Blocking Asset Batch returned BLOCKED because no integrated GPT Image 2
-  path was available and the CLI/API path lacked `OPENAI_API_KEY`; no files
-  were generated. Window can be cleared unless rerun in an image-capable agent.
+- Board Blocking Asset Batch returned complete and was committed at `9f8060b`,
+  generating the requested 17 PNG board/objective/unit-base/VFX files. Window
+  can be cleared. Manifest statuses remain unchanged, so a separate asset-status
+  reconciliation pass is still needed if these placeholders should receive
+  file-presence credit.
 - Audio Production Handoff returned and was committed at `64cfd7f`; window can
   be cleared.
 - COMBAT-004 story-done returned and was committed at `52caa45`; follow-up
