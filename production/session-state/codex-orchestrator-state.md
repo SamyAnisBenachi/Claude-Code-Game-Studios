@@ -145,6 +145,16 @@ None currently tracked here.
 
 ## Recent Planning / Readiness Updates
 
+- COMBAT-008 / S5-10 RANGE Targeting readiness repair returned READY and was
+  pushed at `b26f007`, updating `docs/architecture/tr-registry.yaml`,
+  `production/epics/combat-resolution/EPIC.md`, and
+  `production/epics/combat-resolution/story-008-range-targeting.md`. The repair
+  updated the manifest version to `2026-05-01`, fixed TR coverage, aligned RNG
+  guidance to intent-named `ServerRng` methods and strict
+  `RangeEquidistantSelect` ordering, promoted equidistant RANGE selection to a
+  blocking AC/QA case, expanded dependencies on Stories 004-007, and added the
+  ADR-017 `<= 15 ms` RESOLUTION budget note. `/dev-story` is safe next with
+  explicit authorization.
 - COMBAT-005 readiness repair returned READY and was committed at `90ebdfb`.
   The story now traces `TR-CR-002`, `TR-CR-007`, `TR-CR-020`, and
   `TR-CR-021`, uses manifest `2026-05-01`, includes the ADR-017
@@ -892,6 +902,9 @@ Active implementation workers by default-launch rule:
   noted; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
+- COMBAT-008 readiness repair returned READY and was pushed at `b26f007`.
+  Readiness window can be cleared. Next action is a new COMBAT-008 `/dev-story`
+  implementation worker.
 - OBJECTIVE-007 implementation worker returned; root cherry-picked only the
   implementation because the branch was behind current `main` and pushed
   integration commit `1c8ef2a`. Story-done returned COMPLETE WITH NOTES and
