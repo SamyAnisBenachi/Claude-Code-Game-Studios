@@ -22,6 +22,15 @@ Resolve these before any art production begins. Several asset dimensions and atl
 
 ---
 
+## 2026-05-04 Coverage Notes
+
+- Auction-specific audio ownership has been split into `design/assets/specs/auction-system-assets.md` as ASSET-175 through ASSET-181.
+- The DRAFT_AUCTION timer bar keeps the current green/yellow/red readability exception. This exception is deliberate, limited to the auction timer material, and tracked as ASSET-182. Do not silently normalize it to the art-bible amber/crimson ramp.
+- Accessibility requires an optional bid-confirmation decision, but the interaction is not designed. No bid-confirmation production assets are tracked in this pass.
+- Card art in auction/shop panels uses the shared runtime card composition pipeline. Per-card illustration-only specs live under `design/assets/specs/cards/`.
+
+---
+
 ## ASSET-001 — Gold Coin Icon
 
 | Field | Value |

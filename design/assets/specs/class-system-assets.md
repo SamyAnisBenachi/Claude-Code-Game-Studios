@@ -23,6 +23,14 @@ Resolve these before beginning art production.
 
 ---
 
+## 2026-05-04 Coverage Notes
+
+- This file already tracks class figurines per class and class icons per class. No class rows were collapsed in the new manifest pass.
+- Shared font, focus, button, desaturation, outline, reduced-motion, and accessibility settings materials are now tracked in `design/assets/specs/shared-fonts-materials-shaders-assets.md`.
+- Lobby player-slot and class-reveal UI ownership is tracked in `design/assets/specs/game-session-system-assets.md`; this file remains focused on class identity assets and class-specific gameplay markers.
+
+---
+
 ## Atlas Specification: atlas_figurines (F-CS-2 Resolution)
 
 | Field | Value |

@@ -1,12 +1,22 @@
 # Asset Manifest
 
-> Last updated: 2026-05-01
+> Last updated: 2026-05-04
 
 ## Progress Summary
 
 | Total | Needed | In Progress | Done | Approved |
 |-------|--------|-------------|------|----------|
-| 127 | 127 | 0 | 0 | 0 |
+| 234 | 234 | 0 | 0 | 0 |
+
+---
+
+## 2026-05-04 Expansion Notes
+
+- Full-game coverage now includes combat resolution, keyword system assets, auction-system audio/material states, prism rewards, game session / lobby / reconnect / outcome ownership, shared fonts / materials / shaders, and illustration specs for the current `cards.json` art IDs.
+- Current per-card rows are illustration-only. Runtime card composition owns frames, badges, text, type / rarity labels, hover, ghost, drag, and state overlays.
+- The full ~315-card catalog remains deferred until roster IDs, card IDs, and art IDs are reconciled.
+- GAME_OVER / outcome rows are placeholder ownership only and blocked pending result-screen UX.
+- Optional bid confirmation remains an unresolved accessibility design decision; no confirmation-step production assets are tracked in this manifest yet.
 
 ---
 
@@ -77,9 +87,9 @@
 
 | Asset ID | Name | Category | Status | Spec File |
 |----------|------|----------|--------|-----------|
-| ASSET-052 | Card Display Face | Sprite / 2D Art | Needed | design/assets/specs/hand-ui-assets.md |
-| ASSET-053 | Card Zoom Face | Sprite / 2D Art | Needed | design/assets/specs/hand-ui-assets.md |
-| ASSET-054 | Drag Sprite | Sprite / 2D Art | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-052 | Card Display Composition Template | Runtime Card Composition | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-053 | Card Zoom Composition Template | Runtime Card Composition | Needed | design/assets/specs/hand-ui-assets.md |
+| ASSET-054 | Drag Card Composition | Runtime Card Composition | Needed | design/assets/specs/hand-ui-assets.md |
 | ASSET-055 | Card Frame Chrome (Hand) | UI | Needed | design/assets/specs/hand-ui-assets.md |
 | ASSET-056 | Mana Cost Diamond Badge | UI | Needed | design/assets/specs/hand-ui-assets.md |
 | ASSET-057 | ATK Stat Badge | UI | Needed | design/assets/specs/hand-ui-assets.md |
@@ -120,7 +130,7 @@
 |----------|------|----------|--------|-----------|
 | ASSET-088 | HUD Zone Chip Background | Sprite / 2D Art | Needed | design/assets/specs/hud-assets.md |
 | ASSET-089 | Reserve Mana Diamond Icon | Sprite / 2D Art | Needed | design/assets/specs/hud-assets.md |
-| ASSET-090 | Project Display Font (Bold + Regular) | Font | Needed | design/assets/specs/hud-assets.md |
+| ASSET-090 | Project Display Font Style Anchor (split to ASSET-215/216) | Font Direction / Style Anchor | Needed | design/assets/specs/hud-assets.md |
 | ASSET-091 | Phase Transition Tick SFX | Audio | Needed | design/assets/specs/hud-assets.md |
 | ASSET-092 | Scoreboard Dot Darkening Thud SFX | Audio | Needed | design/assets/specs/hud-assets.md |
 | ASSET-093 | GAME_OVER Resolved Chord SFX | Audio | Needed | design/assets/specs/hud-assets.md |
@@ -163,3 +173,145 @@
 | ASSET-125 | Opponent Class Reveal SFX | Audio | Needed | design/assets/specs/class-system-assets.md |
 | ASSET-126 | Reserve Gain SFX | Audio | Needed | design/assets/specs/class-system-assets.md |
 | ASSET-127 | Ready Retract SFX | Audio | Needed | design/assets/specs/class-system-assets.md |
+
+### System: combat-resolution
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-128 | Placement Reveal Card-Back Silhouette | Sprite / Overlay | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-129 | Placement Reveal Prism Edge Flash | VFX | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-130 | Player-Side Base Ring Reveal Flash | VFX | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-131 | CHARGE X Motion Trail Copy Material | Material / Runtime Tint | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-132 | FIRST STRIKE Impact Flash | VFX | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-133 | Standard Combat Impact Flash | VFX | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-134 | Damage Number Text Style | Runtime Text / Material | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-135 | SHIELD Active Hex Glyph | UI / Unit Indicator | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-136 | SHIELD Absorb Burst Particles | VFX / Particle | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-137 | STUN Orbit Star Glyph | UI / Unit Indicator | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-138 | INJURED Outline Pulse Material | Shader / Material | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-139 | LEADER Crown Glyph | UI / Unit Indicator | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-140 | LEADER Family Buff Ring Tint | Material / Runtime Tint | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-141 | SILENCE Desaturation Outline Material | Shader / Material | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-142 | OUTNUMBERED Arrow-Down Glyph | UI / Unit Indicator | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-143 | Death Squash / Crimson Tint Material | Shader / Material | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-144 | Death Crimson Particle Burst | VFX / Particle | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-145 | Trigger Gold Pulse Ring | VFX | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-146 | Ranged Bolt Projectile - Blade | VFX / Projectile | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-147 | Ranged Bolt Projectile - Arcane | VFX / Projectile | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-148 | Ranged Bolt Projectile - Neutral | VFX / Projectile | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-149 | Objective HP Pip Damage Flash | Material / UI Overlay | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-150 | Objective Destruction Prism Overlay Frames | VFX / Screen Overlay | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-151 | Real Objective Lane Gold Flood | VFX / Lane Overlay | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-152 | Fake Objective Question Dissolve | VFX / Glyph Animation | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-153 | Kill Gold +1 Float Text Style | Runtime Text / Material | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-154 | Objective Gold +3 Float Text Style | Runtime Text / Material | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-155 | Placement Reveal Flip SFX | Audio | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-156 | FIRST STRIKE Impact SFX | Audio | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-157 | Standard Combat Impact SFX | Audio | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-158 | Unit Death SFX | Audio | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-159 | SHIELD Absorb SFX | Audio | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-160 | SHIELD Break SFX | Audio | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-161 | Kill Gold Reward SFX | Audio | Needed | design/assets/specs/combat-resolution-assets.md |
+| ASSET-162 | COUNTERATTACK Response SFX | Audio | Needed | design/assets/specs/combat-resolution-assets.md |
+
+### System: keyword-system
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-163 | BODYGUARD Shield-Arc Glyph | UI / Unit Indicator | Needed | design/assets/specs/keyword-system-assets.md |
+| ASSET-164 | BODYGUARD Bond Break Shards | VFX / Particle | Needed | design/assets/specs/keyword-system-assets.md |
+| ASSET-165 | IRREMOVABLE Chain-Link Glyph | UI / Unit Indicator | Needed | design/assets/specs/keyword-system-assets.md |
+| ASSET-166 | IRREMOVABLE Block Flash | VFX / Overlay | Needed | design/assets/specs/keyword-system-assets.md |
+| ASSET-167 | UNTARGETABLE Diamond-Cross Glyph | UI / Unit Indicator | Needed | design/assets/specs/keyword-system-assets.md |
+| ASSET-168 | REPEL Push Flash | VFX / Overlay | Needed | design/assets/specs/keyword-system-assets.md |
+| ASSET-169 | ATTRACT Pull Flash | VFX / Overlay | Needed | design/assets/specs/keyword-system-assets.md |
+| ASSET-170 | TELEPORT Exit Bar | VFX | Needed | design/assets/specs/keyword-system-assets.md |
+| ASSET-171 | TELEPORT Entry Bar | VFX | Needed | design/assets/specs/keyword-system-assets.md |
+| ASSET-172 | START OF TURN Floating Label Style | Runtime Text / Material | Needed | design/assets/specs/keyword-system-assets.md |
+| ASSET-173 | END OF TURN Trigger Pulse Hook | VFX / Reuse | Needed | design/assets/specs/keyword-system-assets.md |
+| ASSET-174 | SILENCE Stripped-Keyword Dissolve | VFX / Particle / Material | Needed | design/assets/specs/keyword-system-assets.md |
+
+### System: auction-system
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-175 | Auction Ambient Urgency Tone Loop | Audio | Needed | design/assets/specs/auction-system-assets.md |
+| ASSET-176 | Accepted Bid Ascending SFX | Audio | Needed | design/assets/specs/auction-system-assets.md |
+| ASSET-177 | Auction Red-Zone Countdown Tick Cue | Audio / Reuse | Needed / Reuse | design/assets/specs/auction-system-assets.md |
+| ASSET-178 | Timer Reset Reverse-Tick SFX | Audio | Needed | design/assets/specs/auction-system-assets.md |
+| ASSET-179 | Auction Won By Self Sting | Audio | Needed | design/assets/specs/auction-system-assets.md |
+| ASSET-180 | Auction Won By Opponent Sting | Audio | Needed | design/assets/specs/auction-system-assets.md |
+| ASSET-181 | No-Bid Card Gone SFX | Audio | Needed | design/assets/specs/auction-system-assets.md |
+| ASSET-182 | Auction Timer Bar Material Exception | UI Material | Needed | design/assets/specs/auction-system-assets.md |
+| ASSET-183 | Local Expiry Awaiting-Settlement Pulse | UI Material / Animation | Needed | design/assets/specs/auction-system-assets.md |
+| ASSET-184 | Auction Disconnect Grace Overlay | UI | Placeholder | design/assets/specs/auction-system-assets.md |
+
+### System: prism-system
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-185 | Card Illustration: prism_strike | Card Illustration | Needed | design/assets/specs/prism-system-assets.md |
+| ASSET-186 | Card Illustration: prism_reserve | Card Illustration | Needed | design/assets/specs/prism-system-assets.md |
+| ASSET-187 | Prism Reward Card-Acquired Shimmer | VFX / Reuse | Needed / Reuse | design/assets/specs/prism-system-assets.md |
+| ASSET-188 | Prism Reward Dropped Indicator | UI / Toast | Needed | design/assets/specs/prism-system-assets.md |
+| ASSET-189 | Prism Set Respawn Pulse | VFX | Placeholder | design/assets/specs/prism-system-assets.md |
+| ASSET-190 | Prism Strike Projectile | VFX / Projectile | Needed | design/assets/specs/prism-system-assets.md |
+| ASSET-191 | Prism Reserve Bar Ping | VFX / UI Overlay | Needed | design/assets/specs/prism-system-assets.md |
+| ASSET-192 | Prism Strike Reward Icon | UI Icon | Needed | design/assets/specs/prism-system-assets.md |
+| ASSET-193 | Prism Reserve Reward Icon | UI Icon | Needed | design/assets/specs/prism-system-assets.md |
+| ASSET-194 | Prism Random Draw Reward Icon | UI Icon | Needed | design/assets/specs/prism-system-assets.md |
+
+### System: game-session-system
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-195 | Title / Lobby Backdrop | UI Background | Placeholder | design/assets/specs/game-session-system-assets.md |
+| ASSET-196 | Room Code Display Chip | UI | Needed | design/assets/specs/game-session-system-assets.md |
+| ASSET-197 | Room Code Copy Icon | UI Icon | Needed | design/assets/specs/game-session-system-assets.md |
+| ASSET-198 | Join Room Input Frame | UI | Needed | design/assets/specs/game-session-system-assets.md |
+| ASSET-199 | Lobby Player Slot Panel States | UI | Needed | design/assets/specs/game-session-system-assets.md |
+| ASSET-200 | Class Browser Carousel Arrows | UI Icon | Needed | design/assets/specs/game-session-system-assets.md |
+| ASSET-201 | Lobby Timer Progress Bar Material | UI Material | Needed | design/assets/specs/game-session-system-assets.md |
+| ASSET-202 | Lobby Cancel Confirmation Overlay | UI Overlay | Placeholder | design/assets/specs/game-session-system-assets.md |
+| ASSET-203 | Lobby Inline Error Flash Material | UI Material | Needed | design/assets/specs/game-session-system-assets.md |
+| ASSET-204 | Button Loading Spinner | UI Icon / Animation | Needed | design/assets/specs/game-session-system-assets.md |
+| ASSET-205 | Simultaneous Class Reveal Flash | VFX / UI Material | Needed | design/assets/specs/game-session-system-assets.md |
+| ASSET-206 | Session Cancelled - Opponent Left Overlay | UI Overlay | Placeholder | design/assets/specs/game-session-system-assets.md |
+| ASSET-207 | Session Cancelled - Timeout Overlay | UI Overlay | Placeholder | design/assets/specs/game-session-system-assets.md |
+| ASSET-208 | Reconnect Snapshot Rebuild Overlay | UI Overlay | Placeholder | design/assets/specs/game-session-system-assets.md |
+| ASSET-209 | Opponent Disconnected Grace Overlay | UI Overlay | Placeholder | design/assets/specs/game-session-system-assets.md |
+| ASSET-210 | Opponent Reconnected Toast | UI / Toast | Placeholder | design/assets/specs/game-session-system-assets.md |
+| ASSET-211 | GAME_OVER Result Panel Placeholder - UX not designed | UI Overlay | Blocked | design/assets/specs/game-session-system-assets.md |
+| ASSET-212 | Outcome Badge Placeholder Set - blocked pending result-screen UX | UI | Blocked | design/assets/specs/game-session-system-assets.md |
+| ASSET-213 | Post-Match Action Button Placeholder - UX not designed | UI | Blocked | design/assets/specs/game-session-system-assets.md |
+| ASSET-214 | Post-Match Objective Reveal Placeholder - blocked pending result-screen UX | UI / VFX | Blocked | design/assets/specs/game-session-system-assets.md |
+
+### System: shared-fonts-materials-shaders
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-215 | Project Display Font - Regular | Font | Needed | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+| ASSET-216 | Project Display Font - Bold | Font | Needed | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+| ASSET-217 | Keyboard Focus Ring Material | UI Material | Needed | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+| ASSET-218 | Button Chrome Material Set | UI Material | Needed | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+| ASSET-219 | Shared Timer Bar Material Set | UI Material | Needed | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+| ASSET-220 | Card Ghost / Lock Desaturation Shader | WGSL Shader | Needed | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+| ASSET-221 | Gold Selection Outline Shader | WGSL Shader | Needed | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+| ASSET-222 | Unit Target Outline Material2D | WGSL Shader | Needed | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+| ASSET-223 | Colorblind Palette Override Materials | Accessibility Material Set | Placeholder | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+| ASSET-224 | Reduced-Motion Animation Policy Map | Accessibility Data Asset | Placeholder | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+| ASSET-225 | Audio Bus Settings UI Controls | UI / Settings | Placeholder | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+| ASSET-226 | Brightness / Gamma Overlay Material | Accessibility Material | Placeholder | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+
+### Cards: Current cards.json Illustration Specs
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-227 | Card Illustration: iop_knight_001 | Card Illustration | Needed | design/assets/specs/cards/iop_knight_001.md |
+| ASSET-228 | Card Illustration: sacrier_foot_002 | Card Illustration | Needed | design/assets/specs/cards/sacrier_foot_002.md |
+| ASSET-229 | Card Illustration: cra_piercing_shot_003 | Card Illustration | Needed | design/assets/specs/cards/cra_piercing_shot_003.md |
+| ASSET-230 | Card Illustration: xelor_time_trap_004 | Card Illustration | Needed | design/assets/specs/cards/xelor_time_trap_004.md |
+| ASSET-231 | Card Illustration: gobball_sturdy_005 | Card Illustration | Needed | design/assets/specs/cards/gobball_sturdy_005.md |
+| ASSET-232 | Card Illustration: sadida_rose_field_006 | Card Illustration | Needed | design/assets/specs/cards/sadida_rose_field_006.md |
+| ASSET-233 | Card Illustration: ecaflip_decree_007 | Card Illustration | Needed | design/assets/specs/cards/ecaflip_decree_007.md |
+| ASSET-234 | Card Illustration: iop_double_face_008 | Card Illustration | Needed | design/assets/specs/cards/iop_double_face_008.md |

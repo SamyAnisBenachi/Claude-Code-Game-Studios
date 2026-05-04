@@ -12,7 +12,7 @@
 
 | Category | Count | Art Files | Notes |
 |---|---|---|---|
-| Sprite / 2D Art | 3 | 2 unique PNGs (ASSET-054 reuses ASSET-052 frame) | Card face, zoom, drag |
+| Runtime Card Composition | 3 | Per-card art now tracked in `design/assets/specs/cards/` | Display, zoom, drag templates |
 | UI | 18 | 9 PNG · 4 code-only · 3 shader · 2 procedural | See per-asset Engine Notes |
 | VFX / Particles | 5 | 1 PNG · 4 WGSL shaders | ASSET-073 is sprited; 074–077 GPU material |
 | Audio | 10 | 10 OGG files | All `ui_hand` channel, mono, 44100 Hz |
@@ -22,7 +22,7 @@
 
 | Atlas | Assets |
 |---|---|
-| `atlas_cards` (2048×2048) | ASSET-052, ASSET-054 (reuses 052), ASSET-055 (N class variants) |
+| `atlas_cards` (2048×2048) | Per-card display illustrations (ASSET-227-234), ASSET-055 (N class variants) |
 | `atlas_ui_hud` (1024×1024) | ASSET-056, 057, 058, 059, 061, 062, 063, 066, 067 |
 | `atlas_vfx` (1024×1024) | ASSET-073 |
 | Standalone (not atlased) | ASSET-053 (Card Zoom — on-demand load/evict) |
@@ -40,19 +40,34 @@
 
 ---
 
-## ASSET-052 — Card Display Face
+## 2026-05-04 Revision - Runtime Card Composition
+
+ASSET-052 through ASSET-054 are runtime presentation layers, not unique card illustrations. Unique card illustrations are now tracked per current `cards.json` `art_id` in `design/assets/specs/cards/` as ASSET-227 through ASSET-234.
+
+Cards are composed at runtime from:
+
+1. Per-card illustration-only art.
+2. Card frame chrome.
+3. Runtime mana, ATK, HP, type, rarity, text, and keyword layers.
+4. Runtime hover, ghost, drag, lock, and state overlays.
+
+No per-card illustration spec may bake card frames, badges, text, type/rarity, hover, ghost, drag, or state overlays into the art file.
+
+---
+
+## ASSET-052 — Card Display Composition Template
 
 | Field | Value |
 |-------|-------|
-| Category | Sprite / 2D Art |
+| Category | Runtime Card Composition / Template |
 | Dimensions | 120×180 px |
 | Atlas | `atlas_cards` |
-| Format | PNG-32 straight alpha |
-| Naming | `card_[cardname]_default_display.png` |
+| Format | Runtime composition; per-card illustration derivative is PNG-32 straight alpha |
+| Naming | `card_[art_id]_art_display.png` for illustration layer only |
 | Status | Needed |
 
 **Visual Description:**
-A 120×180 px portrait card with straight, very slightly rounded corners. The center field is a full-bleed cel-shaded illustration in the Ankama register — bold Void `#0D0D14` outlines, a single highlight stop and single shadow stop with no airbrushing. The bottom strip carries the card name in Ivory `#F7F0DC` Heavy weight on a parchment-toned band; the top-left hosts the mana-cost diamond badge in the class color; the top-right carries the ATK orange diamond `#E07020` above the HP teal gem `#2AA8C4`; an 18px type/rarity icon sits at the bottom corner.
+A 120x180 runtime-composed portrait card. The per-card illustration fills the center art field only. Frame chrome, card name, keyword text, mana badge, ATK badge, HP badge, type icon, rarity badge/text, and all state overlays are separate runtime layers.
 
 **Art Bible Anchors:**
 - §1 Visual Identity: bold outlines, fully saturated local color, readable at 64px minimum
@@ -63,7 +78,7 @@ A 120×180 px portrait card with straight, very slightly rounded corners. The ce
 - §8.4 Outline Technique: 2px Void baked; no procedural outline for primary identity
 
 **Generation Prompt:**
-Ankama/Wakfu cel-shaded trading card face, 120×180 portrait, straight corners, bold 2px void black outline (#0D0D14), full-bleed fantasy illustration center fill (chibi humanoid warrior, 3/4 front view, oversized weapon), flat saturated local color with one cel-shade highlight and one shadow pass — no gradient blending, no airbrush, no ambient occlusion. Top-left: small diamond gem badge in deep blue-purple class color. Top-right: orange diamond (#E07020) ATK badge above teal gem (#2AA8C4) HP badge. Bottom strip: warm parchment (#F7F0DC) narrow text band. Bottom-right corner: 18px flat icon with void outline. Style: Krosmaga card art. Negative: no photorealism, no gradient glow, no drop shadow, no serif fonts, no watercolor texture.
+None for this template. Generate per-card illustration-only art from `design/assets/specs/cards/<art_id>.md`; runtime layers compose the display card.
 
 **Engine Notes:**
 `bevy_asset_loader` loads `atlas_cards` at session start. `CardDataPlugin` maps `CardId → TextureAtlas frame index` (OQ5 dependency). 10 pre-pooled `ImageNode` fan slot entities. Frame index and visibility toggled per S2CCardAcquired. Ghost state (ASSET-071) swaps to custom `UiMaterial`.
@@ -72,19 +87,19 @@ Ankama/Wakfu cel-shaded trading card face, 120×180 portrait, straight corners, 
 
 ---
 
-## ASSET-053 — Card Zoom Face
+## ASSET-053 — Card Zoom Composition Template
 
 | Field | Value |
 |-------|-------|
-| Category | Sprite / 2D Art |
+| Category | Runtime Card Composition / Template |
 | Dimensions | 240×360 px |
 | Atlas | Standalone (NOT atlased) |
-| Format | PNG-32 straight alpha |
-| Naming | `card_[cardname]_default_zoom.png` |
+| Format | Runtime composition; per-card illustration master is PNG-32 straight alpha |
+| Naming | `card_[art_id]_art_zoom.png` for illustration layer only |
 | Status | Needed |
 
 **Visual Description:**
-A 240×360 px portrait — the full-resolution authoring canvas — depicting the same character as ASSET-052 at a higher detail pass: thicker outer Void outline (3–4px), secondary internal linework at 1px for costume details and expression. A 20px safe zone on all edges hosts stat badge overlays. Same costume, same weapon, same color identity as ASSET-052 — the player must immediately map this card to the board unit.
+A 240x360 runtime-composed zoom card. The per-card illustration master is loaded on demand and remains illustration-only. Badge overlays, frame chrome, text, rarity/type, hover outline, ghost, and drag state are runtime layers and must not be baked into the zoom illustration.
 
 **Art Bible Anchors:**
 - §1 Visual Identity: same character as ASSET-052 — identifiable by shape at both tiers
@@ -94,7 +109,7 @@ A 240×360 px portrait — the full-resolution authoring canvas — depicting th
 - §8.4 Outline Technique: 3–4px outer; 1px inner details at this tier
 
 **Generation Prompt:**
-Ankama/Wakfu cel-shaded trading card art, 240×360 portrait master canvas, straight corners, bold 3–4px void black outer outline (#0D0D14), 1px secondary inner detail lines. Full-bleed center: chibi humanoid in exaggerated confident pose, 1:1.5 head-to-body ratio, oversized weapon 20–30% larger than body, 3/4 front view angled slightly downward. Flat saturated color — one warm highlight, one cool shadow per form, hard cel-shade terminator edge. 20px safe inset on all edges. Art at full Wakfu chroma. Negative: no photorealism, no airbrush, no gradients, no Hearthstone chiaroscuro.
+None for this template. Generate per-card illustration-only zoom masters from `design/assets/specs/cards/<art_id>.md`.
 
 **Engine Notes:**
 Loaded on-demand via strong `Handle<Image>` at hover-start; dropped on hover-end (Bevy evicts from GPU). Stored at `assets/art/cards/zoom/`. Hover scale transition (80ms ease-out) via `bevy_tweening` `Lens<Node>`. ASSET-074 overlay handles hover gold outline.
@@ -103,19 +118,19 @@ Loaded on-demand via strong `Handle<Image>` at hover-start; dropped on hover-end
 
 ---
 
-## ASSET-054 — Drag Sprite
+## ASSET-054 — Drag Card Composition
 
 | Field | Value |
 |-------|-------|
-| Category | Sprite / 2D Art |
+| Category | Runtime Card Composition |
 | Dimensions | 120×180 px logical (132×198 px at 1.10× drag scale — even integers) |
 | Atlas | `atlas_cards` (reuses ASSET-052 art frame — no separate file) |
 | Format | PNG-32 straight alpha (shared with ASSET-052) |
-| Naming | Reuses `card_[cardname]_default_display.png` |
+| Naming | Reuses `card_[art_id]_art_display.png` illustration layer plus runtime badge children |
 | Status | Needed (reuse of ASSET-052) |
 
 **Visual Description:**
-A world-space clone of the card art at 120×180 px logical, rendered frameless — no card border chrome. Only the full-bleed art, ATK orange diamond `#E07020` top-right, HP teal gem `#2AA8C4` below, and mana-cost diamond top-left float over the art. At drag time the entity renders at 1.10× scale. No shadow, no glow — scale and physical separation communicate lift.
+A world-space clone of the runtime-composed card at 120x180 logical, rendered without frame chrome. The illustration layer remains per-card art; mana, ATK, HP, and other required playability badges are runtime child layers. Drag state does not require a separate complete-card texture.
 
 **Art Bible Anchors:**
 - §1 Visual Identity: art reads without frame containment; Void outline baked into art
@@ -123,7 +138,7 @@ A world-space clone of the card art at 120×180 px logical, rendered frameless �
 - §7.6 Animation Feel: no shadow or glow; scale alone communicates lift
 
 **Generation Prompt:**
-*(Reuses ASSET-052 art frame — no separate generation. Card frame chrome child has `Visibility::Hidden` during drag; art entity remains with `Transform.scale = Vec3::splat(1.10)`.)*
+*(Reuses the ASSET-052 composition pipeline and per-card illustration derivative. No separate complete-card generation.)*
 
 **Engine Notes:**
 Pre-pooled world-space `Sprite` entity (not bevy_ui). On drag-start: `Visible`, atlas index set, `Transform.scale = Vec3::splat(1.10)`. Cursor follow each frame via `Res<BoardLayout>`. Stat badge children are world-space sprites via `ChildOf` (Bevy 0.18). Frame chrome child stays on fan slot with `Visibility::Hidden`.
@@ -271,9 +286,22 @@ An icon at the bottom corner of the card face. Flat Ankama-style: 2px Void `#0D0
 Ankama-style flat card-game type icon, 18×18px centered on 24×24 canvas, 2px void black stroke (#0D0D14), flat interior fill. Six type variants: Minion = crossed-swords; Trap = cog/gear; Structure = tower; Spell = starburst; Field = spreading wave; Instant = lightning bolt. Common: Ivory (#F7F0DC). Uncommon: Arcane Gold (#F5C842). Rare: Prism White (#EEF4FF). Negative: no detailed illustration, no glow, no border-radius pill.
 
 **Engine Notes:**
-One atlas frame per type×rarity combination in M1 card pool (up to 30; prune to actual pool).
+One atlas frame per type/rarity combination in the current implemented pool. Current `assets/data/cards.json` production variants:
 
-**State Variants:** One frame per type/rarity combination.
+| Variant | Cards |
+|---|---|
+| Minion/Common | Iop Knight |
+| Minion/Uncommon | Sacrier Footsoldier |
+| Spell/Rare | Piercing Shot |
+| Trap/Epic | Time Trap |
+| Structure/Common | Sturdy Gobball |
+| Field/Legendary | Sadida Rose Field |
+| Order/Rare | Ecaflip's Decree |
+| DoubleFace/Uncommon | Double-Face Blade |
+
+Full catalog expansion is deferred until roster/card IDs/art IDs are reconciled.
+
+**State Variants:** Eight current type/rarity frames, plus future frames when the full catalog is reconciled.
 
 ---
 

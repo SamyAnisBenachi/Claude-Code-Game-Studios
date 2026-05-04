@@ -7,6 +7,14 @@
 
 ---
 
+## 2026-05-04 Coverage Notes
+
+- HUD remains the owner of HUD chips, reserve mana iconography, and HUD audio cues.
+- Project font production tracking is split into shared ASSET-215 and ASSET-216 in `design/assets/specs/shared-fonts-materials-shaders-assets.md`. ASSET-090 remains the typography style anchor and selection gate.
+- GAME_OVER result-screen assets are not designed here. Placeholder ownership rows are tracked in `design/assets/specs/game-session-system-assets.md` as ASSET-211 through ASSET-214.
+
+---
+
 ## ASSET-088 — HUD Zone Chip Background
 
 | Field | Value |
@@ -96,15 +104,15 @@ specular sphere, 3D facets, Hearthstone mana crystal, Magic land frame
 
 ---
 
-## ASSET-090 — Project Display Font (Bold + Regular)
+## ASSET-090 — Project Display Font Style Anchor (split to ASSET-215/216)
 
 | Field | Value |
 |-------|-------|
-| Category | Font (TTF/OTF — project-wide, shared across all UI) |
+| Category | Font Direction / Style Anchor |
 | Dimensions | N/A (vector) |
 | Format | TTF preferred (OTF acceptable). **Not** WOFF/WOFF2 — Bevy's asset server loads raw TTF/OTF, not browser font containers. |
-| Naming | `font_hud_display_bold.ttf` + `font_hud_display_regular.ttf` |
-| Delivery path | `assets/fonts/` (standalone — not atlased) |
+| Naming | Production font files tracked as ASSET-215 and ASSET-216 |
+| Delivery path | See `shared-fonts-materials-shaders-assets.md` |
 | Memory | 80–200 KB per file on disk. Runtime glyph cache: <1 MB VRAM for HUD codepoints. |
 
 **Typeface Character:**

@@ -21,6 +21,15 @@
 
 ---
 
+## 2026-05-04 Coverage Notes
+
+- Board Rendering remains the owner of standing board sprites, objective base/reveal sprites, prism token sprite, and board/objective audio already listed here.
+- Combat-specific hit flashes, damage-number materials, unit state indicators, and combat-specific audio are now tracked in `design/assets/specs/combat-resolution-assets.md`.
+- Prism reward-card art and prism reward feedback are tracked in `design/assets/specs/prism-system-assets.md`; this file keeps ASSET-032/043/049 as the reusable board token, collection shimmer, and collection sound.
+- Existing objective destruction audio rows ASSET-047 and ASSET-048 are reused by Combat Resolution and should not be duplicated under new IDs.
+
+---
+
 ## ASSET-022 — env_board_background_default
 
 | Field | Value |
