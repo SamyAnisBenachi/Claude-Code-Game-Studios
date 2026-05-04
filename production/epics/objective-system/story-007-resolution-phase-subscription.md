@@ -1,7 +1,7 @@
 # Story 007: ResolutionPhaseEntered Subscription & RESOLUTION-end Sync
 
 > **Epic**: Objective System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -146,7 +146,21 @@ Reconnect gap for Sang Méprise (open issue from GDD OQ5): `S2CSangMepriseReveal
 **Story Type**: Integration
 **Required evidence**: `tests/integration/objective/resolution_sync_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 4/4 passing for blocking server scope (OS-13a, OS-18a, OS-24 covered; OS-18b ECS side covered and transport visibility remains advisory per story text)
+**Deviations**: None blocking.
+**Advisories**: OS-18b's "single visible HP replication update" guarantee remains a Lightyear transport/session assertion and was not verified with a live two-client session in this story. The ECS-side no-duplicate consequence path is covered by `damage_interface_test`, and RESOLUTION-end network batching is covered by `objective_resolution_sync_test`.
+**Test Evidence**: Integration test `tests/integration/objective/resolution_sync_test.rs` exists and `cargo test -p server --test objective_resolution_sync_test` passed 5/5.
+**Code Review**: Skipped - lean mode.
+**QA Coverage Gate**: Skipped - lean mode.
+**Verification**: `cargo test -p server --test objective_resolution_sync_test`; `cargo test -p server --test fake_reward_test --test consequence_path_test --test damage_interface_test`; `cargo check -p server`; `git diff --check`.
 
 ---
 

@@ -1731,3 +1731,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching BOARD-RENDERING-001 row exists in `production/sprint-status.yaml`.
 - Next recommended: Board Rendering Story 002 (`production/epics/board-rendering/story-002-board-grid-camera-and-layer-constants.md`) after readiness check, or continue Sprint 5 Must Have Combat Story 8 if the current sprint priority remains unchanged.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/objective-system/story-007-resolution-phase-subscription.md` - Story 007: ResolutionPhaseEntered Subscription & RESOLUTION-end Sync
+- Criteria: 4/4 passing for blocking server scope; OS-13a, OS-18a, ResolutionPhaseEntered subscription, and OS-24 covered by `tests/integration/objective/resolution_sync_test.rs`; OS-18b ECS-side no-duplicate consequence path covered by `tests/unit/objective/damage_interface_test.rs`.
+- Test Evidence: `cargo test -p server --test objective_resolution_sync_test` passed 5/5. `cargo test -p server --test fake_reward_test --test consequence_path_test --test damage_interface_test` passed 22/22. `cargo check -p server` passed. `git diff --check` passed.
+- Verification: Current `main` includes integrated commit `1c8ef2a`; `ResolutionPhaseEntered` is consumed through `MessageReader`, `ResolutionComplete` drains `PendingObjectiveEvents` only at RESOLUTION-end, sorted by ascending lane, writes internal `ObjectiveDestroyed`, sends one reliable `S2CResolutionEvent` batch to `NetworkTarget::All`, and leaves Sang Meprise visibility state outside the suppression path.
+- Notes: Advisory only - OS-18b's single visible HP replication update is a live Lightyear transport/session assertion and remains deferred per story text. No combat objective damage, GAME_OVER, UI/result screen, design asset, or unrelated scope creep found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-16 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
+- Next recommended: Hand UI Story 10 Submit Pre-Validation (`production/epics/hand-ui/story-010-submit-prevalidation.md`) after readiness check, or continue Sprint 5 Nice to Have combat work if Sprint 5 should stay server-focused.

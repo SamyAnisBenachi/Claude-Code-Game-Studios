@@ -175,10 +175,13 @@ stories:
     name: "Objective Story 7: Resolution-End Sync"
     file: "production/epics/objective-system/story-007-resolution-phase-subscription.md"
     priority: should-have
-    status: not-started
+    status: done
     owner: "unassigned"
     estimate_days: 1.00
     blocker: ""
+    completed: "2026-05-04"
+    notes:
+      - "COMPLETE WITH NOTES: RESOLUTION-end ObjectiveDestroyed drain, lane-order batching, ResolutionPhaseEntered subscription, and Sang Meprise non-suppression verified; OS-18b live two-client HP replication visibility remains advisory per story text."
 
   - id: "S5-17"
     name: "Hand UI Story 10: Submit Pre-Validation"
