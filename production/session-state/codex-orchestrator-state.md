@@ -196,8 +196,10 @@ None currently tracked here.
   requirements; no TR-PRES entry is required. Planning was committed at
   `514c1ad`; worker implementation returned local commit `e783a27` without a
   branch push, so root cherry-picked only that commit and pushed it to
-  `origin/main` as `1c5c40f`. Next action: run `/story-done` for
-  `production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md`.
+  `origin/main` as `1c5c40f`. Story-done returned COMPLETE and was pushed at
+  `d303155`, updating
+  `production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md`
+  and `production/session-state/active.md`; no sprint-status row existed.
 - Board Rendering Story 001 readiness returned NEEDS WORK. No trace,
   dependency, ADR, or manifest blocker was found. Required fixes are docs-only:
   add an explicit ADR-021 presentation performance/no-impact note and clarify
@@ -305,9 +307,10 @@ None currently tracked here.
   `cargo test -p client --test presentation_plugin_scaffold_test` 3/3,
   adjacent HUD/Hand/Card Animations regressions 16/16,
   `cargo check -p client`, `git diff --check`, and the grep guard for exactly
-  one `MessageReceiver<S2CPhaseChanged>` in `client/src`. Next action: run
-  `/story-done` for the Presentation Layer Story 001. Do not relaunch the
-  PRESENTATION-001 worker.
+  one `MessageReceiver<S2CPhaseChanged>` in `client/src`. Story-done returned
+  COMPLETE and was pushed at `d303155`, updating the story file and
+  `production/session-state/active.md`. No sprint-status row existed. Do not
+  relaunch the PRESENTATION-001 worker.
 - COMBAT-004: Movement + Collision readiness repair landed on main at
   `c2fc0d3`; implementation landed on main at `408c34a`; story-done closure
   committed at `52caa45`; follow-up story scope clarification committed at
@@ -860,8 +863,8 @@ Current active windows by user default-launch rule:
   and recommends a new shared Presentation Layer story. Window can be cleared.
 - Presentation Layer Story 001 readiness returned READY; window can be cleared.
   Presentation implementation worker returned local commit `e783a27`; root
-  cherry-picked and pushed it as `1c5c40f`. Window can be cleared. Story-done
-  for Presentation Layer Story 001 is now pending.
+  cherry-picked and pushed it as `1c5c40f`; story-done returned and pushed
+  closure at `d303155`. Window can be cleared.
 - Board Rendering Story 001 readiness returned NEEDS WORK on missing
   presentation performance/no-impact note and ambiguous invalid
   `cell_to_world` bounds/assert wording. Use `REPONDRE` in that same window
