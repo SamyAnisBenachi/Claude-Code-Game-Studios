@@ -71,7 +71,7 @@ pub fn resolve_combat(world: &mut World) { ... }
 Registered in the server `App` as a normal system — Bevy 0.18 auto-detects `&mut World` as exclusive. The system:
 
 1. Reads `MessageReader<BeginResolution>` — exits immediately if no message is present (idling outside RESOLUTION phase).
-2. Takes a stat snapshot (unit ATK, HP, AR, MP, keywords; LEADER bonuses) at resolution entry. This snapshot is immutable for the duration of the run.
+2. Takes a base stat snapshot (unit ATK, HP, AR, MP, keywords) at resolution entry. LEADER bonuses are snapshotted after SS1 completes, before SS2 begins, per ADR-018/OQ-KS9. Snapshotted values are immutable for the duration of the run unless explicitly modeled as live HP/state fields.
 3. Executes sub-steps 1–6 as sequential function calls, accumulating a `ResolutionLog`.
 4. Applies all ECS mutations at their natural points (units move, die, gold updates via `world.resource_mut::<PlayerEconomies>()`).
 5. Broadcasts `S2CResolutionEvent { round, events: log.into_vec() }` via Lightyear.
@@ -148,12 +148,13 @@ pub enum ResolutionEvent {
   RSM (server/)                resolve_combat (server/ exclusive system)
   ───────────────────────────────────────────────────────────────────────
   BeginResolution ──────────►  read trigger
-                               snapshot unit stats + LEADER bonuses
+                               snapshot base unit stats
                                consume ServerRng (Ecaflip pre-computation)
 
                                sub-step 1: apply_placements()
                                │  ECS: spawn units, fire APPEARANCE triggers
                                │  Log: UnitPlaced, KeywordTriggered (APPEARANCE)
+                               snapshot LEADER bonuses after SS1, before SS2
 
                                sub-step 2: execute_charge_x()
                                │  Destination rule + collision loop (enemy only)
@@ -204,7 +205,8 @@ pub struct CombatResult {
     pub ar_attacker_combat: u8,  // type-advantage AR bonus for two-pass bilateral algorithm
 }
 
-/// Unit stats frozen at RESOLUTION entry. Immutable during algorithm run.
+/// Base unit stats frozen at RESOLUTION entry; LEADER bonus fields are filled
+/// after SS1 completes and before SS2 begins. Live HP mutates inline.
 pub struct UnitSnapshot {
     pub unit_id: UnitId,
     pub player: PlayerId,
@@ -216,7 +218,7 @@ pub struct UnitSnapshot {
     pub mp: u8,
     pub unit_type: UnitType,
     pub keywords: KeywordSet,
-    pub leader_atk_bonus: u8,  // snapshotted at resolution entry; 0 if no LEADER
+    pub leader_atk_bonus: u8,  // snapshotted post-SS1/pre-SS2; 0 if no LEADER
 }
 
 /// Accumulates all events during algorithm execution.

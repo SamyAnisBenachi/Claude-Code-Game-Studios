@@ -36,7 +36,7 @@ Combat Resolution implements the server-side deterministic 6-step algorithm that
 | TR-CR-008 | Kill gold +1 is awarded by `resolve_combat`; objective gold +3 lands before economy interest snapshots (CR-16) | ADR-017, ADR-019 |
 | TR-CR-009 | Objective damage bypasses AR, uses ATK_effective only, and mutates objective HP with `saturating_sub` (CR-10, CR-27) | ADR-017 |
 | TR-CR-010 | INJURED activates at sub-step boundaries; state is re-evaluated and not retroactive within a sub-step (CR-26) | ADR-018 |
-| TR-CR-011 | OUTNUMBERED is counted at sub-step entry using per-player global board count and strict less-than comparison (KW-027a, KW-027b) | ADR-018 |
+| TR-CR-011 | OUTNUMBERED is counted at sub-step entry using per-player global board count and strict less-than comparison; after SS4 it recomputes only once `ChainDeathBuffer` fully drains (KW-027a, KW-027b, KW-040) | ADR-018, ADR-022 |
 | TR-CR-012 | Type advantage formula grants ATK+1 and AR+1 in bilateral matchups only, from `GameConfig.type_beats` (CR-15) | ADR-017 |
 | TR-CR-013 | `resolve_combat` exclusive-system scaffold reads `BeginResolution`, exits idle without mutations, executes SS1-SS6, writes `ResolutionComplete` only after `S2CResolutionEvent`, and aborts at 10,000 iterations with `GameOver{Draw}` (CR-41) | ADR-017 |
 | TR-CR-014 | `S2CPlacementReveal` is enqueued before any SS1 entity spawn or ECS mutation; empty PendingPlacements still sends an empty reveal (CR-30) | ADR-007, ADR-017, ADR-020 |
@@ -51,6 +51,8 @@ Combat Resolution implements the server-side deterministic 6-step algorithm that
 | TR-CR-023 | SS6 RANGE target selection attacks the nearest forward enemy within RANGE X; single-nearest consumes no RNG, equidistant nearest consumes exactly one RangeEquidistantSelect seed with deterministic eligible ordering (CR-3) | ADR-005, ADR-017 |
 | TR-CR-024 | RANGE filtering is forward-only for both players; enemies behind the attacker are never valid RANGE targets (CR-28) | ADR-017 |
 | TR-CR-025 | RANGE + FIRST STRIKE units select their SS6 target fresh after SS4 removal and can acquire a surviving enemy if the SS3 target died (CR-45) | ADR-017 |
+| TR-CR-026 | LEADER bonuses snapshot post-SS1/pre-SS2, include LEADERs that entered during SS1 if alive at snapshot time, persist after SS4 LEADER death, and recompute fresh next round (CR-33, KW-025, KW-068) | ADR-017, ADR-018 |
+| TR-CR-027 | INJURED persists across rounds so INJURED-granted FIRST STRIKE is available in the next round's SS3 unless SILENCE strips the granted keyword (CR-34, KW-007) | ADR-018, ADR-022 |
 
 ## Definition of Done
 
@@ -85,7 +87,7 @@ Before the first story can be marked Ready for implementation:
 | 007 | [Sub-step 6 — Standard Combat + SHIELD + COUNTERATTACK](story-007-substep6-combat-shield-counterattack.md) | Logic | Ready | ADR-017 |
 | 008 | [Sub-step 6 — RANGE Targeting](story-008-range-targeting.md) | Logic | Ready | ADR-017 |
 | 009 | [Sub-step 6 — Objective Damage + GAME_OVER](story-009-objective-damage-gameover.md) | Logic | Ready | ADR-017, ADR-002 |
-| 010 | [Persistent Keyword States — INJURED, LEADER, OUTNUMBERED](story-010-persistent-keyword-states.md) | Logic | Ready | ADR-017 |
+| 010 | [Persistent Keyword States — INJURED, LEADER, OUTNUMBERED](story-010-persistent-keyword-states.md) | Logic | Ready | ADR-017, ADR-018, ADR-022 |
 | 011 | [ResolutionEvent Log Completeness](story-011-resolution-event-log.md) | Integration | Ready | ADR-017, ADR-008 |
 
 ## Next Step

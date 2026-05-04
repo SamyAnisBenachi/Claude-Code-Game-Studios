@@ -189,7 +189,7 @@ auction state, class system, card acquisition shop state, economy system, board/
 - **`resolve_prism_draws` scheduled:** `.after(resolve_ecaflip_triggers).before(award_fake_objective_rewards)` within the RESOLUTION `Update` set. — source: ADR-016
 - **Prism S2C sends use Lightyear 0.26 `ServerMultiMessageSender`.** Owner-only sends (`S2CCardAcquired`, `S2CPrismRewardDropped`) target `NetworkTarget::Single(owner_peer_id)`; all-player respawn sends target `NetworkTarget::All`. — source: ADR-016, ADR-008
 - **`resolve_combat` is an exclusive Bevy system: `fn resolve_combat(world: &mut World)`.** Bevy 0.18 auto-detects `&mut World`. All 6 sub-steps execute in a single frame invocation. — source: ADR-017
-- **Stats snapshot taken at RESOLUTION entry; immutable for the full algorithm run.** — source: ADR-017
+- **Base stats snapshot taken at RESOLUTION entry; LEADER bonuses snapshot post-SS1/pre-SS2 after all SS1 APPEARANCE effects resolve.** — source: ADR-017, ADR-018
 - **`apply_combat_modifier_stack` is a pure function — no World access.** All modifier-stack CRs testable without Bevy context. — source: ADR-017
 - **Movement boundary (resolves OQ1):** Destination rule (Formula F1) governs Trap/Prism triggering — intermediate cells skipped. Enemy collision tick-by-tick loop governs obstruction (WALL halt, path-crossing). Complementary layers, not contradictions. — source: ADR-017
 - **`S2CResolutionEvent` is a single reliable broadcast sent AFTER all 6 sub-steps complete.** Clients receive the full log and replay at animation tempo. — source: ADR-017
@@ -200,8 +200,8 @@ auction state, class system, card acquisition shop state, economy system, board/
 - **NEVER serialize `bodyguard_protects: Option<Entity>` into `protocol/` types.** Use `EntityId` (session-scoped u32) in network types. — source: ADR-018
 - **`bodyguard_cleanup_system` runs in `PostUpdate`** using `&Entities` (Bevy 0.18 system param) for O(1) alive check (`entities.contains(entity)`). Clears stale `Option<Entity>` after despawns. — source: ADR-018
 - **Keyword effects module (`server/feature/keyword/`) is separate from combat module.** Combat calls `keyword::effects::*` as plain function calls. Combat owns *when*; Keyword owns *what*. — source: ADR-018
-- **`leader_snapshot_system` runs at RESOLUTION entry (before SS1).** Bonus persists for the full round even if the LEADER dies in SS4. — source: ADR-018
-- **`eval_outnumbered_system` called at each sub-step boundary.** Emits `OutnumberedFlipped` only on boolean transition (bandwidth-efficient). — source: ADR-018
+- **`leader_snapshot_system` runs after SS1 fully drains, before SS2 begins.** LEADER units entering during SS1 are included if alive at snapshot time; the bonus persists through SS5/SS6 even if the LEADER dies in SS4 and recomputes fresh post-SS1 next round. — source: ADR-018
+- **`eval_outnumbered_system` called at each sub-step boundary.** After SS4, it runs only after `ChainDeathBuffer` fully drains and all resulting removals are processed; it emits `OutnumberedFlipped` only on boolean transition (bandwidth-efficient). — source: ADR-018
 - **Three RNG seed slots must be registered in ADR-005 §4 BEFORE any keyword story opens:** `range_equidistant_select`, `teleport_random_dest`, `strich_change_lane_select`. KW-033b is formally BLOCKED until done. — source: ADR-018
 - **`Keyword`/`SimpleKeyword` round-trip test for all 7 variants must pass before the ADR-006 amendment merges.** — source: ADR-018
 - **5 global Observers registered in `KeywordPlugin::build()`:** `on_unit_appeared`, `on_unit_died`, `on_final_blow_dealt`, `on_start_of_turn`, `on_end_of_turn`. — source: ADR-022

@@ -29,8 +29,8 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 10
-last_updated: "2026-05-04"
+version: 11
+last_updated: "2026-05-05"
 # Run 3 (/architecture-review 2026-04-30c): registered 80 new M2/M3 TRs covering
 # combat-resolution, card-acquisition, prism-system, keyword-system, card-animations,
 # board-rendering, hand-ui, shop-auction-ui, hud. TR-CS already populated by another
@@ -59,6 +59,11 @@ last_updated: "2026-05-04"
 # TR-CR-023, TR-CR-024, TR-CR-025 for RANGE target selection, forward-only
 # filtering, and post-SS4 target reacquisition traceability (CR-3, CR-28,
 # CR-45). Total: 192 active TRs.
+# Run 12 (/story-readiness COMBAT-010 trace repair 2026-05-05): revised
+# TR-CR-011 to include post-SS4 ChainDeathBuffer OUTNUMBERED timing and
+# registered TR-CR-026, TR-CR-027 for LEADER snapshot persistence and
+# INJURED cross-round FIRST STRIKE traceability (CR-33, CR-34). Total:
+# 194 active TRs.
 
 requirements:
 
@@ -1114,10 +1119,10 @@ requirements:
   - id: TR-CR-011
     system: combat-resolution
     gdd: design/gdd/combat-resolution.md
-    gdd_ac_ids: [KW-027a, KW-027b]
-    requirement: "OUTNUMBERED counted at sub-step entry; per-player global board count (not per-lane); strict less-than comparison"
+    gdd_ac_ids: [KW-027a, KW-027b, KW-040]
+    requirement: "OUTNUMBERED counted at sub-step entry; per-player global board count (not per-lane); strict less-than comparison; after SS4 it recomputes only once ChainDeathBuffer fully drains and all resulting removals are processed"
     created: 2026-04-30
-    revised: ""
+    revised: 2026-05-05
     status: active
 
   - id: TR-CR-012
@@ -1243,6 +1248,24 @@ requirements:
     gdd_ac_ids: [CR-45]
     requirement: "RANGE + FIRST STRIKE units select their sub-step 6 target fresh after sub-step 4 removal; if the sub-step 3 target died and another enemy remains within RANGE, the surviving enemy is acquired and CombatDamage is emitted in sub-step 6"
     created: 2026-05-04
+    revised: ""
+    status: active
+
+  - id: TR-CR-026
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-33, KW-025, KW-068]
+    requirement: "LEADER bonuses snapshot after SS1 fully resolves and before SS2; LEADERs that enter during SS1 are included if alive at snapshot time; the snapshot persists through SS5/SS6 even if the LEADER dies in SS4 and recomputes fresh post-SS1 next round"
+    created: 2026-05-05
+    revised: ""
+    status: active
+
+  - id: TR-CR-027
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-34, KW-007]
+    requirement: "INJURED state persists between rounds; a unit that gains INJURED after SS3 damage in round N has INJURED-granted FIRST STRIKE available for SS3 of round N+1 unless SILENCE strips the granted keyword"
+    created: 2026-05-05
     revised: ""
     status: active
 

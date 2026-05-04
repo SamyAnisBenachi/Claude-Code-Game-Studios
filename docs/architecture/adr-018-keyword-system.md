@@ -105,7 +105,7 @@ pub struct UnitKeywordState {
     /// Some(r) = silenced until end of round r (inclusive). None = not silenced.
     pub silenced_until_round: Option<u8>,
 
-    // ── LEADER bonus (snapshotted at RESOLUTION entry) ────────────────
+    // ── LEADER bonus (snapshotted post-SS1, before SS2) ───────────────
     /// ATK bonus granted by a living LEADER's family snapshot. 0 = none.
     pub leader_bonus_atk: u8,
     /// HP bonus granted by a living LEADER's family snapshot. 0 = none.
@@ -145,8 +145,9 @@ functions are called by combat resolution as plain function calls with query ref
 
 ```
 Update set:
-  leader_snapshot_system      runs on ResolutionPhaseEntered (before SS1)
+  leader_snapshot_system      called after SS1 fully drains, before SS2
   eval_outnumbered_system     called by combat resolution at each sub-step boundary
+                                 after the previous sub-step is fully complete
   bodyguard_cleanup_system    runs in PostUpdate (after despawn commands flush)
 ```
 
@@ -313,9 +314,10 @@ pub enum DisplacementKind {
 ```rust
 // server/feature/keyword/state_eval.rs
 
-/// Runs at RESOLUTION entry (on ResolutionPhaseEntered, before SS1).
+/// Runs after SS1 completes, before SS2 begins.
 /// Snapshots LEADER bonuses onto all eligible family units.
-/// A silenced LEADER (silenced_until_round covers the current round) grants no bonus.
+/// A silenced LEADER at snapshot time (silenced_until_round covers the current
+/// round) grants no bonus.
 ///
 /// IMPORTANT: app.add_message::<KeywordTriggered>() must be registered in
 /// KeywordPlugin or this MessageWriter will panic at first write.
@@ -331,10 +333,12 @@ pub fn leader_snapshot_system(
     // 3. Write leader_bonus_atk / leader_bonus_hp to each family member's UnitKeywordState.
     // 4. Emit KeywordTriggered { keyword: LeaderSnapshotTaken, leader_unit_id } for client tint.
     //
-    // Snapshot semantics: LEADER units that entered play in SS1 of THIS round are
-    // NOT included (not on board at RESOLUTION entry). LEADER killed in SS4 does NOT
-    // revoke the snapshot; fields persist until RESOLUTION ends and are cleared at
-    // the start of the next round's leader_snapshot_system run.
+    // Snapshot semantics: LEADER units that entered play in SS1 of THIS round
+    // are included if they are alive after all SS1 APPEARANCE effects resolve.
+    // A LEADER killed during SS1 before this snapshot grants no bonus this round.
+    // A LEADER killed in SS4 does NOT revoke the snapshot; fields persist through
+    // SS5/SS6 until RESOLUTION ends and are overwritten by the next round's
+    // post-SS1 leader_snapshot_system run.
 }
 ```
 
@@ -343,12 +347,17 @@ pub fn leader_snapshot_system(
 ```rust
 // server/feature/keyword/state_eval.rs
 
-/// Called by combat resolution at the start of each sub-step boundary.
+/// Called by combat resolution at each sub-step boundary after the previous
+/// sub-step is fully complete and before the next sub-step begins.
 /// Re-evaluates outnumbered(player) from global board counts.
 /// Emits OutnumberedFlipped ONLY when the boolean transitions (bandwidth-efficient).
 ///
 /// Formula 3: outnumbered(player) = count(alive_units(player)) < count(alive_units(opponent))
 /// Traps excluded from board count (face-down, not participating in counts).
+///
+/// SS4 boundary rule: after SS4 begins, ChainDeathBuffer is drained to completion
+/// and all resulting deaths/removals are processed before OUTNUMBERED is
+/// recomputed for SS5. OUTNUMBERED never flips during an in-progress DEATH chain.
 pub fn eval_outnumbered_system(
     mut units: Query<(&UnitBoardOwner, &mut UnitKeywordState)>,
     board_counts: Res<BoardUnitCounts>,
@@ -381,7 +390,8 @@ server/feature/keyword/               server/feature/combat/
   effects.rs
     apply_first_strike(...)             sub_steps.rs: execute_ss1()
     apply_shield_absorb(...)              ↳ calls keyword::effects::apply_appearance()
-    apply_bodyguard_bond(...)             ↳ calls keyword::state_eval::leader_snapshot_system
+    apply_bodyguard_bond(...)             ↳ after SS1 drains: calls
+                                            keyword::state_eval::leader_snapshot_system
     apply_movement_keyword(...)
 
   movement.rs
@@ -390,8 +400,9 @@ server/feature/keyword/               server/feature/combat/
     (Pure functions — i32 intermediate arithmetic, clamp to u8)
 
   state_eval.rs
-    leader_snapshot_system    (system — runs before SS1)
-    eval_outnumbered_system   (called at each sub-step boundary)
+    leader_snapshot_system    (called after SS1, before SS2)
+    eval_outnumbered_system   (called at each sub-step boundary; after SS4
+                               ChainDeathBuffer fully drains before SS5)
     bodyguard_cleanup_system  (PostUpdate — clears stale Option<Entity> refs)
 
 protocol/src/keyword.rs
@@ -498,8 +509,8 @@ archetype migrations, and direct mapping to `UnitBoardState` network fields.
 |---|---|---|
 | `keyword-system.md` Replication Contract | 6 persistent states in `UnitBoardState` (OQ-NP4) | `UnitKeywordState` fields map 1:1: `shield_active`, `stun_active`, `silenced_until_round`, `leader_bonus_atk`, `leader_bonus_hp`, `bodyguard_protects` |
 | `keyword-system.md` Edge Case: BODYGUARD bond storage | "MUST be stored as unit-to-unit entity bond, NOT lane-scoped attribute" | `bodyguard_protects: Option<Entity>` on BODYGUARD entity; stable across CHANGE LANE |
-| `keyword-system.md` LEADER snapshot semantics | Snapshotted at RESOLUTION entry; persists after LEADER dies in SS4 | `leader_snapshot_system` runs before SS1; fields persist until RESOLUTION ends regardless of LEADER death |
-| `keyword-system.md` OUTNUMBERED Formula 3 | Global board count, re-evaluated at each sub-step boundary | `eval_outnumbered_system` called at each sub-step boundary; `outnumbered_active` cached in `UnitKeywordState` |
+| `keyword-system.md` LEADER snapshot semantics | Snapshotted after SS1 completes, before SS2 begins; persists after LEADER dies in SS4 | `leader_snapshot_system` runs post-SS1/pre-SS2; fields persist until RESOLUTION ends regardless of later LEADER death and are recomputed fresh next round |
+| `keyword-system.md` OUTNUMBERED Formula 3 | Global board count, re-evaluated at each sub-step boundary; SS4 DEATH chains do not flip OUTNUMBERED mid-chain | `eval_outnumbered_system` called at each sub-step boundary; after SS4 it runs only once `ChainDeathBuffer` fully drains; `outnumbered_active` cached in `UnitKeywordState` |
 | `keyword-system.md` OQ-NP1 | `DisplacementEvent { unit_id, attacker_id, keyword, from_cell, to_cell, sub_step, was_blocked }` | `DisplacementEvent` struct + `DisplacementKind` enum in `protocol/src/keyword.rs` |
 | `keyword-system.md` OQ-NP5 | `KeywordTriggered { unit_id, keyword: KeywordKind, sub_step, payload: KeywordPayload }` | `KeywordKind` + `KeywordPayload` + `InjuredGrantedKeyword` in `protocol/src/keyword.rs` |
 | `keyword-system.md` OQ-KS1 | 3 distinct RNG seed slots in RESOLUTION chain | Formally tracked as pre-implementation gate; must be added to ADR-005 before keyword stories open |
@@ -556,8 +567,8 @@ Pre-implementation gates:
 - ADR-005: Server-side RNG — 3 new seed slots (OQ-KS1) are a pre-implementation gate
 - ADR-006: Card data schema — amendment required; this ADR supersedes ADR-006's partial
   `SimpleKeyword` definition
-- ADR-009: RSM phase state — LEADER snapshot runs on `ResolutionPhaseEntered`
-- ADR-010: RSM event bus — `ResolutionPhaseEntered` triggers keyword system RESOLUTION init
+- ADR-009: RSM phase state — RSM emits `BeginResolution`; LEADER snapshot timing is internal to `resolve_combat` after SS1 drains, not a direct `ResolutionPhaseEntered` subscriber.
+- ADR-010: RSM event bus — `BeginResolution` starts the exclusive RESOLUTION batch; keyword state evaluation is invoked inline by Combat Resolution at sub-step boundaries.
 - `design/gdd/keyword-system.md` — primary GDD; all 41 ACs, formulas, replication contract
 - `design/gdd/combat-resolution.md` — owns sub-step timing; calls keyword effects functions
 - `design/gdd/network-protocol.md` — must be updated with `KeywordTriggered` +
