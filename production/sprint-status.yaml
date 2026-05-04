@@ -162,10 +162,11 @@ stories:
     name: "Objective Story 6: D4 Fake Reward Draw"
     file: "production/epics/objective-system/story-006-d4-fake-reward-draw.md"
     priority: should-have
-    status: not-started
+    status: done
     owner: "unassigned"
     estimate_days: 1.00
     blocker: ""
+    completed: "2026-05-04"
 
   - id: "S5-16"
     name: "Objective Story 7: Resolution-End Sync"

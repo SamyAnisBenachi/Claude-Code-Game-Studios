@@ -1,7 +1,7 @@
 # Story 006: D4 Fake Reward Draw
 
 > **Epic**: Objective System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -32,14 +32,14 @@
 
 *From GDD `design/gdd/objective-system.md`, scoped to this story:*
 
-- [ ] OS-8 (BLOCKING): GIVEN a fake objective is destroyed by the opponent, WHEN the consequence path runs, THEN `fake_objectives_destroyed(attacker)` increments by 1, AND exactly one of `{ManaCapIncreased, FreeCardPick}` is emitted (not both, not neither).
-- [ ] OS-11 (BLOCKING): GIVEN both of a player's fake objectives are destroyed with both D4 draws producing ManaCapIncreased, WHEN the Objective System processes both rewards, THEN `ManaCapIncreased { player, amount: 1 }` is emitted exactly twice. (This story tests the two-emission behavior. The Economy System integration — that `mana_cap_effective = min(mana_cap_base + 2, mana_cap_max)` — is verified in Economy System tests.)
-- [ ] OS-12 (BLOCKING): GIVEN a fake objective is destroyed and D4 draws ManaCapIncreased, WHEN `ManaCapIncreased` is emitted, THEN it is emitted exactly once regardless of the current mana cap value. (Ceiling enforcement is the Economy System's job, not this story's.)
-- [ ] OS-15 (BLOCKING): GIVEN a FreeCardPick reward fires for a player whose hand is at 10 cards, WHEN the consequence path processes the reward, THEN `draw_random()` is NOT called and `AwardGold { player, amount: 1 }` is emitted instead.
-- [ ] OS-19 (BLOCKING): GIVEN a fake objective is destroyed with a known server-side RNG seed producing `gen_range(0..2) = 0`, WHEN the reward draw executes, THEN `ManaCapIncreased` is emitted (not `FreeCardPick`). GIVEN a seed producing `gen_range(0..2) = 1`, THEN `FreeCardPick` path enters (not ManaCapIncreased). (Requires seeded `ChaCha20Rng::seed_from_u64(known_seed)` — not live randomness.)
-- [ ] OS-22 (BLOCKING): GIVEN a FreeCardPick reward fires and `draw_random(FAKE_REWARD_POOL_FILTER, seed)` returns `None` (pool exhausted), WHEN the consequence path processes the reward, THEN no card is granted, no gold is emitted, and no re-roll to mana cap occurs. (Distinct from OS-15: pool-exhausted → no-op; hand-full → +1g.)
-- [ ] OS-26 (BLOCKING): GIVEN both fake objectives destroyed in the same RESOLUTION with D4 draws producing results 0 (ManaCapIncreased) and 1 (FreeCardPick) respectively, WHEN both rewards are processed, THEN `ManaCapIncreased { player, amount: 1 }` is emitted once AND `draw_random(FAKE_REWARD_POOL_FILTER, seed)` is called once. (Requires two seeded draws — pre-compute seeds before writing the test.)
-- [ ] OS-27 (BLOCKING): GIVEN a FreeCardPick reward fires and the attacker's hand is below max capacity, WHEN the draw is issued, THEN the filter used is `FAKE_REWARD_POOL_FILTER` with all fields `None`. Verified by: (a) asserting `FAKE_REWARD_POOL_FILTER` constant has `rarity: None, class: None, card_type: None, max_cost: None`; (b) code review confirms `FAKE_REWARD_POOL_FILTER` is the constant passed to `draw_random` at the call site.
+- [x] OS-8 (BLOCKING): GIVEN a fake objective is destroyed by the opponent, WHEN the consequence path runs, THEN `fake_objectives_destroyed(attacker)` increments by 1, AND exactly one of `{ManaCapIncreased, FreeCardPick}` is emitted (not both, not neither).
+- [x] OS-11 (BLOCKING): GIVEN both of a player's fake objectives are destroyed with both D4 draws producing ManaCapIncreased, WHEN the Objective System processes both rewards, THEN `ManaCapIncreased { player, amount: 1 }` is emitted exactly twice. (This story tests the two-emission behavior. The Economy System integration — that `mana_cap_effective = min(mana_cap_base + 2, mana_cap_max)` — is verified in Economy System tests.)
+- [x] OS-12 (BLOCKING): GIVEN a fake objective is destroyed and D4 draws ManaCapIncreased, WHEN `ManaCapIncreased` is emitted, THEN it is emitted exactly once regardless of the current mana cap value. (Ceiling enforcement is the Economy System's job, not this story's.)
+- [x] OS-15 (BLOCKING): GIVEN a FreeCardPick reward fires for a player whose hand is at 10 cards, WHEN the consequence path processes the reward, THEN `draw_random()` is NOT called and `AwardGold { player, amount: 1 }` is emitted instead.
+- [x] OS-19 (BLOCKING): GIVEN a fake objective is destroyed with a known server-side RNG seed producing `gen_range(0..2) = 0`, WHEN the reward draw executes, THEN `ManaCapIncreased` is emitted (not `FreeCardPick`). GIVEN a seed producing `gen_range(0..2) = 1`, THEN `FreeCardPick` path enters (not ManaCapIncreased). (Requires seeded `ChaCha20Rng::seed_from_u64(known_seed)` — not live randomness.)
+- [x] OS-22 (BLOCKING): GIVEN a FreeCardPick reward fires and `draw_random(FAKE_REWARD_POOL_FILTER, seed)` returns `None` (pool exhausted), WHEN the consequence path processes the reward, THEN no card is granted, no gold is emitted, and no re-roll to mana cap occurs. (Distinct from OS-15: pool-exhausted → no-op; hand-full → +1g.)
+- [x] OS-26 (BLOCKING): GIVEN both fake objectives destroyed in the same RESOLUTION with D4 draws producing results 0 (ManaCapIncreased) and 1 (FreeCardPick) respectively, WHEN both rewards are processed, THEN `ManaCapIncreased { player, amount: 1 }` is emitted once AND `draw_random(FAKE_REWARD_POOL_FILTER, seed)` is called once. (Requires two seeded draws — pre-compute seeds before writing the test.)
+- [x] OS-27 (BLOCKING): GIVEN a FreeCardPick reward fires and the attacker's hand is below max capacity, WHEN the draw is issued, THEN the filter used is `FAKE_REWARD_POOL_FILTER` with all fields `None`. Verified by: (a) asserting `FAKE_REWARD_POOL_FILTER` constant has `rarity: None, class: None, card_type: None, max_cost: None`; (b) code review confirms `FAKE_REWARD_POOL_FILTER` is the constant passed to `draw_random` at the call site.
 
 ---
 
@@ -170,7 +170,7 @@ Pre-compute seed values for OS-19 tests: use `ChaCha20Rng::seed_from_u64(S)` and
 **Story Type**: Logic
 **Required evidence**: `tests/unit/objective/fake_reward_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -178,3 +178,15 @@ Pre-compute seed values for OS-19 tests: use `ChaCha20Rng::seed_from_u64(S)` and
 
 - Depends on: Story 005 must be DONE (the consequence path decides to call `draw_fake_reward` — this function's entry point lives in Story 005's routing logic)
 - Unlocks: Story 007 (all reward draw logic is complete before RESOLUTION-end sync is implemented)
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 8/8 passing (OS-8, OS-11, OS-12, OS-15, OS-19, OS-22, OS-26, OS-27)
+**Deviations**: None blocking.
+**Advisories**: Current `TR-OBJ-005` in `docs/architecture/tr-registry.yaml` is narrower than this story and the current GDD: it maps only OS-12/OS-19/OS-26 and omits the hand-full fallback, pool-exhausted no-op, and unfiltered-pool contract now covered by OS-15/OS-22/OS-27. Implementation and tests follow `design/gdd/objective-system.md`.
+**Test Evidence**: Logic unit test `tests/unit/objective/fake_reward_test.rs` exists and `cargo test -p server --test fake_reward_test` passed 8/8.
+**Code Review**: Skipped - lean mode.
+**QA Coverage Gate**: Skipped - lean mode.
+**Verification**: `cargo test -p server --test fake_reward_test`; `cargo test -p server --test consequence_path_test --test damage_interface_test`; `cargo check -p server`; `git diff --check`.

@@ -1686,3 +1686,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-08 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
 - Next recommended: Combat Story 7 Standard Combat + SHIELD + COUNTERATTACK (`production/epics/combat-resolution/story-007-substep6-combat-shield-counterattack.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/objective-system/story-006-d4-fake-reward-draw.md` - Story 006: D4 Fake Reward Draw
+- Criteria: 8/8 passing; OS-8, OS-11, OS-12, OS-15, OS-19, OS-22, OS-26, and OS-27 covered by `tests/unit/objective/fake_reward_test.rs`.
+- Test Evidence: `cargo test -p server --test fake_reward_test` passed 8/8. `cargo test -p server --test consequence_path_test --test damage_interface_test` passed 14/14. `cargo check -p server` passed. `git diff --check` passed.
+- Verification: Current `main` includes integrated commit `d46e812`; fake opponent destruction increments `fake_objectives_destroyed`, consumes `AwardFakeObjectiveReward`, emits exactly one D4 outcome, emits two mana-cap messages for two mana rolls, skips the draw seed and emits +1 gold when the hand is full, treats pool exhaustion as a silent no-op after consuming the draw seed, and passes `FAKE_REWARD_POOL_FILTER` into `draw_random`.
+- Notes: Advisory only - current `TR-OBJ-005` in `docs/architecture/tr-registry.yaml` is narrower than the current story/GDD coverage; OS-15, OS-22, and OS-27 are verified against `design/gdd/objective-system.md` and the story evidence. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-15 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
+- Next recommended: Combat Story 7 Standard Combat + SHIELD + COUNTERATTACK (`production/epics/combat-resolution/story-007-substep6-combat-shield-counterattack.md`) after readiness check.
