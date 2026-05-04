@@ -117,6 +117,48 @@ None currently tracked here.
 ## Recently Implemented, Needs Formal Story-Done
 
 None currently tracked here.
+
+## Recent Planning / Readiness Updates
+
+- COMBAT-005 readiness repair returned READY and was committed at `90ebdfb`.
+  The story now traces `TR-CR-002`, `TR-CR-007`, `TR-CR-020`, and
+  `TR-CR-021`, uses manifest `2026-05-01`, includes the ADR-017
+  `<= 15 ms` RESOLUTION budget note, and clarifies minimal SS3 RANGE +
+  FIRST STRIKE scope. A COMBAT-005 `/dev-story` prompt was given after this
+  repair; by user default-launch rule, treat the implementation worker as
+  launched unless the user says otherwise.
+- AUC-008 readiness repair returned READY and was committed at `c20e503`.
+  The story now uses manifest `2026-05-01`, removes stale ADR-013 wording,
+  clarifies current Card Pool API ownership, removes stale `SharedNeutralPool`
+  wording, and includes an auction tick performance/no-impact note. An
+  AUC-008 `/dev-story` prompt was given after this repair; by user
+  default-launch rule, treat the implementation worker as launched unless the
+  user says otherwise.
+- S5-21 planning artifacts for Board Rendering and Shop/Auction UI were
+  written and pushed at `1c28e9c`: two EPIC.md files, 19 story files, and
+  `production/epics/index.md`. This was planning/docs only; no code or
+  session-state/sprint-status files were touched.
+- Sprint 6 draft was produced as report-only and explicitly not written. Do
+  not create `production/sprints/sprint-6.md` until S5-21 artifacts and the
+  Sprint 5 combat spine are clearer.
+- HAND-UI-010 / S5-17 story-readiness returned BLOCKED. Main blockers:
+  server authoritative placement validation does not yet match the reserve /
+  current-mana split spec, `PlacedCard` protocol shape is drifted between C2S
+  and S2C reveal, and Hand UI lacks `current_mana` in its economy view. Do
+  not implement HAND-UI-010 until the server/protocol/client data blockers are
+  split or resolved.
+- Shop/Auction UI UX readiness check returned that `design/ux/shop-auction-ui.md`
+  is missing. It is advisory for Story 001 scaffold/formulas, but blocks
+  visual/layout implementation and exact tooltip/layout work.
+- Shop/Auction UI Story 001 readiness returned BLOCKED because
+  `PresentationPlugin` / `PresentationSet` from ADR-021 do not exist yet.
+  A Presentation scaffold ownership analysis prompt was given; wait for the
+  user-provided agent result before acting on that window.
+- Full-game art coverage prompts were given for asset coverage, card art
+  coverage, and UI/VFX/audio coverage. By user default-launch rule, treat
+  those audit windows as launched unless the user says otherwise. Do not make
+  asset-generation decisions until those audit reports return.
+
 ## Recently Closed
 
 - COMBAT-004: Movement + Collision readiness repair landed on main at
@@ -589,6 +631,14 @@ Run only one story-done at a time.
   `61e7042`, and closed at `6021787`; CDP-006 is integrated at
   `e03dfcb`/`4d21482` and closed at `199a9b3`. All listed pull-forward
   revalidation items are now integrated and story-done closed.
+- Sprint 5 QA plan exists at `production/qa/qa-plan-sprint-5-2026-05-04.md`
+  and was committed at `f71a736`.
+- `production/sprint-status.yaml` was rebuilt for Sprint 5 at `b932290`.
+  COMBAT-004 story-done later updated S5-06 to done at `52caa45`.
+- S5-21 Board Rendering and Shop/Auction UI planning artifacts exist at
+  `1c28e9c`, but the new UI/rendering stories need readiness passes before
+  any implementation. Shop/Auction UI Story 001 is blocked by missing
+  ADR-021 Presentation scaffold ownership.
 - Sprint 4 QA plan missing: resolved at `8578890` with
   `production/qa/qa-plan-sprint-4-2026-05-03.md`. S4-14 Economy Network
   Dispatch can now run story-readiness, but `production/sprint-status.yaml`
@@ -617,12 +667,42 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- None known at this checkpoint. HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009,
-  COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have returned and
-  are integrated or closed as noted; do not relaunch their implementation
-  workers.
+- COMBAT-005 is assumed launched from the `/dev-story` prompt for
+  `production/epics/combat-resolution/story-005-substep3-first-strike.md`.
+  Expected worktree: `D:\_DEV\claude-code-game-studios-worktrees\COMBAT-005`;
+  expected branch: `work/combat-005-first-strike`. Await user-provided
+  worker return before integrating or classifying the window.
+- AUC-008 is assumed launched from the `/dev-story` prompt for
+  `production/epics/auction-system/story-008-pool-integration.md`.
+  Expected worktree: `D:\_DEV\claude-code-game-studios-worktrees\AUC-008`;
+  expected branch: `work/auc-008-pool-integration`. Await user-provided
+  worker return before integrating or classifying the window.
+- Full-game asset coverage audit, full card art coverage audit, and full
+  UI/audio/VFX coverage audit are assumed launched from prompts. Await user
+  reports before revising asset specs or generating art.
+- HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009, COMBAT-002, OBJECTIVE-004,
+  BOARD-008, and HAND-UI-007 have returned and are integrated or closed as
+  noted; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
+- COMBAT-005 readiness repair returned READY and was committed at `90ebdfb`;
+  that readiness window can be cleared. COMBAT-005 implementation worker is
+  assumed launched and is pending return.
+- AUC-008 readiness repair returned READY and was committed at `c20e503`;
+  that readiness window can be cleared. AUC-008 implementation worker is
+  assumed launched and is pending return.
+- S5-21 planning artifacts returned and were committed at `1c28e9c`; window
+  can be cleared.
+- Sprint 6 draft returned as report-only and was not written; window can be
+  cleared.
+- HAND-UI-010 readiness returned BLOCKED; window can be cleared and should
+  not be relaunched until server/protocol/client data blockers are addressed.
+- Shop/Auction UX readiness check returned; window can be cleared.
+- Shop/Auction UI Story 001 readiness returned BLOCKED on missing
+  PresentationPlugin / PresentationSet; window can be cleared after the
+  Presentation scaffold analysis prompt is launched/tracked.
+- Full-game art coverage audit, card art coverage audit, and UI/audio/VFX
+  coverage audit prompts are assumed launched and pending return.
 - COMBAT-004 story-done returned and was committed at `52caa45`; follow-up
   scope clarification committed at `3ef7bab`; window can be cleared.
 - CDP-006 story-done returned and was committed at `199a9b3`; window can be
