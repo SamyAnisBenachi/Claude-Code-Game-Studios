@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-03
+Updated: 2026-05-04
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -154,6 +154,12 @@ None currently tracked here.
   `PresentationPlugin` / `PresentationSet` from ADR-021 do not exist yet.
   A Presentation scaffold ownership analysis prompt was given; wait for the
   user-provided agent result before acting on that window.
+- Board Rendering Story 001 readiness returned NEEDS WORK. No trace,
+  dependency, ADR, or manifest blocker was found. Required fixes are docs-only:
+  add an explicit ADR-021 presentation performance/no-impact note and clarify
+  `cell_to_world` invalid bounds/assert behavior inline (`lane 1..=5`,
+  `cell 1..=8`, release `assert!`). The correct window action is `REPONDRE`
+  with a readiness repair prompt, not `CLEAR`.
 - Full-game art coverage prompts were given for asset coverage, card art
   coverage, and UI/VFX/audio coverage. By user default-launch rule, treat
   those audit windows as launched unless the user says otherwise. Do not make
@@ -638,7 +644,8 @@ Run only one story-done at a time.
 - S5-21 Board Rendering and Shop/Auction UI planning artifacts exist at
   `1c28e9c`, but the new UI/rendering stories need readiness passes before
   any implementation. Shop/Auction UI Story 001 is blocked by missing
-  ADR-021 Presentation scaffold ownership.
+  ADR-021 Presentation scaffold ownership. Board Rendering Story 001 has only
+  docs-only readiness gaps and should be repaired/rerun before any `/dev-story`.
 - Sprint 4 QA plan missing: resolved at `8578890` with
   `production/qa/qa-plan-sprint-4-2026-05-03.md`. S4-14 Economy Network
   Dispatch can now run story-readiness, but `production/sprint-status.yaml`
@@ -701,6 +708,11 @@ Current active windows by user default-launch rule:
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; window can be cleared after the
   Presentation scaffold analysis prompt is launched/tracked.
+- Board Rendering Story 001 readiness returned NEEDS WORK on missing
+  presentation performance/no-impact note and ambiguous invalid
+  `cell_to_world` bounds/assert wording. Use `REPONDRE` in that same window
+  to repair the story, rerun readiness, and commit/push docs-only changes; do
+  not create a worker or implement code until it returns READY.
 - Full-game art coverage audit, card art coverage audit, and UI/audio/VFX
   coverage audit prompts are assumed launched and pending return.
 - COMBAT-004 story-done returned and was committed at `52caa45`; follow-up
