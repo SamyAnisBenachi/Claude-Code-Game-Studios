@@ -30,7 +30,7 @@ use crate::feature::board::{
 use crate::feature::keyword::components::UnitKeywordState;
 use crate::feature::keyword::effects::{
     apply_stun, can_execute_first_strike, can_execute_standard_attack,
-    can_execute_standard_movement, charge_x_cells_for_sub_step,
+    can_execute_standard_movement, charge_x_cells_for_sub_step, consume_shield_for_sub_step,
 };
 use crate::feature::keyword::{ChainDeathBuffer, UnitDied};
 use crate::foundation::config::{CardCatalog, GameConfig as ServerGameConfig};
@@ -343,6 +343,13 @@ struct CombatAttack {
     attacker_lane: LaneId,
     attacker_player: PlayerId,
     damage_amount: u8,
+    melee_contact: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CombatAttackPhase {
+    FirstStrike,
+    Standard,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -474,7 +481,7 @@ fn run_sub_step_scaffold(
             4 => remove_dead(world, &mut budget)?,
             5 => execute_standard_movement(world, current_round, &mut budget)?,
             6 => {
-                execute_range_first_strike_standard_combat(world, current_round, &mut budget)?;
+                execute_standard_combat(world, current_round, &mut budget)?;
                 run_objective_detection_if_ready(world);
             }
             _ => {}
@@ -509,35 +516,35 @@ fn execute_first_strike(
     apply_combat_attacks(world, &mut attacks, 3, budget)
 }
 
-fn execute_range_first_strike_standard_combat(
+fn execute_standard_combat(
     world: &mut World,
     current_round: u32,
     budget: &mut IterationBudget,
 ) -> Result<(), CombatAbort> {
-    let mut attacks = collect_range_first_strike_standard_attacks(world, current_round);
-    apply_combat_attacks(world, &mut attacks, 6, budget)
+    let mut attacks = collect_standard_combat_attacks(world, current_round);
+    apply_combat_attacks(world, &mut attacks, 6, budget)?;
+    remove_dead_for_sub_step(world, budget, 6, 6)
 }
 
 fn collect_first_strike_attacks(world: &mut World, current_round: u32) -> Vec<CombatAttack> {
-    collect_combat_attacks(world, |unit, world| {
+    collect_combat_attacks(world, CombatAttackPhase::FirstStrike, |unit, world| {
         unit.snapshot.hp > 0 && can_execute_first_strike(unit.entity, current_round, world)
     })
 }
 
-fn collect_range_first_strike_standard_attacks(
-    world: &mut World,
-    current_round: u32,
-) -> Vec<CombatAttack> {
-    collect_combat_attacks(world, |unit, world| {
+fn collect_standard_combat_attacks(world: &mut World, current_round: u32) -> Vec<CombatAttack> {
+    collect_combat_attacks(world, CombatAttackPhase::Standard, |unit, world| {
         unit.snapshot.hp > 0
-            && unit.range_max.is_some()
-            && can_execute_first_strike(unit.entity, current_round, world)
             && can_execute_standard_attack(unit.entity, current_round, world)
+            && (unit.range_max.is_none()
+                || (unit.range_max.is_some()
+                    && can_execute_first_strike(unit.entity, current_round, world)))
     })
 }
 
 fn collect_combat_attacks(
     world: &mut World,
+    phase: CombatAttackPhase,
     can_attack: impl Fn(&CombatUnit, &World) -> bool,
 ) -> Vec<CombatAttack> {
     let Some(session_config) = world.get_resource::<SessionConfig>().cloned() else {
@@ -553,7 +560,8 @@ fn collect_combat_attacks(
         .iter()
         .filter(|unit| can_attack(unit, world))
         .filter_map(|attacker| {
-            let defender = select_combat_target(attacker, &units, &session_config, &board_config)?;
+            let defender =
+                select_combat_target(attacker, &units, &session_config, &board_config, phase)?;
             let result =
                 apply_combat_modifier_stack(&attacker.snapshot, &defender.snapshot, &config);
             Some(CombatAttack {
@@ -562,6 +570,9 @@ fn collect_combat_attacks(
                 attacker_lane: attacker.snapshot.lane,
                 attacker_player: attacker.snapshot.player,
                 damage_amount: result.net_damage,
+                melee_contact: attacker.range_max.is_none()
+                    && attacker.snapshot.lane == defender.snapshot.lane
+                    && attacker.snapshot.cell.abs_diff(defender.snapshot.cell) <= 1,
             })
         })
         .collect()
@@ -581,46 +592,119 @@ fn apply_combat_attacks(
         )
     });
 
-    for attack in attacks.iter().copied() {
-        budget.tick()?;
-        apply_combat_attack(world, attack, sub_step);
+    let mut index = 0;
+    while index < attacks.len() {
+        let defender = attacks[index].defender;
+        let start = index;
+        while index < attacks.len() && attacks[index].defender == defender {
+            budget.tick()?;
+            index += 1;
+        }
+
+        apply_combat_attack_group(world, &attacks[start..index], sub_step, budget)?;
     }
 
     Ok(())
 }
 
+fn apply_combat_attack_group(
+    world: &mut World,
+    attacks: &[CombatAttack],
+    sub_step: u8,
+    budget: &mut IterationBudget,
+) -> Result<(), CombatAbort> {
+    let Some(first_attack) = attacks.first().copied() else {
+        return Ok(());
+    };
+
+    if consume_shield_for_sub_step(first_attack.defender, sub_step, world) {
+        world
+            .resource_mut::<CombatResolutionTrace>()
+            .push(CombatTraceEntry::KeywordTriggered {
+                unit: first_attack.defender,
+                keyword: KeywordKind::Shield,
+                sub_step,
+            });
+        let hp_after = world
+            .get::<UnitStats>(first_attack.defender)
+            .map_or(0, |stats| stats.hp);
+        for attack in attacks.iter().copied() {
+            world
+                .resource_mut::<CombatResolutionTrace>()
+                .push(CombatTraceEntry::CombatDamage {
+                    attacker: attack.attacker,
+                    defender: attack.defender,
+                    damage_amount: 0,
+                    hp_after,
+                    was_blocked_by_shield: true,
+                    sub_step,
+                });
+        }
+    } else {
+        for attack in attacks.iter().copied() {
+            apply_combat_attack(world, attack, sub_step);
+        }
+    }
+
+    apply_counterattacks(world, first_attack.defender, attacks, sub_step, budget)
+}
+
 fn apply_combat_attack(world: &mut World, attack: CombatAttack, sub_step: u8) {
-    let Some(mut stats) = world.get_mut::<UnitStats>(attack.defender) else {
+    apply_damage_to_defender(
+        world,
+        attack.attacker,
+        attack.defender,
+        attack.attacker_player,
+        attack.damage_amount,
+        sub_step,
+        false,
+    );
+}
+
+fn apply_damage_to_defender(
+    world: &mut World,
+    attacker: Entity,
+    defender: Entity,
+    attacker_player: PlayerId,
+    damage_amount: u8,
+    sub_step: u8,
+    was_blocked_by_shield: bool,
+) {
+    let Some(mut stats) = world.get_mut::<UnitStats>(defender) else {
         return;
     };
     let hp_before = stats.hp;
-    let hp_after = hp_before.saturating_sub(attack.damage_amount);
+    let hp_after = if was_blocked_by_shield {
+        hp_before
+    } else {
+        hp_before.saturating_sub(damage_amount)
+    };
     stats.hp = hp_after;
     drop(stats);
 
     world
         .resource_mut::<CombatResolutionTrace>()
         .push(CombatTraceEntry::CombatDamage {
-            attacker: attack.attacker,
-            defender: attack.defender,
-            damage_amount: attack.damage_amount,
+            attacker,
+            defender,
+            damage_amount,
             hp_after,
-            was_blocked_by_shield: false,
+            was_blocked_by_shield,
             sub_step,
         });
 
     if hp_before > 0 && hp_after == 0 {
         world.resource_mut::<CombatKillLog>().push(KillRecord {
-            killer: attack.attacker,
-            victim: attack.defender,
-            killer_player_id: attack.attacker_player,
+            killer: attacker,
+            victim: defender,
+            killer_player_id: attacker_player,
             lethal_sub_step: sub_step,
         });
 
-        if unit_has_simple_keyword(attack.attacker, SimpleKeyword::FinalBlow, world) {
+        if unit_has_simple_keyword(attacker, SimpleKeyword::FinalBlow, world) {
             world.resource_mut::<CombatResolutionTrace>().push(
                 CombatTraceEntry::KeywordTriggered {
-                    unit: attack.attacker,
+                    unit: attacker,
                     keyword: KeywordKind::FinalBlow,
                     sub_step,
                 },
@@ -629,7 +713,113 @@ fn apply_combat_attack(world: &mut World, attack: CombatAttack, sub_step: u8) {
     }
 }
 
+fn apply_counterattacks(
+    world: &mut World,
+    defender: Entity,
+    attacks: &[CombatAttack],
+    sub_step: u8,
+    budget: &mut IterationBudget,
+) -> Result<(), CombatAbort> {
+    if !unit_has_simple_keyword(defender, SimpleKeyword::Counterattack, world) {
+        return Ok(());
+    }
+
+    let melee_attacks = attacks
+        .iter()
+        .copied()
+        .filter(|attack| attack.melee_contact)
+        .collect::<Vec<_>>();
+    if melee_attacks.is_empty() {
+        return Ok(());
+    }
+
+    world
+        .resource_mut::<CombatResolutionTrace>()
+        .push(CombatTraceEntry::KeywordTriggered {
+            unit: defender,
+            keyword: KeywordKind::Counterattack,
+            sub_step,
+        });
+
+    for attack in melee_attacks.iter().copied() {
+        budget.tick()?;
+        apply_counterattack_damage(world, defender, attack.attacker, sub_step);
+    }
+
+    for attack in melee_attacks.iter().copied() {
+        if !unit_has_simple_keyword(attack.attacker, SimpleKeyword::Counterattack, world) {
+            continue;
+        }
+        budget.tick()?;
+        world
+            .resource_mut::<CombatResolutionTrace>()
+            .push(CombatTraceEntry::KeywordTriggered {
+                unit: attack.attacker,
+                keyword: KeywordKind::Counterattack,
+                sub_step,
+            });
+        apply_counterattack_damage(world, attack.attacker, defender, sub_step);
+    }
+
+    Ok(())
+}
+
+fn apply_counterattack_damage(world: &mut World, attacker: Entity, defender: Entity, sub_step: u8) {
+    let Some(attacker_snapshot) = snapshot_for_combat_entity(attacker, world) else {
+        return;
+    };
+    let Some(defender_snapshot) = snapshot_for_combat_entity(defender, world) else {
+        return;
+    };
+    let attacker_player = attacker_snapshot.player;
+
+    if consume_shield_for_sub_step(defender, sub_step, world) {
+        world
+            .resource_mut::<CombatResolutionTrace>()
+            .push(CombatTraceEntry::KeywordTriggered {
+                unit: defender,
+                keyword: KeywordKind::Shield,
+                sub_step,
+            });
+        apply_damage_to_defender(
+            world,
+            attacker,
+            defender,
+            attacker_player,
+            0,
+            sub_step,
+            true,
+        );
+        return;
+    }
+
+    let damage_amount = apply_combat_modifier_stack(
+        &attacker_snapshot,
+        &defender_snapshot,
+        &combat_config(world),
+    )
+    .net_damage;
+    apply_damage_to_defender(
+        world,
+        attacker,
+        defender,
+        attacker_player,
+        damage_amount,
+        sub_step,
+        false,
+    );
+}
+
 fn remove_dead(world: &mut World, budget: &mut IterationBudget) -> Result<(), CombatAbort> {
+    remove_dead_for_sub_step(world, budget, 4, 3)
+}
+
+fn remove_dead_for_sub_step(
+    world: &mut World,
+    budget: &mut IterationBudget,
+    death_sub_step: u8,
+    gold_sub_step: u8,
+) -> Result<(), CombatAbort> {
     seed_chain_death_buffer(world);
 
     loop {
@@ -643,11 +833,11 @@ fn remove_dead(world: &mut World, budget: &mut IterationBudget) -> Result<(), Co
             return Err(err);
         }
 
-        remove_dead_unit(world, unit, attacker);
+        remove_dead_unit(world, unit, attacker, death_sub_step);
     }
 
     world.resource_mut::<ChainDeathBuffer>().0.clear();
-    drain_ss3_kill_gold(world);
+    drain_kill_gold(world, gold_sub_step);
 
     Ok(())
 }
@@ -692,7 +882,7 @@ fn collect_dead_units_lane_ordered(world: &mut World) -> Vec<(Entity, Option<Ent
         .collect()
 }
 
-fn remove_dead_unit(world: &mut World, unit: Entity, attacker: Option<Entity>) {
+fn remove_dead_unit(world: &mut World, unit: Entity, attacker: Option<Entity>, sub_step: u8) {
     let Some(position) = world.get::<BoardPosition>(unit).copied() else {
         return;
     };
@@ -724,7 +914,7 @@ fn remove_dead_unit(world: &mut World, unit: Entity, attacker: Option<Entity>) {
             .push(CombatTraceEntry::KeywordTriggered {
                 unit,
                 keyword: KeywordKind::Death,
-                sub_step: 4,
+                sub_step,
             });
     }
 
@@ -752,10 +942,10 @@ fn remove_unit_from_board_state(world: &mut World, unit: Entity, position: Board
     }
 }
 
-fn drain_ss3_kill_gold(world: &mut World) {
+fn drain_kill_gold(world: &mut World, sub_step: u8) {
     let records = world
         .get_resource_mut::<CombatKillLog>()
-        .map(|mut kill_log| kill_log.drain_for_sub_step(3))
+        .map(|mut kill_log| kill_log.drain_for_sub_step(sub_step))
         .unwrap_or_default();
 
     for record in records {
@@ -768,6 +958,10 @@ fn drain_ss3_kill_gold(world: &mut World) {
             });
         award_kill_gold(world, record.killer_player_id);
     }
+}
+
+fn drain_ss3_kill_gold(world: &mut World) {
+    drain_kill_gold(world, 3);
 }
 
 fn award_kill_gold(world: &mut World, player: PlayerId) {
@@ -826,16 +1020,47 @@ fn collect_combat_units(world: &mut World) -> Vec<CombatUnit> {
         .collect()
 }
 
+fn snapshot_for_combat_entity(entity: Entity, world: &World) -> Option<UnitSnapshot> {
+    let position = world.get::<BoardPosition>(entity).copied()?;
+    let stats = world.get::<UnitStats>(entity).copied()?;
+    let owner = world.get::<UnitOwner>(entity).copied()?;
+    let card_ref = world.get::<UnitCardRef>(entity).copied()?;
+    let card = card_for(card_ref.0, world)?;
+    let leader_atk_bonus = world
+        .get::<UnitKeywordState>(entity)
+        .map_or(0, |state| state.leader_bonus_atk);
+
+    Some(UnitSnapshot {
+        unit_id: entity.to_bits() as EntityId,
+        player: owner.0,
+        lane: position.lane,
+        cell: position.cell,
+        atk: stats.atk,
+        hp: stats.hp,
+        ar: stats.ar,
+        mp: stats.mp,
+        unit_type: card.unit_type,
+        keywords: card.keywords.clone(),
+        leader_atk_bonus,
+    })
+}
+
 fn select_combat_target<'a>(
     attacker: &CombatUnit,
     units: &'a [CombatUnit],
     session_config: &SessionConfig,
     board_config: &BoardConfig,
+    phase: CombatAttackPhase,
 ) -> Option<&'a CombatUnit> {
     if attacker.range_max.is_some() {
         select_single_nearest_range_target(attacker, units, session_config, board_config)
     } else {
-        select_melee_target(attacker, units, session_config)
+        select_melee_target(
+            attacker,
+            units,
+            session_config,
+            phase == CombatAttackPhase::Standard,
+        )
     }
 }
 
@@ -843,6 +1068,7 @@ fn select_melee_target<'a>(
     attacker: &CombatUnit,
     units: &'a [CombatUnit],
     session_config: &SessionConfig,
+    allow_adjacent_contact: bool,
 ) -> Option<&'a CombatUnit> {
     units
         .iter()
@@ -850,7 +1076,9 @@ fn select_melee_target<'a>(
             candidate.entity != attacker.entity
                 && candidate.snapshot.hp > 0
                 && candidate.snapshot.lane == attacker.snapshot.lane
-                && candidate.snapshot.cell == attacker.snapshot.cell
+                && (candidate.snapshot.cell == attacker.snapshot.cell
+                    || (allow_adjacent_contact
+                        && candidate.snapshot.cell.abs_diff(attacker.snapshot.cell) == 1))
                 && snapshots_are_enemies(&attacker.snapshot, &candidate.snapshot, session_config)
         })
         .min_by_key(|candidate| candidate.entity.index())

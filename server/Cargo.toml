@@ -280,3 +280,7 @@ path = "../tests/unit/combat/substep3_first_strike_test.rs"
 [[test]]
 name = "substep4_dead_removal_test"
 path = "../tests/unit/combat/substep4_dead_removal_test.rs"
+
+[[test]]
+name = "substep6_combat_shield_counterattack_test"
+path = "../tests/unit/combat/substep6_combat_shield_counterattack_test.rs"
