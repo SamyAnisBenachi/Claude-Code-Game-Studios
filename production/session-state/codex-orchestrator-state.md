@@ -18,8 +18,30 @@ source of truth for story status.
 - Workers run local Developer PowerShell checks, commit explicit owned paths,
   push their story branch, and report branch name, commit hash plus CI run if
   available.
+- Worker launch prompts must include the pre-integration duty: before the final
+  report, the worker rebases on latest `origin/main`, resolves conflicts inside
+  its story worktree, reruns the full listed verification after the rebase,
+  runs `git diff --check`, and pushes only the `work/...` branch if allowed.
+  If worker branch push is blocked, the worker reports the local commit hash
+  and final clean worktree status instead of attempting unsafe workarounds.
+- Worker final reports must include: worktree path, branch, commit hash,
+  changed files, exact checks run with results, blockers/notes, whether rebase
+  happened, whether branch push succeeded, and final `git status`.
+- If a worker touches shared protocol/config/Cargo workspace surfaces, its
+  prompt must require `cargo check --workspace` after rebase. Otherwise use
+  the narrow package check plus affected regressions.
 - The root checkout stays reserved for orchestrator integration merges,
   story-done, CI triage, and state tracking.
+- Root/orchestrator responsibilities after a worker return: only act after the
+  user pastes the official return; update this memory file; integrate by
+  cherry-pick/merge to `main`; run minimal trust checks rather than redoing the
+  whole worker suite unless risk or shared surfaces require it; push `main`;
+  then queue exactly one serialized `/story-done`.
+- Workers must never push `main`, run `/story-done`, or edit
+  `production/session-state/active.md`,
+  `production/session-state/codex-orchestrator-state.md`, or
+  `production/sprint-status.yaml` unless a prompt explicitly authorizes that
+  specific tracking/closure work.
 - Story-done windows are serialized because they edit shared production files.
 - Keep commits scoped. If the pre-commit hook blocks due to mixed files, unstage
   and re-add explicit owned paths.
