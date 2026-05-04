@@ -251,14 +251,12 @@ None currently tracked here.
   checks. Story-done updated
   `production/epics/auction-system/story-008-pool-integration.md`,
   `production/session-state/active.md`, and sprint-status row S5-14.
-- COMBAT-006 / S5-08 readiness returned NEEDS WORK. No hard dependency
-  blockers: Combat Stories 001/002/005 are Complete and ADR-017 is Accepted.
-  Docs/story blockers before `/dev-story`: stale `TR-CR-???` trace and
-  missing active TR for CR-25, stale manifest `2026-04-30`, recursive
-  DEATH-chain wording that conflicts with current ChainDeathBuffer/no-recursive
-  `world.trigger_targets()` rule, and missing `<= 15 ms` RESOLUTION performance
-  budget note. Correct next action: `REPONDRE` in that readiness window with a
-  docs-only repair prompt; do not implement until readiness reruns READY.
+- COMBAT-006 / S5-08 readiness repair returned READY and was pushed at
+  `acafff6`. It is safe to launch `/dev-story` next. The repair updated
+  `docs/architecture/tr-registry.yaml` and
+  `production/epics/combat-resolution/story-006-substep4-dead-removal.md`,
+  resolving stale traceability, manifest version, ChainDeathBuffer/no-recursive
+  DEATH-chain wording, and the `<= 15 ms` RESOLUTION performance note.
 - COMBAT-004: Movement + Collision readiness repair landed on main at
   `c2fc0d3`; implementation landed on main at `408c34a`; story-done closure
   committed at `52caa45`; follow-up story scope clarification committed at
