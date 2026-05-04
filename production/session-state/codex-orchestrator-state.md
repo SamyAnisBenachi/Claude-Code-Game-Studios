@@ -116,13 +116,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- AUC-007: Auction Plugin Scheduling readiness repair landed on main at
-  `f96a524`; implementation landed on main at `ea5d88d`. Verification passed
-  `cargo check -p server`, focused auction tests 31/31 with 1 pre-existing
-  ignored test, source-only deprecated Bevy event API grep with zero matches,
-  `ResMut<AuctionState>` grep with exactly one source match, and diff checks.
-  This was one of the Sprint 5 out-of-plan pull-forward items and has now
-  returned READY plus integrated; it still needs `/story-done`.
 - HAND-UI-011: Reserve Mana Strip implementation landed on main at `bd8c15b`.
   Verification passed `cargo test -p client --test
   hand_ui_reserve_mana_strip_test` 3/3, placement submit/plugin/unstaging
@@ -145,6 +138,13 @@ None currently tracked here.
   it still needs `/story-done`.
 ## Recently Closed
 
+- AUC-007: Auction Plugin Scheduling readiness repair landed on main at
+  `f96a524`; implementation landed on main at `ea5d88d`; story-done closure
+  committed at `a5eaadc`. Verification passed the targeted auction/economy
+  test set 39/39 with 1 pre-existing ignored AUC-006 edge test, `cargo check
+  -p server`, and diff checks. `production/sprint-status.yaml` had no matching
+  AUC-007 row. AU1-b-network remains recorded as a deferred/open sprint-review
+  note pending ADR-008 FIFO integration evidence.
 - OBJECTIVE-005: Destruction Consequence Path readiness repair landed on main
   at `e903c69`; implementation landed on main at `cf93a8d`; story-done
   closure committed at `b5ecd56`. Verification passed `cargo test -p server
@@ -559,16 +559,13 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. AUC-007:
-   `production/epics/auction-system/story-007-auction-plugin-scheduling.md`
-   after integration commit `ea5d88d`.
-2. HAND-UI-011:
+1. HAND-UI-011:
    `production/epics/hand-ui/story-011-reserve-mana-strip.md`
    after integration commit `bd8c15b`.
-3. BOARD-010:
+2. BOARD-010:
    `production/epics/board-lane-system/story-010-displacement-keywords.md`
    after integration commit `e49f5a2`.
-4. CDP-006:
+3. CDP-006:
    `production/epics/card-data-pool/story-006-network-dispatch-wiring.md`
    after integration commit `4d21482`.
 
@@ -585,10 +582,10 @@ Run only one story-done at a time.
   - CDP-006 Network Dispatch Wiring
   Treat those items as Sprint 5 in-flight only after their worker readiness
   repairs return READY and are reconciled during integration/story-done.
-  AUC-007 has returned READY and is integrated at `f96a524`/`ea5d88d`;
-  HAND-UI-011 is integrated at `bd8c15b`; BOARD-010 is integrated at
+  AUC-007 has returned READY, integrated at `f96a524`/`ea5d88d`, and closed
+  at `a5eaadc`; HAND-UI-011 is integrated at `bd8c15b`; BOARD-010 is integrated at
   `40b3176`/`e49f5a2`; CDP-006 is integrated at `e03dfcb`/`4d21482`;
-  all four remain pending story-done.
+  the remaining three remain pending story-done.
 - Sprint 4 QA plan missing: resolved at `8578890` with
   `production/qa/qa-plan-sprint-4-2026-05-03.md`. S4-14 Economy Network
   Dispatch can now run story-readiness, but `production/sprint-status.yaml`
@@ -617,7 +614,7 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- None known at this checkpoint. CDP-006, BOARD-010, HAND-UI-011, AUC-007,
+- None known at this checkpoint. CDP-006, BOARD-010, HAND-UI-011,
   HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009,
   COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have returned and
   are integrated or closed as noted; do not relaunch their implementation
@@ -632,10 +629,9 @@ Current active windows by user default-launch rule:
   cleared. It now needs serialized `/story-done` after HAND-UI-011.
 - HAND-UI-011 returned, integrated into main at `bd8c15b`, verified, and is on
   origin/main after orchestrator push. Window can be cleared. It now needs
-  serialized `/story-done` after AUC-007.
-- AUC-007 returned, integrated into main at `f96a524` and `ea5d88d`,
-  verified, and is on origin/main after orchestrator push. Window can be
-  cleared. It now needs serialized `/story-done`.
+  serialized `/story-done`.
+- AUC-007 story-done returned and was committed at `a5eaadc`; window can be
+  cleared.
 - OBJECTIVE-005 story-done returned and was committed at `b5ecd56`; window can
   be cleared.
 - COMBAT-003 story-done returned and was committed at `bcc73bb`; window can
