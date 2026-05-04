@@ -124,7 +124,20 @@ None currently tracked here.
   passed `cargo fmt -p server -- --check`, `cargo test -p server --test
   substep3_first_strike_test` 5/5, adjacent combat regressions 20/20,
   `cargo check -p server`, and `git diff --check HEAD~1..HEAD`.
-  Next action: launch serialized `/story-done`.
+  `/story-done` returned COMPLETE WITH NOTES and is awaiting approval to write
+  `production/epics/combat-resolution/story-005-substep3-first-strike.md`,
+  `production/session-state/active.md`, and matching sprint row S5-07.
+- AUC-008 worker returned implemented on branch
+  `work/auc-008-pool-integration` at worker commit `d1e8cba`; root
+  cherry-picked and pushed the implementation to `origin/main` at `c6a1d86`.
+  Worker changed auction pool/config/RNG surfaces and
+  `tests/integration/auction/pool_integration_test.rs`. Root verification
+  passed `cargo fmt -p server -- --check`, `cargo test -p server --test
+  auction_pool_integration_test` 5/5, auction regressions 39 passed with 1
+  pre-existing ignored test, card-pool regressions 12/12, filtered
+  `foundation::rng::tests`, `cargo check --workspace`, and
+  `git diff --check HEAD~1..HEAD`. Next action after COMBAT-005 closure:
+  launch serialized `/story-done`.
 
 ## Recent Planning / Readiness Updates
 
@@ -625,7 +638,11 @@ None currently tracked here.
 ## Story-Done Queue
 
 - COMBAT-005 / `production/epics/combat-resolution/story-005-substep3-first-strike.md`
-  is integrated at `e1733be` and needs serialized `/story-done`.
+  is integrated at `e1733be`; `/story-done` returned COMPLETE WITH NOTES and
+  is awaiting approval to write closure files.
+- AUC-008 / `production/epics/auction-system/story-008-pool-integration.md`
+  is integrated at `c6a1d86` and needs serialized `/story-done` after
+  COMBAT-005 closure finishes.
 
 Run only one story-done at a time.
 
@@ -687,11 +704,6 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- AUC-008 is assumed launched from the `/dev-story` prompt for
-  `production/epics/auction-system/story-008-pool-integration.md`.
-  Expected worktree: `D:\_DEV\claude-code-game-studios-worktrees\AUC-008`;
-  expected branch: `work/auc-008-pool-integration`. Await user-provided
-  worker return before integrating or classifying the window.
 - Full-game asset coverage audit, full card art coverage audit, and full
   UI/audio/VFX coverage audit are assumed launched from prompts. Await user
   reports before revising asset specs or generating art.
@@ -703,10 +715,12 @@ Current active windows by user default-launch rule:
 - COMBAT-005 implementation worker returned complete at `912fa45`; worker
   push was blocked by approval review, but the commit is locally visible from
   root. Root integrated and pushed it at `e1733be`. Window can be cleared.
-  Serialized COMBAT-005 story-done is now pending.
+  COMBAT-005 story-done returned COMPLETE WITH NOTES and needs `REPONDRE`
+  approval in that story-done window.
 - AUC-008 readiness repair returned READY and was committed at `c20e503`;
-  that readiness window can be cleared. AUC-008 implementation worker is
-  assumed launched and is pending return.
+  that readiness window can be cleared. AUC-008 implementation worker returned
+  complete at `d1e8cba`; root integrated and pushed it at `c6a1d86`. Window
+  can be cleared. Serialized AUC-008 story-done is queued after COMBAT-005.
 - S5-21 planning artifacts returned and were committed at `1c28e9c`; window
   can be cleared.
 - Sprint 6 draft returned as report-only and was not written; window can be
