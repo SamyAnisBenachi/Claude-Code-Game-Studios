@@ -1,7 +1,7 @@
 # Story 006: Network Dispatch Wiring
 
 > **Epic**: Card Data & Pool
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -37,10 +37,10 @@
 
 ## Acceptance Criteria
 
-- [ ] **AC-1**: GIVEN `ShopSlots[player_A]` is populated with three `CardId` values and `ReconnectTracker.snapshot_sent[player_A] == true`, WHEN the Card Acquisition dispatch path runs, THEN it assembles `S2CShopSlots` with those three slots and targets only `player_A`'s `PeerId` using `ReliableChannel`.
-- [ ] **AC-2**: GIVEN `InitialDraftOffering[player_A]` is populated with nine `CardId` values for DRAFT_INITIAL and `ReconnectTracker.snapshot_sent[player_A] == true`, WHEN the Card Acquisition dispatch path runs, THEN it assembles `S2CDraftOffering` with those nine IDs and targets only `player_A`'s `PeerId` using `ReliableChannel`.
-- [ ] **AC-3**: GIVEN `ShopSlots[player_A]` contains a partial fill with two cards and one empty slot, WHEN `S2CShopSlots` is assembled, THEN the message preserves the empty slot as `None` and does not invent a replacement `CardId`.
-- [ ] **AC-4**: GIVEN `ReconnectTracker.snapshot_sent[player_A] == false`, WHEN `S2CShopSlots` or `S2CDraftOffering` for `player_A` would be sent, THEN the message is stored in `ReconnectTracker.deferred_queue[player_A]` and is not live-sent until the snapshot gate is open.
+- [x] **AC-1**: GIVEN `ShopSlots[player_A]` is populated with three `CardId` values and `ReconnectTracker.snapshot_sent[player_A] == true`, WHEN the Card Acquisition dispatch path runs, THEN it assembles `S2CShopSlots` with those three slots and targets only `player_A`'s `PeerId` using `ReliableChannel`.
+- [x] **AC-2**: GIVEN `InitialDraftOffering[player_A]` is populated with nine `CardId` values for DRAFT_INITIAL and `ReconnectTracker.snapshot_sent[player_A] == true`, WHEN the Card Acquisition dispatch path runs, THEN it assembles `S2CDraftOffering` with those nine IDs and targets only `player_A`'s `PeerId` using `ReliableChannel`.
+- [x] **AC-3**: GIVEN `ShopSlots[player_A]` contains a partial fill with two cards and one empty slot, WHEN `S2CShopSlots` is assembled, THEN the message preserves the empty slot as `None` and does not invent a replacement `CardId`.
+- [x] **AC-4**: GIVEN `ReconnectTracker.snapshot_sent[player_A] == false`, WHEN `S2CShopSlots` or `S2CDraftOffering` for `player_A` would be sent, THEN the message is stored in `ReconnectTracker.deferred_queue[player_A]` and is not live-sent until the snapshot gate is open.
 
 ---
 
@@ -140,3 +140,12 @@ No new steady-state loop budget is introduced beyond the existing Card Acquisiti
 - Depends on: `S2CShopSlots` and `S2CDraftOffering` message types in `shared/src/protocol.rs`.
 - Depends on: Lightyear 0.26.4 verification evidence in `tests/evidence/lightyear-026-verification.md` items #1, #7, and #9.
 - Unlocks: None; this is the final story in the card-data-pool epic.
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 4/4 passing. AC-1 through AC-4 are covered by `tests/unit/network/shop_dispatch_test.rs`; AC-4 also has supporting reconnect regression coverage in `tests/integration/session/reconnect_snapshot_test.rs`.
+**Deviations**: None blocking. Note: `production/sprint-status.yaml` has no matching CDP-006/S5-04 row and was not updated per approval boundary.
+**Test Evidence**: `cargo test -p server --test shop_dispatch_test` passed 5/5. `cargo test -p server --test reconnect_snapshot_test acquisition_unicast_helpers_defer_while_snapshot_pending` passed 1/1 filtered test. `cargo check -p server` passed.
+**Code Review**: Skipped - lean mode.

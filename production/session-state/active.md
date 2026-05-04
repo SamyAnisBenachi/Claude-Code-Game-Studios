@@ -1620,3 +1620,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per approval boundary; no matching `BOARD-010` row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the Sprint 5 queue from `production/sprints/sprint-5.md`, or run a fresh sprint/status scan before pulling the next story.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/card-data-pool/story-006-network-dispatch-wiring.md` - Story 006: Network Dispatch Wiring
+- Criteria: 4/4 passing; AC-1 through AC-4 covered by `tests/unit/network/shop_dispatch_test.rs`, with AC-4 also supported by the reconnect snapshot regression.
+- Test Evidence: `cargo test -p server --test shop_dispatch_test` passed 5/5. `cargo test -p server --test reconnect_snapshot_test acquisition_unicast_helpers_defer_while_snapshot_pending` passed 1/1 filtered test. `cargo check -p server` passed.
+- Verification: Current `main` contains integrated commit `4d21482`; `S2CShopSlots` and `S2CDraftOffering` remain reliable server-to-client protocol messages, dispatch helpers resolve only the owning player's `PeerId`, partial shop slots preserve `None`, and reconnect-pending acquisition messages queue through `ReconnectTracker.deferred_queue`.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviation found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per user instruction; `production/sprint-status.yaml` was not touched and has no matching CDP-006/S5-04 row.
+- Next recommended: Continue the Sprint 5 queue from `production/sprints/sprint-5.md`; likely next Must Have is Combat Story 004 Movement + Collision after readiness/status review.
