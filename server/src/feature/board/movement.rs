@@ -83,13 +83,22 @@ pub fn apply_attract(
     caster_cell: u8,
     target_cell: u8,
     attract_amount: u8,
+    target_is_enemy: bool,
     board_config: &BoardConfig,
 ) -> u8 {
     let direction = (caster_cell as i16 - target_cell as i16).signum();
+    let distance = (caster_cell as i16 - target_cell as i16).abs();
+    let max_pull = if target_is_enemy {
+        distance.saturating_sub(1)
+    } else {
+        distance
+    };
+    let effective_amount = attract_amount.min(max_pull as u8);
+
     apply_f1(
         target_cell,
         direction,
-        attract_amount,
+        effective_amount,
         board_config.cell_min,
         board_config.cell_max,
     )
@@ -349,7 +358,7 @@ pub fn apply_attract_displacements(
     mut trap_triggers: MessageWriter<TrapTrigger>,
     irremovable: Query<(), With<Irremovable>>,
     mut units: ParamSet<(
-        Query<&BoardPosition>,
+        Query<(&BoardPosition, &UnitOwner)>,
         Query<(&mut BoardPosition, &UnitOwner)>,
     )>,
 ) {
@@ -358,21 +367,27 @@ pub fn apply_attract_displacements(
             continue;
         }
 
-        let caster_cell = {
+        let (caster_cell, caster_owner) = {
             let caster_positions = units.p0();
-            let Ok(caster_position) = caster_positions.get(displacement.caster) else {
+            let Ok((caster_position, caster_owner)) = caster_positions.get(displacement.caster)
+            else {
                 continue;
             };
-            caster_position.cell
+            (caster_position.cell, caster_owner.0)
         };
         let mut target_positions = units.p1();
         let Ok((mut target_position, owner)) = target_positions.get_mut(displacement.target) else {
+            continue;
+        };
+        let Some(target_is_enemy) = players_are_enemies(caster_owner, owner.0, &session_config)
+        else {
             continue;
         };
         let destination_cell = apply_attract(
             caster_cell,
             target_position.cell,
             displacement.amount,
+            target_is_enemy,
             &board_config,
         );
         let destination_lane = target_position.lane;
@@ -389,6 +404,17 @@ pub fn apply_attract_displacements(
             destination_cell,
         );
     }
+}
+
+fn players_are_enemies(
+    first: PlayerId,
+    second: PlayerId,
+    session_config: &SessionConfig,
+) -> Option<bool> {
+    let first_team = session_config.team_map.get(&first).copied()?;
+    let second_team = session_config.team_map.get(&second).copied()?;
+
+    Some(first_team != second_team)
 }
 
 /// Executes queued CHANGE LANE displacements.

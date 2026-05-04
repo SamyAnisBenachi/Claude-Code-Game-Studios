@@ -99,10 +99,10 @@ fn test_new_010b_repel_clamps_player_b_spawn_boundary() {
 fn test_bl_24_and_new_010a_attract_uses_caster_relative_direction() {
     let config = BoardConfig::default();
 
-    assert_eq!(apply_attract(8, 5, 5, &config), 8);
-    assert_eq!(apply_attract(2, 6, 3, &config), 3);
-    assert_eq!(apply_attract(3, 3, 10, &config), 3);
-    assert_eq!(apply_attract(1, 6, 10, &config), 1);
+    assert_eq!(apply_attract(8, 5, 5, true, &config), 7);
+    assert_eq!(apply_attract(2, 6, 3, true, &config), 3);
+    assert_eq!(apply_attract(3, 3, 10, true, &config), 3);
+    assert_eq!(apply_attract(1, 6, 10, false, &config), 1);
 }
 
 #[test]
