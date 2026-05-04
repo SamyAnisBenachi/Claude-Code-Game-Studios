@@ -1576,3 +1576,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per user instruction; no matching COMBAT-003 row exists in `production/sprint-status.yaml`.
 - Next recommended: Continue the serialized closure queue with Objective Story 005 (`production/epics/objective-system/story-005-destruction-consequence-path.md`).
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE
+- Story: `production/epics/objective-system/story-005-destruction-consequence-path.md` - Story 005: Destruction Consequence Path
+- Criteria: 7/7 passing; OS-7, OS-9, OS-10, OS-13a, OS-14, OS-18a, and OS-21 covered by `tests/unit/objective/consequence_path_test.rs`.
+- Test Evidence: `cargo test -p server --test consequence_path_test` passed 7/7.
+- Verification: Current `main` after integrated commit `cf93a8d` queues `ObjectiveDestroyed` with `target_player_id`, lane, and `was_fake`; awards objective gold once on opponent destruction; increments real destroyed counters for real objectives including self-destruction; preserves fake counters/rewards for self-destroyed fakes; and preserves lane-ascending queue order through `take_damage`.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviation found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per user instruction; no matching OBJECTIVE-005 row exists in `production/sprint-status.yaml`.
+- Next recommended: Objective Story 006 D4 Fake Reward Draw (`production/epics/objective-system/story-006-d4-fake-reward-draw.md`) after readiness check.

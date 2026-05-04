@@ -1,7 +1,7 @@
 # Story 005: Destruction Consequence Path
 
 > **Epic**: Objective System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -35,13 +35,13 @@
 
 *From GDD `design/gdd/objective-system.md`, scoped to this story:*
 
-- [ ] OS-7 (BLOCKING): GIVEN any objective (real or fake) is destroyed by the opponent (`attacker_player ≠ defending_player`), WHEN the consequence path runs, THEN `AwardGold { player: attacker_player, amount: 3 }` is emitted exactly once.
-- [ ] OS-9 (BLOCKING): GIVEN `real_objectives_destroyed(player) = 1`, WHEN that player's second real objective is destroyed, THEN `real_objectives_destroyed(player) = 2`. (Unit test scope: assert the count only — RSM transition to GAME_OVER is verified in RSM integration tests.)
-- [ ] OS-10 (BLOCKING): GIVEN both players each have `real_objectives_destroyed` = 1, WHEN one unit in each player's lane deals lethal damage to a real opponent objective in the same RESOLUTION sub-step sequence, THEN `real_objectives_destroyed(player_a) = 2` AND `real_objectives_destroyed(player_b) = 2` after all sub-steps complete. (Unit test scope: assert counts only.)
-- [ ] OS-13a (BLOCKING): GIVEN an objective is destroyed by the opponent, WHEN the consequence path runs, THEN `ObjectiveDestroyed { target_player_id, lane, was_fake: bool }` is queued with the correct payload. (This story tests queuing. Story 007 tests that it broadcasts at RESOLUTION-end, not mid-sub-step.)
-- [ ] OS-14 (BLOCKING): GIVEN `attacker_player == defending_player` (self-destruction), WHEN a real objective is destroyed, THEN no gold is awarded, no fake rewards fire, and `real_objectives_destroyed(defending_player)` increments by 1.
-- [ ] OS-18a (BLOCKING): GIVEN units at Cell 8 in both lane 1 and lane 3 dealing lethal damage to the opponent's objectives in the same RESOLUTION sub-step 6, WHEN `take_damage()` is processed, THEN the lane 1 consequence path fires before the lane 3 path (verified by event emission order in unit test).
-- [ ] OS-21 (BLOCKING): GIVEN `attacker_player == defending_player` and the destroyed objective is a fake, WHEN the consequence path runs, THEN `fake_objectives_destroyed(defender)` is unchanged, no `AwardGold` is emitted, and no mana cap or card reward fires. The slot is marked destroyed and `ObjectiveDestroyed` is queued.
+- [x] OS-7 (BLOCKING): GIVEN any objective (real or fake) is destroyed by the opponent (`attacker_player ≠ defending_player`), WHEN the consequence path runs, THEN `AwardGold { player: attacker_player, amount: 3 }` is emitted exactly once.
+- [x] OS-9 (BLOCKING): GIVEN `real_objectives_destroyed(player) = 1`, WHEN that player's second real objective is destroyed, THEN `real_objectives_destroyed(player) = 2`. (Unit test scope: assert the count only — RSM transition to GAME_OVER is verified in RSM integration tests.)
+- [x] OS-10 (BLOCKING): GIVEN both players each have `real_objectives_destroyed` = 1, WHEN one unit in each player's lane deals lethal damage to a real opponent objective in the same RESOLUTION sub-step sequence, THEN `real_objectives_destroyed(player_a) = 2` AND `real_objectives_destroyed(player_b) = 2` after all sub-steps complete. (Unit test scope: assert counts only.)
+- [x] OS-13a (BLOCKING): GIVEN an objective is destroyed by the opponent, WHEN the consequence path runs, THEN `ObjectiveDestroyed { target_player_id, lane, was_fake: bool }` is queued with the correct payload. (This story tests queuing. Story 007 tests that it broadcasts at RESOLUTION-end, not mid-sub-step.)
+- [x] OS-14 (BLOCKING): GIVEN `attacker_player == defending_player` (self-destruction), WHEN a real objective is destroyed, THEN no gold is awarded, no fake rewards fire, and `real_objectives_destroyed(defending_player)` increments by 1.
+- [x] OS-18a (BLOCKING): GIVEN units at Cell 8 in both lane 1 and lane 3 dealing lethal damage to the opponent's objectives in the same RESOLUTION sub-step 6, WHEN `take_damage()` is processed, THEN the lane 1 consequence path fires before the lane 3 path (verified by event emission order in unit test).
+- [x] OS-21 (BLOCKING): GIVEN `attacker_player == defending_player` and the destroyed objective is a fake, WHEN the consequence path runs, THEN `fake_objectives_destroyed(defender)` is unchanged, no `AwardGold` is emitted, and no mana cap or card reward fires. The slot is marked destroyed and `ObjectiveDestroyed` is queued.
 
 ---
 
@@ -162,7 +162,7 @@ Emission ordering for `PendingObjectiveEvents.queue`: callers must call `take_da
 **Story Type**: Logic
 **Required evidence**: `tests/unit/objective/consequence_path_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -170,3 +170,15 @@ Emission ordering for `PendingObjectiveEvents.queue`: callers must call `take_da
 
 - Depends on: Story 004 must be DONE (consequence path is triggered by the destruction detection in `take_damage`)
 - Unlocks: Story 006 (D4 fake reward draw is called from within the consequence path)
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Verdict**: COMPLETE
+**Criteria**: 7/7 passing (OS-7, OS-9, OS-10, OS-13a, OS-14, OS-18a, OS-21)
+**Deviations**: None
+**Advisories**: None
+**Test Evidence**: Logic unit test `tests/unit/objective/consequence_path_test.rs` exists and `cargo test -p server --test consequence_path_test` passed 7/7.
+**Code Review**: Skipped - lean mode.
+**QA Coverage Gate**: Skipped - lean mode.
+**Verification**: `git diff --check`; `cargo test -p server --test consequence_path_test`; `cargo check -p server`.
