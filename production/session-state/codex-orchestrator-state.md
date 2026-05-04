@@ -214,8 +214,24 @@ None currently tracked here.
   blending, ImageScaleMode, particles, and OGG loops are not locked; manifest
   inconsistencies include ASSET-119, ASSET-071, class atlas dimensions, auction
   border over-baking, and board cell variant tinting. The full-game asset audit
-  window can be cleared. Card art coverage and UI/audio/VFX coverage audit
-  windows are still pending unless the user provides their returns.
+  window can be cleared.
+- Full card art coverage audit returned with verdict that card art coverage is
+  not sufficient yet. No files were edited. Current `assets/data/cards.json`
+  has 8 unique `art_id`s, but none has a unique per-card illustration spec and
+  `assets/art/cards/` does not exist, so no display/zoom card illustration
+  PNGs exist. Catalog planning is inconsistent (`~298` vs `~315` usable cards)
+  and registry plans 2 Prism spell cards absent from `cards.json`. The hand UI
+  asset spec currently conflicts with layered composition by describing baked
+  full card faces while ASSET-055..059 define frame/badges/text/type layers.
+  Required direction: per-card art should be illustration-only; frame, badges,
+  text, type/rarity, hover/ghost, and state overlays compose at runtime. Generate
+  or spec now only after fixing the layered-composition wording: 8 current
+  per-card specs, 16 display/zoom PNG targets, and missing current type/rarity
+  icons (`trap_epic`, `field_legendary`, `order_rare`,
+  `doubleface_uncommon`). Defer the full ~315-card catalog until roster count,
+  card IDs, and art IDs are reconciled. Card art audit window can be cleared.
+  UI/audio/VFX coverage audit remains pending unless the user provides its
+  return.
 
 ## Recently Closed
 
@@ -736,9 +752,9 @@ Batch launched:
 
 Active implementation workers by default-launch rule:
 - Full-game asset coverage audit returned and can be cleared. Full card art
-  coverage audit and full UI/audio/VFX coverage audit are still assumed
-  launched/pending. Await those reports before revising asset specs or
-  generating art.
+  coverage audit returned and can be cleared. Full UI/audio/VFX coverage audit
+  is still assumed launched/pending. Await that report before revising asset
+  specs or generating art.
 - HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009, COMBAT-002, OBJECTIVE-004,
   BOARD-008, and HAND-UI-007 have returned and are integrated or closed as
   noted; do not relaunch their implementation workers.
@@ -770,7 +786,11 @@ Current active windows by user default-launch rule:
   not create a worker or implement code until it returns READY.
 - Full-game asset coverage audit returned: verdict says asset coverage is not
   complete enough for full-game asset generation; window can be cleared. Card
-  art coverage and UI/audio/VFX coverage audits remain pending.
+  art coverage audit returned: card art coverage is insufficient, current 8
+  cards need per-card illustration specs/display/zoom PNG targets, global
+  type/rarity icons are missing for current card types, and full catalog art is
+  deferred until roster/art IDs are reconciled; window can be cleared. UI/audio/
+  VFX coverage audit remains pending.
 - COMBAT-004 story-done returned and was committed at `52caa45`; follow-up
   scope clarification committed at `3ef7bab`; window can be cleared.
 - CDP-006 story-done returned and was committed at `199a9b3`; window can be
