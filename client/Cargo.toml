@@ -138,3 +138,7 @@ path = "../tests/integration/card-animations/input_gating_test.rs"
 [[test]]
 name = "card_animations_placement_reveal_test"
 path = "../tests/integration/card-animations/placement_reveal_test.rs"
+
+[[test]]
+name = "presentation_plugin_scaffold_test"
+path = "../tests/integration/presentation/presentation_plugin_scaffold_test.rs"
