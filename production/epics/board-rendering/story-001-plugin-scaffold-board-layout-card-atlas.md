@@ -1,0 +1,69 @@
+# Story 001: Plugin Scaffold, BoardLayout, and CardAtlas
+
+> **Epic**: Board Rendering
+> **Status**: Ready
+> **Layer**: Presentation
+> **Type**: Logic
+> **Manifest Version**: 2026-05-01
+
+## Context
+
+**GDD**: `design/gdd/board-rendering.md`
+**Requirement**: `TR-BR-002`
+**ADR Governing Implementation**: [ADR-021: Presentation Layer Architecture](../../../docs/architecture/adr-021-presentation-layer-architecture.md)
+
+`BoardRenderingPlugin` owns the session-scoped `BoardLayout` and `CardAtlas` resources consumed by Hand UI, HUD, and Card Animations. Current client code has `BoardLayout` in `client/src/ui/shared.rs`, but its `cell_to_world` returns `Option<Vec2>`; the GDD requires a canonical coordinate authority with assertion-backed invalid input handling. This story establishes the plugin/resource contract before any visual entity spawning.
+
+## Acceptance Criteria
+
+- [ ] `BoardRenderingPlugin` can be registered in a minimal client `App` without panic.
+- [ ] `BoardLayout` is inserted on `OnEnter(ClientState::InSession)` and removed on `OnExit`.
+- [ ] `CardAtlas` is inserted on session entry as a shared resource with `Handle<Image>` plus `Handle<TextureAtlasLayout>`.
+- [ ] `BoardLayout::cell_to_world(1, 1)` returns `board_origin`.
+- [ ] `BoardLayout::cell_to_world(1, 2)` returns `board_origin + Vec2::new(cell_width, 0.0)`.
+- [ ] Invalid lane/cell values fail loudly through the agreed GDD assertion path; downstream systems do not silently ignore invalid coordinates.
+- [ ] No `MessageReceiver<S2CPhaseChanged>` is registered by this plugin; phase is read through `Res<CurrentClientPhase>` only.
+
+## Implementation Notes
+
+- Follow ADR-021 plugin order: `CardAnimationsPlugin`, `BoardRenderingPlugin`, `HandUiPlugin`, `HudPlugin`, `ShopAuctionUiPlugin`.
+- Use Bevy 0.18 Required Components API. Do not introduce `*Bundle` types.
+- `CardAtlas` must use the Bevy 0.18 pattern: `Handle<Image>` plus `Handle<TextureAtlasLayout>` inside `Sprite.texture_atlas`.
+- Keep `BoardLayout` as the single coordinate authority. Do not hardcode lane/cell positions in later stories.
+- If retaining the existing `client/src/ui/shared.rs` type, update its contract in this story so all current consumers compile against the canonical API.
+
+## Out of Scope
+
+- Board grid/camera spawning (Story 002).
+- Snapshot-driven unit and objective spawning (Story 003).
+- Ghost previews and placement reveal animation (Stories 004 and 005).
+
+## QA Test Cases
+
+- **BR-2 layout formula**
+  - Given: a `BoardLayout` with `board_origin = Vec2::new(-128.0, 160.0)`, `cell_width = 64.0`, `lane_height = 80.0`
+  - When: `cell_to_world(1, 1)`, `cell_to_world(1, 2)`, and `cell_to_world(2, 1)` are called
+  - Then: positions match the GDD formula exactly.
+
+- **Resource lifecycle**
+  - Given: `App::new()` with `BoardRenderingPlugin`
+  - When: `ClientState::InSession` is entered and then exited
+  - Then: `BoardLayout` and `CardAtlas` exist during the session and are absent after exit.
+
+- **Phase drain guard**
+  - Given: client source after implementation
+  - When: `rg "MessageReceiver<S2CPhaseChanged>" client/src`
+  - Then: only the shared phase sink owns the Lightyear receiver.
+
+## Test Evidence
+
+**Required evidence**:
+- Logic: `tests/unit/board_rendering/plugin_scaffold_test.rs`
+- CI grep: `MessageReceiver<S2CPhaseChanged>` appears only in the shared phase sink.
+
+**Status**: [ ] Not yet created
+
+## Dependencies
+
+- Depends on: None.
+- Unlocks: Stories 002, 003, 004, 005, 006, 007, 008, 009, 010.
