@@ -1697,3 +1697,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-15 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
 - Next recommended: Combat Story 7 Standard Combat + SHIELD + COUNTERATTACK (`production/epics/combat-resolution/story-007-substep6-combat-shield-counterattack.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE
+- Story: `production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md` - Story 001: PresentationPlugin, PresentationSet, and Phase Sink
+- Criteria: 15/15 passing; ADR-021 R1/R5 and control-manifest presentation rules accepted as sufficient traceability for this ADR-only infrastructure.
+- Test Evidence: `tests/integration/presentation/presentation_plugin_scaffold_test.rs`; `cargo test -p client --test presentation_plugin_scaffold_test` passed 3/3. `cargo test -p client --test hud_phase_transitions_test --test hand_ui_phase_state_machine_test --test card_animations_plugin_scaffold_test` passed 16/16. `cargo check -p client` passed.
+- Verification: Current `main` includes integrated commit `1c5c40f`; `PresentationPlugin` exports and registers the shared presentation layer, configures `PresentationSet` order `PhaseTransition -> MessageDrain -> StateSync -> AnimationTick`, owns the single `MessageReceiver<S2CPhaseChanged>` phase sink, applies last-write-wins phase updates while ignoring timer display data, bridges HUD/Hand UI/Card Animations into ADR-021 scheduling, and documents Board Rendering and Shop/Auction UI slots.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviation found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged per user instruction; no matching `PRESENTATION-001` row exists in `production/sprint-status.yaml`.
+- Next recommended: Combat Story 7 Standard Combat + SHIELD + COUNTERATTACK (`production/epics/combat-resolution/story-007-substep6-combat-shield-counterattack.md`) after readiness check.

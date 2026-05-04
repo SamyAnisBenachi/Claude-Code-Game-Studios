@@ -1,7 +1,7 @@
 # Story 001: PresentationPlugin, PresentationSet, and Phase Sink
 
 > **Epic**: Presentation Layer
-> **Status**: Ready-for-Readiness
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -92,9 +92,19 @@ No dedicated `TR-PRES-*` entry exists in `docs/architecture/tr-registry.yaml` fo
 - Integration: `tests/integration/presentation/presentation_plugin_scaffold_test.rs`
 - CI or local grep guard: `MessageReceiver<S2CPhaseChanged>` appears only in the shared phase sink under production client source.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Verified locally on 2026-05-04
 
 ## Dependencies
 
 - Depends on: ADR-021 Accepted; existing client `ClientState`; existing `CurrentClientPhase` scaffold or approved move/re-export path.
 - Unlocks: `production/epics/board-rendering/story-001-plugin-scaffold-board-layout-card-atlas.md`; `production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md`; final ADR-021 registration bridge for HUD, Hand UI, and Card Animations.
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Verdict**: COMPLETE
+**Criteria**: 15/15 passing.
+**Traceability**: ADR-only infrastructure. ADR-021 R1/R5 plus the current control manifest were accepted as sufficient traceability; no `TR-PRES-*` entry is required for this story.
+**Deviations**: None.
+**Test Evidence**: Integration evidence exists at `tests/integration/presentation/presentation_plugin_scaffold_test.rs`; `cargo test -p client --test presentation_plugin_scaffold_test` passed 3/3; HUD/Hand UI/Card Animations regression command passed 16/16; `cargo check -p client` passed; `rg -n "MessageReceiver<S2CPhaseChanged>" client/src` returned exactly one production occurrence; `git diff --check` passed.
+**Code Review**: Lean mode; QL-TEST-COVERAGE and LP-CODE-REVIEW gates skipped per review mode.
