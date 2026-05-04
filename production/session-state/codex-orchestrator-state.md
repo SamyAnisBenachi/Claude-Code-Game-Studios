@@ -268,11 +268,15 @@ None currently tracked here.
   `production/epics/auction-system/story-008-pool-integration.md`,
   `production/session-state/active.md`, and sprint-status row S5-14.
 - COMBAT-006 / S5-08 readiness repair returned READY and was pushed at
-  `acafff6`. It is safe to launch `/dev-story` next. The repair updated
-  `docs/architecture/tr-registry.yaml` and
-  `production/epics/combat-resolution/story-006-substep4-dead-removal.md`,
-  resolving stale traceability, manifest version, ChainDeathBuffer/no-recursive
-  DEATH-chain wording, and the `<= 15 ms` RESOLUTION performance note.
+  `acafff6`. Worker implementation returned at `ea43240` on
+  `work/combat-006-dead-removal-death-chain-kill-gold`; root fast-forwarded
+  and pushed that commit to `origin/main`. Verification passed
+  `cargo fmt -p server -- --check`,
+  `cargo test -p server --test substep4_dead_removal_test` 3/3,
+  adjacent combat regressions 25/25, `cargo check -p server`, and
+  `git diff --check`. Next action: run `/story-done` for
+  `production/epics/combat-resolution/story-006-substep4-dead-removal.md`.
+  Do not relaunch the COMBAT-006 implementation worker.
 - COMBAT-004: Movement + Collision readiness repair landed on main at
   `c2fc0d3`; implementation landed on main at `408c34a`; story-done closure
   committed at `52caa45`; follow-up story scope clarification committed at
@@ -797,6 +801,8 @@ Active implementation workers by default-launch rule:
   noted; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
+- COMBAT-006 implementation worker returned, root integrated and pushed commit
+  `ea43240`; window can be cleared. Story-done for COMBAT-006 is now pending.
 - COMBAT-005 story-done returned, wrote closure files, and pushed closure at
   `621fef5`; window can be cleared.
 - Server RNG 003 story-done returned, wrote closure files, and pushed closure
