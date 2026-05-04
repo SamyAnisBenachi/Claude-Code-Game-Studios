@@ -1,24 +1,39 @@
 use bevy::prelude::*;
 use lightyear::prelude::{NetworkTarget, PeerId, Replicate, Server, ServerMultiMessageSender};
+use rand::{Rng, SeedableRng};
+use rand_chacha::ChaCha20Rng;
+use shared::card::CardId;
 use shared::protocol::{DraftPhase, ReliableChannel, S2CObjectiveIdentities};
 use shared::session::PlayerId;
 
-use crate::core::economy::AwardGold;
+use crate::core::economy::{AwardGold, ManaCapIncreased};
+use crate::core::pool::{PlayerPools, PoolFilter};
 use crate::core::rsm::DraftStarted;
 use crate::core::session::{
     defer_unicast_for_reconnect, DeferredMessage, PlayerConnectionMap, ReconnectTracker,
     SessionConfig,
 };
+use crate::feature::acquisition::{hand_push, PlayerHands, MAX_HAND_SIZE};
 use crate::feature::board::{FakeObjectiveDestroyed, LaneId};
 use crate::feature::objective::{
     HiddenObjectives, ObjectiveCounters, ObjectiveDestroyed, ObjectiveHp, ObjectiveSlot,
     PendingObjectiveEvents, OBJECTIVE_LANE_COUNT,
 };
-use crate::foundation::config::GameConfig;
+use crate::foundation::config::{CardCatalog, GameConfig};
 use crate::foundation::rng::ServerRng;
 
 const LOSS_THRESHOLD: u32 = 2;
 const DEFAULT_OBJECTIVE_GOLD_REWARD: u32 = 3;
+const FAKE_OBJECTIVE_HAND_FULL_GOLD_REWARD: u32 = 1;
+
+/// Unfiltered pool draw used by fake objective FreeCardPick rewards.
+pub const FAKE_REWARD_POOL_FILTER: PoolFilter = PoolFilter {
+    card_type: None,
+    card_types: None,
+    class: None,
+    rarity: None,
+    max_cost: None,
+};
 
 /// Local signal emitted after hidden objective identities are ready to send.
 #[derive(Message, Clone, Debug, PartialEq, Eq)]
@@ -253,6 +268,7 @@ pub fn apply_consequence_path(
         if was_fake {
             emit_fake_objective_destroyed(world, attacker_player);
             increment_fake_destroyed(world, attacker_player);
+            draw_fake_reward(world, lane, attacker_player);
         }
     }
 
@@ -290,8 +306,18 @@ fn emit_award_gold(world: &mut World, player: PlayerId) {
             config.objective_gold_reward
         });
 
+    emit_award_gold_amount(world, player, amount);
+}
+
+fn emit_award_gold_amount(world: &mut World, player: PlayerId, amount: u32) {
     if let Some(mut messages) = world.get_resource_mut::<Messages<AwardGold>>() {
         messages.write(AwardGold { player, amount });
+    }
+}
+
+fn emit_mana_cap_increased(world: &mut World, player: PlayerId) {
+    if let Some(mut messages) = world.get_resource_mut::<Messages<ManaCapIncreased>>() {
+        messages.write(ManaCapIncreased { player, amount: 1 });
     }
 }
 
@@ -321,6 +347,127 @@ fn increment_real_destroyed(world: &mut World, player: PlayerId) {
             .and_modify(|count| *count = count.saturating_add(1))
             .or_insert(1);
     }
+}
+
+/// Draws and applies the D4 fake objective reward for a destroyed fake.
+///
+/// The caller owns the consequence-path predicate: fake objective destroyed by
+/// the opponent. This function owns only the reward roll and application.
+#[allow(dead_code)]
+pub fn draw_fake_reward(world: &mut World, lane: LaneId, attacker_player: PlayerId) {
+    let Ok(rng_player_id) = u32::try_from(attacker_player.0) else {
+        warn!(
+            player_id = attacker_player.0,
+            lane, "fake objective reward skipped because player id exceeds current RNG API width"
+        );
+        return;
+    };
+
+    let Some(reward_seed) = consume_fake_reward_seed(world, rng_player_id, lane) else {
+        return;
+    };
+
+    match fake_reward_outcome(reward_seed) {
+        FakeRewardOutcome::ManaCapIncreased => emit_mana_cap_increased(world, attacker_player),
+        FakeRewardOutcome::FreeCardPick => {
+            resolve_fake_reward_free_card_pick(world, lane, attacker_player, rng_player_id);
+        }
+    }
+}
+
+fn consume_fake_reward_seed(world: &mut World, rng_player_id: u32, lane: LaneId) -> Option<u64> {
+    world
+        .get_resource_mut::<ServerRng>()
+        .map(|mut rng| rng.award_fake_objective_reward(rng_player_id, lane))
+}
+
+fn consume_draw_free_card_seed(world: &mut World, rng_player_id: u32) -> Option<u64> {
+    world
+        .get_resource_mut::<ServerRng>()
+        .map(|mut rng| rng.draw_free_card(rng_player_id))
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum FakeRewardOutcome {
+    ManaCapIncreased,
+    FreeCardPick,
+}
+
+fn fake_reward_outcome(seed: u64) -> FakeRewardOutcome {
+    let mut rng = ChaCha20Rng::seed_from_u64(seed);
+    match rng.gen_range(0u32..2) {
+        0 => FakeRewardOutcome::ManaCapIncreased,
+        1 => FakeRewardOutcome::FreeCardPick,
+        _ => unreachable!("gen_range(0..2) returns only 0 or 1"),
+    }
+}
+
+fn resolve_fake_reward_free_card_pick(
+    world: &mut World,
+    lane: LaneId,
+    attacker_player: PlayerId,
+    rng_player_id: u32,
+) {
+    let Some(hands) = world.get_resource::<PlayerHands>() else {
+        return;
+    };
+
+    if hands.hand_len(attacker_player) >= MAX_HAND_SIZE {
+        emit_award_gold_amount(world, attacker_player, FAKE_OBJECTIVE_HAND_FULL_GOLD_REWARD);
+        return;
+    }
+
+    if !world.contains_resource::<CardCatalog>() || !player_has_pool(world, attacker_player) {
+        return;
+    }
+
+    let Some(draw_seed) = consume_draw_free_card_seed(world, rng_player_id) else {
+        return;
+    };
+
+    let Some(card_id) = draw_and_distribute_fake_reward_card(world, attacker_player, draw_seed)
+    else {
+        return;
+    };
+
+    if let Some(mut hands) = world.get_resource_mut::<PlayerHands>() {
+        if hand_push(&mut hands, attacker_player, card_id).is_err() {
+            warn!(
+                player_id = attacker_player.0,
+                lane,
+                card_id = card_id.0,
+                "fake objective free card reward dropped after draw because hand became full"
+            );
+        }
+    }
+}
+
+fn player_has_pool(world: &World, player: PlayerId) -> bool {
+    world
+        .get_resource::<PlayerPools>()
+        .is_some_and(|pools| pools.pools.contains_key(&player))
+}
+
+fn draw_and_distribute_fake_reward_card(
+    world: &mut World,
+    player: PlayerId,
+    draw_seed: u64,
+) -> Option<CardId> {
+    world.resource_scope(|world, card_catalog: Mut<CardCatalog>| -> Option<CardId> {
+        let mut player_pools = world.get_resource_mut::<PlayerPools>()?;
+        let pool = player_pools.pools.get_mut(&player)?;
+        let card_id = pool.draw_random(&card_catalog.cards, &FAKE_REWARD_POOL_FILTER, draw_seed)?;
+        if let Err(error) = pool.distribute(card_id) {
+            warn!(
+                player_id = player.0,
+                card_id = card_id.0,
+                ?error,
+                "fake objective free card reward could not distribute drawn card"
+            );
+            return None;
+        }
+        Some(card_id)
+    })
 }
 
 pub fn prepare_objective_identity_dispatch(
