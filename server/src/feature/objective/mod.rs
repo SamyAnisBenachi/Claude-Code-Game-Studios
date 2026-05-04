@@ -15,7 +15,8 @@ pub use state::{
 };
 #[allow(unused_imports)]
 pub use system::{
-    apply_consequence_path, deliver_objective_identities_on_ready, draw_fake_reward,
-    initialize_objectives_on_draft_initial, take_damage, ObjectiveIdentitiesReady,
-    ObjectiveNetworkOutbox, FAKE_REWARD_POOL_FILTER,
+    apply_consequence_path, broadcast_objective_events, deliver_objective_identities_on_ready,
+    draw_fake_reward, initialize_objectives_on_draft_initial, objective_resolution_ready,
+    take_damage, ObjectiveIdentitiesReady, ObjectiveNetworkOutbox, ObjectiveResolutionState,
+    FAKE_REWARD_POOL_FILTER,
 };

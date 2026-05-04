@@ -3,12 +3,15 @@ use lightyear::prelude::{NetworkTarget, PeerId, Replicate, Server, ServerMultiMe
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use shared::card::CardId;
-use shared::protocol::{DraftPhase, ReliableChannel, S2CObjectiveIdentities};
+use shared::protocol::{
+    DraftPhase, ReliableChannel, ResolutionEvent, S2CObjectiveIdentities, S2CResolutionEvent,
+    TaggedEvent,
+};
 use shared::session::PlayerId;
 
 use crate::core::economy::{AwardGold, ManaCapIncreased};
 use crate::core::pool::{PlayerPools, PoolFilter};
-use crate::core::rsm::DraftStarted;
+use crate::core::rsm::{DraftStarted, ResolutionComplete, ResolutionPhaseEntered};
 use crate::core::session::{
     defer_unicast_for_reconnect, DeferredMessage, PlayerConnectionMap, ReconnectTracker,
     SessionConfig,
@@ -25,6 +28,7 @@ use crate::foundation::rng::ServerRng;
 const LOSS_THRESHOLD: u32 = 2;
 const DEFAULT_OBJECTIVE_GOLD_REWARD: u32 = 3;
 const FAKE_OBJECTIVE_HAND_FULL_GOLD_REWARD: u32 = 1;
+const OBJECTIVE_DESTROYED_REVEAL_SUB_STEP: u8 = 6;
 
 /// Unfiltered pool draw used by fake objective FreeCardPick rewards.
 pub const FAKE_REWARD_POOL_FILTER: PoolFilter = PoolFilter {
@@ -51,6 +55,8 @@ pub struct ObjectiveIdentityDispatch {
 #[derive(Resource, Default, Clone, Debug)]
 pub struct ObjectiveNetworkOutbox {
     identity_dispatches: Vec<ObjectiveIdentityDispatch>,
+    destroyed_broadcasts: Vec<ObjectiveDestroyed>,
+    resolution_batches: Vec<S2CResolutionEvent>,
 }
 
 impl ObjectiveNetworkOutbox {
@@ -58,9 +64,58 @@ impl ObjectiveNetworkOutbox {
         self.identity_dispatches.push(dispatch);
     }
 
+    pub fn push_destroyed_broadcasts(
+        &mut self,
+        events: impl IntoIterator<Item = ObjectiveDestroyed>,
+    ) {
+        self.destroyed_broadcasts.extend(events);
+    }
+
+    pub fn push_resolution_batch(&mut self, message: S2CResolutionEvent) {
+        self.resolution_batches.push(message);
+    }
+
     #[allow(dead_code)]
     pub fn identity_dispatches(&self) -> &[ObjectiveIdentityDispatch] {
         &self.identity_dispatches
+    }
+
+    #[allow(dead_code)]
+    pub fn destroyed_broadcasts(&self) -> &[ObjectiveDestroyed] {
+        &self.destroyed_broadcasts
+    }
+
+    #[allow(dead_code)]
+    pub fn resolution_batches(&self) -> &[S2CResolutionEvent] {
+        &self.resolution_batches
+    }
+}
+
+/// Tracks whether the Objective System has observed RESOLUTION entry.
+#[derive(Resource, Default, Clone, Debug, PartialEq, Eq)]
+pub struct ObjectiveResolutionState {
+    current_round: Option<u32>,
+    entries_seen: u32,
+}
+
+impl ObjectiveResolutionState {
+    #[allow(dead_code)]
+    pub const fn current_round(&self) -> Option<u32> {
+        self.current_round
+    }
+
+    #[allow(dead_code)]
+    pub const fn entries_seen(&self) -> u32 {
+        self.entries_seen
+    }
+
+    fn mark_entered(&mut self, round: u32) {
+        self.current_round = Some(round);
+        self.entries_seen = self.entries_seen.saturating_add(1);
+    }
+
+    fn clear(&mut self) {
+        self.current_round = None;
     }
 }
 
@@ -165,6 +220,87 @@ pub fn deliver_objective_identities_on_ready(
                 send_objective_identities(sender, server, &dispatch);
             }
         }
+    }
+}
+
+/// Subscribes to RESOLUTION entry without polling `RoundState`.
+pub fn objective_resolution_ready(
+    mut resolution_entered: MessageReader<ResolutionPhaseEntered>,
+    mut resolution_state: ResMut<ObjectiveResolutionState>,
+) {
+    for event in resolution_entered.read() {
+        resolution_state.mark_entered(event.round);
+    }
+}
+
+/// Drains queued objective destructions at the RESOLUTION-end sync point.
+///
+/// `take_damage` only queues during sub-steps; this system is the sole network
+/// and internal-message broadcast point for authoritative destruction reveals.
+pub fn broadcast_objective_events(
+    mut resolution_complete: MessageReader<ResolutionComplete>,
+    mut pending: ResMut<PendingObjectiveEvents>,
+    mut objective_destroyed: MessageWriter<ObjectiveDestroyed>,
+    mut network_outbox: Option<ResMut<ObjectiveNetworkOutbox>>,
+    mut resolution_state: Option<ResMut<ObjectiveResolutionState>>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
+) {
+    let server = server.single().ok();
+
+    for _event in resolution_complete.read() {
+        if let Some(state) = resolution_state.as_deref_mut() {
+            state.clear();
+        }
+
+        let events = drain_sorted_pending_objective_events(&mut pending);
+        if events.is_empty() {
+            continue;
+        }
+
+        for event in &events {
+            objective_destroyed.write(*event);
+        }
+
+        let message = objective_destroyed_resolution_batch(&events);
+
+        if let Some(outbox) = network_outbox.as_deref_mut() {
+            outbox.push_destroyed_broadcasts(events.iter().copied());
+            outbox.push_resolution_batch(message.clone());
+        }
+
+        if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
+            let _ = sender.send::<S2CResolutionEvent, ReliableChannel>(
+                &message,
+                server,
+                &NetworkTarget::All,
+            );
+        }
+    }
+}
+
+fn drain_sorted_pending_objective_events(
+    pending: &mut PendingObjectiveEvents,
+) -> Vec<ObjectiveDestroyed> {
+    pending
+        .queue
+        .sort_by_key(|event| (event.lane, event.target_player_id.0));
+    pending.queue.drain(..).collect()
+}
+
+fn objective_destroyed_resolution_batch(events: &[ObjectiveDestroyed]) -> S2CResolutionEvent {
+    S2CResolutionEvent {
+        events: events
+            .iter()
+            .map(|event| TaggedEvent {
+                sub_step: OBJECTIVE_DESTROYED_REVEAL_SUB_STEP,
+                event: ResolutionEvent::ObjectiveDestroyed {
+                    target_player_id: event.target_player_id,
+                    lane: event.lane,
+                    was_fake: event.was_fake,
+                },
+            })
+            .collect(),
     }
 }
 
