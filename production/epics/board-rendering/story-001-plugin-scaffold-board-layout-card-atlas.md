@@ -14,6 +14,8 @@
 
 `BoardRenderingPlugin` owns the session-scoped `BoardLayout` and `CardAtlas` resources consumed by Hand UI, HUD, and Card Animations. Current client code has `BoardLayout` in `client/src/ui/shared.rs`, but its `cell_to_world` returns `Option<Vec2>`; the GDD requires a canonical coordinate authority with assertion-backed invalid input handling. This story establishes the plugin/resource contract before any visual entity spawning.
 
+Shared ADR-021 infrastructure (`PresentationPlugin`, `PresentationSet`, `phase_sink_system`, and the canonical `CurrentClientPhase` path) is owned by [Presentation Layer Story 001](../presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md). Do not implement those shared surfaces here.
+
 ## Acceptance Criteria
 
 - [ ] `BoardRenderingPlugin` can be registered in a minimal client `App` without panic.
@@ -23,6 +25,7 @@
 - [ ] `BoardLayout::cell_to_world(1, 2)` returns `board_origin + Vec2::new(cell_width, 0.0)`.
 - [ ] Invalid lane/cell values assert in release builds through the agreed GDD path: valid lanes are `1..=5`, valid cells are `1..=8`, and invalid values such as `lane=0`, `lane=6`, `cell=0`, or `cell=9` are not silently ignored.
 - [ ] No `MessageReceiver<S2CPhaseChanged>` is registered by this plugin; phase is read through `Res<CurrentClientPhase>` only.
+- [ ] This story relies on `PresentationPlugin`, `PresentationSet`, and `phase_sink_system` from Presentation Layer Story 001 rather than defining them locally.
 
 ## Implementation Notes
 
@@ -35,6 +38,7 @@
 
 ## Out of Scope
 
+- `PresentationPlugin`, `PresentationSet`, `phase_sink_system`, and shared `CurrentClientPhase` path ownership (Presentation Layer Story 001).
 - Board grid/camera spawning (Story 002).
 - Snapshot-driven unit and objective spawning (Story 003).
 - Ghost previews and placement reveal animation (Stories 004 and 005).
@@ -66,5 +70,5 @@
 
 ## Dependencies
 
-- Depends on: None.
+- Depends on: `production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md` - shared `PresentationPlugin`, `PresentationSet`, `phase_sink_system`, and `CurrentClientPhase` path must be complete before BoardRenderingPlugin is implemented or registered.
 - Unlocks: Stories 002, 003, 004, 005, 006, 007, 008, 009, 010.

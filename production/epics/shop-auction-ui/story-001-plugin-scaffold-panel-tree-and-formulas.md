@@ -14,12 +14,15 @@
 
 This story creates the `ShopAuctionUiPlugin` shell, panel state resources, stable root nodes, and pure UI formulas used by all later stories. It should not wire gameplay messages beyond registering resources and local Bevy messages needed by the UI.
 
+Shared ADR-021 infrastructure (`PresentationPlugin`, `PresentationSet`, `phase_sink_system`, and the canonical `CurrentClientPhase` path) is owned by [Presentation Layer Story 001](../presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md). Do not implement those shared surfaces here.
+
 ## Acceptance Criteria
 
 - [ ] `ShopAuctionUiPlugin` registers without panic in a minimal client `App`.
 - [ ] Root panel entities for draft offering, shop, auction, footer, toast, and settlement overlay are created or pre-pooled according to the chosen UI lifecycle.
 - [ ] All panel roots are bevy_ui entities, not world-space sprites.
 - [ ] Plugin reads phase through `Res<CurrentClientPhase>` only.
+- [ ] This story relies on `PresentationPlugin`, `PresentationSet`, and `phase_sink_system` from Presentation Layer Story 001 rather than defining them locally.
 - [ ] `local_free_gold(gold, reserved_gold)` returns `gold - reserved_gold` without underflow.
 - [ ] Bid labels render total commitment: `current_price + {1, 3, 5}` with secondary increment text.
 - [ ] Auction border color tier formula maps 0-3, 4-6, 7-9, and 10+ to the GDD tiers.
@@ -34,6 +37,7 @@ This story creates the `ShopAuctionUiPlugin` shell, panel state resources, stabl
 
 ## Out of Scope
 
+- `PresentationPlugin`, `PresentationSet`, `phase_sink_system`, and shared `CurrentClientPhase` path ownership (Presentation Layer Story 001).
 - Draft offering purchase flow (Story 002).
 - Shop slot refresh/purchase flow (Story 003).
 - Auction message handling (Stories 004-007).
@@ -64,5 +68,5 @@ This story creates the `ShopAuctionUiPlugin` shell, panel state resources, stabl
 
 ## Dependencies
 
-- Depends on: Presentation plugin scaffold/phase resource from ADR-021.
+- Depends on: `production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md` - shared `PresentationPlugin`, `PresentationSet`, `phase_sink_system`, and `CurrentClientPhase` path must be complete before ShopAuctionUiPlugin is implemented or registered.
 - Unlocks: Stories 002, 003, 004, 005, 006, 007, 008, 009.

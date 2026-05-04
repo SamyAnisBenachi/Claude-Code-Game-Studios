@@ -3,7 +3,7 @@
 > **Layer**: Presentation
 > **GDD**: design/gdd/board-rendering.md
 > **Architecture Module**: `client/src/ui/board/` - `BoardRenderingPlugin` (sub-plugin #2 inside `PresentationPlugin`)
-> **Status**: Ready - story set drafted for S5-21
+> **Status**: Ready - story set drafted for S5-21; Story 001 depends on Presentation Layer Story 001
 > **Stories**: 10 stories created 2026-05-04 - 6 Ready, 4 Blocked/Partial
 
 ## Overview
@@ -11,6 +11,8 @@
 Board Rendering implements the client-side world-space board view for the M2 visual playable path. It renders the 5 lane x 8 cell board, units, objectives, HP bars, spawn range highlights, ghost previews, placement reveal, and RESOLUTION playback from replicated server state and reliable S2C messages. The client remains a read-only view: Board Rendering does not validate gameplay, mutate authoritative state, or send C2S game-logic messages. The only planned C2S exception is the GDD-defined `C2SRequestSnapshot` desync-recovery request.
 
 `BoardRenderingPlugin` is registered second in `PresentationPlugin`, after `CardAnimationsPlugin` and before `HandUiPlugin`, `HudPlugin`, and `ShopAuctionUiPlugin`. It owns `BoardLayout` and `CardAtlas` as session-scoped resources, provides world-space sprite rendering below bevy_ui, and coordinates with Card Animations for reveal and resolution tweens.
+
+Shared ADR-021 infrastructure is owned by [Presentation Layer Story 001](../presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md). Board Rendering Story 001 must not implement `PresentationPlugin`, `PresentationSet`, or `phase_sink_system`; it depends on those surfaces before implementation.
 
 ## Governing ADRs
 
@@ -49,13 +51,14 @@ Board Rendering implements the client-side world-space board view for the M2 vis
 | Card Animations | `PlacementRevealAnimReady`, `BoardRebuildRequested`, tween lenses, `AnimQueue` | Board emits animation requests and consumes animation completion where needed |
 | Hand UI | ghost preview messages, `BoardLayout` cursor mapping | Draw placement ghost previews and valid spawn highlights |
 | HUD | `HudObjectiveUpdate` observer contract | Notify scoreboard without leaking fake/real identity |
+| Presentation Layer | `PresentationPlugin`, `PresentationSet`, `CurrentClientPhase`, `phase_sink_system` | Provides shared scheduling and phase sink before Board Rendering registers as sub-plugin #2 |
 
 ## Current Implementation Gaps
 
 - `client/src/ui/board/` and `BoardRenderingPlugin` do not exist yet.
 - `BoardLayout` currently exists in `client/src/ui/shared.rs`, but its `cell_to_world` API returns `Option<Vec2>` while the Board Rendering GDD specifies a canonical non-optional coordinate function with assertions for invalid lane/cell input. Story 001 must reconcile this before downstream consumers rely on it.
 - No client-side `CardAtlas` owner exists.
-- No shared `PresentationPlugin`/`phase_sink_system` implementation is visible yet; stories must preserve the single `MessageReceiver<S2CPhaseChanged>` drain rule.
+- No shared `PresentationPlugin`/`phase_sink_system` implementation is visible yet; Board Rendering Story 001 depends on Presentation Layer Story 001 for this cross-epic infrastructure.
 - `C2SRequestSnapshot` is defined in the Network Protocol GDD but is not currently present in `shared/src/protocol.rs`; reconnect/desync recovery remains blocked until the protocol type and registration exist.
 - Objective destruction transport is inconsistent across docs and code (`ObjectiveDestroyed`, `S2CObjectiveDestroyed`, and `ResolutionEvent::ObjectiveDestroyed` are not yet aligned). HUD fanout remains blocked until that contract lands.
 
@@ -68,6 +71,7 @@ Board Rendering implements the client-side world-space board view for the M2 vis
 | Resolution event variant completeness | Story 006 | Combat Resolution story must provide stable `ResolutionEvent` variants for movement, death, trap, objective, and prism visuals |
 | Art bible / atlas frame count | Stories 003 and 010 | Confirm atlas budget and placeholder-to-final art path before performance evidence is signed off |
 | Keyword display definitions and `SpawnRange` replication | Story 009 | Confirm replicated keyword/status display data and spawn range source |
+| Presentation Layer scaffold missing | Story 001 | Complete or readiness-approve Presentation Layer Story 001 before implementing Board Rendering Story 001 |
 
 ## Definition of Done
 
@@ -102,15 +106,16 @@ This epic is complete when:
 ## Sprint 6 Candidate Order
 
 Recommended Sprint 6 sequence:
-1. Story 001 - scaffold resources and plugin contract.
-2. Story 002 - visible board grid, camera, and Z constants.
-3. Story 003 - snapshot rebuild with placeholders.
-4. Story 004 - ghost preview bridge for Hand UI.
-5. Story 005 - placement reveal path.
-6. Story 006 - resolution queue after Combat event variants land.
-7. Story 008 - objective reveal/HUD fanout after transport contract lands.
-8. Story 010 - performance and CI guard evidence once the visible path exists.
+1. Presentation Layer Story 001 - shared plugin, set, and phase sink foundation.
+2. Story 001 - scaffold resources and plugin contract.
+3. Story 002 - visible board grid, camera, and Z constants.
+4. Story 003 - snapshot rebuild with placeholders.
+5. Story 004 - ghost preview bridge for Hand UI.
+6. Story 005 - placement reveal path.
+7. Story 006 - resolution queue after Combat event variants land.
+8. Story 008 - objective reveal/HUD fanout after transport contract lands.
+9. Story 010 - performance and CI guard evidence once the visible path exists.
 
 ## Next Step
 
-Run `/story-readiness production/epics/board-rendering/story-001-plugin-scaffold-board-layout-card-atlas.md` before implementation. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file.
+Run `/story-readiness production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md` before Board Rendering Story 001 implementation. Then run `/story-readiness production/epics/board-rendering/story-001-plugin-scaffold-board-layout-card-atlas.md`. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file.

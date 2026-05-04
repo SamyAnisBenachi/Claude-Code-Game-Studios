@@ -22,6 +22,7 @@
 | [class-system](class-system/EPIC.md) | Feature (M3) | `server/feature/class/` | class-system | 10 stories | Ready |
 | [prism-system](prism-system/EPIC.md) | Feature (M3) | `server/feature/prism/` | prism-system | Not yet created | Ready |
 | [keyword-system](keyword-system/EPIC.md) | Feature (M3) | `server/feature/keyword/` + `protocol/src/keyword.rs` | keyword-system | Not yet created | Ready — 7 pre-impl gates to clear first |
+| [presentation-layer](presentation-layer/EPIC.md) | Presentation | `client/src/presentation/` | ADR-021 cross-epic infrastructure | 1 story | Ready-for-Readiness |
 | [hud](hud/EPIC.md) | Presentation | `client/src/ui/hud/` | hud | 10 stories | Ready |
 | [card-animations](card-animations/EPIC.md) | Presentation | `client/src/card_animations/` | card-animations | 9 stories | Ready |
 | [hand-ui](hand-ui/EPIC.md) | Presentation | `client/src/ui/hand/` | hand-ui | 13 stories | Ready - OQ8 gates activation-lock story |
@@ -55,7 +56,7 @@
 | Feature (M1) | **EPIC files written 2026-04-30 — run `/create-stories` per epic next** | Board/Lane + Objective epics ready; M2/M3 epics paused pending ADRs |
 | Feature (M2) | **auction-system + card-acquisition + combat-resolution EPICs written 2026-04-30** — run `/create-stories` per epic next; Presentation epics pending ADRs | ADR-013 ✅ ADR-015 ✅ ADR-017 ✅ |
 | Feature (M3) | **class-system + prism-system + keyword-system EPICs written 2026-04-30** — run `/create-stories class-system` next; prism-system + keyword-system have pre-impl gates to clear first (keyword: ADR-018/022 must be Accepted; prism: 3 gates) | ADR-014 ✅ (class-system); ADR-016 ✅ (prism-system); ADR-018/022 ⚠️ Proposed (keyword) |
-| Presentation | **card-animations + hand-ui + hud EPICs written 2026-05-01; board-rendering + shop-auction-ui epics/stories written 2026-05-04 for S5-21**. Next step: story-readiness for Sprint 6 candidates, starting with board-rendering Story 001 and shop-auction-ui Story 001. | ADR-021 ✅ (Presentation Layer Architecture) |
+| Presentation | **card-animations + hand-ui + hud EPICs written 2026-05-01; board-rendering + shop-auction-ui epics/stories written 2026-05-04 for S5-21; presentation-layer shared ADR-021 foundation story proposed 2026-05-04**. Next step: run `/story-readiness` for `presentation-layer` Story 001 before Board Rendering 001 or Shop/Auction UI 001. | ADR-021 ✅ (Presentation Layer Architecture) |
 
 ## Core Layer Coordination Notes
 
