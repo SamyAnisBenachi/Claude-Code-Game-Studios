@@ -141,17 +141,7 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- AUC-008 worker returned implemented on branch
-  `work/auc-008-pool-integration` at worker commit `d1e8cba`; root
-  cherry-picked and pushed the implementation to `origin/main` at `c6a1d86`.
-  Worker changed auction pool/config/RNG surfaces and
-  `tests/integration/auction/pool_integration_test.rs`. Root verification
-  passed `cargo fmt -p server -- --check`, `cargo test -p server --test
-  auction_pool_integration_test` 5/5, auction regressions 39 passed with 1
-  pre-existing ignored test, card-pool regressions 12/12, filtered
-  `foundation::rng::tests`, `cargo check --workspace`, and
-  `git diff --check HEAD~1..HEAD`. Next action after COMBAT-005 closure:
-  launch serialized `/story-done`.
+None currently tracked here.
 
 ## Recent Planning / Readiness Updates
 
@@ -246,6 +236,14 @@ None currently tracked here.
   updated `production/epics/combat-resolution/story-005-substep3-first-strike.md`,
   `production/session-state/active.md`, and sprint-status row S5-07. Advisory:
   SS4 dead removal/gold chain remains COMBAT-006 scope.
+- AUC-008: Pool Integration readiness repair landed at `c20e503`; worker
+  implementation returned at `d1e8cba`; root integrated and pushed it at
+  `c6a1d86`; story-done closure committed at `9ff607e`. Verification passed
+  `cargo test -p server --test auction_pool_integration_test` 5/5,
+  `cargo check --workspace`, root auction/card-pool/RNG checks, and diff
+  checks. Story-done updated
+  `production/epics/auction-system/story-008-pool-integration.md`,
+  `production/session-state/active.md`, and sprint-status row S5-14.
 - COMBAT-004: Movement + Collision readiness repair landed on main at
   `c2fc0d3`; implementation landed on main at `408c34a`; story-done closure
   committed at `52caa45`; follow-up story scope clarification committed at
@@ -695,8 +693,7 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-- AUC-008 / `production/epics/auction-system/story-008-pool-integration.md`
-  is integrated at `c6a1d86` and needs serialized `/story-done`.
+None currently queued.
 
 Run only one story-done at a time.
 
@@ -775,7 +772,8 @@ Current active windows by user default-launch rule:
 - AUC-008 readiness repair returned READY and was committed at `c20e503`;
   that readiness window can be cleared. AUC-008 implementation worker returned
   complete at `d1e8cba`; root integrated and pushed it at `c6a1d86`. Window
-  can be cleared. Serialized AUC-008 story-done is queued after COMBAT-005.
+  can be cleared. AUC-008 story-done returned, wrote closure files, and pushed
+  closure at `9ff607e`; window can be cleared.
 - S5-21 planning artifacts returned and were committed at `1c28e9c`; window
   can be cleared.
 - Sprint 6 draft returned as report-only and was not written; window can be
