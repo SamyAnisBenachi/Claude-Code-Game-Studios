@@ -116,7 +116,17 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-None currently tracked here.
+- COMBAT-005 worker returned implemented and committed on branch
+  `work/combat-005-first-strike` at
+  `912fa45ffc138b941604aeb568e9bee6b6b8ef10`. Worker changed
+  `server/src/feature/combat/mod.rs`, `server/Cargo.toml`, and
+  `tests/unit/combat/substep3_first_strike_test.rs`. Verification passed
+  `cargo fmt -p server -- --check`, `cargo test -p server --test
+  substep3_first_strike_test`, adjacent combat regressions, `cargo check -p
+  server`, and `git diff --check` with only CRLF warnings. Worker push was
+  blocked by approval review, but the commit is visible to the root checkout.
+  Next root action: cherry-pick/integrate, rerun focused checks, then queue
+  serialized `/story-done`.
 
 ## Recent Planning / Readiness Updates
 
@@ -674,11 +684,6 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- COMBAT-005 is assumed launched from the `/dev-story` prompt for
-  `production/epics/combat-resolution/story-005-substep3-first-strike.md`.
-  Expected worktree: `D:\_DEV\claude-code-game-studios-worktrees\COMBAT-005`;
-  expected branch: `work/combat-005-first-strike`. Await user-provided
-  worker return before integrating or classifying the window.
 - AUC-008 is assumed launched from the `/dev-story` prompt for
   `production/epics/auction-system/story-008-pool-integration.md`.
   Expected worktree: `D:\_DEV\claude-code-game-studios-worktrees\AUC-008`;
@@ -692,9 +697,9 @@ Active implementation workers by default-launch rule:
   noted; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
-- COMBAT-005 readiness repair returned READY and was committed at `90ebdfb`;
-  that readiness window can be cleared. COMBAT-005 implementation worker is
-  assumed launched and is pending return.
+- COMBAT-005 implementation worker returned complete at `912fa45`; worker
+  push was blocked by approval review, but the commit is locally visible from
+  root. Window can be cleared. Root integration/story-done remain pending.
 - AUC-008 readiness repair returned READY and was committed at `c20e503`;
   that readiness window can be cleared. AUC-008 implementation worker is
   assumed launched and is pending return.
