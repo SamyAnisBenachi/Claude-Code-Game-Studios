@@ -1,7 +1,7 @@
 # Story 008: Sub-step 6 - RANGE Targeting
 
 > **Epic**: Combat Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -28,11 +28,11 @@
 
 *From GDD `design/gdd/combat-resolution.md`, scoped to this story:*
 
-- [ ] **CR-3**: GIVEN a unit with RANGE 1-X at cell C with a single nearest enemy, WHEN sub-step 6 executes, THEN it attacks that nearest enemy (Player A: minimum cell-distance in cells C+1 to C+X; Player B: C-X to C-1), does not advance, and consumes zero RNG seeds. GIVEN two or more nearest valid targets are equidistant, WHEN sub-step 6 executes, THEN eligible targets are ordered by `(distance_from_attacker, target_cell, target_unit_id)`, exactly one `RangeEquidistantSelect` seed is consumed through the intent-named `ServerRng` method, and the selected target is deterministic for the same seed and ordered eligible set.
-- [ ] **CR-4**: GIVEN a unit with RANGE 1-X and FIRST STRIKE, WHEN RESOLUTION executes, THEN two distinct `CombatDamage` entries are in the ResolutionLog: one with `sub_step: 3` from the FIRST STRIKE pass and one with `sub_step: 6` from the standard RANGE pass.
-- [ ] **CR-28**: GIVEN a RANGE unit with enemies both forward and behind it, both within the numeric RANGE value, WHEN sub-step 6 executes, THEN only the forward enemy is eligible and the enemy behind is never selected.
-- [ ] **CR-44**: GIVEN a RANGE 1-3 unit at cell C with a WALL unit at cell C+2 within RANGE, WHEN sub-step 5 executes, THEN the RANGE unit's cell position is unchanged; WHEN sub-step 6 executes, THEN the RANGE unit attacks the WALL from cell C and a `CombatDamage` record is emitted with defender = WALL.
-- [ ] **CR-45**: GIVEN a RANGE + FIRST STRIKE unit kills its sub-step 3 target, AND a different enemy unit exists within range at sub-step 6 entry, WHEN sub-step 4 removes the killed unit AND sub-step 6 executes, THEN the RANGE unit acquires the surviving enemy as its sub-step 6 target and a `CombatDamage` record is emitted for that target.
+- [x] **CR-3**: GIVEN a unit with RANGE 1-X at cell C with a single nearest enemy, WHEN sub-step 6 executes, THEN it attacks that nearest enemy (Player A: minimum cell-distance in cells C+1 to C+X; Player B: C-X to C-1), does not advance, and consumes zero RNG seeds. GIVEN two or more nearest valid targets are equidistant, WHEN sub-step 6 executes, THEN eligible targets are ordered by `(distance_from_attacker, target_cell, target_unit_id)`, exactly one `RangeEquidistantSelect` seed is consumed through the intent-named `ServerRng` method, and the selected target is deterministic for the same seed and ordered eligible set.
+- [x] **CR-4**: GIVEN a unit with RANGE 1-X and FIRST STRIKE, WHEN RESOLUTION executes, THEN two distinct `CombatDamage` entries are in the ResolutionLog: one with `sub_step: 3` from the FIRST STRIKE pass and one with `sub_step: 6` from the standard RANGE pass.
+- [x] **CR-28**: GIVEN a RANGE unit with enemies both forward and behind it, both within the numeric RANGE value, WHEN sub-step 6 executes, THEN only the forward enemy is eligible and the enemy behind is never selected.
+- [x] **CR-44**: GIVEN a RANGE 1-3 unit at cell C with a WALL unit at cell C+2 within RANGE, WHEN sub-step 5 executes, THEN the RANGE unit's cell position is unchanged; WHEN sub-step 6 executes, THEN the RANGE unit attacks the WALL from cell C and a `CombatDamage` record is emitted with defender = WALL.
+- [x] **CR-45**: GIVEN a RANGE + FIRST STRIKE unit kills its sub-step 3 target, AND a different enemy unit exists within range at sub-step 6 entry, WHEN sub-step 4 removes the killed unit AND sub-step 6 executes, THEN the RANGE unit acquires the surviving enemy as its sub-step 6 target and a `CombatDamage` record is emitted for that target.
 
 ---
 
@@ -154,7 +154,7 @@ RANGE targeting runs inside the ADR-017 `resolve_combat(world: &mut World)` RESO
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combat/range_targeting_test.rs` - must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -165,3 +165,14 @@ RANGE targeting runs inside the ADR-017 `resolve_combat(world: &mut World)` RESO
 - Depends on: Story 006 (SS4 dead removal before CR-45 target reacquisition; Complete)
 - Depends on: Story 007 (SS6 SHIELD and COUNTERATTACK rules; Complete)
 - Unlocks: Story 009 (objective damage fires after all SS6 unit combat, including RANGE)
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 5/5 passing.
+**Test Evidence**: Logic evidence at `tests/unit/combat/range_targeting_test.rs`; `cargo test -p server --test range_targeting_test` passed 6/6.
+**Verification**: CR-3 single-nearest RANGE targeting attacks the nearest forward enemy without moving or consuming `RangeEquidistantSelect`; CR-3 equidistant targeting sorts the eligible set by `(distance, target_cell, target_unit_id)`, consumes exactly one `RangeEquidistantSelect` seed, and is deterministic for the same seed and ordered set. CR-4 emits distinct SS3 and SS6 `CombatDamage` entries for RANGE + FIRST STRIKE. CR-28 excludes enemies behind the attacker. CR-44 keeps the RANGE unit at its current cell and attacks the WALL from distance. CR-45 reacquires a surviving SS6 target after SS4 removes the SS3 kill.
+**Regression Evidence**: `cargo test -p server --test substep6_combat_shield_counterattack_test --test substep4_dead_removal_test --test substep3_first_strike_test --test movement_collision_test` passed 20/20. `cargo check -p server` passed. `git diff --check` passed.
+**Deviations**: None blocking.
+**Code Review**: Skipped - lean mode.
+**QA Coverage Gate**: Skipped - lean mode.

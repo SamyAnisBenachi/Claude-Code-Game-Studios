@@ -117,10 +117,13 @@ stories:
     name: "Combat Story 8: RANGE Targeting"
     file: "production/epics/combat-resolution/story-008-range-targeting.md"
     priority: must-have
-    status: not-started
+    status: done
     owner: "worker"
     estimate_days: 1.00
     blocker: ""
+    completed: "2026-05-04"
+    notes:
+      - "COMPLETE WITH NOTES: CR-3 nearest and equidistant RANGE targeting, CR-4 RANGE + FIRST STRIKE SS3/SS6 damage, CR-28 behind-attacker exclusion, CR-44 RANGE-vs-WALL behavior, and CR-45 post-SS4 reacquisition verified. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates."
 
   - id: "S5-11"
     name: "Combat Story 9: Objective Damage + GAME_OVER"

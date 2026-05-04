@@ -1742,3 +1742,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-16 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
 - Next recommended: Hand UI Story 10 Submit Pre-Validation (`production/epics/hand-ui/story-010-submit-prevalidation.md`) after readiness check, or continue Sprint 5 Nice to Have combat work if Sprint 5 should stay server-focused.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/combat-resolution/story-008-range-targeting.md` - Story 008: Sub-step 6 - RANGE Targeting
+- Criteria: 5/5 passing; CR-3, CR-4, CR-28, CR-44, and CR-45 covered by `tests/unit/combat/range_targeting_test.rs`.
+- Test Evidence: `cargo test -p server --test range_targeting_test` passed 6/6. Adjacent regression command passed 20/20 across `movement_collision_test`, `substep3_first_strike_test`, `substep4_dead_removal_test`, and `substep6_combat_shield_counterattack_test`. `cargo check -p server` passed. `git diff --check` passed.
+- Verification: Current `main` includes integrated implementation commit `dd7bd50`; RANGE targeting selects the nearest forward valid target without movement or RNG for single-nearest cases, orders equidistant targets by `(distance, target_cell, target_unit_id)`, consumes exactly one `RangeEquidistantSelect` seed for equidistant nearest cases, emits distinct SS3 and SS6 damage for RANGE + FIRST STRIKE, excludes behind-attacker enemies, attacks WALL from the current cell, and reacquires a fresh SS6 target after SS4 removal.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or ServerRng deviation found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-10 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
+- Next recommended: Combat Story 9 Objective Damage + GAME_OVER (`production/epics/combat-resolution/story-009-objective-damage-gameover.md`) after readiness check.
