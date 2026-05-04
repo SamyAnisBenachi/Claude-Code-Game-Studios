@@ -275,9 +275,13 @@ None currently tracked here.
   `cargo fmt -p server -- --check`,
   `cargo test -p server --test substep4_dead_removal_test` 3/3,
   adjacent combat regressions 25/25, `cargo check -p server`, and
-  `git diff --check`. Next action: run `/story-done` for
-  `production/epics/combat-resolution/story-006-substep4-dead-removal.md`.
-  Do not relaunch the COMBAT-006 implementation worker.
+  `git diff --check`. Story-done returned COMPLETE WITH NOTES and was pushed at
+  `e3e1cd7`, updating
+  `production/epics/combat-resolution/story-006-substep4-dead-removal.md`,
+  `production/session-state/active.md`, and sprint-status row S5-08. Advisory:
+  implementation uses Bevy `EntityEvent` dispatch via `world.trigger(...)`
+  rather than manifest wording `world.trigger_targets(...)`, with tests and
+  compile confirming targeted synchronous DEATH-chain behavior.
 - OBJECTIVE-006 / S5-15 readiness repair returned READY at `f6cdf58`. Worker
   implementation returned at `c07be2c` on
   `work/objective-006-d4-fake-reward-draw`, but the branch was behind current
@@ -827,10 +831,8 @@ Active implementation workers by default-launch rule:
 
 Current active windows by user default-launch rule:
 - COMBAT-006 implementation worker returned, root integrated and pushed commit
-  `ea43240`; window can be cleared. `origin/main` now also contains
-  `e3e1cd7` (`story-done S5-08: COMBAT-006 closure`), but the user has not
-  pasted that story-done window output yet. Do not relaunch the prompt; wait
-  for the official pasted return before classifying the window.
+  `ea43240`; story-done returned and pushed closure at `e3e1cd7`. Window can
+  be cleared.
 - OBJECTIVE-006 implementation worker returned; root cherry-picked and pushed
   only the objective commit as `d46e812` because the worker branch was behind
   current main. Window can be cleared. Story-done for OBJECTIVE-006 is now
