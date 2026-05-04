@@ -232,6 +232,14 @@ None currently tracked here.
   card IDs, and art IDs are reconciled. Card art audit window can be cleared.
   UI/audio/VFX coverage audit remains pending unless the user provides its
   return.
+- Full-game asset manifest/spec expansion was written and committed at
+  `bbde404` as `asset-spec: expand full-game manifest coverage`. The commit is
+  asset-only under `design/assets/**`, with ASSET-001 through ASSET-234
+  continuous, no duplicates/missing IDs, 20 allowed asset files, and 8 current
+  per-card illustration specs. Validation passed `git diff --check` after EOF
+  cleanup and staged allowlist verification. No assets or code were generated.
+  Remaining design questions: optional bid confirmation UX, GAME_OVER/result
+  screen UX, full ~315-card roster/art IDs, and accessibility/settings details.
 
 ## Recently Closed
 
@@ -781,10 +789,9 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- Full-game asset coverage audit returned and can be cleared. Full card art
-  coverage audit returned and can be cleared. Full UI/audio/VFX coverage audit
-  is still assumed launched/pending. Await that report before revising asset
-  specs or generating art.
+- Full-game asset coverage audit, card art coverage audit, and UI/audio/VFX
+  coverage audit have returned. The full-game asset manifest/spec expansion was
+  committed at `bbde404`; no asset audit window remains active.
 - HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009, COMBAT-002, OBJECTIVE-004,
   BOARD-008, and HAND-UI-007 have returned and are integrated or closed as
   noted; do not relaunch their implementation workers.
@@ -823,8 +830,9 @@ Current active windows by user default-launch rule:
   art coverage audit returned: card art coverage is insufficient, current 8
   cards need per-card illustration specs/display/zoom PNG targets, global
   type/rarity icons are missing for current card types, and full catalog art is
-  deferred until roster/art IDs are reconciled; window can be cleared. UI/audio/
-  VFX coverage audit remains pending.
+  deferred until roster/art IDs are reconciled; window can be cleared.
+- UI/audio/VFX coverage audit returned and led into the full-game asset
+  manifest/spec expansion committed at `bbde404`; window can be cleared.
 - COMBAT-004 story-done returned and was committed at `52caa45`; follow-up
   scope clarification committed at `3ef7bab`; window can be cleared.
 - CDP-006 story-done returned and was committed at `199a9b3`; window can be
