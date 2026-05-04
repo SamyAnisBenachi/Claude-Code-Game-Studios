@@ -141,21 +141,7 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- COMBAT-008 / S5-10 RANGE Targeting is integrated on `origin/main` and needs
-  serialized `/story-done`. Readiness repair was pushed at `b26f007`. Worker
-  branch `work/combat-008-range-targeting` returned at `dd7bd50`, pushed to
-  `origin/work/combat-008-range-targeting`, and root fast-forwarded `main` to
-  the same commit. Changed files: `server/src/feature/combat/mod.rs`,
-  `server/src/foundation/rng.rs`, `server/Cargo.toml`, and
-  `tests/unit/combat/range_targeting_test.rs`. Root verification passed:
-  `cargo fmt -p server -- --check`,
-  `cargo test -p server --test range_targeting_test` 6/6, adjacent combat
-  regressions (`substep6_combat_shield_counterattack_test`,
-  `substep4_dead_removal_test`, `substep3_first_strike_test`,
-  `movement_collision_test`) 20/20, `cargo check -p server`, and
-  `git diff --check`. Queue exactly one `/story-done` for
-  `production/epics/combat-resolution/story-008-range-targeting.md`; do not
-  relaunch the implementation worker.
+None currently tracked here.
 
 ## Recent Planning / Readiness Updates
 
@@ -919,7 +905,9 @@ Current active windows by user default-launch rule:
 - COMBAT-008 readiness repair returned READY and was pushed at `b26f007`.
   Readiness window can be cleared. COMBAT-008 implementation worker returned at
   `dd7bd50`; root fast-forwarded and pushed `main` to that commit. Worker
-  window can be cleared. A serialized `/story-done` window is now needed.
+  window can be cleared. Story-done returned COMPLETE WITH NOTES and was pushed
+  at `6f6b40b`, updating the story, active session state, and S5-10 sprint row.
+  Story-done window can be cleared.
 - OBJECTIVE-007 implementation worker returned; root cherry-picked only the
   implementation because the branch was behind current `main` and pushed
   integration commit `1c8ef2a`. Story-done returned COMPLETE WITH NOTES and
