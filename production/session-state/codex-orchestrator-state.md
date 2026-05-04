@@ -264,6 +264,13 @@ None currently tracked here.
   ASSET-026 separate sprite vs runtime tint, ASSET-035 `ui_` prefix on a
   world-space board sprite, ASSET-039 64x96 canvas with 48x64 centered art,
   and ASSET-044 1x2 HP bar odd-width exception.
+- Audio production handoff returned and was committed at `64cfd7f`, creating
+  `design/assets/production-handoffs/audio-production-queue-2026-05-04.md`.
+  It covers 37 audio assets grouped as board/objective blocking SFX, Hand UI
+  current interaction SFX, combat SS3/SS4/SS6 SFX, auction SFX, and class/lobby
+  SFX. No audio files were generated and no manifest statuses were changed.
+  The handoff notes Bevy 0.18 audio API verification and several sound-design
+  confirmation points.
 
 ## Recently Closed
 
@@ -935,6 +942,8 @@ Current active windows by user default-launch rule:
 - Board Blocking Asset Batch returned BLOCKED because no integrated GPT Image 2
   path was available and the CLI/API path lacked `OPENAI_API_KEY`; no files
   were generated. Window can be cleared unless rerun in an image-capable agent.
+- Audio Production Handoff returned and was committed at `64cfd7f`; window can
+  be cleared.
 - COMBAT-004 story-done returned and was committed at `52caa45`; follow-up
   scope clarification committed at `3ef7bab`; window can be cleared.
 - CDP-006 story-done returned and was committed at `199a9b3`; window can be
