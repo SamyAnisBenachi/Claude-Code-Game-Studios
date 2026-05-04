@@ -29,7 +29,7 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 9
+version: 10
 last_updated: "2026-05-04"
 # Run 3 (/architecture-review 2026-04-30c): registered 80 new M2/M3 TRs covering
 # combat-resolution, card-acquisition, prism-system, keyword-system, card-animations,
@@ -55,6 +55,10 @@ last_updated: "2026-05-04"
 # Run 10 (/story-readiness COMBAT-007 trace repair 2026-05-04): revised
 # TR-CR-005 to cover SHIELD consumption/persistence CRs and revised TR-CR-006
 # to cover collision-halt COUNTERATTACK traceability. Active count unchanged.
+# Run 11 (/story-readiness COMBAT-008 trace repair 2026-05-04): registered
+# TR-CR-023, TR-CR-024, TR-CR-025 for RANGE target selection, forward-only
+# filtering, and post-SS4 target reacquisition traceability (CR-3, CR-28,
+# CR-45). Total: 192 active TRs.
 
 requirements:
 
@@ -1211,6 +1215,33 @@ requirements:
     gdd: design/gdd/combat-resolution.md
     gdd_ac_ids: [CR-25]
     requirement: "Sub-step 4 DEATH chains are sequential: when unit A's DEATH trigger kills unit B, B's DEATH trigger fires only after A's DEATH trigger completes; chain dispatch uses ChainDeathBuffer queue ordering rather than recursive observer dispatch"
+    created: 2026-05-04
+    revised: ""
+    status: active
+
+  - id: TR-CR-023
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-3]
+    requirement: "Sub-step 6 RANGE target selection attacks the nearest enemy in the forward direction within RANGE X without advancing; single-nearest selection consumes no RNG, while equidistant nearest selection uses exactly one RangeEquidistantSelect ServerRng consumption with deterministic eligible-target ordering"
+    created: 2026-05-04
+    revised: ""
+    status: active
+
+  - id: TR-CR-024
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-28]
+    requirement: "RANGE target filtering is forward-only: Player A may target cells C+1 through C+X, Player B may target cells C-X through C-1, and enemies behind the attacker are never valid targets even when within numeric RANGE"
+    created: 2026-05-04
+    revised: ""
+    status: active
+
+  - id: TR-CR-025
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-45]
+    requirement: "RANGE + FIRST STRIKE units select their sub-step 6 target fresh after sub-step 4 removal; if the sub-step 3 target died and another enemy remains within RANGE, the surviving enemy is acquired and CombatDamage is emitted in sub-step 6"
     created: 2026-05-04
     revised: ""
     status: active
