@@ -81,7 +81,10 @@ three numbered prompts in a batch when three safe parallel tasks exist; if fewer
 than three are safe, state why. Keep the existing status color convention:
 `🟢` action/result, `🔵` verification, `🟡` attention/blocker, `🟣` queue/next.
 Each prompt must include branch, worktree, scope limits, story-done prohibition,
-shared tracker prohibition, and detailed commit-body requirements.
+shared tracker prohibition, and detailed commit-body requirements. Do not
+replace prompt triangles with colored circles; prompts keep the red triangle
+prefix. Colored circles are only status/window labels immediately before the
+word, for example `🟢 CLEAR` and `🟡 REPONDRE`.
 
 Window instruction policy: use uppercase `CLEAR` or `REPONDRE`. `CLEAR` means
 the user should close that window; do not add redundant wording like "do not
