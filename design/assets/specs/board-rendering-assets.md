@@ -103,7 +103,7 @@ Five 32×32 sprites each displaying a single heavy-weight digit (1–5) in Ivory
 **Generation Prompt:**
 32×32 pixel game UI sprite, lane number label, single large bold digit centered, Ankama cel-shaded, flat angular chip background with beveled horizontal ends in Ink Blue `#1A2D5A`, digit in Ivory `#F7F0DC` heavy display sans-serif, 2px Void `#0D0D14` outline, digit fills 60% chip height, high contrast, transparent PNG-32 straight alpha, produce 5 variants: "1" "2" "3" "4" "5". Negative: serif font, drop shadow, gradient fill, rounded soft edges.
 
-**Status:** Needed
+**Status:** Generated Placeholder
 
 ---
 
@@ -130,7 +130,7 @@ A 32×32 diamond-shaped node in cyan-blue neon — the primary navigational land
 **Generation Prompt:**
 32×32 pixel game sprite, diamond-shaped cell node, Ankama/Krosmaga cel-shaded, cyan-blue neon diamond `#3AB4CC`, 2px Void `#0D0D14` outline baked, soft inner radial glow from center to tips at 40% opacity, flat color fill interior, fully saturated, single frame idle state, transparent PNG-32 straight alpha. Negative: circle shape, green tint, animated frames in sprite, photorealistic glow, soft blurry edges.
 
-**Status:** Needed
+**Status:** Generated Placeholder
 
 ---
 
@@ -157,7 +157,7 @@ Same diamond geometry as ASSET-025, interior shifted to warm gold-white — Arca
 **Generation Prompt:**
 32×32 pixel game sprite, diamond-shaped spawn cell node active state, Ankama cel-shaded, warm gold-white tint interior `#FFF0C0` with Arcane Gold `#F5C842` inner glow 50% opacity, 2px Void `#0D0D14` baked outline, same diamond geometry as idle node, single warm bloom from center, transparent PNG-32 straight alpha. Negative: cyan-blue fill, cool color, red tint, circle shape.
 
-**Status:** Needed
+**Status:** Generated Placeholder
 
 ---
 
@@ -236,7 +236,7 @@ Squat three-tier cylindrical cobblestone pedestal topped by a stone-grey inert t
 **Generation Prompt:**
 64×96 pixel game sprite, unknown objective on cobblestone pedestal, Ankama cel-shaded, three-tier squat cylindrical stone pedestal cobblestone texture slightly lighter than `#1A1A22`, atop pedestal stone-grey inert teardrop-flame silhouette 2px Void `#0D0D14` outline, no flame, no glow, stone-grey fill `#888899`, small Ivory `#F7F0DC` `?` glyph floating 3px above tip, objective height 1.5× standard unit, transparent PNG-32 straight alpha. Negative: animated flame, gold glow, green tint, red tint, any warm color on teardrop.
 
-**Status:** Needed
+**Status:** Generated Placeholder
 
 ---
 
@@ -263,7 +263,7 @@ Same pedestal geometry as ASSET-029, teardrop now alive: Arcane Gold `#F5C842` f
 **Generation Prompt:**
 64×96 pixel game sprite, revealed real objective on cobblestone pedestal, Ankama cel-shaded, three-tier squat cylindrical cobblestone pedestal identical to unknown variant, teardrop-flame filled with Arcane Gold `#F5C842` flame, inner swirl glyph in deep amber `#C88020`, 2px Void `#0D0D14` outer outline, warm golden glow halo 4–6px at 40% opacity, no `?` glyph, luminance apex, fully saturated gold, transparent PNG-32 straight alpha. Negative: stone grey fill, green tint, blue tint, cold flame, Hearthstone golden treatment, spinning particle loop.
 
-**Status:** Needed
+**Status:** Generated Placeholder
 
 ---
 
@@ -342,7 +342,7 @@ Flat horizontal base ring in Sky Blue `#3A8EDB` with 1–2px Void outline, angul
 **Generation Prompt:**
 48×16 pixel game sprite, unit base platform strip Player A, Ankama cel-shaded, flat horizontal beveled-end chip shape, solid Sky Blue `#3A8EDB` fill, subtle cel-shade highlight one stop lighter at top center, small inset circle glyph on surface center, 1–2px Void `#0D0D14` outline, transparent PNG-32 straight alpha. Negative: gradient, photorealism, diamond shape inset, terracotta color.
 
-**Status:** Needed
+**Status:** Generated Placeholder
 
 ---
 
@@ -369,7 +369,7 @@ Identical geometry to ASSET-033 in Terracotta `#D45C22` for Player B. Colorblind
 **Generation Prompt:**
 48×16 pixel game sprite, unit base platform strip Player B, Ankama cel-shaded, flat horizontal beveled-end chip — identical geometry to Player A base, solid Terracotta `#D45C22` fill, subtle cel-shade highlight one stop lighter at top center, small inset diamond glyph on surface center, 1–2px Void `#0D0D14` outline, transparent PNG-32 straight alpha. Negative: sky blue fill, circle shape inset, gradient.
 
-**Status:** Needed
+**Status:** Generated Placeholder
 
 ---
 
@@ -396,7 +396,7 @@ A deliberately boring, low-profile horizontal bar in neutral mid-grey (`~#666678
 **Generation Prompt:**
 32×32 pixel game sprite, face-down trap tile marker, Ankama cel-shaded, near-flat horizontal rectangle bar, neutral mid-grey `#666678`, 1–2px Void `#0D0D14` outline, no icon, no glyph, no color accent, deliberately boring and unassuming, reads as inert floor tile, very slight bevel on long edges only, transparent PNG-32 straight alpha. Negative: bright color, class icon, interesting silhouette, glowing edge, any detail that suggests a unit.
 
-**Status:** Needed
+**Status:** Generated Placeholder
 
 ---
 
@@ -502,7 +502,7 @@ Wide shallow oval icon (§3.1 Field silhouette: "wide shallow oval — environme
 **Generation Prompt:**
 64×96 pixel game sprite, missing unit art placeholder, Ankama game style, 48×64 art centered on 64×96 canvas with transparent outer margin, flat rectangle matching unit board footprint, Ink Blue `#1A2D5A` fill, 2px Void `#0D0D14` outer outline on the 48×64 art area, 2px Arcane Gold `#F5C842` inner border inset 2px, large centered `?` glyph in Ivory `#F7F0DC` heavy weight, legible, transparent PNG-32 straight alpha. Negative: bright red error color, X mark, gradient, decorative content.
 
-**Status:** Needed
+**Status:** Generated Placeholder
 
 ---
 
@@ -529,7 +529,7 @@ Three discrete frames for the "500ms hold → golden flash overlay → slot clea
 **Generation Prompt:**
 64×96 pixel VFX frame strip, 3 frames, golden flash overlay for objective reveal, Ankama cel-shaded game VFX. Frame 01: flat Arcane Gold `#F5C842` full-canvas flood at 60% opacity. Frame 02: overexposed white-gold bloom `#FFF5CC` at 90% opacity, radial bloom from center. Frame 03: warm gold `#F5C842` at 20% opacity fading to transparent edges. Hard-edged frames, pure color overlay, transparent PNG-32 straight alpha. Negative: cool color, blue tint, complex shapes, character art.
 
-**Status:** Needed
+**Status:** Generated Placeholder
 
 ---
 
@@ -633,7 +633,7 @@ Zero artistic content. Single-pixel white column, two pixels tall. Programmatica
 **Generation Prompt:**
 None — programmatic asset. Deliver: 1px wide × 2px tall, pure white `#FFFFFF`, PNG-32 straight alpha, fully opaque. Place in atlas with 2px transparent gutter on all four sides.
 
-**Status:** Needed
+**Status:** File Present Placeholder
 
 ---
 
