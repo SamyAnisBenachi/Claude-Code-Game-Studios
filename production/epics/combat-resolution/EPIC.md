@@ -41,6 +41,10 @@ Combat Resolution implements the server-side deterministic 6-step algorithm that
 | TR-CR-013 | `resolve_combat` exclusive-system scaffold reads `BeginResolution`, exits idle without mutations, executes SS1-SS6, writes `ResolutionComplete` only after `S2CResolutionEvent`, and aborts at 10,000 iterations with `GameOver{Draw}` (CR-41) | ADR-017 |
 | TR-CR-014 | `S2CPlacementReveal` is enqueued before any SS1 entity spawn or ECS mutation; empty PendingPlacements still sends an empty reveal (CR-30) | ADR-007, ADR-017, ADR-020 |
 | TR-CR-015 | `S2CResolutionEvent` is enqueued before `ResolutionComplete`; RSM phase change can only follow after `ResolutionComplete`, guaranteeing clients receive the full log before phase change (CR-32) | ADR-008, ADR-017 |
+| TR-CR-016 | STUN suppresses all RESOLUTION actions for the affected unit: no CHARGE X movement in SS2, no FIRST STRIKE attack in SS3, no standard movement in SS5, and no standard attack in SS6 (CR-5) | ADR-017, ADR-018, ADR-022 |
+| TR-CR-017 | SS5 WALL collision halt stops an advancing enemy at the WALL cell; SS6 damage targets that WALL, WALL has 0 ATK, and dead WALL removal occurs at the next DEATH-processing point (CR-8) | ADR-017 |
+| TR-CR-018 | CHARGE X movement in SS2 advances X cells using the movement/collision rules, then SS5 movement advances MP as a separate movement (CR-31) | ADR-017, ADR-018 |
+| TR-CR-019 | RANGE unit already in range of a WALL does not halt at or advance toward the WALL in SS5; SS6 attacks the WALL from the current cell and emits CombatDamage targeting the WALL (CR-44) | ADR-017, ADR-018 |
 
 ## Definition of Done
 
@@ -57,7 +61,7 @@ This epic is complete when:
 
 Before the first story can be marked Ready for implementation:
 
-1. **DONE 2026-05-01 / revised 2026-05-03**: `TR-CR-001..015` are registered in `docs/architecture/tr-registry.yaml`
+1. **DONE 2026-05-01 / revised 2026-05-03 / repaired 2026-05-04**: `TR-CR-001..019` are registered in `docs/architecture/tr-registry.yaml`
 2. **`type_advantage_atk_bonus` and `type_advantage_ar_bonus`** must be added to `game-config.md` and `assets/config/game_config.ron` (OQ2 from GDD — action required before combat story begins)
 3. **Update `network-protocol.md` D.2** to reference the canonical `ResolutionEvent` enum from ADR-017 (OQ5 close)
 4. **Verify `UnitId` vs `EntityId` naming** across `network-protocol.md` D.2 and ADR-017 — must match before code is written (OQ5 gate)

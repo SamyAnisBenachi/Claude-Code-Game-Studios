@@ -4,12 +4,12 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Logic
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
 **GDD**: `design/gdd/combat-resolution.md`
-**Requirement**: `TR-CR-???` (TR-CR-005, TR-CR-008 — unregistered)
+**Requirement**: `TR-CR-016` (CR-5 STUN action suppression; this story verifies the SS2/SS5 movement clauses), `TR-CR-017` (CR-8 WALL halt), `TR-CR-003` (CR-9 path crossing), `TR-CR-018` (CR-31 CHARGE X plus standard movement), `TR-CR-019` (CR-44 RANGE-vs-WALL movement exemption)
 
 **ADR Governing Implementation**: ADR-017: Combat Resolution Execution Architecture (Decision 2 — Movement Collision Boundary)
 **ADR Decision Summary**: Two movement rules coexist. Rule A (destination rule): F1 formula computes each unit's intended destination once at SS5 entry — this governs Trap/Prism triggering. Rule B (collision loop): a per-tick advance loop inside `execute_movement` determines actual final position after enemy obstruction — this governs WALL halts and path-crossing halts. These rules are complementary layers, not contradictory. CHARGE X (SS2) uses the same tick loop as SS5 but with the CHARGE_X value instead of MP.
@@ -18,9 +18,10 @@
 **Engine Notes**: All position arithmetic must use `i16` intermediate before clamping to cell range `[1, 8]` — u8 subtraction for Player B movement would underflow. `world.resource_mut::<BoardState>()` is the correct World accessor (stable since Bevy 0.12). No breaking changes to `World::resource_mut` through Bevy 0.18.
 
 **Control Manifest Rules (Feature layer)**:
-- Required: Destination formula computed in `i16`; collision loop checks enemy occupancy only — friendly units, Traps, Prisms are not checked; STUNned units excluded from BOTH SS2 and SS5
-- Forbidden: Never check collision against friendly units; never use `unit.mp` for CHARGE X loop (use `unit.charge_x_value`)
-- Guardrail: Tick loop bounded by `iter_count`; pathological bounce loop (A blocks B blocks A) must terminate within `[max_mp + max_charge_x] × 2` ticks
+- Required: `resolve_combat(world: &mut World)` remains one Bevy exclusive-system frame; stats snapshots are immutable for the full RESOLUTION; movement formula F1 uses `i16` intermediate arithmetic.
+- Required: Current movement boundary is two-layered: F1 destination governs Trap/Prism triggering, while the enemy collision tick loop governs obstruction such as WALL halt and path crossing.
+- Forbidden: Never break RESOLUTION into a multi-frame state machine; never stream per-sub-step S2C events; never use `unit.mp` for CHARGE X movement (use the CHARGE X value).
+- Guardrail: Combat resolution worst case stays <= 15 ms; tick loop remains bounded by `iter_count` and must terminate pathological bounce loops.
 
 ---
 
@@ -88,6 +89,7 @@ fn execute_movement(
 - Story 003: SS1 populates board state and applies STUN (which this story checks)
 - Story 005: SS3 FIRST STRIKE attacks (units damaged in SS3 may affect SS5 via HP changes, but STUN from SS3 doesn't apply to SS5 — STUN must be applied before SS2)
 - Story 007: SS6 combat at WALL cell (this story only covers movement; the fight is SS6)
+- Story 008: SS6 RANGE target selection and CombatDamage emission for RANGE-vs-WALL; this story only preserves the SS5 movement exemption
 
 ---
 
