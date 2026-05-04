@@ -1631,3 +1631,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged per user instruction; `production/sprint-status.yaml` was not touched and has no matching CDP-006/S5-04 row.
 - Next recommended: Continue the Sprint 5 queue from `production/sprints/sprint-5.md`; likely next Must Have is Combat Story 004 Movement + Collision after readiness/status review.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/combat-resolution/story-004-movement-collision.md` - Story 004: Sub-steps 2 & 5 - Movement + Collision
+- Criteria: 5/5 passing; CR-5, CR-8, CR-9, CR-31, and CR-44 movement/collision clauses covered by `tests/unit/combat/movement_collision_test.rs`.
+- Test Evidence: `cargo test -p server --test movement_collision_test` passed 5/5. `cargo check -p server` passed.
+- Verification: Current `main` after integrated commit `408c34a` executes CHARGE X movement in SS2 and standard movement in SS5 through the same bounded tick loop, suppresses STUNned unit movement, uses `apply_f1` with `i16` intermediate arithmetic, halts on enemy WALL cells, halts path-crossing units at pre-crossing cells, logs separate SS2/SS5 `UnitMoved` trace entries, and preserves the RANGE-vs-WALL SS5 movement exemption.
+- Notes: Advisory only - CR-5, CR-8, and CR-44 include later SS3/SS6 attack, damage, and CombatDamage clauses in the current GDD text; those are explicitly out of scope for COMBAT-004 and remain owned by Combat Stories 005, 007, and 008. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-06 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
+- Next recommended: Combat Story 5 FIRST STRIKE Attacks (`production/epics/combat-resolution/story-005-substep3-first-strike.md`) after readiness check.

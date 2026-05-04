@@ -1,7 +1,7 @@
 # Story 004: Sub-steps 2 & 5 — Movement + Collision
 
 > **Epic**: Combat Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -132,7 +132,7 @@ fn execute_movement(
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combat/movement_collision_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -140,3 +140,13 @@ fn execute_movement(
 
 - Depends on: Story 001 (function called from `resolve_combat`), Story 003 (board state populated by SS1)
 - Unlocks: Story 005 (SS3 FIRST STRIKE uses post-SS2 positions), Story 007 (SS6 combat uses post-SS5 positions)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 5/5 passing (CR-5, CR-8, CR-9, CR-31, CR-44 movement/collision clauses)
+**Deviations**: Advisory only - the current GDD text for CR-5, CR-8, and CR-44 also references later SS3/SS6 attack, damage, and CombatDamage behavior. Those clauses are explicitly out of scope for this story and remain owned by Story 005, Story 007, and Story 008; they are not blockers for COMBAT-004 closure.
+**Test Evidence**: Logic: `tests/unit/combat/movement_collision_test.rs` exists and passed 5/5 via `cargo test -p server --test movement_collision_test`.
+**Code Review**: Skipped - lean mode.

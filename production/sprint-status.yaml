@@ -69,10 +69,13 @@ stories:
     name: "Combat Story 4: Movement + Collision"
     file: "production/epics/combat-resolution/story-004-movement-collision.md"
     priority: must-have
-    status: not-started
+    status: done
     owner: "worker"
     estimate_days: 1.00
     blocker: ""
+    completed: "2026-05-04"
+    notes:
+      - "COMPLETE WITH NOTES: SS2/SS5 movement and collision clauses verified; later SS3/SS6 attack/damage clauses remain out of scope for Stories 005, 007, and 008."
 
   - id: "S5-07"
     name: "Combat Story 5: FIRST STRIKE Attacks"
