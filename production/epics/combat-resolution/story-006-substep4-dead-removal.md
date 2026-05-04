@@ -4,23 +4,24 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Logic
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
 **GDD**: `design/gdd/combat-resolution.md`
-**Requirement**: `TR-CR-???` (TR-CR-007, TR-CR-013 — unregistered)
+**Requirement**: `TR-CR-008` (CR-16 — SS4 kill gold), `TR-CR-007` (CR-23 — FINAL BLOW stays in kill sub-step), `TR-CR-022` (CR-25 — sequential DEATH chains)
 
-**ADR Governing Implementation**: ADR-017: Combat Resolution Execution Architecture
-**ADR Decision Summary**: SS4 removes all units at 0 HP, fires DEATH trigger chains sequentially in lane order, and drains the `kill_log` for SS3 kills into `GoldAwarded` log entries. FINAL BLOW for SS3 kills fires IN SS3 (Story 005) — not consolidated here. SS4 handles the despawn and the SS3 kill gold only; SS6 kills are drained in a post-SS6 cleanup pass.
+**ADR Governing Implementation**: ADR-017: Combat Resolution Execution Architecture; ADR-022: Keyword System Timing Trigger Observer Architecture
+**ADR Decision Summary**: SS4 removes all units at 0 HP, fires DEATH trigger chains sequentially in lane order via `ChainDeathBuffer`, and drains the `kill_log` for SS3 kills into `GoldAwarded` log entries. FINAL BLOW for SS3 kills fires IN SS3 (Story 005) — not consolidated here. SS4 handles the despawn and the SS3 kill gold only; SS6 kills are drained in a post-SS6 cleanup pass.
 
 **Engine**: Bevy 0.18 | **Risk**: HIGH
-**Engine Notes**: `commands.entity(e).despawn()` — `despawn_recursive()` is removed since Bevy 0.16. Inside the exclusive system, use `world.despawn(entity_id)` directly (stable API since Bevy 0.14). DEATH triggers may spawn new entities (e.g., explosion VFX markers) — ensure `iter_count` is incremented per DEATH trigger chain link.
+**Engine Notes**: `commands.entity(e).despawn()` — `despawn_recursive()` is removed since Bevy 0.16. Inside the exclusive system, use `world.despawn(entity_id)` directly (stable API since Bevy 0.14). DEATH trigger dispatch uses `ChainDeathBuffer` and `world.trigger_targets(UnitDied { ... }, entity)` from the exclusive system; do not recursively call `world.trigger_targets()` from inside `on_unit_died`. Increment `iter_count` per DEATH chain link.
 
 **Control Manifest Rules (Feature layer)**:
 - Required: Drain `kill_log` for SS3 kills after removing dead units; emit `GoldAwarded` entries into ResolutionLog; DEATH trigger chains are sequential (fire A's DEATH, then B's if B died from A's trigger)
-- Forbidden: Never consolidate SS6 FINAL BLOW into SS4; never award kill gold for objective destruction
-- Guardrail: DEATH chain depth bounded by `iter_count`; infinite DEATH loops (A kills B kills A kills B...) terminate at 10,000
+- Required: Manage DEATH chains via `ChainDeathBuffer` `VecDeque`; clear it at SS4 start; seed initial deaths in lane order; drain one entity at a time
+- Forbidden: Never consolidate SS6 FINAL BLOW into SS4; never award kill gold for objective destruction; never use recursive `world.trigger_targets()` inside `on_unit_died`
+- Guardrail: DEATH chain depth bounded by `iter_count`; infinite DEATH loops terminate at 10,000; SS4 must stay within ADR-017's full RESOLUTION <= 15 ms frame budget
 
 ---
 
@@ -44,29 +45,48 @@ fn remove_dead(
     snapshots: &mut Vec<UnitSnapshot>,
     log: &mut ResolutionLog,
     kill_log: &mut Vec<KillRecord>,
+    chain_death_buffer: &mut ChainDeathBuffer,
     iter_count: &mut u32,
 ) {
-    // 1. Collect all units at HP == 0
+    // 1. Clear SS4 chain state and collect all units at HP == 0
+    chain_death_buffer.0.clear();
     let dead_units: Vec<UnitId> = snapshots.iter()
         .filter(|u| u.hp == 0 && !u.already_removed)
         .map(|u| u.unit_id)
         .collect();
 
-    // 2. Sort by lane order for determinism
+    // 2. Sort by lane order for determinism and seed the explicit queue
     dead_units.sort_by_key(|id| snapshots[id].lane);
+    chain_death_buffer.0.extend(dead_units);
 
-    // 3. For each dead unit: despawn entity, emit UnitRemoved, fire DEATH trigger
-    for unit_id in dead_units {
+    // 3. Drain one entity at a time. on_unit_died may push chain deaths here.
+    while let Some(unit_id) = chain_death_buffer.0.pop_front() {
+        *iter_count += 1;
+        if *iter_count > 10_000 {
+            abort_resolution_as_draw(world, log);
+            break;
+        }
+
+        let snapshot = snapshots.by_unit_id_mut(unit_id);
+        if snapshot.already_removed {
+            continue;
+        }
+
         // Despawn ECS entity
         world.despawn(snapshot.entity_id);
         snapshot.already_removed = true;
 
         log.push(ResolutionEvent::UnitRemoved { unit_id, lane, cell });
 
-        // Fire DEATH trigger (if unit has DEATH keyword)
+        // Fire DEATH observer synchronously from the exclusive system.
+        // The observer may enqueue new deaths into ChainDeathBuffer.
         if snapshot.keywords.contains(Death) {
-            fire_death_trigger(world, snapshot, snapshots, log, kill_log, iter_count);
-            // DEATH trigger may kill MORE units → recursive (but guarded by iter_count)
+            world.trigger_targets(UnitDied { attacker: snapshot.killer }, snapshot.entity_id);
+            log.push(ResolutionEvent::KeywordTriggered {
+                unit_id,
+                keyword: KeywordKind::Death,
+                sub_step: 4,
+            });
         }
     }
 
@@ -82,11 +102,13 @@ fn remove_dead(
 }
 ```
 
-**DEATH chain rule (CR-25)**: `fire_death_trigger` may call `remove_dead` recursively for newly killed units. This is sequential — A's trigger runs to completion (including B's removal) before moving to the next dead unit in the original list. The `iter_count` guards against infinite loops.
+**DEATH chain rule (CR-25)**: SS4 uses `ChainDeathBuffer` as an explicit FIFO queue. Initial dead units are seeded in lane order. Each queue entry is removed from board state, logs `UnitRemoved`, then fires `world.trigger_targets(UnitDied { ... }, entity)` synchronously from the exclusive system. If A's DEATH trigger kills B, the observer enqueues B into `ChainDeathBuffer`; B is drained only after A's observer completes. Do not recurse from `on_unit_died`; queueing is the sequencing mechanism. The `iter_count` guard aborts pathological loops at 10,000 iterations.
 
 **SS6 kill gold**: The `kill_log` for SS6 kills is drained in a post-SS6-combat cleanup pass within `execute_combat` (Story 007). Story 006 only drains SS3 kills (records where `lethal_sub_step == 3`).
 
 **CR-23 verification**: This AC is primarily verified by checking that FINAL_BLOW triggered in SS6 has `sub_step: 6` in its log entry — Story 007 owns the actual implementation. This story's responsibility is to NOT fire FINAL_BLOW during SS4.
+
+**Performance budget**: SS4 is part of ADR-017's single-frame RESOLUTION batch and must remain within the full RESOLUTION <= 15 ms frame budget. Queue draining, death-trigger dispatch, kill-log draining, and gold application must remain bounded by live unit count plus the 10,000 iteration safety guard.
 
 ---
 

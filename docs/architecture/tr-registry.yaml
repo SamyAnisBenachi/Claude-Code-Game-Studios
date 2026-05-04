@@ -29,7 +29,7 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 7
+version: 8
 last_updated: "2026-05-04"
 # Run 3 (/architecture-review 2026-04-30c): registered 80 new M2/M3 TRs covering
 # combat-resolution, card-acquisition, prism-system, keyword-system, card-animations,
@@ -49,6 +49,9 @@ last_updated: "2026-05-04"
 # TR-CR-002 to include CR-1 and registered TR-CR-020, TR-CR-021 for FIRST
 # STRIKE RANGE dual-event and lane-order multi-source traceability. Total:
 # 188 active TRs.
+# Run 9 (/story-readiness COMBAT-006 trace repair 2026-05-04): registered
+# TR-CR-022 for sequential DEATH chain traceability (CR-25). Total:
+# 189 active TRs.
 
 requirements:
 
@@ -1187,6 +1190,15 @@ requirements:
     gdd: design/gdd/combat-resolution.md
     gdd_ac_ids: [CR-37]
     requirement: "When multiple FIRST STRIKE attackers target the same unit in sub-step 3, damage is applied in ascending lane order and FINAL BLOW credit goes to the attacker that delivers lethal damage"
+    created: 2026-05-04
+    revised: ""
+    status: active
+
+  - id: TR-CR-022
+    system: combat-resolution
+    gdd: design/gdd/combat-resolution.md
+    gdd_ac_ids: [CR-25]
+    requirement: "Sub-step 4 DEATH chains are sequential: when unit A's DEATH trigger kills unit B, B's DEATH trigger fires only after A's DEATH trigger completes; chain dispatch uses ChainDeathBuffer queue ordering rather than recursive observer dispatch"
     created: 2026-05-04
     revised: ""
     status: active
