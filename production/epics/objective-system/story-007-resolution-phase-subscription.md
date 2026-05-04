@@ -4,12 +4,14 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Integration
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
 **GDD**: `design/gdd/objective-system.md`
 **Requirement**: `TR-OBJ-008` — `ObjectiveDestroyed` broadcast at RESOLUTION-end sync (NOT mid-sub-step); 500ms minimum reveal hold (client concern); `Sang Méprise`: `S2CSangMepriseReveal` reliable unicast to opponent only; `ObjectiveDestroyed` fires regardless of Sang Méprise visibility
+
+**Trace Validation (2026-05-04)**: `TR-OBJ-008` is active in `docs/architecture/tr-registry.yaml` and still maps to `design/gdd/objective-system.md` ACs `OS-13a`, `OS-13b`, and `OS-24`. This story's server-side scope is the RESOLUTION-end `ObjectiveDestroyed` broadcast plus Sang Méprise non-suppression. The 500ms reveal hold remains a Board Rendering/client obligation and is not a server timer in this story. `OS-18a` and `OS-18b` are included as adjacent GDD coverage because lane-order batching and no intermediate client-visible HP updates are inseparable from the RESOLUTION-end sync contract.
 
 **ADR Governing Implementation**: [ADR-010: RSM Phase Event Bus](docs/architecture/adr-010-rsm-event-bus.md) (`ResolutionPhaseEntered` subscription pattern); [ADR-001](docs/architecture/adr-001-objective-identity-unicast.md) (`S2CSangMepriseReveal` unicast)
 
@@ -20,11 +22,13 @@
 
 **Control Manifest Rules (Feature layer)**:
 - Required: Subscribe to `ResolutionPhaseEntered` via `MessageReader<T>`, never by polling `RoundState` directly (ADR-010)
-- Required: Feature systems never import from `server/core/rsm/` directly — subscribe to Messages only (ADR-010)
+- Required: Feature systems may import RSM message types from Core, but must not call RSM functions or poll/mutate `RoundState`; react through `MessageReader<ResolutionPhaseEntered>` and schedule subscribers `.after(advance_phase)` (ADR-010)
 - Required: `Sang Méprise` reveal sent as one-shot reliable unicast `S2CSangMepriseReveal` to opponent only; reveal persists in client local state for RESOLUTION duration (ADR-001)
 - Required: `ObjectiveDestroyed` broadcast fires at RESOLUTION-end regardless of prior Sang Méprise visibility (GDD OS-24)
 - Forbidden: Never emit `ObjectiveDestroyed` mid-sub-step — it is queued during sub-steps and broadcast at sync point (GDD Rule 6)
 - Guardrail: 500ms minimum reveal hold between HP = 0 and `was_fake` shown is a client/Board Rendering responsibility, not enforced server-side
+
+**Performance / RESOLUTION Impact**: No steady-state gameplay-loop work is added. `objective_resolution_ready` drains `ResolutionPhaseEntered` once per RESOLUTION entry; `broadcast_objective_events` runs once at RESOLUTION-end and drains a bounded queue of destroyed objectives (at most one per player lane). This stays within the current control-manifest budgets: server RESOLUTION batch <= 15 ms and per-round messages < 1 KB/round/player. No mid-sub-step network emission is introduced.
 
 ---
 
