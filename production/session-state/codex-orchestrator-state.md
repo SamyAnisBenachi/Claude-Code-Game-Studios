@@ -187,8 +187,19 @@ None currently tracked here.
   visual/layout implementation and exact tooltip/layout work.
 - Shop/Auction UI Story 001 readiness returned BLOCKED because
   `PresentationPlugin` / `PresentationSet` from ADR-021 do not exist yet.
-  A Presentation scaffold ownership analysis prompt was given; wait for the
-  user-provided agent result before acting on that window.
+  Presentation scaffold ownership analysis returned: create a new shared
+  Presentation Layer story rather than hiding it in Board Rendering 001 or
+  Shop/Auction UI 001. Proposed path:
+  `production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md`.
+  Rationale: ADR-021 owns `PresentationPlugin`, `PresentationSet`, and
+  `phase_sink_system` as cross-epic infrastructure, and its migration plan
+  starts with `client/src/presentation/mod.rs` before BoardRenderingPlugin.
+  Likely implementation surface: `client/src/presentation/mod.rs`,
+  `client/src/lib.rs`, `client/src/main.rs`, existing HUD/Hand UI/Card
+  Animations scheduling, and
+  `tests/integration/presentation/presentation_plugin_scaffold_test.rs`.
+  Board Rendering 001 and Shop/Auction UI 001 remain blocked until this shared
+  story exists and is implemented.
 - Board Rendering Story 001 readiness returned NEEDS WORK. No trace,
   dependency, ADR, or manifest blocker was found. Required fixes are docs-only:
   add an explicit ADR-021 presentation performance/no-impact note and clarify
@@ -713,8 +724,11 @@ Run only one story-done at a time.
 - S5-21 Board Rendering and Shop/Auction UI planning artifacts exist at
   `1c28e9c`, but the new UI/rendering stories need readiness passes before
   any implementation. Shop/Auction UI Story 001 is blocked by missing
-  ADR-021 Presentation scaffold ownership. Board Rendering Story 001 has only
-  docs-only readiness gaps and should be repaired/rerun before any `/dev-story`.
+  ADR-021 Presentation scaffold ownership. The ownership analysis recommends a
+  new shared Presentation Layer story before Board Rendering 001 or
+  Shop/Auction UI 001 implementation. Board Rendering Story 001 has only
+  docs-only readiness gaps and should be repaired/rerun, but still depends on
+  the shared Presentation story before implementation.
   Commit `22b6830` (`docs: repair board rendering scaffold readiness`) is now
   on `origin/main`, but the user has not yet pasted that agent's official
   return. Do not classify that window or launch BR-001 implementation until
@@ -770,8 +784,8 @@ Current active windows by user default-launch rule:
   not be relaunched until server/protocol/client data blockers are addressed.
 - Shop/Auction UX readiness check returned; window can be cleared.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
-  PresentationPlugin / PresentationSet; window can be cleared after the
-  Presentation scaffold analysis prompt is launched/tracked.
+  PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
+  and recommends a new shared Presentation Layer story. Window can be cleared.
 - Board Rendering Story 001 readiness returned NEEDS WORK on missing
   presentation performance/no-impact note and ambiguous invalid
   `cell_to_world` bounds/assert wording. Use `REPONDRE` in that same window
