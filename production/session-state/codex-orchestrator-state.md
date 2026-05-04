@@ -277,6 +277,18 @@ None currently tracked here.
   `git diff --check`. Next action: run `/story-done` for
   `production/epics/combat-resolution/story-006-substep4-dead-removal.md`.
   Do not relaunch the COMBAT-006 implementation worker.
+- OBJECTIVE-006 / S5-15 readiness repair returned READY at `f6cdf58`. Worker
+  implementation returned at `c07be2c` on
+  `work/objective-006-d4-fake-reward-draw`, but the branch was behind current
+  `origin/main` after COMBAT-006 integration, so root cherry-picked only the
+  OBJECTIVE-006 commit and pushed it to `origin/main` as `d46e812`. Verification
+  passed `cargo fmt -p server -- --check`,
+  `cargo test -p server --test fake_reward_test` 8/8,
+  `cargo test -p server --test consequence_path_test --test damage_interface_test`
+  14/14, `cargo check -p server`, and `git diff --check`. Next action: run
+  `/story-done` for
+  `production/epics/objective-system/story-006-d4-fake-reward-draw.md`. Do not
+  relaunch the OBJECTIVE-006 implementation worker.
 - COMBAT-004: Movement + Collision readiness repair landed on main at
   `c2fc0d3`; implementation landed on main at `408c34a`; story-done closure
   committed at `52caa45`; follow-up story scope clarification committed at
@@ -803,6 +815,10 @@ Active implementation workers by default-launch rule:
 Current active windows by user default-launch rule:
 - COMBAT-006 implementation worker returned, root integrated and pushed commit
   `ea43240`; window can be cleared. Story-done for COMBAT-006 is now pending.
+- OBJECTIVE-006 implementation worker returned; root cherry-picked and pushed
+  only the objective commit as `d46e812` because the worker branch was behind
+  current main. Window can be cleared. Story-done for OBJECTIVE-006 is now
+  pending.
 - COMBAT-005 story-done returned, wrote closure files, and pushed closure at
   `621fef5`; window can be cleared.
 - Server RNG 003 story-done returned, wrote closure files, and pushed closure
