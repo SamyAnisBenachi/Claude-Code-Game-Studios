@@ -1,7 +1,7 @@
 # Story 006: Sub-step 4 — Dead Removal + DEATH Chains + Kill Gold
 
 > **Epic**: Combat Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -29,9 +29,9 @@
 
 *From GDD `design/gdd/combat-resolution.md`, scoped to this story:*
 
-- [ ] **CR-16**: GIVEN a unit kills an enemy unit, WHEN sub-step 4 processes the dead unit, THEN the killing player immediately receives +1 gold (emitted as `GoldAwarded { player, amount: 1, reason: Kill }` in ResolutionLog)
-- [ ] **CR-23**: GIVEN a unit kills another unit in sub-step 6 (standard combat), WHEN FINAL BLOW fires, THEN it fires in sub-step 6 — NOT consolidated to sub-step 4 (verified by checking log order: FINAL_BLOW entry has `sub_step: 6`, not `sub_step: 4`)
-- [ ] **CR-25**: GIVEN unit A's DEATH trigger kills unit B in sub-step 4, WHEN DEATH triggers process, THEN B's DEATH trigger fires AFTER A's DEATH trigger completes (sequential chain, not simultaneous)
+- [x] **CR-16**: GIVEN a unit kills an enemy unit, WHEN sub-step 4 processes the dead unit, THEN the killing player immediately receives +1 gold (emitted as `GoldAwarded { player, amount: 1, reason: Kill }` in ResolutionLog)
+- [x] **CR-23**: GIVEN a unit kills another unit in sub-step 6 (standard combat), WHEN FINAL BLOW fires, THEN it fires in sub-step 6 — NOT consolidated to sub-step 4 (verified by checking log order: FINAL_BLOW entry has `sub_step: 6`, not `sub_step: 4`)
+- [x] **CR-25**: GIVEN unit A's DEATH trigger kills unit B in sub-step 4, WHEN DEATH triggers process, THEN B's DEATH trigger fires AFTER A's DEATH trigger completes (sequential chain, not simultaneous)
 
 ---
 
@@ -147,7 +147,7 @@ fn remove_dead(
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combat/substep4_dead_removal_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -155,3 +155,13 @@ fn remove_dead(
 
 - Depends on: Story 001 (scaffold), Story 002 (CombatResult.net_damage feeds kill_log), Story 005 (kill_log populated with SS3 kills)
 - Unlocks: Story 007 (SS6 combat uses board state after SS4 removals)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 3/3 passing (CR-16, CR-23, CR-25)
+**Deviations**: Advisory only - implementation dispatches `UnitDied` with Bevy's targeted `EntityEvent` path via `world.trigger(...)` rather than the manifest wording `world.trigger_targets(...)`; `cargo check` and CR-25 coverage confirm synchronous targeted observer behavior, `ChainDeathBuffer` FIFO sequencing, and no recursive DEATH-chain dispatch.
+**Test Evidence**: Logic: `tests/unit/combat/substep4_dead_removal_test.rs` exists and passed 3/3 via `cargo test -p server --test substep4_dead_removal_test`. `cargo check -p server` passed. `git diff --check` passed.
+**Code Review**: Skipped - lean mode.

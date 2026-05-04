@@ -1675,3 +1675,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-18 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
 - Next recommended: Continue Sprint 5 Must Have combat spine with Combat Story 6 Dead Removal + DEATH Chains + Kill Gold (`production/epics/combat-resolution/story-006-substep4-dead-removal.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/combat-resolution/story-006-substep4-dead-removal.md` - Story 006: Sub-step 4 - Dead Removal + DEATH Chains + Kill Gold
+- Criteria: 3/3 passing; CR-16, CR-23, and CR-25 covered by `tests/unit/combat/substep4_dead_removal_test.rs`.
+- Test Evidence: `cargo test -p server --test substep4_dead_removal_test` passed 3/3. `cargo check -p server` passed. `git diff --check` passed.
+- Verification: Current `main` after integrated commit `ea43240` removes SS4 dead units, drains SS3 kill records into `GoldAwarded { amount: 1, reason: Kill }` entries and economy gold, keeps FINAL BLOW in the kill sub-step with no SS4 FINAL BLOW trace, and processes DEATH chains sequentially through `ChainDeathBuffer` without recursive DEATH dispatch.
+- Notes: Advisory only - implementation dispatches `UnitDied` with Bevy's targeted `EntityEvent` path via `world.trigger(...)` rather than the manifest wording `world.trigger_targets(...)`; compile and CR-25 coverage confirm equivalent synchronous targeted behavior for this story. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-08 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
+- Next recommended: Combat Story 7 Standard Combat + SHIELD + COUNTERATTACK (`production/epics/combat-resolution/story-007-substep6-combat-shield-counterattack.md`) after readiness check.

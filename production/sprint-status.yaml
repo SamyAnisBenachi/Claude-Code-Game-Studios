@@ -93,10 +93,13 @@ stories:
     name: "Combat Story 6: Dead Removal + DEATH Chains + Kill Gold"
     file: "production/epics/combat-resolution/story-006-substep4-dead-removal.md"
     priority: must-have
-    status: not-started
+    status: done
     owner: "worker"
     estimate_days: 1.00
     blocker: ""
+    completed: "2026-05-04"
+    notes:
+      - "COMPLETE WITH NOTES: SS4 dead removal, SS3 kill-gold drain, FINAL BLOW non-SS4 ordering, and sequential ChainDeathBuffer DEATH chains verified. Advisory only: implementation uses Bevy EntityEvent `world.trigger(...)` rather than manifest wording `world.trigger_targets(...)`; coverage confirms synchronous targeted behavior."
 
   - id: "S5-09"
     name: "Combat Story 7: Standard Combat + SHIELD + COUNTERATTACK"
