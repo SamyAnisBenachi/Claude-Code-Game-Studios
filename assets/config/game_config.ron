@@ -47,6 +47,7 @@
     auction_floor_rare: 3,
     auction_floor_epic: 4,
     auction_floor_legendary: 5,
+    legendary_pool_entry_round: 6,
 
     // Class mechanics
     xelor_sablier_steal: 1,

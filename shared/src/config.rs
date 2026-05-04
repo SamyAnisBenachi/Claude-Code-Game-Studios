@@ -57,6 +57,7 @@ pub struct GameConfig {
     pub auction_floor_rare: u32,
     pub auction_floor_epic: u32,
     pub auction_floor_legendary: u32,
+    pub legendary_pool_entry_round: u32,
 
     // Class mechanics
     pub xelor_sablier_steal: u32,
@@ -107,6 +108,7 @@ impl Default for GameConfig {
             auction_floor_rare: 3,
             auction_floor_epic: 4,
             auction_floor_legendary: 5,
+            legendary_pool_entry_round: 6,
             xelor_sablier_steal: 1,
             protocol_version: 1,
             hello_timeout_ms: 5000,

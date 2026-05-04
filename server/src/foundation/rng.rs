@@ -33,6 +33,8 @@ pub enum RngEvent {
     DrawInitialDraft { player_id: PlayerId },
     /// Shop slot draw — 2–3 seeds per slot, ascending player_id then slot_index.
     DrawShopSlot { player_id: PlayerId, slot_index: u8 },
+    /// Shared auction-card draw for one auction round.
+    DrawAuctionCard { round: u32 },
     /// Ecaflip dice trigger — ascending lane order.
     ResolveEcaflip { lane: u8 },
     /// Prism activation resolution — ascending player_id then lane.
@@ -243,6 +245,21 @@ impl ServerRng {
                 player_id,
                 slot_index,
             },
+            seed_index: idx,
+            result: None,
+        });
+        seed
+    }
+
+    /// Draw seed for one shared auction card.
+    ///
+    /// Consumes 1 seed. Auction owns the rarity eligibility view and Card Pool
+    /// owns weighted selection from that view.
+    pub fn draw_auction_card(&mut self, round: u32) -> u64 {
+        let idx = self.seed_index;
+        let seed = self.next_seed();
+        self.audit_log.push(AuditEntry {
+            event_type: RngEvent::DrawAuctionCard { round },
             seed_index: idx,
             result: None,
         });
@@ -503,9 +520,9 @@ mod tests {
     // (structural — verified by the module's visibility rules; no runtime assertion needed)
     // Verified: next_seed() is private; rng/seed_index/audit_log fields are private.
 
-    // All 7 intent-named methods exist and push exactly one entry per next_seed() call
+    // All 8 intent-named methods exist and push exactly one entry per next_seed() call
     #[test]
-    fn test_all_seven_methods_push_one_entry_each() {
+    fn test_all_eight_methods_push_one_entry_each() {
         let mut rng = ServerRng::from_seed(0);
         let baseline = rng.audit_log().len(); // 1 (sentinel)
         rng.assign_fake_objectives(1); // +2 entries
@@ -514,16 +531,18 @@ mod tests {
         assert_eq!(rng.audit_log().len(), baseline + 3);
         rng.draw_shop_slot(1, 0); // +1
         assert_eq!(rng.audit_log().len(), baseline + 4);
-        rng.resolve_ecaflip(0); // +1
+        rng.draw_auction_card(3); // +1
         assert_eq!(rng.audit_log().len(), baseline + 5);
-        rng.resolve_prism(1, 0); // +1
+        rng.resolve_ecaflip(0); // +1
         assert_eq!(rng.audit_log().len(), baseline + 6);
-        rng.award_fake_objective_reward(1, 0); // +1
+        rng.resolve_prism(1, 0); // +1
         assert_eq!(rng.audit_log().len(), baseline + 7);
-        rng.draw_free_card(1); // +1
+        rng.award_fake_objective_reward(1, 0); // +1
         assert_eq!(rng.audit_log().len(), baseline + 8);
-        // seed_index: 1 (start) + 2 + 1 + 1 + 1 + 1 + 1 + 1 = 9
-        assert_eq!(rng.current_seed_index(), 9);
+        rng.draw_free_card(1); // +1
+        assert_eq!(rng.audit_log().len(), baseline + 9);
+        // seed_index: 1 (start) + 2 + seven one-seed methods = 10
+        assert_eq!(rng.current_seed_index(), 10);
     }
 
     // -------------------------------------------------------------------------

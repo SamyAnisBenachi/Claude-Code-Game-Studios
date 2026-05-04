@@ -1,25 +1,29 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use lightyear::prelude::{
     MessageReceiver, NetworkTarget, PeerId, RemoteId, Server, ServerMultiMessageSender,
 };
-use shared::card::{CardId, Rarity};
+use shared::card::{CardId, ClassId, Rarity};
 use shared::protocol::{
-    BidRejectedReason, C2SPlaceBid, CardSource, ReliableChannel, S2CAuctionBidAccepted,
+    BidRejectedReason, C2SPlaceBid, CardSource, DraftPhase, ReliableChannel, S2CAuctionBidAccepted,
     S2CAuctionBidRejected, S2CAuctionSettled, S2CCardAcquired,
 };
 use shared::session::PlayerId;
 
 use crate::core::economy::system::{gold_broadcast, S2CGoldBroadcast};
 use crate::core::economy::{api, PlayerEconomies};
-use crate::core::rsm::{AbortAuction, AuctionPhaseEntered, AuctionSettled};
+use crate::core::pool::PlayerPool;
+use crate::core::rsm::{
+    AbortAuction, AuctionPhaseEntered, AuctionSettled, DraftStarted, GameOverEmitted,
+};
 use crate::core::session::{
     defer_unicast_for_reconnect, DeferredMessage, PlayerConnectionMap, ReconnectTracker,
 };
 use crate::feature::acquisition::{hand_push, PlayerHands, MAX_HAND_SIZE};
 use crate::foundation::config::{CardCatalog, GameConfig};
+use crate::foundation::rng::ServerRng;
 
 use super::state::{AuctionPhase, AuctionState};
 
@@ -50,11 +54,54 @@ impl AuctionCardDrawFixture {
     }
 }
 
+/// Shared neutral auction pool, separate from every player's personal shop pool.
+#[derive(Resource)]
+pub struct AuctionPool {
+    pub pool: PlayerPool,
+}
+
+impl AuctionPool {
+    pub fn from_catalog(catalog: &CardCatalog, config: &GameConfig) -> Self {
+        Self {
+            pool: PlayerPool::initialize(&catalog.cards, &config.0),
+        }
+    }
+
+    pub fn copies_remaining(&self, card_id: CardId) -> u32 {
+        self.pool.copies_remaining(card_id)
+    }
+}
+
+impl Default for AuctionPool {
+    fn default() -> Self {
+        Self {
+            pool: PlayerPool {
+                copies_remaining: HashMap::new(),
+                initial_count: HashMap::new(),
+                shop_slots: Vec::new(),
+            },
+        }
+    }
+}
+
 #[derive(SystemParam)]
 pub struct AuctionMessageWriters<'w> {
     auction_cards: MessageWriter<'w, S2CAuctionCard>,
     gold_broadcasts: MessageWriter<'w, S2CGoldBroadcast>,
     settled: MessageWriter<'w, AuctionSettled>,
+}
+
+#[derive(SystemParam)]
+pub struct AuctionStaticData<'w> {
+    catalog: Res<'w, CardCatalog>,
+    config: Res<'w, GameConfig>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AuctionDrawOutcome {
+    Drawn(CardId),
+    EmptyPool,
+    MissingIntegration,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -146,9 +193,10 @@ pub fn auction_tick_system(
     mut abort: MessageReader<AbortAuction>,
     mut economies: ResMut<PlayerEconomies>,
     mut hands: Option<ResMut<PlayerHands>>,
+    mut auction_pool: Option<ResMut<AuctionPool>>,
     draw_fixture: Option<Res<AuctionCardDrawFixture>>,
-    catalog: Res<CardCatalog>,
-    config: Res<GameConfig>,
+    data: AuctionStaticData,
+    mut rng: Option<ResMut<ServerRng>>,
     time: Option<Res<Time>>,
     connections: Option<Res<PlayerConnectionMap>>,
     mut reconnect_tracker: Option<ResMut<ReconnectTracker>>,
@@ -169,21 +217,40 @@ pub fn auction_tick_system(
 
         auction.phase = AuctionPhase::Selecting;
 
-        let Some(card_id) = draw_fixture.as_ref().and_then(|fixture| fixture.card_id) else {
-            tracing::error!(
-                round = event.round,
-                "AuctionPhaseEntered received before auction draw integration is available"
-            );
-            reset_to_idle(&mut auction);
-            continue;
+        let card_id = match select_auction_card(
+            auction_pool.as_deref_mut(),
+            draw_fixture.as_deref(),
+            &data.catalog,
+            &data.config,
+            rng.as_deref_mut(),
+            event.round,
+        ) {
+            AuctionDrawOutcome::Drawn(card_id) => card_id,
+            AuctionDrawOutcome::EmptyPool => {
+                writers.settled.write(AuctionSettled {
+                    winner: None,
+                    final_price: 0,
+                    card_id: CardId(0),
+                });
+                reset_to_idle(&mut auction);
+                continue;
+            }
+            AuctionDrawOutcome::MissingIntegration => {
+                tracing::error!(
+                    round = event.round,
+                    "AuctionPhaseEntered received before auction draw integration is available"
+                );
+                reset_to_idle(&mut auction);
+                continue;
+            }
         };
 
-        let starting_price = starting_price_for(card_id, &catalog, &config);
+        let starting_price = starting_price_for(card_id, &data.catalog, &data.config);
         auction.card_id = Some(card_id);
         auction.starting_price = starting_price;
         auction.current_price = starting_price;
         auction.current_leader = None;
-        auction.timer_remaining_ms = config.auction_timer_seconds.saturating_mul(1000);
+        auction.timer_remaining_ms = data.config.auction_timer_seconds.saturating_mul(1000);
         auction.phase = AuctionPhase::LiveBidding;
 
         writers.auction_cards.write(S2CAuctionCard {
@@ -203,7 +270,7 @@ pub fn auction_tick_system(
         &mut auction,
         &mut economies,
         hands.as_deref(),
-        &config,
+        &data.config,
         bids,
         &mut frame_outbox,
         &mut frame_gold_broadcasts,
@@ -243,6 +310,143 @@ pub fn auction_tick_system(
             connections.as_deref(),
             &pending_players,
         );
+    }
+}
+
+pub fn initialize_auction_pool_on_draft_started(
+    mut draft_started: MessageReader<DraftStarted>,
+    catalog: Option<Res<CardCatalog>>,
+    config: Option<Res<GameConfig>>,
+    mut auction_pool: ResMut<AuctionPool>,
+) {
+    for message in draft_started.read() {
+        if message.phase != DraftPhase::Initial {
+            continue;
+        }
+
+        let (Some(catalog), Some(config)) = (catalog.as_deref(), config.as_deref()) else {
+            tracing::warn!(
+                "DraftStarted::Initial received before CardCatalog or GameConfig; AuctionPool not initialized"
+            );
+            continue;
+        };
+
+        *auction_pool = AuctionPool::from_catalog(catalog, config);
+    }
+}
+
+pub fn clear_auction_pool_on_game_over(
+    mut game_over: MessageReader<GameOverEmitted>,
+    mut auction_pool: ResMut<AuctionPool>,
+) {
+    if game_over.read().next().is_some() {
+        *auction_pool = AuctionPool::default();
+    }
+}
+
+fn select_auction_card(
+    auction_pool: Option<&mut AuctionPool>,
+    draw_fixture: Option<&AuctionCardDrawFixture>,
+    catalog: &CardCatalog,
+    config: &GameConfig,
+    rng: Option<&mut ServerRng>,
+    round: u32,
+) -> AuctionDrawOutcome {
+    if let Some(auction_pool) = auction_pool {
+        return draw_from_auction_pool(auction_pool, catalog, config, rng, round);
+    }
+
+    draw_fixture
+        .and_then(|fixture| fixture.card_id)
+        .map(AuctionDrawOutcome::Drawn)
+        .unwrap_or(AuctionDrawOutcome::MissingIntegration)
+}
+
+fn draw_from_auction_pool(
+    auction_pool: &mut AuctionPool,
+    catalog: &CardCatalog,
+    config: &GameConfig,
+    rng: Option<&mut ServerRng>,
+    round: u32,
+) -> AuctionDrawOutcome {
+    let eligible_pool = build_eligible_auction_pool(&auction_pool.pool, catalog, config, round);
+    let seed = auction_draw_seed(rng, round);
+    let Some(card_id) = PlayerPool::draw_auction_card(&eligible_pool, &catalog.cards, seed) else {
+        return AuctionDrawOutcome::EmptyPool;
+    };
+
+    if let Err(error) = auction_pool.pool.distribute(card_id) {
+        tracing::error!(
+            card_id = card_id.0,
+            ?error,
+            "auction draw selected a card that could not be distributed"
+        );
+        return AuctionDrawOutcome::EmptyPool;
+    }
+
+    AuctionDrawOutcome::Drawn(card_id)
+}
+
+fn auction_draw_seed(rng: Option<&mut ServerRng>, round: u32) -> u64 {
+    if let Some(rng) = rng {
+        return rng.draw_auction_card(round);
+    }
+
+    tracing::warn!(
+        round,
+        "AuctionPhaseEntered processed without ServerRng; using deterministic round seed"
+    );
+    u64::from(round)
+}
+
+fn build_eligible_auction_pool(
+    auction_pool: &PlayerPool,
+    catalog: &CardCatalog,
+    config: &GameConfig,
+    round: u32,
+) -> PlayerPool {
+    let copies_remaining = auction_pool
+        .copies_remaining
+        .iter()
+        .filter_map(|(card_id, remaining)| {
+            auction_card_is_round_eligible(*card_id, catalog, config, round)
+                .then_some((*card_id, *remaining))
+        })
+        .collect();
+    let initial_count = auction_pool
+        .initial_count
+        .iter()
+        .filter_map(|(card_id, initial)| {
+            auction_card_is_round_eligible(*card_id, catalog, config, round)
+                .then_some((*card_id, *initial))
+        })
+        .collect();
+
+    PlayerPool {
+        copies_remaining,
+        initial_count,
+        shop_slots: Vec::new(),
+    }
+}
+
+fn auction_card_is_round_eligible(
+    card_id: CardId,
+    catalog: &CardCatalog,
+    config: &GameConfig,
+    round: u32,
+) -> bool {
+    let Some(card) = catalog.cards.get(&card_id) else {
+        return false;
+    };
+
+    if card.class != ClassId::Neutral {
+        return false;
+    }
+
+    match card.rarity {
+        Rarity::Rare => true,
+        Rarity::Legendary => round >= config.legendary_pool_entry_round,
+        _ => false,
     }
 }
 
