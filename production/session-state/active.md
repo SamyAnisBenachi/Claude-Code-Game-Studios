@@ -1653,3 +1653,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-07 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
 - Next recommended: Combat Story 6 Dead Removal + DEATH Chains + Kill Gold (`production/epics/combat-resolution/story-006-substep4-dead-removal.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE
+- Story: `production/epics/auction-system/story-008-pool-integration.md` - Story 008: Pool Integration - draw_auction_card, distribute, Legendary Stratification
+- Criteria: 3/3 passing; AU8-pool, AU15, and AU21 covered by `tests/integration/auction/pool_integration_test.rs`.
+- Test Evidence: `cargo test -p server --test auction_pool_integration_test` passed 5/5. `cargo check --workspace` passed.
+- Verification: Current `main` after integrated commit `c6a1d86` calls `PlayerPool::draw_auction_card()` at SELECTING entry through a round-eligible auction-pool view, calls `distribute(card_id)` immediately after a successful draw, handles empty eligible pools with same-invocation `AuctionSettled { winner: None, final_price: 0, card_id: CardId(0) }` and no `S2CAuctionCard`, and excludes Legendary cards before `GameConfig.legendary_pool_entry_round`.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or Lightyear deviation found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-14 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
+- Next recommended: Objective Story 6 D4 Fake Reward Draw (`production/epics/objective-system/story-006-d4-fake-reward-draw.md`) after readiness check.

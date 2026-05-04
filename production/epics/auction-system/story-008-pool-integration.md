@@ -1,7 +1,7 @@
 # Story 008: Pool Integration — draw_auction_card, distribute, Legendary Stratification
 
 > **Epic**: Auction System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -35,9 +35,9 @@
 
 *From GDD `design/gdd/auction-system.md`, scoped to this story:*
 
-- [ ] **AU8-pool**: `GIVEN` `draw_auction_card()` was called at SELECTING entry, `WHEN` the auction ends by any path (win, no-bid, or AbortAuction from LIVE_BIDDING), `THEN` the drawn card's `copies_remaining` in the shared neutral pool has been decremented by exactly 1 from its pre-draw value. Test parameterized over all three exit paths
-- [ ] **AU15**: `GIVEN` the shared neutral auction pool has `copies_remaining == 0` across all eligible rarities, `WHEN` `AuctionPhaseEntered` is received, `THEN` `AuctionSettled { winner: None, amount: 0 }` Bevy Message fires in the same system invocation (not deferred), `auction_state.phase == IDLE`, and no `S2CAuctionCard` is queued
-- [ ] **AU21**: `GIVEN` `round_number < GameConfig.legendary_pool_entry_round` (e.g., round 3 with `legendary_pool_entry_round = 6`), `WHEN` `draw_auction_card()` is called, `THEN` the drawn card's rarity is NOT Legendary — even if Legendary cards are present in the pool
+- [x] **AU8-pool**: `GIVEN` `draw_auction_card()` was called at SELECTING entry, `WHEN` the auction ends by any path (win, no-bid, or AbortAuction from LIVE_BIDDING), `THEN` the drawn card's `copies_remaining` in the shared neutral pool has been decremented by exactly 1 from its pre-draw value. Test parameterized over all three exit paths
+- [x] **AU15**: `GIVEN` the shared neutral auction pool has `copies_remaining == 0` across all eligible rarities, `WHEN` `AuctionPhaseEntered` is received, `THEN` `AuctionSettled { winner: None, amount: 0 }` Bevy Message fires in the same system invocation (not deferred), `auction_state.phase == IDLE`, and no `S2CAuctionCard` is queued
+- [x] **AU21**: `GIVEN` `round_number < GameConfig.legendary_pool_entry_round` (e.g., round 3 with `legendary_pool_entry_round = 6`), `WHEN` `draw_auction_card()` is called, `THEN` the drawn card's rarity is NOT Legendary — even if Legendary cards are present in the pool
 
 ---
 
@@ -189,7 +189,7 @@ Test: round < threshold draws only non-Legendary cards
 **Story Type**: Integration
 **Required evidence**: `tests/integration/auction/pool_integration_test.rs` — must exist and pass (uses `App::new()` with AuctionPlugin + CardDataPoolPlugin + EconomyPlugin)
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -199,3 +199,13 @@ Test: round < threshold draws only non-Legendary cards
 - Depends on: `card-data-pool` story-001 DONE (provides `PlayerPool` and `distribute()`)
 - Depends on: `card-data-pool` story-002 DONE (provides current read-only `PlayerPool::draw_auction_card(auction_pool, catalog, seed)`)
 - Unlocks: Epic complete — all 10 TR-AUC requirements covered
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 3/3 passing (AU8-pool, AU15, AU21)
+**Deviations**: None.
+**Test Evidence**: Integration: `tests/integration/auction/pool_integration_test.rs` exists and passed 5/5 via `cargo test -p server --test auction_pool_integration_test`. `cargo check --workspace` passed.
+**Code Review**: Skipped - lean mode.

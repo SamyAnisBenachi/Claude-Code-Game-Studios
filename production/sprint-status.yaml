@@ -149,10 +149,11 @@ stories:
     name: "Auction Story 8: Pool Integration"
     file: "production/epics/auction-system/story-008-pool-integration.md"
     priority: should-have
-    status: not-started
-    owner: "unassigned"
+    status: done
+    owner: "worker + orchestrator"
     estimate_days: 1.00
     blocker: ""
+    completed: "2026-05-04"
 
   - id: "S5-15"
     name: "Objective Story 6: D4 Fake Reward Draw"
