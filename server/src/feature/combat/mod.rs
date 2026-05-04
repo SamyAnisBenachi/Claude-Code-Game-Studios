@@ -8,6 +8,7 @@ use bevy::ecs::message::MessageCursor;
 use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 use shared::card::{CardData, CardId, CardType, Keyword, SimpleKeyword};
+use shared::config::GameConfig as SharedGameConfig;
 use shared::keyword::KeywordKind;
 use shared::protocol::{
     EntityId, GameOverReason, PlacedCard, PlayTarget, S2CPlacementReveal, S2CResolutionEvent,
@@ -28,9 +29,12 @@ use crate::feature::board::{
 };
 use crate::feature::keyword::components::UnitKeywordState;
 use crate::feature::keyword::effects::{
-    apply_stun, can_execute_standard_movement, charge_x_cells_for_sub_step,
+    apply_stun, can_execute_first_strike, can_execute_standard_attack,
+    can_execute_standard_movement, charge_x_cells_for_sub_step,
 };
-use crate::foundation::config::CardCatalog;
+use crate::foundation::config::{CardCatalog, GameConfig as ServerGameConfig};
+
+use self::modifier_stack::{apply_combat_modifier_stack, UnitSnapshot};
 
 pub const DEFAULT_ITERATION_BUDGET: u32 = 10_000;
 
@@ -51,6 +55,7 @@ impl Plugin for CombatPlugin {
             .init_resource::<CombatIterationBudget>()
             .init_resource::<CombatNetworkOutbox>()
             .init_resource::<CombatResolutionTrace>()
+            .init_resource::<CombatKillLog>()
             .init_resource::<AppearanceEffectRegistry>()
             .configure_sets(
                 Update,
@@ -210,6 +215,14 @@ pub enum CombatTraceEntry {
         hp_after: u8,
         sub_step: u8,
     },
+    CombatDamage {
+        attacker: Entity,
+        defender: Entity,
+        damage_amount: u8,
+        hp_after: u8,
+        was_blocked_by_shield: bool,
+        sub_step: u8,
+    },
     UnitChangedLane {
         unit: Entity,
         from_lane: LaneId,
@@ -220,6 +233,33 @@ pub enum CombatTraceEntry {
     IterationBudgetExceeded,
     ResolutionEventEnqueued,
     ResolutionCompleteQueued,
+}
+
+#[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
+pub struct CombatKillLog {
+    records: Vec<KillRecord>,
+}
+
+impl CombatKillLog {
+    pub fn push(&mut self, record: KillRecord) {
+        self.records.push(record);
+    }
+
+    pub fn records(&self) -> &[KillRecord] {
+        &self.records
+    }
+
+    pub fn clear(&mut self) {
+        self.records.clear();
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct KillRecord {
+    pub killer: Entity,
+    pub victim: Entity,
+    pub killer_player_id: PlayerId,
+    pub lethal_sub_step: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -257,6 +297,22 @@ struct MovementUnit {
     destination: u8,
     direction: i16,
     halted: bool,
+}
+
+#[derive(Debug, Clone)]
+struct CombatUnit {
+    entity: Entity,
+    snapshot: UnitSnapshot,
+    range_max: Option<u8>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct CombatAttack {
+    attacker: Entity,
+    defender: Entity,
+    attacker_lane: LaneId,
+    attacker_player: PlayerId,
+    damage_amount: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -319,6 +375,7 @@ pub fn resolve_combat(world: &mut World) {
         .push(CombatTraceEntry::BeginResolutionRead {
             round: begin_resolution.round,
         });
+    world.resource_mut::<CombatKillLog>().clear();
 
     let iteration_limit = world.resource::<CombatIterationBudget>().limit();
     if run_sub_step_scaffold(world, iteration_limit, begin_resolution.round).is_err() {
@@ -383,8 +440,12 @@ fn run_sub_step_scaffold(
         match sub_step {
             1 => apply_placements(world, &mut budget)?,
             2 => execute_charge_x(world, current_round, &mut budget)?,
+            3 => execute_first_strike(world, current_round, &mut budget)?,
             5 => execute_standard_movement(world, current_round, &mut budget)?,
-            6 => run_objective_detection_if_ready(world),
+            6 => {
+                execute_range_first_strike_standard_combat(world, current_round, &mut budget)?;
+                run_objective_detection_if_ready(world);
+            }
             _ => {}
         }
     }
@@ -406,6 +467,276 @@ fn execute_standard_movement(
     budget: &mut IterationBudget,
 ) -> Result<(), CombatAbort> {
     execute_movement(world, current_round, false, budget)
+}
+
+fn execute_first_strike(
+    world: &mut World,
+    current_round: u32,
+    budget: &mut IterationBudget,
+) -> Result<(), CombatAbort> {
+    let mut attacks = collect_first_strike_attacks(world, current_round);
+    apply_combat_attacks(world, &mut attacks, 3, budget)
+}
+
+fn execute_range_first_strike_standard_combat(
+    world: &mut World,
+    current_round: u32,
+    budget: &mut IterationBudget,
+) -> Result<(), CombatAbort> {
+    let mut attacks = collect_range_first_strike_standard_attacks(world, current_round);
+    apply_combat_attacks(world, &mut attacks, 6, budget)
+}
+
+fn collect_first_strike_attacks(world: &mut World, current_round: u32) -> Vec<CombatAttack> {
+    collect_combat_attacks(world, |unit, world| {
+        unit.snapshot.hp > 0 && can_execute_first_strike(unit.entity, current_round, world)
+    })
+}
+
+fn collect_range_first_strike_standard_attacks(
+    world: &mut World,
+    current_round: u32,
+) -> Vec<CombatAttack> {
+    collect_combat_attacks(world, |unit, world| {
+        unit.snapshot.hp > 0
+            && unit.range_max.is_some()
+            && can_execute_first_strike(unit.entity, current_round, world)
+            && can_execute_standard_attack(unit.entity, current_round, world)
+    })
+}
+
+fn collect_combat_attacks(
+    world: &mut World,
+    can_attack: impl Fn(&CombatUnit, &World) -> bool,
+) -> Vec<CombatAttack> {
+    let Some(session_config) = world.get_resource::<SessionConfig>().cloned() else {
+        return Vec::new();
+    };
+    let Some(board_config) = world.get_resource::<BoardConfig>().copied() else {
+        return Vec::new();
+    };
+    let config = combat_config(world);
+    let units = collect_combat_units(world);
+
+    units
+        .iter()
+        .filter(|unit| can_attack(unit, world))
+        .filter_map(|attacker| {
+            let defender = select_combat_target(attacker, &units, &session_config, &board_config)?;
+            let result =
+                apply_combat_modifier_stack(&attacker.snapshot, &defender.snapshot, &config);
+            Some(CombatAttack {
+                attacker: attacker.entity,
+                defender: defender.entity,
+                attacker_lane: attacker.snapshot.lane,
+                attacker_player: attacker.snapshot.player,
+                damage_amount: result.net_damage,
+            })
+        })
+        .collect()
+}
+
+fn apply_combat_attacks(
+    world: &mut World,
+    attacks: &mut [CombatAttack],
+    sub_step: u8,
+    budget: &mut IterationBudget,
+) -> Result<(), CombatAbort> {
+    attacks.sort_by_key(|attack| {
+        (
+            attack.defender.index(),
+            attack.attacker_lane,
+            attack.attacker.index(),
+        )
+    });
+
+    for attack in attacks.iter().copied() {
+        budget.tick()?;
+        apply_combat_attack(world, attack, sub_step);
+    }
+
+    Ok(())
+}
+
+fn apply_combat_attack(world: &mut World, attack: CombatAttack, sub_step: u8) {
+    let Some(mut stats) = world.get_mut::<UnitStats>(attack.defender) else {
+        return;
+    };
+    let hp_before = stats.hp;
+    let hp_after = hp_before.saturating_sub(attack.damage_amount);
+    stats.hp = hp_after;
+    drop(stats);
+
+    world
+        .resource_mut::<CombatResolutionTrace>()
+        .push(CombatTraceEntry::CombatDamage {
+            attacker: attack.attacker,
+            defender: attack.defender,
+            damage_amount: attack.damage_amount,
+            hp_after,
+            was_blocked_by_shield: false,
+            sub_step,
+        });
+
+    if hp_before > 0 && hp_after == 0 {
+        world.resource_mut::<CombatKillLog>().push(KillRecord {
+            killer: attack.attacker,
+            victim: attack.defender,
+            killer_player_id: attack.attacker_player,
+            lethal_sub_step: sub_step,
+        });
+
+        if unit_has_simple_keyword(attack.attacker, SimpleKeyword::FinalBlow, world) {
+            world.resource_mut::<CombatResolutionTrace>().push(
+                CombatTraceEntry::KeywordTriggered {
+                    unit: attack.attacker,
+                    keyword: KeywordKind::FinalBlow,
+                    sub_step,
+                },
+            );
+        }
+    }
+}
+
+fn collect_combat_units(world: &mut World) -> Vec<CombatUnit> {
+    let raw_units = {
+        let mut query =
+            world.query::<(Entity, &BoardPosition, &UnitStats, &UnitOwner, &UnitCardRef)>();
+        query
+            .iter(world)
+            .map(|(entity, position, stats, owner, card_ref)| {
+                (entity, *position, *stats, *owner, *card_ref)
+            })
+            .collect::<Vec<_>>()
+    };
+
+    raw_units
+        .into_iter()
+        .filter_map(|(entity, position, stats, owner, card_ref)| {
+            let card = card_for(card_ref.0, world)?;
+            let leader_atk_bonus = world
+                .get::<UnitKeywordState>(entity)
+                .map_or(0, |state| state.leader_bonus_atk);
+            Some(CombatUnit {
+                entity,
+                snapshot: UnitSnapshot {
+                    unit_id: entity.to_bits() as EntityId,
+                    player: owner.0,
+                    lane: position.lane,
+                    cell: position.cell,
+                    atk: stats.atk,
+                    hp: stats.hp,
+                    ar: stats.ar,
+                    mp: stats.mp,
+                    unit_type: card.unit_type,
+                    keywords: card.keywords.clone(),
+                    leader_atk_bonus,
+                },
+                range_max: card.keywords.iter().find_map(|keyword| {
+                    if let Keyword::RangeX { max_range } = keyword {
+                        Some(*max_range)
+                    } else {
+                        None
+                    }
+                }),
+            })
+        })
+        .collect()
+}
+
+fn select_combat_target<'a>(
+    attacker: &CombatUnit,
+    units: &'a [CombatUnit],
+    session_config: &SessionConfig,
+    board_config: &BoardConfig,
+) -> Option<&'a CombatUnit> {
+    if attacker.range_max.is_some() {
+        select_single_nearest_range_target(attacker, units, session_config, board_config)
+    } else {
+        select_melee_target(attacker, units, session_config)
+    }
+}
+
+fn select_melee_target<'a>(
+    attacker: &CombatUnit,
+    units: &'a [CombatUnit],
+    session_config: &SessionConfig,
+) -> Option<&'a CombatUnit> {
+    units
+        .iter()
+        .filter(|candidate| {
+            candidate.entity != attacker.entity
+                && candidate.snapshot.hp > 0
+                && candidate.snapshot.lane == attacker.snapshot.lane
+                && candidate.snapshot.cell == attacker.snapshot.cell
+                && snapshots_are_enemies(&attacker.snapshot, &candidate.snapshot, session_config)
+        })
+        .min_by_key(|candidate| candidate.entity.index())
+}
+
+fn select_single_nearest_range_target<'a>(
+    attacker: &CombatUnit,
+    units: &'a [CombatUnit],
+    session_config: &SessionConfig,
+    board_config: &BoardConfig,
+) -> Option<&'a CombatUnit> {
+    let max_range = attacker.range_max?;
+    let direction = advance_direction(attacker.snapshot.player, session_config, board_config)?;
+    let mut candidates = units
+        .iter()
+        .filter_map(|candidate| {
+            if candidate.entity == attacker.entity
+                || candidate.snapshot.hp == 0
+                || !snapshots_are_enemies(&attacker.snapshot, &candidate.snapshot, session_config)
+            {
+                return None;
+            }
+
+            let distance =
+                forward_distance(attacker.snapshot.cell, candidate.snapshot.cell, direction)?;
+            (distance <= max_range).then_some((candidate, distance))
+        })
+        .collect::<Vec<_>>();
+
+    candidates.sort_by_key(|(candidate, distance)| {
+        (
+            *distance,
+            candidate.snapshot.lane,
+            candidate.snapshot.cell,
+            candidate.entity.index(),
+        )
+    });
+
+    let nearest_distance = candidates.first().map(|(_, distance)| *distance)?;
+    let mut nearest = candidates
+        .into_iter()
+        .filter(|(_, distance)| *distance == nearest_distance)
+        .map(|(candidate, _)| candidate);
+
+    let selected = nearest.next()?;
+    nearest.next().is_none().then_some(selected)
+}
+
+fn snapshots_are_enemies(
+    first: &UnitSnapshot,
+    second: &UnitSnapshot,
+    session_config: &SessionConfig,
+) -> bool {
+    let Some(first_team) = session_config.team_map.get(&first.player).copied() else {
+        return first.player != second.player;
+    };
+    let Some(second_team) = session_config.team_map.get(&second.player).copied() else {
+        return first.player != second.player;
+    };
+
+    teams_are_enemies(first_team, second_team)
+}
+
+fn combat_config(world: &World) -> SharedGameConfig {
+    world
+        .get_resource::<ServerGameConfig>()
+        .map(|config| config.0.clone())
+        .unwrap_or_default()
 }
 
 fn execute_movement(
