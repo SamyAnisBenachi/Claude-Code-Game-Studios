@@ -129,10 +129,13 @@ stories:
     name: "Combat Story 9: Objective Damage + GAME_OVER"
     file: "production/epics/combat-resolution/story-009-objective-damage-gameover.md"
     priority: must-have
-    status: not-started
+    status: done
     owner: "worker"
     estimate_days: 1.25
     blocker: ""
+    completed: "2026-05-04"
+    notes:
+      - "COMPLETE: CR-10/11/17/18/19/27 verified by objective_damage_gameover_test. Combat Resolution does not directly broadcast S2CGameOver; RSM owns GameOverEmitted. Full S2CResolutionEvent completeness/order remains COMBAT-011 scope."
 
   - id: "S5-12"
     name: "Hand UI Story 11: Reserve Mana Split Strip pull-forward revalidation/integration"

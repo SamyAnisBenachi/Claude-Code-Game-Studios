@@ -1,7 +1,7 @@
 # Story 009: Sub-step 6 — Objective Damage + GAME_OVER
 
 > **Epic**: Combat Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -37,12 +37,12 @@
 
 *From GDD `design/gdd/combat-resolution.md`, scoped to this story:*
 
-- [ ] **CR-10**: GIVEN a unit alive at Cell 8 at the end of sub-step 6, WHEN sub-step 6 completes, THEN that unit deals its ATK value as damage to the objective in that lane AND the unit remains at Cell 8 (attacks again next round unless killed)
-- [ ] **CR-11**: GIVEN a unit with FIRST STRIKE is at Cell 8 and is killed in sub-step 3, WHEN sub-step 4 removes it, THEN it does NOT deal objective damage in sub-step 6 (unit must be alive at end of SS6 to deal objective damage)
-- [ ] **CR-17**: GIVEN a unit at Cell 8 destroys an objective, WHEN sub-step 6 completes, THEN the attacking player receives +3 gold AND does NOT additionally receive +1 kill gold (objectives are not units)
-- [ ] **CR-18**: GIVEN the 2nd real objective of Player B is destroyed, WHEN Combat Resolution completes normally and the RSM evaluates `ObjectiveCounters`, THEN `GameOverEmitted { loser: Some(PlayerB), reason: ObjectivesDestroyed }` is emitted and the server broadcasts `S2CGameOver { loser: Some(PlayerB), reason: ObjectivesDestroyed }` on the reliable channel
-- [ ] **CR-19**: GIVEN both players' 2nd real objectives are destroyed in the same sub-step 6, WHEN Combat Resolution completes normally and the RSM evaluates `ObjectiveCounters`, THEN `GameOverEmitted { loser: None, reason: Draw }` is emitted and the server broadcasts `S2CGameOver { loser: None, reason: Draw }`
-- [ ] **CR-27**: GIVEN a unit at Cell 8 with ATK=3 attacks an objective with HP=2, WHEN sub-step 6 completes, THEN objective HP = 0 (floor at 0; NOT negative); the objective is destroyed
+- [x] **CR-10**: GIVEN a unit alive at Cell 8 at the end of sub-step 6, WHEN sub-step 6 completes, THEN that unit deals its ATK value as damage to the objective in that lane AND the unit remains at Cell 8 (attacks again next round unless killed)
+- [x] **CR-11**: GIVEN a unit with FIRST STRIKE is at Cell 8 and is killed in sub-step 3, WHEN sub-step 4 removes it, THEN it does NOT deal objective damage in sub-step 6 (unit must be alive at end of SS6 to deal objective damage)
+- [x] **CR-17**: GIVEN a unit at Cell 8 destroys an objective, WHEN sub-step 6 completes, THEN the attacking player receives +3 gold AND does NOT additionally receive +1 kill gold (objectives are not units)
+- [x] **CR-18**: GIVEN the 2nd real objective of Player B is destroyed, WHEN Combat Resolution completes normally and the RSM evaluates `ObjectiveCounters`, THEN `GameOverEmitted { loser: Some(PlayerB), reason: ObjectivesDestroyed }` is emitted and the server broadcasts `S2CGameOver { loser: Some(PlayerB), reason: ObjectivesDestroyed }` on the reliable channel
+- [x] **CR-19**: GIVEN both players' 2nd real objectives are destroyed in the same sub-step 6, WHEN Combat Resolution completes normally and the RSM evaluates `ObjectiveCounters`, THEN `GameOverEmitted { loser: None, reason: Draw }` is emitted and the server broadcasts `S2CGameOver { loser: None, reason: Draw }`
+- [x] **CR-27**: GIVEN a unit at Cell 8 with ATK=3 attacks an objective with HP=2, WHEN sub-step 6 completes, THEN objective HP = 0 (floor at 0; NOT negative); the objective is destroyed
 
 ---
 
@@ -132,7 +132,7 @@ Objective damage pass (runs AFTER all unit-vs-unit SS6 combat):
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combat/objective_damage_gameover_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -142,3 +142,14 @@ Objective damage pass (runs AFTER all unit-vs-unit SS6 combat):
 - Depends on: OBJECTIVE-005 (Complete — destruction consequence path updates objective HP/counters and queues `ObjectiveDestroyed`), OBJECTIVE-006 (Complete — fake reward draw path), OBJECTIVE-007 (Complete — RESOLUTION-end objective sync / pending objective event broadcast)
 - Depends on: RSM Story 004 (Complete — RSM reads `ObjectiveCounters` after `ResolutionComplete` and emits `GameOverEmitted`) and Economy Story 003 current ADR-019 completion contract (Complete — `ResolutionComplete` drives post-reward interest snapshot before RSM input)
 - Unlocks: Story 010 (persistent states span multiple rounds, building on full RESOLUTION execution), Story 011 (log completeness needs objective events)
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 6/6 passing.
+**Test Evidence**: Logic evidence at `tests/unit/combat/objective_damage_gameover_test.rs`; `cargo test -p server --test objective_damage_gameover_test` passed 6/6.
+**Verification**: CR-10 alive Cell 8 units damage objectives and remain at Cell 8. CR-11 units removed before objective damage do not damage objectives. CR-17 objective destruction awards +3 objective gold and no +1 kill gold. CR-18 second real objective destruction completes normal combat, emits `ResolutionComplete`, then the RSM emits single-loser `GameOverEmitted`. CR-19 mutual second real objective destruction processes both destructions before the RSM emits Draw. CR-27 objective HP floors at 0.
+**Regression Evidence**: `cargo test -p server --test range_targeting_test --test substep6_combat_shield_counterattack_test --test substep4_dead_removal_test --test consequence_path_test --test fake_reward_test --test objective_resolution_sync_test` passed 36/36. `cargo check -p server` passed. `git diff --check` passed.
+**Deviations**: None blocking. Combat Resolution does not directly broadcast `S2CGameOver`; RSM owns `GameOverEmitted`, and Game Session/network dispatch owns reliable `S2CGameOver` broadcast after that signal. Full `S2CResolutionEvent` completeness/order verification remains COMBAT-011 scope.
+**Code Review**: Skipped - lean mode.
+**QA Coverage Gate**: Skipped - lean mode.

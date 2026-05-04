@@ -1753,3 +1753,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-10 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
 - Next recommended: Combat Story 9 Objective Damage + GAME_OVER (`production/epics/combat-resolution/story-009-objective-damage-gameover.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-04
+- Verdict: COMPLETE
+- Story: `production/epics/combat-resolution/story-009-objective-damage-gameover.md` - Story 009: Sub-step 6 - Objective Damage + GAME_OVER
+- Criteria: 6/6 passing; CR-10, CR-11, CR-17, CR-18, CR-19, and CR-27 covered by `tests/unit/combat/objective_damage_gameover_test.rs`.
+- Test Evidence: `cargo test -p server --test objective_damage_gameover_test` passed 6/6. Requested adjacent regression command passed 36/36 across RANGE targeting, SS6 shield/counterattack, SS4 dead removal, objective consequence path, fake rewards, and objective resolution sync. `cargo check -p server` passed. `git diff --check` passed.
+- Verification: Current `main` includes integrated implementation commit `16398c6`; surviving Cell 8 attackers damage objectives and remain, units removed before objective damage do not damage objectives, objective destruction awards +3 objective gold with no kill gold, second real objective destruction reaches RSM-owned `GameOverEmitted` after normal `ResolutionComplete`, mutual second real objective destruction resolves Draw after all destructions, and objective HP saturates to zero.
+- Notes: No blocking GDD, ADR, Bevy 0.18, or economy/RSM ownership deviation found. Combat Resolution does not directly broadcast `S2CGameOver`; Game Session/network dispatch owns that after `GameOverEmitted`. Full `S2CResolutionEvent` completeness/order verification remains COMBAT-011 scope. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-11 in `production/sprint-status.yaml` to `done` with completion date 2026-05-04.
+- Next recommended: Review COMBAT-010 Persistent Keyword States and COMBAT-011 ResolutionEvent Log Completeness readiness before starting either.
