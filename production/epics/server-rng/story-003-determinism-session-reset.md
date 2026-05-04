@@ -4,12 +4,12 @@
 > **Status**: Ready
 > **Layer**: Foundation
 > **Type**: Logic
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
 **GDD**: `design/gdd/server-rng.md`
-**Requirement**: TR-??? (covers TR-RNG-04: fixed execution order; RNG13: session reset; RNG15/ADVISORY: overflow wrap)
+**Requirement**: TR-RNG-004 (fixed execution order/RNG8), TR-RNG-001 (session reset/RNG13), TR-RNG-007 (overflow wrap/RNG15 ADVISORY)
 
 **ADR Governing Implementation**: ADR-005: Server-side RNG — §2 Lifecycle, §4 Consumption Order, Validation Criteria VC1 + VC2
 **ADR Decision Summary**: Given the same fixed seed and the same sequence of intent-named method calls, the `audit_log` must be byte-for-byte identical across runs and across host machines. Session boundaries are hard reset boundaries — a new `ServerRng` always starts with `session_init` at index 0, regardless of prior session state.
@@ -159,7 +159,7 @@ This ensures RNG15 doesn't panic. The GDD Edge Cases section documents this: "If
 
 **Story Type**: Logic
 **Required evidence**: `tests/unit/foundation/server_rng_determinism_test.rs` — all test cases passing
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/unit/foundation/server_rng_determinism_test.rs` evidence file present; runnable tests embedded in `server/src/foundation/rng.rs` (run via `cargo test -p server`)
 
 ---
 

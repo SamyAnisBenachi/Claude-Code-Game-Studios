@@ -256,6 +256,15 @@ requirements:
     revised: ""
     status: active
 
+  - id: TR-RNG-007
+    system: server-rng
+    gdd: design/gdd/server-rng.md
+    gdd_ac_ids: [RNG15]
+    requirement: "ServerRng seed_index overflow uses wrapping_add: a test-only constructor can set seed_index to u32::MAX; the next consumption wraps current_seed_index to 0 without panic and records the overflow audit entry with seed_index = u32::MAX"
+    created: 2026-05-04
+    revised: ""
+    status: active
+
   # ─── Economy System (TR-ECO) ───────────────────────────────────────────────
   # GDD: design/gdd/economy-system.md
   # ADR coverage: ADR-010 (DraftStarted subscriber contract)
