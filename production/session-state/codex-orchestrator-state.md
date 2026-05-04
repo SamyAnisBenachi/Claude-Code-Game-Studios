@@ -116,7 +116,11 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-None currently tracked here.
+- COMBAT-004: Movement + Collision readiness repair landed on main at
+  `c2fc0d3`; implementation landed on main at `408c34a`. Verification passed
+  `cargo fmt -p server -- --check`, `cargo test -p server --test
+  movement_collision_test` 5/5, combat/board regression slice 25/25, `cargo
+  check -p server`, and diff checks. No `/story-done` has run yet.
 ## Recently Closed
 
 - CDP-006: Network Dispatch Wiring readiness/trace repair landed on main at
@@ -561,7 +565,9 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-None currently queued.
+1. COMBAT-004:
+   `production/epics/combat-resolution/story-004-movement-collision.md`
+   after integration commit `408c34a`.
 
 Run only one story-done at a time.
 
@@ -610,12 +616,14 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- None known at this checkpoint. HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009,
+- None known at this checkpoint. COMBAT-004, HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009,
   COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have returned and
   are integrated or closed as noted; do not relaunch their implementation
   workers.
 
 Current active windows by user default-launch rule:
+- COMBAT-004 returned, integrated into main at `408c34a`, verified, and is
+  ready for serialized `/story-done`. Window can be cleared.
 - CDP-006 story-done returned and was committed at `199a9b3`; window can be
   cleared.
 - BOARD-010 story-done returned and was committed at `6021787`; window can be
