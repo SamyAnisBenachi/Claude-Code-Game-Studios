@@ -116,17 +116,15 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- COMBAT-005 worker returned implemented and committed on branch
-  `work/combat-005-first-strike` at
-  `912fa45ffc138b941604aeb568e9bee6b6b8ef10`. Worker changed
-  `server/src/feature/combat/mod.rs`, `server/Cargo.toml`, and
-  `tests/unit/combat/substep3_first_strike_test.rs`. Verification passed
-  `cargo fmt -p server -- --check`, `cargo test -p server --test
-  substep3_first_strike_test`, adjacent combat regressions, `cargo check -p
-  server`, and `git diff --check` with only CRLF warnings. Worker push was
-  blocked by approval review, but the commit is visible to the root checkout.
-  Next root action: cherry-pick/integrate, rerun focused checks, then queue
-  serialized `/story-done`.
+- COMBAT-005 worker returned implemented on branch
+  `work/combat-005-first-strike` at worker commit `912fa45`; root
+  cherry-picked and pushed the implementation to `origin/main` at `e1733be`.
+  Worker changed `server/src/feature/combat/mod.rs`, `server/Cargo.toml`,
+  and `tests/unit/combat/substep3_first_strike_test.rs`. Root verification
+  passed `cargo fmt -p server -- --check`, `cargo test -p server --test
+  substep3_first_strike_test` 5/5, adjacent combat regressions 20/20,
+  `cargo check -p server`, and `git diff --check HEAD~1..HEAD`.
+  Next action: launch serialized `/story-done`.
 
 ## Recent Planning / Readiness Updates
 
@@ -626,7 +624,8 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-None currently queued.
+- COMBAT-005 / `production/epics/combat-resolution/story-005-substep3-first-strike.md`
+  is integrated at `e1733be` and needs serialized `/story-done`.
 
 Run only one story-done at a time.
 
@@ -656,6 +655,10 @@ Run only one story-done at a time.
   any implementation. Shop/Auction UI Story 001 is blocked by missing
   ADR-021 Presentation scaffold ownership. Board Rendering Story 001 has only
   docs-only readiness gaps and should be repaired/rerun before any `/dev-story`.
+  Commit `22b6830` (`docs: repair board rendering scaffold readiness`) is now
+  on `origin/main`, but the user has not yet pasted that agent's official
+  return. Do not classify that window or launch BR-001 implementation until
+  the user provides the output.
 - Sprint 4 QA plan missing: resolved at `8578890` with
   `production/qa/qa-plan-sprint-4-2026-05-03.md`. S4-14 Economy Network
   Dispatch can now run story-readiness, but `production/sprint-status.yaml`
@@ -699,7 +702,8 @@ Active implementation workers by default-launch rule:
 Current active windows by user default-launch rule:
 - COMBAT-005 implementation worker returned complete at `912fa45`; worker
   push was blocked by approval review, but the commit is locally visible from
-  root. Window can be cleared. Root integration/story-done remain pending.
+  root. Root integrated and pushed it at `e1733be`. Window can be cleared.
+  Serialized COMBAT-005 story-done is now pending.
 - AUC-008 readiness repair returned READY and was committed at `c20e503`;
   that readiness window can be cleared. AUC-008 implementation worker is
   assumed launched and is pending return.
