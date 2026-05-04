@@ -190,6 +190,13 @@ None currently tracked here.
   `tests/integration/presentation/presentation_plugin_scaffold_test.rs`.
   Board Rendering 001 and Shop/Auction UI 001 remain blocked until this shared
   story exists and is implemented.
+- Presentation Layer Story 001 readiness returned READY. Traceability decision:
+  ADR-021 plus current control manifest is sufficient because this is ADR-only
+  presentation infrastructure and the TR registry is scoped to GDD technical
+  requirements; no TR-PRES entry is required. Workflow note: the written story
+  still says `Ready-for-Readiness` because the pass was read-only. Before
+  `/dev-story`, commit the Presentation planning files and preserve the
+  ADR-only traceability exception in the implementation prompt.
 - Board Rendering Story 001 readiness returned NEEDS WORK. No trace,
   dependency, ADR, or manifest blocker was found. Required fixes are docs-only:
   add an explicit ADR-021 presentation performance/no-impact note and clarify
@@ -733,7 +740,9 @@ Run only one story-done at a time.
   new shared Presentation Layer story before Board Rendering 001 or
   Shop/Auction UI 001 implementation. Board Rendering Story 001 has only
   docs-only readiness gaps and should be repaired/rerun, but still depends on
-  the shared Presentation story before implementation.
+  the shared Presentation story before implementation. Presentation Layer
+  Story 001 readiness returned READY, but its planning files are currently
+  uncommitted until the user approves committing that changeset.
   Commit `22b6830` (`docs: repair board rendering scaffold readiness`) is now
   on `origin/main`, but the user has not yet pasted that agent's official
   return. Do not classify that window or launch BR-001 implementation until
@@ -792,6 +801,10 @@ Current active windows by user default-launch rule:
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
   and recommends a new shared Presentation Layer story. Window can be cleared.
+- Presentation Layer Story 001 readiness returned READY; window can be cleared.
+  Next action is committing the Presentation planning changeset, then launching
+  `/dev-story` for the Presentation Layer story with the ADR-only traceability
+  exception included.
 - Board Rendering Story 001 readiness returned NEEDS WORK on missing
   presentation performance/no-impact note and ambiguous invalid
   `cell_to_world` bounds/assert wording. Use `REPONDRE` in that same window
