@@ -322,6 +322,16 @@ None currently tracked here.
   `git diff --check`. Next action: run `/story-done` for
   `production/epics/combat-resolution/story-007-substep6-combat-shield-counterattack.md`.
   Do not relaunch the COMBAT-007 implementation worker.
+- BOARD-RENDERING-001 worker returned at `43ace3e` on
+  `work/board-rendering-001-plugin-scaffold-layout-atlas`. The worker branch
+  was behind current `origin/main`, so root cherry-picked only the board
+  rendering commit and pushed it to `origin/main` as `b5abcd5`. Verification
+  passed `cargo fmt -p client -- --check`,
+  `cargo test -p client --test board_rendering_plugin_scaffold_test` 9/9,
+  touched adjacent tests 14/14, `cargo check -p client`, and `git diff --check`.
+  Next action: run `/story-done` for
+  `production/epics/board-rendering/story-001-plugin-scaffold-board-layout-card-atlas.md`.
+  Do not relaunch the BOARD-RENDERING-001 implementation worker.
 - COMBAT-004: Movement + Collision readiness repair landed on main at
   `c2fc0d3`; implementation landed on main at `408c34a`; story-done closure
   committed at `52caa45`; follow-up story scope clarification committed at
@@ -846,6 +856,10 @@ Active implementation workers by default-launch rule:
   noted; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
+- BOARD-RENDERING-001 implementation worker returned; root cherry-picked and
+  pushed only the board rendering commit as `b5abcd5` because the branch was
+  behind current main. Window can be cleared. Story-done for
+  BOARD-RENDERING-001 is now pending.
 - COMBAT-007 implementation worker returned, root integrated and pushed commit
   `2c8f752`; window can be cleared. Story-done for COMBAT-007 is now pending.
 - COMBAT-006 implementation worker returned, root integrated and pushed commit
