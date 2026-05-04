@@ -290,10 +290,12 @@ None currently tracked here.
   passed `cargo fmt -p server -- --check`,
   `cargo test -p server --test fake_reward_test` 8/8,
   `cargo test -p server --test consequence_path_test --test damage_interface_test`
-  14/14, `cargo check -p server`, and `git diff --check`. Next action: run
-  `/story-done` for
-  `production/epics/objective-system/story-006-d4-fake-reward-draw.md`. Do not
-  relaunch the OBJECTIVE-006 implementation worker.
+  14/14, `cargo check -p server`, and `git diff --check`. Story-done returned
+  COMPLETE WITH NOTES and was pushed at `8142875`, updating
+  `production/epics/objective-system/story-006-d4-fake-reward-draw.md`,
+  `production/session-state/active.md`, and sprint-status row S5-15. Advisory:
+  current TR-OBJ-005 registry text is narrower than story/GDD coverage, but
+  implementation and tests cover OS-15, OS-22, and OS-27.
 - PRESENTATION-001 readiness/planning landed at `514c1ad`; worker
   implementation returned local commit `e783a27` on
   `work/presentation-001-plugin-set-phase-sink`, but branch push was rejected.
@@ -835,8 +837,8 @@ Current active windows by user default-launch rule:
   be cleared.
 - OBJECTIVE-006 implementation worker returned; root cherry-picked and pushed
   only the objective commit as `d46e812` because the worker branch was behind
-  current main. Window can be cleared. Story-done for OBJECTIVE-006 is now
-  pending.
+  current main. Story-done returned and pushed closure at `8142875`. Window can
+  be cleared.
 - COMBAT-005 story-done returned, wrote closure files, and pushed closure at
   `621fef5`; window can be cleared.
 - Server RNG 003 story-done returned, wrote closure files, and pushed closure
