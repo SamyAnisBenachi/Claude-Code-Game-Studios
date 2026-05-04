@@ -9,7 +9,7 @@
 ## Context
 
 **GDD**: `design/gdd/combat-resolution.md`
-**Requirement**: `TR-CR-016` (CR-5 STUN action suppression; this story verifies the SS2/SS5 movement clauses), `TR-CR-017` (CR-8 WALL halt), `TR-CR-003` (CR-9 path crossing), `TR-CR-018` (CR-31 CHARGE X plus standard movement), `TR-CR-019` (CR-44 RANGE-vs-WALL movement exemption)
+**Requirement**: `TR-CR-016` (CR-5 STUN action suppression; this story verifies the SS2/SS5 movement clauses), `TR-CR-017` (CR-8 SS5 WALL halt movement clause only), `TR-CR-003` (CR-9 SS5 path-crossing halt movement clause only), `TR-CR-018` (CR-31 CHARGE X plus standard movement), `TR-CR-019` (CR-44 SS5 RANGE-vs-WALL movement exemption only)
 
 **ADR Governing Implementation**: ADR-017: Combat Resolution Execution Architecture (Decision 2 — Movement Collision Boundary)
 **ADR Decision Summary**: Two movement rules coexist. Rule A (destination rule): F1 formula computes each unit's intended destination once at SS5 entry — this governs Trap/Prism triggering. Rule B (collision loop): a per-tick advance loop inside `execute_movement` determines actual final position after enemy obstruction — this governs WALL halts and path-crossing halts. These rules are complementary layers, not contradictory. CHARGE X (SS2) uses the same tick loop as SS5 but with the CHARGE_X value instead of MP.
@@ -30,10 +30,10 @@
 *From GDD `design/gdd/combat-resolution.md`, scoped to this story:*
 
 - [ ] **CR-5**: GIVEN a STUNned unit (including a CHARGE unit STUNned in sub-step 1), WHEN RESOLUTION executes, THEN the unit does not advance in sub-step 2 (CHARGE X suppressed) and does not advance in sub-step 5
-- [ ] **CR-8**: GIVEN an advancing enemy unit whose next step would reach a WALL unit's cell, WHEN sub-step 5 executes, THEN the attacker halts at the WALL's cell; WHEN sub-step 6 executes, THEN the attacker deals net_damage to the WALL (WALL has 0 ATK); if WALL HP reaches 0, the WALL is removed at the next death-processing point
-- [ ] **CR-9**: GIVEN two enemy units whose paths would cross in sub-step 5 (each moving to the other's cell in the same tick), WHEN sub-step 5 executes, THEN both halt at their pre-crossing cells (adjacent facing); WHEN sub-step 6 executes, THEN both fight each other
+- [ ] **CR-8**: GIVEN an advancing enemy unit whose next step would reach a WALL unit's cell, WHEN sub-step 5 movement executes, THEN the attacker halts at the WALL's cell and records the SS5 movement result. This story does not verify SS6 damage to the WALL, WALL death processing, or CombatDamage events.
+- [ ] **CR-9**: GIVEN two enemy units whose paths would cross in sub-step 5 (each moving to the other's cell in the same tick), WHEN sub-step 5 movement executes, THEN both halt at their pre-crossing cells (adjacent facing). This story does not verify the later SS6 fight.
 - [ ] **CR-31**: GIVEN a unit with CHARGE X, WHEN sub-step 2 executes, THEN the unit advances X additional cells (subject to WALL-blocking and crossing rules); WHEN sub-step 5 executes, THEN the unit additionally advances its MP value as a separate standard movement
-- [ ] **CR-44**: GIVEN a RANGE 1-3 unit at cell C with a WALL unit at cell C+2 (within RANGE), WHEN sub-step 5 executes, THEN the RANGE unit does NOT halt at the WALL cell (no WALL-halt treatment for RANGE units whose target is within range); WHEN sub-step 6 executes, THEN the RANGE unit attacks the WALL from its cell (a CombatDamage record is emitted with target = WALL)
+- [ ] **CR-44**: GIVEN a RANGE 1-3 unit at cell C with a WALL unit at cell C+2 (within RANGE), WHEN sub-step 5 movement executes, THEN the RANGE unit's cell position is unchanged and it does NOT halt at or advance toward the WALL. This story does not verify SS6 RANGE targeting, WALL damage, or CombatDamage events.
 
 ---
 
@@ -67,7 +67,7 @@ fn execute_movement(
         // Advance all non-stunned, non-halted units by 1 cell
         // Check WALL halt: if next_cell == enemy WALL cell → halt
         // Check path-cross: if A→B cell and B→A cell in same tick → both halt at current
-        // Check same-cell: two enemies both arrive at X → both land (fight in SS6)
+        // Check same-cell: two enemies both arrive at X → both land; SS6 combat is later story scope
         // Increment iter_count for each unit-tick step
         *iter_count += moving_units.len() as u32;
         if *iter_count > 10_000 { return Err(IterationBudgetExceeded); }
@@ -76,7 +76,7 @@ fn execute_movement(
 }
 ```
 
-**RANGE unit + WALL exception (CR-44)**: Before the tick loop, check if a RANGE unit's target (WALL) is already within its range from its current cell. If yes, mark this RANGE unit's destination as its CURRENT cell (it does not advance). In SS6, RANGE targeting handles the actual attack.
+**RANGE unit + WALL exception (CR-44)**: Before the tick loop, check if a RANGE unit's target (WALL) is already within its range from its current cell. If yes, mark this RANGE unit's destination as its CURRENT cell (it does not advance). SS6 RANGE targeting and CombatDamage emission are owned by later combat stories.
 
 **F1 destination formula** (`clamp_i16`): compute `current_cell as i16 + direction * mp as i16`, then clamp to `[1i16, 8i16]`, then cast to `u8`. Player A direction = +1, Player B direction = -1.
 
@@ -88,8 +88,9 @@ fn execute_movement(
 
 - Story 003: SS1 populates board state and applies STUN (which this story checks)
 - Story 005: SS3 FIRST STRIKE attacks (units damaged in SS3 may affect SS5 via HP changes, but STUN from SS3 doesn't apply to SS5 — STUN must be applied before SS2)
-- Story 007: SS6 combat at WALL cell (this story only covers movement; the fight is SS6)
-- Story 008: SS6 RANGE target selection and CombatDamage emission for RANGE-vs-WALL; this story only preserves the SS5 movement exemption
+- COMBAT-007: SS6 standard combat, including WALL attacks/damage, adjacent collision-halt fights, SHIELD, and COUNTERATTACK
+- COMBAT-008: SS6 RANGE target selection, including RANGE-vs-WALL attacks from the RANGE unit's current cell
+- COMBAT-011: ResolutionEvent log completeness, including CombatDamage event emission and ordering
 
 ---
 
@@ -111,7 +112,7 @@ fn execute_movement(
 - **CR-9** (path-crossing halt):
   - Given: Unit A at cell 4 (Player A, MP=2); Unit B at cell 5 (Player B, MP=2) — would swap
   - When: SS5 tick 1
-  - Then: both halt at cells 4 and 5 (adjacent facing); fight in SS6
+  - Then: both halt at cells 4 and 5 (adjacent facing); SS6 fight is not asserted in this story
 
 - **CR-31** (CHARGE X + standard movement separate):
   - Given: Unit with CHARGE X=2, MP=1 at cell 2 (Player A)
@@ -122,8 +123,7 @@ fn execute_movement(
   - Given: RANGE 3 unit at cell C=2 (Player A, MP=0); WALL at cell 4 (Player B)
   - When: SS5 executes
   - Then: RANGE unit cell position unchanged (MP=0, no advancement); no WALL-halt event in log for this unit
-  - When: SS6 executes
-  - Then: CombatDamage record emitted with defender_id = WALL
+  - Out of scope: SS6 RANGE attack and CombatDamage emission are covered by COMBAT-008 and COMBAT-011
 
 ---
 
@@ -147,6 +147,6 @@ fn execute_movement(
 
 **Completed**: 2026-05-04
 **Criteria**: 5/5 passing (CR-5, CR-8, CR-9, CR-31, CR-44 movement/collision clauses)
-**Deviations**: Advisory only - the current GDD text for CR-5, CR-8, and CR-44 also references later SS3/SS6 attack, damage, and CombatDamage behavior. Those clauses are explicitly out of scope for this story and remain owned by Story 005, Story 007, and Story 008; they are not blockers for COMBAT-004 closure.
+**Deviations**: Advisory only - the current GDD/TR text for CR-8, CR-9, and CR-44 also references later SS6 attack, damage, death-processing, and CombatDamage behavior. Those clauses are explicitly out of scope for this story and remain owned by COMBAT-007, COMBAT-008, and COMBAT-011; they are not blockers for COMBAT-004 closure.
 **Test Evidence**: Logic: `tests/unit/combat/movement_collision_test.rs` exists and passed 5/5 via `cargo test -p server --test movement_collision_test`.
 **Code Review**: Skipped - lean mode.
