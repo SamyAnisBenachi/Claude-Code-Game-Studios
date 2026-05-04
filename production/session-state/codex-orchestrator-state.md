@@ -116,12 +116,6 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- HAND-UI-011: Reserve Mana Strip implementation landed on main at `bd8c15b`.
-  Verification passed `cargo test -p client --test
-  hand_ui_reserve_mana_strip_test` 3/3, placement submit/plugin/unstaging
-  regressions 12/12, `cargo check -p client`, `cargo check --workspace`, and
-  diff checks. This was one of the Sprint 5 out-of-plan pull-forward items and
-  has now returned READY plus integrated; it still needs `/story-done`.
 - BOARD-010: Displacement Keywords readiness repair landed on main at
   `40b3176`; implementation landed on main at `e49f5a2`. Verification passed
   `cargo test -p server --test displacement_keywords_test` 9/9, board/objective
@@ -138,6 +132,12 @@ None currently tracked here.
   it still needs `/story-done`.
 ## Recently Closed
 
+- HAND-UI-011: Reserve Mana Strip implementation landed on main at `bd8c15b`;
+  story-done closure committed at `d203c3b`. Verification passed `cargo test
+  -p client --test hand_ui_reserve_mana_strip_test` 3/3, `cargo check -p
+  client`, and diff checks. `production/sprint-status.yaml` had no matching
+  HAND-UI-011 row. TR-HU-004 and VA-9 differences were recorded as advisory
+  notes.
 - AUC-007: Auction Plugin Scheduling readiness repair landed on main at
   `f96a524`; implementation landed on main at `ea5d88d`; story-done closure
   committed at `a5eaadc`. Verification passed the targeted auction/economy
@@ -559,13 +559,10 @@ None currently tracked here.
 
 ## Story-Done Queue
 
-1. HAND-UI-011:
-   `production/epics/hand-ui/story-011-reserve-mana-strip.md`
-   after integration commit `bd8c15b`.
-2. BOARD-010:
+1. BOARD-010:
    `production/epics/board-lane-system/story-010-displacement-keywords.md`
    after integration commit `e49f5a2`.
-3. CDP-006:
+2. CDP-006:
    `production/epics/card-data-pool/story-006-network-dispatch-wiring.md`
    after integration commit `4d21482`.
 
@@ -583,9 +580,10 @@ Run only one story-done at a time.
   Treat those items as Sprint 5 in-flight only after their worker readiness
   repairs return READY and are reconciled during integration/story-done.
   AUC-007 has returned READY, integrated at `f96a524`/`ea5d88d`, and closed
-  at `a5eaadc`; HAND-UI-011 is integrated at `bd8c15b`; BOARD-010 is integrated at
-  `40b3176`/`e49f5a2`; CDP-006 is integrated at `e03dfcb`/`4d21482`;
-  the remaining three remain pending story-done.
+  at `a5eaadc`; HAND-UI-011 is integrated at `bd8c15b` and closed at
+  `d203c3b`; BOARD-010 is integrated at `40b3176`/`e49f5a2`; CDP-006 is
+  integrated at `e03dfcb`/`4d21482`; the remaining two remain pending
+  story-done.
 - Sprint 4 QA plan missing: resolved at `8578890` with
   `production/qa/qa-plan-sprint-4-2026-05-03.md`. S4-14 Economy Network
   Dispatch can now run story-readiness, but `production/sprint-status.yaml`
@@ -614,7 +612,7 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
-- None known at this checkpoint. CDP-006, BOARD-010, HAND-UI-011,
+- None known at this checkpoint. CDP-006, BOARD-010,
   HAND-UI-009, HAND-UI-008, AUC-006, BOARD-009,
   COMBAT-002, OBJECTIVE-004, BOARD-008, and HAND-UI-007 have returned and
   are integrated or closed as noted; do not relaunch their implementation
@@ -626,10 +624,9 @@ Current active windows by user default-launch rule:
   cleared. It now needs serialized `/story-done` after BOARD-010.
 - BOARD-010 returned, integrated into main at `40b3176` and `e49f5a2`,
   verified, and is on origin/main after orchestrator push. Window can be
-  cleared. It now needs serialized `/story-done` after HAND-UI-011.
-- HAND-UI-011 returned, integrated into main at `bd8c15b`, verified, and is on
-  origin/main after orchestrator push. Window can be cleared. It now needs
-  serialized `/story-done`.
+  cleared. It now needs serialized `/story-done`.
+- HAND-UI-011 story-done returned and was committed at `d203c3b`; window can
+  be cleared.
 - AUC-007 story-done returned and was committed at `a5eaadc`; window can be
   cleared.
 - OBJECTIVE-005 story-done returned and was committed at `b5ecd56`; window can
