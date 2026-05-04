@@ -235,6 +235,14 @@ None currently tracked here.
 
 ## Recently Closed
 
+- Server RNG 003 / S5-18: Determinism Proof & Session Reset readiness repair
+  landed at `46e1ee2`; direct story-done closure committed at `2dcb237`.
+  Verification recorded: `cargo test -p server foundation::rng::tests` 19/19
+  and `cargo check -p server`. Story-done updated
+  `production/epics/server-rng/story-003-determinism-session-reset.md`,
+  `production/session-state/active.md`, and sprint-status row S5-18.
+  Verdict was COMPLETE WITH NOTES because RNG source comments still use
+  shorthand TR-RNG-04/RNG13/RNG15 while story and registry trace are correct.
 - COMBAT-005: First Strike readiness repair landed at `90ebdfb`; worker
   implementation returned at `912fa45`; root integrated and pushed it at
   `e1733be`; story-done closure committed at `621fef5`. Verification passed
@@ -784,6 +792,8 @@ Active implementation workers by default-launch rule:
 Current active windows by user default-launch rule:
 - COMBAT-005 story-done returned, wrote closure files, and pushed closure at
   `621fef5`; window can be cleared.
+- Server RNG 003 story-done returned, wrote closure files, and pushed closure
+  at `2dcb237`; window can be cleared.
 - AUC-008 readiness repair returned READY and was committed at `c20e503`;
   that readiness window can be cleared. AUC-008 implementation worker returned
   complete at `d1e8cba`; root integrated and pushed it at `c6a1d86`. Window
