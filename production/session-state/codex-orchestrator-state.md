@@ -243,6 +243,17 @@ None currently tracked here.
   cleanup and staged allowlist verification. No assets or code were generated.
   Remaining design questions: optional bid confirmation UX, GAME_OVER/result
   screen UX, full ~315-card roster/art IDs, and accessibility/settings details.
+- Asset audit all returned read-only on 2026-05-04 with verdict
+  NON-COMPLIANT for production asset readiness. Runtime scan found 57 assets
+  total: 55 PNGs under `assets/art`, `assets/data/cards.json`, and
+  `assets/config/game_config.ron`; `assets/audio`, `assets/vfx`, and
+  `assets/shaders` directories are missing. Only 17 manifest rows have
+  file-presence credit, and all 55 PNGs are temporary placeholders, not
+  production-approved final art. P0 missing groups: Board Rendering blocking
+  visuals/SFX, current 8-card display/zoom pairs plus four type/rarity icons,
+  hand shaders, Hand UI audio, and shared display fonts. Next production batch
+  recommendation: board functional placeholder pack, hand current-card pack,
+  shared font/shader pack, then minimal board/hand audio.
 
 ## Recently Closed
 
@@ -905,6 +916,9 @@ Current active windows by user default-launch rule:
   deferred until roster/art IDs are reconciled; window can be cleared.
 - UI/audio/VFX coverage audit returned and led into the full-game asset
   manifest/spec expansion committed at `bbde404`; window can be cleared.
+- Asset audit existing runtime files returned read-only with NON-COMPLIANT
+  verdict and no edits; window can be cleared. The trailing `/review on my
+  current changes` is not applicable to that audit because it made no changes.
 - COMBAT-004 story-done returned and was committed at `52caa45`; follow-up
   scope clarification committed at `3ef7bab`; window can be cleared.
 - CDP-006 story-done returned and was committed at `199a9b3`; window can be
