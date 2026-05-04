@@ -23,11 +23,13 @@ use crate::core::rsm::{
 };
 use crate::core::session::SessionConfig;
 use crate::feature::board::{
-    detect_objective_presence, BoardCell, BoardConfig, BoardGrid, BoardOccupancy, BoardSystemSet,
-    LaneId, PendingPlacements, UnitAtObjective,
+    advance_direction, apply_f1, detect_objective_presence, BoardCell, BoardConfig, BoardGrid,
+    BoardOccupancy, BoardSystemSet, LaneId, PendingPlacements, UnitAtObjective,
 };
 use crate::feature::keyword::components::UnitKeywordState;
-use crate::feature::keyword::effects::apply_stun;
+use crate::feature::keyword::effects::{
+    apply_stun, can_execute_standard_movement, charge_x_cells_for_sub_step,
+};
 use crate::foundation::config::CardCatalog;
 
 pub const DEFAULT_ITERATION_BUDGET: u32 = 10_000;
@@ -190,6 +192,12 @@ pub enum CombatTraceEntry {
         lane: LaneId,
         cell: u8,
     },
+    UnitMoved {
+        unit: Entity,
+        from_cell: u8,
+        to_cell: u8,
+        sub_step: u8,
+    },
     KeywordTriggered {
         unit: Entity,
         keyword: KeywordKind,
@@ -239,6 +247,36 @@ impl IterationBudget {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct MovementUnit {
+    entity: Entity,
+    team: u8,
+    lane: LaneId,
+    original_cell: u8,
+    cell: u8,
+    destination: u8,
+    direction: i16,
+    halted: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct MovementProposal {
+    unit_index: usize,
+    from_cell: u8,
+    to_cell: u8,
+    wall_halt: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct BoardUnitInfo {
+    entity: Entity,
+    team: Option<u8>,
+    lane: LaneId,
+    cell: u8,
+    is_wall: bool,
+    range_max: Option<u8>,
+}
+
 #[derive(Resource, Default, Debug, Clone)]
 pub struct AppearanceEffectRegistry {
     pub effects: HashMap<CardId, Vec<AppearanceEffect>>,
@@ -283,7 +321,7 @@ pub fn resolve_combat(world: &mut World) {
         });
 
     let iteration_limit = world.resource::<CombatIterationBudget>().limit();
-    if run_sub_step_scaffold(world, iteration_limit).is_err() {
+    if run_sub_step_scaffold(world, iteration_limit, begin_resolution.round).is_err() {
         world
             .resource_mut::<CombatResolutionTrace>()
             .push(CombatTraceEntry::IterationBudgetExceeded);
@@ -329,7 +367,11 @@ fn enqueue_resolution_event(world: &mut World) {
         .push(CombatTraceEntry::ResolutionEventEnqueued);
 }
 
-fn run_sub_step_scaffold(world: &mut World, iteration_limit: u32) -> Result<(), CombatAbort> {
+fn run_sub_step_scaffold(
+    world: &mut World,
+    iteration_limit: u32,
+    current_round: u32,
+) -> Result<(), CombatAbort> {
     let mut budget = IterationBudget::new(iteration_limit);
 
     for sub_step in 1..=6 {
@@ -340,12 +382,373 @@ fn run_sub_step_scaffold(world: &mut World, iteration_limit: u32) -> Result<(), 
 
         match sub_step {
             1 => apply_placements(world, &mut budget)?,
+            2 => execute_charge_x(world, current_round, &mut budget)?,
+            5 => execute_standard_movement(world, current_round, &mut budget)?,
             6 => run_objective_detection_if_ready(world),
             _ => {}
         }
     }
 
     Ok(())
+}
+
+fn execute_charge_x(
+    world: &mut World,
+    current_round: u32,
+    budget: &mut IterationBudget,
+) -> Result<(), CombatAbort> {
+    execute_movement(world, current_round, true, budget)
+}
+
+fn execute_standard_movement(
+    world: &mut World,
+    current_round: u32,
+    budget: &mut IterationBudget,
+) -> Result<(), CombatAbort> {
+    execute_movement(world, current_round, false, budget)
+}
+
+fn execute_movement(
+    world: &mut World,
+    current_round: u32,
+    charge_x_mode: bool,
+    budget: &mut IterationBudget,
+) -> Result<(), CombatAbort> {
+    let board_units = collect_board_units(world);
+    let mut units = collect_movement_units(world, &board_units, current_round, charge_x_mode);
+
+    loop {
+        let proposals = movement_proposals(&board_units, &units);
+        if proposals.is_empty() {
+            break;
+        }
+
+        for _ in &proposals {
+            budget.tick()?;
+        }
+
+        let crossing_halts = path_crossing_halts(&units, &proposals);
+        let same_cell_halts = same_cell_landing_halts(&units, &proposals);
+        let mut any_moved = false;
+
+        for proposal in proposals {
+            let unit = &mut units[proposal.unit_index];
+            if crossing_halts.contains(&proposal.unit_index) {
+                unit.halted = true;
+                continue;
+            }
+
+            unit.cell = proposal.to_cell;
+            unit.halted = proposal.wall_halt || same_cell_halts.contains(&proposal.unit_index);
+            any_moved |= proposal.from_cell != proposal.to_cell;
+        }
+
+        if !any_moved {
+            break;
+        }
+    }
+
+    commit_movement_results(world, &units, movement_sub_step(charge_x_mode));
+
+    Ok(())
+}
+
+fn collect_movement_units(
+    world: &mut World,
+    board_units: &[BoardUnitInfo],
+    current_round: u32,
+    charge_x_mode: bool,
+) -> Vec<MovementUnit> {
+    let Some(board_config) = world.get_resource::<BoardConfig>().copied() else {
+        return Vec::new();
+    };
+    let Some(session_config) = world.get_resource::<SessionConfig>().cloned() else {
+        return Vec::new();
+    };
+
+    let raw_units = {
+        let mut query = world.query::<(Entity, &BoardPosition, &UnitStats, &UnitOwner)>();
+        query
+            .iter(world)
+            .map(|(entity, position, stats, owner)| (entity, *position, *stats, *owner))
+            .collect::<Vec<_>>()
+    };
+
+    let mut units = raw_units
+        .into_iter()
+        .filter_map(|(entity, position, stats, owner)| {
+            let move_value = if charge_x_mode {
+                charge_x_cells_for_sub_step(entity, current_round, world)?
+            } else {
+                if !can_execute_standard_movement(entity, current_round, world) || stats.mp == 0 {
+                    return None;
+                }
+                stats.mp
+            };
+
+            if move_value == 0
+                || (!charge_x_mode
+                    && range_wall_target_in_range(
+                        entity,
+                        owner.0,
+                        position.lane,
+                        position.cell,
+                        board_units,
+                        &session_config,
+                        &board_config,
+                    ))
+            {
+                return None;
+            }
+
+            let direction = advance_direction(owner.0, &session_config, &board_config)?;
+            let team = session_config.team_map.get(&owner.0).copied()?;
+            let destination = apply_f1(
+                position.cell,
+                direction,
+                move_value,
+                board_config.cell_min,
+                board_config.cell_max,
+            );
+
+            (destination != position.cell).then_some(MovementUnit {
+                entity,
+                team,
+                lane: position.lane,
+                original_cell: position.cell,
+                cell: position.cell,
+                destination,
+                direction,
+                halted: false,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    units.sort_by_key(|unit| (unit.lane, unit.original_cell, unit.entity.index()));
+    units
+}
+
+fn collect_board_units(world: &mut World) -> Vec<BoardUnitInfo> {
+    let teams = world
+        .get_resource::<SessionConfig>()
+        .map(|session| session.team_map.clone())
+        .unwrap_or_default();
+    let raw_units = {
+        let mut query = world.query::<(Entity, &BoardPosition, &UnitOwner)>();
+        query
+            .iter(world)
+            .map(|(entity, position, owner)| (entity, *position, *owner))
+            .collect::<Vec<_>>()
+    };
+
+    raw_units
+        .into_iter()
+        .map(|(entity, position, owner)| BoardUnitInfo {
+            entity,
+            team: teams.get(&owner.0).copied(),
+            lane: position.lane,
+            cell: position.cell,
+            is_wall: unit_has_simple_keyword(entity, SimpleKeyword::Wall, world),
+            range_max: range_max(entity, world),
+        })
+        .collect()
+}
+
+fn movement_proposals(
+    board_units: &[BoardUnitInfo],
+    units: &[MovementUnit],
+) -> Vec<MovementProposal> {
+    units
+        .iter()
+        .enumerate()
+        .filter_map(|(unit_index, unit)| {
+            if unit.halted || unit.cell == unit.destination {
+                return None;
+            }
+
+            let to_cell = (unit.cell as i16 + unit.direction).clamp(1, 8) as u8;
+            Some(MovementProposal {
+                unit_index,
+                from_cell: unit.cell,
+                to_cell,
+                wall_halt: enemy_wall_at(board_units, unit.team, unit.lane, to_cell),
+            })
+        })
+        .collect()
+}
+
+fn path_crossing_halts(units: &[MovementUnit], proposals: &[MovementProposal]) -> Vec<usize> {
+    let mut halted = Vec::new();
+
+    for first in proposals {
+        for second in proposals {
+            if first.unit_index >= second.unit_index {
+                continue;
+            }
+
+            let first_unit = units[first.unit_index];
+            let second_unit = units[second.unit_index];
+            if first_unit.lane != second_unit.lane
+                || !teams_are_enemies(first_unit.team, second_unit.team)
+            {
+                continue;
+            }
+
+            if first.to_cell == second.from_cell && second.to_cell == first.from_cell {
+                halted.push(first.unit_index);
+                halted.push(second.unit_index);
+            }
+        }
+    }
+
+    halted.sort_unstable();
+    halted.dedup();
+    halted
+}
+
+fn same_cell_landing_halts(units: &[MovementUnit], proposals: &[MovementProposal]) -> Vec<usize> {
+    let mut halted = Vec::new();
+
+    for first in proposals {
+        for second in proposals {
+            if first.unit_index >= second.unit_index || first.to_cell != second.to_cell {
+                continue;
+            }
+
+            let first_unit = units[first.unit_index];
+            let second_unit = units[second.unit_index];
+            if first_unit.lane == second_unit.lane
+                && teams_are_enemies(first_unit.team, second_unit.team)
+            {
+                halted.push(first.unit_index);
+                halted.push(second.unit_index);
+            }
+        }
+    }
+
+    halted.sort_unstable();
+    halted.dedup();
+    halted
+}
+
+fn commit_movement_results(world: &mut World, units: &[MovementUnit], sub_step: u8) {
+    for unit in units {
+        if unit.cell == unit.original_cell {
+            continue;
+        }
+
+        if let Some(mut position) = world.get_mut::<BoardPosition>(unit.entity) {
+            position.cell = unit.cell;
+        }
+
+        world
+            .resource_mut::<CombatResolutionTrace>()
+            .push(CombatTraceEntry::UnitMoved {
+                unit: unit.entity,
+                from_cell: unit.original_cell,
+                to_cell: unit.cell,
+                sub_step,
+            });
+    }
+
+    rebuild_board_grid(world);
+}
+
+fn rebuild_board_grid(world: &mut World) {
+    if !world.contains_resource::<BoardGrid>() {
+        return;
+    }
+
+    let mut query = world.query::<(Entity, &BoardPosition)>();
+    let positions = query
+        .iter(world)
+        .map(|(entity, position)| (entity, *position))
+        .collect::<Vec<_>>();
+
+    let mut grid = world.resource_mut::<BoardGrid>();
+    *grid = BoardGrid::default();
+    for (entity, position) in positions {
+        if let Some((lane_index, cell_index)) = grid_indices(position.lane, position.cell) {
+            grid.lanes[lane_index][cell_index] = Some(BoardCell::new(entity));
+        }
+    }
+}
+
+fn movement_sub_step(charge_x_mode: bool) -> u8 {
+    if charge_x_mode {
+        2
+    } else {
+        5
+    }
+}
+
+fn range_wall_target_in_range(
+    unit: Entity,
+    owner: PlayerId,
+    lane: LaneId,
+    cell: u8,
+    board_units: &[BoardUnitInfo],
+    session_config: &SessionConfig,
+    board_config: &BoardConfig,
+) -> bool {
+    let Some(max_range) = board_units
+        .iter()
+        .find(|candidate| candidate.entity == unit)
+        .and_then(|candidate| candidate.range_max)
+    else {
+        return false;
+    };
+    let Some(direction) = advance_direction(owner, session_config, board_config) else {
+        return false;
+    };
+    let Some(team) = session_config.team_map.get(&owner).copied() else {
+        return false;
+    };
+
+    board_units.iter().any(|candidate| {
+        candidate.entity != unit
+            && candidate.lane == lane
+            && candidate
+                .team
+                .is_some_and(|candidate_team| teams_are_enemies(team, candidate_team))
+            && candidate.is_wall
+            && forward_distance(cell, candidate.cell, direction)
+                .is_some_and(|distance| distance <= max_range)
+    })
+}
+
+fn enemy_wall_at(board_units: &[BoardUnitInfo], team: u8, lane: LaneId, cell: u8) -> bool {
+    board_units.iter().any(|candidate| {
+        candidate.lane == lane
+            && candidate.cell == cell
+            && candidate
+                .team
+                .is_some_and(|candidate_team| teams_are_enemies(team, candidate_team))
+            && candidate.is_wall
+    })
+}
+
+fn teams_are_enemies(first: u8, second: u8) -> bool {
+    first != second
+}
+
+fn range_max(unit: Entity, world: &World) -> Option<u8> {
+    let card_id = world.get::<UnitCardRef>(unit).map(|card| card.0)?;
+    card_for(card_id, world)?
+        .keywords
+        .iter()
+        .find_map(|keyword| {
+            if let Keyword::RangeX { max_range } = keyword {
+                Some(*max_range)
+            } else {
+                None
+            }
+        })
+}
+
+fn forward_distance(from_cell: u8, target_cell: u8, direction: i16) -> Option<u8> {
+    let distance = (target_cell as i16 - from_cell as i16) * direction.signum();
+    (distance > 0).then_some(distance as u8)
 }
 
 fn apply_placements(world: &mut World, budget: &mut IterationBudget) -> Result<(), CombatAbort> {

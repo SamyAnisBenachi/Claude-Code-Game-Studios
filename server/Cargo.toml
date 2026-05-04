@@ -260,3 +260,7 @@ path = "../tests/unit/combat/modifier_stack_test.rs"
 [[test]]
 name = "substep1_placement_test"
 path = "../tests/unit/combat/substep1_placement_test.rs"
+
+[[test]]
+name = "movement_collision_test"
+path = "../tests/unit/combat/movement_collision_test.rs"
