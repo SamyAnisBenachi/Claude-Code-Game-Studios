@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Integration
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -13,20 +13,21 @@
 *(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)*
 
 **ADR Governing Implementation**: [ADR-013: Auction System State Machine and Bid Processing Architecture](docs/architecture/adr-013-auction-system-state.md)
-**ADR Decision Summary**: At SELECTING entry, `draw_auction_card()` is called and `distribute()` is called unconditionally at draw time — the card is permanently consumed from the shared neutral pool regardless of auction outcome. Pool-empty guard fires `AuctionSettled { winner: None }` immediately without sending `S2CAuctionCard`. Legendary cards are filtered out if `round_number < GameConfig.legendary_pool_entry_round`.
+**ADR Decision Summary**: At SELECTING entry, Auction uses the current read-only `PlayerPool::draw_auction_card(auction_pool, catalog, seed)` API to select an auction card, then Auction calls `distribute(card_id)` explicitly and unconditionally at draw time on a successful selection. The card is permanently consumed from the shared neutral auction pool regardless of auction outcome. Pool-empty guard fires `AuctionSettled { winner: None }` immediately without sending `S2CAuctionCard`. Legendary cards are excluded by Auction-side round eligibility before `GameConfig.legendary_pool_entry_round`.
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
 **Engine Notes**:
 - This story uses `App::new()` with both `AuctionPlugin` and `CardDataPoolPlugin` registered — the full integration test harness
-- `draw_auction_card()` accepts eligible rarities derived from `round_number` vs `legendary_pool_entry_round` — the filter lives inside the pool API call, not in the Auction System directly
+- Current Card Pool API: `PlayerPool::draw_auction_card(auction_pool, catalog, seed) -> Option<CardId>` is read-only and does **not** accept eligible rarities. It filters only Neutral Rare/Legendary cards with `copies_remaining > 0`
+- Auction owns round eligibility and Legendary stratification: before the configured entry round, Auction must present a Rare-only auction-pool view or equivalent bounded filter to the draw path, then call `distribute(card_id)` only after a successful eligible selection
 - Pool draw functions return `Option<T>` and never panic — pool-empty returns `None`, Auction System handles it (AU15)
 - `liv-bevy-018` skill mandatory; `liv-bevy-lightyear` for any networking code added during integration
 
 **Control Manifest Rules (Feature Layer)**:
-- Required: `distribute()` called unconditionally at draw time, NOT conditionally on auction outcome — card is consumed from pool at draw, not at settlement
-- Required: `draw_auction_card()` must receive the eligible rarity set as a parameter (based on `round_number`) — pool owns NO round-number awareness; filter is passed in by caller
-- Forbidden: Do NOT return a Legendary card when `round_number < legendary_pool_entry_round` — this is enforced by the `eligible_rarities` parameter passed to `draw_auction_card()`
-- Note: ADR-013 is Accepted but not yet incorporated in the control manifest (v2026-04-30 lists it as pending)
+- Required: `distribute()` called by Auction unconditionally at draw time after a successful `draw_auction_card()` result, NOT conditionally on auction outcome — card is consumed from pool at draw, not at settlement
+- Required: `auction_tick_system` remains the sole `AuctionState` writer and keeps ADR-013 code order: handle `AuctionPhaseEntered`, handle `AbortAuction`, drain bids, decrement timer, settle expired auction
+- Forbidden: Do NOT return or distribute a Legendary card when `round_number < legendary_pool_entry_round`; Auction owns this stratification because the current Card Pool API has no eligible-rarity parameter
+- Note: `docs/architecture/control-manifest.md` version 2026-05-01 includes ADR-013 auction state, scheduling, and Lightyear receiver rules
 
 ---
 
@@ -48,14 +49,14 @@
 // Step 1 of auction_tick_system (within AuctionPhaseEntered handler):
 auction.phase = AuctionPhase::Selecting;
 
-// Build eligible rarity set based on round_number
-let eligible_rarities = if round >= game_config.legendary_pool_entry_round {
-    vec![Rarity::Rare, Rarity::Epic, Rarity::Legendary]
-} else {
-    vec![Rarity::Rare, Rarity::Epic]  // No Legendary before entry round
-};
+// Build an eligible auction-pool view based on round_number.
+// Current PlayerPool::draw_auction_card() has no eligible-rarity parameter.
+// Before legendary_pool_entry_round, Auction must exclude Legendary cards
+// before selecting and before calling distribute().
+let eligible_auction_pool =
+    build_eligible_auction_pool(&auction_pool, &catalog, round, &game_config);
 
-let draw_result = card_pool.draw_auction_card(&eligible_rarities, rng_seed);
+let draw_result = PlayerPool::draw_auction_card(&eligible_auction_pool, &catalog, rng_seed);
 
 match draw_result {
     None => {
@@ -64,9 +65,19 @@ match draw_result {
         auction.phase = AuctionPhase::Idle;
         return;  // Skip LIVE_BIDDING setup
     }
-    Some((card_id, rarity)) => {
-        // distribute() was called by draw_auction_card() unconditionally at draw time
-        // The card is permanently consumed from the pool
+    Some(card_id) => {
+        // Auction owns consumption. distribute() is called immediately at draw time.
+        // The card is permanently consumed from the pool regardless of outcome.
+        if auction_pool.distribute(card_id).is_err() {
+            // Treat an unexpected distribute failure as pool-empty for this story's tests.
+            settled_writer.write(AuctionSettled { winner: None, final_price: 0, card_id: CardId(0) });
+            auction.phase = AuctionPhase::Idle;
+            return;
+        }
+        let rarity = catalog
+            .get(&card_id)
+            .expect("draw_auction_card returned a card missing from CardCatalog")
+            .rarity;
         let starting_price = match rarity { ... };
         auction.card_id = Some(card_id);
         auction.current_price = starting_price;
@@ -78,11 +89,16 @@ match draw_result {
 }
 ```
 
-**`distribute()` responsibility**: The `card-data-pool` epic defines whether `distribute()` is called inside `draw_auction_card()` or by the caller. Confirm with `card-data-pool` story-001 — the GDD says "calls `distribute(card_id)` immediately at draw time." If `distribute()` is the caller's responsibility, the Auction System must call it explicitly after a successful draw.
+**`distribute()` responsibility**: Current code makes `PlayerPool::draw_auction_card(...)` read-only. Auction System must call `distribute(card_id)` explicitly and immediately after a successful eligible draw. This is the only consumption point for AU8-pool; win, no-bid, and AbortAuction paths must not add a second decrement or return the card.
 
-**Pool-empty with only ineligible rarities**: If the pool has Legendary copies but `round_number < legendary_pool_entry_round`, the Legendary cards are ineligible. The pool draw returns `None` for the eligible rarities — AU15 path fires. This is tested in AU21's edge case.
+**Pool-empty with only ineligible rarities**: If the pool has Legendary copies but `round_number < legendary_pool_entry_round`, the Legendary cards are ineligible. The eligible auction-pool view has no drawable cards, `draw_auction_card()` returns `None`, and AU15 fires. This is tested in AU21's edge case.
 
 **AU8-pool parameterization**: Rust does not have built-in parameterized tests — write three separate test functions sharing a `fn auction_fixture() -> App` builder that sets up AuctionPlugin + CardDataPoolPlugin + EconomyPlugin with a Rare card having `copies_remaining = 3`.
+
+**Performance / No-Impact Note**:
+- Pool integration must stay in the bounded SELECTING branch of `auction_tick_system`: at most one bounded eligibility pass over the auction-pool/catalog data, one `draw_auction_card()` call, and one `distribute()` call on success
+- Do not add retry-until-success loops, background/deferred pool work, asset scans, network fan-out, or other expensive work inside `auction_tick_system`
+- Expected cost remains within the server steady-state budget from the control manifest (`<= 5 ms` per frame tick); empty-pool and ineligible-Legendary paths must return immediately to IDLE after writing the required `AuctionSettled` message
 
 ---
 
@@ -135,14 +151,15 @@ Test: pool distribution is permanent even when auction aborted
 ```
 Test: empty pool triggers immediate no-card outcome
   Given: App::new() with AuctionPlugin + CardDataPoolPlugin
-         Card pool fixture: ALL eligible rarities (Rare, Epic) have copies_remaining == 0
+         Card pool fixture: all currently eligible auction cards have copies_remaining == 0
+         (before legendary_pool_entry_round, Rare is the only eligible auction rarity)
          AuctionPhaseEntered injected
   When: auction_tick_system runs
   Then: AuctionSettled { winner: None, amount: 0 } Bevy Message fires in same invocation
         auction_state.phase == AuctionPhase::Idle
         No S2CAuctionCard queued
         Messages<AuctionSettled> contains exactly one event (not deferred to next frame)
-  Edge cases: Pool has copies_remaining = 0 for Rare/Epic but has Legendary copies AND
+  Edge cases: Pool has copies_remaining = 0 for Rare but has Legendary copies AND
               round_number < legendary_pool_entry_round → Legendary is ineligible →
               treated as pool empty → same AU15 outcome
 ```
@@ -179,5 +196,6 @@ Test: round < threshold draws only non-Legendary cards
 ## Dependencies
 
 - Depends on: Story 007 DONE (`AuctionPlugin` fully registered — required for `App::new()` integration tests)
-- Depends on: `card-data-pool` story-001 DONE (provides `draw_auction_card()`, `distribute()`, and `SharedNeutralPool` resource)
+- Depends on: `card-data-pool` story-001 DONE (provides `PlayerPool` and `distribute()`)
+- Depends on: `card-data-pool` story-002 DONE (provides current read-only `PlayerPool::draw_auction_card(auction_pool, catalog, seed)`)
 - Unlocks: Epic complete — all 10 TR-AUC requirements covered
