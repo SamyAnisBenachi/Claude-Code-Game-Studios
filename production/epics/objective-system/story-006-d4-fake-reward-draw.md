@@ -4,7 +4,7 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Logic
-> **Manifest Version**: 2026-04-29
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
@@ -24,6 +24,7 @@
 - Required: Feature systems emit `AwardGold` and `ManaCapIncreased` as Messages consumed by Economy System — never call Economy System directly (ADR-010)
 - Forbidden: No re-roll from pool-exhausted `None` result to ManaCapIncreased — this would bias the D4 50/50 (GDD edge case)
 - Forbidden: Do not consume the `draw_random` seed if hand is full — AwardGold fallback terminates without calling draw_random (GDD OS-15)
+- Performance Guardrail: D4 fake reward draw executes inside RESOLUTION and must stay within the full server RESOLUTION batch budget of ≤ 15 ms.
 
 ---
 
