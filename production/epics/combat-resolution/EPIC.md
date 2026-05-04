@@ -22,7 +22,7 @@ Combat Resolution implements the server-side deterministic 6-step algorithm that
 
 ## GDD Requirements
 
-> Trace source: `docs/architecture/tr-registry.yaml` version 5. Keep this table aligned with active registry IDs.
+> Trace source: `docs/architecture/tr-registry.yaml` version 9. Keep this table aligned with active registry IDs.
 
 | TR-ID | Requirement | ADR Coverage |
 |-------|-------------|--------------|
@@ -30,8 +30,8 @@ Combat Resolution implements the server-side deterministic 6-step algorithm that
 | TR-CR-002 | Sub-step 3 FIRST STRIKE damage resolves before retaliation in sub-step 6; FINAL BLOW is eligible from SS3 kills (CR-2) | ADR-017, ADR-022 |
 | TR-CR-003 | Sub-step 5 step-by-step collision detection handles path crossing and same-cell halting; deviation from Board/Lane skip-intermediate rule documented in ADR-017 (CR-9) | ADR-017 |
 | TR-CR-004 | Sub-step 6 bilateral pair simultaneous damage uses pre-combat HP snapshots; two-pass algorithm computes all damage before applying (CR-1) | ADR-017 |
-| TR-CR-005 | SHIELD canonical pre-check absorbs all sub-step damage once for simultaneous attackers; removed from modifier stack step 10 (CR-36) | ADR-017, ADR-018 |
-| TR-CR-006 | COUNTERATTACK fires after damage; melee contact only, chains once, and supports multi-attacker simultaneous retaliation (CR-20, CR-21) | ADR-018, ADR-022 |
+| TR-CR-005 | SHIELD persists across rounds until consumed; when triggered, its pre-check absorbs all incoming damage for that sub-step, consumes exactly once, and later sub-steps apply damage normally after consumption (CR-6, CR-7, CR-29, CR-36) | ADR-017, ADR-018 |
+| TR-CR-006 | COUNTERATTACK fires after incoming damage or SHIELD absorption for melee contact only (same-cell or collision-halt adjacent); RANGE attackers at distance never trigger it; chains once; multi-attacker simultaneous retaliation supported (CR-20, CR-21, CR-35) | ADR-018, ADR-022 |
 | TR-CR-007 | FINAL BLOW fires in the kill sub-step, not SS4; eligibility is evaluated against the attacker who delivered lethal damage (CR-22, CR-23) | ADR-018, ADR-022 |
 | TR-CR-008 | Kill gold +1 is awarded by `resolve_combat`; objective gold +3 lands before economy interest snapshots (CR-16) | ADR-017, ADR-019 |
 | TR-CR-009 | Objective damage bypasses AR, uses ATK_effective only, and mutates objective HP with `saturating_sub` (CR-10, CR-27) | ADR-017 |

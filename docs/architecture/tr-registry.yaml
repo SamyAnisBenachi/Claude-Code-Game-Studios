@@ -29,7 +29,7 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 8
+version: 9
 last_updated: "2026-05-04"
 # Run 3 (/architecture-review 2026-04-30c): registered 80 new M2/M3 TRs covering
 # combat-resolution, card-acquisition, prism-system, keyword-system, card-animations,
@@ -52,6 +52,9 @@ last_updated: "2026-05-04"
 # Run 9 (/story-readiness COMBAT-006 trace repair 2026-05-04): registered
 # TR-CR-022 for sequential DEATH chain traceability (CR-25). Total:
 # 189 active TRs.
+# Run 10 (/story-readiness COMBAT-007 trace repair 2026-05-04): revised
+# TR-CR-005 to cover SHIELD consumption/persistence CRs and revised TR-CR-006
+# to cover collision-halt COUNTERATTACK traceability. Active count unchanged.
 
 requirements:
 
@@ -1053,19 +1056,19 @@ requirements:
   - id: TR-CR-005
     system: combat-resolution
     gdd: design/gdd/combat-resolution.md
-    gdd_ac_ids: [CR-36]
-    requirement: "SHIELD canonical pre-check rule absorbs all sub-step damage once for simultaneous attackers; removed from per-attacker modifier stack step 10"
+    gdd_ac_ids: [CR-6, CR-7, CR-29, CR-36]
+    requirement: "SHIELD persists across rounds until consumed; when triggered, its pre-check absorbs all incoming damage for that sub-step, consumes exactly once, and later sub-steps apply damage normally after consumption"
     created: 2026-04-30
-    revised: ""
+    revised: 2026-05-04
     status: active
 
   - id: TR-CR-006
     system: combat-resolution
     gdd: design/gdd/combat-resolution.md
-    gdd_ac_ids: [CR-20, CR-21]
-    requirement: "COUNTERATTACK fires after damage; melee contact only (not RANGE); chains once; multi-attacker simultaneous retaliation supported"
+    gdd_ac_ids: [CR-20, CR-21, CR-35]
+    requirement: "COUNTERATTACK fires after incoming damage or SHIELD absorption for melee contact only (same-cell or collision-halt adjacent); RANGE attackers at distance never trigger it; chains once; multi-attacker simultaneous retaliation supported"
     created: 2026-04-30
-    revised: ""
+    revised: 2026-05-04
     status: active
 
   - id: TR-CR-007

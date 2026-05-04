@@ -4,12 +4,12 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Logic
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
 **GDD**: `design/gdd/combat-resolution.md`
-**Requirement**: `TR-CR-???` (TR-CR-009 partial, TR-CR-010, TR-CR-011 — unregistered)
+**Requirement**: `TR-CR-004` (SS6 bilateral snapshot combat), `TR-CR-005` (CR-6, CR-7, CR-29, CR-36 — SHIELD consumption and persistence), `TR-CR-006` (CR-20, CR-21, CR-35 — COUNTERATTACK melee eligibility and retaliation)
 
 **ADR Governing Implementation**: ADR-017: Combat Resolution Execution Architecture
 **ADR Decision Summary**: SS6 runs the two-pass bilateral combat algorithm, SHIELD pre-check (runs before the modifier stack, absorbs all simultaneous attackers, consumed once per sub-step), and COUNTERATTACK retaliation (melee-only, fires once per sub-step after all incoming damage, runs full modifier stack). Dead unit cleanup and kill gold drain run as a post-SS6 pass.
@@ -20,6 +20,7 @@
 **Control Manifest Rules (Feature layer)**:
 - Required: SHIELD pre-check runs BEFORE modifier stack; SHIELD absorbs all simultaneous attackers in one sub-step; COUNTERATTACK fires AFTER all incoming damage resolved (including SHIELD absorption); post-SS6 cleanup pass drains kill_log for SS6 kills
 - Forbidden: SHIELD does not suppress COUNTERATTACK; COUNTERATTACK does not fire for RANGE attackers at distance
+- Performance: SS6 contributes to ADR-017's <= 15 ms RESOLUTION budget; combat pair collection, SHIELD absorption grouping, COUNTERATTACK retaliation, and post-SS6 cleanup must remain bounded by live unit count plus the 10,000 iteration safety guard.
 
 ---
 
