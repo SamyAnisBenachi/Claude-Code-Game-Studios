@@ -263,10 +263,14 @@ None currently tracked here.
   passed: all PNG dimensions matched spec, files are `Format32bppArgb`, alpha
   was verified, HP pixel is fully opaque, `git diff --check` passed, and final
   status was clean. No code, audio, card art, production session files, or
-  sprint-status files were touched. Manifest statuses were not changed. Remaining
-  non-blocking spec flags: ASSET-026 separate sprite vs runtime tint, ASSET-035
-  `ui_` prefix on a world-space board sprite, ASSET-039 64x96 canvas despite
-  manifest/spec naming saying 48x64, and ASSET-044 odd-width HP bar exception.
+  sprint-status files were touched. Follow-up asset-status reconciliation was
+  pushed at `631a5fd`, updating only `design/assets/asset-manifest.md` and
+  `design/assets/specs/board-rendering-assets.md` to mark the 17 PNGs as
+  generated/file-present placeholders only, with no `Done`, `Approved`, or
+  production-ready claims. Remaining non-blocking spec flags: ASSET-026 separate
+  sprite vs runtime tint, ASSET-035 `ui_` prefix on a world-space board sprite,
+  ASSET-039 64x96 canvas despite manifest/spec naming saying 48x64, and
+  ASSET-044 odd-width HP bar exception.
 - Audio production handoff returned and was committed at `64cfd7f`, creating
   `design/assets/production-handoffs/audio-production-queue-2026-05-04.md`.
   It covers 37 audio assets grouped as board/objective blocking SFX, Hand UI
@@ -949,9 +953,9 @@ Current active windows by user default-launch rule:
   current changes` is not applicable to that audit because it made no changes.
 - Board Blocking Asset Batch returned complete and was committed at `9f8060b`,
   generating the requested 17 PNG board/objective/unit-base/VFX files. Window
-  can be cleared. Manifest statuses remain unchanged, so a separate asset-status
-  reconciliation pass is still needed if these placeholders should receive
-  file-presence credit.
+  can be cleared. Asset-status reconciliation returned and was committed at
+  `631a5fd`, marking the 17 PNGs as generated/file-present placeholders only.
+  That reconciliation window can also be cleared.
 - Audio Production Handoff returned and was committed at `64cfd7f`; window can
   be cleared.
 - COMBAT-004 story-done returned and was committed at `52caa45`; follow-up
