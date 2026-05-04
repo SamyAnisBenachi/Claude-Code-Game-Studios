@@ -24,8 +24,9 @@ use crate::core::rsm::{
 };
 use crate::core::session::SessionConfig;
 use crate::feature::board::{
-    advance_direction, apply_f1, detect_objective_presence, BoardCell, BoardConfig, BoardGrid,
-    BoardOccupancy, BoardSystemSet, LaneId, PendingPlacements, UnitAtObjective,
+    advance_direction, apply_f1, detect_objective_presence, is_at_objective, BoardCell,
+    BoardConfig, BoardGrid, BoardOccupancy, BoardSystemSet, LaneId, PendingPlacements,
+    UnitAtObjective,
 };
 use crate::feature::keyword::components::UnitKeywordState;
 use crate::feature::keyword::effects::{
@@ -33,6 +34,10 @@ use crate::feature::keyword::effects::{
     can_execute_standard_movement, charge_x_cells_for_sub_step, consume_shield_for_sub_step,
 };
 use crate::feature::keyword::{ChainDeathBuffer, UnitDied};
+use crate::feature::objective::{
+    take_damage as apply_objective_damage, ObjectiveDestroyed, ObjectiveHp, ObjectiveSlot,
+    PendingObjectiveEvents,
+};
 use crate::foundation::config::{CardCatalog, GameConfig as ServerGameConfig};
 use crate::foundation::rng::ServerRng;
 
@@ -242,6 +247,18 @@ pub enum CombatTraceEntry {
         amount: u32,
         reason: GoldAwardReason,
     },
+    ObjectiveDamaged {
+        target_player_id: PlayerId,
+        lane: LaneId,
+        hp_before: u32,
+        hp_after: u32,
+        attacker_id: Option<Entity>,
+    },
+    ObjectiveDestroyed {
+        target_player_id: PlayerId,
+        lane: LaneId,
+        was_fake: bool,
+    },
     SubStepStarted(u8),
     IterationBudgetExceeded,
     ResolutionEventEnqueued,
@@ -251,6 +268,7 @@ pub enum CombatTraceEntry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GoldAwardReason {
     Kill,
+    ObjectiveReward,
 }
 
 #[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
@@ -345,6 +363,16 @@ struct CombatAttack {
     attacker_player: PlayerId,
     damage_amount: u8,
     melee_contact: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ObjectiveAttack {
+    attacker: Entity,
+    attacker_player: PlayerId,
+    target_player: PlayerId,
+    lane: LaneId,
+    cell: u8,
+    amount: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -483,7 +511,7 @@ fn run_sub_step_scaffold(
             5 => execute_standard_movement(world, current_round, &mut budget)?,
             6 => {
                 execute_standard_combat(world, current_round, &mut budget)?;
-                run_objective_detection_if_ready(world);
+                execute_objective_damage(world, &mut budget)?;
             }
             _ => {}
         }
@@ -1950,6 +1978,190 @@ fn clear_pending_placements(world: &mut World) {
         .resource_mut::<PendingPlacements>()
         .submissions
         .clear();
+}
+
+fn execute_objective_damage(
+    world: &mut World,
+    budget: &mut IterationBudget,
+) -> Result<(), CombatAbort> {
+    run_objective_detection_if_ready(world);
+
+    for attack in collect_objective_attacks(world) {
+        budget.tick()?;
+        apply_single_objective_attack(world, attack);
+    }
+
+    Ok(())
+}
+
+fn collect_objective_attacks(world: &mut World) -> Vec<ObjectiveAttack> {
+    let Some(board_config) = world.get_resource::<BoardConfig>().copied() else {
+        return Vec::new();
+    };
+    let Some(session_config) = world.get_resource::<SessionConfig>().cloned() else {
+        return Vec::new();
+    };
+
+    let raw_units = {
+        let mut query = world.query::<(Entity, &BoardPosition, &UnitOwner, &UnitStats)>();
+        query
+            .iter(world)
+            .map(|(entity, position, owner, stats)| (entity, *position, *owner, *stats))
+            .collect::<Vec<_>>()
+    };
+
+    let mut attacks = raw_units
+        .into_iter()
+        .filter_map(|(entity, position, owner, stats)| {
+            if stats.hp == 0
+                || !is_at_objective(owner.0, position.cell, &session_config, &board_config)
+            {
+                return None;
+            }
+
+            let target_player = objective_target_player(&session_config, owner.0)?;
+            let leader_bonus = world
+                .get::<UnitKeywordState>(entity)
+                .map_or(0, |state| state.leader_bonus_atk);
+            let amount = u32::from(stats.atk).saturating_add(u32::from(leader_bonus));
+            (amount > 0).then_some(ObjectiveAttack {
+                attacker: entity,
+                attacker_player: owner.0,
+                target_player,
+                lane: position.lane,
+                cell: position.cell,
+                amount,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    attacks.sort_by_key(|attack| {
+        (
+            attack.lane,
+            attack.cell,
+            attack.attacker_player.0,
+            attack.attacker.index(),
+        )
+    });
+    attacks
+}
+
+fn objective_target_player(
+    session_config: &SessionConfig,
+    attacker_player: PlayerId,
+) -> Option<PlayerId> {
+    let attacker_team = session_config.team_map.get(&attacker_player).copied()?;
+    session_config.players().find(|player| {
+        session_config
+            .team_map
+            .get(player)
+            .copied()
+            .is_some_and(|team| teams_are_enemies(attacker_team, team))
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ObjectiveStateSnapshot {
+    hp: u32,
+    destroyed: bool,
+}
+
+fn objective_state_snapshot(
+    world: &mut World,
+    target_player: PlayerId,
+    lane: LaneId,
+) -> Option<ObjectiveStateSnapshot> {
+    let mut query = world.query::<(&ObjectiveSlot, &ObjectiveHp)>();
+    query.iter(world).find_map(|(slot, hp)| {
+        (slot.player == target_player && slot.lane == lane).then_some(ObjectiveStateSnapshot {
+            hp: hp.hp,
+            destroyed: slot.destroyed,
+        })
+    })
+}
+
+fn apply_single_objective_attack(world: &mut World, attack: ObjectiveAttack) {
+    let Some(before) = objective_state_snapshot(world, attack.target_player, attack.lane) else {
+        return;
+    };
+    if before.destroyed || before.hp == 0 {
+        return;
+    }
+
+    let pending_start = pending_objective_event_count(world);
+    apply_objective_damage(world, attack.lane, attack.attacker_player, attack.amount);
+
+    let Some(after) = objective_state_snapshot(world, attack.target_player, attack.lane) else {
+        return;
+    };
+
+    world
+        .resource_mut::<CombatResolutionTrace>()
+        .push(CombatTraceEntry::ObjectiveDamaged {
+            target_player_id: attack.target_player,
+            lane: attack.lane,
+            hp_before: before.hp,
+            hp_after: after.hp,
+            attacker_id: Some(attack.attacker),
+        });
+
+    if let Some(event) =
+        objective_destroyed_event_since(world, attack.target_player, attack.lane, pending_start)
+    {
+        world
+            .resource_mut::<CombatResolutionTrace>()
+            .push(CombatTraceEntry::ObjectiveDestroyed {
+                target_player_id: event.target_player_id,
+                lane: event.lane,
+                was_fake: event.was_fake,
+            });
+
+        award_objective_gold(world, attack.attacker_player);
+    }
+}
+
+fn pending_objective_event_count(world: &World) -> usize {
+    world
+        .get_resource::<PendingObjectiveEvents>()
+        .map_or(0, |pending| pending.queue.len())
+}
+
+fn objective_destroyed_event_since(
+    world: &World,
+    target_player: PlayerId,
+    lane: LaneId,
+    start_index: usize,
+) -> Option<ObjectiveDestroyed> {
+    world
+        .get_resource::<PendingObjectiveEvents>()?
+        .queue
+        .iter()
+        .skip(start_index)
+        .find(|event| event.target_player_id == target_player && event.lane == lane)
+        .copied()
+}
+
+fn award_objective_gold(world: &mut World, player: PlayerId) {
+    let amount = world.get_resource::<ServerGameConfig>().map_or(
+        SharedGameConfig::default().objective_gold_reward,
+        |config| config.objective_gold_reward,
+    );
+
+    world
+        .resource_mut::<CombatResolutionTrace>()
+        .push(CombatTraceEntry::GoldAwarded {
+            player,
+            amount,
+            reason: GoldAwardReason::ObjectiveReward,
+        });
+
+    let Some(mut economies) = world.get_resource_mut::<PlayerEconomies>() else {
+        return;
+    };
+    let Some(economy) = economies.0.get_mut(&player) else {
+        return;
+    };
+    economy_api::apply_gold_award(economy, amount);
 }
 
 fn run_objective_detection_if_ready(world: &mut World) {

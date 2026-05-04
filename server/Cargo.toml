@@ -292,3 +292,7 @@ path = "../tests/unit/combat/substep6_combat_shield_counterattack_test.rs"
 [[test]]
 name = "range_targeting_test"
 path = "../tests/unit/combat/range_targeting_test.rs"
+
+[[test]]
+name = "objective_damage_gameover_test"
+path = "../tests/unit/combat/objective_damage_gameover_test.rs"
