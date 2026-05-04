@@ -141,7 +141,23 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-None currently tracked here.
+- OBJECTIVE-007 / S5-16 resolution phase subscription is integrated on
+  `origin/main` and needs serialized `/story-done`. Readiness repair was pushed
+  at `74d4d8b`. Worker branch
+  `work/objective-007-resolution-phase-subscription` returned at `d110c7f`
+  and was pushed to `origin/work/objective-007-resolution-phase-subscription`,
+  but the branch was behind current `main`; root cherry-picked only the worker
+  implementation and pushed it as `1c8ef2a`. Changed surfaces:
+  `server/Cargo.toml`, `server/src/feature/objective/{mod.rs,plugin.rs,system.rs}`,
+  `shared/src/protocol.rs`, and
+  `tests/integration/objective/resolution_sync_test.rs`. Root verification
+  passed: `cargo fmt -p server -- --check`,
+  `cargo test -p server --test objective_resolution_sync_test` 5/5,
+  objective regressions (`fake_reward_test`, `consequence_path_test`,
+  `damage_interface_test`) 22/22, `cargo check -p server`, and
+  `git diff --check`. Queue exactly one `/story-done` for
+  `production/epics/objective-system/story-007-resolution-phase-subscription.md`;
+  do not relaunch the implementation worker.
 
 ## Recent Planning / Readiness Updates
 
@@ -885,6 +901,10 @@ Active implementation workers by default-launch rule:
   noted; do not relaunch their implementation workers.
 
 Current active windows by user default-launch rule:
+- OBJECTIVE-007 implementation worker returned; root cherry-picked only the
+  implementation because the branch was behind current `main` and pushed
+  integration commit `1c8ef2a`. Worker window can be cleared. A serialized
+  `/story-done` window is now needed.
 - BOARD-RENDERING-001 implementation worker returned; root cherry-picked and
   pushed only the board rendering commit as `b5abcd5` because the branch was
   behind current main; story-done returned and pushed closure at `e2d81d9`.
