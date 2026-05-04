@@ -834,19 +834,14 @@ Run only one story-done at a time.
 - `production/sprint-status.yaml` was rebuilt for Sprint 5 at `b932290`.
   COMBAT-004 story-done later updated S5-06 to done at `52caa45`.
 - S5-21 Board Rendering and Shop/Auction UI planning artifacts exist at
-  `1c28e9c`, but the new UI/rendering stories need readiness passes before
-  any implementation. Shop/Auction UI Story 001 is blocked by missing
-  ADR-021 Presentation scaffold ownership. The ownership analysis recommends a
-  new shared Presentation Layer story before Board Rendering 001 or
-  Shop/Auction UI 001 implementation. Board Rendering Story 001 has only
-  docs-only readiness gaps and should be repaired/rerun, but still depends on
-  the shared Presentation story before implementation. Presentation Layer
-  Story 001 planning landed at `514c1ad` and implementation landed at
-  `1c5c40f`; story-done is pending.
-  Commit `22b6830` (`docs: repair board rendering scaffold readiness`) is now
-  on `origin/main`, but the user has not yet pasted that agent's official
-  return. Do not classify that window or launch BR-001 implementation until
-  the user provides the output.
+  `1c28e9c`; sprint hygiene cleanup at `625c416` marked S5-21 done. S5-22
+  duplicate/stale Card Data Pool cleanup was also closed at `625c416`, retiring
+  stale duplicate Ready story files and marking the canonical Card Data Pool
+  epic/stories complete in docs/status. Presentation Layer Story 001 is closed
+  at `d303155`, Board Rendering Story 001 is implemented/closed at `b5abcd5` /
+  `e2d81d9`, and Shop/Auction UI Story 001 readiness is READY after `f847020`.
+  Next UI implementation candidate after current story-done work is Shop/Auction
+  UI Story 001.
 - Sprint 4 QA plan missing: resolved at `8578890` with
   `production/qa/qa-plan-sprint-4-2026-05-03.md`. S4-14 Economy Network
   Dispatch can now run story-readiness, but `production/sprint-status.yaml`
@@ -907,7 +902,8 @@ Current active windows by user default-launch rule:
   can be cleared. AUC-008 story-done returned, wrote closure files, and pushed
   closure at `9ff607e`; window can be cleared.
 - S5-21 planning artifacts returned and were committed at `1c28e9c`; window
-  can be cleared.
+  can be cleared. Sprint hygiene S5-21/S5-22 cleanup returned and was committed
+  at `625c416`; window can be cleared.
 - Sprint 6 draft returned as report-only and was not written; window can be
   cleared.
 - HAND-UI-010 readiness returned BLOCKED; window can be cleared and should
