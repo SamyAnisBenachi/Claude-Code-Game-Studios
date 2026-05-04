@@ -236,17 +236,19 @@ fn cr_38_death_from_appearance_is_deferred_until_all_appearances_finish() {
             sub_step: 1,
         },
     );
+    let removal = trace_index(
+        &app,
+        CombatTraceEntry::UnitRemoved {
+            unit: target,
+            lane: 1,
+            cell: 2,
+        },
+    );
 
     assert!(killer_appearance < observer_appearance);
     assert!(observer_appearance < death);
-    assert_eq!(
-        app.world()
-            .entity(target)
-            .get::<UnitStats>()
-            .expect("target should have stats")
-            .hp,
-        0
-    );
+    assert!(death < removal);
+    assert!(app.world().get_entity(target).is_err());
 }
 
 #[test]

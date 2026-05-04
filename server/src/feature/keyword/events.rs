@@ -7,8 +7,9 @@ pub struct UnitAppeared {
     pub sub_step: u8,
 }
 
-#[derive(Event, Clone, Debug)]
+#[derive(EntityEvent, Clone, Debug)]
 pub struct UnitDied {
+    pub entity: Entity,
     pub attacker: Option<Entity>,
 }
 

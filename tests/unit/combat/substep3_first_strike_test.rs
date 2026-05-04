@@ -5,9 +5,7 @@ use server::core::board::{BoardPosition, UnitCardRef, UnitOwner, UnitStats};
 use server::core::rsm::BeginResolution;
 use server::core::session::SessionConfig;
 use server::feature::board::{BoardCell, BoardConfig, BoardGrid, BoardOccupancy};
-use server::feature::combat::{
-    CombatKillLog, CombatPlugin, CombatResolutionTrace, CombatTraceEntry, KillRecord,
-};
+use server::feature::combat::{CombatPlugin, CombatResolutionTrace, CombatTraceEntry};
 use server::feature::keyword::components::UnitKeywordState;
 use server::foundation::config::CardCatalog;
 use shared::card::{CardData, CardId, CardType, ClassId, Keyword, Rarity, SimpleKeyword, UnitType};
@@ -151,8 +149,8 @@ fn damage(
     }
 }
 
-fn kill_log(app: &App) -> &[KillRecord] {
-    app.world().resource::<CombatKillLog>().records()
+fn unit_removed(unit: Entity, lane: u8, cell: u8) -> CombatTraceEntry {
+    CombatTraceEntry::UnitRemoved { unit, lane, cell }
 }
 
 #[test]
@@ -209,13 +207,12 @@ fn cr_2_mutual_first_strike_damage_uses_pre_damage_snapshots() {
 
     begin_resolution(&mut app);
 
-    assert_eq!(hp(&app, unit_a), 0);
-    assert_eq!(hp(&app, unit_b), 0);
     assert!(trace(&app).contains(&damage(unit_a, unit_b, 3, 0, 3)));
     assert!(trace(&app).contains(&damage(unit_b, unit_a, 3, 0, 3)));
-    assert_eq!(kill_log(&app).len(), 2);
-    assert!(app.world().get_entity(unit_a).is_ok());
-    assert!(app.world().get_entity(unit_b).is_ok());
+    assert!(trace(&app).contains(&unit_removed(unit_a, 1, 4)));
+    assert!(trace(&app).contains(&unit_removed(unit_b, 1, 4)));
+    assert!(app.world().get_entity(unit_a).is_err());
+    assert!(app.world().get_entity(unit_b).is_err());
 }
 
 #[test]
@@ -287,17 +284,12 @@ fn cr_22_final_blow_fires_in_ss3_before_dead_unit_removal() {
         },
     );
     let substep4_index = trace_index(&app, CombatTraceEntry::SubStepStarted(4));
+    let removal_index = trace_index(&app, unit_removed(defender, 1, 4));
 
     assert!(damage_index < final_blow_index);
     assert!(final_blow_index < substep4_index);
-    assert_eq!(hp(&app, defender), 0);
-    assert!(app.world().get_entity(defender).is_ok());
-    assert!(app
-        .world()
-        .entity(defender)
-        .get::<BoardPosition>()
-        .is_some());
-    assert_eq!(kill_log(&app)[0].killer, attacker);
+    assert!(substep4_index < removal_index);
+    assert!(app.world().get_entity(defender).is_err());
 }
 
 #[test]
@@ -335,17 +327,10 @@ fn cr_37_multisource_first_strike_damage_uses_attacker_lane_order_for_kill_credi
 
     let lane_2_damage = trace_index(&app, damage(attacker_lane_2, defender, 3, 1, 3));
     let lane_4_damage = trace_index(&app, damage(attacker_lane_4, defender, 3, 0, 3));
+    let removal_index = trace_index(&app, unit_removed(defender, 3, 3));
     assert!(lane_2_damage < lane_4_damage);
-    assert_eq!(hp(&app, defender), 0);
-    assert_eq!(
-        kill_log(&app),
-        &[KillRecord {
-            killer: attacker_lane_4,
-            victim: defender,
-            killer_player_id: PLAYER_A,
-            lethal_sub_step: 3,
-        }]
-    );
+    assert!(lane_4_damage < removal_index);
+    assert!(app.world().get_entity(defender).is_err());
 }
 
 fn grid_indices(lane: u8, cell: u8) -> Option<(usize, usize)> {

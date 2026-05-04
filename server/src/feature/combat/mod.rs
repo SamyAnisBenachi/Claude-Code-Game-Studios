@@ -32,6 +32,7 @@ use crate::feature::keyword::effects::{
     apply_stun, can_execute_first_strike, can_execute_standard_attack,
     can_execute_standard_movement, charge_x_cells_for_sub_step,
 };
+use crate::feature::keyword::{ChainDeathBuffer, UnitDied};
 use crate::foundation::config::{CardCatalog, GameConfig as ServerGameConfig};
 
 use self::modifier_stack::{apply_combat_modifier_stack, UnitSnapshot};
@@ -56,6 +57,7 @@ impl Plugin for CombatPlugin {
             .init_resource::<CombatNetworkOutbox>()
             .init_resource::<CombatResolutionTrace>()
             .init_resource::<CombatKillLog>()
+            .init_resource::<ChainDeathBuffer>()
             .init_resource::<AppearanceEffectRegistry>()
             .configure_sets(
                 Update,
@@ -197,6 +199,11 @@ pub enum CombatTraceEntry {
         lane: LaneId,
         cell: u8,
     },
+    UnitRemoved {
+        unit: Entity,
+        lane: LaneId,
+        cell: u8,
+    },
     UnitMoved {
         unit: Entity,
         from_cell: u8,
@@ -229,10 +236,20 @@ pub enum CombatTraceEntry {
         to_lane: LaneId,
         sub_step: u8,
     },
+    GoldAwarded {
+        player: PlayerId,
+        amount: u32,
+        reason: GoldAwardReason,
+    },
     SubStepStarted(u8),
     IterationBudgetExceeded,
     ResolutionEventEnqueued,
     ResolutionCompleteQueued,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GoldAwardReason {
+    Kill,
 }
 
 #[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
@@ -251,6 +268,19 @@ impl CombatKillLog {
 
     pub fn clear(&mut self) {
         self.records.clear();
+    }
+
+    pub fn drain_for_sub_step(&mut self, sub_step: u8) -> Vec<KillRecord> {
+        let mut drained = Vec::new();
+        self.records.retain(|record| {
+            if record.lethal_sub_step == sub_step {
+                drained.push(*record);
+                false
+            } else {
+                true
+            }
+        });
+        drained
     }
 }
 
@@ -441,6 +471,7 @@ fn run_sub_step_scaffold(
             1 => apply_placements(world, &mut budget)?,
             2 => execute_charge_x(world, current_round, &mut budget)?,
             3 => execute_first_strike(world, current_round, &mut budget)?,
+            4 => remove_dead(world, &mut budget)?,
             5 => execute_standard_movement(world, current_round, &mut budget)?,
             6 => {
                 execute_range_first_strike_standard_combat(world, current_round, &mut budget)?;
@@ -596,6 +627,157 @@ fn apply_combat_attack(world: &mut World, attack: CombatAttack, sub_step: u8) {
             );
         }
     }
+}
+
+fn remove_dead(world: &mut World, budget: &mut IterationBudget) -> Result<(), CombatAbort> {
+    seed_chain_death_buffer(world);
+
+    loop {
+        let next = world.resource_mut::<ChainDeathBuffer>().0.pop_front();
+        let Some((unit, attacker)) = next else {
+            break;
+        };
+
+        if let Err(err) = budget.tick() {
+            world.resource_mut::<ChainDeathBuffer>().0.clear();
+            return Err(err);
+        }
+
+        remove_dead_unit(world, unit, attacker);
+    }
+
+    world.resource_mut::<ChainDeathBuffer>().0.clear();
+    drain_ss3_kill_gold(world);
+
+    Ok(())
+}
+
+fn seed_chain_death_buffer(world: &mut World) {
+    let initial_deaths = collect_dead_units_lane_ordered(world);
+    let mut chain_death_buffer = world.resource_mut::<ChainDeathBuffer>();
+    chain_death_buffer.0.clear();
+    chain_death_buffer.0.extend(initial_deaths);
+}
+
+fn collect_dead_units_lane_ordered(world: &mut World) -> Vec<(Entity, Option<Entity>)> {
+    let killers_by_victim = world
+        .get_resource::<CombatKillLog>()
+        .map(|kill_log| {
+            kill_log
+                .records()
+                .iter()
+                .map(|record| (record.victim, record.killer))
+                .collect::<HashMap<_, _>>()
+        })
+        .unwrap_or_default();
+
+    let mut query = world.query::<(Entity, &BoardPosition, &UnitStats)>();
+    let mut deaths = query
+        .iter(world)
+        .filter(|(_, _, stats)| stats.hp == 0)
+        .map(|(unit, position, _)| {
+            (
+                unit,
+                position.lane,
+                position.cell,
+                killers_by_victim.get(&unit).copied(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    deaths.sort_by_key(|(unit, lane, cell, _)| (*lane, *cell, unit.index()));
+    deaths
+        .into_iter()
+        .map(|(unit, _, _, attacker)| (unit, attacker))
+        .collect()
+}
+
+fn remove_dead_unit(world: &mut World, unit: Entity, attacker: Option<Entity>) {
+    let Some(position) = world.get::<BoardPosition>(unit).copied() else {
+        return;
+    };
+    let Some(stats) = world.get::<UnitStats>(unit).copied() else {
+        return;
+    };
+    if stats.hp > 0 {
+        return;
+    }
+
+    let triggers_death = unit_has_simple_keyword(unit, SimpleKeyword::Death, world);
+    remove_unit_from_board_state(world, unit, position);
+
+    world
+        .resource_mut::<CombatResolutionTrace>()
+        .push(CombatTraceEntry::UnitRemoved {
+            unit,
+            lane: position.lane,
+            cell: position.cell,
+        });
+
+    if triggers_death {
+        world.trigger(UnitDied {
+            entity: unit,
+            attacker,
+        });
+        world
+            .resource_mut::<CombatResolutionTrace>()
+            .push(CombatTraceEntry::KeywordTriggered {
+                unit,
+                keyword: KeywordKind::Death,
+                sub_step: 4,
+            });
+    }
+
+    let _ = world.despawn(unit);
+}
+
+fn remove_unit_from_board_state(world: &mut World, unit: Entity, position: BoardPosition) {
+    if world.contains_resource::<BoardGrid>() {
+        let mut grid = world.resource_mut::<BoardGrid>();
+        if let Some((lane_index, cell_index)) = grid_indices(position.lane, position.cell) {
+            if grid.lanes[lane_index][cell_index].map(|cell| cell.entity) == Some(unit) {
+                grid.lanes[lane_index][cell_index] = None;
+            }
+        }
+    }
+
+    if world.contains_resource::<BoardOccupancy>() {
+        let mut occupancy = world.resource_mut::<BoardOccupancy>();
+        occupancy
+            .minion_slots
+            .retain(|_, occupant| *occupant != unit);
+        occupancy.traps.retain(|_, occupant| *occupant != unit);
+        occupancy.structures.retain(|_, occupant| *occupant != unit);
+        occupancy.fields.retain(|_, occupant| *occupant != unit);
+    }
+}
+
+fn drain_ss3_kill_gold(world: &mut World) {
+    let records = world
+        .get_resource_mut::<CombatKillLog>()
+        .map(|mut kill_log| kill_log.drain_for_sub_step(3))
+        .unwrap_or_default();
+
+    for record in records {
+        world
+            .resource_mut::<CombatResolutionTrace>()
+            .push(CombatTraceEntry::GoldAwarded {
+                player: record.killer_player_id,
+                amount: 1,
+                reason: GoldAwardReason::Kill,
+            });
+        award_kill_gold(world, record.killer_player_id);
+    }
+}
+
+fn award_kill_gold(world: &mut World, player: PlayerId) {
+    let Some(mut economies) = world.get_resource_mut::<PlayerEconomies>() else {
+        return;
+    };
+    let Some(economy) = economies.0.get_mut(&player) else {
+        return;
+    };
+    economy_api::apply_gold_award(economy, 1);
 }
 
 fn collect_combat_units(world: &mut World) -> Vec<CombatUnit> {
