@@ -43,13 +43,14 @@ S6-01 through S6-06.
 ## QA Condition Register Reconciliation
 
 S6-01 must reconcile condition file status, taxonomy status, and sprint blocker
-status before final QA sign-off. The QA plan itself does not edit condition
-records; it defines the verification work.
+status before final QA sign-off. This QA plan defines the verification work; the
+S6-01 docs-only reconciliation updates the taxonomy and condition records where
+they were stale.
 
 | ID | Priority | Current Condition Status | Sprint 6 QA Action | Blocker Status |
 |---|---|---|---|---|
-| QA-COND-0001 | P2 Sprint 6 validation | Open, Needs Evidence | Review AU1 FIFO harness evidence or document reclassification / accepted risk | Open P2 validation condition |
-| QA-COND-0002 | P2 Sprint 6 validation | Condition file Closed; taxonomy still lists Open | Reconcile taxonomy/register status with closure evidence from AU19-a repair | Not a P1 blocker; register consistency issue remains |
+| QA-COND-0001 | P2 Sprint 6 validation | Open, Needs Evidence | Review AU1 FIFO harness from commit `bf3ef3dd734bf8c8e0bab0b9094282c7680ab4fb`; expected command: `cargo test -p server --test auction_fifo_ordering_test`; then close, reclassify, or accept risk by QA disposition | Open P2 validation condition |
+| QA-COND-0002 | P2 Sprint 6 validation | Closed, N/A - Closed | No further S6-01 action after taxonomy/register reconciliation; retain closure evidence from AU19-a repair | Closed; not a P1 blocker |
 | QA-COND-0003 | P2 Sprint 6 validation | Open, Needs Evidence | Close through S6-05 two-client ObjectiveHp visibility evidence or reclassify | Open P2 validation condition |
 | QA-COND-0004 | P1 Sprint 6 gate blocker | Open, Needs Evidence | Close through S6-03 browser/WASM board performance capture or explicit gate reclassification | Open P1 gate blocker |
 | QA-COND-0005 | P1 Sprint 6 gate blocker | Open, Needs Remediation | Close through S6-04 Standard-tier remediation / verification or accepted risk | Open P1 gate blocker |
@@ -69,8 +70,12 @@ converted to machine-validated metadata.
 - Every `production/qa/bugs/QA-COND-*.md` file has current status, action state,
   source evidence, expected closure evidence, blocker status, and non-goals.
 - `production/qa/bug-register-taxonomy.md` agrees with condition files, notably
-  QA-COND-0002, whose condition file is Closed while the taxonomy initial table
-  still lists it Open.
+  QA-COND-0002, which should be `Closed | N/A - Closed` in both places.
+- QA-COND-0001 links the AU1 FIFO harness evidence from commit
+  `bf3ef3dd734bf8c8e0bab0b9094282c7680ab4fb`, including
+  `tests/integration/network/auction_fifo_ordering_test.rs`,
+  `server/Cargo.toml`, and expected verification command
+  `cargo test -p server --test auction_fifo_ordering_test`.
 - Open P1 and P2 records have an explicit next action: evidence, remediation,
   reclassification, or accepted risk.
 
@@ -275,8 +280,10 @@ each condition disposition.
 
 Checklist:
 - [ ] Sprint 6 QA plan exists at `production/qa/qa-plan-sprint-6-2026-05-05.md`.
-- [ ] QA-COND-0001 has evidence, reclassification, or accepted-risk next action.
-- [ ] QA-COND-0002 condition file and taxonomy/register status are reconciled.
+- [ ] QA-COND-0001 records the AU1 FIFO harness evidence review and remains open
+      until QA accepts the harness result, reclassifies it, or accepts risk.
+- [ ] QA-COND-0002 condition file and taxonomy/register status are reconciled as
+      `Closed | N/A - Closed`.
 - [ ] QA-COND-0003 is linked to S6-05 evidence or explicit reclassification.
 - [ ] QA-COND-0004 remains open until browser/WASM performance capture exists or
       is explicitly reclassified.
