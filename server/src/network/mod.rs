@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use crate::core::rsm::{advance_phase, tick_disconnect_timers};
 use crate::core::session::PlayerConnectionMap;
+use crate::feature::board::{BoardSystemSet, PlacementSubmissionReceived};
 use crate::lobby::handler::handle_class_choice;
 use bevy::prelude::*;
 use lightyear::prelude::server::*;
@@ -33,6 +34,7 @@ impl Plugin for ServerNetworkPlugin {
                 Update,
                 (
                     receive_c2s_messages.before(tick_disconnect_timers),
+                    drain_submit_placement_messages.before(BoardSystemSet::PlacementSubmission),
                     handle_class_choice,
                     rsm_dispatch::dispatch_phase_changed.after(advance_phase),
                 ),
@@ -113,13 +115,47 @@ fn log_client_disconnected(trigger: On<Add, Disconnected>, clients: Query<&Remot
 fn receive_c2s_messages(
     activate_card: Query<&mut MessageReceiver<C2SActivateCard>>,
     signal_ready: Query<&mut MessageReceiver<C2SSignalReady>>,
-    submit_placement: Query<&mut MessageReceiver<C2SSubmitPlacement>>,
     acknowledge_result: Query<&mut MessageReceiver<C2SAcknowledgeResult>>,
 ) {
     log_received("C2SActivateCard", activate_card);
     log_received("C2SSignalReady", signal_ready);
-    log_received("C2SSubmitPlacement", submit_placement);
     log_received("C2SAcknowledgeResult", acknowledge_result);
+}
+
+pub fn drain_submit_placement_messages(
+    connections: Res<PlayerConnectionMap>,
+    mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SSubmitPlacement>)>,
+    mut submissions: MessageWriter<PlacementSubmissionReceived>,
+) {
+    for (remote, mut receiver) in receivers.iter_mut() {
+        for msg in receiver.receive() {
+            let Some(resolved) = resolve_submit_placement_sender(&connections, remote.0, msg)
+            else {
+                debug!(
+                    "C2SSubmitPlacement discarded because sender is not mapped to a player: {:?}",
+                    remote.0
+                );
+                continue;
+            };
+
+            submissions.write(resolved);
+        }
+    }
+}
+
+pub fn resolve_submit_placement_sender(
+    connections: &PlayerConnectionMap,
+    peer_id: PeerId,
+    msg: C2SSubmitPlacement,
+) -> Option<PlacementSubmissionReceived> {
+    connections
+        .0
+        .get(&peer_id)
+        .copied()
+        .map(|player| PlacementSubmissionReceived {
+            player,
+            placements: msg.placements,
+        })
 }
 
 fn log_received<M: std::fmt::Debug + Send + Sync + 'static>(

@@ -19,6 +19,7 @@ use server::core::rsm::{
     PlacementPhaseEntered, PlacementSubmitted, ResolutionPhaseEntered, RoundPhase, RoundState,
 };
 use server::core::session::SessionConfig;
+use server::feature::acquisition::PlayerHands;
 use server::feature::board::{
     get_units_at_cell, AcceptedPlacement, BoardGrid, BoardPlugin, PendingPlacements,
     PlacementCommitTrace, PlacementCommitTraceEntry, PlacementCommitted,
@@ -81,11 +82,16 @@ fn card_id(id: u32) -> CardId {
     CardId(id)
 }
 
-fn submitted_minion(card_id: CardId, lane: u8, cell: u8) -> PlacedCardSubmit {
+fn submitted_minion(
+    card_id: CardId,
+    lane: u8,
+    cell: u8,
+    current_mana_spend: u32,
+) -> PlacedCardSubmit {
     PlacedCardSubmit {
         card_id,
         target: PlayTarget::BoardCell { lane, cell },
-        current_mana_spend: 0,
+        current_mana_spend,
         reserve_mana_spend: 0,
     }
 }
@@ -97,6 +103,23 @@ fn accepted_minion(owner_id: PlayerId, card_id: CardId, lane: u8, cell: u8) -> A
         target: PlayTarget::BoardCell { lane, cell },
         current_mana_spend: 0,
         reserve_mana_spend: 0,
+    }
+}
+
+fn accepted_minion_with_split(
+    owner_id: PlayerId,
+    card_id: CardId,
+    lane: u8,
+    cell: u8,
+    current_mana_spend: u32,
+    reserve_mana_spend: u32,
+) -> AcceptedPlacement {
+    AcceptedPlacement {
+        owner_id,
+        card_id,
+        target: PlayTarget::BoardCell { lane, cell },
+        current_mana_spend,
+        reserve_mana_spend,
     }
 }
 
@@ -155,6 +178,15 @@ fn session_config() -> SessionConfig {
     }
 }
 
+fn player_hands() -> PlayerHands {
+    PlayerHands {
+        hands: HashMap::from([
+            (player(1), vec![card_id(10), card_id(20), card_id(30)]),
+            (player(2), vec![card_id(10), card_id(20), card_id(30)]),
+        ]),
+    }
+}
+
 fn app_with_board() -> App {
     let mut app = App::new();
     app.add_plugins(ServerPlugins {
@@ -175,7 +207,8 @@ fn app_with_board() -> App {
     .insert_resource(PlayerEconomies(HashMap::from([
         (player(1), economy(10, 0)),
         (player(2), economy(10, 0)),
-    ])));
+    ])))
+    .insert_resource(player_hands());
     app
 }
 
@@ -199,9 +232,10 @@ fn live_server_app(port: u16, connection_probe: ServerConnectionProbe) -> App {
             minion_card(30, 1, 1, 1, 1),
         ]))
         .insert_resource(PlayerEconomies(HashMap::from([
-            (player(1), economy(10, 0)),
-            (player(2), economy(10, 0)),
+            (player(1), economy(10, 5)),
+            (player(2), economy(10, 5)),
         ])))
+        .insert_resource(player_hands())
         .insert_resource(connection_probe)
         .add_systems(Startup, move |mut commands: Commands| {
             let bind_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
@@ -338,8 +372,8 @@ fn test_placement_phase_entered_clears_pending_buffer() {
 #[test]
 fn test_duplicate_submission_keeps_first_final_batch() {
     let mut app = app_with_board();
-    let first = submitted_minion(card_id(10), 1, 1);
-    let second = submitted_minion(card_id(30), 2, 1);
+    let first = submitted_minion(card_id(10), 1, 1, 2);
+    let second = submitted_minion(card_id(30), 2, 1, 1);
 
     write_message(
         &mut app,
@@ -366,7 +400,14 @@ fn test_duplicate_submission_keeps_first_final_batch() {
         .expect("first submission should be retained");
     assert_eq!(
         submission.placements,
-        vec![accepted_minion(player(1), card_id(10), 1, 1)]
+        vec![accepted_minion_with_split(
+            player(1),
+            card_id(10),
+            1,
+            1,
+            2,
+            0
+        )]
     );
     assert!(submission.is_final);
 
@@ -402,7 +443,14 @@ fn test_close_placement_phase_sends_reliable_reveal_before_spawning_units_atomic
             (
                 player(1),
                 PlayerSubmission {
-                    placements: vec![accepted_minion(player(1), card_id(10), 1, 1)],
+                    placements: vec![accepted_minion_with_split(
+                        player(1),
+                        card_id(10),
+                        1,
+                        1,
+                        1,
+                        1,
+                    )],
                     submitted_at: std::time::Duration::ZERO,
                     is_final: true,
                 },
@@ -410,7 +458,14 @@ fn test_close_placement_phase_sends_reliable_reveal_before_spawning_units_atomic
             (
                 player(2),
                 PlayerSubmission {
-                    placements: vec![accepted_minion(player(2), card_id(20), 5, 8)],
+                    placements: vec![accepted_minion_with_split(
+                        player(2),
+                        card_id(20),
+                        5,
+                        8,
+                        2,
+                        1,
+                    )],
                     submitted_at: std::time::Duration::ZERO,
                     is_final: true,
                 },
@@ -444,6 +499,10 @@ fn test_close_placement_phase_sends_reliable_reveal_before_spawning_units_atomic
         .world()
         .resource::<PlacementCommitTrace>()
         .entries();
+    let mana_deduct_index = trace
+        .iter()
+        .position(|entry| *entry == PlacementCommitTraceEntry::ManaDeducted)
+        .expect("explicit mana deduction should be traced before reveal");
     let reveal_index = trace
         .iter()
         .position(|entry| *entry == PlacementCommitTraceEntry::PlacementRevealEnqueued)
@@ -452,6 +511,7 @@ fn test_close_placement_phase_sends_reliable_reveal_before_spawning_units_atomic
         .iter()
         .position(|entry| matches!(entry, PlacementCommitTraceEntry::UnitSpawned { .. }))
         .expect("unit spawn should be traced");
+    assert!(mana_deduct_index < reveal_index);
     assert!(reveal_index < first_spawn_index);
 
     let committed = read_messages::<PlacementCommitted>(&server_app);
@@ -464,8 +524,10 @@ fn test_close_placement_phase_sends_reliable_reveal_before_spawning_units_atomic
         .is_empty());
 
     let economies = server_app.world().resource::<PlayerEconomies>();
-    assert_eq!(economies.0[&player(1)].current_mana, 8);
-    assert_eq!(economies.0[&player(2)].current_mana, 7);
+    assert_eq!(economies.0[&player(1)].current_mana, 9);
+    assert_eq!(economies.0[&player(1)].reserve_mana, 4);
+    assert_eq!(economies.0[&player(2)].current_mana, 8);
+    assert_eq!(economies.0[&player(2)].reserve_mana, 4);
 
     for _ in 0..MAX_FRAMES {
         if !reveal_probe.messages().is_empty() {
