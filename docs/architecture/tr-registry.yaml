@@ -64,6 +64,9 @@ last_updated: "2026-05-05"
 # registered TR-CR-026, TR-CR-027 for LEADER snapshot persistence and
 # INJURED cross-round FIRST STRIKE traceability (CR-33, CR-34). Total:
 # 194 active TRs.
+# Run 13 (/story-readiness COMBAT-011 trace repair 2026-05-05): revised
+# TR-CR-015 to cover the full CR-32 content-completeness requirement, not
+# only the phase-ordering invariant. Active count unchanged.
 
 requirements:
 
@@ -1156,9 +1159,9 @@ requirements:
     system: combat-resolution
     gdd: design/gdd/combat-resolution.md
     gdd_ac_ids: [CR-32]
-    requirement: "S2CResolutionEvent ordering invariant: ResolutionEvent is enqueued before ResolutionComplete is written; RSM can only enqueue S2CPhaseChanged(DRAFT_SHOP) after receiving ResolutionComplete; clients are guaranteed to receive the full resolution log before phase change"
+    requirement: "S2CResolutionEvent content and ordering: the reliable broadcast contains exactly one SubStepEntry per executed sub-step, one CombatDamage per damage application including non-lethal and shield-blocked hits, one UnitRemoved per killed unit, one GoldAwarded per gold event, one KeywordTriggered per APPEARANCE/DEATH/COUNTERATTACK/FINAL_BLOW activation, all in chronological (sub_step, trigger_index) order; ResolutionEvent is enqueued before ResolutionComplete is written so RSM S2CPhaseChanged(DRAFT_SHOP) cannot precede the full log"
     created: 2026-05-01
-    revised: ""
+    revised: 2026-05-05
     status: active
 
   - id: TR-CR-016

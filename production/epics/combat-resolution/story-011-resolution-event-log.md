@@ -4,12 +4,12 @@
 > **Status**: Ready
 > **Layer**: Feature
 > **Type**: Integration
-> **Manifest Version**: 2026-04-30
+> **Manifest Version**: 2026-05-01
 
 ## Context
 
 **GDD**: `design/gdd/combat-resolution.md`
-**Requirement**: `TR-CR-???` (TR-CR-001 full, TR-CR-015 full — unregistered)
+**Requirement**: `TR-CR-014` (CR-30 PlacementReveal atomic timing) and `TR-CR-015` (CR-32 ResolutionEvent content completeness and ordering)
 
 **ADR Governing Implementation**: ADR-017: Combat Resolution Execution Architecture (Decision 3) + ADR-008: Lightyear Channel Config
 **ADR Decision Summary**: `S2CResolutionEvent` is a single reliable-broadcast Lightyear message sent after all 6 sub-steps complete. It contains a `Vec<ResolutionEvent>` in chronological `(sub_step, trigger_index)` order. `S2CPhaseChanged(DRAFT_SHOP)` must not be observable before `S2CResolutionEvent`. `S2CPlacementReveal` is a separate message broadcast before SS1.
@@ -27,15 +27,11 @@
 
 *From GDD `design/gdd/combat-resolution.md`, scoped to this story:*
 
-- [ ] **CR-30**: GIVEN `S2CPlacementReveal` is broadcast, WHEN RESOLUTION begins, THEN PlacementReveal is sent before any sub-step 1 effects execute AND contains both players' full placements in one atomic message
-- [ ] **CR-32**: GIVEN RESOLUTION completes all 6 sub-steps, WHEN RESOLUTION_COMPLETE fires, THEN `S2CResolutionEvent` MUST contain:
-  - Exactly one `SubStepEntry` per executed sub-step
-  - One `CombatDamage` record per damage application (including non-lethal hits)
-  - One `UnitRemovedRecord` per killed unit
-  - One `GoldAwarded` record per gold event
-  - One `KeywordTriggered` record per APPEARANCE/DEATH/COUNTERATTACK/FINAL_BLOW activation
-  - All in chronological `(sub_step, trigger_index)` order
-  - `S2CPhaseChanged(DRAFT_SHOP)` must NOT be observed by any client before `S2CResolutionEvent` is received
+- [ ] **CR-30 / TR-CR-014**: GIVEN `S2CPlacementReveal` is broadcast, WHEN RESOLUTION begins, THEN PlacementReveal is sent before any sub-step 1 effects execute AND contains both players' full placements in one atomic message.
+- [ ] **CR-32 / TR-CR-015 - protocol schema**: GIVEN the ADR-017 resolution log is serialized, WHEN `S2CResolutionEvent.events` is inspected, THEN the shared protocol contains typed entries for every required CR-32 replay category: `SubStepEntry`, `CombatDamage`, `UnitRemovedRecord`, `GoldAwarded`, and `KeywordTriggered`.
+- [ ] **CR-32 / TR-CR-015 - content completeness**: GIVEN RESOLUTION completes all executed sub-steps, WHEN `S2CResolutionEvent` is built, THEN it contains exactly one `SubStepEntry` per executed sub-step, one `CombatDamage` record per damage application including non-lethal and SHIELD-blocked hits, one `UnitRemovedRecord` per killed unit, one `GoldAwarded` record per gold event, and one `KeywordTriggered` record per APPEARANCE/DEATH/COUNTERATTACK/FINAL_BLOW activation.
+- [ ] **CR-32 / TR-CR-015 - ordering**: GIVEN the event log contains entries from multiple sub-steps and triggers, WHEN the batch is serialized, THEN entries remain in chronological `(sub_step, trigger_index)` order with no post-hoc reordering that can move same-trigger effects across their emission order.
+- [ ] **CR-32 / TR-CR-015 - phase delivery**: GIVEN RESOLUTION completes, WHEN server network output and RSM phase output are observed at frame boundaries, THEN one complete `S2CResolutionEvent` reliable broadcast is enqueued before `ResolutionComplete` is written, and `S2CPhaseChanged(DRAFT_SHOP)` is not observable before that full batch.
 
 ---
 
@@ -43,7 +39,11 @@
 
 *Derived from ADR-017 Decision 3 and GDD CR-32 content requirement:*
 
-This story is an integration verification story — it does not add new behaviour but verifies that the `ResolutionLog` built across Stories 001–010 is correctly serialized, broadcast in one message, and ordered correctly.
+This story is an integration/protocol completion story. It must not change gameplay rules or individual sub-step behavior, but it may need to implement missing protocol/log serialization so the `ResolutionLog` built across Stories 001-010 is correctly serialized, broadcast in one message, and ordered correctly.
+
+**Readiness repair note (2026-05-05)**: Current code review found that `shared/src/protocol.rs` does not yet expose the full ADR-017/CR-32 `ResolutionEvent` schema, `resolve_combat` currently enqueues an empty `S2CResolutionEvent`, and objective resolution sync can emit a separate `S2CResolutionEvent` after `ResolutionComplete`. `/dev-story` must treat those as in-scope integration gaps: consolidate RESOLUTION replay data into one complete combat-owned batch before `ResolutionComplete`, then verify ordering against the RSM phase change.
+
+If implementation touches Bevy combat systems, shared protocol, or Lightyear send/registration code, future `/dev-story` must use `liv-bevy-018` and `liv-bevy-lightyear`.
 
 **Log population checklist** — verify each event type is emitted by the correct story:
 
@@ -61,7 +61,7 @@ This story is an integration verification story — it does not add new behaviou
 | `ObjectiveDestroyed { lane, owner, is_fake }` | Story 009 | ✅ |
 | `GameOver { loser, reason }` | Story 009 / Story 001 (budget abort) | ✅ |
 
-**Ordering verification**: All log entries pushed via `log.push(...)` during sub-step execution are already in chronological order — the log is append-only and sub-steps run sequentially. No reordering needed. Integration test: assert that for any two entries `A` and `B` in the log, if `A.sub_step < B.sub_step`, then `A` precedes `B` in `log.events`.
+**Ordering verification**: All log entries pushed via `log.push(...)` during sub-step execution must remain in chronological order because the log is append-only and sub-steps run sequentially. No sorting pass should be needed for normal combat entries. Integration test: assert that for any two entries `A` and `B` in the log, if `A.sub_step < B.sub_step`, then `A` precedes `B` in `log.events`; same-sub-step entries retain `trigger_index`/emission order.
 
 **OQ-D ordering**: The integration test must verify that in the same Bevy frame, `S2CResolutionEvent` is enqueued BEFORE `ResolutionComplete` is written. The RSM only reads `ResolutionComplete` on the next tick. `S2CPhaseChanged` is sent in the RSM tick that processes `ResolutionComplete` — which is always a later Bevy frame than `S2CResolutionEvent`.
 
@@ -73,6 +73,9 @@ This story is an integration verification story — it does not add new behaviou
 
 - Stories 001–010: Individual event emissions (this story verifies completeness, not individual sub-step logic)
 - Board Rendering GDD: Client-side animation replay of the log (owned by that system)
+- Gameplay rule changes, balance changes, or new combat mechanics
+
+**Performance budget**: No new gameplay algorithm cost is expected beyond serializing already-emitted log entries. The RESOLUTION batch must remain within the ADR-017 server RESOLUTION budget (`<= 15 ms`) and the ADR-002 per-round message target (`< 1 KB/round/player`) unless the implementation records a measured exception for review.
 
 ---
 
@@ -105,6 +108,11 @@ This story is an integration verification story — it does not add new behaviou
   - When: RESOLUTION completes; RSM advances to DRAFT_SHOP
   - Then: `S2CResolutionEvent` was enqueued in frame N; `S2CPhaseChanged(DRAFT_SHOP)` was enqueued in frame N+1 or later (verified by checking message queue state at frame boundaries)
 
+- **CR-32** (single complete batch):
+  - Given: Objective damage/destruction and gold awards occur during SS6
+  - When: RESOLUTION completes
+  - Then: objective, gold, damage, removal, keyword, and sub-step entries appear in the same `S2CResolutionEvent`; no second RESOLUTION log batch is emitted after `ResolutionComplete`
+
 ---
 
 ## Test Evidence
@@ -118,5 +126,12 @@ This story is an integration verification story — it does not add new behaviou
 
 ## Dependencies
 
-- Depends on: Stories 003–010 (all event-emitting sub-steps must be implemented before log completeness can be verified)
+- Depends on: Story 003 (Complete - SS1 placement/APPEARANCE emits placement and keyword trace data)
+- Depends on: Story 004 (Complete - SS2/SS5 movement emits movement trace data)
+- Depends on: Story 005 (Complete - SS3 FIRST STRIKE emits damage and FINAL_BLOW trace data)
+- Depends on: Story 006 (Complete - SS4 dead removal emits removal, DEATH, and kill-gold trace data)
+- Depends on: Story 007 (Complete - SS6 melee, SHIELD, and COUNTERATTACK emit damage/keyword trace data)
+- Depends on: Story 008 (Complete - RANGE targeting emits ranged damage trace data)
+- Depends on: Story 009 (Complete - objective damage/GAME_OVER emits objective and reward trace data)
+- Depends on: Story 010 (Complete - persistent keyword states closed at `7e0a213`)
 - Unlocks: Epic closed via `/story-done` after this story passes
