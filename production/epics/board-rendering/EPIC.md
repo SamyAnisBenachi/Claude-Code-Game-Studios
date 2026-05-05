@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/board-rendering.md
 > **Architecture Module**: `client/src/ui/board/` - `BoardRenderingPlugin` (sub-plugin #2 inside `PresentationPlugin`)
 > **Status**: Ready - story set drafted for S5-21; Story 001 depends on Presentation Layer Story 001
-> **Stories**: 10 stories created 2026-05-04 - 7 Ready, 3 Blocked plus split follow-up scope
+> **Stories**: 11 stories created - 7 Ready, 4 Blocked, plus final board evidence follow-up scope
 
 ## Overview
 
@@ -19,7 +19,7 @@ Shared ADR-021 infrastructure is owned by [Presentation Layer Story 001](../pres
 | ADR | Decision Summary | Engine Risk |
 |-----|------------------|-------------|
 | [ADR-021: Presentation Layer Architecture](../../../docs/architecture/adr-021-presentation-layer-architecture.md) | Presentation plugin order, `PresentationSet`, single phase sink, world-space board sprites, shared `BoardLayout` and `CardAtlas`, Bevy 0.18 rendering API, tween cancel-and-replace contract | HIGH |
-| [ADR-020: Board/Lane System State Architecture](../../../docs/architecture/adr-020-board-lane-state-architecture.md) | Server board state is replicated through unit ECS components; clients render `BoardPosition`, owner, card ref, stats, HP, keyword state, and spawn range | HIGH |
+| [ADR-020: Board/Lane System State Architecture](../../../docs/architecture/adr-020-board-lane-state-architecture.md) | Server board state is replicated through unit ECS components; clients render `BoardPosition`, owner, card ref, stats, HP, and keyword state; spawn range is Board/Lane-owned `SpawnRangeState` delivered by snapshot + `SpawnRangeChanged` | HIGH |
 | [ADR-017: Combat Resolution Execution Architecture](../../../docs/architecture/adr-017-combat-resolution-execution-architecture.md) | `S2CResolutionEvent` is the authoritative full resolution log; clients replay it visually without changing gameplay state | HIGH |
 | [ADR-011: Reconnect and Snapshot](../../../docs/architecture/adr-011-reconnect-snapshot.md) | Reconnect rebuild is driven by `S2CGameSnapshot` followed by identity and phase messages | HIGH |
 | [ADR-001: Objective Identity Unicast](../../../docs/architecture/adr-001-objective-identity-unicast.md) | Objective identity stays server-only except owner unicast; Board Rendering strips fake/real before HUD fanout | LOW |
@@ -37,13 +37,14 @@ Shared ADR-021 infrastructure is owned by [Presentation Layer Story 001](../pres
 | TR-BR-005 | Snapshot/reconnect buffers: `PendingPhaseChange` and `PendingResolutionScript` | ADR-011, ADR-021 |
 | TR-BR-006 | Persistent status indicators with Tier-1 priority ordering | ADR-021, ADR-018 |
 | TR-BR-007 | OUTNUMBERED indicator and keyword-state display reconciliation | ADR-018, ADR-021 |
+| TR-BR-008 | Persistent spawn range highlights from `PlayerSnapshot.spawn_range_cells` and live `SpawnRangeChanged` events | ADR-011, ADR-020, ADR-021, ADR-008 |
 
 ## Dependency Map
 
 | Dependency | Existing Surface | Board Rendering Use |
 |------------|------------------|---------------------|
-| Board/Lane System | `server/src/feature/board/`, `BoardPosition`, owner/card/stat components | Spawn/update world-space unit sprites and HP bars from replicated entities |
-| Objective System | `ObjectiveHp`, `ObjectiveDestroyed`, objective identity unicast | Render standing objectives and reveal destroyed objective state; fan out HUD-safe updates |
+| Board/Lane System | `server/src/feature/board/`, `BoardPosition`, owner/card/stat components, `SpawnRangeState` source | Spawn/update world-space unit sprites and HP bars from replicated entities; render spawn highlights from snapshot + live `SpawnRangeChanged` |
+| Objective System | `ObjectiveHp`, `ObjectiveDestroyed`, objective identity unicast | Render standing objectives and reveal destroyed objective state; fan out HUD-safe updates. Objective does not provide live spawn range projection. |
 | Combat Resolution | `S2CPlacementReveal`, `S2CResolutionEvent`, resolution log variants | Placement reveal collection and RESOLUTION animation queue playback |
 | Network Protocol | `S2CPhaseChanged`, `S2CGameSnapshot`, `S2CObjectiveIdentities`, resolution and reveal messages | Phase state, reconnect rebuild, objective cache, desync recovery |
 | Card Data and Pool | `CardId`, rarity/card metadata, atlas frame mapping | Choose unit/card placeholder frames and eventual atlas frames |
@@ -61,6 +62,7 @@ Shared ADR-021 infrastructure is owned by [Presentation Layer Story 001](../pres
 - No shared `PresentationPlugin`/`phase_sink_system` implementation is visible yet; Board Rendering Story 001 depends on Presentation Layer Story 001 for this cross-epic infrastructure.
 - `C2SRequestSnapshot` is defined in the Network Protocol GDD but is not currently present in `shared/src/protocol.rs`; reconnect/desync recovery remains blocked until the protocol type and registration exist.
 - Objective destruction transport is inconsistent across docs and code (`ObjectiveDestroyed`, `S2CObjectiveDestroyed`, and `ResolutionEvent::ObjectiveDestroyed` are not yet aligned). HUD fanout remains blocked until that contract lands.
+- Spawn range source/transport is documented but not fully implemented: live updates must use ordered `ResolutionEvent::SpawnRangeChanged`, snapshots must read Board/Lane `SpawnRangeState`, and Board Rendering must consume both paths.
 
 ## Pre-Implementation Gates
 
@@ -71,7 +73,8 @@ Shared ADR-021 infrastructure is owned by [Presentation Layer Story 001](../pres
 | Resolution event variant completeness | Story 006 | Combat Resolution story must provide stable `ResolutionEvent` variants for movement, death, trap, objective, and prism visuals |
 | Art bible / atlas frame count | Stories 003 and 010 | Confirm atlas budget and placeholder-to-final art path before performance evidence is signed off |
 | Keyword/status display projection | Story 009 | Implement data-driven status icons and co-occupancy visual offsets |
-| `SpawnRange` live source and final evidence | Split follow-up after Story 009 | Reconcile spawn range source/replication, then capture final status-icon atlas and browser evidence |
+| Spawn range prerequisite chain | NP-006 -> BLS-012 -> BR-011 | NP defines schema/ordering (NP-33/TR-NP-014); BLS owns `SpawnRangeState` projection and snapshot source; BR consumes snapshot + live event for persistent highlights |
+| Final board evidence | Later split after BR-011 | Capture final status-icon atlas evidence, spawn-highlight evidence, browser frame-time evidence, and any final-art icon evidence |
 | Presentation Layer scaffold missing | Story 001 | Complete or readiness-approve Presentation Layer Story 001 before implementing Board Rendering Story 001 |
 
 ## Definition of Done
@@ -101,8 +104,9 @@ This epic is complete when:
 | 008 | [Objective Reveal and HUD Fanout](story-008-objective-reveal-and-hud-fanout.md) | Integration | Blocked | TR-BR-005 | ADR-001, ADR-021 |
 | 009 | [Status Icons and Co-Occupancy Visuals](story-009-status-icons-cooccupancy-and-spawn-range.md) | Visual/Feel | Ready | TR-BR-006, TR-BR-007 | ADR-018, ADR-021 |
 | 010 | [Performance Evidence and CI Guards](story-010-performance-evidence-and-ci-guards.md) | Config/Data | Ready | TR-BR-003 | ADR-021 |
+| 011 | [Spawn Range Highlights](story-011-spawn-range-highlights.md) | Visual/Feel | Blocked | TR-BR-008, TR-NP-014 | ADR-011, ADR-020, ADR-021, ADR-008 |
 
-**Story counts**: 2 Logic, 4 Integration, 2 Visual/Feel, 1 Config/Data, plus spawn range and final evidence split follow-ups.
+**Story counts**: 2 Logic, 4 Integration, 3 Visual/Feel, 1 Config/Data, plus final evidence split follow-up.
 
 ## Sprint 6 Candidate Order
 
@@ -115,7 +119,8 @@ Recommended Sprint 6 sequence:
 6. Story 005 - placement reveal path.
 7. Story 006 - resolution queue after Combat event variants land.
 8. Story 008 - objective reveal/HUD fanout after transport contract lands.
-9. Story 010 - performance and CI guard evidence once the visible path exists.
+9. Story 011 - spawn range highlights after NP-006 and BLS-012 land.
+10. Story 010 - performance and CI guard evidence once the visible path exists.
 
 ## Next Step
 

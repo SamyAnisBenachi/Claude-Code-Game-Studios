@@ -4,19 +4,20 @@
 > **GDD**: design/gdd/board-lane-system.md
 > **Architecture Module**: `server/feature/board/`
 > **Status**: Ready
-> **Stories**: 11 stories created; Story 011 added 2026-05-05 as HAND-UI-010 prerequisite
+> **Stories**: 12 stories created; Story 011 added 2026-05-05 as HAND-UI-010 prerequisite; Story 012 added 2026-05-05 as spawn range contract prerequisite
 
 ## Overview
 
 The Board/Lane System owns the spatial model of the game: a 5-lane, 8-cell-deep grid
-per player, the PendingPlacements buffer that holds submitted cards until reveal, spawn
-range enforcement (only the first N cells from spawn are valid placement targets), and
+per player, the PendingPlacements buffer that holds submitted cards until reveal, `SpawnRangeState`
+as the live authoritative spawn range projection, spawn range enforcement (only the first N cells from spawn are valid placement targets), and
 the PrismState tracker that emits PrismCollected events on spawn-cell contact. It
 receives PlacementPhaseEntered to open the submission window, validates and buffers
 C2SSubmitPlacement messages (all-or-nothing per player), and on ResolutionPhaseEntered
 it atomically commits the buffer: enqueuing S2CPlacementReveal first, then spawning
-unit ECS entities. It also subscribes to fake_objectives_destroyed from the Objective
-System to expand the player's spawn range when a fake objective is destroyed.
+unit ECS entities. It consumes fake objective destruction facts from the Objective
+System to update `SpawnRangeState`, supplies `PlayerSnapshot.spawn_range_cells`, and contributes
+ordered `SpawnRangeChanged` entries to `S2CResolutionEvent`.
 
 ## Governing ADRs
 
@@ -40,9 +41,10 @@ System to expand the player's spawn range when a fake objective is destroyed.
 | TR-BLS-009 | ResolutionPhaseEntered Message subscription triggers buffer commit (reveal + spawn) | ADR-010 ✅ |
 | TR-BLS-010 | PrismState tracks per-player per-lane prism collection; PrismCollected event emitted when a unit ends standard movement at own spawn cell | ADR-010 ✅ |
 | TR-BLS-011 | Placement submit authority validation: sender, phase, hand ownership, duplicate cards, target legality, spawn/occupancy, and explicit current/reserve mana split are validated all-or-nothing before pending write | ADR-007, ADR-019, ADR-002 |
+| TR-NP-014 | Live spawn range transport: `SpawnRangeChanged` ordered after `ObjectiveDestroyed` inside reliable `S2CResolutionEvent` | ADR-008, ADR-020 |
 
 > **TR registry note:** TR-BLS-001–011 are registered in `docs/architecture/tr-registry.yaml`.
-> Story 011 was added as a HAND-UI-010 prerequisite repair.
+> Story 011 was added as a HAND-UI-010 prerequisite repair. Story 012 uses existing BLS spawn range TR coverage plus `TR-NP-014`.
 
 ## Definition of Done
 
@@ -70,6 +72,7 @@ This epic is complete when:
 | 009 | [Prism Collection](story-009-prism-collection.md) | Logic | Ready | ADR-010 |
 | 010 | [Displacement Keywords and Spawn Range Expansion](story-010-displacement-keywords.md) | Logic | Ready | ADR-007, ADR-010 |
 | 011 | [Placement Submit Authority Validation](story-011-placement-submit-authority-validation.md) | Integration | Ready | ADR-007, ADR-019, ADR-002, ADR-008 |
+| 012 | [Spawn Range Authoritative Projection](story-012-spawn-range-authoritative-projection.md) | Integration | Blocked | ADR-020, ADR-008, ADR-011 |
 
 ## Next Step
 

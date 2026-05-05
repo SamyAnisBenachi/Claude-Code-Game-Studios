@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/network-protocol.md
 > **Architecture Module**: `shared/src/protocol.rs` + `server/src/network/` + `client/src/network/`
 > **Status**: Ready
-> **Stories**: 5 stories created — see table below
+> **Stories**: 6 stories created — see table below
 > **Priority**: ⭐ SPRINT 1 STORY 1.0 — Highest-risk de-risking item (TD sign-off 2026-04-29)
 
 ## Overview
@@ -22,7 +22,7 @@ Verifies that Lightyear 0.26 is usable as specified across all 12 ADRs before an
 
 ## GDD Requirements
 
-> Note: Stories 001-004 were authored from informal ADR/GDD references before the full TR registry existed. Story 005 uses stable `TR-NP-013` for the HAND-UI-010 prerequisite repair.
+> Note: Stories 001-004 were authored from informal ADR/GDD references before the full TR registry existed. Story 005 uses stable `TR-NP-013` for the HAND-UI-010 prerequisite repair. Story 006 uses `TR-NP-014` for the spawn range live update contract.
 
 | Informal TR-ID | Requirement | ADR Coverage |
 |----------------|-------------|--------------|
@@ -32,6 +32,7 @@ Verifies that Lightyear 0.26 is usable as specified across all 12 ADRs before an
 | TR-NP-SYMM | Server and client use identical message type definitions from `shared/`; divergence is a compile error | ADR-003 ✅ |
 | TR-NP-ALL29 | All 29 ACs from network-protocol.md (28 BLOCKING) — full message type coverage, channel routing verified | ADR-008 ✅ |
 | TR-NP-013 | Placement submit and placement reveal use direction-specific payload structs; submit carries explicit current/reserve spend, reveal omits spend fields | ADR-003, ADR-008, ADR-007 |
+| TR-NP-014 | Spawn range live updates use `ResolutionEvent::SpawnRangeChanged` inside ordered reliable `S2CResolutionEvent`, after `ObjectiveDestroyed`; snapshot is recovery only | ADR-003, ADR-008, ADR-011, ADR-020 |
 
 ## Scope
 
@@ -99,8 +100,9 @@ All C2S* and S2C* message types from `design/gdd/network-protocol.md` Table A, d
 | 003 | [Server & Client Network Plugins](story-003-server-client-network-plugins.md) | Integration | Ready | ADR-008, ADR-003 |
 | 004 | [End-to-End WebSocket Round-Trip Test](story-004-e2e-websocket-roundtrip.md) | Integration | Ready | ADR-008 |
 | 005 | [Placement Payload Shape Split](story-005-placement-payload-shape-split.md) | Config/Data | Ready | ADR-003, ADR-008, ADR-007 |
+| 006 | [Spawn Range Live Update Contract](story-006-spawn-range-live-update-contract.md) | Config/Data | Ready | ADR-003, ADR-008, ADR-011, ADR-020 |
 
-> Story sequence: 001 → 002 → 003 → 004; Story 005 is a follow-up protocol repair required before BLS-011 and HAND-UI-010.
+> Story sequence: 001 → 002 → 003 → 004; Story 005 is a follow-up protocol repair required before BLS-011 and HAND-UI-010. Story 006 is the first step in the spawn range prerequisite chain and unlocks BLS-012.
 > **Story 001 is a hard gate** — no other story in this epic or any Core/Feature networking epic may start until it is Done.
 
 ## Next Step

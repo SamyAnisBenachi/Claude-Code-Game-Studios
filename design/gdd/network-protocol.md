@@ -126,7 +126,7 @@ enum PlayTarget {
 | `S2CDraftOffering` | Reliable | Unicast | `{ card_ids: Vec<CardId> }` — exactly 9 cards at DRAFT_INITIAL (fewer only in stripped test fixtures) |
 | `S2CPoolUpdate` | Reliable | Unicast | `{ updates: Vec<(CardId, u8)> }` — delta `copies_remaining` |
 | `S2CPlacementReveal` | Reliable | Broadcast | `{ placements: Vec<PlacedCardReveal> }` — atomic simultaneous reveal; both players receive this as the sole signal that placement is closed. Client MUST render from this payload, not from pre-arrived component replication. **Pre-arrived unreliable `BoardPosition` replication that contradicts placement positions MUST be discarded — the reveal payload is authoritative for all placement-related board positions.** Cross-reference: `board-rendering.md` Rule 7 (collect-then-reveal buffer). |
-| `S2CResolutionEvent` | Reliable | Broadcast | `{ events: Vec<TaggedEvent> }` — ordered sub-step replay log |
+| `S2CResolutionEvent` | Reliable | Broadcast | `{ events: Vec<TaggedEvent> }` — ordered sub-step replay log. Includes live `ResolutionEvent::SpawnRangeChanged { player_id, new_spawn_range_cells }` entries for spawn range changes; no standalone spawn-range message exists. |
 | `S2CAuctionCard` | Reliable | Broadcast | `{ card_id: CardId, starting_price: u32 }` |
 | `S2CAuctionBidAccepted` | Reliable | Broadcast | `{ bidder: PlayerId, amount: u32, new_timer_ms: u32 }` |
 | `S2CAuctionSettled` | Reliable | Broadcast | `{ winner: Option<PlayerId>, amount: u32 }` |
@@ -157,7 +157,7 @@ enum PlayTarget {
 | `ObjectiveHp` | `hp: u8` | Real/fake identity never replicated — revealed only via `S2CResolutionEvent::ObjectiveDestroyed` |
 | `PrismPresence` | `collected: bool` | Prism availability on board |
 
-**Not replicated via components:** `gold`, `current_mana`, `reserve_mana`, hand, pool — delivered via unicast reliable S2C messages (`S2CGoldUpdate`, `S2CCardAcquired`, etc.) rather than Lightyear component replication. However, **opponent gold IS public** and included in `S2CGameSnapshot.PlayerSnapshot` and `S2CGoldBroadcast` — "not replicated via components" does not mean "private." Only hand, shop slots, pool, and real/fake objective identity are secret.
+**Not replicated via components:** `gold`, `current_mana`, `reserve_mana`, hand, pool, and spawn range — delivered via reliable S2C messages or snapshots rather than Lightyear component replication. Live spawn range changes are carried only as `S2CResolutionEvent::SpawnRangeChanged` entries; recovery/reconnect uses `PlayerSnapshot.spawn_range_cells`. However, **opponent gold and opponent spawn range ARE public** and included in `S2CGameSnapshot.PlayerSnapshot` — "not replicated via components" does not mean "private." Only hand, shop slots, pool, and real/fake objective identity are secret.
 
 **RESOLUTION rendering contract for unreliable components:** While `S2CResolutionEvent` animation is draining (`isResolutionAnimating = true` in client state):
 1. **`ObjectiveHp` replication is suppressed** — objective HP bars are driven exclusively by `ObjectiveDamaged.hp_after` at AnimQueue playback time. Applying replication simultaneously causes HP bar flicker (jump to final value, then decrement during animation).
@@ -194,10 +194,10 @@ enum PlayTarget {
 | **Round State Machine** | Phase change events, GAME_OVER data | `S2CPhaseChanged`, `S2CGameOver` (reliable broadcast) |
 | **Economy System** | Per-player gold/mana change events | `S2CGoldUpdate` (reliable unicast) |
 | **Card Data & Pool** | Shop slots per player, draft offering, pool delta per purchase | `S2CShopSlots`, `S2CDraftOffering`, `S2CPoolUpdate` (reliable unicast) |
-| **Board / Lane System** | Placement reveal data, resolution replay log, unit position / objective HP updates | `S2CPlacementReveal`, `S2CResolutionEvent` (reliable broadcast); `BoardPosition`, `ObjectiveHp` (component replication) |
+| **Board / Lane System** | Placement reveal data, live spawn range projection, resolution replay log, unit position updates | `S2CPlacementReveal`, `S2CResolutionEvent` (reliable broadcast, including `SpawnRangeChanged` entries); `BoardPosition` component replication |
 | **Server-side RNG** | RNG results via consuming systems | No direct protocol messages — consuming systems broadcast results after reading from RNG |
 | **Auction System** | Bid accepted events, auction settled event, auction card selection | `S2CAuctionCard`, `S2CAuctionBidAccepted`, `S2CAuctionSettled` (reliable broadcast). Gold reservation changes on bid acceptance trigger `S2CGoldBroadcast` (reserved_gold rule). |
-| **Combat Resolution** | Sub-step events, kill/objective gold-award events (embedded as `GoldAwarded` entries in batch) | `S2CResolutionEvent` (reliable broadcast). Gold awards embedded in batch — **no standalone `S2CGoldUpdate` during RESOLUTION**. After batch delivery, server sends `S2CGoldBroadcast` to sync totals. `S2CGoldUpdate` fires for all non-RESOLUTION gold events only. |
+| **Combat Resolution** | Sub-step events, kill/objective gold-award events (embedded as `GoldAwarded` entries in batch), objective-destruction ordering envelope | `S2CResolutionEvent` (reliable broadcast). Gold awards embedded in batch — **no standalone `S2CGoldUpdate` during RESOLUTION**. Spawn range changes embedded in batch as `SpawnRangeChanged` entries ordered after the corresponding `ObjectiveDestroyed`. After batch delivery, server sends `S2CGoldBroadcast` to sync totals. `S2CGoldUpdate` fires for all non-RESOLUTION gold events only. |
 | **Keyword System** | Keyword trigger events, displacement events, keyword-effect card grants | `S2CResolutionEvent` variants: `KeywordTriggered`, `DisplacementEvent`, `AppearanceFired`, `DeathTriggerFired`, `FinalBlowFired`, `EndOfTurnFired`. Keyword-granted cards: `S2CCardAcquired { source: AcquisitionSource::KeywordEffect }`. |
 | **Prism System** | Prism collection rewards, full-set respawn, hand-full drop notifications | `S2CCardAcquired { source: PrismLane{1..5} }` (reliable unicast to owning player) on successful reward delivery. `S2CPrismRespawned { player_id }` (reliable broadcast) when all 5 of a player's prisms have been collected and the set respawns. `S2CPrismRewardDropped { player_id, lane }` (reliable unicast) when a Lane 1/2/4/5 reward is lost to hand-full. `PrismPresence` component replication (unreliable) carries per-lane token visibility. |
 | **Game Session System** | Lobby phase messages, session metadata, opponent status changes | `S2CRoomCreated`, `S2CJoinAck`, `S2CJoinRejected`, `S2CSlotUpdated`, `S2CClassLocked`, `S2CClassesRevealed`, `S2CConfirmClassRejected`, `S2CSessionCancelled` (all reliable); `S2CHandshake`, `S2COpponentDisconnected`, `S2COpponentReconnected` (reliable) |
@@ -257,7 +257,9 @@ PlayerSnapshot {
     reserved_gold:     u32,          // PUBLIC — gold committed to current auction bid (free gold = gold - reserved_gold). Required for HUD bidding-headroom display on reconnect.
     current_mana:      u32,
     reserve_mana:      u32,
-    spawn_range_cells: u8,           // cells available for Minion placement: 1–3
+    spawn_range_cells: u8,           // recovery/reconnect source for cells available for Minion placement: 1–3.
+                                      // Live connected updates use ResolutionEvent::SpawnRangeChanged,
+                                      // not snapshot polling and not a replicated SpawnRange component.
     mana_cap:          u8,           // current mana cap (default 10; can increase to 11–12 via fake reward). SERVER INVARIANT: must not exceed 12.
     submitted:         bool,         // true if this player has submitted their PLACEMENT this round
 
@@ -389,7 +391,7 @@ FieldBoardState {
 
 **Secret information rule:** The server MUST NOT send a broadcast `S2CGameSnapshot`. Each player receives exactly one snapshot with their own private data intact and the opponent's private data stripped. This is the enforcement mechanism for the "no client-side game state" architecture.
 
-**Public vs. secret in `PlayerSnapshot`:** The `players` Vec contains a `PlayerSnapshot` for each player in the session. For the recipient's own entry, all fields are populated. For the opponent's entry, the "Own player only" fields (hand, shop_slots, pool_snapshot, objectives, opponent_objectives) are stripped. All other fields — including `gold`, `spawn_range_cells`, `mana_cap`, `submitted` — are present in BOTH entries and are therefore **public information**. `spawn_range_cells` for the opponent IS transmitted and must be used to correctly render the opponent's placement zone.
+**Public vs. secret in `PlayerSnapshot`:** The `players` Vec contains a `PlayerSnapshot` for each player in the session. For the recipient's own entry, all fields are populated. For the opponent's entry, the "Own player only" fields (hand, shop_slots, pool_snapshot, objectives, opponent_objectives) are stripped. All other fields — including `gold`, `spawn_range_cells`, `mana_cap`, `submitted` — are present in BOTH entries and are therefore **public information**. `spawn_range_cells` for the opponent IS transmitted and must be used to correctly render the opponent's placement zone after initial connect/reconnect. While connected, clients keep that field current through ordered `SpawnRangeChanged` resolution-log entries.
 
 **Post-reconnect message sequencing:** After `S2CGameSnapshot` is enqueued on the reliable channel, the server MUST NOT enqueue any additional S2C messages until the same system has finished processing the reconnect event. This prevents live-game messages (e.g., a concurrent `S2CGoldUpdate` from another system in the same frame) from arriving before the snapshot in a separate system ordering. All post-snapshot live messages must be enqueued in a system scheduled AFTER the snapshot system in the same `Update` schedule.
 
@@ -412,7 +414,7 @@ AuctionSnapshot {
 
 ### D.2 — S2CResolutionEvent Schema
 
-Sent once per RESOLUTION on the reliable channel, after `S2CPlacementReveal` and before `S2CPhaseChanged(DRAFT_SHOP)`. The client replays `events` in array order to drive animations; `sub_step` is the animation grouping key.
+Sent once per RESOLUTION on the reliable channel, after `S2CPlacementReveal` and before `S2CPhaseChanged(DRAFT_SHOP)`. The client replays `events` in array order to drive animations; `sub_step` is the animation grouping key. Live spawn range changes also travel in this ordered batch as `SpawnRangeChanged` entries; a fake-objective destruction that expands range MUST put `SpawnRangeChanged` after the corresponding `ObjectiveDestroyed` entry in the same `events` array.
 
 ```
 S2CResolutionEvent {
@@ -550,8 +552,12 @@ enum ResolutionEvent {
     SpawnRangeChanged {
         player_id:            PlayerId,
         new_spawn_range_cells: u8,   // 1–3; increases when attacker destroys a fake objective
-        // This event is the ONLY delivery mechanism for spawn range changes for the connected player.
+        // Board/Lane System owns the authoritative live projection in SpawnRangeState.
+        // Objective System owns destruction facts/counters only.
+        // This event is the ONLY live delivery mechanism for spawn range changes.
+        // It MUST appear after the ObjectiveDestroyed entry that made the range change visible.
         // Reconnecting clients receive spawn_range_cells in PlayerSnapshot instead.
+        // Do NOT add a replicated SpawnRange component unless future docs explicitly reverse this decision.
     },
 
     // ── Traps ────────────────────────────────────────────────────────────────
@@ -768,6 +774,8 @@ enum GrantedKeyword {
 
 - **If a client reconnects during PLACEMENT after having already submitted**: The `PlayerSnapshot.submitted` field carries `true`. The client skips the placement UI and renders "waiting for opponent" immediately — it does not re-present card selection.
 
+- **If a client reconnects after a spawn range change occurred**: `PlayerSnapshot.spawn_range_cells` is the recovery source. The server must build it from the Board/Lane live `SpawnRangeState`, not by recomputing directly from Objective System counters during snapshot serialization. Snapshot recovery does not replace live transport; connected clients still require `SpawnRangeChanged` in `S2CResolutionEvent`.
+
 - **If a client reconnects during PLACEMENT before having submitted**: The snapshot delivers `timer_remaining_ms` with the live countdown already running (in milliseconds). The client re-presents the placement UI. No special case needed, provided `timer_remaining_ms` is accurate in the snapshot.
 
 - **If `C2SHello` is sent twice on the same connection**: Server discards the second silently if handshake is already complete. `C2SHello` is NOT a retry mechanism — to retry, the client must close and reopen the transport connection.
@@ -812,7 +820,7 @@ enum GrantedKeyword {
 | **Round State Machine** | Hard | RSM phase transition events drive `S2CPhaseChanged` broadcasts; RSM fires GAME_OVER data | Network Protocol has no phase logic — it is a delivery layer for RSM signals |
 | **Economy System** | Hard | Economy fires per-player gold/mana change events; protocol delivers via `S2CGoldUpdate` | Economy System emits events; protocol handles delivery — no direct coupling |
 | **Card Data & Pool** | Hard | Pool fires shop-refresh and draft-offering events; pool delta updates on purchase | `S2CShopSlots`, `S2CDraftOffering`, `S2CPoolUpdate` all sourced from Card Data & Pool |
-| **Board / Lane System** | Hard | Board fires placement reveal data and resolution replay events; provides unit positions and objective HP for component replication | `S2CPlacementReveal` and `S2CResolutionEvent` are Board/Lane-sourced |
+| **Board / Lane System** | Hard | Board fires placement reveal data, owns live spawn range projection, and contributes resolution replay events; provides unit positions for component replication | `S2CPlacementReveal` and `S2CResolutionEvent::SpawnRangeChanged` are Board/Lane-sourced |
 | **Server-side RNG** | Soft | RNG results are broadcast by consuming systems after reading from RNG — protocol never calls RNG directly | Indirect dependency only |
 
 ### Downstream Dependents
@@ -822,7 +830,7 @@ enum GrantedKeyword {
 | **Game Session System** *(Approved)* | Hard | Session manages LOBBY and connection state; protocol delivers `S2CHandshake`, `S2COpponentDisconnected`, `S2COpponentReconnected` | LOBBY flow and `C2SReadyToStart` handling defined in `game-session-system.md` ✓ |
 | **Auction System** *(Approved)* | Hard | Auction System owns all bid state; protocol delivers `S2CAuctionCard`, `S2CAuctionBidAccepted`, `S2CAuctionSettled` | Auction System is the authority on bid acceptance; protocol carries results only |
 | **Combat Resolution** *(Approved)* | Hard | Combat produces all `ResolutionEvent` entries; protocol wraps and delivers in `S2CResolutionEvent` | ResolutionEvent enum variants confirmed sufficient per combat-resolution.md ✓ |
-| **Objective System** *(Approved)* | Hard | Objective System owns real/fake HP state; `ObjectiveDestroyed.was_fake` is sourced from Objective System; Sang Méprise ability triggers `S2CSangMepriseReveal` | Protocol delivers `S2CSangMepriseReveal` unicast to opponent per `objective-system.md` OQ6 (Option B) |
+| **Objective System** *(Approved)* | Hard | Objective System owns real/fake HP state and objective destruction facts/counters; `ObjectiveDestroyed.was_fake` is sourced from Objective System; Sang Méprise ability triggers `S2CSangMepriseReveal` | Protocol delivers `S2CSangMepriseReveal` unicast to opponent per `objective-system.md` OQ6 (Option B). Objective System does not own `SpawnRangeChanged` or live spawn range projection. |
 | **Keyword System** *(Approved)* | Soft | Keywords that give cards to hand produce `S2CCardAcquired(source: KeywordEffect)`; targeted spell keywords may require `PlayTarget` extension | `PlayTarget` enum confirmed stable — keyword-system.md OQ5 resolved ✓ |
 | **Prism System** *(Approved)* | Soft | Prism System delivers `S2CPrismRespawned`, `S2CPrismRewardDropped`, and `S2CCardAcquired { source: PrismLane{1..5} }` | Prism messages defined in S2C table above ✓ |
 | **All Presentation systems** | Soft | Board Rendering, Hand UI, Shop UI, HUD consume S2C messages and replicated components as their sole data source | No direct interface — presentation reads what the protocol delivers |
@@ -908,7 +916,7 @@ N/A — This system renders nothing. The protocol delivers data consumed by UI s
 | NP-31f | **GIVEN** the OUTNUMBERED condition flips for a player during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains `KeywordTriggered { source_unit_id: None, sub_step, payload: KeywordPayload::OutnumberedFlipped { player_id, active } }` at the sub_step where unit counts changed. | BLOCKING |
 | NP-31g | **GIVEN** a COUNTERATTACK fires during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains both `KeywordTriggered { payload: CounterattackFired { target_id }, sub_step }` AND a `CombatDamage { is_counterattack: true, target_id: <same target_id> }` entry for the return strike, with `KeywordTriggered` appearing before `CombatDamage` in the array for that sub_step. In multi-attacker scenarios, the server emits **one `CounterattackFired` event per retaliation target** (one per attacker), each with its own `target_id`. | BLOCKING |
 | NP-32 | **GIVEN** a REPEL, ATTRACT, or TELEPORT keyword displaces a unit during RESOLUTION, **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains a `DisplacementEvent` entry with correct `from_lane`, `from_cell`, `to_lane`, `to_cell`, and `kind`. (The "BoardPosition converges" assertion is advisory — unreliable replication is suppressed during RESOLUTION animation per the RESOLUTION rendering contract. Test only the event batch fields.) | BLOCKING |
-| NP-33 | **GIVEN** a fake objective is destroyed during RESOLUTION (attacker's spawn range expands), **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains both `ObjectiveDestroyed { was_fake: true }` AND `SpawnRangeChanged { player_id: attacker, new_spawn_range_cells }`, with `SpawnRangeChanged` appearing **after** `ObjectiveDestroyed` in the events array. | BLOCKING |
+| NP-33 | **GIVEN** a fake objective is destroyed during RESOLUTION (attacker's spawn range expands), **WHEN** the server emits `S2CResolutionEvent`, **THEN** the event batch contains both `ObjectiveDestroyed { was_fake: true }` AND `SpawnRangeChanged { player_id: attacker, new_spawn_range_cells }`, with `SpawnRangeChanged` appearing **after** `ObjectiveDestroyed` in the events array. No replicated `SpawnRange` component and no snapshot-only live update path satisfy this criterion. | BLOCKING |
 | NP-34 | **GIVEN** Player A submits their PLACEMENT and Player B has not yet submitted, **WHEN** the server processes Player A's `C2SSubmitPlacement`, **THEN** `S2COpponentSubmitted { player_id: Player_A }` is delivered to Player B's transport connection within the same reliable channel message sequence. | BLOCKING |
 | NP-35 | **GIVEN** a reconnecting player's `S2CGameSnapshot` is processed, **WHEN** both `PlayerSnapshot` entries in `players` are inspected, **THEN** `class_id` is non-zero/non-None for both players (server-observable assertion — confirms the field is populated, not that the UI renders correctly). | BLOCKING |
 

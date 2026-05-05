@@ -41,6 +41,7 @@ Round State Machine phase state, RSM event bus, session lifecycle, reconnect pro
 - **Only `C2SHeartbeat` and `S2CAuctionUpdate` use `UnreliableChannel`.** Everything else uses `ReliableChannel`. — source: ADR-008
 - **`S2CResolutionEvent` MUST be enqueued before `S2CPhaseChanged(DRAFT_SHOP)` in the same server frame (OQ-D invariant).** Enforced by same-channel FIFO on `ReliableChannel`. — source: ADR-008
 - **Default channel for any new message type: `ReliableChannel`.** Use `UnreliableChannel` only when: dropped packet is immediately superseded, stale arrival causes no state corruption, and the message is sent more than once per phase. — source: ADR-008
+- **Live spawn range changes MUST be `ResolutionEvent::SpawnRangeChanged { player_id, new_spawn_range_cells }` entries inside `S2CResolutionEvent`, ordered after the corresponding `ObjectiveDestroyed`.** Recovery/reconnect uses `PlayerSnapshot.spawn_range_cells`. — source: network-protocol.md NP-33, ADR-020
 - **`C2SSubmitPlacement` payload shape is submit-only:** `PlacedCardSubmit { card_id, target, current_mana_spend, reserve_mana_spend }`. `S2CPlacementReveal` uses a distinct reveal type and MUST NOT expose mana-spend fields. — source: network-protocol.md, ADR-007
 - **Per-connection `snapshot_sent` flag.** Set to `false` on `OnConnected`. Snapshot system scheduled BEFORE all live-game message systems. No live S2C enqueued to a reconnecting client before `snapshot_sent = true`. — source: ADR-008, ADR-011
 - **`RoundState` resource is the single source of truth for phase.** Only `rsm_tick_system` holds `ResMut<RoundState>`. All other systems use `Res<RoundState>`. — source: ADR-009
@@ -69,6 +70,7 @@ Round State Machine phase state, RSM event bus, session lifecycle, reconnect pro
 - **Never lazy-load `GameConfig` or `CardCatalog`.** Must load before `AppState::Lobby`. — source: ADR-004
 - **Never hot-reload `CardCatalog`.** Card data changes require a server restart. — source: ADR-004
 - **Never split `S2CResolutionEvent` and `S2CPhaseChanged(DRAFT_SHOP)` onto different channels.** Cross-channel ordering is not guaranteed. — source: ADR-008
+- **Never deliver live spawn range by snapshot-only polling or a replicated `SpawnRange` ECS component.** Use the ordered `S2CResolutionEvent` entry plus snapshot recovery unless future docs explicitly reverse the decision. — source: network-protocol.md NP-33, ADR-020
 - **Never use `EventWriter<T>` / `EventReader<T>` / `Events<T>`.** Do not exist in Bevy 0.17+. Use `MessageWriter`/`MessageReader` (buffered) or Observers (reactive). — source: ADR-009, ADR-010
 - **Never use `app.add_message::<SessionReady>()` or `MessageReader<SessionReady>`.** `SessionReady` is an Observer event — `MessageReader` will never fire for it. — source: ADR-012
 - **Never register more than one Observer for `SessionReady`.** Other systems subscribe to `DraftStarted`. — source: ADR-012
@@ -130,12 +132,12 @@ auction state, class system, card acquisition shop state, economy system, board/
 - **`on_resolution_complete` scheduled `.before(rsm_input_reader)`.** Snapshot must precede RSM DRAFT transition. — source: ADR-019
 - **`PendingResolutionComplete(bool)` bridge resource.** `resolve_combat` (exclusive system) sets `world.resource_mut::<PendingResolutionComplete>().0 = true`. `drain_pending_resolution_complete` (regular system, `CombatSystemSet::PostResolution`) emits `MessageWriter<ResolutionComplete>`. `MessageWriter<T>` cannot be used from an exclusive system. — source: ADR-019
 - **`ResMut<PlayerEconomies>` write access restricted to five systems:** `initialise_player_economies`, `on_draft_started`, `on_resolution_complete`, `auction_tick_system`, `resolve_combat`. — source: ADR-019
-- **Board state is a hybrid: ECS entities (Lightyear-replicated) + `BoardState` resource (O(1) spatial index).** All board mutations through `board/api.rs` — entity components AND `BoardState` index updated atomically. — source: ADR-020
+- **Board state is a hybrid: ECS entities (Lightyear-replicated) + `BoardState` resource (O(1) spatial index) + Board/Lane-owned `SpawnRangeState`.** All board mutations through `board/api.rs` — entity components, `BoardState` index, and `SpawnRangeState` projection updated through the Board/Lane API. — source: ADR-020
 - **Unit entities spawn WITHOUT `Replicate` component.** Add `Replicate::to_clients(NetworkTarget::All)` ONLY AFTER `S2CPlacementReveal` is enqueued. — source: ADR-020
 - **Correct Lightyear 0.26 replication API: `Replicate::to_clients(NetworkTarget::All)`.** `ReplicateTo` component does NOT exist in Lightyear 0.26.0. — source: ADR-020
 - **Movement formula F1:** `new_cell = clamp(current_cell + direction × mp, 1, 8)` using `i16` intermediate arithmetic to prevent u8 overflow/underflow. — source: ADR-020
 - **`remove_unit_from_board` removes from `BoardState` index but does NOT despawn entity.** Caller explicitly calls `commands.entity(e).despawn()`. — source: ADR-020
-- **`expand_spawn_range(state, player)` clamped at 2.** Maximum fakes destroyed = 2. — source: ADR-020
+- **`expand_spawn_range(&mut SpawnRangeState, player)` clamped at 2.** Maximum fakes destroyed = 2. Snapshot builders read `SpawnRangeState` for `PlayerSnapshot.spawn_range_cells`; they must not recompute live projection directly from `ObjectiveCounters`. — source: ADR-020
 
 ### Forbidden Approaches
 
@@ -160,6 +162,7 @@ auction state, class system, card acquisition shop state, economy system, board/
 - **Never use `MessageWriter<T>` as a system param inside an exclusive system.** Use `PendingResolutionComplete` bridge resource instead. — source: ADR-019
 - **Never assign to `PlayerEconomy` fields directly outside `economy/api.rs`** (`.gold =`, `.current_mana =`, etc.). — source: ADR-019
 - **Never mutate `BoardPosition` component or `BoardState` index outside `board/api.rs`.** — source: ADR-020
+- **Never mutate `SpawnRangeState` outside Board/Lane API functions.** Objective System owns destruction facts/counters only; it must not own live spawn range projection or S2C transport. — source: ADR-020
 - **Never add `Replicate` to a unit entity before `S2CPlacementReveal` is enqueued.** — source: ADR-020
 - **Never use `ReplicateTo` component.** Does not exist in Lightyear 0.26. — source: ADR-020
 - **Never use any `*Bundle` type (`SpriteBundle`, `Camera2dBundle`, `NodeBundle`, etc.).** Deprecated in Bevy 0.15. Use Required Components API. — source: engine-reference

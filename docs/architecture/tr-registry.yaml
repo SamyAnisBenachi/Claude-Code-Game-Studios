@@ -29,7 +29,7 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 12
+version: 13
 last_updated: "2026-05-05"
 # Run 3 (/architecture-review 2026-04-30c): registered 80 new M2/M3 TRs covering
 # combat-resolution, card-acquisition, prism-system, keyword-system, card-animations,
@@ -70,6 +70,9 @@ last_updated: "2026-05-05"
 # Run 14 (HAND-UI-010 prerequisite docs 2026-05-05): registered TR-NP-013,
 # TR-ECO-009, TR-BLS-011, TR-PRES-001 and revised TR-HU-008 for explicit
 # placement mana split prerequisites. Total: 198 active TRs.
+# Run 15 (spawn range contract docs repair 2026-05-05): registered
+# TR-NP-014 for NP-33 live spawn range update ordering and TR-BR-008 for
+# persistent spawn range highlights. Total: 200 active TRs.
 
 requirements:
 
@@ -682,6 +685,15 @@ requirements:
     gdd: design/gdd/network-protocol.md
     gdd_ac_ids: [NP-58]
     requirement: "Placement payload shape split: C2SSubmitPlacement uses PlacedCardSubmit with card_id, target, current_mana_spend, reserve_mana_spend; S2CPlacementReveal uses a distinct PlacedCardReveal type and omits mana-spend fields"
+    created: 2026-05-05
+    revised: ""
+    status: active
+
+  - id: TR-NP-014
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-33]
+    requirement: "Live spawn range updates use ResolutionEvent::SpawnRangeChanged { player_id, new_spawn_range_cells } inside the ordered reliable S2CResolutionEvent batch, appearing after the corresponding ObjectiveDestroyed entry; PlayerSnapshot.spawn_range_cells is recovery/reconnect source only; no replicated SpawnRange component and no snapshot-only live update path"
     created: 2026-05-05
     revised: ""
     status: active
@@ -1720,6 +1732,15 @@ requirements:
     gdd_ac_ids: [BR-OUTNUMBERED]
     requirement: "OUTNUMBERED indicator per-unit (revised from per-lane); requires keyword-system reconciliation (OQ-KS5)"
     created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BR-008
+    system: board-rendering
+    gdd: design/gdd/board-rendering.md
+    gdd_ac_ids: [BR-SPAWN-HIGHLIGHTS]
+    requirement: "Persistent spawn range highlights seed from PlayerSnapshot.spawn_range_cells on snapshot rebuild and update from ordered ResolutionEvent::SpawnRangeChanged entries in S2CResolutionEvent; highlights persist across DRAFT/PLACEMENT frames and are not derived from ObjectiveDestroyed alone"
+    created: 2026-05-05
     revised: ""
     status: active
 

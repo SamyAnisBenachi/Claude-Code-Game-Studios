@@ -23,11 +23,11 @@ The board is the one place your opponent cannot lie. Their hand is hidden, their
 - The authoritative 5-lane × 8-cell spatial grid (server-side only; clients receive replicated read-only view)
 - Each unit's current lane and cell position
 - Occupancy tracking for Minions, Traps, Structures, and Fields per lane/cell/player
-- Spawn range state per player (driven by fake objective destruction events)
+- `SpawnRangeState` per player: the live authoritative spawn range projection used for placement validation, snapshot assembly, and `SpawnRangeChanged` resolution-log events
 - Prism presence state per lane per player
 - A pending-placement buffer (committed at RESOLUTION start)
 
-The Board/Lane System does NOT own: combat damage, card stats, HP totals, objective HP, or keyword effect logic. It provides spatial queries and executes movement commands on behalf of other systems.
+The Board/Lane System does NOT own: combat damage, card stats, HP totals, objective HP, objective destruction facts/counters, or keyword effect logic. Objective System owns fake/real destruction records; Board/Lane consumes those facts to update its live spawn range projection.
 
 ---
 
@@ -56,6 +56,8 @@ During PLACEMENT, a Minion may only be placed within the player's current spawn 
 | 2 | Cells 1–3 (absolute for Player A; cells 6–8 for Player B) |
 
 Spawn range is **global** — it applies to all 5 lanes simultaneously.
+
+`SpawnRangeState` is the single live source for this projection. Objective System owns `fake_objectives_destroyed(player)` as a destruction fact/counter, but it does not compute live spawn range cells and does not transport spawn range to clients. Board/Lane updates `SpawnRangeState`, uses it for validation, supplies `PlayerSnapshot.spawn_range_cells` during snapshot assembly, and contributes ordered `ResolutionEvent::SpawnRangeChanged { player_id, new_spawn_range_cells }` entries to the reliable `S2CResolutionEvent` batch.
 
 **Exceptions to spawn range:**
 - **Traps**: may be placed on any of the player's 20 home cells, regardless of spawn range
@@ -158,13 +160,13 @@ The Board/Lane System has no internal state machine — it is persistent spatial
 |---|---|---|
 | **RSM** | RSM → Board | RSM fires `OnResolutionEnd` (board cleanup); RSM PLACEMENT state gates placement submission |
 | **Combat Resolution** | Combat ↔ Board | Combat sequences sub-steps; Board executes `move_unit`, `remove_unit`, `change_lane`, `teleport_unit`; Board answers `get_units_at_cell(lane, cell)` and `get_units_at_objective_cell(player)` |
-| **Objective System** | Board → Objective | Board fires `UnitAtObjective(unit_id, lane)` at sub-step 6 end; Objective System applies damage and checks loss condition |
+| **Objective System** | Bidirectional facts | Board fires `UnitAtObjective(unit_id, lane)` at sub-step 6 end; Objective System applies damage and owns destruction facts/counters. Board/Lane reads or receives fake-destruction facts to update `SpawnRangeState`; Objective System never owns the live spawn range projection. |
 | **Prism System** | Board → Prism | Board fires `PrismCollected(player, lane)` during sub-step 5 when prism condition met |
-| **Economy System** | Economy → Board | Economy notifies Board of fake objective destruction → Board updates `spawn_range[player]` |
+| **Economy System** | Objective/Board → Economy | Economy receives gold and mana-cap reward events from Objective System; it does not own or notify spawn range changes |
 | **Keyword System** | Keyword ↔ Board | Keyword System calculates displacement deltas; Board executes movement via spatial API and enforces bounds/IRREMOVABLE |
 | **Card Data & Pool** | Board reads | Board reads ATK, HP, MP, AR, keyword list from card definition at unit spawn time |
-| **Network Protocol / Lightyear** | Board → Clients | Sub-step 1 commit sends a single `S2CPlacementReveal { placements: Vec<PlacedUnit> }` payload (all placed units for both players in one message) — not per-entity component replication — to guarantee atomic client-side reveal. Subsequent position updates use Lightyear component replication. Resolution events are delivered as an ordered `Vec<S2CResolutionEvent>` replay log (move / trap-trigger / death events, each tagged with sub-step index) for client animation playback. All S2C/C2S message types carry a `protocol_version: u32` constant validated at LOBBY handshake before any game state is exchanged. |
-| **Board Rendering** | Board → Rendering | Rendering reads unit positions and board state from replicated components; allied co-occupancy rendered side-by-side |
+| **Network Protocol / Lightyear** | Board → Clients | Sub-step 1 commit sends a single `S2CPlacementReveal { placements: Vec<PlacedUnit> }` payload (all placed units for both players in one message) — not per-entity component replication — to guarantee atomic client-side reveal. Subsequent position updates use Lightyear component replication. Resolution events are delivered as an ordered `S2CResolutionEvent` replay log. Spawn range changes are delivered as `ResolutionEvent::SpawnRangeChanged` entries ordered after the corresponding `ObjectiveDestroyed`; recovery/reconnect uses `PlayerSnapshot.spawn_range_cells`. Do not add a replicated `SpawnRange` component unless future docs explicitly reverse the decision. |
+| **Board Rendering** | Board → Rendering | Rendering reads unit positions from replicated components, seeds spawn highlights from `PlayerSnapshot.spawn_range_cells`, and updates live highlights from ordered `SpawnRangeChanged` entries; allied co-occupancy rendered side-by-side |
 
 ## Formulas
 
@@ -276,6 +278,8 @@ at_objective(unit) =
 
 **If a fake objective is destroyed during RESOLUTION** (sub-step 6 objective damage): the attacker's spawn range expansion takes effect at the start of the **next round's PLACEMENT phase** — not the current round. Placement validation (Formula F2) runs only during PLACEMENT; the current round's placements were already committed at sub-step 1.
 
+The update still becomes visible to connected clients in the current RESOLUTION's reliable event batch: Board/Lane updates `SpawnRangeState` after receiving the fake-destruction fact and emits `SpawnRangeChanged` after the matching `ObjectiveDestroyed` entry. Clients use the new range to render the next actionable PLACEMENT state. Snapshot builders must read `SpawnRangeState`, not recompute directly from `ObjectiveCounters`, so reconnect state cannot drift from live validation state.
+
 **If Strich is in lane 1 and an enemy unit enters lane 1**: Strich's CHANGE LANE auto-trigger fires but targets lane 0 (does not exist). The attempt is a silent no-op. Strich stays in lane 1. The same applies in lane 5 (cannot change rightward).
 
 **If Strich attempts CHANGE LANE and both adjacent lanes already contain the player's own Minion**: Strich is blocked — it stays in its current lane. No error is raised. A full adjacent lane is treated identically to a boundary (no valid destination = no-op).
@@ -311,7 +315,7 @@ at_objective(unit) =
 | System | Type | Interface | Notes |
 |---|---|---|---|
 | **Card Data & Pool** (Approved) | Hard | Board reads `atk`, `hp`, `mp`, `ar`, `keywords` from card definition at unit spawn time | Card schema owns all base stats; Board tracks current HP separately for damage |
-| **Game Config** (Designed) | Hard | Board reads `fake_objective_spawn_advance` (1 cell) to update spawn range on fake destruction | Spawn range expansion is data-driven, not hardcoded |
+| **Game Config** (Designed) | Hard | Board reads `fake_objective_spawn_advance` (1 cell) to update `SpawnRangeState` on fake destruction | Spawn range expansion is data-driven, not hardcoded |
 | **Round State Machine** (Designed) | Hard | RSM drives PLACEMENT and RESOLUTION phase boundaries; Board validates placements during PLACEMENT and executes sub-steps during RESOLUTION | RSM provisional interface finalized here: Board listens for `OnResolutionEnd`; provides placement validation API during PLACEMENT |
 
 ### Downstream Dependents
@@ -319,12 +323,12 @@ at_objective(unit) =
 | System | Type | Interface | Notes |
 |---|---|---|---|
 | **Combat Resolution** *(Not Started)* | Hard | Combat sequences all 6 sub-steps; Board exposes `move_unit`, `remove_unit`, `change_lane`, `teleport_unit`, `get_units_at_cell`, `get_units_at_objective_cell` | Combat Resolution is the orchestrator; Board is the spatial executor |
-| **Objective System** *(Not Started)* | Hard | Board fires `UnitAtObjective(unit_id, lane)` at sub-step 6 end | Objective System applies damage and checks loss condition; Board does not own objective HP |
+| **Objective System** *(Not Started)* | Hard | Board fires `UnitAtObjective(unit_id, lane)` at sub-step 6 end; Objective System exposes fake/real destruction facts/counters | Objective System applies damage and checks loss condition; Board does not own objective HP or counters, and Objective does not own live spawn projection |
 | **Prism System** *(Not Started — M3)* | Soft | Board fires `PrismCollected(player, lane)` during sub-step 5 when a player's unit ends movement at their prism cell | Prism System handles all reward delivery |
-| **Economy System** (Designed) | Soft | Economy fires fake objective destruction notification → Board updates `spawn_range[player]`; update deferred to next PLACEMENT phase | Board is the consumer; Economy is the event source |
+| **Economy System** (Designed) | Soft | Economy receives objective gold and mana-cap reward events; no spawn range interface | Spawn range is Board/Lane projection from Objective destruction facts, not an Economy notification |
 | **Keyword System** *(Not Started — M3)* | Soft | Keyword System computes displacement deltas; Board executes and enforces IRREMOVABLE/bounds | Board provides spatial API; Keyword System owns keyword logic |
-| **Board Rendering** *(Not Started)* | Soft | Rendering reads replicated `BoardPosition` components; allied co-occupancy rendered side-by-side | Board provides data; Rendering owns all visual presentation |
-| **Network Protocol / Lightyear** *(Not Started)* | Hard | Unit positions replicated via Lightyear component replication; unit death and trap trigger events sent as explicit S2C messages | Client holds read-only board mirror |
+| **Board Rendering** *(Not Started)* | Soft | Rendering reads replicated `BoardPosition` components and protocol-delivered spawn range (`PlayerSnapshot.spawn_range_cells` + `SpawnRangeChanged`) | Board provides data; Rendering owns all visual presentation |
+| **Network Protocol / Lightyear** *(Not Started)* | Hard | Unit positions replicated via Lightyear component replication; unit death, trap trigger, and `SpawnRangeChanged` events sent through reliable `S2CResolutionEvent` | Client holds read-only board mirror; no replicated `SpawnRange` component |
 
 ## Tuning Knobs
 
@@ -395,7 +399,7 @@ Most Board/Lane parameters are structural constants — they define the physical
 | UI element | Driven by | Notes |
 |---|---|---|
 | Board grid (5×8 cells) | `BoardPosition` components + board state | Board Rendering GDD owns visual implementation; Board/Lane provides authoritative data |
-| Spawn range highlights | `spawn_range[player]` per-player state | During PLACEMENT: cells within range glow gold |
+| Spawn range highlights | `SpawnRangeState` via snapshot + `SpawnRangeChanged` | During PLACEMENT: cells within range glow gold |
 | Placement fog (opponent's half) | RSM PLACEMENT phase signal | Dark-blue fog over opponent's half; lifted on RESOLUTION reveal |
 | Placement timer ring | RSM `placement_timer_seconds` | Board frame countdown; driven by RSM, displayed in board border UI |
 | Placement rejection feedback | Board validation result | Red flash on attempted cell when placement rejected (full slot or invalid cell) |
@@ -435,7 +439,7 @@ Most Board/Lane parameters are structural constants — they define the physical
 | BL-23 | GIVEN an IRREMOVABLE unit is targeted by REPEL, WHEN REPEL fires, THEN the unit does not move and no error is raised. | BLOCKING |
 | BL-24 | GIVEN Player B's unit (the caster) is at cell 8, and ATTRACT 5 targets Player A's unit at cell 5, WHEN ATTRACT fires, THEN Player A's unit moves to cell 7 — 1 cell short of the caster's cell (Rule 9a, enemy target): `effective_pull = min(5, max(0, \|8−5\|−1)) = min(5, 2) = 2`; `attract_destination = 5 + sign(8−5) × 2 = 7`. | BLOCKING |
 | BL-25 | GIVEN Player B's unit is at cell 1 at end of sub-step 6, WHEN sub-step 6 completes, THEN the Board emits `UnitAtObjective(unit_id, lane)` for Player B's unit. | BLOCKING |
-| BL-26 | GIVEN a fake objective is destroyed during RESOLUTION sub-step 6, WHEN the next PLACEMENT phase begins, THEN Player A's spawn range is expanded by 1 cell — the expansion does NOT apply to the current round's already-committed placements. | BLOCKING |
+| BL-26 | GIVEN a fake objective is destroyed during RESOLUTION sub-step 6, WHEN Board/Lane consumes the fake-destruction fact, THEN `SpawnRangeState` expands the attacker's range by 1 cell, the `S2CResolutionEvent` contains `SpawnRangeChanged` after the corresponding `ObjectiveDestroyed`, and the expanded range applies to the next PLACEMENT phase — not the current round's already-committed placements. | BLOCKING |
 | BL-27 | GIVEN an enemy Trap is at cell 3 and Player A's unit is at cell 1 with MP=3, WHEN sub-step 5 fires, THEN the unit moves to cell 4 and the Trap at cell 3 does NOT trigger. | BLOCKING |
 | BL-27b | GIVEN an enemy Trap is at (lane 1, cell 2) and Player A's unit is in lane 1 at cell 1 with CHARGE 3, WHEN sub-step 2 fires, THEN the unit moves to cell 4 and the Trap at cell 2 does NOT trigger (CHARGE X movement skips intermediate cells, same as standard movement). | BLOCKING |
 | BL-28 | GIVEN any unit is in lane 1, WHEN CHANGE LANE leftward fires, THEN unit stays in lane 1 — no error raised. | BLOCKING |

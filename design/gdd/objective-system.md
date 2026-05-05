@@ -7,7 +7,7 @@
 
 ## Overview
 
-The Objective System is the server-side authority for each player's five objectives — three real and two fake — throughout the game session. It owns each objective's identity (real or fake, visible only to the owning player), HP state (5 HP each, 0 AR, cannot be healed), and cumulative destruction record. On any objective's HP reaching zero, the Objective System executes the correct consequence path: awarding gold to the attacker via the Economy System, applying fake-specific rewards (spawn range expansion and a server-RNG-drawn bonus: mana cap +1 or free card pick at 50/50), or advancing the loss condition count for real objective destruction. It exposes two authoritative read interfaces: `real_objectives_destroyed(player)`, read by the Round State Machine after each RESOLUTION to evaluate GAME_OVER, and `fake_objectives_destroyed(player)`, read by the Board/Lane System to compute per-player spawn range. Initial fake-lane assignment uses two Server-side RNG seeds per player drawn at DRAFT_INITIAL; reward randomization uses one seed per fake destruction event.
+The Objective System is the server-side authority for each player's five objectives — three real and two fake — throughout the game session. It owns each objective's identity (real or fake, visible only to the owning player), HP state (5 HP each, 0 AR, cannot be healed), and cumulative destruction record. On any objective's HP reaching zero, the Objective System executes the correct consequence path: awarding gold to the attacker via the Economy System, recording fake destruction facts/counters for Board/Lane to project into spawn range, applying the server-RNG-drawn fake reward (mana cap +1 or free card pick at 50/50), or advancing the loss condition count for real objective destruction. It exposes two authoritative read interfaces: `real_objectives_destroyed(player)`, read by the Round State Machine after each RESOLUTION to evaluate GAME_OVER, and `fake_objectives_destroyed(player)`, read by the Board/Lane System to update `SpawnRangeState`. Objective System does not own live spawn range projection, `PlayerSnapshot.spawn_range_cells`, or `SpawnRangeChanged` transport. Initial fake-lane assignment uses two Server-side RNG seeds per player drawn at DRAFT_INITIAL; reward randomization uses one seed per fake destruction event.
 
 ## Player Fantasy
 
@@ -58,7 +58,7 @@ When `take_damage()` reduces HP to 0, the Objective System executes this sequenc
 1. Mark slot destroyed. HP clamped to 0. Queue `ObjectiveDestroyed { target_player_id: defending_player, lane, was_fake }` for RESOLUTION-end broadcast.
 2. **Gold award** (if `attacker_player ≠ defending_player`): emit `AwardGold { player: attacker_player, amount: 3 }` to Economy System.
 3. **Fake-specific rewards** (if fake AND `attacker_player ≠ defending_player`):
-   - Increment `fake_objectives_destroyed(attacker_player)` by 1. Board/Lane System reads this at next placement validation.
+   - Increment `fake_objectives_destroyed(attacker_player)` by 1. This is an objective destruction fact/counter only. Board/Lane System consumes it to update live `SpawnRangeState`, snapshot `spawn_range_cells`, and the ordered `SpawnRangeChanged` resolution-log entry.
    - Draw 1 reward seed from Server-side RNG (`gen_range(0..2)`):
      - `0` → emit `ManaCapIncreased { player: attacker_player, amount: 1 }`. Economy System applies at RESOLUTION end; takes effect the following DRAFT.
      - `1` → check `attacker_player`'s hand size first: if hand is at max capacity (10 cards), skip `draw_random()` and emit `AwardGold { player: attacker_player, amount: 1 }` as fallback (see OS-15); this branch terminates here. Otherwise: draw 1 free-card seed from Server-side RNG, then call `draw_random(filter: PoolFilter { rarity: None, class: None, card_type: None, max_cost: None }, seed)` on Card Data & Pool. On `Some(card_id)`: call `distribute(card_id)` on the pool and add the card to the player's hand server-side; client sees it at RESOLUTION-end sync. On `None` (pool exhausted): no-op (see OS-22).
@@ -112,11 +112,11 @@ Transitions: `Intact → Damaged` (any damage, HP > 0 remaining) → `Damaged �
 | System | Direction | Interface |
 |---|---|---|
 | **Server-side RNG** | ← Consumes | 2 seeds/player at DRAFT_INITIAL (fake assignment); per fake destruction: 1 seed for D4 reward draw + 1 additional seed for `draw_random` if outcome is FreeCardPick (total: **1 seed** if ManaCapIncreased, **2 seeds** if FreeCardPick) |
-| **Game Config** | ← Reads | `objective_hp`, `fake_count`, `objective_gold_reward`, `fake_objective_spawn_advance` at session init |
+| **Game Config** | ← Reads | `objective_hp`, `fake_count`, `objective_gold_reward` at session init |
 | **Combat Resolution** | ← Receives | `take_damage(lane, attacker_player, amount)` during sub-step 6 |
 | **Economy System** | → Emits | `AwardGold { player, amount: 3 }` on destruction (attacker ≠ owner); `ManaCapIncreased { player, amount: 1 }` for mana cap reward |
 | **Card Data & Pool** | → Calls | `draw_random(PoolFilter, seed)` for free card pick reward; `distribute(card_id)` on non-None result; card placed in hand server-side |
-| **Board/Lane System** | → Exposes | `fake_objectives_destroyed(player): u32` read interface; BLS queries this at placement validation |
+| **Board/Lane System** | → Exposes | `fake_objectives_destroyed(player): u32` destruction fact/counter; BLS consumes this to update `SpawnRangeState` |
 | **Round State Machine** | → Exposes | `real_objectives_destroyed(player): u32` read interface; RSM queries after each RESOLUTION |
 | **HUD** | → Replicates | `ObjectiveHp` to both players; `ObjectiveIdentity` to owner only; `ObjectiveDestroyed` to both on destruction |
 | **Board Rendering** | → Replicates | `ObjectiveHp`, destroyed state; cleared slot on destruction |
@@ -215,7 +215,7 @@ real_lanes = lanes \ {fake_1, fake_2}
 
 **Output Range:** C(5,2) = 10 distinct lane pairs, each with probability 1/10 = 10%.
 **Example:** `RNG_1 = 3` → array index 3 into [1,2,3,4,5] → fake_1 = LaneId 4 (display: lane 4). Remaining = [1,2,3,5]. `RNG_2 = 1` → array index 1 into [1,2,3,5] → fake_2 = LaneId 2 (display: lane 2). `fake_lanes = {2, 4}`, `real_lanes = {1, 3, 5}`.
-**Notes:** Two independent `gen_range(0..5)` draws without removal would produce a 20% collision rate — distinctness requires the removal approach. Uses exactly 2 seeds per player from the DRAFT_INITIAL RNG chain. Spawn range expansion on fake destruction (`spawn_range_valid`) is owned by `board-lane-system.md` and reads `fake_objectives_destroyed(player)` from this system.
+**Notes:** Two independent `gen_range(0..5)` draws without removal would produce a 20% collision rate — distinctness requires the removal approach. Uses exactly 2 seeds per player from the DRAFT_INITIAL RNG chain. Spawn range projection is owned by `board-lane-system.md`; this system only provides the `fake_objectives_destroyed(player)` destruction fact/counter.
 
 ## Edge Cases
 
@@ -262,7 +262,7 @@ real_lanes = lanes \ {fake_1, fake_2}
 | **Server-side RNG** | Upstream | Hard | 2 seeds/player at DRAFT_INITIAL (fake assignment); 1 seed per fake destruction (reward draw) | Cannot initialize without RNG. Seeds must be drawn before any placement is accepted. |
 | **Game Config** | Upstream | Hard | Reads `objective_hp`, `fake_count`, `objective_gold_reward`, `fake_objective_spawn_advance` at session init | All locked values; all parameters source from Game Config. |
 | **Round State Machine** | Downstream | Hard | RSM reads `real_objectives_destroyed(player)` after each RESOLUTION | Read-only. RSM owns the GAME_OVER decision; this system provides the count. Bidirectional: RSM GDD Rule 11 confirms dependency. |
-| **Board / Lane System** | Downstream | Hard | BLS reads `fake_objectives_destroyed(player)` at PLACEMENT validation | Read-only. Bidirectional: BLS GDD Rule 4 / `spawn_range_valid` formula references `fakes_destroyed`. |
+| **Board / Lane System** | Downstream | Hard | BLS consumes `fake_objectives_destroyed(player)` to update `SpawnRangeState` | Read-only destruction fact from Objective. BLS owns live spawn range projection, snapshot source, and `SpawnRangeChanged` transport. |
 | **Combat Resolution** | Upstream caller | Hard | Combat Resolution calls `take_damage(lane, attacker_player, amount)` during sub-step 6 | Not yet designed. Must reference this interface when authored. |
 | **Economy System** | Downstream receiver | Hard (one-way) | Receives `AwardGold { player, amount }` and `ManaCapIncreased { player, amount: 1 }` events at RESOLUTION end | Economy GDD should reference this system as the event source when updated. |
 | **Card Data & Pool** | Downstream caller | Hard (one-way) | Objective System calls `draw_random(PoolFilter, seed)` for free card pick; `distribute(card_id)` on non-None result | Pool returns `None` if no cards available; treated as no-op. |
@@ -278,7 +278,7 @@ The Objective System has no independently owned tuning knobs. All configurable p
 | `objective_hp` | game-config.md | 5 | 3–8 | HP of each objective. Lower = faster objective kills, more explosive tempo. Higher = more sustained unit pressure needed; more comeback potential. |
 | `fake_count` | game-config.md | 2 | 1–3 | Fakes per player. Controls bluff depth and mana cap ceiling (`mana_cap_base + fake_count`). Note: `loss_threshold` stays at 2 regardless. At `fake_count = 1`: 4 reals, attacker needs 2 of 4 (easier to close). At `fake_count = 3`: 2 reals, attacker must destroy both (harder to close; near-perfect information needed). |
 | `objective_gold_reward` | game-config.md | 3 | 2–5 | Gold awarded on any objective destruction (attacker ≠ owner). Higher = more gold snowball from first destruction. |
-| `fake_objective_spawn_advance` | game-config.md | 1 | 1–2 | Spawn range expansion (cells) per fake destroyed. Higher = greater positional dividend for correctly identifying fakes early. |
+| `fake_objective_spawn_advance` | game-config.md / Board-Lane System | 1 | 1–2 | Spawn range expansion (cells) per fake destroyed. Listed for cross-system context only; Board/Lane reads this knob and owns the live projection. |
 
 **Derived values (not independently configurable):**
 - `loss_threshold = 2` — fixed design constant; does not change with `fake_count`
