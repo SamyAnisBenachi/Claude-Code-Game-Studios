@@ -150,3 +150,7 @@ path = "../tests/unit/board_rendering/plugin_scaffold_test.rs"
 [[test]]
 name = "shop_auction_ui_plugin_scaffold_formulas_test"
 path = "../tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs"
+
+[[test]]
+name = "board_rendering_grid_camera_test"
+path = "../tests/unit/board_rendering/board_grid_camera_test.rs"
