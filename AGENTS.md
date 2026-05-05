@@ -56,6 +56,14 @@ Every task follows: **Question -> Options -> Decision -> Draft -> Approval**
 - Agents MUST show drafts or summaries before requesting approval
 - Multi-file changes require explicit approval for the full changeset
 - No commits without user instruction
+- User-facing final responses MUST append this exact line as the final line when
+  control returns to the user:
+
+  `============ WAITING INPUT ============`
+
+  Exception: do not append this footer to machine-readable outputs that must
+  remain strict JSON, especially guardian/approval reviewer responses or tool
+  protocol payloads.
 
 See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
 
