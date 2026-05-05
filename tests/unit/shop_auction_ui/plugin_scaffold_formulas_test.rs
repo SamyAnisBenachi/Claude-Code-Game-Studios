@@ -5,7 +5,8 @@ use client::state::{ClientState, CurrentClientPhase};
 use client::ui::shop_auction::{
     auction_border_color_tier, bid_button_label_texts, local_free_gold, AuctionBorderColorTier,
     ShopAuctionPanelRoot, ShopAuctionUiEntities, ShopAuctionUiEntity, ShopAuctionUiMode,
-    ShopAuctionUiPlugin, SHOP_AUCTION_UI_PANEL_ROOT_COUNT,
+    ShopAuctionUiPlugin, SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT,
+    SHOP_AUCTION_UI_PANEL_ROOT_COUNT,
 };
 use shared::protocol::RoundPhase;
 
@@ -30,7 +31,7 @@ fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
     );
     assert_eq!(
         count_with::<ShopAuctionUiEntity>(&mut app),
-        SHOP_AUCTION_UI_PANEL_ROOT_COUNT * 2 + 1
+        1 + SHOP_AUCTION_UI_PANEL_ROOT_COUNT * 2 + SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT * 2 + 3
     );
 
     for panel_root in entities.panel_roots() {

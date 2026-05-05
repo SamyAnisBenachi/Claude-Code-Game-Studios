@@ -67,6 +67,7 @@ impl Plugin for PresentationPlugin {
                 HandUiSystemSet::MessageDrain.in_set(PresentationSet::MessageDrain),
                 HandUiSystemSet::StateSync.in_set(PresentationSet::StateSync),
                 ShopAuctionUiSystemSet::PhaseTransition.in_set(PresentationSet::PhaseTransition),
+                ShopAuctionUiSystemSet::MessageDrain.in_set(PresentationSet::MessageDrain),
                 ShopAuctionUiSystemSet::StateSync.in_set(PresentationSet::StateSync),
                 CardAnimationsSet::React.in_set(PresentationSet::MessageDrain),
             ),
@@ -87,7 +88,8 @@ impl Plugin for PresentationPlugin {
             )
                 .in_set(PresentationSet::MessageDrain)
                 .before(HudSystemSet::MessageDrain)
-                .before(HandUiSystemSet::MessageDrain),
+                .before(HandUiSystemSet::MessageDrain)
+                .before(ShopAuctionUiSystemSet::MessageDrain),
         );
     }
 }
