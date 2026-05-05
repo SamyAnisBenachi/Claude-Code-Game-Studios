@@ -25,8 +25,9 @@ use crate::core::rsm::{
 };
 use crate::core::session::SessionConfig;
 use crate::feature::board::{
-    advance_direction, apply_f1, detect_objective_presence, is_at_objective, AcceptedPlacement,
-    BoardCell, BoardConfig, BoardGrid, BoardOccupancy, BoardSystemSet, LaneId, PendingPlacements,
+    advance_direction, apply_f1, detect_objective_presence, expand_spawn_range_from_objective_fact,
+    is_at_objective, AcceptedPlacement, BoardCell, BoardConfig, BoardGrid, BoardOccupancy,
+    BoardSystemSet, LaneId, PendingPlacements, SpawnRangeProjectionChange, SpawnRangeState,
     UnitAtObjective,
 };
 use crate::feature::keyword::components::UnitKeywordState;
@@ -264,6 +265,10 @@ pub enum CombatTraceEntry {
         target_player_id: PlayerId,
         lane: LaneId,
         was_fake: bool,
+    },
+    SpawnRangeChanged {
+        player: PlayerId,
+        new_spawn_range_cells: u8,
     },
     SubStepStarted(u8),
     IterationBudgetExceeded,
@@ -664,6 +669,16 @@ fn resolution_event_from_trace(
                 target_player_id,
                 lane,
                 was_fake,
+            },
+        )),
+        CombatTraceEntry::SpawnRangeChanged {
+            player,
+            new_spawn_range_cells,
+        } => Some((
+            current_sub_step,
+            ResolutionEvent::SpawnRangeChanged {
+                player_id: player,
+                new_spawn_range_cells,
             },
         )),
         _ => None,
@@ -2392,8 +2407,34 @@ fn apply_single_objective_attack(world: &mut World, attack: ObjectiveAttack) {
                 was_fake: event.was_fake,
             });
 
+        if event.was_fake {
+            trace_spawn_range_change(world, attack.attacker_player);
+        }
+
         award_objective_gold(world, attack.attacker_player);
     }
+}
+
+fn trace_spawn_range_change(world: &mut World, player: PlayerId) {
+    let Some(change) = apply_spawn_range_change(world, player) else {
+        return;
+    };
+
+    world
+        .resource_mut::<CombatResolutionTrace>()
+        .push(CombatTraceEntry::SpawnRangeChanged {
+            player: change.player_id,
+            new_spawn_range_cells: change.new_spawn_range_cells,
+        });
+}
+
+fn apply_spawn_range_change(
+    world: &mut World,
+    player: PlayerId,
+) -> Option<SpawnRangeProjectionChange> {
+    let session = world.get_resource::<SessionConfig>()?.clone();
+    let mut spawn_ranges = world.get_resource_mut::<SpawnRangeState>()?;
+    expand_spawn_range_from_objective_fact(&mut spawn_ranges, player, &session)
 }
 
 fn pending_objective_event_count(world: &World) -> usize {

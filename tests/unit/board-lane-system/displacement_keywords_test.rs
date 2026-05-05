@@ -215,7 +215,7 @@ fn test_change_lane_displacement_commits_valid_lane_and_occupancy_slot() {
 }
 
 #[test]
-fn test_fake_objective_consequence_emits_spawn_range_message() {
+fn test_fake_objective_consequence_emits_spawn_range_fact_and_records_counter() {
     let mut world = world_with_board();
     world.insert_resource(Messages::<AwardGold>::default());
     world.insert_resource(ObjectiveCounters::default());
@@ -242,6 +242,21 @@ fn test_fake_objective_consequence_emits_spawn_range_message() {
         vec![FakeObjectiveDestroyed {
             destroyed_by: PLAYER_A
         }]
+    );
+    assert_eq!(
+        world
+            .resource::<PendingObjectiveEvents>()
+            .queue
+            .iter()
+            .map(|event| (event.target_player_id, event.lane, event.was_fake))
+            .collect::<Vec<_>>(),
+        vec![(PLAYER_B, 2, true)]
+    );
+    assert_eq!(
+        world
+            .resource::<ObjectiveCounters>()
+            .fake_objectives_destroyed(PLAYER_A),
+        1
     );
 }
 

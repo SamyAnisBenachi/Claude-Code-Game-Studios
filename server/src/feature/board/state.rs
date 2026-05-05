@@ -75,6 +75,8 @@ impl Default for BoardOccupancy {
 pub struct SpawnRangeState {
     /// Destroyed fake objective counts indexed by player side, clamped by later stories.
     pub fakes_destroyed: [u8; BOARD_PLAYER_COUNT],
+    /// Already-applied fake-destruction facts that the scheduled message bridge should skip.
+    pub applied_fake_objective_facts: [u32; BOARD_PLAYER_COUNT],
 }
 
 /// Per-player prism presence by lane.
