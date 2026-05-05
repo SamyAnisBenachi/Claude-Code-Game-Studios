@@ -247,6 +247,16 @@ None currently tracked here.
   Acquisition Story 002 and Card Data Pool Story 006, and tooltip
   placement/persistence needs clear Out-of-Scope placement. Repair docs-only,
   then rerun readiness.
+- SAU-004 readiness returned NEEDS WORK, not hard-blocked. GDD path exists,
+  `TR-SAU-006` is active, ADR-013/ADR-021 are Accepted, Story 001 is Complete,
+  acceptance criteria and evidence path are clear, and no unresolved markers or
+  asset references were found. Gaps before `/dev-story`: manifest stale
+  (`2026-05-01` vs current `2026-05-05`), control manifest rules not cited
+  (`phase_sink_system` / `CurrentClientPhase`, no sub-plugin direct phase
+  drain, Bevy UI Required Components, single-drain Lightyear handling), engine
+  notes too thin for Bevy 0.18 / Lightyear 0.26, and performance budget missing
+  for UI state/timer/message-driven activation. Repair docs-only, then rerun
+  readiness.
 - Shop/Auction UI UX review finished with verdict NEEDS REVISION. It is not a
   major redesign and does not block SAU-001, but it blocks clean final
   visual/accessibility handoff and SAU-009. Full blockers: bid accessibility
@@ -1349,6 +1359,9 @@ Current active windows by user default-launch rule:
   until readiness returns READY.
 - SAU-002 readiness returned NEEDS WORK; readiness window can be cleared after
   launching a docs-only repair. Do not launch SAU-002 dev-story until readiness
+  returns READY.
+- SAU-004 readiness returned NEEDS WORK; readiness window can be cleared after
+  launching a docs-only repair. Do not launch SAU-004 dev-story until readiness
   returns READY.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
