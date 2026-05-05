@@ -281,6 +281,13 @@ None currently tracked here.
   --test shop_auction_ui_plugin_scaffold_formulas_test` 8/8,
   `cargo check -p client`, and `git diff --check HEAD~1..HEAD`. Needs
   serialized `/story-done`; do not relaunch worker.
+- SHOP-AUCTION-UI-001 story-done returned COMPLETE WITH NOTES but did not
+  create a commit or push. It modified
+  `production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md`
+  and `production/session-state/active.md`. Root inspection showed
+  `active.md` also contains a BOARD-RENDERING-002 story-done extract, so do not
+  commit SAU closure from root until the concurrent BOARD-002 closure report is
+  known or the same story-done window commits only its approved SAU scope.
 - BOARD-RENDERING-002 implementation worker returned and was integrated/pushed
   to `origin/main` as `ce3658b`. Worker branch
   `work/board-rendering-002-grid-camera-z-layers` returned at `6ae82d7`. Needs
@@ -1259,6 +1266,11 @@ Current active windows by user default-launch rule:
   integrated and pushed it as `2dbc988`. Worker window can be cleared. Queue a
   serialized `/story-done` for
   `production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md`.
+- SHOP-AUCTION-UI-001 story-done returned COMPLETE WITH NOTES but no commit was
+  created. Do not clear yet; respond in that window to commit/push only the SAU
+  closure, or wait for BOARD-002 story-done report before doing any root closure
+  commit because `production/session-state/active.md` currently contains both
+  SAU and BOARD extracts.
 - BOARD-RENDERING-002 implementation worker returned at `6ae82d7`; root
   integrated and pushed it as `ce3658b`. Worker window can be cleared. Queue a
   serialized `/story-done` for
