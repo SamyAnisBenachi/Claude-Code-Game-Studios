@@ -1,7 +1,7 @@
 # Story 007: Auction Settlement and Shop Transition
 
 > **Epic**: Shop / Auction UI
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Presentation
 > **Type**: Visual/Feel
 > **Manifest Version**: 2026-05-05
@@ -13,7 +13,7 @@
 **Requirement**: `TR-SAU-003`, `TR-SAU-006`
 **ADR Governing Implementation**: [ADR-013: Auction System State](../../../docs/architecture/adr-013-auction-system-state.md), [ADR-019: Economy Resource Architecture](../../../docs/architecture/adr-019-economy-resource-architecture.md), [ADR-021: Presentation Layer Architecture](../../../docs/architecture/adr-021-presentation-layer-architecture.md)
 **Control Manifest**: `docs/architecture/control-manifest.md` version `2026-05-05`.
-**Readiness status**: Story content is repaired for current ADR, UX, engine, and manifest guidance, but `/dev-story` remains blocked until SAU-004, SAU-005, and SAU-006 are implemented and marked Complete.
+**Readiness status**: READY. Story content is current against ADR, UX, engine, manifest, and prerequisite guidance. SAU-004, SAU-005, and SAU-006 are Complete, so SAU-007 is safe for `/dev-story`.
 
 This story handles terminal auction settlement, winner/no-bid presentation, card-to-hand feedback for local wins, stale late-message suppression, and the transition into the interactive DRAFT_SHOP panel.
 
@@ -37,6 +37,7 @@ This story handles terminal auction settlement, winner/no-bid presentation, card
 - Run UI work in the ADR-021 `PresentationSet` order: `PhaseTransition` -> `MessageDrain` -> `StateSync` -> `AnimationTick`.
 - Keep Lightyear `MessageReceiver<T>` handling single-drain per message type. Register exactly one production drainer for each S2C message type consumed by this flow.
 - Do not drain `MessageReceiver<S2CPhaseChanged>` in Shop/Auction UI. Read `Res<CurrentClientPhase>` populated by `phase_sink_system`.
+- Do not register a Shop/Auction UI `MessageReceiver<S2CGoldUpdate>`. Read `Res<PlayerEconomyView>` populated by the shared economy-view drain instead.
 - Use Bevy 0.18 Required Components API for all UI entities (`Node`, `Text`, `TextSpan`, `ImageNode`, `ChildOf` where parenting is needed). Do not use deprecated bundles or APIs such as `NodeBundle`, `SpriteBundle`, `Camera2dBundle`, `UiImage::new()`, `commands.entity(e).set_parent(...)`, or `Color::rgba()`.
 - This is presentation synchronization only. Never mutate authoritative auction, economy, card ownership, gold, reservation, or phase state from local UI.
 
@@ -60,13 +61,14 @@ This story handles terminal auction settlement, winner/no-bid presentation, card
 - Auction-win `S2CCardAcquired { source: AuctionWon }` is produced by Auction System settlement code, not by Card Acquisition shop/draft dispatch. This story may consume that message for local presentation/hand feedback but must not route auction wins through the shop/draft acquisition handler.
 - Keep all Lightyear `MessageReceiver<T>` consumers single-drain. If SAU-004, SAU-005, SAU-006, HUD, Hand UI, or shared presentation code already exposes a bridge/resource for a needed S2C message, consume that bridge rather than registering a duplicate receiver.
 - Phase interrupt handling reads `CurrentClientPhase`; Shop/Auction UI must not register its own `MessageReceiver<S2CPhaseChanged>`.
+- Gold, mana, and free-gold display reads come from `PlayerEconomyView`; Shop/Auction UI must not add a duplicate `MessageReceiver<S2CGoldUpdate>`.
 - Settlement overlays, the 350ms transition, timer-start deferral, vertical layout reserves, and phase interrupt behavior follow `design/ux/shop-auction-ui.md`.
 - Keep state/integration tests separate from final screenshot evidence; Story 009 owns the full visual/accessibility evidence pass.
 
 ## Performance Budget
 
 - Presentation steady-state remains under the ADR-021 budget of < 1 ms/frame.
-- Settlement and auction-to-shop phase-boundary work must remain inside the ADR-021 < 3 ms spike budget.
+- Settlement and auction-to-shop phase-boundary work must remain inside the ADR-021 budget of < 3 ms for the phase-boundary spike.
 - Settlement cleanup is O(1): clear the in-flight bid flag, pending accepted/gold gate flags, queued late accepted/rejected state, and one settlement state resource/component.
 - Transition work updates pre-pooled panel/overlay/timer entities and animation targets only; do not allocate or spawn/despawn per frame during steady state.
 
@@ -95,24 +97,23 @@ This story handles terminal auction settlement, winner/no-bid presentation, card
 
 ## Test Evidence
 
-**Required evidence**:
-- Visual/Feel: `production/qa/evidence/shop-auction-ui-settlement-transition-evidence.md`
-- Integration support: `tests/integration/shop_auction_ui/auction_settlement_test.rs`
+**Required evidence paths**:
+- Visual/Feel evidence: `production/qa/evidence/shop-auction-ui-settlement-transition-evidence.md`
+- Integration support test: `tests/integration/shop_auction_ui/auction_settlement_test.rs`
+- Expected test command: `cargo test -p client --test shop_auction_ui_auction_settlement_test`
 
 **Status**: [ ] Not yet created
 
 ## Dependencies
 
-- Depends on: [Story 004](story-004-auction-panel-activation-and-preparing-state.md) - must be implemented and marked Complete before SAU-007 `/dev-story`; provides active auction panel state, preparing/activation buffers, locked footer boundary, and auction timer source.
-- Depends on: [Story 005](story-005-auction-bid-buttons-affordability-and-inflight.md) - must be implemented and marked Complete before SAU-007 `/dev-story`; provides bid button state, local affordability/in-flight flags, leader replacement state, and locally-expired state that settlement clears.
-- Depends on: [Story 006](story-006-auction-accepted-rejected-feedback.md) - must be implemented and marked Complete before SAU-007 `/dev-story`; provides accepted/rejected message handling, late-message guards, and the two-message gold gate state that settlement clears.
-- Depends on: Auction System settlement dispatch, including `S2CAuctionSettled` broadcast and auction-win `S2CCardAcquired { source: AuctionWon }` unicast from auction code, not Card Acquisition shop/draft dispatch.
-- Depends on: Card Acquisition shop slot data for pre-populated DRAFT_SHOP slots; auction-win card acquisition is not owned by Card Acquisition shop/draft dispatch.
+- Depends on: [Story 004](story-004-auction-panel-activation-and-preparing-state.md) - Complete; provides active auction panel state, preparing/activation buffers, locked footer boundary, and auction timer source.
+- Depends on: [Story 005](story-005-auction-bid-buttons-affordability-and-inflight.md) - Complete; provides bid button state, local affordability/in-flight flags, leader replacement state, and locally-expired state that settlement clears.
+- Depends on: [Story 006](story-006-auction-accepted-rejected-feedback.md) - Complete; provides accepted/rejected message handling, late-message guards, and the two-message gold gate state that settlement clears.
+- Depends on: Auction System Story 006 - Complete; provides settlement dispatch, including `S2CAuctionSettled` broadcast and auction-win `S2CCardAcquired { source: AuctionWon }` unicast from auction code, not Card Acquisition shop/draft dispatch.
+- Depends on: Card Acquisition draw/slot pipeline and Card Data Pool network dispatch - Complete; provides pre-populated DRAFT_SHOP slots. Auction-win card acquisition is not owned by Card Acquisition shop/draft dispatch.
 - Unlocks: Story 008 and post-auction shop visual path.
 
 ## Blockers
 
-- SAU-004 is currently `Ready`, not `Complete`.
-- SAU-005 is currently `Ready`, not `Complete`.
-- SAU-006 is currently `Blocked`, not `Complete`.
-- `/dev-story` safe next: No. Launch only after SAU-004, SAU-005, and SAU-006 are Complete.
+- None.
+- `/dev-story` safe next: Yes. SAU-004, SAU-005, and SAU-006 are Complete.
