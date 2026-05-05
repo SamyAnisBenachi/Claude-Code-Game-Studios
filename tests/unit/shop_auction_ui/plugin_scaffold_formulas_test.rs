@@ -6,7 +6,7 @@ use client::ui::shop_auction::{
     auction_border_color_tier, bid_button_label_texts, local_free_gold, AuctionBorderColorTier,
     ShopAuctionPanelRoot, ShopAuctionUiEntities, ShopAuctionUiEntity, ShopAuctionUiMode,
     ShopAuctionUiPlugin, SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT,
-    SHOP_AUCTION_UI_PANEL_ROOT_COUNT,
+    SHOP_AUCTION_UI_PANEL_ROOT_COUNT, SHOP_AUCTION_UI_SHOP_SLOT_COUNT,
 };
 use shared::protocol::RoundPhase;
 
@@ -31,7 +31,11 @@ fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
     );
     assert_eq!(
         count_with::<ShopAuctionUiEntity>(&mut app),
-        1 + SHOP_AUCTION_UI_PANEL_ROOT_COUNT * 2 + SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT * 2 + 3
+        1 + SHOP_AUCTION_UI_PANEL_ROOT_COUNT * 2
+            + SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT * 2
+            + 3
+            + SHOP_AUCTION_UI_SHOP_SLOT_COUNT
+            + 4
     );
 
     for panel_root in entities.panel_roots() {
@@ -120,7 +124,7 @@ fn shop_auction_ui_phase_visibility_reads_current_phase_resource() {
     );
     assert_eq!(
         app.world().get::<Visibility>(entities.shop_panel),
-        Some(&Visibility::Visible)
+        Some(&Visibility::Hidden)
     );
     assert_eq!(
         app.world().get::<Visibility>(entities.auction_panel),
