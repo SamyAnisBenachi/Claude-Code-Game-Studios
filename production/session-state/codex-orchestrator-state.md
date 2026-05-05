@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-04
+Updated: 2026-05-05
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -244,6 +244,17 @@ None currently tracked here.
   is now marked Blocked on Story 005, NP-005, ECO-007, BLS-011, and PRES-002.
   Final blocker chain: `NP-005 + ECO-007 -> BLS-011`; `BLS-011 + PRES-002 ->
   HAND-UI-010`.
+- PRES-002 / Presentation Layer Story 002 readiness returned READY with no file
+  changes or commit. Story:
+  `production/epics/presentation-layer/story-002-shared-economy-view.md`.
+  `TR-PRES-001` is active; manifest version `2026-05-05` matches the control
+  manifest; ADR-021, ADR-002, ADR-008, and ADR-019 are Accepted;
+  Presentation Story 001 is Complete; `S2CGoldUpdate`, `S2CGameSnapshot`, and
+  `PlayerSnapshot` exist; no unresolved markers or asset references were found.
+  `/dev-story` is safe next. Future implementation should use `liv-bevy-018`,
+  plus `liv-bevy-lightyear` if touching `MessageReceiver<S2CGoldUpdate>` or
+  other Lightyear drain code. HAND-UI-010 remains blocked until PRES-002 is
+  implemented, not just readiness-cleared.
 - SHOP-AUCTION-UI-001 implementation worker returned and was integrated/pushed
   to `origin/main` as `2dbc988`. Worker branch
   `work/sau-001-plugin-scaffold-formulas` returned at `733158c`. Verification
@@ -1210,6 +1221,8 @@ Current active windows by user default-launch rule:
 - HAND-UI-010 prerequisite docs writer returned and pushed `935f090`; window can
   be cleared. Next safe work is readiness/dev sequencing for NP-005, ECO-007,
   and PRES-002; BLS-011 waits for NP-005 + ECO-007.
+- PRES-002 readiness returned READY; readiness window can be cleared. PRES-002
+  `/dev-story` is safe to launch now and remains a prerequisite for HAND-UI-010.
 - Shop/Auction UX readiness check returned; window can be cleared.
 - Shop/Auction UX review finish returned NEEDS REVISION; window can be cleared
   after recording repair scope. Use `REPONDRE` only if launching the UX repair
