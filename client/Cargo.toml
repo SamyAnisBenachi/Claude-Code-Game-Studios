@@ -36,6 +36,10 @@ path = "src/main.rs"
 name = "board_rendering_perf_harness"
 path = "src/board_rendering_perf_harness.rs"
 
+[[bin]]
+name = "hud_mana_shapes_harness"
+path = "src/hud_mana_shapes_harness.rs"
+
 [[test]]
 name = "card_animations_plugin_scaffold_test"
 path = "../tests/unit/card-animations/plugin_scaffold_test.rs"
@@ -47,6 +51,10 @@ path = "../tests/unit/hud/hud_plugin_scaffold_test.rs"
 [[test]]
 name = "hud_gold_mana_display_test"
 path = "../tests/unit/hud/gold_mana_display_test.rs"
+
+[[test]]
+name = "hud_mana_shape_distinction_test"
+path = "../tests/unit/hud/mana_shape_distinction_test.rs"
 
 [[test]]
 name = "hand_ui_plugin_scaffold_test"

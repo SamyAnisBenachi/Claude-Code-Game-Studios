@@ -19,7 +19,11 @@ use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
 pub const HUD_DOT_ROWS: usize = 2;
 pub const HUD_DOTS_PER_ROW: usize = 5;
-pub const HUD_ENTITY_COUNT: usize = 18;
+pub const HUD_ENTITY_COUNT: usize = 19;
+pub const CURRENT_MANA_BAR_WIDTH_PX: f32 = 104.0;
+pub const CURRENT_MANA_BAR_HEIGHT_PX: f32 = 28.0;
+pub const RESERVE_MANA_DIAMOND_SIZE_PX: f32 = 74.0;
+pub const RESERVE_MANA_DIAMOND_ROTATION_DEGREES: f32 = 45.0;
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HudSystemSet {
@@ -70,6 +74,7 @@ pub struct HudEntities {
     pub opponent_gold_parent: Entity,
     pub opponent_gold_span: Entity,
     pub mana_label: Entity,
+    pub reserve_container: Entity,
     pub reserve_label: Entity,
     pub dots: [[Entity; HUD_DOTS_PER_ROW]; HUD_DOT_ROWS],
 }
@@ -91,6 +96,26 @@ pub struct ManaLabel;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReserveManaLabel;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CurrentManaShape;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReserveManaShape;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ManaShapeKind {
+    Bar,
+    Diamond,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
+pub struct ManaShapeGeometry {
+    pub kind: ManaShapeKind,
+    pub width_px: f32,
+    pub height_px: f32,
+    pub rotation_degrees: f32,
+}
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GoldLabelOwner {
@@ -444,16 +469,10 @@ fn spawn_hud(mut commands: Commands, config: Res<HudConfig>, existing: Option<Re
         &mut commands,
         root,
         "HUD Mana Label",
-        bottom_left_node(config.hud_margin_px, 0.0),
+        current_mana_bar_node(config.hud_margin_px),
     );
-    let reserve_label = spawn_text_label(
-        &mut commands,
-        root,
-        "HUD Reserve Mana Label",
-        "",
-        ReserveManaLabel,
-        bottom_left_node(config.hud_margin_px, 22.0),
-    );
+    let (reserve_container, reserve_label) =
+        spawn_reserve_mana_label(&mut commands, root, config.hud_margin_px);
     let dots = spawn_scoreboard_dots(&mut commands, root, &config);
 
     commands.insert_resource(HudEntities {
@@ -465,6 +484,7 @@ fn spawn_hud(mut commands: Commands, config: Res<HudConfig>, existing: Option<Re
         opponent_gold_parent,
         opponent_gold_span,
         mana_label,
+        reserve_container,
         reserve_label,
         dots,
     });
@@ -511,16 +531,67 @@ fn spawn_mana_label(
             Name::new(name),
             HudEntity,
             ManaLabel,
+            CurrentManaShape,
+            ManaShapeGeometry {
+                kind: ManaShapeKind::Bar,
+                width_px: CURRENT_MANA_BAR_WIDTH_PX,
+                height_px: CURRENT_MANA_BAR_HEIGHT_PX,
+                rotation_degrees: 0.0,
+            },
             ManaDisplayState::default(),
             ManaTweenTarget::default(),
             Text::new("-- / --"),
             hud_text_font(18.0),
             TextColor(Color::srgb(0.92, 0.94, 0.96)),
+            BackgroundColor(current_mana_bar_fill()),
+            BorderColor::all(current_mana_bar_border()),
             node,
             Visibility::Hidden,
             ChildOf(parent),
         ))
         .id()
+}
+
+fn spawn_reserve_mana_label(
+    commands: &mut Commands,
+    parent: Entity,
+    margin_px: f32,
+) -> (Entity, Entity) {
+    let container = commands
+        .spawn((
+            Name::new("HUD Reserve Mana Diamond"),
+            HudEntity,
+            ReserveManaShape,
+            ManaShapeGeometry {
+                kind: ManaShapeKind::Diamond,
+                width_px: RESERVE_MANA_DIAMOND_SIZE_PX,
+                height_px: RESERVE_MANA_DIAMOND_SIZE_PX,
+                rotation_degrees: RESERVE_MANA_DIAMOND_ROTATION_DEGREES,
+            },
+            reserve_mana_diamond_node(margin_px),
+            UiTransform::from_rotation(Rot2::degrees(RESERVE_MANA_DIAMOND_ROTATION_DEGREES)),
+            BackgroundColor(reserve_mana_diamond_fill()),
+            BorderColor::all(reserve_mana_diamond_border()),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id();
+    let label = commands
+        .spawn((
+            Name::new("HUD Reserve Mana Label"),
+            HudEntity,
+            ReserveManaLabel,
+            Text::new(""),
+            hud_text_font(14.0),
+            TextColor(Color::srgb(0.92, 0.94, 0.96)),
+            reserve_mana_label_node(),
+            UiTransform::from_rotation(Rot2::degrees(-RESERVE_MANA_DIAMOND_ROTATION_DEGREES)),
+            Visibility::Hidden,
+            ChildOf(container),
+        ))
+        .id();
+
+    (container, label)
 }
 
 fn spawn_gold_label(
@@ -1006,6 +1077,7 @@ pub fn sync_gold_text_system(
 }
 
 pub fn sync_mana_text_system(
+    entities: Option<Res<HudEntities>>,
     mut mana_labels: Query<
         (
             &ManaDisplayState,
@@ -1015,15 +1087,13 @@ pub fn sync_mana_text_system(
         ),
         With<ManaLabel>,
     >,
-    mut reserve_labels: Query<
-        (&mut Text, &mut Visibility),
-        (With<ReserveManaLabel>, Without<ManaLabel>),
-    >,
+    mut reserve_labels: Query<&mut Text, (With<ReserveManaLabel>, Without<ManaLabel>)>,
+    mut visibility: Query<&mut Visibility>,
 ) {
     let Ok((state, mut target, mut mana_text, animator)) = mana_labels.single_mut() else {
         return;
     };
-    let Ok((mut reserve_text, mut reserve_visibility)) = reserve_labels.single_mut() else {
+    let Ok(mut reserve_text) = reserve_labels.single_mut() else {
         return;
     };
 
@@ -1034,7 +1104,7 @@ pub fn sync_mana_text_system(
     if !target.is_populated {
         mana_text.0 = "-- / --".to_string();
         reserve_text.0.clear();
-        *reserve_visibility = Visibility::Hidden;
+        set_reserve_mana_visibility(&entities, &mut visibility, Visibility::Hidden);
         return;
     }
 
@@ -1044,12 +1114,13 @@ pub fn sync_mana_text_system(
         display_numeric_value(target.mana_cap)
     );
 
-    if display_numeric_value(target.reserve_mana) > 0 {
-        reserve_text.0 = format!("+{} reserve", display_numeric_value(target.reserve_mana));
-        *reserve_visibility = Visibility::Visible;
+    if state.reserve_mana > 0 {
+        let reserve_value = display_numeric_value(target.reserve_mana).max(1);
+        reserve_text.0 = format!("+{} reserve", reserve_value);
+        set_reserve_mana_visibility(&entities, &mut visibility, Visibility::Visible);
     } else {
         reserve_text.0.clear();
-        *reserve_visibility = Visibility::Hidden;
+        set_reserve_mana_visibility(&entities, &mut visibility, Visibility::Hidden);
     }
 }
 
@@ -1376,6 +1447,19 @@ fn set_hud_visible(entities: &HudEntities, visibility: &mut Query<&mut Visibilit
     }
 }
 
+fn set_reserve_mana_visibility(
+    entities: &Option<Res<HudEntities>>,
+    visibility: &mut Query<&mut Visibility>,
+    target_visibility: Visibility,
+) {
+    let Some(entities) = entities else {
+        return;
+    };
+
+    set_visibility(visibility, entities.reserve_container, target_visibility);
+    set_visibility(visibility, entities.reserve_label, target_visibility);
+}
+
 fn cancel_hud_numeric_tweens(
     commands: &mut Commands,
     animators: &mut Query<(Entity, &mut TweenAnim), Or<(With<GoldLabelOwner>, With<ManaLabel>)>>,
@@ -1418,6 +1502,22 @@ fn alive_dot_border() -> Color {
 
 fn destroyed_dot_border() -> Color {
     Color::srgba(0.30, 0.32, 0.35, 0.70)
+}
+
+fn current_mana_bar_fill() -> Color {
+    Color::srgba(0.05, 0.18, 0.24, 0.82)
+}
+
+fn current_mana_bar_border() -> Color {
+    Color::srgba(0.72, 0.94, 1.0, 0.92)
+}
+
+fn reserve_mana_diamond_fill() -> Color {
+    Color::srgba(0.07, 0.13, 0.30, 0.82)
+}
+
+fn reserve_mana_diamond_border() -> Color {
+    Color::srgba(0.68, 0.78, 1.0, 0.92)
 }
 
 fn sync_gold_label_for_mode(
@@ -1619,11 +1719,46 @@ fn top_right_node(margin_px: f32, top_offset_px: f32) -> Node {
     }
 }
 
-fn bottom_left_node(margin_px: f32, bottom_offset_px: f32) -> Node {
+fn current_mana_bar_node(margin_px: f32) -> Node {
     Node {
         position_type: PositionType::Absolute,
         left: Val::Px(margin_px),
-        bottom: Val::Px(margin_px + bottom_offset_px),
+        bottom: Val::Px(margin_px),
+        width: Val::Px(CURRENT_MANA_BAR_WIDTH_PX),
+        height: Val::Px(CURRENT_MANA_BAR_HEIGHT_PX),
+        min_width: Val::Px(CURRENT_MANA_BAR_WIDTH_PX),
+        min_height: Val::Px(CURRENT_MANA_BAR_HEIGHT_PX),
+        padding: UiRect::axes(Val::Px(10.0), Val::Px(3.0)),
+        border: UiRect::all(Val::Px(2.0)),
+        border_radius: BorderRadius::all(Val::Px(4.0)),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        ..default()
+    }
+}
+
+fn reserve_mana_diamond_node(margin_px: f32) -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(margin_px + 9.0),
+        bottom: Val::Px(margin_px + 42.0),
+        width: Val::Px(RESERVE_MANA_DIAMOND_SIZE_PX),
+        height: Val::Px(RESERVE_MANA_DIAMOND_SIZE_PX),
+        min_width: Val::Px(RESERVE_MANA_DIAMOND_SIZE_PX),
+        min_height: Val::Px(RESERVE_MANA_DIAMOND_SIZE_PX),
+        border: UiRect::all(Val::Px(2.0)),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        ..default()
+    }
+}
+
+fn reserve_mana_label_node() -> Node {
+    Node {
+        width: Val::Px(104.0),
+        height: Val::Px(24.0),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
         ..default()
     }
 }
