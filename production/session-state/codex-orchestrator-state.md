@@ -175,6 +175,23 @@ None currently tracked here.
 - COMBAT-011 / S5-20 dev-story has been launched with worker Hilbert on the
   existing COMBAT-011 worktree/branch. Await the implementation return; do not
   launch a second COMBAT-011 worker.
+- COMBAT-011 worker Hilbert returned blocked at commit/push approval before
+  creating a commit. Worktree:
+  `D:\_DEV\claude-code-game-studios-worktrees\COMBAT-011`, branch
+  `work/combat-011-resolution-event-log`. Staged files reported:
+  `shared/src/protocol.rs`, `server/src/feature/combat/mod.rs`,
+  `server/src/feature/objective/system.rs`, `server/Cargo.toml`,
+  `tests/integration/combat/resolution_event_log_test.rs`,
+  `tests/integration/objective/resolution_sync_test.rs`,
+  `tests/unit/combat/movement_collision_test.rs`, and
+  `tests/unit/combat/substep1_placement_test.rs`. Verification passed before
+  commit: `cargo fmt -p server -- --check`, `cargo fmt -p shared -- --check`,
+  `cargo test -p server --test resolution_event_log_test`, combat regression
+  slice including prior combat sub-step tests and `objective_resolution_sync_test`,
+  `cargo check -p server`, and `git diff --check`. Branch is behind
+  `origin/main` by 6 commits; after explicit approval, worker must commit the
+  staged scope, fetch/rebase on latest `origin/main`, rerun verification, and
+  push only `origin/work/combat-011-resolution-event-log`.
 - Shop/Auction UI UX review finished with verdict NEEDS REVISION. It is not a
   major redesign and does not block SAU-001, but it blocks clean final
   visual/accessibility handoff and SAU-009. Full blockers: bid accessibility
@@ -1121,7 +1138,8 @@ Batch launched:
 
 Active implementation workers by default-launch rule:
 - COMBAT-011 dev-story launched with worker Hilbert on the existing COMBAT-011
-  worktree/branch; await return and do not relaunch.
+  worktree/branch. Worker is blocked waiting for explicit approval to commit
+  staged changes and push `work/combat-011-resolution-event-log`; do not relaunch.
 - Full-game asset coverage audit, card art coverage audit, and UI/audio/VFX
   coverage audit have returned. The full-game asset manifest/spec expansion was
   committed at `bbde404`; no asset audit window remains active.
