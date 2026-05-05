@@ -44,13 +44,13 @@ stories:
     name: "Browser/WASM board performance evidence"
     file: "production/qa/bugs/QA-COND-0004-browser-wasm-board-performance-capture.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "performance analyst + client programmer"
     estimate_days: 1.50
     blocker: ""
-    completed: ""
+    completed: "2026-05-05"
     notes:
-      - "Requires 1920x1080 browser/WASM capture, nonblank framed board evidence, frame timing, and ADR-021 budget observations."
+      - "BOARD-012 browser/WASM capture exists with nonblank 1920x1080 board evidence, corrected timing verdict PASS, and QA-COND-0004 closed."
 
   - id: "S6-04"
     name: "Standard-tier accessibility remediation and verification"

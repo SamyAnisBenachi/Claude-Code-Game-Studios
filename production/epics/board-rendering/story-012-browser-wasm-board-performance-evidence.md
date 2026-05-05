@@ -1,7 +1,7 @@
 # Story 012: Browser/WASM Board Performance Evidence
 
 > **Epic**: Board Rendering
-> **Status**: Blocked
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Config/Data
 > **Manifest Version**: 2026-05-05
@@ -15,7 +15,7 @@
 **Engine**: Bevy 0.18 + Lightyear 0.26 + browser/WASM target | **Risk**: HIGH
 **Engine Notes**: Use `liv-bevy-018` for Bevy rendering or harness code. Use `liv-bevy-lightyear` only if implementation touches Lightyear receiver or protocol code.
 
-BOARD-010 created native baseline guard evidence for the narrowed BOARD-002/003 visible board path and documented the remaining browser/WASM capture blocker. This story is the Sprint 6 S6-03 follow-up that turns that blocker into a repeatable browser/WASM evidence path. The goal is evidence: a render-capable harness, a deterministic post-reveal baseline fixture, a 1920x1080 nonblank screenshot, frame timing, and an updated evidence document.
+BOARD-010 created native baseline guard evidence for the narrowed BOARD-002/003 visible board path and documented the browser/WASM capture gap that BOARD-012 now closes. This story is the Sprint 6 S6-03 follow-up that turns that gap into a repeatable browser/WASM evidence path. The goal is evidence: a render-capable harness, a deterministic post-reveal baseline fixture, a 1920x1080 nonblank screenshot, frame timing, and an updated evidence document.
 
 This story does not claim final Board Rendering epic closure. It measures only the narrowed BOARD-010 baseline: board grid/camera/Z layers, snapshot-spawned units, standing objectives, and HP bars.
 
@@ -127,31 +127,30 @@ The baseline must exclude status icons, spawn range highlights, traps, and final
 
 **Asset reference note**: the `.png`, `.json`, and `.log` paths above are future output artifacts for this story, not pre-existing input assets. They are expected not to exist before BOARD-012 implementation.
 
-**Status**: [ ] Browser capture blocked. The harness and capture path are implemented, but the required 1920x1080 browser screenshot and browser/WASM timing artifacts were not produced because `trunk`, `node`, and a browser executable were unavailable on PATH during story-done verification.
+**Status**: [x] Browser/WASM capture completed. The required 1920x1080 screenshot and browser/WASM timing trace exist under `production/qa/evidence/captures/`; the corrected timing verdict passes, and `QA-COND-0004` is closed.
 
 ## Dependencies
 
-- Depends on: [Story 010](story-010-performance-evidence-and-ci-guards.md), which created the narrowed BOARD-010 baseline guard evidence and documented the browser/WASM capture blocker.
+- Depends on: [Story 010](story-010-performance-evidence-and-ci-guards.md), which created the narrowed BOARD-010 baseline guard evidence and documented the browser/WASM capture gap that BOARD-012 now closes.
 - Supporting completed baseline: [Story 002](story-002-board-grid-camera-and-z-layers.md) and [Story 003](story-003-snapshot-spawn-units-objectives-and-hp-bars.md).
-- Unlocks: Sprint 6 S6-03 evidence for QA-COND-0004 browser/WASM board performance capture.
+- Unlocks: Sprint 6 S6-03 evidence for QA-COND-0004 browser/WASM board performance capture. QA-COND-0004 is now closed by the captured browser/WASM evidence.
 
-## Story Done Review Notes
+## Completion Notes
 
-**Reviewed**: 2026-05-05
+**Completed**: 2026-05-05
 
-**Verdict**: BLOCKED - the BOARD-012 harness implementation is integrated and verified, but the story cannot be marked Complete because the required browser/WASM screenshot and timing artifacts were not produced.
+**Verdict**: COMPLETE WITH NOTES
 
-**Integrated implementation**: Worker commit reviewed: `8e0fce4772c0164ba3a879e081575f2576e3d473`. The integration branch was rebased on `origin/main` during story-done verification.
+**Criteria**: 10/10 satisfied by current evidence. The browser/WASM harness seed, fixture counts, 1920x1080 viewport capture, nonblank 5-lane board image, total browser RAF frame timing, ADR-021 steady-state presentation timing, corrected snapshot rebuild timing, evidence update, scope guard, and failure handling requirements are all covered by `production/qa/evidence/board-rendering-performance-evidence.md` and the capture artifacts.
 
-**Verified coverage**:
-- Harness binary and WASM target build check pass.
-- Baseline fixture coverage verifies 5 lanes, 40 board cells, 20 visible units, 10 objectives, HP bars on every visible unit, and post-reveal-ready state.
-- The fixture excludes BOARD-009 status-icon final evidence, spawn range highlights, traps, final VFX, and full Board Rendering epic closure claims.
-- `production/qa/evidence/board-rendering-performance-evidence.md` records the capture commands, artifact paths, fixture counts, and explicit blocker.
+**Test Evidence**: Browser/WASM evidence exists at `production/qa/evidence/board-rendering-performance-evidence.md`. Required artifacts exist at `production/qa/evidence/captures/board-rendering-baseline-1920x1080.png` and `production/qa/evidence/captures/board-rendering-baseline-timing.json`. The screenshot is 1920x1080 and nonblank. The timing trace reports 5 lanes, 40 board cells, 20 visible units, 10 objectives, 20 HP bars, seed `board-rendering-baseline-v1`, browser RAF max 6.0 ms against the <=16.67 ms total-frame budget, steady-state presentation max 0.2 ms against the <1 ms budget, seeded full snapshot rebuild 3.3 ms against `BR-RECONNECT-TIME` <=16.67 ms, and `board012BudgetPass=true`.
 
-**Blocked acceptance criteria**:
-- Viewport capture and nonblank board evidence remain unverified because `production/qa/evidence/captures/board-rendering-baseline-1920x1080.png` was not produced.
-- Browser total frame timing and ADR-021 steady/spike budget verdicts remain unverified because `production/qa/evidence/captures/board-rendering-baseline-timing.json` was not produced.
-- Evidence remains partial because it does not contain raw browser timing values, browser environment details, or browser budget pass/fail verdicts.
+**Deviations / Notes**: None blocking. Evidence correction commit `7d64cd766d02b0c2888124d7e23debf29fd53d16` corrected the BOARD-012 timing classification: browser RAF owns the total-frame verdict, Bevy `Time<Real>` total-frame samples are diagnostic only, the seeded full snapshot rebuild is compared to `BR-RECONNECT-TIME`, and ADR-021's <3 ms phase-boundary presentation spike budget remains documented for true hide/show/cancel-tween phase work rather than full snapshot rebuild. That true phase-boundary spike was not claimed as newly sampled by BOARD-012.
 
-**QA-COND-0004**: Remains Open / Needs Evidence.
+**QA Condition**: `production/qa/bugs/QA-COND-0004-browser-wasm-board-performance-capture.md` is Closed / N/A - Closed, and `production/qa/bug-register-taxonomy.md` records QA-COND-0004 as closed after the BOARD-012 browser/WASM capture passed corrected timing budgets.
+
+**Scope Guard**: This closure does not change board rendering behavior, does not touch `design/assets/**`, does not touch `AGENTS.md`, does not touch `production/session-state/codex-orchestrator-state.md`, and does not claim full Board Rendering epic closure.
+
+**Code Review**: Lean story-done mode applied because `production/review-mode.txt` is `lean`; external QL-TEST-COVERAGE and LP-CODE-REVIEW gates were skipped for this docs/status closure repair.
+
+**Verification Notes**: Closure repair verified the evidence document, QA-COND-0004 bug file, bug register taxonomy, capture artifacts, timing trace, and BOARD-012 acceptance criteria. `production/sprint-status.yaml` contains the matching S6-03 row and was updated to `done` with `completed: "2026-05-05"`.

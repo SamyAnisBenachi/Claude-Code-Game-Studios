@@ -2037,3 +2037,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; S6-04 tracks the broader QA-COND-0005 remediation condition, so this sub-gap verification does not legitimately close that sprint row.
 - Next recommended: Continue remaining Standard-tier accessibility evidence/disposition work before using S6-04 or QA-COND-0005 for Production -> Polish gate closure.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-rendering/story-012-browser-wasm-board-performance-evidence.md` - Story 012: Browser/WASM Board Performance Evidence
+- Criteria: 10/10 satisfied by current browser/WASM evidence; harness seed, fixture counts, 1920x1080 capture, nonblank 5-lane board, browser RAF total-frame timing, ADR-021 steady-state presentation timing, corrected snapshot rebuild timing, evidence update, scope guard, and failure handling are covered.
+- Test Evidence: `production/qa/evidence/board-rendering-performance-evidence.md`; `production/qa/evidence/captures/board-rendering-baseline-1920x1080.png`; `production/qa/evidence/captures/board-rendering-baseline-timing.json`. The trace reports browser RAF max 6.0 ms <=16.67 ms, steady-state presentation max 0.2 ms <1 ms, seeded full snapshot rebuild 3.3 ms <=16.67 ms, and `board012BudgetPass=true`.
+- QA condition: `QA-COND-0004` is Closed / N/A - Closed in both the bug file and taxonomy.
+- Notes: Evidence correction commit `7d64cd766d02b0c2888124d7e23debf29fd53d16` corrected the timing classification. ADR-021's <3 ms phase-boundary presentation spike budget remains documented for true hide/show/cancel-tween phase work and is not claimed as newly sampled by BOARD-012. No board rendering behavior, `design/assets/**`, `AGENTS.md`, `production/session-state/codex-orchestrator-state.md`, or unrelated QA-COND files were touched. No full Board Rendering epic closure is claimed.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` matching S6-03 row set to `done` with `completed: "2026-05-05"`.
+- Next recommended: S6-01, S6-02, and S6-04 remain open; S6-06 final re-smoke / QA sign-off / gate-check remains blocked until S6-01 through S6-05 are complete or explicitly reclassified.
