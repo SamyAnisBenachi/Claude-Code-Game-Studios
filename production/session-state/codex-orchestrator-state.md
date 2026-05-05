@@ -1339,6 +1339,10 @@ Current active windows by user default-launch rule:
 - Shop/Auction UX repair returned and pushed `a3739db`; window can be cleared.
   SAU-005/006 are no longer blocked by the bid-confirmation conflict. SAU-009
   remains blocked by implementation/evidence prerequisites.
+- SAU-003 readiness returned NEEDS WORK with no hard blockers. Window can be
+  cleared after launching a docs-only repair for stale manifest `2026-05-01`,
+  coarse/stale GDD trace, missing current control-manifest notes, missing
+  UI/message-path performance note, and imprecise upstream dependency wording.
 - SHOP-AUCTION-UI-001 implementation/story-done windows and BOARD-RENDERING-002
   implementation/story-done windows can be cleared. Root committed and pushed
   both story-done closures together at `3222be0` after both official closure
