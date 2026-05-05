@@ -36,6 +36,7 @@ fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
             + 3
             + SHOP_AUCTION_UI_SHOP_SLOT_COUNT
             + 4
+            + 9
     );
 
     for panel_root in entities.panel_roots() {
@@ -101,15 +102,15 @@ fn shop_auction_ui_phase_visibility_reads_current_phase_resource() {
     let entities = *app.world().resource::<ShopAuctionUiEntities>();
     assert_eq!(
         app.world().get_resource::<ShopAuctionUiMode>(),
-        Some(&ShopAuctionUiMode::Auction)
+        Some(&ShopAuctionUiMode::Inactive)
     );
     assert_eq!(
         app.world().get::<Visibility>(entities.auction_panel),
-        Some(&Visibility::Visible)
+        Some(&Visibility::Hidden)
     );
     assert_eq!(
         app.world().get::<Visibility>(entities.shop_footer),
-        Some(&Visibility::Visible)
+        Some(&Visibility::Hidden)
     );
     assert_eq!(
         app.world().get::<Visibility>(entities.draft_offering_panel),

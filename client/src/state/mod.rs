@@ -49,5 +49,11 @@ pub fn apply_phase_changed_message(msg: S2CPhaseChanged, current: &mut CurrentCl
     current.round = round_number;
 }
 
+pub fn apply_phase_view_message(msg: &S2CPhaseChanged, phase_view: &mut ClientPhaseView) {
+    phase_view.phase = msg.phase;
+    phase_view.round_number = msg.round_number;
+    phase_view.timer_duration_ms = msg.timer_duration_ms;
+}
+
 #[derive(Message, Debug, Clone)]
 pub struct ClientGameSnapshotMessage(pub S2CGameSnapshot);
