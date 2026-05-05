@@ -226,6 +226,7 @@ fn snapshot_with_units(units: Vec<UnitBoardState>) -> S2CGameSnapshot {
         round_number: 4,
         phase: RoundPhase::Placement,
         timer_remaining_ms: Some(20_000),
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
         players: vec![player_snapshot(player(1)), player_snapshot(player(2))],
         board: BoardSnapshot { units, ..default() },
         auction_state: None,

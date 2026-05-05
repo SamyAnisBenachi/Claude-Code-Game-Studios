@@ -111,7 +111,10 @@ fn test_os18b_two_clients_observe_only_final_objective_hp_after_same_substep_dam
     let client_a_observations = observations(&client_a);
     let client_b_observations = observations(&client_b);
 
-    assert_eq!(server_hp, 0, "server ObjectiveHp must saturate both damage calls");
+    assert_eq!(
+        server_hp, 0,
+        "server ObjectiveHp must saturate both damage calls"
+    );
     assert_eq!(
         queued,
         vec![ObjectiveDestroyed {
@@ -229,10 +232,7 @@ fn record_player_connections(
     mut commands: Commands,
     peers: Query<&RemoteId, (With<ClientOf>, With<ReplicationSender>)>,
 ) {
-    let mut connections = peers
-        .iter()
-        .map(|remote| remote.0)
-        .collect::<Vec<_>>();
+    let mut connections = peers.iter().map(|remote| remote.0).collect::<Vec<_>>();
     connections.sort_by_key(|peer| format!("{peer:?}"));
 
     let mut map = HashMap::new();
@@ -256,9 +256,10 @@ fn record_objective_hp_observations(
         return;
     }
 
-    observations
-        .values
-        .extend(hp.iter().filter_map(|hp| (hp.hp != INITIAL_HP).then_some(hp.hp)));
+    observations.values.extend(
+        hp.iter()
+            .filter_map(|hp| (hp.hp != INITIAL_HP).then_some(hp.hp)),
+    );
 }
 
 fn initialize_objective_fixture(server_app: &mut App) {

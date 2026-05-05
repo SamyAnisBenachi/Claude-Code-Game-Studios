@@ -22,6 +22,7 @@ fn session_config(players: [PlayerId; 2]) -> SessionConfig {
         player_count: players.len() as u8,
         team_map: HashMap::from([(players[0], 1 as TeamId), (players[1], 2 as TeamId)]),
         class_map: HashMap::from([(players[0], ClassId::Iop), (players[1], ClassId::Cra)]),
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
     }
 }
 

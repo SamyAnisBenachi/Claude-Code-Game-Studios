@@ -17,7 +17,7 @@ use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
 };
 use crate::presentation::PlayerEconomyView;
-use crate::state::{ClientState, CurrentClientPhase};
+use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 pub const HAND_FAN_SLOT_COUNT: usize = 10;
@@ -692,6 +692,7 @@ impl Plugin for HandUiPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<ClientState>()
             .init_resource::<CurrentClientPhase>()
+            .init_resource::<ClientPhaseView>()
             .init_resource::<HandFanLayoutConfig>()
             .init_resource::<HandFanViewport>()
             .init_resource::<HandFanLayoutState>()
@@ -881,6 +882,7 @@ pub fn sync_reserve_strip_state_system(
 
 pub fn hand_ui_phase_transition_system(
     current: Res<CurrentClientPhase>,
+    phase_view: Res<ClientPhaseView>,
     hand_contents: Res<HandContents>,
     timer_config: Res<PlacementTimerConfig>,
     mut mode: ResMut<HandUiMode>,
@@ -1002,7 +1004,12 @@ pub fn hand_ui_phase_transition_system(
     }
 
     if entering_staging {
-        placement_timer.reset_for_placement(timer_config.placement_duration_ms);
+        let duration_ms = server_placement_timer_duration_ms(
+            &current,
+            &phase_view,
+            timer_config.placement_duration_ms,
+        );
+        placement_timer.reset_for_placement(duration_ms);
         commands
             .entity(entities.submit_button)
             .remove::<SubmitValidationError>();
@@ -1015,6 +1022,22 @@ pub fn hand_ui_phase_transition_system(
             text.0.push_str("Submit (0 cards)");
             *interaction_state = HandSubmitInteractionState::Active;
         }
+    }
+}
+
+fn server_placement_timer_duration_ms(
+    current: &CurrentClientPhase,
+    phase_view: &ClientPhaseView,
+    fallback_ms: u32,
+) -> u32 {
+    if current.phase == RoundPhase::Placement
+        && phase_view.phase == RoundPhase::Placement
+        && phase_view.round_number == current.round
+        && phase_view.timer_duration_ms > 0
+    {
+        phase_view.timer_duration_ms
+    } else {
+        fallback_ms
     }
 }
 

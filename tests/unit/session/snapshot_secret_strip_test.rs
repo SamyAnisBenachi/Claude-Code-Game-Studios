@@ -48,6 +48,7 @@ fn insert_session(world: &mut World, players: &[PlayerId]) {
         player_count: players.len() as u8,
         team_map,
         class_map,
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
     });
     world.insert_resource(sessions);
 }

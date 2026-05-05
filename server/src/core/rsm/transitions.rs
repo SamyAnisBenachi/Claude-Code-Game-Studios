@@ -8,6 +8,8 @@ use super::events::{
 use super::state::{
     GameOverRequest, PendingPhaseAdvance, PhaseAdvanceRequest, RoundPhase, RoundState,
 };
+use std::time::Duration;
+
 use crate::core::objective_contract::ObjectiveCounters;
 use crate::core::session::{
     LobbyHeartbeats, PlayerConnectionMap, PlayerSessions, SessionConfig, SessionReady,
@@ -361,16 +363,15 @@ pub fn advance_phase(
             rsm.draft_shop_timer = None;
             rsm.draft_ready_players.clear();
             rsm.submissions_received.clear();
-            rsm.placement_timer = config
-                .as_ref()
-                .map(|config| once_timer(config.placement_timer_seconds));
+            let timer_ms = placement_timer_ms(session.as_deref(), &config, false);
+            rsm.placement_timer = (timer_ms > 0).then(|| once_timer_ms(timer_ms));
             placement_entered.write(PlacementPhaseEntered {
                 round: rsm.round_number,
             });
             broadcast.write(BroadcastPhaseChanged {
                 phase: RoundPhase::Placement,
                 round: rsm.round_number,
-                timer_ms: seconds_to_ms(config.as_ref().map_or(0, |c| c.placement_timer_seconds)),
+                timer_ms,
             });
         }
         RoundPhase::DraftAuction => {
@@ -397,16 +398,19 @@ pub fn advance_phase(
             rsm.draft_shop_timer = None;
             rsm.draft_ready_players.clear();
             rsm.submissions_received.clear();
-            rsm.placement_timer = config
-                .as_ref()
-                .map(|config| once_timer(config.placement_timer_seconds));
+            let timer_ms = placement_timer_ms(
+                session.as_deref(),
+                &config,
+                is_auction_round(rsm.round_number),
+            );
+            rsm.placement_timer = (timer_ms > 0).then(|| once_timer_ms(timer_ms));
             placement_entered.write(PlacementPhaseEntered {
                 round: rsm.round_number,
             });
             broadcast.write(BroadcastPhaseChanged {
                 phase: RoundPhase::Placement,
                 round: rsm.round_number,
-                timer_ms: seconds_to_ms(config.as_ref().map_or(0, |c| c.placement_timer_seconds)),
+                timer_ms,
             });
         }
         RoundPhase::Placement => {
@@ -570,6 +574,27 @@ fn seconds_to_ms(seconds: u32) -> u32 {
     seconds.saturating_mul(1000)
 }
 
+fn placement_timer_ms(
+    session: Option<&SessionConfig>,
+    config: &Option<Res<crate::foundation::config::GameConfig>>,
+    auction_followup: bool,
+) -> u32 {
+    let Some(config) = config else {
+        return 0;
+    };
+
+    let base_seconds = if auction_followup {
+        config.auction_followup_placement_timer_seconds
+    } else {
+        config.placement_timer_seconds
+    };
+    let base_ms = seconds_to_ms(base_seconds);
+    let multiplier = session
+        .map(|session| session.placement_timer_multiplier_effective)
+        .unwrap_or_default();
+    multiplier.apply_to_ms(base_ms)
+}
+
 fn disconnect_grace_ms(config: &Option<Res<crate::foundation::config::GameConfig>>) -> u32 {
     seconds_to_ms(
         config
@@ -613,6 +638,13 @@ fn protocol_round_phase(phase: RoundPhase) -> shared::protocol::RoundPhase {
 
 fn once_timer(seconds: u32) -> Timer {
     Timer::from_seconds(seconds as f32, TimerMode::Once)
+}
+
+fn once_timer_ms(milliseconds: u32) -> Timer {
+    Timer::new(
+        Duration::from_millis(u64::from(milliseconds)),
+        TimerMode::Once,
+    )
 }
 
 fn tick_timer(timer: Option<&mut Timer>, elapsed: std::time::Duration) -> bool {

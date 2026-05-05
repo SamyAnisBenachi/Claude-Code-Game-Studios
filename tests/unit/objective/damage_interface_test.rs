@@ -21,6 +21,7 @@ fn session_config() -> SessionConfig {
         player_count: 2,
         team_map: HashMap::from([(ATTACKER, 1 as TeamId), (DEFENDER, 2 as TeamId)]),
         class_map: HashMap::from([(ATTACKER, ClassId::Iop), (DEFENDER, ClassId::Cra)]),
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
     }
 }
 

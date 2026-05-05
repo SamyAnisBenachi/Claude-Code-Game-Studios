@@ -287,6 +287,7 @@ fn snapshot(player_a: PlayerSnapshot, player_b: PlayerSnapshot) -> S2CGameSnapsh
         round_number: 6,
         phase: RoundPhase::Resolution,
         timer_remaining_ms: Some(10_000),
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
         players: vec![player_a, player_b],
         board: BoardSnapshot::default(),
         auction_state: None,

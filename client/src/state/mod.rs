@@ -1,7 +1,10 @@
 // State layer: client-side read-only view of server state
 
 use bevy::prelude::*;
-use shared::protocol::{RoundPhase, S2CGameSnapshot, S2CPhaseChanged};
+use shared::protocol::{
+    PlacementTimerMultiplier, RoundPhase, S2CGameSnapshot, S2CPhaseChanged,
+    S2CSessionSettingsUpdated,
+};
 
 /// Client presentation lifecycle. It gates session-scoped UI pools.
 #[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -18,6 +21,19 @@ pub struct ClientPhaseView {
     pub phase: RoundPhase,
     pub round_number: u32,
     pub timer_duration_ms: u32,
+}
+
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SessionSettingsView {
+    pub placement_timer_multiplier_effective: PlacementTimerMultiplier,
+}
+
+impl Default for SessionSettingsView {
+    fn default() -> Self {
+        Self {
+            placement_timer_multiplier_effective: PlacementTimerMultiplier::X1,
+        }
+    }
 }
 
 /// Canonical phase state for presentation systems.
@@ -53,6 +69,21 @@ pub fn apply_phase_view_message(msg: &S2CPhaseChanged, phase_view: &mut ClientPh
     phase_view.phase = msg.phase;
     phase_view.round_number = msg.round_number;
     phase_view.timer_duration_ms = msg.timer_duration_ms;
+}
+
+pub fn apply_session_settings_updated_message(
+    msg: &S2CSessionSettingsUpdated,
+    settings_view: &mut SessionSettingsView,
+) {
+    settings_view.placement_timer_multiplier_effective = msg.placement_timer_multiplier_effective;
+}
+
+pub fn apply_snapshot_to_session_settings_view(
+    snapshot: &S2CGameSnapshot,
+    settings_view: &mut SessionSettingsView,
+) {
+    settings_view.placement_timer_multiplier_effective =
+        snapshot.placement_timer_multiplier_effective;
 }
 
 #[derive(Message, Debug, Clone)]

@@ -7,7 +7,7 @@ use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 use client::card_animations::HandDragSprite;
 use client::presentation::PlayerEconomyView;
-use client::state::{ClientState, CurrentClientPhase};
+use client::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use client::ui::{
     hand::{
         FanSlotIndex, FanSlotState, HandCardCatalog, HandContents, HandSubmitButton,
@@ -158,6 +158,28 @@ fn hu_23_submit_checkmark_visible_while_timer_keeps_running() {
     );
 }
 
+#[test]
+fn hu_24_placement_timer_uses_server_phase_duration() {
+    let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(50), CardType::Minion)]));
+
+    set_phase_with_round(&mut app, RoundPhase::DraftShop, 7);
+    run_update(&mut app);
+    app.world_mut().resource_mut::<ClientPhaseView>().phase = RoundPhase::Placement;
+    app.world_mut()
+        .resource_mut::<ClientPhaseView>()
+        .round_number = 7;
+    app.world_mut()
+        .resource_mut::<ClientPhaseView>()
+        .timer_duration_ms = 30_000;
+    set_phase_with_round(&mut app, RoundPhase::Placement, 7);
+    run_update(&mut app);
+
+    assert_eq!(
+        app.world().resource::<PlacementTimer>().remaining_ms,
+        30_000
+    );
+}
+
 fn app_with_hand_ui_in_placement(catalog: HashMap<CardId, CardData>) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
@@ -219,6 +241,12 @@ fn test_card(card_id: CardId, card_type: CardType) -> CardData {
 
 fn set_phase(app: &mut App, phase: RoundPhase) {
     app.world_mut().resource_mut::<CurrentClientPhase>().phase = phase;
+}
+
+fn set_phase_with_round(app: &mut App, phase: RoundPhase, round: u32) {
+    let mut current = app.world_mut().resource_mut::<CurrentClientPhase>();
+    current.phase = phase;
+    current.round = round;
 }
 
 fn set_hand<const N: usize>(app: &mut App, cards: [CardId; N]) {

@@ -84,6 +84,10 @@ fn test_session_ready_f4_true_inserts_config_rng_and_enters_draft_initial() {
     assert_eq!(config.team_map.get(&player(2)), Some(&1));
     assert_eq!(config.class_map.get(&player(1)), Some(&ClassId::Iop));
     assert_eq!(config.class_map.get(&player(2)), Some(&ClassId::Cra));
+    assert_eq!(
+        config.placement_timer_multiplier_effective,
+        shared::protocol::PlacementTimerMultiplier::X1
+    );
 
     assert!(app.world().contains_resource::<ServerRng>());
     assert_eq!(

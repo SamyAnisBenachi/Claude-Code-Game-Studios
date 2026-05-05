@@ -50,6 +50,7 @@ fn test_game_config_default_rsm_timers() {
     assert_eq!(config.draft_initial_timer_seconds, 45);
     assert_eq!(config.draft_shop_timer_seconds, 30);
     assert_eq!(config.placement_timer_seconds, 10);
+    assert_eq!(config.auction_followup_placement_timer_seconds, 12);
     assert_eq!(config.resolution_max_duration_seconds, 60);
     assert_eq!(config.disconnect_grace_seconds, 30);
     assert_eq!(config.lobby_timeout_seconds, 90);
@@ -89,6 +90,7 @@ fn test_game_config_dangerous_value_constraints() {
     assert!(config.fake_count <= 3);
     assert!(config.objective_hp >= 1);
     assert!(config.placement_timer_seconds >= 1);
+    assert!(config.auction_followup_placement_timer_seconds >= 1);
     assert!(config.auction_timer_seconds >= 1);
     assert!(config.auction_timer_reset_seconds < config.auction_timer_seconds);
 }

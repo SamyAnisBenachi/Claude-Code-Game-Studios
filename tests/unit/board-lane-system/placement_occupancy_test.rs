@@ -35,6 +35,7 @@ fn session_config(mode: GameMode, teams: &[(PlayerId, u8)]) -> SessionConfig {
         player_count: teams.len() as u8,
         team_map,
         class_map,
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
     }
 }
 

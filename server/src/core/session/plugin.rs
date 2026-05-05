@@ -7,8 +7,9 @@ use crate::core::rsm::{advance_phase, on_session_ready, PlayerHeartbeat};
 use crate::core::session::{
     evaluate_session_ready, flush_deferred_queue, handle_confirm_class, handle_create_room,
     handle_game_over_teardown, handle_join_room, handle_lobby_disconnect, handle_lobby_heartbeat,
-    handle_reconnect, handle_select_class, hello_timeout_watchdog, lobby_timeout_check,
-    on_reconnect_connected, tick_lobby_heartbeats, ActiveSessions, ClassPreviews, ClassSelections,
+    handle_placement_timer_multiplier_requests, handle_reconnect, handle_select_class,
+    hello_timeout_watchdog, lobby_timeout_check, on_reconnect_connected, tick_lobby_heartbeats,
+    ActiveSessions, ClassPreviews, ClassSelections, PlacementTimerMultiplierRequests,
     PlayerConnectionMap, PlayerSessionData, PlayerSessions, ReconnectNetworkOutbox,
     ReconnectTracker, RoomSessions, ServerRngFactory, SessionConfig, SessionNetworkOutbox,
     SessionSystemSet,
@@ -22,6 +23,7 @@ impl Plugin for GameSessionPlugin {
             .init_resource::<ActiveSessions>()
             .init_resource::<ClassPreviews>()
             .init_resource::<ClassSelections>()
+            .init_resource::<PlacementTimerMultiplierRequests>()
             .init_resource::<PlayerConnectionMap>()
             .init_resource::<ReconnectTracker>()
             .init_resource::<ReconnectNetworkOutbox>()
@@ -43,6 +45,7 @@ impl Plugin for GameSessionPlugin {
                     handle_join_room,
                     handle_select_class,
                     handle_confirm_class,
+                    handle_placement_timer_multiplier_requests,
                 ),
             )
             .add_systems(

@@ -6,8 +6,10 @@ use bevy::state::app::StatesPlugin;
 use client::presentation::{
     apply_phase_changed_messages, CurrentClientPhase, PresentationPlugin, PresentationSet,
 };
-use client::state::ClientState;
-use shared::protocol::{RoundPhase, S2CPhaseChanged};
+use client::state::{apply_session_settings_updated_message, ClientState, SessionSettingsView};
+use shared::protocol::{
+    PlacementTimerMultiplier, RoundPhase, S2CPhaseChanged, S2CSessionSettingsUpdated,
+};
 
 #[derive(Resource, Default, Debug, PartialEq, Eq)]
 struct PresentationOrder(Vec<&'static str>);
@@ -75,6 +77,43 @@ fn phase_receiver_source_guard_has_one_production_drain() {
     collect_source_matches(
         &client_src,
         "MessageReceiver<S2CPhaseChanged>",
+        &mut matches,
+    );
+
+    assert_eq!(
+        matches,
+        vec![client_src.join("presentation").join("mod.rs")]
+    );
+}
+
+#[test]
+fn session_settings_update_application_is_neutral_last_write_wins() {
+    let mut settings = SessionSettingsView::default();
+
+    for message in [
+        S2CSessionSettingsUpdated {
+            placement_timer_multiplier_effective: PlacementTimerMultiplier::X1_5,
+        },
+        S2CSessionSettingsUpdated {
+            placement_timer_multiplier_effective: PlacementTimerMultiplier::X3,
+        },
+    ] {
+        apply_session_settings_updated_message(&message, &mut settings);
+    }
+
+    assert_eq!(
+        settings.placement_timer_multiplier_effective,
+        PlacementTimerMultiplier::X3
+    );
+}
+
+#[test]
+fn session_settings_receiver_source_guard_has_one_production_drain() {
+    let client_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut matches = Vec::new();
+    collect_source_matches(
+        &client_src,
+        "MessageReceiver<S2CSessionSettingsUpdated>",
         &mut matches,
     );
 
