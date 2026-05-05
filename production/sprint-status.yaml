@@ -193,10 +193,13 @@ stories:
     name: "Hand UI Story 10: Submit Pre-Validation"
     file: "production/epics/hand-ui/story-010-submit-prevalidation.md"
     priority: should-have
-    status: not-started
-    owner: "unassigned"
+    status: done
+    owner: "worker + orchestrator"
     estimate_days: 0.75
     blocker: ""
+    completed: "2026-05-05"
+    notes:
+      - "COMPLETE: HU-17b reserve overdraw, TR-HU-008 current mana overdraw, and HU-17c correction success verified by hand_ui_submit_prevalidation_test. Adjacent Hand UI regressions, server placement authority validation, client fmt/check, and diff whitespace checks passed."
 
   - id: "S5-18"
     name: "Server RNG Story 3: Determinism Proof & Session Reset"

@@ -1892,3 +1892,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching BOARD-003/story row exists in `production/sprint-status.yaml`.
 - Next recommended: Board Rendering Story 005 (`production/epics/board-rendering/story-005-placement-reveal-animation-handoff.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE
+- Story: `production/epics/hand-ui/story-010-submit-prevalidation.md` - Story 010: Submit Pre-Validation -- Mana & Reserve Checks
+- Criteria: 3/3 passing; HU-17b reserve overdraw, TR-HU-008 current mana overdraw, and HU-17c correction success verified.
+- Test Evidence: `cargo test -p client --test hand_ui_submit_prevalidation_test` passed 8/8. Adjacent client regression command passed 15/15 across `hand_ui_placement_timer_test`, `hand_ui_placement_submit_core_test`, `hand_ui_placement_instant_staging_test`, and `hand_ui_reserve_mana_strip_test`. `cargo test -p server --test placement_submit_authority_validation_test` passed 8/8. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+- Verification: Current `main` includes worker branch `work/hand-ui-010-submit-prevalidation` commit `ccecb7c17157e0ace1c34ba93438c46dd8371ff6` through main integration commit `8ee2860`; submit pre-validation reads `PlayerEconomyView`, blocks overdrawn reserve/current spends before `C2SSubmitPlacement`, keeps Submit active on failure, attaches and clears `SubmitValidationError`, and follows the existing successful-send inactive path after correction.
+- Notes: No blocking GDD, ADR-021, ADR-002, Bevy 0.18, or Lightyear 0.26 deviation found. Broader non-economy Rule 10 checks remain server-authoritative under BLS-011 and out of HAND-UI-010 scope. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-17 in `production/sprint-status.yaml` to `done` with completion date 2026-05-05.
+- Next recommended: Sprint 5 Must Have and Should Have tracked story rows are complete; run sprint close-out (`/smoke-check sprint`, `/team-qa sprint`, then `/gate-check`) if no more pull-forward work is being added.

@@ -1,7 +1,7 @@
 # Story 010: Submit Pre-Validation -- Mana & Reserve Checks
 
 > **Epic**: Hand UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-05
@@ -124,7 +124,7 @@ No measurable performance impact expected. Validation is `O(n)` over staged plac
 **Required evidence**:
 - `tests/unit/hand-ui/submit_prevalidation_test.rs` - must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -141,3 +141,14 @@ No measurable performance impact expected. Validation is `O(n)` over staged plac
 ## Readiness Recheck Notes
 
 Rechecked 2026-05-05 after the prerequisite chain completed. Remaining gaps were docs-only: stale blocked status/dependency wording, missing explicit current-mana overdraw criterion, and missing performance-budget note. No code/design blocker remains for HAND-UI-010.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Verdict**: COMPLETE
+**Criteria**: 3/3 passing. HU-17b reserve overdraw blocks submit, TR-HU-008 / Rule 10 current mana overdraw blocks submit, and HU-17c correction clears the error and sends successfully are covered by `tests/unit/hand-ui/submit_prevalidation_test.rs`.
+**Test Evidence**: `cargo test -p client --test hand_ui_submit_prevalidation_test` passed 8/8. Requested adjacent client regressions passed 15/15 across placement timer, placement submit core, instant staging, and reserve mana strip tests. Server authority regression `cargo test -p server --test placement_submit_authority_validation_test` passed 8/8. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+**Verification**: Current `main` includes worker branch `work/hand-ui-010-submit-prevalidation` commit `ccecb7c17157e0ace1c34ba93438c46dd8371ff6` through main integration commit `8ee2860`. Submit pre-validation reads `PlayerEconomyView`, rejects reserve overdraw before current overdraw, attaches `SubmitValidationError`, does not lock the Submit button on failure, clears the error on correction, and sends `C2SSubmitPlacement` only after validation passes.
+**Deviations**: None. Broader non-economy Rule 10 checks remain server-authoritative under BLS-011 and out of HAND-UI-010 scope.
+**Code Review**: Lean mode default; QL-TEST-COVERAGE and LP-CODE-REVIEW skipped.
+**Tech Debt**: None logged.
