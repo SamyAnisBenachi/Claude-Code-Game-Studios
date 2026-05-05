@@ -107,6 +107,7 @@ fn snapshot(own: PlayerSnapshot, opponent: PlayerSnapshot) -> S2CGameSnapshot {
         round_number: 4,
         phase: RoundPhase::Placement,
         timer_remaining_ms: None,
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
         players: vec![own, opponent],
         board: BoardSnapshot::default(),
         auction_state: None,

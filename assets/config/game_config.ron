@@ -34,6 +34,7 @@
     draft_initial_timer_seconds: 45,
     draft_shop_timer_seconds: 30,
     placement_timer_seconds: 10,
+    auction_followup_placement_timer_seconds: 12,
     resolution_max_duration_seconds: 60,
     disconnect_grace_seconds: 30,
     lobby_timeout_seconds: 90,

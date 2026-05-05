@@ -503,6 +503,7 @@ pub fn baseline_fixture_snapshot() -> S2CGameSnapshot {
         round_number: 4,
         phase: RoundPhase::Resolution,
         timer_remaining_ms: Some(20_000),
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
         players: vec![player_snapshot(player(1)), player_snapshot(player(2))],
         board: BoardSnapshot {
             units: baseline_units(),

@@ -21,8 +21,8 @@ use server::feature::objective::{HiddenObjectives, OBJECTIVE_LANE_COUNT};
 use server::foundation::config::GameConfig;
 use shared::card::{CardId, ClassId};
 use shared::protocol::{
-    BidRejectedReason, C2SHello, CardSource, GameMode, S2CAuctionBidAccepted,
-    S2CAuctionBidRejected, S2CDraftOffering, S2CGoldUpdate, S2CShopSlots,
+    BidRejectedReason, C2SHello, CardSource, GameMode, PlacementTimerMultiplier,
+    S2CAuctionBidAccepted, S2CAuctionBidRejected, S2CDraftOffering, S2CGoldUpdate, S2CShopSlots,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
@@ -37,6 +37,7 @@ fn session_config(player_a: PlayerId, player_b: PlayerId) -> SessionConfig {
         player_count: 2,
         team_map: HashMap::from([(player_a, 0), (player_b, 1)]),
         class_map: HashMap::from([(player_a, ClassId::Iop), (player_b, ClassId::Cra)]),
+        placement_timer_multiplier_effective: PlacementTimerMultiplier::X2,
     }
 }
 
@@ -170,6 +171,15 @@ fn reconnect_hello_sends_snapshot_sequence_and_restores_sang_meprise() {
     };
     assert_eq!(message.recipient_player_id, player_a);
     assert_eq!(message.timer_remaining_ms, Some(6000));
+    assert_eq!(
+        message.placement_timer_multiplier_effective,
+        PlacementTimerMultiplier::X2
+    );
+    let snapshot_json =
+        serde_json::to_value(message).expect("snapshot should serialize for reconnect");
+    assert!(snapshot_json.get("requester").is_none());
+    assert!(snapshot_json.get("requester_id").is_none());
+    assert!(snapshot_json.get("connection_id").is_none());
     assert!(message
         .active_sang_meprise_reveals
         .as_ref()

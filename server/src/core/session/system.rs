@@ -7,18 +7,20 @@ use lightyear::prelude::*;
 use shared::card::ClassId;
 use shared::protocol::{
     self, C2SConfirmClass, C2SCreateRoom, C2SHeartbeat, C2SJoinRoom, C2SSelectClass,
-    ConfirmClassRejectedReason, CreateRoomRejectedReason, GameMode, JoinRejectedReason,
-    ReliableChannel, S2CClassLocked, S2CClassesRevealed, S2CConfirmClassRejected,
-    S2CCreateRoomRejected, S2CGameOver, S2CJoinAck, S2CJoinRejected, S2CRoomCreated,
-    S2CSessionCancelled, S2CSlotUpdated,
+    C2SSetPlacementTimerMultiplier, ConfirmClassRejectedReason, CreateRoomRejectedReason, GameMode,
+    JoinRejectedReason, PlacementTimerMultiplier, ReliableChannel, S2CClassLocked,
+    S2CClassesRevealed, S2CConfirmClassRejected, S2CCreateRoomRejected, S2CGameOver, S2CJoinAck,
+    S2CJoinRejected, S2CRoomCreated, S2CSessionCancelled, S2CSessionSettingsUpdated,
+    S2CSlotUpdated,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
 
 use crate::core::rsm::{GameOverEmitted, PlayerHeartbeat};
 use crate::core::session::{
-    build_session_config, ActiveSessions, ClassPreviews, ClassSelections, LobbyDeadline,
-    LobbyHeartbeats, LobbyState, PlayerConnectionMap, ReconnectTracker, RoomCode, RoomSession,
+    build_session_config_with_settings, effective_placement_timer_multiplier, ActiveSessions,
+    ClassPreviews, ClassSelections, LobbyDeadline, LobbyHeartbeats, LobbyState,
+    PlacementTimerMultiplierRequests, PlayerConnectionMap, ReconnectTracker, RoomCode, RoomSession,
     RoomSessions, SessionCancelledReason, SessionConfig, SessionId, SessionNetworkOutbox,
     SessionReady, SessionSlot, SessionSlots,
 };
@@ -104,6 +106,7 @@ pub fn evaluate_session_ready(
     selections: Option<Res<ClassSelections>>,
     deadline: Option<Res<LobbyDeadline>>,
     rng_factory: Option<Res<ServerRngFactory>>,
+    placement_timer_requests: Option<Res<PlacementTimerMultiplierRequests>>,
     connections: Option<Res<PlayerConnectionMap>>,
     active_sessions: Option<Res<ActiveSessions>>,
     server: Query<&Server>,
@@ -124,7 +127,11 @@ pub fn evaluate_session_ready(
         return;
     }
 
-    let session_config = build_session_config(&slots, &selections);
+    let session_config = build_session_config_with_settings(
+        &slots,
+        &selections,
+        placement_timer_requests.as_deref(),
+    );
     let rng_factory = rng_factory.as_deref().copied().unwrap_or_default();
     let Ok(server_rng) = rng_factory.create() else {
         commands.insert_resource(LobbyState::LobbyCancelled);
@@ -152,6 +159,102 @@ pub fn evaluate_session_ready(
     commands.trigger(SessionReady);
     commands.remove_resource::<LobbyHeartbeats>();
     commands.insert_resource(LobbyState::GameActive);
+}
+
+/// Sole drainer for `MessageReceiver<C2SSetPlacementTimerMultiplier>`.
+#[allow(clippy::too_many_arguments)]
+pub fn handle_placement_timer_multiplier_requests(
+    lobby_state: Option<Res<LobbyState>>,
+    session_config: Option<Res<SessionConfig>>,
+    slots: Option<Res<SessionSlots>>,
+    connections: Res<PlayerConnectionMap>,
+    mut placement_timer_requests: Option<ResMut<PlacementTimerMultiplierRequests>>,
+    mut receivers: Query<(
+        &RemoteId,
+        &mut MessageReceiver<C2SSetPlacementTimerMultiplier>,
+    )>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
+    mut outbox: Option<ResMut<SessionNetworkOutbox>>,
+) {
+    let Some(mut placement_timer_requests) = placement_timer_requests.take() else {
+        for (_, mut receiver) in receivers.iter_mut() {
+            for _ in receiver.receive() {}
+        }
+        return;
+    };
+
+    let mut requests = Vec::new();
+    for (remote, mut receiver) in receivers.iter_mut() {
+        for msg in receiver.receive() {
+            let Some(player_id) = connections.0.get(&remote.0).copied() else {
+                continue;
+            };
+            requests.push((player_id, Some(msg.multiplier)));
+        }
+    }
+
+    let Some(update) = apply_placement_timer_multiplier_request_batch(
+        lobby_state.as_deref(),
+        session_config.as_deref(),
+        slots.as_deref(),
+        &mut placement_timer_requests,
+        requests,
+    ) else {
+        return;
+    };
+
+    let recipients = slots.as_deref().map(occupied_players).unwrap_or_default();
+    broadcast_session_settings_updated(
+        &server,
+        sender.as_mut(),
+        Some(&connections),
+        outbox.as_deref_mut(),
+        update,
+        &recipients,
+    );
+}
+
+pub fn apply_placement_timer_multiplier_request_batch(
+    lobby_state: Option<&LobbyState>,
+    session_config: Option<&SessionConfig>,
+    slots: Option<&SessionSlots>,
+    placement_timer_requests: &mut PlacementTimerMultiplierRequests,
+    requests: impl IntoIterator<Item = (PlayerId, Option<PlacementTimerMultiplier>)>,
+) -> Option<S2CSessionSettingsUpdated> {
+    if lobby_state != Some(&LobbyState::LobbyWaiting) || session_config.is_some() {
+        return None;
+    }
+
+    let slots = slots?;
+    let before = effective_placement_timer_multiplier(slots, Some(placement_timer_requests));
+    let mut accepted_any = false;
+
+    for (player_id, multiplier) in requests {
+        if !session_has_player(slots, player_id) {
+            continue;
+        }
+
+        let Some(multiplier) = multiplier else {
+            continue;
+        };
+
+        accepted_any = true;
+        if multiplier == PlacementTimerMultiplier::X1 {
+            placement_timer_requests.0.remove(&player_id);
+        } else {
+            placement_timer_requests.0.insert(player_id, multiplier);
+        }
+    }
+
+    if !accepted_any {
+        return None;
+    }
+
+    let after = effective_placement_timer_multiplier(slots, Some(placement_timer_requests));
+    (after != before).then_some(S2CSessionSettingsUpdated {
+        placement_timer_multiplier_effective: after,
+    })
 }
 
 pub fn f4_session_ready(
@@ -185,6 +288,7 @@ pub fn handle_game_over_teardown(
     slots: Option<Res<SessionSlots>>,
     selections: Option<Res<ClassSelections>>,
     previews: Option<Res<ClassPreviews>>,
+    mut placement_timer_requests: Option<ResMut<PlacementTimerMultiplierRequests>>,
     deadline: Option<Res<LobbyDeadline>>,
     heartbeats: Option<Res<LobbyHeartbeats>>,
     mut cleanup_state: ParamSet<(
@@ -280,6 +384,9 @@ pub fn handle_game_over_teardown(
     }
     if previews.is_some() {
         commands.remove_resource::<ClassPreviews>();
+    }
+    if let Some(requests) = placement_timer_requests.as_deref_mut() {
+        requests.0.clear();
     }
     if deadline.is_some() {
         commands.remove_resource::<LobbyDeadline>();
@@ -1053,6 +1160,43 @@ fn broadcast_game_over(
     }
 
     let _ = sender.send::<S2CGameOver, ReliableChannel>(
+        &message,
+        server,
+        &NetworkTarget::Only(target_peers),
+    );
+}
+
+fn broadcast_session_settings_updated(
+    server: &Query<&Server>,
+    sender: Option<&mut ServerMultiMessageSender>,
+    connections: Option<&PlayerConnectionMap>,
+    outbox: Option<&mut SessionNetworkOutbox>,
+    message: S2CSessionSettingsUpdated,
+    recipients: &[PlayerId],
+) {
+    if let Some(outbox) = outbox {
+        outbox.push_session_settings_updated(message.clone());
+    }
+
+    let Some(sender) = sender else {
+        return;
+    };
+    let Some(server) = server.single().ok() else {
+        return;
+    };
+    let Some(connections) = connections else {
+        return;
+    };
+
+    let target_peers = recipients
+        .iter()
+        .filter_map(|player_id| peer_for_player(&connections.0, *player_id))
+        .collect::<Vec<_>>();
+    if target_peers.is_empty() {
+        return;
+    }
+
+    let _ = sender.send::<S2CSessionSettingsUpdated, ReliableChannel>(
         &message,
         server,
         &NetworkTarget::Only(target_peers),

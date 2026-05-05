@@ -122,6 +122,7 @@ fn test_session_config_resource_constructs_directly() {
         player_count: 1,
         team_map: HashMap::from([(p1, 0)]),
         class_map: HashMap::from([(p1, ClassId::Sacrier)]),
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
     };
 
     assert_eq!(config.players().collect::<Vec<_>>(), vec![p1]);
@@ -136,6 +137,7 @@ fn test_session_config_players_iterate_in_ascending_player_id_order() {
         player_count: 2,
         team_map: HashMap::from([(p2, 1), (p1, 0)]),
         class_map: HashMap::from([(p2, ClassId::Cra), (p1, ClassId::Iop)]),
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
     };
 
     assert_eq!(config.players().collect::<Vec<_>>(), vec![p1, p2]);

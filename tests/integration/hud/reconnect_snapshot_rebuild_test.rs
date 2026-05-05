@@ -237,6 +237,7 @@ fn snapshot(
         round_number,
         phase,
         timer_remaining_ms: Some(12_000),
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
         players: vec![own, opponent],
         board: BoardSnapshot::default(),
         auction_state: None,

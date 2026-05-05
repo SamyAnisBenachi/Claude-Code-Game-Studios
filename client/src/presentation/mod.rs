@@ -1,4 +1,4 @@
-use ::shared::protocol::{S2CGameSnapshot, S2CPhaseChanged};
+use ::shared::protocol::{S2CGameSnapshot, S2CPhaseChanged, S2CSessionSettingsUpdated};
 use bevy::prelude::*;
 use lightyear::prelude::MessageReceiver;
 
@@ -6,8 +6,9 @@ use crate::card_animations::{CardAnimationsPlugin, CardAnimationsSet};
 use crate::presentation::board_rendering::BoardRenderSet;
 use crate::presentation::shared::economy_view::drain_gold_update_receiver_system as drain_shared_gold_update_receiver_system;
 use crate::state::{
-    apply_phase_changed_message, apply_phase_view_message, ClientGameSnapshotMessage,
-    ClientPhaseView, ClientState,
+    apply_phase_changed_message, apply_phase_view_message, apply_session_settings_updated_message,
+    apply_snapshot_to_session_settings_view, ClientGameSnapshotMessage, ClientPhaseView,
+    ClientState, SessionSettingsView,
 };
 use crate::ui::hand::{HandUiPlugin, HandUiSystemSet};
 use crate::ui::hud::{HudPlugin, HudSystemSet};
@@ -39,6 +40,7 @@ impl Plugin for PresentationPlugin {
         app.init_state::<ClientState>()
             .init_resource::<CurrentClientPhase>()
             .init_resource::<ClientPhaseView>()
+            .init_resource::<SessionSettingsView>()
             .init_resource::<PlayerEconomyView>()
             .add_message::<ClientGameSnapshotMessage>();
 
@@ -88,6 +90,7 @@ impl Plugin for PresentationPlugin {
         .add_systems(
             Update,
             (
+                session_settings_sink_system,
                 game_snapshot_sink_system,
                 drain_shared_gold_update_receiver_system,
             )
@@ -122,9 +125,21 @@ pub fn apply_phase_changed_messages(
     }
 }
 
+pub fn session_settings_sink_system(
+    mut receivers: Query<&mut MessageReceiver<S2CSessionSettingsUpdated>>,
+    mut settings_view: ResMut<SessionSettingsView>,
+) {
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            apply_session_settings_updated_message(&message, &mut settings_view);
+        }
+    }
+}
+
 pub fn game_snapshot_sink_system(
     mut receivers: Query<&mut MessageReceiver<S2CGameSnapshot>>,
     mut economy_view: ResMut<PlayerEconomyView>,
+    mut settings_view: ResMut<SessionSettingsView>,
     mut board_writer: MessageWriter<ClientGameSnapshotMessage>,
     mut presentation_writer: MessageWriter<PresentationGameSnapshotMessage>,
 ) {
@@ -136,6 +151,7 @@ pub fn game_snapshot_sink_system(
                     message.recipient_player_id
                 );
             }
+            apply_snapshot_to_session_settings_view(&message, &mut settings_view);
             board_writer.write(ClientGameSnapshotMessage(message.clone()));
             presentation_writer.write(PresentationGameSnapshotMessage(message));
         }

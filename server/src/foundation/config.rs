@@ -426,6 +426,7 @@ pub fn validate_and_promote(
 /// - `fake_count` ∈ [1, 3]
 /// - `objective_hp` >= 1
 /// - `placement_timer_seconds` >= 1
+/// - `auction_followup_placement_timer_seconds` >= 1
 pub fn validate_game_config(c: &shared::config::GameConfig) -> Result<(), String> {
     if c.shop_weight_cap <= 0.0 {
         return Err(format!(
@@ -468,6 +469,9 @@ pub fn validate_game_config(c: &shared::config::GameConfig) -> Result<(), String
     }
     if c.placement_timer_seconds < 1 {
         return Err("placement_timer_seconds must be >= 1".into());
+    }
+    if c.auction_followup_placement_timer_seconds < 1 {
+        return Err("auction_followup_placement_timer_seconds must be >= 1".into());
     }
     if c.auction_timer_seconds < 1 {
         return Err("auction_timer_seconds must be >= 1".into());
@@ -664,6 +668,14 @@ mod tests {
     fn test_game_config_validation_rejects_placement_timer_zero() {
         let err = game_config_error(|config| config.placement_timer_seconds = 0);
         assert!(err.contains("placement_timer_seconds"));
+    }
+
+    #[test]
+    fn test_game_config_validation_rejects_auction_followup_placement_timer_zero() {
+        let err = game_config_error(|config| {
+            config.auction_followup_placement_timer_seconds = 0;
+        });
+        assert!(err.contains("auction_followup_placement_timer_seconds"));
     }
 
     #[test]

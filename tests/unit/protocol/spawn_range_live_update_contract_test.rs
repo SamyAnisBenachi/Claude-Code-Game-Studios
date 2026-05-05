@@ -174,6 +174,7 @@ fn test_player_snapshot_spawn_range_cells_remains_public_recovery_field() {
         round_number: 2,
         phase: RoundPhase::Placement,
         timer_remaining_ms: Some(30_000),
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
         players: vec![snapshot],
         board: BoardSnapshot::default(),
         auction_state: None,

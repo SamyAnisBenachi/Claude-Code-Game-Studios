@@ -65,6 +65,7 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_c2s::<C2SActivateCard>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SSignalReady>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SPlaceBid>(registry, ProtocolChannel::Reliable);
+    register_c2s::<C2SSetPlacementTimerMultiplier>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SSubmitPlacement>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SAcknowledgeResult>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SRequestSnapshot>(registry, ProtocolChannel::Reliable);
@@ -98,6 +99,7 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_s2c::<S2CClassLocked>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CClassesRevealed>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CConfirmClassRejected>(registry, ProtocolChannel::Reliable);
+    register_s2c::<S2CSessionSettingsUpdated>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CSessionCancelled>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CObjectiveIdentities>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CSangMepriseReveal>(registry, ProtocolChannel::Reliable);
@@ -157,6 +159,63 @@ pub enum GameOverReason {
     Disconnect,
     Draw,
     ResolutionTimeout,
+}
+
+#[derive(
+    Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
+pub enum PlacementTimerMultiplier {
+    #[default]
+    X1,
+    X1_5,
+    X2,
+    X3,
+}
+
+impl PlacementTimerMultiplier {
+    pub const MULTIPLAYER_STANDARD_VALUES: [Self; 4] = [Self::X1, Self::X1_5, Self::X2, Self::X3];
+
+    pub const fn ratio(self) -> (u32, u32) {
+        match self {
+            Self::X1 => (1, 1),
+            Self::X1_5 => (3, 2),
+            Self::X2 => (2, 1),
+            Self::X3 => (3, 1),
+        }
+    }
+
+    pub fn apply_to_ms(self, base_ms: u32) -> u32 {
+        let (numerator, denominator) = self.ratio();
+        let value = u128::from(base_ms) * u128::from(numerator) / u128::from(denominator);
+        u32::try_from(value).unwrap_or(u32::MAX)
+    }
+
+    pub fn from_standard_ratio(numerator: u32, denominator: u32) -> Option<Self> {
+        match (numerator, denominator) {
+            (1, 1) => Some(Self::X1),
+            (3, 2) => Some(Self::X1_5),
+            (2, 1) => Some(Self::X2),
+            (3, 1) => Some(Self::X3),
+            _ => None,
+        }
+    }
+
+    pub fn from_ratio_capped(numerator: u32, denominator: u32) -> Option<Self> {
+        if denominator == 0 || numerator < denominator {
+            return None;
+        }
+
+        if u128::from(numerator) >= 3 * u128::from(denominator) {
+            return Some(Self::X3);
+        }
+        if u128::from(numerator) * 2 >= 4 * u128::from(denominator) {
+            return Some(Self::X2);
+        }
+        if u128::from(numerator) * 2 >= 3 * u128::from(denominator) {
+            return Some(Self::X1_5);
+        }
+        Some(Self::X1)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -397,6 +456,11 @@ pub struct C2SPlaceBid {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct C2SSetPlacementTimerMultiplier {
+    pub multiplier: PlacementTimerMultiplier,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct C2SSubmitPlacement {
     pub placements: Vec<PlacedCardSubmit>,
 }
@@ -575,6 +639,11 @@ pub struct S2CConfirmClassRejected {
     pub reason: ConfirmClassRejectedReason,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct S2CSessionSettingsUpdated {
+    pub placement_timer_multiplier_effective: PlacementTimerMultiplier,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct S2CSessionCancelled {
     pub reason: SessionCancelledReason,
@@ -731,6 +800,7 @@ pub struct S2CGameSnapshot {
     pub round_number: u32,
     pub phase: RoundPhase,
     pub timer_remaining_ms: Option<u32>,
+    pub placement_timer_multiplier_effective: PlacementTimerMultiplier,
     pub players: Vec<PlayerSnapshot>,
     pub board: BoardSnapshot,
     pub auction_state: Option<AuctionSnapshot>,
@@ -841,5 +911,63 @@ mod tests {
                 ProtocolChannel::Reliable,
             ))
         );
+        assert_eq!(
+            registry.messages.iter().find(|(name, _, _)| {
+                *name == std::any::type_name::<C2SSetPlacementTimerMultiplier>()
+            }),
+            Some(&(
+                std::any::type_name::<C2SSetPlacementTimerMultiplier>(),
+                ProtocolDirection::ClientToServer,
+                ProtocolChannel::Reliable,
+            ))
+        );
+        assert_eq!(
+            registry.messages.iter().find(|(name, _, _)| {
+                *name == std::any::type_name::<S2CSessionSettingsUpdated>()
+            }),
+            Some(&(
+                std::any::type_name::<S2CSessionSettingsUpdated>(),
+                ProtocolDirection::ServerToClient,
+                ProtocolChannel::Reliable,
+            ))
+        );
+    }
+
+    #[test]
+    fn placement_timer_multiplier_values_are_multiplayer_safe_and_integer_backed() {
+        assert_eq!(
+            PlacementTimerMultiplier::MULTIPLAYER_STANDARD_VALUES,
+            [
+                PlacementTimerMultiplier::X1,
+                PlacementTimerMultiplier::X1_5,
+                PlacementTimerMultiplier::X2,
+                PlacementTimerMultiplier::X3
+            ]
+        );
+        assert_eq!(PlacementTimerMultiplier::X1_5.apply_to_ms(12_000), 18_000);
+        assert_eq!(PlacementTimerMultiplier::X3.apply_to_ms(10_000), 30_000);
+        assert_eq!(
+            PlacementTimerMultiplier::from_standard_ratio(1, 2),
+            None,
+            "0.5x is not a multiplayer Standard-tier value"
+        );
+        assert_eq!(
+            PlacementTimerMultiplier::from_ratio_capped(4, 1),
+            Some(PlacementTimerMultiplier::X3)
+        );
+    }
+
+    #[test]
+    fn session_settings_update_payload_has_no_requester_identity() {
+        let update = S2CSessionSettingsUpdated {
+            placement_timer_multiplier_effective: PlacementTimerMultiplier::X3,
+        };
+        let value = serde_json::to_value(update).expect("settings update should serialize");
+
+        assert!(value.get("placement_timer_multiplier_effective").is_some());
+        assert!(value.get("player_id").is_none());
+        assert!(value.get("requester").is_none());
+        assert!(value.get("requester_id").is_none());
+        assert!(value.get("connection_id").is_none());
     }
 }

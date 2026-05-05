@@ -8,7 +8,7 @@ use shared::card::ClassId;
 use shared::protocol::{
     CardSource, S2CAuctionBidAccepted, S2CAuctionBidRejected, S2CCardAcquired, S2CDraftOffering,
     S2CGameOver, S2CGoldUpdate, S2CObjectiveIdentities, S2CPrismRewardDropped, S2CSessionCancelled,
-    S2CShopSlots,
+    S2CSessionSettingsUpdated, S2CShopSlots,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
@@ -49,6 +49,11 @@ pub struct ClassSelections(pub HashMap<PlayerId, ClassId>);
 
 #[derive(Debug, Default, Resource)]
 pub struct ClassPreviews(pub HashMap<PlayerId, ClassId>);
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Resource)]
+pub struct PlacementTimerMultiplierRequests(
+    pub HashMap<PlayerId, shared::protocol::PlacementTimerMultiplier>,
+);
 
 /// Authoritative per-player class identity for one game session.
 #[derive(Debug, Resource, Default)]
@@ -198,6 +203,7 @@ impl ReconnectNetworkOutbox {
 #[derive(Debug, Default, Clone, Resource)]
 pub struct SessionNetworkOutbox {
     session_cancelled: Vec<S2CSessionCancelled>,
+    session_settings_updated: Vec<S2CSessionSettingsUpdated>,
     game_over: Vec<S2CGameOver>,
 }
 
@@ -210,8 +216,16 @@ impl SessionNetworkOutbox {
         self.game_over.push(message);
     }
 
+    pub fn push_session_settings_updated(&mut self, message: S2CSessionSettingsUpdated) {
+        self.session_settings_updated.push(message);
+    }
+
     pub fn session_cancelled(&self) -> &[S2CSessionCancelled] {
         &self.session_cancelled
+    }
+
+    pub fn session_settings_updated(&self) -> &[S2CSessionSettingsUpdated] {
+        &self.session_settings_updated
     }
 
     pub fn game_over(&self) -> &[S2CGameOver] {

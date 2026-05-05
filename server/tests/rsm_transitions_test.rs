@@ -26,6 +26,7 @@ fn session_config(players: &[PlayerId]) -> SessionConfig {
         player_count: players.len() as u8,
         team_map,
         class_map,
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
     }
 }
 

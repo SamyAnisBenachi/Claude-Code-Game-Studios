@@ -1,9 +1,9 @@
 use bevy::prelude::{Entity, Timer, World};
 use shared::card::{CardId, ClassId};
 use shared::protocol::{
-    BoardSnapshot, FieldBoardState, ObjectiveSnapshot, OpponentObjectiveSnapshot, PlayerSnapshot,
-    PrismBoardState, RoundPhase as ProtocolRoundPhase, S2CGameSnapshot, SeedBoardState,
-    SinistroState, StructureBoardState, TrapBoardState,
+    BoardSnapshot, FieldBoardState, ObjectiveSnapshot, OpponentObjectiveSnapshot,
+    PlacementTimerMultiplier, PlayerSnapshot, PrismBoardState, RoundPhase as ProtocolRoundPhase,
+    S2CGameSnapshot, SeedBoardState, SinistroState, StructureBoardState, TrapBoardState,
 };
 use shared::session::PlayerId;
 
@@ -45,6 +45,10 @@ pub fn build_game_snapshot(
         .map(protocol_round_phase)
         .unwrap_or(ProtocolRoundPhase::Handshaking);
     let timer_remaining_ms = snapshot_timer_remaining_ms(world);
+    let placement_timer_multiplier_effective = world
+        .get_resource::<SessionConfig>()
+        .map(|config| config.placement_timer_multiplier_effective)
+        .unwrap_or(PlacementTimerMultiplier::X1);
 
     let player_snapshots = players
         .iter()
@@ -67,6 +71,7 @@ pub fn build_game_snapshot(
         round_number,
         phase,
         timer_remaining_ms,
+        placement_timer_multiplier_effective,
         players: player_snapshots,
         board,
         auction_state,
