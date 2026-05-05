@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/hud.md
 > **Architecture Module**: `client/src/ui/hud/` — `HudPlugin` within `PresentationPlugin`
 > **Status**: Ready
-> **Stories**: 11 stories created/updated through 2026-05-05
+> **Stories**: 12 stories created/updated through 2026-05-05
 
 ## Overview
 
@@ -60,6 +60,13 @@ story for that row: current mana must read as a bar-shaped container and
 reserve mana must read as a diamond-shaped container, with browser/WASM evidence
 showing the distinction is not color-only.
 
+The same register marks A11Y-ST-01 and A11Y-ST-03 as evidence-only blockers for
+text size and contrast. HUD-012 is the narrow HUD story for those rows: HUD gold,
+mana, reserve, phase, and round text must meet the required text-size floors;
+DRAFT_AUCTION inline gold/reserved labels must be captured as auction-linked HUD
+counters; and HUD-owned text/background pairs must have browser/WASM contrast
+evidence. The actual auction price counter remains Shop/Auction UI owned.
+
 ## Pre-Implementation Gates
 
 The following open questions from `design/gdd/hud.md` must be resolved before the
@@ -93,6 +100,7 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/unit/hud/` or `tests/integration/hud/`
 - Visual/UI stories have screenshot evidence + lead sign-off in `production/qa/evidence/`
 - HUD-011 has browser/WASM A11Y-ST-13 evidence at `production/qa/evidence/hud-011-mana-shapes-evidence.md`
+- HUD-012 has browser/WASM A11Y-ST-01 and HUD-owned A11Y-ST-03 evidence at `production/qa/evidence/hud-012-text-size-contrast-accessibility.md`
 - HUD-20 (same-tick tie-break) uses `App::new()` with `HudPlugin` registered — not `World::new()` — to verify plugin system ordering (GDD AC note)
 - `cargo build -p client` without `ui_picking` feature compiles without panic (ADR-021 validation criterion)
 - OQ-HUD-04 resolved: dot horizontal alignment verified against `BoardLayout` / `LANE_MIDPOINT_X` at 1280×720 and 1920×1080
@@ -112,10 +120,11 @@ This epic is complete when:
 | 009 | [Same-Tick Gold Tie-Break (Plugin-Level Integration)](story-009-same-tick-tie-break.md) | Integration | Ready | ADR-021 |
 | 010 | [Numeric Tween Animation](story-010-numeric-tween-animation.md) | Visual/Feel | Ready | ADR-021 |
 | 011 | [Current and Reserve Mana Shape Distinction](story-011-current-reserve-mana-shapes.md) | UI | Ready | ADR-021, ADR-002 |
+| 012 | [HUD Text Size and Contrast Accessibility Evidence](story-012-text-size-and-contrast-accessibility.md) | UI | Ready | ADR-021, ADR-002 |
 
-**11 stories total: 5 Logic · 2 UI · 3 Integration · 1 Visual/Feel**
+**12 stories total: 5 Logic · 3 UI · 3 Integration · 1 Visual/Feel**
 Story 004 blocked on OQ-HUD-05 (HudObjectiveUpdate trigger type crate location).
 
 ## Next Step
 
-Run `/story-readiness production/epics/hud/story-011-current-reserve-mana-shapes.md` before assigning the Sprint 6 A11Y-ST-13 remediation story. Work through stories in dependency order — each story's `Depends on:` field tells you what must be DONE first.
+Run `/story-readiness production/epics/hud/story-012-text-size-and-contrast-accessibility.md` before assigning the Sprint 6 A11Y-ST-01/A11Y-ST-03 HUD evidence story. Work through stories in dependency order — each story's `Depends on:` field tells you what must be DONE first.
