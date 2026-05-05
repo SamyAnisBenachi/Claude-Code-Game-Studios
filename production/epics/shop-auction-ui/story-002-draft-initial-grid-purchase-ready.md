@@ -1,7 +1,7 @@
 # Story 002: Draft Initial Grid Purchase Ready
 
 > **Epic**: Shop / Auction UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -34,15 +34,15 @@ DRAFT_INITIAL activates only after both `S2CPhaseChanged(DRAFT_INITIAL)` and `S2
 
 ## Acceptance Criteria
 
-- [ ] Panel remains blank until both phase and draft offering data have arrived.
-- [ ] The 9-card grid is sorted by rarity descending, then cost descending.
-- [ ] Valid slot click sends exactly one `C2SPurchaseCard { card_id }`.
-- [ ] Insufficient gold does not send C2S and flashes the gold counter request.
-- [ ] Hand size 10 locks unowned slots and shows the hand-full banner.
-- [ ] `S2CCardAcquired` plus `S2CGoldUpdate` marks the slot as purchased and shows "BOUGHT" overlay.
-- [ ] Ready sends `C2SSignalReady { retract: false }`; Retract Ready sends `C2SSignalReady { retract: true }`.
-- [ ] Grid remains interactive after Ready until phase changes to PLACEMENT.
-- [ ] `S2CPhaseChanged(PLACEMENT)` dismisses the panel and blocks further purchase sends.
+- [x] Panel remains blank until both phase and draft offering data have arrived.
+- [x] The 9-card grid is sorted by rarity descending, then cost descending.
+- [x] Valid slot click sends exactly one `C2SPurchaseCard { card_id }`.
+- [x] Insufficient gold does not send C2S and flashes the gold counter request.
+- [x] Hand size 10 locks unowned slots and shows the hand-full banner.
+- [x] `S2CCardAcquired` plus `S2CGoldUpdate` marks the slot as purchased and shows "BOUGHT" overlay.
+- [x] Ready sends `C2SSignalReady { retract: false }`; Retract Ready sends `C2SSignalReady { retract: true }`.
+- [x] Grid remains interactive after Ready until phase changes to PLACEMENT.
+- [x] `S2CPhaseChanged(PLACEMENT)` dismisses the panel and blocks further purchase sends.
 
 ## Implementation Notes
 
@@ -89,7 +89,7 @@ Presentation steady-state must remain under 1 ms per frame. This story is expect
 - UI/integration: `tests/integration/shop_auction_ui/draft_initial_grid_test.rs`
 - Visual evidence for overlay/tooltip later: `production/qa/evidence/shop-auction-ui-draft-initial-evidence.md`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Automated UI/integration evidence created and passing; manual visual evidence deferred to Story 009 or a separately scoped tooltip/visual evidence story.
 
 ## Dependencies
 
@@ -104,3 +104,14 @@ Presentation steady-state must remain under 1 ms per frame. This story is expect
 - Depends on: `production/epics/economy-system/story-006-network-dispatch-wiring.md` is Complete and provides reliable unicast dispatch for own `S2CGoldUpdate`.
 - Depends on: `production/epics/hud/story-002-gold-mana-display.md` is Complete and provides the own-gold display surface that receives the insufficient-gold flash request.
 - Unlocks: DRAFT_INITIAL M2 playable path.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 9/9 passing.
+**Deviations**: Advisory only - manual visual evidence for overlay/tooltip remains deferred to Story 009 or a separately scoped tooltip/visual evidence story, matching this story's out-of-scope notes.
+**Test Evidence**: UI/integration target `cargo test -p client --test shop_auction_ui_draft_initial_grid_test` passed; scaffold/formula regression target `cargo test -p client --test shop_auction_ui_plugin_scaffold_formulas_test` passed.
+**Code Review**: Skipped - lean review mode.
+**QA Coverage Gate**: Skipped - lean review mode.
+**Worker Commit**: `b52510adba1f60fb2c740c0636e4ebaed6c5b862`
+**Main Integration Commit**: `21c09f5`

@@ -1842,6 +1842,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Sprint status: Unchanged; no matching PRES-002 row exists in `production/sprint-status.yaml`.
 - Next recommended: PRES-002 no longer blocks HAND-UI-010; remaining HAND-UI-010 prerequisite is BLS-011 (`production/epics/board-lane-system/story-011-placement-submit-authority-validation.md`) before readiness can be rechecked.
 
+## Session Extract - /dev-story 2026-05-05
+- Story: `production/epics/shop-auction-ui/story-002-draft-initial-grid-purchase-ready.md` - Story 002: Draft Initial Grid Purchase Ready
+- Files changed: `client/Cargo.toml`, `client/src/presentation/mod.rs`, `client/src/ui/shop_auction/mod.rs`, `tests/integration/shop_auction_ui/draft_initial_grid_test.rs`, `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs`
+- Test written: `tests/integration/shop_auction_ui/draft_initial_grid_test.rs`
+- Blockers: None
+- Next: `/code-review client/src/ui/shop_auction/mod.rs client/src/presentation/mod.rs tests/integration/shop_auction_ui/draft_initial_grid_test.rs tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs` then `/story-done production/epics/shop-auction-ui/story-002-draft-initial-grid-purchase-ready.md`
+
 ## Session Extract - /story-done 2026-05-05
 - Verdict: COMPLETE WITH NOTES
 - Story: `production/epics/board-rendering/story-004-ghost-preview-hand-ui-bridge.md` - Story 004: Ghost Preview and Hand UI Bridge
@@ -1852,3 +1859,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching BOARD-004 row exists in `production/sprint-status.yaml`.
 - Next recommended: Board Rendering Story 005 (`production/epics/board-rendering/story-005-placement-reveal-animation-handoff.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/shop-auction-ui/story-002-draft-initial-grid-purchase-ready.md` - Story 002: Draft Initial Grid Purchase Ready
+- Criteria: 9/9 passing; activation buffering, sort order, valid purchase sends, insufficient-gold lockout, hand-full lockout, purchase confirmation overlay, Ready/Retract Ready signaling, ready-state purchase interactivity, and PLACEMENT dismissal were verified.
+- Test Evidence: `cargo test -p client --test shop_auction_ui_draft_initial_grid_test` passed 9/9. `cargo test -p client --test shop_auction_ui_plugin_scaffold_formulas_test` passed 8/8. `cargo check -p client`, `cargo fmt -p client -- --check`, and `git diff --check` passed.
+- Verification: Current `main` includes worker commit `b52510adba1f60fb2c740c0636e4ebaed6c5b862` via main integration commit `21c09f5`; DRAFT_INITIAL reads shared phase/economy state, owns only `S2CDraftOffering` and `S2CCardAcquired` drains, sends purchase/ready intents over `ReliableChannel`, and uses Bevy UI Required Components without forbidden bundle patterns.
+- Notes: Advisory only - manual visual evidence for overlay/tooltip remains deferred to Story 009 or a separately scoped tooltip/visual evidence story. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching SAU-002/story row exists in `production/sprint-status.yaml`.
+- Next recommended: Shop/Auction UI Story 003 (`production/epics/shop-auction-ui/story-003-draft-shop-refresh-and-purchase.md`) after readiness check, or continue the current sprint close-out sequence if no additional Should Have scope is being pulled in.
