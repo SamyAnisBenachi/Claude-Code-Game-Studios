@@ -10,7 +10,8 @@ use server::core::rsm::{
 };
 use server::core::session::SessionConfig;
 use server::feature::board::{
-    BoardCell, BoardGrid, BoardOccupancy, BoardPlugin, PendingPlacements, PlayerSubmission,
+    AcceptedPlacement, BoardCell, BoardGrid, BoardOccupancy, BoardPlugin, PendingPlacements,
+    PlayerSubmission,
 };
 use server::feature::combat::{
     CombatNetworkMessage, CombatNetworkMessageKind, CombatNetworkOutbox, CombatPlugin,
@@ -24,9 +25,7 @@ use server::foundation::config::CardCatalog;
 use server::network::rsm_dispatch::dispatch_phase_changed;
 use shared::card::{CardData, CardId, CardType, ClassId, Keyword, Rarity, SimpleKeyword, UnitType};
 use shared::keyword::KeywordKind;
-use shared::protocol::{
-    GameMode, GoldReason, PlacedCard, PlayTarget, ResolutionEvent, S2CResolutionEvent,
-};
+use shared::protocol::{GameMode, GoldReason, PlayTarget, ResolutionEvent, S2CResolutionEvent};
 use shared::session::PlayerId;
 
 const ROUND: u32 = 7;
@@ -108,16 +107,17 @@ fn economy() -> PlayerEconomy {
     }
 }
 
-fn placed(card_id: CardId, owner_id: PlayerId, lane: u8, cell: u8) -> PlacedCard {
-    PlacedCard {
+fn placed(card_id: CardId, owner_id: PlayerId, lane: u8, cell: u8) -> AcceptedPlacement {
+    AcceptedPlacement {
         card_id,
         owner_id,
         target: PlayTarget::BoardCell { lane, cell },
-        reserve_amount: 0,
+        current_mana_spend: 0,
+        reserve_mana_spend: 0,
     }
 }
 
-fn submit(app: &mut App, player: PlayerId, placements: Vec<PlacedCard>) {
+fn submit(app: &mut App, player: PlayerId, placements: Vec<AcceptedPlacement>) {
     app.world_mut()
         .resource_mut::<PendingPlacements>()
         .submissions
