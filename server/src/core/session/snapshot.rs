@@ -12,13 +12,12 @@ use crate::core::board::{
     SeedOwner, UnitCardRef, UnitOwner, UnitStats,
 };
 use crate::core::economy::{PlayerEconomies, PlayerEconomy};
-use crate::core::objective_contract::ObjectiveCounters;
 use crate::core::pool::{PlayerPool, PlayerPools};
 use crate::core::rsm::{RoundPhase, RoundState};
 use crate::core::session::{PlayerSessions, SessionConfig};
 use crate::feature::acquisition::{PlayerHands, ShopStates};
 use crate::feature::auction::{auction_snapshot, AuctionState};
-use crate::feature::board::BoardOccupancy;
+use crate::feature::board::{spawn_range_cells_for_player, BoardOccupancy, SpawnRangeState};
 use crate::feature::objective::{
     HiddenObjectives, ObjectiveHp, ObjectiveSlot, OBJECTIVE_LANE_COUNT,
 };
@@ -212,11 +211,14 @@ fn pool_for_player(world: &World, player_id: PlayerId) -> Option<&PlayerPool> {
 }
 
 fn spawn_range_cells(world: &World, player_id: PlayerId) -> u8 {
-    let fakes_destroyed = world
-        .get_resource::<ObjectiveCounters>()
-        .map(|counters| counters.fake_objectives_destroyed(player_id))
-        .unwrap_or(0);
-    u32_to_u8(1_u32.saturating_add(fakes_destroyed).min(3))
+    let Some(session) = world.get_resource::<SessionConfig>() else {
+        return 1;
+    };
+
+    world
+        .get_resource::<SpawnRangeState>()
+        .and_then(|spawn_ranges| spawn_range_cells_for_player(spawn_ranges, player_id, session))
+        .unwrap_or(1)
 }
 
 fn submitted_for_player(world: &World, player_id: PlayerId) -> bool {

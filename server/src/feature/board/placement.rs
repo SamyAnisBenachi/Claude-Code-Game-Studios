@@ -22,7 +22,7 @@ use crate::foundation::config::CardCatalog;
 
 const PLAYER_A_TEAM_ID: u8 = 0;
 const PLAYER_B_TEAM_ID: u8 = 1;
-const MAX_FAKE_OBJECTIVES_DESTROYED: u8 = 2;
+pub const MAX_FAKE_OBJECTIVES_DESTROYED: u8 = 2;
 
 /// Server-side buffer of accepted placement submissions for the active phase.
 ///
@@ -60,6 +60,13 @@ pub struct PlacementSubmissionReceived {
 #[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FakeObjectiveDestroyed {
     pub destroyed_by: PlayerId,
+}
+
+/// Board-owned projection change produced by fake objective destruction.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SpawnRangeProjectionChange {
+    pub player_id: PlayerId,
+    pub new_spawn_range_cells: u8,
 }
 
 /// Internal signal emitted after reveal enqueue and entity spawn complete.
@@ -278,13 +285,83 @@ pub fn update_spawn_range(
     };
 
     for event in destroyed.read() {
-        let Some(index) = spawn_range_index_for(event.destroyed_by, session) else {
+        if skip_already_applied_objective_fact(&mut spawn_ranges, event.destroyed_by, session) {
             continue;
-        };
-        spawn_ranges.fakes_destroyed[index] = spawn_ranges.fakes_destroyed[index]
-            .saturating_add(1)
-            .min(MAX_FAKE_OBJECTIVES_DESTROYED);
+        }
+
+        expand_spawn_range(&mut spawn_ranges, event.destroyed_by, session);
     }
+}
+
+/// Expands the Board/Lane-owned spawn range projection for a player.
+///
+/// Returns a change only when the live projection actually increases. The
+/// stored value remains the fake-destruction count; protocol snapshots/events
+/// expose the derived placement cell count (`1..=3`).
+pub fn expand_spawn_range(
+    spawn_ranges: &mut SpawnRangeState,
+    player: PlayerId,
+    session: &SessionConfig,
+) -> Option<SpawnRangeProjectionChange> {
+    let index = spawn_range_index_for(player, session)?;
+    let before = spawn_ranges.fakes_destroyed[index].min(MAX_FAKE_OBJECTIVES_DESTROYED);
+    let after = before.saturating_add(1).min(MAX_FAKE_OBJECTIVES_DESTROYED);
+
+    spawn_ranges.fakes_destroyed[index] = after;
+
+    (after != before).then(|| SpawnRangeProjectionChange {
+        player_id: player,
+        new_spawn_range_cells: spawn_range_cells_from_fakes_destroyed(after),
+    })
+}
+
+/// Expands spawn range for an Objective-owned fake-destruction fact.
+///
+/// Combat resolution uses this path so the ordered resolution batch can include
+/// `SpawnRangeChanged` immediately. The normal Board/Lane message bridge then
+/// skips the already-applied fact when it later observes the same objective signal.
+pub fn expand_spawn_range_from_objective_fact(
+    spawn_ranges: &mut SpawnRangeState,
+    player: PlayerId,
+    session: &SessionConfig,
+) -> Option<SpawnRangeProjectionChange> {
+    let index = spawn_range_index_for(player, session)?;
+    spawn_ranges.applied_fake_objective_facts[index] =
+        spawn_ranges.applied_fake_objective_facts[index].saturating_add(1);
+    expand_spawn_range(spawn_ranges, player, session)
+}
+
+/// Returns the protocol-facing spawn range cell count for a player.
+pub fn spawn_range_cells_for_player(
+    spawn_ranges: &SpawnRangeState,
+    player: PlayerId,
+    session: &SessionConfig,
+) -> Option<u8> {
+    fakes_destroyed_for(spawn_ranges, player, session).map(spawn_range_cells_from_fakes_destroyed)
+}
+
+const fn spawn_range_cells_from_fakes_destroyed(fakes_destroyed: u8) -> u8 {
+    1 + if fakes_destroyed > MAX_FAKE_OBJECTIVES_DESTROYED {
+        MAX_FAKE_OBJECTIVES_DESTROYED
+    } else {
+        fakes_destroyed
+    }
+}
+
+fn skip_already_applied_objective_fact(
+    spawn_ranges: &mut SpawnRangeState,
+    player: PlayerId,
+    session: &SessionConfig,
+) -> bool {
+    let Some(index) = spawn_range_index_for(player, session) else {
+        return false;
+    };
+    let Some(remaining) = spawn_ranges.applied_fake_objective_facts[index].checked_sub(1) else {
+        return false;
+    };
+
+    spawn_ranges.applied_fake_objective_facts[index] = remaining;
+    true
 }
 
 /// Accepts valid placement submissions into the server-only pending buffer.

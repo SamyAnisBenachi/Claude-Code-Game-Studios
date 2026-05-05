@@ -134,6 +134,10 @@ name = "spawn_range_validation_test"
 path = "../tests/unit/board-lane-system/spawn_range_validation_test.rs"
 
 [[test]]
+name = "spawn_range_authoritative_projection_test"
+path = "../tests/unit/board-lane-system/spawn_range_authoritative_projection_test.rs"
+
+[[test]]
 name = "placement_occupancy_test"
 path = "../tests/unit/board-lane-system/placement_occupancy_test.rs"
 

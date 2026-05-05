@@ -11,7 +11,7 @@ use server::core::rsm::{
 use server::core::session::SessionConfig;
 use server::feature::board::{
     AcceptedPlacement, BoardCell, BoardGrid, BoardOccupancy, BoardPlugin, PendingPlacements,
-    PlayerSubmission,
+    PlayerSubmission, SpawnRangeState,
 };
 use server::feature::combat::{
     CombatNetworkMessage, CombatNetworkMessageKind, CombatNetworkOutbox, CombatPlugin,
@@ -477,6 +477,58 @@ fn test_cr_32_resolution_event_batch_serializes_complete_ordered_log() {
             reason: GoldReason::ObjectiveDestroyed,
         }
     )));
+}
+
+#[test]
+fn test_spawn_range_changed_follows_fake_objective_destroyed_in_resolution_batch() {
+    let mut app = app_with_combat(vec![card(30, vec![])]);
+    spawn_unit(
+        &mut app,
+        CardId(30),
+        PLAYER_A,
+        2,
+        8,
+        UnitStats::new(2, 1, 0, 0),
+        UnitKeywordState::default(),
+    );
+    spawn_objective(&mut app, PLAYER_B, 2, 1, true);
+
+    begin_resolution(&mut app);
+
+    let batch = resolution_batch(&app);
+    let objective_destroyed_index = batch
+        .events
+        .iter()
+        .position(|tagged| {
+            matches!(
+                tagged.event,
+                ResolutionEvent::ObjectiveDestroyed {
+                    target_player_id: PLAYER_B,
+                    lane: 2,
+                    was_fake: true,
+                }
+            )
+        })
+        .expect("fake objective destruction should be in resolution batch");
+    let spawn_range_changed_index = batch
+        .events
+        .iter()
+        .position(|tagged| {
+            matches!(
+                tagged.event,
+                ResolutionEvent::SpawnRangeChanged {
+                    player_id: PLAYER_A,
+                    new_spawn_range_cells: 2,
+                }
+            )
+        })
+        .expect("spawn range change should be in resolution batch");
+
+    assert!(objective_destroyed_index < spawn_range_changed_index);
+    assert_eq!(
+        app.world().resource::<SpawnRangeState>().fakes_destroyed[0],
+        1
+    );
 }
 
 #[test]
