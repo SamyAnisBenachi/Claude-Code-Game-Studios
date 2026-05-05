@@ -17,6 +17,7 @@
 
 **Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
 **Engine Notes**: Use `liv-bevy-018` for Bevy code and `liv-bevy-lightyear` for Lightyear/protocol wiring before implementation.
+**Performance Budget**: Spawn-range projection reads/writes must remain O(1) per player. Event assembly may add only the changed player's `SpawnRangeChanged` entry and must not scan board cells or recompute from objective counters.
 
 **Control Manifest Rules (Feature layer)**:
 - Required: `SpawnRangeState` is mutated only through Board/Lane API functions.
