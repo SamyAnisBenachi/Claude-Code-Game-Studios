@@ -165,6 +165,21 @@ None currently tracked here.
   `design/ux/shop-auction-ui.md`, `design/ux/interaction-patterns.md`, and
   `design/accessibility-requirements.md`; optional later tracker hygiene for
   `production/epics/shop-auction-ui/story-009-visual-evidence-layout-and-accessibility.md`.
+- HAND-UI-010 prerequisite docs changeset returned and was pushed at `935f090`
+  (`docs: add HAND-UI-010 prerequisite stories`). It created/updated the
+  cross-epic blocker chain without touching production session-state or
+  sprint-status. New prerequisite stories: NP-005 Placement Payload Shape Split
+  (`production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md`,
+  Status Ready, `TR-NP-013`), ECO-007 Explicit Placement Mana Split API
+  (`production/epics/economy-system/story-007-explicit-placement-mana-split-api.md`,
+  Status Ready, `TR-ECO-009`), BLS-011 Placement Submit Authority Validation
+  (`production/epics/board-lane-system/story-011-placement-submit-authority-validation.md`,
+  Status Blocked on NP-005 + ECO-007, `TR-BLS-011`), and PRES-002 Shared Economy
+  View (`production/epics/presentation-layer/story-002-shared-economy-view.md`,
+  Status Ready, `TR-PRES-001`). `production/epics/hand-ui/story-010-submit-prevalidation.md`
+  is now marked Blocked on Story 005, NP-005, ECO-007, BLS-011, and PRES-002.
+  Final blocker chain: `NP-005 + ECO-007 -> BLS-011`; `BLS-011 + PRES-002 ->
+  HAND-UI-010`.
 - Settings/Accessibility UX design returned and was pushed at `093b62a`,
   creating `design/ux/settings-accessibility.md` only. Validation passed
   `git diff --check` and a path-specific check. Open questions recorded in the
@@ -216,11 +231,11 @@ None currently tracked here.
   missing `S2CActivationRejected`; Story 013 keeps the reconnect timer-zero
   design question open. Unblocks hand/shop panel layout evidence and later Hand
   UI visual polish.
-- Observed root worktree note: after parallel prompts, there are unrelated dirty
-  docs and untracked files in the root checkout, including the HAND-UI-010
-  prerequisite docs changeset surfaces and `design/ux/combat-log.md`. Do not
-  stage, revert, or commit those as part of orchestrator tracking unless the
-  user pastes the owning agent's final report or explicitly authorizes it.
+- Observed root worktree note: after parallel prompts, the HAND-UI-010
+  prerequisite docs changeset surfaces were committed at `935f090`. The root
+  checkout still has `design/ux/combat-log.md` untracked; do not stage, revert,
+  or commit it unless the user pastes the owning agent's final report or
+  explicitly authorizes it.
 - COMBAT-011 / S5-20 ResolutionEvent Log Completeness readiness repair/recheck
   returned READY. Initial repair was pushed at `92b5826`, updating
   `docs/architecture/tr-registry.yaml` and
@@ -1086,6 +1101,9 @@ Current active windows by user default-launch rule:
   not be relaunched until server/protocol/client data blockers are addressed.
   HAND-UI-010 blocker split returned read-only and confirmed new prerequisite
   implementation stories are needed; blocker split window can be cleared.
+- HAND-UI-010 prerequisite docs writer returned and pushed `935f090`; window can
+  be cleared. Next safe work is readiness/dev sequencing for NP-005, ECO-007,
+  and PRES-002; BLS-011 waits for NP-005 + ECO-007.
 - Shop/Auction UX readiness check returned; window can be cleared.
 - Shop/Auction UX review finish returned NEEDS REVISION; window can be cleared
   after recording repair scope. Use `REPONDRE` only if launching the UX repair
