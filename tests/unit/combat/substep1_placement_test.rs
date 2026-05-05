@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use server::core::board::{BoardPosition, UnitCardRef, UnitOwner, UnitStats};
 use server::core::rsm::BeginResolution;
 use server::feature::board::{
-    BoardCell, BoardGrid, BoardOccupancy, PendingPlacements, PlayerSubmission,
+    AcceptedPlacement, BoardCell, BoardGrid, BoardOccupancy, PendingPlacements, PlayerSubmission,
 };
 use server::feature::combat::{
     AppearanceEffect, AppearanceEffectRegistry, AppearanceTarget, CombatNetworkMessageKind,
@@ -17,7 +17,7 @@ use server::feature::keyword::effects::{
 use server::foundation::config::CardCatalog;
 use shared::card::{CardData, CardId, CardType, ClassId, Keyword, Rarity, SimpleKeyword, UnitType};
 use shared::keyword::KeywordKind;
-use shared::protocol::{PlacedCard, PlayTarget};
+use shared::protocol::PlayTarget;
 use shared::session::PlayerId;
 
 const ROUND: u32 = 3;
@@ -50,12 +50,13 @@ fn simple(keyword: SimpleKeyword) -> Keyword {
     Keyword::Simple(keyword)
 }
 
-fn placed(card_id: CardId, owner_id: PlayerId, lane: u8, cell: u8) -> PlacedCard {
-    PlacedCard {
-        card_id,
+fn placed(card_id: CardId, owner_id: PlayerId, lane: u8, cell: u8) -> AcceptedPlacement {
+    AcceptedPlacement {
         owner_id,
+        card_id,
         target: PlayTarget::BoardCell { lane, cell },
-        reserve_amount: 0,
+        current_mana_spend: 0,
+        reserve_mana_spend: 0,
     }
 }
 
@@ -71,7 +72,7 @@ fn app_with_cards(cards: Vec<CardData>) -> App {
     app
 }
 
-fn submit(app: &mut App, player: PlayerId, placements: Vec<PlacedCard>) {
+fn submit(app: &mut App, player: PlayerId, placements: Vec<AcceptedPlacement>) {
     app.world_mut()
         .resource_mut::<PendingPlacements>()
         .submissions

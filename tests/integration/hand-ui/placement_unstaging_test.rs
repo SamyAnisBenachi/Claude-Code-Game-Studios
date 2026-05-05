@@ -9,7 +9,7 @@ use client::ui::hand::{
     HandUiPlugin, PendingPlacements, ReserveStripForFanSlot,
 };
 use shared::card::CardId;
-use shared::protocol::{PlacedCard, PlayTarget, RoundPhase};
+use shared::protocol::{PlacedCardSubmit, PlayTarget, RoundPhase};
 use shared::session::PlayerId;
 
 #[test]
@@ -61,11 +61,11 @@ fn hu_21_unknown_ghost_click_is_ignored() {
 
     assert_eq!(
         app.world().resource::<PendingPlacements>().placements,
-        vec![PlacedCard {
+        vec![PlacedCardSubmit {
             card_id: CardId(20),
-            owner_id: PlayerId(7),
             target: PlayTarget::BoardCell { lane: 1, cell: 1 },
-            reserve_amount: 0,
+            current_mana_spend: 1,
+            reserve_mana_spend: 0,
         }]
     );
     let slot = fan_slot(&mut app, 0);
@@ -125,11 +125,11 @@ fn hu_21b_board_ghost_drag_unstages_only_on_fan_zone_release() {
 
     assert_eq!(
         app.world().resource::<PendingPlacements>().placements,
-        vec![PlacedCard {
+        vec![PlacedCardSubmit {
             card_id: CardId(31),
-            owner_id: PlayerId(7),
             target: PlayTarget::BoardCell { lane: 2, cell: 4 },
-            reserve_amount: 0,
+            current_mana_spend: 1,
+            reserve_mana_spend: 0,
         }]
     );
     let slot = fan_slot(&mut app, 0);

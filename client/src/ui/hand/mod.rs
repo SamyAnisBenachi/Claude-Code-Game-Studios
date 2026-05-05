@@ -8,7 +8,7 @@ use bevy_tweening::{lens::TransformPositionLens, Tween, TweenAnim};
 use lightyear::prelude::MessageSender;
 use shared::card::{CardCatalog, CardId, CardType};
 use shared::protocol::{
-    C2SActivateCard, C2SPurchaseCard, C2SSubmitPlacement, EntityId, PlacedCard, PlayTarget,
+    C2SActivateCard, C2SPurchaseCard, C2SSubmitPlacement, EntityId, PlacedCardSubmit, PlayTarget,
     ReliableChannel, RoundPhase,
 };
 use shared::session::PlayerId;
@@ -166,7 +166,7 @@ pub struct HandUiOutboundMessages {
 
 #[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
 pub struct PendingPlacements {
-    pub placements: Vec<PlacedCard>,
+    pub placements: Vec<PlacedCardSubmit>,
 }
 
 impl PendingPlacements {
@@ -178,15 +178,17 @@ impl PendingPlacements {
         self.placements.clear();
     }
 
-    fn stage_or_update(&mut self, placement: PlacedCard) {
+    fn stage_or_update(&mut self, placement: PlacedCardSubmit) {
         if let Some(existing) = self
             .placements
             .iter_mut()
             .find(|existing| existing.card_id == placement.card_id)
         {
-            let reserve_amount = existing.reserve_amount;
+            let current_mana_spend = existing.current_mana_spend;
+            let reserve_mana_spend = existing.reserve_mana_spend;
             *existing = placement;
-            existing.reserve_amount = reserve_amount;
+            existing.current_mana_spend = current_mana_spend;
+            existing.reserve_mana_spend = reserve_mana_spend;
             return;
         }
 
@@ -200,7 +202,7 @@ impl PendingPlacements {
             .map(|placement| &placement.target)
     }
 
-    fn remove_staged(&mut self, card_id: CardId) -> Option<PlacedCard> {
+    fn remove_staged(&mut self, card_id: CardId) -> Option<PlacedCardSubmit> {
         let index = self
             .placements
             .iter()
@@ -212,14 +214,14 @@ impl PendingPlacements {
         self.placements
             .iter()
             .find(|placement| placement.card_id == card_id)
-            .map(|placement| placement.reserve_amount)
+            .map(|placement| placement.reserve_mana_spend)
     }
 
     fn reserve_committed_by_other_cards(&self, card_id: CardId) -> u32 {
         self.placements
             .iter()
             .filter(|placement| placement.card_id != card_id)
-            .map(|placement| placement.reserve_amount)
+            .map(|placement| placement.reserve_mana_spend)
             .sum()
     }
 
@@ -232,11 +234,12 @@ impl PendingPlacements {
             return false;
         };
 
-        if placement.reserve_amount >= ceiling {
+        if placement.reserve_mana_spend >= ceiling {
             return false;
         }
 
-        placement.reserve_amount += 1;
+        placement.reserve_mana_spend += 1;
+        placement.current_mana_spend = placement.current_mana_spend.saturating_sub(1);
         true
     }
 
@@ -249,11 +252,12 @@ impl PendingPlacements {
             return false;
         };
 
-        if placement.reserve_amount == 0 {
+        if placement.reserve_mana_spend == 0 {
             return false;
         }
 
-        placement.reserve_amount -= 1;
+        placement.reserve_mana_spend -= 1;
+        placement.current_mana_spend = placement.current_mana_spend.saturating_add(1);
         true
     }
 }
@@ -1560,11 +1564,12 @@ pub fn handle_placement_drop_resolved_system(
             continue;
         };
 
-        let placement = PlacedCard {
+        let cost = card_cost_or_default(&catalog, card.0);
+        let placement = PlacedCardSubmit {
             card_id: card.0,
-            owner_id: drop.owner_id,
             target: target.clone(),
-            reserve_amount: 0,
+            current_mana_spend: cost,
+            reserve_mana_spend: 0,
         };
         pending_placements.stage_or_update(placement);
         ghost_writer.write(GhostPlacementChanged {
@@ -1576,7 +1581,6 @@ pub fn handle_placement_drop_resolved_system(
             let mut submit_texts = submit_button_sets.p0();
             set_submit_count_text(&mut submit_texts, pending_placements.staged_count());
         }
-        let cost = card_cost_or_default(&catalog, card.0);
         set_reserve_strip_visibility(
             &mut visibility_sets.p1(),
             slot_index.0,

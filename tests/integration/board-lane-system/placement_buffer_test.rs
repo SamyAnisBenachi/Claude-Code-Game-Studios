@@ -20,13 +20,16 @@ use server::core::rsm::{
 };
 use server::core::session::SessionConfig;
 use server::feature::board::{
-    get_units_at_cell, BoardGrid, BoardPlugin, PendingPlacements, PlacementCommitTrace,
-    PlacementCommitTraceEntry, PlacementCommitted, PlacementSubmissionReceived, PlayerSubmission,
+    get_units_at_cell, AcceptedPlacement, BoardGrid, BoardPlugin, PendingPlacements,
+    PlacementCommitTrace, PlacementCommitTraceEntry, PlacementCommitted,
+    PlacementSubmissionReceived, PlayerSubmission,
 };
 use server::foundation::config::CardCatalog;
 use server::network::register_lightyear_protocol;
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
-use shared::protocol::{GameMode, PlacedCard, PlayTarget, S2CPlacementReveal};
+use shared::protocol::{
+    GameMode, PlacedCardReveal, PlacedCardSubmit, PlayTarget, S2CPlacementReveal,
+};
 use shared::session::PlayerId;
 
 const TICK_HZ: f64 = 60.0;
@@ -78,12 +81,30 @@ fn card_id(id: u32) -> CardId {
     CardId(id)
 }
 
-fn placed_minion(owner_id: PlayerId, card_id: CardId, lane: u8, cell: u8) -> PlacedCard {
-    PlacedCard {
+fn submitted_minion(card_id: CardId, lane: u8, cell: u8) -> PlacedCardSubmit {
+    PlacedCardSubmit {
         card_id,
-        owner_id,
         target: PlayTarget::BoardCell { lane, cell },
-        reserve_amount: 0,
+        current_mana_spend: 0,
+        reserve_mana_spend: 0,
+    }
+}
+
+fn accepted_minion(owner_id: PlayerId, card_id: CardId, lane: u8, cell: u8) -> AcceptedPlacement {
+    AcceptedPlacement {
+        owner_id,
+        card_id,
+        target: PlayTarget::BoardCell { lane, cell },
+        current_mana_spend: 0,
+        reserve_mana_spend: 0,
+    }
+}
+
+fn revealed_minion(owner_id: PlayerId, card_id: CardId, lane: u8, cell: u8) -> PlacedCardReveal {
+    PlacedCardReveal {
+        owner_id,
+        card_id,
+        target: PlayTarget::BoardCell { lane, cell },
     }
 }
 
@@ -298,7 +319,7 @@ fn test_placement_phase_entered_clears_pending_buffer() {
         .insert(
             player(1),
             PlayerSubmission {
-                placements: vec![placed_minion(player(1), card_id(10), 1, 1)],
+                placements: vec![accepted_minion(player(1), card_id(10), 1, 1)],
                 submitted_at: std::time::Duration::ZERO,
                 is_final: true,
             },
@@ -317,8 +338,8 @@ fn test_placement_phase_entered_clears_pending_buffer() {
 #[test]
 fn test_duplicate_submission_keeps_first_final_batch() {
     let mut app = app_with_board();
-    let first = placed_minion(player(1), card_id(10), 1, 1);
-    let second = placed_minion(player(1), card_id(30), 2, 1);
+    let first = submitted_minion(card_id(10), 1, 1);
+    let second = submitted_minion(card_id(30), 2, 1);
 
     write_message(
         &mut app,
@@ -343,7 +364,10 @@ fn test_duplicate_submission_keeps_first_final_batch() {
         .submissions
         .get(&player(1))
         .expect("first submission should be retained");
-    assert_eq!(submission.placements, vec![first]);
+    assert_eq!(
+        submission.placements,
+        vec![accepted_minion(player(1), card_id(10), 1, 1)]
+    );
     assert!(submission.is_final);
 
     let submitted = read_messages::<PlacementSubmitted>(&app);
@@ -378,7 +402,7 @@ fn test_close_placement_phase_sends_reliable_reveal_before_spawning_units_atomic
             (
                 player(1),
                 PlayerSubmission {
-                    placements: vec![placed_minion(player(1), card_id(10), 1, 1)],
+                    placements: vec![accepted_minion(player(1), card_id(10), 1, 1)],
                     submitted_at: std::time::Duration::ZERO,
                     is_final: true,
                 },
@@ -386,7 +410,7 @@ fn test_close_placement_phase_sends_reliable_reveal_before_spawning_units_atomic
             (
                 player(2),
                 PlayerSubmission {
-                    placements: vec![placed_minion(player(2), card_id(20), 5, 8)],
+                    placements: vec![accepted_minion(player(2), card_id(20), 5, 8)],
                     submitted_at: std::time::Duration::ZERO,
                     is_final: true,
                 },
@@ -458,8 +482,8 @@ fn test_close_placement_phase_sends_reliable_reveal_before_spawning_units_atomic
     assert_eq!(
         received[0].placements,
         vec![
-            placed_minion(player(1), card_id(10), 1, 1),
-            placed_minion(player(2), card_id(20), 5, 8),
+            revealed_minion(player(1), card_id(10), 1, 1),
+            revealed_minion(player(2), card_id(20), 5, 8),
         ]
     );
 }

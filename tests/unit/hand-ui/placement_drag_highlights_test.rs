@@ -14,7 +14,7 @@ use client::ui::{
     shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT},
 };
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
-use shared::protocol::{EntityId, PlacedCard, PlayTarget, RoundPhase};
+use shared::protocol::{EntityId, PlacedCardSubmit, PlayTarget, RoundPhase};
 use shared::session::PlayerId;
 
 #[test]
@@ -34,11 +34,11 @@ fn hu_12_minion_highlights_spawn_cells_minus_occupied_and_staged_minions() {
     app.world_mut()
         .resource_mut::<PendingPlacements>()
         .placements
-        .push(PlacedCard {
+        .push(PlacedCardSubmit {
             card_id: CardId(10),
-            owner_id: PlayerId(1),
             target: PlayTarget::BoardCell { lane: 1, cell: 2 },
-            reserve_amount: 0,
+            current_mana_spend: 0,
+            reserve_mana_spend: 0,
         });
     app.update();
 

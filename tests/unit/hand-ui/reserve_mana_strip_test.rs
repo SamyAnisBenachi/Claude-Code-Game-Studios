@@ -185,7 +185,7 @@ fn set_reserve_amount(app: &mut App, card_id: CardId, reserve_amount: u32) {
         .iter_mut()
         .find(|placement| placement.card_id == card_id)
         .expect("card should be staged");
-    placement.reserve_amount = reserve_amount;
+    placement.reserve_mana_spend = reserve_amount;
     drop(pending);
     app.update();
 }
@@ -197,7 +197,7 @@ fn reserve_amount(app: &App, card_id: CardId) -> u32 {
         .iter()
         .find(|placement| placement.card_id == card_id)
         .expect("card should be staged")
-        .reserve_amount
+        .reserve_mana_spend
 }
 
 fn fan_slot(app: &mut App, index: u8) -> Entity {

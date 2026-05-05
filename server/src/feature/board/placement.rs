@@ -2,8 +2,10 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use lightyear::prelude::{NetworkTarget, Replicate, Server, ServerMultiMessageSender};
-use shared::card::{CardData, CardType};
-use shared::protocol::{PlacedCard, PlayTarget, ReliableChannel, S2CPlacementReveal};
+use shared::card::{CardData, CardId, CardType};
+use shared::protocol::{
+    PlacedCardReveal, PlacedCardSubmit, PlayTarget, ReliableChannel, S2CPlacementReveal,
+};
 use shared::session::PlayerId;
 
 use crate::core::board::{BoardPosition, UnitCardRef, UnitOwner, UnitStats};
@@ -36,7 +38,7 @@ pub struct PendingPlacements {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayerSubmission {
     /// Validated placements in submission order.
-    pub placements: Vec<PlacedCard>,
+    pub placements: Vec<AcceptedPlacement>,
     /// Server time at submission receipt. Tests may use `0.0`.
     pub submitted_at: std::time::Duration,
     /// True once the first valid submission is accepted for this phase.
@@ -51,7 +53,7 @@ pub struct PlayerSubmission {
 #[derive(Message, Clone, Debug, PartialEq, Eq)]
 pub struct PlacementSubmissionReceived {
     pub player: PlayerId,
-    pub placements: Vec<PlacedCard>,
+    pub placements: Vec<PlacedCardSubmit>,
 }
 
 /// Internal signal emitted when a player destroys an opposing fake objective.
@@ -64,7 +66,41 @@ pub struct FakeObjectiveDestroyed {
 #[derive(Message, Clone, Debug, PartialEq, Eq)]
 pub struct PlacementCommitted {
     pub round_number: u32,
-    pub committed_placements: HashMap<PlayerId, Vec<PlacedCard>>,
+    pub committed_placements: HashMap<PlayerId, Vec<AcceptedPlacement>>,
+}
+
+/// Server-internal placement after sender identity has been resolved.
+///
+/// This intentionally differs from both protocol payloads. C2S submit entries
+/// do not carry trusted ownership, while S2C reveal entries must omit mana
+/// spend fields.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AcceptedPlacement {
+    pub owner_id: PlayerId,
+    pub card_id: CardId,
+    pub target: PlayTarget,
+    pub current_mana_spend: u32,
+    pub reserve_mana_spend: u32,
+}
+
+impl AcceptedPlacement {
+    fn from_submit(owner_id: PlayerId, placement: PlacedCardSubmit) -> Self {
+        Self {
+            owner_id,
+            card_id: placement.card_id,
+            target: placement.target,
+            current_mana_spend: placement.current_mana_spend,
+            reserve_mana_spend: placement.reserve_mana_spend,
+        }
+    }
+
+    pub fn reveal(&self) -> PlacedCardReveal {
+        PlacedCardReveal {
+            owner_id: self.owner_id,
+            card_id: self.card_id,
+            target: self.target.clone(),
+        }
+    }
 }
 
 /// Instrumentation for the reveal-before-spawn invariant.
@@ -297,7 +333,7 @@ pub fn handle_placement_submission(
 pub fn process_placement_submission(
     pending: &mut PendingPlacements,
     player: PlayerId,
-    placements: Vec<PlacedCard>,
+    placements: Vec<PlacedCardSubmit>,
     phase: Option<RoundPhase>,
     session: Option<&SessionConfig>,
     board_config: &BoardConfig,
@@ -350,7 +386,10 @@ pub fn process_placement_submission(
     pending.submissions.insert(
         player,
         PlayerSubmission {
-            placements,
+            placements: placements
+                .into_iter()
+                .map(|placement| AcceptedPlacement::from_submit(player, placement))
+                .collect(),
             submitted_at: std::time::Duration::ZERO,
             is_final: true,
         },
@@ -398,7 +437,7 @@ pub fn close_placement_phase(
         placements: committed_sequence
             .iter()
             .map(|(_, placements)| placements)
-            .flat_map(|placements| placements.iter().cloned())
+            .flat_map(|placements| placements.iter().map(AcceptedPlacement::reveal))
             .collect(),
     };
 
@@ -442,7 +481,7 @@ pub fn get_units_at_cell(grid: &BoardGrid, lane: LaneId, cell: u8) -> Vec<Entity
 #[allow(clippy::too_many_arguments)]
 fn validate_submission_batch(
     player: PlayerId,
-    placements: &[PlacedCard],
+    placements: &[PlacedCardSubmit],
     session: &SessionConfig,
     board_config: &BoardConfig,
     spawn_ranges: &SpawnRangeState,
@@ -455,9 +494,6 @@ fn validate_submission_batch(
     let mut total_cost = 0_u32;
 
     for placement in placements {
-        if placement.owner_id != player {
-            return Some(PlacementSubmissionResult::OwnerMismatch);
-        }
         if hands
             .and_then(|hands| hands.hands.get(&player))
             .is_some_and(|hand| !hand.contains(&placement.card_id))
@@ -470,6 +506,7 @@ fn validate_submission_batch(
         };
 
         if let Some(result) = validate_placement_target(
+            player,
             placement,
             card,
             session,
@@ -495,7 +532,8 @@ fn validate_submission_batch(
 }
 
 fn validate_placement_target(
-    placement: &PlacedCard,
+    player: PlayerId,
+    placement: &PlacedCardSubmit,
     card: &CardData,
     session: &SessionConfig,
     board_config: &BoardConfig,
@@ -507,21 +545,13 @@ fn validate_placement_target(
             if !valid_lane_cell(*lane, *cell, board_config) {
                 return Some(PlacementSubmissionResult::InvalidTarget);
             }
-            let Some(fakes_destroyed) =
-                fakes_destroyed_for(spawn_ranges, placement.owner_id, session)
-            else {
+            let Some(fakes_destroyed) = fakes_destroyed_for(spawn_ranges, player, session) else {
                 return Some(PlacementSubmissionResult::SpawnRangeRejected);
             };
-            if !validate_spawn_range(
-                *cell,
-                placement.owner_id,
-                fakes_destroyed,
-                session,
-                board_config,
-            ) {
+            if !validate_spawn_range(*cell, player, fakes_destroyed, session, board_config) {
                 return Some(PlacementSubmissionResult::SpawnRangeRejected);
             }
-            if !is_minion_slot_available(occupancy, placement.owner_id, *lane, session) {
+            if !is_minion_slot_available(occupancy, player, *lane, session) {
                 return Some(PlacementSubmissionResult::OccupancyRejected);
             }
         }
@@ -529,7 +559,7 @@ fn validate_placement_target(
             if !valid_lane_cell(*lane, *cell, board_config) {
                 return Some(PlacementSubmissionResult::InvalidTarget);
             }
-            if !is_trap_slot_available(occupancy, placement.owner_id, *lane, *cell) {
+            if !is_trap_slot_available(occupancy, player, *lane, *cell) {
                 return Some(PlacementSubmissionResult::OccupancyRejected);
             }
         }
@@ -537,7 +567,7 @@ fn validate_placement_target(
             if !valid_lane_cell(*lane, *cell, board_config) {
                 return Some(PlacementSubmissionResult::InvalidTarget);
             }
-            if !is_structure_slot_available(occupancy, placement.owner_id, *lane, *cell) {
+            if !is_structure_slot_available(occupancy, player, *lane, *cell) {
                 return Some(PlacementSubmissionResult::OccupancyRejected);
             }
         }
@@ -545,7 +575,7 @@ fn validate_placement_target(
             if *lane < 1 || *lane > board_config.lane_count {
                 return Some(PlacementSubmissionResult::InvalidTarget);
             }
-            if !is_field_slot_available(occupancy, placement.owner_id, *lane) {
+            if !is_field_slot_available(occupancy, player, *lane) {
                 return Some(PlacementSubmissionResult::OccupancyRejected);
             }
         }
@@ -575,7 +605,7 @@ fn spawn_range_index_for(player: PlayerId, session: &SessionConfig) -> Option<us
 fn stage_occupancy(
     occupancy: &mut BoardOccupancy,
     player: PlayerId,
-    placement: &PlacedCard,
+    placement: &PlacedCardSubmit,
     card_type: CardType,
 ) {
     match (card_type, placement.target.clone()) {
@@ -601,7 +631,9 @@ fn stage_occupancy(
     }
 }
 
-fn collect_committed_placements(pending: &PendingPlacements) -> Vec<(PlayerId, Vec<PlacedCard>)> {
+fn collect_committed_placements(
+    pending: &PendingPlacements,
+) -> Vec<(PlayerId, Vec<AcceptedPlacement>)> {
     let mut players = pending.submissions.keys().copied().collect::<Vec<_>>();
     players.sort_by_key(|player| player.0);
 
@@ -617,7 +649,7 @@ fn collect_committed_placements(pending: &PendingPlacements) -> Vec<(PlayerId, V
 }
 
 fn deduct_committed_mana(
-    committed: &HashMap<PlayerId, Vec<PlacedCard>>,
+    committed: &HashMap<PlayerId, Vec<AcceptedPlacement>>,
     catalog: &CardCatalog,
     economies: &mut PlayerEconomies,
 ) {
@@ -647,34 +679,37 @@ fn spawn_committed_placement(
     grid: &mut BoardGrid,
     occupancy: &mut BoardOccupancy,
     trace: &mut PlacementCommitTrace,
-    placement: &PlacedCard,
+    placement: &AcceptedPlacement,
     catalog: &CardCatalog,
 ) {
     let Some(card) = catalog.cards.get(&placement.card_id) else {
         return;
     };
 
-    match placement.target {
+    match &placement.target {
         PlayTarget::BoardCell { lane, cell } => {
             let entity = commands
                 .spawn((
                     UnitCardRef(placement.card_id),
                     UnitOwner(placement.owner_id),
                     UnitStats::new(card.hp, card.atk, card.mp, card.ar),
-                    BoardPosition { lane, cell },
+                    BoardPosition {
+                        lane: *lane,
+                        cell: *cell,
+                    },
                     Replicate::to_clients(NetworkTarget::All),
                 ))
                 .id();
             if let Some((lane_index, cell_index)) =
-                grid_indices(lane, cell, &BoardConfig::default())
+                grid_indices(*lane, *cell, &BoardConfig::default())
             {
                 grid.lanes[lane_index][cell_index] = Some(BoardCell::new(entity));
             }
             apply_spawned_occupancy(
                 occupancy,
                 placement.owner_id,
-                lane,
-                cell,
+                *lane,
+                *cell,
                 card.card_type,
                 entity,
             );
@@ -688,7 +723,7 @@ fn spawn_committed_placement(
                     Replicate::to_clients(NetworkTarget::All),
                 ))
                 .id();
-            occupancy.fields.insert((placement.owner_id, lane), entity);
+            occupancy.fields.insert((placement.owner_id, *lane), entity);
             trace.push(PlacementCommitTraceEntry::UnitSpawned { entity });
         }
         PlayTarget::Instant | PlayTarget::TargetUnit { .. } | PlayTarget::TargetObj { .. } => {}
