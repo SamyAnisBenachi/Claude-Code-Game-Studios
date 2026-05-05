@@ -37,6 +37,18 @@ source of truth for story status.
   cherry-pick/merge to `main`; run minimal trust checks rather than redoing the
   whole worker suite unless risk or shared surfaces require it; push `main`;
   then queue exactly one serialized `/story-done`.
+- Delegation boundaries: delegate docs/readiness repairs, UX/docs repairs, asset
+  batches, and worker `/dev-story` tasks to agents whenever their prompts can
+  include scoped commit/push rules. Delegate `/story-done` too, but keep exactly
+  one story-done active at a time because it edits shared closure files.
+  Orchestrator keeps dependency decisions, window triage, prompt sequencing, and
+  main-branch worker integration unless an explicit one-off integration prompt is
+  issued. Do not let orchestrator become the bottleneck by committing this memory
+  file for every minor return; batch memory updates unless a durable blocker,
+  closure, integration, or policy change needs to persist.
+- The orchestrator cannot approve reviewer-blocked actions inside another agent
+  window on the user's behalf. When approval is needed, provide the exact short
+  approval line the user should paste back into that same window.
 - Workers must never push `main`, run `/story-done`, or edit
   `production/session-state/active.md`,
   `production/session-state/codex-orchestrator-state.md`, or
@@ -85,6 +97,11 @@ shared tracker prohibition, and detailed commit-body requirements. Do not
 replace prompt triangles with colored circles; prompts keep the red triangle
 prefix. Colored circles are only status/window labels immediately before the
 word, for example `🟢 CLEAR` and `🟡 REPONDRE`.
+
+Prompt number policy: prompt numbers are global and monotonically increasing
+within the orchestration conversation. Do not reset the index to 1 in later
+answers. The last launch prompt issued was PROMPT 4, so the next launch prompt
+number is PROMPT 5 unless a later memory update records a newer number.
 
 Window instruction policy: use uppercase `CLEAR` or `REPONDRE`. `CLEAR` means
 the user should close that window; do not add redundant wording like "do not
@@ -141,8 +158,7 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- NP-005 / Placement Payload Shape Split is integrated on `origin/main` and
-  needs serialized `/story-done`. Worker branch
+- NP-005 / Placement Payload Shape Split is complete on `origin/main`. Worker branch
   `work/np-005-placement-payload-shape-split` returned at `103d27d`, pushed to
   `origin/work/np-005-placement-payload-shape-split`. Root cherry-picked the
   worker commit into `main` as `e65fcfe` (`NP-005 impl: split placement payload
@@ -163,9 +179,8 @@ None currently tracked here.
   affected server tests 12/12, affected client tests 17/17,
   `cargo test -p server --test resolution_event_log_test` 3/3,
   `cargo check --workspace`, and `git diff --check origin/main..HEAD` before
-  push. Queue exactly one `/story-done` for
-  `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md`;
-  do not relaunch the implementation worker.
+  push. Story-done closure is pushed at `705defa`; do not relaunch the
+  implementation worker or closure window.
 - ECO-007 / Explicit Placement Mana Split API is complete on `origin/main`.
   Worker branch
   `work/eco-007-explicit-placement-mana-split-api` returned at `b1c678f`,
@@ -1316,8 +1331,8 @@ Current active windows by user default-launch rule:
   HAND-UI-010.
 - NP-005 implementation worker returned at `103d27d`; root integrated and
   pushed it as `e65fcfe` plus integration fix `48b4b5f`. Worker window can be
-  cleared. Queue serialized `/story-done` for
-  `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md`.
+  cleared. NP-005 story-done returned and pushed closure at `705defa`; closure
+  window can be cleared.
 - ECO-007 implementation worker returned at `b1c678f`; root integrated and
   pushed it as `dacc7d3`. Worker window can be cleared. Queue serialized
   `/story-done` for
