@@ -195,6 +195,16 @@ None currently tracked here.
   (`Format32bppArgb`), transparent corners, nonzero alpha coverage, and
   `git diff --check` passed with only unrelated CRLF warnings. No code,
   manifest, production session-state, or sprint-status files were touched.
+- Current 8-card illustration batch returned and was pushed at `330806f`,
+  generating 16 PNGs: one `assets/art/cards/zoom/card_<art_id>_art_zoom.png`
+  at 240x360 and one
+  `assets/art/cards/display/card_<art_id>_art_display.png` at 120x180 for each
+  of the 8 current `assets/data/cards.json` art IDs. Skipped files: none; no
+  filename collisions, so no numeric suffixes were needed. Validation passed:
+  PNG signatures valid, bit depth 8 / color type 6 RGBA for all files,
+  dimensions match requested sizes, `git diff --check` passed with only
+  unrelated CRLF warnings. No manifest/code edits; production session-state and
+  sprint-status untouched.
 - Hand UI UX design returned and was pushed at `fc95a84`, creating
   `design/ux/hand-ui.md` only. Validation passed `git diff --check`; no code,
   production session-state, or sprint-status files were touched. Open questions
@@ -1087,6 +1097,8 @@ Current active windows by user default-launch rule:
   stories.
 - Current card type/rarity HUD icon batch returned and pushed `43bd1f8`; window
   can be cleared.
+- Current 8-card illustration batch returned and pushed `330806f`; window can be
+  cleared.
 - Hand UI UX design returned and pushed `fc95a84`; window can be cleared.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
