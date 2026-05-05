@@ -1,7 +1,7 @@
 # Story 012: Spawn Range Authoritative Projection
 
 > **Epic**: Board / Lane System
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -27,9 +27,10 @@
 
 ---
 
-## Blocker
+## Prerequisite Status
 
-Blocked until `production/epics/lightyear-protocol-verification/story-006-spawn-range-live-update-contract.md` defines and registers the shared `ResolutionEvent::SpawnRangeChanged` variant.
+- `production/epics/lightyear-protocol-verification/story-006-spawn-range-live-update-contract.md` is Complete as of `af11e1f` and defines/registers the shared `ResolutionEvent::SpawnRangeChanged` variant.
+- Objective fake-destruction facts/counters are available from the completed Objective consequence path; BLS-012 owns turning those facts into the Board/Lane live projection.
 
 ---
 
@@ -68,6 +69,8 @@ Board/Lane System
 
 The story should remove any current snapshot shortcut that derives `spawn_range_cells` from `ObjectiveCounters`. `ObjectiveCounters` may remain the RSM/objective fact contract, but it is not the live projection source for placement validation or client recovery.
 
+Centralize spawn range mutation behind a Board/Lane-owned API helper (ADR-020 names this `expand_spawn_range`) so placement validation, snapshot assembly, and resolution-event production all share the same `SpawnRangeState` source.
+
 ## Out of Scope
 
 - Protocol schema definition (`NP-006`).
@@ -101,7 +104,7 @@ The story should remove any current snapshot shortcut that derives `spawn_range_
 **Story Type**: Integration
 **Required evidence**:
 - Unit: `tests/unit/board-lane-system/spawn_range_authoritative_projection_test.rs`
-- Integration or protocol evidence for ordered `S2CResolutionEvent` assembly if not covered by the unit test.
+- Integration: `tests/integration/combat/resolution_event_log_test.rs` covers ordered `ObjectiveDestroyed` -> `SpawnRangeChanged` assembly in `S2CResolutionEvent`.
 
 **Status**: [ ] Not yet created
 
@@ -109,6 +112,8 @@ The story should remove any current snapshot shortcut that derives `spawn_range_
 
 ## Dependencies
 
-- Depends on: `production/epics/lightyear-protocol-verification/story-006-spawn-range-live-update-contract.md`.
-- Depends on: Objective System destruction counters/facts from the objective consequence path stories.
+- Depends on: `production/epics/lightyear-protocol-verification/story-006-spawn-range-live-update-contract.md` (Complete at `af11e1f` - shared `ResolutionEvent::SpawnRangeChanged` exists).
+- Depends on: `production/epics/objective-system/story-005-destruction-consequence-path.md` (Complete - fake destruction updates counters and emits the Board/Lane fact).
+- Depends on: `production/epics/objective-system/story-007-resolution-phase-subscription.md` (Complete - `ObjectiveDestroyed` sync path exists).
+- Depends on: `production/epics/combat-resolution/story-009-objective-damage-gameover.md` (Complete - objective destruction enters the resolution log path).
 - Unlocks: `production/epics/board-rendering/story-011-spawn-range-highlights.md`.

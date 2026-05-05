@@ -72,7 +72,7 @@ This epic is complete when:
 | 009 | [Prism Collection](story-009-prism-collection.md) | Logic | Ready | ADR-010 |
 | 010 | [Displacement Keywords and Spawn Range Expansion](story-010-displacement-keywords.md) | Logic | Ready | ADR-007, ADR-010 |
 | 011 | [Placement Submit Authority Validation](story-011-placement-submit-authority-validation.md) | Integration | Ready | ADR-007, ADR-019, ADR-002, ADR-008 |
-| 012 | [Spawn Range Authoritative Projection](story-012-spawn-range-authoritative-projection.md) | Integration | Blocked | ADR-020, ADR-008, ADR-011 |
+| 012 | [Spawn Range Authoritative Projection](story-012-spawn-range-authoritative-projection.md) | Integration | Ready | ADR-020, ADR-008, ADR-011 |
 
 ## Next Step
 
