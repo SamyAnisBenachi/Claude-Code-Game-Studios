@@ -1,7 +1,7 @@
 # Story 012: Browser/WASM Board Performance Evidence
 
 > **Epic**: Board Rendering
-> **Status**: Ready
+> **Status**: Blocked
 > **Layer**: Presentation
 > **Type**: Config/Data
 > **Manifest Version**: 2026-05-05
@@ -127,10 +127,31 @@ The baseline must exclude status icons, spawn range highlights, traps, and final
 
 **Asset reference note**: the `.png`, `.json`, and `.log` paths above are future output artifacts for this story, not pre-existing input assets. They are expected not to exist before BOARD-012 implementation.
 
-**Status**: [ ] Not yet captured
+**Status**: [ ] Browser capture blocked. The harness and capture path are implemented, but the required 1920x1080 browser screenshot and browser/WASM timing artifacts were not produced because `trunk`, `node`, and a browser executable were unavailable on PATH during story-done verification.
 
 ## Dependencies
 
 - Depends on: [Story 010](story-010-performance-evidence-and-ci-guards.md), which created the narrowed BOARD-010 baseline guard evidence and documented the browser/WASM capture blocker.
 - Supporting completed baseline: [Story 002](story-002-board-grid-camera-and-z-layers.md) and [Story 003](story-003-snapshot-spawn-units-objectives-and-hp-bars.md).
 - Unlocks: Sprint 6 S6-03 evidence for QA-COND-0004 browser/WASM board performance capture.
+
+## Story Done Review Notes
+
+**Reviewed**: 2026-05-05
+
+**Verdict**: BLOCKED - the BOARD-012 harness implementation is integrated and verified, but the story cannot be marked Complete because the required browser/WASM screenshot and timing artifacts were not produced.
+
+**Integrated implementation**: `8e0fce4772c0164ba3a879e081575f2576e3d473`
+
+**Verified coverage**:
+- Harness binary and WASM target build check pass.
+- Baseline fixture coverage verifies 5 lanes, 40 board cells, 20 visible units, 10 objectives, HP bars on every visible unit, and post-reveal-ready state.
+- The fixture excludes BOARD-009 status-icon final evidence, spawn range highlights, traps, final VFX, and full Board Rendering epic closure claims.
+- `production/qa/evidence/board-rendering-performance-evidence.md` records the capture commands, artifact paths, fixture counts, and explicit blocker.
+
+**Blocked acceptance criteria**:
+- Viewport capture and nonblank board evidence remain unverified because `production/qa/evidence/captures/board-rendering-baseline-1920x1080.png` was not produced.
+- Browser total frame timing and ADR-021 steady/spike budget verdicts remain unverified because `production/qa/evidence/captures/board-rendering-baseline-timing.json` was not produced.
+- Evidence remains partial because it does not contain raw browser timing values, browser environment details, or browser budget pass/fail verdicts.
+
+**QA-COND-0004**: Remains Open / Needs Evidence.
