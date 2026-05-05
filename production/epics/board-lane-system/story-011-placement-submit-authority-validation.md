@@ -1,7 +1,7 @@
 # Story 011: Placement Submit Authority Validation
 
 > **Epic**: Board / Lane System
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -11,6 +11,7 @@
 **GDD**: `design/gdd/board-lane-system.md`
 **Requirement**: `TR-BLS-011`
 *(Requirement text lives in `docs/architecture/tr-registry.yaml` - read fresh at review time)*
+**Readiness dependency status**: NP-005 is Complete at main integration `705defa`; ECO-007 is Complete at main integration `a564d99`; `TR-BLS-011` is active; ADR-007, ADR-019, ADR-002, and ADR-008 are Accepted.
 
 **ADR Governing Implementation**: ADR-007: Placement Buffer and Simultaneous Reveal Architecture; ADR-019: Economy Resource Architecture; ADR-002: Client-Server Authority; ADR-008: Lightyear Channel Config
 **ADR Decision Summary**: Placement submissions are authoritative server-side batches. The server validates phase, sender ownership, hand membership, duplicate card IDs, target legality, occupancy/spawn rules, and explicit current/reserve mana budgets before writing to `PendingPlacements`. Rejections are silent and all-or-nothing. Mana is deducted at PLACEMENT close, not at submit receipt.
@@ -27,12 +28,12 @@
 
 ---
 
-## Blockers
+## Readiness Gates Confirmed
 
-This story cannot open until:
+This story is ready to open because:
 
-- `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md` is Complete.
-- `production/epics/economy-system/story-007-explicit-placement-mana-split-api.md` is Complete.
+- `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md` is Complete and provides the split `C2SSubmitPlacement` / `S2CPlacementReveal` protocol payloads.
+- `production/epics/economy-system/story-007-explicit-placement-mana-split-api.md` is Complete and provides `validate_explicit_mana_split` / `apply_explicit_mana_split`.
 
 ---
 
@@ -86,6 +87,10 @@ Do not deduct mana in the submit handler. The accepted split values must remain 
 6. clear PendingPlacements
 ```
 
+## Performance Budget
+
+Placement submit validation must remain bounded by the submitted batch size plus constant-time lookups in authoritative player hand, card catalog, board state, and economy resources. The submit handler runs in the normal server gameplay loop and must stay within the ADR-002 steady-state server budget of `<= 5 ms` per tick; `close_placement_phase` work remains part of the existing phase-close path and must not violate the ADR-017 RESOLUTION batch budget of `<= 15 ms`.
+
 ---
 
 ## Out of Scope
@@ -135,5 +140,7 @@ Do not deduct mana in the submit handler. The accepted split values must remain 
 
 ## Dependencies
 
-- Depends on: `NP-005` and `ECO-007`.
+- Readiness gates confirmed: `NP-005` Complete; `ECO-007` Complete; ADR-007/ADR-019/ADR-002/ADR-008 Accepted; `TR-BLS-011` active.
+- Depends on: `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md` is Complete and provides split placement protocol payloads.
+- Depends on: `production/epics/economy-system/story-007-explicit-placement-mana-split-api.md` is Complete and provides explicit current/reserve mana validation and deduction APIs.
 - Unlocks: `production/epics/hand-ui/story-010-submit-prevalidation.md` server-authority prerequisite.

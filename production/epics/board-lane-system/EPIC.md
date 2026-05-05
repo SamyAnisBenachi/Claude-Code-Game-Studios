@@ -69,7 +69,7 @@ This epic is complete when:
 | 008 | [Objective Cell Detection (F3)](story-008-objective-cell-detection.md) | Logic | Ready | ADR-010 |
 | 009 | [Prism Collection](story-009-prism-collection.md) | Logic | Ready | ADR-010 |
 | 010 | [Displacement Keywords and Spawn Range Expansion](story-010-displacement-keywords.md) | Logic | Ready | ADR-007, ADR-010 |
-| 011 | [Placement Submit Authority Validation](story-011-placement-submit-authority-validation.md) | Integration | Blocked | ADR-007, ADR-019, ADR-002 |
+| 011 | [Placement Submit Authority Validation](story-011-placement-submit-authority-validation.md) | Integration | Ready | ADR-007, ADR-019, ADR-002, ADR-008 |
 
 ## Next Step
 
