@@ -296,6 +296,18 @@ None currently tracked here.
   ASSET-037 variants are 512x128 with top 48px transparent and max alpha 51,
   `git diff --check` and `git diff --cached --check` passed with only unrelated
   CRLF warnings. Manifest assets were not marked Done.
+- Shop/Auction UI PNG asset pack returned and was pushed at `efb95a1`,
+  generating 18 PNGs under `assets/art/ui/shop_auction/` and
+  `assets/art/vfx/shop_auction/`: gold coin 48/24, rarity gems rare/epic/
+  legendary display variants, shop slot highlight, auction panel background,
+  auction border tiers 1-4, gold particle loop, gold bloom loop, prism flash,
+  and bid pulse ring loop. Validation passed: 18/18 files are PNG
+  `Format32bppArgb` with alpha channel, dimensions match spec, transparent
+  assets have valid alpha ranges, panel background is fully opaque RGBA,
+  chroma-key fringe scan passed after cleanup, `git diff --check` passed, and
+  `git diff --cached --check -- assets/art/ui/shop_auction assets/art/vfx/shop_auction`
+  passed. Skipped: none; no filename suffixes needed. No audio, code, manifest,
+  sprint-status, or session-state files were committed.
 - Hand UI UX design returned and was pushed at `fc95a84`, creating
   `design/ux/hand-ui.md` only. Validation passed `git diff --check`; no code,
   production session-state, or sprint-status files were touched. Open questions
@@ -1206,6 +1218,8 @@ Current active windows by user default-launch rule:
   cleared.
 - Remaining Board Rendering placeholder PNG batch returned and pushed `9fa1908`;
   window can be cleared.
+- Shop/Auction UI PNG asset pack returned and pushed `efb95a1`; window can be
+  cleared.
 - Hand UI UX design returned and pushed `fc95a84`; window can be cleared.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
