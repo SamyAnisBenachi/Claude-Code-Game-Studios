@@ -1,7 +1,7 @@
 # Story 006: Auction Accepted/Rejected Feedback
 
 > **Epic**: Shop / Auction UI
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -13,7 +13,7 @@
 **Requirement**: `TR-SAU-001`, `TR-SAU-005`
 **ADR Governing Implementation**: [ADR-013: Auction System State](../../../docs/architecture/adr-013-auction-system-state.md), [ADR-019: Economy Resource Architecture](../../../docs/architecture/adr-019-economy-resource-architecture.md), [ADR-021: Presentation Layer Architecture](../../../docs/architecture/adr-021-presentation-layer-architecture.md)
 **Control Manifest**: `docs/architecture/control-manifest.md` version `2026-05-05`.
-**Readiness status**: Story content is repaired for current manifest rules, but `/dev-story` is blocked until SAU-004 and SAU-005 are implemented and marked Complete.
+**Readiness status**: Story content is repaired for current manifest rules. SAU-004 and SAU-005 are Complete, so SAU-006 is unblocked for `/dev-story`.
 
 This story processes `S2CAuctionBidAccepted`, `S2CAuctionBidRejected`, and the associated `S2CGoldBroadcast` gate that prevents button re-enable against stale free-gold data. It resolves in-flight bid state and keeps accepted/rejected UI synchronized with server authority.
 
@@ -108,14 +108,12 @@ This story processes `S2CAuctionBidAccepted`, `S2CAuctionBidRejected`, and the a
 
 ## Dependencies
 
-- Depends on: [Story 004](story-004-auction-panel-activation-and-preparing-state.md) - must be implemented and marked Complete before SAU-006 `/dev-story`; provides the active auction panel, preparing/activation state, locked footer boundary, and timer source that accepted/rejected feedback updates.
-- Depends on: [Story 005](story-005-auction-bid-buttons-affordability-and-inflight.md) - must be implemented and marked Complete before SAU-006 `/dev-story`; provides bid buttons, affordability/in-flight state, `BIDDING...` label ownership, and initial `C2SPlaceBid` send semantics that SAU-006 resolves.
+- Depends on: [Story 004](story-004-auction-panel-activation-and-preparing-state.md) - Complete; provides the active auction panel, preparing/activation state, locked footer boundary, and timer source that accepted/rejected feedback updates.
+- Depends on: [Story 005](story-005-auction-bid-buttons-affordability-and-inflight.md) - Complete; provides bid buttons, affordability/in-flight state, `BIDDING...` label ownership, and initial `C2SPlaceBid` send semantics that SAU-006 resolves.
 - Depends on: Auction System bid accepted/rejected dispatch being integrated for runtime end-to-end behavior.
 - Depends on: Economy gold broadcast dispatch and the existing/shared `S2CGoldBroadcast` bridge/resource path being available for the local-player re-enable gate.
 - Unlocks: Story 007.
 
 ## Blockers
 
-- SAU-004 is currently `Ready`, not `Complete`.
-- SAU-005 is currently `Ready`, not `Complete`.
-- SAU-006 remains blocked for `/dev-story` until both dependencies are Complete.
+None.
