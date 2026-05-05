@@ -145,6 +145,19 @@ None currently tracked here.
 
 ## Recent Planning / Readiness Updates
 
+- COMBAT-011 / S5-20 ResolutionEvent Log Completeness readiness repair/recheck
+  returned READY. Initial repair was pushed at `92b5826`, updating
+  `docs/architecture/tr-registry.yaml` and
+  `production/epics/combat-resolution/story-011-resolution-event-log.md`:
+  manifest `2026-05-01`, trace repaired to active `TR-CR-014` and `TR-CR-015`,
+  `TR-CR-015` expanded to cover CR-32 content completeness, and story scope
+  clarified as integration/protocol completion rather than verification-only.
+  Follow-up commit `ce6a7aa` is also on `origin/main` and aligns event names to
+  current protocol/story wording (`SubStepBegin` satisfying GDD SubStepEntry,
+  `UnitRemoved` satisfying GDD UnitRemovedRecord). `/dev-story` is safe next
+  with explicit authorization and must use `liv-bevy-018` plus
+  `liv-bevy-lightyear` if it touches Bevy combat, shared protocol, Lightyear
+  registration, or sending.
 - COMBAT-010 / S5-19 Persistent Keyword States readiness returned BLOCKED on
   stale LEADER timing and trace/story gaps. Follow-up read-only analysis found
   the current Combat/Keyword GDDs authoritative: LEADER snapshot is post-SS1,
@@ -947,8 +960,10 @@ Current active windows by user default-launch rule:
   `main` to that commit. Worker window can be cleared. Story-done returned
   COMPLETE and was pushed at `7e0a213`, updating the story, active session
   state, and S5-19 sprint row. COMBAT-010 story-done window can be cleared.
-  COMBAT-011 is now unblocked for readiness repair/recheck, but prior readiness
-  found stale manifest/TR/protocol-scope gaps.
+  COMBAT-011 readiness repair/recheck returned READY and was pushed at
+  `92b5826`, with follow-up trace-name alignment at `ce6a7aa`; readiness window
+  can be cleared. COMBAT-011 `/dev-story` is now safe to launch with
+  `liv-bevy-018` and `liv-bevy-lightyear`.
 - COMBAT-008 readiness repair returned READY and was pushed at `b26f007`.
   Readiness window can be cleared. COMBAT-008 implementation worker returned at
   `dd7bd50`; root fast-forwarded and pushed `main` to that commit. Worker
