@@ -14,6 +14,7 @@ notes:
   - "Pull-forward credit is already integrated and must not be double-counted as unstarted Sprint 6 capacity."
   - "Pull-forward credit: SAU-003; SAU-004; SAU-005; SAU-006; BOARD-005; BOARD-009 narrowed status/co-occupancy; BOARD-010 narrowed baseline; NP-006; BLS-012 readiness; BOARD-006 readiness; OS-18b Story 008 docs; spawn range docs repair; playtest package and fun hypothesis decision docs; QA condition register; AU19-a repair / QA-COND-0002 closure; AU1 FIFO harness; ADR-023 timer accessibility authority."
   - "Sprint 6 QA plan exists at production/qa/qa-plan-sprint-6-2026-05-05.md and governs remediation validation, condition reconciliation, smoke scope, and QA sign-off prerequisites."
+  - "Producer decision on 2026-05-05 reclassifies S6-02 / QA-COND-0006 out of active Sprint 6 remediation scope as accepted deferred risk; this is not playtest evidence completion."
 
 stories:
   - id: "S6-01"
@@ -31,14 +32,16 @@ stories:
   - id: "S6-02"
     name: "Playtest sessions and fun hypothesis decision"
     file: "production/playtests/sprint-6-fun-hypothesis-decision.md"
-    priority: must-have
-    status: ready-for-dev
+    priority: accepted-risk
+    status: accepted-risk
     owner: "producer + qa-lead"
     estimate_days: 2.00
-    blocker: ""
+    blocker: "Producer accepted deferral for Sprint 6; not an active S6-06 blocker. Production -> Polish gate must carry QA-COND-0006 as an explicit condition/risk, not as passed playtest evidence."
     completed: ""
     notes:
-      - "Requires new-player, mid-game, and difficulty-curve reports plus aggregate decision."
+      - "Producer decision on 2026-05-05: do not run Sprint 6 playtests now, do not implement a dev-only playable shell just to satisfy S6-02, and do not fabricate playtest reports."
+      - "S6-02 / QA-COND-0006 is reclassified out of active Sprint 6 remediation scope; this is not evidence completion and QA-COND-0006 is not Verified."
+      - "Future playtest closure still requires actual new-player, mid-game, and difficulty-curve reports plus an evidence-based aggregate fun-hypothesis decision."
 
   - id: "S6-03"
     name: "Browser/WASM board performance evidence"
@@ -83,10 +86,11 @@ stories:
     status: blocked
     owner: "orchestrator + qa-lead"
     estimate_days: 1.00
-    blocker: "Blocked until remaining open Must Have gate work is complete or explicitly reclassified: S6-02 playtest/fun-hypothesis evidence and S6-04 Standard-tier accessibility remediation/verification."
+    blocker: "Blocked until remaining active P1 gate work is complete or explicitly reclassified: S6-04 Standard-tier accessibility remediation/verification. S6-02 / QA-COND-0006 is producer-deferred and must be carried as an explicit gate condition/risk, not as playtest evidence."
     completed: ""
     notes:
       - "Smoke must be PASS or PASS WITH WARNINGS before final QA sign-off and gate-check."
+      - "Final QA sign-off and Production -> Polish gate-check must not treat QA-COND-0006 as Verified or as passed playtest evidence."
 
   - id: "S6-S1"
     name: "SAU-007 readiness refresh and implementation after SAU-006"
