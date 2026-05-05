@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
 use lightyear::prelude::{NetworkTarget, Replicate, Server, ServerMultiMessageSender};
@@ -129,6 +129,7 @@ impl PlacementCommitTrace {
 /// Ordered trace entries for `close_placement_phase`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlacementCommitTraceEntry {
+    ManaDeducted,
     PlacementRevealEnqueued,
     UnitSpawned { entity: Entity },
     PlacementCommittedWritten,
@@ -145,6 +146,7 @@ pub enum PlacementSubmissionResult {
     MissingEconomy,
     CardMissingFromCatalog,
     CardNotInHand,
+    DuplicateCardId,
     InvalidTarget,
     SpawnRangeRejected,
     OccupancyRejected,
@@ -429,8 +431,14 @@ pub fn close_placement_phase(
         .iter()
         .cloned()
         .collect::<HashMap<_, _>>();
-    if let Some(economies) = economies.as_deref_mut() {
-        deduct_committed_mana(&committed_placements, catalog, economies);
+    if !committed_placements.is_empty() {
+        let Some(economies) = economies.as_deref_mut() else {
+            return;
+        };
+        if !deduct_committed_mana(&committed_placements, catalog, economies) {
+            return;
+        }
+        trace.push(PlacementCommitTraceEntry::ManaDeducted);
     }
 
     let reveal = S2CPlacementReveal {
@@ -491,13 +499,23 @@ fn validate_submission_batch(
     hands: Option<&PlayerHands>,
 ) -> Option<PlacementSubmissionResult> {
     let mut staged_occupancy = occupancy.clone();
+    let Some(economy) = economies.0.get(&player) else {
+        return Some(PlacementSubmissionResult::MissingEconomy);
+    };
+    let Some(hand) = hands.and_then(|hands| hands.hands.get(&player)) else {
+        return Some(PlacementSubmissionResult::CardNotInHand);
+    };
+    let mut submitted_cards = HashSet::new();
     let mut total_cost = 0_u32;
+    let mut total_current_mana_spend = 0_u32;
+    let mut total_reserve_mana_spend = 0_u32;
 
     for placement in placements {
-        if hands
-            .and_then(|hands| hands.hands.get(&player))
-            .is_some_and(|hand| !hand.contains(&placement.card_id))
-        {
+        if !submitted_cards.insert(placement.card_id) {
+            return Some(PlacementSubmissionResult::DuplicateCardId);
+        }
+
+        if !hand.contains(&placement.card_id) {
             return Some(PlacementSubmissionResult::CardNotInHand);
         }
 
@@ -518,17 +536,51 @@ fn validate_submission_batch(
         }
 
         stage_occupancy(&mut staged_occupancy, player, placement, card.card_type);
-        total_cost = total_cost.saturating_add(card.cost);
+        let Some(next_total_cost) = checked_submission_total(total_cost, card.cost) else {
+            return Some(PlacementSubmissionResult::InsufficientMana);
+        };
+        let Some(next_total_current_mana_spend) =
+            checked_submission_total(total_current_mana_spend, placement.current_mana_spend)
+        else {
+            return Some(PlacementSubmissionResult::InsufficientMana);
+        };
+        let Some(next_total_reserve_mana_spend) =
+            checked_submission_total(total_reserve_mana_spend, placement.reserve_mana_spend)
+        else {
+            return Some(PlacementSubmissionResult::InsufficientMana);
+        };
+        total_cost = next_total_cost;
+        total_current_mana_spend = next_total_current_mana_spend;
+        total_reserve_mana_spend = next_total_reserve_mana_spend;
+
+        if economy_api::validate_explicit_mana_split(
+            economy,
+            card.cost,
+            placement.current_mana_spend,
+            placement.reserve_mana_spend,
+        )
+        .is_err()
+        {
+            return Some(PlacementSubmissionResult::InsufficientMana);
+        }
     }
 
-    let Some(economy) = economies.0.get(&player) else {
-        return Some(PlacementSubmissionResult::MissingEconomy);
-    };
-    if economy_api::validate_spend(economy, total_cost, false).is_err() {
+    if economy_api::validate_explicit_mana_split(
+        economy,
+        total_cost,
+        total_current_mana_spend,
+        total_reserve_mana_spend,
+    )
+    .is_err()
+    {
         return Some(PlacementSubmissionResult::InsufficientMana);
     }
 
     None
+}
+
+fn checked_submission_total(current: u32, addend: u32) -> Option<u32> {
+    current.checked_add(addend)
 }
 
 fn validate_placement_target(
@@ -540,11 +592,12 @@ fn validate_placement_target(
     spawn_ranges: &SpawnRangeState,
     occupancy: &BoardOccupancy,
 ) -> Option<PlacementSubmissionResult> {
+    if !play_target_in_bounds(&placement.target, session, board_config) {
+        return Some(PlacementSubmissionResult::InvalidTarget);
+    }
+
     match (card.card_type, &placement.target) {
         (CardType::Minion, PlayTarget::BoardCell { lane, cell }) => {
-            if !valid_lane_cell(*lane, *cell, board_config) {
-                return Some(PlacementSubmissionResult::InvalidTarget);
-            }
             let Some(fakes_destroyed) = fakes_destroyed_for(spawn_ranges, player, session) else {
                 return Some(PlacementSubmissionResult::SpawnRangeRejected);
             };
@@ -556,25 +609,16 @@ fn validate_placement_target(
             }
         }
         (CardType::Trap, PlayTarget::BoardCell { lane, cell }) => {
-            if !valid_lane_cell(*lane, *cell, board_config) {
-                return Some(PlacementSubmissionResult::InvalidTarget);
-            }
             if !is_trap_slot_available(occupancy, player, *lane, *cell) {
                 return Some(PlacementSubmissionResult::OccupancyRejected);
             }
         }
         (CardType::Structure, PlayTarget::BoardCell { lane, cell }) => {
-            if !valid_lane_cell(*lane, *cell, board_config) {
-                return Some(PlacementSubmissionResult::InvalidTarget);
-            }
             if !is_structure_slot_available(occupancy, player, *lane, *cell) {
                 return Some(PlacementSubmissionResult::OccupancyRejected);
             }
         }
         (CardType::Field, PlayTarget::LaneWide { lane }) => {
-            if *lane < 1 || *lane > board_config.lane_count {
-                return Some(PlacementSubmissionResult::InvalidTarget);
-            }
             if !is_field_slot_available(occupancy, player, *lane) {
                 return Some(PlacementSubmissionResult::OccupancyRejected);
             }
@@ -584,6 +628,25 @@ fn validate_placement_target(
     }
 
     None
+}
+
+fn play_target_in_bounds(
+    target: &PlayTarget,
+    session: &SessionConfig,
+    board_config: &BoardConfig,
+) -> bool {
+    match target {
+        PlayTarget::BoardCell { lane, cell } => valid_lane_cell(*lane, *cell, board_config),
+        PlayTarget::TargetUnit { lane, .. } | PlayTarget::LaneWide { lane } => {
+            *lane >= 1 && *lane <= board_config.lane_count
+        }
+        PlayTarget::TargetObj { player_id, lane } => {
+            session.team_map.contains_key(player_id)
+                && *lane >= 1
+                && *lane <= board_config.lane_count
+        }
+        PlayTarget::Instant => true,
+    }
 }
 
 fn fakes_destroyed_for(
@@ -648,30 +711,76 @@ fn collect_committed_placements(
         .collect()
 }
 
-fn deduct_committed_mana(
+pub fn deduct_committed_mana(
     committed: &HashMap<PlayerId, Vec<AcceptedPlacement>>,
     catalog: &CardCatalog,
     economies: &mut PlayerEconomies,
-) {
+) -> bool {
     let mut players = committed.keys().copied().collect::<Vec<_>>();
     players.sort_by_key(|player| player.0);
 
-    for player in players {
-        let cost = committed
-            .get(&player)
-            .into_iter()
-            .flat_map(|placements| placements.iter())
-            .filter_map(|placement| catalog.cards.get(&placement.card_id))
-            .map(|card| card.cost)
-            .sum::<u32>();
-
-        let Some(economy) = economies.0.get_mut(&player) else {
+    for player in &players {
+        let Some(placements) = committed.get(player) else {
             continue;
         };
-        if economy_api::validate_spend(economy, cost, false).is_ok() {
-            economy_api::apply_spend(economy, cost, false);
+        let mut total_cost = 0_u32;
+        let mut total_current_mana_spend = 0_u32;
+        let mut total_reserve_mana_spend = 0_u32;
+
+        for placement in placements {
+            let Some(card) = catalog.cards.get(&placement.card_id) else {
+                return false;
+            };
+            let Some(next_cost) = total_cost.checked_add(card.cost) else {
+                return false;
+            };
+            let Some(next_current) =
+                total_current_mana_spend.checked_add(placement.current_mana_spend)
+            else {
+                return false;
+            };
+            let Some(next_reserve) =
+                total_reserve_mana_spend.checked_add(placement.reserve_mana_spend)
+            else {
+                return false;
+            };
+            total_cost = next_cost;
+            total_current_mana_spend = next_current;
+            total_reserve_mana_spend = next_reserve;
+        }
+
+        let Some(economy) = economies.0.get(player) else {
+            return false;
+        };
+        if economy_api::validate_explicit_mana_split(
+            economy,
+            total_cost,
+            total_current_mana_spend,
+            total_reserve_mana_spend,
+        )
+        .is_err()
+        {
+            return false;
         }
     }
+
+    for player in players {
+        let Some(placements) = committed.get(&player) else {
+            continue;
+        };
+        let Some(economy) = economies.0.get_mut(&player) else {
+            return false;
+        };
+        for placement in placements {
+            economy_api::apply_explicit_mana_split(
+                economy,
+                placement.current_mana_spend,
+                placement.reserve_mana_spend,
+            );
+        }
+    }
+
+    true
 }
 
 fn spawn_committed_placement(

@@ -134,6 +134,10 @@ name = "placement_occupancy_test"
 path = "../tests/unit/board-lane-system/placement_occupancy_test.rs"
 
 [[test]]
+name = "placement_submit_authority_validation_test"
+path = "../tests/unit/board-lane-system/placement_submit_authority_validation_test.rs"
+
+[[test]]
 name = "objective_detection_test"
 path = "../tests/unit/board-lane-system/objective_detection_test.rs"
 
