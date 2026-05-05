@@ -220,7 +220,7 @@ fn reserve_amount(app: &App, card_id: CardId) -> u32 {
         .iter()
         .find(|placement| placement.card_id == card_id)
         .expect("card should be staged")
-        .reserve_amount
+        .reserve_mana_spend
 }
 
 fn player(id: u64) -> PlayerId {
