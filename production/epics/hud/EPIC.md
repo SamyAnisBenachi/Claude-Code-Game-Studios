@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/hud.md
 > **Architecture Module**: `client/src/ui/hud/` — `HudPlugin` within `PresentationPlugin`
 > **Status**: Ready
-> **Stories**: 10 stories created 2026-05-01
+> **Stories**: 11 stories created/updated through 2026-05-05
 
 ## Overview
 
@@ -51,6 +51,15 @@ ADR-021; dot state flips and phase/round labels are instantaneous (StateSync, no
 
 **10 / 10 TRs covered** (9 fully by Accepted ADRs; TR-HUD-009 partial — follow GDD Rules 10 and 13 directly for FROZEN behavior).
 
+## Sprint 6 Accessibility Gate Addendum
+
+QA-COND-0005 remains Open for Standard-tier accessibility remediation. The
+Sprint 6 accessibility evidence register marks A11Y-ST-13, "Mana pools:
+distinct container shapes," as a must-implement row. HUD-011 is the narrow HUD
+story for that row: current mana must read as a bar-shaped container and
+reserve mana must read as a diamond-shaped container, with browser/WASM evidence
+showing the distinction is not color-only.
+
 ## Pre-Implementation Gates
 
 The following open questions from `design/gdd/hud.md` must be resolved before the
@@ -83,6 +92,7 @@ This epic is complete when:
 - All acceptance criteria from `design/gdd/hud.md` (28 BLOCKING + 4 ADVISORY) are verified
 - All Logic and Integration stories have passing test files in `tests/unit/hud/` or `tests/integration/hud/`
 - Visual/UI stories have screenshot evidence + lead sign-off in `production/qa/evidence/`
+- HUD-011 has browser/WASM A11Y-ST-13 evidence at `production/qa/evidence/hud-011-mana-shapes-evidence.md`
 - HUD-20 (same-tick tie-break) uses `App::new()` with `HudPlugin` registered — not `World::new()` — to verify plugin system ordering (GDD AC note)
 - `cargo build -p client` without `ui_picking` feature compiles without panic (ADR-021 validation criterion)
 - OQ-HUD-04 resolved: dot horizontal alignment verified against `BoardLayout` / `LANE_MIDPOINT_X` at 1280×720 and 1920×1080
@@ -101,10 +111,11 @@ This epic is complete when:
 | 008 | [Reconnect Snapshot Rebuild](story-008-reconnect-snapshot-rebuild.md) | Integration | Ready | ADR-021, ADR-011 |
 | 009 | [Same-Tick Gold Tie-Break (Plugin-Level Integration)](story-009-same-tick-tie-break.md) | Integration | Ready | ADR-021 |
 | 010 | [Numeric Tween Animation](story-010-numeric-tween-animation.md) | Visual/Feel | Ready | ADR-021 |
+| 011 | [Current and Reserve Mana Shape Distinction](story-011-current-reserve-mana-shapes.md) | UI | Ready | ADR-021, ADR-002 |
 
-**10 stories total: 5 Logic · 1 UI · 3 Integration · 1 Visual/Feel**
+**11 stories total: 5 Logic · 2 UI · 3 Integration · 1 Visual/Feel**
 Story 004 blocked on OQ-HUD-05 (HudObjectiveUpdate trigger type crate location).
 
 ## Next Step
 
-Run `/story-readiness production/epics/hud/story-001-hud-plugin-scaffold.md` to begin implementation. Work through stories in dependency order — each story's `Depends on:` field tells you what must be DONE first.
+Run `/story-readiness production/epics/hud/story-011-current-reserve-mana-shapes.md` before assigning the Sprint 6 A11Y-ST-13 remediation story. Work through stories in dependency order — each story's `Depends on:` field tells you what must be DONE first.
