@@ -2,5 +2,6 @@
 pub mod hand;
 pub mod hud;
 pub mod shared;
+pub mod shop_auction;
 
 pub use crate::card_animations as anim;
