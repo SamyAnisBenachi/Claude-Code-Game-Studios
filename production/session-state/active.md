@@ -1958,3 +1958,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching BOARD-009 row exists in `production/sprint-status.yaml`.
 - Next recommended: Final Board Rendering visual/evidence closure should wait until spawn range source/replication is resolved and status-icon atlas/browser evidence is captured.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/shop-auction-ui/story-005-auction-bid-buttons-affordability-and-inflight.md` - Story 005: Auction Bid Buttons, Affordability, and In-Flight
+- Criteria: 8/8 passing; total-commitment bid labels, local-free-gold affordability, hand-full lockout, leading badge, exact one-send click behavior, in-flight visual lockout, duplicate-send suppression, and locally expired timer messaging verified.
+- Test Evidence: `cargo test -p client --test shop_auction_ui_auction_bid_buttons_test` passed 5/5. Requested regressions passed: `shop_auction_ui_auction_activation_test` 6/6, `shop_auction_ui_shop_panel_test` 8/8, `shop_auction_ui_draft_initial_grid_test` 9/9, and `presentation_plugin_scaffold_test` 3/3. Additional changed-file check `shop_auction_ui_plugin_scaffold_formulas_test` passed 8/8. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+- Verification: Worker branch `work/sau-005-auction-bid-buttons-affordability-inflight` commit `b118dcabcb755e606eb212b55010baf05e8228eb` was applied onto current `main` after Sprint 5 smoke gate commit `38f613a`. Integration fixes updated the scaffold entity-count test and moved bid-status text below the button row to avoid overlap.
+- Notes: Advisory only - manual visual/accessibility evidence remains deferred to Story 009 / `production/qa/evidence/shop-auction-ui-bid-buttons-evidence.md`. No blocking GDD, ADR-013, ADR-019, ADR-021, Bevy 0.18, or Lightyear 0.26 deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching SAU-005/story row exists in `production/sprint-status.yaml`.
+- Next recommended: Shop/Auction UI Story 006 (`production/epics/shop-auction-ui/story-006-auction-accepted-rejected-feedback.md`) after readiness check, or continue sprint close-out if no more pull-forward work is being added.

@@ -1,7 +1,7 @@
 # Story 005: Auction Bid Buttons, Affordability, and In-Flight
 
 > **Epic**: Shop / Auction UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -93,7 +93,7 @@ Presentation steady-state must remain under 1 ms per frame. Bid-state evaluation
 - UI/integration: `tests/integration/shop_auction_ui/auction_bid_buttons_test.rs`
 - Visual evidence later: `production/qa/evidence/shop-auction-ui-bid-buttons-evidence.md`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ## Dependencies
 
@@ -104,3 +104,12 @@ Presentation steady-state must remain under 1 ms per frame. Bid-state evaluation
 - Depends on: `shared/src/protocol.rs` protocol registration - Complete; `C2SPlaceBid`, `S2CGoldBroadcast`, `S2CAuctionBidAccepted`, and `S2CAuctionBidRejected` are registered on `ReliableChannel`.
 - Depends on: Auction System bid dispatch and Economy gold broadcast dispatch being integrated for runtime end-to-end behavior.
 - Unlocks: Story 006.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 8/8 passing
+**Deviations**: None blocking. Advisory only: manual visual/accessibility evidence for the final bid-button presentation remains deferred to Story 009 / `production/qa/evidence/shop-auction-ui-bid-buttons-evidence.md`.
+**Test Evidence**: `cargo test -p client --test shop_auction_ui_auction_bid_buttons_test` passed 5/5. Adjacent regressions passed: `shop_auction_ui_auction_activation_test` 6/6, `shop_auction_ui_shop_panel_test` 8/8, `shop_auction_ui_draft_initial_grid_test` 9/9, `presentation_plugin_scaffold_test` 3/3, and `shop_auction_ui_plugin_scaffold_formulas_test` 8/8. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+**Code Review**: Skipped - lean mode.
+**Integration Notes**: Worker commit `b118dcabcb755e606eb212b55010baf05e8228eb` was applied onto current `main` after Sprint 5 smoke gate commit `38f613a`. Integration fixes updated the pre-pooled entity count test for the new bid-status text entity and moved bid-status text below the button row to avoid overlap with disabled hand-full buttons.
