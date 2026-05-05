@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::{CardCatalog, CardId, Rarity};
 use shared::protocol::{
-    C2SPurchaseCard, C2SSignalReady, CardSource, ReliableChannel, RoundPhase, S2CCardAcquired,
-    S2CDraftOffering,
+    C2SPurchaseCard, C2SRefreshShop, C2SSignalReady, CardSource, ReliableChannel, RoundPhase,
+    S2CCardAcquired, S2CDraftOffering, S2CShopSlots,
 };
 
 use crate::presentation::PlayerEconomyView;
@@ -11,7 +11,10 @@ use crate::state::{ClientState, CurrentClientPhase};
 
 pub const SHOP_AUCTION_UI_PANEL_ROOT_COUNT: usize = 6;
 pub const SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT: usize = 9;
+pub const SHOP_AUCTION_UI_SHOP_SLOT_COUNT: usize = 3;
 pub const BID_INCREMENTS: [u32; 3] = [1, 3, 5];
+pub const DEFAULT_SHOP_REFRESH_BASE_COST: u32 = 1;
+pub const DEFAULT_SHOP_REFRESH_CAP: u32 = 1;
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShopAuctionUiSystemSet {
@@ -58,8 +61,24 @@ pub struct ShopAuctionDraftHandView {
 #[derive(Resource, Default, Debug, Clone)]
 pub struct ShopAuctionUiOutboundMessages {
     pub purchase_cards: Vec<C2SPurchaseCard>,
+    pub refresh_shops: Vec<C2SRefreshShop>,
     pub ready_signals: Vec<C2SSignalReady>,
     pub gold_counter_flash_requests: u32,
+}
+
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionRefreshConfig {
+    pub refresh_base_cost: u32,
+    pub refresh_cap: u32,
+}
+
+impl Default for ShopAuctionRefreshConfig {
+    fn default() -> Self {
+        Self {
+            refresh_base_cost: DEFAULT_SHOP_REFRESH_BASE_COST,
+            refresh_cap: DEFAULT_SHOP_REFRESH_CAP,
+        }
+    }
 }
 
 #[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
@@ -81,6 +100,56 @@ impl ShopAuctionDraftInitialState {
     }
 }
 
+#[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
+pub struct ShopAuctionShopState {
+    pub slots_loaded: bool,
+    pub ready_signalled: bool,
+    pub refresh_count_this_draft: u32,
+    pub refresh_in_flight: bool,
+    buffered_slots: Option<Vec<Option<CardId>>>,
+    pending_confirmed_purchases: Vec<CardId>,
+}
+
+impl ShopAuctionShopState {
+    fn enter_shop_phase(&mut self) {
+        self.slots_loaded = false;
+        self.ready_signalled = false;
+        self.refresh_count_this_draft = 0;
+        self.refresh_in_flight = false;
+        self.pending_confirmed_purchases.clear();
+    }
+
+    fn enter_auction_phase(&mut self) {
+        self.clear_phase_state();
+        self.buffered_slots = None;
+    }
+
+    fn clear_phase_state(&mut self) {
+        self.slots_loaded = false;
+        self.ready_signalled = false;
+        self.refresh_count_this_draft = 0;
+        self.refresh_in_flight = false;
+        self.pending_confirmed_purchases.clear();
+    }
+
+    fn clear_all(&mut self) {
+        self.clear_phase_state();
+        self.buffered_slots = None;
+    }
+
+    fn queue_slots(&mut self, slots: Vec<Option<CardId>>) {
+        self.buffered_slots = Some(slots);
+    }
+
+    fn take_buffered_slots(&mut self) -> Option<Vec<Option<CardId>>> {
+        self.buffered_slots.take()
+    }
+
+    fn queue_purchase_confirmation(&mut self, card_id: CardId) {
+        self.pending_confirmed_purchases.push(card_id);
+    }
+}
+
 #[derive(Resource, Debug, Clone, Copy)]
 pub struct ShopAuctionUiEntities {
     pub root: Entity,
@@ -91,6 +160,11 @@ pub struct ShopAuctionUiEntities {
     pub draft_initial_ready_status: Entity,
     pub draft_initial_hand_full_banner: Entity,
     pub shop_panel: Entity,
+    pub shop_slots: [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT],
+    pub shop_refresh_button: Entity,
+    pub shop_ready_button: Entity,
+    pub shop_ready_status: Entity,
+    pub shop_hand_full_banner: Entity,
     pub auction_panel: Entity,
     pub shop_footer: Entity,
     pub toast_root: Entity,
@@ -168,6 +242,47 @@ pub struct DraftInitialReadyStatus;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DraftInitialHandFullBanner;
 
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopSlotIndex(pub u8);
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopSlotCard(pub CardId);
+
+#[derive(Component, Debug, Clone, PartialEq, Eq)]
+pub struct ShopSlotCardName(pub String);
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopSlotGoldCost(pub u32);
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopSlotRarity(pub Rarity);
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShopSlotState {
+    Empty,
+    Available,
+    PendingPurchase,
+    HandFullLocked,
+    Refreshing,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopRefreshButton;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopReadyButton;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopReadyStatus;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopHandFullBanner;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopRefreshButtonState {
+    pub enabled: bool,
+}
+
 #[derive(Message, Debug, Clone, PartialEq, Eq)]
 pub struct ShopAuctionDraftOfferingReceived {
     pub card_ids: Vec<CardId>,
@@ -179,12 +294,37 @@ pub struct ShopAuctionCardAcquiredReceived {
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionShopCardAcquiredReceived {
+    pub card_id: CardId,
+}
+
+#[derive(Message, Debug, Clone, PartialEq, Eq)]
+pub struct ShopAuctionShopSlotsReceived {
+    pub slots: Vec<Option<CardId>>,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShopAuctionDraftSlotClicked {
     pub slot: Entity,
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShopAuctionDraftReadyButtonClicked {
+    pub button: Entity,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionShopSlotClicked {
+    pub slot: Entity,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionShopRefreshClicked {
+    pub button: Entity,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionShopReadyButtonClicked {
     pub button: Entity,
 }
 
@@ -233,11 +373,18 @@ impl Plugin for ShopAuctionUiPlugin {
             .init_resource::<ShopAuctionDraftHandView>()
             .init_resource::<ShopAuctionUiOutboundMessages>()
             .init_resource::<ShopAuctionDraftInitialState>()
+            .init_resource::<ShopAuctionShopState>()
+            .init_resource::<ShopAuctionRefreshConfig>()
             .init_resource::<PlayerEconomyView>()
             .add_message::<ShopAuctionDraftOfferingReceived>()
             .add_message::<ShopAuctionCardAcquiredReceived>()
+            .add_message::<ShopAuctionShopCardAcquiredReceived>()
+            .add_message::<ShopAuctionShopSlotsReceived>()
             .add_message::<ShopAuctionDraftSlotClicked>()
             .add_message::<ShopAuctionDraftReadyButtonClicked>()
+            .add_message::<ShopAuctionShopSlotClicked>()
+            .add_message::<ShopAuctionShopRefreshClicked>()
+            .add_message::<ShopAuctionShopReadyButtonClicked>()
             .add_message::<ShopAuctionGoldCounterFlashRequested>()
             .configure_sets(
                 Update,
@@ -259,20 +406,29 @@ impl Plugin for ShopAuctionUiPlugin {
                         .in_set(ShopAuctionUiSystemSet::PhaseTransition),
                     (
                         drain_draft_offering_receiver_system,
+                        drain_shop_slots_receiver_system,
                         drain_card_acquired_receiver_system,
                         handle_draft_offering_system,
+                        handle_shop_slots_system,
                         handle_card_acquired_system,
+                        handle_shop_card_acquired_system,
                         apply_draft_initial_purchase_confirmations_system,
+                        apply_shop_purchase_confirmations_system,
                     )
                         .chain()
                         .in_set(ShopAuctionUiSystemSet::MessageDrain),
                     (
                         handle_draft_initial_slot_click_system,
                         handle_draft_initial_ready_click_system,
+                        handle_shop_slot_click_system,
+                        handle_shop_refresh_click_system,
+                        handle_shop_ready_click_system,
                     )
                         .chain()
                         .in_set(ShopAuctionUiSystemSet::Input),
-                    sync_draft_initial_panel_system.in_set(ShopAuctionUiSystemSet::StateSync),
+                    (sync_draft_initial_panel_system, sync_shop_panel_system)
+                        .chain()
+                        .in_set(ShopAuctionUiSystemSet::StateSync),
                 ),
             );
     }
@@ -291,6 +447,14 @@ pub fn bid_button_labels(current_price: u32) -> [BidButtonLabel; 3] {
 
 pub fn bid_button_label_texts(current_price: u32) -> [String; 3] {
     bid_button_labels(current_price).map(BidButtonLabel::text)
+}
+
+pub fn displayed_refresh_cost(
+    refresh_base_cost: u32,
+    refresh_cap: u32,
+    refresh_count_this_draft: u32,
+) -> u32 {
+    refresh_base_cost.saturating_add(refresh_count_this_draft.min(refresh_cap))
 }
 
 pub fn auction_border_color_tier(current_price: u32) -> AuctionBorderColorTier {
@@ -335,12 +499,14 @@ pub fn shop_auction_ui_phase_transition_system(
     entities: Option<Res<ShopAuctionUiEntities>>,
     mut mode: ResMut<ShopAuctionUiMode>,
     mut draft_state: ResMut<ShopAuctionDraftInitialState>,
+    mut shop_state: ResMut<ShopAuctionShopState>,
     mut visibility: Query<&mut Visibility>,
 ) {
     if !current.is_changed() {
         return;
     }
 
+    let previous_mode = *mode;
     let next_mode = ShopAuctionUiMode::from_phase(current.phase);
     *mode = next_mode;
 
@@ -348,18 +514,31 @@ pub fn shop_auction_ui_phase_transition_system(
         draft_state.reset_phase_state();
     }
 
+    match next_mode {
+        ShopAuctionUiMode::Shop if previous_mode != ShopAuctionUiMode::Shop => {
+            shop_state.enter_shop_phase();
+        }
+        ShopAuctionUiMode::Auction if previous_mode != ShopAuctionUiMode::Auction => {
+            shop_state.enter_auction_phase();
+        }
+        ShopAuctionUiMode::DraftOffering | ShopAuctionUiMode::Inactive => {
+            shop_state.clear_all();
+        }
+        _ => {}
+    }
+
     let Some(entities) = entities else {
         return;
     };
 
-    set_visibility(
-        &mut visibility,
-        entities.root,
-        visibility_for(
-            next_mode != ShopAuctionUiMode::Inactive
-                && (next_mode != ShopAuctionUiMode::DraftOffering || draft_state.offering_loaded),
-        ),
-    );
+    let root_visible = match next_mode {
+        ShopAuctionUiMode::Inactive => false,
+        ShopAuctionUiMode::DraftOffering => draft_state.offering_loaded,
+        ShopAuctionUiMode::Auction => true,
+        ShopAuctionUiMode::Shop => shop_state.slots_loaded,
+    };
+
+    set_visibility(&mut visibility, entities.root, visibility_for(root_visible));
     set_visibility(
         &mut visibility,
         entities.draft_offering_panel,
@@ -370,7 +549,7 @@ pub fn shop_auction_ui_phase_transition_system(
     set_visibility(
         &mut visibility,
         entities.shop_panel,
-        visibility_for(next_mode == ShopAuctionUiMode::Shop),
+        visibility_for(next_mode == ShopAuctionUiMode::Shop && shop_state.slots_loaded),
     );
     set_visibility(
         &mut visibility,
@@ -403,16 +582,38 @@ pub fn drain_draft_offering_receiver_system(
     }
 }
 
-pub fn drain_card_acquired_receiver_system(
-    mut receivers: Query<&mut MessageReceiver<S2CCardAcquired>>,
-    mut writer: MessageWriter<ShopAuctionCardAcquiredReceived>,
+pub fn drain_shop_slots_receiver_system(
+    mut receivers: Query<&mut MessageReceiver<S2CShopSlots>>,
+    mut writer: MessageWriter<ShopAuctionShopSlotsReceived>,
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
-            if message.source == CardSource::DraftInitial {
-                writer.write(ShopAuctionCardAcquiredReceived {
-                    card_id: message.card_id,
-                });
+            writer.write(ShopAuctionShopSlotsReceived {
+                slots: message.slots,
+            });
+        }
+    }
+}
+
+pub fn drain_card_acquired_receiver_system(
+    mut receivers: Query<&mut MessageReceiver<S2CCardAcquired>>,
+    mut writer: MessageWriter<ShopAuctionCardAcquiredReceived>,
+    mut shop_writer: MessageWriter<ShopAuctionShopCardAcquiredReceived>,
+) {
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            match message.source {
+                CardSource::DraftInitial => {
+                    writer.write(ShopAuctionCardAcquiredReceived {
+                        card_id: message.card_id,
+                    });
+                }
+                CardSource::ShopPurchase => {
+                    shop_writer.write(ShopAuctionShopCardAcquiredReceived {
+                        card_id: message.card_id,
+                    });
+                }
+                _ => {}
             }
         }
     }
@@ -491,12 +692,83 @@ pub fn handle_draft_offering_system(
     }
 }
 
+pub fn handle_shop_slots_system(
+    current: Res<CurrentClientPhase>,
+    mode: Res<ShopAuctionUiMode>,
+    catalog: Res<ShopAuctionCardCatalog>,
+    entities: Option<Res<ShopAuctionUiEntities>>,
+    mut slot_messages: MessageReader<ShopAuctionShopSlotsReceived>,
+    mut shop_state: ResMut<ShopAuctionShopState>,
+    mut commands: Commands,
+    mut shop_slots: Query<(Entity, &ShopSlotIndex, &mut Text, &mut Visibility)>,
+) {
+    let mut slots_to_apply = None;
+    for message in slot_messages.read() {
+        if *mode == ShopAuctionUiMode::Shop && current.phase == RoundPhase::DraftShop {
+            slots_to_apply = Some(message.slots.clone());
+        } else if should_buffer_shop_slots(current.phase) {
+            shop_state.queue_slots(message.slots.clone());
+        } else {
+            shop_state.refresh_in_flight = false;
+        }
+    }
+
+    if *mode == ShopAuctionUiMode::Shop && slots_to_apply.is_none() {
+        slots_to_apply = shop_state.take_buffered_slots();
+    }
+
+    let Some(slots) = slots_to_apply else {
+        return;
+    };
+
+    if *mode != ShopAuctionUiMode::Shop {
+        shop_state.queue_slots(slots);
+        return;
+    }
+
+    if shop_state.refresh_in_flight {
+        shop_state.refresh_count_this_draft = shop_state.refresh_count_this_draft.saturating_add(1);
+    }
+    shop_state.refresh_in_flight = false;
+    shop_state.slots_loaded = true;
+    shop_state.pending_confirmed_purchases.clear();
+
+    let Some(entities) = entities else {
+        return;
+    };
+
+    for slot_entity in entities.shop_slots {
+        let Ok((entity, slot_index, mut text, mut visibility)) = shop_slots.get_mut(slot_entity)
+        else {
+            continue;
+        };
+        let card_id = slots.get(slot_index.0 as usize).copied().flatten();
+        apply_shop_slot(
+            &mut commands,
+            entity,
+            card_id,
+            &catalog.cards,
+            &mut text,
+            &mut visibility,
+        );
+    }
+}
+
 pub fn handle_card_acquired_system(
     mut acquisitions: MessageReader<ShopAuctionCardAcquiredReceived>,
     mut draft_state: ResMut<ShopAuctionDraftInitialState>,
 ) {
     for acquisition in acquisitions.read() {
         draft_state.queue_purchase_confirmation(acquisition.card_id);
+    }
+}
+
+pub fn handle_shop_card_acquired_system(
+    mut acquisitions: MessageReader<ShopAuctionShopCardAcquiredReceived>,
+    mut shop_state: ResMut<ShopAuctionShopState>,
+) {
+    for acquisition in acquisitions.read() {
+        shop_state.queue_purchase_confirmation(acquisition.card_id);
     }
 }
 
@@ -543,6 +815,37 @@ pub fn apply_draft_initial_purchase_confirmations_system(
     }
 
     draft_state.pending_confirmed_purchases = unapplied_confirmations;
+}
+
+pub fn apply_shop_purchase_confirmations_system(
+    mode: Res<ShopAuctionUiMode>,
+    economy: Res<PlayerEconomyView>,
+    mut shop_state: ResMut<ShopAuctionShopState>,
+    mut commands: Commands,
+    mut slots: Query<(Entity, &ShopSlotCard, &mut ShopSlotState, &mut Text)>,
+) {
+    if !shop_active(&mode, &shop_state) {
+        shop_state.pending_confirmed_purchases.clear();
+        return;
+    }
+
+    if !economy.initialized {
+        return;
+    }
+
+    let pending_confirmations = std::mem::take(&mut shop_state.pending_confirmed_purchases);
+    if pending_confirmations.is_empty() {
+        return;
+    }
+
+    let mut unapplied_confirmations = Vec::new();
+    for card_id in pending_confirmations {
+        if !mark_confirmed_shop_purchase(card_id, &mut commands, &mut slots) {
+            unapplied_confirmations.push(card_id);
+        }
+    }
+
+    shop_state.pending_confirmed_purchases = unapplied_confirmations;
 }
 
 pub fn handle_draft_initial_slot_click_system(
@@ -627,6 +930,134 @@ pub fn handle_draft_initial_ready_click_system(
         }
         outbound.ready_signals.push(message);
         draft_state.ready_signalled = !draft_state.ready_signalled;
+    }
+}
+
+pub fn handle_shop_slot_click_system(
+    mode: Res<ShopAuctionUiMode>,
+    economy: Res<PlayerEconomyView>,
+    hand_view: Res<ShopAuctionDraftHandView>,
+    shop_state: Res<ShopAuctionShopState>,
+    mut clicks: MessageReader<ShopAuctionShopSlotClicked>,
+    mut slots: Query<(&ShopSlotCard, &ShopSlotGoldCost, &mut ShopSlotState)>,
+    mut senders: Query<&mut MessageSender<C2SPurchaseCard>>,
+    mut outbound: ResMut<ShopAuctionUiOutboundMessages>,
+    mut commands: Commands,
+    mut flash_writer: MessageWriter<ShopAuctionGoldCounterFlashRequested>,
+) {
+    for click in clicks.read() {
+        if !shop_active(&mode, &shop_state) {
+            continue;
+        }
+
+        let Ok((card, cost, mut slot_state)) = slots.get_mut(click.slot) else {
+            continue;
+        };
+
+        if *slot_state != ShopSlotState::Available {
+            continue;
+        }
+
+        if hand_view.hand_size >= 10 {
+            *slot_state = ShopSlotState::HandFullLocked;
+            continue;
+        }
+
+        if !economy.initialized || cost.0 > economy.gold {
+            outbound.gold_counter_flash_requests =
+                outbound.gold_counter_flash_requests.saturating_add(1);
+            flash_writer.write(ShopAuctionGoldCounterFlashRequested);
+            continue;
+        }
+
+        let message = C2SPurchaseCard { card_id: card.0 };
+        if let Ok(mut sender) = senders.single_mut() {
+            sender.send::<ReliableChannel>(message.clone());
+        }
+        outbound.purchase_cards.push(message);
+        *slot_state = ShopSlotState::PendingPurchase;
+        commands.entity(click.slot).insert(PendingShopPurchase);
+    }
+}
+
+pub fn handle_shop_refresh_click_system(
+    entities: Option<Res<ShopAuctionUiEntities>>,
+    mode: Res<ShopAuctionUiMode>,
+    economy: Res<PlayerEconomyView>,
+    refresh_config: Res<ShopAuctionRefreshConfig>,
+    mut shop_state: ResMut<ShopAuctionShopState>,
+    mut clicks: MessageReader<ShopAuctionShopRefreshClicked>,
+    mut senders: Query<&mut MessageSender<C2SRefreshShop>>,
+    mut outbound: ResMut<ShopAuctionUiOutboundMessages>,
+    mut slots: Query<(&mut ShopSlotState, &mut Text), With<ShopSlotIndex>>,
+) {
+    let Some(entities) = entities else {
+        for _click in clicks.read() {}
+        return;
+    };
+
+    for click in clicks.read() {
+        if click.button != entities.shop_refresh_button || !shop_active(&mode, &shop_state) {
+            continue;
+        }
+
+        if shop_state.refresh_in_flight {
+            continue;
+        }
+
+        let refresh_cost = displayed_refresh_cost(
+            refresh_config.refresh_base_cost,
+            refresh_config.refresh_cap,
+            shop_state.refresh_count_this_draft,
+        );
+        if !economy.initialized || economy.gold < refresh_cost {
+            continue;
+        }
+
+        let message = C2SRefreshShop {};
+        if let Ok(mut sender) = senders.single_mut() {
+            sender.send::<ReliableChannel>(message.clone());
+        }
+        outbound.refresh_shops.push(message);
+        shop_state.refresh_in_flight = true;
+
+        for slot_entity in entities.shop_slots {
+            let Ok((mut slot_state, mut text)) = slots.get_mut(slot_entity) else {
+                continue;
+            };
+            *slot_state = ShopSlotState::Refreshing;
+            text.0.clear();
+            text.0.push_str("Refreshing...");
+        }
+    }
+}
+
+pub fn handle_shop_ready_click_system(
+    entities: Option<Res<ShopAuctionUiEntities>>,
+    mode: Res<ShopAuctionUiMode>,
+    mut shop_state: ResMut<ShopAuctionShopState>,
+    mut clicks: MessageReader<ShopAuctionShopReadyButtonClicked>,
+    mut senders: Query<&mut MessageSender<C2SSignalReady>>,
+    mut outbound: ResMut<ShopAuctionUiOutboundMessages>,
+) {
+    let Some(entities) = entities else {
+        for _click in clicks.read() {}
+        return;
+    };
+
+    for click in clicks.read() {
+        if click.button != entities.shop_ready_button || !shop_active(&mode, &shop_state) {
+            continue;
+        }
+
+        let message = C2SSignalReady {
+            retract: shop_state.ready_signalled,
+        };
+        if let Ok(mut sender) = senders.single_mut() {
+            sender.send::<ReliableChannel>(message.clone());
+        }
+        outbound.ready_signals.push(message);
+        shop_state.ready_signalled = !shop_state.ready_signalled;
     }
 }
 
@@ -725,6 +1156,131 @@ pub fn sync_draft_initial_panel_system(
     }
 }
 
+pub fn sync_shop_panel_system(
+    mode: Res<ShopAuctionUiMode>,
+    economy: Res<PlayerEconomyView>,
+    hand_view: Res<ShopAuctionDraftHandView>,
+    refresh_config: Res<ShopAuctionRefreshConfig>,
+    shop_state: Res<ShopAuctionShopState>,
+    entities: Option<Res<ShopAuctionUiEntities>>,
+    mut commands: Commands,
+    mut shop_ui: ParamSet<(
+        Query<&mut Visibility>,
+        Query<
+            (
+                Entity,
+                Option<&ShopSlotCard>,
+                &mut ShopSlotState,
+                &mut Visibility,
+                &mut Text,
+            ),
+            With<ShopSlotIndex>,
+        >,
+        Query<&mut Text>,
+        Query<&mut ShopRefreshButtonState>,
+    )>,
+) {
+    let Some(entities) = entities else {
+        return;
+    };
+
+    let active = shop_active(&mode, &shop_state);
+    {
+        let mut visibility = shop_ui.p0();
+        if *mode == ShopAuctionUiMode::Shop {
+            set_visibility(&mut visibility, entities.root, visibility_for(active));
+        }
+        set_visibility(&mut visibility, entities.shop_panel, visibility_for(active));
+        set_visibility(
+            &mut visibility,
+            entities.shop_refresh_button,
+            visibility_for(active),
+        );
+        set_visibility(
+            &mut visibility,
+            entities.shop_ready_button,
+            visibility_for(active),
+        );
+        set_visibility(
+            &mut visibility,
+            entities.shop_ready_status,
+            visibility_for(active && shop_state.ready_signalled),
+        );
+        set_visibility(
+            &mut visibility,
+            entities.shop_hand_full_banner,
+            visibility_for(active && hand_view.hand_size >= 10),
+        );
+    }
+
+    {
+        let mut slots = shop_ui.p1();
+        for (slot_entity, card, mut slot_state, mut visibility, mut text) in &mut slots {
+            if !active {
+                *visibility = Visibility::Hidden;
+                if *slot_state == ShopSlotState::PendingPurchase {
+                    *slot_state = ShopSlotState::Available;
+                    commands.entity(slot_entity).remove::<PendingShopPurchase>();
+                }
+                continue;
+            }
+
+            *visibility = Visibility::Visible;
+            if hand_view.hand_size >= 10 && card.is_some() && *slot_state != ShopSlotState::Empty {
+                *slot_state = ShopSlotState::HandFullLocked;
+                commands.entity(slot_entity).remove::<PendingShopPurchase>();
+            }
+            if *slot_state == ShopSlotState::Refreshing {
+                text.0.clear();
+                text.0.push_str("Refreshing...");
+            }
+        }
+    }
+
+    let refresh_cost = displayed_refresh_cost(
+        refresh_config.refresh_base_cost,
+        refresh_config.refresh_cap,
+        shop_state.refresh_count_this_draft,
+    );
+    let refresh_enabled = active
+        && !shop_state.refresh_in_flight
+        && economy.initialized
+        && economy.gold >= refresh_cost;
+
+    {
+        let mut refresh_buttons = shop_ui.p3();
+        if let Ok(mut button_state) = refresh_buttons.get_mut(entities.shop_refresh_button) {
+            button_state.enabled = refresh_enabled;
+        }
+    }
+
+    let mut texts = shop_ui.p2();
+    if let Ok(mut text) = texts.get_mut(entities.shop_refresh_button) {
+        text.0.clear();
+        if shop_state.refresh_in_flight {
+            text.0.push_str("Refreshing...");
+        } else {
+            text.0.push_str(&format!("REFRESH · {refresh_cost}g"));
+        }
+    }
+
+    if let Ok(mut text) = texts.get_mut(entities.shop_ready_button) {
+        text.0.clear();
+        if shop_state.ready_signalled {
+            text.0.push_str("Retract Ready");
+        } else {
+            text.0.push_str("Ready");
+        }
+    }
+
+    if let Ok(mut text) = texts.get_mut(entities.shop_ready_status) {
+        text.0.clear();
+        if shop_state.ready_signalled {
+            text.0.push_str("Waiting for opponent...");
+        }
+    }
+}
+
 fn spawn_shop_auction_ui(mut commands: Commands, existing: Option<Res<ShopAuctionUiEntities>>) {
     if existing.is_some() {
         return;
@@ -774,6 +1330,11 @@ fn spawn_shop_auction_ui(mut commands: Commands, existing: Option<Res<ShopAuctio
         "Shop Auction Shop Root",
         bottom_panel_node(),
     );
+    let shop_slots = spawn_shop_slots(&mut commands, shop_panel);
+    let shop_refresh_button = spawn_shop_refresh_button(&mut commands, shop_panel);
+    let shop_ready_button = spawn_shop_ready_button(&mut commands, shop_panel);
+    let shop_ready_status = spawn_shop_ready_status(&mut commands, shop_panel);
+    let shop_hand_full_banner = spawn_shop_hand_full_banner(&mut commands, shop_panel);
     let auction_panel = spawn_panel_root(
         &mut commands,
         root,
@@ -812,6 +1373,11 @@ fn spawn_shop_auction_ui(mut commands: Commands, existing: Option<Res<ShopAuctio
         draft_initial_ready_status,
         draft_initial_hand_full_banner,
         shop_panel,
+        shop_slots,
+        shop_refresh_button,
+        shop_ready_button,
+        shop_ready_status,
+        shop_hand_full_banner,
         auction_panel,
         shop_footer,
         toast_root,
@@ -862,6 +1428,9 @@ fn spawn_panel_root(
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 struct PendingDraftInitialPurchase;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+struct PendingShopPurchase;
 
 fn spawn_draft_initial_grid(
     commands: &mut Commands,
@@ -959,6 +1528,93 @@ fn spawn_draft_initial_hand_full_banner(commands: &mut Commands, parent: Entity)
         .id()
 }
 
+fn spawn_shop_slots(
+    commands: &mut Commands,
+    parent: Entity,
+) -> [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT] {
+    std::array::from_fn(|index| {
+        commands
+            .spawn((
+                Name::new(format!("Shop Auction Shop Slot {index}")),
+                ShopAuctionUiEntity,
+                ShopSlotIndex(index as u8),
+                ShopSlotState::Empty,
+                shop_slot_node(index),
+                Text::new("Empty"),
+                shop_auction_text_font(14.0),
+                TextColor(Color::srgb(0.92, 0.94, 0.96)),
+                Visibility::Hidden,
+                ChildOf(parent),
+            ))
+            .id()
+    })
+}
+
+fn spawn_shop_refresh_button(commands: &mut Commands, parent: Entity) -> Entity {
+    commands
+        .spawn((
+            Name::new("Shop Auction Refresh Button"),
+            ShopAuctionUiEntity,
+            ShopRefreshButton,
+            ShopRefreshButtonState { enabled: false },
+            Text::new("REFRESH · 1g"),
+            shop_auction_text_font(15.0),
+            TextColor(Color::srgb(0.74, 0.92, 0.92)),
+            shop_refresh_button_node(),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
+fn spawn_shop_ready_button(commands: &mut Commands, parent: Entity) -> Entity {
+    commands
+        .spawn((
+            Name::new("Shop Auction Shop Ready Button"),
+            ShopAuctionUiEntity,
+            ShopReadyButton,
+            Text::new("Ready"),
+            shop_auction_text_font(16.0),
+            TextColor(Color::srgb(0.98, 0.93, 0.72)),
+            shop_ready_button_node(),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
+fn spawn_shop_ready_status(commands: &mut Commands, parent: Entity) -> Entity {
+    commands
+        .spawn((
+            Name::new("Shop Auction Shop Ready Status"),
+            ShopAuctionUiEntity,
+            ShopReadyStatus,
+            Text::new(""),
+            shop_auction_text_font(13.0),
+            TextColor(Color::srgb(0.80, 0.86, 0.94)),
+            shop_ready_status_node(),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
+fn spawn_shop_hand_full_banner(commands: &mut Commands, parent: Entity) -> Entity {
+    commands
+        .spawn((
+            Name::new("Shop Auction Shop Hand Full Banner"),
+            ShopAuctionUiEntity,
+            ShopHandFullBanner,
+            Text::new("Hand full - play cards during PLACEMENT to free space."),
+            shop_auction_text_font(14.0),
+            TextColor(Color::srgb(1.0, 0.78, 0.55)),
+            shop_hand_full_banner_node(),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
 fn bottom_panel_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
@@ -1022,6 +1678,64 @@ fn draft_initial_hand_full_banner_node() -> Node {
         right: Val::Px(96.0),
         top: Val::Px(138.0),
         width: Val::Px(260.0),
+        height: Val::Px(30.0),
+        ..default()
+    }
+}
+
+fn shop_slot_node(index: usize) -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(92.0 + index as f32 * 154.0),
+        top: Val::Px(44.0),
+        width: Val::Px(136.0),
+        height: Val::Px(78.0),
+        border: UiRect::all(Val::Px(1.0)),
+        ..default()
+    }
+}
+
+fn shop_refresh_button_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(92.0),
+        top: Val::Px(148.0),
+        width: Val::Px(148.0),
+        height: Val::Px(36.0),
+        border: UiRect::all(Val::Px(1.0)),
+        ..default()
+    }
+}
+
+fn shop_ready_button_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        right: Val::Px(96.0),
+        top: Val::Px(148.0),
+        width: Val::Px(132.0),
+        height: Val::Px(36.0),
+        border: UiRect::all(Val::Px(1.0)),
+        ..default()
+    }
+}
+
+fn shop_ready_status_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        right: Val::Px(96.0),
+        top: Val::Px(190.0),
+        width: Val::Px(180.0),
+        height: Val::Px(28.0),
+        ..default()
+    }
+}
+
+fn shop_hand_full_banner_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(260.0),
+        top: Val::Px(152.0),
+        width: Val::Px(300.0),
         height: Val::Px(30.0),
         ..default()
     }
@@ -1100,6 +1814,17 @@ fn draft_initial_active(mode: &ShopAuctionUiMode, state: &ShopAuctionDraftInitia
     *mode == ShopAuctionUiMode::DraftOffering && state.offering_loaded
 }
 
+fn shop_active(mode: &ShopAuctionUiMode, state: &ShopAuctionShopState) -> bool {
+    *mode == ShopAuctionUiMode::Shop && state.slots_loaded
+}
+
+fn should_buffer_shop_slots(phase: RoundPhase) -> bool {
+    matches!(
+        phase,
+        RoundPhase::DraftInitial | RoundPhase::DraftAuction | RoundPhase::Resolution
+    )
+}
+
 fn rarity_sort_rank(rarity: Rarity) -> u8 {
     match rarity {
         Rarity::Common => 0,
@@ -1128,6 +1853,54 @@ fn clear_draft_initial_slot(
     )>();
 }
 
+fn apply_shop_slot(
+    commands: &mut Commands,
+    entity: Entity,
+    card_id: Option<CardId>,
+    catalog: &CardCatalog,
+    text: &mut Text,
+    visibility: &mut Visibility,
+) {
+    *visibility = Visibility::Visible;
+
+    let Some(card_id) = card_id else {
+        clear_shop_slot(commands, entity, text);
+        return;
+    };
+
+    let card = catalog.get(&card_id);
+    let card_name = card
+        .map(|card| card.name_en.clone())
+        .unwrap_or_else(|| format!("Card {}", card_id.0));
+    let cost = card.map_or(0, |card| card.cost);
+    let rarity = card.map_or(Rarity::Common, |card| card.rarity);
+
+    text.0.clear();
+    text.0
+        .push_str(&format!("{}\n{:?} · {}g", card_name.as_str(), rarity, cost));
+    commands.entity(entity).insert((
+        ShopSlotCard(card_id),
+        ShopSlotCardName(card_name),
+        ShopSlotGoldCost(cost),
+        ShopSlotRarity(rarity),
+        ShopSlotState::Available,
+    ));
+    commands.entity(entity).remove::<PendingShopPurchase>();
+}
+
+fn clear_shop_slot(commands: &mut Commands, entity: Entity, text: &mut Text) {
+    text.0.clear();
+    text.0.push_str("Empty");
+    commands.entity(entity).insert(ShopSlotState::Empty);
+    commands.entity(entity).remove::<(
+        ShopSlotCard,
+        ShopSlotCardName,
+        ShopSlotGoldCost,
+        ShopSlotRarity,
+        PendingShopPurchase,
+    )>();
+}
+
 fn mark_confirmed_purchase(
     card_id: CardId,
     commands: &mut Commands,
@@ -1151,6 +1924,24 @@ fn mark_confirmed_purchase(
     }
 
     None
+}
+
+fn mark_confirmed_shop_purchase(
+    card_id: CardId,
+    commands: &mut Commands,
+    slots: &mut Query<(Entity, &ShopSlotCard, &mut ShopSlotState, &mut Text)>,
+) -> bool {
+    for (entity, slot_card, mut slot_state, mut text) in slots.iter_mut() {
+        if slot_card.0 != card_id || *slot_state == ShopSlotState::Empty {
+            continue;
+        }
+
+        *slot_state = ShopSlotState::Empty;
+        clear_shop_slot(commands, entity, &mut text);
+        return true;
+    }
+
+    false
 }
 
 fn set_bought_overlay_visibility(
