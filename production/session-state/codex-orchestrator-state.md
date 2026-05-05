@@ -141,6 +141,31 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
+- NP-005 / Placement Payload Shape Split is integrated on `origin/main` and
+  needs serialized `/story-done`. Worker branch
+  `work/np-005-placement-payload-shape-split` returned at `103d27d`, pushed to
+  `origin/work/np-005-placement-payload-shape-split`. Root cherry-picked the
+  worker commit into `main` as `e65fcfe` (`NP-005 impl: split placement payload
+  shapes`), resolving a conflict in `server/src/feature/combat/mod.rs` by
+  combining NP-005 reveal payload conversion with COMBAT-011 placement reveal
+  broadcast/enqueue behavior. Root added follow-up integration fix `48b4b5f`
+  (`NP-005 integration: update resolution event test payload`) so
+  `tests/integration/combat/resolution_event_log_test.rs` uses
+  `AcceptedPlacement` rather than removed `PlacedCard`. Changed files include:
+  `shared/src/protocol.rs`, `client/src/ui/hand/mod.rs`,
+  `server/src/feature/board/mod.rs`, `server/src/feature/board/placement.rs`,
+  `server/src/feature/combat/mod.rs`,
+  `production/qa/evidence/placement-payload-shape-split-evidence.md`, and
+  affected board/hand/combat tests. Root verification passed:
+  `cargo fmt -p shared -- --check`, `cargo fmt -p server -- --check`,
+  `cargo fmt -p client -- --check`, `cargo check -p shared`,
+  `cargo test -p shared` 5/5, `cargo check -p server`, `cargo check -p client`,
+  affected server tests 12/12, affected client tests 17/17,
+  `cargo test -p server --test resolution_event_log_test` 3/3,
+  `cargo check --workspace`, and `git diff --check origin/main..HEAD` before
+  push. Queue exactly one `/story-done` for
+  `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md`;
+  do not relaunch the implementation worker.
 - COMBAT-011 / S5-20 ResolutionEvent Log Completeness is integrated on
   `origin/main` and needs serialized `/story-done`. Worker branch
   `work/combat-011-resolution-event-log` returned at `06d5b17`, pushed to
@@ -191,6 +216,12 @@ None currently tracked here.
   deferral, GDD Rule 8 coverage is missing `GhostDragStartEvent` and
   variant-specific ghost behavior ACs, and the rendering/PLACEMENT-loop
   performance budget note is missing. Repair docs-only, then rerun readiness.
+- BOARD-RENDERING-004 docs-only repair commit `edfe87f` was already present
+  locally above `origin/main` when integrating NP-005 and was pushed with the
+  NP-005 integration batch. It changes only
+  `production/epics/board-rendering/story-004-ghost-preview-hand-ui-bridge.md`.
+  Treat this as observed until the owning agent's official repair/readiness
+  report is pasted.
 - Shop/Auction UI UX review finished with verdict NEEDS REVISION. It is not a
   major redesign and does not block SAU-001, but it blocks clean final
   visual/accessibility handoff and SAU-009. Full blockers: bid accessibility
@@ -1249,6 +1280,10 @@ Current active windows by user default-launch rule:
 - NP-005 readiness returned READY; readiness window can be cleared. NP-005
   `/dev-story` is safe to launch now and is a prerequisite for BLS-011 and
   HAND-UI-010.
+- NP-005 implementation worker returned at `103d27d`; root integrated and
+  pushed it as `e65fcfe` plus integration fix `48b4b5f`. Worker window can be
+  cleared. Queue serialized `/story-done` for
+  `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md`.
 - Shop/Auction UX readiness check returned; window can be cleared.
 - Shop/Auction UX review finish returned NEEDS REVISION; window can be cleared
   after recording repair scope. Use `REPONDRE` only if launching the UX repair
