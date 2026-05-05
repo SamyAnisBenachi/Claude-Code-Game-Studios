@@ -5,7 +5,10 @@ use lightyear::prelude::MessageReceiver;
 use crate::card_animations::{CardAnimationsPlugin, CardAnimationsSet};
 use crate::presentation::board_rendering::BoardRenderSet;
 use crate::presentation::shared::economy_view::drain_gold_update_receiver_system as drain_shared_gold_update_receiver_system;
-use crate::state::{apply_phase_changed_message, ClientGameSnapshotMessage, ClientState};
+use crate::state::{
+    apply_phase_changed_message, apply_phase_view_message, ClientGameSnapshotMessage,
+    ClientPhaseView, ClientState,
+};
 use crate::ui::hand::{HandUiPlugin, HandUiSystemSet};
 use crate::ui::hud::{HudPlugin, HudSystemSet};
 use crate::ui::shop_auction::{ShopAuctionUiPlugin, ShopAuctionUiSystemSet};
@@ -35,6 +38,7 @@ impl Plugin for PresentationPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<ClientState>()
             .init_resource::<CurrentClientPhase>()
+            .init_resource::<ClientPhaseView>()
             .init_resource::<PlayerEconomyView>()
             .add_message::<ClientGameSnapshotMessage>();
 
@@ -97,9 +101,13 @@ impl Plugin for PresentationPlugin {
 pub fn phase_sink_system(
     mut receivers: Query<&mut MessageReceiver<S2CPhaseChanged>>,
     mut current: ResMut<CurrentClientPhase>,
+    mut phase_view: ResMut<ClientPhaseView>,
 ) {
     for mut receiver in &mut receivers {
-        apply_phase_changed_messages(receiver.receive(), &mut current);
+        for message in receiver.receive() {
+            apply_phase_changed_message(message.clone(), &mut current);
+            apply_phase_view_message(&message, &mut phase_view);
+        }
     }
 }
 

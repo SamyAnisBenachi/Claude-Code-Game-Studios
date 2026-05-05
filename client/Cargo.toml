@@ -168,6 +168,10 @@ name = "shop_auction_ui_shop_panel_test"
 path = "../tests/integration/shop_auction_ui/shop_panel_test.rs"
 
 [[test]]
+name = "shop_auction_ui_auction_activation_test"
+path = "../tests/integration/shop_auction_ui/auction_activation_test.rs"
+
+[[test]]
 name = "board_rendering_grid_camera_test"
 path = "../tests/unit/board_rendering/board_grid_camera_test.rs"
 
