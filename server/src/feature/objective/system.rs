@@ -167,7 +167,7 @@ pub fn initialize_objectives_on_draft_initial(
                     player,
                     destroyed: false,
                 },
-                Replicate::default(),
+                Replicate::to_clients(NetworkTarget::All),
             ));
         }
     }
