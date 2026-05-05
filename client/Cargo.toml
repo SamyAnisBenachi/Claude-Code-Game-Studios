@@ -19,6 +19,11 @@ bevy_tweening = { workspace = true, default-features = false, features = ["bevy_
 default = []
 ui_picking = ["bevy/ui_picking", "bevy/bevy_picking"]
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["Window"] }
+
 [lib]
 name = "client"
 path = "src/lib.rs"
@@ -26,6 +31,10 @@ path = "src/lib.rs"
 [[bin]]
 name = "client"
 path = "src/main.rs"
+
+[[bin]]
+name = "board_rendering_perf_harness"
+path = "src/board_rendering_perf_harness.rs"
 
 [[test]]
 name = "card_animations_plugin_scaffold_test"
@@ -190,6 +199,10 @@ path = "../tests/integration/board_rendering/ghost_preview_bridge_test.rs"
 [[test]]
 name = "board_rendering_snapshot_spawn_test"
 path = "../tests/integration/board_rendering/snapshot_spawn_test.rs"
+
+[[test]]
+name = "board_rendering_browser_wasm_perf_harness_test"
+path = "../tests/integration/board_rendering/browser_wasm_perf_harness_test.rs"
 
 [[test]]
 name = "board_rendering_status_icons_test"

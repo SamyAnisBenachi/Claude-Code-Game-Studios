@@ -2203,9 +2203,12 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_tweening",
+ "js-sys",
  "lightyear",
  "serde",
  "shared",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

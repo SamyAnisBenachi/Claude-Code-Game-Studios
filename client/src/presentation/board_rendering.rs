@@ -25,6 +25,7 @@ use crate::ui::hand::{
 };
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
+pub mod perf_harness;
 pub mod rendering_constants;
 
 pub const UNIT_PLACEHOLDER_FRAME_INDEX: usize = 0;

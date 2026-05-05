@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BOARD-012 Board Rendering Performance Harness</title>
+    <style>
+      html,
+      body,
+      canvas {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #11171a;
+      }
+    </style>
+    <script>
+      (() => {
+        const budgetMs = 16.67;
+        const samples = [];
+        window.__boardRenderingPerf = {
+          seed: "board-rendering-baseline-v1",
+          fixture: "board_rendering_baseline",
+          viewport: "1920x1080",
+          totalFrameBudgetMs: budgetMs,
+          harnessReport: null,
+          samples,
+          sampleCount: 0,
+          maxFrameMs: 0,
+          averageFrameMs: 0,
+          totalFrameBudgetPass: null,
+        };
+
+        window.boardWasmPerfReport = (json) => {
+          const report = JSON.parse(json);
+          window.__boardRenderingPerf.harnessReport = report;
+          document.title = "BOARD-012 Board Rendering Performance Harness READY";
+        };
+
+        let last = undefined;
+        function sample(now) {
+          if (last !== undefined) {
+            const frameMs = now - last;
+            samples.push(frameMs);
+            if (samples.length > 240) {
+              samples.shift();
+            }
+            const max = Math.max(...samples);
+            const sum = samples.reduce((acc, value) => acc + value, 0);
+            window.__boardRenderingPerf.sampleCount = samples.length;
+            window.__boardRenderingPerf.maxFrameMs = max;
+            window.__boardRenderingPerf.averageFrameMs = sum / samples.length;
+            window.__boardRenderingPerf.totalFrameBudgetPass = max <= budgetMs;
+          }
+          last = now;
+          window.requestAnimationFrame(sample);
+        }
+
+        window.requestAnimationFrame(sample);
+      })();
+    </script>
+    <link
+      data-trunk
+      rel="rust"
+      href="Cargo.toml"
+      data-bin="board_rendering_perf_harness"
+    />
+  </head>
+  <body>
+    <canvas id="bevy"></canvas>
+  </body>
+</html>

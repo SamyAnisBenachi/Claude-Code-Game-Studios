@@ -1,73 +1,142 @@
-# BOARD-010 Board Rendering Baseline CI/Perf Guard Evidence
+# BOARD-012 Browser/WASM Board Performance Evidence
 
-Status: Baseline guard and fixture evidence captured for the narrowed BOARD-002/003 visible board path.
+Status: Harness enabled; browser capture artifact is still pending in this
+worker environment because `trunk`, `node`, and a browser executable were not
+available on PATH.
 
-Story: `production/epics/board-rendering/story-010-performance-evidence-and-ci-guards.md`
+Story: `production/epics/board-rendering/story-012-browser-wasm-board-performance-evidence.md`
 
-Scope:
-- Included: Board Rendering grid/camera/Z layers, snapshot-spawned units, standing objectives, and HP bars.
-- Excluded: BOARD-009 status icons, co-occupancy indicators, OUTNUMBERED indicators, spawn range overlays, trap visuals, final VFX, and full Board Rendering epic closure.
-- Status-icon atlas evidence remains gated by BOARD-009.
+## Scope
 
-## Source Guards
+Included:
+- BOARD-010 narrowed visible board path: grid/camera/Z layers,
+  snapshot-spawned units, standing objectives, and HP bars.
+- Deterministic browser/WASM harness seed:
+  `board-rendering-baseline-v1`.
+- Repeatable capture paths under `production/qa/evidence/captures/`.
 
-CI now runs a focused Board Rendering source guard step in `.github/workflows/tests.yml`:
+Excluded:
+- BOARD-009 final status-icon evidence.
+- Spawn range highlights.
+- Traps.
+- Final VFX.
+- Full Board Rendering epic closure.
+
+## Harness
+
+Browser entry point:
 
 ```text
-cargo test -p client --test board_rendering_grid_camera_test test_board_z_layers_are_named_constants --verbose
-cargo test -p client --test board_rendering_plugin_scaffold_test board_rendering_does_not_register_phase_receiver --verbose
+client/board-rendering-perf-harness.html
 ```
 
-The Z guard scans `client/src/presentation/board_rendering.rs` spawn transform code and fails if the third argument to `Transform::from_xyz(...)` or `translation: Vec3::new(...)` contains an inline numeric literal.
+Harness binary:
 
-The phase guard normalizes whitespace and verifies `MessageReceiver<S2CPhaseChanged>` appears only in `client/src/presentation/mod.rs`; Board Rendering must read `Res<CurrentClientPhase>` and must not drain the Lightyear phase receiver.
+```text
+cargo check -p client --bin board_rendering_perf_harness
+cargo check -p client --bin board_rendering_perf_harness --target wasm32-unknown-unknown
+```
 
-## Baseline Fixture Evidence
+Serve command, from the repo root:
 
-Automated fixture: `cargo test -p client --test board_rendering_snapshot_spawn_test test_baseline_board_path_supports_twenty_units_and_two_atlased_images --verbose`
+```text
+cd client
+trunk serve board-rendering-perf-harness.html --release --port 8080
+```
 
-The fixture validates the current BOARD-002/003 path can produce:
-- 40 `BoardCellNode` entities.
-- 20 visible `BoardUnit` entities, arranged as 4 units per lane across all 5 lanes.
+Capture command, from a second shell at the repo root:
+
+```text
+node production/qa/evidence/captures/board-rendering-baseline-capture.mjs
+```
+
+Default capture URL:
+
+```text
+http://127.0.0.1:8080/board-rendering-perf-harness.html?fixture=board_rendering_baseline&seed=board-rendering-baseline-v1
+```
+
+Expected artifacts:
+
+```text
+production/qa/evidence/captures/board-rendering-baseline-1920x1080.png
+production/qa/evidence/captures/board-rendering-baseline-timing.json
+```
+
+## Fixture Counts
+
+Automated harness test:
+
+```text
+cargo test -p client --test board_rendering_browser_wasm_perf_harness_test
+```
+
+Validated counts:
+- 5 lanes.
+- 40 board cells.
+- 20 visible units.
+- 10 standing objectives.
 - HP bar background and fill children on every visible unit.
-- 10 standing objective entities in the current snapshot renderer, representing 5 objectives per player.
-- Exactly two atlased board-rendering image handles for atlased sprites: the unit atlas and the board-elements atlas.
+- 20 post-reveal-ready units with scale 1.0 and alpha 1.0.
+- 0 status icons.
+- 0 spawn range highlights.
+- 0 ghost units / lane ghost washes.
 
-Approved standalone/non-counted batches in the narrowed baseline:
-- Board cell nodes are tint sprites from `Sprite::from_color(...)`, not atlas-counted.
-- Field wash / ghost translucent batches are not part of the BOARD-002/003 snapshot baseline and remain logged separately if present in a future browser capture.
-- Status icons are excluded here and must be validated after BOARD-009.
+## Timing Method
 
-## Verification Run
+Total browser frame timing is sampled by
+`production/qa/evidence/captures/board-rendering-baseline-capture.mjs` from the
+browser `requestAnimationFrame` loop and compared against `<= 16.67 ms`.
 
-Local verification on 2026-05-05:
+Presentation timing is sampled inside the Bevy harness around the board
+presentation systems. The harness records:
+- Steady-state presentation max against `< 1 ms/frame`.
+- Snapshot rebuild spike against `< 3 ms`.
+
+The harness logs a `BOARD-012 harness result ...` JSON line to the browser
+console; the capture script stores matching console lines in
+`board-rendering-baseline-timing.json`.
+
+## Current Results
+
+Local worker verification:
+
+```text
+cargo test -p client --test board_rendering_grid_camera_test --test board_rendering_plugin_scaffold_test --test board_rendering_snapshot_spawn_test --test board_rendering_browser_wasm_perf_harness_test
+cargo fmt -p client -- --check
+cargo check -p client
+cargo check -p client --bin board_rendering_perf_harness --target wasm32-unknown-unknown
+git diff --check
+```
+
+Results:
+- Harness fixture and budget-report integration test: passed.
+- BOARD-010 supporting guard tests: passed.
+- `cargo fmt -p client -- --check`: passed.
+- `cargo check -p client`: passed.
+- Harness WASM target check: passed.
+- `git diff --check`: passed with existing Windows line-ending warnings only.
+- Browser screenshot: not captured in this worker environment.
+- Browser total frame timing: not sampled in this worker environment.
+- ADR-021 browser presentation budget status: not sampled in a browser in this
+  worker environment.
+
+Pass/fail status:
+- Fixture counts: PASS.
+- Capture path readiness: PASS.
+- Browser artifact production: BLOCKED until a machine with Trunk, Node, and a
+  Playwright-supported browser runs the capture command.
+- Browser timing budgets: NOT SAMPLED; no budget is weakened or claimed.
+
+## Prior BOARD-010 Baseline Guards
+
+Retained source guard commands from BOARD-010:
 
 ```text
 cargo test -p client --test board_rendering_grid_camera_test test_board_z_layers_are_named_constants --verbose
 cargo test -p client --test board_rendering_plugin_scaffold_test board_rendering_does_not_register_phase_receiver --verbose
 cargo test -p client --test board_rendering_snapshot_spawn_test test_baseline_board_path_supports_twenty_units_and_two_atlased_images --verbose
-cargo test -p client --test board_rendering_grid_camera_test --test board_rendering_plugin_scaffold_test --test board_rendering_snapshot_spawn_test
-cargo fmt -p client -- --check
-cargo check -p client
-git diff --check
 ```
 
-Results:
-- Focused Z source guard: passed.
-- Focused phase receiver source guard: passed.
-- Focused 20-unit baseline fixture / two-atlas handle guard: passed.
-- Full affected Board Rendering test targets: 20 tests passed.
-- `cargo fmt -p client -- --check`: passed.
-- `cargo check -p client`: passed.
-- `git diff --check`: passed with existing Windows line-ending warnings only.
-
-## Browser/WASM Capture
-
-No browser/WASM frame-time screenshot capture is claimed by this baseline guard commit. The current repository has native ECS fixture coverage for the visible board path, but no automated browser harness that can seed the 20-unit worst-case snapshot at a 1920x1080 viewport and record frame timing.
-
-Perf targets retained for the eventual browser capture:
-- Total browser/WASM frame budget: <= 16.67 ms.
-- ADR-021 presentation steady-state budget: < 1 ms.
-- ADR-021 phase-boundary spike budget: < 3 ms.
-
-Blocker for final visual performance closure: add or expose a browser/WASM fixture harness that can seed the BOARD-002/003 baseline snapshot, capture a 1920x1080 screenshot, and record frame timing. This blocker does not expand BOARD-010 into BOARD-009 status-icon atlas evidence or full epic closure.
+These remain supporting native ECS fixture evidence only; they do not claim the
+browser/WASM screenshot or timing capture.
