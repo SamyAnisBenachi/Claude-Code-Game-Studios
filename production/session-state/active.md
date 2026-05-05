@@ -1991,3 +1991,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching SAU-006/story row exists in `production/sprint-status.yaml`.
 - Next recommended: Shop/Auction UI Story 007 (`production/epics/shop-auction-ui/story-007-auction-settlement-and-shop-transition.md`) after readiness check; do not implement it as part of SAU-006 closure.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE
+- Story: `production/epics/board-lane-system/story-012-spawn-range-authoritative-projection.md` - Story 012: Spawn Range Authoritative Projection
+- Criteria: 6/6 passing; `SpawnRangeState` is the live Board/Lane source for placement validation, fake objective facts expand and clamp the projection, snapshots read `SpawnRangeState` instead of `ObjectiveCounters`, `SpawnRangeChanged` is emitted for live changes, event ordering follows `ObjectiveDestroyed`, and no replicated `SpawnRange` component was introduced.
+- Test Evidence: `cargo test -p server --test spawn_range_authoritative_projection_test --test resolution_event_log_test --test spawn_range_validation_test --test displacement_keywords_test --test placement_submit_authority_validation_test --test objective_damage_gameover_test --test consequence_path_test --test fake_reward_test --test snapshot_secret_strip_test --test reconnect_snapshot_test` passed. `cargo test -p shared --test spawn_range_live_update_contract`, `cargo fmt`, `cargo check -p server`, and `git diff --check` passed.
+- Verification: Worker branch `work/bls-012-spawn-range-authoritative-projection` commit `cfc44ac888297782c439be9963d877fa4497dae1` was integrated onto `main` as implementation commit `4418aae`. Combat now traces ordered `ResolutionEvent::SpawnRangeChanged` after fake `ObjectiveDestroyed`, and snapshot assembly uses the Board/Lane `SpawnRangeState` projection.
+- Notes: No blocking GDD, ADR-008, ADR-011, ADR-020, Bevy 0.18, or Lightyear 0.26 deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent. BR-011 spawn range highlights, final board visual/browser evidence, status icon/co-occupancy evidence, and design/assets work were not implemented or closed.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` matching BLS-012 row set to `done` with `completed: "2026-05-05"`.
+- Next recommended: Keep BR-011 (`production/epics/board-rendering/story-011-spawn-range-highlights.md`) as a separate readiness/implementation decision; do not treat BLS-012 closure as BR-011 closure.

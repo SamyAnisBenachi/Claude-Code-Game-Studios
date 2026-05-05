@@ -1,7 +1,7 @@
 # Story 012: Spawn Range Authoritative Projection
 
 > **Epic**: Board / Lane System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -107,7 +107,7 @@ Centralize spawn range mutation behind a Board/Lane-owned API helper (ADR-020 na
 - Unit: `tests/unit/board-lane-system/spawn_range_authoritative_projection_test.rs`
 - Integration: `tests/integration/combat/resolution_event_log_test.rs` covers ordered `ObjectiveDestroyed` -> `SpawnRangeChanged` assembly in `S2CResolutionEvent`.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete
 
 ---
 
@@ -118,3 +118,13 @@ Centralize spawn range mutation behind a Board/Lane-owned API helper (ADR-020 na
 - Depends on: `production/epics/objective-system/story-007-resolution-phase-subscription.md` (Complete - `ObjectiveDestroyed` sync path exists).
 - Depends on: `production/epics/combat-resolution/story-009-objective-damage-gameover.md` (Complete - objective destruction enters the resolution log path).
 - Unlocks: `production/epics/board-rendering/story-011-spawn-range-highlights.md`.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 6/6 passing.
+**Deviations**: None.
+**Test Evidence**: `tests/unit/board-lane-system/spawn_range_authoritative_projection_test.rs`, `tests/integration/combat/resolution_event_log_test.rs`, and `tests/unit/protocol/spawn_range_live_update_contract_test.rs` cover the BLS-012 acceptance criteria. Requested server and shared test bundles, `cargo fmt`, `cargo check -p server`, and `git diff --check` passed.
+**Code Review**: Skipped - lean mode (`production/review-mode.txt` absent).
+**Implementation**: Worker commit `cfc44ac888297782c439be9963d877fa4497dae1` was integrated onto `main` as `4418aae`.
+**Scope Notes**: BR-011 spawn range highlights, final board visual/browser evidence, status icon/co-occupancy evidence, and design/assets work were not implemented or closed.

@@ -104,11 +104,11 @@ stories:
     name: "BLS-012 implementation"
     file: "production/epics/board-lane-system/story-012-spawn-range-authoritative-projection.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: "gameplay programmer"
     estimate_days: 1.00
     blocker: ""
-    completed: ""
+    completed: "2026-05-05"
     notes:
       - "Depends on NP-006 completion and BLS-012 readiness notes."
 
