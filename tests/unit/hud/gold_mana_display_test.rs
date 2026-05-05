@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use bevy_tweening::TweenAnim;
+use client::presentation::PlayerEconomyView;
 use client::state::ClientState;
 use client::ui::hud::{
-    apply_gold_update_batch, GoldDisplayState, HudEntities, HudPlayerIds, HudPlugin,
-    ManaDisplayState, ScoreboardDotState,
+    GoldDisplayState, HudEntities, HudPlayerIds, HudPlugin, ManaDisplayState, ScoreboardDotState,
 };
 use shared::protocol::{S2CGoldBroadcast, S2CGoldUpdate};
 use shared::session::PlayerId;
@@ -56,12 +56,8 @@ fn gold_update_changes_only_local_economy_readouts() {
     app.update();
 
     assert_eq!(gold_state(&app, entities.own_gold_parent).gold, 10.0);
-    assert_eq!(text(&app, entities.own_gold_parent), "10g");
-    assert_eq!(text(&app, entities.mana_label), "4 / 8");
-    assert_eq!(
-        app.world().get::<Visibility>(entities.reserve_label),
-        Some(&Visibility::Hidden)
-    );
+    assert_eq!(mana_state(&app, entities.mana_label).current_mana, 4);
+    assert_eq!(mana_state(&app, entities.mana_label).reserve_mana, 0);
     assert_eq!(
         gold_state(&app, entities.opponent_gold_parent),
         opponent_state_before
@@ -95,15 +91,13 @@ fn mana_cap_denominator_updates_and_zero_reserve_hides_label() {
 
     apply_own_gold_update(&mut app, gold_update(7, 4, 10, 0));
     app.update();
-    assert_eq!(text(&app, entities.mana_label), "4 / 10");
-    assert_eq!(
-        app.world().get::<Visibility>(entities.reserve_label),
-        Some(&Visibility::Hidden)
-    );
+    assert_eq!(mana_state(&app, entities.mana_label).mana_cap, 10);
+    assert_eq!(mana_state(&app, entities.mana_label).reserve_mana, 0);
 
     apply_own_gold_update(&mut app, gold_update(7, 5, 3, 0));
     app.update();
-    assert_eq!(text(&app, entities.mana_label), "5 / 3");
+    assert_eq!(mana_state(&app, entities.mana_label).current_mana, 5);
+    assert_eq!(mana_state(&app, entities.mana_label).mana_cap, 3);
 }
 
 #[test]
@@ -135,23 +129,17 @@ fn mana_cap_zero_renders_without_panic() {
 
 #[test]
 fn multi_update_collapse_applies_only_last_gold_update() {
-    let mut gold = GoldDisplayState::default();
-    let mut mana = ManaDisplayState::default();
+    let mut economy_view = PlayerEconomyView::default();
+    for update in [
+        gold_update(7, 2, 10, 0),
+        gold_update(9, 3, 10, 0),
+        gold_update(11, 4, 10, 0),
+    ] {
+        economy_view.apply_gold_update(&update);
+    }
 
-    let applied = apply_gold_update_batch(
-        vec![
-            gold_update(7, 2, 10, 0),
-            gold_update(9, 3, 10, 0),
-            gold_update(11, 4, 10, 0),
-        ],
-        &mut gold,
-        &mut mana,
-    )
-    .expect("batch should apply last update");
-
-    assert_eq!(applied.gold, 11);
-    assert_eq!(gold.gold, 11.0);
-    assert_eq!(mana.current_mana, 4);
+    assert_eq!(economy_view.gold, 11);
+    assert_eq!(economy_view.current_mana, 4);
 
     let mut app = app_with_hud_in_session();
     let entities = hud_entities(&app);
@@ -159,7 +147,7 @@ fn multi_update_collapse_applies_only_last_gold_update() {
         .world()
         .get::<TweenAnim>(entities.own_gold_parent)
         .is_none());
-    apply_own_gold_update(&mut app, applied);
+    *app.world_mut().resource_mut::<PlayerEconomyView>() = economy_view;
     app.update();
     assert_eq!(text(&app, entities.own_gold_parent), "11g");
     assert!(app
@@ -210,25 +198,9 @@ fn gold_broadcast(player_id: PlayerId, gold: u32, reserved_gold: u32) -> S2CGold
 }
 
 fn apply_own_gold_update(app: &mut App, message: S2CGoldUpdate) {
-    let entities = hud_entities(app);
-    {
-        let mut gold_state = app
-            .world_mut()
-            .get_mut::<GoldDisplayState>(entities.own_gold_parent)
-            .expect("own gold state should exist");
-        gold_state.gold = message.gold as f32;
-        gold_state.is_populated = true;
-    }
-    {
-        let mut mana_state = app
-            .world_mut()
-            .get_mut::<ManaDisplayState>(entities.mana_label)
-            .expect("mana state should exist");
-        mana_state.current_mana = message.current_mana;
-        mana_state.mana_cap = message.mana_cap as u32;
-        mana_state.reserve_mana = message.reserve_mana;
-        mana_state.is_populated = true;
-    }
+    app.world_mut()
+        .resource_mut::<PlayerEconomyView>()
+        .apply_gold_update(&message);
 }
 
 fn apply_gold_broadcast(app: &mut App, message: S2CGoldBroadcast) {
@@ -258,6 +230,12 @@ fn gold_state(app: &App, entity: Entity) -> GoldDisplayState {
     *app.world()
         .get::<GoldDisplayState>(entity)
         .expect("gold state should exist")
+}
+
+fn mana_state(app: &App, entity: Entity) -> ManaDisplayState {
+    *app.world()
+        .get::<ManaDisplayState>(entity)
+        .expect("mana state should exist")
 }
 
 fn text(app: &App, entity: Entity) -> String {

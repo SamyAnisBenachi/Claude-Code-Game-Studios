@@ -9,11 +9,11 @@ use bevy_tweening::{
 use lightyear::prelude::MessageReceiver;
 use shared::protocol::{
     OpponentObjectiveSnapshot, PlayerSnapshot, RoundPhase, S2CGameSnapshot, S2CGoldBroadcast,
-    S2CGoldUpdate,
 };
 use shared::session::PlayerId;
 
 use crate::card_animations::cancel_tween_anim_in_place;
+use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientState, CurrentClientPhase};
 use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
@@ -195,12 +195,6 @@ impl Lens<ManaTweenTarget> for ManaTweenLens {
 #[derive(Message, Debug, Clone)]
 pub struct HudGoldBroadcastMessage(pub S2CGoldBroadcast);
 
-#[derive(Message, Debug, Clone)]
-pub struct HudGoldUpdateMessage(pub S2CGoldUpdate);
-
-#[derive(Message, Debug, Clone)]
-pub struct HudGameSnapshotMessage(pub S2CGameSnapshot);
-
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScoreboardDot {
     pub row: ScoreboardRow,
@@ -228,12 +222,12 @@ impl Plugin for HudPlugin {
 
         app.init_state::<ClientState>()
             .init_resource::<CurrentClientPhase>()
+            .init_resource::<PlayerEconomyView>()
             .init_resource::<HudConfig>()
             .init_resource::<HudMode>()
             .add_message::<HudObjectiveUpdate>()
             .add_message::<HudGoldBroadcastMessage>()
-            .add_message::<HudGoldUpdateMessage>()
-            .add_message::<HudGameSnapshotMessage>()
+            .add_message::<PresentationGameSnapshotMessage>()
             .configure_sets(
                 Update,
                 (
@@ -253,24 +247,18 @@ impl Plugin for HudPlugin {
                         .in_set(HudSystemSet::PhaseTransition)
                         .before(update_phase_label_round_counter_system),
                     update_phase_label_round_counter_system.in_set(HudSystemSet::PhaseTransition),
-                    drain_game_snapshot_receiver_system
-                        .in_set(HudSystemSet::MessageDrain)
-                        .before(handle_game_snapshot_system),
                     handle_game_snapshot_system
                         .in_set(HudSystemSet::MessageDrain)
                         .before(handle_gold_broadcast_system)
-                        .before(handle_gold_update_system)
+                        .before(sync_hud_economy_view_system)
                         .before(handle_hud_objective_update_system),
                     drain_gold_broadcast_receiver_system
                         .in_set(HudSystemSet::MessageDrain)
                         .before(handle_gold_broadcast_system),
                     handle_gold_broadcast_system
                         .in_set(HudSystemSet::MessageDrain)
-                        .before(handle_gold_update_system),
-                    drain_gold_update_receiver_system
-                        .in_set(HudSystemSet::MessageDrain)
-                        .before(handle_gold_update_system),
-                    handle_gold_update_system.in_set(HudSystemSet::MessageDrain),
+                        .before(sync_hud_economy_view_system),
+                    sync_hud_economy_view_system.in_set(HudSystemSet::MessageDrain),
                     handle_hud_objective_update_system.in_set(HudSystemSet::MessageDrain),
                     sync_gold_text_system
                         .in_set(HudSystemSet::StateSync)
@@ -629,31 +617,9 @@ pub fn drain_gold_broadcast_receiver_system(
     }
 }
 
-pub fn drain_gold_update_receiver_system(
-    mut receivers: Query<&mut MessageReceiver<S2CGoldUpdate>>,
-    mut writer: MessageWriter<HudGoldUpdateMessage>,
-) {
-    for mut receiver in &mut receivers {
-        for message in receiver.receive() {
-            writer.write(HudGoldUpdateMessage(message));
-        }
-    }
-}
-
-pub fn drain_game_snapshot_receiver_system(
-    mut receivers: Query<&mut MessageReceiver<S2CGameSnapshot>>,
-    mut writer: MessageWriter<HudGameSnapshotMessage>,
-) {
-    for mut receiver in &mut receivers {
-        for message in receiver.receive() {
-            writer.write(HudGameSnapshotMessage(message));
-        }
-    }
-}
-
 pub fn handle_game_snapshot_system(
     mut commands: Commands,
-    mut messages: MessageReader<HudGameSnapshotMessage>,
+    mut messages: MessageReader<PresentationGameSnapshotMessage>,
     entities: Option<Res<HudEntities>>,
     mut current: ResMut<CurrentClientPhase>,
     mut mode: ResMut<HudMode>,
@@ -909,11 +875,11 @@ pub fn phase_label_text(phase: RoundPhase) -> Option<&'static str> {
     }
 }
 
-pub fn handle_gold_update_system(
+pub fn sync_hud_economy_view_system(
     mut commands: Commands,
     mode: Res<HudMode>,
     config: Res<HudConfig>,
-    mut messages: MessageReader<HudGoldUpdateMessage>,
+    economy_view: Res<PlayerEconomyView>,
     mut gold_labels: Query<
         (
             Entity,
@@ -934,21 +900,11 @@ pub fn handle_gold_update_system(
         (With<ManaLabel>, Without<GoldDisplayState>),
     >,
 ) {
-    if *mode == HudMode::Frozen {
-        drain_hud_gold_update_messages(&mut messages);
+    if !economy_view.initialized || *mode == HudMode::Frozen {
         return;
     }
 
-    let mut last_update = None;
-    for message in messages.read().map(|message| &message.0) {
-        last_update = Some(message);
-    }
-
-    let Some(message) = last_update else {
-        return;
-    };
-
-    if message.mana_cap == 0 {
+    if economy_view.mana_cap == 0 {
         warn!("HUD: mana_cap=0 received - server invariant violated");
     }
 
@@ -958,62 +914,66 @@ pub fn handle_gold_update_system(
         return;
     };
 
+    let mut mana_needs_tween = false;
     for (entity, owner, mut state, mut target, animator) in &mut gold_labels {
         if *owner == GoldLabelOwner::Local {
-            apply_gold_update_message(&message, &mut state, &mut mana_state);
-            start_gold_tween(
-                &mut commands,
-                entity,
-                &config,
-                &state,
-                &mut target,
-                animator,
-            );
+            let gold_needs_tween = !state.is_populated || state.gold != economy_view.gold as f32;
+            mana_needs_tween = mana_display_differs_from_view(&mana_state, &economy_view);
+            if !gold_needs_tween && !mana_needs_tween {
+                return;
+            }
+
+            apply_player_economy_view(&economy_view, &mut state, &mut mana_state);
+            if gold_needs_tween {
+                start_gold_tween(
+                    &mut commands,
+                    entity,
+                    &config,
+                    &state,
+                    &mut target,
+                    animator,
+                );
+            }
         }
     }
 
-    start_mana_tween(
-        &mut commands,
-        mana_entity,
-        &config,
-        &mana_state,
-        &mut mana_target,
-        mana_animator,
-    );
+    if mana_needs_tween {
+        start_mana_tween(
+            &mut commands,
+            mana_entity,
+            &config,
+            &mana_state,
+            &mut mana_target,
+            mana_animator,
+        );
+    }
 }
 
 fn drain_hud_gold_broadcast_messages(messages: &mut MessageReader<HudGoldBroadcastMessage>) {
     for _message in messages.read() {}
 }
 
-fn drain_hud_gold_update_messages(messages: &mut MessageReader<HudGoldUpdateMessage>) {
-    for _message in messages.read() {}
-}
-
-pub fn apply_gold_update_batch<I>(
-    messages: I,
-    own_gold: &mut GoldDisplayState,
-    mana_state: &mut ManaDisplayState,
-) -> Option<S2CGoldUpdate>
-where
-    I: IntoIterator<Item = S2CGoldUpdate>,
-{
-    let message = messages.into_iter().last()?;
-    apply_gold_update_message(&message, own_gold, mana_state);
-    Some(message)
-}
-
-pub fn apply_gold_update_message(
-    message: &S2CGoldUpdate,
+pub fn apply_player_economy_view(
+    economy_view: &PlayerEconomyView,
     own_gold: &mut GoldDisplayState,
     mana_state: &mut ManaDisplayState,
 ) {
-    own_gold.gold = message.gold as f32;
+    own_gold.gold = economy_view.gold as f32;
     own_gold.is_populated = true;
-    mana_state.current_mana = message.current_mana;
-    mana_state.mana_cap = message.mana_cap as u32;
-    mana_state.reserve_mana = message.reserve_mana;
+    mana_state.current_mana = economy_view.current_mana;
+    mana_state.mana_cap = economy_view.mana_cap as u32;
+    mana_state.reserve_mana = economy_view.reserve_mana;
     mana_state.is_populated = true;
+}
+
+fn mana_display_differs_from_view(
+    state: &ManaDisplayState,
+    economy_view: &PlayerEconomyView,
+) -> bool {
+    !state.is_populated
+        || state.current_mana != economy_view.current_mana
+        || state.mana_cap != u32::from(economy_view.mana_cap)
+        || state.reserve_mana != economy_view.reserve_mana
 }
 
 pub fn sync_gold_text_system(

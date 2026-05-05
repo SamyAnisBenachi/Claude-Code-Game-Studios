@@ -5,10 +5,11 @@ use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 use bevy_tweening::{PlaybackState, TweenAnim, TweenState};
 use client::{
+    presentation::PlayerEconomyView,
     state::{apply_phase_changed_message, ClientState, CurrentClientPhase},
     ui::hud::{
         GoldDisplayState, GoldTweenTarget, HudConfig, HudEntities, HudGoldBroadcastMessage,
-        HudGoldUpdateMessage, HudPlayerIds, HudPlugin, ManaDisplayState, ManaTweenTarget,
+        HudPlayerIds, HudPlugin, ManaDisplayState, ManaTweenTarget,
     },
 };
 use shared::{
@@ -230,8 +231,8 @@ fn set_mana_display(
 
 fn write_gold_update(app: &mut App, message: S2CGoldUpdate) {
     app.world_mut()
-        .resource_mut::<Messages<HudGoldUpdateMessage>>()
-        .write(HudGoldUpdateMessage(message));
+        .resource_mut::<PlayerEconomyView>()
+        .apply_gold_update(&message);
 }
 
 fn write_gold_broadcast(app: &mut App, message: S2CGoldBroadcast) {

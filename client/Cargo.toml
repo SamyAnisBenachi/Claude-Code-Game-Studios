@@ -144,6 +144,10 @@ name = "presentation_plugin_scaffold_test"
 path = "../tests/integration/presentation/presentation_plugin_scaffold_test.rs"
 
 [[test]]
+name = "shared_economy_view_test"
+path = "../tests/integration/presentation/shared_economy_view_test.rs"
+
+[[test]]
 name = "board_rendering_plugin_scaffold_test"
 path = "../tests/unit/board_rendering/plugin_scaffold_test.rs"
 

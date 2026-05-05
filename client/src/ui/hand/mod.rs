@@ -16,6 +16,7 @@ use shared::session::PlayerId;
 use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
 };
+use crate::presentation::PlayerEconomyView;
 use crate::state::{ClientState, CurrentClientPhase};
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
@@ -104,12 +105,6 @@ impl Default for PlacementTimerConfig {
             grace_window_ms: 200,
         }
     }
-}
-
-#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct HandUiEconomyView {
-    pub gold: u32,
-    pub reserve_mana: u32,
 }
 
 #[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
@@ -697,7 +692,7 @@ impl Plugin for HandUiPlugin {
             .init_resource::<HandCardCatalog>()
             .init_resource::<HandUiTimingConfig>()
             .init_resource::<PlacementTimerConfig>()
-            .init_resource::<HandUiEconomyView>()
+            .init_resource::<PlayerEconomyView>()
             .init_resource::<HandContents>()
             .init_resource::<HandUiMode>()
             .init_resource::<HandUiOutboundMessages>()
@@ -851,7 +846,7 @@ pub fn apply_reserve_strip_layout_system(
 
 pub fn sync_reserve_strip_state_system(
     mode: Res<HandUiMode>,
-    economy: Res<HandUiEconomyView>,
+    economy: Res<PlayerEconomyView>,
     catalog: Res<HandCardCatalog>,
     pending_placements: Res<PendingPlacements>,
     mut commands: Commands,
@@ -1605,7 +1600,7 @@ pub fn handle_placement_drop_resolved_system(
 
 pub fn handle_reserve_strip_button_interactions_system(
     mode: Res<HandUiMode>,
-    economy: Res<HandUiEconomyView>,
+    economy: Res<PlayerEconomyView>,
     catalog: Res<HandCardCatalog>,
     mut commands: Commands,
     mut interactions: Query<
@@ -2251,7 +2246,7 @@ fn set_reserve_strip_visibility(
 
 fn sync_reserve_strip_entities(
     mode: HandUiMode,
-    economy: &HandUiEconomyView,
+    economy: &PlayerEconomyView,
     catalog: &HandCardCatalog,
     pending_placements: &PendingPlacements,
     commands: &mut Commands,

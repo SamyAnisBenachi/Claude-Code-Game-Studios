@@ -1,10 +1,11 @@
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use client::{
+    presentation::PlayerEconomyView,
     state::{apply_phase_changed_message, ClientState, CurrentClientPhase},
     ui::hud::{
-        GoldDisplayState, HudEntities, HudGoldBroadcastMessage, HudGoldUpdateMessage, HudMode,
-        HudPlayerIds, HudPlugin, ManaDisplayState,
+        GoldDisplayState, HudEntities, HudGoldBroadcastMessage, HudMode, HudPlayerIds, HudPlugin,
+        ManaDisplayState,
     },
 };
 use shared::{
@@ -117,8 +118,8 @@ fn write_gold_broadcast(app: &mut App, message: S2CGoldBroadcast) {
 
 fn write_gold_update(app: &mut App, message: S2CGoldUpdate) {
     app.world_mut()
-        .resource_mut::<Messages<HudGoldUpdateMessage>>()
-        .write(HudGoldUpdateMessage(message));
+        .resource_mut::<PlayerEconomyView>()
+        .apply_gold_update(&message);
 }
 
 fn gold_update(gold: u32, current_mana: u32, mana_cap: u8, reserve_mana: u32) -> S2CGoldUpdate {
