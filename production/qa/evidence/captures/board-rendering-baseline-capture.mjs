@@ -27,12 +27,32 @@ await page.waitForFunction(
   () => globalThis.__boardRenderingPerf?.harnessReport?.ready_for_capture === true,
   { timeout: 15000 },
 );
+await page.waitForFunction(
+  () =>
+    globalThis.__boardRenderingPerf?.sampleCount >= 120 &&
+    globalThis.__boardRenderingPerf?.totalFrameBudgetPass !== null,
+  { timeout: 15000 },
+);
 await page.screenshot({ path: screenshotPath, fullPage: false });
 
 const browserFrameTiming = await page.evaluate(
   () => globalThis.__boardRenderingPerf ?? null,
 );
 const harnessReport = browserFrameTiming?.harnessReport ?? null;
+const budgetVerdict = {
+  totalFrameSource: "browser_raf_sampler",
+  totalFrameBudgetPass: browserFrameTiming?.totalFrameBudgetPass === true,
+  steadyStatePresentationBudgetPass:
+    harnessReport?.status?.steady_state_presentation === "pass",
+  reconnectSnapshotRebuildBudgetPass:
+    harnessReport?.status?.reconnect_snapshot_rebuild === "pass",
+  phaseBoundaryPresentationSpikeStatus:
+    harnessReport?.status?.phase_boundary_presentation_spike ?? "not_sampled",
+  board012BudgetPass:
+    browserFrameTiming?.totalFrameBudgetPass === true &&
+    harnessReport?.status?.steady_state_presentation === "pass" &&
+    harnessReport?.status?.reconnect_snapshot_rebuild === "pass",
+};
 const harnessConsole = consoleMessages.filter((line) =>
   line.includes("BOARD-012 harness"),
 );
@@ -45,8 +65,11 @@ const result = {
   seed: "board-rendering-baseline-v1",
   screenshotPath:
     "production/qa/evidence/captures/board-rendering-baseline-1920x1080.png",
+  tracePath:
+    "production/qa/evidence/captures/board-rendering-baseline-timing.json",
   browserFrameTiming,
   harnessReport,
+  budgetVerdict,
   harnessConsole,
   capturedAt: new Date().toISOString(),
 };

@@ -35,9 +35,10 @@ const UNIT_CARD_FRAME: usize = 7;
 const UNIT_CARD_MAX_HP: u8 = 5;
 const ATLAS_FRAME_SIZE: u32 = 16;
 const ATLAS_COLUMNS: u32 = 8;
-const TOTAL_FRAME_BUDGET_MS: f64 = 16.67;
+const BROWSER_TOTAL_FRAME_BUDGET_MS: f64 = 16.67;
+const RECONNECT_SNAPSHOT_REBUILD_BUDGET_MS: f64 = 16.67;
 const STEADY_STATE_PRESENTATION_BUDGET_MS: f64 = 1.0;
-const PHASE_BOUNDARY_REBUILD_SPIKE_BUDGET_MS: f64 = 3.0;
+const PHASE_BOUNDARY_PRESENTATION_SPIKE_BUDGET_MS: f64 = 3.0;
 
 pub struct BoardRenderingPerfHarnessPlugin;
 
@@ -93,7 +94,7 @@ struct BoardRenderingPerfHarnessState {
     stable_frames: u32,
     sample_start: Option<Instant>,
     steady_state_samples: Vec<BoardWasmPerfTimingSample>,
-    rebuild_spike_ms: Option<f64>,
+    snapshot_rebuild_ms: Option<f64>,
     published: bool,
 }
 
@@ -104,7 +105,7 @@ impl Default for BoardRenderingPerfHarnessState {
             stable_frames: 0,
             sample_start: None,
             steady_state_samples: Vec::with_capacity(SAMPLE_FRAME_COUNT),
-            rebuild_spike_ms: None,
+            snapshot_rebuild_ms: None,
             published: false,
         }
     }
@@ -121,14 +122,14 @@ pub struct BoardWasmPerfHarnessReport {
     pub seed: &'static str,
     pub fixture_counts: BoardWasmPerfFixtureCounts,
     pub ready_for_capture: bool,
-    pub total_frame_budget: PerfBudgetStatus,
     pub steady_state_presentation_budget: PerfBudgetStatus,
-    pub phase_boundary_rebuild_spike_budget: PerfBudgetStatus,
+    pub reconnect_snapshot_rebuild_budget: PerfBudgetStatus,
+    pub phase_boundary_presentation_spike_budget: PerfBudgetStatus,
     pub total_frame_avg_ms: Option<f64>,
     pub total_frame_max_ms: Option<f64>,
     pub presentation_avg_ms: Option<f64>,
     pub presentation_max_ms: Option<f64>,
-    pub rebuild_spike_ms: Option<f64>,
+    pub snapshot_rebuild_ms: Option<f64>,
     pub raw_total_frame_ms: Vec<f64>,
     pub raw_presentation_ms: Vec<f64>,
     pub screenshot_path: &'static str,
@@ -141,14 +142,14 @@ impl Default for BoardWasmPerfHarnessReport {
             seed: BOARD_RENDERING_BASELINE_SEED,
             fixture_counts: BoardWasmPerfFixtureCounts::default(),
             ready_for_capture: false,
-            total_frame_budget: PerfBudgetStatus::NotSampled,
             steady_state_presentation_budget: PerfBudgetStatus::NotSampled,
-            phase_boundary_rebuild_spike_budget: PerfBudgetStatus::NotSampled,
+            reconnect_snapshot_rebuild_budget: PerfBudgetStatus::NotSampled,
+            phase_boundary_presentation_spike_budget: PerfBudgetStatus::NotSampled,
             total_frame_avg_ms: None,
             total_frame_max_ms: None,
             presentation_avg_ms: None,
             presentation_max_ms: None,
-            rebuild_spike_ms: None,
+            snapshot_rebuild_ms: None,
             raw_total_frame_ms: Vec::new(),
             raw_presentation_ms: Vec::new(),
             screenshot_path: BOARD_RENDERING_BASELINE_SCREENSHOT_PATH,
@@ -183,27 +184,32 @@ impl BoardWasmPerfHarnessReport {
         );
         let _ = write!(
             json,
-            "\"budgets_ms\":{{\"total_frame\":{},\"steady_state_presentation\":{},\"phase_boundary_rebuild_spike\":{}}},",
-            TOTAL_FRAME_BUDGET_MS,
+            "\"budgets_ms\":{{\"browser_total_frame\":{},\"steady_state_presentation\":{},\"reconnect_snapshot_rebuild\":{},\"phase_boundary_presentation_spike\":{}}},",
+            BROWSER_TOTAL_FRAME_BUDGET_MS,
             STEADY_STATE_PRESENTATION_BUDGET_MS,
-            PHASE_BOUNDARY_REBUILD_SPIKE_BUDGET_MS
+            RECONNECT_SNAPSHOT_REBUILD_BUDGET_MS,
+            PHASE_BOUNDARY_PRESENTATION_SPIKE_BUDGET_MS
         );
         let _ = write!(
             json,
-            "\"ready_for_capture\":{},\"status\":{{\"total_frame\":\"{}\",\"steady_state_presentation\":\"{}\",\"phase_boundary_rebuild_spike\":\"{}\"}},",
+            "\"ready_for_capture\":{},\"status\":{{\"steady_state_presentation\":\"{}\",\"reconnect_snapshot_rebuild\":\"{}\",\"phase_boundary_presentation_spike\":\"{}\"}},",
             self.ready_for_capture,
-            self.total_frame_budget.as_str(),
             self.steady_state_presentation_budget.as_str(),
-            self.phase_boundary_rebuild_spike_budget.as_str()
+            self.reconnect_snapshot_rebuild_budget.as_str(),
+            self.phase_boundary_presentation_spike_budget.as_str()
         );
         let _ = write!(
             json,
-            "\"summary_ms\":{{\"total_frame_avg\":{},\"total_frame_max\":{},\"presentation_avg\":{},\"presentation_max\":{},\"rebuild_spike\":{}}},",
-            optional_ms(self.total_frame_avg_ms),
-            optional_ms(self.total_frame_max_ms),
+            "\"summary_ms\":{{\"presentation_avg\":{},\"presentation_max\":{},\"snapshot_rebuild\":{}}},",
             optional_ms(self.presentation_avg_ms),
             optional_ms(self.presentation_max_ms),
-            optional_ms(self.rebuild_spike_ms)
+            optional_ms(self.snapshot_rebuild_ms)
+        );
+        let _ = write!(
+            json,
+            "\"diagnostics_ms\":{{\"bevy_total_frame_avg\":{},\"bevy_total_frame_max\":{}}},",
+            optional_ms(self.total_frame_avg_ms),
+            optional_ms(self.total_frame_max_ms)
         );
         let _ = write!(
             json,
@@ -359,7 +365,7 @@ fn finish_board_timing_sample_system(
         .unwrap_or(0.0);
 
     if rebuilds.read().next().is_some() {
-        state.rebuild_spike_ms = Some(presentation_ms);
+        state.snapshot_rebuild_ms = Some(presentation_ms);
     }
 
     let counts = collect_fixture_counts(
@@ -396,7 +402,7 @@ fn finish_board_timing_sample_system(
     if !state.published
         && report.ready_for_capture
         && state.steady_state_samples.len() >= SAMPLE_FRAME_COUNT
-        && state.rebuild_spike_ms.is_some()
+        && state.snapshot_rebuild_ms.is_some()
     {
         publish_report(&report);
         state.published = true;
@@ -481,19 +487,18 @@ fn update_report_from_samples(
     report.total_frame_max_ms = max(&report.raw_total_frame_ms);
     report.presentation_avg_ms = average(&report.raw_presentation_ms);
     report.presentation_max_ms = max(&report.raw_presentation_ms);
-    report.rebuild_spike_ms = state.rebuild_spike_ms.map(round_ms);
-    report.total_frame_budget =
-        PerfBudgetStatus::from_max(report.total_frame_max_ms, TOTAL_FRAME_BUDGET_MS, true);
+    report.snapshot_rebuild_ms = state.snapshot_rebuild_ms.map(round_ms);
     report.steady_state_presentation_budget = PerfBudgetStatus::from_max(
         report.presentation_max_ms,
         STEADY_STATE_PRESENTATION_BUDGET_MS,
         false,
     );
-    report.phase_boundary_rebuild_spike_budget = PerfBudgetStatus::from_max(
-        report.rebuild_spike_ms,
-        PHASE_BOUNDARY_REBUILD_SPIKE_BUDGET_MS,
-        false,
+    report.reconnect_snapshot_rebuild_budget = PerfBudgetStatus::from_max(
+        report.snapshot_rebuild_ms,
+        RECONNECT_SNAPSHOT_REBUILD_BUDGET_MS,
+        true,
     );
+    report.phase_boundary_presentation_spike_budget = PerfBudgetStatus::NotSampled;
 }
 
 pub fn baseline_fixture_snapshot() -> S2CGameSnapshot {

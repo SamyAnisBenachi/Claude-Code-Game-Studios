@@ -167,13 +167,25 @@ try {
     do {
         Start-Sleep -Milliseconds 500
         $perf = Get-HarnessPerf
-        if ($null -ne $perf -and $null -ne $perf.harnessReport -and $perf.harnessReport.ready_for_capture -eq $true) {
+        if (
+            $null -ne $perf -and
+            $null -ne $perf.harnessReport -and
+            $perf.harnessReport.ready_for_capture -eq $true -and
+            $perf.sampleCount -ge 120 -and
+            $null -ne $perf.totalFrameBudgetPass
+        ) {
             break
         }
     } while ((Get-Date) -lt $readyDeadline)
 
-    if ($null -eq $perf -or $null -eq $perf.harnessReport -or $perf.harnessReport.ready_for_capture -ne $true) {
-        throw "BOARD-012 harness did not become ready for capture within $ReadyTimeoutSeconds seconds."
+    if (
+        $null -eq $perf -or
+        $null -eq $perf.harnessReport -or
+        $perf.harnessReport.ready_for_capture -ne $true -or
+        $perf.sampleCount -lt 120 -or
+        $null -eq $perf.totalFrameBudgetPass
+    ) {
+        throw "BOARD-012 harness and RAF sampler did not become ready for capture within $ReadyTimeoutSeconds seconds."
     }
 
     Start-Sleep -Seconds 2
@@ -197,6 +209,17 @@ try {
     )
 
     $chromeVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($ChromePath).ProductVersion
+    $totalFramePass = $perf.totalFrameBudgetPass -eq $true
+    $steadyPresentationPass = $perf.harnessReport.status.steady_state_presentation -eq "pass"
+    $reconnectSnapshotRebuildPass = $perf.harnessReport.status.reconnect_snapshot_rebuild -eq "pass"
+    $budgetVerdict = [ordered]@{
+        totalFrameSource = "browser_raf_sampler"
+        totalFrameBudgetPass = $totalFramePass
+        steadyStatePresentationBudgetPass = $steadyPresentationPass
+        reconnectSnapshotRebuildBudgetPass = $reconnectSnapshotRebuildPass
+        phaseBoundaryPresentationSpikeStatus = $perf.harnessReport.status.phase_boundary_presentation_spike
+        board012BudgetPass = ($totalFramePass -and $steadyPresentationPass -and $reconnectSnapshotRebuildPass)
+    }
     $result = [ordered]@{
         url = $Url
         viewport = [ordered]@{ width = 1920; height = 1080 }
@@ -205,6 +228,7 @@ try {
         tracePath = $traceRelativePath
         browserFrameTiming = $perf
         harnessReport = $perf.harnessReport
+        budgetVerdict = $budgetVerdict
         harnessConsole = $harnessConsole
         captureTool = "PowerShell Chrome DevTools Protocol"
         chromePath = $ChromePath

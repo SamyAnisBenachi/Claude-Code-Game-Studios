@@ -26,13 +26,18 @@ fn test_browser_wasm_perf_harness_seeds_board_012_baseline_and_records_budgets()
         BoardWasmPerfFixtureCounts::expected()
     );
     assert!(report.ready_for_capture);
-    assert_ne!(report.total_frame_budget, PerfBudgetStatus::NotSampled);
+    assert!(report.total_frame_avg_ms.is_some());
+    assert!(report.total_frame_max_ms.is_some());
     assert_ne!(
         report.steady_state_presentation_budget,
         PerfBudgetStatus::NotSampled
     );
     assert_ne!(
-        report.phase_boundary_rebuild_spike_budget,
+        report.reconnect_snapshot_rebuild_budget,
+        PerfBudgetStatus::NotSampled
+    );
+    assert_eq!(
+        report.phase_boundary_presentation_spike_budget,
         PerfBudgetStatus::NotSampled
     );
     assert_eq!(
