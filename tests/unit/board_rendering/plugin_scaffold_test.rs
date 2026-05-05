@@ -111,7 +111,7 @@ fn presentation_plugin_registers_board_rendering_resources_in_adr_order_slot() {
 fn board_rendering_does_not_register_phase_receiver() {
     let client_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut matches = Vec::new();
-    collect_source_matches(
+    collect_normalized_source_matches(
         &client_src,
         "MessageReceiver<S2CPhaseChanged>",
         &mut matches,
@@ -121,14 +121,26 @@ fn board_rendering_does_not_register_phase_receiver() {
         matches,
         vec![client_src.join("presentation").join("mod.rs")]
     );
+
+    let board_rendering_source =
+        fs::read_to_string(client_src.join("presentation").join("board_rendering.rs"))
+            .expect("board rendering source should be readable");
+    assert!(
+        !normalize_source(&board_rendering_source).contains("MessageReceiver<S2CPhaseChanged>"),
+        "Board Rendering must read Res<CurrentClientPhase>; it must not drain MessageReceiver<S2CPhaseChanged>"
+    );
 }
 
-fn collect_source_matches(path: &Path, needle: &str, matches: &mut Vec<std::path::PathBuf>) {
+fn collect_normalized_source_matches(
+    path: &Path,
+    needle: &str,
+    matches: &mut Vec<std::path::PathBuf>,
+) {
     let entries = fs::read_dir(path).expect("client source directory should be readable");
     for entry in entries {
         let path = entry.expect("source entry should be readable").path();
         if path.is_dir() {
-            collect_source_matches(&path, needle, matches);
+            collect_normalized_source_matches(&path, needle, matches);
             continue;
         }
 
@@ -137,8 +149,16 @@ fn collect_source_matches(path: &Path, needle: &str, matches: &mut Vec<std::path
         }
 
         let contents = fs::read_to_string(&path).expect("Rust source file should be readable");
-        for _ in contents.match_indices(needle) {
+        let normalized = normalize_source(&contents);
+        for _ in normalized.match_indices(needle) {
             matches.push(path.clone());
         }
     }
+}
+
+fn normalize_source(source: &str) -> String {
+    source
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .collect()
 }

@@ -87,6 +87,12 @@ jobs:
             libxkbcommon-dev \
             pkg-config
 
+      - name: Check Board Rendering source guards
+        run: |
+          set -euo pipefail
+          cargo test -p client --test board_rendering_grid_camera_test test_board_z_layers_are_named_constants --verbose
+          cargo test -p client --test board_rendering_plugin_scaffold_test board_rendering_does_not_register_phase_receiver --verbose
+
       # ADR-003: compile shared/ with minimal deps first
       - name: Check shared crate
         run: |
