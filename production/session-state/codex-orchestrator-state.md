@@ -166,6 +166,22 @@ None currently tracked here.
   push. Queue exactly one `/story-done` for
   `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md`;
   do not relaunch the implementation worker.
+- ECO-007 / Explicit Placement Mana Split API is integrated on `origin/main`
+  and needs serialized `/story-done`. Worker branch
+  `work/eco-007-explicit-placement-mana-split-api` returned at `b1c678f`,
+  pushed to `origin/work/eco-007-explicit-placement-mana-split-api`. Root
+  cherry-picked the worker commit into `main` as `dacc7d3` (`ECO-007 impl:
+  explicit placement mana split API`) and pushed it to `origin/main`. Changed
+  files: `server/Cargo.toml`, `server/src/core/economy/api.rs`,
+  `server/src/core/economy/mod.rs`, `server/src/core/economy/state.rs`, and
+  `tests/unit/economy/explicit_placement_mana_split_test.rs`. Root verification
+  passed: `cargo fmt -p server -- --check`,
+  `cargo test -p server --test explicit_placement_mana_split_test` 6/6,
+  `cargo test -p server --lib economy::api::tests` 20/20, economy adjacent
+  regression bundle 26/26, `cargo check -p server`, and
+  `git diff --check HEAD~1..HEAD`. Queue serialized `/story-done` for
+  `production/epics/economy-system/story-007-explicit-placement-mana-split-api.md`;
+  do not relaunch the implementation worker.
 - COMBAT-011 / S5-20 ResolutionEvent Log Completeness is integrated on
   `origin/main` and needs serialized `/story-done`. Worker branch
   `work/combat-011-resolution-event-log` returned at `06d5b17`, pushed to
@@ -1284,6 +1300,10 @@ Current active windows by user default-launch rule:
   pushed it as `e65fcfe` plus integration fix `48b4b5f`. Worker window can be
   cleared. Queue serialized `/story-done` for
   `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md`.
+- ECO-007 implementation worker returned at `b1c678f`; root integrated and
+  pushed it as `dacc7d3`. Worker window can be cleared. Queue serialized
+  `/story-done` for
+  `production/epics/economy-system/story-007-explicit-placement-mana-split-api.md`.
 - Shop/Auction UX readiness check returned; window can be cleared.
 - Shop/Auction UX review finish returned NEEDS REVISION; window can be cleared
   after recording repair scope. Use `REPONDRE` only if launching the UX repair
