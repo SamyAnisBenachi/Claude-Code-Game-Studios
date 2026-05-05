@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Author**: ux-designer / producer
-> **Last Updated**: 2026-04-29
+> **Last Updated**: 2026-05-05
 > **Accessibility Tier Target**: Standard
 > **Platform(s)**: WASM Browser (primary) · Native desktop (dev/debug target only)
 > **External Standards Targeted**: WCAG 2.1 Level AA (browser UI); Game Accessibility Guidelines (basic)
@@ -67,7 +67,7 @@ No voiced dialogue exists in the current design; subtitle requirements are minim
 | PLACEMENT timer extension | Standard | Not Started | Provide multiplier: 0.5×, 1×, 1.5×, 2×, 3×. At 3× the 10-second placement window becomes 30 seconds. Default: 1×. This is the highest motor-impact feature in the game — the 10s hard deadline is the biggest barrier. |
 | Hold-to-press alternatives | Standard | Not Started | Audit all "hold to confirm" inputs. Provide toggle alternative. |
 | DRAFT_SHOP ready signal — retractable | Standard | **Addressed in design** | RSM Rule 8: ready signal is retractable at any time until all-ready fires. Prevents accidental early commitment. |
-| Bid input — confirmation step | Standard | Not Started | Auction bid should require confirmation (click bid, then confirm), not immediate commitment on first click. Prevents misclick bids. |
+| Auction bid buttons — immediate preset commitments | Standard | **Addressed in design** | Auction bids do not require a separate confirmation step. Misclick mitigation is handled by preset total-commitment labels, 44x44 targets, focus rings, per-button affordability gating, same-frame in-flight disable, one-send semantics, and visible "BIDDING..." feedback. |
 
 ---
 
@@ -101,7 +101,7 @@ No voiced dialogue exists in the current design; subtitle requirements are minim
 |---|---|---|---|---|---|
 | Game Session / Lobby | Class colors on UI | None — unhurried | Class selection is low-pressure | None critical | Partial — class icons backup |
 | DRAFT_INITIAL | Card stat readability | None — 45s timer | 9-card selection, moderate load | None | Not Started |
-| DRAFT_AUCTION | Auction escalation color track; opponent gold visibility | Bid click-to-confirm needed | Price + own gold + opponent gold + card + hand = 5 elements | Timer final 5s audio cue | Partial — color has text backup |
+| DRAFT_AUCTION | Auction escalation color track; opponent gold visibility | Immediate preset bid buttons with documented misclick mitigations | Price + own gold + opponent gold + card + hand = 5 elements | Timer final 5s audio cue | Partial — color has text backup; bid motor conflict resolved in UX |
 | DRAFT_SHOP | Shop slot readability | None — 30s soft timer, retractable | Moderate — shop + hand + gold | None | Not Started |
 | PLACEMENT | Spawn range highlight; opponent side opaque | **10s PLACEMENT TIMER — highest risk** | 4 decisions in 10s | Countdown tone | Partial — staged disclosure planned |
 | RESOLUTION | Combat result colors (win/loss) | None — read-only phase | Replay sequence, no decisions | Combat SFX | Partial — color has floating number backup |

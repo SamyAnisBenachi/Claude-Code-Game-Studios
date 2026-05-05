@@ -2,9 +2,9 @@
 
 > **Status**: Complete — pending /ux-review
 > **Author**: user + ux-designer
-> **Last Updated**: 2026-04-29
+> **Last Updated**: 2026-05-05
 > **Template**: Interaction Pattern Library
-> **Source Specs**: `design/ux/main-menu.md`, `design/ux/hud.md`
+> **Source Specs**: `design/ux/main-menu.md`, `design/ux/hud.md`, `design/ux/shop-auction-ui.md`
 > **Input Methods**: Mouse + Keyboard. No gamepad. No touch. WASM browser.
 > **Accessibility Tier**: Standard (`design/accessibility-requirements.md`)
 
@@ -14,7 +14,7 @@
 
 This library catalogs the reusable interaction patterns extracted from all Lanes and Lies UX specs. When designing a new screen or flow, reference these patterns by ID rather than reinventing behavior. New patterns introduced by future specs are added here at the time of spec completion.
 
-**Total patterns: 20**
+**Total patterns: 29**
 
 ---
 
@@ -42,6 +42,15 @@ This library catalogs the reusable interaction patterns extracted from all Lanes
 | PTN-OVR-001 | Player Slot | Overlay / Modal | main-menu (lobby) |
 | PTN-DSP-009 | Card Frame Container | Data Display | class-picker |
 | PTN-DSP-010 | Dot Position Indicator | Data Display | class-picker |
+| PTN-INP-004 | Auction Bid Button | Input | shop-auction-ui |
+| PTN-INP-005 | Shop Item Card | Input | shop-auction-ui |
+| PTN-FDB-005 | Notification Toast | Feedback | shop-auction-ui |
+| PTN-FDB-006 | Dismissible Tutorial Tooltip | Feedback | shop-auction-ui |
+| PTN-DSP-011 | Leader Badge | Data Display | shop-auction-ui |
+| PTN-DSP-012 | Read-only Shop Footer | Data Display | shop-auction-ui |
+| PTN-OVR-002 | Settlement Overlay | Overlay / Modal | shop-auction-ui |
+| PTN-OVR-003 | Phase Economy Panel | Overlay / Panel | shop-auction-ui |
+| PTN-OVR-004 | Auction Decision Panel | Overlay / Panel | shop-auction-ui |
 
 ---
 
@@ -63,7 +72,7 @@ This library catalogs the reusable interaction patterns extracted from all Lanes
 - Input: Mouse click or keyboard Enter
 - Feedback: Brief visual press (scale 0.96, 80ms) on click; loading spinner if async operation
 
-**When to Use**: One clear, high-commitment action per visible context (Create Room, Confirm Class, Submit Bid).
+**When to Use**: One clear, high-commitment action per visible context (Create Room, Confirm Class, Ready).
 
 **When NOT to Use**: Destructive or reversible actions (use ghost/text button). More than one primary action per context (demote the secondary to a ghost button).
 
@@ -533,18 +542,216 @@ This library catalogs the reusable interaction patterns extracted from all Lanes
 
 ---
 
+### PTN-INP-004 — Auction Bid Button
+
+**Category**: Input
+**Used In**: `design/ux/shop-auction-ui.md` (DRAFT_AUCTION preset bids)
+
+**Description**: One of three immediate preset bid buttons used during DRAFT_AUCTION. Each button commits a fixed total bid amount (`current_price + 1`, `+3`, or `+5`) without a separate confirmation step.
+
+**Specification**:
+- Content: Primary text is the total commitment, secondary text is the increment, e.g. `8g (+1)`.
+- Size: Minimum 44x44 CSS px target at 100% UI scale; text zone supports two-line fallback (`8g` / `(+1)`) at narrow widths.
+- Enabled when: Timer active, not local leader, no bid in flight, hand not full, and `free_gold >= current_price + offset`.
+- Click / Enter: Revalidates, sends one `C2SPlaceBid { amount }`, changes only the clicked button to `BIDDING...`, and disables all bid buttons until S2C response.
+- Misclick mitigation: Total commitment is visible before click; per-button affordability gating prevents impossible bids; in-flight state prevents double-send; visible focus ring makes keyboard activation deliberate.
+- No confirmation modal: This pattern explicitly replaces the stale numeric bid input assumption. The in-flight state is feedback, not an undo/confirm step.
+
+**When to Use**: Time-pressured auction bidding where the design wants immediate, legible preset commitments.
+
+**When NOT to Use**: Free-form bids, reversible bids, or non-auction purchases.
+
+**Reference**: `design/ux/shop-auction-ui.md` — DRAFT_AUCTION bid buttons
+
+---
+
+### PTN-INP-005 — Shop Item Card
+
+**Category**: Input
+**Used In**: `design/ux/shop-auction-ui.md` (DRAFT_INITIAL offering slots, DRAFT_SHOP slots)
+
+**Description**: A purchasable card presentation that combines card identity, rarity, cost, and purchase state in a stable slot.
+
+**Specification**:
+- Content: Card art, name, rarity badge, cost, and state overlay when pending, bought, locked, empty, or dead.
+- Size: Minimum 44x44 CSS px target; DRAFT_SHOP visual target follows the GDD card size rules.
+- Enabled when: Slot has a card, timer active, `local_gold >= cost`, and `local_hand_size < 10`.
+- Pending: Only the clicked slot enters pending state; neighboring slots remain individually interactive.
+- Confirmed DRAFT_INITIAL purchase: Card stays in position with `BOUGHT` overlay; grid does not reflow.
+- Confirmed DRAFT_SHOP purchase: Card fades out and slot becomes a fixed-position empty/dead well; remaining slots do not reflow.
+- Empty/dead: No card art hover, no focus target, no cost, and no C2S purchase event.
+
+**When to Use**: Purchasable card slots inside draft/shop economy panels.
+
+**When NOT to Use**: Read-only previews without interaction; use PTN-DSP-012.
+
+**Reference**: `design/ux/shop-auction-ui.md` — Draft offering slot, Shop slot
+
+---
+
+### PTN-FDB-005 — Notification Toast
+
+**Category**: Feedback
+**Used In**: `design/ux/shop-auction-ui.md` (bid rejection, refresh failure)
+
+**Description**: A non-blocking transient message for phase-local feedback that should not interrupt the player or move core controls.
+
+**Specification**:
+- Position: Inside the active panel bounds, never over HUD chips, hand tray, or bid/shop controls.
+- Timing: 120ms fade in, 2.0s hold at full opacity, 120ms fade out. Reduced motion cuts or uses an 80ms fade.
+- Replacement: A new toast replaces the previous toast and resets the hold timer; no vertical stacking.
+- Content: One short sentence, two lines maximum. Text must not rely on color alone.
+- Input: Non-interactive and not focusable.
+
+**When to Use**: Bid rejections, refresh failure, short phase-local warnings.
+
+**When NOT to Use**: Persistent error states or actions that require acknowledgement.
+
+**Reference**: `design/ux/shop-auction-ui.md` — Toast feedback
+
+---
+
+### PTN-FDB-006 — Dismissible Tutorial Tooltip
+
+**Category**: Feedback
+**Used In**: `design/ux/shop-auction-ui.md` (DRAFT_INITIAL first-session callout)
+
+**Description**: A first-session instructional callout that can be dismissed explicitly and persisted locally.
+
+**Specification**:
+- Position: Anchored to the relevant header or control group; never covers cards, primary controls, HUD chips, or the hand tray.
+- Content: One to three lines plus a concise dismiss control.
+- Dismissal: Explicit button, outside click, or Esc. The tooltip is removed from the focus order after dismissal.
+- Persistence: Owning spec defines the key; Shop/Auction uses `lanes_and_lies.shop_auction.draft_tooltip_dismissed`.
+- Accessibility: Dismiss control has a 44x44 CSS px target and receives keyboard focus before the controls the tooltip explains.
+
+**When to Use**: One-time onboarding prompts that should not block reading or acting.
+
+**When NOT to Use**: Hover-only definitions; use PTN-FDB-004.
+
+**Reference**: `design/ux/shop-auction-ui.md` — First-session tooltip
+
+---
+
+### PTN-DSP-011 — Leader Badge
+
+**Category**: Data Display
+**Used In**: `design/ux/shop-auction-ui.md` (DRAFT_AUCTION local leader state)
+
+**Description**: A passive state badge that replaces unavailable bid buttons when the local player is already leading.
+
+**Specification**:
+- Content: `YOU ARE LEADING`.
+- Placement: Fills the exact bid-button group area so controls do not shift vertically.
+- Interaction: Non-focusable and non-clickable; all bid buttons are hidden, not disabled.
+- Layout: Supports two-line localization and 40% text expansion without changing panel geometry.
+- Accessibility: Text label is the primary state; color and border treatment are supplementary.
+
+**When to Use**: A mutually exclusive passive state replacing an action group.
+
+**When NOT to Use**: Generic success messages or statuses that should appear alongside active controls.
+
+**Reference**: `design/ux/shop-auction-ui.md` — You are leading badge
+
+---
+
+### PTN-DSP-012 — Read-only Shop Footer
+
+**Category**: Data Display
+**Used In**: `design/ux/shop-auction-ui.md` (DRAFT_AUCTION shop preview)
+
+**Description**: A locked preview strip showing upcoming shop slots during auction without offering purchase or refresh interaction.
+
+**Specification**:
+- Content: Three shop slots with card art and costs at 30% opacity.
+- Interaction: Not focusable, no hover lift, no pointer cursor, no purchase or refresh messages.
+- Refresh affordance: Hidden entirely, not disabled.
+- Position: Inside the auction panel above the bottom HUD/hand reserve.
+- Purpose: Lets the player evaluate budget pressure while preserving auction as the primary decision.
+
+**When to Use**: Read-only future-context previews that must be visible but clearly inert.
+
+**When NOT to Use**: Interactive shop state; use PTN-INP-005 inside PTN-OVR-003.
+
+**Reference**: `design/ux/shop-auction-ui.md` — ShopFooterStrip
+
+---
+
+### PTN-OVR-002 — Settlement Overlay
+
+**Category**: Overlay / Modal
+**Used In**: `design/ux/shop-auction-ui.md` (auction settlement)
+
+**Description**: A panel-scoped outcome overlay that briefly confirms auction result before transition.
+
+**Specification**:
+- Scope: Confined to the active auction panel bounds; never covers HUD chips, top strip, bottom resources, or hand tray.
+- Outcomes: `YOU WON`, `OPPONENT WON`, `NO BIDS - CARD LOST`.
+- Duration: Follows the owning GDD outcome durations; Shop/Auction uses 400ms for win/loss overlay copy and 1.0s hold for no-bid loss.
+- Motion: Standard mode may move the won card toward the hand target; reduced motion uses static flash/cut.
+- Interrupt: `S2CPhaseChanged(PLACEMENT)` or other authoritative phase change cancels the overlay immediately.
+
+**When to Use**: Short, automatic outcome confirmation inside an active panel.
+
+**When NOT to Use**: Errors requiring player acknowledgement or full-screen results.
+
+**Reference**: `design/ux/shop-auction-ui.md` — Settlement
+
+---
+
+### PTN-OVR-003 — Phase Economy Panel
+
+**Category**: Overlay / Panel
+**Used In**: `design/ux/shop-auction-ui.md` (DRAFT_INITIAL, DRAFT_SHOP)
+
+**Description**: A bottom economy panel that presents a phase-specific set of purchasable options without covering persistent HUD resources.
+
+**Specification**:
+- Position: Anchored above the bottom HUD/hand reserve and below the board-safe area.
+- Content: Phase header, card slots, timer, ready/retract ready, and optional refresh controls.
+- Geometry: Does not enter top HUD reserve or bottom HUD/hand reserve; DRAFT_SHOP follows the 220-300px / max 32% viewport cap from the owning spec.
+- Interaction: Container itself is not focusable; child controls define focus order.
+- State changes: Slot pending/confirmed/empty states must not reflow the slot columns.
+
+**When to Use**: Draft/shop panels sharing the same bottom economy layout contract.
+
+**When NOT to Use**: Board takeover auction state; use PTN-OVR-004.
+
+**Reference**: `design/ux/shop-auction-ui.md` — DraftInitialPanel, ShopPanel
+
+---
+
+### PTN-OVR-004 — Auction Decision Panel
+
+**Category**: Overlay / Panel
+**Used In**: `design/ux/shop-auction-ui.md` (DRAFT_AUCTION)
+
+**Description**: A board-replacement panel for the auction's featured card, price, gold comparison, timer, bid controls, leader state, and read-only shop footer.
+
+**Specification**:
+- Position: Owns the active content band between top HUD and bottom HUD/hand reserves; DRAFT_AUCTION is the explicit board-takeover exception.
+- Primary hierarchy: Current price and bid commitments, free gold counters, featured card, timer/leader state, then read-only shop footer.
+- Interaction: Child bid buttons use PTN-INP-004; leader replacement uses PTN-DSP-011; footer uses PTN-DSP-012.
+- Overlay scope: Toasts and settlement overlays remain inside panel bounds and never cover HUD chips.
+- Performance: First active content should appear within 100ms after both auction phase and auction card data are available.
+
+**When to Use**: The Shop/Auction auction takeover only.
+
+**When NOT to Use**: Non-auction draft/shop panels or full-screen modal flows.
+
+**Reference**: `design/ux/shop-auction-ui.md` — AuctionPanel
+
+---
+
 ## Gaps & Patterns Needed
 
 Anticipated patterns for planned systems with no spec yet. Document when the relevant screen is authored.
 
 | Gap | Anticipated by | Notes |
 |---|---|---|
-| Auction Bid Input | DRAFT_AUCTION HUD (future spec) | Numeric input with increment/decrement controls; confirmation step required (accessibility §motor — PTN-FDB-001 covers the submit spinner) |
-| Shop Item Card | DRAFT_SHOP HUD (future spec) | Purchasable card with cost overlay; disabled/unaffordable state |
 | Board Cell + Spawn Highlight | PLACEMENT HUD (future spec) | Interactive grid cell; spawn-range highlight state; fog-of-war state for opponent half |
 | Movement Arrow | PLACEMENT HUD (future spec) | Per-cell directional arrow overlay showing committed unit movement |
 | Confirmation Modal | Lobby cancel (OQ-MM-3), Settings | Two-action overlay — confirm / cancel. Needed for "Leave room?" when opponent is connected. |
-| Notification Toast | Post-auction result, round summary | Non-blocking transient message that auto-dismisses after ~2s |
 | Score / Result Panel | GAME_OVER screen (not yet designed) | Win/loss display with fake objective reveals |
 
 ---

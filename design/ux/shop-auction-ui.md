@@ -1,8 +1,8 @@
 # UX Spec: Shop / Auction UI
 
-> **Status**: In Design
+> **Status**: In Design - UX review repair applied
 > **Author**: user + ux-designer
-> **Last Updated**: 2026-05-04
+> **Last Updated**: 2026-05-05
 > **Journey Phase(s)**: DRAFT_INITIAL, DRAFT_AUCTION, DRAFT_SHOP
 > **Template**: UX Spec
 > **Input Methods**: Mouse + Keyboard (primary: mouse click). No gamepad. No touch. WASM browser.
@@ -141,6 +141,17 @@ Reference target: 16:9 desktop browser at 1920x1080. Layout must remain usable f
 | Auction takeover area | Center zone between top HUD and bottom HUD/hand | Auction panel | Replaces board zone during DRAFT_AUCTION |
 | Overlay layer | Within active panel bounds only | Tooltip, toast, settlement overlay | Never covers HUD chips or top strip |
 
+#### Vertical Layout Contract
+
+The screen is divided into three protected vertical bands plus one active content band:
+
+- **Top HUD reserve**: 96px at 100% UI scale, clamped by the global UI scale range. Shop/Auction panels, tooltips, toasts, and settlement overlays must not enter this reserve.
+- **Bottom HUD/hand reserve**: 170px at 100% UI scale, clamped by the global UI scale range. The hand tray and bottom resource strip live here and remain visible in every Shop/Auction phase.
+- **Active content band**: the remaining space between the top and bottom reserves. DRAFT_AUCTION owns this whole band as a board takeover. DRAFT_INITIAL and DRAFT_SHOP may use only the lower portion of this band.
+- **Panel cap**: DRAFT_SHOP steady state should stay between 220px and 300px at 100% UI scale and never exceed 32% of viewport height. DRAFT_INITIAL may expand higher for the 3x3 grid but must preserve at least 42% of viewport height as readable board area above the panel at 1366x768.
+
+HUD z-order is fixed: board world-space, Shop/Auction panels, panel-scoped overlays/toasts/tooltips, then HUD chips and hand tray. A card-acquisition animation may target the hand tray centerline, but its overlay mask must remain within the active panel band until the hand-owned animation takes over.
+
 #### DRAFT_INITIAL Layout
 
 The DRAFT_INITIAL panel sits in the bottom panel area but expands vertically enough to hold a readable 3x3 grid. The board behind it is dimmed to 40% opacity but remains spatially readable. The panel must not cover top HUD or HUD gold counters.
@@ -201,7 +212,7 @@ The shop is a bottom panel that leaves the board readable above it. Three slots 
 |   SHOP                                                         |
 |   [slot card]       [slot card]       [slot card]               |
 |   cost/name         cost/name         cost/name                 |
-|                                            [REFRESH - 1g]       |
+|                                            [REFRESH · 1g]       |
 |                                            [Ready]              |
 |                                            [waiting text]       |
 |   [timer bar]                                                   |
@@ -214,28 +225,28 @@ The shop is a bottom panel that leaves the board readable above it. Three slots 
 
 | Component | Type | Content | Interactive | Pattern |
 |---|---|---|---|---|
-| DraftInitialPanel | Panel | Header, grid, timer, ready state | Container only | New: Phase Economy Panel |
-| Draft offering slot | Purchasable card slot | Art, name, rarity, cost, bought/locked/pending state | Yes when affordable and timer active | New: Shop Item Card |
-| First-session tooltip | Tutorial callout | "These 9 cards are your only offering. No refresh. 5g to spend." | Dismiss only | Adapt PTN-FDB-004; new dismiss variant |
+| DraftInitialPanel | Panel | Header, grid, timer, ready state | Container only | PTN-OVR-003 Phase Economy Panel |
+| Draft offering slot | Purchasable card slot | Art, name, rarity, cost, bought/locked/pending state | Yes when affordable and timer active | PTN-INP-005 Shop Item Card |
+| First-session tooltip | Tutorial callout | "These 9 cards are your only offering. No refresh. 5g to spend." | Dismiss only | PTN-FDB-006 Dismissible Tutorial Tooltip |
 | Draft timer bar | Countdown bar + seconds | 45s timer, neutral/yellow/red states | No | PTN-DSP-005 variant |
 | Ready button | Action button | Ready / Retract Ready | Yes | PTN-NAV-001 |
 | Waiting text | Status label | "Waiting for opponent..." | No | PTN-DSP-004 style |
-| AuctionPanel | Board-replacement panel | Featured card, price, gold, timer, bid controls, footer | Container only | New: Auction Decision Panel |
+| AuctionPanel | Board-replacement panel | Featured card, price, gold, timer, bid controls, footer | Container only | PTN-OVR-004 Auction Decision Panel |
 | Featured auction card | Card zoom | Art, name, rarity, starting/current price context | No | Card Frame Container variant |
 | Current price counter | Resource counter | Current bid price | No | PTN-DSP-001 |
 | Free-gold counters | Resource counters | Own and opponent `gold - reserved_gold` | No | PTN-DSP-001 |
-| Bid buttons | Preset action buttons | `[current_price + offset]g (+offset)` for +1/+3/+5 | Yes when enabled | New: Auction Bid Button |
-| You are leading badge | State replacement | "YOU ARE LEADING" | No | New: Leader Badge |
+| Bid buttons | Preset action buttons | `[current_price + offset]g (+offset)` for +1/+3/+5 | Yes when enabled | PTN-INP-004 Auction Bid Button |
+| You are leading badge | State replacement | "YOU ARE LEADING" | No | PTN-DSP-011 Leader Badge |
 | Auction timer bar | Countdown bar + seconds | 20s timer, green/yellow/red, correction easing | No | PTN-DSP-005 variant |
-| ShopFooterStrip | Read-only preview strip | Three shop slots at 30% opacity | No | New: Read-only Shop Footer |
-| Toast | Non-blocking feedback | Bid rejection, refresh failure | No | New: Notification Toast |
-| Settlement overlay | Panel-scoped overlay | YOU WON, OPPONENT WON, NO BIDS / CARD LOST | No | New: Settlement Overlay |
-| ShopPanel | Bottom economy panel | Three slots, refresh, ready, timer | Container only | New: Phase Economy Panel |
-| Shop slot | Purchasable card slot | Art, name, rarity, cost, empty/dead state | Yes when valid | New: Shop Item Card |
-| Refresh button | Async action button | `REFRESH - 1g`, `REFRESH - 2g` | Yes when affordable and not in-flight | PTN-NAV-001 plus PTN-FDB-001 |
+| ShopFooterStrip | Read-only preview strip | Three shop slots at 30% opacity | No | PTN-DSP-012 Read-only Shop Footer |
+| Toast | Non-blocking feedback | Bid rejection, refresh failure | No | PTN-FDB-005 Notification Toast |
+| Settlement overlay | Panel-scoped overlay | YOU WON, OPPONENT WON, NO BIDS / CARD LOST | No | PTN-OVR-002 Settlement Overlay |
+| ShopPanel | Bottom economy panel | Three slots, refresh, ready, timer | Container only | PTN-OVR-003 Phase Economy Panel |
+| Shop slot | Purchasable card slot | Art, name, rarity, cost, empty/dead state | Yes when valid | PTN-INP-005 Shop Item Card |
+| Refresh button | Async action button | `REFRESH · 1g`, `REFRESH · 2g` | Yes when affordable and not in-flight | PTN-NAV-001 plus PTN-FDB-001 |
 | Hand-full banner | Status banner | Phase-specific lockout text | No | PTN-FDB-002 style without error input |
 
-Pattern library gaps to update later:
+Shop/Auction pattern dependencies resolved in `design/ux/interaction-patterns.md`:
 
 - Auction Bid Button
 - Shop Item Card
@@ -243,6 +254,9 @@ Pattern library gaps to update later:
 - Settlement Overlay
 - Notification Toast
 - Dismissible Tutorial Tooltip
+- Leader Badge
+- Phase Economy Panel
+- Auction Decision Panel
 
 ---
 
@@ -278,8 +292,10 @@ Pattern library gaps to update later:
 | DRAFT_SHOP buffering | Non-auction shop phase without slots | Panel not interactive until slots arrive |
 | DRAFT_SHOP active | Phase and slots available, or post-auction transition complete | Three slots, refresh, ready, timer |
 | DRAFT_SHOP purchase pending | Valid slot click sent | Only clicked slot pending; other slots remain individually interactive |
+| DRAFT_SHOP purchase confirmed | `S2CCardAcquired` plus `S2CGoldUpdate` confirms clicked slot | Purchased card fades out; slot becomes a fixed-position empty/dead well, non-focusable and non-clickable, with no hover lift |
+| DRAFT_SHOP empty/dead slot | Server slot is empty, pool-depleted, or purchase already confirmed | Column remains reserved; shows an inert "EMPTY" or "SOLD" well with no cost, no card art hover, and no C2S action |
 | DRAFT_SHOP refresh in-flight | Refresh clicked | Refresh disabled same frame; all slots grey with "Refreshing..." |
-| DRAFT_SHOP refresh timeout | 5s without `S2CShopSlots` | Refresh re-enabled; toast "Refresh failed - try again"; count unchanged |
+| DRAFT_SHOP refresh timeout | 5s without `S2CShopSlots` | Refresh re-enabled; toast "Refresh failed - try again" for 2.0s; count unchanged |
 | DRAFT_SHOP hand full | `local_hand_size == 10` | Slots locked; Refresh remains available if affordable |
 | DRAFT_SHOP ready | Ready clicked | Button becomes Retract Ready; waiting text appears; shop remains interactive |
 | Reduced motion | Accessibility setting enabled | Replaces scale/pulse/slide emphasis with fades/cuts and static tint changes |
@@ -306,6 +322,8 @@ Input scope: Mouse click primary. Keyboard Tab and Enter must reach all interact
 | Shop Retract Ready button | Retract | Click or Enter | Button label changes to Ready; waiting text clears | Sends `C2SSignalReady { retract: true }` |
 | Toast | Auto-dismiss | Timer only | Fades/cuts after display duration | No gameplay event |
 | Settlement overlay | None | None | Outcome displayed | Transition proceeds automatically unless phase interrupt arrives |
+
+Shop/Auction notification toasts use PTN-FDB-005 timing: 120ms fade in, 2.0s hold at full opacity, 120ms fade out. A replacement toast resets the hold timer rather than stacking vertically.
 
 Keyboard focus order:
 
@@ -399,10 +417,11 @@ Reduced motion removes timer bar scale pulse and glow pulsing. Numeric seconds, 
 | Auction settlement | Auction System: `S2CAuctionSettled` | Read | Winner and amount; terminal for auction state |
 | Own gold/current mana/reserve mana/mana cap | Economy: `S2CGoldUpdate` | Read | Drives HUD and purchase affordability for own player |
 | Own and opponent free gold | Economy: `S2CGoldBroadcast` | Read | `gold - reserved_gold`; local broadcast gates opponent-accepted bid re-enable |
+| Card acquired confirmation | Card Acquisition: `S2CCardAcquired` | Read | Confirms DRAFT_INITIAL and DRAFT_SHOP purchases; paired with `S2CGoldUpdate` before final purchased/empty slot state is shown |
 | Hand size | Hand UI / card ownership state | Read | Hand full locks purchase/bid slots according to phase |
 | Refresh count this draft | Card Acquisition/UI confirmed state | Read | Increments only on `S2CShopSlots` confirmation, not on send |
 | Refresh cost config | Game Config | Read | Default 1g then 2g cap |
-| Tooltip dismissed flag | Local preferences | Read / Write | Storage target unresolved: browser `localStorage` or player preferences resource |
+| Tooltip dismissed flag | Local preferences backed by browser `localStorage` | Read / Write | Boolean key `lanes_and_lies.shop_auction.draft_tooltip_dismissed`; write immediately on explicit button, outside click, or Esc dismiss |
 | UI scale | Settings | Read | 75%-150% supported |
 | Reduced motion | Settings | Read | Changes animation policy |
 | Purchase intent | UI to Network Protocol | Write | `C2SPurchaseCard { card_id }`; no optimistic ownership |
@@ -437,11 +456,12 @@ Standard tier. Source: `design/accessibility-requirements.md`.
 | Tutorial prompt | First-session tooltip is dismissible, non-occluding, and should be retrievable later through Help when that screen exists |
 | Motor safety | Ready is retractable. Refresh disables in the same frame to prevent double-send |
 
-Accessibility conflict to resolve:
+Bid accessibility decision:
 
-- `design/accessibility-requirements.md` currently says auction bids should require a confirmation step.
-- `design/gdd/shop-auction-ui.md` and Stories 005/006 specify immediate preset bid buttons with in-flight feedback and no separate confirm step.
-- This UX spec follows the newer GDD/story behavior for implementation readiness, but keeps the conflict open as OQ-SAU-UX-4.
+- Auction bidding keeps the GDD/story behavior: immediate preset bid buttons with no separate confirmation step.
+- Misclick mitigation is handled by preset total-commitment labels (`8g (+1)`), 44x44 minimum targets, keyboard focus rings, per-button affordability gating, same-frame in-flight disable, exact one-send semantics, and visible "BIDDING..." feedback on only the clicked button.
+- The in-flight state is feedback, not a reversible confirmation. Once a valid bid click is sent, the UI does not offer local undo; server acceptance/rejection remains authoritative.
+- `design/accessibility-requirements.md` must match this decision. OQ-SAU-UX-4 is closed.
 
 Screen reader support:
 
@@ -460,9 +480,16 @@ Screen reader support:
 | "BIDDING..." | Medium | Button can show a spinner/icon plus shortened text if localization exceeds width |
 | "YOU ARE LEADING" | Medium | Badge supports 2-line wrap; text remains centered |
 | Rejection toasts | Medium | Toast area supports 2 lines; no layout reflow of bid buttons |
-| Refresh label | Low | `REFRESH - 1g` can localize within fixed button min width; allow 2-line wrap at narrow desktop |
+| Refresh label | Low | `REFRESH · 1g` can localize within fixed button min width; allow 2-line wrap at narrow desktop |
 | Hand-full banners | High | Banner supports 2 lines and does not cover cards |
 | Settlement overlays | Medium | "OPPONENT WON" and "NO BIDS - CARD LOST" support 2-line layout |
+
+Localization layout limits:
+
+- All localized text containers in this spec must tolerate 40% string expansion without overlapping adjacent controls at 1366x768, 1920x1080, and 150% UI scale.
+- Fixed numeric zones reserve width for at least three currency digits plus suffix (`999g`) and three timer digits (`999s`). If a debug/config value exceeds that limit, render compact overflow (`999+g`, `999+s`) in the fixed zone and keep the exact value in diagnostics/accessibility metadata.
+- Bid labels keep the total commitment and increment visible together. If localized suffixes exceed width, the button may wrap to two lines (`8g` / `(+1)`) but may not hide the increment.
+- Toasts and banners may wrap to two lines; they do not resize or push bid buttons, shop slots, timers, HUD chips, or the hand tray.
 
 All currency and countdown numbers use game-specific formatting, not locale-specific money/date formatting.
 
@@ -486,10 +513,13 @@ All currency and countdown numbers use game-specific formatting, not locale-spec
 - [ ] Settlement overlays display the correct local win, opponent win, or no-bid outcome and never cover HUD chips.
 - [ ] Auction-to-shop transition pre-populates the ShopPanel before reveal, slides/dismisses auction and expands shop over 350ms in standard motion, and starts the DRAFT_SHOP timer only after expansion completes.
 - [ ] DRAFT_SHOP shows three slots, Refresh with confirmed cost label, Ready/Retract Ready, and a timer without covering the top HUD or board-critical area.
+- [ ] DRAFT_SHOP confirmed purchases fade the purchased card out into a fixed-position empty/dead slot well; remaining slots do not reflow, and empty/dead wells are non-focusable and send no purchase message.
 - [ ] Refresh disables in the same frame as click, sends exactly one `C2SRefreshShop`, greys slots with "Refreshing...", and increments refresh count only on `S2CShopSlots`.
 - [ ] All interactive controls are reachable by keyboard Tab/Enter in the focus orders defined above, with visible focus indicators.
 - [ ] Reduced-motion mode removes panel slide/expand, repeated pulse, frame flicker, and card travel motion while preserving text, tint, numeric, and state-change feedback.
+- [ ] First visible active panel content appears within 100ms after the required phase/data messages are both available; auction-to-shop reveal completes within the specified 350ms transition and never shows an empty ShopPanel flash.
 - [ ] At 1366x768, 1920x1080, and 150% UI scale, no button text, tooltip, timer, toast, or overlay overlaps another required UI element.
+- [ ] At 1366x768, 1920x1080, and 150% UI scale, all localized labels fit with 40% text expansion or use the specified two-line/compact numeric fallback without changing panel geometry.
 
 ---
 
@@ -497,10 +527,10 @@ All currency and countdown numbers use game-specific formatting, not locale-spec
 
 | # | Question | Owner | Priority |
 |---|---|---|---|
-| OQ-SAU-UX-1 | Exact persistent storage for the DRAFT_INITIAL tooltip dismissal flag: browser `localStorage`, a player preferences resource, or another settings store? | UX Designer + Engine Programmer | High |
-| OQ-SAU-UX-2 | Hand tray vertical extent is not specified in a `design/ux/hand-ui.md` file. Final pixel split between bottom hand row, bottom resources, and Shop/Auction panels must be verified once Hand UI has a UX spec. | UX Designer | High |
+| OQ-SAU-UX-1 | ~~Exact persistent storage for the DRAFT_INITIAL tooltip dismissal flag.~~ **RESOLVED 2026-05-05** - store `lanes_and_lies.shop_auction.draft_tooltip_dismissed` in local preferences backed by browser `localStorage`. | - | Closed |
+| OQ-SAU-UX-2 | ~~Hand tray / HUD / panel vertical contract missing for SAU-009.~~ **RESOLVED 2026-05-05** - top HUD reserve, bottom HUD/hand reserve, active content band, panel caps, and z-order are defined in Vertical Layout Contract. SAU-009 still verifies with screenshots. | - | Closed |
 | OQ-SAU-UX-3 | ~~HUD/art direction says DRAFT_AUCTION replaces the board, while the Shop/Auction GDD UI Requirements say the board must not be occluded.~~ **RESOLVED 2026-05-04** — `design/gdd/shop-auction-ui.md` now states DRAFT_AUCTION is the explicit board-takeover exception; DRAFT_INITIAL and DRAFT_SHOP keep the board readable. | — | Closed |
-| OQ-SAU-UX-4 | Accessibility requirements request bid confirmation, but the current GDD and stories specify immediate preset bid buttons. Should accessibility docs be updated, or should bid confirmation return to the design? | UX Designer + Producer | High |
+| OQ-SAU-UX-4 | ~~Accessibility requirements request bid confirmation, but the current GDD and stories specify immediate preset bid buttons.~~ **RESOLVED 2026-05-05** - keep immediate preset bid buttons; misclick mitigations are target size, total labels, focus, affordability gating, in-flight disable, and one-send semantics. | - | Closed |
 | OQ-SAU-UX-5 | Should "YOU ARE LEADING" include any passive opponent-activity or tension signal if playtests report the leader window as idle? GDD OQ9 flags this as high risk. | Designer | High |
-| OQ-SAU-UX-6 | Should toast display duration be globally standardized in the interaction pattern library, or should Shop/Auction toasts use phase-specific timing? | UX Designer | Medium |
+| OQ-SAU-UX-6 | ~~Should toast display duration be globally standardized in the interaction pattern library, or should Shop/Auction toasts use phase-specific timing?~~ **RESOLVED 2026-05-05** - use PTN-FDB-005: 120ms fade in, 2.0s hold, 120ms fade out. | - | Closed |
 | OQ-SAU-UX-7 | Should the DRAFT_INITIAL tutorial prompt be retrievable from a future Help/Pause screen immediately, or is first-session persistence enough for M2? | UX Designer + Producer | Low |

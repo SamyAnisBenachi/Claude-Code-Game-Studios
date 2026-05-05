@@ -12,11 +12,14 @@
 **Requirement**: `TR-SAU-006`
 **ADR Governing Implementation**: [ADR-021: Presentation Layer Architecture](../../../docs/architecture/adr-021-presentation-layer-architecture.md)
 
-This story captures the final UX/layout/accessibility evidence for DRAFT_INITIAL, DRAFT_AUCTION, and DRAFT_SHOP. It is blocked until the missing UX spec defines exact screen allocation, tooltip placement, panel proportions, and interactions with Board Rendering, Hand UI, and HUD.
+This story captures the final UX/layout/accessibility evidence for DRAFT_INITIAL, DRAFT_AUCTION, and DRAFT_SHOP. The UX spec now exists; this story remains blocked until the Shop/Auction review blockers are resolved and panel states from Stories 002-007 are renderable enough to capture evidence.
 
 ## Blocker
 
-`design/ux/shop-auction-ui.md` does not exist. The GDD explicitly defers DRAFT_INITIAL tooltip placement, dismiss persistence, and board/panel screen split to that UX spec.
+Current blockers are review/evidence blockers, not missing-spec blockers:
+
+- Shop/Auction UX repair must be merged before SAU-009 starts. The repair scope is: bid accessibility conflict, stale interaction pattern assumptions, tooltip storage, data requirements, toast timing, localization expansion, and vertical HUD/hand/panel layout contract.
+- Stories 002-007 must render the relevant panel states before screenshots and manual accessibility evidence can be captured.
 
 ## Acceptance Criteria
 
