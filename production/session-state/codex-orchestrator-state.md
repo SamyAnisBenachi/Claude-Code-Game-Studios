@@ -238,6 +238,15 @@ None currently tracked here.
   `production/epics/board-rendering/story-004-ghost-preview-hand-ui-bridge.md`.
   Treat this as observed until the owning agent's official repair/readiness
   report is pasted.
+- SAU-002 readiness returned NEEDS WORK, not hard-blocked. ADR-015/ADR-021 are
+  Accepted, `TR-SAU-006` is active, Story 001 is Complete, and draft offering /
+  network dispatch dependencies appear Complete. Gaps before `/dev-story`:
+  manifest stale (`2026-05-01` vs `2026-05-05`), ADR-021/control-manifest rules
+  not noted, Bevy 0.18 and Lightyear engine notes too thin, performance budget
+  missing, dependency wording should name exact completed paths such as Card
+  Acquisition Story 002 and Card Data Pool Story 006, and tooltip
+  placement/persistence needs clear Out-of-Scope placement. Repair docs-only,
+  then rerun readiness.
 - Shop/Auction UI UX review finished with verdict NEEDS REVISION. It is not a
   major redesign and does not block SAU-001, but it blocks clean final
   visual/accessibility handoff and SAU-009. Full blockers: bid accessibility
@@ -1338,6 +1347,9 @@ Current active windows by user default-launch rule:
 - BOARD-RENDERING-004 readiness returned NEEDS WORK; readiness window can be
   cleared after launching a docs-only repair. Do not launch BOARD-004 dev-story
   until readiness returns READY.
+- SAU-002 readiness returned NEEDS WORK; readiness window can be cleared after
+  launching a docs-only repair. Do not launch SAU-002 dev-story until readiness
+  returns READY.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
   and recommends a new shared Presentation Layer story. Window can be cleared.
