@@ -263,6 +263,17 @@ None currently tracked here.
   manifest; Economy Story 001 is Complete; the test evidence path is defined.
   `/dev-story` is safe next. HAND-UI-010 still depends on NP-005, BLS-011, and
   PRES-002 in addition to ECO-007 completion.
+- NP-005 / Lightyear Protocol Verification Story 005 Placement Payload Shape
+  Split readiness returned READY with no file changes or commit. Story:
+  `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md`.
+  `TR-NP-013` is active; manifest version `2026-05-05` matches the control
+  manifest; ADR-002, ADR-003, ADR-007, and ADR-008 are Accepted; dependency
+  Story 002 is Complete; `shared/src/protocol.rs` and current protocol
+  registration scaffold exist. `/dev-story` is safe next. Future implementation
+  should use `liv-bevy-lightyear`, plus `liv-bevy-018` if any Bevy-importing
+  Rust file is touched. Evidence requirements: `cargo check -p shared` plus
+  grep evidence in
+  `production/qa/evidence/placement-payload-shape-split-evidence.md`.
 - SHOP-AUCTION-UI-001 implementation worker returned and was integrated/pushed
   to `origin/main` as `2dbc988`. Worker branch
   `work/sau-001-plugin-scaffold-formulas` returned at `733158c`. Verification
@@ -1233,6 +1244,9 @@ Current active windows by user default-launch rule:
   `/dev-story` is safe to launch now and remains a prerequisite for HAND-UI-010.
 - ECO-007 readiness returned READY; readiness window can be cleared. ECO-007
   `/dev-story` is safe to launch now and remains a prerequisite for BLS-011 and
+  HAND-UI-010.
+- NP-005 readiness returned READY; readiness window can be cleared. NP-005
+  `/dev-story` is safe to launch now and is a prerequisite for BLS-011 and
   HAND-UI-010.
 - Shop/Auction UX readiness check returned; window can be cleared.
 - Shop/Auction UX review finish returned NEEDS REVISION; window can be cleared
