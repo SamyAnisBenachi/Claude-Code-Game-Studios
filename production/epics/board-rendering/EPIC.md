@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/board-rendering.md
 > **Architecture Module**: `client/src/ui/board/` - `BoardRenderingPlugin` (sub-plugin #2 inside `PresentationPlugin`)
 > **Status**: Ready - story set drafted for S5-21; Story 001 depends on Presentation Layer Story 001
-> **Stories**: 10 stories created 2026-05-04 - 6 Ready, 4 Blocked/Partial
+> **Stories**: 10 stories created 2026-05-04 - 7 Ready, 3 Blocked plus split follow-up scope
 
 ## Overview
 
@@ -70,7 +70,8 @@ Shared ADR-021 infrastructure is owned by [Presentation Layer Story 001](../pres
 | Objective destruction transport gap | Story 008 | Define the final S2C or resolution-log contract and crate location for `HudObjectiveUpdate` fanout |
 | Resolution event variant completeness | Story 006 | Combat Resolution story must provide stable `ResolutionEvent` variants for movement, death, trap, objective, and prism visuals |
 | Art bible / atlas frame count | Stories 003 and 010 | Confirm atlas budget and placeholder-to-final art path before performance evidence is signed off |
-| Keyword display definitions and `SpawnRange` replication | Story 009 | Confirm replicated keyword/status display data and spawn range source |
+| Keyword/status display projection | Story 009 | Implement data-driven status icons and co-occupancy visual offsets |
+| `SpawnRange` live source and final evidence | Split follow-up after Story 009 | Reconcile spawn range source/replication, then capture final status-icon atlas and browser evidence |
 | Presentation Layer scaffold missing | Story 001 | Complete or readiness-approve Presentation Layer Story 001 before implementing Board Rendering Story 001 |
 
 ## Definition of Done
@@ -98,10 +99,10 @@ This epic is complete when:
 | 006 | [Resolution AnimQueue and Phase Buffering](story-006-resolution-anim-queue-and-phase-buffering.md) | Integration | Blocked | TR-BR-001, TR-BR-004 | ADR-017, ADR-021 |
 | 007 | [Reconnect Snapshot and Desync Recovery](story-007-reconnect-snapshot-and-desync-recovery.md) | Integration | Blocked | TR-BR-005 | ADR-011, ADR-021 |
 | 008 | [Objective Reveal and HUD Fanout](story-008-objective-reveal-and-hud-fanout.md) | Integration | Blocked | TR-BR-005 | ADR-001, ADR-021 |
-| 009 | [Status Icons, Co-Occupancy, and Spawn Range](story-009-status-icons-cooccupancy-and-spawn-range.md) | Visual/Feel | Partial | TR-BR-006, TR-BR-007 | ADR-018, ADR-021 |
+| 009 | [Status Icons and Co-Occupancy Visuals](story-009-status-icons-cooccupancy-and-spawn-range.md) | Visual/Feel | Ready | TR-BR-006, TR-BR-007 | ADR-018, ADR-021 |
 | 010 | [Performance Evidence and CI Guards](story-010-performance-evidence-and-ci-guards.md) | Config/Data | Ready | TR-BR-003 | ADR-021 |
 
-**Story counts**: 2 Logic, 4 Integration, 2 Visual/Feel, 1 Config/Data, 1 Partial/blocked follow-up.
+**Story counts**: 2 Logic, 4 Integration, 2 Visual/Feel, 1 Config/Data, plus spawn range and final evidence split follow-ups.
 
 ## Sprint 6 Candidate Order
 
