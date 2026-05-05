@@ -1,7 +1,7 @@
 # Story 011: Spawn Range Highlights
 
 > **Epic**: Board Rendering
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Presentation
 > **Type**: Visual/Feel
 > **Manifest Version**: 2026-05-05
@@ -10,7 +10,6 @@
 
 **GDD**: `design/gdd/board-rendering.md`
 **Requirement**: `TR-BR-008`, `TR-NP-014`
-*(Requirement text lives in `docs/architecture/tr-registry.yaml` - read fresh at review time)*
 
 **ADR Governing Implementation**: ADR-021: Presentation Layer Architecture; ADR-020: Board/Lane System State Architecture; ADR-011: Reconnect and Snapshot; ADR-008: Lightyear Channel Config
 **ADR Decision Summary**: Board Rendering is a read-only presentation layer. Spawn range highlights seed from snapshots and update from ordered reliable resolution-log entries. Board/Lane owns live projection; Objective destruction events alone are not a spawn range source.
@@ -27,10 +26,27 @@
 
 ---
 
-## Blockers
+## Requirement Trace
 
-- `production/epics/lightyear-protocol-verification/story-006-spawn-range-live-update-contract.md` must define the shared `SpawnRangeChanged` variant.
-- `production/epics/board-lane-system/story-012-spawn-range-authoritative-projection.md` must make `SpawnRangeState` the snapshot/live source.
+- `TR-BR-008`: Persistent spawn range highlights seed from `PlayerSnapshot.spawn_range_cells` on snapshot rebuild and update from ordered `ResolutionEvent::SpawnRangeChanged` entries in `S2CResolutionEvent`; highlights persist across DRAFT/PLACEMENT frames and are not derived from `ObjectiveDestroyed` alone.
+- `TR-NP-014`: Live spawn range updates use `ResolutionEvent::SpawnRangeChanged { player_id, new_spawn_range_cells }` inside the ordered reliable `S2CResolutionEvent` batch, after the corresponding `ObjectiveDestroyed`; `PlayerSnapshot.spawn_range_cells` is recovery/reconnect source only; there is no replicated `SpawnRange` component and no snapshot-only live update path.
+- Direct GDD ACs: `BR-SPAWN-HIGHLIGHTS` and `BR-EC-OBJMISS` in `design/gdd/board-rendering.md`.
+- Network Protocol AC: `NP-33` in `design/gdd/network-protocol.md`.
+
+## Prerequisite Status
+
+- NP-006 is Complete: `production/epics/lightyear-protocol-verification/story-006-spawn-range-live-update-contract.md` defines/registers the shared `ResolutionEvent::SpawnRangeChanged` variant and closed on main at `af11e1f`.
+- BLS-012 is Complete: `production/epics/board-lane-system/story-012-spawn-range-authoritative-projection.md` made `SpawnRangeState` the authoritative snapshot/live source, integrated as `4418aae`, and closed by story-done commit `922cedd`.
+- BOARD-009 narrowed status-icon and co-occupancy scope is Complete. Its final visual/browser evidence remains separate, and BOARD-009 did not implement or close spawn range highlights.
+
+## Scope
+
+In scope:
+
+- Seed persistent board-cell spawn highlight state from each public `PlayerSnapshot.spawn_range_cells` value during `S2CGameSnapshot` rebuild.
+- Consume live `ResolutionEvent::SpawnRangeChanged { player_id, new_spawn_range_cells }` entries from the existing ordered `S2CResolutionEvent` drain.
+- Update persistent `SpawnHighlightState` on `BoardCellNode` entities and recolor board-cell sprites so the unlocked spawn cells remain visually active in later DRAFT/PLACEMENT frames.
+- Preserve the separation between objective destruction visuals and spawn range state: `ObjectiveDestroyed` alone never changes highlights.
 
 ---
 
@@ -61,15 +77,23 @@ struct SpawnHighlightState {
 }
 ```
 
-Attach it to `BoardCellNode` entities. Snapshot rebuild computes the initial state from each public `PlayerSnapshot.spawn_range_cells`. Resolution-message drain applies `SpawnRangeChanged` by recomputing affected node state from `new_spawn_range_cells`.
+Current client code already has a persistent `SpawnHighlightState` component on `BoardCellNode` entities as `Inactive` / `ValidSpawn`. Reuse or extend that component shape as needed so each board cell can represent the correct player-side spawn range without adding authoritative gameplay state to the client.
+
+Snapshot rebuild computes the initial state from each public `PlayerSnapshot.spawn_range_cells`. Resolution-message drain applies `SpawnRangeChanged` by recomputing affected node state from `new_spawn_range_cells`.
 
 The update path should live in the existing Board Rendering message-drain/resolution-event path. Do not add a duplicate `MessageReceiver<S2CPhaseChanged>` or any second drain for a Lightyear message that already has a single owner.
 
+## Performance Budget
+
+- Presentation steady-state work from spawn range highlights must remain under 1 ms/frame.
+- Snapshot rebuild, phase-boundary, or live-update spike attributable to highlight refresh must remain under 3 ms.
+- This story does not close total browser/WASM frame-time evidence; that remains in the separate Board Rendering evidence path.
+
 ## Out of Scope
 
-- Protocol schema or server event production.
-- Final browser frame-time, atlas, or art evidence.
-- Drag-time Hand UI placement pre-validation.
+- Protocol schema, server event production, or Board/Lane spawn range authority.
+- Final browser frame-time, atlas, status-icon, spawn-highlight screenshot, or art evidence.
+- Hand UI drag-time placement highlights and pre-validation.
 - Objective reveal/HUD fanout beyond preserving the corrected spawn range separation.
 
 ---
@@ -98,7 +122,7 @@ The update path should live in the existing Board Rendering message-drain/resolu
 **Story Type**: Visual/Feel
 **Required evidence**:
 - Unit/integration support: `tests/unit/board_rendering/spawn_range_highlights_test.rs`
-- Visual evidence deferred to the later final board evidence story.
+- Deferred visual evidence path, created by the later final board evidence story when visual capture is required: `production/qa/evidence/board-rendering-spawn-range-highlights-evidence.md`
 
 **Status**: [ ] Not yet created
 
@@ -106,6 +130,7 @@ The update path should live in the existing Board Rendering message-drain/resolu
 
 ## Dependencies
 
-- Depends on: `production/epics/lightyear-protocol-verification/story-006-spawn-range-live-update-contract.md`.
-- Depends on: `production/epics/board-lane-system/story-012-spawn-range-authoritative-projection.md`.
+- Depends on: `production/epics/lightyear-protocol-verification/story-006-spawn-range-live-update-contract.md` (Complete - NP-006 shared `ResolutionEvent::SpawnRangeChanged` exists).
+- Depends on: `production/epics/board-lane-system/story-012-spawn-range-authoritative-projection.md` (Complete - BLS-012 supplies `SpawnRangeState`, snapshot `spawn_range_cells`, and live `SpawnRangeChanged` production).
+- Supporting status: `production/epics/board-rendering/story-009-status-icons-cooccupancy-and-spawn-range.md` is Complete for the narrowed status-icon/co-occupancy scope only; final status-icon and spawn-highlight visual evidence remains separate.
 - Unlocks: final Board Rendering evidence story covering status-icon atlas, spawn-highlight visual evidence, and browser frame-time evidence.
