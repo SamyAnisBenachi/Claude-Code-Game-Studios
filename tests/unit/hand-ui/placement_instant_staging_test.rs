@@ -68,8 +68,9 @@ fn hu_19_instant_drop_on_plate_stages_instant_and_updates_submit_count() {
     let pending = &app.world().resource::<PendingPlacements>().placements;
     assert_eq!(pending.len(), 1);
     assert_eq!(pending[0].card_id, CardId(80));
-    assert_eq!(pending[0].owner_id, PlayerId(7));
     assert_eq!(pending[0].target, PlayTarget::Instant);
+    assert_eq!(pending[0].current_mana_spend, 1);
+    assert_eq!(pending[0].reserve_mana_spend, 0);
 }
 
 #[test]
