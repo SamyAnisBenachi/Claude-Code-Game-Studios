@@ -1841,3 +1841,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching PRES-002 row exists in `production/sprint-status.yaml`.
 - Next recommended: PRES-002 no longer blocks HAND-UI-010; remaining HAND-UI-010 prerequisite is BLS-011 (`production/epics/board-lane-system/story-011-placement-submit-authority-validation.md`) before readiness can be rechecked.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-rendering/story-004-ghost-preview-hand-ui-bridge.md` - Story 004: Ghost Preview and Hand UI Bridge
+- Criteria: 14/14 passing; ghost message drain, BoardCell lifecycle, replacement, sprite constraints, variant matrix, clear/no-op behavior, reveal cleanup, reverse ghost interaction messages, no spawn-highlight ownership, and no submit-message ownership verified.
+- Test Evidence: `cargo test -p client --test board_rendering_ghost_preview_bridge_test` passed 4/4. Adjacent Hand UI tests passed: `hand_ui_placement_drag_highlights_test`, `hand_ui_placement_submit_core_test`, `hand_ui_placement_timer_test`, and `hand_ui_placement_unstaging_test`. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+- Verification: Current `main` includes worker commit `1e87793ddcc6fffdcc8ac284b18e842735911d2a` via integration commit `699ac16`; Board Rendering owns only presentation ghost previews and reverse ghost interaction messages, while Hand UI remains staging/submit owner.
+- Notes: Advisory only - manual screenshot/UI evidence deferred until interactive UI evidence exists. Known unrelated `hand_ui_placement_instant_staging_test` stale `pending[0].owner_id` compile issue is not a BOARD-004 blocker.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching BOARD-004 row exists in `production/sprint-status.yaml`.
+- Next recommended: Board Rendering Story 005 (`production/epics/board-rendering/story-005-placement-reveal-animation-handoff.md`) after readiness check.

@@ -1,7 +1,7 @@
 # Story 004: Ghost Preview and Hand UI Bridge
 
 > **Epic**: Board Rendering
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -22,20 +22,20 @@ Spawn range highlights are not part of this story. Story 009 owns persistent spa
 
 ## Acceptance Criteria
 
-- [ ] Board Rendering reads `GhostPlacementChanged` as a Bevy-internal `MessageReader<GhostPlacementChanged>` message, not as a Lightyear `MessageReceiver`.
-- [ ] `Some(PlayTarget::BoardCell { lane, cell })` spawns or moves exactly one `GhostUnit` for that `card_id` at `BoardLayout.cell_to_world(lane, cell)` with `Transform.translation.z == Z_GHOST_UNIT`.
-- [ ] Re-staging the same `card_id` replaces or moves the existing ghost; after deferred commands flush, exactly one `GhostUnit` exists for that `card_id`.
-- [ ] `GhostUnit` is a world-space `Sprite` entity with `Sprite.color` alpha `0.5`, no HP bar child, no status indicator child, and no Lightyear replication component.
-- [ ] `Some(PlayTarget::TargetUnit { lane, unit_id })` applies a `TargetUnitGhost` marker to the matching unit entity and spawns no new board entity.
-- [ ] `Some(PlayTarget::TargetObj { player_id, lane })` applies an `ObjectiveTargetGhost` marker to the matching objective entity and spawns no new unit ghost.
-- [ ] `Some(PlayTarget::LaneWide { lane })` spawns or moves exactly one `LaneGhostWash` for that `card_id` covering the target lane column.
-- [ ] `Some(PlayTarget::Instant)` is a Board Rendering no-op: no board ghost entity is spawned and no board ghost marker is added.
-- [ ] `target: None` clears all ghost entities and marker components for the corresponding `card_id`; if none exist, the clear is a no-op with no panic.
-- [ ] On `S2CPlacementReveal`, Board Rendering clears all ghost entities and marker components immediately before or during the reveal handoff so real replicated entities are the only placement visuals after reveal.
-- [ ] Clicking any board ghost variant writes exactly one `GhostClickedEvent { card_id }` Bevy-internal message and does not directly remove the ghost.
-- [ ] Mouse-down on any board ghost variant writes exactly one `GhostDragStartEvent { card_id }` Bevy-internal message and leaves staging ownership with Hand UI.
-- [ ] Board Rendering does not add, remove, or recompute `BoardCellHighlighted` spawn range / placement highlight markers in this story.
-- [ ] Board Rendering never sends `C2SSubmitPlacement` or any other placement submit message; Hand UI remains the submit-message owner.
+- [x] Board Rendering reads `GhostPlacementChanged` as a Bevy-internal `MessageReader<GhostPlacementChanged>` message, not as a Lightyear `MessageReceiver`.
+- [x] `Some(PlayTarget::BoardCell { lane, cell })` spawns or moves exactly one `GhostUnit` for that `card_id` at `BoardLayout.cell_to_world(lane, cell)` with `Transform.translation.z == Z_GHOST_UNIT`.
+- [x] Re-staging the same `card_id` replaces or moves the existing ghost; after deferred commands flush, exactly one `GhostUnit` exists for that `card_id`.
+- [x] `GhostUnit` is a world-space `Sprite` entity with `Sprite.color` alpha `0.5`, no HP bar child, no status indicator child, and no Lightyear replication component.
+- [x] `Some(PlayTarget::TargetUnit { lane, unit_id })` applies a `TargetUnitGhost` marker to the matching unit entity and spawns no new board entity.
+- [x] `Some(PlayTarget::TargetObj { player_id, lane })` applies an `ObjectiveTargetGhost` marker to the matching objective entity and spawns no new unit ghost.
+- [x] `Some(PlayTarget::LaneWide { lane })` spawns or moves exactly one `LaneGhostWash` for that `card_id` covering the target lane column.
+- [x] `Some(PlayTarget::Instant)` is a Board Rendering no-op: no board ghost entity is spawned and no board ghost marker is added.
+- [x] `target: None` clears all ghost entities and marker components for the corresponding `card_id`; if none exist, the clear is a no-op with no panic.
+- [x] On `S2CPlacementReveal`, Board Rendering clears all ghost entities and marker components immediately before or during the reveal handoff so real replicated entities are the only placement visuals after reveal.
+- [x] Clicking any board ghost variant writes exactly one `GhostClickedEvent { card_id }` Bevy-internal message and does not directly remove the ghost.
+- [x] Mouse-down on any board ghost variant writes exactly one `GhostDragStartEvent { card_id }` Bevy-internal message and leaves staging ownership with Hand UI.
+- [x] Board Rendering does not add, remove, or recompute `BoardCellHighlighted` spawn range / placement highlight markers in this story.
+- [x] Board Rendering never sends `C2SSubmitPlacement` or any other placement submit message; Hand UI remains the submit-message owner.
 
 ## Control Manifest Rules
 
@@ -105,7 +105,7 @@ Spawn range highlights are not part of this story. Story 009 owns persistent spa
 - Integration: `tests/integration/board_rendering/ghost_preview_bridge_test.rs`
 - Screenshot or manual evidence once UI interaction exists.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Exists and passed (`cargo test -p client --test board_rendering_ghost_preview_bridge_test`, 4/4).
 
 ## Dependencies
 
@@ -113,3 +113,16 @@ Spawn range highlights are not part of this story. Story 009 owns persistent spa
 - Dependency source: `GhostPlacementChanged`, `GhostClickedEvent`, and `GhostDragStartEvent` are registered in Hand UI; `PlayTarget` variants are defined in `shared::protocol`.
 - Not a dependency: Story 009 spawn range replication/source work, because spawn range highlight updates are out of scope here.
 - Unlocks: Story 005 and Hand UI placement polish.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 14/14 passing; ghost message drain, BoardCell lifecycle, same-card replacement, sprite alpha/no-child/no-replication constraints, TargetUnit/TargetObj/LaneWide/Instant variant behavior, clear/no-op behavior, reveal cleanup, reverse ghost click/drag messages, spawn-highlight non-ownership, and submit non-ownership verified.
+**Test Evidence**: Integration: `tests/integration/board_rendering/ghost_preview_bridge_test.rs`; `cargo test -p client --test board_rendering_ghost_preview_bridge_test` passed 4/4. Adjacent Hand UI regression tests passed: `hand_ui_placement_drag_highlights_test`, `hand_ui_placement_submit_core_test`, `hand_ui_placement_timer_test`, and `hand_ui_placement_unstaging_test`. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+**Verification**: Current `main` includes worker commit `1e87793ddcc6fffdcc8ac284b18e842735911d2a` via integration commit `699ac16`; Board Rendering uses Bevy-internal ghost messages for presentation-only board previews, emits reverse ghost interaction messages for Hand UI, clears ghosts on reveal, and does not send placement submit messages.
+**Deviations**: Advisory only - manual screenshot/UI evidence is deferred until interactive UI evidence exists. Known unrelated `hand_ui_placement_instant_staging_test` stale `pending[0].owner_id` compile issue on existing `origin/main` is not a BOARD-004 blocker because BOARD-004 acceptance is covered by the targeted integration and adjacent passing Hand UI tests.
+**Code Review**: Skipped - Lean mode.
+**Tech Debt**: None logged.
+**Sprint Status**: Unchanged; no matching BOARD-004 row exists in `production/sprint-status.yaml`.
+**Next Recommended**: Board Rendering Story 005 (`production/epics/board-rendering/story-005-placement-reveal-animation-handoff.md`) after readiness check.
