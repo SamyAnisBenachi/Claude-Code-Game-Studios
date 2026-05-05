@@ -3,8 +3,8 @@
 > **Layer**: Presentation
 > **GDD**: `design/accessibility-requirements.md` + `design/ux/settings-accessibility.md`
 > **Architecture Module**: `client/src/ui/settings/` and client-side preference resources
-> **Status**: Ready
-> **Stories**: Story 001 created 2026-05-05; follow-up stories listed for QA-COND-0005 closure planning
+> **Status**: Ready - Sprint 6 accessibility foundation and photosensitivity audit stories drafted
+> **Stories**: Stories 001 and 003 created 2026-05-05; follow-up stories listed for QA-COND-0005 closure planning
 
 ## Overview
 
@@ -84,6 +84,7 @@ implemented and evidenced, reclassified, or accepted as risk by the producer.
 - No Settings panel root, category navigation, focus model, or status footer exists.
 - `SessionSettingsView` exists for neutral GSS-008 effective timer state, but no UI selector exposes player timer requests.
 - `web-sys` is present with `Window`, but the wasm localStorage path may need the `Storage` feature added during implementation.
+- No photosensitivity warning or flash-frequency audit evidence exists for A11Y-BS-03.
 
 ## Stories
 
@@ -91,10 +92,11 @@ implemented and evidenced, reclassified, or accepted as risk by the producer.
 |---|-------|------|--------|---------------------|-----|
 | 001 | [Settings / Accessibility Foundation and Preferences](story-001-settings-accessibility-foundation-and-preferences.md) | UI | Ready | Reduces risk; does not close QA-COND-0005 alone | ADR-002, ADR-021, ADR-023 |
 | 002 | Colorblind Modes and Color-Only Backups | UI / Visual | Planned | Closes colorblind and color-as-only indicator sub-rows when implemented and evidenced | ADR-021 |
-| 003 | Reduced Motion, Flash Audit, and Gameplay-Critical Visual Backups | Visual/Feel | Planned | Closes reduced-motion and visual-audio backup rows; may support screen-flash accepted-risk decision | ADR-021 |
+| 003 | [Photosensitivity Warning and Flash Audit](story-003-photosensitivity-warning-and-flash-audit.md) | Config/Data | Ready | Supplies A11Y-BS-03 warning/audit evidence or producer reclassification after audit; does not close QA-COND-0005 alone | ADR-002, ADR-021 |
 | 004 | Input Remapping and Hold Audit | UI | Planned | Closes or dispositions full input remapping and hold-to-press rows | ADR-002, ADR-021 |
 | 005 | Help and Tutorial Persistence | UI | Planned | Closes tutorial persistence row | ADR-021 |
 | 006 | Browser Accessibility Evidence and QA-COND-0005 Closure | UI / Config/Data | Planned | Direct closure story only after all implementation and producer dispositions exist | ADR-021, ADR-023 |
+| 007 | Reduced Motion Consumers and Gameplay-Critical Visual Backups | Visual/Feel | Planned | Closes reduced-motion and visual-audio backup rows after preference foundation and audit disposition | ADR-021 |
 
 ## Definition of Done
 
@@ -109,6 +111,10 @@ This epic is complete when:
 - Colorblind, reduced-motion, UI scale, input-remapping, tutorial, brightness,
   audio, and browser-evidence rows have implementation, evidence, producer
   reclassification, or accepted-risk disposition.
+- Photosensitivity warning and flash-frequency audit evidence exists at
+  `production/qa/evidence/accessibility-photosensitivity-warning-flash-audit-2026-05-05.md`,
+  and A11Y-BS-03 has either warning implementation evidence or producer
+  reclassification after audit.
 - QA-COND-0005 is updated only after the closure evidence states that no
   unverified Standard-tier blocker remains.
 
@@ -117,5 +123,8 @@ This epic is complete when:
 Story 001 is the recommended first implementation slice because the remaining
 Standard-tier accessibility work needs a shared preference foundation before
 consumer systems can safely apply color, motion, scale, input, help/tutorial,
-video, or audio preferences. It should run through `/story-readiness` before
-any `/dev-story` work begins.
+video, or audio preferences. Story 003 can run as an audit/readiness slice in
+parallel with implementation planning because its mandatory deliverable is the
+exact flash-audit evidence path and a producer disposition for A11Y-BS-03. Both
+stories should run through `/story-readiness` before any `/dev-story` work
+begins.

@@ -3,8 +3,8 @@
 > **Layer**: Presentation
 > **GDD**: design/gdd/shop-auction-ui.md
 > **Architecture Module**: `client/src/ui/shop_auction/` - `ShopAuctionUiPlugin` (sub-plugin #5 inside `PresentationPlugin`)
-> **Status**: Ready - core story set drafted for S5-21; Sprint 6 accessibility remediation story added for A11Y-ST-12
-> **Stories**: 10 story docs present - 6 Complete, 3 Ready, 1 Blocked by UX evidence/layout gate
+> **Status**: Ready - core story set drafted for S5-21; Sprint 6 accessibility remediation stories added for A11Y-ST-12 and A11Y-ST-18
+> **Stories**: 11 story docs present - 6 Complete, 4 Ready, 1 Blocked by UX evidence/layout gate
 
 ## Overview
 
@@ -63,7 +63,7 @@ Presentation Layer Story 001 is complete on `main` as of `d303155`. Shop/Auction
 - `PresentationPlugin`/`phase_sink_system` infrastructure exists on `main`; Story 001 must reuse it, not redefine it locally.
 - `design/ux/shop-auction-ui.md` exists. Story 009 remains the visual evidence/layout gate, while earlier stories cite the UX spec for root/lifecycle constraints as needed.
 - The Shop/Auction UI GDD status has been reconciled to Approved; story-readiness should treat the GDD as approved unless later design changes reopen it.
-- QA-COND-0005 remains Open. A11Y-ST-12 auction bid target/focus remediation is now scoped in Story 011 so it can be implemented and evidenced independently from the broader blocked SAU-009 visual sign-off.
+- QA-COND-0005 remains Open. A11Y-ST-12 auction bid target/focus remediation is scoped in Story 011, and A11Y-ST-18 DRAFT_INITIAL clear objective remediation is scoped in Story 012. Both can be implemented and evidenced independently from the broader blocked SAU-009 visual sign-off.
 
 ## Pre-Implementation Gates
 
@@ -102,8 +102,9 @@ This epic is complete when:
 | 008 | [Reconnect Snapshot and Late Message Recovery](story-008-reconnect-snapshot-and-late-message-recovery.md) | Integration | Ready | TR-SAU-003, TR-SAU-006 | ADR-011, ADR-021 |
 | 009 | [Visual Evidence, Layout, and Accessibility](story-009-visual-evidence-layout-and-accessibility.md) | UI | Blocked | TR-SAU-006 | ADR-021 |
 | 011 | [Auction Bid Target Size and Focus Evidence](story-011-auction-bid-target-size-and-focus-evidence.md) | UI | Ready | TR-SAU-002, TR-SAU-005, TR-SAU-006 | ADR-013, ADR-019, ADR-021 |
+| 012 | [Draft Initial Clear Objective Overlay](story-012-draft-initial-clear-objective-overlay.md) | UI | Ready | TR-SAU-006, A11Y-ST-18 | ADR-015, ADR-021 |
 
-**Story counts**: 1 Logic, 3 Integration, 5 UI, 1 Visual/Feel.
+**Story counts**: 1 Logic, 3 Integration, 6 UI, 1 Visual/Feel.
 
 ## Sprint 6 Candidate Order
 
@@ -118,7 +119,8 @@ Recommended Sprint 6 sequence:
 8. Story 007 - settlement and transition after auction server path is stable.
 9. Story 008 - reconnect and late-message recovery.
 10. Story 011 - A11Y-ST-12 bid target size, focus visibility, and browser/WASM evidence after SAU-005 and SAU-006.
-11. Story 009 - full visual evidence after all scoped panel states and accessibility remediation slices exist.
+11. Story 012 - A11Y-ST-18 DRAFT_INITIAL clear objective overlay, dismissal, retrieval, and browser/WASM evidence after SAU-002.
+12. Story 009 - full visual evidence after all scoped panel states and accessibility remediation slices exist.
 
 ## Next Step
 
