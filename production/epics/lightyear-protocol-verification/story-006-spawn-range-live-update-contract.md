@@ -1,7 +1,7 @@
 # Story 006: Spawn Range Live Update Contract
 
 > **Epic**: Lightyear Protocol & Verification Spike
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Config/Data
 > **Manifest Version**: 2026-05-05
@@ -29,15 +29,15 @@
 
 ## Acceptance Criteria
 
-- [ ] **NP-33 / TR-NP-014 - schema**: `ResolutionEvent` includes `SpawnRangeChanged { player_id: PlayerId, new_spawn_range_cells: u8 }` in `shared/src/protocol.rs`.
+- [x] **NP-33 / TR-NP-014 - schema**: `ResolutionEvent` includes `SpawnRangeChanged { player_id: PlayerId, new_spawn_range_cells: u8 }` in `shared/src/protocol.rs`.
 
-- [ ] **NP-33 / TR-NP-014 - reliable live transport**: Given a fake objective destruction expands the attacker's spawn range, when `S2CResolutionEvent` is emitted, then the event batch includes `SpawnRangeChanged` on the same `ReliableChannel` message as the rest of the resolution log.
+- [x] **NP-33 / TR-NP-014 - reliable live transport**: Given a fake objective destruction expands the attacker's spawn range, when `S2CResolutionEvent` is emitted, then the event batch includes `SpawnRangeChanged` on the same `ReliableChannel` message as the rest of the resolution log.
 
-- [ ] **NP-33 / TR-NP-014 - ordering**: Given the same fake destruction, when the event array is inspected, then `ObjectiveDestroyed { was_fake: true }` appears before `SpawnRangeChanged { player_id: attacker, new_spawn_range_cells }`.
+- [x] **NP-33 / TR-NP-014 - ordering**: Given the same fake destruction, when the event array is inspected, then `ObjectiveDestroyed { was_fake: true }` appears before `SpawnRangeChanged { player_id: attacker, new_spawn_range_cells }`.
 
-- [ ] **Snapshot recovery role**: `PlayerSnapshot.spawn_range_cells` remains present and public for initial connect/reconnect recovery, but no implementation treats snapshots as the live update path for connected clients.
+- [x] **Snapshot recovery role**: `PlayerSnapshot.spawn_range_cells` remains present and public for initial connect/reconnect recovery, but no implementation treats snapshots as the live update path for connected clients.
 
-- [ ] **No replicated component**: No `SpawnRange` ECS component is registered for Lightyear replication and no protocol registration attempts to replicate spawn range as a component.
+- [x] **No replicated component**: No `SpawnRange` ECS component is registered for Lightyear replication and no protocol registration attempts to replicate spawn range as a component.
 
 ---
 
@@ -89,7 +89,7 @@ This story only establishes the wire/schema contract. Board/Lane Story 012 owns 
 - `tests/unit/protocol/spawn_range_live_update_contract_test.rs`
 - `cargo check -p shared` if `shared/src/protocol.rs` or protocol/schema registration is touched.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and verified 2026-05-05
 
 ---
 
@@ -97,3 +97,12 @@ This story only establishes the wire/schema contract. Board/Lane Story 012 owns 
 
 - Depends on: Lightyear Protocol Story 002 complete enough to own `ResolutionEvent` in `shared/src/protocol.rs`.
 - Unlocks: `production/epics/board-lane-system/story-012-spawn-range-authoritative-projection.md`.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 5/5 passing.
+**Deviations**: None.
+**Test Evidence**: `tests/unit/protocol/spawn_range_live_update_contract_test.rs`; `cargo test -p shared --test spawn_range_live_update_contract` passed 5/5; `cargo test -p shared`, `cargo check -p shared`, `cargo check -p server`, `cargo check -p client`, `cargo fmt -p shared -- --check`, and `git diff --check` passed.
+**Code Review**: Skipped - lean review mode.
+**Scope Notes**: NP-006 only. BLS-012, BR-011, spawn highlight visuals, `design/assets/**`, unrelated `AGENTS.md`, and `production/session-state/codex-orchestrator-state.md` were not touched.

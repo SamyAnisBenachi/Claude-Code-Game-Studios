@@ -1969,3 +1969,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching SAU-005/story row exists in `production/sprint-status.yaml`.
 - Next recommended: Shop/Auction UI Story 006 (`production/epics/shop-auction-ui/story-006-auction-accepted-rejected-feedback.md`) after readiness check, or continue sprint close-out if no more pull-forward work is being added.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE
+- Story: `production/epics/lightyear-protocol-verification/story-006-spawn-range-live-update-contract.md` - Story 006: Spawn Range Live Update Contract
+- Criteria: 5/5 passing; `ResolutionEvent::SpawnRangeChanged` schema, reliable `S2CResolutionEvent` transport, post-`ObjectiveDestroyed` ordering, snapshot recovery role, and no replicated `SpawnRange` component verified.
+- Test Evidence: `cargo fmt -p shared -- --check`, `cargo test -p shared`, `cargo test -p shared --test spawn_range_live_update_contract`, `cargo check -p shared`, `cargo check -p server`, `cargo check -p client`, and `git diff --check` passed in the NP-006 worker worktree.
+- Verification: Worker branch `work/np-006-spawn-range-live-update-contract` commit `02267ebfe65ab31f943b8b209dd51236970c2068` was fast-forwarded onto `main`; the commit touches only `shared/src/protocol.rs`, `shared/Cargo.toml`, and `tests/unit/protocol/spawn_range_live_update_contract_test.rs`.
+- Notes: No blocking GDD, ADR-003, ADR-008, ADR-011, ADR-020, Bevy 0.18, or Lightyear 0.26 deviation found. BLS-012, BR-011, and spawn highlight visuals remain out of scope and were not implemented. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching NP-006/story row exists in `production/sprint-status.yaml`.
+- Next recommended: Board/Lane Story 012 (`production/epics/board-lane-system/story-012-spawn-range-authoritative-projection.md`) after readiness check; do not implement it as part of NP-006 closure.
