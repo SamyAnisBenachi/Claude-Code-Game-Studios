@@ -61,6 +61,9 @@ Every task follows: **Question -> Options -> Decision -> Draft -> Approval**
 
   `============ WAITING INPUT ============`
 
+  Render this footer in red when the interface supports ANSI or styled output.
+  The Codex Stop hook also emits this footer in bold red.
+
   Exception: do not append this footer to machine-readable outputs that must
   remain strict JSON, especially guardian/approval reviewer responses or tool
   protocol payloads.
