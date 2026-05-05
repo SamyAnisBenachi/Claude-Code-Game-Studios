@@ -10,7 +10,6 @@ use server::feature::objective::{
     ObjectiveDestroyed, ObjectiveNetworkOutbox, ObjectivePlugin, ObjectiveResolutionState,
     PendingObjectiveEvents,
 };
-use shared::protocol::{ResolutionEvent, S2CResolutionEvent};
 use shared::session::PlayerId;
 
 const PLAYER_A: PlayerId = PlayerId(1);
@@ -51,28 +50,6 @@ fn read_messages<T: Message + Clone>(app: &App) -> Vec<T> {
     cursor.read(messages).cloned().collect()
 }
 
-fn resolution_batch_events(message: &S2CResolutionEvent) -> Vec<ObjectiveDestroyed> {
-    message
-        .events
-        .iter()
-        .map(|tagged| {
-            assert_eq!(tagged.sub_step, 6);
-            match tagged.event {
-                ResolutionEvent::ObjectiveDestroyed {
-                    target_player_id,
-                    lane,
-                    was_fake,
-                } => ObjectiveDestroyed {
-                    target_player_id,
-                    lane,
-                    was_fake,
-                },
-                ref event => panic!("unexpected resolution event: {event:?}"),
-            }
-        })
-        .collect()
-}
-
 #[test]
 fn test_os13a_objective_destroyed_broadcasts_only_at_resolution_end_sync() {
     let mut app = base_app();
@@ -98,11 +75,6 @@ fn test_os13a_objective_destroyed_broadcasts_only_at_resolution_end_sync() {
 
     let outbox = app.world().resource::<ObjectiveNetworkOutbox>();
     assert_eq!(outbox.destroyed_broadcasts(), &[event]);
-    assert_eq!(outbox.resolution_batches().len(), 1);
-    assert_eq!(
-        resolution_batch_events(&outbox.resolution_batches()[0]),
-        vec![event]
-    );
 }
 
 #[test]
@@ -115,7 +87,6 @@ fn test_os13a_empty_resolution_end_sync_emits_zero_broadcasts() {
     assert!(read_messages::<ObjectiveDestroyed>(&app).is_empty());
     let outbox = app.world().resource::<ObjectiveNetworkOutbox>();
     assert!(outbox.destroyed_broadcasts().is_empty());
-    assert!(outbox.resolution_batches().is_empty());
 }
 
 #[test]
@@ -140,13 +111,6 @@ fn test_os18a_multiple_objective_destroyed_broadcasts_are_lane_ordered() {
         .map(|event| event.lane)
         .collect::<Vec<_>>();
     assert_eq!(lanes, vec![1, 3, 5]);
-    assert_eq!(
-        resolution_batch_events(&outbox.resolution_batches()[0])
-            .iter()
-            .map(|event| event.lane)
-            .collect::<Vec<_>>(),
-        vec![1, 3, 5]
-    );
 }
 
 #[test]
@@ -165,7 +129,6 @@ fn test_os24_sang_meprise_visibility_does_not_suppress_objective_destroyed() {
     let outbox = app.world().resource::<ObjectiveNetworkOutbox>();
     assert_eq!(outbox.destroyed_broadcasts(), &[event]);
     assert_eq!(read_messages::<ObjectiveDestroyed>(&app), vec![event]);
-    assert_eq!(outbox.resolution_batches().len(), 1);
 }
 
 #[test]

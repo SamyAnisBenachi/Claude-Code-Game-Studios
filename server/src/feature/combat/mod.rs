@@ -5,14 +5,15 @@ pub mod modifier_stack;
 use std::collections::HashMap;
 
 use bevy::ecs::message::MessageCursor;
-use bevy::ecs::system::RunSystemOnce;
+use bevy::ecs::system::{RunSystemOnce, SystemState};
 use bevy::prelude::*;
+use lightyear::prelude::{NetworkTarget, Server, ServerMultiMessageSender};
 use shared::card::{CardData, CardId, CardType, Keyword, SimpleKeyword};
 use shared::config::GameConfig as SharedGameConfig;
 use shared::keyword::KeywordKind;
 use shared::protocol::{
-    EntityId, GameOverReason, PlacedCard, PlayTarget, S2CPlacementReveal, S2CResolutionEvent,
-    TaggedEvent,
+    EntityId, GameOverReason, GoldReason, PlacedCard, PlayTarget, ReliableChannel, ResolutionEvent,
+    S2CPlacementReveal, S2CResolutionEvent, TaggedEvent,
 };
 use shared::session::PlayerId;
 
@@ -205,6 +206,7 @@ pub enum CombatTraceEntry {
     PlacementRevealEnqueued,
     UnitPlaced {
         entity: Entity,
+        player: PlayerId,
         lane: LaneId,
         cell: u8,
     },
@@ -215,6 +217,7 @@ pub enum CombatTraceEntry {
     },
     UnitMoved {
         unit: Entity,
+        lane: LaneId,
         from_cell: u8,
         to_cell: u8,
         sub_step: u8,
@@ -439,6 +442,7 @@ pub fn resolve_combat(world: &mut World) {
         return;
     };
 
+    let trace_start = world.resource::<CombatResolutionTrace>().entries().len();
     world
         .resource_mut::<CombatResolutionTrace>()
         .push(CombatTraceEntry::BeginResolutionRead {
@@ -455,7 +459,7 @@ pub fn resolve_combat(world: &mut World) {
         return;
     }
 
-    enqueue_resolution_event(world);
+    enqueue_resolution_event(world, begin_resolution.round, trace_start);
     world
         .resource_mut::<PendingResolutionComplete>()
         .mark_pending();
@@ -482,15 +486,223 @@ fn read_begin_resolution(world: &mut World) -> Option<BeginResolution> {
     )
 }
 
-fn enqueue_resolution_event(world: &mut World) {
+fn enqueue_resolution_event(world: &mut World, round: u32, trace_start: usize) {
+    let events = build_resolution_events(
+        &world.resource::<CombatResolutionTrace>().entries()[trace_start..],
+    );
+    let message = S2CResolutionEvent { round, events };
+
     world
         .resource_mut::<CombatNetworkOutbox>()
-        .push_resolution_event(S2CResolutionEvent {
-            events: Vec::<TaggedEvent>::new(),
-        });
+        .push_resolution_event(message.clone());
+    broadcast_resolution_event(world, &message);
     world
         .resource_mut::<CombatResolutionTrace>()
         .push(CombatTraceEntry::ResolutionEventEnqueued);
+}
+
+fn build_resolution_events(trace: &[CombatTraceEntry]) -> Vec<TaggedEvent> {
+    let mut events = Vec::new();
+    let mut current_sub_step = 0;
+
+    for entry in trace.iter().copied() {
+        if let CombatTraceEntry::SubStepStarted(sub_step) = entry {
+            current_sub_step = sub_step;
+        }
+
+        let Some((sub_step, event)) = resolution_event_from_trace(entry, current_sub_step) else {
+            continue;
+        };
+
+        events.push(TaggedEvent {
+            sub_step,
+            trigger_index: events.len() as u32,
+            event,
+        });
+    }
+
+    events
+}
+
+fn resolution_event_from_trace(
+    entry: CombatTraceEntry,
+    current_sub_step: u8,
+) -> Option<(u8, ResolutionEvent)> {
+    match entry {
+        CombatTraceEntry::SubStepStarted(sub_step) => {
+            Some((sub_step, ResolutionEvent::SubStepBegin))
+        }
+        CombatTraceEntry::UnitPlaced {
+            entity,
+            player,
+            lane,
+            cell,
+        } => Some((
+            current_sub_step,
+            ResolutionEvent::UnitPlaced {
+                unit_id: entity_id(entity),
+                player,
+                lane,
+                cell,
+            },
+        )),
+        CombatTraceEntry::UnitMoved {
+            unit,
+            lane,
+            from_cell,
+            to_cell,
+            sub_step,
+        } => Some((
+            sub_step,
+            ResolutionEvent::UnitMoved {
+                unit_id: entity_id(unit),
+                lane,
+                from_cell,
+                to_cell,
+            },
+        )),
+        CombatTraceEntry::UnitChangedLane {
+            unit,
+            from_lane,
+            to_lane,
+            sub_step,
+        } => Some((
+            sub_step,
+            ResolutionEvent::UnitChangedLane {
+                unit_id: entity_id(unit),
+                from_lane,
+                to_lane,
+            },
+        )),
+        CombatTraceEntry::UnitDamaged {
+            source,
+            target,
+            amount,
+            hp_after,
+            sub_step,
+        } => Some((
+            sub_step,
+            ResolutionEvent::CombatDamage {
+                attacker_id: entity_id(source),
+                defender_id: entity_id(target),
+                damage_amount: amount,
+                defender_hp_after: hp_after,
+                was_blocked_by_shield: false,
+            },
+        )),
+        CombatTraceEntry::CombatDamage {
+            attacker,
+            defender,
+            damage_amount,
+            hp_after,
+            was_blocked_by_shield,
+            sub_step,
+        } => Some((
+            sub_step,
+            ResolutionEvent::CombatDamage {
+                attacker_id: entity_id(attacker),
+                defender_id: entity_id(defender),
+                damage_amount,
+                defender_hp_after: hp_after,
+                was_blocked_by_shield,
+            },
+        )),
+        CombatTraceEntry::UnitRemoved { unit, lane, cell } => Some((
+            current_sub_step,
+            ResolutionEvent::UnitRemoved {
+                unit_id: entity_id(unit),
+                lane,
+                cell,
+            },
+        )),
+        CombatTraceEntry::KeywordTriggered {
+            unit,
+            keyword,
+            sub_step,
+        } => Some((
+            sub_step,
+            ResolutionEvent::KeywordTriggered {
+                unit_id: entity_id(unit),
+                keyword,
+            },
+        )),
+        CombatTraceEntry::GoldAwarded {
+            player,
+            amount,
+            reason,
+        } => Some((
+            current_sub_step,
+            ResolutionEvent::GoldAwarded {
+                player,
+                amount,
+                reason: gold_reason(reason),
+            },
+        )),
+        CombatTraceEntry::ObjectiveDamaged {
+            target_player_id,
+            lane,
+            hp_before,
+            hp_after,
+            attacker_id,
+        } => Some((
+            current_sub_step,
+            ResolutionEvent::ObjectiveDamage {
+                attacker_id: attacker_id.map(entity_id),
+                target_player_id,
+                lane,
+                damage_amount: hp_before.saturating_sub(hp_after),
+                objective_hp_after: hp_after,
+            },
+        )),
+        CombatTraceEntry::ObjectiveDestroyed {
+            target_player_id,
+            lane,
+            was_fake,
+        } => Some((
+            current_sub_step,
+            ResolutionEvent::ObjectiveDestroyed {
+                target_player_id,
+                lane,
+                was_fake,
+            },
+        )),
+        _ => None,
+    }
+}
+
+fn entity_id(entity: Entity) -> EntityId {
+    entity.to_bits() as EntityId
+}
+
+const fn gold_reason(reason: GoldAwardReason) -> GoldReason {
+    match reason {
+        GoldAwardReason::Kill => GoldReason::Kill,
+        GoldAwardReason::ObjectiveReward => GoldReason::ObjectiveDestroyed,
+    }
+}
+
+fn broadcast_placement_reveal(world: &mut World, message: &S2CPlacementReveal) {
+    let mut system_state: SystemState<(Query<&Server>, Option<ServerMultiMessageSender>)> =
+        SystemState::new(world);
+    let (server, mut sender) = system_state.get_mut(world);
+    let (Ok(server), Some(sender)) = (server.single(), sender.as_mut()) else {
+        return;
+    };
+
+    let _ =
+        sender.send::<S2CPlacementReveal, ReliableChannel>(message, server, &NetworkTarget::All);
+}
+
+fn broadcast_resolution_event(world: &mut World, message: &S2CResolutionEvent) {
+    let mut system_state: SystemState<(Query<&Server>, Option<ServerMultiMessageSender>)> =
+        SystemState::new(world);
+    let (server, mut sender) = system_state.get_mut(world);
+    let (Ok(server), Some(sender)) = (server.single(), sender.as_mut()) else {
+        return;
+    };
+
+    let _ =
+        sender.send::<S2CResolutionEvent, ReliableChannel>(message, server, &NetworkTarget::All);
 }
 
 fn run_sub_step_scaffold(
@@ -1497,6 +1709,7 @@ fn commit_movement_results(world: &mut World, units: &[MovementUnit], sub_step: 
             .resource_mut::<CombatResolutionTrace>()
             .push(CombatTraceEntry::UnitMoved {
                 unit: unit.entity,
+                lane: unit.lane,
                 from_cell: unit.original_cell,
                 to_cell: unit.cell,
                 sub_step,
@@ -1695,11 +1908,14 @@ fn deduct_committed_mana(world: &mut World, placements: &[PlacedCard]) {
 }
 
 fn enqueue_placement_reveal(world: &mut World, placements: &[PlacedCard]) {
+    let message = S2CPlacementReveal {
+        placements: placements.to_vec(),
+    };
+
     world
         .resource_mut::<CombatNetworkOutbox>()
-        .push_placement_reveal(S2CPlacementReveal {
-            placements: placements.to_vec(),
-        });
+        .push_placement_reveal(message.clone());
+    broadcast_placement_reveal(world, &message);
     world
         .resource_mut::<CombatResolutionTrace>()
         .push(CombatTraceEntry::PlacementRevealEnqueued);
@@ -1736,7 +1952,12 @@ fn spawn_committed_placements(world: &mut World, placements: &[PlacedCard]) -> V
         );
         world
             .resource_mut::<CombatResolutionTrace>()
-            .push(CombatTraceEntry::UnitPlaced { entity, lane, cell });
+            .push(CombatTraceEntry::UnitPlaced {
+                entity,
+                player: placement.owner_id,
+                lane,
+                cell,
+            });
     }
 
     spawned
