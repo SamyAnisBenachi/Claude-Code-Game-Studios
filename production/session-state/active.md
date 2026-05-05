@@ -1775,3 +1775,25 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-19 in `production/sprint-status.yaml` to `done` with completion date 2026-05-05.
 - Next recommended: Combat Story 11 ResolutionEvent Log Completeness (`production/epics/combat-resolution/story-011-resolution-event-log.md`) after readiness check.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md` - Story 001: Plugin Scaffold, Panel Tree, and Formulas
+- Criteria: 8/8 passing; plugin registration, stable bevy_ui panel roots, phase-resource usage, PresentationPlugin dependency, free-gold formula, bid labels, and auction border tiers covered by `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs`.
+- Test Evidence: `cargo test -p client --test shop_auction_ui_plugin_scaffold_formulas_test` passed 8/8. `cargo fmt -p client -- --check`, `cargo check -p client`, `git diff --check 2dbc988^..2dbc988`, and `git diff --check` passed.
+- Verification: Current `main` includes worker commit `733158c`, main integration commit `2dbc988`, and current `origin/main`/`HEAD` before closure commit `f527247`; `ShopAuctionUiPlugin` is registered fifth through `PresentationPlugin`, reads phase through `Res<CurrentClientPhase>`, creates six hidden bevy_ui panel roots for session lifecycle, and exposes pure formulas for free gold, bid button text, and auction border tiers.
+- Notes: Advisory only - story manifest version is 2026-05-01 while current control manifest is 2026-05-05. No blocking GDD, ADR-019, ADR-021, or Bevy 0.18 deviation found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching `SHOP-AUCTION-UI-001` / `SAU-001` row exists in `production/sprint-status.yaml`.
+- Next recommended: Shop/Auction UI Story 002 (`production/epics/shop-auction-ui/story-002-draft-initial-grid-purchase-ready.md`) after readiness check, or Sprint 5 Combat Story 11 (`production/epics/combat-resolution/story-011-resolution-event-log.md`) if staying on the current sprint path.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-rendering/story-002-board-grid-camera-and-z-layers.md` - Story 002: Board Grid, Camera, and Z Layers
+- Criteria: 7/7 passing; camera singleton/projection, 40 LaneCell sprite nodes, named Z constants, world-space sprite usage, and tint-based spawn highlight state covered by `tests/unit/board_rendering/board_grid_camera_test.rs`.
+- Test Evidence: `cargo test -p client --test board_rendering_grid_camera_test` passed 6/6. `cargo test -p client --test board_rendering_plugin_scaffold_test` passed 9/9. `cargo fmt -p client -- --check` and `cargo check -p client` passed.
+- Verification: Current `main` contains worker commit `6ae82d7` and main integration commit `ce3658b`; `BoardRenderingPlugin` spawns a fixed orthographic `Camera2d`, creates 40 `BoardCellNode` entities with `LaneCell` markers, uses named constants from `rendering_constants.rs`, and encodes spawn highlight state through `Sprite.color` tint instead of a separate Z layer.
+- Notes: Advisory only - story manifest version is 2026-05-01 while current control manifest is 2026-05-05. Active TR-BR-003 also mentions BoardPosition replication; this remains outside the declared Story 002 grid/camera/Z-layer scope. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching BOARD-RENDERING-002 row exists in `production/sprint-status.yaml`.
+- Next recommended: Board Rendering Story 003 (`production/epics/board-rendering/story-003-snapshot-spawn-units-objectives-and-hp-bars.md`) after readiness check, or Sprint 5 Combat Story 11 (`production/epics/combat-resolution/story-011-resolution-event-log.md`) if staying on the current sprint path.

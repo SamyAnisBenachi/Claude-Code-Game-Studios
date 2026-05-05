@@ -1,7 +1,7 @@
 # Story 001: Plugin Scaffold, Panel Tree, and Formulas
 
 > **Epic**: Shop / Auction UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -19,14 +19,14 @@ Shared ADR-021 infrastructure (`PresentationPlugin`, `PresentationSet`, `phase_s
 
 ## Acceptance Criteria
 
-- [ ] `ShopAuctionUiPlugin` registers without panic in a minimal client `App`.
-- [ ] Root panel entities for draft offering, shop, auction, footer, toast, and settlement overlay are created or pre-pooled according to the chosen UI lifecycle.
-- [ ] All panel roots are bevy_ui entities, not world-space sprites.
-- [ ] Plugin reads phase through `Res<CurrentClientPhase>` only.
-- [ ] This story relies on `PresentationPlugin`, `PresentationSet`, and `phase_sink_system` from Presentation Layer Story 001 rather than defining them locally.
-- [ ] `local_free_gold(gold, reserved_gold)` returns `gold - reserved_gold` without underflow.
-- [ ] Bid labels render total commitment: `current_price + {1, 3, 5}` with secondary increment text.
-- [ ] Auction border color tier formula maps 0-3, 4-6, 7-9, and 10+ to the GDD tiers.
+- [x] `ShopAuctionUiPlugin` registers without panic in a minimal client `App`.
+- [x] Root panel entities for draft offering, shop, auction, footer, toast, and settlement overlay are created or pre-pooled according to the chosen UI lifecycle.
+- [x] All panel roots are bevy_ui entities, not world-space sprites.
+- [x] Plugin reads phase through `Res<CurrentClientPhase>` only.
+- [x] This story relies on `PresentationPlugin`, `PresentationSet`, and `phase_sink_system` from Presentation Layer Story 001 rather than defining them locally.
+- [x] `local_free_gold(gold, reserved_gold)` returns `gold - reserved_gold` without underflow.
+- [x] Bid labels render total commitment: `current_price + {1, 3, 5}` with secondary increment text.
+- [x] Auction border color tier formula maps 0-3, 4-6, 7-9, and 10+ to the GDD tiers.
 
 ## Implementation Notes
 
@@ -65,10 +65,23 @@ Shared ADR-021 infrastructure (`PresentationPlugin`, `PresentationSet`, `phase_s
 **Required evidence**:
 - Logic: `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ## Dependencies
 
 - Depends on: `production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md` - shared `PresentationPlugin`, `PresentationSet`, `phase_sink_system`, and `CurrentClientPhase` path must be complete before ShopAuctionUiPlugin is implemented or registered. Complete on `main` as of `d303155`.
 - Sequencing note: launch after `production/epics/board-rendering/story-001-plugin-scaffold-board-layout-card-atlas.md` so `BoardRenderingPlugin`, `BoardLayout`, and `CardAtlas` exist before `ShopAuctionUiPlugin` is registered fifth in `PresentationPlugin`.
 - Unlocks: Stories 002, 003, 004, 005, 006, 007, 008, 009.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 8/8 passing.
+**Test Evidence**: Logic evidence at `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs`; `cargo test -p client --test shop_auction_ui_plugin_scaffold_formulas_test` passed 8/8.
+**Verification**: `cargo fmt -p client -- --check`, `cargo check -p client`, `git diff --check 2dbc988^..2dbc988`, and `git diff --check` passed.
+**Implementation Commit**: worker `733158c`; main integration `2dbc988`; current `origin/main`/`HEAD` before closure commit `f527247`.
+**Deviations**: Advisory only - story manifest version is 2026-05-01 and current control manifest version is 2026-05-05. No blocking GDD, ADR-019, ADR-021, or Bevy 0.18 deviation found.
+**Scope**: Implementation changed only `client/Cargo.toml`, `client/src/presentation/mod.rs`, `client/src/ui/mod.rs`, `client/src/ui/shop_auction/mod.rs`, and `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs`. Unrelated dirty UX and asset files were not included.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Unchanged; no matching `SHOP-AUCTION-UI-001` / `SAU-001` row exists in `production/sprint-status.yaml`.

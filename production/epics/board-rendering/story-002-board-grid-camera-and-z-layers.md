@@ -1,7 +1,7 @@
 # Story 002: Board Grid, Camera, and Z Layers
 
 > **Epic**: Board Rendering
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-05-01
@@ -16,13 +16,13 @@ This story creates the visible world-space board shell: fixed orthographic camer
 
 ## Acceptance Criteria
 
-- [ ] Exactly one `Camera2d` entity exists for the board view.
-- [ ] The camera has an orthographic projection and no perspective projection.
-- [ ] Cell node entities are spawned for all 40 lane/cell coordinates.
-- [ ] Every cell node carries a `LaneCell { lane, cell }` marker.
-- [ ] Z values are named constants in `rendering_constants.rs`; no inline Z literals are used in board spawn functions.
-- [ ] Board cell nodes use world-space `Sprite` plus `Transform`, not bevy_ui `Node`.
-- [ ] Spawn highlight state is represented by sprite tint/state, not a separate Z layer.
+- [x] Exactly one `Camera2d` entity exists for the board view.
+- [x] The camera has an orthographic projection and no perspective projection.
+- [x] Cell node entities are spawned for all 40 lane/cell coordinates.
+- [x] Every cell node carries a `LaneCell { lane, cell }` marker.
+- [x] Z values are named constants in `rendering_constants.rs`; no inline Z literals are used in board spawn functions.
+- [x] Board cell nodes use world-space `Sprite` plus `Transform`, not bevy_ui `Node`.
+- [x] Spawn highlight state is represented by sprite tint/state, not a separate Z layer.
 
 ## Implementation Notes
 
@@ -60,9 +60,20 @@ This story creates the visible world-space board shell: fixed orthographic camer
 - Logic: `tests/unit/board_rendering/board_grid_camera_test.rs`
 - CI guard or lint note for Z constants.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete - `cargo test -p client --test board_rendering_grid_camera_test` passed 6/6 on 2026-05-05.
 
 ## Dependencies
 
 - Depends on: [Story 001](story-001-plugin-scaffold-board-layout-card-atlas.md).
 - Unlocks: Story 003 and Story 004.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 7/7 passing.
+**Implementation**: Worker commit `6ae82d7`; main integration commit `ce3658b`.
+**Deviations**:
+- Advisory: Story manifest version is 2026-05-01 while the current control manifest is 2026-05-05.
+- Advisory: Active TR-BR-003 also mentions BoardPosition replication; this remains outside the declared Story 002 grid/camera/Z-layer scope.
+**Test Evidence**: Logic evidence at `tests/unit/board_rendering/board_grid_camera_test.rs`; `cargo test -p client --test board_rendering_grid_camera_test` passed 6/6. Adjacent scaffold regression `cargo test -p client --test board_rendering_plugin_scaffold_test` passed 9/9. `cargo fmt -p client -- --check` and `cargo check -p client` passed.
+**Code Review**: Skipped - lean mode.
