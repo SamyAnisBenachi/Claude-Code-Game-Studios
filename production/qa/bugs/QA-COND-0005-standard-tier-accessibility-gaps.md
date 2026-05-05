@@ -57,6 +57,12 @@ Standard-tier accessibility is remediated, verified, or explicitly reclassified.
   It records QA-COND-0005 as Open, marks only the PLACEMENT timer-extension
   sub-gap as implemented/verified via GSS-008, and lists the remaining
   Standard-tier rows that still block closure.
+- 2026-05-05: S6-04 disposition register completed at
+  `production/qa/evidence/accessibility-standard-tier-sprint-6-2026-05-05.md`.
+  Every source row now has exactly one allowed final disposition. QA-COND-0005
+  remains Open because rows still require evidence, Sprint 6 implementation,
+  blocked-dependency follow-up, or producer decisions before closure. No
+  accepted-risk or reclassification signoff is recorded in this update.
 
 ## Non-Goals
 
