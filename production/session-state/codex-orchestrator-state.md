@@ -192,6 +192,26 @@ None currently tracked here.
   `design/ux/shop-auction-ui.md`, `design/ux/interaction-patterns.md`, and
   `design/accessibility-requirements.md`; optional later tracker hygiene for
   `production/epics/shop-auction-ui/story-009-visual-evidence-layout-and-accessibility.md`.
+- Shop/Auction UX repair returned and was pushed at `a3739db` (`docs: repair
+  shop auction UX review blockers`). Changed files:
+  `design/ux/shop-auction-ui.md`, `design/ux/interaction-patterns.md`,
+  `design/accessibility-requirements.md`, and
+  `production/epics/shop-auction-ui/story-009-visual-evidence-layout-and-accessibility.md`.
+  Resolved blockers: immediate preset bid buttons kept with misclick
+  mitigations, stale Auction Bid Input assumptions replaced by Auction Bid
+  Button, missing Shop/Auction patterns added, tooltip storage resolved to local
+  preferences/localStorage, `S2CCardAcquired` data requirement added,
+  DRAFT_SHOP confirmed-purchase and empty/dead slot behavior defined, toast
+  duration / `REFRESH · 1g` / open-time performance criterion / numeric
+  localization 40% expansion / vertical HUD-hand-panel contract added, and
+  SAU-009 stale "UX spec does not exist" wording replaced. Remaining blockers:
+  SAU-009 still needs renderable panel states from Stories 002-007 and evidence
+  capture; YOU ARE LEADING idle-window playtest risk remains open; help/pause
+  retrieval for dismissed tutorials remains low-priority open UX. Safe
+  afterward: SAU-001 remains safe, SAU-005/006 are no longer blocked by bid
+  confirmation conflict, and SAU-009 now waits on implementation/evidence
+  prerequisites rather than missing UX repair docs. Verification passed:
+  `git diff --check` and `git diff --cached --check`.
 - HAND-UI-010 prerequisite docs changeset returned and was pushed at `935f090`
   (`docs: add HAND-UI-010 prerequisite stories`). It created/updated the
   cross-epic blocker chain without touching production session-state or
@@ -217,11 +237,7 @@ None currently tracked here.
 - BOARD-RENDERING-002 implementation worker returned and was integrated/pushed
   to `origin/main` as `ce3658b`. Worker branch
   `work/board-rendering-002-grid-camera-z-layers` returned at `6ae82d7`. Needs
-  serialized `/story-done`; do not relaunch worker. Note: while pushing
-  `main`, an already-local unreported commit `a3739db` (`docs: repair shop
-  auction UX review blockers`) was also present and is now on `origin/main`.
-  Do not mark that UX repair window clear until the user pastes its official
-  report.
+  serialized `/story-done`; do not relaunch worker.
 - Settings/Accessibility UX design returned and was pushed at `093b62a`,
   creating `design/ux/settings-accessibility.md` only. Validation passed
   `git diff --check` and a path-specific check. Open questions recorded in the
@@ -1150,6 +1166,9 @@ Current active windows by user default-launch rule:
 - Shop/Auction UX review finish returned NEEDS REVISION; window can be cleared
   after recording repair scope. Use `REPONDRE` only if launching the UX repair
   changeset.
+- Shop/Auction UX repair returned and pushed `a3739db`; window can be cleared.
+  SAU-005/006 are no longer blocked by the bid-confirmation conflict. SAU-009
+  remains blocked by implementation/evidence prerequisites.
 - SHOP-AUCTION-UI-001 implementation worker returned at `733158c`; root
   integrated and pushed it as `2dbc988`. Worker window can be cleared. Queue a
   serialized `/story-done` for
