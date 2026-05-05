@@ -1857,10 +1857,10 @@ requirements:
   - id: TR-SAU-005
     system: shop-auction-ui
     gdd: design/gdd/shop-auction-ui.md
-    gdd_ac_ids: [SAU-5]
-    requirement: "Optimistic bid pending state — local UI reflects bid before server S2CAuctionBidAccepted; reversal on S2CAuctionBidRejected"
+    gdd_ac_ids: [SAU-DA11a, SAU-DA11b, SAU-DA12]
+    requirement: "Immediate preset bid button click sends C2SPlaceBid once, changes only the clicked button to BIDDING..., disables the other bid buttons, and clears/re-evaluates in-flight state only when authoritative S2CAuctionBidAccepted or S2CAuctionBidRejected arrives"
     created: 2026-04-30
-    revised: ""
+    revised: 2026-05-05
     status: active
 
   - id: TR-SAU-006
