@@ -1,7 +1,7 @@
 # Story 004: Auction Panel Activation and Preparing State
 
 > **Epic**: Shop / Auction UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -78,9 +78,17 @@ Auction activation requires both `S2CAuctionCard` and `S2CPhaseChanged(DRAFT_AUC
 - Integration: `tests/integration/shop_auction_ui/auction_activation_test.rs`
 - Visual evidence later: `production/qa/evidence/shop-auction-ui-auction-preparing-evidence.md`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Integration evidence created and passing
 
 ## Dependencies
 
 - Depends on: [Story 001](story-001-plugin-scaffold-panel-tree-and-formulas.md), Auction System card dispatch, Card Acquisition shop slot data for footer.
 - Unlocks: Stories 005, 006, 007.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 7/7 passing. `S2CAuctionCard` card-first enters `AUCTION_PREPARING` with card/price, grey timer, and no countdown; phase-first remains inactive until card arrives; both orders activate countdown from `S2CPhaseChanged.timer_duration_ms`; preparing times out after 10 seconds into connection error; non-auction phase clears/dismisses preparing; DRAFT_AUCTION footer is visible and locked with refresh hidden; shop slot and refresh clicks send no purchase/refresh messages during auction.
+**Deviations**: None blocking. Advisory only: manual visual evidence remains deferred to Story 009 / `production/qa/evidence/shop-auction-ui-auction-preparing-evidence.md`.
+**Test Evidence**: Integration test `tests/integration/shop_auction_ui/auction_activation_test.rs` passed 6/6. Requested adjacent regressions passed: `shop_auction_ui_plugin_scaffold_formulas_test` 8/8, `shop_auction_ui_draft_initial_grid_test` 9/9, `shop_auction_ui_shop_panel_test` 8/8, and `presentation_plugin_scaffold_test` 3/3. `cargo check -p client` and `git diff --check` passed. `cargo fmt -p client -- --check` passed in the clean SAU-004 worker worktree; the root checkout invocation currently fails only because unrelated dirty `client/src/presentation/board_rendering.rs` formatting differs.
+**Code Review**: Skipped - lean mode; `production/review-mode.txt` is absent.
