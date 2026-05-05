@@ -1,7 +1,7 @@
 # Story 011: ResolutionEvent Log Completeness
 
 > **Epic**: Combat Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-01
@@ -120,7 +120,7 @@ If implementation touches Bevy combat systems, shared protocol, or Lightyear sen
 **Story Type**: Integration
 **Required evidence**: `tests/integration/combat/resolution_event_log_test.rs` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Exists and passes (`cargo test -p server --test resolution_event_log_test`)
 
 ---
 
@@ -135,3 +135,16 @@ If implementation touches Bevy combat systems, shared protocol, or Lightyear sen
 - Depends on: Story 009 (Complete - objective damage/GAME_OVER emits objective and reward trace data)
 - Depends on: Story 010 (Complete - persistent keyword states closed at `7e0a213`)
 - Unlocks: Epic closed via `/story-done` after this story passes
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 5/5 passing.
+**Verification**: Current `main` includes worker commit `06d5b1744c39e3f6be97ffedb11c3dd99e489c12` and integrated implementation commit `73ad695`. CR-30 / TR-CR-014 and CR-32 / TR-CR-015 are covered by `tests/integration/combat/resolution_event_log_test.rs`; adjacent combat/objective regression coverage also passed for objective damage/gameover, objective resolution sync, RANGE targeting, SS4 dead removal, and SS6 SHIELD/COUNTERATTACK.
+**Test Evidence**: `cargo test -p server --test resolution_event_log_test` passed 3/3. Requested adjacent regression command passed 27/27. `cargo check --workspace` passed. `git diff --check` passed.
+**Deviations**: None blocking. Advisory only - story manifest version is 2026-05-01 while current control manifest is 2026-05-05; no conflicting current GDD, ADR-017, ADR-008, Bevy 0.18, or Lightyear 0.26 rule found during closure.
+**Scope**: Implementation scope stayed within the COMBAT-011 integration boundary; objective resolution sync was touched only to consolidate objective events into the single combat-owned `S2CResolutionEvent` batch before `ResolutionComplete`.
+**Code Review**: Lean mode; QL-TEST-COVERAGE and LP-CODE-REVIEW gates skipped because `production/review-mode.txt` is unset and `/story-done` defaults to lean mode.
+**Tech Debt**: None logged.

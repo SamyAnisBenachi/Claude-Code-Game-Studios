@@ -1797,3 +1797,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching BOARD-RENDERING-002 row exists in `production/sprint-status.yaml`.
 - Next recommended: Board Rendering Story 003 (`production/epics/board-rendering/story-003-snapshot-spawn-units-objectives-and-hp-bars.md`) after readiness check, or Sprint 5 Combat Story 11 (`production/epics/combat-resolution/story-011-resolution-event-log.md`) if staying on the current sprint path.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/combat-resolution/story-011-resolution-event-log.md` - Story 011: ResolutionEvent Log Completeness
+- Criteria: 5/5 passing; CR-30 and CR-32 are covered by `tests/integration/combat/resolution_event_log_test.rs`.
+- Test Evidence: `cargo test -p server --test resolution_event_log_test` passed 3/3. Requested adjacent regression command passed 27/27 across `objective_damage_gameover_test`, `objective_resolution_sync_test`, `range_targeting_test`, `substep4_dead_removal_test`, and `substep6_combat_shield_counterattack_test`. `cargo check --workspace` passed. `git diff --check` passed.
+- Verification: Current `main` includes worker commit `06d5b1744c39e3f6be97ffedb11c3dd99e489c12` and integrated commit `73ad695`; `S2CPlacementReveal` is atomic and precedes SS1 effects, `S2CResolutionEvent` carries the full typed CR-32 log in chronological order, objective events are consolidated into the single combat-owned batch, and `S2CPhaseChanged(DRAFT_SHOP)` is not observable before the resolution batch.
+- Notes: Advisory only - story manifest version is 2026-05-01 while current control manifest is 2026-05-05; no conflicting current GDD, ADR-017, ADR-008, Bevy 0.18, or Lightyear 0.26 rule found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Updated S5-20 in `production/sprint-status.yaml` to `done` with completion date 2026-05-05.
+- Next recommended: Sprint 5 Must Have scope is complete; either run sprint close-out (`/smoke-check sprint`, `/team-qa sprint`, then `/gate-check`) or pick up S5-17 Hand UI Story 10 Submit Pre-Validation if the remaining Should Have item stays in scope.

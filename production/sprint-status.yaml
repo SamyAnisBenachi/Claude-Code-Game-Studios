@@ -226,10 +226,13 @@ stories:
     name: "Combat Story 11: ResolutionEvent Log Completeness"
     file: "production/epics/combat-resolution/story-011-resolution-event-log.md"
     priority: nice-to-have
-    status: not-started
-    owner: "unassigned"
+    status: done
+    owner: "worker"
     estimate_days: 1.00
     blocker: ""
+    completed: "2026-05-05"
+    notes:
+      - "COMPLETE WITH NOTES: CR-30 atomic PlacementReveal timing and CR-32 protocol schema, content completeness, chronological ordering, single-batch objective consolidation, and phase-delivery ordering verified by resolution_event_log_test. Advisory only - story manifest version is 2026-05-01 while current control manifest is 2026-05-05."
 
   - id: "S5-21"
     name: "Create missing Board Rendering and Shop/Auction UI production epics/stories"
