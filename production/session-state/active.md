@@ -1947,3 +1947,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching SAU-004/story row exists in `production/sprint-status.yaml`.
 - Next recommended: Shop/Auction UI Story 005 (`production/epics/shop-auction-ui/story-005-auction-bid-buttons-affordability-and-inflight.md`) after `/story-readiness`, or continue sprint close-out if no more pull-forward work is being added.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-rendering/story-009-status-icons-cooccupancy-and-spawn-range.md` - Story 009: Status Icons and Co-Occupancy Visuals
+- Criteria: 10/10 passing for narrowed status-icon and co-occupancy visuals; status icon count, overflow badge, tier/duration/key ordering, local stack transforms, `ChildOf` inheritance, board-elements atlas use, per-unit OUTNUMBERED key rendering, F3 two-unit offsets, and F3 index-2 assert verified.
+- Test Evidence: `cargo test -p client --test board_rendering_status_icons_test` passed 5/5. Requested adjacent regressions passed: `board_rendering_snapshot_spawn_test` 5/5, `board_rendering_grid_camera_test` 6/6, `board_rendering_plugin_scaffold_test` 9/9, and `board_rendering_placement_reveal_test` 3/3. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+- Verification: Worker commit `9693bab086e946b6908fde7c2ee537dfa19eba91` was integrated onto current `main` as implementation commit `ea8783d38c1a9f1aa5133b3d11607bffaa3f6ad7`; closure notes were added after verification.
+- Notes: No blocking GDD, ADR-018, ADR-021, Bevy 0.18, or Lightyear 0.26 deviation found for the narrowed renderer scope. Final visual/browser evidence remains open, and spawn range source/replication/highlight closure remains out of scope and not closed. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching BOARD-009 row exists in `production/sprint-status.yaml`.
+- Next recommended: Final Board Rendering visual/evidence closure should wait until spawn range source/replication is resolved and status-icon atlas/browser evidence is captured.

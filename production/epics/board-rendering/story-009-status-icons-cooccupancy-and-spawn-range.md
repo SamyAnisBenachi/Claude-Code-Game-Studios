@@ -1,7 +1,7 @@
 # Story 009: Status Icons and Co-Occupancy Visuals
 
 > **Epic**: Board Rendering
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Visual/Feel
 > **Manifest Version**: 2026-05-05
@@ -112,10 +112,20 @@ Trace registrations still needed outside this story: Network Protocol should reg
 - Unit/integration support: `tests/unit/board_rendering/status_icons_test.rs`
 - Integration support if snapshot projection is touched: `tests/integration/board_rendering/status_snapshot_projection_test.rs`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Unit support created; final visual/evidence capture deferred and not closed
 
 ## Dependencies
 
 - Depends on: [Story 003](story-003-snapshot-spawn-units-objectives-and-hp-bars.md) Complete for snapshot-spawned board units, child HP-bar hierarchy, `LaneCell`, and `CardAtlas`.
 - Not required: [Story 004](story-004-ghost-preview-hand-ui-bridge.md), [Story 005](story-005-placement-reveal-collect-and-tween.md), spawn range replication/source, and trap identity protocol work.
 - Unlocks: status-icon portion of Board legibility polish and the final Board Rendering atlas/evidence follow-up.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 10/10 passing for the narrowed status-icon and co-occupancy visual scope. Status icons render one child per visible effect, cap at three visible icons plus an overflow badge, sort by display tier then duration then deterministic key, use local top-right stack transforms, inherit co-occupancy parent X offsets through `ChildOf`, use the board-elements atlas, support OUTNUMBERED as a per-unit status key, and apply F3 allied co-occupancy offsets with the required index-2 `assert!`.
+**Deviations**: None blocking for the narrowed scope. Advisory/deferred: final visual/browser evidence remains open, and spawn range source/replication/highlight closure remains out of scope and not closed by this story-done pass.
+**Test Evidence**: `tests/unit/board_rendering/status_icons_test.rs`; `cargo test -p client --test board_rendering_status_icons_test` passed 5/5. Requested adjacent regressions also passed: `board_rendering_snapshot_spawn_test` 5/5, `board_rendering_grid_camera_test` 6/6, `board_rendering_plugin_scaffold_test` 9/9, and `board_rendering_placement_reveal_test` 3/3. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+**Code Review**: Complete locally. Lean mode applied because `production/review-mode.txt` is absent; QL-TEST-COVERAGE and LP-CODE-REVIEW external gates were skipped.
+**Verification Notes**: Worker commit `9693bab086e946b6908fde7c2ee537dfa19eba91` was integrated onto current `main` as implementation commit `ea8783d38c1a9f1aa5133b3d11607bffaa3f6ad7`. `production/sprint-status.yaml` was not updated because no matching BOARD-009 row exists. `AGENTS.md`, `production/session-state/codex-orchestrator-state.md`, and `design/assets/**` were not touched for this closure.
