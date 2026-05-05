@@ -1,8 +1,8 @@
 # Control Manifest
 
 > **Engine**: Bevy 0.18 + Lightyear 0.26
-> **Last Updated**: 2026-05-01
-> **Manifest Version**: 2026-05-01
+> **Last Updated**: 2026-05-05
+> **Manifest Version**: 2026-05-05
 > **ADRs Covered**: ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ADR-006, ADR-007, ADR-008, ADR-009, ADR-010, ADR-011, ADR-012, ADR-013, ADR-014, ADR-015, ADR-016, ADR-017, ADR-018, ADR-019, ADR-020, ADR-021, ADR-022
 > **Status**: Active — regenerate with `/create-control-manifest` when ADRs change
 
@@ -41,6 +41,7 @@ Round State Machine phase state, RSM event bus, session lifecycle, reconnect pro
 - **Only `C2SHeartbeat` and `S2CAuctionUpdate` use `UnreliableChannel`.** Everything else uses `ReliableChannel`. — source: ADR-008
 - **`S2CResolutionEvent` MUST be enqueued before `S2CPhaseChanged(DRAFT_SHOP)` in the same server frame (OQ-D invariant).** Enforced by same-channel FIFO on `ReliableChannel`. — source: ADR-008
 - **Default channel for any new message type: `ReliableChannel`.** Use `UnreliableChannel` only when: dropped packet is immediately superseded, stale arrival causes no state corruption, and the message is sent more than once per phase. — source: ADR-008
+- **`C2SSubmitPlacement` payload shape is submit-only:** `PlacedCardSubmit { card_id, target, current_mana_spend, reserve_mana_spend }`. `S2CPlacementReveal` uses a distinct reveal type and MUST NOT expose mana-spend fields. — source: network-protocol.md, ADR-007
 - **Per-connection `snapshot_sent` flag.** Set to `false` on `OnConnected`. Snapshot system scheduled BEFORE all live-game message systems. No live S2C enqueued to a reconnecting client before `snapshot_sent = true`. — source: ADR-008, ADR-011
 - **`RoundState` resource is the single source of truth for phase.** Only `rsm_tick_system` holds `ResMut<RoundState>`. All other systems use `Res<RoundState>`. — source: ADR-009
 - **`rsm_tick_system` scheduled AFTER `AuctionSystem` and `CombatResolutionSystem` in `Update`.** — source: ADR-009
@@ -124,6 +125,7 @@ auction state, class system, card acquisition shop state, economy system, board/
 - **`displayed_this_draft` NOT cleared on `ShopUnlock` trigger.** Dedup accumulates across DRAFT_AUCTION + DRAFT_SHOP. Reset only on new DRAFT_INITIAL entry. — source: ADR-015
 - **`card_acquisition_tick_system` scheduled AFTER `rsm_tick_system`:** `CardAcquisitionSet::Tick.after(RsmSet::Tick)`. — source: ADR-015
 - **All `PlayerEconomy` field mutations go through `server/src/core/economy/api.rs` functions.** Direct field assignment (`.gold = x`, `.current_mana = x`) outside `api.rs` is forbidden. — source: ADR-019
+- **Placement mana spends use explicit split API:** Board/Lane calls `validate_explicit_mana_split` before pending write and `apply_explicit_mana_split` at PLACEMENT close. Normal non-placement spends keep auto-split `validate_spend` / `apply_spend`. — source: ADR-019
 - **Interest snapshot triggered by `MessageReader<ResolutionComplete>` — NOT `ResolutionPhaseEntered`.** Snapshot must occur after all kill/objective gold awards in `resolve_combat`. — source: ADR-019
 - **`on_resolution_complete` scheduled `.before(rsm_input_reader)`.** Snapshot must precede RSM DRAFT transition. — source: ADR-019
 - **`PendingResolutionComplete(bool)` bridge resource.** `resolve_combat` (exclusive system) sets `world.resource_mut::<PendingResolutionComplete>().0 = true`. `drain_pending_resolution_complete` (regular system, `CombatSystemSet::PostResolution`) emits `MessageWriter<ResolutionComplete>`. `MessageWriter<T>` cannot be used from an exclusive system. — source: ADR-019
@@ -179,6 +181,7 @@ auction state, class system, card acquisition shop state, economy system, board/
 
 - **`PendingPlacements` resource holds pending submissions as plain Rust data — NO ECS entity spawn during PLACEMENT.** Unit entities only exist after sub-step 1 commit. — source: ADR-007
 - **Placement validation is all-or-nothing per player batch.** Any single card failure → silent discard of entire batch. No partial acceptance. — source: ADR-007
+- **Placement submit authority validation covers sender, phase, hand ownership, duplicate card IDs, target legality, spawn/occupancy, and explicit current/reserve mana split before pending write.** — source: ADR-007, ADR-019
 - **Buffer cleared on `PlacementPhaseEntered` (not `PlacementPhaseExited`).** — source: ADR-007
 - **`close_placement_phase` strict order (all in ONE system — never split across two):** 1. Collect `PendingPlacements`. 2. Deduct mana. 3. Enqueue `S2CPlacementReveal` on `ReliableChannel`. 4. Spawn ECS unit entities. 5. Add `Replicate::to_clients(NetworkTarget::All)`. 6. Emit `PlacementCommitted`. 7. Clear buffer. — source: ADR-007
 - **Mana deducted at PLACEMENT close, not at submission receipt.** — source: ADR-007
@@ -250,6 +253,7 @@ auction state, class system, card acquisition shop state, economy system, board/
 - **`PresentationPlugin` registration order is a contract — DO NOT reorder:** 1. `CardAnimationsPlugin`, 2. `BoardRenderingPlugin`, 3. `HandUiPlugin`, 4. `HudPlugin`, 5. `ShopAuctionUiPlugin`. Reordering causes runtime panics (Resource not yet inserted). — source: ADR-021
 - **`PresentationSet` execution order:** `PhaseTransition` → `MessageDrain` → `StateSync` → `AnimationTick` (chained via `.chain()`). — source: ADR-021
 - **Single `phase_sink_system` drains `MessageReceiver<S2CPhaseChanged>` (Lightyear).** All sub-plugins read `Res<CurrentClientPhase>` — never `MessageReceiver<S2CPhaseChanged>` directly. — source: ADR-021
+- **Single shared economy-view system drains `MessageReceiver<S2CGoldUpdate>` and seeds `PlayerEconomyView` from `S2CGameSnapshot`.** Hand UI, HUD, and Shop/Auction UI read `Res<PlayerEconomyView>` instead of each draining economy messages. — source: ADR-021
 - **Board content ALWAYS world-space:** `Sprite` + `Transform` with `Camera2d`. Board entities cannot appear above bevy_ui without custom render layers. — source: ADR-021
 - **UI ALWAYS bevy_ui:** `Node` for HUD, hand fan, shop panels, auction bid box. — source: ADR-021
 - **Hand drag-sprite preview is a bevy_ui `Node` — NOT a world-space `Sprite`.** Preserves correct z-ordering above board during drag. — source: ADR-021
@@ -267,6 +271,7 @@ auction state, class system, card acquisition shop state, economy system, board/
 - **Never use any `*Bundle` type** (`SpriteBundle`, `Camera2dBundle`, `NodeBundle`, etc.). Deprecated in Bevy 0.15. Use Required Components API. — source: ADR-021, engine-reference
 - **Never use `Handle<TextureAtlas>`.** Asset type removed in Bevy 0.18. Use `Handle<TextureAtlasLayout>` with `TextureAtlas` as a component field. — source: ADR-021, engine-reference
 - **Never register `MessageReceiver<S2CPhaseChanged>` in more than one system.** First drain consumes all — other systems silently miss messages. — source: ADR-021
+- **Never register `MessageReceiver<S2CGoldUpdate>` in Hand UI, HUD, or Shop/Auction UI.** The shared economy-view system is the only production drain. — source: ADR-021
 - **Never despawn+respawn entities for tween cancel-and-replace.** Discards game-state components. — source: ADR-021
 - **Never assign a child entity's `Transform.translation.z` to the intended world Z directly.** Renders at `parent_z + intended_world_z`. Use local offset. — source: ADR-021
 - **Never use `UiImage::new()`.** Use `ImageNode::new()` (Bevy 0.16+). — source: engine-reference

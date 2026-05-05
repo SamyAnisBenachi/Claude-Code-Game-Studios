@@ -186,6 +186,22 @@ pub fn validate_spend(economy: &PlayerEconomy, cost: u32, from_reserve_only: boo
 /// overflow to reserve_mana. Reserve-only: deducts reserve only.
 pub fn apply_spend(economy: &mut PlayerEconomy, cost: u32, from_reserve_only: bool);
 
+/// Validate a PLACEMENT submit split. Unlike apply_spend, this preserves the
+/// player's explicit current/reserve allocation from C2SSubmitPlacement.
+pub fn validate_explicit_mana_split(
+    economy: &PlayerEconomy,
+    cost: u32,
+    current_mana_spend: u32,
+    reserve_mana_spend: u32,
+) -> Result<(), SpendError>;
+
+/// Apply a previously validated PLACEMENT split exactly as submitted.
+pub fn apply_explicit_mana_split(
+    economy: &mut PlayerEconomy,
+    current_mana_spend: u32,
+    reserve_mana_spend: u32,
+);
+
 /// Add gold to a player's pool (kill reward, objective reward, starting gold, income).
 pub fn apply_gold_award(economy: &mut PlayerEconomy, amount: u32);
 
@@ -377,6 +393,7 @@ Both are `#[derive(Message)]` server-internal messages consumed by the network d
 | `economy-system.md` | Rule 2 — `current_mana = min(round, mana_cap)` at DRAFT start | `api::apply_mana_ramp(economy, round)` called in `on_draft_started` per GDD formula F1 |
 | `economy-system.md` | Rule 3 — Reserve mana persists; no cap | `reserve_mana: u32` field never zeroed by any scheduled system; `api::add_reserve` saturating-adds |
 | `economy-system.md` | Rule 4 — Auto-split mana spend (current first, reserve overflow); reserve-only variant | `api::validate_spend` + `api::apply_spend` with `from_reserve_only` flag; atomic validate-then-apply pattern |
+| `economy-system.md` | Rule 4 placement explicit split exception | `api::validate_explicit_mana_split` + `api::apply_explicit_mana_split`; Board/Lane uses these for `C2SSubmitPlacement` validation and close-time deduction |
 | `economy-system.md` | Rule 5 — Mana cap increase (+1 per fake objective mana reward, max 12) | `api::increment_mana_cap(economy, config)` clamps at `config.mana_cap_max`; called by Objective System |
 | `economy-system.md` | Rule 6 — Interest formula: `min(floor(gold_at_RESOLUTION_end / threshold), max_bonus)` applied at DRAFT start | `InterestSnapshots` captures gold at `ResolutionComplete`; interest computed in `on_draft_started` using snapshot |
 | `economy-system.md` | Rule 6 — Starting gold = 5 granted before round 1 | `initialise_player_economies` (Observer: `On<SessionReady>`) sets `gold = config.starting_gold` |
@@ -392,6 +409,7 @@ Both are `#[derive(Message)]` server-internal messages consumed by the network d
 | `economy-system.md` | EC16–EC17 (kill gold, objective gold awarded during RESOLUTION) | `resolve_combat` calls `api::apply_gold_award` for kills and real objective destructions |
 | `economy-system.md` | EC18 (mana discard at RESOLUTION end) | `on_resolution_complete` calls `api::discard_current_mana` per player |
 | `economy-system.md` | EC21–EC23 (auction bid affordability, reserved gold reduces shop budget) | `api::can_afford_bid` (reads `reserved_gold`); `api::can_afford_shop` (same pattern) |
+| `economy-system.md` | EC27–EC28 (explicit placement current/reserve split validation and deduction) | `api::validate_explicit_mana_split` and `api::apply_explicit_mana_split` |
 | `round-state-machine.md` | RSM event bus subscriber: Economy reads `DraftStarted` | `on_draft_started` is a MessageReader<DraftStarted> subscriber — per ADR-010 subscriber contract |
 
 ## Performance Implications

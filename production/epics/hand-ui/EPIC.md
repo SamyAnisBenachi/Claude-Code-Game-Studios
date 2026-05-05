@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/hand-ui.md
 > **Architecture Module**: `client/src/presentation/hand/` — `HandUiPlugin` (sub-plugin #3 inside `PresentationPlugin`)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories hand-ui`
+> **Stories**: Created — see Stories table below
 
 ## Overview
 
@@ -26,7 +26,7 @@ Hand UI implements the client-side card fan display and all card-play interactio
 | TR-HU-001 | Hand fan pre-pooled: 10 card slots + 9 DRAFT_INITIAL grid slots; fixed entity count regardless of hand size | ADR-021 Impl Guideline 3 ✅ |
 | TR-HU-002 | PLACEMENT drag-to-stage state machine: Idle → Dragging → Staged → Committed; cursor-to-cell mapping via `Res<BoardLayout>` | ADR-021 (rendering boundary + BoardLayout) ✅ |
 | TR-HU-003 | Instant card staging: cards with Instant type stage to fan plate; no board cell highlight | ADR-021 + ADR-002 ✅ |
-| TR-HU-004 | Reserve mana split control: +/- strip per staged card; ceiling = `player.reserve_mana − sum(other_staged.reserve_amount)` | ADR-021 + ADR-019 ✅ |
+| TR-HU-004 | Reserve mana split control: +/- strip per staged card; ceiling = `player.reserve_mana - sum(other_staged.reserve_mana_spend)` | ADR-021 + ADR-019 ✅ |
 | TR-HU-005 | DRAFT_INITIAL grid overlay: 9-card display, purchase feedback, `purchase_timeout_ms` revert | ADR-021 + ADR-004 ✅ |
 | TR-HU-006 | TargetUnit hover feedback: `TargetUnitHover` marker on valid units; no `BoardCellHighlighted` markers | ADR-021 (rendering boundary) ✅ |
 | TR-HU-007 | PLACEMENT timer urgency: 5s threshold fires `TimerUrgencyAudio` event exactly once; tween to Amber/Crimson | ADR-021 (AnimationTick set + tween lifecycle) ✅ |
@@ -42,6 +42,7 @@ These are not design gaps — the GDD is Approved. They gate specific stories wi
 |------|--------|-----------------|
 | **OQ8** — `S2CActivationRejected` not registered in NP GDD | HU-28 / HU-28b (activation-lock story) | Add `S2CActivationRejected` to `design/gdd/network-protocol.md` before the activation-lock story opens |
 | **OQ5/OQ6** — Card data pipeline ADR; atlas-sharing confirmation | Asset-pipeline story (card TextureAtlas frame index resolution) | ADR-021 resolves direction (`Res<CardAtlas>` shared from `BoardRenderingPlugin`); confirm `CardAtlas::frame_index(card_id)` shared method exists before asset story starts |
+| **HAND-UI-010 blockers** — placement submit pre-validation prerequisites | Story 010 | Complete `NP-005` placement payload split, `ECO-007` explicit placement mana split API, `BLS-011` server authority validation, and `PRES-002` shared economy view before implementation |
 
 ## Key ADR-021 Constraints for This Epic
 
@@ -78,10 +79,10 @@ This epic is complete when:
 | 007 | [PLACEMENT Instant Card Staging](story-007-placement-instant-staging.md) | Logic | Ready | ADR-021 |
 | 008 | [PLACEMENT Un-Staging — Board Ghosts & Instant Fan Slot](story-008-placement-unstaging.md) | Integration | Ready | ADR-021 |
 | 009 | [PLACEMENT Timer — Urgency, Grace Window & Submit Checkmark](story-009-placement-timer.md) | Integration | Ready | ADR-021 |
-| 010 | [Submit Pre-Validation — Mana & Reserve Checks](story-010-submit-prevalidation.md) | Logic | Ready | ADR-021, ADR-002 |
+| 010 | [Submit Pre-Validation — Mana & Reserve Checks](story-010-submit-prevalidation.md) | Logic | Blocked | ADR-021, ADR-002 |
 | 011 | [Reserve Mana Split Strip — Per-Staged-Card Controls](story-011-reserve-mana-strip.md) | Logic | Ready | ADR-021 |
 | 012 | [Activation Lock — DRAFT_SHOP Instant Card Lock & Timeout](story-012-activation-lock.md) | Integration | Blocked | ADR-021, ADR-002 |
 | 013 | [Reconnect Rebuild — PLACEMENT State Recovery](story-013-reconnect-rebuild.md) | Integration | Ready | ADR-021, ADR-002, ADR-009 |
 
-**Story counts**: 8 Logic · 5 Integration · 1 Blocked (OQ8)
+**Story counts**: 8 Logic · 5 Integration · 2 Blocked (OQ8, HAND-UI-010 prerequisites)
 **Dependency order**: 001 → 002, 003; 003 → 004, 005, 013; 005 → 006, 007, 008, 009, 010, 011

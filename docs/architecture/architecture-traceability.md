@@ -7,8 +7,9 @@
 > Full review report (Run 4): `docs/architecture/architecture-review-2026-05-01.md`
 > Full review report (Run 3): `docs/architecture/architecture-review-2026-04-30c.md`
 > Prior reports: Run 2 (`architecture-review-2026-04-30b.md`), Run 1 (`architecture-review-2026-04-30.md`)
-> Stable TR-IDs: `docs/architecture/tr-registry.yaml` (fully registered, 182 TRs)
-> CDP-006 trace repair (2026-05-03): registered TR-CDP-010 for draft/shop network payload dispatch; registry now has 182 active TRs.
+> Stable TR-IDs: `docs/architecture/tr-registry.yaml` (fully registered, 198 active TRs as of HAND-UI-010 prerequisite docs update)
+> CDP-006 trace repair (2026-05-03): registered TR-CDP-010 for draft/shop network payload dispatch.
+> HAND-UI-010 prerequisite docs (2026-05-05): registered TR-NP-013, TR-ECO-009, TR-BLS-011, TR-PRES-001 and revised TR-HU-008 for explicit placement mana split traceability.
 
 ---
 
@@ -20,16 +21,17 @@
 | M2 Auction (ADR-013) | 10 | 10 ✅ | 0 | 0 |
 | M2 Card Acquisition (ADR-015) | 10 | 10 ✅ | 0 | 0 |
 | M2 Combat Resolution (ADR-017 + ADR-018 + ADR-022) | 15 | 15 ✅ | 0 | 0 |
-| M2 Economy (ADR-019) | 8 | 8 ✅ | 0 | 0 |
+| M2 Economy (ADR-019) | 9 | 9 ✅ | 0 | 0 |
 | M3 Class (ADR-014) | 12 | 12 ✅ | 0 | 0 |
 | M3 Prism (ADR-016) | 8 | 8 ✅ | 0 | 0 |
 | M3 Keyword (ADR-018 + ADR-022) | 12 | 12 ✅ | 0 | 0 |
 | M3 Card Animations (ADR-021) | 7 | 7 ✅ | 0 | 0 |
 | Presentation: Board Rendering (ADR-020 + ADR-021) | 7 | 7 ✅ | 0 | 0 |
 | Presentation: Hand UI (ADR-021) | 8 | 8 ✅ | 0 | 0 |
+| Presentation: Shared Economy View (ADR-021 + ADR-002) | 1 | 1 ✅ | 0 | 0 |
 | Presentation: Shop/Auction UI (ADR-021) | 6 | 6 ✅ | 0 | 0 |
 | Presentation: HUD (ADR-021) | 10 | 10 ✅ | 0 | 0 |
-| **Total** | **~203** | **~203 (~100%)** | **0** | **0** |
+| **Total** | **~207** | **~207 (~100%)** | **0** | **0** |
 
 **ALL LAYERS: PASS.** Run 3 → Run 4: HC-1/HC-2/HC-3/SI-1/B-5' all resolved; ADR-018/020 promoted Accepted; ADR-021/022 NEW Accepted. No known gaps remain.
 
@@ -44,10 +46,10 @@ All 9 M1 systems have full ADR coverage. Zero gaps.
 | Card Data & Pool | TR-CDP-001..010 | 10 | ADR-004, ADR-006, ADR-008, ADR-011 | CP1a..CP-C3, CP-NET-01 |
 | Game Config | TR-GC-001..005 | 5 | ADR-004, ADR-003 | GC1..GC12 |
 | Server-side RNG | TR-RNG-001..006 | 6 | ADR-005 | RNG1..RNG15 |
-| Economy System | TR-ECO-001..008 | 8 | ADR-010 | EC1..EC26 |
-| Board/Lane System | TR-BLS-001..010 | 10 | ADR-007, ADR-010 | BL-1..BL-33 |
+| Economy System | TR-ECO-001..009 | 9 | ADR-010, ADR-019 | EC1..EC28 |
+| Board/Lane System | TR-BLS-001..011 | 11 | ADR-007, ADR-010, ADR-019 | BL-1..BL-36 |
 | Round State Machine | TR-RSM-001..010 | 10 | ADR-009, ADR-010 | RSM-1..RSM-38 |
-| Network Protocol | TR-NP-001..012 | 12 | ADR-002, ADR-008, ADR-011 | NP-1..NP-29 |
+| Network Protocol | TR-NP-001..013 | 13 | ADR-002, ADR-008, ADR-011, ADR-007 | NP-1..NP-58 |
 | Game Session System | TR-GSS-001..010 | 10 | ADR-011, ADR-012 | GSS-1..GSS-41 |
 | Objective System | TR-OBJ-001..010 | 10 | ADR-001, ADR-010 | OS-1..OS-28 |
 

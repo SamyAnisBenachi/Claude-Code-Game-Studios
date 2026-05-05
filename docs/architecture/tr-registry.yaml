@@ -29,7 +29,7 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 11
+version: 12
 last_updated: "2026-05-05"
 # Run 3 (/architecture-review 2026-04-30c): registered 80 new M2/M3 TRs covering
 # combat-resolution, card-acquisition, prism-system, keyword-system, card-animations,
@@ -67,6 +67,9 @@ last_updated: "2026-05-05"
 # Run 13 (/story-readiness COMBAT-011 trace repair 2026-05-05): revised
 # TR-CR-015 to cover the full CR-32 content-completeness requirement, not
 # only the phase-ordering invariant. Active count unchanged.
+# Run 14 (HAND-UI-010 prerequisite docs 2026-05-05): registered TR-NP-013,
+# TR-ECO-009, TR-BLS-011, TR-PRES-001 and revised TR-HU-008 for explicit
+# placement mana split prerequisites. Total: 198 active TRs.
 
 requirements:
 
@@ -356,6 +359,15 @@ requirements:
     revised: ""
     status: active
 
+  - id: TR-ECO-009
+    system: economy-system
+    gdd: design/gdd/economy-system.md
+    gdd_ac_ids: [EC27, EC28]
+    requirement: "Placement submit explicit mana split API: validate_explicit_mana_split requires current_mana_spend + reserve_mana_spend == card cost and rejects current/reserve overdraw independently; apply_explicit_mana_split deducts exactly the validated amounts at PLACEMENT close without auto-split recomputation"
+    created: 2026-05-05
+    revised: ""
+    status: active
+
   # ─── Board/Lane System (TR-BLS) ────────────────────────────────────────────
   # GDD: design/gdd/board-lane-system.md
   # ADR coverage: ADR-007 (placement buffer + reveal), ADR-010 (PlacementPhaseEntered)
@@ -447,6 +459,15 @@ requirements:
     gdd_ac_ids: [BL-15, BL-19, BL-20, BL-23, BL-26, BL-28]
     requirement: "Displacement keywords: REPEL clamped at spawn boundary; ATTRACT clamped to [1,8]; CHANGE LANE silent no-op at boundaries; IRREMOVABLE is a no-op; spawn range expansion from fake destruction takes effect at NEXT PLACEMENT"
     created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-BLS-011
+    system: board-lane-system
+    gdd: design/gdd/board-lane-system.md
+    gdd_ac_ids: [BL-35, BL-36]
+    requirement: "Placement submit authority validation: sender, phase, hand ownership, duplicate card IDs, target legality, spawn/occupancy, and explicit current/reserve mana split are checked all-or-nothing before PendingPlacements write; accepted split values are deducted at PLACEMENT close before S2CPlacementReveal and ECS spawn"
+    created: 2026-05-05
     revised: ""
     status: active
 
@@ -653,6 +674,15 @@ requirements:
     gdd_ac_ids: [NP-12, NP-17]
     requirement: "S2COpponentDisconnected unicast to remaining player with grace_remaining_ms; S2COpponentReconnected broadcast to all on reconnect completion"
     created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-NP-013
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-58]
+    requirement: "Placement payload shape split: C2SSubmitPlacement uses PlacedCardSubmit with card_id, target, current_mana_spend, reserve_mana_spend; S2CPlacementReveal uses a distinct PlacedCardReveal type and omits mana-spend fields"
+    created: 2026-05-05
     revised: ""
     status: active
 
@@ -1764,9 +1794,22 @@ requirements:
   - id: TR-HU-008
     system: hand-ui
     gdd: design/gdd/hand-ui.md
-    gdd_ac_ids: [HU-17b]
-    requirement: "Submit pre-validation: client-side mana/reserve checks before C2SSubmitPlacement; server-side validation authoritative"
+    gdd_ac_ids: [HU-17b, HU-17c]
+    requirement: "Submit pre-validation: client-side explicit current/reserve spend checks read PlayerEconomyView before C2SSubmitPlacement; server-side validation remains authoritative and correction clears SubmitValidationError before sending"
     created: 2026-04-30
+    revised: 2026-05-05
+    status: active
+
+  # ─── Presentation Layer (TR-PRES) ──────────────────────────────────────────
+  # GDD: design/gdd/hand-ui.md
+  # ADR coverage: ADR-021 (shared presentation resources), ADR-002 (client view)
+
+  - id: TR-PRES-001
+    system: presentation-layer
+    gdd: design/gdd/hand-ui.md
+    gdd_ac_ids: [HU-17b, HU-17c, HU-25, HU-26]
+    requirement: "Shared PlayerEconomyView mirrors own gold, current_mana, reserve_mana, and mana_cap from S2CGoldUpdate and local S2CGameSnapshot; Hand UI, HUD, and Shop/Auction UI read this resource instead of independently draining economy messages"
+    created: 2026-05-05
     revised: ""
     status: active
 

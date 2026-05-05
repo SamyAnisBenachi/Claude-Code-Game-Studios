@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/board-lane-system.md
 > **Architecture Module**: `server/feature/board/`
 > **Status**: Ready
-> **Stories**: 10 stories created 2026-04-30
+> **Stories**: 11 stories created; Story 011 added 2026-05-05 as HAND-UI-010 prerequisite
 
 ## Overview
 
@@ -39,10 +39,10 @@ System to expand the player's spawn range when a fake objective is destroyed.
 | TR-BLS-008 | PlacementPhaseEntered Message subscription opens the placement window | ADR-010 ✅ |
 | TR-BLS-009 | ResolutionPhaseEntered Message subscription triggers buffer commit (reveal + spawn) | ADR-010 ✅ |
 | TR-BLS-010 | PrismState tracks per-player per-lane prism collection; PrismCollected event emitted when a unit ends standard movement at own spawn cell | ADR-010 ✅ |
+| TR-BLS-011 | Placement submit authority validation: sender, phase, hand ownership, duplicate cards, target legality, spawn/occupancy, and explicit current/reserve mana split are validated all-or-nothing before pending write | ADR-007, ADR-019, ADR-002 |
 
-> **TR registry note:** TR-BLS-001–010 are referenced in `docs/architecture/architecture-traceability.md`
-> but not yet machine-populated in `docs/architecture/tr-registry.yaml`.
-> Run `/architecture-review` for M2 systems to populate the YAML before `/create-stories`.
+> **TR registry note:** TR-BLS-001–011 are registered in `docs/architecture/tr-registry.yaml`.
+> Story 011 was added as a HAND-UI-010 prerequisite repair.
 
 ## Definition of Done
 
@@ -69,6 +69,7 @@ This epic is complete when:
 | 008 | [Objective Cell Detection (F3)](story-008-objective-cell-detection.md) | Logic | Ready | ADR-010 |
 | 009 | [Prism Collection](story-009-prism-collection.md) | Logic | Ready | ADR-010 |
 | 010 | [Displacement Keywords and Spawn Range Expansion](story-010-displacement-keywords.md) | Logic | Ready | ADR-007, ADR-010 |
+| 011 | [Placement Submit Authority Validation](story-011-placement-submit-authority-validation.md) | Integration | Blocked | ADR-007, ADR-019, ADR-002 |
 
 ## Next Step
 

@@ -4,7 +4,7 @@
 > **GDD**: ADR-021 cross-epic infrastructure
 > **Architecture Module**: `client/src/presentation/` - `PresentationPlugin`
 > **Status**: Ready-for-Readiness
-> **Stories**: 1 proposed shared foundation story
+> **Stories**: 2 shared prerequisite stories
 
 ## Overview
 
@@ -29,10 +29,11 @@ This epic exists because ADR-021 defines cross-epic infrastructure that should n
 | ADR-021 R5 | `S2CPhaseChanged` is drained by exactly one shared phase sink; sub-plugins read `Res<CurrentClientPhase>` | ADR-021, ADR-008 |
 | Control Manifest | `PresentationSet` order is `PhaseTransition -> MessageDrain -> StateSync -> AnimationTick` | ADR-021 |
 | Control Manifest | `PresentationPlugin` registration order is Card Animations, Board Rendering, Hand UI, HUD, Shop/Auction UI | ADR-021 |
+| TR-PRES-001 | Shared `PlayerEconomyView` mirrors own current/reserve mana from `S2CGoldUpdate` and `S2CGameSnapshot`; presentation sub-plugins read the resource instead of draining economy messages independently | ADR-021, ADR-002, ADR-008 |
 
-## Traceability Gap
+## Traceability Notes
 
-No dedicated `TR-PRES-*` entry exists in `docs/architecture/tr-registry.yaml` for this shared ADR-021 presentation infrastructure. This epic does not invent a TR-ID. Story 001 is traceable to ADR-021 R1 and R5 and is marked `Ready-for-Readiness` so the readiness gate can explicitly accept or reject ADR-level traceability before implementation.
+Story 001 remains ADR-only infrastructure and does not need a `TR-PRES-*` entry. Story 002 is GDD-derived shared client state required by HAND-UI-010, so it is registered as `TR-PRES-001` in `docs/architecture/tr-registry.yaml`.
 
 ## Dependency Map
 
@@ -72,7 +73,8 @@ This epic is complete when:
 | # | Story | Type | Status | Requirement | ADR |
 |---|-------|------|--------|-------------|-----|
 | 001 | [PresentationPlugin, PresentationSet, and Phase Sink](story-001-presentation-plugin-set-and-phase-sink.md) | Integration | Ready-for-Readiness | ADR-021 R1, R5 | ADR-021 |
+| 002 | [Shared Economy View](story-002-shared-economy-view.md) | Integration | Ready | TR-PRES-001 | ADR-021, ADR-002, ADR-008 |
 
 ## Next Step
 
-Run `/story-readiness production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md` before implementation. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file during implementation.
+Run `/story-readiness production/epics/presentation-layer/story-002-shared-economy-view.md` before HAND-UI-010. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file during implementation.

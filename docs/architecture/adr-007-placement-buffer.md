@@ -88,6 +88,8 @@ Placement submissions are stored as plain Rust data in a `PendingPlacements` Bev
 5. Emits the `PlacementCommitted` internal event to trigger Combat Resolution sub-step 1.
 6. Clears `PendingPlacements`.
 
+**2026-05-05 amendment - explicit placement mana split:** accepted pending data preserves the protocol submit split as `current_mana_spend` and `reserve_mana_spend`. The legacy `reserve_amount` shorthand is superseded. Board/Lane validates the explicit split through ADR-019 Economy APIs at submission time and applies the exact split at PLACEMENT close in step 2.
+
 The ordering in step 3 before step 4 is the invariant that enforces the simultaneous reveal: clients receive the reveal message before any replicated ECS component from newly spawned units can arrive, because the entities do not exist until after the message is enqueued.
 
 ### Architecture
@@ -186,9 +188,10 @@ pub struct PlacedCard {
     /// Absolute cell target for Minions, Traps, Structures.
     /// PlayTarget::LaneWide for Fields. PlayTarget::Instant for Orders.
     pub target: PlayTarget,
-    /// Mana drawn from the player's reserve pool (0 = pay all from current_mana).
-    /// Validated: reserve_amount <= card.cost AND sum(reserve_amount) <= player.reserve_mana.
-    pub reserve_amount: u32,
+    /// Mana drawn from current-round mana for this card.
+    pub current_mana_spend: u32,
+    /// Mana drawn from reserve mana for this card.
+    pub reserve_mana_spend: u32,
 }
 
 // Internal event — emitted after S2CPlacementReveal is enqueued and ECS entities
@@ -235,13 +238,14 @@ fn validate_mana_budget(
     card_costs: &[(CardId, u32)],  // (card_id, cost) looked up from CardPool
     player_mana: &PlayerMana,
 ) -> bool {
-    let total_reserve: u32 = placements.iter().map(|p| p.reserve_amount).sum();
-    let total_current: u32 = placements
+    let total_reserve: u32 = placements.iter().map(|p| p.reserve_mana_spend).sum();
+    let total_current: u32 = placements.iter().map(|p| p.current_mana_spend).sum();
+    let all_splits_match_cost = placements
         .iter()
         .zip(card_costs.iter())
-        .map(|(p, (_, cost))| cost.saturating_sub(p.reserve_amount))
-        .sum();
-    total_reserve <= player_mana.reserve_mana
+        .all(|(p, (_, cost))| p.current_mana_spend + p.reserve_mana_spend == *cost);
+    all_splits_match_cost
+        && total_reserve <= player_mana.reserve_mana
         && total_current <= player_mana.current_mana
 }
 ```
@@ -303,8 +307,9 @@ The server validates the complete batch atomically before writing to `PendingPla
 | Phase gate | Received outside PLACEMENT | network-protocol.md Rule 4 |
 | Duplicate submission | `player.is_final = true` already | network-protocol.md NP-14 |
 | Card in hand | `card_id` not in `player.hand` | network-protocol.md `C2SSubmitPlacement` notes |
-| Reserve mana | `sum(reserve_amount) > player.reserve_mana` | network-protocol.md `C2SSubmitPlacement` notes |
-| Current mana | `sum(card.cost - reserve_amount) > player.current_mana` | network-protocol.md `C2SSubmitPlacement` notes |
+| Reserve mana | `sum(reserve_mana_spend) > player.reserve_mana` | network-protocol.md `C2SSubmitPlacement` notes |
+| Current mana | `sum(current_mana_spend) > player.current_mana` | network-protocol.md `C2SSubmitPlacement` notes |
+| Split sum | `current_mana_spend + reserve_mana_spend != card.cost` | network-protocol.md `C2SSubmitPlacement` notes |
 | Lane range | `lane` outside 1–5 | network-protocol.md lane/cell validation contract |
 | Cell range | `cell` outside 1–8 | network-protocol.md lane/cell validation contract |
 | Spawn range (Minions) | F2 validation fails for `target_cell` | board-lane-system.md Formula F2 |
@@ -401,7 +406,7 @@ The `liv-bevy-018` and `liv-bevy-lightyear` skills are mandatory on all files in
 ### Negative
 
 - Placement data lives in two representations: first as `PendingPlacements` (plain Rust), then as ECS entities (post-reveal). Any system that needs to query "what was placed this round" before sub-step 1 commits must read from `PendingPlacements`, not from ECS. This requires contributors to understand the two-phase lifecycle.
-- Mana validation duplicates some logic that the Economy System owns. The buffer validates the mana budget at submission time; the Economy System deducts at close time. These must stay in sync. If the Economy System's mana model changes, placement validation must be updated in parallel.
+- Mana validation must call the ADR-019 Economy explicit split API. The buffer validates the mana budget at submission time; the Economy System deducts at close time. These must stay in sync by sharing `validate_explicit_mana_split` / `apply_explicit_mana_split` rather than duplicating arithmetic.
 - The `close_placement_phase` system is an ordering-critical singleton: the broadcast-before-spawn invariant must be maintained if the system is ever refactored. This risk is mitigated by the Implementation Guidelines above and by the BLS-01 unit test suite.
 
 ### Neutral
@@ -415,7 +420,7 @@ The `liv-bevy-018` and `liv-bevy-lightyear` skills are mandatory on all files in
 |------|------------|--------|-----------|
 | `close_placement_phase` is split into two systems by a future refactor, with entity spawn preceding broadcast | Low | Critical — breaks simultaneous reveal invariant | BLS-01 integration test asserts no `BoardPosition` component replication precedes `S2CPlacementReveal` delivery. Code comment on system marks the ordering constraint explicitly. |
 | Lightyear 0.26 auto-replicates entities on spawn before `ReplicateTo` is added | Low | Critical — same failure mode | Verify `Commands::spawn` without explicit replication opt-in produces no replication (see Engine Compatibility Verification Required). Add test asserting entity spawned without `ReplicateTo` component does not appear in client world. |
-| Mana validation in buffer becomes stale relative to Economy System model | Medium | High — invalid placements accepted | Mana validation and Economy System must be updated together. Shared `validate_mana_budget` function called from both paths to prevent divergence. |
+| Mana validation in buffer becomes stale relative to Economy System model | Medium | High — invalid placements accepted | Board/Lane calls Economy's explicit split validation API. No independent placement mana arithmetic is allowed outside tests. |
 | `placement_timer` and "all submitted" condition race in the same frame | Low | Medium — double-close | `close_placement_phase` is guarded by a phase flag; the RSM transitions away from PLACEMENT after close fires, making a second invocation a no-op. |
 | Validation occupancy check diverges from ECS board state (stale reads) | Low | Medium — placements accepted that conflict with live board | Occupancy validation reads from `BoardOccupancy` resource (owned by Board/Lane System), which is updated synchronously after each sub-step commit. Validation runs before the next PLACEMENT phase, by which time occupancy reflects the previous round's committed state. |
 
@@ -449,7 +454,7 @@ If a future decision supersedes this ADR (e.g., Lightyear gains first-class per-
 - [ ] **BLS-01**: GIVEN Player A submits valid placements during PLACEMENT, WHEN the submission is accepted, THEN no ECS entity with `BoardPosition` or `CardOwner` component exists in the server `World` for those placements before `close_placement_phase` runs. (Unit test — `World::new()`, no Lightyear session required.)
 - [ ] **BLS-02**: GIVEN Player A submits valid placements and PLACEMENT closes, WHEN `close_placement_phase` runs, THEN `S2CPlacementReveal` is enqueued on the reliable channel AND ECS unit entities are present in the `World` — in that system invocation, in that order. (Integration test — requires a live Lightyear session to inspect message enqueue order relative to entity spawn.)
 - [ ] **BLS-03**: GIVEN both players have submitted, WHEN `S2CPlacementReveal` is delivered to each client, THEN the `placements` field contains entries for BOTH players' cards in a single message. No partial reveal (one player's cards arriving before the other's) is possible. (Integration test — NP-28.)
-- [ ] **BLS-04**: GIVEN a placement batch where `sum(placements[i].reserve_amount) > player.reserve_mana`, WHEN `C2SSubmitPlacement` is processed, THEN the entire batch is silently discarded, `PendingPlacements[player].is_final` remains `false`, and no S2C message is sent. (Unit test.)
+- [ ] **BLS-04**: GIVEN a placement batch where `sum(placements[i].reserve_mana_spend) > player.reserve_mana`, WHEN `C2SSubmitPlacement` is processed, THEN the entire batch is silently discarded, `PendingPlacements[player].is_final` remains `false`, and no S2C message is sent. (Unit test.)
 - [ ] **BLS-05**: GIVEN Player A has 0 fakes destroyed and submits a Minion to `(lane: 1, cell: 2)`, WHEN `validate_spawn_range` is called, THEN it returns `false` and the batch is discarded. (Unit test — board-lane-system.md BL-5.)
 - [ ] **BLS-06**: GIVEN Player A submits a valid `C2SSubmitPlacement` and then submits a second `C2SSubmitPlacement` in the same PLACEMENT phase, WHEN the second message is processed, THEN `PendingPlacements[Player_A].placements` is unchanged (first submission retained), `is_final` remains `true`, and no S2C message is sent. (Unit test — NP-14.)
 - [ ] **BLS-07**: GIVEN `PlacementPhaseEntered` fires, WHEN `placement_buffer_open` runs, THEN `PendingPlacements.submissions` is empty for all players. (Unit test.)

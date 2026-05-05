@@ -211,6 +211,20 @@ fn phase_sink_system(
     }
 }
 
+// ─── client/src/presentation/shared/economy_view.rs ───────────────────────
+
+/// Canonical client-side own-economy read model. Written only from
+/// authoritative S2C messages / snapshots; read by Hand UI, HUD, and
+/// Shop/Auction UI.
+#[derive(Resource, Default, Debug, Clone, PartialEq)]
+pub struct PlayerEconomyView {
+    pub gold: u32,
+    pub current_mana: u32,
+    pub reserve_mana: u32,
+    pub mana_cap: u8,
+    pub initialized: bool,
+}
+
 
 // ─── client/src/presentation/shared/card_atlas.rs ─────────────────
 
@@ -308,6 +322,8 @@ impl Lens<Sprite> for SpriteAlphaLens {
 
 6. **Single S2CPhaseChanged drain.** `MessageReceiver<S2CPhaseChanged>` (Lightyear) is drained ONLY in `phase_sink_system` registered by `PresentationPlugin`. No sub-plugin system may register its own `MessageReceiver<S2CPhaseChanged>`. All sub-plugin phase-transition logic reads `Res<CurrentClientPhase>`. This parallels the `multiple_c2s_*_readers` forbidden patterns on the server.
 
+6a. **Single own-economy drain.** `MessageReceiver<S2CGoldUpdate>` is drained ONLY by the shared economy-view system registered in Presentation Layer Story 002. Hand UI, HUD, and Shop/Auction UI read `Res<PlayerEconomyView>`; they must not each drain `S2CGoldUpdate`.
+
 7. **AnimationTick set contract.** The `AnimQueue` tick system runs first within `AnimationTick`. `GroupDrainedSignal` emitted by `MessageWriter<GroupDrainedSignal>` (Bevy internal) is available to consumers next frame — within the same frame only if a consumer system is ordered `.after()` the AnimQueue tick system in the same set.
 
 8. **Rendering boundary is immutable.** Board content (units, objectives, prisms, HP bars, spawn range) is always world-space. bevy_ui panels (HUD, Hand, Shop, Auction) always render above world-space. There is no supported path to render a world-space sprite above a bevy_ui panel without a custom render layer setup. The hand drag-sprite preview is a bevy_ui `Node` element, not a world-space `Sprite`, to preserve correct z-ordering during drag.
@@ -379,6 +395,7 @@ impl Lens<Sprite> for SpriteAlphaLens {
 | board-rendering.md | Rule 3 — `BoardLayout` Resource accessible to any system mapping cell positions | `BoardLayout` is a shared Resource inserted by `BoardRenderingPlugin`, accessible project-wide via `Res<BoardLayout>`. |
 | board-rendering.md | Bevy 0.18 API Contract — `SpriteAlphaLens`, cancel-and-replace, `TextureAtlas` as component field | `SpriteAlphaLens` owned by `CardAnimationsPlugin`. Cancel-and-replace contract defined in Key Interfaces. `CardAtlas` struct shows correct 0.18 atlas field usage. |
 | hand-ui.md | Rule 1 — pre-pooled fan + drag sprite; atlas-sharing decision with Board Rendering open | Pre-pooling mandated in Implementation Guideline 3. Atlas sharing resolved by `Res<CardAtlas>`. Drag sprite is a bevy_ui `Node` (not world-space Sprite) per rendering boundary rule. |
+| hand-ui.md | Rule 10 / Rule 13 — submit pre-validation and reserve split controls require current/reserve mana | `PlayerEconomyView` is the shared presentation resource populated from `S2CGoldUpdate` and `S2CGameSnapshot`; Hand UI reads it instead of draining S2C economy messages directly. |
 | hud.md | Rule 1 — HUD entities pre-pooled at session start; `PickingBehavior` behind feature flag | Pre-pooling mandated in Implementation Guideline 3. Feature-flag guard in Implementation Guideline 4. |
 | card-animations.md | Rule C-4 — same S2C event → simultaneous animation start across all sub-systems | `PresentationSet` guarantees all sub-systems process the same message batch (in `MessageDrain`) before any animation starts (in `AnimationTick`). No sub-system can start an animation for an event that another sub-system has not yet processed. |
 | card-animations.md | Rule C-3 — tween cancel-and-replace must not despawn/respawn game-state entities | Cancel-and-replace contract (Key Interfaces) explicitly forbids despawn+respawn. `set_tweenable()` is the required path. |
@@ -411,6 +428,7 @@ No existing presentation code. Implementation order:
 - [ ] `SpriteAlphaLens::lerp()` at ratio `0.0` preserves original alpha; at `1.0` produces `end` alpha. Unit test on `Sprite::default()`.
 - [ ] `cargo build -p client` without `ui_picking` feature compiles without panic. CI build matrix entry.
 - [ ] `phase_sink_system` is the only system registering `MessageReceiver<S2CPhaseChanged>`. Verified by grep: `MessageReceiver<S2CPhaseChanged>` appears exactly once in `client/src/`.
+- [ ] The shared economy-view system is the only production system registering `MessageReceiver<S2CGoldUpdate>`. Verified by grep: `MessageReceiver<S2CGoldUpdate>` appears exactly once in `client/src/`.
 - [ ] Tween cancel-and-replace does not despawn entities. ECS test advancing `Time<Virtual>` asserts entity survives `set_tweenable()` call with game-state components intact.
 
 ## Related Decisions

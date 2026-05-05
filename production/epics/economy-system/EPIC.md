@@ -28,7 +28,7 @@ Lower than RSM/GSS because Economy uses standard Bevy patterns: a `Resource` for
 
 ## GDD Requirements
 
-> Note: `docs/architecture/tr-registry.yaml` has not yet been populated. TR-IDs below are informal references from the GDD Acceptance Criteria.
+> Note: Stories 001-006 were authored before this epic's registry rows were fully reconciled. Story 007 uses stable `TR-ECO-009` for the HAND-UI-010 prerequisite repair.
 
 | Informal TR-ID | Requirement | ADR Coverage |
 |----------------|-------------|--------------|
@@ -40,6 +40,7 @@ Lower than RSM/GSS because Economy uses standard Bevy patterns: a `Resource` for
 | TR-ECO-06 | Spend validation: `current_mana + reserve_mana >= cost` before accepting card play; auto-split current-first | GDD Rule 4 |
 | TR-ECO-07 | Reserve-only cards: `reserve_mana >= cost`; `current_mana` does not substitute | GDD Rule 4 |
 | TR-ECO-08 | Auction reservation: `reserve_gold` lowers shop-purchase ceiling; `release_gold_reservation` on outbid; `apply_spend(from_reserve=false)` on auction win | GDD Rule 7 (auction hand-full + reservation) |
+| TR-ECO-009 | Placement submit validation uses an explicit current/reserve mana split API; normal non-placement spends keep auto-split behavior | ADR-019 |
 
 ## Scope
 
@@ -81,6 +82,19 @@ pub fn can_afford_shop(economy: &PlayerEconomy, cost: u32) -> bool;
     // = (gold - reserved_gold) >= cost
 
 pub fn discard_current_mana(economy: &mut PlayerEconomy);  // RESOLUTION end; current_mana = 0
+
+pub fn validate_explicit_mana_split(
+    economy: &PlayerEconomy,
+    cost: u32,
+    current_mana_spend: u32,
+    reserve_mana_spend: u32,
+) -> Result<(), SpendError>;
+
+pub fn apply_explicit_mana_split(
+    economy: &mut PlayerEconomy,
+    current_mana_spend: u32,
+    reserve_mana_spend: u32,
+);
 ```
 
 **Invariants enforced by the API:**
@@ -172,5 +186,6 @@ pub fn discard_current_mana(economy: &mut PlayerEconomy);  // RESOLUTION end; cu
 | 004 | [Kill & Objective Awards](story-004-kill-and-objective-awards.md) | Logic | Ready | ADR-010 |
 | 005 | [Auction Reservation & Bid Validation](story-005-auction-reservation-bid-validation.md) | Logic | Ready | ADR-010 |
 | 006 | [Network Dispatch Wiring](story-006-network-dispatch-wiring.md) | Integration | Ready | ADR-010, ADR-008 |
+| 007 | [Explicit Placement Mana Split API](story-007-explicit-placement-mana-split-api.md) | Logic | Ready | ADR-019 |
 
 Work through stories in order — each story's `Depends on:` field tells you what must be DONE before you can start it. Story 001 (State + API) can begin in parallel with other epics — it is pure Rust with no dependencies.

@@ -113,8 +113,9 @@ If the PLACEMENT timer reaches 0 while a card is mid-drag (lifted from fan, not 
 The Submit button is active from PLACEMENT entry regardless of staged count. Pressing Submit triggers a two-step sequence:
 
 1. **Client-side pre-validation** (before sending the message). Hand UI mirrors the server's validation (per `network-protocol.md` line 86):
-   - `sum(placements[i].reserve_amount) ≤ player.reserve_mana`
-   - `sum(card[i].cost − placements[i].reserve_amount) ≤ player.current_mana`
+   - `sum(placements[i].reserve_mana_spend) <= player.reserve_mana`
+   - `sum(placements[i].current_mana_spend) <= player.current_mana`
+   - `placements[i].current_mana_spend + placements[i].reserve_mana_spend == card[i].cost`
    - For each placement, the `card_id` is in the player's current hand
    - For each `BoardCell`, `TargetUnit`, `TargetObj`, `LaneWide`: the lane (1–5) and cell (1–8 if applicable) values are in range
    
@@ -139,25 +140,25 @@ The server still performs the same validation server-side and silently discards 
 On RESOLUTION entry: all Hand UI elements hide immediately (`Visibility::Hidden`). No exit animation. On RESOLUTION exit to DRAFT: Hand UI restores visibility with the updated hand state from the completed round.
 
 **Rule 13 — Reserve Mana Split UI**
-Cards with `cost > 0` may have a portion of their cost paid from the player's reserve mana pool instead of the current-round mana. The split is encoded per staged card as `PlacedCard.reserve_amount: u32` (NP line 69). The default at stage time is `reserve_amount = 0` (pay all from current).
+Cards with `cost > 0` may have a portion of their cost paid from the player's reserve mana pool instead of the current-round mana. The split is encoded per staged card as `current_mana_spend: u32` plus `reserve_mana_spend: u32` in `PlacedCardSubmit`. The default at stage time is `reserve_mana_spend = 0` and `current_mana_spend = card.cost` (pay all from current).
 
 **When the control appears.** The split control attaches to each staged card's *fan ghost* (not the board ghost) — anchored just above the dimmed fan slot in the bottom strip. It appears the moment a card stages and disappears the moment it un-stages. It is visible only during PLACEMENT in `STAGING` state and is disabled (display-only, non-interactive) once the player presses Submit.
 
 **Strip positioning at high card counts.** Each strip is centered horizontally on its fan ghost slot's `card_x` position (from Formula 1). At `fan_half_spread = 280 px` with 10 staged cards, adjacent fan slots are spaced ≈62 px apart center-to-center. Strips (96 px wide) will overlap adjacent strips by ≈34 px at full staging — this overlap is intentional and acceptable given the absolute positioning of each strip over its ghost. The `[ − ]` and `[ + ]` buttons (24 px each) remain accessible at the left and right edges of each strip despite overlap. The minimum spatial separation between a strip button and the Instant card un-stage gesture (clicking the dimmed fan ghost): the un-stage click target is the full 120-px slot; the strip is positioned 8 px above it. Vertical separation of ≥8 px is maintained at all card counts.
 
 **Layout.** Each control is a single horizontal strip (height 24 px, width 96 px) showing `[ − ] [N / cost] [ + ]`:
-- `[ − ]` decrements `reserve_amount` by 1 (clamped to 0).
-- `[ + ]` increments `reserve_amount` by 1 (clamped to `card.cost` and to `player.reserve_mana − sum(other_staged.reserve_amount)`).
+- `[ − ]` decrements `reserve_mana_spend` by 1 (clamped to 0) and increments `current_mana_spend` by 1.
+- `[ + ]` increments `reserve_mana_spend` by 1 (clamped to `card.cost` and to `player.reserve_mana - sum(other_staged.reserve_mana_spend)`) and decrements `current_mana_spend` by 1.
 - `[N / cost]` displays the current split, e.g. `2 / 5` = "2 mana from reserve, 3 from current."
 
 **Interaction model.**
-- Click `[ − ]` or `[ + ]` to step `reserve_amount` by 1. No drag, no slider, no modal — single-click steps only. Each click runs the clamp checks and updates the display in the same frame.
+- Click `[ − ]` or `[ + ]` to step `reserve_mana_spend` by 1. No drag, no slider, no modal — single-click steps only. Each click runs the clamp checks and updates the display in the same frame.
 - The strip is non-modal: it does not block board reading or other staging actions. The 10-second timer continues to run during adjustment.
 - If the player has no reserve mana available at all (`player.reserve_mana == 0`), all `[ + ]` buttons are disabled (greyed out) and the strip displays `0 / cost`. No interaction possible.
 - For cards with `cost == 0` (free cards), the entire strip is hidden (no decision to make).
-- The `[ + ]` button becomes `Disabled` immediately when `reserve_amount` reaches `min(card.cost, player.reserve_mana − sum(other_staged.reserve_amount))` — the remaining pool ceiling. **No auto-decrement of other staged cards occurs.** If the player wants to allocate more reserve to card B, they must first press `[ − ]` on card A to free reserve. This keeps the interaction model explicit and reversible.
+- The `[ + ]` button becomes `Disabled` immediately when `reserve_mana_spend` reaches `min(card.cost, player.reserve_mana - sum(other_staged.reserve_mana_spend))` — the remaining pool ceiling. **No auto-decrement of other staged cards occurs.** If the player wants to allocate more reserve to card B, they must first press `[ − ]` on card A to free reserve. This keeps the interaction model explicit and reversible.
 
-**Pre-submit validation interaction.** The Rule 10 pre-validation sums all `reserve_amount` and all `cost − reserve_amount` across staged cards. The `[ + ]` button-disable logic prevents most overdraw cases proactively, but the Rule 10 check is the final gate.
+**Pre-submit validation interaction.** The Rule 10 pre-validation sums all `reserve_mana_spend` and all `current_mana_spend` across staged cards. The `[ + ]` button-disable logic prevents most overdraw cases proactively, but the Rule 10 check is the final gate.
 
 **Class System dependency.** The Hand UI control is class-agnostic: any card with `cost > 0` shows the strip. The Class System GDD (M3, Not Started) may add class-specific reserve mana behaviours (e.g., Xelor `Rollback` mechanics). The +/- control's *interaction model* is fixed by this GDD; the *availability* and *meaning* of reserve mana per class is owned by Class System.
 
@@ -434,7 +435,7 @@ The split control attaches to each staged card's fan ghost (anchored 8 px above 
 |---|---|
 | Strip background | Ink Blue `#1A2D5A` 70% opacity, 4 px corner radius |
 | Buttons (`[ − ]`, `[ + ]`) | 24×24 px each. Active: Ivory `#F7F0DC` glyph on Ink Blue. Hovered: glyph brightens to Prism White `#EEF4FF`. Disabled: glyph desaturated to 30% chroma. |
-| `[N / cost]` numeric display | Ivory `#F7F0DC`, Heavy weight, centered, e.g. `2 / 5`. The leading number is the reserve_amount; the trailing number is the card's cost. |
+| `[N / cost]` numeric display | Ivory `#F7F0DC`, Heavy weight, centered, e.g. `2 / 5`. The leading number is `reserve_mana_spend`; the trailing number is the card's cost. |
 | `cost == 0` cards | Strip not rendered (no decision available) |
 | `player.reserve_mana == 0` | Both `[ − ]` and `[ + ]` disabled; display shows `0 / cost` |
 
@@ -541,8 +542,8 @@ All criteria BLOCKING unless noted ADVISORY. Where an AC asserts visual properti
 
 | # | Criterion | Type |
 |---|---|---|
-| HU-17b | **GIVEN** the player has staged cards whose `sum(reserve_amount) > player.reserve_mana`, **WHEN** Submit is pressed, **THEN** (a) no `C2SSubmitPlacement` message is written; (b) the Submit button does NOT enter the `Inactive` state; (c) a `SubmitValidationError::ReserveOverdrawn` marker is attached to the Submit button entity (the Crimson inline label rendering is ADVISORY). | BLOCKING |
-| HU-17c | **GIVEN** the player un-stages a card that was causing the reserve overdraw, **WHEN** Submit is pressed again, **THEN** pre-validation passes and `C2SSubmitPlacement` is sent. The previous `SubmitValidationError` marker is cleared. | BLOCKING |
+| HU-17b | **GIVEN** the player has staged cards whose `sum(reserve_mana_spend) > player.reserve_mana`, **WHEN** Submit is pressed, **THEN** (a) no `C2SSubmitPlacement` message is written; (b) the Submit button does NOT enter the `Inactive` state; (c) a `SubmitValidationError::ReserveOverdrawn` marker is attached to the Submit button entity (the Crimson inline label rendering is ADVISORY). | BLOCKING |
+| HU-17c | **GIVEN** the player un-stages a card that was causing the reserve overdraw, **WHEN** Submit is pressed again, **THEN** pre-validation passes and `C2SSubmitPlacement` is sent with explicit current/reserve spend fields. The previous `SubmitValidationError` marker is cleared. | BLOCKING |
 
 ### PLACEMENT — Instant Cards
 
@@ -569,8 +570,8 @@ All criteria BLOCKING unless noted ADVISORY. Where an AC asserts visual properti
 
 | # | Criterion | Type |
 |---|---|---|
-| HU-25 | **GIVEN** a card with `cost = 5` is staged AND `player.reserve_mana = 3`, **WHEN** the player clicks `[ + ]` on its reserve strip 3 times, **THEN** the strip's `reserve_amount` increments to 1, 2, 3; after the third click `reserve_amount == min(5, 3) = 3` so `[ + ]` immediately enters `Disabled` state. A fourth click produces no state change. | BLOCKING |
-| HU-26 | **GIVEN** card A is staged with `reserve_amount = 2` AND `player.reserve_mana = 3`, **WHEN** card B (cost ≥ 2) is staged (default `reserve_amount = 0`) AND the player presses `[ + ]` on card B's reserve strip, **THEN** (a) card B's `reserve_amount` increments to 1 (ceiling = `player.reserve_mana − sum_other = 3 − 2 = 1`); (b) card B's `[ + ]` button immediately enters `Disabled` state; (c) card A's `reserve_amount` remains 2 (no auto-decrement occurs). | BLOCKING |
+| HU-25 | **GIVEN** a card with `cost = 5` is staged AND `player.reserve_mana = 3`, **WHEN** the player clicks `[ + ]` on its reserve strip 3 times, **THEN** the strip's `reserve_mana_spend` increments to 1, 2, 3 while `current_mana_spend` decrements to 4, 3, 2; after the third click `reserve_mana_spend == min(5, 3) = 3` so `[ + ]` immediately enters `Disabled` state. A fourth click produces no state change. | BLOCKING |
+| HU-26 | **GIVEN** card A is staged with `reserve_mana_spend = 2` AND `player.reserve_mana = 3`, **WHEN** card B (cost >= 2) is staged (default `reserve_mana_spend = 0`) AND the player presses `[ + ]` on card B's reserve strip, **THEN** (a) card B's `reserve_mana_spend` increments to 1 (ceiling = `player.reserve_mana - sum_other = 3 - 2 = 1`); (b) card B's `[ + ]` button immediately enters `Disabled` state; (c) card A's `reserve_mana_spend` remains 2 (no auto-decrement occurs). | BLOCKING |
 | HU-27 | **GIVEN** a card with `cost = 0` is staged, **WHEN** the staged ghost renders, **THEN** the reserve strip entity for that card has `Visibility::Hidden` (no decision available). | BLOCKING |
 
 ### Activation Lock (Rule 5c)

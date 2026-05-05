@@ -84,6 +84,8 @@ When a player plays a card with cost `C`:
 
 **Example:** Player has 0 current, 5 reserve. Plays a 3-cost card with no restriction. Auto-split: `current_mana -= 0`, `reserve_mana -= 3`. Result: 0 current, 2 reserve. ← Accepted.
 
+**Placement explicit split exception:** PLACEMENT submissions do not use auto-split. The player chooses an explicit split per staged card through Hand UI, and `C2SSubmitPlacement` sends `current_mana_spend` plus `reserve_mana_spend` for each entry. Economy exposes `validate_explicit_mana_split` and `apply_explicit_mana_split` so Board/Lane can validate and later deduct exactly that split. This exception exists only for placement submit batches; non-placement card plays keep the auto-split rules above.
+
 ---
 
 **5. Mana cap**
@@ -416,6 +418,8 @@ Economy data (gold, mana, reserve, mana_cap) is read by the HUD for display. Sho
 | EC24 | **GIVEN** `gold = 5` and no refreshes yet this DRAFT phase, **WHEN** player triggers manual refresh, **THEN** `gold = 4` (1g deducted for first refresh). | BLOCKING |
 | EC25 | **GIVEN** `gold = 5` and one refresh already used this DRAFT phase, **WHEN** player triggers a second refresh, **THEN** `gold = 3` (2g deducted). | BLOCKING |
 | EC26 | **GIVEN** two refreshes used this DRAFT phase, **WHEN** the NEXT DRAFT phase begins, **THEN** the refresh cost counter resets to base cost (first refresh in new phase costs 1g). | BLOCKING |
+| EC27 | **GIVEN** `current_mana = 3`, `reserve_mana = 2`, and card cost `5`, **WHEN** Board/Lane validates placement split `current_mana_spend = 3`, `reserve_mana_spend = 2`, **THEN** validation succeeds. If either spend exceeds its matching pool or the two spends do not sum to card cost, validation rejects and neither pool changes. | BLOCKING |
+| EC28 | **GIVEN** an explicit placement split has already validated, **WHEN** Board/Lane applies it at PLACEMENT close, **THEN** `current_mana` and `reserve_mana` are deducted by exactly the submitted amounts; no auto-split recomputation occurs. | BLOCKING |
 
 ## Open Questions
 
