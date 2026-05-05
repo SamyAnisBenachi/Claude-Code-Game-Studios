@@ -1830,3 +1830,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching ECO-007/story row exists in `production/sprint-status.yaml`.
 - Next recommended: Board/Lane Story 011 Placement Submit Authority Validation (`production/epics/board-lane-system/story-011-placement-submit-authority-validation.md`) after readiness check. HAND-UI-010 still depends on BLS-011 and PRES-002; PRES-002 story-done remains untouched per instruction.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE
+- Story: `production/epics/presentation-layer/story-002-shared-economy-view.md` - Story 002: Shared Economy View
+- Criteria: 6/6 passing; resource shape, single `S2CGoldUpdate` drain, reconnect snapshot seed, no local optimism, Hand UI consumption path, and single production drain grep guard verified.
+- Test Evidence: `cargo test -p client --test shared_economy_view_test` passed 3/3. Affected HUD/Hand/PRES regression bundle passed: `hud_gold_mana_display_test` 6/6, `same_tick_tie_break_test` 3/3, `reconnect_snapshot_rebuild_test` 3/3, `hand_ui_reserve_mana_strip_test` 3/3, `hand_ui_draft_initial_grid_test` 5/5, and `hud_numeric_tween_animation_test` 4/4. `cargo check -p client`, `cargo fmt -p client -- --check`, and `git diff --check` passed.
+- Verification: Current `main` includes worker commit `58afb3b2ba321bbea4bd5331a13bc228f952e6ed`, main integration commit `8587fa9`, and integration fix commit `e14feb6`; `PlayerEconomyView` is the shared presentation read model for own gold/current mana/reserve mana/mana cap, is updated only from authoritative `S2CGoldUpdate` or local reconnect snapshot data, and is consumed by Hand UI/HUD without independent `S2CGoldUpdate` drains.
+- Notes: No blocking GDD, ADR-021, ADR-002, ADR-008, ADR-019, Bevy 0.18, or Lightyear 0.26 deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching PRES-002 row exists in `production/sprint-status.yaml`.
+- Next recommended: PRES-002 no longer blocks HAND-UI-010; remaining HAND-UI-010 prerequisite is BLS-011 (`production/epics/board-lane-system/story-011-placement-submit-authority-validation.md`) before readiness can be rechecked.

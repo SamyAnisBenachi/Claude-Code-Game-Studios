@@ -1,7 +1,7 @@
 # Story 002: Shared Economy View
 
 > **Epic**: Presentation Layer
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -30,22 +30,22 @@
 
 *From GDD `design/gdd/hand-ui.md` Rule 10 and Rule 13, scoped to this shared presentation prerequisite:*
 
-- [ ] **PRES-002 / TR-PRES-001 - resource shape**: `client/src/presentation/shared/economy_view.rs` (or equivalent shared presentation module) defines `PlayerEconomyView` with at least:
+- [x] **PRES-002 / TR-PRES-001 - resource shape**: `client/src/presentation/shared/economy_view.rs` (or equivalent shared presentation module) defines `PlayerEconomyView` with at least:
   - `gold: u32`
   - `current_mana: u32`
   - `reserve_mana: u32`
   - `mana_cap: u8`
   - `last_update_source` or equivalent test-observable marker for S2C vs snapshot updates
 
-- [ ] **PRES-002 / TR-PRES-001 - S2CGoldUpdate drain**: Exactly one production client system drains `MessageReceiver<S2CGoldUpdate>` and updates `PlayerEconomyView` in `PresentationSet::MessageDrain`.
+- [x] **PRES-002 / TR-PRES-001 - S2CGoldUpdate drain**: Exactly one production client system drains `MessageReceiver<S2CGoldUpdate>` and updates `PlayerEconomyView` in `PresentationSet::MessageDrain`.
 
-- [ ] **PRES-002 / TR-PRES-001 - reconnect snapshot seed**: When `S2CGameSnapshot` is processed for the local player, `PlayerEconomyView` is seeded from the local `PlayerSnapshot` before Hand UI submit validation can run.
+- [x] **PRES-002 / TR-PRES-001 - reconnect snapshot seed**: When `S2CGameSnapshot` is processed for the local player, `PlayerEconomyView` is seeded from the local `PlayerSnapshot` before Hand UI submit validation can run.
 
-- [ ] **PRES-002 / TR-PRES-001 - no local optimism**: Local purchase, activation, reserve-strip, or submit input must not mutate `PlayerEconomyView`; only authoritative S2C/snapshot data may change it.
+- [x] **PRES-002 / TR-PRES-001 - no local optimism**: Local purchase, activation, reserve-strip, or submit input must not mutate `PlayerEconomyView`; only authoritative S2C/snapshot data may change it.
 
-- [ ] **PRES-002 / TR-PRES-001 - Hand UI consumption path**: Hand UI submit pre-validation and reserve strip controls read `Res<PlayerEconomyView>` for current/reserve mana limits. They must not drain `S2CGoldUpdate` directly.
+- [x] **PRES-002 / TR-PRES-001 - Hand UI consumption path**: Hand UI submit pre-validation and reserve strip controls read `Res<PlayerEconomyView>` for current/reserve mana limits. They must not drain `S2CGoldUpdate` directly.
 
-- [ ] Grep guard: production client source contains exactly one `MessageReceiver<S2CGoldUpdate>` drain after this story.
+- [x] Grep guard: production client source contains exactly one `MessageReceiver<S2CGoldUpdate>` drain after this story.
 
 ---
 
@@ -113,7 +113,7 @@ Register the drain in `PresentationSet::MessageDrain`, after the shared phase si
 - `tests/integration/presentation/shared_economy_view_test.rs`
 - Grep evidence in `production/qa/evidence/shared-economy-view-evidence.md`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -121,3 +121,16 @@ Register the drain in `PresentationSet::MessageDrain`, after the shared phase si
 
 - Depends on: Presentation Layer Story 001 complete; `S2CGoldUpdate` and `S2CGameSnapshot` protocol types available.
 - Unlocks: `production/epics/hand-ui/story-010-submit-prevalidation.md` client-economy-view prerequisite.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Verdict**: COMPLETE
+**Criteria**: 6/6 passing; resource shape, single `S2CGoldUpdate` drain, reconnect snapshot seed, no local optimism, Hand UI consumption path, and grep guard verified.
+**Test Evidence**: `tests/integration/presentation/shared_economy_view_test.rs` exists and `cargo test -p client --test shared_economy_view_test` passed 3/3. Required grep evidence exists at `production/qa/evidence/shared-economy-view-evidence.md`.
+**Regression Evidence**: Affected HUD/Hand/PRES bundle passed: `hud_gold_mana_display_test` 6/6, `same_tick_tie_break_test` 3/3, `reconnect_snapshot_rebuild_test` 3/3, `hand_ui_reserve_mana_strip_test` 3/3, `hand_ui_draft_initial_grid_test` 5/5, and `hud_numeric_tween_animation_test` 4/4. `cargo check -p client`, `cargo fmt -p client -- --check`, `rg -n "MessageReceiver<S2CGoldUpdate>" client/src`, and `git diff --check` passed; the grep returned exactly one production occurrence in `client/src/presentation/shared/economy_view.rs`.
+**Verification**: Current `main` includes worker commit `58afb3b2ba321bbea4bd5331a13bc228f952e6ed`, main integration commit `8587fa9`, and integration fix commit `e14feb6`. `PlayerEconomyView` mirrors own gold/current mana/reserve mana/mana cap from authoritative S2C gold updates and local reconnect snapshots; Hand UI and HUD read the shared resource instead of draining `S2CGoldUpdate` independently.
+**Deviations**: None. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+**Tech Debt**: None logged.
+**Sprint Status**: Unchanged; no matching PRES-002 row exists in `production/sprint-status.yaml`.
+**Next Recommended**: PRES-002 no longer blocks HAND-UI-010. HAND-UI-010 still depends on BLS-011 (`production/epics/board-lane-system/story-011-placement-submit-authority-validation.md`) before readiness can be rechecked.
