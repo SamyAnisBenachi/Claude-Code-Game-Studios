@@ -534,6 +534,12 @@ impl FanSlotLayout {
 pub struct HandSubmitButton;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SubmitValidationError {
+    ReserveOverdrawn,
+    ManaOverdrawn,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ConfirmationModal;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -749,11 +755,12 @@ impl Plugin for HandUiPlugin {
                         handle_hand_fan_card_click_system,
                         handle_placement_drop_resolved_system,
                         handle_reserve_strip_button_interactions_system,
-                        handle_submit_button_click_system,
                     )
                         .chain()
                         .in_set(HandUiSystemSet::Input),
                     (
+                        sync_submit_validation_error_system,
+                        handle_submit_button_click_system,
                         tick_placement_timer_system,
                         apply_placement_drag_highlights_system,
                         tick_pending_purchase_timeouts_system,
@@ -996,6 +1003,9 @@ pub fn hand_ui_phase_transition_system(
 
     if entering_staging {
         placement_timer.reset_for_placement(timer_config.placement_duration_ms);
+        commands
+            .entity(entities.submit_button)
+            .remove::<SubmitValidationError>();
         if let Ok(mut timer_state) = timer_states.get_mut(entities.timer) {
             *timer_state = TimerState::Normal;
         }
@@ -1016,6 +1026,7 @@ pub fn tick_placement_timer_system(
     mut placement_timer: ResMut<PlacementTimer>,
     mut active_drag: ResMut<ActivePlacementDrag>,
     pending_placements: Res<PendingPlacements>,
+    economy: Res<PlayerEconomyView>,
     mut urgency_writer: MessageWriter<TimerUrgencyAudio>,
     mut commands: Commands,
     mut visibility_query: Query<&mut Visibility>,
@@ -1073,6 +1084,8 @@ pub fn tick_placement_timer_system(
                 &mut outbound,
                 &mut placement_timer,
                 &mut visibility_query,
+                &economy,
+                &mut commands,
             );
         }
     }
@@ -1101,6 +1114,8 @@ pub fn tick_placement_timer_system(
                 &mut outbound,
                 &mut placement_timer,
                 &mut visibility_query,
+                &economy,
+                &mut commands,
             );
         }
     }
@@ -1511,6 +1526,7 @@ pub fn handle_ghost_drag_ended_system(
 pub fn handle_placement_drop_resolved_system(
     mode: Res<HandUiMode>,
     catalog: Res<HandCardCatalog>,
+    economy: Res<PlayerEconomyView>,
     entities: Option<Res<HandUiEntities>>,
     mut drops: MessageReader<HandUiPlacementDropResolved>,
     mut pending_placements: ResMut<PendingPlacements>,
@@ -1593,6 +1609,8 @@ pub fn handle_placement_drop_resolved_system(
                 &mut outbound,
                 &mut placement_timer,
                 &mut visibility_sets.p0(),
+                &economy,
+                &mut commands,
             );
         }
     }
@@ -1675,6 +1693,8 @@ pub fn handle_submit_button_click_system(
     entities: Option<Res<HandUiEntities>>,
     mut clicks: MessageReader<HandSubmitButtonClicked>,
     pending_placements: Res<PendingPlacements>,
+    economy: Res<PlayerEconomyView>,
+    mut commands: Commands,
     mut submit_buttons: Query<(&mut Text, &mut HandSubmitInteractionState), With<HandSubmitButton>>,
     mut submit_senders: Query<&mut MessageSender<C2SSubmitPlacement>>,
     mut outbound: ResMut<HandUiOutboundMessages>,
@@ -1712,7 +1732,31 @@ pub fn handle_submit_button_click_system(
             &mut outbound,
             &mut placement_timer,
             &mut visibility_query,
+            &economy,
+            &mut commands,
         );
+    }
+}
+
+pub fn sync_submit_validation_error_system(
+    entities: Option<Res<HandUiEntities>>,
+    pending_placements: Res<PendingPlacements>,
+    economy: Res<PlayerEconomyView>,
+    submit_errors: Query<&SubmitValidationError, With<HandSubmitButton>>,
+    mut commands: Commands,
+) {
+    let Some(entities) = entities else {
+        return;
+    };
+
+    if submit_errors.get(entities.submit_button).is_err() {
+        return;
+    }
+
+    if validate_submit_placement_spend(&pending_placements, &economy).is_ok() {
+        commands
+            .entity(entities.submit_button)
+            .remove::<SubmitValidationError>();
     }
 }
 
@@ -2186,6 +2230,8 @@ fn submit_pending_placements(
     outbound: &mut HandUiOutboundMessages,
     placement_timer: &mut PlacementTimer,
     visibility_query: &mut Query<&mut Visibility>,
+    economy: &PlayerEconomyView,
+    commands: &mut Commands,
 ) -> bool {
     if placement_timer.submitted {
         return false;
@@ -2198,6 +2244,15 @@ fn submit_pending_placements(
     if *interaction_state != HandSubmitInteractionState::Active {
         return false;
     }
+
+    if let Err(error) = validate_submit_placement_spend(pending_placements, economy) {
+        commands.entity(submit_button).insert(error);
+        return false;
+    }
+
+    commands
+        .entity(submit_button)
+        .remove::<SubmitValidationError>();
 
     let msg = C2SSubmitPlacement {
         placements: pending_placements.placements.clone(),
@@ -2214,6 +2269,33 @@ fn submit_pending_placements(
     text.0.push_str("Submitted");
     set_visibility(submitted_checkmark, Visibility::Visible, visibility_query);
     true
+}
+
+fn validate_submit_placement_spend(
+    pending_placements: &PendingPlacements,
+    economy: &PlayerEconomyView,
+) -> Result<(), SubmitValidationError> {
+    let reserve_spend = pending_placements
+        .placements
+        .iter()
+        .fold(0_u32, |sum, placement| {
+            sum.saturating_add(placement.reserve_mana_spend)
+        });
+    if reserve_spend > economy.reserve_mana {
+        return Err(SubmitValidationError::ReserveOverdrawn);
+    }
+
+    let current_spend = pending_placements
+        .placements
+        .iter()
+        .fold(0_u32, |sum, placement| {
+            sum.saturating_add(placement.current_mana_spend)
+        });
+    if current_spend > economy.current_mana {
+        return Err(SubmitValidationError::ManaOverdrawn);
+    }
+
+    Ok(())
 }
 
 fn cancel_active_placement_drag(

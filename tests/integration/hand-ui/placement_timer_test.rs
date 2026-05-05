@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 use client::card_animations::HandDragSprite;
+use client::presentation::PlayerEconomyView;
 use client::state::{ClientState, CurrentClientPhase};
 use client::ui::{
     hand::{
@@ -168,6 +169,11 @@ fn app_with_hand_ui_in_placement(catalog: HashMap<CardId, CardData>) -> App {
         lane_height: 80.0,
     });
     app.insert_resource(HandCardCatalog { cards: catalog });
+    {
+        let mut economy = app.world_mut().resource_mut::<PlayerEconomyView>();
+        economy.current_mana = 10;
+        economy.reserve_mana = 10;
+    }
     app.world_mut()
         .resource_mut::<Time<Virtual>>()
         .set_max_delta(Duration::from_secs(60));
