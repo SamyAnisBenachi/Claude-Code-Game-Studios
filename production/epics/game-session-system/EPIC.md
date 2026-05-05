@@ -4,11 +4,11 @@
 > **GDD**: design/gdd/game-session-system.md
 > **Architecture Module**: `server/core/session/` (full module — `state.rs`, `events.rs`, `system.rs`, `config.rs`, `plugin.rs`); contributes `on_session_ready` Observer registration to `server/core/rsm/`
 > **Status**: Ready
-> **Stories**: 7 stories — see Stories section below
+> **Stories**: 8 stories — see Stories section below
 
 ## Overview
 
-Implements the lobby finite-state machine and the session-readiness handoff that bridges connection-time concerns to the round loop. This epic owns `SessionSlot`, room creation and join, public class selection with deferred simultaneous reveal, the F4 readiness predicate (all slots filled + all classes confirmed + lobby deadline not expired), the lobby heartbeat / `OnDisconnected` immediate-cancel path, and — critically — the `SessionReady` Observer-trigger delivery that hands `SessionConfig` and `ServerRng` to the RSM in the same `Update` tick. After `SessionReady` fires, the GSS becomes a passive read-only configuration store: `Res<SessionConfig>` (mode, player_count, team_map, class_map) is the single source of session data for every Feature system. The GSS also owns the `ServerRng` lifecycle: it seeds the RNG from `OsRng` immediately before triggering `SessionReady` (per ADR-005) and destroys both `SessionConfig` and `ServerRng` resources on `GameOverEmitted` (subscribed from Epic 1's RSM event bus). This epic is the load-bearing gate between LOBBY and DRAFT_INITIAL: an Observer-trigger ordering bug here panics the RSM with "resource not found" and breaks every game session.
+Implements the lobby finite-state machine and the session-readiness handoff that bridges connection-time concerns to the round loop. This epic owns `SessionSlot`, room creation and join, public class selection with deferred simultaneous reveal, the F4 readiness predicate (all slots filled + all classes confirmed + lobby deadline not expired), lobby/session PLACEMENT timer multiplier negotiation, the lobby heartbeat / `OnDisconnected` immediate-cancel path, and — critically — the `SessionReady` Observer-trigger delivery that hands `SessionConfig` and `ServerRng` to the RSM in the same `Update` tick. After `SessionReady` fires, the GSS becomes a passive read-only configuration store: `Res<SessionConfig>` (mode, player_count, team_map, class_map, placement_timer_multiplier_effective) is the single source of session data for every Feature system. The GSS also owns the `ServerRng` lifecycle: it seeds the RNG from `OsRng` immediately before triggering `SessionReady` (per ADR-005) and destroys both `SessionConfig` and `ServerRng` resources on `GameOverEmitted` (subscribed from Epic 1's RSM event bus). This epic is the load-bearing gate between LOBBY and DRAFT_INITIAL: an Observer-trigger ordering bug here panics the RSM with "resource not found" and breaks every game session.
 
 ## Governing ADRs
 
@@ -16,6 +16,7 @@ Implements the lobby finite-state machine and the session-readiness handoff that
 |-----|-----------------|-------------|
 | ADR-011: Reconnect Flow and Game Snapshot Protocol | `SessionToken` issued at first connect; `ClientId` re-mapped on every Lightyear transport reconnect; live message queue held until `S2CGameSnapshot` delivery confirmed; secret-stripping rules per player at snapshot send (own vs opponent) | HIGH |
 | ADR-012: SessionReady Delivery (Observer, same-frame) | `SessionReady` is delivered via `Commands::trigger(SessionReady)` (Observer pattern), NOT buffered `Events<T>`; `SessionConfig` and `ServerRng` inserted via Commands BEFORE the trigger, in the same system; one Observer only (`on_session_ready` in RSM); exclusive-system `World::trigger` fallback documented if Commands flush ordering cannot be verified | HIGH |
+| ADR-023: Placement Timer Accessibility Authority | GSS negotiates the multiplayer PLACEMENT timer multiplier during LOBBY; effective value is the highest requested multiplayer-safe value capped at 3x; value is neutral, frozen into `SessionConfig` at `SessionReady`, and consumed by RSM/client timer display through server-provided phase data | HIGH |
 
 ## Engine Risk: HIGH
 
@@ -43,6 +44,7 @@ Three high-risk post-cutoff API behaviours converge in this epic:
 | TR-GSS-08 | `SessionToken` enables reconnect across new `ClientId` | ADR-011 ✅ |
 | TR-GSS-09 | Class reveal: deferred simultaneous broadcast (`S2CClassesRevealed`) | GDD Rule 7 |
 | TR-GSS-10 | One active session per `PlayerId`; idempotent `C2SCreateRoom` retry | GDD Rule 13 |
+| TR-GSS-11 | GSS owns multiplayer PLACEMENT timer multiplier negotiation before `SessionReady`: highest requested multiplayer-safe value wins, capped at 3x, neutral, and frozen into `SessionConfig` | ADR-023 |
 
 ## Scope
 
@@ -52,6 +54,7 @@ Three high-risk post-cutoff API behaviours converge in this epic:
 - `SessionSlot { index: u8, team: TeamId, player: Option<PlayerId>, class: Option<ClassId> }`
 - `LobbyState` enum: `LobbyWaiting | LobbyReady | GameActive | LobbyCancelled | GameOver`
 - Per-session resources: `SessionSlots(Vec<SessionSlot>)`, `ClassSelections(HashMap<PlayerId, ClassId>)`, `LobbyDeadline(f64)`, `LobbyHeartbeats(HashMap<PlayerId, f64>)`, `LobbyState`
+- PLACEMENT timer multiplier lobby resources: per-player `PlacementTimerMultiplier` requests and neutral effective room/session value
 - `SessionId(Uuid)`, `RoomCode(String)` newtypes
 - `SessionToken` (issued at first `C2SHello`, used by ADR-011 reconnect path)
 
@@ -60,7 +63,7 @@ Three high-risk post-cutoff API behaviours converge in this epic:
 - `SessionCancelled { reason: SessionCancelledReason }` — buffered Event for post-cancel teardown subscribers (logging, etc.)
 
 **`server/src/core/session/config.rs`**
-- `SessionConfig { mode: GameMode, player_count: u8, team_map: HashMap<PlayerId, TeamId>, class_map: HashMap<PlayerId, ClassId> }` — `#[derive(Resource, Clone)]`. Inserted ONCE at `SessionReady` time. Never mutated after insertion. Removed by GSS on `GameOverEmitted`.
+- `SessionConfig { mode: GameMode, player_count: u8, team_map: HashMap<PlayerId, TeamId>, class_map: HashMap<PlayerId, ClassId>, placement_timer_multiplier_effective: PlacementTimerMultiplier }` — `#[derive(Resource, Clone)]`. Inserted ONCE at `SessionReady` time. Never mutated after insertion. Removed by GSS on `GameOverEmitted`.
 - `build_session_config(slots: &SessionSlots, selections: &ClassSelections) -> SessionConfig` — panics if any occupied slot has `class = None` (GDD Rule 11 invariant; ADR-012 Verification Required item).
 
 **`server/src/core/session/system.rs`**
@@ -68,6 +71,7 @@ Three high-risk post-cutoff API behaviours converge in this epic:
 - `handle_join_room(C2SJoinRoom)` — slot validation; on success: `S2CJoinAck` to joiner (full slot state), `S2CSlotUpdated` broadcast to others (full slot vector — never deltas). One-active-session check per Rule 13 (`AlreadyInSession` rejection).
 - `handle_select_class(C2SSelectClass)` — updates preview only; not broadcast.
 - `handle_confirm_class(C2SConfirmClass)` — same-system sequential write of `SessionSlot.class = Some(_)` and `class_selections[player_id] = class_id`; `S2CClassLocked` unicast to locking player; if all slots locked → `S2CClassesRevealed` broadcast.
+- `handle_set_placement_timer_multiplier(C2SSetPlacementTimerMultiplier)` — valid only in LOBBY before `SessionReady`; accepts multiplayer-safe values `1x`, `1.5x`, `2x`, and `3x`; computes the neutral effective value as highest request capped at 3x; broadcasts `S2CSessionSettingsUpdated` without requester attribution; requests after `SessionReady` do not mutate active `SessionConfig`.
 - `evaluate_session_ready` — runs every tick while `LobbyState == LobbyWaiting`. F4 predicate: all slots filled AND all classes confirmed AND `now < lobby_deadline`. If true:
   1. Build `SessionConfig` from finalised slots (panic on `None` invariant violation).
   2. Initialise `ServerRng` from `OsRng`. If init fails → transition to `LobbyCancelled`, broadcast `S2CSessionCancelled`, do NOT trigger `SessionReady`.
@@ -92,7 +96,7 @@ Three high-risk post-cutoff API behaviours converge in this epic:
 **Reconnect path (ADR-011)**
 - `SessionToken` issued in response to first `C2SHello { protocol_version, session_token: None }`; stored on the session.
 - On reconnect (`C2SHello { session_token: Some(t) }`): map new `ClientId` to existing `PlayerId`, hold live messages in `ReconnectTracker.snapshot_sent[player] = false` queue, send `S2CHandshake`, then `S2CGameSnapshot` (built per ADR-011 secret-stripping rules — own player gets full hand/objectives, opponent fields stripped to public only), then re-send `S2CObjectiveIdentities` (ADR-001), then `S2CPhaseChanged`, then unfreeze the live queue.
-- `S2CGameSnapshot` builder is implemented here (it touches `Res<RoundState>`, `Res<SessionConfig>`, `Res<PlayerEconomy>`, `Res<HiddenObjectives>`, `Res<BoardGrid>`, `Res<PlayerPool>` — broadest cross-system read in the codebase).
+- `S2CGameSnapshot` builder is implemented here (it touches `Res<RoundState>`, `Res<SessionConfig>`, `Res<PlayerEconomy>`, `Res<HiddenObjectives>`, `Res<BoardGrid>`, `Res<PlayerPool>` — broadest cross-system read in the codebase). Snapshot data includes the frozen neutral `placement_timer_multiplier_effective` and never attributes the requester.
 
 **Tests**
 - `tests/unit/session/` — F4 predicate truth table (all combinations of slot fill, class confirm, deadline expiry).
@@ -102,6 +106,9 @@ Three high-risk post-cutoff API behaviours converge in this epic:
 - `tests/unit/session/class_reveal_test.rs` — both players confirm: `S2CClassLocked` to each player only; `S2CClassesRevealed` broadcast only after second confirm (Rule 7).
 - `tests/unit/session/dual_signal_disconnect_test.rs` — Lightyear `OnDisconnected` cancels immediately; heartbeat gap > 15s cancels via fallback path; first signal wins.
 - `tests/integration/session/reconnect_snapshot_test.rs` — full reconnect flow: live message queue held until snapshot sent (ADR-011 invariant).
+- `tests/unit/session/placement_timer_multiplier_test.rs` — ADR-023 GSS coverage: highest request wins, no request defaults to 1x, no post-`SessionReady` mutation, neutral `S2CSessionSettingsUpdated`.
+- `tests/unit/rsm/rsm_placement_timer_multiplier_test.rs` — ADR-023 RSM coverage: standard and auction-followup PLACEMENT base durations multiplied by frozen `SessionConfig.placement_timer_multiplier_effective`.
+- `tests/integration/hand-ui/server_timer_duration_test.rs` — Hand UI initializes PLACEMENT timer from server-provided phase/snapshot duration rather than the local 10s default.
 
 ### Out of Scope (owned by other epics)
 
@@ -139,6 +146,8 @@ If any check fails: implement `evaluate_session_ready` as `fn(world: &mut World)
 - An integration test demonstrates the full LOBBY → DRAFT_INITIAL path: room created, second player joins, both players confirm class, `SessionReady` triggers, RSM transitions, `S2CPhaseChanged(DRAFT_INITIAL)` broadcast — all within the same Update run.
 - An integration test demonstrates session teardown: `GameOverEmitted` event causes `SessionConfig` and `ServerRng` to be removed from the World; `S2CGameOver` broadcast on `ReliableChannel`.
 - Reconnect integration test: `S2CGameSnapshot` is sent before any live message after a reconnect; live messages queued during the snapshot window are delivered after `snapshot_sent[player] = true`.
+- ADR-023 validation passes: `C2SSetPlacementTimerMultiplier`, `S2CSessionSettingsUpdated`, `PlacementTimerMultiplier { 1x, 1.5x, 2x, 3x }`, frozen `SessionConfig.placement_timer_multiplier_effective`, RSM effective PLACEMENT duration, snapshot frozen multiplier, and Hand UI server timer consumption are implemented and tested.
+- No multiplayer Standard-tier `0.5x` timer option exists, and no S2C/session settings payload exposes requester identity.
 
 ## Stories
 
@@ -151,6 +160,7 @@ If any check fails: implement `evaluate_session_ready` as `fn(world: &mut World)
 | 005 | Lobby Disconnect — Dual-Signal Cancel | Integration | Ready | ADR-011, ADR-008 |
 | 006 | Game-Over Teardown | Integration | Ready | ADR-010, ADR-005, ADR-008 |
 | 007 | Reconnect and Game Snapshot | Integration | Ready | ADR-011, ADR-001, ADR-008, ADR-002 |
+| 008 | PLACEMENT Timer Multiplier Authority | Integration | Ready | ADR-023, ADR-002, ADR-009, ADR-012, ADR-021 |
 
 > ⚠️ Story 004 is **Blocked** pending ADR-012 verification (Commands::trigger ordering invariant — 4 checklist items must be confirmed against Bevy 0.18). Run the verification spike before Story 004 can be marked Ready.
 
@@ -165,6 +175,7 @@ Suggested decomposition (final story list to be authored via `/create-stories`):
 5. **Lobby disconnect (dual-signal)** (Integration) — Lightyear `OnDisconnected` immediate cancel; heartbeat gap fallback (15s); lobby timeout cancel.
 6. **GAME_OVER teardown** (Integration) — Subscribe to `GameOverEmitted` from Epic 1; broadcast `S2CGameOver`; destroy `SessionConfig` + `ServerRng`.
 7. **Reconnect + snapshot** (Integration) — `SessionToken` handshake; `S2CGameSnapshot` builder with secret-stripping (ADR-011); live-message queue gated on `snapshot_sent`.
+8. **PLACEMENT timer multiplier authority** (Integration) — ADR-023 protocol, GSS request negotiation, `SessionConfig` freeze, RSM effective PLACEMENT duration, reconnect snapshot field, and Hand UI server-provided timer consumption.
 
 ## Next Step
 
