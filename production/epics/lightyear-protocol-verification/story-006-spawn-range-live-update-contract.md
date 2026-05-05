@@ -86,8 +86,8 @@ This story only establishes the wire/schema contract. Board/Lane Story 012 owns 
 
 **Story Type**: Config/Data
 **Required evidence**:
-- `cargo check -p shared`
-- Unit or integration coverage for NP-33 ordering, likely under `tests/unit/protocol/` or the existing protocol tests.
+- `tests/unit/protocol/spawn_range_live_update_contract_test.rs`
+- `cargo check -p shared` if `shared/src/protocol.rs` or protocol/schema registration is touched.
 
 **Status**: [ ] Not yet created
 
