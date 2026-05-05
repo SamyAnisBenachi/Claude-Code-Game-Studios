@@ -5,13 +5,14 @@ use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 use bevy::{prelude::*, time::Virtual};
 use bevy_tweening::{TweenAnim, TweeningPlugin};
+use client::presentation::PlayerEconomyView;
 use client::state::{ClientState, CurrentClientPhase};
 use client::ui::hand::{
     compute_fan_slot_layout, FanLayoutMetrics, FanSlotIndex, GridSlotCard, GridSlotCardName,
     GridSlotIndex, GridSlotManaCost, GridSlotState, HandCardCatalog, HandContents,
     HandFullNotification, HandGridCardClicked, HandSlotCard, HandUiCardAcquiredReceived,
-    HandUiDraftOfferingReceived, HandUiEconomyView, HandUiEntities, HandUiOutboundMessages,
-    HandUiPlugin, HandUiTimingConfig, NotificationTimer, PendingPurchaseTimer,
+    HandUiDraftOfferingReceived, HandUiEntities, HandUiOutboundMessages, HandUiPlugin,
+    HandUiTimingConfig, NotificationTimer, PendingPurchaseTimer,
 };
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::RoundPhase;
@@ -175,7 +176,7 @@ fn hu_10_pending_purchase_times_out_without_deducting_gold_and_can_retry() {
 
     run_for(&mut app, Duration::from_millis(3_001));
 
-    assert_eq!(app.world().resource::<HandUiEconomyView>().gold, 5);
+    assert_eq!(app.world().resource::<PlayerEconomyView>().gold, 5);
     assert_eq!(
         app.world().get::<GridSlotState>(slot_two),
         Some(&GridSlotState::Available)
@@ -240,9 +241,11 @@ fn app_with_hand_ui_in_draft_initial() -> App {
     app.insert_resource(HandCardCatalog {
         cards: test_catalog(1..=18),
     });
-    app.insert_resource(HandUiEconomyView {
+    app.insert_resource(PlayerEconomyView {
         gold: 5,
         reserve_mana: 0,
+        initialized: true,
+        ..default()
     });
     app.insert_resource(HandUiTimingConfig {
         card_draw_animation_ms: 280,

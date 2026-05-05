@@ -1,16 +1,25 @@
+use ::shared::protocol::S2CPhaseChanged;
 use bevy::prelude::*;
 use lightyear::prelude::MessageReceiver;
-use shared::protocol::S2CPhaseChanged;
 
 use crate::card_animations::{CardAnimationsPlugin, CardAnimationsSet};
+use crate::presentation::shared::economy_view::{
+    drain_game_snapshot_receiver_system as drain_shared_game_snapshot_receiver_system,
+    drain_gold_update_receiver_system as drain_shared_gold_update_receiver_system,
+};
 use crate::state::{apply_phase_changed_message, ClientState};
 use crate::ui::hand::{HandUiPlugin, HandUiSystemSet};
 use crate::ui::hud::{HudPlugin, HudSystemSet};
 use crate::ui::shop_auction::{ShopAuctionUiPlugin, ShopAuctionUiSystemSet};
 
 pub mod board_rendering;
+pub mod shared;
 
 pub use crate::presentation::board_rendering::{BoardRenderingPlugin, CardAtlas};
+pub use crate::presentation::shared::economy_view::{
+    apply_snapshot_to_player_economy_view, PlayerEconomyView, PlayerEconomyViewUpdateSource,
+    PresentationGameSnapshotMessage,
+};
 pub use crate::state::CurrentClientPhase;
 pub use crate::ui::shared::{BoardLayout, LaneCell};
 
@@ -27,7 +36,8 @@ pub enum PresentationSet {
 impl Plugin for PresentationPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<ClientState>()
-            .init_resource::<CurrentClientPhase>();
+            .init_resource::<CurrentClientPhase>()
+            .init_resource::<PlayerEconomyView>();
 
         // ADR-021 registration order is a contract.
         app.add_plugins(CardAnimationsPlugin);
@@ -68,6 +78,16 @@ impl Plugin for PresentationPlugin {
                 .before(HudSystemSet::PhaseTransition)
                 .before(HandUiSystemSet::PhaseTransition)
                 .before(ShopAuctionUiSystemSet::PhaseTransition),
+        )
+        .add_systems(
+            Update,
+            (
+                drain_shared_game_snapshot_receiver_system,
+                drain_shared_gold_update_receiver_system,
+            )
+                .in_set(PresentationSet::MessageDrain)
+                .before(HudSystemSet::MessageDrain)
+                .before(HandUiSystemSet::MessageDrain),
         );
     }
 }

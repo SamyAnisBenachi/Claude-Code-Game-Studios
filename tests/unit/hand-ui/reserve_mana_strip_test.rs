@@ -2,11 +2,12 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
+use client::presentation::PlayerEconomyView;
 use client::state::{ClientState, CurrentClientPhase};
 use client::ui::hand::{
-    FanSlotIndex, HandCardCatalog, HandContents, HandUiEconomyView, HandUiPlacementDropResolved,
-    HandUiPlugin, PendingPlacements, ReserveStripAction, ReserveStripButton,
-    ReserveStripButtonDisabled, ReserveStripForFanSlot, ReserveStripValueText,
+    FanSlotIndex, HandCardCatalog, HandContents, HandUiPlacementDropResolved, HandUiPlugin,
+    PendingPlacements, ReserveStripAction, ReserveStripButton, ReserveStripButtonDisabled,
+    ReserveStripForFanSlot, ReserveStripValueText,
 };
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{PlayTarget, RoundPhase};
@@ -107,7 +108,7 @@ fn app_with_hand_ui_in_placement(catalog: HashMap<CardId, CardData>, reserve_man
     app.add_plugins(HandUiPlugin);
     app.insert_resource(HandCardCatalog { cards: catalog });
     app.world_mut()
-        .resource_mut::<HandUiEconomyView>()
+        .resource_mut::<PlayerEconomyView>()
         .reserve_mana = reserve_mana;
     app.world_mut()
         .resource_mut::<NextState<ClientState>>()

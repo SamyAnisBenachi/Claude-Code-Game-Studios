@@ -6,10 +6,11 @@ use bevy::state::app::StatesPlugin;
 use bevy_tweening::{lens::TransformScaleLens, TweenAnim};
 use client::card_animations::make_tween_anim;
 use client::{
+    presentation::{PlayerEconomyView, PresentationGameSnapshotMessage},
     state::{ClientState, CurrentClientPhase},
     ui::hud::{
-        GoldDisplayState, HudEntities, HudGameSnapshotMessage, HudMode, HudPlayerIds, HudPlugin,
-        ManaDisplayState, ScoreboardDotState, HUD_DOTS_PER_ROW, HUD_ENTITY_COUNT,
+        GoldDisplayState, HudEntities, HudMode, HudPlayerIds, HudPlugin, ManaDisplayState,
+        ScoreboardDotState, HUD_DOTS_PER_ROW, HUD_ENTITY_COUNT,
     },
 };
 use shared::{
@@ -325,14 +326,14 @@ fn opponent_objective_snapshots(
 
 fn write_snapshot(app: &mut App, snapshot: S2CGameSnapshot) {
     app.world_mut()
-        .resource_mut::<Messages<HudGameSnapshotMessage>>()
-        .write(HudGameSnapshotMessage(snapshot));
+        .resource_mut::<Messages<PresentationGameSnapshotMessage>>()
+        .write(PresentationGameSnapshotMessage(snapshot));
 }
 
 fn write_gold_update(app: &mut App, message: S2CGoldUpdate) {
     app.world_mut()
-        .resource_mut::<Messages<client::ui::hud::HudGoldUpdateMessage>>()
-        .write(client::ui::hud::HudGoldUpdateMessage(message));
+        .resource_mut::<PlayerEconomyView>()
+        .apply_gold_update(&message);
 }
 
 fn gold_update(gold: u32, current_mana: u32, mana_cap: u8, reserve_mana: u32) -> S2CGoldUpdate {
