@@ -70,7 +70,9 @@ impl Plugin for PresentationPlugin {
                 HandUiSystemSet::MessageDrain.in_set(PresentationSet::MessageDrain),
                 HandUiSystemSet::StateSync.in_set(PresentationSet::StateSync),
                 ShopAuctionUiSystemSet::PhaseTransition.in_set(PresentationSet::PhaseTransition),
-                ShopAuctionUiSystemSet::MessageDrain.in_set(PresentationSet::MessageDrain),
+                ShopAuctionUiSystemSet::MessageDrain
+                    .in_set(PresentationSet::MessageDrain)
+                    .after(HudSystemSet::MessageDrain),
                 ShopAuctionUiSystemSet::StateSync.in_set(PresentationSet::StateSync),
                 CardAnimationsSet::React.in_set(PresentationSet::MessageDrain),
             ),

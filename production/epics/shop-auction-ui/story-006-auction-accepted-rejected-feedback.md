@@ -1,7 +1,7 @@
 # Story 006: Auction Accepted/Rejected Feedback
 
 > **Epic**: Shop / Auction UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -102,9 +102,9 @@ This story processes `S2CAuctionBidAccepted`, `S2CAuctionBidRejected`, and the a
 ## Test Evidence
 
 **Required evidence**:
-- Integration: `tests/integration/shop_auction_ui/auction_feedback_gold_gate_test.rs`
+- Integration: `tests/integration/shop_auction_ui/auction_feedback_test.rs`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ## Dependencies
 
@@ -117,3 +117,12 @@ This story processes `S2CAuctionBidAccepted`, `S2CAuctionBidRejected`, and the a
 ## Blockers
 
 None.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 9/9 passing
+**Deviations**: None blocking. Advisory only: visual polish for toast animation remains deferred to Story 009, as scoped.
+**Test Evidence**: `cargo test -p client --test shop_auction_ui_auction_feedback_test` passed 6/6. Requested regressions passed: `shop_auction_ui_auction_bid_buttons_test` 5/5, `shop_auction_ui_auction_activation_test` 6/6, and `shop_auction_ui_shop_panel_test` 8/8. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+**Code Review**: Skipped - lean mode.
+**Integration Notes**: Worker commit `abbbe0f1498d7a949e19e2377244b40e83ad5c91` was merged from `work/sau-006-auction-accepted-rejected-feedback`. Integration fixes corrected the exact `HandFull` rejection toast copy and added coverage for phase-exit cleanup of the accepted/gold gate plus ignored late rejections.

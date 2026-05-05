@@ -1980,3 +1980,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching NP-006/story row exists in `production/sprint-status.yaml`.
 - Next recommended: Board/Lane Story 012 (`production/epics/board-lane-system/story-012-spawn-range-authoritative-projection.md`) after readiness check; do not implement it as part of NP-006 closure.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/shop-auction-ui/story-006-auction-accepted-rejected-feedback.md` - Story 006: Auction Accepted/Rejected Feedback
+- Criteria: 9/9 passing; local accepted bid leader/button/timer target, opponent accepted bid two-message local-gold gate in both arrival orders, opponent gold non-satisfaction, rejection affordability reset, exact rejection toast mapping, toast replacement/timer behavior, and phase-exit settlement guard cleanup verified.
+- Test Evidence: `cargo test -p client --test shop_auction_ui_auction_feedback_test` passed 6/6. Requested regressions passed: `shop_auction_ui_auction_bid_buttons_test` 5/5, `shop_auction_ui_auction_activation_test` 6/6, and `shop_auction_ui_shop_panel_test` 8/8. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed after freeing generated Cargo artifacts from `target\msvc-local`.
+- Verification: Worker branch `work/sau-006-auction-accepted-rejected-feedback` commit `abbbe0f1498d7a949e19e2377244b40e83ad5c91` was integrated. Shop/Auction UI handles `S2CAuctionBidAccepted` and `S2CAuctionBidRejected`, consumes HUD's local `S2CGoldBroadcast` bridge for the re-enable gate, writes `AuctionTimerTargetFill`, uses pre-pooled toast entities, and keeps late rejected messages from reviving controls after phase exit.
+- Notes: Advisory only - toast visual polish remains Story 009 scope. No blocking GDD, ADR-013, ADR-019, ADR-021, Bevy 0.18, or Lightyear 0.26 deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching SAU-006/story row exists in `production/sprint-status.yaml`.
+- Next recommended: Shop/Auction UI Story 007 (`production/epics/shop-auction-ui/story-007-auction-settlement-and-shop-transition.md`) after readiness check; do not implement it as part of SAU-006 closure.
