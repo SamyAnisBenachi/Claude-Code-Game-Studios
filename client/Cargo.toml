@@ -40,6 +40,10 @@ path = "src/board_rendering_perf_harness.rs"
 name = "hud_mana_shapes_harness"
 path = "src/hud_mana_shapes_harness.rs"
 
+[[bin]]
+name = "hud_text_size_contrast_harness"
+path = "src/hud_text_size_contrast_harness.rs"
+
 [[test]]
 name = "card_animations_plugin_scaffold_test"
 path = "../tests/unit/card-animations/plugin_scaffold_test.rs"
@@ -111,6 +115,10 @@ path = "../tests/unit/hud/phase_transitions_test.rs"
 [[test]]
 name = "hud_economy_auction_inline_gold_test"
 path = "../tests/unit/hud/economy_auction_inline_gold_test.rs"
+
+[[test]]
+name = "hud_text_size_contrast_accessibility_test"
+path = "../tests/integration/hud/text_size_contrast_accessibility_test.rs"
 
 [[test]]
 name = "hud_game_over_freeze_test"

@@ -1,0 +1,143 @@
+{
+    "url":  "http://127.0.0.1:8082/hud-text-size-contrast-harness.html?fixture=hud_012_text_size_contrast",
+    "captureTool":  "PowerShell Chrome DevTools Protocol",
+    "chromePath":  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "chromeVersion":  "147.0.7727.139",
+    "summaryPath":  "production/qa/evidence/captures/hud-012-text-size-contrast/hud-012-text-size-contrast-capture-summary.json",
+    "captures":  [
+                     {
+                         "viewport":  {
+                                          "width":  1366,
+                                          "height":  768
+                                      },
+                         "url":  "http://127.0.0.1:8082/hud-text-size-contrast-harness.html?fixture=hud_012_text_size_contrast\u0026viewport=1366x768\u0026capture=21ce7ca0ea004456a80e1061094ac758",
+                         "fixture":  {
+                                         "ready_for_capture":  true,
+                                         "fixture":  "hud_012_text_size_contrast",
+                                         "reported":  {
+                                                          "ready_for_capture":  true,
+                                                          "fixture":  "hud_012_text_size_contrast",
+                                                          "phase":  "DRAFT_AUCTION",
+                                                          "round":  9,
+                                                          "own_gold":  "11g",
+                                                          "own_reserved_gold":  " (4r)",
+                                                          "opponent_gold":  "8g",
+                                                          "opponent_reserved_gold":  " (3r)",
+                                                          "current_mana":  "6 / 10",
+                                                          "reserve_mana":  "+2 reserve",
+                                                          "text_size_px":  {
+                                                                               "gold_primary":  40,
+                                                                               "reserved_suffix":  26,
+                                                                               "current_mana":  20,
+                                                                               "reserve_mana":  20,
+                                                                               "phase_label":  20,
+                                                                               "round_counter":  20
+                                                                           },
+                                                          "contrast_ratio":  {
+                                                                                 "primary_text_on_hud_background":  17.87,
+                                                                                 "gold_on_hud_background":  12.95,
+                                                                                 "reserved_suffix_on_hud_background":  6.74,
+                                                                                 "primary_text_on_current_mana_bar":  13.56,
+                                                                                 "primary_text_on_reserve_diamond":  14.8
+                                                                             }
+                                                      },
+                                         "phase":  "DRAFT_AUCTION",
+                                         "round":  9,
+                                         "own_gold":  "11g",
+                                         "own_reserved_gold":  " (4r)",
+                                         "opponent_gold":  "8g",
+                                         "opponent_reserved_gold":  " (3r)",
+                                         "current_mana":  "6 / 10",
+                                         "reserve_mana":  "+2 reserve",
+                                         "text_size_px":  {
+                                                              "gold_primary":  40,
+                                                              "reserved_suffix":  26,
+                                                              "current_mana":  20,
+                                                              "reserve_mana":  20,
+                                                              "phase_label":  20,
+                                                              "round_counter":  20
+                                                          },
+                                         "contrast_ratio":  {
+                                                                "primary_text_on_hud_background":  17.87,
+                                                                "gold_on_hud_background":  12.95,
+                                                                "reserved_suffix_on_hud_background":  6.74,
+                                                                "primary_text_on_current_mana_bar":  13.56,
+                                                                "primary_text_on_reserve_diamond":  14.8
+                                                            }
+                                     },
+                         "screenshot":  "production/qa/evidence/captures/hud-012-text-size-contrast/hud-012-text-size-contrast-1366x768.png",
+                         "screenshotBytes":  19866,
+                         "title":  "HUD-012 Text Size Contrast Harness READY"
+                     },
+                     {
+                         "viewport":  {
+                                          "width":  1920,
+                                          "height":  1080
+                                      },
+                         "url":  "http://127.0.0.1:8082/hud-text-size-contrast-harness.html?fixture=hud_012_text_size_contrast\u0026viewport=1920x1080\u0026capture=ee91683fd1e9404eb0726368a1988ba7",
+                         "fixture":  {
+                                         "ready_for_capture":  true,
+                                         "fixture":  "hud_012_text_size_contrast",
+                                         "reported":  {
+                                                          "ready_for_capture":  true,
+                                                          "fixture":  "hud_012_text_size_contrast",
+                                                          "phase":  "DRAFT_AUCTION",
+                                                          "round":  9,
+                                                          "own_gold":  "11g",
+                                                          "own_reserved_gold":  " (4r)",
+                                                          "opponent_gold":  "8g",
+                                                          "opponent_reserved_gold":  " (3r)",
+                                                          "current_mana":  "6 / 10",
+                                                          "reserve_mana":  "+2 reserve",
+                                                          "text_size_px":  {
+                                                                               "gold_primary":  40,
+                                                                               "reserved_suffix":  26,
+                                                                               "current_mana":  20,
+                                                                               "reserve_mana":  20,
+                                                                               "phase_label":  20,
+                                                                               "round_counter":  20
+                                                                           },
+                                                          "contrast_ratio":  {
+                                                                                 "primary_text_on_hud_background":  17.87,
+                                                                                 "gold_on_hud_background":  12.95,
+                                                                                 "reserved_suffix_on_hud_background":  6.74,
+                                                                                 "primary_text_on_current_mana_bar":  13.56,
+                                                                                 "primary_text_on_reserve_diamond":  14.8
+                                                                             }
+                                                      },
+                                         "phase":  "DRAFT_AUCTION",
+                                         "round":  9,
+                                         "own_gold":  "11g",
+                                         "own_reserved_gold":  " (4r)",
+                                         "opponent_gold":  "8g",
+                                         "opponent_reserved_gold":  " (3r)",
+                                         "current_mana":  "6 / 10",
+                                         "reserve_mana":  "+2 reserve",
+                                         "text_size_px":  {
+                                                              "gold_primary":  40,
+                                                              "reserved_suffix":  26,
+                                                              "current_mana":  20,
+                                                              "reserve_mana":  20,
+                                                              "phase_label":  20,
+                                                              "round_counter":  20
+                                                          },
+                                         "contrast_ratio":  {
+                                                                "primary_text_on_hud_background":  17.87,
+                                                                "gold_on_hud_background":  12.95,
+                                                                "reserved_suffix_on_hud_background":  6.74,
+                                                                "primary_text_on_current_mana_bar":  13.56,
+                                                                "primary_text_on_reserve_diamond":  14.8
+                                                            }
+                                     },
+                         "screenshot":  "production/qa/evidence/captures/hud-012-text-size-contrast/hud-012-text-size-contrast-1920x1080.png",
+                         "screenshotBytes":  23684,
+                         "title":  "HUD-012 Text Size Contrast Harness READY"
+                     }
+                 ],
+    "verdict":  {
+                    "artifactProduction":  "PASS",
+                    "colorCaptureCount":  2,
+                    "fixtureValues":  "phase=DRAFT_AUCTION, round=9, own=11g (4r), opponent=8g (3r), mana=6 / 10, reserve=+2 reserve"
+                },
+    "capturedAt":  "2026-05-06T09:43:42.7230372Z"
+}
