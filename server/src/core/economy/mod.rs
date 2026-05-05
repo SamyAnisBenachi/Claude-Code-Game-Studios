@@ -8,9 +8,10 @@ pub mod system;
 // Scaffold API consumed by downstream stories.
 #[allow(unused_imports)]
 pub use api::{
-    add_reserve, apply_gold_award, apply_mana_ramp, apply_spend, can_afford_bid, can_afford_shop,
-    discard_current_mana, increment_mana_cap, refund_gold, release_gold_reservation, reserve_gold,
-    spend_gold, total_effective_mana, validate_auction_bid, validate_spend,
+    add_reserve, apply_explicit_mana_split, apply_gold_award, apply_mana_ramp, apply_spend,
+    can_afford_bid, can_afford_shop, discard_current_mana, increment_mana_cap, refund_gold,
+    release_gold_reservation, reserve_gold, spend_gold, total_effective_mana, validate_auction_bid,
+    validate_explicit_mana_split, validate_spend,
 };
 pub use plugin::EconomyPlugin;
 // Scaffold API consumed by downstream stories.
