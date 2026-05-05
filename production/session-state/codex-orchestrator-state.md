@@ -337,11 +337,13 @@ None currently tracked here.
   missing `S2CActivationRejected`; Story 013 keeps the reconnect timer-zero
   design question open. Unblocks hand/shop panel layout evidence and later Hand
   UI visual polish.
-- Observed root worktree note: after parallel prompts, the HAND-UI-010
-  prerequisite docs changeset surfaces were committed at `935f090`. The root
-  checkout still has `design/ux/combat-log.md` untracked; do not stage, revert,
-  or commit it unless the user pastes the owning agent's final report or
-  explicitly authorizes it.
+- Combat Log UX spec returned and was pushed at `959e38a`, creating
+  `design/ux/combat-log.md` only. Validation passed: index verified as only
+  `design/ux/combat-log.md`, `git diff --cached --check` passed, and
+  `git diff --check` passed with only unrelated CRLF warnings. The follow-up
+  orchestration tracking commit `89a8756` is also in `origin/main` history and
+  recorded the COMBAT-011 approval blocker. No blocker remains for the combat
+  log UX spec window.
 - COMBAT-011 / S5-20 ResolutionEvent Log Completeness readiness repair/recheck
   returned READY. Initial repair was pushed at `92b5826`, updating
   `docs/architecture/tr-registry.yaml` and
@@ -1244,6 +1246,7 @@ Current active windows by user default-launch rule:
 - Shop/Auction UI PNG asset pack returned and pushed `efb95a1`; window can be
   cleared.
 - Hand UI UX design returned and pushed `fc95a84`; window can be cleared.
+- Combat Log UX design returned and pushed `959e38a`; window can be cleared.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
   and recommends a new shared Presentation Layer story. Window can be cleared.
