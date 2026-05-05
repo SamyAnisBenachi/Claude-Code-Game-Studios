@@ -167,6 +167,14 @@ None currently tracked here.
   and pushed `origin/work/combat-011-resolution-event-log`. Root integrated and
   pushed it to `origin/main` as `73ad695`. Worker window can be cleared; queue
   serialized story-done only.
+- BOARD-RENDERING-003 readiness returned NEEDS WORK, not blocked. Story 001 and
+  Story 002 are Complete; ADR-020/ADR-021 are Accepted; `TR-BR-003` is active.
+  Gaps before `/dev-story`: story manifest is stale (`2026-05-01` vs current
+  control manifest `2026-05-05`), GDD/TR trace is incomplete for snapshot
+  rebuild / HP bars / objective identity isolation / missing-card fallback /
+  pending state reconciliation, and the rendering performance budget note is
+  missing. Repair docs-only, then rerun readiness; do not launch implementation
+  yet.
 - Shop/Auction UI UX review finished with verdict NEEDS REVISION. It is not a
   major redesign and does not block SAU-001, but it blocks clean final
   visual/accessibility handoff and SAU-009. Full blockers: bid accessibility
@@ -1251,6 +1259,9 @@ Current active windows by user default-launch rule:
   cleared.
 - Hand UI UX design returned and pushed `fc95a84`; window can be cleared.
 - Combat Log UX design returned and pushed `959e38a`; window can be cleared.
+- BOARD-RENDERING-003 readiness returned NEEDS WORK; readiness window can be
+  cleared after launching a docs-only repair. Do not launch BOARD-003 dev-story
+  until readiness returns READY.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
   and recommends a new shared Presentation Layer story. Window can be cleared.
