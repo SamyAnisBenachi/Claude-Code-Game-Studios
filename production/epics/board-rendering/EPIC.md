@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/board-rendering.md
 > **Architecture Module**: `client/src/ui/board/` - `BoardRenderingPlugin` (sub-plugin #2 inside `PresentationPlugin`)
 > **Status**: Ready - story set drafted for S5-21; Story 001 depends on Presentation Layer Story 001
-> **Stories**: 11 stories created - 8 Ready, 3 Blocked, plus final board evidence follow-up scope
+> **Stories**: 12 stories created - 7 Complete, 2 Ready, 3 Blocked; S6-03 browser/WASM evidence follow-up added as Story 012
 
 ## Overview
 
@@ -74,7 +74,8 @@ Shared ADR-021 infrastructure is owned by [Presentation Layer Story 001](../pres
 | Art bible / atlas frame count | Stories 003 and 010 | Confirm atlas budget and placeholder-to-final art path before performance evidence is signed off |
 | Keyword/status display projection | Story 009 | Implement data-driven status icons and co-occupancy visual offsets |
 | Spawn range prerequisite chain | NP-006 -> BLS-012 -> BR-011 | NP defines schema/ordering (NP-33/TR-NP-014); BLS owns `SpawnRangeState` projection and snapshot source; BR consumes snapshot + live event for persistent highlights |
-| Final board evidence | Later split after BR-011 | Capture final status-icon atlas evidence, spawn-highlight evidence, browser frame-time evidence, and any final-art icon evidence |
+| Browser/WASM baseline evidence | Story 012 | Capture the narrowed BOARD-010 browser/WASM baseline screenshot and frame-time evidence for Sprint 6 S6-03 without claiming BOARD-009 final evidence, spawn highlights, traps, final VFX, or full epic closure |
+| Final board evidence | Later split after BR-011 and final visual scope | Capture final status-icon atlas evidence, spawn-highlight evidence, trap/final-VFX evidence if still required, and any final-art icon evidence before full Board Rendering epic closure |
 | Presentation Layer scaffold missing | Story 001 | Complete or readiness-approve Presentation Layer Story 001 before implementing Board Rendering Story 001 |
 
 ## Definition of Done
@@ -94,19 +95,20 @@ This epic is complete when:
 
 | # | Story | Type | Status | TR-IDs | ADR |
 |---|-------|------|--------|--------|-----|
-| 001 | [Plugin Scaffold, BoardLayout, and CardAtlas](story-001-plugin-scaffold-board-layout-card-atlas.md) | Logic | Ready | TR-BR-002 | ADR-021 |
-| 002 | [Board Grid, Camera, and Z Layers](story-002-board-grid-camera-and-z-layers.md) | Logic | Ready | TR-BR-003 | ADR-021 |
-| 003 | [Snapshot Spawn: Units, Objectives, and HP Bars](story-003-snapshot-spawn-units-objectives-and-hp-bars.md) | Integration | Ready | TR-BR-003 | ADR-020, ADR-021 |
-| 004 | [Ghost Preview and Hand UI Bridge](story-004-ghost-preview-hand-ui-bridge.md) | Integration | Ready | TR-BR-002 | ADR-021 |
-| 005 | [Placement Reveal Collect and Tween](story-005-placement-reveal-collect-and-tween.md) | Visual/Feel | Ready | TR-BR-001 | ADR-017, ADR-021 |
+| 001 | [Plugin Scaffold, BoardLayout, and CardAtlas](story-001-plugin-scaffold-board-layout-card-atlas.md) | Logic | Complete | TR-BR-002 | ADR-021 |
+| 002 | [Board Grid, Camera, and Z Layers](story-002-board-grid-camera-and-z-layers.md) | Logic | Complete | TR-BR-003 | ADR-021 |
+| 003 | [Snapshot Spawn: Units, Objectives, and HP Bars](story-003-snapshot-spawn-units-objectives-and-hp-bars.md) | Integration | Complete | TR-BR-003 | ADR-020, ADR-021 |
+| 004 | [Ghost Preview and Hand UI Bridge](story-004-ghost-preview-hand-ui-bridge.md) | Integration | Complete | TR-BR-002 | ADR-021 |
+| 005 | [Placement Reveal Collect and Tween](story-005-placement-reveal-collect-and-tween.md) | Visual/Feel | Complete | TR-BR-001 | ADR-017, ADR-021 |
 | 006 | [Resolution AnimQueue and Phase Buffering](story-006-resolution-anim-queue-and-phase-buffering.md) | Integration | Ready | TR-BR-001, TR-BR-004, TR-BR-005 | ADR-017, ADR-021 |
 | 007 | [Reconnect Snapshot and Desync Recovery](story-007-reconnect-snapshot-and-desync-recovery.md) | Integration | Blocked | TR-BR-005 | ADR-011, ADR-021 |
 | 008 | [Objective Reveal and HUD Fanout](story-008-objective-reveal-and-hud-fanout.md) | Integration | Blocked | TR-BR-005 | ADR-001, ADR-021 |
-| 009 | [Status Icons and Co-Occupancy Visuals](story-009-status-icons-cooccupancy-and-spawn-range.md) | Visual/Feel | Ready | TR-BR-006, TR-BR-007 | ADR-018, ADR-021 |
-| 010 | [Performance Evidence and CI Guards](story-010-performance-evidence-and-ci-guards.md) | Config/Data | Ready | TR-BR-003 | ADR-021 |
+| 009 | [Status Icons and Co-Occupancy Visuals](story-009-status-icons-cooccupancy-and-spawn-range.md) | Visual/Feel | Complete | TR-BR-006, TR-BR-007 | ADR-018, ADR-021 |
+| 010 | [Performance Evidence and CI Guards](story-010-performance-evidence-and-ci-guards.md) | Config/Data | Complete | TR-BR-003 | ADR-021 |
 | 011 | [Spawn Range Highlights](story-011-spawn-range-highlights.md) | Visual/Feel | Blocked | TR-BR-008, TR-NP-014 | ADR-011, ADR-020, ADR-021, ADR-008 |
+| 012 | [Browser/WASM Board Performance Evidence](story-012-browser-wasm-board-performance-evidence.md) | Config/Data | Ready | TR-BR-003, TR-BR-005 | ADR-021 |
 
-**Story counts**: 2 Logic, 4 Integration, 3 Visual/Feel, 1 Config/Data, plus final evidence split follow-up.
+**Story counts**: 2 Logic, 5 Integration, 3 Visual/Feel, 2 Config/Data, plus later final evidence split follow-up.
 
 ## Sprint 6 Candidate Order
 
@@ -120,8 +122,9 @@ Recommended Sprint 6 sequence:
 7. Story 006 - resolution queue after Combat Story 011 event-log contract completion.
 8. Story 008 - objective reveal/HUD fanout after transport contract lands.
 9. Story 011 - spawn range highlights after NP-006 and BLS-012 land.
-10. Story 010 - performance and CI guard evidence once the visible path exists.
+10. Story 010 - narrowed baseline performance and CI guard evidence once the visible path exists.
+11. Story 012 - Sprint 6 S6-03 browser/WASM baseline screenshot and frame-time evidence after BOARD-010.
 
 ## Next Step
 
-Run `/story-readiness production/epics/presentation-layer/story-001-presentation-plugin-set-and-phase-sink.md` before Board Rendering Story 001 implementation. Then run `/story-readiness production/epics/board-rendering/story-001-plugin-scaffold-board-layout-card-atlas.md`. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file.
+Run `/story-readiness production/epics/board-rendering/story-012-browser-wasm-board-performance-evidence.md` before Sprint 6 S6-03 implementation. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file.
