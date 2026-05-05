@@ -3,8 +3,8 @@
 > **Layer**: Presentation
 > **GDD**: design/gdd/shop-auction-ui.md
 > **Architecture Module**: `client/src/ui/shop_auction/` - `ShopAuctionUiPlugin` (sub-plugin #5 inside `PresentationPlugin`)
-> **Status**: Ready - story set drafted for S5-21; Story 001 launches after Presentation Layer Story 001 and Board Rendering Story 001
-> **Stories**: 9 stories created 2026-05-04 - 8 Ready, 1 Blocked by UX evidence/layout gate
+> **Status**: Ready - core story set drafted for S5-21; Sprint 6 accessibility remediation story added for A11Y-ST-12
+> **Stories**: 10 story docs present - 6 Complete, 3 Ready, 1 Blocked by UX evidence/layout gate
 
 ## Overview
 
@@ -63,6 +63,7 @@ Presentation Layer Story 001 is complete on `main` as of `d303155`. Shop/Auction
 - `PresentationPlugin`/`phase_sink_system` infrastructure exists on `main`; Story 001 must reuse it, not redefine it locally.
 - `design/ux/shop-auction-ui.md` exists. Story 009 remains the visual evidence/layout gate, while earlier stories cite the UX spec for root/lifecycle constraints as needed.
 - The Shop/Auction UI GDD status has been reconciled to Approved; story-readiness should treat the GDD as approved unless later design changes reopen it.
+- QA-COND-0005 remains Open. A11Y-ST-12 auction bid target/focus remediation is now scoped in Story 011 so it can be implemented and evidenced independently from the broader blocked SAU-009 visual sign-off.
 
 ## Pre-Implementation Gates
 
@@ -91,17 +92,18 @@ This epic is complete when:
 
 | # | Story | Type | Status | TR-IDs | ADR |
 |---|-------|------|--------|--------|-----|
-| 001 | [Plugin Scaffold, Panel Tree, and Formulas](story-001-plugin-scaffold-panel-tree-and-formulas.md) | Logic | Ready | TR-SAU-001, TR-SAU-002, TR-SAU-006 | ADR-021, ADR-019 |
-| 002 | [Draft Initial Grid Purchase Ready](story-002-draft-initial-grid-purchase-ready.md) | UI | Ready | TR-SAU-006 | ADR-015, ADR-021 |
-| 003 | [Shop Panel Slots Refresh Purchase Ready](story-003-shop-panel-slots-refresh-purchase-ready.md) | UI | Ready | TR-SAU-004, TR-SAU-006 | ADR-015, ADR-021 |
-| 004 | [Auction Panel Activation and Preparing State](story-004-auction-panel-activation-and-preparing-state.md) | Integration | Ready | TR-SAU-006 | ADR-013, ADR-021 |
-| 005 | [Auction Bid Buttons, Affordability, and In-Flight](story-005-auction-bid-buttons-affordability-and-inflight.md) | UI | Ready | TR-SAU-001, TR-SAU-002, TR-SAU-005 | ADR-013, ADR-019, ADR-021 |
-| 006 | [Auction Accepted/Rejected Feedback](story-006-auction-accepted-rejected-feedback.md) | Integration | Ready | TR-SAU-001, TR-SAU-005 | ADR-013, ADR-019 |
+| 001 | [Plugin Scaffold, Panel Tree, and Formulas](story-001-plugin-scaffold-panel-tree-and-formulas.md) | Logic | Complete | TR-SAU-001, TR-SAU-002, TR-SAU-006 | ADR-021, ADR-019 |
+| 002 | [Draft Initial Grid Purchase Ready](story-002-draft-initial-grid-purchase-ready.md) | UI | Complete | TR-SAU-006 | ADR-015, ADR-021 |
+| 003 | [Shop Panel Slots Refresh Purchase Ready](story-003-shop-panel-slots-refresh-purchase-ready.md) | UI | Complete | TR-SAU-004, TR-SAU-006 | ADR-015, ADR-021 |
+| 004 | [Auction Panel Activation and Preparing State](story-004-auction-panel-activation-and-preparing-state.md) | Integration | Complete | TR-SAU-006 | ADR-013, ADR-021 |
+| 005 | [Auction Bid Buttons, Affordability, and In-Flight](story-005-auction-bid-buttons-affordability-and-inflight.md) | UI | Complete | TR-SAU-001, TR-SAU-002, TR-SAU-005 | ADR-013, ADR-019, ADR-021 |
+| 006 | [Auction Accepted/Rejected Feedback](story-006-auction-accepted-rejected-feedback.md) | Integration | Complete | TR-SAU-001, TR-SAU-005 | ADR-013, ADR-019 |
 | 007 | [Auction Settlement and Shop Transition](story-007-auction-settlement-and-shop-transition.md) | Visual/Feel | Ready | TR-SAU-003, TR-SAU-006 | ADR-013, ADR-019, ADR-021 |
 | 008 | [Reconnect Snapshot and Late Message Recovery](story-008-reconnect-snapshot-and-late-message-recovery.md) | Integration | Ready | TR-SAU-003, TR-SAU-006 | ADR-011, ADR-021 |
 | 009 | [Visual Evidence, Layout, and Accessibility](story-009-visual-evidence-layout-and-accessibility.md) | UI | Blocked | TR-SAU-006 | ADR-021 |
+| 011 | [Auction Bid Target Size and Focus Evidence](story-011-auction-bid-target-size-and-focus-evidence.md) | UI | Ready | TR-SAU-002, TR-SAU-005, TR-SAU-006 | ADR-013, ADR-019, ADR-021 |
 
-**Story counts**: 1 Logic, 3 Integration, 4 UI, 1 Visual/Feel.
+**Story counts**: 1 Logic, 3 Integration, 5 UI, 1 Visual/Feel.
 
 ## Sprint 6 Candidate Order
 
@@ -115,7 +117,8 @@ Recommended Sprint 6 sequence:
 7. Story 003 - DRAFT_SHOP slots, refresh, purchase, ready.
 8. Story 007 - settlement and transition after auction server path is stable.
 9. Story 008 - reconnect and late-message recovery.
-10. Story 009 - visual evidence after UX spec exists.
+10. Story 011 - A11Y-ST-12 bid target size, focus visibility, and browser/WASM evidence after SAU-005 and SAU-006.
+11. Story 009 - full visual evidence after all scoped panel states and accessibility remediation slices exist.
 
 ## Next Step
 
