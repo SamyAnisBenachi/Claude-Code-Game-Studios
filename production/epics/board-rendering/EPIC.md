@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/board-rendering.md
 > **Architecture Module**: `client/src/ui/board/` - `BoardRenderingPlugin` (sub-plugin #2 inside `PresentationPlugin`)
 > **Status**: Ready - story set drafted for S5-21; Story 001 depends on Presentation Layer Story 001
-> **Stories**: 11 stories created - 7 Ready, 4 Blocked, plus final board evidence follow-up scope
+> **Stories**: 11 stories created - 8 Ready, 3 Blocked, plus final board evidence follow-up scope
 
 ## Overview
 
@@ -70,7 +70,7 @@ Shared ADR-021 infrastructure is owned by [Presentation Layer Story 001](../pres
 |------|--------|---------------------|
 | Protocol gap: `C2SRequestSnapshot` missing from `shared/src/protocol.rs` | Story 007 | Add shared protocol type and Lightyear registration on ReliableChannel |
 | Objective destruction transport gap | Story 008 | Define the final S2C or resolution-log contract and crate location for `HudObjectiveUpdate` fanout |
-| Resolution event variant completeness | Story 006 | Combat Resolution story must provide stable `ResolutionEvent` variants for movement, death, trap, objective, and prism visuals |
+| Resolution event variant completeness | Story 006 | Resolved 2026-05-05: Combat Resolution Story 011 is Complete and provides the stable `S2CResolutionEvent` / `ResolutionEvent` log contract for queue grouping and phase-buffer playback |
 | Art bible / atlas frame count | Stories 003 and 010 | Confirm atlas budget and placeholder-to-final art path before performance evidence is signed off |
 | Keyword/status display projection | Story 009 | Implement data-driven status icons and co-occupancy visual offsets |
 | Spawn range prerequisite chain | NP-006 -> BLS-012 -> BR-011 | NP defines schema/ordering (NP-33/TR-NP-014); BLS owns `SpawnRangeState` projection and snapshot source; BR consumes snapshot + live event for persistent highlights |
@@ -99,7 +99,7 @@ This epic is complete when:
 | 003 | [Snapshot Spawn: Units, Objectives, and HP Bars](story-003-snapshot-spawn-units-objectives-and-hp-bars.md) | Integration | Ready | TR-BR-003 | ADR-020, ADR-021 |
 | 004 | [Ghost Preview and Hand UI Bridge](story-004-ghost-preview-hand-ui-bridge.md) | Integration | Ready | TR-BR-002 | ADR-021 |
 | 005 | [Placement Reveal Collect and Tween](story-005-placement-reveal-collect-and-tween.md) | Visual/Feel | Ready | TR-BR-001 | ADR-017, ADR-021 |
-| 006 | [Resolution AnimQueue and Phase Buffering](story-006-resolution-anim-queue-and-phase-buffering.md) | Integration | Blocked | TR-BR-001, TR-BR-004 | ADR-017, ADR-021 |
+| 006 | [Resolution AnimQueue and Phase Buffering](story-006-resolution-anim-queue-and-phase-buffering.md) | Integration | Ready | TR-BR-001, TR-BR-004, TR-BR-005 | ADR-017, ADR-021 |
 | 007 | [Reconnect Snapshot and Desync Recovery](story-007-reconnect-snapshot-and-desync-recovery.md) | Integration | Blocked | TR-BR-005 | ADR-011, ADR-021 |
 | 008 | [Objective Reveal and HUD Fanout](story-008-objective-reveal-and-hud-fanout.md) | Integration | Blocked | TR-BR-005 | ADR-001, ADR-021 |
 | 009 | [Status Icons and Co-Occupancy Visuals](story-009-status-icons-cooccupancy-and-spawn-range.md) | Visual/Feel | Ready | TR-BR-006, TR-BR-007 | ADR-018, ADR-021 |
@@ -117,7 +117,7 @@ Recommended Sprint 6 sequence:
 4. Story 003 - snapshot rebuild with placeholders.
 5. Story 004 - ghost preview bridge for Hand UI.
 6. Story 005 - placement reveal path.
-7. Story 006 - resolution queue after Combat event variants land.
+7. Story 006 - resolution queue after Combat Story 011 event-log contract completion.
 8. Story 008 - objective reveal/HUD fanout after transport contract lands.
 9. Story 011 - spawn range highlights after NP-006 and BLS-012 land.
 10. Story 010 - performance and CI guard evidence once the visible path exists.

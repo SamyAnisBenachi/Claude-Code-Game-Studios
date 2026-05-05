@@ -1,32 +1,51 @@
 # Story 006: Resolution AnimQueue and Phase Buffering
 
 > **Epic**: Board Rendering
-> **Status**: Blocked
+> **Status**: Ready
 > **Layer**: Presentation
 > **Type**: Integration
-> **Manifest Version**: 2026-05-01
+> **Manifest Version**: 2026-05-05
 
 ## Context
 
 **GDD**: `design/gdd/board-rendering.md`
-**Requirement**: `TR-BR-001`, `TR-BR-004`
+**Requirement Trace**:
+- Primary trace: Board Rendering Rule 9, AC `BR-12`, and `TR-BR-001` require `S2CResolutionEvent` intake to partition the flat replay log into `AnimGroup`s by `sub_step`, sort groups ascending, and advance playback with `Time<Virtual>` timers.
+- Phase-buffer trace: Rule 10, AC `BR-14`, AC `BR-15`, and `TR-BR-005` require `PendingPhaseChange` to buffer `S2CPhaseChanged(DRAFT_SHOP)` or `S2CPhaseChanged(GAME_OVER)` while resolution playback is active, then apply it only after the queue and objective reveal phase finish.
+- Early-script trace: edge cases `EC-REVEAL-WAIT`, `EC-PLACEMENT-STUCK`, `BR-EC-EARLY`, `BR-EC-EARLY-CONSUME`, and `BR-EC-PLACEMENT-STUCK` require `PendingResolutionScript` to buffer a resolution script that arrives before placement reveal completes and to request snapshot recovery if reveal never arrives.
+- Desync trace: edge case `EC-SUBSTEP-OOR` and AC `BR-24` require any out-of-range `sub_step` outside `[1, 6]` to discard the entire queue, log protocol desync, and enqueue `C2SRequestSnapshot`.
+- Supporting visual trace: `TR-BR-004` covers WALL/collision visual dispatch during SS5 movement playback. This story creates the resolution queue and phase buffering path that later per-variant visual handlers consume.
+
 **ADR Governing Implementation**: [ADR-017: Combat Resolution Execution Architecture](../../../docs/architecture/adr-017-combat-resolution-execution-architecture.md), [ADR-021: Presentation Layer Architecture](../../../docs/architecture/adr-021-presentation-layer-architecture.md)
 
-This story converts `S2CResolutionEvent` into grouped animation steps and buffers phase changes that arrive while RESOLUTION playback is still running. It is blocked until Combat Resolution provides stable `ResolutionEvent` variants and ordering for movement, attack, death, trap, prism, and objective events.
+This story converts `S2CResolutionEvent` into grouped animation steps and buffers phase changes that arrive while RESOLUTION playback is still running.
 
-## Blocker
+## Dependency Revalidation
 
-`ResolutionEvent` variant coverage is not stable enough for full dispatch. Queue grouping and phase buffering can be unit-tested with opaque sub-step fixtures, but production playback should not start until the Combat Resolution story for the final event log contract is complete.
+**Rechecked**: 2026-05-05
+
+The prior blocker on final `ResolutionEvent` contract coverage is resolved. Combat Resolution Story 011 is Complete and documents CR-32 / `TR-CR-015` coverage for a single complete `S2CResolutionEvent` batch, chronological `(sub_step, trigger_index)` ordering, typed replay categories, and `S2CResolutionEvent` before `S2CPhaseChanged(DRAFT_SHOP)` delivery. Board Rendering Story 005 is also Complete and unlocks this story's placement-reveal-to-resolution handoff.
 
 ## Acceptance Criteria
 
 - [ ] `S2CResolutionEvent` is grouped into `AnimGroup`s by sub-step.
 - [ ] Groups are sorted ascending by sub-step.
-- [ ] Out-of-range sub-step values trigger desync recovery instead of partial playback.
+- [ ] Out-of-range sub-step values discard the entire queue, log protocol desync, and enqueue one `C2SRequestSnapshot` recovery request instead of partial playback.
 - [ ] `PendingResolutionScript` buffers a resolution script that arrives before placement reveal is complete.
 - [ ] `PendingPhaseChange` buffers `S2CPhaseChanged` while `BoardRenderState == ResolutionExecuting`.
 - [ ] Phase buffer is applied only after the animation queue drains.
 - [ ] Same-frame `S2CResolutionEvent` and `S2CPhaseChanged(DRAFT_SHOP)` preserves the resolution playback before DRAFT UI resumes.
+
+## Control Manifest Rules
+
+- Manifest reviewed against `docs/architecture/control-manifest.md` version `2026-05-05`.
+- `S2CResolutionEvent` and `S2CPhaseChanged(DRAFT_SHOP)` must both remain on `ReliableChannel`; never split them across channels.
+- `S2CResolutionEvent` is a single reliable broadcast sent after all 6 combat sub-steps complete. Board Rendering replays the batch locally at animation tempo and must not expect streamed per-sub-step S2C messages.
+- Board Rendering is client-side presentation only. It may enqueue `C2SRequestSnapshot` for desync/stuck-state recovery, but it must not mutate authoritative game state or send C2S game-logic messages.
+- `MessageReceiver<S2CPhaseChanged>` is drained only by the shared presentation phase sink. Board Rendering phase logic reads `CurrentClientPhase` and uses `PendingPhaseChange` for resolution playback gating.
+- `BoardLayout`, `CardAtlas`, and animation queue systems are session-scoped presentation resources and must run only while the client is in-session.
+- Use Bevy 0.18 message APIs for intra-client handoff: `#[derive(Message)]`, `MessageWriter<T>`, `MessageReader<T>`, and `app.add_message::<T>()`; do not use removed `EventReader`, `EventWriter`, or `Events<T>`.
+- Use Bevy Required Components API and ADR-021 sprite/atlas patterns; do not use `SpriteBundle`, `NodeBundle`, `Camera2dBundle`, or `Handle<TextureAtlas>`.
 
 ## Implementation Notes
 
@@ -34,6 +53,15 @@ This story converts `S2CResolutionEvent` into grouped animation steps and buffer
 - `AnimQueue` should be a resource, not a sentinel component pattern.
 - Board Rendering schedules animation requests; Card Animations owns tween execution.
 - `S2CResolutionEvent` must remain on ReliableChannel and must not be streamed per sub-step.
+- `S2CResolutionEvent.events` is now a vector of `TaggedEvent { sub_step, trigger_index, event }`; queue grouping should use the outer `TaggedEvent.sub_step` as authoritative and reject values outside `[1, 6]`.
+- `PendingResolutionScript` is cleared on consumption after `S2CPlacementReveal` starts the reveal handoff. It remains intact when `BR-EC-PLACEMENT-STUCK` requests a snapshot because snapshot receipt owns state reset.
+- `PendingPhaseChange` is last-write-wins if multiple phase messages arrive during playback. `GAME_OVER` may skip remaining animation groups after the current group, but still runs objective reveal before entering final board state per `BR-15`.
+
+## Performance Notes
+
+- Queue construction is linear in the event count plus sorting of at most 6 distinct sub-step groups; no steady-state work should run when no resolution batch is pending.
+- Group timers use integer millisecond config values and `Time<Virtual>` for deterministic headless tests.
+- Keep the resolution intake and phase-buffer systems within ADR-021's Presentation budget: less than 1 ms steady-state and less than 3 ms on phase-boundary or queue-build frames.
 
 ## Out of Scope
 
@@ -67,5 +95,6 @@ This story converts `S2CResolutionEvent` into grouped animation steps and buffer
 
 ## Dependencies
 
-- Depends on: [Story 005](story-005-placement-reveal-collect-and-tween.md), final Combat Resolution `ResolutionEvent` contract.
+- Depends on: [Story 005](story-005-placement-reveal-collect-and-tween.md) Complete for the placement reveal collect/recovery path and `PendingResolutionScript` handoff.
+- Depends on: [Combat Resolution Story 011](../combat-resolution/story-011-resolution-event-log.md) Complete for final `S2CResolutionEvent` schema, typed `ResolutionEvent` coverage, and phase-ordering contract.
 - Unlocks: Story 008 and RESOLUTION visual QA.
