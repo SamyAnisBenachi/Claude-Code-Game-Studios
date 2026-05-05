@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-04-30"  # updated by ADR-014, ADR-015, ADR-016, ADR-019, ADR-020, ADR-021
+last_updated: "2026-05-05"  # updated by ADR-014, ADR-015, ADR-016, ADR-019, ADR-020, ADR-021, ADR-023
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -173,6 +173,19 @@ state_ownership:
     added: "2026-04-30"
     revised: ""
 
+  - state: placement_timer_multiplier_effective
+    status: active
+    owner_system: game-session-system
+    adr: docs/architecture/adr-023-placement-timer-accessibility-authority.md
+    interface: "SessionConfig.placement_timer_multiplier_effective (read-only after SessionReady). GSS owns per-player lobby requests before SessionReady; effective value = highest multiplayer-safe request capped at 3x. RSM reads the frozen value when starting PLACEMENT timers. Clients receive only neutral effective setting / effective timer duration."
+    write_access: GSS lobby/session setting handler before SessionReady only; no writes after SessionReady
+    referenced_by:
+      - docs/architecture/adr-023-placement-timer-accessibility-authority.md
+      - docs/architecture/adr-009-rsm-phase-state.md
+      - docs/architecture/adr-021-presentation-layer-architecture.md
+    added: "2026-05-05"
+    revised: ""
+
 # Example:
 #
 # state_ownership:
@@ -311,6 +324,24 @@ interfaces:
     referenced_by:
       - docs/architecture/adr-021-presentation-layer-architecture.md
     added: "2026-04-30"
+    revised: ""
+
+  - contract: placement_timer_multiplier_negotiation
+    status: active
+    pattern: rpc
+    producer: client
+    consumers:
+      - game-session-system
+      - rsm-system
+      - client-hud
+      - client-hand-ui
+    adr: docs/architecture/adr-023-placement-timer-accessibility-authority.md
+    signal_signature: "C2SSetPlacementTimerMultiplier { multiplier: PlacementTimerMultiplier } during LOBBY; GSS emits S2CSessionSettingsUpdated { placement_timer_multiplier_effective } without player attribution; RSM later emits S2CPhaseChanged.timer_duration_ms with the effective PLACEMENT duration."
+    referenced_by:
+      - docs/architecture/adr-023-placement-timer-accessibility-authority.md
+      - docs/architecture/adr-009-rsm-phase-state.md
+      - docs/architecture/adr-021-presentation-layer-architecture.md
+    added: "2026-05-05"
     revised: ""
 
 # Example:

@@ -55,6 +55,9 @@ Round State Machine phase state, RSM event bus, session lifecycle, reconnect pro
 - **GSS command order before triggering `SessionReady`:** `commands.insert_resource(SessionConfig)` → `commands.insert_resource(ServerRng)` → `commands.trigger(SessionReady)`. Never reorder. — source: ADR-012
 - **Exactly one Observer for `SessionReady` — the RSM's `on_session_ready` handler.** Other systems react to `DraftStarted`, not `SessionReady`. — source: ADR-012
 - **`evaluate_session_ready` runs only while in LOBBY state.** Gate on `LobbyState::GameActive` to prevent re-trigger. — source: ADR-012
+- **PLACEMENT timer multiplier is server-authoritative:** GSS negotiates it in LOBBY before `SessionReady`; effective value = highest requested multiplayer-safe value across players, capped at 3x; frozen into `SessionConfig.placement_timer_multiplier_effective` at `SessionReady`. — source: ADR-023
+- **RSM applies the frozen PLACEMENT timer multiplier after selecting the base PLACEMENT duration.** `S2CPhaseChanged.timer_duration_ms` carries the effective duration; clients never recompute it from local Settings. — source: ADR-023
+- **Display PLACEMENT timer multiplier as a neutral room/session setting.** Do not include requester identity in `S2CSessionSettingsUpdated` or UI copy. — source: ADR-023
 - **`ObjectiveIdentity { is_fake }` is NEVER in the Lightyear replication graph.** Server holds `HiddenObjectives` as a server-only resource. — source: ADR-001
 - **At `DRAFT_INITIAL`: send `S2CObjectiveIdentities` via `ServerMultiMessageSender::send::<S2CObjectiveIdentities, ReliableChannel>(&msg, server, &NetworkTarget::Single(peer_id))` — one unicast per player.** Lightyear 0.26 uses `PeerId`, not `ClientId`. — source: ADR-001, Lightyear 0.26 verification
 - **Mandatory reconnect send order (all `ReliableChannel`, all unicast):** 1. `S2CHandshake`, 2. `S2CGameSnapshot`, 3. `S2CObjectiveIdentities`, 4. `S2CPhaseChanged`. Then set `snapshot_sent = true` and flush deferred queue. — source: ADR-011
@@ -74,6 +77,9 @@ Round State Machine phase state, RSM event bus, session lifecycle, reconnect pro
 - **Never use `EventWriter<T>` / `EventReader<T>` / `Events<T>`.** Do not exist in Bevy 0.17+. Use `MessageWriter`/`MessageReader` (buffered) or Observers (reactive). — source: ADR-009, ADR-010
 - **Never use `app.add_message::<SessionReady>()` or `MessageReader<SessionReady>`.** `SessionReady` is an Observer event — `MessageReader` will never fire for it. — source: ADR-012
 - **Never register more than one Observer for `SessionReady`.** Other systems subscribe to `DraftStarted`. — source: ADR-012
+- **Never let client-local Settings alter the active multiplayer PLACEMENT timer after `SessionReady`.** Changes after the freeze are next-session preferences only. — source: ADR-023
+- **Never expose 0.5x as a multiplayer Standard-tier PLACEMENT timer value.** 0.5x is solo/custom/debug pace only if documented elsewhere. — source: ADR-023
+- **Never attribute the effective timer multiplier to a player.** It is a room/session setting, not an identity or accessibility label. — source: ADR-023
 - **Never send `S2CGameSnapshot` as a broadcast.** Always unicast per player with opponent secrets stripped. — source: ADR-011
 - **Never use `ResMut<RoundState>` in any system other than `rsm_tick_system`.** — source: ADR-009
 - **Never schedule a subscriber system before `advance_phase`.** — source: ADR-010
@@ -99,7 +105,8 @@ auction state, class system, card acquisition shop state, economy system, board/
 - **All C2S handlers follow this pattern:** 1. Resolve `ClientId` → `PlayerId` (unknown sender → log + drop, never panic). 2. Phase gate (silent discard). 3. Domain validation (silent discard). 4. Apply to authoritative state. 5. Broadcast/unicast S2C. — source: ADR-002
 - **No optimistic client updates.** `ClientState` mutates only from inbound S2C — never from local user input. — source: ADR-002
 - **On `OnConnected`: server sends `S2CGameSnapshot` before any other S2C.** `snapshot_sent` flag mechanism (Foundation layer). — source: ADR-002
-- **Server tick is the wall clock.** Client timer display is derived from `S2CPhaseChanged.deadline_server_ms` for presentation only. — source: ADR-002
+- **Server tick is the wall clock.** Client timer display is derived from server phase/snapshot timer data for presentation only. — source: ADR-002, ADR-023
+- **Multiplayer PLACEMENT timer values are extension-only:** accepted Standard-tier requests are 1x, 1.5x, 2x, and 3x. — source: ADR-023
 - **Single `ServerRng` resource backed by `ChaCha20Rng` from `rand_chacha 0.3`.** Seeded once from `OsRng` at session start; removed on `GameOverEmitted`. — source: ADR-005
 - **All RNG access via intent-named methods on `ServerRng` — never raw `next_u32`/`gen`.** Every consumption must push an `AuditEntry` in the same call as the draw. — source: ADR-005
 - **Strict RNG consumption order (ADR-005 §4).** RESOLUTION chain Orders 4–10: `RangeEquidistantSelect` → `TeleportRandomDest` → `StrichChangeLaneSelect` → `ResolveEcaflip` → `ResolvePrism` → `AwardFakeObjectiveReward` → `DrawFreeCard`. Any new consumer requires a new `RngEvent` variant + ADR-005 amendment before the story opens. — source: ADR-005
@@ -256,6 +263,7 @@ auction state, class system, card acquisition shop state, economy system, board/
 - **`PresentationPlugin` registration order is a contract — DO NOT reorder:** 1. `CardAnimationsPlugin`, 2. `BoardRenderingPlugin`, 3. `HandUiPlugin`, 4. `HudPlugin`, 5. `ShopAuctionUiPlugin`. Reordering causes runtime panics (Resource not yet inserted). — source: ADR-021
 - **`PresentationSet` execution order:** `PhaseTransition` → `MessageDrain` → `StateSync` → `AnimationTick` (chained via `.chain()`). — source: ADR-021
 - **Single `phase_sink_system` drains `MessageReceiver<S2CPhaseChanged>` (Lightyear).** All sub-plugins read `Res<CurrentClientPhase>` — never `MessageReceiver<S2CPhaseChanged>` directly. — source: ADR-021
+- **HUD and Hand UI display PLACEMENT timer duration from server phase/snapshot data.** They may show the frozen neutral room/session multiplier for explanation, but must not locally multiply countdown duration. — source: ADR-023
 - **Single shared economy-view system drains `MessageReceiver<S2CGoldUpdate>` and seeds `PlayerEconomyView` from `S2CGameSnapshot`.** Hand UI, HUD, and Shop/Auction UI read `Res<PlayerEconomyView>` instead of each draining economy messages. — source: ADR-021
 - **Board content ALWAYS world-space:** `Sprite` + `Transform` with `Camera2d`. Board entities cannot appear above bevy_ui without custom render layers. — source: ADR-021
 - **UI ALWAYS bevy_ui:** `Node` for HUD, hand fan, shop panels, auction bid box. — source: ADR-021
@@ -274,6 +282,7 @@ auction state, class system, card acquisition shop state, economy system, board/
 - **Never use any `*Bundle` type** (`SpriteBundle`, `Camera2dBundle`, `NodeBundle`, etc.). Deprecated in Bevy 0.15. Use Required Components API. — source: ADR-021, engine-reference
 - **Never use `Handle<TextureAtlas>`.** Asset type removed in Bevy 0.18. Use `Handle<TextureAtlasLayout>` with `TextureAtlas` as a component field. — source: ADR-021, engine-reference
 - **Never register `MessageReceiver<S2CPhaseChanged>` in more than one system.** First drain consumes all — other systems silently miss messages. — source: ADR-021
+- **Never calculate active PLACEMENT countdown from local Settings in presentation code.** Use `S2CPhaseChanged.timer_duration_ms` and reconnect snapshot timer data. — source: ADR-023
 - **Never register `MessageReceiver<S2CGoldUpdate>` in Hand UI, HUD, or Shop/Auction UI.** The shared economy-view system is the only production drain. — source: ADR-021
 - **Never despawn+respawn entities for tween cancel-and-replace.** Discards game-state components. — source: ADR-021
 - **Never assign a child entity's `Transform.translation.z` to the intended world Z directly.** Renders at `parent_z + intended_world_z`. Use local offset. — source: ADR-021

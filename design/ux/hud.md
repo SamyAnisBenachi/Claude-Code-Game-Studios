@@ -154,8 +154,8 @@ Perimeter-ring layout. Board occupies center. All HUD anchored to screen edges.
   - > 15s: Ivory (calm)
   - 6–15s: Auction Amber (attention)
   - ≤ 5s: Crimson-Amber (urgent)
-- **PLACEMENT timer specifics**: Hard 10s deadline. Large, prominent. Semi-opaque background behind numeral (never rendered directly over animated board cells — accessibility §motor).
-- **PLACEMENT timer accessibility**: Multiplier setting available (×0.5, ×1, ×1.5, ×2, ×3) per `design/accessibility-requirements.md`.
+- **PLACEMENT timer specifics**: Hard server-owned deadline. Base duration is 10s for standard PLACEMENT; the RSM may send a longer effective duration when the frozen room/session timer multiplier applies. Large, prominent. Semi-opaque background behind numeral (never rendered directly over animated board cells — accessibility §motor).
+- **PLACEMENT timer accessibility**: Multiplayer Standard tier supports neutral room/session multiplier values 1x, 1.5x, 2x, and 3x per ADR-023 and `design/accessibility-requirements.md`. HUD displays the effective server timer, not a local calculation.
 - **When no timer**: RESOLUTION shows no countdown (RSM drives resolution duration; no player deadline). Timer element hides.
 
 ### Objective Dots
@@ -198,7 +198,7 @@ Perimeter-ring layout. Board occupies center. All HUD anchored to screen edges.
 
 ### Timer Behavior
 - Phase timer visible whenever a countdown is active. Hidden during RESOLUTION (no player deadline).
-- PLACEMENT timer: if extended via accessibility setting (×multiplier), the timer duration is multiplied but the urgency color ramp stays proportional to remaining time.
+- PLACEMENT timer: if extended by the server-authoritative room/session multiplier, `S2CPhaseChanged.timer_duration_ms` already contains the effective duration. The urgency color ramp stays proportional to remaining time.
 - Timer stops (shows `0`) on early exit (all players submitted), does not hide.
 
 ### Gold Counter Updates
@@ -241,7 +241,7 @@ No gamepad support. No touch support (current scope). No platform variants requi
 
 | Requirement | How addressed |
 |---|---|
-| PLACEMENT timer extension (×0.5 – ×3) | Timer multiplier setting in accessibility options. 10s → 30s at ×3. |
+| PLACEMENT timer extension (1x-3x multiplayer) | Neutral room/session timer setting from ADR-023. 10s base -> 30s at 3x. HUD displays the effective server-provided duration without player attribution. |
 | Mana pools distinct by shape (not only color) | Current mana = segmented bar. Reserve mana = diamond shape. |
 | Colorblind: player A/B distinction | Circle (A) vs diamond (B) on class figurines. Shape backup per art bible §4.6. |
 | Colorblind: class identity | Class icon always shown alongside class color. |
@@ -263,14 +263,14 @@ No gamepad support. No touch support (current scope). No platform variants requi
 - [ ] Current mana bar and reserve mana diamond are distinct shapes — a colorblind player can tell them apart without color alone
 - [ ] Interest threshold tooltip appears on hover over own gold counter and disappears on mouse-out
 - [ ] Phase label text updates on every `S2CPhaseChanged` event with no flash or layout shift
-- [ ] Phase timer counts down correctly for all three durations: 45s (DRAFT_INITIAL), 30s (DRAFT_SHOP), 10s (PLACEMENT)
+- [ ] Phase timer counts down correctly from the `S2CPhaseChanged.timer_duration_ms` value for DRAFT_INITIAL, DRAFT_SHOP, and PLACEMENT, including extended PLACEMENT durations.
 - [ ] PLACEMENT timer stops (shows `0`) when all players submit before timer expires — does not continue counting down
 - [ ] Objective dots update immediately on `ObjectiveHp` replication change with pulse animation
 - [ ] Destroyed objective dot shows a visually distinct state (cracked/shrunken/dimmed) from an intact dot, detectable without color alone
 - [ ] Real vs fake objective dots on own side are visually identical before destruction (no animation, size, or pulse difference)
 - [ ] HUD dims to 70% opacity during RESOLUTION phase and returns to full opacity at next DRAFT entry
 - [ ] Auction panel replaces board during DRAFT_AUCTION; top strip (objectives, phase label) and class figurines remain visible
-- [ ] PLACEMENT timer multiplier setting (×1, ×2, ×3) changes the countdown duration while keeping urgency color ramp proportional
+- [ ] PLACEMENT timer multiplier affects HUD only through the server-provided `S2CPhaseChanged.timer_duration_ms`; HUD does not multiply local Settings values, and urgency color ramp remains proportional
 - [ ] Keyboard focus is trapped within the game canvas during PLACEMENT phase; Tab key does not escape to browser chrome
 - [ ] All interactive HUD elements (bid input, submit placement button) have a minimum 44×44 CSS pixel click target
 
@@ -284,4 +284,4 @@ No gamepad support. No touch support (current scope). No platform variants requi
 | OQ-HUD-2 | During DRAFT_AUCTION, what opacity level for the bottom resource strip — fully visible (100%) or reduced (60–70%)? Higher = easier to track gold budget while bidding; lower = more visual focus on the auction card | ux-designer | Low |
 | OQ-HUD-3 | Reserve mana is uncapped. Should the diamond display show a warning state at very high values (e.g., `20+`) to hint at Garde-Temps threat? Or stay neutral? | game-designer | Low |
 | OQ-HUD-4 | Should the mana cap label be shown inline with the mana bar (e.g., `7/10`) or as a separate indicator above the bar? | ux-designer | Low |
-| OQ-HUD-5 | Placement timer multiplier range: current spec says ×0.5–×3 (5s–30s). Does ×0.5 (5s) serve any real use case, or should the minimum be ×1? | producer | Medium |
+| OQ-HUD-5 | ~~Placement timer multiplier range: should multiplayer include ×0.5?~~ Resolved 2026-05-05 by ADR-023: multiplayer Standard tier is 1x-3x only; 0.5x may exist only as solo/custom/debug pace if documented elsewhere. | producer | Closed |

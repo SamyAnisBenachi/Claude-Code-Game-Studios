@@ -74,6 +74,7 @@ When an implementer hits an edge-case tradeoff, they should ask: "which of these
 | `C2SSelectClass` | `{ class_id: ClassId }` | LOBBY | Preview selection — reversible; not broadcast to others |
 | `C2SConfirmClass` | `{ class_id: ClassId }` | LOBBY | Class lock — retractable via `C2SRetractReady` until both players commit; triggers `S2CClassesRevealed` when all slots locked |
 | `C2SRetractReady` | `{}` | LOBBY | Retracts own class lock. Only valid before `S2CClassesRevealed` fires. Server rejects with `S2CConfirmClassRejected { reason: AlreadyRevealed }` if both players already committed. |
+| `C2SSetPlacementTimerMultiplier` | `{ multiplier: PlacementTimerMultiplier }` | LOBBY | Request a multiplayer-safe PLACEMENT timer multiplier before `SessionReady`. Valid Standard-tier values: `X1`, `X1_5`, `X2`, `X3`. The GSS computes the neutral effective room/session value as the highest requested multiplayer-safe value across players, capped at 3x. `0.5x` is not valid in multiplayer. Messages after `SessionReady` are silently discarded per Rule 4. |
 
 The LOBBY phase is a protocol-layer state entered after `IN_GAME` handshake completes and before RSM transitions to `DRAFT_INITIAL`. All LOBBY C2S messages are phase-gated: messages arriving after LOBBY ends are silently discarded per Rule 4. Semantics owned by `game-session-system.md`.
 
@@ -141,6 +142,7 @@ enum PlayTarget {
 | `S2CClassesRevealed` | Reliable | Broadcast | `{ player_class_map: Map<PlayerId, ClassId> }` — sent only when ALL slots have locked |
 | `S2CConfirmClassRejected` | Reliable | Unicast | `{ reason: ConfirmClassRejectedReason }` — enum: `ClassAlreadyConfirmed`, `AlreadyRevealed` (retract attempted after both players committed) |
 | `S2CSessionCancelled` | Reliable | Broadcast | `{ reason: SessionCancelledReason }` — enum: `LobbyTimeout`, `PlayerDisconnected` |
+| `S2CSessionSettingsUpdated` | Reliable | Broadcast or unicast-to-joiner | `{ placement_timer_multiplier_effective: PlacementTimerMultiplier }` — neutral room/session timer setting from ADR-023. Sent when the effective value changes and sent to a joining player as part of lobby state recovery. Must not identify which player requested the extension. |
 | `S2CSangMepriseReveal` | Reliable | Unicast (opponent) | `{ identities: Vec<(lane: u8, is_fake: bool)> }` — reveals selected objective identities to the opponent. Decided in `objective-system.md` Open Question 6 (Option B: targeted unicast). Sent by Objective System; protocol delivers. |
 | `S2CObjectiveIdentities` | Reliable | Unicast (owner) | `{ identities: Vec<(LaneId, bool)> }` — `(lane_id, is_fake)`. Owned by ADR-001. Dispatched once at DRAFT_INITIAL to each player with their own objective identity assignments; **MUST be re-sent on reconnect** as part of the session resume sequence (after `S2CGameSnapshot`, before any actionable phase). Reliable delivery guarantees in-session arrival but does not auto-replay across reconnects — the server explicitly re-dispatches. Payload is tiny (~6 bytes per player). Cross-references: `docs/architecture/adr-001-objective-identity-unicast.md` (source); `design/gdd/board-rendering.md` Rule 11 + ObjectiveIdentityCache (consumer); `design/ux/hud.md` (own-objective dots). |
 | `S2CPrismRespawned` | Reliable | Broadcast | `{ player_id: PlayerId }` — sent when all 5 of a player's prisms have been collected and the full set respawns. Both players receive this for board rendering (prism tokens reappear on the opponent's side). `PrismPresence` component replication (unreliable channel) propagates per-lane token visibility on the next frame; `S2CPrismRespawned` guarantees respawn delivery even if the unreliable frame is dropped. **Not** a resource reward — no card or gold accompanies this message (prism-system.md Rule 10). |
@@ -200,7 +202,7 @@ enum PlayTarget {
 | **Combat Resolution** | Sub-step events, kill/objective gold-award events (embedded as `GoldAwarded` entries in batch), objective-destruction ordering envelope | `S2CResolutionEvent` (reliable broadcast). Gold awards embedded in batch — **no standalone `S2CGoldUpdate` during RESOLUTION**. Spawn range changes embedded in batch as `SpawnRangeChanged` entries ordered after the corresponding `ObjectiveDestroyed`. After batch delivery, server sends `S2CGoldBroadcast` to sync totals. `S2CGoldUpdate` fires for all non-RESOLUTION gold events only. |
 | **Keyword System** | Keyword trigger events, displacement events, keyword-effect card grants | `S2CResolutionEvent` variants: `KeywordTriggered`, `DisplacementEvent`, `AppearanceFired`, `DeathTriggerFired`, `FinalBlowFired`, `EndOfTurnFired`. Keyword-granted cards: `S2CCardAcquired { source: AcquisitionSource::KeywordEffect }`. |
 | **Prism System** | Prism collection rewards, full-set respawn, hand-full drop notifications | `S2CCardAcquired { source: PrismLane{1..5} }` (reliable unicast to owning player) on successful reward delivery. `S2CPrismRespawned { player_id }` (reliable broadcast) when all 5 of a player's prisms have been collected and the set respawns. `S2CPrismRewardDropped { player_id, lane }` (reliable unicast) when a Lane 1/2/4/5 reward is lost to hand-full. `PrismPresence` component replication (unreliable) carries per-lane token visibility. |
-| **Game Session System** | Lobby phase messages, session metadata, opponent status changes | `S2CRoomCreated`, `S2CJoinAck`, `S2CJoinRejected`, `S2CSlotUpdated`, `S2CClassLocked`, `S2CClassesRevealed`, `S2CConfirmClassRejected`, `S2CSessionCancelled` (all reliable); `S2CHandshake`, `S2COpponentDisconnected`, `S2COpponentReconnected` (reliable) |
+| **Game Session System** | Lobby phase messages, session metadata, opponent status changes | `S2CRoomCreated`, `S2CJoinAck`, `S2CJoinRejected`, `S2CSlotUpdated`, `S2CClassLocked`, `S2CClassesRevealed`, `S2CSessionSettingsUpdated`, `S2CConfirmClassRejected`, `S2CSessionCancelled` (all reliable); `S2CHandshake`, `S2COpponentDisconnected`, `S2COpponentReconnected` (reliable) |
 
 ## Formulas
 
@@ -219,6 +221,10 @@ S2CGameSnapshot {
                                           // None = phase has no active timer (LOBBY, HANDSHAKING, post-GAME_OVER).
                                           // Some(0) = timer just reached zero, phase transition imminent.
                                           // u32 is insufficient — 0 is semantically overloaded between "no timer" and "expired".
+    placement_timer_multiplier_effective: PlacementTimerMultiplier,
+                                          // Frozen at SessionReady by the Game Session System.
+                                          // Neutral room/session setting; no requester attribution.
+                                          // HUD/Hand UI display server timer data, not local multiplier math.
 
     players: Vec<PlayerSnapshot>,    // one entry per player in the session
     board:   BoardSnapshot,
@@ -679,6 +685,13 @@ enum AcquisitionSource {
     KeywordEffect,    // card added to hand by a keyword trigger (DEATH, FINAL BLOW, class ability)
 }
 
+enum PlacementTimerMultiplier {
+    X1,    // 1x, default
+    X1_5,  // 1.5x
+    X2,    // 2x
+    X3,    // 3x cap for multiplayer Standard-tier accessibility
+}
+
 struct PlacedCardReveal {  // element of S2CPlacementReveal.placements — S2C only; distinct from PlacedCardSubmit (C2S)
     card_id:  CardId,
     owner_id: PlayerId,
@@ -860,7 +873,7 @@ enum GrantedKeyword {
 | Constant | Value | Source |
 |---|---|---|
 | `disconnect_grace_seconds` | 30 | `game-config.md` (via RSM) |
-| `placement_timer_seconds` | 10 | `game-config.md` |
+| `placement_timer_seconds` | 10 base | `game-config.md`; effective multiplayer duration also depends on frozen ADR-023 `PlacementTimerMultiplier` |
 | `auction_timer_seconds` | 20 | `game-config.md` |
 
 ## Visual/Audio Requirements
@@ -944,6 +957,8 @@ N/A — This system renders nothing. The protocol delivers data consumed by UI s
 | NP-56 | **GIVEN** all 5 of a player's prisms have been collected in the same RESOLUTION (prism_respawn_due returns true after all PrismCollected events are processed), **WHEN** `resolve_prism_draws` completes, **THEN** `S2CPrismRespawned { player_id }` is received by BOTH connected players on the reliable channel. No `S2CCardAcquired` accompanies this message — respawn delivers no resource reward (prism-system.md Rule 10). (Integration test — requires two live clients.) | BLOCKING |
 | NP-57 | **GIVEN** a player's hand is full (hand.len() == 10) when they collect a Lane 1, 2, 4, or 5 prism, **WHEN** `resolve_prism_draws` processes the event, **THEN** `S2CPrismRewardDropped { player_id, lane }` is sent reliable unicast to the owning player only — Player B does not receive it. No `S2CCardAcquired` is sent. **GIVEN** a player's hand is full when they collect a Lane 3 prism, `S2CPrismRewardDropped` is NOT emitted (Lane 3 hand-full silently skips the draw; there is no specific card to report dropped). | BLOCKING |
 | NP-58 | **GIVEN** `C2SSubmitPlacement` and `S2CPlacementReveal` are defined in the shared protocol, **WHEN** their payload types are inspected, **THEN** submit entries use `PlacedCardSubmit { card_id, target, current_mana_spend, reserve_mana_spend }`, reveal entries use a distinct `PlacedCardReveal` type, and reveal entries contain no mana-spend fields. | BLOCKING |
+| NP-59 | **GIVEN** Player A sends `C2SSetPlacementTimerMultiplier { multiplier: X1_5 }` and Player B sends `{ multiplier: X3 }` during LOBBY before `SessionReady`, **WHEN** the GSS recomputes session settings, **THEN** `S2CSessionSettingsUpdated { placement_timer_multiplier_effective: X3 }` is sent on the reliable channel and the message contains no player id or requester attribution. | BLOCKING |
+| NP-60 | **GIVEN** `SessionReady` has fired and the RSM enters PLACEMENT with a frozen effective multiplier, **WHEN** `S2CPhaseChanged(PLACEMENT)` and `S2CGameSnapshot` are inspected, **THEN** `S2CPhaseChanged.timer_duration_ms` contains the RSM-computed effective PLACEMENT duration and `S2CGameSnapshot.placement_timer_multiplier_effective` contains the frozen neutral session value. | BLOCKING |
 
 ## Open Questions
 

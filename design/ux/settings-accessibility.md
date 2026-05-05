@@ -21,7 +21,7 @@ The player arrives wanting to:
 2. Recover dismissed help: tutorial prompts and rules references remain available after first dismissal.
 3. Adjust live comfort settings without losing match context or creating a multiplayer timing exploit.
 
-If this screen is missing or hard to use, the Standard accessibility tier is not met. The highest-risk failures are: players cannot extend the 10-second PLACEMENT timer, color-coded information stays inaccessible, input conflicts block keyboard play, or dismissed tutorials become permanently unrecoverable.
+If this screen is missing or hard to use, the Standard accessibility tier is not met. The highest-risk failures are: players cannot request the server-authoritative room/session PLACEMENT timer extension before `SessionReady`, color-coded information stays inaccessible, input conflicts block keyboard play, or dismissed tutorials become permanently unrecoverable.
 
 ---
 
@@ -30,8 +30,8 @@ If this screen is missing or hard to use, the Standard accessibility tier is not
 | Arrival Context | Player State | Design Response |
 |---|---|---|
 | First app launch from title screen | Curious, checking setup before creating/joining a room | Open to Accessibility by default on first visit; make core comfort controls visible without scrolling |
-| Lobby via Settings button or pause/settings shortcut | Waiting, low pressure, possibly configuring before opponent arrives | Full Settings panel available; return to exact lobby state on close |
-| DRAFT_INITIAL or DRAFT_SHOP pause window | Actively playing but not in the 10-second placement deadline | Settings can open as a blocking overlay; local-only settings apply immediately; timer-affecting settings apply at next server-safe boundary |
+| Lobby via Settings button or pause/settings shortcut | Waiting, low pressure, possibly configuring before opponent arrives | Full Settings panel available; PLACEMENT timer request can update the neutral room/session setting before `SessionReady`; return to exact lobby state on close |
+| DRAFT_INITIAL or DRAFT_SHOP pause window | Actively playing but not in the 10-second base placement deadline | Settings can open as a blocking overlay; local-only settings apply immediately; timer multiplier is frozen for the active session and preference changes apply to the next lobby/session |
 | PLACEMENT, DRAFT_AUCTION, or RESOLUTION | Time-critical or non-interruptible multiplayer phase | Full panel does not open immediately. Esc shows "Pause requested - settings available next phase boundary." |
 | GAME_OVER | Reviewing outcome, safe to change preferences for next match | Full panel available; Help tab includes match-relevant tutorial entries |
 
@@ -105,7 +105,7 @@ Nested capture states have priority over screen close: Esc cancels a keybind cap
 ### Information Hierarchy
 
 1. Current category title and short state summary: Accessibility, Controls, Audio, Video, Help.
-2. High-impact accessibility controls: colorblind mode, reduced motion, PLACEMENT timer multiplier, UI/HUD scale.
+2. High-impact accessibility controls: colorblind mode, reduced motion, PLACEMENT room timer multiplier, UI/HUD scale.
 3. Sensory comfort controls: brightness/gamma and audio buses.
 4. Control reliability: input remapping, conflict status, reset defaults.
 5. Tutorial/help persistence: replay dismissed prompts, reset tutorial flags, open rules.
@@ -149,7 +149,7 @@ Responsive behavior:
 | Colorblind mode selector | Segmented select/dropdown | Off, Protanopia, Deuteranopia, Tritanopia | Yes | New: Segmented Preference Control |
 | Colorblind preview strip | Data preview | Player rings, class icon pair, auction track, objective dot states, ATK/HP gems | No | New: Accessibility Preview Strip |
 | Reduced motion toggle | Toggle | Off/On | Yes | New: Binary Setting Toggle |
-| PLACEMENT timer multiplier | Segmented select | 0.5x, 1x, 1.5x, 2x, 3x | Yes | New: Segmented Preference Control |
+| PLACEMENT room timer multiplier | Segmented select | 1x, 1.5x, 2x, 3x | Yes before `SessionReady`; read-only/future-session after | New: Segmented Preference Control |
 | Menu UI scale slider | Slider + numeric value | 75% to 150% | Yes | New: Slider with Numeric Value |
 | HUD UI scale slider | Slider + numeric value | 75% to 150% | Yes | New: Slider with Numeric Value |
 | Brightness slider | Slider + numeric value | -50% to +50% | Yes | New: Slider with Preview |
@@ -184,7 +184,7 @@ Pattern library gaps to update later:
 |---|---|---|---|
 | Colorblind mode | Segmented selector | Off | Provides Protanopia, Deuteranopia, and Tritanopia modes. Shape/icon backups remain always-on and are not toggleable. |
 | Reduced motion | Toggle | Off | Removes repeated pulses, frame flicker, large panel movement, desaturate/slide reveal effects, and nonessential scale motion. Does not remove necessary unit movement that communicates board state. |
-| PLACEMENT timer multiplier | Segmented selector | 1x | Options: 0.5x, 1x, 1.5x, 2x, 3x. At 3x, the 10-second PLACEMENT window becomes 30 seconds. |
+| PLACEMENT room timer multiplier | Segmented selector | 1x | Multiplayer options: 1x, 1.5x, 2x, 3x. The server negotiates the effective value before `SessionReady` as the highest requested multiplayer-safe value across players, capped at 3x, and freezes it for the active session. At 3x, the 10-second base PLACEMENT window becomes 30 seconds. |
 | Menu UI scale | Slider/stepper | 100% | 75% to 150%. Applies to menu/settings/lobby UI. |
 | HUD UI scale | Slider/stepper | 100% | 75% to 150%. Independent from menu scale per accessibility requirements. |
 
@@ -268,7 +268,7 @@ Required persisted prompt categories:
 | Returning visit | Stored last category exists | Opens to last visited category unless deep-linked from Help/Controls |
 | Preference changed | Any local setting changed | Setting applies immediately where safe; footer shows "Saved" after persistence succeeds |
 | Storage unavailable | Browser localStorage/profile write fails | Inline warning: "Settings could not be saved in this browser session." Runtime value still applies until refresh |
-| Active match safe phase | Settings opened from DRAFT_INITIAL or DRAFT_SHOP pause | Local visual/audio/input settings apply immediately; timer multiplier shows "Applies next PLACEMENT" |
+| Active match safe phase | Settings opened from DRAFT_INITIAL or DRAFT_SHOP pause | Local visual/audio/input settings apply immediately; timer multiplier shows the frozen active-session value and any change is saved as a next-session preference |
 | Unsafe phase request | Esc pressed during PLACEMENT, DRAFT_AUCTION, RESOLUTION | No full panel; HUD shows pause/settings request indicator until next safe boundary |
 | Keybind capture | Player activates a binding cell | Modal traps focus, waits for key/mouse input, Esc cancels capture |
 | Keybind conflict | Captured binding already used | Binding is not saved; conflicting action is named in an inline error |
@@ -291,7 +291,7 @@ Input scope: Mouse click primary. Keyboard Tab, Shift+Tab, Enter, Space, Arrow k
 | Category rail/tab | Change category | Click, Enter, Arrow Up/Down or Left/Right | Active category highlight moves | Content pane updates; last category stored |
 | Colorblind selector | Choose mode | Click, Enter, Arrow keys | Selected option highlights; preview updates | Saves `colorblind_mode` |
 | Reduced motion toggle | Toggle | Click, Space, Enter | Toggle changes state; preview switches motion policy | Saves `reduced_motion` |
-| Timer multiplier selector | Choose multiplier | Click, Enter, Arrow keys | Value updates; status says when it applies | Saves `placement_timer_multiplier`; may notify active session policy |
+| Timer multiplier selector | Choose multiplier | Click, Enter, Arrow keys | Value updates; status says whether it updates the lobby/session now or next session only | Saves `placement_timer_multiplier`; in LOBBY before `SessionReady` sends `C2SSetPlacementTimerMultiplier` |
 | UI scale slider | Adjust scale | Drag, Arrow keys, Page Up/Down | Numeric value and layout update live | Saves menu or HUD scale |
 | Brightness/gamma slider | Adjust image calibration | Drag, Arrow keys, Page Up/Down | Preview tiles update live | Saves display adjustment |
 | Audio bus slider | Adjust volume | Drag, Arrow keys, Page Up/Down | Optional UI tick plays on UI bus if unmuted | Saves bus volume |
@@ -323,7 +323,7 @@ No disabled control receives keyboard focus. Hidden controls are removed from th
 | Change category | `UiSettingsCategoryChanged` | `{ category }` |
 | Change colorblind mode | `PreferenceChanged` | `{ key: "colorblind_mode", value }` |
 | Toggle reduced motion | `PreferenceChanged` | `{ key: "reduced_motion", value: bool }` |
-| Change timer multiplier | `PreferenceChanged` | `{ key: "placement_timer_multiplier", value }` |
+| Change timer multiplier | `PreferenceChanged`; if in LOBBY before `SessionReady`, `C2SSetPlacementTimerMultiplier` | `{ key: "placement_timer_multiplier", value }`; `{ multiplier }` |
 | Change menu UI scale | `PreferenceChanged` | `{ key: "menu_ui_scale", value_percent }` |
 | Change HUD UI scale | `PreferenceChanged` | `{ key: "hud_ui_scale", value_percent }` |
 | Change brightness/gamma | `PreferenceChanged` | `{ key: "brightness" or "gamma", value_percent }` |
@@ -334,7 +334,7 @@ No disabled control receives keyboard focus. Hidden controls are removed from th
 | Reset tutorial flags | `TutorialDismissalFlagsReset` | `{ scope: "all" or prompt_id }` |
 | Replay help topic | None | Local read-only UI state |
 
-Server-authoritative timer behavior is not fully specified in current architecture docs. If PLACEMENT timer multiplier affects server phase duration, the implementation needs a network/session preference message or lobby-ready payload extension. This spec treats that as an architecture dependency, not a UI-owned decision.
+Server-authoritative timer behavior is specified by ADR-023. Settings stores the player's requested preference locally, but multiplayer authority belongs to the session: before `SessionReady`, the client sends the request to the server; the server broadcasts only the neutral effective room/session value. After `SessionReady`, the active match value is frozen.
 
 ---
 
@@ -366,7 +366,8 @@ Prohibited motion:
 | Current game phase | RSM / phase sink | Read | Determines whether full Settings can open immediately |
 | Colorblind mode | Local preferences | Read / Write | Off, Protanopia, Deuteranopia, Tritanopia |
 | Reduced motion | Local preferences | Read / Write | Read by HUD, Shop/Auction UI, class picker, animation systems |
-| Placement timer multiplier | Local preferences plus server/session policy | Read / Write | UI stores preference; server authority policy unresolved |
+| Placement timer multiplier request | Local preferences plus Game Session System | Read / Write | UI stores preference; before `SessionReady`, sends request to GSS. Multiplayer-safe values: 1x, 1.5x, 2x, 3x. |
+| Placement timer multiplier effective | Game Session System / `SessionConfig` / RSM phase data | Read | Neutral room/session value. Highest requested multiplayer-safe value across players, capped at 3x, frozen at `SessionReady`; HUD/Hand UI use server-provided phase timer duration. |
 | Menu UI scale | Local preferences | Read / Write | Applies to title, lobby, settings, modal overlays |
 | HUD UI scale | Local preferences | Read / Write | Applies to in-game HUD independently from menu scale |
 | Brightness/gamma | Local preferences / render pipeline | Read / Write | Applies to render calibration; contrast re-verification required |
@@ -391,7 +392,7 @@ Standard tier. Source: `design/accessibility-requirements.md`.
 | Colorblind modes | Protanopia, Deuteranopia, and Tritanopia modes are selectable. Shape/icon backups remain always-on. |
 | Color-independent communication | Preview and setting labels confirm that color is never the only carrier for player side, class identity, objective destruction, ATK/HP, damage/heal, or auction urgency. |
 | Reduced motion | Toggle provides alternatives for auction entrance, bid pulse, timer pulse, class reveal, panel motion, frame flicker, and nonessential scale effects. |
-| PLACEMENT timer extension | Multiplier selector supports 0.5x, 1x, 1.5x, 2x, 3x; 3x turns 10 seconds into 30 seconds. |
+| PLACEMENT timer extension | Multiplayer selector supports 1x, 1.5x, 2x, 3x; 3x turns the 10-second base PLACEMENT window into 30 seconds. 0.5x is excluded from multiplayer Standard tier and may exist only as solo/custom/debug pace if documented elsewhere. |
 | UI scaling | Menu and HUD scale from 75% to 150%; layout must remain usable at all values. |
 | Brightness/gamma | Sliders expose -50% to +50% adjustment with a live preview; UI contrast cannot fall below 4.5:1 for body text. |
 | Input remapping | Every player-facing keyboard/mouse action can be rebound; conflicts are blocked and explained. |
@@ -433,7 +434,7 @@ Spec implications:
 
 - `design/ux/interaction-patterns.md` should add the new settings controls listed in Component Inventory before implementation stories begin.
 - Architecture needs a preference storage contract covering browser `localStorage`, native debug persistence, and future profile/account storage.
-- Network/session design must resolve how PLACEMENT timer multiplier affects authoritative multiplayer timers.
+- Network/session design follows ADR-023: PLACEMENT timer multiplier is a server-authoritative lobby/session setting, effective value is highest requested multiplayer-safe value capped at 3x, frozen at `SessionReady`.
 - Audio implementation needs named mixer buses: Music, SFX, UI, and optionally Master.
 - Help/tutorial content needs a maintained prompt registry so dismiss/reset/replay behavior is data-driven rather than hardcoded per screen.
 
@@ -447,7 +448,8 @@ Spec implications:
 - [ ] Accessibility category exposes colorblind mode, reduced motion, PLACEMENT timer multiplier, menu UI scale, and HUD UI scale controls.
 - [ ] Colorblind selector includes Off, Protanopia, Deuteranopia, and Tritanopia, and the preview strip updates immediately when changed.
 - [ ] Reduced-motion mode removes repeated pulses, frame flicker, panel slide/expand motion, class reveal slide/desaturate, and nonessential scale motion while preserving readable state changes.
-- [ ] PLACEMENT timer multiplier options include 0.5x, 1x, 1.5x, 2x, and 3x; 3x maps the 10-second PLACEMENT window to 30 seconds.
+- [ ] PLACEMENT timer multiplier options include 1x, 1.5x, 2x, and 3x in multiplayer Standard tier; 3x maps the 10-second base PLACEMENT window to 30 seconds.
+- [ ] Before `SessionReady`, changing the PLACEMENT timer multiplier sends a server request and the lobby displays only the neutral effective room/session value; after `SessionReady`, the active-session value is read-only and changes apply to the next session.
 - [ ] Menu UI scale and HUD UI scale each support 75% to 150% and remain independently configurable.
 - [ ] At 1366x768 and 1920x1080, at 75%, 100%, and 150% UI scale, no settings text, button, slider, category label, or status message overlaps another required UI element.
 - [ ] Brightness and gamma controls each support -50% to +50% adjustment and show a live calibration preview.
@@ -468,8 +470,8 @@ Spec implications:
 
 | # | Question | Owner | Priority |
 |---|---|---|---|
-| OQ-SA-1 | How should PLACEMENT timer multiplier work in multiplayer: highest requested multiplier across both players, room-host setting, per-player queueing, or another server-authoritative policy? | UX Designer + Lead Programmer + Producer | High |
-| OQ-SA-2 | Should the 0.5x timer option ship, or should the minimum be 1x as raised by `design/ux/hud.md` OQ-HUD-5? | Producer | Medium |
+| OQ-SA-1 | ~~How should PLACEMENT timer multiplier work in multiplayer?~~ Resolved 2026-05-05 by ADR-023: highest requested multiplayer-safe value across players, capped at 3x, server-authoritative and frozen at `SessionReady`. | UX Designer + Lead Programmer + Producer | Closed |
+| OQ-SA-2 | ~~Should the 0.5x timer option ship, or should the minimum be 1x?~~ Resolved 2026-05-05 by ADR-023: 0.5x is removed from multiplayer Standard tier; only solo/custom/debug pace may document it. | Producer | Closed |
 | OQ-SA-3 | What is the canonical persistence layer for settings: browser `localStorage`, a player preferences resource, or a future profile/account store? | Lead Programmer | High |
 | OQ-SA-4 | Can Bevy 0.18/browser builds expose semantic names/roles for menu and Settings controls, or is screen reader support deferred entirely? | Lead Programmer | Medium |
 | OQ-SA-5 | Which browser/system shortcuts are forbidden for input remapping on the WASM target? | UI Programmer | Medium |

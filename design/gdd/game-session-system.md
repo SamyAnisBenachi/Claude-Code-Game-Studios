@@ -27,6 +27,8 @@ The lobby is brief by design — it should feel like the moment two players sit 
 - `class_selections: Map<PlayerId, ClassId>` — finalized class per player
 - `team_assignments: Map<PlayerId, TeamId>` — derived from slot index at creation
 - `lobby_deadline: f32` — server clock time at which lobby timeout fires if unfilled
+- `placement_timer_multiplier_requests: Map<PlayerId, PlacementTimerMultiplier>` — lobby/session accessibility requests for the PLACEMENT timer multiplier before `SessionReady`
+- `placement_timer_multiplier_effective: PlacementTimerMultiplier` — neutral effective room/session value, computed from requests and frozen into `SessionConfig` at `SessionReady`
 
 The Game Session System does **not** own: round number, phase state, gold/mana, card hands, board state, or any in-game economy. All of those belong to the RSM and downstream systems. After firing `SessionReady`, the GSS becomes a read-only configuration store.
 
@@ -116,6 +118,7 @@ When `SessionReady` fires, the GSS writes the following into a read-only `Sessio
 - `player_count: u8`
 - `team_map: Map<PlayerId, TeamId>` — derived from `SessionSlot.team` for each occupied slot; RSM uses for team-forfeiture logic
 - `class_map: Map<PlayerId, ClassId>` — derived from `SessionSlot.class` for each occupied slot; Class System uses for class-specific rule activation
+- `placement_timer_multiplier_effective: PlacementTimerMultiplier` — neutral effective PLACEMENT room/session timer multiplier from Rule 14; RSM reads it when starting PLACEMENT timers
 
 The GSS also initializes the `ServerRng` resource as part of the `SessionReady` handoff, satisfying the RNG GDD's contract: "Initialized once at game-session start."
 
@@ -138,6 +141,38 @@ A `PlayerId` may occupy a slot in at most one active session at a time.
 - **`C2SJoinRoom` when already in a session:** The server returns `S2CJoinRejected { reason: AlreadyInSession }`. The player's existing slot is undisturbed. (See GSS-15 for the same-session self-join case.)
 
 `S2CCreateRoomRejected` is a new message type distinct from `S2CJoinRejected` — the contexts are different and should not share an error type.
+
+**Rule 14 — PLACEMENT timer multiplier negotiation:**
+During LOBBY, before `SessionReady`, each occupied player slot may request a
+multiplayer-safe PLACEMENT timer multiplier via the Network Protocol message
+`C2SSetPlacementTimerMultiplier`.
+
+Allowed multiplayer Standard-tier values are:
+
+- `1x`
+- `1.5x`
+- `2x`
+- `3x`
+
+The effective room/session value is neutral and server-authoritative:
+
+`placement_timer_multiplier_effective = min(max(requests), 3x)`
+
+Players who do not send a request contribute `1x`. Requests below `1x`,
+including `0.5x`, are not multiplayer-safe and do not lower the effective
+multiplayer value. Requests above `3x` cannot raise the effective value above
+`3x`.
+
+The GSS broadcasts `S2CSessionSettingsUpdated {
+placement_timer_multiplier_effective }` whenever the effective value changes and
+unicasts the current value to a joining player as part of lobby state recovery.
+This message is a neutral room/session setting display. It must not identify
+which player requested the extension.
+
+When `SessionReady` fires, the current effective value is written into
+`SessionConfig.placement_timer_multiplier_effective` and frozen for the active
+match. Later Settings changes may update local preferences for the next session
+but must not mutate the active session config.
 
 ---
 
@@ -167,12 +202,12 @@ A `PlayerId` may occupy a slot in at most one active session at a time.
 
 | System | Direction | What this system does |
 |---|---|---|
-| **Round State Machine** | GSS → RSM | Fires `SessionReady` when all slots filled and all classes confirmed. Publishes `SessionConfig` (mode, player_count, team_map, class_map) that RSM reads for player-count checks and team-forfeit logic. |
+| **Round State Machine** | GSS → RSM | Fires `SessionReady` when all slots filled and all classes confirmed. Publishes `SessionConfig` (mode, player_count, team_map, class_map, `placement_timer_multiplier_effective`) that RSM reads for player-count checks, team-forfeit logic, and PLACEMENT timer duration. |
 | **Round State Machine** | RSM → GSS | GSS observes `S2CGameOver` to trigger session teardown (destroy `SessionConfig`, remove `ServerRng`, close audit log). |
 | **Game Config** | GSS reads | Reads `lobby_timeout_seconds` at room creation. Reads `disconnect_grace_seconds` for pre-game disconnect grace (same value as RSM — no separate field). |
 | **Server-side RNG** | GSS → RNG | Initializes `ServerRng` resource immediately before `SessionReady` fires. Destroys `ServerRng` resource on `GAME_OVER` teardown. |
 | **Class System** *(GDD not yet written)* | GSS publishes | Writes `class_map: Map<PlayerId, ClassId>` into `SessionConfig` at session start. Class System reads this to activate class-specific rule sets. |
-| **Network Protocol / Lightyear** | GSS → clients | During LOBBY: sends `S2CRoomCreated` (unicast to creator), `S2CJoinAck` (unicast to joiner), `S2CSlotUpdated` (broadcast on any slot change), `S2CClassLocked` (unicast to locking player), `S2CClassesRevealed` (broadcast when all locked), `S2CSessionCancelled` (broadcast on cancel). All on reliable channel. After DRAFT_INITIAL, phase-state broadcasts transfer to RSM. |
+| **Network Protocol / Lightyear** | GSS → clients | During LOBBY: sends `S2CRoomCreated` (unicast to creator), `S2CJoinAck` (unicast to joiner), `S2CSlotUpdated` (broadcast on any slot change), `S2CClassLocked` (unicast to locking player), `S2CClassesRevealed` (broadcast when all locked), `S2CSessionSettingsUpdated` (neutral timer setting), `S2CSessionCancelled` (broadcast on cancel). All on reliable channel. After DRAFT_INITIAL, phase-state broadcasts transfer to RSM. |
 | **Network Protocol / Lightyear** | Lightyear → GSS | GSS listens to Lightyear `OnDisconnected` events to trigger immediate session cancellation (Rule 9, MVP behavior). |
 
 ## Formulas
@@ -269,6 +304,30 @@ The session ready predicate is defined as:
 **Output Range:** Boolean.
 **Example:** 4-player 2v2 game. Players in slots 0, 1, 2 have confirmed classes. Slot 3 is occupied but class is unconfirmed. `all_classes_confirmed = false` → `is_ready = false`. Player in slot 3 confirms → `all_classes_confirmed = true` → `is_ready = true` → `SessionReady` fires.
 
+---
+
+### F5 — Effective PLACEMENT Timer Multiplier
+
+The effective multiplayer PLACEMENT timer multiplier is defined as:
+
+`effective = min(max(multiplayer_safe_requests), 3x)`
+
+**Variables:**
+
+| Variable | Symbol | Type | Range | Description |
+|---|---|---|---|---|
+| Player request | `request[player]` | `PlacementTimerMultiplier` | `{1x, 1.5x, 2x, 3x}` | Multiplayer-safe request submitted before `SessionReady`; absent request contributes `1x` |
+| Effective multiplier | `effective` | `PlacementTimerMultiplier` | `{1x, 1.5x, 2x, 3x}` | Highest multiplayer-safe request across players, capped at 3x |
+
+**Output Range:** `1x` to `3x`.
+**Example:** Player A requests `1.5x`; Player B requests `3x`. The server
+broadcasts neutral room/session setting `3x` and freezes `3x` into
+`SessionConfig` at `SessionReady`.
+
+`0.5x` is not a multiplayer-safe request. It must not be exposed in multiplayer
+Standard-tier Settings and cannot reduce the effective multiplayer value below
+`1x`.
+
 ## Edge Cases
 
 **If an invalid room code is entered:** Server returns `S2CJoinRejected { reason: RoomNotFound }`. Client shows "Room not found" and lets the player re-enter.
@@ -318,7 +377,7 @@ The session ready predicate is defined as:
 
 | System | Type | Interface | Notes |
 |---|---|---|---|
-| **Round State Machine** | Hard | GSS fires `SessionReady` (internal Bevy Event) when LOBBY conditions are met; RSM's LOBBY→DRAFT_INITIAL transition is gated on this event. GSS publishes `SessionConfig` (mode, player_count, team_map, class_map) that RSM reads throughout the game. RSM observes `S2CGameOver` to trigger GSS teardown. | Bidirectional. See `round-state-machine.md` Rule 1 (cross-reference note added). |
+| **Round State Machine** | Hard | GSS fires `SessionReady` (internal Bevy Event) when LOBBY conditions are met; RSM's LOBBY→DRAFT_INITIAL transition is gated on this event. GSS publishes `SessionConfig` (mode, player_count, team_map, class_map, `placement_timer_multiplier_effective`) that RSM reads throughout the game. RSM observes `S2CGameOver` to trigger GSS teardown. | Bidirectional. See `round-state-machine.md` Rule 1 and ADR-023. |
 | **Server-side RNG** | Hard | GSS initializes the `ServerRng` resource immediately before firing `SessionReady`. GSS destroys `ServerRng` during `GAME_OVER` teardown. The RNG GDD states "initialized once at game-session start" — this GDD is that boundary. | The RNG GDD should note this GDD as the lifecycle owner. |
 | **Class System** *(GDD not yet written)* | Hard | GSS writes `class_map: Map<PlayerId, ClassId>` into `SessionConfig`. The Class System reads this at game start to activate class-specific rule sets for each player. | Class System GDD must list Game Session System as an upstream dependency when authored. |
 | **Auction System** *(GDD not yet written)* | Soft | Auction System reads `player_count` from `SessionConfig` for multi-player auction card count decisions (RSM Open Question 3). | Indirect — consumed via `SessionConfig`, not a direct GSS interface. |
@@ -391,7 +450,7 @@ The following upstream GDDs should add Game Session System to their downstream d
 | GSS-27 | GIVEN a `TwoVTwoVTwo` session where all 6 slots are filled and 5 of 6 players have confirmed classes, WHEN the 6th player confirms their class, THEN the server broadcasts `S2CClassesRevealed { player_class_map }` to all 6 players simultaneously. The reveal is not sent to the 5 earlier lockers before the 6th lock — all 6 receive it at once in the same broadcast cycle. | BLOCKING |
 | GSS-28 | GIVEN `lobby_timeout_seconds = 60` (minimum safe value) and a session created at server time T=0, WHEN `server_clock_now = T + 60.0` (f64) and the session has not reached `LOBBY_READY`, THEN the server broadcasts `S2CSessionCancelled { reason: LobbyTimeout }`. Tests the minimum F3 boundary. | BLOCKING |
 | GSS-29 | GIVEN all lobby conditions are met (all slots filled, all classes confirmed, deadline not expired), WHEN `ServerRng` initialization fails at the moment `SessionReady` would fire, THEN `SessionReady` is not fired. The session transitions to `LOBBY_CANCELLED`. No `S2CGameOver` is emitted. *Note: requires dependency injection on the RNG init path — raise with lead programmer before implementation.* | BLOCKING |
-| GSS-30 | GIVEN all lobby conditions are met and `ServerRng` initializes successfully, WHEN `SessionReady` fires, THEN the `SessionConfig` resource exists in the ECS world containing `mode`, `player_count`, `team_map` (every `PlayerId` → `TeamId` derived from `SessionSlot.team`), and `class_map` (every `PlayerId` → confirmed `ClassId` derived from `SessionSlot.class`). The behavioral requirement: `SessionConfig` and `ServerRng` are available when the RSM handles `SessionReady`. The specific tick/frame ordering depends on Observer vs Events<T> — see session ADR. | BLOCKING |
+| GSS-30 | GIVEN all lobby conditions are met and `ServerRng` initializes successfully, WHEN `SessionReady` fires, THEN the `SessionConfig` resource exists in the ECS world containing `mode`, `player_count`, `team_map` (every `PlayerId` → `TeamId` derived from `SessionSlot.team`), `class_map` (every `PlayerId` → confirmed `ClassId` derived from `SessionSlot.class`), and `placement_timer_multiplier_effective` (the frozen neutral room/session value from Rule 14). The behavioral requirement: `SessionConfig` and `ServerRng` are available when the RSM handles `SessionReady`. The specific tick/frame ordering depends on Observer vs Events<T> — see session ADR. | BLOCKING |
 | GSS-31 | GIVEN `lobby_timeout_seconds = 90` and a session created at T=0 with no players joining until T=30, WHEN the deadline is evaluated, THEN it fires at T=90, not T=120. The countdown begins at room creation, not at first slot occupancy. | BLOCKING |
 | GSS-32 | GIVEN Player A occupies a slot and has not sent any `C2SSelectClass` message, WHEN Player A sends `C2SConfirmClass { class_id: Sacrier }`, THEN the server accepts the confirmation, writes `SessionSlot[A].class = Some(Sacrier)` and `class_selections[A] = Sacrier` in the same system, and sends `S2CClassLocked { class_id: Sacrier }` to Player A. No prior `C2SSelectClass` is required. | BLOCKING |
 | GSS-33 | GIVEN Player A has already confirmed `class_id: Xelor`, WHEN Player A sends `C2SConfirmClass { class_id: Xelor }` again (same class), THEN the server silently discards the duplicate. No `S2CClassLocked` is re-sent. No `S2CClassesRevealed` is triggered. `SessionSlot[A].class` and `class_selections[A]` remain `Xelor`. | BLOCKING |
@@ -403,6 +462,9 @@ The following upstream GDDs should add Game Session System to their downstream d
 | GSS-39 | GIVEN Player A is already in slot 0 of session `"ABCDEF"` (which is in `LOBBY_READY`), WHEN Player A sends `C2SCreateRoom { mode: OneVOne }`, THEN the server returns `S2CCreateRoomRejected { reason: AlreadyInSession }`. No new session is created. | BLOCKING |
 | GSS-40 | GIVEN Player A is already in slot 2 of session `"XYZABC"` (a session they joined, not created), WHEN Player A sends `C2SJoinRoom { room_code: "QRSTUV", requested_slot: 0 }` for a different session, THEN the server returns `S2CJoinRejected { reason: AlreadyInSession }`. Player A's existing slot in `"XYZABC"` is undisturbed. | BLOCKING |
 | GSS-41 | GIVEN Player A is in slot 0 of a `OneVOne` session and Player B is in slot 1, and Player B has not sent `C2SHeartbeat` for longer than `lobby_heartbeat_timeout_seconds`, WHEN the GSS heartbeat tracker evaluates the gap, THEN `S2CSessionCancelled { reason: PlayerDisconnected }` is broadcast to Player A's connection and the session is destroyed. This fires even if Lightyear `OnDisconnected` has not yet fired for Player B. | BLOCKING |
+| GSS-42 | GIVEN Player A requests `1.5x` and Player B requests `3x` via `C2SSetPlacementTimerMultiplier` before `SessionReady`, WHEN the GSS recomputes the room/session timer setting, THEN `placement_timer_multiplier_effective = 3x` and `S2CSessionSettingsUpdated { placement_timer_multiplier_effective: 3x }` is sent without identifying which player requested it. | BLOCKING |
+| GSS-43 | GIVEN no player has requested a PLACEMENT timer multiplier before `SessionReady`, WHEN the GSS builds `SessionConfig`, THEN `placement_timer_multiplier_effective = 1x`. | BLOCKING |
+| GSS-44 | GIVEN `SessionReady` has fired with `placement_timer_multiplier_effective = 2x`, WHEN any player changes their local Settings timer preference during DRAFT_INITIAL, DRAFT_SHOP, PLACEMENT, RESOLUTION, or GAME_OVER, THEN the active `SessionConfig.placement_timer_multiplier_effective` remains `2x`; the change can only affect a future lobby/session. | BLOCKING |
 
 ## Open Questions
 
@@ -418,6 +480,6 @@ The following upstream GDDs should add Game Session System to their downstream d
 
 6. **Reconnect-with-grace during LOBBY** — DEFERRED post-hackathon. MVP behavior is disconnect = forfeit (Rule 9). A functional reconnect mechanism requires: (a) a session token issued in `S2CHandshake` and stored by the client, (b) a `C2SReconnect { session_id, slot_index, token }` message, (c) server-side session-to-token mapping. None of this is designed. Track as a post-hackathon feature when network protocol v2 is designed.
 
-7. **ADR needed: Observer vs. buffered Events<T> for SessionReady** — Whether `SessionReady` uses a Bevy `Observer` (same-frame, immediate) or buffered `Events<T>` (next-frame) determines when the RSM can read `SessionConfig`. This is an implementation decision for the lead programmer and belongs in an ADR before the session system is coded.
+7. ~~**ADR needed: Observer vs. buffered Events<T> for SessionReady**~~ — **Resolved by ADR-012.** `SessionReady` uses a Bevy Observer trigger; `SessionConfig`, including the ADR-023 timer multiplier field, must be inserted before the trigger.
 
 8. **`lobby_heartbeat_timeout_seconds` in GameConfig** — Must be added to `game-config.md` (field `pub lobby_heartbeat_timeout_seconds: u32`, default 15) and registered in `design/registry/entities.yaml` before the Game Session System can be implemented. Owner: next `game-config.md` authoring session.

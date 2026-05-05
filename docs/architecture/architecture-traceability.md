@@ -91,6 +91,7 @@ All 9 M1 systems have full ADR coverage. Zero gaps.
 | ADR-020 | Board/Lane State Architecture | board-lane-system | ✅ Accepted | `ReplicateTo` resolved; `Replicate::to_clients()` verified |
 | ADR-021 | Presentation Layer Architecture | board-rendering, hand-ui, hud, shop-auction-ui, card-animations | ✅ Accepted | Closes all Presentation gaps; PresentationPlugin + SystemSet |
 | ADR-022 | Keyword Observer Architecture | keyword-system, combat-resolution | ✅ Accepted | 5 timing-trigger Observers + ChainDeathBuffer |
+| ADR-023 | Placement Timer Accessibility Authority | game-session-system, round-state-machine, network-protocol, hud, hand-ui | ✅ Accepted | Server-authoritative timer multiplier; highest requested multiplayer-safe value capped at 3x; frozen at SessionReady |
 
 ## Required New ADRs
 

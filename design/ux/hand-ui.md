@@ -45,7 +45,7 @@ Hand UI appears inside the in-game HUD rather than as a standalone destination. 
 | DRAFT_INITIAL | First hand-building moment. Player has a 9-card offering, 45 seconds, and an initial gold budget. | Curious, planning, moderate time pressure. | Grid-first selection surface with fan below as acquisition feedback. |
 | DRAFT_SHOP | Player is evaluating shop and current hand after auction/shop events. | Calculating, lower pressure. | Fan is visible. Instant cards can be activated by click. Non-Instant cards are read-only. |
 | DRAFT_AUCTION | Auction panel owns attention and input. Hand is tactical context only. | Competitive, price pressure. | Fan is visible but read-only in `PASSIVE_LOCKED`. |
-| PLACEMENT | Player has about 10 seconds to stage and submit a batch plan. | Highest pressure, decisive. | Fan becomes the primary action surface; drag-to-stage, reserve split, Submit, timer, and errors are active. |
+| PLACEMENT | Player has a server-owned PLACEMENT timer to stage and submit a batch plan. Base duration is 10 seconds; the effective room/session timer may extend it up to 3x per ADR-023. | Highest pressure, decisive. | Fan becomes the primary action surface; drag-to-stage, reserve split, Submit, timer, and errors are active. |
 | RESOLUTION | Player watches the committed plan execute. | Spectator, consequence-reading. | Hand UI hides immediately. |
 | Reconnect during PLACEMENT | Player returns mid-deadline with a server snapshot and no local pending placements. | Recovery, urgent reorientation. | Rebuilt STAGING state with current hand, empty staged queue, hidden drag sprite, and snapshot timer. |
 
@@ -78,7 +78,7 @@ Related layout ownership:
 | RSM phase change | `DRAFT_INITIAL` | 9-card draft offering, current gold, 45s timer |
 | RSM phase change | `DRAFT_SHOP` | Current hand, current mana/reserve state, shop context |
 | RSM phase change | `DRAFT_AUCTION` | Current hand for reading only; auction owns input |
-| RSM phase change | `PLACEMENT` | Current hand, current mana, reserve mana, board state, spawn range, 10s timer |
+| RSM phase change | `PLACEMENT` | Current hand, current mana, reserve mana, board state, spawn range, server-provided timer duration |
 | Local submit | `C2SSubmitPlacement` sent after pre-validation | Pending placements become submitted, interactions lock, timer remains visible |
 | Reconnect | `S2CGameSnapshot { phase: PLACEMENT, timer_remaining_ms, hand }` | Current hand from snapshot, empty pending placements, remaining timer, no active drag |
 
@@ -131,7 +131,7 @@ Hand UI follows the HUD perimeter-ring philosophy. The board center remains unob
 | Board interaction layer | Valid cell highlights, unit hover outline, no-valid-target overlay, board ghosts | PLACEMENT only | Board Rendering owns rendering; Hand UI writes/consumes ghost and highlight intent. |
 | Submit cluster | Submit button, Submit count, inline validation error | PLACEMENT and SUBMITTED | Fixed above fan. Never shifts when fan count or reserve strips change. |
 | Reserve strip layer | Per-staged-card `[-] [N / cost] [+]` strips | PLACEMENT STAGING only | Anchored 8px above each staged fan ghost. May overlap horizontally; edge buttons remain reachable. |
-| Timer cluster | Whole-second PLACEMENT timer, submitted checkmark | PLACEMENT and SUBMITTED | Upper-right or HUD timer slot per `design/ux/hud.md`; never over animated board content without backing. |
+| Timer cluster | Whole-second PLACEMENT timer from server phase data, submitted checkmark | PLACEMENT and SUBMITTED | Upper-right or HUD timer slot per `design/ux/hud.md`; never over animated board content without backing. |
 | Notification layer | Hand full toast, no valid targets text, submit validation label | Contextual | Near the cause: hand full near fan, no valid targets over board, submit errors under Submit. |
 
 ### Hand Fan Layout
@@ -351,10 +351,10 @@ Hard constraints:
 | Board layout | Board Rendering | Read | Cursor-to-board mapping during PLACEMENT. |
 | Valid spawn cells, valid target units/objectives/lanes | Board/Lane, Objective, Board Rendering | Read | Drives highlight sets and no-valid-target overlay. |
 | RSM phase | Round State Machine / shared phase sink | Read | Drives state machine. |
-| Timer duration and remaining time | Game Config / RSM / snapshot | Read/write local countdown | Snapshot remaining time overrides default duration on reconnect. |
+| Timer duration and remaining time | RSM / `S2CPhaseChanged` / snapshot | Read/write local countdown | `S2CPhaseChanged.timer_duration_ms` is the effective server duration after the frozen room/session multiplier. Snapshot remaining time overrides local countdown on reconnect. |
 | Activation lock state | Hand UI local presentation state | Write local only | Clears on ack/reject/timeout. |
 | Purchase pending state | Hand UI local presentation state | Write local only | Clears on acquisition, timeout, hand-full lock, or phase exit. |
-| Accessibility timer multiplier | Settings / accessibility | Read | Applies to PLACEMENT duration and urgency proportions. |
+| Accessibility timer multiplier | Game Session System / SessionConfig / RSM | Read | Frozen before `SessionReady` by ADR-023. Hand UI does not apply local Settings multipliers; it reads effective server timer data. |
 
 Architectural guardrails:
 
@@ -384,7 +384,7 @@ Hand UI follows the project's Standard accessibility tier.
 
 - Submit button and reserve strip buttons must provide at least 44x44 CSS px effective pointer targets where layout allows. If the visual reserve buttons remain 24x24, their hit area must be expanded invisibly or keyboard operation must be fully supported.
 - PLACEMENT focus is trapped in the game canvas.
-- PLACEMENT timer multiplier supports 0.5x, 1x, 1.5x, 2x, and 3x unless OQ-HUD-5 changes the range.
+- Multiplayer PLACEMENT timer multiplier supports 1x, 1.5x, 2x, and 3x as a server-authoritative room/session setting per ADR-023. 0.5x is not part of multiplayer Standard-tier accessibility.
 - No hold-to-confirm interaction exists in Hand UI.
 - Drag interactions must have keyboard alternatives for final accessibility sign-off: select card, move focus through valid targets, confirm target, adjust reserve, submit.
 
@@ -442,7 +442,7 @@ Numbers must use locale-safe formatting only where grouping is expected. Mana, r
 - [ ] Clicking an available DRAFT_INITIAL grid card sends purchase intent but does not update the hand until server confirmation.
 - [ ] When hand count reaches 10, all remaining grid cards lock, clicks are suppressed, and a `Hand full` notification appears near the fan for 2 seconds.
 - [ ] DRAFT_AUCTION shows the fan in read-only `PASSIVE_LOCKED` state with input suppressed and no click/drag feedback.
-- [ ] PLACEMENT entry shows Submit as `Submit (0 cards)`, activates the fan for staging, and displays the PLACEMENT timer immediately.
+- [ ] PLACEMENT entry shows Submit as `Submit (0 cards)`, activates the fan for staging, and displays the server-provided PLACEMENT timer immediately.
 - [ ] Drag-start from a fan card hides the original card, shows a drag sprite, and preserves a stable fan slot placeholder.
 - [ ] Dropping a card on a valid board target stages the card, creates/updates the board ghost through `GhostPlacementChanged`, dims the fan ghost, and increments Submit count.
 - [ ] Dropping a card on an invalid target or outside the valid zone restores the card to its original fan slot and emits no ghost message.

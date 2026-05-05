@@ -73,6 +73,10 @@ last_updated: "2026-05-05"
 # Run 15 (spawn range contract docs repair 2026-05-05): registered
 # TR-NP-014 for NP-33 live spawn range update ordering and TR-BR-008 for
 # persistent spawn range highlights. Total: 200 active TRs.
+# Run 16 (ADR-023 placement timer accessibility authority 2026-05-05):
+# registered TR-RSM-011, TR-NP-015, and TR-GSS-011 for server-authoritative
+# PLACEMENT timer multiplier negotiation, freeze, and broadcast. Total:
+# 203 active TRs.
 
 requirements:
 
@@ -568,6 +572,15 @@ requirements:
     revised: ""
     status: active
 
+  - id: TR-RSM-011
+    system: round-state-machine
+    gdd: design/gdd/round-state-machine.md
+    gdd_ac_ids: [RSM-29c, RSM-39]
+    requirement: "Effective PLACEMENT duration = selected base PLACEMENT timer (standard or auction-followup) multiplied by frozen SessionConfig.placement_timer_multiplier_effective from ADR-023; S2CPhaseChanged.timer_duration_ms carries the effective server duration"
+    created: 2026-05-05
+    revised: ""
+    status: active
+
   # ─── Network Protocol (TR-NP) ──────────────────────────────────────────────
   # GDD: design/gdd/network-protocol.md
   # ADR coverage: ADR-002 (authority + phase-gate), ADR-008 (channels), ADR-011 (reconnect)
@@ -698,6 +711,15 @@ requirements:
     revised: ""
     status: active
 
+  - id: TR-NP-015
+    system: network-protocol
+    gdd: design/gdd/network-protocol.md
+    gdd_ac_ids: [NP-59, NP-60]
+    requirement: "Placement timer multiplier protocol: C2SSetPlacementTimerMultiplier valid only in LOBBY before SessionReady; S2CSessionSettingsUpdated broadcasts neutral effective value without requester attribution; S2CPhaseChanged carries effective PLACEMENT duration and S2CGameSnapshot carries frozen multiplier"
+    created: 2026-05-05
+    revised: ""
+    status: active
+
   # ─── Game Session System (TR-GSS) ──────────────────────────────────────────
   # GDD: design/gdd/game-session-system.md
   # ADR coverage: ADR-011 (reconnect + snapshot), ADR-012 (SessionReady delivery)
@@ -789,6 +811,15 @@ requirements:
     gdd_ac_ids: [GSS-11, GSS-12, GSS-13, GSS-14, GSS-36]
     requirement: "Reject codes: SlotOccupied, SessionFull, RoomNotFound, InvalidSlot, AlreadyInSession, SessionInProgress, InvalidMode — all result in S2CJoinRejected unicast"
     created: 2026-04-30
+    revised: ""
+    status: active
+
+  - id: TR-GSS-011
+    system: game-session-system
+    gdd: design/gdd/game-session-system.md
+    gdd_ac_ids: [GSS-42, GSS-43, GSS-44]
+    requirement: "GSS owns multiplayer PLACEMENT timer multiplier negotiation before SessionReady: effective value is highest requested multiplayer-safe value across players, capped at 3x, neutral, and frozen into SessionConfig; later Settings changes affect only future sessions"
+    created: 2026-05-05
     revised: ""
     status: active
 

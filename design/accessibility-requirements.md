@@ -15,14 +15,14 @@
 
 **Target Tier: Standard**
 
-**Rationale:** Lanes and Lies is a real-time multiplayer card/strategy game with significant information-density demands — five simultaneous systems during the 10-second PLACEMENT phase, two mana pools, auction price tracking, and hidden objective reasoning. The primary accessibility barriers are visual (color-coded information) and motor (timed inputs). Standard tier addresses both: colorblind modes resolve the color dependency; input timing adjustments address the hard 10-second placement timer.
+**Rationale:** Lanes and Lies is a real-time multiplayer card/strategy game with significant information-density demands — five simultaneous systems during the 10-second base PLACEMENT phase, two mana pools, auction price tracking, and hidden objective reasoning. The primary accessibility barriers are visual (color-coded information) and motor (timed inputs). Standard tier addresses both: colorblind modes resolve the color dependency; the server-authoritative room/session timer multiplier addresses the hard PLACEMENT deadline.
 
 The WASM browser target means no platform certification requirement (no Xbox XAG, no PS5 guidelines). Standard tier is the appropriate commitment for a solo-dev hackathon-origin project that can realistically implement these features. The art bible (Section 4.6) has already defined colorblind shape-backup for all critical color pairs — implementation effort for colorblind modes is reduced accordingly.
 
-No voiced dialogue exists in the current design; subtitle requirements are minimal. Dropping to Basic would exclude players relying on colorblind modes (estimated 8% of men) and those affected by the 10-second placement timer — an inexcusable exclusion given the low implementation cost.
+No voiced dialogue exists in the current design; subtitle requirements are minimal. Dropping to Basic would exclude players relying on colorblind modes (estimated 8% of men) and those affected by the base 10-second placement timer — an inexcusable exclusion given the low implementation cost.
 
 **In scope beyond tier baseline:**
-- Timer extension option for PLACEMENT phase — relevant to the game's specific 10s hard deadline
+- Server-authoritative timer extension option for PLACEMENT phase — relevant to the game's specific 10s base deadline
 - Distinct container shapes for current mana vs. reserve mana (not only color) — cognitive safety, not just visual
 
 **Out of scope (documented intentional limitations):**
@@ -64,10 +64,17 @@ No voiced dialogue exists in the current design; subtitle requirements are minim
 | Feature | Tier | Status | Notes |
 |---|---|---|---|
 | Full input remapping (keyboard + mouse) | Standard | Not Started | Every input rebindable. No two actions bound to same key simultaneously. Persist to browser localStorage or profile. |
-| PLACEMENT timer extension | Standard | Not Started | Provide multiplier: 0.5×, 1×, 1.5×, 2×, 3×. At 3× the 10-second placement window becomes 30 seconds. Default: 1×. This is the highest motor-impact feature in the game — the 10s hard deadline is the biggest barrier. |
+| PLACEMENT timer extension | Standard | Not Started | Multiplayer Standard tier provides extension-only multipliers: 1×, 1.5×, 2×, 3×. The server negotiates this as a lobby/session setting before `SessionReady`; effective multiplier = highest requested multiplayer-safe value across players, capped at 3×, and frozen at `SessionReady` (ADR-023). At 3× the 10-second base placement window becomes 30 seconds. Default: 1×. |
 | Hold-to-press alternatives | Standard | Not Started | Audit all "hold to confirm" inputs. Provide toggle alternative. |
 | DRAFT_SHOP ready signal — retractable | Standard | **Addressed in design** | RSM Rule 8: ready signal is retractable at any time until all-ready fires. Prevents accidental early commitment. |
 | Auction bid buttons — immediate preset commitments | Standard | **Addressed in design** | Auction bids do not require a separate confirmation step. Misclick mitigation is handled by preset total-commitment labels, 44x44 targets, focus rings, per-button affordability gating, same-frame in-flight disable, one-send semantics, and visible "BIDDING..." feedback. |
+
+**Multiplayer timer authority:** The PLACEMENT timer multiplier is not a local-only
+client preference in multiplayer. It is displayed as a neutral room/session timer
+setting. The UI must not attribute the effective value to a specific player. A
+0.5× pace option is excluded from multiplayer Standard-tier accessibility; if it
+exists at all, it is limited to solo, custom, or debug pace contexts and never
+participates in multiplayer timer negotiation.
 
 ---
 
@@ -103,7 +110,7 @@ No voiced dialogue exists in the current design; subtitle requirements are minim
 | DRAFT_INITIAL | Card stat readability | None — 45s timer | 9-card selection, moderate load | None | Not Started |
 | DRAFT_AUCTION | Auction escalation color track; opponent gold visibility | Immediate preset bid buttons with documented misclick mitigations | Price + own gold + opponent gold + card + hand = 5 elements | Timer final 5s audio cue | Partial — color has text backup; bid motor conflict resolved in UX |
 | DRAFT_SHOP | Shop slot readability | None — 30s soft timer, retractable | Moderate — shop + hand + gold | None | Not Started |
-| PLACEMENT | Spawn range highlight; opponent side opaque | **10s PLACEMENT TIMER — highest risk** | 4 decisions in 10s | Countdown tone | Partial — staged disclosure planned |
+| PLACEMENT | Spawn range highlight; opponent side opaque | **10s base PLACEMENT TIMER — highest risk; mitigated by server-authoritative room/session extension** | 4 decisions in 10s base | Countdown tone | Partial — staged disclosure planned |
 | RESOLUTION | Combat result colors (win/loss) | None — read-only phase | Replay sequence, no decisions | Combat SFX | Partial — color has floating number backup |
 | GAME_OVER | Fake objective reveal animation | None | None | Objective destruction burst SFX | Not Started |
 | Board / Lane System | Movement arrows; spawn range; unit identity | None | Track 5 lanes simultaneously | None | Partial — art bible shape language |
@@ -127,6 +134,6 @@ No voiced dialogue exists in the current design; subtitle requirements are minim
 | Question | Owner | Priority |
 |---|---|---|
 | Does Bevy 0.18 support accessible UI element names/roles for browser screen reader passthrough? | lead-programmer | Medium |
-| What is the minimum PLACEMENT timer extension needed to cover 99th-percentile motor reaction time? (Suggested: 3× = 30s) | ux-designer | High |
+| ~~What is the minimum PLACEMENT timer extension needed to cover 99th-percentile motor reaction time?~~ Resolved 2026-05-05 by ADR-023: multiplayer Standard tier supports 1×, 1.5×, 2×, and 3×, with 3× capped as the maximum effective multiplier. | ux-designer | Closed |
 | Should PLACEMENT timer pause when the browser tab is backgrounded? (WASM half-open connection risk per network-protocol.md NP-25) | lead-programmer | High |
 | Does the staged-disclosure pattern for PLACEMENT require a GDD revision to formally specify? | game-designer | Medium |

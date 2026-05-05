@@ -185,8 +185,8 @@ Within server/:
 
 | Module | Owns | Exposes | Consumes |
 |---|---|---|---|
-| **Round State Machine** | `RoundPhase` (Bevy State); `round_number: u32`; `placement_timer`; `draft_shop_timer`; `disconnect_trackers: Map<PlayerId, f32>`; `submissions_received: Set<PlayerId>` | Phase Messages: `DraftStarted`, `AuctionPhaseEntered`, `PlacementPhaseEntered`, `ResolutionPhaseEntered`, `ShopRefreshNeeded`, `GameOverEmitted`; broadcasts `S2CPhaseChanged` | `Res<GameConfig>` (timers); `Res<SessionConfig>`; Lightyear `OnDisconnected`; `C2SSubmitPlacement`, `C2SHeartbeat` |
-| **Game Session System** | `SessionSlot` vec; `session_id`, `room_code`; `lobby_deadline: f64`; `class_selections`; `heartbeat_trackers` (LOBBY only) | `Res<SessionConfig> { mode, player_count, team_map, class_map }` (read-only after `SessionReady`); `SessionReady` Message | `Res<GameConfig>` (lobby timeouts); Lightyear `OnConnected`, `OnDisconnected`; `C2SCreateRoom`, `C2SJoinRoom`, `C2SSelectClass`, `C2SConfirmClass`, `C2SHeartbeat` |
+| **Round State Machine** | `RoundPhase` (Bevy State); `round_number: u32`; `placement_timer`; `draft_shop_timer`; `disconnect_trackers: Map<PlayerId, f32>`; `submissions_received: Set<PlayerId>` | Phase Messages: `DraftStarted`, `AuctionPhaseEntered`, `PlacementPhaseEntered`, `ResolutionPhaseEntered`, `ShopRefreshNeeded`, `GameOverEmitted`; broadcasts `S2CPhaseChanged` with effective timer duration | `Res<GameConfig>` (base timers); `Res<SessionConfig>` (frozen placement timer multiplier); Lightyear `OnDisconnected`; `C2SSubmitPlacement`, `C2SHeartbeat` |
+| **Game Session System** | `SessionSlot` vec; `session_id`, `room_code`; `lobby_deadline: f64`; `class_selections`; `heartbeat_trackers` (LOBBY only); placement timer multiplier requests before `SessionReady` | `Res<SessionConfig> { mode, player_count, team_map, class_map, placement_timer_multiplier_effective }` (read-only after `SessionReady`); `SessionReady` Message; `S2CSessionSettingsUpdated` neutral timer setting | `Res<GameConfig>` (lobby timeouts); Lightyear `OnConnected`, `OnDisconnected`; `C2SCreateRoom`, `C2SJoinRoom`, `C2SSelectClass`, `C2SConfirmClass`, `C2SSetPlacementTimerMultiplier`, `C2SHeartbeat` |
 | **Economy System** | `PlayerEconomy { gold, current_mana, reserve_mana, mana_cap }` per player; `gold_snapshot` (interest base); `reserved_gold` per active bid | `fn validate_spend()`; `fn apply_spend()`; `fn apply_gold_award()`; `S2CGoldUpdate` (unicast); `S2CGoldBroadcast` (broadcast) | `Res<GameConfig>`; `DraftStarted` Message (mana ramp + income); `ResolutionPhaseEntered` (snapshot); `AuctionBidPlaced` event (reservation) |
 | **Card Data & Pool** | `CardCatalog: HashMap<CardId, CardData>` (immutable, loaded at startup); `PlayerPool { copies_remaining: HashMap<CardId, u32> }` per player; `ShopSlots` per player | `fn draw_class_card()`; `fn draw_neutral()`; `fn draw_family_card()`; `fn acquire_card()`; `S2CShopSlots` (unicast); `S2CDraftOffering` (unicast) | `Res<GameConfig>` (pool counts, weights); `Res<ServerRng>`; `ShopRefreshNeeded` Message; `CardAcquired` event (from Feature) |
 
@@ -308,7 +308,7 @@ DRAFT phase (player decisions)
 ├─ [DRAFT_SHOP] RSM starts draft_shop_timer (30s)
 ├─ All C2SReadySignal received OR timer expires → RSM emits PlacementPhaseEntered
 │
-PLACEMENT (10s)
+PLACEMENT (10s base, extended by frozen session multiplier if applicable)
 │
 ├─ Board/Lane validates and buffers placements (PendingPlacements — not ECS entities)
 ├─ All C2SSubmitPlacement received OR timer expires
@@ -423,11 +423,12 @@ pub struct AuditEntry {
 pub struct C2SHello { pub protocol_version: u32, pub session_token: Option<SessionToken> }
 
 #[derive(Message, Serialize, Deserialize, Clone, Debug)]
-pub struct S2CPhaseChanged { pub phase: RoundPhase, pub round: u32, pub timer_ms: u32 }
+pub struct S2CPhaseChanged { pub phase: RoundPhase, pub round_number: u32, pub timer_duration_ms: Option<u32> }
 
 #[derive(Message, Serialize, Deserialize, Clone, Debug)]
 pub struct S2CGameSnapshot {
     pub phase: RoundPhase, pub round: u32,
+    pub placement_timer_multiplier_effective: PlacementTimerMultiplier,
     pub own: PlayerSnapshot, pub opponent: OpponentSnapshot,
     pub board: BoardSnapshot,
 }
@@ -529,6 +530,7 @@ pub struct SessionConfig {
     pub player_count: u8,
     pub team_map: HashMap<PlayerId, TeamId>,
     pub class_map: HashMap<PlayerId, ClassId>,
+    pub placement_timer_multiplier_effective: PlacementTimerMultiplier,
 }
 
 // Invariant: Inserted ONCE at SessionReady. NEVER mutated after insertion.

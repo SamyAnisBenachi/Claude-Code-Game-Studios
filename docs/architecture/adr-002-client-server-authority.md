@@ -268,7 +268,7 @@ fn on_user_clicked_buy(card_id: CardId, net: &mut LightyearClient) {
 
 5. **Snapshot-driven reconnect.** On `OnConnected` (Lightyear 0.26), the server unicasts `S2CGameSnapshot` with opponent secret fields stripped (per network-protocol.md Rule 6). The client treats the snapshot as a full reset: discard all locally buffered state, rebuild `ClientState` from scratch. Any S2C messages received before snapshot processing completes are dropped (Rule 7).
 
-6. **Server tick is the wall clock.** All time-based logic (auction timer, placement timer, disconnect grace) reads server time. The client's view of remaining time is derived from `S2CPhaseChanged.deadline_server_ms` minus its own clock with drift compensation; this is presentation only and never feeds back into authoritative state.
+6. **Server tick is the wall clock.** All time-based logic (auction timer, placement timer, disconnect grace) reads server time. The client's view of remaining time is derived from server phase/snapshot timer data (`S2CPhaseChanged.timer_duration_ms` on phase entry and `S2CGameSnapshot.timer_remaining_ms` on reconnect); this is presentation only and never feeds back into authoritative state.
 
 7. **RNG never leaves the server.** `ServerRng` is seeded at session start from OS entropy. The seed is never serialized into any `protocol/` type. RNG outputs (shop rolls, Ecaflip dice, fake-objective placement) are revealed to clients only as concrete results in S2C messages.
 
