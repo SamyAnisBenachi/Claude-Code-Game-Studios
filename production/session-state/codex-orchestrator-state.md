@@ -166,8 +166,8 @@ None currently tracked here.
   push. Queue exactly one `/story-done` for
   `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md`;
   do not relaunch the implementation worker.
-- ECO-007 / Explicit Placement Mana Split API is integrated on `origin/main`
-  and needs serialized `/story-done`. Worker branch
+- ECO-007 / Explicit Placement Mana Split API is complete on `origin/main`.
+  Worker branch
   `work/eco-007-explicit-placement-mana-split-api` returned at `b1c678f`,
   pushed to `origin/work/eco-007-explicit-placement-mana-split-api`. Root
   cherry-picked the worker commit into `main` as `dacc7d3` (`ECO-007 impl:
@@ -179,9 +179,8 @@ None currently tracked here.
   `cargo test -p server --test explicit_placement_mana_split_test` 6/6,
   `cargo test -p server --lib economy::api::tests` 20/20, economy adjacent
   regression bundle 26/26, `cargo check -p server`, and
-  `git diff --check HEAD~1..HEAD`. Queue serialized `/story-done` for
-  `production/epics/economy-system/story-007-explicit-placement-mana-split-api.md`;
-  do not relaunch the implementation worker.
+  `git diff --check HEAD~1..HEAD`. Story-done closure is pushed at `a564d99`
+  and the window can be cleared; do not relaunch the implementation worker.
 - COMBAT-011 / S5-20 ResolutionEvent Log Completeness is integrated on
   `origin/main` and needs serialized `/story-done`. Worker branch
   `work/combat-011-resolution-event-log` returned at `06d5b17`, pushed to
@@ -1372,9 +1371,8 @@ Current active windows by user default-launch rule:
   until readiness returns READY.
 - BOARD-RENDERING-003 readiness repair returned READY at `171997b`; repair
   window can be cleared. BOARD-003 `/dev-story` is safe to launch now.
-- BOARD-RENDERING-004 readiness returned NEEDS WORK; readiness window can be
-  cleared after launching a docs-only repair. Do not launch BOARD-004 dev-story
-  until readiness returns READY.
+- BOARD-RENDERING-004 readiness returned READY after docs repair `edfe87f`;
+  readiness window can be cleared. BOARD-004 `/dev-story` is safe to launch.
 - SAU-002 readiness returned NEEDS WORK; readiness window can be cleared after
   launching a docs-only repair. Do not launch SAU-002 dev-story until readiness
   returns READY.
