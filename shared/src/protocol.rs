@@ -3,6 +3,7 @@
 // ADR-008 assigns every message to exactly one of two Lightyear channels.
 
 use crate::card::{CardId, ClassId};
+use crate::keyword::KeywordKind;
 use crate::session::PlayerId;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -230,17 +231,57 @@ pub enum PlayTarget {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TaggedEvent {
     pub sub_step: u8,
+    pub trigger_index: u32,
     pub event: ResolutionEvent,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ResolutionEvent {
+    SubStepBegin,
+    UnitPlaced {
+        unit_id: EntityId,
+        player: PlayerId,
+        lane: u8,
+        cell: u8,
+    },
     UnitMoved {
+        unit_id: EntityId,
+        lane: u8,
+        from_cell: u8,
+        to_cell: u8,
+    },
+    UnitChangedLane {
         unit_id: EntityId,
         from_lane: u8,
         to_lane: u8,
-        from_cell: u8,
-        to_cell: u8,
+    },
+    CombatDamage {
+        attacker_id: EntityId,
+        defender_id: EntityId,
+        damage_amount: u8,
+        defender_hp_after: u8,
+        was_blocked_by_shield: bool,
+    },
+    UnitRemoved {
+        unit_id: EntityId,
+        lane: u8,
+        cell: u8,
+    },
+    KeywordTriggered {
+        unit_id: EntityId,
+        keyword: KeywordKind,
+    },
+    GoldAwarded {
+        player: PlayerId,
+        amount: u32,
+        reason: GoldReason,
+    },
+    ObjectiveDamage {
+        attacker_id: Option<EntityId>,
+        target_player_id: PlayerId,
+        lane: u8,
+        damage_amount: u32,
+        objective_hp_after: u32,
     },
     UnitDied {
         unit_id: EntityId,
@@ -259,6 +300,16 @@ pub enum ResolutionEvent {
         lane: u8,
         was_fake: bool,
     },
+    GameOver {
+        loser: Option<PlayerId>,
+        reason: GameOverReason,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GoldReason {
+    Kill,
+    ObjectiveDestroyed,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -410,13 +461,14 @@ pub struct S2CPoolUpdate {
     pub updates: Vec<(CardId, u8)>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct S2CPlacementReveal {
     pub placements: Vec<PlacedCard>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct S2CResolutionEvent {
+    pub round: u32,
     pub events: Vec<TaggedEvent>,
 }
 

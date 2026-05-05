@@ -157,6 +157,7 @@ fn cr_24_appearance_fires_before_substep2() {
         &app,
         CombatTraceEntry::UnitPlaced {
             entity: unit,
+            player: PLAYER_A,
             lane: 1,
             cell: 1,
         },

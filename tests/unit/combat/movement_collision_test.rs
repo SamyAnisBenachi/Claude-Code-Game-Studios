@@ -117,6 +117,7 @@ fn trace(app: &App) -> &[CombatTraceEntry] {
 fn moved(unit: Entity, from_cell: u8, to_cell: u8, sub_step: u8) -> CombatTraceEntry {
     CombatTraceEntry::UnitMoved {
         unit,
+        lane: 1,
         from_cell,
         to_cell,
         sub_step,

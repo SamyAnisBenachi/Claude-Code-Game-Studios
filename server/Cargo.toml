@@ -266,6 +266,10 @@ name = "resolve_combat_scaffold_test"
 path = "../tests/integration/combat/resolve_combat_scaffold_test.rs"
 
 [[test]]
+name = "resolution_event_log_test"
+path = "../tests/integration/combat/resolution_event_log_test.rs"
+
+[[test]]
 name = "modifier_stack_test"
 path = "../tests/unit/combat/modifier_stack_test.rs"
 
