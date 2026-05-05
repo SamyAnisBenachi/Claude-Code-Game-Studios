@@ -1,7 +1,7 @@
 # Story 005: Placement Reveal Collect and Tween
 
 > **Epic**: Board Rendering
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Visual/Feel
 > **Manifest Version**: 2026-05-05
@@ -85,7 +85,7 @@ At RESOLUTION entry, both players' newly committed placements must appear as one
 - Visual/Feel: `production/qa/evidence/board-rendering-placement-reveal-evidence.md`
 - Integration support: `tests/integration/board_rendering/placement_reveal_test.rs`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Integration support created; visual evidence deferred/advisory
 
 ## Dependencies
 
@@ -94,3 +94,12 @@ At RESOLUTION entry, both players' newly committed placements must appear as one
 - Depends on: [Card Animations Story 005](../card-animations/story-005-placement-reveal-parallelism.md) Complete for the `PlacementRevealAnimReady` consumer and same-pass animation handling.
 - Not a dependency: Board Rendering Story 007 reconnect rebuild, because this story only enqueues reveal/stuck `C2SRequestSnapshot` requests and does not implement snapshot rebuild.
 - Unlocks: Story 006.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 7/7 passing. One-frame opponent-only placement reveal collection, single sorted `PlacementRevealAnimReady` batch, same-pass Card Animations reveal start, `unit_reveal_tween_duration_ms` default/range use, and both stuck-state recovery request paths verified.
+**Deviations**: None blocking. Advisory only: the Visual/Feel sign-off file `production/qa/evidence/board-rendering-placement-reveal-evidence.md` is not present yet; integration evidence covers the functional reveal/recovery path.
+**Test Evidence**: `cargo test -p client --test board_rendering_placement_reveal_test` passed 3/3; `cargo test -p client --test card_animations_placement_reveal_test` passed 9/9; adjacent board rendering regressions and `cargo test -p shared` passed. `cargo fmt -p client -- --check`, `cargo fmt -p shared -- --check`, `cargo check -p client`, and `git diff --check` passed.
+**Code Review**: Complete locally. Lean mode applied because `production/review-mode.txt` is absent; QL-TEST-COVERAGE and LP-CODE-REVIEW external gates were skipped.
+**Verification Notes**: Worker commit `a7d792e092d380ec15c7cabcac7effec0c52839a` was integrated. `C2SRequestSnapshot` is an empty C2S reliable protocol message, registered in `shared/src/protocol.rs`, and wired into the client Lightyear sender surface for reveal/stuck recovery only. No reconnect rebuild, full resolution playback, Shop/Auction UI, Hand UI, server placement authority, session-state unrelated files, sprint-status, design, or asset scope was included.

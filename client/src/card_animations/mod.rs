@@ -50,6 +50,7 @@ pub enum CardAnimationsSet {
 impl Plugin for CardAnimationsPlugin {
     fn build(&self, app: &mut App) {
         AnimationTimingConfig::default().assert_damage_number_budget();
+        AnimationTimingConfig::default().assert_unit_reveal_tween_budget();
 
         if !app.is_plugin_added::<TweeningPlugin>() {
             app.add_plugins(TweeningPlugin);

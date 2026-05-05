@@ -1914,3 +1914,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching SAU-003/story row exists in `production/sprint-status.yaml`.
 - Next recommended: Shop/Auction UI Story 004 (`production/epics/shop-auction-ui/story-004-auction-locked-footer-and-card-buffer.md`) after readiness check, or continue sprint close-out if no more pull-forward work is being added.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-rendering/story-005-placement-reveal-collect-and-tween.md` - Story 005: Placement Reveal Collect and Tween
+- Criteria: 7/7 passing; one-frame opponent-only reveal collection, one sorted `PlacementRevealAnimReady` batch, same-pass Card Animations reveal start, `unit_reveal_tween_duration_ms` use, `ResolutionReveal stuck` recovery, and `PendingResolutionScript stuck` recovery verified.
+- Test Evidence: `cargo test -p client --test board_rendering_placement_reveal_test` passed 3/3; `board_rendering_snapshot_spawn_test` passed 4/4; `board_rendering_ghost_preview_bridge_test` passed 4/4; `card_animations_placement_reveal_test` passed 9/9; `cargo test -p shared` passed 5/5. `cargo fmt -p client -- --check`, `cargo fmt -p shared -- --check`, `cargo check -p client`, and `git diff --check` passed.
+- Verification: Worker branch `work/board-rendering-005-placement-reveal-collect-tween` commit `a7d792e092d380ec15c7cabcac7effec0c52839a` integrated. `C2SRequestSnapshot` is a narrow empty payload C2S reliable message, registered in `shared/src/protocol.rs`, exposed through the client Lightyear sender surface, and used only by Board Rendering reveal/stuck recovery.
+- Notes: Advisory only - manual Visual/Feel sign-off file `production/qa/evidence/board-rendering-placement-reveal-evidence.md` is not present yet. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent. No reconnect rebuild, full resolution playback, Shop/Auction UI, Hand UI, server placement authority, design, asset, or sprint-status scope creep found.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching BOARD-005 row exists in `production/sprint-status.yaml`.
+- Next recommended: Board Rendering Story 006 (`production/epics/board-rendering/story-006-resolution-anim-queue-and-phase-buffering.md`) after its blocker is rechecked against the now-complete Combat Resolution event log work.

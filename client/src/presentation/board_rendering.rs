@@ -1,19 +1,20 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use bevy::prelude::*;
 use bevy_tweening::TweenAnim;
-use lightyear::prelude::MessageReceiver;
+use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::{CardId, ClassId};
 use shared::protocol::{
-    EntityId, ObjectiveSnapshot, PlayTarget, RoundPhase, S2CGameSnapshot, S2CPlacementReveal,
-    UnitBoardLocation, UnitBoardState, UnitStatsSnapshot,
+    C2SRequestSnapshot, EntityId, ObjectiveSnapshot, PlacedCardReveal, PlayTarget, ReliableChannel,
+    RoundPhase, S2CGameSnapshot, S2CPlacementReveal, S2CResolutionEvent, UnitBoardLocation,
+    UnitBoardState, UnitStatsSnapshot,
 };
 use shared::session::PlayerId;
 
 use super::PresentationSet;
 use crate::card_animations::{
     cancel_tween_anim_in_place, AnimQueue, BoardRebuildRequested, PendingObjectiveDestroyedEvents,
-    PendingPhaseChange, StagedObjectiveRevealQueue,
+    PendingPhaseChange, PlacementRevealAnimReady, PlacementRevealEntry, StagedObjectiveRevealQueue,
 };
 use crate::state::{ClientGameSnapshotMessage, ClientState, CurrentClientPhase};
 use crate::ui::hand::{
@@ -163,6 +164,260 @@ impl BoardRenderingConfig {
     }
 }
 
+pub const DEFAULT_RESOLUTION_REVEAL_TIMEOUT_MS: u64 = 2_000;
+pub const MIN_RESOLUTION_REVEAL_TIMEOUT_MS: u64 = 1_500;
+pub const MAX_RESOLUTION_REVEAL_TIMEOUT_MS: u64 = 5_000;
+
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardRevealTimingConfig {
+    pub resolution_reveal_timeout_ms: u64,
+}
+
+impl Default for BoardRevealTimingConfig {
+    fn default() -> Self {
+        Self {
+            resolution_reveal_timeout_ms: DEFAULT_RESOLUTION_REVEAL_TIMEOUT_MS,
+        }
+    }
+}
+
+impl BoardRevealTimingConfig {
+    pub fn assert_valid(self) {
+        assert!(
+            (MIN_RESOLUTION_REVEAL_TIMEOUT_MS..=MAX_RESOLUTION_REVEAL_TIMEOUT_MS)
+                .contains(&self.resolution_reveal_timeout_ms),
+            "resolution_reveal_timeout_ms={} outside allowed range {}..={}",
+            self.resolution_reveal_timeout_ms,
+            MIN_RESOLUTION_REVEAL_TIMEOUT_MS,
+            MAX_RESOLUTION_REVEAL_TIMEOUT_MS
+        );
+    }
+
+    fn timeout(self) -> Duration {
+        Duration::from_millis(self.resolution_reveal_timeout_ms)
+    }
+}
+
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardLocalPlayer {
+    pub player_id: Option<PlayerId>,
+}
+
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SnapshotRecoveryRequested {
+    pub reason: SnapshotRecoveryReason,
+}
+
+impl SnapshotRecoveryRequested {
+    fn resolution_reveal_stuck() -> Self {
+        Self {
+            reason: SnapshotRecoveryReason::ResolutionRevealStuck,
+        }
+    }
+
+    fn pending_resolution_script_stuck() -> Self {
+        Self {
+            reason: SnapshotRecoveryReason::PendingResolutionScriptStuck,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SnapshotRecoveryReason {
+    ResolutionRevealStuck,
+    PendingResolutionScriptStuck,
+}
+
+#[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
+pub struct PendingResolutionScript {
+    script: Option<S2CResolutionEvent>,
+    elapsed_without_reveal: Duration,
+    recovery_requested: bool,
+}
+
+impl PendingResolutionScript {
+    pub fn set(&mut self, script: S2CResolutionEvent) {
+        self.script = Some(script);
+        self.elapsed_without_reveal = Duration::ZERO;
+        self.recovery_requested = false;
+    }
+
+    pub fn clear(&mut self) {
+        self.script = None;
+        self.elapsed_without_reveal = Duration::ZERO;
+        self.recovery_requested = false;
+    }
+
+    pub fn is_some(&self) -> bool {
+        self.script.is_some()
+    }
+
+    pub fn script(&self) -> Option<&S2CResolutionEvent> {
+        self.script.as_ref()
+    }
+
+    fn tick_without_reveal(&mut self, delta: Duration, timeout: Duration) -> bool {
+        if self.script.is_none() || self.recovery_requested {
+            return false;
+        }
+
+        self.elapsed_without_reveal += delta;
+        if self.elapsed_without_reveal >= timeout {
+            self.recovery_requested = true;
+            return true;
+        }
+
+        false
+    }
+}
+
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResolutionRevealWait {
+    active: bool,
+    elapsed: Duration,
+    recovery_requested: bool,
+}
+
+impl ResolutionRevealWait {
+    pub fn start(&mut self) {
+        self.active = true;
+        self.elapsed = Duration::ZERO;
+        self.recovery_requested = false;
+    }
+
+    pub fn clear(&mut self) {
+        self.active = false;
+        self.elapsed = Duration::ZERO;
+        self.recovery_requested = false;
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.active
+    }
+
+    fn tick(&mut self, delta: Duration, timeout: Duration) -> bool {
+        if !self.active || self.recovery_requested {
+            return false;
+        }
+
+        self.elapsed += delta;
+        if self.elapsed >= timeout {
+            self.recovery_requested = true;
+            return true;
+        }
+
+        false
+    }
+}
+
+#[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
+pub struct PlacementRevealCollectState {
+    pending: Option<PendingPlacementRevealBatch>,
+}
+
+impl PlacementRevealCollectState {
+    pub fn start_from_reveal(
+        &mut self,
+        reveal: &S2CPlacementReveal,
+        local_player_id: Option<PlayerId>,
+    ) -> usize {
+        let targets = reveal_targets(reveal, local_player_id);
+        self.start(targets)
+    }
+
+    pub fn start_from_reveals(
+        &mut self,
+        reveals: &[S2CPlacementReveal],
+        local_player_id: Option<PlayerId>,
+    ) -> usize {
+        let targets = reveals
+            .iter()
+            .flat_map(|reveal| reveal_targets(reveal, local_player_id))
+            .collect::<Vec<_>>();
+        self.start(targets)
+    }
+
+    pub fn is_pending(&self) -> bool {
+        self.pending.is_some()
+    }
+
+    pub fn pending_target_count(&self) -> usize {
+        self.pending
+            .as_ref()
+            .map(|pending| pending.targets.len())
+            .unwrap_or(0)
+    }
+
+    pub fn clear(&mut self) {
+        self.pending = None;
+    }
+
+    fn start(&mut self, targets: Vec<PlacementRevealTarget>) -> usize {
+        let count = targets.len();
+        self.pending = Some(PendingPlacementRevealBatch {
+            targets,
+            frames_until_collect: 1,
+        });
+        count
+    }
+
+    fn take_ready_targets(&mut self) -> Option<Vec<PlacementRevealTarget>> {
+        let pending = self.pending.as_mut()?;
+        if pending.frames_until_collect > 0 {
+            pending.frames_until_collect -= 1;
+            return None;
+        }
+
+        self.pending.take().map(|pending| pending.targets)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PendingPlacementRevealBatch {
+    targets: Vec<PlacementRevealTarget>,
+    frames_until_collect: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PlacementRevealTarget {
+    owner_id: PlayerId,
+    card_id: CardId,
+    lane: u8,
+    cell: u8,
+}
+
+fn reveal_targets(
+    reveal: &S2CPlacementReveal,
+    local_player_id: Option<PlayerId>,
+) -> Vec<PlacementRevealTarget> {
+    reveal
+        .placements
+        .iter()
+        .filter_map(|placement| reveal_target(placement, local_player_id))
+        .collect()
+}
+
+fn reveal_target(
+    placement: &PlacedCardReveal,
+    local_player_id: Option<PlayerId>,
+) -> Option<PlacementRevealTarget> {
+    let local_player_id = local_player_id?;
+    if placement.owner_id == local_player_id {
+        return None;
+    }
+
+    let PlayTarget::BoardCell { lane, cell } = placement.target else {
+        return None;
+    };
+
+    Some(PlacementRevealTarget {
+        owner_id: placement.owner_id,
+        card_id: placement.card_id,
+        lane,
+        cell,
+    })
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HpBarColor {
     Green,
@@ -196,6 +451,8 @@ pub enum BoardRenderState {
     DraftAuction,
     Placement,
     Resolution,
+    ResolutionReveal,
+    ResolutionExecuting,
     GameOver,
 }
 
@@ -258,14 +515,22 @@ pub struct BoardRenderingPlugin;
 impl Plugin for BoardRenderingPlugin {
     fn build(&self, app: &mut App) {
         BoardRenderingConfig::default().assert_valid();
+        BoardRevealTimingConfig::default().assert_valid();
 
         app.init_state::<ClientState>()
             .init_resource::<CurrentClientPhase>()
             .init_resource::<BoardRenderingConfig>()
+            .init_resource::<BoardRevealTimingConfig>()
             .init_resource::<BoardRenderState>()
+            .init_resource::<BoardLocalPlayer>()
             .init_resource::<ObjectiveIdentityCache>()
+            .init_resource::<PlacementRevealCollectState>()
+            .init_resource::<PendingResolutionScript>()
+            .init_resource::<ResolutionRevealWait>()
             .add_message::<ClientGameSnapshotMessage>()
             .add_message::<BoardRebuildRequested>()
+            .add_message::<PlacementRevealAnimReady>()
+            .add_message::<SnapshotRecoveryRequested>()
             .add_message::<GhostPlacementChanged>()
             .add_message::<GhostClickedEvent>()
             .add_message::<GhostDragStartEvent>()
@@ -304,7 +569,17 @@ impl Plugin for BoardRenderingPlugin {
             .add_systems(
                 Update,
                 (
+                    sync_reveal_state_from_snapshot_system.in_set(BoardRenderSet::ReadMessages),
                     rebuild_board_from_snapshot_system.in_set(BoardRenderSet::ReadMessages),
+                    drain_resolution_event_system.in_set(BoardRenderSet::ReadMessages),
+                    tick_reveal_recovery_timeouts_system
+                        .in_set(BoardRenderSet::ResolveStateMachine),
+                    (
+                        collect_placement_reveal_batch_system,
+                        send_snapshot_recovery_requests_system,
+                    )
+                        .chain()
+                        .in_set(BoardRenderSet::ScheduleTweens),
                     update_hp_bars_system.in_set(BoardRenderSet::UpdateHpBars),
                 ),
             )
@@ -314,7 +589,7 @@ impl Plugin for BoardRenderingPlugin {
                     apply_ghost_placement_changed_system,
                     emit_ghost_drag_start_events_system,
                     emit_ghost_clicked_events_system,
-                    clear_ghosts_on_placement_reveal_system,
+                    drain_placement_reveal_system,
                 )
                     .chain()
                     .in_set(PresentationSet::MessageDrain)
@@ -379,30 +654,44 @@ pub fn apply_ghost_placement_changed_system(
     }
 }
 
-pub fn clear_ghosts_on_placement_reveal_system(
+pub fn drain_placement_reveal_system(
     mut commands: Commands,
     mut receivers: Query<&mut MessageReceiver<S2CPlacementReveal>>,
+    local_player: Res<BoardLocalPlayer>,
+    mut collect_state: ResMut<PlacementRevealCollectState>,
+    mut reveal_wait: ResMut<ResolutionRevealWait>,
+    mut render_state: ResMut<BoardRenderState>,
     ghost_units: Query<(Entity, &GhostUnit)>,
     lane_washes: Query<(Entity, &LaneGhostWash)>,
     target_markers: Query<(Entity, &TargetUnitGhost, Option<&BoardGhostPickable>)>,
     objective_markers: Query<(Entity, &ObjectiveTargetGhost, Option<&BoardGhostPickable>)>,
 ) {
-    let mut saw_reveal = false;
+    let mut reveals = Vec::new();
     for mut receiver in &mut receivers {
-        for _message in receiver.receive() {
-            saw_reveal = true;
+        for message in receiver.receive() {
+            reveals.push(message);
         }
     }
 
-    if saw_reveal {
-        clear_all_board_ghosts(
-            &mut commands,
-            &ghost_units,
-            &lane_washes,
-            &target_markers,
-            &objective_markers,
-        );
+    if reveals.is_empty() {
+        return;
     }
+
+    clear_all_board_ghosts(
+        &mut commands,
+        &ghost_units,
+        &lane_washes,
+        &target_markers,
+        &objective_markers,
+    );
+
+    if local_player.player_id.is_none() {
+        warn!("Board Rendering: placement reveal received before local player id was known");
+    }
+
+    collect_state.start_from_reveals(&reveals, local_player.player_id);
+    reveal_wait.start();
+    *render_state = BoardRenderState::ResolutionReveal;
 }
 
 pub fn emit_ghost_clicked_events_system(
@@ -443,6 +732,134 @@ pub fn emit_ghost_drag_start_events_system(
             card_id: ghost.card_id,
         });
     }
+}
+
+pub fn drain_resolution_event_system(
+    mut receivers: Query<&mut MessageReceiver<S2CResolutionEvent>>,
+    mut pending_script: ResMut<PendingResolutionScript>,
+    mut reveal_wait: ResMut<ResolutionRevealWait>,
+    mut render_state: ResMut<BoardRenderState>,
+) {
+    let mut latest = None;
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            latest = Some(message);
+        }
+    }
+
+    let Some(message) = latest else {
+        return;
+    };
+
+    pending_script.set(message);
+    if reveal_wait.is_active() || *render_state == BoardRenderState::ResolutionReveal {
+        reveal_wait.clear();
+        *render_state = BoardRenderState::ResolutionExecuting;
+    }
+}
+
+pub fn tick_reveal_recovery_timeouts_system(
+    time: Res<Time<Virtual>>,
+    timings: Res<BoardRevealTimingConfig>,
+    render_state: Res<BoardRenderState>,
+    mut reveal_wait: ResMut<ResolutionRevealWait>,
+    mut pending_script: ResMut<PendingResolutionScript>,
+    mut recovery_writer: MessageWriter<SnapshotRecoveryRequested>,
+) {
+    let timeout = timings.timeout();
+    let delta = time.delta();
+
+    if reveal_wait.tick(delta, timeout) {
+        warn!("ResolutionReveal stuck; requesting authoritative snapshot");
+        recovery_writer.write(SnapshotRecoveryRequested::resolution_reveal_stuck());
+    }
+
+    if *render_state == BoardRenderState::Placement
+        && pending_script.tick_without_reveal(delta, timeout)
+    {
+        warn!("PendingResolutionScript stuck; requesting authoritative snapshot");
+        recovery_writer.write(SnapshotRecoveryRequested::pending_resolution_script_stuck());
+    }
+}
+
+pub fn send_snapshot_recovery_requests_system(
+    mut requests: MessageReader<SnapshotRecoveryRequested>,
+    mut senders: Query<&mut MessageSender<C2SRequestSnapshot>>,
+) {
+    for _request in requests.read() {
+        let mut sent = false;
+        for mut sender in &mut senders {
+            sender.send::<ReliableChannel>(C2SRequestSnapshot {});
+            sent = true;
+        }
+
+        if !sent {
+            warn!("Board Rendering: C2SRequestSnapshot requested but no MessageSender exists");
+        }
+    }
+}
+
+pub fn collect_placement_reveal_batch_system(
+    mut collect_state: ResMut<PlacementRevealCollectState>,
+    units: Query<(Entity, &BoardUnitOwner, &BoardUnitCard, &LaneCell), With<BoardUnit>>,
+    mut writer: MessageWriter<PlacementRevealAnimReady>,
+) {
+    let Some(targets) = collect_state.take_ready_targets() else {
+        return;
+    };
+
+    let mut entries = Vec::new();
+    for target in targets {
+        for (entity, owner, card, lane_cell) in &units {
+            if reveal_target_matches_unit(target, owner, card, lane_cell) {
+                entries.push(PlacementRevealEntry {
+                    unit: entity,
+                    lane: lane_cell.lane,
+                    cell: lane_cell.cell,
+                });
+            }
+        }
+    }
+
+    entries.sort_by_key(|entry| (entry.lane, entry.cell, entry.unit.to_bits()));
+
+    if !entries.is_empty() {
+        writer.write(PlacementRevealAnimReady { entries });
+    }
+}
+
+fn reveal_target_matches_unit(
+    target: PlacementRevealTarget,
+    owner: &BoardUnitOwner,
+    card: &BoardUnitCard,
+    lane_cell: &LaneCell,
+) -> bool {
+    owner.0 == target.owner_id
+        && card.card_id == Some(target.card_id)
+        && lane_cell.lane == target.lane
+        && lane_cell.cell == target.cell
+}
+
+fn sync_reveal_state_from_snapshot_system(
+    mut snapshots: MessageReader<ClientGameSnapshotMessage>,
+    mut local_player: ResMut<BoardLocalPlayer>,
+    mut reveal_collect: ResMut<PlacementRevealCollectState>,
+    mut reveal_wait: ResMut<ResolutionRevealWait>,
+    mut pending_script: ResMut<PendingResolutionScript>,
+) {
+    let mut latest_snapshot = None;
+    for snapshot in snapshots.read() {
+        latest_snapshot = Some(&snapshot.0);
+    }
+
+    let Some(snapshot) = latest_snapshot else {
+        return;
+    };
+
+    local_player.player_id = Some(snapshot.recipient_player_id);
+    reveal_collect.clear();
+    reveal_wait.clear();
+    pending_script.clear();
 }
 
 fn insert_board_rendering_session_resources(mut commands: Commands) {
