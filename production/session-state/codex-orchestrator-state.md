@@ -155,6 +155,20 @@ None currently tracked here.
   and `git diff --check HEAD~1..HEAD`. Queue exactly one `/story-done` for
   `production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md`;
   do not relaunch the implementation worker.
+- BOARD-RENDERING-002 / Board Grid, Camera, and Z Layers is integrated on
+  `origin/main` and needs serialized `/story-done`. Worker branch
+  `work/board-rendering-002-grid-camera-z-layers` returned at `6ae82d7`, pushed
+  to `origin/work/board-rendering-002-grid-camera-z-layers`. Root cherry-picked
+  the worker commit into `main` as `ce3658b` (`BOARD-RENDERING-002 impl: grid
+  camera z layers`), resolving the `client/Cargo.toml` test-entry conflict by
+  keeping both SAU-001 and BOARD-002 test entries. Root checks passed:
+  `cargo fmt -p client -- --check`, `cargo test -p client --test
+  board_rendering_grid_camera_test` 6/6, `cargo test -p client --test
+  board_rendering_plugin_scaffold_test` 9/9, `cargo check -p client`, and
+  `git diff --check HEAD~1..HEAD`. Commit is on `origin/main`; do not relaunch
+  the worker. Queue exactly one `/story-done` for
+  `production/epics/board-rendering/story-002-board-grid-camera-and-z-layers.md`
+  after/around serialized SAU-001 story-done.
 
 ## Recent Planning / Readiness Updates
 
@@ -200,6 +214,14 @@ None currently tracked here.
   --test shop_auction_ui_plugin_scaffold_formulas_test` 8/8,
   `cargo check -p client`, and `git diff --check HEAD~1..HEAD`. Needs
   serialized `/story-done`; do not relaunch worker.
+- BOARD-RENDERING-002 implementation worker returned and was integrated/pushed
+  to `origin/main` as `ce3658b`. Worker branch
+  `work/board-rendering-002-grid-camera-z-layers` returned at `6ae82d7`. Needs
+  serialized `/story-done`; do not relaunch worker. Note: while pushing
+  `main`, an already-local unreported commit `a3739db` (`docs: repair shop
+  auction UX review blockers`) was also present and is now on `origin/main`.
+  Do not mark that UX repair window clear until the user pastes its official
+  report.
 - Settings/Accessibility UX design returned and was pushed at `093b62a`,
   creating `design/ux/settings-accessibility.md` only. Validation passed
   `git diff --check` and a path-specific check. Open questions recorded in the
@@ -1132,6 +1154,10 @@ Current active windows by user default-launch rule:
   integrated and pushed it as `2dbc988`. Worker window can be cleared. Queue a
   serialized `/story-done` for
   `production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md`.
+- BOARD-RENDERING-002 implementation worker returned at `6ae82d7`; root
+  integrated and pushed it as `ce3658b`. Worker window can be cleared. Queue a
+  serialized `/story-done` for
+  `production/epics/board-rendering/story-002-board-grid-camera-and-z-layers.md`.
 - Settings/Accessibility UX design returned and pushed `093b62a`; window can be
   cleared. Keep its open questions visible for future settings implementation.
 - Result Screen UX design returned and pushed `399bb34`; window can be cleared.
