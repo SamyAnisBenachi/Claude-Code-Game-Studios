@@ -1,7 +1,7 @@
 # Story 011: Placement Submit Authority Validation
 
 > **Epic**: Board / Lane System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -41,21 +41,21 @@ This story is ready to open because:
 
 *From GDD `design/gdd/board-lane-system.md` and `design/gdd/network-protocol.md`, scoped to this story:*
 
-- [ ] **BL-35 / TR-BLS-011 - authority gate**: Given any `C2SSubmitPlacement`, when the server handles it, then the handler resolves sender `ClientId` to authoritative `PlayerId`, phase-gates to PLACEMENT, and silently discards unknown-sender or wrong-phase messages.
+- [x] **BL-35 / TR-BLS-011 - authority gate**: Given any `C2SSubmitPlacement`, when the server handles it, then the handler resolves sender `ClientId` to authoritative `PlayerId`, phase-gates to PLACEMENT, and silently discards unknown-sender or wrong-phase messages.
 
-- [ ] **BL-35 / TR-BLS-011 - hand ownership**: Given a submitted `card_id` that is not in the submitting player's authoritative `PlayerHands`, when validation runs, then the entire batch is silently discarded and `PendingPlacements[player].is_final` remains false.
+- [x] **BL-35 / TR-BLS-011 - hand ownership**: Given a submitted `card_id` that is not in the submitting player's authoritative `PlayerHands`, when validation runs, then the entire batch is silently discarded and `PendingPlacements[player].is_final` remains false.
 
-- [ ] **BL-35 / TR-BLS-011 - duplicate card IDs**: Given the same `card_id` appears more than once in one submitted batch, when validation runs, then the entire batch is silently discarded, no S2C response is sent, and no pending placement is written.
+- [x] **BL-35 / TR-BLS-011 - duplicate card IDs**: Given the same `card_id` appears more than once in one submitted batch, when validation runs, then the entire batch is silently discarded, no S2C response is sent, and no pending placement is written.
 
-- [ ] **BL-35 / TR-BLS-011 - target legality**: Given any submitted `PlayTarget` with lane/cell/objective/unit data outside the authoritative board constraints, when validation runs, then the entire batch is silently discarded.
+- [x] **BL-35 / TR-BLS-011 - target legality**: Given any submitted `PlayTarget` with lane/cell/objective/unit data outside the authoritative board constraints, when validation runs, then the entire batch is silently discarded.
 
-- [ ] **BL-35 / TR-BLS-011 - spawn and occupancy legality**: Given a minion outside current spawn range, an occupied personal minion slot, duplicate trap/structure/field occupancy, or any other Board/Lane placement rule failure, when validation runs, then the entire batch is silently discarded.
+- [x] **BL-35 / TR-BLS-011 - spawn and occupancy legality**: Given a minion outside current spawn range, an occupied personal minion slot, duplicate trap/structure/field occupancy, or any other Board/Lane placement rule failure, when validation runs, then the entire batch is silently discarded.
 
-- [ ] **BL-35 / TR-BLS-011 - explicit mana budget validation**: Given submitted entries with `current_mana_spend` / `reserve_mana_spend`, when validation runs, then Board/Lane calls Economy's explicit split validation for each card and the whole batch aggregate. Current and reserve overdraw each reject the full batch.
+- [x] **BL-35 / TR-BLS-011 - explicit mana budget validation**: Given submitted entries with `current_mana_spend` / `reserve_mana_spend`, when validation runs, then Board/Lane calls Economy's explicit split validation for each card and the whole batch aggregate. Current and reserve overdraw each reject the full batch.
 
-- [ ] **BL-36 / TR-BLS-011 - accepted batch write**: Given all checks pass, when validation completes, then exactly one `PlayerSubmission` is written to `PendingPlacements` for the submitting player with `is_final = true`, preserving per-card explicit split values for PLACEMENT close.
+- [x] **BL-36 / TR-BLS-011 - accepted batch write**: Given all checks pass, when validation completes, then exactly one `PlayerSubmission` is written to `PendingPlacements` for the submitting player with `is_final = true`, preserving per-card explicit split values for PLACEMENT close.
 
-- [ ] **BL-36 / TR-BLS-011 - deduction at close**: Given accepted pending placements exist, when `close_placement_phase` runs, then it applies Economy explicit split deductions before `S2CPlacementReveal` is enqueued and before any ECS unit entity is spawned.
+- [x] **BL-36 / TR-BLS-011 - deduction at close**: Given accepted pending placements exist, when `close_placement_phase` runs, then it applies Economy explicit split deductions before `S2CPlacementReveal` is enqueued and before any ECS unit entity is spawned.
 
 ---
 
@@ -134,7 +134,7 @@ Placement submit validation must remain bounded by the submitted batch size plus
 - Unit: `tests/unit/board-lane-system/placement_submit_authority_validation_test.rs`
 - Integration or evidence doc: `production/qa/evidence/placement-submit-authority-validation-evidence.md`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -144,3 +144,18 @@ Placement submit validation must remain bounded by the submitted batch size plus
 - Depends on: `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md` is Complete and provides split placement protocol payloads.
 - Depends on: `production/epics/economy-system/story-007-explicit-placement-mana-split-api.md` is Complete and provides explicit current/reserve mana validation and deduction APIs.
 - Unlocks: `production/epics/hand-ui/story-010-submit-prevalidation.md` server-authority prerequisite.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Verdict**: COMPLETE
+**Criteria**: 8/8 passing; sender authority/phase gate, hand ownership, duplicate card rejection, target bounds, spawn/occupancy legality, explicit split validation, accepted pending write, and close-phase deduction ordering verified.
+**Test Evidence**: `tests/unit/board-lane-system/placement_submit_authority_validation_test.rs` exists and `cargo test -p server --test placement_submit_authority_validation_test` passed 8/8. `production/qa/evidence/placement-submit-authority-validation-evidence.md` exists. Adjacent regression commands passed: `cargo test -p server --test placement_buffer_test` 3/3 and `cargo test -p server --test explicit_placement_mana_split_test` 6/6.
+**Verification**: Current `main` includes worker commit `d2d16312db93205d81613387e3aade18cbebd732` via main integration commit `7f034b3`. `drain_submit_placement_messages` resolves trusted sender identity before writing internal placement submissions; `process_placement_submission` silently rejects wrong phase, unknown player, duplicate final submission, missing hand ownership, duplicate card IDs, invalid targets, spawn/occupancy failures, and current/reserve overdraw before writing `PendingPlacements`. Accepted batches preserve per-card explicit split values until `close_placement_phase`, where aggregate explicit mana is deducted before `S2CPlacementReveal` and before unit spawn.
+**Regression Evidence**: `cargo fmt -p server -- --check`, `cargo check -p server`, `cargo check --workspace`, and `git diff --check` passed.
+**Deviations**: None. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+**Tech Debt**: None logged.
+**Sprint Status**: Unchanged; no matching BLS-011 row exists in `production/sprint-status.yaml`.
+**Next Recommended**: HAND-UI-010 can be rechecked now that the BLS-011 server-authority prerequisite is complete.

@@ -1870,3 +1870,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching SAU-002/story row exists in `production/sprint-status.yaml`.
 - Next recommended: Shop/Auction UI Story 003 (`production/epics/shop-auction-ui/story-003-draft-shop-refresh-and-purchase.md`) after readiness check, or continue the current sprint close-out sequence if no additional Should Have scope is being pulled in.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE
+- Story: `production/epics/board-lane-system/story-011-placement-submit-authority-validation.md` - Story 011: Placement Submit Authority Validation
+- Criteria: 8/8 passing; sender authority/phase gate, hand ownership, duplicate card rejection, target legality, spawn/occupancy legality, explicit mana validation, accepted pending write, and close-phase deduction ordering verified.
+- Test Evidence: `cargo test -p server --test placement_submit_authority_validation_test` passed 8/8. Requested adjacent regression commands passed: `placement_buffer_test` 3/3 and `explicit_placement_mana_split_test` 6/6. `cargo fmt -p server -- --check`, `cargo check -p server`, `cargo check --workspace`, and `git diff --check` passed.
+- Verification: Current `main` includes worker commit `d2d16312db93205d81613387e3aade18cbebd732` via main integration commit `7f034b3`; sender identity resolves from `PlayerConnectionMap`, invalid submissions are silently discarded all-or-nothing before `PendingPlacements` writes, accepted submissions preserve explicit current/reserve spend, and `close_placement_phase` deducts explicit mana before reveal enqueue and unit spawn.
+- Notes: No blocking GDD, ADR-007, ADR-019, ADR-002, ADR-008, Bevy 0.18, or Lightyear 0.26 deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching BLS-011 row exists in `production/sprint-status.yaml`.
+- Next recommended: HAND-UI-010 can be rechecked now that BLS-011 is complete.
