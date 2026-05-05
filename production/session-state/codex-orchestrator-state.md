@@ -175,6 +175,17 @@ None currently tracked here.
   (`Format32bppArgb`), transparent corners, nonzero alpha coverage, and
   `git diff --check` passed with only unrelated CRLF warnings. No code,
   manifest, production session-state, or sprint-status files were touched.
+- Hand UI UX design returned and was pushed at `fc95a84`, creating
+  `design/ux/hand-ui.md` only. Validation passed `git diff --check`; no code,
+  production session-state, or sprint-status files were touched. Open questions
+  captured: keyboard/focus scope vs Sprint 1 "no keybindings" GDD note, shallow
+  fan row reconciliation between GDD fan formula and HUD/art readability
+  guidance, missing `S2CActivationRejected`, reserve strip final width (`96px`
+  GDD vs `104px` implementation evidence), and card zoom resolution / atlas
+  sharing asset-pipeline questions. Blockers: Story 012 remains blocked by
+  missing `S2CActivationRejected`; Story 013 keeps the reconnect timer-zero
+  design question open. Unblocks hand/shop panel layout evidence and later Hand
+  UI visual polish.
 - Observed root worktree note: after parallel prompts, there are unrelated dirty
   docs and untracked files in the root checkout, including the HAND-UI-010
   prerequisite docs changeset surfaces and `design/ux/combat-log.md`. Do not
@@ -1050,6 +1061,7 @@ Current active windows by user default-launch rule:
   stories.
 - Current card type/rarity HUD icon batch returned and pushed `43bd1f8`; window
   can be cleared.
+- Hand UI UX design returned and pushed `fc95a84`; window can be cleared.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
   and recommends a new shared Presentation Layer story. Window can be cleared.
