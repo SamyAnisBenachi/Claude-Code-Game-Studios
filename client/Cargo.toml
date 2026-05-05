@@ -166,3 +166,7 @@ path = "../tests/unit/board_rendering/board_grid_camera_test.rs"
 [[test]]
 name = "board_rendering_ghost_preview_bridge_test"
 path = "../tests/integration/board_rendering/ghost_preview_bridge_test.rs"
+
+[[test]]
+name = "board_rendering_snapshot_spawn_test"
+path = "../tests/integration/board_rendering/snapshot_spawn_test.rs"

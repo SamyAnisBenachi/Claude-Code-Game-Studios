@@ -1,7 +1,7 @@
 // State layer: client-side read-only view of server state
 
 use bevy::prelude::*;
-use shared::protocol::{RoundPhase, S2CPhaseChanged};
+use shared::protocol::{RoundPhase, S2CGameSnapshot, S2CPhaseChanged};
 
 /// Client presentation lifecycle. It gates session-scoped UI pools.
 #[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -48,3 +48,6 @@ pub fn apply_phase_changed_message(msg: S2CPhaseChanged, current: &mut CurrentCl
     current.phase = phase;
     current.round = round_number;
 }
+
+#[derive(Message, Debug, Clone)]
+pub struct ClientGameSnapshotMessage(pub S2CGameSnapshot);

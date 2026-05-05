@@ -1,10 +1,21 @@
+use std::collections::HashMap;
+
 use bevy::prelude::*;
+use bevy_tweening::TweenAnim;
 use lightyear::prelude::MessageReceiver;
-use shared::card::CardId;
-use shared::protocol::{PlayTarget, S2CPlacementReveal};
+use shared::card::{CardId, ClassId};
+use shared::protocol::{
+    EntityId, ObjectiveSnapshot, PlayTarget, RoundPhase, S2CGameSnapshot, S2CPlacementReveal,
+    UnitBoardLocation, UnitBoardState, UnitStatsSnapshot,
+};
+use shared::session::PlayerId;
 
 use super::PresentationSet;
-use crate::state::ClientState;
+use crate::card_animations::{
+    cancel_tween_anim_in_place, AnimQueue, BoardRebuildRequested, PendingObjectiveDestroyedEvents,
+    PendingPhaseChange, StagedObjectiveRevealQueue,
+};
+use crate::state::{ClientGameSnapshotMessage, ClientState, CurrentClientPhase};
 use crate::ui::hand::{
     GhostClickedEvent, GhostDragStartEvent, GhostPlacementChanged, ObjectiveCell,
     PlacementTargetUnit,
@@ -13,10 +24,41 @@ use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUN
 
 pub mod rendering_constants;
 
+pub const UNIT_PLACEHOLDER_FRAME_INDEX: usize = 0;
+pub const HP_BAR_WHITE_PIXEL_FRAME_INDEX: usize = 1;
+pub const OBJECTIVE_UNKNOWN_FRAME_INDEX: usize = 0;
+pub const HP_THRESHOLD_EPSILON: f32 = 1e-4;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UnitAtlasFrame {
+    pub frame_index: usize,
+    pub max_hp: u8,
+}
+
 #[derive(Resource, Debug, Clone, PartialEq, Default)]
 pub struct CardAtlas {
     pub image: Handle<Image>,
     pub layout: Handle<TextureAtlasLayout>,
+    pub board_elements_image: Handle<Image>,
+    pub board_elements_layout: Handle<TextureAtlasLayout>,
+    pub unit_frames: HashMap<CardId, UnitAtlasFrame>,
+}
+
+impl CardAtlas {
+    pub fn with_unit_frame(mut self, card_id: CardId, frame_index: usize, max_hp: u8) -> Self {
+        self.unit_frames.insert(
+            card_id,
+            UnitAtlasFrame {
+                frame_index,
+                max_hp,
+            },
+        );
+        self
+    }
+
+    pub fn unit_frame(&self, card_id: CardId) -> Option<UnitAtlasFrame> {
+        self.unit_frames.get(&card_id).copied()
+    }
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,6 +69,144 @@ pub struct BoardCamera;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BoardCellNode;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardSnapshotEntity;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardUnit {
+    pub unit_id: EntityId,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardUnitOwner(pub PlayerId);
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardUnitCard {
+    pub card_id: Option<CardId>,
+    pub frame_index: usize,
+    pub used_missing_art_fallback: bool,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardUnitStats {
+    pub hp_current: u8,
+    pub hp_max: u8,
+    pub atk: u8,
+    pub mp: u8,
+    pub ar: u8,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardUnitSourceClass(pub ClassId);
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StandingObjective {
+    pub owner_id: PlayerId,
+    pub lane: u8,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StandingObjectiveHp {
+    pub hp_current: u8,
+    pub hp_max: u8,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HpBarBackground;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HpBarFill;
+
+#[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
+pub struct ObjectiveIdentityCache {
+    identities: HashMap<(PlayerId, u8), bool>,
+}
+
+impl ObjectiveIdentityCache {
+    pub fn insert(&mut self, player_id: PlayerId, lane: u8, is_fake: bool) {
+        self.identities.insert((player_id, lane), is_fake);
+    }
+
+    pub fn clear(&mut self) {
+        self.identities.clear();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.identities.is_empty()
+    }
+}
+
+#[derive(Resource, Debug, Clone, Copy, PartialEq)]
+pub struct BoardRenderingConfig {
+    pub health_bar_green_threshold: f32,
+    pub health_bar_red_threshold: f32,
+}
+
+impl Default for BoardRenderingConfig {
+    fn default() -> Self {
+        Self {
+            health_bar_green_threshold: 0.6,
+            health_bar_red_threshold: 0.3,
+        }
+    }
+}
+
+impl BoardRenderingConfig {
+    pub fn assert_valid(self) {
+        assert!(
+            self.health_bar_red_threshold < self.health_bar_green_threshold,
+            "HP threshold config invalid: red_threshold={} >= green_threshold={}",
+            self.health_bar_red_threshold,
+            self.health_bar_green_threshold
+        );
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HpBarColor {
+    Green,
+    Yellow,
+    Red,
+}
+
+impl HpBarColor {
+    pub fn tint(self) -> Color {
+        match self {
+            Self::Green => Color::srgba(0.2, 0.92, 0.38, 1.0),
+            Self::Yellow => Color::srgba(1.0, 0.78, 0.18, 1.0),
+            Self::Red => Color::srgba(0.95, 0.18, 0.16, 1.0),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HpBarVisual {
+    pub fill: f32,
+    pub color: HpBarColor,
+}
+
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoardRenderState {
+    #[default]
+    Idle,
+    Lobby,
+    DraftInitial,
+    DraftShop,
+    DraftAuction,
+    Placement,
+    Resolution,
+    GameOver,
+}
+
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BoardRenderSet {
+    ReadMessages,
+    ResolveStateMachine,
+    SpawnEntities,
+    ScheduleTweens,
+    UpdateHpBars,
+}
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GhostUnit {
@@ -77,12 +257,42 @@ pub struct BoardRenderingPlugin;
 
 impl Plugin for BoardRenderingPlugin {
     fn build(&self, app: &mut App) {
+        BoardRenderingConfig::default().assert_valid();
+
         app.init_state::<ClientState>()
+            .init_resource::<CurrentClientPhase>()
+            .init_resource::<BoardRenderingConfig>()
+            .init_resource::<BoardRenderState>()
+            .init_resource::<ObjectiveIdentityCache>()
+            .add_message::<ClientGameSnapshotMessage>()
+            .add_message::<BoardRebuildRequested>()
             .add_message::<GhostPlacementChanged>()
             .add_message::<GhostClickedEvent>()
             .add_message::<GhostDragStartEvent>()
             .add_message::<Pointer<Click>>()
             .add_message::<Pointer<Press>>()
+            .configure_sets(
+                Update,
+                (
+                    BoardRenderSet::ReadMessages,
+                    BoardRenderSet::ResolveStateMachine,
+                    BoardRenderSet::SpawnEntities,
+                    BoardRenderSet::ScheduleTweens,
+                    BoardRenderSet::UpdateHpBars,
+                )
+                    .chain()
+                    .run_if(in_state(ClientState::InSession)),
+            )
+            .configure_sets(
+                Update,
+                (
+                    BoardRenderSet::ReadMessages.in_set(PresentationSet::MessageDrain),
+                    BoardRenderSet::ResolveStateMachine.in_set(PresentationSet::StateSync),
+                    BoardRenderSet::SpawnEntities.in_set(PresentationSet::StateSync),
+                    BoardRenderSet::ScheduleTweens.in_set(PresentationSet::StateSync),
+                    BoardRenderSet::UpdateHpBars.in_set(PresentationSet::StateSync),
+                ),
+            )
             .add_systems(
                 OnEnter(ClientState::InSession),
                 insert_board_rendering_session_resources,
@@ -90,6 +300,13 @@ impl Plugin for BoardRenderingPlugin {
             .add_systems(
                 OnExit(ClientState::InSession),
                 remove_board_rendering_session_resources,
+            )
+            .add_systems(
+                Update,
+                (
+                    rebuild_board_from_snapshot_system.in_set(BoardRenderSet::ReadMessages),
+                    update_hp_bars_system.in_set(BoardRenderSet::UpdateHpBars),
+                ),
             )
             .add_systems(
                 Update,
@@ -247,6 +464,463 @@ fn remove_board_rendering_session_resources(
 
     commands.remove_resource::<BoardLayout>();
     commands.remove_resource::<CardAtlas>();
+}
+
+#[allow(clippy::too_many_arguments)]
+fn rebuild_board_from_snapshot_system(
+    mut commands: Commands,
+    mut snapshots: MessageReader<ClientGameSnapshotMessage>,
+    board_layout: Option<Res<BoardLayout>>,
+    card_atlas: Option<Res<CardAtlas>>,
+    config: Res<BoardRenderingConfig>,
+    stale_entities: Query<Entity, With<BoardSnapshotEntity>>,
+    mut render_state: ResMut<BoardRenderState>,
+    mut current_phase: Option<ResMut<CurrentClientPhase>>,
+    mut objective_identity_cache: ResMut<ObjectiveIdentityCache>,
+    mut rebuild_writer: MessageWriter<BoardRebuildRequested>,
+    mut tweens: Query<&mut TweenAnim>,
+    mut anim_queue: Option<ResMut<AnimQueue>>,
+    mut pending_phase: Option<ResMut<PendingPhaseChange>>,
+    mut pending_objectives: Option<ResMut<PendingObjectiveDestroyedEvents>>,
+    mut staged_objectives: Option<ResMut<StagedObjectiveRevealQueue>>,
+) {
+    let mut latest_snapshot = None;
+    for snapshot in snapshots.read() {
+        latest_snapshot = Some(snapshot.0.clone());
+    }
+
+    let Some(snapshot) = latest_snapshot else {
+        return;
+    };
+    let Some(board_layout) = board_layout else {
+        warn!("Board Rendering: snapshot ignored because BoardLayout is missing");
+        return;
+    };
+    let Some(card_atlas) = card_atlas else {
+        warn!("Board Rendering: snapshot ignored because CardAtlas is missing");
+        return;
+    };
+
+    clear_pending_visual_state(
+        &mut rebuild_writer,
+        &mut tweens,
+        anim_queue.as_deref_mut(),
+        pending_phase.as_deref_mut(),
+        pending_objectives.as_deref_mut(),
+        staged_objectives.as_deref_mut(),
+    );
+    objective_identity_cache.clear();
+
+    for entity in &stale_entities {
+        commands.entity(entity).despawn();
+    }
+
+    *render_state = BoardRenderState::from_snapshot_phase(snapshot.phase);
+    if let Some(current_phase) = current_phase.as_deref_mut() {
+        current_phase.phase = snapshot.phase;
+        current_phase.round = snapshot.round_number;
+    }
+
+    spawn_snapshot_objectives(&mut commands, &board_layout, &card_atlas, &snapshot);
+    spawn_snapshot_units(
+        &mut commands,
+        &board_layout,
+        &card_atlas,
+        &config,
+        &snapshot,
+    );
+}
+
+fn clear_pending_visual_state(
+    rebuild_writer: &mut MessageWriter<BoardRebuildRequested>,
+    tweens: &mut Query<&mut TweenAnim>,
+    anim_queue: Option<&mut AnimQueue>,
+    pending_phase: Option<&mut PendingPhaseChange>,
+    pending_objectives: Option<&mut PendingObjectiveDestroyedEvents>,
+    staged_objectives: Option<&mut StagedObjectiveRevealQueue>,
+) {
+    rebuild_writer.write(BoardRebuildRequested);
+
+    if let Some(anim_queue) = anim_queue {
+        anim_queue.reset();
+    }
+    if let Some(pending_phase) = pending_phase {
+        pending_phase.clear();
+    }
+    if let Some(pending_objectives) = pending_objectives {
+        pending_objectives.clear();
+    }
+    if let Some(staged_objectives) = staged_objectives {
+        staged_objectives.clear();
+    }
+
+    for mut tween in tweens.iter_mut() {
+        if let Err(error) = cancel_tween_anim_in_place(&mut tween) {
+            warn!("Board Rendering: failed to cancel tween during snapshot rebuild: {error}");
+        }
+    }
+}
+
+fn spawn_snapshot_units(
+    commands: &mut Commands,
+    board_layout: &BoardLayout,
+    card_atlas: &CardAtlas,
+    config: &BoardRenderingConfig,
+    snapshot: &S2CGameSnapshot,
+) {
+    for unit in &snapshot.board.units {
+        spawn_snapshot_unit(commands, board_layout, card_atlas, config, snapshot, unit);
+    }
+}
+
+fn spawn_snapshot_unit(
+    commands: &mut Commands,
+    board_layout: &BoardLayout,
+    card_atlas: &CardAtlas,
+    config: &BoardRenderingConfig,
+    snapshot: &S2CGameSnapshot,
+    unit: &UnitBoardState,
+) {
+    let Some((lane, cell)) = visible_unit_cell(unit, snapshot.recipient_player_id) else {
+        warn!(
+            "Board Rendering: unit {:?} has out-of-range snapshot location; skipped",
+            unit.unit_id
+        );
+        return;
+    };
+
+    let stats = board_unit_stats(unit, card_atlas);
+    let (frame_index, used_missing_art_fallback) = unit_frame_index(unit, card_atlas);
+    let world_xy = board_layout.cell_to_world(lane, cell);
+
+    let unit_entity = commands
+        .spawn((
+            BoardRenderingEntity,
+            BoardSnapshotEntity,
+            BoardUnit {
+                unit_id: unit.unit_id,
+            },
+            BoardUnitOwner(unit.owner_id),
+            BoardUnitCard {
+                card_id: unit.card_id,
+                frame_index,
+                used_missing_art_fallback,
+            },
+            stats,
+            LaneCell { lane, cell },
+            unit_sprite(card_atlas, frame_index),
+            Transform::from_xyz(world_xy.x, world_xy.y, rendering_constants::Z_UNITS),
+        ))
+        .id();
+
+    if let Some(source_class) = unit.source_class {
+        commands
+            .entity(unit_entity)
+            .insert(BoardUnitSourceClass(source_class));
+    }
+
+    spawn_hp_bar_children(commands, unit_entity, card_atlas, stats, config);
+}
+
+fn visible_unit_cell(unit: &UnitBoardState, recipient_player_id: PlayerId) -> Option<(u8, u8)> {
+    match unit.location {
+        UnitBoardLocation::BoardCell { lane, cell } => {
+            in_board_bounds(lane, cell).then_some((lane, cell))
+        }
+        UnitBoardLocation::ObjectiveAttachment { lane } => {
+            let cell = if unit.owner_id == recipient_player_id {
+                BOARD_CELL_COUNT
+            } else {
+                1
+            };
+            in_board_bounds(lane, cell).then_some((lane, cell))
+        }
+    }
+}
+
+fn in_board_bounds(lane: u8, cell: u8) -> bool {
+    (1..=BOARD_LANE_COUNT).contains(&lane) && (1..=BOARD_CELL_COUNT).contains(&cell)
+}
+
+fn unit_frame_index(unit: &UnitBoardState, card_atlas: &CardAtlas) -> (usize, bool) {
+    let Some(card_id) = unit.card_id else {
+        warn!(
+            "Board Rendering asset-miss: unit {:?} has no card_id",
+            unit.unit_id
+        );
+        return (UNIT_PLACEHOLDER_FRAME_INDEX, true);
+    };
+
+    if let Some(frame) = card_atlas.unit_frame(card_id) {
+        (frame.frame_index, false)
+    } else {
+        warn!(
+            "Board Rendering asset-miss: missing art for card_id {:?}; using placeholder",
+            card_id
+        );
+        (UNIT_PLACEHOLDER_FRAME_INDEX, true)
+    }
+}
+
+fn board_unit_stats(unit: &UnitBoardState, card_atlas: &CardAtlas) -> BoardUnitStats {
+    let stats = unit.stats.unwrap_or_else(|| {
+        warn!(
+            "Board Rendering: unit {:?} missing stats in snapshot; defaulting to 1 HP",
+            unit.unit_id
+        );
+        UnitStatsSnapshot {
+            hp: 1,
+            atk: 0,
+            mp: 0,
+            ar: 0,
+        }
+    });
+    let hp_max = unit
+        .card_id
+        .and_then(|card_id| card_atlas.unit_frame(card_id))
+        .map(|frame| frame.max_hp)
+        .unwrap_or(stats.hp)
+        .max(1);
+
+    BoardUnitStats {
+        hp_current: stats.hp,
+        hp_max,
+        atk: stats.atk,
+        mp: stats.mp,
+        ar: stats.ar,
+    }
+}
+
+fn spawn_snapshot_objectives(
+    commands: &mut Commands,
+    board_layout: &BoardLayout,
+    card_atlas: &CardAtlas,
+    snapshot: &S2CGameSnapshot,
+) {
+    for player in &snapshot.players {
+        for objective in &player.objectives {
+            spawn_standing_objective(
+                commands,
+                board_layout,
+                card_atlas,
+                snapshot.recipient_player_id,
+                player.player_id,
+                objective,
+            );
+        }
+    }
+}
+
+fn spawn_standing_objective(
+    commands: &mut Commands,
+    board_layout: &BoardLayout,
+    card_atlas: &CardAtlas,
+    recipient_player_id: PlayerId,
+    owner_id: PlayerId,
+    objective: &ObjectiveSnapshot,
+) {
+    if objective.is_destroyed {
+        return;
+    }
+
+    let lane = objective.lane;
+    let cell = objective_cell(owner_id, recipient_player_id);
+    if !in_board_bounds(lane, cell) {
+        warn!(
+            "Board Rendering: objective for {:?} lane {} is out of range; skipped",
+            owner_id, lane
+        );
+        return;
+    }
+
+    let world_xy = board_layout.cell_to_world(lane, cell);
+    let hp = StandingObjectiveHp {
+        hp_current: objective.hp,
+        hp_max: objective.hp.max(1),
+    };
+    let objective_entity = commands
+        .spawn((
+            BoardRenderingEntity,
+            BoardSnapshotEntity,
+            StandingObjective { owner_id, lane },
+            hp,
+            LaneCell { lane, cell },
+            objective_unknown_sprite(card_atlas),
+            Transform::from_xyz(world_xy.x, world_xy.y, rendering_constants::Z_OBJECTIVES),
+        ))
+        .id();
+
+    spawn_objective_hp_bar_children(commands, objective_entity, card_atlas, hp);
+}
+
+fn objective_cell(owner_id: PlayerId, recipient_player_id: PlayerId) -> u8 {
+    if owner_id == recipient_player_id {
+        1
+    } else {
+        BOARD_CELL_COUNT
+    }
+}
+
+fn spawn_hp_bar_children(
+    commands: &mut Commands,
+    parent: Entity,
+    card_atlas: &CardAtlas,
+    stats: BoardUnitStats,
+    config: &BoardRenderingConfig,
+) {
+    let visual = hp_bar_visual(stats.hp_current, stats.hp_max, *config);
+    spawn_hp_bar_background(commands, parent, card_atlas);
+    spawn_hp_bar_fill(commands, parent, card_atlas, visual);
+}
+
+fn spawn_objective_hp_bar_children(
+    commands: &mut Commands,
+    parent: Entity,
+    card_atlas: &CardAtlas,
+    hp: StandingObjectiveHp,
+) {
+    let visual = hp_bar_visual(hp.hp_current, hp.hp_max, BoardRenderingConfig::default());
+    spawn_hp_bar_background(commands, parent, card_atlas);
+    spawn_hp_bar_fill(commands, parent, card_atlas, visual);
+}
+
+fn spawn_hp_bar_background(commands: &mut Commands, parent: Entity, card_atlas: &CardAtlas) {
+    commands.spawn((
+        BoardRenderingEntity,
+        BoardSnapshotEntity,
+        HpBarBackground,
+        hp_bar_sprite(
+            card_atlas,
+            Color::srgba(0.08, 0.08, 0.08, 0.76),
+            rendering_constants::HP_BAR_SIZE,
+        ),
+        Transform::from_xyz(
+            0.0,
+            rendering_constants::HP_BAR_Y_OFFSET,
+            rendering_constants::HEALTH_BAR_LOCAL_Z,
+        ),
+        Visibility::Inherited,
+        ChildOf(parent),
+    ));
+}
+
+fn spawn_hp_bar_fill(
+    commands: &mut Commands,
+    parent: Entity,
+    card_atlas: &CardAtlas,
+    visual: HpBarVisual,
+) {
+    commands.spawn((
+        BoardRenderingEntity,
+        BoardSnapshotEntity,
+        HpBarFill,
+        hp_bar_sprite(
+            card_atlas,
+            visual.color.tint(),
+            rendering_constants::HP_BAR_SIZE,
+        ),
+        Transform {
+            translation: Vec3::new(
+                hp_fill_offset_x(visual.fill),
+                rendering_constants::HP_BAR_Y_OFFSET,
+                rendering_constants::HEALTH_BAR_LOCAL_Z,
+            ),
+            scale: Vec3::new(visual.fill, 1.0, 1.0),
+            ..default()
+        },
+        Visibility::Inherited,
+        ChildOf(parent),
+    ));
+}
+
+fn unit_sprite(card_atlas: &CardAtlas, frame_index: usize) -> Sprite {
+    atlas_sprite(
+        card_atlas.image.clone(),
+        card_atlas.layout.clone(),
+        frame_index,
+        rendering_constants::UNIT_SPRITE_SIZE,
+        Color::srgba(1.0, 1.0, 1.0, 1.0),
+    )
+}
+
+fn objective_unknown_sprite(card_atlas: &CardAtlas) -> Sprite {
+    atlas_sprite(
+        card_atlas.board_elements_image.clone(),
+        card_atlas.board_elements_layout.clone(),
+        OBJECTIVE_UNKNOWN_FRAME_INDEX,
+        rendering_constants::OBJECTIVE_SPRITE_SIZE,
+        Color::srgba(1.0, 1.0, 1.0, 1.0),
+    )
+}
+
+fn hp_bar_sprite(card_atlas: &CardAtlas, color: Color, size: Vec2) -> Sprite {
+    atlas_sprite(
+        card_atlas.image.clone(),
+        card_atlas.layout.clone(),
+        HP_BAR_WHITE_PIXEL_FRAME_INDEX,
+        size,
+        color,
+    )
+}
+
+fn atlas_sprite(
+    image: Handle<Image>,
+    layout: Handle<TextureAtlasLayout>,
+    index: usize,
+    custom_size: Vec2,
+    color: Color,
+) -> Sprite {
+    Sprite {
+        image,
+        texture_atlas: Some(TextureAtlas { layout, index }),
+        custom_size: Some(custom_size),
+        color,
+        ..default()
+    }
+}
+
+fn update_hp_bars_system(
+    config: Res<BoardRenderingConfig>,
+    units: Query<(&BoardUnitStats, &Children), With<BoardUnit>>,
+    mut fills: Query<(&mut Transform, &mut Sprite), With<HpBarFill>>,
+) {
+    for (stats, children) in &units {
+        let visual = hp_bar_visual(stats.hp_current, stats.hp_max, *config);
+        for child in children.iter() {
+            if let Ok((mut transform, mut sprite)) = fills.get_mut(child) {
+                apply_hp_fill_visual(&mut transform, &mut sprite, visual);
+            }
+        }
+    }
+}
+
+fn apply_hp_fill_visual(transform: &mut Transform, sprite: &mut Sprite, visual: HpBarVisual) {
+    transform.scale.x = visual.fill;
+    transform.translation.x = hp_fill_offset_x(visual.fill);
+    sprite.color = visual.color.tint();
+}
+
+pub fn hp_bar_visual(hp_current: u8, hp_max: u8, config: BoardRenderingConfig) -> HpBarVisual {
+    config.assert_valid();
+    let hp_max_safe = hp_max.max(1);
+    if hp_max == 0 {
+        warn!("Board Rendering: UnitStats.hp_max=0 from server; clamped to 1");
+    }
+
+    let fill = (f32::from(hp_current) / f32::from(hp_max_safe)).clamp(0.0, 1.0);
+    let color = if fill >= config.health_bar_green_threshold - HP_THRESHOLD_EPSILON {
+        HpBarColor::Green
+    } else if fill >= config.health_bar_red_threshold - HP_THRESHOLD_EPSILON {
+        HpBarColor::Yellow
+    } else {
+        HpBarColor::Red
+    };
+
+    HpBarVisual { fill, color }
+}
+
+fn hp_fill_offset_x(fill: f32) -> f32 {
+    -rendering_constants::HP_BAR_SIZE.x * (1.0 - fill) * 0.5
 }
 
 fn spawn_board_camera(commands: &mut Commands, board_layout: &BoardLayout) {
@@ -507,4 +1181,19 @@ fn board_center(board_layout: &BoardLayout) -> Vec2 {
         board_layout.board_origin.y
             - f32::from(BOARD_LANE_COUNT - 1) * board_layout.lane_height * 0.5,
     )
+}
+
+impl BoardRenderState {
+    fn from_snapshot_phase(phase: RoundPhase) -> Self {
+        match phase {
+            RoundPhase::Handshaking => Self::Idle,
+            RoundPhase::Lobby => Self::Lobby,
+            RoundPhase::DraftInitial => Self::DraftInitial,
+            RoundPhase::DraftShop => Self::DraftShop,
+            RoundPhase::DraftAuction => Self::DraftAuction,
+            RoundPhase::Placement => Self::Placement,
+            RoundPhase::Resolution => Self::Resolution,
+            RoundPhase::GameOver => Self::GameOver,
+        }
+    }
 }
