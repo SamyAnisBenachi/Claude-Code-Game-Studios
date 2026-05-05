@@ -141,34 +141,7 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-- SHOP-AUCTION-UI-001 / SAU-001 Plugin Scaffold, Panel Tree, and Formulas is
-  integrated on `origin/main` and needs serialized `/story-done`. Worker branch
-  `work/sau-001-plugin-scaffold-formulas` returned at `733158c`, pushed to
-  `origin/work/sau-001-plugin-scaffold-formulas`. Root cherry-picked only that
-  worker commit into `main` as `2dbc988` (`SAU-001 impl: Shop auction UI
-  scaffold formulas`) and pushed it to `origin/main`. Changed files:
-  `client/Cargo.toml`, `client/src/presentation/mod.rs`, `client/src/ui/mod.rs`,
-  `client/src/ui/shop_auction/mod.rs`, and
-  `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs`. Root checks
-  passed: `cargo fmt -p client -- --check`, `cargo test -p client --test
-  shop_auction_ui_plugin_scaffold_formulas_test` 8/8, `cargo check -p client`,
-  and `git diff --check HEAD~1..HEAD`. Queue exactly one `/story-done` for
-  `production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md`;
-  do not relaunch the implementation worker.
-- BOARD-RENDERING-002 / Board Grid, Camera, and Z Layers is integrated on
-  `origin/main` and needs serialized `/story-done`. Worker branch
-  `work/board-rendering-002-grid-camera-z-layers` returned at `6ae82d7`, pushed
-  to `origin/work/board-rendering-002-grid-camera-z-layers`. Root cherry-picked
-  the worker commit into `main` as `ce3658b` (`BOARD-RENDERING-002 impl: grid
-  camera z layers`), resolving the `client/Cargo.toml` test-entry conflict by
-  keeping both SAU-001 and BOARD-002 test entries. Root checks passed:
-  `cargo fmt -p client -- --check`, `cargo test -p client --test
-  board_rendering_grid_camera_test` 6/6, `cargo test -p client --test
-  board_rendering_plugin_scaffold_test` 9/9, `cargo check -p client`, and
-  `git diff --check HEAD~1..HEAD`. Commit is on `origin/main`; do not relaunch
-  the worker. Queue exactly one `/story-done` for
-  `production/epics/board-rendering/story-002-board-grid-camera-and-z-layers.md`
-  after/around serialized SAU-001 story-done.
+None currently tracked here.
 
 ## Recent Planning / Readiness Updates
 
@@ -274,24 +247,15 @@ None currently tracked here.
   Rust file is touched. Evidence requirements: `cargo check -p shared` plus
   grep evidence in
   `production/qa/evidence/placement-payload-shape-split-evidence.md`.
-- SHOP-AUCTION-UI-001 implementation worker returned and was integrated/pushed
-  to `origin/main` as `2dbc988`. Worker branch
-  `work/sau-001-plugin-scaffold-formulas` returned at `733158c`. Verification
-  passed in root with `cargo fmt -p client -- --check`, `cargo test -p client
-  --test shop_auction_ui_plugin_scaffold_formulas_test` 8/8,
-  `cargo check -p client`, and `git diff --check HEAD~1..HEAD`. Needs
-  serialized `/story-done`; do not relaunch worker.
-- SHOP-AUCTION-UI-001 story-done returned COMPLETE WITH NOTES but did not
-  create a commit or push. It modified
-  `production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md`
-  and `production/session-state/active.md`. Root inspection showed
-  `active.md` also contains a BOARD-RENDERING-002 story-done extract, so do not
-  commit SAU closure from root until the concurrent BOARD-002 closure report is
-  known or the same story-done window commits only its approved SAU scope.
-- BOARD-RENDERING-002 implementation worker returned and was integrated/pushed
-  to `origin/main` as `ce3658b`. Worker branch
-  `work/board-rendering-002-grid-camera-z-layers` returned at `6ae82d7`. Needs
-  serialized `/story-done`; do not relaunch worker.
+- SHOP-AUCTION-UI-001 and BOARD-RENDERING-002 story-done closures were committed
+  together at `3222be0` after both official story-done reports were received.
+  The combined closure was required because both story-done windows had written
+  extracts into `production/session-state/active.md`. Changed files:
+  `production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md`,
+  `production/epics/board-rendering/story-002-board-grid-camera-and-z-layers.md`,
+  and `production/session-state/active.md`. No sprint-status row existed for
+  either story, so `production/sprint-status.yaml` stayed unchanged. Both
+  windows can be cleared.
 - Settings/Accessibility UX design returned and was pushed at `093b62a`,
   creating `design/ux/settings-accessibility.md` only. Validation passed
   `git diff --check` and a path-specific check. Open questions recorded in the
@@ -1262,19 +1226,10 @@ Current active windows by user default-launch rule:
 - Shop/Auction UX repair returned and pushed `a3739db`; window can be cleared.
   SAU-005/006 are no longer blocked by the bid-confirmation conflict. SAU-009
   remains blocked by implementation/evidence prerequisites.
-- SHOP-AUCTION-UI-001 implementation worker returned at `733158c`; root
-  integrated and pushed it as `2dbc988`. Worker window can be cleared. Queue a
-  serialized `/story-done` for
-  `production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md`.
-- SHOP-AUCTION-UI-001 story-done returned COMPLETE WITH NOTES but no commit was
-  created. Do not clear yet; respond in that window to commit/push only the SAU
-  closure, or wait for BOARD-002 story-done report before doing any root closure
-  commit because `production/session-state/active.md` currently contains both
-  SAU and BOARD extracts.
-- BOARD-RENDERING-002 implementation worker returned at `6ae82d7`; root
-  integrated and pushed it as `ce3658b`. Worker window can be cleared. Queue a
-  serialized `/story-done` for
-  `production/epics/board-rendering/story-002-board-grid-camera-and-z-layers.md`.
+- SHOP-AUCTION-UI-001 implementation/story-done windows and BOARD-RENDERING-002
+  implementation/story-done windows can be cleared. Root committed and pushed
+  both story-done closures together at `3222be0` after both official closure
+  reports were received.
 - Settings/Accessibility UX design returned and pushed `093b62a`; window can be
   cleared. Keep its open questions visible for future settings implementation.
 - Result Screen UX design returned and pushed `399bb34`; window can be cleared.
