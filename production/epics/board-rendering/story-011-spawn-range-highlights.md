@@ -1,7 +1,7 @@
 # Story 011: Spawn Range Highlights
 
 > **Epic**: Board Rendering
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Visual/Feel
 > **Manifest Version**: 2026-05-05
@@ -52,17 +52,17 @@ In scope:
 
 ## Acceptance Criteria
 
-- [ ] **Snapshot seed**: Given `S2CGameSnapshot` includes `PlayerSnapshot.spawn_range_cells` for both players, when Board Rendering rebuilds the board, then every `BoardCellNode` has `SpawnHighlightState` matching the valid cells for the corresponding player side.
+- [x] **Snapshot seed**: Given `S2CGameSnapshot` includes `PlayerSnapshot.spawn_range_cells` for both players, when Board Rendering rebuilds the board, then every `BoardCellNode` has `SpawnHighlightState` matching the valid cells for the corresponding player side.
 
-- [ ] **Live update consumption**: Given an ordered `S2CResolutionEvent` contains `SpawnRangeChanged { player_id, new_spawn_range_cells }`, when Board Rendering drains the resolution event, then only that player's cell-node highlight states update.
+- [x] **Live update consumption**: Given an ordered `S2CResolutionEvent` contains `SpawnRangeChanged { player_id, new_spawn_range_cells }`, when Board Rendering drains the resolution event, then only that player's cell-node highlight states update.
 
-- [ ] **Persistence**: Given spawn range highlights update during RESOLUTION, when the board transitions to DRAFT/PLACEMENT, then the updated highlights persist and the newly unlocked cells render with the spawn-active visual state.
+- [x] **Persistence**: Given spawn range highlights update during RESOLUTION, when the board transitions to DRAFT/PLACEMENT, then the updated highlights persist and the newly unlocked cells render with the spawn-active visual state.
 
-- [ ] **Objective event separation**: Given `ObjectiveDestroyed { was_fake: true }` arrives without a matching `SpawnRangeChanged`, then Board Rendering performs the objective reveal/clear behavior but does not change spawn highlights.
+- [x] **Objective event separation**: Given `ObjectiveDestroyed { was_fake: true }` arrives without a matching `SpawnRangeChanged`, then Board Rendering performs the objective reveal/clear behavior but does not change spawn highlights.
 
-- [ ] **OBJMISS behavior**: Given no objective entity exists when `ObjectiveDestroyed` is processed, then no objective entity is spawned, no panic occurs, and spawn highlights change only if a separate `SpawnRangeChanged` entry exists.
+- [x] **OBJMISS behavior**: Given no objective entity exists when `ObjectiveDestroyed` is processed, then no objective entity is spawned, no panic occurs, and spawn highlights change only if a separate `SpawnRangeChanged` entry exists.
 
-- [ ] **No replicated component**: Board Rendering does not query or register a `SpawnRange` replicated component.
+- [x] **No replicated component**: Board Rendering does not query or register a `SpawnRange` replicated component.
 
 ---
 
@@ -124,7 +124,7 @@ The update path should live in the existing Board Rendering message-drain/resolu
 - Unit/integration support: `tests/unit/board_rendering/spawn_range_highlights_test.rs`
 - Deferred visual evidence path, created by the later final board evidence story when visual capture is required: `production/qa/evidence/board-rendering-spawn-range-highlights-evidence.md`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Unit/integration support created and verified on 2026-05-05. Final visual/browser evidence remains deferred to the later final Board Rendering evidence path and BOARD-012 browser/WASM perf evidence.
 
 ---
 
@@ -134,3 +134,21 @@ The update path should live in the existing Board Rendering message-drain/resolu
 - Depends on: `production/epics/board-lane-system/story-012-spawn-range-authoritative-projection.md` (Complete - BLS-012 supplies `SpawnRangeState`, snapshot `spawn_range_cells`, and live `SpawnRangeChanged` production).
 - Supporting status: `production/epics/board-rendering/story-009-status-icons-cooccupancy-and-spawn-range.md` is Complete for the narrowed status-icon/co-occupancy scope only; final status-icon and spawn-highlight visual evidence remains separate.
 - Unlocks: final Board Rendering evidence story covering status-icon atlas, spawn-highlight visual evidence, and browser frame-time evidence.
+
+---
+
+## Completion Notes
+
+Completed: 2026-05-05
+
+Verdict: COMPLETE WITH NOTES
+
+Criteria: 6/6 passing. Snapshot seeding, live `ResolutionEvent::SpawnRangeChanged` consumption, persistence through DRAFT/PLACEMENT, objective-event separation, OBJMISS behavior, and absence of any replicated `SpawnRange` component were verified.
+
+Implementation: Worker branch `work/board-rendering-011-spawn-range-highlights` commit `ec7d0abc46e0d1a840b7347400cb9d6487bc2cf0` was fast-forwarded into `main`. Board Rendering now keeps persistent `SpawnHighlightState` on board cell nodes, seeds it from `PlayerSnapshot.spawn_range_cells`, updates it from ordered resolution-log `SpawnRangeChanged` entries, and leaves Hand UI drag-time ghost/highlight behavior separate.
+
+Test Evidence: `cargo test -p client --test board_rendering_spawn_range_highlights_test --test board_rendering_grid_camera_test --test board_rendering_plugin_scaffold_test --test board_rendering_snapshot_spawn_test --test board_rendering_status_icons_test --test board_rendering_placement_reveal_test --test board_rendering_ghost_preview_bridge_test` passed 36/36 after integration. `cargo fmt -p client -- --check` and `cargo check -p client` passed.
+
+Notes: No blocking GDD, ADR-011, ADR-020, ADR-021, Bevy 0.18, or Lightyear transport deviation found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent. BOARD-012 browser/WASM perf evidence, final Board Rendering visual evidence, traps, final VFX, server spawn range authority, `design/assets/**`, and `AGENTS.md` were not implemented, closed, or touched.
+
+Sprint status: `production/sprint-status.yaml` contains the matching BR-011 story row; that row was set to `done` with `completed: "2026-05-05"` because BLS-012 is complete and BR-011 is now verified.

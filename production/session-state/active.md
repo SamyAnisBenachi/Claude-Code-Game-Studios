@@ -2002,3 +2002,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` matching BLS-012 row set to `done` with `completed: "2026-05-05"`.
 - Next recommended: Keep BR-011 (`production/epics/board-rendering/story-011-spawn-range-highlights.md`) as a separate readiness/implementation decision; do not treat BLS-012 closure as BR-011 closure.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-rendering/story-011-spawn-range-highlights.md` - Story 011: Spawn Range Highlights
+- Criteria: 6/6 passing; snapshot `PlayerSnapshot.spawn_range_cells` rebuild seeding, ordered live `ResolutionEvent::SpawnRangeChanged` consumption, DRAFT/PLACEMENT persistence, objective-event separation, OBJMISS behavior, and no replicated `SpawnRange` component verified.
+- Test Evidence: `cargo test -p client --test board_rendering_spawn_range_highlights_test --test board_rendering_grid_camera_test --test board_rendering_plugin_scaffold_test --test board_rendering_snapshot_spawn_test --test board_rendering_status_icons_test --test board_rendering_placement_reveal_test --test board_rendering_ghost_preview_bridge_test` passed 36/36. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed after closure updates.
+- Verification: Worker branch `work/board-rendering-011-spawn-range-highlights` commit `ec7d0abc46e0d1a840b7347400cb9d6487bc2cf0` was fast-forwarded onto `main`. Board Rendering now owns persistent board-cell spawn highlight state separately from Hand UI drag-time ghost/highlight behavior.
+- Notes: No blocking GDD, ADR-011, ADR-020, ADR-021, Bevy 0.18, or Lightyear transport deviation found. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent. BOARD-012 browser/WASM perf evidence, final Board Rendering visual evidence, traps, final VFX, and server spawn range authority remain separate and were not implemented or closed.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` matching BR-011 row set to `done` with `completed: "2026-05-05"`.
+- Next recommended: Keep BOARD-012 browser/WASM perf evidence and final Board Rendering visual/evidence closure separate from BR-011.

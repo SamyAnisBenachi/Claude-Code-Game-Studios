@@ -116,13 +116,14 @@ stories:
     name: "BR-011 readiness after BLS-012"
     file: "production/epics/board-rendering/story-011-spawn-range-highlights.md"
     priority: should-have
-    status: blocked
+    status: done
     owner: "client programmer + technical artist"
     estimate_days: 0.50
-    blocker: "Blocked until BLS-012 is complete."
-    completed: ""
+    blocker: ""
+    completed: "2026-05-05"
     notes:
       - "Readiness only until authoritative spawn-range projection is complete."
+      - "BR-011 implementation verified and closed; final Board Rendering visual/browser evidence remains separate."
 
   - id: "S6-S4"
     name: "Deferred visual/manual QA evidence"
