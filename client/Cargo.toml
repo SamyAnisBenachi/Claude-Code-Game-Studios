@@ -184,5 +184,9 @@ name = "board_rendering_snapshot_spawn_test"
 path = "../tests/integration/board_rendering/snapshot_spawn_test.rs"
 
 [[test]]
+name = "board_rendering_status_icons_test"
+path = "../tests/unit/board_rendering/status_icons_test.rs"
+
+[[test]]
 name = "board_rendering_placement_reveal_test"
 path = "../tests/integration/board_rendering/placement_reveal_test.rs"
