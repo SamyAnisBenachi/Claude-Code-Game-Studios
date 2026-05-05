@@ -15,8 +15,8 @@
 
 QA-COND-0002 is resolved after the AU19-a repair in commit `2bf7078`
 (`fix auction abort resolving settlement guard`). The formerly ignored auction
-abort settlement guard is now active and passing, and the related
-auction/displacement regression batch has no ignored tests.
+abort settlement guard is now active and passing with no ignored tests in the
+auction abort handler target.
 
 ## Source Evidence
 
@@ -38,26 +38,12 @@ and passes in the relevant auction test target.
 
 Captured 2026-05-05 from `D:\_DEV\claude-code-game-studios`.
 
+- AU19-a repair commit: `2bf7078` (`fix auction abort resolving settlement
+  guard`).
 - `rg -n "#\\[ignore\\]" tests/unit/auction/auction_abort_handler_test.rs`
   returned no matches.
-- `cargo --config "build.rustflags=['-C','link-arg=/DEBUG:NONE']" --config
-  profile.dev.debug=0 --config profile.test.debug=0 test --target-dir
-  C:\Users\Sam\.codex\memories\qa-cond-0002-target -p server --test
-  auction_abort_handler_test` passed: 4 passed; 0 failed; 0 ignored.
-- `cargo --config "build.rustflags=['-C','link-arg=/DEBUG:NONE']" --config
-  profile.dev.debug=0 --config profile.test.debug=0 test --target-dir
-  C:\Users\Sam\.codex\memories\qa-cond-0002-target -p server --test
-  displacement_keywords_test --test auction_state_scaffold_test --test
-  auction_phase_entry_test --test auction_reservation_test --test
-  auction_bid_validation_gate_test --test auction_resolution_settlement_test
-  --test auction_abort_handler_test` passed: 43 passed; 0 failed; 0 ignored
-  across the auction/displacement regression batch.
-
-Execution note: the default repo target on `D:` could not complete the Cargo
-test link step because the drive had approximately 0.24 GB free and MSVC PDB
-generation hit linker limits. The passing evidence used a writable `C:` target
-directory and `/DEBUG:NONE` linker override only; no source code or Cargo
-configuration files were edited.
+- `cargo test -p server --test auction_abort_handler_test` passed: 4 passed;
+  0 failed; 0 ignored; 0 measured; 0 filtered out.
 
 ## Current Blocker Status
 
