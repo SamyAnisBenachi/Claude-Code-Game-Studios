@@ -278,6 +278,24 @@ None currently tracked here.
   dimensions match requested sizes, `git diff --check` passed with only
   unrelated CRLF warnings. No manifest/code edits; production session-state and
   sprint-status untouched.
+- Remaining Board Rendering placeholder PNG batch returned and was pushed at
+  `9fa1908`, generating remaining board PNG placeholders under
+  `assets/art/board/`, `assets/art/ui/board/`, and `assets/art/vfx/board/`.
+  Generated files included `env_board_background_default.png`,
+  `env_cell_node_inactive_board.png`, `env_cell_node_invalid_board.png`,
+  `env_objective_fake_crack_board.png`, `env_prism_idle_board.png`,
+  `ui_structure_token_default_board.png`, `ui_field_wash_lane_default.png`,
+  `ui_field_wash_lane_default_1.png`,
+  `ui_field_badge_icon_default_hud.png`,
+  `vfx_objective_attack_ring_loop.png`,
+  `vfx_spawn_range_pulse_loop.png`, and
+  `vfx_prism_collect_shimmer_01.png`. Skipped: none. ASSET-037 produced two
+  spec variants; the second used `_1` due to the no-overwrite rule. Validation
+  passed: PNG signatures valid, color type 6 RGBA / `Format32bppArgb`,
+  dimensions match spec, transparent assets have alpha/transparent corners,
+  ASSET-037 variants are 512x128 with top 48px transparent and max alpha 51,
+  `git diff --check` and `git diff --cached --check` passed with only unrelated
+  CRLF warnings. Manifest assets were not marked Done.
 - Hand UI UX design returned and was pushed at `fc95a84`, creating
   `design/ux/hand-ui.md` only. Validation passed `git diff --check`; no code,
   production session-state, or sprint-status files were touched. Open questions
@@ -1186,6 +1204,8 @@ Current active windows by user default-launch rule:
   can be cleared.
 - Current 8-card illustration batch returned and pushed `330806f`; window can be
   cleared.
+- Remaining Board Rendering placeholder PNG batch returned and pushed `9fa1908`;
+  window can be cleared.
 - Hand UI UX design returned and pushed `fc95a84`; window can be cleared.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
