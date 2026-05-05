@@ -26,7 +26,7 @@ S6-01 through S6-06.
 | Item | Type | Automated Test Required | Manual Verification Required |
 |---|---|---|---|
 | S6-01 QA plan / condition register reconciliation | Config/Data | Register consistency checks and evidence-link audit | QA lead review of condition dispositions |
-| S6-02 Playtests / fun-hypothesis decision | Visual/Feel | None | Three filled playtest reports plus aggregate decision |
+| S6-02 Playtests / fun-hypothesis decision | Visual/Feel | None | Producer accepted-risk deferral recorded; no Sprint 6 playtests are marked completed, no playtest reports are created, and QA-COND-0006 carries into the final Production -> Polish gate as an explicit risk/condition |
 | S6-03 Browser/WASM board performance capture | Visual/Feel + Integration | Browser/WASM harness or equivalent repeatable capture path if available | 1920x1080 capture, nonblank board, frame timing evidence |
 | S6-04 Standard-tier accessibility remediation / verification | UI + Visual/Feel | Targeted checks for implemented accessibility settings where available | Standard-tier checklist, browser/WASM verification, accepted-risk review |
 | S6-05 OS-18b two-client ObjectiveHp visibility evidence | Integration | `tests/integration/network/os18b_two_client_objective_hp_visibility_test.rs` | Evidence report with both client observation sequences |
@@ -54,7 +54,7 @@ they were stale.
 | QA-COND-0003 | P2 Sprint 6 validation | Closed, N/A - Closed | No further S6-01 action after OS-008/S6-05 evidence; retain closure evidence report and harness result | Closed; no longer an open P2 validation condition |
 | QA-COND-0004 | P1 Sprint 6 gate blocker | Closed, N/A - Closed | No further S6-01 action after BOARD-012 browser/WASM evidence; retain closure evidence and corrected timing result | Closed; no longer a P1 gate blocker |
 | QA-COND-0005 | P1 Sprint 6 gate blocker | Open, Needs Remediation | Close through S6-04 Standard-tier remediation / verification or accepted risk | Open P1 gate blocker |
-| QA-COND-0006 | P1 Sprint 6 gate blocker | Open, Needs Evidence | Close through S6-02 three playtest reports and aggregate fun decision | Open P1 gate blocker |
+| QA-COND-0006 | P4 Accepted risk candidate | Accepted Risk, Deferred Accepted | Do not close as evidence; carry the producer-deferred playtest evidence gap into the final Production -> Polish gate as an explicit risk/condition | Accepted-risk / deferred; not an active S6-06 blocker |
 | QA-COND-0007 | P2 Sprint 6 validation | Open, Needs Evidence | Address through S6-S4 only if Must Have remediation is stable | Open P2 validation condition |
 
 ---
@@ -290,35 +290,33 @@ Checklist:
       evidence and corrected timing verification.
 - [ ] QA-COND-0005 remains open until Standard-tier accessibility is remediated,
       verified, explicitly reclassified, or accepted as risk.
-- [ ] QA-COND-0006 remains open until three playtest reports and the aggregate
-      fun decision exist or the gate requirement is explicitly reclassified.
+- [ ] QA-COND-0006 records the producer accepted-risk deferral and is not marked
+      Verified or closed as evidence.
+- [ ] QA-COND-0006 is carried into the final Production -> Polish gate as an
+      explicit risk/condition, not as passed playtest evidence.
 - [ ] QA-COND-0007 has a conditional validation plan and does not block Must Have
       remediation unless reclassified.
 
 ### S6-02 - Playtests and Fun-Hypothesis Decision
 
-**Verification method**: playtest report review
+**Verification method**: accepted-risk deferral review
 **Who must sign off**: producer + qa-lead
 **Evidence to capture**:
-- `production/playtests/sprint-6-new-player-[date]-[tester].md`
-- `production/playtests/sprint-6-mid-game-[date]-[tester].md`
-- `production/playtests/sprint-6-difficulty-curve-[date]-[tester].md`
-- updated `production/playtests/sprint-6-fun-hypothesis-decision.md`
+- existing `production/playtests/sprint-6-fun-hypothesis-decision.md`
+- existing `production/qa/bugs/QA-COND-0006-playtest-fun-hypothesis-evidence.md`
 
 Checklist:
-- [ ] New-player session report exists and uses the required template headings.
-- [ ] Mid-game session report exists and uses the required template headings.
-- [ ] Difficulty-curve session report exists and uses the required template
-      headings.
-- [ ] Each report includes build commit, tester/date/session type, observed
-      evidence, bugs/design findings, quantitative data, and decision outcome.
-- [ ] Each report ends with exactly one decision: `VALIDATE`, `REVISE`, or
-      `VALIDATE WITH CONDITIONS`.
-- [ ] Aggregate fun-hypothesis decision is updated from `Pending Sessions`.
-- [ ] Auction tension, hidden-objective suspense, simultaneous placement
-      commitment, and no-idle spectator time are all addressed by evidence.
-- [ ] QA-COND-0006 is closed, reclassified, or explicitly accepted as risk only
-      after the evidence supports that disposition.
+- [ ] Producer decision dated 2026-05-05 is recorded as accepted-risk deferral.
+- [ ] No Sprint 6 playtest sessions are marked completed.
+- [ ] No new-player, mid-game, or difficulty-curve playtest reports are created
+      for this deferral.
+- [ ] QA-COND-0006 remains not Verified and not closed as passed playtest
+      evidence.
+- [ ] Future closure still requires real new-player, mid-game, and
+      difficulty-curve reports plus an evidence-based aggregate fun-hypothesis
+      decision.
+- [ ] Final Production -> Polish gate-check carries QA-COND-0006 as an explicit
+      risk/condition.
 
 ### S6-03 - Browser/WASM Board Performance Capture
 
@@ -403,8 +401,10 @@ Checklist:
 - [ ] QA sign-off explicitly lists P1 condition disposition.
 - [ ] Production -> Polish gate-check rerun is recorded after smoke and QA
       sign-off.
-- [ ] Gate-check does not advance the project if QA-COND-0005 or QA-COND-0006
-      remains open without approved disposition.
+- [ ] Gate-check does not advance the project if QA-COND-0005 remains open
+      without approved disposition.
+- [ ] Gate-check carries QA-COND-0006 as an explicit accepted-risk condition,
+      not as passed playtest evidence.
 
 ---
 
@@ -421,7 +421,8 @@ Critical paths to verify before QA hand-off for Sprint 6:
    S6-05 is attempting closure.
 5. Accessibility settings or remediated UI states targeted by S6-04 are visible
    in the browser/WASM target.
-6. Playtest build and commit match the reports used for S6-02.
+6. S6-02 / QA-COND-0006 accepted-risk deferral is listed in QA sign-off and the
+   gate-check as an explicit risk/condition.
 7. No P1 condition is marked closed without evidence, reclassification, or
    accepted-risk disposition.
 8. Smoke verdict is `PASS` or `PASS WITH WARNINGS` before final QA sign-off.
@@ -433,17 +434,23 @@ list when running that skill.
 
 ## Playtest Requirements
 
+S6-02 / QA-COND-0006 is producer-deferred for Sprint 6 as accepted risk. Do not
+mark Sprint 6 playtests completed and do not create playtest reports for this
+deferral.
+
+Future evidence-based closure still requires:
+
 | Story / Task | Playtest Goal | Min Sessions | Target Player Type |
 |---|---|---:|---|
-| S6-02 New-player report | Determine whether a first-time player understands the goal, avoids confusion loops, and feels read/fool tension | 1 | New player |
-| S6-02 Mid-game report | Determine whether auction, economy, class, prism, and deck-growth systems stay readable and engaging once underway | 1 | Experienced or guided mid-game tester |
-| S6-02 Difficulty-curve report | Determine whether pressure escalates without unfair spikes, dead time, or unrecoverable snowballing | 1 | Player able to reach or simulate difficulty curve |
+| Future new-player report | Determine whether a first-time player understands the goal, avoids confusion loops, and feels read/fool tension | 1 | New player |
+| Future mid-game report | Determine whether auction, economy, class, prism, and deck-growth systems stay readable and engaging once underway | 1 | Experienced or guided mid-game tester |
+| Future difficulty-curve report | Determine whether pressure escalates without unfair spikes, dead time, or unrecoverable snowballing | 1 | Player able to reach or simulate difficulty curve |
 
-**Sign-off requirement**: Playtest notes must be written under
-`production/playtests/` using the Sprint 6 templates and reviewed by the
-producer + qa-lead before QA-COND-0006 can be closed.
+**Sign-off requirement**: Future playtest notes must be written under
+`production/playtests/` using the applicable templates and reviewed by the
+producer + qa-lead before QA-COND-0006 can be closed by evidence.
 
-Aggregate decision must be recorded in
+Future aggregate decision must be recorded in
 `production/playtests/sprint-6-fun-hypothesis-decision.md` as one of:
 `VALIDATE`, `REVISE`, or `VALIDATE WITH CONDITIONS`.
 
@@ -458,9 +465,10 @@ A Sprint 6 Must Have task is DONE when all applicable items are true:
       explicit disposition.
 - [ ] S6-01 condition register reconciliation is complete enough that P1/P2
       status is not contradictory.
-- [ ] S6-02 produces three required playtest reports and an aggregate fun
-      decision, or the missing evidence is explicitly reclassified by the gate
-      owner.
+- [ ] S6-02 / QA-COND-0006 accepted-risk deferral is recorded without marking
+      playtests completed or creating playtest reports.
+- [ ] Final Production -> Polish gate-check carries QA-COND-0006 as an explicit
+      risk/condition rather than passed evidence.
 - [ ] S6-03 produced browser/WASM board performance evidence and QA-COND-0004 is
       closed.
 - [ ] S6-04 produces Standard-tier accessibility evidence or QA-COND-0005
@@ -477,12 +485,12 @@ A Sprint 6 Must Have task is DONE when all applicable items are true:
 
 ## Current Blocker Status
 
-As of S6-01 final closure reconciliation, the Production -> Polish gate remains
-blocked by the remaining open P1 Sprint 6 gate blockers:
+As of the QA-COND-0006 producer accepted-risk deferral, S6-06 remains blocked by
+the remaining active P1 Sprint 6 gate blocker:
 
 - QA-COND-0005: Standard-tier accessibility gaps.
-- QA-COND-0006: Playtest/fun-hypothesis evidence.
 
 QA-COND-0004 is closed after BOARD-012 browser/WASM evidence passed corrected
-timing budgets. The remaining P1 blockers stay open until evidence, explicit
-reclassification, or accepted-risk disposition is recorded.
+timing budgets. QA-COND-0006 is accepted-risk / deferred and must be carried
+into the final Production -> Polish gate as an explicit risk/condition, not as
+passed playtest evidence.
