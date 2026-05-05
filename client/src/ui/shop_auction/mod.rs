@@ -2,12 +2,14 @@ use bevy::prelude::*;
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::{CardCatalog, CardId, Rarity};
 use shared::protocol::{
-    C2SPurchaseCard, C2SRefreshShop, C2SSignalReady, CardSource, ReliableChannel, RoundPhase,
-    S2CAuctionCard, S2CCardAcquired, S2CDraftOffering, S2CShopSlots,
+    C2SPlaceBid, C2SPurchaseCard, C2SRefreshShop, C2SSignalReady, CardSource, ReliableChannel,
+    RoundPhase, S2CAuctionCard, S2CCardAcquired, S2CDraftOffering, S2CShopSlots,
 };
+use shared::session::PlayerId;
 
-use crate::presentation::PlayerEconomyView;
+use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
+use crate::ui::hud::{HudGoldBroadcastMessage, HudPlayerIds};
 
 pub const SHOP_AUCTION_UI_PANEL_ROOT_COUNT: usize = 6;
 pub const SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT: usize = 9;
@@ -16,6 +18,7 @@ pub const BID_INCREMENTS: [u32; 3] = [1, 3, 5];
 pub const DEFAULT_SHOP_REFRESH_BASE_COST: u32 = 1;
 pub const DEFAULT_SHOP_REFRESH_CAP: u32 = 1;
 pub const AUCTION_PREPARING_TIMEOUT_MS: u32 = 10_000;
+pub const AUCTION_AWAITING_SERVER_DELAY_MS: u32 = 1_500;
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShopAuctionUiSystemSet {
@@ -65,6 +68,7 @@ pub struct ShopAuctionUiOutboundMessages {
     pub purchase_cards: Vec<C2SPurchaseCard>,
     pub refresh_shops: Vec<C2SRefreshShop>,
     pub ready_signals: Vec<C2SSignalReady>,
+    pub place_bids: Vec<C2SPlaceBid>,
     pub gold_counter_flash_requests: u32,
 }
 
@@ -181,9 +185,12 @@ pub struct ShopAuctionAuctionState {
     pub card_id: Option<CardId>,
     pub starting_price: u32,
     pub current_price: u32,
+    pub current_leader: Option<PlayerId>,
     pub timer_duration_ms: u32,
     pub timer_remaining_ms: u32,
     pub preparing_elapsed_ms: u32,
+    pub locally_expired_elapsed_ms: u32,
+    pub in_flight_bid_amount: Option<u32>,
 }
 
 impl ShopAuctionAuctionState {
@@ -191,8 +198,11 @@ impl ShopAuctionAuctionState {
         self.card_id = Some(message.card_id);
         self.starting_price = message.starting_price;
         self.current_price = message.starting_price;
+        self.current_leader = None;
         self.timer_duration_ms = 0;
         self.timer_remaining_ms = 0;
+        self.locally_expired_elapsed_ms = 0;
+        self.in_flight_bid_amount = None;
     }
 
     fn enter_preparing(&mut self) {
@@ -200,6 +210,8 @@ impl ShopAuctionAuctionState {
         self.preparing_elapsed_ms = 0;
         self.timer_duration_ms = 0;
         self.timer_remaining_ms = 0;
+        self.locally_expired_elapsed_ms = 0;
+        self.in_flight_bid_amount = None;
     }
 
     fn enter_active(&mut self, timer_duration_ms: u32) {
@@ -207,6 +219,7 @@ impl ShopAuctionAuctionState {
         self.preparing_elapsed_ms = 0;
         self.timer_duration_ms = timer_duration_ms;
         self.timer_remaining_ms = timer_duration_ms;
+        self.locally_expired_elapsed_ms = 0;
     }
 
     fn clear(&mut self) {
@@ -226,6 +239,36 @@ impl ShopAuctionAuctionState {
         self.panel_state == ShopAuctionAuctionPanelState::Active
             && self.timer_duration_ms > 0
             && self.timer_remaining_ms > 0
+    }
+
+    pub fn locally_expired(&self) -> bool {
+        self.panel_state == ShopAuctionAuctionPanelState::Active
+            && self.timer_duration_ms > 0
+            && self.timer_remaining_ms == 0
+    }
+}
+
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionLocalGoldView {
+    pub player_id: Option<PlayerId>,
+    pub gold: u32,
+    pub reserved_gold: u32,
+    pub initialized: bool,
+}
+
+impl ShopAuctionLocalGoldView {
+    pub fn free_gold(self, economy: &PlayerEconomyView) -> u32 {
+        let gold = if self.initialized {
+            self.gold
+        } else {
+            economy.gold
+        };
+        let reserved_gold = if self.initialized {
+            self.reserved_gold
+        } else {
+            0
+        };
+        local_free_gold(gold, reserved_gold)
     }
 }
 
@@ -248,6 +291,7 @@ pub struct ShopAuctionUiEntities {
     pub auction_featured_card: Entity,
     pub auction_status_text: Entity,
     pub auction_timer_bar: Entity,
+    pub auction_bid_status_text: Entity,
     pub auction_bid_buttons: [Entity; 3],
     pub shop_footer: Entity,
     pub shop_footer_slots: [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT],
@@ -288,6 +332,21 @@ pub enum ShopAuctionPanelRoot {
 pub struct AuctionBidButton {
     pub increment: u32,
 }
+
+#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuctionBidButtonState {
+    #[default]
+    GenericDisabled,
+    Enabled,
+    Unaffordable,
+    HandFullLocked,
+    InFlight,
+    LocallyExpired,
+    HiddenLeading,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionBidStatusText;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuctionFeaturedCard;
@@ -447,6 +506,11 @@ pub struct ShopAuctionShopReadyButtonClicked {
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionBidButtonClicked {
+    pub button: Entity,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShopAuctionGoldCounterFlashRequested;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -457,7 +521,7 @@ pub struct BidButtonLabel {
 
 impl BidButtonLabel {
     pub fn text(self) -> String {
-        format!("{}g (+{})", self.total_commitment, self.increment)
+        format!("{}g\n(+{})", self.total_commitment, self.increment)
     }
 }
 
@@ -493,9 +557,12 @@ impl Plugin for ShopAuctionUiPlugin {
             .init_resource::<ShopAuctionDraftInitialState>()
             .init_resource::<ShopAuctionShopState>()
             .init_resource::<ShopAuctionAuctionState>()
+            .init_resource::<ShopAuctionLocalGoldView>()
             .init_resource::<ShopAuctionRefreshConfig>()
             .init_resource::<PlayerEconomyView>()
             .init_resource::<ClientPhaseView>()
+            .add_message::<PresentationGameSnapshotMessage>()
+            .add_message::<HudGoldBroadcastMessage>()
             .add_message::<ShopAuctionDraftOfferingReceived>()
             .add_message::<ShopAuctionAuctionCardReceived>()
             .add_message::<ShopAuctionCardAcquiredReceived>()
@@ -506,6 +573,7 @@ impl Plugin for ShopAuctionUiPlugin {
             .add_message::<ShopAuctionShopSlotClicked>()
             .add_message::<ShopAuctionShopRefreshClicked>()
             .add_message::<ShopAuctionShopReadyButtonClicked>()
+            .add_message::<ShopAuctionBidButtonClicked>()
             .add_message::<ShopAuctionGoldCounterFlashRequested>()
             .configure_sets(
                 Update,
@@ -530,6 +598,8 @@ impl Plugin for ShopAuctionUiPlugin {
                         drain_auction_card_receiver_system,
                         drain_shop_slots_receiver_system,
                         drain_card_acquired_receiver_system,
+                        handle_auction_snapshot_system,
+                        handle_auction_gold_broadcast_system,
                         handle_draft_offering_system,
                         handle_auction_card_system,
                         handle_shop_slots_system,
@@ -546,6 +616,7 @@ impl Plugin for ShopAuctionUiPlugin {
                         handle_shop_slot_click_system,
                         handle_shop_refresh_click_system,
                         handle_shop_ready_click_system,
+                        handle_auction_bid_button_click_system,
                     )
                         .chain()
                         .in_set(ShopAuctionUiSystemSet::Input),
@@ -788,6 +859,84 @@ pub fn drain_card_acquired_receiver_system(
                 _ => {}
             }
         }
+    }
+}
+
+pub fn handle_auction_snapshot_system(
+    phase_view: Res<ClientPhaseView>,
+    mut snapshots: MessageReader<PresentationGameSnapshotMessage>,
+    mut auction_state: ResMut<ShopAuctionAuctionState>,
+    mut local_gold: ResMut<ShopAuctionLocalGoldView>,
+    mut hand_view: ResMut<ShopAuctionDraftHandView>,
+    mut mode: ResMut<ShopAuctionUiMode>,
+) {
+    for snapshot in snapshots.read().map(|message| &message.0) {
+        local_gold.player_id = Some(snapshot.recipient_player_id);
+        if let Some(local_player) = snapshot
+            .players
+            .iter()
+            .find(|player| player.player_id == snapshot.recipient_player_id)
+        {
+            local_gold.gold = local_player.gold;
+            local_gold.reserved_gold = local_player.reserved_gold;
+            local_gold.initialized = true;
+            hand_view.hand_size = local_player.hand.len();
+        } else {
+            warn!(
+                "Shop/Auction UI: snapshot for {:?} does not contain local player",
+                snapshot.recipient_player_id
+            );
+        }
+
+        let Some(snapshot_auction) = snapshot.auction_state else {
+            continue;
+        };
+
+        auction_state.card_id = Some(snapshot_auction.card_id);
+        auction_state.starting_price = snapshot_auction.starting_price;
+        auction_state.current_price = if snapshot_auction.last_accepted_bid == 0 {
+            snapshot_auction.starting_price
+        } else {
+            snapshot_auction.last_accepted_bid
+        };
+        auction_state.current_leader = snapshot_auction.current_leader;
+        auction_state.timer_duration_ms = phase_view
+            .timer_duration_ms
+            .max(snapshot_auction.timer_remaining_ms);
+        auction_state.timer_remaining_ms = snapshot_auction.timer_remaining_ms;
+        auction_state.locally_expired_elapsed_ms = 0;
+        auction_state.in_flight_bid_amount = None;
+
+        if snapshot.phase == RoundPhase::DraftAuction {
+            auction_state.panel_state = ShopAuctionAuctionPanelState::Active;
+            auction_state.preparing_elapsed_ms = 0;
+            *mode = ShopAuctionUiMode::Auction;
+        }
+    }
+}
+
+pub fn handle_auction_gold_broadcast_system(
+    player_ids: Option<Res<HudPlayerIds>>,
+    mut messages: MessageReader<HudGoldBroadcastMessage>,
+    mut local_gold: ResMut<ShopAuctionLocalGoldView>,
+) {
+    let local_player_id = player_ids
+        .as_deref()
+        .map(|ids| ids.local_id)
+        .or(local_gold.player_id);
+
+    if let Some(player_id) = local_player_id {
+        local_gold.player_id = Some(player_id);
+    }
+
+    for message in messages.read().map(|message| &message.0) {
+        if Some(message.player_id) != local_player_id {
+            continue;
+        }
+
+        local_gold.gold = message.gold;
+        local_gold.reserved_gold = message.reserved_gold;
+        local_gold.initialized = true;
     }
 }
 
@@ -1256,6 +1405,57 @@ pub fn handle_shop_ready_click_system(
     }
 }
 
+pub fn handle_auction_bid_button_click_system(
+    entities: Option<Res<ShopAuctionUiEntities>>,
+    mode: Res<ShopAuctionUiMode>,
+    economy: Res<PlayerEconomyView>,
+    local_gold: Res<ShopAuctionLocalGoldView>,
+    hand_view: Res<ShopAuctionDraftHandView>,
+    mut auction_state: ResMut<ShopAuctionAuctionState>,
+    mut clicks: MessageReader<ShopAuctionBidButtonClicked>,
+    buttons: Query<&AuctionBidButton>,
+    mut senders: Query<&mut MessageSender<C2SPlaceBid>>,
+    mut outbound: ResMut<ShopAuctionUiOutboundMessages>,
+) {
+    let Some(entities) = entities else {
+        for _click in clicks.read() {}
+        return;
+    };
+
+    for click in clicks.read() {
+        if !entities.auction_bid_buttons.contains(&click.button)
+            || !auction_active(&mode, &auction_state)
+        {
+            continue;
+        }
+
+        if auction_state.in_flight_bid_amount.is_some()
+            || auction_state.locally_expired()
+            || hand_view.hand_size >= 10
+            || local_player_is_leading(&auction_state, &local_gold)
+        {
+            continue;
+        }
+
+        let Ok(button) = buttons.get(click.button) else {
+            continue;
+        };
+        let amount = auction_bid_amount(auction_state.current_price, button.increment);
+        if (!economy.initialized && !local_gold.initialized)
+            || local_gold.free_gold(&economy) < amount
+        {
+            continue;
+        }
+
+        let message = C2SPlaceBid { amount };
+        if let Ok(mut sender) = senders.single_mut() {
+            sender.send::<ReliableChannel>(message.clone());
+        }
+        outbound.place_bids.push(message);
+        auction_state.in_flight_bid_amount = Some(amount);
+    }
+}
+
 pub fn sync_draft_initial_panel_system(
     mode: Res<ShopAuctionUiMode>,
     hand_view: Res<ShopAuctionDraftHandView>,
@@ -1505,11 +1705,26 @@ pub fn tick_auction_countdown_system(
     }
 
     let elapsed_ms = u32::try_from(time.delta().as_millis()).unwrap_or(u32::MAX);
+    let was_expired = auction_state.timer_remaining_ms == 0;
     auction_state.timer_remaining_ms = auction_state.timer_remaining_ms.saturating_sub(elapsed_ms);
+    if auction_state.timer_remaining_ms == 0 {
+        if was_expired {
+            auction_state.locally_expired_elapsed_ms = auction_state
+                .locally_expired_elapsed_ms
+                .saturating_add(elapsed_ms);
+        } else {
+            auction_state.locally_expired_elapsed_ms = 0;
+        }
+    } else {
+        auction_state.locally_expired_elapsed_ms = 0;
+    }
 }
 
 pub fn sync_auction_panel_system(
     mode: Res<ShopAuctionUiMode>,
+    economy: Res<PlayerEconomyView>,
+    local_gold: Res<ShopAuctionLocalGoldView>,
+    hand_view: Res<ShopAuctionDraftHandView>,
     catalog: Res<ShopAuctionCardCatalog>,
     auction_state: Res<ShopAuctionAuctionState>,
     shop_state: Res<ShopAuctionShopState>,
@@ -1520,6 +1735,13 @@ pub fn sync_auction_panel_system(
         Query<&mut Text>,
         Query<(&mut AuctionTimerBarState, &mut Node, &mut BackgroundColor), With<AuctionTimerBar>>,
         Query<(Entity, &ShopFooterSlotIndex, &mut Visibility, &mut Text)>,
+        Query<(
+            &AuctionBidButton,
+            &mut AuctionBidButtonState,
+            &mut Visibility,
+            &mut Text,
+            &mut TextColor,
+        )>,
     )>,
 ) {
     let Some(entities) = entities else {
@@ -1531,6 +1753,9 @@ pub fn sync_auction_panel_system(
         ShopAuctionUiMode::AuctionPreparing | ShopAuctionUiMode::Auction
     ) && auction_state.panel_visible();
     let footer_visible = *mode == ShopAuctionUiMode::Auction && auction_visible;
+    let local_leading = local_player_is_leading(&auction_state, &local_gold);
+    let hand_full = hand_view.hand_size >= 10;
+    let bid_status_visible = footer_visible && (local_leading || hand_full);
 
     {
         let mut visibility = auction_ui.p0();
@@ -1566,16 +1791,14 @@ pub fn sync_auction_panel_system(
         );
         set_visibility(
             &mut visibility,
+            entities.auction_bid_status_text,
+            visibility_for(bid_status_visible),
+        );
+        set_visibility(
+            &mut visibility,
             entities.shop_footer,
             visibility_for(footer_visible),
         );
-        for bid_button in entities.auction_bid_buttons {
-            set_visibility(
-                &mut visibility,
-                bid_button,
-                visibility_for(*mode == ShopAuctionUiMode::Auction && auction_visible),
-            );
-        }
     }
 
     {
@@ -1605,17 +1828,24 @@ pub fn sync_auction_panel_system(
                     text.0.push_str("Connection error - awaiting server...");
                 }
                 ShopAuctionAuctionPanelState::Active => {
-                    text.0.push_str("Auction live");
+                    if auction_state.locally_expired() {
+                        text.0.push_str(auction_expired_status_text(
+                            auction_state.locally_expired_elapsed_ms,
+                        ));
+                    } else {
+                        text.0.push_str("Auction live");
+                    }
                 }
                 ShopAuctionAuctionPanelState::Hidden => {}
             }
         }
 
-        let labels = bid_button_label_texts(auction_state.current_price);
-        for (button, label) in entities.auction_bid_buttons.into_iter().zip(labels) {
-            if let Ok(mut text) = texts.get_mut(button) {
-                text.0.clear();
-                text.0.push_str(&label);
+        if let Ok(mut text) = texts.get_mut(entities.auction_bid_status_text) {
+            text.0.clear();
+            if local_leading {
+                text.0.push_str("YOU ARE LEADING");
+            } else if hand_full {
+                text.0.push_str("Hand full - no bids possible this auction");
             }
         }
     }
@@ -1649,6 +1879,47 @@ pub fn sync_auction_panel_system(
             } else {
                 Color::srgb(0.36, 0.38, 0.42)
             });
+        }
+    }
+
+    {
+        let local_free_gold = local_gold.free_gold(&economy);
+        let has_gold_source = economy.initialized || local_gold.initialized;
+        let mut bid_buttons = auction_ui.p4();
+        for button_entity in entities.auction_bid_buttons {
+            let Ok((button, mut state, mut visibility, mut text, mut text_color)) =
+                bid_buttons.get_mut(button_entity)
+            else {
+                continue;
+            };
+
+            let amount = auction_bid_amount(auction_state.current_price, button.increment);
+            let next_state = auction_bid_button_state(
+                amount,
+                local_free_gold,
+                has_gold_source,
+                hand_full,
+                local_leading,
+                &auction_state,
+            );
+
+            *visibility = visibility_for(
+                footer_visible && next_state != AuctionBidButtonState::HiddenLeading,
+            );
+            *state = next_state;
+            text.0.clear();
+            if next_state == AuctionBidButtonState::InFlight {
+                text.0.push_str("BIDDING...");
+            } else {
+                text.0.push_str(
+                    &BidButtonLabel {
+                        total_commitment: amount,
+                        increment: button.increment,
+                    }
+                    .text(),
+                );
+            }
+            *text_color = TextColor(auction_bid_text_color(next_state));
         }
     }
 
@@ -1739,8 +2010,13 @@ fn spawn_shop_auction_ui(mut commands: Commands, existing: Option<Res<ShopAuctio
         "Shop Auction Auction Root",
         auction_panel_node(),
     );
-    let (auction_featured_card, auction_status_text, auction_timer_bar, auction_bid_buttons) =
-        spawn_auction_contents(&mut commands, auction_panel);
+    let (
+        auction_featured_card,
+        auction_status_text,
+        auction_timer_bar,
+        auction_bid_status_text,
+        auction_bid_buttons,
+    ) = spawn_auction_contents(&mut commands, auction_panel);
     let shop_footer = spawn_panel_root(
         &mut commands,
         root,
@@ -1782,6 +2058,7 @@ fn spawn_shop_auction_ui(mut commands: Commands, existing: Option<Res<ShopAuctio
         auction_featured_card,
         auction_status_text,
         auction_timer_bar,
+        auction_bid_status_text,
         auction_bid_buttons,
         shop_footer,
         shop_footer_slots,
@@ -2023,7 +2300,7 @@ fn spawn_shop_hand_full_banner(commands: &mut Commands, parent: Entity) -> Entit
 fn spawn_auction_contents(
     commands: &mut Commands,
     parent: Entity,
-) -> (Entity, Entity, Entity, [Entity; 3]) {
+) -> (Entity, Entity, Entity, Entity, [Entity; 3]) {
     let featured_card = commands
         .spawn((
             Name::new("Shop Auction Featured Auction Card"),
@@ -2072,6 +2349,20 @@ fn spawn_auction_contents(
         ))
         .id();
 
+    let bid_status_text = commands
+        .spawn((
+            Name::new("Shop Auction Bid Status"),
+            ShopAuctionUiEntity,
+            AuctionBidStatusText,
+            Text::new(""),
+            shop_auction_text_font(18.0),
+            TextColor(Color::srgb(0.98, 0.88, 0.40)),
+            auction_bid_status_text_node(),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id();
+
     let bid_buttons = std::array::from_fn(|index| {
         commands
             .spawn((
@@ -2080,6 +2371,7 @@ fn spawn_auction_contents(
                 AuctionBidButton {
                     increment: BID_INCREMENTS[index],
                 },
+                AuctionBidButtonState::GenericDisabled,
                 Text::new(""),
                 shop_auction_text_font(17.0),
                 TextColor(Color::srgb(0.98, 0.93, 0.72)),
@@ -2090,7 +2382,13 @@ fn spawn_auction_contents(
             .id()
     });
 
-    (featured_card, status_text, timer_bar, bid_buttons)
+    (
+        featured_card,
+        status_text,
+        timer_bar,
+        bid_status_text,
+        bid_buttons,
+    )
 }
 
 fn spawn_shop_footer_slots(
@@ -2286,6 +2584,17 @@ fn auction_timer_bar_node() -> Node {
     }
 }
 
+fn auction_bid_status_text_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Percent(34.0),
+        top: Val::Px(248.0),
+        width: Val::Px(360.0),
+        height: Val::Px(40.0),
+        ..default()
+    }
+}
+
 fn auction_bid_button_node(index: usize) -> Node {
     Node {
         position_type: PositionType::Absolute,
@@ -2364,6 +2673,74 @@ fn visibility_for(visible: bool) -> Visibility {
         Visibility::Visible
     } else {
         Visibility::Hidden
+    }
+}
+
+fn auction_active(mode: &ShopAuctionUiMode, state: &ShopAuctionAuctionState) -> bool {
+    *mode == ShopAuctionUiMode::Auction
+        && state.panel_state == ShopAuctionAuctionPanelState::Active
+        && state.card_id.is_some()
+}
+
+fn local_player_is_leading(
+    state: &ShopAuctionAuctionState,
+    local_gold: &ShopAuctionLocalGoldView,
+) -> bool {
+    state.current_leader.is_some() && state.current_leader == local_gold.player_id
+}
+
+pub fn auction_bid_amount(current_price: u32, increment: u32) -> u32 {
+    current_price.saturating_add(increment)
+}
+
+pub fn auction_bid_button_state(
+    amount: u32,
+    local_free_gold: u32,
+    has_gold_source: bool,
+    hand_full: bool,
+    local_leading: bool,
+    auction_state: &ShopAuctionAuctionState,
+) -> AuctionBidButtonState {
+    if local_leading {
+        return AuctionBidButtonState::HiddenLeading;
+    }
+
+    if let Some(in_flight_amount) = auction_state.in_flight_bid_amount {
+        return if in_flight_amount == amount {
+            AuctionBidButtonState::InFlight
+        } else {
+            AuctionBidButtonState::GenericDisabled
+        };
+    }
+
+    if auction_state.locally_expired() {
+        return AuctionBidButtonState::LocallyExpired;
+    }
+
+    if hand_full {
+        return AuctionBidButtonState::HandFullLocked;
+    }
+
+    if !has_gold_source || local_free_gold < amount {
+        return AuctionBidButtonState::Unaffordable;
+    }
+
+    AuctionBidButtonState::Enabled
+}
+
+fn auction_bid_text_color(state: AuctionBidButtonState) -> Color {
+    match state {
+        AuctionBidButtonState::Enabled => Color::srgb(0.98, 0.93, 0.72),
+        AuctionBidButtonState::InFlight => Color::srgba(0.98, 0.93, 0.72, 0.80),
+        _ => Color::srgba(0.92, 0.94, 0.96, 0.30),
+    }
+}
+
+fn auction_expired_status_text(locally_expired_elapsed_ms: u32) -> &'static str {
+    if locally_expired_elapsed_ms >= AUCTION_AWAITING_SERVER_DELAY_MS {
+        "Awaiting server..."
+    } else {
+        "Auction ending..."
     }
 }
 

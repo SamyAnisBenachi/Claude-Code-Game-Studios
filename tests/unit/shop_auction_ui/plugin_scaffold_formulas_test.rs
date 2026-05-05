@@ -143,7 +143,7 @@ fn local_free_gold_saturates_reserved_gold_without_underflow() {
 fn bid_labels_render_total_commitment_with_secondary_increment() {
     assert_eq!(
         bid_button_label_texts(7),
-        ["8g (+1)", "10g (+3)", "12g (+5)"]
+        ["8g\n(+1)", "10g\n(+3)", "12g\n(+5)"]
     );
 }
 
