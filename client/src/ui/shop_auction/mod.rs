@@ -23,6 +23,9 @@ pub const AUCTION_AWAITING_SERVER_DELAY_MS: u32 = 1_500;
 pub const AUCTION_TOAST_FADE_IN_MS: u32 = 120;
 pub const AUCTION_TOAST_HOLD_MS: u32 = 2_000;
 pub const AUCTION_TOAST_FADE_OUT_MS: u32 = 120;
+pub const AUCTION_BID_TARGET_WIDTH_PX: f32 = 108.0;
+pub const AUCTION_BID_TARGET_HEIGHT_PX: f32 = 44.0;
+pub const AUCTION_BID_FOCUS_RING_WIDTH_PX: f32 = 2.0;
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShopAuctionUiSystemSet {
@@ -417,6 +420,44 @@ pub enum AuctionBidButtonState {
     HiddenLeading,
 }
 
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
+pub struct AuctionBidTargetBounds {
+    pub width_px: f32,
+    pub height_px: f32,
+}
+
+impl AuctionBidTargetBounds {
+    pub const fn meets_minimum_target(self) -> bool {
+        self.width_px >= 44.0 && self.height_px >= 44.0
+    }
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
+pub struct AuctionBidFocusState {
+    pub order: u8,
+    pub focusable: bool,
+    pub focused: bool,
+    pub focus_ring_visible: bool,
+    pub focus_ring_width_px: f32,
+}
+
+impl AuctionBidFocusState {
+    pub const fn inactive(order: u8) -> Self {
+        Self {
+            order,
+            focusable: false,
+            focused: false,
+            focus_ring_visible: false,
+            focus_ring_width_px: 0.0,
+        }
+    }
+}
+
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionBidKeyboardFocus {
+    pub focused_button: Option<Entity>,
+}
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuctionBidStatusText;
 
@@ -730,6 +771,8 @@ impl Plugin for ShopAuctionUiPlugin {
             .init_resource::<AuctionTimerTargetFill>()
             .init_resource::<ShopAuctionToastState>()
             .init_resource::<ShopAuctionRefreshConfig>()
+            .init_resource::<AuctionBidKeyboardFocus>()
+            .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<PlayerEconomyView>()
             .init_resource::<ClientPhaseView>()
             .add_message::<PresentationGameSnapshotMessage>()
@@ -793,6 +836,8 @@ impl Plugin for ShopAuctionUiPlugin {
                         handle_shop_slot_click_system,
                         handle_shop_refresh_click_system,
                         handle_shop_ready_click_system,
+                        handle_auction_bid_button_interactions_system,
+                        handle_auction_bid_keyboard_focus_system,
                         handle_auction_bid_button_click_system,
                     )
                         .chain()
@@ -1714,6 +1759,56 @@ pub fn handle_auction_bid_button_click_system(
     }
 }
 
+pub fn handle_auction_bid_button_interactions_system(
+    mut interactions: Query<(Entity, &Interaction), (Changed<Interaction>, With<AuctionBidButton>)>,
+    mut clicks: MessageWriter<ShopAuctionBidButtonClicked>,
+) {
+    for (entity, interaction) in &mut interactions {
+        if *interaction == Interaction::Pressed {
+            clicks.write(ShopAuctionBidButtonClicked { button: entity });
+        }
+    }
+}
+
+pub fn handle_auction_bid_keyboard_focus_system(
+    entities: Option<Res<ShopAuctionUiEntities>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    focus_states: Query<&AuctionBidFocusState, With<AuctionBidButton>>,
+    mut keyboard_focus: ResMut<AuctionBidKeyboardFocus>,
+    mut clicks: MessageWriter<ShopAuctionBidButtonClicked>,
+) {
+    let Some(entities) = entities else {
+        keyboard_focus.focused_button = None;
+        return;
+    };
+
+    let buttons = entities.auction_bid_buttons;
+    if !keyboard_focus
+        .focused_button
+        .is_some_and(|focused| bid_button_focusable(focused, &focus_states))
+    {
+        keyboard_focus.focused_button = None;
+    }
+
+    if keyboard.just_pressed(KeyCode::Tab) {
+        let start_index = keyboard_focus
+            .focused_button
+            .and_then(|focused| buttons.iter().position(|button| *button == focused))
+            .map_or(0, |index| (index + 1) % buttons.len());
+
+        keyboard_focus.focused_button =
+            next_focusable_bid_button(&buttons, start_index, &focus_states);
+    }
+
+    if keyboard.just_pressed(KeyCode::Enter) || keyboard.just_pressed(KeyCode::Space) {
+        if let Some(button) = keyboard_focus.focused_button {
+            if bid_button_focusable(button, &focus_states) {
+                clicks.write(ShopAuctionBidButtonClicked { button });
+            }
+        }
+    }
+}
+
 pub fn sync_draft_initial_panel_system(
     mode: Res<ShopAuctionUiMode>,
     hand_view: Res<ShopAuctionDraftHandView>,
@@ -1992,6 +2087,7 @@ pub fn sync_auction_panel_system(
     auction_state: Res<ShopAuctionAuctionState>,
     shop_state: Res<ShopAuctionShopState>,
     entities: Option<Res<ShopAuctionUiEntities>>,
+    mut keyboard_focus: ResMut<AuctionBidKeyboardFocus>,
     mut commands: Commands,
     mut auction_ui: ParamSet<(
         Query<&mut Visibility>,
@@ -1999,11 +2095,17 @@ pub fn sync_auction_panel_system(
         Query<(&mut AuctionTimerBarState, &mut Node, &mut BackgroundColor), With<AuctionTimerBar>>,
         Query<(Entity, &ShopFooterSlotIndex, &mut Visibility, &mut Text)>,
         Query<(
+            Entity,
             &AuctionBidButton,
             &mut AuctionBidButtonState,
             &mut Visibility,
             &mut Text,
             &mut TextColor,
+            &mut Node,
+            &mut BorderColor,
+            &mut BackgroundColor,
+            &mut AuctionBidTargetBounds,
+            &mut AuctionBidFocusState,
         )>,
     )>,
 ) {
@@ -2148,10 +2250,23 @@ pub fn sync_auction_panel_system(
     {
         let local_free_gold = local_gold.free_gold(&economy);
         let has_gold_source = economy.initialized || local_gold.initialized;
+        let focused_button = keyboard_focus.focused_button;
+        let mut focused_button_is_focusable = false;
         let mut bid_buttons = auction_ui.p4();
-        for button_entity in entities.auction_bid_buttons {
-            let Ok((button, mut state, mut visibility, mut text, mut text_color)) =
-                bid_buttons.get_mut(button_entity)
+        for (index, button_entity) in entities.auction_bid_buttons.into_iter().enumerate() {
+            let Ok((
+                entity,
+                button,
+                mut state,
+                mut visibility,
+                mut text,
+                mut text_color,
+                mut node,
+                mut border_color,
+                mut background_color,
+                mut target_bounds,
+                mut focus_state,
+            )) = bid_buttons.get_mut(button_entity)
             else {
                 continue;
             };
@@ -2171,6 +2286,38 @@ pub fn sync_auction_panel_system(
                 footer_visible && next_state != AuctionBidButtonState::HiddenLeading,
             );
             *state = next_state;
+            node.width = Val::Px(AUCTION_BID_TARGET_WIDTH_PX);
+            node.height = Val::Px(AUCTION_BID_TARGET_HEIGHT_PX);
+            *target_bounds = AuctionBidTargetBounds {
+                width_px: AUCTION_BID_TARGET_WIDTH_PX,
+                height_px: AUCTION_BID_TARGET_HEIGHT_PX,
+            };
+
+            let focusable =
+                auction_bid_state_focusable(next_state) && *visibility == Visibility::Visible;
+            let focused = focused_button == Some(entity) && focusable;
+            if focused {
+                focused_button_is_focusable = true;
+            }
+            *focus_state = AuctionBidFocusState {
+                order: (index + 1) as u8,
+                focusable,
+                focused,
+                focus_ring_visible: focused,
+                focus_ring_width_px: if focused {
+                    AUCTION_BID_FOCUS_RING_WIDTH_PX
+                } else {
+                    0.0
+                },
+            };
+            node.border = UiRect::all(Val::Px(if focused {
+                AUCTION_BID_FOCUS_RING_WIDTH_PX
+            } else {
+                1.0
+            }));
+            *border_color = BorderColor::all(auction_bid_border_color(next_state, focused));
+            *background_color = BackgroundColor(auction_bid_background_color(next_state));
+
             text.0.clear();
             if next_state == AuctionBidButtonState::InFlight {
                 text.0.push_str("BIDDING...");
@@ -2184,6 +2331,9 @@ pub fn sync_auction_panel_system(
                 );
             }
             *text_color = TextColor(auction_bid_text_color(next_state));
+        }
+        if focused_button.is_some() && !focused_button_is_focusable {
+            keyboard_focus.focused_button = None;
         }
     }
 
@@ -2690,9 +2840,22 @@ fn spawn_auction_contents(
                     increment: BID_INCREMENTS[index],
                 },
                 AuctionBidButtonState::GenericDisabled,
+                AuctionBidTargetBounds {
+                    width_px: AUCTION_BID_TARGET_WIDTH_PX,
+                    height_px: AUCTION_BID_TARGET_HEIGHT_PX,
+                },
+                AuctionBidFocusState::inactive((index + 1) as u8),
+                Interaction::None,
                 Text::new(""),
                 shop_auction_text_font(17.0),
                 TextColor(Color::srgb(0.98, 0.93, 0.72)),
+                BackgroundColor(auction_bid_background_color(
+                    AuctionBidButtonState::GenericDisabled,
+                )),
+                BorderColor::all(auction_bid_border_color(
+                    AuctionBidButtonState::GenericDisabled,
+                    false,
+                )),
                 auction_bid_button_node(index),
                 Visibility::Hidden,
                 ChildOf(parent),
@@ -2918,8 +3081,8 @@ fn auction_bid_button_node(index: usize) -> Node {
         position_type: PositionType::Absolute,
         left: Val::Percent(34.0 + index as f32 * 9.0),
         top: Val::Px(248.0),
-        width: Val::Px(108.0),
-        height: Val::Px(36.0),
+        width: Val::Px(AUCTION_BID_TARGET_WIDTH_PX),
+        height: Val::Px(AUCTION_BID_TARGET_HEIGHT_PX),
         border: UiRect::all(Val::Px(1.0)),
         ..default()
     }
@@ -3062,11 +3225,65 @@ pub fn auction_bid_button_state(
     AuctionBidButtonState::Enabled
 }
 
+fn auction_bid_state_focusable(state: AuctionBidButtonState) -> bool {
+    state == AuctionBidButtonState::Enabled
+}
+
+fn bid_button_focusable(
+    button: Entity,
+    focus_states: &Query<&AuctionBidFocusState, With<AuctionBidButton>>,
+) -> bool {
+    focus_states
+        .get(button)
+        .is_ok_and(|focus_state| focus_state.focusable)
+}
+
+fn next_focusable_bid_button(
+    buttons: &[Entity; 3],
+    start_index: usize,
+    focus_states: &Query<&AuctionBidFocusState, With<AuctionBidButton>>,
+) -> Option<Entity> {
+    for offset in 0..buttons.len() {
+        let index = (start_index + offset) % buttons.len();
+        let button = buttons[index];
+        if bid_button_focusable(button, focus_states) {
+            return Some(button);
+        }
+    }
+
+    None
+}
+
 fn auction_bid_text_color(state: AuctionBidButtonState) -> Color {
     match state {
         AuctionBidButtonState::Enabled => Color::srgb(0.98, 0.93, 0.72),
         AuctionBidButtonState::InFlight => Color::srgba(0.98, 0.93, 0.72, 0.80),
         _ => Color::srgba(0.92, 0.94, 0.96, 0.30),
+    }
+}
+
+fn auction_bid_border_color(state: AuctionBidButtonState, focused: bool) -> Color {
+    if focused {
+        return Color::srgb(1.0, 1.0, 1.0);
+    }
+
+    match state {
+        AuctionBidButtonState::Enabled => Color::srgb(0.98, 0.73, 0.30),
+        AuctionBidButtonState::InFlight => Color::srgb(0.98, 0.88, 0.40),
+        AuctionBidButtonState::Unaffordable
+        | AuctionBidButtonState::HandFullLocked
+        | AuctionBidButtonState::GenericDisabled
+        | AuctionBidButtonState::LocallyExpired => Color::srgba(0.92, 0.94, 0.96, 0.35),
+        AuctionBidButtonState::HiddenLeading => Color::srgba(0.92, 0.94, 0.96, 0.0),
+    }
+}
+
+fn auction_bid_background_color(state: AuctionBidButtonState) -> Color {
+    match state {
+        AuctionBidButtonState::Enabled => Color::srgba(0.22, 0.18, 0.11, 0.90),
+        AuctionBidButtonState::InFlight => Color::srgba(0.34, 0.28, 0.12, 0.92),
+        AuctionBidButtonState::HiddenLeading => Color::srgba(0.0, 0.0, 0.0, 0.0),
+        _ => Color::srgba(0.12, 0.14, 0.18, 0.55),
     }
 }
 
