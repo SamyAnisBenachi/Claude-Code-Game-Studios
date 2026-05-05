@@ -6,6 +6,7 @@ use crate::card_animations::{CardAnimationsPlugin, CardAnimationsSet};
 use crate::state::{apply_phase_changed_message, ClientState};
 use crate::ui::hand::{HandUiPlugin, HandUiSystemSet};
 use crate::ui::hud::{HudPlugin, HudSystemSet};
+use crate::ui::shop_auction::{ShopAuctionUiPlugin, ShopAuctionUiSystemSet};
 
 pub mod board_rendering;
 
@@ -33,7 +34,7 @@ impl Plugin for PresentationPlugin {
         app.add_plugins(BoardRenderingPlugin);
         app.add_plugins(HandUiPlugin);
         app.add_plugins(HudPlugin);
-        // ShopAuctionUiPlugin slot: register here once that story creates it.
+        app.add_plugins(ShopAuctionUiPlugin);
 
         app.configure_sets(
             Update,
@@ -55,6 +56,8 @@ impl Plugin for PresentationPlugin {
                 HandUiSystemSet::PhaseTransition.in_set(PresentationSet::PhaseTransition),
                 HandUiSystemSet::MessageDrain.in_set(PresentationSet::MessageDrain),
                 HandUiSystemSet::StateSync.in_set(PresentationSet::StateSync),
+                ShopAuctionUiSystemSet::PhaseTransition.in_set(PresentationSet::PhaseTransition),
+                ShopAuctionUiSystemSet::StateSync.in_set(PresentationSet::StateSync),
                 CardAnimationsSet::React.in_set(PresentationSet::MessageDrain),
             ),
         )
@@ -63,7 +66,8 @@ impl Plugin for PresentationPlugin {
             phase_sink_system
                 .in_set(PresentationSet::PhaseTransition)
                 .before(HudSystemSet::PhaseTransition)
-                .before(HandUiSystemSet::PhaseTransition),
+                .before(HandUiSystemSet::PhaseTransition)
+                .before(ShopAuctionUiSystemSet::PhaseTransition),
         );
     }
 }
