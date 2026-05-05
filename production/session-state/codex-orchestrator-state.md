@@ -77,8 +77,12 @@ when closure work exists, and keep two to four implementation/blocker-clear
 workers active whenever READY stories do not overlap on likely files or
 architectural ownership.
 
-Do not wait for the user to ask what can run in parallel. Assume prompts the
-orchestrator provides are launched unless the user explicitly says otherwise.
+Do not wait for the user to ask what can run in parallel. After every agent
+return, explicitly state whether there are new prompts to launch now. Distinguish
+`RELANCER`/repair prompts for an existing window from new launch prompts for a
+new window. If new work is safe, provide the complete numbered prompts in the
+same response; if not, state the blocker. Assume prompts the orchestrator
+provides are launched unless the user explicitly says otherwise.
 
 Parallelism policy: maximize safe throughput even across future sprints. Do not
 limit launch candidates to the current sprint if future Ready stories are
@@ -100,8 +104,9 @@ word, for example `🟢 CLEAR` and `🟡 REPONDRE`.
 
 Prompt number policy: prompt numbers are global and monotonically increasing
 within the orchestration conversation. Do not reset the index to 1 in later
-answers. The last launch prompt issued was PROMPT 4, so the next launch prompt
-number is PROMPT 5 unless a later memory update records a newer number.
+answers. The last numbered response prompt issued was REPONSE 5, so the next
+new launch prompt number is PROMPT 6 unless a later memory update records a
+newer number.
 
 Window instruction policy: use uppercase `CLEAR` or `REPONDRE`. `CLEAR` means
 the user should close that window; do not add redundant wording like "do not
