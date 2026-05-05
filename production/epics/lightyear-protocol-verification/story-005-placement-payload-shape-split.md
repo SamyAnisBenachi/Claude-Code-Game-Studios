@@ -1,7 +1,7 @@
 # Story 005: Placement Payload Shape Split
 
 > **Epic**: Lightyear Protocol & Verification Spike
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Config/Data
 > **Manifest Version**: 2026-05-05
@@ -30,19 +30,19 @@
 
 *From GDD `design/gdd/network-protocol.md`, scoped to this story:*
 
-- [ ] **NP-58 / TR-NP-013 - C2S submit payload**: `C2SSubmitPlacement` uses `placements: Vec<PlacedCardSubmit>`, where each submit entry contains:
+- [x] **NP-58 / TR-NP-013 - C2S submit payload**: `C2SSubmitPlacement` uses `placements: Vec<PlacedCardSubmit>`, where each submit entry contains:
   - `card_id: CardId`
   - `target: PlayTarget`
   - `current_mana_spend: u32`
   - `reserve_mana_spend: u32`
 
-- [ ] **NP-58 / TR-NP-013 - S2C reveal payload**: `S2CPlacementReveal` uses `placements: Vec<PlacedCardReveal>`, where each reveal entry contains owner/card/target data needed for rendering and combat setup, but omits `current_mana_spend` and `reserve_mana_spend`.
+- [x] **NP-58 / TR-NP-013 - S2C reveal payload**: `S2CPlacementReveal` uses `placements: Vec<PlacedCardReveal>`, where each reveal entry contains owner/card/target data needed for rendering and combat setup, but omits `current_mana_spend` and `reserve_mana_spend`.
 
-- [ ] **NP-58 / TR-NP-013 - no ambiguous shared placement type**: `shared/src/protocol.rs` no longer uses one `PlacedCard` type for both `C2SSubmitPlacement` and `S2CPlacementReveal`. Any internal server placement struct is separate from protocol structs.
+- [x] **NP-58 / TR-NP-013 - no ambiguous shared placement type**: `shared/src/protocol.rs` no longer uses one `PlacedCard` type for both `C2SSubmitPlacement` and `S2CPlacementReveal`. Any internal server placement struct is separate from protocol structs.
 
-- [ ] **NP-58 / TR-NP-013 - explicit split invariant**: `PlacedCardSubmit.current_mana_spend + PlacedCardSubmit.reserve_mana_spend` is documented as the intended total payment for that card. Server validation of the invariant is out of scope for this story and owned by Board/Lane Story 011.
+- [x] **NP-58 / TR-NP-013 - explicit split invariant**: `PlacedCardSubmit.current_mana_spend + PlacedCardSubmit.reserve_mana_spend` is documented as the intended total payment for that card. Server validation of the invariant is out of scope for this story and owned by Board/Lane Story 011.
 
-- [ ] `register_protocol(app)` registers the renamed/split placement types without adding any new Lightyear channel.
+- [x] `register_protocol(app)` registers the renamed/split placement types without adding any new Lightyear channel.
 
 ---
 
@@ -117,7 +117,7 @@ Keep compatibility fallout explicit: every compiler error caused by the rename s
 - `cargo check -p shared`
 - Grep evidence in `production/qa/evidence/placement-payload-shape-split-evidence.md`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -125,3 +125,19 @@ Keep compatibility fallout explicit: every compiler error caused by the rename s
 
 - Depends on: Lightyear Protocol Story 002 complete; current protocol registration scaffold present.
 - Unlocks: `production/epics/board-lane-system/story-011-placement-submit-authority-validation.md`; HAND-UI-010 protocol prerequisite.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Verdict**: COMPLETE
+**Criteria**: 5/5 passing.
+**Test Evidence**: Config/Data evidence at `production/qa/evidence/placement-payload-shape-split-evidence.md`; `cargo test -p shared` passed 5/5, including `protocol::tests::submit_and_reveal_payloads_use_direction_specific_shapes` and `protocol::tests::placement_messages_remain_registered_on_reliable_channel`.
+**Verification**: `cargo check -p shared`, `cargo check -p server`, and `cargo check -p client` passed on current `main`. `git diff --check` passed during closure.
+**Implementation Commit**: worker `103d27d3260bc26a74536115a60a2e83c34ab1e5`; main integration `e65fcfe`; additional integration fix `48b4b5f`; current `main` before closure `9386224`.
+**Deviations**: None blocking. Story manifest version `2026-05-05` matches the current control manifest version; no conflicting current GDD, ADR-003, ADR-008, ADR-002, ADR-007, Bevy 0.18, or Lightyear 0.26 rule found.
+**Scope**: Verification covered `shared/src/protocol.rs`, affected client/server call sites, and the placement payload evidence document. No implementation code, `design/assets/**`, or `production/session-state/codex-orchestrator-state.md` was edited during closure.
+**Code Review**: Skipped - Lean mode.
+**Sprint Status**: Unchanged; no matching NP-005/story row exists in `production/sprint-status.yaml`.
+**Tech Debt**: None logged.

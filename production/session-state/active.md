@@ -1808,3 +1808,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-20 in `production/sprint-status.yaml` to `done` with completion date 2026-05-05.
 - Next recommended: Sprint 5 Must Have scope is complete; either run sprint close-out (`/smoke-check sprint`, `/team-qa sprint`, then `/gate-check`) or pick up S5-17 Hand UI Story 10 Submit Pre-Validation if the remaining Should Have item stays in scope.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE
+- Story: `production/epics/lightyear-protocol-verification/story-005-placement-payload-shape-split.md` - Story 005: Placement Payload Shape Split
+- Criteria: 5/5 passing; NP-58 / TR-NP-013 submit payload, reveal payload, type separation, split-payment invariant documentation, and reliable protocol registration verified against `shared/src/protocol.rs`.
+- Test Evidence: `production/qa/evidence/placement-payload-shape-split-evidence.md`; fresh local verification passed `cargo test -p shared` (5/5), `cargo check -p shared`, `cargo check -p server`, `cargo check -p client`, and `git diff --check`.
+- Verification: Current `main` includes worker commit `103d27d3260bc26a74536115a60a2e83c34ab1e5`, main integration commit `e65fcfe`, and additional integration fix `48b4b5f`; client submission code stages/sends `PlacedCardSubmit`, server call sites convert through internal `AcceptedPlacement`, and reveal messages expose `PlacedCardReveal` without mana-spend fields.
+- Notes: No blocking GDD, ADR-003, ADR-008, ADR-002, ADR-007, Bevy 0.18, or Lightyear 0.26 deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching NP-005/story row exists in `production/sprint-status.yaml`.
+- Next recommended: HAND-UI-010 Submit Pre-Validation (`production/epics/hand-ui/story-010-submit-prevalidation.md`) is unblocked on the NP-005 protocol prerequisite, but still depends on ECO-007, BLS-011, and PRES-002 per the current Sprint 5 row.
