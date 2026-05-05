@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use server::core::economy::{PlayerEconomies, PlayerEconomy, S2CGoldBroadcast};
 use server::core::rsm::{AbortAuction, AuctionPhaseEntered, AuctionSettled};
+use server::feature::acquisition::PlayerHands;
 use server::feature::auction::{auction_tick_system, AuctionPhase, AuctionState, S2CAuctionCard};
 use server::foundation::config::{CardCatalog, GameConfig};
 use shared::card::CardId;
@@ -24,6 +25,17 @@ fn economy(gold: u32, reserved_gold: u32) -> PlayerEconomy {
     }
 }
 
+fn hands(player: PlayerId, hand_size: u32) -> PlayerHands {
+    let mut hands = PlayerHands::default();
+    hands.hands.insert(
+        player,
+        (0..hand_size)
+            .map(|index| CardId(index.saturating_add(1)))
+            .collect(),
+    );
+    hands
+}
+
 fn app_with_state(state: AuctionState, economies: PlayerEconomies) -> App {
     let mut app = App::new();
     app.add_message::<AuctionPhaseEntered>()
@@ -33,6 +45,7 @@ fn app_with_state(state: AuctionState, economies: PlayerEconomies) -> App {
         .add_message::<S2CGoldBroadcast>()
         .insert_resource(state)
         .insert_resource(economies)
+        .insert_resource(PlayerHands::default())
         .insert_resource(CardCatalog {
             cards: HashMap::new(),
         })
@@ -158,14 +171,38 @@ fn abort_in_selecting_returns_idle_without_settlement() {
 }
 
 #[test]
-#[ignore = "pending AUC-006 resolution settlement implementation"]
 fn abort_in_resolving_is_uninterruptible_and_settlement_completes() {
-    let _ = AuctionState {
-        phase: AuctionPhase::Resolving,
-        card_id: Some(CardId(9)),
-        starting_price: 5,
-        current_price: 7,
-        current_leader: Some(PlayerId(2)),
-        timer_remaining_ms: 0,
-    };
+    let winner = PlayerId(2);
+    let card_id = CardId(9);
+    let mut economies = PlayerEconomies::default();
+    economies.0.insert(winner, economy(10, 7));
+
+    let mut app = app_with_state(
+        AuctionState {
+            phase: AuctionPhase::Resolving,
+            card_id: Some(card_id),
+            starting_price: 5,
+            current_price: 7,
+            current_leader: Some(winner),
+            timer_remaining_ms: 0,
+        },
+        economies,
+    );
+    app.world_mut().insert_resource(hands(winner, 3));
+    send_abort(&mut app);
+
+    app.update();
+
+    let hands = app.world().resource::<PlayerHands>();
+    assert!(hands
+        .hands
+        .get(&winner)
+        .expect("winner hand exists")
+        .contains(&card_id));
+
+    let settled = read_messages::<AuctionSettled>(&app);
+    assert_eq!(settled.len(), 1);
+    assert_eq!(settled[0].winner, Some(winner));
+    assert_eq!(settled[0].final_price, 7);
+    assert_eq!(settled[0].card_id, card_id);
 }

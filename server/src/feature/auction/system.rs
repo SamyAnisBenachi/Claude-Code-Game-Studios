@@ -521,11 +521,20 @@ pub fn settle_expired_auction(
     outbox: &mut AuctionNetworkOutbox,
     gold_broadcasts: &mut Vec<S2CGoldBroadcast>,
 ) -> Option<AuctionSettled> {
-    if auction.phase != AuctionPhase::LiveBidding || auction.timer_remaining_ms != 0 {
+    if auction.timer_remaining_ms != 0 {
         return None;
     }
 
-    auction.phase = AuctionPhase::Resolving;
+    match auction.phase {
+        AuctionPhase::LiveBidding => {
+            auction.phase = AuctionPhase::Resolving;
+        }
+        AuctionPhase::Resolving => {}
+        AuctionPhase::Idle | AuctionPhase::Selecting => {
+            return None;
+        }
+    }
+
     let card_id = auction.card_id.unwrap_or_else(|| {
         tracing::error!("auction settlement reached without an auction card");
         CardId(0)
