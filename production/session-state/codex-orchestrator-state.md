@@ -255,6 +255,14 @@ None currently tracked here.
   plus `liv-bevy-lightyear` if touching `MessageReceiver<S2CGoldUpdate>` or
   other Lightyear drain code. HAND-UI-010 remains blocked until PRES-002 is
   implemented, not just readiness-cleared.
+- ECO-007 / Economy Story 007 Explicit Placement Mana Split API readiness
+  returned READY with no file changes or commit. Story:
+  `production/epics/economy-system/story-007-explicit-placement-mana-split-api.md`.
+  `TR-ECO-009` is active; EC27/EC28 trace to the Economy GDD; ADR-019 and
+  ADR-002 are Accepted; manifest version `2026-05-05` matches the control
+  manifest; Economy Story 001 is Complete; the test evidence path is defined.
+  `/dev-story` is safe next. HAND-UI-010 still depends on NP-005, BLS-011, and
+  PRES-002 in addition to ECO-007 completion.
 - SHOP-AUCTION-UI-001 implementation worker returned and was integrated/pushed
   to `origin/main` as `2dbc988`. Worker branch
   `work/sau-001-plugin-scaffold-formulas` returned at `733158c`. Verification
@@ -1223,6 +1231,9 @@ Current active windows by user default-launch rule:
   and PRES-002; BLS-011 waits for NP-005 + ECO-007.
 - PRES-002 readiness returned READY; readiness window can be cleared. PRES-002
   `/dev-story` is safe to launch now and remains a prerequisite for HAND-UI-010.
+- ECO-007 readiness returned READY; readiness window can be cleared. ECO-007
+  `/dev-story` is safe to launch now and remains a prerequisite for BLS-011 and
+  HAND-UI-010.
 - Shop/Auction UX readiness check returned; window can be cleared.
 - Shop/Auction UX review finish returned NEEDS REVISION; window can be cleared
   after recording repair scope. Use `REPONDRE` only if launching the UX repair
