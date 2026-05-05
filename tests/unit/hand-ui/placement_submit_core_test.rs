@@ -8,7 +8,7 @@ use client::ui::hand::{
     HandUiPlacementDropResolved, HandUiPlugin, PendingPlacements, ReserveStripForFanSlot,
 };
 use shared::card::CardId;
-use shared::protocol::{PlacedCard, PlayTarget, RoundPhase};
+use shared::protocol::{PlacedCardSubmit, PlayTarget, RoundPhase};
 use shared::session::PlayerId;
 
 #[test]
@@ -87,8 +87,9 @@ fn hu_13_valid_drop_stages_ghost_updates_submit_and_reserve_strip() {
     let pending = &app.world().resource::<PendingPlacements>().placements;
     assert_eq!(pending.len(), 1);
     assert_eq!(pending[0].card_id, CardId(201));
-    assert_eq!(pending[0].owner_id, PlayerId(7));
     assert_eq!(pending[0].target, target);
+    assert_eq!(pending[0].current_mana_spend, 1);
+    assert_eq!(pending[0].reserve_mana_spend, 0);
 }
 
 #[test]
@@ -204,12 +205,12 @@ fn click_submit(app: &mut App) {
     app.update();
 }
 
-fn placement(card_id: CardId, target: PlayTarget) -> PlacedCard {
-    PlacedCard {
+fn placement(card_id: CardId, target: PlayTarget) -> PlacedCardSubmit {
+    PlacedCardSubmit {
         card_id,
-        owner_id: PlayerId(7),
         target,
-        reserve_amount: 0,
+        current_mana_spend: 0,
+        reserve_mana_spend: 0,
     }
 }
 

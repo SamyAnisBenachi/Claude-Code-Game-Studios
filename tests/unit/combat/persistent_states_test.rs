@@ -6,7 +6,8 @@ use server::core::board::{BoardPosition, UnitCardRef, UnitOwner, UnitStats};
 use server::core::rsm::BeginResolution;
 use server::core::session::SessionConfig;
 use server::feature::board::{
-    BoardCell, BoardConfig, BoardGrid, BoardOccupancy, PendingPlacements, PlayerSubmission,
+    AcceptedPlacement, BoardCell, BoardConfig, BoardGrid, BoardOccupancy, PendingPlacements,
+    PlayerSubmission,
 };
 use server::feature::combat::{CombatPlugin, CombatResolutionTrace, CombatTraceEntry};
 use server::feature::keyword::components::UnitKeywordState;
@@ -14,7 +15,7 @@ use server::feature::keyword::{ChainDeathBuffer, UnitDied};
 use server::foundation::config::CardCatalog;
 use shared::card::{CardData, CardId, CardType, ClassId, Keyword, Rarity, SimpleKeyword, UnitType};
 use shared::keyword::KeywordKind;
-use shared::protocol::{GameMode, PlacedCard, PlayTarget};
+use shared::protocol::{GameMode, PlayTarget};
 use shared::session::PlayerId;
 
 const PLAYER_A: PlayerId = PlayerId(1);
@@ -136,7 +137,7 @@ fn spawn_unit(
     entity
 }
 
-fn submit(app: &mut App, player: PlayerId, placements: Vec<PlacedCard>) {
+fn submit(app: &mut App, player: PlayerId, placements: Vec<AcceptedPlacement>) {
     app.world_mut()
         .resource_mut::<PendingPlacements>()
         .submissions
@@ -150,12 +151,13 @@ fn submit(app: &mut App, player: PlayerId, placements: Vec<PlacedCard>) {
         );
 }
 
-fn placed(card_id: CardId, owner_id: PlayerId, lane: u8, cell: u8) -> PlacedCard {
-    PlacedCard {
-        card_id,
+fn placed(card_id: CardId, owner_id: PlayerId, lane: u8, cell: u8) -> AcceptedPlacement {
+    AcceptedPlacement {
         owner_id,
+        card_id,
         target: PlayTarget::BoardCell { lane, cell },
-        reserve_amount: 0,
+        current_mana_spend: 0,
+        reserve_mana_spend: 0,
     }
 }
 

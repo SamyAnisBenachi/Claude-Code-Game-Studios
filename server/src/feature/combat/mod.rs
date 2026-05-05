@@ -12,7 +12,7 @@ use shared::card::{CardData, CardId, CardType, Keyword, SimpleKeyword};
 use shared::config::GameConfig as SharedGameConfig;
 use shared::keyword::KeywordKind;
 use shared::protocol::{
-    EntityId, GameOverReason, GoldReason, PlacedCard, PlayTarget, ReliableChannel, ResolutionEvent,
+    EntityId, GameOverReason, GoldReason, PlayTarget, ReliableChannel, ResolutionEvent,
     S2CPlacementReveal, S2CResolutionEvent, TaggedEvent,
 };
 use shared::session::PlayerId;
@@ -25,8 +25,8 @@ use crate::core::rsm::{
 };
 use crate::core::session::SessionConfig;
 use crate::feature::board::{
-    advance_direction, apply_f1, detect_objective_presence, is_at_objective, BoardCell,
-    BoardConfig, BoardGrid, BoardOccupancy, BoardSystemSet, LaneId, PendingPlacements,
+    advance_direction, apply_f1, detect_objective_presence, is_at_objective, AcceptedPlacement,
+    BoardCell, BoardConfig, BoardGrid, BoardOccupancy, BoardSystemSet, LaneId, PendingPlacements,
     UnitAtObjective,
 };
 use crate::feature::keyword::components::UnitKeywordState;
@@ -1857,7 +1857,7 @@ fn apply_placements(world: &mut World, budget: &mut IterationBudget) -> Result<(
     Ok(())
 }
 
-fn collect_pending_placements(world: &World) -> Vec<PlacedCard> {
+fn collect_pending_placements(world: &World) -> Vec<AcceptedPlacement> {
     let pending = world.resource::<PendingPlacements>();
     let mut players = pending.submissions.keys().copied().collect::<Vec<_>>();
     players.sort_by_key(|player| player.0);
@@ -1869,7 +1869,7 @@ fn collect_pending_placements(world: &World) -> Vec<PlacedCard> {
         .collect()
 }
 
-fn deduct_committed_mana(world: &mut World, placements: &[PlacedCard]) {
+fn deduct_committed_mana(world: &mut World, placements: &[AcceptedPlacement]) {
     if placements.is_empty()
         || !world.contains_resource::<CardCatalog>()
         || !world.contains_resource::<PlayerEconomies>()
@@ -1907,9 +1907,9 @@ fn deduct_committed_mana(world: &mut World, placements: &[PlacedCard]) {
     }
 }
 
-fn enqueue_placement_reveal(world: &mut World, placements: &[PlacedCard]) {
+fn enqueue_placement_reveal(world: &mut World, placements: &[AcceptedPlacement]) {
     let message = S2CPlacementReveal {
-        placements: placements.to_vec(),
+        placements: placements.iter().map(AcceptedPlacement::reveal).collect(),
     };
 
     world
@@ -1921,7 +1921,7 @@ fn enqueue_placement_reveal(world: &mut World, placements: &[PlacedCard]) {
         .push(CombatTraceEntry::PlacementRevealEnqueued);
 }
 
-fn spawn_committed_placements(world: &mut World, placements: &[PlacedCard]) -> Vec<Entity> {
+fn spawn_committed_placements(world: &mut World, placements: &[AcceptedPlacement]) -> Vec<Entity> {
     let mut spawned = Vec::new();
 
     for placement in placements {
@@ -1963,9 +1963,9 @@ fn spawn_committed_placements(world: &mut World, placements: &[PlacedCard]) -> V
     spawned
 }
 
-fn board_cell_target(placement: &PlacedCard) -> Option<(LaneId, u8)> {
-    match placement.target {
-        PlayTarget::BoardCell { lane, cell } => Some((lane, cell)),
+fn board_cell_target(placement: &AcceptedPlacement) -> Option<(LaneId, u8)> {
+    match &placement.target {
+        PlayTarget::BoardCell { lane, cell } => Some((*lane, *cell)),
         PlayTarget::TargetUnit { .. }
         | PlayTarget::TargetObj { .. }
         | PlayTarget::LaneWide { .. }

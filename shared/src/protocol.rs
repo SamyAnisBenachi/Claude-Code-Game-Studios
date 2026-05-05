@@ -212,20 +212,35 @@ pub enum CardSource {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct PlacedCard {
-    pub card_id: CardId,
-    pub owner_id: PlayerId,
-    pub target: PlayTarget,
-    pub reserve_amount: u32,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum PlayTarget {
     BoardCell { lane: u8, cell: u8 },
     TargetUnit { lane: u8, unit_id: EntityId },
     TargetObj { player_id: PlayerId, lane: u8 },
     LaneWide { lane: u8 },
     Instant,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct PlacedCardSubmit {
+    pub card_id: CardId,
+    pub target: PlayTarget,
+    pub current_mana_spend: u32,
+    pub reserve_mana_spend: u32,
+}
+
+impl PlacedCardSubmit {
+    /// Intended total payment for this card; BLS-011 owns validation.
+    pub const fn total_mana_spend(&self) -> u32 {
+        self.current_mana_spend
+            .saturating_add(self.reserve_mana_spend)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct PlacedCardReveal {
+    pub owner_id: PlayerId,
+    pub card_id: CardId,
+    pub target: PlayTarget,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -378,7 +393,7 @@ pub struct C2SPlaceBid {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct C2SSubmitPlacement {
-    pub placements: Vec<PlacedCard>,
+    pub placements: Vec<PlacedCardSubmit>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -463,7 +478,7 @@ pub struct S2CPoolUpdate {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct S2CPlacementReveal {
-    pub placements: Vec<PlacedCard>,
+    pub placements: Vec<PlacedCardReveal>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -716,3 +731,96 @@ pub struct S2CGameSnapshot {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct S2CHeartbeat {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Default)]
+    struct RecordingRegistry {
+        messages: Vec<(&'static str, ProtocolDirection, ProtocolChannel)>,
+    }
+
+    impl ProtocolRegistry for RecordingRegistry {
+        fn add_channel<C: Send + Sync + 'static>(&mut self, _channel: ProtocolChannel) {}
+
+        fn add_message<M: Serialize + DeserializeOwned + Send + Sync + 'static>(
+            &mut self,
+            direction: ProtocolDirection,
+            channel: ProtocolChannel,
+        ) {
+            self.messages
+                .push((std::any::type_name::<M>(), direction, channel));
+        }
+    }
+
+    #[test]
+    fn submit_and_reveal_payloads_use_direction_specific_shapes() {
+        let submit = C2SSubmitPlacement {
+            placements: vec![PlacedCardSubmit {
+                card_id: CardId(7),
+                target: PlayTarget::BoardCell { lane: 2, cell: 3 },
+                current_mana_spend: 2,
+                reserve_mana_spend: 1,
+            }],
+        };
+        let submit_json = serde_json::to_value(&submit).expect("submit payload should serialize");
+        assert_eq!(submit.placements[0].total_mana_spend(), 3);
+        assert!(submit_json["placements"][0].get("card_id").is_some());
+        assert!(submit_json["placements"][0]
+            .get("current_mana_spend")
+            .is_some());
+        assert!(submit_json["placements"][0]
+            .get("reserve_mana_spend")
+            .is_some());
+        assert!(submit_json["placements"][0].get("owner_id").is_none());
+
+        let reveal = S2CPlacementReveal {
+            placements: vec![PlacedCardReveal {
+                owner_id: PlayerId(11),
+                card_id: CardId(7),
+                target: PlayTarget::BoardCell { lane: 2, cell: 3 },
+            }],
+        };
+        let reveal_json = serde_json::to_value(&reveal).expect("reveal payload should serialize");
+        assert!(reveal_json["placements"][0].get("owner_id").is_some());
+        assert!(reveal_json["placements"][0].get("card_id").is_some());
+        assert!(reveal_json["placements"][0].get("target").is_some());
+        assert!(reveal_json["placements"][0]
+            .get("current_mana_spend")
+            .is_none());
+        assert!(reveal_json["placements"][0]
+            .get("reserve_mana_spend")
+            .is_none());
+        assert!(reveal_json["placements"][0].get("reserve_amount").is_none());
+    }
+
+    #[test]
+    fn placement_messages_remain_registered_on_reliable_channel() {
+        let mut registry = RecordingRegistry::default();
+        register_protocol(&mut registry);
+
+        assert_eq!(
+            registry
+                .messages
+                .iter()
+                .find(|(name, _, _)| { *name == std::any::type_name::<C2SSubmitPlacement>() }),
+            Some(&(
+                std::any::type_name::<C2SSubmitPlacement>(),
+                ProtocolDirection::ClientToServer,
+                ProtocolChannel::Reliable,
+            ))
+        );
+        assert_eq!(
+            registry
+                .messages
+                .iter()
+                .find(|(name, _, _)| { *name == std::any::type_name::<S2CPlacementReveal>() }),
+            Some(&(
+                std::any::type_name::<S2CPlacementReveal>(),
+                ProtocolDirection::ServerToClient,
+                ProtocolChannel::Reliable,
+            ))
+        );
+    }
+}

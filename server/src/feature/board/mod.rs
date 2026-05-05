@@ -23,8 +23,8 @@ pub use placement::{
     close_placement_phase, get_units_at_cell, handle_placement_submission, is_field_slot_available,
     is_minion_slot_available, is_structure_slot_available, is_trap_slot_available,
     placement_buffer_open, process_placement_submission, requires_spawn_range_validation,
-    update_spawn_range, validate_spawn_range, FakeObjectiveDestroyed, PendingPlacements,
-    PlacementCommitTrace, PlacementCommitTraceEntry, PlacementCommitted,
+    update_spawn_range, validate_spawn_range, AcceptedPlacement, FakeObjectiveDestroyed,
+    PendingPlacements, PlacementCommitTrace, PlacementCommitTraceEntry, PlacementCommitted,
     PlacementSubmissionReceived, PlacementSubmissionResult, PlayerSubmission,
 };
 pub use plugin::{BoardPlugin, BoardSystemSet};
