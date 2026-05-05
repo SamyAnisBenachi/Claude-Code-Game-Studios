@@ -4,15 +4,26 @@
 > **Status**: Ready
 > **Layer**: Presentation
 > **Type**: Integration
-> **Manifest Version**: 2026-05-01
+> **Manifest Version**: 2026-05-05
 
 ## Context
 
 **GDD**: `design/gdd/shop-auction-ui.md`
-**Requirement**: `TR-SAU-006`
+**Requirement**: `TR-SAU-004`, `TR-SAU-006`
 **ADR Governing Implementation**: [ADR-013: Auction System State](../../../docs/architecture/adr-013-auction-system-state.md), [ADR-021: Presentation Layer Architecture](../../../docs/architecture/adr-021-presentation-layer-architecture.md)
 
+**Requirement basis**: GDD `DRAFT_AUCTION Panel` Rule 1 and edge cases `SAU-EG4a`, `SAU-EG4b`, `SAU-EG4c`, `SAU-EG5`, `SAU-EG6a`, and `SAU-EG6b` require auction activation to buffer `S2CAuctionCard` and `S2CPhaseChanged(DRAFT_AUCTION)` in either arrival order, enter `AUCTION_PREPARING` only for card-first arrival, dismiss on non-auction phase, and time out after 10 seconds. GDD Rule 2 requires the DRAFT_AUCTION shop footer to remain visible but fully locked, with refresh hidden and no purchase or refresh messages sent.
+
 Auction activation requires both `S2CAuctionCard` and `S2CPhaseChanged(DRAFT_AUCTION)`. The UI must handle either arrival order, a preparing state when the card arrives first, and normal dismissal if a non-auction phase arrives while preparing.
+
+**Engine**: Bevy 0.18 + Lightyear 0.26 | **Risk**: HIGH
+**Engine Notes**: Use `liv-bevy-018` before touching any Bevy `.rs` implementation and `liv-bevy-lightyear` before touching any Lightyear network code. Treat each Lightyear `MessageReceiver<T>` drain as a single-consumer boundary: `S2CPhaseChanged` is drained only by `phase_sink_system`, and any Shop/Auction S2C message drain added for this story must have one production owner. Use Bevy UI Required Components (`Node`, `Text`, `ImageNode`, etc.) and do not use deprecated Bevy bundle APIs such as `NodeBundle`, `SpriteBundle`, or `Camera2dBundle`.
+
+**Control Manifest Rules (Presentation layer)**:
+- Required: `S2CPhaseChanged` is drained through `phase_sink_system`, then exposed to sub-plugins through `Res<CurrentClientPhase>`.
+- Forbidden: Shop/Auction sub-plugin systems must not directly drain `MessageReceiver<S2CPhaseChanged>`.
+- Required: Bevy UI entities use the Required Components API; no deprecated `*Bundle` types.
+- Required: Lightyear message handling is single-drain per message type; do not confuse Lightyear `MessageReceiver<T>` with Bevy `MessageReader<T>`.
 
 ## Acceptance Criteria
 
@@ -30,6 +41,13 @@ Auction activation requires both `S2CAuctionCard` and `S2CPhaseChanged(DRAFT_AUC
 - The activation buffer is the primary path, not an edge-case guard.
 - Timer starts only from `S2CPhaseChanged { timer_duration_ms }`.
 - Shop footer content should use available shop slot data without allowing interaction.
+
+## Performance Budget
+
+- Presentation steady-state: < 1 ms/frame.
+- Phase-boundary activation/preparing transition: < 3 ms.
+- Activation and preparing-state buffer checks must be O(1).
+- Countdown/preparing updates must not allocate per frame; update pre-pooled UI entities and existing fields only.
 
 ## Out of Scope
 
