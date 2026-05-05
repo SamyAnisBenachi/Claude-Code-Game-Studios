@@ -44,6 +44,15 @@ Provide all applicable evidence:
 This is a P1 Sprint 6 gate blocker for Production-to-Polish readiness until
 Standard-tier accessibility is remediated, verified, or explicitly reclassified.
 
+## Partial Evidence Updates
+
+- 2026-05-05: PLACEMENT timer-extension sub-gap implemented and verified by
+  GSS-008. Evidence:
+  `production/qa/evidence/gss-008-placement-timer-multiplier-authority-2026-05-05.md`.
+  This does not close QA-COND-0005 as a whole; all remaining Standard-tier
+  accessibility gaps stay Open for later evidence, remediation, reclassification,
+  or accepted-risk disposition.
+
 ## Non-Goals
 
 - Does not assign Sprint 6 capacity.

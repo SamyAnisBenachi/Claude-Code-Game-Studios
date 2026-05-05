@@ -2025,3 +2025,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` matching S6-05 row set to `done` with `completed: "2026-05-05"`.
 - Next recommended: S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check remain blocked until S6-01 through S6-05 are complete or explicitly reclassified.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/game-session-system/story-008-placement-timer-multiplier-authority.md` - Story 008: PLACEMENT Timer Multiplier Authority
+- Criteria: 24/24 verified; protocol values are extension-only, reliable C2S/S2C settings messages are registered, no requester identity is exposed, GSS computes and freezes highest-request-wins before `SessionReady`, RSM applies the frozen multiplier to standard and auction-followup PLACEMENT timers, `S2CPhaseChanged.timer_duration_ms` carries the effective duration, reconnect snapshot carries the frozen neutral value, and Hand UI uses server-provided phase duration.
+- Test Evidence: `cargo fmt -p shared -- --check`, `cargo fmt -p server -- --check`, `cargo fmt -p client -- --check`, `cargo check -p shared`, `cargo check -p server`, `cargo check -p client`, `cargo test -p shared`, the requested server tests, the requested client tests, and `git diff --check` all passed.
+- Verification: Worker branch `work/game-session-system-008-placement-timer-multiplier-authority` commit `d31b98d60b0921f01017b4427b9193c5e7383ed8` was cherry-picked onto current `main` as integration commit `4b505af`.
+- Notes: No blocking GDD, ADR-002, ADR-009, ADR-012, ADR-021, ADR-023, Bevy 0.18, or Lightyear 0.26 deviation found. Equivalent Hand UI server-duration coverage lives in `tests/integration/hand-ui/placement_timer_test.rs::hu_24_placement_timer_uses_server_phase_duration`; no separate `hand_ui_server_timer_duration_test.rs` was created. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- QA condition: `QA-COND-0005` remains Open. Only the PLACEMENT timer-extension sub-gap is recorded as implemented/verified in `production/qa/evidence/gss-008-placement-timer-multiplier-authority-2026-05-05.md`.
+- Tech debt logged: None.
+- Sprint status: Unchanged; S6-04 tracks the broader QA-COND-0005 remediation condition, so this sub-gap verification does not legitimately close that sprint row.
+- Next recommended: Continue remaining Standard-tier accessibility evidence/disposition work before using S6-04 or QA-COND-0005 for Production -> Polish gate closure.

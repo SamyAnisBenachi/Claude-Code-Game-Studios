@@ -1,7 +1,7 @@
 # Story 008: PLACEMENT Timer Multiplier Authority
 
 > **Epic**: Game Session System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core / Networking / Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -170,7 +170,7 @@
 - `tests/integration/hand-ui/server_timer_duration_test.rs` or equivalent client test proves Hand UI uses server-provided PLACEMENT duration.
 - `cargo check --workspace` and `git diff --check` pass.
 
-**Status**: [ ] Required for story completion.
+**Status**: [x] Complete and passing.
 
 ---
 
@@ -183,3 +183,16 @@
 - Depends on: `production/epics/hand-ui/story-009-placement-timer.md` (Complete) for existing PLACEMENT timer presentation behavior.
 - Depends on: ADR-023 Accepted as of 2026-05-05.
 - Unlocks: Settings/Accessibility preference UI can later send timer multiplier requests before `SessionReady`; QA-COND-0005 can mark the PLACEMENT timer extension sub-gap implemented after this story has passing evidence.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 24/24 verified. Protocol values are `X1`, `X1_5`, `X2`, and `X3` only; C2S/S2C settings messages are registered on the reliable path; `S2CSessionSettingsUpdated` and snapshots expose no requester identity; GSS request handling is LOBBY-only and highest-request-wins; `SessionConfig.placement_timer_multiplier_effective` freezes before `SessionReady`; RSM applies the frozen multiplier after selecting standard vs auction-followup PLACEMENT base duration; `S2CPhaseChanged.timer_duration_ms` carries the effective duration; Hand UI initializes from the server-provided phase duration and preserves urgency/grace/checkmark behavior.
+**Deviations**: None blocking. One named evidence target was satisfied by an equivalent client regression: `tests/integration/hand-ui/placement_timer_test.rs::hu_24_placement_timer_uses_server_phase_duration` covers server-provided PLACEMENT duration instead of creating a separate `hand_ui_server_timer_duration_test.rs`.
+**Test Evidence**: `cargo fmt -p shared -- --check`; `cargo fmt -p server -- --check`; `cargo fmt -p client -- --check`; `cargo check -p shared`; `cargo check -p server`; `cargo check -p client`; `cargo test -p shared`; `cargo test -p server --test placement_timer_multiplier_test`; `cargo test -p server --test rsm_placement_timer_multiplier_test`; `cargo test -p server --test reconnect_snapshot_test`; `cargo test -p server --test game_config_defaults_test`; `cargo test -p server --test session_ready_test`; `cargo test -p server --test rsm_timers_test`; `cargo test -p client --test hand_ui_placement_timer_test`; `cargo test -p client --test presentation_plugin_scaffold_test`; `git diff --check`.
+**QA-COND-0005 Impact**: PLACEMENT timer-extension sub-gap is implemented and verified by GSS-008 evidence at `production/qa/evidence/gss-008-placement-timer-multiplier-authority-2026-05-05.md`. QA-COND-0005 remains Open for the remaining Standard-tier accessibility gaps.
+**Code Review**: Skipped - lean mode (`production/review-mode.txt` absent).
+**QA Coverage Gate**: Skipped - lean mode (`production/review-mode.txt` absent).
+**Implementation**: Worker commit `d31b98d60b0921f01017b4427b9193c5e7383ed8` was cherry-picked onto current `main` as integration commit `4b505af`.
+**Scope Notes**: `production/sprint-status.yaml` was not updated because S6-04 tracks the whole QA-COND-0005 remediation condition, not only the PLACEMENT timer-extension sub-gap. `design/assets/**`, `AGENTS.md`, and `production/session-state/codex-orchestrator-state.md` were not touched.
