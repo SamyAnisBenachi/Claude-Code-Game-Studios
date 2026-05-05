@@ -1903,3 +1903,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Updated S5-17 in `production/sprint-status.yaml` to `done` with completion date 2026-05-05.
 - Next recommended: Sprint 5 Must Have and Should Have tracked story rows are complete; run sprint close-out (`/smoke-check sprint`, `/team-qa sprint`, then `/gate-check`) if no more pull-forward work is being added.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/shop-auction-ui/story-003-shop-panel-slots-refresh-purchase-ready.md` - Story 003: Shop Panel Slots Refresh Purchase Ready
+- Criteria: 9/9 passing; DRAFT_SHOP phase+slot activation, three-slot rendering, valid multi-purchase sends, same-frame refresh disable, confirmed-only refresh count changes, hand-full slot lockout with refresh affordance, Ready/Retract Ready interactivity, PLACEMENT dismissal/late confirmation handling, and DRAFT_AUCTION slot buffering verified.
+- Test Evidence: `cargo test -p client --test shop_auction_ui_shop_panel_test` passed 8/8. Requested adjacent regressions passed: `shop_auction_ui_plugin_scaffold_formulas_test` 8/8 and `shop_auction_ui_draft_initial_grid_test` 9/9. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+- Verification: Current `main` includes worker branch `work/sau-003-shop-panel-slots-refresh-purchase-ready` commit `2be9e0af39dbd03fb1782aaf4d95cf4c74646feb` through main integration commit `27e077a`; DRAFT_SHOP reads shared phase/economy state, owns shop slot/acquisition handling, sends purchase/refresh/ready intents over `ReliableChannel`, and buffers auction-phase `S2CShopSlots` until the shop phase.
+- Notes: Advisory only - manual visual evidence remains deferred to Story 009. No blocking GDD, ADR-015, ADR-021, Bevy 0.18, or Lightyear 0.26 deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching SAU-003/story row exists in `production/sprint-status.yaml`.
+- Next recommended: Shop/Auction UI Story 004 (`production/epics/shop-auction-ui/story-004-auction-locked-footer-and-card-buffer.md`) after readiness check, or continue sprint close-out if no more pull-forward work is being added.

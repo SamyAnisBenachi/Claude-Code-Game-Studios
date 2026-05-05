@@ -1,7 +1,7 @@
 # Story 003: Shop Panel Slots Refresh Purchase Ready
 
 > **Epic**: Shop / Auction UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -30,15 +30,15 @@ The DRAFT_SHOP panel displays three server-supplied shop slots, supports purchas
 
 ## Acceptance Criteria
 
-- [ ] `SAU-DS1` - Non-auction DRAFT_SHOP waits for both `S2CPhaseChanged(DRAFT_SHOP)` and `S2CShopSlots` before becoming interactive.
-- [ ] DRAFT_SHOP renders exactly three server-supplied shop slots, including card data or empty/dead-slot state. UI holds no card-pool knowledge.
-- [ ] `SAU-DS6` - Purchase click sends `C2SPurchaseCard` only for valid, affordable, non-empty slots, and rapid clicks on two valid slots send two purchase messages while tracking only each clicked slot as pending.
-- [ ] `SAU-DS8` - Refresh click disables the refresh button in the same frame before any second click can fire, and sends exactly one `C2SRefreshShop`.
-- [ ] `SAU-DS2`, `SAU-DS3`, `SAU-DS5` - Refresh count increments only when `S2CShopSlots` confirms the refresh, does not increment on timeout/failure, and resets to 0 on the next DRAFT_SHOP entry.
-- [ ] `SAU-DS4` - Hand size 10 locks all shop slots but does not lock Refresh when `local_gold >= displayed_refresh_cost`.
-- [ ] `SAU-DS9`, `SAU-DS10`, `SAU-DS11` - Ready/Retract Ready sends exactly one `C2SSignalReady { retract: false/true }` per click, updates button/status text, and does not disable purchases before phase transition.
-- [ ] `SAU-DS7`, `SAU-DS12` - `S2CPhaseChanged(PLACEMENT)` dismisses the panel, blocks late purchase/refresh sends, and late purchase confirmation restores pre-click slot state with gold unchanged.
-- [ ] `SAU-EG2` - If `S2CShopSlots` arrives during `AUCTION_ACTIVE`, the footer does not update mid-auction; the buffered slots are applied when DRAFT_SHOP becomes active post-transition.
+- [x] `SAU-DS1` - Non-auction DRAFT_SHOP waits for both `S2CPhaseChanged(DRAFT_SHOP)` and `S2CShopSlots` before becoming interactive.
+- [x] DRAFT_SHOP renders exactly three server-supplied shop slots, including card data or empty/dead-slot state. UI holds no card-pool knowledge.
+- [x] `SAU-DS6` - Purchase click sends `C2SPurchaseCard` only for valid, affordable, non-empty slots, and rapid clicks on two valid slots send two purchase messages while tracking only each clicked slot as pending.
+- [x] `SAU-DS8` - Refresh click disables the refresh button in the same frame before any second click can fire, and sends exactly one `C2SRefreshShop`.
+- [x] `SAU-DS2`, `SAU-DS3`, `SAU-DS5` - Refresh count increments only when `S2CShopSlots` confirms the refresh, does not increment on timeout/failure, and resets to 0 on the next DRAFT_SHOP entry.
+- [x] `SAU-DS4` - Hand size 10 locks all shop slots but does not lock Refresh when `local_gold >= displayed_refresh_cost`.
+- [x] `SAU-DS9`, `SAU-DS10`, `SAU-DS11` - Ready/Retract Ready sends exactly one `C2SSignalReady { retract: false/true }` per click, updates button/status text, and does not disable purchases before phase transition.
+- [x] `SAU-DS7`, `SAU-DS12` - `S2CPhaseChanged(PLACEMENT)` dismisses the panel, blocks late purchase/refresh sends, and late purchase confirmation restores pre-click slot state with gold unchanged.
+- [x] `SAU-EG2` - If `S2CShopSlots` arrives during `AUCTION_ACTIVE`, the footer does not update mid-auction; the buffered slots are applied when DRAFT_SHOP becomes active post-transition.
 
 ## Implementation Notes
 
@@ -86,7 +86,7 @@ The DRAFT_SHOP UI/message path must stay within ADR-021 Presentation budgets: st
 - UI/integration: `tests/integration/shop_auction_ui/shop_panel_test.rs`
 - Visual evidence later: `production/qa/evidence/shop-auction-ui-shop-panel-evidence.md`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Automated UI/integration evidence created and passing; manual visual evidence remains deferred to Story 009.
 
 ## Dependencies
 
@@ -99,3 +99,16 @@ The DRAFT_SHOP UI/message path must stay within ADR-021 Presentation budgets: st
 - Depends on: [RSM Story 006](../round-state-machine/story-006-network-dispatch-wiring.md) - Complete; dispatches `S2CPhaseChanged` over `ReliableChannel` for phase sink consumption.
 - Depends on: [HUD Story 002](../hud/story-002-gold-mana-display.md) - Complete; provides the shared economy display/state pattern that Shop/Auction UI must reuse.
 - Unlocks: post-auction M2 shop path and Story 007.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 9/9 passing. Non-auction activation gating, three-slot server-supplied rendering, valid multi-purchase sends, same-frame refresh disable, confirmed-only refresh count changes, hand-full slot lockout with refresh affordance, Ready/Retract Ready interactivity, PLACEMENT dismissal/late confirmation handling, and DRAFT_AUCTION slot buffering are covered by `tests/integration/shop_auction_ui/shop_panel_test.rs`.
+**Test Evidence**: `cargo test -p client --test shop_auction_ui_shop_panel_test` passed 8/8. Requested adjacent regressions passed: `shop_auction_ui_plugin_scaffold_formulas_test` 8/8 and `shop_auction_ui_draft_initial_grid_test` 9/9. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+**Verification**: Current `main` includes worker branch `work/sau-003-shop-panel-slots-refresh-purchase-ready` commit `2be9e0af39dbd03fb1782aaf4d95cf4c74646feb` through main integration commit `27e077a`. The shop panel reads shared phase/economy state, owns `S2CShopSlots` and shop `S2CCardAcquired` handling, sends purchase/refresh/ready intents over `ReliableChannel`, buffers auction-phase shop slots, and uses Bevy UI Required Components without forbidden bundle patterns.
+**Deviations**: Advisory only - manual visual evidence remains deferred to Story 009 as already stated in this story's out-of-scope and test-evidence notes. No blocking GDD, ADR-015, ADR-021, Bevy 0.18, or Lightyear 0.26 deviation found. Story manifest version `2026-05-05` matches the current control manifest.
+**Code Review**: Skipped per lean review mode because `production/review-mode.txt` is absent.
+**QA Coverage Gate**: Skipped per lean review mode because `production/review-mode.txt` is absent.
+**Tech Debt**: None logged.
+**Sprint Status**: Unchanged; no matching SAU-003/story row exists in `production/sprint-status.yaml`.
