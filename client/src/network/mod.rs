@@ -6,9 +6,9 @@ use lightyear::prelude::client::*;
 use lightyear::prelude::*;
 use shared::protocol::{
     self, C2SAcknowledgeResult, C2SActivateCard, C2SConfirmClass, C2SCreateRoom, C2SHeartbeat,
-    C2SHello, C2SJoinRoom, C2SPlaceBid, C2SPurchaseCard, C2SRefreshShop, C2SSelectClass,
-    C2SSignalReady, C2SSubmitPlacement, ProtocolChannel, ProtocolDirection, ProtocolRegistry,
-    UnreliableChannel,
+    C2SHello, C2SJoinRoom, C2SPlaceBid, C2SPurchaseCard, C2SRefreshShop, C2SRequestSnapshot,
+    C2SSelectClass, C2SSignalReady, C2SSubmitPlacement, ProtocolChannel, ProtocolDirection,
+    ProtocolRegistry, UnreliableChannel,
 };
 
 pub struct ClientNetworkPlugin;
@@ -92,6 +92,7 @@ fn c2s_sender_stubs(
     place_bid: Query<&MessageSender<C2SPlaceBid>>,
     submit_placement: Query<&MessageSender<C2SSubmitPlacement>>,
     acknowledge_result: Query<&MessageSender<C2SAcknowledgeResult>>,
+    request_snapshot: Query<&MessageSender<C2SRequestSnapshot>>,
     heartbeat: Query<&MessageSender<C2SHeartbeat>>,
 ) {
     count_senders(hello);
@@ -106,6 +107,7 @@ fn c2s_sender_stubs(
     count_senders(place_bid);
     count_senders(submit_placement);
     count_senders(acknowledge_result);
+    count_senders(request_snapshot);
     count_senders(heartbeat);
 }
 

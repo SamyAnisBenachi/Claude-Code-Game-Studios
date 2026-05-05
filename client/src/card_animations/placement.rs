@@ -11,16 +11,16 @@ use super::{
         CellHighlightRequested, PlacementCancelAllAnimsRequested, PlacementRevealAnimReady,
         SnapBackRequested,
     },
-    make_tween_anim, placement_phase_duration, replace_tweenable, InputGatingAnimationConfig,
-    PlacementPhaseAnimator, SpriteColorLens, TransformScaleXLens,
+    make_tween_anim, placement_phase_duration, replace_tweenable, AnimationTimingConfig,
+    InputGatingAnimationConfig, PlacementPhaseAnimator, SpriteColorLens, TransformScaleXLens,
 };
 
-const PLACEMENT_REVEAL_MS: u64 = 90;
 const CELL_HIGHLIGHT_COLOR: Color = Color::srgba(0.88, 0.98, 1.0, 0.85);
 
 pub fn placement_reveal_system(
     mut commands: Commands,
     board_layout: Option<Res<BoardLayout>>,
+    timings: Res<AnimationTimingConfig>,
     mut requests: MessageReader<PlacementRevealAnimReady>,
     mut units: Query<(Entity, &mut Transform, Option<&mut TweenAnim>)>,
 ) {
@@ -37,7 +37,7 @@ pub fn placement_reveal_system(
             let end_scale_x = transform.scale.x;
             let tween = Tween::new(
                 EaseFunction::QuadraticOut,
-                placement_phase_duration(PLACEMENT_REVEAL_MS),
+                timings.unit_reveal_tween_duration(),
                 TransformScaleXLens {
                     start: 0.0,
                     end: end_scale_x,

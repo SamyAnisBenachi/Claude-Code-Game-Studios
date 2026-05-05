@@ -7,6 +7,9 @@ use shared::protocol::{RoundPhase, S2CPhaseChanged};
 use super::{events::GroupDrainedSignal, make_tween_anim};
 
 const DEFAULT_PRE_ANIMATION_PAUSE_MS: u64 = 400;
+const DEFAULT_UNIT_REVEAL_TWEEN_DURATION_MS: u64 = 250;
+const MIN_UNIT_REVEAL_TWEEN_DURATION_MS: u64 = 150;
+const MAX_UNIT_REVEAL_TWEEN_DURATION_MS: u64 = 400;
 const DEFAULT_INTER_STEP_PAUSE_MS: u64 = 150;
 const DEFAULT_RESOLUTION_SUB_STEP_DURATION_MS: u64 = 600;
 const DEFAULT_OBJECTIVE_REVEAL_MS: u64 = 400;
@@ -18,6 +21,7 @@ const DAMAGE_NUMBER_BUDGET_BUFFER_MS: u64 = 50;
 #[derive(Resource, Clone, Copy, Debug, Eq, PartialEq)]
 pub struct AnimationTimingConfig {
     pub pre_animation_pause_ms: u64,
+    pub unit_reveal_tween_duration_ms: u64,
     pub inter_step_pause_ms: u64,
     pub resolution_sub_step_duration_ms: u64,
     pub objective_reveal_ms: u64,
@@ -30,6 +34,7 @@ impl Default for AnimationTimingConfig {
     fn default() -> Self {
         Self {
             pre_animation_pause_ms: DEFAULT_PRE_ANIMATION_PAUSE_MS,
+            unit_reveal_tween_duration_ms: DEFAULT_UNIT_REVEAL_TWEEN_DURATION_MS,
             inter_step_pause_ms: DEFAULT_INTER_STEP_PAUSE_MS,
             resolution_sub_step_duration_ms: DEFAULT_RESOLUTION_SUB_STEP_DURATION_MS,
             objective_reveal_ms: DEFAULT_OBJECTIVE_REVEAL_MS,
@@ -41,6 +46,17 @@ impl Default for AnimationTimingConfig {
 }
 
 impl AnimationTimingConfig {
+    pub fn assert_unit_reveal_tween_budget(self) {
+        assert!(
+            (MIN_UNIT_REVEAL_TWEEN_DURATION_MS..=MAX_UNIT_REVEAL_TWEEN_DURATION_MS)
+                .contains(&self.unit_reveal_tween_duration_ms),
+            "unit_reveal_tween_duration_ms={} outside allowed range {}..={}",
+            self.unit_reveal_tween_duration_ms,
+            MIN_UNIT_REVEAL_TWEEN_DURATION_MS,
+            MAX_UNIT_REVEAL_TWEEN_DURATION_MS
+        );
+    }
+
     pub fn assert_damage_number_budget(self) {
         let despawn_delay_ms = self.damage_number_despawn_delay_ms();
         assert!(
@@ -69,6 +85,10 @@ impl AnimationTimingConfig {
     pub fn damage_number_despawn_delay_ms(self) -> u64 {
         self.damage_number_float_tween_ms
             .max(self.damage_number_fade_tween_ms)
+    }
+
+    pub fn unit_reveal_tween_duration(self) -> Duration {
+        Duration::from_millis(self.unit_reveal_tween_duration_ms)
     }
 
     fn pre_animation_pause(self) -> Duration {

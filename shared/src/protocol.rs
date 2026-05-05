@@ -67,6 +67,7 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_c2s::<C2SPlaceBid>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SSubmitPlacement>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SAcknowledgeResult>(registry, ProtocolChannel::Reliable);
+    register_c2s::<C2SRequestSnapshot>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SHeartbeat>(registry, ProtocolChannel::Unreliable);
 
     register_s2c::<S2CHandshake>(registry, ProtocolChannel::Reliable);
@@ -398,6 +399,9 @@ pub struct C2SSubmitPlacement {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct C2SAcknowledgeResult {}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct C2SRequestSnapshot {}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct C2SHeartbeat {}
@@ -819,6 +823,17 @@ mod tests {
             Some(&(
                 std::any::type_name::<S2CPlacementReveal>(),
                 ProtocolDirection::ServerToClient,
+                ProtocolChannel::Reliable,
+            ))
+        );
+        assert_eq!(
+            registry
+                .messages
+                .iter()
+                .find(|(name, _, _)| { *name == std::any::type_name::<C2SRequestSnapshot>() }),
+            Some(&(
+                std::any::type_name::<C2SRequestSnapshot>(),
+                ProtocolDirection::ClientToServer,
                 ProtocolChannel::Reliable,
             ))
         );

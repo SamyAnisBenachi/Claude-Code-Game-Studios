@@ -112,7 +112,7 @@ fn placement_reveal_payload_starts_all_entries_same_update() {
         );
         assert_eq!(
             animator.tweenable().cycle_duration(),
-            Duration::from_millis(90)
+            Duration::from_millis(250)
         );
         assert_eq!(
             app.world()
