@@ -145,6 +145,26 @@ None currently tracked here.
 
 ## Recent Planning / Readiness Updates
 
+- COMBAT-011 / S5-20 dev-story has been launched with worker Hilbert on the
+  existing COMBAT-011 worktree/branch. Await the implementation return; do not
+  launch a second COMBAT-011 worker.
+- Shop/Auction UI UX review finished with verdict NEEDS REVISION. It is not a
+  major redesign and does not block SAU-001, but it blocks clean final
+  visual/accessibility handoff and SAU-009. Full blockers: bid accessibility
+  conflict (`design/accessibility-requirements.md` requires bid confirmation
+  while UX/GDD/stories use immediate preset bid buttons), stale
+  `interaction-patterns.md` Auction Bid Input assumptions plus missing patterns
+  for components invented by the UX spec, unresolved hand tray / bottom
+  resources / panel vertical split (`OQ-SAU-UX-2`), unresolved tooltip storage,
+  missing `S2CCardAcquired` in data requirements, underspecified DRAFT_SHOP
+  confirmed-purchase / empty-dead slot behavior, and stale SAU-009 tracker text
+  saying `design/ux/shop-auction-ui.md` does not exist. Safe now: SAU-001,
+  SAU-002 core, SAU-003 core, SAU-004, and SAU-007 state/logic. SAU-005/006 are
+  safe only if the team explicitly keeps immediate preset bids and repairs
+  accessibility docs accordingly. Recommended repair changeset: edit
+  `design/ux/shop-auction-ui.md`, `design/ux/interaction-patterns.md`, and
+  `design/accessibility-requirements.md`; optional later tracker hygiene for
+  `production/epics/shop-auction-ui/story-009-visual-evidence-layout-and-accessibility.md`.
 - Settings/Accessibility UX design returned and was pushed at `093b62a`,
   creating `design/ux/settings-accessibility.md` only. Validation passed
   `git diff --check` and a path-specific check. Open questions recorded in the
@@ -987,6 +1007,8 @@ Batch launched:
 - HUD-008: closed at `07f477f`.
 
 Active implementation workers by default-launch rule:
+- COMBAT-011 dev-story launched with worker Hilbert on the existing COMBAT-011
+  worktree/branch; await return and do not relaunch.
 - Full-game asset coverage audit, card art coverage audit, and UI/audio/VFX
   coverage audit have returned. The full-game asset manifest/spec expansion was
   committed at `bbde404`; no asset audit window remains active.
@@ -1009,7 +1031,8 @@ Current active windows by user default-launch rule:
   COMBAT-011 readiness repair/recheck returned READY and was pushed at
   `92b5826`, with follow-up trace-name alignment at `ce6a7aa`; readiness window
   can be cleared. COMBAT-011 `/dev-story` is now safe to launch with
-  `liv-bevy-018` and `liv-bevy-lightyear`.
+  `liv-bevy-018` and `liv-bevy-lightyear`. COMBAT-011 dev-story has now been
+  launched with worker Hilbert; wait for its return.
 - COMBAT-008 readiness repair returned READY and was pushed at `b26f007`.
   Readiness window can be cleared. COMBAT-008 implementation worker returned at
   `dd7bd50`; root fast-forwarded and pushed `main` to that commit. Worker
@@ -1054,6 +1077,9 @@ Current active windows by user default-launch rule:
   HAND-UI-010 blocker split returned read-only and confirmed new prerequisite
   implementation stories are needed; blocker split window can be cleared.
 - Shop/Auction UX readiness check returned; window can be cleared.
+- Shop/Auction UX review finish returned NEEDS REVISION; window can be cleared
+  after recording repair scope. Use `REPONDRE` only if launching the UX repair
+  changeset.
 - Settings/Accessibility UX design returned and pushed `093b62a`; window can be
   cleared. Keep its open questions visible for future settings implementation.
 - Result Screen UX design returned and pushed `399bb34`; window can be cleared.
