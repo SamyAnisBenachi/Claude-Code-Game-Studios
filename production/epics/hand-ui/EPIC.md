@@ -34,6 +34,14 @@ Hand UI implements the client-side card fan display and all card-play interactio
 
 **Untraced Requirements**: None
 
+## Sprint 6 Accessibility Gate
+
+QA-COND-0005 remains Open for Standard-tier accessibility remediation. Story 014
+scopes A11Y-ST-14 PLACEMENT staged disclosure as a Hand UI UI story. Current
+drag/drop behavior covers the underlying staging mechanics, but the row still
+needs lane/cell guidance hardening and browser/WASM evidence before the
+A11Y-ST-14 sub-gap can be marked implemented/evidenced.
+
 ## Pre-Implementation Gates
 
 These are not design gaps — the GDD is Approved. They gate specific stories within the epic:
@@ -42,7 +50,7 @@ These are not design gaps — the GDD is Approved. They gate specific stories wi
 |------|--------|-----------------|
 | **OQ8** — `S2CActivationRejected` not registered in NP GDD | HU-28 / HU-28b (activation-lock story) | Add `S2CActivationRejected` to `design/gdd/network-protocol.md` before the activation-lock story opens |
 | **OQ5/OQ6** — Card data pipeline ADR; atlas-sharing confirmation | Asset-pipeline story (card TextureAtlas frame index resolution) | ADR-021 resolves direction (`Res<CardAtlas>` shared from `BoardRenderingPlugin`); confirm `CardAtlas::frame_index(card_id)` shared method exists before asset story starts |
-| **HAND-UI-010 blockers** — placement submit pre-validation prerequisites | Story 010 | Complete `NP-005` placement payload split, `ECO-007` explicit placement mana split API, `BLS-011` server authority validation, and `PRES-002` shared economy view before implementation |
+| **HAND-UI-010 prerequisites** — placement submit pre-validation prerequisites | Story 010 | Resolved; Story 010 is Complete and its submit pre-validation behavior must be preserved by Story 014 |
 
 ## Key ADR-021 Constraints for This Epic
 
@@ -63,26 +71,27 @@ This epic is complete when:
 - All stories are implemented, reviewed, and closed via `/story-done`
 - All acceptance criteria from `design/gdd/hand-ui.md` are verified (HU-01 through HU-30, excluding HU-28/HU-28b until OQ8 resolves)
 - All Logic and Integration stories have passing test files in `tests/unit/hand-ui/` or `tests/integration/hand-ui/`
-- All Visual/Feel stories have evidence docs with lead sign-off in `production/qa/evidence/`
+- All Visual/Feel and UI stories have evidence docs with lead sign-off in `production/qa/evidence/`
 - Pre-implementation gates OQ8 and OQ5/OQ6 are resolved and their gated stories are implemented and closed
 
 ## Stories
 
 | # | Story | Type | Status | ADR |
 |---|-------|------|--------|-----|
-| 001 | [Plugin Scaffold — Pre-Pooled Entity Spawning](story-001-plugin-scaffold.md) | Logic | Ready | ADR-021 |
-| 002 | [Fan Layout Formula — Card Position & Rotation](story-002-fan-layout-formula.md) | Logic | Ready | ADR-021 |
-| 003 | [Phase State Machine — Visibility & Input Gating](story-003-phase-state-machine.md) | Logic | Ready | ADR-021, ADR-009 |
-| 004 | [DRAFT_INITIAL Grid — Display & Purchase Flow](story-004-draft-initial-grid.md) | Integration | Ready | ADR-021, ADR-004 |
-| 005 | [PLACEMENT Entry — Submit Button & Core Stage/Unstage](story-005-placement-submit-core.md) | Logic | Ready | ADR-021, ADR-002 |
-| 006 | [PLACEMENT Drag — Highlight Sets & TargetUnit](story-006-placement-drag-highlights.md) | Logic | Ready | ADR-021 |
-| 007 | [PLACEMENT Instant Card Staging](story-007-placement-instant-staging.md) | Logic | Ready | ADR-021 |
-| 008 | [PLACEMENT Un-Staging — Board Ghosts & Instant Fan Slot](story-008-placement-unstaging.md) | Integration | Ready | ADR-021 |
-| 009 | [PLACEMENT Timer — Urgency, Grace Window & Submit Checkmark](story-009-placement-timer.md) | Integration | Ready | ADR-021 |
-| 010 | [Submit Pre-Validation — Mana & Reserve Checks](story-010-submit-prevalidation.md) | Logic | Blocked | ADR-021, ADR-002 |
-| 011 | [Reserve Mana Split Strip — Per-Staged-Card Controls](story-011-reserve-mana-strip.md) | Logic | Ready | ADR-021 |
+| 001 | [Plugin Scaffold — Pre-Pooled Entity Spawning](story-001-plugin-scaffold.md) | Logic | Complete | ADR-021 |
+| 002 | [Fan Layout Formula — Card Position & Rotation](story-002-fan-layout-formula.md) | Logic | Complete | ADR-021 |
+| 003 | [Phase State Machine — Visibility & Input Gating](story-003-phase-state-machine.md) | Logic | Complete | ADR-021, ADR-009 |
+| 004 | [DRAFT_INITIAL Grid — Display & Purchase Flow](story-004-draft-initial-grid.md) | Integration | Complete | ADR-021, ADR-004 |
+| 005 | [PLACEMENT Entry — Submit Button & Core Stage/Unstage](story-005-placement-submit-core.md) | Logic | Complete | ADR-021, ADR-002 |
+| 006 | [PLACEMENT Drag — Highlight Sets & TargetUnit](story-006-placement-drag-highlights.md) | Logic | Complete | ADR-021 |
+| 007 | [PLACEMENT Instant Card Staging](story-007-placement-instant-staging.md) | Logic | Complete | ADR-021 |
+| 008 | [PLACEMENT Un-Staging — Board Ghosts & Instant Fan Slot](story-008-placement-unstaging.md) | Integration | Complete | ADR-021 |
+| 009 | [PLACEMENT Timer — Urgency, Grace Window & Submit Checkmark](story-009-placement-timer.md) | Integration | Complete | ADR-021 |
+| 010 | [Submit Pre-Validation — Mana & Reserve Checks](story-010-submit-prevalidation.md) | Logic | Complete | ADR-021, ADR-002 |
+| 011 | [Reserve Mana Split Strip — Per-Staged-Card Controls](story-011-reserve-mana-strip.md) | Logic | Complete | ADR-021 |
 | 012 | [Activation Lock — DRAFT_SHOP Instant Card Lock & Timeout](story-012-activation-lock.md) | Integration | Blocked | ADR-021, ADR-002 |
 | 013 | [Reconnect Rebuild — PLACEMENT State Recovery](story-013-reconnect-rebuild.md) | Integration | Ready | ADR-021, ADR-002, ADR-009 |
+| 014 | [PLACEMENT Staged Disclosure Accessibility](story-014-placement-staged-disclosure-accessibility.md) | UI | Ready | ADR-021, ADR-002, ADR-023 |
 
-**Story counts**: 8 Logic · 5 Integration · 2 Blocked (OQ8, HAND-UI-010 prerequisites)
-**Dependency order**: 001 → 002, 003; 003 → 004, 005, 013; 005 → 006, 007, 008, 009, 010, 011
+**Story counts**: 8 Logic · 5 Integration · 1 UI; status counts: 11 Complete · 2 Ready · 1 Blocked (OQ8)
+**Dependency order**: 001 → 002, 003; 003 → 004, 005, 013; 005 → 006, 007, 008, 009, 010, 011; 006, 007, 008, 010, 011 → 014
