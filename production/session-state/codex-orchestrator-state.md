@@ -141,7 +141,20 @@ None currently tracked here.
 
 ## Recently Implemented, Needs Formal Story-Done
 
-None currently tracked here.
+- SHOP-AUCTION-UI-001 / SAU-001 Plugin Scaffold, Panel Tree, and Formulas is
+  integrated on `origin/main` and needs serialized `/story-done`. Worker branch
+  `work/sau-001-plugin-scaffold-formulas` returned at `733158c`, pushed to
+  `origin/work/sau-001-plugin-scaffold-formulas`. Root cherry-picked only that
+  worker commit into `main` as `2dbc988` (`SAU-001 impl: Shop auction UI
+  scaffold formulas`) and pushed it to `origin/main`. Changed files:
+  `client/Cargo.toml`, `client/src/presentation/mod.rs`, `client/src/ui/mod.rs`,
+  `client/src/ui/shop_auction/mod.rs`, and
+  `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs`. Root checks
+  passed: `cargo fmt -p client -- --check`, `cargo test -p client --test
+  shop_auction_ui_plugin_scaffold_formulas_test` 8/8, `cargo check -p client`,
+  and `git diff --check HEAD~1..HEAD`. Queue exactly one `/story-done` for
+  `production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md`;
+  do not relaunch the implementation worker.
 
 ## Recent Planning / Readiness Updates
 
@@ -180,6 +193,13 @@ None currently tracked here.
   is now marked Blocked on Story 005, NP-005, ECO-007, BLS-011, and PRES-002.
   Final blocker chain: `NP-005 + ECO-007 -> BLS-011`; `BLS-011 + PRES-002 ->
   HAND-UI-010`.
+- SHOP-AUCTION-UI-001 implementation worker returned and was integrated/pushed
+  to `origin/main` as `2dbc988`. Worker branch
+  `work/sau-001-plugin-scaffold-formulas` returned at `733158c`. Verification
+  passed in root with `cargo fmt -p client -- --check`, `cargo test -p client
+  --test shop_auction_ui_plugin_scaffold_formulas_test` 8/8,
+  `cargo check -p client`, and `git diff --check HEAD~1..HEAD`. Needs
+  serialized `/story-done`; do not relaunch worker.
 - Settings/Accessibility UX design returned and was pushed at `093b62a`,
   creating `design/ux/settings-accessibility.md` only. Validation passed
   `git diff --check` and a path-specific check. Open questions recorded in the
@@ -1108,6 +1128,10 @@ Current active windows by user default-launch rule:
 - Shop/Auction UX review finish returned NEEDS REVISION; window can be cleared
   after recording repair scope. Use `REPONDRE` only if launching the UX repair
   changeset.
+- SHOP-AUCTION-UI-001 implementation worker returned at `733158c`; root
+  integrated and pushed it as `2dbc988`. Worker window can be cleared. Queue a
+  serialized `/story-done` for
+  `production/epics/shop-auction-ui/story-001-plugin-scaffold-panel-tree-and-formulas.md`.
 - Settings/Accessibility UX design returned and pushed `093b62a`; window can be
   cleared. Keep its open questions visible for future settings implementation.
 - Result Screen UX design returned and pushed `399bb34`; window can be cleared.
