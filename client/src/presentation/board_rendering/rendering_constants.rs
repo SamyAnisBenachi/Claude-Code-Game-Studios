@@ -8,3 +8,8 @@ pub const Z_GHOST_UNIT: f32 = 3.5;
 
 pub const Z_BOARD_CAMERA: f32 = 999.0;
 pub const CELL_NODE_SIZE: f32 = 28.0;
+pub const UNIT_SPRITE_SIZE: bevy::prelude::Vec2 = bevy::prelude::Vec2::new(48.0, 64.0);
+pub const OBJECTIVE_SPRITE_SIZE: bevy::prelude::Vec2 = bevy::prelude::Vec2::new(64.0, 96.0);
+pub const HP_BAR_SIZE: bevy::prelude::Vec2 = bevy::prelude::Vec2::new(42.0, 5.0);
+pub const HP_BAR_Y_OFFSET: f32 = 38.0;
+pub const HEALTH_BAR_LOCAL_Z: f32 = Z_HEALTH_BARS - Z_UNITS;

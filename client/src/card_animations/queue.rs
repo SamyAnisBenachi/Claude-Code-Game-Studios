@@ -251,6 +251,10 @@ impl PendingPhaseChange {
         self.phase_change.is_none()
     }
 
+    pub fn clear(&mut self) {
+        self.phase_change = None;
+    }
+
     fn take(&mut self) -> Option<S2CPhaseChanged> {
         self.phase_change.take()
     }
