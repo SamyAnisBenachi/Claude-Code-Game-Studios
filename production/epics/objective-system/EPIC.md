@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/objective-system.md
 > **Architecture Module**: `server/feature/objective/`
 > **Status**: Ready
-> **Stories**: 7 stories — see table below
+> **Stories**: 8 stories — see table below
 
 ## Overview
 
@@ -19,6 +19,11 @@ check. Sang Méprise reveal is handled as a one-shot reliable unicast to the opp
 only, persisting client-side for RESOLUTION duration. On every reconnect,
 S2CObjectiveIdentities is re-sent because reliable delivery is not guaranteed across
 transport reconnects.
+
+Story 008 tracks the remaining OS-18b live two-client ObjectiveHp visibility
+evidence gap. Objective System owns the acceptance condition; the Lightyear
+harness is only the evidence mechanism. Passing Story 008 closes open QA
+condition `QA-COND-0003`.
 
 ## Governing ADRs
 
@@ -51,6 +56,8 @@ This epic is complete when:
 - All stories are implemented, reviewed, and closed via `/story-done`
 - All acceptance criteria from `design/gdd/objective-system.md` are verified (41 ACs)
 - All Logic and Integration stories have passing test files in `tests/`
+- `QA-COND-0003` is closed by OS-18b two-client ObjectiveHp visibility evidence
+  at `production/qa/evidence/os-18b-two-client-objective-hp-visibility-2026-05-05.md`
 - CI grep confirms: `grep -rn "ObjectiveIdentity\|is_fake" server/src/` never appears
   in a `Replicate` context or any S2C broadcast message
 - `liv-bevy-018` and `liv-bevy-lightyear` skills activated on all `.rs` files in this module
@@ -66,9 +73,10 @@ This epic is complete when:
 | 005 | [Destruction Consequence Path](story-005-destruction-consequence-path.md) | Logic | Ready | ADR-010, ADR-001 |
 | 006 | [D4 Fake Reward Draw](story-006-d4-fake-reward-draw.md) | Logic | Ready | ADR-001 |
 | 007 | [ResolutionPhaseEntered Subscription & RESOLUTION-end Sync](story-007-resolution-phase-subscription.md) | Integration | Ready | ADR-010, ADR-001 |
+| 008 | [OS-18b Two-Client Objective HP Visibility Evidence](story-008-os18b-two-client-objective-hp-visibility.md) | Integration | Ready | ADR-001, ADR-010 |
 
 Work through stories in order — each story's `Depends on:` field tells you what must be DONE before you can start it.
 
 ## Next Step
 
-Run `/story-readiness production/epics/objective-system/story-001-objective-state-model.md` then `/dev-story` to begin implementation.
+Run `/story-readiness production/epics/objective-system/story-008-os18b-two-client-objective-hp-visibility.md` then `/dev-story` to close the remaining OS-18b evidence condition.
