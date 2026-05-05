@@ -13,6 +13,7 @@ use client::presentation::board_rendering::{
 };
 use client::presentation::{BoardLayout, LaneCell};
 use client::state::ClientState;
+use shared::session::PlayerId;
 
 #[test]
 fn test_board_camera_spawns_single_fixed_orthographic_view() {
@@ -95,7 +96,10 @@ fn test_spawn_highlight_state_uses_cell_tint_not_extra_z_layer() {
         Color::srgba(0.12, 0.24, 0.30, 0.55)
     );
     assert_eq!(
-        SpawnHighlightState::ValidSpawn.tint(),
+        SpawnHighlightState::ValidSpawn {
+            player_id: PlayerId(1),
+        }
+        .tint(),
         Color::srgba(1.0, 0.82, 0.24, 0.88)
     );
 

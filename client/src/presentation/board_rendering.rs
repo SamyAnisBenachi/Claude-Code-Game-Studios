@@ -7,9 +7,9 @@ use shared::card::{CardId, ClassId};
 use shared::keyword::InjuredGrantedKeyword;
 use shared::protocol::{
     C2SRequestSnapshot, EntityId, ObjectiveSnapshot, PlacedCardReveal, PlayTarget, ReliableChannel,
-    RoundPhase, S2CGameSnapshot, S2CJoinAck, S2CPlacementReveal, S2CResolutionEvent,
-    S2CRoomCreated, S2CSlotUpdated, SessionSlot, UnitBoardLocation, UnitBoardState,
-    UnitStatsSnapshot,
+    ResolutionEvent, RoundPhase, S2CGameSnapshot, S2CJoinAck, S2CPlacementReveal,
+    S2CResolutionEvent, S2CRoomCreated, S2CSlotUpdated, SessionSlot, UnitBoardLocation,
+    UnitBoardState, UnitStatsSnapshot,
 };
 use shared::session::PlayerId;
 
@@ -760,16 +760,31 @@ pub struct BoardGhostPickable;
 pub enum SpawnHighlightState {
     #[default]
     Inactive,
-    ValidSpawn,
+    ValidSpawn {
+        player_id: PlayerId,
+    },
 }
 
 impl SpawnHighlightState {
     pub fn tint(self) -> Color {
         match self {
             Self::Inactive => Color::srgba(0.12, 0.24, 0.30, 0.55),
-            Self::ValidSpawn => Color::srgba(1.0, 0.82, 0.24, 0.88),
+            Self::ValidSpawn { .. } => Color::srgba(1.0, 0.82, 0.24, 0.88),
         }
     }
+
+    pub fn player_id(self) -> Option<PlayerId> {
+        match self {
+            Self::Inactive => None,
+            Self::ValidSpawn { player_id } => Some(player_id),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SpawnRangeEdge {
+    LowCells,
+    HighCells,
 }
 
 pub struct BoardRenderingPlugin;
@@ -834,6 +849,7 @@ impl Plugin for BoardRenderingPlugin {
                 Update,
                 (
                     sync_reveal_state_from_snapshot_system.in_set(BoardRenderSet::ReadMessages),
+                    apply_snapshot_spawn_highlights_system.in_set(BoardRenderSet::ReadMessages),
                     rebuild_board_from_snapshot_system.in_set(BoardRenderSet::ReadMessages),
                     drain_resolution_event_system.in_set(BoardRenderSet::ReadMessages),
                     tick_reveal_recovery_timeouts_system
@@ -1030,10 +1046,19 @@ pub fn drain_resolution_event_system(
     mut pending_script: ResMut<PendingResolutionScript>,
     mut reveal_wait: ResMut<ResolutionRevealWait>,
     mut render_state: ResMut<BoardRenderState>,
+    local_player: Res<BoardLocalPlayer>,
+    player_team_map: Res<PlayerTeamMap>,
+    mut board_cells: Query<(&LaneCell, &mut SpawnHighlightState, &mut Sprite), With<BoardCellNode>>,
 ) {
     let mut latest = None;
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            apply_resolution_spawn_range_changes(
+                &message,
+                local_player.player_id,
+                &player_team_map,
+                &mut board_cells,
+            );
             latest = Some(message);
         }
     }
@@ -1241,6 +1266,140 @@ fn rebuild_board_from_snapshot_system(
         &player_team_map,
         &snapshot,
     );
+}
+
+fn apply_snapshot_spawn_highlights_system(
+    mut snapshots: MessageReader<ClientGameSnapshotMessage>,
+    player_team_map: Res<PlayerTeamMap>,
+    mut board_cells: Query<(&LaneCell, &mut SpawnHighlightState, &mut Sprite), With<BoardCellNode>>,
+) {
+    let mut latest_snapshot = None;
+    for snapshot in snapshots.read() {
+        latest_snapshot = Some(&snapshot.0);
+    }
+
+    let Some(snapshot) = latest_snapshot else {
+        return;
+    };
+
+    apply_snapshot_spawn_highlights(snapshot, &player_team_map, &mut board_cells);
+}
+
+pub fn apply_resolution_spawn_range_changes(
+    script: &S2CResolutionEvent,
+    local_player_id: Option<PlayerId>,
+    player_team_map: &PlayerTeamMap,
+    board_cells: &mut Query<
+        (&LaneCell, &mut SpawnHighlightState, &mut Sprite),
+        With<BoardCellNode>,
+    >,
+) {
+    for event in &script.events {
+        let ResolutionEvent::SpawnRangeChanged {
+            player_id,
+            new_spawn_range_cells,
+        } = &event.event
+        else {
+            continue;
+        };
+
+        let edge = spawn_range_edge_for_player(*player_id, local_player_id, player_team_map);
+        apply_player_spawn_highlight(*player_id, edge, *new_spawn_range_cells, board_cells);
+    }
+}
+
+fn apply_snapshot_spawn_highlights(
+    snapshot: &S2CGameSnapshot,
+    player_team_map: &PlayerTeamMap,
+    board_cells: &mut Query<
+        (&LaneCell, &mut SpawnHighlightState, &mut Sprite),
+        With<BoardCellNode>,
+    >,
+) {
+    for (_lane_cell, mut state, mut sprite) in board_cells.iter_mut() {
+        set_spawn_highlight_state(&mut state, &mut sprite, SpawnHighlightState::Inactive);
+    }
+
+    for player in &snapshot.players {
+        let edge = spawn_range_edge_for_player(
+            player.player_id,
+            Some(snapshot.recipient_player_id),
+            player_team_map,
+        );
+        apply_player_spawn_highlight(
+            player.player_id,
+            edge,
+            player.spawn_range_cells,
+            board_cells,
+        );
+    }
+}
+
+fn apply_player_spawn_highlight(
+    player_id: PlayerId,
+    edge: SpawnRangeEdge,
+    spawn_range_cells: u8,
+    board_cells: &mut Query<
+        (&LaneCell, &mut SpawnHighlightState, &mut Sprite),
+        With<BoardCellNode>,
+    >,
+) {
+    let range = spawn_range_cells.clamp(1, BOARD_CELL_COUNT);
+
+    for (lane_cell, mut state, mut sprite) in board_cells.iter_mut() {
+        let next_state = if cell_in_spawn_range(edge, lane_cell.cell, range) {
+            SpawnHighlightState::ValidSpawn { player_id }
+        } else if state.player_id() == Some(player_id) {
+            SpawnHighlightState::Inactive
+        } else {
+            *state
+        };
+
+        set_spawn_highlight_state(&mut state, &mut sprite, next_state);
+    }
+}
+
+fn set_spawn_highlight_state(
+    state: &mut SpawnHighlightState,
+    sprite: &mut Sprite,
+    next_state: SpawnHighlightState,
+) {
+    if *state == next_state && sprite.color == next_state.tint() {
+        return;
+    }
+
+    *state = next_state;
+    sprite.color = next_state.tint();
+}
+
+fn cell_in_spawn_range(edge: SpawnRangeEdge, cell: u8, range: u8) -> bool {
+    match edge {
+        SpawnRangeEdge::LowCells => (1..=range).contains(&cell),
+        SpawnRangeEdge::HighCells => {
+            let first_cell = BOARD_CELL_COUNT - range + 1;
+            (first_cell..=BOARD_CELL_COUNT).contains(&cell)
+        }
+    }
+}
+
+fn spawn_range_edge_for_player(
+    player_id: PlayerId,
+    local_player_id: Option<PlayerId>,
+    player_team_map: &PlayerTeamMap,
+) -> SpawnRangeEdge {
+    if let Some(team) = player_team_map.team_for(player_id) {
+        return if team == 0 {
+            SpawnRangeEdge::LowCells
+        } else {
+            SpawnRangeEdge::HighCells
+        };
+    }
+
+    if Some(player_id) == local_player_id {
+        SpawnRangeEdge::LowCells
+    } else {
+        SpawnRangeEdge::HighCells
+    }
 }
 
 fn clear_pending_visual_state(
