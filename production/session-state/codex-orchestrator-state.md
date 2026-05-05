@@ -156,6 +156,15 @@ None currently tracked here.
   accessibility support. Asset/spec implications: settings UI controls/patterns,
   accessibility preview strip assets, audio bus support, help/tutorial prompt
   registry, and interaction-pattern additions.
+- Result Screen UX design returned and was pushed at `399bb34`, creating
+  `design/ux/result-screen.md` only. Validation passed `git diff --check`.
+  Open blockers captured: full post-game opponent objective reveal needs server
+  data, GAME_OVER reconnect needs result payload or `S2CGameOver` resend,
+  rematch protocol is undefined, and `C2SAcknowledgeResult` timing needs a
+  session-system decision. Downstream unlocked: result screen UI
+  implementation, post-game summary / GAME_OVER reconnect protocol story,
+  rematch flow story, full objective reveal payload work, and result overlay /
+  objective reveal interaction patterns/assets.
 - Observed root worktree note: after parallel prompts, there are unrelated dirty
   docs and untracked files in the root checkout, including the HAND-UI-010
   prerequisite docs changeset surfaces and `design/ux/combat-log.md`. Do not
@@ -1026,6 +1035,9 @@ Current active windows by user default-launch rule:
 - Shop/Auction UX readiness check returned; window can be cleared.
 - Settings/Accessibility UX design returned and pushed `093b62a`; window can be
   cleared. Keep its open questions visible for future settings implementation.
+- Result Screen UX design returned and pushed `399bb34`; window can be cleared.
+  Keep its protocol/data blockers visible for future result/reconnect/rematch
+  stories.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
   and recommends a new shared Presentation Layer story. Window can be cleared.
