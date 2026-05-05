@@ -1159,7 +1159,7 @@ requirements:
     system: combat-resolution
     gdd: design/gdd/combat-resolution.md
     gdd_ac_ids: [CR-32]
-    requirement: "S2CResolutionEvent content and ordering: the reliable broadcast contains exactly one SubStepEntry per executed sub-step, one CombatDamage per damage application including non-lethal and shield-blocked hits, one UnitRemoved per killed unit, one GoldAwarded per gold event, one KeywordTriggered per APPEARANCE/DEATH/COUNTERATTACK/FINAL_BLOW activation, all in chronological (sub_step, trigger_index) order; ResolutionEvent is enqueued before ResolutionComplete is written so RSM S2CPhaseChanged(DRAFT_SHOP) cannot precede the full log"
+    requirement: "S2CResolutionEvent content and ordering: the reliable broadcast contains exactly one SubStepBegin per executed sub-step (satisfying GDD CR-32 SubStepEntry), one CombatDamage per damage application including non-lethal and shield-blocked hits, one UnitRemoved per killed unit (satisfying GDD CR-32 UnitRemovedRecord), one GoldAwarded per gold event, one KeywordTriggered per APPEARANCE/DEATH/COUNTERATTACK/FINAL_BLOW activation, all in chronological (sub_step, trigger_index) order; ResolutionEvent is enqueued before ResolutionComplete is written so RSM S2CPhaseChanged(DRAFT_SHOP) cannot precede the full log"
     created: 2026-05-01
     revised: 2026-05-05
     status: active
