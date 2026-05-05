@@ -1,7 +1,7 @@
 # Story 003: Snapshot Spawn, Units, Objectives, and HP Bars
 
 > **Epic**: Board Rendering
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -26,13 +26,13 @@ This story turns authoritative server state into visible board entities. `S2CGam
 
 ## Acceptance Criteria
 
-- [ ] `S2CGameSnapshot` rebuild clears stale board-rendering entities before spawning the snapshot view.
-- [ ] Every visible unit has `LaneCell`, `Transform`, `Sprite`, owner/card identity markers, and HP bar background/fill child sprites.
-- [ ] HP bar fill width and color derive from current/max HP using GDD thresholds and `HP_THRESHOLD_EPSILON` handling.
-- [ ] HP bar child local Z values are `Z_HEALTH_BARS - Z_UNITS`, not absolute `Z_HEALTH_BARS`.
-- [ ] Standing objectives render from the same unknown objective atlas frame/component set regardless of real/fake identity, and standing-objective rendering does not query identity-bearing components or `ObjectiveIdentityCache`.
-- [ ] Missing card art uses a placeholder atlas frame and logs a warning without panic.
-- [ ] Snapshot rebuild leaves `AnimQueue`, `PendingPhaseChange`, and `PendingResolutionScript` cleared or explicitly reconciled with the snapshot phase; no stale pending value survives.
+- [x] `S2CGameSnapshot` rebuild clears stale board-rendering entities before spawning the snapshot view.
+- [x] Every visible unit has `LaneCell`, `Transform`, `Sprite`, owner/card identity markers, and HP bar background/fill child sprites.
+- [x] HP bar fill width and color derive from current/max HP using GDD thresholds and `HP_THRESHOLD_EPSILON` handling.
+- [x] HP bar child local Z values are `Z_HEALTH_BARS - Z_UNITS`, not absolute `Z_HEALTH_BARS`.
+- [x] Standing objectives render from the same unknown objective atlas frame/component set regardless of real/fake identity, and standing-objective rendering does not query identity-bearing components or `ObjectiveIdentityCache`.
+- [x] Missing card art uses a placeholder atlas frame and logs a warning without panic.
+- [x] Snapshot rebuild leaves `AnimQueue`, `PendingPhaseChange`, and `PendingResolutionScript` cleared or explicitly reconciled with the snapshot phase; no stale pending value survives.
 
 ## Implementation Notes
 
@@ -73,9 +73,19 @@ This story turns authoritative server state into visible board entities. `S2CGam
 - Integration: `tests/integration/board_rendering/snapshot_spawn_test.rs`
 - Optional screenshot evidence once placeholders are visible.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ## Dependencies
 
 - Depends on: [Story 001](story-001-plugin-scaffold-board-layout-card-atlas.md), [Story 002](story-002-board-grid-camera-and-z-layers.md), server Board/Lane replicated components.
 - Unlocks: Stories 005, 006, 007, 008, 009.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 7/7 passing.
+**Deviations**: Advisory only - current client code has no concrete `PendingResolutionScript` resource; snapshot rebuild clears the implemented pending visual/script resources (`AnimQueue`, `PendingPhaseChange`, `PendingObjectiveDestroyedEvents`, and `StagedObjectiveRevealQueue`) and pauses stale `TweenAnim` components. No blocking GDD, ADR-001, ADR-020, ADR-021, Bevy 0.18, or Lightyear 0.26 deviation found.
+**Test Evidence**: `cargo test -p client --test board_rendering_snapshot_spawn_test` passed 4/4. Adjacent requested checks passed: `board_rendering_grid_camera_test` 6/6, `board_rendering_plugin_scaffold_test` 9/9, `presentation_plugin_scaffold_test` 3/3, and `reconnect_snapshot_rebuild_test` 3/3. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+**Code Review**: Skipped per lean review mode because `production/review-mode.txt` is absent.
+**Integration**: Worker commit `fd6f6fd121dd32a945fbfcd276c3921fb159f7e7`; main integration commit `c0dc500ea675342fd0b17dedf7a85039f16bc9f7`.
+**Sprint Status**: Unchanged; no matching BOARD-003/story row exists in `production/sprint-status.yaml`.

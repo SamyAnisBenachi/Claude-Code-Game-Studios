@@ -1881,3 +1881,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching BLS-011 row exists in `production/sprint-status.yaml`.
 - Next recommended: HAND-UI-010 can be rechecked now that BLS-011 is complete.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-rendering/story-003-snapshot-spawn-units-objectives-and-hp-bars.md` - Story 003: Snapshot Spawn, Units, Objectives, and HP Bars
+- Criteria: 7/7 passing; snapshot rebuild, visible unit components, HP fill thresholds and epsilon handling, HP child local Z, standing objective identity isolation, missing-card placeholder fallback, and stale pending visual state cleanup verified.
+- Test Evidence: `cargo test -p client --test board_rendering_snapshot_spawn_test` passed 4/4. Requested adjacent commands passed: `board_rendering_grid_camera_test` 6/6, `board_rendering_plugin_scaffold_test` 9/9, `presentation_plugin_scaffold_test` 3/3, and `reconnect_snapshot_rebuild_test` 3/3. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+- Verification: Current `main` includes worker commit `fd6f6fd121dd32a945fbfcd276c3921fb159f7e7` via main integration commit `c0dc500ea675342fd0b17dedf7a85039f16bc9f7`; `S2CGameSnapshot` rebuild consumes the local snapshot message, despawns stale `BoardSnapshotEntity` nodes, spawns atlas-backed unit/objective sprites with HP bar children, clears `AnimQueue`, `PendingPhaseChange`, `PendingObjectiveDestroyedEvents`, `StagedObjectiveRevealQueue`, and `ObjectiveIdentityCache`, and pauses stale `TweenAnim` components.
+- Notes: Advisory only - current client code has no concrete `PendingResolutionScript` resource; the implemented pending visual/script resources are cleared and covered by `board_rendering_snapshot_spawn_test`. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching BOARD-003/story row exists in `production/sprint-status.yaml`.
+- Next recommended: Board Rendering Story 005 (`production/epics/board-rendering/story-005-placement-reveal-animation-handoff.md`) after readiness check.
