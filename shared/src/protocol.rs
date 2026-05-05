@@ -316,6 +316,10 @@ pub enum ResolutionEvent {
         lane: u8,
         was_fake: bool,
     },
+    SpawnRangeChanged {
+        player_id: PlayerId,
+        new_spawn_range_cells: u8,
+    },
     GameOver {
         loser: Option<PlayerId>,
         reason: GameOverReason,

@@ -13,3 +13,7 @@ description = "Protocol types, GameConfig struct, and shared data definitions. Z
 # not here. The `shared` feature does not exist in lightyear 0.26.
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+[[test]]
+name = "spawn_range_live_update_contract"
+path = "../tests/unit/protocol/spawn_range_live_update_contract_test.rs"
