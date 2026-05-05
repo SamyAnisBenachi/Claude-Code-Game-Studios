@@ -165,6 +165,16 @@ None currently tracked here.
   implementation, post-game summary / GAME_OVER reconnect protocol story,
   rematch flow story, full objective reveal payload work, and result overlay /
   objective reveal interaction patterns/assets.
+- Current card type/rarity HUD icon batch returned and was pushed at `43bd1f8`,
+  generating four files under `assets/art/ui/hand/`:
+  `ui_icon_trap_epic_default_hud.png`,
+  `ui_icon_field_legendary_default_hud.png`,
+  `ui_icon_order_rare_default_hud.png`, and
+  `ui_icon_doubleface_uncommon_default_hud.png`. Used imagegen/built-in image
+  generation path, not API CLI. Validation passed: all four are 24x24 PNG RGBA
+  (`Format32bppArgb`), transparent corners, nonzero alpha coverage, and
+  `git diff --check` passed with only unrelated CRLF warnings. No code,
+  manifest, production session-state, or sprint-status files were touched.
 - Observed root worktree note: after parallel prompts, there are unrelated dirty
   docs and untracked files in the root checkout, including the HAND-UI-010
   prerequisite docs changeset surfaces and `design/ux/combat-log.md`. Do not
@@ -1038,6 +1048,8 @@ Current active windows by user default-launch rule:
 - Result Screen UX design returned and pushed `399bb34`; window can be cleared.
   Keep its protocol/data blockers visible for future result/reconnect/rematch
   stories.
+- Current card type/rarity HUD icon batch returned and pushed `43bd1f8`; window
+  can be cleared.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
   and recommends a new shared Presentation Layer story. Window can be cleared.
