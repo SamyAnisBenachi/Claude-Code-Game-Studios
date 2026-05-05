@@ -1,7 +1,7 @@
 # Story 010: Performance Evidence and CI Guards
 
 > **Epic**: Board Rendering
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Config/Data
 > **Manifest Version**: 2026-05-05
@@ -108,10 +108,19 @@ Out of scope for this story:
 - Config/Data: CI or local guard notes in `production/qa/evidence/board-rendering-performance-evidence.md`
 - Browser screenshot/performance evidence for the worst-case baseline board state at 1920x1080.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Baseline guard/evidence created; browser/WASM capture harness blocker documented
 
 ## Dependencies
 
 - Depends on: [Story 002](story-002-board-grid-camera-and-z-layers.md) and [Story 003](story-003-snapshot-spawn-units-objectives-and-hp-bars.md).
 - Conditional closure dependency: [Story 009](story-009-status-icons-cooccupancy-and-spawn-range.md) is required for final status-icon atlas evidence and full Board Rendering epic closure, but is not required for this narrowed baseline guard story.
 - Unlocks: baseline Board Rendering CI/performance guard evidence.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 5/8 passing, 3/8 deferred with accepted blocker notes for the narrowed baseline scope. CI Z-literal guard, single `MessageReceiver<S2CPhaseChanged>` drain guard, narrowed baseline two-atlas handle evidence, approved standalone/non-counted batch notes, and BOARD-009 status-icon atlas deferral are verified. Browser/WASM 1920x1080 screenshot capture, frame-time capture, and nonblank framed-lane screenshot evidence remain blocked until a browser harness can seed the 20-unit baseline fixture and record timing.
+**Deviations**: None blocking for the narrowed BOARD-010 baseline guard scope. Advisory/deferred: this closure does not claim final browser/WASM visual performance evidence, final Board Rendering epic closure, or BOARD-009 status-icon atlas evidence.
+**Test Evidence**: `production/qa/evidence/board-rendering-performance-evidence.md` documents the CI guards, native ECS baseline fixture, verification commands, approved standalone/non-counted batches, browser/WASM harness blocker, and BOARD-009 status-icon atlas deferral.
+**Code Review**: Complete locally. Lean mode applied because `production/review-mode.txt` is absent; QL-TEST-COVERAGE and LP-CODE-REVIEW external gates were skipped.
+**Verification Notes**: Worker commit `f51a3f7f92634e33ae4e96fac787fefb35e990f9` was integrated. Requested verification passed: `cargo test -p client --test board_rendering_grid_camera_test --test board_rendering_plugin_scaffold_test --test board_rendering_snapshot_spawn_test`, `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check`. `production/sprint-status.yaml` was not updated because no matching BOARD-010 row exists.

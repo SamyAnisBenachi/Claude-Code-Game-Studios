@@ -1925,3 +1925,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching BOARD-005 row exists in `production/sprint-status.yaml`.
 - Next recommended: Board Rendering Story 006 (`production/epics/board-rendering/story-006-resolution-anim-queue-and-phase-buffering.md`) after its blocker is rechecked against the now-complete Combat Resolution event log work.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-rendering/story-010-performance-evidence-and-ci-guards.md` - Story 010: Performance Evidence and CI Guards
+- Criteria: 5/8 passing, 3/8 deferred with accepted blocker notes for the narrowed baseline scope. Z-literal CI guard, single phase-drain guard, 20-unit native ECS baseline fixture, two-atlased-image handle evidence, approved standalone/non-counted batch notes, and BOARD-009 status-icon atlas deferral verified.
+- Test Evidence: `production/qa/evidence/board-rendering-performance-evidence.md` created. `cargo test -p client --test board_rendering_grid_camera_test --test board_rendering_plugin_scaffold_test --test board_rendering_snapshot_spawn_test` passed 20/20. `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+- Verification: Worker branch `work/board-rendering-010-baseline-ci-perf-guards` commit `f51a3f7f92634e33ae4e96fac787fefb35e990f9` integrated. CI now runs focused Board Rendering source guards for named Z constants and single `MessageReceiver<S2CPhaseChanged>` drain ownership.
+- Notes: Advisory/deferred only - browser/WASM 1920x1080 frame-time screenshot capture still needs a harness that can seed the 20-unit baseline fixture and record timing; BOARD-009 status-icon atlas evidence remains deferred and is not claimed by this narrowed baseline closure. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching BOARD-010 row exists in `production/sprint-status.yaml`.
+- Next recommended: Board Rendering final epic closure should wait for the browser/WASM capture harness and BOARD-009 status-icon atlas evidence, or continue sprint close-out if no more pull-forward work is being added.

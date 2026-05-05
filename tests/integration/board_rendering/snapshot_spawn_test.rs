@@ -12,11 +12,11 @@ use client::presentation::board_rendering::rendering_constants::{
     HEALTH_BAR_LOCAL_Z, Z_HEALTH_BARS, Z_UNITS,
 };
 use client::presentation::board_rendering::{
-    hp_bar_visual, BoardRenderState, BoardRenderingConfig, BoardRenderingEntity,
+    hp_bar_visual, BoardCellNode, BoardRenderState, BoardRenderingConfig, BoardRenderingEntity,
     BoardRenderingPlugin, BoardSnapshotEntity, BoardUnit, BoardUnitCard, BoardUnitOwner,
-    BoardUnitStats, CardAtlas, HpBarColor, HpBarFill, ObjectiveIdentityCache, StandingObjective,
-    StandingObjectiveHp, HP_BAR_WHITE_PIXEL_FRAME_INDEX, OBJECTIVE_UNKNOWN_FRAME_INDEX,
-    UNIT_PLACEHOLDER_FRAME_INDEX,
+    BoardUnitStats, CardAtlas, HpBarBackground, HpBarColor, HpBarFill, ObjectiveIdentityCache,
+    StandingObjective, StandingObjectiveHp, HP_BAR_WHITE_PIXEL_FRAME_INDEX,
+    OBJECTIVE_UNKNOWN_FRAME_INDEX, UNIT_PLACEHOLDER_FRAME_INDEX,
 };
 use client::presentation::LaneCell;
 use client::state::{ClientGameSnapshotMessage, ClientState, CurrentClientPhase};
@@ -290,6 +290,64 @@ fn test_missing_card_art_uses_placeholder_and_keeps_hp_bar() {
         .any(|child| app.world().get::<HpBarFill>(child).is_some()));
 }
 
+#[test]
+fn test_baseline_board_path_supports_twenty_units_and_two_atlased_images() {
+    let mut app = app_in_session();
+    install_distinct_test_atlas(&mut app);
+
+    write_snapshot(
+        &mut app,
+        snapshot_with_units(RoundPhase::Placement, baseline_twenty_units()),
+    );
+    app.update();
+
+    let world = app.world_mut();
+
+    let mut cells = world.query_filtered::<Entity, With<BoardCellNode>>();
+    assert_eq!(cells.iter(world).count(), 40);
+
+    let mut units = world.query_filtered::<(Entity, &BoardUnit), With<BoardSnapshotEntity>>();
+    let unit_rows = units.iter(world).collect::<Vec<_>>();
+    assert_eq!(unit_rows.len(), 20);
+
+    for (unit_entity, _unit) in unit_rows {
+        let children = world
+            .entity(unit_entity)
+            .get::<Children>()
+            .expect("baseline unit should have HP bar children");
+        assert!(children
+            .iter()
+            .any(|child| world.get::<HpBarBackground>(child).is_some()));
+        assert!(children
+            .iter()
+            .any(|child| world.get::<HpBarFill>(child).is_some()));
+    }
+
+    let mut objectives = world.query_filtered::<Entity, With<StandingObjective>>();
+    assert_eq!(objectives.iter(world).count(), 10);
+
+    let atlas = world
+        .get_resource::<CardAtlas>()
+        .expect("CardAtlas should exist during session")
+        .clone();
+    let mut atlased_image_ids = Vec::new();
+    let mut sprites = world.query::<&Sprite>();
+    for sprite in sprites.iter(world) {
+        if sprite.texture_atlas.is_none() {
+            continue;
+        }
+
+        let image_id = sprite.image.id();
+        if !atlased_image_ids.contains(&image_id) {
+            atlased_image_ids.push(image_id);
+        }
+    }
+
+    assert_eq!(atlased_image_ids.len(), 2);
+    assert!(atlased_image_ids.contains(&atlas.image.id()));
+    assert!(atlased_image_ids.contains(&atlas.board_elements_image.id()));
+}
+
 fn app_in_session() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
@@ -307,6 +365,50 @@ fn app_in_session() -> App {
 fn install_test_atlas(app: &mut App) {
     *app.world_mut().resource_mut::<CardAtlas>() =
         CardAtlas::default().with_unit_frame(KNOWN_CARD, KNOWN_CARD_FRAME, KNOWN_CARD_MAX_HP);
+}
+
+fn install_distinct_test_atlas(app: &mut App) {
+    app.world_mut().init_resource::<Assets<Image>>();
+    app.world_mut()
+        .init_resource::<Assets<TextureAtlasLayout>>();
+
+    let unit_image = app
+        .world_mut()
+        .resource_mut::<Assets<Image>>()
+        .add(Image::default());
+    let board_elements_image = app
+        .world_mut()
+        .resource_mut::<Assets<Image>>()
+        .add(Image::default());
+    let unit_layout = app
+        .world_mut()
+        .resource_mut::<Assets<TextureAtlasLayout>>()
+        .add(TextureAtlasLayout::from_grid(
+            UVec2::splat(1),
+            8,
+            1,
+            None,
+            None,
+        ));
+    let board_elements_layout = app
+        .world_mut()
+        .resource_mut::<Assets<TextureAtlasLayout>>()
+        .add(TextureAtlasLayout::from_grid(
+            UVec2::splat(1),
+            8,
+            1,
+            None,
+            None,
+        ));
+
+    *app.world_mut().resource_mut::<CardAtlas>() = CardAtlas {
+        image: unit_image,
+        layout: unit_layout,
+        board_elements_image,
+        board_elements_layout,
+        unit_frames: default(),
+    }
+    .with_unit_frame(KNOWN_CARD, KNOWN_CARD_FRAME, KNOWN_CARD_MAX_HP);
 }
 
 fn write_snapshot(app: &mut App, snapshot: S2CGameSnapshot) {
@@ -327,6 +429,25 @@ fn snapshot_with_units(phase: RoundPhase, units: Vec<UnitBoardState>) -> S2CGame
         auction_state: None,
         active_sang_meprise_reveals: None,
     }
+}
+
+fn baseline_twenty_units() -> Vec<UnitBoardState> {
+    let mut units = Vec::new();
+    let mut unit_id = 1_000;
+
+    for lane in 1..=5 {
+        for (owner_id, cell, hp) in [
+            (player(1), 2, 5),
+            (player(2), 3, 4),
+            (player(1), 6, 3),
+            (player(2), 7, 2),
+        ] {
+            units.push(unit(unit_id, owner_id, lane, cell, Some(KNOWN_CARD), hp));
+            unit_id += 1;
+        }
+    }
+
+    units
 }
 
 fn player_snapshot(player_id: PlayerId) -> PlayerSnapshot {

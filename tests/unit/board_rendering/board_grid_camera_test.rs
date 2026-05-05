@@ -131,8 +131,13 @@ fn test_board_z_layers_are_named_constants() {
 
     assert!(source.contains("rendering_constants::Z_BOARD_CAMERA"));
     assert!(source.contains("rendering_constants::Z_CELL_NODES"));
-    assert!(!source.contains("Transform::from_xyz(0.0, 0.0, 999.0)"));
-    assert!(!source.contains("Transform::from_xyz(world_xy.x, world_xy.y, 1.0)"));
+
+    let violations = inline_z_literal_violations(&source);
+    assert!(
+        violations.is_empty(),
+        "board rendering spawn code must use named Z constants; inline Z literals found:\n{}",
+        violations.join("\n")
+    );
 }
 
 #[test]
@@ -164,4 +169,115 @@ fn app_in_session() -> App {
     app.update();
 
     app
+}
+
+fn inline_z_literal_violations(source: &str) -> Vec<String> {
+    let mut violations = Vec::new();
+    collect_z_arg_violations(source, "Transform::from_xyz", &mut violations);
+    collect_z_arg_violations(source, "translation: Vec3::new", &mut violations);
+    violations
+}
+
+fn collect_z_arg_violations(source: &str, marker: &str, violations: &mut Vec<String>) {
+    let mut search_start = 0;
+    while let Some(marker_offset) = source[search_start..].find(marker) {
+        let marker_start = search_start + marker_offset;
+        let Some(open_offset) = source[marker_start..].find('(') else {
+            break;
+        };
+        let open = marker_start + open_offset;
+        let Some(close) = matching_paren(source, open) else {
+            violations.push(format!(
+                "line {}: `{marker}` has no matching `)`",
+                line_number(source, marker_start)
+            ));
+            break;
+        };
+        let args = split_top_level_args(&source[open + 1..close]);
+        let Some(z_arg) = args.get(2).map(|arg| arg.trim()) else {
+            violations.push(format!(
+                "line {}: `{marker}` has fewer than three arguments",
+                line_number(source, marker_start)
+            ));
+            search_start = close + 1;
+            continue;
+        };
+
+        if has_numeric_literal(z_arg) {
+            violations.push(format!(
+                "line {}: `{marker}` z argument `{z_arg}` contains an inline numeric literal",
+                line_number(source, marker_start)
+            ));
+        }
+        search_start = close + 1;
+    }
+}
+
+fn matching_paren(source: &str, open: usize) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, byte) in source.bytes().enumerate().skip(open) {
+        match byte {
+            b'(' => depth += 1,
+            b')' => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return Some(index);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn split_top_level_args(args: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut start = 0usize;
+    let mut depth = 0usize;
+
+    for (index, byte) in args.bytes().enumerate() {
+        match byte {
+            b'(' | b'[' | b'{' => depth += 1,
+            b')' | b']' | b'}' => depth = depth.saturating_sub(1),
+            b',' if depth == 0 => {
+                parts.push(&args[start..index]);
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+
+    parts.push(&args[start..]);
+    parts
+}
+
+fn has_numeric_literal(expression: &str) -> bool {
+    let bytes = expression.as_bytes();
+    for (index, byte) in bytes.iter().copied().enumerate() {
+        let starts_number = byte.is_ascii_digit()
+            || (byte == b'.'
+                && bytes
+                    .get(index + 1)
+                    .is_some_and(|next| next.is_ascii_digit()));
+        if !starts_number {
+            continue;
+        }
+
+        let previous_is_identifier = index
+            .checked_sub(1)
+            .and_then(|previous| bytes.get(previous))
+            .is_some_and(|previous| previous.is_ascii_alphanumeric() || *previous == b'_');
+        if !previous_is_identifier {
+            return true;
+        }
+    }
+    false
+}
+
+fn line_number(source: &str, byte_index: usize) -> usize {
+    source[..byte_index]
+        .bytes()
+        .filter(|byte| *byte == b'\n')
+        .count()
+        + 1
 }
