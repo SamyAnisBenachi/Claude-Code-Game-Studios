@@ -1343,6 +1343,11 @@ Current active windows by user default-launch rule:
   cleared after launching a docs-only repair for stale manifest `2026-05-01`,
   coarse/stale GDD trace, missing current control-manifest notes, missing
   UI/message-path performance note, and imprecise upstream dependency wording.
+- SAU-002 readiness returned NEEDS WORK with no hard blockers. Window can be
+  cleared after launching a docs-only repair for stale manifest `2026-05-01`,
+  resolved tooltip UX scope, and missing current control-manifest notes for
+  phase sink, `PlayerEconomyView`, single Lightyear drains, Bevy Required
+  Components, and presentation performance budget.
 - SHOP-AUCTION-UI-001 implementation/story-done windows and BOARD-RENDERING-002
   implementation/story-done windows can be cleared. Root committed and pushed
   both story-done closures together at `3222be0` after both official closure
