@@ -145,6 +145,22 @@ None currently tracked here.
 
 ## Recent Planning / Readiness Updates
 
+- Settings/Accessibility UX design returned and was pushed at `093b62a`,
+  creating `design/ux/settings-accessibility.md` only. Validation passed
+  `git diff --check` and a path-specific check. Open questions recorded in the
+  spec: timer multiplier authority, `0.5x` timer option, settings persistence
+  layer, Bevy/browser semantic accessibility support, reserved shortcut list,
+  brightness/gamma implementation, audio Master bus, and tutorial/help
+  ownership. Blocker status: none for the UX spec. Implementation still needs
+  decisions on timer multiplier authority, preference storage, and semantic
+  accessibility support. Asset/spec implications: settings UI controls/patterns,
+  accessibility preview strip assets, audio bus support, help/tutorial prompt
+  registry, and interaction-pattern additions.
+- Observed root worktree note: after parallel prompts, there are unrelated dirty
+  docs and untracked files in the root checkout, including the HAND-UI-010
+  prerequisite docs changeset surfaces and `design/ux/combat-log.md`. Do not
+  stage, revert, or commit those as part of orchestrator tracking unless the
+  user pastes the owning agent's final report or explicitly authorizes it.
 - COMBAT-011 / S5-20 ResolutionEvent Log Completeness readiness repair/recheck
   returned READY. Initial repair was pushed at `92b5826`, updating
   `docs/architecture/tr-registry.yaml` and
@@ -1008,6 +1024,8 @@ Current active windows by user default-launch rule:
   HAND-UI-010 blocker split returned read-only and confirmed new prerequisite
   implementation stories are needed; blocker split window can be cleared.
 - Shop/Auction UX readiness check returned; window can be cleared.
+- Settings/Accessibility UX design returned and pushed `093b62a`; window can be
+  cleared. Keep its open questions visible for future settings implementation.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
   and recommends a new shared Presentation Layer story. Window can be cleared.
