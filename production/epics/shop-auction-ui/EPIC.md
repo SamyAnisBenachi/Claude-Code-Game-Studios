@@ -97,7 +97,7 @@ This epic is complete when:
 | 004 | [Auction Panel Activation and Preparing State](story-004-auction-panel-activation-and-preparing-state.md) | Integration | Ready | TR-SAU-006 | ADR-013, ADR-021 |
 | 005 | [Auction Bid Buttons, Affordability, and In-Flight](story-005-auction-bid-buttons-affordability-and-inflight.md) | UI | Ready | TR-SAU-001, TR-SAU-002, TR-SAU-005 | ADR-013, ADR-019, ADR-021 |
 | 006 | [Auction Accepted/Rejected Feedback](story-006-auction-accepted-rejected-feedback.md) | Integration | Ready | TR-SAU-001, TR-SAU-005 | ADR-013, ADR-019 |
-| 007 | [Auction Settlement and Shop Transition](story-007-auction-settlement-and-shop-transition.md) | Visual/Feel | Ready | TR-SAU-003, TR-SAU-006 | ADR-013, ADR-021 |
+| 007 | [Auction Settlement and Shop Transition](story-007-auction-settlement-and-shop-transition.md) | Visual/Feel | Ready | TR-SAU-003, TR-SAU-006 | ADR-013, ADR-019, ADR-021 |
 | 008 | [Reconnect Snapshot and Late Message Recovery](story-008-reconnect-snapshot-and-late-message-recovery.md) | Integration | Ready | TR-SAU-003, TR-SAU-006 | ADR-011, ADR-021 |
 | 009 | [Visual Evidence, Layout, and Accessibility](story-009-visual-evidence-layout-and-accessibility.md) | UI | Blocked | TR-SAU-006 | ADR-021 |
 
