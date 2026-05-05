@@ -141,7 +141,7 @@ The baseline must exclude status icons, spawn range highlights, traps, and final
 
 **Verdict**: BLOCKED - the BOARD-012 harness implementation is integrated and verified, but the story cannot be marked Complete because the required browser/WASM screenshot and timing artifacts were not produced.
 
-**Integrated implementation**: `8e0fce4772c0164ba3a879e081575f2576e3d473`
+**Integrated implementation**: Worker commit reviewed: `8e0fce4772c0164ba3a879e081575f2576e3d473`. The integration branch was rebased on `origin/main` during story-done verification.
 
 **Verified coverage**:
 - Harness binary and WASM target build check pass.

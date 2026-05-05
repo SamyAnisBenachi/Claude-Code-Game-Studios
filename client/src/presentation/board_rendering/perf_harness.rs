@@ -75,8 +75,14 @@ fn add_board_rendering_perf_harness(app: &mut App) {
         )
         .add_systems(
             Update,
-            finish_board_timing_sample_system
+            clear_baseline_spawn_highlights_system
                 .after(BoardRenderSet::UpdateHpBars)
+                .run_if(in_state(ClientState::InSession)),
+        )
+        .add_systems(
+            Update,
+            finish_board_timing_sample_system
+                .after(clear_baseline_spawn_highlights_system)
                 .run_if(in_state(ClientState::InSession)),
         );
 }
@@ -317,6 +323,15 @@ fn seed_baseline_fixture_system(
 
 fn begin_board_timing_sample_system(mut state: ResMut<BoardRenderingPerfHarnessState>) {
     state.sample_start = Some(Instant::now());
+}
+
+fn clear_baseline_spawn_highlights_system(
+    mut cells: Query<(&mut SpawnHighlightState, &mut Sprite), With<BoardCellNode>>,
+) {
+    for (mut highlight_state, mut sprite) in &mut cells {
+        *highlight_state = SpawnHighlightState::Inactive;
+        sprite.color = SpawnHighlightState::Inactive.tint();
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
