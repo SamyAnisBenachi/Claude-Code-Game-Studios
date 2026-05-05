@@ -6,17 +6,17 @@
 | Kind | QA Condition |
 | Severity | S3 Medium |
 | Priority | P2 Sprint 6 validation |
-| Status | Open |
-| Action State | Needs Evidence |
+| Status | Closed |
+| Action State | N/A - Closed |
 | Reported | 2026-05-05 |
 | Source | Sprint 5 QA sign-off and Production-to-Polish gate check |
 
 ## Summary
 
-OS-18b objective HP replication is covered by automated objective-resolution
-logic, but live two-client visibility remains advisory. The repository needs
-evidence that two live clients both see objective HP updates correctly after
-resolution-end sync.
+QA-COND-0003 is resolved by the OS-008 live two-client ObjectiveHp visibility
+harness and evidence report. The harness proves both connected clients observe
+only the final public `ObjectiveHp` value after two same-sub-step damage calls,
+with no intermediate HP and no duplicate final HP update.
 
 ## Source Evidence
 
@@ -27,7 +27,8 @@ resolution-end sync.
 
 ## Expected Closure Evidence
 
-Provide one of the following:
+Satisfied by the second closure path: an automated end-to-end transport test
+proves the live two-client visibility contract.
 
 - A live two-client capture showing objective HP visibility after
   resolution-end sync for both clients.
@@ -36,10 +37,30 @@ Provide one of the following:
 - A documented reclassification explaining why live two-client visibility is no
   longer required for this gate.
 
+## Closure Evidence
+
+Captured 2026-05-05 from `D:\_DEV\claude-code-game-studios`.
+
+- Integrated OS-008 implementation commit: `f097606`
+  (`S6-05 evidence: OS-18b two-client objective HP visibility`).
+- Harness: `tests/integration/network/os18b_two_client_objective_hp_visibility_test.rs`.
+- Evidence report:
+  `production/qa/evidence/os-18b-two-client-objective-hp-visibility-2026-05-05.md`.
+- `cargo test -p server --test os18b_two_client_objective_hp_visibility_test -- --nocapture`
+  passed: 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out.
+- Server assertions recorded final authoritative `ObjectiveHp` as `0`, queued
+  exactly one `ObjectiveDestroyed` consequence, incremented the real objective
+  destroyed counter once, and emitted exactly one RESOLUTION-end
+  `ObjectiveDestroyed` message.
+- Client A observed post-damage `ObjectiveHp` sequence `[0]`.
+- Client B observed post-damage `ObjectiveHp` sequence `[0]`.
+- Neither client observed intermediate HP `1` or duplicate final HP `[0, 0]`.
+
 ## Current Blocker Status
 
-This is not a Sprint 5 close-out blocker. It is a Sprint 6 validation condition
-for live transport visibility.
+Closed. QA-COND-0003 is no longer Sprint 6 validation debt after the OS-008
+two-client harness and evidence report verified final-only ObjectiveHp
+visibility for both clients.
 
 ## Non-Goals
 

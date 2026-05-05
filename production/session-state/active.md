@@ -2013,3 +2013,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` matching BR-011 row set to `done` with `completed: "2026-05-05"`.
 - Next recommended: Keep BOARD-012 browser/WASM perf evidence and final Board Rendering visual/evidence closure separate from BR-011.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE
+- Story: `production/epics/objective-system/story-008-os18b-two-client-objective-hp-visibility.md` - Story 008: OS-18b Two-Client Objective HP Visibility Evidence
+- Criteria: 7/7 passing; final authoritative server `ObjectiveHp` saturated to 0 after same-sub-step double damage, consequence path queued exactly once, RESOLUTION-end destruction emitted exactly once, both clients observed `[0]`, intermediate HP 1 was not observed, duplicate final HP was not observed, and the evidence file records the command plus client observation sequences.
+- Test Evidence: `cargo test -p server --test os18b_two_client_objective_hp_visibility_test -- --nocapture` passed 1/1. Required evidence exists at `production/qa/evidence/os-18b-two-client-objective-hp-visibility-2026-05-05.md`.
+- Verification: Worker branch `work/objective-system-008-os18b-two-client-objective-hp-visibility` commit `3394127e2f7badecdc491d4b6be8cfcca61b3e4c` was cherry-picked onto current `main` as integration commit `f097606`. Requested regressions passed: `objective_resolution_sync_test` 5/5, `objective_identity_unicast_test` 4/4, `damage_interface_test` 7/7, `consequence_path_test` 7/7, `e2e_websocket_test` 1/1, and `cargo check -p server`.
+- Notes: No blocking GDD, ADR-001, ADR-010, Bevy 0.18, or Lightyear 0.26 deviation found. The harness exposed and fixed a public ObjectiveHp replication bug by changing objective initialization to `Replicate::to_clients(NetworkTarget::All)`. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- QA condition: `QA-COND-0003` closed in `production/qa/bugs/QA-COND-0003-os-18b-two-client-objective-hp-visibility.md`.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` matching S6-05 row set to `done` with `completed: "2026-05-05"`.
+- Next recommended: S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check remain blocked until S6-01 through S6-05 are complete or explicitly reclassified.

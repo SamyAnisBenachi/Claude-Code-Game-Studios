@@ -68,11 +68,11 @@ stories:
     name: "OS-18b two-client objective HP visibility evidence"
     file: "production/epics/objective-system/story-008-os18b-two-client-objective-hp-visibility.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "network/gameplay programmer + qa-tester"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-05-05"
     notes:
       - "Two-client capture or equivalent end-to-end evidence must prove objective HP visibility for both clients after resolution-end sync."
 

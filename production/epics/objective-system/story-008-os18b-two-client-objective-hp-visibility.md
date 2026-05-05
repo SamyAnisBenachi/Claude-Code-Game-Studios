@@ -1,7 +1,7 @@
 # Story 008: OS-18b Two-Client Objective HP Visibility Evidence
 
 > **Epic**: Objective System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -35,23 +35,23 @@
 
 *From GDD `design/gdd/objective-system.md`, scoped to OS-18b evidence:*
 
-- [ ] **OS-18b final server HP**: GIVEN one live two-client server tick/sub-step and one target objective with known HP, WHEN two `take_damage()` calls hit that same objective before the replication flush, THEN the final authoritative server `ObjectiveHp` equals the saturated result of both calls.
-- [ ] **OS-18b consequence path once**: GIVEN the same tick/sub-step, WHEN the first or combined damage reaches 0 HP, THEN the Objective System consequence path runs exactly once for that objective.
-- [ ] **OS-18b destruction event once**: GIVEN the same tick/sub-step reaches 0 HP, WHEN RESOLUTION-end sync emits destruction output, THEN the destruction event for that objective is visible exactly once.
-- [ ] **OS-18b both clients final-only HP**: GIVEN both clients are connected for the same tick/sub-step, WHEN objective HP replication is observed, THEN both clients observe only the final `ObjectiveHp` value.
-- [ ] **OS-18b no intermediate HP**: GIVEN the first `take_damage()` call would create an intermediate HP value, WHEN client observations are inspected, THEN neither client observes that intermediate HP value.
-- [ ] **OS-18b no duplicate final HP**: GIVEN the final HP value is replicated, WHEN client observations are inspected for the target objective, THEN neither client observes duplicate final HP updates in the same tick/sub-step.
-- [ ] **QA-COND-0003 closure evidence**: GIVEN the harness passes, WHEN the story is closed, THEN `production/qa/evidence/os-18b-two-client-objective-hp-visibility-2026-05-05.md` records the command, server assertions, both client observation sequences, and whether the optional raw log was captured.
+- [x] **OS-18b final server HP**: GIVEN one live two-client server tick/sub-step and one target objective with known HP, WHEN two `take_damage()` calls hit that same objective before the replication flush, THEN the final authoritative server `ObjectiveHp` equals the saturated result of both calls.
+- [x] **OS-18b consequence path once**: GIVEN the same tick/sub-step, WHEN the first or combined damage reaches 0 HP, THEN the Objective System consequence path runs exactly once for that objective.
+- [x] **OS-18b destruction event once**: GIVEN the same tick/sub-step reaches 0 HP, WHEN RESOLUTION-end sync emits destruction output, THEN the destruction event for that objective is visible exactly once.
+- [x] **OS-18b both clients final-only HP**: GIVEN both clients are connected for the same tick/sub-step, WHEN objective HP replication is observed, THEN both clients observe only the final `ObjectiveHp` value.
+- [x] **OS-18b no intermediate HP**: GIVEN the first `take_damage()` call would create an intermediate HP value, WHEN client observations are inspected, THEN neither client observes that intermediate HP value.
+- [x] **OS-18b no duplicate final HP**: GIVEN the final HP value is replicated, WHEN client observations are inspected for the target objective, THEN neither client observes duplicate final HP updates in the same tick/sub-step.
+- [x] **QA-COND-0003 closure evidence**: GIVEN the harness passes, WHEN the story is closed, THEN `production/qa/evidence/os-18b-two-client-objective-hp-visibility-2026-05-05.md` records the command, server assertions, both client observation sequences, and whether the optional raw log was captured.
 
 ---
 
 ## Readiness Criteria
 
-- [ ] Harness target is `tests/integration/network/os18b_two_client_objective_hp_visibility_test.rs`.
-- [ ] Evidence output target is `production/qa/evidence/os-18b-two-client-objective-hp-visibility-2026-05-05.md`.
-- [ ] Optional raw log target is `production/qa/evidence/os-18b-two-client-objective-hp-visibility-2026-05-05.log`.
-- [ ] The story remains evidence-harness only; do not require gameplay behavior changes unless the harness exposes a real transport bug.
-- [ ] `QA-COND-0003` remains open until evidence exists; this story is the planned closure path.
+- [x] Harness target is `tests/integration/network/os18b_two_client_objective_hp_visibility_test.rs`.
+- [x] Evidence output target is `production/qa/evidence/os-18b-two-client-objective-hp-visibility-2026-05-05.md`.
+- [x] Optional raw log target is `production/qa/evidence/os-18b-two-client-objective-hp-visibility-2026-05-05.log`.
+- [x] The story remains evidence-harness only; do not require gameplay behavior changes unless the harness exposes a real transport bug.
+- [x] `QA-COND-0003` remains open until evidence exists; this story is the planned closure path.
 
 ---
 
@@ -120,7 +120,7 @@ If the harness exposes a real transport or scheduling bug, document it in the ev
 **Optional evidence**:
 - `production/qa/evidence/os-18b-two-client-objective-hp-visibility-2026-05-05.log` - raw harness log if useful for audit or debugging.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ---
 
@@ -128,3 +128,16 @@ If the harness exposes a real transport or scheduling bug, document it in the ev
 
 - Depends on: Story 004 (`take_damage()` interface), Story 005 (destruction consequence path), Story 007 (RESOLUTION-end sync and OS-18b advisory note), and existing Lightyear network integration test infrastructure.
 - Unlocks: Closure of `QA-COND-0003` once the harness and evidence file exist and pass.
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Verdict**: COMPLETE
+**Criteria**: 7/7 passing; final authoritative server `ObjectiveHp` saturated to 0 after same-sub-step double damage, consequence path queued exactly once, RESOLUTION-end destruction emitted exactly once, both clients observed `[0]`, intermediate HP 1 was not observed, duplicate final HP was not observed, and the evidence file records the required command and observations.
+**Deviations**: None blocking. The harness exposed and fixed a real public-state replication bug: objective initialization now uses `Replicate::to_clients(NetworkTarget::All)` so public `ObjectiveHp` reaches both live client replication senders.
+**Advisories**: None.
+**Test Evidence**: Integration harness `tests/integration/network/os18b_two_client_objective_hp_visibility_test.rs` exists and `cargo test -p server --test os18b_two_client_objective_hp_visibility_test -- --nocapture` passed 1/1. Closure evidence exists at `production/qa/evidence/os-18b-two-client-objective-hp-visibility-2026-05-05.md`.
+**QA-COND-0003**: Closed in `production/qa/bugs/QA-COND-0003-os-18b-two-client-objective-hp-visibility.md` using the OS-008 harness and evidence report.
+**Code Review**: Skipped - lean mode.
+**QA Coverage Gate**: Skipped - lean mode.
+**Verification**: `cargo test -p server --test os18b_two_client_objective_hp_visibility_test -- --nocapture`; `cargo test -p server --test objective_resolution_sync_test`; `cargo test -p server --test objective_identity_unicast_test`; `cargo test -p server --test damage_interface_test`; `cargo test -p server --test consequence_path_test`; `cargo test -p server --test e2e_websocket_test`; `cargo check -p server`; `git diff --check`.
