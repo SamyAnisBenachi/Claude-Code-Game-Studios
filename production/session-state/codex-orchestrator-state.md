@@ -1323,6 +1323,15 @@ Current active windows by user default-launch rule:
   pushed it as `dacc7d3`. Worker window can be cleared. Queue serialized
   `/story-done` for
   `production/epics/economy-system/story-007-explicit-placement-mana-split-api.md`.
+- PRES-002 implementation worker returned at `58afb3b`; root integrated and
+  pushed it as `8587fa9` plus integration fix `e14feb6` for the NP-005 placement
+  payload split test helper. Worker window can be cleared. Verification passed:
+  affected client bundle 27/27, `cargo check -p client`, `cargo fmt -p client
+  -- --check`, PRES commit-range `git diff --check`, and the grep guard showing
+  exactly one production `MessageReceiver<S2CGoldUpdate>` drain in
+  `client/src/presentation/shared/economy_view.rs`. Queue serialized
+  `/story-done` for
+  `production/epics/presentation-layer/story-002-shared-economy-view.md`.
 - Shop/Auction UX readiness check returned; window can be cleared.
 - Shop/Auction UX review finish returned NEEDS REVISION; window can be cleared
   after recording repair scope. Use `REPONDRE` only if launching the UX repair
