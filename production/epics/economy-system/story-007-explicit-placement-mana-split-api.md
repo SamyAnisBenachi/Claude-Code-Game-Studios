@@ -1,7 +1,7 @@
 # Story 007: Explicit Placement Mana Split API
 
 > **Epic**: Economy System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-05-05
@@ -114,7 +114,7 @@ Zero-cost cards are valid only with `current_mana_spend = 0` and `reserve_mana_s
 - `tests/unit/economy/explicit_placement_mana_split_test.rs` must exist and pass
 - Existing economy API regression tests must pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Exists and passes (`cargo test -p server --test explicit_placement_mana_split_test`)
 
 ---
 
@@ -122,3 +122,15 @@ Zero-cost cards are valid only with `current_mana_spend = 0` and `reserve_mana_s
 
 - Depends on: Economy Story 001 complete (`PlayerEconomy` and API scaffold).
 - Unlocks: `production/epics/board-lane-system/story-011-placement-submit-authority-validation.md`; HAND-UI-010 server-validation prerequisite.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-05
+**Criteria**: 6/6 passing.
+**Verification**: Current `main` includes worker commit `b1c678f3400f4f7c8047adffd3f6d0b775bb5c29` and integration commit `dacc7d38bc300f89ac13b689e5abbb17f69a1fed`. `validate_explicit_mana_split` accepts exact current/reserve split requests, rejects invalid sums before affordability checks, rejects current and reserve overdraw independently without mutation, and supports zero-cost cards only with a zero split. `apply_explicit_mana_split` deducts the submitted current and reserve amounts exactly, without auto-split recomputation. Existing `validate_spend` / `apply_spend` auto-split behavior remains covered by the economy API tests.
+**Test Evidence**: `cargo test -p server --test explicit_placement_mana_split_test` passed 6/6. `cargo test -p server economy::api::tests` passed for the matching economy API tests. Adjacent economy regressions passed 26/26 across `auction_reservation_test`, `economy_draft_subscriber_test`, `economy_interest_snapshot_test`, `economy_round_trace_test`, and `economy_network_dispatch_test`. `cargo check -p server` passed. `git diff --check` passed.
+**Deviations**: None blocking. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+**Code Review**: Lean mode; QL-TEST-COVERAGE and LP-CODE-REVIEW gates skipped.
+**Tech Debt**: None logged.

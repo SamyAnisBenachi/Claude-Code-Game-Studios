@@ -1819,3 +1819,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: Unchanged; no matching NP-005/story row exists in `production/sprint-status.yaml`.
 - Next recommended: HAND-UI-010 Submit Pre-Validation (`production/epics/hand-ui/story-010-submit-prevalidation.md`) is unblocked on the NP-005 protocol prerequisite, but still depends on ECO-007, BLS-011, and PRES-002 per the current Sprint 5 row.
+
+## Session Extract - /story-done 2026-05-05
+- Verdict: COMPLETE
+- Story: `production/epics/economy-system/story-007-explicit-placement-mana-split-api.md` - Story 007: Explicit Placement Mana Split API
+- Criteria: 6/6 passing; EC27 / TR-ECO-009 explicit split validation, pool-specific rejection, invalid-sum rejection, exact deduction, zero-cost split behavior, and existing auto-split regression coverage verified.
+- Test Evidence: `cargo test -p server --test explicit_placement_mana_split_test` passed 6/6. `cargo test -p server economy::api::tests` passed for the matching economy API tests. Adjacent economy regressions passed 26/26 across `auction_reservation_test`, `economy_draft_subscriber_test`, `economy_interest_snapshot_test`, `economy_round_trace_test`, and `economy_network_dispatch_test`. `cargo check -p server` passed. `git diff --check` passed.
+- Verification: Current `main` includes worker commit `b1c678f3400f4f7c8047adffd3f6d0b775bb5c29` and integration commit `dacc7d38bc300f89ac13b689e5abbb17f69a1fed`; `validate_explicit_mana_split` preserves submitted placement current/reserve allocation and rejects invalid requests without mutation, while `apply_explicit_mana_split` deducts the exact validated amounts without auto-split recomputation.
+- Notes: No blocking GDD, ADR-019, ADR-002, Bevy 0.18, or scope deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- Tech debt logged: None.
+- Sprint status: Unchanged; no matching ECO-007/story row exists in `production/sprint-status.yaml`.
+- Next recommended: Board/Lane Story 011 Placement Submit Authority Validation (`production/epics/board-lane-system/story-011-placement-submit-authority-validation.md`) after readiness check. HAND-UI-010 still depends on BLS-011 and PRES-002; PRES-002 story-done remains untouched per instruction.
