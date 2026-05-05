@@ -4,10 +4,12 @@ use bevy::prelude::*;
 use bevy_tweening::TweenAnim;
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::{CardId, ClassId};
+use shared::keyword::InjuredGrantedKeyword;
 use shared::protocol::{
     C2SRequestSnapshot, EntityId, ObjectiveSnapshot, PlacedCardReveal, PlayTarget, ReliableChannel,
-    RoundPhase, S2CGameSnapshot, S2CPlacementReveal, S2CResolutionEvent, UnitBoardLocation,
-    UnitBoardState, UnitStatsSnapshot,
+    RoundPhase, S2CGameSnapshot, S2CJoinAck, S2CPlacementReveal, S2CResolutionEvent,
+    S2CRoomCreated, S2CSlotUpdated, SessionSlot, UnitBoardLocation, UnitBoardState,
+    UnitStatsSnapshot,
 };
 use shared::session::PlayerId;
 
@@ -28,7 +30,20 @@ pub mod rendering_constants;
 pub const UNIT_PLACEHOLDER_FRAME_INDEX: usize = 0;
 pub const HP_BAR_WHITE_PIXEL_FRAME_INDEX: usize = 1;
 pub const OBJECTIVE_UNKNOWN_FRAME_INDEX: usize = 0;
+pub const STATUS_ICON_SHIELD_FRAME_INDEX: usize = 10;
+pub const STATUS_ICON_STUN_FRAME_INDEX: usize = 11;
+pub const STATUS_ICON_SILENCE_FRAME_INDEX: usize = 12;
+pub const STATUS_ICON_INJURED_FRAME_INDEX: usize = 13;
+pub const STATUS_ICON_LEADER_FRAME_INDEX: usize = 14;
+pub const STATUS_ICON_HASTE_FRAME_INDEX: usize = 15;
+pub const STATUS_ICON_BODYGUARD_FRAME_INDEX: usize = 16;
+pub const STATUS_ICON_OUTNUMBERED_FRAME_INDEX: usize = 17;
+pub const STATUS_ICON_INJURED_GRANTED_FRAME_INDEX: usize = 18;
+pub const STATUS_OVERFLOW_BADGE_FRAME_INDEX: usize = 19;
 pub const HP_THRESHOLD_EPSILON: f32 = 1e-4;
+pub const DEFAULT_CO_OCCUPANCY_SIDE_OFFSET: f32 = 8.0;
+pub const MIN_CO_OCCUPANCY_SIDE_OFFSET: f32 = 4.0;
+pub const MAX_CO_OCCUPANCY_SIDE_OFFSET: f32 = 16.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UnitAtlasFrame {
@@ -101,6 +116,215 @@ pub struct BoardUnitStats {
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BoardUnitSourceClass(pub ClassId);
 
+#[derive(Component, Debug, Clone, PartialEq, Eq, Default)]
+pub struct StatusEffectsList {
+    effects: Vec<StatusEffectVisual>,
+}
+
+impl StatusEffectsList {
+    pub fn new(effects: Vec<StatusEffectVisual>) -> Self {
+        Self { effects }
+    }
+
+    pub fn effects(&self) -> &[StatusEffectVisual] {
+        &self.effects
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.effects.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StatusEffectVisual {
+    pub key: StatusEffectKey,
+    pub remaining_duration_sort_key: u16,
+}
+
+impl StatusEffectVisual {
+    pub fn untimed(key: StatusEffectKey) -> Self {
+        Self {
+            key,
+            remaining_duration_sort_key: 0,
+        }
+    }
+
+    pub fn timed(key: StatusEffectKey, remaining_duration_sort_key: u16) -> Self {
+        Self {
+            key,
+            remaining_duration_sort_key,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StatusEffectKey {
+    Shield,
+    Stun,
+    Silence,
+    Injured,
+    Leader,
+    Haste,
+    Bodyguard,
+    Outnumbered,
+    InjuredGranted(InjuredGrantedKeyword),
+}
+
+impl StatusEffectKey {
+    fn deterministic_sort_key(self) -> u16 {
+        match self {
+            Self::Shield => 0,
+            Self::Stun => 1,
+            Self::Silence => 2,
+            Self::Injured => 3,
+            Self::Leader => 4,
+            Self::Haste => 5,
+            Self::Bodyguard => 6,
+            Self::Outnumbered => 7,
+            Self::InjuredGranted(keyword) => 100 + injured_granted_sort_key(keyword),
+        }
+    }
+}
+
+fn injured_granted_sort_key(keyword: InjuredGrantedKeyword) -> u16 {
+    match keyword {
+        InjuredGrantedKeyword::FirstStrike => 0,
+        InjuredGrantedKeyword::Counterattack => 1,
+        InjuredGrantedKeyword::Range => 2,
+        InjuredGrantedKeyword::Shield => 3,
+    }
+}
+
+#[derive(Resource, Debug, Clone, PartialEq)]
+pub struct StatusDisplayDefinitions {
+    definitions: HashMap<StatusEffectKey, StatusDisplayDefinition>,
+}
+
+impl Default for StatusDisplayDefinitions {
+    fn default() -> Self {
+        let mut definitions = HashMap::new();
+        definitions.insert(
+            StatusEffectKey::Shield,
+            StatusDisplayDefinition::new(
+                1,
+                STATUS_ICON_SHIELD_FRAME_INDEX,
+                Color::srgba(0.42, 0.78, 1.0, 1.0),
+            ),
+        );
+        definitions.insert(
+            StatusEffectKey::Stun,
+            StatusDisplayDefinition::new(
+                2,
+                STATUS_ICON_STUN_FRAME_INDEX,
+                Color::srgba(1.0, 0.84, 0.22, 1.0),
+            ),
+        );
+        definitions.insert(
+            StatusEffectKey::Silence,
+            StatusDisplayDefinition::new(
+                2,
+                STATUS_ICON_SILENCE_FRAME_INDEX,
+                Color::srgba(0.72, 0.72, 0.82, 1.0),
+            ),
+        );
+        definitions.insert(
+            StatusEffectKey::Injured,
+            StatusDisplayDefinition::new(
+                2,
+                STATUS_ICON_INJURED_FRAME_INDEX,
+                Color::srgba(1.0, 0.28, 0.28, 1.0),
+            ),
+        );
+        definitions.insert(
+            StatusEffectKey::Leader,
+            StatusDisplayDefinition::new(
+                2,
+                STATUS_ICON_LEADER_FRAME_INDEX,
+                Color::srgba(0.85, 0.68, 1.0, 1.0),
+            ),
+        );
+        definitions.insert(
+            StatusEffectKey::Haste,
+            StatusDisplayDefinition::new(
+                2,
+                STATUS_ICON_HASTE_FRAME_INDEX,
+                Color::srgba(0.44, 1.0, 0.62, 1.0),
+            ),
+        );
+        definitions.insert(
+            StatusEffectKey::Bodyguard,
+            StatusDisplayDefinition::new(
+                2,
+                STATUS_ICON_BODYGUARD_FRAME_INDEX,
+                Color::srgba(0.66, 0.88, 1.0, 1.0),
+            ),
+        );
+        definitions.insert(
+            StatusEffectKey::Outnumbered,
+            StatusDisplayDefinition::new(
+                2,
+                STATUS_ICON_OUTNUMBERED_FRAME_INDEX,
+                Color::srgba(1.0, 0.52, 0.28, 1.0),
+            ),
+        );
+
+        for keyword in [
+            InjuredGrantedKeyword::FirstStrike,
+            InjuredGrantedKeyword::Counterattack,
+            InjuredGrantedKeyword::Range,
+            InjuredGrantedKeyword::Shield,
+        ] {
+            definitions.insert(
+                StatusEffectKey::InjuredGranted(keyword),
+                StatusDisplayDefinition::new(
+                    2,
+                    STATUS_ICON_INJURED_GRANTED_FRAME_INDEX,
+                    Color::srgba(1.0, 0.36, 0.46, 1.0),
+                ),
+            );
+        }
+
+        Self { definitions }
+    }
+}
+
+impl StatusDisplayDefinitions {
+    pub fn definition(&self, key: StatusEffectKey) -> Option<&StatusDisplayDefinition> {
+        self.definitions.get(&key)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StatusDisplayDefinition {
+    pub display_tier: u8,
+    pub icon_frame_index: usize,
+    pub tint: Color,
+}
+
+impl StatusDisplayDefinition {
+    pub fn new(display_tier: u8, icon_frame_index: usize, tint: Color) -> Self {
+        Self {
+            display_tier,
+            icon_frame_index,
+            tint,
+        }
+    }
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StatusIcon {
+    pub key: StatusEffectKey,
+    pub slot: u8,
+    pub display_tier: u8,
+    pub remaining_duration_sort_key: u16,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StatusOverflowBadge {
+    pub slot: u8,
+    pub hidden_count: u8,
+}
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StandingObjective {
     pub owner_id: PlayerId,
@@ -138,10 +362,39 @@ impl ObjectiveIdentityCache {
     }
 }
 
+#[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
+pub struct PlayerTeamMap {
+    teams: HashMap<PlayerId, u8>,
+}
+
+impl PlayerTeamMap {
+    pub fn apply_slots(&mut self, slots: &[SessionSlot]) {
+        self.teams.clear();
+        for slot in slots {
+            if let Some(player_id) = slot.player_id {
+                self.teams.insert(player_id, slot.team);
+            }
+        }
+    }
+
+    pub fn insert(&mut self, player_id: PlayerId, team: u8) {
+        self.teams.insert(player_id, team);
+    }
+
+    pub fn team_for(&self, player_id: PlayerId) -> Option<u8> {
+        self.teams.get(&player_id).copied()
+    }
+
+    pub fn clear(&mut self) {
+        self.teams.clear();
+    }
+}
+
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct BoardRenderingConfig {
     pub health_bar_green_threshold: f32,
     pub health_bar_red_threshold: f32,
+    pub co_occupancy_side_offset: f32,
 }
 
 impl Default for BoardRenderingConfig {
@@ -149,6 +402,7 @@ impl Default for BoardRenderingConfig {
         Self {
             health_bar_green_threshold: 0.6,
             health_bar_red_threshold: 0.3,
+            co_occupancy_side_offset: DEFAULT_CO_OCCUPANCY_SIDE_OFFSET,
         }
     }
 }
@@ -160,6 +414,14 @@ impl BoardRenderingConfig {
             "HP threshold config invalid: red_threshold={} >= green_threshold={}",
             self.health_bar_red_threshold,
             self.health_bar_green_threshold
+        );
+        assert!(
+            (MIN_CO_OCCUPANCY_SIDE_OFFSET..=MAX_CO_OCCUPANCY_SIDE_OFFSET)
+                .contains(&self.co_occupancy_side_offset),
+            "co_occupancy_side_offset={} outside allowed range {}..={}",
+            self.co_occupancy_side_offset,
+            MIN_CO_OCCUPANCY_SIDE_OFFSET,
+            MAX_CO_OCCUPANCY_SIDE_OFFSET
         );
     }
 }
@@ -524,6 +786,8 @@ impl Plugin for BoardRenderingPlugin {
             .init_resource::<BoardRenderState>()
             .init_resource::<BoardLocalPlayer>()
             .init_resource::<ObjectiveIdentityCache>()
+            .init_resource::<PlayerTeamMap>()
+            .init_resource::<StatusDisplayDefinitions>()
             .init_resource::<PlacementRevealCollectState>()
             .init_resource::<PendingResolutionScript>()
             .init_resource::<ResolutionRevealWait>()
@@ -581,8 +845,10 @@ impl Plugin for BoardRenderingPlugin {
                         .chain()
                         .in_set(BoardRenderSet::ScheduleTweens),
                     update_hp_bars_system.in_set(BoardRenderSet::UpdateHpBars),
+                    update_status_icons_system.in_set(BoardRenderSet::UpdateHpBars),
                 ),
             )
+            .add_systems(Update, drain_player_team_map_messages_system)
             .add_systems(
                 Update,
                 (
@@ -595,6 +861,31 @@ impl Plugin for BoardRenderingPlugin {
                     .in_set(PresentationSet::MessageDrain)
                     .run_if(in_state(ClientState::InSession)),
             );
+    }
+}
+
+pub fn drain_player_team_map_messages_system(
+    mut created_receivers: Query<&mut MessageReceiver<S2CRoomCreated>>,
+    mut join_receivers: Query<&mut MessageReceiver<S2CJoinAck>>,
+    mut slot_receivers: Query<&mut MessageReceiver<S2CSlotUpdated>>,
+    mut player_team_map: ResMut<PlayerTeamMap>,
+) {
+    for mut receiver in &mut created_receivers {
+        for message in receiver.receive() {
+            player_team_map.apply_slots(&message.slots);
+        }
+    }
+
+    for mut receiver in &mut join_receivers {
+        for message in receiver.receive() {
+            player_team_map.apply_slots(&message.slots);
+        }
+    }
+
+    for mut receiver in &mut slot_receivers {
+        for message in receiver.receive() {
+            player_team_map.apply_slots(&message.slots);
+        }
     }
 }
 
@@ -874,11 +1165,13 @@ fn insert_board_rendering_session_resources(mut commands: Commands) {
 fn remove_board_rendering_session_resources(
     mut commands: Commands,
     board_entities: Query<Entity, With<BoardRenderingEntity>>,
+    mut player_team_map: ResMut<PlayerTeamMap>,
 ) {
     for entity in &board_entities {
         commands.entity(entity).despawn();
     }
 
+    player_team_map.clear();
     commands.remove_resource::<BoardLayout>();
     commands.remove_resource::<CardAtlas>();
 }
@@ -890,6 +1183,7 @@ fn rebuild_board_from_snapshot_system(
     board_layout: Option<Res<BoardLayout>>,
     card_atlas: Option<Res<CardAtlas>>,
     config: Res<BoardRenderingConfig>,
+    player_team_map: Res<PlayerTeamMap>,
     stale_entities: Query<Entity, With<BoardSnapshotEntity>>,
     mut render_state: ResMut<BoardRenderState>,
     mut current_phase: Option<ResMut<CurrentClientPhase>>,
@@ -944,6 +1238,7 @@ fn rebuild_board_from_snapshot_system(
         &board_layout,
         &card_atlas,
         &config,
+        &player_team_map,
         &snapshot,
     );
 }
@@ -983,10 +1278,26 @@ fn spawn_snapshot_units(
     board_layout: &BoardLayout,
     card_atlas: &CardAtlas,
     config: &BoardRenderingConfig,
+    player_team_map: &PlayerTeamMap,
     snapshot: &S2CGameSnapshot,
 ) {
+    let co_occupancy_offsets =
+        snapshot_co_occupancy_offsets(snapshot, player_team_map, config.co_occupancy_side_offset);
+
     for unit in &snapshot.board.units {
-        spawn_snapshot_unit(commands, board_layout, card_atlas, config, snapshot, unit);
+        let co_occupancy_x_offset = co_occupancy_offsets
+            .get(&unit.unit_id)
+            .copied()
+            .unwrap_or(0.0);
+        spawn_snapshot_unit(
+            commands,
+            board_layout,
+            card_atlas,
+            config,
+            snapshot,
+            unit,
+            co_occupancy_x_offset,
+        );
     }
 }
 
@@ -997,6 +1308,7 @@ fn spawn_snapshot_unit(
     config: &BoardRenderingConfig,
     snapshot: &S2CGameSnapshot,
     unit: &UnitBoardState,
+    co_occupancy_x_offset: f32,
 ) {
     let Some((lane, cell)) = visible_unit_cell(unit, snapshot.recipient_player_id) else {
         warn!(
@@ -1025,8 +1337,13 @@ fn spawn_snapshot_unit(
             },
             stats,
             LaneCell { lane, cell },
+            StatusEffectsList::default(),
             unit_sprite(card_atlas, frame_index),
-            Transform::from_xyz(world_xy.x, world_xy.y, rendering_constants::Z_UNITS),
+            Transform::from_xyz(
+                world_xy.x + co_occupancy_x_offset,
+                world_xy.y,
+                rendering_constants::Z_UNITS,
+            ),
         ))
         .id();
 
@@ -1037,6 +1354,62 @@ fn spawn_snapshot_unit(
     }
 
     spawn_hp_bar_children(commands, unit_entity, card_atlas, stats, config);
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum CoOccupancyTeamKey {
+    Known(u8),
+    UnknownOwner(PlayerId),
+}
+
+fn snapshot_co_occupancy_offsets(
+    snapshot: &S2CGameSnapshot,
+    player_team_map: &PlayerTeamMap,
+    side_offset: f32,
+) -> HashMap<EntityId, f32> {
+    let mut groups = HashMap::<(CoOccupancyTeamKey, u8, u8), Vec<EntityId>>::new();
+
+    for unit in &snapshot.board.units {
+        let Some((lane, cell)) = visible_unit_cell(unit, snapshot.recipient_player_id) else {
+            continue;
+        };
+        let team = player_team_map
+            .team_for(unit.owner_id)
+            .map(CoOccupancyTeamKey::Known)
+            .unwrap_or(CoOccupancyTeamKey::UnknownOwner(unit.owner_id));
+        groups
+            .entry((team, lane, cell))
+            .or_default()
+            .push(unit.unit_id);
+    }
+
+    let mut offsets = HashMap::new();
+    for units in groups.values_mut() {
+        if units.len() <= 1 {
+            continue;
+        }
+
+        units.sort_unstable();
+        for (index, unit_id) in units.iter().copied().enumerate() {
+            assert!(
+                index <= u8::MAX as usize,
+                "F3 co-occupancy: unit_index={} > 255 - invalid co-occupancy state",
+                index
+            );
+            offsets.insert(unit_id, co_occupancy_offset(index as u8, side_offset));
+        }
+    }
+
+    offsets
+}
+
+pub fn co_occupancy_offset(unit_index: u8, side_offset: f32) -> f32 {
+    assert!(
+        unit_index <= 1,
+        "F3 co-occupancy: unit_index={} > 1 - invalid co-occupancy state",
+        unit_index
+    );
+    (f32::from(unit_index) - 0.5) * side_offset
 }
 
 fn visible_unit_cell(unit: &UnitBoardState, recipient_player_id: PlayerId) -> Option<(u8, u8)> {
@@ -1188,6 +1561,164 @@ fn spawn_hp_bar_children(
     let visual = hp_bar_visual(stats.hp_current, stats.hp_max, *config);
     spawn_hp_bar_background(commands, parent, card_atlas);
     spawn_hp_bar_fill(commands, parent, card_atlas, visual);
+}
+
+pub fn update_status_icons_system(
+    mut commands: Commands,
+    card_atlas: Res<CardAtlas>,
+    definitions: Res<StatusDisplayDefinitions>,
+    units: Query<
+        (Entity, &StatusEffectsList, Option<&Children>),
+        (With<BoardUnit>, Changed<StatusEffectsList>),
+    >,
+    status_children: Query<(), Or<(With<StatusIcon>, With<StatusOverflowBadge>)>>,
+) {
+    for (unit, status_effects, children) in &units {
+        if let Some(children) = children {
+            for child in children.iter() {
+                if status_children.get(child).is_ok() {
+                    commands.entity(child).despawn();
+                }
+            }
+        }
+
+        spawn_status_icon_children(
+            &mut commands,
+            unit,
+            &card_atlas,
+            &definitions,
+            status_effects,
+        );
+    }
+}
+
+fn spawn_status_icon_children(
+    commands: &mut Commands,
+    parent: Entity,
+    card_atlas: &CardAtlas,
+    definitions: &StatusDisplayDefinitions,
+    status_effects: &StatusEffectsList,
+) {
+    let visible = visible_status_effects(status_effects, definitions);
+    let hidden_count = visible.hidden_count.min(u8::MAX as usize) as u8;
+
+    for (slot, effect) in visible.effects.iter().enumerate() {
+        let slot = slot as u8;
+        commands.spawn((
+            BoardRenderingEntity,
+            BoardSnapshotEntity,
+            StatusIcon {
+                key: effect.visual.key,
+                slot,
+                display_tier: effect.definition.display_tier,
+                remaining_duration_sort_key: effect.visual.remaining_duration_sort_key,
+            },
+            status_icon_sprite(
+                card_atlas,
+                effect.definition.icon_frame_index,
+                effect.definition.tint,
+            ),
+            Transform::from_translation(status_icon_slot_translation(slot)),
+            Visibility::Inherited,
+            ChildOf(parent),
+        ));
+    }
+
+    if hidden_count > 0 {
+        let slot = 3;
+        commands.spawn((
+            BoardRenderingEntity,
+            BoardSnapshotEntity,
+            StatusOverflowBadge { slot, hidden_count },
+            status_icon_sprite(
+                card_atlas,
+                STATUS_OVERFLOW_BADGE_FRAME_INDEX,
+                Color::srgba(0.10, 0.11, 0.14, 0.94),
+            ),
+            Transform::from_translation(status_icon_slot_translation(slot)),
+            Visibility::Inherited,
+            ChildOf(parent),
+        ));
+    }
+}
+
+struct VisibleStatusEffects {
+    effects: Vec<StatusEffectRenderEntry>,
+    hidden_count: usize,
+}
+
+#[derive(Clone, Copy)]
+struct StatusEffectRenderEntry {
+    visual: StatusEffectVisual,
+    definition: StatusDisplayDefinition,
+}
+
+fn visible_status_effects(
+    status_effects: &StatusEffectsList,
+    definitions: &StatusDisplayDefinitions,
+) -> VisibleStatusEffects {
+    let mut effects = status_effects
+        .effects()
+        .iter()
+        .filter_map(|visual| {
+            let Some(definition) = definitions.definition(visual.key).copied() else {
+                warn!(
+                    "Board Rendering: missing status display definition for {:?}",
+                    visual.key
+                );
+                return None;
+            };
+            Some(StatusEffectRenderEntry {
+                visual: *visual,
+                definition,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    effects.sort_by(|left, right| {
+        left.definition
+            .display_tier
+            .cmp(&right.definition.display_tier)
+            .then_with(|| {
+                right
+                    .visual
+                    .remaining_duration_sort_key
+                    .cmp(&left.visual.remaining_duration_sort_key)
+            })
+            .then_with(|| {
+                left.visual
+                    .key
+                    .deterministic_sort_key()
+                    .cmp(&right.visual.key.deterministic_sort_key())
+            })
+    });
+
+    let hidden_count = effects.len().saturating_sub(3);
+    effects.truncate(3);
+
+    VisibleStatusEffects {
+        effects,
+        hidden_count,
+    }
+}
+
+pub fn status_icon_slot_translation(slot: u8) -> Vec3 {
+    Vec3::new(
+        rendering_constants::STATUS_ICON_TOP_RIGHT_X_OFFSET
+            - f32::from(slot) * rendering_constants::STATUS_ICON_SLOT_STEP_X,
+        rendering_constants::STATUS_ICON_TOP_RIGHT_Y_OFFSET,
+        rendering_constants::STATUS_ICON_LOCAL_Z,
+    )
+}
+
+fn status_icon_sprite(card_atlas: &CardAtlas, frame_index: usize, color: Color) -> Sprite {
+    atlas_sprite(
+        card_atlas.board_elements_image.clone(),
+        card_atlas.board_elements_layout.clone(),
+        frame_index,
+        rendering_constants::STATUS_ICON_SIZE,
+        color,
+    )
 }
 
 fn spawn_objective_hp_bar_children(
