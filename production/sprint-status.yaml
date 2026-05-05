@@ -13,20 +13,20 @@ notes:
   - "Capacity: 10 workdays, 20% buffer, 8 effective planned days."
   - "Pull-forward credit is already integrated and must not be double-counted as unstarted Sprint 6 capacity."
   - "Pull-forward credit: SAU-003; SAU-004; SAU-005; SAU-006; BOARD-005; BOARD-009 narrowed status/co-occupancy; BOARD-010 narrowed baseline; NP-006; BLS-012 readiness; BOARD-006 readiness; OS-18b Story 008 docs; spawn range docs repair; playtest package and fun hypothesis decision docs; QA condition register; AU19-a repair / QA-COND-0002 closure; AU1 FIFO harness; ADR-023 timer accessibility authority."
-  - "No production/qa/qa-plan-sprint-6.md exists yet; Sprint 6 QA plan remains required before implementation or final validation begins."
+  - "Sprint 6 QA plan exists at production/qa/qa-plan-sprint-6-2026-05-05.md and governs remediation validation, condition reconciliation, smoke scope, and QA sign-off prerequisites."
 
 stories:
   - id: "S6-01"
     name: "Sprint 6 QA plan and QA condition register tracking/closure"
     file: "production/qa/bugs/"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "qa-lead + orchestrator"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-05-05"
     notes:
-      - "QA-COND statuses must be reconciled, including QA-COND-0002 closure and AU1 FIFO evidence review."
+      - "QA plan exists; QA-COND register/taxonomy/status references reconciled, including QA-COND-0002 closure, AU1 FIFO evidence review, and QA-COND-0003/0004 closure state."
 
   - id: "S6-02"
     name: "Playtest sessions and fun hypothesis decision"
@@ -83,7 +83,7 @@ stories:
     status: blocked
     owner: "orchestrator + qa-lead"
     estimate_days: 1.00
-    blocker: "Blocked until S6-01 through S6-05 are complete or explicitly reclassified."
+    blocker: "Blocked until remaining open Must Have gate work is complete or explicitly reclassified: S6-02 playtest/fun-hypothesis evidence and S6-04 Standard-tier accessibility remediation/verification."
     completed: ""
     notes:
       - "Smoke must be PASS or PASS WITH WARNINGS before final QA sign-off and gate-check."

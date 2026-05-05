@@ -92,12 +92,12 @@ unstarted Sprint 6 capacity:
 |------|--------|--------------------|
 | BR-011 | Blocked | Blocked until BLS-012 is complete and the authoritative spawn range projection exists |
 | SAU-009 | Blocked | Blocked until panel states from prerequisites are renderable and evidence prerequisites are satisfied |
-| Final board visual/browser evidence | Blocked | Depends on a harness/evidence path that can seed and capture the browser/WASM baseline |
-| QA-COND-0004 | Open P1 gate blocker | Browser/WASM board performance capture missing |
+| Final board visual/browser evidence | Closed for Sprint 6 P1 gate | BOARD-012 browser/WASM capture exists with nonblank 1920x1080 board evidence and corrected timing verdict PASS |
+| QA-COND-0004 | Closed | BOARD-012 browser/WASM capture passed corrected timing budgets |
 | QA-COND-0005 | Open P1 gate blocker | Standard-tier accessibility remediation/verification incomplete |
 | QA-COND-0006 | Open P1 gate blocker | Required playtest sessions and aggregate fun decision still pending |
 | QA-COND-0001 | Open P2 validation | AU1-b-network FIFO evidence requires QA disposition after FIFO harness review |
-| QA-COND-0003 | Open P2 validation | OS-18b two-client objective HP visibility evidence still pending |
+| QA-COND-0003 | Closed | OS-18b two-client ObjectiveHp visibility evidence verified final-only observations for both clients |
 | QA-COND-0007 | Open P2 validation | Deferred manual/visual evidence still pending |
 
 ## Risks
@@ -121,9 +121,10 @@ unstarted Sprint 6 capacity:
 
 ## QA Plan
 
-> WARNING: **No QA Plan**: Sprint 6 has no QA plan yet. Run `/qa-plan sprint`
-> before implementation or final validation begins. The Production -> Polish
-> gate requires a QA sign-off report, which requires a QA plan.
+Sprint 6 QA plan exists at
+`production/qa/qa-plan-sprint-6-2026-05-05.md`. Use it as the current source for
+condition reconciliation, remediation validation, smoke scope, QA sign-off, and
+Production -> Polish gate-check prerequisites.
 
 ## Definition of Done for this Sprint
 

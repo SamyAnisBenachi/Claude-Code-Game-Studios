@@ -76,7 +76,7 @@ Each file in `production/qa/bugs/` should include:
 |---|---|---|---|---|---|---|---|
 | QA-COND-0001 | AU1-b-network FIFO evidence | QA Condition | S3 Medium | P2 Sprint 6 validation | Open | Needs Evidence | Sprint 5 non-blocking condition; Sprint 6 validation condition |
 | QA-COND-0002 | Ignored AUC-006 auction test | Test Debt | S3 Medium | P2 Sprint 6 validation | Closed | N/A - Closed | Closed after AU19-a repair evidence confirmed no ignored auction abort tests |
-| QA-COND-0003 | OS-18b two-client objective HP visibility | QA Condition | S3 Medium | P2 Sprint 6 validation | Open | Needs Evidence | Sprint 5 non-blocking condition; live transport visibility remains advisory |
+| QA-COND-0003 | OS-18b two-client objective HP visibility | QA Condition | S3 Medium | P2 Sprint 6 validation | Closed | N/A - Closed | Closed after OS-008 two-client ObjectiveHp evidence verified final-only visibility for both clients |
 | QA-COND-0004 | Browser/WASM board performance capture | Performance Gap | S2 High | P1 Sprint 6 gate blocker | Closed | N/A - Closed | Closed after BOARD-012 browser/WASM capture passed corrected timing budgets |
 | QA-COND-0005 | Standard-tier accessibility gaps | Accessibility Gap | S2 High | P1 Sprint 6 gate blocker | Open | Needs Remediation | Production-to-Polish hard blocker |
 | QA-COND-0006 | Playtest/fun-hypothesis evidence | Evidence Gap | S2 High | P1 Sprint 6 gate blocker | Open | Needs Evidence | Production-to-Polish hard blocker |

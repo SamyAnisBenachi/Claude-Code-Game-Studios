@@ -51,8 +51,8 @@ they were stale.
 |---|---|---|---|---|
 | QA-COND-0001 | P2 Sprint 6 validation | Open, Needs Evidence | Review AU1 FIFO harness from commit `bf3ef3dd734bf8c8e0bab0b9094282c7680ab4fb`; expected command: `cargo test -p server --test auction_fifo_ordering_test`; then close, reclassify, or accept risk by QA disposition | Open P2 validation condition |
 | QA-COND-0002 | P2 Sprint 6 validation | Closed, N/A - Closed | No further S6-01 action after taxonomy/register reconciliation; retain closure evidence from AU19-a repair | Closed; not a P1 blocker |
-| QA-COND-0003 | P2 Sprint 6 validation | Open, Needs Evidence | Close through S6-05 two-client ObjectiveHp visibility evidence or reclassify | Open P2 validation condition |
-| QA-COND-0004 | P1 Sprint 6 gate blocker | Open, Needs Evidence | Close through S6-03 browser/WASM board performance capture or explicit gate reclassification | Open P1 gate blocker |
+| QA-COND-0003 | P2 Sprint 6 validation | Closed, N/A - Closed | No further S6-01 action after OS-008/S6-05 evidence; retain closure evidence report and harness result | Closed; no longer an open P2 validation condition |
+| QA-COND-0004 | P1 Sprint 6 gate blocker | Closed, N/A - Closed | No further S6-01 action after BOARD-012 browser/WASM evidence; retain closure evidence and corrected timing result | Closed; no longer a P1 gate blocker |
 | QA-COND-0005 | P1 Sprint 6 gate blocker | Open, Needs Remediation | Close through S6-04 Standard-tier remediation / verification or accepted risk | Open P1 gate blocker |
 | QA-COND-0006 | P1 Sprint 6 gate blocker | Open, Needs Evidence | Close through S6-02 three playtest reports and aggregate fun decision | Open P1 gate blocker |
 | QA-COND-0007 | P2 Sprint 6 validation | Open, Needs Evidence | Address through S6-S4 only if Must Have remediation is stable | Open P2 validation condition |
@@ -98,8 +98,9 @@ repeatable harness is added, place evidence under
 **Edge cases to cover**:
 - Browser capture must not rely only on native ECS fixture evidence.
 - Screenshot/capture must show the board area, not a menu or loading state.
-- If the browser harness cannot seed the baseline, the evidence must explicitly
-  state the blocker and preserve QA-COND-0004 as open.
+- BOARD-012 evidence now closes QA-COND-0004 for the Sprint 6 P1 gate. Any
+  future browser/WASM board performance regression should be tracked as a new or
+  explicitly reopened QA condition.
 
 **Estimated test count**: 1 browser/WASM capture path plus performance evidence.
 
@@ -284,9 +285,9 @@ Checklist:
       until QA accepts the harness result, reclassifies it, or accepts risk.
 - [ ] QA-COND-0002 condition file and taxonomy/register status are reconciled as
       `Closed | N/A - Closed`.
-- [ ] QA-COND-0003 is linked to S6-05 evidence or explicit reclassification.
-- [ ] QA-COND-0004 remains open until browser/WASM performance capture exists or
-      is explicitly reclassified.
+- [ ] QA-COND-0003 is closed by OS-008/S6-05 ObjectiveHp two-client evidence.
+- [ ] QA-COND-0004 is closed by BOARD-012 browser/WASM board performance
+      evidence and corrected timing verification.
 - [ ] QA-COND-0005 remains open until Standard-tier accessibility is remediated,
       verified, explicitly reclassified, or accepted as risk.
 - [ ] QA-COND-0006 remains open until three playtest reports and the aggregate
@@ -335,7 +336,8 @@ Checklist:
 - [ ] Total frame timing is measured against `<= 16.67 ms`.
 - [ ] ADR-021 steady-state presentation budget `< 1 ms` is observed or failed.
 - [ ] ADR-021 phase-boundary spike budget `< 3 ms` is observed or failed.
-- [ ] QA-COND-0004 remains open if browser/WASM timing evidence is missing.
+- [ ] QA-COND-0004 remains closed unless explicit QA review reopens it after a
+      new browser/WASM board performance regression.
 
 ### S6-04 - Standard-Tier Accessibility Remediation / Verification
 
@@ -382,8 +384,8 @@ Checklist:
 - [ ] Client B ObjectiveHp observation sequence is recorded.
 - [ ] Neither client observes the intermediate HP value.
 - [ ] Neither client observes duplicate final HP in the same tick/sub-step.
-- [ ] QA-COND-0003 remains open if live/two-client or equivalent end-to-end
-      evidence is missing.
+- [ ] QA-COND-0003 remains closed unless explicit QA review reopens it after a
+      new ObjectiveHp two-client visibility regression.
 
 ### S6-06 - Re-Smoke, QA Sign-Off, and Gate-Check Rerun
 
@@ -401,8 +403,8 @@ Checklist:
 - [ ] QA sign-off explicitly lists P1 condition disposition.
 - [ ] Production -> Polish gate-check rerun is recorded after smoke and QA
       sign-off.
-- [ ] Gate-check does not advance the project if QA-COND-0004, QA-COND-0005, or
-      QA-COND-0006 remain open without approved disposition.
+- [ ] Gate-check does not advance the project if QA-COND-0005 or QA-COND-0006
+      remains open without approved disposition.
 
 ---
 
@@ -459,12 +461,11 @@ A Sprint 6 Must Have task is DONE when all applicable items are true:
 - [ ] S6-02 produces three required playtest reports and an aggregate fun
       decision, or the missing evidence is explicitly reclassified by the gate
       owner.
-- [ ] S6-03 produces browser/WASM board performance evidence or QA-COND-0004
-      remains open / reclassified / accepted as risk.
+- [ ] S6-03 produced browser/WASM board performance evidence and QA-COND-0004 is
+      closed.
 - [ ] S6-04 produces Standard-tier accessibility evidence or QA-COND-0005
       remains open / reclassified / accepted as risk.
-- [ ] S6-05 produces ObjectiveHp two-client evidence or QA-COND-0003 remains
-      open / reclassified / accepted as risk.
+- [ ] S6-05 produced ObjectiveHp two-client evidence and QA-COND-0003 is closed.
 - [ ] `/smoke-check sprint` produces `PASS` or `PASS WITH WARNINGS` before QA
       sign-off.
 - [ ] QA sign-off records P1 and P2 condition disposition.
@@ -476,12 +477,12 @@ A Sprint 6 Must Have task is DONE when all applicable items are true:
 
 ## Current Blocker Status
 
-As of this QA plan, the Production -> Polish gate remains blocked by the open P1
-Sprint 6 gate blockers:
+As of S6-01 final closure reconciliation, the Production -> Polish gate remains
+blocked by the remaining open P1 Sprint 6 gate blockers:
 
-- QA-COND-0004: Browser/WASM board performance capture.
 - QA-COND-0005: Standard-tier accessibility gaps.
 - QA-COND-0006: Playtest/fun-hypothesis evidence.
 
-These P1 blockers remain open until evidence, explicit reclassification, or
-accepted-risk disposition is recorded.
+QA-COND-0004 is closed after BOARD-012 browser/WASM evidence passed corrected
+timing budgets. The remaining P1 blockers stay open until evidence, explicit
+reclassification, or accepted-risk disposition is recorded.
