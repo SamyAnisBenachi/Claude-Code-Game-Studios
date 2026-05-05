@@ -48,6 +48,50 @@ pub fn apply_spend(economy: &mut PlayerEconomy, cost: u32, from_reserve_only: bo
     economy.reserve_mana = economy.reserve_mana.saturating_sub(from_reserve);
 }
 
+/// Validate a placement mana spend that preserves the submitted split.
+///
+/// Unlike normal spends, explicit placement spends do not auto-split from
+/// current mana into reserve mana. Each requested pool is checked independently.
+pub fn validate_explicit_mana_split(
+    economy: &PlayerEconomy,
+    cost: u32,
+    current_mana_spend: u32,
+    reserve_mana_spend: u32,
+) -> Result<(), SpendError> {
+    if current_mana_spend.checked_add(reserve_mana_spend) != Some(cost) {
+        return Err(SpendError::InvalidManaSplit);
+    }
+
+    if current_mana_spend > economy.current_mana {
+        return Err(SpendError::InsufficientCurrentMana);
+    }
+
+    if reserve_mana_spend > economy.reserve_mana {
+        return Err(SpendError::InsufficientReserveMana);
+    }
+
+    Ok(())
+}
+
+/// Apply a previously validated placement mana spend exactly as submitted.
+pub fn apply_explicit_mana_split(
+    economy: &mut PlayerEconomy,
+    current_mana_spend: u32,
+    reserve_mana_spend: u32,
+) {
+    debug_assert!(
+        current_mana_spend <= economy.current_mana,
+        "explicit current mana spend must be validated before apply"
+    );
+    debug_assert!(
+        reserve_mana_spend <= economy.reserve_mana,
+        "explicit reserve mana spend must be validated before apply"
+    );
+
+    economy.current_mana = economy.current_mana.saturating_sub(current_mana_spend);
+    economy.reserve_mana = economy.reserve_mana.saturating_sub(reserve_mana_spend);
+}
+
 /// Add persistent gold to the economy.
 pub fn apply_gold_award(economy: &mut PlayerEconomy, amount: u32) {
     economy.gold = economy.gold.saturating_add(amount);

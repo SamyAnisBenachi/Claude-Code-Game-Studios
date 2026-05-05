@@ -40,6 +40,12 @@ pub struct InterestSnapshots(pub HashMap<PlayerId, u32>);
 pub enum SpendError {
     /// Player does not have enough available currency.
     InsufficientFunds,
+    /// Requested current/reserve mana spend does not sum to card cost.
+    InvalidManaSplit,
+    /// Requested current mana spend exceeds current mana.
+    InsufficientCurrentMana,
+    /// Requested reserve mana spend exceeds reserve mana.
+    InsufficientReserveMana,
     /// A reserve-only payment was attempted with current mana allocation.
     ReserveOnlyButCurrentProvided,
     /// Hand-size validation failed in a caller-owned system.

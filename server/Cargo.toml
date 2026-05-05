@@ -74,6 +74,10 @@ name = "auction_reservation_test"
 path = "../tests/unit/economy/auction_reservation_test.rs"
 
 [[test]]
+name = "explicit_placement_mana_split_test"
+path = "../tests/unit/economy/explicit_placement_mana_split_test.rs"
+
+[[test]]
 name = "economy_network_dispatch_test"
 path = "../tests/integration/economy/network_dispatch_test.rs"
 
