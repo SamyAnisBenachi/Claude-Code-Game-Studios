@@ -175,6 +175,13 @@ None currently tracked here.
   pending state reconciliation, and the rendering performance budget note is
   missing. Repair docs-only, then rerun readiness; do not launch implementation
   yet.
+- BOARD-RENDERING-003 docs-only readiness repair returned READY and was pushed
+  at `171997b`. Changed file:
+  `production/epics/board-rendering/story-003-snapshot-spawn-units-objectives-and-hp-bars.md`.
+  Remaining blockers/gaps: none. `/dev-story` is safe next from readiness.
+  Story 001/002 are Complete and referenced server replicated components exist
+  locally. No code, worktrees, production session-state, sprint-status, or
+  design assets were touched.
 - Shop/Auction UI UX review finished with verdict NEEDS REVISION. It is not a
   major redesign and does not block SAU-001, but it blocks clean final
   visual/accessibility handoff and SAU-009. Full blockers: bid accessibility
@@ -1262,6 +1269,8 @@ Current active windows by user default-launch rule:
 - BOARD-RENDERING-003 readiness returned NEEDS WORK; readiness window can be
   cleared after launching a docs-only repair. Do not launch BOARD-003 dev-story
   until readiness returns READY.
+- BOARD-RENDERING-003 readiness repair returned READY at `171997b`; repair
+  window can be cleared. BOARD-003 `/dev-story` is safe to launch now.
 - Shop/Auction UI Story 001 readiness returned BLOCKED on missing
   PresentationPlugin / PresentationSet; Presentation scaffold analysis returned
   and recommends a new shared Presentation Layer story. Window can be cleared.
