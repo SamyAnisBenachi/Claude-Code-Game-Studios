@@ -2108,3 +2108,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record SAU-011 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
 - Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+
+## Session Extract - /story-done 2026-05-06
+- Verdict: COMPLETE
+- Story: `production/epics/shop-auction-ui/story-012-draft-initial-clear-objective-overlay.md` - Story 012: Draft Initial Clear Objective Overlay
+- Criteria: 17/17 passing; DRAFT_INITIAL objective overlay activation waits for phase plus offering, exact copy is rendered, dismiss button and Esc dismissal work, non-actionable outside dismissal emits no C2S messages, guarded controls preserve behavior, retrieval reopens the same overlay, phase exit hides overlay/retrieval, purchase/Ready/Retract Ready/PLACEMENT regressions pass, and Browser/WASM evidence records non-occlusion/readability.
+- Test Evidence: `production/qa/evidence/shop-auction-ui-draft-initial-clear-objective-overlay-2026-05-05.md`; capture artifacts under `production/qa/evidence/captures/shop-auction-ui-draft-initial-clear-objective-overlay/`; `capture-summary.json` aggregate verdict PASS; `cargo test -p client --test shop_auction_ui_draft_initial_objective_overlay_test --jobs 1` passed 8/8; requested Shop/Auction UI regression groups passed 17/17 and 17/17; `cargo fmt -p client -- --check`, `cargo check -p client --jobs 1`, and `git diff --check` passed.
+- Verification: Current root `main` had no implementation changes during closure. Browser/WASM evidence exists for entry overlay, focused dismiss control, Esc dismissal, retrieval affordance, reopened overlay, and required grid, timer, Ready, HUD gold, and hand surface non-occlusion.
+- Notes: No blocking GDD, ADR-015, ADR-021, Bevy 0.18, or control-manifest deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- QA condition: `QA-COND-0005` remains Open. SAU-012 closes only the A11Y-ST-18 DRAFT_INITIAL clear-objective sub-gap in the Standard-tier accessibility disposition register.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` updated to record SAU-012 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
+- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.

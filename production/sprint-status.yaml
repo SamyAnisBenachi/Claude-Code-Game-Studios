@@ -71,6 +71,7 @@ stories:
       - "HUD-012 / HUD-owned A11Y-ST-01 text-size and HUD-owned A11Y-ST-03 contrast evidence is implemented and evidenced. QA-COND-0005 remains Open because non-HUD / auction-price exposure and other Standard-tier rows still block closure."
       - "HAND-UI-014 / A11Y-ST-14 PLACEMENT staged disclosure is implemented and evidenced with Browser/WASM entry, selection, lane/cell guidance, stage, split adjustment, invalid-submit correction, and successful-submit captures. QA-COND-0005 remains Open because other Standard-tier rows still block closure."
       - "SAU-011 / A11Y-ST-12 auction bid target size, focus visibility, affordability gating, in-flight disable, local leader replacement, and one-send semantics are implemented and evidenced with Browser/WASM captures. QA-COND-0005 remains Open because other Standard-tier rows still block closure."
+      - "SAU-012 / A11Y-ST-18 DRAFT_INITIAL clear objective overlay, exact copy, dismiss, Esc, retrieval, non-occlusion, and no overlay-originated C2S sends are implemented and evidenced with Browser/WASM captures. QA-COND-0005 remains Open because other Standard-tier rows still block closure."
 
   - id: "S6-05"
     name: "OS-18b two-client objective HP visibility evidence"

@@ -1,7 +1,7 @@
 # Story 012: Draft Initial Clear Objective Overlay
 
 > **Epic**: Shop / Auction UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -84,23 +84,23 @@
 
 ## Acceptance Criteria
 
-- [ ] On DRAFT_INITIAL activation, after both `S2CPhaseChanged(DRAFT_INITIAL)` and `S2CDraftOffering` are available, the objective overlay appears in the same active panel state as the 3 x 3 offering.
-- [ ] The visible overlay body copy is exactly `Select up to 9 cards to keep. You have 45 seconds.`
-- [ ] The overlay appears only during DRAFT_INITIAL and is hidden or cleared on `S2CPhaseChanged(PLACEMENT)` and on any non-DRAFT_INITIAL phase.
-- [ ] The overlay does not render before the DRAFT_INITIAL panel is active and does not activate from `S2CDraftOffering` alone.
-- [ ] Dismissing through the explicit dismiss button hides the overlay without hiding the DRAFT_INITIAL grid, timer, Ready/Retract Ready, purchased-slot state, or gold affordances.
-- [ ] Pressing Esc while overlay focus is active hides the overlay and returns focus to a deterministic DRAFT_INITIAL control.
-- [ ] Clicking outside the overlay but inside non-actionable DRAFT_INITIAL panel space hides the overlay and does not send `C2SPurchaseCard` or `C2SSignalReady`.
-- [ ] Clicking a card slot, Ready, Retract Ready, timer, or retrieval affordance does not count as outside-dismiss and preserves that control's existing behavior.
-- [ ] After dismissal, the in-phase retrieval affordance remains visible, keyboard-reachable, and reopens the same overlay while DRAFT_INITIAL is active.
-- [ ] The retrieval affordance is removed from focus traversal or hidden when DRAFT_INITIAL exits.
-- [ ] Overlay dismissal and retrieval are local presentation state only and do not emit C2S messages.
-- [ ] Existing DRAFT_INITIAL card purchase behavior remains unchanged: valid affordable slot clicks still send exactly one `C2SPurchaseCard { card_id }`, insufficient gold still does not send, and confirmed purchases still show the existing bought state.
-- [ ] Existing DRAFT_INITIAL Ready/Retract Ready behavior remains unchanged: Ready sends `C2SSignalReady { retract: false }`, Retract Ready sends `C2SSignalReady { retract: true }`, and the grid remains interactive while ready.
-- [ ] Existing DRAFT_INITIAL PLACEMENT dismissal behavior remains unchanged: `S2CPhaseChanged(PLACEMENT)` dismisses the panel and blocks further purchase sends.
-- [ ] Browser/WASM evidence shows overlay presence, exact copy, dismiss button focus, Esc dismissal, retrieval affordance, reopened overlay, and no overlap with required grid, timer, Ready, HUD, or hand surfaces.
-- [ ] The evidence document includes a QA-COND-0005 impact statement saying A11Y-ST-18 is implemented and evidenced by this story, but QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented, evidenced, reclassified, or accepted as risk.
-- [ ] `git diff --check` passes.
+- [x] On DRAFT_INITIAL activation, after both `S2CPhaseChanged(DRAFT_INITIAL)` and `S2CDraftOffering` are available, the objective overlay appears in the same active panel state as the 3 x 3 offering.
+- [x] The visible overlay body copy is exactly `Select up to 9 cards to keep. You have 45 seconds.`
+- [x] The overlay appears only during DRAFT_INITIAL and is hidden or cleared on `S2CPhaseChanged(PLACEMENT)` and on any non-DRAFT_INITIAL phase.
+- [x] The overlay does not render before the DRAFT_INITIAL panel is active and does not activate from `S2CDraftOffering` alone.
+- [x] Dismissing through the explicit dismiss button hides the overlay without hiding the DRAFT_INITIAL grid, timer, Ready/Retract Ready, purchased-slot state, or gold affordances.
+- [x] Pressing Esc while overlay focus is active hides the overlay and returns focus to a deterministic DRAFT_INITIAL control.
+- [x] Clicking outside the overlay but inside non-actionable DRAFT_INITIAL panel space hides the overlay and does not send `C2SPurchaseCard` or `C2SSignalReady`.
+- [x] Clicking a card slot, Ready, Retract Ready, timer, or retrieval affordance does not count as outside-dismiss and preserves that control's existing behavior.
+- [x] After dismissal, the in-phase retrieval affordance remains visible, keyboard-reachable, and reopens the same overlay while DRAFT_INITIAL is active.
+- [x] The retrieval affordance is removed from focus traversal or hidden when DRAFT_INITIAL exits.
+- [x] Overlay dismissal and retrieval are local presentation state only and do not emit C2S messages.
+- [x] Existing DRAFT_INITIAL card purchase behavior remains unchanged: valid affordable slot clicks still send exactly one `C2SPurchaseCard { card_id }`, insufficient gold still does not send, and confirmed purchases still show the existing bought state.
+- [x] Existing DRAFT_INITIAL Ready/Retract Ready behavior remains unchanged: Ready sends `C2SSignalReady { retract: false }`, Retract Ready sends `C2SSignalReady { retract: true }`, and the grid remains interactive while ready.
+- [x] Existing DRAFT_INITIAL PLACEMENT dismissal behavior remains unchanged: `S2CPhaseChanged(PLACEMENT)` dismisses the panel and blocks further purchase sends.
+- [x] Browser/WASM evidence shows overlay presence, exact copy, dismiss button focus, Esc dismissal, retrieval affordance, reopened overlay, and no overlap with required grid, timer, Ready, HUD, or hand surfaces.
+- [x] The evidence document includes a QA-COND-0005 impact statement saying A11Y-ST-18 is implemented and evidenced by this story, but QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented, evidenced, reclassified, or accepted as risk.
+- [x] `git diff --check` passes.
 
 ---
 
@@ -182,7 +182,10 @@ No gameplay-loop performance impact expected. This story adds one bounded DRAFT_
 
 Story 012 implements and evidences A11Y-ST-18 for DRAFT_INITIAL clear objective copy, dismissal, retrieval, and browser/WASM readability. It does not close QA-COND-0005 by itself. QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented and evidenced, reclassified, or accepted as risk.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing. Evidence document:
+`production/qa/evidence/shop-auction-ui-draft-initial-clear-objective-overlay-2026-05-05.md`.
+Browser/WASM capture artifacts:
+`production/qa/evidence/captures/shop-auction-ui-draft-initial-clear-objective-overlay/`.
 
 ---
 
@@ -197,3 +200,12 @@ Story 012 implements and evidences A11Y-ST-18 for DRAFT_INITIAL clear objective 
 ## Blockers
 
 None.
+
+## Completion Notes
+
+**Completed**: 2026-05-06
+**Criteria**: 17/17 passing.
+**Deviations**: None blocking. `QA-COND-0005` remains Open; this story closes only the A11Y-ST-18 sub-gap in the Standard-tier accessibility disposition register.
+**Test Evidence**: `production/qa/evidence/shop-auction-ui-draft-initial-clear-objective-overlay-2026-05-05.md`; capture artifacts under `production/qa/evidence/captures/shop-auction-ui-draft-initial-clear-objective-overlay/`; `capture-summary.json` aggregate verdict PASS.
+**Verification**: `cargo test -p client --test shop_auction_ui_draft_initial_objective_overlay_test --jobs 1` passed 8/8; `cargo test -p client --test shop_auction_ui_draft_initial_grid_test --test shop_auction_ui_shop_panel_test --jobs 1` passed 17/17; `cargo test -p client --test shop_auction_ui_auction_activation_test --test shop_auction_ui_auction_bid_buttons_test --test shop_auction_ui_auction_feedback_test --jobs 1` passed 17/17; `cargo fmt -p client -- --check`, `cargo check -p client --jobs 1`, and `git diff --check` passed.
+**Code Review**: Skipped - lean mode default because `production/review-mode.txt` is absent. No implementation code changed during this `/story-done` retry.

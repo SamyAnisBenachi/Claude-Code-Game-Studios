@@ -13,7 +13,8 @@
 | HUD-012 evidence | `production/qa/evidence/hud-012-text-size-contrast-accessibility.md` |
 | A11Y Settings 001 evidence | `production/qa/evidence/accessibility-settings-foundation-2026-05-05.md` |
 | HAND-UI-014 evidence | `production/qa/evidence/hand-ui-placement-staged-disclosure-accessibility-2026-05-05.md` |
-| Disposition verdict | QA-COND-0005 remains Open. Every source row has exactly one allowed final disposition. A11Y-ST-09, A11Y-ST-13, and A11Y-ST-14 are implemented and evidenced. HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are implemented and evidenced by HUD-012, but the parent rows still require remaining non-HUD / auction-price evidence before closure. A11Y-DEP-01 and A11Y-DEP-02 now have foundation implementation evidence, but dependent source rows still require their own closure evidence. |
+| SAU-012 evidence | `production/qa/evidence/shop-auction-ui-draft-initial-clear-objective-overlay-2026-05-05.md` |
+| Disposition verdict | QA-COND-0005 remains Open. Every source row has exactly one allowed final disposition. A11Y-ST-09, A11Y-ST-12, A11Y-ST-13, A11Y-ST-14, and A11Y-ST-18 are implemented and evidenced. HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are implemented and evidenced by HUD-012, but the parent rows still require remaining non-HUD / auction-price evidence before closure. A11Y-DEP-01 and A11Y-DEP-02 now have foundation implementation evidence, but dependent source rows still require their own closure evidence. |
 
 ## Scope
 
@@ -132,6 +133,27 @@ reserve/current split adjustment, invalid submit, correction, and successful
 submit. It also records that later controls are not shown before their
 disclosure step and that QA-COND-0005 remains Open.
 
+## SAU-012 Evidence Linkage
+
+SAU-012 implemented and verified the A11Y-ST-18 DRAFT_INITIAL clear objective
+overlay sub-gap.
+
+- evidence:
+  `production/qa/evidence/shop-auction-ui-draft-initial-clear-objective-overlay-2026-05-05.md`
+- Browser/WASM captures:
+  `production/qa/evidence/captures/shop-auction-ui-draft-initial-clear-objective-overlay/`
+- story:
+  `production/epics/shop-auction-ui/story-012-draft-initial-clear-objective-overlay.md`
+- automated verification:
+  `cargo test -p client --test shop_auction_ui_draft_initial_objective_overlay_test --jobs 1`
+  and the requested Shop/Auction UI regression targets
+
+SAU-012 evidence records overlay presence on DRAFT_INITIAL activation, exact
+copy, visible focused dismiss control, Esc dismissal, retrieval affordance,
+retrieved overlay, non-occlusion of the grid, timer, Ready control, HUD gold,
+and hand surfaces, plus no overlay-originated C2S sends. It also records that
+QA-COND-0005 remains Open.
+
 ## Source Row Disposition Register
 
 | Row ID | Source row | Tier | Current evidence | Final disposition | Required audit or test | Producer signoff required | Signoff evidence | QA-COND-0005 impact | Follow-up path |
@@ -153,7 +175,7 @@ disclosure step and that QA-COND-0005 remains Open.
 | A11Y-ST-15 | Tutorial persistence | Standard | Settings UX defines Help replay/reset behavior, but no tutorial/help prompt registry, replay, reset, or persistence implementation exists. | later sprint / blocked dependency | Implement prompt registry, dismissed-prompt persistence, Help replay, reset-all, and per-prompt reset evidence. | No | N/A | Blocks closure. | A11Y-DEP-06, `production/epics/accessibility-settings/EPIC.md` story 005. |
 | A11Y-ST-16 | Phase label always visible | Standard | HUD logic evidence verifies phase label text updates; no browser/WASM evidence verifies visibility, non-occlusion, and non-animation-only phase communication. | evidence-only required | Browser/WASM capture across phases proving phase label remains visible, readable, non-occluded, and not communicated by animation alone. | No | N/A | Blocks closure. | HUD evidence pass or `production/epics/accessibility-settings/EPIC.md` story 006. |
 | A11Y-ST-17 | Gold counter always visible | Standard | HUD and economy logic evidence covers gold display behavior; no browser/WASM occlusion or full-opacity visibility evidence is attached. | evidence-only required | Browser/WASM capture across DRAFT_INITIAL, DRAFT_SHOP, DRAFT_AUCTION, PLACEMENT, RESOLUTION, and GAME_OVER proving gold counter visibility and opacity. | No | N/A | Blocks closure. | HUD/Shop-Auction evidence pass or `production/epics/accessibility-settings/EPIC.md` story 006. |
-| A11Y-ST-18 | DRAFT_INITIAL: clear objective | Standard | No implementation or evidence for the dismissible and retrievable start objective overlay. | must implement in Sprint 6 | Implement and capture evidence for the start objective overlay text, dismissal, retrieval path, and browser readability. | No | N/A | Blocks closure. | Sprint 6 cognitive support story or `production/epics/accessibility-settings/EPIC.md` story 005 plus DRAFT_INITIAL UI work. |
+| A11Y-ST-18 | DRAFT_INITIAL: clear objective | Standard | SAU-012 evidence verifies the exact DRAFT_INITIAL objective copy, activation only after phase plus offering data, dismiss button focus, Esc dismissal, non-actionable outside dismissal without C2S sends, in-phase retrieval, hidden retrieval on phase exit, and Browser/WASM non-occlusion/readability captures. | implemented + evidence attached | Retain SAU-012 evidence, capture summary, and regression commands from `production/qa/evidence/shop-auction-ui-draft-initial-clear-objective-overlay-2026-05-05.md`. | No | N/A | Closes sub-gap. QA-COND-0005 as a whole remains Open. | No follow-up for this row unless DRAFT_INITIAL objective overlay accessibility regresses. |
 | A11Y-ST-19 | Visual indicators for audio cues | Standard | Source docs identify timer, auction, RESOLUTION, and objective audio cues. Hand UI has visible timer number and `TimerUrgencyAudio`, but no complete gameplay-critical audio-cue audit is attached. | evidence-only required | Audit all gameplay-critical audio cues and map each cue to visible backup, non-shipping audio status, or implementation dependency. Any shipped audio-only critical cue must be remediated or producer-signed as risk. | No | N/A | Blocks closure. | A11Y-DEP-04, `production/epics/accessibility-settings/EPIC.md` story 003. |
 | A11Y-BS-01 | Color-as-only-indicator audit | Basic baseline under Standard target | Art bible and design docs cover some shape/text backups; objective dots and damage/heal backup remain unverified. | evidence-only required | Color-as-only audit for player side, class identity, objective status, auction escalation, ATK/HP, damage/heal, and other gameplay-critical state. | No | N/A | Blocks closure. | `production/epics/accessibility-settings/EPIC.md` story 002. |
 | A11Y-BS-02 | Brightness / gamma controls | Basic baseline under Standard target | Settings UX specifies brightness/gamma sliders, but render calibration approach and contrast-preserving implementation are not defined or evidenced. | later sprint / blocked dependency | Define render calibration approach, implement controls, and re-verify UI contrast under adjustment range. | No | N/A | Blocks closure. | A11Y-DEP-05 and a future accessibility-settings video calibration story. |
@@ -171,7 +193,7 @@ disclosure step and that QA-COND-0005 remains Open.
 | A11Y-DEP-03 | Input action registry | Settings UX lists action groups, but no canonical registry is implemented or evidenced. | Registry of rebindable player-facing actions, conflict model, reserved browser shortcut list, and persistence tests. | A11Y-ST-08, A11Y-ST-10. | Blocks input remapping closure and any hold-flow remediation. | `production/epics/accessibility-settings/EPIC.md` story 004. |
 | A11Y-DEP-04 | Audio controls pipeline | Hand UI has `TimerUrgencyAudio` and an intended `ui_hand` channel; Settings UX requires Music/SFX/UI buses. No full audio bus implementation or gate audit exists. | Audit of shipped audio content and evidence for Music, SFX, and UI bus controls with persistence, or producer decision if no audio pipeline ships in this gate. | A11Y-ST-19, A11Y-BS-05. | Blocks closure for visual-backup and volume-control rows. | `production/epics/accessibility-settings/EPIC.md` story 003 plus future audio-controls story. |
 | A11Y-DEP-05 | Render calibration approach | Settings UX requires brightness/gamma controls and contrast preservation, but no renderer/shader/browser calibration approach is selected. | Technical decision for brightness/gamma implementation path and contrast re-verification under the adjustment range. | A11Y-BS-02. | Blocks brightness/gamma closure. | Future accessibility-settings video calibration story. |
-| A11Y-DEP-06 | Tutorial/help prompt registry | Settings UX specifies Help replay/reset and prompt categories. No registry, ownership decision, or persistence evidence exists. | Prompt registry, owner decision for tutorial/help copy, dismiss/replay/reset persistence evidence, and DRAFT_INITIAL objective overlay retrieval path. | A11Y-ST-15, A11Y-ST-18. | Blocks tutorial persistence and DRAFT_INITIAL clear-objective closure. | `production/epics/accessibility-settings/EPIC.md` story 005. |
+| A11Y-DEP-06 | Tutorial/help prompt registry | Settings UX specifies Help replay/reset and prompt categories. No registry, ownership decision, or persistence evidence exists. SAU-012 supplies the DRAFT_INITIAL objective overlay retrieval path for A11Y-ST-18. | Prompt registry, owner decision for tutorial/help copy, and dismiss/replay/reset persistence evidence. | A11Y-ST-15. | Blocks tutorial persistence; no longer blocks DRAFT_INITIAL clear-objective closure. | `production/epics/accessibility-settings/EPIC.md` story 005. |
 
 ## Rows Still Blocking QA-COND-0005 Closure
 
@@ -182,13 +204,12 @@ decision:
 - A11Y-ST-01, A11Y-ST-02, A11Y-ST-03.
 - A11Y-ST-04, A11Y-ST-05, A11Y-ST-06, A11Y-ST-07, A11Y-ST-08.
 - A11Y-ST-10, A11Y-ST-11, A11Y-ST-15.
-- A11Y-ST-16, A11Y-ST-17, A11Y-ST-18, A11Y-ST-19.
+- A11Y-ST-16, A11Y-ST-17, A11Y-ST-19.
 - A11Y-BS-01, A11Y-BS-02, A11Y-BS-03, A11Y-BS-04, A11Y-BS-05.
 - A11Y-NA-01.
 
 Rows currently marked `must implement in Sprint 6`:
 
-- A11Y-ST-18 - DRAFT_INITIAL: clear objective.
 - A11Y-BS-03 - Screen flash warning.
 
 Rows currently marked `later sprint / blocked dependency`:
@@ -199,7 +220,7 @@ Rows currently marked `later sprint / blocked dependency`:
 
 ## Rows No Longer Blocking QA-COND-0005 Closure
 
-Four source rows no longer block as individual sub-gaps:
+Five source rows no longer block as individual sub-gaps:
 
 - A11Y-ST-09 - PLACEMENT timer extension. It is implemented and evidenced by
   GSS-008.
@@ -209,6 +230,8 @@ Four source rows no longer block as individual sub-gaps:
   evidenced by HUD-011.
 - A11Y-ST-14 - PLACEMENT staged disclosure. It is implemented and evidenced by
   HAND-UI-014.
+- A11Y-ST-18 - DRAFT_INITIAL: clear objective. It is implemented and evidenced
+  by SAU-012.
 
 Two dependency rows are no longer empty prerequisites:
 
@@ -254,7 +277,8 @@ dispositioned without an unverified Standard-tier blocker.
 Current closure result:
 
 - QA-COND-0005 remains Open.
-- A11Y-ST-09, A11Y-ST-12, A11Y-ST-13, and A11Y-ST-14 are closed sub-gaps.
+- A11Y-ST-09, A11Y-ST-12, A11Y-ST-13, A11Y-ST-14, and A11Y-ST-18
+  are closed sub-gaps.
 - HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are evidenced by HUD-012, but
   the parent rows still block closure until remaining non-HUD / auction-price
   exposure is evidenced or dispositioned.

@@ -104,6 +104,13 @@ Standard-tier accessibility is remediated, verified, or explicitly reclassified.
   submit, correction, and successful submit, plus the focused Hand UI
   accessibility test and requested regression targets passing. This closes only
   the A11Y-ST-14 sub-gap; QA-COND-0005 remains Open.
+- 2026-05-06: SAU-012 implemented and verified the A11Y-ST-18 DRAFT_INITIAL
+  clear-objective sub-gap. Evidence:
+  `production/qa/evidence/shop-auction-ui-draft-initial-clear-objective-overlay-2026-05-05.md`
+  with Browser/WASM captures for overlay entry, focused dismiss control, Esc
+  dismissal, retrieval, reopened overlay, and non-occlusion/readability, plus
+  focused Shop/Auction UI and regression targets passing. This closes only the
+  A11Y-ST-18 sub-gap; QA-COND-0005 remains Open.
 
 ## Non-Goals
 
