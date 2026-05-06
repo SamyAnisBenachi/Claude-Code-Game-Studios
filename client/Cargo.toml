@@ -49,6 +49,10 @@ path = "src/hud_text_size_contrast_harness.rs"
 name = "hand_ui_placement_staged_disclosure_harness"
 path = "src/hand_ui_placement_staged_disclosure_harness.rs"
 
+[[bin]]
+name = "shop_auction_bid_target_focus_harness"
+path = "src/shop_auction_bid_target_focus_harness.rs"
+
 [[test]]
 name = "card_animations_plugin_scaffold_test"
 path = "../tests/unit/card-animations/plugin_scaffold_test.rs"
@@ -228,6 +232,10 @@ path = "../tests/integration/shop_auction_ui/auction_activation_test.rs"
 [[test]]
 name = "shop_auction_ui_auction_bid_buttons_test"
 path = "../tests/integration/shop_auction_ui/auction_bid_buttons_test.rs"
+
+[[test]]
+name = "shop_auction_ui_auction_bid_target_focus_test"
+path = "../tests/integration/shop_auction_ui/auction_bid_target_focus_test.rs"
 
 [[test]]
 name = "shop_auction_ui_auction_feedback_test"

@@ -1,0 +1,1145 @@
+{
+    "url":  "http://127.0.0.1:8082/shop-auction-bid-target-focus-harness.html",
+    "captureTool":  "PowerShell Chrome DevTools Protocol",
+    "chromePath":  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "chromeVersion":  "147.0.7727.139",
+    "summaryPath":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/capture-summary.json",
+    "captures":  [
+                     {
+                         "scenario":  "affordable",
+                         "viewport":  {
+                                          "width":  1366,
+                                          "height":  768
+                                      },
+                         "url":  "http://127.0.0.1:8082/shop-auction-bid-target-focus-harness.html?scenario=affordable\u0026ui_scale=100\u0026capture=6adf1f2e99ab47a1b76d13f321de326c",
+                         "report":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-affordable-1366x768-report.json",
+                         "screenshot":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-affordable-1366x768.png",
+                         "screenshotBytes":  19390,
+                         "reported":  {
+                                          "ready_for_capture":  true,
+                                          "fixture":  "sau_011_auction_bid_target_focus",
+                                          "scenario":  "affordable",
+                                          "viewport":  {
+                                                           "width":  1366,
+                                                           "height":  768
+                                                       },
+                                          "ui_scale":  1,
+                                          "buttons":  [
+                                                          {
+                                                              "increment":  1,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "5g\n(+1)",
+                                                              "focusable":  true,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  1,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  519,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  3,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "7g\n(+3)",
+                                                              "focusable":  true,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  2,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  642,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  5,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "9g\n(+5)",
+                                                              "focusable":  true,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  3,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  764,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          }
+                                                      ],
+                                          "target_bounds":  [
+                                                                {
+                                                                    "increment":  1,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  3,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  5,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                }
+                                                            ],
+                                          "focus_bounds":  [
+                                                               {
+                                                                   "increment":  1,
+                                                                   "focusable":  true,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  3,
+                                                                   "focusable":  true,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  5,
+                                                                   "focusable":  true,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               }
+                                                           ],
+                                          "focused_increment":  null,
+                                          "bid_status_text":  "",
+                                          "outbound_place_bids":  0,
+                                          "verdict":  {
+                                                          "target_bounds_44px":  true,
+                                                          "focus_bounds_44px":  true,
+                                                          "affordable_labels":  true,
+                                                          "unaffordable_keyboard_skip":  false,
+                                                          "bidding_feedback":  false,
+                                                          "leading_replacement_no_focusable_bid":  false
+                                                      }
+                                      }
+                     },
+                     {
+                         "scenario":  "focus-plus-1",
+                         "viewport":  {
+                                          "width":  1366,
+                                          "height":  768
+                                      },
+                         "url":  "http://127.0.0.1:8082/shop-auction-bid-target-focus-harness.html?scenario=focus-plus-1\u0026ui_scale=100\u0026capture=abc9c68be4254c4db602b04b6e7a6cd4",
+                         "report":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-focus-plus-1-1366x768-report.json",
+                         "screenshot":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-focus-plus-1-1366x768.png",
+                         "screenshotBytes":  19390,
+                         "reported":  {
+                                          "ready_for_capture":  true,
+                                          "fixture":  "sau_011_auction_bid_target_focus",
+                                          "scenario":  "focus-plus-1",
+                                          "viewport":  {
+                                                           "width":  1366,
+                                                           "height":  768
+                                                       },
+                                          "ui_scale":  1,
+                                          "buttons":  [
+                                                          {
+                                                              "increment":  1,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "5g\n(+1)",
+                                                              "focusable":  true,
+                                                              "focused":  true,
+                                                              "focus_ring_visible":  true,
+                                                              "focus_ring_width_px":  2,
+                                                              "order":  1,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  519,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  2,
+                                                                                "right":  2,
+                                                                                "top":  2,
+                                                                                "bottom":  2
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  3,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "7g\n(+3)",
+                                                              "focusable":  true,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  2,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  642,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  5,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "9g\n(+5)",
+                                                              "focusable":  true,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  3,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  764,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          }
+                                                      ],
+                                          "target_bounds":  [
+                                                                {
+                                                                    "increment":  1,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  3,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  5,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                }
+                                                            ],
+                                          "focus_bounds":  [
+                                                               {
+                                                                   "increment":  1,
+                                                                   "focusable":  true,
+                                                                   "focused":  true,
+                                                                   "focus_ring_visible":  true,
+                                                                   "focus_ring_width_px":  2,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  3,
+                                                                   "focusable":  true,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  5,
+                                                                   "focusable":  true,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               }
+                                                           ],
+                                          "focused_increment":  1,
+                                          "bid_status_text":  "",
+                                          "outbound_place_bids":  0,
+                                          "verdict":  {
+                                                          "target_bounds_44px":  true,
+                                                          "focus_bounds_44px":  true,
+                                                          "affordable_labels":  true,
+                                                          "unaffordable_keyboard_skip":  false,
+                                                          "bidding_feedback":  false,
+                                                          "leading_replacement_no_focusable_bid":  false
+                                                      }
+                                      }
+                     },
+                     {
+                         "scenario":  "focus-plus-3",
+                         "viewport":  {
+                                          "width":  1366,
+                                          "height":  768
+                                      },
+                         "url":  "http://127.0.0.1:8082/shop-auction-bid-target-focus-harness.html?scenario=focus-plus-3\u0026ui_scale=100\u0026capture=178387463dee4e72a3dbcd2e4f27f6ba",
+                         "report":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-focus-plus-3-1366x768-report.json",
+                         "screenshot":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-focus-plus-3-1366x768.png",
+                         "screenshotBytes":  19390,
+                         "reported":  {
+                                          "ready_for_capture":  true,
+                                          "fixture":  "sau_011_auction_bid_target_focus",
+                                          "scenario":  "focus-plus-3",
+                                          "viewport":  {
+                                                           "width":  1366,
+                                                           "height":  768
+                                                       },
+                                          "ui_scale":  1,
+                                          "buttons":  [
+                                                          {
+                                                              "increment":  1,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "5g\n(+1)",
+                                                              "focusable":  true,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  1,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  519,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  3,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "7g\n(+3)",
+                                                              "focusable":  true,
+                                                              "focused":  true,
+                                                              "focus_ring_visible":  true,
+                                                              "focus_ring_width_px":  2,
+                                                              "order":  2,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  642,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  2,
+                                                                                "right":  2,
+                                                                                "top":  2,
+                                                                                "bottom":  2
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  5,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "9g\n(+5)",
+                                                              "focusable":  true,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  3,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  764,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          }
+                                                      ],
+                                          "target_bounds":  [
+                                                                {
+                                                                    "increment":  1,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  3,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  5,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                }
+                                                            ],
+                                          "focus_bounds":  [
+                                                               {
+                                                                   "increment":  1,
+                                                                   "focusable":  true,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  3,
+                                                                   "focusable":  true,
+                                                                   "focused":  true,
+                                                                   "focus_ring_visible":  true,
+                                                                   "focus_ring_width_px":  2,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  5,
+                                                                   "focusable":  true,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               }
+                                                           ],
+                                          "focused_increment":  3,
+                                          "bid_status_text":  "",
+                                          "outbound_place_bids":  0,
+                                          "verdict":  {
+                                                          "target_bounds_44px":  true,
+                                                          "focus_bounds_44px":  true,
+                                                          "affordable_labels":  true,
+                                                          "unaffordable_keyboard_skip":  false,
+                                                          "bidding_feedback":  false,
+                                                          "leading_replacement_no_focusable_bid":  false
+                                                      }
+                                      }
+                     },
+                     {
+                         "scenario":  "focus-plus-5",
+                         "viewport":  {
+                                          "width":  1366,
+                                          "height":  768
+                                      },
+                         "url":  "http://127.0.0.1:8082/shop-auction-bid-target-focus-harness.html?scenario=focus-plus-5\u0026ui_scale=100\u0026capture=9c14002b60be4443b7a59b54825a5491",
+                         "report":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-focus-plus-5-1366x768-report.json",
+                         "screenshot":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-focus-plus-5-1366x768.png",
+                         "screenshotBytes":  19390,
+                         "reported":  {
+                                          "ready_for_capture":  true,
+                                          "fixture":  "sau_011_auction_bid_target_focus",
+                                          "scenario":  "focus-plus-5",
+                                          "viewport":  {
+                                                           "width":  1366,
+                                                           "height":  768
+                                                       },
+                                          "ui_scale":  1,
+                                          "buttons":  [
+                                                          {
+                                                              "increment":  1,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "5g\n(+1)",
+                                                              "focusable":  true,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  1,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  519,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  3,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "7g\n(+3)",
+                                                              "focusable":  true,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  2,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  642,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  5,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "9g\n(+5)",
+                                                              "focusable":  true,
+                                                              "focused":  true,
+                                                              "focus_ring_visible":  true,
+                                                              "focus_ring_width_px":  2,
+                                                              "order":  3,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  764,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  2,
+                                                                                "right":  2,
+                                                                                "top":  2,
+                                                                                "bottom":  2
+                                                                            }
+                                                          }
+                                                      ],
+                                          "target_bounds":  [
+                                                                {
+                                                                    "increment":  1,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  3,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  5,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                }
+                                                            ],
+                                          "focus_bounds":  [
+                                                               {
+                                                                   "increment":  1,
+                                                                   "focusable":  true,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  3,
+                                                                   "focusable":  true,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  5,
+                                                                   "focusable":  true,
+                                                                   "focused":  true,
+                                                                   "focus_ring_visible":  true,
+                                                                   "focus_ring_width_px":  2,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               }
+                                                           ],
+                                          "focused_increment":  5,
+                                          "bid_status_text":  "",
+                                          "outbound_place_bids":  0,
+                                          "verdict":  {
+                                                          "target_bounds_44px":  true,
+                                                          "focus_bounds_44px":  true,
+                                                          "affordable_labels":  true,
+                                                          "unaffordable_keyboard_skip":  false,
+                                                          "bidding_feedback":  false,
+                                                          "leading_replacement_no_focusable_bid":  false
+                                                      }
+                                      }
+                     },
+                     {
+                         "scenario":  "unaffordable",
+                         "viewport":  {
+                                          "width":  1366,
+                                          "height":  768
+                                      },
+                         "url":  "http://127.0.0.1:8082/shop-auction-bid-target-focus-harness.html?scenario=unaffordable\u0026ui_scale=100\u0026capture=e519d1b7e52c4b61a881ed32a5f7fbc8",
+                         "report":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-unaffordable-1366x768-report.json",
+                         "screenshot":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-unaffordable-1366x768.png",
+                         "screenshotBytes":  20430,
+                         "reported":  {
+                                          "ready_for_capture":  true,
+                                          "fixture":  "sau_011_auction_bid_target_focus",
+                                          "scenario":  "unaffordable",
+                                          "viewport":  {
+                                                           "width":  1366,
+                                                           "height":  768
+                                                       },
+                                          "ui_scale":  1,
+                                          "buttons":  [
+                                                          {
+                                                              "increment":  1,
+                                                              "state":  "Enabled",
+                                                              "visible":  true,
+                                                              "text":  "1g\n(+1)",
+                                                              "focusable":  true,
+                                                              "focused":  true,
+                                                              "focus_ring_visible":  true,
+                                                              "focus_ring_width_px":  2,
+                                                              "order":  1,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  519,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  2,
+                                                                                "right":  2,
+                                                                                "top":  2,
+                                                                                "bottom":  2
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  3,
+                                                              "state":  "Unaffordable",
+                                                              "visible":  true,
+                                                              "text":  "3g\n(+3)",
+                                                              "focusable":  false,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  2,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  642,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  5,
+                                                              "state":  "Unaffordable",
+                                                              "visible":  true,
+                                                              "text":  "5g\n(+5)",
+                                                              "focusable":  false,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  3,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  764,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          }
+                                                      ],
+                                          "target_bounds":  [
+                                                                {
+                                                                    "increment":  1,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  3,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  5,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                }
+                                                            ],
+                                          "focus_bounds":  [
+                                                               {
+                                                                   "increment":  1,
+                                                                   "focusable":  true,
+                                                                   "focused":  true,
+                                                                   "focus_ring_visible":  true,
+                                                                   "focus_ring_width_px":  2,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  3,
+                                                                   "focusable":  false,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  5,
+                                                                   "focusable":  false,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               }
+                                                           ],
+                                          "focused_increment":  1,
+                                          "bid_status_text":  "",
+                                          "outbound_place_bids":  0,
+                                          "verdict":  {
+                                                          "target_bounds_44px":  true,
+                                                          "focus_bounds_44px":  true,
+                                                          "affordable_labels":  false,
+                                                          "unaffordable_keyboard_skip":  true,
+                                                          "bidding_feedback":  false,
+                                                          "leading_replacement_no_focusable_bid":  false
+                                                      }
+                                      }
+                     },
+                     {
+                         "scenario":  "bidding",
+                         "viewport":  {
+                                          "width":  1366,
+                                          "height":  768
+                                      },
+                         "url":  "http://127.0.0.1:8082/shop-auction-bid-target-focus-harness.html?scenario=bidding\u0026ui_scale=100\u0026capture=4a9fe9c999084fdd8b5eb490859270db",
+                         "report":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-bidding-1366x768-report.json",
+                         "screenshot":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-bidding-1366x768.png",
+                         "screenshotBytes":  19947,
+                         "reported":  {
+                                          "ready_for_capture":  true,
+                                          "fixture":  "sau_011_auction_bid_target_focus",
+                                          "scenario":  "bidding",
+                                          "viewport":  {
+                                                           "width":  1366,
+                                                           "height":  768
+                                                       },
+                                          "ui_scale":  1,
+                                          "buttons":  [
+                                                          {
+                                                              "increment":  1,
+                                                              "state":  "GenericDisabled",
+                                                              "visible":  true,
+                                                              "text":  "5g\n(+1)",
+                                                              "focusable":  false,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  1,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  519,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  3,
+                                                              "state":  "InFlight",
+                                                              "visible":  true,
+                                                              "text":  "BIDDING...",
+                                                              "focusable":  false,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  2,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  642,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  5,
+                                                              "state":  "GenericDisabled",
+                                                              "visible":  true,
+                                                              "text":  "9g\n(+5)",
+                                                              "focusable":  false,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  3,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  764,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          }
+                                                      ],
+                                          "target_bounds":  [
+                                                                {
+                                                                    "increment":  1,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  3,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  5,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                }
+                                                            ],
+                                          "focus_bounds":  [
+                                                               {
+                                                                   "increment":  1,
+                                                                   "focusable":  false,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  3,
+                                                                   "focusable":  false,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  5,
+                                                                   "focusable":  false,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               }
+                                                           ],
+                                          "focused_increment":  null,
+                                          "bid_status_text":  "",
+                                          "outbound_place_bids":  1,
+                                          "verdict":  {
+                                                          "target_bounds_44px":  true,
+                                                          "focus_bounds_44px":  true,
+                                                          "affordable_labels":  false,
+                                                          "unaffordable_keyboard_skip":  false,
+                                                          "bidding_feedback":  true,
+                                                          "leading_replacement_no_focusable_bid":  false
+                                                      }
+                                      }
+                     },
+                     {
+                         "scenario":  "leading",
+                         "viewport":  {
+                                          "width":  1366,
+                                          "height":  768
+                                      },
+                         "url":  "http://127.0.0.1:8082/shop-auction-bid-target-focus-harness.html?scenario=leading\u0026ui_scale=100\u0026capture=ce2b9f8cfa0b47e09ce49fac1a94e579",
+                         "report":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-leading-1366x768-report.json",
+                         "screenshot":  "production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/sau-011-leading-1366x768.png",
+                         "screenshotBytes":  19125,
+                         "reported":  {
+                                          "ready_for_capture":  true,
+                                          "fixture":  "sau_011_auction_bid_target_focus",
+                                          "scenario":  "leading",
+                                          "viewport":  {
+                                                           "width":  1366,
+                                                           "height":  768
+                                                       },
+                                          "ui_scale":  1,
+                                          "buttons":  [
+                                                          {
+                                                              "increment":  1,
+                                                              "state":  "HiddenLeading",
+                                                              "visible":  false,
+                                                              "text":  "5g\n(+1)",
+                                                              "focusable":  false,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  1,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  519,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  3,
+                                                              "state":  "HiddenLeading",
+                                                              "visible":  false,
+                                                              "text":  "7g\n(+3)",
+                                                              "focusable":  false,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  2,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  642,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          },
+                                                          {
+                                                              "increment":  5,
+                                                              "state":  "HiddenLeading",
+                                                              "visible":  false,
+                                                              "text":  "9g\n(+5)",
+                                                              "focusable":  false,
+                                                              "focused":  false,
+                                                              "focus_ring_visible":  false,
+                                                              "focus_ring_width_px":  0,
+                                                              "order":  3,
+                                                              "width_css_px":  108,
+                                                              "height_css_px":  44,
+                                                              "center_css_px":  {
+                                                                                    "x":  764,
+                                                                                    "y":  352
+                                                                                },
+                                                              "border_px":  {
+                                                                                "left":  1,
+                                                                                "right":  1,
+                                                                                "top":  1,
+                                                                                "bottom":  1
+                                                                            }
+                                                          }
+                                                      ],
+                                          "target_bounds":  [
+                                                                {
+                                                                    "increment":  1,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  3,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                },
+                                                                {
+                                                                    "increment":  5,
+                                                                    "width_css_px":  108,
+                                                                    "height_css_px":  44,
+                                                                    "component_width_px":  108,
+                                                                    "component_height_px":  44,
+                                                                    "meets_44px":  true
+                                                                }
+                                                            ],
+                                          "focus_bounds":  [
+                                                               {
+                                                                   "increment":  1,
+                                                                   "focusable":  false,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  3,
+                                                                   "focusable":  false,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               },
+                                                               {
+                                                                   "increment":  5,
+                                                                   "focusable":  false,
+                                                                   "focused":  false,
+                                                                   "focus_ring_visible":  false,
+                                                                   "focus_ring_width_px":  0,
+                                                                   "width_css_px":  108,
+                                                                   "height_css_px":  44,
+                                                                   "meets_44px":  true
+                                                               }
+                                                           ],
+                                          "focused_increment":  null,
+                                          "bid_status_text":  "YOU ARE LEADING",
+                                          "outbound_place_bids":  0,
+                                          "verdict":  {
+                                                          "target_bounds_44px":  true,
+                                                          "focus_bounds_44px":  true,
+                                                          "affordable_labels":  true,
+                                                          "unaffordable_keyboard_skip":  false,
+                                                          "bidding_feedback":  false,
+                                                          "leading_replacement_no_focusable_bid":  true
+                                                      }
+                                      }
+                     }
+                 ],
+    "verdict":  {
+                    "targetBounds44":  true,
+                    "focusBounds44":  true,
+                    "affordableLabels":  true,
+                    "unaffordableKeyboardSkip":  true,
+                    "biddingFeedback":  true,
+                    "leadingReplacement":  true
+                },
+    "capturedAt":  "2026-05-06T11:10:58.8758988Z"
+}

@@ -1,0 +1,150 @@
+{
+    "ready_for_capture":  true,
+    "fixture":  "sau_011_auction_bid_target_focus",
+    "scenario":  "bidding",
+    "viewport":  {
+                     "width":  1366,
+                     "height":  768
+                 },
+    "ui_scale":  1,
+    "buttons":  [
+                    {
+                        "increment":  1,
+                        "state":  "GenericDisabled",
+                        "visible":  true,
+                        "text":  "5g\n(+1)",
+                        "focusable":  false,
+                        "focused":  false,
+                        "focus_ring_visible":  false,
+                        "focus_ring_width_px":  0,
+                        "order":  1,
+                        "width_css_px":  108,
+                        "height_css_px":  44,
+                        "center_css_px":  {
+                                              "x":  519,
+                                              "y":  352
+                                          },
+                        "border_px":  {
+                                          "left":  1,
+                                          "right":  1,
+                                          "top":  1,
+                                          "bottom":  1
+                                      }
+                    },
+                    {
+                        "increment":  3,
+                        "state":  "InFlight",
+                        "visible":  true,
+                        "text":  "BIDDING...",
+                        "focusable":  false,
+                        "focused":  false,
+                        "focus_ring_visible":  false,
+                        "focus_ring_width_px":  0,
+                        "order":  2,
+                        "width_css_px":  108,
+                        "height_css_px":  44,
+                        "center_css_px":  {
+                                              "x":  642,
+                                              "y":  352
+                                          },
+                        "border_px":  {
+                                          "left":  1,
+                                          "right":  1,
+                                          "top":  1,
+                                          "bottom":  1
+                                      }
+                    },
+                    {
+                        "increment":  5,
+                        "state":  "GenericDisabled",
+                        "visible":  true,
+                        "text":  "9g\n(+5)",
+                        "focusable":  false,
+                        "focused":  false,
+                        "focus_ring_visible":  false,
+                        "focus_ring_width_px":  0,
+                        "order":  3,
+                        "width_css_px":  108,
+                        "height_css_px":  44,
+                        "center_css_px":  {
+                                              "x":  764,
+                                              "y":  352
+                                          },
+                        "border_px":  {
+                                          "left":  1,
+                                          "right":  1,
+                                          "top":  1,
+                                          "bottom":  1
+                                      }
+                    }
+                ],
+    "target_bounds":  [
+                          {
+                              "increment":  1,
+                              "width_css_px":  108,
+                              "height_css_px":  44,
+                              "component_width_px":  108,
+                              "component_height_px":  44,
+                              "meets_44px":  true
+                          },
+                          {
+                              "increment":  3,
+                              "width_css_px":  108,
+                              "height_css_px":  44,
+                              "component_width_px":  108,
+                              "component_height_px":  44,
+                              "meets_44px":  true
+                          },
+                          {
+                              "increment":  5,
+                              "width_css_px":  108,
+                              "height_css_px":  44,
+                              "component_width_px":  108,
+                              "component_height_px":  44,
+                              "meets_44px":  true
+                          }
+                      ],
+    "focus_bounds":  [
+                         {
+                             "increment":  1,
+                             "focusable":  false,
+                             "focused":  false,
+                             "focus_ring_visible":  false,
+                             "focus_ring_width_px":  0,
+                             "width_css_px":  108,
+                             "height_css_px":  44,
+                             "meets_44px":  true
+                         },
+                         {
+                             "increment":  3,
+                             "focusable":  false,
+                             "focused":  false,
+                             "focus_ring_visible":  false,
+                             "focus_ring_width_px":  0,
+                             "width_css_px":  108,
+                             "height_css_px":  44,
+                             "meets_44px":  true
+                         },
+                         {
+                             "increment":  5,
+                             "focusable":  false,
+                             "focused":  false,
+                             "focus_ring_visible":  false,
+                             "focus_ring_width_px":  0,
+                             "width_css_px":  108,
+                             "height_css_px":  44,
+                             "meets_44px":  true
+                         }
+                     ],
+    "focused_increment":  null,
+    "bid_status_text":  "",
+    "outbound_place_bids":  1,
+    "verdict":  {
+                    "target_bounds_44px":  true,
+                    "focus_bounds_44px":  true,
+                    "affordable_labels":  false,
+                    "unaffordable_keyboard_skip":  false,
+                    "bidding_feedback":  true,
+                    "leading_replacement_no_focusable_bid":  false
+                }
+}
