@@ -37,10 +37,10 @@ Hand UI implements the client-side card fan display and all card-play interactio
 ## Sprint 6 Accessibility Gate
 
 QA-COND-0005 remains Open for Standard-tier accessibility remediation. Story 014
-scopes A11Y-ST-14 PLACEMENT staged disclosure as a Hand UI UI story. Current
-drag/drop behavior covers the underlying staging mechanics, but the row still
-needs lane/cell guidance hardening and browser/WASM evidence before the
-A11Y-ST-14 sub-gap can be marked implemented/evidenced.
+is Complete and evidences A11Y-ST-14 PLACEMENT staged disclosure as a Hand UI
+UI story. Story 015 scopes the Hand UI slice of A11Y-ST-02 card cost, ATK, HP,
+and keyword readability across hand/fan, staged fan, and acquisition feedback
+surfaces before the final cross-surface Presentation evidence pass.
 
 ## Pre-Implementation Gates
 
@@ -50,7 +50,7 @@ These are not design gaps — the GDD is Approved. They gate specific stories wi
 |------|--------|-----------------|
 | **OQ8** — `S2CActivationRejected` not registered in NP GDD | HU-28 / HU-28b (activation-lock story) | Add `S2CActivationRejected` to `design/gdd/network-protocol.md` before the activation-lock story opens |
 | **OQ5/OQ6** — Card data pipeline ADR; atlas-sharing confirmation | Asset-pipeline story (card TextureAtlas frame index resolution) | ADR-021 resolves direction (`Res<CardAtlas>` shared from `BoardRenderingPlugin`); confirm `CardAtlas::frame_index(card_id)` shared method exists before asset story starts |
-| **HAND-UI-010 prerequisites** — placement submit pre-validation prerequisites | Story 010 | Resolved; Story 010 is Complete and its submit pre-validation behavior must be preserved by Story 014 |
+| **HAND-UI-010 prerequisites** — placement submit pre-validation prerequisites | Story 010 | Resolved; Story 010 is Complete and its submit pre-validation behavior must be preserved by Stories 014 and 015 |
 
 ## Key ADR-021 Constraints for This Epic
 
@@ -91,7 +91,8 @@ This epic is complete when:
 | 011 | [Reserve Mana Split Strip — Per-Staged-Card Controls](story-011-reserve-mana-strip.md) | Logic | Complete | ADR-021 |
 | 012 | [Activation Lock — DRAFT_SHOP Instant Card Lock & Timeout](story-012-activation-lock.md) | Integration | Blocked | ADR-021, ADR-002 |
 | 013 | [Reconnect Rebuild — PLACEMENT State Recovery](story-013-reconnect-rebuild.md) | Integration | Ready | ADR-021, ADR-002, ADR-009 |
-| 014 | [PLACEMENT Staged Disclosure Accessibility](story-014-placement-staged-disclosure-accessibility.md) | UI | Ready | ADR-021, ADR-002, ADR-023 |
+| 014 | [PLACEMENT Staged Disclosure Accessibility](story-014-placement-staged-disclosure-accessibility.md) | UI | Complete | ADR-021, ADR-002, ADR-023 |
+| 015 | [Card Text, Stat, and Keyword Accessibility](story-015-card-text-stat-keyword-accessibility.md) | UI | Ready | ADR-021, ADR-002, ADR-019 |
 
-**Story counts**: 8 Logic · 5 Integration · 1 UI; status counts: 11 Complete · 2 Ready · 1 Blocked (OQ8)
-**Dependency order**: 001 → 002, 003; 003 → 004, 005, 013; 005 → 006, 007, 008, 009, 010, 011; 006, 007, 008, 010, 011 → 014
+**Story counts**: 8 Logic · 5 Integration · 2 UI; status counts: 12 Complete · 2 Ready · 1 Blocked (OQ8)
+**Dependency order**: 001 → 002, 003; 003 → 004, 005, 013; 005 → 006, 007, 008, 009, 010, 011; 006, 007, 008, 010, 011 → 014; 002, 004, 005, 007, 008, 010, 011, 014 → 015

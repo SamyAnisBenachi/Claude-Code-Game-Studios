@@ -1,4 +1,4 @@
-# Story 005: Card Text, Stat, and Keyword Accessibility
+# Story 005: A11Y-ST-02 Cross-Surface Browser/WASM Evidence
 
 > **Epic**: Presentation Layer
 > **Status**: Ready
@@ -16,8 +16,16 @@ accessibility remediation.
 `production/qa/bugs/QA-COND-0005-standard-tier-accessibility-gaps.md`
 remains Open. The Sprint 6 accessibility evidence register row `A11Y-ST-02`
 states that there is no browser/WASM measurement evidence for card cost, ATK,
-HP, or keyword text floors, and that QA-COND-0005 closure remains blocked until
-that evidence exists.
+HP, or keyword text floors.
+
+This story is the final cross-surface Browser/WASM evidence pass for
+A11Y-ST-02. It starts after the split implementation stories land:
+
+- Hand UI Story 015 owns Hand UI card fan, staged fan, and acquisition feedback
+  remediation/evidence.
+- Shop/Auction UI Story 013 owns DRAFT_INITIAL grid, DRAFT_SHOP shop,
+  DRAFT_AUCTION featured, DRAFT_AUCTION footer, and settlement card
+  remediation/evidence.
 
 **Primary Sources**:
 
@@ -33,29 +41,26 @@ that evidence exists.
 
 **Accessibility Requirement**:
 
-- `design/accessibility-requirements.md` Standard-tier row
-  `Minimum text size - card text (cost, ATK, HP, keyword)` requires card stat
-  badges for ATK and HP to have an 18px minimum floor, and keyword text to have
-  a 14px minimum floor. This story applies the same 18 CSS px floor to the
-  visible card cost badge or numeral because A11Y-ST-02 explicitly includes
-  card cost in the evidence gap.
+- `design/accessibility-requirements.md` Standard-tier row `Minimum text size -
+  card text (cost, ATK, HP, keyword)` requires ATK and HP stat badges to have
+  an 18px minimum floor and keyword text to have a 14px minimum floor.
+- A11Y-ST-02 explicitly includes card cost, so this final evidence story
+  verifies the same 18 CSS px floor for visible card cost numerals or badges.
 
 **GDD Requirements**:
 
 - `design/gdd/card-data-pool.md` Card definition schema requires visible card
   display fields including `cost`, `atk`, `hp`, `keywords`, and `effect_text`.
-- `design/gdd/hand-ui.md` Rule 1 requires 10 pre-pooled hand fan card slots
-  and 9 pre-pooled DRAFT_INITIAL grid slots.
-- `design/gdd/hand-ui.md` Rule 4 requires each DRAFT_INITIAL grid cell to show
-  card art, name, mana cost, and rarity indicator.
-- `design/gdd/hand-ui.md` Visual Anatomy VA-1 places cost in the top-left,
-  ATK in a bottom-right orange badge, HP below ATK in a teal gem, and requires
-  ATK and HP badges to maintain a minimum render floor at 10-card overlap.
+- `design/gdd/hand-ui.md` Rule 1 requires 10 pre-pooled hand fan card slots and
+  9 pre-pooled DRAFT_INITIAL grid slots.
+- `design/gdd/hand-ui.md` Visual Anatomy VA-1 places card cost, ATK, and HP
+  badges on the card face and requires readable card identity at 10-card hand
+  compression.
 - `design/gdd/shop-auction-ui.md` DRAFT_INITIAL Rule 2 requires a 3x3 card
   grid sorted by rarity and cost.
 - `design/gdd/shop-auction-ui.md` DRAFT_AUCTION Rule 1 requires the auction
-  panel to render the auction card art, rarity badge, and starting price as the
-  current price after `S2CAuctionCard` and phase data are available.
+  panel to render the auction card art, rarity badge, and starting price after
+  `S2CAuctionCard` and phase data are available.
 - `design/gdd/shop-auction-ui.md` DRAFT_AUCTION Rule 2 requires read-only shop
   footer card costs to remain visible at 30 percent opacity during auction.
 - `design/gdd/shop-auction-ui.md` DRAFT_SHOP Rule 2 requires three horizontal
@@ -63,15 +68,14 @@ that evidence exists.
 
 **UX Requirements**:
 
-- `design/ux/hand-ui.md` and `design/ux/shop-auction-ui.md` identify card
-  readability, text contrast, and non-overlap as required browser/WASM evidence
-  concerns for card surfaces.
-- `design/ux/shop-auction-ui.md` Accessibility requires card keyword text to
-  remain readable on hover or zoom, and requires body text contrast of at least
-  4.5:1 where card text is sampled against its rendered background.
-- `design/ux/shop-auction-ui.md` acceptance criteria require no required UI
-  overlap at `1366x768` and `1920x1080`; this story applies that rule to card
-  cost, ATK, HP, and keyword text across the card surfaces below.
+- `design/ux/hand-ui.md` requires card cost, ATK, HP, and type or rarity to
+  remain readable at 10-card hand compression.
+- `design/ux/shop-auction-ui.md` requires card keyword text to remain readable
+  on hover or zoom, body text contrast of at least `4.5:1`, and no required UI
+  overlap at `1366x768` and `1920x1080`.
+- `design/ux/interaction-patterns.md` PTN-INP-005 defines purchasable card
+  presentation as card art, name, rarity, cost, and purchase state in a stable
+  slot.
 
 **TR IDs**:
 
@@ -90,23 +94,21 @@ that evidence exists.
 
 - [ADR-002: Client-Server Authority](../../../docs/architecture/adr-002-client-server-authority.md)
 - [ADR-013: Auction System State Machine and Bid Processing Architecture](../../../docs/architecture/adr-013-auction-system-state.md)
+- [ADR-015: Card Acquisition Shop State](../../../docs/architecture/adr-015-card-acquisition-shop-state.md)
 - [ADR-019: Economy System Resource Architecture](../../../docs/architecture/adr-019-economy-resource-architecture.md)
 - [ADR-021: Presentation Layer Architecture](../../../docs/architecture/adr-021-presentation-layer-architecture.md)
 
-**ADR Decision Summary**: Card text accessibility is presentation-only. The
-client reads server-authoritative phase, card, hand, shop, auction, and economy
-state, then renders readable card surfaces. Remediation must not mutate
-authoritative card data, gold, hand ownership, auction price, bid state, or
-phase state.
+**ADR Decision Summary**: A11Y-ST-02 is presentation-only. The client reads
+server-authoritative phase, card, hand, shop, auction, and economy state, then
+renders readable card surfaces. Final evidence must not mutate authoritative
+card data, gold, hand ownership, auction price, bid state, or phase state.
 
 **Engine**: Bevy 0.18 + browser/WASM target | **Risk**: HIGH
 
-**Engine Notes**: Use `liv-bevy-018` before editing any Bevy `.rs` file. Card
-text and card badges must remain Bevy 0.18 presentation UI or sprite-backed
-presentation elements that follow the Required Components API. Do not use
-`NodeBundle`, `TextBundle`, `SpriteBundle`, `UiImage::new()`, `Parent`, or
-`Color::rgba()`. If a browser measurement overlay or evidence harness is added,
-keep it test-only or evidence-only.
+**Engine Notes**: Use `liv-bevy-018` before editing any Bevy `.rs` file. This
+story should normally be evidence-only. If the final browser/WASM evidence
+finds a missing test hook or measurement export, repair that hook only in the
+owning split story area and preserve Bevy 0.18 Required Components API rules.
 
 **Control Manifest Rules (2026-05-05)**:
 
@@ -132,124 +134,112 @@ keep it test-only or evidence-only.
 
 ### In Scope
 
-- Verify or remediate A11Y-ST-02 card text floors across these card views:
+- Run the final A11Y-ST-02 browser/WASM evidence pass after Hand UI Story 015
+  and Shop/Auction UI Story 013 have landed.
+- Verify the combined card readability matrix across these card views:
   - DRAFT_INITIAL 3x3 grid cards.
-  - Hand/fan cards at rest, hover or zoom, read-only DRAFT_AUCTION fan, and
-    staged PLACEMENT fan ghosts.
+  - DRAFT_INITIAL acquired-card feedback in the Hand UI fan.
+  - DRAFT_SHOP hand fan cards.
+  - DRAFT_AUCTION read-only hand fan cards.
+  - PLACEMENT active fan cards, staged fan ghosts, and Instant fan ghosts.
   - DRAFT_SHOP shop cards.
-  - DRAFT_AUCTION auction featured card, auction preparing card view, settlement
-    card view, and read-only shop footer cards.
+  - DRAFT_AUCTION auction preparing and active featured card views.
+  - DRAFT_AUCTION read-only shop footer cards.
+  - DRAFT_AUCTION settlement card views.
 - Measure cost, ATK, HP, and keyword text at browser/WASM viewports `1366x768`
   and `1920x1080`.
-- Apply a minimum floor of `18 CSS px` or browser-equivalent rendered pixels to
-  visible cost, ATK, and HP numerals or badge text.
-- Apply a minimum floor of `14 CSS px` or browser-equivalent rendered pixels to
-  visible keyword text.
-- Record explicit not-applicable entries for card types that do not have ATK,
-  HP, or visible keyword text in a given fixture.
+- Verify a minimum floor of `18 CSS px` or browser-equivalent rendered pixels
+  for visible cost, ATK, and HP numerals or badge text.
+- Verify a minimum floor of `14 CSS px` or browser-equivalent rendered pixels
+  for visible keyword text.
+- Verify explicit not-applicable entries for card types that do not have ATK,
+  HP, or visible keyword text in a given fixture or state.
 - Verify that card text does not clip, truncate into unreadability, or overlap
   another required card element, sibling card, HUD zone, hand fan element, shop
-  control, auction control, timer, tooltip, or overlay.
+  control, auction control, timer, tooltip, settlement overlay, or evidence
+  overlay.
 - Verify body text contrast for sampled keyword text and stat numerals where
-  the text is composited against the final browser/WASM background; sampled
-  pairs must meet at least `4.5:1`.
-- Add or update focused automated coverage that exposes card text metrics,
-  card bounds, and overlap checks without relying only on manual visual
-  judgment.
-- Capture browser/WASM evidence and update the exact evidence document listed
-  in `## Test Evidence`.
-- Preserve existing card surface behavior, input gating, panel activation,
-  purchase, bid, settlement, and hand/fan state semantics.
+  text is composited against the final browser/WASM background. Sampled pairs
+  must meet at least `4.5:1`.
+- Combine Hand UI Story 015 and Shop/Auction UI Story 013 evidence into the
+  final evidence document listed in `## Test Evidence`.
+- Record a single A11Y-ST-02 pass/fail impact statement for QA-COND-0005.
 
 ### Out of Scope
 
-- No code implementation in this readiness pass.
-- No changes to authoritative card catalog fields, card costs, ATK, HP,
-  keywords, rarity, effect text, or pool distribution.
-- No changes to economy, auction bidding, purchase validation, hand ownership,
-  phase timing, network protocol payloads, or server authority.
-- No broader UI scaling preference implementation.
-- No colorblind palette implementation.
-- No Settings or Accessibility screen work.
-- No full A11Y-ST-01 HUD text evidence or A11Y-ST-03 global contrast evidence
-  beyond the card text pairs sampled for this story.
-- No changes to `production/sprint-status.yaml`.
-- No changes to `production/session-state/**`.
-- No changes to project asset files.
-- No changes to `AGENTS.md`.
-- Do not close QA-COND-0005 from this story alone.
+- New Hand UI card typography remediation unless Hand UI Story 015 first
+  failed and is repaired in its owning scope.
+- New Shop/Auction UI card typography remediation unless Shop/Auction UI Story
+  013 first failed and is repaired in its owning scope.
+- Changes to authoritative card catalog fields, card costs, ATK, HP, keywords,
+  rarity, effect text, pool distribution, economy, auction bidding, purchase
+  validation, hand ownership, phase timing, network protocol payloads, or
+  server authority.
+- Broader UI scaling preferences, Settings or Accessibility screen work,
+  colorblind palette implementation, full A11Y-ST-01 HUD text evidence, or
+  A11Y-ST-03 global contrast evidence beyond sampled card text pairs.
+- Changes to `production/sprint-status.yaml`, `production/session-state/**`,
+  project asset files, or `AGENTS.md`.
+- QA-COND-0005 closure. This story contributes only the final A11Y-ST-02
+  evidence row.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] **DRAFT_INITIAL grid evidence exists**: GIVEN browser/WASM evidence runs
-  at `1366x768` and `1920x1080`, WHEN the DRAFT_INITIAL 3x3 grid is rendered
-  with a fixture containing minion, spell or instant, structure, long-name, and
-  multi-keyword cards, THEN the evidence records cost, ATK, HP, keyword text,
-  card bounds, and text bounds for every visible grid card field that applies.
-- [ ] **Hand/fan evidence exists**: GIVEN browser/WASM evidence runs at both
-  required viewports, WHEN the hand/fan is rendered with 10 cards in DRAFT_SHOP,
-  DRAFT_AUCTION read-only, and PLACEMENT staged ghost states, THEN the evidence
-  records cost, ATK, HP, keyword text, card bounds, and text bounds for each
-  visible fan card field that applies.
-- [ ] **Shop card evidence exists**: GIVEN browser/WASM evidence runs at both
-  required viewports, WHEN DRAFT_SHOP shows three shop cards and the DRAFT_AUCTION
-  read-only footer shows three locked shop cards at its specified opacity, THEN
-  the evidence records cost, ATK, HP, keyword text, card bounds, and text bounds
-  for every visible shop/footer field that applies.
-- [ ] **Auction card evidence exists**: GIVEN browser/WASM evidence runs at both
-  required viewports, WHEN the auction featured card is shown in preparing,
-  active, and settlement states, THEN the evidence records cost, ATK, HP,
-  keyword text, card bounds, and text bounds for every visible auction-card
-  field that applies.
-- [ ] **Cost floor passes**: GIVEN any visible card cost numeral or badge in the
-  measured surfaces, WHEN text-size measurements are reviewed, THEN the cost
-  text measures at least `18 CSS px` or browser-equivalent rendered pixels at
-  both viewports.
-- [ ] **ATK floor passes**: GIVEN any visible card ATK numeral or badge in the
-  measured surfaces, WHEN text-size measurements are reviewed, THEN the ATK text
-  measures at least `18 CSS px` or browser-equivalent rendered pixels at both
-  viewports.
-- [ ] **HP floor passes**: GIVEN any visible card HP numeral or badge in the
-  measured surfaces, WHEN text-size measurements are reviewed, THEN the HP text
-  measures at least `18 CSS px` or browser-equivalent rendered pixels at both
-  viewports.
-- [ ] **Keyword floor passes**: GIVEN any visible keyword text in the measured
-  surfaces, WHEN text-size measurements are reviewed, THEN the keyword text
-  measures at least `14 CSS px` or browser-equivalent rendered pixels at both
-  viewports.
+- [ ] **Split implementation inputs are present**: GIVEN this story begins,
+  WHEN implementation history and story files are reviewed, THEN Hand UI Story
+  015 and Shop/Auction UI Story 013 are both implemented with their required
+  evidence documents and capture directories present.
+- [ ] **Combined surface matrix exists**: GIVEN final browser/WASM evidence
+  runs at `1366x768` and `1920x1080`, WHEN the evidence document is reviewed,
+  THEN it includes every in-scope Hand UI and Shop/Auction UI card surface
+  listed in `## Scope`.
+- [ ] **Cost floor passes cross-surface**: GIVEN any visible card cost numeral
+  or badge in the measured surfaces, WHEN final text-size measurements are
+  reviewed, THEN the cost text measures at least `18 CSS px` or
+  browser-equivalent rendered pixels at both viewports.
+- [ ] **ATK floor passes cross-surface**: GIVEN any visible card ATK numeral or
+  badge in the measured surfaces, WHEN final text-size measurements are
+  reviewed, THEN the ATK text measures at least `18 CSS px` or
+  browser-equivalent rendered pixels at both viewports.
+- [ ] **HP floor passes cross-surface**: GIVEN any visible card HP numeral or
+  badge in the measured surfaces, WHEN final text-size measurements are
+  reviewed, THEN the HP text measures at least `18 CSS px` or
+  browser-equivalent rendered pixels at both viewports.
+- [ ] **Keyword floor passes cross-surface**: GIVEN any visible keyword text in
+  the measured surfaces, WHEN final text-size measurements are reviewed, THEN
+  the keyword text measures at least `14 CSS px` or browser-equivalent rendered
+  pixels at both viewports.
 - [ ] **Not-applicable fields are explicit**: GIVEN a fixture card has no ATK,
-  no HP, or no visible keyword text, WHEN the evidence table is reviewed, THEN
-  that field is marked `N/A - field not present on this card type or state`
-  rather than being silently omitted.
-- [ ] **Long and dense card text remains readable**: GIVEN fixture cards include
-  at least one long card name, at least one two-keyword card, at least one
-  zero-cost card, and at least one card with two-digit cost, ATK, or HP, WHEN
+  no HP, or no visible keyword text, WHEN the final evidence table is reviewed,
+  THEN that field is marked `N/A - field not present on this card type or
+  state` rather than being silently omitted.
+- [ ] **Long and dense card text remains readable cross-surface**: GIVEN
+  fixture cards include at least one long card name, one two-keyword card, one
+  zero-cost card, and one card with two-digit cost, ATK, or HP, WHEN final
   browser/WASM captures are reviewed, THEN visible cost, ATK, HP, and keyword
   text remains inside its card or badge bounds without clipping or unreadable
-  truncation.
-- [ ] **No card-internal overlap**: GIVEN the measured text bounds and card
-  bounds, WHEN overlap checks run, THEN cost, ATK, HP, keyword text, card name,
-  rarity indicator, and visible card art zones do not overlap in a way that
-  makes required text unreadable.
-- [ ] **No surface-level overlap**: GIVEN the measured card and UI bounds, WHEN
-  overlap checks run, THEN card text does not overlap sibling cards, fan ghosts,
-  shop controls, auction controls, Ready controls, timers, tooltips, HUD chips,
-  settlement overlays, or browser evidence overlays.
-- [ ] **Contrast sample passes for card text**: GIVEN sampled browser/WASM
+  truncation across all in-scope surfaces.
+- [ ] **No card-internal overlap cross-surface**: GIVEN measured text bounds
+  and card bounds, WHEN final overlap checks run, THEN cost, ATK, HP, keyword
+  text, card name, rarity indicator, and visible card art zones do not overlap
+  in a way that makes required text unreadable.
+- [ ] **No surface-level overlap cross-surface**: GIVEN measured card and UI
+  bounds, WHEN final overlap checks run, THEN card text does not overlap sibling
+  cards, fan ghosts, reserve strips, shop controls, auction controls, Ready
+  controls, timers, tooltips, HUD chips, hand tray, settlement overlays, panel
+  boundaries, or browser evidence overlays.
+- [ ] **Contrast sample passes cross-surface**: GIVEN sampled browser/WASM
   foreground and composited background colors for cost, ATK, HP, and keyword
   text, WHEN contrast ratios are computed, THEN each sampled text/background
   pair meets at least `4.5:1`.
-- [ ] **Existing behavior is preserved**: GIVEN existing Hand UI and
-  Shop/Auction UI regression tests run after remediation, WHEN card typography
-  or measurement instrumentation is applied, THEN purchase, refresh, read-only
-  footer, auction preparing, auction active, settlement, hand/fan visibility,
-  fan staged ghost, and input suppression behavior remains unchanged.
-- [ ] **Focused accessibility test passes**:
-  `cargo test -p client --test card_text_accessibility_test` passes. The target
-  must be backed by `tests/integration/presentation/card_text_accessibility_test.rs`
-  and registered as `card_text_accessibility_test`.
+- [ ] **Focused accessibility tests pass**: The Hand UI and Shop/Auction UI
+  focused accessibility test commands from Story 015 and Story 013 both pass,
+  and their command summaries are included in the final evidence document.
+- [ ] **Regression summaries are included**: The final evidence document
+  includes the Hand UI and Shop/Auction UI regression command summaries from
+  Story 015 and Story 013.
 - [ ] **Browser/WASM evidence exists**:
   `production/qa/evidence/presentation-card-text-accessibility.md` records the
   browser, build target, commit, capture command, fixture cards, viewport table,
@@ -257,15 +247,15 @@ keep it test-only or evidence-only.
   directory, pass/fail verdict, and QA-COND-0005 impact statement.
 - [ ] **Capture directory is populated**:
   `production/qa/evidence/captures/presentation-card-text-accessibility/`
-  contains the browser/WASM captures referenced by the evidence document for
-  both required viewports and every required card surface.
-- [ ] **A11Y-ST-02 impact is explicit**: The evidence document states whether
-  A11Y-ST-02 is implemented and evidenced by this story, or which measured
-  surface still fails the cost, ATK, HP, keyword, non-overlap, or readability
-  checks.
-- [ ] **QA-COND-0005 remains open**: The evidence document states that this
-  story contributes only the A11Y-ST-02 card text accessibility row and that
-  QA-COND-0005 remains Open until all remaining Standard-tier rows are
+  contains the browser/WASM captures referenced by the final evidence document
+  for both required viewports and every required card surface.
+- [ ] **A11Y-ST-02 impact is explicit**: The final evidence document states
+  whether A11Y-ST-02 is implemented and evidenced across all in-scope card
+  surfaces, or which measured surface still fails the cost, ATK, HP, keyword,
+  non-overlap, or readability checks.
+- [ ] **QA-COND-0005 remains open**: The final evidence document states that
+  this story contributes only the A11Y-ST-02 card text accessibility row and
+  that QA-COND-0005 remains Open until all remaining Standard-tier rows are
   implemented and evidenced, reclassified, dependency-blocked, or accepted as
   risk.
 - [ ] **Whitespace gate passes**: `git diff --check` passes.
@@ -274,54 +264,32 @@ keep it test-only or evidence-only.
 
 ## Implementation Notes
 
-- Keep work local to presentation card rendering, test fixtures, and evidence
-  harnesses needed for A11Y-ST-02.
-- Prefer adjusting existing typography constants, theme tokens, card layout
-  slots, badge sizes, or hover/zoom surfaces over changing card data or game
-  logic.
-- If a card surface intentionally hides text at rest and shows it only on hover
-  or zoom, the evidence must show both the hidden/rest state and the readable
-  hover or zoom state. The evidence must state which state is the accepted
-  player-readable state for that field.
-- If a card type has no ATK or HP, do not add fake stat text to satisfy the
-  measurement table. Record the field as not applicable for that card type.
-- If keyword text wraps, the wrapped line block must still meet the `14 CSS px`
-  floor, remain inside the card surface, and avoid overlap with stats or card
-  controls.
-- If browser metrics are exported through a debug overlay, measurement log, or
-  test-only component, keep that instrumentation out of normal shipping UI.
-- Do not reduce DRAFT_AUCTION footer opacity below the GDD-specified value as a
-  readability workaround. If 30 percent opacity makes required text fail, choose
-  a remediation that preserves read-only state while meeting A11Y-ST-02.
-- Do not move the auction price counter into card-text scope. The auction price
-  counter is owned by separate HUD or Shop/Auction evidence for A11Y-ST-01 and
-  A11Y-ST-03.
+- Treat this as the final Browser/WASM evidence and aggregation story, not the
+  first implementation story.
+- Use the focused evidence from Hand UI Story 015 and Shop/Auction UI Story 013
+  as inputs. Do not duplicate ownership by moving remediation into
+  Presentation Layer.
+- If final capture finds a failing surface, repair that surface in the owning
+  split story scope first, then rerun this final evidence story.
+- Keep any browser measurement overlay, evidence harness, or bounds export
+  test-only or evidence-only.
+- Do not reduce DRAFT_AUCTION footer opacity below the GDD-specified 30 percent
+  value as a readability workaround.
+- Do not move auction price counter remediation into card-text scope. The
+  auction price counter is owned by separate HUD or Shop/Auction evidence for
+  A11Y-ST-01 and A11Y-ST-03.
 
 ---
 
 ## QA Test Cases
 
-- **DRAFT_INITIAL card text measurement**
-  - Given: Browser/WASM DRAFT_INITIAL renders a 3x3 fixture at `1366x768` and
-    `1920x1080`
-  - When: text metrics are exported
-  - Then: every visible cost, ATK, and HP text field is at least `18 CSS px`,
-    every visible keyword field is at least `14 CSS px`, and not-applicable
-    stat fields are explicitly recorded
-
-- **Hand/fan card text measurement**
-  - Given: The hand/fan renders 10 cards in DRAFT_SHOP, DRAFT_AUCTION read-only,
-    and PLACEMENT staged ghost states
-  - When: text metrics and bounds are exported
-  - Then: visible cost, ATK, HP, and keyword fields meet their floors and remain
-    readable despite fan overlap, dimming, hover, zoom, and ghost treatments
-
-- **Shop and auction card text measurement**
-  - Given: DRAFT_SHOP slots, DRAFT_AUCTION footer slots, auction preparing, and
-    active auction card views are rendered
-  - When: text metrics and bounds are exported
-  - Then: visible cost, ATK, HP, and keyword fields meet their floors in every
-    state where the field is intended to be readable
+- **Cross-surface card text measurement**
+  - Given: Browser/WASM evidence fixtures render every in-scope card surface at
+    `1366x768` and `1920x1080`
+  - When: final text metrics are exported
+  - Then: every visible cost, ATK, and HP field is at least `18 CSS px`, every
+    visible keyword field is at least `14 CSS px`, and absent fields are
+    explicitly recorded
 
 - **Overlap guard**
   - Given: Browser/WASM card and text bounds are captured for every required
@@ -337,11 +305,12 @@ keep it test-only or evidence-only.
   - When: contrast ratios are computed after compositing
   - Then: sampled pairs meet at least `4.5:1`
 
-- **Behavior preservation**
-  - Given: existing Hand UI and Shop/Auction UI behavior regressions run
-  - When: card text accessibility changes are present
-  - Then: purchase, refresh, auction, settlement, hand/fan visibility, staged
-    ghost, and input gating behavior remain unchanged
+- **Evidence aggregation**
+  - Given: Hand UI Story 015 and Shop/Auction UI Story 013 evidence documents
+    exist
+  - When: the final Presentation Layer evidence document is reviewed
+  - Then: it includes links or summaries for both split stories, the combined
+    surface matrix, final pass/fail verdict, and QA-COND-0005 impact statement
 
 ---
 
@@ -349,19 +318,26 @@ keep it test-only or evidence-only.
 
 **Story Type**: UI
 
-**Required automated test target**:
+**Required source evidence inputs**:
 
-- `tests/integration/presentation/card_text_accessibility_test.rs`
-  - Registered as `card_text_accessibility_test`
-  - Command: `cargo test -p client --test card_text_accessibility_test`
+- `production/qa/evidence/hand-ui-card-text-stat-keyword-accessibility.md`
+- `production/qa/evidence/shop-auction-ui-card-text-stat-keyword-accessibility.md`
+
+**Required automated test targets**:
+
+- `tests/integration/hand-ui/card_text_stat_keyword_accessibility_test.rs`
+  - Registered as `hand_ui_card_text_stat_keyword_accessibility_test`
+  - Command:
+    `cargo test -p client --test hand_ui_card_text_stat_keyword_accessibility_test`
+- `tests/integration/shop_auction_ui/card_text_stat_keyword_accessibility_test.rs`
+  - Registered as `shop_auction_ui_card_text_stat_keyword_accessibility_test`
+  - Command:
+    `cargo test -p client --test shop_auction_ui_card_text_stat_keyword_accessibility_test`
 
 **Required regression commands**:
 
-- `cargo test -p client --test shop_auction_ui_draft_initial_grid_test`
-- `cargo test -p client --test shop_auction_ui_auction_panel_test`
-- `cargo test -p client --test shop_auction_ui_shop_panel_test`
-- `cargo test -p client --test hand_ui_draft_initial_grid_test`
-- `cargo test -p client --test hand_ui_fan_layout_test`
+- Hand UI regression commands from Story 015.
+- Shop/Auction UI regression commands from Story 013.
 - `cargo check -p client`
 - `git diff --check`
 
@@ -375,30 +351,32 @@ keep it test-only or evidence-only.
 
 **Required browser/WASM evidence contents**:
 
-- Browser, build target, commit, capture command, and fixture source.
+- Browser, build target, commit, capture command, fixture source, and UI scale.
 - Viewports: `1366x768` and `1920x1080`.
-- UI scale used for the capture.
 - Fixture cards covering minion, structure, spell or instant, zero-cost,
   two-digit stat, long-name, no-keyword, and multi-keyword cases.
-- Surface table covering DRAFT_INITIAL grid cards, hand/fan cards, DRAFT_SHOP
-  shop cards, DRAFT_AUCTION footer cards, and auction featured card views.
+- Combined surface table covering all Hand UI and Shop/Auction UI card surfaces
+  listed in `## Scope`.
 - Text-size table for cost, ATK, HP, and keyword text by surface and viewport.
 - Explicit not-applicable entries for fields absent from a card type or state.
 - Overlap table comparing text bounds, card bounds, and adjacent UI bounds.
 - Contrast sample table for visible cost, ATK, HP, and keyword text.
 - Browser/WASM capture links under the required capture directory.
-- Focused automated test command output summary.
-- Regression command output summary.
+- Focused automated test command output summaries.
+- Regression command output summaries.
+- Links or summaries for the Hand UI Story 015 evidence input and the
+  Shop/Auction UI Story 013 evidence input.
 - A11Y-ST-02 impact statement.
 - QA-COND-0005 impact statement confirming the condition remains Open.
 
 **QA-COND-0005 impact statement required in evidence**:
 
-Story 005 implements and evidences A11Y-ST-02 for card cost, ATK, HP, and
-keyword text floors across DRAFT_INITIAL grid, hand/fan, shop, and auction card
-views. It does not close QA-COND-0005 by itself. QA-COND-0005 remains Open
-until all remaining Standard-tier rows are implemented and evidenced,
-reclassified, dependency-blocked, or accepted as risk.
+Story 005 implements the final cross-surface A11Y-ST-02 Browser/WASM evidence
+pass for card cost, ATK, HP, and keyword text floors after Hand UI Story 015
+and Shop/Auction UI Story 013 land. It does not close QA-COND-0005 by itself.
+QA-COND-0005 remains Open until all remaining Standard-tier rows are
+implemented and evidenced, reclassified, dependency-blocked, or accepted as
+risk.
 
 **Status**: [ ] Not yet implemented or captured.
 
@@ -406,36 +384,43 @@ reclassified, dependency-blocked, or accepted as risk.
 
 ## Dependencies
 
-- Story dependencies: None.
-- Source dependency: `production/qa/evidence/accessibility-standard-tier-sprint-6-2026-05-05.md`
-  identifies A11Y-ST-02 as an evidence-only required row that blocks
+- Depends on: [Hand UI Story 015](../hand-ui/story-015-card-text-stat-keyword-accessibility.md)
+  - Ready; provides Hand UI A11Y-ST-02 remediation and focused evidence.
+- Depends on: [Shop/Auction UI Story 013](../shop-auction-ui/story-013-card-text-stat-keyword-accessibility.md)
+  - Ready; provides Shop/Auction UI A11Y-ST-02 remediation and focused evidence.
+- Depends on: `production/qa/evidence/accessibility-standard-tier-sprint-6-2026-05-05.md`
+  identifying A11Y-ST-02 as an evidence-only required row that blocks
   QA-COND-0005 closure.
-- Source dependency:
-  `production/qa/bugs/QA-COND-0005-standard-tier-accessibility-gaps.md` remains
-  Open and defines the closure guard.
-- Source dependency: ADR-002, ADR-013, ADR-019, and ADR-021 are Accepted.
+- Depends on:
+  `production/qa/bugs/QA-COND-0005-standard-tier-accessibility-gaps.md`
+  remaining Open and defining the closure guard.
+- Depends on: ADR-002, ADR-013, ADR-015, ADR-019, and ADR-021 Accepted.
 - Unlocks: A11Y-ST-02 can move from evidence-only required to implemented and
-  evidenced after this story is implemented and
+  evidenced in the Sprint 6 accessibility evidence register after this story is
+  implemented and
   `production/qa/evidence/presentation-card-text-accessibility.md` passes QA
   review. This does not unlock QA-COND-0005 closure by itself.
 
+## Blockers
+
+None.
+
 ## Performance Budget
 
-No measurable gameplay-loop performance impact is expected from typography
-adjustments or evidence-only measurement instrumentation. Any production
-remediation must preserve the ADR-021 presentation guardrails: steady-state
-presentation work remains below 1 ms per frame and phase-boundary spikes remain
-below 3 ms. The implementation must not add per-frame entity creation, extra
-Lightyear message drains, card catalog scans, texture uploads, or persistent
-debug overlays.
+No measurable gameplay-loop performance impact is expected from final evidence
+aggregation. If evidence-only measurement instrumentation is needed, it must
+preserve ADR-021 presentation guardrails: steady-state presentation work remains
+below 1 ms per frame and phase-boundary spikes remain below 3 ms. The story
+must not add per-frame entity creation, extra Lightyear message drains, card
+catalog scans, texture uploads, or persistent debug overlays.
 
 ## QA-COND-0005 Impact
 
-This story targets only A11Y-ST-02 card text accessibility. Completing it
-reduces QA-COND-0005 by attaching card text-size, readability, non-overlap, and
-contrast sample evidence, but QA-COND-0005 remains Open until every other
-Standard-tier blocker has implementation and evidence, reclassification,
-dependency-blocking, or accepted-risk disposition.
+This story targets only the final A11Y-ST-02 card text accessibility evidence
+row. Completing it reduces QA-COND-0005 by attaching card text-size,
+readability, non-overlap, and contrast sample evidence, but QA-COND-0005
+remains Open until every other Standard-tier blocker has implementation and
+evidence, reclassification, dependency-blocking, or accepted-risk disposition.
 
 ## No Open Questions
 
