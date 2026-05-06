@@ -12,6 +12,7 @@ use crate::state::{
 };
 use crate::ui::hand::{HandUiPlugin, HandUiSystemSet};
 use crate::ui::hud::{HudPlugin, HudSystemSet};
+use crate::ui::photosensitivity_warning::PhotosensitivityWarningPlugin;
 use crate::ui::settings::SettingsAccessibilityPlugin;
 use crate::ui::shop_auction::{ShopAuctionUiPlugin, ShopAuctionUiSystemSet};
 
@@ -52,6 +53,7 @@ impl Plugin for PresentationPlugin {
         app.add_plugins(HudPlugin);
         app.add_plugins(ShopAuctionUiPlugin);
         app.add_plugins(SettingsAccessibilityPlugin);
+        app.add_plugins(PhotosensitivityWarningPlugin);
 
         app.configure_sets(
             Update,
