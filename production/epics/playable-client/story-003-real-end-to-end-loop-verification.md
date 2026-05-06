@@ -1,7 +1,7 @@
 # Story 003: Real End-to-End Loop Verification
 
 > **Epic**: Playable Client
-> **Status**: Ready
+> **Status**: Blocked - pending PLAYABLE-002 story-done
 > **Layer**: Polish / Client Integration
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -10,6 +10,8 @@
 ## Context
 
 PLAYABLE-003 verifies the Sprint 7 friend-game path with a real local server and two real primary clients. This is evidence and focused integration hardening for internal friend-game quality. It does not claim public release readiness, broad accessibility completion, playtest validation, fun-hypothesis validation, or full playable-client manual QA.
+
+Current dependency state: PLAYABLE-001 is Complete. PLAYABLE-002 is pending and must be Complete via `/story-done` before PLAYABLE-003 verification starts. Until then, this story is readiness-reviewed but not safe to run.
 
 **Primary sources**:
 
@@ -118,7 +120,6 @@ PLAYABLE-003 verifies the Sprint 7 friend-game path with a real local server and
 ## Likely Files Touched
 
 - `tests/integration/playable_client/real_e2e_loop_test.rs`
-- `tests/evidence/playable-client-real-e2e-loop.md`
 - `production/qa/evidence/playable-client-real-e2e-loop.md`
 - `production/qa/evidence/captures/playable-client-real-e2e-loop/`
 - `server/Cargo.toml`
@@ -148,6 +149,7 @@ Any repair must remain scoped to friend-game playability and must not edit Sprin
 ## Implementation Notes
 
 - Treat this as verification plus focused blocker repair, not a broad QA sweep.
+- Do not start verification until PLAYABLE-002 is Complete via `/story-done`.
 - Use real commands and real targets. Automated helpers may launch processes or collect logs, but cannot seed authoritative game state directly.
 - Evidence should include the first failing point if the full loop is not reachable. A documented nearest reachable endpoint is acceptable only when paired with blocker detail.
 - Do not turn this story into a public QA plan, accessibility campaign, or playtest report.
@@ -201,6 +203,8 @@ Verification should record whether obvious performance symptoms appear, but it i
 
 - `production/qa/evidence/captures/playable-client-real-e2e-loop/`
 
+These required test and evidence paths match the Sprint 7 QA plan at `production/qa/qa-plan-sprint-7-2026-05-06.md`.
+
 **Required regression commands**:
 
 - `cargo test -p client --test playable_client_lobby_entry_test`
@@ -214,7 +218,9 @@ Verification should record whether obvious performance symptoms appear, but it i
 
 - Exact commit and build target.
 - Commands used to run the server and both primary clients.
-- Browser or native target details.
+- Environment details: OS, target type, browser name/version or native client build, viewport/window size, local server address/port, WebSocket/Lightyear transport, and confirmation that both clients fresh-started from no session token unless the run explicitly tests reconnect.
+- Log artifacts: server stdout/stderr, host-client log, joiner-client log, and message trace excerpts or artifact paths for every reached phase.
+- Capture artifacts: screenshots or recordings stored under `production/qa/evidence/captures/playable-client-real-e2e-loop/`, with filenames or a capture manifest that identify lobby, class reveal, draft/shop, placement, resolution, next-loop, and game-over or nearest endpoint where reached.
 - Message trace for lobby, class, draft/shop, purchase, ready, placement, resolution, next-loop, and game-over where reached.
 - Screenshots or captures for each reached phase.
 - Defect table with severity, owner, workaround, and friend-game impact.
@@ -227,11 +233,11 @@ Verification should record whether obvious performance symptoms appear, but it i
 
 ## Dependencies
 
-- Depends on: [PLAYABLE-001 Primary Client Bootstrap + Fresh Lobby Entry](story-001-primary-client-bootstrap-fresh-lobby-entry.md) - Ready; must complete before implementation starts.
-- Depends on: [PLAYABLE-002 Live Draft/Shop/Hand Bridge](story-002-live-draft-shop-hand-bridge.md) - Ready; must complete before final verification starts.
+- Depends on: [PLAYABLE-001 Primary Client Bootstrap + Fresh Lobby Entry](story-001-primary-client-bootstrap-fresh-lobby-entry.md) - Complete; required before this verification can start.
+- Depends on: [PLAYABLE-002 Live Draft/Shop/Hand Bridge](story-002-live-draft-shop-hand-bridge.md) - Pending; must be Complete via `/story-done` before final verification starts.
 - Depends on: a local server and two primary clients that can run from the same commit.
 - Unlocks: Sprint 7 friend-game evidence index cleanup and any focused follow-up repair stories found by verification.
 
 ## Blockers
 
-None.
+Blocked by PLAYABLE-002 until `/story-done` marks that story Complete.
