@@ -23,6 +23,7 @@ pub const AUCTION_AWAITING_SERVER_DELAY_MS: u32 = 1_500;
 pub const AUCTION_TOAST_FADE_IN_MS: u32 = 120;
 pub const AUCTION_TOAST_HOLD_MS: u32 = 2_000;
 pub const AUCTION_TOAST_FADE_OUT_MS: u32 = 120;
+pub const DRAFT_INITIAL_OBJECTIVE_COPY: &str = "Select up to 9 cards to keep. You have 45 seconds.";
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShopAuctionUiSystemSet {
@@ -95,6 +96,9 @@ impl Default for ShopAuctionRefreshConfig {
 pub struct ShopAuctionDraftInitialState {
     pub offering_loaded: bool,
     pub ready_signalled: bool,
+    pub objective_overlay_visible: bool,
+    pub objective_overlay_dismissed: bool,
+    pub objective_focus_target: DraftInitialObjectiveFocusTarget,
     pending_confirmed_purchases: Vec<CardId>,
 }
 
@@ -102,7 +106,30 @@ impl ShopAuctionDraftInitialState {
     fn reset_phase_state(&mut self) {
         self.offering_loaded = false;
         self.ready_signalled = false;
+        self.objective_overlay_visible = false;
+        self.objective_overlay_dismissed = false;
+        self.objective_focus_target = DraftInitialObjectiveFocusTarget::None;
         self.pending_confirmed_purchases.clear();
+    }
+
+    fn show_objective_overlay(&mut self) {
+        if !self.offering_loaded {
+            return;
+        }
+
+        self.objective_overlay_visible = true;
+        self.objective_overlay_dismissed = false;
+        self.objective_focus_target = DraftInitialObjectiveFocusTarget::DismissButton;
+    }
+
+    fn dismiss_objective_overlay(&mut self) {
+        if !self.objective_overlay_visible {
+            return;
+        }
+
+        self.objective_overlay_visible = false;
+        self.objective_overlay_dismissed = true;
+        self.objective_focus_target = DraftInitialObjectiveFocusTarget::RetrievalAffordance;
     }
 
     fn queue_purchase_confirmation(&mut self, card_id: CardId) {
@@ -352,6 +379,10 @@ pub struct ShopAuctionUiEntities {
     pub draft_initial_ready_button: Entity,
     pub draft_initial_ready_status: Entity,
     pub draft_initial_hand_full_banner: Entity,
+    pub draft_initial_objective_overlay: Entity,
+    pub draft_initial_objective_copy: Entity,
+    pub draft_initial_objective_dismiss_button: Entity,
+    pub draft_initial_objective_retrieval_button: Entity,
     pub shop_panel: Entity,
     pub shop_slots: [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT],
     pub shop_refresh_button: Entity,
@@ -531,6 +562,26 @@ pub struct DraftInitialReadyStatus;
 pub struct DraftInitialHandFullBanner;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DraftInitialObjectiveOverlay;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DraftInitialObjectiveCopy;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DraftInitialObjectiveDismissButton;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DraftInitialObjectiveRetrievalButton;
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum DraftInitialObjectiveFocusTarget {
+    #[default]
+    None,
+    DismissButton,
+    RetrievalAffordance,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShopSlotIndex(pub u8);
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -660,6 +711,37 @@ pub struct ShopAuctionDraftReadyButtonClicked {
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionDraftObjectiveDismissClicked {
+    pub button: Entity,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionDraftObjectiveRetrievalClicked {
+    pub button: Entity,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DraftInitialObjectivePanelClickTarget {
+    NonActionablePanel,
+    Overlay,
+    CardSlot(Entity),
+    ReadyButton,
+    Timer,
+    RetrievalAffordance,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionDraftObjectivePanelClicked {
+    pub target: DraftInitialObjectivePanelClickTarget,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionDraftObjectiveEscPressed;
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionDraftObjectiveEnterPressed;
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShopAuctionShopSlotClicked {
     pub slot: Entity,
 }
@@ -743,6 +825,11 @@ impl Plugin for ShopAuctionUiPlugin {
             .add_message::<ShopAuctionBidRejectedReceived>()
             .add_message::<ShopAuctionDraftSlotClicked>()
             .add_message::<ShopAuctionDraftReadyButtonClicked>()
+            .add_message::<ShopAuctionDraftObjectiveDismissClicked>()
+            .add_message::<ShopAuctionDraftObjectiveRetrievalClicked>()
+            .add_message::<ShopAuctionDraftObjectivePanelClicked>()
+            .add_message::<ShopAuctionDraftObjectiveEscPressed>()
+            .add_message::<ShopAuctionDraftObjectiveEnterPressed>()
             .add_message::<ShopAuctionShopSlotClicked>()
             .add_message::<ShopAuctionShopRefreshClicked>()
             .add_message::<ShopAuctionShopReadyButtonClicked>()
@@ -788,6 +875,9 @@ impl Plugin for ShopAuctionUiPlugin {
                         .chain()
                         .in_set(ShopAuctionUiSystemSet::MessageDrain),
                     (
+                        handle_draft_initial_objective_message_input_system,
+                        handle_draft_initial_objective_keyboard_system,
+                        handle_draft_initial_objective_button_interactions_system,
                         handle_draft_initial_slot_click_system,
                         handle_draft_initial_ready_click_system,
                         handle_shop_slot_click_system,
@@ -911,6 +1001,8 @@ pub fn shop_auction_ui_phase_transition_system(
 
     if next_mode != ShopAuctionUiMode::DraftOffering {
         draft_state.reset_phase_state();
+    } else if previous_mode != ShopAuctionUiMode::DraftOffering && draft_state.offering_loaded {
+        draft_state.show_objective_overlay();
     }
 
     match next_mode {
@@ -1241,6 +1333,9 @@ pub fn handle_draft_offering_system(
     for offering in offerings.read() {
         draft_state.offering_loaded = true;
         draft_state.ready_signalled = false;
+        if *mode == ShopAuctionUiMode::DraftOffering {
+            draft_state.show_objective_overlay();
+        }
         draft_state.pending_confirmed_purchases.clear();
 
         let sorted_card_ids = sort_draft_offering_card_ids(&offering.card_ids, &catalog.cards);
@@ -1535,6 +1630,128 @@ pub fn handle_draft_initial_ready_click_system(
     }
 }
 
+pub fn handle_draft_initial_objective_message_input_system(
+    entities: Option<Res<ShopAuctionUiEntities>>,
+    mode: Res<ShopAuctionUiMode>,
+    mut draft_state: ResMut<ShopAuctionDraftInitialState>,
+    mut dismiss_clicks: MessageReader<ShopAuctionDraftObjectiveDismissClicked>,
+    mut retrieval_clicks: MessageReader<ShopAuctionDraftObjectiveRetrievalClicked>,
+    mut panel_clicks: MessageReader<ShopAuctionDraftObjectivePanelClicked>,
+) {
+    let Some(entities) = entities else {
+        for _click in dismiss_clicks.read() {}
+        for _click in retrieval_clicks.read() {}
+        for _click in panel_clicks.read() {}
+        return;
+    };
+
+    for click in dismiss_clicks.read() {
+        if click.button == entities.draft_initial_objective_dismiss_button
+            && draft_initial_active(&mode, &draft_state)
+            && draft_state.objective_overlay_visible
+        {
+            draft_state.dismiss_objective_overlay();
+        }
+    }
+
+    for click in panel_clicks.read() {
+        if draft_initial_active(&mode, &draft_state)
+            && draft_state.objective_overlay_visible
+            && click.target == DraftInitialObjectivePanelClickTarget::NonActionablePanel
+        {
+            draft_state.dismiss_objective_overlay();
+        }
+    }
+
+    for click in retrieval_clicks.read() {
+        if click.button == entities.draft_initial_objective_retrieval_button
+            && draft_initial_active(&mode, &draft_state)
+            && draft_state.objective_overlay_dismissed
+        {
+            draft_state.show_objective_overlay();
+        }
+    }
+}
+
+pub fn handle_draft_initial_objective_keyboard_system(
+    keys: Option<Res<ButtonInput<KeyCode>>>,
+    mode: Res<ShopAuctionUiMode>,
+    mut draft_state: ResMut<ShopAuctionDraftInitialState>,
+    mut esc_presses: MessageReader<ShopAuctionDraftObjectiveEscPressed>,
+    mut enter_presses: MessageReader<ShopAuctionDraftObjectiveEnterPressed>,
+) {
+    let esc_requested = esc_presses.read().next().is_some()
+        || keys
+            .as_ref()
+            .is_some_and(|keys| keys.just_pressed(KeyCode::Escape));
+    let enter_requested = enter_presses.read().next().is_some()
+        || keys
+            .as_ref()
+            .is_some_and(|keys| keys.just_pressed(KeyCode::Enter));
+
+    if !draft_initial_active(&mode, &draft_state) {
+        return;
+    }
+
+    if esc_requested
+        && draft_state.objective_overlay_visible
+        && draft_state.objective_focus_target == DraftInitialObjectiveFocusTarget::DismissButton
+    {
+        draft_state.dismiss_objective_overlay();
+        return;
+    }
+
+    if !enter_requested {
+        return;
+    }
+
+    match draft_state.objective_focus_target {
+        DraftInitialObjectiveFocusTarget::DismissButton
+            if draft_state.objective_overlay_visible =>
+        {
+            draft_state.dismiss_objective_overlay();
+        }
+        DraftInitialObjectiveFocusTarget::RetrievalAffordance
+            if draft_state.objective_overlay_dismissed =>
+        {
+            draft_state.show_objective_overlay();
+        }
+        _ => {}
+    }
+}
+
+pub fn handle_draft_initial_objective_button_interactions_system(
+    mode: Res<ShopAuctionUiMode>,
+    mut draft_state: ResMut<ShopAuctionDraftInitialState>,
+    mut interactions: Query<
+        (
+            Entity,
+            &Interaction,
+            Option<&DraftInitialObjectiveDismissButton>,
+            Option<&DraftInitialObjectiveRetrievalButton>,
+        ),
+        (
+            Changed<Interaction>,
+            Or<(
+                With<DraftInitialObjectiveDismissButton>,
+                With<DraftInitialObjectiveRetrievalButton>,
+            )>,
+        ),
+    >,
+) {
+    for (_entity, interaction, dismiss, retrieval) in &mut interactions {
+        if *interaction != Interaction::Pressed || !draft_initial_active(&mode, &draft_state) {
+            continue;
+        }
+
+        if dismiss.is_some() && draft_state.objective_overlay_visible {
+            draft_state.dismiss_objective_overlay();
+        } else if retrieval.is_some() && draft_state.objective_overlay_dismissed {
+            draft_state.show_objective_overlay();
+        }
+    }
+}
+
 pub fn handle_shop_slot_click_system(
     mode: Res<ShopAuctionUiMode>,
     economy: Res<PlayerEconomyView>,
@@ -1764,6 +1981,27 @@ pub fn sync_draft_initial_panel_system(
             &mut visibility,
             entities.draft_initial_hand_full_banner,
             visibility_for(active && hand_view.hand_size >= 10),
+        );
+        let objective_overlay_visible = active && draft_state.objective_overlay_visible;
+        set_visibility(
+            &mut visibility,
+            entities.draft_initial_objective_overlay,
+            visibility_for(objective_overlay_visible),
+        );
+        set_visibility(
+            &mut visibility,
+            entities.draft_initial_objective_copy,
+            visibility_for(objective_overlay_visible),
+        );
+        set_visibility(
+            &mut visibility,
+            entities.draft_initial_objective_dismiss_button,
+            visibility_for(objective_overlay_visible),
+        );
+        set_visibility(
+            &mut visibility,
+            entities.draft_initial_objective_retrieval_button,
+            visibility_for(active && draft_state.objective_overlay_dismissed),
         );
     }
 
@@ -2291,6 +2529,13 @@ fn spawn_shop_auction_ui(mut commands: Commands, existing: Option<Res<ShopAuctio
         spawn_draft_initial_status_text(&mut commands, draft_offering_panel);
     let draft_initial_hand_full_banner =
         spawn_draft_initial_hand_full_banner(&mut commands, draft_offering_panel);
+    let (
+        draft_initial_objective_overlay,
+        draft_initial_objective_copy,
+        draft_initial_objective_dismiss_button,
+    ) = spawn_draft_initial_objective_overlay(&mut commands, draft_offering_panel);
+    let draft_initial_objective_retrieval_button =
+        spawn_draft_initial_objective_retrieval_button(&mut commands, draft_offering_panel);
     let shop_panel = spawn_panel_root(
         &mut commands,
         root,
@@ -2349,6 +2594,10 @@ fn spawn_shop_auction_ui(mut commands: Commands, existing: Option<Res<ShopAuctio
         draft_initial_ready_button,
         draft_initial_ready_status,
         draft_initial_hand_full_banner,
+        draft_initial_objective_overlay,
+        draft_initial_objective_copy,
+        draft_initial_objective_dismiss_button,
+        draft_initial_objective_retrieval_button,
         shop_panel,
         shop_slots,
         shop_refresh_button,
@@ -2522,6 +2771,77 @@ fn spawn_draft_initial_hand_full_banner(commands: &mut Commands, parent: Entity)
             shop_auction_text_font(14.0),
             TextColor(Color::srgb(1.0, 0.78, 0.55)),
             draft_initial_hand_full_banner_node(),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
+fn spawn_draft_initial_objective_overlay(
+    commands: &mut Commands,
+    parent: Entity,
+) -> (Entity, Entity, Entity) {
+    let overlay = commands
+        .spawn((
+            Name::new("Shop Auction Draft Objective Overlay"),
+            ShopAuctionUiEntity,
+            DraftInitialObjectiveOverlay,
+            draft_initial_objective_overlay_node(),
+            BackgroundColor(Color::srgba(0.02, 0.05, 0.08, 0.92)),
+            BorderColor::all(Color::srgb(0.74, 0.92, 0.92)),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id();
+
+    let copy = commands
+        .spawn((
+            Name::new("Shop Auction Draft Objective Copy"),
+            ShopAuctionUiEntity,
+            DraftInitialObjectiveCopy,
+            Text::new(DRAFT_INITIAL_OBJECTIVE_COPY),
+            shop_auction_text_font(14.0),
+            TextColor(Color::srgb(0.96, 0.98, 1.0)),
+            draft_initial_objective_copy_node(),
+            Visibility::Hidden,
+            ChildOf(overlay),
+        ))
+        .id();
+
+    let dismiss = commands
+        .spawn((
+            Name::new("Shop Auction Draft Objective Dismiss"),
+            ShopAuctionUiEntity,
+            DraftInitialObjectiveDismissButton,
+            Button,
+            Interaction::None,
+            Text::new("Dismiss"),
+            shop_auction_text_font(13.0),
+            TextColor(Color::srgb(0.98, 0.93, 0.72)),
+            draft_initial_objective_dismiss_node(),
+            Visibility::Hidden,
+            ChildOf(overlay),
+        ))
+        .id();
+
+    (overlay, copy, dismiss)
+}
+
+fn spawn_draft_initial_objective_retrieval_button(
+    commands: &mut Commands,
+    parent: Entity,
+) -> Entity {
+    commands
+        .spawn((
+            Name::new("Shop Auction Draft Objective Retrieval"),
+            ShopAuctionUiEntity,
+            DraftInitialObjectiveRetrievalButton,
+            Button,
+            Interaction::None,
+            Text::new("Objective"),
+            shop_auction_text_font(13.0),
+            TextColor(Color::srgb(0.74, 0.92, 0.92)),
+            draft_initial_objective_retrieval_node(),
             Visibility::Hidden,
             ChildOf(parent),
         ))
@@ -2795,6 +3115,53 @@ fn draft_initial_hand_full_banner_node() -> Node {
         top: Val::Px(138.0),
         width: Val::Px(260.0),
         height: Val::Px(30.0),
+        ..default()
+    }
+}
+
+fn draft_initial_objective_overlay_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(88.0),
+        top: Val::Px(2.0),
+        width: Val::Px(640.0),
+        height: Val::Px(28.0),
+        border: UiRect::all(Val::Px(1.0)),
+        ..default()
+    }
+}
+
+fn draft_initial_objective_copy_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(10.0),
+        top: Val::Px(5.0),
+        width: Val::Px(500.0),
+        height: Val::Px(18.0),
+        ..default()
+    }
+}
+
+fn draft_initial_objective_dismiss_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        right: Val::Px(8.0),
+        top: Val::Px(4.0),
+        width: Val::Px(88.0),
+        height: Val::Px(20.0),
+        border: UiRect::all(Val::Px(1.0)),
+        ..default()
+    }
+}
+
+fn draft_initial_objective_retrieval_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        right: Val::Px(96.0),
+        top: Val::Px(12.0),
+        width: Val::Px(116.0),
+        height: Val::Px(28.0),
+        border: UiRect::all(Val::Px(1.0)),
         ..default()
     }
 }

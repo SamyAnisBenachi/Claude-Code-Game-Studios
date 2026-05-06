@@ -34,6 +34,7 @@ fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
         1 + SHOP_AUCTION_UI_PANEL_ROOT_COUNT * 2
             + SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT * 2
             + 3
+            + 4
             + SHOP_AUCTION_UI_SHOP_SLOT_COUNT
             + 4
             + 11

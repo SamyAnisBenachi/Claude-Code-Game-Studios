@@ -181,6 +181,10 @@ name = "shop_auction_ui_draft_initial_grid_test"
 path = "../tests/integration/shop_auction_ui/draft_initial_grid_test.rs"
 
 [[test]]
+name = "shop_auction_ui_draft_initial_objective_overlay_test"
+path = "../tests/integration/shop_auction_ui/draft_initial_objective_overlay_test.rs"
+
+[[test]]
 name = "shop_auction_ui_shop_panel_test"
 path = "../tests/integration/shop_auction_ui/shop_panel_test.rs"
 
