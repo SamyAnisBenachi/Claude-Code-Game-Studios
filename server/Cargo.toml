@@ -226,6 +226,10 @@ name = "lobby_to_draft_initial_test"
 path = "../tests/integration/session/lobby_to_draft_initial_test.rs"
 
 [[test]]
+name = "room_create_join_test"
+path = "../tests/integration/session/room_create_join_test.rs"
+
+[[test]]
 name = "game_over_teardown_test"
 path = "../tests/integration/session/game_over_teardown_test.rs"
 
@@ -236,6 +240,10 @@ path = "../tests/unit/session/snapshot_secret_strip_test.rs"
 [[test]]
 name = "reconnect_snapshot_test"
 path = "../tests/integration/session/reconnect_snapshot_test.rs"
+
+[[test]]
+name = "playable_client_lobby_entry_server_test"
+path = "../tests/integration/playable_client/lobby_entry_server_test.rs"
 
 [[test]]
 name = "rsm_win_condition_test"

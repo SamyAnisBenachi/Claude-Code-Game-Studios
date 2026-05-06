@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
@@ -17,9 +17,9 @@ use uuid::Uuid;
 
 use crate::core::rsm::{PlayerReconnected, RoundPhase};
 use crate::core::session::{
-    build_game_snapshot, ActiveSessions, DeferredMessage, PendingHello, PlayerConnectionMap,
-    ReconnectNetworkOutbox, ReconnectTracker, SessionConfig, SessionId, SessionSlot, SessionSlots,
-    SessionToken,
+    build_game_snapshot, ActiveSessions, DeferredMessage, NextFreshPlayerId, PendingHello,
+    PlayerConnectionMap, ReconnectNetworkOutbox, ReconnectTracker, SessionConfig, SessionId,
+    SessionSlot, SessionSlots, SessionToken,
 };
 use crate::feature::objective::{HiddenObjectives, OBJECTIVE_LANE_COUNT};
 use crate::foundation::config::GameConfig;
@@ -140,7 +140,7 @@ pub fn process_reconnect_hello(
     clear_pending_hello(world, peer_id);
 
     let Some(token) = hello.session_token else {
-        return ReconnectProcessResult::default();
+        return process_fresh_hello(world, peer_id);
     };
 
     let Some((session_id, player_id)) = token_lookup(world, &token) else {
@@ -188,6 +188,7 @@ pub fn process_reconnect_hello(
                 protocol_version: protocol_version(world),
                 session_id: session_id_to_u64(session_id),
                 session_token: token,
+                player_id,
             },
         },
         ReconnectDispatch::GameSnapshot {
@@ -533,6 +534,70 @@ fn token_lookup(world: &World, token: &SessionToken) -> Option<(SessionId, Playe
         .token_map
         .get(token)
         .copied()
+}
+
+fn process_fresh_hello(world: &mut World, peer_id: PeerId) -> ReconnectProcessResult {
+    let player_id = fresh_player_for_peer(world, peer_id);
+    let session_id = fresh_session_id_for_player(player_id);
+    let session_token = token_for_player(session_id, player_id);
+
+    if let Some(mut tracker) = world.get_resource_mut::<ReconnectTracker>() {
+        tracker
+            .token_map
+            .insert(session_token, (session_id, player_id));
+        tracker.deferred_queue.entry(player_id).or_default();
+    }
+
+    ReconnectProcessResult {
+        dispatches: vec![ReconnectDispatch::Handshake {
+            peer_id,
+            message: S2CHandshake {
+                protocol_version: protocol_version(world),
+                session_id: session_id_to_u64(session_id),
+                session_token,
+                player_id,
+            },
+        }],
+        closes: Vec::new(),
+    }
+}
+
+fn fresh_player_for_peer(world: &mut World, peer_id: PeerId) -> PlayerId {
+    if let Some(player_id) = world
+        .get_resource::<PlayerConnectionMap>()
+        .and_then(|connections| connections.0.get(&peer_id).copied())
+    {
+        return player_id;
+    }
+
+    let used = used_player_ids(world);
+    if !world.contains_resource::<NextFreshPlayerId>() {
+        world.insert_resource(NextFreshPlayerId::default());
+    }
+
+    let player_id = world
+        .resource_mut::<NextFreshPlayerId>()
+        .allocate_avoiding(&used);
+    map_reconnect_peer(world, peer_id, player_id);
+    player_id
+}
+
+fn used_player_ids(world: &World) -> HashSet<PlayerId> {
+    let mut used = HashSet::new();
+
+    if let Some(connections) = world.get_resource::<PlayerConnectionMap>() {
+        used.extend(connections.0.values().copied());
+    }
+
+    if let Some(tracker) = world.get_resource::<ReconnectTracker>() {
+        used.extend(tracker.token_map.values().map(|(_, player_id)| *player_id));
+    }
+
+    used
+}
+
+fn fresh_session_id_for_player(player_id: PlayerId) -> SessionId {
+    SessionId(Uuid::from_u128(u128::from(player_id.0)))
 }
 
 fn map_reconnect_peer(world: &mut World, peer_id: PeerId, player_id: PlayerId) {

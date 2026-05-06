@@ -3,16 +3,16 @@
 use bevy::prelude::*;
 use shared::card::ClassId;
 
-use crate::core::rsm::{advance_phase, on_session_ready, PlayerHeartbeat};
+use crate::core::rsm::{advance_phase, on_session_ready, GameOverEmitted, PlayerHeartbeat};
 use crate::core::session::{
     evaluate_session_ready, flush_deferred_queue, handle_confirm_class, handle_create_room,
     handle_game_over_teardown, handle_join_room, handle_lobby_disconnect, handle_lobby_heartbeat,
     handle_placement_timer_multiplier_requests, handle_reconnect, handle_select_class,
     hello_timeout_watchdog, lobby_timeout_check, on_reconnect_connected, tick_lobby_heartbeats,
-    ActiveSessions, ClassPreviews, ClassSelections, PlacementTimerMultiplierRequests,
-    PlayerConnectionMap, PlayerSessionData, PlayerSessions, ReconnectNetworkOutbox,
-    ReconnectTracker, RoomSessions, ServerRngFactory, SessionConfig, SessionNetworkOutbox,
-    SessionSystemSet,
+    ActiveSessions, ClassPreviews, ClassSelections, NextFreshPlayerId,
+    PlacementTimerMultiplierRequests, PlayerConnectionMap, PlayerSessionData, PlayerSessions,
+    ReconnectNetworkOutbox, ReconnectTracker, RoomSessions, ServerRngFactory, SessionConfig,
+    SessionNetworkOutbox, SessionSystemSet,
 };
 
 pub struct GameSessionPlugin;
@@ -25,11 +25,13 @@ impl Plugin for GameSessionPlugin {
             .init_resource::<ClassSelections>()
             .init_resource::<PlacementTimerMultiplierRequests>()
             .init_resource::<PlayerConnectionMap>()
+            .init_resource::<NextFreshPlayerId>()
             .init_resource::<ReconnectTracker>()
             .init_resource::<ReconnectNetworkOutbox>()
             .init_resource::<RoomSessions>()
             .init_resource::<ServerRngFactory>()
             .init_resource::<SessionNetworkOutbox>()
+            .add_message::<GameOverEmitted>()
             .add_message::<PlayerHeartbeat>()
             .configure_sets(
                 Update,

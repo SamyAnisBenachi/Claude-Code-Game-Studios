@@ -244,6 +244,29 @@ pub struct ActiveSessions(pub HashMap<PlayerId, SessionId>);
 #[derive(Debug, Default, Resource)]
 pub struct PlayerConnectionMap(pub HashMap<PeerId, PlayerId>);
 
+/// Monotonic allocator for fresh primary-client identities before room entry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Resource)]
+pub struct NextFreshPlayerId(pub u64);
+
+impl Default for NextFreshPlayerId {
+    fn default() -> Self {
+        Self(1)
+    }
+}
+
+impl NextFreshPlayerId {
+    pub fn allocate_avoiding(&mut self, used: &HashSet<PlayerId>) -> PlayerId {
+        loop {
+            let candidate = PlayerId(self.0.max(1));
+            self.0 = self.0.saturating_add(1).max(1);
+
+            if !used.contains(&candidate) {
+                return candidate;
+            }
+        }
+    }
+}
+
 /// All room records currently known to this server process.
 #[derive(Debug, Default, Resource)]
 pub struct RoomSessions {

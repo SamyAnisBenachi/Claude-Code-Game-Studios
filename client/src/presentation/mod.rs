@@ -10,8 +10,9 @@ use crate::presentation::board_rendering::{
 use crate::presentation::shared::economy_view::drain_gold_update_receiver_system as drain_shared_gold_update_receiver_system;
 use crate::state::{
     apply_phase_changed_message, apply_phase_view_message, apply_session_settings_updated_message,
-    apply_snapshot_to_session_settings_view, ClientGameSnapshotMessage, ClientPhaseView,
-    ClientState, SessionSettingsView,
+    apply_snapshot_to_session_settings_view, should_enter_session_from_phase,
+    should_enter_session_from_snapshot, ClientGameSnapshotMessage, ClientPhaseView,
+    ClientSessionIdentity, ClientState, SessionSettingsView,
 };
 use crate::ui::hand::{HandUiPlugin, HandUiSystemSet};
 use crate::ui::hud::{HudPlugin, HudSystemSet};
@@ -45,6 +46,7 @@ impl Plugin for PresentationPlugin {
         app.init_state::<ClientState>()
             .init_resource::<CurrentClientPhase>()
             .init_resource::<ClientPhaseView>()
+            .init_resource::<ClientSessionIdentity>()
             .init_resource::<SessionSettingsView>()
             .init_resource::<PlayerEconomyView>()
             .add_message::<ClientGameSnapshotMessage>();
@@ -66,8 +68,7 @@ impl Plugin for PresentationPlugin {
                 PresentationSet::StateSync,
                 PresentationSet::AnimationTick,
             )
-                .chain()
-                .run_if(in_state(ClientState::InSession)),
+                .chain(),
         )
         .configure_sets(
             Update,
@@ -83,7 +84,9 @@ impl Plugin for PresentationPlugin {
                     .in_set(PresentationSet::MessageDrain)
                     .after(HudSystemSet::MessageDrain),
                 ShopAuctionUiSystemSet::StateSync.in_set(PresentationSet::StateSync),
-                CardAnimationsSet::React.in_set(PresentationSet::MessageDrain),
+                CardAnimationsSet::React
+                    .in_set(PresentationSet::MessageDrain)
+                    .run_if(in_state(ClientState::InSession)),
             ),
         )
         .add_systems(
@@ -118,12 +121,23 @@ pub fn phase_sink_system(
     pending_script: Option<Res<PendingResolutionScript>>,
     reveal_wait: Option<Res<ResolutionRevealWait>>,
     mut pending_phase: Option<ResMut<PendingPhaseChange>>,
+    identity: Res<ClientSessionIdentity>,
+    state: Res<State<ClientState>>,
+    mut next_state: ResMut<NextState<ClientState>>,
 ) {
     let mut messages = Vec::new();
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
             messages.push(message);
         }
+    }
+
+    if *state.get() == ClientState::Lobby
+        && messages
+            .iter()
+            .any(|message| should_enter_session_from_phase(&identity, message.phase))
+    {
+        next_state.set(ClientState::InSession);
     }
 
     apply_phase_changed_messages_with_resolution_gate(
@@ -203,9 +217,17 @@ pub fn game_snapshot_sink_system(
     mut settings_view: ResMut<SessionSettingsView>,
     mut board_writer: MessageWriter<ClientGameSnapshotMessage>,
     mut presentation_writer: MessageWriter<PresentationGameSnapshotMessage>,
+    identity: Res<ClientSessionIdentity>,
+    state: Res<State<ClientState>>,
+    mut next_state: ResMut<NextState<ClientState>>,
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            if *state.get() == ClientState::Lobby
+                && should_enter_session_from_snapshot(&identity, &message)
+            {
+                next_state.set(ClientState::InSession);
+            }
             if !apply_snapshot_to_player_economy_view(&message, &mut economy_view) {
                 warn!(
                     "Presentation: snapshot for {:?} does not contain the local player economy",

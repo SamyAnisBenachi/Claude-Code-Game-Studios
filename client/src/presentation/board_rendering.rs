@@ -7,9 +7,8 @@ use shared::card::{CardId, ClassId};
 use shared::keyword::InjuredGrantedKeyword;
 use shared::protocol::{
     C2SRequestSnapshot, EntityId, ObjectiveSnapshot, PlacedCardReveal, PlayTarget, ReliableChannel,
-    ResolutionEvent, RoundPhase, S2CGameSnapshot, S2CJoinAck, S2CPlacementReveal,
-    S2CResolutionEvent, S2CRoomCreated, S2CSlotUpdated, SessionSlot, TaggedEvent,
-    UnitBoardLocation, UnitBoardState, UnitStatsSnapshot,
+    ResolutionEvent, RoundPhase, S2CGameSnapshot, S2CPlacementReveal, S2CResolutionEvent,
+    SessionSlot, TaggedEvent, UnitBoardLocation, UnitBoardState, UnitStatsSnapshot,
 };
 use shared::session::PlayerId;
 
@@ -24,6 +23,7 @@ use crate::ui::hand::{
     GhostClickedEvent, GhostDragStartEvent, GhostPlacementChanged, ObjectiveCell,
     PlacementTargetUnit,
 };
+use crate::ui::lobby::LobbyViewState;
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 pub mod perf_harness;
@@ -918,27 +918,11 @@ impl Plugin for BoardRenderingPlugin {
 }
 
 pub fn drain_player_team_map_messages_system(
-    mut created_receivers: Query<&mut MessageReceiver<S2CRoomCreated>>,
-    mut join_receivers: Query<&mut MessageReceiver<S2CJoinAck>>,
-    mut slot_receivers: Query<&mut MessageReceiver<S2CSlotUpdated>>,
+    lobby: Option<Res<LobbyViewState>>,
     mut player_team_map: ResMut<PlayerTeamMap>,
 ) {
-    for mut receiver in &mut created_receivers {
-        for message in receiver.receive() {
-            player_team_map.apply_slots(&message.slots);
-        }
-    }
-
-    for mut receiver in &mut join_receivers {
-        for message in receiver.receive() {
-            player_team_map.apply_slots(&message.slots);
-        }
-    }
-
-    for mut receiver in &mut slot_receivers {
-        for message in receiver.receive() {
-            player_team_map.apply_slots(&message.slots);
-        }
+    if let Some(lobby) = lobby.as_deref() {
+        player_team_map.apply_slots(&lobby.slots);
     }
 }
 

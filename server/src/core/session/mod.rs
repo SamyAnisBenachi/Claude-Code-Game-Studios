@@ -26,7 +26,7 @@ pub use reconnect::{
 pub use snapshot::{build_game_snapshot, build_snapshot};
 pub use state::{
     ActiveSessions, ClassPreviews, ClassSelections, DeferredMessage, LobbyDeadline,
-    LobbyHeartbeats, LobbyState, PendingHello, PlacementTimerMultiplierRequests,
+    LobbyHeartbeats, LobbyState, NextFreshPlayerId, PendingHello, PlacementTimerMultiplierRequests,
     PlayerConnectionMap, PlayerSessionData, PlayerSessions, ReconnectNetworkOutbox,
     ReconnectTracker, RoomCode, RoomSession, RoomSessions, SessionId, SessionNetworkOutbox,
     SessionSlot, SessionSlots, SessionToken, TeamId,

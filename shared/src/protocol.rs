@@ -479,6 +479,7 @@ pub struct S2CHandshake {
     pub protocol_version: u32,
     pub session_id: u64,
     pub session_token: SessionToken,
+    pub player_id: PlayerId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -5,13 +5,13 @@ use bevy::prelude::*;
 use lightyear::prelude::client::*;
 use lightyear::prelude::*;
 use shared::protocol::{
-    self, C2SAcknowledgeResult, C2SActivateCard, C2SConfirmClass, C2SCreateRoom, C2SHeartbeat,
-    C2SHello, C2SJoinRoom, C2SPlaceBid, C2SPurchaseCard, C2SRefreshShop, C2SRequestSnapshot,
-    C2SSelectClass, C2SSignalReady, C2SSubmitPlacement, ProtocolChannel, ProtocolDirection,
-    ProtocolRegistry, UnreliableChannel,
+    self, C2SHeartbeat, C2SHello, ProtocolChannel, ProtocolDirection, ProtocolRegistry,
+    ReliableChannel, UnreliableChannel,
 };
 
 pub struct ClientNetworkPlugin;
+
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 
 impl Plugin for ClientNetworkPlugin {
     fn build(&self, app: &mut App) {
@@ -21,8 +21,28 @@ impl Plugin for ClientNetworkPlugin {
 
         register_lightyear_protocol(app);
 
-        app.add_systems(Startup, connect_websocket_client)
-            .add_systems(Update, c2s_sender_stubs);
+        app.init_resource::<ClientHelloState>()
+            .init_resource::<ClientHeartbeatTimer>()
+            .add_systems(Startup, connect_websocket_client)
+            .add_systems(Update, (send_fresh_hello_once, send_heartbeat_system));
+    }
+}
+
+#[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct ClientHelloState {
+    pub sent: bool,
+}
+
+#[derive(Resource, Debug, Clone)]
+pub struct ClientHeartbeatTimer {
+    timer: Timer,
+}
+
+impl Default for ClientHeartbeatTimer {
+    fn default() -> Self {
+        Self {
+            timer: Timer::new(HEARTBEAT_INTERVAL, TimerMode::Repeating),
+        }
     }
 }
 
@@ -79,40 +99,43 @@ fn connect_websocket_client(mut commands: Commands) {
     commands.trigger(Connect { entity: client });
 }
 
-fn c2s_sender_stubs(
-    hello: Query<&MessageSender<C2SHello>>,
-    create_room: Query<&MessageSender<C2SCreateRoom>>,
-    join_room: Query<&MessageSender<C2SJoinRoom>>,
-    select_class: Query<&MessageSender<C2SSelectClass>>,
-    confirm_class: Query<&MessageSender<C2SConfirmClass>>,
-    purchase_card: Query<&MessageSender<C2SPurchaseCard>>,
-    refresh_shop: Query<&MessageSender<C2SRefreshShop>>,
-    activate_card: Query<&MessageSender<C2SActivateCard>>,
-    signal_ready: Query<&MessageSender<C2SSignalReady>>,
-    place_bid: Query<&MessageSender<C2SPlaceBid>>,
-    submit_placement: Query<&MessageSender<C2SSubmitPlacement>>,
-    acknowledge_result: Query<&MessageSender<C2SAcknowledgeResult>>,
-    request_snapshot: Query<&MessageSender<C2SRequestSnapshot>>,
-    heartbeat: Query<&MessageSender<C2SHeartbeat>>,
+fn send_fresh_hello_once(
+    mut state: ResMut<ClientHelloState>,
+    mut senders: Query<&mut MessageSender<C2SHello>>,
 ) {
-    count_senders(hello);
-    count_senders(create_room);
-    count_senders(join_room);
-    count_senders(select_class);
-    count_senders(confirm_class);
-    count_senders(purchase_card);
-    count_senders(refresh_shop);
-    count_senders(activate_card);
-    count_senders(signal_ready);
-    count_senders(place_bid);
-    count_senders(submit_placement);
-    count_senders(acknowledge_result);
-    count_senders(request_snapshot);
-    count_senders(heartbeat);
+    if state.sent {
+        return;
+    }
+
+    let Some(mut sender) = senders.iter_mut().next() else {
+        return;
+    };
+
+    sender.send::<ReliableChannel>(C2SHello {
+        protocol_version: shared::config::GameConfig::default().protocol_version,
+        session_token: None,
+    });
+    state.sent = true;
 }
 
-fn count_senders<M: Send + Sync + 'static>(senders: Query<&MessageSender<M>>) -> usize {
-    senders.iter().count()
+fn send_heartbeat_system(
+    time: Res<Time>,
+    mut heartbeat_timer: ResMut<ClientHeartbeatTimer>,
+    mut senders: Query<&mut MessageSender<C2SHeartbeat>>,
+) {
+    if !heartbeat_due_after_tick(&mut heartbeat_timer, time.delta()) {
+        return;
+    }
+
+    let Some(mut sender) = senders.iter_mut().next() else {
+        return;
+    };
+
+    sender.send::<UnreliableChannel>(C2SHeartbeat {});
+}
+
+pub fn heartbeat_due_after_tick(timer: &mut ClientHeartbeatTimer, delta: Duration) -> bool {
+    timer.timer.tick(delta).just_finished()
 }
 
 #[allow(dead_code)]

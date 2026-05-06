@@ -2,9 +2,10 @@
 
 use bevy::prelude::*;
 use shared::protocol::{
-    PlacementTimerMultiplier, RoundPhase, S2CGameSnapshot, S2CPhaseChanged,
-    S2CSessionSettingsUpdated,
+    PlacementTimerMultiplier, RoundPhase, S2CGameSnapshot, S2CHandshake, S2CPhaseChanged,
+    S2CSessionSettingsUpdated, SessionToken,
 };
+use shared::session::PlayerId;
 
 /// Client presentation lifecycle. It gates session-scoped UI pools.
 #[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -53,6 +54,35 @@ impl Default for CurrentClientPhase {
             round: 0,
         }
     }
+}
+
+/// Server-confirmed identity assigned by the fresh hello/reconnect handshake.
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClientSessionIdentity {
+    pub player_id: Option<PlayerId>,
+    pub session_id: Option<u64>,
+    pub session_token: Option<SessionToken>,
+}
+
+pub fn apply_handshake_message(msg: &S2CHandshake, identity: &mut ClientSessionIdentity) {
+    identity.player_id = Some(msg.player_id);
+    identity.session_id = Some(msg.session_id);
+    identity.session_token = Some(msg.session_token);
+}
+
+pub fn should_enter_session_from_phase(
+    identity: &ClientSessionIdentity,
+    phase: RoundPhase,
+) -> bool {
+    identity.player_id.is_some() && !matches!(phase, RoundPhase::Handshaking | RoundPhase::Lobby)
+}
+
+pub fn should_enter_session_from_snapshot(
+    identity: &ClientSessionIdentity,
+    snapshot: &S2CGameSnapshot,
+) -> bool {
+    identity.player_id == Some(snapshot.recipient_player_id)
+        && should_enter_session_from_phase(identity, snapshot.phase)
 }
 
 pub fn apply_phase_changed_message(msg: S2CPhaseChanged, current: &mut CurrentClientPhase) {
