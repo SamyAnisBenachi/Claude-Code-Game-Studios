@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HUD-011 Mana Shapes Harness</title>
+    <style>
+      html,
+      body,
+      canvas {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #05070a;
+      }
+    </style>
+    <script>
+      (() => {
+        window.__hudManaShapesEvidence = {
+          ready_for_capture: false,
+          fixture: "hud_011_mana_shapes",
+          current_mana: 6,
+          mana_cap: 10,
+          reserve_mana: 2,
+          reported: null,
+        };
+
+        window.hudManaShapesReady = (json) => {
+          const report = JSON.parse(json);
+          window.__hudManaShapesEvidence = {
+            ...window.__hudManaShapesEvidence,
+            ...report,
+            reported: report,
+          };
+          document.title = "HUD-011 Mana Shapes Harness READY";
+        };
+      })();
+    </script>
+    <link
+      data-trunk
+      rel="rust"
+      href="Cargo.toml"
+      data-bin="hud_mana_shapes_harness"
+      data-wasm-opt="0"
+    />
+  </head>
+  <body>
+    <canvas id="bevy"></canvas>
+  </body>
+</html>

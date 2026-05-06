@@ -1,0 +1,66 @@
+{
+    "url":  "http://127.0.0.1:8081/hud-mana-shapes-harness.html?fixture=hud_011_mana_shapes",
+    "captureTool":  "PowerShell Chrome DevTools Protocol",
+    "chromePath":  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "chromeVersion":  "147.0.7727.139",
+    "summaryPath":  "production/qa/evidence/captures/hud-011-mana-shapes/capture-summary.json",
+    "captures":  [
+                     {
+                         "viewport":  {
+                                          "width":  1366,
+                                          "height":  768
+                                      },
+                         "url":  "http://127.0.0.1:8081/hud-mana-shapes-harness.html?fixture=hud_011_mana_shapes\u0026viewport=1366x768\u0026capture=965fe7b0fda34cf194ea782061301a08",
+                         "fixture":  {
+                                         "ready_for_capture":  true,
+                                         "fixture":  "hud_011_mana_shapes",
+                                         "current_mana":  6,
+                                         "mana_cap":  10,
+                                         "reserve_mana":  2,
+                                         "reported":  {
+                                                          "ready_for_capture":  true,
+                                                          "fixture":  "hud_011_mana_shapes",
+                                                          "current_mana":  6,
+                                                          "mana_cap":  10,
+                                                          "reserve_mana":  2
+                                                      }
+                                     },
+                         "colorScreenshot":  "production/qa/evidence/captures/hud-011-mana-shapes/hud-011-mana-shapes-1366x768.png",
+                         "grayscaleScreenshot":  "production/qa/evidence/captures/hud-011-mana-shapes/hud-011-mana-shapes-1366x768-grayscale.png",
+                         "colorBytes":  12520,
+                         "grayscaleBytes":  11941
+                     },
+                     {
+                         "viewport":  {
+                                          "width":  1920,
+                                          "height":  1080
+                                      },
+                         "url":  "http://127.0.0.1:8081/hud-mana-shapes-harness.html?fixture=hud_011_mana_shapes\u0026viewport=1920x1080\u0026capture=481f8688bf9f488486b4954eaf9d1457",
+                         "fixture":  {
+                                         "ready_for_capture":  true,
+                                         "fixture":  "hud_011_mana_shapes",
+                                         "current_mana":  6,
+                                         "mana_cap":  10,
+                                         "reserve_mana":  2,
+                                         "reported":  {
+                                                          "ready_for_capture":  true,
+                                                          "fixture":  "hud_011_mana_shapes",
+                                                          "current_mana":  6,
+                                                          "mana_cap":  10,
+                                                          "reserve_mana":  2
+                                                      }
+                                     },
+                         "colorScreenshot":  "production/qa/evidence/captures/hud-011-mana-shapes/hud-011-mana-shapes-1920x1080.png",
+                         "grayscaleScreenshot":  "production/qa/evidence/captures/hud-011-mana-shapes/hud-011-mana-shapes-1920x1080-grayscale.png",
+                         "colorBytes":  16284,
+                         "grayscaleBytes":  15725
+                     }
+                 ],
+    "verdict":  {
+                    "artifactProduction":  "PASS",
+                    "colorCaptureCount":  2,
+                    "grayscaleCaptureCount":  2,
+                    "fixtureValues":  "current_mana=6, mana_cap=10, reserve_mana=2"
+                },
+    "capturedAt":  "2026-05-05T23:28:53.9313726Z"
+}
