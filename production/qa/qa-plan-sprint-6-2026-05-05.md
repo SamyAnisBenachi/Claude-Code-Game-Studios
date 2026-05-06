@@ -53,7 +53,7 @@ they were stale.
 | QA-COND-0002 | P2 Sprint 6 validation | Closed, N/A - Closed | No further S6-01 action after taxonomy/register reconciliation; retain closure evidence from AU19-a repair | Closed; not a P1 blocker |
 | QA-COND-0003 | P2 Sprint 6 validation | Closed, N/A - Closed | No further S6-01 action after OS-008/S6-05 evidence; retain closure evidence report and harness result | Closed; no longer an open P2 validation condition |
 | QA-COND-0004 | P1 Sprint 6 gate blocker | Closed, N/A - Closed | No further S6-01 action after BOARD-012 browser/WASM evidence; retain closure evidence and corrected timing result | Closed; no longer a P1 gate blocker |
-| QA-COND-0005 | P1 Sprint 6 gate blocker | Open, Needs Remediation | Close through S6-04 Standard-tier remediation / verification or accepted risk | Open P1 gate blocker |
+| QA-COND-0005 | P4 Accepted risk condition | Accepted Risk, Producer Waived | Carry S6-04 as friend-game-only accepted risk; do not mark Standard-tier accessibility as verified | Accepted-risk / waived; not an active S6-06 blocker |
 | QA-COND-0006 | P4 Accepted risk candidate | Accepted Risk, Deferred Accepted | Do not close as evidence; carry the producer-deferred playtest evidence gap into the final Production -> Polish gate as an explicit risk/condition | Accepted-risk / deferred; not an active S6-06 blocker |
 | QA-COND-0007 | P2 Sprint 6 validation | Open, Needs Evidence | Address through S6-S4 only if Must Have remediation is stable | Open P2 validation condition |
 
@@ -288,8 +288,8 @@ Checklist:
 - [ ] QA-COND-0003 is closed by OS-008/S6-05 ObjectiveHp two-client evidence.
 - [ ] QA-COND-0004 is closed by BOARD-012 browser/WASM board performance
       evidence and corrected timing verification.
-- [ ] QA-COND-0005 remains open until Standard-tier accessibility is remediated,
-      verified, explicitly reclassified, or accepted as risk.
+- [ ] QA-COND-0005 records the producer accepted-risk waiver and is not marked
+      Verified or closed as Standard-tier accessibility evidence.
 - [ ] QA-COND-0006 records the producer accepted-risk deferral and is not marked
       Verified or closed as evidence.
 - [ ] QA-COND-0006 is carried into the final Production -> Polish gate as an
@@ -363,8 +363,8 @@ Checklist:
       room/session authority.
 - [ ] Cognitive supports and visual audio backups are verified or explicitly
       recorded as remaining exposure.
-- [ ] QA-COND-0005 remains open unless verification evidence or explicit
-      disposition supports closure.
+- [ ] QA-COND-0005 accepted-risk disposition is recorded without claiming full
+      Standard-tier accessibility verification.
 
 ### S6-05 - OS-18b Two-Client ObjectiveHp Visibility Evidence
 
@@ -485,10 +485,13 @@ A Sprint 6 Must Have task is DONE when all applicable items are true:
 
 ## Current Blocker Status
 
-As of the QA-COND-0006 producer accepted-risk deferral, S6-06 remains blocked by
-the remaining active P1 Sprint 6 gate blocker:
+As of the QA-COND-0005 and QA-COND-0006 producer accepted-risk dispositions,
+S6-06 is no longer blocked by active P1 Sprint 6 gate conditions. Final smoke,
+QA sign-off, and Production -> Polish gate-check must carry both conditions as
+explicit accepted risks rather than verified evidence:
 
-- QA-COND-0005: Standard-tier accessibility gaps.
+- QA-COND-0005: Standard-tier accessibility waived for friend-game scope only.
+- QA-COND-0006: playtest/fun-hypothesis evidence deferred accepted risk.
 
 QA-COND-0004 is closed after BOARD-012 browser/WASM evidence passed corrected
 timing budgets. QA-COND-0006 is accepted-risk / deferred and must be carried

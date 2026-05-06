@@ -94,7 +94,7 @@ unstarted Sprint 6 capacity:
 | SAU-009 | Blocked | Blocked until panel states from prerequisites are renderable and evidence prerequisites are satisfied |
 | Final board visual/browser evidence | Closed for Sprint 6 P1 gate | BOARD-012 browser/WASM capture exists with nonblank 1920x1080 board evidence and corrected timing verdict PASS |
 | QA-COND-0004 | Closed | BOARD-012 browser/WASM capture passed corrected timing budgets |
-| QA-COND-0005 | Open P1 gate blocker | Standard-tier accessibility remediation/verification incomplete |
+| QA-COND-0005 | Accepted-risk / producer waived | Producer accepted remaining Standard-tier accessibility exposure as friend-game-only risk: Standard-tier accessibility waived by producer; no public release, no obligation. Not verified accessibility completion. |
 | QA-COND-0006 | Accepted-risk / deferred | Producer accepted deferral for Sprint 6 on 2026-05-05; required playtest sessions and aggregate fun decision remain future closure evidence, and the final Production -> Polish gate must carry this as an explicit risk/condition rather than passed evidence |
 | QA-COND-0001 | Open P2 validation | AU1-b-network FIFO evidence requires QA disposition after FIFO harness review |
 | QA-COND-0003 | Closed | OS-18b two-client ObjectiveHp visibility evidence verified final-only observations for both clients |

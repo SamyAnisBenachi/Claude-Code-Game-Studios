@@ -5,17 +5,19 @@
 | ID | QA-COND-0005 |
 | Kind | Accessibility Gap |
 | Severity | S2 High |
-| Priority | P1 Sprint 6 gate blocker |
-| Status | Open |
-| Action State | Needs Remediation |
+| Priority | P4 Accepted risk condition |
+| Status | Accepted Risk |
+| Action State | Producer Waived |
 | Reported | 2026-05-05 |
 | Source | Accessibility requirements and Production-to-Polish gate check |
 
 ## Summary
 
-The project has committed to Standard-tier accessibility, but the requirements
-document remains Draft and many Standard-tier rows are still Not Started. The
-Production-to-Polish gate marks accessibility verification as a hard blocker.
+The project originally targeted Standard-tier accessibility, but the producer
+has waived the remaining Standard-tier accessibility scope for the Sprint 6
+Production-to-Polish gate under friend-game scope. This is not verified
+accessibility completion; it is an accepted-risk disposition for a non-public
+build.
 
 ## Source Evidence
 
@@ -41,8 +43,17 @@ Provide all applicable evidence:
 
 ## Current Blocker Status
 
-This is a P1 Sprint 6 gate blocker for Production-to-Polish readiness until
-Standard-tier accessibility is remediated, verified, or explicitly reclassified.
+This condition is no longer an active P1 Sprint 6 blocker. On 2026-05-06, the
+producer accepted the remaining Standard-tier accessibility exposure as risk
+for friend-game scope:
+
+> Friend-game scope - Standard-tier accessibility waived by producer. No
+> public release, no obligation.
+
+This does not mark Standard-tier accessibility as verified and does not remove
+future accessibility debt. Any public, external, commercial, or broader release
+candidate must revisit the remaining rows and either implement, evidence,
+reclassify, or accept risk under that new release scope.
 
 ## Partial Evidence Updates
 
@@ -123,6 +134,12 @@ Standard-tier accessibility is remediated, verified, or explicitly reclassified.
   audit evidence, with scoped remediation or producer disposition still
   available before release if warning-only disposition is insufficient.
   QA-COND-0005 remains Open.
+- 2026-05-06: Producer reclassified the remaining QA-COND-0005 Standard-tier
+  accessibility exposure as accepted risk for friend-game scope only. Reason:
+  "Friend-game scope - Standard-tier accessibility waived by producer. No
+  public release, no obligation." This unblocks S6-06 for Sprint 6 gate
+  execution, but does not verify Standard-tier accessibility and does not apply
+  to any future public/external release candidate.
 
 ## Non-Goals
 

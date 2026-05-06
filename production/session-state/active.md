@@ -2133,3 +2133,9 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record A11Y-BS-03 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
 - Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+
+## Session Extract - Producer Risk Disposition 2026-05-06
+- Decision: `QA-COND-0005` / S6-04 is accepted risk for Sprint 6 friend-game scope only.
+- Producer wording: "Friend-game scope - Standard-tier accessibility waived by producer. No public release, no obligation."
+- Scope: This does not verify Standard-tier accessibility, close the underlying accessibility debt, or apply to any public/external release candidate. Remaining Standard-tier rows must be revisited before a public, external, commercial, or broader release.
+- Sprint status: S6-04 is no longer an active P1 blocker. S6-06 is unblocked and ready for final re-smoke, QA sign-off, and Production -> Polish gate-check, carrying QA-COND-0005 and QA-COND-0006 as explicit accepted-risk conditions rather than verified evidence.

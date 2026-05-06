@@ -5,7 +5,7 @@
 | Evidence ID | S6-04 Standard-tier accessibility disposition |
 | Date | 2026-05-06 |
 | QA condition | `production/qa/bugs/QA-COND-0005-standard-tier-accessibility-gaps.md` |
-| QA-COND-0005 status | Open |
+| QA-COND-0005 status | Accepted Risk |
 | Source draft | `design/accessibility-requirements.md` |
 | Related UX draft | `design/ux/settings-accessibility.md` |
 | GSS-008 evidence | `production/qa/evidence/gss-008-placement-timer-multiplier-authority-2026-05-05.md` |
@@ -15,14 +15,16 @@
 | HAND-UI-014 evidence | `production/qa/evidence/hand-ui-placement-staged-disclosure-accessibility-2026-05-05.md` |
 | SAU-012 evidence | `production/qa/evidence/shop-auction-ui-draft-initial-clear-objective-overlay-2026-05-05.md` |
 | A11Y-BS-03 evidence | `production/qa/evidence/accessibility-photosensitivity-warning-flash-audit-2026-05-05.md` |
-| Disposition verdict | QA-COND-0005 remains Open. Every source row has exactly one allowed final disposition. A11Y-ST-09, A11Y-ST-12, A11Y-ST-13, A11Y-ST-14, A11Y-ST-18, and A11Y-BS-03 are implemented and evidenced. HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are implemented and evidenced by HUD-012, but the parent rows still require remaining non-HUD / auction-price evidence before closure. A11Y-DEP-01 and A11Y-DEP-02 now have foundation implementation evidence, but dependent source rows still require their own closure evidence. |
+| Disposition verdict | QA-COND-0005 is accepted risk for Sprint 6 friend-game scope. A11Y-ST-09, A11Y-ST-12, A11Y-ST-13, A11Y-ST-14, A11Y-ST-18, and A11Y-BS-03 are implemented and evidenced. HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are implemented and evidenced by HUD-012. Remaining Standard-tier rows are not verified; producer waived them for friend-game scope only with reason: "Standard-tier accessibility waived by producer. No public release, no obligation." |
 
 ## Scope
 
 This register records the Sprint 6 S6-04 disposition of every Standard-tier
 accessibility source row and every Sprint 6 dependency row. It does not edit the
-accessibility requirements draft, does not implement code, does not close
-QA-COND-0005, and does not claim evidence that has not been captured.
+accessibility requirements draft, does not implement code, and does not claim
+evidence that has not been captured. It records the producer accepted-risk
+waiver that removes QA-COND-0005 as an active Sprint 6 blocker for friend-game
+scope only.
 
 Allowed final dispositions used by this register:
 
@@ -30,10 +32,21 @@ Allowed final dispositions used by this register:
 - evidence-only required
 - must implement in Sprint 6
 - later sprint / blocked dependency
+- accepted risk with producer signoff
 
-No row currently uses `accepted risk with producer signoff` or `reclassified out
-of Production -> Polish gate`, because no producer signoff block is present in
-the source evidence for this pass.
+## Producer Accepted-Risk Decision
+
+On 2026-05-06, the producer waived the remaining Standard-tier accessibility
+scope for the Sprint 6 Production-to-Polish gate under friend-game scope:
+
+> Friend-game scope - Standard-tier accessibility waived by producer. No public
+> release, no obligation.
+
+This is not verified Standard-tier accessibility completion. It is a scoped
+accepted-risk decision for a non-public friend-game build. Any public, external,
+commercial, or broader release candidate must revisit the remaining unresolved
+rows and either implement, evidence, reclassify, or accept risk under that later
+release scope.
 
 ## GSS-008 Evidence Linkage
 
@@ -218,11 +231,12 @@ QA-COND-0005 remains Open.
 | A11Y-DEP-05 | Render calibration approach | Settings UX requires brightness/gamma controls and contrast preservation, but no renderer/shader/browser calibration approach is selected. | Technical decision for brightness/gamma implementation path and contrast re-verification under the adjustment range. | A11Y-BS-02. | Blocks brightness/gamma closure. | Future accessibility-settings video calibration story. |
 | A11Y-DEP-06 | Tutorial/help prompt registry | Settings UX specifies Help replay/reset and prompt categories. No registry, ownership decision, or persistence evidence exists. SAU-012 supplies the DRAFT_INITIAL objective overlay retrieval path for A11Y-ST-18. | Prompt registry, owner decision for tutorial/help copy, and dismiss/replay/reset persistence evidence. | A11Y-ST-15. | Blocks tutorial persistence; no longer blocks DRAFT_INITIAL clear-objective closure. | `production/epics/accessibility-settings/EPIC.md` story 005. |
 
-## Rows Still Blocking QA-COND-0005 Closure
+## Rows Remaining As Accepted Risk / Future Accessibility Debt
 
-QA-COND-0005 remains Open. The following source rows still block closure because
-they require evidence, implementation, a dependency, or a future producer
-decision:
+QA-COND-0005 is accepted risk for Sprint 6 friend-game scope. The following
+source rows remain unresolved accessibility debt and must be revisited before
+any public/external release, but they no longer block S6-06 under the producer
+waiver above:
 
 - A11Y-ST-01, A11Y-ST-02, A11Y-ST-03.
 - A11Y-ST-04, A11Y-ST-05, A11Y-ST-06, A11Y-ST-07, A11Y-ST-08.
@@ -269,13 +283,12 @@ Two dependency rows are no longer empty prerequisites:
 
 This does not close QA-COND-0005 as a whole.
 
-## Producer Decisions Needed Before Closure
+## Producer Decisions Recorded For Sprint 6
 
-No producer signoff is recorded in this register. If the project wants to avoid
-implementing or evidencing a row before the Production -> Polish gate, the
-producer must provide a dated decision with row ID, decision text, reason the
-risk is acceptable for the gate, and follow-up owner or explicit
-no-follow-up-needed statement.
+The producer decision above accepts the remaining Standard-tier accessibility
+exposure for friend-game scope only. The row-specific decisions below remain
+useful future planning notes, not Sprint 6 blockers after this accepted-risk
+waiver.
 
 Exact decisions currently available but not signed:
 
@@ -295,14 +308,16 @@ Exact decisions currently available but not signed:
 
 ## Closure Rule
 
-QA-COND-0005 can close only after all source rows are implemented and evidenced,
-accepted as risk with producer signoff, reclassified out of the Production ->
-Polish gate with producer signoff and follow-up path, or otherwise formally
-dispositioned without an unverified Standard-tier blocker.
+QA-COND-0005 can only be marked Verified/Closed after all source rows are
+implemented and evidenced, accepted as risk with producer signoff, reclassified
+out of the relevant release gate with producer signoff and follow-up path, or
+otherwise formally dispositioned without an unverified Standard-tier blocker.
+For Sprint 6 friend-game scope, this register records accepted risk rather than
+verified accessibility completion.
 
 Current closure result:
 
-- QA-COND-0005 remains Open.
+- QA-COND-0005 is Accepted Risk for Sprint 6 friend-game scope.
 - A11Y-ST-09, A11Y-ST-12, A11Y-ST-13, A11Y-ST-14, and A11Y-ST-18
   are closed sub-gaps.
 - A11Y-BS-03 is a closed warning/audit sub-gap, with objective-destruction
@@ -311,6 +326,8 @@ Current closure result:
 - HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are evidenced by HUD-012, but
   the parent rows still block closure until remaining non-HUD / auction-price
   exposure is evidenced or dispositioned.
-- No accepted-risk or reclassification signoff is present.
-- Rows marked `must implement in Sprint 6` or `later sprint / blocked
-  dependency` prevent closure.
+- Producer accepted-risk signoff is present for remaining Standard-tier
+  exposure under friend-game scope only.
+- Rows marked `evidence-only required`, `must implement in Sprint 6`, or
+  `later sprint / blocked dependency` remain future accessibility debt and must
+  be revisited before any public/external release candidate.
