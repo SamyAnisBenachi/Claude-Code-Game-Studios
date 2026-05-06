@@ -8,15 +8,16 @@ use shared::keyword::InjuredGrantedKeyword;
 use shared::protocol::{
     C2SRequestSnapshot, EntityId, ObjectiveSnapshot, PlacedCardReveal, PlayTarget, ReliableChannel,
     ResolutionEvent, RoundPhase, S2CGameSnapshot, S2CJoinAck, S2CPlacementReveal,
-    S2CResolutionEvent, S2CRoomCreated, S2CSlotUpdated, SessionSlot, UnitBoardLocation,
-    UnitBoardState, UnitStatsSnapshot,
+    S2CResolutionEvent, S2CRoomCreated, S2CSlotUpdated, SessionSlot, TaggedEvent,
+    UnitBoardLocation, UnitBoardState, UnitStatsSnapshot,
 };
 use shared::session::PlayerId;
 
 use super::PresentationSet;
 use crate::card_animations::{
-    cancel_tween_anim_in_place, AnimQueue, BoardRebuildRequested, PendingObjectiveDestroyedEvents,
-    PendingPhaseChange, PlacementRevealAnimReady, PlacementRevealEntry, StagedObjectiveRevealQueue,
+    cancel_tween_anim_in_place, AnimGroup, AnimQueue, AnimQueueEvent, AnimationTimingConfig,
+    BoardRebuildRequested, PendingObjectiveDestroyedEvents, PendingPhaseChange,
+    PlacementRevealAnimReady, PlacementRevealEntry, StagedObjectiveRevealQueue,
 };
 use crate::state::{ClientGameSnapshotMessage, ClientState, CurrentClientPhase};
 use crate::ui::hand::{
@@ -45,6 +46,8 @@ pub const HP_THRESHOLD_EPSILON: f32 = 1e-4;
 pub const DEFAULT_CO_OCCUPANCY_SIDE_OFFSET: f32 = 8.0;
 pub const MIN_CO_OCCUPANCY_SIDE_OFFSET: f32 = 4.0;
 pub const MAX_CO_OCCUPANCY_SIDE_OFFSET: f32 = 16.0;
+pub const MIN_RESOLUTION_SUB_STEP: u8 = 1;
+pub const MAX_RESOLUTION_SUB_STEP: u8 = 6;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UnitAtlasFrame {
@@ -483,12 +486,24 @@ impl SnapshotRecoveryRequested {
             reason: SnapshotRecoveryReason::PendingResolutionScriptStuck,
         }
     }
+
+    fn resolution_sub_step_out_of_range() -> Self {
+        Self {
+            reason: SnapshotRecoveryReason::ResolutionSubStepOutOfRange,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SnapshotRecoveryReason {
     ResolutionRevealStuck,
     PendingResolutionScriptStuck,
+    ResolutionSubStepOutOfRange,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ResolutionQueueBuildError {
+    OutOfRangeSubStep { sub_step: u8, trigger_index: u32 },
 }
 
 #[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
@@ -517,6 +532,13 @@ impl PendingResolutionScript {
 
     pub fn script(&self) -> Option<&S2CResolutionEvent> {
         self.script.as_ref()
+    }
+
+    fn take(&mut self) -> Option<S2CResolutionEvent> {
+        let script = self.script.take();
+        self.elapsed_without_reveal = Duration::ZERO;
+        self.recovery_requested = false;
+        script
     }
 
     fn tick_without_reveal(&mut self, delta: Duration, timeout: Duration) -> bool {
@@ -852,18 +874,32 @@ impl Plugin for BoardRenderingPlugin {
                     sync_reveal_state_from_snapshot_system.in_set(BoardRenderSet::ReadMessages),
                     apply_snapshot_spawn_highlights_system.in_set(BoardRenderSet::ReadMessages),
                     rebuild_board_from_snapshot_system.in_set(BoardRenderSet::ReadMessages),
-                    drain_resolution_event_system.in_set(BoardRenderSet::ReadMessages),
                     tick_reveal_recovery_timeouts_system
                         .in_set(BoardRenderSet::ResolveStateMachine),
                     (
                         collect_placement_reveal_batch_system,
+                        consume_pending_resolution_script_system,
                         send_snapshot_recovery_requests_system,
                     )
                         .chain()
-                        .in_set(BoardRenderSet::ScheduleTweens),
+                        .in_set(BoardRenderSet::ScheduleTweens)
+                        .before(crate::card_animations::resolution_executing_system),
                     update_hp_bars_system.in_set(BoardRenderSet::UpdateHpBars),
                     update_status_icons_system.in_set(BoardRenderSet::UpdateHpBars),
                 ),
+            )
+            .add_systems(
+                Update,
+                drain_resolution_event_system
+                    .in_set(PresentationSet::PhaseTransition)
+                    .before(super::phase_sink_system)
+                    .run_if(in_state(ClientState::InSession)),
+            )
+            .add_systems(
+                Update,
+                sync_resolution_queue_drain_state_system
+                    .after(crate::card_animations::resolution_executing_system)
+                    .run_if(in_state(ClientState::InSession)),
             )
             .add_systems(Update, drain_player_team_map_messages_system)
             .add_systems(
@@ -1045,23 +1081,31 @@ pub fn emit_ghost_drag_start_events_system(
 pub fn drain_resolution_event_system(
     mut receivers: Query<&mut MessageReceiver<S2CResolutionEvent>>,
     mut pending_script: ResMut<PendingResolutionScript>,
-    mut reveal_wait: ResMut<ResolutionRevealWait>,
-    mut render_state: ResMut<BoardRenderState>,
-    local_player: Res<BoardLocalPlayer>,
-    player_team_map: Res<PlayerTeamMap>,
-    mut board_cells: Query<(&LaneCell, &mut SpawnHighlightState, &mut Sprite), With<BoardCellNode>>,
+    mut anim_queue: Option<ResMut<AnimQueue>>,
+    mut recovery_writer: MessageWriter<SnapshotRecoveryRequested>,
 ) {
     let mut latest = None;
+    let mut rejected = None;
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
-            apply_resolution_spawn_range_changes(
-                &message,
-                local_player.player_id,
-                &player_team_map,
-                &mut board_cells,
-            );
+            if let Err(error) = validate_resolution_script(&message) {
+                rejected = Some(error);
+                latest = None;
+                continue;
+            }
+
             latest = Some(message);
         }
+    }
+
+    if let Some(error) = rejected {
+        reject_resolution_script(
+            error,
+            &mut pending_script,
+            anim_queue.as_deref_mut(),
+            &mut recovery_writer,
+        );
+        return;
     }
 
     let Some(message) = latest else {
@@ -1069,10 +1113,176 @@ pub fn drain_resolution_event_system(
     };
 
     pending_script.set(message);
-    if reveal_wait.is_active() || *render_state == BoardRenderState::ResolutionReveal {
-        reveal_wait.clear();
-        *render_state = BoardRenderState::ResolutionExecuting;
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn consume_pending_resolution_script_system(
+    mut pending_script: ResMut<PendingResolutionScript>,
+    collect_state: Res<PlacementRevealCollectState>,
+    mut reveal_wait: ResMut<ResolutionRevealWait>,
+    mut render_state: ResMut<BoardRenderState>,
+    timings: Option<Res<AnimationTimingConfig>>,
+    mut anim_queue: Option<ResMut<AnimQueue>>,
+    local_player: Res<BoardLocalPlayer>,
+    player_team_map: Res<PlayerTeamMap>,
+    mut board_cells: Query<(&LaneCell, &mut SpawnHighlightState, &mut Sprite), With<BoardCellNode>>,
+    mut recovery_writer: MessageWriter<SnapshotRecoveryRequested>,
+) {
+    if !pending_resolution_script_ready_for_playback(
+        &pending_script,
+        &collect_state,
+        &reveal_wait,
+        &render_state,
+    ) {
+        return;
     }
+
+    let Some(anim_queue) = anim_queue.as_deref_mut() else {
+        warn!("Board Rendering: pending resolution script cannot play without AnimQueue");
+        return;
+    };
+    let timings = timings.as_deref().copied().unwrap_or_default();
+    let Some(script) = pending_script.take() else {
+        return;
+    };
+
+    match resolution_anim_groups_from_script(&script, timings) {
+        Ok(groups) => {
+            apply_resolution_spawn_range_changes(
+                &script,
+                local_player.player_id,
+                &player_team_map,
+                &mut board_cells,
+            );
+            anim_queue.load_groups(groups);
+            reveal_wait.clear();
+            *render_state = BoardRenderState::ResolutionExecuting;
+        }
+        Err(error) => {
+            reject_resolution_script(
+                error,
+                &mut pending_script,
+                Some(anim_queue),
+                &mut recovery_writer,
+            );
+        }
+    }
+}
+
+pub fn sync_resolution_queue_drain_state_system(
+    queue: Option<Res<AnimQueue>>,
+    pending_phase: Option<Res<PendingPhaseChange>>,
+    current_phase: Option<Res<CurrentClientPhase>>,
+    mut render_state: ResMut<BoardRenderState>,
+) {
+    if *render_state != BoardRenderState::ResolutionExecuting {
+        return;
+    }
+
+    let queue_drained = queue.as_deref().is_none_or(|queue| queue.groups.is_empty());
+    let phase_drained = pending_phase
+        .as_deref()
+        .is_none_or(PendingPhaseChange::is_none);
+    if !queue_drained || !phase_drained {
+        return;
+    }
+
+    let phase = current_phase
+        .as_deref()
+        .map(|current| current.phase)
+        .unwrap_or(RoundPhase::Resolution);
+    *render_state = BoardRenderState::from_snapshot_phase(phase);
+}
+
+fn pending_resolution_script_ready_for_playback(
+    pending_script: &PendingResolutionScript,
+    collect_state: &PlacementRevealCollectState,
+    reveal_wait: &ResolutionRevealWait,
+    render_state: &BoardRenderState,
+) -> bool {
+    if !pending_script.is_some() || collect_state.is_pending() {
+        return false;
+    }
+
+    reveal_wait.is_active()
+        || matches!(
+            render_state,
+            BoardRenderState::Resolution
+                | BoardRenderState::ResolutionReveal
+                | BoardRenderState::ResolutionExecuting
+        )
+}
+
+pub fn resolution_anim_groups_from_script(
+    script: &S2CResolutionEvent,
+    timings: AnimationTimingConfig,
+) -> Result<Vec<AnimGroup>, ResolutionQueueBuildError> {
+    validate_resolution_script(script)?;
+
+    let mut by_sub_step: [Vec<TaggedEvent>; MAX_RESOLUTION_SUB_STEP as usize] =
+        std::array::from_fn(|_| Vec::new());
+    for event in &script.events {
+        by_sub_step[(event.sub_step - MIN_RESOLUTION_SUB_STEP) as usize].push(event.clone());
+    }
+
+    let mut groups = Vec::new();
+    for (index, mut events) in by_sub_step.into_iter().enumerate() {
+        if events.is_empty() {
+            continue;
+        }
+
+        events.sort_by_key(|event| event.trigger_index);
+        let sub_step = index as u8 + MIN_RESOLUTION_SUB_STEP;
+        groups.push(AnimGroup::new(
+            sub_step,
+            timings.resolution_sub_step_duration_ms,
+            events
+                .into_iter()
+                .map(AnimQueueEvent::resolution_replay)
+                .collect(),
+        ));
+    }
+
+    Ok(groups)
+}
+
+fn validate_resolution_script(
+    script: &S2CResolutionEvent,
+) -> Result<(), ResolutionQueueBuildError> {
+    for event in &script.events {
+        if !(MIN_RESOLUTION_SUB_STEP..=MAX_RESOLUTION_SUB_STEP).contains(&event.sub_step) {
+            return Err(ResolutionQueueBuildError::OutOfRangeSubStep {
+                sub_step: event.sub_step,
+                trigger_index: event.trigger_index,
+            });
+        }
+    }
+
+    Ok(())
+}
+
+fn reject_resolution_script(
+    error: ResolutionQueueBuildError,
+    pending_script: &mut PendingResolutionScript,
+    anim_queue: Option<&mut AnimQueue>,
+    recovery_writer: &mut MessageWriter<SnapshotRecoveryRequested>,
+) {
+    match error {
+        ResolutionQueueBuildError::OutOfRangeSubStep {
+            sub_step,
+            trigger_index,
+        } => {
+            error!(
+                "Board Rendering protocol desync: S2CResolutionEvent sub_step {sub_step} at trigger_index {trigger_index} is outside {MIN_RESOLUTION_SUB_STEP}..={MAX_RESOLUTION_SUB_STEP}; requesting snapshot"
+            );
+        }
+    }
+
+    pending_script.clear();
+    if let Some(anim_queue) = anim_queue {
+        anim_queue.reset();
+    }
+    recovery_writer.write(SnapshotRecoveryRequested::resolution_sub_step_out_of_range());
 }
 
 pub fn tick_reveal_recovery_timeouts_system(

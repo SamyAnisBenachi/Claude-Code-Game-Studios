@@ -2,9 +2,13 @@ use std::{collections::VecDeque, time::Duration};
 
 use bevy::{math::curve::EaseFunction, prelude::*};
 use bevy_tweening::{lens::TransformPositionLens, Tween};
-use shared::protocol::{RoundPhase, S2CPhaseChanged};
+use shared::protocol::{RoundPhase, S2CPhaseChanged, TaggedEvent};
 
 use super::{events::GroupDrainedSignal, make_tween_anim};
+use crate::presentation::board_rendering::BoardRenderState;
+use crate::state::{
+    apply_phase_changed_message, apply_phase_view_message, ClientPhaseView, CurrentClientPhase,
+};
 
 const DEFAULT_PRE_ANIMATION_PAUSE_MS: u64 = 400;
 const DEFAULT_UNIT_REVEAL_TWEEN_DURATION_MS: u64 = 250;
@@ -112,6 +116,9 @@ pub enum AnimQueueEvent {
         end: Vec3,
         duration_ms: u64,
     },
+    ResolutionReplay {
+        event: TaggedEvent,
+    },
 }
 
 impl AnimQueueEvent {
@@ -122,6 +129,10 @@ impl AnimQueueEvent {
             end,
             duration_ms,
         }
+    }
+
+    pub fn resolution_replay(event: TaggedEvent) -> Self {
+        Self::ResolutionReplay { event }
     }
 
     fn spawn(&self, commands: &mut Commands) {
@@ -147,6 +158,7 @@ impl AnimQueueEvent {
                     warn!("AnimQueue target entity {target:?} no longer exists");
                 }
             }
+            Self::ResolutionReplay { .. } => {}
         }
     }
 }
@@ -449,8 +461,18 @@ pub fn resolution_executing_system(
     mut pending_objectives: ResMut<PendingObjectiveDestroyedEvents>,
     mut staged_objectives: ResMut<StagedObjectiveRevealQueue>,
     mut drained_signals: MessageWriter<GroupDrainedSignal>,
+    render_state: Option<Res<BoardRenderState>>,
+    mut current_phase: Option<ResMut<CurrentClientPhase>>,
+    mut phase_view: Option<ResMut<ClientPhaseView>>,
 ) {
     let delta = time.delta();
+    let playback_active = render_state
+        .as_deref()
+        .is_none_or(|state| *state == BoardRenderState::ResolutionExecuting);
+
+    if !playback_active {
+        return;
+    }
 
     if queue.groups.is_empty() {
         drain_empty_queue(
@@ -458,6 +480,8 @@ pub fn resolution_executing_system(
             timings.pre_animation_pause(),
             &mut queue,
             &mut pending_phase,
+            &mut current_phase,
+            &mut phase_view,
         );
         return;
     }
@@ -473,7 +497,7 @@ pub fn resolution_executing_system(
 
     if pending_phase.phase() == Some(RoundPhase::GameOver) {
         stage_objective_reveals(&mut pending_objectives, &mut staged_objectives, &timings);
-        drain_pending_phase(&mut pending_phase);
+        drain_pending_phase(&mut pending_phase, &mut current_phase, &mut phase_view);
         drained_signals.write(GroupDrainedSignal);
         queue.clear_after_drain();
         return;
@@ -481,7 +505,8 @@ pub fn resolution_executing_system(
 
     if queue.current_index + 1 >= queue.groups.len() {
         stage_objective_reveals(&mut pending_objectives, &mut staged_objectives, &timings);
-        drain_pending_phase(&mut pending_phase);
+        drain_pending_phase(&mut pending_phase, &mut current_phase, &mut phase_view);
+        drained_signals.write(GroupDrainedSignal);
         queue.clear_after_drain();
         return;
     }
@@ -544,6 +569,8 @@ fn drain_empty_queue(
     pre_animation_pause: Duration,
     queue: &mut AnimQueue,
     pending_phase: &mut PendingPhaseChange,
+    current_phase: &mut Option<ResMut<CurrentClientPhase>>,
+    phase_view: &mut Option<ResMut<ClientPhaseView>>,
 ) {
     if pending_phase.is_none() {
         queue.empty_queue_active = false;
@@ -557,7 +584,7 @@ fn drain_empty_queue(
 
     queue.empty_queue_elapsed += delta;
     if queue.empty_queue_elapsed >= pre_animation_pause {
-        drain_pending_phase(pending_phase);
+        drain_pending_phase(pending_phase, current_phase, phase_view);
         queue.empty_queue_active = false;
         queue.empty_queue_elapsed = Duration::ZERO;
     }
@@ -582,6 +609,19 @@ fn stage_objective_reveals(
     }
 }
 
-fn drain_pending_phase(pending_phase: &mut PendingPhaseChange) {
-    let _ = pending_phase.take();
+fn drain_pending_phase(
+    pending_phase: &mut PendingPhaseChange,
+    current_phase: &mut Option<ResMut<CurrentClientPhase>>,
+    phase_view: &mut Option<ResMut<ClientPhaseView>>,
+) {
+    let Some(message) = pending_phase.take() else {
+        return;
+    };
+
+    if let Some(current_phase) = current_phase.as_deref_mut() {
+        apply_phase_changed_message(message.clone(), current_phase);
+    }
+    if let Some(phase_view) = phase_view.as_deref_mut() {
+        apply_phase_view_message(&message, phase_view);
+    }
 }
