@@ -6,18 +6,17 @@
 | Kind | QA Condition |
 | Severity | S3 Medium |
 | Priority | P2 Sprint 6 validation |
-| Status | Open |
-| Action State | Needs Evidence |
+| Status | Closed |
+| Action State | N/A - Closed |
 | Reported | 2026-05-05 |
 | Source | Sprint 5 QA sign-off and Production-to-Polish gate check |
 
 ## Summary
 
-`AU1-b-network` remains open pending QA disposition of the ADR-008 Lightyear
-FIFO integration harness added after Sprint 5 close-out. Sprint 5 QA accepted
-this as a non-blocking condition, but it must remain visible until the harness
-is run, recorded, and accepted as closure evidence or the condition is otherwise
-reclassified.
+`AU1-b-network` is resolved by the expanded ADR-008 Lightyear FIFO integration
+harness. The original single-client S2C ordering evidence remains accepted as
+partial evidence, and the 2026-05-06 repair adds the missing live two-client
+first-valid-wins FIFO evidence for same-window competing auction bids.
 
 ## Source Evidence
 
@@ -47,12 +46,12 @@ The harness exercises a live Lightyear WebSocket server/client pair and sends
 prove the auction card arrives before the phase change on the intended ordered
 reliable channel.
 
-QA disposition is still required. This condition should remain `Open / Needs
-Evidence` until the command result is captured in QA evidence and the QA lead or
-orchestrator explicitly accepts it as closure evidence, reclassifies the
-condition, or records accepted risk.
+This section is retained as the partial-evidence review that kept the condition
+open before the two-client repair below.
 
 ## 2026-05-06 QA Disposition Review
+
+Historical disposition before the two-client repair below.
 
 Disposition: Keep `Open / Needs Evidence`.
 
@@ -96,6 +95,49 @@ Required next evidence:
   the current harness; or
 - Record an explicit accepted-risk disposition.
 
+## 2026-05-06 Two-Client FIFO Evidence Repair
+
+Disposition: Close `Closed / N/A - Closed`.
+
+Evidence added:
+
+- Harness: `tests/integration/network/auction_fifo_ordering_test.rs`.
+- New test:
+  `two_clients_same_window_duplicate_bid_first_valid_wins_on_reliable_channel`.
+- Existing partial S2C FIFO test retained:
+  `auction_card_precedes_draft_auction_phase_on_reliable_channel`.
+- Focused verification command:
+  `cargo test -p server --test auction_fifo_ordering_test -- --nocapture`.
+- Focused verification result on 2026-05-06: PASS, 2 passed, 0 failed,
+  0 ignored.
+- Adjacent auction/network regression command:
+  `cargo test -p server --test e2e_websocket_test --test auction_bid_validation_gate_test --test accepted_bid_reservation_test`.
+- Adjacent regression result on 2026-05-06: PASS, 15 passed, 0 failed,
+  0 ignored across the three targets.
+- Server check: `cargo check -p server`: PASS.
+
+Closure rationale:
+
+- The new harness starts one live Lightyear WebSocket server and two live
+  Lightyear WebSocket clients.
+- Client A is connected and mapped first; Client B is connected and mapped
+  second.
+- After both clients are connected, each client queues one
+  `C2SPlaceBid { amount: 5 }` on `ReliableChannel` in the same armed auction
+  window.
+- The server collects both client inputs before one authoritative
+  `process_bid_batch` call. Before that batch, the auction leader is `None` and
+  the current price is the starting price, `4`.
+- The server records the observed FIFO bid order, accepts exactly the first
+  observed valid bid at amount `5`, rejects the later same-amount conflicting
+  bid with `BidRejectedReason::AmountTooLow`, and leaves final auction state
+  with only the first bidder as leader.
+- Economy assertions prove only the first bidder reserves `5` gold and the
+  later conflicting bidder reserves `0`.
+
+This satisfies the requested two-client / first-valid-wins FIFO closure path for
+QA-COND-0001. No reclassification or accepted-risk disposition is needed.
+
 ## Expected Closure Evidence
 
 Provide one of the following:
@@ -108,12 +150,14 @@ Provide one of the following:
 
 ## Current Blocker Status
 
-This is not a Sprint 5 close-out blocker. It is a Sprint 6 validation condition
-and remains open until the AU1 FIFO harness result is captured and accepted as
-closure evidence, or until reclassification or accepted-risk disposition exists.
+Closed. QA-COND-0001 is no longer Sprint 6 validation debt after the expanded
+AU1 FIFO harness verified live two-client first-valid-wins behavior for
+same-window competing auction bids.
 
 ## Non-Goals
 
 - Does not assign Sprint 6 capacity.
-- Does not edit ADR-008, Lightyear code, tests, or sprint status.
-- Does not claim QA has already verified or accepted the AU1 FIFO harness.
+- Does not edit ADR-008, Lightyear production code, sprint status, or
+  session-state records.
+- Does not alter QA-COND-0005, QA-COND-0006, or QA-COND-0007.
+- Does not claim playable-client manual QA.
