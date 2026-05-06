@@ -40,6 +40,10 @@ path = "src/board_rendering_perf_harness.rs"
 name = "hud_mana_shapes_harness"
 path = "src/hud_mana_shapes_harness.rs"
 
+[[bin]]
+name = "shop_auction_bid_target_focus_harness"
+path = "src/shop_auction_bid_target_focus_harness.rs"
+
 [[test]]
 name = "card_animations_plugin_scaffold_test"
 path = "../tests/unit/card-animations/plugin_scaffold_test.rs"
