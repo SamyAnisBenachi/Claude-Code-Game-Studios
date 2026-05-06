@@ -63,6 +63,13 @@ Standard-tier accessibility is remediated, verified, or explicitly reclassified.
   remains Open because rows still require evidence, Sprint 6 implementation,
   blocked-dependency follow-up, or producer decisions before closure. No
   accepted-risk or reclassification signoff is recorded in this update.
+- 2026-05-05: SAU-011 automated ECS evidence added at
+  `production/qa/evidence/shop-auction-ui-auction-bid-target-focus-2026-05-05.md`
+  for A11Y-ST-12 target size, focus order, focus ring, disabled/unaffordable
+  focus skip, `BIDDING...` state, and `YOU ARE LEADING` replacement behavior.
+  Browser/WASM visual screenshot evidence is deferred until a playable or
+  renderable Shop/Auction shell exists. This does not claim A11Y-ST-12 visual
+  closure and does not close QA-COND-0005.
 
 ## Non-Goals
 

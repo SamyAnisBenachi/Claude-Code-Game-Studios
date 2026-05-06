@@ -1,6 +1,8 @@
 # SAU-011 Auction Bid Target Size and Focus Evidence
 
-Status: Implementation and automated ECS evidence added; browser/WASM screenshot capture pending.
+Status: Implementation and automated ECS evidence added; browser/WASM visual
+screenshot evidence deferred until a playable or renderable Shop/Auction shell
+exists.
 
 Story: `production/epics/shop-auction-ui/story-011-auction-bid-target-size-and-focus-evidence.md`
 QA condition: `production/qa/bugs/QA-COND-0005-standard-tier-accessibility-gaps.md`
@@ -53,11 +55,17 @@ Coverage in `tests/integration/shop_auction_ui/auction_bid_target_focus_test.rs`
   `C2SPlaceBid { amount }`, switch the clicked control to `BIDDING...`, and
   block additional sends while in flight.
 
+Disposition: this automated ECS evidence remains valid evidence for target
+size, focus order, focus ring state, disabled/unaffordable focus skip, the
+`BIDDING...` in-flight state, and the local `YOU ARE LEADING` replacement.
+
 ## Browser/WASM Capture Status
 
-Browser/WASM screenshot artifacts were not captured in this worker pass.
+Browser/WASM visual screenshot artifacts are deferred by disposition. Do not
+create a temporary browser/WASM harness for SAU-011; capture should wait until
+a playable or renderable Shop/Auction shell exists.
 
-Required before story closure:
+Deferred visual evidence needed before claiming A11Y-ST-12 visual closure:
 
 - 100 percent UI scale target-bound measurements for +1, +3, and +5.
 - Focus-bound measurements for +1, +3, and +5.
@@ -70,8 +78,8 @@ Required before story closure:
 - Screenshot evidence for local `YOU ARE LEADING` replacement with no
   focusable bid-area control.
 
-Implementation note: the visible button target itself was enlarged to 44px high;
-no equivalent invisible hit box is used.
+Implementation note: the visible button target itself was enlarged to 44px
+high; no equivalent invisible hit box is used.
 
 ## QA-COND-0005 Impact
 
@@ -79,7 +87,8 @@ SAU-011 implements the A11Y-ST-12 code path for auction bid target size, focus
 visibility, immediate preset commitment labels, affordability gating, in-flight
 disable, one-send semantics, and `BIDDING...` feedback.
 
-This evidence file does not close A11Y-ST-12 by itself until the required
-browser/WASM screenshot artifacts are attached. QA-COND-0005 remains Open until
-all remaining Standard-tier rows are implemented and evidenced, reclassified,
-or accepted as risk.
+This evidence file does not claim A11Y-ST-12 visual closure because the
+browser/WASM visual screenshot evidence is deferred until a playable or
+renderable Shop/Auction shell exists. QA-COND-0005 remains Open until all
+remaining Standard-tier rows are implemented and evidenced, reclassified, or
+accepted as risk.
