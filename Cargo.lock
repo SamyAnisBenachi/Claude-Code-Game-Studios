@@ -2206,6 +2206,7 @@ dependencies = [
  "js-sys",
  "lightyear",
  "serde",
+ "serde_json",
  "shared",
  "wasm-bindgen",
  "web-sys",

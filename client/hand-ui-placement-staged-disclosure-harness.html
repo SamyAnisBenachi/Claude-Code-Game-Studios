@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HAND-UI-014 Placement Staged Disclosure Harness</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background: #11171a;
+        color: #f5f7f2;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #11171a;
+      }
+
+      canvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.12;
+      }
+
+      #capture-root {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 18px;
+        box-sizing: border-box;
+        padding: 22px;
+        background:
+          linear-gradient(180deg, rgba(17, 23, 26, 0.96), rgba(22, 27, 28, 0.94)),
+          radial-gradient(circle at 20% 18%, rgba(85, 132, 116, 0.28), transparent 32%);
+      }
+
+      header,
+      footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 26px;
+        font-weight: 700;
+      }
+
+      .meta {
+        color: #cbd2cc;
+        font-size: 14px;
+      }
+
+      .stage-pill {
+        border: 1px solid #8fb59d;
+        border-radius: 4px;
+        padding: 8px 10px;
+        background: #22332c;
+        color: #dff0e4;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .surface {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 18px;
+      }
+
+      .board {
+        position: relative;
+        display: grid;
+        grid-template-rows: repeat(5, 1fr);
+        gap: 8px;
+        padding: 16px;
+        border: 1px solid #38433f;
+        background: #182023;
+      }
+
+      .lane {
+        display: grid;
+        grid-template-columns: 54px repeat(8, 1fr);
+        gap: 8px;
+        align-items: stretch;
+      }
+
+      .lane-label,
+      .cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+
+      .lane-label {
+        color: #c9d2cd;
+        background: #202a2d;
+      }
+
+      .cell {
+        min-width: 0;
+        border: 1px solid #2f3b3e;
+        background: #222b2e;
+        color: #85908b;
+      }
+
+      .cell.highlight {
+        border-color: #f2d46f;
+        background: #594f27;
+        color: #fff7bf;
+        box-shadow: inset 0 0 0 2px #f2d46f;
+        font-weight: 700;
+      }
+
+      .cell.staged {
+        border-color: #8fd1ff;
+        background: #17354a;
+        color: #d8f1ff;
+        box-shadow: inset 0 0 0 2px #8fd1ff;
+      }
+
+      .side {
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        gap: 12px;
+      }
+
+      .panel {
+        border: 1px solid #38433f;
+        border-radius: 6px;
+        background: #171f21;
+        padding: 14px;
+      }
+
+      .panel h2 {
+        font-size: 17px;
+        margin-bottom: 10px;
+      }
+
+      .guidance {
+        color: #eaf4ec;
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      .detail-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+        font-size: 14px;
+        color: #cbd2cc;
+      }
+
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .detail-row strong {
+        color: #f5f7f2;
+      }
+
+      .hand {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+      }
+
+      .card {
+        min-height: 132px;
+        border: 1px solid #47514d;
+        border-radius: 6px;
+        background: #212b2d;
+        padding: 10px;
+        display: grid;
+        align-content: space-between;
+      }
+
+      .card.selected {
+        border-color: #f2d46f;
+        background: #403a25;
+        box-shadow: inset 0 0 0 2px #f2d46f;
+      }
+
+      .card.ghost {
+        border-style: dashed;
+        border-color: #8fd1ff;
+        background: #1c2b34;
+      }
+
+      .card-title {
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .card-meta {
+        color: #cbd2cc;
+        font-size: 13px;
+      }
+
+      .controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .button {
+        min-width: 114px;
+        border: 1px solid #8fb59d;
+        border-radius: 4px;
+        padding: 9px 12px;
+        background: #22332c;
+        color: #eaf4ec;
+        text-align: center;
+        font-weight: 700;
+      }
+
+      .button.inactive {
+        border-color: #58615d;
+        background: #2b3030;
+        color: #aeb7b2;
+      }
+
+      .timer {
+        min-width: 72px;
+        border: 1px solid #7b928b;
+        border-radius: 4px;
+        padding: 9px 12px;
+        color: #f5f7f2;
+        text-align: center;
+      }
+
+      .split {
+        min-height: 36px;
+        border: 1px solid #52635d;
+        border-radius: 4px;
+        padding: 9px 10px;
+        background: #1c2425;
+        color: #dce7e0;
+        font-weight: 700;
+      }
+
+      .split.hidden {
+        color: #727d78;
+        font-weight: 500;
+      }
+
+      .error {
+        color: #ffc1a3;
+        font-weight: 700;
+      }
+
+      .artifact {
+        color: #cbd2cc;
+        font-size: 13px;
+      }
+    </style>
+    <script>
+      (() => {
+        const requiredOrder = [
+          "placement-entry",
+          "card-selected",
+          "lane-cell-target-guidance",
+          "valid-target-highlight",
+          "valid-stage",
+          "reserve-current-split-adjustment",
+          "invalid-submit",
+          "correction-successful-submit",
+        ];
+
+        function byId(id) {
+          return document.getElementById(id);
+        }
+
+        function renderBoard(step) {
+          const highlights = new Set(
+            (step.highlightedCells || []).map((cell) => `${cell.lane}-${cell.cell}`),
+          );
+          const staged = step.pendingTarget?.lane
+            ? `${step.pendingTarget.lane}-${step.pendingTarget.cell}`
+            : "";
+          let html = "";
+          for (let lane = 1; lane <= 5; lane += 1) {
+            html += `<div class="lane"><div class="lane-label">Lane ${lane}</div>`;
+            for (let cell = 1; cell <= 8; cell += 1) {
+              const key = `${lane}-${cell}`;
+              const classes = ["cell"];
+              if (highlights.has(key)) classes.push("highlight");
+              if (staged === key) classes.push("staged");
+              html += `<div class="${classes.join(" ")}">${cell}</div>`;
+            }
+            html += "</div>";
+          }
+          byId("board").innerHTML = html;
+        }
+
+        function renderStep(step) {
+          byId("stage-title").textContent = step.title;
+          byId("stage-id").textContent = step.id;
+          byId("guidance").textContent = step.guidance;
+          byId("disclosure").textContent = step.disclosure;
+          byId("submit").textContent = step.submitText;
+          byId("submit").className =
+            step.submitState === "Inactive" ? "button inactive" : "button";
+          byId("timer").textContent = step.timerVisible ? "10s" : "hidden";
+          byId("split").textContent = step.reserveStripVisible
+            ? step.reserveText
+            : "Reserve/current split hidden";
+          byId("split").className = step.reserveStripVisible
+            ? "split"
+            : "split hidden";
+          byId("slot-state").textContent = step.fanSlotState;
+          byId("drag-state").textContent = step.dragVisible ? "visible" : "hidden";
+          byId("highlight-count").textContent = String(step.highlightedCells.length);
+          byId("ghost-count").textContent = String(step.ghostMessageCount);
+          byId("submit-count").textContent = String(step.submissionCount);
+          byId("error").textContent = step.submitError || "none";
+          byId("error").className = step.submitError ? "error" : "";
+          byId("checkmark").textContent = step.checkmarkVisible ? "visible" : "hidden";
+          byId("premature").textContent = step.laterControlsHidden
+            ? "later controls hidden until disclosed"
+            : "later controls visible after disclosure";
+          byId("card").className = `card ${step.cardClass}`;
+          byId("card-state").textContent = step.fanSlotState;
+          renderBoard(step);
+        }
+
+        window.handUiPlacementStagedDisclosureReport = (json) => {
+          const report = JSON.parse(json);
+          const state = {
+            report,
+            requiredOrder,
+            currentStep: null,
+            ready_for_capture: false,
+          };
+          window.__handUiPlacementStagedDisclosure = state;
+          window.__handUiPlacementStagedDisclosureRender = (stepId) => {
+            const step = report.steps.find((candidate) => candidate.id === stepId);
+            if (!step) {
+              throw new Error(`Unknown HAND-UI-014 capture step: ${stepId}`);
+            }
+            state.currentStep = stepId;
+            renderStep(step);
+            document.title = `HAND-UI-014 ${stepId}`;
+            return step;
+          };
+          window.__handUiPlacementStagedDisclosureRender(requiredOrder[0]);
+          state.ready_for_capture = true;
+        };
+      })();
+    </script>
+    <link
+      data-trunk
+      rel="rust"
+      href="Cargo.toml"
+      data-bin="hand_ui_placement_staged_disclosure_harness"
+      data-wasm-opt="0"
+    />
+  </head>
+  <body>
+    <canvas id="bevy"></canvas>
+    <main id="capture-root">
+      <header>
+        <div>
+          <h1>HAND-UI-014 PLACEMENT Staged Disclosure</h1>
+          <p class="meta">Browser/WASM evidence harness - viewport 1366x768 - mouse drag path</p>
+        </div>
+        <div class="stage-pill" id="stage-id">loading</div>
+      </header>
+      <section class="surface">
+        <div class="board" id="board"></div>
+        <aside class="side">
+          <section class="panel">
+            <h2 id="stage-title">Waiting for WASM</h2>
+            <p class="guidance" id="guidance">Loading harness...</p>
+            <div class="detail-list">
+              <div class="detail-row"><span>Disclosure</span><strong id="disclosure">loading</strong></div>
+              <div class="detail-row"><span>Highlights</span><strong id="highlight-count">0</strong></div>
+              <div class="detail-row"><span>Drag sprite</span><strong id="drag-state">hidden</strong></div>
+              <div class="detail-row"><span>Slot state</span><strong id="slot-state">Active</strong></div>
+              <div class="detail-row"><span>Ghost messages</span><strong id="ghost-count">0</strong></div>
+              <div class="detail-row"><span>Submissions</span><strong id="submit-count">0</strong></div>
+              <div class="detail-row"><span>Submit error</span><strong id="error">none</strong></div>
+              <div class="detail-row"><span>Checkmark</span><strong id="checkmark">hidden</strong></div>
+            </div>
+          </section>
+          <section class="panel hand">
+            <div class="card" id="card">
+              <div>
+                <div class="card-title">Iop Vanguard</div>
+                <div class="card-meta">Minion - Cost 3</div>
+              </div>
+              <div class="card-meta" id="card-state">Active</div>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="controls">
+              <div class="button" id="submit">Submit (0 cards)</div>
+              <div class="timer" id="timer">10s</div>
+            </div>
+            <div style="height: 10px"></div>
+            <div class="split hidden" id="split">Reserve/current split hidden</div>
+          </section>
+        </aside>
+      </section>
+      <footer>
+        <div class="artifact" id="premature">later controls hidden until disclosed</div>
+        <div class="artifact">QA-COND-0005 remains Open until all Standard-tier rows are resolved.</div>
+      </footer>
+    </main>
+  </body>
+</html>

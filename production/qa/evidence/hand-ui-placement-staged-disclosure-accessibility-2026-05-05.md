@@ -6,9 +6,9 @@
 | QA row | A11Y-ST-14 |
 | QA condition | QA-COND-0005 Standard-tier accessibility gaps |
 | Source branch | `work/hand-ui-014-placement-staged-disclosure-accessibility` |
-| Source base | `a87f19b` |
+| Source base | `1b295b68158a24eeffc47acfc20ef6e233b9e996` plus HAND-UI-014 browser evidence repair |
 | Evidence date | 2026-05-06 |
-| Evidence status | Automated ECS evidence captured. Browser/WASM visual capture still required before `/story-done`. |
+| Evidence status | Automated ECS evidence and Browser/WASM visual capture captured. `/story-done` was not run in this worker. |
 
 ## Implementation Evidence
 
@@ -100,27 +100,41 @@ Result:
 PASS
 ```
 
-## Browser/WASM Capture Status
+## Browser/WASM Capture Evidence
 
-Browser/WASM screenshot capture was not run in this dev-story pass. Required
-manual or browser-automated capture before `/story-done`:
+Capture command:
 
-- Browser build/source identifier, viewport size, UI scale, input method, and
-  whether mouse drag, keyboard focus, or both were used.
-- PLACEMENT entry capture showing Submit, timer, selectable fan cards, no active
-  target guidance, no board/fan target highlight, and no visible split controls.
-- Card-selected capture showing selected/dragged card, visible target guidance,
-  valid target highlights, and no split controls.
-- Lane/cell target capture showing the selected board target step and valid target
-  set, including lane and cell context.
-- Valid-stage capture showing fan ghost state, board ghost or Instant fan ghost,
-  Submit count increment, and split controls visible only after staging.
-- Reserve/current split adjustment capture showing `+` and `-`, disabled increment
-  at ceiling, reserve spend, and current spend as text.
-- Invalid-submit capture showing no outbound submit, Submit still active, and
-  inline correction guidance.
-- Correction capture showing split adjustment or un-stage followed by exactly one
-  successful submit, `Submitted` text, and submitted checkmark.
+```text
+powershell -ExecutionPolicy Bypass -File production\qa\evidence\captures\hand-ui-placement-staged-disclosure\hand-ui-placement-staged-disclosure-capture.ps1
+```
+
+Capture metadata:
+
+| Field | Value |
+|---|---|
+| Browser URL | `http://127.0.0.1:8081/` |
+| Viewport | 1366x768 |
+| UI scale | 100% |
+| Input method | Deterministic mouse drag and click sequence |
+| Capture tool | PowerShell Chrome DevTools Protocol + Trunk WASM harness |
+| Browser | Chrome `147.0.7727.139` |
+| Trace | `production/qa/evidence/captures/hand-ui-placement-staged-disclosure/hand-ui-placement-staged-disclosure-trace.json` |
+
+The Browser/WASM harness compiles and runs
+`hand_ui_placement_staged_disclosure_harness`, drives the real `HandUiPlugin`
+PLACEMENT sequence, publishes the observed disclosure state to the browser page,
+and captures each required stage as PNG evidence.
+
+| Required capture | Browser/WASM artifact | Observed state |
+|---|---|---|
+| PLACEMENT entry | `production/qa/evidence/captures/hand-ui-placement-staged-disclosure/01-placement-entry.png` | `CardSelection`; Submit/timer visible; reserve strip hidden; no highlights. |
+| Card selected | `production/qa/evidence/captures/hand-ui-placement-staged-disclosure/02-card-selected.png` | `TargetSelection(Minion)`; selected card/drag visible; target guidance visible. |
+| Lane/cell target guidance | `production/qa/evidence/captures/hand-ui-placement-staged-disclosure/03-lane-cell-target-guidance.png` | Guidance says `Choose a lane and cell`; valid lane/cell set listed. |
+| Valid target highlight | `production/qa/evidence/captures/hand-ui-placement-staged-disclosure/04-valid-target-highlight.png` | HU-12 valid cells highlighted while split controls remain hidden. |
+| Valid stage | `production/qa/evidence/captures/hand-ui-placement-staged-disclosure/05-valid-stage.png` | `StagedCard`; fan slot `Ghost`; target lane 1 cell 1; Submit count is 1. |
+| Reserve/current split adjustment | `production/qa/evidence/captures/hand-ui-placement-staged-disclosure/06-reserve-current-split-adjustment.png` | Split text shows `Reserve 1 Current 2`. |
+| Invalid submit | `production/qa/evidence/captures/hand-ui-placement-staged-disclosure/07-invalid-submit.png` | `Correction(ManaOverdrawn)`; Submit remains active; outbound submissions remain 0. |
+| Correction and successful submit | `production/qa/evidence/captures/hand-ui-placement-staged-disclosure/08-correction-successful-submit.png` | `Submitted`; split text shows `Reserve 3 Current 0`; outbound submissions is 1; checkmark visible. |
 
 ## QA-COND-0005 Impact
 

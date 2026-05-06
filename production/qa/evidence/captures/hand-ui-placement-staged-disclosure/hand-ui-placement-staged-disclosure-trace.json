@@ -1,0 +1,386 @@
+{
+    "story":  "HAND-UI-014",
+    "qaCondition":  "QA-COND-0005",
+    "url":  "http://127.0.0.1:8081/",
+    "viewport":  {
+                     "width":  1366,
+                     "height":  768
+                 },
+    "uiScale":  "100%",
+    "inputMethod":  "deterministic mouse drag and click sequence",
+    "captureTool":  "PowerShell Chrome DevTools Protocol + Trunk WASM harness",
+    "chromePath":  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "chromeVersion":  "147.0.7727.139",
+    "sourceCommit":  "1b295b68158a24eeffc47acfc20ef6e233b9e996",
+    "sourceBranch":  "work/hand-ui-014-placement-staged-disclosure-accessibility",
+    "sourceNote":  "sourceCommit is HEAD at capture start; the final repair commit contains this harness, trace, and screenshots.",
+    "workingTreeStatusAtCapture":  [
+                                       " M Cargo.lock",
+                                       " M client/Cargo.toml",
+                                       " M production/qa/evidence/hand-ui-placement-staged-disclosure-accessibility-2026-05-05.md",
+                                       "?? client/hand-ui-placement-staged-disclosure-harness.html",
+                                       "?? client/src/hand_ui_placement_staged_disclosure_harness.rs",
+                                       "?? production/qa/evidence/captures/hand-ui-placement-staged-disclosure/"
+                                   ],
+    "artifacts":  [
+                      {
+                          "step":  "placement-entry",
+                          "path":  "production/qa/evidence/captures/hand-ui-placement-staged-disclosure/01-placement-entry.png"
+                      },
+                      {
+                          "step":  "card-selected",
+                          "path":  "production/qa/evidence/captures/hand-ui-placement-staged-disclosure/02-card-selected.png"
+                      },
+                      {
+                          "step":  "lane-cell-target-guidance",
+                          "path":  "production/qa/evidence/captures/hand-ui-placement-staged-disclosure/03-lane-cell-target-guidance.png"
+                      },
+                      {
+                          "step":  "valid-target-highlight",
+                          "path":  "production/qa/evidence/captures/hand-ui-placement-staged-disclosure/04-valid-target-highlight.png"
+                      },
+                      {
+                          "step":  "valid-stage",
+                          "path":  "production/qa/evidence/captures/hand-ui-placement-staged-disclosure/05-valid-stage.png"
+                      },
+                      {
+                          "step":  "reserve-current-split-adjustment",
+                          "path":  "production/qa/evidence/captures/hand-ui-placement-staged-disclosure/06-reserve-current-split-adjustment.png"
+                      },
+                      {
+                          "step":  "invalid-submit",
+                          "path":  "production/qa/evidence/captures/hand-ui-placement-staged-disclosure/07-invalid-submit.png"
+                      },
+                      {
+                          "step":  "correction-successful-submit",
+                          "path":  "production/qa/evidence/captures/hand-ui-placement-staged-disclosure/08-correction-successful-submit.png"
+                      }
+                  ],
+    "harnessReport":  {
+                          "story":  "HAND-UI-014",
+                          "qaCondition":  "QA-COND-0005",
+                          "engine":  "Bevy 0.18 WASM HandUiPlugin harness",
+                          "viewport":  {
+                                           "width":  1366,
+                                           "height":  768
+                                       },
+                          "inputMethod":  "deterministic mouse drag and click sequence",
+                          "steps":  [
+                                        {
+                                            "id":  "placement-entry",
+                                            "title":  "PLACEMENT Entry",
+                                            "guidance":  "Select a card",
+                                            "disclosure":  "CardSelection",
+                                            "submitText":  "Submit (0 cards)",
+                                            "submitState":  "Active",
+                                            "timerVisible":  true,
+                                            "reserveStripVisible":  false,
+                                            "reserveText":  "Reserve 0 Current 0",
+                                            "fanSlotState":  "Active",
+                                            "dragVisible":  false,
+                                            "highlightedCells":  [
+
+                                                                 ],
+                                            "ghostMessageCount":  0,
+                                            "submissionCount":  0,
+                                            "submitError":  null,
+                                            "checkmarkVisible":  false,
+                                            "laterControlsHidden":  true,
+                                            "cardClass":  "",
+                                            "pendingTarget":  null
+                                        },
+                                        {
+                                            "id":  "card-selected",
+                                            "title":  "Card Selected",
+                                            "guidance":  "Choose a lane and cell",
+                                            "disclosure":  "TargetSelection(Minion)",
+                                            "submitText":  "Submit (0 cards)",
+                                            "submitState":  "Active",
+                                            "timerVisible":  true,
+                                            "reserveStripVisible":  false,
+                                            "reserveText":  "Reserve 0 Current 0",
+                                            "fanSlotState":  "Active",
+                                            "dragVisible":  true,
+                                            "highlightedCells":  [
+                                                                     {
+                                                                         "lane":  1,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  1,
+                                                                         "cell":  2
+                                                                     },
+                                                                     {
+                                                                         "lane":  2,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  2,
+                                                                         "cell":  2
+                                                                     },
+                                                                     {
+                                                                         "lane":  3,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  3,
+                                                                         "cell":  2
+                                                                     },
+                                                                     {
+                                                                         "lane":  4,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  4,
+                                                                         "cell":  2
+                                                                     },
+                                                                     {
+                                                                         "lane":  5,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  5,
+                                                                         "cell":  2
+                                                                     }
+                                                                 ],
+                                            "ghostMessageCount":  0,
+                                            "submissionCount":  0,
+                                            "submitError":  null,
+                                            "checkmarkVisible":  false,
+                                            "laterControlsHidden":  true,
+                                            "cardClass":  "selected",
+                                            "pendingTarget":  null
+                                        },
+                                        {
+                                            "id":  "lane-cell-target-guidance",
+                                            "title":  "Lane/Cell Target Guidance",
+                                            "guidance":  "Choose a lane and cell",
+                                            "disclosure":  "TargetSelection(Minion)",
+                                            "submitText":  "Submit (0 cards)",
+                                            "submitState":  "Active",
+                                            "timerVisible":  true,
+                                            "reserveStripVisible":  false,
+                                            "reserveText":  "Reserve 0 Current 0",
+                                            "fanSlotState":  "Active",
+                                            "dragVisible":  true,
+                                            "highlightedCells":  [
+                                                                     {
+                                                                         "lane":  1,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  1,
+                                                                         "cell":  2
+                                                                     },
+                                                                     {
+                                                                         "lane":  2,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  2,
+                                                                         "cell":  2
+                                                                     },
+                                                                     {
+                                                                         "lane":  3,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  3,
+                                                                         "cell":  2
+                                                                     },
+                                                                     {
+                                                                         "lane":  4,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  4,
+                                                                         "cell":  2
+                                                                     },
+                                                                     {
+                                                                         "lane":  5,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  5,
+                                                                         "cell":  2
+                                                                     }
+                                                                 ],
+                                            "ghostMessageCount":  0,
+                                            "submissionCount":  0,
+                                            "submitError":  null,
+                                            "checkmarkVisible":  false,
+                                            "laterControlsHidden":  true,
+                                            "cardClass":  "selected",
+                                            "pendingTarget":  null
+                                        },
+                                        {
+                                            "id":  "valid-target-highlight",
+                                            "title":  "Valid Target Highlight",
+                                            "guidance":  "Choose a lane and cell",
+                                            "disclosure":  "TargetSelection(Minion)",
+                                            "submitText":  "Submit (0 cards)",
+                                            "submitState":  "Active",
+                                            "timerVisible":  true,
+                                            "reserveStripVisible":  false,
+                                            "reserveText":  "Reserve 0 Current 0",
+                                            "fanSlotState":  "Active",
+                                            "dragVisible":  true,
+                                            "highlightedCells":  [
+                                                                     {
+                                                                         "lane":  1,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  1,
+                                                                         "cell":  2
+                                                                     },
+                                                                     {
+                                                                         "lane":  2,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  2,
+                                                                         "cell":  2
+                                                                     },
+                                                                     {
+                                                                         "lane":  3,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  3,
+                                                                         "cell":  2
+                                                                     },
+                                                                     {
+                                                                         "lane":  4,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  4,
+                                                                         "cell":  2
+                                                                     },
+                                                                     {
+                                                                         "lane":  5,
+                                                                         "cell":  1
+                                                                     },
+                                                                     {
+                                                                         "lane":  5,
+                                                                         "cell":  2
+                                                                     }
+                                                                 ],
+                                            "ghostMessageCount":  0,
+                                            "submissionCount":  0,
+                                            "submitError":  null,
+                                            "checkmarkVisible":  false,
+                                            "laterControlsHidden":  true,
+                                            "cardClass":  "selected",
+                                            "pendingTarget":  null
+                                        },
+                                        {
+                                            "id":  "valid-stage",
+                                            "title":  "Valid Stage",
+                                            "guidance":  "Review staged card and mana split",
+                                            "disclosure":  "StagedCard",
+                                            "submitText":  "Submit (1 cards)",
+                                            "submitState":  "Active",
+                                            "timerVisible":  true,
+                                            "reserveStripVisible":  true,
+                                            "reserveText":  "Reserve 0 Current 3",
+                                            "fanSlotState":  "Ghost",
+                                            "dragVisible":  false,
+                                            "highlightedCells":  [
+
+                                                                 ],
+                                            "ghostMessageCount":  1,
+                                            "submissionCount":  0,
+                                            "submitError":  null,
+                                            "checkmarkVisible":  false,
+                                            "laterControlsHidden":  false,
+                                            "cardClass":  "ghost",
+                                            "pendingTarget":  {
+                                                                  "lane":  1,
+                                                                  "cell":  1
+                                                              }
+                                        },
+                                        {
+                                            "id":  "reserve-current-split-adjustment",
+                                            "title":  "Reserve/Current Split Adjustment",
+                                            "guidance":  "Review staged card and mana split",
+                                            "disclosure":  "StagedCard",
+                                            "submitText":  "Submit (1 cards)",
+                                            "submitState":  "Active",
+                                            "timerVisible":  true,
+                                            "reserveStripVisible":  true,
+                                            "reserveText":  "Reserve 1 Current 2",
+                                            "fanSlotState":  "Ghost",
+                                            "dragVisible":  false,
+                                            "highlightedCells":  [
+
+                                                                 ],
+                                            "ghostMessageCount":  1,
+                                            "submissionCount":  0,
+                                            "submitError":  null,
+                                            "checkmarkVisible":  false,
+                                            "laterControlsHidden":  false,
+                                            "cardClass":  "ghost",
+                                            "pendingTarget":  {
+                                                                  "lane":  1,
+                                                                  "cell":  1
+                                                              }
+                                        },
+                                        {
+                                            "id":  "invalid-submit",
+                                            "title":  "Invalid Submit",
+                                            "guidance":  "Adjust reserve/current mana",
+                                            "disclosure":  "Correction(ManaOverdrawn)",
+                                            "submitText":  "Submit (1 cards)",
+                                            "submitState":  "Active",
+                                            "timerVisible":  true,
+                                            "reserveStripVisible":  true,
+                                            "reserveText":  "Reserve 1 Current 2",
+                                            "fanSlotState":  "Ghost",
+                                            "dragVisible":  false,
+                                            "highlightedCells":  [
+
+                                                                 ],
+                                            "ghostMessageCount":  1,
+                                            "submissionCount":  0,
+                                            "submitError":  "ManaOverdrawn",
+                                            "checkmarkVisible":  false,
+                                            "laterControlsHidden":  false,
+                                            "cardClass":  "ghost",
+                                            "pendingTarget":  {
+                                                                  "lane":  1,
+                                                                  "cell":  1
+                                                              }
+                                        },
+                                        {
+                                            "id":  "correction-successful-submit",
+                                            "title":  "Correction And Successful Submit",
+                                            "guidance":  "Placement submitted",
+                                            "disclosure":  "Submitted",
+                                            "submitText":  "Submitted",
+                                            "submitState":  "Inactive",
+                                            "timerVisible":  true,
+                                            "reserveStripVisible":  true,
+                                            "reserveText":  "Reserve 3 Current 0",
+                                            "fanSlotState":  "Ghost",
+                                            "dragVisible":  false,
+                                            "highlightedCells":  [
+
+                                                                 ],
+                                            "ghostMessageCount":  1,
+                                            "submissionCount":  1,
+                                            "submitError":  null,
+                                            "checkmarkVisible":  true,
+                                            "laterControlsHidden":  false,
+                                            "cardClass":  "ghost",
+                                            "pendingTarget":  {
+                                                                  "lane":  1,
+                                                                  "cell":  1
+                                                              }
+                                        }
+                                    ]
+                      },
+    "tracePath":  "production/qa/evidence/captures/hand-ui-placement-staged-disclosure/hand-ui-placement-staged-disclosure-trace.json",
+    "capturedAt":  "2026-05-06T08:43:30.9095046Z"
+}

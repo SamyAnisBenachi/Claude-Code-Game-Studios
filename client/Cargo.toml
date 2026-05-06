@@ -7,6 +7,7 @@ description = "WASM Bevy client. Read-only view of server state. No game logic."
 [dependencies]
 shared = { path = "../shared" }
 serde = { workspace = true }
+serde_json = { workspace = true }
 # Bevy 0.18 high-level feature collection for 2D games (liv-bevy-018).
 # "2d" includes bevy_sprite, bevy_text, bevy_asset, bevy_ui, and bevy_render.
 # "webgl2" enables the WebGL2 backend for WASM targets.
@@ -39,6 +40,10 @@ path = "src/board_rendering_perf_harness.rs"
 [[bin]]
 name = "hud_mana_shapes_harness"
 path = "src/hud_mana_shapes_harness.rs"
+
+[[bin]]
+name = "hand_ui_placement_staged_disclosure_harness"
+path = "src/hand_ui_placement_staged_disclosure_harness.rs"
 
 [[test]]
 name = "card_animations_plugin_scaffold_test"
