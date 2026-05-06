@@ -52,6 +52,50 @@ Evidence` until the command result is captured in QA evidence and the QA lead or
 orchestrator explicitly accepts it as closure evidence, reclassifies the
 condition, or records accepted risk.
 
+## 2026-05-06 QA Disposition Review
+
+Disposition: Keep `Open / Needs Evidence`.
+
+Reviewed evidence:
+
+- Sprint 6 smoke report: `production/qa/smoke-2026-05-06.md` records
+  `auction_fifo_ordering_test` passing during the Sprint 6 smoke run.
+- Focused rerun on 2026-05-06:
+  `cargo test -p server --test auction_fifo_ordering_test -- --nocapture`.
+- Focused rerun result: PASS, 1 passed, 0 failed, 0 ignored.
+- Harness reviewed:
+  `tests/integration/network/auction_fifo_ordering_test.rs`.
+
+Evidence accepted:
+
+- The harness is acceptable partial evidence that one live Lightyear
+  WebSocket client receives `S2CAuctionCard` before
+  `S2CPhaseChanged(DraftAuction)` on `ReliableChannel`.
+- The harness asserts payload fidelity for the auction card and phase change,
+  verifies both messages were observed, and verifies the auction card message id
+  and observed receive order precede the draft-auction phase change.
+
+Remaining closure gap:
+
+- The current closure path still asks for passing live or integration evidence
+  that two auction clients preserve first-valid-wins FIFO ordering on the
+  intended Lightyear channel.
+- The current harness uses one live client. It does not prove the ordering
+  across two auction clients and does not validate first-valid-wins behavior
+  between multiple auction participants.
+- No QA closure, reclassification, or accepted-risk disposition has been
+  recorded for this condition.
+
+Required next evidence:
+
+- Either add or expand live integration evidence so two auction clients preserve
+  the required FIFO/first-valid-wins behavior on the intended Lightyear channel,
+  then record QA acceptance; or
+- Reclassify this condition with an explicit rationale that narrows closure to
+  the single-client cross-message `ReliableChannel` ordering already covered by
+  the current harness; or
+- Record an explicit accepted-risk disposition.
+
 ## Expected Closure Evidence
 
 Provide one of the following:
