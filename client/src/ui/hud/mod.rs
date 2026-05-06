@@ -24,6 +24,17 @@ pub const CURRENT_MANA_BAR_WIDTH_PX: f32 = 104.0;
 pub const CURRENT_MANA_BAR_HEIGHT_PX: f32 = 28.0;
 pub const RESERVE_MANA_DIAMOND_SIZE_PX: f32 = 74.0;
 pub const RESERVE_MANA_DIAMOND_ROTATION_DEGREES: f32 = 45.0;
+pub const HUD_RESOURCE_TEXT_MIN_SIZE_PX: f32 = 20.0;
+pub const HUD_GOLD_TEXT_MIN_SIZE_PX: f32 = 40.0;
+pub const HUD_GOLD_FONT_SIZE_PX: f32 = HUD_GOLD_TEXT_MIN_SIZE_PX;
+pub const HUD_RESERVED_GOLD_FONT_SIZE_PX: f32 = 26.0;
+pub const HUD_SECONDARY_FONT_SIZE_PX: f32 = HUD_RESOURCE_TEXT_MIN_SIZE_PX;
+pub const HUD_TEXT_BACKGROUND_COLOR: Color = Color::srgba(0.04, 0.07, 0.12, 1.0);
+pub const HUD_PRIMARY_TEXT_COLOR: Color = Color::srgba(0.96, 0.98, 1.0, 1.0);
+pub const HUD_GOLD_TEXT_COLOR: Color = Color::srgba(1.0, 0.82, 0.28, 1.0);
+pub const HUD_RESERVED_GOLD_TEXT_COLOR: Color = Color::srgba(0.95, 0.90, 0.70, 0.65);
+const HUD_GOLD_ROW_GAP_PX: f32 = 48.0;
+const HUD_SECONDARY_ROW_GAP_PX: f32 = 28.0;
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HudSystemSet {
@@ -463,7 +474,7 @@ fn spawn_hud(mut commands: Commands, config: Res<HudConfig>, existing: Option<Re
         "HUD Opponent Gold",
         GoldLabelOwner::Opponent,
         config.hud_margin_px,
-        22.0,
+        HUD_GOLD_ROW_GAP_PX,
     );
     let mana_label = spawn_mana_label(
         &mut commands,
@@ -511,8 +522,9 @@ fn spawn_text_label<M: Component>(
             HudEntity,
             marker,
             Text::new(text),
-            hud_text_font(18.0),
-            TextColor(Color::srgb(0.92, 0.94, 0.96)),
+            hud_text_font(HUD_SECONDARY_FONT_SIZE_PX),
+            TextColor(HUD_PRIMARY_TEXT_COLOR),
+            BackgroundColor(HUD_TEXT_BACKGROUND_COLOR),
             node,
             Visibility::Hidden,
             ChildOf(parent),
@@ -541,8 +553,8 @@ fn spawn_mana_label(
             ManaDisplayState::default(),
             ManaTweenTarget::default(),
             Text::new("-- / --"),
-            hud_text_font(18.0),
-            TextColor(Color::srgb(0.92, 0.94, 0.96)),
+            hud_text_font(HUD_SECONDARY_FONT_SIZE_PX),
+            TextColor(HUD_PRIMARY_TEXT_COLOR),
             BackgroundColor(current_mana_bar_fill()),
             BorderColor::all(current_mana_bar_border()),
             node,
@@ -582,8 +594,8 @@ fn spawn_reserve_mana_label(
             HudEntity,
             ReserveManaLabel,
             Text::new(""),
-            hud_text_font(14.0),
-            TextColor(Color::srgb(0.92, 0.94, 0.96)),
+            hud_text_font(HUD_SECONDARY_FONT_SIZE_PX),
+            TextColor(HUD_PRIMARY_TEXT_COLOR),
             reserve_mana_label_node(),
             UiTransform::from_rotation(Rot2::degrees(-RESERVE_MANA_DIAMOND_ROTATION_DEGREES)),
             Visibility::Hidden,
@@ -610,8 +622,9 @@ fn spawn_gold_label(
             GoldDisplayState::default(),
             GoldTweenTarget::default(),
             Text::new("--g"),
-            hud_text_font(18.0),
-            TextColor(Color::srgb(0.95, 0.90, 0.70)),
+            hud_text_font(HUD_GOLD_FONT_SIZE_PX),
+            TextColor(HUD_GOLD_TEXT_COLOR),
+            BackgroundColor(HUD_TEXT_BACKGROUND_COLOR),
             top_right_node(margin_px, top_offset_px),
             Visibility::Hidden,
             ChildOf(parent),
@@ -622,8 +635,8 @@ fn spawn_gold_label(
             Name::new(format!("{name} Reserved Span")),
             HudEntity,
             TextSpan::new(""),
-            hud_text_font(18.0 * 0.65),
-            TextColor(Color::srgba(0.95, 0.90, 0.70, 0.65)),
+            hud_text_font(HUD_RESERVED_GOLD_FONT_SIZE_PX),
+            TextColor(HUD_RESERVED_GOLD_TEXT_COLOR),
             Visibility::Hidden,
             ChildOf(parent_entity),
         ))
@@ -1505,7 +1518,7 @@ fn destroyed_dot_border() -> Color {
 }
 
 fn current_mana_bar_fill() -> Color {
-    Color::srgba(0.05, 0.18, 0.24, 0.82)
+    Color::srgba(0.05, 0.18, 0.24, 1.0)
 }
 
 fn current_mana_bar_border() -> Color {
@@ -1513,7 +1526,7 @@ fn current_mana_bar_border() -> Color {
 }
 
 fn reserve_mana_diamond_fill() -> Color {
-    Color::srgba(0.07, 0.13, 0.30, 0.82)
+    Color::srgba(0.07, 0.13, 0.30, 1.0)
 }
 
 fn reserve_mana_diamond_border() -> Color {
@@ -1705,7 +1718,7 @@ fn top_left_second_line_node(margin_px: f32) -> Node {
     Node {
         position_type: PositionType::Absolute,
         left: Val::Px(margin_px),
-        top: Val::Px(margin_px + 22.0),
+        top: Val::Px(margin_px + HUD_SECONDARY_ROW_GAP_PX),
         ..default()
     }
 }
