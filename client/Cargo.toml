@@ -226,6 +226,10 @@ name = "playable_client_lobby_entry_test"
 path = "../tests/integration/playable_client/lobby_entry_test.rs"
 
 [[test]]
+name = "playable_client_draft_shop_hand_bridge_test"
+path = "../tests/integration/playable_client/draft_shop_hand_bridge_test.rs"
+
+[[test]]
 name = "shop_auction_ui_plugin_scaffold_formulas_test"
 path = "../tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs"
 

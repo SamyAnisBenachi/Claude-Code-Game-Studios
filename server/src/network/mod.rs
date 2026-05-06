@@ -1,7 +1,7 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
-use crate::core::rsm::{advance_phase, tick_disconnect_timers};
+use crate::core::rsm::{advance_phase, rsm_input_reader, tick_disconnect_timers, DraftReadySignal};
 use crate::core::session::PlayerConnectionMap;
 use crate::feature::board::{BoardSystemSet, PlacementSubmissionReceived};
 use crate::lobby::handler::handle_class_choice;
@@ -34,6 +34,7 @@ impl Plugin for ServerNetworkPlugin {
                 Update,
                 (
                     receive_c2s_messages.before(tick_disconnect_timers),
+                    drain_signal_ready_messages.before(rsm_input_reader),
                     drain_submit_placement_messages.before(BoardSystemSet::PlacementSubmission),
                     handle_class_choice,
                     rsm_dispatch::dispatch_phase_changed.after(advance_phase),
@@ -114,12 +115,45 @@ fn log_client_disconnected(trigger: On<Add, Disconnected>, clients: Query<&Remot
 
 fn receive_c2s_messages(
     activate_card: Query<&mut MessageReceiver<C2SActivateCard>>,
-    signal_ready: Query<&mut MessageReceiver<C2SSignalReady>>,
     acknowledge_result: Query<&mut MessageReceiver<C2SAcknowledgeResult>>,
 ) {
     log_received("C2SActivateCard", activate_card);
-    log_received("C2SSignalReady", signal_ready);
     log_received("C2SAcknowledgeResult", acknowledge_result);
+}
+
+pub fn drain_signal_ready_messages(
+    connections: Res<PlayerConnectionMap>,
+    mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SSignalReady>)>,
+    mut ready_signals: MessageWriter<DraftReadySignal>,
+) {
+    for (remote, mut receiver) in receivers.iter_mut() {
+        for msg in receiver.receive() {
+            let Some(signal) = resolve_signal_ready_sender(&connections, remote.0, msg) else {
+                debug!(
+                    "C2SSignalReady discarded because sender is not mapped to a player: {:?}",
+                    remote.0
+                );
+                continue;
+            };
+
+            ready_signals.write(signal);
+        }
+    }
+}
+
+pub fn resolve_signal_ready_sender(
+    connections: &PlayerConnectionMap,
+    peer_id: PeerId,
+    msg: C2SSignalReady,
+) -> Option<DraftReadySignal> {
+    connections
+        .0
+        .get(&peer_id)
+        .copied()
+        .map(|player| DraftReadySignal {
+            player,
+            ready: !msg.retract,
+        })
 }
 
 pub fn drain_submit_placement_messages(

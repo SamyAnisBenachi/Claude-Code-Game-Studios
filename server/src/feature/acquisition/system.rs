@@ -8,11 +8,14 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use shared::card::{CardId, ClassId};
 use shared::protocol::{
-    C2SPurchaseCard, C2SRefreshShop, ReliableChannel, S2CDraftOffering, S2CShopSlots,
+    C2SPurchaseCard, C2SRefreshShop, CardSource, ReliableChannel, S2CCardAcquired,
+    S2CDraftOffering, S2CGoldUpdate as ProtocolGoldUpdate, S2CShopSlots,
 };
 use shared::session::PlayerId;
 
-use crate::core::economy::{api as economy_api, PlayerEconomies};
+use crate::core::economy::{
+    api as economy_api, PlayerEconomies, S2CGoldUpdate as EconomyGoldUpdate,
+};
 use crate::core::pool::{DistributeError, PlayerPool, PlayerPools};
 use crate::core::session::{
     defer_unicast_for_reconnect, DeferredMessage, PlayerConnectionMap, PlayerSessions,
@@ -72,6 +75,21 @@ pub struct ShopSlotsDispatch {
     pub message: S2CShopSlots,
 }
 
+#[derive(Clone, Debug)]
+pub struct CardAcquiredDispatch {
+    pub player_id: PlayerId,
+    pub peer_id: Option<PeerId>,
+    pub message: S2CCardAcquired,
+}
+
+#[derive(Clone, Debug)]
+pub struct PurchaseNetworkEvents {
+    pub player_id: PlayerId,
+    pub card_acquired: CardAcquiredDispatch,
+    pub shop_slots: Option<ShopSlotsDispatch>,
+    pub gold_update: EconomyGoldUpdate,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ShopSlotType {
     Class,
@@ -112,8 +130,11 @@ pub fn card_acquisition_tick_system(
     connections: Option<Res<PlayerConnectionMap>>,
     mut reconnect_tracker: Option<ResMut<ReconnectTracker>>,
     mut shop_refreshes: MessageReader<ShopRefreshTriggered>,
-    mut refresh_receivers: Query<(&RemoteId, &mut MessageReceiver<C2SRefreshShop>)>,
-    mut purchase_receivers: Query<(&RemoteId, &mut MessageReceiver<C2SPurchaseCard>)>,
+    mut c2s_receivers: ParamSet<(
+        Query<(&RemoteId, &mut MessageReceiver<C2SRefreshShop>)>,
+        Query<(&RemoteId, &mut MessageReceiver<C2SPurchaseCard>)>,
+    )>,
+    mut gold_updates: MessageWriter<EconomyGoldUpdate>,
     server: Query<&Server>,
     mut sender: Option<ServerMultiMessageSender>,
 ) {
@@ -211,7 +232,7 @@ pub fn card_acquisition_tick_system(
     }
 
     let connections = connections.as_deref();
-    for (remote, mut receiver) in refresh_receivers.iter_mut() {
+    for (remote, mut receiver) in c2s_receivers.p0().iter_mut() {
         for _message in receiver.receive() {
             let Some(player_id) = resolve_player(remote, connections) else {
                 continue;
@@ -233,7 +254,7 @@ pub fn card_acquisition_tick_system(
                     Some(config),
                     Some(server_rng),
                 ) => {
-                    let (_result, message) = process_manual_refresh_shop_request(
+                    let (result, message) = process_manual_refresh_shop_request(
                         &mut shop_states,
                         &mut *economies,
                         pools,
@@ -243,6 +264,14 @@ pub fn card_acquisition_tick_system(
                         server_rng,
                         player_id,
                     );
+                    if result == RefreshAttemptResult::Refreshed {
+                        emit_economy_update_for_player(
+                            &*economies,
+                            player_id,
+                            reconnect_tracker.as_deref_mut(),
+                            &mut gold_updates,
+                        );
+                    }
                     message
                         .map(|message| prepare_shop_slots_dispatch(player_id, message, connections))
                 }
@@ -263,7 +292,7 @@ pub fn card_acquisition_tick_system(
     }
 
     let catalog = catalog.as_deref();
-    for (remote, mut receiver) in purchase_receivers.iter_mut() {
+    for (remote, mut receiver) in c2s_receivers.p1().iter_mut() {
         for message in receiver.receive() {
             let Some(player_id) = resolve_player(remote, connections) else {
                 continue;
@@ -273,7 +302,8 @@ pub fn card_acquisition_tick_system(
             else {
                 continue;
             };
-            let (_result, update) = process_purchase_card(
+            let source = purchase_card_source(&shop_states, player_id, message.card_id);
+            let (result, update) = process_purchase_card(
                 &mut shop_states,
                 &mut hands,
                 &mut *economies,
@@ -283,14 +313,22 @@ pub fn card_acquisition_tick_system(
                 message.card_id,
             );
 
-            let dispatch =
-                update.map(|message| prepare_shop_slots_dispatch(player_id, message, connections));
-            if let Some(dispatch) = dispatch.as_ref() {
-                if !defer_shop_slots(reconnect_tracker.as_deref_mut(), dispatch) {
-                    if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
-                        send_shop_slots(sender, server, dispatch);
-                    }
-                }
+            if let Some(events) = purchase_network_events_for_result(
+                result,
+                player_id,
+                message.card_id,
+                source,
+                &*economies,
+                update,
+                connections,
+            ) {
+                dispatch_purchase_network_events(
+                    events,
+                    reconnect_tracker.as_deref_mut(),
+                    server,
+                    sender.as_mut(),
+                    &mut gold_updates,
+                );
             }
         }
     }
@@ -414,6 +452,18 @@ pub fn prepare_shop_slots_dispatch(
     }
 }
 
+pub fn prepare_card_acquired_dispatch(
+    player_id: PlayerId,
+    message: S2CCardAcquired,
+    connections: Option<&PlayerConnectionMap>,
+) -> CardAcquiredDispatch {
+    CardAcquiredDispatch {
+        player_id,
+        peer_id: connections.and_then(|connections| peer_for_player(&connections.0, player_id)),
+        message,
+    }
+}
+
 pub fn apply_shop_refresh_trigger(shop_states: &mut ShopStates, trigger: ShopRefreshTriggered) {
     let player_state = shop_states.player_state_mut(trigger.player_id);
 
@@ -525,6 +575,46 @@ pub fn process_purchase_card(
         player_id,
         card_id,
     )
+}
+
+pub fn purchase_card_source(
+    shop_states: &ShopStates,
+    player_id: PlayerId,
+    card_id: CardId,
+) -> Option<CardSource> {
+    let player_shop = shop_states.players.get(&player_id)?;
+    match purchase_display(player_shop, card_id)? {
+        PurchaseDisplay::DraftInitialOffering => Some(CardSource::DraftInitial),
+        PurchaseDisplay::ShopSlot(_) => Some(CardSource::ShopPurchase),
+    }
+}
+
+pub fn purchase_network_events_for_result(
+    result: PurchaseAttemptResult,
+    player_id: PlayerId,
+    card_id: CardId,
+    source: Option<CardSource>,
+    economies: &PlayerEconomies,
+    slots_update: Option<S2CShopSlots>,
+    connections: Option<&PlayerConnectionMap>,
+) -> Option<PurchaseNetworkEvents> {
+    if result != PurchaseAttemptResult::Purchased {
+        return None;
+    }
+
+    let source = source?;
+    let gold_update = economy_gold_update_for_player(economies, player_id)?;
+    let card_acquired =
+        prepare_card_acquired_dispatch(player_id, S2CCardAcquired { card_id, source }, connections);
+    let shop_slots =
+        slots_update.map(|message| prepare_shop_slots_dispatch(player_id, message, connections));
+
+    Some(PurchaseNetworkEvents {
+        player_id,
+        card_acquired,
+        shop_slots,
+        gold_update,
+    })
 }
 
 pub fn process_purchase_card_with_pool(
@@ -884,6 +974,121 @@ fn send_shop_slots(
         server,
         &NetworkTarget::Single(peer_id),
     );
+}
+
+fn dispatch_purchase_network_events(
+    events: PurchaseNetworkEvents,
+    mut tracker: Option<&mut ReconnectTracker>,
+    server: Option<&Server>,
+    mut sender: Option<&mut ServerMultiMessageSender>,
+    gold_updates: &mut MessageWriter<EconomyGoldUpdate>,
+) {
+    if !defer_card_acquired(tracker.as_deref_mut(), &events.card_acquired) {
+        if let (Some(server), Some(sender)) = (server, sender.as_deref_mut()) {
+            send_card_acquired(sender, server, &events.card_acquired);
+        }
+    }
+
+    emit_economy_update(
+        events.player_id,
+        events.gold_update,
+        tracker.as_deref_mut(),
+        gold_updates,
+    );
+
+    if let Some(dispatch) = events.shop_slots.as_ref() {
+        if !defer_shop_slots(tracker.as_deref_mut(), dispatch) {
+            if let (Some(server), Some(sender)) = (server, sender.as_deref_mut()) {
+                send_shop_slots(sender, server, dispatch);
+            }
+        }
+    }
+}
+
+fn emit_economy_update_for_player(
+    economies: &PlayerEconomies,
+    player_id: PlayerId,
+    tracker: Option<&mut ReconnectTracker>,
+    gold_updates: &mut MessageWriter<EconomyGoldUpdate>,
+) {
+    let Some(gold_update) = economy_gold_update_for_player(economies, player_id) else {
+        return;
+    };
+
+    emit_economy_update(player_id, gold_update, tracker, gold_updates);
+}
+
+fn emit_economy_update(
+    player_id: PlayerId,
+    gold_update: EconomyGoldUpdate,
+    mut tracker: Option<&mut ReconnectTracker>,
+    gold_updates: &mut MessageWriter<EconomyGoldUpdate>,
+) {
+    if !defer_gold_update(tracker.as_deref_mut(), player_id, &gold_update) {
+        gold_updates.write(gold_update);
+    }
+}
+
+pub fn economy_gold_update_for_player(
+    economies: &PlayerEconomies,
+    player_id: PlayerId,
+) -> Option<EconomyGoldUpdate> {
+    let economy = economies.0.get(&player_id)?;
+    Some(EconomyGoldUpdate {
+        player: player_id,
+        gold: economy.gold,
+        current_mana: economy.current_mana,
+        reserve_mana: economy.reserve_mana,
+        mana_cap: economy.mana_cap,
+    })
+}
+
+fn protocol_gold_update(message: &EconomyGoldUpdate) -> ProtocolGoldUpdate {
+    ProtocolGoldUpdate {
+        gold: message.gold,
+        current_mana: message.current_mana,
+        reserve_mana: message.reserve_mana,
+        mana_cap: message.mana_cap.min(u32::from(u8::MAX)) as u8,
+    }
+}
+
+fn send_card_acquired(
+    sender: &mut ServerMultiMessageSender,
+    server: &Server,
+    dispatch: &CardAcquiredDispatch,
+) {
+    let Some(peer_id) = dispatch.peer_id else {
+        return;
+    };
+
+    let _ = sender.send::<S2CCardAcquired, ReliableChannel>(
+        &dispatch.message,
+        server,
+        &NetworkTarget::Single(peer_id),
+    );
+}
+
+pub fn defer_card_acquired(
+    tracker: Option<&mut ReconnectTracker>,
+    dispatch: &CardAcquiredDispatch,
+) -> bool {
+    defer_unicast_for_reconnect(
+        tracker,
+        dispatch.player_id,
+        DeferredMessage::CardAcquiredMessage(dispatch.message.clone()),
+    )
+}
+
+fn defer_gold_update(
+    tracker: Option<&mut ReconnectTracker>,
+    player_id: PlayerId,
+    message: &EconomyGoldUpdate,
+) -> bool {
+    defer_unicast_for_reconnect(
+        tracker,
+        player_id,
+        DeferredMessage::GoldUpdate(protocol_gold_update(message)),
+    )
 }
 
 pub fn defer_shop_slots(

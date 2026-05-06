@@ -16,7 +16,7 @@ use shared::session::PlayerId;
 use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
 };
-use crate::presentation::PlayerEconomyView;
+use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
@@ -758,6 +758,7 @@ impl Plugin for HandUiPlugin {
             .add_message::<HandGridCardClicked>()
             .add_message::<HandUiDraftOfferingReceived>()
             .add_message::<HandUiCardAcquiredReceived>()
+            .add_message::<PresentationGameSnapshotMessage>()
             .add_message::<HandUiPlacementDragStarted>()
             .add_message::<HandUiPlacementCursorMoved>()
             .add_message::<HandUiPlacementDragEnded>()
@@ -785,6 +786,7 @@ impl Plugin for HandUiPlugin {
                 (
                     hand_ui_phase_transition_system.in_set(HandUiSystemSet::PhaseTransition),
                     (
+                        handle_game_snapshot_system,
                         handle_draft_offering_system,
                         handle_card_acquired_system,
                         handle_ghost_clicked_unstage_system,
@@ -1208,6 +1210,27 @@ pub fn tick_placement_timer_system(
     {
         let mut timer_texts = text_sets.p0();
         set_timer_text(&mut timer_texts, placement_timer.remaining_ms);
+    }
+}
+
+pub fn handle_game_snapshot_system(
+    mut snapshots: MessageReader<PresentationGameSnapshotMessage>,
+    mut hand_contents: ResMut<HandContents>,
+) {
+    for snapshot in snapshots.read().map(|message| &message.0) {
+        let Some(local_player) = snapshot
+            .players
+            .iter()
+            .find(|player| player.player_id == snapshot.recipient_player_id)
+        else {
+            warn!(
+                "Hand UI: snapshot for {:?} does not contain local player",
+                snapshot.recipient_player_id
+            );
+            continue;
+        };
+
+        hand_contents.cards = local_player.hand.clone();
     }
 }
 

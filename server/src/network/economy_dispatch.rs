@@ -9,6 +9,7 @@ use crate::core::economy::{
     on_draft_started, S2CGoldBroadcast as EconomyGoldBroadcast, S2CGoldUpdate as EconomyGoldUpdate,
 };
 use crate::core::session::PlayerConnectionMap;
+use crate::feature::acquisition::CardAcquisitionSet;
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EconomyNetworkSet {
@@ -24,7 +25,8 @@ impl Plugin for EconomyNetworkPlugin {
             (dispatch_gold_update, dispatch_gold_broadcast)
                 .chain()
                 .in_set(EconomyNetworkSet::Dispatch)
-                .after(on_draft_started),
+                .after(on_draft_started)
+                .after(CardAcquisitionSet::Tick),
         );
     }
 }

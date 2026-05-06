@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::core::economy::S2CGoldUpdate as EconomyGoldUpdate;
 use crate::core::pool::CardPoolSet;
 use crate::core::rsm::advance_phase;
 use crate::core::session::SessionSystemSet;
@@ -17,6 +18,7 @@ impl Plugin for CardAcquisitionPlugin {
         app.init_resource::<ShopStates>()
             .init_resource::<PlayerHands>()
             .add_message::<ShopRefreshTriggered>()
+            .add_message::<EconomyGoldUpdate>()
             .configure_sets(
                 Update,
                 CardAcquisitionSet::Tick

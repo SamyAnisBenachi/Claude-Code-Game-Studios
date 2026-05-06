@@ -1,4 +1,7 @@
-use ::shared::protocol::{S2CGameSnapshot, S2CPhaseChanged, S2CSessionSettingsUpdated};
+use ::shared::protocol::{
+    CardSource, S2CCardAcquired, S2CDraftOffering, S2CGameSnapshot, S2CPhaseChanged,
+    S2CSessionSettingsUpdated, S2CShopSlots,
+};
 use bevy::prelude::*;
 use lightyear::prelude::MessageReceiver;
 
@@ -14,11 +17,17 @@ use crate::state::{
     should_enter_session_from_snapshot, ClientGameSnapshotMessage, ClientPhaseView,
     ClientSessionIdentity, ClientState, SessionSettingsView,
 };
-use crate::ui::hand::{HandUiPlugin, HandUiSystemSet};
+use crate::ui::hand::{
+    HandUiCardAcquiredReceived, HandUiDraftOfferingReceived, HandUiPlugin, HandUiSystemSet,
+};
 use crate::ui::hud::{HudPlugin, HudSystemSet};
 use crate::ui::photosensitivity_warning::PhotosensitivityWarningPlugin;
 use crate::ui::settings::SettingsAccessibilityPlugin;
-use crate::ui::shop_auction::{ShopAuctionUiPlugin, ShopAuctionUiSystemSet};
+use crate::ui::shop_auction::{
+    ShopAuctionCardAcquiredReceived, ShopAuctionDraftOfferingReceived,
+    ShopAuctionShopCardAcquiredReceived, ShopAuctionShopSlotsReceived, ShopAuctionUiPlugin,
+    ShopAuctionUiSystemSet,
+};
 
 pub mod board_rendering;
 pub mod shared;
@@ -103,6 +112,7 @@ impl Plugin for PresentationPlugin {
                 session_settings_sink_system,
                 game_snapshot_sink_system,
                 drain_shared_gold_update_receiver_system,
+                draft_shop_hand_bridge_fanout_system,
             )
                 .in_set(PresentationSet::MessageDrain)
                 .before(BoardRenderSet::ReadMessages)
@@ -237,6 +247,102 @@ pub fn game_snapshot_sink_system(
             apply_snapshot_to_session_settings_view(&message, &mut settings_view);
             board_writer.write(ClientGameSnapshotMessage(message.clone()));
             presentation_writer.write(PresentationGameSnapshotMessage(message));
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DraftOfferingFanout {
+    pub hand: HandUiDraftOfferingReceived,
+    pub shop: ShopAuctionDraftOfferingReceived,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CardAcquiredFanout {
+    pub hand: HandUiCardAcquiredReceived,
+    pub draft_initial: Option<ShopAuctionCardAcquiredReceived>,
+    pub shop_purchase: Option<ShopAuctionShopCardAcquiredReceived>,
+}
+
+pub fn draft_offering_fanout_messages(message: S2CDraftOffering) -> DraftOfferingFanout {
+    DraftOfferingFanout {
+        hand: HandUiDraftOfferingReceived {
+            card_ids: message.card_ids.clone(),
+        },
+        shop: ShopAuctionDraftOfferingReceived {
+            card_ids: message.card_ids,
+        },
+    }
+}
+
+pub fn shop_slots_message(message: S2CShopSlots) -> ShopAuctionShopSlotsReceived {
+    ShopAuctionShopSlotsReceived {
+        slots: message.slots,
+    }
+}
+
+pub fn card_acquired_fanout_messages(message: S2CCardAcquired) -> CardAcquiredFanout {
+    let hand = HandUiCardAcquiredReceived {
+        card_id: message.card_id,
+    };
+    let (draft_initial, shop_purchase) = match message.source {
+        CardSource::DraftInitial => (
+            Some(ShopAuctionCardAcquiredReceived {
+                card_id: message.card_id,
+            }),
+            None,
+        ),
+        CardSource::ShopPurchase => (
+            None,
+            Some(ShopAuctionShopCardAcquiredReceived {
+                card_id: message.card_id,
+            }),
+        ),
+        _ => (None, None),
+    };
+
+    CardAcquiredFanout {
+        hand,
+        draft_initial,
+        shop_purchase,
+    }
+}
+
+pub fn draft_shop_hand_bridge_fanout_system(
+    mut draft_offering_receivers: Query<&mut MessageReceiver<S2CDraftOffering>>,
+    mut shop_slots_receivers: Query<&mut MessageReceiver<S2CShopSlots>>,
+    mut card_acquired_receivers: Query<&mut MessageReceiver<S2CCardAcquired>>,
+    mut hand_offering_writer: MessageWriter<HandUiDraftOfferingReceived>,
+    mut shop_offering_writer: MessageWriter<ShopAuctionDraftOfferingReceived>,
+    mut shop_slots_writer: MessageWriter<ShopAuctionShopSlotsReceived>,
+    mut hand_acquired_writer: MessageWriter<HandUiCardAcquiredReceived>,
+    mut draft_acquired_writer: MessageWriter<ShopAuctionCardAcquiredReceived>,
+    mut shop_acquired_writer: MessageWriter<ShopAuctionShopCardAcquiredReceived>,
+) {
+    for mut receiver in &mut draft_offering_receivers {
+        for message in receiver.receive() {
+            let fanout = draft_offering_fanout_messages(message);
+            hand_offering_writer.write(fanout.hand);
+            shop_offering_writer.write(fanout.shop);
+        }
+    }
+
+    for mut receiver in &mut shop_slots_receivers {
+        for message in receiver.receive() {
+            shop_slots_writer.write(shop_slots_message(message));
+        }
+    }
+
+    for mut receiver in &mut card_acquired_receivers {
+        for message in receiver.receive() {
+            let fanout = card_acquired_fanout_messages(message);
+            hand_acquired_writer.write(fanout.hand);
+            if let Some(message) = fanout.draft_initial {
+                draft_acquired_writer.write(message);
+            }
+            if let Some(message) = fanout.shop_purchase {
+                shop_acquired_writer.write(message);
+            }
         }
     }
 }

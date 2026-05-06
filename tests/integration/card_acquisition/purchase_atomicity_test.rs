@@ -3,11 +3,13 @@ use std::collections::{HashMap, HashSet};
 use server::core::economy::{PlayerEconomies, PlayerEconomy};
 use server::core::pool::{DistributeError, PlayerPool, PlayerPools};
 use server::feature::acquisition::{
-    process_purchase_card, process_purchase_card_with_pool, PlayerHands, PlayerShopState,
-    PurchaseAttemptResult, PurchasePool, ShopPhase, ShopStates,
+    process_purchase_card, process_purchase_card_with_pool, purchase_card_source,
+    purchase_network_events_for_result, PlayerHands, PlayerShopState, PurchaseAttemptResult,
+    PurchasePool, ShopPhase, ShopStates,
 };
 use server::foundation::config::CardCatalog;
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
+use shared::protocol::CardSource;
 use shared::session::PlayerId;
 
 fn card(id: u32, cost: u32, copies: i32) -> CardData {
@@ -150,6 +152,7 @@ fn ca14_successful_purchase_spends_distributes_and_removes_slot() {
     };
     let mut hands = PlayerHands::default();
     let mut economies = PlayerEconomies(HashMap::from([(player, economy(5))]));
+    let source = purchase_card_source(&shops, player, card_id);
 
     let (result, update) = process_purchase_card(
         &mut shops,
@@ -181,9 +184,113 @@ fn ca14_successful_purchase_spends_distributes_and_removes_slot() {
         [Some(CardId(10)), None, Some(CardId(11))]
     );
     assert_eq!(
-        update.expect("successful shop purchase emits slots").slots,
+        update
+            .clone()
+            .expect("successful shop purchase emits slots")
+            .slots,
         vec![Some(CardId(10)), None, Some(CardId(11))]
     );
+
+    let events = purchase_network_events_for_result(
+        result, player, card_id, source, &economies, update, None,
+    )
+    .expect("successful shop purchase should emit network events");
+    assert_eq!(events.card_acquired.message.card_id, card_id);
+    assert_eq!(
+        events.card_acquired.message.source,
+        CardSource::ShopPurchase
+    );
+    assert_eq!(events.gold_update.player, player);
+    assert_eq!(events.gold_update.gold, 2);
+    assert_eq!(
+        events
+            .shop_slots
+            .expect("shop purchase should include slot update")
+            .message
+            .slots,
+        vec![Some(CardId(10)), None, Some(CardId(11))]
+    );
+}
+
+#[test]
+fn playable_002_draft_initial_purchase_emits_card_acquired_and_gold_without_slots() {
+    let player = PlayerId(1);
+    let card_id = CardId(42);
+    let catalog = catalog_with(vec![card(42, 3, 1)]);
+    let mut pools = pools_for(player, &catalog);
+    let mut shops = ShopStates {
+        players: HashMap::from([(
+            player,
+            PlayerShopState {
+                phase: ShopPhase::DraftInitial,
+                displayed_this_draft: HashSet::from([card_id]),
+                current_slots: [None, None, None],
+                refresh_count_this_draft: 0,
+            },
+        )]),
+    };
+    let mut hands = PlayerHands::default();
+    let mut economies = PlayerEconomies(HashMap::from([(player, economy(5))]));
+    let source = purchase_card_source(&shops, player, card_id);
+
+    let (result, update) = process_purchase_card(
+        &mut shops,
+        &mut hands,
+        &mut economies,
+        &mut pools,
+        &catalog,
+        player,
+        card_id,
+    );
+
+    assert_eq!(result, PurchaseAttemptResult::Purchased);
+    assert!(update.is_none());
+    let events = purchase_network_events_for_result(
+        result, player, card_id, source, &economies, update, None,
+    )
+    .expect("successful initial draft purchase should emit network events");
+    assert_eq!(events.card_acquired.message.card_id, card_id);
+    assert_eq!(
+        events.card_acquired.message.source,
+        CardSource::DraftInitial
+    );
+    assert_eq!(events.gold_update.gold, 2);
+    assert!(events.shop_slots.is_none());
+}
+
+#[test]
+fn playable_002_rejected_purchase_emits_no_acquisition_or_gold_event() {
+    let player = PlayerId(1);
+    let card_id = CardId(42);
+    let catalog = catalog_with(vec![card(42, 2, 1)]);
+    let mut pools = pools_for(player, &catalog);
+    let mut shops = ShopStates {
+        players: HashMap::from([(
+            player,
+            shop_state(ShopPhase::Inactive, [Some(card_id), None, None]),
+        )]),
+    };
+    let mut hands = PlayerHands::default();
+    let mut economies = PlayerEconomies(HashMap::from([(player, economy(5))]));
+    let source = purchase_card_source(&shops, player, card_id);
+
+    let (result, update) = process_purchase_card(
+        &mut shops,
+        &mut hands,
+        &mut economies,
+        &mut pools,
+        &catalog,
+        player,
+        card_id,
+    );
+
+    assert_eq!(result, PurchaseAttemptResult::DiscardedWrongPhase);
+    assert!(purchase_network_events_for_result(
+        result, player, card_id, source, &economies, update, None,
+    )
+    .is_none());
+    assert_eq!(gold(&economies, player), 5);
+    assert_eq!(hands.hand_len(player), 0);
 }
 
 #[test]

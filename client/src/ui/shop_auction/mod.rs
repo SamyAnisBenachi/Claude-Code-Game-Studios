@@ -2,9 +2,8 @@ use bevy::prelude::*;
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::{CardCatalog, CardId, Rarity};
 use shared::protocol::{
-    BidRejectedReason, C2SPlaceBid, C2SPurchaseCard, C2SRefreshShop, C2SSignalReady, CardSource,
+    BidRejectedReason, C2SPlaceBid, C2SPurchaseCard, C2SRefreshShop, C2SSignalReady,
     ReliableChannel, RoundPhase, S2CAuctionBidAccepted, S2CAuctionBidRejected, S2CAuctionCard,
-    S2CCardAcquired, S2CDraftOffering, S2CShopSlots,
 };
 use shared::session::PlayerId;
 
@@ -897,23 +896,20 @@ impl Plugin for ShopAuctionUiPlugin {
                     shop_auction_ui_phase_transition_system
                         .in_set(ShopAuctionUiSystemSet::PhaseTransition),
                     (
-                        drain_draft_offering_receiver_system,
                         drain_auction_card_receiver_system,
-                        drain_shop_slots_receiver_system,
                         drain_auction_bid_accepted_receiver_system,
                         drain_auction_bid_rejected_receiver_system,
-                        drain_card_acquired_receiver_system,
                         handle_auction_snapshot_system,
                         handle_auction_gold_broadcast_system,
                         handle_auction_bid_accepted_system,
                         handle_auction_bid_rejected_system,
                         handle_draft_offering_system,
                         handle_auction_card_system,
-                        handle_shop_slots_system,
                         handle_card_acquired_system,
                         handle_shop_card_acquired_system,
                         apply_draft_initial_purchase_confirmations_system,
                         apply_shop_purchase_confirmations_system,
+                        handle_shop_slots_system,
                     )
                         .chain()
                         .in_set(ShopAuctionUiSystemSet::MessageDrain),
@@ -1115,19 +1111,6 @@ pub fn shop_auction_ui_phase_transition_system(
     );
 }
 
-pub fn drain_draft_offering_receiver_system(
-    mut receivers: Query<&mut MessageReceiver<S2CDraftOffering>>,
-    mut writer: MessageWriter<ShopAuctionDraftOfferingReceived>,
-) {
-    for mut receiver in &mut receivers {
-        for message in receiver.receive() {
-            writer.write(ShopAuctionDraftOfferingReceived {
-                card_ids: message.card_ids,
-            });
-        }
-    }
-}
-
 pub fn drain_auction_card_receiver_system(
     mut receivers: Query<&mut MessageReceiver<S2CAuctionCard>>,
     mut writer: MessageWriter<ShopAuctionAuctionCardReceived>,
@@ -1137,19 +1120,6 @@ pub fn drain_auction_card_receiver_system(
             writer.write(ShopAuctionAuctionCardReceived {
                 card_id: message.card_id,
                 starting_price: message.starting_price,
-            });
-        }
-    }
-}
-
-pub fn drain_shop_slots_receiver_system(
-    mut receivers: Query<&mut MessageReceiver<S2CShopSlots>>,
-    mut writer: MessageWriter<ShopAuctionShopSlotsReceived>,
-) {
-    for mut receiver in &mut receivers {
-        for message in receiver.receive() {
-            writer.write(ShopAuctionShopSlotsReceived {
-                slots: message.slots,
             });
         }
     }
@@ -1177,30 +1147,6 @@ pub fn drain_auction_bid_rejected_receiver_system(
     }
 }
 
-pub fn drain_card_acquired_receiver_system(
-    mut receivers: Query<&mut MessageReceiver<S2CCardAcquired>>,
-    mut writer: MessageWriter<ShopAuctionCardAcquiredReceived>,
-    mut shop_writer: MessageWriter<ShopAuctionShopCardAcquiredReceived>,
-) {
-    for mut receiver in &mut receivers {
-        for message in receiver.receive() {
-            match message.source {
-                CardSource::DraftInitial => {
-                    writer.write(ShopAuctionCardAcquiredReceived {
-                        card_id: message.card_id,
-                    });
-                }
-                CardSource::ShopPurchase => {
-                    shop_writer.write(ShopAuctionShopCardAcquiredReceived {
-                        card_id: message.card_id,
-                    });
-                }
-                _ => {}
-            }
-        }
-    }
-}
-
 pub fn handle_auction_snapshot_system(
     phase_view: Res<ClientPhaseView>,
     mut snapshots: MessageReader<PresentationGameSnapshotMessage>,
@@ -1208,6 +1154,7 @@ pub fn handle_auction_snapshot_system(
     mut local_gold: ResMut<ShopAuctionLocalGoldView>,
     mut hand_view: ResMut<ShopAuctionDraftHandView>,
     mut mode: ResMut<ShopAuctionUiMode>,
+    mut shop_slots_writer: MessageWriter<ShopAuctionShopSlotsReceived>,
 ) {
     for snapshot in snapshots.read().map(|message| &message.0) {
         local_gold.player_id = Some(snapshot.recipient_player_id);
@@ -1220,6 +1167,11 @@ pub fn handle_auction_snapshot_system(
             local_gold.reserved_gold = local_player.reserved_gold;
             local_gold.initialized = true;
             hand_view.hand_size = local_player.hand.len();
+            if snapshot.phase == RoundPhase::DraftShop {
+                shop_slots_writer.write(ShopAuctionShopSlotsReceived {
+                    slots: local_player.shop_slots.clone(),
+                });
+            }
         } else {
             warn!(
                 "Shop/Auction UI: snapshot for {:?} does not contain local player",
@@ -1562,6 +1514,7 @@ pub fn apply_draft_initial_purchase_confirmations_system(
 pub fn apply_shop_purchase_confirmations_system(
     mode: Res<ShopAuctionUiMode>,
     economy: Res<PlayerEconomyView>,
+    mut hand_view: ResMut<ShopAuctionDraftHandView>,
     mut shop_state: ResMut<ShopAuctionShopState>,
     mut commands: Commands,
     mut slots: Query<(Entity, &ShopSlotCard, &mut ShopSlotState, &mut Text)>,
@@ -1584,6 +1537,8 @@ pub fn apply_shop_purchase_confirmations_system(
     for card_id in pending_confirmations {
         if !mark_confirmed_shop_purchase(card_id, &mut commands, &mut slots) {
             unapplied_confirmations.push(card_id);
+        } else {
+            hand_view.hand_size = hand_view.hand_size.saturating_add(1).min(10);
         }
     }
 
