@@ -93,6 +93,14 @@ Standard-tier accessibility is remediated, verified, or explicitly reclassified.
   A11Y-ST-01 and A11Y-ST-03; QA-COND-0005 remains Open because remaining
   Standard-tier rows and non-HUD / auction-price exposure still need evidence,
   reclassification, dependency-blocking, or accepted-risk disposition.
+- 2026-05-06: HAND-UI-014 implemented and verified the A11Y-ST-14 PLACEMENT
+  staged-disclosure sub-gap. Evidence:
+  `production/qa/evidence/hand-ui-placement-staged-disclosure-accessibility-2026-05-05.md`
+  with Browser/WASM captures for entry, card selection, lane/cell guidance,
+  valid highlight, valid stage, reserve/current split adjustment, invalid
+  submit, correction, and successful submit, plus the focused Hand UI
+  accessibility test and requested regression targets passing. This closes only
+  the A11Y-ST-14 sub-gap; QA-COND-0005 remains Open.
 
 ## Non-Goals
 

@@ -12,7 +12,8 @@
 | HUD-011 evidence | `production/qa/evidence/hud-011-mana-shapes-evidence.md` |
 | HUD-012 evidence | `production/qa/evidence/hud-012-text-size-contrast-accessibility.md` |
 | A11Y Settings 001 evidence | `production/qa/evidence/accessibility-settings-foundation-2026-05-05.md` |
-| Disposition verdict | QA-COND-0005 remains Open. Every source row has exactly one allowed final disposition. A11Y-ST-09 and A11Y-ST-13 are implemented and evidenced. HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are implemented and evidenced by HUD-012, but the parent rows still require remaining non-HUD / auction-price evidence before closure. A11Y-DEP-01 and A11Y-DEP-02 now have foundation implementation evidence, but dependent source rows still require their own closure evidence. |
+| HAND-UI-014 evidence | `production/qa/evidence/hand-ui-placement-staged-disclosure-accessibility-2026-05-05.md` |
+| Disposition verdict | QA-COND-0005 remains Open. Every source row has exactly one allowed final disposition. A11Y-ST-09, A11Y-ST-13, and A11Y-ST-14 are implemented and evidenced. HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are implemented and evidenced by HUD-012, but the parent rows still require remaining non-HUD / auction-price evidence before closure. A11Y-DEP-01 and A11Y-DEP-02 now have foundation implementation evidence, but dependent source rows still require their own closure evidence. |
 
 ## Scope
 
@@ -112,6 +113,25 @@ reduced-motion consumers, full input remapping, tutorial persistence,
 brightness/gamma controls, audio bus controls, or final browser/WASM closure
 evidence for QA-COND-0005.
 
+## HAND-UI-014 Evidence Linkage
+
+HAND-UI-014 implemented and verified the A11Y-ST-14 PLACEMENT staged disclosure
+sub-gap:
+
+- evidence:
+  `production/qa/evidence/hand-ui-placement-staged-disclosure-accessibility-2026-05-05.md`
+- story:
+  `production/epics/hand-ui/story-014-placement-staged-disclosure-accessibility.md`
+- automated verification:
+  `cargo test -p client --test hand_ui_placement_staged_disclosure_accessibility_test`
+  and the requested Hand UI regression targets
+
+HAND-UI-014 evidence records the Browser/WASM sequence for PLACEMENT entry, card
+selection, lane/cell target guidance, valid target highlight, valid stage,
+reserve/current split adjustment, invalid submit, correction, and successful
+submit. It also records that later controls are not shown before their
+disclosure step and that QA-COND-0005 remains Open.
+
 ## Source Row Disposition Register
 
 | Row ID | Source row | Tier | Current evidence | Final disposition | Required audit or test | Producer signoff required | Signoff evidence | QA-COND-0005 impact | Follow-up path |
@@ -129,7 +149,7 @@ evidence for QA-COND-0005.
 | A11Y-ST-11 | DRAFT_SHOP ready signal - retractable | Standard | RSM logic evidence covers ready retraction in `server/tests/rsm_timers_test.rs`; no browser/UI evidence verifies visible retractable control behavior. | evidence-only required | Browser/WASM manual or automated evidence showing ready can be retracted before all-ready fires and that the control is visibly reversible. | No | N/A | Blocks closure. | Existing Shop/Auction evidence pass, SAU-009 equivalent, or `production/epics/accessibility-settings/EPIC.md` story 006. |
 | A11Y-ST-12 | Auction bid buttons - immediate preset commitments | Standard | SAU-005 records bid-button tests and immediate preset commitment behavior; manual visual/accessibility evidence remains deferred. | evidence-only required | Browser/WASM capture showing preset total commitment labels, 44x44 targets, focus rings, affordability gating, in-flight disable, one-send semantics, and BIDDING feedback. | No | N/A | Blocks closure. | SAU-009 equivalent or `production/epics/accessibility-settings/EPIC.md` story 006. |
 | A11Y-ST-13 | Mana pools: distinct container shapes | Standard | HUD-011 evidence verifies current mana as a horizontal bar, reserve mana as a diamond, non-color component/layout assertions, and browser/WASM color plus grayscale captures at `1366x768` and `1920x1080`. | implemented + evidence attached | Retain HUD-011 evidence and regression commands from `production/qa/evidence/hud-011-mana-shapes-evidence.md`. | No | N/A | Closes sub-gap. QA-COND-0005 as a whole remains Open. | No follow-up for this row unless HUD mana shape accessibility regresses. |
-| A11Y-ST-14 | PLACEMENT staged disclosure | Standard | Hand UI staging behavior exists in prior stories, but the guided staged-disclosure UX is not fully verified as browser evidence. | evidence-only required | Browser/WASM capture showing card selection, lane selection, cell selection, and mana split/submit disclosure sequence without showing later controls prematurely. | No | N/A | Blocks closure. | Hand UI evidence pass or `production/epics/accessibility-settings/EPIC.md` story 006. |
+| A11Y-ST-14 | PLACEMENT staged disclosure | Standard | HAND-UI-014 evidence verifies PLACEMENT entry, card selection, lane/cell target guidance, valid target highlight, valid stage, reserve/current split adjustment, invalid submit, correction, and successful submit in Browser/WASM capture evidence. | implemented + evidence attached | Retain HAND-UI-014 evidence and regression commands from `production/qa/evidence/hand-ui-placement-staged-disclosure-accessibility-2026-05-05.md`. | No | N/A | Closes sub-gap. QA-COND-0005 as a whole remains Open. | No follow-up for this row unless PLACEMENT staged disclosure regresses. |
 | A11Y-ST-15 | Tutorial persistence | Standard | Settings UX defines Help replay/reset behavior, but no tutorial/help prompt registry, replay, reset, or persistence implementation exists. | later sprint / blocked dependency | Implement prompt registry, dismissed-prompt persistence, Help replay, reset-all, and per-prompt reset evidence. | No | N/A | Blocks closure. | A11Y-DEP-06, `production/epics/accessibility-settings/EPIC.md` story 005. |
 | A11Y-ST-16 | Phase label always visible | Standard | HUD logic evidence verifies phase label text updates; no browser/WASM evidence verifies visibility, non-occlusion, and non-animation-only phase communication. | evidence-only required | Browser/WASM capture across phases proving phase label remains visible, readable, non-occluded, and not communicated by animation alone. | No | N/A | Blocks closure. | HUD evidence pass or `production/epics/accessibility-settings/EPIC.md` story 006. |
 | A11Y-ST-17 | Gold counter always visible | Standard | HUD and economy logic evidence covers gold display behavior; no browser/WASM occlusion or full-opacity visibility evidence is attached. | evidence-only required | Browser/WASM capture across DRAFT_INITIAL, DRAFT_SHOP, DRAFT_AUCTION, PLACEMENT, RESOLUTION, and GAME_OVER proving gold counter visibility and opacity. | No | N/A | Blocks closure. | HUD/Shop-Auction evidence pass or `production/epics/accessibility-settings/EPIC.md` story 006. |
@@ -161,7 +181,7 @@ decision:
 
 - A11Y-ST-01, A11Y-ST-02, A11Y-ST-03.
 - A11Y-ST-04, A11Y-ST-05, A11Y-ST-06, A11Y-ST-07, A11Y-ST-08.
-- A11Y-ST-10, A11Y-ST-11, A11Y-ST-12, A11Y-ST-14, A11Y-ST-15.
+- A11Y-ST-10, A11Y-ST-11, A11Y-ST-12, A11Y-ST-15.
 - A11Y-ST-16, A11Y-ST-17, A11Y-ST-18, A11Y-ST-19.
 - A11Y-BS-01, A11Y-BS-02, A11Y-BS-03, A11Y-BS-04, A11Y-BS-05.
 - A11Y-NA-01.
@@ -179,12 +199,14 @@ Rows currently marked `later sprint / blocked dependency`:
 
 ## Rows No Longer Blocking QA-COND-0005 Closure
 
-Two source rows no longer block as individual sub-gaps:
+Three source rows no longer block as individual sub-gaps:
 
 - A11Y-ST-09 - PLACEMENT timer extension. It is implemented and evidenced by
   GSS-008.
 - A11Y-ST-13 - Mana pools: distinct container shapes. It is implemented and
   evidenced by HUD-011.
+- A11Y-ST-14 - PLACEMENT staged disclosure. It is implemented and evidenced by
+  HAND-UI-014.
 
 Two dependency rows are no longer empty prerequisites:
 
@@ -230,7 +252,7 @@ dispositioned without an unverified Standard-tier blocker.
 Current closure result:
 
 - QA-COND-0005 remains Open.
-- A11Y-ST-09 and A11Y-ST-13 are closed sub-gaps.
+- A11Y-ST-09, A11Y-ST-13, and A11Y-ST-14 are closed sub-gaps.
 - HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are evidenced by HUD-012, but
   the parent rows still block closure until remaining non-HUD / auction-price
   exposure is evidenced or dispositioned.

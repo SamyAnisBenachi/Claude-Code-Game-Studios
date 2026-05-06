@@ -1,7 +1,7 @@
 # Story 014: PLACEMENT Staged Disclosure Accessibility
 
 > **Epic**: Hand UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -81,33 +81,33 @@
 
 ## Acceptance Criteria
 
-- [ ] **A11Y-ST-14 entry state**: GIVEN PLACEMENT begins, WHEN Hand UI enters STAGING, THEN Submit and timer are visible, fan cards are selectable, no card is selected, no board target guidance is active, no board cells or fan plate are highlighted, and all reserve/current split controls are hidden.
+- [x] **A11Y-ST-14 entry state**: GIVEN PLACEMENT begins, WHEN Hand UI enters STAGING, THEN Submit and timer are visible, fan cards are selectable, no card is selected, no board target guidance is active, no board cells or fan plate are highlighted, and all reserve/current split controls are hidden.
 
-- [ ] **A11Y-ST-14 card selection disclosure**: GIVEN a board-target card is selected from the PLACEMENT fan, WHEN the selection/drag begins, THEN the original fan slot enters the active selection visual state, the drag sprite or selected-card affordance is visible, the disclosure guidance state communicates target selection, and reserve/current split controls remain hidden.
+- [x] **A11Y-ST-14 card selection disclosure**: GIVEN a board-target card is selected from the PLACEMENT fan, WHEN the selection/drag begins, THEN the original fan slot enters the active selection visual state, the drag sprite or selected-card affordance is visible, the disclosure guidance state communicates target selection, and reserve/current split controls remain hidden.
 
-- [ ] **A11Y-ST-14 lane/cell target guidance**: GIVEN a selected Minion card, WHEN valid target guidance is active, THEN the UI exposes a test-observable target-disclosure state for lane/cell selection and the highlighted board cells equal the existing HU-12 valid set. Browser/WASM evidence must show the player is being guided to choose a lane/cell target before mana split controls appear.
+- [x] **A11Y-ST-14 lane/cell target guidance**: GIVEN a selected Minion card, WHEN valid target guidance is active, THEN the UI exposes a test-observable target-disclosure state for lane/cell selection and the highlighted board cells equal the existing HU-12 valid set. Browser/WASM evidence must show the player is being guided to choose a lane/cell target before mana split controls appear.
 
-- [ ] **Existing highlight semantics preserved**: GIVEN TargetObj, LaneWide, TargetUnit, and Instant cards are selected, WHEN their target guidance is active, THEN Story 006 and Story 007 highlight semantics are unchanged: objectives highlight only surviving opponent objectives, LaneWide highlights all lane cells, TargetUnit uses `TargetUnitHover` with no `BoardCellHighlighted` cells, and Instant uses `FanPlateHighlighted` with no board cell highlights.
+- [x] **Existing highlight semantics preserved**: GIVEN TargetObj, LaneWide, TargetUnit, and Instant cards are selected, WHEN their target guidance is active, THEN Story 006 and Story 007 highlight semantics are unchanged: objectives highlight only surviving opponent objectives, LaneWide highlights all lane cells, TargetUnit uses `TargetUnitHover` with no `BoardCellHighlighted` cells, and Instant uses `FanPlateHighlighted` with no board cell highlights.
 
-- [ ] **Invalid target preserves disclosure recovery**: GIVEN a card is selected and the player releases on an invalid target or outside the valid zone, WHEN the drop resolves, THEN the drag sprite hides, the fan slot returns to `FanSlotState::Active`, no `GhostPlacementChanged` message is written, pending placements remain unchanged, and reserve/current split controls remain hidden.
+- [x] **Invalid target preserves disclosure recovery**: GIVEN a card is selected and the player releases on an invalid target or outside the valid zone, WHEN the drop resolves, THEN the drag sprite hides, the fan slot returns to `FanSlotState::Active`, no `GhostPlacementChanged` message is written, pending placements remain unchanged, and reserve/current split controls remain hidden.
 
-- [ ] **Staged card state follows target confirmation**: GIVEN a selected card is released on a valid board target, WHEN the drop resolves, THEN one pending placement exists for that card, `GhostPlacementChanged { target: Some(<resolved target>), card_id: Some(card_id) }` is written, the fan slot enters `FanSlotState::Ghost`, Submit text increments to `Submit (N cards)`, and the staged card guidance state replaces target-selection guidance.
+- [x] **Staged card state follows target confirmation**: GIVEN a selected card is released on a valid board target, WHEN the drop resolves, THEN one pending placement exists for that card, `GhostPlacementChanged { target: Some(<resolved target>), card_id: Some(card_id) }` is written, the fan slot enters `FanSlotState::Ghost`, Submit text increments to `Submit (N cards)`, and the staged card guidance state replaces target-selection guidance.
 
-- [ ] **Instant staged state follows fan plate confirmation**: GIVEN an Instant card is selected, WHEN it is released on the highlighted fan plate, THEN the card stages to `PlayTarget::Instant`, no board highlight remains, the fan slot enters `FanSlotState::Ghost`, Submit count increments, and the same staged-card disclosure rules apply.
+- [x] **Instant staged state follows fan plate confirmation**: GIVEN an Instant card is selected, WHEN it is released on the highlighted fan plate, THEN the card stages to `PlayTarget::Instant`, no board highlight remains, the fan slot enters `FanSlotState::Ghost`, Submit count increments, and the same staged-card disclosure rules apply.
 
-- [ ] **Reserve/current mana strip disclosure timing**: GIVEN a cost greater than 0 card has not yet been staged, THEN its reserve/current split controls are hidden. GIVEN that card is staged, THEN its split controls become visible only after target confirmation and expose both reserve spend and current spend in a non-color-only way. GIVEN a zero-cost card is staged, THEN the split controls remain hidden.
+- [x] **Reserve/current mana strip disclosure timing**: GIVEN a cost greater than 0 card has not yet been staged, THEN its reserve/current split controls are hidden. GIVEN that card is staged, THEN its split controls become visible only after target confirmation and expose both reserve spend and current spend in a non-color-only way. GIVEN a zero-cost card is staged, THEN the split controls remain hidden.
 
-- [ ] **Reserve/current split behavior preserved**: GIVEN a staged card with reserve controls visible, WHEN `+` or `-` is activated, THEN `reserve_mana_spend` and `current_mana_spend` update using the existing Story 011 clamp and ceiling rules, disabled increment behavior remains unchanged, and no other staged card is auto-decremented.
+- [x] **Reserve/current split behavior preserved**: GIVEN a staged card with reserve controls visible, WHEN `+` or `-` is activated, THEN `reserve_mana_spend` and `current_mana_spend` update using the existing Story 011 clamp and ceiling rules, disabled increment behavior remains unchanged, and no other staged card is auto-decremented.
 
-- [ ] **Submit invalid flow preserves HAND-UI-010**: GIVEN staged placements overdraw reserve mana or current mana, WHEN Submit is pressed, THEN no `C2SSubmitPlacement` is sent, Submit remains `Active`, `SubmitValidationError::ReserveOverdrawn` or `SubmitValidationError::ManaOverdrawn` is attached with the existing reserve-first precedence, and the disclosure guidance keeps the player in correction flow.
+- [x] **Submit invalid flow preserves HAND-UI-010**: GIVEN staged placements overdraw reserve mana or current mana, WHEN Submit is pressed, THEN no `C2SSubmitPlacement` is sent, Submit remains `Active`, `SubmitValidationError::ReserveOverdrawn` or `SubmitValidationError::ManaOverdrawn` is attached with the existing reserve-first precedence, and the disclosure guidance keeps the player in correction flow.
 
-- [ ] **Correction and submit success preserve HAND-UI-010**: GIVEN a prior submit attempt failed pre-validation, WHEN the player adjusts reserve/current split or un-stages cards so both aggregate spends fit `PlayerEconomyView`, THEN the next Submit clears `SubmitValidationError`, sends exactly one `C2SSubmitPlacement`, changes Submit to `Submitted`, and shows the submitted checkmark through the existing successful-send path.
+- [x] **Correction and submit success preserve HAND-UI-010**: GIVEN a prior submit attempt failed pre-validation, WHEN the player adjusts reserve/current split or un-stages cards so both aggregate spends fit `PlayerEconomyView`, THEN the next Submit clears `SubmitValidationError`, sends exactly one `C2SSubmitPlacement`, changes Submit to `Submitted`, and shows the submitted checkmark through the existing successful-send path.
 
-- [ ] **Browser/WASM evidence completeness**: The evidence document captures PLACEMENT entry, card selected, lane/cell target guidance, valid target highlight, valid stage, reserve/current split adjustment, invalid submit, correction, and successful submit. It also records that later controls are not shown before their disclosure step.
+- [x] **Browser/WASM evidence completeness**: The evidence document captures PLACEMENT entry, card selected, lane/cell target guidance, valid target highlight, valid stage, reserve/current split adjustment, invalid submit, correction, and successful submit. It also records that later controls are not shown before their disclosure step.
 
-- [ ] **QA-COND-0005 impact statement**: The evidence document states that this story implements and evidences only A11Y-ST-14 and that QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented/evidenced, reclassified, dependency-blocked, or accepted as risk.
+- [x] **QA-COND-0005 impact statement**: The evidence document states that this story implements and evidences only A11Y-ST-14 and that QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented/evidenced, reclassified, dependency-blocked, or accepted as risk.
 
-- [ ] `git diff --check` passes.
+- [x] `git diff --check` passes.
 
 ---
 
@@ -209,7 +209,7 @@ No gameplay-loop performance impact expected beyond a small fixed Hand UI guidan
 
 Story 014 implements and evidences A11Y-ST-14 for PLACEMENT staged disclosure. It does not close QA-COND-0005 by itself. QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented and evidenced, reclassified, dependency-blocked, or accepted as risk.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Implemented and captured.
 
 ---
 
@@ -227,3 +227,12 @@ Story 014 implements and evidences A11Y-ST-14 for PLACEMENT staged disclosure. I
 ## Blockers
 
 None.
+
+## Completion Notes
+
+**Completed**: 2026-05-06
+**Criteria**: 14/14 passing.
+**Deviations**: None blocking. HAND-UI-014 implements and evidences only A11Y-ST-14 PLACEMENT staged disclosure; QA-COND-0005 remains Open because other Standard-tier accessibility rows still require implementation/evidence, reclassification, dependency-blocking, or accepted-risk disposition.
+**Test Evidence**: `production/qa/evidence/hand-ui-placement-staged-disclosure-accessibility-2026-05-05.md`; capture artifacts under `production/qa/evidence/captures/hand-ui-placement-staged-disclosure/`; `cargo test -p client --test hand_ui_placement_staged_disclosure_accessibility_test --jobs 1` passed 6/6; requested Hand UI regression groups passed 11/11, 13/13, and 25/25; `cargo fmt -p client -- --check`, `cargo check -p client --jobs 1`, and `git diff --check` passed.
+**Code Review**: Skipped - lean mode. `production/review-mode.txt` is absent, so QL-TEST-COVERAGE and LP-CODE-REVIEW gates were not spawned.
+**QA-COND-0005 Impact**: QA-COND-0005 remains Open. A11Y-ST-14 can move to implemented/evidenced in the Sprint 6 disposition register, but the broader condition is not closed by this story.

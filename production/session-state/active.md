@@ -2084,3 +2084,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record HUD-012 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
 - Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+
+## Session Extract - /story-done 2026-05-06
+- Verdict: COMPLETE
+- Story: `production/epics/hand-ui/story-014-placement-staged-disclosure-accessibility.md` - Story 014: PLACEMENT Staged Disclosure Accessibility
+- Criteria: 14/14 passing; A11Y-ST-14 entry state, card selection disclosure, lane/cell target guidance, preserved target-kind highlight semantics, invalid-drop recovery, valid board staging, Instant fan-plate staging, reserve/current split disclosure timing, reserve split behavior, submit invalid flow, correction/success path, Browser/WASM evidence completeness, QA-COND-0005 impact statement, and whitespace gate verified.
+- Test Evidence: `production/qa/evidence/hand-ui-placement-staged-disclosure-accessibility-2026-05-05.md`; capture artifacts under `production/qa/evidence/captures/hand-ui-placement-staged-disclosure/`; `cargo test -p client --test hand_ui_placement_staged_disclosure_accessibility_test --jobs 1` passed 6/6; requested Hand UI regression groups passed 11/11, 13/13, and 25/25; `cargo fmt -p client -- --check`, `cargo check -p client --jobs 1`, and `git diff --check` passed.
+- Verification: Current root `main` was clean and aligned with `origin/main` after `git fetch origin` before closure edits. No implementation code was changed during closure.
+- Notes: No blocking GDD, ADR-002, ADR-021, ADR-023, Bevy 0.18, or control-manifest deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- QA condition: `QA-COND-0005` remains Open. HAND-UI-014 closes only the A11Y-ST-14 PLACEMENT staged-disclosure sub-gap in the Standard-tier accessibility disposition register.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` updated to record HAND-UI-014 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
+- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
