@@ -75,17 +75,17 @@ Sprint 6 final gate reconciliation is complete as of 2026-05-06.
 | Gate report | PASS WITH CONDITIONS | `production/gate-checks/gate-production-polish-sprint-6-2026-05-06.md` |
 | Gate commit | Recorded | `f622605872856ea29014601db5a9996c8b3d1122` |
 
-Carried conditions remain part of the Polish backlog:
+Current condition state after post-gate QA closure reconciliation:
 
 - QA-COND-0005 is friend-game-only accepted risk. This is not verified
   Standard-tier accessibility completion and must be revisited before any
   public, external, commercial, or broader release candidate.
 - QA-COND-0006 is accepted-risk/deferred. This is not playtest evidence and is
   not fun-hypothesis validation.
-- QA-COND-0001 remains open P2 until AU1 FIFO evidence receives explicit QA
-  disposition.
-- QA-COND-0007 remains open P2 until deferred manual/visual evidence is
-  captured or dispositioned.
+- QA-COND-0001 is Closed / N/A - Closed via integrated two-client FIFO evidence
+  at `8fc30de33526d2f44e53d7e1fa82673ee4f26ccf`.
+- QA-COND-0007 is Closed / N/A - Closed via Hand UI visual evidence and
+  resolution replay readability evidence.
 - Full manual playable-client QA is not claimed by the smoke report, QA
   sign-off, gate report, or this reconciliation.
 
@@ -125,10 +125,10 @@ unstarted Sprint 6 capacity:
 | Final board visual/browser evidence | Closed for Sprint 6 P1 gate | BOARD-012 browser/WASM capture exists with nonblank 1920x1080 board evidence and corrected timing verdict PASS |
 | QA-COND-0004 | Closed | BOARD-012 browser/WASM capture passed corrected timing budgets |
 | QA-COND-0005 | Accepted-risk / producer waived | Producer accepted remaining Standard-tier accessibility exposure as friend-game-only risk: Standard-tier accessibility waived by producer; no public release, no obligation. Not verified accessibility completion. |
-| QA-COND-0006 | Accepted-risk / deferred | Producer accepted deferral for Sprint 6 on 2026-05-05; required playtest sessions and aggregate fun decision remain future closure evidence, and the final Production -> Polish gate must carry this as an explicit risk/condition rather than passed evidence |
-| QA-COND-0001 | Open P2 validation | AU1-b-network FIFO evidence requires QA disposition after FIFO harness review |
+| QA-COND-0006 | Accepted-risk / deferred | Producer accepted deferral for Sprint 6 on 2026-05-05; required playtest sessions and aggregate fun decision remain future closure evidence, and the final Production -> Polish gate carried this as an explicit risk/condition rather than passed evidence |
+| QA-COND-0001 | Closed / N/A - Closed | Closed via integrated two-client FIFO evidence at `8fc30de33526d2f44e53d7e1fa82673ee4f26ccf` |
 | QA-COND-0003 | Closed | OS-18b two-client ObjectiveHp visibility evidence verified final-only observations for both clients |
-| QA-COND-0007 | Open P2 validation | Deferred manual/visual evidence still pending |
+| QA-COND-0007 | Closed / N/A - Closed | Closed via Hand UI visual evidence and resolution replay readability evidence |
 
 ## Risks
 
@@ -162,7 +162,7 @@ Production -> Polish gate-check prerequisites.
       the Sprint 6 Production -> Polish gate.
 - [x] Sprint 6 QA plan exists
 - [x] P1 QA conditions are closed, verified, explicitly reclassified, or accepted as risk
-- [ ] P2 QA validation conditions have evidence, reclassification, or accepted-risk disposition
+- [x] P2 QA validation conditions have evidence, reclassification, or accepted-risk disposition
 - [x] S6-02 / QA-COND-0006 accepted-risk deferral is recorded without marking
       playtests completed or creating playtest reports
 - [x] Production -> Polish gate-check carries QA-COND-0006 as an explicit

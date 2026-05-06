@@ -2147,7 +2147,7 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA sign-off: `production/qa/qa-signoff-sprint-6-2026-05-06.md` records `APPROVED WITH CONDITIONS`.
 - Sprint status: docs-only reconciliation marks S6-06 done in `production/sprint-status.yaml` without running `/story-done`.
 - Sprint 6 plan: `production/sprints/sprint-6.md` records the post-gate state and preserves the carried conditions.
-- Carried conditions: QA-COND-0005 remains friend-game-only accepted risk, not verified Standard-tier accessibility completion; QA-COND-0006 remains accepted-risk/deferred, not playtest or fun-hypothesis validation; QA-COND-0001 remains open P2; QA-COND-0007 remains open P2; full manual playable-client QA is not claimed.
+- Current condition summary: QA-COND-0005 remains friend-game-only accepted risk, not verified Standard-tier accessibility completion; QA-COND-0006 remains accepted-risk/deferred, not playtest or fun-hypothesis validation; QA-COND-0001 is Closed / N/A - Closed via integrated two-client FIFO evidence at `8fc30de33526d2f44e53d7e1fa82673ee4f26ccf`; QA-COND-0007 is Closed / N/A - Closed via Hand UI visual evidence and resolution replay readability evidence; full manual playable-client QA is not claimed.
 
 ## Session Extract - /story-done 2026-05-06
 - Verdict: COMPLETE WITH NOTES
@@ -2156,7 +2156,17 @@ C:\Program Files\GitHub CLI\gh.exe
 - Test Evidence: `tests/integration/board_rendering/resolution_anim_queue_test.rs`; `cargo test -p client --test board_rendering_resolution_anim_queue_test` passed 5/5; relevant regressions passed for placement reveal, snapshot spawn cleanup, spawn-range highlights, AnimQueue drain/GAME_OVER skip, and objective stagger.
 - Verification: Root `main` was clean and aligned with `origin/main` after `git fetch origin` before closure edits. Integrated implementation commit `8caa1a0195fd817b1ce632877db2174a357e8162` is present on main.
 - Notes: No blocking GDD, ADR-017, ADR-021, Bevy 0.18, or control-manifest deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
-- QA condition: `QA-COND-0007` remains Open. BR-006 supplies prerequisite resolution replay queue/phase-buffering infrastructure for future readability evidence, but does not close the condition, does not provide manual/visual readability captures, and does not claim manual playable-client QA.
+- QA condition: BR-006 alone did not close `QA-COND-0007`; post-gate reconciliation now records QA-COND-0007 as Closed / N/A - Closed via separate Hand UI visual evidence and resolution replay readability evidence. Full playable-client manual QA is still not claimed.
 - Tech debt logged: None.
-- Sprint status: `production/sprint-status.yaml` updated only to record BR-006 prerequisite impact under S6-S4 while leaving QA-COND-0007 open.
-- Next recommended: Capture or disposition resolution replay readability evidence for `QA-COND-0007`; do not treat BR-006 story completion as QA-COND-0007 closure.
+- Sprint status: `production/sprint-status.yaml` reconciled S6-S4 / QA-COND-0007 as closed after the separate visual/readability evidence, not from BR-006 story completion alone.
+- Next recommended: Do not carry QA-COND-0007 into Sprint 7 planning; preserve the evidence boundary that BR-006 infrastructure alone did not claim full playable-client manual QA.
+
+## Session Extract - Prompt 266 Post-Gate Condition Status Reconciliation 2026-05-06
+- Scope: docs-only reconciliation of current planning/status references after QA-COND-0001 and QA-COND-0007 closure; no `/dev-story`, `/story-done`, `/smoke-check`, `/team-qa`, or `/gate-check` run.
+- Stage: `production/stage.txt` remains `Polish`.
+- QA-COND-0001: Closed / N/A - Closed via integrated two-client FIFO evidence at `8fc30de33526d2f44e53d7e1fa82673ee4f26ccf`.
+- QA-COND-0007: Closed / N/A - Closed via Hand UI visual evidence and resolution replay readability evidence.
+- QA-COND-0005: remains accepted-risk / friend-game-only waiver; this is not verified Standard-tier accessibility completion.
+- QA-COND-0006: remains accepted-risk/deferred; this is not playtest evidence or fun-hypothesis validation.
+- Planning impact: `production/sprint-status.yaml`, `production/qa/bug-register-taxonomy.md`, and `production/sprints/sprint-6.md` no longer carry QA-COND-0001 or QA-COND-0007 as open active conditions, and QA-COND-0007 should not be pulled into Sprint 7 planning.
+- Scope guard: full playable-client manual QA is not claimed.
