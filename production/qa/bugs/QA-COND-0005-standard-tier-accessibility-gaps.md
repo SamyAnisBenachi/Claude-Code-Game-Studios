@@ -70,6 +70,13 @@ Standard-tier accessibility is remediated, verified, or explicitly reclassified.
   Browser/WASM visual screenshot evidence is deferred until a playable or
   renderable Shop/Auction shell exists. This does not claim A11Y-ST-12 visual
   closure and does not close QA-COND-0005.
+- 2026-05-06: HUD-011 implemented and verified the A11Y-ST-13 current/reserve
+  mana shape-distinction sub-gap. Evidence:
+  `production/qa/evidence/hud-011-mana-shapes-evidence.md` with browser/WASM
+  color and grayscale captures at `1366x768` and `1920x1080`, plus
+  `cargo test -p client --test hud_mana_shape_distinction_test` and
+  `cargo test -p client --test hud_gold_mana_display_test` passing. This closes
+  only the A11Y-ST-13 sub-gap; QA-COND-0005 remains Open.
 
 ## Non-Goals
 

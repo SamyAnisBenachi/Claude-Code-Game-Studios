@@ -1,7 +1,7 @@
 # Story 011: Current and Reserve Mana Shape Distinction
 
 > **Epic**: HUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -71,17 +71,17 @@
 
 ## Acceptance Criteria
 
-- [ ] **A11Y-ST-13 shape distinction**: GIVEN HUD is visible with `current_mana=6`, `mana_cap=10`, and `reserve_mana=2`, WHEN current mana and reserve mana render, THEN current mana is contained in a horizontally oriented bar or segmented bar shape, and reserve mana is contained in a diamond shape. The two resources remain distinguishable when hue and saturation are removed from the capture.
-- [ ] **Current mana remains a current/cap readout**: GIVEN `S2CGoldUpdate { current_mana=6, mana_cap=10, reserve_mana=2 }`, WHEN HUD state sync completes, THEN the current mana text still reads exactly `6 / 10`; the shape work does not collapse current and reserve mana into one total.
-- [ ] **Reserve mana text and visibility are preserved**: GIVEN `reserve_mana=2`, WHEN HUD state sync completes, THEN reserve text still reads exactly `+2 reserve` and is visible. GIVEN a later update with `reserve_mana=0`, THEN the reserve readout is hidden and no stale diamond, numeral, or label remains visible.
-- [ ] **Shape is not color-only**: GIVEN the HUD mana cluster is inspected in the automated UI test, WHEN color fields are ignored, THEN the current mana container has bar geometry and the reserve mana container has diamond geometry as explicit component/layout state. A test that only compares color values does not satisfy this criterion.
-- [ ] **No new steady-state spawning**: GIVEN the HUD has spawned at session entry, WHEN three `S2CGoldUpdate` messages change current/reserve mana over later frames, THEN no additional HUD shape or text entities are spawned during those updates. Any shape nodes required by the implementation are pre-pooled before the first visible HUD frame.
-- [ ] **Existing economy display regressions stay green**: `cargo test -p client --test hud_gold_mana_display_test` passes after the shape change.
-- [ ] **Focused shape test passes**: `cargo test -p client --test hud_mana_shape_distinction_test` passes. The target must be backed by `tests/unit/hud/mana_shape_distinction_test.rs` and registered in `client/Cargo.toml`.
-- [ ] **Browser/WASM evidence exists**: `production/qa/evidence/hud-011-mana-shapes-evidence.md` records the browser, viewport, fixture values, capture method, capture artifact directory, grayscale/color-stripped review result, and pass/fail verdict for A11Y-ST-13.
-- [ ] **Browser/WASM capture covers two viewports**: The evidence document includes captures at `1366x768` and `1920x1080` with current mana and reserve mana both visible, not clipped, and not overlapping Hand UI, Shop/Auction UI, board content, or other HUD zones.
-- [ ] **QA-COND-0005 impact is explicit**: The evidence document states that HUD-011 implements and verifies only A11Y-ST-13. QA-COND-0005 remains Open until the remaining Standard-tier rows are implemented/evidenced, reclassified, dependency-blocked, or accepted as risk.
-- [ ] **Whitespace gate passes**: `git diff --check` passes.
+- [x] **A11Y-ST-13 shape distinction**: GIVEN HUD is visible with `current_mana=6`, `mana_cap=10`, and `reserve_mana=2`, WHEN current mana and reserve mana render, THEN current mana is contained in a horizontally oriented bar or segmented bar shape, and reserve mana is contained in a diamond shape. The two resources remain distinguishable when hue and saturation are removed from the capture.
+- [x] **Current mana remains a current/cap readout**: GIVEN `S2CGoldUpdate { current_mana=6, mana_cap=10, reserve_mana=2 }`, WHEN HUD state sync completes, THEN the current mana text still reads exactly `6 / 10`; the shape work does not collapse current and reserve mana into one total.
+- [x] **Reserve mana text and visibility are preserved**: GIVEN `reserve_mana=2`, WHEN HUD state sync completes, THEN reserve text still reads exactly `+2 reserve` and is visible. GIVEN a later update with `reserve_mana=0`, THEN the reserve readout is hidden and no stale diamond, numeral, or label remains visible.
+- [x] **Shape is not color-only**: GIVEN the HUD mana cluster is inspected in the automated UI test, WHEN color fields are ignored, THEN the current mana container has bar geometry and the reserve mana container has diamond geometry as explicit component/layout state. A test that only compares color values does not satisfy this criterion.
+- [x] **No new steady-state spawning**: GIVEN the HUD has spawned at session entry, WHEN three `S2CGoldUpdate` messages change current/reserve mana over later frames, THEN no additional HUD shape or text entities are spawned during those updates. Any shape nodes required by the implementation are pre-pooled before the first visible HUD frame.
+- [x] **Existing economy display regressions stay green**: `cargo test -p client --test hud_gold_mana_display_test` passes after the shape change.
+- [x] **Focused shape test passes**: `cargo test -p client --test hud_mana_shape_distinction_test` passes. The target must be backed by `tests/unit/hud/mana_shape_distinction_test.rs` and registered in `client/Cargo.toml`.
+- [x] **Browser/WASM evidence exists**: `production/qa/evidence/hud-011-mana-shapes-evidence.md` records the browser, viewport, fixture values, capture method, capture artifact directory, grayscale/color-stripped review result, and pass/fail verdict for A11Y-ST-13.
+- [x] **Browser/WASM capture covers two viewports**: The evidence document includes captures at `1366x768` and `1920x1080` with current mana and reserve mana both visible, not clipped, and not overlapping Hand UI, Shop/Auction UI, board content, or other HUD zones.
+- [x] **QA-COND-0005 impact is explicit**: The evidence document states that HUD-011 implements and verifies only A11Y-ST-13. QA-COND-0005 remains Open until the remaining Standard-tier rows are implemented/evidenced, reclassified, dependency-blocked, or accepted as risk.
+- [x] **Whitespace gate passes**: `git diff --check` passes.
 
 ---
 
@@ -157,7 +157,7 @@
 - Test command output summary for the automated shape test and HUD gold/mana regression.
 - QA-COND-0005 impact statement limited to A11Y-ST-13.
 
-**Status**: [ ] Not yet implemented or captured.
+**Status**: [x] Implemented, captured, and verified.
 
 ---
 
@@ -181,3 +181,13 @@ This story targets only the A11Y-ST-13 mana-pool shape distinction sub-gap. Comp
 ## No Open Questions
 
 No unresolved design question blocks this story. The implementation target is fixed for Sprint 6: current mana uses a bar-shaped container, reserve mana uses a diamond-shaped container, and existing HUD economy text behavior is preserved.
+
+## Completion Notes
+
+**Completed**: 2026-05-06
+**Criteria**: 11/11 passing.
+**Deviations**: None. Story manifest version `2026-05-05` matches the current control manifest.
+**Test Evidence**: `production/qa/evidence/hud-011-mana-shapes-evidence.md` exists and records PASS evidence for A11Y-ST-13, including `1366x768` and `1920x1080` browser/WASM captures plus grayscale captures under `production/qa/evidence/captures/hud-011-mana-shapes/`.
+**Verification**: `cargo test -p client --test hud_mana_shape_distinction_test` passed 3/3; `cargo test -p client --test hud_gold_mana_display_test` passed 6/6; `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+**QA-COND-0005 Impact**: A11Y-ST-13 is implemented and evidenced by HUD-011. QA-COND-0005 remains Open until the remaining Standard-tier rows are implemented/evidenced, reclassified, dependency-blocked, or accepted as risk.
+**Code Review**: Skipped - Lean mode. `production/review-mode.txt` is absent, so QL-TEST-COVERAGE and LP-CODE-REVIEW gates were skipped by story-done policy.

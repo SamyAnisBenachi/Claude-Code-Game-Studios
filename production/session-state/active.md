@@ -2048,3 +2048,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` matching S6-03 row set to `done` with `completed: "2026-05-05"`.
 - Next recommended: S6-01, S6-02, and S6-04 remain open; S6-06 final re-smoke / QA sign-off / gate-check remains blocked until S6-01 through S6-05 are complete or explicitly reclassified.
+
+## Session Extract - /story-done 2026-05-06
+- Verdict: COMPLETE
+- Story: `production/epics/hud/story-011-current-reserve-mana-shapes.md` - Story 011: Current and Reserve Mana Shape Distinction
+- Criteria: 11/11 passing; A11Y-ST-13 current/reserve mana shape distinction, current/cap text, reserve text/visibility, non-color component geometry, pre-pooled entity stability, focused/regression tests, browser/WASM evidence, two viewport captures, QA-COND-0005 impact statement, and whitespace gate verified.
+- Test Evidence: `production/qa/evidence/hud-011-mana-shapes-evidence.md`; capture artifacts under `production/qa/evidence/captures/hud-011-mana-shapes/`; `cargo test -p client --test hud_mana_shape_distinction_test` passed 3/3; `cargo test -p client --test hud_gold_mana_display_test` passed 6/6; `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+- Verification: Current `main` is aligned with `origin/main` and includes the integrated HUD-011 implementation. The HUD exposes current mana as bar geometry and reserve mana as diamond geometry through Bevy UI component/layout state, hides the reserve diamond and label together at zero reserve, and preserves existing economy display behavior.
+- Notes: No blocking GDD, ADR-002, ADR-021, Bevy 0.18, or control-manifest deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent. No new code was implemented during closure.
+- QA condition: `QA-COND-0005` remains Open. HUD-011 closes only the A11Y-ST-13 sub-gap in the Standard-tier accessibility disposition register.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` updated to record A11Y-ST-13 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
+- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.

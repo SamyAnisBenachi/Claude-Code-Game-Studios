@@ -3,13 +3,14 @@
 | Field | Value |
 |---|---|
 | Evidence ID | S6-04 Standard-tier accessibility disposition |
-| Date | 2026-05-05 |
+| Date | 2026-05-06 |
 | QA condition | `production/qa/bugs/QA-COND-0005-standard-tier-accessibility-gaps.md` |
 | QA-COND-0005 status | Open |
 | Source draft | `design/accessibility-requirements.md` |
 | Related UX draft | `design/ux/settings-accessibility.md` |
 | GSS-008 evidence | `production/qa/evidence/gss-008-placement-timer-multiplier-authority-2026-05-05.md` |
-| Disposition verdict | QA-COND-0005 remains Open. Every source row now has exactly one allowed final disposition. Only A11Y-ST-09 is implemented and evidenced. |
+| HUD-011 evidence | `production/qa/evidence/hud-011-mana-shapes-evidence.md` |
+| Disposition verdict | QA-COND-0005 remains Open. Every source row has exactly one allowed final disposition. A11Y-ST-09 and A11Y-ST-13 are implemented and evidenced. |
 
 ## Scope
 
@@ -47,6 +48,23 @@ effective multiplier at `SessionReady`; applies the frozen value through the
 RSM PLACEMENT duration; carries the duration in server phase/snapshot data; and
 keeps client presentation from recomputing the active timer locally.
 
+## HUD-011 Evidence Linkage
+
+HUD-011 implemented and verified the A11Y-ST-13 current/reserve mana shape
+distinction:
+
+- evidence:
+  `production/qa/evidence/hud-011-mana-shapes-evidence.md`
+- story:
+  `production/epics/hud/story-011-current-reserve-mana-shapes.md`
+- automated verification:
+  `cargo test -p client --test hud_mana_shape_distinction_test` and
+  `cargo test -p client --test hud_gold_mana_display_test`
+
+HUD-011 evidence records current mana as a horizontal bar, reserve mana as a
+diamond container, non-color component/layout assertions, and browser/WASM
+color plus grayscale captures at `1366x768` and `1920x1080`.
+
 ## Source Row Disposition Register
 
 | Row ID | Source row | Tier | Current evidence | Final disposition | Required audit or test | Producer signoff required | Signoff evidence | QA-COND-0005 impact | Follow-up path |
@@ -63,7 +81,7 @@ keeps client presentation from recomputing the active timer locally.
 | A11Y-ST-10 | Hold-to-press alternatives | Standard | Spot audit found `design/ux/hand-ui.md` states no hold-to-confirm interaction exists in Hand UI. Full UX and implementation audit is not attached. | evidence-only required | Audit UX specs and implementation for hold-to-confirm, long-press, press-and-hold, timer-gated button hold, and pointer-held flows. If any shipped hold flow exists, implement an alternative or obtain producer accepted-risk signoff per flow. | No | N/A | Blocks closure. | `production/epics/accessibility-settings/EPIC.md` story 004. |
 | A11Y-ST-11 | DRAFT_SHOP ready signal - retractable | Standard | RSM logic evidence covers ready retraction in `server/tests/rsm_timers_test.rs`; no browser/UI evidence verifies visible retractable control behavior. | evidence-only required | Browser/WASM manual or automated evidence showing ready can be retracted before all-ready fires and that the control is visibly reversible. | No | N/A | Blocks closure. | Existing Shop/Auction evidence pass, SAU-009 equivalent, or `production/epics/accessibility-settings/EPIC.md` story 006. |
 | A11Y-ST-12 | Auction bid buttons - immediate preset commitments | Standard | SAU-005 records bid-button tests and immediate preset commitment behavior; manual visual/accessibility evidence remains deferred. | evidence-only required | Browser/WASM capture showing preset total commitment labels, 44x44 targets, focus rings, affordability gating, in-flight disable, one-send semantics, and BIDDING feedback. | No | N/A | Blocks closure. | SAU-009 equivalent or `production/epics/accessibility-settings/EPIC.md` story 006. |
-| A11Y-ST-13 | Mana pools: distinct container shapes | Standard | HUD/UX requirements call for current mana bar and reserve mana diamond shapes, but no implementation confirmation or browser evidence is attached. | must implement in Sprint 6 | Implement or verify distinct current/reserve mana container shapes and capture browser/WASM evidence proving shape distinction without color. | No | N/A | Blocks closure. | Sprint 6 HUD/accessibility implementation story or `production/epics/accessibility-settings/EPIC.md` story 006 after implementation exists. |
+| A11Y-ST-13 | Mana pools: distinct container shapes | Standard | HUD-011 evidence verifies current mana as a horizontal bar, reserve mana as a diamond, non-color component/layout assertions, and browser/WASM color plus grayscale captures at `1366x768` and `1920x1080`. | implemented + evidence attached | Retain HUD-011 evidence and regression commands from `production/qa/evidence/hud-011-mana-shapes-evidence.md`. | No | N/A | Closes sub-gap. QA-COND-0005 as a whole remains Open. | No follow-up for this row unless HUD mana shape accessibility regresses. |
 | A11Y-ST-14 | PLACEMENT staged disclosure | Standard | Hand UI staging behavior exists in prior stories, but the guided staged-disclosure UX is not fully verified as browser evidence. | evidence-only required | Browser/WASM capture showing card selection, lane selection, cell selection, and mana split/submit disclosure sequence without showing later controls prematurely. | No | N/A | Blocks closure. | Hand UI evidence pass or `production/epics/accessibility-settings/EPIC.md` story 006. |
 | A11Y-ST-15 | Tutorial persistence | Standard | Settings UX defines Help replay/reset behavior, but no tutorial/help prompt registry, replay, reset, or persistence implementation exists. | later sprint / blocked dependency | Implement prompt registry, dismissed-prompt persistence, Help replay, reset-all, and per-prompt reset evidence. | No | N/A | Blocks closure. | A11Y-DEP-06, `production/epics/accessibility-settings/EPIC.md` story 005. |
 | A11Y-ST-16 | Phase label always visible | Standard | HUD logic evidence verifies phase label text updates; no browser/WASM evidence verifies visibility, non-occlusion, and non-animation-only phase communication. | evidence-only required | Browser/WASM capture across phases proving phase label remains visible, readable, non-occluded, and not communicated by animation alone. | No | N/A | Blocks closure. | HUD evidence pass or `production/epics/accessibility-settings/EPIC.md` story 006. |
@@ -96,14 +114,13 @@ decision:
 
 - A11Y-ST-01, A11Y-ST-02, A11Y-ST-03.
 - A11Y-ST-04, A11Y-ST-05, A11Y-ST-06, A11Y-ST-07, A11Y-ST-08.
-- A11Y-ST-10, A11Y-ST-11, A11Y-ST-12, A11Y-ST-13, A11Y-ST-14, A11Y-ST-15.
+- A11Y-ST-10, A11Y-ST-11, A11Y-ST-12, A11Y-ST-14, A11Y-ST-15.
 - A11Y-ST-16, A11Y-ST-17, A11Y-ST-18, A11Y-ST-19.
 - A11Y-BS-01, A11Y-BS-02, A11Y-BS-03, A11Y-BS-04, A11Y-BS-05.
 - A11Y-NA-01.
 
 Rows currently marked `must implement in Sprint 6`:
 
-- A11Y-ST-13 - Mana pools: distinct container shapes.
 - A11Y-ST-18 - DRAFT_INITIAL: clear objective.
 - A11Y-BS-03 - Screen flash warning.
 
@@ -115,10 +132,12 @@ Rows currently marked `later sprint / blocked dependency`:
 
 ## Rows No Longer Blocking QA-COND-0005 Closure
 
-Only one source row no longer blocks as an individual sub-gap:
+Two source rows no longer block as individual sub-gaps:
 
 - A11Y-ST-09 - PLACEMENT timer extension. It is implemented and evidenced by
   GSS-008.
+- A11Y-ST-13 - Mana pools: distinct container shapes. It is implemented and
+  evidenced by HUD-011.
 
 This does not close QA-COND-0005 as a whole.
 
@@ -157,7 +176,7 @@ dispositioned without an unverified Standard-tier blocker.
 Current closure result:
 
 - QA-COND-0005 remains Open.
-- A11Y-ST-09 is the only closed sub-gap.
+- A11Y-ST-09 and A11Y-ST-13 are closed sub-gaps.
 - No accepted-risk or reclassification signoff is present.
 - Rows marked `must implement in Sprint 6` or `later sprint / blocked
   dependency` prevent closure.
