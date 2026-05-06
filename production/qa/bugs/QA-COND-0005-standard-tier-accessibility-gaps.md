@@ -63,13 +63,16 @@ Standard-tier accessibility is remediated, verified, or explicitly reclassified.
   remains Open because rows still require evidence, Sprint 6 implementation,
   blocked-dependency follow-up, or producer decisions before closure. No
   accepted-risk or reclassification signoff is recorded in this update.
-- 2026-05-05: SAU-011 automated ECS evidence added at
+- 2026-05-06: SAU-011 automated ECS and Browser/WASM screenshot evidence added
+  at
   `production/qa/evidence/shop-auction-ui-auction-bid-target-focus-2026-05-05.md`
-  for A11Y-ST-12 target size, focus order, focus ring, disabled/unaffordable
-  focus skip, `BIDDING...` state, and `YOU ARE LEADING` replacement behavior.
-  Browser/WASM visual screenshot evidence is deferred until a playable or
-  renderable Shop/Auction shell exists. This does not claim A11Y-ST-12 visual
-  closure and does not close QA-COND-0005.
+  with captures under
+  `production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/`.
+  It verifies A11Y-ST-12 target size, focus order, focus ring,
+  disabled/unaffordable focus skip, affordability gating, one-send semantics,
+  in-flight disable, `BIDDING...` state, and `YOU ARE LEADING` replacement
+  behavior. This closes only the A11Y-ST-12 sub-gap and does not close
+  QA-COND-0005.
 - 2026-05-06: HUD-011 implemented and verified the A11Y-ST-13 current/reserve
   mana shape-distinction sub-gap. Evidence:
   `production/qa/evidence/hud-011-mana-shapes-evidence.md` with browser/WASM

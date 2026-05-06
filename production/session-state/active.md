@@ -2096,3 +2096,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record HAND-UI-014 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
 - Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+
+## Session Extract - /story-done 2026-05-06
+- Verdict: COMPLETE
+- Story: `production/epics/shop-auction-ui/story-011-auction-bid-target-size-and-focus-evidence.md` - Story 011: Auction Bid Target Size and Focus Evidence
+- Criteria: 16/16 passing; A11Y-ST-12 auction bid targets measure 108x44 CSS px, focus order is +1 -> +3 -> +5, focus rings expose 2px state, unaffordable controls skip focus, local leader hides bid controls, `BIDDING...` in-flight state disables further sends, and click/Enter activation preserves exact one-send semantics.
+- Test Evidence: `production/qa/evidence/shop-auction-ui-auction-bid-target-focus-2026-05-05.md`; capture artifacts under `production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/`; `cargo test -p client --test shop_auction_ui_auction_bid_target_focus_test --jobs 1` passed 4/4; requested SAU-004/005/006 regression group passed 17/17; `cargo test -p client --test shop_auction_ui_draft_initial_objective_overlay_test --jobs 1` passed 8/8; `cargo fmt -p client -- --check`, `cargo check -p client --jobs 1`, and `git diff --check` passed.
+- Verification: Current root `main` had no implementation changes during closure. Browser/WASM evidence exists for affordable, focus +1/+3/+5, unaffordable, `BIDDING...`, and local `YOU ARE LEADING` states.
+- Notes: No blocking GDD, ADR-013, ADR-019, ADR-021, Bevy 0.18, or control-manifest deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- QA condition: `QA-COND-0005` remains Open. SAU-011 closes only the A11Y-ST-12 auction bid target/focus sub-gap in the Standard-tier accessibility disposition register.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` updated to record SAU-011 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
+- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.

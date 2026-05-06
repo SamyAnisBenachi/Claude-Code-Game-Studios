@@ -147,7 +147,7 @@ disclosure step and that QA-COND-0005 remains Open.
 | A11Y-ST-09 | PLACEMENT timer extension | Standard | GSS-008 evidence verifies server-authoritative values 1x, 1.5x, 2x, 3x; neutral highest-request-wins authority; freeze at `SessionReady`; RSM effective duration; reconnect snapshot; and Hand UI server-duration use. | implemented + evidence attached | Retain GSS-008 regression commands and `git diff --check` evidence from `production/qa/evidence/gss-008-placement-timer-multiplier-authority-2026-05-05.md`. | No | N/A | Closes sub-gap. | No follow-up for this row unless timer authority regresses. QA-COND-0005 as a whole remains Open. |
 | A11Y-ST-10 | Hold-to-press alternatives | Standard | Spot audit found `design/ux/hand-ui.md` states no hold-to-confirm interaction exists in Hand UI. Full UX and implementation audit is not attached. | evidence-only required | Audit UX specs and implementation for hold-to-confirm, long-press, press-and-hold, timer-gated button hold, and pointer-held flows. If any shipped hold flow exists, implement an alternative or obtain producer accepted-risk signoff per flow. | No | N/A | Blocks closure. | `production/epics/accessibility-settings/EPIC.md` story 004. |
 | A11Y-ST-11 | DRAFT_SHOP ready signal - retractable | Standard | RSM logic evidence covers ready retraction in `server/tests/rsm_timers_test.rs`; no browser/UI evidence verifies visible retractable control behavior. | evidence-only required | Browser/WASM manual or automated evidence showing ready can be retracted before all-ready fires and that the control is visibly reversible. | No | N/A | Blocks closure. | Existing Shop/Auction evidence pass, SAU-009 equivalent, or `production/epics/accessibility-settings/EPIC.md` story 006. |
-| A11Y-ST-12 | Auction bid buttons - immediate preset commitments | Standard | SAU-005 records bid-button tests and immediate preset commitment behavior; manual visual/accessibility evidence remains deferred. | evidence-only required | Browser/WASM capture showing preset total commitment labels, 44x44 targets, focus rings, affordability gating, in-flight disable, one-send semantics, and BIDDING feedback. | No | N/A | Blocks closure. | SAU-009 equivalent or `production/epics/accessibility-settings/EPIC.md` story 006. |
+| A11Y-ST-12 | Auction bid buttons - immediate preset commitments | Standard | SAU-011 evidence verifies preset total-commitment labels, 108x44 CSS-px targets, 2px focus-ring state, affordability gating, disabled/unaffordable focus skip, in-flight disable, one-send semantics, `BIDDING...` feedback, and local `YOU ARE LEADING` replacement in automated ECS tests plus Browser/WASM captures. | implemented + evidence attached | Retain SAU-011 evidence and regression commands from `production/qa/evidence/shop-auction-ui-auction-bid-target-focus-2026-05-05.md`. | No | N/A | Closes sub-gap. QA-COND-0005 as a whole remains Open. | No follow-up for this row unless auction bid target/focus accessibility regresses. |
 | A11Y-ST-13 | Mana pools: distinct container shapes | Standard | HUD-011 evidence verifies current mana as a horizontal bar, reserve mana as a diamond, non-color component/layout assertions, and browser/WASM color plus grayscale captures at `1366x768` and `1920x1080`. | implemented + evidence attached | Retain HUD-011 evidence and regression commands from `production/qa/evidence/hud-011-mana-shapes-evidence.md`. | No | N/A | Closes sub-gap. QA-COND-0005 as a whole remains Open. | No follow-up for this row unless HUD mana shape accessibility regresses. |
 | A11Y-ST-14 | PLACEMENT staged disclosure | Standard | HAND-UI-014 evidence verifies PLACEMENT entry, card selection, lane/cell target guidance, valid target highlight, valid stage, reserve/current split adjustment, invalid submit, correction, and successful submit in Browser/WASM capture evidence. | implemented + evidence attached | Retain HAND-UI-014 evidence and regression commands from `production/qa/evidence/hand-ui-placement-staged-disclosure-accessibility-2026-05-05.md`. | No | N/A | Closes sub-gap. QA-COND-0005 as a whole remains Open. | No follow-up for this row unless PLACEMENT staged disclosure regresses. |
 | A11Y-ST-15 | Tutorial persistence | Standard | Settings UX defines Help replay/reset behavior, but no tutorial/help prompt registry, replay, reset, or persistence implementation exists. | later sprint / blocked dependency | Implement prompt registry, dismissed-prompt persistence, Help replay, reset-all, and per-prompt reset evidence. | No | N/A | Blocks closure. | A11Y-DEP-06, `production/epics/accessibility-settings/EPIC.md` story 005. |
@@ -181,7 +181,7 @@ decision:
 
 - A11Y-ST-01, A11Y-ST-02, A11Y-ST-03.
 - A11Y-ST-04, A11Y-ST-05, A11Y-ST-06, A11Y-ST-07, A11Y-ST-08.
-- A11Y-ST-10, A11Y-ST-11, A11Y-ST-12, A11Y-ST-15.
+- A11Y-ST-10, A11Y-ST-11, A11Y-ST-15.
 - A11Y-ST-16, A11Y-ST-17, A11Y-ST-18, A11Y-ST-19.
 - A11Y-BS-01, A11Y-BS-02, A11Y-BS-03, A11Y-BS-04, A11Y-BS-05.
 - A11Y-NA-01.
@@ -199,10 +199,12 @@ Rows currently marked `later sprint / blocked dependency`:
 
 ## Rows No Longer Blocking QA-COND-0005 Closure
 
-Three source rows no longer block as individual sub-gaps:
+Four source rows no longer block as individual sub-gaps:
 
 - A11Y-ST-09 - PLACEMENT timer extension. It is implemented and evidenced by
   GSS-008.
+- A11Y-ST-12 - Auction bid buttons: immediate preset commitments. It is
+  implemented and evidenced by SAU-011.
 - A11Y-ST-13 - Mana pools: distinct container shapes. It is implemented and
   evidenced by HUD-011.
 - A11Y-ST-14 - PLACEMENT staged disclosure. It is implemented and evidenced by
@@ -252,7 +254,7 @@ dispositioned without an unverified Standard-tier blocker.
 Current closure result:
 
 - QA-COND-0005 remains Open.
-- A11Y-ST-09, A11Y-ST-13, and A11Y-ST-14 are closed sub-gaps.
+- A11Y-ST-09, A11Y-ST-12, A11Y-ST-13, and A11Y-ST-14 are closed sub-gaps.
 - HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are evidenced by HUD-012, but
   the parent rows still block closure until remaining non-HUD / auction-price
   exposure is evidenced or dispositioned.

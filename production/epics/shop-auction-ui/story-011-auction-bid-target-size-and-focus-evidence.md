@@ -1,7 +1,7 @@
 # Story 011: Auction Bid Target Size and Focus Evidence
 
 > **Epic**: Shop / Auction UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -78,22 +78,22 @@
 
 ## Acceptance Criteria
 
-- [ ] The +1, +3, and +5 bid controls each expose an interactive target with measured browser/WASM bounds of at least 44 CSS px height and 44 CSS px width at 100 percent UI scale.
-- [ ] If the visible button art remains smaller than 44px high, the accepted equivalent target area is documented in tests and browser evidence, and focus/click hit bounds still measure at least 44x44 CSS px.
-- [ ] Bid labels still show total commitment as primary text and increment as secondary text for all three controls, including exact visible increment labels `(+1)`, `(+3)`, and `(+5)`.
-- [ ] At narrow supported auction widths, bid labels either remain on one line without clipping or use the PTN-INP-004 two-line fallback with total commitment on one line and increment on the next.
-- [ ] Keyboard focus order in DRAFT_AUCTION is exactly +1, then +3, then +5 while all three bid controls are visible and enabled.
-- [ ] The focused bid control shows a visible high-contrast focus ring or component state equivalent to the UX requirement of a 2px Prism White outline.
-- [ ] Disabled unaffordable bid controls are not reachable by keyboard focus and remain visually distinguishable from enabled affordable controls through opacity plus disabled affordance.
-- [ ] The affordable enabled state, disabled unaffordable state, clicked `BIDDING...` in-flight state, and local `YOU ARE LEADING` replacement state all render text fully inside their target or badge bounds with no clipping, sibling overlap, or unreadable truncation in browser/WASM evidence.
-- [ ] The local `YOU ARE LEADING` state hides the +1, +3, and +5 bid controls and leaves no focusable item in the bid area.
-- [ ] Clicking or pressing Enter on an enabled bid control still sends exactly one `C2SPlaceBid { amount }` and does not show a confirmation modal.
-- [ ] While a bid is in flight, the clicked bid control reads `BIDDING...`, the other bid controls are non-interactive, and no additional bid can be sent until the authoritative accepted or rejected response resolves the state.
-- [ ] Existing SAU-005 bid behavior tests remain green.
-- [ ] Existing SAU-006 accepted/rejected feedback tests remain green.
-- [ ] Browser/WASM evidence records target bounds and focus bounds for +1, +3, and +5, plus screenshot observations for affordable, unaffordable, `BIDDING...`, and `YOU ARE LEADING` states.
-- [ ] The evidence document includes a QA-COND-0005 impact statement saying A11Y-ST-12 is implemented and evidenced by this story, but QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented, evidenced, reclassified, or accepted as risk.
-- [ ] `git diff --check` passes.
+- [x] The +1, +3, and +5 bid controls each expose an interactive target with measured browser/WASM bounds of at least 44 CSS px height and 44 CSS px width at 100 percent UI scale.
+- [x] If the visible button art remains smaller than 44px high, the accepted equivalent target area is documented in tests and browser evidence, and focus/click hit bounds still measure at least 44x44 CSS px.
+- [x] Bid labels still show total commitment as primary text and increment as secondary text for all three controls, including exact visible increment labels `(+1)`, `(+3)`, and `(+5)`.
+- [x] At narrow supported auction widths, bid labels either remain on one line without clipping or use the PTN-INP-004 two-line fallback with total commitment on one line and increment on the next.
+- [x] Keyboard focus order in DRAFT_AUCTION is exactly +1, then +3, then +5 while all three bid controls are visible and enabled.
+- [x] The focused bid control shows a visible high-contrast focus ring or component state equivalent to the UX requirement of a 2px Prism White outline.
+- [x] Disabled unaffordable bid controls are not reachable by keyboard focus and remain visually distinguishable from enabled affordable controls through opacity plus disabled affordance.
+- [x] The affordable enabled state, disabled unaffordable state, clicked `BIDDING...` in-flight state, and local `YOU ARE LEADING` replacement state all render text fully inside their target or badge bounds with no clipping, sibling overlap, or unreadable truncation in browser/WASM evidence.
+- [x] The local `YOU ARE LEADING` state hides the +1, +3, and +5 bid controls and leaves no focusable item in the bid area.
+- [x] Clicking or pressing Enter on an enabled bid control still sends exactly one `C2SPlaceBid { amount }` and does not show a confirmation modal.
+- [x] While a bid is in flight, the clicked bid control reads `BIDDING...`, the other bid controls are non-interactive, and no additional bid can be sent until the authoritative accepted or rejected response resolves the state.
+- [x] Existing SAU-005 bid behavior tests remain green.
+- [x] Existing SAU-006 accepted/rejected feedback tests remain green.
+- [x] Browser/WASM evidence records target bounds and focus bounds for +1, +3, and +5, plus screenshot observations for affordable, unaffordable, `BIDDING...`, and `YOU ARE LEADING` states.
+- [x] The evidence document includes a QA-COND-0005 impact statement saying A11Y-ST-12 is implemented and evidenced by this story, but QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented, evidenced, reclassified, or accepted as risk.
+- [x] `git diff --check` passes.
 
 ---
 
@@ -175,7 +175,7 @@ No gameplay-loop performance impact expected. This story changes a fixed three-c
 
 Story 011 implements and evidences A11Y-ST-12 for auction bid target size, focus visibility, immediate preset commitment labels, affordability gating, in-flight disable, one-send semantics, and `BIDDING...` feedback. It does not close QA-COND-0005 by itself. QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented and evidenced, reclassified, or accepted as risk.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and verified
 
 ---
 
@@ -191,3 +191,12 @@ Story 011 implements and evidences A11Y-ST-12 for auction bid target size, focus
 ## Blockers
 
 None.
+
+## Completion Notes
+
+**Completed**: 2026-05-06
+**Criteria**: 16/16 passing.
+**Deviations**: None blocking. The visible bid button target itself is 108x44 CSS px in browser/WASM evidence, so no invisible equivalent hit box is used.
+**Test Evidence**: `production/qa/evidence/shop-auction-ui-auction-bid-target-focus-2026-05-05.md`; Browser/WASM capture artifacts under `production/qa/evidence/captures/shop-auction-ui-auction-bid-target-focus/`; `cargo test -p client --test shop_auction_ui_auction_bid_target_focus_test --jobs 1` passed 4/4; requested SAU-004/005/006 regression group passed 17/17; `cargo test -p client --test shop_auction_ui_draft_initial_objective_overlay_test --jobs 1` passed 8/8; `cargo fmt -p client -- --check`, `cargo check -p client --jobs 1`, and `git diff --check` passed.
+**Code Review**: Skipped by lean review mode because `production/review-mode.txt` is absent.
+**QA-COND-0005**: A11Y-ST-12 is implemented and evidenced by SAU-011. QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented and evidenced, reclassified, or accepted as risk.
