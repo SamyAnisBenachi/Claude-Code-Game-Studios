@@ -2060,3 +2060,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record A11Y-ST-13 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
 - Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+
+## Session Extract - /story-done 2026-05-06
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/accessibility-settings/story-001-settings-accessibility-foundation-and-preferences.md` - Story 001: Settings / Accessibility Foundation and Preferences
+- Criteria: 24/24 passing; Settings / Accessibility plugin registration, preference defaults and validation, versioned storage abstraction, storage failure fallback, native/debug in-memory backend, safe/unsafe settings entry, stable shell markers, keyboard focus baseline, independent menu/HUD scale fields, colorblind/reduced-motion preference updates, and PLACEMENT timer selector authority boundary verified.
+- Test Evidence: `production/qa/evidence/accessibility-settings-foundation-2026-05-05.md`; `cargo test -p client --test accessibility_settings_preferences_test` passed 4/4; `cargo test -p client --test accessibility_settings_shell_test` passed 4/4; `cargo test -p client --test accessibility_settings_timer_selector_test` passed 4/4; `cargo test -p client --test presentation_plugin_scaffold_test` passed 5/5; `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+- Verification: Current root `main` was clean and aligned with `origin/main` after `git fetch origin` before closure edits. No implementation code was changed during closure.
+- Notes: No blocking GDD, ADR-002, ADR-021, ADR-023, Bevy 0.18, or control-manifest deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- QA condition: `QA-COND-0005` remains Open. A11Y Settings 001 clears only the Settings foundation and preference persistence dependency evidence for future Standard-tier rows; it does not close colorblind palette application, reduced-motion consumers, full UI-scale evidence, pause-anywhere behavior, input remapping, tutorial persistence, brightness/gamma, or audio-control rows.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` updated to record A11Y Settings 001 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
+- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.

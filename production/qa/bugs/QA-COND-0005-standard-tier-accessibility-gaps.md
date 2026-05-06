@@ -77,6 +77,13 @@ Standard-tier accessibility is remediated, verified, or explicitly reclassified.
   `cargo test -p client --test hud_mana_shape_distinction_test` and
   `cargo test -p client --test hud_gold_mana_display_test` passing. This closes
   only the A11Y-ST-13 sub-gap; QA-COND-0005 remains Open.
+- 2026-05-06: A11Y Settings 001 implemented and verified the Settings /
+  Accessibility foundation, preference storage fallback, safe/unsafe settings
+  entry, keyboard-operable shell markers, and multiplayer-safe PLACEMENT timer
+  selector UI. Evidence:
+  `production/qa/evidence/accessibility-settings-foundation-2026-05-05.md`.
+  This clears only the A11Y-DEP-01/A11Y-DEP-02 foundation dependency evidence
+  for future accessibility rows; QA-COND-0005 remains Open.
 
 ## Non-Goals
 

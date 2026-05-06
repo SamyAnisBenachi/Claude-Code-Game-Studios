@@ -1,7 +1,7 @@
 # Story 001: Settings / Accessibility Foundation and Preferences
 
 > **Epic**: Accessibility Settings
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -96,30 +96,30 @@
 
 ## Acceptance Criteria
 
-- [ ] `client/src/ui/settings/` exists and exposes a Settings / Accessibility plugin or module that can be registered from the client presentation layer without reordering existing ADR-021 sub-plugins.
-- [ ] `AccessibilityPreferences` or equivalent resource exists with defaults: colorblind Off, reduced motion false, placement timer request 1x, menu UI scale 100 percent, HUD UI scale 100 percent.
-- [ ] Preference validation clamps or rejects invalid scale values outside 75 through 150 and rejects any multiplayer PLACEMENT timer value outside 1x, 1.5x, 2x, and 3x.
-- [ ] Browser/WASM persistence writes and reads the Story 001 preference fields through a single storage abstraction; when storage is unavailable or write fails, runtime values still apply and the Settings status footer reports the save warning.
-- [ ] Native/debug builds compile without browser APIs by using the same preference resource with an in-memory storage adapter.
-- [ ] Settings opens from a title/lobby safe-context entry function or message and closes back to its source without mutating room/session state.
-- [ ] During PLACEMENT, DRAFT_AUCTION, and RESOLUTION, the Story 001 shell does not open the full Settings panel directly; it records or displays a pause/settings request state for the next safe boundary.
-- [ ] The Settings shell includes Back/Close, category navigation, content pane, and status footer entities with stable components or markers that tests can query.
-- [ ] Accessibility category exposes colorblind mode selector, reduced motion toggle, PLACEMENT timer selector, menu UI scale control, and HUD UI scale control.
-- [ ] The PLACEMENT timer selector shows exactly 1x, 1.5x, 2x, and 3x. It does not show 0.5x, custom values, requester names, player IDs, or player-specific accessibility labels.
-- [ ] Before `SessionReady` in LOBBY, changing the timer selector to 1.5x, 2x, or 3x writes one `C2SSetPlacementTimerMultiplier` intent for the selected value and updates the stored local request.
-- [ ] After `SessionReady`, changing the timer preference stores the next-session preference only and does not write a C2S timer request or alter active `SessionSettingsView`.
-- [ ] The visible effective timer value is read from the existing neutral session settings view or snapshot-derived state and never computed by locally multiplying the active PLACEMENT countdown.
-- [ ] Keyboard focus order is deterministic: Back/Close, category navigation, current category content, footer actions. Hidden controls are absent from the focus order.
-- [ ] Every visible interactive Settings control can be reached by keyboard and activated by Enter or Space where applicable; Esc closes the panel or cancels the active capture state if one exists later.
-- [ ] Focus indicators use a high-contrast visible focus marker or component state that can be verified in tests.
-- [ ] Menu UI scale and HUD UI scale are stored independently in the preference resource. Story 001 does not need every consumer to apply those values, but the Settings shell must apply menu scale to its own panel or expose a tested application hook for menu-scale consumers.
-- [ ] Colorblind mode and reduced-motion preferences update the shared preference resource immediately. Palette application and animation-consumer behavior remain future stories.
-- [ ] `cargo test -p client --test accessibility_settings_preferences_test` passes.
-- [ ] `cargo test -p client --test accessibility_settings_shell_test` passes.
-- [ ] `cargo test -p client --test accessibility_settings_timer_selector_test` passes.
-- [ ] `cargo test -p client --test presentation_plugin_scaffold_test` remains green.
-- [ ] `cargo check -p client` passes.
-- [ ] `git diff --check` passes.
+- [x] `client/src/ui/settings/` exists and exposes a Settings / Accessibility plugin or module that can be registered from the client presentation layer without reordering existing ADR-021 sub-plugins.
+- [x] `AccessibilityPreferences` or equivalent resource exists with defaults: colorblind Off, reduced motion false, placement timer request 1x, menu UI scale 100 percent, HUD UI scale 100 percent.
+- [x] Preference validation clamps or rejects invalid scale values outside 75 through 150 and rejects any multiplayer PLACEMENT timer value outside 1x, 1.5x, 2x, and 3x.
+- [x] Browser/WASM persistence writes and reads the Story 001 preference fields through a single storage abstraction; when storage is unavailable or write fails, runtime values still apply and the Settings status footer reports the save warning.
+- [x] Native/debug builds compile without browser APIs by using the same preference resource with an in-memory storage adapter.
+- [x] Settings opens from a title/lobby safe-context entry function or message and closes back to its source without mutating room/session state.
+- [x] During PLACEMENT, DRAFT_AUCTION, and RESOLUTION, the Story 001 shell does not open the full Settings panel directly; it records or displays a pause/settings request state for the next safe boundary.
+- [x] The Settings shell includes Back/Close, category navigation, content pane, and status footer entities with stable components or markers that tests can query.
+- [x] Accessibility category exposes colorblind mode selector, reduced motion toggle, PLACEMENT timer selector, menu UI scale control, and HUD UI scale control.
+- [x] The PLACEMENT timer selector shows exactly 1x, 1.5x, 2x, and 3x. It does not show 0.5x, custom values, requester names, player IDs, or player-specific accessibility labels.
+- [x] Before `SessionReady` in LOBBY, changing the timer selector to 1.5x, 2x, or 3x writes one `C2SSetPlacementTimerMultiplier` intent for the selected value and updates the stored local request.
+- [x] After `SessionReady`, changing the timer preference stores the next-session preference only and does not write a C2S timer request or alter active `SessionSettingsView`.
+- [x] The visible effective timer value is read from the existing neutral session settings view or snapshot-derived state and never computed by locally multiplying the active PLACEMENT countdown.
+- [x] Keyboard focus order is deterministic: Back/Close, category navigation, current category content, footer actions. Hidden controls are absent from the focus order.
+- [x] Every visible interactive Settings control can be reached by keyboard and activated by Enter or Space where applicable; Esc closes the panel or cancels the active capture state if one exists later.
+- [x] Focus indicators use a high-contrast visible focus marker or component state that can be verified in tests.
+- [x] Menu UI scale and HUD UI scale are stored independently in the preference resource. Story 001 does not need every consumer to apply those values, but the Settings shell must apply menu scale to its own panel or expose a tested application hook for menu-scale consumers.
+- [x] Colorblind mode and reduced-motion preferences update the shared preference resource immediately. Palette application and animation-consumer behavior remain future stories.
+- [x] `cargo test -p client --test accessibility_settings_preferences_test` passes.
+- [x] `cargo test -p client --test accessibility_settings_shell_test` passes.
+- [x] `cargo test -p client --test accessibility_settings_timer_selector_test` passes.
+- [x] `cargo test -p client --test presentation_plugin_scaffold_test` remains green.
+- [x] `cargo check -p client` passes.
+- [x] `git diff --check` passes.
 
 ---
 
@@ -237,7 +237,7 @@ preference foundation and timer selector UI. It does not close QA-COND-0005.
 The bug remains Open until the remaining Standard-tier rows are implemented and
 browser/WASM-evidenced, reclassified, or accepted as risk.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and verified at `production/qa/evidence/accessibility-settings-foundation-2026-05-05.md`
 
 ---
 
@@ -248,3 +248,12 @@ browser/WASM-evidenced, reclassified, or accepted as risk.
 - Depends on: `production/epics/presentation-layer/story-002-shared-economy-view.md` (Complete) for current presentation shared-resource patterns.
 - Depends on: ADR-002, ADR-021, and ADR-023 Accepted.
 - Unlocks: colorblind modes and color-only backups; reduced motion, flash audit, and gameplay-critical visual backups; input remapping and hold audit; help/tutorial persistence; browser accessibility evidence and QA-COND-0005 closure story.
+
+## Completion Notes
+
+**Completed**: 2026-05-06
+**Criteria**: 24/24 passing.
+**Deviations**: None blocking. Story 001 intentionally implements the Settings / Accessibility foundation and preference storage only; full palette application, reduced-motion consumers, full input remapping, tutorial persistence, brightness/gamma, audio controls, and final browser closure evidence remain future QA-COND-0005 work.
+**Test Evidence**: `production/qa/evidence/accessibility-settings-foundation-2026-05-05.md`; `cargo test -p client --test accessibility_settings_preferences_test` passed 4/4; `cargo test -p client --test accessibility_settings_shell_test` passed 4/4; `cargo test -p client --test accessibility_settings_timer_selector_test` passed 4/4; `cargo test -p client --test presentation_plugin_scaffold_test` passed 5/5; `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed on the root `main` checkout.
+**Code Review**: Skipped by `/story-done` lean mode because `production/review-mode.txt` is absent.
+**QA-COND-0005 Impact**: Story 001 adds implementation and evidence for the Settings / Accessibility foundation, preference storage fallback, safe/unsafe settings entry, and PLACEMENT timer selector UI. It does not close QA-COND-0005 as a whole; remaining Standard-tier rows still require implementation, evidence, reclassification, dependency-blocking, or accepted-risk disposition.

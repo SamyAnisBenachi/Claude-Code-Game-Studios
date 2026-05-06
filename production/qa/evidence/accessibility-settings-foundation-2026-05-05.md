@@ -6,6 +6,7 @@
 - Branch: `work/accessibility-settings-001-foundation-and-preferences`
 - Worktree: `D:\_DEV\claude-code-game-studios-worktrees\A11Y-SETTINGS-001`
 - QA condition: `QA-COND-0005`
+- Story-done verification: re-run from root `main` checkout aligned with `origin/main` on 2026-05-06
 
 ## Commands
 
@@ -17,7 +18,13 @@
 | `cargo test -p client --test presentation_plugin_scaffold_test` | PASS - 5 passed, 0 failed |
 | `cargo fmt -p client -- --check` | PASS |
 | `cargo check -p client` | PASS |
-| `git diff --check origin/main...HEAD` | PASS |
+| `git diff --check` | PASS |
+
+## Story-Done Verification - 2026-05-06
+
+The `/story-done` verification was re-run from the root checkout on `main`,
+after `git fetch origin`, with `HEAD` aligned to `origin/main` before closure
+documentation edits. No implementation code was changed during closure.
 
 ## Implemented Preference Fields
 
