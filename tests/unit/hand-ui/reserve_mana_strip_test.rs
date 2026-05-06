@@ -35,7 +35,7 @@ fn hu_25_plus_increments_to_ceiling_then_disabled_clicks_do_nothing() {
     click_reserve_button(&mut app, 0, ReserveStripAction::Increment);
     assert_eq!(reserve_amount(&app, CardId(10)), 3);
     assert!(button_disabled(&mut app, 0, ReserveStripAction::Increment));
-    assert_eq!(reserve_text(&mut app, 0), "3 / 5");
+    assert_eq!(reserve_text(&mut app, 0), "Reserve 3 Current 2");
 
     click_reserve_button(&mut app, 0, ReserveStripAction::Increment);
     assert_eq!(reserve_amount(&app, CardId(10)), 3);

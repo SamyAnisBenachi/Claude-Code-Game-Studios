@@ -45,6 +45,10 @@ path = "src/hud_mana_shapes_harness.rs"
 name = "hud_text_size_contrast_harness"
 path = "src/hud_text_size_contrast_harness.rs"
 
+[[bin]]
+name = "hand_ui_placement_staged_disclosure_harness"
+path = "src/hand_ui_placement_staged_disclosure_harness.rs"
+
 [[test]]
 name = "card_animations_plugin_scaffold_test"
 path = "../tests/unit/card-animations/plugin_scaffold_test.rs"
@@ -100,6 +104,10 @@ path = "../tests/integration/hand-ui/placement_unstaging_test.rs"
 [[test]]
 name = "hand_ui_placement_timer_test"
 path = "../tests/integration/hand-ui/placement_timer_test.rs"
+
+[[test]]
+name = "hand_ui_placement_staged_disclosure_accessibility_test"
+path = "../tests/integration/hand-ui/placement_staged_disclosure_accessibility_test.rs"
 
 [[test]]
 name = "hand_ui_draft_initial_grid_test"
