@@ -1,8 +1,8 @@
 # Epics Index
 
-**Last Updated:** 2026-05-04
+**Last Updated:** 2026-05-06
 **Engine:** Bevy 0.18 + Lightyear 0.26
-**Layer in progress:** Feature (M1 + M2 + M3) + Presentation
+**Layer in progress:** Feature (M1 + M2 + M3) + Presentation + Polish
 
 | Epic | Layer | Architecture Module | GDD(s) | Stories | Status |
 |------|-------|---------------------|--------|---------|--------|
@@ -28,6 +28,7 @@
 | [hand-ui](hand-ui/EPIC.md) | Presentation | `client/src/ui/hand/` | hand-ui | 13 stories | Ready - OQ8 gates activation-lock story |
 | [board-rendering](board-rendering/EPIC.md) | Presentation | `client/src/ui/board/` | board-rendering | 10 stories | Ready - protocol/objective/combat gates on later stories |
 | [shop-auction-ui](shop-auction-ui/EPIC.md) | Presentation | `client/src/ui/shop_auction/` | shop-auction-ui | 9 stories | Ready - UX spec gates final visual evidence |
+| [playable-client](playable-client/EPIC.md) | Polish | `client/src/main.rs` + `client/src/network/` + client UI/presentation + server message bridges | Sprint 7 real primary client path | 3 stories | Ready |
 
 > ⭐ Sprint 1 Story 1.0 = `lightyear-protocol-verification` Story 001 (Lightyear 0.26 verification spike)
 
@@ -43,6 +44,7 @@
 | game-session-system | TBD | — | — | — |
 | economy-system | TBD | — | — | — |
 | card-data-pool | 6 | 3 | 3 | 0 |
+| playable-client | 3 | 0 | 3 | 0 |
 | **Foundation total** | **15** | **4** | **7** | **4** |
 
 > Core layer story counts will populate after `/create-stories` is run on each Core epic.
@@ -57,6 +59,7 @@
 | Feature (M2) | **auction-system + card-acquisition + combat-resolution EPICs written 2026-04-30** — run `/create-stories` per epic next; Presentation epics pending ADRs | ADR-013 ✅ ADR-015 ✅ ADR-017 ✅ |
 | Feature (M3) | **class-system + prism-system + keyword-system EPICs written 2026-04-30** — run `/create-stories class-system` next; prism-system + keyword-system have pre-impl gates to clear first (keyword: ADR-018/022 must be Accepted; prism: 3 gates) | ADR-014 ✅ (class-system); ADR-016 ✅ (prism-system); ADR-018/022 ⚠️ Proposed (keyword) |
 | Presentation | **card-animations + hand-ui + hud EPICs written 2026-05-01; board-rendering + shop-auction-ui epics/stories written 2026-05-04 for S5-21; presentation-layer shared ADR-021 foundation story proposed 2026-05-04**. Next step: run `/story-readiness` for `presentation-layer` Story 001 before Board Rendering 001 or Shop/Auction UI 001. | ADR-021 ✅ (Presentation Layer Architecture) |
+| Polish | **playable-client epic and Sprint 7 PLAYABLE story docs written 2026-05-06**. Next implementation step is PLAYABLE-001, then PLAYABLE-002, then PLAYABLE-003 evidence. | Friend-game playable path, not public release readiness |
 
 ## Core Layer Coordination Notes
 
