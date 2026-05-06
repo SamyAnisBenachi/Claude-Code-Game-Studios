@@ -25,7 +25,7 @@ pub const DRAFT_INITIAL_GRID_SLOT_COUNT: usize = 9;
 pub const RESERVE_STRIP_ENTITY_COUNT: usize = 4;
 pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT
     + DRAFT_INITIAL_GRID_SLOT_COUNT
-    + 7
+    + 8
     + HAND_FAN_SLOT_COUNT * RESERVE_STRIP_ENTITY_COUNT;
 const HAND_DRAG_SPRITE_SCALE: f32 = 1.10;
 
@@ -210,6 +210,13 @@ impl PendingPlacements {
             .iter()
             .find(|placement| placement.card_id == card_id)
             .map(|placement| placement.reserve_mana_spend)
+    }
+
+    fn mana_spend_for(&self, card_id: CardId) -> Option<(u32, u32)> {
+        self.placements
+            .iter()
+            .find(|placement| placement.card_id == card_id)
+            .map(|placement| (placement.reserve_mana_spend, placement.current_mana_spend))
     }
 
     fn reserve_committed_by_other_cards(&self, card_id: CardId) -> u32 {
@@ -539,6 +546,39 @@ pub enum SubmitValidationError {
     ManaOverdrawn,
 }
 
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlacementDisclosureState {
+    pub step: PlacementDisclosureStep,
+}
+
+impl Default for PlacementDisclosureState {
+    fn default() -> Self {
+        Self {
+            step: PlacementDisclosureStep::Hidden,
+        }
+    }
+}
+
+impl PlacementDisclosureState {
+    fn set_for_staged_count(&mut self, staged_count: usize) {
+        self.step = if staged_count == 0 {
+            PlacementDisclosureStep::CardSelection
+        } else {
+            PlacementDisclosureStep::StagedCard
+        };
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlacementDisclosureStep {
+    Hidden,
+    CardSelection,
+    TargetSelection { target_kind: PlacementTargetKind },
+    StagedCard,
+    Correction { error: SubmitValidationError },
+    Submitted,
+}
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ConfirmationModal;
 
@@ -606,6 +646,9 @@ pub struct TargetUnitHover;
 pub struct NoValidTargetsOverlay;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlacementDisclosureGuidance;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReserveStripForFanSlot(pub u8);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -638,6 +681,7 @@ pub struct HandUiEntities {
     pub submitted_checkmark: Entity,
     pub hand_full_notification: Entity,
     pub no_valid_targets_overlay: Entity,
+    pub placement_disclosure_guidance: Entity,
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -708,6 +752,7 @@ impl Plugin for HandUiPlugin {
             .init_resource::<PlacementBoardView>()
             .init_resource::<ActivePlacementDrag>()
             .init_resource::<ActiveGhostUnstageDrag>()
+            .init_resource::<PlacementDisclosureState>()
             .init_resource::<FanZoneBounds>()
             .add_message::<HandFanCardClicked>()
             .add_message::<HandGridCardClicked>()
@@ -764,6 +809,7 @@ impl Plugin for HandUiPlugin {
                         handle_submit_button_click_system,
                         tick_placement_timer_system,
                         apply_placement_drag_highlights_system,
+                        sync_placement_disclosure_guidance_system,
                         tick_pending_purchase_timeouts_system,
                         apply_fan_layout_system,
                         apply_reserve_strip_layout_system,
@@ -923,6 +969,13 @@ pub fn hand_ui_phase_transition_system(
         placement_timer.submitted = false;
         active_drag.clear();
         active_ghost_drag.clear();
+        commands.insert_resource(PlacementDisclosureState {
+            step: if next_mode == HandUiMode::Staging {
+                PlacementDisclosureStep::CardSelection
+            } else {
+                PlacementDisclosureStep::Hidden
+            },
+        });
         commands
             .entity(entities.fan_root)
             .remove::<FanPlateHighlighted>();
@@ -964,6 +1017,11 @@ pub fn hand_ui_phase_transition_system(
         Visibility::Hidden,
         &mut visibility_query,
     );
+    set_visibility(
+        entities.placement_disclosure_guidance,
+        visibility_for(next_mode == HandUiMode::Staging),
+        &mut visibility_query,
+    );
 
     for entity in entities.grid_slots.iter().copied() {
         if next_mode != HandUiMode::Grid {
@@ -987,7 +1045,7 @@ pub fn hand_ui_phase_transition_system(
         if next_mode.shows_fan_slots() {
             if let Some(card_id) = hand_contents.cards.get(index).copied() {
                 commands.entity(entity).insert(HandSlotCard(card_id));
-                if entering_staging {
+                if next_mode == HandUiMode::Staging {
                     commands.entity(entity).insert(FanSlotState::Active);
                 }
             } else {
@@ -1048,6 +1106,7 @@ pub fn tick_placement_timer_system(
     entities: Option<Res<HandUiEntities>>,
     mut placement_timer: ResMut<PlacementTimer>,
     mut active_drag: ResMut<ActivePlacementDrag>,
+    mut disclosure_state: ResMut<PlacementDisclosureState>,
     pending_placements: Res<PendingPlacements>,
     economy: Res<PlayerEconomyView>,
     mut urgency_writer: MessageWriter<TimerUrgencyAudio>,
@@ -1109,6 +1168,7 @@ pub fn tick_placement_timer_system(
                 &mut visibility_query,
                 &economy,
                 &mut commands,
+                &mut disclosure_state,
             );
         }
     }
@@ -1125,6 +1185,7 @@ pub fn tick_placement_timer_system(
                 entities.drag_sprite,
                 entities.fan_root,
                 &mut visibility_query,
+                &mut disclosure_state,
             );
 
             let mut submit_buttons = text_sets.p1();
@@ -1139,6 +1200,7 @@ pub fn tick_placement_timer_system(
                 &mut visibility_query,
                 &economy,
                 &mut commands,
+                &mut disclosure_state,
             );
         }
     }
@@ -1287,6 +1349,7 @@ pub fn handle_ghost_clicked_unstage_system(
     mode: Res<HandUiMode>,
     mut clicks: MessageReader<GhostClickedEvent>,
     mut pending_placements: ResMut<PendingPlacements>,
+    mut disclosure_state: ResMut<PlacementDisclosureState>,
     mut ghost_writer: MessageWriter<GhostPlacementChanged>,
     mut commands: Commands,
     fan_slots: Query<(Entity, &FanSlotIndex, &HandSlotCard), With<FanSlotIndex>>,
@@ -1312,6 +1375,7 @@ pub fn handle_ghost_clicked_unstage_system(
                 &fan_slots,
                 &mut reserve_strips,
                 &mut submit_buttons,
+                &mut disclosure_state,
             );
         }
     }
@@ -1377,6 +1441,7 @@ pub fn handle_hand_fan_card_click_system(
     mode: Res<HandUiMode>,
     mut clicks: MessageReader<HandFanCardClicked>,
     mut pending_placements: ResMut<PendingPlacements>,
+    mut disclosure_state: ResMut<PlacementDisclosureState>,
     mut ghost_writer: MessageWriter<GhostPlacementChanged>,
     mut commands: Commands,
     hand_cards: Query<(Entity, &FanSlotIndex, &HandSlotCard, Option<&FanSlotState>)>,
@@ -1415,6 +1480,7 @@ pub fn handle_hand_fan_card_click_system(
                 &fan_slots,
                 &mut reserve_strips,
                 &mut submit_buttons,
+                &mut disclosure_state,
             );
         }
     }
@@ -1426,31 +1492,37 @@ pub fn handle_placement_drag_started_system(
     entities: Option<Res<HandUiEntities>>,
     mut starts: MessageReader<HandUiPlacementDragStarted>,
     mut active_drag: ResMut<ActivePlacementDrag>,
+    mut disclosure_state: ResMut<PlacementDisclosureState>,
     hand_cards: Query<(&HandSlotCard, Option<&HandPlacementTargetKind>), With<FanSlotIndex>>,
     mut visibility_query: Query<&mut Visibility>,
 ) {
     for start in starts.read() {
         if *mode != HandUiMode::Staging {
             active_drag.clear();
+            disclosure_state.step = PlacementDisclosureStep::Hidden;
             continue;
         }
 
         let Some(entities) = &entities else {
             active_drag.clear();
+            disclosure_state.step = PlacementDisclosureStep::CardSelection;
             continue;
         };
 
         let Ok((card, target_kind)) = hand_cards.get(start.card) else {
             active_drag.clear();
+            disclosure_state.step = PlacementDisclosureStep::CardSelection;
             continue;
         };
 
         let Some(target_kind) = resolve_placement_target_kind(card.0, target_kind, &catalog) else {
             active_drag.clear();
+            disclosure_state.step = PlacementDisclosureStep::CardSelection;
             continue;
         };
 
         active_drag.start(start.card, card.0, start.owner_id, target_kind);
+        disclosure_state.step = PlacementDisclosureStep::TargetSelection { target_kind };
         set_visibility(
             entities.drag_sprite,
             Visibility::Visible,
@@ -1481,6 +1553,7 @@ pub fn handle_placement_drag_ended_system(
     entities: Option<Res<HandUiEntities>>,
     mut ends: MessageReader<HandUiPlacementDragEnded>,
     mut active_drag: ResMut<ActivePlacementDrag>,
+    mut disclosure_state: ResMut<PlacementDisclosureState>,
     fan_plates: Query<&Node, With<FanPlateDropZone>>,
     mut drops: MessageWriter<HandUiPlacementDropResolved>,
 ) {
@@ -1508,6 +1581,7 @@ pub fn handle_placement_drag_ended_system(
         }
 
         active_drag.clear();
+        disclosure_state.step = PlacementDisclosureStep::CardSelection;
     }
 }
 
@@ -1517,6 +1591,7 @@ pub fn handle_ghost_drag_ended_system(
     mut ends: MessageReader<HandUiPlacementDragEnded>,
     mut active_ghost_drag: ResMut<ActiveGhostUnstageDrag>,
     mut pending_placements: ResMut<PendingPlacements>,
+    mut disclosure_state: ResMut<PlacementDisclosureState>,
     mut ghost_writer: MessageWriter<GhostPlacementChanged>,
     mut commands: Commands,
     fan_slots: Query<(Entity, &FanSlotIndex, &HandSlotCard), With<FanSlotIndex>>,
@@ -1539,6 +1614,7 @@ pub fn handle_ghost_drag_ended_system(
                 &fan_slots,
                 &mut reserve_strips,
                 &mut submit_buttons,
+                &mut disclosure_state,
             );
         }
 
@@ -1555,6 +1631,7 @@ pub fn handle_placement_drop_resolved_system(
     mut pending_placements: ResMut<PendingPlacements>,
     mut placement_timer: ResMut<PlacementTimer>,
     mut active_drag: ResMut<ActivePlacementDrag>,
+    mut disclosure_state: ResMut<PlacementDisclosureState>,
     mut ghost_writer: MessageWriter<GhostPlacementChanged>,
     mut commands: Commands,
     mut visibility_sets: ParamSet<(
@@ -1576,6 +1653,7 @@ pub fn handle_placement_drop_resolved_system(
 
     for drop in drops.read() {
         if *mode != HandUiMode::Staging {
+            disclosure_state.step = PlacementDisclosureStep::Hidden;
             continue;
         }
 
@@ -1595,6 +1673,7 @@ pub fn handle_placement_drop_resolved_system(
 
         let Some(target) = drop.target.clone() else {
             commands.entity(drop.card).insert(FanSlotState::Active);
+            disclosure_state.step = PlacementDisclosureStep::CardSelection;
             continue;
         };
 
@@ -1606,6 +1685,7 @@ pub fn handle_placement_drop_resolved_system(
             reserve_mana_spend: 0,
         };
         pending_placements.stage_or_update(placement);
+        disclosure_state.step = PlacementDisclosureStep::StagedCard;
         ghost_writer.write(GhostPlacementChanged {
             target: Some(target),
             card_id: Some(card.0),
@@ -1634,6 +1714,7 @@ pub fn handle_placement_drop_resolved_system(
                 &mut visibility_sets.p0(),
                 &economy,
                 &mut commands,
+                &mut disclosure_state,
             );
         }
     }
@@ -1722,6 +1803,7 @@ pub fn handle_submit_button_click_system(
     mut submit_senders: Query<&mut MessageSender<C2SSubmitPlacement>>,
     mut outbound: ResMut<HandUiOutboundMessages>,
     mut placement_timer: ResMut<PlacementTimer>,
+    mut disclosure_state: ResMut<PlacementDisclosureState>,
     mut visibility_query: Query<&mut Visibility>,
 ) {
     let Some(entities) = entities else {
@@ -1757,6 +1839,7 @@ pub fn handle_submit_button_click_system(
             &mut visibility_query,
             &economy,
             &mut commands,
+            &mut disclosure_state,
         );
     }
 }
@@ -1766,21 +1849,52 @@ pub fn sync_submit_validation_error_system(
     pending_placements: Res<PendingPlacements>,
     economy: Res<PlayerEconomyView>,
     submit_errors: Query<&SubmitValidationError, With<HandSubmitButton>>,
+    mut disclosure_state: ResMut<PlacementDisclosureState>,
     mut commands: Commands,
 ) {
     let Some(entities) = entities else {
         return;
     };
 
-    if submit_errors.get(entities.submit_button).is_err() {
+    let Ok(error) = submit_errors.get(entities.submit_button) else {
         return;
-    }
+    };
 
     if validate_submit_placement_spend(&pending_placements, &economy).is_ok() {
         commands
             .entity(entities.submit_button)
             .remove::<SubmitValidationError>();
+        disclosure_state.set_for_staged_count(pending_placements.staged_count());
+    } else {
+        disclosure_state.step = PlacementDisclosureStep::Correction { error: *error };
     }
+}
+
+pub fn sync_placement_disclosure_guidance_system(
+    mode: Res<HandUiMode>,
+    disclosure_state: Res<PlacementDisclosureState>,
+    entities: Option<Res<HandUiEntities>>,
+    mut guidance: Query<(&mut Text, &mut Visibility), With<PlacementDisclosureGuidance>>,
+) {
+    let Some(entities) = entities else {
+        return;
+    };
+
+    let Ok((mut text, mut visibility)) = guidance.get_mut(entities.placement_disclosure_guidance)
+    else {
+        return;
+    };
+
+    let step = if *mode == HandUiMode::Staging {
+        disclosure_state.step
+    } else {
+        PlacementDisclosureStep::Hidden
+    };
+
+    let label = placement_disclosure_label(step);
+    text.0.clear();
+    text.0.push_str(label);
+    *visibility = visibility_for(step != PlacementDisclosureStep::Hidden);
 }
 
 pub fn apply_placement_drag_highlights_system(
@@ -2064,7 +2178,19 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
             Name::new("Hand UI No Valid Targets Overlay"),
             HandUiEntity,
             NoValidTargetsOverlay,
-            hidden_control_node(180.0, 28.0, 208.0),
+            hidden_control_node(180.0, 28.0, 236.0),
+            Visibility::Hidden,
+            ChildOf(fan_root),
+        ))
+        .id();
+
+    let placement_disclosure_guidance = commands
+        .spawn((
+            Name::new("Hand UI Placement Disclosure Guidance"),
+            HandUiEntity,
+            PlacementDisclosureGuidance,
+            Text::new(""),
+            hidden_control_node(260.0, 28.0, 208.0),
             Visibility::Hidden,
             ChildOf(fan_root),
         ))
@@ -2081,6 +2207,7 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
         submitted_checkmark,
         hand_full_notification,
         no_valid_targets_overlay,
+        placement_disclosure_guidance,
     });
 }
 
@@ -2109,8 +2236,8 @@ fn spawn_reserve_strip(commands: &mut Commands, fan_root: Entity, slot_index: u8
         Name::new(format!("Hand UI Reserve Strip Value {slot_index}")),
         HandUiEntity,
         ReserveStripValueText(slot_index),
-        Text::new("0 / 0"),
-        reserve_strip_child_node(28.0, 48.0),
+        Text::new("Reserve 0 Current 0"),
+        reserve_strip_child_node(28.0, 124.0),
         Visibility::Visible,
         ChildOf(strip),
     ));
@@ -2121,7 +2248,7 @@ fn spawn_reserve_strip(commands: &mut Commands, fan_root: Entity, slot_index: u8
         slot_index,
         ReserveStripAction::Increment,
         "+",
-        80.0,
+        156.0,
     );
     commands.entity(plus).insert(ReserveStripButtonDisabled);
 
@@ -2183,7 +2310,7 @@ fn reserve_strip_node() -> Node {
         position_type: PositionType::Absolute,
         left: Val::Px(0.0),
         bottom: Val::Px(0.0),
-        width: Val::Px(104.0),
+        width: Val::Px(180.0),
         height: Val::Px(24.0),
         ..default()
     }
@@ -2255,6 +2382,7 @@ fn submit_pending_placements(
     visibility_query: &mut Query<&mut Visibility>,
     economy: &PlayerEconomyView,
     commands: &mut Commands,
+    disclosure_state: &mut PlacementDisclosureState,
 ) -> bool {
     if placement_timer.submitted {
         return false;
@@ -2270,6 +2398,7 @@ fn submit_pending_placements(
 
     if let Err(error) = validate_submit_placement_spend(pending_placements, economy) {
         commands.entity(submit_button).insert(error);
+        disclosure_state.step = PlacementDisclosureStep::Correction { error };
         return false;
     }
 
@@ -2291,7 +2420,33 @@ fn submit_pending_placements(
     text.0.clear();
     text.0.push_str("Submitted");
     set_visibility(submitted_checkmark, Visibility::Visible, visibility_query);
+    disclosure_state.step = PlacementDisclosureStep::Submitted;
     true
+}
+
+fn placement_disclosure_label(step: PlacementDisclosureStep) -> &'static str {
+    match step {
+        PlacementDisclosureStep::Hidden => "",
+        PlacementDisclosureStep::CardSelection => "Select a card",
+        PlacementDisclosureStep::TargetSelection {
+            target_kind: PlacementTargetKind::Minion,
+        } => "Choose a lane and cell",
+        PlacementDisclosureStep::TargetSelection {
+            target_kind: PlacementTargetKind::TargetObj,
+        } => "Choose an objective",
+        PlacementDisclosureStep::TargetSelection {
+            target_kind: PlacementTargetKind::LaneWide,
+        } => "Choose a lane",
+        PlacementDisclosureStep::TargetSelection {
+            target_kind: PlacementTargetKind::TargetUnit,
+        } => "Choose a unit",
+        PlacementDisclosureStep::TargetSelection {
+            target_kind: PlacementTargetKind::Instant,
+        } => "Drop on fan plate",
+        PlacementDisclosureStep::StagedCard => "Review staged card and mana split",
+        PlacementDisclosureStep::Correction { .. } => "Adjust reserve/current mana",
+        PlacementDisclosureStep::Submitted => "Placement submitted",
+    }
 }
 
 fn validate_submit_placement_spend(
@@ -2327,6 +2482,7 @@ fn cancel_active_placement_drag(
     drag_sprite: Entity,
     fan_root: Entity,
     visibility_query: &mut Query<&mut Visibility>,
+    disclosure_state: &mut PlacementDisclosureState,
 ) {
     if let Some(card) = active_drag.card {
         commands.entity(card).insert(FanSlotState::Active);
@@ -2335,6 +2491,7 @@ fn cancel_active_placement_drag(
     active_drag.clear();
     set_visibility(drag_sprite, Visibility::Hidden, visibility_query);
     commands.entity(fan_root).remove::<FanPlateHighlighted>();
+    disclosure_state.step = PlacementDisclosureStep::CardSelection;
 }
 
 fn set_reserve_strip_visibility(
@@ -2372,9 +2529,9 @@ fn sync_reserve_strip_entities(
         let cost = card_id
             .map(|card_id| card_cost_or_default(catalog, card_id))
             .unwrap_or(0);
-        let reserve_amount = card_id
-            .and_then(|card_id| pending_placements.reserve_amount_for(card_id))
-            .unwrap_or(0);
+        let (reserve_amount, current_amount) = card_id
+            .and_then(|card_id| pending_placements.mana_spend_for(card_id))
+            .unwrap_or((0, 0));
         let ceiling = card_id
             .map(|card_id| {
                 reserve_ceiling_for_card(pending_placements, card_id, cost, economy.reserve_mana)
@@ -2383,7 +2540,13 @@ fn sync_reserve_strip_entities(
         let is_visible = card_id.is_some() && cost > 0;
 
         *visibility = visibility_for(is_visible);
-        set_reserve_value_text(value_texts, slot_index, reserve_amount, cost);
+        set_reserve_value_text(
+            value_texts,
+            slot_index,
+            reserve_amount,
+            current_amount,
+            cost,
+        );
         set_reserve_button_disabled(
             commands,
             buttons,
@@ -2405,11 +2568,16 @@ fn set_reserve_value_text(
     value_texts: &mut Query<(&ReserveStripValueText, &mut Text)>,
     slot_index: u8,
     reserve_amount: u32,
+    current_amount: u32,
     cost: u32,
 ) {
     for (value_slot, mut text) in value_texts.iter_mut() {
         if value_slot.0 == slot_index {
-            text.0 = format!("{reserve_amount} / {cost}");
+            if cost == 0 {
+                text.0 = "Reserve 0 Current 0".to_string();
+            } else {
+                text.0 = format!("Reserve {reserve_amount} Current {current_amount}");
+            }
         }
     }
 }
@@ -2484,6 +2652,7 @@ fn unstage_card(
     fan_slots: &Query<(Entity, &FanSlotIndex, &HandSlotCard), With<FanSlotIndex>>,
     reserve_strips: &mut Query<(&ReserveStripForFanSlot, &mut Visibility)>,
     submit_buttons: &mut Query<&mut Text, With<HandSubmitButton>>,
+    disclosure_state: &mut PlacementDisclosureState,
 ) -> bool {
     let Some((slot_entity, slot_index)) = fan_slot_for_card(fan_slots, card_id) else {
         return false;
@@ -2500,6 +2669,7 @@ fn unstage_card(
     commands.entity(slot_entity).insert(FanSlotState::Active);
     set_submit_count_text(submit_buttons, pending_placements.staged_count());
     set_reserve_strip_visibility(reserve_strips, slot_index, Visibility::Hidden);
+    disclosure_state.set_for_staged_count(pending_placements.staged_count());
     true
 }
 

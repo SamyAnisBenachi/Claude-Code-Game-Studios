@@ -97,6 +97,10 @@ name = "hand_ui_placement_timer_test"
 path = "../tests/integration/hand-ui/placement_timer_test.rs"
 
 [[test]]
+name = "hand_ui_placement_staged_disclosure_accessibility_test"
+path = "../tests/integration/hand-ui/placement_staged_disclosure_accessibility_test.rs"
+
+[[test]]
 name = "hand_ui_draft_initial_grid_test"
 path = "../tests/integration/hand-ui/draft_initial_grid_test.rs"
 
