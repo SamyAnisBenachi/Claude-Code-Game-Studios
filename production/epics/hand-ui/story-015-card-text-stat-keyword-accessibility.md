@@ -9,81 +9,64 @@
 
 ## Context
 
-**Sprint Gate**: Sprint 6 S6-04 / QA-COND-0005 Standard-tier
-accessibility remediation.
+**Sprint Gate**: Sprint 6 S6-04 / QA-COND-0005 Standard-tier accessibility remediation.
 
-**QA condition**:
-`production/qa/bugs/QA-COND-0005-standard-tier-accessibility-gaps.md`
-remains Open. The Sprint 6 accessibility evidence register row `A11Y-ST-02`
-states that there is no browser/WASM measurement evidence for card cost, ATK,
-HP, or keyword text floors. This story owns the Hand UI portion of that row.
+**QA condition**: `production/qa/bugs/QA-COND-0005-standard-tier-accessibility-gaps.md` remains Open. The Sprint 6 accessibility evidence register row `A11Y-ST-02` states that card cost, ATK, HP, and keyword text do not yet have browser/WASM measurement evidence. This story owns the Hand UI implementation slice for hand and fan card surfaces. The final cross-surface browser/WASM evidence is owned by Presentation Layer Story 005.
 
-**GDD**: `design/gdd/hand-ui.md`
-**UX Spec**: `design/ux/hand-ui.md`
-**Accessibility Source**: `design/accessibility-requirements.md`
-**Requirement**: `TR-HU-001`, `TR-HU-002`, `TR-HU-003`, `TR-HU-005`,
-`TR-HU-008`, A11Y-ST-02
+**Primary sources**:
+
+- `production/qa/evidence/accessibility-standard-tier-sprint-6-2026-05-05.md`
+- `design/accessibility-requirements.md`
+- `design/gdd/card-data-pool.md`
+- `design/gdd/hand-ui.md`
+- `design/ux/hand-ui.md`
+
+**Accessibility requirement**:
+
+- `design/accessibility-requirements.md` Standard-tier row `Minimum text size - card text (cost, ATK, HP, keyword)` requires stat badges for ATK and HP to have an 18 px minimum floor and keyword text to have a 14 px minimum floor. This story applies the same 18 CSS px floor to visible card cost numerals because `A11Y-ST-02` explicitly includes card cost in the evidence gap.
+
+**GDD and UX trace**:
+
+- `design/gdd/card-data-pool.md` card definition schema exposes display fields including `cost`, `atk`, `hp`, `keywords`, and `effect_text`.
+- `design/gdd/hand-ui.md` Rule 1 requires pre-pooled 10 hand fan card slots and a reused drag sprite.
+- `design/gdd/hand-ui.md` Rule 3 requires the fan to be visible in DRAFT_SHOP, read-only in DRAFT_AUCTION, and interactive in PLACEMENT.
+- `design/gdd/hand-ui.md` Rule 8 and Rule 13 require staged fan ghosts and reserve/current split controls to preserve card identity during PLACEMENT.
+- `design/gdd/hand-ui.md` VA-1 defines card cost, ATK, HP, type, rarity, and hover zoom anatomy for the hand card face.
+- `design/ux/hand-ui.md` requires card cost, ATK, HP, and type or rarity to remain readable at 10-card hand compression.
+
+**TR IDs**:
+
+- `TR-HU-001` for pre-pooled hand fan card slots.
+- `TR-HU-002` for PLACEMENT drag-to-stage state and cursor mapping.
+- `TR-HU-003` for Instant card staging.
+- `TR-HU-004` for reserve mana split controls attached to staged cards.
+- `TR-HU-005` for DRAFT_INITIAL card acquisition flow into the hand fan.
+- `TR-CDP-010` for server-provided draft and shop card payloads arriving before client phase/UI use.
+
+`A11Y-ST-02` is a Sprint 6 accessibility evidence row, not a registered `TR-PRES-*` requirement.
 
 **ADR Governing Implementation**:
-[ADR-021: Presentation Layer Architecture](../../../docs/architecture/adr-021-presentation-layer-architecture.md),
-[ADR-002: Client-Server Authority Model](../../../docs/architecture/adr-002-client-server-authority.md),
-[ADR-019: Economy System Resource Architecture](../../../docs/architecture/adr-019-economy-resource-architecture.md)
 
-**Control Manifest**: `docs/architecture/control-manifest.md` version
-`2026-05-05`.
+- [ADR-002: Client-Server Authority](../../../docs/architecture/adr-002-client-server-authority.md)
+- [ADR-019: Economy Resource Architecture](../../../docs/architecture/adr-019-economy-resource-architecture.md)
+- [ADR-021: Presentation Layer Architecture](../../../docs/architecture/adr-021-presentation-layer-architecture.md)
 
-**GDD trace**:
+**ADR Decision Summary**: Hand card readability is presentation-only. Hand UI reads server-authoritative phase, hand, card, and economy state, then renders readable hand card surfaces. Remediation must not mutate authoritative hand ownership, card data, phase, mana, reserve mana, or placement state.
 
-- `design/gdd/hand-ui.md` Rule 1 and acceptance criterion HU-01 require 10
-  pre-pooled hand fan card slots and 9 pre-pooled DRAFT_INITIAL grid slots,
-  with card visibility toggled from server-authoritative hand state.
-- `design/gdd/hand-ui.md` Rules 5, 5d, 6, 7, 8, 10, and 13 require the hand
-  fan to render during DRAFT_SHOP, DRAFT_AUCTION read-only, and PLACEMENT
-  staging states while preserving card identity, fan ghosts, Instant staging,
-  Submit count, and reserve/current split controls.
-- `design/gdd/hand-ui.md` Visual Anatomy VA-1 defines a 120x180 card display,
-  cost in the top-left, ATK in the top-right orange badge, HP below ATK in a
-  teal gem, and readable card identity at 10-card hand compression.
-- `design/gdd/hand-ui.md` acceptance criteria HU-05, HU-06, HU-13, HU-18,
-  HU-19, HU-21, HU-21b, and HU-21c define the Hand UI states whose behavior
-  must be preserved while typography, badge, or measurement instrumentation is
-  repaired.
+**Engine**: Bevy 0.18 + browser/WASM target | **Risk**: HIGH
 
-**UX and accessibility trace**:
+**Engine Notes**: Use `liv-bevy-018` before editing any Bevy `.rs` file. Hand card text and badges must remain Bevy 0.18 presentation UI or sprite-backed presentation elements using the Required Components API. Do not use `NodeBundle`, `TextBundle`, `SpriteBundle`, `UiImage::new()`, `Parent`, or `Color::rgba()`. Evidence or measurement helpers must remain test-only or evidence-only unless explicitly promoted to player-facing UI by a later story.
 
-- `design/accessibility-requirements.md` Standard-tier row `Minimum text size -
-  card text (cost, ATK, HP, keyword)` requires ATK and HP stat badges to have
-  an 18px minimum floor and keyword text to have a 14px minimum floor.
-- A11Y-ST-02 explicitly includes card cost, so this story applies the same
-  18 CSS px floor to visible Hand UI card cost numerals or badges.
-- `design/ux/hand-ui.md` requires the bottom hand fan, including 10-card
-  compression, DRAFT_AUCTION read-only state, PLACEMENT staged ghosts, and
-  hover or zoom inspection to preserve card cost, ATK, HP, and card text
-  readability.
-- `design/ux/hand-ui.md` states that card cost, ATK, HP, and type or rarity
-  must remain readable at 10-card hand compression, and that ATK orange and HP
-  teal remain reserved stat colors.
+**Control Manifest Rules (2026-05-05)**:
 
-**Engine**: Bevy 0.18 + Lightyear 0.26 + browser/WASM evidence | **Risk**: HIGH
-
-**Required skills**: use `liv-bevy-018` before editing any Bevy `.rs` file and
-`liv-bevy-lightyear` before editing any Lightyear/networking `.rs` file.
-
-**ADR/control-manifest rules for this story**:
-
-- `HandUiPlugin` remains the third `PresentationPlugin` sub-plugin after Card
-  Animations and Board Rendering.
-- Hand UI reads phase through `Res<CurrentClientPhase>` only. It must not drain
-  `MessageReceiver<S2CPhaseChanged>`.
-- Hand UI reads `Res<PlayerEconomyView>` for own current and reserve mana. It
-  must not drain economy S2C messages directly.
-- Card fan, drag sprite, fan ghosts, reserve strips, and evidence-only overlays
-  remain bevy_ui presentation surfaces where UI is required.
-- UI work runs in ADR-021 `PresentationSet` order and remains session-scoped
-  under `ClientState::InSession`.
-- Client-side card readability remediation is presentation-only. It must not
-  mutate authoritative card catalog, hand ownership, phase, current mana,
-  reserve mana, or placement state.
+- Required: client presentation is a read-only view of server-authoritative state.
+- Required: Hand UI reads phase through `Res<CurrentClientPhase>` and never drains `MessageReceiver<S2CPhaseChanged>`.
+- Required: Hand UI reads `Res<PlayerEconomyView>` and never drains economy S2C messages directly.
+- Required: UI surfaces such as hand fan and drag sprite use `bevy_ui`; board content remains world-space.
+- Required: `PresentationSet` order remains `PhaseTransition -> MessageDrain -> StateSync -> AnimationTick`.
+- Required: `PresentationPlugin` registration order remains Card Animations, Board Rendering, Hand UI, HUD, Shop/Auction UI.
+- Forbidden: client presentation must not assert or mutate authoritative game state.
+- Guardrail: presentation steady-state stays below 1 ms per frame and phase-boundary presentation spikes stay below 3 ms.
 
 ---
 
@@ -91,215 +74,103 @@ HP, or keyword text floors. This story owns the Hand UI portion of that row.
 
 ### In Scope
 
-- Verify or remediate A11Y-ST-02 card text floors for Hand UI-owned card
-  surfaces:
-  - DRAFT_SHOP hand fan cards at rest and hover or zoom.
-  - DRAFT_AUCTION read-only hand fan cards.
-  - PLACEMENT hand fan cards, active selection state, staged fan ghosts, and
-    Instant fan ghosts.
-  - DRAFT_INITIAL acquired-card feedback in the hand fan after authoritative
-    purchase confirmation.
-- Measure visible cost, ATK, HP, and keyword text at browser/WASM viewports
-  `1366x768` and `1920x1080`.
-- Apply a minimum floor of `18 CSS px` or browser-equivalent rendered pixels to
-  visible cost, ATK, and HP numerals or badge text.
-- Apply a minimum floor of `14 CSS px` or browser-equivalent rendered pixels to
-  visible keyword text.
-- Record explicit not-applicable entries for card types or states that do not
-  have ATK, HP, or visible keyword text.
-- Verify that Hand UI card text does not clip, truncate into unreadability, or
-  overlap another required card element, sibling fan card, fan ghost, reserve
-  strip, Submit cluster, timer, HUD zone, tooltip, or evidence overlay.
-- Verify body text contrast for sampled Hand UI keyword text and stat numerals
-  against their final browser/WASM composited backgrounds. Sampled pairs must
-  meet at least `4.5:1`.
-- Add or update focused automated coverage that exposes Hand UI card text
-  metrics, card bounds, and overlap checks without relying only on manual
-  visual judgment.
-- Capture Hand UI browser/WASM evidence and update the exact evidence document
-  listed in `## Test Evidence`.
-- Preserve existing fan layout, card acquisition feedback, read-only auction
-  fan behavior, PLACEMENT staging, fan ghost, reserve strip, Submit
-  pre-validation, Instant staging, and input suppression semantics.
+- Verify or remediate card cost, ATK, HP, and keyword text floors on Hand UI owned card surfaces:
+  - DRAFT_SHOP passive hand/fan cards at rest.
+  - DRAFT_SHOP hand/fan hover or zoom card view.
+  - DRAFT_AUCTION read-only hand/fan cards.
+  - PLACEMENT active hand/fan cards before staging.
+  - PLACEMENT selected-card and drag-sprite presentation.
+  - PLACEMENT staged fan ghosts.
+  - DRAFT_INITIAL card-acquired fan landing state after a purchase confirmation.
+- Apply a minimum floor of 18 CSS px or browser-equivalent rendered pixels to visible cost, ATK, and HP numerals or badge text.
+- Apply a minimum floor of 14 CSS px or browser-equivalent rendered pixels to visible keyword text when keyword text is exposed on the hand surface, hover view, or zoom view.
+- Add or update test-observable card text metrics, card bounds, text bounds, and overlap checks for Hand UI surfaces.
+- Preserve existing Hand UI behavior: hand count, phase visibility, drag-to-stage, Instant staging, staged fan ghost, reserve split controls, submit pre-validation, activation lock behavior, and reconnect rebuild semantics.
+- Produce the Hand UI implementation evidence note listed in `## Test Evidence`. Final browser/WASM cross-surface evidence remains owned by Presentation Layer Story 005.
 
 ### Out of Scope
 
-- DRAFT_INITIAL 3x3 grid slot rendering. That surface is owned by
-  Shop/Auction UI Story 013.
-- DRAFT_SHOP shop slot cards, DRAFT_AUCTION featured cards, DRAFT_AUCTION shop
-  footer cards, auction preparing cards, and settlement cards. Those surfaces
-  are owned by Shop/Auction UI Story 013.
-- Final cross-surface A11Y-ST-02 browser/WASM evidence aggregation. That is
-  owned by Presentation Layer Story 005 after the split implementation stories
-  are complete.
-- Changes to authoritative card catalog fields, card costs, ATK, HP, keywords,
-  rarity, effect text, pool distribution, hand ownership, economy, auction,
-  phase timing, network protocol payloads, or server authority.
-- Broader UI scaling preferences, Settings or Accessibility screen work,
-  colorblind palette implementation, full A11Y-ST-01 HUD text evidence, or
-  A11Y-ST-03 global contrast evidence beyond sampled Hand UI card text pairs.
-- Changes to `production/sprint-status.yaml`, `production/session-state/**`,
-  project asset files, or `AGENTS.md`.
-- QA-COND-0005 closure. This story contributes only the Hand UI slice of
-  A11Y-ST-02.
+- No Shop/Auction UI card surfaces.
+- No DRAFT_INITIAL 3 x 3 grid slot rendering. Shop/Auction UI owns those slot entities and Story 013 owns their card text remediation.
+- No auction featured card, auction preparing card, settlement card, DRAFT_SHOP shop slot, or DRAFT_AUCTION read-only shop footer remediation.
+- No final cross-surface browser/WASM capture package. Presentation Layer Story 005 owns that evidence pass.
+- No changes to authoritative card catalog fields, card costs, ATK, HP, keywords, rarity, effect text, or pool distribution.
+- No changes to economy, auction bidding, purchase validation, hand ownership, placement legality, phase timing, network protocol payloads, or server authority.
+- No broader UI scaling preference implementation.
+- No colorblind palette implementation.
+- No Settings or Accessibility screen work.
+- No changes to `production/sprint-status.yaml`.
+- No changes to `production/session-state/**`.
+- No changes to project asset files.
+- No changes to `AGENTS.md`.
+- Do not close QA-COND-0005 from this story alone.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] **Hand fan text metrics exist**: GIVEN browser/WASM evidence runs at
-  `1366x768` and `1920x1080`, WHEN the hand fan renders 0, 1, 2, 5, and 10
-  card cases, THEN the evidence records visible cost, ATK, HP, keyword text,
-  card bounds, and text bounds for every field that applies.
-- [ ] **DRAFT_SHOP fan readability passes**: GIVEN the DRAFT_SHOP hand fan
-  renders 10 cards and hover or zoom inspection is available, WHEN text-size
-  measurements are reviewed, THEN visible cost, ATK, and HP fields are at least
-  `18 CSS px`, visible keyword text is at least `14 CSS px`, and the accepted
-  readable state is stated for each field.
-- [ ] **DRAFT_AUCTION read-only fan readability passes**: GIVEN the
-  DRAFT_AUCTION read-only fan is visible with input suppressed, WHEN
-  browser/WASM measurements are reviewed, THEN dimming or read-only treatment
-  does not reduce visible cost, ATK, HP, or keyword text below the required
-  floors in the accepted readable state.
-- [ ] **PLACEMENT fan readability passes**: GIVEN PLACEMENT fan cards are
-  active, selected, staged as fan ghosts, or staged as Instant fan ghosts, WHEN
-  browser/WASM measurements are reviewed, THEN required card text remains
-  inside card or badge bounds and meets the required text floors in each state.
-- [ ] **DRAFT_INITIAL acquisition fan feedback is readable**: GIVEN a
-  DRAFT_INITIAL purchase is confirmed and the acquired card animates or settles
-  into the hand fan, WHEN metrics are captured after the authoritative hand
-  update is visible, THEN visible cost, ATK, HP, and keyword fields meet the
-  required floors or are explicitly marked not applicable.
-- [ ] **Cost floor passes**: GIVEN any visible Hand UI card cost numeral or
-  badge in the measured surfaces, WHEN text-size measurements are reviewed,
-  THEN the cost text measures at least `18 CSS px` or browser-equivalent
-  rendered pixels at both viewports.
-- [ ] **ATK floor passes**: GIVEN any visible Hand UI card ATK numeral or
-  badge in the measured surfaces, WHEN text-size measurements are reviewed,
-  THEN the ATK text measures at least `18 CSS px` or browser-equivalent
-  rendered pixels at both viewports.
-- [ ] **HP floor passes**: GIVEN any visible Hand UI card HP numeral or badge
-  in the measured surfaces, WHEN text-size measurements are reviewed, THEN the
-  HP text measures at least `18 CSS px` or browser-equivalent rendered pixels
-  at both viewports.
-- [ ] **Keyword floor passes**: GIVEN any visible Hand UI keyword text in the
-  measured surfaces, WHEN text-size measurements are reviewed, THEN the keyword
-  text measures at least `14 CSS px` or browser-equivalent rendered pixels at
-  both viewports.
-- [ ] **Not-applicable fields are explicit**: GIVEN a fixture card has no ATK,
-  no HP, or no visible keyword text in a Hand UI state, WHEN the evidence table
-  is reviewed, THEN that field is marked `N/A - field not present on this card
-  type or state` rather than being silently omitted.
-- [ ] **Dense fan state remains readable**: GIVEN the hand fan contains at
-  least one long card name, one two-keyword card, one zero-cost card, and one
-  card with two-digit cost, ATK, or HP, WHEN the 10-card compressed fan is
-  captured, THEN visible cost, ATK, HP, and keyword text remains readable
-  without clipping or unreadable truncation.
-- [ ] **No Hand UI card-internal overlap**: GIVEN measured text bounds and card
-  bounds, WHEN overlap checks run, THEN cost, ATK, HP, keyword text, card name,
-  rarity indicator, and visible card art zones do not overlap in a way that
-  makes required text unreadable.
-- [ ] **No Hand UI surface-level overlap**: GIVEN measured card and UI bounds,
-  WHEN overlap checks run, THEN Hand UI card text does not overlap sibling fan
-  cards, staged fan ghosts, reserve strips, Submit controls, timers, HUD chips,
-  tooltips, hand-full notifications, no-valid-target overlays, or browser
-  evidence overlays.
-- [ ] **Contrast sample passes for Hand UI card text**: GIVEN sampled
-  browser/WASM foreground and composited background colors for visible cost,
-  ATK, HP, and keyword text, WHEN contrast ratios are computed, THEN each
-  sampled text/background pair meets at least `4.5:1`.
-- [ ] **Existing Hand UI behavior is preserved**: GIVEN existing Hand UI
-  regression tests run after remediation, WHEN card typography or measurement
-  instrumentation is applied, THEN DRAFT_INITIAL acquisition feedback,
-  DRAFT_SHOP fan display, DRAFT_AUCTION read-only fan, PLACEMENT staging, fan
-  ghost, Instant staging, reserve strip, Submit pre-validation, and input
-  suppression behavior remains unchanged.
-- [ ] **Focused accessibility test passes**:
-  `cargo test -p client --test hand_ui_card_text_stat_keyword_accessibility_test`
-  passes. The target must be backed by
-  `tests/integration/hand-ui/card_text_stat_keyword_accessibility_test.rs`.
-- [ ] **Browser/WASM evidence exists**:
-  `production/qa/evidence/hand-ui-card-text-stat-keyword-accessibility.md`
-  records browser, build target, commit, capture command, fixture cards,
-  viewport table, text-size table, overlap table, contrast sample table,
-  screenshot capture directory, pass/fail verdict, and QA-COND-0005 impact
-  statement.
-- [ ] **Capture directory is populated**:
-  `production/qa/evidence/captures/hand-ui-card-text-stat-keyword-accessibility/`
-  contains the browser/WASM captures referenced by the evidence document for
-  both required viewports and every required Hand UI card surface.
-- [ ] **A11Y-ST-02 Hand UI impact is explicit**: The evidence document states
-  whether the Hand UI portion of A11Y-ST-02 is implemented and evidenced, or
-  which measured Hand UI surface still fails the cost, ATK, HP, keyword,
-  non-overlap, or readability checks.
-- [ ] **QA-COND-0005 remains open**: The evidence document states that this
-  story contributes only the Hand UI slice of A11Y-ST-02 and that QA-COND-0005
-  remains Open until all remaining Standard-tier rows are implemented and
-  evidenced, reclassified, dependency-blocked, or accepted as risk.
+- [ ] **Hand/fan cost floor passes**: GIVEN the Hand UI fan renders at 10-card compression in DRAFT_SHOP, DRAFT_AUCTION read-only, and PLACEMENT, WHEN hand card text metrics are exported, THEN every visible cost numeral or badge text measures at least 18 CSS px or browser-equivalent rendered pixels.
+- [ ] **Hand/fan ATK floor passes**: GIVEN a visible minion or structure hand card has an ATK field, WHEN hand card text metrics are exported, THEN every visible ATK numeral or badge text measures at least 18 CSS px or browser-equivalent rendered pixels.
+- [ ] **Hand/fan HP floor passes**: GIVEN a visible minion or structure hand card has an HP field, WHEN hand card text metrics are exported, THEN every visible HP numeral or badge text measures at least 18 CSS px or browser-equivalent rendered pixels.
+- [ ] **Keyword floor passes on the accepted readable state**: GIVEN a card has one or more keywords, WHEN the accepted readable hand state is rendered at rest, hover, or zoom, THEN the visible keyword text measures at least 14 CSS px or browser-equivalent rendered pixels.
+- [ ] **Accepted readable state is explicit**: GIVEN a hand card surface hides keyword text at rest because the 10-card fan is compressed, WHEN metrics are exported, THEN the record identifies hover or zoom as the accepted readable state and still records the rest state as not presenting keyword text.
+- [ ] **Not-applicable fields are explicit**: GIVEN a card type has no ATK, no HP, or no visible keyword text in a Hand UI state, WHEN the Hand UI metric table is generated, THEN that field is recorded as `N/A - field not present on this card type or state`.
+- [ ] **Long and dense cards remain inside bounds**: GIVEN fixture cards include a long name, a zero-cost card, a two-digit cost card, a two-digit ATK or HP card, a no-keyword card, and a multi-keyword card, WHEN Hand UI bounds checks run, THEN visible cost, ATK, HP, and keyword text remains inside the card, badge, hover view, or zoom bounds without clipping into unreadability.
+- [ ] **No hand-card internal overlap**: GIVEN Hand UI text bounds and card bounds are exported, WHEN overlap checks run, THEN cost, ATK, HP, keyword text, card name, rarity indicator, and visible card art zones do not overlap in a way that makes required text unreadable.
+- [ ] **No fan-surface overlap**: GIVEN the hand/fan renders 10 cards, staged fan ghosts, and reserve/current split strips, WHEN surface overlap checks run, THEN required card text does not overlap sibling cards, fan ghosts, reserve/current split controls, Submit, timer, HUD chips, or evidence overlays.
+- [ ] **Read-only and ghost treatments preserve readability**: GIVEN DRAFT_AUCTION read-only fan cards and PLACEMENT staged fan ghosts are rendered, WHEN metrics and bounds are exported, THEN opacity, desaturation, and ghost treatment do not reduce visible cost, ATK, HP, or accepted keyword text below the required floors.
+- [ ] **Drag sprite preserves stat readability**: GIVEN a PLACEMENT card is selected or dragged, WHEN the drag sprite is visible, THEN the drag presentation keeps visible cost, ATK, and HP text at the required 18 CSS px floor and does not hide the source fan slot state needed for layout stability.
+- [ ] **Existing Hand UI behavior is preserved**: GIVEN the Hand UI accessibility changes are present, WHEN the existing Hand UI regression commands listed in `## Test Evidence` run, THEN phase visibility, fan layout, draft acquisition, drag highlights, Instant staging, un-staging, reserve split, submit pre-validation, timer, and staged disclosure behavior remains unchanged.
+- [ ] **Focused Hand UI accessibility test passes**: `cargo test -p client --test hand_ui_card_text_stat_keyword_accessibility_test` passes. The target must be backed by `tests/integration/hand-ui/card_text_stat_keyword_accessibility_test.rs` and registered as `hand_ui_card_text_stat_keyword_accessibility_test`.
+- [ ] **Hand UI implementation evidence exists**: `production/qa/evidence/hand-ui-card-text-stat-keyword-accessibility-2026-05-06.md` records the changed constants or components, fixture cards, automated text-size table, overlap table, regression command output summary, and hand-surface readiness statement for Presentation Layer Story 005.
+- [ ] **A11Y-ST-02 impact is explicit**: The Hand UI evidence note states that this story implements the Hand UI slice of A11Y-ST-02 only, and that final cross-surface browser/WASM evidence remains owned by Presentation Layer Story 005.
+- [ ] **QA-COND-0005 remains open**: The Hand UI evidence note states that QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented and evidenced, reclassified, dependency-blocked, or accepted as risk.
 - [ ] **Whitespace gate passes**: `git diff --check` passes.
 
 ---
 
 ## Implementation Notes
 
-- Keep work local to Hand UI card rendering, Hand UI test fixtures, and Hand UI
-  evidence harnesses needed for A11Y-ST-02.
-- Prefer adjusting existing typography constants, theme tokens, card layout
-  slots, badge sizes, hover or zoom surfaces, or Hand UI measurement markers
-  over changing card data or game logic.
-- If a card field is intentionally unreadable at rest and readable on hover or
-  zoom, the evidence must show both states and state which state is accepted as
-  the player-readable state for that field.
-- If a card type has no ATK or HP, do not add fake stat text to satisfy the
-  measurement table. Record the field as not applicable for that card type.
-- If keyword text wraps, the wrapped line block must still meet the `14 CSS px`
-  floor, remain inside the card surface, and avoid overlap with stats, fan
-  neighbors, reserve strips, and card controls.
-- Keep evidence-only measurement overlays, debug labels, exported bounds, or
-  capture harnesses out of normal shipping UI unless they are also accepted
-  player-facing accessibility affordances.
-- Do not reduce DRAFT_AUCTION fan opacity as a readability workaround unless
-  the read-only state remains visually distinguishable and existing input
-  suppression semantics remain unchanged.
+- Keep work local to Hand UI card rendering, hand/fan layout constants, text/badge sizing, hover or zoom surfaces, test fixtures, and evidence-only measurement hooks.
+- Prefer adjusting existing typography constants, badge dimensions, fan text slots, hover or zoom presentation, and test-observable measurement components over changing card data or game logic.
+- If a hand card surface intentionally hides keyword text at rest and exposes it on hover or zoom, the implementation must make that state test-observable and document it as the accepted player-readable state.
+- Do not add fake ATK, HP, or keyword text to cards that do not have those fields. Record those fields as not applicable.
+- If keyword text wraps in hover or zoom, the wrapped block must meet the 14 CSS px floor, remain inside the card surface, and avoid overlap with stats or card controls.
+- Do not reduce DRAFT_AUCTION read-only fan opacity or PLACEMENT staged ghost opacity below the GDD-specified communication treatment as a readability shortcut. Preserve the treatment and make the readable state pass.
+- Keep any measurement overlay, metric export, or test marker out of normal shipping UI unless a later UX story promotes it.
+
+## Performance Budget
+
+No gameplay-loop performance impact is expected from typography adjustments or evidence-only measurement instrumentation. Any production remediation must preserve the ADR-021 presentation guardrails: steady-state presentation work remains below 1 ms per frame and phase-boundary spikes remain below 3 ms. The implementation must not add per-frame entity creation, extra Lightyear message drains, card catalog scans, texture uploads, or persistent debug overlays.
 
 ---
 
 ## QA Test Cases
 
-- **Compressed fan card text measurement**
-  - Given: Browser/WASM hand fan fixtures render 0, 1, 2, 5, and 10 cards at
-    `1366x768` and `1920x1080`
-  - When: text metrics are exported
-  - Then: every visible cost, ATK, and HP field is at least `18 CSS px`, every
-    visible keyword field is at least `14 CSS px`, and absent fields are
-    explicitly recorded
+- **Hand/fan text measurement**
+  - Given: The hand/fan renders 10 cards in DRAFT_SHOP, DRAFT_AUCTION read-only, and PLACEMENT.
+  - When: text metrics and bounds are exported.
+  - Then: visible cost, ATK, and HP fields meet the 18 CSS px floor, accepted keyword text meets the 14 CSS px floor, and absent fields are explicitly recorded as not applicable.
 
-- **DRAFT_SHOP and DRAFT_AUCTION fan states**
-  - Given: The hand fan renders in DRAFT_SHOP and DRAFT_AUCTION read-only states
-  - When: rest, hover or zoom, and read-only treatments are captured
-  - Then: visible card text remains inside card or badge bounds and meets the
-    required floors in the accepted readable state
+- **Hover or zoom readable state**
+  - Given: a compressed hand card has hidden or abbreviated keyword text at rest.
+  - When: hover or zoom is rendered.
+  - Then: keyword text is visible at the 14 CSS px floor and the metric record identifies hover or zoom as the accepted readable state.
 
-- **PLACEMENT fan and ghost states**
-  - Given: PLACEMENT fan cards are active, selected, staged as board-target
-    ghosts, and staged as Instant fan ghosts
-  - When: text metrics and bounds are exported
-  - Then: visible cost, ATK, HP, and keyword fields meet their floors and do
-    not overlap reserve strips, Submit controls, fan ghosts, HUD, or overlays
+- **Staged ghost readability**
+  - Given: a PLACEMENT hand card is staged and displayed as a fan ghost.
+  - When: metrics and bounds are exported.
+  - Then: visible cost, ATK, HP, and accepted keyword text remain readable through the ghost treatment without overlapping reserve/current split controls.
 
-- **Contrast sample guard**
-  - Given: Browser/WASM foreground/background samples are captured for visible
-    Hand UI cost, ATK, HP, and keyword text
-  - When: contrast ratios are computed after compositing
-  - Then: sampled pairs meet at least `4.5:1`
+- **Overlap guard**
+  - Given: 10-card fan compression, staged ghosts, and reserve/current split controls are visible.
+  - When: overlap checks compare card text, sibling cards, hand controls, HUD chips, Submit, and timer bounds.
+  - Then: no required Hand UI card text overlaps another element in a way that makes it unreadable.
 
 - **Behavior preservation**
-  - Given: existing Hand UI regressions run after typography or measurement
-    changes
-  - When: DRAFT_INITIAL acquisition, DRAFT_SHOP fan, DRAFT_AUCTION read-only
-    fan, PLACEMENT staging, Instant staging, reserve strip, and Submit
-    pre-validation paths are exercised
-  - Then: existing behavior remains unchanged
+  - Given: Hand UI card readability changes are present.
+  - When: the Hand UI regression suite runs.
+  - Then: draft acquisition, fan layout, drag/stage, Instant, un-stage, reserve strip, submit pre-validation, timer, and staged disclosure behavior remains unchanged.
 
 ---
 
@@ -311,58 +182,40 @@ HP, or keyword text floors. This story owns the Hand UI portion of that row.
 
 - `tests/integration/hand-ui/card_text_stat_keyword_accessibility_test.rs`
   - Registered as `hand_ui_card_text_stat_keyword_accessibility_test`
-  - Command:
-    `cargo test -p client --test hand_ui_card_text_stat_keyword_accessibility_test`
+  - Command: `cargo test -p client --test hand_ui_card_text_stat_keyword_accessibility_test`
 
 **Required regression commands**:
 
-- `cargo test -p client --test hand_ui_fan_layout_test`
+- `cargo test -p client --test hand_ui_fan_layout_formula_test`
 - `cargo test -p client --test hand_ui_draft_initial_grid_test`
-- `cargo test -p client --test hand_ui_placement_submit_core_test`
+- `cargo test -p client --test hand_ui_placement_drag_highlights_test`
 - `cargo test -p client --test hand_ui_placement_instant_staging_test`
 - `cargo test -p client --test hand_ui_placement_unstaging_test`
 - `cargo test -p client --test hand_ui_reserve_mana_strip_test`
 - `cargo test -p client --test hand_ui_submit_prevalidation_test`
+- `cargo test -p client --test hand_ui_placement_timer_test`
 - `cargo test -p client --test hand_ui_placement_staged_disclosure_accessibility_test`
 - `cargo check -p client`
 - `git diff --check`
 
-**Required browser/WASM evidence document**:
+**Required implementation evidence document**:
 
-- `production/qa/evidence/hand-ui-card-text-stat-keyword-accessibility.md`
+- `production/qa/evidence/hand-ui-card-text-stat-keyword-accessibility-2026-05-06.md`
 
-**Required browser/WASM capture artifact directory**:
+**Required evidence contents**:
 
-- `production/qa/evidence/captures/hand-ui-card-text-stat-keyword-accessibility/`
-
-**Required browser/WASM evidence contents**:
-
-- Browser, build target, commit, capture command, fixture source, and UI scale.
-- Viewports: `1366x768` and `1920x1080`.
-- Fixture cards covering minion, structure, spell or instant, zero-cost,
-  two-digit stat, long-name, no-keyword, and multi-keyword cases.
-- Surface table covering DRAFT_INITIAL acquired-card fan feedback, DRAFT_SHOP
-  hand fan, DRAFT_AUCTION read-only hand fan, and PLACEMENT active/staged fan
-  states.
-- Text-size table for cost, ATK, HP, and keyword text by Hand UI surface and
-  viewport.
+- Commit, fixture card list, Hand UI surfaces covered, changed typography constants or components, and UI scale assumption.
+- Text-size table for cost, ATK, HP, and keyword text by Hand UI surface.
 - Explicit not-applicable entries for fields absent from a card type or state.
-- Overlap table comparing text bounds, card bounds, fan neighbors, reserve
-  strips, Submit controls, HUD zones, and adjacent overlays.
-- Contrast sample table for visible cost, ATK, HP, and keyword text.
-- Browser/WASM capture links under the required capture directory.
-- Focused automated test command output summary.
+- Bounds and overlap table for 10-card fan, read-only fan, PLACEMENT selected state, drag sprite, staged ghost, and hover or zoom state.
 - Regression command output summary.
-- A11Y-ST-02 Hand UI impact statement.
+- Hand UI readiness statement for Presentation Layer Story 005.
+- A11Y-ST-02 impact statement.
 - QA-COND-0005 impact statement confirming the condition remains Open.
 
-**QA-COND-0005 impact statement required in evidence**:
+**Final browser/WASM evidence owner**:
 
-Story 015 implements and evidences the Hand UI slice of A11Y-ST-02 for card
-cost, ATK, HP, and keyword text floors across Hand UI-owned card fan surfaces.
-It does not close QA-COND-0005 by itself. QA-COND-0005 remains Open until all
-remaining Standard-tier rows are implemented and evidenced, reclassified,
-dependency-blocked, or accepted as risk.
+- Presentation Layer Story 005 captures the final cross-surface browser/WASM evidence at `production/qa/evidence/presentation-card-text-accessibility.md`.
 
 **Status**: [ ] Not yet implemented or captured.
 
@@ -370,40 +223,21 @@ dependency-blocked, or accepted as risk.
 
 ## Dependencies
 
-- Depends on: [Story 002](story-002-fan-layout-formula.md) - Complete; provides
-  fan layout formulas and 10-card compression behavior.
-- Depends on: [Story 004](story-004-draft-initial-grid.md) - Complete; provides
-  DRAFT_INITIAL acquired-card fan feedback that this story must preserve.
-- Depends on: [Story 005](story-005-placement-submit-core.md) - Complete;
-  provides PLACEMENT Submit and staging baseline.
-- Depends on: [Story 007](story-007-placement-instant-staging.md) - Complete;
-  provides Instant fan staging semantics.
-- Depends on: [Story 008](story-008-placement-unstaging.md) - Complete;
-  provides fan ghost correction paths.
-- Depends on: [Story 010](story-010-submit-prevalidation.md) - Complete;
-  provides Submit pre-validation behavior that this story must preserve.
-- Depends on: [Story 011](story-011-reserve-mana-strip.md) - Complete; provides
-  reserve/current split controls that must not overlap Hand UI card text.
-- Depends on: [Story 014](story-014-placement-staged-disclosure-accessibility.md)
-  - Complete; provides A11Y-ST-14 staged disclosure evidence that this story
-  must preserve.
+- Depends on: [Story 001](story-001-plugin-scaffold.md) - Complete; provides pre-pooled hand/fan slot ownership.
+- Depends on: [Story 002](story-002-fan-layout-formula.md) - Complete; provides 10-card fan compression formula.
+- Depends on: [Story 003](story-003-phase-state-machine.md) - Complete; provides phase visibility and passive/read-only/staging state machine.
+- Depends on: [Story 004](story-004-draft-initial-grid.md) - Complete; provides DRAFT_INITIAL acquisition into the fan, while Shop/Auction UI remains owner of grid slot rendering.
+- Depends on: [Story 005](story-005-placement-submit-core.md) - Complete; provides PLACEMENT staging baseline.
+- Depends on: [Story 007](story-007-placement-instant-staging.md) - Complete; provides Instant staging baseline.
+- Depends on: [Story 008](story-008-placement-unstaging.md) - Complete; provides staged ghost correction baseline.
+- Depends on: [Story 011](story-011-reserve-mana-strip.md) - Complete; provides reserve/current split controls near staged ghosts.
+- Depends on: [Story 014](story-014-placement-staged-disclosure-accessibility.md) - Complete; provides staged disclosure evidence baseline to preserve.
 - Depends on: ADR-002, ADR-019, and ADR-021 Accepted.
-- Unlocks: Presentation Layer Story 005 final A11Y-ST-02 cross-surface
-  browser/WASM evidence after Shop/Auction UI Story 013 is also implemented.
+- Unlocks: Hand UI slice for Presentation Layer Story 005 final A11Y-ST-02 browser/WASM evidence.
 
 ## Blockers
 
 None.
-
-## Performance Budget
-
-No gameplay-loop performance impact is expected from Hand UI typography
-adjustments or evidence-only measurement instrumentation. Any production
-remediation must preserve ADR-021 presentation guardrails: steady-state
-presentation work remains below 1 ms per frame and phase-boundary spikes remain
-below 3 ms. The implementation must not add per-frame entity creation, extra
-Lightyear message drains, card catalog scans, texture uploads, or persistent
-debug overlays.
 
 ## No Open Questions
 
