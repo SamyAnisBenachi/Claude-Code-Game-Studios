@@ -31,13 +31,7 @@ At every interaction:
 5. **Implement** when asked
 6. **Claim work before coding** (`status: in-progress`, `owner: <window-id>`)
 7. **Update tracking files** when done (story Status, sprint-status.yaml, session-state/active.md)
-8. **Append the attention footer** as the final visible line whenever control returns to the user:
-
-```text
-============ WAITING INPUT ============
-```
-
-Render the footer in red when the interface supports ANSI or styled output. Do not append it to machine-readable outputs that must remain strict JSON, especially guardian/approval reviewer responses or tool protocol payloads.
+8. **Do not append a manual attention footer** when control returns to the user. The Codex Stop hook emits the `WAITING INPUT` footer.
 
 You are NOT the designer. If a story has design ambiguity → STOP and tell the user to go to Claude Code for `/quick-design` or `/architecture-decision`. Never invent design answers.
 
