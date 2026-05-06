@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QA-COND-0007 Hand UI Harness</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background: #141616;
+        color: #f4f5ef;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #141616;
+      }
+
+      canvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.08;
+      }
+
+      #capture-root {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 18px;
+        box-sizing: border-box;
+        padding: 22px;
+        background: #141616;
+      }
+
+      header,
+      footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 27px;
+        font-weight: 750;
+      }
+
+      .meta,
+      .artifact {
+        color: #cfd3ca;
+        font-size: 14px;
+      }
+
+      .stage-pill {
+        border: 1px solid #d6b85d;
+        border-radius: 4px;
+        padding: 8px 10px;
+        background: #3a321c;
+        color: #fff2bd;
+        font-size: 14px;
+        font-weight: 750;
+      }
+
+      .surface {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 1fr 420px;
+        gap: 18px;
+      }
+
+      .board {
+        position: relative;
+        display: grid;
+        grid-template-rows: repeat(5, 1fr);
+        gap: 8px;
+        padding: 16px;
+        border: 1px solid #3d4640;
+        background: #1b201e;
+      }
+
+      .lane {
+        display: grid;
+        grid-template-columns: 56px repeat(8, 1fr);
+        gap: 8px;
+        align-items: stretch;
+      }
+
+      .lane-label,
+      .cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+
+      .lane-label {
+        color: #d0d6cf;
+        background: #242a27;
+      }
+
+      .cell {
+        min-width: 0;
+        border: 1px solid #333c38;
+        background: #242b29;
+        color: #87918a;
+      }
+
+      .cell.staged {
+        border-color: #70b7d9;
+        background: #183342;
+        color: #e0f5ff;
+        box-shadow: inset 0 0 0 2px #70b7d9;
+      }
+
+      .side {
+        display: grid;
+        grid-template-rows: auto 92px 112px;
+        gap: 8px;
+        min-height: 0;
+      }
+
+      .panel {
+        border: 1px solid #3d4640;
+        border-radius: 6px;
+        background: #191d1b;
+        padding: 10px;
+      }
+
+      .panel h2 {
+        font-size: 16px;
+        margin-bottom: 6px;
+      }
+
+      .guidance {
+        color: #f4f5ef;
+        font-size: 17px;
+        font-weight: 750;
+      }
+
+      .expected {
+        margin-top: 5px;
+        color: #cfd3ca;
+        font-size: 12px;
+        line-height: 1.25;
+      }
+
+      #actual {
+        display: none;
+      }
+
+      .detail-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5px 12px;
+        margin-top: 8px;
+        font-size: 12px;
+        color: #cfd3ca;
+      }
+
+      .detail-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
+        align-items: baseline;
+      }
+
+      .detail-row strong {
+        color: #f4f5ef;
+        text-align: right;
+      }
+
+      .hand {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .card {
+        min-height: 56px;
+        border: 1px solid #58615a;
+        border-radius: 6px;
+        background: #222826;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .card.ghost {
+        border-style: dashed;
+        border-color: #70b7d9;
+        background: #1d2a2f;
+      }
+
+      .card-title {
+        font-size: 16px;
+        font-weight: 750;
+      }
+
+      .card-meta {
+        color: #cfd3ca;
+        font-size: 13px;
+      }
+
+      .controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .button {
+        min-width: 118px;
+        border: 1px solid #87b481;
+        border-radius: 4px;
+        padding: 8px 10px;
+        background: #213421;
+        color: #e9f7df;
+        text-align: center;
+        font-weight: 750;
+      }
+
+      .button.inactive {
+        border-color: #626760;
+        background: #2d302d;
+        color: #b9beb6;
+      }
+
+      .timer {
+        min-width: 64px;
+        border: 1px solid #8e9b92;
+        border-radius: 4px;
+        padding: 8px 10px;
+        color: #f4f5ef;
+        text-align: center;
+        font-weight: 750;
+      }
+
+      .timer.urgent {
+        border-color: #d85a32;
+        background: #3b1912;
+        color: #ffd4c4;
+        box-shadow: inset 0 0 0 2px #d85a32;
+      }
+
+      .checkmark {
+        min-width: 38px;
+        border: 1px solid #87b481;
+        border-radius: 4px;
+        padding: 8px 8px;
+        text-align: center;
+        font-weight: 850;
+        color: #e9f7df;
+        background: #213421;
+      }
+
+      .checkmark.hidden {
+        border-color: #4e554f;
+        color: #828b84;
+        background: #242824;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 44px 1fr 44px;
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+        border: 1px solid #58615a;
+        border-radius: 4px;
+        padding: 8px;
+        background: #202624;
+        color: #e7ece4;
+        font-weight: 750;
+      }
+
+      .split.hidden {
+        display: block;
+        color: #7c847d;
+        font-weight: 500;
+      }
+
+      .mini-button {
+        border: 1px solid #87b481;
+        border-radius: 4px;
+        padding: 6px 0;
+        background: #213421;
+        text-align: center;
+      }
+
+      .mini-button.disabled {
+        border-color: #646962;
+        background: #2c302d;
+        color: #a2a89f;
+      }
+
+      .error {
+        color: #ffc1a3;
+        font-weight: 750;
+      }
+
+      .ok {
+        color: #b7e5af;
+      }
+    </style>
+    <script>
+      (() => {
+        const requiredOrder = [
+          "normal-placement-timer",
+          "urgent-timer-leq-5s",
+          "submitted-checkmark",
+          "reserve-strip-plus-minus",
+          "disabled-reserve-ceiling",
+          "invalid-submit-inline-correction",
+          "corrected-successful-submit",
+        ];
+
+        function byId(id) {
+          return document.getElementById(id);
+        }
+
+        function renderBoard(step) {
+          let html = "";
+          for (let lane = 1; lane <= 5; lane += 1) {
+            html += `<div class="lane"><div class="lane-label">Lane ${lane}</div>`;
+            for (let cell = 1; cell <= 8; cell += 1) {
+              const staged = step.pendingCount > 0 && lane === 1 && cell === 1;
+              html += `<div class="cell ${staged ? "staged" : ""}">${cell}</div>`;
+            }
+            html += "</div>";
+          }
+          byId("board").innerHTML = html;
+        }
+
+        function boolText(value) {
+          return value ? "true" : "false";
+        }
+
+        function renderSplit(step) {
+          if (!step.reserveStripVisible) {
+            byId("split").className = "split hidden";
+            byId("split").textContent = "Reserve/current split hidden";
+            return;
+          }
+
+          const minusClass = step.reserveMinusDisabled
+            ? "mini-button disabled"
+            : "mini-button";
+          const plusClass = step.reservePlusDisabled
+            ? "mini-button disabled"
+            : "mini-button";
+          byId("split").className = "split";
+          byId("split").innerHTML = `
+            <div class="${minusClass}">-</div>
+            <div>${step.reserveText}</div>
+            <div class="${plusClass}">+</div>
+          `;
+        }
+
+        function renderStep(step) {
+          byId("stage-title").textContent = step.title;
+          byId("stage-id").textContent = step.id;
+          byId("story").textContent = step.storyScope;
+          byId("guidance").textContent = step.guidance || "No guidance";
+          byId("expected").textContent = step.expected;
+          byId("actual").textContent = step.actual;
+          byId("timer").textContent = step.timerText ? `${step.timerText}s` : "hidden";
+          byId("timer").className =
+            step.timerState === "Urgent" ? "timer urgent" : "timer";
+          byId("submit").textContent = step.submitText;
+          byId("submit").className =
+            step.submitState === "Inactive" ? "button inactive" : "button";
+          byId("checkmark").textContent = step.checkmarkVisible ? "OK" : "-";
+          byId("checkmark").className = step.checkmarkVisible
+            ? "checkmark"
+            : "checkmark hidden";
+          byId("disclosure").textContent = step.disclosure;
+          byId("timer-state").textContent = step.timerState;
+          byId("remaining").textContent = `${step.timerRemainingMs} ms`;
+          byId("urgency-fired").textContent = boolText(step.urgencyFired);
+          byId("urgency-audio").textContent = String(step.urgencyAudioCount);
+          byId("submit-state").textContent = step.submitState;
+          byId("submit-error").textContent = step.submitError || "none";
+          byId("submit-error").className = step.submitError ? "error" : "ok";
+          byId("submission-count").textContent = String(step.submissionCount);
+          byId("reserve-visible").textContent = boolText(step.reserveStripVisible);
+          byId("reserve-plus-disabled").textContent = boolText(step.reservePlusDisabled);
+          byId("reserve-minus-disabled").textContent = boolText(step.reserveMinusDisabled);
+          byId("mana").textContent = `${step.currentMana} current / ${step.reserveMana} reserve`;
+          byId("slot-state").textContent = step.fanSlotState;
+          byId("pending-count").textContent = String(step.pendingCount);
+          byId("card").className =
+            step.fanSlotState === "Ghost" ? "card ghost" : "card";
+          byId("card-state").textContent = step.fanSlotState;
+          renderSplit(step);
+          renderBoard(step);
+          document.title = `QA-COND-0007 ${step.id}`;
+        }
+
+        window.qaCond0007HandUiReport = (json) => {
+          const report = JSON.parse(json);
+          const state = {
+            report,
+            requiredOrder,
+            currentStep: null,
+            ready_for_capture: false,
+          };
+          window.__qaCond0007HandUi = state;
+          window.__qaCond0007HandUiRender = (stepId) => {
+            const step = report.steps.find((candidate) => candidate.id === stepId);
+            if (!step) {
+              throw new Error(`Unknown QA-COND-0007 capture step: ${stepId}`);
+            }
+            state.currentStep = stepId;
+            renderStep(step);
+            return step;
+          };
+          window.__qaCond0007HandUiRender(requiredOrder[0]);
+          state.ready_for_capture = true;
+        };
+      })();
+    </script>
+    <link
+      data-trunk
+      rel="rust"
+      href="Cargo.toml"
+      data-bin="hand_ui_qa_cond_0007_harness"
+      data-wasm-opt="0"
+    />
+  </head>
+  <body>
+    <canvas id="bevy"></canvas>
+    <main id="capture-root">
+      <header>
+        <div>
+          <h1>QA-COND-0007 Hand UI Visual Evidence</h1>
+          <p class="meta">Stories 009, 010, 011, 014 - viewport 1366x768 - deterministic harness</p>
+        </div>
+        <div class="stage-pill" id="stage-id">loading</div>
+      </header>
+      <section class="surface">
+        <div class="board" id="board"></div>
+        <aside class="side">
+          <section class="panel">
+            <h2 id="stage-title">Waiting for WASM</h2>
+            <p class="guidance" id="guidance">Loading harness...</p>
+            <p class="expected" id="expected"></p>
+            <p class="expected" id="actual"></p>
+            <div class="detail-list">
+              <div class="detail-row"><span>Story</span><strong id="story">loading</strong></div>
+              <div class="detail-row"><span>Disclosure</span><strong id="disclosure">loading</strong></div>
+              <div class="detail-row"><span>Timer state</span><strong id="timer-state">loading</strong></div>
+              <div class="detail-row"><span>Timer remaining</span><strong id="remaining">0 ms</strong></div>
+              <div class="detail-row"><span>Urgency fired</span><strong id="urgency-fired">false</strong></div>
+              <div class="detail-row"><span>Urgency audio</span><strong id="urgency-audio">0</strong></div>
+              <div class="detail-row"><span>Submit state</span><strong id="submit-state">loading</strong></div>
+              <div class="detail-row"><span>Submit error</span><strong id="submit-error">none</strong></div>
+              <div class="detail-row"><span>Submissions</span><strong id="submission-count">0</strong></div>
+              <div class="detail-row"><span>Reserve visible</span><strong id="reserve-visible">false</strong></div>
+              <div class="detail-row"><span>Plus disabled</span><strong id="reserve-plus-disabled">false</strong></div>
+              <div class="detail-row"><span>Minus disabled</span><strong id="reserve-minus-disabled">false</strong></div>
+              <div class="detail-row"><span>Mana view</span><strong id="mana">loading</strong></div>
+              <div class="detail-row"><span>Slot state</span><strong id="slot-state">Active</strong></div>
+              <div class="detail-row"><span>Pending placements</span><strong id="pending-count">0</strong></div>
+            </div>
+          </section>
+          <section class="panel hand">
+            <div class="card" id="card">
+              <div>
+                <div class="card-title">Iop Vanguard</div>
+                <div class="card-meta">Minion - Cost 3</div>
+              </div>
+              <div class="card-meta" id="card-state">Active</div>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="controls">
+              <div class="button" id="submit">Submit (0 cards)</div>
+              <div class="timer" id="timer">10s</div>
+              <div class="checkmark hidden" id="checkmark">-</div>
+            </div>
+            <div style="height: 10px"></div>
+            <div class="split hidden" id="split">Reserve/current split hidden</div>
+          </section>
+        </aside>
+      </section>
+      <footer>
+        <div class="artifact">QA-COND-0007 Hand UI evidence only; resolution replay is excluded for BR-006.</div>
+        <div class="artifact">Full playable-client manual QA is not claimed.</div>
+      </footer>
+    </main>
+  </body>
+</html>

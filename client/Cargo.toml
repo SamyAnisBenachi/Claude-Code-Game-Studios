@@ -50,6 +50,10 @@ name = "hand_ui_placement_staged_disclosure_harness"
 path = "src/hand_ui_placement_staged_disclosure_harness.rs"
 
 [[bin]]
+name = "hand_ui_qa_cond_0007_harness"
+path = "src/hand_ui_qa_cond_0007_harness.rs"
+
+[[bin]]
 name = "shop_auction_bid_target_focus_harness"
 path = "src/shop_auction_bid_target_focus_harness.rs"
 
