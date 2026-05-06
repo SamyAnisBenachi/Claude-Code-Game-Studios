@@ -9,8 +9,8 @@ feature scope.
 ## Planning Notes
 
 - Sprint 5 is officially closed with conditions.
-- Production -> Polish gate failed on 2026-05-05; the project remains in
-  Production.
+- Production -> Polish gate failed on 2026-05-05, then passed with conditions
+  on 2026-05-06. The project is now in Polish.
 - Sprint 6 is a remediation/validation sprint, not a normal feature sprint.
 - Pull-forward work already integrated is credited below and is not counted as
   unstarted Sprint 6 capacity.
@@ -18,6 +18,8 @@ feature scope.
   so the sprint-plan workflow defaults to `lean`.
 - Do not use Sprint 6 capacity for unrelated feature expansion until gate
   blockers are resolved or explicitly reclassified.
+- Post-gate reconciliation on 2026-05-06 records S6-06 as complete without
+  reopening Sprint 6 or running `/story-done`.
 
 ## Capacity
 
@@ -61,6 +63,34 @@ feature scope.
 | S6-N2 | SAU-008 readiness only if SAU-007 lands early | UI/client programmer | 0.50 | SAU-007 Complete; Must Have gate remediation stable | SAU-008 readiness is refreshed without implementation unless gate blockers are already resolved |
 
 ---
+
+## Post-Gate Status
+
+Sprint 6 final gate reconciliation is complete as of 2026-05-06.
+
+| Item | Final status | Evidence |
+|------|--------------|----------|
+| Stage | Polish | `production/stage.txt` |
+| S6-06 | Done | Smoke `PASS WITH WARNINGS`, QA sign-off `APPROVED WITH CONDITIONS`, and gate `PASS WITH CONDITIONS` |
+| Gate report | PASS WITH CONDITIONS | `production/gate-checks/gate-production-polish-sprint-6-2026-05-06.md` |
+| Gate commit | Recorded | `f622605872856ea29014601db5a9996c8b3d1122` |
+
+Carried conditions remain part of the Polish backlog:
+
+- QA-COND-0005 is friend-game-only accepted risk. This is not verified
+  Standard-tier accessibility completion and must be revisited before any
+  public, external, commercial, or broader release candidate.
+- QA-COND-0006 is accepted-risk/deferred. This is not playtest evidence and is
+  not fun-hypothesis validation.
+- QA-COND-0001 remains open P2 until AU1 FIFO evidence receives explicit QA
+  disposition.
+- QA-COND-0007 remains open P2 until deferred manual/visual evidence is
+  captured or dispositioned.
+- Full manual playable-client QA is not claimed by the smoke report, QA
+  sign-off, gate report, or this reconciliation.
+
+S6-04 is not an active Sprint 6 blocker after the producer's friend-game-only
+accepted-risk decision for QA-COND-0005.
 
 ## Pull-forward Credit Already Integrated
 
@@ -128,21 +158,23 @@ Production -> Polish gate-check prerequisites.
 
 ## Definition of Done for this Sprint
 
-- [ ] All Must Have tasks completed
-- [ ] Sprint 6 QA plan exists
-- [ ] P1 QA conditions are closed, verified, explicitly reclassified, or accepted as risk
+- [x] All Must Have tasks completed, closed, or explicitly accepted as risk for
+      the Sprint 6 Production -> Polish gate.
+- [x] Sprint 6 QA plan exists
+- [x] P1 QA conditions are closed, verified, explicitly reclassified, or accepted as risk
 - [ ] P2 QA validation conditions have evidence, reclassification, or accepted-risk disposition
-- [ ] S6-02 / QA-COND-0006 accepted-risk deferral is recorded without marking
+- [x] S6-02 / QA-COND-0006 accepted-risk deferral is recorded without marking
       playtests completed or creating playtest reports
-- [ ] Production -> Polish gate-check carries QA-COND-0006 as an explicit
+- [x] Production -> Polish gate-check carries QA-COND-0006 as an explicit
       risk/condition, not as passed playtest evidence
-- [ ] Browser/WASM board performance evidence is captured and compared against budgets
-- [ ] Standard-tier accessibility remediation/verification is documented
-- [ ] OS-18b two-client objective HP visibility evidence is captured or explicitly reclassified
-- [ ] Smoke check passed as `PASS` or `PASS WITH WARNINGS`
-- [ ] QA sign-off report is complete
-- [ ] Production -> Polish gate-check rerun is recorded
-- [ ] Pull-forward credit remains separated from unstarted Sprint 6 capacity
+- [x] Browser/WASM board performance evidence is captured and compared against budgets
+- [x] Standard-tier accessibility remediation/verification is documented as
+      friend-game-only accepted risk, not verified Standard-tier completion
+- [x] OS-18b two-client objective HP visibility evidence is captured or explicitly reclassified
+- [x] Smoke check passed as `PASS` or `PASS WITH WARNINGS`
+- [x] QA sign-off report is complete
+- [x] Production -> Polish gate-check rerun is recorded
+- [x] Pull-forward credit remains separated from unstarted Sprint 6 capacity
 
 ---
 

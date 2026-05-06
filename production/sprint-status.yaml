@@ -15,6 +15,8 @@ notes:
   - "Pull-forward credit: SAU-003; SAU-004; SAU-005; SAU-006; BOARD-005; BOARD-009 narrowed status/co-occupancy; BOARD-010 narrowed baseline; NP-006; BLS-012 readiness; BOARD-006 readiness; OS-18b Story 008 docs; spawn range docs repair; playtest package and fun hypothesis decision docs; QA condition register; AU19-a repair / QA-COND-0002 closure; AU1 FIFO harness; ADR-023 timer accessibility authority."
   - "Sprint 6 QA plan exists at production/qa/qa-plan-sprint-6-2026-05-05.md and governs remediation validation, condition reconciliation, smoke scope, and QA sign-off prerequisites."
   - "Producer decision on 2026-05-05 reclassifies S6-02 / QA-COND-0006 out of active Sprint 6 remediation scope as accepted deferred risk; this is not playtest evidence completion."
+  - "Post-gate reconciliation on 2026-05-06: S6-06 completed the final re-smoke, QA sign-off, and Production -> Polish gate-check. Gate verdict is PASS WITH CONDITIONS at commit f622605872856ea29014601db5a9996c8b3d1122, and production/stage.txt remains Polish."
+  - "Carried Polish conditions remain explicit: QA-COND-0005 is friend-game-only accepted risk, QA-COND-0006 is accepted-risk/deferred, QA-COND-0001 remains open P2, QA-COND-0007 remains open P2, and full manual playable-client QA is not claimed."
 
 stories:
   - id: "S6-01"
@@ -36,7 +38,7 @@ stories:
     status: accepted-risk
     owner: "producer + qa-lead"
     estimate_days: 2.00
-    blocker: "Producer accepted deferral for Sprint 6; not an active S6-06 blocker. Production -> Polish gate must carry QA-COND-0006 as an explicit condition/risk, not as passed playtest evidence."
+    blocker: ""
     completed: ""
     notes:
       - "Producer decision on 2026-05-05: do not run Sprint 6 playtests now, do not implement a dev-only playable shell just to satisfy S6-02, and do not fabricate playtest reports."
@@ -62,7 +64,7 @@ stories:
     status: accepted-risk
     owner: "accessibility owner + UI/client programmer"
     estimate_days: 2.00
-    blocker: "Producer accepted remaining Standard-tier accessibility exposure as risk for friend-game scope only: Standard-tier accessibility waived by producer; no public release, no obligation."
+    blocker: ""
     completed: ""
     notes:
       - "Standard-tier accessibility gaps must be remediated, verified, explicitly reclassified, or accepted as risk."
@@ -91,15 +93,20 @@ stories:
     name: "Final re-smoke, QA sign-off, and Production -> Polish gate-check"
     file: "production/gate-checks/"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "orchestrator + qa-lead"
     estimate_days: 1.00
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
     notes:
-      - "Smoke must be PASS or PASS WITH WARNINGS before final QA sign-off and gate-check."
-      - "Final QA sign-off and Production -> Polish gate-check must not treat QA-COND-0006 as Verified or as passed playtest evidence."
-      - "S6-04 / QA-COND-0005 is no longer an active blocker after producer accepted the remaining Standard-tier accessibility exposure as friend-game-only risk; carry it into S6-06 as an explicit accepted-risk condition, not as verified accessibility evidence."
+      - "Smoke completed at production/qa/smoke-2026-05-06.md with verdict PASS WITH WARNINGS."
+      - "QA sign-off completed at production/qa/qa-signoff-sprint-6-2026-05-06.md with verdict APPROVED WITH CONDITIONS."
+      - "Production -> Polish gate-check completed at production/gate-checks/gate-production-polish-sprint-6-2026-05-06.md with verdict PASS WITH CONDITIONS; gate commit f622605872856ea29014601db5a9996c8b3d1122 advanced the project to Polish."
+      - "QA-COND-0005 is carried only as friend-game-only accepted risk, not verified Standard-tier accessibility completion."
+      - "QA-COND-0006 is carried only as accepted-risk/deferred, not playtest or fun-hypothesis validation."
+      - "QA-COND-0001 remains open P2 until AU1 FIFO evidence receives explicit QA disposition."
+      - "QA-COND-0007 remains open P2 until deferred manual/visual evidence is captured or dispositioned."
+      - "Full manual playable-client QA is not claimed by the smoke report, QA sign-off, gate report, or this reconciliation."
 
   - id: "S6-S1"
     name: "SAU-007 readiness refresh and implementation after SAU-006"

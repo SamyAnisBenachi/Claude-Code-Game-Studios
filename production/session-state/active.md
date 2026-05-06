@@ -178,8 +178,8 @@ Specialists: game-designer, systems-designer, qa-lead, network-programmer, creat
 
 ---
 
-## Stage actuel : Pre-Production ✅
-`production/stage.txt` = `Pre-Production`
+## Current Stage: Polish
+`production/stage.txt` = `Polish`
 
 ## Session Extract — /story-done 2026-05-01
 - Verdict: COMPLETE WITH NOTES
@@ -2024,7 +2024,7 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA condition: `QA-COND-0003` closed in `production/qa/bugs/QA-COND-0003-os-18b-two-client-objective-hp-visibility.md`.
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` matching S6-05 row set to `done` with `completed: "2026-05-05"`.
-- Next recommended: S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check remain blocked until S6-01 through S6-05 are complete or explicitly reclassified.
+- Post-gate note: Superseded by the 2026-05-06 S6-06 gate pass; OS-18b evidence contributed to S6-05 closure.
 
 ## Session Extract - /story-done 2026-05-05
 - Verdict: COMPLETE WITH NOTES
@@ -2036,7 +2036,7 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA condition: `QA-COND-0005` remains Open. Only the PLACEMENT timer-extension sub-gap is recorded as implemented/verified in `production/qa/evidence/gss-008-placement-timer-multiplier-authority-2026-05-05.md`.
 - Tech debt logged: None.
 - Sprint status: Unchanged; S6-04 tracks the broader QA-COND-0005 remediation condition, so this sub-gap verification does not legitimately close that sprint row.
-- Next recommended: Continue remaining Standard-tier accessibility evidence/disposition work before using S6-04 or QA-COND-0005 for Production -> Polish gate closure.
+- Post-gate note: QA-COND-0005 is friend-game-only accepted risk for the Sprint 6 gate and remains future accessibility debt before any public/external release.
 
 ## Session Extract - /story-done 2026-05-05
 - Verdict: COMPLETE WITH NOTES
@@ -2047,7 +2047,7 @@ C:\Program Files\GitHub CLI\gh.exe
 - Notes: Evidence correction commit `7d64cd766d02b0c2888124d7e23debf29fd53d16` corrected the timing classification. ADR-021's <3 ms phase-boundary presentation spike budget remains documented for true hide/show/cancel-tween phase work and is not claimed as newly sampled by BOARD-012. No board rendering behavior, `design/assets/**`, `AGENTS.md`, `production/session-state/codex-orchestrator-state.md`, or unrelated QA-COND files were touched. No full Board Rendering epic closure is claimed.
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` matching S6-03 row set to `done` with `completed: "2026-05-05"`.
-- Next recommended: S6-01, S6-02, and S6-04 remain open; S6-06 final re-smoke / QA sign-off / gate-check remains blocked until S6-01 through S6-05 are complete or explicitly reclassified.
+- Post-gate note: Superseded by the 2026-05-06 S6-06 gate pass; BOARD-012 closed QA-COND-0004 for the Sprint 6 gate.
 
 ## Session Extract - /story-done 2026-05-06
 - Verdict: COMPLETE
@@ -2059,7 +2059,7 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA condition: `QA-COND-0005` remains Open. HUD-011 closes only the A11Y-ST-13 sub-gap in the Standard-tier accessibility disposition register.
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record A11Y-ST-13 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
-- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+- Post-gate note: Remaining Standard-tier accessibility rows are Polish/public-release debt under the QA-COND-0005 friend-game-only accepted-risk disposition.
 
 ## Session Extract - /story-done 2026-05-06
 - Verdict: COMPLETE WITH NOTES
@@ -2071,7 +2071,7 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA condition: `QA-COND-0005` remains Open. A11Y Settings 001 clears only the Settings foundation and preference persistence dependency evidence for future Standard-tier rows; it does not close colorblind palette application, reduced-motion consumers, full UI-scale evidence, pause-anywhere behavior, input remapping, tutorial persistence, brightness/gamma, or audio-control rows.
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record A11Y Settings 001 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
-- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+- Post-gate note: Remaining Standard-tier accessibility rows are Polish/public-release debt under the QA-COND-0005 friend-game-only accepted-risk disposition.
 
 ## Session Extract - /story-done 2026-05-06
 - Verdict: COMPLETE
@@ -2083,7 +2083,7 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA condition: `QA-COND-0005` remains Open. HUD-012 closes only the HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 in the Standard-tier accessibility disposition register; actual auction price counter and non-HUD UI/accessibility surfaces remain separate.
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record HUD-012 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
-- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+- Post-gate note: Remaining Standard-tier accessibility rows are Polish/public-release debt under the QA-COND-0005 friend-game-only accepted-risk disposition.
 
 ## Session Extract - /story-done 2026-05-06
 - Verdict: COMPLETE
@@ -2095,7 +2095,7 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA condition: `QA-COND-0005` remains Open. HAND-UI-014 closes only the A11Y-ST-14 PLACEMENT staged-disclosure sub-gap in the Standard-tier accessibility disposition register.
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record HAND-UI-014 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
-- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+- Post-gate note: Remaining Standard-tier accessibility rows are Polish/public-release debt under the QA-COND-0005 friend-game-only accepted-risk disposition.
 
 ## Session Extract - /story-done 2026-05-06
 - Verdict: COMPLETE
@@ -2107,7 +2107,7 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA condition: `QA-COND-0005` remains Open. SAU-011 closes only the A11Y-ST-12 auction bid target/focus sub-gap in the Standard-tier accessibility disposition register.
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record SAU-011 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
-- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+- Post-gate note: Remaining Standard-tier accessibility rows are Polish/public-release debt under the QA-COND-0005 friend-game-only accepted-risk disposition.
 
 ## Session Extract - /story-done 2026-05-06
 - Verdict: COMPLETE
@@ -2119,7 +2119,7 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA condition: `QA-COND-0005` remains Open. SAU-012 closes only the A11Y-ST-18 DRAFT_INITIAL clear-objective sub-gap in the Standard-tier accessibility disposition register.
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record SAU-012 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
-- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+- Post-gate note: Remaining Standard-tier accessibility rows are Polish/public-release debt under the QA-COND-0005 friend-game-only accepted-risk disposition.
 
 ## Session Extract - /story-done 2026-05-06
 - Verdict: COMPLETE WITH NOTES
@@ -2132,10 +2132,19 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA condition: `QA-COND-0005` remains Open. A11Y-BS-03 closes only the photosensitivity warning/audit sub-gap in the Standard-tier accessibility disposition register.
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record A11Y-BS-03 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
-- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+- Post-gate note: Remaining Standard-tier accessibility rows are Polish/public-release debt under the QA-COND-0005 friend-game-only accepted-risk disposition.
 
 ## Session Extract - Producer Risk Disposition 2026-05-06
 - Decision: `QA-COND-0005` / S6-04 is accepted risk for Sprint 6 friend-game scope only.
 - Producer wording: "Friend-game scope - Standard-tier accessibility waived by producer. No public release, no obligation."
 - Scope: This does not verify Standard-tier accessibility, close the underlying accessibility debt, or apply to any public/external release candidate. Remaining Standard-tier rows must be revisited before a public, external, commercial, or broader release.
-- Sprint status: S6-04 is no longer an active P1 blocker. S6-06 is unblocked and ready for final re-smoke, QA sign-off, and Production -> Polish gate-check, carrying QA-COND-0005 and QA-COND-0006 as explicit accepted-risk conditions rather than verified evidence.
+- Sprint status: S6-04 is no longer an active P1 blocker. S6-06 later completed final re-smoke, QA sign-off, and the Production -> Polish gate-check, carrying QA-COND-0005 and QA-COND-0006 as explicit accepted-risk conditions rather than verified evidence.
+
+## Session Extract - S6-06 Post-Gate Reconciliation 2026-05-06
+- Stage: `production/stage.txt` is `Polish`.
+- Gate: `production/gate-checks/gate-production-polish-sprint-6-2026-05-06.md` records `PASS WITH CONDITIONS` at commit `f622605872856ea29014601db5a9996c8b3d1122`.
+- Smoke: `production/qa/smoke-2026-05-06.md` records `PASS WITH WARNINGS`.
+- QA sign-off: `production/qa/qa-signoff-sprint-6-2026-05-06.md` records `APPROVED WITH CONDITIONS`.
+- Sprint status: docs-only reconciliation marks S6-06 done in `production/sprint-status.yaml` without running `/story-done`.
+- Sprint 6 plan: `production/sprints/sprint-6.md` records the post-gate state and preserves the carried conditions.
+- Carried conditions: QA-COND-0005 remains friend-game-only accepted risk, not verified Standard-tier accessibility completion; QA-COND-0006 remains accepted-risk/deferred, not playtest or fun-hypothesis validation; QA-COND-0001 remains open P2; QA-COND-0007 remains open P2; full manual playable-client QA is not claimed.
