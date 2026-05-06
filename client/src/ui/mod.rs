@@ -1,6 +1,7 @@
 // UI layer: Presentation — board, hand, shop, HUD (M2+)
 pub mod hand;
 pub mod hud;
+pub mod photosensitivity_warning;
 pub mod shared;
 pub mod shop_auction;
 
