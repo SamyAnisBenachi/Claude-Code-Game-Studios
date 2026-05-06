@@ -12,6 +12,7 @@ use crate::state::{
 };
 use crate::ui::hand::{HandUiPlugin, HandUiSystemSet};
 use crate::ui::hud::{HudPlugin, HudSystemSet};
+use crate::ui::settings::SettingsAccessibilityPlugin;
 use crate::ui::shop_auction::{ShopAuctionUiPlugin, ShopAuctionUiSystemSet};
 
 pub mod board_rendering;
@@ -50,6 +51,7 @@ impl Plugin for PresentationPlugin {
         app.add_plugins(HandUiPlugin);
         app.add_plugins(HudPlugin);
         app.add_plugins(ShopAuctionUiPlugin);
+        app.add_plugins(SettingsAccessibilityPlugin);
 
         app.configure_sets(
             Update,
