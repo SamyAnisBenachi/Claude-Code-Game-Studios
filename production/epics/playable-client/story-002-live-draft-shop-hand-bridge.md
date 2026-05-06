@@ -1,7 +1,7 @@
 # Story 002: Live Draft/Shop/Hand Bridge
 
 > **Epic**: Playable Client
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Polish / Client Integration
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -93,17 +93,17 @@ PLAYABLE-001 gets two real clients into a server-confirmed session. PLAYABLE-002
 
 ## Acceptance Criteria
 
-- [ ] **DRAFT_INITIAL offering is live**: GIVEN PLAYABLE-001 has placed the client in `ClientState::InSession`, WHEN the server sends `S2CDraftOffering`, THEN the primary client renders the 9-card DRAFT_INITIAL grid from that payload and does not use harness card IDs.
-- [ ] **DRAFT_INITIAL purchase is authoritative**: GIVEN a DRAFT_INITIAL card is affordable and clicked, WHEN the click is processed, THEN exactly one `C2SPurchaseCard` is sent over `ReliableChannel`; the card appears in the client hand only after authoritative `S2CCardAcquired` or snapshot state includes it.
-- [ ] **Economy projection stays shared**: GIVEN purchase confirmation changes gold or hand state, WHEN the client receives `S2CGoldUpdate` and related acquisition messages, THEN `PlayerEconomyView`, HUD, Hand UI, and Shop/Auction UI converge on the same gold/current mana/reserve mana/hand state without any extra `S2CGoldUpdate` drainer.
-- [ ] **Draft ready reaches server RSM path**: GIVEN either client clicks Ready in DRAFT_INITIAL or DRAFT_SHOP, WHEN `C2SSignalReady { retract: false }` reaches the server, THEN the server writes the owning draft-ready signal or equivalent RSM input for that player and does not leave the message as a logging-only stub.
-- [ ] **Ready retract is live**: GIVEN a player has clicked Ready but the phase has not advanced, WHEN they click Retract Ready, THEN `C2SSignalReady { retract: true }` reaches the same server authority path and the ready state changes only from authoritative state.
-- [ ] **All-ready phase progression is server-owned**: GIVEN both real clients are ready in the active draft phase, WHEN the server processes the all-ready condition, THEN any phase advance comes from RSM/server state and reaches both clients as `S2CPhaseChanged`.
-- [ ] **DRAFT_SHOP slots are live**: GIVEN the server enters DRAFT_SHOP, WHEN `S2CShopSlots` arrives, THEN the shop panel renders exactly the server slots, including empty slots, and does not generate local shop contents.
-- [ ] **DRAFT_SHOP purchase and refresh use real messages**: GIVEN a valid DRAFT_SHOP purchase or refresh click, WHEN the UI processes the action, THEN it sends `C2SPurchaseCard` or `C2SRefreshShop` once per valid click and waits for `S2CCardAcquired`, `S2CShopSlots`, and economy S2C to update visible state.
-- [ ] **Snapshot recovery seeds the bridge**: GIVEN a reconnect or late snapshot occurs during DRAFT_INITIAL or DRAFT_SHOP, WHEN `S2CGameSnapshot` arrives, THEN hand, shop slots, economy, phase, and board-facing presentation resources rebuild from snapshot state before additional live messages become actionable.
-- [ ] **Regression commands pass**: `cargo test -p client --test playable_client_draft_shop_hand_bridge_test`, `cargo test -p server --test playable_client_draft_ready_bridge_test`, `cargo check -p client`, `cargo check -p server`, and `git diff --check` pass.
-- [ ] **Evidence document exists**: `production/qa/evidence/playable-client-draft-shop-hand-bridge.md` records commit, commands, two-client setup, live message path, purchase/ready/refresh observations, defects, and friend-game-only scope statement.
+- [x] **DRAFT_INITIAL offering is live**: GIVEN PLAYABLE-001 has placed the client in `ClientState::InSession`, WHEN the server sends `S2CDraftOffering`, THEN the primary client renders the 9-card DRAFT_INITIAL grid from that payload and does not use harness card IDs.
+- [x] **DRAFT_INITIAL purchase is authoritative**: GIVEN a DRAFT_INITIAL card is affordable and clicked, WHEN the click is processed, THEN exactly one `C2SPurchaseCard` is sent over `ReliableChannel`; the card appears in the client hand only after authoritative `S2CCardAcquired` or snapshot state includes it.
+- [x] **Economy projection stays shared**: GIVEN purchase confirmation changes gold or hand state, WHEN the client receives `S2CGoldUpdate` and related acquisition messages, THEN `PlayerEconomyView`, HUD, Hand UI, and Shop/Auction UI converge on the same gold/current mana/reserve mana/hand state without any extra `S2CGoldUpdate` drainer.
+- [x] **Draft ready reaches server RSM path**: GIVEN either client clicks Ready in DRAFT_INITIAL or DRAFT_SHOP, WHEN `C2SSignalReady { retract: false }` reaches the server, THEN the server writes the owning draft-ready signal or equivalent RSM input for that player and does not leave the message as a logging-only stub.
+- [x] **Ready retract is live**: GIVEN a player has clicked Ready but the phase has not advanced, WHEN they click Retract Ready, THEN `C2SSignalReady { retract: true }` reaches the same server authority path and the ready state changes only from authoritative state.
+- [x] **All-ready phase progression is server-owned**: GIVEN both real clients are ready in the active draft phase, WHEN the server processes the all-ready condition, THEN any phase advance comes from RSM/server state and reaches both clients as `S2CPhaseChanged`.
+- [x] **DRAFT_SHOP slots are live**: GIVEN the server enters DRAFT_SHOP, WHEN `S2CShopSlots` arrives, THEN the shop panel renders exactly the server slots, including empty slots, and does not generate local shop contents.
+- [x] **DRAFT_SHOP purchase and refresh use real messages**: GIVEN a valid DRAFT_SHOP purchase or refresh click, WHEN the UI processes the action, THEN it sends `C2SPurchaseCard` or `C2SRefreshShop` once per valid click and waits for `S2CCardAcquired`, `S2CShopSlots`, and economy S2C to update visible state.
+- [x] **Snapshot recovery seeds the bridge**: GIVEN a reconnect or late snapshot occurs during DRAFT_INITIAL or DRAFT_SHOP, WHEN `S2CGameSnapshot` arrives, THEN hand, shop slots, economy, phase, and board-facing presentation resources rebuild from snapshot state before additional live messages become actionable.
+- [x] **Regression commands pass**: `cargo test -p client --test playable_client_draft_shop_hand_bridge_test`, `cargo test -p server --test playable_client_draft_ready_bridge_test`, `cargo check -p client`, `cargo check -p server`, and `git diff --check` pass.
+- [x] **Evidence document exists**: `production/qa/evidence/playable-client-draft-shop-hand-bridge.md` records commit, commands, two-client setup, live message path, purchase/ready/refresh observations, defects, and friend-game-only scope statement.
 
 ---
 
@@ -209,7 +209,7 @@ The live bridge is fixed-size over visible draft grid slots, shop slots, hand sl
 - Screenshot or capture summary of DRAFT_INITIAL grid, updated hand, updated economy, DRAFT_SHOP slots, and ready state.
 - Explicit statement that evidence is friend-game draft/shop/hand bridge evidence only, not public release readiness, not playtest validation, not broad accessibility completion, and not full playable-client manual QA.
 
-**Status**: [ ] Not yet implemented or captured.
+**Status**: [x] Implemented and captured for friend-game draft/shop/hand bridge scope at integrated commits `5077839bfc606dd46deea6baccdedc04e6ea75f0` and `1c4d34df0b0c1ee67df7210819c791671c708c81`.
 
 ---
 
@@ -222,3 +222,28 @@ The live bridge is fixed-size over visible draft grid slots, shop slots, hand sl
 ## Blockers
 
 None.
+
+## Completion Notes
+
+**Completed**: 2026-05-06
+
+**Criteria**: 11/11 passing.
+
+**Verification**:
+
+- `cargo test -p client --test playable_client_draft_shop_hand_bridge_test` passed 4/4 with the local MSVC no-PDB test environment (`CARGO_PROFILE_DEV_DEBUG=0`, `RUSTFLAGS=-C link-arg=/DEBUG:NONE`).
+- `cargo test -p server --test playable_client_draft_ready_bridge_test` passed 3/3 with the same local test environment.
+- Relevant client shop/auction/hand/shared economy regressions passed 52/52.
+- Relevant server economy/acquisition/auction/RSM/network dispatch regressions passed 70/70.
+- `cargo fmt -p client -p server -- --check` passed.
+- `cargo check -p client` passed.
+- `cargo check -p server` passed.
+- `git diff --check` passed.
+
+**Test Evidence**: `tests/integration/playable_client/draft_shop_hand_bridge_test.rs`, `tests/integration/playable_client/draft_ready_bridge_test.rs`, and `production/qa/evidence/playable-client-draft-shop-hand-bridge.md`.
+
+**Deviations**: None blocking. Scope note: no two-real-client manual capture or full playable-client manual QA is claimed here; PLAYABLE-003 owns real end-to-end loop verification.
+
+**Code Review**: Skipped by lean review mode because `production/review-mode.txt` is absent.
+
+**Next Story**: PLAYABLE-003 is unblocked for execution after this story-done update.

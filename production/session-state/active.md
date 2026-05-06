@@ -2192,3 +2192,16 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` marks PLAYABLE-001 done; PLAYABLE-002 remains not started and is unblocked for `/dev-story`; PLAYABLE-003 remains blocked by PLAYABLE-002.
 - Next recommended: `/dev-story production/epics/playable-client/story-002-live-draft-shop-hand-bridge.md`.
+
+## Session Extract - /story-done 2026-05-06
+- Verdict: COMPLETE
+- Story: `production/epics/playable-client/story-002-live-draft-shop-hand-bridge.md` - Story 002: Live Draft/Shop/Hand Bridge
+- Criteria: 11/11 passing; live DRAFT_INITIAL offering, authoritative DRAFT_INITIAL purchase, shared economy projection, ready/retract server path, server-owned all-ready progression, live DRAFT_SHOP slots, DRAFT_SHOP purchase/refresh messages, snapshot recovery, regression commands, and evidence document verified for PLAYABLE-002 scope.
+- Test Evidence: `production/qa/evidence/playable-client-draft-shop-hand-bridge.md`; `cargo test -p client --test playable_client_draft_shop_hand_bridge_test` passed 4/4; `cargo test -p server --test playable_client_draft_ready_bridge_test` passed 3/3; relevant client regressions passed 52/52; relevant server regressions passed 70/70; format, client/server checks, and `git diff --check` passed.
+- Verification: Root `main` was clean and aligned with `origin/main` at commit `1c4d34df0b0c1ee67df7210819c791671c708c81` after `git fetch origin` before closure edits. Integrated implementation commits `5077839bfc606dd46deea6baccdedc04e6ea75f0` and `1c4d34df0b0c1ee67df7210819c791671c708c81` are present on main.
+- Notes: No blocking GDD, ADR-002, ADR-008, ADR-010, ADR-015, ADR-019, ADR-021, Bevy 0.18, Lightyear, or control-manifest deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW because `production/review-mode.txt` is absent.
+- Scope guard: PLAYABLE-002 closure is friend-game draft/shop/hand bridge only. It does not claim PLAYABLE-003 two-real-client end-to-end evidence, public release readiness, broad accessibility completion, playtest validation, full playable-client manual QA, or a complete primary-client game loop.
+- QA conditions: `QA-COND-0005` remains accepted risk for friend-game scope only and is not verified Standard-tier accessibility completion. `QA-COND-0006` remains accepted-risk/deferred and is not playtest evidence or fun-hypothesis validation.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` marks PLAYABLE-002 done and PLAYABLE-003 ready/unblocked.
+- Next recommended: `/dev-story production/epics/playable-client/story-003-real-end-to-end-loop-verification.md`.

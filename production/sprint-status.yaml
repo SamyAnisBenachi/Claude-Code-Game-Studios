@@ -20,7 +20,7 @@ notes:
   - "QA-COND-0005 is accepted risk for friend-game scope only and is not verified Standard-tier accessibility completion."
   - "QA-COND-0006 is accepted-risk/deferred and is not playtest evidence or fun-hypothesis validation."
   - "Full playable-client manual QA is not claimed."
-  - "PLAYABLE story docs exist; PLAYABLE-001 is complete, PLAYABLE-002 remains not started and unblocked for /dev-story, and PLAYABLE-003 remains blocked by PLAYABLE-002."
+  - "PLAYABLE story docs exist; PLAYABLE-001 and PLAYABLE-002 are complete, and PLAYABLE-003 is unblocked for execution."
   - "Sprint 7 QA plan exists at production/qa/qa-plan-sprint-7-2026-05-06.md; no smoke-check, team-qa, gate-check, public release readiness, playtest validation, or full playable-client manual QA is claimed here."
 
 stories:
@@ -46,28 +46,29 @@ stories:
     name: "Live Draft/Shop/Hand Bridge"
     file: "production/epics/playable-client/story-002-live-draft-shop-hand-bridge.md"
     priority: must-have
-    status: ready
+    status: done
     owner: "client/network gameplay programmer + UI programmer"
     estimate_days: 2.00
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
     notes:
-      - "Not started; unblocked for /dev-story by PLAYABLE-001 story-done."
-      - "Wire C2SSignalReady to the server-side DraftReadySignal path."
-      - "Regular purchase confirmation must reach client hand and economy views."
-      - "DRAFT_INITIAL and DRAFT_SHOP purchase/ready UI must run through real WebSocket messages."
-      - "Do not introduce client-side optimistic authority."
+      - "Story-done complete at integrated commit 1c4d34df0b0c1ee67df7210819c791671c708c81."
+      - "C2SSignalReady maps to the server-side DraftReadySignal path."
+      - "Regular purchase confirmation reaches client hand and shared economy views from authoritative S2C."
+      - "DRAFT_INITIAL and DRAFT_SHOP purchase/refresh/ready UI run through real WebSocket message types."
+      - "Scope is friend-game draft/shop/hand bridge only; no full primary-client game loop, full playable-client manual QA, public release readiness, broad accessibility completion, or playtest validation is claimed."
 
   - id: "PLAYABLE-003"
     name: "Real End-to-End Loop Verification"
     file: "production/epics/playable-client/story-003-real-end-to-end-loop-verification.md"
     priority: must-have
-    status: blocked
+    status: ready
     owner: "QA tester + orchestrator + client/server programmer"
     estimate_days: 2.00
-    blocker: "Blocked by PLAYABLE-002."
+    blocker: ""
     completed: ""
     notes:
+      - "Unblocked by PLAYABLE-002 story-done; ready for execution."
       - "Two real clients must use a real local server and real primary client path."
       - "Evidence must cover create/join/class confirm, draft/shop, auction where available, placement, resolution, next loop, and game-over or documented nearest reachable friend-game endpoint."
       - "No harness-injected state can satisfy completion."

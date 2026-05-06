@@ -1,7 +1,7 @@
 # Story 003: Real End-to-End Loop Verification
 
 > **Epic**: Playable Client
-> **Status**: Blocked - pending PLAYABLE-002 story-done
+> **Status**: Ready
 > **Layer**: Polish / Client Integration
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -11,7 +11,7 @@
 
 PLAYABLE-003 verifies the Sprint 7 friend-game path with a real local server and two real primary clients. This is evidence and focused integration hardening for internal friend-game quality. It does not claim public release readiness, broad accessibility completion, playtest validation, fun-hypothesis validation, or full playable-client manual QA.
 
-Current dependency state: PLAYABLE-001 is Complete. PLAYABLE-002 is pending and must be Complete via `/story-done` before PLAYABLE-003 verification starts. Until then, this story is readiness-reviewed but not safe to run.
+Current dependency state: PLAYABLE-001 and PLAYABLE-002 are Complete. PLAYABLE-003 may now verify the real end-to-end friend-game loop from the integrated primary client path.
 
 **Primary sources**:
 
@@ -149,7 +149,7 @@ Any repair must remain scoped to friend-game playability and must not edit Sprin
 ## Implementation Notes
 
 - Treat this as verification plus focused blocker repair, not a broad QA sweep.
-- Do not start verification until PLAYABLE-002 is Complete via `/story-done`.
+- PLAYABLE-002 must remain Complete via `/story-done` before verification starts; this dependency is currently satisfied.
 - Use real commands and real targets. Automated helpers may launch processes or collect logs, but cannot seed authoritative game state directly.
 - Evidence should include the first failing point if the full loop is not reachable. A documented nearest reachable endpoint is acceptable only when paired with blocker detail.
 - Do not turn this story into a public QA plan, accessibility campaign, or playtest report.
@@ -234,10 +234,10 @@ These required test and evidence paths match the Sprint 7 QA plan at `production
 ## Dependencies
 
 - Depends on: [PLAYABLE-001 Primary Client Bootstrap + Fresh Lobby Entry](story-001-primary-client-bootstrap-fresh-lobby-entry.md) - Complete; required before this verification can start.
-- Depends on: [PLAYABLE-002 Live Draft/Shop/Hand Bridge](story-002-live-draft-shop-hand-bridge.md) - Pending; must be Complete via `/story-done` before final verification starts.
+- Depends on: [PLAYABLE-002 Live Draft/Shop/Hand Bridge](story-002-live-draft-shop-hand-bridge.md) - Complete; required before final verification starts.
 - Depends on: a local server and two primary clients that can run from the same commit.
 - Unlocks: Sprint 7 friend-game evidence index cleanup and any focused follow-up repair stories found by verification.
 
 ## Blockers
 
-Blocked by PLAYABLE-002 until `/story-done` marks that story Complete.
+None.
