@@ -2170,3 +2170,12 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA-COND-0006: remains accepted-risk/deferred; this is not playtest evidence or fun-hypothesis validation.
 - Planning impact: `production/sprint-status.yaml`, `production/qa/bug-register-taxonomy.md`, and `production/sprints/sprint-6.md` no longer carry QA-COND-0001 or QA-COND-0007 as open active conditions, and QA-COND-0007 should not be pulled into Sprint 7 planning.
 - Scope guard: full playable-client manual QA is not claimed.
+
+## Session Extract - Prompt 268 /sprint-plan Sprint 7 2026-05-06
+- Stage: `production/stage.txt` is `Polish`.
+- Sprint 7 plan created at `production/sprints/sprint-7.md`; `production/sprint-status.yaml` now points to Sprint 7.
+- Sprint 7 goal: make the Polish build playable for an internal friend-game session through the real primary client path, without claiming public release readiness, broad accessibility completion, or full playtest validation.
+- Must Have: PLAYABLE-001 Primary Client Bootstrap + Fresh Lobby Entry; PLAYABLE-002 Live Draft/Shop/Hand Bridge; PLAYABLE-003 Real End-to-End Loop Verification.
+- PLAYABLE story files were not created by `/sprint-plan`; they are listed in Sprint 7 and must be created/readiness reviewed in a separate docs-only prompt before `/dev-story`.
+- Scope guard: QA-COND-0005 remains friend-game-only accepted risk, QA-COND-0006 remains accepted-risk/deferred, and full playable-client manual QA is not claimed.
+- First recommended prompt: create the Sprint 7 PLAYABLE story docs/readiness package, then run `/qa-plan sprint-7` before implementation.
