@@ -20,7 +20,7 @@ use server_crate::foundation::config::GameConfig;
 use server_crate::foundation::rng::ServerRng;
 use server_crate::network::register_lightyear_protocol;
 use shared::card::ClassId;
-use shared::protocol::{DraftPhase, GameMode};
+use shared::protocol::{DraftPhase, GameMode, PlacementTimerMultiplier};
 use shared::session::PlayerId;
 
 const TICK_HZ: f64 = 60.0;
@@ -290,6 +290,7 @@ fn session_config() -> SessionConfig {
     SessionConfig {
         mode: GameMode::OneVOne,
         player_count: 2,
+        placement_timer_multiplier_effective: PlacementTimerMultiplier::X1,
         team_map: HashMap::from([(PLAYER_A, 0 as TeamId), (PLAYER_B, 1 as TeamId)]),
         class_map: HashMap::from([(PLAYER_A, ClassId::Iop), (PLAYER_B, ClassId::Cra)]),
     }
