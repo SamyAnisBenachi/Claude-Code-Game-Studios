@@ -1,0 +1,8 @@
+﻿Sanitized stderr summary.
+Attempt: 3
+Role: client-a
+Command: SERVER_URL=ws://localhost:<PORT> cargo run -p client --bin client
+Result: native client launched, created a Lanes and Lies window, then logged lightyear_messages::receive MissingComponent(ComponentId(320)).
+Root cause identified later: server Lightyear replication/protocol-check metadata shifted message net IDs because the native client dependency did not enable the protocol-affecting replication feature.
+Repair status: repaired by aligning the client Lightyear dependency with the server replication feature.
+Redactions: local filesystem paths, user name, hardware details, process id, raw timestamp, and machine-specific metadata removed.

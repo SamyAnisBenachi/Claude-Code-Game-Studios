@@ -1,3 +1,4 @@
+use bevy::ecs::schedule::common_conditions::resource_exists;
 use bevy::prelude::*;
 
 use crate::core::economy::system::S2CGoldBroadcast;
@@ -47,7 +48,9 @@ impl Plugin for AuctionPlugin {
                     .in_set(SessionSystemSet::LiveMessages)
                     .after(initialize_auction_pool_on_draft_started)
                     .after(clear_auction_pool_on_game_over)
-                    .after(reconnect_snapshot_system),
+                    .after(reconnect_snapshot_system)
+                    .run_if(resource_exists::<crate::foundation::config::CardCatalog>)
+                    .run_if(resource_exists::<crate::foundation::config::GameConfig>),
             );
     }
 }

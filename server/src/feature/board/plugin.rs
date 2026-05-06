@@ -1,6 +1,8 @@
+use bevy::ecs::schedule::common_conditions::resource_exists;
 use bevy::prelude::*;
 
 use crate::core::rsm::advance_phase;
+use crate::core::session::SessionConfig;
 use crate::feature::board::{
     apply_attract_displacements, apply_change_lane_displacements, apply_repel_displacements,
     close_placement_phase, handle_placement_submission, placement_buffer_open, update_spawn_range,
@@ -78,7 +80,8 @@ impl Plugin for BoardPlugin {
                     apply_attract_displacements,
                     apply_change_lane_displacements,
                 )
-                    .in_set(BoardSystemSet::Displacement),
+                    .in_set(BoardSystemSet::Displacement)
+                    .run_if(resource_exists::<SessionConfig>),
             );
     }
 }

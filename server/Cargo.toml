@@ -250,6 +250,10 @@ name = "playable_client_draft_ready_bridge_test"
 path = "../tests/integration/playable_client/draft_ready_bridge_test.rs"
 
 [[test]]
+name = "playable_client_real_e2e_loop_test"
+path = "../tests/integration/playable_client/real_e2e_loop_test.rs"
+
+[[test]]
 name = "rsm_win_condition_test"
 path = "../tests/unit/rsm/rsm_win_condition_test.rs"
 

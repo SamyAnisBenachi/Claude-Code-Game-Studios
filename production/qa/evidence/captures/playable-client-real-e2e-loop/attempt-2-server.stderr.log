@@ -1,0 +1,8 @@
+﻿Sanitized stderr summary.
+Attempt: 2
+Role: server
+Command: SERVER_PORT=<PORT> cargo run -p server
+Result: process exited with code 101 before lobby readiness.
+Key failure: server::feature::board::movement::apply_attract_displacements required SessionConfig before it existed.
+Repair status: repaired in this branch by gating displacement systems on SessionConfig.
+Redactions: local filesystem paths, user name, process id, raw timestamp, and machine-specific metadata removed.

@@ -1,0 +1,8 @@
+﻿Sanitized stderr summary.
+Attempt: 1
+Role: server
+Command: SERVER_PORT=<PORT> cargo run -p server
+Result: process exited with code 101 before launch completion.
+Key failure: server::feature::auction::system::auction_tick_system required CardCatalog before it existed.
+Repair status: repaired in this branch by gating auction_tick_system on CardCatalog and GameConfig resources.
+Redactions: local filesystem paths, user name, process id, raw timestamp, and machine-specific metadata removed.

@@ -1,0 +1,6 @@
+﻿Sanitized stderr summary.
+Attempt: 3
+Role: server
+Command: SERVER_PORT=<PORT> cargo run -p server
+Result: server launched and stayed alive through the capture window after startup repairs.
+Redactions: local filesystem paths, user name, process id, raw timestamp, and machine-specific metadata removed.

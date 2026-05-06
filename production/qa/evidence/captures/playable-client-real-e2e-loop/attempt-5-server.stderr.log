@@ -1,0 +1,7 @@
+﻿Sanitized stderr summary.
+Attempt: 5
+Role: server
+Command: SERVER_PORT=<PORT> cargo run -p server
+Result: server launched and stayed alive through the post-repair two-client capture window.
+MissingComponent status: not observed in server stderr.
+Redactions: local filesystem paths, user name, process id, raw timestamp, and machine-specific metadata removed.

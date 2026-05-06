@@ -1,0 +1,7 @@
+﻿Sanitized stderr summary.
+Attempt: 1
+Role: client-b
+Command: SERVER_URL=ws://localhost:<PORT> cargo run -p client
+Result: cargo could not select a binary because --bin client was omitted.
+Repair status: subsequent attempts use cargo run -p client --bin client.
+Redactions: local filesystem paths, user name, process id, raw timestamp, and machine-specific metadata removed.

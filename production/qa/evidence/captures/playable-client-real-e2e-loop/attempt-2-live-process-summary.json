@@ -1,0 +1,26 @@
+﻿[
+    {
+        "role":  "server",
+        "pid":  "\u003credacted\u003e",
+        "has_exited":  true,
+        "exit_code":  101,
+        "port":  "\u003cPORT\u003e",
+        "command":  "SERVER_PORT=\u003cPORT\u003e cargo run -p server"
+    },
+    {
+        "role":  "client-a",
+        "pid":  "\u003credacted\u003e",
+        "has_exited":  true,
+        "exit_code":  101,
+        "server_url":  "ws://localhost:\u003cPORT\u003e",
+        "command":  "SERVER_URL=ws://localhost:\u003cPORT\u003e cargo run -p client --bin client"
+    },
+    {
+        "role":  "client-b",
+        "pid":  "\u003credacted\u003e",
+        "has_exited":  true,
+        "exit_code":  101,
+        "server_url":  "ws://localhost:\u003cPORT\u003e",
+        "command":  "SERVER_URL=ws://localhost:\u003cPORT\u003e cargo run -p client --bin client"
+    }
+]

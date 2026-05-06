@@ -1,0 +1,8 @@
+﻿Sanitized stderr summary.
+Attempt: 5
+Role: client-a
+Command: SERVER_URL=ws://localhost:<PORT> cargo run -p client --bin client
+Result: native client launched, initialized rendering, and created a Lanes and Lies window during the post-repair capture window.
+MissingComponent status: not observed in client-a stderr.
+Remaining evidence limit: production client logs do not emit handshake/room/session-state transitions, so live manual flow remains verified only to native launch/no MissingComponent; automated smoke verifies fresh hello separately.
+Redactions: local filesystem paths, user name, hardware details, process id, raw timestamp, and machine-specific metadata removed.
