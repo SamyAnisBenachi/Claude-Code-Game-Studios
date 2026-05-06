@@ -14,7 +14,8 @@
 | A11Y Settings 001 evidence | `production/qa/evidence/accessibility-settings-foundation-2026-05-05.md` |
 | HAND-UI-014 evidence | `production/qa/evidence/hand-ui-placement-staged-disclosure-accessibility-2026-05-05.md` |
 | SAU-012 evidence | `production/qa/evidence/shop-auction-ui-draft-initial-clear-objective-overlay-2026-05-05.md` |
-| Disposition verdict | QA-COND-0005 remains Open. Every source row has exactly one allowed final disposition. A11Y-ST-09, A11Y-ST-12, A11Y-ST-13, A11Y-ST-14, and A11Y-ST-18 are implemented and evidenced. HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are implemented and evidenced by HUD-012, but the parent rows still require remaining non-HUD / auction-price evidence before closure. A11Y-DEP-01 and A11Y-DEP-02 now have foundation implementation evidence, but dependent source rows still require their own closure evidence. |
+| A11Y-BS-03 evidence | `production/qa/evidence/accessibility-photosensitivity-warning-flash-audit-2026-05-05.md` |
+| Disposition verdict | QA-COND-0005 remains Open. Every source row has exactly one allowed final disposition. A11Y-ST-09, A11Y-ST-12, A11Y-ST-13, A11Y-ST-14, A11Y-ST-18, and A11Y-BS-03 are implemented and evidenced. HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are implemented and evidenced by HUD-012, but the parent rows still require remaining non-HUD / auction-price evidence before closure. A11Y-DEP-01 and A11Y-DEP-02 now have foundation implementation evidence, but dependent source rows still require their own closure evidence. |
 
 ## Scope
 
@@ -154,6 +155,28 @@ retrieved overlay, non-occlusion of the grid, timer, Ready control, HUD gold,
 and hand surfaces, plus no overlay-originated C2S sends. It also records that
 QA-COND-0005 remains Open.
 
+## A11Y-BS-03 Evidence Linkage
+
+A11Y-BS-03 implemented and verified the photosensitivity warning plus
+flash-frequency audit evidence:
+
+- evidence:
+  `production/qa/evidence/accessibility-photosensitivity-warning-flash-audit-2026-05-05.md`
+- story:
+  `production/epics/accessibility-settings/story-003-photosensitivity-warning-and-flash-audit.md`
+- automated verification:
+  `cargo test -p client --test accessibility_settings_photosensitivity_warning_test --jobs 1`
+  and `cargo test -p client --test presentation_plugin_scaffold_test --jobs 1`
+
+The evidence records the warning copy in
+`client/src/ui/photosensitivity_warning.rs`, shows the boot warning appears
+before gameplay exposure, and covers message plus interaction acknowledgement.
+The audit documents objective destruction full-screen Prism White as exceeding
+or unable to prove the local max 3 flashes/sec rule. That residual risk remains
+visible as a follow-up for Board Rendering / Card Animations and producer
+disposition if warning-only treatment is insufficient before release.
+QA-COND-0005 remains Open.
+
 ## Source Row Disposition Register
 
 | Row ID | Source row | Tier | Current evidence | Final disposition | Required audit or test | Producer signoff required | Signoff evidence | QA-COND-0005 impact | Follow-up path |
@@ -179,7 +202,7 @@ QA-COND-0005 remains Open.
 | A11Y-ST-19 | Visual indicators for audio cues | Standard | Source docs identify timer, auction, RESOLUTION, and objective audio cues. Hand UI has visible timer number and `TimerUrgencyAudio`, but no complete gameplay-critical audio-cue audit is attached. | evidence-only required | Audit all gameplay-critical audio cues and map each cue to visible backup, non-shipping audio status, or implementation dependency. Any shipped audio-only critical cue must be remediated or producer-signed as risk. | No | N/A | Blocks closure. | A11Y-DEP-04, `production/epics/accessibility-settings/EPIC.md` story 003. |
 | A11Y-BS-01 | Color-as-only-indicator audit | Basic baseline under Standard target | Art bible and design docs cover some shape/text backups; objective dots and damage/heal backup remain unverified. | evidence-only required | Color-as-only audit for player side, class identity, objective status, auction escalation, ATK/HP, damage/heal, and other gameplay-critical state. | No | N/A | Blocks closure. | `production/epics/accessibility-settings/EPIC.md` story 002. |
 | A11Y-BS-02 | Brightness / gamma controls | Basic baseline under Standard target | Settings UX specifies brightness/gamma sliders, but render calibration approach and contrast-preserving implementation are not defined or evidenced. | later sprint / blocked dependency | Define render calibration approach, implement controls, and re-verify UI contrast under adjustment range. | No | N/A | Blocks closure. | A11Y-DEP-05 and a future accessibility-settings video calibration story. |
-| A11Y-BS-03 | Screen flash warning | Basic baseline under Standard target | UX/GDD specs contain flashes, flicker, bursts, and result-screen photosensitivity notes; no formal Harding FPA-style audit or photosensitivity warning evidence is attached. | must implement in Sprint 6 | Audit RESOLUTION, GAME_OVER, combat hit, objective destruction, phase transition, and animation specs for flash frequency and full-screen flash exposure; add pre-launch photosensitivity warning evidence. | No | N/A | Blocks closure. | `production/epics/accessibility-settings/EPIC.md` story 003 or dedicated Sprint 6 flash-warning story. |
+| A11Y-BS-03 | Screen flash warning | Basic baseline under Standard target | Photosensitivity warning and flash-frequency audit evidence is attached at `production/qa/evidence/accessibility-photosensitivity-warning-flash-audit-2026-05-05.md`. The warning is implemented in `client/src/ui/photosensitivity_warning.rs` and verified by focused client tests. The audit records objective destruction full-screen Prism White as exceeding or unable to prove the local max 3 flashes/sec rule. | implemented + evidence attached | Retain A11Y-BS-03 evidence and regression commands; do not claim strict objective-destruction flash compliance unless the residual Prism White effect is remediated or formally dispositioned later. | No | N/A | Closes the A11Y-BS-03 warning/audit sub-gap. QA-COND-0005 as a whole remains Open. | Board Rendering / Card Animations follow-up for objective-destruction Prism White if warning-only disposition is insufficient before release. |
 | A11Y-BS-04 | Pause anywhere | Basic baseline under Standard target | A11Y Settings 001 implements safe Settings entry and queues unsafe-phase full-panel requests for the next safe boundary. No broader server-safe pause, unsafe-phase request indicator, or solo-play pause behavior evidence is attached. | later sprint / blocked dependency | Implement or formally disposition safe-phase pause, unsafe-phase pause-request indicator, and solo-play pause behavior. | No | N/A | Blocks closure. | Settings / pause implementation story. |
 | A11Y-BS-05 | Independent volume controls | Basic baseline under Standard target | Settings UX specifies Music, SFX, and UI bus sliders. Hand UI references a `ui_hand` channel, but no full audio bus pipeline or persistence evidence is attached. | later sprint / blocked dependency | Define audio controls pipeline, implement Music/SFX/UI buses with persistence, and verify muting does not remove visual backups. | No | N/A | Blocks closure. | A11Y-DEP-04 and future accessibility-settings audio-controls story. |
 | A11Y-NA-01 | No dialogue / voiced content | N/A in source draft | `design/accessibility-requirements.md` states no voiced dialogue exists and subtitle requirements are minimal. Spot audit found no shipped voiced dialogue or spoken instruction evidence, but no producer not-applicable signoff is attached. | evidence-only required | Attach a formal narrative, UX, audio, and gameplay audit for voiced dialogue or spoken instructions. If none ships, producer must sign the not-applicable decision before the row stops blocking closure. | No | N/A | Blocks closure. | Producer not-applicable decision or future subtitle/accessibility story if voice is added. |
@@ -205,12 +228,12 @@ decision:
 - A11Y-ST-04, A11Y-ST-05, A11Y-ST-06, A11Y-ST-07, A11Y-ST-08.
 - A11Y-ST-10, A11Y-ST-11, A11Y-ST-15.
 - A11Y-ST-16, A11Y-ST-17, A11Y-ST-19.
-- A11Y-BS-01, A11Y-BS-02, A11Y-BS-03, A11Y-BS-04, A11Y-BS-05.
+- A11Y-BS-01, A11Y-BS-02, A11Y-BS-04, A11Y-BS-05.
 - A11Y-NA-01.
 
 Rows currently marked `must implement in Sprint 6`:
 
-- A11Y-BS-03 - Screen flash warning.
+- None.
 
 Rows currently marked `later sprint / blocked dependency`:
 
@@ -220,7 +243,7 @@ Rows currently marked `later sprint / blocked dependency`:
 
 ## Rows No Longer Blocking QA-COND-0005 Closure
 
-Five source rows no longer block as individual sub-gaps:
+Six source rows no longer block as individual sub-gaps:
 
 - A11Y-ST-09 - PLACEMENT timer extension. It is implemented and evidenced by
   GSS-008.
@@ -232,6 +255,10 @@ Five source rows no longer block as individual sub-gaps:
   HAND-UI-014.
 - A11Y-ST-18 - DRAFT_INITIAL: clear objective. It is implemented and evidenced
   by SAU-012.
+- A11Y-BS-03 - Screen flash warning. It is implemented and evidenced by the
+  photosensitivity warning plus flash-frequency audit. Objective destruction
+  Prism White remains a documented residual follow-up if warning-only
+  disposition is insufficient before release.
 
 Two dependency rows are no longer empty prerequisites:
 
@@ -262,7 +289,6 @@ Exact decisions currently available but not signed:
 | A11Y-ST-15 | Either implement tutorial persistence and Help replay/reset, or producer reclassifies tutorial persistence out of the gate with a prompt-registry follow-up path. |
 | A11Y-ST-19 | If the audio-cue audit finds any shipped audio-only critical cue, producer must require visual backup implementation or accept the exposure as risk. |
 | A11Y-BS-02 | Either implement brightness/gamma controls with contrast re-verification, or producer reclassifies render calibration out of the gate with a follow-up path. |
-| A11Y-BS-03 | Either add photosensitivity warning and flash audit evidence, or producer accepts the residual flash-warning risk after audit. |
 | A11Y-BS-04 | Either implement safe-phase pause and unsafe-phase pause request behavior, or producer reclassifies pause-anywhere behavior out of the gate with multiplayer constraints recorded. |
 | A11Y-BS-05 | Either implement independent Music/SFX/UI volume controls or producer accepts risk/reclassifies the audio-controls dependency if no full audio pipeline ships in this gate. |
 | A11Y-NA-01 | Producer must sign the not-applicable decision if the formal audit confirms no voiced dialogue or spoken instructions ship. |
@@ -279,6 +305,9 @@ Current closure result:
 - QA-COND-0005 remains Open.
 - A11Y-ST-09, A11Y-ST-12, A11Y-ST-13, A11Y-ST-14, and A11Y-ST-18
   are closed sub-gaps.
+- A11Y-BS-03 is a closed warning/audit sub-gap, with objective-destruction
+  Prism White retained as a residual follow-up if strict local-rule compliance
+  is required before release.
 - HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are evidenced by HUD-012, but
   the parent rows still block closure until remaining non-HUD / auction-price
   exposure is evidenced or dispositioned.

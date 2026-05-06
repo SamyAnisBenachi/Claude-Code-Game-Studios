@@ -1,7 +1,7 @@
 # Story 003: Photosensitivity Warning and Flash Audit
 
 > **Epic**: Accessibility Settings
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Config/Data
 > **Manifest Version**: 2026-05-05
@@ -88,20 +88,20 @@
 
 ## Acceptance Criteria
 
-- [ ] The evidence file exists at exactly `production/qa/evidence/accessibility-photosensitivity-warning-flash-audit-2026-05-05.md`.
-- [ ] The evidence file contains an audit table covering RESOLUTION playback, GAME_OVER transition and result-entry effects, combat hit and impact flash effects, objective damage and objective destruction effects, phase transition effects, and animation specs.
-- [ ] Every audit row includes source document, owner system, triggering phase or event, flash count per second or declared not-flashing, full-screen or partial-screen exposure, red-flash exposure, reduced-motion interaction if already specified, and final disposition.
-- [ ] The audit explicitly covers `design/gdd/card-animations.md`, `design/gdd/board-rendering.md`, `design/gdd/combat-resolution.md`, `design/gdd/objective-system.md`, `design/gdd/hud.md`, `design/gdd/shop-auction-ui.md`, `design/ux/interaction-patterns.md`, and `design/ux/settings-accessibility.md`.
-- [ ] Effects that exceed or cannot prove compliance with the local max 3 flashes per second rule are assigned one of these dispositions: scoped remediation required, warning implemented now, producer reclassification after audit, or accepted risk with producer signoff.
-- [ ] Effects declared not-flashing identify the reason, such as color cross-fade, static state change, non-repeating single-frame impact, or no full-screen exposure.
-- [ ] The evidence file records whether the photosensitivity warning is implemented now or whether the producer reclassifies A11Y-BS-03 out of Sprint 6 must-implement after reviewing the attached audit.
-- [ ] If the warning is implemented now, the implemented warning copy is stored in one test-observable source and appears before gameplay exposure in a title, boot, Settings, or equivalent pre-match surface.
-- [ ] If the warning is implemented now, browser/WASM evidence shows the warning before entering a match and records its dismissal or acknowledgment behavior.
-- [ ] If the warning is not implemented now, the evidence file contains a dated producer reclassification block that includes row ID A11Y-BS-03, decision text, release-gate rationale, follow-up owner, and follow-up timing.
-- [ ] A11Y-BS-03 is not marked complete, accepted-risk, or reclassified unless the audit evidence file above exists and contains the completed audit table.
-- [ ] QA-COND-0005 remains Open and the evidence file states that this story does not close QA-COND-0005 by itself.
-- [ ] No full reduced-motion implementation is included unless the evidence file identifies a specific release-gate blocker and records explicit producer instruction for that scoped remediation.
-- [ ] `git diff --check` passes.
+- [x] The evidence file exists at exactly `production/qa/evidence/accessibility-photosensitivity-warning-flash-audit-2026-05-05.md`.
+- [x] The evidence file contains an audit table covering RESOLUTION playback, GAME_OVER transition and result-entry effects, combat hit and impact flash effects, objective damage and objective destruction effects, phase transition effects, and animation specs.
+- [x] Every audit row includes source document, owner system, triggering phase or event, flash count per second or declared not-flashing, full-screen or partial-screen exposure, red-flash exposure, reduced-motion interaction if already specified, and final disposition.
+- [x] The audit explicitly covers `design/gdd/card-animations.md`, `design/gdd/board-rendering.md`, `design/gdd/combat-resolution.md`, `design/gdd/objective-system.md`, `design/gdd/hud.md`, `design/gdd/shop-auction-ui.md`, `design/ux/interaction-patterns.md`, and `design/ux/settings-accessibility.md`.
+- [x] Effects that exceed or cannot prove compliance with the local max 3 flashes per second rule are assigned one of these dispositions: scoped remediation required, warning implemented now, producer reclassification after audit, or accepted risk with producer signoff.
+- [x] Effects declared not-flashing identify the reason, such as color cross-fade, static state change, non-repeating single-frame impact, or no full-screen exposure.
+- [x] The evidence file records whether the photosensitivity warning is implemented now or whether the producer reclassifies A11Y-BS-03 out of Sprint 6 must-implement after reviewing the attached audit.
+- [x] If the warning is implemented now, the implemented warning copy is stored in one test-observable source and appears before gameplay exposure in a title, boot, Settings, or equivalent pre-match surface.
+- [x] If the warning is implemented now, browser/WASM evidence shows the warning before entering a match and records its dismissal or acknowledgment behavior.
+- [x] If the warning is not implemented now, the evidence file contains a dated producer reclassification block that includes row ID A11Y-BS-03, decision text, release-gate rationale, follow-up owner, and follow-up timing.
+- [x] A11Y-BS-03 is not marked complete, accepted-risk, or reclassified unless the audit evidence file above exists and contains the completed audit table.
+- [x] QA-COND-0005 remains Open and the evidence file states that this story does not close QA-COND-0005 by itself.
+- [x] No full reduced-motion implementation is included unless the evidence file identifies a specific release-gate blocker and records explicit producer instruction for that scoped remediation.
+- [x] `git diff --check` passes.
 
 ---
 
@@ -183,7 +183,7 @@ No gameplay-loop performance impact expected from the audit itself. If warning U
 
 Story 003 supplies the A11Y-BS-03 photosensitivity warning and flash-frequency audit evidence required for release-gate confidence or producer reclassification. It does not close QA-COND-0005 by itself. QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented and evidenced, reclassified, or accepted as risk.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created, attached, and verified
 
 ---
 
@@ -197,3 +197,12 @@ Story 003 supplies the A11Y-BS-03 photosensitivity warning and flash-frequency a
 ## Blockers
 
 None.
+
+## Completion Notes
+
+**Completed**: 2026-05-06
+**Criteria**: 14/14 passing. The warning/audit evidence exists, the warning copy is a single test-observable source, boot-time warning behavior and acknowledgement are covered by automated client tests, and QA-COND-0005 remains Open.
+**Deviations**: None blocking. Objective destruction full-screen Prism White remains documented as a residual risk because the specified 3-frame / 240 ms overlay exceeds or cannot prove compliance with the local max 3 flashes/sec rule if counted as separate flashes. This story is closable because the evidence assigns the allowed "warning implemented now" disposition, records the follow-up owner/timing, and does not claim strict flash-rule compliance or QA-COND-0005 closure.
+**Test Evidence**: `production/qa/evidence/accessibility-photosensitivity-warning-flash-audit-2026-05-05.md`; `cargo test -p client --test accessibility_settings_photosensitivity_warning_test --jobs 1`; `cargo test -p client --test presentation_plugin_scaffold_test --jobs 1`; `cargo fmt -p client -- --check`; `cargo check -p client --jobs 1`; `git diff --check`.
+**Code Review**: Skipped - lean mode.
+**QA-COND-0005 Impact**: A11Y-BS-03 warning/audit evidence is now attached and the A11Y-BS-03 sub-gap no longer blocks as an individual missing-evidence row. QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented/evidenced, reclassified, dependency-blocked, or accepted as risk.

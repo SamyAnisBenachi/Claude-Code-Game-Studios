@@ -2120,3 +2120,16 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record SAU-012 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
 - Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+
+## Session Extract - /story-done 2026-05-06
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/accessibility-settings/story-003-photosensitivity-warning-and-flash-audit.md` - Story 003: Photosensitivity Warning and Flash Audit
+- Criteria: 14/14 passing; the evidence file exists, the audit covers the required effects and source documents, each row includes flash count/not-flashing rationale plus exposure and disposition, warning implementation is recorded, single-source warning copy is test-observable, boot-time warning and acknowledgement behavior are verified, reduced-motion scope was not expanded, QA-COND-0005 remains Open, and `git diff --check` passes.
+- Test Evidence: `production/qa/evidence/accessibility-photosensitivity-warning-flash-audit-2026-05-05.md`; `cargo test -p client --test accessibility_settings_photosensitivity_warning_test --jobs 1` passed 4/4; `cargo test -p client --test presentation_plugin_scaffold_test --jobs 1` passed 5/5; `cargo fmt -p client -- --check`, `cargo check -p client --jobs 1`, and `git diff --check` passed.
+- Verification: Current root `main` was clean and aligned with `origin/main` after `git fetch origin` before closure edits. No implementation code was changed during closure.
+- Notes: No blocking GDD, ADR-002, ADR-021, Bevy 0.18, or control-manifest deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- Residual risk: Objective destruction full-screen Prism White is documented as exceeding or unable to prove the local max 3 flashes/sec rule if counted as separate flashes. Story closure is valid as warning plus audit evidence because the evidence assigns the allowed "warning implemented now" disposition and keeps strict-compliance remediation or producer disposition visible before release if warning-only treatment is insufficient.
+- QA condition: `QA-COND-0005` remains Open. A11Y-BS-03 closes only the photosensitivity warning/audit sub-gap in the Standard-tier accessibility disposition register.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` updated to record A11Y-BS-03 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
+- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.

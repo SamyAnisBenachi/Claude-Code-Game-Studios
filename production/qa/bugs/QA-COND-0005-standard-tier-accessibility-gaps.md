@@ -111,6 +111,18 @@ Standard-tier accessibility is remediated, verified, or explicitly reclassified.
   dismissal, retrieval, reopened overlay, and non-occlusion/readability, plus
   focused Shop/Auction UI and regression targets passing. This closes only the
   A11Y-ST-18 sub-gap; QA-COND-0005 remains Open.
+- 2026-05-06: A11Y-BS-03 photosensitivity warning and flash-frequency audit
+  evidence added at
+  `production/qa/evidence/accessibility-photosensitivity-warning-flash-audit-2026-05-05.md`.
+  The warning is implemented in
+  `client/src/ui/photosensitivity_warning.rs`, verified by
+  `cargo test -p client --test accessibility_settings_photosensitivity_warning_test --jobs 1`,
+  and registered through the presentation plugin regression target. The audit
+  records objective destruction full-screen Prism White as exceeding or unable
+  to prove the local max 3 flashes/sec rule; the row is closed as warning plus
+  audit evidence, with scoped remediation or producer disposition still
+  available before release if warning-only disposition is insufficient.
+  QA-COND-0005 remains Open.
 
 ## Non-Goals
 
