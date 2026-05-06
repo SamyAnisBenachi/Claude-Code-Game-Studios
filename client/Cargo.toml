@@ -53,6 +53,10 @@ path = "src/hand_ui_placement_staged_disclosure_harness.rs"
 name = "shop_auction_bid_target_focus_harness"
 path = "src/shop_auction_bid_target_focus_harness.rs"
 
+[[bin]]
+name = "shop_auction_draft_initial_objective_overlay_harness"
+path = "src/shop_auction_draft_initial_objective_overlay_harness.rs"
+
 [[test]]
 name = "card_animations_plugin_scaffold_test"
 path = "../tests/unit/card-animations/plugin_scaffold_test.rs"

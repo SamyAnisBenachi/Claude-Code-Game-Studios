@@ -6,7 +6,7 @@
 | QA condition | `production/qa/bugs/QA-COND-0005-standard-tier-accessibility-gaps.md` |
 | Row | A11Y-ST-18 |
 | Evidence date | 2026-05-06 |
-| Verdict | PASS - implementation and automated UI evidence complete |
+| Verdict | PASS - implementation, automated UI evidence, and Browser/WASM capture evidence complete |
 | QA-COND-0005 status | Open |
 
 ## Evidence Summary
@@ -27,18 +27,50 @@ Overlay dismissal and retrieval update local presentation state only. The test
 evidence verifies no `C2SPurchaseCard` or `C2SSignalReady` is emitted by overlay
 dismissal, Esc dismissal, outside-panel dismissal, or retrieval.
 
-## Browser/WASM Capture Checklist
+## Browser/WASM Capture Evidence
 
-The supported evidence viewport should capture the following DRAFT_INITIAL states:
+Capture command:
 
-| Required capture | Evidence status |
-|---|---|
-| Overlay visible on DRAFT_INITIAL activation with exact copy | Covered by `sau_012_overlay_waits_for_phase_and_offering_before_showing_exact_copy`; overlay root and copy are visible only after phase plus offering. |
-| Dismiss button visible and focused | Covered by `sau_012_dismiss_and_retrieval_controls_are_button_interaction_targets`; focus target is `DismissButton` on overlay appearance. |
-| Esc dismissal result | Covered by `sau_012_escape_dismisses_and_enter_retrieves_with_deterministic_focus`. |
-| Retrieval affordance visible after dismissal | Covered by `sau_012_overlay_dismiss_button_hides_overlay_without_hiding_draft_controls`. |
-| Reopened overlay from retrieval affordance | Covered by `sau_012_retrieval_reopens_same_overlay_and_never_emits_c2s`. |
-| Non-occlusion of 3 x 3 grid, timer, Ready/Retract Ready, HUD gold counters, and hand tray | Overlay geometry is panel-scoped at top 2-30 px; DRAFT_INITIAL slots begin at top 30 px, Ready begins at top 58 px, and HUD/hand surfaces are outside the Shop/Auction panel. Guarded-control tests cover card slot, Ready, timer, and retrieval targets. |
+```text
+trunk serve shop-auction-draft-initial-objective-overlay-harness.html --release --port 8082 --address 127.0.0.1 --no-autoreload true --no-error-reporting true
+powershell -NoProfile -ExecutionPolicy Bypass -File production/qa/evidence/captures/shop-auction-ui-draft-initial-clear-objective-overlay/capture.ps1 -Url http://127.0.0.1:8082/shop-auction-draft-initial-objective-overlay-harness.html -ReadyTimeoutSeconds 240
+```
+
+Capture summary:
+
+- Summary JSON: `production/qa/evidence/captures/shop-auction-ui-draft-initial-clear-objective-overlay/capture-summary.json`
+- Capture tool: PowerShell Chrome DevTools Protocol
+- Browser: Chrome `147.0.7727.139`
+- Captured at: `2026-05-06T13:53:02.9763719Z`
+- Viewport: 1366x768, device scale factor 1, UI scale 1.0
+
+Artifact set:
+
+- Entry overlay visible on DRAFT_INITIAL activation with exact copy and the
+  dismiss control as the deterministic focus target:
+  `production/qa/evidence/captures/shop-auction-ui-draft-initial-clear-objective-overlay/sau-012-entry-1366x768.png`
+  and `production/qa/evidence/captures/shop-auction-ui-draft-initial-clear-objective-overlay/sau-012-entry-1366x768-report.json`
+- Esc-dismissed state with overlay hidden, retrieval affordance visible, and
+  zero overlay-originated `C2SPurchaseCard` / `C2SSignalReady` sends:
+  `production/qa/evidence/captures/shop-auction-ui-draft-initial-clear-objective-overlay/sau-012-esc-dismissed-1366x768.png`
+  and `production/qa/evidence/captures/shop-auction-ui-draft-initial-clear-objective-overlay/sau-012-esc-dismissed-1366x768-report.json`
+- Retrieved state proving the retrieval affordance reopens the same overlay
+  with the exact copy and still emits no C2S messages:
+  `production/qa/evidence/captures/shop-auction-ui-draft-initial-clear-objective-overlay/sau-012-retrieved-1366x768.png`
+  and `production/qa/evidence/captures/shop-auction-ui-draft-initial-clear-objective-overlay/sau-012-retrieved-1366x768-report.json`
+
+Summary verdict:
+
+- Screenshots nonblank: PASS.
+- Exact copy: PASS.
+- Overlay visible on entry: PASS.
+- Dismiss control focused/visible: PASS.
+- Esc dismissal without C2S sends: PASS.
+- Retrieval visible after dismissal: PASS.
+- Retrieval reopens same overlay: PASS.
+- Grid, Ready, HUD gold, and hand surfaces non-occluded by the overlay: PASS.
+- DRAFT_INITIAL phase exit behavior remains covered by
+  `sau_012_overlay_and_retrieval_hide_on_placement_phase_exit`.
 
 ## Verification Commands
 

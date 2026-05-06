@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SAU-012 Draft Initial Objective Overlay Harness</title>
+    <style>
+      html,
+      body,
+      canvas {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #05070a;
+      }
+    </style>
+    <script>
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        const scenario = params.get("scenario") || "entry";
+
+        window.__sau012DraftInitialObjectiveEvidence = {
+          ready_for_capture: false,
+          fixture: "sau_012_draft_initial_objective_overlay",
+          scenario,
+          reported: null,
+        };
+
+        window.sau012DraftInitialObjectiveEvidenceReady = (json) => {
+          const report = JSON.parse(json);
+          window.__sau012DraftInitialObjectiveEvidence = {
+            ...window.__sau012DraftInitialObjectiveEvidence,
+            ...report,
+            ready_for_capture: report.readyForCapture === true,
+            reported: report,
+          };
+          document.title = `SAU-012 ${report.scenario} READY`;
+        };
+      })();
+    </script>
+    <link
+      data-trunk
+      rel="rust"
+      href="Cargo.toml"
+      data-bin="shop_auction_draft_initial_objective_overlay_harness"
+      data-wasm-opt="0"
+    />
+  </head>
+  <body>
+    <canvas id="bevy"></canvas>
+  </body>
+</html>

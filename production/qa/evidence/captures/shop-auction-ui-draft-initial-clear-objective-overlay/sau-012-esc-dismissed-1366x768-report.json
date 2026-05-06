@@ -1,0 +1,500 @@
+{
+    "readyForCapture":  true,
+    "fixture":  "sau_012_draft_initial_objective_overlay",
+    "scenario":  "esc-dismissed",
+    "viewport":  {
+                     "width":  1366,
+                     "height":  768
+                 },
+    "uiScale":  1,
+    "draftTimerDurationMs":  45000,
+    "objectiveCopy":  "Select up to 9 cards to keep. You have 45 seconds.",
+    "expectedObjectiveCopy":  "Select up to 9 cards to keep. You have 45 seconds.",
+    "objectiveFocusTarget":  "RetrievalAffordance",
+    "overlayVisible":  false,
+    "dismissVisible":  false,
+    "retrievalVisible":  true,
+    "draftPanelVisible":  true,
+    "visibleDraftSlotCount":  9,
+    "readyVisible":  true,
+    "hudOwnGoldVisible":  true,
+    "hudOpponentGoldVisible":  true,
+    "visibleHandSurfaceCount":  3,
+    "outboundPurchaseCards":  0,
+    "outboundReadySignals":  0,
+    "surfaces":  [
+                     {
+                         "label":  "draft_panel",
+                         "visible":  true,
+                         "text":  "Shop Auction Draft Offering Root",
+                         "widthCssPx":  1366,
+                         "heightCssPx":  260,
+                         "centerCssPx":  {
+                                             "x":  683,
+                                             "y":  638
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  0,
+                                             "yMin":  508,
+                                             "xMax":  1366,
+                                             "yMax":  768
+                                         }
+                     },
+                     {
+                         "label":  "objective_overlay",
+                         "visible":  false,
+                         "text":  "Shop Auction Draft Objective Overlay",
+                         "widthCssPx":  640,
+                         "heightCssPx":  28,
+                         "centerCssPx":  {
+                                             "x":  408,
+                                             "y":  524
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  88,
+                                             "yMin":  510,
+                                             "xMax":  728,
+                                             "yMax":  538
+                                         }
+                     },
+                     {
+                         "label":  "objective_copy",
+                         "visible":  false,
+                         "text":  "Select up to 9 cards to keep. You have 45 seconds.",
+                         "widthCssPx":  500,
+                         "heightCssPx":  18,
+                         "centerCssPx":  {
+                                             "x":  349,
+                                             "y":  525
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  99,
+                                             "yMin":  516,
+                                             "xMax":  599,
+                                             "yMax":  534
+                                         }
+                     },
+                     {
+                         "label":  "objective_dismiss",
+                         "visible":  false,
+                         "text":  "Dismiss",
+                         "widthCssPx":  88,
+                         "heightCssPx":  20,
+                         "centerCssPx":  {
+                                             "x":  675,
+                                             "y":  525
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  631,
+                                             "yMin":  515,
+                                             "xMax":  719,
+                                             "yMax":  535
+                                         }
+                     },
+                     {
+                         "label":  "objective_retrieval",
+                         "visible":  true,
+                         "text":  "Objective",
+                         "widthCssPx":  116,
+                         "heightCssPx":  28,
+                         "centerCssPx":  {
+                                             "x":  1212,
+                                             "y":  534
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  1154,
+                                             "yMin":  520,
+                                             "xMax":  1270,
+                                             "yMax":  548
+                                         }
+                     },
+                     {
+                         "label":  "draft_slot_0",
+                         "visible":  true,
+                         "text":  "SAU-012 Card 3\n3g",
+                         "widthCssPx":  120,
+                         "heightCssPx":  56,
+                         "centerCssPx":  {
+                                             "x":  156,
+                                             "y":  566
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  96,
+                                             "yMin":  538,
+                                             "xMax":  216,
+                                             "yMax":  594
+                                         }
+                     },
+                     {
+                         "label":  "draft_slot_1",
+                         "visible":  true,
+                         "text":  "SAU-012 Card 2\n2g",
+                         "widthCssPx":  120,
+                         "heightCssPx":  56,
+                         "centerCssPx":  {
+                                             "x":  288,
+                                             "y":  566
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  228,
+                                             "yMin":  538,
+                                             "xMax":  348,
+                                             "yMax":  594
+                                         }
+                     },
+                     {
+                         "label":  "draft_slot_2",
+                         "visible":  true,
+                         "text":  "SAU-012 Card 1\n1g",
+                         "widthCssPx":  120,
+                         "heightCssPx":  56,
+                         "centerCssPx":  {
+                                             "x":  420,
+                                             "y":  566
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  360,
+                                             "yMin":  538,
+                                             "xMax":  480,
+                                             "yMax":  594
+                                         }
+                     },
+                     {
+                         "label":  "draft_slot_3",
+                         "visible":  true,
+                         "text":  "SAU-012 Card 5\n5g",
+                         "widthCssPx":  120,
+                         "heightCssPx":  56,
+                         "centerCssPx":  {
+                                             "x":  156,
+                                             "y":  632
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  96,
+                                             "yMin":  604,
+                                             "xMax":  216,
+                                             "yMax":  660
+                                         }
+                     },
+                     {
+                         "label":  "draft_slot_4",
+                         "visible":  true,
+                         "text":  "SAU-012 Card 4\n4g",
+                         "widthCssPx":  120,
+                         "heightCssPx":  56,
+                         "centerCssPx":  {
+                                             "x":  288,
+                                             "y":  632
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  228,
+                                             "yMin":  604,
+                                             "xMax":  348,
+                                             "yMax":  660
+                                         }
+                     },
+                     {
+                         "label":  "draft_slot_5",
+                         "visible":  true,
+                         "text":  "SAU-012 Card 6\n1g",
+                         "widthCssPx":  120,
+                         "heightCssPx":  56,
+                         "centerCssPx":  {
+                                             "x":  420,
+                                             "y":  632
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  360,
+                                             "yMin":  604,
+                                             "xMax":  480,
+                                             "yMax":  660
+                                         }
+                     },
+                     {
+                         "label":  "draft_slot_6",
+                         "visible":  true,
+                         "text":  "SAU-012 Card 9\n4g",
+                         "widthCssPx":  120,
+                         "heightCssPx":  56,
+                         "centerCssPx":  {
+                                             "x":  156,
+                                             "y":  698
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  96,
+                                             "yMin":  670,
+                                             "xMax":  216,
+                                             "yMax":  726
+                                         }
+                     },
+                     {
+                         "label":  "draft_slot_7",
+                         "visible":  true,
+                         "text":  "SAU-012 Card 8\n3g",
+                         "widthCssPx":  120,
+                         "heightCssPx":  56,
+                         "centerCssPx":  {
+                                             "x":  288,
+                                             "y":  698
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  228,
+                                             "yMin":  670,
+                                             "xMax":  348,
+                                             "yMax":  726
+                                         }
+                     },
+                     {
+                         "label":  "draft_slot_8",
+                         "visible":  true,
+                         "text":  "SAU-012 Card 7\n2g",
+                         "widthCssPx":  120,
+                         "heightCssPx":  56,
+                         "centerCssPx":  {
+                                             "x":  420,
+                                             "y":  698
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  360,
+                                             "yMin":  670,
+                                             "xMax":  480,
+                                             "yMax":  726
+                                         }
+                     },
+                     {
+                         "label":  "draft_ready",
+                         "visible":  true,
+                         "text":  "Ready",
+                         "widthCssPx":  132,
+                         "heightCssPx":  36,
+                         "centerCssPx":  {
+                                             "x":  1204,
+                                             "y":  584
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  1138,
+                                             "yMin":  566,
+                                             "xMax":  1270,
+                                             "yMax":  602
+                                         }
+                     },
+                     {
+                         "label":  "hud_own_gold",
+                         "visible":  true,
+                         "text":  "7g",
+                         "widthCssPx":  48,
+                         "heightCssPx":  48,
+                         "centerCssPx":  {
+                                             "x":  1330,
+                                             "y":  36
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  1306,
+                                             "yMin":  12,
+                                             "xMax":  1354,
+                                             "yMax":  60
+                                         }
+                     },
+                     {
+                         "label":  "hud_opponent_gold",
+                         "visible":  true,
+                         "text":  "--g",
+                         "widthCssPx":  72,
+                         "heightCssPx":  48,
+                         "centerCssPx":  {
+                                             "x":  1318,
+                                             "y":  84
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  1282,
+                                             "yMin":  60,
+                                             "xMax":  1354,
+                                             "yMax":  108
+                                         }
+                     },
+                     {
+                         "label":  "hand_fan_slot_0",
+                         "visible":  true,
+                         "text":  "Hand UI Fan Slot 0",
+                         "widthCssPx":  0,
+                         "heightCssPx":  0,
+                         "centerCssPx":  {
+                                             "x":  120,
+                                             "y":  998
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  120,
+                                             "yMin":  998,
+                                             "xMax":  120,
+                                             "yMax":  998
+                                         }
+                     },
+                     {
+                         "label":  "hand_fan_slot_1",
+                         "visible":  true,
+                         "text":  "Hand UI Fan Slot 1",
+                         "widthCssPx":  0,
+                         "heightCssPx":  0,
+                         "centerCssPx":  {
+                                             "x":  400,
+                                             "y":  1008
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  400,
+                                             "yMin":  1008,
+                                             "xMax":  400,
+                                             "yMax":  1008
+                                         }
+                     },
+                     {
+                         "label":  "hand_fan_slot_2",
+                         "visible":  true,
+                         "text":  "Hand UI Fan Slot 2",
+                         "widthCssPx":  0,
+                         "heightCssPx":  0,
+                         "centerCssPx":  {
+                                             "x":  680,
+                                             "y":  998
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  680,
+                                             "yMin":  998,
+                                             "xMax":  680,
+                                             "yMax":  998
+                                         }
+                     },
+                     {
+                         "label":  "hand_fan_slot_3",
+                         "visible":  false,
+                         "text":  "Hand UI Fan Slot 3",
+                         "widthCssPx":  0,
+                         "heightCssPx":  0,
+                         "centerCssPx":  {
+                                             "x":  0,
+                                             "y":  508
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  0,
+                                             "yMin":  508,
+                                             "xMax":  0,
+                                             "yMax":  508
+                                         }
+                     },
+                     {
+                         "label":  "hand_fan_slot_4",
+                         "visible":  false,
+                         "text":  "Hand UI Fan Slot 4",
+                         "widthCssPx":  0,
+                         "heightCssPx":  0,
+                         "centerCssPx":  {
+                                             "x":  0,
+                                             "y":  508
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  0,
+                                             "yMin":  508,
+                                             "xMax":  0,
+                                             "yMax":  508
+                                         }
+                     },
+                     {
+                         "label":  "hand_fan_slot_5",
+                         "visible":  false,
+                         "text":  "Hand UI Fan Slot 5",
+                         "widthCssPx":  0,
+                         "heightCssPx":  0,
+                         "centerCssPx":  {
+                                             "x":  0,
+                                             "y":  508
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  0,
+                                             "yMin":  508,
+                                             "xMax":  0,
+                                             "yMax":  508
+                                         }
+                     },
+                     {
+                         "label":  "hand_fan_slot_6",
+                         "visible":  false,
+                         "text":  "Hand UI Fan Slot 6",
+                         "widthCssPx":  0,
+                         "heightCssPx":  0,
+                         "centerCssPx":  {
+                                             "x":  0,
+                                             "y":  508
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  0,
+                                             "yMin":  508,
+                                             "xMax":  0,
+                                             "yMax":  508
+                                         }
+                     },
+                     {
+                         "label":  "hand_fan_slot_7",
+                         "visible":  false,
+                         "text":  "Hand UI Fan Slot 7",
+                         "widthCssPx":  0,
+                         "heightCssPx":  0,
+                         "centerCssPx":  {
+                                             "x":  0,
+                                             "y":  508
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  0,
+                                             "yMin":  508,
+                                             "xMax":  0,
+                                             "yMax":  508
+                                         }
+                     },
+                     {
+                         "label":  "hand_fan_slot_8",
+                         "visible":  false,
+                         "text":  "Hand UI Fan Slot 8",
+                         "widthCssPx":  0,
+                         "heightCssPx":  0,
+                         "centerCssPx":  {
+                                             "x":  0,
+                                             "y":  508
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  0,
+                                             "yMin":  508,
+                                             "xMax":  0,
+                                             "yMax":  508
+                                         }
+                     },
+                     {
+                         "label":  "hand_fan_slot_9",
+                         "visible":  false,
+                         "text":  "Hand UI Fan Slot 9",
+                         "widthCssPx":  0,
+                         "heightCssPx":  0,
+                         "centerCssPx":  {
+                                             "x":  0,
+                                             "y":  508
+                                         },
+                         "boundsCssPx":  {
+                                             "xMin":  0,
+                                             "yMin":  508,
+                                             "xMax":  0,
+                                             "yMax":  508
+                                         }
+                     }
+                 ],
+    "verdict":  {
+                    "exactCopy":  true,
+                    "overlayVisibleOnEntry":  false,
+                    "dismissControlFocusedVisible":  false,
+                    "escDismissedWithoutC2s":  true,
+                    "retrievalVisibleAfterDismissal":  true,
+                    "retrievalReopenedSameOverlay":  true,
+                    "timerCopyVisible":  true,
+                    "gridNonOccluded":  false,
+                    "readyNonOccluded":  false,
+                    "hudNonOccluded":  false,
+                    "handSurfacesNonOccluded":  false,
+                    "phaseExitCoveredByAutomatedTest":  true
+                }
+}
