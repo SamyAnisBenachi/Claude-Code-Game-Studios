@@ -20,36 +20,39 @@ notes:
   - "QA-COND-0005 is accepted risk for friend-game scope only and is not verified Standard-tier accessibility completion."
   - "QA-COND-0006 is accepted-risk/deferred and is not playtest evidence or fun-hypothesis validation."
   - "Full playable-client manual QA is not claimed."
-  - "The sprint-plan workflow does not create placeholder PLAYABLE story docs; PLAYABLE rows are blocked until those docs are created/readiness reviewed."
-  - "No Sprint 7 QA plan exists yet; run /qa-plan sprint-7 after PLAYABLE story docs exist and before implementation begins."
+  - "PLAYABLE story docs exist; PLAYABLE-001 is complete, PLAYABLE-002 remains not started and unblocked for /dev-story, and PLAYABLE-003 remains blocked by PLAYABLE-002."
+  - "Sprint 7 QA plan exists at production/qa/qa-plan-sprint-7-2026-05-06.md; no smoke-check, team-qa, gate-check, public release readiness, playtest validation, or full playable-client manual QA is claimed here."
 
 stories:
   - id: "PLAYABLE-001"
     name: "Primary Client Bootstrap + Fresh Lobby Entry"
     file: "production/epics/playable-client/story-001-primary-client-bootstrap-fresh-lobby-entry.md"
     priority: must-have
-    status: blocked
+    status: done
     owner: "client/network gameplay programmer"
     estimate_days: 2.00
-    blocker: "Story file/readiness package not created by /sprint-plan; run the first recommended prompt before /dev-story."
-    completed: ""
+    blocker: ""
+    completed: "2026-05-06"
     notes:
+      - "Story-done complete at integrated commit 85878d254a569ef19f54cee0e66ada2575b13e50."
       - "Real client plugins/window as needed for primary client use."
       - "Fresh C2SHello maps a player through the real server path."
       - "Create/join/class confirm flow uses real C2S/S2C messages."
       - "Minimal lobby/session entry UI is enough for friend-game use."
       - "Transition to ClientState::InSession must be server-confirmed, not harness-injected."
+      - "Scope is lobby/bootstrap only; no full primary-client game loop, public release readiness, playtest validation, broad accessibility completion, or full playable-client manual QA is claimed."
 
   - id: "PLAYABLE-002"
     name: "Live Draft/Shop/Hand Bridge"
     file: "production/epics/playable-client/story-002-live-draft-shop-hand-bridge.md"
     priority: must-have
-    status: blocked
+    status: ready
     owner: "client/network gameplay programmer + UI programmer"
     estimate_days: 2.00
-    blocker: "Blocked by missing story file/readiness package and PLAYABLE-001."
+    blocker: ""
     completed: ""
     notes:
+      - "Not started; unblocked for /dev-story by PLAYABLE-001 story-done."
       - "Wire C2SSignalReady to the server-side DraftReadySignal path."
       - "Regular purchase confirmation must reach client hand and economy views."
       - "DRAFT_INITIAL and DRAFT_SHOP purchase/ready UI must run through real WebSocket messages."
@@ -62,7 +65,7 @@ stories:
     status: blocked
     owner: "QA tester + orchestrator + client/server programmer"
     estimate_days: 2.00
-    blocker: "Blocked by missing story file/readiness package, PLAYABLE-001, and PLAYABLE-002."
+    blocker: "Blocked by PLAYABLE-002."
     completed: ""
     notes:
       - "Two real clients must use a real local server and real primary client path."

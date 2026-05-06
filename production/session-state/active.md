@@ -2179,3 +2179,16 @@ C:\Program Files\GitHub CLI\gh.exe
 - PLAYABLE story files were not created by `/sprint-plan`; they are listed in Sprint 7 and must be created/readiness reviewed in a separate docs-only prompt before `/dev-story`.
 - Scope guard: QA-COND-0005 remains friend-game-only accepted risk, QA-COND-0006 remains accepted-risk/deferred, and full playable-client manual QA is not claimed.
 - First recommended prompt: create the Sprint 7 PLAYABLE story docs/readiness package, then run `/qa-plan sprint-7` before implementation.
+
+## Session Extract - /story-done 2026-05-06
+- Verdict: COMPLETE
+- Story: `production/epics/playable-client/story-001-primary-client-bootstrap-fresh-lobby-entry.md` - Story 001: Primary Client Bootstrap + Fresh Lobby Entry
+- Criteria: 10/10 passing; primary client bootstrap, fresh hello identity mapping, create/join/class server-confirmed lobby flow, authoritative session entry gating, no optimistic authority, friend-game lobby readability, regression commands, and evidence document verified for PLAYABLE-001 scope.
+- Test Evidence: `production/qa/evidence/playable-client-lobby-entry.md`; `cargo test -p server --test playable_client_lobby_entry_server_test` passed 3/3; `cargo test -p client --test playable_client_lobby_entry_test` passed 5/5; requested server regression bundle passed 22/22; `e2e_websocket_test --no-run`, `presentation_plugin_scaffold_test`, format, client/server checks, and `git diff --check` passed.
+- Verification: Root `main` was clean and aligned with `origin/main` at commit `85878d254a569ef19f54cee0e66ada2575b13e50` after `git fetch origin` before closure edits. Integrated implementation commit `85878d254a569ef19f54cee0e66ada2575b13e50` is present on main.
+- Notes: No blocking GDD, ADR-002, ADR-003, ADR-008, ADR-011, ADR-012, ADR-021, Bevy 0.18, Lightyear, or control-manifest deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW because `production/review-mode.txt` is absent.
+- Scope guard: PLAYABLE-001 closure is lobby/bootstrap only. It does not claim PLAYABLE-002 draft/shop/hand bridge completion, PLAYABLE-003 two-real-client end-to-end evidence, public release readiness, broad accessibility completion, playtest validation, full playable-client manual QA, or a complete primary-client game loop.
+- QA conditions: `QA-COND-0005` remains accepted risk for friend-game scope only and is not verified Standard-tier accessibility completion. `QA-COND-0006` remains accepted-risk/deferred and is not playtest evidence or fun-hypothesis validation.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` marks PLAYABLE-001 done; PLAYABLE-002 remains not started and is unblocked for `/dev-story`; PLAYABLE-003 remains blocked by PLAYABLE-002.
+- Next recommended: `/dev-story production/epics/playable-client/story-002-live-draft-shop-hand-bridge.md`.

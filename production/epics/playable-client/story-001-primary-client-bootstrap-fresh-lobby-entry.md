@@ -1,7 +1,7 @@
 # Story 001: Primary Client Bootstrap + Fresh Lobby Entry
 
 > **Epic**: Playable Client
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Polish / Client Integration
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -87,16 +87,16 @@ Sprint 7 requires the real primary client path to become usable for an internal 
 
 ## Acceptance Criteria
 
-- [ ] **Primary client boots on the real path**: GIVEN the primary client is started with the normal client binary or browser/WASM entry, WHEN it reaches the first interactive screen, THEN it includes real networking and presentation plugins, does not rely on harness-injected session state, and keeps a stable friend-game lobby view visible.
-- [ ] **Fresh hello maps identity**: GIVEN a fresh client connects with no stored session token, WHEN the user reaches the lobby entry screen, THEN the client sends exactly one `C2SHello { protocol_version, session_token: None }` over `ReliableChannel` and records the resulting `S2CHandshake` session token without entering `ClientState::InSession`.
-- [ ] **Create room uses real C2S/S2C flow**: GIVEN the host clicks Create Room, WHEN `S2CRoomCreated` arrives, THEN the room code, mode, and full slots vector render from that S2C payload and no local room state is treated as authoritative before the message arrives.
-- [ ] **Join room uses real C2S/S2C flow**: GIVEN the second client enters a room code and clicks Join, WHEN `S2CJoinAck` arrives, THEN the joiner sees the full slots vector from the server and the host receives `S2CSlotUpdated`; rejection cases render from `S2CJoinRejected` without changing confirmed room state.
-- [ ] **Class confirm is server-confirmed**: GIVEN both clients choose and confirm a class, WHEN the server sends `S2CClassLocked` and then `S2CClassesRevealed`, THEN the UI shows own lock and revealed class map only from those messages.
-- [ ] **Session entry waits for authoritative phase or snapshot**: GIVEN all required slots are filled and classes are confirmed, WHEN the server transitions out of lobby, THEN `ClientState::InSession` is set only after authoritative `S2CGameSnapshot` or `S2CPhaseChanged(DRAFT_INITIAL)` state is received and the client has a local player identity.
-- [ ] **No optimistic authority is introduced**: GIVEN any create, join, class, or confirm action is clicked, WHEN the outbound C2S message is queued, THEN no server-owned phase, slot, class lock, room membership, or hand/economy state changes locally until the corresponding S2C state arrives.
-- [ ] **Friend-game lobby readability is adequate**: GIVEN two internal users run the flow at the supported test viewport, WHEN they create, join, pick classes, and wait for session entry, THEN room code, connection state, slot occupancy, own class lock, revealed class map, and actionable controls are readable without overlapping each other.
-- [ ] **Regression commands pass**: `cargo test -p client --test playable_client_lobby_entry_test`, `cargo test -p server --test playable_client_lobby_entry_server_test`, `cargo check -p client`, `cargo check -p server`, and `git diff --check` pass.
-- [ ] **Evidence document exists**: `production/qa/evidence/playable-client-lobby-entry.md` records commit, commands, target, two-client setup, screenshots or captures, observed C2S/S2C messages, pass/fail summary, and friend-game-only scope statement.
+- [x] **Primary client boots on the real path**: GIVEN the primary client is started with the normal client binary or browser/WASM entry, WHEN it reaches the first interactive screen, THEN it includes real networking and presentation plugins, does not rely on harness-injected session state, and keeps a stable friend-game lobby view visible.
+- [x] **Fresh hello maps identity**: GIVEN a fresh client connects with no stored session token, WHEN the user reaches the lobby entry screen, THEN the client sends exactly one `C2SHello { protocol_version, session_token: None }` over `ReliableChannel` and records the resulting `S2CHandshake` session token without entering `ClientState::InSession`.
+- [x] **Create room uses real C2S/S2C flow**: GIVEN the host clicks Create Room, WHEN `S2CRoomCreated` arrives, THEN the room code, mode, and full slots vector render from that S2C payload and no local room state is treated as authoritative before the message arrives.
+- [x] **Join room uses real C2S/S2C flow**: GIVEN the second client enters a room code and clicks Join, WHEN `S2CJoinAck` arrives, THEN the joiner sees the full slots vector from the server and the host receives `S2CSlotUpdated`; rejection cases render from `S2CJoinRejected` without changing confirmed room state.
+- [x] **Class confirm is server-confirmed**: GIVEN both clients choose and confirm a class, WHEN the server sends `S2CClassLocked` and then `S2CClassesRevealed`, THEN the UI shows own lock and revealed class map only from those messages.
+- [x] **Session entry waits for authoritative phase or snapshot**: GIVEN all required slots are filled and classes are confirmed, WHEN the server transitions out of lobby, THEN `ClientState::InSession` is set only after authoritative `S2CGameSnapshot` or `S2CPhaseChanged(DRAFT_INITIAL)` state is received and the client has a local player identity.
+- [x] **No optimistic authority is introduced**: GIVEN any create, join, class, or confirm action is clicked, WHEN the outbound C2S message is queued, THEN no server-owned phase, slot, class lock, room membership, or hand/economy state changes locally until the corresponding S2C state arrives.
+- [x] **Friend-game lobby readability is adequate**: GIVEN two internal users run the flow at the supported test viewport, WHEN they create, join, pick classes, and wait for session entry, THEN room code, connection state, slot occupancy, own class lock, revealed class map, and actionable controls are readable without overlapping each other.
+- [x] **Regression commands pass**: `cargo test -p client --test playable_client_lobby_entry_test`, `cargo test -p server --test playable_client_lobby_entry_server_test`, `cargo check -p client`, `cargo check -p server`, and `git diff --check` pass.
+- [x] **Evidence document exists**: `production/qa/evidence/playable-client-lobby-entry.md` records commit, commands, target, two-client setup, screenshots or captures, observed C2S/S2C messages, pass/fail summary, and friend-game-only scope statement.
 
 ---
 
@@ -196,7 +196,7 @@ No measurable gameplay-loop performance impact is expected before session entry.
 - Screenshots or captures showing host room, joiner room, class locks, class reveal, and first in-session state.
 - Explicit statement that evidence is friend-game lobby/session-entry evidence only, not public release readiness, not playtest validation, not broad accessibility completion, and not full playable-client manual QA.
 
-**Status**: [ ] Not yet implemented or captured.
+**Status**: [x] Created and passing.
 
 ---
 
@@ -209,3 +209,14 @@ No measurable gameplay-loop performance impact is expected before session entry.
 ## Blockers
 
 None.
+
+## Completion Notes
+
+**Completed**: 2026-05-06
+**Criteria**: 10/10 passing.
+**Deviations**: None blocking. Story manifest version `2026-05-05` matches the current control manifest. Lean review mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW because `production/review-mode.txt` is absent.
+**Test Evidence**: Integration tests at `tests/integration/playable_client/lobby_entry_test.rs` and `tests/integration/playable_client/lobby_entry_server_test.rs`; story evidence at `production/qa/evidence/playable-client-lobby-entry.md`.
+**Verification**: `cargo test -p server --test playable_client_lobby_entry_server_test` passed 3/3; `cargo test -p client --test playable_client_lobby_entry_test` passed 5/5; server regressions `room_create_join_test`, `class_reveal_test`, `lobby_to_draft_initial_test`, and `reconnect_snapshot_test` passed 22/22; `cargo test -p server --test e2e_websocket_test --no-run`, `cargo test -p client --test presentation_plugin_scaffold_test`, `cargo fmt -p client -p server -- --check`, `cargo check -p client`, `cargo check -p server`, and `git diff --check` passed.
+**Scope Boundary**: Complete for PLAYABLE-001 lobby/bootstrap only. This does not claim PLAYABLE-002 draft/shop/hand bridge completion, PLAYABLE-003 two-real-client end-to-end evidence, public release readiness, broad accessibility completion, playtest validation, full playable-client manual QA, or a complete primary-client game loop.
+**PLAYABLE-002 Impact**: PLAYABLE-002 remains not started and is unblocked for `/dev-story`.
+**Code Review**: Skipped per lean review mode.
