@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QA-COND-0007 Resolution Replay Harness</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background: #121514;
+        color: #f4f2e8;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #121514;
+      }
+
+      canvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.05;
+      }
+
+      #capture-root {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 16px;
+        box-sizing: border-box;
+        padding: 22px;
+        background: #121514;
+      }
+
+      header,
+      footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 27px;
+        font-weight: 760;
+      }
+
+      .meta,
+      .artifact {
+        color: #cfd3ca;
+        font-size: 14px;
+      }
+
+      .status-pill {
+        border: 1px solid #78c2a4;
+        border-radius: 4px;
+        padding: 8px 10px;
+        background: #18332a;
+        color: #d8ffef;
+        font-size: 14px;
+        font-weight: 760;
+      }
+
+      .surface {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 1fr 430px;
+        gap: 18px;
+      }
+
+      .board-wrap {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: 1fr auto;
+        gap: 12px;
+      }
+
+      .board {
+        position: relative;
+        display: grid;
+        grid-template-rows: repeat(5, 1fr);
+        gap: 8px;
+        padding: 16px;
+        border: 1px solid #3f4942;
+        background: #1a201d;
+      }
+
+      .lane {
+        display: grid;
+        grid-template-columns: 56px repeat(8, 1fr);
+        gap: 8px;
+        min-height: 0;
+      }
+
+      .lane-label,
+      .cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+
+      .lane-label {
+        color: #d6ddd8;
+        background: #252c28;
+      }
+
+      .cell {
+        position: relative;
+        border: 1px solid #35403b;
+        background: #242c29;
+        color: #87918a;
+        overflow: hidden;
+      }
+
+      .cell.spawn {
+        border-color: #e7c766;
+        background: #3a331d;
+        color: #fff2bd;
+        box-shadow: inset 0 0 0 2px #e7c766;
+      }
+
+      .unit {
+        position: absolute;
+        inset: 9px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        border: 1px solid #75bfe6;
+        background: #183443;
+        color: #e6f8ff;
+        font-weight: 760;
+      }
+
+      .unit.enemy {
+        border-color: #e88772;
+        background: #48231f;
+        color: #ffe4db;
+      }
+
+      .unit.focus {
+        box-shadow: 0 0 0 3px #ffffff, 0 0 0 6px #77c8ed;
+      }
+
+      .objective {
+        position: absolute;
+        bottom: 5px;
+        right: 6px;
+        padding: 2px 5px;
+        border-radius: 3px;
+        background: #5b3d16;
+        color: #ffd985;
+        font-size: 11px;
+        font-weight: 760;
+      }
+
+      .timeline {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+
+      .step {
+        min-height: 86px;
+        border: 1px solid #3f4942;
+        border-radius: 6px;
+        padding: 10px;
+        background: #191e1c;
+      }
+
+      .step.active {
+        border-color: #77c8ed;
+        background: #172a32;
+      }
+
+      .step.done {
+        border-color: #78c2a4;
+        background: #172922;
+      }
+
+      .step h2 {
+        font-size: 15px;
+        margin-bottom: 6px;
+      }
+
+      .step ul {
+        margin: 0;
+        padding-left: 16px;
+        color: #cfd3ca;
+        font-size: 12px;
+        line-height: 1.25;
+      }
+
+      .side {
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        gap: 10px;
+        min-height: 0;
+      }
+
+      .panel {
+        border: 1px solid #3f4942;
+        border-radius: 6px;
+        background: #191e1c;
+        padding: 12px;
+      }
+
+      .panel h2 {
+        font-size: 16px;
+        margin-bottom: 7px;
+      }
+
+      .readable {
+        color: #f4f2e8;
+        font-size: 17px;
+        font-weight: 760;
+        line-height: 1.25;
+      }
+
+      .expected {
+        margin-top: 6px;
+        color: #cfd3ca;
+        font-size: 12px;
+        line-height: 1.25;
+      }
+
+      .detail-list {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+        font-size: 12px;
+        color: #cfd3ca;
+      }
+
+      .detail-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: baseline;
+      }
+
+      .detail-row strong {
+        color: #f4f2e8;
+        text-align: right;
+      }
+
+      .events {
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .event-list {
+        display: grid;
+        gap: 7px;
+      }
+
+      .event {
+        border: 1px solid #35403b;
+        border-radius: 5px;
+        padding: 7px 8px;
+        background: #222825;
+        color: #d7ded7;
+        font-size: 12px;
+        line-height: 1.25;
+      }
+
+      .event.active {
+        border-color: #77c8ed;
+        background: #183443;
+        color: #e6f8ff;
+      }
+
+      .event.recovery {
+        border-color: #e88772;
+        background: #44221f;
+        color: #ffe4db;
+      }
+    </style>
+    <script>
+      (() => {
+        const state = {
+          report: null,
+          ready_for_capture: false,
+          currentStepId: "replay-start",
+        };
+
+        window.__qaCond0007Replay = state;
+
+        window.qaCond0007ReplayReport = (json) => {
+          state.report = JSON.parse(json);
+          state.ready_for_capture = state.report?.verdict?.readyForCapture === true;
+          render(state.currentStepId);
+          document.title = "QA-COND-0007 Resolution Replay Harness READY";
+        };
+
+        window.__qaCond0007ReplayRender = (stepId) => {
+          state.currentStepId = stepId;
+          render(stepId);
+        };
+
+        function render(stepId) {
+          const report = state.report;
+          if (!report) {
+            return;
+          }
+
+          const step =
+            report.steps.find((candidate) => candidate.id === stepId) ??
+            report.steps[0];
+          const isRecovery = stepId === report.recovery.id;
+          const currentSubStep = isRecovery ? null : step.currentSubStep;
+
+          document.querySelector("#subtitle").textContent =
+            isRecovery ? report.recovery.title : step.title;
+          document.querySelector("#status").textContent = state.ready_for_capture
+            ? "PASS"
+            : "PENDING";
+          document.querySelector("#readable").textContent = isRecovery
+            ? report.recovery.actual
+            : step.readableResult;
+          document.querySelector("#expected").textContent = isRecovery
+            ? report.recovery.expected
+            : step.expected;
+          document.querySelector("#artifact").textContent =
+            `${report.qaCondition} | ${report.scope}`;
+
+          renderBoard(step, currentSubStep);
+          renderTimeline(report, currentSubStep, isRecovery);
+          renderDetails(report, step, isRecovery);
+          renderEvents(report, currentSubStep, isRecovery);
+        }
+
+        function renderBoard(step, currentSubStep) {
+          const board = document.querySelector("#board");
+          board.textContent = "";
+          const highlights = new Set(step.spawnHighlightCells ?? []);
+          for (let lane = 1; lane <= 5; lane += 1) {
+            const row = document.createElement("div");
+            row.className = "lane";
+            const label = document.createElement("div");
+            label.className = "lane-label";
+            label.textContent = `L${lane}`;
+            row.appendChild(label);
+
+            for (let cell = 1; cell <= 8; cell += 1) {
+              const cellNode = document.createElement("div");
+              const highlightKey = `P1 L${lane}C${cell}`;
+              cellNode.className = highlights.has(highlightKey)
+                ? "cell spawn"
+                : "cell";
+              cellNode.textContent = cell;
+              if (lane === 2 && cell === 3) {
+                const unit = document.createElement("div");
+                unit.className =
+                  currentSubStep === 1 ? "unit focus" : "unit";
+                unit.textContent = "A";
+                cellNode.appendChild(unit);
+              }
+              if (lane === 2 && cell === 5) {
+                const unit = document.createElement("div");
+                unit.className =
+                  currentSubStep === 2 ? "unit enemy focus" : "unit enemy";
+                unit.textContent = "D";
+                cellNode.appendChild(unit);
+              }
+              if (lane === 2 && cell === 8) {
+                const objective = document.createElement("div");
+                objective.className = "objective";
+                objective.textContent = currentSubStep === 3 ? "OBJ 4" : "OBJ";
+                cellNode.appendChild(objective);
+              }
+              row.appendChild(cellNode);
+            }
+            board.appendChild(row);
+          }
+        }
+
+        function renderTimeline(report, currentSubStep, isRecovery) {
+          const timeline = document.querySelector("#timeline");
+          timeline.textContent = "";
+          for (const group of report.replayScript.subSteps) {
+            const item = document.createElement("section");
+            item.className = "step";
+            if (!isRecovery && group.subStep === currentSubStep) {
+              item.classList.add("active");
+            } else if (!isRecovery && currentSubStep && group.subStep < currentSubStep) {
+              item.classList.add("done");
+            }
+
+            const title = document.createElement("h2");
+            title.textContent = `Sub-step ${group.subStep}`;
+            item.appendChild(title);
+
+            const list = document.createElement("ul");
+            for (const label of group.eventLabels.slice(0, 3)) {
+              const row = document.createElement("li");
+              row.textContent = label;
+              list.appendChild(row);
+            }
+            item.appendChild(list);
+            timeline.appendChild(item);
+          }
+        }
+
+        function renderDetails(report, step, isRecovery) {
+          const detail = document.querySelector("#details");
+          detail.textContent = "";
+          const rows = isRecovery
+            ? [
+                ["Snapshot requests", String(report.recovery.requestCount)],
+                [
+                  "Duplicate requests",
+                  String(report.recovery.duplicateRequestCountAfterSecondUpdate),
+                ],
+                ["Pending script", String(report.recovery.pendingScriptPresent)],
+                ["Queue empty", String(report.recovery.queueEmpty)],
+                ["Manual playable QA", "not claimed"],
+              ]
+            : [
+                ["Elapsed", `${step.elapsedMs}ms`],
+                ["Render state", step.boardRenderState],
+                ["Current phase", step.currentPhase],
+                ["Phase view", step.phaseView],
+                ["Pending phase", step.pendingPhase ?? "none"],
+                ["Current sub-step", step.currentSubStep ?? "none"],
+                ["Queue groups", String(step.queueGroupCount)],
+                ["Phase jump blocked", String(step.phaseJumpBlocked)],
+                ["Manual playable QA", "not claimed"],
+              ];
+
+          for (const [label, value] of rows) {
+            const row = document.createElement("div");
+            row.className = "detail-row";
+            const left = document.createElement("span");
+            left.textContent = label;
+            const right = document.createElement("strong");
+            right.textContent = value;
+            row.append(left, right);
+            detail.appendChild(row);
+          }
+        }
+
+        function renderEvents(report, currentSubStep, isRecovery) {
+          const list = document.querySelector("#events");
+          list.textContent = "";
+          if (isRecovery) {
+            const row = document.createElement("div");
+            row.className = "event recovery";
+            row.textContent = report.recovery.reasons.join(", ") || "No recovery";
+            list.appendChild(row);
+            return;
+          }
+
+          for (const group of report.replayScript.subSteps) {
+            for (const label of group.eventLabels) {
+              const row = document.createElement("div");
+              row.className =
+                group.subStep === currentSubStep ? "event active" : "event";
+              row.textContent = `F${group.subStep}: ${label}`;
+              list.appendChild(row);
+            }
+          }
+        }
+      })();
+    </script>
+    <link
+      data-trunk
+      rel="rust"
+      href="Cargo.toml"
+      data-bin="board_rendering_qa_cond_0007_replay_harness"
+      data-wasm-opt="0"
+    />
+  </head>
+  <body>
+    <canvas id="bevy"></canvas>
+    <main id="capture-root">
+      <header>
+        <div>
+          <h1>QA-COND-0007 Resolution Replay Readability</h1>
+          <p id="subtitle" class="meta">Loading replay capture</p>
+        </div>
+        <div id="status" class="status-pill">PENDING</div>
+      </header>
+      <section class="surface">
+        <div class="board-wrap">
+          <section id="board" class="board"></section>
+          <section id="timeline" class="timeline"></section>
+        </div>
+        <aside class="side">
+          <section class="panel">
+            <h2>Readable Result</h2>
+            <p id="readable" class="readable">Loading</p>
+            <p id="expected" class="expected">Loading</p>
+          </section>
+          <section class="panel">
+            <h2>Replay State</h2>
+            <div id="details" class="detail-list"></div>
+          </section>
+          <section class="panel events">
+            <h2>Result Log</h2>
+            <div id="events" class="event-list"></div>
+          </section>
+        </aside>
+      </section>
+      <footer>
+        <p id="artifact" class="artifact">QA-COND-0007</p>
+        <p class="artifact">Chrome CDP capture | Bevy 0.18 WASM harness | no full playable-client manual QA claim</p>
+      </footer>
+    </main>
+  </body>
+</html>

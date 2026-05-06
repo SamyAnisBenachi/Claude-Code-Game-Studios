@@ -6,18 +6,17 @@
 | Kind | Evidence Gap |
 | Severity | S3 Medium |
 | Priority | P2 Sprint 6 validation |
-| Status | Open |
-| Action State | Needs Evidence |
+| Status | Closed |
+| Action State | N/A - Closed |
 | Reported | 2026-05-05 |
 | Source | Sprint 5 QA sign-off and Production-to-Polish gate check |
 
 ## Summary
 
-Manual and visual QA evidence remains deferred for several player-visible
+Manual and visual QA evidence was deferred for several player-visible
 presentation paths: placement timer urgency/checkmark, reserve strip affordance,
-submit validation inline feedback, and resolution replay readability. Sprint 5
-QA accepted this as a condition, but the evidence remains open for future visual
-validation.
+submit validation inline feedback, and resolution replay readability. The
+condition is now closed by focused visual/harness evidence for all listed paths.
 
 ## Source Evidence
 
@@ -41,21 +40,42 @@ Each evidence item should include the tested build or commit, environment,
 steps, expected result, actual result, and screenshot or capture reference when
 visual confirmation is required.
 
+## Closure Evidence
+
+Captured and documented 2026-05-06.
+
+- Hand UI evidence report:
+  `production/qa/evidence/deferred-visual-manual-sprint-6-2026-05-06.md`.
+- Hand UI capture root:
+  `production/qa/evidence/captures/qa-cond-0007-hand-ui/`.
+- Resolution replay evidence report:
+  `production/qa/evidence/qa-cond-0007-resolution-replay-readability-2026-05-06.md`.
+- Resolution replay capture root:
+  `production/qa/evidence/captures/qa-cond-0007-resolution-replay/`.
+- Resolution replay trace:
+  `production/qa/evidence/captures/qa-cond-0007-resolution-replay/qa-cond-0007-resolution-replay-trace.json`.
+- Resolution replay screenshots:
+  `01-replay-start.png`, `02-replay-mid-first-sub-step.png`,
+  `03-replay-second-sub-step.png`, `04-replay-final-sub-step-buffered.png`,
+  `05-replay-drained-next-phase.png`, and
+  `06-recovery-snapshot-requested.png`.
+
 ## Current Blocker Status
 
-This is not a Sprint 5 close-out blocker. It is a Sprint 6 validation condition
-until the deferred manual/visual checks are evidenced or explicitly reclassified.
+Closed. QA-COND-0007 is no longer an open P2 validation condition after the
+Hand UI evidence and resolution replay readability evidence cover every listed
+deferred path.
 
 ## Infrastructure Impact
 
 2026-05-06 BR-006 story-done verified that the integrated board-rendering
-resolution replay queue and phase-buffering infrastructure is in place. This
-supports future resolution replay readability evidence capture, but it does not
-close QA-COND-0007, does not satisfy the missing manual/visual readability
-evidence, and does not claim playable-client QA.
+resolution replay queue and phase-buffering infrastructure is in place. The
+resolution replay evidence pass now captures that infrastructure in a focused
+visual/harness flow and verifies result progression, phase buffering/no
+premature phase jump, and out-of-range replay recovery.
 
 ## Non-Goals
 
 - Does not assign Sprint 6 capacity.
-- Does not create visual captures.
 - Does not edit UI, HUD, board rendering, hand UI, or resolution code.
+- Does not claim full playable-client manual QA.

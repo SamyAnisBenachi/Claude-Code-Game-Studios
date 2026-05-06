@@ -1,0 +1,308 @@
+{
+    "qaCondition":  "QA-COND-0007",
+    "scope":  "Resolution replay readability",
+    "url":  "http://127.0.0.1:8084/",
+    "viewport":  {
+                     "width":  1366,
+                     "height":  768
+                 },
+    "uiScale":  "100%",
+    "inputMethod":  "deterministic ECS replay script against BR-006 queue and phase-buffering infrastructure",
+    "captureTool":  "PowerShell Chrome DevTools Protocol + Trunk WASM harness",
+    "chromePath":  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "chromeVersion":  "147.0.7727.139",
+    "sourceCommit":  "484bef101c16bc7931456b2c0f72676279d7a536",
+    "sourceBranch":  "work/qa-cond-0007-resolution-replay-evidence",
+    "sourceNote":  "sourceCommit is HEAD at capture start; final evidence commit contains this trace and screenshots.",
+    "workingTreeStatusAtCapture":  [
+                                       "M  client/Cargo.toml",
+                                       "A  client/qa-cond-0007-resolution-replay-harness.html",
+                                       "A  client/src/board_rendering_qa_cond_0007_replay_harness.rs",
+                                       "M  production/qa/bugs/QA-COND-0007-deferred-manual-visual-evidence.md",
+                                       "A  production/qa/evidence/captures/qa-cond-0007-resolution-replay/01-replay-start.png",
+                                       "A  production/qa/evidence/captures/qa-cond-0007-resolution-replay/02-replay-mid-first-sub-step.png",
+                                       "A  production/qa/evidence/captures/qa-cond-0007-resolution-replay/03-replay-second-sub-step.png",
+                                       "A  production/qa/evidence/captures/qa-cond-0007-resolution-replay/04-replay-final-sub-step-buffered.png",
+                                       "A  production/qa/evidence/captures/qa-cond-0007-resolution-replay/05-replay-drained-next-phase.png",
+                                       "A  production/qa/evidence/captures/qa-cond-0007-resolution-replay/06-recovery-snapshot-requested.png",
+                                       "AM production/qa/evidence/captures/qa-cond-0007-resolution-replay/qa-cond-0007-resolution-replay-capture.ps1",
+                                       "A  production/qa/evidence/captures/qa-cond-0007-resolution-replay/qa-cond-0007-resolution-replay-trace.json",
+                                       "A  production/qa/evidence/qa-cond-0007-resolution-replay-readability-2026-05-06.md"
+                                   ],
+    "artifacts":  [
+                      {
+                          "step":  "replay-start",
+                          "path":  "production/qa/evidence/captures/qa-cond-0007-resolution-replay/01-replay-start.png"
+                      },
+                      {
+                          "step":  "replay-mid-first-sub-step",
+                          "path":  "production/qa/evidence/captures/qa-cond-0007-resolution-replay/02-replay-mid-first-sub-step.png"
+                      },
+                      {
+                          "step":  "replay-second-sub-step",
+                          "path":  "production/qa/evidence/captures/qa-cond-0007-resolution-replay/03-replay-second-sub-step.png"
+                      },
+                      {
+                          "step":  "replay-final-sub-step-buffered",
+                          "path":  "production/qa/evidence/captures/qa-cond-0007-resolution-replay/04-replay-final-sub-step-buffered.png"
+                      },
+                      {
+                          "step":  "replay-drained-next-phase",
+                          "path":  "production/qa/evidence/captures/qa-cond-0007-resolution-replay/05-replay-drained-next-phase.png"
+                      },
+                      {
+                          "step":  "recovery-snapshot-requested",
+                          "path":  "production/qa/evidence/captures/qa-cond-0007-resolution-replay/06-recovery-snapshot-requested.png"
+                      }
+                  ],
+    "harnessReport":  {
+                          "qaCondition":  "QA-COND-0007",
+                          "scope":  "Resolution replay readability using BR-006 queue and phase-buffering infrastructure",
+                          "engine":  "Bevy 0.18 WASM board rendering replay QA harness",
+                          "viewport":  {
+                                           "width":  1366,
+                                           "height":  768
+                                       },
+                          "inputMethod":  "deterministic ECS replay script against BoardRenderingPlugin, CardAnimationsPlugin, AnimQueue, PendingPhaseChange, and SnapshotRecoveryRequested",
+                          "sourceCommits":  {
+                                                "implementation":  "8caa1a0195fd817b1ce632877db2174a357e8162",
+                                                "storyDone":  "484bef101c16bc7931456b2c0f72676279d7a536"
+                                            },
+                          "replayScript":  {
+                                               "round":  8,
+                                               "eventCount":  7,
+                                               "groupCount":  3,
+                                               "subSteps":  [
+                                                                {
+                                                                    "subStep":  1,
+                                                                    "triggerIndexes":  [
+                                                                                           10,
+                                                                                           11
+                                                                                       ],
+                                                                    "eventLabels":  [
+                                                                                        "SubStepBegin",
+                                                                                        "UnitMoved unit 1001 lane 2 2-\u003e3"
+                                                                                    ]
+                                                                },
+                                                                {
+                                                                    "subStep":  2,
+                                                                    "triggerIndexes":  [
+                                                                                           20,
+                                                                                           21
+                                                                                       ],
+                                                                    "eventLabels":  [
+                                                                                        "CombatDamage attacker 1001 defender 2001 -2 hp_after 3 shield_blocked false",
+                                                                                        "KeywordTriggered unit 1001 Bodyguard"
+                                                                                    ]
+                                                                },
+                                                                {
+                                                                    "subStep":  3,
+                                                                    "triggerIndexes":  [
+                                                                                           30,
+                                                                                           31,
+                                                                                           32
+                                                                                       ],
+                                                                    "eventLabels":  [
+                                                                                        "ObjectiveDamage player 2 lane 2 -1 hp_after 4",
+                                                                                        "GoldAwarded player 1 +1 Kill",
+                                                                                        "SpawnRangeChanged player 1 range 3"
+                                                                                    ]
+                                                                }
+                                                            ]
+                                           },
+                          "steps":  [
+                                        {
+                                            "id":  "replay-start",
+                                            "title":  "Replay Queue Loaded",
+                                            "expected":  "Resolution replay starts in ResolutionExecuting with ordered sub-step 1 active and DraftShop buffered.",
+                                            "actual":  "state=ResolutionExecuting, current_phase=Resolution, phase_view=Resolution, pending_phase=DraftShop, queue_empty=false, current_sub_step=1, phase_jump_blocked=true, spawn_highlights=P1 L1C1, P1 L1C2, P1 L1C3, P1 L2C1, P1 L2C2, P1 L2C3, P1 L3C1, P1 L3C2, P1 L3C3, P1 L4C1, P1 L4C2, P1 L4C3, P1 L5C1, P1 L5C2, P1 L5C3",
+                                            "elapsedMs":  0,
+                                            "boardRenderState":  "ResolutionExecuting",
+                                            "currentPhase":  "Resolution",
+                                            "phaseView":  "Resolution",
+                                            "pendingPhase":  "DraftShop",
+                                            "queueGroupCount":  3,
+                                            "queueCurrentIndex":  0,
+                                            "currentSubStep":  1,
+                                            "queueEmpty":  false,
+                                            "phaseJumpBlocked":  true,
+                                            "spawnHighlightCells":  [
+                                                                        "P1 L1C1",
+                                                                        "P1 L1C2",
+                                                                        "P1 L1C3",
+                                                                        "P1 L2C1",
+                                                                        "P1 L2C2",
+                                                                        "P1 L2C3",
+                                                                        "P1 L3C1",
+                                                                        "P1 L3C2",
+                                                                        "P1 L3C3",
+                                                                        "P1 L4C1",
+                                                                        "P1 L4C2",
+                                                                        "P1 L4C3",
+                                                                        "P1 L5C1",
+                                                                        "P1 L5C2",
+                                                                        "P1 L5C3"
+                                                                    ],
+                                            "readableResult":  "Sub-step 1 is visibly identified as active, with later result groups queued."
+                                        },
+                                        {
+                                            "id":  "replay-mid-first-sub-step",
+                                            "title":  "First Result Still Holding Phase",
+                                            "expected":  "At 599ms the client is still in Resolution, the queue is not drained, and DraftShop has not applied.",
+                                            "actual":  "state=ResolutionExecuting, current_phase=Resolution, phase_view=Resolution, pending_phase=DraftShop, queue_empty=false, current_sub_step=1, phase_jump_blocked=true, spawn_highlights=P1 L1C1, P1 L1C2, P1 L1C3, P1 L2C1, P1 L2C2, P1 L2C3, P1 L3C1, P1 L3C2, P1 L3C3, P1 L4C1, P1 L4C2, P1 L4C3, P1 L5C1, P1 L5C2, P1 L5C3",
+                                            "elapsedMs":  599,
+                                            "boardRenderState":  "ResolutionExecuting",
+                                            "currentPhase":  "Resolution",
+                                            "phaseView":  "Resolution",
+                                            "pendingPhase":  "DraftShop",
+                                            "queueGroupCount":  3,
+                                            "queueCurrentIndex":  0,
+                                            "currentSubStep":  1,
+                                            "queueEmpty":  false,
+                                            "phaseJumpBlocked":  true,
+                                            "spawnHighlightCells":  [
+                                                                        "P1 L1C1",
+                                                                        "P1 L1C2",
+                                                                        "P1 L1C3",
+                                                                        "P1 L2C1",
+                                                                        "P1 L2C2",
+                                                                        "P1 L2C3",
+                                                                        "P1 L3C1",
+                                                                        "P1 L3C2",
+                                                                        "P1 L3C3",
+                                                                        "P1 L4C1",
+                                                                        "P1 L4C2",
+                                                                        "P1 L4C3",
+                                                                        "P1 L5C1",
+                                                                        "P1 L5C2",
+                                                                        "P1 L5C3"
+                                                                    ],
+                                            "readableResult":  "The current result remains readable before the first 600ms group boundary."
+                                        },
+                                        {
+                                            "id":  "replay-second-sub-step",
+                                            "title":  "Second Result Advances After Pause",
+                                            "expected":  "After the inter-step pause, the active result advances to sub-step 2 while DraftShop remains buffered.",
+                                            "actual":  "state=ResolutionExecuting, current_phase=Resolution, phase_view=Resolution, pending_phase=DraftShop, queue_empty=false, current_sub_step=2, phase_jump_blocked=true, spawn_highlights=P1 L1C1, P1 L1C2, P1 L1C3, P1 L2C1, P1 L2C2, P1 L2C3, P1 L3C1, P1 L3C2, P1 L3C3, P1 L4C1, P1 L4C2, P1 L4C3, P1 L5C1, P1 L5C2, P1 L5C3",
+                                            "elapsedMs":  750,
+                                            "boardRenderState":  "ResolutionExecuting",
+                                            "currentPhase":  "Resolution",
+                                            "phaseView":  "Resolution",
+                                            "pendingPhase":  "DraftShop",
+                                            "queueGroupCount":  3,
+                                            "queueCurrentIndex":  1,
+                                            "currentSubStep":  2,
+                                            "queueEmpty":  false,
+                                            "phaseJumpBlocked":  true,
+                                            "spawnHighlightCells":  [
+                                                                        "P1 L1C1",
+                                                                        "P1 L1C2",
+                                                                        "P1 L1C3",
+                                                                        "P1 L2C1",
+                                                                        "P1 L2C2",
+                                                                        "P1 L2C3",
+                                                                        "P1 L3C1",
+                                                                        "P1 L3C2",
+                                                                        "P1 L3C3",
+                                                                        "P1 L4C1",
+                                                                        "P1 L4C2",
+                                                                        "P1 L4C3",
+                                                                        "P1 L5C1",
+                                                                        "P1 L5C2",
+                                                                        "P1 L5C3"
+                                                                    ],
+                                            "readableResult":  "The timeline advances one result group at a time after the queue pause."
+                                        },
+                                        {
+                                            "id":  "replay-final-sub-step-buffered",
+                                            "title":  "Final Result Before Drain",
+                                            "expected":  "During the final sub-step, the current phase is still Resolution and DraftShop remains pending.",
+                                            "actual":  "state=ResolutionExecuting, current_phase=Resolution, phase_view=Resolution, pending_phase=DraftShop, queue_empty=false, current_sub_step=3, phase_jump_blocked=true, spawn_highlights=P1 L1C1, P1 L1C2, P1 L1C3, P1 L2C1, P1 L2C2, P1 L2C3, P1 L3C1, P1 L3C2, P1 L3C3, P1 L4C1, P1 L4C2, P1 L4C3, P1 L5C1, P1 L5C2, P1 L5C3",
+                                            "elapsedMs":  2099,
+                                            "boardRenderState":  "ResolutionExecuting",
+                                            "currentPhase":  "Resolution",
+                                            "phaseView":  "Resolution",
+                                            "pendingPhase":  "DraftShop",
+                                            "queueGroupCount":  3,
+                                            "queueCurrentIndex":  2,
+                                            "currentSubStep":  3,
+                                            "queueEmpty":  false,
+                                            "phaseJumpBlocked":  true,
+                                            "spawnHighlightCells":  [
+                                                                        "P1 L1C1",
+                                                                        "P1 L1C2",
+                                                                        "P1 L1C3",
+                                                                        "P1 L2C1",
+                                                                        "P1 L2C2",
+                                                                        "P1 L2C3",
+                                                                        "P1 L3C1",
+                                                                        "P1 L3C2",
+                                                                        "P1 L3C3",
+                                                                        "P1 L4C1",
+                                                                        "P1 L4C2",
+                                                                        "P1 L4C3",
+                                                                        "P1 L5C1",
+                                                                        "P1 L5C2",
+                                                                        "P1 L5C3"
+                                                                    ],
+                                            "readableResult":  "The final result is still readable before the next phase is released."
+                                        },
+                                        {
+                                            "id":  "replay-drained-next-phase",
+                                            "title":  "Replay Drained To Next Phase",
+                                            "expected":  "After the last group drains, the queue is empty and the buffered DraftShop phase applies.",
+                                            "actual":  "state=DraftShop, current_phase=DraftShop, phase_view=DraftShop, pending_phase=none, queue_empty=true, current_sub_step=none, phase_jump_blocked=false, spawn_highlights=P1 L1C1, P1 L1C2, P1 L1C3, P1 L2C1, P1 L2C2, P1 L2C3, P1 L3C1, P1 L3C2, P1 L3C3, P1 L4C1, P1 L4C2, P1 L4C3, P1 L5C1, P1 L5C2, P1 L5C3",
+                                            "elapsedMs":  2100,
+                                            "boardRenderState":  "DraftShop",
+                                            "currentPhase":  "DraftShop",
+                                            "phaseView":  "DraftShop",
+                                            "pendingPhase":  null,
+                                            "queueGroupCount":  0,
+                                            "queueCurrentIndex":  null,
+                                            "currentSubStep":  null,
+                                            "queueEmpty":  true,
+                                            "phaseJumpBlocked":  false,
+                                            "spawnHighlightCells":  [
+                                                                        "P1 L1C1",
+                                                                        "P1 L1C2",
+                                                                        "P1 L1C3",
+                                                                        "P1 L2C1",
+                                                                        "P1 L2C2",
+                                                                        "P1 L2C3",
+                                                                        "P1 L3C1",
+                                                                        "P1 L3C2",
+                                                                        "P1 L3C3",
+                                                                        "P1 L4C1",
+                                                                        "P1 L4C2",
+                                                                        "P1 L4C3",
+                                                                        "P1 L5C1",
+                                                                        "P1 L5C2",
+                                                                        "P1 L5C3"
+                                                                    ],
+                                            "readableResult":  "The after state shows a clean phase transition only after replay drain."
+                                        }
+                                    ],
+                          "recovery":  {
+                                           "id":  "recovery-snapshot-requested",
+                                           "title":  "Out-Of-Range Replay Requests Snapshot",
+                                           "expected":  "An invalid replay sub-step is rejected, clears pending replay state, resets the queue, and requests exactly one authoritative snapshot.",
+                                           "actual":  "requests=1, duplicate_requests_after_second_update=0, reasons=ResolutionSubStepOutOfRange, pending_script_present=false, queue_empty=true",
+                                           "requestCount":  1,
+                                           "duplicateRequestCountAfterSecondUpdate":  0,
+                                           "reasons":  [
+                                                           "ResolutionSubStepOutOfRange"
+                                                       ],
+                                           "pendingScriptPresent":  false,
+                                           "queueEmpty":  true
+                                       },
+                          "verdict":  {
+                                          "readyForCapture":  true,
+                                          "resultProgressionPass":  true,
+                                          "phaseBufferingPass":  true,
+                                          "recoveryPass":  true,
+                                          "playableClientManualQaClaimed":  false
+                                      }
+                      },
+    "tracePath":  "production/qa/evidence/captures/qa-cond-0007-resolution-replay/qa-cond-0007-resolution-replay-trace.json",
+    "capturedAt":  "2026-05-06T17:53:02.3823278Z"
+}
