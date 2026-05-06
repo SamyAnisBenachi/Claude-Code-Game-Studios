@@ -10,8 +10,9 @@
 | Related UX draft | `design/ux/settings-accessibility.md` |
 | GSS-008 evidence | `production/qa/evidence/gss-008-placement-timer-multiplier-authority-2026-05-05.md` |
 | HUD-011 evidence | `production/qa/evidence/hud-011-mana-shapes-evidence.md` |
+| HUD-012 evidence | `production/qa/evidence/hud-012-text-size-contrast-accessibility.md` |
 | A11Y Settings 001 evidence | `production/qa/evidence/accessibility-settings-foundation-2026-05-05.md` |
-| Disposition verdict | QA-COND-0005 remains Open. Every source row has exactly one allowed final disposition. A11Y-ST-09 and A11Y-ST-13 are implemented and evidenced. A11Y-DEP-01 and A11Y-DEP-02 now have foundation implementation evidence, but dependent source rows still require their own closure evidence. |
+| Disposition verdict | QA-COND-0005 remains Open. Every source row has exactly one allowed final disposition. A11Y-ST-09 and A11Y-ST-13 are implemented and evidenced. HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are implemented and evidenced by HUD-012, but the parent rows still require remaining non-HUD / auction-price evidence before closure. A11Y-DEP-01 and A11Y-DEP-02 now have foundation implementation evidence, but dependent source rows still require their own closure evidence. |
 
 ## Scope
 
@@ -66,6 +67,27 @@ HUD-011 evidence records current mana as a horizontal bar, reserve mana as a
 diamond container, non-color component/layout assertions, and browser/WASM
 color plus grayscale captures at `1366x768` and `1920x1080`.
 
+## HUD-012 Evidence Linkage
+
+HUD-012 implemented and verified HUD-owned text-size and contrast evidence for
+A11Y-ST-01 and A11Y-ST-03:
+
+- evidence:
+  `production/qa/evidence/hud-012-text-size-contrast-accessibility.md`
+- story:
+  `production/epics/hud/story-012-text-size-and-contrast-accessibility.md`
+- automated verification:
+  `cargo test -p client --test hud_text_size_contrast_accessibility_test`,
+  `cargo test -p client --test hud_gold_mana_display_test`,
+  `cargo test -p client --test hud_phase_label_round_counter_test`, and
+  `cargo test -p client --test hud_economy_auction_inline_gold_test`
+
+HUD-012 evidence records browser/WASM captures at `1366x768` and `1920x1080`,
+40 px HUD gold primary text, 20 px-or-better HUD resource/phase/round text and
+cold-start placeholders, and HUD-owned text/background contrast ratios above
+`4.5:1`. It does not cover card text, the actual auction price counter,
+Settings, Shop/Auction, Hand UI, board, or result-screen contrast.
+
 ## A11Y Settings 001 Evidence Linkage
 
 A11Y Settings 001 implemented and verified the Settings / Accessibility
@@ -94,9 +116,9 @@ evidence for QA-COND-0005.
 
 | Row ID | Source row | Tier | Current evidence | Final disposition | Required audit or test | Producer signoff required | Signoff evidence | QA-COND-0005 impact | Follow-up path |
 |---|---|---|---|---|---|---|---|---|---|
-| A11Y-ST-01 | Minimum text size - HUD | Standard | No browser/WASM measurement evidence for 20px resource counters or 40px auction price counter. | evidence-only required | Browser/WASM capture at 1366x768 and 1920x1080 measuring HUD gold, mana, round, and auction price text floors. | No | N/A | Blocks closure. | `production/epics/accessibility-settings/EPIC.md` story 006 or equivalent browser evidence pass. |
+| A11Y-ST-01 | Minimum text size - HUD | Standard | HUD-012 evidence verifies HUD-owned gold, reserved-gold suffix, mana, reserve, phase, round, and cold-start placeholder text floors in browser/WASM captures at `1366x768` and `1920x1080`. The actual auction price counter remains outside HUD-012 and still lacks required browser evidence. | evidence-only required | Retain HUD-012 evidence for HUD-owned text floors; capture browser/WASM evidence for the actual auction price counter's required 40 px floor or formally disposition that separate owner. | No | N/A | Partially closes the HUD-owned text-size sub-gap; still blocks closure until the actual auction price counter and any remaining row exposure are evidenced or dispositioned. | Shop/Auction/accessibility closure evidence pass or `production/epics/accessibility-settings/EPIC.md` story 006. |
 | A11Y-ST-02 | Minimum text size - card text | Standard | No browser/WASM measurement evidence for card cost, ATK, HP, or keyword text floors. | evidence-only required | Browser/WASM card readability capture measuring stat badges at 18px minimum and keyword text at 14px minimum. | No | N/A | Blocks closure. | `production/epics/accessibility-settings/EPIC.md` story 006 or equivalent browser evidence pass. |
-| A11Y-ST-03 | Text contrast - UI on backgrounds | Standard | No contrast audit evidence for 4.5:1 body text or 7:1 auction price counter. | evidence-only required | Contrast audit against browser/WASM screenshots for HUD, cards, Settings, Shop/Auction, and auction price counter. | No | N/A | Blocks closure. | `production/epics/accessibility-settings/EPIC.md` story 006 or equivalent contrast evidence pass. |
+| A11Y-ST-03 | Text contrast - UI on backgrounds | Standard | HUD-012 evidence verifies HUD-owned text/background pairs at `4.5:1` or better, including reserved-gold suffix alpha compositing and DRAFT_AUCTION / RESOLUTION HUD states. Cards, Settings, Shop/Auction, Hand UI, board, result screens, and the actual auction price counter remain outside HUD-012. | evidence-only required | Retain HUD-012 evidence for HUD-owned contrast; complete browser/WASM contrast audit for cards, Settings, Shop/Auction, Hand UI, board, result screens, and the actual auction price counter's 7:1 exception. | No | N/A | Partially closes the HUD-owned contrast sub-gap; still blocks closure until remaining UI surfaces and the auction price exception are evidenced or dispositioned. | Accessibility closure evidence pass or `production/epics/accessibility-settings/EPIC.md` story 006. |
 | A11Y-ST-04 | Colorblind mode - Protanopia / Deuteranopia | Standard | A11Y Settings 001 implements and persists the colorblind selector field, and art/design docs define shape/icon backups. Palette application and browser evidence are not attached. | later sprint / blocked dependency | Implement and verify Protanopia and Deuteranopia palette application plus shape/icon backup browser evidence. | No | N/A | Blocks closure. | `production/epics/accessibility-settings/EPIC.md` story 002. |
 | A11Y-ST-05 | Colorblind mode - Tritanopia | Standard | A11Y Settings 001 implements and persists the Tritanopia selector field. Tritanopia palette application and auction escalation readability evidence are not attached. | later sprint / blocked dependency | Implement and verify Tritanopia palette application, auction escalation readability, and shape/icon backups. | No | N/A | Blocks closure. | `production/epics/accessibility-settings/EPIC.md` story 002. |
 | A11Y-ST-06 | UI scaling | Standard | A11Y Settings 001 implements independent menu/HUD scale preference fields, persistence, validation, and a tested Settings panel menu-scale hook. Full menu/HUD consumer application and browser layout evidence are not attached. | later sprint / blocked dependency | Verify menu and HUD scale consumers and capture browser layout checks at 75%, 100%, and 150%. | No | N/A | Blocks closure. | Future UI-scale consumer/evidence pass or `production/epics/accessibility-settings/EPIC.md` story 006. |
@@ -209,6 +231,9 @@ Current closure result:
 
 - QA-COND-0005 remains Open.
 - A11Y-ST-09 and A11Y-ST-13 are closed sub-gaps.
+- HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 are evidenced by HUD-012, but
+  the parent rows still block closure until remaining non-HUD / auction-price
+  exposure is evidenced or dispositioned.
 - No accepted-risk or reclassification signoff is present.
 - Rows marked `must implement in Sprint 6` or `later sprint / blocked
   dependency` prevent closure.

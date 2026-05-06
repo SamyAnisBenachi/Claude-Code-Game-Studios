@@ -2072,3 +2072,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` updated to record A11Y Settings 001 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
 - Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.
+
+## Session Extract - /story-done 2026-05-06
+- Verdict: COMPLETE
+- Story: `production/epics/hud/story-012-text-size-and-contrast-accessibility.md` - Story 012: HUD Text Size and Contrast Accessibility Evidence
+- Criteria: 19/19 passing; HUD text-size fixture, gold floors, reserved suffix floors, mana/reserve floors, phase/round floors, cold-start placeholders, HUD contrast pairs, DRAFT_AUCTION and RESOLUTION contrast, string preservation, reserve visibility, pre-pooled entity stability, focused/regression tests, browser/WASM evidence, two viewport captures, A11Y-ST-01/A11Y-ST-03 impact statements, QA-COND-0005 open statement, and whitespace gate verified.
+- Test Evidence: `production/qa/evidence/hud-012-text-size-contrast-accessibility.md`; capture artifacts under `production/qa/evidence/captures/hud-012-text-size-contrast/`; `cargo test -p client --test hud_text_size_contrast_accessibility_test` passed 4/4; `cargo test -p client --test hud_gold_mana_display_test` passed 6/6; `cargo test -p client --test hud_phase_label_round_counter_test` passed 6/6; `cargo test -p client --test hud_economy_auction_inline_gold_test` passed 4/4; `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+- Verification: Current root `main` was clean and aligned with `origin/main` after `git fetch origin` before closure edits. No implementation code was changed during closure.
+- Notes: No blocking GDD, ADR-002, ADR-021, Bevy 0.18, or control-manifest deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- QA condition: `QA-COND-0005` remains Open. HUD-012 closes only the HUD-owned portions of A11Y-ST-01 and A11Y-ST-03 in the Standard-tier accessibility disposition register; actual auction price counter and non-HUD UI/accessibility surfaces remain separate.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` updated to record HUD-012 evidence under S6-04 while leaving S6-04/QA-COND-0005 open.
+- Next recommended: Continue remaining Standard-tier accessibility remediation/evidence rows before S6-06 final re-smoke, QA sign-off, and Production -> Polish gate-check.

@@ -84,6 +84,15 @@ Standard-tier accessibility is remediated, verified, or explicitly reclassified.
   `production/qa/evidence/accessibility-settings-foundation-2026-05-05.md`.
   This clears only the A11Y-DEP-01/A11Y-DEP-02 foundation dependency evidence
   for future accessibility rows; QA-COND-0005 remains Open.
+- 2026-05-06: HUD-012 implemented and verified HUD-owned A11Y-ST-01 text-size
+  evidence and HUD-owned A11Y-ST-03 contrast evidence. Evidence:
+  `production/qa/evidence/hud-012-text-size-contrast-accessibility.md` with
+  browser/WASM captures at `1366x768` and `1920x1080`, plus
+  `cargo test -p client --test hud_text_size_contrast_accessibility_test` and
+  HUD regression targets passing. This closes only the HUD-owned portions of
+  A11Y-ST-01 and A11Y-ST-03; QA-COND-0005 remains Open because remaining
+  Standard-tier rows and non-HUD / auction-price exposure still need evidence,
+  reclassification, dependency-blocking, or accepted-risk disposition.
 
 ## Non-Goals
 

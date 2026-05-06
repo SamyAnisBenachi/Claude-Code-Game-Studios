@@ -68,6 +68,7 @@ stories:
       - "Standard-tier accessibility gaps must be remediated, verified, explicitly reclassified, or accepted as risk."
       - "HUD-011 / A11Y-ST-13 current/reserve mana shape distinction is implemented and evidenced. QA-COND-0005 remains Open because other Standard-tier rows still block closure."
       - "A11Y Settings 001 foundation is implemented and evidenced: Settings / Accessibility shell, preference storage fallback, safe/unsafe entry, keyboard baseline, and PLACEMENT timer selector. QA-COND-0005 remains Open because dependent Standard-tier source rows still require feature-specific evidence or formal disposition."
+      - "HUD-012 / HUD-owned A11Y-ST-01 text-size and HUD-owned A11Y-ST-03 contrast evidence is implemented and evidenced. QA-COND-0005 remains Open because non-HUD / auction-price exposure and other Standard-tier rows still block closure."
 
   - id: "S6-05"
     name: "OS-18b two-client objective HP visibility evidence"

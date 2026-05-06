@@ -1,7 +1,7 @@
 # Story 012: HUD Text Size and Contrast Accessibility Evidence
 
 > **Epic**: HUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -95,25 +95,25 @@
 
 ## Acceptance Criteria
 
-- [ ] **HUD text-size fixture is captured**: GIVEN browser/WASM HUD evidence runs at `1366x768` and `1920x1080`, WHEN HUD is visible with `gold=11`, `reserved_gold=4`, opponent `gold=8`, opponent `reserved_gold=3`, `current_mana=6`, `mana_cap=10`, `reserve_mana=2`, phase `DRAFT_AUCTION`, and round `9`, THEN the evidence records measured text size for own gold, opponent gold, both reserved-gold suffixes, current mana, reserve mana, phase label, and round counter at both viewports.
-- [ ] **Gold counter floor passes**: GIVEN the fixture above, WHEN text-size measurements are reviewed, THEN own and opponent gold primary text each measure at least `40 CSS px` or browser-equivalent rendered pixels at both `1366x768` and `1920x1080`.
-- [ ] **Auction-linked HUD suffix floor passes**: GIVEN DRAFT_AUCTION HUD labels display `11g (4r)` and `8g (3r)`, WHEN the parenthetical suffix spans are measured, THEN each visible `(Yr)` suffix measures at least `20 CSS px` or browser-equivalent rendered pixels at both viewports.
-- [ ] **Mana and reserve floors pass**: GIVEN the fixture above, WHEN current mana and reserve mana labels are measured, THEN `6 / 10` and `+2 reserve` each measure at least `20 CSS px` or browser-equivalent rendered pixels at both viewports.
-- [ ] **Phase and round floors pass**: GIVEN the fixture above, WHEN phase and round labels are measured, THEN `AUCTION` and `R9` each measure at least `20 CSS px` or browser-equivalent rendered pixels at both viewports.
-- [ ] **Cold-start placeholders remain readable**: GIVEN HUD has entered DRAFT_INITIAL before receiving economy state, WHEN the own gold placeholder `--g`, opponent gold placeholder `--g`, and mana placeholder `-- / --` are measured, THEN each placeholder meets the same floor as the runtime label it represents.
-- [ ] **HUD contrast evidence covers every pair**: GIVEN the HUD text/background pairs are sampled after browser/WASM rendering, WHEN contrast ratios are computed from the composited foreground and immediate background colors, THEN own gold primary text, opponent gold primary text, reserved-gold suffixes, current mana, reserve mana, phase label, round counter, and placeholders each meet at least `4.5:1`.
-- [ ] **Contrast survives phase-specific dimming**: GIVEN HUD may dim or change opacity during DRAFT_AUCTION or RESOLUTION, WHEN the text/background pairs are measured in DRAFT_AUCTION and RESOLUTION fixtures, THEN every HUD-owned text pair listed in this story still meets at least `4.5:1` after opacity compositing.
-- [ ] **Existing HUD strings are preserved**: GIVEN the existing HUD behavior fixtures run, WHEN text size or contrast remediation is applied, THEN own gold, opponent gold, reserved suffix, mana, reserve, phase, and round strings remain exactly as required by HUD-03, HUD-05, HUD-17, HUD-22, and HUD-29.
-- [ ] **Existing visibility behavior is preserved**: GIVEN reserve mana changes from `2` to `0`, WHEN HUD state sync completes, THEN reserve mana visibility still follows `reserve_mana > 0`; no contrast or font-size work leaves stale reserve text visible.
-- [ ] **No new steady-state spawning**: GIVEN the HUD entity tree has spawned at session entry, WHEN three later economy and phase updates change displayed HUD values, THEN no additional HUD text entities are spawned during those updates.
-- [ ] **Focused accessibility test passes**: `cargo test -p client --test hud_text_size_contrast_accessibility_test` passes. The target must be backed by `tests/integration/hud/text_size_contrast_accessibility_test.rs` and registered in `client/Cargo.toml`.
-- [ ] **Existing HUD regression tests stay green**: `cargo test -p client --test hud_gold_mana_display_test --test hud_phase_label_round_counter_test --test hud_economy_auction_inline_gold_test` passes after the change.
-- [ ] **Browser/WASM evidence exists**: `production/qa/evidence/hud-012-text-size-contrast-accessibility.md` records the browser, build target, fixture values, capture method, artifact directory, text-size table, contrast table, screenshots, pass/fail verdict, and QA-COND-0005 impact statement.
-- [ ] **Browser/WASM capture covers two viewports**: The evidence document links screenshot artifacts for `1366x768` and `1920x1080`, and each capture shows HUD text readable, not clipped, and not overlapping Hand UI, Shop/Auction UI, board content, browser chrome, or other HUD zones.
-- [ ] **A11Y-ST-01 impact is explicit**: The evidence document states that HUD-012 verifies HUD-owned A11Y-ST-01 only. Card text and the actual auction price counter remain outside this story.
-- [ ] **A11Y-ST-03 impact is explicit**: The evidence document states that HUD-012 verifies HUD-owned A11Y-ST-03 only. Card, Settings, Shop/Auction, Hand UI, board, and result-screen contrast remain outside this story.
-- [ ] **QA-COND-0005 remains open**: The evidence document states that QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented and evidenced, reclassified, dependency-blocked, or accepted as risk.
-- [ ] **Whitespace gate passes**: `git diff --check` passes.
+- [x] **HUD text-size fixture is captured**: GIVEN browser/WASM HUD evidence runs at `1366x768` and `1920x1080`, WHEN HUD is visible with `gold=11`, `reserved_gold=4`, opponent `gold=8`, opponent `reserved_gold=3`, `current_mana=6`, `mana_cap=10`, `reserve_mana=2`, phase `DRAFT_AUCTION`, and round `9`, THEN the evidence records measured text size for own gold, opponent gold, both reserved-gold suffixes, current mana, reserve mana, phase label, and round counter at both viewports.
+- [x] **Gold counter floor passes**: GIVEN the fixture above, WHEN text-size measurements are reviewed, THEN own and opponent gold primary text each measure at least `40 CSS px` or browser-equivalent rendered pixels at both `1366x768` and `1920x1080`.
+- [x] **Auction-linked HUD suffix floor passes**: GIVEN DRAFT_AUCTION HUD labels display `11g (4r)` and `8g (3r)`, WHEN the parenthetical suffix spans are measured, THEN each visible `(Yr)` suffix measures at least `20 CSS px` or browser-equivalent rendered pixels at both viewports.
+- [x] **Mana and reserve floors pass**: GIVEN the fixture above, WHEN current mana and reserve mana labels are measured, THEN `6 / 10` and `+2 reserve` each measure at least `20 CSS px` or browser-equivalent rendered pixels at both viewports.
+- [x] **Phase and round floors pass**: GIVEN the fixture above, WHEN phase and round labels are measured, THEN `AUCTION` and `R9` each measure at least `20 CSS px` or browser-equivalent rendered pixels at both viewports.
+- [x] **Cold-start placeholders remain readable**: GIVEN HUD has entered DRAFT_INITIAL before receiving economy state, WHEN the own gold placeholder `--g`, opponent gold placeholder `--g`, and mana placeholder `-- / --` are measured, THEN each placeholder meets the same floor as the runtime label it represents.
+- [x] **HUD contrast evidence covers every pair**: GIVEN the HUD text/background pairs are sampled after browser/WASM rendering, WHEN contrast ratios are computed from the composited foreground and immediate background colors, THEN own gold primary text, opponent gold primary text, reserved-gold suffixes, current mana, reserve mana, phase label, round counter, and placeholders each meet at least `4.5:1`.
+- [x] **Contrast survives phase-specific dimming**: GIVEN HUD may dim or change opacity during DRAFT_AUCTION or RESOLUTION, WHEN the text/background pairs are measured in DRAFT_AUCTION and RESOLUTION fixtures, THEN every HUD-owned text pair listed in this story still meets at least `4.5:1` after opacity compositing.
+- [x] **Existing HUD strings are preserved**: GIVEN the existing HUD behavior fixtures run, WHEN text size or contrast remediation is applied, THEN own gold, opponent gold, reserved suffix, mana, reserve, phase, and round strings remain exactly as required by HUD-03, HUD-05, HUD-17, HUD-22, and HUD-29.
+- [x] **Existing visibility behavior is preserved**: GIVEN reserve mana changes from `2` to `0`, WHEN HUD state sync completes, THEN reserve mana visibility still follows `reserve_mana > 0`; no contrast or font-size work leaves stale reserve text visible.
+- [x] **No new steady-state spawning**: GIVEN the HUD entity tree has spawned at session entry, WHEN three later economy and phase updates change displayed HUD values, THEN no additional HUD text entities are spawned during those updates.
+- [x] **Focused accessibility test passes**: `cargo test -p client --test hud_text_size_contrast_accessibility_test` passes. The target must be backed by `tests/integration/hud/text_size_contrast_accessibility_test.rs` and registered in `client/Cargo.toml`.
+- [x] **Existing HUD regression tests stay green**: `cargo test -p client --test hud_gold_mana_display_test --test hud_phase_label_round_counter_test --test hud_economy_auction_inline_gold_test` passes after the change.
+- [x] **Browser/WASM evidence exists**: `production/qa/evidence/hud-012-text-size-contrast-accessibility.md` records the browser, build target, fixture values, capture method, artifact directory, text-size table, contrast table, screenshots, pass/fail verdict, and QA-COND-0005 impact statement.
+- [x] **Browser/WASM capture covers two viewports**: The evidence document links screenshot artifacts for `1366x768` and `1920x1080`, and each capture shows HUD text readable, not clipped, and not overlapping Hand UI, Shop/Auction UI, board content, browser chrome, or other HUD zones.
+- [x] **A11Y-ST-01 impact is explicit**: The evidence document states that HUD-012 verifies HUD-owned A11Y-ST-01 only. Card text and the actual auction price counter remain outside this story.
+- [x] **A11Y-ST-03 impact is explicit**: The evidence document states that HUD-012 verifies HUD-owned A11Y-ST-03 only. Card, Settings, Shop/Auction, Hand UI, board, and result-screen contrast remain outside this story.
+- [x] **QA-COND-0005 remains open**: The evidence document states that QA-COND-0005 remains Open until all remaining Standard-tier rows are implemented and evidenced, reclassified, dependency-blocked, or accepted as risk.
+- [x] **Whitespace gate passes**: `git diff --check` passes.
 
 ---
 
@@ -195,7 +195,7 @@
 - A11Y-ST-03 impact statement limited to HUD-owned contrast evidence.
 - QA-COND-0005 impact statement confirming the condition remains Open.
 
-**Status**: [ ] Not yet implemented or captured.
+**Status**: [x] Implemented and captured.
 
 ---
 
@@ -221,3 +221,12 @@ This story targets only the HUD-owned portions of A11Y-ST-01 and A11Y-ST-03. Com
 ## No Open Questions
 
 No unresolved design question blocks this story. The implementation target is fixed for Sprint 6: HUD gold, mana, reserve, phase, and round text must meet the stated text-size floors and `4.5:1` contrast in browser/WASM evidence while preserving current HUD behavior.
+
+## Completion Notes
+
+**Completed**: 2026-05-06
+**Criteria**: 19/19 passing.
+**Deviations**: None blocking. HUD-012 verifies only HUD-owned A11Y-ST-01 text-size and HUD-owned A11Y-ST-03 contrast evidence; card text, the actual auction price counter, Settings, Shop/Auction, Hand UI, board, and result-screen accessibility evidence remain outside this story.
+**Test Evidence**: `production/qa/evidence/hud-012-text-size-contrast-accessibility.md`; capture artifacts under `production/qa/evidence/captures/hud-012-text-size-contrast/`; `cargo test -p client --test hud_text_size_contrast_accessibility_test` passed 4/4; `cargo test -p client --test hud_gold_mana_display_test` passed 6/6; `cargo test -p client --test hud_phase_label_round_counter_test` passed 6/6; `cargo test -p client --test hud_economy_auction_inline_gold_test` passed 4/4; `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+**Code Review**: Skipped - lean mode. `production/review-mode.txt` is absent, so QL-TEST-COVERAGE and LP-CODE-REVIEW gates were not spawned.
+**QA-COND-0005 Impact**: QA-COND-0005 remains Open. HUD-012 adds implementation/evidence for HUD-owned A11Y-ST-01 and HUD-owned A11Y-ST-03 only; remaining Standard-tier rows and non-HUD portions still require implementation/evidence, reclassification, dependency-blocking, or accepted-risk disposition.
