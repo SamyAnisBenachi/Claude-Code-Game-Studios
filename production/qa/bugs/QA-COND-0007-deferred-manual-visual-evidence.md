@@ -46,6 +46,14 @@ visual confirmation is required.
 This is not a Sprint 5 close-out blocker. It is a Sprint 6 validation condition
 until the deferred manual/visual checks are evidenced or explicitly reclassified.
 
+## Infrastructure Impact
+
+2026-05-06 BR-006 story-done verified that the integrated board-rendering
+resolution replay queue and phase-buffering infrastructure is in place. This
+supports future resolution replay readability evidence capture, but it does not
+close QA-COND-0007, does not satisfy the missing manual/visual readability
+evidence, and does not claim playable-client QA.
+
 ## Non-Goals
 
 - Does not assign Sprint 6 capacity.

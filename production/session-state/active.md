@@ -2148,3 +2148,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - Sprint status: docs-only reconciliation marks S6-06 done in `production/sprint-status.yaml` without running `/story-done`.
 - Sprint 6 plan: `production/sprints/sprint-6.md` records the post-gate state and preserves the carried conditions.
 - Carried conditions: QA-COND-0005 remains friend-game-only accepted risk, not verified Standard-tier accessibility completion; QA-COND-0006 remains accepted-risk/deferred, not playtest or fun-hypothesis validation; QA-COND-0001 remains open P2; QA-COND-0007 remains open P2; full manual playable-client QA is not claimed.
+
+## Session Extract - /story-done 2026-05-06
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/board-rendering/story-006-resolution-anim-queue-and-phase-buffering.md` - Story 006: Resolution AnimQueue and Phase Buffering
+- Criteria: 7/7 passing; `S2CResolutionEvent` groups by sub-step, groups sort ascending, out-of-range sub-steps reject the entire queue and enqueue one snapshot recovery request, `PendingResolutionScript` buffers early scripts, `PendingPhaseChange` buffers RESOLUTION phase changes, buffered phase applies only after queue drain, and same-frame resolution plus DRAFT_SHOP phase preserves replay before DRAFT resumes.
+- Test Evidence: `tests/integration/board_rendering/resolution_anim_queue_test.rs`; `cargo test -p client --test board_rendering_resolution_anim_queue_test` passed 5/5; relevant regressions passed for placement reveal, snapshot spawn cleanup, spawn-range highlights, AnimQueue drain/GAME_OVER skip, and objective stagger.
+- Verification: Root `main` was clean and aligned with `origin/main` after `git fetch origin` before closure edits. Integrated implementation commit `8caa1a0195fd817b1ce632877db2174a357e8162` is present on main.
+- Notes: No blocking GDD, ADR-017, ADR-021, Bevy 0.18, or control-manifest deviation found. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW gates because `production/review-mode.txt` is absent.
+- QA condition: `QA-COND-0007` remains Open. BR-006 supplies prerequisite resolution replay queue/phase-buffering infrastructure for future readability evidence, but does not close the condition, does not provide manual/visual readability captures, and does not claim manual playable-client QA.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` updated only to record BR-006 prerequisite impact under S6-S4 while leaving QA-COND-0007 open.
+- Next recommended: Capture or disposition resolution replay readability evidence for `QA-COND-0007`; do not treat BR-006 story completion as QA-COND-0007 closure.

@@ -156,6 +156,7 @@ stories:
     completed: ""
     notes:
       - "Covers placement timer urgency/checkmark, reserve strip affordance, submit validation inline feedback, and resolution replay readability."
+      - "BR-006 completion on 2026-05-06 provides resolution replay queue/phase-buffering prerequisite infrastructure only; QA-COND-0007 remains open until manual/visual readability evidence is captured or dispositioned."
 
   - id: "S6-N1"
     name: "Evidence index/backlink cleanup"

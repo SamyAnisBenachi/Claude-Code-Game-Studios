@@ -1,7 +1,7 @@
 # Story 006: Resolution AnimQueue and Phase Buffering
 
 > **Epic**: Board Rendering
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -28,13 +28,13 @@ The prior blocker on final `ResolutionEvent` contract coverage is resolved. Comb
 
 ## Acceptance Criteria
 
-- [ ] `S2CResolutionEvent` is grouped into `AnimGroup`s by sub-step.
-- [ ] Groups are sorted ascending by sub-step.
-- [ ] Out-of-range sub-step values discard the entire queue, log protocol desync, and enqueue one `C2SRequestSnapshot` recovery request instead of partial playback.
-- [ ] `PendingResolutionScript` buffers a resolution script that arrives before placement reveal is complete.
-- [ ] `PendingPhaseChange` buffers `S2CPhaseChanged` while `BoardRenderState == ResolutionExecuting`.
-- [ ] Phase buffer is applied only after the animation queue drains.
-- [ ] Same-frame `S2CResolutionEvent` and `S2CPhaseChanged(DRAFT_SHOP)` preserves the resolution playback before DRAFT UI resumes.
+- [x] `S2CResolutionEvent` is grouped into `AnimGroup`s by sub-step.
+- [x] Groups are sorted ascending by sub-step.
+- [x] Out-of-range sub-step values discard the entire queue, log protocol desync, and enqueue one `C2SRequestSnapshot` recovery request instead of partial playback.
+- [x] `PendingResolutionScript` buffers a resolution script that arrives before placement reveal is complete.
+- [x] `PendingPhaseChange` buffers `S2CPhaseChanged` while `BoardRenderState == ResolutionExecuting`.
+- [x] Phase buffer is applied only after the animation queue drains.
+- [x] Same-frame `S2CResolutionEvent` and `S2CPhaseChanged(DRAFT_SHOP)` preserves the resolution playback before DRAFT UI resumes.
 
 ## Control Manifest Rules
 
@@ -91,10 +91,20 @@ The prior blocker on final `ResolutionEvent` contract coverage is resolved. Comb
 **Required evidence**:
 - Integration: `tests/integration/board_rendering/resolution_anim_queue_test.rs`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ## Dependencies
 
 - Depends on: [Story 005](story-005-placement-reveal-collect-and-tween.md) Complete for the placement reveal collect/recovery path and `PendingResolutionScript` handoff.
 - Depends on: [Combat Resolution Story 011](../combat-resolution/story-011-resolution-event-log.md) Complete for final `S2CResolutionEvent` schema, typed `ResolutionEvent` coverage, and phase-ordering contract.
 - Unlocks: Story 008 and RESOLUTION visual QA.
+
+## Completion Notes
+
+**Completed**: 2026-05-06
+**Criteria**: 7/7 passing
+**Deviations**: None blocking. Story manifest version `2026-05-05` matches the current control manifest. Lean review mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW because `production/review-mode.txt` is absent.
+**Test Evidence**: Integration test at `tests/integration/board_rendering/resolution_anim_queue_test.rs`; registered as `board_rendering_resolution_anim_queue_test` in `client/Cargo.toml`.
+**Verification**: `cargo test -p client --test board_rendering_resolution_anim_queue_test` passed 5/5. Relevant board rendering/card animation regressions passed: `board_rendering_placement_reveal_test` 3/3, `board_rendering_snapshot_spawn_test` 5/5, `board_rendering_spawn_range_highlights_test` 4/4, `card_animations_anim_queue_test` 4/4, and `card_animations_objective_stagger_test` 3/3.
+**QA-COND-0007 Impact**: BR-006 provides the replay queue and phase-buffering prerequisite for future resolution replay readability evidence. QA-COND-0007 remains Open; no manual playable-client QA or resolution readability capture is claimed.
+**Code Review**: Skipped per lean review mode.
