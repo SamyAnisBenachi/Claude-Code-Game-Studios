@@ -4,13 +4,13 @@
 > **GDD**: Sprint 7 playable path traced to game-session-system, network-protocol, card-acquisition, hand-ui, shop-auction-ui, hud, board-rendering, and round-state-machine GDDs
 > **Architecture Module**: `client/src/main.rs`, `client/src/network/`, `client/src/state/`, `client/src/presentation/`, `client/src/ui/`, plus server message bridges in `server/src/network/` and owning server systems
 > **Status**: Ready
-> **Stories**: 3 Sprint 7 must-have stories
+> **Stories**: 5 Sprint 7/8 must-have stories
 
 ## Overview
 
-Sprint 7 makes the Polish build playable for an internal friend-game session through the real primary client path. This epic exists because the work cuts across client bootstrap, Lightyear connection flow, lobby/session entry, live draft and shop UI, hand/economy presentation, placement, resolution, and manual friend-game evidence. None of the existing single-system epics cleanly owns that whole vertical path.
+Sprint 7 makes the Polish build playable for an internal friend-game session through the real primary client path. Sprint 8 extends and hardens that same path beyond the proven next-loop DRAFT_SHOP endpoint without broadening the claim. This epic exists because the work cuts across client bootstrap, Lightyear connection flow, lobby/session entry, live draft and shop UI, hand/economy presentation, placement, resolution, endpoint/result evidence, and manual friend-game evidence. None of the existing single-system epics cleanly owns that whole vertical path.
 
-The epic does not create public release readiness, broad accessibility completion, playtest validation, or full playable-client manual QA. It only owns the friend-game playable path needed for Sprint 7.
+The epic does not create public release readiness, broad accessibility completion, playtest validation, full playable-client manual QA, or full game completion. It only owns the internal friend-game playable path needed for Sprint 7 and Sprint 8 friend-game robustness work. QA-COND-0005 remains accepted risk for friend-game scope only. QA-COND-0006 remains accepted-risk/deferred.
 
 ## Governing ADRs
 
@@ -37,6 +37,9 @@ The epic does not create public release readiness, broad accessibility completio
 | `design/gdd/shop-auction-ui.md` / `TR-SAU-006` | Shop/Auction UI transitions and input gating follow server phase and authoritative messages |
 | `design/gdd/hand-ui.md` / `TR-HU-005`, `TR-HU-008`, `TR-PRES-001` | Draft/hand/economy views use server-projected card and economy data |
 | `design/gdd/network-protocol.md` / `TR-NP-007`, `TR-NP-009`, `TR-NP-011` | Placement close, resolution ordering, and next-loop phase updates remain same-channel authoritative messages |
+| `production/sprints/sprint-8.md` | Friend-game result endpoint expansion and active loop polish beyond Sprint 7's next-loop DRAFT_SHOP endpoint, without public release, broad accessibility, playtest, full manual QA, game-over unless reached, or full completion claims |
+| `design/gdd/round-state-machine.md` / `TR-RSM-008`, `TR-RSM-009` | GAME_OVER detection and reliable phase broadcasts remain server-authoritative and exactly evidenced when reached |
+| `design/gdd/hud.md` / `TR-HUD-009` | HUD FROZEN mode records final state on GAME_OVER without incremental updates |
 
 ## Scope
 
@@ -47,6 +50,8 @@ The epic does not create public release readiness, broad accessibility completio
 - Minimal friend-game lobby/session UI for create, join, class select, class confirm, and session entry.
 - Live draft, shop, hand, economy, ready, placement, resolution, and next-loop bridge through real messages.
 - Two-real-client friend-game evidence for the nearest complete playable endpoint.
+- Sprint 8 result endpoint expansion toward GAME_OVER or an explicit accepted nearest-endpoint improvement.
+- Sprint 8 active DRAFT_SHOP, auction, placement, and resolution loop polish for stale panels, stale timers, ready-state cleanup, auction feedback cleanup, `UnitPlaced` visibility, and client authority drift.
 
 ### Out of Scope
 
@@ -55,6 +60,7 @@ The epic does not create public release readiness, broad accessibility completio
 - Editing the accepted-risk disposition for `QA-COND-0005` or `QA-COND-0006`.
 - Claiming playtest validation, fun-hypothesis validation, or full playable-client manual QA.
 - New modes, broad class/content expansion, or balance redesign.
+- Full game completion or game-over coverage unless the exact Sprint 8 evidence reaches and records it.
 
 ## Control Manifest Rules
 
@@ -86,10 +92,14 @@ The epic does not create public release readiness, broad accessibility completio
 | 001 | [Primary Client Bootstrap + Fresh Lobby Entry](story-001-primary-client-bootstrap-fresh-lobby-entry.md) | Integration | Ready | PLAYABLE-001 |
 | 002 | [Live Draft/Shop/Hand Bridge](story-002-live-draft-shop-hand-bridge.md) | Integration | Ready | PLAYABLE-002 |
 | 003 | [Real End-to-End Loop Verification](story-003-real-end-to-end-loop-verification.md) | Integration | Ready | PLAYABLE-003 |
+| 004 | [Friend-Game Result Endpoint Expansion](story-004-friend-game-result-endpoint-expansion.md) | Integration | Ready | PLAYABLE-004 |
+| 005 | [DRAFT_SHOP / Auction / Placement / Resolution Loop Polish](story-005-draft-shop-auction-placement-resolution-loop-polish.md) | Integration | Ready | LOOP-001 |
 
 ## Definition of Done
 
 - PLAYABLE-001, PLAYABLE-002, and PLAYABLE-003 are complete with their required evidence.
+- PLAYABLE-004 records either actual GAME_OVER/result evidence or an accepted nearest-endpoint improvement with no game-over claim.
+- LOOP-001 records repeated active-loop behavior without stale panels, stale timers, duplicate ready state, stale auction feedback, missing `UnitPlaced`, or client-side optimistic authority.
 - Two real primary clients can use a real local server through the scoped friend-game path.
 - Evidence documents the exact build, commit, commands, captures, reached endpoint, defects, and no-harness condition.
-- Sprint 7 claims remain limited to internal friend-game playable quality.
+- Sprint 7 and Sprint 8 claims remain limited to internal friend-game playable quality and robustness. Public release readiness, broad accessibility completion, playtest validation, full playable-client manual QA, game-over coverage unless actually reached, and full game completion remain out of scope.
