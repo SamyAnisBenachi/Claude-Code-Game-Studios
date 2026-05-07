@@ -4,11 +4,13 @@
 > **Card ID**: 5
 > **Asset ID**: ASSET-231
 > **Source**: assets/data/cards.json
-> **Status**: Needed
+> **Status**: Generated Placeholder
 
 ## Production Contract
 
 Illustration only. Runtime card composition owns the frame, mana badge, ATK/HP badges, text, type/rarity label, hover, ghost, drag, and state overlays.
+
+2026-05-07 reconciliation: `assets/art/cards/display/card_gobball_sturdy_005_art_display.png` exists at 120x180 and `assets/art/cards/zoom/card_gobball_sturdy_005_art_zoom.png` exists at 240x360. Status records generated placeholder files only; production approval, final delivery evidence, and public-release clearance remain outstanding.
 
 | Field | Value |
 |---|---|

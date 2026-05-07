@@ -1,12 +1,14 @@
 # Asset Manifest
 
-> Last updated: 2026-05-04
+> Last updated: 2026-05-07
 
 ## Progress Summary
 
 | Total | Needed | In Progress | Done | Approved |
 |-------|--------|-------------|------|----------|
 | 234 | 234 | 0 | 0 | 0 |
+
+Generated Placeholder and File Present Placeholder rows remain counted under Needed until production approval is recorded.
 
 ## Status Taxonomy
 
@@ -28,6 +30,25 @@
 - The full ~315-card catalog remains deferred until roster IDs, card IDs, and art IDs are reconciled.
 - GAME_OVER / outcome rows are placeholder ownership only and blocked pending result-screen UX.
 - Optional bid confirmation remains an unresolved accessibility design decision; no confirmation-step production assets are tracked in this manifest yet.
+
+---
+
+## 2026-05-07 Card Illustration Reconciliation
+
+ASSET-227 through ASSET-234 now reflect existing generated placeholder files for the current `assets/data/cards.json` `art_id` set. This is file tracking only: no row is Done or Approved, and none of these illustrations are cleared for public release until production approval/sign-off is documented.
+
+| Asset ID | art_id | Display file | Zoom file | Reconciled status |
+|----------|--------|--------------|-----------|-------------------|
+| ASSET-227 | iop_knight_001 | `assets/art/cards/display/card_iop_knight_001_art_display.png` (120x180) | `assets/art/cards/zoom/card_iop_knight_001_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-228 | sacrier_foot_002 | `assets/art/cards/display/card_sacrier_foot_002_art_display.png` (120x180) | `assets/art/cards/zoom/card_sacrier_foot_002_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-229 | cra_piercing_shot_003 | `assets/art/cards/display/card_cra_piercing_shot_003_art_display.png` (120x180) | `assets/art/cards/zoom/card_cra_piercing_shot_003_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-230 | xelor_time_trap_004 | `assets/art/cards/display/card_xelor_time_trap_004_art_display.png` (120x180) | `assets/art/cards/zoom/card_xelor_time_trap_004_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-231 | gobball_sturdy_005 | `assets/art/cards/display/card_gobball_sturdy_005_art_display.png` (120x180) | `assets/art/cards/zoom/card_gobball_sturdy_005_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-232 | sadida_rose_field_006 | `assets/art/cards/display/card_sadida_rose_field_006_art_display.png` (120x180) | `assets/art/cards/zoom/card_sadida_rose_field_006_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-233 | ecaflip_decree_007 | `assets/art/cards/display/card_ecaflip_decree_007_art_display.png` (120x180) | `assets/art/cards/zoom/card_ecaflip_decree_007_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-234 | iop_double_face_008 | `assets/art/cards/display/card_iop_double_face_008_art_display.png` (120x180) | `assets/art/cards/zoom/card_iop_double_face_008_art_zoom.png` (240x360) | Generated Placeholder |
+
+Remaining work: production art review, final delivery evidence, approval/sign-off, and public-release clearance.
 
 ---
 
@@ -318,11 +339,11 @@
 
 | Asset ID | Name | Category | Status | Spec File |
 |----------|------|----------|--------|-----------|
-| ASSET-227 | Card Illustration: iop_knight_001 | Card Illustration | Needed | design/assets/specs/cards/iop_knight_001.md |
-| ASSET-228 | Card Illustration: sacrier_foot_002 | Card Illustration | Needed | design/assets/specs/cards/sacrier_foot_002.md |
-| ASSET-229 | Card Illustration: cra_piercing_shot_003 | Card Illustration | Needed | design/assets/specs/cards/cra_piercing_shot_003.md |
-| ASSET-230 | Card Illustration: xelor_time_trap_004 | Card Illustration | Needed | design/assets/specs/cards/xelor_time_trap_004.md |
-| ASSET-231 | Card Illustration: gobball_sturdy_005 | Card Illustration | Needed | design/assets/specs/cards/gobball_sturdy_005.md |
-| ASSET-232 | Card Illustration: sadida_rose_field_006 | Card Illustration | Needed | design/assets/specs/cards/sadida_rose_field_006.md |
-| ASSET-233 | Card Illustration: ecaflip_decree_007 | Card Illustration | Needed | design/assets/specs/cards/ecaflip_decree_007.md |
-| ASSET-234 | Card Illustration: iop_double_face_008 | Card Illustration | Needed | design/assets/specs/cards/iop_double_face_008.md |
+| ASSET-227 | Card Illustration: iop_knight_001 | Card Illustration | Generated Placeholder | design/assets/specs/cards/iop_knight_001.md |
+| ASSET-228 | Card Illustration: sacrier_foot_002 | Card Illustration | Generated Placeholder | design/assets/specs/cards/sacrier_foot_002.md |
+| ASSET-229 | Card Illustration: cra_piercing_shot_003 | Card Illustration | Generated Placeholder | design/assets/specs/cards/cra_piercing_shot_003.md |
+| ASSET-230 | Card Illustration: xelor_time_trap_004 | Card Illustration | Generated Placeholder | design/assets/specs/cards/xelor_time_trap_004.md |
+| ASSET-231 | Card Illustration: gobball_sturdy_005 | Card Illustration | Generated Placeholder | design/assets/specs/cards/gobball_sturdy_005.md |
+| ASSET-232 | Card Illustration: sadida_rose_field_006 | Card Illustration | Generated Placeholder | design/assets/specs/cards/sadida_rose_field_006.md |
+| ASSET-233 | Card Illustration: ecaflip_decree_007 | Card Illustration | Generated Placeholder | design/assets/specs/cards/ecaflip_decree_007.md |
+| ASSET-234 | Card Illustration: iop_double_face_008 | Card Illustration | Generated Placeholder | design/assets/specs/cards/iop_double_face_008.md |
