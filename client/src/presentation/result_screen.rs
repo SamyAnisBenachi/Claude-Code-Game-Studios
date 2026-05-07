@@ -23,6 +23,7 @@ impl Plugin for ResultScreenPlugin {
             .init_resource::<ClientSessionIdentity>()
             .init_resource::<AccessibilityPreferences>()
             .init_resource::<ResultScreenViewState>()
+            .init_resource::<ResultScreenReturnToLobbyState>()
             .init_resource::<ResultScreenFocusOrder>()
             .init_resource::<ResultScreenMotionState>()
             .init_resource::<ResultScreenOutboundMessages>()
@@ -43,7 +44,9 @@ impl Plugin for ResultScreenPlugin {
                         .after(super::game_snapshot_sink_system),
                     result_screen_button_interaction_system,
                     result_screen_keyboard_input_system,
-                    handle_result_screen_actions_system,
+                    handle_result_screen_actions_system
+                        .in_set(PresentationSet::StateSync)
+                        .before(sync_result_screen_ui_system),
                     sync_result_screen_ui_system.in_set(PresentationSet::StateSync),
                 )
                     .run_if(in_state(ClientState::InSession)),
@@ -57,7 +60,6 @@ pub struct ResultScreenViewState {
     pub cached_snapshot: Option<S2CGameSnapshot>,
     pub visible: bool,
     pub snapshot_game_over_seen: bool,
-    pub acknowledgement_sent: bool,
 }
 
 impl ResultScreenViewState {
@@ -69,6 +71,19 @@ impl ResultScreenViewState {
 #[derive(Resource, Default, Debug, Clone)]
 pub struct ResultScreenOutboundMessages {
     pub acknowledgements: Vec<C2SAcknowledgeResult>,
+}
+
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResultScreenReturnToLobbyState {
+    pub return_requested: bool,
+    pub acknowledgement_sent: bool,
+    pub local_cleanup_completed: bool,
+}
+
+impl ResultScreenReturnToLobbyState {
+    pub fn reset_for_session(&mut self) {
+        *self = Self::default();
+    }
 }
 
 #[derive(Resource, Debug, Clone, PartialEq, Eq)]
@@ -470,7 +485,12 @@ pub fn result_screen_motion_state(
     }
 }
 
-fn spawn_result_screen_system(mut commands: Commands) {
+fn spawn_result_screen_system(
+    mut commands: Commands,
+    mut return_state: ResMut<ResultScreenReturnToLobbyState>,
+) {
+    return_state.reset_for_session();
+
     let root = commands
         .spawn((
             Name::new("Result screen root"),
@@ -682,9 +702,15 @@ fn cache_result_screen_snapshot_system(
 fn result_screen_phase_transition_system(
     current_phase: Res<CurrentClientPhase>,
     preferences: Res<AccessibilityPreferences>,
+    return_state: Res<ResultScreenReturnToLobbyState>,
     mut view_state: ResMut<ResultScreenViewState>,
     mut motion_state: ResMut<ResultScreenMotionState>,
 ) {
+    if return_state.return_requested {
+        view_state.visible = false;
+        return;
+    }
+
     let snapshot_game_over = view_state
         .cached_snapshot
         .as_ref()
@@ -752,6 +778,7 @@ fn handle_result_screen_actions_system(
     mut senders: Query<&mut MessageSender<C2SAcknowledgeResult>>,
     mut outbound_messages: ResMut<ResultScreenOutboundMessages>,
     mut view_state: ResMut<ResultScreenViewState>,
+    mut return_state: ResMut<ResultScreenReturnToLobbyState>,
     mut focus_order: ResMut<ResultScreenFocusOrder>,
     mut next_state: ResMut<NextState<ClientState>>,
 ) {
@@ -766,17 +793,23 @@ fn handle_result_screen_actions_system(
         return;
     }
 
-    if !view_state.acknowledgement_sent {
+    return_state.return_requested = true;
+
+    if !return_state.acknowledgement_sent {
         let acknowledgement = C2SAcknowledgeResult {};
         for mut sender in &mut senders {
             sender.send::<ReliableChannel>(acknowledgement.clone());
         }
         outbound_messages.acknowledgements.push(acknowledgement);
-        view_state.acknowledgement_sent = true;
+        return_state.acknowledgement_sent = true;
     }
 
-    view_state.clear_for_lobby();
-    focus_order.set_entities(Vec::new());
+    if !return_state.local_cleanup_completed {
+        view_state.clear_for_lobby();
+        focus_order.set_entities(Vec::new());
+        return_state.local_cleanup_completed = true;
+    }
+
     next_state.set(ClientState::Lobby);
 }
 
