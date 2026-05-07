@@ -4,11 +4,13 @@
 > **Card ID**: 8
 > **Asset ID**: ASSET-234
 > **Source**: assets/data/cards.json
-> **Status**: Needed
+> **Status**: Generated Placeholder
 
 ## Production Contract
 
 Illustration only. Runtime card composition owns the frame, mana badge, ATK/HP badges, text, type/rarity label, hover, ghost, drag, and state overlays. DoubleFace transform state is a runtime/card-data concern; do not bake both faces as UI chrome.
+
+2026-05-07 reconciliation: `assets/art/cards/display/card_iop_double_face_008_art_display.png` exists at 120x180 and `assets/art/cards/zoom/card_iop_double_face_008_art_zoom.png` exists at 240x360. Status records generated placeholder files only; production approval, final delivery evidence, and public-release clearance remain outstanding.
 
 | Field | Value |
 |---|---|
