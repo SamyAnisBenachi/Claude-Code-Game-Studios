@@ -15,6 +15,7 @@ pub struct LobbyUiPlugin;
 
 const LOBBY_PANEL_WIDTH: f32 = 420.0;
 const ROOM_CODE_MAX: usize = 8;
+const LOBBY_BUTTON_HEIGHT: f32 = 30.0;
 
 impl Plugin for LobbyUiPlugin {
     fn build(&self, app: &mut App) {
@@ -34,6 +35,7 @@ impl Plugin for LobbyUiPlugin {
                 (
                     drain_lobby_s2c_system,
                     lobby_keyboard_input_system,
+                    lobby_button_interaction_system,
                     send_lobby_commands_system,
                     refresh_lobby_ui_system,
                 )
@@ -77,14 +79,24 @@ pub struct LobbyInputState {
     pub join_room_code: String,
     pub requested_slot: u8,
     pub selected_class: ClassId,
+    pub room_code_focused: bool,
+    pub create_in_flight: bool,
+    pub join_in_flight: bool,
+    pub class_confirm_in_flight: bool,
 }
 
 impl Default for LobbyInputState {
     fn default() -> Self {
         Self {
-            join_room_code: std::env::var("JOIN_ROOM_CODE").unwrap_or_default(),
+            join_room_code: normalize_room_code_text(
+                &std::env::var("JOIN_ROOM_CODE").unwrap_or_default(),
+            ),
             requested_slot: 1,
             selected_class: ClassId::Iop,
+            room_code_focused: false,
+            create_in_flight: false,
+            join_in_flight: false,
+            class_confirm_in_flight: false,
         }
     }
 }
@@ -113,9 +125,42 @@ pub struct LobbyCamera;
 #[derive(Component)]
 struct LobbyStatusText;
 
+#[derive(Component)]
+pub struct LobbyRoomCodeField;
+
+#[derive(Component)]
+pub struct LobbyCreateRoomButton;
+
+#[derive(Component)]
+pub struct LobbyJoinRoomButton;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LobbyRequestedSlotButton {
+    pub slot: u8,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LobbyClassButton {
+    pub class_id: ClassId,
+}
+
+#[derive(Component)]
+pub struct LobbyConfirmClassButton;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+enum LobbyDynamicText {
+    RoomCode,
+    Slot(u8),
+    Class(ClassId),
+    Create,
+    Join,
+    Confirm,
+}
+
 pub fn drain_lobby_s2c_system(
     mut identity: ResMut<ClientSessionIdentity>,
     mut lobby: ResMut<LobbyViewState>,
+    mut input: ResMut<LobbyInputState>,
     mut handshakes: Query<&mut MessageReceiver<S2CHandshake>>,
     mut handshake_rejections: Query<&mut MessageReceiver<S2CHandshakeRejected>>,
     mut created: Query<&mut MessageReceiver<S2CRoomCreated>>,
@@ -145,24 +190,28 @@ pub fn drain_lobby_s2c_system(
     for mut receiver in &mut created {
         for message in receiver.receive() {
             apply_room_created(&mut lobby, &message);
+            input.create_in_flight = false;
         }
     }
 
     for mut receiver in &mut create_rejected {
         for message in receiver.receive() {
             lobby.status = format!("Create rejected: {:?}", message.reason);
+            input.create_in_flight = false;
         }
     }
 
     for mut receiver in &mut joined {
         for message in receiver.receive() {
             apply_join_ack(&mut lobby, &message);
+            input.join_in_flight = false;
         }
     }
 
     for mut receiver in &mut join_rejected {
         for message in receiver.receive() {
             lobby.status = format!("Join rejected: {:?}", message.reason);
+            input.join_in_flight = false;
         }
     }
 
@@ -175,6 +224,7 @@ pub fn drain_lobby_s2c_system(
     for mut receiver in &mut class_locked {
         for message in receiver.receive() {
             apply_class_locked(&mut lobby, &message);
+            input.class_confirm_in_flight = false;
         }
     }
 
@@ -187,6 +237,7 @@ pub fn drain_lobby_s2c_system(
     for mut receiver in &mut confirm_rejected {
         for message in receiver.receive() {
             lobby.status = format!("Class confirm rejected: {:?}", message.reason);
+            input.class_confirm_in_flight = false;
         }
     }
 }
@@ -237,46 +288,81 @@ fn lobby_keyboard_input_system(
     mut lobby: ResMut<LobbyViewState>,
     mut commands: MessageWriter<LobbyCommand>,
 ) {
-    append_room_code_keys(&keys, &mut input.join_room_code);
+    if input.room_code_focused {
+        append_room_code_keys(&keys, &mut input.join_room_code);
 
-    if keys.just_pressed(KeyCode::Backspace) {
-        input.join_room_code.pop();
+        if keys.just_pressed(KeyCode::Backspace) {
+            input.join_room_code.pop();
+        }
+
+        if keys.just_pressed(KeyCode::Escape) {
+            input.room_code_focused = false;
+        }
+
+        return;
     }
 
-    if keys.just_pressed(KeyCode::Digit0) {
-        input.requested_slot = 0;
-    } else if keys.just_pressed(KeyCode::Digit1) {
-        input.requested_slot = 1;
-    } else if keys.just_pressed(KeyCode::Digit2) {
-        input.requested_slot = 2;
-    } else if keys.just_pressed(KeyCode::Digit3) {
-        input.requested_slot = 3;
+    if let Some(slot) = requested_slot_from_keys(&keys) {
+        input.requested_slot = slot;
     }
 
     if let Some(class_id) = selected_class_from_keys(&keys) {
-        input.selected_class = class_id;
-        lobby.selected_class = class_id;
-        commands.write(LobbyCommand::SelectClass { class_id });
+        request_select_class(class_id, &mut input, &mut lobby, &mut commands);
     }
 
     if keys.just_pressed(KeyCode::KeyC) {
-        lobby.status = "Creating room".to_string();
-        commands.write(LobbyCommand::CreateRoom);
+        request_create_room(&mut input, &mut lobby, &mut commands);
     }
 
-    if keys.just_pressed(KeyCode::KeyJ) && !input.join_room_code.is_empty() {
-        lobby.status = format!("Joining {}", input.join_room_code);
-        commands.write(LobbyCommand::JoinRoom {
-            room_code: input.join_room_code.clone(),
-            requested_slot: input.requested_slot,
-        });
+    if keys.just_pressed(KeyCode::KeyJ) {
+        request_join_room(&mut input, &mut lobby, &mut commands);
     }
 
     if keys.just_pressed(KeyCode::Enter) {
-        lobby.status = format!("Confirming {:?}", input.selected_class);
-        commands.write(LobbyCommand::ConfirmClass {
-            class_id: input.selected_class,
-        });
+        request_confirm_class(&mut input, &mut lobby, &mut commands);
+    }
+}
+
+fn lobby_button_interaction_system(
+    mut interactions: Query<
+        (
+            &Interaction,
+            Option<&LobbyRoomCodeField>,
+            Option<&LobbyCreateRoomButton>,
+            Option<&LobbyJoinRoomButton>,
+            Option<&LobbyRequestedSlotButton>,
+            Option<&LobbyClassButton>,
+            Option<&LobbyConfirmClassButton>,
+        ),
+        Changed<Interaction>,
+    >,
+    mut input: ResMut<LobbyInputState>,
+    mut lobby: ResMut<LobbyViewState>,
+    mut commands: MessageWriter<LobbyCommand>,
+) {
+    for (interaction, room_code, create, join, slot, class, confirm) in &mut interactions {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+
+        if room_code.is_some() {
+            input.room_code_focused = true;
+            continue;
+        }
+
+        input.room_code_focused = false;
+
+        if create.is_some() {
+            request_create_room(&mut input, &mut lobby, &mut commands);
+        } else if join.is_some() {
+            request_join_room(&mut input, &mut lobby, &mut commands);
+        } else if let Some(slot) = slot {
+            input.requested_slot = slot.slot;
+        } else if let Some(class) = class {
+            request_select_class(class.class_id, &mut input, &mut lobby, &mut commands);
+        } else if confirm.is_some() {
+            request_confirm_class(&mut input, &mut lobby, &mut commands);
+        }
     }
 }
 
@@ -331,9 +417,40 @@ fn append_room_code_keys(keys: &ButtonInput<KeyCode>, room_code: &mut String) {
     }
 
     for (key, value) in room_code_key_map() {
+        if room_code.len() >= ROOM_CODE_MAX {
+            break;
+        }
+
         if keys.just_pressed(key) {
             room_code.push(value);
         }
+    }
+}
+
+pub fn normalize_room_code_text(raw: &str) -> String {
+    raw.chars()
+        .filter_map(normalize_room_code_char)
+        .take(ROOM_CODE_MAX)
+        .collect()
+}
+
+fn normalize_room_code_char(value: char) -> Option<char> {
+    value
+        .is_ascii_alphanumeric()
+        .then(|| value.to_ascii_uppercase())
+}
+
+fn requested_slot_from_keys(keys: &ButtonInput<KeyCode>) -> Option<u8> {
+    if keys.just_pressed(KeyCode::Digit0) {
+        Some(0)
+    } else if keys.just_pressed(KeyCode::Digit1) {
+        Some(1)
+    } else if keys.just_pressed(KeyCode::Digit2) {
+        Some(2)
+    } else if keys.just_pressed(KeyCode::Digit3) {
+        Some(3)
+    } else {
+        None
     }
 }
 
@@ -396,6 +513,75 @@ fn selected_class_from_keys(keys: &ButtonInput<KeyCode>) -> Option<ClassId> {
     }
 }
 
+fn request_create_room(
+    input: &mut LobbyInputState,
+    lobby: &mut LobbyViewState,
+    commands: &mut MessageWriter<LobbyCommand>,
+) {
+    if input.create_in_flight {
+        lobby.status = "Create already pending".to_string();
+        return;
+    }
+
+    input.create_in_flight = true;
+    lobby.status = "Creating room".to_string();
+    commands.write(LobbyCommand::CreateRoom);
+}
+
+fn request_join_room(
+    input: &mut LobbyInputState,
+    lobby: &mut LobbyViewState,
+    commands: &mut MessageWriter<LobbyCommand>,
+) {
+    if input.join_in_flight {
+        lobby.status = "Join already pending".to_string();
+        return;
+    }
+
+    let room_code = normalize_room_code_text(&input.join_room_code);
+    input.join_room_code = room_code.clone();
+    if room_code.is_empty() {
+        lobby.status = "Enter a room code before joining".to_string();
+        return;
+    }
+
+    input.join_in_flight = true;
+    lobby.status = format!("Joining {}", room_code);
+    commands.write(LobbyCommand::JoinRoom {
+        room_code,
+        requested_slot: input.requested_slot,
+    });
+}
+
+fn request_select_class(
+    class_id: ClassId,
+    input: &mut LobbyInputState,
+    lobby: &mut LobbyViewState,
+    commands: &mut MessageWriter<LobbyCommand>,
+) {
+    input.selected_class = class_id;
+    lobby.selected_class = class_id;
+    lobby.status = format!("Previewing {:?}", class_id);
+    commands.write(LobbyCommand::SelectClass { class_id });
+}
+
+fn request_confirm_class(
+    input: &mut LobbyInputState,
+    lobby: &mut LobbyViewState,
+    commands: &mut MessageWriter<LobbyCommand>,
+) {
+    if input.class_confirm_in_flight {
+        lobby.status = "Class confirm already pending".to_string();
+        return;
+    }
+
+    input.class_confirm_in_flight = true;
+    lobby.status = format!("Confirming {:?}", input.selected_class);
+    commands.write(LobbyCommand::ConfirmClass {
+        class_id: input.selected_class,
+    });
+}
+
 fn spawn_lobby_ui_system(
     mut commands: Commands,
     lobby: Res<LobbyViewState>,
@@ -435,6 +621,111 @@ fn spawn_lobby_ui_system(
                 lobby_text_font(18.0),
                 TextColor(Color::srgb(0.92, 0.95, 0.98)),
             ));
+
+            parent.spawn((
+                LobbyRoomCodeField,
+                LobbyDynamicText::RoomCode,
+                Button,
+                Interaction::None,
+                Text::new(lobby_dynamic_copy(
+                    LobbyDynamicText::RoomCode,
+                    &lobby,
+                    &input,
+                )),
+                lobby_text_font(15.0),
+                TextColor(Color::srgb(0.90, 0.96, 1.0)),
+                lobby_button_node(Val::Percent(100.0)),
+                BackgroundColor(Color::srgba(0.11, 0.15, 0.19, 0.95)),
+                BorderColor::all(Color::srgb(0.33, 0.52, 0.68)),
+            ));
+
+            parent.spawn((lobby_row_node(),)).with_children(|row| {
+                row.spawn((
+                    LobbyCreateRoomButton,
+                    LobbyDynamicText::Create,
+                    Button,
+                    Interaction::None,
+                    Text::new(lobby_dynamic_copy(LobbyDynamicText::Create, &lobby, &input)),
+                    lobby_text_font(14.0),
+                    TextColor(Color::srgb(0.98, 0.93, 0.72)),
+                    lobby_button_node(Val::Px(128.0)),
+                    BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
+                    BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
+                ));
+                row.spawn((
+                    LobbyJoinRoomButton,
+                    LobbyDynamicText::Join,
+                    Button,
+                    Interaction::None,
+                    Text::new(lobby_dynamic_copy(LobbyDynamicText::Join, &lobby, &input)),
+                    lobby_text_font(14.0),
+                    TextColor(Color::srgb(0.82, 0.95, 1.0)),
+                    lobby_button_node(Val::Px(128.0)),
+                    BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
+                    BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
+                ));
+            });
+
+            parent.spawn((Text::new("Requested slot"), lobby_text_font(13.0)));
+            parent.spawn((lobby_row_node(),)).with_children(|row| {
+                for slot in 0..=3 {
+                    row.spawn((
+                        LobbyRequestedSlotButton { slot },
+                        LobbyDynamicText::Slot(slot),
+                        Button,
+                        Interaction::None,
+                        Text::new(lobby_dynamic_copy(
+                            LobbyDynamicText::Slot(slot),
+                            &lobby,
+                            &input,
+                        )),
+                        lobby_text_font(13.0),
+                        TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                        lobby_button_node(Val::Px(72.0)),
+                        BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
+                        BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
+                    ));
+                }
+            });
+
+            parent.spawn((Text::new("Class"), lobby_text_font(13.0)));
+            parent.spawn((lobby_wrap_row_node(),)).with_children(|row| {
+                for class_id in lobby_class_options() {
+                    row.spawn((
+                        LobbyClassButton { class_id },
+                        LobbyDynamicText::Class(class_id),
+                        Button,
+                        Interaction::None,
+                        Text::new(lobby_dynamic_copy(
+                            LobbyDynamicText::Class(class_id),
+                            &lobby,
+                            &input,
+                        )),
+                        lobby_text_font(13.0),
+                        TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                        lobby_button_node(Val::Px(92.0)),
+                        BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
+                        BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
+                    ));
+                }
+            });
+
+            parent.spawn((
+                LobbyConfirmClassButton,
+                LobbyDynamicText::Confirm,
+                Button,
+                Interaction::None,
+                Text::new(lobby_dynamic_copy(
+                    LobbyDynamicText::Confirm,
+                    &lobby,
+                    &input,
+                )),
+                lobby_text_font(14.0),
+                TextColor(Color::srgb(0.98, 0.93, 0.72)),
+                lobby_button_node(Val::Percent(100.0)),
+                BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
+                BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
+            ));
         });
 }
 
@@ -442,6 +733,7 @@ fn refresh_lobby_ui_system(
     lobby: Res<LobbyViewState>,
     input: Res<LobbyInputState>,
     mut texts: Query<&mut Text, With<LobbyStatusText>>,
+    mut dynamic_texts: Query<(&LobbyDynamicText, &mut Text), Without<LobbyStatusText>>,
 ) {
     if !lobby.is_changed() && !input.is_changed() {
         return;
@@ -452,6 +744,10 @@ fn refresh_lobby_ui_system(
     };
 
     text.0 = lobby_status_copy(&lobby, &input);
+
+    for (role, mut text) in &mut dynamic_texts {
+        text.0 = lobby_dynamic_copy(*role, &lobby, &input);
+    }
 }
 
 pub fn lobby_status_copy(lobby: &LobbyViewState, input: &LobbyInputState) -> String {
@@ -485,6 +781,69 @@ pub fn lobby_status_copy(lobby: &LobbyViewState, input: &LobbyInputState) -> Str
     )
 }
 
+fn lobby_dynamic_copy(
+    role: LobbyDynamicText,
+    lobby: &LobbyViewState,
+    input: &LobbyInputState,
+) -> String {
+    match role {
+        LobbyDynamicText::RoomCode => {
+            let code = if input.join_room_code.is_empty() {
+                "--------".to_string()
+            } else {
+                input.join_room_code.clone()
+            };
+            let focus = if input.room_code_focused {
+                "focused"
+            } else {
+                "idle"
+            };
+            format!("Room code: {code} ({focus})")
+        }
+        LobbyDynamicText::Slot(slot) => {
+            if input.requested_slot == slot {
+                format!("Slot {slot} *")
+            } else {
+                format!("Slot {slot}")
+            }
+        }
+        LobbyDynamicText::Class(class_id) => {
+            if input.selected_class == class_id {
+                format!("{class_id:?} *")
+            } else {
+                format!("{class_id:?}")
+            }
+        }
+        LobbyDynamicText::Create if input.create_in_flight => "Creating...".to_string(),
+        LobbyDynamicText::Create => "Create Room".to_string(),
+        LobbyDynamicText::Join if input.join_in_flight => "Joining...".to_string(),
+        LobbyDynamicText::Join if input.join_room_code.is_empty() => "Join Room".to_string(),
+        LobbyDynamicText::Join => format!("Join {}", input.join_room_code),
+        LobbyDynamicText::Confirm if input.class_confirm_in_flight => "Confirming...".to_string(),
+        LobbyDynamicText::Confirm => {
+            let locked = lobby
+                .locked_class
+                .map_or(false, |locked| locked == input.selected_class);
+            if locked {
+                format!("Confirmed {:?}", input.selected_class)
+            } else {
+                format!("Confirm {:?}", input.selected_class)
+            }
+        }
+    }
+}
+
+fn lobby_class_options() -> [ClassId; 6] {
+    [
+        ClassId::Iop,
+        ClassId::Cra,
+        ClassId::Sacrier,
+        ClassId::Xelor,
+        ClassId::Ecaflip,
+        ClassId::Sadida,
+    ]
+}
+
 fn despawn_lobby_ui_system(
     mut commands: Commands,
     roots: Query<Entity, With<LobbyRoot>>,
@@ -502,6 +861,41 @@ fn despawn_lobby_ui_system(
 fn lobby_text_font(font_size: f32) -> TextFont {
     TextFont {
         font_size,
+        ..default()
+    }
+}
+
+fn lobby_row_node() -> Node {
+    Node {
+        width: Val::Percent(100.0),
+        height: Val::Px(LOBBY_BUTTON_HEIGHT),
+        flex_direction: FlexDirection::Row,
+        column_gap: Val::Px(8.0),
+        align_items: AlignItems::Center,
+        ..default()
+    }
+}
+
+fn lobby_wrap_row_node() -> Node {
+    Node {
+        width: Val::Percent(100.0),
+        flex_direction: FlexDirection::Row,
+        flex_wrap: FlexWrap::Wrap,
+        row_gap: Val::Px(6.0),
+        column_gap: Val::Px(6.0),
+        align_items: AlignItems::Center,
+        ..default()
+    }
+}
+
+fn lobby_button_node(width: Val) -> Node {
+    Node {
+        width,
+        height: Val::Px(LOBBY_BUTTON_HEIGHT),
+        border: UiRect::all(Val::Px(1.0)),
+        padding: UiRect::horizontal(Val::Px(8.0)),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
         ..default()
     }
 }

@@ -1093,6 +1093,7 @@ impl Plugin for ShopAuctionUiPlugin {
                         .chain()
                         .in_set(ShopAuctionUiSystemSet::MessageDrain),
                     (
+                        handle_shop_auction_control_interactions_system,
                         handle_draft_initial_objective_message_input_system,
                         handle_draft_initial_objective_keyboard_system,
                         handle_draft_initial_objective_button_interactions_system,
@@ -1905,6 +1906,55 @@ pub fn apply_shop_purchase_confirmations_system(
     }
 
     shop_state.pending_confirmed_purchases = unapplied_confirmations;
+}
+
+pub fn handle_shop_auction_control_interactions_system(
+    mut interactions: Query<
+        (
+            Entity,
+            &Interaction,
+            Option<&DraftInitialSlotIndex>,
+            Option<&DraftInitialReadyButton>,
+            Option<&ShopSlotIndex>,
+            Option<&ShopRefreshButton>,
+            Option<&ShopReadyButton>,
+        ),
+        (
+            Changed<Interaction>,
+            Or<(
+                With<DraftInitialSlotIndex>,
+                With<DraftInitialReadyButton>,
+                With<ShopSlotIndex>,
+                With<ShopRefreshButton>,
+                With<ShopReadyButton>,
+            )>,
+        ),
+    >,
+    mut draft_slots: MessageWriter<ShopAuctionDraftSlotClicked>,
+    mut draft_ready: MessageWriter<ShopAuctionDraftReadyButtonClicked>,
+    mut shop_slots: MessageWriter<ShopAuctionShopSlotClicked>,
+    mut shop_refresh: MessageWriter<ShopAuctionShopRefreshClicked>,
+    mut shop_ready: MessageWriter<ShopAuctionShopReadyButtonClicked>,
+) {
+    for (entity, interaction, draft_slot, draft_button, shop_slot, refresh_button, ready_button) in
+        &mut interactions
+    {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+
+        if draft_slot.is_some() {
+            draft_slots.write(ShopAuctionDraftSlotClicked { slot: entity });
+        } else if draft_button.is_some() {
+            draft_ready.write(ShopAuctionDraftReadyButtonClicked { button: entity });
+        } else if shop_slot.is_some() {
+            shop_slots.write(ShopAuctionShopSlotClicked { slot: entity });
+        } else if refresh_button.is_some() {
+            shop_refresh.write(ShopAuctionShopRefreshClicked { button: entity });
+        } else if ready_button.is_some() {
+            shop_ready.write(ShopAuctionShopReadyButtonClicked { button: entity });
+        }
+    }
 }
 
 pub fn handle_draft_initial_slot_click_system(
@@ -3305,6 +3355,8 @@ fn spawn_draft_initial_grid(
                 Name::new(format!("Shop Auction Draft Slot {index}")),
                 ShopAuctionUiEntity,
                 DraftInitialSlotIndex(index as u8),
+                Button,
+                Interaction::None,
                 draft_initial_slot_node(index),
                 Text::new(""),
                 shop_auction_text_font(14.0),
@@ -3345,6 +3397,8 @@ fn spawn_draft_initial_ready_button(commands: &mut Commands, parent: Entity) -> 
             Name::new("Shop Auction Draft Ready Button"),
             ShopAuctionUiEntity,
             DraftInitialReadyButton,
+            Button,
+            Interaction::None,
             Text::new("Ready"),
             shop_auction_text_font(16.0),
             TextColor(Color::srgb(0.98, 0.93, 0.72)),
@@ -3469,6 +3523,8 @@ fn spawn_shop_slots(
                 ShopAuctionUiEntity,
                 ShopSlotIndex(index as u8),
                 ShopSlotState::Empty,
+                Button,
+                Interaction::None,
                 shop_slot_node(index),
                 Text::new("Empty"),
                 shop_auction_text_font(14.0),
@@ -3486,6 +3542,8 @@ fn spawn_shop_refresh_button(commands: &mut Commands, parent: Entity) -> Entity 
             Name::new("Shop Auction Refresh Button"),
             ShopAuctionUiEntity,
             ShopRefreshButton,
+            Button,
+            Interaction::None,
             ShopRefreshButtonState { enabled: false },
             Text::new("REFRESH · 1g"),
             shop_auction_text_font(15.0),
@@ -3503,6 +3561,8 @@ fn spawn_shop_ready_button(commands: &mut Commands, parent: Entity) -> Entity {
             Name::new("Shop Auction Shop Ready Button"),
             ShopAuctionUiEntity,
             ShopReadyButton,
+            Button,
+            Interaction::None,
             Text::new("Ready"),
             shop_auction_text_font(16.0),
             TextColor(Color::srgb(0.98, 0.93, 0.72)),

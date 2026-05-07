@@ -811,6 +811,7 @@ impl Plugin for HandUiPlugin {
                         .chain()
                         .in_set(HandUiSystemSet::MessageDrain),
                     (
+                        handle_hand_control_interactions_system,
                         handle_placement_drag_started_system,
                         handle_placement_cursor_moved_system,
                         handle_placement_drag_ended_system,
@@ -1492,6 +1493,43 @@ pub fn handle_ghost_drag_started_system(
     }
 }
 
+pub fn handle_hand_control_interactions_system(
+    mut interactions: Query<
+        (
+            Entity,
+            &Interaction,
+            Option<&GridSlotIndex>,
+            Option<&FanSlotIndex>,
+            Option<&HandSubmitButton>,
+        ),
+        (
+            Changed<Interaction>,
+            Or<(
+                With<GridSlotIndex>,
+                With<FanSlotIndex>,
+                With<HandSubmitButton>,
+            )>,
+        ),
+    >,
+    mut grid_clicks: MessageWriter<HandGridCardClicked>,
+    mut fan_clicks: MessageWriter<HandFanCardClicked>,
+    mut submit_clicks: MessageWriter<HandSubmitButtonClicked>,
+) {
+    for (entity, interaction, grid_slot, fan_slot, submit) in &mut interactions {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+
+        if grid_slot.is_some() {
+            grid_clicks.write(HandGridCardClicked { card: entity });
+        } else if fan_slot.is_some() {
+            fan_clicks.write(HandFanCardClicked { card: entity });
+        } else if submit.is_some() {
+            submit_clicks.write(HandSubmitButtonClicked { button: entity });
+        }
+    }
+}
+
 pub fn handle_grid_card_click_system(
     mode: Res<HandUiMode>,
     timing: Res<HandUiTimingConfig>,
@@ -1527,13 +1565,22 @@ pub fn handle_grid_card_click_system(
 
 pub fn handle_hand_fan_card_click_system(
     mode: Res<HandUiMode>,
+    catalog: Res<HandCardCatalog>,
+    board_view: Res<PlacementBoardView>,
     mut clicks: MessageReader<HandFanCardClicked>,
     mut pending_placements: ResMut<PendingPlacements>,
     mut disclosure_state: ResMut<PlacementDisclosureState>,
     mut ghost_writer: MessageWriter<GhostPlacementChanged>,
+    mut drop_writer: MessageWriter<HandUiPlacementDropResolved>,
     mut commands: Commands,
     hand_cards: Query<(Entity, &FanSlotIndex, &HandSlotCard, Option<&FanSlotState>)>,
     fan_slots: Query<(Entity, &FanSlotIndex, &HandSlotCard), With<FanSlotIndex>>,
+    board_cells: Query<(
+        &LaneCell,
+        Option<&BoardCellOccupied>,
+        Option<&ObjectiveCell>,
+    )>,
+    objectives: Query<(&ObjectiveCell, Option<&ObjectiveAlive>)>,
     mut reserve_strips: Query<(&ReserveStripForFanSlot, &mut Visibility)>,
     mut submit_buttons: Query<&mut Text, With<HandSubmitButton>>,
     mut outbound: ResMut<HandUiOutboundMessages>,
@@ -1550,7 +1597,24 @@ pub fn handle_hand_fan_card_click_system(
             continue;
         }
 
-        if *mode != HandUiMode::Staging || slot_state != Some(&FanSlotState::Ghost) {
+        if *mode != HandUiMode::Staging {
+            continue;
+        }
+
+        if slot_state == Some(&FanSlotState::Active) {
+            if let Some(target) =
+                default_click_stage_target(card.0, &catalog, *board_view, &board_cells, &objectives)
+            {
+                drop_writer.write(HandUiPlacementDropResolved {
+                    card: click.card,
+                    owner_id: board_view.local_player_id,
+                    target: Some(target),
+                });
+            }
+            continue;
+        }
+
+        if slot_state != Some(&FanSlotState::Ghost) {
             continue;
         }
 
@@ -2184,6 +2248,8 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
                 HandCard,
                 FanSlotIndex(index as u8),
                 FanSlotState::Active,
+                Button,
+                Interaction::None,
                 hidden_slot_node(),
                 Transform::default(),
                 Visibility::Hidden,
@@ -2198,6 +2264,8 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
                 Name::new(format!("Hand UI Draft Grid Slot {index}")),
                 HandUiEntity,
                 GridSlotIndex(index as u8),
+                Button,
+                Interaction::None,
                 hand_draft_grid_slot_node(index),
                 Visibility::Hidden,
                 ChildOf(fan_root),
@@ -2226,6 +2294,8 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
             HandUiEntity,
             HandSubmitButton,
             HandSubmitInteractionState::Inactive,
+            Button,
+            Interaction::None,
             Text::new("Submit (0 cards)"),
             hidden_control_node(96.0, 28.0, 88.0),
             Visibility::Hidden,
@@ -2365,6 +2435,7 @@ fn spawn_reserve_strip_button(
             Name::new(format!("Hand UI Reserve Strip {action:?} {slot_index}")),
             HandUiEntity,
             ReserveStripButton { slot_index, action },
+            Button,
             Interaction::None,
             Text::new(label),
             reserve_strip_child_node(left_px, 24.0),
@@ -2828,6 +2899,68 @@ fn resolve_placement_target_kind(
         CardType::Order => Some(PlacementTargetKind::Instant),
         CardType::Spell | CardType::Trap | CardType::Structure | CardType::DoubleFace => None,
     }
+}
+
+fn default_click_stage_target(
+    card_id: CardId,
+    catalog: &HandCardCatalog,
+    board_view: PlacementBoardView,
+    board_cells: &Query<(
+        &LaneCell,
+        Option<&BoardCellOccupied>,
+        Option<&ObjectiveCell>,
+    )>,
+    objectives: &Query<(&ObjectiveCell, Option<&ObjectiveAlive>)>,
+) -> Option<PlayTarget> {
+    match resolve_placement_target_kind(card_id, None, catalog)? {
+        PlacementTargetKind::Minion => {
+            let (lane, cell) = first_available_spawn_cell(board_view, board_cells)
+                .unwrap_or_else(|| fallback_spawn_cell(board_view));
+            Some(PlayTarget::BoardCell { lane, cell })
+        }
+        PlacementTargetKind::LaneWide => Some(PlayTarget::LaneWide { lane: 1 }),
+        PlacementTargetKind::TargetObj => objectives
+            .iter()
+            .filter(|(objective, alive)| {
+                objective.player_id == board_view.opponent_player_id && alive.is_some()
+            })
+            .map(|(objective, _alive)| (objective.lane, objective.player_id))
+            .min_by_key(|(lane, _player_id)| *lane)
+            .map(|(lane, player_id)| PlayTarget::TargetObj { player_id, lane })
+            .or(Some(PlayTarget::TargetObj {
+                player_id: board_view.opponent_player_id,
+                lane: 1,
+            })),
+        PlacementTargetKind::TargetUnit => None,
+        PlacementTargetKind::Instant => Some(PlayTarget::Instant),
+    }
+}
+
+fn first_available_spawn_cell(
+    board_view: PlacementBoardView,
+    board_cells: &Query<(
+        &LaneCell,
+        Option<&BoardCellOccupied>,
+        Option<&ObjectiveCell>,
+    )>,
+) -> Option<(u8, u8)> {
+    board_cells
+        .iter()
+        .filter_map(|(lane_cell, occupied, objective)| {
+            let available = board_view.is_spawn_cell(lane_cell.lane, lane_cell.cell)
+                && occupied.is_none()
+                && objective.is_none();
+            available.then_some((lane_cell.lane, lane_cell.cell))
+        })
+        .min()
+}
+
+fn fallback_spawn_cell(board_view: PlacementBoardView) -> (u8, u8) {
+    let cell = match board_view.spawn_edge {
+        BoardSpawnEdge::LowCells => 1,
+        BoardSpawnEdge::HighCells => BOARD_CELL_COUNT,
+    };
+    (1, cell)
 }
 
 fn minion_highlight_cells(

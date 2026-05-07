@@ -88,8 +88,12 @@ fn lobby_state_is_updated_only_from_authoritative_s2c_messages() {
     let mut lobby = LobbyViewState::default();
     let input = LobbyInputState {
         join_room_code: "abc123".to_string(),
+        room_code_focused: false,
         requested_slot: 1,
         selected_class: ClassId::Xelor,
+        create_in_flight: false,
+        join_in_flight: false,
+        class_confirm_in_flight: false,
     };
 
     assert_eq!(lobby.room_code, None);

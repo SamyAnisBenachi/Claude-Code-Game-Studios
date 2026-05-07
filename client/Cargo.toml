@@ -247,6 +247,10 @@ name = "playable_client_active_loop_ui_state_test"
 path = "../tests/integration/playable_client/active_loop_ui_state_test.rs"
 
 [[test]]
+name = "playable_client_native_operator_controls_test"
+path = "../tests/integration/playable_client/native_operator_controls_test.rs"
+
+[[test]]
 name = "shop_auction_ui_plugin_scaffold_formulas_test"
 path = "../tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs"
 
