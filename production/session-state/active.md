@@ -2366,3 +2366,16 @@ C:\Program Files\GitHub CLI\gh.exe
 - Updated docs/status: `production/sprint-status.yaml`, `production/sprints/sprint-9.md`, `production/session-state/codex-orchestrator-state.md`, and `production/session-state/active.md`.
 - Scope guard: no full card production, asset approval, full balance completion, public release readiness, release-candidate readiness, full game completion, broad accessibility completion, full playable-client manual QA, Sprint 9 close-out, or playtest/fun-hypothesis validation is claimed.
 - Verification: `git diff --check` passed; `git diff --cached --check` passed before commit.
+
+## Session Extract - /story-done 2026-05-07
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/presentation-layer/story-006-result-screen-mvp.md` - Story 006: Result Screen MVP
+- Criteria: 24/24 passing; result overlay display, missing-result fallback, victory/defeat/draw/no-result/disconnect copy, authoritative objective summary, alive opponent `Unknown` fallback, destroyed opponent `was_fake` reveal, missing objective fallback, final summary fields, frozen HUD preservation, Return to Lobby, hidden rematch, keyboard focus, visible focus indicator, reduced motion, photosensitivity guard, viewport-safe layout structure, non-claims, QA condition carry-forward, and whitespace gate are verified.
+- Test Evidence: `production/qa/evidence/result-screen-mvp-evidence.md`, `tests/integration/presentation/result_screen_mvp_test.rs`, `tests/unit/hud/game_over_freeze_test.rs`, and `tests/integration/playable_client/friend_game_result_endpoint_test.rs`.
+- Verification: `cargo test -p client --test result_screen_mvp_test` passed 6/6; `cargo test -p client --test hud_game_over_freeze_test` passed 2/2; `cargo test -p server --test playable_client_friend_game_result_endpoint_test` passed 1/1; `cargo check -p client`, `cargo fmt -p client -p server -- --check`, and `git diff --check` passed.
+- Notes: Source of truth was `origin/main@8d963d50f5ee4ccb861d95ba94edc730c60499db`. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW because `production/review-mode.txt` is absent. Viewport/layout coverage is automated/static evidence; no browser/manual viewport capture is claimed.
+- Scope guard: No smoke, QA sign-off, `/team-qa`, `/gate-check`, Sprint 9 close-out, Sprint 8 close-out, unrelated implementation, public release readiness, full game completion, broad Standard-tier accessibility completion, full playable-client manual QA, manual/browser `GAME_OVER`, or playtest/fun-hypothesis validation is claimed.
+- QA conditions: `QA-COND-0005` remains accepted risk for friend-game scope only and is not verified Standard-tier accessibility completion. `QA-COND-0006` remains accepted-risk/deferred and is not playtest evidence or fun-hypothesis validation.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` marks S9-RS-002 done and preserves Sprint 8 carried conditions plus Sprint 9 no-claims.
+- Next recommended: S9-RS-003 Result acknowledgement cleanup handshake can be readiness-checked or assigned next when requested; no close-out, smoke, QA sign-off, `/team-qa`, or `/gate-check` was run.

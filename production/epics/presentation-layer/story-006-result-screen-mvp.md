@@ -1,7 +1,7 @@
 # Story 006: Result Screen MVP
 
 > **Epic**: Presentation Layer
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -397,7 +397,8 @@ client.
   completion.
 - QA-COND-0005 and QA-COND-0006 impact statement.
 
-**Status**: [ ] Not yet implemented or captured.
+**Status**: [x] Implemented and captured by
+`production/qa/evidence/result-screen-mvp-evidence.md`.
 
 ---
 
@@ -459,3 +460,55 @@ Sprint 9 activation is tracked in `production/sprint-status.yaml` and
 `production/sprints/sprint-9.md`. Implementation workers must not update shared
 status/session files from this story except through an explicitly authorized
 integration or story-done prompt.
+
+## Completion Notes
+
+**Completed**: 2026-05-07
+
+**Verdict**: COMPLETE WITH NOTES
+
+**Source of Truth**: `origin/main@8d963d50f5ee4ccb861d95ba94edc730c60499db`
+
+**Criteria**: 24/24 passing. Result overlay display, missing-result fallback,
+victory/defeat/draw/no-result/disconnect copy, authoritative objective summary,
+alive opponent `Unknown` fallback, destroyed opponent `was_fake` reveal, missing
+objective fallback, final summary fields, frozen HUD preservation, Return to
+Lobby, hidden rematch, keyboard focus, visible focus indicator, reduced motion,
+photosensitivity guard, viewport-safe layout structure, non-claims, QA condition
+carry-forward, and whitespace gate are verified.
+
+**Test Evidence**:
+`production/qa/evidence/result-screen-mvp-evidence.md`,
+`tests/integration/presentation/result_screen_mvp_test.rs`,
+`tests/unit/hud/game_over_freeze_test.rs`, and
+`tests/integration/playable_client/friend_game_result_endpoint_test.rs`.
+
+**Verification**:
+
+- `cargo test -p client --test result_screen_mvp_test` passed 6/6.
+- `cargo test -p client --test hud_game_over_freeze_test` passed 2/2.
+- `cargo test -p server --test playable_client_friend_game_result_endpoint_test`
+  passed 1/1.
+- `cargo check -p client` passed.
+- `cargo fmt -p client -p server -- --check` passed.
+- `git diff --check` passed.
+
+**Deviations**: None blocking. Viewport/layout coverage is code/static evidence
+through bounded Bevy UI structure plus the MVP evidence note; no browser/manual
+viewport capture, manual/browser `GAME_OVER`, or QA sign-off is claimed.
+
+**Code Review**: Lean mode; QL-TEST-COVERAGE and LP-CODE-REVIEW skipped because
+`production/review-mode.txt` is absent.
+
+**Scope Guard**: No smoke, QA sign-off, `/team-qa`, `/gate-check`, Sprint 9
+close-out, Sprint 8 close-out, unrelated implementation, public release
+readiness, full game completion, broad Standard-tier accessibility completion,
+full playable-client manual QA, manual/browser `GAME_OVER`, or playtest/fun
+hypothesis validation is claimed.
+
+**QA Conditions**: `QA-COND-0005` remains accepted risk for friend-game scope
+only and does not become verified Standard-tier accessibility completion.
+`QA-COND-0006` remains accepted-risk/deferred and is not playtest evidence or
+fun-hypothesis validation.
+
+**Tech Debt Logged**: None.

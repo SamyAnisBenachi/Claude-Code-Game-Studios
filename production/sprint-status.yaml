@@ -40,7 +40,7 @@ carried_conditions:
 coordination:
   native_lobby_blank_screen_repair: "Integrated in tested code baseline via commit 1bfbf5b."
   native_operator_controls: "Story exists and is ready; no active implementation worker was found in root source-of-truth check."
-  result_screen_mvp: "Prompt 414 readiness refresh marks S9-RS-002 Ready after S9-RS-001 completed the acknowledgement/result data contract. No result screen implementation is claimed."
+  result_screen_mvp: "S9-RS-002 Result Screen MVP is integrated on main at 8d963d5 and verified by /story-done Prompt 423. No manual/browser GAME_OVER, Sprint 9 QA sign-off, Sprint 9 close-out, public release readiness, full game completion, broad accessibility completion, playtest validation, or full playable-client manual QA is claimed."
   result_screen_mvp_readiness_recheck:
     prompt: "414"
     source_of_truth: "origin/main@6d428021558b94d7ef0185d7dbc69887bd8dd785"
@@ -105,17 +105,16 @@ stories:
     name: "Result screen MVP"
     file: "production/epics/presentation-layer/story-006-result-screen-mvp.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "UI/client programmer"
     estimate_days: 2.00
     blocker: ""
-    completed: ""
+    completed: "2026-05-07"
     notes:
-      - "Prompt 414 readiness refresh confirms S9-RS-001 removed the acknowledgement/result data contract blockers."
-      - "Ready for implementation within MVP boundaries: rematch hidden or disabled; alive opponent objective identities displayed as Unknown unless server authority exists."
-      - "S9-RS-004 accessibility and viewport polish is initially owned inside this MVP story."
-      - "No result screen implementation is claimed by Sprint 9 activation or Prompt 414 readiness refresh."
-      - "No manual/browser GAME_OVER, Sprint 9 QA sign-off, public release readiness, full game completion, broad accessibility completion, playtest validation, or full playable-client manual QA is claimed."
+      - "Integrated on main at 8d963d5 and verified by /story-done Prompt 423."
+      - "Result overlay opens from authoritative GAME_OVER phase/result state, supports missing-result fallback, outcome copy, objective summary, frozen HUD preservation, Return to Lobby acknowledgement dispatch, hidden rematch, keyboard focus, reduced motion, and whitespace gates."
+      - "S9-RS-004 initial focus/reduced-motion/viewport MVP scope is covered by this story as automated/static evidence; no broad Standard-tier accessibility closure is claimed."
+      - "No manual/browser GAME_OVER, Sprint 9 QA sign-off, Sprint 9 close-out, public release readiness, full game completion, broad accessibility completion, playtest validation, or full playable-client manual QA is claimed."
 
   - id: "S9-RS-003"
     name: "Result acknowledgement cleanup handshake"
