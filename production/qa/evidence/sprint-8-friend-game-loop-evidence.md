@@ -17,6 +17,11 @@ game completion.
   outside the friend-game endpoint test/evidence scope.
 - LOOP-001 worker branch:
   `work/loop-001-draft-shop-auction-placement-resolution-loop-polish`
+- LOOP-001 integrated base during implementation:
+  `origin/main@4f85035a93297f2ee5e0c26e8f7a2b0abf488005`
+- LOOP-001 worker commit: recorded in the final orchestration handoff for this
+  branch. The evidence document is committed with the worker branch; a Git
+  commit cannot contain its own final hash.
 - LOOP-001 scope: active friend-game loop polish only. No `/story-done`, smoke,
   team-qa, gate-check, Sprint 8 close-out, QA-COND-0005/0006 disposition change,
   public-release claim, broad accessibility claim, playtest claim, or unrelated
@@ -91,7 +96,10 @@ short-circuit game-over or mutate result state directly.
 ## LOOP-001 Active Loop Polish Addendum
 
 LOOP-001 stabilized the active friend-game loop around stale UI state and
-phase-boundary cleanup. The automated real-Lightyear route remains:
+phase-boundary cleanup. Dedicated capture:
+`production/qa/evidence/captures/sprint-8-friend-game-loop/loop-001-active-loop-polish-trace.json`.
+
+The automated real-Lightyear route remains:
 
 `DRAFT_INITIAL -> PLACEMENT(empty) -> RESOLUTION -> DRAFT_SHOP -> PLACEMENT(non_empty) -> RESOLUTION -> DRAFT_AUCTION -> DRAFT_SHOP -> PLACEMENT(non_empty) -> RESOLUTION -> DRAFT_SHOP`.
 
@@ -107,6 +115,9 @@ Stabilized behavior:
 - Placement exit clears pending hand placements, submit validation markers,
   active drag state, submitted/grace flags, urgency state, and the visible hand
   timer before RESOLUTION.
+- SAU-007 remains the owner of settlement presentation and card-acquisition
+  feedback. LOOP-001 only suppresses stale/late settlement start after auction
+  context is gone.
 - `UnitPlaced` replay remains covered by the real-Lightyear route and by the
   existing PLAYABLE-004 result endpoint route.
 
@@ -127,20 +138,30 @@ package.
 - `cargo test -p server --test playable_client_friend_game_result_endpoint_test`: PASS, 1 passed. Endpoint reached `GAME_OVER` through real C2S/S2C route.
 - `cargo test -p client --test hud_game_over_freeze_test`: PASS, 2 passed.
   Captures available HUD frozen/result behavior for the same commit.
-- `cargo test -p server --test playable_client_active_loop_polish_test`: PASS, 4 passed.
-- `cargo test -p client --test playable_client_active_loop_ui_state_test`: PASS, 4 passed.
-- `cargo test -p server --test playable_client_real_e2e_loop_test`: PASS, 4 passed.
-- `cargo test -p client --test shop_auction_ui_auction_settlement_test`: PASS, 7 passed.
-- `cargo test -p client --test playable_client_draft_shop_hand_bridge_test`: PASS, 4 passed.
-- `cargo test -p client --test shop_auction_ui_auction_feedback_test`: PASS, 6 passed.
+- `cargo test -p server --test playable_client_active_loop_polish_test`: PASS,
+  4 passed.
+- `cargo test -p client --test playable_client_active_loop_ui_state_test`: PASS,
+  4 passed.
+- `cargo test -p server --test playable_client_real_e2e_loop_test`: PASS,
+  4 passed.
+- `cargo test -p client --test shop_auction_ui_auction_settlement_test`: PASS,
+  7 passed.
+- `cargo test -p client --test playable_client_draft_shop_hand_bridge_test`:
+  PASS, 4 passed.
 - `cargo test -p client --test hand_ui_placement_timer_test`: PASS, 5 passed.
-- `cargo test -p client --test hand_ui_submit_prevalidation_test`: PASS, 8 passed.
+- `cargo test -p client --test hand_ui_phase_state_machine_test`: PASS,
+  3 passed.
+- `cargo test -p client --test shop_auction_ui_shop_panel_test`: PASS, 9 passed.
+- `cargo test -p client --test shop_auction_ui_auction_feedback_test`: PASS,
+  6 passed.
+- `cargo test -p client --test shop_auction_ui_auction_activation_test`: PASS,
+  7 passed.
+- `cargo test -p client --test board_rendering_resolution_anim_queue_test`:
+  PASS, 5 passed.
 - `cargo test -p client --test hud_phase_transitions_test`: PASS, 5 passed.
-- `cargo test -p client --test board_rendering_spawn_range_highlights_test`: PASS, 4 passed.
 - `cargo check --workspace`: PASS.
-
-Additional required regression commands are recorded in the final branch handoff
-for this implementation pass.
+- `cargo fmt -p client -p server -- --check`: PASS.
+- `git diff --check origin/main...HEAD`: PASS.
 
 ## Non-Claims
 
