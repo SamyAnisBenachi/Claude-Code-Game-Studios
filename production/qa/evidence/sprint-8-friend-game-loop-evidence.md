@@ -22,6 +22,9 @@ game completion.
   client apps from the same worker tree.
 - Target: local WebSocket route using one real server app and two real primary
   client apps.
+- HUD target: same-commit client HUD ECS regression for `GAME_OVER` frozen
+  state. The endpoint harness does not instantiate the full rendered HUD app, so
+  browser HUD capture remains outside this automated pass.
 - Local hardware, usernames, machine identifiers, process ids, raw room codes,
   transient ports, and unsafe branch-local metadata are redacted from committed
   evidence.
@@ -53,6 +56,10 @@ Observed result endpoint:
 - Both clients observed authoritative `S2CGameOver`.
 - Both clients observed `S2CPhaseChanged(GameOver)` after the resolution event.
 - The `S2CGameOver` payload was a draw: `loser = None`, `reason = Draw`.
+- HUD frozen/result state is available through the same-commit client HUD
+  regression: `HudMode::Frozen`, phase label `GAME OVER`, round counter retained,
+  final gold text retained, objective dot state frozen against post-game updates,
+  and active gold tween removed on snap rerender.
 - Server `ObjectiveCounters` reached at least two real objectives destroyed for
   both players.
 - GSS teardown was observed: `RoundState::GameOver`, `LobbyState::GameOver`,
@@ -84,6 +91,8 @@ short-circuit game-over or mutate result state directly.
 ## Verification Results
 
 - `cargo test -p server --test playable_client_friend_game_result_endpoint_test`: PASS, 1 passed. Endpoint reached `GAME_OVER` through real C2S/S2C route.
+- `cargo test -p client --test hud_game_over_freeze_test`: PASS, 2 passed.
+  Captures available HUD frozen/result behavior for the same commit.
 
 Additional required regression commands are recorded in the final branch handoff
 for this implementation pass.

@@ -43,7 +43,20 @@
       "host",
       "joiner"
     ],
-    "resolution_before_game_over_phase": true
+    "resolution_before_game_over_phase": true,
+    "hud_result_state": {
+      "source": "cargo test -p client --test hud_game_over_freeze_test",
+      "available_in_endpoint_harness": false,
+      "observed": true,
+      "observations": [
+        "HudMode::Frozen",
+        "phase_label=GAME OVER",
+        "round_counter_retained",
+        "final_gold_text_retained",
+        "post_game_objective_updates_rejected",
+        "active_gold_tween_removed_on_snap_rerender"
+      ]
+    }
   },
   "protocol_path": {
     "host": [
