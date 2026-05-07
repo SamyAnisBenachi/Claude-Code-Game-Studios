@@ -1,10 +1,12 @@
 use std::collections::HashMap;
+use std::path::Path;
 use std::time::Duration;
 
 use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 use bevy::{prelude::*, time::Virtual};
 use bevy_tweening::TweeningPlugin;
+use client::asset_wiring::{default_client_card_catalog, resolve_card_display_art};
 use client::presentation::{
     card_acquired_fanout_messages, draft_offering_fanout_messages, shop_slots_message,
     PlayerEconomyView, PresentationGameSnapshotMessage,
@@ -194,6 +196,37 @@ fn test_draft_shop_snapshot_seeds_hand_and_shop_before_live_messages() {
     assert_eq!(
         shop_slot_cards(&mut app),
         vec![Some(CardId(2)), None, Some(CardId(3))]
+    );
+}
+
+#[test]
+fn test_cards_json_art_ids_resolve_to_display_assets() {
+    let catalog = default_client_card_catalog();
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("client crate should live under the repository root");
+    let mut unresolved = Vec::new();
+
+    for card in catalog.values() {
+        let expected_path = format!("art/cards/display/card_{}_art_display.png", card.art_id);
+
+        match resolve_card_display_art(Some(card)) {
+            Ok(path) if path == expected_path => {
+                let asset_path = repo_root.join("assets").join(path);
+                if !asset_path.is_file() {
+                    unresolved.push(format!("{} -> {path} missing file", card.art_id));
+                }
+            }
+            Ok(path) => unresolved.push(format!("{} resolved to unexpected {path}", card.art_id)),
+            Err(reason) => unresolved.push(format!("{} unresolved: {reason:?}", card.art_id)),
+        }
+    }
+
+    unresolved.sort();
+    assert!(
+        unresolved.is_empty(),
+        "all assets/data/cards.json art_ids should resolve through display asset wiring:\n{}",
+        unresolved.join("\n")
     );
 }
 

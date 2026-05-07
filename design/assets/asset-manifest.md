@@ -6,7 +6,7 @@
 
 | Total | Needed | In Progress | Done | Approved |
 |-------|--------|-------------|------|----------|
-| 234 | 234 | 0 | 0 | 0 |
+| 242 | 242 | 0 | 0 | 0 |
 
 Generated Placeholder and File Present Placeholder rows remain counted under Needed until production approval is recorded.
 
@@ -35,7 +35,7 @@ Generated Placeholder and File Present Placeholder rows remain counted under Nee
 
 ## 2026-05-07 Card Illustration Reconciliation
 
-ASSET-227 through ASSET-234 now reflect existing generated placeholder files for the current `assets/data/cards.json` `art_id` set. This is file tracking only: no row is Done or Approved, and none of these illustrations are cleared for public release until production approval/sign-off is documented.
+ASSET-227 through ASSET-242 now reflect generated placeholder files for the current `assets/data/cards.json` `art_id` set. This is file tracking only: no row is Done or Approved, and none of these illustrations are cleared for public release until production approval/sign-off is documented.
 
 | Asset ID | art_id | Display file | Zoom file | Reconciled status |
 |----------|--------|--------------|-----------|-------------------|
@@ -47,6 +47,14 @@ ASSET-227 through ASSET-234 now reflect existing generated placeholder files for
 | ASSET-232 | sadida_rose_field_006 | `assets/art/cards/display/card_sadida_rose_field_006_art_display.png` (120x180) | `assets/art/cards/zoom/card_sadida_rose_field_006_art_zoom.png` (240x360) | Generated Placeholder |
 | ASSET-233 | ecaflip_decree_007 | `assets/art/cards/display/card_ecaflip_decree_007_art_display.png` (120x180) | `assets/art/cards/zoom/card_ecaflip_decree_007_art_zoom.png` (240x360) | Generated Placeholder |
 | ASSET-234 | iop_double_face_008 | `assets/art/cards/display/card_iop_double_face_008_art_display.png` (120x180) | `assets/art/cards/zoom/card_iop_double_face_008_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-235 | neutral_tofu_scout_101 | `assets/art/cards/display/card_neutral_tofu_scout_101_art_display.png` (120x180) | `assets/art/cards/zoom/card_neutral_tofu_scout_101_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-236 | neutral_wabbit_guard_102 | `assets/art/cards/display/card_neutral_wabbit_guard_102_art_display.png` (120x180) | `assets/art/cards/zoom/card_neutral_wabbit_guard_102_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-237 | neutral_market_runner_103 | `assets/art/cards/display/card_neutral_market_runner_103_art_display.png` (120x180) | `assets/art/cards/zoom/card_neutral_market_runner_103_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-238 | neutral_training_banner_104 | `assets/art/cards/display/card_neutral_training_banner_104_art_display.png` (120x180) | `assets/art/cards/zoom/card_neutral_training_banner_104_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-239 | neutral_guild_errand_105 | `assets/art/cards/display/card_neutral_guild_errand_105_art_display.png` (120x180) | `assets/art/cards/zoom/card_neutral_guild_errand_105_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-240 | neutral_paddock_bruiser_106 | `assets/art/cards/display/card_neutral_paddock_bruiser_106_art_display.png` (120x180) | `assets/art/cards/zoom/card_neutral_paddock_bruiser_106_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-241 | neutral_vault_sentry_107 | `assets/art/cards/display/card_neutral_vault_sentry_107_art_display.png` (120x180) | `assets/art/cards/zoom/card_neutral_vault_sentry_107_art_zoom.png` (240x360) | Generated Placeholder |
+| ASSET-242 | neutral_crowned_mercenary_108 | `assets/art/cards/display/card_neutral_crowned_mercenary_108_art_display.png` (120x180) | `assets/art/cards/zoom/card_neutral_crowned_mercenary_108_art_zoom.png` (240x360) | Generated Placeholder |
 
 Remaining work: production art review, final delivery evidence, approval/sign-off, and public-release clearance.
 
@@ -347,3 +355,11 @@ Remaining work: production art review, final delivery evidence, approval/sign-of
 | ASSET-232 | Card Illustration: sadida_rose_field_006 | Card Illustration | Generated Placeholder | design/assets/specs/cards/sadida_rose_field_006.md |
 | ASSET-233 | Card Illustration: ecaflip_decree_007 | Card Illustration | Generated Placeholder | design/assets/specs/cards/ecaflip_decree_007.md |
 | ASSET-234 | Card Illustration: iop_double_face_008 | Card Illustration | Generated Placeholder | design/assets/specs/cards/iop_double_face_008.md |
+| ASSET-235 | Card Illustration: neutral_tofu_scout_101 | Card Illustration | Generated Placeholder | design/assets/specs/hand-ui-assets.md |
+| ASSET-236 | Card Illustration: neutral_wabbit_guard_102 | Card Illustration | Generated Placeholder | design/assets/specs/hand-ui-assets.md |
+| ASSET-237 | Card Illustration: neutral_market_runner_103 | Card Illustration | Generated Placeholder | design/assets/specs/hand-ui-assets.md |
+| ASSET-238 | Card Illustration: neutral_training_banner_104 | Card Illustration | Generated Placeholder | design/assets/specs/hand-ui-assets.md |
+| ASSET-239 | Card Illustration: neutral_guild_errand_105 | Card Illustration | Generated Placeholder | design/assets/specs/hand-ui-assets.md |
+| ASSET-240 | Card Illustration: neutral_paddock_bruiser_106 | Card Illustration | Generated Placeholder | design/assets/specs/hand-ui-assets.md |
+| ASSET-241 | Card Illustration: neutral_vault_sentry_107 | Card Illustration | Generated Placeholder | design/assets/specs/hand-ui-assets.md |
+| ASSET-242 | Card Illustration: neutral_crowned_mercenary_108 | Card Illustration | Generated Placeholder | design/assets/specs/hand-ui-assets.md |
