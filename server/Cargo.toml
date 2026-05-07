@@ -246,6 +246,10 @@ name = "result_acknowledgement_contract_test"
 path = "../tests/integration/session/result_acknowledgement_contract_test.rs"
 
 [[test]]
+name = "result_acknowledgement_cleanup_handshake_test"
+path = "../tests/integration/session/result_acknowledgement_cleanup_handshake_test.rs"
+
+[[test]]
 name = "game_over_reconnect_result_resend_test"
 path = "../tests/integration/session/game_over_reconnect_result_resend_test.rs"
 

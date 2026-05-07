@@ -219,6 +219,10 @@ name = "result_screen_mvp_test"
 path = "../tests/integration/presentation/result_screen_mvp_test.rs"
 
 [[test]]
+name = "result_screen_return_to_lobby_test"
+path = "../tests/integration/presentation/result_screen_return_to_lobby_test.rs"
+
+[[test]]
 name = "accessibility_settings_preferences_test"
 path = "../tests/unit/accessibility_settings/preferences_test.rs"
 
