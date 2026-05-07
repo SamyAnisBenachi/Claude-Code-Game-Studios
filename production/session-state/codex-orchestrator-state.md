@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-05
+Updated: 2026-05-07
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -113,6 +113,23 @@ the user should close that window; do not add redundant wording like "do not
 respond" after `CLEAR`. `REPONDRE` means the next prompt belongs in that same
 existing window. If a prompt follows a `CLEAR` instruction, it is for a new
 agent/window unless a specific `REPONDRE` line says otherwise.
+
+## GitHub CLI And CI Notes
+
+- 2026-05-07 CI auth repair: user GitHub CLI auth is valid in normal
+  PowerShell and in Codex when commands run outside the sandbox. Sandboxed
+  `gh auth status -h github.com` can still report an invalid default token
+  because the sandbox cannot read the Windows keyring token. For CI triage,
+  use escalated `gh` commands against the existing keyring auth; do not ask the
+  user to relogin or store a plain-text token unless they explicitly approve
+  that security tradeoff.
+- 2026-05-07 latest `tests.yml` on `main` failed at `Run Cargo Tests` /
+  `Check Board Rendering source guards` because Linux CI could not find
+  `wayland-client` for `wayland-sys`. Local fix applied but not committed:
+  `.github/workflows/tests.yml` now installs `libwayland-dev` with the other
+  Linux packages. Older target run `25485272040` for commit `54681615` was also
+  failed and is superseded by later failing `main` runs until this workflow fix
+  is committed/pushed and CI reruns.
 
 ## Live Windows Confirmed By User
 
