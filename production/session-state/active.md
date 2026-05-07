@@ -2220,3 +2220,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` marks PLAYABLE-003 done. All Sprint 7 Must Have PLAYABLE stories are complete.
 - Next recommended: `S7-N1` friend-game evidence index cleanup is unblocked; after that, choose whether to pull conditional Should Have work or proceed to the Sprint 7 close-out sequence later. No `/smoke-check`, `/team-qa`, `/gate-check`, or Sprint 8 planning was run in this serialized story-done scope.
+
+## Session Extract - Prompt 305 S7-N1 Evidence Index Cleanup 2026-05-07
+- Scope: docs-only evidence index cleanup for Sprint 7 friend-game auditability; no `/smoke-check`, `/team-qa`, `/gate-check`, or Sprint 8 planning was run.
+- Evidence index: `production/qa/evidence/sprint-7-friend-game-evidence-index.md`.
+- Linked story evidence: `production/qa/evidence/playable-client-lobby-entry.md`, `production/qa/evidence/playable-client-draft-shop-hand-bridge.md`, and `production/qa/evidence/playable-client-real-e2e-loop.md`.
+- Capture spine: `production/qa/evidence/captures/playable-client-real-e2e-loop/`, especially `prompt-290-room-session-trace.json`, `prompt-296-draft-shop-trace.json`, `prompt-298-auction-placement-resolution-trace.json`, and `phase-captures.md`.
+- Verified endpoint: next-loop DRAFT_SHOP after post-auction placement/resolution.
+- Forbidden claims preserved exactly: no public release readiness, no broad accessibility completion, no playtest/fun-hypothesis validation, no full playable-client manual QA, no full game completion.
+- QA conditions: `QA-COND-0005` remains accepted risk for friend-game scope only and is not verified Standard-tier accessibility completion. `QA-COND-0006` remains accepted-risk/deferred and is not playtest evidence or fun-hypothesis validation.
+- Sprint status: `production/sprint-status.yaml` marks `S7-N1` done.
+- Next recommended: decide whether to pull conditional Sprint 7 Should Have work (`SAU-007` or `ECO-004`) or begin the later Sprint 7 close-out sequence when requested.

@@ -20,8 +20,9 @@ notes:
   - "QA-COND-0005 is accepted risk for friend-game scope only and is not verified Standard-tier accessibility completion."
   - "QA-COND-0006 is accepted-risk/deferred and is not playtest evidence or fun-hypothesis validation."
   - "Full playable-client manual QA is not claimed."
-  - "PLAYABLE story docs exist; PLAYABLE-001 and PLAYABLE-002 are complete, and PLAYABLE-003 is unblocked for execution."
+  - "PLAYABLE story docs exist; PLAYABLE-001, PLAYABLE-002, and PLAYABLE-003 are complete."
   - "Sprint 7 QA plan exists at production/qa/qa-plan-sprint-7-2026-05-06.md; no smoke-check, team-qa, gate-check, public release readiness, playtest validation, or full playable-client manual QA is claimed here."
+  - "S7-N1 friend-game evidence index cleanup is complete at production/qa/evidence/sprint-7-friend-game-evidence-index.md; verified endpoint is next-loop DRAFT_SHOP after post-auction placement/resolution."
 
 stories:
   - id: "PLAYABLE-001"
@@ -73,7 +74,7 @@ stories:
       - "Documented endpoint is next-loop DRAFT_SHOP after post-auction placement/resolution; game-over is not reached or claimed."
       - "No harness-injected game state satisfies completion; evidence uses controlled real-Lightyear server/client paths from the same commit."
       - "Evidence is friend-game evidence only, not public QA, public release readiness, broad accessibility completion, playtest validation, fun-hypothesis validation, full playable-client manual QA, or full game completion."
-      - "All Sprint 7 Must Have PLAYABLE stories are complete; S7-N1 friend-game evidence index cleanup is unblocked. No smoke-check, team-qa, gate-check, or Sprint 8 planning was run."
+      - "All Sprint 7 Must Have PLAYABLE stories are complete; S7-N1 friend-game evidence index cleanup is complete. No smoke-check, team-qa, gate-check, or Sprint 8 planning was run."
 
   - id: "SAU-007"
     name: "Auction Settlement and Shop Transition"
@@ -103,12 +104,16 @@ stories:
 
   - id: "S7-N1"
     name: "Friend-game evidence index cleanup"
-    file: "production/qa/evidence/"
+    file: "production/qa/evidence/sprint-7-friend-game-evidence-index.md"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: "orchestrator"
     estimate_days: 0.25
-    blocker: "Start only after PLAYABLE-003 evidence exists."
-    completed: ""
+    blocker: ""
+    completed: "2026-05-07"
     notes:
-      - "Make Sprint 7 friend-game evidence paths easy to audit."
+      - "Sprint 7 friend-game evidence index links PLAYABLE-001, PLAYABLE-002, and PLAYABLE-003 evidence docs."
+      - "Capture directory and key trace artifacts are indexed under production/qa/evidence/captures/playable-client-real-e2e-loop/."
+      - "Verified endpoint is next-loop DRAFT_SHOP after post-auction placement/resolution."
+      - "Forbidden claims remain: no public release readiness, no broad accessibility completion, no playtest/fun-hypothesis validation, no full playable-client manual QA, no full game completion."
+      - "No smoke-check, team-qa, gate-check, Sprint 8 planning, or QA-COND-0005/QA-COND-0006 disposition change was made."

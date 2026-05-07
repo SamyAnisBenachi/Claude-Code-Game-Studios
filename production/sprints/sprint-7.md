@@ -118,10 +118,20 @@ Until those files exist and pass story readiness, the PLAYABLE rows in
 
 ## QA Plan
 
-> WARNING: **No QA Plan**: Sprint 7 has no QA plan yet. Run `/qa-plan sprint-7`
-> after the PLAYABLE story docs are created and before implementation begins.
-> This Sprint 7 plan intentionally does not run `/qa-plan`, `/team-qa`,
-> `/smoke-check`, or `/gate-check`.
+Sprint 7 QA planning exists at
+[`production/qa/qa-plan-sprint-7-2026-05-06.md`](../qa/qa-plan-sprint-7-2026-05-06.md).
+No `/smoke-check`, `/team-qa`, `/gate-check`, or Sprint 8 planning is claimed
+by the S7-N1 evidence-index cleanup.
+
+## Friend-Game Evidence Index
+
+S7-N1 is complete. The concise evidence index is
+[`production/qa/evidence/sprint-7-friend-game-evidence-index.md`](../qa/evidence/sprint-7-friend-game-evidence-index.md).
+
+The verified endpoint is next-loop DRAFT_SHOP after post-auction
+placement/resolution. Game-over, public release readiness, broad accessibility
+completion, playtest/fun-hypothesis validation, full playable-client manual QA,
+and full game completion are not claimed.
 
 ## Out of Scope
 
