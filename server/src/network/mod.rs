@@ -9,8 +9,8 @@ use bevy::prelude::*;
 use lightyear::prelude::server::*;
 use lightyear::prelude::*;
 use shared::protocol::{
-    self, C2SAcknowledgeResult, C2SActivateCard, C2SSignalReady, C2SSubmitPlacement,
-    ProtocolChannel, ProtocolDirection, ProtocolRegistry, ReliableChannel, S2CObjectiveIdentities,
+    self, C2SActivateCard, C2SSignalReady, C2SSubmitPlacement, ProtocolChannel, ProtocolDirection,
+    ProtocolRegistry, ReliableChannel, S2CObjectiveIdentities,
 };
 
 pub mod economy_dispatch;
@@ -113,12 +113,8 @@ fn log_client_disconnected(trigger: On<Add, Disconnected>, clients: Query<&Remot
     info!("Client disconnected: {:?}", client_id);
 }
 
-fn receive_c2s_messages(
-    activate_card: Query<&mut MessageReceiver<C2SActivateCard>>,
-    acknowledge_result: Query<&mut MessageReceiver<C2SAcknowledgeResult>>,
-) {
+fn receive_c2s_messages(activate_card: Query<&mut MessageReceiver<C2SActivateCard>>) {
     log_received("C2SActivateCard", activate_card);
-    log_received("C2SAcknowledgeResult", acknowledge_result);
 }
 
 pub fn drain_signal_ready_messages(

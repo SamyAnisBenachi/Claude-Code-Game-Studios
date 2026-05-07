@@ -7,8 +7,8 @@ use lightyear::prelude::PeerId;
 use shared::card::ClassId;
 use shared::protocol::{
     CardSource, S2CAuctionBidAccepted, S2CAuctionBidRejected, S2CCardAcquired, S2CDraftOffering,
-    S2CGameOver, S2CGoldUpdate, S2CObjectiveIdentities, S2CPrismRewardDropped, S2CSessionCancelled,
-    S2CSessionSettingsUpdated, S2CShopSlots,
+    S2CGameOver, S2CGameSnapshot, S2CGoldUpdate, S2CObjectiveIdentities, S2CPrismRewardDropped,
+    S2CSessionCancelled, S2CSessionSettingsUpdated, S2CShopSlots,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
@@ -151,6 +151,37 @@ pub struct ReconnectTracker {
     pub token_map: HashMap<SessionToken, (SessionId, PlayerId)>,
     pub pending_hellos: HashMap<PeerId, PendingHello>,
     pub sang_meprise_sent_to: HashSet<PlayerId>,
+}
+
+/// Authoritative GAME_OVER result retained during the result acknowledgement
+/// window. It is removed only after every participant acknowledges or the
+/// configured acknowledgement timeout expires.
+#[derive(Debug, Clone, Resource)]
+pub struct EndedSessionResultState {
+    pub result: S2CGameOver,
+    pub participants: HashSet<PlayerId>,
+    pub acknowledged: HashSet<PlayerId>,
+    pub final_snapshots: HashMap<PlayerId, S2CGameSnapshot>,
+    pub expires_at_ms: u64,
+    pub session_ids: HashSet<SessionId>,
+}
+
+impl EndedSessionResultState {
+    pub fn acknowledge(&mut self, player_id: PlayerId) -> bool {
+        if !self.participants.contains(&player_id) {
+            return false;
+        }
+
+        self.acknowledged.insert(player_id)
+    }
+
+    pub fn all_acknowledged(&self) -> bool {
+        !self.participants.is_empty()
+            && self
+                .participants
+                .iter()
+                .all(|player| self.acknowledged.contains(player))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

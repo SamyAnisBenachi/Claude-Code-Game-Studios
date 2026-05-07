@@ -17,9 +17,9 @@ use uuid::Uuid;
 
 use crate::core::rsm::{PlayerReconnected, RoundPhase};
 use crate::core::session::{
-    build_game_snapshot, ActiveSessions, DeferredMessage, NextFreshPlayerId, PendingHello,
-    PlayerConnectionMap, ReconnectNetworkOutbox, ReconnectTracker, SessionConfig, SessionId,
-    SessionSlot, SessionSlots, SessionToken,
+    build_game_snapshot, ActiveSessions, DeferredMessage, EndedSessionResultState,
+    NextFreshPlayerId, PendingHello, PlayerConnectionMap, ReconnectNetworkOutbox, ReconnectTracker,
+    SessionConfig, SessionId, SessionSlot, SessionSlots, SessionToken,
 };
 use crate::feature::objective::{HiddenObjectives, OBJECTIVE_LANE_COUNT};
 use crate::foundation::config::GameConfig;
@@ -40,6 +40,10 @@ pub enum ReconnectDispatch {
     ObjectiveIdentities {
         peer_id: PeerId,
         message: S2CObjectiveIdentities,
+    },
+    GameOver {
+        peer_id: PeerId,
+        message: S2CGameOver,
     },
     PhaseChanged {
         peer_id: PeerId,
@@ -157,6 +161,12 @@ pub fn process_reconnect_hello(
             }],
         };
     };
+
+    if let Some(result) =
+        process_ended_session_reconnect(world, token, session_id, player_id, peer_id)
+    {
+        return result;
+    }
 
     map_reconnect_peer(world, peer_id, player_id);
     set_snapshot_sent(world, player_id, false);
@@ -366,6 +376,10 @@ fn send_reconnect_dispatches(world: &mut World, dispatches: &[ReconnectDispatch]
                     &single(*peer_id),
                 );
             }
+            ReconnectDispatch::GameOver { peer_id, message } => {
+                let _ =
+                    sender.send::<S2CGameOver, ReliableChannel>(message, server, &single(*peer_id));
+            }
             ReconnectDispatch::PhaseChanged { peer_id, message } => {
                 let _ = sender.send::<S2CPhaseChanged, ReliableChannel>(
                     message,
@@ -534,6 +548,65 @@ fn token_lookup(world: &World, token: &SessionToken) -> Option<(SessionId, Playe
         .token_map
         .get(token)
         .copied()
+}
+
+fn process_ended_session_reconnect(
+    world: &mut World,
+    token: SessionToken,
+    session_id: SessionId,
+    player_id: PlayerId,
+    peer_id: PeerId,
+) -> Option<ReconnectProcessResult> {
+    let ended_state = world.get_resource::<EndedSessionResultState>()?;
+    if !ended_state.participants.contains(&player_id) {
+        return None;
+    }
+    if !ended_state.session_ids.is_empty() && !ended_state.session_ids.contains(&session_id) {
+        return None;
+    }
+
+    let snapshot = ended_state.final_snapshots.get(&player_id)?.clone();
+    let game_over = ended_state.result.clone();
+    let phase_changed = phase_changed_from_snapshot(&snapshot);
+
+    map_reconnect_peer(world, peer_id, player_id);
+    set_snapshot_sent(world, player_id, false);
+    let objective_identities = objective_identities_for_player(world, player_id);
+
+    let dispatches = vec![
+        ReconnectDispatch::Handshake {
+            peer_id,
+            message: S2CHandshake {
+                protocol_version: protocol_version(world),
+                session_id: session_id_to_u64(session_id),
+                session_token: token,
+                player_id,
+            },
+        },
+        ReconnectDispatch::GameSnapshot {
+            peer_id,
+            message: snapshot,
+        },
+        ReconnectDispatch::ObjectiveIdentities {
+            peer_id,
+            message: objective_identities,
+        },
+        ReconnectDispatch::GameOver {
+            peer_id,
+            message: game_over,
+        },
+        ReconnectDispatch::PhaseChanged {
+            peer_id,
+            message: phase_changed,
+        },
+    ];
+
+    set_snapshot_sent(world, player_id, true);
+
+    Some(ReconnectProcessResult {
+        dispatches,
+        closes: Vec::new(),
+    })
 }
 
 fn process_fresh_hello(world: &mut World, peer_id: PeerId) -> ReconnectProcessResult {

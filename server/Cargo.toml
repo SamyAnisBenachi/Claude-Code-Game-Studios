@@ -242,6 +242,14 @@ name = "reconnect_snapshot_test"
 path = "../tests/integration/session/reconnect_snapshot_test.rs"
 
 [[test]]
+name = "result_acknowledgement_contract_test"
+path = "../tests/integration/session/result_acknowledgement_contract_test.rs"
+
+[[test]]
+name = "game_over_reconnect_result_resend_test"
+path = "../tests/integration/session/game_over_reconnect_result_resend_test.rs"
+
+[[test]]
 name = "playable_client_lobby_entry_server_test"
 path = "../tests/integration/playable_client/lobby_entry_server_test.rs"
 
