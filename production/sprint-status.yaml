@@ -39,7 +39,7 @@ carried_conditions:
 
 coordination:
   native_lobby_blank_screen_repair: "Integrated in tested code baseline via commit 1bfbf5b."
-  native_operator_controls: "Story exists and is ready; no active implementation worker was found in root source-of-truth check."
+  native_operator_controls: "S9-NATIVE-001 is integrated on main at 1e8e1dd and verified by /story-done Prompt 433 from origin/main@b69a7fd. Native visual window confirmation remains a warning; no full manual/browser/native two-client route, QA sign-off, Sprint 9 close-out, or release readiness is claimed."
   result_screen_mvp: "S9-RS-002 Result Screen MVP is integrated on main at 8d963d5 and verified by /story-done Prompt 423. No manual/browser GAME_OVER, Sprint 9 QA sign-off, Sprint 9 close-out, public release readiness, full game completion, broad accessibility completion, playtest validation, or full playable-client manual QA is claimed."
   result_screen_mvp_readiness_recheck:
     prompt: "414"
@@ -91,15 +91,17 @@ stories:
     name: "Native friend-game operator controls"
     file: "production/epics/playable-client/story-006-native-friend-game-operator-controls.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "client/platform programmer"
     estimate_days: 1.00
     blocker: ""
-    completed: ""
+    completed: "2026-05-07"
     notes:
       - "Native lobby blank screen repair is integrated via commit 1bfbf5b."
-      - "Story docs exist and are ready, but no active implementation worker was found during activation."
-      - "This enables manual native operation only; S9-QA-001 owns route evidence and any closure of S8-QA-001-W1."
+      - "Native operator controls are integrated via commit 1e8e1dd and verified by /story-done Prompt 433 from origin/main@b69a7fd."
+      - "Evidence: production/qa/evidence/native-friend-game-operator-controls-evidence.md and playable_client_native_operator_controls_test cover lobby, class, draft, shop, auction, and placement operator controls without client-side optimistic authority."
+      - "Native launch sanity remains partial: server and two native clients stayed alive without panic output, but no native visual window confirmation or full manual two-client route is claimed."
+      - "This enables manual native operation only; S9-QA-001 still owns full route evidence and any closure of S8-QA-001-W1."
 
   - id: "S9-RS-002"
     name: "Result screen MVP"

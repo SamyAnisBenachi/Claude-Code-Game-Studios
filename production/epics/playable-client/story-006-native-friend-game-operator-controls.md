@@ -1,7 +1,7 @@
 # Story 006: Native Friend-Game Operator Controls
 
 > **Epic**: Playable Client
-> **Status**: Ready - backlog preparation only
+> **Status**: Complete
 > **Layer**: Polish / Native Client Operator UX
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -520,7 +520,11 @@ full performance profiling pass.
   playable-client manual QA, and full game completion.
 - QA-COND-0005 and QA-COND-0006 impact statement.
 
-**Status**: [ ] Not yet implemented or captured.
+**Status**: [x] Implemented and captured by
+`production/qa/evidence/native-friend-game-operator-controls-evidence.md`.
+Native launch sanity is partial: one server and two native clients stayed alive
+without panic output, but this story does not claim full visual native-window
+confirmation or a full manually driven two-client route.
 
 ## Dependencies
 
@@ -555,3 +559,67 @@ This story is self-contained for native operator controls and evidence. It can
 be assigned later without changing Sprint 8 status or activating Sprint 9.
 Implementation must preserve the carried Sprint 8 conditions and must not claim
 that this docs-prep branch closed S8-QA-001-W1, QA-COND-0005, or QA-COND-0006.
+
+## Completion Notes
+
+**Completed**: 2026-05-07
+
+**Verdict**: COMPLETE WITH NOTES
+
+**Source of Truth**: `origin/main@b69a7fd6a676fa999fe4d803e9e42d977a339e21`
+
+**Criteria**: 25/25 verified, with the native visual sanity warning preserved.
+Operator controls are covered for lobby room-code focus and shortcuts, explicit
+slot/create/join controls, class selection and confirmation, draft initial,
+draft shop, auction bidding, placement stage/unstage/submit, no optimistic
+client authority, result dependency boundaries, command regressions, and
+evidence claim boundaries.
+
+**Test Evidence**:
+`production/qa/evidence/native-friend-game-operator-controls-evidence.md`,
+`tests/integration/playable_client/native_operator_controls_test.rs`,
+`tests/integration/playable_client/lobby_entry_test.rs`,
+`tests/integration/playable_client/draft_shop_hand_bridge_test.rs`,
+`tests/integration/playable_client/active_loop_ui_state_test.rs`, and
+`tests/integration/playable_client/friend_game_result_endpoint_test.rs`.
+
+**Verification**:
+
+- `cargo test -p client --test playable_client_native_operator_controls_test`
+  passed 4/4.
+- `cargo test -p client --test playable_client_lobby_entry_test` passed 6/6.
+- `cargo test -p client --test playable_client_draft_shop_hand_bridge_test`
+  passed 5/5.
+- `cargo test -p client --test playable_client_active_loop_ui_state_test`
+  passed 4/4.
+- `cargo test -p server --test playable_client_friend_game_result_endpoint_test`
+  passed 1/1.
+- `cargo check -p client` passed.
+- `cargo fmt -p client -p server -- --check` passed.
+- `git diff --check` passed.
+
+**Deviations**: None blocking. The original story named
+`production/qa/evidence/native-friend-game-operator-controls.md`; integrated
+evidence exists at
+`production/qa/evidence/native-friend-game-operator-controls-evidence.md` and
+covers the operator-control implementation plus native launch sanity. Native
+visual window confirmation remains a warning: process startup was stable, but
+the Codex execution context did not expose native window handles for manual
+visual confirmation.
+
+**Code Review**: Lean mode; QL-TEST-COVERAGE and LP-CODE-REVIEW skipped because
+`production/review-mode.txt` is absent.
+
+**Scope Guard**: No smoke, QA sign-off, `/team-qa`, `/gate-check`, Sprint 9
+close-out, Sprint 8 close-out, unrelated implementation, public release
+readiness, release-candidate readiness, full game completion, broad
+accessibility completion, full playable-client manual QA, full
+manual/browser/native two-client route completion, or playtest/fun-hypothesis
+validation is claimed.
+
+**QA Conditions**: `QA-COND-0005` remains accepted risk for friend-game scope
+only and is not verified Standard-tier accessibility completion. `QA-COND-0006`
+remains accepted-risk/deferred and is not playtest evidence or fun-hypothesis
+validation.
+
+**Tech Debt Logged**: None.
