@@ -1,0 +1,190 @@
+{
+  "story": "LOOP-001",
+  "branch": "work/loop-001-draft-shop-auction-placement-resolution-loop-polish",
+  "base": "origin/main@4f85035a93297f2ee5e0c26e8f7a2b0abf488005",
+  "capture_type": "controlled in-process real Lightyear server plus same-commit Bevy ECS UI regressions",
+  "redactions": [
+    "local paths",
+    "usernames",
+    "machine names",
+    "process ids",
+    "raw room codes",
+    "transient ports",
+    "branch-local unsafe metadata"
+  ],
+  "result": "PASS",
+  "route_under_regression": [
+    "DRAFT_SHOP",
+    "PLACEMENT(non_empty)",
+    "RESOLUTION",
+    "DRAFT_AUCTION",
+    "DRAFT_SHOP",
+    "PLACEMENT(non_empty)",
+    "RESOLUTION",
+    "DRAFT_SHOP"
+  ],
+  "source_traces": [
+    {
+      "file": "production/qa/evidence/captures/sprint-8-friend-game-loop/playable-004-result-endpoint-trace.json",
+      "role": "Sprint 8 endpoint continuity evidence retained from PLAYABLE-004"
+    },
+    {
+      "file": "production/qa/evidence/captures/playable-client-real-e2e-loop/prompt-298-auction-placement-resolution-trace.json",
+      "role": "Sprint 7 auction-to-next-shop route baseline"
+    }
+  ],
+  "real_lightyear_checks": [
+    {
+      "command": "cargo test -p server --test playable_client_active_loop_polish_test",
+      "result": "PASS",
+      "tests": 4,
+      "observes": [
+        "fresh C2SHello/S2CHandshake",
+        "two-client room session through class reveal and session entry",
+        "DRAFT_SHOP to non-empty PLACEMENT to RESOLUTION to DRAFT_AUCTION to DRAFT_SHOP to non-empty PLACEMENT to RESOLUTION to next DRAFT_SHOP",
+        "UnitPlaced resolution content before next-loop phase"
+      ]
+    },
+    {
+      "command": "cargo test -p server --test playable_client_friend_game_result_endpoint_test",
+      "result": "PASS",
+      "tests": 1,
+      "observes": [
+        "PLAYABLE-004 result endpoint continuity remains intact",
+        "S2CResolutionEvent before terminal GameOver phase change",
+        "No LOOP-001 claim of new result endpoint scope"
+      ]
+    },
+    {
+      "command": "cargo test -p server --test playable_client_real_e2e_loop_test",
+      "result": "PASS",
+      "tests": 4,
+      "observes": [
+        "real local Lightyear route reaches next DRAFT_SHOP after auction, placement, and resolution"
+      ]
+    }
+  ],
+  "client_ui_state_checks": [
+    {
+      "command": "cargo test -p client --test playable_client_active_loop_ui_state_test",
+      "result": "PASS",
+      "tests": 4,
+      "observes": [
+        "auction to placement phase exit clears stale toast, timer target, bid state, and auction card context",
+        "repeated DRAFT_SHOP resets ready/retract state and waits for new server slots",
+        "late S2CAuctionSettled after shop convergence does not resurrect auction settlement UI",
+        "placement exit clears stale hand timer, submit validation, pending placements, drag state, and disclosure state"
+      ]
+    },
+    {
+      "command": "cargo test -p client --test shop_auction_ui_auction_settlement_test",
+      "result": "PASS",
+      "tests": 7,
+      "observes": [
+        "SAU-007 settlement behavior remains owner of auction settlement presentation",
+        "settlement-to-shop timer deferral and interrupt behavior remain intact"
+      ]
+    },
+    {
+      "command": "cargo test -p client --test playable_client_draft_shop_hand_bridge_test",
+      "result": "PASS",
+      "tests": 4,
+      "observes": [
+        "hand/shop bridge still converges from snapshots and live acquisition messages"
+      ]
+    },
+    {
+      "command": "cargo test -p client --test hand_ui_placement_timer_test",
+      "result": "PASS",
+      "tests": 5,
+      "observes": [
+        "placement timer authority and grace-window submit behavior remain intact"
+      ]
+    },
+    {
+      "command": "cargo test -p client --test hand_ui_phase_state_machine_test",
+      "result": "PASS",
+      "tests": 3,
+      "observes": [
+        "hand controls still hide on resolution and restore on draft/shop phases"
+      ]
+    },
+    {
+      "command": "cargo test -p client --test shop_auction_ui_shop_panel_test",
+      "result": "PASS",
+      "tests": 9,
+      "observes": [
+        "shop slots, ready/retract, refresh, and placement dismissal behavior remain intact"
+      ]
+    },
+    {
+      "command": "cargo test -p client --test shop_auction_ui_auction_feedback_test",
+      "result": "PASS",
+      "tests": 6,
+      "observes": [
+        "accepted/rejected bid feedback, local gold gating, and late rejection suppression remain intact"
+      ]
+    },
+    {
+      "command": "cargo test -p client --test shop_auction_ui_auction_activation_test",
+      "result": "PASS",
+      "tests": 7,
+      "observes": [
+        "auction card/phase ordering, preparing timeout, and footer locking remain intact"
+      ]
+    },
+    {
+      "command": "cargo test -p client --test board_rendering_resolution_anim_queue_test",
+      "result": "PASS",
+      "tests": 5,
+      "observes": [
+        "resolution script buffering still applies following phase changes after queue drain"
+      ]
+    },
+    {
+      "command": "cargo test -p client --test hud_phase_transitions_test",
+      "result": "PASS",
+      "tests": 5,
+      "observes": [
+        "HUD phase transitions and auction-exit economy formatting remain intact"
+      ]
+    }
+  ],
+  "workspace_gates": [
+    {
+      "command": "cargo check --workspace",
+      "result": "PASS"
+    },
+    {
+      "command": "cargo fmt -p client -p server -- --check",
+      "result": "PASS"
+    }
+  ],
+  "stabilized_behaviors": [
+    "Phase exits clear stale shop/auction feedback state before the next active loop phase renders.",
+    "Repeated DRAFT_SHOP phase messages reset ready/retract state and wait for current authoritative shop slots.",
+    "Late settlement messages after auction context is cleared are suppressed and cannot resurrect inactive settlement UI.",
+    "Placement phase exit clears stale timer, submit error, drag, pending placement, and disclosure state.",
+    "SAU-007 remains the owner of settlement presentation and card-acquisition feedback."
+  ],
+  "defects": [],
+  "accepted_risks_retained": [
+    "QA-COND-0005 remains accepted risk; LOOP-001 does not close broad accessibility evidence.",
+    "QA-COND-0006 remains accepted risk; LOOP-001 does not create playtest or fun-hypothesis validation."
+  ],
+  "non_claims": [
+    "No public release readiness",
+    "No store readiness",
+    "No deployment readiness",
+    "No release-candidate readiness",
+    "No broad accessibility completion",
+    "No closure of QA-COND-0005",
+    "No playtest validation",
+    "No fun-hypothesis validation",
+    "No closure of QA-COND-0006",
+    "No full playable-client manual QA",
+    "No full regression campaign",
+    "No full game completion",
+    "No LOOP-001 expansion of PLAYABLE-004 result endpoint scope"
+  ]
+}

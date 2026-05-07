@@ -1000,6 +1000,17 @@ pub fn hand_ui_phase_transition_system(
         commands
             .entity(entities.fan_root)
             .remove::<FanPlateHighlighted>();
+
+        if next_mode != HandUiMode::Staging {
+            placement_timer.remaining_ms = 0;
+            placement_timer.urgency_fired = false;
+            commands
+                .entity(entities.submit_button)
+                .remove::<SubmitValidationError>();
+            if let Ok(mut timer_state) = timer_states.get_mut(entities.timer) {
+                *timer_state = TimerState::Normal;
+            }
+        }
     }
 
     if next_mode == HandUiMode::Hidden {

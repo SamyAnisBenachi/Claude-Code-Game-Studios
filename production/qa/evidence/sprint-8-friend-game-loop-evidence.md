@@ -15,6 +15,12 @@ game completion.
 - Scope: PLAYABLE-004 only. No `/story-done`, smoke, team-qa, gate-check, Sprint
   status close-out, ASSET-LOOP files, public-release claims, or implementation
   outside the friend-game endpoint test/evidence scope.
+- LOOP-001 worker branch:
+  `work/loop-001-draft-shop-auction-placement-resolution-loop-polish`
+- LOOP-001 scope: active friend-game loop polish only. No `/story-done`, smoke,
+  team-qa, gate-check, Sprint 8 close-out, QA-COND-0005/0006 disposition change,
+  public-release claim, broad accessibility claim, playtest claim, or unrelated
+  content/asset work.
 
 ## Runtime
 
@@ -37,6 +43,8 @@ Capture directory:
 
 - `playable-004-result-endpoint-trace.json`: sanitized controlled real-Lightyear
   trace summary for the Sprint 8 endpoint expansion.
+- `loop-001-active-loop-polish-trace.json`: sanitized controlled
+  real-Lightyear and ECS regression summary for repeated active-loop stability.
 
 ## Reached Endpoint
 
@@ -80,6 +88,32 @@ short-circuit game-over or mutate result state directly.
 - `S2CResolutionEvent` is observed before `S2CPhaseChanged(GameOver)`.
 - The terminal phase is server-authored; clients do not locally force the result.
 
+## LOOP-001 Active Loop Polish Addendum
+
+LOOP-001 stabilized the active friend-game loop around stale UI state and
+phase-boundary cleanup. The automated real-Lightyear route remains:
+
+`DRAFT_INITIAL -> PLACEMENT(empty) -> RESOLUTION -> DRAFT_SHOP -> PLACEMENT(non_empty) -> RESOLUTION -> DRAFT_AUCTION -> DRAFT_SHOP -> PLACEMENT(non_empty) -> RESOLUTION -> DRAFT_SHOP`.
+
+Stabilized behavior:
+
+- Repeated authoritative `DRAFT_SHOP` phase messages reset local ready/retract
+  state, wait for fresh shop slots, and restart the server-provided shop timer.
+- Auction feedback clears on phase boundaries: rejected-bid toasts, accepted-bid
+  timer targets, keyboard focus, in-flight bid state, and old card/leader state
+  do not leak into placement or the next auction.
+- Late settlement messages after shop convergence do not resurrect auction UI,
+  restart settlement overlays, or disturb the active shop timer/slots.
+- Placement exit clears pending hand placements, submit validation markers,
+  active drag state, submitted/grace flags, urgency state, and the visible hand
+  timer before RESOLUTION.
+- `UnitPlaced` replay remains covered by the real-Lightyear route and by the
+  existing PLAYABLE-004 result endpoint route.
+
+No browser/manual two-client smoke was run in this worker pass. S8-QA-001
+remains blocked until the orchestrator pulls the manual friend-game smoke
+package.
+
 ## Defects And Gaps
 
 | ID | Severity | Owner/System | Status | Friend-game Impact | Workaround |
@@ -93,6 +127,17 @@ short-circuit game-over or mutate result state directly.
 - `cargo test -p server --test playable_client_friend_game_result_endpoint_test`: PASS, 1 passed. Endpoint reached `GAME_OVER` through real C2S/S2C route.
 - `cargo test -p client --test hud_game_over_freeze_test`: PASS, 2 passed.
   Captures available HUD frozen/result behavior for the same commit.
+- `cargo test -p server --test playable_client_active_loop_polish_test`: PASS, 4 passed.
+- `cargo test -p client --test playable_client_active_loop_ui_state_test`: PASS, 4 passed.
+- `cargo test -p server --test playable_client_real_e2e_loop_test`: PASS, 4 passed.
+- `cargo test -p client --test shop_auction_ui_auction_settlement_test`: PASS, 7 passed.
+- `cargo test -p client --test playable_client_draft_shop_hand_bridge_test`: PASS, 4 passed.
+- `cargo test -p client --test shop_auction_ui_auction_feedback_test`: PASS, 6 passed.
+- `cargo test -p client --test hand_ui_placement_timer_test`: PASS, 5 passed.
+- `cargo test -p client --test hand_ui_submit_prevalidation_test`: PASS, 8 passed.
+- `cargo test -p client --test hud_phase_transitions_test`: PASS, 5 passed.
+- `cargo test -p client --test board_rendering_spawn_range_highlights_test`: PASS, 4 passed.
+- `cargo check --workspace`: PASS.
 
 Additional required regression commands are recorded in the final branch handoff
 for this implementation pass.

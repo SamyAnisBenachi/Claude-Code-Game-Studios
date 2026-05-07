@@ -1195,6 +1195,9 @@ pub fn shop_auction_ui_phase_transition_system(
     mut auction_state: ResMut<ShopAuctionAuctionState>,
     mut settlement_state: ResMut<ShopAuctionSettlementState>,
     mut shop_timer: ResMut<ShopAuctionShopTimerState>,
+    mut toast_state: ResMut<ShopAuctionToastState>,
+    mut timer_target: ResMut<AuctionTimerTargetFill>,
+    mut keyboard_focus: ResMut<AuctionBidKeyboardFocus>,
     mut visibility: Query<&mut Visibility>,
 ) {
     if !current.is_changed() {
@@ -1204,6 +1207,8 @@ pub fn shop_auction_ui_phase_transition_system(
     let previous_mode = *mode;
     let mut next_mode = ShopAuctionUiMode::from_phase(current.phase);
     let settlement_active = settlement_state.transition_active;
+
+    clear_auction_feedback_state(&mut toast_state, &mut timer_target, &mut keyboard_focus);
 
     if settlement_active {
         match current.phase {
@@ -1267,7 +1272,7 @@ pub fn shop_auction_ui_phase_transition_system(
     }
 
     match next_mode {
-        ShopAuctionUiMode::Shop if previous_mode != ShopAuctionUiMode::Shop => {
+        ShopAuctionUiMode::Shop => {
             shop_state.enter_shop_phase();
             shop_timer.start(phase_view.timer_duration_ms);
         }
@@ -1283,7 +1288,6 @@ pub fn shop_auction_ui_phase_transition_system(
         ShopAuctionUiMode::AuctionPreparing
         | ShopAuctionUiMode::Auction
         | ShopAuctionUiMode::AuctionSettling => {}
-        _ => {}
     }
 
     let Some(entities) = entities else {
@@ -1342,6 +1346,16 @@ pub fn shop_auction_ui_phase_transition_system(
         entities.settlement_overlay_text,
         Visibility::Hidden,
     );
+}
+
+fn clear_auction_feedback_state(
+    toast_state: &mut ShopAuctionToastState,
+    timer_target: &mut AuctionTimerTargetFill,
+    keyboard_focus: &mut AuctionBidKeyboardFocus,
+) {
+    toast_state.clear();
+    *timer_target = AuctionTimerTargetFill::default();
+    keyboard_focus.focused_button = None;
 }
 
 pub fn drain_auction_card_receiver_system(
@@ -1561,10 +1575,7 @@ pub fn handle_auction_settled_system(
         .or(local_gold.player_id);
 
     for message in messages.read() {
-        if !matches!(
-            current.phase,
-            RoundPhase::DraftAuction | RoundPhase::DraftShop
-        ) {
+        if !auction_settlement_can_start(current.phase, &auction_state) {
             continue;
         }
 
@@ -1607,6 +1618,22 @@ pub fn handle_auction_settled_system(
         }
         *mode = ShopAuctionUiMode::AuctionSettling;
     }
+}
+
+fn auction_settlement_can_start(
+    current_phase: RoundPhase,
+    auction_state: &ShopAuctionAuctionState,
+) -> bool {
+    matches!(
+        current_phase,
+        RoundPhase::DraftAuction | RoundPhase::DraftShop
+    ) && auction_state.card_id.is_some()
+        && matches!(
+            auction_state.panel_state,
+            ShopAuctionAuctionPanelState::Preparing
+                | ShopAuctionAuctionPanelState::Active
+                | ShopAuctionAuctionPanelState::ConnectionError
+        )
 }
 
 pub fn handle_auction_card_system(
