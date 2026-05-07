@@ -102,6 +102,14 @@ replace prompt triangles with colored circles; prompts keep the red triangle
 prefix. Colored circles are only status/window labels immediately before the
 word, for example `🟢 CLEAR` and `🟡 REPONDRE`.
 
+Final red-line prompt policy: when instructing workers about their final line,
+do not paste literal HTML/CSS/ANSI/Markdown wrappers or bracket placeholders
+such as `<span style="color:red">349: S9-BACKLOG-PREP: [STATUS]</span>`.
+Workers sometimes copy those literally. Instead, write the requirement in plain
+language: the last visible line must be red, must contain exactly
+`PROMPT-NUMBER: TICKET-ID: STATUS`, and `STATUS` must be replaced with the true
+outcome chosen by the worker. No line may follow it.
+
 Prompt number policy: prompt numbers are global and monotonically increasing
 within the orchestration conversation. Do not reset the index to 1 in later
 answers. The last numbered response prompt issued was REPONSE 5, so the next
