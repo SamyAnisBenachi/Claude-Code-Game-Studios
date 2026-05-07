@@ -40,12 +40,12 @@ carried_conditions:
 coordination:
   native_lobby_blank_screen_repair: "Integrated in tested code baseline via commit 1bfbf5b."
   native_operator_controls: "Story exists and is ready; no active implementation worker was found in root source-of-truth check."
-  result_screen_mvp: "Story exists but remains blocked until S9-RS-001 completes and is integrated."
+  result_screen_mvp: "S9-RS-001 is complete; Result Screen MVP story still needs a scoped readiness/status refresh before assignment. No result screen implementation is claimed."
   out_of_plan_pull_forward:
     s9_rs_001:
       branch: "work/s9-rs-001-result-ack-contract"
       worktree: "D:\\_DEV\\claude-code-game-studios-worktrees\\S9-RS-001"
-      disposition: "Known active worktree with uncommitted local changes, behind current origin/main, not integrated; tracked as in-progress only."
+      disposition: "Integrated on main at b87e694 and verified by /story-done Prompt 412; tracked complete. Root story-done did not inspect or mutate the old worker worktree."
     s9_content_001:
       branch: "work/neutral-card-display-placeholder-pack"
       worktree: "D:\\_DEV\\claude-code-game-studios-worktrees\\neutral-card-display-placeholder-pack"
@@ -67,15 +67,16 @@ stories:
     name: "Result acknowledgement and result data contract"
     file: "production/epics/game-session-system/story-009-result-acknowledgement-and-result-data-contract.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: "network/session gameplay programmer + UX owner"
     estimate_days: 1.00
-    blocker: "Active out-of-plan worktree is dirty and behind current origin/main; not integrated."
-    completed: ""
+    blocker: ""
+    completed: "2026-05-07"
     notes:
       - "Prerequisite contract story for Result Screen MVP."
-      - "Active worktree exists at D:\\_DEV\\claude-code-game-studios-worktrees\\S9-RS-001 on branch work/s9-rs-001-result-ack-contract."
-      - "No completion, story-done, or integration is claimed until committed, rebased, verified, and integrated to main."
+      - "Integrated on main at b87e694 and verified by /story-done Prompt 412."
+      - "Server-owned result acknowledgement, retained S2CGameOver plus per-player final snapshot resend, all-ack cleanup, timeout cleanup, and post-cleanup reconnect fallback are complete."
+      - "No Result Screen UI implementation, manual/browser GAME_OVER evidence, smoke, QA sign-off, Sprint 9 close-out, gate-check, public release readiness, full game completion, broad accessibility completion, or playtest validation is claimed."
 
   - id: "S9-NATIVE-001"
     name: "Native friend-game operator controls"

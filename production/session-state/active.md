@@ -2342,3 +2342,16 @@ C:\Program Files\GitHub CLI\gh.exe
 - Carried conditions preserved: S8-QA-001-W1 manual/browser `GAME_OVER` gap, `QA-COND-0005` friend-game-only accepted risk, `QA-COND-0006` accepted-risk/deferred, no public release readiness, no release-candidate readiness, no full game completion, no full playable-client manual QA, no broad accessibility completion, and no playtest/fun-hypothesis validation.
 - QA plan: no Sprint 9 QA plan was found during activation; no QA plan was generated.
 - Verification: `git diff --check` passed; `git diff --cached --check` passed before commit.
+
+## Session Extract - /story-done 2026-05-07
+- Verdict: COMPLETE
+- Story: `production/epics/game-session-system/story-009-result-acknowledgement-and-result-data-contract.md` - Story 009: Result Acknowledgement and Result Data Contract
+- Criteria: 21/21 passing; GSS owns the single `C2SAcknowledgeResult` drain, invalid/unknown/non-participant ack is discarded silently, ended-session result data is retained through the ack window, GAME_OVER reconnect resends retained final snapshot plus retained `S2CGameOver`, all-ack and timeout cleanup remove ended-session reconnect state, and rematch/no-client-authority/no-overclaim boundaries are preserved.
+- Test Evidence: `tests/integration/session/result_acknowledgement_contract_test.rs`, `tests/integration/session/game_over_reconnect_result_resend_test.rs`, `tests/integration/session/reconnect_snapshot_test.rs`, and `tests/integration/session/game_over_teardown_test.rs`.
+- Verification: `cargo test -p server --test result_acknowledgement_contract_test` passed 5/5; `cargo test -p server --test game_over_reconnect_result_resend_test` passed 2/2; `cargo test -p server --test reconnect_snapshot_test` passed 6/6; `cargo test -p server --test game_over_teardown_test` passed 4/4; `cargo check -p server`, `cargo fmt -p server -- --check`, `git diff --check`, and `git diff --cached --check` passed.
+- Notes: Source of truth was current `origin/main` at `b87e694f8cbf6e7b085fe03b31b226dd3f7753a0`. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW because `production/review-mode.txt` is absent.
+- Scope guard: No smoke, QA sign-off, `/team-qa`, `/gate-check`, Sprint 9 close-out, Sprint 8 close-out, unrelated implementation, Result Screen UI implementation, manual/browser GAME_OVER evidence, public release readiness, full game completion, broad accessibility completion, full playable-client manual QA, or playtest/fun-hypothesis validation is claimed.
+- QA conditions: Sprint 8 carried conditions remain preserved: S8-QA-001-W1 manual/browser `GAME_OVER` gap, `QA-COND-0005` friend-game-only accepted risk, and `QA-COND-0006` accepted-risk/deferred.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` marks S9-RS-001 done and preserves Sprint 9 no-claims.
+- Next recommended: run a scoped readiness/status refresh for S9-RS-002 Result Screen MVP before assigning implementation. No close-out or gate sequence was run.
