@@ -177,6 +177,18 @@ Prompt 298 repair verification:
     including committed-placement handoff coverage.
 - `git diff --check origin/main...HEAD`: PASS.
 
+Prompt 304 serialized story-done verification at integrated commit
+`bc83943a2153b61ef455159a23267bb61462dd18`:
+
+- `cargo test -p server --test playable_client_real_e2e_loop_test`: PASS, 4 passed.
+- `cargo test -p client --test playable_client_lobby_entry_test`: PASS, 5 passed.
+- `cargo test -p client --test playable_client_draft_shop_hand_bridge_test`: PASS, 4 passed.
+- `cargo test -p server --test playable_client_draft_ready_bridge_test`: PASS, 3 passed.
+- `cargo test -p server --test e2e_websocket_test`: PASS, 1 passed.
+- `cargo check --workspace`: PASS.
+- `cargo fmt -p client -p server -- --check`: PASS.
+- `git diff --check`: PASS.
+
 ## Non-Claims
 
 - No public release readiness.

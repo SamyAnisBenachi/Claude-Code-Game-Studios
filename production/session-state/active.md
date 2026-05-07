@@ -2205,3 +2205,18 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` marks PLAYABLE-002 done and PLAYABLE-003 ready/unblocked.
 - Next recommended: `/dev-story production/epics/playable-client/story-003-real-end-to-end-loop-verification.md`.
+
+## Session Extract - /story-done 2026-05-07
+- Verdict: COMPLETE
+- Story: `production/epics/playable-client/story-003-real-end-to-end-loop-verification.md` - Story 003: Real End-to-End Loop Verification
+- Criteria: 11/11 passing; evidence uses same-commit controlled real-Lightyear server/client paths with no direct World injection, lobby/session entry is covered, draft/shop is covered, auction bid/settlement and AuctionWon acquisition are covered, non-empty placement and both-client `S2CPlacementReveal` are covered, `UnitPlaced` resolution replay and next-loop `DRAFT_SHOP` are covered, nearest endpoint is documented honestly, defects are classified, forbidden public-release/playtest/QA claims are absent, required commands pass, and required evidence exists.
+- Reached endpoint: `DRAFT_INITIAL -> PLACEMENT(empty) -> RESOLUTION -> DRAFT_SHOP -> PLACEMENT(non_empty) -> RESOLUTION -> DRAFT_AUCTION -> DRAFT_SHOP -> PLACEMENT(non_empty) -> RESOLUTION -> DRAFT_SHOP`.
+- Game-over: Not reached and not claimed. The documented nearest reachable friend-game endpoint is next-loop `DRAFT_SHOP` after post-auction placement/resolution.
+- Test Evidence: `production/qa/evidence/playable-client-real-e2e-loop.md`, captures under `production/qa/evidence/captures/playable-client-real-e2e-loop/`, and `tests/integration/playable_client/real_e2e_loop_test.rs`.
+- Verification: `cargo test -p server --test playable_client_real_e2e_loop_test` passed 4/4; `cargo test -p client --test playable_client_lobby_entry_test` passed 5/5; `cargo test -p client --test playable_client_draft_shop_hand_bridge_test` passed 4/4; `cargo test -p server --test playable_client_draft_ready_bridge_test` passed 3/3; `cargo test -p server --test e2e_websocket_test` passed 1/1; `cargo check --workspace`, `cargo fmt -p client -p server -- --check`, and `git diff --check` passed.
+- Notes: No blocking GDD, ADR, Bevy 0.18, Lightyear, or control-manifest deviation found for serialized story-done closure. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW because `production/review-mode.txt` is absent.
+- Scope guard: PLAYABLE-003 closure is internal friend-game evidence only. It does not claim public release readiness, broad accessibility completion, playtest validation, fun-hypothesis validation, QA sign-off, full playable-client manual QA, live native manual two-client completion, game-over coverage, or full game completion.
+- QA conditions: `QA-COND-0005` remains accepted risk for friend-game scope only and is not verified Standard-tier accessibility completion. `QA-COND-0006` remains accepted-risk/deferred and is not playtest evidence or fun-hypothesis validation.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` marks PLAYABLE-003 done. All Sprint 7 Must Have PLAYABLE stories are complete.
+- Next recommended: `S7-N1` friend-game evidence index cleanup is unblocked; after that, choose whether to pull conditional Should Have work or proceed to the Sprint 7 close-out sequence later. No `/smoke-check`, `/team-qa`, `/gate-check`, or Sprint 8 planning was run in this serialized story-done scope.

@@ -1,7 +1,7 @@
 # Story 003: Real End-to-End Loop Verification
 
 > **Epic**: Playable Client
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Polish / Client Integration
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -103,17 +103,17 @@ Current dependency state: PLAYABLE-001 and PLAYABLE-002 are Complete. PLAYABLE-0
 
 ## Acceptance Criteria
 
-- [ ] **Evidence uses real clients and server**: GIVEN PLAYABLE-001 and PLAYABLE-002 are complete, WHEN final evidence is captured, THEN one real local server and two real primary clients run from the same commit with no direct `World` injection or harness-injected game state.
-- [ ] **Lobby path is verified**: GIVEN both clients start fresh, WHEN the host creates a room and the second client joins, THEN evidence records `C2SHello`, `S2CHandshake`, create/join messages, slot updates, class confirm, class reveal, and server-confirmed session entry.
-- [ ] **Draft and shop path is verified**: GIVEN the clients reach DRAFT_INITIAL and DRAFT_SHOP, WHEN purchase, refresh, and ready actions are performed, THEN evidence records real C2S/S2C messages and visible hand/economy/shop convergence from server state.
-- [ ] **Auction path is verified or bounded**: GIVEN the loop reaches DRAFT_AUCTION during the run, WHEN auction messages and UI appear, THEN evidence records auction card, bid or no-bid state, settlement or transition behavior. If not reached, evidence names the exact phase and blocker that prevented auction coverage.
-- [ ] **Placement path is verified**: GIVEN both clients reach PLACEMENT with playable cards, WHEN each submits placements, THEN evidence records real `C2SSubmitPlacement` sends and a server `S2CPlacementReveal` received by both clients.
-- [ ] **Resolution and next-loop ordering are verified**: GIVEN placement reveal completes, WHEN RESOLUTION runs, THEN evidence records `S2CResolutionEvent` before `S2CPhaseChanged(DRAFT_SHOP)` or records the exact blocker that prevented observing that ordering.
-- [ ] **Game-over or nearest endpoint is documented**: GIVEN the friend-game run continues until game-over or a scoped blocker appears, WHEN evidence is finalized, THEN it states either the observed `S2CGameOver` result or the nearest reachable friend-game endpoint with blocking defects.
-- [ ] **Defects are classified for friend-game use**: GIVEN any issue blocks or degrades the path, WHEN it is recorded, THEN the evidence classifies severity for internal friend-game playability and names the likely owning story/system without expanding public release scope.
-- [ ] **No forbidden claims are made**: GIVEN the evidence is reviewed, WHEN scope statements are inspected, THEN the document explicitly says this is friend-game evidence only and not public release readiness, broad accessibility completion, playtest validation, fun-hypothesis validation, QA sign-off, or full playable-client manual QA.
-- [ ] **Regression commands pass or blockers are explicit**: `cargo test -p server --test playable_client_real_e2e_loop_test`, `cargo check --workspace`, and `git diff --check` pass, or the evidence records exact failing command output and the issue is classified as a Sprint 7 blocker.
-- [ ] **Evidence document exists**: `production/qa/evidence/playable-client-real-e2e-loop.md` records commit, commands, build target, two-client setup, reached endpoint, captures, defects, no-harness statement, and friend-game-only scope statement.
+- [x] **Evidence uses real clients and server**: GIVEN PLAYABLE-001 and PLAYABLE-002 are complete, WHEN final evidence is captured, THEN one real local server and two real primary clients run from the same commit with no direct `World` injection or harness-injected game state.
+- [x] **Lobby path is verified**: GIVEN both clients start fresh, WHEN the host creates a room and the second client joins, THEN evidence records `C2SHello`, `S2CHandshake`, create/join messages, slot updates, class confirm, class reveal, and server-confirmed session entry.
+- [x] **Draft and shop path is verified**: GIVEN the clients reach DRAFT_INITIAL and DRAFT_SHOP, WHEN purchase, refresh, and ready actions are performed, THEN evidence records real C2S/S2C messages and visible hand/economy/shop convergence from server state.
+- [x] **Auction path is verified or bounded**: GIVEN the loop reaches DRAFT_AUCTION during the run, WHEN auction messages and UI appear, THEN evidence records auction card, bid or no-bid state, settlement or transition behavior. If not reached, evidence names the exact phase and blocker that prevented auction coverage.
+- [x] **Placement path is verified**: GIVEN both clients reach PLACEMENT with playable cards, WHEN each submits placements, THEN evidence records real `C2SSubmitPlacement` sends and a server `S2CPlacementReveal` received by both clients.
+- [x] **Resolution and next-loop ordering are verified**: GIVEN placement reveal completes, WHEN RESOLUTION runs, THEN evidence records `S2CResolutionEvent` before `S2CPhaseChanged(DRAFT_SHOP)` or records the exact blocker that prevented observing that ordering.
+- [x] **Game-over or nearest endpoint is documented**: GIVEN the friend-game run continues until game-over or a scoped blocker appears, WHEN evidence is finalized, THEN it states either the observed `S2CGameOver` result or the nearest reachable friend-game endpoint with blocking defects.
+- [x] **Defects are classified for friend-game use**: GIVEN any issue blocks or degrades the path, WHEN it is recorded, THEN the evidence classifies severity for internal friend-game playability and names the likely owning story/system without expanding public release scope.
+- [x] **No forbidden claims are made**: GIVEN the evidence is reviewed, WHEN scope statements are inspected, THEN the document explicitly says this is friend-game evidence only and not public release readiness, broad accessibility completion, playtest validation, fun-hypothesis validation, QA sign-off, or full playable-client manual QA.
+- [x] **Regression commands pass or blockers are explicit**: `cargo test -p server --test playable_client_real_e2e_loop_test`, `cargo check --workspace`, and `git diff --check` pass, or the evidence records exact failing command output and the issue is classified as a Sprint 7 blocker.
+- [x] **Evidence document exists**: `production/qa/evidence/playable-client-real-e2e-loop.md` records commit, commands, build target, two-client setup, reached endpoint, captures, defects, no-harness statement, and friend-game-only scope statement.
 
 ---
 
@@ -227,7 +227,7 @@ These required test and evidence paths match the Sprint 7 QA plan at `production
 - No-harness statement confirming no direct state injection was used for completion.
 - Explicit statement that evidence is internal friend-game evidence only, not public release readiness, not broad accessibility completion, not playtest validation, not fun-hypothesis validation, not QA sign-off, and not full playable-client manual QA.
 
-**Status**: [ ] Not yet implemented or captured.
+**Status**: [x] Implemented and captured for friend-game end-to-end loop verification scope at integrated commit `bc83943a2153b61ef455159a23267bb61462dd18`.
 
 ---
 
@@ -241,3 +241,32 @@ These required test and evidence paths match the Sprint 7 QA plan at `production
 ## Blockers
 
 None.
+
+## Completion Notes
+
+**Completed**: 2026-05-07
+
+**Criteria**: 11/11 passing.
+
+**Reached Endpoint**: `DRAFT_INITIAL -> PLACEMENT(empty) -> RESOLUTION -> DRAFT_SHOP -> PLACEMENT(non_empty) -> RESOLUTION -> DRAFT_AUCTION -> DRAFT_SHOP -> PLACEMENT(non_empty) -> RESOLUTION -> DRAFT_SHOP`.
+
+**Game-over**: Not reached and not claimed. The documented nearest reachable friend-game endpoint is next-loop `DRAFT_SHOP` after post-auction placement/resolution.
+
+**Verification**:
+
+- `cargo test -p server --test playable_client_real_e2e_loop_test` passed 4/4.
+- `cargo test -p client --test playable_client_lobby_entry_test` passed 5/5.
+- `cargo test -p client --test playable_client_draft_shop_hand_bridge_test` passed 4/4.
+- `cargo test -p server --test playable_client_draft_ready_bridge_test` passed 3/3.
+- `cargo test -p server --test e2e_websocket_test` passed 1/1.
+- `cargo check --workspace` passed.
+- `cargo fmt -p client -p server -- --check` passed.
+- `git diff --check` passed.
+
+**Test Evidence**: `tests/integration/playable_client/real_e2e_loop_test.rs`, `production/qa/evidence/playable-client-real-e2e-loop.md`, and capture artifacts under `production/qa/evidence/captures/playable-client-real-e2e-loop/`.
+
+**Deviations**: None blocking. Scope note: this closure is internal friend-game evidence only and does not claim public release readiness, broad accessibility completion, playtest validation, fun-hypothesis validation, full playable-client manual QA, live native manual two-client completion, game-over coverage, or full game completion.
+
+**Code Review**: Skipped by lean review mode because `production/review-mode.txt` is absent.
+
+**Sprint 7 Impact**: All Sprint 7 Must Have PLAYABLE stories are complete; `S7-N1` friend-game evidence index cleanup is now unblocked. No `/smoke-check`, `/team-qa`, `/gate-check`, or Sprint 8 planning was run by this story-done scope.

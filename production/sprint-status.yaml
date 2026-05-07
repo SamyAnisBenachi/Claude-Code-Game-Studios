@@ -6,7 +6,7 @@ goal: "Make the Polish build playable for an internal friend-game session throug
 start: "2026-05-07"
 end: "2026-05-20"
 generated: "2026-05-06"
-updated: "2026-05-06"
+updated: "2026-05-07"
 stage: "Polish"
 scope: "friend-game playable quality"
 
@@ -62,17 +62,18 @@ stories:
     name: "Real End-to-End Loop Verification"
     file: "production/epics/playable-client/story-003-real-end-to-end-loop-verification.md"
     priority: must-have
-    status: ready
+    status: done
     owner: "QA tester + orchestrator + client/server programmer"
     estimate_days: 2.00
     blocker: ""
-    completed: ""
+    completed: "2026-05-07"
     notes:
-      - "Unblocked by PLAYABLE-002 story-done; ready for execution."
-      - "Two real clients must use a real local server and real primary client path."
-      - "Evidence must cover create/join/class confirm, draft/shop, auction where available, placement, resolution, next loop, and game-over or documented nearest reachable friend-game endpoint."
-      - "No harness-injected state can satisfy completion."
-      - "Evidence is friend-game manual evidence only, not public QA, playtest validation, or full playable-client manual QA."
+      - "Story-done complete at integrated commit bc83943a2153b61ef455159a23267bb61462dd18."
+      - "Evidence covers create/join/class confirm, draft/shop, auction, bid, settlement, AuctionWon acquisition, non-empty placement, UnitPlaced resolution replay, and next-loop DRAFT_SHOP."
+      - "Documented endpoint is next-loop DRAFT_SHOP after post-auction placement/resolution; game-over is not reached or claimed."
+      - "No harness-injected game state satisfies completion; evidence uses controlled real-Lightyear server/client paths from the same commit."
+      - "Evidence is friend-game evidence only, not public QA, public release readiness, broad accessibility completion, playtest validation, fun-hypothesis validation, full playable-client manual QA, or full game completion."
+      - "All Sprint 7 Must Have PLAYABLE stories are complete; S7-N1 friend-game evidence index cleanup is unblocked. No smoke-check, team-qa, gate-check, or Sprint 8 planning was run."
 
   - id: "SAU-007"
     name: "Auction Settlement and Shop Transition"
