@@ -40,7 +40,16 @@ carried_conditions:
 coordination:
   native_lobby_blank_screen_repair: "Integrated in tested code baseline via commit 1bfbf5b."
   native_operator_controls: "Story exists and is ready; no active implementation worker was found in root source-of-truth check."
-  result_screen_mvp: "S9-RS-001 is complete; Result Screen MVP story still needs a scoped readiness/status refresh before assignment. No result screen implementation is claimed."
+  result_screen_mvp: "Prompt 414 readiness refresh marks S9-RS-002 Ready after S9-RS-001 completed the acknowledgement/result data contract. No result screen implementation is claimed."
+  result_screen_mvp_readiness_recheck:
+    prompt: "414"
+    source_of_truth: "origin/main@6d428021558b94d7ef0185d7dbc69887bd8dd785"
+    verdict: "ready"
+    notes:
+      - "S9-RS-001 is complete and integrated."
+      - "Rematch remains hidden or disabled unless separately scoped."
+      - "Alive opponent objective identities remain Unknown unless server authority is separately added."
+      - "Sprint 8 carried conditions and Sprint 9 no-claims remain preserved."
   out_of_plan_pull_forward:
     s9_rs_001:
       branch: "work/s9-rs-001-result-ack-contract"
@@ -49,8 +58,8 @@ coordination:
     s9_content_001:
       branch: "work/neutral-card-display-placeholder-pack"
       worktree: "D:\\_DEV\\claude-code-game-studios-worktrees\\neutral-card-display-placeholder-pack"
-      local_commit: "33d60d4"
-      disposition: "Known pull-forward branch/worktree with local commit not integrated to origin/main; tracked as in-progress only."
+      integrated_commit: "424bcfa0b60cea5dba0d1cb920ac4a3221b9ae4f"
+      disposition: "Integrated on main at 424bcfa as S9-CONTENT-001 supporting display placeholder content. No /story-done was run because no standalone story file exists."
 
 forbidden_runs_in_activation:
   dev_story: false
@@ -96,15 +105,17 @@ stories:
     name: "Result screen MVP"
     file: "production/epics/presentation-layer/story-006-result-screen-mvp.md"
     priority: must-have
-    status: blocked
+    status: ready-for-dev
     owner: "UI/client programmer"
     estimate_days: 2.00
-    blocker: "Blocked until S9-RS-001 result acknowledgement/result data contract completes and is integrated."
+    blocker: ""
     completed: ""
     notes:
-      - "Story exists but remains blocked on result contract gaps."
+      - "Prompt 414 readiness refresh confirms S9-RS-001 removed the acknowledgement/result data contract blockers."
+      - "Ready for implementation within MVP boundaries: rematch hidden or disabled; alive opponent objective identities displayed as Unknown unless server authority exists."
       - "S9-RS-004 accessibility and viewport polish is initially owned inside this MVP story."
-      - "No result screen implementation is claimed by Sprint 9 activation."
+      - "No result screen implementation is claimed by Sprint 9 activation or Prompt 414 readiness refresh."
+      - "No manual/browser GAME_OVER, Sprint 9 QA sign-off, public release readiness, full game completion, broad accessibility completion, playtest validation, or full playable-client manual QA is claimed."
 
   - id: "S9-RS-003"
     name: "Result acknowledgement cleanup handshake"
@@ -113,7 +124,7 @@ stories:
     status: blocked
     owner: "session/network programmer + UI/client programmer"
     estimate_days: 1.00
-    blocker: "Blocked until S9-RS-001 and S9-RS-002 complete and are integrated."
+    blocker: "Blocked until S9-RS-002 completes and is integrated; S9-RS-001 is complete."
     completed: ""
     notes:
       - "Owns Return to Lobby acknowledgement dispatch, local ended-session UI cleanup, idempotent server cleanup, timeout cleanup, and reconnect-after-cleanup fallback verification."
@@ -174,11 +185,12 @@ stories:
     name: "Neutral card display placeholder pack"
     file: "design/assets/asset-manifest.md"
     priority: should-have
-    status: in-progress
+    status: done
     owner: "content designer + UI/client programmer"
     estimate_days: 0.75
-    blocker: "Out-of-plan pull-forward branch/worktree exists but is not integrated to origin/main."
-    completed: ""
+    blocker: ""
+    completed: "2026-05-07"
     notes:
-      - "Branch work/neutral-card-display-placeholder-pack has local commit 33d60d4 with display/zoom placeholder assets and wiring changes."
-      - "No completion, asset approval, full card production, full balance completion, public release readiness, or playtest/fun-hypothesis validation is claimed until integrated."
+      - "Integrated on main at 424bcfa with neutral card display/zoom placeholder art, asset resolver wiring, asset-manifest entries, and focused draft/shop hand bridge coverage."
+      - "Supporting content/asset slice only; no /story-done was forced because no standalone story file exists."
+      - "No asset approval, full card production, full balance completion, public release readiness, release-candidate readiness, full game completion, broad accessibility completion, or playtest/fun-hypothesis validation is claimed."

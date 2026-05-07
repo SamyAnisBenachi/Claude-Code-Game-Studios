@@ -1,7 +1,7 @@
 # Story 006: Result Screen MVP
 
 > **Epic**: Presentation Layer
-> **Status**: Blocked - contract gaps
+> **Status**: Ready
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -37,6 +37,15 @@ real Lightyear server/client route. The observed endpoint is a draw with
 That evidence does not prove a rendered result screen, manual/browser GAME_OVER,
 public release readiness, broad Standard-tier accessibility completion,
 playtest validation, full playable-client manual QA, or full game completion.
+
+**Prompt 414 readiness refresh**:
+
+S9-RS-001 is complete on `origin/main` and resolves the previous result
+acknowledgement/result data contract blockers. Result Screen MVP implementation
+may start from the retained `S2CGameOver` plus retained per-player final
+`S2CGameSnapshot` contract. Rematch remains hidden or disabled. Alive opponent
+objective identities remain `Unknown` unless a separate server-authoritative
+post-game reveal scope is approved.
 
 **S9-RS-004 ownership note**:
 
@@ -410,50 +419,41 @@ client.
   acknowledgement cleanup verification.
 - Blocks: Playable Client Story 007 for S9-QA-001 manual/browser two-client
   GAME_OVER evidence closure.
-- Blocks: Result-screen implementation assignment until the blockers below are
-  resolved or explicitly accepted as MVP fallback scope.
 
-## Blockers
+## Readiness Disposition
 
-- **RS-BLOCK-001 - Result acknowledgement handler**:
-  `C2SAcknowledgeResult` exists in `shared/src/protocol.rs` and is registered on
-  `ReliableChannel`, but current server source only logs it in
-  `server/src/network/mod.rs`. No implemented server-side result
-  acknowledgement handler, all-player acknowledgement tracking, or
-  `ack_timeout_ms` cleanup path was found. Unblock by implementing Game Session
-  System Story 009, or by replacing it with an explicit producer-approved
-  fallback before assigning this UI story.
+- **RS-BLOCK-001 - Result acknowledgement handler**: Resolved by Game Session
+  System Story 009 / S9-RS-001. `C2SAcknowledgeResult` is handled by the GSS
+  session path, acknowledgements are tracked per participant, duplicate
+  acknowledgements are idempotent, and cleanup runs after all acknowledgements
+  or `ack_timeout_ms`.
 
-- **RS-BLOCK-002 - GAME_OVER reconnect result payload**:
-  `S2CGameSnapshot` includes `phase: RoundPhase` but does not include the final
-  `S2CGameOver` payload fields `loser`, `round`, and `reason`. A reconnecting
-  client at GAME_OVER can only show fallback result copy unless the server
-  re-sends `S2CGameOver` or adds an authoritative result payload to the
-  snapshot. Game Session System Story 009 defines retained final snapshot plus
-  retained `S2CGameOver` resend as the chosen S9-RS-001 contract path. Unblock
-  by implementing that contract, or by replacing it with an explicit
-  producer-approved fallback before assigning this UI story.
+- **RS-BLOCK-002 - GAME_OVER reconnect result payload**: Resolved by Game
+  Session System Story 009 / S9-RS-001. The accepted contract is retained
+  per-player final `S2CGameSnapshot` plus retained `S2CGameOver` resend during
+  the acknowledgement window. `S2CGameSnapshot` does not need final loser,
+  round, or reason fields for this MVP.
 
-- **RS-BLOCK-003 - Full post-game objective reveal contract**:
-  `OpponentObjectiveSnapshot.was_fake` only reveals destroyed opponent
-  objectives. Alive opponent objective identities remain absent from the
-  current snapshot contract. Unblock by adding a post-game reveal payload or
-  GAME_OVER-specific snapshot projection, or by accepting `Unknown` for alive
-  opponent lanes in the MVP.
+- **RS-BLOCK-003 - Full post-game objective reveal contract**: Accepted MVP
+  fallback. Destroyed opponent objective identity is authoritative through
+  `OpponentObjectiveSnapshot.was_fake`; alive opponent objective identities
+  remain `Unknown` unless a separate server-authoritative reveal payload is
+  scoped later.
 
-- **RS-BLOCK-004 - Rematch protocol undefined**:
-  No rematch C2S/S2C protocol, session negotiation, or same-session/fresh-lobby
-  decision is currently scoped. This does not block the MVP if Rematch is hidden
-  or disabled, but it blocks any enabled rematch button.
+- **RS-BLOCK-004 - Rematch protocol undefined**: Not blocking this MVP. Rematch
+  remains hidden or disabled, and no rematch C2S message is sent.
 
 ## Readiness Notes
 
-**Implementation readiness verdict**: BLOCKED.
+**Implementation readiness verdict**: READY.
 
-This story is specific enough for review, but it should not be assigned for
-implementation until RS-BLOCK-001 through RS-BLOCK-003 are either resolved or
-explicitly accepted as MVP fallback constraints. RS-BLOCK-004 is not blocking
-only if Rematch remains hidden or disabled.
+This story can be assigned for S9-RS-002 implementation. S9-RS-001 resolved the
+server acknowledgement and retained GAME_OVER result data contract gaps. The
+remaining constraints are implementation scope boundaries, not blockers:
+Rematch stays hidden or disabled, alive opponent objective identities stay
+`Unknown`, and no manual/browser GAME_OVER, Sprint 9 QA sign-off, public release,
+full game completion, broad accessibility, playtest, or full playable-client
+manual QA claim is made by readiness.
 
 Sprint 9 activation is tracked in `production/sprint-status.yaml` and
 `production/sprints/sprint-9.md`. Implementation workers must not update shared

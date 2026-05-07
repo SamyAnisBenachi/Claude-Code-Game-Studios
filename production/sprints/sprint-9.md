@@ -3,6 +3,9 @@
 > **Status**: Active.
 > **Activated**: 2026-05-07 by Prompt 409.
 > **Source of truth**: `origin/main@879fd1dc4bd426d0d3ea4a985d73975755042c7c`.
+> **Status reconciliation**: Prompt 415 reconciled `S9-CONTENT-001` against
+> `origin/main@6d428021558b94d7ef0185d7dbc69887bd8dd785`; neutral card
+> display placeholders are integrated at `424bcfa0b60cea5dba0d1cb920ac4a3221b9ae4f`.
 
 Sprint 9 turns the controlled internal friend-game `GAME_OVER` endpoint into a
 usable player-facing result flow for the friend-game path, then closes or
@@ -24,11 +27,24 @@ CI, or release readiness.
   `production/epics/game-session-system/story-009-result-acknowledgement-and-result-data-contract.md`.
 - Result Screen MVP story docs exist at
   `production/epics/presentation-layer/story-006-result-screen-mvp.md`, but the
-  story remains blocked until the result contract completes.
+  story remained blocked at activation until the result contract completed.
+  Prompt 414 post-activation readiness refresh supersedes that status.
 - Sprint 9 missing story readiness package is integrated at
   `879fd1dc4bd426d0d3ea4a985d73975755042c7c`.
 - No Sprint 9 smoke, QA sign-off, implementation, story-done, or gate-check is
   claimed by this activation.
+
+## Post-Activation Updates
+
+- S9-RS-001 result acknowledgement/result data contract is complete and
+  integrated on `origin/main` (`b87e694`, with story-done corrections through
+  `6d42802`).
+- Prompt 414 readiness refresh marks S9-RS-002 Result Screen MVP Ready for
+  implementation assignment. This readiness does not claim result-screen
+  implementation, manual/browser GAME_OVER evidence, smoke, QA sign-off,
+  gate-check, public release readiness, full game completion, broad
+  accessibility completion, playtest validation, or full playable-client manual
+  QA.
 
 ## Carried Sprint 8 Conditions
 
@@ -62,30 +78,28 @@ manual evidence warning.
 
 ## Current Coordination Notes
 
-- S9-RS-001 has an active out-of-plan worktree:
-  `D:\_DEV\claude-code-game-studios-worktrees\S9-RS-001` on branch
-  `work/s9-rs-001-result-ack-contract`. It has uncommitted local changes in
-  server session/network files and is behind current `origin/main`. This is
-  tracked as in progress only; no completion or integration is claimed.
-- S9-CONTENT-001 has an out-of-plan pull-forward branch/worktree:
-  `D:\_DEV\claude-code-game-studios-worktrees\neutral-card-display-placeholder-pack`
-  on branch `work/neutral-card-display-placeholder-pack`, with local commit
-  `33d60d4` ahead of its base and not integrated to `origin/main`. This is
-  supporting content/asset work in progress only; no asset approval, full card
-  production, or Sprint 9 completion is claimed.
+- S9-RS-001 is complete and integrated on `origin/main`. Any old out-of-plan
+  worktree at `D:\_DEV\claude-code-game-studios-worktrees\S9-RS-001` is not the
+  source of truth for Sprint 9 status.
+- S9-CONTENT-001 neutral card display placeholder pack is integrated on main at
+  `424bcfa0b60cea5dba0d1cb920ac4a3221b9ae4f`. It remains a supporting
+  content/asset slice only; no asset approval, full card production, full
+  balance completion, or Sprint 9 close-out is claimed.
 - No active native operator controls implementation worker was found in the
   root source-of-truth check. S9-NATIVE-001 is ready, not in progress.
-- No active Result Screen MVP implementation is claimed. S9-RS-002 remains
-  blocked until S9-RS-001 completes and is integrated.
+- No active Result Screen MVP implementation is claimed. S9-RS-002 is Ready
+  after Prompt 414 readiness refresh and must keep rematch hidden/disabled,
+  alive opponent objective identities as `Unknown`, and all carried non-claims
+  intact.
 
 ## Must Have
 
 | ID | Task | Owner | Est. Days | Status | Dependencies | Acceptance Criteria |
 |---|---|---:|---:|---|---|---|
-| S9-RS-001 | Result acknowledgement and result data contract | network/session gameplay programmer + UX owner | 1.00 | In progress, not integrated | `design/ux/result-screen.md`; current `S2CGameOver` and `S2CGameSnapshot` contracts | Decide and implement/document when `C2SAcknowledgeResult` is sent; define the minimal authoritative data source for result headline, reason, round, final resources, and objective reveal fallback; define reconnect-at-`GAME_OVER` behavior as either `S2CGameOver` resend or snapshot-carried result payload; rematch remains disabled/unsupported unless separately scoped. |
+| S9-RS-001 | Result acknowledgement and result data contract | network/session gameplay programmer + UX owner | 1.00 | Complete | `design/ux/result-screen.md`; current `S2CGameOver` and `S2CGameSnapshot` contracts | Complete and integrated: `C2SAcknowledgeResult` server handling, retained `S2CGameOver` plus per-player final snapshot, all-ack cleanup, timeout cleanup, post-cleanup reconnect fallback, rematch disabled/unsupported unless separately scoped. |
 | S9-NATIVE-001 | Native friend-game operator controls | client/platform programmer | 1.00 | Ready | Native lobby blank screen repair integrated; story docs ready | Native operator path is clean enough for room entry/join, class confirmation, draft/shop, auction, placement, result dependency handling, and manual evidence attempts without client-side optimistic authority or debug-only proof. |
-| S9-RS-002 | Result screen MVP | UI/client programmer | 2.00 | Blocked | S9-RS-001; HUD `GAME_OVER` freeze; controlled Sprint 8 `GAME_OVER` evidence | Player-facing result overlay opens from `S2CGameOver` plus `S2CPhaseChanged(GameOver)`; displays victory/defeat/draw/no-result headline, cause, final round, available objective lane status, available final resources, and Return to Lobby; shows safe fallback copy when data is missing; Rematch is disabled or hidden if protocol support remains undefined; HUD stays frozen underneath. |
-| S9-RS-003 | Result acknowledgement implementation and cleanup handshake | session/network programmer + UI/client programmer | 1.00 | Blocked | S9-RS-001; S9-RS-002 | Client sends `C2SAcknowledgeResult` at the decided timing; server cleanup/ended-session state handles acknowledgement idempotently; Return to Lobby clears local ended-session UI and returns to the lobby/menu flow without optimistic server-owned state changes. |
+| S9-RS-002 | Result screen MVP | UI/client programmer | 2.00 | Ready | S9-RS-001 complete; HUD `GAME_OVER` freeze; controlled Sprint 8 `GAME_OVER` evidence | Player-facing result overlay opens from `S2CGameOver` plus `S2CPhaseChanged(GameOver)`; displays victory/defeat/draw/no-result headline, cause, final round, available objective lane status, available final resources, and Return to Lobby; shows safe fallback copy when data is missing; Rematch is disabled or hidden; alive opponent objective identities remain `Unknown` unless server authority exists; HUD stays frozen underneath. |
+| S9-RS-003 | Result acknowledgement implementation and cleanup handshake | session/network programmer + UI/client programmer | 1.00 | Blocked | S9-RS-002 complete and integrated; S9-RS-001 complete | Client sends `C2SAcknowledgeResult` at the decided timing; server cleanup/ended-session state handles acknowledgement idempotently; Return to Lobby clears local ended-session UI and returns to the lobby/menu flow without optimistic server-owned state changes. |
 | S9-QA-001 | Manual/browser two-client `GAME_OVER` evidence closure | QA tester + orchestrator | 1.25 | Blocked | S9-NATIVE-001 and/or browser route usable; S9-RS-002; S9-RS-003 | Capture a full manually driven browser or native two-client route from lobby create/join through class confirm, draft/shop, auction, placement, resolution, `GAME_OVER`, result screen, and acknowledgement. Close S8-QA-001-W1 only if the route is actually captured. Preserve non-claims if blocked. |
 
 ## Conditional Backlog And Supporting Work
@@ -95,7 +109,7 @@ manual evidence warning.
 | S9-QA-002 | Result evidence index cleanup | orchestrator | 0.25 | Blocked/backlog | Pull after S9-QA-001 evidence or blocker record exists | Create or update a concise Sprint 9 evidence index recording endpoint, manual/browser/native status, result screen status, acknowledgement status, evidence links, and all carried non-claims. |
 | SAU-008 | Reconnect Snapshot and Late Message Recovery | UI/client programmer | 1.25 | Conditional backlog | Pull only if reconnect, snapshot, or late-message instability affects the active/result flow | Snapshot rebuild restores the correct shop/auction panel; late accepted/rejected and stale purchase/refresh confirmations do not revive inactive panels; no duplicate Lightyear receiver drains are introduced. |
 | ECO-004 | Kill and Objective Awards reward-loop polish | gameplay programmer | 1.00 | Conditional backlog | Pull only if Sprint 9 evidence shows a concrete reward-loop gameplay issue | Reward changes preserve current contracts, avoid duplicate awards, land before interest snapshot, and do not expand into broad economy tuning. |
-| S9-CONTENT-001 | Neutral card display placeholder pack | content designer + UI/client programmer | 0.75 | In progress, not integrated | Out-of-plan pull-forward only; integrate only if approved and non-conflicting | Display/zoom placeholders for current neutral cards improve route readability without claiming full card production, full balance completion, broad asset approval, or unrelated art pipeline completion. |
+| S9-CONTENT-001 | Neutral card display placeholder pack | content designer + UI/client programmer | 0.75 | Done | Integrated on main at `424bcfa`; supporting content only | Display/zoom placeholders for current neutral cards improve route readability without claiming full card production, full balance completion, broad asset approval, or unrelated art pipeline completion. No `/story-done` was forced because no standalone story file exists. |
 
 S9-RS-004 result-screen accessibility and viewport polish remains initially
 owned inside S9-RS-002. It can be split later only if implementation evidence
@@ -110,13 +124,13 @@ weakness that cannot be contained by the MVP contract.
 | Risk | Probability | Impact | Mitigation |
 |---|---|---|---|
 | Manual/browser `GAME_OVER` route remains uncaptured | Medium | High | Keep S9-QA-001 blocked until result flow and operator/browser controls are usable; close the warning only with actual evidence. |
-| Result Screen MVP starts before acknowledgement/data contract is integrated | Medium | High | Keep S9-RS-002 blocked until S9-RS-001 completes and is integrated. |
-| Active S9-RS-001 worktree drifts from current `origin/main` | Medium | Medium | Rebase/repair in the worker worktree before integration; do not mark complete from dirty or unintegrated work. |
+| Result Screen MVP expands beyond the accepted MVP contract | Medium | High | Keep S9-RS-002 within Prompt 414 readiness boundaries: consume S9-RS-001 retained result data, keep Rematch hidden/disabled, keep alive opponent objectives `Unknown`, and preserve all Sprint 8 carried non-claims. |
+| Old S9-RS-001 worktree is mistaken for source of truth | Low | Medium | Treat current `origin/main` and integrated story-done docs as source of truth; do not re-open old worker state unless a separate repair prompt asks for it. |
 | Native operator controls are mistaken for native manual route evidence | Medium | High | S9-NATIVE-001 only enables operation; S9-QA-001 owns route evidence and closure. |
 | Result screen implies full game completion or public readiness | Medium | High | Preserve non-claims in plan, stories, evidence, smoke, and sign-off. |
 | Accessibility debt is accidentally represented as closed | Medium | High | Keep `QA-COND-0005` accepted-risk language explicit; result screen polish does not close broad Standard-tier accessibility. |
 | Friend-game evidence is mistaken for playtest validation | Medium | High | Keep `QA-COND-0006` accepted-risk/deferred; no playtest or fun-hypothesis claim. |
-| Supporting asset/content work expands into broad production | Medium | Medium | Keep S9-CONTENT-001 to approved display placeholder support only and require integration before claiming completion. |
+| Supporting asset/content work expands into broad production | Medium | Medium | Keep S9-CONTENT-001 to integrated display placeholder support only; do not treat it as asset approval, full card production, full balance completion, or release readiness. |
 
 ## QA Plan
 
@@ -129,7 +143,7 @@ future Sprint 9 QA sign-off or production-to-polish gate claim.
 
 ## Definition Of Done
 
-- [ ] S9-RS-001 result acknowledgement/result data contract is complete and
+- [x] S9-RS-001 result acknowledgement/result data contract is complete and
       integrated.
 - [ ] S9-NATIVE-001 is complete or explicitly waived because the browser route
       is sufficient for S9-QA-001 evidence.

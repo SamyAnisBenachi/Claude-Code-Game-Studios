@@ -3,7 +3,7 @@
 > **Layer**: Presentation
 > **GDD**: ADR-021 cross-epic infrastructure and Sprint 6 accessibility gate control
 > **Architecture Module**: `client/src/presentation/` - `PresentationPlugin`
-> **Status**: Ready-for-Readiness
+> **Status**: Ready
 > **Stories**: 5 shared prerequisite/control/accessibility/result stories
 
 ## Overview
@@ -16,14 +16,13 @@ Sprint 6 also uses this epic for S6-04 accessibility control stories. Story 003 
 
 Sprint 9 also uses this epic for the Result Screen MVP story because
 the screen is a cross-surface presentation overlay above frozen HUD and board
-state. Story 006 remains blocked for implementation until the result
-acknowledgement, GAME_OVER reconnect payload, and post-game objective reveal
-contract gaps are resolved or explicitly accepted as MVP fallbacks. Game
-Session System Story 009 is the owning S9-RS-001 contract story for result
-acknowledgement and GAME_OVER result data retention. Story 006 also owns the
-initial S9-RS-004 focus, reduced-motion, and viewport evidence scope; no
-standalone S9-RS-004 story exists unless implementation evidence later shows a
-route-blocking polish split is needed.
+state. Story 006 is ready after S9-RS-001 completed the result
+acknowledgement and retained GAME_OVER result data contract. Alive opponent
+objective identities remain `Unknown` for MVP unless a separate
+server-authoritative reveal payload is scoped, and rematch remains hidden or
+disabled. Story 006 also owns the initial S9-RS-004 focus, reduced-motion, and
+viewport evidence scope; no standalone S9-RS-004 story exists unless
+implementation evidence later shows a route-blocking polish split is needed.
 
 ## Governing ADRs
 
@@ -74,9 +73,9 @@ Story 001 remains ADR-only infrastructure and does not need a `TR-PRES-*` entry.
 - `BoardRenderingPlugin` and `ShopAuctionUiPlugin` do not exist yet and must remain owned by their own epics.
 - A11Y-ST-02 remains open because Hand UI Story 015, Shop/Auction UI Story 013, and the final Presentation Story 005 evidence pass have not yet been implemented and captured.
 - Result Screen MVP is not implemented.
-- `C2SAcknowledgeResult` exists and is registered, but no server-side acknowledgement handler or `ack_timeout_ms` cleanup path was found. Game Session System Story 009 now defines the required S9-RS-001 contract; implementation is not done.
-- `S2CGameSnapshot` does not include final result payload fields for GAME_OVER reconnect. Game Session System Story 009 chooses retained final snapshot plus retained `S2CGameOver` resend as the contract path rather than snapshot result fields; implementation is not done.
-- Full post-game reveal data for alive opponent objective identities is not available; destroyed opponent identity is available only through `OpponentObjectiveSnapshot.was_fake`.
+- S9-RS-001 is complete: `C2SAcknowledgeResult` has a server-side acknowledgement handler, retained ended-session result state, all-ack cleanup, timeout cleanup, and retained GAME_OVER reconnect resend.
+- `S2CGameSnapshot` still does not include final loser, round, or reason fields; this is acceptable for Result Screen MVP because S9-RS-001 uses retained final snapshot plus retained `S2CGameOver` resend instead.
+- Full post-game reveal data for alive opponent objective identities is not available and remains out of scope; destroyed opponent identity is available through `OpponentObjectiveSnapshot.was_fake`, and alive opponent identities render as `Unknown`.
 - Rematch protocol is not defined and must stay disabled or hidden unless separately scoped.
 
 ## Definition of Done
@@ -91,8 +90,8 @@ This epic is complete when:
 - The implementation story has passing integration evidence under `tests/integration/presentation/`.
 - S6-04 accessibility disposition work has a complete register at `production/qa/evidence/accessibility-standard-tier-sprint-6-2026-05-05.md` before broader accessibility implementation scope proceeds.
 - A11Y-ST-02 card text accessibility evidence is captured at `production/qa/evidence/presentation-card-text-accessibility.md` with browser/WASM captures under `production/qa/evidence/captures/presentation-card-text-accessibility/` after Hand UI Story 015 and Shop/Auction UI Story 013 land, before the row is treated as implemented and evidenced.
-- Result Screen MVP either implements its blocked contracts or records explicit MVP fallback acceptance for acknowledgement, reconnect result payload, and post-game objective reveal gaps before implementation assignment.
-- Game Session System Story 009 is complete or a producer-approved replacement fallback is documented before Presentation Story 006 implementation assignment.
+- Result Screen MVP consumes the S9-RS-001 retained `S2CGameOver` plus retained final `S2CGameSnapshot` contract and keeps alive opponent objectives as `Unknown` unless separate server authority exists.
+- Game Session System Story 009 / S9-RS-001 remains complete before Presentation Story 006 implementation assignment.
 - No BoardLayout, CardAtlas, BoardRenderingPlugin, ShopAuctionUiPlugin, panel tree, unrelated visual spawning, gameplay logic, rematch protocol, or server contract change is implemented by this epic.
 
 ## Stories
@@ -103,8 +102,8 @@ This epic is complete when:
 | 002 | [Shared Economy View](story-002-shared-economy-view.md) | Integration | Ready | TR-PRES-001 | ADR-021, ADR-002, ADR-008 |
 | 003 | [S6 Accessibility Disposition and Evidence Register](story-003-s6-accessibility-disposition-and-evidence-register.md) | Config/Data | Ready | S6-04 / QA-COND-0005 | ADR-023, ADR-021, ADR-002 |
 | 005 | [A11Y-ST-02 Cross-Surface Browser/WASM Evidence](story-005-card-text-stat-keyword-accessibility.md) | UI | Ready | A11Y-ST-02 / QA-COND-0005 | ADR-021, ADR-002, ADR-013, ADR-015, ADR-019 |
-| 006 | [Result Screen MVP](story-006-result-screen-mvp.md) | UI | Blocked - contract gaps | Result Screen UX / TR-NP-001 / TR-RSM-008 / TR-HUD-009 | ADR-021, ADR-002, ADR-008, ADR-011 |
+| 006 | [Result Screen MVP](story-006-result-screen-mvp.md) | UI | Ready | Result Screen UX / TR-NP-001 / TR-RSM-008 / TR-HUD-009 | ADR-021, ADR-002, ADR-008, ADR-011 |
 
 ## Next Step
 
-For the accessibility path, run Hand UI Story 015 first, then Shop/Auction UI Story 013 after any needed settlement surface work, then run Presentation Story 005 as the final cross-surface Browser/WASM evidence pass. For the result-screen path, resolve or explicitly accept the Story 006 contract blockers before implementation assignment. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file during implementation. QA-COND-0005 remains Open until every Standard-tier accessibility row has valid implementation/evidence, dependency-blocking, reclassification, or accepted-risk disposition.
+For the accessibility path, run Hand UI Story 015 first, then Shop/Auction UI Story 013 after any needed settlement surface work, then run Presentation Story 005 as the final cross-surface Browser/WASM evidence pass. For the result-screen path, assign Story 006 within its MVP boundaries: no enabled rematch, alive opponent objectives remain `Unknown`, and no manual/browser GAME_OVER or QA closure claim is made by implementation readiness. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file during implementation. QA-COND-0005 remains Open until every Standard-tier accessibility row has valid implementation/evidence, dependency-blocking, reclassification, or accepted-risk disposition.
