@@ -4,7 +4,7 @@
 > **GDD**: ADR-021 cross-epic infrastructure and Sprint 6 accessibility gate control
 > **Architecture Module**: `client/src/presentation/` - `PresentationPlugin`
 > **Status**: Ready-for-Readiness
-> **Stories**: 4 shared prerequisite/control/accessibility stories
+> **Stories**: 5 shared prerequisite/control/accessibility/result stories
 
 ## Overview
 
@@ -13,6 +13,12 @@ Presentation Layer owns the shared client-side infrastructure defined by ADR-021
 This epic exists because ADR-021 defines cross-epic infrastructure that should not be owned by Board Rendering 001 or Shop/Auction UI 001. Board Rendering, HUD, Hand UI, Card Animations, and Shop/Auction UI remain independently owned sub-plugins; this epic owns only the scheduling and phase-state bridge that lets those sub-plugins compose safely.
 
 Sprint 6 also uses this epic for S6-04 accessibility control stories. Story 003 is docs-only and prevents broad Settings / Accessibility implementation scope from opening until QA-COND-0005 has a complete row-by-row evidence, reclassification, accepted-risk, or dependency disposition register. Story 005 is now the final cross-surface Browser/WASM evidence story for A11Y-ST-02 after Hand UI Story 015 and Shop/Auction UI Story 013 land their owning surface work.
+
+Sprint 9 preparation also uses this epic for the Result Screen MVP story because
+the screen is a cross-surface presentation overlay above frozen HUD and board
+state. Story 006 remains blocked for implementation until the result
+acknowledgement, GAME_OVER reconnect payload, and post-game objective reveal
+contract gaps are resolved or explicitly accepted as MVP fallbacks.
 
 ## Governing ADRs
 
@@ -34,10 +40,11 @@ Sprint 6 also uses this epic for S6-04 accessibility control stories. Story 003 
 | TR-PRES-001 | Shared `PlayerEconomyView` mirrors own current/reserve mana from `S2CGoldUpdate` and `S2CGameSnapshot`; presentation sub-plugins read the resource instead of draining economy messages independently | ADR-021, ADR-002, ADR-008 |
 | S6-04 / QA-COND-0005 | Standard-tier accessibility gaps must be implemented/evidenced, accepted risk with producer signoff, reclassified out of the Production -> Polish gate, or explicitly dependency-blocked before QA-COND-0005 closure can be considered | ADR-023, ADR-021 |
 | A11Y-ST-02 / QA-COND-0005 | Card cost, ATK, HP, and keyword text floors must be verified with final browser/WASM evidence across the Hand UI and Shop/Auction UI card surfaces implemented by their split A11Y-ST-02 stories | ADR-021, ADR-002 |
+| Result Screen UX | GAME_OVER result overlay displays server-authoritative win/loss/draw/no-result copy, objective summary with Unknown fallbacks, frozen HUD/background behavior, Return to Lobby, rematch disabled/hidden unless scoped, keyboard focus, reduced-motion behavior, and no public/full-QA/full-game claims | ADR-021, ADR-002, ADR-008, ADR-011 |
 
 ## Traceability Notes
 
-Story 001 remains ADR-only infrastructure and does not need a `TR-PRES-*` entry. Story 002 is GDD-derived shared client state required by HAND-UI-010, so it is registered as `TR-PRES-001` in `docs/architecture/tr-registry.yaml`. Story 003 is a Sprint 6 QA control/evidence story and does not need a `TR-PRES-*` entry because it is traceable to S6-04, QA-COND-0005, the Sprint 6 QA plan, and ADR-023. Story 005 is a Sprint 6 QA accessibility evidence story and does not need a new `TR-PRES-*` entry because it is traceable to A11Y-ST-02, QA-COND-0005, the Sprint 6 accessibility evidence register, Hand UI Story 015, Shop/Auction UI Story 013, and the owning GDD requirements for card surfaces.
+Story 001 remains ADR-only infrastructure and does not need a `TR-PRES-*` entry. Story 002 is GDD-derived shared client state required by HAND-UI-010, so it is registered as `TR-PRES-001` in `docs/architecture/tr-registry.yaml`. Story 003 is a Sprint 6 QA control/evidence story and does not need a `TR-PRES-*` entry because it is traceable to S6-04, QA-COND-0005, the Sprint 6 QA plan, and ADR-023. Story 005 is a Sprint 6 QA accessibility evidence story and does not need a new `TR-PRES-*` entry because it is traceable to A11Y-ST-02, QA-COND-0005, the Sprint 6 accessibility evidence register, Hand UI Story 015, Shop/Auction UI Story 013, and the owning GDD requirements for card surfaces. Story 006 is traced to `design/ux/result-screen.md` plus `TR-NP-001`, `TR-NP-005`, `TR-RSM-008`, `TR-RSM-009`, `TR-HUD-009`, PLAYABLE-004 controlled GAME_OVER evidence, and the carried QA-COND-0005/0006 risk files; no dedicated `TR-PRES-*` entry exists yet.
 
 ## Dependency Map
 
@@ -50,6 +57,7 @@ Story 001 remains ADR-only infrastructure and does not need a `TR-PRES-*` entry.
 | Hand UI | `HandUiPlugin`, `HandUiSystemSet` | Reads shared phase state; phase/message/state systems bridge into global ordering |
 | HUD | `HudPlugin`, `HudSystemSet` | Reads shared phase state; phase/message/state systems bridge into global ordering |
 | Shop/Auction UI | Future `ShopAuctionUiPlugin` | Registered fifth once its own story implements it |
+| Result Screen | Future result-screen presentation module | Opens from shared GAME_OVER phase/result state above frozen HUD and board without mutating either surface |
 
 ## Current Implementation Gaps
 
@@ -60,6 +68,11 @@ Story 001 remains ADR-only infrastructure and does not need a `TR-PRES-*` entry.
 - `client/src/main.rs` registers `ClientNetworkPlugin`, but not the top-level Presentation plugin.
 - `BoardRenderingPlugin` and `ShopAuctionUiPlugin` do not exist yet and must remain owned by their own epics.
 - A11Y-ST-02 remains open because Hand UI Story 015, Shop/Auction UI Story 013, and the final Presentation Story 005 evidence pass have not yet been implemented and captured.
+- Result Screen MVP is not implemented.
+- `C2SAcknowledgeResult` exists and is registered, but no server-side acknowledgement handler or `ack_timeout_ms` cleanup path was found.
+- `S2CGameSnapshot` does not include final result payload fields for GAME_OVER reconnect.
+- Full post-game reveal data for alive opponent objective identities is not available; destroyed opponent identity is available only through `OpponentObjectiveSnapshot.was_fake`.
+- Rematch protocol is not defined and must stay disabled or hidden unless separately scoped.
 
 ## Definition of Done
 
@@ -73,7 +86,8 @@ This epic is complete when:
 - The implementation story has passing integration evidence under `tests/integration/presentation/`.
 - S6-04 accessibility disposition work has a complete register at `production/qa/evidence/accessibility-standard-tier-sprint-6-2026-05-05.md` before broader accessibility implementation scope proceeds.
 - A11Y-ST-02 card text accessibility evidence is captured at `production/qa/evidence/presentation-card-text-accessibility.md` with browser/WASM captures under `production/qa/evidence/captures/presentation-card-text-accessibility/` after Hand UI Story 015 and Shop/Auction UI Story 013 land, before the row is treated as implemented and evidenced.
-- No BoardLayout, CardAtlas, BoardRenderingPlugin, ShopAuctionUiPlugin, panel tree, visual spawning, gameplay logic, or protocol change is implemented by this epic.
+- Result Screen MVP either implements its blocked contracts or records explicit MVP fallback acceptance for acknowledgement, reconnect result payload, and post-game objective reveal gaps before implementation assignment.
+- No BoardLayout, CardAtlas, BoardRenderingPlugin, ShopAuctionUiPlugin, panel tree, unrelated visual spawning, gameplay logic, rematch protocol, or server contract change is implemented by this epic.
 
 ## Stories
 
@@ -83,7 +97,8 @@ This epic is complete when:
 | 002 | [Shared Economy View](story-002-shared-economy-view.md) | Integration | Ready | TR-PRES-001 | ADR-021, ADR-002, ADR-008 |
 | 003 | [S6 Accessibility Disposition and Evidence Register](story-003-s6-accessibility-disposition-and-evidence-register.md) | Config/Data | Ready | S6-04 / QA-COND-0005 | ADR-023, ADR-021, ADR-002 |
 | 005 | [A11Y-ST-02 Cross-Surface Browser/WASM Evidence](story-005-card-text-stat-keyword-accessibility.md) | UI | Ready | A11Y-ST-02 / QA-COND-0005 | ADR-021, ADR-002, ADR-013, ADR-015, ADR-019 |
+| 006 | [Result Screen MVP](story-006-result-screen-mvp.md) | UI | Blocked - contract gaps | Result Screen UX / TR-NP-001 / TR-RSM-008 / TR-HUD-009 | ADR-021, ADR-002, ADR-008, ADR-011 |
 
 ## Next Step
 
-Run Hand UI Story 015 first, then Shop/Auction UI Story 013 after any needed settlement surface work, then run Presentation Story 005 as the final cross-surface Browser/WASM evidence pass. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file during implementation. QA-COND-0005 remains Open until every Standard-tier accessibility row has valid implementation/evidence, dependency-blocking, reclassification, or accepted-risk disposition.
+For the accessibility path, run Hand UI Story 015 first, then Shop/Auction UI Story 013 after any needed settlement surface work, then run Presentation Story 005 as the final cross-surface Browser/WASM evidence pass. For the result-screen path, resolve or explicitly accept the Story 006 contract blockers before implementation assignment. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file during implementation. QA-COND-0005 remains Open until every Standard-tier accessibility row has valid implementation/evidence, dependency-blocking, reclassification, or accepted-risk disposition.
