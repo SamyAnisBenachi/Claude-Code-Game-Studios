@@ -1,7 +1,7 @@
 # Sprint 9 Draft Plan -- Planning Only
 
 > **Status**: Draft only. Sprint 9 is not active.
-> **Source of truth**: `origin/main@02e25c2ae750c3b9f6cc956a5d529e7dcb7d47c5`
+> **Source of truth**: `origin/main@c3635f02109526e50656542748396540d462ac1f`
 > **Drafted**: 2026-05-07
 > **Do not use this document as activation state.**
 
@@ -54,6 +54,28 @@ Before this draft can become an active Sprint 9 plan:
   implementation starts.
 - `production/sprint-status.yaml` must remain Sprint 8 until an explicit
   activation prompt updates it.
+
+## Story Readiness Ownership Package
+
+This draft now has story-file ownership for the missing Sprint 9 rows while
+remaining planning-only. These docs do not activate Sprint 9 and do not update
+`production/sprint-status.yaml` or `production/session-state/**`.
+
+| Sprint Row | Story Ownership | Readiness Disposition |
+|---|---|---|
+| S9-RS-001 | `production/epics/game-session-system/story-009-result-acknowledgement-and-result-data-contract.md` | Standalone story exists and remains the prerequisite contract story for Result Screen MVP. |
+| S9-RS-002 | `production/epics/presentation-layer/story-006-result-screen-mvp.md` | Standalone story exists and remains blocked until S9-RS-001 contract gaps are resolved or explicitly accepted as MVP fallbacks. |
+| S9-RS-003 | `production/epics/game-session-system/story-010-result-acknowledgement-cleanup-handshake.md` | New standalone follow-up story owns Return to Lobby acknowledgement dispatch, local ended-session UI cleanup, idempotent server cleanup, timeout cleanup, and reconnect-after-cleanup fallback verification after S9-RS-001 and S9-RS-002. |
+| S9-QA-001 | `production/epics/playable-client/story-007-manual-browser-game-over-evidence-closure.md` | New standalone evidence story owns the full manual browser/native two-client route through GAME_OVER, result screen, and acknowledgement. It closes S8-QA-001-W1 only with actual captured evidence. |
+| S9-RS-004 | `production/epics/presentation-layer/story-006-result-screen-mvp.md` | No standalone story in this package. Initial focus, visible focus indicator, reduced-motion, photosensitivity, and viewport evidence ownership is explicitly inside Result Screen MVP. Split later only if implementation evidence shows a route-blocking polish issue. This does not close QA-COND-0005. |
+| S9-QA-002 | `production/epics/playable-client/story-008-sprint-9-result-evidence-index-cleanup.md` | New standalone follow-up story owns the concise Sprint 9 result evidence index after S9-QA-001 evidence or blocker records exist. |
+
+Sprint 8 conditions and non-claims remain carried: manual/browser GAME_OVER is
+not claimed until S9-QA-001 captures it; QA-COND-0005 remains accepted risk for
+friend-game scope only; QA-COND-0006 remains accepted-risk/deferred; no public
+release readiness, broad accessibility completion, playtest validation, full
+playable-client manual QA, full regression campaign, or full game completion is
+claimed by this readiness package.
 
 ## Must Have
 

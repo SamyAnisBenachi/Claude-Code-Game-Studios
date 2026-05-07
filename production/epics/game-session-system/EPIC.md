@@ -4,11 +4,14 @@
 > **GDD**: design/gdd/game-session-system.md
 > **Architecture Module**: `server/core/session/` (full module — `state.rs`, `events.rs`, `system.rs`, `config.rs`, `plugin.rs`); contributes `on_session_ready` Observer registration to `server/core/rsm/`
 > **Status**: Ready
-> **Stories**: 9 stories — see Stories section below
+> **Stories**: 10 stories — see Stories section below
 
 ## Overview
 
 Implements the lobby finite-state machine and the session-readiness handoff that bridges connection-time concerns to the round loop. This epic owns `SessionSlot`, room creation and join, public class selection with deferred simultaneous reveal, the F4 readiness predicate (all slots filled + all classes confirmed + lobby deadline not expired), lobby/session PLACEMENT timer multiplier negotiation, the lobby heartbeat / `OnDisconnected` immediate-cancel path, and — critically — the `SessionReady` Observer-trigger delivery that hands `SessionConfig` and `ServerRng` to the RSM in the same `Update` tick. After `SessionReady` fires, the GSS becomes a passive read-only configuration store: `Res<SessionConfig>` (mode, player_count, team_map, class_map, placement_timer_multiplier_effective) is the single source of session data for every Feature system. The GSS also owns the `ServerRng` lifecycle: it seeds the RNG from `OsRng` immediately before triggering `SessionReady` (per ADR-005) and destroys both `SessionConfig` and `ServerRng` resources on `GameOverEmitted` (subscribed from Epic 1's RSM event bus). Sprint 9 preparation adds the result acknowledgement/result data contract as Story 009: GSS owns the server-side `C2SAcknowledgeResult` handling, retained GAME_OVER result data during the acknowledgement window, and reconnect behavior needed by the Result Screen MVP. This epic is the load-bearing gate between LOBBY and DRAFT_INITIAL: an Observer-trigger ordering bug here panics the RSM with "resource not found" and breaks every game session.
+
+Story 010 owns the S9-RS-003 cross-boundary Return to Lobby acknowledgement
+cleanup handshake after Story 009 and Presentation Layer Story 006 exist.
 
 ## Governing ADRs
 
@@ -46,6 +49,8 @@ Three high-risk post-cutoff API behaviours converge in this epic:
 | TR-GSS-10 | One active session per `PlayerId`; idempotent `C2SCreateRoom` retry | GDD Rule 13 |
 | TR-GSS-11 | GSS owns multiplayer PLACEMENT timer multiplier negotiation before `SessionReady`: highest requested multiplayer-safe value wins, capped at 3x, neutral, and frozen into `SessionConfig` | ADR-023 |
 | S9-RS-001 | Result acknowledgement and retained GAME_OVER result data: `C2SAcknowledgeResult` is handled server-side during GAME_OVER, duplicate acks are idempotent, reconnect during the retained acknowledgement window receives authoritative final snapshot plus re-sent `S2CGameOver`, and cleanup waits for all acks or `ack_timeout_ms` | ADR-002, ADR-008, ADR-011 |
+
+| S9-RS-003 | Result acknowledgement cleanup handshake: Return to Lobby sends the agreed acknowledgement, clears local ended-session UI, keeps server cleanup authoritative, and verifies duplicate ack, all-ack cleanup, timeout cleanup, and reconnect-after-cleanup fallback end to end | ADR-002, ADR-008, ADR-011, ADR-021 |
 
 ## Scope
 
@@ -166,6 +171,7 @@ If any check fails: implement `evaluate_session_ready` as `fn(world: &mut World)
 | 007 | Reconnect and Game Snapshot | Integration | Ready | ADR-011, ADR-001, ADR-008, ADR-002 |
 | 008 | PLACEMENT Timer Multiplier Authority | Integration | Ready | ADR-023, ADR-002, ADR-009, ADR-012, ADR-021 |
 | 009 | [Result Acknowledgement and Result Data Contract](story-009-result-acknowledgement-and-result-data-contract.md) | Integration | Ready | ADR-002, ADR-008, ADR-010, ADR-011 |
+| 010 | [Result Acknowledgement Cleanup Handshake](story-010-result-acknowledgement-cleanup-handshake.md) | Integration | Blocked - depends on S9-RS-001 and S9-RS-002 | ADR-002, ADR-008, ADR-011, ADR-021 |
 
 > ⚠️ Story 004 is **Blocked** pending ADR-012 verification (Commands::trigger ordering invariant — 4 checklist items must be confirmed against Bevy 0.18). Run the verification spike before Story 004 can be marked Ready.
 
@@ -182,6 +188,7 @@ Suggested decomposition (final story list to be authored via `/create-stories`):
 7. **Reconnect + snapshot** (Integration) — `SessionToken` handshake; `S2CGameSnapshot` builder with secret-stripping (ADR-011); live-message queue gated on `snapshot_sent`.
 8. **PLACEMENT timer multiplier authority** (Integration) — ADR-023 protocol, GSS request negotiation, `SessionConfig` freeze, RSM effective PLACEMENT duration, reconnect snapshot field, and Hand UI server-provided timer consumption.
 9. **Result acknowledgement + result data contract** (Integration) - S9-RS-001 server acknowledgement handling, retained final result data, GAME_OVER reconnect resend, idempotent ack safety, and ack-timeout cleanup.
+10. **Result acknowledgement cleanup handshake** (Integration) - S9-RS-003 Return to Lobby acknowledgement dispatch, local ended-session UI cleanup, duplicate ack idempotence, all-ack cleanup, timeout cleanup, and reconnect-after-cleanup fallback verification.
 
 ## Next Step
 

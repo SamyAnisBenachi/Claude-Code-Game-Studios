@@ -20,7 +20,10 @@ state. Story 006 remains blocked for implementation until the result
 acknowledgement, GAME_OVER reconnect payload, and post-game objective reveal
 contract gaps are resolved or explicitly accepted as MVP fallbacks. Game
 Session System Story 009 is the owning S9-RS-001 contract story for result
-acknowledgement and GAME_OVER result data retention.
+acknowledgement and GAME_OVER result data retention. Story 006 also owns the
+initial S9-RS-004 focus, reduced-motion, and viewport evidence scope; no
+standalone S9-RS-004 story exists unless implementation evidence later shows a
+route-blocking polish split is needed.
 
 ## Governing ADRs
 
@@ -42,11 +45,11 @@ acknowledgement and GAME_OVER result data retention.
 | TR-PRES-001 | Shared `PlayerEconomyView` mirrors own current/reserve mana from `S2CGoldUpdate` and `S2CGameSnapshot`; presentation sub-plugins read the resource instead of draining economy messages independently | ADR-021, ADR-002, ADR-008 |
 | S6-04 / QA-COND-0005 | Standard-tier accessibility gaps must be implemented/evidenced, accepted risk with producer signoff, reclassified out of the Production -> Polish gate, or explicitly dependency-blocked before QA-COND-0005 closure can be considered | ADR-023, ADR-021 |
 | A11Y-ST-02 / QA-COND-0005 | Card cost, ATK, HP, and keyword text floors must be verified with final browser/WASM evidence across the Hand UI and Shop/Auction UI card surfaces implemented by their split A11Y-ST-02 stories | ADR-021, ADR-002 |
-| Result Screen UX | GAME_OVER result overlay displays server-authoritative win/loss/draw/no-result copy, objective summary with Unknown fallbacks, frozen HUD/background behavior, Return to Lobby, rematch disabled/hidden unless scoped, keyboard focus, reduced-motion behavior, and no public/full-QA/full-game claims | ADR-021, ADR-002, ADR-008, ADR-011 |
+| Result Screen UX | GAME_OVER result overlay displays server-authoritative win/loss/draw/no-result copy, objective summary with Unknown fallbacks, frozen HUD/background behavior, Return to Lobby, rematch disabled/hidden unless scoped, keyboard focus, reduced-motion behavior, viewport stability, and no public/full-QA/full-game claims | ADR-021, ADR-002, ADR-008, ADR-011 |
 
 ## Traceability Notes
 
-Story 001 remains ADR-only infrastructure and does not need a `TR-PRES-*` entry. Story 002 is GDD-derived shared client state required by HAND-UI-010, so it is registered as `TR-PRES-001` in `docs/architecture/tr-registry.yaml`. Story 003 is a Sprint 6 QA control/evidence story and does not need a `TR-PRES-*` entry because it is traceable to S6-04, QA-COND-0005, the Sprint 6 QA plan, and ADR-023. Story 005 is a Sprint 6 QA accessibility evidence story and does not need a new `TR-PRES-*` entry because it is traceable to A11Y-ST-02, QA-COND-0005, the Sprint 6 accessibility evidence register, Hand UI Story 015, Shop/Auction UI Story 013, and the owning GDD requirements for card surfaces. Story 006 is traced to `design/ux/result-screen.md` plus `TR-NP-001`, `TR-NP-005`, `TR-RSM-008`, `TR-RSM-009`, `TR-HUD-009`, PLAYABLE-004 controlled GAME_OVER evidence, and the carried QA-COND-0005/0006 risk files; no dedicated `TR-PRES-*` entry exists yet.
+Story 001 remains ADR-only infrastructure and does not need a `TR-PRES-*` entry. Story 002 is GDD-derived shared client state required by HAND-UI-010, so it is registered as `TR-PRES-001` in `docs/architecture/tr-registry.yaml`. Story 003 is a Sprint 6 QA control/evidence story and does not need a `TR-PRES-*` entry because it is traceable to S6-04, QA-COND-0005, the Sprint 6 QA plan, and ADR-023. Story 005 is a Sprint 6 QA accessibility evidence story and does not need a new `TR-PRES-*` entry because it is traceable to A11Y-ST-02, QA-COND-0005, the Sprint 6 accessibility evidence register, Hand UI Story 015, Shop/Auction UI Story 013, and the owning GDD requirements for card surfaces. Story 006 is traced to `design/ux/result-screen.md` plus `TR-NP-001`, `TR-NP-005`, `TR-RSM-008`, `TR-RSM-009`, `TR-HUD-009`, PLAYABLE-004 controlled GAME_OVER evidence, and the carried QA-COND-0005/0006 risk files; it also owns the initial S9-RS-004 focus/reduced-motion/viewport evidence scope. No dedicated `TR-PRES-*` entry exists yet.
 
 ## Dependency Map
 

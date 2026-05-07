@@ -1,6 +1,6 @@
 # Epics Index
 
-**Last Updated:** 2026-05-06
+**Last Updated:** 2026-05-07
 **Engine:** Bevy 0.18 + Lightyear 0.26
 **Layer in progress:** Feature (M1 + M2 + M3) + Presentation + Polish
 
@@ -11,7 +11,7 @@
 | [server-rng](server-rng/EPIC.md) | Foundation | `server/foundation/rng.rs` | server-rng | 3 stories | Ready |
 | [lightyear-protocol-verification](lightyear-protocol-verification/EPIC.md) ⭐ | Foundation | `shared/protocol.rs` + `server/network/` + `client/network/` | network-protocol | 4 stories | Ready |
 | [round-state-machine](round-state-machine/EPIC.md) | Core | `server/core/rsm/` | round-state-machine | TBD — see hint | Ready |
-| [game-session-system](game-session-system/EPIC.md) | Core | `server/core/session/` (+ `on_session_ready` in `server/core/rsm/`) | game-session-system | 9 stories | Ready |
+| [game-session-system](game-session-system/EPIC.md) | Core | `server/core/session/` (+ `on_session_ready` in `server/core/rsm/`) | game-session-system | 10 stories | Ready |
 | [economy-system](economy-system/EPIC.md) | Core | `server/core/economy/` | economy-system | TBD — see hint | Ready |
 | [card-data-pool](card-data-pool/EPIC.md) | Core | `server/core/pool/` | card-data-pool | 6 stories | Complete |
 | [board-lane-system](board-lane-system/EPIC.md) | Feature (M1) | `server/feature/board/` | board-lane-system | TBD | Ready |
@@ -22,13 +22,13 @@
 | [class-system](class-system/EPIC.md) | Feature (M3) | `server/feature/class/` | class-system | 10 stories | Ready |
 | [prism-system](prism-system/EPIC.md) | Feature (M3) | `server/feature/prism/` | prism-system | Not yet created | Ready |
 | [keyword-system](keyword-system/EPIC.md) | Feature (M3) | `server/feature/keyword/` + `protocol/src/keyword.rs` | keyword-system | Not yet created | Ready — 7 pre-impl gates to clear first |
-| [presentation-layer](presentation-layer/EPIC.md) | Presentation | `client/src/presentation/` | ADR-021 cross-epic infrastructure | 1 story | Ready-for-Readiness |
+| [presentation-layer](presentation-layer/EPIC.md) | Presentation | `client/src/presentation/` | ADR-021 cross-epic infrastructure | 5 stories | Ready-for-Readiness |
 | [hud](hud/EPIC.md) | Presentation | `client/src/ui/hud/` | hud | 10 stories | Ready |
 | [card-animations](card-animations/EPIC.md) | Presentation | `client/src/card_animations/` | card-animations | 9 stories | Ready |
 | [hand-ui](hand-ui/EPIC.md) | Presentation | `client/src/ui/hand/` | hand-ui | 13 stories | Ready - OQ8 gates activation-lock story |
 | [board-rendering](board-rendering/EPIC.md) | Presentation | `client/src/ui/board/` | board-rendering | 10 stories | Ready - protocol/objective/combat gates on later stories |
 | [shop-auction-ui](shop-auction-ui/EPIC.md) | Presentation | `client/src/ui/shop_auction/` | shop-auction-ui | 9 stories | Ready - UX spec gates final visual evidence |
-| [playable-client](playable-client/EPIC.md) | Polish | `client/src/main.rs` + `client/src/network/` + client UI/presentation + server message bridges | Sprint 7 real primary client path | 3 stories | Ready |
+| [playable-client](playable-client/EPIC.md) | Polish | `client/src/main.rs` + `client/src/network/` + client UI/presentation + server message bridges | Sprint 7 real primary client path | 8 stories | Ready |
 
 > ⭐ Sprint 1 Story 1.0 = `lightyear-protocol-verification` Story 001 (Lightyear 0.26 verification spike)
 
@@ -44,7 +44,7 @@
 | game-session-system | TBD | — | — | — |
 | economy-system | TBD | — | — | — |
 | card-data-pool | 6 | 3 | 3 | 0 |
-| playable-client | 3 | 0 | 3 | 0 |
+| playable-client | 8 | 0 | 7 | 1 |
 | **Foundation total** | **15** | **4** | **7** | **4** |
 
 > Core layer story counts will populate after `/create-stories` is run on each Core epic.

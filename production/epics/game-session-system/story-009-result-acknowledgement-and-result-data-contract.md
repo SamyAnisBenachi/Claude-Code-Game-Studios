@@ -406,8 +406,9 @@ are bounded to the player count and the `ack_timeout_ms` window.
 - Depends on: ADR-002, ADR-008, ADR-010, and ADR-011 Accepted.
 - Blocks: Presentation Layer Story 006 Result Screen MVP implementation
   assignment.
-- Blocks: S9-RS-003 result acknowledgement implementation/cleanup handshake as
-  a separate UI integration story if Sprint 9 keeps that split.
+- Blocks: [Story 010](story-010-result-acknowledgement-cleanup-handshake.md)
+  for S9-RS-003 result acknowledgement cleanup and Return to Lobby handshake
+  verification.
 
 ## Readiness Notes
 

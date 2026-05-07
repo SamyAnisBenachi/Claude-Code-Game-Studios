@@ -38,6 +38,20 @@ That evidence does not prove a rendered result screen, manual/browser GAME_OVER,
 public release readiness, broad Standard-tier accessibility completion,
 playtest validation, full playable-client manual QA, or full game completion.
 
+**S9-RS-004 ownership note**:
+
+The Sprint 9 draft lists S9-RS-004 as result-screen accessibility and viewport
+polish. For the readiness package, S9-RS-004 is not a separate story. Its
+initial ownership is explicitly inside this Result Screen MVP story through the
+keyboard focus, visible focus indicator, reduced-motion, photosensitivity, and
+viewport layout acceptance criteria below, plus the required evidence document
+`production/qa/evidence/result-screen-mvp-evidence.md`.
+
+If implementation evidence shows that layout, focus, or reduced-motion issues
+still block the manual route after this story is functional, split a later
+follow-up from this story. That later split must not close QA-COND-0005 unless
+separate Standard-tier accessibility closure evidence exists.
+
 **GDD, UX, and TR trace**:
 
 - `design/ux/result-screen.md` is the direct UX source for the result overlay,
@@ -389,6 +403,13 @@ client.
 - Depends on: Game Session System Story 009 complete for S9-RS-001 result
   acknowledgement and retained GAME_OVER result data contract.
 - Depends on: ADR-002, ADR-008, ADR-011, and ADR-021 Accepted.
+- Owns: S9-RS-004 initial result-screen focus, reduced-motion, and viewport
+  evidence scope. No standalone S9-RS-004 story exists in this readiness
+  package unless a later implementation blocker requires a split.
+- Blocks: Game Session System Story 010 for S9-RS-003 Return to Lobby
+  acknowledgement cleanup verification.
+- Blocks: Playable Client Story 007 for S9-QA-001 manual/browser two-client
+  GAME_OVER evidence closure.
 - Blocks: Result-screen implementation assignment until the blockers below are
   resolved or explicitly accepted as MVP fallback scope.
 
