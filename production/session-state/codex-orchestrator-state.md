@@ -199,12 +199,11 @@ None currently tracked here.
   `work/s9-rs-001-result-ack-contract` exists with uncommitted local
   session/network changes and is behind current `origin/main`. It is not
   integrated and must not be treated as complete.
-- S9-CONTENT-001 / neutral card display placeholder pack is tracked as an
-  out-of-plan supporting content pull-forward only. Worktree
-  `D:\_DEV\claude-code-game-studios-worktrees\neutral-card-display-placeholder-pack`
-  on branch `work/neutral-card-display-placeholder-pack` has local commit
-  `33d60d4` but is not integrated to `origin/main`; no completion, asset
-  approval, full card production, or balance completion is claimed.
+- S9-CONTENT-001 / neutral card display placeholder pack is integrated on main
+  at `424bcfa0b60cea5dba0d1cb920ac4a3221b9ae4f` as a supporting content/asset
+  slice. No standalone story file exists and no `/story-done` was forced. No
+  asset approval, full card production, full balance completion, public release
+  readiness, or full game completion is claimed.
 - S9-NATIVE-001 is ready for dev, not in progress. No active native operator
   controls implementation worker was found during activation.
 - S9-RS-002 remains blocked until S9-RS-001 completes and is integrated.

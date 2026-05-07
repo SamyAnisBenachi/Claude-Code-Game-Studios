@@ -2355,3 +2355,14 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` marks S9-RS-001 done and preserves Sprint 9 no-claims.
 - Next recommended: run a scoped readiness/status refresh for S9-RS-002 Result Screen MVP before assigning implementation. No close-out or gate sequence was run.
+
+## Session Extract - Prompt 415 Neutral Card Display Placeholder Pack Reconciliation 2026-05-07
+- Scope: docs/status reconciliation only for already-integrated `S9-CONTENT-001`. No `/dev-story`, `/story-done`, smoke, QA sign-off, `/team-qa`, `/gate-check`, Sprint close-out, or implementation was run.
+- Source of truth: `origin/main` was fetched and local `main` matched `6d428021558b94d7ef0185d7dbc69887bd8dd785` before edits.
+- Final base note: before the session-state reconciliation commit, `origin/main` had advanced to `a4fae1a50b869720d890ce5992706296a099c705`, which already contained the Sprint status and Sprint 9 plan portions of this reconciliation.
+- Reconciled `S9-CONTENT-001` as Done for the neutral card display placeholder pack integrated on main at `424bcfa0b60cea5dba0d1cb920ac4a3221b9ae4f`.
+- Tracking disposition: `S9-CONTENT-001` exists as the Sprint 9 status row, but no standalone story file exists; this reconciliation did not force `/story-done`.
+- Integrated scope recorded: display/zoom placeholder art for current neutral cards, asset resolver wiring, asset manifest entries, and focused draft/shop hand bridge coverage from the integrated commit.
+- Updated docs/status: `production/sprint-status.yaml`, `production/sprints/sprint-9.md`, `production/session-state/codex-orchestrator-state.md`, and `production/session-state/active.md`.
+- Scope guard: no full card production, asset approval, full balance completion, public release readiness, release-candidate readiness, full game completion, broad accessibility completion, full playable-client manual QA, Sprint 9 close-out, or playtest/fun-hypothesis validation is claimed.
+- Verification: `git diff --check` passed; `git diff --cached --check` passed before commit.
