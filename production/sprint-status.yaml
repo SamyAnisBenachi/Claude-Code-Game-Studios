@@ -26,8 +26,8 @@ carried_conditions:
 planning:
   review_mode: "lean"
   producer_gate: "PR-SPRINT skipped -- Lean mode"
-  qa_plan_found: false
-  qa_plan_required_next: true
+  qa_plan_found: true
+  qa_plan_required_next: false
   forbidden_runs_in_prompt:
     dev_story: false
     story_done: false
@@ -41,7 +41,9 @@ notes:
   - "Game-over, full game completion, public release readiness, broad accessibility completion, playtest/fun-hypothesis validation, and full playable-client manual QA are not claimed."
   - "The core GAME_OVER pipeline has completed implementation stories, but Sprint 7 did not reach game-over through friend-game evidence."
   - "Sprint 8 must either extend the friend-game endpoint toward result/game-over evidence or record an explicitly accepted nearest-endpoint improvement with no game-over claim."
-  - "No Sprint 8 QA plan exists yet. Run /qa-plan sprint-8 before implementation starts."
+  - "Sprint 8 QA plan exists at production/qa/qa-plan-sprint-8-2026-05-07.md."
+  - "PLAYABLE-004 and LOOP-001 story docs exist and are Ready; no story-doc availability blocker remains."
+  - "PLAYABLE-004 is the next implementation candidate. LOOP-001 starts after PLAYABLE-004 unless explicitly waived."
   - "No /dev-story, /story-done, /smoke-check, /team-qa, or /gate-check was run by Sprint 8 planning."
 
 stories:
@@ -49,14 +51,15 @@ stories:
     name: "Sprint 8 story docs and readiness package"
     file: "production/epics/playable-client/story-004-friend-game-result-endpoint-expansion.md"
     priority: must-have
-    status: blocked
+    status: done
     owner: "orchestrator + producer"
     estimate_days: 0.50
-    blocker: "Create/refresh the Sprint 8 PLAYABLE story docs and run story readiness before implementation starts."
-    completed: ""
+    blocker: ""
+    completed: "2026-05-07"
     notes:
       - "Also covers production/epics/playable-client/story-005-draft-shop-auction-placement-resolution-loop-polish.md."
       - "Docs/readiness only; no implementation."
+      - "PLAYABLE-004 and LOOP-001 story docs exist and are Ready."
       - "Must preserve QA-COND-0005 and QA-COND-0006 no-claim language."
 
   - id: "SAU-007"
@@ -70,6 +73,7 @@ stories:
     completed: "2026-05-07"
     notes:
       - "Story status is Complete."
+      - "Completed at commit 3e3ad6fc04ffe6735b51f00d3022342bb96ad36e."
       - "Prioritized because Sprint 7 reached auction settlement but did not pull SAU-007."
       - "Settlement must be terminal, late-message-safe, and interruptible by PLACEMENT."
       - "Story-done verified settlement transition evidence and required regressions; no public release readiness, broad accessibility completion, playtest/fun-hypothesis validation, full playable-client manual QA, or full game completion claimed."
@@ -78,12 +82,13 @@ stories:
     name: "Friend-Game Result Endpoint Expansion"
     file: "production/epics/playable-client/story-004-friend-game-result-endpoint-expansion.md"
     priority: must-have
-    status: blocked
+    status: ready
     owner: "client/server gameplay programmer + QA tester"
     estimate_days: 2.00
-    blocker: "Story file does not exist yet. Create docs/readiness package before /dev-story."
+    blocker: ""
     completed: ""
     notes:
+      - "Story file exists and is Ready; this is the next recommended /dev-story."
       - "Extend Sprint 7 route beyond next-loop DRAFT_SHOP toward result/game-over coverage."
       - "If GAME_OVER is reached, evidence must record S2CGameOver, HUD frozen/result state, and teardown behavior."
       - "If GAME_OVER is not reachable within scoped capacity, record explicit accepted nearest-endpoint improvement with no game-over or full-completion claim."
@@ -95,9 +100,10 @@ stories:
     status: blocked
     owner: "client/server gameplay programmer + UI programmer"
     estimate_days: 1.50
-    blocker: "Story file does not exist yet. Create docs/readiness package before /dev-story."
+    blocker: "Sequenced after PLAYABLE-004; start only after PLAYABLE-004 completes unless explicitly waived."
     completed: ""
     notes:
+      - "Story file exists and is Ready; blocker is sequencing only, not missing docs."
       - "Focus is active loop coherence only: stale panels, stale timers, duplicate ready state, stale auction feedback, UnitPlaced visibility, and server authority."
       - "Do not expand into broad UI polish."
 
@@ -108,7 +114,7 @@ stories:
     status: blocked
     owner: "QA tester + orchestrator"
     estimate_days: 1.00
-    blocker: "Sprint 8 QA plan does not exist yet; run /qa-plan sprint-8 before implementation starts."
+    blocker: "Blocked until PLAYABLE-004 endpoint decision and LOOP-001 stability make the manual evidence path exercisable."
     completed: ""
     notes:
       - "Evidence must cover at least two consecutive loop passes after Sprint 7's endpoint, settlement-to-shop behavior, placement/resolution replay, and endpoint decision."

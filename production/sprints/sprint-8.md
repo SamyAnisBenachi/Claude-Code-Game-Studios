@@ -54,7 +54,7 @@ placement, and resolution loop without claiming public release readiness.
 | S8-DOCS-001 | Sprint 8 story docs and readiness package | orchestrator + producer | 0.50 | This sprint plan | New Sprint 8 planned story docs exist or existing story docs are confirmed current before implementation starts; every new story preserves the Sprint 7 no-claim language; missing-story blockers in `production/sprint-status.yaml` are cleared only by docs/readiness work, not by implementation. |
 | SAU-007 | [Auction Settlement and Shop Transition](../epics/shop-auction-ui/story-007-auction-settlement-and-shop-transition.md) | UI/client programmer | 1.00 | SAU-004, SAU-005, SAU-006 complete; Sprint 7 friend-game path reaches auction settlement | Local winner, opponent winner, and no-bid settlement states work; in-flight bid state and late accepted/rejected effects are cleared; auction panel dismisses and shop panel expands with the UX-specified transition; DRAFT_SHOP timer starts after shop expansion; PLACEMENT phase interrupts settlement immediately. |
 | PLAYABLE-004 | Friend-Game Result Endpoint Expansion | client/server gameplay programmer + QA tester | 2.00 | PLAYABLE-003 complete; RSM GAME_OVER, Combat Objective Damage, GSS Game-Over Teardown, HUD Game-Over Freeze complete | Two real clients extend the Sprint 7 route beyond the proven endpoint toward game-over/result coverage; if GAME_OVER is reached, evidence records `S2CGameOver`, HUD frozen/result state, and teardown behavior; if GAME_OVER is not reachable within scoped capacity, the story records an explicit accepted nearest-endpoint improvement and defect classification without claiming game-over or full game completion. |
-| LOOP-001 | DRAFT_SHOP / Auction / Placement / Resolution Loop Polish | client/server gameplay programmer + UI programmer | 1.50 | SAU-007 underway or complete; PLAYABLE-003 evidence route | The active friend-game loop can repeat through DRAFT_SHOP, auction, post-auction DRAFT_SHOP, non-empty placement, resolution replay, and next-loop DRAFT_SHOP without stale panels, stale timers, duplicate ready state, stale auction feedback, missing `UnitPlaced`, or client-side optimistic authority. |
+| LOOP-001 | DRAFT_SHOP / Auction / Placement / Resolution Loop Polish | client/server gameplay programmer + UI programmer | 1.50 | SAU-007 complete; PLAYABLE-004 before LOOP-001 unless explicitly waived; PLAYABLE-003 evidence route | The active friend-game loop can repeat through DRAFT_SHOP, auction, post-auction DRAFT_SHOP, non-empty placement, resolution replay, and next-loop DRAFT_SHOP without stale panels, stale timers, duplicate ready state, stale auction feedback, missing `UnitPlaced`, or client-side optimistic authority. |
 | S8-QA-001 | Friend-Game Manual Smoke Expansion Package | QA tester + orchestrator | 1.00 | SAU-007 and LOOP-001 stable enough to exercise; PLAYABLE-004 endpoint decision | Manual friend-game evidence covers at least two consecutive loop passes after Sprint 7's endpoint, settlement-to-shop behavior, placement/resolution replay, endpoint decision, and known defects; evidence is labeled internal friend-game only and does not claim public release readiness, broad accessibility completion, playtest validation, full playable-client manual QA, game-over coverage unless actually reached, or full game completion. |
 
 ### Should Have
@@ -74,10 +74,11 @@ placement, and resolution loop without claiming public release readiness.
 
 ---
 
-## Required Sprint 8 Story Docs
+## Sprint 8 Story Docs And Readiness
 
-`/sprint-plan` does not scaffold new story files. Create or refresh these in a
-separate docs-only prompt before `/dev-story` begins:
+`/sprint-plan` did not scaffold new story files. The Sprint 8 docs/readiness
+refresh has now created or confirmed the required story docs before
+implementation begins:
 
 | Planned ID | Required story file |
 |------------|---------------------|
@@ -86,14 +87,18 @@ separate docs-only prompt before `/dev-story` begins:
 | LOOP-001 | `production/epics/playable-client/story-005-draft-shop-auction-placement-resolution-loop-polish.md` |
 | S8-QA-001 | `production/qa/evidence/sprint-8-friend-game-loop-evidence.md` |
 
-Existing story docs that are already present and Ready:
+Current story-doc status:
 
-- `production/epics/shop-auction-ui/story-007-auction-settlement-and-shop-transition.md`
-- `production/epics/shop-auction-ui/story-008-reconnect-snapshot-and-late-message-recovery.md`
-- `production/epics/economy-system/story-004-kill-and-objective-awards.md`
+- `production/epics/playable-client/story-004-friend-game-result-endpoint-expansion.md` exists and is Ready for PLAYABLE-004.
+- `production/epics/playable-client/story-005-draft-shop-auction-placement-resolution-loop-polish.md` exists and is Ready for LOOP-001, but implementation starts after PLAYABLE-004 unless explicitly waived.
+- `production/epics/shop-auction-ui/story-007-auction-settlement-and-shop-transition.md` is Complete at commit `3e3ad6fc04ffe6735b51f00d3022342bb96ad36e`.
+- `production/epics/shop-auction-ui/story-008-reconnect-snapshot-and-late-message-recovery.md` remains Ready as a conditional Should Have.
+- `production/epics/economy-system/story-004-kill-and-objective-awards.md` remains Ready as a conditional Should Have.
 
-Until the new PLAYABLE story files exist and pass story readiness, the matching
-rows in `production/sprint-status.yaml` remain blocked by missing story docs.
+No `PLAYABLE-004` or `LOOP-001` row in `production/sprint-status.yaml` should
+carry a story-doc availability blocker. `PLAYABLE-004` is the next
+implementation candidate; `LOOP-001` remains sequencing-held until PLAYABLE-004
+completes unless explicitly waived.
 
 ## Carryover from Previous Sprint
 
@@ -114,7 +119,7 @@ rows in `production/sprint-status.yaml` remain blocked by missing story docs.
 | Reconnect scope can expand beyond active loop needs | MEDIUM | MEDIUM | Pull SAU-008 only if reconnect/late-message instability affects the active loop. |
 | QA-COND-0005 could be misreported as verified accessibility completion | MEDIUM | HIGH | Preserve accepted-risk language in every Sprint 8 plan, story, evidence, smoke, and sign-off artifact. |
 | QA-COND-0006 could be misreported as playtest validation | MEDIUM | HIGH | Keep friend-game evidence separate from playtest/fun-hypothesis evidence; do not close QA-COND-0006. |
-| Sprint 8 has no QA plan yet | HIGH | MEDIUM | Run `/qa-plan sprint-8` before implementation starts; keep the warning below until a plan exists. |
+| Sprint 8 status docs drift after docs/readiness changes | MEDIUM | MEDIUM | Keep `production/sprint-status.yaml`, this sprint plan, and `production/qa/qa-plan-sprint-8-2026-05-07.md` aligned before each `/dev-story`. |
 
 ## Dependencies on External Factors
 
@@ -124,15 +129,15 @@ rows in `production/sprint-status.yaml` remain blocked by missing story docs.
 - Existing RSM, Combat Resolution, Objective System, Game Session System, HUD,
   Shop/Auction UI, Hand UI, Board Rendering, Economy, and Presentation Layer
   behavior remains stable enough to exercise the active loop.
-- Sprint 8 QA plan must be created before implementation starts.
+- Sprint 8 QA plan exists and must remain aligned with story status before
+  implementation starts.
 
 ## QA Plan
 
-No Sprint 8 QA plan was found at planning time.
-
-> Warning: This sprint has no QA plan yet. Run `/qa-plan sprint-8` before
-> implementation begins. Until that exists, test requirements for Sprint 8 are
-> undefined and the sprint cannot close cleanly with QA sign-off.
+Sprint 8 QA planning exists at
+`production/qa/qa-plan-sprint-8-2026-05-07.md`. It defines future smoke and
+manual evidence expectations only; it is not a smoke pass, product QA pass,
+playtest report, broad accessibility completion, or release-readiness claim.
 
 ## Out of Scope
 
@@ -152,11 +157,11 @@ No Sprint 8 QA plan was found at planning time.
 
 ## Definition of Done for this Sprint
 
-- [ ] Sprint 8 QA plan exists before implementation begins.
-- [ ] New Sprint 8 story docs exist and pass readiness before implementation
+- [x] Sprint 8 QA plan exists before implementation begins.
+- [x] New Sprint 8 story docs exist and pass readiness before implementation
       starts.
 - [ ] All Must Have tasks completed.
-- [ ] SAU-007 settlement-to-shop transition is implemented and evidenced.
+- [x] SAU-007 settlement-to-shop transition is implemented and evidenced.
 - [ ] PLAYABLE-004 records either actual GAME_OVER/result evidence or an
       explicitly accepted nearest-endpoint improvement without claiming
       game-over.
@@ -179,9 +184,9 @@ No Sprint 8 QA plan was found at planning time.
 
 ## Next Recommended Step
 
-Run `/qa-plan sprint-8` before implementation begins. Then create/refresh the
-new Sprint 8 PLAYABLE story docs and run `/story-readiness` on each Must Have
-story before any `/dev-story`.
+Run `/dev-story production/epics/playable-client/story-004-friend-game-result-endpoint-expansion.md`.
+After PLAYABLE-004 completes, run LOOP-001 unless the sequence is explicitly
+waived.
 
 ---
 

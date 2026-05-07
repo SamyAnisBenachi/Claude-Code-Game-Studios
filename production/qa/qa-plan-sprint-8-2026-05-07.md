@@ -69,11 +69,11 @@ Relevant prior evidence:
 
 | Story | Priority | Status | Type | Automated Test Required | Manual Verification Required |
 |---|---|---|---|---|---|
-| S8-DOCS-001: Sprint 8 story docs and readiness package | Must Have | Blocked | Documentation/Readiness | None | Readiness review before implementation starts |
-| SAU-007: Auction Settlement and Shop Transition | Must Have | Ready | Visual/Feel + Integration | Client integration test for settlement state ordering and stale message suppression | Settlement-to-shop transition evidence with local winner, opponent winner, no-bid, timer deferral, and placement interrupt |
-| PLAYABLE-004: Friend-Game Result Endpoint Expansion | Must Have | Blocked, story file missing | Integration + Manual Evidence | Provisional real-loop/result endpoint integration target after story creation | Two-real-client endpoint evidence, with game-over only claimed if actually reached |
-| LOOP-001: DRAFT_SHOP / Auction / Placement / Resolution Loop Polish | Must Have | Blocked, story file missing | Integration + UI | Provisional active-loop regression target after story creation | Two-real-client repeated-loop evidence for stale panel, timer, ready, auction feedback, UnitPlaced, and authority drift |
-| S8-QA-001: Friend-Game Manual Smoke Expansion Package | Must Have | Blocked by QA plan and implementation stability | Manual Evidence | None beyond smoke/regression commands after implementation | Sprint 8 friend-game smoke package and endpoint decision |
+| S8-DOCS-001: Sprint 8 story docs and readiness package | Must Have | Complete | Documentation/Readiness | None | PLAYABLE-004 and LOOP-001 story docs exist and are Ready |
+| SAU-007: Auction Settlement and Shop Transition | Must Have | Complete | Visual/Feel + Integration | Client integration test for settlement state ordering and stale message suppression | Settlement-to-shop transition evidence with local winner, opponent winner, no-bid, timer deferral, and placement interrupt |
+| PLAYABLE-004: Friend-Game Result Endpoint Expansion | Must Have | Ready | Integration + Manual Evidence | Real-loop/result endpoint integration target finalized in story doc | Two-real-client endpoint evidence, with game-over only claimed if actually reached |
+| LOOP-001: DRAFT_SHOP / Auction / Placement / Resolution Loop Polish | Must Have | Sequencing hold after PLAYABLE-004; story Ready | Integration + UI | Active-loop regression targets finalized in story doc | Two-real-client repeated-loop evidence for stale panel, timer, ready, auction feedback, UnitPlaced, and authority drift |
+| S8-QA-001: Friend-Game Manual Smoke Expansion Package | Must Have | Blocked by implementation stability | Manual Evidence | None beyond smoke/regression commands after implementation | Sprint 8 friend-game smoke package and endpoint decision |
 | CONTENT-001: Runtime Card Variety Floor | Should Have, conditional | Backlog | Config/Data | Catalog/pool validation only if pulled | Spot-check runtime variety only if pulled |
 | ECO-004: Kill and Objective Awards reward-loop polish | Should Have, conditional | Backlog | Integration + Logic | Economy/combat/objective reward-loop tests only if pulled | Friend-game reward visibility check only if evidence shows a concrete issue |
 | SAU-008: Reconnect Snapshot and Late Message Recovery | Should Have, conditional | Backlog | Integration | Reconnect/snapshot/late-message integration test only if pulled | Reconnect or late-message manual recovery check only if active-loop instability is observed |
@@ -82,22 +82,21 @@ Relevant prior evidence:
 
 ---
 
-## Current Blockers Before Implementation
+## Current Sequencing Before Implementation
 
-Sprint 8 implementation should not start until these blockers are resolved or
-explicitly accepted in writing:
+Sprint 8 PLAYABLE story docs now exist and are Ready. No Must Have row carries
+a `PLAYABLE-004` or `LOOP-001` story-file availability blocker.
 
-- `production/epics/playable-client/story-004-friend-game-result-endpoint-expansion.md`
-  does not exist.
-- `production/epics/playable-client/story-005-draft-shop-auction-placement-resolution-loop-polish.md`
-  does not exist.
+- `PLAYABLE-004` is the next implementation candidate.
+- `LOOP-001` starts after PLAYABLE-004 unless explicitly waived; its current
+  blocker is sequencing only.
 - `production/qa/evidence/sprint-8-friend-game-loop-evidence.md` does not
-  exist yet; this is expected before evidence capture, but S8-QA-001 remains
+  exist yet; this is expected before evidence capture, and S8-QA-001 remains
   blocked until the implementation path is stable enough to exercise.
-- Missing story docs must preserve the Sprint 8 no-claim language for public
-  release readiness, broad accessibility completion, playtest validation,
-  game-over, and full game completion.
-- Must Have story readiness should be confirmed before the first `/dev-story`.
+- All Sprint 8 story and evidence docs must preserve the no-claim language for
+  public release readiness, broad accessibility completion, playtest validation,
+  game-over unless reached, full playable-client manual QA, and full game
+  completion.
 
 ---
 
@@ -111,15 +110,14 @@ explicitly accepted in writing:
 
 **What to verify before implementation**:
 
-- Missing PLAYABLE story docs exist at the required paths.
+- PLAYABLE-004 and LOOP-001 story docs exist at the required paths.
 - Story docs embed Sprint 8 scope guards and carried QA-COND-0005/0006 language.
 - Story docs name required tests and evidence paths.
-- Story docs pass `/story-readiness` before any implementation work begins.
+- Story docs are marked Ready before any implementation work begins.
 
 **Evidence**:
 
-- Story readiness output for each Must Have story, or a status note recording
-  why readiness is blocked.
+- Story readiness/status output for each Must Have story.
 
 ### SAU-007 - Auction Settlement and Shop Transition
 
@@ -182,17 +180,18 @@ visual evidence.
 **Story file**:
 `production/epics/playable-client/story-004-friend-game-result-endpoint-expansion.md`
 
-**Status**: Missing. Exact test targets must be finalized in the story doc
-before implementation.
+**Status**: Ready. Story doc and test targets are finalized before
+implementation.
 
-**Provisional test target family**:
+**Required test target**:
 
 - `tests/integration/playable_client/friend_game_result_endpoint_test.rs`
-- Expected package: server or client/server split to be decided by the story
-  doc based on ownership.
+- Expected command from story:
+  `cargo test -p server --test playable_client_friend_game_result_endpoint_test`
 
 **Regression commands to include when implemented**:
 
+- `cargo test -p server --test playable_client_friend_game_result_endpoint_test`
 - `cargo test -p client --test playable_client_lobby_entry_test`
 - `cargo test -p client --test playable_client_draft_shop_hand_bridge_test`
 - `cargo test -p server --test playable_client_draft_ready_bridge_test`
@@ -234,16 +233,18 @@ manual two-real-client evidence package.
 **Story file**:
 `production/epics/playable-client/story-005-draft-shop-auction-placement-resolution-loop-polish.md`
 
-**Status**: Missing. Exact test targets must be finalized in the story doc
-before implementation.
+**Status**: Story Ready; sequencing-held until PLAYABLE-004 completes unless
+explicitly waived.
 
-**Provisional test target family**:
+**Required test targets**:
 
 - `tests/integration/playable_client/active_loop_polish_test.rs`
-- Additional client-side UI regression tests as specified by the story doc.
+- `tests/integration/playable_client/active_loop_ui_state_test.rs`
 
 **Regression commands to include when implemented**:
 
+- `cargo test -p server --test playable_client_active_loop_polish_test`
+- `cargo test -p client --test playable_client_active_loop_ui_state_test`
 - `cargo test -p client --test shop_auction_ui_auction_settlement_test`
 - `cargo test -p client --test playable_client_draft_shop_hand_bridge_test`
 - `cargo test -p server --test playable_client_real_e2e_loop_test`
@@ -667,17 +668,16 @@ implementation continues.
 
 ---
 
-## First Safe Sprint 8 Readiness Prompt
+## First Safe Sprint 8 Implementation Prompt
 
-The first safe next prompt is docs/readiness work, not implementation:
+The docs/readiness blocker is cleared. The first safe implementation prompt is:
 
-`Create or refresh the Sprint 8 PLAYABLE story docs for production/epics/playable-client/story-004-friend-game-result-endpoint-expansion.md and production/epics/playable-client/story-005-draft-shop-auction-placement-resolution-loop-polish.md, preserving Sprint 8 no-claim language for public release readiness, broad accessibility completion, playtest validation, game-over unless reached, and full game completion. Then run story readiness on Sprint 8 Must Have story docs. Do not run /dev-story, /story-done, /smoke-check, /team-qa, or /gate-check.`
+`Run /dev-story production/epics/playable-client/story-004-friend-game-result-endpoint-expansion.md`
 
-After those story docs exist and readiness passes, the first implementation
-candidate is SAU-007 because its story is already Ready and it directly hardens
-the proven auction path:
+After PLAYABLE-004 completes, run LOOP-001 unless the sequence is explicitly
+waived:
 
-`Run /dev-story production/epics/shop-auction-ui/story-007-auction-settlement-and-shop-transition.md`
+`Run /dev-story production/epics/playable-client/story-005-draft-shop-auction-placement-resolution-loop-polish.md`
 
 Guardrails for that later implementation prompt:
 
@@ -692,14 +692,14 @@ Guardrails for that later implementation prompt:
 
 ## QA Plan Verdict
 
-**COMPLETE FOR PRE-IMPLEMENTATION QA PLANNING WITH BLOCKERS**
+**COMPLETE FOR PRE-IMPLEMENTATION QA PLANNING AND PLAYABLE STORY READINESS**
 
 Sprint 8 now has a QA map for its internal friend-game robustness goal,
 including story classifications, automated test expectations, manual
 friend-game smoke expectations, evidence paths, carried conditions, and explicit
 non-claims.
 
-The plan is blocked for implementation readiness until the missing PLAYABLE
-story docs exist and pass readiness. This verdict is not a product QA pass, not
-a smoke pass, not a playtest report, not accessibility completion, and not
-release readiness.
+PLAYABLE-004 is Ready and is the next implementation candidate. LOOP-001 is
+Ready but sequencing-held until PLAYABLE-004 completes unless explicitly
+waived. This verdict is not a product QA pass, not a smoke pass, not a playtest
+report, not accessibility completion, and not release readiness.

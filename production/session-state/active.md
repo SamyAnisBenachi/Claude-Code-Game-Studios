@@ -2256,3 +2256,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` marks SAU-007 done. Sprint 8 carried conditions and no-claim language are preserved.
 - Next recommended: Create/refresh the Sprint 8 playable story docs/readiness package for `PLAYABLE-004` and `LOOP-001`, then run `/qa-plan sprint-8` when that planning scope is requested. No `/smoke-check`, `/team-qa`, `/gate-check`, Sprint 8 status close-out, or new implementation was run in this serialized story-done scope.
+
+## Session Extract - Prompt 325 Sprint 8 Playable Docs Status Refresh 2026-05-07
+- Scope: docs/status refresh only. No `/dev-story`, `/story-done`, `/smoke-check`, `/team-qa`, `/gate-check`, or implementation was run.
+- SAU-007: Complete at commit `3e3ad6fc04ffe6735b51f00d3022342bb96ad36e`; Sprint 8 status and QA plan now reflect completion.
+- S8-DOCS-001: Complete. `PLAYABLE-004` and `LOOP-001` story docs exist and are Ready.
+- PLAYABLE-004: Ready and next implementation candidate.
+- LOOP-001: story Ready, sequencing-held until PLAYABLE-004 completes unless explicitly waived. It has no story-file availability blocker.
+- QA plan: `production/qa/qa-plan-sprint-8-2026-05-07.md` exists and is aligned with current story status.
+- Scope guard: no public release readiness, broad accessibility completion, playtest/fun-hypothesis validation, full playable-client manual QA, game-over coverage unless evidenced, or full game completion is claimed.
+- Next recommended: `/dev-story production/epics/playable-client/story-004-friend-game-result-endpoint-expansion.md`.
