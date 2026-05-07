@@ -3,7 +3,7 @@ use shared::card::{CardCatalog, CardData};
 
 const CARD_DATA_JSON: &str = include_str!("../../assets/data/cards.json");
 
-const DISPLAY_ART_PATHS: [(&str, &str); 8] = [
+const DISPLAY_ART_PATHS: [(&str, &str); 16] = [
     (
         "cra_piercing_shot_003",
         "art/cards/display/card_cra_piercing_shot_003_art_display.png",
@@ -23,6 +23,38 @@ const DISPLAY_ART_PATHS: [(&str, &str); 8] = [
     (
         "iop_knight_001",
         "art/cards/display/card_iop_knight_001_art_display.png",
+    ),
+    (
+        "neutral_tofu_scout_101",
+        "art/cards/display/card_neutral_tofu_scout_101_art_display.png",
+    ),
+    (
+        "neutral_wabbit_guard_102",
+        "art/cards/display/card_neutral_wabbit_guard_102_art_display.png",
+    ),
+    (
+        "neutral_market_runner_103",
+        "art/cards/display/card_neutral_market_runner_103_art_display.png",
+    ),
+    (
+        "neutral_training_banner_104",
+        "art/cards/display/card_neutral_training_banner_104_art_display.png",
+    ),
+    (
+        "neutral_guild_errand_105",
+        "art/cards/display/card_neutral_guild_errand_105_art_display.png",
+    ),
+    (
+        "neutral_paddock_bruiser_106",
+        "art/cards/display/card_neutral_paddock_bruiser_106_art_display.png",
+    ),
+    (
+        "neutral_vault_sentry_107",
+        "art/cards/display/card_neutral_vault_sentry_107_art_display.png",
+    ),
+    (
+        "neutral_crowned_mercenary_108",
+        "art/cards/display/card_neutral_crowned_mercenary_108_art_display.png",
     ),
     (
         "sacrier_foot_002",
