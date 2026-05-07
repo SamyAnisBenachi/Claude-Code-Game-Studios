@@ -1,7 +1,7 @@
 # S8-QA-001 Client B Log
 
-**Client role**: Joiner / Client B  
-**Commit**: `3cc620cdeee6f5249e404703365b160ccbc34f6c`  
+**Client role**: Joiner / Client B
+**Commit**: `3cc620cdeee6f5249e404703365b160ccbc34f6c`
 **Evidence source**:
 `production/qa/evidence/captures/sprint-8-friend-game-loop/playable-004-result-endpoint-trace.json`
 

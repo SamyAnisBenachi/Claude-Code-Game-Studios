@@ -1,10 +1,10 @@
 # S8-QA-001 Command Summary
 
-**Date**: 2026-05-07  
-**Commit**: `3cc620cdeee6f5249e404703365b160ccbc34f6c`  
-**Branch status before evidence edits**: `## main...origin/main`  
-**Target**: local Windows Cargo, Bevy 0.18 + Lightyear 0.26  
-**Smoke port**: `5018` for bounded server startup note  
+**Date**: 2026-05-07
+**Commit**: `3cc620cdeee6f5249e404703365b160ccbc34f6c`
+**Branch status before evidence edits**: `## main...origin/main`
+**Target**: local Windows Cargo, Bevy 0.18 + Lightyear 0.26
+**Smoke port**: `5018` for bounded server startup note
 **Scope**: internal 1v1 friend-game smoke/evidence only
 
 All Cargo commands used:

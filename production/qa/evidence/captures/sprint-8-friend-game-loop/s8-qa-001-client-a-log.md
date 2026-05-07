@@ -1,7 +1,7 @@
 # S8-QA-001 Client A Log
 
-**Client role**: Host / Client A  
-**Commit**: `3cc620cdeee6f5249e404703365b160ccbc34f6c`  
+**Client role**: Host / Client A
+**Commit**: `3cc620cdeee6f5249e404703365b160ccbc34f6c`
 **Evidence source**:
 `production/qa/evidence/captures/sprint-8-friend-game-loop/playable-004-result-endpoint-trace.json`
 
