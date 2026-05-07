@@ -1,7 +1,7 @@
 # Story 004: Friend-Game Result Endpoint Expansion
 
 > **Epic**: Playable Client
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Polish / Client and Server Integration
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -134,39 +134,39 @@ FROZEN/result state, and teardown behavior.
 
 ## Acceptance Criteria
 
-- [ ] **Sprint 7 endpoint is reproduced**: GIVEN one real local server and two
+- [x] **Sprint 7 endpoint is reproduced**: GIVEN one real local server and two
       real primary clients from the same commit, WHEN the friend-game route is
       exercised, THEN evidence reaches or explicitly records the blocker before
       the Sprint 7 endpoint:
       `DRAFT_INITIAL -> PLACEMENT(empty) -> RESOLUTION -> DRAFT_SHOP ->
       PLACEMENT(non_empty) -> RESOLUTION -> DRAFT_AUCTION -> DRAFT_SHOP ->
       PLACEMENT(non_empty) -> RESOLUTION -> DRAFT_SHOP`.
-- [ ] **Route extends beyond next-loop DRAFT_SHOP**: GIVEN the Sprint 7 endpoint
+- [x] **Route extends beyond next-loop DRAFT_SHOP**: GIVEN the Sprint 7 endpoint
       is reached, WHEN implementation exercises the next scoped actions, THEN
       evidence records at least one additional authoritative phase, result path,
       or blocker beyond that endpoint.
-- [ ] **Game-over evidence is exact when reached**: GIVEN the route reaches
+- [x] **Game-over evidence is exact when reached**: GIVEN the route reaches
       `GAME_OVER`, WHEN evidence is finalized, THEN it records `S2CGameOver`,
       `S2CPhaseChanged(GAME_OVER)`, final round/reason/loser or draw payload,
       HUD FROZEN/result state, and GSS teardown behavior.
-- [ ] **Nearest endpoint is explicit when game-over is not reached**: GIVEN
+- [x] **Nearest endpoint is explicit when game-over is not reached**: GIVEN
       `GAME_OVER` is not reached within scoped capacity, WHEN evidence is
       finalized, THEN it records the accepted nearest-endpoint improvement,
       classifies the blocker by severity and owner, and states that game-over
       coverage is not claimed.
-- [ ] **No harness endpoint proof is used**: GIVEN endpoint evidence is reviewed,
+- [x] **No harness endpoint proof is used**: GIVEN endpoint evidence is reviewed,
       WHEN the evidence path is inspected, THEN it confirms no direct `World`
       injection, fake snapshot insertion, harness card state, or direct server
       feature API call was used for completion proof.
-- [ ] **Reliable ordering remains observed**: GIVEN placement and resolution are
+- [x] **Reliable ordering remains observed**: GIVEN placement and resolution are
       part of the route, WHEN messages are captured, THEN `S2CPlacementReveal`,
       `S2CResolutionEvent`, and following `S2CPhaseChanged` observations remain
       ordered according to the GDD and any ordering defect is classified.
-- [ ] **Defects are scoped to friend-game impact**: GIVEN any issue blocks or
+- [x] **Defects are scoped to friend-game impact**: GIVEN any issue blocks or
       degrades endpoint expansion, WHEN it is recorded, THEN evidence lists
       severity, likely owner/system, workaround where one exists, and internal
       friend-game impact without expanding release scope.
-- [ ] **Required commands pass or blockers are explicit**: `cargo test -p server
+- [x] **Required commands pass or blockers are explicit**: `cargo test -p server
       --test playable_client_friend_game_result_endpoint_test`,
       `cargo test -p server --test playable_client_real_e2e_loop_test`,
       `cargo test -p client --test playable_client_lobby_entry_test`,
@@ -175,7 +175,7 @@ FROZEN/result state, and teardown behavior.
       `cargo test -p server --test e2e_websocket_test`,
       `cargo check --workspace`, and `git diff --check` pass, or exact failing
       command output is recorded as a blocker.
-- [ ] **Evidence document exists**:
+- [x] **Evidence document exists**:
       `production/qa/evidence/sprint-8-friend-game-loop-evidence.md` records
       commit, commands, target, two-client setup, exact route, exact endpoint,
       captures, defects, no-harness statement, QA-COND-0005 and QA-COND-0006
@@ -292,7 +292,9 @@ local critical path budget used by the existing real E2E loop test.
   fun-hypothesis validation, full playable-client manual QA, game-over coverage
   unless reached, or full game completion.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing for PLAYABLE-004 endpoint expansion at
+integrated implementation/evidence commits `f3f4962` and `4449da8`; serialized
+story-done verification ran on `main` after `86f3e08`.
 
 ## Dependencies
 
@@ -306,5 +308,66 @@ local critical path budget used by the existing real E2E loop test.
 
 ## Blockers
 
-- No design or story-doc blocker remains for readiness.
-- `/dev-story` should wait until CI is green per Sprint 8 planning context.
+- None for story closure.
+
+## Completion Notes
+
+**Completed**: 2026-05-07
+
+**Criteria**: 9/9 passing. The route reproduced Sprint 7's next-loop
+`DRAFT_SHOP` endpoint, extended through authoritative endpoint placement and
+RESOLUTION, and reached `GAME_OVER`.
+
+**Verification**:
+
+- `cargo test -p server --test playable_client_friend_game_result_endpoint_test`
+  passed 1/1.
+- `cargo test -p server --test playable_client_real_e2e_loop_test` passed 4/4.
+- `cargo test -p client --test playable_client_lobby_entry_test` passed 5/5.
+- `cargo test -p client --test playable_client_draft_shop_hand_bridge_test`
+  passed 4/4.
+- `cargo test -p server --test playable_client_draft_ready_bridge_test` passed
+  3/3.
+- `cargo test -p server --test e2e_websocket_test` passed 1/1.
+- `cargo test -p client --test shop_auction_ui_auction_settlement_test` passed
+  7/7.
+- `cargo test -p client --test hud_game_over_freeze_test` passed 2/2.
+- `cargo check --workspace` passed.
+- `cargo fmt -p client -p server -- --check` passed.
+- `git diff --check` passed.
+
+**Test Evidence**:
+`production/qa/evidence/sprint-8-friend-game-loop-evidence.md`,
+`production/qa/evidence/captures/sprint-8-friend-game-loop/playable-004-result-endpoint-trace.json`,
+`tests/integration/playable_client/friend_game_result_endpoint_test.rs`, and
+`tests/unit/hud/game_over_freeze_test.rs`.
+
+**Endpoint Evidence**: Both clients observed `S2CGameOver` and
+`S2CPhaseChanged(GameOver)` after `S2CResolutionEvent`. The final payload is a
+draw: `loser = None`, `reason = Draw`. GSS teardown was observed through
+`RoundState::GameOver`, `LobbyState::GameOver`, `SessionConfig` removal, and
+`ServerRng` removal. HUD frozen/result behavior is covered by the same-commit
+client HUD ECS regression.
+
+**Deviations**: None blocking. Browser HUD capture was not run and is not
+claimed. Manual/browser evidence remains deferred to the Sprint 8 manual smoke
+scope if requested.
+
+**Code Review**: Skipped by lean review mode (`production/review-mode.txt` is
+`lean`).
+
+**Scope Guard**: PLAYABLE-004 closure is internal friend-game endpoint evidence
+only. It does not claim public release readiness, broad accessibility
+completion, playtest validation, fun-hypothesis validation, full
+playable-client manual QA, or full game completion.
+
+**QA Conditions**: `QA-COND-0005` remains accepted risk for friend-game scope
+only and is not verified Standard-tier accessibility completion. `QA-COND-0006`
+remains accepted-risk/deferred and is not playtest evidence or fun-hypothesis
+validation.
+
+**Sprint 8 Impact**: PLAYABLE-004 is complete. LOOP-001 is the next sequenced
+Must Have task; S8-QA-001 remains blocked until LOOP-001 stability makes the
+manual friend-game smoke path exercisable. No `/smoke-check`, `/team-qa`,
+`/gate-check`, Sprint 8 close-out, or new implementation was run by this
+serialized story-done scope.

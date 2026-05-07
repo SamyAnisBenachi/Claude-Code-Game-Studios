@@ -38,12 +38,12 @@ planning:
 notes:
   - "Sprint 7 is closed with conditions after friend-game evidence reached lobby -> draft/shop -> auction -> non-empty placement -> resolution(UnitPlaced) -> next-loop DRAFT_SHOP."
   - "The Sprint 7 endpoint remains next-loop DRAFT_SHOP after post-auction placement/resolution."
-  - "Game-over, full game completion, public release readiness, broad accessibility completion, playtest/fun-hypothesis validation, and full playable-client manual QA are not claimed."
+  - "Sprint 7 carried no game-over claim; PLAYABLE-004 now records internal friend-game GAME_OVER endpoint evidence only. Full game completion, public release readiness, broad accessibility completion, playtest/fun-hypothesis validation, and full playable-client manual QA are not claimed."
   - "The core GAME_OVER pipeline has completed implementation stories, but Sprint 7 did not reach game-over through friend-game evidence."
-  - "Sprint 8 must either extend the friend-game endpoint toward result/game-over evidence or record an explicitly accepted nearest-endpoint improvement with no game-over claim."
+  - "PLAYABLE-004 extended the friend-game endpoint to GAME_OVER/result evidence for internal friend-game scope; this does not claim full game completion."
   - "Sprint 8 QA plan exists at production/qa/qa-plan-sprint-8-2026-05-07.md."
   - "PLAYABLE-004 and LOOP-001 story docs exist and are Ready; no story-doc availability blocker remains."
-  - "PLAYABLE-004 is the next implementation candidate. LOOP-001 starts after PLAYABLE-004 unless explicitly waived."
+  - "PLAYABLE-004 is Complete. LOOP-001 is the next implementation candidate."
   - "No /dev-story, /story-done, /smoke-check, /team-qa, or /gate-check was run by Sprint 8 planning."
 
 stories:
@@ -82,28 +82,29 @@ stories:
     name: "Friend-Game Result Endpoint Expansion"
     file: "production/epics/playable-client/story-004-friend-game-result-endpoint-expansion.md"
     priority: must-have
-    status: ready
+    status: done
     owner: "client/server gameplay programmer + QA tester"
     estimate_days: 2.00
     blocker: ""
-    completed: ""
+    completed: "2026-05-07"
     notes:
-      - "Story file exists and is Ready; this is the next recommended /dev-story."
-      - "Extend Sprint 7 route beyond next-loop DRAFT_SHOP toward result/game-over coverage."
-      - "If GAME_OVER is reached, evidence must record S2CGameOver, HUD frozen/result state, and teardown behavior."
-      - "If GAME_OVER is not reachable within scoped capacity, record explicit accepted nearest-endpoint improvement with no game-over or full-completion claim."
+      - "Story status is Complete."
+      - "Integrated implementation commit f3f4962 and evidence commit 4449da8 are present on main."
+      - "Story-done verified the Sprint 7 next-loop DRAFT_SHOP endpoint was reproduced and extended through authoritative endpoint placement, RESOLUTION, S2CGameOver, S2CPhaseChanged(GameOver), draw payload, HUD frozen ECS regression coverage, and GSS teardown observations."
+      - "Browser HUD capture was not run and is not claimed."
+      - "Closure is internal friend-game endpoint evidence only; no public release readiness, broad accessibility completion, playtest/fun-hypothesis validation, full playable-client manual QA, full game completion, smoke, team-qa, gate-check, Sprint 8 close-out, or new implementation claimed."
 
   - id: "LOOP-001"
     name: "DRAFT_SHOP / Auction / Placement / Resolution Loop Polish"
     file: "production/epics/playable-client/story-005-draft-shop-auction-placement-resolution-loop-polish.md"
     priority: must-have
-    status: blocked
+    status: ready
     owner: "client/server gameplay programmer + UI programmer"
     estimate_days: 1.50
-    blocker: "Sequenced after PLAYABLE-004; start only after PLAYABLE-004 completes unless explicitly waived."
+    blocker: ""
     completed: ""
     notes:
-      - "Story file exists and is Ready; blocker is sequencing only, not missing docs."
+      - "Story file exists and is Ready; PLAYABLE-004 sequencing blocker cleared by serialized story-done on 2026-05-07."
       - "Focus is active loop coherence only: stale panels, stale timers, duplicate ready state, stale auction feedback, UnitPlaced visibility, and server authority."
       - "Do not expand into broad UI polish."
 
@@ -114,9 +115,10 @@ stories:
     status: blocked
     owner: "QA tester + orchestrator"
     estimate_days: 1.00
-    blocker: "Blocked until PLAYABLE-004 endpoint decision and LOOP-001 stability make the manual evidence path exercisable."
+    blocker: "Blocked until LOOP-001 stability makes the manual evidence path exercisable."
     completed: ""
     notes:
+      - "PLAYABLE-004 endpoint decision is complete and recorded actual GAME_OVER/result evidence; manual/browser friend-game smoke remains separate and is not claimed by PLAYABLE-004."
       - "Evidence must cover at least two consecutive loop passes after Sprint 7's endpoint, settlement-to-shop behavior, placement/resolution replay, and endpoint decision."
       - "Evidence is internal friend-game only and must not claim public release readiness, broad accessibility completion, playtest validation, full playable-client manual QA, or full game completion."
 
