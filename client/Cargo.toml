@@ -215,6 +215,10 @@ name = "shared_economy_view_test"
 path = "../tests/integration/presentation/shared_economy_view_test.rs"
 
 [[test]]
+name = "result_screen_mvp_test"
+path = "../tests/integration/presentation/result_screen_mvp_test.rs"
+
+[[test]]
 name = "accessibility_settings_preferences_test"
 path = "../tests/unit/accessibility_settings/preferences_test.rs"
 
