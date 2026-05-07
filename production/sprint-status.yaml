@@ -42,8 +42,8 @@ notes:
   - "The core GAME_OVER pipeline has completed implementation stories, but Sprint 7 did not reach game-over through friend-game evidence."
   - "PLAYABLE-004 extended the friend-game endpoint to GAME_OVER/result evidence for internal friend-game scope; this does not claim full game completion."
   - "Sprint 8 QA plan exists at production/qa/qa-plan-sprint-8-2026-05-07.md."
-  - "PLAYABLE-004 and LOOP-001 story docs exist and are Ready; no story-doc availability blocker remains."
-  - "PLAYABLE-004 is Complete. LOOP-001 is the next implementation candidate."
+  - "PLAYABLE-004 and LOOP-001 story docs exist; no story-doc availability blocker remains."
+  - "PLAYABLE-004 and LOOP-001 are Complete. S8-QA-001/manual friend-game smoke is now unblocked for scoped evidence capture."
   - "No /dev-story, /story-done, /smoke-check, /team-qa, or /gate-check was run by Sprint 8 planning."
 
 stories:
@@ -98,27 +98,31 @@ stories:
     name: "DRAFT_SHOP / Auction / Placement / Resolution Loop Polish"
     file: "production/epics/playable-client/story-005-draft-shop-auction-placement-resolution-loop-polish.md"
     priority: must-have
-    status: ready
+    status: done
     owner: "client/server gameplay programmer + UI programmer"
     estimate_days: 1.50
     blocker: ""
-    completed: ""
+    completed: "2026-05-07"
     notes:
-      - "Story file exists and is Ready; PLAYABLE-004 sequencing blocker cleared by serialized story-done on 2026-05-07."
-      - "Focus is active loop coherence only: stale panels, stale timers, duplicate ready state, stale auction feedback, UnitPlaced visibility, and server authority."
-      - "Do not expand into broad UI polish."
+      - "Story status is Complete."
+      - "Integrated implementation commit f4e515b and evidence commit 6c9dc47 are present on main."
+      - "Story-done verified repeated DRAFT_SHOP readiness reset/fresh slot wait, stale auction toast/timer/focus/bid/card cleanup, late settlement suppression, placement timer/validation/drag/pending/disclosure cleanup, UnitPlaced replay preservation, and read-only client authority for the active friend-game loop."
+      - "SAU-007 settlement ownership remains intact; LOOP-001 only suppresses stale/late settlement starts after auction context is gone."
+      - "ASSET-LOOP-001 supporting display fallback coverage is reconciled under LOOP-001 only; no standalone asset approval or asset production claim is made."
+      - "Closure is internal friend-game active-loop polish only; no public release readiness, broad accessibility completion, playtest/fun-hypothesis validation, full playable-client manual QA, asset production approval, full game completion, smoke, team-qa, gate-check, or Sprint 8 close-out claimed."
 
   - id: "S8-QA-001"
     name: "Friend-Game Manual Smoke Expansion Package"
     file: "production/qa/evidence/sprint-8-friend-game-loop-evidence.md"
     priority: must-have
-    status: blocked
+    status: ready
     owner: "QA tester + orchestrator"
     estimate_days: 1.00
-    blocker: "Blocked until LOOP-001 stability makes the manual evidence path exercisable."
+    blocker: ""
     completed: ""
     notes:
       - "PLAYABLE-004 endpoint decision is complete and recorded actual GAME_OVER/result evidence; manual/browser friend-game smoke remains separate and is not claimed by PLAYABLE-004."
+      - "Unblocked by LOOP-001 story-done on 2026-05-07; manual smoke has not been run and no QA sign-off, full playable-client manual QA, or Sprint 8 close-out is claimed."
       - "Evidence must cover at least two consecutive loop passes after Sprint 7's endpoint, settlement-to-shop behavior, placement/resolution replay, and endpoint decision."
       - "Evidence is internal friend-game only and must not claim public release readiness, broad accessibility completion, playtest validation, full playable-client manual QA, or full game completion."
 
@@ -134,6 +138,7 @@ stories:
     notes:
       - "Target is a small internal friend-game variety floor, not full card production."
       - "Include sufficient neutral Rare/Legendary auction-eligible cards for repeated auction evidence if pulled."
+      - "CONTENT-001A remains a supporting content slice to reconcile later or at Sprint 8 close-out if needed; no standalone story file was created by LOOP-001 story-done."
 
   - id: "ECO-004"
     name: "Kill and Objective Awards reward-loop polish"

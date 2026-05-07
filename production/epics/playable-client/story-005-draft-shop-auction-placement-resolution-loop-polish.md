@@ -1,7 +1,7 @@
 # Story 005: DRAFT_SHOP / Auction / Placement / Resolution Loop Polish
 
 > **Epic**: Playable Client
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Polish / Client and Server Integration
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -311,7 +311,8 @@ spawn or despawn steady-state UI every frame.
   fun-hypothesis validation, full playable-client manual QA, game-over coverage,
   or full game completion.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing for LOOP-001 active-loop polish at
+integrated implementation/evidence commits `f4e515b` and `6c9dc47`.
 
 ## Dependencies
 
@@ -325,7 +326,74 @@ spawn or despawn steady-state UI every frame.
 
 ## Blockers
 
-- No design or story-doc blocker remains for readiness.
-- `/dev-story` should wait until CI is green per Sprint 8 planning context.
-- If SAU-007 is not underway or complete, run SAU-007 before LOOP-001 or
-  explicitly coordinate branch order.
+- None for story closure.
+
+## Completion Notes
+
+**Completed**: 2026-05-07
+
+**Criteria**: 10/10 passing. The repeated active route is covered through
+`DRAFT_SHOP -> PLACEMENT(non_empty) -> RESOLUTION -> DRAFT_AUCTION ->
+DRAFT_SHOP -> PLACEMENT(non_empty) -> RESOLUTION -> DRAFT_SHOP`; stale panels,
+timers, ready state, auction feedback, placement state, `UnitPlaced` replay,
+and client read-only authority checks are verified by integrated
+implementation, evidence, and regressions.
+
+**Verification**:
+
+- `cargo test -p server --test playable_client_active_loop_polish_test` passed
+  4/4.
+- `cargo test -p client --test playable_client_active_loop_ui_state_test`
+  passed 4/4.
+- `cargo test -p server --test playable_client_friend_game_result_endpoint_test`
+  passed 1/1.
+- `cargo test -p server --test playable_client_real_e2e_loop_test` passed 4/4.
+- `cargo test -p client --test shop_auction_ui_auction_settlement_test` passed
+  7/7.
+- `cargo test -p client --test playable_client_draft_shop_hand_bridge_test`
+  passed 4/4.
+- `cargo test -p client --test hand_ui_placement_timer_test` passed 5/5.
+- `cargo test -p client --test hand_ui_phase_state_machine_test` passed 3/3.
+- `cargo test -p client --test shop_auction_ui_shop_panel_test` passed 9/9.
+- `cargo test -p client --test shop_auction_ui_auction_feedback_test` passed
+  6/6.
+- `cargo test -p client --test shop_auction_ui_auction_activation_test` passed
+  7/7.
+- `cargo test -p client --test board_rendering_resolution_anim_queue_test`
+  passed 5/5.
+- `cargo test -p client --test hud_phase_transitions_test` passed 5/5.
+- `cargo check --workspace` passed.
+- `cargo fmt -p client -p server -- --check` passed.
+- `git diff --check` passed.
+
+**Test Evidence**:
+`production/qa/evidence/sprint-8-friend-game-loop-evidence.md`,
+`production/qa/evidence/captures/sprint-8-friend-game-loop/loop-001-active-loop-polish-trace.json`,
+`tests/integration/playable_client/active_loop_polish_test.rs`, and
+`tests/integration/playable_client/active_loop_ui_state_test.rs`.
+
+**Deviations**: None blocking. Review mode is lean because
+`production/review-mode.txt` is absent, so QL-TEST-COVERAGE and LP-CODE-REVIEW
+were skipped by workflow.
+
+**Scope Notes**: SAU-007 settlement ownership remains intact; LOOP-001 only
+suppresses stale or late settlement starts after auction context is gone.
+ASSET-LOOP-001 supporting display fallback coverage is reconciled under
+LOOP-001 only; no standalone asset approval or asset production claim is made.
+CONTENT-001A remains a supporting content slice to reconcile later or at Sprint
+8 close-out if needed; no story file was created.
+
+**Scope Guard**: LOOP-001 closure is internal friend-game active-loop polish
+only. It does not claim public release readiness, broad accessibility
+completion, playtest validation, fun-hypothesis validation, full
+playable-client manual QA, asset production approval, full game completion,
+smoke, team-qa, gate-check, or Sprint 8 close-out.
+
+**QA Conditions**: `QA-COND-0005` remains accepted risk for friend-game scope
+only and is not verified Standard-tier accessibility completion. `QA-COND-0006`
+remains accepted-risk/deferred and is not playtest evidence or fun-hypothesis
+validation.
+
+**Sprint 8 Impact**: LOOP-001 is complete. S8-QA-001/manual friend-game smoke
+is now unblocked for its scoped evidence package, but it has not been run and
+no QA sign-off or close-out is claimed.
