@@ -8,8 +8,9 @@
 **QA plan**: `production/qa/qa-plan-sprint-8-2026-05-07.md`
 **Smoke report**: `production/qa/smoke-sprint-8-2026-05-07.md`
 **Smoke verdict**: PASS WITH WARNINGS
-**Current source of truth**: `origin/main@c31645c93cc91701f56e5960abb4a46dca80ba5f`
-**Latest green CI evidence**: `tests.yml` run `25506133839`, `success`, at `efbc9e4ed58128f385fb8bceea18302a4c830c17`
+**Current source of truth**: `origin/main@f980452d4362669c0128c7883a8cf0e2ae94e967` for Sprint 8 close-out reconciliation
+**Original QA sign-off baseline**: `origin/main@c31645c93cc91701f56e5960abb4a46dca80ba5f`
+**Latest green CI evidence**: Automated Tests run `25517712136`, `success`, at `df8a43fa603448ba1ca29d639e6816d9a4544bfc`
 **QA Lead sign-off**: Approved with conditions
 
 ## Verdict
@@ -20,7 +21,7 @@ Sprint 8 QA sign-off is approved with conditions for the scoped internal
 1v1 friend-game loop robustness goal only. The sign-off is supported by:
 
 - S8-QA-001 smoke result: **PASS WITH WARNINGS**.
-- Latest referenced green `tests.yml` CI run `25506133839`: **success**.
+- Latest referenced green Automated Tests CI run `25517712136`: **success**.
 - PLAYABLE-004: Complete.
 - LOOP-001: Complete.
 - SAU-007: Complete.
@@ -51,7 +52,7 @@ playtest validation, full playable-client manual QA, or full game completion.
 - CONTENT-001A runtime card variety floor reconciliation as supporting Sprint 8
   content only.
 - QA-COND-0005 and QA-COND-0006 condition files as accepted-risk context only.
-- Green CI run `25506133839`, including successful dep-purity jobs, cargo
+- Green CI run `25517712136`, including successful dep-purity jobs, cargo
   tests, and WASM bundle size check.
 
 Out of scope for this sign-off:
@@ -77,7 +78,7 @@ Out of scope for this sign-off:
 | LOOP-001 active-loop polish | `production/qa/evidence/captures/sprint-8-friend-game-loop/loop-001-active-loop-polish-trace.json` | PASS for repeated active-loop stability evidence |
 | SAU-007 settlement transition | `production/qa/evidence/shop-auction-ui-settlement-transition-evidence.md` | PASS |
 | CONTENT-001A support slice | `production/sprint-status.yaml` and `production/qa/evidence/sprint-8-friend-game-loop-evidence.md` | Reconciled as supporting content only |
-| CI | `tests.yml` run `25506133839` | PASS |
+| CI | Automated Tests run `25517712136` | PASS |
 
 PLAYABLE-004 reached this controlled internal friend-game route:
 
@@ -89,8 +90,8 @@ LOOP-001 active-loop evidence covers:
 
 ## CI Summary
 
-`tests.yml` run `25506133839` completed successfully on
-`efbc9e4ed58128f385fb8bceea18302a4c830c17`.
+Automated Tests run `25517712136` completed successfully on
+`df8a43fa603448ba1ca29d639e6816d9a4544bfc`.
 
 | Job | Status |
 |---|---|
@@ -100,9 +101,18 @@ LOOP-001 active-loop evidence covers:
 | `Run Cargo Tests` | success |
 | `WASM bundle size check` | success |
 
-No failed CI jobs or failed CI steps were found in run `25506133839`. The
+No failed CI jobs or failed CI steps were found in run `25517712136`. The
 `Run Cargo Tests` job completed successfully and is the green CI source used for
-this sign-off.
+this reconciled sign-off wording.
+
+CI reconciliation note (2026-05-07): the original QA sign-off referenced
+`origin/main@c31645c93cc91701f56e5960abb4a46dca80ba5f` and green run
+`25506133839`. Sprint 8 close-out reconciliation verified the later green
+Automated Tests run `25517712136` at
+`df8a43fa603448ba1ca29d639e6816d9a4544bfc`; current `origin/main`
+`f980452d4362669c0128c7883a8cf0e2ae94e967` is docs-only close-out after that
+CI evidence. This does not change the QA sign-off verdict or expand the scoped
+claims.
 
 ## Smoke Evidence Summary
 

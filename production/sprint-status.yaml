@@ -26,11 +26,13 @@ close_out:
     full_game_completion_claimed: false
     full_playable_client_manual_qa_claimed: false
   ci_disposition:
-    latest_tested_code_baseline: "adf116333a2bac3364f4ca1aab8589ed058d97a6"
-    latest_green_ci_run: "Automated Tests run 25515627861, success, completed, at adf116333a2bac3364f4ca1aab8589ed058d97a6"
+    latest_tested_code_baseline: "df8a43fa603448ba1ca29d639e6816d9a4544bfc"
+    latest_green_ci_run: "Automated Tests run 25517712136, success, completed, at df8a43fa603448ba1ca29d639e6816d9a4544bfc"
+    previous_green_ci_run: "Automated Tests run 25515627861, success, completed, at adf116333a2bac3364f4ca1aab8589ed058d97a6"
     current_origin_main_at_closeout_start: "df8a43fa603448ba1ca29d639e6816d9a4544bfc"
-    docs_only_commit_after_baseline: "df8a43fa603448ba1ca29d639e6816d9a4544bfc"
-    waiver: "Accepted by orchestrator decision without fresh CI because commits after adf116333a2bac3364f4ca1aab8589ed058d97a6 through current origin/main are docs-only result-ack contract preparation."
+    current_origin_main_at_ci_reconciliation: "f980452d4362669c0128c7883a8cf0e2ae94e967"
+    docs_only_commit_after_baseline: "f980452d4362669c0128c7883a8cf0e2ae94e967"
+    waiver: "The original docs-only waiver after adf116333a2bac3364f4ca1aab8589ed058d97a6 is qualified by later green Automated Tests run 25517712136 at df8a43fa603448ba1ca29d639e6816d9a4544bfc; waiver now applies only to docs-only Sprint 8 close-out/reconciliation commits after df8a43fa603448ba1ca29d639e6816d9a4544bfc through current origin/main f980452d4362669c0128c7883a8cf0e2ae94e967."
   integrated_late_docs:
     sprint_9_draft: "production/sprints/sprint-9-draft.md integrated as draft only; Sprint 9 is not active."
     result_screen_story: "production/epics/presentation-layer/story-006-result-screen-mvp.md integrated as Sprint 9 preparation; implementation is not done."
@@ -78,7 +80,7 @@ notes:
   - "Native operator controls story docs are integrated as backlog/Sprint 9 prep; implementation is not done."
   - "SAU-008 docs refresh is integrated and the story remains Ready; SAU-008 implementation is not pulled."
   - "Result acknowledgement contract story docs are integrated as Sprint 9 prep; this is not Sprint 8 implementation."
-  - "CI disposition: Automated Tests run 25515627861 is green for code baseline adf116333a2bac3364f4ca1aab8589ed058d97a6; later df8a43fa603448ba1ca29d639e6816d9a4544bfc is docs-only result-ack contract prep accepted without rerun by orchestrator decision."
+  - "CI reconciliation: Automated Tests run 25517712136 is verified green for df8a43fa603448ba1ca29d639e6816d9a4544bfc after prior green run 25515627861 at adf116333a2bac3364f4ca1aab8589ed058d97a6; current origin/main f980452d4362669c0128c7883a8cf0e2ae94e967 is docs-only close-out after that evidence, so the docs-only waiver is retained only for docs-only close-out/reconciliation commits and does not imply df8a43fa603448ba1ca29d639e6816d9a4544bfc was untested."
   - "No public release readiness, release-candidate readiness, broad accessibility completion, playtest/fun-hypothesis validation, full playable-client manual QA, manual/browser GAME_OVER, or full game completion is claimed."
   - "No /dev-story, /story-done, /smoke-check, /team-qa, /gate-check, Sprint 9 activation, or implementation was run by Sprint 8 status close-out."
 

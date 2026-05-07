@@ -2307,7 +2307,7 @@ C:\Program Files\GitHub CLI\gh.exe
 ## Session Extract - Prompt 394 Sprint 8 Status Close-Out 2026-05-07
 - Scope: docs/status close-out only. No `/dev-story`, `/story-done`, smoke, QA sign-off, `/team-qa`, `/gate-check`, Sprint 9 activation, or implementation was run.
 - Pre-edit gates: `git fetch origin` completed; local `main` matched `origin/main` at `df8a43fa603448ba1ca29d639e6816d9a4544bfc`; Automated Tests run `25515627861` was confirmed `success` / `completed` for `adf116333a2bac3364f4ca1aab8589ed058d97a6`; commits after that baseline through current `origin/main` were docs-only.
-- CI disposition: last green CI run `25515627861` covers tested code baseline `adf116333a2bac3364f4ca1aab8589ed058d97a6`. Later commit `df8a43fa603448ba1ca29d639e6816d9a4544bfc` is docs-only result-ack contract prep and was accepted without rerunning CI by orchestrator decision.
+- CI disposition at close-out drafting time: green CI run `25515627861` covered tested code baseline `adf116333a2bac3364f4ca1aab8589ed058d97a6`; later Prompt 396 reconciliation verified green CI run `25517712136` at `df8a43fa603448ba1ca29d639e6816d9a4544bfc`, so `df8a43f` is no longer treated as untested.
 - Sprint status: Sprint 8 is closed with conditions in `production/sprint-status.yaml` and `production/sprints/sprint-8.md`.
 - S8-QA-001: Done with smoke `PASS WITH WARNINGS` at `production/qa/smoke-sprint-8-2026-05-07.md` and QA sign-off `APPROVED WITH CONDITIONS` at `production/qa/qa-signoff-sprint-8-2026-05-07.md`.
 - S8-N2: Done because `production/qa/evidence/sprint-8-friend-game-evidence-index.md` exists and indexes the exact endpoint plus non-claims.
@@ -2318,3 +2318,10 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA conditions: `QA-COND-0005` remains friend-game-only accepted risk, not broad accessibility completion. `QA-COND-0006` remains accepted-risk/deferred, not playtest evidence or fun-hypothesis validation.
 - Scope guard: no public release readiness, release-candidate readiness, full playable-client manual QA, full manual/browser route evidence, or full game completion is claimed.
 - Verification: `git diff --check` passed; `git diff --cached --check` passed before commit.
+
+## Session Extract - Prompt 396 Sprint 8 CI Wording Reconciliation 2026-05-07
+- Scope: docs-only CI wording reconciliation. No `/dev-story`, `/story-done`, smoke, QA sign-off, `/team-qa`, `/gate-check`, Sprint 9 activation, or implementation was run.
+- Source of truth: `origin/main` fetched and local `main` matched `f980452d4362669c0128c7883a8cf0e2ae94e967` before editing.
+- Verified CI: Automated Tests run `25517712136` on `origin` completed `success` for `df8a43fa603448ba1ca29d639e6816d9a4544bfc` on 2026-05-07, with dep-purity jobs, `Run Cargo Tests`, and `WASM bundle size check` successful.
+- Reconciliation: prior green run `25515627861` at `adf116333a2bac3364f4ca1aab8589ed058d97a6` remains valid historical evidence, but Sprint 8 close-out wording now records the later green `df8a43f` run. The docs-only waiver is retained only for close-out/reconciliation docs after `df8a43f`, including current `origin/main` `f980452d4362669c0128c7883a8cf0e2ae94e967`.
+- Verdicts unchanged: Sprint 8 remains closed with conditions; QA sign-off remains APPROVED WITH CONDITIONS; smoke remains PASS WITH WARNINGS; carried conditions and no-claim language are preserved.

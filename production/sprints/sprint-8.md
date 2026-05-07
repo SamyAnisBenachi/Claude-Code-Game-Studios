@@ -173,7 +173,15 @@ Sprint 8 is **closed with conditions** as of 2026-05-07.
 | S8-N1 | Not pulled; remains backlog | Nice To Have surface-polish notes were not required for closure |
 | Controlled endpoint | Internal friend-game `GAME_OVER` endpoint evidenced | `production/qa/evidence/sprint-8-friend-game-loop-evidence.md` |
 | Manual/browser endpoint | Not claimed | S8-QA-001-W1 remains a bounded warning |
-| CI disposition | Accepted docs-only waiver | Automated Tests run `25515627861` is green for code baseline `adf116333a2bac3364f4ca1aab8589ed058d97a6`; later `df8a43fa603448ba1ca29d639e6816d9a4544bfc` is docs-only result-ack contract prep accepted without rerun by orchestrator decision |
+| CI disposition | Green CI plus docs-only waiver | Automated Tests run `25517712136` is verified `success`/`completed` for `df8a43fa603448ba1ca29d639e6816d9a4544bfc`; prior green run `25515627861` covered `adf116333a2bac3364f4ca1aab8589ed058d97a6`; current `origin/main` `f980452d4362669c0128c7883a8cf0e2ae94e967` is docs-only close-out after the verified `df8a43f` run |
+
+CI reconciliation note (2026-05-07): run `25517712136` was verified on
+`origin` as Automated Tests `success`/`completed` for
+`df8a43fa603448ba1ca29d639e6816d9a4544bfc`. This qualifies the original
+docs-only waiver that was based on green run `25515627861` at
+`adf116333a2bac3364f4ca1aab8589ed058d97a6`; the waiver now applies only to
+docs-only Sprint 8 close-out/reconciliation commits after the verified
+`df8a43f` CI evidence. Sprint 8 remains closed with conditions.
 
 Late integrated context:
 
