@@ -5,6 +5,9 @@ use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 use bevy::{prelude::*, time::Virtual};
 use bevy_tweening::{TweenAnim, TweeningPlugin};
+use client::asset_wiring::{
+    CardDisplayArtAsset, CardDisplayArtFallback, CardDisplayArtFallbackReason,
+};
 use client::presentation::PlayerEconomyView;
 use client::state::{ClientState, CurrentClientPhase};
 use client::ui::hand::{
@@ -60,6 +63,41 @@ fn hu_07_draft_offering_populates_nine_visible_grid_slots() {
     assert_eq!(
         app.world().get::<GridSlotCardName>(slot_zero),
         Some(&GridSlotCardName("Card 10".to_string()))
+    );
+}
+
+#[test]
+fn hu_asset_loop_draft_and_fan_slots_resolve_card_display_art_or_fallback() {
+    let mut app = app_with_hand_ui_in_draft_initial();
+
+    send_offering(&mut app, vec![CardId(1), CardId(2)]);
+
+    let known_art_slot = grid_slot(&mut app, 0);
+    assert_eq!(
+        app.world().get::<CardDisplayArtAsset>(known_art_slot),
+        Some(&CardDisplayArtAsset {
+            path: "art/cards/display/card_iop_knight_001_art_display.png"
+        })
+    );
+
+    let missing_art_slot = grid_slot(&mut app, 1);
+    assert_eq!(
+        app.world().get::<CardDisplayArtFallback>(missing_art_slot),
+        Some(&CardDisplayArtFallback {
+            reason: CardDisplayArtFallbackReason::MissingDisplayAsset
+        })
+    );
+
+    app.world_mut()
+        .write_message(HandUiCardAcquiredReceived { card_id: CardId(1) });
+    run_update(&mut app);
+
+    let fan_slot = fan_slot(&mut app, 0);
+    assert_eq!(
+        app.world().get::<CardDisplayArtAsset>(fan_slot),
+        Some(&CardDisplayArtAsset {
+            path: "art/cards/display/card_iop_knight_001_art_display.png"
+        })
     );
 }
 
@@ -334,7 +372,11 @@ fn test_card(id: u32) -> CardData {
         ar: 0,
         keywords: Vec::new(),
         effect_text: String::new(),
-        art_id: format!("test_{id}"),
+        art_id: if id == 1 {
+            "iop_knight_001".to_string()
+        } else {
+            format!("test_{id}")
+        },
         pool_copies_override: None,
     }
 }

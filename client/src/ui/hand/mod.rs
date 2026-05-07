@@ -13,6 +13,10 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+use crate::asset_wiring::{
+    default_client_card_catalog, resolve_card_display_art, CardDisplayArtAsset,
+    CardDisplayArtFallback,
+};
 use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
 };
@@ -27,6 +31,10 @@ pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT
     + DRAFT_INITIAL_GRID_SLOT_COUNT
     + 8
     + HAND_FAN_SLOT_COUNT * RESERVE_STRIP_ENTITY_COUNT;
+const HAND_CARD_DISPLAY_WIDTH_PX: f32 = 96.0;
+const HAND_CARD_DISPLAY_HEIGHT_PX: f32 = 136.0;
+const HAND_DRAFT_GRID_CARD_WIDTH_PX: f32 = 120.0;
+const HAND_DRAFT_GRID_CARD_HEIGHT_PX: f32 = 56.0;
 const HAND_DRAG_SPRITE_SCALE: f32 = 1.10;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
@@ -68,9 +76,17 @@ pub struct HandFanLayoutState {
     pub hand_count: usize,
 }
 
-#[derive(Resource, Default, Debug, Clone)]
+#[derive(Resource, Debug, Clone)]
 pub struct HandCardCatalog {
     pub cards: CardCatalog,
+}
+
+impl Default for HandCardCatalog {
+    fn default() -> Self {
+        Self {
+            cards: default_client_card_catalog(),
+        }
+    }
 }
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
@@ -814,6 +830,7 @@ impl Plugin for HandUiPlugin {
                         sync_placement_disclosure_guidance_system,
                         tick_pending_purchase_timeouts_system,
                         apply_fan_layout_system,
+                        sync_hand_fan_card_art_system,
                         apply_reserve_strip_layout_system,
                         sync_reserve_strip_state_system,
                         tick_hand_full_notification_system,
@@ -874,6 +891,8 @@ pub fn apply_fan_layout_system(
         transform.rotation = layout.bevy_rotation();
         node.left = Val::Px(layout.card_x);
         node.top = Val::Px(layout.card_y);
+        node.width = Val::Px(HAND_CARD_DISPLAY_WIDTH_PX);
+        node.height = Val::Px(HAND_CARD_DISPLAY_HEIGHT_PX);
     }
 }
 
@@ -1051,12 +1070,14 @@ pub fn hand_ui_phase_transition_system(
                     commands.entity(entity).insert(FanSlotState::Active);
                 }
             } else {
+                clear_card_display_art(&mut commands, entity);
                 commands
                     .entity(entity)
                     .remove::<(HandSlotCard, FanSlotState)>();
             }
         } else {
             set_visibility(entity, Visibility::Hidden, &mut visibility_query);
+            clear_card_display_art(&mut commands, entity);
             commands
                 .entity(entity)
                 .remove::<(HandSlotCard, FanSlotState)>();
@@ -1082,6 +1103,27 @@ pub fn hand_ui_phase_transition_system(
             text.0.push_str("Submit (0 cards)");
             *interaction_state = HandSubmitInteractionState::Active;
         }
+    }
+}
+
+pub fn sync_hand_fan_card_art_system(
+    catalog: Res<HandCardCatalog>,
+    asset_server: Option<Res<AssetServer>>,
+    mut commands: Commands,
+    fan_slots: Query<(Entity, Option<&HandSlotCard>), With<FanSlotIndex>>,
+) {
+    for (entity, card) in &fan_slots {
+        let Some(card) = card else {
+            clear_card_display_art(&mut commands, entity);
+            continue;
+        };
+
+        apply_card_display_art(
+            &mut commands,
+            entity,
+            catalog.cards.get(&card.0),
+            asset_server.as_deref(),
+        );
     }
 }
 
@@ -1237,6 +1279,7 @@ pub fn handle_game_snapshot_system(
 pub fn handle_draft_offering_system(
     mode: Res<HandUiMode>,
     catalog: Res<HandCardCatalog>,
+    asset_server: Option<Res<AssetServer>>,
     entities: Option<Res<HandUiEntities>>,
     mut offerings: MessageReader<HandUiDraftOfferingReceived>,
     mut commands: Commands,
@@ -1268,6 +1311,7 @@ pub fn handle_draft_offering_system(
                 GridSlotManaCost(card.cost),
                 GridSlotState::Available,
             ));
+            apply_card_display_art(&mut commands, entity, Some(card), asset_server.as_deref());
             commands.entity(entity).remove::<PendingPurchaseTimer>();
             set_visibility(
                 entity,
@@ -1280,9 +1324,11 @@ pub fn handle_draft_offering_system(
 
 pub fn handle_card_acquired_system(
     mode: Res<HandUiMode>,
+    catalog: Res<HandCardCatalog>,
     config: Res<HandFanLayoutConfig>,
     viewport: Res<HandFanViewport>,
     timing: Res<HandUiTimingConfig>,
+    asset_server: Option<Res<AssetServer>>,
     entities: Option<Res<HandUiEntities>>,
     mut acquisitions: MessageReader<HandUiCardAcquiredReceived>,
     mut hand_contents: ResMut<HandContents>,
@@ -1341,9 +1387,17 @@ pub fn handle_card_acquired_system(
                     transform.rotation = layout.bevy_rotation();
                     node.left = Val::Px(layout.card_x);
                     node.top = Val::Px(layout.card_y);
+                    node.width = Val::Px(HAND_CARD_DISPLAY_WIDTH_PX);
+                    node.height = Val::Px(HAND_CARD_DISPLAY_HEIGHT_PX);
                     commands
                         .entity(fan_entity)
                         .insert(HandSlotCard(acquisition.card_id));
+                    apply_card_display_art(
+                        &mut commands,
+                        fan_entity,
+                        catalog.cards.get(&acquisition.card_id),
+                        asset_server.as_deref(),
+                    );
                     install_card_draw_animation(
                         &mut commands,
                         fan_entity,
@@ -1512,10 +1566,12 @@ pub fn handle_hand_fan_card_click_system(
 pub fn handle_placement_drag_started_system(
     mode: Res<HandUiMode>,
     catalog: Res<HandCardCatalog>,
+    asset_server: Option<Res<AssetServer>>,
     entities: Option<Res<HandUiEntities>>,
     mut starts: MessageReader<HandUiPlacementDragStarted>,
     mut active_drag: ResMut<ActivePlacementDrag>,
     mut disclosure_state: ResMut<PlacementDisclosureState>,
+    mut commands: Commands,
     hand_cards: Query<(&HandSlotCard, Option<&HandPlacementTargetKind>), With<FanSlotIndex>>,
     mut visibility_query: Query<&mut Visibility>,
 ) {
@@ -1550,6 +1606,12 @@ pub fn handle_placement_drag_started_system(
             entities.drag_sprite,
             Visibility::Visible,
             &mut visibility_query,
+        );
+        apply_card_display_art(
+            &mut commands,
+            entities.drag_sprite,
+            catalog.cards.get(&card.0),
+            asset_server.as_deref(),
         );
     }
 }
@@ -1686,6 +1748,7 @@ pub fn handle_placement_drop_resolved_system(
             Visibility::Hidden,
             &mut visibility_sets.p0(),
         );
+        clear_card_display_art(&mut commands, entities.drag_sprite);
         commands
             .entity(entities.fan_root)
             .remove::<FanPlateHighlighted>();
@@ -2124,7 +2187,7 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
                 Name::new(format!("Hand UI Draft Grid Slot {index}")),
                 HandUiEntity,
                 GridSlotIndex(index as u8),
-                hidden_slot_node(),
+                hand_draft_grid_slot_node(index),
                 Visibility::Hidden,
                 ChildOf(fan_root),
             ))
@@ -2139,7 +2202,7 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
             Name::new("Hand UI Drag Sprite"),
             HandUiEntity,
             HandDragSprite,
-            hidden_slot_node(),
+            hand_drag_sprite_node(),
             Transform::from_scale(Vec3::splat(HAND_DRAG_SPRITE_SCALE)),
             Visibility::Hidden,
             ChildOf(fan_root),
@@ -2314,6 +2377,29 @@ fn hidden_slot_node() -> Node {
         position_type: PositionType::Absolute,
         width: Val::Px(0.0),
         height: Val::Px(0.0),
+        ..default()
+    }
+}
+
+fn hand_draft_grid_slot_node(index: usize) -> Node {
+    let column = index % 3;
+    let row = index / 3;
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(96.0 + column as f32 * 132.0),
+        top: Val::Px(28.0 + row as f32 * 66.0),
+        width: Val::Px(HAND_DRAFT_GRID_CARD_WIDTH_PX),
+        height: Val::Px(HAND_DRAFT_GRID_CARD_HEIGHT_PX),
+        border: UiRect::all(Val::Px(1.0)),
+        ..default()
+    }
+}
+
+fn hand_drag_sprite_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        width: Val::Px(HAND_CARD_DISPLAY_WIDTH_PX),
+        height: Val::Px(HAND_CARD_DISPLAY_HEIGHT_PX),
         ..default()
     }
 }
@@ -2972,6 +3058,36 @@ fn clear_grid_slot(commands: &mut Commands, entity: Entity) {
         GridSlotState,
         PendingPurchaseTimer,
     )>();
+    clear_card_display_art(commands, entity);
+}
+
+fn apply_card_display_art(
+    commands: &mut Commands,
+    entity: Entity,
+    card: Option<&shared::card::CardData>,
+    asset_server: Option<&AssetServer>,
+) {
+    match resolve_card_display_art(card) {
+        Ok(path) => {
+            let mut entity_commands = commands.entity(entity);
+            entity_commands.insert(CardDisplayArtAsset { path });
+            entity_commands.remove::<CardDisplayArtFallback>();
+            if let Some(asset_server) = asset_server {
+                entity_commands.insert(ImageNode::new(asset_server.load(path)));
+            }
+        }
+        Err(reason) => {
+            let mut entity_commands = commands.entity(entity);
+            entity_commands.insert(CardDisplayArtFallback { reason });
+            entity_commands.remove::<(CardDisplayArtAsset, ImageNode)>();
+        }
+    }
+}
+
+fn clear_card_display_art(commands: &mut Commands, entity: Entity) {
+    commands
+        .entity(entity)
+        .remove::<(CardDisplayArtAsset, CardDisplayArtFallback, ImageNode)>();
 }
 
 fn hide_acquired_grid_slot(
