@@ -18,10 +18,15 @@ const ROOM_CODE_MAX: usize = 8;
 
 impl Plugin for LobbyUiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<ClientSessionIdentity>()
+        app.init_state::<ClientState>()
+            .init_resource::<ClientSessionIdentity>()
             .init_resource::<LobbyViewState>()
             .init_resource::<LobbyInputState>()
             .add_message::<LobbyCommand>()
+            .add_systems(
+                Startup,
+                spawn_lobby_ui_system.run_if(in_state(ClientState::Lobby)),
+            )
             .add_systems(OnEnter(ClientState::Lobby), spawn_lobby_ui_system)
             .add_systems(OnExit(ClientState::Lobby), despawn_lobby_ui_system)
             .add_systems(
@@ -101,6 +106,9 @@ pub enum LobbyCommand {
 
 #[derive(Component)]
 struct LobbyRoot;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LobbyCamera;
 
 #[derive(Component)]
 struct LobbyStatusText;
@@ -388,7 +396,21 @@ fn selected_class_from_keys(keys: &ButtonInput<KeyCode>) -> Option<ClassId> {
     }
 }
 
-fn spawn_lobby_ui_system(mut commands: Commands) {
+fn spawn_lobby_ui_system(
+    mut commands: Commands,
+    lobby: Res<LobbyViewState>,
+    input: Res<LobbyInputState>,
+    roots: Query<Entity, With<LobbyRoot>>,
+    cameras: Query<Entity, With<LobbyCamera>>,
+) {
+    if cameras.is_empty() {
+        commands.spawn((LobbyCamera, Name::new("Lobby Camera"), Camera2d));
+    }
+
+    if !roots.is_empty() {
+        return;
+    }
+
     commands
         .spawn((
             LobbyRoot,
@@ -409,7 +431,7 @@ fn spawn_lobby_ui_system(mut commands: Commands) {
         .with_children(|parent| {
             parent.spawn((
                 LobbyStatusText,
-                Text::new(""),
+                Text::new(lobby_status_copy(&lobby, &input)),
                 lobby_text_font(18.0),
                 TextColor(Color::srgb(0.92, 0.95, 0.98)),
             ));
@@ -463,8 +485,16 @@ pub fn lobby_status_copy(lobby: &LobbyViewState, input: &LobbyInputState) -> Str
     )
 }
 
-fn despawn_lobby_ui_system(mut commands: Commands, roots: Query<Entity, With<LobbyRoot>>) {
+fn despawn_lobby_ui_system(
+    mut commands: Commands,
+    roots: Query<Entity, With<LobbyRoot>>,
+    cameras: Query<Entity, With<LobbyCamera>>,
+) {
     for entity in &roots {
+        commands.entity(entity).despawn();
+    }
+
+    for entity in &cameras {
         commands.entity(entity).despawn();
     }
 }

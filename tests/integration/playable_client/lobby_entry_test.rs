@@ -1,13 +1,16 @@
 use std::time::Duration;
 
+use bevy::prelude::*;
+use bevy::state::app::StatesPlugin;
 use client::network::{heartbeat_due_after_tick, ClientHeartbeatTimer};
 use client::state::{
     apply_handshake_message, should_enter_session_from_phase, should_enter_session_from_snapshot,
-    ClientSessionIdentity,
+    ClientSessionIdentity, ClientState,
 };
 use client::ui::lobby::{
     apply_class_locked, apply_classes_revealed, apply_join_ack, apply_lobby_handshake,
-    apply_room_created, apply_slot_update, lobby_status_copy, LobbyInputState, LobbyViewState,
+    apply_room_created, apply_slot_update, lobby_status_copy, LobbyCamera, LobbyInputState,
+    LobbyUiPlugin, LobbyViewState,
 };
 use shared::card::ClassId;
 use shared::protocol::{
@@ -40,6 +43,44 @@ fn fresh_handshake_records_identity_without_entering_session() {
         &identity,
         RoundPhase::Lobby
     ));
+}
+
+#[test]
+fn lobby_startup_spawns_visible_ui_camera_until_session_entry() {
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.add_plugins(StatesPlugin);
+    app.init_resource::<ButtonInput<KeyCode>>();
+    app.add_plugins(LobbyUiPlugin);
+
+    app.update();
+
+    {
+        let world = app.world_mut();
+        let mut cameras = world.query_filtered::<Entity, (With<Camera2d>, With<LobbyCamera>)>();
+        assert_eq!(cameras.iter(world).count(), 1);
+
+        let mut texts = world.query::<&Text>();
+        let rendered_copy = texts
+            .iter(world)
+            .map(|text| text.0.as_str())
+            .collect::<Vec<_>>();
+        assert!(
+            rendered_copy
+                .iter()
+                .any(|copy| copy.contains("Status: Connecting")),
+            "lobby text should be populated on the first lobby frame"
+        );
+    }
+
+    app.world_mut()
+        .resource_mut::<NextState<ClientState>>()
+        .set(ClientState::InSession);
+    app.update();
+
+    let world = app.world_mut();
+    let mut cameras = world.query_filtered::<Entity, With<LobbyCamera>>();
+    assert_eq!(cameras.iter(world).count(), 0);
 }
 
 #[test]
