@@ -1,0 +1,134 @@
+{
+  "story": "S8-QA-001",
+  "package": "Sprint 8 manual friend-game smoke expansion package",
+  "date": "2026-05-07",
+  "commit_under_smoke": "3cc620cdeee6f5249e404703365b160ccbc34f6c",
+  "scope": "internal 1v1 friend-game smoke/evidence only",
+  "verdict": "PASS WITH WARNINGS",
+  "manual_execution": {
+    "attempted_full_native_or_browser_two_client_run": false,
+    "blocker": "The Codex shell session can run commands and tests, but it cannot drive two interactive Bevy native client windows or browser clients through room creation, join, class confirmation, draft/shop, auction, placement, resolution, and result steps. Launching native clients would require GUI interaction and would not produce a completed manual route log from this non-interactive workflow.",
+    "server_log": "bounded process note only: production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-server-process.txt",
+    "client_a_log": "not captured from a full manual two-client run",
+    "client_b_log": "not captured from a full manual two-client run",
+    "nearest_covered_evidence": [
+      "production/qa/evidence/captures/sprint-8-friend-game-loop/playable-004-result-endpoint-trace.json",
+      "production/qa/evidence/captures/sprint-8-friend-game-loop/loop-001-active-loop-polish-trace.json",
+      "production/qa/evidence/captures/playable-client-real-e2e-loop/phase-captures.md"
+    ]
+  },
+  "environment": {
+    "branch_status_before_docs": "main...origin/main",
+    "server_command_if_run_manually": "SERVER_PORT=<PORT> cargo run -p server",
+    "client_a_command_if_run_manually": "SERVER_URL=ws://localhost:<PORT> cargo run -p client --bin client",
+    "client_b_command_if_run_manually": "SERVER_URL=ws://localhost:<PORT> cargo run -p client --bin client",
+    "browser_build_tooling": "trunk 0.21.14 present",
+    "default_server_url": "ws://localhost:5000",
+    "default_server_port": "5000",
+    "target": "local Windows Cargo; controlled real-Lightyear tests use one real server app plus two primary client apps in-process"
+  },
+  "required_commands": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "PASS",
+      "summary": "3cc620cdeee6f5249e404703365b160ccbc34f6c"
+    },
+    {
+      "command": "git status --short --branch",
+      "result": "PASS",
+      "summary": "## main...origin/main"
+    },
+    {
+      "command": "cargo test -p server --test playable_client_active_loop_polish_test",
+      "result": "PASS",
+      "tests": 4
+    },
+    {
+      "command": "cargo test -p client --test playable_client_active_loop_ui_state_test",
+      "result": "PASS",
+      "tests": 4
+    },
+    {
+      "command": "cargo test -p server --test playable_client_friend_game_result_endpoint_test",
+      "result": "PASS",
+      "tests": 1
+    },
+    {
+      "command": "cargo test -p server --test playable_client_real_e2e_loop_test",
+      "result": "PASS",
+      "tests": 4
+    },
+    {
+      "command": "cargo test -p client --test shop_auction_ui_auction_settlement_test",
+      "result": "PASS",
+      "tests": 7
+    },
+    {
+      "command": "cargo check --workspace",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "checklist": {
+    "server_log": "WARN - bounded server process note only; no full manual two-client server route log captured",
+    "client_a_log": "WARN - no full manual client A log captured",
+    "client_b_log": "WARN - no full manual client B log captured",
+    "commands_port_commit_target_summary": "PASS",
+    "lobby_create_join": "PASS via controlled real-Lightyear trace",
+    "class_confirm": "PASS via controlled real-Lightyear trace",
+    "draft_initial": "PASS via controlled real-Lightyear trace",
+    "draft_shop": "PASS via controlled real-Lightyear trace",
+    "auction": "PASS via controlled real-Lightyear trace",
+    "settlement_to_shop": "PASS via SAU-007 regression and LOOP-001 trace",
+    "post_auction_draft_shop": "PASS via controlled real-Lightyear trace",
+    "non_empty_placement": "PASS via controlled real-Lightyear trace",
+    "resolution_unit_placed": "PASS via controlled real-Lightyear trace",
+    "second_post_endpoint_loop_pass": "PASS via PLAYABLE-004 endpoint trace plus LOOP-001 repeated-loop trace",
+    "manual_game_over": "WARN - automated real-Lightyear endpoint reaches GAME_OVER; manual game-over is not claimed",
+    "defect_table": "PASS"
+  },
+  "known_defects_or_warnings": [
+    {
+      "id": "S8-QA-001-W1",
+      "severity": "Low evidence gap",
+      "owner": "Manual/browser smoke workflow",
+      "status": "Bounded warning",
+      "impact": "Core route is covered by controlled real-Lightyear tests and traces, but no new manually driven two-window or browser route log was captured in this session.",
+      "workaround": "Use the committed controlled traces for S8 smoke; run an out-of-band interactive two-client session later if full manual client QA is required."
+    },
+    {
+      "id": "QA-COND-0005",
+      "severity": "Accepted risk",
+      "owner": "Accessibility evidence",
+      "status": "Still accepted risk for friend-game scope only",
+      "impact": "This package does not verify broad Standard-tier accessibility completion.",
+      "workaround": "Keep the non-claim explicit until a separate accessibility scope verifies it."
+    },
+    {
+      "id": "QA-COND-0006",
+      "severity": "Accepted risk",
+      "owner": "Playtest validation",
+      "status": "Still accepted-risk/deferred",
+      "impact": "This package is not playtest evidence and does not validate the fun hypothesis.",
+      "workaround": "Run separate production playtests later if fun-hypothesis validation is needed."
+    }
+  ],
+  "non_claims": [
+    "No public release readiness",
+    "No store readiness",
+    "No deployment readiness",
+    "No release-candidate readiness",
+    "No broad accessibility completion",
+    "No closure of QA-COND-0005",
+    "No playtest validation",
+    "No fun-hypothesis validation",
+    "No closure of QA-COND-0006",
+    "No full playable-client manual QA",
+    "No full regression campaign",
+    "No full game completion",
+    "No asset production approval"
+  ]
+}

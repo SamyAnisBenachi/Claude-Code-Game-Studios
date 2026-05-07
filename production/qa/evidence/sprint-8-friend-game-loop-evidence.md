@@ -125,16 +125,89 @@ No browser/manual two-client smoke was run in this worker pass. S8-QA-001
 remains blocked until the orchestrator pulls the manual friend-game smoke
 package.
 
+## S8-QA-001 Manual Friend-Game Smoke Package Addendum
+
+S8-QA-001 was run as a scoped smoke/evidence package on
+`main@3cc620cdeee6f5249e404703365b160ccbc34f6c`.
+
+This package did not run `/dev-story`, `/story-done`, `/team-qa`,
+`/gate-check`, Sprint 8 close-out, or new implementation. It only reviewed the
+Sprint 8 plan/status/story context, reran the required smoke command set, and
+packaged the manual friend-game evidence status.
+
+Capture summary:
+`production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-manual-smoke-summary.json`.
+
+Bounded server process note:
+`production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-server-process.txt`.
+
+Manual execution status:
+
+- Full native/browser two-client manual execution was not completed in this
+  Codex shell session.
+- Blocker: this workflow can run commands and inspect artifacts, but it cannot
+  drive two interactive Bevy native client windows or browser clients through
+  room creation, join, class confirmation, draft/shop, auction, placement,
+  resolution, and result steps. Launching native clients here would require GUI
+  interaction and would not produce a completed manual route log from this
+  non-interactive workflow.
+- A bounded server process note was captured, but no new full manual server
+  route log, client A log, or client B log was captured.
+- Trunk is installed (`trunk 0.21.14`), `client/index.html` exists, the default
+  server port remains `5000`, and the manual command shape remains:
+  `SERVER_PORT=<PORT> cargo run -p server`;
+  `SERVER_URL=ws://localhost:<PORT> cargo run -p client --bin client` for both
+  primary clients.
+
+Nearest covered evidence:
+
+- `playable-004-result-endpoint-trace.json` covers one real local Lightyear
+  server app plus two real primary client apps in-process reaching
+  `GAME_OVER`.
+- `loop-001-active-loop-polish-trace.json` covers repeated active-loop stability
+  and UI stale-state cleanup.
+- `production/qa/evidence/captures/playable-client-real-e2e-loop/phase-captures.md`
+  records prior native launch attempts and the controlled real-Lightyear route
+  baseline.
+
+Manual/evidence checklist status:
+
+| Checklist Item | Status | Evidence |
+|---|---|---|
+| Server log | WARN | Bounded server process note only; no full manual two-client server route log captured. |
+| Client A log | WARN | No new full manual client A log captured; see blocker above. |
+| Client B log | WARN | No new full manual client B log captured; see blocker above. |
+| Commands / port / commit / target summary | PASS | This addendum and `s8-qa-001-manual-smoke-summary.json`. |
+| Lobby create/join | PASS | Controlled real-Lightyear trace records `C2SCreateRoom`, `S2CRoomCreated`, `C2SJoinRoom`, and `S2CJoinAck`. |
+| Class confirm | PASS | Controlled real-Lightyear trace records `C2SSelectClass`, `C2SConfirmClass`, `S2CClassLocked`, and `S2CClassesRevealed`. |
+| DRAFT_INITIAL | PASS | Controlled real-Lightyear trace records `S2CPhaseChanged(DraftInitial)` and `S2CDraftOffering`. |
+| DRAFT_SHOP | PASS | Controlled real-Lightyear traces reproduce Sprint 7 next-loop `DRAFT_SHOP` and later passes. |
+| Auction | PASS | Controlled trace records `DRAFT_AUCTION`, `S2CAuctionCard`, `C2SPlaceBid`, `S2CAuctionBidAccepted`, `S2CAuctionSettled`, and auction acquisition. |
+| Settlement-to-shop | PASS | SAU-007 settlement regression passed; LOOP-001 trace records stale settlement suppression after shop convergence. |
+| Post-auction DRAFT_SHOP | PASS | Controlled trace records post-auction `DRAFT_SHOP`. |
+| Non-empty placement | PASS | Controlled trace records real `C2SSubmitPlacement` with server-owned hand cards. |
+| Resolution `UnitPlaced` | PASS | Controlled trace records `S2CResolutionEvent` containing `UnitPlaced` before following phase changes. |
+| Second post-endpoint loop pass | PASS | PLAYABLE-004 endpoint trace plus LOOP-001 repeated-loop trace cover continued route beyond Sprint 7 endpoint. |
+| GAME_OVER | PASS WITH WARNING | Automated real-Lightyear endpoint reaches `GAME_OVER`; manual/browser game-over is not claimed. |
+| Defect table | PASS | See Defects And Gaps below. |
+
+S8-QA-001 verdict: **PASS WITH WARNINGS**. All required commands passed and the
+scoped route is evidenced through controlled real-Lightyear artifacts, but the
+new full manual two-window/browser route log remains a bounded evidence gap.
+
 ## Defects And Gaps
 
 | ID | Severity | Owner/System | Status | Friend-game Impact | Workaround |
 |---|---|---|---|---|---|
-| PLAYABLE-004-D1 | Low evidence gap | Manual/browser evidence | Deferred | Automated in-process real-Lightyear endpoint is covered; browser/native manual captures are not part of this pass | Use S8-QA-001 for manual friend-game smoke package if requested |
+| S8-QA-001-W1 | Low evidence gap | Manual/browser smoke workflow | Bounded warning | Core route is covered by controlled real-Lightyear tests and traces, but no new manually driven two-window or browser route log was captured in this session | Use the committed controlled traces for S8 smoke; run an out-of-band interactive two-client session later if full manual client QA is required |
+| PLAYABLE-004-D1 | Low evidence gap | Manual/browser evidence | Superseded by S8-QA-001-W1 | Automated in-process real-Lightyear endpoint is covered; browser/native manual captures remain bounded by S8-QA-001-W1 | Keep the bounded warning explicit |
 | QA-COND-0005 | Accepted risk | Accessibility evidence | Still accepted risk | This story does not close broad Standard-tier accessibility evidence | Keep non-claim explicit |
 | QA-COND-0006 | Accepted risk | Playtest validation | Still accepted risk | This story is not a playtest and does not validate fun hypothesis | Keep non-claim explicit |
 
 ## Verification Results
 
+- S8-QA-001 command gate on `main@3cc620cdeee6f5249e404703365b160ccbc34f6c`:
+  PASS WITH WARNINGS.
 - `cargo test -p server --test playable_client_friend_game_result_endpoint_test`: PASS, 1 passed. Endpoint reached `GAME_OVER` through real C2S/S2C route.
 - `cargo test -p client --test hud_game_over_freeze_test`: PASS, 2 passed.
   Captures available HUD frozen/result behavior for the same commit.

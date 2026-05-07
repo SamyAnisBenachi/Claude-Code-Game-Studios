@@ -1,0 +1,13 @@
+S8-QA-001 bounded server process note
+
+Result: WARN - bounded server process note only, not a full manual two-client
+route log.
+
+Observed process scope: server process started on port 5018 and was stopped
+after bounded smoke log capture.
+
+Limit: this artifact does not prove lobby create/join, class confirmation,
+DRAFT_INITIAL, DRAFT_SHOP, auction, placement, resolution, or GAME_OVER by a
+manually driven two-client route. Those phase checks remain covered by the
+controlled real-Lightyear traces listed in
+s8-qa-001-manual-smoke-summary.json.
