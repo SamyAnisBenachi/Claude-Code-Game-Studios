@@ -1322,11 +1322,9 @@ fn record_room_flow_server_state(
             if state.draft_ready_players.contains(&host) {
                 flags.server_host_ready_seen.store(true, Ordering::SeqCst);
             }
-            if flags.host_sent_ready_retract.load(Ordering::SeqCst)
+            if state.phase == ServerRoundPhase::DraftInitial
+                && flags.host_sent_ready_retract.load(Ordering::SeqCst)
                 && !state.draft_ready_players.contains(&host)
-                && joiner
-                    .map(|joiner| state.draft_ready_players.contains(&joiner))
-                    .unwrap_or(false)
             {
                 flags
                     .server_retract_path_observed
@@ -1539,7 +1537,11 @@ fn send_draft_ready_path(
             }
         }
         ClientRole::Joiner => {
-            if probe.flags.host_sent_ready_retract.load(Ordering::SeqCst)
+            if probe
+                .flags
+                .server_retract_path_observed
+                .load(Ordering::SeqCst)
+                && probe.flags.host_sent_ready_final.load(Ordering::SeqCst)
                 && !probe.flags.joiner_sent_ready.load(Ordering::SeqCst)
             {
                 send_ready(signal_ready, false, &probe.flags.joiner_sent_ready);
