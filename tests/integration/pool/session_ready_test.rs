@@ -10,7 +10,7 @@ use server::feature::acquisition::{CardAcquisitionPlugin, ShopPhase, ShopStates}
 use server::foundation::config::{CardCatalog, GameConfig};
 use server::foundation::rng::ServerRng;
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
-use shared::protocol::{DraftPhase, GameMode, GameOverReason};
+use shared::protocol::{DraftPhase, GameMode, GameOverReason, PlacementTimerMultiplier};
 use shared::session::PlayerId;
 
 fn card(id: u32, class: ClassId) -> CardData {
@@ -62,6 +62,7 @@ fn session_config(players: &[PlayerId]) -> SessionConfig {
             .iter()
             .map(|player| (*player, ClassId::Iop))
             .collect(),
+        placement_timer_multiplier_effective: PlacementTimerMultiplier::X1,
     }
 }
 

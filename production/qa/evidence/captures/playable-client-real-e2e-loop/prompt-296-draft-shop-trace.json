@@ -1,0 +1,92 @@
+{
+  "prompt": 296,
+  "branch": "work/playable-003-draftinitial-draftshop-evidence",
+  "base": "origin/main@54681615f725cf1d7be19fd70dc27f133ebcf39f",
+  "capture_type": "controlled in-process real Lightyear server plus two primary client apps",
+  "redactions": [
+    "local paths",
+    "usernames",
+    "machine names",
+    "process ids",
+    "raw room codes",
+    "transient ports",
+    "branch-local unsafe metadata"
+  ],
+  "test": "cargo test -p server --test playable_client_real_e2e_loop_test real_lightyear_two_client_draft_initial_purchase_ready_reaches_draft_shop",
+  "protocol_path": {
+    "host": [
+      "C2SHello",
+      "S2CHandshake",
+      "C2SCreateRoom",
+      "S2CRoomCreated(room_code=<ROOM_CODE_REDACTED>)",
+      "S2CSlotUpdated",
+      "C2SSelectClass(Iop)",
+      "C2SConfirmClass(Iop)",
+      "S2CClassLocked",
+      "S2CClassesRevealed",
+      "S2CPhaseChanged(DraftInitial)",
+      "S2CDraftOffering(card_count=9)",
+      "C2SPurchaseCard(card_id=<SERVER_OFFERED_CARD_ID>)",
+      "S2CCardAcquired(source=DraftInitial)",
+      "S2CGoldUpdate(after_purchase=true)",
+      "C2SSignalReady(retract=false)",
+      "C2SSignalReady(retract=true)",
+      "C2SSignalReady(retract=false)",
+      "S2CPhaseChanged(Placement)",
+      "C2SSubmitPlacement(placements=[])",
+      "S2CPlacementReveal(placements=[])",
+      "S2CPhaseChanged(Resolution)",
+      "S2CResolutionEvent",
+      "S2CPhaseChanged(DraftShop)"
+    ],
+    "joiner": [
+      "C2SHello",
+      "S2CHandshake",
+      "C2SJoinRoom(room_code=<ROOM_CODE_REDACTED>)",
+      "S2CJoinAck",
+      "C2SSelectClass(Cra)",
+      "C2SConfirmClass(Cra)",
+      "S2CClassLocked",
+      "S2CClassesRevealed",
+      "S2CPhaseChanged(DraftInitial)",
+      "S2CDraftOffering(card_count=9)",
+      "C2SPurchaseCard(card_id=<SERVER_OFFERED_CARD_ID>)",
+      "S2CCardAcquired(source=DraftInitial)",
+      "S2CGoldUpdate(after_purchase=true)",
+      "C2SSignalReady(retract=false)",
+      "S2CPhaseChanged(Placement)",
+      "C2SSubmitPlacement(placements=[])",
+      "S2CPlacementReveal(placements=[])",
+      "S2CPhaseChanged(Resolution)",
+      "S2CResolutionEvent",
+      "S2CPhaseChanged(DraftShop)"
+    ]
+  },
+  "server_authority_observations": [
+    "RoomSession state became GameActive",
+    "SessionConfig was created from room slots and class selections",
+    "PlayerSessions was populated from SessionConfig before SessionReady observers consumed class identity",
+    "RoundState entered DraftInitial",
+    "PlayerHands contained at least one purchased card for each player after C2SPurchaseCard",
+    "RoundState observed host ready, host retract, joiner ready, then host ready again",
+    "RoundState advanced through Placement and Resolution to DraftShop"
+  ],
+  "endpoint": {
+    "reached": "DRAFT_SHOP",
+    "route": [
+      "DRAFT_INITIAL",
+      "PLACEMENT",
+      "RESOLUTION",
+      "DRAFT_SHOP"
+    ],
+    "note": "The server RSM does not transition directly from DRAFT_INITIAL to DRAFT_SHOP; all-ready exits DRAFT_INITIAL to PLACEMENT, and the controlled real-Lightyear test continues with real placement submit and resolution messages to reach DRAFT_SHOP."
+  },
+  "non_claims": [
+    "No public release readiness",
+    "No broad accessibility completion",
+    "No playtest validation",
+    "No full playable-client manual QA",
+    "No auction coverage",
+    "No game-over coverage"
+  ]
+}

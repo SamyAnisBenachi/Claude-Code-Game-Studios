@@ -20,9 +20,9 @@ use crate::core::rsm::{GameOverEmitted, PlayerHeartbeat};
 use crate::core::session::{
     build_session_config_with_settings, effective_placement_timer_multiplier, ActiveSessions,
     ClassPreviews, ClassSelections, LobbyDeadline, LobbyHeartbeats, LobbyState,
-    PlacementTimerMultiplierRequests, PlayerConnectionMap, ReconnectTracker, RoomCode, RoomSession,
-    RoomSessions, SessionCancelledReason, SessionConfig, SessionId, SessionNetworkOutbox,
-    SessionReady, SessionSlot, SessionSlots,
+    PlacementTimerMultiplierRequests, PlayerConnectionMap, PlayerSessionData, PlayerSessions,
+    ReconnectTracker, RoomCode, RoomSession, RoomSessions, SessionCancelledReason, SessionConfig,
+    SessionId, SessionNetworkOutbox, SessionReady, SessionSlot, SessionSlots,
 };
 use crate::foundation::config::GameConfig;
 use crate::foundation::rng::ServerRng;
@@ -109,6 +109,7 @@ pub fn evaluate_session_ready(
     placement_timer_requests: Option<Res<PlacementTimerMultiplierRequests>>,
     connections: Option<Res<PlayerConnectionMap>>,
     active_sessions: Option<Res<ActiveSessions>>,
+    mut player_sessions: ResMut<PlayerSessions>,
     server: Query<&Server>,
     mut sender: Option<ServerMultiMessageSender>,
     mut outbox: Option<ResMut<SessionNetworkOutbox>>,
@@ -153,6 +154,7 @@ pub fn evaluate_session_ready(
         Some(slots.as_ref()),
         active_sessions.as_deref(),
     );
+    populate_player_sessions_from_config(&mut player_sessions, &session_config);
     commands.insert_resource(session_config);
     commands.insert_resource(reconnect_tracker);
     commands.insert_resource(server_rng);
@@ -170,6 +172,7 @@ pub fn evaluate_room_session_ready(
     placement_timer_requests: Option<Res<PlacementTimerMultiplierRequests>>,
     active_sessions: Option<Res<ActiveSessions>>,
     session_config: Option<Res<SessionConfig>>,
+    mut player_sessions: ResMut<PlayerSessions>,
 ) {
     if session_config.is_some() {
         return;
@@ -207,6 +210,7 @@ pub fn evaluate_room_session_ready(
         Some(&slots),
         active_sessions.as_deref(),
     );
+    populate_player_sessions_from_config(&mut player_sessions, &session_config);
 
     if let Some(session) = rooms.get_mut(session_id) {
         session.state = LobbyState::GameActive;
@@ -220,6 +224,27 @@ pub fn evaluate_room_session_ready(
     commands.insert_resource(server_rng);
     commands.trigger(SessionReady);
     commands.insert_resource(LobbyState::GameActive);
+}
+
+fn populate_player_sessions_from_config(
+    player_sessions: &mut PlayerSessions,
+    session_config: &SessionConfig,
+) {
+    player_sessions.players.clear();
+    for player_id in session_config.players() {
+        let class = session_config
+            .class_map
+            .get(&player_id)
+            .copied()
+            .unwrap_or(ClassId::Neutral);
+        player_sessions.players.insert(
+            player_id,
+            PlayerSessionData {
+                class,
+                class_locked: false,
+            },
+        );
+    }
 }
 
 fn find_room_session_ready(

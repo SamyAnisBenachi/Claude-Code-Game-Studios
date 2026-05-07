@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::path::PathBuf;
@@ -13,23 +14,36 @@ use lightyear::prelude::client::*;
 use lightyear::prelude::server::*;
 use lightyear::prelude::*;
 use server_crate::core::rsm::{
-    advance_phase, RoundPhase as ServerRoundPhase, RoundState, RsmPlugin,
+    advance_phase, rsm_input_reader, RoundPhase as ServerRoundPhase, RoundState, RsmPlugin,
 };
 use server_crate::core::session::{
     GameSessionPlugin, LobbyState, PlayerConnectionMap, RoomSessions,
 };
-use server_crate::network::{register_lightyear_protocol, rsm_dispatch::dispatch_phase_changed};
-use shared::card::ClassId;
+use server_crate::core::{economy::EconomyPlugin, pool::CardPoolPlugin};
+use server_crate::feature::{
+    acquisition::{CardAcquisitionPlugin, PlayerHands},
+    board::BoardPlugin,
+    combat::CombatPlugin,
+};
+use server_crate::foundation::{config::CardCatalog, rng::ServerRng};
+use server_crate::network::{
+    drain_signal_ready_messages, drain_submit_placement_messages,
+    economy_dispatch::EconomyNetworkPlugin, register_lightyear_protocol,
+    rsm_dispatch::dispatch_phase_changed,
+};
+use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{
-    C2SConfirmClass, C2SCreateRoom, C2SHello, C2SJoinRoom, C2SSelectClass, GameMode,
-    ReliableChannel, RoundPhase as ProtocolRoundPhase, S2CClassLocked, S2CClassesRevealed,
-    S2CHandshake, S2CJoinAck, S2CPhaseChanged, S2CRoomCreated, S2CSlotUpdated,
+    C2SConfirmClass, C2SCreateRoom, C2SHello, C2SJoinRoom, C2SPurchaseCard, C2SSelectClass,
+    C2SSignalReady, C2SSubmitPlacement, CardSource, GameMode, ReliableChannel,
+    RoundPhase as ProtocolRoundPhase, S2CCardAcquired, S2CClassLocked, S2CClassesRevealed,
+    S2CDraftOffering, S2CGoldUpdate, S2CHandshake, S2CJoinAck, S2CPhaseChanged, S2CPlacementReveal,
+    S2CResolutionEvent, S2CRoomCreated, S2CSlotUpdated,
 };
 use shared::session::PlayerId;
 
 const TICK_HZ: f64 = 60.0;
 const MAX_FRAMES: usize = 600;
-const ROOM_FLOW_MAX_FRAMES: usize = 1_200;
+const ROOM_FLOW_MAX_FRAMES: usize = 2_400;
 const FRAME_SLEEP: Duration = Duration::from_millis(10);
 
 #[test]
@@ -186,6 +200,128 @@ fn real_lightyear_two_client_room_session_reaches_class_reveal_and_session_entry
     );
 }
 
+#[test]
+fn real_lightyear_two_client_draft_initial_purchase_ready_reaches_draft_shop() {
+    let port = reserve_ephemeral_port();
+    let url = format!("ws://127.0.0.1:{port}");
+    let flags = RoomSessionFlags::new();
+
+    let mut server_app = build_room_flow_server_app(port, flags.clone());
+    for _ in 0..30 {
+        server_app.update();
+        thread::sleep(FRAME_SLEEP);
+    }
+
+    let mut host_app = build_room_flow_client_app(url.clone(), ClientRole::Host, flags.clone());
+    let mut joiner_app = build_room_flow_client_app(url, ClientRole::Joiner, flags.clone());
+    for _ in 0..ROOM_FLOW_MAX_FRAMES {
+        server_app.update();
+        host_app.update();
+        joiner_app.update();
+
+        if flags.draft_shop_observed() {
+            break;
+        }
+
+        thread::sleep(FRAME_SLEEP);
+    }
+
+    assert!(
+        flags.host_received_draft_offering.load(Ordering::SeqCst)
+            && flags.joiner_received_draft_offering.load(Ordering::SeqCst),
+        "both clients should receive server-authored S2CDraftOffering: {}",
+        flags.report()
+    );
+    assert_eq!(
+        flags.host_draft_offering_count.load(Ordering::SeqCst),
+        server_crate::feature::acquisition::DRAFT_INITIAL_OFFERING_COUNT as usize,
+        "host offering should contain the server-authored draft count: {}",
+        flags.report()
+    );
+    assert_eq!(
+        flags.joiner_draft_offering_count.load(Ordering::SeqCst),
+        server_crate::feature::acquisition::DRAFT_INITIAL_OFFERING_COUNT as usize,
+        "joiner offering should contain the server-authored draft count: {}",
+        flags.report()
+    );
+    assert!(
+        flags.host_sent_purchase_card.load(Ordering::SeqCst)
+            && flags.joiner_sent_purchase_card.load(Ordering::SeqCst),
+        "both clients should send C2SPurchaseCard through Lightyear: {}",
+        flags.report()
+    );
+    assert!(
+        flags.host_received_card_acquired.load(Ordering::SeqCst)
+            && flags.joiner_received_card_acquired.load(Ordering::SeqCst)
+            && flags
+                .host_card_acquired_source_draft_initial
+                .load(Ordering::SeqCst)
+            && flags
+                .joiner_card_acquired_source_draft_initial
+                .load(Ordering::SeqCst),
+        "clients should receive authoritative S2CCardAcquired(DraftInitial): {}",
+        flags.report()
+    );
+    assert!(
+        flags
+            .host_received_purchase_gold_update
+            .load(Ordering::SeqCst)
+            && flags
+                .joiner_received_purchase_gold_update
+                .load(Ordering::SeqCst),
+        "clients should receive authoritative economy updates after purchase: {}",
+        flags.report()
+    );
+    assert!(
+        flags.server_host_hand_size.load(Ordering::SeqCst) >= 1
+            && flags.server_joiner_hand_size.load(Ordering::SeqCst) >= 1,
+        "server authoritative PlayerHands should contain purchased cards: {}",
+        flags.report()
+    );
+    assert!(
+        flags.host_sent_ready_initial.load(Ordering::SeqCst)
+            && flags.host_sent_ready_retract.load(Ordering::SeqCst)
+            && flags.host_sent_ready_final.load(Ordering::SeqCst)
+            && flags.joiner_sent_ready.load(Ordering::SeqCst)
+            && flags.server_retract_path_observed.load(Ordering::SeqCst),
+        "ready/retract/ready path should be observed by server RSM: {}",
+        flags.report()
+    );
+    assert!(
+        flags.server_round_placement.load(Ordering::SeqCst)
+            && flags.host_received_placement.load(Ordering::SeqCst)
+            && flags.joiner_received_placement.load(Ordering::SeqCst),
+        "DraftInitial all-ready should leave the server-owned phase through Placement: {}",
+        flags.report()
+    );
+    assert!(
+        flags.host_sent_placement_submit.load(Ordering::SeqCst)
+            && flags.joiner_sent_placement_submit.load(Ordering::SeqCst)
+            && flags.server_round_resolution.load(Ordering::SeqCst),
+        "both clients should submit real C2SSubmitPlacement and reach Resolution: {}",
+        flags.report()
+    );
+    assert!(
+        flags.host_received_placement_reveal.load(Ordering::SeqCst)
+            && flags
+                .joiner_received_placement_reveal
+                .load(Ordering::SeqCst)
+            && flags.host_received_resolution_event.load(Ordering::SeqCst)
+            && flags
+                .joiner_received_resolution_event
+                .load(Ordering::SeqCst),
+        "clients should receive server-authored placement reveal and resolution event: {}",
+        flags.report()
+    );
+    assert!(
+        flags.server_round_draft_shop.load(Ordering::SeqCst)
+            && flags.host_received_draft_shop.load(Ordering::SeqCst)
+            && flags.joiner_received_draft_shop.load(Ordering::SeqCst),
+        "server should progress to DraftShop and notify both clients: {}",
+        flags.report()
+    );
+}
+
 #[derive(Clone, Resource)]
 struct HandshakeFlags {
     client_sent_hello: Arc<AtomicBool>,
@@ -230,6 +366,43 @@ struct RoomSessionFlags {
     server_round_draft_initial: Arc<AtomicBool>,
     host_received_draft_initial: Arc<AtomicBool>,
     joiner_received_draft_initial: Arc<AtomicBool>,
+    host_received_draft_offering: Arc<AtomicBool>,
+    joiner_received_draft_offering: Arc<AtomicBool>,
+    host_draft_offering_count: Arc<AtomicUsize>,
+    joiner_draft_offering_count: Arc<AtomicUsize>,
+    host_purchase_card_id: Arc<AtomicU64>,
+    joiner_purchase_card_id: Arc<AtomicU64>,
+    host_sent_purchase_card: Arc<AtomicBool>,
+    joiner_sent_purchase_card: Arc<AtomicBool>,
+    host_received_card_acquired: Arc<AtomicBool>,
+    joiner_received_card_acquired: Arc<AtomicBool>,
+    host_card_acquired_source_draft_initial: Arc<AtomicBool>,
+    joiner_card_acquired_source_draft_initial: Arc<AtomicBool>,
+    host_received_purchase_gold_update: Arc<AtomicBool>,
+    joiner_received_purchase_gold_update: Arc<AtomicBool>,
+    server_host_hand_size: Arc<AtomicUsize>,
+    server_joiner_hand_size: Arc<AtomicUsize>,
+    server_host_ready_seen: Arc<AtomicBool>,
+    host_sent_ready_initial: Arc<AtomicBool>,
+    host_sent_ready_retract: Arc<AtomicBool>,
+    host_sent_ready_final: Arc<AtomicBool>,
+    joiner_sent_ready: Arc<AtomicBool>,
+    server_retract_path_observed: Arc<AtomicBool>,
+    server_round_placement: Arc<AtomicBool>,
+    host_received_placement: Arc<AtomicBool>,
+    joiner_received_placement: Arc<AtomicBool>,
+    host_sent_placement_submit: Arc<AtomicBool>,
+    joiner_sent_placement_submit: Arc<AtomicBool>,
+    server_round_resolution: Arc<AtomicBool>,
+    host_received_resolution: Arc<AtomicBool>,
+    joiner_received_resolution: Arc<AtomicBool>,
+    host_received_placement_reveal: Arc<AtomicBool>,
+    joiner_received_placement_reveal: Arc<AtomicBool>,
+    host_received_resolution_event: Arc<AtomicBool>,
+    joiner_received_resolution_event: Arc<AtomicBool>,
+    server_round_draft_shop: Arc<AtomicBool>,
+    host_received_draft_shop: Arc<AtomicBool>,
+    joiner_received_draft_shop: Arc<AtomicBool>,
     room_code: Arc<Mutex<Option<String>>>,
 }
 
@@ -262,6 +435,43 @@ impl RoomSessionFlags {
             server_round_draft_initial: Arc::new(AtomicBool::new(false)),
             host_received_draft_initial: Arc::new(AtomicBool::new(false)),
             joiner_received_draft_initial: Arc::new(AtomicBool::new(false)),
+            host_received_draft_offering: Arc::new(AtomicBool::new(false)),
+            joiner_received_draft_offering: Arc::new(AtomicBool::new(false)),
+            host_draft_offering_count: Arc::new(AtomicUsize::new(0)),
+            joiner_draft_offering_count: Arc::new(AtomicUsize::new(0)),
+            host_purchase_card_id: Arc::new(AtomicU64::new(0)),
+            joiner_purchase_card_id: Arc::new(AtomicU64::new(0)),
+            host_sent_purchase_card: Arc::new(AtomicBool::new(false)),
+            joiner_sent_purchase_card: Arc::new(AtomicBool::new(false)),
+            host_received_card_acquired: Arc::new(AtomicBool::new(false)),
+            joiner_received_card_acquired: Arc::new(AtomicBool::new(false)),
+            host_card_acquired_source_draft_initial: Arc::new(AtomicBool::new(false)),
+            joiner_card_acquired_source_draft_initial: Arc::new(AtomicBool::new(false)),
+            host_received_purchase_gold_update: Arc::new(AtomicBool::new(false)),
+            joiner_received_purchase_gold_update: Arc::new(AtomicBool::new(false)),
+            server_host_hand_size: Arc::new(AtomicUsize::new(0)),
+            server_joiner_hand_size: Arc::new(AtomicUsize::new(0)),
+            server_host_ready_seen: Arc::new(AtomicBool::new(false)),
+            host_sent_ready_initial: Arc::new(AtomicBool::new(false)),
+            host_sent_ready_retract: Arc::new(AtomicBool::new(false)),
+            host_sent_ready_final: Arc::new(AtomicBool::new(false)),
+            joiner_sent_ready: Arc::new(AtomicBool::new(false)),
+            server_retract_path_observed: Arc::new(AtomicBool::new(false)),
+            server_round_placement: Arc::new(AtomicBool::new(false)),
+            host_received_placement: Arc::new(AtomicBool::new(false)),
+            joiner_received_placement: Arc::new(AtomicBool::new(false)),
+            host_sent_placement_submit: Arc::new(AtomicBool::new(false)),
+            joiner_sent_placement_submit: Arc::new(AtomicBool::new(false)),
+            server_round_resolution: Arc::new(AtomicBool::new(false)),
+            host_received_resolution: Arc::new(AtomicBool::new(false)),
+            joiner_received_resolution: Arc::new(AtomicBool::new(false)),
+            host_received_placement_reveal: Arc::new(AtomicBool::new(false)),
+            joiner_received_placement_reveal: Arc::new(AtomicBool::new(false)),
+            host_received_resolution_event: Arc::new(AtomicBool::new(false)),
+            joiner_received_resolution_event: Arc::new(AtomicBool::new(false)),
+            server_round_draft_shop: Arc::new(AtomicBool::new(false)),
+            host_received_draft_shop: Arc::new(AtomicBool::new(false)),
+            joiner_received_draft_shop: Arc::new(AtomicBool::new(false)),
             room_code: Arc::new(Mutex::new(None)),
         }
     }
@@ -281,8 +491,33 @@ impl RoomSessionFlags {
             && self.joiner_received_draft_initial.load(Ordering::SeqCst)
     }
 
+    fn draft_shop_observed(&self) -> bool {
+        self.session_entry_observed()
+            && self.host_received_draft_offering.load(Ordering::SeqCst)
+            && self.joiner_received_draft_offering.load(Ordering::SeqCst)
+            && self.host_sent_purchase_card.load(Ordering::SeqCst)
+            && self.joiner_sent_purchase_card.load(Ordering::SeqCst)
+            && self.host_received_card_acquired.load(Ordering::SeqCst)
+            && self.joiner_received_card_acquired.load(Ordering::SeqCst)
+            && self
+                .host_received_purchase_gold_update
+                .load(Ordering::SeqCst)
+            && self
+                .joiner_received_purchase_gold_update
+                .load(Ordering::SeqCst)
+            && self.host_sent_ready_retract.load(Ordering::SeqCst)
+            && self.server_retract_path_observed.load(Ordering::SeqCst)
+            && self.host_sent_ready_final.load(Ordering::SeqCst)
+            && self.joiner_sent_ready.load(Ordering::SeqCst)
+            && self.host_sent_placement_submit.load(Ordering::SeqCst)
+            && self.joiner_sent_placement_submit.load(Ordering::SeqCst)
+            && self.server_round_draft_shop.load(Ordering::SeqCst)
+            && self.host_received_draft_shop.load(Ordering::SeqCst)
+            && self.joiner_received_draft_shop.load(Ordering::SeqCst)
+    }
+
     fn report(&self) -> String {
-        format!(
+        let base = format!(
             "host_hello_sent={}, joiner_hello_sent={}, host_handshake={}, joiner_handshake={}, host_player_id={}, joiner_player_id={}, server_connections={}, server_rooms={}, host_create_sent={}, host_room_created={}, room_code_captured={}, joiner_join_sent={}, joiner_join_ack={}, host_slot_update={}, host_select_sent={}, joiner_select_sent={}, host_confirm_sent={}, joiner_confirm_sent={}, host_locked={}, joiner_locked={}, host_revealed={}, joiner_revealed={}, reveal_player_count={}, server_room_game_active={}, server_round_draft_initial={}, host_draft_initial={}, joiner_draft_initial={}",
             self.host_sent_hello.load(Ordering::SeqCst),
             self.joiner_sent_hello.load(Ordering::SeqCst),
@@ -311,6 +546,46 @@ impl RoomSessionFlags {
             self.server_round_draft_initial.load(Ordering::SeqCst),
             self.host_received_draft_initial.load(Ordering::SeqCst),
             self.joiner_received_draft_initial.load(Ordering::SeqCst),
+        );
+        format!(
+            "{base}, host_offering={}, joiner_offering={}, host_offering_count={}, joiner_offering_count={}, host_purchase_card_id={}, joiner_purchase_card_id={}, host_purchase_sent={}, joiner_purchase_sent={}, host_acquired={}, joiner_acquired={}, host_acquired_source_draft_initial={}, joiner_acquired_source_draft_initial={}, host_purchase_gold_update={}, joiner_purchase_gold_update={}, server_host_hand_size={}, server_joiner_hand_size={}, server_host_ready_seen={}, host_ready_initial={}, host_ready_retract={}, host_ready_final={}, joiner_ready={}, server_retract_path_observed={}, server_placement={}, host_placement={}, joiner_placement={}, host_placement_submit={}, joiner_placement_submit={}, server_resolution={}, host_resolution={}, joiner_resolution={}, host_placement_reveal={}, joiner_placement_reveal={}, host_resolution_event={}, joiner_resolution_event={}, server_draft_shop={}, host_draft_shop={}, joiner_draft_shop={}",
+            self.host_received_draft_offering.load(Ordering::SeqCst),
+            self.joiner_received_draft_offering.load(Ordering::SeqCst),
+            self.host_draft_offering_count.load(Ordering::SeqCst),
+            self.joiner_draft_offering_count.load(Ordering::SeqCst),
+            self.host_purchase_card_id.load(Ordering::SeqCst),
+            self.joiner_purchase_card_id.load(Ordering::SeqCst),
+            self.host_sent_purchase_card.load(Ordering::SeqCst),
+            self.joiner_sent_purchase_card.load(Ordering::SeqCst),
+            self.host_received_card_acquired.load(Ordering::SeqCst),
+            self.joiner_received_card_acquired.load(Ordering::SeqCst),
+            self.host_card_acquired_source_draft_initial.load(Ordering::SeqCst),
+            self.joiner_card_acquired_source_draft_initial.load(Ordering::SeqCst),
+            self.host_received_purchase_gold_update.load(Ordering::SeqCst),
+            self.joiner_received_purchase_gold_update.load(Ordering::SeqCst),
+            self.server_host_hand_size.load(Ordering::SeqCst),
+            self.server_joiner_hand_size.load(Ordering::SeqCst),
+            self.server_host_ready_seen.load(Ordering::SeqCst),
+            self.host_sent_ready_initial.load(Ordering::SeqCst),
+            self.host_sent_ready_retract.load(Ordering::SeqCst),
+            self.host_sent_ready_final.load(Ordering::SeqCst),
+            self.joiner_sent_ready.load(Ordering::SeqCst),
+            self.server_retract_path_observed.load(Ordering::SeqCst),
+            self.server_round_placement.load(Ordering::SeqCst),
+            self.host_received_placement.load(Ordering::SeqCst),
+            self.joiner_received_placement.load(Ordering::SeqCst),
+            self.host_sent_placement_submit.load(Ordering::SeqCst),
+            self.joiner_sent_placement_submit.load(Ordering::SeqCst),
+            self.server_round_resolution.load(Ordering::SeqCst),
+            self.host_received_resolution.load(Ordering::SeqCst),
+            self.joiner_received_resolution.load(Ordering::SeqCst),
+            self.host_received_placement_reveal.load(Ordering::SeqCst),
+            self.joiner_received_placement_reveal.load(Ordering::SeqCst),
+            self.host_received_resolution_event.load(Ordering::SeqCst),
+            self.joiner_received_resolution_event.load(Ordering::SeqCst),
+            self.server_round_draft_shop.load(Ordering::SeqCst),
+            self.host_received_draft_shop.load(Ordering::SeqCst),
+            self.joiner_received_draft_shop.load(Ordering::SeqCst),
         )
     }
 }
@@ -368,6 +643,39 @@ fn assert_lightyear_feature(manifest: &str, package: &str, feature: &str) {
         dependency.contains(&format!("\"{feature}\"")),
         "{package} lightyear dependency must include protocol-affecting feature {feature:?}: {dependency}"
     );
+}
+
+fn playable_card(id: u32, class: ClassId, cost: u32) -> CardData {
+    CardData {
+        id: CardId(id),
+        name_fr: format!("Carte {id}"),
+        name_en: format!("Card {id}"),
+        class,
+        family: Some("Playable E2E".to_string()),
+        rarity: Rarity::Common,
+        card_type: CardType::Minion,
+        unit_type: UnitType::Blade,
+        cost,
+        atk: 1,
+        hp: 1,
+        mp: 1,
+        ar: 0,
+        keywords: vec![],
+        effect_text: String::new(),
+        art_id: format!("playable_e2e_{id}"),
+        pool_copies_override: Some(2),
+    }
+}
+
+fn playable_e2e_catalog() -> CardCatalog {
+    CardCatalog {
+        cards: (1..=14)
+            .map(|id| playable_card(id, ClassId::Iop, 1))
+            .chain((101..=114).map(|id| playable_card(id, ClassId::Cra, 1)))
+            .chain((201..=214).map(|id| playable_card(id, ClassId::Neutral, 1)))
+            .map(|card| (card.id, card))
+            .collect::<HashMap<_, _>>(),
+    }
 }
 
 fn reserve_ephemeral_port() -> u16 {
@@ -458,7 +766,18 @@ fn build_room_flow_server_app(port: u16, flags: RoomSessionFlags) -> App {
     app.init_resource::<PeerMetadata>();
     app.add_plugins(RsmPlugin);
     app.add_plugins(GameSessionPlugin);
+    app.add_plugins(EconomyPlugin);
+    app.add_plugins(CardPoolPlugin);
+    app.add_plugins(CardAcquisitionPlugin);
+    app.add_plugins(BoardPlugin);
+    app.add_plugins(CombatPlugin);
     register_lightyear_protocol(&mut app);
+    app.add_plugins(EconomyNetworkPlugin);
+    app.insert_resource(server_crate::foundation::config::GameConfig(
+        shared::config::GameConfig::default(),
+    ));
+    app.insert_resource(playable_e2e_catalog());
+    app.insert_resource(ServerRng::new());
     app.insert_resource(flags);
     app.add_systems(Startup, move |mut commands: Commands| {
         let bind_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
@@ -478,6 +797,9 @@ fn build_room_flow_server_app(port: u16, flags: RoomSessionFlags) -> App {
     app.add_systems(
         Update,
         (
+            drain_signal_ready_messages.before(rsm_input_reader),
+            drain_submit_placement_messages
+                .before(server_crate::feature::board::BoardSystemSet::PlacementSubmission),
             record_room_flow_server_state,
             dispatch_phase_changed.after(advance_phase),
         ),
@@ -592,6 +914,7 @@ fn record_room_flow_server_state(
     connections: Option<Res<PlayerConnectionMap>>,
     rooms: Option<Res<RoomSessions>>,
     round_state: Option<Res<RoundState>>,
+    hands: Option<Res<PlayerHands>>,
 ) {
     if let Some(connections) = connections {
         flags
@@ -611,14 +934,60 @@ fn record_room_flow_server_state(
         }
     }
 
-    if round_state
-        .as_deref()
-        .map(|state| state.phase == ServerRoundPhase::DraftInitial)
-        .unwrap_or(false)
-    {
-        flags
-            .server_round_draft_initial
-            .store(true, Ordering::SeqCst);
+    let host = player_from_atomic(&flags.host_player_id);
+    let joiner = player_from_atomic(&flags.joiner_player_id);
+    if let Some(hands) = hands {
+        if let Some(host) = host {
+            flags
+                .server_host_hand_size
+                .store(hands.hand_len(host), Ordering::SeqCst);
+        }
+        if let Some(joiner) = joiner {
+            flags
+                .server_joiner_hand_size
+                .store(hands.hand_len(joiner), Ordering::SeqCst);
+        }
+    }
+
+    if let Some(state) = round_state.as_deref() {
+        match state.phase {
+            ServerRoundPhase::DraftInitial => flags
+                .server_round_draft_initial
+                .store(true, Ordering::SeqCst),
+            ServerRoundPhase::Placement => {
+                flags.server_round_placement.store(true, Ordering::SeqCst)
+            }
+            ServerRoundPhase::Resolution => {
+                flags.server_round_resolution.store(true, Ordering::SeqCst)
+            }
+            ServerRoundPhase::DraftShop => {
+                flags.server_round_draft_shop.store(true, Ordering::SeqCst)
+            }
+            _ => {}
+        }
+
+        if let Some(host) = host {
+            if state.draft_ready_players.contains(&host) {
+                flags.server_host_ready_seen.store(true, Ordering::SeqCst);
+            }
+            if flags.host_sent_ready_retract.load(Ordering::SeqCst)
+                && !state.draft_ready_players.contains(&host)
+                && joiner
+                    .map(|joiner| state.draft_ready_players.contains(&joiner))
+                    .unwrap_or(false)
+            {
+                flags
+                    .server_retract_path_observed
+                    .store(true, Ordering::SeqCst);
+            }
+        }
+    }
+}
+
+fn player_from_atomic(value: &AtomicU64) -> Option<PlayerId> {
+    match value.load(Ordering::SeqCst) {
+        0 => None,
+        id => Some(PlayerId(id)),
     }
 }
 
@@ -689,6 +1058,9 @@ fn send_room_flow_lobby_actions(
     mut join_room: Query<&mut MessageSender<C2SJoinRoom>>,
     mut select_class: Query<&mut MessageSender<C2SSelectClass>>,
     mut confirm_class: Query<&mut MessageSender<C2SConfirmClass>>,
+    mut purchase_card: Query<&mut MessageSender<C2SPurchaseCard>>,
+    mut signal_ready: Query<&mut MessageSender<C2SSignalReady>>,
+    mut submit_placement: Query<&mut MessageSender<C2SSubmitPlacement>>,
 ) {
     match probe.role {
         ClientRole::Host => {
@@ -745,6 +1117,129 @@ fn send_room_flow_lobby_actions(
             }
         }
     }
+
+    send_draft_initial_purchase(&probe, &mut purchase_card);
+    send_draft_ready_path(&probe, &mut signal_ready);
+    send_empty_placement_submit(&probe, &mut submit_placement);
+}
+
+fn send_draft_initial_purchase(
+    probe: &RoomClientProbe,
+    purchase_card: &mut Query<&mut MessageSender<C2SPurchaseCard>>,
+) {
+    let (offering_received, card_id, sent) = match probe.role {
+        ClientRole::Host => (
+            &probe.flags.host_received_draft_offering,
+            probe.flags.host_purchase_card_id.load(Ordering::SeqCst),
+            &probe.flags.host_sent_purchase_card,
+        ),
+        ClientRole::Joiner => (
+            &probe.flags.joiner_received_draft_offering,
+            probe.flags.joiner_purchase_card_id.load(Ordering::SeqCst),
+            &probe.flags.joiner_sent_purchase_card,
+        ),
+    };
+
+    if !offering_received.load(Ordering::SeqCst) || card_id == 0 || sent.load(Ordering::SeqCst) {
+        return;
+    }
+
+    if let Some(mut sender) = purchase_card.iter_mut().next() {
+        sender.send::<ReliableChannel>(C2SPurchaseCard {
+            card_id: CardId(card_id as u32),
+        });
+        sent.store(true, Ordering::SeqCst);
+    }
+}
+
+fn send_draft_ready_path(
+    probe: &RoomClientProbe,
+    signal_ready: &mut Query<&mut MessageSender<C2SSignalReady>>,
+) {
+    if !draft_purchases_observed(&probe.flags) {
+        return;
+    }
+
+    match probe.role {
+        ClientRole::Host => {
+            if !probe.flags.host_sent_ready_initial.load(Ordering::SeqCst) {
+                send_ready(signal_ready, false, &probe.flags.host_sent_ready_initial);
+                return;
+            }
+
+            if probe.flags.server_host_ready_seen.load(Ordering::SeqCst)
+                && !probe.flags.host_sent_ready_retract.load(Ordering::SeqCst)
+            {
+                send_ready(signal_ready, true, &probe.flags.host_sent_ready_retract);
+                return;
+            }
+
+            if probe
+                .flags
+                .server_retract_path_observed
+                .load(Ordering::SeqCst)
+                && !probe.flags.host_sent_ready_final.load(Ordering::SeqCst)
+            {
+                send_ready(signal_ready, false, &probe.flags.host_sent_ready_final);
+            }
+        }
+        ClientRole::Joiner => {
+            if probe.flags.host_sent_ready_retract.load(Ordering::SeqCst)
+                && !probe.flags.joiner_sent_ready.load(Ordering::SeqCst)
+            {
+                send_ready(signal_ready, false, &probe.flags.joiner_sent_ready);
+            }
+        }
+    }
+}
+
+fn draft_purchases_observed(flags: &RoomSessionFlags) -> bool {
+    flags.host_received_card_acquired.load(Ordering::SeqCst)
+        && flags.joiner_received_card_acquired.load(Ordering::SeqCst)
+        && flags
+            .host_received_purchase_gold_update
+            .load(Ordering::SeqCst)
+        && flags
+            .joiner_received_purchase_gold_update
+            .load(Ordering::SeqCst)
+}
+
+fn send_ready(
+    signal_ready: &mut Query<&mut MessageSender<C2SSignalReady>>,
+    retract: bool,
+    sent: &AtomicBool,
+) {
+    if let Some(mut sender) = signal_ready.iter_mut().next() {
+        sender.send::<ReliableChannel>(C2SSignalReady { retract });
+        sent.store(true, Ordering::SeqCst);
+    }
+}
+
+fn send_empty_placement_submit(
+    probe: &RoomClientProbe,
+    submit_placement: &mut Query<&mut MessageSender<C2SSubmitPlacement>>,
+) {
+    let (placement_received, sent) = match probe.role {
+        ClientRole::Host => (
+            &probe.flags.host_received_placement,
+            &probe.flags.host_sent_placement_submit,
+        ),
+        ClientRole::Joiner => (
+            &probe.flags.joiner_received_placement,
+            &probe.flags.joiner_sent_placement_submit,
+        ),
+    };
+
+    if !placement_received.load(Ordering::SeqCst) || sent.load(Ordering::SeqCst) {
+        return;
+    }
+
+    if let Some(mut sender) = submit_placement.iter_mut().next() {
+        sender.send::<ReliableChannel>(C2SSubmitPlacement {
+            placements: Vec::new(),
+        });
+        sent.store(true, Ordering::SeqCst);
+    }
 }
 
 fn send_class_selection_and_confirm(
@@ -778,6 +1273,11 @@ fn record_room_flow_s2c_messages(
     mut class_locked: Query<&mut MessageReceiver<S2CClassLocked>>,
     mut classes_revealed: Query<&mut MessageReceiver<S2CClassesRevealed>>,
     mut phase_changed: Query<&mut MessageReceiver<S2CPhaseChanged>>,
+    mut draft_offering: Query<&mut MessageReceiver<S2CDraftOffering>>,
+    mut card_acquired: Query<&mut MessageReceiver<S2CCardAcquired>>,
+    mut gold_update: Query<&mut MessageReceiver<S2CGoldUpdate>>,
+    mut placement_reveal: Query<&mut MessageReceiver<S2CPlacementReveal>>,
+    mut resolution_event: Query<&mut MessageReceiver<S2CResolutionEvent>>,
 ) {
     for mut receiver in &mut room_created {
         for message in receiver.receive() {
@@ -854,20 +1354,168 @@ fn record_room_flow_s2c_messages(
 
     for mut receiver in &mut phase_changed {
         for message in receiver.receive() {
-            if message.phase != ProtocolRoundPhase::DraftInitial {
-                continue;
-            }
+            record_phase_changed(&probe, message.phase);
+        }
+    }
 
+    for mut receiver in &mut draft_offering {
+        for message in receiver.receive() {
+            if let Some(card_id) = message.card_ids.first().copied() {
+                match probe.role {
+                    ClientRole::Host => {
+                        probe
+                            .flags
+                            .host_draft_offering_count
+                            .store(message.card_ids.len(), Ordering::SeqCst);
+                        probe
+                            .flags
+                            .host_purchase_card_id
+                            .store(u64::from(card_id.0), Ordering::SeqCst);
+                        probe
+                            .flags
+                            .host_received_draft_offering
+                            .store(true, Ordering::SeqCst);
+                    }
+                    ClientRole::Joiner => {
+                        probe
+                            .flags
+                            .joiner_draft_offering_count
+                            .store(message.card_ids.len(), Ordering::SeqCst);
+                        probe
+                            .flags
+                            .joiner_purchase_card_id
+                            .store(u64::from(card_id.0), Ordering::SeqCst);
+                        probe
+                            .flags
+                            .joiner_received_draft_offering
+                            .store(true, Ordering::SeqCst);
+                    }
+                }
+            }
+        }
+    }
+
+    for mut receiver in &mut card_acquired {
+        for message in receiver.receive() {
+            match probe.role {
+                ClientRole::Host => {
+                    probe
+                        .flags
+                        .host_received_card_acquired
+                        .store(true, Ordering::SeqCst);
+                    if message.source == CardSource::DraftInitial {
+                        probe
+                            .flags
+                            .host_card_acquired_source_draft_initial
+                            .store(true, Ordering::SeqCst);
+                    }
+                }
+                ClientRole::Joiner => {
+                    probe
+                        .flags
+                        .joiner_received_card_acquired
+                        .store(true, Ordering::SeqCst);
+                    if message.source == CardSource::DraftInitial {
+                        probe
+                            .flags
+                            .joiner_card_acquired_source_draft_initial
+                            .store(true, Ordering::SeqCst);
+                    }
+                }
+            }
+        }
+    }
+
+    for mut receiver in &mut gold_update {
+        for message in receiver.receive() {
+            let purchase_gold = message.gold < shared::config::GameConfig::default().starting_gold;
+            match probe.role {
+                ClientRole::Host => {
+                    if probe.flags.host_sent_purchase_card.load(Ordering::SeqCst) && purchase_gold {
+                        probe
+                            .flags
+                            .host_received_purchase_gold_update
+                            .store(true, Ordering::SeqCst);
+                    }
+                }
+                ClientRole::Joiner => {
+                    if probe.flags.joiner_sent_purchase_card.load(Ordering::SeqCst) && purchase_gold
+                    {
+                        probe
+                            .flags
+                            .joiner_received_purchase_gold_update
+                            .store(true, Ordering::SeqCst);
+                    }
+                }
+            }
+        }
+    }
+
+    for mut receiver in &mut placement_reveal {
+        for _message in receiver.receive() {
             match probe.role {
                 ClientRole::Host => probe
                     .flags
-                    .host_received_draft_initial
+                    .host_received_placement_reveal
                     .store(true, Ordering::SeqCst),
                 ClientRole::Joiner => probe
                     .flags
-                    .joiner_received_draft_initial
+                    .joiner_received_placement_reveal
                     .store(true, Ordering::SeqCst),
             }
         }
+    }
+
+    for mut receiver in &mut resolution_event {
+        for _message in receiver.receive() {
+            match probe.role {
+                ClientRole::Host => probe
+                    .flags
+                    .host_received_resolution_event
+                    .store(true, Ordering::SeqCst),
+                ClientRole::Joiner => probe
+                    .flags
+                    .joiner_received_resolution_event
+                    .store(true, Ordering::SeqCst),
+            }
+        }
+    }
+}
+
+fn record_phase_changed(probe: &RoomClientProbe, phase: ProtocolRoundPhase) {
+    match (probe.role, phase) {
+        (ClientRole::Host, ProtocolRoundPhase::DraftInitial) => probe
+            .flags
+            .host_received_draft_initial
+            .store(true, Ordering::SeqCst),
+        (ClientRole::Joiner, ProtocolRoundPhase::DraftInitial) => probe
+            .flags
+            .joiner_received_draft_initial
+            .store(true, Ordering::SeqCst),
+        (ClientRole::Host, ProtocolRoundPhase::Placement) => probe
+            .flags
+            .host_received_placement
+            .store(true, Ordering::SeqCst),
+        (ClientRole::Joiner, ProtocolRoundPhase::Placement) => probe
+            .flags
+            .joiner_received_placement
+            .store(true, Ordering::SeqCst),
+        (ClientRole::Host, ProtocolRoundPhase::Resolution) => probe
+            .flags
+            .host_received_resolution
+            .store(true, Ordering::SeqCst),
+        (ClientRole::Joiner, ProtocolRoundPhase::Resolution) => probe
+            .flags
+            .joiner_received_resolution
+            .store(true, Ordering::SeqCst),
+        (ClientRole::Host, ProtocolRoundPhase::DraftShop) => probe
+            .flags
+            .host_received_draft_shop
+            .store(true, Ordering::SeqCst),
+        (ClientRole::Joiner, ProtocolRoundPhase::DraftShop) => probe
+            .flags
+            .joiner_received_draft_shop
+            .store(true, Ordering::SeqCst),
+        _ => {}
     }
 }
