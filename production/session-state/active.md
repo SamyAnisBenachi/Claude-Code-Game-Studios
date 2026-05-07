@@ -2243,3 +2243,16 @@ C:\Program Files\GitHub CLI\gh.exe
 - No source or test files changed during close-out.
 - Sprint 8 planning is now safe as the next docs-planning step if explicitly requested, with the carried Sprint 7 conditions preserved. No Sprint 8 plan was created.
 - Next recommended: `/sprint-plan new` for Sprint 8 planning when the user requests it.
+
+## Session Extract - /story-done 2026-05-07
+- Verdict: COMPLETE
+- Story: `production/epics/shop-auction-ui/story-007-auction-settlement-and-shop-transition.md` - Story 007: Auction Settlement and Shop Transition
+- Criteria: 8/8 passing; local winner settlement enters terminal settling state and requests local card feedback, opponent winner and no-bid outcomes skip local hand movement, settlement clears bid gates and stale accepted/rejected effects, auction-to-shop transition uses the 350ms ordering with reduced-motion preserving state order, DRAFT_SHOP timer starts after shop expansion, and PLACEMENT interrupts settlement immediately.
+- Test Evidence: `production/qa/evidence/shop-auction-ui-settlement-transition-evidence.md` and `tests/integration/shop_auction_ui/auction_settlement_test.rs`.
+- Verification: `cargo test -p client --test shop_auction_ui_auction_settlement_test` passed 7/7; adjacent Shop/Auction UI regressions passed 25/25; `cargo test -p server --test playable_client_real_e2e_loop_test` passed 4/4; `cargo fmt -p client -- --check`, `cargo check -p client`, and `git diff --check` passed.
+- Notes: No blocking GDD, ADR-013, ADR-019, ADR-021, Bevy 0.18, Lightyear, or control-manifest deviation found for serialized story-done closure. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW because `production/review-mode.txt` is absent.
+- Scope guard: SAU-007 closure is settlement and shop-transition presentation behavior only. It does not claim public release readiness, broad accessibility completion, playtest/fun-hypothesis validation, full playable-client manual QA, or full game completion.
+- QA conditions: `QA-COND-0005` remains accepted risk for friend-game scope only and is not verified Standard-tier accessibility completion. `QA-COND-0006` remains accepted-risk/deferred and is not playtest evidence or fun-hypothesis validation.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` marks SAU-007 done. Sprint 8 carried conditions and no-claim language are preserved.
+- Next recommended: Create/refresh the Sprint 8 playable story docs/readiness package for `PLAYABLE-004` and `LOOP-001`, then run `/qa-plan sprint-8` when that planning scope is requested. No `/smoke-check`, `/team-qa`, `/gate-check`, Sprint 8 status close-out, or new implementation was run in this serialized story-done scope.

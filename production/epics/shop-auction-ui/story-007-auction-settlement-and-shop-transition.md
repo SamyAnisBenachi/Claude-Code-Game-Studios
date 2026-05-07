@@ -1,7 +1,7 @@
 # Story 007: Auction Settlement and Shop Transition
 
 > **Epic**: Shop / Auction UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Visual/Feel
 > **Manifest Version**: 2026-05-05
@@ -102,7 +102,7 @@ This story handles terminal auction settlement, winner/no-bid presentation, card
 - Integration support test: `tests/integration/shop_auction_ui/auction_settlement_test.rs`
 - Expected test command: `cargo test -p client --test shop_auction_ui_auction_settlement_test`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing
 
 ## Dependencies
 
@@ -117,3 +117,26 @@ This story handles terminal auction settlement, winner/no-bid presentation, card
 
 - None.
 - `/dev-story` safe next: Yes. SAU-004, SAU-005, and SAU-006 are Complete.
+
+## Completion Notes
+
+**Completed**: 2026-05-07
+
+**Criteria**: 8/8 passing.
+
+**Verification**:
+
+- `cargo test -p client --test shop_auction_ui_auction_settlement_test` passed 7/7.
+- Adjacent Shop/Auction UI regressions passed 25/25: `shop_auction_ui_auction_activation_test` 6/6, `shop_auction_ui_auction_bid_buttons_test` 5/5, `shop_auction_ui_auction_feedback_test` 6/6, and `shop_auction_ui_shop_panel_test` 8/8.
+- `cargo test -p server --test playable_client_real_e2e_loop_test` passed 4/4.
+- `cargo fmt -p client -- --check` passed.
+- `cargo check -p client` passed.
+- `git diff --check` passed.
+
+**Test Evidence**: `production/qa/evidence/shop-auction-ui-settlement-transition-evidence.md` and `tests/integration/shop_auction_ui/auction_settlement_test.rs`.
+
+**Deviations**: None blocking. Visual/Feel evidence is scoped to settlement/transition behavior and does not claim public release readiness, broad accessibility completion, playtest/fun-hypothesis validation, full playable-client manual QA, or full game completion.
+
+**Code Review**: Skipped by lean review mode because `production/review-mode.txt` is absent.
+
+**Sprint 8 Impact**: SAU-007 is complete. Sprint 8 carried conditions remain unchanged: QA-COND-0005 remains friend-game-only accepted risk and QA-COND-0006 remains accepted-risk/deferred. No `/smoke-check`, `/team-qa`, `/gate-check`, Sprint 8 status close-out, or new implementation was run by this serialized story-done scope.

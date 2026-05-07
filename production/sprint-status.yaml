@@ -63,15 +63,16 @@ stories:
     name: "Auction Settlement and Shop Transition"
     file: "production/epics/shop-auction-ui/story-007-auction-settlement-and-shop-transition.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "UI/client programmer"
     estimate_days: 1.00
     blocker: ""
-    completed: ""
+    completed: "2026-05-07"
     notes:
-      - "Existing story status is Ready."
+      - "Story status is Complete."
       - "Prioritized because Sprint 7 reached auction settlement but did not pull SAU-007."
       - "Settlement must be terminal, late-message-safe, and interruptible by PLACEMENT."
+      - "Story-done verified settlement transition evidence and required regressions; no public release readiness, broad accessibility completion, playtest/fun-hypothesis validation, full playable-client manual QA, or full game completion claimed."
 
   - id: "PLAYABLE-004"
     name: "Friend-Game Result Endpoint Expansion"
