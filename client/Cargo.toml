@@ -32,38 +32,47 @@ path = "src/lib.rs"
 [[bin]]
 name = "client"
 path = "src/main.rs"
+test = false
 
 [[bin]]
 name = "board_rendering_perf_harness"
 path = "src/board_rendering_perf_harness.rs"
+test = false
 
 [[bin]]
 name = "hud_mana_shapes_harness"
 path = "src/hud_mana_shapes_harness.rs"
+test = false
 
 [[bin]]
 name = "hud_text_size_contrast_harness"
 path = "src/hud_text_size_contrast_harness.rs"
+test = false
 
 [[bin]]
 name = "hand_ui_placement_staged_disclosure_harness"
 path = "src/hand_ui_placement_staged_disclosure_harness.rs"
+test = false
 
 [[bin]]
 name = "hand_ui_qa_cond_0007_harness"
 path = "src/hand_ui_qa_cond_0007_harness.rs"
+test = false
 
 [[bin]]
 name = "board_rendering_qa_cond_0007_replay_harness"
 path = "src/board_rendering_qa_cond_0007_replay_harness.rs"
+test = false
 
 [[bin]]
 name = "shop_auction_bid_target_focus_harness"
 path = "src/shop_auction_bid_target_focus_harness.rs"
+test = false
 
 [[bin]]
 name = "shop_auction_draft_initial_objective_overlay_harness"
 path = "src/shop_auction_draft_initial_objective_overlay_harness.rs"
+test = false
 
 [[test]]
 name = "card_animations_plugin_scaffold_test"
@@ -260,6 +269,10 @@ path = "../tests/integration/shop_auction_ui/auction_bid_target_focus_test.rs"
 [[test]]
 name = "shop_auction_ui_auction_feedback_test"
 path = "../tests/integration/shop_auction_ui/auction_feedback_test.rs"
+
+[[test]]
+name = "shop_auction_ui_auction_settlement_test"
+path = "../tests/integration/shop_auction_ui/auction_settlement_test.rs"
 
 [[test]]
 name = "board_rendering_grid_camera_test"

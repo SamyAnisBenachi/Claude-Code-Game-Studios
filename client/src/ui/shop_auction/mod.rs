@@ -4,12 +4,17 @@ use shared::card::{CardCatalog, CardId, Rarity};
 use shared::protocol::{
     BidRejectedReason, C2SPlaceBid, C2SPurchaseCard, C2SRefreshShop, C2SSignalReady,
     ReliableChannel, RoundPhase, S2CAuctionBidAccepted, S2CAuctionBidRejected, S2CAuctionCard,
+    S2CAuctionSettled,
 };
 use shared::session::PlayerId;
 
+use crate::card_animations::{
+    AuctionPanelTransitionRequested, CardAcquiredAnimReady, SettlementOverlayRequested,
+};
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use crate::ui::hud::{HudGoldBroadcastMessage, HudPlayerIds};
+use crate::ui::settings::AccessibilityPreferences;
 
 pub const SHOP_AUCTION_UI_PANEL_ROOT_COUNT: usize = 6;
 pub const SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT: usize = 9;
@@ -22,6 +27,7 @@ pub const AUCTION_AWAITING_SERVER_DELAY_MS: u32 = 1_500;
 pub const AUCTION_TOAST_FADE_IN_MS: u32 = 120;
 pub const AUCTION_TOAST_HOLD_MS: u32 = 2_000;
 pub const AUCTION_TOAST_FADE_OUT_MS: u32 = 120;
+pub const AUCTION_SETTLEMENT_TRANSITION_MS: u32 = 350;
 pub const DRAFT_INITIAL_OBJECTIVE_COPY: &str = "Select up to 9 cards to keep. You have 45 seconds.";
 pub const AUCTION_BID_TARGET_WIDTH_PX: f32 = 108.0;
 pub const AUCTION_BID_TARGET_HEIGHT_PX: f32 = 44.0;
@@ -42,6 +48,7 @@ pub enum ShopAuctionUiMode {
     DraftOffering,
     AuctionPreparing,
     Auction,
+    AuctionSettling,
     Shop,
 }
 
@@ -203,6 +210,7 @@ pub enum ShopAuctionAuctionPanelState {
     Hidden,
     Preparing,
     Active,
+    Settling,
     ConnectionError,
 }
 
@@ -258,6 +266,18 @@ impl ShopAuctionAuctionState {
         self.timer_duration_ms = timer_duration_ms;
         self.timer_remaining_ms = timer_duration_ms;
         self.locally_expired_elapsed_ms = 0;
+    }
+
+    fn enter_settling(&mut self, amount: u32) {
+        self.panel_state = ShopAuctionAuctionPanelState::Settling;
+        self.preparing_elapsed_ms = 0;
+        self.timer_duration_ms = 0;
+        self.timer_remaining_ms = 0;
+        self.locally_expired_elapsed_ms = 0;
+        if amount > 0 {
+            self.current_price = amount;
+        }
+        self.clear_bid_resolution_state();
     }
 
     fn clear(&mut self) {
@@ -331,6 +351,7 @@ impl ShopAuctionAuctionState {
             self.panel_state,
             ShopAuctionAuctionPanelState::Preparing
                 | ShopAuctionAuctionPanelState::Active
+                | ShopAuctionAuctionPanelState::Settling
                 | ShopAuctionAuctionPanelState::ConnectionError
         )
     }
@@ -345,6 +366,122 @@ impl ShopAuctionAuctionState {
         self.panel_state == ShopAuctionAuctionPanelState::Active
             && self.timer_duration_ms > 0
             && self.timer_remaining_ms == 0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShopAuctionSettlementOutcome {
+    LocalWinner,
+    OpponentWinner,
+    NoBid,
+}
+
+#[derive(Resource, Debug, Clone, PartialEq, Eq)]
+pub struct ShopAuctionSettlementState {
+    pub outcome: Option<ShopAuctionSettlementOutcome>,
+    pub winner: Option<PlayerId>,
+    pub amount: u32,
+    pub card_id: Option<CardId>,
+    pub elapsed_ms: u32,
+    pub transition_duration_ms: u32,
+    pub transition_active: bool,
+    pub local_card_feedback_requests: u32,
+    pub overlay_requests: u32,
+    pub panel_transition_requests: u32,
+}
+
+impl Default for ShopAuctionSettlementState {
+    fn default() -> Self {
+        Self {
+            outcome: None,
+            winner: None,
+            amount: 0,
+            card_id: None,
+            elapsed_ms: 0,
+            transition_duration_ms: AUCTION_SETTLEMENT_TRANSITION_MS,
+            transition_active: false,
+            local_card_feedback_requests: 0,
+            overlay_requests: 0,
+            panel_transition_requests: 0,
+        }
+    }
+}
+
+impl ShopAuctionSettlementState {
+    fn begin(
+        &mut self,
+        outcome: ShopAuctionSettlementOutcome,
+        winner: Option<PlayerId>,
+        amount: u32,
+        card_id: Option<CardId>,
+        local_card_feedback: bool,
+    ) {
+        self.outcome = Some(outcome);
+        self.winner = winner;
+        self.amount = amount;
+        self.card_id = card_id;
+        self.elapsed_ms = 0;
+        self.transition_duration_ms = AUCTION_SETTLEMENT_TRANSITION_MS;
+        self.transition_active = true;
+        self.overlay_requests = self.overlay_requests.saturating_add(1);
+        self.panel_transition_requests = self.panel_transition_requests.saturating_add(1);
+        if local_card_feedback {
+            self.local_card_feedback_requests = self.local_card_feedback_requests.saturating_add(1);
+        }
+    }
+
+    fn clear(&mut self) {
+        *self = Self::default();
+    }
+
+    fn finish_transition(&mut self) {
+        self.transition_active = false;
+        self.elapsed_ms = self.transition_duration_ms;
+    }
+
+    pub fn transition_progress(&self) -> f32 {
+        if self.transition_duration_ms == 0 {
+            return 1.0;
+        }
+
+        (self.elapsed_ms as f32 / self.transition_duration_ms as f32).min(1.0)
+    }
+
+    pub fn overlay_text(&self) -> &'static str {
+        match self.outcome {
+            Some(ShopAuctionSettlementOutcome::LocalWinner) => "Auction won - card moving to hand",
+            Some(ShopAuctionSettlementOutcome::OpponentWinner) => "Opponent won the auction",
+            Some(ShopAuctionSettlementOutcome::NoBid) => "No bids - card returned",
+            None => "",
+        }
+    }
+}
+
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionShopTimerState {
+    pub duration_ms: u32,
+    pub remaining_ms: u32,
+    pub started: bool,
+    pub deferred: bool,
+}
+
+impl ShopAuctionShopTimerState {
+    fn defer(&mut self, duration_ms: u32) {
+        self.duration_ms = duration_ms;
+        self.remaining_ms = duration_ms;
+        self.started = false;
+        self.deferred = true;
+    }
+
+    fn start(&mut self, duration_ms: u32) {
+        self.duration_ms = duration_ms;
+        self.remaining_ms = duration_ms;
+        self.started = true;
+        self.deferred = false;
+    }
+
+    fn stop(&mut self) {
+        *self = Self::default();
     }
 }
 
@@ -402,6 +539,7 @@ pub struct ShopAuctionUiEntities {
     pub toast_root: Entity,
     pub toast_text: Entity,
     pub settlement_overlay: Entity,
+    pub settlement_overlay_text: Entity,
 }
 
 impl ShopAuctionUiEntities {
@@ -529,6 +667,12 @@ impl ShopAuctionToastState {
         self.active = true;
     }
 
+    fn clear(&mut self) {
+        self.text.clear();
+        self.elapsed_ms = 0;
+        self.active = false;
+    }
+
     fn tick(&mut self, elapsed_ms: u32) {
         if !self.active {
             return;
@@ -563,6 +707,9 @@ impl ShopAuctionToastState {
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuctionToastText;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionSettlementOverlayText;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DraftInitialSlotIndex(pub u8);
@@ -741,6 +888,21 @@ impl From<S2CAuctionBidRejected> for ShopAuctionBidRejectedReceived {
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionSettledReceived {
+    pub winner: Option<PlayerId>,
+    pub amount: u32,
+}
+
+impl From<S2CAuctionSettled> for ShopAuctionSettledReceived {
+    fn from(message: S2CAuctionSettled) -> Self {
+        Self {
+            winner: message.winner,
+            amount: message.amount,
+        }
+    }
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShopAuctionDraftSlotClicked {
     pub slot: Entity,
 }
@@ -848,6 +1010,8 @@ impl Plugin for ShopAuctionUiPlugin {
             .init_resource::<ShopAuctionDraftInitialState>()
             .init_resource::<ShopAuctionShopState>()
             .init_resource::<ShopAuctionAuctionState>()
+            .init_resource::<ShopAuctionSettlementState>()
+            .init_resource::<ShopAuctionShopTimerState>()
             .init_resource::<ShopAuctionLocalGoldView>()
             .init_resource::<AuctionTimerTargetFill>()
             .init_resource::<ShopAuctionToastState>()
@@ -865,6 +1029,7 @@ impl Plugin for ShopAuctionUiPlugin {
             .add_message::<ShopAuctionShopSlotsReceived>()
             .add_message::<ShopAuctionBidAcceptedReceived>()
             .add_message::<ShopAuctionBidRejectedReceived>()
+            .add_message::<ShopAuctionSettledReceived>()
             .add_message::<ShopAuctionDraftSlotClicked>()
             .add_message::<ShopAuctionDraftReadyButtonClicked>()
             .add_message::<ShopAuctionDraftObjectiveDismissClicked>()
@@ -899,10 +1064,12 @@ impl Plugin for ShopAuctionUiPlugin {
                         drain_auction_card_receiver_system,
                         drain_auction_bid_accepted_receiver_system,
                         drain_auction_bid_rejected_receiver_system,
+                        drain_auction_settled_receiver_system,
                         handle_auction_snapshot_system,
                         handle_auction_gold_broadcast_system,
                         handle_auction_bid_accepted_system,
                         handle_auction_bid_rejected_system,
+                        handle_auction_settled_system,
                         handle_draft_offering_system,
                         handle_auction_card_system,
                         handle_card_acquired_system,
@@ -931,10 +1098,12 @@ impl Plugin for ShopAuctionUiPlugin {
                     (
                         tick_auction_preparing_timeout_system,
                         tick_auction_countdown_system,
+                        tick_auction_settlement_transition_system,
                         tick_auction_toast_system,
                         sync_draft_initial_panel_system,
                         sync_shop_panel_system,
                         sync_auction_panel_system,
+                        sync_settlement_overlay_system,
                         sync_auction_toast_system,
                     )
                         .chain()
@@ -1012,6 +1181,8 @@ pub fn shop_auction_ui_phase_transition_system(
     mut draft_state: ResMut<ShopAuctionDraftInitialState>,
     mut shop_state: ResMut<ShopAuctionShopState>,
     mut auction_state: ResMut<ShopAuctionAuctionState>,
+    mut settlement_state: ResMut<ShopAuctionSettlementState>,
+    mut shop_timer: ResMut<ShopAuctionShopTimerState>,
     mut visibility: Query<&mut Visibility>,
 ) {
     if !current.is_changed() {
@@ -1020,19 +1191,56 @@ pub fn shop_auction_ui_phase_transition_system(
 
     let previous_mode = *mode;
     let mut next_mode = ShopAuctionUiMode::from_phase(current.phase);
+    let settlement_active = settlement_state.transition_active;
 
-    if current.phase == RoundPhase::DraftAuction {
+    if settlement_active {
+        match current.phase {
+            RoundPhase::DraftShop => {
+                shop_state.enter_shop_phase();
+                shop_timer.defer(phase_view.timer_duration_ms);
+                next_mode = ShopAuctionUiMode::AuctionSettling;
+            }
+            RoundPhase::DraftAuction => {
+                next_mode = ShopAuctionUiMode::AuctionSettling;
+            }
+            RoundPhase::Placement
+            | RoundPhase::Resolution
+            | RoundPhase::GameOver
+            | RoundPhase::DraftInitial
+            | RoundPhase::Lobby
+            | RoundPhase::Handshaking => {
+                settlement_state.clear();
+                auction_state.clear();
+                shop_timer.stop();
+            }
+        }
+    } else if current.phase == RoundPhase::DraftAuction {
         shop_state.enter_auction_phase();
+        shop_timer.stop();
         if auction_state.card_id.is_some() {
             auction_state.enter_active(phase_view.timer_duration_ms);
             next_mode = ShopAuctionUiMode::Auction;
         } else {
             auction_state.panel_state = ShopAuctionAuctionPanelState::Hidden;
         }
+    } else if current.phase == RoundPhase::DraftShop
+        && auction_state.card_id.is_some()
+        && matches!(
+            auction_state.panel_state,
+            ShopAuctionAuctionPanelState::Preparing
+                | ShopAuctionAuctionPanelState::Active
+                | ShopAuctionAuctionPanelState::ConnectionError
+        )
+    {
+        auction_state.clear_bid_resolution_state();
+        shop_state.enter_shop_phase();
+        shop_timer.defer(phase_view.timer_duration_ms);
+        next_mode = ShopAuctionUiMode::AuctionSettling;
     } else if matches!(
         auction_state.panel_state,
         ShopAuctionAuctionPanelState::Preparing
             | ShopAuctionAuctionPanelState::Active
+            | ShopAuctionAuctionPanelState::Settling
             | ShopAuctionAuctionPanelState::ConnectionError
     ) {
         auction_state.clear();
@@ -1049,15 +1257,20 @@ pub fn shop_auction_ui_phase_transition_system(
     match next_mode {
         ShopAuctionUiMode::Shop if previous_mode != ShopAuctionUiMode::Shop => {
             shop_state.enter_shop_phase();
+            shop_timer.start(phase_view.timer_duration_ms);
         }
         ShopAuctionUiMode::DraftOffering => {
             shop_state.clear_all();
+            shop_timer.stop();
         }
         ShopAuctionUiMode::Inactive if current.phase != RoundPhase::DraftAuction => {
             shop_state.clear_all();
+            shop_timer.stop();
         }
         ShopAuctionUiMode::Inactive => {}
-        ShopAuctionUiMode::AuctionPreparing | ShopAuctionUiMode::Auction => {}
+        ShopAuctionUiMode::AuctionPreparing
+        | ShopAuctionUiMode::Auction
+        | ShopAuctionUiMode::AuctionSettling => {}
         _ => {}
     }
 
@@ -1071,6 +1284,7 @@ pub fn shop_auction_ui_phase_transition_system(
         ShopAuctionUiMode::AuctionPreparing | ShopAuctionUiMode::Auction => {
             auction_state.panel_visible()
         }
+        ShopAuctionUiMode::AuctionSettling => auction_state.panel_visible(),
         ShopAuctionUiMode::Shop => shop_state.slots_loaded,
     };
 
@@ -1093,7 +1307,9 @@ pub fn shop_auction_ui_phase_transition_system(
         visibility_for(
             matches!(
                 next_mode,
-                ShopAuctionUiMode::AuctionPreparing | ShopAuctionUiMode::Auction
+                ShopAuctionUiMode::AuctionPreparing
+                    | ShopAuctionUiMode::Auction
+                    | ShopAuctionUiMode::AuctionSettling
             ) && auction_state.panel_visible(),
         ),
     );
@@ -1107,6 +1323,11 @@ pub fn shop_auction_ui_phase_transition_system(
     set_visibility(
         &mut visibility,
         entities.settlement_overlay,
+        Visibility::Hidden,
+    );
+    set_visibility(
+        &mut visibility,
+        entities.settlement_overlay_text,
         Visibility::Hidden,
     );
 }
@@ -1139,6 +1360,17 @@ pub fn drain_auction_bid_accepted_receiver_system(
 pub fn drain_auction_bid_rejected_receiver_system(
     mut receivers: Query<&mut MessageReceiver<S2CAuctionBidRejected>>,
     mut writer: MessageWriter<ShopAuctionBidRejectedReceived>,
+) {
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            writer.write(message.into());
+        }
+    }
+}
+
+pub fn drain_auction_settled_receiver_system(
+    mut receivers: Query<&mut MessageReceiver<S2CAuctionSettled>>,
+    mut writer: MessageWriter<ShopAuctionSettledReceived>,
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
@@ -1236,6 +1468,7 @@ pub fn handle_auction_gold_broadcast_system(
 pub fn handle_auction_bid_accepted_system(
     player_ids: Option<Res<HudPlayerIds>>,
     local_gold: Res<ShopAuctionLocalGoldView>,
+    mode: Res<ShopAuctionUiMode>,
     mut messages: MessageReader<ShopAuctionBidAcceptedReceived>,
     mut auction_state: ResMut<ShopAuctionAuctionState>,
     mut timer_target: ResMut<AuctionTimerTargetFill>,
@@ -1246,7 +1479,9 @@ pub fn handle_auction_bid_accepted_system(
         .or(local_gold.player_id);
 
     for message in messages.read() {
-        if auction_state.panel_state != ShopAuctionAuctionPanelState::Active {
+        if *mode != ShopAuctionUiMode::Auction
+            || auction_state.panel_state != ShopAuctionAuctionPanelState::Active
+        {
             continue;
         }
 
@@ -1272,18 +1507,93 @@ pub fn handle_auction_bid_accepted_system(
 }
 
 pub fn handle_auction_bid_rejected_system(
+    mode: Res<ShopAuctionUiMode>,
     mut messages: MessageReader<ShopAuctionBidRejectedReceived>,
     mut auction_state: ResMut<ShopAuctionAuctionState>,
     mut toast_state: ResMut<ShopAuctionToastState>,
 ) {
     for message in messages.read() {
-        if auction_state.panel_state != ShopAuctionAuctionPanelState::Active {
+        if *mode != ShopAuctionUiMode::Auction
+            || auction_state.panel_state != ShopAuctionAuctionPanelState::Active
+        {
             continue;
         }
 
         let toast = rejection_toast_text(message.reason, auction_state.current_price);
         auction_state.clear_bid_resolution_state();
         toast_state.show(toast);
+    }
+}
+
+pub fn handle_auction_settled_system(
+    player_ids: Option<Res<HudPlayerIds>>,
+    local_gold: Res<ShopAuctionLocalGoldView>,
+    current: Res<CurrentClientPhase>,
+    phase_view: Res<ClientPhaseView>,
+    mut messages: MessageReader<ShopAuctionSettledReceived>,
+    mut auction_state: ResMut<ShopAuctionAuctionState>,
+    mut settlement_state: ResMut<ShopAuctionSettlementState>,
+    mut shop_state: ResMut<ShopAuctionShopState>,
+    mut shop_timer: ResMut<ShopAuctionShopTimerState>,
+    mut hand_view: ResMut<ShopAuctionDraftHandView>,
+    mut mode: ResMut<ShopAuctionUiMode>,
+    mut toast_state: ResMut<ShopAuctionToastState>,
+    mut timer_target: ResMut<AuctionTimerTargetFill>,
+    mut card_anim_messages: Option<ResMut<Messages<CardAcquiredAnimReady>>>,
+    mut overlay_messages: Option<ResMut<Messages<SettlementOverlayRequested>>>,
+    mut panel_transition_messages: Option<ResMut<Messages<AuctionPanelTransitionRequested>>>,
+) {
+    let local_player_id = player_ids
+        .as_deref()
+        .map(|ids| ids.local_id)
+        .or(local_gold.player_id);
+
+    for message in messages.read() {
+        if !matches!(
+            current.phase,
+            RoundPhase::DraftAuction | RoundPhase::DraftShop
+        ) {
+            continue;
+        }
+
+        let outcome = match message.winner {
+            Some(winner) if Some(winner) == local_player_id => {
+                ShopAuctionSettlementOutcome::LocalWinner
+            }
+            Some(_) => ShopAuctionSettlementOutcome::OpponentWinner,
+            None => ShopAuctionSettlementOutcome::NoBid,
+        };
+        let local_card_feedback = outcome == ShopAuctionSettlementOutcome::LocalWinner;
+
+        auction_state.enter_settling(message.amount);
+        settlement_state.begin(
+            outcome,
+            message.winner,
+            message.amount,
+            auction_state.card_id,
+            local_card_feedback,
+        );
+        toast_state.clear();
+        *timer_target = AuctionTimerTargetFill::default();
+
+        if local_card_feedback {
+            hand_view.hand_size = hand_view.hand_size.saturating_add(1).min(10);
+            if let Some(messages) = card_anim_messages.as_deref_mut() {
+                messages.write(CardAcquiredAnimReady);
+            }
+        }
+        if let Some(messages) = overlay_messages.as_deref_mut() {
+            messages.write(SettlementOverlayRequested);
+        }
+        if let Some(messages) = panel_transition_messages.as_deref_mut() {
+            messages.write(AuctionPanelTransitionRequested);
+        }
+
+        if current.phase == RoundPhase::DraftShop {
+            shop_state.enter_shop_phase();
+            shop_timer.defer(phase_view.timer_duration_ms);
+        }
+        *mode = ShopAuctionUiMode::AuctionSettling;
     }
 }
 
@@ -1295,6 +1605,10 @@ pub fn handle_auction_card_system(
     mut mode: ResMut<ShopAuctionUiMode>,
 ) {
     for message in auction_cards.read() {
+        if auction_state.panel_state == ShopAuctionAuctionPanelState::Settling {
+            continue;
+        }
+
         auction_state.buffer_card(&S2CAuctionCard {
             card_id: message.card_id,
             starting_price: message.starting_price,
@@ -1397,8 +1711,13 @@ pub fn handle_shop_slots_system(
     mut shop_slots: Query<(Entity, &ShopSlotIndex, &mut Text, &mut Visibility)>,
 ) {
     let mut slots_to_apply = None;
+    let can_apply_shop_slots = current.phase == RoundPhase::DraftShop
+        && matches!(
+            *mode,
+            ShopAuctionUiMode::Shop | ShopAuctionUiMode::AuctionSettling
+        );
     for message in slot_messages.read() {
-        if *mode == ShopAuctionUiMode::Shop && current.phase == RoundPhase::DraftShop {
+        if can_apply_shop_slots {
             slots_to_apply = Some(message.slots.clone());
         } else if should_buffer_shop_slots(current.phase) {
             shop_state.queue_slots(message.slots.clone());
@@ -1407,7 +1726,7 @@ pub fn handle_shop_slots_system(
         }
     }
 
-    if *mode == ShopAuctionUiMode::Shop && slots_to_apply.is_none() {
+    if can_apply_shop_slots && slots_to_apply.is_none() {
         slots_to_apply = shop_state.take_buffered_slots();
     }
 
@@ -1415,7 +1734,7 @@ pub fn handle_shop_slots_system(
         return;
     };
 
-    if *mode != ShopAuctionUiMode::Shop {
+    if !can_apply_shop_slots {
         shop_state.queue_slots(slots);
         return;
     }
@@ -2266,6 +2585,57 @@ pub fn tick_auction_countdown_system(
     }
 }
 
+pub fn tick_auction_settlement_transition_system(
+    time: Res<Time>,
+    current: Res<CurrentClientPhase>,
+    phase_view: Res<ClientPhaseView>,
+    preferences: Option<Res<AccessibilityPreferences>>,
+    mut mode: ResMut<ShopAuctionUiMode>,
+    mut auction_state: ResMut<ShopAuctionAuctionState>,
+    mut settlement_state: ResMut<ShopAuctionSettlementState>,
+    mut shop_timer: ResMut<ShopAuctionShopTimerState>,
+) {
+    if auction_state.panel_state != ShopAuctionAuctionPanelState::Settling
+        || !settlement_state.transition_active
+    {
+        return;
+    }
+
+    if matches!(
+        current.phase,
+        RoundPhase::Placement | RoundPhase::Resolution | RoundPhase::GameOver
+    ) {
+        auction_state.clear();
+        settlement_state.clear();
+        shop_timer.stop();
+        *mode = ShopAuctionUiMode::Inactive;
+        return;
+    }
+
+    let reduced_motion = preferences
+        .as_deref()
+        .is_some_and(|preferences| preferences.reduced_motion);
+    settlement_state.transition_duration_ms = if reduced_motion {
+        0
+    } else {
+        AUCTION_SETTLEMENT_TRANSITION_MS
+    };
+
+    let elapsed_ms = u32::try_from(time.delta().as_millis()).unwrap_or(u32::MAX);
+    settlement_state.elapsed_ms = settlement_state.elapsed_ms.saturating_add(elapsed_ms);
+
+    if current.phase != RoundPhase::DraftShop {
+        return;
+    }
+
+    if settlement_state.elapsed_ms >= settlement_state.transition_duration_ms {
+        settlement_state.finish_transition();
+        auction_state.clear();
+        shop_timer.start(phase_view.timer_duration_ms);
+        *mode = ShopAuctionUiMode::Shop;
+    }
+}
+
 pub fn tick_auction_toast_system(time: Res<Time>, mut toast_state: ResMut<ShopAuctionToastState>) {
     let elapsed_ms = u32::try_from(time.delta().as_millis()).unwrap_or(u32::MAX);
     toast_state.tick(elapsed_ms);
@@ -2278,6 +2648,7 @@ pub fn sync_auction_panel_system(
     hand_view: Res<ShopAuctionDraftHandView>,
     catalog: Res<ShopAuctionCardCatalog>,
     auction_state: Res<ShopAuctionAuctionState>,
+    settlement_state: Res<ShopAuctionSettlementState>,
     shop_state: Res<ShopAuctionShopState>,
     entities: Option<Res<ShopAuctionUiEntities>>,
     mut keyboard_focus: ResMut<AuctionBidKeyboardFocus>,
@@ -2308,7 +2679,9 @@ pub fn sync_auction_panel_system(
 
     let auction_visible = matches!(
         *mode,
-        ShopAuctionUiMode::AuctionPreparing | ShopAuctionUiMode::Auction
+        ShopAuctionUiMode::AuctionPreparing
+            | ShopAuctionUiMode::Auction
+            | ShopAuctionUiMode::AuctionSettling
     ) && auction_state.panel_visible();
     let footer_visible = *mode == ShopAuctionUiMode::Auction && auction_visible;
     let local_leading = local_player_is_leading(&auction_state, &local_gold);
@@ -2319,7 +2692,9 @@ pub fn sync_auction_panel_system(
         let mut visibility = auction_ui.p0();
         if matches!(
             *mode,
-            ShopAuctionUiMode::AuctionPreparing | ShopAuctionUiMode::Auction
+            ShopAuctionUiMode::AuctionPreparing
+                | ShopAuctionUiMode::Auction
+                | ShopAuctionUiMode::AuctionSettling
         ) {
             set_visibility(
                 &mut visibility,
@@ -2393,6 +2768,9 @@ pub fn sync_auction_panel_system(
                     } else {
                         text.0.push_str("Auction live");
                     }
+                }
+                ShopAuctionAuctionPanelState::Settling => {
+                    text.0.push_str(settlement_state.overlay_text());
                 }
                 ShopAuctionAuctionPanelState::Hidden => {}
             }
@@ -2556,6 +2934,53 @@ pub fn sync_auction_panel_system(
     }
 }
 
+pub fn sync_settlement_overlay_system(
+    mode: Res<ShopAuctionUiMode>,
+    settlement_state: Res<ShopAuctionSettlementState>,
+    entities: Option<Res<ShopAuctionUiEntities>>,
+    mut visibility: Query<&mut Visibility>,
+    mut texts: Query<&mut Text, With<AuctionSettlementOverlayText>>,
+    mut text_colors: Query<&mut TextColor, With<AuctionSettlementOverlayText>>,
+) {
+    let Some(entities) = entities else {
+        return;
+    };
+
+    let visible = *mode == ShopAuctionUiMode::AuctionSettling
+        && settlement_state.transition_active
+        && settlement_state.outcome.is_some();
+
+    if visible {
+        set_visibility(&mut visibility, entities.root, Visibility::Visible);
+    }
+    set_visibility(
+        &mut visibility,
+        entities.settlement_overlay,
+        visibility_for(visible),
+    );
+    set_visibility(
+        &mut visibility,
+        entities.settlement_overlay_text,
+        visibility_for(visible),
+    );
+
+    if let Ok(mut text) = texts.get_mut(entities.settlement_overlay_text) {
+        text.0.clear();
+        if visible {
+            text.0.push_str(settlement_state.overlay_text());
+        }
+    }
+
+    if let Ok(mut color) = text_colors.get_mut(entities.settlement_overlay_text) {
+        *color = TextColor(Color::srgba(
+            0.98,
+            0.94,
+            0.80,
+            0.72 + settlement_state.transition_progress() * 0.28,
+        ));
+    }
+}
+
 pub fn sync_auction_toast_system(
     mode: Res<ShopAuctionUiMode>,
     toast_state: Res<ShopAuctionToastState>,
@@ -2690,6 +3115,10 @@ fn spawn_shop_auction_ui(mut commands: Commands, existing: Option<Res<ShopAuctio
         "Shop Auction Settlement Overlay Root",
         overlay_node(),
     );
+    commands
+        .entity(settlement_overlay)
+        .insert(BackgroundColor(Color::srgba(0.02, 0.05, 0.08, 0.58)));
+    let settlement_overlay_text = spawn_settlement_overlay_text(&mut commands, settlement_overlay);
 
     commands.insert_resource(ShopAuctionUiEntities {
         root,
@@ -2720,6 +3149,7 @@ fn spawn_shop_auction_ui(mut commands: Commands, existing: Option<Res<ShopAuctio
         toast_root,
         toast_text,
         settlement_overlay,
+        settlement_overlay_text,
     });
 }
 
@@ -2774,6 +3204,22 @@ fn spawn_auction_toast_text(commands: &mut Commands, parent: Entity) -> Entity {
             shop_auction_text_font(15.0),
             TextColor(Color::srgba(0.98, 0.92, 0.72, 0.0)),
             auction_toast_text_node(),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
+fn spawn_settlement_overlay_text(commands: &mut Commands, parent: Entity) -> Entity {
+    commands
+        .spawn((
+            Name::new("Shop Auction Settlement Text"),
+            ShopAuctionUiEntity,
+            AuctionSettlementOverlayText,
+            Text::new(""),
+            shop_auction_text_font(24.0),
+            TextColor(Color::srgba(0.98, 0.94, 0.80, 0.0)),
+            settlement_overlay_text_node(),
             Visibility::Hidden,
             ChildOf(parent),
         ))
@@ -3460,8 +3906,20 @@ fn overlay_node() -> Node {
         position_type: PositionType::Absolute,
         left: Val::Px(0.0),
         right: Val::Px(0.0),
-        top: Val::Px(0.0),
-        bottom: Val::Px(0.0),
+        top: Val::Px(80.0),
+        bottom: Val::Px(140.0),
+        border: UiRect::all(Val::Px(1.0)),
+        ..default()
+    }
+}
+
+fn settlement_overlay_text_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Percent(34.0),
+        top: Val::Px(140.0),
+        width: Val::Px(420.0),
+        height: Val::Px(48.0),
         ..default()
     }
 }
@@ -3516,6 +3974,10 @@ pub fn auction_bid_button_state(
     waiting_for_local_gold_after_opponent_bid: bool,
     auction_state: &ShopAuctionAuctionState,
 ) -> AuctionBidButtonState {
+    if auction_state.panel_state != ShopAuctionAuctionPanelState::Active {
+        return AuctionBidButtonState::GenericDisabled;
+    }
+
     if local_leading {
         return AuctionBidButtonState::HiddenLeading;
     }
