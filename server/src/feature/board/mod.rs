@@ -25,8 +25,8 @@ pub use placement::{
     is_field_slot_available, is_minion_slot_available, is_structure_slot_available,
     is_trap_slot_available, placement_buffer_open, process_placement_submission,
     requires_spawn_range_validation, spawn_range_cells_for_player, update_spawn_range,
-    validate_spawn_range, AcceptedPlacement, FakeObjectiveDestroyed, PendingPlacements,
-    PlacementCommitTrace, PlacementCommitTraceEntry, PlacementCommitted,
+    validate_spawn_range, AcceptedPlacement, CommittedPlacementUnit, FakeObjectiveDestroyed,
+    PendingPlacements, PlacementCommitTrace, PlacementCommitTraceEntry, PlacementCommitted,
     PlacementSubmissionReceived, PlacementSubmissionResult, PlayerSubmission,
     SpawnRangeProjectionChange, MAX_FAKE_OBJECTIVES_DESTROYED,
 };

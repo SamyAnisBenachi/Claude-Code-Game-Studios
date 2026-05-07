@@ -27,8 +27,8 @@ use crate::core::session::SessionConfig;
 use crate::feature::board::{
     advance_direction, apply_f1, detect_objective_presence, expand_spawn_range_from_objective_fact,
     is_at_objective, AcceptedPlacement, BoardCell, BoardConfig, BoardGrid, BoardOccupancy,
-    BoardSystemSet, LaneId, PendingPlacements, SpawnRangeProjectionChange, SpawnRangeState,
-    UnitAtObjective,
+    BoardSystemSet, CommittedPlacementUnit, LaneId, PendingPlacements, PlacementCommitted,
+    SpawnRangeProjectionChange, SpawnRangeState, UnitAtObjective,
 };
 use crate::feature::keyword::components::UnitKeywordState;
 use crate::feature::keyword::effects::{
@@ -62,7 +62,9 @@ impl Plugin for CombatPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<BeginResolution>()
             .add_message::<ResolutionComplete>()
+            .add_message::<PlacementCommitted>()
             .init_resource::<BeginResolutionCursor>()
+            .init_resource::<PlacementCommittedCursor>()
             .init_resource::<PendingResolutionComplete>()
             .init_resource::<CombatIterationBudget>()
             .init_resource::<CombatNetworkOutbox>()
@@ -90,6 +92,9 @@ impl Plugin for CombatPlugin {
 
 #[derive(Resource, Default)]
 struct BeginResolutionCursor(MessageCursor<BeginResolution>);
+
+#[derive(Resource, Default)]
+struct PlacementCommittedCursor(MessageCursor<PlacementCommitted>);
 
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PendingResolutionComplete {
@@ -734,7 +739,7 @@ fn run_sub_step_scaffold(
             .push(CombatTraceEntry::SubStepStarted(sub_step));
 
         match sub_step {
-            1 => apply_placements(world, &mut budget)?,
+            1 => apply_placements(world, current_round, &mut budget)?,
             2 => execute_charge_x(world, current_round, &mut budget)?,
             3 => execute_first_strike(world, current_round, &mut budget)?,
             4 => remove_dead(world, &mut budget)?,
@@ -1831,7 +1836,18 @@ fn forward_distance(from_cell: u8, target_cell: u8, direction: i16) -> Option<u8
     (distance > 0).then_some(distance as u8)
 }
 
-fn apply_placements(world: &mut World, budget: &mut IterationBudget) -> Result<(), CombatAbort> {
+fn apply_placements(
+    world: &mut World,
+    current_round: u32,
+    budget: &mut IterationBudget,
+) -> Result<(), CombatAbort> {
+    if let Some(spawned_units) = collect_committed_placement_units(world, current_round) {
+        let placed = trace_committed_board_placements(world, &spawned_units);
+        run_placement_appearance_effects(world, budget, &placed)?;
+        clear_pending_placements(world);
+        return Ok(());
+    }
+
     if !world.contains_resource::<PendingPlacements>() {
         return Ok(());
     }
@@ -1841,10 +1857,63 @@ fn apply_placements(world: &mut World, budget: &mut IterationBudget) -> Result<(
     enqueue_placement_reveal(world, &placements);
 
     let spawned = spawn_committed_placements(world, &placements);
+    run_placement_appearance_effects(world, budget, &spawned)?;
+    clear_pending_placements(world);
+
+    Ok(())
+}
+
+fn collect_committed_placement_units(
+    world: &mut World,
+    current_round: u32,
+) -> Option<Vec<CommittedPlacementUnit>> {
+    world.resource_scope(
+        |world, mut cursor: Mut<PlacementCommittedCursor>| -> Option<Vec<CommittedPlacementUnit>> {
+            let messages = world.resource::<Messages<PlacementCommitted>>();
+            cursor
+                .0
+                .read(messages)
+                .filter(|message| message.round_number == current_round)
+                .last()
+                .map(|message| message.spawned_units.clone())
+        },
+    )
+}
+
+fn trace_committed_board_placements(
+    world: &mut World,
+    spawned_units: &[CommittedPlacementUnit],
+) -> Vec<Entity> {
+    let mut placed = Vec::new();
+
+    world
+        .resource_mut::<CombatResolutionTrace>()
+        .push(CombatTraceEntry::PlacementRevealEnqueued);
+
+    for unit in spawned_units {
+        placed.push(unit.entity);
+        world
+            .resource_mut::<CombatResolutionTrace>()
+            .push(CombatTraceEntry::UnitPlaced {
+                entity: unit.entity,
+                player: unit.player,
+                lane: unit.lane,
+                cell: unit.cell,
+            });
+    }
+
+    placed
+}
+
+fn run_placement_appearance_effects(
+    world: &mut World,
+    budget: &mut IterationBudget,
+    placed: &[Entity],
+) -> Result<(), CombatAbort> {
     let mut defeated_by_appearance = Vec::new();
     let mut queued_lane_changes = Vec::new();
 
-    for unit in appearance_units_in_order(world, &spawned) {
+    for unit in appearance_units_in_order(world, placed) {
         budget.tick()?;
         world
             .resource_mut::<CombatResolutionTrace>()
@@ -1867,7 +1936,6 @@ fn apply_placements(world: &mut World, budget: &mut IterationBudget) -> Result<(
 
     fire_deferred_death_triggers(world, budget, &mut defeated_by_appearance)?;
     apply_queued_lane_changes(world, queued_lane_changes);
-    clear_pending_placements(world);
 
     Ok(())
 }
@@ -2265,10 +2333,9 @@ fn grid_indices(lane: LaneId, cell: u8) -> Option<(usize, usize)> {
 }
 
 fn clear_pending_placements(world: &mut World) {
-    world
-        .resource_mut::<PendingPlacements>()
-        .submissions
-        .clear();
+    if let Some(mut pending) = world.get_resource_mut::<PendingPlacements>() {
+        pending.submissions.clear();
+    }
 }
 
 fn execute_objective_damage(

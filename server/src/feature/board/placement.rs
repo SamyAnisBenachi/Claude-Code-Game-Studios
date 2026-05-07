@@ -74,6 +74,17 @@ pub struct SpawnRangeProjectionChange {
 pub struct PlacementCommitted {
     pub round_number: u32,
     pub committed_placements: HashMap<PlayerId, Vec<AcceptedPlacement>>,
+    pub spawned_units: Vec<CommittedPlacementUnit>,
+}
+
+/// Board-owned entity created from one accepted placement.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CommittedPlacementUnit {
+    pub entity: Entity,
+    pub player: PlayerId,
+    pub card_id: CardId,
+    pub lane: LaneId,
+    pub cell: u8,
 }
 
 /// Server-internal placement after sender identity has been resolved.
@@ -534,22 +545,26 @@ pub fn close_placement_phase(
     }
     trace.push(PlacementCommitTraceEntry::PlacementRevealEnqueued);
 
+    let mut spawned_units = Vec::new();
     for (_, placements) in &committed_sequence {
         for placement in placements {
-            spawn_committed_placement(
+            if let Some(spawned_unit) = spawn_committed_placement(
                 &mut commands,
                 &mut grid,
                 &mut occupancy,
                 &mut trace,
                 placement,
                 catalog,
-            );
+            ) {
+                spawned_units.push(spawned_unit);
+            }
         }
     }
 
     committed.write(PlacementCommitted {
         round_number,
         committed_placements,
+        spawned_units,
     });
     trace.push(PlacementCommitTraceEntry::PlacementCommittedWritten);
     pending.submissions.clear();
@@ -867,9 +882,9 @@ fn spawn_committed_placement(
     trace: &mut PlacementCommitTrace,
     placement: &AcceptedPlacement,
     catalog: &CardCatalog,
-) {
+) -> Option<CommittedPlacementUnit> {
     let Some(card) = catalog.cards.get(&placement.card_id) else {
-        return;
+        return None;
     };
 
     match &placement.target {
@@ -900,6 +915,13 @@ fn spawn_committed_placement(
                 entity,
             );
             trace.push(PlacementCommitTraceEntry::UnitSpawned { entity });
+            Some(CommittedPlacementUnit {
+                entity,
+                player: placement.owner_id,
+                card_id: placement.card_id,
+                lane: *lane,
+                cell: *cell,
+            })
         }
         PlayTarget::LaneWide { lane } => {
             let entity = commands
@@ -911,8 +933,9 @@ fn spawn_committed_placement(
                 .id();
             occupancy.fields.insert((placement.owner_id, *lane), entity);
             trace.push(PlacementCommitTraceEntry::UnitSpawned { entity });
+            None
         }
-        PlayTarget::Instant | PlayTarget::TargetUnit { .. } | PlayTarget::TargetObj { .. } => {}
+        PlayTarget::Instant | PlayTarget::TargetUnit { .. } | PlayTarget::TargetObj { .. } => None,
     }
 }
 

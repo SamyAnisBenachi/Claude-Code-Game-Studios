@@ -355,8 +355,14 @@ fn real_lightyear_two_client_draft_shop_auction_placement_resolution_reaches_nex
             && flags.host_received_resolution_event.load(Ordering::SeqCst)
             && flags
                 .joiner_received_resolution_event
+                .load(Ordering::SeqCst)
+            && flags
+                .host_received_unit_placed_resolution_event
+                .load(Ordering::SeqCst)
+            && flags
+                .joiner_received_unit_placed_resolution_event
                 .load(Ordering::SeqCst),
-        "clients should receive non-empty placement reveal and server-authored resolution event: {}",
+        "clients should receive non-empty placement reveal and UnitPlaced resolution replay event: {}",
         flags.report()
     );
     assert!(
@@ -406,6 +412,12 @@ fn real_lightyear_two_client_draft_shop_auction_placement_resolution_reaches_nex
                 >= 2
             && flags.host_resolution_event_count.load(Ordering::SeqCst) >= 3
             && flags.joiner_resolution_event_count.load(Ordering::SeqCst) >= 3
+            && flags
+                .host_received_unit_placed_resolution_event
+                .load(Ordering::SeqCst)
+            && flags
+                .joiner_received_unit_placed_resolution_event
+                .load(Ordering::SeqCst)
             && flags
                 .host_sent_post_auction_draft_shop_ready
                 .load(Ordering::SeqCst)
@@ -723,6 +735,12 @@ impl RoomSessionFlags {
             && self.joiner_received_resolution_event.load(Ordering::SeqCst)
             && self.host_resolution_event_count.load(Ordering::SeqCst) >= 3
             && self.joiner_resolution_event_count.load(Ordering::SeqCst) >= 3
+            && self
+                .host_received_unit_placed_resolution_event
+                .load(Ordering::SeqCst)
+            && self
+                .joiner_received_unit_placed_resolution_event
+                .load(Ordering::SeqCst)
             && self.server_round_draft_auction.load(Ordering::SeqCst)
             && self.host_received_draft_auction.load(Ordering::SeqCst)
             && self.joiner_received_draft_auction.load(Ordering::SeqCst)

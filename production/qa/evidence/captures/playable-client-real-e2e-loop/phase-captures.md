@@ -120,14 +120,14 @@ This capture set is internal friend-game evidence only. Local paths, usernames, 
   - Both clients sent real `C2SSignalReady` from `DRAFT_SHOP`; the server advanced to `PLACEMENT`.
   - Both clients sent real non-empty `C2SSubmitPlacement` payloads using card IDs acquired from server-authored hand state.
   - Server accepted both non-empty placement batches and emitted non-empty `S2CPlacementReveal`.
-  - Server emitted `S2CResolutionEvent` and advanced through the real RSM route into `DRAFT_AUCTION` on the next auction round.
+  - Server emitted `S2CResolutionEvent` containing `UnitPlaced` replay entries for accepted non-empty placements and advanced through the real RSM route into `DRAFT_AUCTION` on the next auction round.
   - Prompt 298 repairs the controlled test server wiring by adding `AuctionPlugin`, repairs the auction catalog fixture by adding neutral Rare cards, and repairs production `S2CAuctionCard` dispatch from `auction_tick_system`.
   - Both clients received real `S2CAuctionCard`; host sent real `C2SPlaceBid`; both clients received `S2CAuctionBidAccepted` and `S2CAuctionSettled`; host received `S2CCardAcquired(source=AuctionWon)`.
-  - Both clients then advanced from post-auction `DRAFT_SHOP` through another non-empty `PLACEMENT`, `S2CPlacementReveal`, `S2CResolutionEvent`, and into the next `DRAFT_SHOP`.
+  - The placement replay ordering was repaired by having combat consume `PlacementCommitted`, including board-owned spawned unit IDs, which `close_placement_phase` writes before clearing `PendingPlacements`, before falling back to combat-only pending placement consumption.
+  - Both clients then advanced from post-auction `DRAFT_SHOP` through another non-empty `PLACEMENT`, `S2CPlacementReveal`, `S2CResolutionEvent` with `UnitPlaced`, and into the next `DRAFT_SHOP`.
 - Files:
   - `prompt-298-auction-placement-resolution-trace.json`
 - Limit:
-  - `S2CResolutionEvent` is received on each resolution, but accepted placements are still not proven as `UnitPlaced` replay entries. The exact open blocker is the ordering split between `server/src/feature/board/placement.rs::close_placement_phase`, which clears `PendingPlacements`, and `server/src/feature/combat/mod.rs::apply_placements`, which builds `UnitPlaced` trace from `PendingPlacements`.
   - This is controlled in-process real-Lightyear evidence only. It does not claim live native manual two-client completion, game-over, full playable-client manual QA, playtest validation, public release readiness, broad accessibility completion, or full game completion.
 
 ## Phase Summary
@@ -150,6 +150,6 @@ This capture set is internal friend-game evidence only. Local paths, usernames, 
 | Auction | `prompt-298-auction-placement-resolution-trace.json` | Reached: server `DraftAuction`, `S2CAuctionCard`, host `C2SPlaceBid`, `S2CAuctionBidAccepted`, `S2CAuctionSettled`, and `S2CCardAcquired(source=AuctionWon)` |
 | Placement submit | `prompt-296-draft-shop-trace.json`, `prompt-298-auction-placement-resolution-trace.json` | Reached with real empty submit from both clients, then two non-empty submit rounds from server-owned hand state |
 | Placement reveal | `prompt-296-draft-shop-trace.json`, `prompt-298-auction-placement-resolution-trace.json` | Reached with server-authored empty reveal, then two non-empty `S2CPlacementReveal` messages per client |
-| Resolution replay | `prompt-298-auction-placement-resolution-trace.json` | Protocol reached three `S2CResolutionEvent` messages per client; `UnitPlaced` replay content remains an exact open blocker |
+| Resolution replay | `prompt-298-auction-placement-resolution-trace.json` | Reached: protocol reached three `S2CResolutionEvent` messages per client, and both clients observed `UnitPlaced` replay entries after accepted non-empty placement |
 | Next loop | `prompt-298-auction-placement-resolution-trace.json` | Reached next `DRAFT_SHOP` after post-auction placement and resolution |
 | Game-over or nearest endpoint | `prompt-298-auction-placement-resolution-trace.json` | Nearest controlled endpoint is next-loop `DRAFT_SHOP`; game-over is not reached or claimed |

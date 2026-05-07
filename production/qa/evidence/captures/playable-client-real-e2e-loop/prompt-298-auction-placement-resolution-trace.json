@@ -36,14 +36,14 @@
       "C2SSubmitPlacement(placements=[])",
       "S2CPlacementReveal(placements=[])",
       "S2CPhaseChanged(Resolution)",
-      "S2CResolutionEvent",
+      "S2CResolutionEvent(events=[SubStepBegin])",
       "S2CPhaseChanged(DraftShop)",
       "C2SSignalReady(retract=false)",
       "S2CPhaseChanged(Placement)",
       "C2SSubmitPlacement(placements=[<SERVER_HAND_CARD>])",
       "S2CPlacementReveal(placements=[<SERVER_ACCEPTED_CARD>])",
       "S2CPhaseChanged(Resolution)",
-      "S2CResolutionEvent",
+      "S2CResolutionEvent(events=[SubStepBegin,UnitPlaced])",
       "S2CPhaseChanged(DraftAuction)",
       "S2CAuctionCard(card_id=<SERVER_AUCTION_CARD>, starting_price=<SERVER_PRICE>)",
       "C2SPlaceBid(amount=<SERVER_PRICE_PLUS_ONE>)",
@@ -56,7 +56,7 @@
       "C2SSubmitPlacement(placements=[<SERVER_HAND_CARD>])",
       "S2CPlacementReveal(placements=[<SERVER_ACCEPTED_CARD>])",
       "S2CPhaseChanged(Resolution)",
-      "S2CResolutionEvent",
+      "S2CResolutionEvent(events=[SubStepBegin,UnitPlaced])",
       "S2CPhaseChanged(DraftShop)"
     ],
     "joiner": [
@@ -78,14 +78,14 @@
       "C2SSubmitPlacement(placements=[])",
       "S2CPlacementReveal(placements=[])",
       "S2CPhaseChanged(Resolution)",
-      "S2CResolutionEvent",
+      "S2CResolutionEvent(events=[SubStepBegin])",
       "S2CPhaseChanged(DraftShop)",
       "C2SSignalReady(retract=false)",
       "S2CPhaseChanged(Placement)",
       "C2SSubmitPlacement(placements=[<SERVER_HAND_CARD>])",
       "S2CPlacementReveal(placements=[<SERVER_ACCEPTED_CARD>])",
       "S2CPhaseChanged(Resolution)",
-      "S2CResolutionEvent",
+      "S2CResolutionEvent(events=[SubStepBegin,UnitPlaced])",
       "S2CPhaseChanged(DraftAuction)",
       "S2CAuctionCard(card_id=<SERVER_AUCTION_CARD>, starting_price=<SERVER_PRICE>)",
       "S2CAuctionBidAccepted",
@@ -96,7 +96,7 @@
       "C2SSubmitPlacement(placements=[<SERVER_HAND_CARD>])",
       "S2CPlacementReveal(placements=[<SERVER_ACCEPTED_CARD>])",
       "S2CPhaseChanged(Resolution)",
-      "S2CResolutionEvent",
+      "S2CResolutionEvent(events=[SubStepBegin,UnitPlaced])",
       "S2CPhaseChanged(DraftShop)"
     ]
   },
@@ -108,6 +108,7 @@
     "The controlled server app includes the production AuctionPlugin for auction draw, bid validation, settlement, and award",
     "The auction card was drawn from a server-owned neutral Rare auction pool fixture catalog",
     "S2CAuctionCard, S2CAuctionBidAccepted, S2CAuctionSettled, and S2CCardAcquired(source=AuctionWon) traversed real Lightyear S2C",
+    "Combat consumed the server-authored PlacementCommitted handoff, including board-owned spawned unit ids, and emitted UnitPlaced replay entries in S2CResolutionEvent for accepted non-empty placements",
     "The final observed client phase was the next DraftShop after post-auction placement and resolution"
   ],
   "endpoint": {
@@ -130,18 +131,20 @@
       "placement_s2c_per_client": 3,
       "resolution_s2c_per_client": 3,
       "non_empty_placement_reveal_s2c_per_client": 2,
-      "resolution_event_s2c_per_client": 3
+      "resolution_event_s2c_per_client": 3,
+      "unit_placed_resolution_event_observed_per_client": true
     }
   },
   "blockers_or_limits": [
     {
       "id": "PLAYABLE-003-RESOLUTION-REPLAY-CONTENT",
-      "status": "open",
-      "summary": "S2CResolutionEvent is emitted and received, but the controlled evidence does not verify UnitPlaced replay entries for accepted placements.",
+      "status": "repaired",
+      "summary": "Accepted non-empty placements and board-owned spawned unit ids are captured through PlacementCommitted and replayed as observable UnitPlaced entries in S2CResolutionEvent.",
       "references": [
-        "server/src/feature/board/placement.rs::close_placement_phase clears PendingPlacements after spawning and S2CPlacementReveal",
-        "server/src/feature/combat/mod.rs::apply_placements builds UnitPlaced trace from PendingPlacements after BoardSystemSet::PlacementClose",
-        "server/src/feature/combat/mod.rs::enqueue_resolution_event serializes CombatResolutionTrace into S2CResolutionEvent"
+        "server/src/feature/board/placement.rs::close_placement_phase writes PlacementCommitted with spawned unit ids before clearing PendingPlacements",
+        "server/src/feature/combat/mod.rs::apply_placements consumes PlacementCommitted before falling back to PendingPlacements",
+        "server/src/feature/combat/mod.rs::enqueue_resolution_event serializes CombatResolutionTrace UnitPlaced entries into S2CResolutionEvent",
+        "tests/integration/playable_client/real_e2e_loop_test.rs requires both clients to observe UnitPlaced replay evidence"
       ]
     }
   ],

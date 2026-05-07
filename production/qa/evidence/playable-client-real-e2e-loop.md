@@ -43,13 +43,19 @@ auction evidence blockers:
   `S2CAuctionCard` payload over Lightyear. Prompt 298 now sends the real S2C
   auction card from the authoritative auction draw.
 
-Open replay-content blocker:
+Resolution replay blocker repair:
 
-- `S2CResolutionEvent` is emitted and received, but accepted placements are not
-  proven as `UnitPlaced` replay entries. `server/src/feature/board/placement.rs::close_placement_phase`
-  consumes and clears `PendingPlacements` after reveal/spawn, while
-  `server/src/feature/combat/mod.rs::apply_placements` builds `UnitPlaced`
-  trace from `PendingPlacements` after `BoardSystemSet::PlacementClose`.
+- `server/src/feature/board/placement.rs::close_placement_phase` now captures
+  accepted placements and board-owned spawned unit IDs in `PlacementCommitted`
+  before clearing `PendingPlacements`.
+- `server/src/feature/combat/mod.rs::apply_placements` now consumes that
+  Bevy `Message` handoff for the matching `BeginResolution` round, traces
+  `UnitPlaced` from the server-owned board entity, and clears any stale pending
+  placement buffer after the replay data is captured. It keeps the older
+  `PendingPlacements` path for combat-only tests that do not run board close.
+- The real two-client evidence now requires both clients to observe
+  `S2CResolutionEvent` containing `UnitPlaced` after accepted non-empty
+  `C2SSubmitPlacement`.
 
 ## Capture Manifest
 
@@ -82,14 +88,16 @@ Prompt 298 controlled endpoint:
    hand state.
 4. Server accepted both non-empty placement batches and emitted non-empty
    `S2CPlacementReveal`.
-5. Server emitted `S2CResolutionEvent` and advanced into `DRAFT_AUCTION`.
+5. Server emitted `S2CResolutionEvent` containing `UnitPlaced` replay entries
+   for the accepted non-empty placements and advanced into `DRAFT_AUCTION`.
 6. Both clients received server-authored `S2CAuctionCard`.
 7. Host sent real `C2SPlaceBid`; both clients received
    `S2CAuctionBidAccepted` and `S2CAuctionSettled`.
 8. Host received `S2CCardAcquired { source: AuctionWon }`.
 9. Both clients reached post-auction `DRAFT_SHOP`, readied again, submitted
-   another non-empty placement, received another non-empty reveal and
-   `S2CResolutionEvent`, then reached the next-loop `DRAFT_SHOP`.
+   another non-empty placement, received another non-empty reveal,
+   `S2CResolutionEvent` with `UnitPlaced`, then reached the next-loop
+   `DRAFT_SHOP`.
 
 Exact reached route:
 
@@ -111,7 +119,7 @@ Game-over was not reached and is not claimed.
 | DRAFT_SHOP | Reached | Prompt 298 observes three `DRAFT_SHOP` S2C phase changes per client |
 | Placement submit | Reached | Empty submit plus two non-empty submit rounds through real `C2SSubmitPlacement` |
 | Placement reveal | Reached | Empty reveal plus two non-empty `S2CPlacementReveal` rounds |
-| Resolution event | Reached with content limit | Three `S2CResolutionEvent` messages per client; `UnitPlaced` replay content remains open |
+| Resolution event | Reached | Three `S2CResolutionEvent` messages per client; both clients observed `UnitPlaced` replay entries after accepted non-empty placement |
 | Auction | Reached | `S2CAuctionCard`, real `C2SPlaceBid`, `S2CAuctionBidAccepted`, `S2CAuctionSettled`, `S2CCardAcquired(source=AuctionWon)` |
 | Next loop | Reached | Next `DRAFT_SHOP` after post-auction placement/resolution |
 | Game-over | Not reached | Not claimed |
@@ -120,17 +128,17 @@ Game-over was not reached and is not claimed.
 
 | ID | Severity | Owner/System | Status | Friend-game Impact | Evidence |
 |---|---|---|---|---|---|
-| PLAYABLE-003-D7 | Major evidence gap | Full friend-game loop capture | Partially repaired | Controlled real-Lightyear evidence now covers auction, non-empty placement, resolution events, and next-loop `DRAFT_SHOP`; live native manual completion remains unproven | `prompt-298-auction-placement-resolution-trace.json` |
+| PLAYABLE-003-D7 | Major evidence gap | Full friend-game loop capture | Partially repaired | Controlled real-Lightyear evidence now covers auction, non-empty placement, `UnitPlaced` resolution replay, and next-loop `DRAFT_SHOP`; live native manual completion remains unproven | `prompt-298-auction-placement-resolution-trace.json` |
 | PLAYABLE-003-D9 | Major | Auction network dispatch | Repaired in prompt 298 | Clients could not receive the server-authored auction card needed for real auction entry | `server/src/feature/auction/system.rs::auction_tick_system` |
-| PLAYABLE-003-D10 | Major | Resolution replay content | Open | `S2CResolutionEvent` is received, but accepted placements are not proven as `UnitPlaced` replay entries | `server/src/feature/board/placement.rs::close_placement_phase`, `server/src/feature/combat/mod.rs::apply_placements` |
+| PLAYABLE-003-D10 | Major | Resolution replay content | Repaired | Accepted non-empty placements and board-owned spawned unit IDs now remain available through `PlacementCommitted` long enough for combat replay to emit observable `UnitPlaced` entries | `server/src/feature/board/placement.rs::close_placement_phase`, `server/src/feature/combat/mod.rs::apply_placements`, `tests/integration/playable_client/real_e2e_loop_test.rs` |
 
 ## Verification Results
 
-Prompt 298 verification:
+Prompt 298 repair verification:
 
 - `cargo fmt -p client -p server -- --check`: PASS.
 - `cargo check --workspace`: PASS.
-- `cargo test -p server --test playable_client_real_e2e_loop_test`: PASS, 4 passed.
+- `cargo test -p server --test playable_client_real_e2e_loop_test`: PASS, 4 passed, including `UnitPlaced` replay evidence for both clients.
 - PLAYABLE-001 focused tests:
   - `cargo test -p client --test playable_client_lobby_entry_test`: PASS, 5 passed.
   - `cargo test -p server --test playable_client_lobby_entry_server_test`: PASS, 3 passed.
@@ -165,7 +173,8 @@ Prompt 298 verification:
     `economy_draft_subscriber_test`, `economy_network_dispatch_test`,
     `economy_interest_snapshot_test`, and `economy_round_trace_test`: PASS.
   - `placement_submit_authority_validation_test`, `placement_buffer_test`,
-    `resolution_event_log_test`, and `substep1_placement_test`: PASS.
+    `resolution_event_log_test`, and `substep1_placement_test`: PASS,
+    including committed-placement handoff coverage.
 - `git diff --check origin/main...HEAD`: PASS.
 
 ## Non-Claims

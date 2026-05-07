@@ -518,6 +518,17 @@ fn test_close_placement_phase_sends_reliable_reveal_before_spawning_units_atomic
     let committed = read_messages::<PlacementCommitted>(&server_app);
     assert_eq!(committed.len(), 1);
     assert_eq!(committed[0].round_number, 3);
+    assert_eq!(
+        committed[0]
+            .spawned_units
+            .iter()
+            .map(|unit| (unit.player, unit.card_id, unit.lane, unit.cell))
+            .collect::<Vec<_>>(),
+        vec![
+            (player(1), card_id(10), 1, 1),
+            (player(2), card_id(20), 5, 8),
+        ]
+    );
     assert!(server_app
         .world()
         .resource::<PendingPlacements>()

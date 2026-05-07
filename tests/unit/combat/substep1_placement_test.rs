@@ -1,14 +1,17 @@
+use std::collections::HashMap;
 use std::time::Duration;
 
 use bevy::prelude::*;
 use server::core::board::{BoardPosition, UnitCardRef, UnitOwner, UnitStats};
 use server::core::rsm::BeginResolution;
 use server::feature::board::{
-    AcceptedPlacement, BoardCell, BoardGrid, BoardOccupancy, PendingPlacements, PlayerSubmission,
+    AcceptedPlacement, BoardCell, BoardGrid, BoardOccupancy, CommittedPlacementUnit,
+    PendingPlacements, PlacementCommitted, PlayerSubmission,
 };
 use server::feature::combat::{
-    AppearanceEffect, AppearanceEffectRegistry, AppearanceTarget, CombatNetworkMessageKind,
-    CombatNetworkOutbox, CombatPlugin, CombatResolutionTrace, CombatTraceEntry,
+    AppearanceEffect, AppearanceEffectRegistry, AppearanceTarget, CombatNetworkMessage,
+    CombatNetworkMessageKind, CombatNetworkOutbox, CombatPlugin, CombatResolutionTrace,
+    CombatTraceEntry,
 };
 use server::feature::keyword::components::UnitKeywordState;
 use server::feature::keyword::effects::{
@@ -17,7 +20,7 @@ use server::feature::keyword::effects::{
 use server::foundation::config::CardCatalog;
 use shared::card::{CardData, CardId, CardType, ClassId, Keyword, Rarity, SimpleKeyword, UnitType};
 use shared::keyword::KeywordKind;
-use shared::protocol::PlayTarget;
+use shared::protocol::{PlayTarget, ResolutionEvent};
 use shared::session::PlayerId;
 
 const ROUND: u32 = 3;
@@ -142,6 +145,83 @@ fn spawn_existing_unit(
         .insert((owner, lane), entity);
 
     entity
+}
+
+#[test]
+fn cr_24_committed_board_placements_are_replayed_without_resubmitting_pending() {
+    let placement = placed(CardId(10), PLAYER_A, 1, 1);
+    let mut app = app_with_cards(vec![card(10, vec![])]);
+    let committed_entity = spawn_existing_unit(&mut app, CardId(10), PLAYER_A, 1, 1, 2, 1);
+    submit(&mut app, PLAYER_A, vec![placement.clone()]);
+    app.world_mut().write_message(PlacementCommitted {
+        round_number: ROUND,
+        committed_placements: HashMap::from([(PLAYER_A, vec![placement])]),
+        spawned_units: vec![CommittedPlacementUnit {
+            entity: committed_entity,
+            player: PLAYER_A,
+            card_id: CardId(10),
+            lane: 1,
+            cell: 1,
+        }],
+    });
+
+    begin_resolution(&mut app);
+
+    trace_index(
+        &app,
+        CombatTraceEntry::UnitPlaced {
+            entity: committed_entity,
+            player: PLAYER_A,
+            lane: 1,
+            cell: 1,
+        },
+    );
+    assert_eq!(
+        app.world()
+            .resource::<CombatNetworkOutbox>()
+            .message_kinds(),
+        vec![CombatNetworkMessageKind::ResolutionEvent]
+    );
+    assert!(app
+        .world()
+        .resource::<PendingPlacements>()
+        .submissions
+        .is_empty());
+
+    let resolution_event = app
+        .world()
+        .resource::<CombatNetworkOutbox>()
+        .messages()
+        .iter()
+        .find_map(|message| match message {
+            CombatNetworkMessage::ResolutionEvent(event) => Some(event),
+            CombatNetworkMessage::PlacementReveal(_) => None,
+        })
+        .expect("resolution event should be emitted");
+    assert!(resolution_event.events.iter().any(|event| {
+        matches!(
+            &event.event,
+            ResolutionEvent::UnitPlaced {
+                unit_id,
+                player,
+                lane,
+                cell,
+            } if *unit_id == committed_entity.to_bits()
+                && *player == PLAYER_A
+                && *lane == 1
+                && *cell == 1
+        )
+    }));
+
+    let committed_card_count = {
+        let world = app.world_mut();
+        let mut query = world.query::<&UnitCardRef>();
+        query
+            .iter(world)
+            .filter(|card| card.0 == CardId(10))
+            .count()
+    };
+    assert_eq!(committed_card_count, 1);
 }
 
 #[test]
