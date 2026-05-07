@@ -4,6 +4,9 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
+use client::asset_wiring::{
+    CardDisplayArtAsset, CardDisplayArtFallback, CardDisplayArtFallbackReason,
+};
 use client::presentation::PlayerEconomyView;
 use client::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use client::ui::shop_auction::{
@@ -82,6 +85,31 @@ fn sau_004_phase_before_card_waits_then_activates_countdown() {
             .resource::<ShopAuctionAuctionState>()
             .timer_remaining_ms,
         19_000
+    );
+}
+
+#[test]
+fn sau_asset_loop_featured_auction_card_resolves_display_art_or_fallback() {
+    let mut app = app_in_session();
+
+    send_auction_card(&mut app, CardId(1), 4);
+    let featured_card = app
+        .world()
+        .resource::<ShopAuctionUiEntities>()
+        .auction_featured_card;
+    assert_eq!(
+        app.world().get::<CardDisplayArtAsset>(featured_card),
+        Some(&CardDisplayArtAsset {
+            path: "art/cards/display/card_iop_knight_001_art_display.png"
+        })
+    );
+
+    send_auction_card(&mut app, CardId(2), 5);
+    assert_eq!(
+        app.world().get::<CardDisplayArtFallback>(featured_card),
+        Some(&CardDisplayArtFallback {
+            reason: CardDisplayArtFallbackReason::MissingDisplayAsset
+        })
     );
 }
 
@@ -284,7 +312,11 @@ fn test_card(id: u32, rarity: Rarity, cost: u32) -> CardData {
         ar: 0,
         keywords: Vec::new(),
         effect_text: String::new(),
-        art_id: format!("test_{id}"),
+        art_id: if id == 1 {
+            "iop_knight_001".to_string()
+        } else {
+            format!("test_{id}")
+        },
         pool_copies_override: None,
     }
 }

@@ -2,6 +2,9 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
+use client::asset_wiring::{
+    CardDisplayArtAsset, CardDisplayArtFallback, CardDisplayArtFallbackReason,
+};
 use client::presentation::PlayerEconomyView;
 use client::state::{ClientState, CurrentClientPhase};
 use client::ui::shop_auction::{
@@ -73,6 +76,26 @@ fn sau_003_renders_three_server_supplied_shop_slots_and_empty_state() {
         visible_shop_slot_count(&app),
         SHOP_AUCTION_UI_SHOP_SLOT_COUNT
     );
+}
+
+#[test]
+fn sau_asset_loop_shop_slots_resolve_display_art_or_text_fallback() {
+    let app = active_shop_app(5, true, vec![Some(CardId(1)), Some(CardId(2)), None]);
+    let slots = shop_slots(&app);
+
+    assert_eq!(
+        app.world().get::<CardDisplayArtAsset>(slots[0]),
+        Some(&CardDisplayArtAsset {
+            path: "art/cards/display/card_iop_knight_001_art_display.png"
+        })
+    );
+    assert_eq!(
+        app.world().get::<CardDisplayArtFallback>(slots[1]),
+        Some(&CardDisplayArtFallback {
+            reason: CardDisplayArtFallbackReason::MissingDisplayAsset
+        })
+    );
+    assert!(app.world().get::<CardDisplayArtAsset>(slots[2]).is_none());
 }
 
 #[test]
@@ -399,7 +422,11 @@ fn test_card(id: u32, rarity: Rarity, cost: u32) -> CardData {
         ar: 0,
         keywords: Vec::new(),
         effect_text: String::new(),
-        art_id: format!("test_{id}"),
+        art_id: if id == 1 {
+            "iop_knight_001".to_string()
+        } else {
+            format!("test_{id}")
+        },
         pool_copies_override: None,
     }
 }

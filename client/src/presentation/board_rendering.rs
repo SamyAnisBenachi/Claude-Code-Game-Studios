@@ -1,5 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_tweening::TweenAnim;
 use lightyear::prelude::{MessageReceiver, MessageSender};
@@ -48,6 +49,13 @@ pub const MIN_CO_OCCUPANCY_SIDE_OFFSET: f32 = 4.0;
 pub const MAX_CO_OCCUPANCY_SIDE_OFFSET: f32 = 16.0;
 pub const MIN_RESOLUTION_SUB_STEP: u8 = 1;
 pub const MAX_RESOLUTION_SUB_STEP: u8 = 6;
+const BOARD_BACKGROUND_ASSET: &str = "art/board/env_board_background_default.png";
+const BOARD_CELL_IDLE_ASSET: &str = "art/board/env_cell_node_idle_board.png";
+const UNIT_PLACEHOLDER_ASSET: &str = "art/characters/ui_unit_placeholder_default_board.png";
+const HP_BAR_WHITE_PIXEL_ASSET: &str = "art/characters/hp_bar_white_pixel_1x2.png";
+const OBJECTIVE_UNKNOWN_ASSET: &str = "art/board/env_objective_unknown_board.png";
+const OBJECTIVE_REAL_ASSET: &str = "art/board/env_objective_real_reveal_board.png";
+const OBJECTIVE_FAKE_ASSET: &str = "art/board/env_objective_fake_crack_board.png";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UnitAtlasFrame {
@@ -78,6 +86,31 @@ impl CardAtlas {
 
     pub fn unit_frame(&self, card_id: CardId) -> Option<UnitAtlasFrame> {
         self.unit_frames.get(&card_id).copied()
+    }
+}
+
+#[derive(Resource, Debug, Clone, PartialEq)]
+pub struct BoardRuntimeAssets {
+    pub board_background: Handle<Image>,
+    pub cell_idle: Handle<Image>,
+    pub unit_placeholder: Handle<Image>,
+    pub hp_bar_white_pixel: Handle<Image>,
+    pub objective_unknown: Handle<Image>,
+    pub objective_real: Handle<Image>,
+    pub objective_fake: Handle<Image>,
+}
+
+impl BoardRuntimeAssets {
+    fn load(asset_server: &AssetServer) -> Self {
+        Self {
+            board_background: asset_server.load(BOARD_BACKGROUND_ASSET),
+            cell_idle: asset_server.load(BOARD_CELL_IDLE_ASSET),
+            unit_placeholder: asset_server.load(UNIT_PLACEHOLDER_ASSET),
+            hp_bar_white_pixel: asset_server.load(HP_BAR_WHITE_PIXEL_ASSET),
+            objective_unknown: asset_server.load(OBJECTIVE_UNKNOWN_ASSET),
+            objective_real: asset_server.load(OBJECTIVE_REAL_ASSET),
+            objective_fake: asset_server.load(OBJECTIVE_FAKE_ASSET),
+        }
     }
 }
 
@@ -333,6 +366,19 @@ pub struct StatusOverflowBadge {
 pub struct StandingObjective {
     pub owner_id: PlayerId,
     pub lane: u8,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StandingObjectiveArt {
+    pub kind: ObjectiveArtKind,
+    pub used_runtime_asset: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ObjectiveArtKind {
+    Unknown,
+    Real,
+    Fake,
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -1373,13 +1419,23 @@ fn sync_reveal_state_from_snapshot_system(
     pending_script.clear();
 }
 
-fn insert_board_rendering_session_resources(mut commands: Commands) {
+fn insert_board_rendering_session_resources(
+    mut commands: Commands,
+    asset_server: Option<Res<AssetServer>>,
+) {
     let board_layout = BoardLayout::default();
+    let runtime_assets = asset_server.as_deref().map(BoardRuntimeAssets::load);
 
     commands.insert_resource(board_layout);
     commands.insert_resource(CardAtlas::default());
     spawn_board_camera(&mut commands, &board_layout);
-    spawn_board_grid(&mut commands, &board_layout);
+    if let Some(runtime_assets) = runtime_assets {
+        spawn_board_background(&mut commands, &board_layout, &runtime_assets);
+        spawn_board_grid(&mut commands, &board_layout, Some(&runtime_assets));
+        commands.insert_resource(runtime_assets);
+    } else {
+        spawn_board_grid(&mut commands, &board_layout, None);
+    }
 }
 
 fn remove_board_rendering_session_resources(
@@ -1394,16 +1450,23 @@ fn remove_board_rendering_session_resources(
     player_team_map.clear();
     commands.remove_resource::<BoardLayout>();
     commands.remove_resource::<CardAtlas>();
+    commands.remove_resource::<BoardRuntimeAssets>();
+}
+
+#[derive(SystemParam)]
+struct BoardSnapshotRenderResources<'w> {
+    board_layout: Option<Res<'w, BoardLayout>>,
+    card_atlas: Option<Res<'w, CardAtlas>>,
+    board_assets: Option<Res<'w, BoardRuntimeAssets>>,
+    config: Res<'w, BoardRenderingConfig>,
+    player_team_map: Res<'w, PlayerTeamMap>,
 }
 
 #[allow(clippy::too_many_arguments)]
 fn rebuild_board_from_snapshot_system(
     mut commands: Commands,
     mut snapshots: MessageReader<ClientGameSnapshotMessage>,
-    board_layout: Option<Res<BoardLayout>>,
-    card_atlas: Option<Res<CardAtlas>>,
-    config: Res<BoardRenderingConfig>,
-    player_team_map: Res<PlayerTeamMap>,
+    render_resources: BoardSnapshotRenderResources,
     stale_entities: Query<Entity, With<BoardSnapshotEntity>>,
     mut render_state: ResMut<BoardRenderState>,
     mut current_phase: Option<ResMut<CurrentClientPhase>>,
@@ -1423,11 +1486,11 @@ fn rebuild_board_from_snapshot_system(
     let Some(snapshot) = latest_snapshot else {
         return;
     };
-    let Some(board_layout) = board_layout else {
+    let Some(board_layout) = render_resources.board_layout else {
         warn!("Board Rendering: snapshot ignored because BoardLayout is missing");
         return;
     };
-    let Some(card_atlas) = card_atlas else {
+    let Some(card_atlas) = render_resources.card_atlas else {
         warn!("Board Rendering: snapshot ignored because CardAtlas is missing");
         return;
     };
@@ -1452,13 +1515,20 @@ fn rebuild_board_from_snapshot_system(
         current_phase.round = snapshot.round_number;
     }
 
-    spawn_snapshot_objectives(&mut commands, &board_layout, &card_atlas, &snapshot);
+    spawn_snapshot_objectives(
+        &mut commands,
+        &board_layout,
+        &card_atlas,
+        render_resources.board_assets.as_deref(),
+        &snapshot,
+    );
     spawn_snapshot_units(
         &mut commands,
         &board_layout,
         &card_atlas,
-        &config,
-        &player_team_map,
+        render_resources.board_assets.as_deref(),
+        &render_resources.config,
+        &render_resources.player_team_map,
         &snapshot,
     );
 }
@@ -1631,6 +1701,7 @@ fn spawn_snapshot_units(
     commands: &mut Commands,
     board_layout: &BoardLayout,
     card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
     config: &BoardRenderingConfig,
     player_team_map: &PlayerTeamMap,
     snapshot: &S2CGameSnapshot,
@@ -1647,6 +1718,7 @@ fn spawn_snapshot_units(
             commands,
             board_layout,
             card_atlas,
+            board_assets,
             config,
             snapshot,
             unit,
@@ -1659,6 +1731,7 @@ fn spawn_snapshot_unit(
     commands: &mut Commands,
     board_layout: &BoardLayout,
     card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
     config: &BoardRenderingConfig,
     snapshot: &S2CGameSnapshot,
     unit: &UnitBoardState,
@@ -1692,7 +1765,7 @@ fn spawn_snapshot_unit(
             stats,
             LaneCell { lane, cell },
             StatusEffectsList::default(),
-            unit_sprite(card_atlas, frame_index),
+            unit_sprite(card_atlas, board_assets, frame_index),
             Transform::from_xyz(
                 world_xy.x + co_occupancy_x_offset,
                 world_xy.y,
@@ -1707,7 +1780,14 @@ fn spawn_snapshot_unit(
             .insert(BoardUnitSourceClass(source_class));
     }
 
-    spawn_hp_bar_children(commands, unit_entity, card_atlas, stats, config);
+    spawn_hp_bar_children(
+        commands,
+        unit_entity,
+        card_atlas,
+        board_assets,
+        stats,
+        config,
+    );
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -1839,6 +1919,7 @@ fn spawn_snapshot_objectives(
     commands: &mut Commands,
     board_layout: &BoardLayout,
     card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
     snapshot: &S2CGameSnapshot,
 ) {
     for player in &snapshot.players {
@@ -1847,6 +1928,7 @@ fn spawn_snapshot_objectives(
                 commands,
                 board_layout,
                 card_atlas,
+                board_assets,
                 snapshot.recipient_player_id,
                 player.player_id,
                 objective,
@@ -1859,6 +1941,7 @@ fn spawn_standing_objective(
     commands: &mut Commands,
     board_layout: &BoardLayout,
     card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
     recipient_player_id: PlayerId,
     owner_id: PlayerId,
     objective: &ObjectiveSnapshot,
@@ -1882,19 +1965,40 @@ fn spawn_standing_objective(
         hp_current: objective.hp,
         hp_max: objective.hp.max(1),
     };
+    let objective_art = objective_art_kind(owner_id, recipient_player_id, objective);
     let objective_entity = commands
         .spawn((
             BoardRenderingEntity,
             BoardSnapshotEntity,
             StandingObjective { owner_id, lane },
+            StandingObjectiveArt {
+                kind: objective_art,
+                used_runtime_asset: board_assets.is_some(),
+            },
             hp,
             LaneCell { lane, cell },
-            objective_unknown_sprite(card_atlas),
+            objective_sprite(card_atlas, board_assets, objective_art),
             Transform::from_xyz(world_xy.x, world_xy.y, rendering_constants::Z_OBJECTIVES),
         ))
         .id();
 
-    spawn_objective_hp_bar_children(commands, objective_entity, card_atlas, hp);
+    spawn_objective_hp_bar_children(commands, objective_entity, card_atlas, board_assets, hp);
+}
+
+fn objective_art_kind(
+    owner_id: PlayerId,
+    recipient_player_id: PlayerId,
+    objective: &ObjectiveSnapshot,
+) -> ObjectiveArtKind {
+    if owner_id != recipient_player_id {
+        return ObjectiveArtKind::Unknown;
+    }
+
+    if objective.is_real {
+        ObjectiveArtKind::Real
+    } else {
+        ObjectiveArtKind::Fake
+    }
 }
 
 fn objective_cell(owner_id: PlayerId, recipient_player_id: PlayerId) -> u8 {
@@ -1909,12 +2013,13 @@ fn spawn_hp_bar_children(
     commands: &mut Commands,
     parent: Entity,
     card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
     stats: BoardUnitStats,
     config: &BoardRenderingConfig,
 ) {
     let visual = hp_bar_visual(stats.hp_current, stats.hp_max, *config);
-    spawn_hp_bar_background(commands, parent, card_atlas);
-    spawn_hp_bar_fill(commands, parent, card_atlas, visual);
+    spawn_hp_bar_background(commands, parent, card_atlas, board_assets);
+    spawn_hp_bar_fill(commands, parent, card_atlas, board_assets, visual);
 }
 
 pub fn update_status_icons_system(
@@ -2079,20 +2184,27 @@ fn spawn_objective_hp_bar_children(
     commands: &mut Commands,
     parent: Entity,
     card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
     hp: StandingObjectiveHp,
 ) {
     let visual = hp_bar_visual(hp.hp_current, hp.hp_max, BoardRenderingConfig::default());
-    spawn_hp_bar_background(commands, parent, card_atlas);
-    spawn_hp_bar_fill(commands, parent, card_atlas, visual);
+    spawn_hp_bar_background(commands, parent, card_atlas, board_assets);
+    spawn_hp_bar_fill(commands, parent, card_atlas, board_assets, visual);
 }
 
-fn spawn_hp_bar_background(commands: &mut Commands, parent: Entity, card_atlas: &CardAtlas) {
+fn spawn_hp_bar_background(
+    commands: &mut Commands,
+    parent: Entity,
+    card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
+) {
     commands.spawn((
         BoardRenderingEntity,
         BoardSnapshotEntity,
         HpBarBackground,
         hp_bar_sprite(
             card_atlas,
+            board_assets,
             Color::srgba(0.08, 0.08, 0.08, 0.76),
             rendering_constants::HP_BAR_SIZE,
         ),
@@ -2110,6 +2222,7 @@ fn spawn_hp_bar_fill(
     commands: &mut Commands,
     parent: Entity,
     card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
     visual: HpBarVisual,
 ) {
     commands.spawn((
@@ -2118,6 +2231,7 @@ fn spawn_hp_bar_fill(
         HpBarFill,
         hp_bar_sprite(
             card_atlas,
+            board_assets,
             visual.color.tint(),
             rendering_constants::HP_BAR_SIZE,
         ),
@@ -2135,7 +2249,21 @@ fn spawn_hp_bar_fill(
     ));
 }
 
-fn unit_sprite(card_atlas: &CardAtlas, frame_index: usize) -> Sprite {
+fn unit_sprite(
+    card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
+    frame_index: usize,
+) -> Sprite {
+    if frame_index == UNIT_PLACEHOLDER_FRAME_INDEX {
+        if let Some(board_assets) = board_assets {
+            return direct_sprite(
+                board_assets.unit_placeholder.clone(),
+                rendering_constants::UNIT_SPRITE_SIZE,
+                Color::srgba(1.0, 1.0, 1.0, 1.0),
+            );
+        }
+    }
+
     atlas_sprite(
         card_atlas.image.clone(),
         card_atlas.layout.clone(),
@@ -2145,7 +2273,24 @@ fn unit_sprite(card_atlas: &CardAtlas, frame_index: usize) -> Sprite {
     )
 }
 
-fn objective_unknown_sprite(card_atlas: &CardAtlas) -> Sprite {
+fn objective_sprite(
+    card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
+    kind: ObjectiveArtKind,
+) -> Sprite {
+    if let Some(board_assets) = board_assets {
+        let image = match kind {
+            ObjectiveArtKind::Unknown => board_assets.objective_unknown.clone(),
+            ObjectiveArtKind::Real => board_assets.objective_real.clone(),
+            ObjectiveArtKind::Fake => board_assets.objective_fake.clone(),
+        };
+        return direct_sprite(
+            image,
+            rendering_constants::OBJECTIVE_SPRITE_SIZE,
+            Color::srgba(1.0, 1.0, 1.0, 1.0),
+        );
+    }
+
     atlas_sprite(
         card_atlas.board_elements_image.clone(),
         card_atlas.board_elements_layout.clone(),
@@ -2155,7 +2300,16 @@ fn objective_unknown_sprite(card_atlas: &CardAtlas) -> Sprite {
     )
 }
 
-fn hp_bar_sprite(card_atlas: &CardAtlas, color: Color, size: Vec2) -> Sprite {
+fn hp_bar_sprite(
+    card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
+    color: Color,
+    size: Vec2,
+) -> Sprite {
+    if let Some(board_assets) = board_assets {
+        return direct_sprite(board_assets.hp_bar_white_pixel.clone(), size, color);
+    }
+
     atlas_sprite(
         card_atlas.image.clone(),
         card_atlas.layout.clone(),
@@ -2163,6 +2317,15 @@ fn hp_bar_sprite(card_atlas: &CardAtlas, color: Color, size: Vec2) -> Sprite {
         size,
         color,
     )
+}
+
+fn direct_sprite(image: Handle<Image>, custom_size: Vec2, color: Color) -> Sprite {
+    Sprite {
+        image,
+        custom_size: Some(custom_size),
+        color,
+        ..default()
+    }
 }
 
 fn atlas_sprite(
@@ -2240,15 +2403,49 @@ fn spawn_board_camera(commands: &mut Commands, board_layout: &BoardLayout) {
     ));
 }
 
-fn spawn_board_grid(commands: &mut Commands, board_layout: &BoardLayout) {
+fn spawn_board_background(
+    commands: &mut Commands,
+    board_layout: &BoardLayout,
+    board_assets: &BoardRuntimeAssets,
+) {
+    let board_center = board_center(board_layout);
+    commands.spawn((
+        BoardRenderingEntity,
+        direct_sprite(
+            board_assets.board_background.clone(),
+            Vec2::new(
+                board_layout.cell_width * f32::from(BOARD_CELL_COUNT),
+                board_layout.lane_height * f32::from(BOARD_LANE_COUNT),
+            ),
+            Color::srgba(1.0, 1.0, 1.0, 1.0),
+        ),
+        Transform::from_xyz(
+            board_center.x,
+            board_center.y,
+            rendering_constants::Z_BOARD_BACKGROUND,
+        ),
+    ));
+}
+
+fn spawn_board_grid(
+    commands: &mut Commands,
+    board_layout: &BoardLayout,
+    board_assets: Option<&BoardRuntimeAssets>,
+) {
     for lane in 1..=BOARD_LANE_COUNT {
         for cell in 1..=BOARD_CELL_COUNT {
-            spawn_cell_node(commands, board_layout, lane, cell);
+            spawn_cell_node(commands, board_layout, board_assets, lane, cell);
         }
     }
 }
 
-fn spawn_cell_node(commands: &mut Commands, board_layout: &BoardLayout, lane: u8, cell: u8) {
+fn spawn_cell_node(
+    commands: &mut Commands,
+    board_layout: &BoardLayout,
+    board_assets: Option<&BoardRuntimeAssets>,
+    lane: u8,
+    cell: u8,
+) {
     let world_xy = board_layout.cell_to_world(lane, cell);
     let highlight_state = SpawnHighlightState::Inactive;
 
@@ -2257,12 +2454,27 @@ fn spawn_cell_node(commands: &mut Commands, board_layout: &BoardLayout, lane: u8
         BoardCellNode,
         LaneCell { lane, cell },
         highlight_state,
-        Sprite::from_color(
-            highlight_state.tint(),
-            Vec2::splat(rendering_constants::CELL_NODE_SIZE),
-        ),
+        cell_node_sprite(board_assets, highlight_state),
         Transform::from_xyz(world_xy.x, world_xy.y, rendering_constants::Z_CELL_NODES),
     ));
+}
+
+fn cell_node_sprite(
+    board_assets: Option<&BoardRuntimeAssets>,
+    highlight_state: SpawnHighlightState,
+) -> Sprite {
+    if let Some(board_assets) = board_assets {
+        return direct_sprite(
+            board_assets.cell_idle.clone(),
+            Vec2::splat(rendering_constants::CELL_NODE_SIZE),
+            highlight_state.tint(),
+        );
+    }
+
+    Sprite::from_color(
+        highlight_state.tint(),
+        Vec2::splat(rendering_constants::CELL_NODE_SIZE),
+    )
 }
 
 fn spawn_ghost_unit(

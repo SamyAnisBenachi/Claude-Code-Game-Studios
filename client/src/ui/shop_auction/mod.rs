@@ -8,6 +8,10 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+use crate::asset_wiring::{
+    default_client_card_catalog, resolve_card_display_art, CardDisplayArtAsset,
+    CardDisplayArtFallback,
+};
 use crate::card_animations::{
     AuctionPanelTransitionRequested, CardAcquiredAnimReady, SettlementOverlayRequested,
 };
@@ -67,9 +71,17 @@ impl ShopAuctionUiMode {
     }
 }
 
-#[derive(Resource, Default, Debug, Clone)]
+#[derive(Resource, Debug, Clone)]
 pub struct ShopAuctionCardCatalog {
     pub cards: CardCatalog,
+}
+
+impl Default for ShopAuctionCardCatalog {
+    fn default() -> Self {
+        Self {
+            cards: default_client_card_catalog(),
+        }
+    }
 }
 
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -1627,6 +1639,7 @@ pub fn handle_auction_card_system(
 pub fn handle_draft_offering_system(
     mode: Res<ShopAuctionUiMode>,
     catalog: Res<ShopAuctionCardCatalog>,
+    asset_server: Option<Res<AssetServer>>,
     entities: Option<Res<ShopAuctionUiEntities>>,
     mut offerings: MessageReader<ShopAuctionDraftOfferingReceived>,
     mut draft_state: ResMut<ShopAuctionDraftInitialState>,
@@ -1685,6 +1698,7 @@ pub fn handle_draft_offering_system(
                     DraftInitialSlotRarity(rarity),
                     DraftInitialSlotState::Available,
                 ));
+                apply_card_display_art(&mut commands, slot_entity, card, asset_server.as_deref());
                 *visibility = visibility_for(draft_initial_active(&mode, &draft_state));
             }
         }
@@ -1704,6 +1718,7 @@ pub fn handle_shop_slots_system(
     current: Res<CurrentClientPhase>,
     mode: Res<ShopAuctionUiMode>,
     catalog: Res<ShopAuctionCardCatalog>,
+    asset_server: Option<Res<AssetServer>>,
     entities: Option<Res<ShopAuctionUiEntities>>,
     mut slot_messages: MessageReader<ShopAuctionShopSlotsReceived>,
     mut shop_state: ResMut<ShopAuctionShopState>,
@@ -1761,6 +1776,7 @@ pub fn handle_shop_slots_system(
             entity,
             card_id,
             &catalog.cards,
+            asset_server.as_deref(),
             &mut text,
             &mut visibility,
         );
@@ -2647,6 +2663,7 @@ pub fn sync_auction_panel_system(
     local_gold: Res<ShopAuctionLocalGoldView>,
     hand_view: Res<ShopAuctionDraftHandView>,
     catalog: Res<ShopAuctionCardCatalog>,
+    asset_server: Option<Res<AssetServer>>,
     auction_state: Res<ShopAuctionAuctionState>,
     settlement_state: Res<ShopAuctionSettlementState>,
     shop_state: Res<ShopAuctionShopState>,
@@ -2740,6 +2757,12 @@ pub fn sync_auction_panel_system(
             text.0.clear();
             if let Some(card_id) = auction_state.card_id {
                 let card = catalog.cards.get(&card_id);
+                apply_card_display_art(
+                    &mut commands,
+                    entities.auction_featured_card,
+                    card,
+                    asset_server.as_deref(),
+                );
                 let name = card
                     .map(|card| card.name_en.as_str())
                     .unwrap_or("Unknown card");
@@ -2748,6 +2771,8 @@ pub fn sync_auction_panel_system(
                     "{name}\n{:?} - {}g",
                     rarity, auction_state.current_price
                 ));
+            } else {
+                clear_card_display_art(&mut commands, entities.auction_featured_card);
             }
         }
 
@@ -2929,7 +2954,14 @@ pub fn sync_auction_panel_system(
             } else {
                 None
             };
-            apply_shop_footer_slot(&mut commands, entity, card_id, &catalog.cards, &mut text);
+            apply_shop_footer_slot(
+                &mut commands,
+                entity,
+                card_id,
+                &catalog.cards,
+                asset_server.as_deref(),
+                &mut text,
+            );
         }
     }
 }
@@ -4152,6 +4184,7 @@ fn clear_draft_initial_slot(
         DraftInitialSlotState,
         PendingDraftInitialPurchase,
     )>();
+    clear_card_display_art(commands, entity);
 }
 
 fn apply_shop_slot(
@@ -4159,6 +4192,7 @@ fn apply_shop_slot(
     entity: Entity,
     card_id: Option<CardId>,
     catalog: &CardCatalog,
+    asset_server: Option<&AssetServer>,
     text: &mut Text,
     visibility: &mut Visibility,
 ) {
@@ -4186,6 +4220,7 @@ fn apply_shop_slot(
         ShopSlotRarity(rarity),
         ShopSlotState::Available,
     ));
+    apply_card_display_art(commands, entity, card, asset_server);
     commands.entity(entity).remove::<PendingShopPurchase>();
 }
 
@@ -4200,6 +4235,7 @@ fn clear_shop_slot(commands: &mut Commands, entity: Entity, text: &mut Text) {
         ShopSlotRarity,
         PendingShopPurchase,
     )>();
+    clear_card_display_art(commands, entity);
 }
 
 fn apply_shop_footer_slot(
@@ -4207,6 +4243,7 @@ fn apply_shop_footer_slot(
     entity: Entity,
     card_id: Option<CardId>,
     catalog: &CardCatalog,
+    asset_server: Option<&AssetServer>,
     text: &mut Text,
 ) {
     let Some(card_id) = card_id else {
@@ -4216,6 +4253,7 @@ fn apply_shop_footer_slot(
             .entity(entity)
             .insert(ShopFooterSlotState::EmptyLocked);
         commands.entity(entity).remove::<ShopFooterSlotCard>();
+        clear_card_display_art(commands, entity);
         return;
     };
 
@@ -4231,6 +4269,36 @@ fn apply_shop_footer_slot(
     commands
         .entity(entity)
         .insert((ShopFooterSlotCard(card_id), ShopFooterSlotState::Locked));
+    apply_card_display_art(commands, entity, card, asset_server);
+}
+
+fn apply_card_display_art(
+    commands: &mut Commands,
+    entity: Entity,
+    card: Option<&shared::card::CardData>,
+    asset_server: Option<&AssetServer>,
+) {
+    match resolve_card_display_art(card) {
+        Ok(path) => {
+            let mut entity_commands = commands.entity(entity);
+            entity_commands.insert(CardDisplayArtAsset { path });
+            entity_commands.remove::<CardDisplayArtFallback>();
+            if let Some(asset_server) = asset_server {
+                entity_commands.insert(ImageNode::new(asset_server.load(path)));
+            }
+        }
+        Err(reason) => {
+            let mut entity_commands = commands.entity(entity);
+            entity_commands.insert(CardDisplayArtFallback { reason });
+            entity_commands.remove::<(CardDisplayArtAsset, ImageNode)>();
+        }
+    }
+}
+
+fn clear_card_display_art(commands: &mut Commands, entity: Entity) {
+    commands
+        .entity(entity)
+        .remove::<(CardDisplayArtAsset, CardDisplayArtFallback, ImageNode)>();
 }
 
 fn mark_confirmed_purchase(

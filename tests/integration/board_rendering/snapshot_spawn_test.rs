@@ -13,10 +13,11 @@ use client::presentation::board_rendering::rendering_constants::{
 };
 use client::presentation::board_rendering::{
     hp_bar_visual, BoardCellNode, BoardRenderState, BoardRenderingConfig, BoardRenderingEntity,
-    BoardRenderingPlugin, BoardSnapshotEntity, BoardUnit, BoardUnitCard, BoardUnitOwner,
-    BoardUnitStats, CardAtlas, HpBarBackground, HpBarColor, HpBarFill, ObjectiveIdentityCache,
-    StandingObjective, StandingObjectiveHp, HP_BAR_WHITE_PIXEL_FRAME_INDEX,
-    OBJECTIVE_UNKNOWN_FRAME_INDEX, UNIT_PLACEHOLDER_FRAME_INDEX,
+    BoardRenderingPlugin, BoardRuntimeAssets, BoardSnapshotEntity, BoardUnit, BoardUnitCard,
+    BoardUnitOwner, BoardUnitStats, CardAtlas, HpBarBackground, HpBarColor, HpBarFill,
+    ObjectiveArtKind, ObjectiveIdentityCache, StandingObjective, StandingObjectiveArt,
+    StandingObjectiveHp, HP_BAR_WHITE_PIXEL_FRAME_INDEX, OBJECTIVE_UNKNOWN_FRAME_INDEX,
+    UNIT_PLACEHOLDER_FRAME_INDEX,
 };
 use client::presentation::LaneCell;
 use client::state::{ClientGameSnapshotMessage, ClientState, CurrentClientPhase};
@@ -291,6 +292,63 @@ fn test_missing_card_art_uses_placeholder_and_keeps_hp_bar() {
 }
 
 #[test]
+fn test_runtime_board_assets_drive_placeholder_hp_and_objective_images() {
+    let mut app = app_in_session();
+    install_runtime_board_assets(&mut app);
+
+    write_snapshot(
+        &mut app,
+        snapshot_with_units(
+            RoundPhase::DraftInitial,
+            vec![unit(401, player(1), 3, 4, Some(CardId(9999)), 3)],
+        ),
+    );
+    app.update();
+
+    let runtime_assets = app.world().resource::<BoardRuntimeAssets>().clone();
+    let mut units = app
+        .world_mut()
+        .query_filtered::<(Entity, &BoardUnitCard, &Sprite), With<BoardUnit>>();
+    let unit_rows = units.iter(app.world()).collect::<Vec<_>>();
+    assert_eq!(unit_rows.len(), 1);
+    let (unit_entity, card, sprite) = unit_rows[0];
+    assert!(card.used_missing_art_fallback);
+    assert_eq!(sprite.image.id(), runtime_assets.unit_placeholder.id());
+    assert!(sprite.texture_atlas.is_none());
+
+    let fill_entity = hp_fill_child(&app, unit_entity);
+    let fill_sprite = app.world().get::<Sprite>(fill_entity).unwrap();
+    assert_eq!(
+        fill_sprite.image.id(),
+        runtime_assets.hp_bar_white_pixel.id()
+    );
+    assert!(fill_sprite.texture_atlas.is_none());
+
+    let mut objectives = app
+        .world_mut()
+        .query::<(&StandingObjective, &StandingObjectiveArt, &Sprite)>();
+    let objective_rows = objectives.iter(app.world()).collect::<Vec<_>>();
+    assert!(objective_rows.iter().any(|(objective, art, sprite)| {
+        objective.owner_id == player(1)
+            && art.kind == ObjectiveArtKind::Real
+            && art.used_runtime_asset
+            && sprite.image.id() == runtime_assets.objective_real.id()
+    }));
+    assert!(objective_rows.iter().any(|(objective, art, sprite)| {
+        objective.owner_id == player(1)
+            && art.kind == ObjectiveArtKind::Fake
+            && art.used_runtime_asset
+            && sprite.image.id() == runtime_assets.objective_fake.id()
+    }));
+    assert!(objective_rows.iter().any(|(objective, art, sprite)| {
+        objective.owner_id == player(2)
+            && art.kind == ObjectiveArtKind::Unknown
+            && art.used_runtime_asset
+            && sprite.image.id() == runtime_assets.objective_unknown.id()
+    }));
+}
+
+#[test]
 fn test_baseline_board_path_supports_twenty_units_and_two_atlased_images() {
     let mut app = app_in_session();
     install_distinct_test_atlas(&mut app);
@@ -409,6 +467,29 @@ fn install_distinct_test_atlas(app: &mut App) {
         unit_frames: default(),
     }
     .with_unit_frame(KNOWN_CARD, KNOWN_CARD_FRAME, KNOWN_CARD_MAX_HP);
+}
+
+fn install_runtime_board_assets(app: &mut App) {
+    app.world_mut().init_resource::<Assets<Image>>();
+    let mut images = app.world_mut().resource_mut::<Assets<Image>>();
+    let board_background = images.add(Image::default());
+    let cell_idle = images.add(Image::default());
+    let unit_placeholder = images.add(Image::default());
+    let hp_bar_white_pixel = images.add(Image::default());
+    let objective_unknown = images.add(Image::default());
+    let objective_real = images.add(Image::default());
+    let objective_fake = images.add(Image::default());
+    drop(images);
+
+    app.world_mut().insert_resource(BoardRuntimeAssets {
+        board_background,
+        cell_idle,
+        unit_placeholder,
+        hp_bar_white_pixel,
+        objective_unknown,
+        objective_real,
+        objective_fake,
+    });
 }
 
 fn write_snapshot(app: &mut App, snapshot: S2CGameSnapshot) {
