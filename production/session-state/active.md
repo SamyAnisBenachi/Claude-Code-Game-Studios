@@ -2379,3 +2379,16 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` marks S9-RS-002 done and preserves Sprint 8 carried conditions plus Sprint 9 no-claims.
 - Next recommended: S9-RS-003 Result acknowledgement cleanup handshake can be readiness-checked or assigned next when requested; no close-out, smoke, QA sign-off, `/team-qa`, or `/gate-check` was run.
+
+## Session Extract - /story-done 2026-05-07
+- Verdict: COMPLETE
+- Story: `production/epics/shop-auction-ui/story-008-reconnect-snapshot-and-late-message-recovery.md` - Story 008: Reconnect Snapshot and Late Message Recovery
+- Criteria: 13/13 passing; snapshot-first ordering, DRAFT_AUCTION snapshot rebuild, auction price/leader/timer restoration, no-bid restoration, DRAFT_SHOP local-slot rebuild and privacy, economy rebuild, shared economy authority preservation, late auction/shop suppression, DRAFT_INITIAL non-restoration, and single-drain guard evidence are verified.
+- Test Evidence: `tests/integration/shop_auction_ui/reconnect_late_message_test.rs` plus existing Shop/Auction feedback, settlement, and shop-panel regression suites.
+- Verification: `cargo test -p client --test shop_auction_ui_reconnect_late_message_test` passed 6/6; `cargo test -p client --test shop_auction_ui_auction_feedback_test` passed 6/6; `cargo test -p client --test shop_auction_ui_auction_settlement_test` passed 7/7; `cargo test -p client --test shop_auction_ui_shop_panel_test` passed 9/9; `cargo check -p client`, `cargo fmt -p client -- --check`, and `git diff --check` passed.
+- Notes: Source of truth was `origin/main@b69a7fd6a676fa999fe4d803e9e42d977a339e21`. Story manifest version `2026-05-05` matches the current control manifest. Lean mode skipped QL-TEST-COVERAGE and LP-CODE-REVIEW because `production/review-mode.txt` is absent. Single-drain evidence confirmed one production `S2CPhaseChanged` drain, one production `S2CGoldUpdate` drain, shared presentation ownership for snapshot/fanout drains, and no Shop/Auction duplicate Lightyear receivers.
+- Scope guard: No smoke, QA sign-off, `/team-qa`, `/gate-check`, Sprint 9 close-out, Sprint 8 close-out, unrelated implementation, manual/browser GAME_OVER evidence, public release readiness, full game completion, broad accessibility completion, full playable-client manual QA, or playtest/fun-hypothesis validation is claimed.
+- QA conditions: Sprint 8 carried conditions remain preserved: S8-QA-001-W1 manual/browser `GAME_OVER` gap, `QA-COND-0005` friend-game-only accepted risk, and `QA-COND-0006` accepted-risk/deferred.
+- Tech debt logged: None.
+- Sprint status: `production/sprint-status.yaml` marks SAU-008 done and preserves Sprint 8 carried conditions plus Sprint 9 no-claims.
+- Next recommended: Continue Sprint 9 from the current plan when requested. No close-out, smoke, QA sign-off, `/team-qa`, `/gate-check`, or unrelated implementation was run.

@@ -1,7 +1,7 @@
 # Story 008: Reconnect Snapshot and Late Message Recovery
 
 > **Epic**: Shop / Auction UI
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -130,7 +130,7 @@ Full DRAFT_INITIAL reconnect restoration requires a separate protocol/server sna
   - `rg -n "MessageReceiver<S2CGoldUpdate>" client/src`
   - targeted grep for `MessageReceiver<S2CGameSnapshot>` and Shop/Auction duplicate receiver additions
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and verified
 
 ## Dependencies
 
@@ -150,3 +150,24 @@ Full DRAFT_INITIAL reconnect restoration requires a separate protocol/server sna
 
 - None for DRAFT_AUCTION and DRAFT_SHOP reconnect/late-message recovery.
 - Blocked/dependent follow-up: full DRAFT_INITIAL reconnect restoration until protocol/server snapshot support carries the active initial draft offering and any required purchase/ready state.
+
+## Completion Notes
+
+**Completed**: 2026-05-07
+**Criteria**: 13/13 passing.
+**Deviations**: None blocking. Story manifest version `2026-05-05` matches the current control manifest. `production/review-mode.txt` is absent, so lean review mode applied and QL-TEST-COVERAGE / LP-CODE-REVIEW were skipped per `/story-done`.
+**Test Evidence**: Integration evidence exists at `tests/integration/shop_auction_ui/reconnect_late_message_test.rs`; Cargo exposes it as `shop_auction_ui_reconnect_late_message_test`.
+**Code Review**: Skipped in lean mode.
+**Verification**:
+- `cargo test -p client --test shop_auction_ui_reconnect_late_message_test` passed 6/6.
+- `cargo test -p client --test shop_auction_ui_auction_feedback_test` passed 6/6.
+- `cargo test -p client --test shop_auction_ui_auction_settlement_test` passed 7/7.
+- `cargo test -p client --test shop_auction_ui_shop_panel_test` passed 9/9.
+- `cargo check -p client` passed.
+- `cargo fmt -p client -- --check` passed.
+- `git diff --check` passed.
+**Single-drain evidence**:
+- `rg -n "MessageReceiver<S2CPhaseChanged>" client/src` found the production drain at `client/src/presentation/mod.rs:130`.
+- `rg -n "MessageReceiver<S2CGoldUpdate>" client/src` found the production drain at `client/src/presentation/shared/economy_view.rs:49`.
+- Targeted snapshot/fanout grep found shared presentation drains for `S2CGameSnapshot`, `S2CDraftOffering`, `S2CShopSlots`, and `S2CCardAcquired`; Shop/Auction UI consumes `PresentationGameSnapshotMessage` / fanout Bevy messages and does not add duplicate Lightyear receivers.
+**Scope Guard**: No smoke, QA sign-off, `/team-qa`, `/gate-check`, Sprint 9 close-out, Sprint 8 close-out, unrelated implementation, public release readiness, full game completion, broad accessibility completion, full playable-client manual QA, or playtest/fun-hypothesis validation is claimed.

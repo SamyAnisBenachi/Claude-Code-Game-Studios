@@ -158,14 +158,16 @@ stories:
     name: "Reconnect Snapshot and Late Message Recovery"
     file: "production/epics/shop-auction-ui/story-008-reconnect-snapshot-and-late-message-recovery.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: "UI/client programmer"
     estimate_days: 1.25
-    blocker: "Conditional backlog; pull only if reconnect, snapshot, or late-message instability affects the active/result flow."
-    completed: ""
+    blocker: ""
+    completed: "2026-05-07"
     notes:
-      - "Story docs are refreshed and Ready."
-      - "Implementation is not pulled or claimed by Sprint 9 activation."
+      - "Integrated on main at b69a7fd and verified by /story-done Prompt 432."
+      - "Snapshot-first rebuild, DRAFT_AUCTION and DRAFT_SHOP reconnect recovery, late-message suppression, DRAFT_INITIAL non-restoration guard, economy authority preservation, and single-drain evidence are verified."
+      - "No smoke, QA sign-off, /team-qa, gate-check, Sprint 9 close-out, Sprint 8 close-out, unrelated implementation, manual/browser GAME_OVER evidence, public release readiness, full game completion, broad accessibility completion, full playable-client manual QA, or playtest/fun-hypothesis validation is claimed."
+      - "Sprint 8 carried conditions and Sprint 9 no-claims remain preserved."
 
   - id: "ECO-004"
     name: "Kill and Objective Awards reward-loop polish"
