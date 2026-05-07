@@ -167,13 +167,17 @@ pub fn evaluate_room_session_ready(
     mut commands: Commands,
     time: Res<Time>,
     mut rooms: ResMut<RoomSessions>,
-    selections: Res<ClassSelections>,
+    selections: Option<Res<ClassSelections>>,
     rng_factory: Option<Res<ServerRngFactory>>,
     placement_timer_requests: Option<Res<PlacementTimerMultiplierRequests>>,
     active_sessions: Option<Res<ActiveSessions>>,
     session_config: Option<Res<SessionConfig>>,
     mut player_sessions: ResMut<PlayerSessions>,
 ) {
+    let Some(selections) = selections else {
+        return;
+    };
+
     if session_config.is_some() {
         return;
     }
@@ -582,9 +586,16 @@ pub fn handle_select_class(
     connections: Res<PlayerConnectionMap>,
     rooms: Res<RoomSessions>,
     active_sessions: Res<ActiveSessions>,
-    mut previews: ResMut<ClassPreviews>,
+    previews: Option<ResMut<ClassPreviews>>,
     mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SSelectClass>)>,
 ) {
+    let Some(mut previews) = previews else {
+        for (_, mut receiver) in receivers.iter_mut() {
+            for _ in receiver.receive() {}
+        }
+        return;
+    };
+
     for (remote, mut receiver) in receivers.iter_mut() {
         for msg in receiver.receive() {
             let Some(player_id) = connections.0.get(&remote.0).copied() else {
@@ -607,11 +618,18 @@ pub fn handle_confirm_class(
     connections: Res<PlayerConnectionMap>,
     active_sessions: Res<ActiveSessions>,
     mut rooms: ResMut<RoomSessions>,
-    mut selections: ResMut<ClassSelections>,
+    selections: Option<ResMut<ClassSelections>>,
     mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SConfirmClass>)>,
     server: Query<&Server>,
     mut sender: Option<ServerMultiMessageSender>,
 ) {
+    let Some(mut selections) = selections else {
+        for (_, mut receiver) in receivers.iter_mut() {
+            for _ in receiver.receive() {}
+        }
+        return;
+    };
+
     let server = server.single().ok();
 
     for (remote, mut receiver) in receivers.iter_mut() {
