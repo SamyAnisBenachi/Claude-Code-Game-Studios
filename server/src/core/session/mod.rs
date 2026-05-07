@@ -34,11 +34,11 @@ pub use state::{
 pub use system::{
     all_classes_confirmed, all_slots_filled, apply_placement_timer_multiplier_request_batch,
     cancel_lobby_by_session, cancel_lobby_for_player, confirm_class, create_room,
-    evaluate_session_ready, f4_session_ready, generate_unique_room_code, handle_confirm_class,
-    handle_create_room, handle_game_over_teardown, handle_join_room, handle_lobby_disconnect,
-    handle_lobby_heartbeat, handle_placement_timer_multiplier_requests, handle_select_class,
-    initialise_slots, join_room, lobby_timeout_check, normalise_room_code, protocol_slots,
-    room_code_from_bytes, select_class, tick_lobby_heartbeats, ConfirmClassOutcome,
-    CreateRoomOutcome, JoinRoomOutcome, SelectClassOutcome, ServerRngFactory, ServerRngInitError,
-    SessionSystemSet, ROOM_CODE_LEN,
+    evaluate_room_session_ready, evaluate_session_ready, f4_session_ready,
+    generate_unique_room_code, handle_confirm_class, handle_create_room, handle_game_over_teardown,
+    handle_join_room, handle_lobby_disconnect, handle_lobby_heartbeat,
+    handle_placement_timer_multiplier_requests, handle_select_class, initialise_slots, join_room,
+    lobby_timeout_check, normalise_room_code, protocol_slots, room_code_from_bytes, select_class,
+    tick_lobby_heartbeats, ConfirmClassOutcome, CreateRoomOutcome, JoinRoomOutcome,
+    SelectClassOutcome, ServerRngFactory, ServerRngInitError, SessionSystemSet, ROOM_CODE_LEN,
 };

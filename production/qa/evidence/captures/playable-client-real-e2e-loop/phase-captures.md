@@ -75,6 +75,24 @@ This capture set is internal friend-game evidence only. Local paths, usernames, 
 - Limit:
   - This smoke does not fake or claim full manual two-client completion.
 
+## Prompt 290 Controlled Room/Session Repair
+
+- Command: `cargo test -p server --test playable_client_real_e2e_loop_test`
+- Focused test: `real_lightyear_two_client_room_session_reaches_class_reveal_and_session_entry`
+- Result:
+  - Host and joiner both completed real Lightyear fresh hello/handshake.
+  - Host sent `C2SCreateRoom`; server returned `S2CRoomCreated`.
+  - Room code was captured from the server response and redacted as `<ROOM_CODE_6_CHARS>`.
+  - Joiner sent `C2SJoinRoom`; server returned `S2CJoinAck`.
+  - Host received `S2CSlotUpdated`.
+  - Host and joiner both sent `C2SSelectClass` and `C2SConfirmClass`.
+  - Both clients received `S2CClassLocked` and `S2CClassesRevealed`.
+  - Server promoted the ready room to `GameActive`, built `SessionConfig`, entered `RoundState::DraftInitial`, and both clients received `S2CPhaseChanged(DraftInitial)`.
+- Files:
+  - `prompt-290-room-session-trace.json`
+- Limit:
+  - This repair proves the controlled room/session endpoint only. It does not claim `DRAFT_SHOP`, auction, placement, resolution, next-loop, game-over, full playable-client manual QA, or public release readiness.
+
 ## Phase Summary
 
 | Phase | Capture | Result |
@@ -82,16 +100,16 @@ This capture set is internal friend-game evidence only. Local paths, usernames, 
 | Server launch | `attempt-5-server.stderr.log` | Reached after repairs |
 | Client A launch | `attempt-5-client-a.stderr.log` | Reached after repairs |
 | Client B launch | `attempt-5-client-b.stderr.log` | Reached after repairs |
-| Fresh hello | `playable_client_real_e2e_loop_test` | Reached by automated real-Lightyear smoke; not directly logged by live native clients |
-| Create room | none | Not reached in live process evidence |
-| Join room | none | Not reached in live process evidence |
-| Class select/confirm | none | Not reached in live process evidence |
-| Server-confirmed session entry | none | Not reached |
-| DRAFT_INITIAL | none | Not reached |
-| DRAFT_SHOP | none | Not reached |
+| Fresh hello | `playable_client_real_e2e_loop_test`, `prompt-290-room-session-trace.json` | Reached by automated real-Lightyear smoke and controlled two-client trace |
+| Create room | `prompt-290-room-session-trace.json` | Reached by controlled real-Lightyear primary-client trace |
+| Join room | `prompt-290-room-session-trace.json` | Reached by controlled real-Lightyear primary-client trace |
+| Class select/confirm | `prompt-290-room-session-trace.json` | Reached by controlled real-Lightyear primary-client trace |
+| Server-confirmed session entry | `prompt-290-room-session-trace.json` | Reached: server room `GameActive`, `SessionConfig`, `RoundState::DraftInitial`, client `S2CPhaseChanged(DraftInitial)` |
+| DRAFT_INITIAL | `prompt-290-room-session-trace.json` | Reached by controlled real-Lightyear primary-client trace |
+| DRAFT_SHOP | none | Not reached in prompt 290 room/session repair |
 | Auction | none | Not reached |
 | Placement submit | none | Not reached |
 | Placement reveal | none | Not reached |
 | Resolution replay | none | Not reached |
 | Next loop | none | Not reached |
-| Game-over or nearest endpoint | `attempt-5-client-a.stderr.log`, `attempt-5-client-b.stderr.log` | Nearest live endpoint is native two-client launch with MissingComponent repaired |
+| Game-over or nearest endpoint | `prompt-290-room-session-trace.json` | Nearest controlled endpoint is `DRAFT_INITIAL`; full loop not verified |

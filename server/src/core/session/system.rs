@@ -161,6 +161,83 @@ pub fn evaluate_session_ready(
     commands.insert_resource(LobbyState::GameActive);
 }
 
+pub fn evaluate_room_session_ready(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut rooms: ResMut<RoomSessions>,
+    selections: Res<ClassSelections>,
+    rng_factory: Option<Res<ServerRngFactory>>,
+    placement_timer_requests: Option<Res<PlacementTimerMultiplierRequests>>,
+    active_sessions: Option<Res<ActiveSessions>>,
+    session_config: Option<Res<SessionConfig>>,
+) {
+    if session_config.is_some() {
+        return;
+    }
+
+    let now = time.elapsed().as_secs_f64();
+    let Some(session_id) = find_room_session_ready(&rooms, &selections, now) else {
+        return;
+    };
+
+    let Some((slots, deadline)) = rooms
+        .get(session_id)
+        .map(|session| (session.slots.clone(), session.lobby_deadline))
+    else {
+        return;
+    };
+
+    let rng_factory = rng_factory.as_deref().copied().unwrap_or_default();
+    let Ok(server_rng) = rng_factory.create() else {
+        if let Some(session) = rooms.get_mut(session_id) {
+            session.state = LobbyState::LobbyCancelled;
+            session.heartbeats.0.clear();
+        }
+        commands.insert_resource(LobbyState::LobbyCancelled);
+        return;
+    };
+
+    let session_config = build_session_config_with_settings(
+        &slots,
+        &selections,
+        placement_timer_requests.as_deref(),
+    );
+    let reconnect_tracker = crate::core::session::initialise_reconnect_tracker(
+        &session_config,
+        Some(&slots),
+        active_sessions.as_deref(),
+    );
+
+    if let Some(session) = rooms.get_mut(session_id) {
+        session.state = LobbyState::GameActive;
+        session.heartbeats.0.clear();
+    }
+
+    commands.insert_resource(slots);
+    commands.insert_resource(deadline);
+    commands.insert_resource(session_config);
+    commands.insert_resource(reconnect_tracker);
+    commands.insert_resource(server_rng);
+    commands.trigger(SessionReady);
+    commands.insert_resource(LobbyState::GameActive);
+}
+
+fn find_room_session_ready(
+    rooms: &RoomSessions,
+    selections: &ClassSelections,
+    now: f64,
+) -> Option<SessionId> {
+    rooms.session_ids().into_iter().find(|session_id| {
+        rooms
+            .get(*session_id)
+            .map(|session| {
+                session.state == LobbyState::LobbyWaiting
+                    && f4_session_ready(&session.slots, selections, now, session.lobby_deadline)
+            })
+            .unwrap_or(false)
+    })
+}
+
 /// Sole drainer for `MessageReceiver<C2SSetPlacementTimerMultiplier>`.
 #[allow(clippy::too_many_arguments)]
 pub fn handle_placement_timer_multiplier_requests(

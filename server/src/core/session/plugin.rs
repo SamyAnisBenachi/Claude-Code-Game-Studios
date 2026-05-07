@@ -5,14 +5,14 @@ use shared::card::ClassId;
 
 use crate::core::rsm::{advance_phase, on_session_ready, GameOverEmitted, PlayerHeartbeat};
 use crate::core::session::{
-    evaluate_session_ready, flush_deferred_queue, handle_confirm_class, handle_create_room,
-    handle_game_over_teardown, handle_join_room, handle_lobby_disconnect, handle_lobby_heartbeat,
-    handle_placement_timer_multiplier_requests, handle_reconnect, handle_select_class,
-    hello_timeout_watchdog, lobby_timeout_check, on_reconnect_connected, tick_lobby_heartbeats,
-    ActiveSessions, ClassPreviews, ClassSelections, NextFreshPlayerId,
-    PlacementTimerMultiplierRequests, PlayerConnectionMap, PlayerSessionData, PlayerSessions,
-    ReconnectNetworkOutbox, ReconnectTracker, RoomSessions, ServerRngFactory, SessionConfig,
-    SessionNetworkOutbox, SessionSystemSet,
+    evaluate_room_session_ready, evaluate_session_ready, flush_deferred_queue,
+    handle_confirm_class, handle_create_room, handle_game_over_teardown, handle_join_room,
+    handle_lobby_disconnect, handle_lobby_heartbeat, handle_placement_timer_multiplier_requests,
+    handle_reconnect, handle_select_class, hello_timeout_watchdog, lobby_timeout_check,
+    on_reconnect_connected, tick_lobby_heartbeats, ActiveSessions, ClassPreviews, ClassSelections,
+    NextFreshPlayerId, PlacementTimerMultiplierRequests, PlayerConnectionMap, PlayerSessionData,
+    PlayerSessions, ReconnectNetworkOutbox, ReconnectTracker, RoomSessions, ServerRngFactory,
+    SessionConfig, SessionNetworkOutbox, SessionSystemSet,
 };
 
 pub struct GameSessionPlugin;
@@ -61,8 +61,10 @@ impl Plugin for GameSessionPlugin {
             )
             .add_systems(
                 Update,
-                evaluate_session_ready
+                (evaluate_room_session_ready, evaluate_session_ready)
+                    .chain()
                     .in_set(SessionSystemSet::LobbyEval)
+                    .after(handle_confirm_class)
                     .after(lobby_timeout_check)
                     .before(advance_phase),
             )

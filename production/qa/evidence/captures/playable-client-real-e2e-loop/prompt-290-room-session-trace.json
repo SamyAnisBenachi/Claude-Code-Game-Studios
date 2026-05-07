@@ -1,0 +1,66 @@
+{
+  "artifact": "PLAYABLE-003 prompt 290 controlled room/session trace",
+  "scope": "controlled in-process Lightyear server plus two primary-client Lightyear clients",
+  "sanitization": {
+    "local_paths": "redacted",
+    "usernames": "redacted",
+    "machine_identifiers": "redacted",
+    "process_ids": "not captured",
+    "transient_port": "<PORT>",
+    "room_code": "<ROOM_CODE_6_CHARS>"
+  },
+  "command": "cargo test -p server --test playable_client_real_e2e_loop_test",
+  "focused_test": "real_lightyear_two_client_room_session_reaches_class_reveal_and_session_entry",
+  "transport": "Lightyear WebSocket raw_connection over localhost:<PORT>",
+  "base_commit": "b00cc3b123d04d5ea7c49f29b85985dc5c3f8599",
+  "rebased_onto_origin_main": "5993be5",
+  "worker_branch": "work/playable-003-room-session-evidence-repair",
+  "result": "passed",
+  "reached_endpoint": "both clients received S2CPhaseChanged(DraftInitial); server room state reached GameActive and RoundState reached DraftInitial",
+  "phases": [
+    {
+      "phase": "fresh_hello",
+      "host": "C2SHello sent; S2CHandshake received with stable PlayerId",
+      "joiner": "C2SHello sent; S2CHandshake received with stable PlayerId",
+      "server": "PlayerConnectionMap contained both fresh primary-client peers"
+    },
+    {
+      "phase": "create_room",
+      "host": "C2SCreateRoom sent on ReliableChannel",
+      "server": "RoomSessions inserted one LobbyWaiting room",
+      "host_response": "S2CRoomCreated received; room code captured as <ROOM_CODE_6_CHARS>"
+    },
+    {
+      "phase": "join_room",
+      "joiner": "C2SJoinRoom sent with captured room code and slot 1",
+      "joiner_response": "S2CJoinAck received",
+      "host_response": "S2CSlotUpdated received"
+    },
+    {
+      "phase": "class_select_confirm",
+      "host": "C2SSelectClass(Iop) and C2SConfirmClass(Iop) sent",
+      "joiner": "C2SSelectClass(Cra) and C2SConfirmClass(Cra) sent",
+      "responses": "both clients received S2CClassLocked for their own class"
+    },
+    {
+      "phase": "class_reveal",
+      "responses": "both clients received S2CClassesRevealed with two player/class entries",
+      "authority": "class map came from server RoomSessions/ClassSelections state"
+    },
+    {
+      "phase": "session_entry",
+      "server": "ready room promoted to GameActive; SessionConfig and ServerRng inserted; RoundState entered DraftInitial",
+      "responses": "both clients received S2CPhaseChanged(DraftInitial)"
+    }
+  ],
+  "not_claimed": [
+    "DRAFT_SHOP",
+    "auction",
+    "placement submit",
+    "S2CPlacementReveal",
+    "resolution replay",
+    "next loop",
+    "game over",
+    "full playable-client manual QA"
+  ]
+}
