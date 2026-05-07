@@ -89,6 +89,7 @@ fn lobby_state_is_updated_only_from_authoritative_s2c_messages() {
     let input = LobbyInputState {
         join_room_code: "abc123".to_string(),
         room_code_focused: false,
+        room_code_selected: false,
         requested_slot: 1,
         selected_class: ClassId::Xelor,
         create_in_flight: false,

@@ -1075,7 +1075,7 @@ pub fn confirm_class(
 
     if let Some(confirmed) = selections.0.get(&player_id).copied() {
         return if confirmed == class_id {
-            ConfirmClassOutcome::Ignored
+            class_lock_ack(&rooms, active_sessions, player_id, class_id)
         } else {
             class_lock_rejected()
         };
@@ -1105,7 +1105,7 @@ pub fn confirm_class(
         if let Some(confirmed) = slot.class {
             selections.0.insert(player_id, confirmed);
             return if confirmed == class_id {
-                ConfirmClassOutcome::Ignored
+                class_lock_ack(&rooms, active_sessions, player_id, class_id)
             } else {
                 class_lock_rejected()
             };
@@ -1663,6 +1663,33 @@ fn class_lock_rejected() -> ConfirmClassOutcome {
     ConfirmClassOutcome::Rejected(S2CConfirmClassRejected {
         reason: ConfirmClassRejectedReason::ClassAlreadyConfirmed,
     })
+}
+
+fn class_lock_ack(
+    rooms: &RoomSessions,
+    active_sessions: &ActiveSessions,
+    player_id: PlayerId,
+    class_id: ClassId,
+) -> ConfirmClassOutcome {
+    let revealed = active_sessions
+        .0
+        .get(&player_id)
+        .and_then(|session_id| rooms.get(*session_id))
+        .and_then(|session| {
+            all_slots_locked(&session.slots).then(|| classes_revealed_message(&session.slots))
+        });
+    let reveal_recipients = active_sessions
+        .0
+        .get(&player_id)
+        .and_then(|session_id| rooms.get(*session_id))
+        .map(|session| occupied_players(&session.slots))
+        .unwrap_or_default();
+
+    ConfirmClassOutcome::Locked {
+        locked: S2CClassLocked { class_id },
+        revealed,
+        reveal_recipients,
+    }
 }
 
 fn join_rejected(reason: JoinRejectedReason) -> JoinRoomOutcome {

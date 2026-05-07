@@ -1,3 +1,4 @@
+use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::ClassId;
@@ -23,6 +24,7 @@ impl Plugin for LobbyUiPlugin {
             .init_resource::<ClientSessionIdentity>()
             .init_resource::<LobbyViewState>()
             .init_resource::<LobbyInputState>()
+            .add_message::<KeyboardInput>()
             .add_message::<LobbyCommand>()
             .add_systems(
                 Startup,
@@ -80,6 +82,7 @@ pub struct LobbyInputState {
     pub requested_slot: u8,
     pub selected_class: ClassId,
     pub room_code_focused: bool,
+    pub room_code_selected: bool,
     pub create_in_flight: bool,
     pub join_in_flight: bool,
     pub class_confirm_in_flight: bool,
@@ -94,6 +97,7 @@ impl Default for LobbyInputState {
             requested_slot: 1,
             selected_class: ClassId::Iop,
             room_code_focused: false,
+            room_code_selected: false,
             create_in_flight: false,
             join_in_flight: false,
             class_confirm_in_flight: false,
@@ -284,19 +288,41 @@ pub fn apply_classes_revealed(lobby: &mut LobbyViewState, message: &S2CClassesRe
 
 fn lobby_keyboard_input_system(
     keys: Res<ButtonInput<KeyCode>>,
+    mut keyboard_input: MessageReader<KeyboardInput>,
     mut input: ResMut<LobbyInputState>,
     mut lobby: ResMut<LobbyViewState>,
     mut commands: MessageWriter<LobbyCommand>,
 ) {
+    let typed_any = if input.room_code_focused {
+        append_room_code_text_events(&mut keyboard_input, &mut input)
+    } else {
+        for _ in keyboard_input.read() {}
+        false
+    };
+
     if input.room_code_focused {
-        append_room_code_keys(&keys, &mut input.join_room_code);
+        if !typed_any {
+            append_room_code_keys(&keys, &mut input);
+        }
 
         if keys.just_pressed(KeyCode::Backspace) {
-            input.join_room_code.pop();
+            if input.room_code_selected {
+                input.join_room_code.clear();
+                input.room_code_selected = false;
+            } else {
+                input.join_room_code.pop();
+            }
         }
 
         if keys.just_pressed(KeyCode::Escape) {
             input.room_code_focused = false;
+            input.room_code_selected = false;
+        }
+
+        if keys.just_pressed(KeyCode::Enter) {
+            input.room_code_focused = false;
+            input.room_code_selected = false;
+            request_join_room(&mut input, &mut lobby, &mut commands);
         }
 
         return;
@@ -347,10 +373,12 @@ fn lobby_button_interaction_system(
 
         if room_code.is_some() {
             input.room_code_focused = true;
+            input.room_code_selected = !input.join_room_code.is_empty();
             continue;
         }
 
         input.room_code_focused = false;
+        input.room_code_selected = false;
 
         if create.is_some() {
             request_create_room(&mut input, &mut lobby, &mut commands);
@@ -411,20 +439,58 @@ fn send_lobby_commands_system(
     }
 }
 
-fn append_room_code_keys(keys: &ButtonInput<KeyCode>, room_code: &mut String) {
-    if room_code.len() >= ROOM_CODE_MAX {
-        return;
+fn append_room_code_text_events(
+    keyboard_input: &mut MessageReader<KeyboardInput>,
+    input: &mut LobbyInputState,
+) -> bool {
+    let mut appended = false;
+
+    for event in keyboard_input.read() {
+        if !event.state.is_pressed() {
+            continue;
+        }
+
+        let Some(text) = event.text.as_ref() else {
+            continue;
+        };
+
+        for value in text.chars() {
+            if let Some(value) = normalize_room_code_char(value) {
+                appended |= push_room_code_char(input, value);
+            }
+        }
     }
 
+    appended
+}
+
+fn append_room_code_keys(keys: &ButtonInput<KeyCode>, input: &mut LobbyInputState) -> bool {
+    let mut appended = false;
     for (key, value) in room_code_key_map() {
-        if room_code.len() >= ROOM_CODE_MAX {
+        if input.join_room_code.len() >= ROOM_CODE_MAX && !input.room_code_selected {
             break;
         }
 
         if keys.just_pressed(key) {
-            room_code.push(value);
+            appended |= push_room_code_char(input, value);
         }
     }
+
+    appended
+}
+
+fn push_room_code_char(input: &mut LobbyInputState, value: char) -> bool {
+    if input.room_code_selected {
+        input.join_room_code.clear();
+        input.room_code_selected = false;
+    }
+
+    if input.join_room_code.len() >= ROOM_CODE_MAX {
+        return false;
+    }
+
+    input.join_room_code.push(value);
+    true
 }
 
 pub fn normalize_room_code_text(raw: &str) -> String {
@@ -794,11 +860,22 @@ fn lobby_dynamic_copy(
                 input.join_room_code.clone()
             };
             let focus = if input.room_code_focused {
-                "focused"
+                if input.room_code_selected {
+                    "selected"
+                } else {
+                    "typing"
+                }
             } else {
                 "idle"
             };
-            format!("Room code: {code} ({focus})")
+            let rendered_code = if input.room_code_selected {
+                format!("[{code}]")
+            } else if input.room_code_focused {
+                format!("{code}|")
+            } else {
+                code
+            };
+            format!("Room code: {rendered_code} ({focus})")
         }
         LobbyDynamicText::Slot(slot) => {
             if input.requested_slot == slot {

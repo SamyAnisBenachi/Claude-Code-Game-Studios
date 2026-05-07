@@ -139,6 +139,17 @@ fn mapped_fresh_players_can_create_join_select_and_confirm_lobby() {
         ),
         ConfirmClassOutcome::Locked { .. }
     ));
+    let ConfirmClassOutcome::Locked { locked, .. } = confirm_class(
+        &mut rooms,
+        &active_sessions,
+        &mut selections,
+        owner,
+        ClassId::Iop,
+    ) else {
+        panic!("duplicate same-class confirm should re-ack so clients do not stay pending");
+    };
+    assert_eq!(locked.class_id, ClassId::Iop);
+
     assert!(matches!(
         confirm_class(
             &mut rooms,

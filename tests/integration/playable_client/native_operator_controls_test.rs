@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use bevy::ecs::message::MessageCursor;
+use bevy::input::keyboard::{Key, KeyboardInput};
+use bevy::input::ButtonState;
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
@@ -60,6 +62,37 @@ fn test_lobby_room_code_focus_separates_text_from_shortcuts() {
         vec![LobbyCommand::JoinRoom {
             room_code: "AB12".to_string(),
             requested_slot: 3,
+        }]
+    );
+}
+
+#[test]
+fn test_lobby_room_code_textbox_click_selects_and_accepts_text_input() {
+    let mut app = lobby_app();
+    let mut command_cursor = command_cursor(&app);
+
+    app.world_mut()
+        .resource_mut::<LobbyInputState>()
+        .join_room_code = "OLD123".to_string();
+    let room_code = entity_with::<LobbyRoomCodeField>(&mut app);
+    press_interaction(&mut app, room_code);
+
+    let input = app.world().resource::<LobbyInputState>();
+    assert!(input.room_code_focused);
+    assert!(input.room_code_selected);
+
+    type_text(&mut app, "ab-12");
+    let input = app.world().resource::<LobbyInputState>();
+    assert_eq!(input.join_room_code, "AB12");
+    assert!(!input.room_code_selected);
+    assert!(commands_since(&app, &mut command_cursor).is_empty());
+
+    press_key(&mut app, KeyCode::Enter);
+    assert_eq!(
+        commands_since(&app, &mut command_cursor),
+        vec![LobbyCommand::JoinRoom {
+            room_code: "AB12".to_string(),
+            requested_slot: 1,
         }]
     );
 }
@@ -324,6 +357,21 @@ fn press_key(app: &mut App, key: KeyCode) {
         keys.release(key);
         keys.clear();
     }
+}
+
+fn type_text(app: &mut App, text: &str) {
+    let window = app.world_mut().spawn_empty().id();
+    for character in text.chars() {
+        app.world_mut().write_message(KeyboardInput {
+            key_code: KeyCode::KeyA,
+            logical_key: Key::Character(character.to_string().into()),
+            state: ButtonState::Pressed,
+            text: Some(character.to_string().into()),
+            repeat: false,
+            window,
+        });
+    }
+    run_update(app);
 }
 
 fn press_interaction(app: &mut App, entity: Entity) {
