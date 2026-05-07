@@ -82,6 +82,7 @@ fn two_v_two_same_team_session() -> SessionConfig {
             (PlayerId(3), ClassId::Sacrier),
             (PlayerId(4), ClassId::Xelor),
         ]),
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
     }
 }
 

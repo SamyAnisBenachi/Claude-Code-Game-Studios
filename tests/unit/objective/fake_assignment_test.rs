@@ -29,6 +29,7 @@ fn session_config(players: &[PlayerId]) -> SessionConfig {
             .iter()
             .map(|player| (*player, ClassId::Iop))
             .collect(),
+        placement_timer_multiplier_effective: shared::protocol::PlacementTimerMultiplier::X1,
     }
 }
 
