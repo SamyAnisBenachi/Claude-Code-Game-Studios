@@ -27,6 +27,11 @@ accessibility completion, or full playtest validation.
   unless a gap directly blocks core gameplay readability or stability.
 - `QA-COND-0006` remains accepted-risk/deferred. This is not playtest evidence,
   fun-hypothesis validation, or a public QA claim.
+- Sprint 7 status close-out completed on 2026-05-07. Sprint 7 is closed with
+  conditions after smoke `PASS WITH WARNINGS` and QA sign-off `APPROVED WITH
+  CONDITIONS`.
+- Close-out did not run `/gate-check`, Sprint 8 planning, new implementation,
+  smoke, `/team-qa`, or `/story-done`.
 - Full playable-client manual QA is not claimed by Sprint 6 smoke, QA sign-off,
   gate reports, or this Sprint 7 plan.
 - Sprint 7 must use real client/server messages and real client state. Harness
@@ -133,6 +138,37 @@ placement/resolution. Game-over, public release readiness, broad accessibility
 completion, playtest/fun-hypothesis validation, full playable-client manual QA,
 and full game completion are not claimed.
 
+## Close-Out Status
+
+Sprint 7 is **closed with conditions** as of 2026-05-07.
+
+| Item | Final status | Evidence |
+|------|--------------|----------|
+| Must Have scope | Complete | PLAYABLE-001, PLAYABLE-002, and PLAYABLE-003 are Complete in `production/sprint-status.yaml` |
+| Nice To Have scope | Complete | S7-N1 evidence index cleanup is Complete |
+| Conditional Should Have scope | Not pulled; remains backlog | SAU-007 and ECO-004 stay backlog and are not required for Sprint 7 closure |
+| Smoke | PASS WITH WARNINGS | `production/qa/smoke-sprint-7-2026-05-07.md` |
+| QA sign-off | APPROVED WITH CONDITIONS | `production/qa/qa-signoff-sprint-7-2026-05-07.md` |
+| Verified endpoint | next-loop DRAFT_SHOP after post-auction placement/resolution | `production/qa/evidence/sprint-7-friend-game-evidence-index.md` |
+
+Carried conditions:
+
+- QA-COND-0005 remains friend-game-only accepted risk. This is not verified
+  Standard-tier accessibility completion and does not apply to any public,
+  external, commercial, or broader release candidate.
+- QA-COND-0006 remains accepted-risk/deferred. This is not playtest evidence,
+  fun-hypothesis validation, a playtest report, or a public QA claim.
+- No public release readiness is claimed.
+- No game-over coverage is claimed.
+- No full playable-client manual QA, full game completion, broad accessibility
+  completion, or playtest/fun-hypothesis validation is claimed.
+- The honest endpoint remains next-loop DRAFT_SHOP after post-auction
+  placement/resolution.
+
+Sprint 8 planning is safe as the next docs-planning step only if explicitly
+requested and only with the carried conditions above preserved. No Sprint 8 plan
+was created by this close-out.
+
 ## Out of Scope
 
 - Public, external, commercial, or release-candidate readiness.
@@ -147,24 +183,34 @@ and full game completion are not claimed.
 
 ## Definition of Done for this Sprint
 
-- [ ] PLAYABLE-001, PLAYABLE-002, and PLAYABLE-003 story docs exist and pass
+- [x] PLAYABLE-001, PLAYABLE-002, and PLAYABLE-003 story docs exist and pass
       readiness before implementation starts.
-- [ ] All Must Have tasks completed.
-- [ ] Real primary client path supports an internal friend-game session through
+- [x] All Must Have tasks completed.
+- [x] Real primary client path supports an internal friend-game session through
       lobby/session entry, draft/shop, placement, resolution, and next-loop or
       documented nearest reachable endpoint.
-- [ ] Friend-game manual evidence exists for two real clients with no
+- [x] Friend-game manual evidence exists for two real clients with no
       harness-injected state.
-- [ ] Sprint 7 QA plan exists before implementation begins.
-- [ ] All Logic/Integration stories have passing unit/integration tests.
-- [ ] Smoke check passed before sprint closure.
-- [ ] QA sign-off report is complete before any future gate or release claim.
-- [ ] No S1 or S2 bugs remain in the scoped friend-game path.
-- [ ] QA-COND-0005 remains labeled accepted risk unless separately verified.
-- [ ] QA-COND-0006 remains labeled accepted-risk/deferred unless actual
+- [x] Sprint 7 QA plan exists before implementation begins.
+- [x] All Logic/Integration stories have passing unit/integration tests.
+- [x] Smoke check passed before sprint closure.
+- [x] QA sign-off report is complete before any future gate or release claim.
+- [x] No S1 or S2 bugs remain in the scoped friend-game path.
+- [x] QA-COND-0005 remains labeled accepted risk unless separately verified.
+- [x] QA-COND-0006 remains labeled accepted-risk/deferred unless actual
       playtest evidence is produced later.
 
-## First Recommended Prompt After Plan
+## Next Recommended Step
+
+When the user explicitly requests it, run `/sprint-plan new` for Sprint 8
+planning. Keep QA-COND-0005, QA-COND-0006, no public release readiness, no
+game-over coverage, and the next-loop DRAFT_SHOP endpoint as carried Sprint 8
+planning constraints.
+
+## Historical First Recommended Prompt After Plan
+
+This historical prompt was completed earlier in Sprint 7 and is no longer the
+current next step after close-out.
 
 `PROMPT 269 -- Create Sprint 7 PLAYABLE Story Docs and Readiness`
 

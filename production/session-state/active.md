@@ -2231,3 +2231,15 @@ C:\Program Files\GitHub CLI\gh.exe
 - QA conditions: `QA-COND-0005` remains accepted risk for friend-game scope only and is not verified Standard-tier accessibility completion. `QA-COND-0006` remains accepted-risk/deferred and is not playtest evidence or fun-hypothesis validation.
 - Sprint status: `production/sprint-status.yaml` marks `S7-N1` done.
 - Next recommended: decide whether to pull conditional Sprint 7 Should Have work (`SAU-007` or `ECO-004`) or begin the later Sprint 7 close-out sequence when requested.
+
+## Session Extract - Prompt 308 Sprint 7 Status Close-Out 2026-05-07
+- Scope: docs/status reconciliation only. No `/gate-check`, Sprint 8 planning, new implementation, smoke, `/team-qa`, or `/story-done` was run.
+- Sprint status: Sprint 7 is closed with conditions.
+- Evidence: PLAYABLE-001, PLAYABLE-002, PLAYABLE-003, and S7-N1 are Complete; Sprint 7 smoke is `PASS WITH WARNINGS`; Sprint 7 QA sign-off is `APPROVED WITH CONDITIONS`.
+- Verified endpoint: next-loop `DRAFT_SHOP` after post-auction placement/resolution. Game-over was not reached and is not claimed.
+- Carried conditions: `QA-COND-0005` remains friend-game-only accepted risk, not verified Standard-tier accessibility completion; `QA-COND-0006` remains accepted-risk/deferred, not playtest evidence or fun-hypothesis validation.
+- Scope guard: no public release readiness, broad accessibility completion, full playable-client manual QA, full game completion, game-over coverage, or playtest/fun-hypothesis validation is claimed.
+- Conditional Should Have items `SAU-007` and `ECO-004` were not pulled into Sprint 7 and remain backlog.
+- No source or test files changed during close-out.
+- Sprint 8 planning is now safe as the next docs-planning step if explicitly requested, with the carried Sprint 7 conditions preserved. No Sprint 8 plan was created.
+- Next recommended: `/sprint-plan new` for Sprint 8 planning when the user requests it.

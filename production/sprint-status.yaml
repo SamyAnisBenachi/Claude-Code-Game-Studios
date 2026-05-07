@@ -9,6 +9,29 @@ generated: "2026-05-06"
 updated: "2026-05-07"
 stage: "Polish"
 scope: "friend-game playable quality"
+status: "closed-with-conditions"
+closed: "2026-05-07"
+
+closeout:
+  smoke_report: "production/qa/smoke-sprint-7-2026-05-07.md"
+  smoke_verdict: "PASS WITH WARNINGS"
+  qa_signoff_report: "production/qa/qa-signoff-sprint-7-2026-05-07.md"
+  qa_signoff_verdict: "APPROVED WITH CONDITIONS"
+  must_have_status: "complete"
+  nice_to_have_status: "S7-N1 complete"
+  conditional_should_have_status: "not pulled; remains backlog"
+  verified_endpoint: "next-loop DRAFT_SHOP after post-auction placement/resolution"
+  game_over_coverage_claimed: false
+  public_release_readiness: false
+  broad_accessibility_completion_claimed: false
+  playtest_fun_hypothesis_validation_claimed: false
+  full_playable_client_manual_qa_claimed: false
+  gate_check_run: false
+  team_qa_run: false
+  story_done_run: false
+  sprint_8_plan_created: false
+  sprint_8_planning_safe: true
+  sprint_8_planning_note: "Safe as the next docs-planning step only if explicitly requested; carry QA-COND-0005, QA-COND-0006, no public release readiness, no game-over coverage, and the next-loop DRAFT_SHOP endpoint."
 
 notes:
   - "Sprint 6 is complete and remains closed."
@@ -23,6 +46,9 @@ notes:
   - "PLAYABLE story docs exist; PLAYABLE-001, PLAYABLE-002, and PLAYABLE-003 are complete."
   - "Sprint 7 QA plan exists at production/qa/qa-plan-sprint-7-2026-05-06.md; no smoke-check, team-qa, gate-check, public release readiness, playtest validation, or full playable-client manual QA is claimed here."
   - "S7-N1 friend-game evidence index cleanup is complete at production/qa/evidence/sprint-7-friend-game-evidence-index.md; verified endpoint is next-loop DRAFT_SHOP after post-auction placement/resolution."
+  - "Sprint 7 status close-out is complete as of 2026-05-07; Sprint 7 is closed with conditions after smoke PASS WITH WARNINGS and QA sign-off APPROVED WITH CONDITIONS."
+  - "Close-out did not run gate-check, Sprint 8 planning, new implementation, smoke, team-qa, or story-done."
+  - "No public release readiness, broad accessibility completion, playtest/fun-hypothesis validation, full playable-client manual QA, full game completion, or game-over coverage is claimed."
 
 stories:
   - id: "PLAYABLE-001"
