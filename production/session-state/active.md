@@ -2325,3 +2325,20 @@ C:\Program Files\GitHub CLI\gh.exe
 - Verified CI: Automated Tests run `25517712136` on `origin` completed `success` for `df8a43fa603448ba1ca29d639e6816d9a4544bfc` on 2026-05-07, with dep-purity jobs, `Run Cargo Tests`, and `WASM bundle size check` successful.
 - Reconciliation: prior green run `25515627861` at `adf116333a2bac3364f4ca1aab8589ed058d97a6` remains valid historical evidence, but Sprint 8 close-out wording now records the later green `df8a43f` run. The docs-only waiver is retained only for close-out/reconciliation docs after `df8a43f`, including current `origin/main` `f980452d4362669c0128c7883a8cf0e2ae94e967`.
 - Verdicts unchanged: Sprint 8 remains closed with conditions; QA sign-off remains APPROVED WITH CONDITIONS; smoke remains PASS WITH WARNINGS; carried conditions and no-claim language are preserved.
+
+## Session Extract - Prompt 409 Sprint 9 Activation 2026-05-07
+- Scope: docs/status activation only. No `/dev-story`, `/story-done`, smoke, QA sign-off, `/team-qa`, `/gate-check`, implementation, or CI was run.
+- Source of truth: `origin/main` was fetched and local `main` matched `879fd1dc4bd426d0d3ea4a985d73975755042c7c` before activation edits.
+- Sprint status: Sprint 9 is active in `production/sprint-status.yaml` and `production/sprints/sprint-9.md`.
+- Converted plan: `production/sprints/sprint-9-draft.md` was converted into active `production/sprints/sprint-9.md`.
+- S9-RS-001: tracked as in-progress only because worktree `D:\_DEV\claude-code-game-studios-worktrees\S9-RS-001` on branch `work/s9-rs-001-result-ack-contract` has uncommitted local session/network changes and is not integrated.
+- S9-NATIVE-001: ready for dev; no active implementation worker was found during activation.
+- S9-RS-002: blocked until S9-RS-001 completes and is integrated.
+- S9-RS-003: blocked until S9-RS-001 and S9-RS-002 complete and are integrated.
+- S9-QA-001: blocked until operator/browser controls plus result flow are usable.
+- S9-QA-002: blocked/backlog until S9-QA-001 evidence or blocker record exists.
+- SAU-008 and ECO-004: conditional backlog; neither implementation is claimed.
+- S9-CONTENT-001: tracked as in-progress supporting content only because worktree `D:\_DEV\claude-code-game-studios-worktrees\neutral-card-display-placeholder-pack` has local commit `33d60d4` not integrated to `origin/main`.
+- Carried conditions preserved: S8-QA-001-W1 manual/browser `GAME_OVER` gap, `QA-COND-0005` friend-game-only accepted risk, `QA-COND-0006` accepted-risk/deferred, no public release readiness, no release-candidate readiness, no full game completion, no full playable-client manual QA, no broad accessibility completion, and no playtest/fun-hypothesis validation.
+- QA plan: no Sprint 9 QA plan was found during activation; no QA plan was generated.
+- Verification: `git diff --check` passed; `git diff --cached --check` passed before commit.

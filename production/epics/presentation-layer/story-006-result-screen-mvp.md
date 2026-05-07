@@ -5,12 +5,12 @@
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
-> **Sprint**: Sprint 9 preparation only - Sprint 9 is not active
+> **Sprint**: Sprint 9 active
 
 ## Context
 
-This is a docs-only preparation story for the post-match result screen. It does
-not implement code, activate Sprint 9, close Sprint 8, run a gate, or claim
+This is the active Sprint 9 story for the post-match result screen. Story
+authoring did not implement code, close Sprint 8, run a gate, or claim
 manual/browser GAME_OVER evidence.
 
 **Primary sources**:
@@ -455,6 +455,7 @@ implementation until RS-BLOCK-001 through RS-BLOCK-003 are either resolved or
 explicitly accepted as MVP fallback constraints. RS-BLOCK-004 is not blocking
 only if Rematch remains hidden or disabled.
 
-The Sprint 9 preparation state is docs-only. Do not update
-`production/sprint-status.yaml`, `production/session-state/**`, Sprint 8
-close-out files, or any Sprint 9 activation file from this story.
+Sprint 9 activation is tracked in `production/sprint-status.yaml` and
+`production/sprints/sprint-9.md`. Implementation workers must not update shared
+status/session files from this story except through an explicitly authorized
+integration or story-done prompt.

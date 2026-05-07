@@ -5,7 +5,7 @@
 > **Layer**: Polish / QA Evidence
 > **Type**: Config/Data
 > **Manifest Version**: 2026-05-05
-> **Sprint**: Sprint 9 preparation only - Sprint 9 is not active
+> **Sprint**: Sprint 9 active
 
 ## Context
 
@@ -17,13 +17,13 @@ This story is standalone because the Sprint 9 draft makes it a separate pull
 condition after evidence exists. It should not be run before S9-QA-001 produces
 evidence or an explicit blocker record.
 
-This story does not implement code during Sprint 9 preparation, activate Sprint
-9, close Sprint 8, run smoke, run QA sign-off, run a gate, run `/dev-story`, or
+This story is active Sprint 9 scope. Story authoring did not implement code,
+close Sprint 8, run smoke, run QA sign-off, run a gate, run `/dev-story`, or
 run `/story-done`.
 
 **Primary sources**:
 
-- `production/sprints/sprint-9-draft.md`
+- `production/sprints/sprint-9.md`
 - `production/epics/playable-client/story-007-manual-browser-game-over-evidence-closure.md`
 - `production/qa/evidence/sprint-8-friend-game-evidence-index.md`
 - `production/qa/evidence/sprint-8-friend-game-loop-evidence.md`
@@ -81,7 +81,7 @@ but this story only indexes and preserves the evidence disposition.
 
 - No evidence capture. S9-QA-001 owns capture.
 - No implementation work.
-- No Sprint 9 activation.
+- No Sprint 8 close-out or Sprint 9 activation-state changes.
 - No Sprint 8 close-out, smoke, QA sign-off, gate-check, `/dev-story`, or
   `/story-done`.
 - No public release readiness, broad accessibility completion, playtest
@@ -199,6 +199,6 @@ N/A - documentation/evidence index only.
 
 **Implementation readiness verdict**: BLOCKED.
 
-This story is intentionally blocked until S9-QA-001 evidence exists. Story
-preparation alone does not create the Sprint 9 index, close S8-QA-001-W1,
-activate Sprint 9, or alter Sprint 8 conditions.
+This story is intentionally blocked until S9-QA-001 evidence exists. It does
+not create the Sprint 9 index, close S8-QA-001-W1, or alter Sprint 8 conditions
+until the required evidence or blocker record exists.

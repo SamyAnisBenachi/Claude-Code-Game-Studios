@@ -186,6 +186,39 @@ confirmed no corresponding agent window is currently running. Treat them as
 stale/incomplete until explicitly relaunched or closed:
 None currently tracked here.
 
+## Sprint 9 Active Coordination
+
+- Prompt 409 activated Sprint 9 from current `origin/main`
+  `879fd1dc4bd426d0d3ea4a985d73975755042c7c`. The active plan is
+  `production/sprints/sprint-9.md`; `production/sprint-status.yaml` is the
+  machine-readable source of truth.
+- Sprint 9 activation was docs/status only. No `/dev-story`, `/story-done`,
+  smoke, QA sign-off, `/team-qa`, `/gate-check`, implementation, or CI was run.
+- S9-RS-001 is tracked as in progress only because worktree
+  `D:\_DEV\claude-code-game-studios-worktrees\S9-RS-001` on branch
+  `work/s9-rs-001-result-ack-contract` exists with uncommitted local
+  session/network changes and is behind current `origin/main`. It is not
+  integrated and must not be treated as complete.
+- S9-CONTENT-001 / neutral card display placeholder pack is tracked as an
+  out-of-plan supporting content pull-forward only. Worktree
+  `D:\_DEV\claude-code-game-studios-worktrees\neutral-card-display-placeholder-pack`
+  on branch `work/neutral-card-display-placeholder-pack` has local commit
+  `33d60d4` but is not integrated to `origin/main`; no completion, asset
+  approval, full card production, or balance completion is claimed.
+- S9-NATIVE-001 is ready for dev, not in progress. No active native operator
+  controls implementation worker was found during activation.
+- S9-RS-002 remains blocked until S9-RS-001 completes and is integrated.
+  S9-RS-003 remains blocked until S9-RS-001 and S9-RS-002 complete and are
+  integrated. S9-QA-001 remains blocked until operator/browser controls plus
+  result flow are usable. S9-QA-002 remains blocked/backlog until evidence or a
+  blocker record exists.
+- Sprint 8 carried conditions remain active in Sprint 9: S8-QA-001-W1
+  manual/browser `GAME_OVER` gap, `QA-COND-0005` friend-game-only accepted
+  risk, `QA-COND-0006` accepted-risk/deferred, no public release readiness, no
+  release-candidate readiness, no full game completion, no full playable-client
+  manual QA, no broad accessibility completion, and no playtest/fun-hypothesis
+  validation.
+
 ## Recently Implemented, Needs Formal Story-Done
 
 - NP-005 / Placement Payload Shape Split is complete on `origin/main`. Worker branch

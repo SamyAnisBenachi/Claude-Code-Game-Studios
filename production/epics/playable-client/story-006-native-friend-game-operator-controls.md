@@ -5,14 +5,14 @@
 > **Layer**: Polish / Native Client Operator UX
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
-> **Sprint**: Backlog / Sprint 9 preparation only - Sprint 9 is not active
+> **Sprint**: Sprint 9 active / ready
 
 ## Context
 
-This is a docs-only preparation story for making the native friend-game client
-operator-playable through real player controls. It does not implement code,
-activate Sprint 9, close Sprint 8, run smoke, run QA sign-off, run a gate, or
-claim full manual/browser/native two-client completion.
+This story makes the native friend-game client operator-playable through real
+player controls. Story authoring did not implement code, close Sprint 8, run
+smoke, run QA sign-off, run a gate, or claim full manual/browser/native
+two-client completion.
 
 Current source of truth for this prep is `origin/main` at
 `f6864b3190fb9609eee8cd72e13b212c10a8fdf8`.
@@ -43,7 +43,7 @@ lobby, but manual progression is blocked or unreliable:
 - `production/epics/presentation-layer/story-006-result-screen-mvp.md`
 - `production/sprints/sprint-8.md`
 - `production/sprint-status.yaml`
-- `production/sprints/sprint-9-draft.md`
+- `production/sprints/sprint-9.md`
 - `production/qa/evidence/sprint-8-friend-game-loop-evidence.md`
 - `production/qa/evidence/captures/playable-client-real-e2e-loop/phase-captures.md`
 - `design/ux/main-menu.md`
@@ -136,8 +136,8 @@ injection, fake snapshots, or harness-only C2S sends as the manual proof.
 ## Sprint 8 Scope Guard
 
 This story preserves all Sprint 8 carried conditions and non-claims. It does
-not close Sprint 8, activate Sprint 9, run `/dev-story`, run `/story-done`, run
-smoke, run QA sign-off, run a gate, or implement code.
+not close Sprint 8, run `/dev-story`, run `/story-done`, run smoke, run QA
+sign-off, run a gate, or implement code during readiness authoring.
 
 `QA-COND-0005` remains accepted risk for friend-game scope only and is not
 verified Standard-tier accessibility completion. `QA-COND-0006` remains

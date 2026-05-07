@@ -5,7 +5,7 @@
 > **Layer**: Polish / QA Evidence
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
-> **Sprint**: Sprint 9 preparation only - Sprint 9 is not active
+> **Sprint**: Sprint 9 active
 
 ## Context
 
@@ -22,13 +22,13 @@ This story is evidence work, not a broad implementation story. If the route
 finds a blocking product defect, the evidence must record the blocker and keep
 the Sprint 8 warning open instead of weakening the route or claiming closure.
 
-This story does not implement code during Sprint 9 preparation, activate Sprint
-9, close Sprint 8, run smoke, run QA sign-off, run a gate, run `/dev-story`, or
+This story is active Sprint 9 scope. Story authoring did not implement code,
+close Sprint 8, run smoke, run QA sign-off, run a gate, run `/dev-story`, or
 run `/story-done`.
 
 **Primary sources**:
 
-- `production/sprints/sprint-9-draft.md`
+- `production/sprints/sprint-9.md`
 - `production/sprints/sprint-8.md`
 - `production/qa/smoke-sprint-8-2026-05-07.md`
 - `production/qa/qa-signoff-sprint-8-2026-05-07.md`
@@ -135,10 +135,10 @@ primary client path and one real local server with two real clients.
   route.
 - No full regression campaign.
 - No full game completion claim.
-- No Sprint 9 activation, Sprint 8 close-out, smoke, QA sign-off, gate-check,
-  `/dev-story`, or `/story-done`.
-- No updates to `production/sprint-status.yaml` or
-  `production/session-state/**`.
+- No Sprint 8 close-out, smoke, QA sign-off, gate-check, `/dev-story`, or
+  `/story-done`.
+- No updates to shared status/session files except through an explicitly
+  authorized integration or story-done prompt.
 
 ---
 
@@ -300,5 +300,5 @@ timeouts as defects rather than treating them as acceptable evidence noise.
 
 This story is a ready evidence package, but it cannot be assigned until
 S9-RS-002 and S9-RS-003 are complete or explicitly replaced by
-producer-approved fallbacks. Story preparation alone does not close S8-QA-001-W1
-and does not activate Sprint 9.
+producer-approved fallbacks. This story closes S8-QA-001-W1 only with actual
+captured manual/browser or native two-client evidence.

@@ -5,7 +5,7 @@
 > **Layer**: Core / Networking
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
-> **Sprint**: Sprint 9 preparation only - Sprint 9 is not active
+> **Sprint**: Sprint 9 active
 
 ## Context
 
@@ -13,9 +13,9 @@ This is the S9-RS-001 prerequisite contract story for the Result Screen MVP.
 It defines the server-owned result acknowledgement, final result data source,
 and GAME_OVER reconnect behavior that Presentation Layer Story 006 must consume.
 
-This story does not implement code, activate Sprint 9, close Sprint 8, run a
-gate, run `/dev-story`, run `/story-done`, run smoke, or claim manual/browser
-GAME_OVER evidence.
+This story is active Sprint 9 scope. Story authoring did not implement code,
+close Sprint 8, run a gate, run `/dev-story`, run `/story-done`, run smoke, or
+claim manual/browser GAME_OVER evidence.
 
 **Primary sources**:
 
@@ -30,7 +30,7 @@ GAME_OVER evidence.
 - `docs/architecture/adr-010-rsm-event-bus.md`
 - `docs/architecture/adr-011-reconnect-snapshot.md`
 - `production/epics/presentation-layer/story-006-result-screen-mvp.md`
-- `production/sprints/sprint-9-draft.md`
+- `production/sprints/sprint-9.md`
 
 **Current blocking gaps**:
 
@@ -171,10 +171,10 @@ authority shortcuts.
 - No required `S2CGameSnapshot` schema expansion for final result fields.
 - No match history persistence, leaderboard updates, rewards, analytics, or
   public release readiness claim.
-- No Sprint 9 activation, Sprint 8 close-out, smoke, QA sign-off, gate-check,
-  `/dev-story`, or `/story-done`.
-- No updates to `production/sprint-status.yaml` or
-  `production/session-state/**`.
+- No Sprint 8 close-out, smoke, QA sign-off, gate-check, `/dev-story`, or
+  `/story-done`.
+- No updates to shared status/session files except through an explicitly
+  authorized integration or story-done prompt.
 
 ---
 
@@ -417,8 +417,9 @@ are bounded to the player count and the `ack_timeout_ms` window.
 The story resolves the result acknowledgement timing, server handling contract,
 result data source, GAME_OVER reconnect behavior, Return to Lobby boundary,
 duplicate acknowledgement safety, rematch exclusion, and no-client-authority
-constraints without activating Sprint 9 or implementing code.
+constraints without implementing code.
 
-The Sprint 9 preparation state is docs-only. Do not update
-`production/sprint-status.yaml`, `production/session-state/**`, Sprint 8
-close-out files, or any Sprint 9 activation file from this story.
+Sprint 9 activation is tracked in `production/sprint-status.yaml` and
+`production/sprints/sprint-9.md`. Implementation workers must not update shared
+status/session files from this story except through an explicitly authorized
+integration or story-done prompt.

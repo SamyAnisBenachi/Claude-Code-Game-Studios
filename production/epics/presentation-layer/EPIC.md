@@ -14,7 +14,7 @@ This epic exists because ADR-021 defines cross-epic infrastructure that should n
 
 Sprint 6 also uses this epic for S6-04 accessibility control stories. Story 003 is docs-only and prevents broad Settings / Accessibility implementation scope from opening until QA-COND-0005 has a complete row-by-row evidence, reclassification, accepted-risk, or dependency disposition register. Story 005 is now the final cross-surface Browser/WASM evidence story for A11Y-ST-02 after Hand UI Story 015 and Shop/Auction UI Story 013 land their owning surface work.
 
-Sprint 9 preparation also uses this epic for the Result Screen MVP story because
+Sprint 9 also uses this epic for the Result Screen MVP story because
 the screen is a cross-surface presentation overlay above frozen HUD and board
 state. Story 006 remains blocked for implementation until the result
 acknowledgement, GAME_OVER reconnect payload, and post-game objective reveal

@@ -25,7 +25,7 @@ Primary documents reviewed:
 - `production/epics/game-session-system/story-009-result-acknowledgement-and-result-data-contract.md`
 - `production/epics/hud/story-007-game-over-freeze.md`
 - `production/qa/evidence/sprint-8-friend-game-loop-evidence.md`
-- `production/sprints/sprint-9-draft.md`
+- `production/sprints/sprint-9.md`
 
 ## Completeness
 

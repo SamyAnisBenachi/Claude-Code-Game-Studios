@@ -187,8 +187,9 @@ Late integrated context:
 
 - Native lobby blank screen repair is integrated in the tested code baseline via
   commit `1bfbf5b`.
-- Sprint 9 draft planning is integrated at `production/sprints/sprint-9-draft.md`;
-  Sprint 9 is not active.
+- At Sprint 8 close-out, Sprint 9 draft planning was integrated but Sprint 9
+  was not active. Prompt 409 later activated Sprint 9 at
+  `production/sprints/sprint-9.md`.
 - Result Screen MVP story docs are integrated at
   `production/epics/presentation-layer/story-006-result-screen-mvp.md`; no
   result screen implementation is done.
@@ -261,9 +262,8 @@ Sprint 9 activation, or implementation was run by this close-out.
 
 ## Next Recommended Step
 
-Sprint 8 is closed with conditions. The next planning step is Sprint 9
-activation only when explicitly requested; use `production/sprints/sprint-9-draft.md`
-as draft context and preserve the Sprint 8 carried conditions.
+Sprint 8 is closed with conditions. Prompt 409 later activated Sprint 9 at
+`production/sprints/sprint-9.md`; preserve the Sprint 8 carried conditions.
 
 ---
 

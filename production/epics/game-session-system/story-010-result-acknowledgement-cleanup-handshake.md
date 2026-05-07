@@ -5,7 +5,7 @@
 > **Layer**: Core / Networking + Presentation Integration
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
-> **Sprint**: Sprint 9 preparation only - Sprint 9 is not active
+> **Sprint**: Sprint 9 active
 
 ## Context
 
@@ -22,13 +22,13 @@ overlay, result copy, focus/reduced-motion behavior, and Return to Lobby
 control. This story verifies that those pieces work together through the real
 client/server boundary.
 
-This story does not implement code during Sprint 9 preparation, activate Sprint
-9, close Sprint 8, run smoke, run QA sign-off, run a gate, run `/dev-story`, or
+This story is active Sprint 9 scope. Story authoring did not implement code,
+close Sprint 8, run smoke, run QA sign-off, run a gate, run `/dev-story`, or
 run `/story-done`.
 
 **Primary sources**:
 
-- `production/sprints/sprint-9-draft.md`
+- `production/sprints/sprint-9.md`
 - `production/epics/game-session-system/story-009-result-acknowledgement-and-result-data-contract.md`
 - `production/epics/presentation-layer/story-006-result-screen-mvp.md`
 - `design/ux/result-screen.md`
@@ -135,8 +135,8 @@ Components API for any UI route changes.
   focus polish, or reduced-motion behavior beyond the Return to Lobby handshake.
 - No rematch protocol, rematch C2S/S2C messages, or rematch UI enablement.
 - No manual/browser two-client GAME_OVER evidence closure. S9-QA-001 owns that.
-- No Sprint 9 activation, Sprint 8 close-out, smoke, QA sign-off, gate-check,
-  `/dev-story`, or `/story-done`.
+- No Sprint 8 close-out, smoke, QA sign-off, gate-check, `/dev-story`, or
+  `/story-done`.
 - No public release readiness, broad accessibility completion, playtest
   validation, full playable-client manual QA, or full game completion claim.
 - No updates to `production/sprint-status.yaml` or
@@ -328,4 +328,4 @@ or repeated entity spawning after the overlay is closed.
 This story is ready as a follow-up package, but it cannot be assigned until
 S9-RS-001 and S9-RS-002 are complete or explicitly replaced by producer-approved
 fallbacks. It preserves S8-QA-001-W1, QA-COND-0005, and QA-COND-0006 as carried
-conditions and does not activate Sprint 9.
+conditions.

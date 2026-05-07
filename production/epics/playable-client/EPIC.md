@@ -8,7 +8,7 @@
 
 ## Overview
 
-Sprint 7 makes the Polish build playable for an internal friend-game session through the real primary client path. Sprint 8 extends and hardens that same path beyond the proven next-loop DRAFT_SHOP endpoint without broadening the claim. A backlog prep story now owns the native operator-control gap found after S8-QA-001: controlled real-Lightyear tests cover the route, but native two-client manual evidence still needs clean player controls for lobby, draft, shop, auction, placement, and result dependency handling. Sprint 9 preparation adds S9-QA-001 and S9-QA-002 as evidence-only stories for the carried manual/browser GAME_OVER gap and follow-up result evidence index. This epic exists because the work cuts across client bootstrap, Lightyear connection flow, lobby/session entry, live draft and shop UI, hand/economy presentation, placement, resolution, endpoint/result evidence, and manual friend-game evidence. None of the existing single-system epics cleanly owns that whole vertical path.
+Sprint 7 makes the Polish build playable for an internal friend-game session through the real primary client path. Sprint 8 extends and hardens that same path beyond the proven next-loop DRAFT_SHOP endpoint without broadening the claim. A Sprint 9 story now owns the native operator-control gap found after S8-QA-001: controlled real-Lightyear tests cover the route, but native two-client manual evidence still needs clean player controls for lobby, draft, shop, auction, placement, and result dependency handling. Sprint 9 adds S9-QA-001 and S9-QA-002 as evidence-only stories for the carried manual/browser GAME_OVER gap and follow-up result evidence index. This epic exists because the work cuts across client bootstrap, Lightyear connection flow, lobby/session entry, live draft and shop UI, hand/economy presentation, placement, resolution, endpoint/result evidence, and manual friend-game evidence. None of the existing single-system epics cleanly owns that whole vertical path.
 
 The epic does not create public release readiness, broad accessibility completion, playtest validation, full playable-client manual QA, or full game completion. It only owns the internal friend-game playable path needed for Sprint 7 and Sprint 8 friend-game robustness work. QA-COND-0005 remains accepted risk for friend-game scope only. QA-COND-0006 remains accepted-risk/deferred.
 
@@ -41,8 +41,8 @@ The epic does not create public release readiness, broad accessibility completio
 | `design/gdd/round-state-machine.md` / `TR-RSM-008`, `TR-RSM-009` | GAME_OVER detection and reliable phase broadcasts remain server-authoritative and exactly evidenced when reached |
 | `design/gdd/hud.md` / `TR-HUD-009` | HUD FROZEN mode records final state on GAME_OVER without incremental updates |
 | `production/qa/evidence/sprint-8-friend-game-loop-evidence.md` / `S8-QA-001-W1` | Native/browser manual two-client route was not captured; future native operator controls must preserve no-claim language while closing or narrowing that evidence gap |
-| `production/sprints/sprint-9-draft.md` / `S9-QA-001` | Manual/browser or native two-client friend-game route must capture lobby create/join through result screen and acknowledgement before S8-QA-001-W1 can be closed |
-| `production/sprints/sprint-9-draft.md` / `S9-QA-002` | Sprint 9 result evidence index must record endpoint, manual/browser status, result-screen status, acknowledgement status, and carried non-claims after evidence exists |
+| `production/sprints/sprint-9.md` / `S9-QA-001` | Manual/browser or native two-client friend-game route must capture lobby create/join through result screen and acknowledgement before S8-QA-001-W1 can be closed |
+| `production/sprints/sprint-9.md` / `S9-QA-002` | Sprint 9 result evidence index must record endpoint, manual/browser status, result-screen status, acknowledgement status, and carried non-claims after evidence exists |
 
 ## Scope
 
@@ -113,5 +113,5 @@ The epic does not create public release readiness, broad accessibility completio
 - Two real primary clients can use a real local server through the scoped friend-game path.
 - Evidence documents the exact build, commit, commands, captures, reached endpoint, defects, and no-harness condition.
 - Sprint 7 and Sprint 8 claims remain limited to internal friend-game playable quality and robustness. Public release readiness, broad accessibility completion, playtest validation, full playable-client manual QA, game-over coverage unless actually reached, and full game completion remain out of scope.
-- Native friend-game operator controls are documented and later evidenced before claiming a manually driven native two-client route. Story preparation alone does not close S8-QA-001-W1, activate Sprint 9, or expand Sprint 8 claims.
+- Native friend-game operator controls are documented and later evidenced before claiming a manually driven native two-client route. Story implementation alone does not close S8-QA-001-W1 or expand Sprint 8 claims.
 - Sprint 9 manual/browser GAME_OVER evidence closes S8-QA-001-W1 only if Story 007 captures the full route through result acknowledgement. If blocked, Story 007 records the blocker and Story 008 indexes the carried warning without expanding the claim.
