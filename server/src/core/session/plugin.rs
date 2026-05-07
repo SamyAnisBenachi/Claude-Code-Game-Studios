@@ -8,11 +8,12 @@ use crate::core::session::{
     evaluate_room_session_ready, evaluate_session_ready, flush_deferred_queue,
     handle_confirm_class, handle_create_room, handle_game_over_teardown, handle_join_room,
     handle_lobby_disconnect, handle_lobby_heartbeat, handle_placement_timer_multiplier_requests,
-    handle_reconnect, handle_select_class, hello_timeout_watchdog, lobby_timeout_check,
-    on_reconnect_connected, tick_lobby_heartbeats, ActiveSessions, ClassPreviews, ClassSelections,
-    NextFreshPlayerId, PlacementTimerMultiplierRequests, PlayerConnectionMap, PlayerSessionData,
-    PlayerSessions, ReconnectNetworkOutbox, ReconnectTracker, RoomSessions, ServerRngFactory,
-    SessionConfig, SessionNetworkOutbox, SessionSystemSet,
+    handle_reconnect, handle_result_acknowledgements, handle_select_class, hello_timeout_watchdog,
+    lobby_timeout_check, on_reconnect_connected, tick_ended_session_result_timeout,
+    tick_lobby_heartbeats, ActiveSessions, ClassPreviews, ClassSelections, NextFreshPlayerId,
+    PlacementTimerMultiplierRequests, PlayerConnectionMap, PlayerSessionData, PlayerSessions,
+    ReconnectNetworkOutbox, ReconnectTracker, RoomSessions, ServerRngFactory, SessionConfig,
+    SessionNetworkOutbox, SessionSystemSet,
 };
 
 pub struct GameSessionPlugin;
@@ -70,7 +71,12 @@ impl Plugin for GameSessionPlugin {
             )
             .add_systems(
                 Update,
-                (handle_reconnect, hello_timeout_watchdog)
+                (
+                    handle_reconnect,
+                    handle_result_acknowledgements,
+                    tick_ended_session_result_timeout,
+                    hello_timeout_watchdog,
+                )
                     .chain()
                     .in_set(SessionSystemSet::ReconnectHandshake),
             )

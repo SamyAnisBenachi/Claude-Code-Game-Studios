@@ -6,23 +6,24 @@ use bevy::prelude::*;
 use lightyear::prelude::*;
 use shared::card::ClassId;
 use shared::protocol::{
-    self, C2SConfirmClass, C2SCreateRoom, C2SHeartbeat, C2SJoinRoom, C2SSelectClass,
-    C2SSetPlacementTimerMultiplier, ConfirmClassRejectedReason, CreateRoomRejectedReason, GameMode,
-    JoinRejectedReason, PlacementTimerMultiplier, ReliableChannel, S2CClassLocked,
-    S2CClassesRevealed, S2CConfirmClassRejected, S2CCreateRoomRejected, S2CGameOver, S2CJoinAck,
-    S2CJoinRejected, S2CRoomCreated, S2CSessionCancelled, S2CSessionSettingsUpdated,
-    S2CSlotUpdated,
+    self, C2SAcknowledgeResult, C2SConfirmClass, C2SCreateRoom, C2SHeartbeat, C2SJoinRoom,
+    C2SSelectClass, C2SSetPlacementTimerMultiplier, ConfirmClassRejectedReason,
+    CreateRoomRejectedReason, GameMode, JoinRejectedReason, PlacementTimerMultiplier,
+    ReliableChannel, RoundPhase as ProtocolRoundPhase, S2CClassLocked, S2CClassesRevealed,
+    S2CConfirmClassRejected, S2CCreateRoomRejected, S2CGameOver, S2CJoinAck, S2CJoinRejected,
+    S2CRoomCreated, S2CSessionCancelled, S2CSessionSettingsUpdated, S2CSlotUpdated,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
 
-use crate::core::rsm::{GameOverEmitted, PlayerHeartbeat};
+use crate::core::rsm::{GameOverEmitted, PlayerHeartbeat, RoundPhase, RoundState};
 use crate::core::session::{
-    build_session_config_with_settings, effective_placement_timer_multiplier, ActiveSessions,
-    ClassPreviews, ClassSelections, LobbyDeadline, LobbyHeartbeats, LobbyState,
-    PlacementTimerMultiplierRequests, PlayerConnectionMap, PlayerSessionData, PlayerSessions,
-    ReconnectTracker, RoomCode, RoomSession, RoomSessions, SessionCancelledReason, SessionConfig,
-    SessionId, SessionNetworkOutbox, SessionReady, SessionSlot, SessionSlots,
+    build_game_snapshot, build_session_config_with_settings, effective_placement_timer_multiplier,
+    ActiveSessions, ClassPreviews, ClassSelections, EndedSessionResultState, LobbyDeadline,
+    LobbyHeartbeats, LobbyState, PlacementTimerMultiplierRequests, PlayerConnectionMap,
+    PlayerSessionData, PlayerSessions, ReconnectTracker, RoomCode, RoomSession, RoomSessions,
+    SessionCancelledReason, SessionConfig, SessionId, SessionNetworkOutbox, SessionReady,
+    SessionSlot, SessionSlots,
 };
 use crate::foundation::config::GameConfig;
 use crate::foundation::rng::ServerRng;
@@ -384,122 +385,155 @@ pub fn all_classes_confirmed(slots: &SessionSlots, selections: &ClassSelections)
         })
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn handle_game_over_teardown(
-    mut commands: Commands,
-    mut game_over_events: MessageReader<GameOverEmitted>,
-    lobby_state: Option<Res<LobbyState>>,
-    session_config: Option<Res<SessionConfig>>,
-    server_rng: Option<Res<ServerRng>>,
-    slots: Option<Res<SessionSlots>>,
-    selections: Option<Res<ClassSelections>>,
-    previews: Option<Res<ClassPreviews>>,
-    mut placement_timer_requests: Option<ResMut<PlacementTimerMultiplierRequests>>,
-    deadline: Option<Res<LobbyDeadline>>,
-    heartbeats: Option<Res<LobbyHeartbeats>>,
-    mut cleanup_state: ParamSet<(
-        Option<ResMut<ActiveSessions>>,
-        Option<ResMut<RoomSessions>>,
-        Option<ResMut<ReconnectTracker>>,
-    )>,
-    connections: Option<Res<PlayerConnectionMap>>,
-    server: Query<&Server>,
-    mut sender: Option<ServerMultiMessageSender>,
-    mut outbox: Option<ResMut<SessionNetworkOutbox>>,
-) {
-    if matches!(lobby_state.as_deref(), Some(LobbyState::GameOver)) {
-        for _ in game_over_events.read() {}
+pub fn handle_game_over_teardown(world: &mut World) {
+    if matches!(
+        world.get_resource::<LobbyState>().copied(),
+        Some(LobbyState::GameOver)
+    ) {
         return;
     }
 
-    let mut game_over = None;
-    for event in game_over_events.read() {
-        if game_over.is_none() {
-            game_over = Some(*event);
-        }
-    }
-    let Some(game_over) = game_over else {
+    let Some(game_over) = first_game_over_message(world) else {
         return;
     };
 
-    let players = session_players(session_config.as_deref(), slots.as_deref());
+    let players = session_players(
+        world.get_resource::<SessionConfig>(),
+        world.get_resource::<SessionSlots>(),
+    );
     let message = S2CGameOver {
         loser: game_over.loser,
         round: game_over.round,
         reason: game_over.reason,
     };
+    let session_ids = session_ids_for_players_from_world(world, &players);
+    let ended_state =
+        build_ended_session_result_state(world, message.clone(), &players, &session_ids);
 
-    broadcast_game_over(
-        &server,
-        sender.as_mut(),
-        connections.as_deref(),
-        outbox.as_deref_mut(),
-        message,
-        &players,
+    broadcast_game_over_from_world(world, message, &players);
+    mark_rooms_game_over(world, &session_ids);
+    remove_active_sessions_for_players(world, &players);
+    world.insert_resource(ended_state);
+    remove_live_session_resources(world);
+    world.insert_resource(LobbyState::GameOver);
+}
+
+/// Sole drainer for `MessageReceiver<C2SAcknowledgeResult>`.
+pub fn handle_result_acknowledgements(
+    round_state: Option<Res<RoundState>>,
+    connections: Res<PlayerConnectionMap>,
+    mut ended_state: Option<ResMut<EndedSessionResultState>>,
+    mut reconnect_tracker: Option<ResMut<ReconnectTracker>>,
+    mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SAcknowledgeResult>)>,
+    mut commands: Commands,
+) {
+    if !matches!(
+        round_state.as_deref().map(|state| state.phase),
+        Some(RoundPhase::GameOver)
+    ) {
+        drain_result_ack_receivers(&mut receivers);
+        return;
+    }
+
+    let Some(ended_state) = ended_state.as_deref_mut() else {
+        drain_result_ack_receivers(&mut receivers);
+        return;
+    };
+
+    let mut terminal_cleanup = false;
+    for (remote, mut receiver) in receivers.iter_mut() {
+        for _message in receiver.receive() {
+            if resolve_result_acknowledgement(
+                round_state.as_deref().map(|state| state.phase),
+                Some(&mut *ended_state),
+                connections.0.get(&remote.0).copied(),
+            ) == ResultAcknowledgementOutcome::AllAcknowledged
+            {
+                terminal_cleanup = true;
+            }
+        }
+    }
+
+    if terminal_cleanup {
+        cleanup_ended_session_reconnect_state(reconnect_tracker.as_deref_mut(), ended_state);
+        commands.remove_resource::<EndedSessionResultState>();
+    }
+}
+
+pub fn tick_ended_session_result_timeout(
+    time: Res<Time>,
+    ended_state: Option<Res<EndedSessionResultState>>,
+    mut reconnect_tracker: Option<ResMut<ReconnectTracker>>,
+    mut commands: Commands,
+) {
+    let Some(ended_state) = ended_state.as_deref() else {
+        return;
+    };
+
+    if elapsed_millis_u64(time.elapsed()) < ended_state.expires_at_ms {
+        return;
+    }
+
+    cleanup_ended_session_reconnect_state(reconnect_tracker.as_deref_mut(), ended_state);
+    commands.remove_resource::<EndedSessionResultState>();
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResultAcknowledgementOutcome {
+    Discarded,
+    Acknowledged,
+    Duplicate,
+    AllAcknowledged,
+}
+
+pub fn apply_result_acknowledgement(
+    ended_state: Option<&mut EndedSessionResultState>,
+    player_id: PlayerId,
+) -> ResultAcknowledgementOutcome {
+    let Some(ended_state) = ended_state else {
+        return ResultAcknowledgementOutcome::Discarded;
+    };
+
+    if !ended_state.participants.contains(&player_id) {
+        return ResultAcknowledgementOutcome::Discarded;
+    }
+
+    if !ended_state.acknowledge(player_id) {
+        return ResultAcknowledgementOutcome::Duplicate;
+    }
+
+    if ended_state.all_acknowledged() {
+        ResultAcknowledgementOutcome::AllAcknowledged
+    } else {
+        ResultAcknowledgementOutcome::Acknowledged
+    }
+}
+
+pub fn resolve_result_acknowledgement(
+    round_phase: Option<RoundPhase>,
+    ended_state: Option<&mut EndedSessionResultState>,
+    sender: Option<PlayerId>,
+) -> ResultAcknowledgementOutcome {
+    if round_phase != Some(RoundPhase::GameOver) {
+        return ResultAcknowledgementOutcome::Discarded;
+    }
+
+    let Some(player_id) = sender else {
+        return ResultAcknowledgementOutcome::Discarded;
+    };
+
+    apply_result_acknowledgement(ended_state, player_id)
+}
+
+pub fn cleanup_ended_session_reconnect_state(
+    tracker: Option<&mut ReconnectTracker>,
+    ended_state: &EndedSessionResultState,
+) {
+    cleanup_reconnect_tracker(
+        tracker,
+        &ended_state.session_ids,
+        &participants_sorted(ended_state),
     );
-
-    let mut session_ids = HashSet::new();
-    {
-        if let Some(mut active_sessions) = cleanup_state.p0() {
-            for player in &players {
-                if let Some(session_id) = active_sessions.0.get(player).copied() {
-                    session_ids.insert(session_id);
-                }
-            }
-
-            for player in &players {
-                active_sessions.0.remove(player);
-            }
-        }
-    }
-
-    {
-        if let Some(mut rooms) = cleanup_state.p1() {
-            if session_ids.is_empty() {
-                session_ids.extend(session_ids_for_players(&rooms, &players));
-            }
-
-            for session_id in &session_ids {
-                if let Some(session) = rooms.get_mut(*session_id) {
-                    session.state = LobbyState::GameOver;
-                    session.heartbeats.0.clear();
-                }
-            }
-        }
-    }
-
-    {
-        let mut reconnect_tracker = cleanup_state.p2();
-        cleanup_reconnect_tracker(reconnect_tracker.as_deref_mut(), &session_ids, &players);
-    }
-
-    if session_config.is_some() {
-        commands.remove_resource::<SessionConfig>();
-    }
-    if server_rng.is_some() {
-        commands.remove_resource::<ServerRng>();
-    }
-
-    commands.insert_resource(LobbyState::GameOver);
-
-    if slots.is_some() {
-        commands.remove_resource::<SessionSlots>();
-    }
-    if selections.is_some() {
-        commands.remove_resource::<ClassSelections>();
-    }
-    if previews.is_some() {
-        commands.remove_resource::<ClassPreviews>();
-    }
-    if let Some(requests) = placement_timer_requests.as_deref_mut() {
-        requests.0.clear();
-    }
-    if deadline.is_some() {
-        commands.remove_resource::<LobbyDeadline>();
-    }
-    if heartbeats.is_some() {
-        commands.remove_resource::<LobbyHeartbeats>();
-    }
 }
 
 /// Sole drainer for `MessageReceiver<C2SCreateRoom>`.
@@ -1192,6 +1226,46 @@ fn occupied_players(slots: &SessionSlots) -> Vec<PlayerId> {
     slots.0.iter().filter_map(|slot| slot.player).collect()
 }
 
+fn first_game_over_message(world: &World) -> Option<GameOverEmitted> {
+    let messages = world.get_resource::<Messages<GameOverEmitted>>()?;
+    let mut cursor = messages.get_cursor();
+    cursor.read(messages).copied().next()
+}
+
+fn build_ended_session_result_state(
+    world: &mut World,
+    result: S2CGameOver,
+    players: &[PlayerId],
+    session_ids: &HashSet<SessionId>,
+) -> EndedSessionResultState {
+    let mut final_snapshots = HashMap::new();
+    for player in players {
+        if let Some(mut snapshot) = build_game_snapshot(*player, world) {
+            snapshot.phase = ProtocolRoundPhase::GameOver;
+            snapshot.round_number = result.round;
+            snapshot.timer_remaining_ms = None;
+            final_snapshots.insert(*player, snapshot);
+        }
+    }
+
+    let expires_at_ms = elapsed_millis_u64(
+        world
+            .get_resource::<Time>()
+            .map(|time| time.elapsed())
+            .unwrap_or_default(),
+    )
+    .saturating_add(u64::from(ack_timeout_ms(world)));
+
+    EndedSessionResultState {
+        result,
+        participants: players.iter().copied().collect(),
+        acknowledged: HashSet::new(),
+        final_snapshots,
+        expires_at_ms,
+        session_ids: session_ids.clone(),
+    }
+}
+
 fn session_players(
     session_config: Option<&SessionConfig>,
     slots: Option<&SessionSlots>,
@@ -1228,6 +1302,114 @@ fn session_ids_for_players(rooms: &RoomSessions, players: &[PlayerId]) -> HashSe
         .collect()
 }
 
+fn session_ids_for_players_from_world(world: &World, players: &[PlayerId]) -> HashSet<SessionId> {
+    let mut session_ids = world
+        .get_resource::<ActiveSessions>()
+        .map(|active_sessions| {
+            players
+                .iter()
+                .filter_map(|player| active_sessions.0.get(player).copied())
+                .collect::<HashSet<_>>()
+        })
+        .unwrap_or_default();
+
+    if session_ids.is_empty() {
+        if let Some(rooms) = world.get_resource::<RoomSessions>() {
+            session_ids.extend(session_ids_for_players(rooms, players));
+        }
+    }
+
+    session_ids
+}
+
+fn remove_active_sessions_for_players(world: &mut World, players: &[PlayerId]) {
+    let Some(mut active_sessions) = world.get_resource_mut::<ActiveSessions>() else {
+        return;
+    };
+
+    for player in players {
+        active_sessions.0.remove(player);
+    }
+}
+
+fn mark_rooms_game_over(world: &mut World, session_ids: &HashSet<SessionId>) {
+    let Some(mut rooms) = world.get_resource_mut::<RoomSessions>() else {
+        return;
+    };
+
+    for session_id in session_ids {
+        if let Some(session) = rooms.get_mut(*session_id) {
+            session.state = LobbyState::GameOver;
+            session.heartbeats.0.clear();
+        }
+    }
+}
+
+fn remove_live_session_resources(world: &mut World) {
+    world.remove_resource::<SessionConfig>();
+    world.remove_resource::<ServerRng>();
+    world.remove_resource::<SessionSlots>();
+    world.remove_resource::<ClassSelections>();
+    world.remove_resource::<ClassPreviews>();
+    if let Some(mut requests) = world.get_resource_mut::<PlacementTimerMultiplierRequests>() {
+        requests.0.clear();
+    }
+    world.remove_resource::<LobbyDeadline>();
+    world.remove_resource::<LobbyHeartbeats>();
+}
+
+fn broadcast_game_over_from_world(
+    world: &mut World,
+    message: S2CGameOver,
+    recipients: &[PlayerId],
+) {
+    if let Some(mut outbox) = world.get_resource_mut::<SessionNetworkOutbox>() {
+        outbox.push_game_over(message.clone());
+    }
+
+    let target_peers = world
+        .get_resource::<PlayerConnectionMap>()
+        .map(|connections| {
+            recipients
+                .iter()
+                .filter_map(|player_id| peer_for_player(&connections.0, *player_id))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    if target_peers.is_empty() {
+        return;
+    }
+
+    let mut system_state: bevy::ecs::system::SystemState<(
+        Query<&Server>,
+        Option<ServerMultiMessageSender>,
+    )> = bevy::ecs::system::SystemState::new(world);
+    let (server, mut sender) = system_state.get_mut(world);
+    let (Ok(server), Some(sender)) = (server.single(), sender.as_mut()) else {
+        return;
+    };
+
+    let _ = sender.send::<S2CGameOver, ReliableChannel>(
+        &message,
+        server,
+        &NetworkTarget::Only(target_peers),
+    );
+}
+
+fn participants_sorted(ended_state: &EndedSessionResultState) -> Vec<PlayerId> {
+    let mut players = ended_state.participants.iter().copied().collect::<Vec<_>>();
+    players.sort_by_key(|player| player.0);
+    players
+}
+
+fn drain_result_ack_receivers(
+    receivers: &mut Query<(&RemoteId, &mut MessageReceiver<C2SAcknowledgeResult>)>,
+) {
+    for (_, mut receiver) in receivers.iter_mut() {
+        for _message in receiver.receive() {}
+    }
+}
+
 fn cleanup_reconnect_tracker(
     tracker: Option<&mut ReconnectTracker>,
     session_ids: &HashSet<SessionId>,
@@ -1247,6 +1429,17 @@ fn cleanup_reconnect_tracker(
         tracker.snapshot_sent.remove(player);
         tracker.sang_meprise_sent_to.remove(player);
     }
+}
+
+fn ack_timeout_ms(world: &World) -> u32 {
+    world
+        .get_resource::<GameConfig>()
+        .map(|config| config.ack_timeout_ms)
+        .unwrap_or_else(|| shared::config::GameConfig::default().ack_timeout_ms)
+}
+
+fn elapsed_millis_u64(duration: std::time::Duration) -> u64 {
+    u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
 }
 
 fn broadcast_game_over(

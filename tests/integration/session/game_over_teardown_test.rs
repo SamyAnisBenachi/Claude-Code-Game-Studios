@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
-use server::core::rsm::{GameOverEmitted, RsmPlugin};
+use server::core::rsm::{GameOverEmitted, RoundPhase, RoundState, RsmPlugin};
 use server::core::session::{
-    ActiveSessions, ClassPreviews, ClassSelections, DeferredMessage, GameSessionPlugin,
-    LobbyDeadline, LobbyHeartbeats, LobbyState, ReconnectTracker, RoomCode, RoomSession,
-    RoomSessions, SessionConfig, SessionId, SessionSlot, SessionSlots,
+    ActiveSessions, ClassPreviews, ClassSelections, DeferredMessage, EndedSessionResultState,
+    GameSessionPlugin, LobbyDeadline, LobbyHeartbeats, LobbyState, ReconnectTracker, RoomCode,
+    RoomSession, RoomSessions, SessionConfig, SessionId, SessionSlot, SessionSlots,
 };
 use server::foundation::rng::ServerRng;
 use shared::card::{CardId, ClassId};
@@ -101,6 +101,7 @@ fn game_active_app() -> App {
 }
 
 fn emit_game_over(app: &mut App) {
+    app.world_mut().resource_mut::<RoundState>().phase = RoundPhase::GameOver;
     app.world_mut().write_message(GameOverEmitted {
         loser: Some(player(1)),
         round: 5,
@@ -134,6 +135,15 @@ fn game_over_teardown_removes_session_resources_and_broadcasts_result() {
         outbox.game_over()[0].reason,
         GameOverReason::ObjectivesDestroyed
     );
+
+    let ended = app.world().resource::<EndedSessionResultState>();
+    assert_eq!(ended.result.round, 5);
+    assert_eq!(ended.participants, HashSet::from([player(1), player(2)]));
+    assert!(ended.acknowledged.is_empty());
+    assert_eq!(ended.final_snapshots.len(), 2);
+    assert!(ended.final_snapshots.values().all(|snapshot| {
+        snapshot.phase == shared::protocol::RoundPhase::GameOver && snapshot.round_number == 5
+    }));
 }
 
 #[test]
@@ -156,7 +166,7 @@ fn game_over_teardown_cleans_active_sessions_and_room_state() {
 }
 
 #[test]
-fn game_over_teardown_cleans_reconnect_tracker_if_present() {
+fn game_over_teardown_retains_reconnect_tracker_until_result_ack_cleanup() {
     let mut app = game_active_app();
     app.insert_resource(ReconnectTracker {
         snapshot_sent: HashMap::from([(player(1), true), (player(2), true), (player(9), true)]),
@@ -195,17 +205,20 @@ fn game_over_teardown_cleans_reconnect_tracker_if_present() {
     emit_game_over(&mut app);
 
     let tracker = app.world().resource::<ReconnectTracker>();
-    assert_eq!(tracker.token_map.len(), 1);
+    assert_eq!(tracker.token_map.len(), 3);
+    assert!(tracker.token_map.contains_key(&[1; 16]));
+    assert!(tracker.token_map.contains_key(&[2; 16]));
     assert!(tracker.token_map.contains_key(&[9; 16]));
-    assert!(!tracker.deferred_queue.contains_key(&player(1)));
-    assert!(!tracker.deferred_queue.contains_key(&player(2)));
+    assert!(tracker.deferred_queue.contains_key(&player(1)));
+    assert!(tracker.deferred_queue.contains_key(&player(2)));
     assert!(tracker.deferred_queue.contains_key(&player(9)));
-    assert!(!tracker.snapshot_sent.contains_key(&player(1)));
-    assert!(!tracker.snapshot_sent.contains_key(&player(2)));
+    assert_eq!(tracker.snapshot_sent.get(&player(1)), Some(&true));
+    assert_eq!(tracker.snapshot_sent.get(&player(2)), Some(&true));
     assert_eq!(tracker.snapshot_sent.get(&player(9)), Some(&true));
-    assert!(!tracker.sang_meprise_sent_to.contains(&player(1)));
-    assert!(!tracker.sang_meprise_sent_to.contains(&player(2)));
+    assert!(tracker.sang_meprise_sent_to.contains(&player(1)));
+    assert!(tracker.sang_meprise_sent_to.contains(&player(2)));
     assert!(tracker.sang_meprise_sent_to.contains(&player(9)));
+    assert!(app.world().contains_resource::<EndedSessionResultState>());
 }
 
 #[test]
