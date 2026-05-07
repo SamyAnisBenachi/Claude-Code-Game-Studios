@@ -18,7 +18,9 @@ Sprint 9 preparation also uses this epic for the Result Screen MVP story because
 the screen is a cross-surface presentation overlay above frozen HUD and board
 state. Story 006 remains blocked for implementation until the result
 acknowledgement, GAME_OVER reconnect payload, and post-game objective reveal
-contract gaps are resolved or explicitly accepted as MVP fallbacks.
+contract gaps are resolved or explicitly accepted as MVP fallbacks. Game
+Session System Story 009 is the owning S9-RS-001 contract story for result
+acknowledgement and GAME_OVER result data retention.
 
 ## Governing ADRs
 
@@ -69,8 +71,8 @@ Story 001 remains ADR-only infrastructure and does not need a `TR-PRES-*` entry.
 - `BoardRenderingPlugin` and `ShopAuctionUiPlugin` do not exist yet and must remain owned by their own epics.
 - A11Y-ST-02 remains open because Hand UI Story 015, Shop/Auction UI Story 013, and the final Presentation Story 005 evidence pass have not yet been implemented and captured.
 - Result Screen MVP is not implemented.
-- `C2SAcknowledgeResult` exists and is registered, but no server-side acknowledgement handler or `ack_timeout_ms` cleanup path was found.
-- `S2CGameSnapshot` does not include final result payload fields for GAME_OVER reconnect.
+- `C2SAcknowledgeResult` exists and is registered, but no server-side acknowledgement handler or `ack_timeout_ms` cleanup path was found. Game Session System Story 009 now defines the required S9-RS-001 contract; implementation is not done.
+- `S2CGameSnapshot` does not include final result payload fields for GAME_OVER reconnect. Game Session System Story 009 chooses retained final snapshot plus retained `S2CGameOver` resend as the contract path rather than snapshot result fields; implementation is not done.
 - Full post-game reveal data for alive opponent objective identities is not available; destroyed opponent identity is available only through `OpponentObjectiveSnapshot.was_fake`.
 - Rematch protocol is not defined and must stay disabled or hidden unless separately scoped.
 
@@ -87,6 +89,7 @@ This epic is complete when:
 - S6-04 accessibility disposition work has a complete register at `production/qa/evidence/accessibility-standard-tier-sprint-6-2026-05-05.md` before broader accessibility implementation scope proceeds.
 - A11Y-ST-02 card text accessibility evidence is captured at `production/qa/evidence/presentation-card-text-accessibility.md` with browser/WASM captures under `production/qa/evidence/captures/presentation-card-text-accessibility/` after Hand UI Story 015 and Shop/Auction UI Story 013 land, before the row is treated as implemented and evidenced.
 - Result Screen MVP either implements its blocked contracts or records explicit MVP fallback acceptance for acknowledgement, reconnect result payload, and post-game objective reveal gaps before implementation assignment.
+- Game Session System Story 009 is complete or a producer-approved replacement fallback is documented before Presentation Story 006 implementation assignment.
 - No BoardLayout, CardAtlas, BoardRenderingPlugin, ShopAuctionUiPlugin, panel tree, unrelated visual spawning, gameplay logic, rematch protocol, or server contract change is implemented by this epic.
 
 ## Stories

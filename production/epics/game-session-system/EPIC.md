@@ -4,11 +4,11 @@
 > **GDD**: design/gdd/game-session-system.md
 > **Architecture Module**: `server/core/session/` (full module — `state.rs`, `events.rs`, `system.rs`, `config.rs`, `plugin.rs`); contributes `on_session_ready` Observer registration to `server/core/rsm/`
 > **Status**: Ready
-> **Stories**: 8 stories — see Stories section below
+> **Stories**: 9 stories — see Stories section below
 
 ## Overview
 
-Implements the lobby finite-state machine and the session-readiness handoff that bridges connection-time concerns to the round loop. This epic owns `SessionSlot`, room creation and join, public class selection with deferred simultaneous reveal, the F4 readiness predicate (all slots filled + all classes confirmed + lobby deadline not expired), lobby/session PLACEMENT timer multiplier negotiation, the lobby heartbeat / `OnDisconnected` immediate-cancel path, and — critically — the `SessionReady` Observer-trigger delivery that hands `SessionConfig` and `ServerRng` to the RSM in the same `Update` tick. After `SessionReady` fires, the GSS becomes a passive read-only configuration store: `Res<SessionConfig>` (mode, player_count, team_map, class_map, placement_timer_multiplier_effective) is the single source of session data for every Feature system. The GSS also owns the `ServerRng` lifecycle: it seeds the RNG from `OsRng` immediately before triggering `SessionReady` (per ADR-005) and destroys both `SessionConfig` and `ServerRng` resources on `GameOverEmitted` (subscribed from Epic 1's RSM event bus). This epic is the load-bearing gate between LOBBY and DRAFT_INITIAL: an Observer-trigger ordering bug here panics the RSM with "resource not found" and breaks every game session.
+Implements the lobby finite-state machine and the session-readiness handoff that bridges connection-time concerns to the round loop. This epic owns `SessionSlot`, room creation and join, public class selection with deferred simultaneous reveal, the F4 readiness predicate (all slots filled + all classes confirmed + lobby deadline not expired), lobby/session PLACEMENT timer multiplier negotiation, the lobby heartbeat / `OnDisconnected` immediate-cancel path, and — critically — the `SessionReady` Observer-trigger delivery that hands `SessionConfig` and `ServerRng` to the RSM in the same `Update` tick. After `SessionReady` fires, the GSS becomes a passive read-only configuration store: `Res<SessionConfig>` (mode, player_count, team_map, class_map, placement_timer_multiplier_effective) is the single source of session data for every Feature system. The GSS also owns the `ServerRng` lifecycle: it seeds the RNG from `OsRng` immediately before triggering `SessionReady` (per ADR-005) and destroys both `SessionConfig` and `ServerRng` resources on `GameOverEmitted` (subscribed from Epic 1's RSM event bus). Sprint 9 preparation adds the result acknowledgement/result data contract as Story 009: GSS owns the server-side `C2SAcknowledgeResult` handling, retained GAME_OVER result data during the acknowledgement window, and reconnect behavior needed by the Result Screen MVP. This epic is the load-bearing gate between LOBBY and DRAFT_INITIAL: an Observer-trigger ordering bug here panics the RSM with "resource not found" and breaks every game session.
 
 ## Governing ADRs
 
@@ -45,6 +45,7 @@ Three high-risk post-cutoff API behaviours converge in this epic:
 | TR-GSS-09 | Class reveal: deferred simultaneous broadcast (`S2CClassesRevealed`) | GDD Rule 7 |
 | TR-GSS-10 | One active session per `PlayerId`; idempotent `C2SCreateRoom` retry | GDD Rule 13 |
 | TR-GSS-11 | GSS owns multiplayer PLACEMENT timer multiplier negotiation before `SessionReady`: highest requested multiplayer-safe value wins, capped at 3x, neutral, and frozen into `SessionConfig` | ADR-023 |
+| S9-RS-001 | Result acknowledgement and retained GAME_OVER result data: `C2SAcknowledgeResult` is handled server-side during GAME_OVER, duplicate acks are idempotent, reconnect during the retained acknowledgement window receives authoritative final snapshot plus re-sent `S2CGameOver`, and cleanup waits for all acks or `ack_timeout_ms` | ADR-002, ADR-008, ADR-011 |
 
 ## Scope
 
@@ -83,6 +84,7 @@ Three high-risk post-cutoff API behaviours converge in this epic:
 - `tick_lobby_heartbeats` — fallback dual-signal: tracks `C2SHeartbeat` per occupied slot; if gap > `lobby_heartbeat_timeout_seconds` (default 15s — separate from RSM's 30s grace), cancel as if `OnDisconnected` fired. Tracker is destroyed on `SessionReady` (RSM takes over with `disconnect_grace_seconds`).
 - `lobby_timeout_check` — at `now > lobby_deadline` with F4 false, transitions to `LobbyCancelled` with `reason: LobbyTimeout`.
 - `handle_game_over_teardown` — subscribes to `MessageReader<GameOverEmitted>` (from Epic 1 RSM message bus); broadcasts `S2CGameOver { loser, round, reason }` on `ReliableChannel`; removes `SessionConfig` and `ServerRng` resources from world; transitions `LobbyState` to `GameOver`. The GAME_OVER → session destruction path lives here per ADR-010 subscriber contract.
+- `handle_result_acknowledgement` — drains `C2SAcknowledgeResult` during GAME_OVER only; resolves the sender to a stable `PlayerId`; records idempotent acknowledgement in retained ended-session result state; silently discards invalid-phase, unknown-sender, stale-token, and non-participant messages; triggers terminal cleanup once all result participants acknowledge or `ack_timeout_ms` expires.
 
 **`on_session_ready` (lives in `server/core/rsm/system.rs`, registered by GSS plugin)**
 - Per ADR-012: `fn on_session_ready(_t: Trigger<SessionReady>, config: Res<SessionConfig>, rng: Res<ServerRng>, mut round_state: ResMut<RoundState>, ...)`.
@@ -97,6 +99,7 @@ Three high-risk post-cutoff API behaviours converge in this epic:
 - `SessionToken` issued in response to first `C2SHello { protocol_version, session_token: None }`; stored on the session.
 - On reconnect (`C2SHello { session_token: Some(t) }`): map new `ClientId` to existing `PlayerId`, hold live messages in `ReconnectTracker.snapshot_sent[player] = false` queue, send `S2CHandshake`, then `S2CGameSnapshot` (built per ADR-011 secret-stripping rules — own player gets full hand/objectives, opponent fields stripped to public only), then re-send `S2CObjectiveIdentities` (ADR-001), then `S2CPhaseChanged`, then unfreeze the live queue.
 - `S2CGameSnapshot` builder is implemented here (it touches `Res<RoundState>`, `Res<SessionConfig>`, `Res<PlayerEconomy>`, `Res<HiddenObjectives>`, `Res<BoardGrid>`, `Res<PlayerPool>` — broadest cross-system read in the codebase). Snapshot data includes the frozen neutral `placement_timer_multiplier_effective` and never attributes the requester.
+- During the retained GAME_OVER acknowledgement window, reconnect uses the final per-player snapshot retained at GAME_OVER plus a re-sent retained `S2CGameOver`. This keeps result-screen reconnect authoritative without requiring `S2CGameSnapshot` to grow `loser`, `round`, or `reason` fields.
 
 **Tests**
 - `tests/unit/session/` — F4 predicate truth table (all combinations of slot fill, class confirm, deadline expiry).
@@ -146,6 +149,7 @@ If any check fails: implement `evaluate_session_ready` as `fn(world: &mut World)
 - An integration test demonstrates the full LOBBY → DRAFT_INITIAL path: room created, second player joins, both players confirm class, `SessionReady` triggers, RSM transitions, `S2CPhaseChanged(DRAFT_INITIAL)` broadcast — all within the same Update run.
 - An integration test demonstrates session teardown: `GameOverEmitted` event causes `SessionConfig` and `ServerRng` to be removed from the World; `S2CGameOver` broadcast on `ReliableChannel`.
 - Reconnect integration test: `S2CGameSnapshot` is sent before any live message after a reconnect; live messages queued during the snapshot window are delivered after `snapshot_sent[player] = true`.
+- Result acknowledgement integration tests demonstrate GAME_OVER-only ack handling, duplicate ack idempotence, all-ack cleanup, `ack_timeout_ms` cleanup, retained final snapshot plus `S2CGameOver` resend on GAME_OVER reconnect, and post-cleanup reconnect fallback.
 - ADR-023 validation passes: `C2SSetPlacementTimerMultiplier`, `S2CSessionSettingsUpdated`, `PlacementTimerMultiplier { 1x, 1.5x, 2x, 3x }`, frozen `SessionConfig.placement_timer_multiplier_effective`, RSM effective PLACEMENT duration, snapshot frozen multiplier, and Hand UI server timer consumption are implemented and tested.
 - No multiplayer Standard-tier `0.5x` timer option exists, and no S2C/session settings payload exposes requester identity.
 
@@ -161,6 +165,7 @@ If any check fails: implement `evaluate_session_ready` as `fn(world: &mut World)
 | 006 | Game-Over Teardown | Integration | Ready | ADR-010, ADR-005, ADR-008 |
 | 007 | Reconnect and Game Snapshot | Integration | Ready | ADR-011, ADR-001, ADR-008, ADR-002 |
 | 008 | PLACEMENT Timer Multiplier Authority | Integration | Ready | ADR-023, ADR-002, ADR-009, ADR-012, ADR-021 |
+| 009 | [Result Acknowledgement and Result Data Contract](story-009-result-acknowledgement-and-result-data-contract.md) | Integration | Ready | ADR-002, ADR-008, ADR-010, ADR-011 |
 
 > ⚠️ Story 004 is **Blocked** pending ADR-012 verification (Commands::trigger ordering invariant — 4 checklist items must be confirmed against Bevy 0.18). Run the verification spike before Story 004 can be marked Ready.
 
@@ -176,6 +181,7 @@ Suggested decomposition (final story list to be authored via `/create-stories`):
 6. **GAME_OVER teardown** (Integration) — Subscribe to `GameOverEmitted` from Epic 1; broadcast `S2CGameOver`; destroy `SessionConfig` + `ServerRng`.
 7. **Reconnect + snapshot** (Integration) — `SessionToken` handshake; `S2CGameSnapshot` builder with secret-stripping (ADR-011); live-message queue gated on `snapshot_sent`.
 8. **PLACEMENT timer multiplier authority** (Integration) — ADR-023 protocol, GSS request negotiation, `SessionConfig` freeze, RSM effective PLACEMENT duration, reconnect snapshot field, and Hand UI server-provided timer consumption.
+9. **Result acknowledgement + result data contract** (Integration) - S9-RS-001 server acknowledgement handling, retained final result data, GAME_OVER reconnect resend, idempotent ack safety, and ack-timeout cleanup.
 
 ## Next Step
 

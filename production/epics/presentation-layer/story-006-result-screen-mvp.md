@@ -386,6 +386,8 @@ client.
 - Depends on: HUD Story 008 complete for snapshot rebuild while FROZEN.
 - Depends on: PLAYABLE-004 complete for controlled internal `GAME_OVER`
   endpoint evidence.
+- Depends on: Game Session System Story 009 complete for S9-RS-001 result
+  acknowledgement and retained GAME_OVER result data contract.
 - Depends on: ADR-002, ADR-008, ADR-011, and ADR-021 Accepted.
 - Blocks: Result-screen implementation assignment until the blockers below are
   resolved or explicitly accepted as MVP fallback scope.
@@ -397,17 +399,19 @@ client.
   `ReliableChannel`, but current server source only logs it in
   `server/src/network/mod.rs`. No implemented server-side result
   acknowledgement handler, all-player acknowledgement tracking, or
-  `ack_timeout_ms` cleanup path was found. Unblock by implementing the GSS or
-  network acknowledgement contract, or by explicitly accepting a client-only
-  Return to Lobby MVP where the ack send has no server cleanup effect.
+  `ack_timeout_ms` cleanup path was found. Unblock by implementing Game Session
+  System Story 009, or by replacing it with an explicit producer-approved
+  fallback before assigning this UI story.
 
 - **RS-BLOCK-002 - GAME_OVER reconnect result payload**:
   `S2CGameSnapshot` includes `phase: RoundPhase` but does not include the final
   `S2CGameOver` payload fields `loser`, `round`, and `reason`. A reconnecting
   client at GAME_OVER can only show fallback result copy unless the server
   re-sends `S2CGameOver` or adds an authoritative result payload to the
-  snapshot. Unblock by extending the protocol/reconnect contract, or by
-  accepting the fallback behavior for MVP.
+  snapshot. Game Session System Story 009 defines retained final snapshot plus
+  retained `S2CGameOver` resend as the chosen S9-RS-001 contract path. Unblock
+  by implementing that contract, or by replacing it with an explicit
+  producer-approved fallback before assigning this UI story.
 
 - **RS-BLOCK-003 - Full post-game objective reveal contract**:
   `OpponentObjectiveSnapshot.was_fake` only reveals destroyed opponent
