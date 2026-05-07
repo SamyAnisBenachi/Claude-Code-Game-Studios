@@ -2295,3 +2295,11 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` marks LOOP-001 done and moves S8-QA-001 to ready/unblocked for scoped manual friend-game smoke. Sprint 8 carried conditions and no-claim language are preserved.
 - Next recommended: Run S8-QA-001 manual friend-game smoke expansion package when requested. No `/smoke-check`, `/team-qa`, `/gate-check`, Sprint 8 close-out, or new implementation was run in this serialized story-done scope.
+
+## Session Extract - Prompt 355 CONTENT-001A Sprint 8 Reconciliation 2026-05-07
+- Scope: docs/status reconciliation only for already-integrated CONTENT-001A; no `/dev-story`, `/story-done`, smoke, `/team-qa`, `/gate-check`, Sprint 8 close-out, QA sign-off, or new implementation was run.
+- Reconciled CONTENT-001 as Complete for the Sprint 8 supporting content slice after main merge `d5f50f9f85224477500f1427ac00b3ff23ab0530` and worker commit `eed165e4837a64ace95c144028c28aad24f7cfb3`.
+- Supporting content covered 8 runtime-valid Neutral cards, `CardId(101)`-`CardId(108)`, plus `server/tests/content_runtime_card_variety_floor_test.rs`.
+- Evidence/status docs updated: `production/sprint-status.yaml`, `production/sprints/sprint-8.md`, and `production/qa/evidence/sprint-8-friend-game-loop-evidence.md`.
+- Scope guard: no standalone CONTENT-001A story, full card production, full balance completion, public release readiness, playtest/fun-hypothesis validation, full playable-client manual QA, or Sprint 8 close-out is claimed.
+- Next recommended: continue Sprint 8 from the reconciled docs/status; manual S8-QA-001 remains separately scoped and is not signed off by this reconciliation.

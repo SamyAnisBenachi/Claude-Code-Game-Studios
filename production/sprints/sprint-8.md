@@ -65,6 +65,15 @@ placement, and resolution loop without claiming public release readiness.
 | ECO-004 | [Kill and Objective Awards](../epics/economy-system/story-004-kill-and-objective-awards.md) reward-loop polish | gameplay programmer | 1.00 | PLAYABLE-004 or S8-QA-001 shows a concrete reward-loop gameplay issue | Only pulled if friend-game evidence shows kill/objective/fake reward visibility or timing affects the loop; preserves current event contracts; no duplicate gold awards; all rewards land before interest snapshot; no broad economy rebalance. |
 | SAU-008 | [Reconnect Snapshot and Late Message Recovery](../epics/shop-auction-ui/story-008-reconnect-snapshot-and-late-message-recovery.md) | UI/client programmer | 1.25 | SAU-007 complete; reconnect or late-message instability affects the active loop | Only pulled if the active loop shows reconnect, snapshot, or late-message instability; snapshot rebuild restores the correct panel; late accepted/rejected and stale purchase/refresh confirmations do not resurrect inactive panels; no duplicate Lightyear receiver drains are introduced. |
 
+CONTENT-001A was pulled into Sprint 8 as supporting content under the existing
+CONTENT-001 row and integrated on main via merge
+`d5f50f9f85224477500f1427ac00b3ff23ab0530`. It added 8 runtime-valid Neutral
+cards, `CardId(101)`-`CardId(108)`, plus
+`server/tests/content_runtime_card_variety_floor_test.rs`. This reconciles the
+support slice only; it does not claim full card production, full balance
+completion, public release readiness, playtest validation, or fun-hypothesis
+validation.
+
 ### Nice To Have
 
 | ID | Task | Agent/Owner | Est. Days | Dependencies | Acceptance Criteria |

@@ -51,6 +51,19 @@ Capture directory:
 - `loop-001-active-loop-polish-trace.json`: sanitized controlled
   real-Lightyear and ECS regression summary for repeated active-loop stability.
 
+## Supporting Content Addendum
+
+CONTENT-001A was already integrated on main by merge
+`d5f50f9f85224477500f1427ac00b3ff23ab0530` with worker commit
+`eed165e4837a64ace95c144028c28aad24f7cfb3` as Sprint 8 supporting content
+under CONTENT-001. It adds 8 runtime-valid Neutral cards, from `CardId(101)`
+through `CardId(108)`, and
+`server/tests/content_runtime_card_variety_floor_test.rs`.
+
+This note only reconciles the runtime card variety floor support slice; it does
+not claim full card production, full balance completion, public release
+readiness, QA sign-off, playtest validation, or fun-hypothesis validation.
+
 ## Reached Endpoint
 
 The automated endpoint test reached actual game-over/result coverage.
