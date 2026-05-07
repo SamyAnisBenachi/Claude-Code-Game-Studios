@@ -2,9 +2,9 @@ use bevy::prelude::*;
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::{CardCatalog, CardId, Rarity};
 use shared::protocol::{
-    BidRejectedReason, C2SPlaceBid, C2SPurchaseCard, C2SRefreshShop, C2SSignalReady,
-    ReliableChannel, RoundPhase, S2CAuctionBidAccepted, S2CAuctionBidRejected, S2CAuctionCard,
-    S2CAuctionSettled,
+    AuctionSnapshot, BidRejectedReason, C2SPlaceBid, C2SPurchaseCard, C2SRefreshShop,
+    C2SSignalReady, ReliableChannel, RoundPhase, S2CAuctionBidAccepted, S2CAuctionBidRejected,
+    S2CAuctionCard, S2CAuctionSettled,
 };
 use shared::session::PlayerId;
 
@@ -280,6 +280,24 @@ impl ShopAuctionAuctionState {
         self.locally_expired_elapsed_ms = 0;
     }
 
+    fn restore_from_snapshot(&mut self, snapshot: &AuctionSnapshot, phase_timer_duration_ms: u32) {
+        self.clear();
+        self.panel_state = ShopAuctionAuctionPanelState::Active;
+        self.card_id = Some(snapshot.card_id);
+        self.starting_price = snapshot.starting_price;
+        self.current_price = if snapshot.last_accepted_bid == 0 {
+            snapshot.starting_price
+        } else {
+            snapshot.last_accepted_bid
+        };
+        self.current_leader = snapshot.current_leader;
+        self.timer_duration_ms = phase_timer_duration_ms.max(snapshot.timer_remaining_ms);
+        self.timer_remaining_ms = snapshot.timer_remaining_ms.min(self.timer_duration_ms);
+        self.preparing_elapsed_ms = 0;
+        self.locally_expired_elapsed_ms = 0;
+        self.clear_bid_resolution_state();
+    }
+
     fn enter_settling(&mut self, amount: u32) {
         self.panel_state = ShopAuctionAuctionPanelState::Settling;
         self.preparing_elapsed_ms = 0;
@@ -488,6 +506,14 @@ impl ShopAuctionShopTimerState {
     fn start(&mut self, duration_ms: u32) {
         self.duration_ms = duration_ms;
         self.remaining_ms = duration_ms;
+        self.started = true;
+        self.deferred = false;
+    }
+
+    fn restore_from_snapshot(&mut self, phase_duration_ms: u32, remaining_ms: Option<u32>) {
+        let remaining_ms = remaining_ms.unwrap_or(phase_duration_ms);
+        self.duration_ms = phase_duration_ms.max(remaining_ms);
+        self.remaining_ms = remaining_ms.min(self.duration_ms);
         self.started = true;
         self.deferred = false;
     }
@@ -1408,14 +1434,29 @@ pub fn drain_auction_settled_receiver_system(
 pub fn handle_auction_snapshot_system(
     phase_view: Res<ClientPhaseView>,
     mut snapshots: MessageReader<PresentationGameSnapshotMessage>,
+    mut draft_state: ResMut<ShopAuctionDraftInitialState>,
+    mut shop_state: ResMut<ShopAuctionShopState>,
     mut auction_state: ResMut<ShopAuctionAuctionState>,
+    mut settlement_state: ResMut<ShopAuctionSettlementState>,
+    mut shop_timer: ResMut<ShopAuctionShopTimerState>,
+    mut toast_state: ResMut<ShopAuctionToastState>,
+    mut timer_target: ResMut<AuctionTimerTargetFill>,
+    mut keyboard_focus: ResMut<AuctionBidKeyboardFocus>,
     mut local_gold: ResMut<ShopAuctionLocalGoldView>,
     mut hand_view: ResMut<ShopAuctionDraftHandView>,
     mut mode: ResMut<ShopAuctionUiMode>,
     mut shop_slots_writer: MessageWriter<ShopAuctionShopSlotsReceived>,
 ) {
     for snapshot in snapshots.read().map(|message| &message.0) {
+        draft_state.reset_phase_state();
+        shop_state.clear_all();
+        auction_state.clear();
+        settlement_state.clear();
+        shop_timer.stop();
+        clear_auction_feedback_state(&mut toast_state, &mut timer_target, &mut keyboard_focus);
+
         local_gold.player_id = Some(snapshot.recipient_player_id);
+        let mut local_shop_slots = None;
         if let Some(local_player) = snapshot
             .players
             .iter()
@@ -1426,40 +1467,50 @@ pub fn handle_auction_snapshot_system(
             local_gold.initialized = true;
             hand_view.hand_size = local_player.hand.len();
             if snapshot.phase == RoundPhase::DraftShop {
-                shop_slots_writer.write(ShopAuctionShopSlotsReceived {
-                    slots: local_player.shop_slots.clone(),
-                });
+                local_shop_slots = Some(local_player.shop_slots.clone());
             }
         } else {
+            local_gold.gold = 0;
+            local_gold.reserved_gold = 0;
+            local_gold.initialized = false;
+            hand_view.hand_size = 0;
             warn!(
                 "Shop/Auction UI: snapshot for {:?} does not contain local player",
                 snapshot.recipient_player_id
             );
         }
 
-        let Some(snapshot_auction) = snapshot.auction_state else {
-            continue;
-        };
-
-        auction_state.card_id = Some(snapshot_auction.card_id);
-        auction_state.starting_price = snapshot_auction.starting_price;
-        auction_state.current_price = if snapshot_auction.last_accepted_bid == 0 {
-            snapshot_auction.starting_price
-        } else {
-            snapshot_auction.last_accepted_bid
-        };
-        auction_state.current_leader = snapshot_auction.current_leader;
-        auction_state.timer_duration_ms = phase_view
-            .timer_duration_ms
-            .max(snapshot_auction.timer_remaining_ms);
-        auction_state.timer_remaining_ms = snapshot_auction.timer_remaining_ms;
-        auction_state.locally_expired_elapsed_ms = 0;
-        auction_state.clear_bid_resolution_state();
-
-        if snapshot.phase == RoundPhase::DraftAuction {
-            auction_state.panel_state = ShopAuctionAuctionPanelState::Active;
-            auction_state.preparing_elapsed_ms = 0;
-            *mode = ShopAuctionUiMode::Auction;
+        match snapshot.phase {
+            RoundPhase::DraftAuction => {
+                if let Some(snapshot_auction) = snapshot.auction_state {
+                    auction_state
+                        .restore_from_snapshot(&snapshot_auction, phase_view.timer_duration_ms);
+                    *mode = ShopAuctionUiMode::Auction;
+                } else {
+                    *mode = ShopAuctionUiMode::Inactive;
+                }
+            }
+            RoundPhase::DraftShop => {
+                shop_state.enter_shop_phase();
+                shop_timer.restore_from_snapshot(
+                    phase_view.timer_duration_ms,
+                    snapshot.timer_remaining_ms,
+                );
+                *mode = ShopAuctionUiMode::Shop;
+                if let Some(slots) = local_shop_slots {
+                    shop_slots_writer.write(ShopAuctionShopSlotsReceived { slots });
+                }
+            }
+            RoundPhase::DraftInitial => {
+                *mode = ShopAuctionUiMode::DraftOffering;
+            }
+            RoundPhase::Lobby
+            | RoundPhase::Placement
+            | RoundPhase::Resolution
+            | RoundPhase::GameOver
+            | RoundPhase::Handshaking => {
+                *mode = ShopAuctionUiMode::Inactive;
+            }
         }
     }
 }
@@ -1494,6 +1545,7 @@ pub fn handle_auction_gold_broadcast_system(
 pub fn handle_auction_bid_accepted_system(
     player_ids: Option<Res<HudPlayerIds>>,
     local_gold: Res<ShopAuctionLocalGoldView>,
+    current: Res<CurrentClientPhase>,
     mode: Res<ShopAuctionUiMode>,
     mut messages: MessageReader<ShopAuctionBidAcceptedReceived>,
     mut auction_state: ResMut<ShopAuctionAuctionState>,
@@ -1505,7 +1557,8 @@ pub fn handle_auction_bid_accepted_system(
         .or(local_gold.player_id);
 
     for message in messages.read() {
-        if *mode != ShopAuctionUiMode::Auction
+        if current.phase != RoundPhase::DraftAuction
+            || *mode != ShopAuctionUiMode::Auction
             || auction_state.panel_state != ShopAuctionAuctionPanelState::Active
         {
             continue;
@@ -1533,13 +1586,15 @@ pub fn handle_auction_bid_accepted_system(
 }
 
 pub fn handle_auction_bid_rejected_system(
+    current: Res<CurrentClientPhase>,
     mode: Res<ShopAuctionUiMode>,
     mut messages: MessageReader<ShopAuctionBidRejectedReceived>,
     mut auction_state: ResMut<ShopAuctionAuctionState>,
     mut toast_state: ResMut<ShopAuctionToastState>,
 ) {
     for message in messages.read() {
-        if *mode != ShopAuctionUiMode::Auction
+        if current.phase != RoundPhase::DraftAuction
+            || *mode != ShopAuctionUiMode::Auction
             || auction_state.panel_state != ShopAuctionAuctionPanelState::Active
         {
             continue;
@@ -1644,6 +1699,16 @@ pub fn handle_auction_card_system(
     mut mode: ResMut<ShopAuctionUiMode>,
 ) {
     for message in auction_cards.read() {
+        if matches!(
+            current.phase,
+            RoundPhase::DraftShop
+                | RoundPhase::Placement
+                | RoundPhase::Resolution
+                | RoundPhase::GameOver
+        ) {
+            continue;
+        }
+
         if auction_state.panel_state == ShopAuctionAuctionPanelState::Settling {
             continue;
         }
@@ -1820,9 +1885,16 @@ pub fn handle_card_acquired_system(
 }
 
 pub fn handle_shop_card_acquired_system(
+    current: Res<CurrentClientPhase>,
     mut acquisitions: MessageReader<ShopAuctionShopCardAcquiredReceived>,
     mut shop_state: ResMut<ShopAuctionShopState>,
 ) {
+    if current.phase != RoundPhase::DraftShop {
+        for _acquisition in acquisitions.read() {}
+        shop_state.pending_confirmed_purchases.clear();
+        return;
+    }
+
     for acquisition in acquisitions.read() {
         shop_state.queue_purchase_confirmation(acquisition.card_id);
     }
@@ -2115,6 +2187,7 @@ pub fn handle_draft_initial_objective_button_interactions_system(
 }
 
 pub fn handle_shop_slot_click_system(
+    current: Res<CurrentClientPhase>,
     mode: Res<ShopAuctionUiMode>,
     economy: Res<PlayerEconomyView>,
     hand_view: Res<ShopAuctionDraftHandView>,
@@ -2127,7 +2200,7 @@ pub fn handle_shop_slot_click_system(
     mut flash_writer: MessageWriter<ShopAuctionGoldCounterFlashRequested>,
 ) {
     for click in clicks.read() {
-        if !shop_active(&mode, &shop_state) {
+        if current.phase != RoundPhase::DraftShop || !shop_active(&mode, &shop_state) {
             continue;
         }
 
@@ -2163,6 +2236,7 @@ pub fn handle_shop_slot_click_system(
 
 pub fn handle_shop_refresh_click_system(
     entities: Option<Res<ShopAuctionUiEntities>>,
+    current: Res<CurrentClientPhase>,
     mode: Res<ShopAuctionUiMode>,
     economy: Res<PlayerEconomyView>,
     refresh_config: Res<ShopAuctionRefreshConfig>,
@@ -2178,7 +2252,10 @@ pub fn handle_shop_refresh_click_system(
     };
 
     for click in clicks.read() {
-        if click.button != entities.shop_refresh_button || !shop_active(&mode, &shop_state) {
+        if current.phase != RoundPhase::DraftShop
+            || click.button != entities.shop_refresh_button
+            || !shop_active(&mode, &shop_state)
+        {
             continue;
         }
 
@@ -2215,6 +2292,7 @@ pub fn handle_shop_refresh_click_system(
 
 pub fn handle_shop_ready_click_system(
     entities: Option<Res<ShopAuctionUiEntities>>,
+    current: Res<CurrentClientPhase>,
     mode: Res<ShopAuctionUiMode>,
     mut shop_state: ResMut<ShopAuctionShopState>,
     mut clicks: MessageReader<ShopAuctionShopReadyButtonClicked>,
@@ -2227,7 +2305,10 @@ pub fn handle_shop_ready_click_system(
     };
 
     for click in clicks.read() {
-        if click.button != entities.shop_ready_button || !shop_active(&mode, &shop_state) {
+        if current.phase != RoundPhase::DraftShop
+            || click.button != entities.shop_ready_button
+            || !shop_active(&mode, &shop_state)
+        {
             continue;
         }
 
@@ -2244,6 +2325,7 @@ pub fn handle_shop_ready_click_system(
 
 pub fn handle_auction_bid_button_click_system(
     entities: Option<Res<ShopAuctionUiEntities>>,
+    current: Res<CurrentClientPhase>,
     mode: Res<ShopAuctionUiMode>,
     economy: Res<PlayerEconomyView>,
     local_gold: Res<ShopAuctionLocalGoldView>,
@@ -2260,7 +2342,8 @@ pub fn handle_auction_bid_button_click_system(
     };
 
     for click in clicks.read() {
-        if !entities.auction_bid_buttons.contains(&click.button)
+        if current.phase != RoundPhase::DraftAuction
+            || !entities.auction_bid_buttons.contains(&click.button)
             || !auction_active(&mode, &auction_state)
         {
             continue;
