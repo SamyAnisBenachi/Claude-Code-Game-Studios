@@ -22,7 +22,8 @@ use server_crate::core::session::{
 use server_crate::core::{economy::EconomyPlugin, pool::CardPoolPlugin};
 use server_crate::feature::{
     acquisition::{CardAcquisitionPlugin, PlayerHands},
-    board::BoardPlugin,
+    auction::AuctionPlugin,
+    board::{BoardPlugin, PendingPlacements},
     combat::CombatPlugin,
 };
 use server_crate::foundation::{config::CardCatalog, rng::ServerRng};
@@ -33,11 +34,13 @@ use server_crate::network::{
 };
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{
-    C2SConfirmClass, C2SCreateRoom, C2SHello, C2SJoinRoom, C2SPurchaseCard, C2SSelectClass,
-    C2SSignalReady, C2SSubmitPlacement, CardSource, GameMode, ReliableChannel,
-    RoundPhase as ProtocolRoundPhase, S2CCardAcquired, S2CClassLocked, S2CClassesRevealed,
-    S2CDraftOffering, S2CGoldUpdate, S2CHandshake, S2CJoinAck, S2CPhaseChanged, S2CPlacementReveal,
-    S2CResolutionEvent, S2CRoomCreated, S2CSlotUpdated,
+    C2SConfirmClass, C2SCreateRoom, C2SHello, C2SJoinRoom, C2SPlaceBid, C2SPurchaseCard,
+    C2SSelectClass, C2SSignalReady, C2SSubmitPlacement, CardSource, GameMode, PlacedCardSubmit,
+    PlayTarget, ReliableChannel, ResolutionEvent, RoundPhase as ProtocolRoundPhase,
+    S2CAuctionBidAccepted, S2CAuctionBidRejected, S2CAuctionCard, S2CAuctionSettled,
+    S2CCardAcquired, S2CClassLocked, S2CClassesRevealed, S2CDraftOffering, S2CGoldUpdate,
+    S2CHandshake, S2CJoinAck, S2CPhaseChanged, S2CPlacementReveal, S2CResolutionEvent,
+    S2CRoomCreated, S2CSlotUpdated,
 };
 use shared::session::PlayerId;
 
@@ -201,7 +204,7 @@ fn real_lightyear_two_client_room_session_reaches_class_reveal_and_session_entry
 }
 
 #[test]
-fn real_lightyear_two_client_draft_initial_purchase_ready_reaches_draft_shop() {
+fn real_lightyear_two_client_draft_shop_auction_placement_resolution_reaches_next_loop() {
     let port = reserve_ephemeral_port();
     let url = format!("ws://127.0.0.1:{port}");
     let flags = RoomSessionFlags::new();
@@ -219,7 +222,7 @@ fn real_lightyear_two_client_draft_initial_purchase_ready_reaches_draft_shop() {
         host_app.update();
         joiner_app.update();
 
-        if flags.draft_shop_observed() {
+        if flags.post_auction_loop_observed() {
             break;
         }
 
@@ -320,6 +323,104 @@ fn real_lightyear_two_client_draft_initial_purchase_ready_reaches_draft_shop() {
         "server should progress to DraftShop and notify both clients: {}",
         flags.report()
     );
+    assert!(
+        flags.host_sent_draft_shop_ready.load(Ordering::SeqCst)
+            && flags.joiner_sent_draft_shop_ready.load(Ordering::SeqCst),
+        "both clients should ready from the first DraftShop through real C2SSignalReady: {}",
+        flags.report()
+    );
+    assert!(
+        flags
+            .host_sent_non_empty_placement_submit
+            .load(Ordering::SeqCst)
+            && flags
+                .joiner_sent_non_empty_placement_submit
+                .load(Ordering::SeqCst)
+            && flags
+                .server_host_non_empty_placement_accepted
+                .load(Ordering::SeqCst)
+            && flags
+                .server_joiner_non_empty_placement_accepted
+                .load(Ordering::SeqCst),
+        "both clients should submit non-empty placement from authoritative hands: {}",
+        flags.report()
+    );
+    assert!(
+        flags
+            .host_received_non_empty_placement_reveal
+            .load(Ordering::SeqCst)
+            && flags
+                .joiner_received_non_empty_placement_reveal
+                .load(Ordering::SeqCst)
+            && flags.host_received_resolution_event.load(Ordering::SeqCst)
+            && flags
+                .joiner_received_resolution_event
+                .load(Ordering::SeqCst),
+        "clients should receive non-empty placement reveal and server-authored resolution event: {}",
+        flags.report()
+    );
+    assert!(
+        flags.server_round_draft_auction.load(Ordering::SeqCst)
+            && flags.host_received_draft_auction.load(Ordering::SeqCst)
+            && flags.joiner_received_draft_auction.load(Ordering::SeqCst),
+        "server should route the next round into DraftAuction and notify both clients: {}",
+        flags.report()
+    );
+    assert!(
+        flags.host_received_auction_card.load(Ordering::SeqCst)
+            && flags.joiner_received_auction_card.load(Ordering::SeqCst)
+            && flags.auction_starting_price.load(Ordering::SeqCst) > 0,
+        "both clients should receive server-authored S2CAuctionCard: {}",
+        flags.report()
+    );
+    assert!(
+        flags.host_sent_auction_bid.load(Ordering::SeqCst)
+            && flags
+                .host_received_auction_bid_accepted
+                .load(Ordering::SeqCst)
+            && flags
+                .joiner_received_auction_bid_accepted
+                .load(Ordering::SeqCst),
+        "host should send a real auction bid and both clients should receive acceptance: {}",
+        flags.report()
+    );
+    assert!(
+        flags.host_received_auction_settled.load(Ordering::SeqCst)
+            && flags.joiner_received_auction_settled.load(Ordering::SeqCst)
+            && flags
+                .host_received_card_acquired_source_auction
+                .load(Ordering::SeqCst),
+        "auction should settle and award the server-owned card to the winning client: {}",
+        flags.report()
+    );
+    assert!(
+        flags.host_draft_shop_phase_count.load(Ordering::SeqCst) >= 3
+            && flags.joiner_draft_shop_phase_count.load(Ordering::SeqCst) >= 3
+            && flags
+                .host_non_empty_placement_reveal_count
+                .load(Ordering::SeqCst)
+                >= 2
+            && flags
+                .joiner_non_empty_placement_reveal_count
+                .load(Ordering::SeqCst)
+                >= 2
+            && flags.host_resolution_event_count.load(Ordering::SeqCst) >= 3
+            && flags.joiner_resolution_event_count.load(Ordering::SeqCst) >= 3
+            && flags
+                .host_sent_post_auction_draft_shop_ready
+                .load(Ordering::SeqCst)
+            && flags
+                .joiner_sent_post_auction_draft_shop_ready
+                .load(Ordering::SeqCst)
+            && flags
+                .host_sent_post_auction_placement_submit
+                .load(Ordering::SeqCst)
+            && flags
+                .joiner_sent_post_auction_placement_submit
+                .load(Ordering::SeqCst),
+        "post-auction DraftShop should advance through placement/resolution into the next loop: {}",
+        flags.report()
+    );
 }
 
 #[derive(Clone, Resource)]
@@ -391,18 +492,57 @@ struct RoomSessionFlags {
     server_round_placement: Arc<AtomicBool>,
     host_received_placement: Arc<AtomicBool>,
     joiner_received_placement: Arc<AtomicBool>,
+    host_placement_phase_count: Arc<AtomicUsize>,
+    joiner_placement_phase_count: Arc<AtomicUsize>,
     host_sent_placement_submit: Arc<AtomicBool>,
     joiner_sent_placement_submit: Arc<AtomicBool>,
+    host_sent_non_empty_placement_submit: Arc<AtomicBool>,
+    joiner_sent_non_empty_placement_submit: Arc<AtomicBool>,
+    host_sent_post_auction_placement_submit: Arc<AtomicBool>,
+    joiner_sent_post_auction_placement_submit: Arc<AtomicBool>,
+    server_host_non_empty_placement_accepted: Arc<AtomicBool>,
+    server_joiner_non_empty_placement_accepted: Arc<AtomicBool>,
     server_round_resolution: Arc<AtomicBool>,
     host_received_resolution: Arc<AtomicBool>,
     joiner_received_resolution: Arc<AtomicBool>,
+    host_resolution_phase_count: Arc<AtomicUsize>,
+    joiner_resolution_phase_count: Arc<AtomicUsize>,
     host_received_placement_reveal: Arc<AtomicBool>,
     joiner_received_placement_reveal: Arc<AtomicBool>,
+    host_received_non_empty_placement_reveal: Arc<AtomicBool>,
+    joiner_received_non_empty_placement_reveal: Arc<AtomicBool>,
+    host_non_empty_placement_reveal_count: Arc<AtomicUsize>,
+    joiner_non_empty_placement_reveal_count: Arc<AtomicUsize>,
     host_received_resolution_event: Arc<AtomicBool>,
     joiner_received_resolution_event: Arc<AtomicBool>,
+    host_resolution_event_count: Arc<AtomicUsize>,
+    joiner_resolution_event_count: Arc<AtomicUsize>,
+    host_received_unit_placed_resolution_event: Arc<AtomicBool>,
+    joiner_received_unit_placed_resolution_event: Arc<AtomicBool>,
+    server_round_draft_auction: Arc<AtomicBool>,
+    host_received_draft_auction: Arc<AtomicBool>,
+    joiner_received_draft_auction: Arc<AtomicBool>,
+    host_received_auction_card: Arc<AtomicBool>,
+    joiner_received_auction_card: Arc<AtomicBool>,
+    auction_starting_price: Arc<AtomicUsize>,
+    host_sent_auction_bid: Arc<AtomicBool>,
+    host_received_auction_bid_accepted: Arc<AtomicBool>,
+    joiner_received_auction_bid_accepted: Arc<AtomicBool>,
+    host_received_auction_bid_rejected: Arc<AtomicBool>,
+    joiner_received_auction_bid_rejected: Arc<AtomicBool>,
+    host_received_auction_settled: Arc<AtomicBool>,
+    joiner_received_auction_settled: Arc<AtomicBool>,
+    host_received_card_acquired_source_auction: Arc<AtomicBool>,
+    joiner_received_card_acquired_source_auction: Arc<AtomicBool>,
     server_round_draft_shop: Arc<AtomicBool>,
     host_received_draft_shop: Arc<AtomicBool>,
     joiner_received_draft_shop: Arc<AtomicBool>,
+    host_draft_shop_phase_count: Arc<AtomicUsize>,
+    joiner_draft_shop_phase_count: Arc<AtomicUsize>,
+    host_sent_draft_shop_ready: Arc<AtomicBool>,
+    joiner_sent_draft_shop_ready: Arc<AtomicBool>,
+    host_sent_post_auction_draft_shop_ready: Arc<AtomicBool>,
+    joiner_sent_post_auction_draft_shop_ready: Arc<AtomicBool>,
     room_code: Arc<Mutex<Option<String>>>,
 }
 
@@ -460,18 +600,57 @@ impl RoomSessionFlags {
             server_round_placement: Arc::new(AtomicBool::new(false)),
             host_received_placement: Arc::new(AtomicBool::new(false)),
             joiner_received_placement: Arc::new(AtomicBool::new(false)),
+            host_placement_phase_count: Arc::new(AtomicUsize::new(0)),
+            joiner_placement_phase_count: Arc::new(AtomicUsize::new(0)),
             host_sent_placement_submit: Arc::new(AtomicBool::new(false)),
             joiner_sent_placement_submit: Arc::new(AtomicBool::new(false)),
+            host_sent_non_empty_placement_submit: Arc::new(AtomicBool::new(false)),
+            joiner_sent_non_empty_placement_submit: Arc::new(AtomicBool::new(false)),
+            host_sent_post_auction_placement_submit: Arc::new(AtomicBool::new(false)),
+            joiner_sent_post_auction_placement_submit: Arc::new(AtomicBool::new(false)),
+            server_host_non_empty_placement_accepted: Arc::new(AtomicBool::new(false)),
+            server_joiner_non_empty_placement_accepted: Arc::new(AtomicBool::new(false)),
             server_round_resolution: Arc::new(AtomicBool::new(false)),
             host_received_resolution: Arc::new(AtomicBool::new(false)),
             joiner_received_resolution: Arc::new(AtomicBool::new(false)),
+            host_resolution_phase_count: Arc::new(AtomicUsize::new(0)),
+            joiner_resolution_phase_count: Arc::new(AtomicUsize::new(0)),
             host_received_placement_reveal: Arc::new(AtomicBool::new(false)),
             joiner_received_placement_reveal: Arc::new(AtomicBool::new(false)),
+            host_received_non_empty_placement_reveal: Arc::new(AtomicBool::new(false)),
+            joiner_received_non_empty_placement_reveal: Arc::new(AtomicBool::new(false)),
+            host_non_empty_placement_reveal_count: Arc::new(AtomicUsize::new(0)),
+            joiner_non_empty_placement_reveal_count: Arc::new(AtomicUsize::new(0)),
             host_received_resolution_event: Arc::new(AtomicBool::new(false)),
             joiner_received_resolution_event: Arc::new(AtomicBool::new(false)),
+            host_resolution_event_count: Arc::new(AtomicUsize::new(0)),
+            joiner_resolution_event_count: Arc::new(AtomicUsize::new(0)),
+            host_received_unit_placed_resolution_event: Arc::new(AtomicBool::new(false)),
+            joiner_received_unit_placed_resolution_event: Arc::new(AtomicBool::new(false)),
+            server_round_draft_auction: Arc::new(AtomicBool::new(false)),
+            host_received_draft_auction: Arc::new(AtomicBool::new(false)),
+            joiner_received_draft_auction: Arc::new(AtomicBool::new(false)),
+            host_received_auction_card: Arc::new(AtomicBool::new(false)),
+            joiner_received_auction_card: Arc::new(AtomicBool::new(false)),
+            auction_starting_price: Arc::new(AtomicUsize::new(0)),
+            host_sent_auction_bid: Arc::new(AtomicBool::new(false)),
+            host_received_auction_bid_accepted: Arc::new(AtomicBool::new(false)),
+            joiner_received_auction_bid_accepted: Arc::new(AtomicBool::new(false)),
+            host_received_auction_bid_rejected: Arc::new(AtomicBool::new(false)),
+            joiner_received_auction_bid_rejected: Arc::new(AtomicBool::new(false)),
+            host_received_auction_settled: Arc::new(AtomicBool::new(false)),
+            joiner_received_auction_settled: Arc::new(AtomicBool::new(false)),
+            host_received_card_acquired_source_auction: Arc::new(AtomicBool::new(false)),
+            joiner_received_card_acquired_source_auction: Arc::new(AtomicBool::new(false)),
             server_round_draft_shop: Arc::new(AtomicBool::new(false)),
             host_received_draft_shop: Arc::new(AtomicBool::new(false)),
             joiner_received_draft_shop: Arc::new(AtomicBool::new(false)),
+            host_draft_shop_phase_count: Arc::new(AtomicUsize::new(0)),
+            joiner_draft_shop_phase_count: Arc::new(AtomicUsize::new(0)),
+            host_sent_draft_shop_ready: Arc::new(AtomicBool::new(false)),
+            joiner_sent_draft_shop_ready: Arc::new(AtomicBool::new(false)),
+            host_sent_post_auction_draft_shop_ready: Arc::new(AtomicBool::new(false)),
+            joiner_sent_post_auction_draft_shop_ready: Arc::new(AtomicBool::new(false)),
             room_code: Arc::new(Mutex::new(None)),
         }
     }
@@ -516,6 +695,67 @@ impl RoomSessionFlags {
             && self.joiner_received_draft_shop.load(Ordering::SeqCst)
     }
 
+    fn post_auction_loop_observed(&self) -> bool {
+        self.draft_shop_observed()
+            && self.host_sent_draft_shop_ready.load(Ordering::SeqCst)
+            && self.joiner_sent_draft_shop_ready.load(Ordering::SeqCst)
+            && self
+                .host_sent_non_empty_placement_submit
+                .load(Ordering::SeqCst)
+            && self
+                .joiner_sent_non_empty_placement_submit
+                .load(Ordering::SeqCst)
+            && self
+                .host_received_non_empty_placement_reveal
+                .load(Ordering::SeqCst)
+            && self
+                .joiner_received_non_empty_placement_reveal
+                .load(Ordering::SeqCst)
+            && self
+                .host_non_empty_placement_reveal_count
+                .load(Ordering::SeqCst)
+                >= 2
+            && self
+                .joiner_non_empty_placement_reveal_count
+                .load(Ordering::SeqCst)
+                >= 2
+            && self.host_received_resolution_event.load(Ordering::SeqCst)
+            && self.joiner_received_resolution_event.load(Ordering::SeqCst)
+            && self.host_resolution_event_count.load(Ordering::SeqCst) >= 3
+            && self.joiner_resolution_event_count.load(Ordering::SeqCst) >= 3
+            && self.server_round_draft_auction.load(Ordering::SeqCst)
+            && self.host_received_draft_auction.load(Ordering::SeqCst)
+            && self.joiner_received_draft_auction.load(Ordering::SeqCst)
+            && self.host_received_auction_card.load(Ordering::SeqCst)
+            && self.joiner_received_auction_card.load(Ordering::SeqCst)
+            && self.host_sent_auction_bid.load(Ordering::SeqCst)
+            && self
+                .host_received_auction_bid_accepted
+                .load(Ordering::SeqCst)
+            && self
+                .joiner_received_auction_bid_accepted
+                .load(Ordering::SeqCst)
+            && self.host_received_auction_settled.load(Ordering::SeqCst)
+            && self.joiner_received_auction_settled.load(Ordering::SeqCst)
+            && self
+                .host_received_card_acquired_source_auction
+                .load(Ordering::SeqCst)
+            && self.host_draft_shop_phase_count.load(Ordering::SeqCst) >= 3
+            && self.joiner_draft_shop_phase_count.load(Ordering::SeqCst) >= 3
+            && self
+                .host_sent_post_auction_draft_shop_ready
+                .load(Ordering::SeqCst)
+            && self
+                .joiner_sent_post_auction_draft_shop_ready
+                .load(Ordering::SeqCst)
+            && self
+                .host_sent_post_auction_placement_submit
+                .load(Ordering::SeqCst)
+            && self
+                .joiner_sent_post_auction_placement_submit
+                .load(Ordering::SeqCst)
+    }
+
     fn report(&self) -> String {
         let base = format!(
             "host_hello_sent={}, joiner_hello_sent={}, host_handshake={}, joiner_handshake={}, host_player_id={}, joiner_player_id={}, server_connections={}, server_rooms={}, host_create_sent={}, host_room_created={}, room_code_captured={}, joiner_join_sent={}, joiner_join_ack={}, host_slot_update={}, host_select_sent={}, joiner_select_sent={}, host_confirm_sent={}, joiner_confirm_sent={}, host_locked={}, joiner_locked={}, host_revealed={}, joiner_revealed={}, reveal_player_count={}, server_room_game_active={}, server_round_draft_initial={}, host_draft_initial={}, joiner_draft_initial={}",
@@ -548,7 +788,7 @@ impl RoomSessionFlags {
             self.joiner_received_draft_initial.load(Ordering::SeqCst),
         );
         format!(
-            "{base}, host_offering={}, joiner_offering={}, host_offering_count={}, joiner_offering_count={}, host_purchase_card_id={}, joiner_purchase_card_id={}, host_purchase_sent={}, joiner_purchase_sent={}, host_acquired={}, joiner_acquired={}, host_acquired_source_draft_initial={}, joiner_acquired_source_draft_initial={}, host_purchase_gold_update={}, joiner_purchase_gold_update={}, server_host_hand_size={}, server_joiner_hand_size={}, server_host_ready_seen={}, host_ready_initial={}, host_ready_retract={}, host_ready_final={}, joiner_ready={}, server_retract_path_observed={}, server_placement={}, host_placement={}, joiner_placement={}, host_placement_submit={}, joiner_placement_submit={}, server_resolution={}, host_resolution={}, joiner_resolution={}, host_placement_reveal={}, joiner_placement_reveal={}, host_resolution_event={}, joiner_resolution_event={}, server_draft_shop={}, host_draft_shop={}, joiner_draft_shop={}",
+            "{base}, host_offering={}, joiner_offering={}, host_offering_count={}, joiner_offering_count={}, host_purchase_card_id={}, joiner_purchase_card_id={}, host_purchase_sent={}, joiner_purchase_sent={}, host_acquired={}, joiner_acquired={}, host_acquired_source_draft_initial={}, joiner_acquired_source_draft_initial={}, host_purchase_gold_update={}, joiner_purchase_gold_update={}, server_host_hand_size={}, server_joiner_hand_size={}, server_host_ready_seen={}, host_ready_initial={}, host_ready_retract={}, host_ready_final={}, joiner_ready={}, server_retract_path_observed={}, server_placement={}, host_placement={}, joiner_placement={}, host_placement_count={}, joiner_placement_count={}, host_placement_submit={}, joiner_placement_submit={}, host_non_empty_submit={}, joiner_non_empty_submit={}, host_post_auction_submit={}, joiner_post_auction_submit={}, server_host_non_empty_accepted={}, server_joiner_non_empty_accepted={}, server_resolution={}, host_resolution={}, joiner_resolution={}, host_resolution_count={}, joiner_resolution_count={}, host_placement_reveal={}, joiner_placement_reveal={}, host_non_empty_reveal={}, joiner_non_empty_reveal={}, host_non_empty_reveal_count={}, joiner_non_empty_reveal_count={}, host_resolution_event={}, joiner_resolution_event={}, host_resolution_event_count={}, joiner_resolution_event_count={}, host_unit_placed_event={}, joiner_unit_placed_event={}, server_draft_auction={}, host_draft_auction={}, joiner_draft_auction={}, host_auction_card={}, joiner_auction_card={}, auction_starting_price={}, host_auction_bid_sent={}, host_auction_bid_accepted={}, joiner_auction_bid_accepted={}, host_auction_bid_rejected={}, joiner_auction_bid_rejected={}, host_auction_settled={}, joiner_auction_settled={}, host_auction_acquired={}, joiner_auction_acquired={}, server_draft_shop={}, host_draft_shop={}, joiner_draft_shop={}, host_draft_shop_count={}, joiner_draft_shop_count={}, host_draft_shop_ready={}, joiner_draft_shop_ready={}, host_post_auction_draft_shop_ready={}, joiner_post_auction_draft_shop_ready={}",
             self.host_received_draft_offering.load(Ordering::SeqCst),
             self.joiner_received_draft_offering.load(Ordering::SeqCst),
             self.host_draft_offering_count.load(Ordering::SeqCst),
@@ -574,18 +814,70 @@ impl RoomSessionFlags {
             self.server_round_placement.load(Ordering::SeqCst),
             self.host_received_placement.load(Ordering::SeqCst),
             self.joiner_received_placement.load(Ordering::SeqCst),
+            self.host_placement_phase_count.load(Ordering::SeqCst),
+            self.joiner_placement_phase_count.load(Ordering::SeqCst),
             self.host_sent_placement_submit.load(Ordering::SeqCst),
             self.joiner_sent_placement_submit.load(Ordering::SeqCst),
+            self.host_sent_non_empty_placement_submit.load(Ordering::SeqCst),
+            self.joiner_sent_non_empty_placement_submit.load(Ordering::SeqCst),
+            self.host_sent_post_auction_placement_submit.load(Ordering::SeqCst),
+            self.joiner_sent_post_auction_placement_submit.load(Ordering::SeqCst),
+            self.server_host_non_empty_placement_accepted
+                .load(Ordering::SeqCst),
+            self.server_joiner_non_empty_placement_accepted
+                .load(Ordering::SeqCst),
             self.server_round_resolution.load(Ordering::SeqCst),
             self.host_received_resolution.load(Ordering::SeqCst),
             self.joiner_received_resolution.load(Ordering::SeqCst),
+            self.host_resolution_phase_count.load(Ordering::SeqCst),
+            self.joiner_resolution_phase_count.load(Ordering::SeqCst),
             self.host_received_placement_reveal.load(Ordering::SeqCst),
             self.joiner_received_placement_reveal.load(Ordering::SeqCst),
+            self.host_received_non_empty_placement_reveal
+                .load(Ordering::SeqCst),
+            self.joiner_received_non_empty_placement_reveal
+                .load(Ordering::SeqCst),
+            self.host_non_empty_placement_reveal_count
+                .load(Ordering::SeqCst),
+            self.joiner_non_empty_placement_reveal_count
+                .load(Ordering::SeqCst),
             self.host_received_resolution_event.load(Ordering::SeqCst),
             self.joiner_received_resolution_event.load(Ordering::SeqCst),
+            self.host_resolution_event_count.load(Ordering::SeqCst),
+            self.joiner_resolution_event_count.load(Ordering::SeqCst),
+            self.host_received_unit_placed_resolution_event
+                .load(Ordering::SeqCst),
+            self.joiner_received_unit_placed_resolution_event
+                .load(Ordering::SeqCst),
+            self.server_round_draft_auction.load(Ordering::SeqCst),
+            self.host_received_draft_auction.load(Ordering::SeqCst),
+            self.joiner_received_draft_auction.load(Ordering::SeqCst),
+            self.host_received_auction_card.load(Ordering::SeqCst),
+            self.joiner_received_auction_card.load(Ordering::SeqCst),
+            self.auction_starting_price.load(Ordering::SeqCst),
+            self.host_sent_auction_bid.load(Ordering::SeqCst),
+            self.host_received_auction_bid_accepted.load(Ordering::SeqCst),
+            self.joiner_received_auction_bid_accepted
+                .load(Ordering::SeqCst),
+            self.host_received_auction_bid_rejected.load(Ordering::SeqCst),
+            self.joiner_received_auction_bid_rejected.load(Ordering::SeqCst),
+            self.host_received_auction_settled.load(Ordering::SeqCst),
+            self.joiner_received_auction_settled.load(Ordering::SeqCst),
+            self.host_received_card_acquired_source_auction
+                .load(Ordering::SeqCst),
+            self.joiner_received_card_acquired_source_auction
+                .load(Ordering::SeqCst),
             self.server_round_draft_shop.load(Ordering::SeqCst),
             self.host_received_draft_shop.load(Ordering::SeqCst),
             self.joiner_received_draft_shop.load(Ordering::SeqCst),
+            self.host_draft_shop_phase_count.load(Ordering::SeqCst),
+            self.joiner_draft_shop_phase_count.load(Ordering::SeqCst),
+            self.host_sent_draft_shop_ready.load(Ordering::SeqCst),
+            self.joiner_sent_draft_shop_ready.load(Ordering::SeqCst),
+            self.host_sent_post_auction_draft_shop_ready
+                .load(Ordering::SeqCst),
+            self.joiner_sent_post_auction_draft_shop_ready
+                .load(Ordering::SeqCst),
         )
     }
 }
@@ -646,13 +938,17 @@ fn assert_lightyear_feature(manifest: &str, package: &str, feature: &str) {
 }
 
 fn playable_card(id: u32, class: ClassId, cost: u32) -> CardData {
+    playable_card_with_rarity(id, class, cost, Rarity::Common)
+}
+
+fn playable_card_with_rarity(id: u32, class: ClassId, cost: u32, rarity: Rarity) -> CardData {
     CardData {
         id: CardId(id),
         name_fr: format!("Carte {id}"),
         name_en: format!("Card {id}"),
         class,
         family: Some("Playable E2E".to_string()),
-        rarity: Rarity::Common,
+        rarity,
         card_type: CardType::Minion,
         unit_type: UnitType::Blade,
         cost,
@@ -672,10 +968,20 @@ fn playable_e2e_catalog() -> CardCatalog {
         cards: (1..=14)
             .map(|id| playable_card(id, ClassId::Iop, 1))
             .chain((101..=114).map(|id| playable_card(id, ClassId::Cra, 1)))
-            .chain((201..=214).map(|id| playable_card(id, ClassId::Neutral, 1)))
+            .chain(
+                (201..=214)
+                    .map(|id| playable_card_with_rarity(id, ClassId::Neutral, 1, Rarity::Rare)),
+            )
             .map(|card| (card.id, card))
             .collect::<HashMap<_, _>>(),
     }
+}
+
+fn playable_e2e_config() -> server_crate::foundation::config::GameConfig {
+    let mut config = shared::config::GameConfig::default();
+    config.auction_timer_seconds = 1;
+    config.auction_timer_reset_seconds = 0;
+    server_crate::foundation::config::GameConfig(config)
 }
 
 fn reserve_ephemeral_port() -> u16 {
@@ -769,13 +1075,12 @@ fn build_room_flow_server_app(port: u16, flags: RoomSessionFlags) -> App {
     app.add_plugins(EconomyPlugin);
     app.add_plugins(CardPoolPlugin);
     app.add_plugins(CardAcquisitionPlugin);
+    app.add_plugins(AuctionPlugin);
     app.add_plugins(BoardPlugin);
     app.add_plugins(CombatPlugin);
     register_lightyear_protocol(&mut app);
     app.add_plugins(EconomyNetworkPlugin);
-    app.insert_resource(server_crate::foundation::config::GameConfig(
-        shared::config::GameConfig::default(),
-    ));
+    app.insert_resource(playable_e2e_config());
     app.insert_resource(playable_e2e_catalog());
     app.insert_resource(ServerRng::new());
     app.insert_resource(flags);
@@ -915,6 +1220,7 @@ fn record_room_flow_server_state(
     rooms: Option<Res<RoomSessions>>,
     round_state: Option<Res<RoundState>>,
     hands: Option<Res<PlayerHands>>,
+    pending: Option<Res<PendingPlacements>>,
 ) {
     if let Some(connections) = connections {
         flags
@@ -949,6 +1255,31 @@ fn record_room_flow_server_state(
         }
     }
 
+    if let Some(pending) = pending {
+        if let Some(host) = host {
+            if pending
+                .submissions
+                .get(&host)
+                .is_some_and(|submission| submission.is_final && !submission.placements.is_empty())
+            {
+                flags
+                    .server_host_non_empty_placement_accepted
+                    .store(true, Ordering::SeqCst);
+            }
+        }
+        if let Some(joiner) = joiner {
+            if pending
+                .submissions
+                .get(&joiner)
+                .is_some_and(|submission| submission.is_final && !submission.placements.is_empty())
+            {
+                flags
+                    .server_joiner_non_empty_placement_accepted
+                    .store(true, Ordering::SeqCst);
+            }
+        }
+    }
+
     if let Some(state) = round_state.as_deref() {
         match state.phase {
             ServerRoundPhase::DraftInitial => flags
@@ -960,6 +1291,9 @@ fn record_room_flow_server_state(
             ServerRoundPhase::Resolution => {
                 flags.server_round_resolution.store(true, Ordering::SeqCst)
             }
+            ServerRoundPhase::DraftAuction => flags
+                .server_round_draft_auction
+                .store(true, Ordering::SeqCst),
             ServerRoundPhase::DraftShop => {
                 flags.server_round_draft_shop.store(true, Ordering::SeqCst)
             }
@@ -1061,6 +1395,7 @@ fn send_room_flow_lobby_actions(
     mut purchase_card: Query<&mut MessageSender<C2SPurchaseCard>>,
     mut signal_ready: Query<&mut MessageSender<C2SSignalReady>>,
     mut submit_placement: Query<&mut MessageSender<C2SSubmitPlacement>>,
+    mut place_bid: Query<&mut MessageSender<C2SPlaceBid>>,
 ) {
     match probe.role {
         ClientRole::Host => {
@@ -1120,7 +1455,9 @@ fn send_room_flow_lobby_actions(
 
     send_draft_initial_purchase(&probe, &mut purchase_card);
     send_draft_ready_path(&probe, &mut signal_ready);
-    send_empty_placement_submit(&probe, &mut submit_placement);
+    send_draft_shop_ready_path(&probe, &mut signal_ready);
+    send_placement_submits(&probe, &mut submit_placement);
+    send_auction_bid(&probe, &mut place_bid);
 }
 
 fn send_draft_initial_purchase(
@@ -1215,22 +1552,72 @@ fn send_ready(
     }
 }
 
+fn send_draft_shop_ready_path(
+    probe: &RoomClientProbe,
+    signal_ready: &mut Query<&mut MessageSender<C2SSignalReady>>,
+) {
+    let (draft_shop_count, first_sent, post_auction_sent) = match probe.role {
+        ClientRole::Host => (
+            probe
+                .flags
+                .host_draft_shop_phase_count
+                .load(Ordering::SeqCst),
+            &probe.flags.host_sent_draft_shop_ready,
+            &probe.flags.host_sent_post_auction_draft_shop_ready,
+        ),
+        ClientRole::Joiner => (
+            probe
+                .flags
+                .joiner_draft_shop_phase_count
+                .load(Ordering::SeqCst),
+            &probe.flags.joiner_sent_draft_shop_ready,
+            &probe.flags.joiner_sent_post_auction_draft_shop_ready,
+        ),
+    };
+
+    if draft_shop_count >= 2 && !post_auction_sent.load(Ordering::SeqCst) {
+        send_ready(signal_ready, false, post_auction_sent);
+        return;
+    }
+
+    if draft_shop_count >= 1 && !first_sent.load(Ordering::SeqCst) {
+        send_ready(signal_ready, false, first_sent);
+    }
+}
+
+fn send_placement_submits(
+    probe: &RoomClientProbe,
+    submit_placement: &mut Query<&mut MessageSender<C2SSubmitPlacement>>,
+) {
+    let placement_count = match probe.role {
+        ClientRole::Host => probe
+            .flags
+            .host_placement_phase_count
+            .load(Ordering::SeqCst),
+        ClientRole::Joiner => probe
+            .flags
+            .joiner_placement_phase_count
+            .load(Ordering::SeqCst),
+    };
+
+    match placement_count {
+        0 => {}
+        1 => send_empty_placement_submit(probe, submit_placement),
+        2 => send_non_empty_placement_submit(probe, submit_placement, 1, false),
+        _ => send_non_empty_placement_submit(probe, submit_placement, 2, true),
+    }
+}
+
 fn send_empty_placement_submit(
     probe: &RoomClientProbe,
     submit_placement: &mut Query<&mut MessageSender<C2SSubmitPlacement>>,
 ) {
-    let (placement_received, sent) = match probe.role {
-        ClientRole::Host => (
-            &probe.flags.host_received_placement,
-            &probe.flags.host_sent_placement_submit,
-        ),
-        ClientRole::Joiner => (
-            &probe.flags.joiner_received_placement,
-            &probe.flags.joiner_sent_placement_submit,
-        ),
+    let sent = match probe.role {
+        ClientRole::Host => &probe.flags.host_sent_placement_submit,
+        ClientRole::Joiner => &probe.flags.joiner_sent_placement_submit,
     };
 
-    if !placement_received.load(Ordering::SeqCst) || sent.load(Ordering::SeqCst) {
+    if sent.load(Ordering::SeqCst) {
         return;
     }
 
@@ -1239,6 +1626,86 @@ fn send_empty_placement_submit(
             placements: Vec::new(),
         });
         sent.store(true, Ordering::SeqCst);
+    }
+}
+
+fn send_non_empty_placement_submit(
+    probe: &RoomClientProbe,
+    submit_placement: &mut Query<&mut MessageSender<C2SSubmitPlacement>>,
+    lane: u8,
+    post_auction: bool,
+) {
+    let sent = match (probe.role, post_auction) {
+        (ClientRole::Host, false) => &probe.flags.host_sent_non_empty_placement_submit,
+        (ClientRole::Joiner, false) => &probe.flags.joiner_sent_non_empty_placement_submit,
+        (ClientRole::Host, true) => &probe.flags.host_sent_post_auction_placement_submit,
+        (ClientRole::Joiner, true) => &probe.flags.joiner_sent_post_auction_placement_submit,
+    };
+    if sent.load(Ordering::SeqCst) {
+        return;
+    }
+
+    let Some(placement) = non_empty_placement(probe, lane) else {
+        return;
+    };
+
+    if let Some(mut sender) = submit_placement.iter_mut().next() {
+        sender.send::<ReliableChannel>(C2SSubmitPlacement {
+            placements: vec![placement],
+        });
+        sent.store(true, Ordering::SeqCst);
+    }
+}
+
+fn non_empty_placement(probe: &RoomClientProbe, lane: u8) -> Option<PlacedCardSubmit> {
+    let card_id = match probe.role {
+        ClientRole::Host => probe.flags.host_purchase_card_id.load(Ordering::SeqCst),
+        ClientRole::Joiner => probe.flags.joiner_purchase_card_id.load(Ordering::SeqCst),
+    };
+    if card_id == 0 {
+        return None;
+    }
+
+    let cell = match probe.role {
+        ClientRole::Host => 1,
+        ClientRole::Joiner => 8,
+    };
+
+    Some(PlacedCardSubmit {
+        card_id: CardId(card_id as u32),
+        target: PlayTarget::BoardCell { lane, cell },
+        current_mana_spend: 1,
+        reserve_mana_spend: 0,
+    })
+}
+
+fn send_auction_bid(
+    probe: &RoomClientProbe,
+    place_bid: &mut Query<&mut MessageSender<C2SPlaceBid>>,
+) {
+    if probe.role != ClientRole::Host
+        || !probe
+            .flags
+            .host_received_auction_card
+            .load(Ordering::SeqCst)
+        || probe.flags.host_sent_auction_bid.load(Ordering::SeqCst)
+    {
+        return;
+    }
+
+    let starting_price = probe.flags.auction_starting_price.load(Ordering::SeqCst);
+    if starting_price == 0 {
+        return;
+    }
+
+    if let Some(mut sender) = place_bid.iter_mut().next() {
+        sender.send::<ReliableChannel>(C2SPlaceBid {
+            amount: (starting_price as u32).saturating_add(1),
+        });
+        probe
+            .flags
+            .host_sent_auction_bid
+            .store(true, Ordering::SeqCst);
     }
 }
 
@@ -1278,6 +1745,10 @@ fn record_room_flow_s2c_messages(
     mut gold_update: Query<&mut MessageReceiver<S2CGoldUpdate>>,
     mut placement_reveal: Query<&mut MessageReceiver<S2CPlacementReveal>>,
     mut resolution_event: Query<&mut MessageReceiver<S2CResolutionEvent>>,
+    mut auction_card: Query<&mut MessageReceiver<S2CAuctionCard>>,
+    mut auction_bid_accepted: Query<&mut MessageReceiver<S2CAuctionBidAccepted>>,
+    mut auction_bid_rejected: Query<&mut MessageReceiver<S2CAuctionBidRejected>>,
+    mut auction_settled: Query<&mut MessageReceiver<S2CAuctionSettled>>,
 ) {
     for mut receiver in &mut room_created {
         for message in receiver.receive() {
@@ -1409,6 +1880,12 @@ fn record_room_flow_s2c_messages(
                             .host_card_acquired_source_draft_initial
                             .store(true, Ordering::SeqCst);
                     }
+                    if message.source == CardSource::AuctionWon {
+                        probe
+                            .flags
+                            .host_received_card_acquired_source_auction
+                            .store(true, Ordering::SeqCst);
+                    }
                 }
                 ClientRole::Joiner => {
                     probe
@@ -1419,6 +1896,12 @@ fn record_room_flow_s2c_messages(
                         probe
                             .flags
                             .joiner_card_acquired_source_draft_initial
+                            .store(true, Ordering::SeqCst);
+                    }
+                    if message.source == CardSource::AuctionWon {
+                        probe
+                            .flags
+                            .joiner_received_card_acquired_source_auction
                             .store(true, Ordering::SeqCst);
                     }
                 }
@@ -1452,30 +1935,146 @@ fn record_room_flow_s2c_messages(
     }
 
     for mut receiver in &mut placement_reveal {
-        for _message in receiver.receive() {
+        for message in receiver.receive() {
             match probe.role {
-                ClientRole::Host => probe
-                    .flags
-                    .host_received_placement_reveal
-                    .store(true, Ordering::SeqCst),
-                ClientRole::Joiner => probe
-                    .flags
-                    .joiner_received_placement_reveal
-                    .store(true, Ordering::SeqCst),
+                ClientRole::Host => {
+                    probe
+                        .flags
+                        .host_received_placement_reveal
+                        .store(true, Ordering::SeqCst);
+                    if !message.placements.is_empty() {
+                        probe
+                            .flags
+                            .host_received_non_empty_placement_reveal
+                            .store(true, Ordering::SeqCst);
+                        probe
+                            .flags
+                            .host_non_empty_placement_reveal_count
+                            .fetch_add(1, Ordering::SeqCst);
+                    }
+                }
+                ClientRole::Joiner => {
+                    probe
+                        .flags
+                        .joiner_received_placement_reveal
+                        .store(true, Ordering::SeqCst);
+                    if !message.placements.is_empty() {
+                        probe
+                            .flags
+                            .joiner_received_non_empty_placement_reveal
+                            .store(true, Ordering::SeqCst);
+                        probe
+                            .flags
+                            .joiner_non_empty_placement_reveal_count
+                            .fetch_add(1, Ordering::SeqCst);
+                    }
+                }
             }
         }
     }
 
     for mut receiver in &mut resolution_event {
+        for message in receiver.receive() {
+            let has_unit_placed = message
+                .events
+                .iter()
+                .any(|event| matches!(event.event, ResolutionEvent::UnitPlaced { .. }));
+            match probe.role {
+                ClientRole::Host => {
+                    probe
+                        .flags
+                        .host_received_resolution_event
+                        .store(true, Ordering::SeqCst);
+                    probe
+                        .flags
+                        .host_resolution_event_count
+                        .fetch_add(1, Ordering::SeqCst);
+                    if has_unit_placed {
+                        probe
+                            .flags
+                            .host_received_unit_placed_resolution_event
+                            .store(true, Ordering::SeqCst);
+                    }
+                }
+                ClientRole::Joiner => {
+                    probe
+                        .flags
+                        .joiner_received_resolution_event
+                        .store(true, Ordering::SeqCst);
+                    probe
+                        .flags
+                        .joiner_resolution_event_count
+                        .fetch_add(1, Ordering::SeqCst);
+                    if has_unit_placed {
+                        probe
+                            .flags
+                            .joiner_received_unit_placed_resolution_event
+                            .store(true, Ordering::SeqCst);
+                    }
+                }
+            }
+        }
+    }
+
+    for mut receiver in &mut auction_card {
+        for message in receiver.receive() {
+            probe
+                .flags
+                .auction_starting_price
+                .store(message.starting_price as usize, Ordering::SeqCst);
+            match probe.role {
+                ClientRole::Host => probe
+                    .flags
+                    .host_received_auction_card
+                    .store(true, Ordering::SeqCst),
+                ClientRole::Joiner => probe
+                    .flags
+                    .joiner_received_auction_card
+                    .store(true, Ordering::SeqCst),
+            }
+        }
+    }
+
+    for mut receiver in &mut auction_bid_accepted {
         for _message in receiver.receive() {
             match probe.role {
                 ClientRole::Host => probe
                     .flags
-                    .host_received_resolution_event
+                    .host_received_auction_bid_accepted
                     .store(true, Ordering::SeqCst),
                 ClientRole::Joiner => probe
                     .flags
-                    .joiner_received_resolution_event
+                    .joiner_received_auction_bid_accepted
+                    .store(true, Ordering::SeqCst),
+            }
+        }
+    }
+
+    for mut receiver in &mut auction_bid_rejected {
+        for _message in receiver.receive() {
+            match probe.role {
+                ClientRole::Host => probe
+                    .flags
+                    .host_received_auction_bid_rejected
+                    .store(true, Ordering::SeqCst),
+                ClientRole::Joiner => probe
+                    .flags
+                    .joiner_received_auction_bid_rejected
+                    .store(true, Ordering::SeqCst),
+            }
+        }
+    }
+
+    for mut receiver in &mut auction_settled {
+        for _message in receiver.receive() {
+            match probe.role {
+                ClientRole::Host => probe
+                    .flags
+                    .host_received_auction_settled
+                    .store(true, Ordering::SeqCst),
+                ClientRole::Joiner => probe
+                    .flags
+                    .joiner_received_auction_settled
                     .store(true, Ordering::SeqCst),
             }
         }
@@ -1508,6 +2107,14 @@ fn record_phase_changed(probe: &RoomClientProbe, phase: ProtocolRoundPhase) {
             .flags
             .joiner_received_resolution
             .store(true, Ordering::SeqCst),
+        (ClientRole::Host, ProtocolRoundPhase::DraftAuction) => probe
+            .flags
+            .host_received_draft_auction
+            .store(true, Ordering::SeqCst),
+        (ClientRole::Joiner, ProtocolRoundPhase::DraftAuction) => probe
+            .flags
+            .joiner_received_draft_auction
+            .store(true, Ordering::SeqCst),
         (ClientRole::Host, ProtocolRoundPhase::DraftShop) => probe
             .flags
             .host_received_draft_shop
@@ -1516,6 +2123,46 @@ fn record_phase_changed(probe: &RoomClientProbe, phase: ProtocolRoundPhase) {
             .flags
             .joiner_received_draft_shop
             .store(true, Ordering::SeqCst),
+        _ => {}
+    }
+
+    match (probe.role, phase) {
+        (ClientRole::Host, ProtocolRoundPhase::Placement) => {
+            probe
+                .flags
+                .host_placement_phase_count
+                .fetch_add(1, Ordering::SeqCst);
+        }
+        (ClientRole::Joiner, ProtocolRoundPhase::Placement) => {
+            probe
+                .flags
+                .joiner_placement_phase_count
+                .fetch_add(1, Ordering::SeqCst);
+        }
+        (ClientRole::Host, ProtocolRoundPhase::Resolution) => {
+            probe
+                .flags
+                .host_resolution_phase_count
+                .fetch_add(1, Ordering::SeqCst);
+        }
+        (ClientRole::Joiner, ProtocolRoundPhase::Resolution) => {
+            probe
+                .flags
+                .joiner_resolution_phase_count
+                .fetch_add(1, Ordering::SeqCst);
+        }
+        (ClientRole::Host, ProtocolRoundPhase::DraftShop) => {
+            probe
+                .flags
+                .host_draft_shop_phase_count
+                .fetch_add(1, Ordering::SeqCst);
+        }
+        (ClientRole::Joiner, ProtocolRoundPhase::DraftShop) => {
+            probe
+                .flags
+                .joiner_draft_shop_phase_count
+                .fetch_add(1, Ordering::SeqCst);
+        }
         _ => {}
     }
 }

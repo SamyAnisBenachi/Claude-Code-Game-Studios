@@ -111,6 +111,25 @@ This capture set is internal friend-game evidence only. Local paths, usernames, 
 - Limit:
   - This repair proves the controlled real-Lightyear endpoint through `DRAFT_SHOP`. It does not claim auction, non-empty placement gameplay, next loop after `DRAFT_SHOP`, game-over, full playable-client manual QA, playtest validation, or public release readiness.
 
+## Prompt 298 Controlled Auction/Placement/Resolution Repair
+
+- Command: `cargo test -p server --test playable_client_real_e2e_loop_test`
+- Focused test: `real_lightyear_two_client_draft_shop_auction_placement_resolution_reaches_next_loop`
+- Result:
+  - Host and joiner both reached the prompt 296 server-authored `DRAFT_SHOP` endpoint.
+  - Both clients sent real `C2SSignalReady` from `DRAFT_SHOP`; the server advanced to `PLACEMENT`.
+  - Both clients sent real non-empty `C2SSubmitPlacement` payloads using card IDs acquired from server-authored hand state.
+  - Server accepted both non-empty placement batches and emitted non-empty `S2CPlacementReveal`.
+  - Server emitted `S2CResolutionEvent` and advanced through the real RSM route into `DRAFT_AUCTION` on the next auction round.
+  - Prompt 298 repairs the controlled test server wiring by adding `AuctionPlugin`, repairs the auction catalog fixture by adding neutral Rare cards, and repairs production `S2CAuctionCard` dispatch from `auction_tick_system`.
+  - Both clients received real `S2CAuctionCard`; host sent real `C2SPlaceBid`; both clients received `S2CAuctionBidAccepted` and `S2CAuctionSettled`; host received `S2CCardAcquired(source=AuctionWon)`.
+  - Both clients then advanced from post-auction `DRAFT_SHOP` through another non-empty `PLACEMENT`, `S2CPlacementReveal`, `S2CResolutionEvent`, and into the next `DRAFT_SHOP`.
+- Files:
+  - `prompt-298-auction-placement-resolution-trace.json`
+- Limit:
+  - `S2CResolutionEvent` is received on each resolution, but accepted placements are still not proven as `UnitPlaced` replay entries. The exact open blocker is the ordering split between `server/src/feature/board/placement.rs::close_placement_phase`, which clears `PendingPlacements`, and `server/src/feature/combat/mod.rs::apply_placements`, which builds `UnitPlaced` trace from `PendingPlacements`.
+  - This is controlled in-process real-Lightyear evidence only. It does not claim live native manual two-client completion, game-over, full playable-client manual QA, playtest validation, public release readiness, broad accessibility completion, or full game completion.
+
 ## Phase Summary
 
 | Phase | Capture | Result |
@@ -127,10 +146,10 @@ This capture set is internal friend-game evidence only. Local paths, usernames, 
 | DRAFT_INITIAL offering | `prompt-296-draft-shop-trace.json` | Reached: both clients received server-authored `S2CDraftOffering(card_count=9)` |
 | Purchase/acquisition/economy | `prompt-296-draft-shop-trace.json` | Reached: clients sent real `C2SPurchaseCard`; server emitted `S2CCardAcquired` and `S2CGoldUpdate` |
 | Ready/retract | `prompt-296-draft-shop-trace.json` | Reached: real `C2SSignalReady` ready/retract/ready observed by server RSM |
-| DRAFT_SHOP | `prompt-296-draft-shop-trace.json` | Reached via real server route `DRAFT_INITIAL -> PLACEMENT -> RESOLUTION -> DRAFT_SHOP` |
-| Auction | none | Not reached |
-| Placement submit | `prompt-296-draft-shop-trace.json` | Reached with real empty `C2SSubmitPlacement` from both clients |
-| Placement reveal | `prompt-296-draft-shop-trace.json` | Reached with server-authored empty `S2CPlacementReveal` |
-| Resolution replay | `prompt-296-draft-shop-trace.json` | Protocol reached `S2CResolutionEvent`; no manual visual replay validation claimed |
-| Next loop | none | Not reached beyond `DRAFT_SHOP` |
-| Game-over or nearest endpoint | `prompt-296-draft-shop-trace.json` | Nearest controlled endpoint is `DRAFT_SHOP`; full loop not verified |
+| DRAFT_SHOP | `prompt-296-draft-shop-trace.json`, `prompt-298-auction-placement-resolution-trace.json` | Reached via real server route `DRAFT_INITIAL -> PLACEMENT -> RESOLUTION -> DRAFT_SHOP`; prompt 298 reaches three `DRAFT_SHOP` S2C notifications per client |
+| Auction | `prompt-298-auction-placement-resolution-trace.json` | Reached: server `DraftAuction`, `S2CAuctionCard`, host `C2SPlaceBid`, `S2CAuctionBidAccepted`, `S2CAuctionSettled`, and `S2CCardAcquired(source=AuctionWon)` |
+| Placement submit | `prompt-296-draft-shop-trace.json`, `prompt-298-auction-placement-resolution-trace.json` | Reached with real empty submit from both clients, then two non-empty submit rounds from server-owned hand state |
+| Placement reveal | `prompt-296-draft-shop-trace.json`, `prompt-298-auction-placement-resolution-trace.json` | Reached with server-authored empty reveal, then two non-empty `S2CPlacementReveal` messages per client |
+| Resolution replay | `prompt-298-auction-placement-resolution-trace.json` | Protocol reached three `S2CResolutionEvent` messages per client; `UnitPlaced` replay content remains an exact open blocker |
+| Next loop | `prompt-298-auction-placement-resolution-trace.json` | Reached next `DRAFT_SHOP` after post-auction placement and resolution |
+| Game-over or nearest endpoint | `prompt-298-auction-placement-resolution-trace.json` | Nearest controlled endpoint is next-loop `DRAFT_SHOP`; game-over is not reached or claimed |

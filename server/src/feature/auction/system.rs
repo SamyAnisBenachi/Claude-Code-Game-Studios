@@ -8,7 +8,8 @@ use lightyear::prelude::{
 use shared::card::{CardId, ClassId, Rarity};
 use shared::protocol::{
     BidRejectedReason, C2SPlaceBid, CardSource, DraftPhase, ReliableChannel, S2CAuctionBidAccepted,
-    S2CAuctionBidRejected, S2CAuctionSettled, S2CCardAcquired,
+    S2CAuctionBidRejected, S2CAuctionCard as ProtocolS2CAuctionCard, S2CAuctionSettled,
+    S2CCardAcquired,
 };
 use shared::session::PlayerId;
 
@@ -27,10 +28,10 @@ use crate::foundation::rng::ServerRng;
 
 use super::state::{AuctionPhase, AuctionState};
 
-/// Internal server queue item for the future network dispatch story.
+/// Internal server queue item for auction draw observers.
 ///
-/// This mirrors `shared::protocol::S2CAuctionCard` without adding Bevy
-/// dependencies to `shared/`.
+/// The production Lightyear dispatch path sends the matching shared protocol
+/// payload directly from `auction_tick_system`.
 #[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct S2CAuctionCard {
     pub card_id: CardId,
@@ -257,6 +258,18 @@ pub fn auction_tick_system(
             card_id,
             starting_price,
         });
+
+        if let (Ok(server), Some(sender)) = (server.single(), sender.as_mut()) {
+            let message = ProtocolS2CAuctionCard {
+                card_id,
+                starting_price,
+            };
+            let _ = sender.send::<ProtocolS2CAuctionCard, ReliableChannel>(
+                &message,
+                server,
+                &NetworkTarget::All,
+            );
+        }
     }
 
     for _event in abort.read() {
