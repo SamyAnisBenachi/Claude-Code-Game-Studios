@@ -11,7 +11,7 @@
 | [server-rng](server-rng/EPIC.md) | Foundation | `server/foundation/rng.rs` | server-rng | 3 stories | Ready |
 | [lightyear-protocol-verification](lightyear-protocol-verification/EPIC.md) ⭐ | Foundation | `shared/protocol.rs` + `server/network/` + `client/network/` | network-protocol | 4 stories | Ready |
 | [round-state-machine](round-state-machine/EPIC.md) | Core | `server/core/rsm/` | round-state-machine | TBD — see hint | Ready |
-| [game-session-system](game-session-system/EPIC.md) | Core | `server/core/session/` (+ `on_session_ready` in `server/core/rsm/`) | game-session-system | TBD — see hint | Ready |
+| [game-session-system](game-session-system/EPIC.md) | Core | `server/core/session/` (+ `on_session_ready` in `server/core/rsm/`) | game-session-system | 9 stories | Ready |
 | [economy-system](economy-system/EPIC.md) | Core | `server/core/economy/` | economy-system | TBD — see hint | Ready |
 | [card-data-pool](card-data-pool/EPIC.md) | Core | `server/core/pool/` | card-data-pool | 6 stories | Complete |
 | [board-lane-system](board-lane-system/EPIC.md) | Feature (M1) | `server/feature/board/` | board-lane-system | TBD | Ready |
