@@ -9,8 +9,8 @@
     "attempted_full_native_or_browser_two_client_run": false,
     "blocker": "The Codex shell session can run commands and tests, but it cannot drive two interactive Bevy native client windows or browser clients through room creation, join, class confirmation, draft/shop, auction, placement, resolution, and result steps. Launching native clients would require GUI interaction and would not produce a completed manual route log from this non-interactive workflow.",
     "server_log": "bounded process note only: production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-server-process.txt",
-    "client_a_log": "not captured from a full manual two-client run",
-    "client_b_log": "not captured from a full manual two-client run",
+    "client_a_log": "nearest covered host trace note: production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-client-a-log.md",
+    "client_b_log": "nearest covered joiner trace note: production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-client-b-log.md",
     "nearest_covered_evidence": [
       "production/qa/evidence/captures/sprint-8-friend-game-loop/playable-004-result-endpoint-trace.json",
       "production/qa/evidence/captures/sprint-8-friend-game-loop/loop-001-active-loop-polish-trace.json",
@@ -59,9 +59,9 @@
       "tests": 4
     },
     {
-      "command": "cargo test -p client --test shop_auction_ui_auction_settlement_test",
+      "command": "cargo test -p client --tests",
       "result": "PASS",
-      "tests": 7
+      "summary": "valid equivalent for incomplete prompt command cargo test -p client --test; --list reports 292 client tests"
     },
     {
       "command": "cargo check --workspace",
@@ -74,9 +74,9 @@
   ],
   "checklist": {
     "server_log": "WARN - bounded server process note only; no full manual two-client server route log captured",
-    "client_a_log": "WARN - no full manual client A log captured",
-    "client_b_log": "WARN - no full manual client B log captured",
-    "commands_port_commit_target_summary": "PASS",
+    "client_a_log": "WARN - host/client A capture note added from nearest real-Lightyear trace; no full manual browser/native client A log captured",
+    "client_b_log": "WARN - joiner/client B capture note added from nearest real-Lightyear trace; no full manual browser/native client B log captured",
+    "commands_port_commit_target_summary": "PASS - see s8-qa-001-command-summary.md",
     "lobby_create_join": "PASS via controlled real-Lightyear trace",
     "class_confirm": "PASS via controlled real-Lightyear trace",
     "draft_initial": "PASS via controlled real-Lightyear trace",
@@ -98,6 +98,14 @@
       "status": "Bounded warning",
       "impact": "Core route is covered by controlled real-Lightyear tests and traces, but no new manually driven two-window or browser route log was captured in this session.",
       "workaround": "Use the committed controlled traces for S8 smoke; run an out-of-band interactive two-client session later if full manual client QA is required."
+    },
+    {
+      "id": "S8-QA-001-W2",
+      "severity": "Low tooling ambiguity",
+      "owner": "Smoke command list",
+      "status": "Recorded",
+      "impact": "Prompt listed cargo test -p client --test, which is incomplete without a test target.",
+      "workaround": "Interpreted as cargo test -p client --tests; valid equivalent passed."
     },
     {
       "id": "QA-COND-0005",

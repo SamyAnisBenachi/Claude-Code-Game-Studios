@@ -121,9 +121,9 @@ Stabilized behavior:
 - `UnitPlaced` replay remains covered by the real-Lightyear route and by the
   existing PLAYABLE-004 result endpoint route.
 
-No browser/manual two-client smoke was run in this worker pass. S8-QA-001
-remains blocked until the orchestrator pulls the manual friend-game smoke
-package.
+No browser/manual two-client smoke was run in the PLAYABLE-004 or LOOP-001
+worker passes. The S8-QA-001 scoped smoke package below records the current
+manual friend-game smoke evidence status.
 
 ## S8-QA-001 Manual Friend-Game Smoke Package Addendum
 
@@ -138,8 +138,16 @@ packaged the manual friend-game evidence status.
 Capture summary:
 `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-manual-smoke-summary.json`.
 
+Command summary:
+`production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-command-summary.md`.
+
 Bounded server process note:
 `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-server-process.txt`.
+
+Nearest host/client capture notes:
+
+- `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-client-a-log.md`
+- `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-client-b-log.md`
 
 Manual execution status:
 
@@ -151,8 +159,9 @@ Manual execution status:
   resolution, and result steps. Launching native clients here would require GUI
   interaction and would not produce a completed manual route log from this
   non-interactive workflow.
-- A bounded server process note was captured, but no new full manual server
-  route log, client A log, or client B log was captured.
+- A bounded server process note was captured. Client A and Client B capture
+  notes were added from the nearest covered real-Lightyear host/joiner traces,
+  but no new full manual browser/native route logs were captured.
 - Trunk is installed (`trunk 0.21.14`), `client/index.html` exists, the default
   server port remains `5000`, and the manual command shape remains:
   `SERVER_PORT=<PORT> cargo run -p server`;
@@ -175,9 +184,9 @@ Manual/evidence checklist status:
 | Checklist Item | Status | Evidence |
 |---|---|---|
 | Server log | WARN | Bounded server process note only; no full manual two-client server route log captured. |
-| Client A log | WARN | No new full manual client A log captured; see blocker above. |
-| Client B log | WARN | No new full manual client B log captured; see blocker above. |
-| Commands / port / commit / target summary | PASS | This addendum and `s8-qa-001-manual-smoke-summary.json`. |
+| Client A log | WARN | Host/client A capture note added from nearest real-Lightyear trace; no new full manual browser/native client A log captured. |
+| Client B log | WARN | Joiner/client B capture note added from nearest real-Lightyear trace; no new full manual browser/native client B log captured. |
+| Commands / port / commit / target summary | PASS | This addendum, `s8-qa-001-manual-smoke-summary.json`, and `s8-qa-001-command-summary.md`. |
 | Lobby create/join | PASS | Controlled real-Lightyear trace records `C2SCreateRoom`, `S2CRoomCreated`, `C2SJoinRoom`, and `S2CJoinAck`. |
 | Class confirm | PASS | Controlled real-Lightyear trace records `C2SSelectClass`, `C2SConfirmClass`, `S2CClassLocked`, and `S2CClassesRevealed`. |
 | DRAFT_INITIAL | PASS | Controlled real-Lightyear trace records `S2CPhaseChanged(DraftInitial)` and `S2CDraftOffering`. |
@@ -200,6 +209,7 @@ new full manual two-window/browser route log remains a bounded evidence gap.
 | ID | Severity | Owner/System | Status | Friend-game Impact | Workaround |
 |---|---|---|---|---|---|
 | S8-QA-001-W1 | Low evidence gap | Manual/browser smoke workflow | Bounded warning | Core route is covered by controlled real-Lightyear tests and traces, but no new manually driven two-window or browser route log was captured in this session | Use the committed controlled traces for S8 smoke; run an out-of-band interactive two-client session later if full manual client QA is required |
+| S8-QA-001-W2 | Low tooling ambiguity | Smoke command list | Recorded | Prompt listed `cargo test -p client --test`, which is incomplete without a test target | Interpreted as `cargo test -p client --tests`; valid equivalent passed |
 | PLAYABLE-004-D1 | Low evidence gap | Manual/browser evidence | Superseded by S8-QA-001-W1 | Automated in-process real-Lightyear endpoint is covered; browser/native manual captures remain bounded by S8-QA-001-W1 | Keep the bounded warning explicit |
 | QA-COND-0005 | Accepted risk | Accessibility evidence | Still accepted risk | This story does not close broad Standard-tier accessibility evidence | Keep non-claim explicit |
 | QA-COND-0006 | Accepted risk | Playtest validation | Still accepted risk | This story is not a playtest and does not validate fun hypothesis | Keep non-claim explicit |
@@ -217,6 +227,9 @@ new full manual two-window/browser route log remains a bounded evidence gap.
   4 passed.
 - `cargo test -p server --test playable_client_real_e2e_loop_test`: PASS,
   4 passed.
+- `cargo test -p client --tests`: PASS. This was used as the valid equivalent
+  for the S8-QA-001 prompt's incomplete `cargo test -p client --test` command;
+  `cargo test -p client --tests -- --list` reports 292 client tests.
 - `cargo test -p client --test shop_auction_ui_auction_settlement_test`: PASS,
   7 passed.
 - `cargo test -p client --test playable_client_draft_shop_hand_bridge_test`:
@@ -234,7 +247,7 @@ new full manual two-window/browser route log remains a bounded evidence gap.
 - `cargo test -p client --test hud_phase_transitions_test`: PASS, 5 passed.
 - `cargo check --workspace`: PASS.
 - `cargo fmt -p client -p server -- --check`: PASS.
-- `git diff --check origin/main...HEAD`: PASS.
+- `git diff --check`: PASS.
 
 ## Non-Claims
 

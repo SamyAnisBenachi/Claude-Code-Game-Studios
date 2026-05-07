@@ -57,8 +57,8 @@ Required context read:
 
 **Status**: PASS
 
-Summary: 20 automated tests passed, 0 failed, plus workspace check and diff
-check passed.
+Summary: required focused smoke targets passed, the valid all-client-tests
+equivalent passed, workspace check passed, and diff check passed.
 
 | Command | Result |
 |---|---|
@@ -68,7 +68,7 @@ check passed.
 | `cargo test -p client --test playable_client_active_loop_ui_state_test` | PASS, 4 passed |
 | `cargo test -p server --test playable_client_friend_game_result_endpoint_test` | PASS, 1 passed |
 | `cargo test -p server --test playable_client_real_e2e_loop_test` | PASS, 4 passed |
-| `cargo test -p client --test shop_auction_ui_auction_settlement_test` | PASS, 7 passed |
+| `cargo test -p client --tests` | PASS; used as the valid equivalent for the prompt's incomplete `cargo test -p client --test`; `--list` reports 292 client tests |
 | `cargo check --workspace` | PASS |
 | `git diff --check` | PASS |
 
@@ -83,9 +83,9 @@ Failed checks:
 | Checklist Item | Status | Evidence |
 |---|---|---|
 | Server log | WARN | Bounded server process note only; no full manual two-client server route log captured. |
-| Client A log | WARN | No new full manual client A log captured. |
-| Client B log | WARN | No new full manual client B log captured. |
-| Commands / port / commit / target summary | PASS | This report and `s8-qa-001-manual-smoke-summary.json`. |
+| Client A log | WARN | Host/client A capture note added from nearest real-Lightyear trace; no new full manual browser/native client A log captured. |
+| Client B log | WARN | Joiner/client B capture note added from nearest real-Lightyear trace; no new full manual browser/native client B log captured. |
+| Commands / port / commit / target summary | PASS | This report, `s8-qa-001-manual-smoke-summary.json`, and `s8-qa-001-command-summary.md`. |
 | Lobby create/join | PASS | `playable-004-result-endpoint-trace.json` records real C2S/S2C room flow. |
 | Class confirm | PASS | `playable-004-result-endpoint-trace.json` records class select/confirm and class reveal. |
 | DRAFT_INITIAL | PASS | `playable-004-result-endpoint-trace.json` records `S2CPhaseChanged(DraftInitial)` and `S2CDraftOffering`. |
@@ -114,7 +114,10 @@ workflow.
 
 - `production/qa/evidence/sprint-8-friend-game-loop-evidence.md`
 - `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-manual-smoke-summary.json`
+- `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-command-summary.md`
 - `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-server-process.txt`
+- `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-client-a-log.md`
+- `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-client-b-log.md`
 - `production/qa/evidence/captures/sprint-8-friend-game-loop/playable-004-result-endpoint-trace.json`
 - `production/qa/evidence/captures/sprint-8-friend-game-loop/loop-001-active-loop-polish-trace.json`
 - `production/qa/evidence/captures/playable-client-real-e2e-loop/phase-captures.md`
@@ -134,6 +137,7 @@ LOOP-001 repeated-loop evidence remains:
 | ID | Severity | Owner/System | Status | Friend-game Impact | Workaround |
 |---|---|---|---|---|---|
 | S8-QA-001-W1 | Low evidence gap | Manual/browser smoke workflow | Bounded warning | Core route is covered by controlled real-Lightyear tests and traces, but no new manually driven two-window or browser route log was captured in this session. | Use the committed controlled traces for S8 smoke; run an out-of-band interactive two-client session later if full manual client QA is required. |
+| S8-QA-001-W2 | Low tooling ambiguity | Smoke command list | Recorded | Prompt listed `cargo test -p client --test`, which is incomplete without a test target. | Interpreted as `cargo test -p client --tests`; valid equivalent passed. |
 | QA-COND-0005 | Accepted risk | Accessibility evidence | Still accepted risk for friend-game scope only | This smoke does not verify broad Standard-tier accessibility completion. | Keep non-claim explicit until a separate accessibility scope verifies it. |
 | QA-COND-0006 | Accepted risk | Playtest validation | Still accepted-risk/deferred | This smoke is not playtest evidence and does not validate the fun hypothesis. | Keep non-claim explicit until separate production playtests exist. |
 
@@ -161,7 +165,10 @@ LOOP-001 repeated-loop evidence remains:
 
 - `production/qa/evidence/sprint-8-friend-game-loop-evidence.md`
 - `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-manual-smoke-summary.json`
+- `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-command-summary.md`
 - `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-server-process.txt`
+- `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-client-a-log.md`
+- `production/qa/evidence/captures/sprint-8-friend-game-loop/s8-qa-001-client-b-log.md`
 - `production/qa/smoke-sprint-8-2026-05-07.md`
 
 No source code, `production/sprint-status.yaml`, `/story-done` records,
