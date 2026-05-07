@@ -9,7 +9,34 @@ generated: "2026-05-07"
 updated: "2026-05-07"
 stage: "Polish"
 scope: "internal 1v1 friend-game loop robustness beyond next-loop DRAFT_SHOP"
-status: "planned"
+status: "closed-with-conditions"
+
+close_out:
+  date: "2026-05-07"
+  status: "closed-with-conditions"
+  basis: "Docs/status reconciliation only; no /dev-story, /story-done, smoke, QA sign-off, team-qa, gate-check, Sprint 9 activation, or implementation run by close-out."
+  qa:
+    s8_qa_001: "done"
+    smoke: "PASS WITH WARNINGS at production/qa/smoke-sprint-8-2026-05-07.md"
+    signoff: "APPROVED WITH CONDITIONS at production/qa/qa-signoff-sprint-8-2026-05-07.md"
+  evidence:
+    controlled_internal_friend_game_game_over_endpoint: "Recorded through committed real-Lightyear endpoint evidence in production/qa/evidence/sprint-8-friend-game-loop-evidence.md."
+    evidence_index: "production/qa/evidence/sprint-8-friend-game-evidence-index.md exists; S8-N2 is complete."
+    manual_browser_game_over_claimed: false
+    full_game_completion_claimed: false
+    full_playable_client_manual_qa_claimed: false
+  ci_disposition:
+    latest_tested_code_baseline: "adf116333a2bac3364f4ca1aab8589ed058d97a6"
+    latest_green_ci_run: "Automated Tests run 25515627861, success, completed, at adf116333a2bac3364f4ca1aab8589ed058d97a6"
+    current_origin_main_at_closeout_start: "df8a43fa603448ba1ca29d639e6816d9a4544bfc"
+    docs_only_commit_after_baseline: "df8a43fa603448ba1ca29d639e6816d9a4544bfc"
+    waiver: "Accepted by orchestrator decision without fresh CI because commits after adf116333a2bac3364f4ca1aab8589ed058d97a6 through current origin/main are docs-only result-ack contract preparation."
+  integrated_late_docs:
+    sprint_9_draft: "production/sprints/sprint-9-draft.md integrated as draft only; Sprint 9 is not active."
+    result_screen_story: "production/epics/presentation-layer/story-006-result-screen-mvp.md integrated as Sprint 9 preparation; implementation is not done."
+    native_operator_controls_story: "production/epics/playable-client/story-006-native-friend-game-operator-controls.md integrated as backlog/Sprint 9 prep; implementation is not done."
+    sau_008_docs_refresh: "production/epics/shop-auction-ui/story-008-reconnect-snapshot-and-late-message-recovery.md refreshed and ready; SAU-008 implementation is not pulled."
+    result_ack_contract_story: "production/epics/game-session-system/story-009-result-acknowledgement-and-result-data-contract.md integrated by df8a43f as Sprint 9 prep; not Sprint 8 implementation."
 
 carried_conditions:
   sprint_7_closed_with_conditions: true
@@ -45,7 +72,15 @@ notes:
   - "PLAYABLE-004 and LOOP-001 story docs exist; no story-doc availability blocker remains."
   - "PLAYABLE-004 and LOOP-001 are Complete. S8-QA-001/manual friend-game smoke is now unblocked for scoped evidence capture."
   - "CONTENT-001A was integrated on main via merge d5f50f9f85224477500f1427ac00b3ff23ab0530 and is reconciled under CONTENT-001 as Sprint 8 supporting content only."
-  - "No /dev-story, /story-done, /smoke-check, /team-qa, or /gate-check was run by Sprint 8 planning."
+  - "S8-QA-001 is done for the scoped package: smoke PASS WITH WARNINGS and QA sign-off APPROVED WITH CONDITIONS."
+  - "S8-N2 is done because the Sprint 8 friend-game evidence index exists."
+  - "Native lobby blank screen repair is integrated in the tested code baseline via commit 1bfbf5b."
+  - "Native operator controls story docs are integrated as backlog/Sprint 9 prep; implementation is not done."
+  - "SAU-008 docs refresh is integrated and the story remains Ready; SAU-008 implementation is not pulled."
+  - "Result acknowledgement contract story docs are integrated as Sprint 9 prep; this is not Sprint 8 implementation."
+  - "CI disposition: Automated Tests run 25515627861 is green for code baseline adf116333a2bac3364f4ca1aab8589ed058d97a6; later df8a43fa603448ba1ca29d639e6816d9a4544bfc is docs-only result-ack contract prep accepted without rerun by orchestrator decision."
+  - "No public release readiness, release-candidate readiness, broad accessibility completion, playtest/fun-hypothesis validation, full playable-client manual QA, manual/browser GAME_OVER, or full game completion is claimed."
+  - "No /dev-story, /story-done, /smoke-check, /team-qa, /gate-check, Sprint 9 activation, or implementation was run by Sprint 8 status close-out."
 
 stories:
   - id: "S8-DOCS-001"
@@ -116,16 +151,16 @@ stories:
     name: "Friend-Game Manual Smoke Expansion Package"
     file: "production/qa/evidence/sprint-8-friend-game-loop-evidence.md"
     priority: must-have
-    status: ready
+    status: done
     owner: "QA tester + orchestrator"
     estimate_days: 1.00
     blocker: ""
-    completed: ""
+    completed: "2026-05-07"
     notes:
-      - "PLAYABLE-004 endpoint decision is complete and recorded actual GAME_OVER/result evidence; manual/browser friend-game smoke remains separate and is not claimed by PLAYABLE-004."
-      - "Unblocked by LOOP-001 story-done on 2026-05-07; manual smoke has not been run and no QA sign-off, full playable-client manual QA, or Sprint 8 close-out is claimed."
-      - "Evidence must cover at least two consecutive loop passes after Sprint 7's endpoint, settlement-to-shop behavior, placement/resolution replay, and endpoint decision."
-      - "Evidence is internal friend-game only and must not claim public release readiness, broad accessibility completion, playtest validation, full playable-client manual QA, or full game completion."
+      - "S8-QA-001 package is done with smoke PASS WITH WARNINGS at production/qa/smoke-sprint-8-2026-05-07.md and QA sign-off APPROVED WITH CONDITIONS at production/qa/qa-signoff-sprint-8-2026-05-07.md."
+      - "Controlled internal friend-game evidence records the GAME_OVER endpoint through real-Lightyear server/client routing."
+      - "Full manually driven browser/native two-client route was not captured; manual/browser GAME_OVER is not claimed."
+      - "Evidence is internal friend-game only and must not claim public release readiness, release-candidate readiness, broad accessibility completion, playtest validation, full playable-client manual QA, or full game completion."
 
   - id: "CONTENT-001"
     name: "Runtime Card Variety Floor"
@@ -165,8 +200,9 @@ stories:
     blocker: "Pull only if reconnect, snapshot, or late-message instability affects the active friend-game loop."
     completed: ""
     notes:
-      - "Existing story status is Ready."
+      - "Existing story status is Ready after docs refresh."
       - "Depends on SAU-007 completion."
+      - "Docs refresh is integrated, but SAU-008 implementation was not pulled into Sprint 8."
 
   - id: "S8-N1"
     name: "Active Loop Surface Polish Notes"
@@ -184,10 +220,11 @@ stories:
     name: "Sprint 8 Evidence Index Cleanup"
     file: "production/qa/evidence/sprint-8-friend-game-evidence-index.md"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: "orchestrator"
     estimate_days: 0.25
-    blocker: "Pull after S8-QA-001 evidence is captured."
-    completed: ""
+    blocker: ""
+    completed: "2026-05-07"
     notes:
-      - "Index the exact endpoint reached and all non-claims."
+      - "Sprint 8 evidence index exists at production/qa/evidence/sprint-8-friend-game-evidence-index.md."
+      - "Index records the controlled internal GAME_OVER endpoint, bounded manual/browser warning, and all non-claims."

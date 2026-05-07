@@ -148,6 +148,67 @@ Sprint 8 QA planning exists at
 manual evidence expectations only; it is not a smoke pass, product QA pass,
 playtest report, broad accessibility completion, or release-readiness claim.
 
+## Friend-Game Evidence Index
+
+S8-N2 is complete. The concise evidence index exists at
+`production/qa/evidence/sprint-8-friend-game-evidence-index.md`.
+
+The controlled internal friend-game endpoint evidence reaches `GAME_OVER`
+through committed real-Lightyear server/client routing. This is not a
+manual/browser `GAME_OVER` claim, not full playable-client manual QA, and not
+full game completion.
+
+## Close-Out Status
+
+Sprint 8 is **closed with conditions** as of 2026-05-07.
+
+| Item | Final status | Evidence |
+|------|--------------|----------|
+| Must Have scope | Complete | S8-DOCS-001, SAU-007, PLAYABLE-004, LOOP-001, and S8-QA-001 are Complete in `production/sprint-status.yaml` |
+| S8-QA-001 | Done; PASS WITH WARNINGS / APPROVED WITH CONDITIONS | `production/qa/smoke-sprint-8-2026-05-07.md` and `production/qa/qa-signoff-sprint-8-2026-05-07.md` |
+| S8-N2 | Complete | `production/qa/evidence/sprint-8-friend-game-evidence-index.md` |
+| CONTENT-001 | Supporting content only | CONTENT-001A runtime card variety floor is reconciled under CONTENT-001, with no full card-production or balance-completion claim |
+| ECO-004 | Not pulled; remains backlog | Conditional Should Have was not needed for closure |
+| SAU-008 | Not pulled; remains backlog | Docs refresh is integrated and the story remains Ready, but implementation is not pulled |
+| S8-N1 | Not pulled; remains backlog | Nice To Have surface-polish notes were not required for closure |
+| Controlled endpoint | Internal friend-game `GAME_OVER` endpoint evidenced | `production/qa/evidence/sprint-8-friend-game-loop-evidence.md` |
+| Manual/browser endpoint | Not claimed | S8-QA-001-W1 remains a bounded warning |
+| CI disposition | Accepted docs-only waiver | Automated Tests run `25515627861` is green for code baseline `adf116333a2bac3364f4ca1aab8589ed058d97a6`; later `df8a43fa603448ba1ca29d639e6816d9a4544bfc` is docs-only result-ack contract prep accepted without rerun by orchestrator decision |
+
+Late integrated context:
+
+- Native lobby blank screen repair is integrated in the tested code baseline via
+  commit `1bfbf5b`.
+- Sprint 9 draft planning is integrated at `production/sprints/sprint-9-draft.md`;
+  Sprint 9 is not active.
+- Result Screen MVP story docs are integrated at
+  `production/epics/presentation-layer/story-006-result-screen-mvp.md`; no
+  result screen implementation is done.
+- Native operator controls story docs are integrated at
+  `production/epics/playable-client/story-006-native-friend-game-operator-controls.md`;
+  implementation is not done.
+- SAU-008 docs refresh is integrated at
+  `production/epics/shop-auction-ui/story-008-reconnect-snapshot-and-late-message-recovery.md`;
+  implementation is not pulled.
+- Result acknowledgement contract story docs are integrated at
+  `production/epics/game-session-system/story-009-result-acknowledgement-and-result-data-contract.md`
+  as Sprint 9 prep, not Sprint 8 implementation.
+
+Carried conditions:
+
+- QA-COND-0005 remains friend-game-only accepted risk. This is not verified
+  Standard-tier accessibility completion and does not apply to any public,
+  external, commercial, release-candidate, or broader accessibility scope.
+- QA-COND-0006 remains accepted-risk/deferred. This is not playtest evidence,
+  fun-hypothesis validation, a playtest report, or public QA.
+- Manual/browser `GAME_OVER` is not claimed.
+- Full playable-client manual QA is not claimed.
+- Full game completion is not claimed.
+- Public release readiness and release-candidate readiness are not claimed.
+
+No `/dev-story`, `/story-done`, smoke, QA sign-off, `/team-qa`, `/gate-check`,
+Sprint 9 activation, or implementation was run by this close-out.
+
 ## Out of Scope
 
 - Public, external, commercial, store, deployment, or release-candidate
@@ -169,33 +230,32 @@ playtest report, broad accessibility completion, or release-readiness claim.
 - [x] Sprint 8 QA plan exists before implementation begins.
 - [x] New Sprint 8 story docs exist and pass readiness before implementation
       starts.
-- [ ] All Must Have tasks completed.
+- [x] All Must Have tasks completed.
 - [x] SAU-007 settlement-to-shop transition is implemented and evidenced.
-- [ ] PLAYABLE-004 records either actual GAME_OVER/result evidence or an
-      explicitly accepted nearest-endpoint improvement without claiming
-      game-over.
-- [ ] LOOP-001 verifies the active DRAFT_SHOP / auction / placement /
+- [x] PLAYABLE-004 records actual internal friend-game GAME_OVER/result
+      evidence while preserving manual/browser and full-completion non-claims.
+- [x] LOOP-001 verifies the active DRAFT_SHOP / auction / placement /
       resolution loop can repeat without stale state or authority drift.
-- [ ] S8-QA-001 friend-game manual evidence exists and records the exact endpoint
-      reached.
-- [ ] All Logic/Integration stories have passing unit/integration tests.
-- [ ] Friend-game smoke evidence exists before sprint closure.
-- [ ] QA sign-off report is complete before any future gate or release claim.
-- [ ] No S1 or S2 bugs remain in the scoped friend-game path unless explicitly
+- [x] S8-QA-001 friend-game smoke package exists, records the exact endpoint
+      reached, and preserves the manual/browser warning.
+- [x] All Logic/Integration stories have passing unit/integration tests.
+- [x] Friend-game smoke evidence exists before sprint closure.
+- [x] QA sign-off report is complete before any future gate or release claim.
+- [x] No S1 or S2 bugs remain in the scoped friend-game path unless explicitly
       accepted as Sprint 8 conditions.
-- [ ] QA-COND-0005 remains labeled accepted risk unless separately verified
+- [x] QA-COND-0005 remains labeled accepted risk unless separately verified
       under a future accessibility scope.
-- [ ] QA-COND-0006 remains labeled accepted-risk/deferred unless actual
+- [x] QA-COND-0006 remains labeled accepted-risk/deferred unless actual
       playtest evidence is produced later.
-- [ ] Public release readiness, broad accessibility completion, playtest
+- [x] Public release readiness, broad accessibility completion, playtest
       validation, full playable-client manual QA, and full game completion are
       not claimed by Sprint 8 artifacts.
 
 ## Next Recommended Step
 
-Run `/dev-story production/epics/playable-client/story-004-friend-game-result-endpoint-expansion.md`.
-After PLAYABLE-004 completes, run LOOP-001 unless the sequence is explicitly
-waived.
+Sprint 8 is closed with conditions. The next planning step is Sprint 9
+activation only when explicitly requested; use `production/sprints/sprint-9-draft.md`
+as draft context and preserve the Sprint 8 carried conditions.
 
 ---
 

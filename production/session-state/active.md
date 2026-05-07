@@ -2303,3 +2303,18 @@ C:\Program Files\GitHub CLI\gh.exe
 - Evidence/status docs updated: `production/sprint-status.yaml`, `production/sprints/sprint-8.md`, and `production/qa/evidence/sprint-8-friend-game-loop-evidence.md`.
 - Scope guard: no standalone CONTENT-001A story, full card production, full balance completion, public release readiness, playtest/fun-hypothesis validation, full playable-client manual QA, or Sprint 8 close-out is claimed.
 - Next recommended: continue Sprint 8 from the reconciled docs/status; manual S8-QA-001 remains separately scoped and is not signed off by this reconciliation.
+
+## Session Extract - Prompt 394 Sprint 8 Status Close-Out 2026-05-07
+- Scope: docs/status close-out only. No `/dev-story`, `/story-done`, smoke, QA sign-off, `/team-qa`, `/gate-check`, Sprint 9 activation, or implementation was run.
+- Pre-edit gates: `git fetch origin` completed; local `main` matched `origin/main` at `df8a43fa603448ba1ca29d639e6816d9a4544bfc`; Automated Tests run `25515627861` was confirmed `success` / `completed` for `adf116333a2bac3364f4ca1aab8589ed058d97a6`; commits after that baseline through current `origin/main` were docs-only.
+- CI disposition: last green CI run `25515627861` covers tested code baseline `adf116333a2bac3364f4ca1aab8589ed058d97a6`. Later commit `df8a43fa603448ba1ca29d639e6816d9a4544bfc` is docs-only result-ack contract prep and was accepted without rerunning CI by orchestrator decision.
+- Sprint status: Sprint 8 is closed with conditions in `production/sprint-status.yaml` and `production/sprints/sprint-8.md`.
+- S8-QA-001: Done with smoke `PASS WITH WARNINGS` at `production/qa/smoke-sprint-8-2026-05-07.md` and QA sign-off `APPROVED WITH CONDITIONS` at `production/qa/qa-signoff-sprint-8-2026-05-07.md`.
+- S8-N2: Done because `production/qa/evidence/sprint-8-friend-game-evidence-index.md` exists and indexes the exact endpoint plus non-claims.
+- Evidence: controlled internal friend-game `GAME_OVER` endpoint evidence is recorded in `production/qa/evidence/sprint-8-friend-game-loop-evidence.md`; manual/browser `GAME_OVER`, full playable-client manual QA, and full game completion remain not claimed.
+- Backlog: ECO-004, SAU-008, and S8-N1 remain backlog/not pulled. CONTENT-001 remains supporting content only.
+- Late integrated context: native lobby blank screen repair is integrated in the tested code baseline via commit `1bfbf5b`; Sprint 9 draft, result screen story docs, SAU-008 docs refresh, native operator controls story docs, and result acknowledgement contract story docs are integrated as planning/prep context only.
+- Implementation boundaries: native operator controls implementation is not done; SAU-008 implementation is not pulled; result acknowledgement contract story docs are Sprint 9 prep, not Sprint 8 implementation.
+- QA conditions: `QA-COND-0005` remains friend-game-only accepted risk, not broad accessibility completion. `QA-COND-0006` remains accepted-risk/deferred, not playtest evidence or fun-hypothesis validation.
+- Scope guard: no public release readiness, release-candidate readiness, full playable-client manual QA, full manual/browser route evidence, or full game completion is claimed.
+- Verification: `git diff --check` passed; `git diff --cached --check` passed before commit.
