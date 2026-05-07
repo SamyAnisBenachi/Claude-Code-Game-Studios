@@ -10,6 +10,7 @@ use crate::card_animations::{CardAnimationsPlugin, CardAnimationsSet};
 use crate::presentation::board_rendering::{
     BoardRenderSet, BoardRenderState, PendingResolutionScript, ResolutionRevealWait,
 };
+use crate::presentation::result_screen::ResultScreenPlugin;
 use crate::presentation::shared::economy_view::drain_gold_update_receiver_system as drain_shared_gold_update_receiver_system;
 use crate::state::{
     apply_phase_changed_message, apply_phase_view_message, apply_session_settings_updated_message,
@@ -30,6 +31,7 @@ use crate::ui::shop_auction::{
 };
 
 pub mod board_rendering;
+pub mod result_screen;
 pub mod shared;
 
 pub use crate::presentation::board_rendering::{BoardRenderingPlugin, CardAtlas};
@@ -66,6 +68,7 @@ impl Plugin for PresentationPlugin {
         app.add_plugins(HandUiPlugin);
         app.add_plugins(HudPlugin);
         app.add_plugins(ShopAuctionUiPlugin);
+        app.add_plugins(ResultScreenPlugin);
         app.add_plugins(SettingsAccessibilityPlugin);
         app.add_plugins(PhotosensitivityWarningPlugin);
 
