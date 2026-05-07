@@ -78,7 +78,7 @@ fn real_friend_game_route_reaches_game_over_result_endpoint() {
     }
 
     assert!(
-        flags.post_auction_loop_observed(),
+        flags.sprint7_endpoint_reproduced(),
         "Sprint 7 endpoint should be reproduced before result expansion: {}",
         flags.report()
     );
@@ -471,7 +471,7 @@ impl RoomSessionFlags {
             && self.joiner_received_draft_shop.load(Ordering::SeqCst)
     }
 
-    fn post_auction_loop_observed(&self) -> bool {
+    fn sprint7_endpoint_reproduced(&self) -> bool {
         self.draft_shop_observed()
             && self.host_sent_draft_shop_ready.load(Ordering::SeqCst)
             && self.joiner_sent_draft_shop_ready.load(Ordering::SeqCst)
@@ -495,15 +495,11 @@ impl RoomSessionFlags {
                 .joiner_non_empty_placement_reveal_count
                 .load(Ordering::SeqCst)
                 >= 2
-            && self.host_received_resolution_event.load(Ordering::SeqCst)
-            && self.joiner_received_resolution_event.load(Ordering::SeqCst)
-            && self.host_resolution_event_count.load(Ordering::SeqCst) >= 3
-            && self.joiner_resolution_event_count.load(Ordering::SeqCst) >= 3
             && self
-                .host_received_unit_placed_resolution_event
+                .server_host_non_empty_placement_accepted
                 .load(Ordering::SeqCst)
             && self
-                .joiner_received_unit_placed_resolution_event
+                .server_joiner_non_empty_placement_accepted
                 .load(Ordering::SeqCst)
             && self.server_round_draft_auction.load(Ordering::SeqCst)
             && self.host_received_draft_auction.load(Ordering::SeqCst)
@@ -538,8 +534,22 @@ impl RoomSessionFlags {
                 .load(Ordering::SeqCst)
     }
 
+    fn post_auction_loop_observed(&self) -> bool {
+        self.sprint7_endpoint_reproduced()
+            && self.host_received_resolution_event.load(Ordering::SeqCst)
+            && self.joiner_received_resolution_event.load(Ordering::SeqCst)
+            && self.host_resolution_event_count.load(Ordering::SeqCst) >= 3
+            && self.joiner_resolution_event_count.load(Ordering::SeqCst) >= 3
+            && self
+                .host_received_unit_placed_resolution_event
+                .load(Ordering::SeqCst)
+            && self
+                .joiner_received_unit_placed_resolution_event
+                .load(Ordering::SeqCst)
+    }
+
     fn game_over_result_observed(&self) -> bool {
-        self.post_auction_loop_observed()
+        self.sprint7_endpoint_reproduced()
             && self
                 .host_sent_result_endpoint_draft_shop_ready
                 .load(Ordering::SeqCst)
@@ -552,10 +562,26 @@ impl RoomSessionFlags {
             && self
                 .joiner_sent_result_endpoint_placement_submit
                 .load(Ordering::SeqCst)
+            && self
+                .host_received_objective_destroyed_resolution_event
+                .load(Ordering::SeqCst)
+            && self
+                .joiner_received_objective_destroyed_resolution_event
+                .load(Ordering::SeqCst)
             && self.host_received_game_over.load(Ordering::SeqCst)
             && self.joiner_received_game_over.load(Ordering::SeqCst)
             && self.host_received_game_over_phase.load(Ordering::SeqCst)
             && self.joiner_received_game_over_phase.load(Ordering::SeqCst)
+            && self
+                .host_game_over_phase_after_resolution
+                .load(Ordering::SeqCst)
+            && self
+                .joiner_game_over_phase_after_resolution
+                .load(Ordering::SeqCst)
+            && self.game_over_loser.load(Ordering::SeqCst) == NO_GAME_OVER_LOSER
+            && self.game_over_reason_draw.load(Ordering::SeqCst)
+            && self.server_host_real_destroyed.load(Ordering::SeqCst) >= 2
+            && self.server_joiner_real_destroyed.load(Ordering::SeqCst) >= 2
             && self.server_round_game_over.load(Ordering::SeqCst)
             && self.server_lobby_game_over.load(Ordering::SeqCst)
             && self.server_session_config_removed.load(Ordering::SeqCst)
