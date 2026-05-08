@@ -3,7 +3,6 @@ use shared::card::{CardCatalog, CardData};
 
 const CARD_DATA_JSON: &str = include_str!("../../assets/data/cards.json");
 
-
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CardDisplayArtAsset {
     pub path: &'static str,
