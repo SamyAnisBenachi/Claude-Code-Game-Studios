@@ -23,6 +23,7 @@ mod foundation;
 mod lobby;
 mod network;
 
+use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 
@@ -85,7 +86,14 @@ fn main() {
     app.add_plugins(StatesPlugin);
 
     // Asset pipeline — must be added before ConfigPlugin.
-    // ADR-004: AssetPlugin default configuration; asset root is assets/.
+    // ADR-004: asset root is repo-root assets/. Resolve from CARGO_MANIFEST_DIR
+    // so AppState progresses past Loading regardless of process CWD.
+    #[cfg(not(target_arch = "wasm32"))]
+    app.add_plugins(AssetPlugin {
+        file_path: format!("{}/../assets", env!("CARGO_MANIFEST_DIR")),
+        ..default()
+    });
+    #[cfg(target_arch = "wasm32")]
     app.add_plugins(AssetPlugin::default());
 
     // Foundation — GameConfig + CardCatalog loading pipeline (ADR-004).
