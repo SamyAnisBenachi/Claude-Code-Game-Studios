@@ -863,7 +863,10 @@ pub fn defer_auction_outbox_for_reconnect(
         let _ = defer_unicast_for_reconnect(
             tracker.as_deref_mut(),
             dispatch.player_id,
-            DeferredMessage::CardAcquiredMessage(dispatch.message.clone()),
+            DeferredMessage::CardAcquired {
+                card_id: dispatch.message.card_id,
+                source: dispatch.message.source,
+            },
         );
     }
 

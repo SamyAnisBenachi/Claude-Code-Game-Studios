@@ -6,9 +6,9 @@ use bevy::prelude::{Entity, Resource};
 use lightyear::prelude::PeerId;
 use shared::card::ClassId;
 use shared::protocol::{
-    CardSource, S2CAuctionBidAccepted, S2CAuctionBidRejected, S2CCardAcquired, S2CDraftOffering,
-    S2CGameOver, S2CGameSnapshot, S2CGoldUpdate, S2CObjectiveIdentities, S2CPrismRewardDropped,
-    S2CSessionCancelled, S2CSessionSettingsUpdated, S2CShopSlots,
+    CardSource, S2CAuctionBidAccepted, S2CAuctionBidRejected, S2CDraftOffering, S2CGameOver,
+    S2CGameSnapshot, S2CGoldUpdate, S2CObjectiveIdentities, S2CSessionCancelled,
+    S2CSessionSettingsUpdated, S2CShopSlots,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
@@ -130,8 +130,6 @@ pub enum DeferredMessage {
     ShopSlots(S2CShopSlots),
     AuctionBidRejected(S2CAuctionBidRejected),
     AuctionBidAccepted(S2CAuctionBidAccepted),
-    CardAcquiredMessage(S2CCardAcquired),
-    PrismRewardDroppedMessage(S2CPrismRewardDropped),
     CardAcquired {
         card_id: shared::card::CardId,
         source: CardSource,
