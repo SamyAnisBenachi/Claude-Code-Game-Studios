@@ -773,8 +773,7 @@ pub struct HandUiPlugin;
 
 impl Plugin for HandUiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<ClientState>()
-            .init_resource::<CurrentClientPhase>()
+        app.init_resource::<CurrentClientPhase>()
             .init_resource::<ClientPhaseView>()
             .init_resource::<HandFanLayoutConfig>()
             .init_resource::<HandFanViewport>()

@@ -271,8 +271,7 @@ impl Plugin for HudPlugin {
             app.add_plugins(TweeningPlugin);
         }
 
-        app.init_state::<ClientState>()
-            .init_resource::<CurrentClientPhase>()
+        app.init_resource::<CurrentClientPhase>()
             .init_resource::<PlayerEconomyView>()
             .init_resource::<HudConfig>()
             .init_resource::<HudMode>()

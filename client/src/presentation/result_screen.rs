@@ -18,8 +18,7 @@ pub struct ResultScreenPlugin;
 
 impl Plugin for ResultScreenPlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<ClientState>()
-            .init_resource::<CurrentClientPhase>()
+        app.init_resource::<CurrentClientPhase>()
             .init_resource::<ClientSessionIdentity>()
             .init_resource::<AccessibilityPreferences>()
             .init_resource::<ResultScreenViewState>()

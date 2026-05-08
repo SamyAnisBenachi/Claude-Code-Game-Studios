@@ -1048,8 +1048,7 @@ pub struct ShopAuctionUiPlugin;
 
 impl Plugin for ShopAuctionUiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<ClientState>()
-            .init_resource::<CurrentClientPhase>()
+        app.init_resource::<CurrentClientPhase>()
             .init_resource::<ShopAuctionUiMode>()
             .init_resource::<ShopAuctionCardCatalog>()
             .init_resource::<ShopAuctionDraftHandView>()

@@ -20,8 +20,7 @@ const LOBBY_BUTTON_HEIGHT: f32 = 30.0;
 
 impl Plugin for LobbyUiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<ClientState>()
-            .init_resource::<ClientSessionIdentity>()
+        app.init_resource::<ClientSessionIdentity>()
             .init_resource::<LobbyViewState>()
             .init_resource::<LobbyInputState>()
             .add_message::<KeyboardInput>()
