@@ -43,7 +43,9 @@ fn count_with_image_node<M: Component>(app: &mut App) -> usize {
 }
 
 fn count_child_of_with<M: Component>(app: &mut App) -> usize {
-    let mut q = app.world_mut().query_filtered::<&ChildOf, (With<M>, With<ImageNode>)>();
+    let mut q = app
+        .world_mut()
+        .query_filtered::<&ChildOf, (With<M>, With<ImageNode>)>();
     q.iter(app.world()).count()
 }
 
@@ -66,7 +68,10 @@ fn test_fan_slot_chrome_card_frame_image_node_present() {
 fn test_fan_slot_chrome_stat_badge_atk_image_node_present() {
     let mut app = make_app();
     enter_session(&mut app);
-    assert_eq!(count_child_of_with::<StatBadgeAtk>(&mut app), HAND_FAN_SLOT_COUNT);
+    assert_eq!(
+        count_child_of_with::<StatBadgeAtk>(&mut app),
+        HAND_FAN_SLOT_COUNT
+    );
 }
 
 /// Every fan slot must have a StatBadgeHp child with ImageNode.
@@ -74,7 +79,10 @@ fn test_fan_slot_chrome_stat_badge_atk_image_node_present() {
 fn test_fan_slot_chrome_stat_badge_hp_image_node_present() {
     let mut app = make_app();
     enter_session(&mut app);
-    assert_eq!(count_child_of_with::<StatBadgeHp>(&mut app), HAND_FAN_SLOT_COUNT);
+    assert_eq!(
+        count_child_of_with::<StatBadgeHp>(&mut app),
+        HAND_FAN_SLOT_COUNT
+    );
 }
 
 /// Every fan slot must have a StatBadgeMp child with ImageNode.
@@ -82,7 +90,10 @@ fn test_fan_slot_chrome_stat_badge_hp_image_node_present() {
 fn test_fan_slot_chrome_stat_badge_mp_image_node_present() {
     let mut app = make_app();
     enter_session(&mut app);
-    assert_eq!(count_child_of_with::<StatBadgeMp>(&mut app), HAND_FAN_SLOT_COUNT);
+    assert_eq!(
+        count_child_of_with::<StatBadgeMp>(&mut app),
+        HAND_FAN_SLOT_COUNT
+    );
 }
 
 /// Every fan slot must have a StatBadgeAr child with ImageNode.
@@ -90,7 +101,10 @@ fn test_fan_slot_chrome_stat_badge_mp_image_node_present() {
 fn test_fan_slot_chrome_stat_badge_ar_image_node_present() {
     let mut app = make_app();
     enter_session(&mut app);
-    assert_eq!(count_child_of_with::<StatBadgeAr>(&mut app), HAND_FAN_SLOT_COUNT);
+    assert_eq!(
+        count_child_of_with::<StatBadgeAr>(&mut app),
+        HAND_FAN_SLOT_COUNT
+    );
 }
 
 /// Every fan slot must have a HandRarityIcon child with ImageNode.
@@ -98,7 +112,10 @@ fn test_fan_slot_chrome_stat_badge_ar_image_node_present() {
 fn test_fan_slot_chrome_rarity_icon_image_node_present() {
     let mut app = make_app();
     enter_session(&mut app);
-    assert_eq!(count_child_of_with::<HandRarityIcon>(&mut app), HAND_FAN_SLOT_COUNT);
+    assert_eq!(
+        count_child_of_with::<HandRarityIcon>(&mut app),
+        HAND_FAN_SLOT_COUNT
+    );
 }
 
 /// Every fan slot must have a HandTypeIcon child with ImageNode.
@@ -106,7 +123,10 @@ fn test_fan_slot_chrome_rarity_icon_image_node_present() {
 fn test_fan_slot_chrome_type_icon_image_node_present() {
     let mut app = make_app();
     enter_session(&mut app);
-    assert_eq!(count_child_of_with::<HandTypeIcon>(&mut app), HAND_FAN_SLOT_COUNT);
+    assert_eq!(
+        count_child_of_with::<HandTypeIcon>(&mut app),
+        HAND_FAN_SLOT_COUNT
+    );
 }
 
 /// Chrome entities must be parented to FanSlotIndex entities.
@@ -116,12 +136,15 @@ fn test_fan_slot_chrome_children_parent_is_fan_slot() {
     enter_session(&mut app);
 
     // Collect all FanSlotIndex entity IDs.
-    let mut slot_q = app.world_mut().query_filtered::<Entity, With<FanSlotIndex>>();
-    let slot_entities: std::collections::HashSet<Entity> =
-        slot_q.iter(app.world()).collect();
+    let mut slot_q = app
+        .world_mut()
+        .query_filtered::<Entity, With<FanSlotIndex>>();
+    let slot_entities: std::collections::HashSet<Entity> = slot_q.iter(app.world()).collect();
 
     // Check that HandCardFrame parents are all fan slots.
-    let mut frame_q = app.world_mut().query_filtered::<&ChildOf, With<HandCardFrame>>();
+    let mut frame_q = app
+        .world_mut()
+        .query_filtered::<&ChildOf, With<HandCardFrame>>();
     let frame_parents: Vec<Entity> = frame_q.iter(app.world()).map(|co| co.parent()).collect();
 
     for parent in frame_parents {
@@ -141,7 +164,9 @@ fn test_fan_slot_chrome_card_frame_handle_non_default() {
     let mut app = make_app();
     enter_session(&mut app);
 
-    let mut q = app.world_mut().query_filtered::<&ImageNode, With<HandCardFrame>>();
+    let mut q = app
+        .world_mut()
+        .query_filtered::<&ImageNode, With<HandCardFrame>>();
     let handles: Vec<_> = q.iter(app.world()).map(|img| img.image.clone()).collect();
 
     assert!(
@@ -163,24 +188,48 @@ fn test_fan_slot_chrome_stat_badge_handles_non_default() {
     let mut app = make_app();
     enter_session(&mut app);
 
-    let mut q_atk = app.world_mut().query_filtered::<&ImageNode, With<StatBadgeAtk>>();
+    let mut q_atk = app
+        .world_mut()
+        .query_filtered::<&ImageNode, With<StatBadgeAtk>>();
     for img in q_atk.iter(app.world()) {
-        assert_ne!(img.image, Handle::default(), "StatBadgeAtk handle must be non-default");
+        assert_ne!(
+            img.image,
+            Handle::default(),
+            "StatBadgeAtk handle must be non-default"
+        );
     }
 
-    let mut q_hp = app.world_mut().query_filtered::<&ImageNode, With<StatBadgeHp>>();
+    let mut q_hp = app
+        .world_mut()
+        .query_filtered::<&ImageNode, With<StatBadgeHp>>();
     for img in q_hp.iter(app.world()) {
-        assert_ne!(img.image, Handle::default(), "StatBadgeHp handle must be non-default");
+        assert_ne!(
+            img.image,
+            Handle::default(),
+            "StatBadgeHp handle must be non-default"
+        );
     }
 
-    let mut q_mp = app.world_mut().query_filtered::<&ImageNode, With<StatBadgeMp>>();
+    let mut q_mp = app
+        .world_mut()
+        .query_filtered::<&ImageNode, With<StatBadgeMp>>();
     for img in q_mp.iter(app.world()) {
-        assert_ne!(img.image, Handle::default(), "StatBadgeMp handle must be non-default");
+        assert_ne!(
+            img.image,
+            Handle::default(),
+            "StatBadgeMp handle must be non-default"
+        );
     }
 
-    let mut q_ar = app.world_mut().query_filtered::<&ImageNode, With<StatBadgeAr>>();
+    let mut q_ar = app
+        .world_mut()
+        .query_filtered::<&ImageNode, With<StatBadgeAr>>();
     for img in q_ar.iter(app.world()) {
-        assert_ne!(img.image, Handle::default(), "StatBadgeAr handle must be non-default");
+        assert_ne!(
+            img.image,
+            Handle::default(),
+            "StatBadgeAr handle must be non-default"
+        );
     }
 }
 

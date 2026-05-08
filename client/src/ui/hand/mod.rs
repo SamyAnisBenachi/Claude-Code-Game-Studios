@@ -1170,7 +1170,14 @@ pub fn sync_hand_fan_card_art_system(
 /// for each fan slot based on current card data and fallback state. Runs after
 /// `sync_hand_fan_card_art_system` so `CardDisplayArtFallback` is already set.
 pub fn sync_fan_slot_chrome_system(
-    slots: Query<(Entity, Option<&HandSlotCard>, Option<&CardDisplayArtFallback>), With<FanSlotIndex>>,
+    slots: Query<
+        (
+            Entity,
+            Option<&HandSlotCard>,
+            Option<&CardDisplayArtFallback>,
+        ),
+        With<FanSlotIndex>,
+    >,
     catalog: Res<HandCardCatalog>,
     placeholder: Res<PlaceholderAssets>,
     mut frames: Query<(&mut ImageNode, &ChildOf), With<HandCardFrame>>,
@@ -1180,7 +1187,11 @@ pub fn sync_fan_slot_chrome_system(
     >,
     mut type_icons: Query<
         (&mut ImageNode, &ChildOf),
-        (With<HandTypeIcon>, Without<HandCardFrame>, Without<HandRarityIcon>),
+        (
+            With<HandTypeIcon>,
+            Without<HandCardFrame>,
+            Without<HandRarityIcon>,
+        ),
     >,
 ) {
     for (mut img, child_of) in &mut frames {
