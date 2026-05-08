@@ -3464,6 +3464,7 @@ fn spawn_draft_initial_grid(
                 Button,
                 Interaction::None,
                 draft_initial_slot_node(index),
+                BackgroundColor(Color::srgba(0.08, 0.12, 0.16, 0.9)),
                 Visibility::Hidden,
                 ChildOf(parent),
             ))
