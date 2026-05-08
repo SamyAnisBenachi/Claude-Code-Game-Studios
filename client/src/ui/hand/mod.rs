@@ -2231,6 +2231,8 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
                 height: Val::Px(260.0),
                 ..default()
             },
+            Transform::default(),
+            GlobalTransform::default(),
             Visibility::Hidden,
         ))
         .id();

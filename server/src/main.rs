@@ -80,6 +80,12 @@ fn main() {
     // ADR-002: headless server — no windowing, no rendering, no UI.
     // Bevy feature flags in server/Cargo.toml: "multi_threaded", "bevy_log",
     // "bevy_asset", "bevy_state" (see Cargo.toml).
+    //
+    // MinimalPlugins does not include LogPlugin, so we initialise tracing here
+    // directly. This must come before App::new() so that all plugin startup
+    // messages are captured.
+    tracing_subscriber::fmt().init();
+
     let mut app = App::new();
 
     app.add_plugins(MinimalPlugins);
