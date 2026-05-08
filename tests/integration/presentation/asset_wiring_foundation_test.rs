@@ -98,7 +98,10 @@ fn test_path_constants_all_non_empty_and_well_formed() {
     ];
 
     for path in representative {
-        assert!(!path.is_empty(), "Path constant must not be empty: {path:?}");
+        assert!(
+            !path.is_empty(),
+            "Path constant must not be empty: {path:?}"
+        );
         assert!(
             path.starts_with("art/"),
             "Path constant must start with 'art/': {path:?}"
@@ -131,7 +134,10 @@ fn test_selector_functions_cover_all_class_variants() {
     ];
 
     // Collect all figurine paths — every one must be non-empty and distinct.
-    let paths: Vec<&str> = all_variants.iter().map(|&c| hud_figurine_asset(c)).collect();
+    let paths: Vec<&str> = all_variants
+        .iter()
+        .map(|&c| hud_figurine_asset(c))
+        .collect();
 
     for &path in &paths {
         assert!(!path.is_empty(), "hud_figurine_asset returned empty string");
@@ -169,7 +175,10 @@ fn test_class_type_icon_selector_covers_all_variants() {
         ClassId::Neutral,
     ];
 
-    let mut paths: Vec<&str> = all_variants.iter().map(|&c| class_type_icon_asset(c)).collect();
+    let mut paths: Vec<&str> = all_variants
+        .iter()
+        .map(|&c| class_type_icon_asset(c))
+        .collect();
     paths.sort_unstable();
     paths.dedup();
     assert_eq!(
@@ -215,7 +224,10 @@ fn test_lobby_portrait_selector_covers_all_variants() {
         ClassId::Neutral,
     ];
 
-    let mut paths: Vec<&str> = all_variants.iter().map(|&c| lobby_portrait_asset(c)).collect();
+    let mut paths: Vec<&str> = all_variants
+        .iter()
+        .map(|&c| lobby_portrait_asset(c))
+        .collect();
     paths.sort_unstable();
     paths.dedup();
     assert_eq!(
@@ -259,10 +271,7 @@ fn test_bid_button_selector_covers_all_variants() {
         BidButtonChromeState::Disabled,
     ];
 
-    let mut paths: Vec<&str> = all_variants
-        .iter()
-        .map(|&s| bid_button_asset(s))
-        .collect();
+    let mut paths: Vec<&str> = all_variants.iter().map(|&s| bid_button_asset(s)).collect();
     paths.sort_unstable();
     paths.dedup();
     assert_eq!(
