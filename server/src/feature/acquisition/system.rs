@@ -201,6 +201,32 @@ pub fn card_acquisition_tick_system(
         );
 
         if refresh.trigger == ShopRefreshTrigger::DraftInitial {
+            // Granular resource tracing — identifies which resource is None at
+            // DRAFT_INITIAL so we can pinpoint the root cause (PROMPT 529).
+            if pools.is_none() {
+                tracing::warn!(
+                    player_id = refresh.player_id.0,
+                    "acquisition_tick: early return — PlayerPools resource not available"
+                );
+            }
+            if sessions.is_none() {
+                tracing::warn!(
+                    player_id = refresh.player_id.0,
+                    "acquisition_tick: early return — PlayerSessions resource not available"
+                );
+            }
+            if catalog.is_none() {
+                tracing::warn!(
+                    player_id = refresh.player_id.0,
+                    "acquisition_tick: early return — CardCatalog resource not available"
+                );
+            }
+            if server_rng.is_none() {
+                tracing::warn!(
+                    player_id = refresh.player_id.0,
+                    "acquisition_tick: early return — ServerRng resource not available"
+                );
+            }
             let dispatch = match (
                 pools.as_deref(),
                 sessions.as_deref(),
@@ -243,11 +269,6 @@ pub fn card_acquisition_tick_system(
                     })
                 }
                 _ => {
-                    // Log point 10: early return due to missing resources.
-                    tracing::info!(
-                        "acquisition_tick: early return — pools/sessions/catalog/server_rng not available for player_id={}",
-                        refresh.player_id.0
-                    );
                     apply_shop_refresh_trigger(&mut shop_states, **refresh);
                     None
                 }
