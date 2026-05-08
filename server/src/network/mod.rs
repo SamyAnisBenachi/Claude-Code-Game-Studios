@@ -40,6 +40,7 @@ impl Plugin for ServerNetworkPlugin {
                     rsm_dispatch::dispatch_phase_changed.after(advance_phase),
                 ),
             )
+            .add_observer(insert_replication_sender_on_link)
             .add_observer(log_client_connected)
             .add_observer(log_client_disconnected);
     }
@@ -80,6 +81,22 @@ impl ProtocolRegistry for LightyearProtocolRegistry<'_> {
 
         self.app.register_message::<M>().add_direction(direction);
     }
+}
+
+/// Inserts [`ReplicationSender`] on every `LinkOf` entity the moment it appears.
+///
+/// Lightyear 0.26 does not auto-insert `ReplicationSender` on `ClientOf` entities;
+/// without it every `ServerMultiMessageSender::send` call silently fails with
+/// "entity does not have ReplicationSender". This observer fires once per client
+/// connection and is the idiomatic fix (verified in integration test os18b).
+fn insert_replication_sender_on_link(trigger: On<Add, LinkOf>, mut commands: Commands) {
+    commands
+        .entity(trigger.entity)
+        .insert(ReplicationSender::new(
+            std::time::Duration::ZERO,
+            SendUpdatesMode::SinceLastAck,
+            false,
+        ));
 }
 
 fn open_websocket_server(mut commands: Commands) {
