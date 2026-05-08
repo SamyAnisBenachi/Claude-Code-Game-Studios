@@ -792,6 +792,7 @@ pub enum BoardRenderState {
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BoardRenderSet {
+    MessageDrain,
     ReadMessages,
     ResolveStateMachine,
     SpawnEntities,
@@ -889,6 +890,7 @@ impl Plugin for BoardRenderingPlugin {
             .configure_sets(
                 Update,
                 (
+                    BoardRenderSet::MessageDrain,
                     BoardRenderSet::ReadMessages,
                     BoardRenderSet::ResolveStateMachine,
                     BoardRenderSet::SpawnEntities,
@@ -901,6 +903,7 @@ impl Plugin for BoardRenderingPlugin {
             .configure_sets(
                 Update,
                 (
+                    BoardRenderSet::MessageDrain.in_set(PresentationSet::MessageDrain),
                     BoardRenderSet::ReadMessages.in_set(PresentationSet::MessageDrain),
                     BoardRenderSet::ResolveStateMachine.in_set(PresentationSet::StateSync),
                     BoardRenderSet::SpawnEntities.in_set(PresentationSet::StateSync),
@@ -939,17 +942,22 @@ impl Plugin for BoardRenderingPlugin {
             .add_systems(
                 Update,
                 drain_resolution_event_system
-                    .in_set(PresentationSet::PhaseTransition)
-                    .before(super::phase_sink_system)
+                    .in_set(BoardRenderSet::MessageDrain)
                     .run_if(in_state(ClientState::InSession)),
             )
             .add_systems(
                 Update,
                 sync_resolution_queue_drain_state_system
+                    .in_set(PresentationSet::StateSync)
                     .after(crate::card_animations::resolution_executing_system)
                     .run_if(in_state(ClientState::InSession)),
             )
-            .add_systems(Update, drain_player_team_map_messages_system)
+            .add_systems(
+                Update,
+                drain_player_team_map_messages_system
+                    .in_set(PresentationSet::MessageDrain)
+                    .run_if(in_state(ClientState::InSession)),
+            )
             .add_systems(
                 Update,
                 (
@@ -984,8 +992,9 @@ pub fn apply_ghost_placement_changed_system(
     objective_markers: Query<(Entity, &ObjectiveTargetGhost, Option<&BoardGhostPickable>)>,
     target_units: Query<(Entity, &PlacementTargetUnit, Option<&Pickable>)>,
     objectives: Query<(Entity, &ObjectiveCell, Option<&Pickable>)>,
+    mut latest_changes: Local<Vec<(CardId, Option<PlayTarget>)>>,
 ) {
-    let mut latest_changes: Vec<(CardId, Option<PlayTarget>)> = Vec::new();
+    latest_changes.clear();
 
     for change in changes.read() {
         let Some(card_id) = change.card_id else {
@@ -1002,7 +1011,7 @@ pub fn apply_ghost_placement_changed_system(
         }
     }
 
-    for (card_id, target) in latest_changes {
+    for (card_id, target) in latest_changes.drain(..) {
         clear_card_ghosts(
             &mut commands,
             card_id,
@@ -1473,7 +1482,6 @@ fn rebuild_board_from_snapshot_system(
     render_resources: BoardSnapshotRenderResources,
     stale_entities: Query<Entity, With<BoardSnapshotEntity>>,
     mut render_state: ResMut<BoardRenderState>,
-    mut current_phase: Option<ResMut<CurrentClientPhase>>,
     mut objective_identity_cache: ResMut<ObjectiveIdentityCache>,
     mut rebuild_writer: MessageWriter<BoardRebuildRequested>,
     mut tweens: Query<&mut TweenAnim>,
@@ -1514,10 +1522,6 @@ fn rebuild_board_from_snapshot_system(
     }
 
     *render_state = BoardRenderState::from_snapshot_phase(snapshot.phase);
-    if let Some(current_phase) = current_phase.as_deref_mut() {
-        current_phase.phase = snapshot.phase;
-        current_phase.round = snapshot.round_number;
-    }
 
     spawn_snapshot_objectives(
         &mut commands,
@@ -2403,7 +2407,7 @@ fn atlas_sprite(
 
 fn update_hp_bars_system(
     config: Res<BoardRenderingConfig>,
-    units: Query<(&BoardUnitStats, &Children), With<BoardUnit>>,
+    units: Query<(&BoardUnitStats, &Children), (With<BoardUnit>, Changed<BoardUnitStats>)>,
     mut fills: Query<(&mut Transform, &mut Sprite), With<HpBarFill>>,
 ) {
     for (stats, children) in &units {
