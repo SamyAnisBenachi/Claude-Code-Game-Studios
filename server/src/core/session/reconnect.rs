@@ -107,7 +107,7 @@ pub fn initialise_reconnect_tracker(
 ) -> ReconnectTracker {
     let mut tracker = ReconnectTracker::default();
     for player in session.players() {
-        tracker.snapshot_sent.insert(player, true);
+        tracker.snapshot_sent.insert(player, false);
         tracker.deferred_queue.entry(player).or_default();
         let session_id = session_id_for_player(player, slots, active_sessions);
         let token = token_for_player(session_id, player);
