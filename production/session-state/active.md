@@ -2417,3 +2417,11 @@ C:\Program Files\GitHub CLI\gh.exe
 - Review mode: lean (LP-CODE-REVIEW and QL-TEST-COVERAGE skipped per director-gates).
 - Sprint 8 carried conditions and Sprint 9 no-claims preserved. S9-QA-001 still owns manual/browser GAME_OVER closure.
 - Next recommended: S9-QA-001 (manual/browser two-client GAME_OVER evidence closure) once a real two-client manual route is ready; otherwise its blocker can now be re-evaluated.
+
+## Session Extract — Prompt 446 Supporting-Fix Note 2026-05-08
+- Task: Docs/status reconciliation for lobby manual playability patch (be8b37d).
+- Source of truth: origin/main — be8b37d is confirmed on main (git log verified).
+- Fix summary: Room-code field click-to-focus and select-existing-text; KeyboardInput.text normalisation with Backspace/Escape/Enter handling; duplicate same-class confirm server re-acks with S2CClassLocked instead of leaving client stuck pending.
+- Files updated: production/sprints/sprint-9.md (supporting-fix paragraph after Conditional Backlog table); production/sprint-status.yaml (lobby_manual_playability_patch entry under coordination); production/session-state/active.md (this extract).
+- Pre-flight: git diff --check PASS; git diff --cached --check PASS.
+- Scope guard: No S9-QA-001 evidence closure, full manual QA, full game completion, release readiness, or QA sign-off is claimed by this reconciliation.

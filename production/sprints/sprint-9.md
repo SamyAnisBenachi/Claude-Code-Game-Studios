@@ -111,6 +111,8 @@ manual evidence warning.
 | ECO-004 | Kill and Objective Awards reward-loop polish | gameplay programmer | 1.00 | Conditional backlog | Pull only if Sprint 9 evidence shows a concrete reward-loop gameplay issue | Reward changes preserve current contracts, avoid duplicate awards, land before interest snapshot, and do not expand into broad economy tuning. |
 | S9-CONTENT-001 | Neutral card display placeholder pack | content designer + UI/client programmer | 0.75 | Done | Integrated on main at `424bcfa`; supporting content only | Display/zoom placeholders for current neutral cards improve route readability without claiming full card production, full balance completion, broad asset approval, or unrelated art pipeline completion. No `/story-done` was forced because no standalone story file exists. |
 
+`be8b37d` (lobby manual playability patch) is a supporting fix integrated on main; it is not a standalone Sprint 9 story. It improves room-code field UX (click-to-focus, select-existing-text, `KeyboardInput.text` normalisation, Backspace/Escape/Enter handling) and fixes duplicate same-class confirm leaving the client pending (server now re-acks with `S2CClassLocked`). Tests cover room-code select/replace, lobby state compilation, and class-confirm re-ack. No smoke, QA sign-off, S9-QA-001 evidence closure, or Sprint 8 condition resolution is claimed by this fix.
+
 S9-RS-004 result-screen accessibility and viewport polish remains initially
 owned inside S9-RS-002. It can be split later only if implementation evidence
 shows a route-blocking polish issue. It does not close `QA-COND-0005`.

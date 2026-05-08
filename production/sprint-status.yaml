@@ -60,6 +60,16 @@ coordination:
       worktree: "D:\\_DEV\\claude-code-game-studios-worktrees\\neutral-card-display-placeholder-pack"
       integrated_commit: "424bcfa0b60cea5dba0d1cb920ac4a3221b9ae4f"
       disposition: "Integrated on main at 424bcfa as S9-CONTENT-001 supporting display placeholder content. No /story-done was run because no standalone story file exists."
+  lobby_manual_playability_patch:
+    commit: "be8b37d"
+    disposition: >-
+      Supporting fix integrated on main at be8b37d; no standalone story file.
+      Fixes: room-code field click-to-focus and select-existing-text;
+      KeyboardInput.text normalisation with Backspace/Escape/Enter key handling;
+      duplicate same-class confirm now returns S2CClassLocked re-ack instead of
+      leaving client stuck pending. Tests cover room-code select/replace, lobby
+      state compilation, and class-confirm re-ack. No smoke, QA sign-off,
+      S9-QA-001 evidence closure, or Sprint 8 condition resolution is claimed.
 
 forbidden_runs_in_activation:
   dev_story: false
