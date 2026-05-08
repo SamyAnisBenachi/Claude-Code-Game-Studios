@@ -1,6 +1,6 @@
 # Epics Index
 
-**Last Updated:** 2026-05-07
+**Last Updated:** 2026-05-08
 **Engine:** Bevy 0.18 + Lightyear 0.26
 **Layer in progress:** Feature (M1 + M2 + M3) + Presentation + Polish
 
@@ -29,6 +29,7 @@
 | [board-rendering](board-rendering/EPIC.md) | Presentation | `client/src/ui/board/` | board-rendering | 10 stories | Ready - protocol/objective/combat gates on later stories |
 | [shop-auction-ui](shop-auction-ui/EPIC.md) | Presentation | `client/src/ui/shop_auction/` | shop-auction-ui | 9 stories | Ready - UX spec gates final visual evidence |
 | [playable-client](playable-client/EPIC.md) | Polish | `client/src/main.rs` + `client/src/network/` + client UI/presentation + server message bridges | Sprint 7 real primary client path | 8 stories | Ready |
+| [audio-system](audio-system/EPIC.md) | Polish | `client/src/audio/` — `AudioPlugin` (new) | audio-production-queue-2026-05-04; ASSET-084 (timer urgency cue) | 1 story (bootstrap); P0/P1 cue stories deferred | Ready |
 
 > ⭐ Sprint 1 Story 1.0 = `lightyear-protocol-verification` Story 001 (Lightyear 0.26 verification spike)
 
