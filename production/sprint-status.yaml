@@ -6,7 +6,7 @@ goal: "Deliver the minimum result acknowledgement contract, player-facing result
 start: "2026-05-07"
 end: "2026-05-20"
 generated: "2026-05-07"
-updated: "2026-05-07"
+updated: "2026-05-08"
 stage: "Polish"
 scope: "internal 1v1 friend-game result flow and manual GAME_OVER evidence closure"
 status: "active"
@@ -122,13 +122,18 @@ stories:
     name: "Result acknowledgement cleanup handshake"
     file: "production/epics/game-session-system/story-010-result-acknowledgement-cleanup-handshake.md"
     priority: must-have
-    status: blocked
+    status: done
     owner: "session/network programmer + UI/client programmer"
     estimate_days: 1.00
-    blocker: "Blocked until S9-RS-002 completes and is integrated; S9-RS-001 is complete."
-    completed: ""
+    blocker: ""
+    completed: "2026-05-08"
     notes:
-      - "Owns Return to Lobby acknowledgement dispatch, local ended-session UI cleanup, idempotent server cleanup, timeout cleanup, and reconnect-after-cleanup fallback verification."
+      - "Integrated on main at 40b7599 and verified by /story-done Prompt 441 from origin/main@40b7599."
+      - "Return to Lobby ack dispatch, local ended-session UI cleanup, duplicate-activation idempotence, disconnected/closing transport fallback, all-ack cleanup, timeout cleanup, invalid-phase silent discard, and post-cleanup reconnect fallback are verified by integration tests in client and server."
+      - "Verification: result_screen_return_to_lobby_test (2/2), result_acknowledgement_cleanup_handshake_test (3/3), result_screen_mvp_test (6/6) regression, result_acknowledgement_contract_test (5/5) regression, cargo check client/server PASS, cargo fmt --check PASS, git diff --check PASS."
+      - "Evidence: production/qa/evidence/result-acknowledgement-cleanup-handshake-evidence.md."
+      - "No smoke, QA sign-off, /team-qa, gate-check, Sprint 9 close-out, Sprint 8 close-out, unrelated implementation, manual/browser GAME_OVER evidence, public release readiness, full game completion, broad accessibility completion, full playable-client manual QA, or playtest/fun-hypothesis validation is claimed."
+      - "Sprint 8 carried conditions (S8-QA-001-W1, QA-COND-0005, QA-COND-0006) remain carried. S9-QA-001 still owns full manual/browser two-client GAME_OVER closure."
 
   - id: "S9-QA-001"
     name: "Manual/browser two-client GAME_OVER evidence closure"

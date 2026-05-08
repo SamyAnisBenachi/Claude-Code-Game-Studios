@@ -1,7 +1,7 @@
 # Story 010: Result Acknowledgement Cleanup Handshake
 
 > **Epic**: Game Session System
-> **Status**: Blocked - depends on S9-RS-001 and S9-RS-002
+> **Status**: Complete
 > **Layer**: Core / Networking + Presentation Integration
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -329,3 +329,23 @@ This story is ready as a follow-up package, but it cannot be assigned until
 S9-RS-001 and S9-RS-002 are complete or explicitly replaced by producer-approved
 fallbacks. It preserves S8-QA-001-W1, QA-COND-0005, and QA-COND-0006 as carried
 conditions.
+
+## Completion Notes
+
+**Completed**: 2026-05-08
+**Source of truth**: origin/main@40b7599 (S9-RS-003 impl: Result acknowledgement cleanup handshake)
+**Criteria**: 12/12 covered by automated integration tests; no DEFERRED items.
+**Deviations**: None.
+**Test Evidence**:
+- `tests/integration/session/result_acknowledgement_cleanup_handshake_test.rs` — 3 passed.
+- `tests/integration/presentation/result_screen_return_to_lobby_test.rs` — 2 passed.
+- `tests/integration/presentation/result_screen_mvp_test.rs` — 6 passed (regression).
+- `tests/integration/session/result_acknowledgement_contract_test.rs` — 5 passed (regression).
+- `cargo check -p client` PASS, `cargo check -p server` PASS.
+- `cargo fmt -p client -p server -- --check` PASS.
+- `git diff --check` PASS, `git diff --cached --check` PASS before commit.
+- Evidence doc: `production/qa/evidence/result-acknowledgement-cleanup-handshake-evidence.md`.
+
+**Code Review**: Skipped — Lean review mode (LP-CODE-REVIEW and QL-TEST-COVERAGE are not PHASE-GATE in lean).
+
+**Carried Non-Claims**: Sprint 8 closed-with-conditions remain carried; QA-COND-0005 and QA-COND-0006 remain accepted-risk/deferred. No smoke, no QA sign-off, no `/team-qa`, no `/gate-check`, no Sprint 9 close-out, no manual/browser GAME_OVER closure (S9-QA-001 still owns), no full playable-client manual QA, no public release readiness, no full game completion, no broad accessibility completion, no playtest/fun-hypothesis validation.

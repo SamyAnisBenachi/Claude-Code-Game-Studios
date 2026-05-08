@@ -2407,3 +2407,13 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Sprint status: `production/sprint-status.yaml` marks S9-NATIVE-001 done and preserves Sprint 8 carried conditions plus Sprint 9 no-claims.
 - Next recommended: S9-RS-003 Result acknowledgement cleanup handshake remains the next blocking result-flow story before S9-QA-001 can close the full manual/browser/native two-client GAME_OVER route evidence gap. No close-out, smoke, QA sign-off, `/team-qa`, or `/gate-check` was run.
+
+## Session Extract — /story-done 2026-05-08
+- Verdict: COMPLETE
+- Story: production/epics/game-session-system/story-010-result-acknowledgement-cleanup-handshake.md — S9-RS-003 Result Acknowledgement Cleanup Handshake
+- Source of truth: origin/main@40b7599
+- Tests: result_screen_return_to_lobby_test 2/2, result_acknowledgement_cleanup_handshake_test 3/3, result_screen_mvp_test 6/6, result_acknowledgement_contract_test 5/5; cargo check client/server PASS; cargo fmt --check PASS; git diff --check PASS.
+- Tech debt logged: None
+- Review mode: lean (LP-CODE-REVIEW and QL-TEST-COVERAGE skipped per director-gates).
+- Sprint 8 carried conditions and Sprint 9 no-claims preserved. S9-QA-001 still owns manual/browser GAME_OVER closure.
+- Next recommended: S9-QA-001 (manual/browser two-client GAME_OVER evidence closure) once a real two-client manual route is ready; otherwise its blocker can now be re-evaluated.
