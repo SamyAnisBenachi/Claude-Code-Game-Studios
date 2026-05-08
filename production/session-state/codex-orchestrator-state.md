@@ -1657,6 +1657,44 @@ PROMPT 507 deep trace identified the actual root cause:
 
 These are accept-risk for friend-game scope, captured for future cleanup pass.
 
+## Key Findings (2026-05-08 Session)
+
+### 🔴 REAL DRAFT_INITIAL ROOT CAUSE — Lightyear protocol mismatch (PROMPT 522)
+After multiple wrong diagnoses (snapshot_sent timing, defer_unicast logic, ClientState dedup, etc.), PROMPT 522 found the actual blocker:
+- Client logs show `MissingComponent(ComponentId(320))` decode errors
+- Client and server registered Lightyear protocol differently → net IDs shifted
+- Client cannot decode S2CPhaseChanged → ClientState stays in Lobby
+- All InSession-gated systems (UI, board, hand) never run
+- Server side works fine (sends messages); client side cannot receive them
+
+**Fix:** PROMPT 524 — ensure client/Cargo.toml + server/Cargo.toml feature parity, and that both register messages in the same order.
+
+### 🟡 S2CObjectiveIdentities has no client handler (PROMPT 522)
+Server sends it (server/src/feature/objective/system.rs:205), client has no MessageReceiver. Latent bug surfaces after protocol mismatch is fixed.
+
+### ✅ snapshot_sent=true IS correct for fresh players (PROMPT 520)
+`/architecture-review` definitively validated against ADR-011:
+- Fresh players: snapshot_sent=true at hello + class confirm + DRAFT_INITIAL entry + first unicast
+- false-then-true bracket is reconnect-only
+- Current implementation matches spec
+- Multiple ad-hoc Explore agents gave contradictory wrong conclusions before this
+
+### Lesson: /architecture-review > ad-hoc Explore for ADR compliance
+PROMPTs 498, 507, 513, 517, 518 all chased snapshot_sent contradictions. /architecture-review (PROMPT 520) gave the definitive answer in one pass. Use the right skill for the question.
+
+### 🟡 HUD scoreboard dots vs draft slots (early session diagnostic)
+The "white dots" in DRAFT_INITIAL screenshots are HUD scoreboard objective indicators (intentional, 5 per team). NOT the missing draft slots. Real draft slots are invisible because client never enters InSession state.
+
+### Doc hygiene tech debt (PROMPT 523)
+- ADR-011 references TR-NP-04 should be TR-NP-006 in some sites
+- NP Rule 7 needs breadcrumb to ADR-011
+
+### Lessons for orchestration
+- /code-review = visibility, not merge gate (per memory)
+- Contradictory diagnostic agents = use /architecture-review for synthesis
+- Triage CHANGES REQUIRED items: real bugs vs friend-game accept-risk
+- Don't cherry-pick "obvious one-line fixes" without /code-review (we did this with PROMPT 503, violated protocol, but now policy is visibility-only anyway)
+
 ### Closed Recently
 - PROMPT 450 — DRAFT_INITIAL grid repair → worker commit `5b6d030` ✅ (incomplete fix — see 461 follow-up; worker forgot the BackgroundColor fallback I had requested)
 - PROMPT 458 — cherry-pick 5b6d030 into main → integration commit `7431bdb` on origin/main ✅
