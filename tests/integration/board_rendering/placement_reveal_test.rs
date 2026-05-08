@@ -132,6 +132,9 @@ fn app_in_session() -> App {
     app.add_plugins(StatesPlugin);
     app.add_plugins(CardAnimationsPlugin);
     app.add_plugins(BoardRenderingPlugin);
+    // BoardRenderingPlugin no longer initialises ClientState (f5b7a34 removed
+    // duplicate init_state calls). Standalone tests must initialise it here.
+    app.init_state::<ClientState>();
     app.world_mut()
         .resource_mut::<NextState<ClientState>>()
         .set(ClientState::InSession);

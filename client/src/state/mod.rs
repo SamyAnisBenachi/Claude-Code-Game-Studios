@@ -116,5 +116,19 @@ pub fn apply_snapshot_to_session_settings_view(
         snapshot.placement_timer_multiplier_effective;
 }
 
+/// Applies the phase and round from a reconnect snapshot to `CurrentClientPhase`.
+///
+/// Called by `game_snapshot_sink_system` so that `CurrentClientPhase` is always
+/// written by the presentation layer's sink systems only, never by sub-plugins
+/// (ADR-021 R5). `S2CGameSnapshot` carries no `timer_duration_ms`; timer-bearing
+/// resources (`ClientPhaseView`) are not updated here.
+pub fn apply_snapshot_to_current_phase(
+    snapshot: &S2CGameSnapshot,
+    current: &mut CurrentClientPhase,
+) {
+    current.phase = snapshot.phase;
+    current.round = snapshot.round_number;
+}
+
 #[derive(Message, Debug, Clone)]
 pub struct ClientGameSnapshotMessage(pub S2CGameSnapshot);

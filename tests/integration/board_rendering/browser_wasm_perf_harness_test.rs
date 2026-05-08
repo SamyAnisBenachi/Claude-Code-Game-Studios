@@ -9,6 +9,7 @@ use client::presentation::board_rendering::{
     BoardCellNode, BoardRenderingPlugin, BoardUnit, HpBarBackground, HpBarFill, StandingObjective,
     StatusIcon, StatusOverflowBadge,
 };
+use client::state::ClientState;
 use client::ui::shared::{BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 #[test]
@@ -101,5 +102,8 @@ fn app_with_harness() -> App {
         BoardRenderingPlugin,
         BoardRenderingPerfHarnessPlugin,
     ));
+    // BoardRenderingPlugin no longer initialises ClientState (f5b7a34 removed
+    // duplicate init_state calls). Standalone tests must initialise it here.
+    app.init_state::<ClientState>();
     app
 }

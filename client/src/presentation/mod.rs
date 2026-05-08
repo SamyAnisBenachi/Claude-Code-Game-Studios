@@ -14,9 +14,9 @@ use crate::presentation::result_screen::ResultScreenPlugin;
 use crate::presentation::shared::economy_view::drain_gold_update_receiver_system as drain_shared_gold_update_receiver_system;
 use crate::state::{
     apply_phase_changed_message, apply_phase_view_message, apply_session_settings_updated_message,
-    apply_snapshot_to_session_settings_view, should_enter_session_from_phase,
-    should_enter_session_from_snapshot, ClientGameSnapshotMessage, ClientPhaseView,
-    ClientSessionIdentity, ClientState, SessionSettingsView,
+    apply_snapshot_to_current_phase, apply_snapshot_to_session_settings_view,
+    should_enter_session_from_phase, should_enter_session_from_snapshot, ClientGameSnapshotMessage,
+    ClientPhaseView, ClientSessionIdentity, ClientState, SessionSettingsView,
 };
 use crate::ui::hand::{
     HandUiCardAcquiredReceived, HandUiDraftOfferingReceived, HandUiPlugin, HandUiSystemSet,
@@ -228,6 +228,7 @@ pub fn game_snapshot_sink_system(
     mut receivers: Query<&mut MessageReceiver<S2CGameSnapshot>>,
     mut economy_view: ResMut<PlayerEconomyView>,
     mut settings_view: ResMut<SessionSettingsView>,
+    mut current_phase: ResMut<CurrentClientPhase>,
     mut board_writer: MessageWriter<ClientGameSnapshotMessage>,
     mut presentation_writer: MessageWriter<PresentationGameSnapshotMessage>,
     identity: Res<ClientSessionIdentity>,
@@ -248,6 +249,10 @@ pub fn game_snapshot_sink_system(
                 );
             }
             apply_snapshot_to_session_settings_view(&message, &mut settings_view);
+            // ADR-021 R5: CurrentClientPhase is written by presentation sink systems only.
+            // Snapshot-driven phase updates are applied here (before BoardRenderSet::ReadMessages)
+            // so sub-plugins never need to hold ResMut<CurrentClientPhase>.
+            apply_snapshot_to_current_phase(&message, &mut current_phase);
             board_writer.write(ClientGameSnapshotMessage(message.clone()));
             presentation_writer.write(PresentationGameSnapshotMessage(message));
         }

@@ -1452,14 +1452,15 @@ struct BoardSnapshotRenderResources<'w> {
     player_team_map: Res<'w, PlayerTeamMap>,
 }
 
-#[allow(clippy::too_many_arguments)]
+// ADR-021 R5: CurrentClientPhase is written only by presentation sink systems
+// (phase_sink_system for S2CPhaseChanged; game_snapshot_sink_system for
+// S2CGameSnapshot). This function must NOT hold ResMut<CurrentClientPhase>.
 fn rebuild_board_from_snapshot_system(
     mut commands: Commands,
     mut snapshots: MessageReader<ClientGameSnapshotMessage>,
     render_resources: BoardSnapshotRenderResources,
     stale_entities: Query<Entity, With<BoardSnapshotEntity>>,
     mut render_state: ResMut<BoardRenderState>,
-    mut current_phase: Option<ResMut<CurrentClientPhase>>,
     mut objective_identity_cache: ResMut<ObjectiveIdentityCache>,
     mut rebuild_writer: MessageWriter<BoardRebuildRequested>,
     mut tweens: Query<&mut TweenAnim>,
@@ -1499,11 +1500,9 @@ fn rebuild_board_from_snapshot_system(
         commands.entity(entity).despawn();
     }
 
+    // CurrentClientPhase is updated by game_snapshot_sink_system before this
+    // system runs (ADR-021 R5). No direct write here.
     *render_state = BoardRenderState::from_snapshot_phase(snapshot.phase);
-    if let Some(current_phase) = current_phase.as_deref_mut() {
-        current_phase.phase = snapshot.phase;
-        current_phase.round = snapshot.round_number;
-    }
 
     spawn_snapshot_objectives(
         &mut commands,

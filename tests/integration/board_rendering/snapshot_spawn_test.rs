@@ -91,9 +91,13 @@ fn test_snapshot_rebuild_clears_stale_visuals_and_spawns_snapshot_units_and_obje
         .resource::<StagedObjectiveRevealQueue>()
         .is_empty());
     assert!(app.world().resource::<ObjectiveIdentityCache>().is_empty());
+    // CurrentClientPhase is written by game_snapshot_sink_system (PresentationPlugin),
+    // not by BoardRenderingPlugin. In standalone tests CurrentClientPhase stays at
+    // its default; the correct snapshot→CurrentClientPhase path is covered by
+    // presentation-layer integration tests (ADR-021 R5).
     assert_eq!(
         app.world().resource::<CurrentClientPhase>().phase,
-        RoundPhase::Placement
+        RoundPhase::Lobby
     );
     assert_eq!(
         *app.world().resource::<BoardRenderState>(),
@@ -412,6 +416,9 @@ fn app_in_session() -> App {
     app.add_plugins(StatesPlugin);
     app.add_plugins(CardAnimationsPlugin);
     app.add_plugins(BoardRenderingPlugin);
+    // BoardRenderingPlugin no longer initialises ClientState (f5b7a34 removed
+    // duplicate init_state calls). Standalone tests must initialise it here.
+    app.init_state::<ClientState>();
 
     app.world_mut()
         .resource_mut::<NextState<ClientState>>()
