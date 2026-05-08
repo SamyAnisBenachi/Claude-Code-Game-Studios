@@ -2425,3 +2425,12 @@ C:\Program Files\GitHub CLI\gh.exe
 - Files updated: production/sprints/sprint-9.md (supporting-fix paragraph after Conditional Backlog table); production/sprint-status.yaml (lobby_manual_playability_patch entry under coordination); production/session-state/active.md (this extract).
 - Pre-flight: git diff --check PASS; git diff --cached --check PASS.
 - Scope guard: No S9-QA-001 evidence closure, full manual QA, full game completion, release readiness, or QA sign-off is claimed by this reconciliation.
+
+## Session Extract — Prompt 452 S9-QA-001 Partial Evidence Tracking 2026-05-08
+- Task: Docs/status reconciliation for S9-QA-001 partial evidence package from e26e240.
+- Source of truth: origin/main — e26e240 confirmed on main (git log verified). Local main in sync for target files.
+- Evidence at e26e240: 6 new QA evidence files only (no status file edits in that commit). Automated regressions 16/16 pass — result_acknowledgement_contract_test 5/5, result_acknowledgement_cleanup_handshake_test 3/3, result_screen_mvp_test 6/6, result_screen_return_to_lobby_test 2/2; cargo check --workspace PASS; server binary starts cleanly (8s, no panic). Manual two-client GUI route not executed: MANUAL-FG-001 (S2) blocks non-interactive agent from operating Bevy windowed clients.
+- Files updated: production/sprint-status.yaml (S9-QA-001 status blocked→in-progress, blocker updated to MANUAL-FG-001, partial evidence notes added; S9-QA-002 blocker updated to reflect pull condition met); production/sprints/sprint-9.md (S9-QA-001 row status, S9-QA-002 row status, Risks row, QA Plan note); production/session-state/active.md (this extract).
+- Preserved: S9-QA-001 not done; S8-QA-001-W1 open; QA-COND-0005 carried; QA-COND-0006 carried; no public release readiness; no full game completion; no broad accessibility completion; no playtest validation; no smoke/QA sign-off/gate-check/sprint close-out claim.
+- Pre-flight: git diff --check PASS; git diff --cached --check PASS (verified before commit).
+- Scope guard: No S9-QA-001 full closure, smoke, QA sign-off, gate-check, sprint close-out, /dev-story, /story-done, implementation, or CI was run.

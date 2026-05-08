@@ -149,14 +149,16 @@ stories:
     name: "Manual/browser two-client GAME_OVER evidence closure"
     file: "production/epics/playable-client/story-007-manual-browser-game-over-evidence-closure.md"
     priority: must-have
-    status: blocked
+    status: in-progress
     owner: "QA tester + orchestrator"
     estimate_days: 1.25
-    blocker: "Blocked until operator/browser controls and result flow are usable: S9-NATIVE-001 or browser route, S9-RS-002, and S9-RS-003."
+    blocker: "MANUAL-FG-001 (S2): non-interactive agent cannot operate Bevy windowed clients. Full manual two-client GUI route requires a human operator."
     completed: ""
     notes:
+      - "Partial evidence at e26e240 (2026-05-08): automated regressions 16/16 pass — result_acknowledgement_contract_test 5/5, result_acknowledgement_cleanup_handshake_test 3/3, result_screen_mvp_test 6/6, result_screen_return_to_lobby_test 2/2; server binary starts cleanly (8s, no panic)."
+      - "Manual two-client GUI route not executed. S8-QA-001-W1 remains open. QA-COND-0005 and QA-COND-0006 remain carried."
       - "Closes S8-QA-001-W1 only with actual full manual browser/native two-client evidence through GAME_OVER, result screen, and acknowledgement."
-      - "If blocked, records the blocker and preserves all Sprint 8 non-claims."
+      - "No public release readiness, full game completion, broad accessibility completion, smoke, QA sign-off, playtest validation, or full playable-client manual QA is claimed."
 
   - id: "S9-QA-002"
     name: "Sprint 9 result evidence index cleanup"
@@ -165,7 +167,7 @@ stories:
     status: blocked
     owner: "orchestrator"
     estimate_days: 0.25
-    blocker: "Blocked until S9-QA-001 evidence or blocker record exists."
+    blocker: "Pull condition met: blocker record and sprint-9-result-evidence-index.md exist at e26e240. Awaiting human-operator S9-QA-001 manual route or explicit close-out decision before full index closure."
     completed: ""
     notes:
       - "Backlog/blocked evidence-index follow-up."

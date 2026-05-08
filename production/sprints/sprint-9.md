@@ -100,13 +100,13 @@ manual evidence warning.
 | S9-NATIVE-001 | Native friend-game operator controls | client/platform programmer | 1.00 | Ready | Native lobby blank screen repair integrated; story docs ready | Native operator path is clean enough for room entry/join, class confirmation, draft/shop, auction, placement, result dependency handling, and manual evidence attempts without client-side optimistic authority or debug-only proof. |
 | S9-RS-002 | Result screen MVP | UI/client programmer | 2.00 | Ready | S9-RS-001 complete; HUD `GAME_OVER` freeze; controlled Sprint 8 `GAME_OVER` evidence | Player-facing result overlay opens from `S2CGameOver` plus `S2CPhaseChanged(GameOver)`; displays victory/defeat/draw/no-result headline, cause, final round, available objective lane status, available final resources, and Return to Lobby; shows safe fallback copy when data is missing; Rematch is disabled or hidden; alive opponent objective identities remain `Unknown` unless server authority exists; HUD stays frozen underneath. |
 | S9-RS-003 | Result acknowledgement implementation and cleanup handshake | session/network programmer + UI/client programmer | 1.00 | Blocked | S9-RS-002 complete and integrated; S9-RS-001 complete | Client sends `C2SAcknowledgeResult` at the decided timing; server cleanup/ended-session state handles acknowledgement idempotently; Return to Lobby clears local ended-session UI and returns to the lobby/menu flow without optimistic server-owned state changes. |
-| S9-QA-001 | Manual/browser two-client `GAME_OVER` evidence closure | QA tester + orchestrator | 1.25 | Blocked | S9-NATIVE-001 and/or browser route usable; S9-RS-002; S9-RS-003 | Capture a full manually driven browser or native two-client route from lobby create/join through class confirm, draft/shop, auction, placement, resolution, `GAME_OVER`, result screen, and acknowledgement. Close S8-QA-001-W1 only if the route is actually captured. Preserve non-claims if blocked. |
+| S9-QA-001 | Manual/browser two-client `GAME_OVER` evidence closure | QA tester + orchestrator | 1.25 | In-progress (partial) | Prerequisites met; MANUAL-FG-001 (S2) blocks full two-client GUI route — requires human operator | Partial automated evidence at `e26e240` (2026-05-08): 16/16 regressions pass; server starts cleanly. Manual route not executed. S8-QA-001-W1 remains open. Closes S8-QA-001-W1 only with actual full browser/native two-client evidence through GAME_OVER, result screen, and acknowledgement. |
 
 ## Conditional Backlog And Supporting Work
 
 | ID | Task | Owner | Est. Days | Status | Pull Condition | Acceptance Criteria |
 |---|---|---:|---:|---|---|---|
-| S9-QA-002 | Result evidence index cleanup | orchestrator | 0.25 | Blocked/backlog | Pull after S9-QA-001 evidence or blocker record exists | Create or update a concise Sprint 9 evidence index recording endpoint, manual/browser/native status, result screen status, acknowledgement status, evidence links, and all carried non-claims. |
+| S9-QA-002 | Result evidence index cleanup | orchestrator | 0.25 | Ready (pull condition met) | Blocker record and `sprint-9-result-evidence-index.md` exist at `e26e240`; awaiting human-operator S9-QA-001 manual route or explicit close-out decision | Create or update a concise Sprint 9 evidence index recording endpoint, manual/browser/native status, result screen status, acknowledgement status, evidence links, and all carried non-claims. |
 | SAU-008 | Reconnect Snapshot and Late Message Recovery | UI/client programmer | 1.25 | Conditional backlog | Pull only if reconnect, snapshot, or late-message instability affects the active/result flow | Snapshot rebuild restores the correct shop/auction panel; late accepted/rejected and stale purchase/refresh confirmations do not revive inactive panels; no duplicate Lightyear receiver drains are introduced. |
 | ECO-004 | Kill and Objective Awards reward-loop polish | gameplay programmer | 1.00 | Conditional backlog | Pull only if Sprint 9 evidence shows a concrete reward-loop gameplay issue | Reward changes preserve current contracts, avoid duplicate awards, land before interest snapshot, and do not expand into broad economy tuning. |
 | S9-CONTENT-001 | Neutral card display placeholder pack | content designer + UI/client programmer | 0.75 | Done | Integrated on main at `424bcfa`; supporting content only | Display/zoom placeholders for current neutral cards improve route readability without claiming full card production, full balance completion, broad asset approval, or unrelated art pipeline completion. No `/story-done` was forced because no standalone story file exists. |
@@ -126,7 +126,7 @@ weakness that cannot be contained by the MVP contract.
 
 | Risk | Probability | Impact | Mitigation |
 |---|---|---|---|
-| Manual/browser `GAME_OVER` route remains uncaptured | Medium | High | Keep S9-QA-001 blocked until result flow and operator/browser controls are usable; close the warning only with actual evidence. |
+| Manual/browser `GAME_OVER` route remains uncaptured | Medium | High | S9-QA-001 prerequisites met; MANUAL-FG-001 (S2) is now the active blocker. Automated regressions 16/16 pass at `e26e240`. Close the warning only with actual human-operator two-client route evidence. S8-QA-001-W1 remains open. |
 | Result Screen MVP expands beyond the accepted MVP contract | Medium | High | Keep S9-RS-002 within Prompt 414 readiness boundaries: consume S9-RS-001 retained result data, keep Rematch hidden/disabled, keep alive opponent objectives `Unknown`, and preserve all Sprint 8 carried non-claims. |
 | Old S9-RS-001 worktree is mistaken for source of truth | Low | Medium | Treat current `origin/main` and integrated story-done docs as source of truth; do not re-open old worker state unless a separate repair prompt asks for it. |
 | Native operator controls are mistaken for native manual route evidence | Medium | High | S9-NATIVE-001 only enables operation; S9-QA-001 owns route evidence and closure. |
@@ -140,9 +140,7 @@ weakness that cannot be contained by the MVP contract.
 No Sprint 9 QA plan was found during activation. This activation does not run
 `/qa-plan`, smoke, QA sign-off, `/team-qa`, or `/gate-check`.
 
-S9-QA-001 and S9-QA-002 remain blocked until the result flow and usable
-operator/browser route exist. A Sprint 9 QA plan is still required before any
-future Sprint 9 QA sign-off or production-to-polish gate claim.
+S9-QA-001 has partial automated evidence at `e26e240` (regressions 16/16 pass; server starts cleanly) but the manual two-client GUI route remains blocked by MANUAL-FG-001 (S2). S8-QA-001-W1 is open. S9-QA-002 pull condition is met but index closure awaits the manual route outcome. A Sprint 9 QA plan is still required before any future Sprint 9 QA sign-off or production-to-polish gate claim.
 
 ## Definition Of Done
 
