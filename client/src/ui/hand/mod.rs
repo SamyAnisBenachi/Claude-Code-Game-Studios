@@ -6,7 +6,7 @@ use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
 use bevy_tweening::{lens::TransformPositionLens, Tween, TweenAnim};
 use lightyear::prelude::MessageSender;
-use shared::card::{CardCatalog, CardId, CardType};
+use shared::card::{CardCatalog, CardId, CardType, ClassId, Rarity};
 use shared::protocol::{
     C2SActivateCard, C2SPurchaseCard, C2SSubmitPlacement, EntityId, PlacedCardSubmit, PlayTarget,
     ReliableChannel, RoundPhase,
@@ -14,8 +14,8 @@ use shared::protocol::{
 use shared::session::PlayerId;
 
 use crate::asset_wiring::{
-    default_client_card_catalog, resolve_card_display_art, CardDisplayArtAsset,
-    CardDisplayArtFallback,
+    default_client_card_catalog, insert_placeholder_assets, resolve_card_display_art,
+    CardDisplayArtAsset, CardDisplayArtFallback, PlaceholderAssets,
 };
 use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
@@ -738,6 +738,29 @@ pub struct NotificationTimer {
     pub remaining_ms: u64,
 }
 
+// ── Hand card chrome markers (PAW-002) ────────────────────────────────────────
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandCardFrame;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StatBadgeAtk;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StatBadgeHp;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StatBadgeMp;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StatBadgeAr;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandRarityIcon;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandTypeIcon;
+
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HandUiSystemSet {
     PhaseTransition,
@@ -795,7 +818,10 @@ impl Plugin for HandUiPlugin {
                     .chain()
                     .run_if(in_state(ClientState::InSession)),
             )
-            .add_systems(OnEnter(ClientState::InSession), spawn_hand_ui)
+            .add_systems(
+                OnEnter(ClientState::InSession),
+                spawn_hand_ui.after(insert_placeholder_assets),
+            )
             .add_systems(OnExit(ClientState::InSession), despawn_hand_ui)
             .add_systems(
                 Update,
@@ -832,6 +858,7 @@ impl Plugin for HandUiPlugin {
                         tick_pending_purchase_timeouts_system,
                         apply_fan_layout_system,
                         sync_hand_fan_card_art_system,
+                        sync_fan_slot_chrome_system,
                         apply_reserve_strip_layout_system,
                         sync_reserve_strip_state_system,
                         tick_hand_full_notification_system,
@@ -1136,6 +1163,98 @@ pub fn sync_hand_fan_card_art_system(
             catalog.cards.get(&card.0),
             asset_server.as_deref(),
         );
+    }
+}
+
+/// Syncs ImageNode handles on the card chrome child entities (frame, badges, icons)
+/// for each fan slot based on current card data and fallback state. Runs after
+/// `sync_hand_fan_card_art_system` so `CardDisplayArtFallback` is already set.
+pub fn sync_fan_slot_chrome_system(
+    slots: Query<(Entity, Option<&HandSlotCard>, Option<&CardDisplayArtFallback>), With<FanSlotIndex>>,
+    catalog: Res<HandCardCatalog>,
+    placeholder: Res<PlaceholderAssets>,
+    mut frames: Query<(&mut ImageNode, &ChildOf), With<HandCardFrame>>,
+    mut rarity_icons: Query<
+        (&mut ImageNode, &ChildOf),
+        (With<HandRarityIcon>, Without<HandCardFrame>),
+    >,
+    mut type_icons: Query<
+        (&mut ImageNode, &ChildOf),
+        (With<HandTypeIcon>, Without<HandCardFrame>, Without<HandRarityIcon>),
+    >,
+) {
+    for (mut img, child_of) in &mut frames {
+        let Ok((_, slot_card, fallback)) = slots.get(child_of.parent()) else {
+            continue;
+        };
+        img.image = chrome_frame_handle(slot_card, fallback, &catalog, &placeholder);
+    }
+    for (mut img, child_of) in &mut rarity_icons {
+        let Ok((_, slot_card, _)) = slots.get(child_of.parent()) else {
+            continue;
+        };
+        img.image = chrome_rarity_icon_handle(slot_card, &catalog, &placeholder);
+    }
+    for (mut img, child_of) in &mut type_icons {
+        let Ok((_, slot_card, _)) = slots.get(child_of.parent()) else {
+            continue;
+        };
+        img.image = chrome_type_icon_handle(slot_card, &catalog, &placeholder);
+    }
+}
+
+fn chrome_frame_handle(
+    slot_card: Option<&HandSlotCard>,
+    fallback: Option<&CardDisplayArtFallback>,
+    catalog: &HandCardCatalog,
+    placeholder: &PlaceholderAssets,
+) -> Handle<Image> {
+    if fallback.is_some() {
+        return placeholder.fallback.clone();
+    }
+    let Some(card) = slot_card.and_then(|sc| catalog.cards.get(&sc.0)) else {
+        return placeholder.card_frame_common.clone();
+    };
+    match card.rarity {
+        Rarity::Common | Rarity::Uncommon => placeholder.card_frame_common.clone(),
+        Rarity::Rare => placeholder.card_frame_rare.clone(),
+        Rarity::Epic => placeholder.card_frame_epic.clone(),
+        Rarity::Legendary => placeholder.card_frame_legendary.clone(),
+    }
+}
+
+fn chrome_rarity_icon_handle(
+    slot_card: Option<&HandSlotCard>,
+    catalog: &HandCardCatalog,
+    placeholder: &PlaceholderAssets,
+) -> Handle<Image> {
+    let Some(card) = slot_card.and_then(|sc| catalog.cards.get(&sc.0)) else {
+        return placeholder.rarity_icon_common.clone();
+    };
+    match card.rarity {
+        Rarity::Common | Rarity::Uncommon => placeholder.rarity_icon_common.clone(),
+        Rarity::Rare => placeholder.rarity_icon_rare.clone(),
+        Rarity::Epic => placeholder.rarity_icon_epic.clone(),
+        Rarity::Legendary => placeholder.rarity_icon_legendary.clone(),
+    }
+}
+
+fn chrome_type_icon_handle(
+    slot_card: Option<&HandSlotCard>,
+    catalog: &HandCardCatalog,
+    placeholder: &PlaceholderAssets,
+) -> Handle<Image> {
+    let Some(card) = slot_card.and_then(|sc| catalog.cards.get(&sc.0)) else {
+        return placeholder.class_type_icon_neutral.clone();
+    };
+    match card.class {
+        ClassId::Iop => placeholder.class_type_icon_iop.clone(),
+        ClassId::Cra => placeholder.class_type_icon_cra.clone(),
+        ClassId::Sacrier => placeholder.class_type_icon_sacrier.clone(),
+        ClassId::Xelor => placeholder.class_type_icon_xelor.clone(),
+        ClassId::Ecaflip => placeholder.class_type_icon_ecaflip.clone(),
+        ClassId::Sadida => placeholder.class_type_icon_sadida.clone(),
+        ClassId::Neutral => placeholder.class_type_icon_neutral.clone(),
     }
 }
 
@@ -2212,7 +2331,11 @@ pub fn tick_hand_full_notification_system(
     }
 }
 
-fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) {
+pub fn spawn_hand_ui(
+    mut commands: Commands,
+    existing: Option<Res<HandUiEntities>>,
+    placeholder: Res<PlaceholderAssets>,
+) {
     if existing.is_some() {
         return;
     }
@@ -2243,7 +2366,7 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
         .insert(bevy::picking::Pickable::IGNORE);
 
     let fan_slots = std::array::from_fn(|index| {
-        commands
+        let slot = commands
             .spawn((
                 Name::new(format!("Hand UI Fan Slot {index}")),
                 HandUiEntity,
@@ -2257,7 +2380,67 @@ fn spawn_hand_ui(mut commands: Commands, existing: Option<Res<HandUiEntities>>) 
                 Visibility::Hidden,
                 ChildOf(fan_root),
             ))
-            .id()
+            .id();
+
+        // Chrome children — PAW-002
+        commands.spawn((
+            Name::new(format!("Fan Slot {index} Card Frame")),
+            HandCardFrame,
+            Node::default(),
+            ImageNode::new(placeholder.card_frame_common.clone()),
+            Visibility::Inherited,
+            ChildOf(slot),
+        ));
+        commands.spawn((
+            Name::new(format!("Fan Slot {index} Stat Badge ATK")),
+            StatBadgeAtk,
+            Node::default(),
+            ImageNode::new(placeholder.stat_badge_atk.clone()),
+            Visibility::Inherited,
+            ChildOf(slot),
+        ));
+        commands.spawn((
+            Name::new(format!("Fan Slot {index} Stat Badge HP")),
+            StatBadgeHp,
+            Node::default(),
+            ImageNode::new(placeholder.stat_badge_hp.clone()),
+            Visibility::Inherited,
+            ChildOf(slot),
+        ));
+        commands.spawn((
+            Name::new(format!("Fan Slot {index} Stat Badge MP")),
+            StatBadgeMp,
+            Node::default(),
+            ImageNode::new(placeholder.stat_badge_mp.clone()),
+            Visibility::Inherited,
+            ChildOf(slot),
+        ));
+        commands.spawn((
+            Name::new(format!("Fan Slot {index} Stat Badge AR")),
+            StatBadgeAr,
+            Node::default(),
+            ImageNode::new(placeholder.stat_badge_ar.clone()),
+            Visibility::Inherited,
+            ChildOf(slot),
+        ));
+        commands.spawn((
+            Name::new(format!("Fan Slot {index} Rarity Icon")),
+            HandRarityIcon,
+            Node::default(),
+            ImageNode::new(placeholder.rarity_icon_common.clone()),
+            Visibility::Inherited,
+            ChildOf(slot),
+        ));
+        commands.spawn((
+            Name::new(format!("Fan Slot {index} Type Icon")),
+            HandTypeIcon,
+            Node::default(),
+            ImageNode::new(placeholder.class_type_icon_neutral.clone()),
+            Visibility::Inherited,
+            ChildOf(slot),
+        ));
+
+        slot
     });
 
     let grid_slots = std::array::from_fn(|index| {
