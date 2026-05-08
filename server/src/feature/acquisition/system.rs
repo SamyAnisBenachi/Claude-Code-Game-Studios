@@ -1150,7 +1150,10 @@ pub fn defer_card_acquired(
     defer_unicast_for_reconnect(
         tracker,
         dispatch.player_id,
-        DeferredMessage::CardAcquiredMessage(dispatch.message.clone()),
+        DeferredMessage::CardAcquired {
+            card_id: dispatch.message.card_id,
+            source: dispatch.message.source,
+        },
     )
 }
 

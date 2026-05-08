@@ -467,17 +467,6 @@ fn send_deferred_message(
                 &single(peer_id),
             );
         }
-        DeferredMessage::CardAcquiredMessage(message) => {
-            let _ =
-                sender.send::<S2CCardAcquired, ReliableChannel>(message, server, &single(peer_id));
-        }
-        DeferredMessage::PrismRewardDroppedMessage(message) => {
-            let _ = sender.send::<S2CPrismRewardDropped, ReliableChannel>(
-                message,
-                server,
-                &single(peer_id),
-            );
-        }
         DeferredMessage::CardAcquired { card_id, source } => {
             let message = S2CCardAcquired {
                 card_id: *card_id,
