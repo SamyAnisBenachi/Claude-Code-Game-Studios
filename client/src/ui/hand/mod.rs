@@ -4,7 +4,7 @@ use std::time::Duration;
 use bevy::ecs::query::QueryFilter;
 use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
-use bevy_tweening::{lens::TransformPositionLens, Tween, TweenAnim};
+use bevy_tweening::{Lens, Tween, TweenAnim};
 use lightyear::prelude::MessageSender;
 use shared::card::{CardCatalog, CardId, CardType, ClassId, Rarity};
 use shared::protocol::{
@@ -23,6 +23,23 @@ use crate::card_animations::{
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
+
+/// Tweens a UI [`Node`]'s `left` and `top` fields, which is the correct way to
+/// animate position for Bevy UI nodes (tweening `Transform` has no effect on layout).
+#[derive(Debug, Copy, Clone)]
+pub struct NodePositionLens {
+    pub start: Vec2,
+    pub end: Vec2,
+}
+
+impl Lens<Node> for NodePositionLens {
+    fn lerp(&mut self, mut target: bevy::ecs::world::Mut<Node>, ratio: f32) {
+        let x = self.start.x + (self.end.x - self.start.x) * ratio;
+        let y = self.start.y + (self.end.y - self.start.y) * ratio;
+        target.left = Val::Px(x);
+        target.top = Val::Px(y);
+    }
+}
 
 pub const HAND_FAN_SLOT_COUNT: usize = 10;
 pub const DRAFT_INITIAL_GRID_SLOT_COUNT: usize = 9;
@@ -505,12 +522,12 @@ pub struct GhostPlacementChanged {
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct GhostClickedEvent {
+pub struct GhostClicked {
     pub card_id: CardId,
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct GhostDragStartEvent {
+pub struct GhostDragStart {
     pub card_id: CardId,
 }
 
@@ -804,8 +821,8 @@ impl Plugin for HandUiPlugin {
             .add_message::<HandSubmitButtonClicked>()
             .add_message::<TimerUrgencyAudio>()
             .add_message::<GhostPlacementChanged>()
-            .add_message::<GhostClickedEvent>()
-            .add_message::<GhostDragStartEvent>()
+            .add_message::<GhostClicked>()
+            .add_message::<GhostDragStart>()
             .configure_sets(
                 Update,
                 (
@@ -913,8 +930,6 @@ pub fn apply_fan_layout_system(
         };
 
         *visibility = Visibility::Visible;
-        transform.translation.x = layout.card_x;
-        transform.translation.y = layout.card_y;
         transform.rotation = layout.bevy_rotation();
         node.left = Val::Px(layout.card_x);
         node.top = Val::Px(layout.card_y);
@@ -1543,8 +1558,8 @@ pub fn handle_card_acquired_system(
                         &mut commands,
                         fan_entity,
                         animator,
-                        transform.translation,
-                        Vec3::new(layout.card_x, layout.card_y, transform.translation.z),
+                        transform.translation.xy(),
+                        Vec2::new(layout.card_x, layout.card_y),
                         timing.card_draw_animation_ms,
                     );
                 }
@@ -1565,7 +1580,7 @@ pub fn handle_card_acquired_system(
 
 pub fn handle_ghost_clicked_unstage_system(
     mode: Res<HandUiMode>,
-    mut clicks: MessageReader<GhostClickedEvent>,
+    mut clicks: MessageReader<GhostClicked>,
     mut pending_placements: ResMut<PendingPlacements>,
     mut disclosure_state: ResMut<PlacementDisclosureState>,
     mut ghost_writer: MessageWriter<GhostPlacementChanged>,
@@ -1601,7 +1616,7 @@ pub fn handle_ghost_clicked_unstage_system(
 
 pub fn handle_ghost_drag_started_system(
     mode: Res<HandUiMode>,
-    mut starts: MessageReader<GhostDragStartEvent>,
+    mut starts: MessageReader<GhostDragStart>,
     pending_placements: Res<PendingPlacements>,
     mut active_drag: ResMut<ActivePlacementDrag>,
     mut active_ghost_drag: ResMut<ActiveGhostUnstageDrag>,
@@ -2797,6 +2812,8 @@ fn submit_pending_placements(
     };
     if let Ok(mut sender) = submit_senders.single_mut() {
         sender.send::<ReliableChannel>(msg.clone());
+    } else {
+        warn!("submit_pending_placements: MessageSender unavailable — placement message dropped");
     }
     outbound.submit_placements.push(msg);
     placement_timer.submitted = true;
@@ -3159,7 +3176,7 @@ fn fallback_spawn_cell(board_view: PlacementBoardView) -> (u8, u8) {
 }
 
 fn minion_highlight_cells(
-    board_layout: &BoardLayout,
+    _board_layout: &BoardLayout,
     board_view: PlacementBoardView,
     catalog: &HandCardCatalog,
     pending_placements: &PendingPlacements,
@@ -3174,7 +3191,6 @@ fn minion_highlight_cells(
     board_cells
         .iter()
         .filter_map(|(entity, lane_cell, occupied, objective)| {
-            let _world_xy = board_layout.cell_to_world(lane_cell.lane, lane_cell.cell);
             let valid_cell = board_view.is_spawn_cell(lane_cell.lane, lane_cell.cell)
                 && occupied.is_none()
                 && objective.is_none()
@@ -3199,7 +3215,7 @@ fn target_objective_highlight_cells(
 }
 
 fn lane_wide_highlight_cells(
-    board_layout: &BoardLayout,
+    _board_layout: &BoardLayout,
     board_cells: &Query<(
         Entity,
         &LaneCell,
@@ -3209,8 +3225,7 @@ fn lane_wide_highlight_cells(
 ) -> BTreeSet<Entity> {
     board_cells
         .iter()
-        .filter_map(|(entity, lane_cell, _occupied, objective)| {
-            let _world_xy = board_layout.cell_to_world(lane_cell.lane, lane_cell.cell);
+        .filter_map(|(entity, _lane_cell, _occupied, objective)| {
             let valid_cell = objective.is_none();
 
             valid_cell.then_some(entity)
@@ -3449,14 +3464,14 @@ fn install_card_draw_animation(
     commands: &mut Commands,
     entity: Entity,
     animator: Option<Mut<TweenAnim>>,
-    start: Vec3,
-    end: Vec3,
+    start: Vec2,
+    end: Vec2,
     duration_ms: u64,
 ) {
     let tween = Tween::new(
         EaseFunction::QuadraticOut,
         Duration::from_millis(duration_ms),
-        TransformPositionLens { start, end },
+        NodePositionLens { start, end },
     );
 
     if let Some(mut animator) = animator {

@@ -22,8 +22,7 @@ use crate::card_animations::{
 };
 use crate::state::{ClientGameSnapshotMessage, ClientState, CurrentClientPhase};
 use crate::ui::hand::{
-    GhostClickedEvent, GhostDragStartEvent, GhostPlacementChanged, ObjectiveCell,
-    PlacementTargetUnit,
+    GhostClicked, GhostDragStart, GhostPlacementChanged, ObjectiveCell, PlacementTargetUnit,
 };
 use crate::ui::lobby::LobbyViewState;
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
@@ -882,8 +881,8 @@ impl Plugin for BoardRenderingPlugin {
             .add_message::<PlacementRevealAnimReady>()
             .add_message::<SnapshotRecoveryRequested>()
             .add_message::<GhostPlacementChanged>()
-            .add_message::<GhostClickedEvent>()
-            .add_message::<GhostDragStartEvent>()
+            .add_message::<GhostClicked>()
+            .add_message::<GhostDragStart>()
             .add_message::<Pointer<Click>>()
             .add_message::<Pointer<Press>>()
             .configure_sets(
@@ -1073,7 +1072,7 @@ pub fn drain_placement_reveal_system(
 pub fn emit_ghost_clicked_events_system(
     mut clicks: MessageReader<Pointer<Click>>,
     ghost_interactions: Query<&BoardGhostInteraction>,
-    mut writer: MessageWriter<GhostClickedEvent>,
+    mut writer: MessageWriter<GhostClicked>,
 ) {
     for click in clicks.read() {
         if click.event.button != PointerButton::Primary {
@@ -1084,7 +1083,7 @@ pub fn emit_ghost_clicked_events_system(
             continue;
         };
 
-        writer.write(GhostClickedEvent {
+        writer.write(GhostClicked {
             card_id: ghost.card_id,
         });
     }
@@ -1093,7 +1092,7 @@ pub fn emit_ghost_clicked_events_system(
 pub fn emit_ghost_drag_start_events_system(
     mut presses: MessageReader<Pointer<Press>>,
     ghost_interactions: Query<&BoardGhostInteraction>,
-    mut writer: MessageWriter<GhostDragStartEvent>,
+    mut writer: MessageWriter<GhostDragStart>,
 ) {
     for press in presses.read() {
         if press.event.button != PointerButton::Primary {
@@ -1104,7 +1103,7 @@ pub fn emit_ghost_drag_start_events_system(
             continue;
         };
 
-        writer.write(GhostDragStartEvent {
+        writer.write(GhostDragStart {
             card_id: ghost.card_id,
         });
     }
