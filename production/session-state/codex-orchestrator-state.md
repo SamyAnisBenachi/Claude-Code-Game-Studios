@@ -1579,3 +1579,62 @@ integrated/closed as noted above.
 As of the asset sorting pass, generated art assets were moved into `assets/art/`
 and committed. `.codex-tmp/` is ignored as a local scratch workspace. Use
 worktree mode for all new code workers.
+
+## Live Orchestration Status
+
+> Updated by the orchestrator after each window return. This is the source of
+> truth for "what is running, what just closed, what is launchable next."
+> Do NOT rely on conversation memory — always read this section first.
+
+### Last Sync: 2026-05-08
+
+### Currently Running (windows still open)
+- PROMPT 457 — S9-AUDIO-001 audio bootstrap + timer urgency cue (worker, branch `work/s9-audio-001-audio-bootstrap-timer-urgency-cue`)
+- PROMPT 459 — Automated E2E GAME_OVER route test (worker, branch `work/e2e-game-over-route-test`)
+
+### Closed Recently
+- PROMPT 450 — DRAFT_INITIAL grid repair → worker commit `5b6d030` ✅
+- PROMPT 458 — cherry-pick 5b6d030 into main → integration commit `7431bdb` on origin/main ✅
+- PROMPT 456 — S9-QA-002 story-done → main commit `10bfac9`, pushed to origin ✅
+
+### Sprint 9 Story Status
+| Story | Status |
+|---|---|
+| S9-RS-001 | Done |
+| S9-RS-002 | Done |
+| S9-RS-003 | Done |
+| S9-NATIVE-001 | Done with notes |
+| SAU-008 | Done |
+| S9-CONTENT-001 | Done (supporting) |
+| S9-QA-002 | Done |
+| S9-QA-001 | in-progress / partial — blocked by MANUAL-FG-001 (human operator GUI route) |
+| S9-AUDIO-001 | in-progress (PROMPT 457 dispatched) |
+| ECO-004 | conditional backlog — do not launch unless reward-loop issue surfaces |
+
+### Active Blockers
+- **MANUAL-FG-001** (S9-QA-001) — human operator must run two-client GAME_OVER route. Hybrid approach approved: PROMPT 459 covers automated E2E test; user does 5 manual screenshots; PROMPT 460 will consolidate into accepted-risk friend-game-lite QA evidence.
+
+### Carried Conditions (do not close)
+- S8-QA-001-W1 — open, full manual GAME_OVER route not captured
+- QA-COND-0005 — accepted-risk (Standard-tier accessibility waived for friend-game)
+- QA-COND-0006 — accepted-risk / deferred
+
+### Next Available Prompt Numbers
+- 460 — pending (consolidation of automated E2E + manual screenshots + accepted-risk evidence; emit when both 459 and screenshots are ready)
+- 461+ — free
+
+### Non-Claims Preserved
+- no public release readiness, no release-candidate readiness, no full game completion
+- no broad Standard-tier accessibility completion, no QA-COND-0005 closure
+- no playtest/fun validation, no QA-COND-0006 closure
+- no full playable-client manual QA, no full regression campaign
+- no smoke/QA sign-off/gate-check/close-out unless explicitly run and evidenced
+
+### Update Protocol for Orchestrator
+After every window return:
+1. Move the prompt from "Currently Running" to "Closed Recently" with its outcome commit hash.
+2. Update Sprint 9 Story Status if the prompt closed/advanced a story.
+3. Update Active Blockers if a blocker resolved or a new one surfaced.
+4. Update Next Available Prompt Numbers when emitting a new prompt.
+5. Bump "Last Sync" date.
+6. Commit this file with message `state: update live orchestration status` whenever a non-trivial state change happens. Batch trivial changes — do not commit on every micro-return.
