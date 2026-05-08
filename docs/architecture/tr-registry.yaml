@@ -2019,6 +2019,61 @@ requirements:
     revised: ""
     status: active
 
+  # ─── PRESENTATION ASSET WIRING — 2026-05-08 ────────────────────────────────
+  - id: TR-PAW-001
+    system: presentation-asset-wiring
+    gdd: design/gdd/hand-ui.md
+    gdd_ac_ids: [HU-01]
+    requirement: "All UI surfaces have ImageNode or BackgroundColor fallback; asset path constants centralized in asset_wiring.rs"
+    created: 2026-05-08
+    revised: ""
+    status: active
+
+  - id: TR-PAW-002
+    system: presentation-asset-wiring
+    gdd: design/gdd/hand-ui.md
+    gdd_ac_ids: [HU-01, HU-06, HU-07, HU-08, HU-09, HU-10]
+    requirement: "Hand UI card frames, stat badges (ATK/HP/mana), rarity/type icons wired via ImageNode per class and rarity"
+    created: 2026-05-08
+    revised: ""
+    status: active
+
+  - id: TR-PAW-003
+    system: presentation-asset-wiring
+    gdd: design/gdd/shop-auction-ui.md
+    gdd_ac_ids: [SAU-DA2, SAU-DA3, SAU-DA7, SAU-DA8]
+    requirement: "Shop/Auction UI panel chrome: slot wells, auction panel background, border ramp tiles, bid button chrome wired"
+    created: 2026-05-08
+    revised: ""
+    status: active
+
+  - id: TR-PAW-004
+    system: presentation-asset-wiring
+    gdd: design/gdd/hud.md
+    gdd_ac_ids: [HUD-02, HUD-03, HUD-04, HUD-05, HUD-07, HUD-08]
+    requirement: "HUD class figurines (own/opponent), phase timer bar, objective dot state sprites wired"
+    created: 2026-05-08
+    revised: ""
+    status: active
+
+  - id: TR-PAW-005
+    system: presentation-asset-wiring
+    gdd: design/gdd/board-rendering.md
+    gdd_ac_ids: [BR-01, BR-02, BR-06, BR-07, BR-08]
+    requirement: "Board unit sprites per class, objective sprites (unknown/real/fake) wired; fallback to placeholder"
+    created: 2026-05-08
+    revised: ""
+    status: active
+
+  - id: TR-PAW-006
+    system: presentation-asset-wiring
+    gdd: design/gdd/game-session-system.md
+    gdd_ac_ids: [GSS-36, GSS-37, GSS-38]
+    requirement: "Lobby class portraits, player slot panel states, room code chip visual wired"
+    created: 2026-05-08
+    revised: ""
+    status: active
+
   # ─── M2/M3 REGISTRATION COMPLETE — 2026-04-30 (Run 3) ──────────────────────
   # All M1 + M2 + M3 systems now have TR entries. ADR coverage status:
   #   100%: M1 (9 systems), Auction, Card Acquisition, Class System, Prism, Economy
