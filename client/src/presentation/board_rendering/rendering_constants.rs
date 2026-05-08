@@ -1,6 +1,7 @@
 pub const Z_BOARD_BACKGROUND: f32 = -0.5;
 pub const Z_FIELD_WASH: f32 = 0.0;
 pub const Z_CELL_NODES: f32 = 1.0;
+pub const Z_BOARD_CHROME: f32 = 1.5;
 pub const Z_TRAPS_STRUCTURES: f32 = 2.0;
 pub const Z_OBJECTIVES: f32 = 2.5;
 pub const Z_UNITS: f32 = 3.0;

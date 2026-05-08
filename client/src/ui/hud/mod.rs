@@ -12,6 +12,10 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+use crate::asset_wiring::{
+    hud_figurine_asset, hud_objective_dot_asset, ObjectiveDotState, PlaceholderAssets,
+    HUD_OBJECTIVE_DOT_DESTROYED_ASSET, HUD_PHASE_TIMER_BAR_ASSET,
+};
 use crate::card_animations::cancel_tween_anim_in_place;
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientState, CurrentClientPhase};
@@ -19,7 +23,8 @@ use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
 pub const HUD_DOT_ROWS: usize = 2;
 pub const HUD_DOTS_PER_ROW: usize = 5;
-pub const HUD_ENTITY_COUNT: usize = 19;
+/// Total HUD entities carrying the `HudEntity` marker (PAW-004: +2 for figurine + timer bar).
+pub const HUD_ENTITY_COUNT: usize = 21;
 pub const CURRENT_MANA_BAR_WIDTH_PX: f32 = 104.0;
 pub const CURRENT_MANA_BAR_HEIGHT_PX: f32 = 28.0;
 pub const RESERVE_MANA_DIAMOND_SIZE_PX: f32 = 74.0;
@@ -87,6 +92,8 @@ pub struct HudEntities {
     pub mana_label: Entity,
     pub reserve_container: Entity,
     pub reserve_label: Entity,
+    pub figurine: Entity,
+    pub timer_bar: Entity,
     pub dots: [[Entity; HUD_DOTS_PER_ROW]; HUD_DOT_ROWS],
 }
 
@@ -231,6 +238,14 @@ impl Lens<ManaTweenTarget> for ManaTweenLens {
 #[derive(Message, Debug, Clone)]
 pub struct HudGoldBroadcastMessage(pub S2CGoldBroadcast);
 
+/// Marker for the HUD class figurine entity (own player's class portrait).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudFigurine;
+
+/// Marker for the HUD phase timer bar fill entity.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudTimerBar;
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScoreboardDot {
     pub row: ScoreboardRow,
@@ -303,6 +318,8 @@ impl Plugin for HudPlugin {
                         .in_set(HudSystemSet::StateSync)
                         .after(AnimationSystem::AnimationUpdate),
                     sync_scoreboard_dot_layout_system.in_set(HudSystemSet::StateSync),
+                    sync_figurine_image_system.in_set(HudSystemSet::StateSync),
+                    sync_dot_image_on_objective_destroyed_system.in_set(HudSystemSet::StateSync),
                 ),
             );
     }
@@ -417,10 +434,26 @@ pub fn hud_phase_transition_system(
     }
 }
 
-fn spawn_hud(mut commands: Commands, config: Res<HudConfig>, existing: Option<Res<HudEntities>>) {
+fn spawn_hud(
+    mut commands: Commands,
+    asset_server: Option<Res<AssetServer>>,
+    config: Res<HudConfig>,
+    placeholder_assets: Option<Res<PlaceholderAssets>>,
+    existing: Option<Res<HudEntities>>,
+) {
     if existing.is_some() {
         return;
     }
+
+    // Use fallback handle when PlaceholderAssets not yet available (test contexts).
+    // When AssetServer is not present (minimal test setup), use a default handle.
+    let fallback_handle = if let Some(pa) = &placeholder_assets {
+        pa.fallback.clone()
+    } else if let Some(server) = &asset_server {
+        server.load(crate::asset_wiring::PLACEHOLDER_FALLBACK_ASSET)
+    } else {
+        Handle::default()
+    };
 
     let root = commands
         .spawn((
@@ -484,7 +517,56 @@ fn spawn_hud(mut commands: Commands, config: Res<HudConfig>, existing: Option<Re
     );
     let (reserve_container, reserve_label) =
         spawn_reserve_mana_label(&mut commands, root, config.hud_margin_px);
-    let dots = spawn_scoreboard_dots(&mut commands, root, &config);
+
+    // ── PAW-004: class figurine (own player) ──────────────────────────────────
+    // Spawned with fallback; updated to the correct class asset in StateSync
+    // when the first S2CGameSnapshot arrives and own ClassId is known.
+    let figurine = commands
+        .spawn((
+            Name::new("HUD Class Figurine"),
+            HudEntity,
+            HudFigurine,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(config.hud_margin_px),
+                bottom: Val::Px(config.hud_margin_px + 60.0),
+                width: Val::Px(64.0),
+                height: Val::Px(64.0),
+                ..default()
+            },
+            ImageNode::new(fallback_handle.clone()),
+            Visibility::Hidden,
+            ChildOf(root),
+        ))
+        .id();
+
+    // ── PAW-004: phase timer bar fill ─────────────────────────────────────────
+    // Image is static; only Node width changes to represent timer progress.
+    let timer_bar_image = if let Some(server) = &asset_server {
+        ImageNode::new(server.load(HUD_PHASE_TIMER_BAR_ASSET))
+    } else {
+        ImageNode::new(Handle::default())
+    };
+    let timer_bar = commands
+        .spawn((
+            Name::new("HUD Phase Timer Bar"),
+            HudEntity,
+            HudTimerBar,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(config.hud_margin_px),
+                top: Val::Px(config.hud_margin_px + 48.0),
+                width: Val::Px(200.0),
+                height: Val::Px(8.0),
+                ..default()
+            },
+            timer_bar_image,
+            Visibility::Hidden,
+            ChildOf(root),
+        ))
+        .id();
+
+    let dots = spawn_scoreboard_dots(&mut commands, asset_server.as_deref(), root, &config);
 
     commands.insert_resource(HudEntities {
         root,
@@ -497,6 +579,8 @@ fn spawn_hud(mut commands: Commands, config: Res<HudConfig>, existing: Option<Re
         mana_label,
         reserve_container,
         reserve_label,
+        figurine,
+        timer_bar,
         dots,
     });
 }
@@ -647,6 +731,7 @@ fn spawn_gold_label(
 
 fn spawn_scoreboard_dots(
     commands: &mut Commands,
+    asset_server: Option<&AssetServer>,
     parent: Entity,
     config: &HudConfig,
 ) -> [[Entity; HUD_DOTS_PER_ROW]; HUD_DOT_ROWS] {
@@ -655,6 +740,18 @@ fn spawn_scoreboard_dots(
             let row_marker = match row {
                 0 => ScoreboardRow::Opponent,
                 _ => ScoreboardRow::Local,
+            };
+
+            // Own row starts Alive; opponent row starts Unknown.
+            let initial_dot_state = match row_marker {
+                ScoreboardRow::Local => ObjectiveDotState::Alive,
+                ScoreboardRow::Opponent => ObjectiveDotState::Unknown,
+            };
+            let dot_image_path = hud_objective_dot_asset(initial_dot_state);
+            let dot_image = if let Some(server) = asset_server {
+                ImageNode::new(server.load(dot_image_path))
+            } else {
+                ImageNode::new(Handle::default())
             };
 
             commands
@@ -680,6 +777,7 @@ fn spawn_scoreboard_dots(
                         border_radius: BorderRadius::all(Val::Px(config.hud_dot_diameter_px * 0.5)),
                         ..default()
                     },
+                    dot_image,
                     BackgroundColor(alive_dot_fill()),
                     BorderColor::all(alive_dot_border()),
                     Visibility::Hidden,
@@ -914,6 +1012,119 @@ pub fn sync_scoreboard_dot_layout_system(
             continue;
         };
         node.left = Val::Px(center_x - config.hud_dot_diameter_px * 0.5);
+    }
+}
+
+/// PAW-004: StateSync — update the figurine `ImageNode` to the own player's
+/// class asset. Runs every frame but only writes when the snapshot class
+/// differs from what the figurine currently shows.
+pub fn sync_figurine_image_system(
+    asset_server: Option<Res<AssetServer>>,
+    mut figurines: Query<&mut ImageNode, With<HudFigurine>>,
+    hud_player_ids: Option<Res<HudPlayerIds>>,
+    entities: Option<Res<HudEntities>>,
+    mut last_class: Local<Option<shared::card::ClassId>>,
+    mut snapshot_messages: MessageReader<PresentationGameSnapshotMessage>,
+) {
+    // Drain messages to find the latest own class_id.
+    let mut latest_class = None;
+    for msg in snapshot_messages.read() {
+        if let Some(own) = msg
+            .0
+            .players
+            .iter()
+            .find(|p| p.player_id == msg.0.recipient_player_id)
+        {
+            latest_class = Some(own.class_id);
+        }
+    }
+
+    let Some(class_id) = latest_class else {
+        return;
+    };
+
+    // Only update if the class changed since last sync.
+    if *last_class == Some(class_id) {
+        return;
+    }
+    *last_class = Some(class_id);
+
+    let Some(entities) = entities else {
+        return;
+    };
+    let Some(server) = asset_server else {
+        return;
+    };
+
+    if let Ok(mut img) = figurines.get_mut(entities.figurine) {
+        img.image = server.load(hud_figurine_asset(class_id));
+    }
+
+    let _ = hud_player_ids; // used for future class-change detection
+}
+
+/// PAW-004: StateSync — when a `HudObjectiveUpdate` message marks a dot as
+/// destroyed, update that dot's `ImageNode` to the destroyed asset.
+pub fn sync_dot_image_on_objective_destroyed_system(
+    asset_server: Option<Res<AssetServer>>,
+    mode: Res<HudMode>,
+    mut updates: MessageReader<HudObjectiveUpdate>,
+    entities: Option<Res<HudEntities>>,
+    player_ids: Option<Res<HudPlayerIds>>,
+    mut dot_images: Query<&mut ImageNode, With<ScoreboardDot>>,
+    dot_states: Query<&ScoreboardDotState, With<ScoreboardDot>>,
+) {
+    if *mode == HudMode::Frozen {
+        for _u in updates.read() {}
+        return;
+    }
+
+    let Some(entities) = entities else {
+        for _u in updates.read() {}
+        return;
+    };
+    let Some(player_ids) = player_ids else {
+        for _u in updates.read() {}
+        return;
+    };
+
+    for update in updates.read() {
+        if !(1..=HUD_DOTS_PER_ROW as u8).contains(&update.lane) {
+            warn!(
+                "HUD(PAW-004): OOB lane {} in HudObjectiveUpdate image sync - ignored",
+                update.lane
+            );
+            continue;
+        }
+
+        let Some(row_index) = scoreboard_row_index(update.target_player_id, &player_ids) else {
+            warn!(
+                "HUD(PAW-004): unknown player {:?} in HudObjectiveUpdate image sync - ignored",
+                update.target_player_id
+            );
+            continue;
+        };
+
+        let lane_index = usize::from(update.lane - 1);
+        let dot_entity = entities.dots[row_index][lane_index];
+
+        // Check current dot state to pick the correct asset.
+        let is_already_destroyed = dot_states
+            .get(dot_entity)
+            .map(|s| s.destroyed)
+            .unwrap_or(false);
+
+        if !is_already_destroyed {
+            // The ScoreboardDotState is updated by handle_hud_objective_update_system
+            // which runs before StateSync. We pick the destroyed asset unconditionally
+            // because this system is only triggered when an objective is destroyed.
+        }
+
+        if let Some(server) = &asset_server {
+            if let Ok(mut img) = dot_images.get_mut(dot_entity) {
+                img.image = server.load(HUD_OBJECTIVE_DOT_DESTROYED_ASSET);
+            }
+        }
     }
 }
 

@@ -14,6 +14,7 @@ use shared::protocol::{
 use shared::session::PlayerId;
 
 use super::PresentationSet;
+use crate::asset_wiring::{PlaceholderAssets, BOARD_CHROME_ASSET};
 use crate::card_animations::{
     cancel_tween_anim_in_place, AnimGroup, AnimQueue, AnimQueueEvent, AnimationTimingConfig,
     BoardRebuildRequested, PendingObjectiveDestroyedEvents, PendingPhaseChange,
@@ -51,7 +52,7 @@ pub const MIN_RESOLUTION_SUB_STEP: u8 = 1;
 pub const MAX_RESOLUTION_SUB_STEP: u8 = 6;
 const BOARD_BACKGROUND_ASSET: &str = "art/board/env_board_background_default.png";
 const BOARD_CELL_IDLE_ASSET: &str = "art/board/env_cell_node_idle_board.png";
-const UNIT_PLACEHOLDER_ASSET: &str = "art/characters/ui_unit_placeholder_default_board.png";
+pub const UNIT_PLACEHOLDER_ASSET: &str = "art/characters/ui_unit_placeholder_default_board.png";
 const HP_BAR_WHITE_PIXEL_ASSET: &str = "art/characters/hp_bar_white_pixel_1x2.png";
 const OBJECTIVE_UNKNOWN_ASSET: &str = "art/board/env_objective_unknown_board.png";
 const OBJECTIVE_REAL_ASSET: &str = "art/board/env_objective_real_reveal_board.png";
@@ -98,6 +99,7 @@ pub struct BoardRuntimeAssets {
     pub objective_unknown: Handle<Image>,
     pub objective_real: Handle<Image>,
     pub objective_fake: Handle<Image>,
+    pub board_chrome: Handle<Image>,
 }
 
 impl BoardRuntimeAssets {
@@ -110,6 +112,7 @@ impl BoardRuntimeAssets {
             objective_unknown: asset_server.load(OBJECTIVE_UNKNOWN_ASSET),
             objective_real: asset_server.load(OBJECTIVE_REAL_ASSET),
             objective_fake: asset_server.load(OBJECTIVE_FAKE_ASSET),
+            board_chrome: asset_server.load(BOARD_CHROME_ASSET),
         }
     }
 }
@@ -1431,6 +1434,7 @@ fn insert_board_rendering_session_resources(
     spawn_board_camera(&mut commands, &board_layout);
     if let Some(runtime_assets) = runtime_assets {
         spawn_board_background(&mut commands, &board_layout, &runtime_assets);
+        spawn_board_chrome(&mut commands, &board_layout, &runtime_assets);
         spawn_board_grid(&mut commands, &board_layout, Some(&runtime_assets));
         commands.insert_resource(runtime_assets);
     } else {
@@ -1458,6 +1462,7 @@ struct BoardSnapshotRenderResources<'w> {
     board_layout: Option<Res<'w, BoardLayout>>,
     card_atlas: Option<Res<'w, CardAtlas>>,
     board_assets: Option<Res<'w, BoardRuntimeAssets>>,
+    placeholder_assets: Option<Res<'w, PlaceholderAssets>>,
     config: Res<'w, BoardRenderingConfig>,
     player_team_map: Res<'w, PlayerTeamMap>,
 }
@@ -1527,6 +1532,7 @@ fn rebuild_board_from_snapshot_system(
         &board_layout,
         &card_atlas,
         render_resources.board_assets.as_deref(),
+        render_resources.placeholder_assets.as_deref(),
         &render_resources.config,
         &render_resources.player_team_map,
         &snapshot,
@@ -1702,6 +1708,7 @@ fn spawn_snapshot_units(
     board_layout: &BoardLayout,
     card_atlas: &CardAtlas,
     board_assets: Option<&BoardRuntimeAssets>,
+    placeholder_assets: Option<&PlaceholderAssets>,
     config: &BoardRenderingConfig,
     player_team_map: &PlayerTeamMap,
     snapshot: &S2CGameSnapshot,
@@ -1719,6 +1726,7 @@ fn spawn_snapshot_units(
             board_layout,
             card_atlas,
             board_assets,
+            placeholder_assets,
             config,
             snapshot,
             unit,
@@ -1732,6 +1740,7 @@ fn spawn_snapshot_unit(
     board_layout: &BoardLayout,
     card_atlas: &CardAtlas,
     board_assets: Option<&BoardRuntimeAssets>,
+    placeholder_assets: Option<&PlaceholderAssets>,
     config: &BoardRenderingConfig,
     snapshot: &S2CGameSnapshot,
     unit: &UnitBoardState,
@@ -1765,7 +1774,13 @@ fn spawn_snapshot_unit(
             stats,
             LaneCell { lane, cell },
             StatusEffectsList::default(),
-            unit_sprite(card_atlas, board_assets, frame_index),
+            unit_sprite(
+                card_atlas,
+                board_assets,
+                frame_index,
+                unit.source_class,
+                placeholder_assets,
+            ),
             Transform::from_xyz(
                 world_xy.x + co_occupancy_x_offset,
                 world_xy.y,
@@ -2249,21 +2264,64 @@ fn spawn_hp_bar_fill(
     ));
 }
 
+/// Returns the `Handle<Image>` that `unit_sprite` selects when no atlas frame exists.
+/// Exposed for integration testing (PAW-005-d, PAW-005-e).
+pub fn resolve_unit_image_handle(
+    source_class: Option<ClassId>,
+    placeholder_assets: Option<&PlaceholderAssets>,
+    board_assets: Option<&BoardRuntimeAssets>,
+) -> Option<Handle<Image>> {
+    if let (Some(class_id), Some(pa)) = (source_class, placeholder_assets) {
+        return Some(board_unit_class_handle(class_id, pa));
+    }
+    board_assets.map(|ba| ba.unit_placeholder.clone())
+}
+
+fn board_unit_class_handle(class_id: ClassId, assets: &PlaceholderAssets) -> Handle<Image> {
+    match class_id {
+        ClassId::Iop => assets.board_unit_iop.clone(),
+        ClassId::Cra => assets.board_unit_cra.clone(),
+        ClassId::Sacrier => assets.board_unit_sacrier.clone(),
+        ClassId::Xelor => assets.board_unit_xelor.clone(),
+        ClassId::Ecaflip => assets.board_unit_ecaflip.clone(),
+        ClassId::Sadida => assets.board_unit_sadida.clone(),
+        ClassId::Neutral => assets.board_unit_neutral.clone(),
+    }
+}
+
 fn unit_sprite(
     card_atlas: &CardAtlas,
     board_assets: Option<&BoardRuntimeAssets>,
     frame_index: usize,
+    source_class: Option<ClassId>,
+    placeholder_assets: Option<&PlaceholderAssets>,
 ) -> Sprite {
-    if frame_index == UNIT_PLACEHOLDER_FRAME_INDEX {
-        if let Some(board_assets) = board_assets {
-            return direct_sprite(
-                board_assets.unit_placeholder.clone(),
-                rendering_constants::UNIT_SPRITE_SIZE,
-                Color::srgba(1.0, 1.0, 1.0, 1.0),
-            );
-        }
+    // Atlas frame takes priority when available.
+    if frame_index != UNIT_PLACEHOLDER_FRAME_INDEX {
+        return atlas_sprite(
+            card_atlas.image.clone(),
+            card_atlas.layout.clone(),
+            frame_index,
+            rendering_constants::UNIT_SPRITE_SIZE,
+            Color::srgba(1.0, 1.0, 1.0, 1.0),
+        );
     }
-
+    // Class-specific sprite when no atlas frame exists.
+    if let (Some(class_id), Some(pa)) = (source_class, placeholder_assets) {
+        return direct_sprite(
+            board_unit_class_handle(class_id, pa),
+            rendering_constants::UNIT_SPRITE_SIZE,
+            Color::srgba(1.0, 1.0, 1.0, 1.0),
+        );
+    }
+    // Generic placeholder fallback.
+    if let Some(board_assets) = board_assets {
+        return direct_sprite(
+            board_assets.unit_placeholder.clone(),
+            rendering_constants::UNIT_SPRITE_SIZE,
+            Color::srgba(1.0, 1.0, 1.0, 1.0),
+        );
+    }
     atlas_sprite(
         card_atlas.image.clone(),
         card_atlas.layout.clone(),
@@ -2423,6 +2481,30 @@ fn spawn_board_background(
             board_center.x,
             board_center.y,
             rendering_constants::Z_BOARD_BACKGROUND,
+        ),
+    ));
+}
+
+fn spawn_board_chrome(
+    commands: &mut Commands,
+    board_layout: &BoardLayout,
+    board_assets: &BoardRuntimeAssets,
+) {
+    let board_center = board_center(board_layout);
+    commands.spawn((
+        BoardRenderingEntity,
+        direct_sprite(
+            board_assets.board_chrome.clone(),
+            Vec2::new(
+                board_layout.cell_width * f32::from(BOARD_CELL_COUNT),
+                board_layout.lane_height * f32::from(BOARD_LANE_COUNT),
+            ),
+            Color::srgba(1.0, 1.0, 1.0, 1.0),
+        ),
+        Transform::from_xyz(
+            board_center.x,
+            board_center.y,
+            rendering_constants::Z_BOARD_CHROME,
         ),
     ));
 }
