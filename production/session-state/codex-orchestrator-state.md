@@ -1602,14 +1602,46 @@ Every action in this project MUST use the Claude Game Studios defined skills:
 
 **Never substitute with:** raw bash/grep checks, manual file edits bypassing skills, skipping smoke-check, ad-hoc path existence checks.
 
-### Last Sync: 2026-05-08 (post-B0004-fix, PROMPT 475 dispatched)
+### Last Sync: 2026-05-08 (active fix wave — PAW code-review fixes in flight)
 
 ### ⚠️ DISK SPACE ALERT
-D: drive hit 100% full from Rust build artifacts. Clean inactive worktree targets before launching new builds. Active worktrees to keep: PAW-001, lightyear-replication-sender-fix. All others can have their target/ deleted.
+D: drive hit 100% full from Rust build artifacts. Clean inactive worktree targets before launching new builds. Keep only active worktrees.
+
+### origin/main HEAD: bd41df3
 
 ### Currently Running (windows still open)
-- PROMPT 473 — PAW-001 asset-wiring-foundation (worker, branch `work/PAW-001-asset-wiring-foundation`)
-- PROMPT 475 — Lightyear ReplicationSender fix (worker, branch `work/lightyear-replication-sender-fix`)
+- PROMPT 493 — hand/mod.rs NodePositionLens + disclosure_state race fix + 3 extra items added (worktree: hand-ui-node-lens-fix)
+- PROMPT 494 — PAW code-review required items fix (worktree: paw-review-fixes)
+
+### Closed Recently (this session)
+- PAW-001 through PAW-006: all on main (cb4e178, 3734f19, bb80b47, f5b7a34, 2132129 etc.)
+- ClientState dedup fix: f5b7a34 on main ✅
+- Lightyear ReplicationSender fix: 14c937d on main ✅
+- B0004 fan root + server tracing: 0cb0766 on main ✅
+- Placeholder panic fix (PROMPT 492): branch pushed, NOT yet integrated — blocked by /code-review CHANGES REQUIRED (4 items, 3 being fixed by PROMPT 493)
+
+### Current Work Flow
+All PAW stories (002-006) are on main but have NOT had /story-done run yet.
+All PAW files failed /code-review — fixes in PROMPT 493 + 494.
+After both fix prompts complete:
+  1. /code-review on fixed files
+  2. If APPROVED → cherry-pick to main
+  3. /story-done for each PAW-002 through PAW-006
+  4. /smoke-check
+  5. Rebuild + retest DRAFT_INITIAL (main fix: ClientState dedup f5b7a34 + ReplicationSender 14c937d)
+
+### Pending /story-done (blocked until code-review passes)
+- PAW-002: story-002-hand-ui-card-frames.md
+- PAW-003: story-003-shop-auction-chrome.md
+- PAW-004: story-004-hud-figurines-timer-dots.md
+- PAW-005: story-005-board-unit-sprites.md
+- PAW-006: story-006-lobby-portraits.md
+
+### Active Blockers
+- PROMPT 492 (placeholder panic fix): not integrated — 3 of 4 review items being fixed by PROMPT 493
+- hand/mod.rs: CHANGES REQUIRED from /code-review — fix in PROMPT 493
+- PAW-003 to PAW-006 + asset_wiring.rs: APPROVED WITH SUGGESTIONS (3 small required fixes) — lobby.rs:33 dead Startup to be fixed in PROMPT 494
+- All /story-done for PAW-002 to PAW-006 blocked until /code-review passes on fixed files
 
 ### Closed Recently
 - PROMPT 450 — DRAFT_INITIAL grid repair → worker commit `5b6d030` ✅ (incomplete fix — see 461 follow-up; worker forgot the BackgroundColor fallback I had requested)
