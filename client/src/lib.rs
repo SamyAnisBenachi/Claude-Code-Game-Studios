@@ -1,4 +1,5 @@
 pub mod asset_wiring;
+pub mod audio;
 pub mod card_animations;
 pub mod network;
 pub mod presentation;

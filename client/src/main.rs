@@ -6,6 +6,7 @@
 use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
 use bevy::window::{PresentMode, Window, WindowPlugin};
+use client::audio::AudioSystemPlugin;
 use client::network::ClientNetworkPlugin;
 use client::presentation::PresentationPlugin;
 use client::ui::lobby::LobbyUiPlugin;
@@ -29,6 +30,7 @@ fn main() {
     });
 
     app.add_plugins(default_plugins);
+    app.add_plugins(AudioSystemPlugin);
     app.add_plugins(ClientNetworkPlugin);
     app.add_plugins(PresentationPlugin);
     app.add_plugins(LobbyUiPlugin);
