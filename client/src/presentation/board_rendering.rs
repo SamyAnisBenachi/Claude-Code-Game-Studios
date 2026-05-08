@@ -885,8 +885,8 @@ impl Plugin for BoardRenderingPlugin {
             .add_message::<GhostPlacementChanged>()
             .add_message::<GhostClickedEvent>()
             .add_message::<GhostDragStartEvent>()
-            .add_message::<Pointer<Click>>()
-            .add_message::<Pointer<Press>>()
+            .add_observer(on_ghost_clicked)
+            .add_observer(on_ghost_drag_start)
             .configure_sets(
                 Update,
                 (
@@ -942,7 +942,8 @@ impl Plugin for BoardRenderingPlugin {
             .add_systems(
                 Update,
                 drain_resolution_event_system
-                    .in_set(BoardRenderSet::MessageDrain)
+                    .in_set(PresentationSet::MessageDrain)
+                    .after(PresentationSet::PhaseTransition)
                     .run_if(in_state(ClientState::InSession)),
             )
             .add_systems(
@@ -962,8 +963,6 @@ impl Plugin for BoardRenderingPlugin {
                 Update,
                 (
                     apply_ghost_placement_changed_system,
-                    emit_ghost_drag_start_events_system,
-                    emit_ghost_clicked_events_system,
                     drain_placement_reveal_system,
                 )
                     .chain()
@@ -1079,44 +1078,40 @@ pub fn drain_placement_reveal_system(
     *render_state = BoardRenderState::ResolutionReveal;
 }
 
-pub fn emit_ghost_clicked_events_system(
-    mut clicks: MessageReader<Pointer<Click>>,
+fn on_ghost_clicked(
+    trigger: On<Pointer<Click>>,
     ghost_interactions: Query<&BoardGhostInteraction>,
     mut writer: MessageWriter<GhostClickedEvent>,
 ) {
-    for click in clicks.read() {
-        if click.event.button != PointerButton::Primary {
-            continue;
-        }
-
-        let Ok(ghost) = ghost_interactions.get(click.entity) else {
-            continue;
-        };
-
-        writer.write(GhostClickedEvent {
-            card_id: ghost.card_id,
-        });
+    if trigger.button != PointerButton::Primary {
+        return;
     }
+
+    let Ok(ghost) = ghost_interactions.get(trigger.entity) else {
+        return;
+    };
+
+    writer.write(GhostClickedEvent {
+        card_id: ghost.card_id,
+    });
 }
 
-pub fn emit_ghost_drag_start_events_system(
-    mut presses: MessageReader<Pointer<Press>>,
+fn on_ghost_drag_start(
+    trigger: On<Pointer<Press>>,
     ghost_interactions: Query<&BoardGhostInteraction>,
     mut writer: MessageWriter<GhostDragStartEvent>,
 ) {
-    for press in presses.read() {
-        if press.event.button != PointerButton::Primary {
-            continue;
-        }
-
-        let Ok(ghost) = ghost_interactions.get(press.entity) else {
-            continue;
-        };
-
-        writer.write(GhostDragStartEvent {
-            card_id: ghost.card_id,
-        });
+    if trigger.button != PointerButton::Primary {
+        return;
     }
+
+    let Ok(ghost) = ghost_interactions.get(trigger.entity) else {
+        return;
+    };
+
+    writer.write(GhostDragStartEvent {
+        card_id: ghost.card_id,
+    });
 }
 
 pub fn drain_resolution_event_system(
@@ -1529,6 +1524,7 @@ fn rebuild_board_from_snapshot_system(
         &card_atlas,
         render_resources.board_assets.as_deref(),
         &snapshot,
+        &render_resources.config,
     );
     spawn_snapshot_units(
         &mut commands,
@@ -1856,12 +1852,14 @@ fn snapshot_co_occupancy_offsets(
 }
 
 pub fn co_occupancy_offset(unit_index: u8, side_offset: f32) -> f32 {
-    assert!(
-        unit_index <= 1,
-        "F3 co-occupancy: unit_index={} > 1 - invalid co-occupancy state",
-        unit_index
-    );
-    (f32::from(unit_index) - 0.5) * side_offset
+    if unit_index > 1 {
+        warn!(
+            "co_occupancy_offset: unit_index {} out of range, clamping to 1",
+            unit_index
+        );
+    }
+    let index = unit_index.min(1);
+    (f32::from(index) - 0.5) * side_offset
 }
 
 fn visible_unit_cell(unit: &UnitBoardState, recipient_player_id: PlayerId) -> Option<(u8, u8)> {
@@ -1939,6 +1937,7 @@ fn spawn_snapshot_objectives(
     card_atlas: &CardAtlas,
     board_assets: Option<&BoardRuntimeAssets>,
     snapshot: &S2CGameSnapshot,
+    config: &BoardRenderingConfig,
 ) {
     for player in &snapshot.players {
         for objective in &player.objectives {
@@ -1950,6 +1949,7 @@ fn spawn_snapshot_objectives(
                 snapshot.recipient_player_id,
                 player.player_id,
                 objective,
+                config,
             );
         }
     }
@@ -1963,6 +1963,7 @@ fn spawn_standing_objective(
     recipient_player_id: PlayerId,
     owner_id: PlayerId,
     objective: &ObjectiveSnapshot,
+    config: &BoardRenderingConfig,
 ) {
     if objective.is_destroyed {
         return;
@@ -2000,7 +2001,14 @@ fn spawn_standing_objective(
         ))
         .id();
 
-    spawn_objective_hp_bar_children(commands, objective_entity, card_atlas, board_assets, hp);
+    spawn_objective_hp_bar_children(
+        commands,
+        objective_entity,
+        card_atlas,
+        board_assets,
+        hp,
+        config,
+    );
 }
 
 fn objective_art_kind(
@@ -2204,8 +2212,9 @@ fn spawn_objective_hp_bar_children(
     card_atlas: &CardAtlas,
     board_assets: Option<&BoardRuntimeAssets>,
     hp: StandingObjectiveHp,
+    config: &BoardRenderingConfig,
 ) {
-    let visual = hp_bar_visual(hp.hp_current, hp.hp_max, BoardRenderingConfig::default());
+    let visual = hp_bar_visual(hp.hp_current, hp.hp_max, *config);
     spawn_hp_bar_background(commands, parent, card_atlas, board_assets);
     spawn_hp_bar_fill(commands, parent, card_atlas, board_assets, visual);
 }
@@ -2455,7 +2464,7 @@ fn spawn_board_camera(commands: &mut Commands, board_layout: &BoardLayout) {
     commands.spawn((
         BoardRenderingEntity,
         BoardCamera,
-        Camera2d,
+        Camera2d, // Camera2d auto-inserts Camera + RenderTarget via Bevy 0.18 Required Components
         Transform::from_xyz(
             camera_xy.x,
             camera_xy.y,
