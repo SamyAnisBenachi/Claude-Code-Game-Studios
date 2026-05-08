@@ -24,9 +24,6 @@ use crate::ui::settings::AccessibilityPreferences;
 pub const SHOP_AUCTION_UI_PANEL_ROOT_COUNT: usize = 6;
 pub const SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT: usize = 9;
 pub const SHOP_AUCTION_UI_SHOP_SLOT_COUNT: usize = 3;
-pub const BID_INCREMENTS: [u32; 3] = [1, 3, 5];
-pub const DEFAULT_SHOP_REFRESH_BASE_COST: u32 = 1;
-pub const DEFAULT_SHOP_REFRESH_CAP: u32 = 1;
 pub const AUCTION_PREPARING_TIMEOUT_MS: u32 = 10_000;
 pub const AUCTION_AWAITING_SERVER_DELAY_MS: u32 = 1_500;
 pub const AUCTION_TOAST_FADE_IN_MS: u32 = 120;
@@ -103,13 +100,16 @@ pub struct ShopAuctionUiOutboundMessages {
 pub struct ShopAuctionRefreshConfig {
     pub refresh_base_cost: u32,
     pub refresh_cap: u32,
+    pub bid_increments: [u32; 3],
 }
 
 impl Default for ShopAuctionRefreshConfig {
     fn default() -> Self {
+        let cfg = shared::config::GameConfig::default();
         Self {
-            refresh_base_cost: DEFAULT_SHOP_REFRESH_BASE_COST,
-            refresh_cap: DEFAULT_SHOP_REFRESH_CAP,
+            refresh_base_cost: cfg.refresh_base_cost,
+            refresh_cap: cfg.refresh_cap,
+            bid_increments: cfg.bid_increments,
         }
     }
 }
@@ -1165,10 +1165,12 @@ pub fn local_free_gold(gold: u32, reserved_gold: u32) -> u32 {
 }
 
 pub fn bid_button_labels(current_price: u32) -> [BidButtonLabel; 3] {
-    BID_INCREMENTS.map(|increment| BidButtonLabel {
-        total_commitment: current_price.saturating_add(increment),
-        increment,
-    })
+    shared::config::GameConfig::default()
+        .bid_increments
+        .map(|increment| BidButtonLabel {
+            total_commitment: current_price.saturating_add(increment),
+            increment,
+        })
 }
 
 pub fn bid_button_label_texts(current_price: u32) -> [String; 3] {
@@ -3239,6 +3241,7 @@ pub fn sync_auction_toast_system(
 pub fn spawn_shop_auction_ui(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    refresh_config: Res<ShopAuctionRefreshConfig>,
     existing: Option<Res<ShopAuctionUiEntities>>,
 ) {
     if existing.is_some() {
@@ -3317,7 +3320,12 @@ pub fn spawn_shop_auction_ui(
         auction_timer_bar,
         auction_bid_status_text,
         auction_bid_buttons,
-    ) = spawn_auction_contents(&mut commands, &asset_server, auction_panel);
+    ) = spawn_auction_contents(
+        &mut commands,
+        &asset_server,
+        &refresh_config.bid_increments,
+        auction_panel,
+    );
     let shop_footer = spawn_panel_root(
         &mut commands,
         root,
@@ -3745,6 +3753,7 @@ fn spawn_shop_hand_full_banner(commands: &mut Commands, parent: Entity) -> Entit
 fn spawn_auction_contents(
     commands: &mut Commands,
     asset_server: &AssetServer,
+    bid_increments: &[u32; 3],
     parent: Entity,
 ) -> (Entity, Entity, Entity, Entity, [Entity; 3]) {
     let featured_card = commands
@@ -3815,7 +3824,7 @@ fn spawn_auction_contents(
                 Name::new(format!("Shop Auction Bid Button {index}")),
                 ShopAuctionUiEntity,
                 AuctionBidButton {
-                    increment: BID_INCREMENTS[index],
+                    increment: bid_increments[index],
                 },
                 AuctionBidButtonState::GenericDisabled,
                 AuctionBidTargetBounds {
