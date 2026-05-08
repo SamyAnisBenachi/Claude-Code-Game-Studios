@@ -10,6 +10,9 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+use crate::asset_wiring::{
+    lobby_portrait_asset, LOBBY_PLAYER_SLOT_PANEL_ASSET, LOBBY_ROOM_CODE_CHIP_ASSET,
+};
 use crate::state::{apply_handshake_message, ClientSessionIdentity, ClientState};
 
 pub struct LobbyUiPlugin;
@@ -150,6 +153,26 @@ pub struct LobbyClassButton {
 
 #[derive(Component)]
 pub struct LobbyConfirmClassButton;
+
+/// Background portrait image for a class selection card in the lobby class picker.
+/// One entity per `ClassId` variant (7 total). The `ImageNode` is the portrait image;
+/// selection state is conveyed by a separate overlay, not by swapping this image.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LobbyClassPortrait {
+    pub class_id: ClassId,
+}
+
+/// Background panel image for the local player's slot in the lobby.
+#[derive(Component)]
+pub struct LobbyOwnSlotPanel;
+
+/// Background panel image for the opponent's slot in the lobby.
+#[derive(Component)]
+pub struct LobbyOpponentSlotPanel;
+
+/// Background image chip that frames the room code display in the lobby.
+#[derive(Component)]
+pub struct LobbyRoomCodeChip;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 enum LobbyDynamicText {
@@ -650,6 +673,7 @@ fn request_confirm_class(
 
 fn spawn_lobby_ui_system(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     lobby: Res<LobbyViewState>,
     input: Res<LobbyInputState>,
     roots: Query<Entity, With<LobbyRoot>>,
@@ -792,6 +816,73 @@ fn spawn_lobby_ui_system(
                 BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
                 BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
             ));
+
+            // ── Class portraits (PAW-006-a) ───────────────────────────────────
+            // One portrait ImageNode per ClassId variant (7 total, including Neutral).
+            // The portrait image is always shown; selection state uses a separate overlay.
+            parent.spawn((lobby_wrap_row_node(),)).with_children(|row| {
+                for class_id in lobby_all_class_ids() {
+                    row.spawn((
+                        LobbyClassPortrait { class_id },
+                        Name::new(format!("Lobby Portrait {:?}", class_id)),
+                        Node {
+                            width: Val::Px(64.0),
+                            height: Val::Px(80.0),
+                            ..default()
+                        },
+                        ImageNode::new(asset_server.load(lobby_portrait_asset(class_id))),
+                    ));
+                }
+            });
+
+            // ── Player slot panels (PAW-006-b) ────────────────────────────────
+            parent.spawn((lobby_row_node(),)).with_children(|row| {
+                row.spawn((
+                    LobbyOwnSlotPanel,
+                    Name::new("Lobby Own Slot Panel"),
+                    Node {
+                        width: Val::Px(160.0),
+                        height: Val::Px(48.0),
+                        ..default()
+                    },
+                    ImageNode::new(asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET)),
+                ));
+                row.spawn((
+                    LobbyOpponentSlotPanel,
+                    Name::new("Lobby Opponent Slot Panel"),
+                    Node {
+                        width: Val::Px(160.0),
+                        height: Val::Px(48.0),
+                        ..default()
+                    },
+                    ImageNode::new(asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET)),
+                ));
+            });
+
+            // ── Room code chip (PAW-006-c) ─────────────────────────────────────
+            // The chip is the background image; the room code text is a separate
+            // Text child layered above it.
+            parent
+                .spawn((
+                    LobbyRoomCodeChip,
+                    Name::new("Lobby Room Code Chip"),
+                    Node {
+                        width: Val::Px(200.0),
+                        height: Val::Px(40.0),
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::Center,
+                        ..default()
+                    },
+                    ImageNode::new(asset_server.load(LOBBY_ROOM_CODE_CHIP_ASSET)),
+                ))
+                .with_children(|chip| {
+                    let room_code = lobby.room_code.as_deref().unwrap_or("--------").to_string();
+                    chip.spawn((
+                        Text::new(room_code),
+                        lobby_text_font(14.0),
+                        TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                    ));
+                });
         });
 }
 
@@ -918,6 +1009,19 @@ fn lobby_class_options() -> [ClassId; 6] {
         ClassId::Xelor,
         ClassId::Ecaflip,
         ClassId::Sadida,
+    ]
+}
+
+/// All 7 ClassId variants used for portrait display (includes Neutral).
+fn lobby_all_class_ids() -> [ClassId; 7] {
+    [
+        ClassId::Iop,
+        ClassId::Cra,
+        ClassId::Sacrier,
+        ClassId::Xelor,
+        ClassId::Ecaflip,
+        ClassId::Sadida,
+        ClassId::Neutral,
     ]
 }
 
