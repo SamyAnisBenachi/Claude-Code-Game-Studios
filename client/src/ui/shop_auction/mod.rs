@@ -9,8 +9,9 @@ use shared::protocol::{
 use shared::session::PlayerId;
 
 use crate::asset_wiring::{
-    default_client_card_catalog, resolve_card_display_art, CardDisplayArtAsset,
-    CardDisplayArtFallback,
+    bid_button_asset, default_client_card_catalog, resolve_card_display_art, BidButtonChromeState,
+    CardDisplayArtAsset, CardDisplayArtFallback, SHOP_PANEL_CHROME_ASSET,
+    SHOP_SLOT_WELL_IDLE_ASSET,
 };
 use crate::card_animations::{
     AuctionPanelTransitionRequested, CardAcquiredAnimReady, SettlementOverlayRequested,
@@ -2868,6 +2869,7 @@ pub fn sync_auction_panel_system(
             &mut BackgroundColor,
             &mut AuctionBidTargetBounds,
             &mut AuctionBidFocusState,
+            &mut ImageNode,
         )>,
     )>,
 ) {
@@ -3043,6 +3045,7 @@ pub fn sync_auction_panel_system(
                 mut background_color,
                 mut target_bounds,
                 mut focus_state,
+                mut image_node,
             )) = bid_buttons.get_mut(button_entity)
             else {
                 continue;
@@ -3063,6 +3066,10 @@ pub fn sync_auction_panel_system(
                 footer_visible && next_state != AuctionBidButtonState::HiddenLeading,
             );
             *state = next_state;
+            if let Some(ref server) = asset_server {
+                image_node.image =
+                    server.load(bid_button_asset(auction_bid_chrome_state(next_state)));
+            }
             node.width = Val::Px(AUCTION_BID_TARGET_WIDTH_PX);
             node.height = Val::Px(AUCTION_BID_TARGET_HEIGHT_PX);
             *target_bounds = AuctionBidTargetBounds {
@@ -3230,7 +3237,11 @@ pub fn sync_auction_toast_system(
     }
 }
 
-fn spawn_shop_auction_ui(mut commands: Commands, existing: Option<Res<ShopAuctionUiEntities>>) {
+pub fn spawn_shop_auction_ui(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    existing: Option<Res<ShopAuctionUiEntities>>,
+) {
     if existing.is_some() {
         return;
     }
@@ -3286,7 +3297,10 @@ fn spawn_shop_auction_ui(mut commands: Commands, existing: Option<Res<ShopAuctio
         "Shop Auction Shop Root",
         bottom_panel_node(),
     );
-    let shop_slots = spawn_shop_slots(&mut commands, shop_panel);
+    commands
+        .entity(shop_panel)
+        .insert(ImageNode::new(asset_server.load(SHOP_PANEL_CHROME_ASSET)));
+    let shop_slots = spawn_shop_slots(&mut commands, &asset_server, shop_panel);
     let shop_refresh_button = spawn_shop_refresh_button(&mut commands, shop_panel);
     let shop_ready_button = spawn_shop_ready_button(&mut commands, shop_panel);
     let shop_ready_status = spawn_shop_ready_status(&mut commands, shop_panel);
@@ -3304,7 +3318,7 @@ fn spawn_shop_auction_ui(mut commands: Commands, existing: Option<Res<ShopAuctio
         auction_timer_bar,
         auction_bid_status_text,
         auction_bid_buttons,
-    ) = spawn_auction_contents(&mut commands, auction_panel);
+    ) = spawn_auction_contents(&mut commands, &asset_server, auction_panel);
     let shop_footer = spawn_panel_root(
         &mut commands,
         root,
@@ -3636,6 +3650,7 @@ fn spawn_draft_initial_objective_retrieval_button(
 
 fn spawn_shop_slots(
     commands: &mut Commands,
+    asset_server: &AssetServer,
     parent: Entity,
 ) -> [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT] {
     std::array::from_fn(|index| {
@@ -3648,6 +3663,7 @@ fn spawn_shop_slots(
                 Button,
                 Interaction::None,
                 shop_slot_node(index),
+                ImageNode::new(asset_server.load(SHOP_SLOT_WELL_IDLE_ASSET)),
                 Text::new("Empty"),
                 shop_auction_text_font(14.0),
                 TextColor(Color::srgb(0.92, 0.94, 0.96)),
@@ -3729,6 +3745,7 @@ fn spawn_shop_hand_full_banner(commands: &mut Commands, parent: Entity) -> Entit
 
 fn spawn_auction_contents(
     commands: &mut Commands,
+    asset_server: &AssetServer,
     parent: Entity,
 ) -> (Entity, Entity, Entity, Entity, [Entity; 3]) {
     let featured_card = commands
@@ -3821,6 +3838,9 @@ fn spawn_auction_contents(
                 auction_bid_button_node(index),
                 Visibility::Hidden,
                 ChildOf(parent),
+            ))
+            .insert(ImageNode::new(
+                asset_server.load(bid_button_asset(BidButtonChromeState::Disabled)),
             ))
             .id()
     });
@@ -4277,6 +4297,15 @@ fn next_focusable_bid_button(
     }
 
     None
+}
+
+/// Maps an [`AuctionBidButtonState`] to the corresponding [`BidButtonChromeState`]
+/// for asset selection. Only `Enabled` maps to `Normal`; all other states use `Disabled`.
+fn auction_bid_chrome_state(state: AuctionBidButtonState) -> BidButtonChromeState {
+    match state {
+        AuctionBidButtonState::Enabled => BidButtonChromeState::Normal,
+        _ => BidButtonChromeState::Disabled,
+    }
 }
 
 fn auction_bid_text_color(state: AuctionBidButtonState) -> Color {
