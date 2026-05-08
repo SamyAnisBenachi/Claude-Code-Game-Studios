@@ -1,10 +1,10 @@
 # Story 004: Kill and Objective Awards
 
 > **Epic**: Economy System
-> **Status**: Ready
+> **Status**: Conditional backlog
 > **Layer**: Core / Feature Integration
 > **Type**: Integration
-> **Manifest Version**: 2026-05-05
+> **Manifest Version**: 2026-05-08
 
 ## Context
 
@@ -25,7 +25,7 @@
 - EC17: destroying an opponent objective immediately grants the attacker `GameConfig.objective_gold_reward`, default 3.
 - EC9 adjacent scope: a fake-objective mana-cap reward increments the attacker's `mana_cap`, capped by `GameConfig.mana_cap_max`, and the increased cap applies at the next DRAFT mana ramp.
 
-**Sprint 7 Conditionality**: ECO-004 is a Sprint 7 Should Have reward-loop polish story. Do not start `/dev-story` for this story until either PLAYABLE-003 exposes a reward-loop gap or the orchestrator confirms Must Have work is stable and capacity remains. This condition is an execution gate, not a readiness dependency.
+**Sprint 9 Conditionality**: ECO-004 sits in the Sprint 9 Conditional Backlog. Do not start `/dev-story` for this story unless Sprint 9 evidence (from S9-QA-001 manual route capture or equivalent observation) shows a concrete reward-loop gameplay issue. Pull condition mirrors sprint-9.md: "Pull only if Sprint 9 evidence shows a concrete reward-loop gameplay issue." No expansion into broad economy tuning, auction behavior, shop refresh, or placement mana-split work is permitted even if this story is pulled.
 
 **ADR Governing Implementation**: ADR-010: RSM Phase Event Bus; ADR-017: Combat Resolution Execution Architecture; ADR-019: Economy Resource Architecture; ADR-005: Server-side RNG.
 
@@ -55,7 +55,7 @@
 
 ## Acceptance Criteria
 
-- [ ] **Sprint 7 conditional gate is preserved**: Given this story is selected during Sprint 7, when implementation is considered, then the worker confirms PLAYABLE-003 exposed a reward-loop gap or Must Have work is stable with capacity remaining, and no Sprint 7 Must Have status is changed by this story.
+- [ ] **Sprint 9 conditional gate is preserved**: Given this story is in the Sprint 9 Conditional Backlog, when implementation is considered, then the worker confirms Sprint 9 evidence shows a concrete reward-loop gameplay issue per the pull condition in sprint-9.md, and no Sprint 9 Must Have story status is changed by this story.
 
 - [ ] **Stale event contract is absent**: Given the implementation plan is reviewed, when reward events are named, then it uses current production contracts only: `CombatKillLog`, `AwardGold`, `ManaCapIncreased`, and `ObjectiveDestroyed { target_player_id, lane, was_fake }`. No standalone kill-award production message and no attacker, defender, or reward-selection fields are added to `ObjectiveDestroyed`.
 
@@ -95,7 +95,7 @@ Current production facts to preserve:
 - `server/src/feature/objective/system.rs` emits `AwardGold` and `ManaCapIncreased` messages from objective fake-reward paths.
 
 Implementation choice for a later `/dev-story`:
-- If PLAYABLE-003 shows the direct combat paths already satisfy friend-game reward visibility, keep the implementation narrow and add tests/documentation only for the observed gap.
+- If Sprint 9 evidence shows the direct combat paths already satisfy friend-game reward visibility, keep the implementation narrow and add tests/documentation only for the observed gap.
 - If `AwardGold` or `ManaCapIncreased` messages are unconsumed in the observed path, add Economy-side consumers only with ordering and duplicate-award guards.
 - If direct combat award paths remain authoritative, do not also consume the same objective gold `AwardGold` message unless the direct award path is guarded or removed.
 
@@ -184,7 +184,7 @@ Suggested test shape:
 - Depends on: Objective System Story 005 (Complete) for destruction consequence and self-inflicted guard.
 - Depends on: Objective System Story 006 (Complete) for fake reward `ManaCapIncreased` / fallback `AwardGold` emission.
 - Depends on: Objective System Story 007 (Complete) for RESOLUTION-end `ObjectiveDestroyed` broadcast timing.
-- Sprint 7 execution gate: wait for PLAYABLE-003 reward-loop evidence unless the orchestrator confirms capacity remains after Must Have work.
+- Sprint 9 conditional pull: pull only if Sprint 9 evidence (S9-QA-001 route capture or equivalent) shows a concrete reward-loop gameplay issue; no broad economy tuning expansion permitted.
 - Unlocks: later reward-loop polish only; does not unlock broad economy scope.
 
 ---
