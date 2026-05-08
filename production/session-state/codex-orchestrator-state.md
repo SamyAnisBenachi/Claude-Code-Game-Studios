@@ -1586,11 +1586,14 @@ worktree mode for all new code workers.
 > truth for "what is running, what just closed, what is launchable next."
 > Do NOT rely on conversation memory — always read this section first.
 
-### Last Sync: 2026-05-08 (post-S9-AUDIO-001 push, post-PROMPT-461 emit)
+### Last Sync: 2026-05-08 (post-B0004-fix, PROMPT 475 dispatched)
+
+### ⚠️ DISK SPACE ALERT
+D: drive hit 100% full from Rust build artifacts. Clean inactive worktree targets before launching new builds. Active worktrees to keep: PAW-001, lightyear-replication-sender-fix. All others can have their target/ deleted.
 
 ### Currently Running (windows still open)
-- PROMPT 459 — Automated E2E GAME_OVER route test (worker, branch `work/e2e-game-over-route-test`)
-- PROMPT 461 — DRAFT_INITIAL slot fallback + art resolution repair (worker, branch `work/draft-initial-slot-fallback`)
+- PROMPT 473 — PAW-001 asset-wiring-foundation (worker, branch `work/PAW-001-asset-wiring-foundation`)
+- PROMPT 475 — Lightyear ReplicationSender fix (worker, branch `work/lightyear-replication-sender-fix`)
 
 ### Closed Recently
 - PROMPT 450 — DRAFT_INITIAL grid repair → worker commit `5b6d030` ✅ (incomplete fix — see 461 follow-up; worker forgot the BackgroundColor fallback I had requested)
