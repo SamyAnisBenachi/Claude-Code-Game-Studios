@@ -1586,16 +1586,31 @@ worktree mode for all new code workers.
 > truth for "what is running, what just closed, what is launchable next."
 > Do NOT rely on conversation memory — always read this section first.
 
-### Last Sync: 2026-05-08
+### Last Sync: 2026-05-08 (post-S9-AUDIO-001 push, post-PROMPT-461 emit)
 
 ### Currently Running (windows still open)
-- PROMPT 457 — S9-AUDIO-001 audio bootstrap + timer urgency cue (worker, branch `work/s9-audio-001-audio-bootstrap-timer-urgency-cue`)
 - PROMPT 459 — Automated E2E GAME_OVER route test (worker, branch `work/e2e-game-over-route-test`)
+- PROMPT 461 — DRAFT_INITIAL slot fallback + art resolution repair (worker, branch `work/draft-initial-slot-fallback`)
 
 ### Closed Recently
-- PROMPT 450 — DRAFT_INITIAL grid repair → worker commit `5b6d030` ✅
+- PROMPT 450 — DRAFT_INITIAL grid repair → worker commit `5b6d030` ✅ (incomplete fix — see 461 follow-up; worker forgot the BackgroundColor fallback I had requested)
 - PROMPT 458 — cherry-pick 5b6d030 into main → integration commit `7431bdb` on origin/main ✅
 - PROMPT 456 — S9-QA-002 story-done → main commit `10bfac9`, pushed to origin ✅
+- PROMPT 457 — S9-AUDIO-001 audio bootstrap + timer urgency cue → worker commit `db7f1a9`, branch pushed ✅ (pending integration to main)
+
+### Known Issues
+- `hud_text_size_contrast_harness` test has a pre-existing rustc STATUS_STACK_BUFFER_OVERRUN crash on origin/main. Surfaced by PROMPT 457 verification. Unrelated to audio work. Investigate later if it blocks CI.
+
+### Visual UI Implementation Gap (NEW — surfaced 2026-05-08)
+Diagnostic confirms that beyond DRAFT_INITIAL slots, the entire game UI is in a raw/unstyled state:
+- 0/242 design assets approved or wired into client
+- HUD missing timer + class figurines + RESOLUTION dimming
+- Hand UI logic complete but no visual chrome (frames, badges, panels)
+- Shop/Auction UI missing all panel chrome (BLOCKER for visual playability)
+- Lobby missing class carousel + portraits + slot indicators
+- Stories were marked Complete on gameplay logic only — visual delivery never tracked as a separate axis
+
+User decision pending on Option A (accept friend-game-lite raw UI), Option B (full visual polish sprint), or Option C (targeted asset wiring + shop/auction panels only).
 
 ### Sprint 9 Story Status
 | Story | Status |
@@ -1608,7 +1623,7 @@ worktree mode for all new code workers.
 | S9-CONTENT-001 | Done (supporting) |
 | S9-QA-002 | Done |
 | S9-QA-001 | in-progress / partial — blocked by MANUAL-FG-001 (human operator GUI route) |
-| S9-AUDIO-001 | in-progress (PROMPT 457 dispatched) |
+| S9-AUDIO-001 | worker pushed `db7f1a9`, pending integration to main |
 | ECO-004 | conditional backlog — do not launch unless reward-loop issue surfaces |
 
 ### Active Blockers
