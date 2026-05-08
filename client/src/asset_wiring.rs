@@ -378,3 +378,170 @@ pub fn resolve_card_display_art(
     let path = format!("art/cards/display/card_{art_id}_art_display.png");
     Ok(Box::leak(path.into_boxed_str()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use shared::card::{ClassId, Rarity};
+
+    #[test]
+    fn card_frame_asset_maps_all_rarities() {
+        assert_eq!(
+            card_frame_asset(Rarity::Common),
+            CARD_FRAME_COMMON_HAND_ASSET
+        );
+        assert_eq!(
+            card_frame_asset(Rarity::Uncommon),
+            CARD_FRAME_COMMON_HAND_ASSET
+        );
+        assert_eq!(card_frame_asset(Rarity::Rare), CARD_FRAME_RARE_HAND_ASSET);
+        assert_eq!(card_frame_asset(Rarity::Epic), CARD_FRAME_EPIC_HAND_ASSET);
+        assert_eq!(
+            card_frame_asset(Rarity::Legendary),
+            CARD_FRAME_LEGENDARY_HAND_ASSET
+        );
+    }
+
+    #[test]
+    fn rarity_icon_asset_maps_all_rarities() {
+        assert_eq!(rarity_icon_asset(Rarity::Common), RARITY_ICON_COMMON_ASSET);
+        assert_eq!(
+            rarity_icon_asset(Rarity::Uncommon),
+            RARITY_ICON_COMMON_ASSET
+        );
+        assert_eq!(rarity_icon_asset(Rarity::Rare), RARITY_ICON_RARE_ASSET);
+        assert_eq!(rarity_icon_asset(Rarity::Epic), RARITY_ICON_EPIC_ASSET);
+        assert_eq!(
+            rarity_icon_asset(Rarity::Legendary),
+            RARITY_ICON_LEGENDARY_ASSET
+        );
+    }
+
+    #[test]
+    fn class_type_icon_asset_maps_all_classes() {
+        assert_eq!(
+            class_type_icon_asset(ClassId::Iop),
+            CLASS_TYPE_ICON_IOP_ASSET
+        );
+        assert_eq!(
+            class_type_icon_asset(ClassId::Cra),
+            CLASS_TYPE_ICON_CRA_ASSET
+        );
+        assert_eq!(
+            class_type_icon_asset(ClassId::Sacrier),
+            CLASS_TYPE_ICON_SACRIER_ASSET
+        );
+        assert_eq!(
+            class_type_icon_asset(ClassId::Xelor),
+            CLASS_TYPE_ICON_XELOR_ASSET
+        );
+        assert_eq!(
+            class_type_icon_asset(ClassId::Ecaflip),
+            CLASS_TYPE_ICON_ECAFLIP_ASSET
+        );
+        assert_eq!(
+            class_type_icon_asset(ClassId::Sadida),
+            CLASS_TYPE_ICON_SADIDA_ASSET
+        );
+        assert_eq!(
+            class_type_icon_asset(ClassId::Neutral),
+            CLASS_TYPE_ICON_NEUTRAL_ASSET
+        );
+    }
+
+    #[test]
+    fn hud_figurine_asset_maps_all_classes() {
+        assert_eq!(hud_figurine_asset(ClassId::Iop), HUD_FIGURINE_IOP_ASSET);
+        assert_eq!(hud_figurine_asset(ClassId::Cra), HUD_FIGURINE_CRA_ASSET);
+        assert_eq!(
+            hud_figurine_asset(ClassId::Sacrier),
+            HUD_FIGURINE_SACRIER_ASSET
+        );
+        assert_eq!(hud_figurine_asset(ClassId::Xelor), HUD_FIGURINE_XELOR_ASSET);
+        assert_eq!(
+            hud_figurine_asset(ClassId::Ecaflip),
+            HUD_FIGURINE_ECAFLIP_ASSET
+        );
+        assert_eq!(
+            hud_figurine_asset(ClassId::Sadida),
+            HUD_FIGURINE_SADIDA_ASSET
+        );
+        assert_eq!(
+            hud_figurine_asset(ClassId::Neutral),
+            HUD_FIGURINE_NEUTRAL_ASSET
+        );
+    }
+
+    #[test]
+    fn board_unit_asset_maps_all_classes() {
+        assert_eq!(board_unit_asset(ClassId::Iop), BOARD_UNIT_IOP_ASSET);
+        assert_eq!(board_unit_asset(ClassId::Cra), BOARD_UNIT_CRA_ASSET);
+        assert_eq!(board_unit_asset(ClassId::Sacrier), BOARD_UNIT_SACRIER_ASSET);
+        assert_eq!(board_unit_asset(ClassId::Xelor), BOARD_UNIT_XELOR_ASSET);
+        assert_eq!(board_unit_asset(ClassId::Ecaflip), BOARD_UNIT_ECAFLIP_ASSET);
+        assert_eq!(board_unit_asset(ClassId::Sadida), BOARD_UNIT_SADIDA_ASSET);
+        assert_eq!(board_unit_asset(ClassId::Neutral), BOARD_UNIT_NEUTRAL_ASSET);
+    }
+
+    #[test]
+    fn lobby_portrait_asset_maps_all_classes() {
+        assert_eq!(lobby_portrait_asset(ClassId::Iop), LOBBY_PORTRAIT_IOP_ASSET);
+        assert_eq!(lobby_portrait_asset(ClassId::Cra), LOBBY_PORTRAIT_CRA_ASSET);
+        assert_eq!(
+            lobby_portrait_asset(ClassId::Sacrier),
+            LOBBY_PORTRAIT_SACRIER_ASSET
+        );
+        assert_eq!(
+            lobby_portrait_asset(ClassId::Xelor),
+            LOBBY_PORTRAIT_XELOR_ASSET
+        );
+        assert_eq!(
+            lobby_portrait_asset(ClassId::Ecaflip),
+            LOBBY_PORTRAIT_ECAFLIP_ASSET
+        );
+        assert_eq!(
+            lobby_portrait_asset(ClassId::Sadida),
+            LOBBY_PORTRAIT_SADIDA_ASSET
+        );
+        assert_eq!(
+            lobby_portrait_asset(ClassId::Neutral),
+            LOBBY_PORTRAIT_NEUTRAL_ASSET
+        );
+    }
+
+    #[test]
+    fn hud_objective_dot_asset_maps_all_states() {
+        assert_eq!(
+            hud_objective_dot_asset(ObjectiveDotState::Alive),
+            HUD_OBJECTIVE_DOT_ALIVE_ASSET
+        );
+        assert_eq!(
+            hud_objective_dot_asset(ObjectiveDotState::Destroyed),
+            HUD_OBJECTIVE_DOT_DESTROYED_ASSET
+        );
+        assert_eq!(
+            hud_objective_dot_asset(ObjectiveDotState::Unknown),
+            HUD_OBJECTIVE_DOT_UNKNOWN_ASSET
+        );
+        assert_eq!(
+            hud_objective_dot_asset(ObjectiveDotState::Fake),
+            HUD_OBJECTIVE_DOT_FAKE_ASSET
+        );
+    }
+
+    #[test]
+    fn bid_button_asset_maps_all_states() {
+        assert_eq!(
+            bid_button_asset(BidButtonChromeState::Normal),
+            BID_BUTTON_NORMAL_ASSET
+        );
+        assert_eq!(
+            bid_button_asset(BidButtonChromeState::Hover),
+            BID_BUTTON_HOVER_ASSET
+        );
+        assert_eq!(
+            bid_button_asset(BidButtonChromeState::Disabled),
+            BID_BUTTON_DISABLED_ASSET
+        );
+    }
+}

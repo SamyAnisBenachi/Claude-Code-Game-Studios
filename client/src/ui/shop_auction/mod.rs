@@ -18,6 +18,7 @@ use crate::card_animations::{
 };
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
+use crate::ui::hand::HAND_FAN_SLOT_COUNT;
 use crate::ui::hud::{HudGoldBroadcastMessage, HudPlayerIds};
 use crate::ui::settings::AccessibilityPreferences;
 
@@ -2580,7 +2581,9 @@ pub fn sync_draft_initial_panel_system(
             }
 
             *visibility = Visibility::Visible;
-            if hand_view.hand_size >= 10 && *slot_state != DraftInitialSlotState::Purchased {
+            if hand_view.hand_size >= HAND_FAN_SLOT_COUNT
+                && *slot_state != DraftInitialSlotState::Purchased
+            {
                 *slot_state = DraftInitialSlotState::HandFullLocked;
                 commands
                     .entity(slot_entity)
@@ -2683,7 +2686,10 @@ pub fn sync_shop_panel_system(
             }
 
             *visibility = Visibility::Visible;
-            if hand_view.hand_size >= 10 && card.is_some() && *slot_state != ShopSlotState::Empty {
+            if hand_view.hand_size >= HAND_FAN_SLOT_COUNT
+                && card.is_some()
+                && *slot_state != ShopSlotState::Empty
+            {
                 *slot_state = ShopSlotState::HandFullLocked;
                 commands.entity(slot_entity).remove::<PendingShopPurchase>();
             }

@@ -28,10 +28,6 @@ impl Plugin for LobbyUiPlugin {
             .init_resource::<LobbyInputState>()
             .add_message::<KeyboardInput>()
             .add_message::<LobbyCommand>()
-            .add_systems(
-                Startup,
-                spawn_lobby_ui_system.run_if(in_state(ClientState::Lobby)),
-            )
             .add_systems(OnEnter(ClientState::Lobby), spawn_lobby_ui_system)
             .add_systems(OnExit(ClientState::Lobby), despawn_lobby_ui_system)
             .add_systems(
@@ -132,6 +128,9 @@ pub struct LobbyCamera;
 struct LobbyStatusText;
 
 #[derive(Component)]
+pub(crate) struct LobbyRoomCodeChipText;
+
+#[derive(Component)]
 pub struct LobbyRoomCodeField;
 
 #[derive(Component)]
@@ -174,7 +173,7 @@ pub struct LobbyOpponentSlotPanel;
 pub struct LobbyRoomCodeChip;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
-enum LobbyDynamicText {
+pub(crate) enum LobbyDynamicText {
     RoomCode,
     Slot(u8),
     Class(ClassId),
@@ -877,6 +876,7 @@ fn spawn_lobby_ui_system(
                 .with_children(|chip| {
                     let room_code = lobby.room_code.as_deref().unwrap_or("--------").to_string();
                     chip.spawn((
+                        LobbyRoomCodeChipText,
                         Text::new(room_code),
                         lobby_text_font(14.0),
                         TextColor(Color::srgb(0.92, 0.95, 0.98)),
@@ -890,6 +890,7 @@ fn refresh_lobby_ui_system(
     input: Res<LobbyInputState>,
     mut texts: Query<&mut Text, With<LobbyStatusText>>,
     mut dynamic_texts: Query<(&LobbyDynamicText, &mut Text), Without<LobbyStatusText>>,
+    mut chip_texts: Query<&mut Text, (With<LobbyRoomCodeChipText>, Without<LobbyStatusText>)>,
 ) {
     if !lobby.is_changed() && !input.is_changed() {
         return;
@@ -903,6 +904,13 @@ fn refresh_lobby_ui_system(
 
     for (role, mut text) in &mut dynamic_texts {
         text.0 = lobby_dynamic_copy(*role, &lobby, &input);
+    }
+
+    if lobby.is_changed() {
+        let room_code = lobby.room_code.as_deref().unwrap_or("--------").to_string();
+        for mut text in &mut chip_texts {
+            text.0 = room_code.clone();
+        }
     }
 }
 
@@ -937,7 +945,7 @@ pub fn lobby_status_copy(lobby: &LobbyViewState, input: &LobbyInputState) -> Str
     )
 }
 
-fn lobby_dynamic_copy(
+pub(crate) fn lobby_dynamic_copy(
     role: LobbyDynamicText,
     lobby: &LobbyViewState,
     input: &LobbyInputState,
@@ -1077,5 +1085,36 @@ fn lobby_button_node(width: Val) -> Node {
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
         ..default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_room_code_strips_non_alphanumeric() {
+        assert_eq!(normalize_room_code_text("ab-cd!"), "ABCD");
+    }
+
+    #[test]
+    fn normalize_room_code_uppercases() {
+        assert_eq!(normalize_room_code_text("abcd"), "ABCD");
+    }
+
+    #[test]
+    fn normalize_room_code_trims_to_max_length() {
+        let long = "ABCDEFGHIJ"; // 10 chars > ROOM_CODE_MAX (8)
+        assert_eq!(normalize_room_code_text(long).len(), ROOM_CODE_MAX);
+    }
+
+    #[test]
+    fn normalize_room_code_empty_input_returns_empty() {
+        assert_eq!(normalize_room_code_text(""), "");
+    }
+
+    #[test]
+    fn normalize_room_code_digits_are_kept() {
+        assert_eq!(normalize_room_code_text("12ab"), "12AB");
     }
 }

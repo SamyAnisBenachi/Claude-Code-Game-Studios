@@ -80,6 +80,12 @@ pub enum HudMode {
     Frozen,
 }
 
+/// Caches the local player's ClassId extracted from the last `PresentationGameSnapshotMessage`.
+/// Written by `handle_game_snapshot_system` (MessageDrain) and read by
+/// `sync_figurine_image_system` (StateSync) to avoid draining the same message in two systems.
+#[derive(Resource, Default, Debug, Clone, Copy)]
+pub struct SnapshotClassCache(pub Option<shared::card::ClassId>);
+
 #[derive(Resource, Debug, Clone, Copy)]
 pub struct HudEntities {
     pub root: Entity,
@@ -275,6 +281,7 @@ impl Plugin for HudPlugin {
             .init_resource::<PlayerEconomyView>()
             .init_resource::<HudConfig>()
             .init_resource::<HudMode>()
+            .init_resource::<SnapshotClassCache>()
             .add_message::<HudObjectiveUpdate>()
             .add_message::<HudGoldBroadcastMessage>()
             .add_message::<PresentationGameSnapshotMessage>()
@@ -804,6 +811,7 @@ pub fn handle_game_snapshot_system(
     entities: Option<Res<HudEntities>>,
     mut current: ResMut<CurrentClientPhase>,
     mut mode: ResMut<HudMode>,
+    mut class_cache: ResMut<SnapshotClassCache>,
     mut visibility: Query<&mut Visibility>,
     mut gold_labels: Query<(
         Entity,
@@ -848,6 +856,8 @@ pub fn handle_game_snapshot_system(
         );
         return;
     };
+
+    class_cache.0 = Some(own.class_id);
 
     commands.insert_resource(HudPlayerIds {
         local_id: own.player_id,
@@ -1023,22 +1033,9 @@ pub fn sync_figurine_image_system(
     hud_player_ids: Option<Res<HudPlayerIds>>,
     entities: Option<Res<HudEntities>>,
     mut last_class: Local<Option<shared::card::ClassId>>,
-    mut snapshot_messages: MessageReader<PresentationGameSnapshotMessage>,
+    class_cache: Res<SnapshotClassCache>,
 ) {
-    // Drain messages to find the latest own class_id.
-    let mut latest_class = None;
-    for msg in snapshot_messages.read() {
-        if let Some(own) = msg
-            .0
-            .players
-            .iter()
-            .find(|p| p.player_id == msg.0.recipient_player_id)
-        {
-            latest_class = Some(own.class_id);
-        }
-    }
-
-    let Some(class_id) = latest_class else {
+    let Some(class_id) = class_cache.0 else {
         return;
     };
 
@@ -1071,7 +1068,6 @@ pub fn sync_dot_image_on_objective_destroyed_system(
     entities: Option<Res<HudEntities>>,
     player_ids: Option<Res<HudPlayerIds>>,
     mut dot_images: Query<&mut ImageNode, With<ScoreboardDot>>,
-    dot_states: Query<&ScoreboardDotState, With<ScoreboardDot>>,
 ) {
     if *mode == HudMode::Frozen {
         for _u in updates.read() {}
@@ -1106,18 +1102,6 @@ pub fn sync_dot_image_on_objective_destroyed_system(
 
         let lane_index = usize::from(update.lane - 1);
         let dot_entity = entities.dots[row_index][lane_index];
-
-        // Check current dot state to pick the correct asset.
-        let is_already_destroyed = dot_states
-            .get(dot_entity)
-            .map(|s| s.destroyed)
-            .unwrap_or(false);
-
-        if !is_already_destroyed {
-            // The ScoreboardDotState is updated by handle_hud_objective_update_system
-            // which runs before StateSync. We pick the destroyed asset unconditionally
-            // because this system is only triggered when an objective is destroyed.
-        }
 
         if let Some(server) = &asset_server {
             if let Ok(mut img) = dot_images.get_mut(dot_entity) {
@@ -1983,5 +1967,50 @@ fn reserve_mana_label_node() -> Node {
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
         ..default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use shared::protocol::RoundPhase;
+
+    #[test]
+    fn hud_mode_for_phase_hidden_phases() {
+        assert_eq!(hud_mode_for_phase(RoundPhase::Lobby), HudMode::Hidden);
+        assert_eq!(hud_mode_for_phase(RoundPhase::Handshaking), HudMode::Hidden);
+    }
+
+    #[test]
+    fn hud_mode_for_phase_auction_phase() {
+        assert_eq!(
+            hud_mode_for_phase(RoundPhase::DraftAuction),
+            HudMode::EconomyAuction
+        );
+    }
+
+    #[test]
+    fn hud_mode_for_phase_frozen_on_game_over() {
+        assert_eq!(hud_mode_for_phase(RoundPhase::GameOver), HudMode::Frozen);
+    }
+
+    #[test]
+    fn hud_mode_for_phase_economy_basic_phases() {
+        assert_eq!(
+            hud_mode_for_phase(RoundPhase::DraftInitial),
+            HudMode::EconomyBasic
+        );
+        assert_eq!(
+            hud_mode_for_phase(RoundPhase::DraftShop),
+            HudMode::EconomyBasic
+        );
+        assert_eq!(
+            hud_mode_for_phase(RoundPhase::Placement),
+            HudMode::EconomyBasic
+        );
+        assert_eq!(
+            hud_mode_for_phase(RoundPhase::Resolution),
+            HudMode::EconomyBasic
+        );
     }
 }

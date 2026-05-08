@@ -44,6 +44,16 @@ pub const STATUS_ICON_BODYGUARD_FRAME_INDEX: usize = 16;
 pub const STATUS_ICON_OUTNUMBERED_FRAME_INDEX: usize = 17;
 pub const STATUS_ICON_INJURED_GRANTED_FRAME_INDEX: usize = 18;
 pub const STATUS_OVERFLOW_BADGE_FRAME_INDEX: usize = 19;
+
+pub const STATUS_TINT_SHIELD: Color = Color::srgba(0.42, 0.78, 1.0, 1.0);
+pub const STATUS_TINT_STUN: Color = Color::srgba(1.0, 0.84, 0.22, 1.0);
+pub const STATUS_TINT_SILENCE: Color = Color::srgba(0.72, 0.72, 0.82, 1.0);
+pub const STATUS_TINT_INJURED: Color = Color::srgba(1.0, 0.28, 0.28, 1.0);
+pub const STATUS_TINT_LEADER: Color = Color::srgba(0.85, 0.68, 1.0, 1.0);
+pub const STATUS_TINT_HASTE: Color = Color::srgba(0.44, 1.0, 0.62, 1.0);
+pub const STATUS_TINT_BODYGUARD: Color = Color::srgba(0.66, 0.88, 1.0, 1.0);
+pub const STATUS_TINT_OUTNUMBERED: Color = Color::srgba(1.0, 0.52, 0.28, 1.0);
+pub const STATUS_TINT_INJURED_GRANTED: Color = Color::srgba(1.0, 0.36, 0.46, 1.0);
 pub const HP_THRESHOLD_EPSILON: f32 = 1e-4;
 pub const DEFAULT_CO_OCCUPANCY_SIDE_OFFSET: f32 = 8.0;
 pub const MIN_CO_OCCUPANCY_SIDE_OFFSET: f32 = 4.0;
@@ -245,58 +255,34 @@ impl Default for StatusDisplayDefinitions {
         let mut definitions = HashMap::new();
         definitions.insert(
             StatusEffectKey::Shield,
-            StatusDisplayDefinition::new(
-                1,
-                STATUS_ICON_SHIELD_FRAME_INDEX,
-                Color::srgba(0.42, 0.78, 1.0, 1.0),
-            ),
+            StatusDisplayDefinition::new(1, STATUS_ICON_SHIELD_FRAME_INDEX, STATUS_TINT_SHIELD),
         );
         definitions.insert(
             StatusEffectKey::Stun,
-            StatusDisplayDefinition::new(
-                2,
-                STATUS_ICON_STUN_FRAME_INDEX,
-                Color::srgba(1.0, 0.84, 0.22, 1.0),
-            ),
+            StatusDisplayDefinition::new(2, STATUS_ICON_STUN_FRAME_INDEX, STATUS_TINT_STUN),
         );
         definitions.insert(
             StatusEffectKey::Silence,
-            StatusDisplayDefinition::new(
-                2,
-                STATUS_ICON_SILENCE_FRAME_INDEX,
-                Color::srgba(0.72, 0.72, 0.82, 1.0),
-            ),
+            StatusDisplayDefinition::new(2, STATUS_ICON_SILENCE_FRAME_INDEX, STATUS_TINT_SILENCE),
         );
         definitions.insert(
             StatusEffectKey::Injured,
-            StatusDisplayDefinition::new(
-                2,
-                STATUS_ICON_INJURED_FRAME_INDEX,
-                Color::srgba(1.0, 0.28, 0.28, 1.0),
-            ),
+            StatusDisplayDefinition::new(2, STATUS_ICON_INJURED_FRAME_INDEX, STATUS_TINT_INJURED),
         );
         definitions.insert(
             StatusEffectKey::Leader,
-            StatusDisplayDefinition::new(
-                2,
-                STATUS_ICON_LEADER_FRAME_INDEX,
-                Color::srgba(0.85, 0.68, 1.0, 1.0),
-            ),
+            StatusDisplayDefinition::new(2, STATUS_ICON_LEADER_FRAME_INDEX, STATUS_TINT_LEADER),
         );
         definitions.insert(
             StatusEffectKey::Haste,
-            StatusDisplayDefinition::new(
-                2,
-                STATUS_ICON_HASTE_FRAME_INDEX,
-                Color::srgba(0.44, 1.0, 0.62, 1.0),
-            ),
+            StatusDisplayDefinition::new(2, STATUS_ICON_HASTE_FRAME_INDEX, STATUS_TINT_HASTE),
         );
         definitions.insert(
             StatusEffectKey::Bodyguard,
             StatusDisplayDefinition::new(
                 2,
                 STATUS_ICON_BODYGUARD_FRAME_INDEX,
-                Color::srgba(0.66, 0.88, 1.0, 1.0),
+                STATUS_TINT_BODYGUARD,
             ),
         );
         definitions.insert(
@@ -304,7 +290,7 @@ impl Default for StatusDisplayDefinitions {
             StatusDisplayDefinition::new(
                 2,
                 STATUS_ICON_OUTNUMBERED_FRAME_INDEX,
-                Color::srgba(1.0, 0.52, 0.28, 1.0),
+                STATUS_TINT_OUTNUMBERED,
             ),
         );
 
@@ -319,7 +305,7 @@ impl Default for StatusDisplayDefinitions {
                 StatusDisplayDefinition::new(
                     2,
                     STATUS_ICON_INJURED_GRANTED_FRAME_INDEX,
-                    Color::srgba(1.0, 0.36, 0.46, 1.0),
+                    STATUS_TINT_INJURED_GRANTED,
                 ),
             );
         }
