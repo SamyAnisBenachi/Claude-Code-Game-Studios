@@ -11,7 +11,7 @@ serde_json = { workspace = true }
 # Bevy 0.18 high-level feature collection for 2D games (liv-bevy-018).
 # "2d" includes bevy_sprite, bevy_text, bevy_asset, bevy_ui, and bevy_render.
 # "webgl2" enables the WebGL2 backend for WASM targets.
-bevy = { version = "0.18", default-features = false, features = ["2d", "webgl2"] }
+bevy = { version = "0.18", default-features = false, features = ["2d", "webgl2", "bevy_audio"] }
 lightyear = { version = "0.26", default-features = false, features = ["client", "websocket", "raw_connection", "replication"] }
 bevy_tweening = { workspace = true, default-features = false, features = ["bevy_sprite", "bevy_ui", "bevy_text"] }
 # bevy_asset_loader = "0.22"  # TODO: verify 0.18-compatible version on crates.io
