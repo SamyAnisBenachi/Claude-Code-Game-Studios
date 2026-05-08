@@ -1602,7 +1602,18 @@ Every action in this project MUST use the Claude Game Studios defined skills:
 
 **Never substitute with:** raw bash/grep checks, manual file edits bypassing skills, skipping smoke-check, ad-hoc path existence checks.
 
-### Last Sync: 2026-05-08 (active fix wave — PAW code-review fixes in flight)
+### Last Sync: 2026-05-08 (reconnect/board fix wave + snapshot_sent root cause)
+
+### CRITICAL CHAIN BLOCKING DRAFT_INITIAL
+1. `defer_unicast_for_reconnect` always returns false → S2CDraftOffering silently discarded
+2. Root cause: `initialise_reconnect_tracker` sets snapshot_sent=true for fresh players (should be false)
+3. PROMPT 499 fixes the one-line bug — branch `work/snapshot-sent-fix` PUSHED
+4. /code-review on reconnect.rs returned CHANGES REQUIRED (5 items unrelated to the fix line itself)
+5. PROMPT 501 fixing the required items — IN FLIGHT
+6. After 501 → re-run /code-review → if APPROVED → integrate snapshot_sent fix → DRAFT_INITIAL unblocked
+
+### PROTOCOL ENFORCEMENT
+Per `feedback_paw_review_flow.md`: NEVER merge until /code-review passes. Even for "one-line obvious" fixes. The protocol is strict and applies to all branches.
 
 ### ⚠️ DISK SPACE ALERT
 D: drive hit 100% full from Rust build artifacts. Clean inactive worktree targets before launching new builds. Keep only active worktrees.
@@ -1610,8 +1621,16 @@ D: drive hit 100% full from Rust build artifacts. Clean inactive worktree target
 ### origin/main HEAD: bd41df3
 
 ### Currently Running (windows still open)
-- PROMPT 493 — hand/mod.rs NodePositionLens + disclosure_state race fix + 3 extra items added (worktree: hand-ui-node-lens-fix)
-- PROMPT 494 — PAW code-review required items fix (worktree: paw-review-fixes)
+- PROMPT 501 — reconnect-dedup-fix (server/src/core/session/reconnect.rs duplicate DeferredMessage variants)
+- PROMPT 502 — paw-final-fixes (LobbyViewState dependency violation + BID_INCREMENTS to game_config.ron)
+- PROMPT 504 — disk space cleanup (worktree targets)
+
+### Worker branches PUSHED but BLOCKED on /code-review
+- work/snapshot-sent-fix (PROMPT 499) — one-line snapshot_sent fix; /code-review CHANGES REQUIRED, blocked on PROMPT 501
+- work/board-rendering-fixes-2 (PROMPT 500) — Pointer<Click> observers + 4 other fixes; needs /code-review
+- work/hand-ui-node-lens-fix (PROMPT 493) — NodePositionLens + 4 other fixes; needs /code-review
+- work/placeholder-assets-panic-fix (PROMPT 492) — already integrated as b92aa97 ✅
+- work/paw-review-fixes (PROMPT 494) + work/paw-functional-fixes (PROMPT 497) — needs follow-up after 502 lands
 
 ### Closed Recently (this session)
 - PAW-001 through PAW-006: all on main (cb4e178, 3734f19, bb80b47, f5b7a34, 2132129 etc.)
