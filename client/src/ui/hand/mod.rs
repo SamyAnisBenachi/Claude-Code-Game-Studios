@@ -1178,7 +1178,7 @@ pub fn sync_fan_slot_chrome_system(
         With<FanSlotIndex>,
     >,
     catalog: Res<HandCardCatalog>,
-    placeholder: Res<PlaceholderAssets>,
+    placeholder: Option<Res<PlaceholderAssets>>,
     mut frames: Query<(&mut ImageNode, &ChildOf), With<HandCardFrame>>,
     mut rarity_icons: Query<
         (&mut ImageNode, &ChildOf),
@@ -1193,11 +1193,14 @@ pub fn sync_fan_slot_chrome_system(
         ),
     >,
 ) {
+    let Some(placeholder) = placeholder.as_ref() else {
+        return;
+    };
     for (mut img, child_of) in &mut frames {
         let Ok((_, slot_card, fallback)) = slots.get(child_of.parent()) else {
             continue;
         };
-        img.image = chrome_frame_handle(slot_card, fallback, &catalog, &placeholder);
+        img.image = chrome_frame_handle(slot_card, fallback, &catalog, placeholder);
     }
     for (mut img, child_of) in &mut rarity_icons {
         let Ok((_, slot_card, _)) = slots.get(child_of.parent()) else {
@@ -2344,11 +2347,14 @@ pub fn tick_hand_full_notification_system(
 pub fn spawn_hand_ui(
     mut commands: Commands,
     existing: Option<Res<HandUiEntities>>,
-    placeholder: Res<PlaceholderAssets>,
+    placeholder: Option<Res<PlaceholderAssets>>,
 ) {
     if existing.is_some() {
         return;
     }
+    let Some(placeholder) = placeholder.as_ref() else {
+        return;
+    };
 
     let fan_root = commands
         .spawn((
