@@ -608,6 +608,12 @@ fn process_fresh_hello(world: &mut World, peer_id: PeerId) -> ReconnectProcessRe
             .token_map
             .insert(session_token, (session_id, player_id));
         tracker.deferred_queue.entry(player_id).or_default();
+        tracker.snapshot_sent.insert(player_id, false);
+        tracing::info!(
+            player_id = player_id.0,
+            "Fresh hello: registered player_id={} for snapshot_sent tracking",
+            player_id.0,
+        );
     }
 
     ReconnectProcessResult {
