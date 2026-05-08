@@ -5,7 +5,7 @@ use shared::protocol::{
     C2SSetPlacementTimerMultiplier, PlacementTimerMultiplier, ReliableChannel, RoundPhase,
 };
 
-use crate::state::{ClientState, CurrentClientPhase, SessionSettingsView};
+use crate::state::{CurrentClientPhase, SessionSettingsView};
 
 pub const ACCESSIBILITY_PREFERENCES_STORAGE_KEY: &str =
     "lanes_and_lies.accessibility_preferences.v1";
@@ -257,8 +257,7 @@ pub struct SettingsAccessibilityPlugin;
 
 impl Plugin for SettingsAccessibilityPlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<ClientState>()
-            .init_resource::<CurrentClientPhase>()
+        app.init_resource::<CurrentClientPhase>()
             .init_resource::<SessionSettingsView>()
             .init_resource::<AccessibilityPreferences>()
             .init_resource::<PreferenceStorageBackend>()

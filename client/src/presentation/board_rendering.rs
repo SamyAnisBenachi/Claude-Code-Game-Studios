@@ -863,8 +863,7 @@ impl Plugin for BoardRenderingPlugin {
         BoardRenderingConfig::default().assert_valid();
         BoardRevealTimingConfig::default().assert_valid();
 
-        app.init_state::<ClientState>()
-            .init_resource::<CurrentClientPhase>()
+        app.init_resource::<CurrentClientPhase>()
             .init_resource::<BoardRenderingConfig>()
             .init_resource::<BoardRevealTimingConfig>()
             .init_resource::<BoardRenderState>()

@@ -1003,6 +1003,10 @@ fn send_draft_offering(
     dispatch: &DraftOfferingDispatch,
 ) {
     let Some(peer_id) = dispatch.peer_id else {
+        tracing::warn!(
+            player_id = dispatch.player_id.0,
+            "send_draft_offering: peer_id is None — S2CDraftOffering not sent"
+        );
         return;
     };
 
@@ -1017,11 +1021,18 @@ pub fn defer_draft_offering(
     tracker: Option<&mut ReconnectTracker>,
     dispatch: &DraftOfferingDispatch,
 ) -> bool {
-    defer_unicast_for_reconnect(
+    let deferred = defer_unicast_for_reconnect(
         tracker,
         dispatch.player_id,
         DeferredMessage::DraftOffering(dispatch.message.clone()),
-    )
+    );
+    if deferred {
+        tracing::debug!(
+            player_id = dispatch.player_id.0,
+            "defer_draft_offering: S2CDraftOffering queued for reconnecting player"
+        );
+    }
+    deferred
 }
 
 fn send_shop_slots(
