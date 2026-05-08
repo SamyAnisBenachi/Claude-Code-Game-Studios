@@ -6,7 +6,7 @@ goal: "Deliver the minimum result acknowledgement contract, player-facing result
 start: "2026-05-07"
 end: "2026-05-20"
 generated: "2026-05-07"
-updated: "2026-05-08"
+updated: "2026-05-08"  # S9-QA-002 marked done by /story-done Prompt 456
 stage: "Polish"
 scope: "internal 1v1 friend-game result flow and manual GAME_OVER evidence closure"
 status: "active"
@@ -164,14 +164,15 @@ stories:
     name: "Sprint 9 result evidence index cleanup"
     file: "production/epics/playable-client/story-008-sprint-9-result-evidence-index-cleanup.md"
     priority: should-have
-    status: blocked
+    status: done
     owner: "orchestrator"
     estimate_days: 0.25
-    blocker: "Pull condition met: blocker record and sprint-9-result-evidence-index.md exist at e26e240. Awaiting human-operator S9-QA-001 manual route or explicit close-out decision before full index closure."
-    completed: ""
+    blocker: ""
+    completed: "2026-05-08"
     notes:
-      - "Backlog/blocked evidence-index follow-up."
-      - "Must preserve manual/browser status, result-screen status, acknowledgement status, and all carried non-claims."
+      - "Completed by /story-done Prompt 456. All 9 ACs verified."
+      - "sprint-9-result-evidence-index.md satisfies all index ACs: endpoint BLOCKED/NOT CAPTURED, result screen Complete at 8d963d5, acknowledgement Not reached, evidence links present, S8-QA-001-W1 REMAINS OPEN, QA-COND-0005/0006 carried, no overclaims."
+      - "S9-QA-001 remains in-progress/partial; MANUAL-FG-001 active. S8-QA-001-W1, QA-COND-0005, QA-COND-0006 all preserved."
 
   - id: "SAU-008"
     name: "Reconnect Snapshot and Late Message Recovery"

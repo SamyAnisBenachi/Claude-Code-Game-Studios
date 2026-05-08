@@ -2434,3 +2434,12 @@ C:\Program Files\GitHub CLI\gh.exe
 - Preserved: S9-QA-001 not done; S8-QA-001-W1 open; QA-COND-0005 carried; QA-COND-0006 carried; no public release readiness; no full game completion; no broad accessibility completion; no playtest validation; no smoke/QA sign-off/gate-check/sprint close-out claim.
 - Pre-flight: git diff --check PASS; git diff --cached --check PASS (verified before commit).
 - Scope guard: No S9-QA-001 full closure, smoke, QA sign-off, gate-check, sprint close-out, /dev-story, /story-done, implementation, or CI was run.
+
+## Session Extract — /story-done 2026-05-08 (Prompt 456)
+- Verdict: COMPLETE
+- Story: production/epics/playable-client/story-008-sprint-9-result-evidence-index-cleanup.md — Sprint 9 Result Evidence Index Cleanup (S9-QA-002)
+- All 9 ACs verified against sprint-9-result-evidence-index.md (exists, endpoint BLOCKED/NOT CAPTURED, result screen Complete, acknowledgement Not reached, evidence links present, S8-QA-001-W1 REMAINS OPEN, QA-COND-0005/0006 carried, no overclaims, whitespace gates clean).
+- Files updated: story-008 (Status→Complete, ACs checked, Completion Notes appended); production/sprint-status.yaml (S9-QA-002 status blocked→done, completed 2026-05-08).
+- Tech debt logged: None.
+- Preserved: S9-QA-001 in-progress/partial, MANUAL-FG-001 active, S8-QA-001-W1 open, QA-COND-0005/0006 carried, no overclaims.
+- Next recommended: Human operator runs manual two-client GAME_OVER route to close S9-QA-001 and S8-QA-001-W1.

@@ -1,7 +1,7 @@
 # Story 008: Sprint 9 Result Evidence Index Cleanup
 
 > **Epic**: Playable Client
-> **Status**: Blocked - depends on S9-QA-001 evidence
+> **Status**: Complete
 > **Layer**: Polish / QA Evidence
 > **Type**: Config/Data
 > **Manifest Version**: 2026-05-05
@@ -94,36 +94,36 @@ but this story only indexes and preserves the evidence disposition.
 
 ## Acceptance Criteria
 
-- [ ] **Index exists after evidence**: GIVEN S9-QA-001 evidence or blocker
+- [x] **Index exists after evidence**: GIVEN S9-QA-001 evidence or blocker
       record exists, WHEN this story is completed, THEN
       `production/qa/evidence/sprint-9-result-evidence-index.md` exists or is
       updated.
-- [ ] **Endpoint disposition is exact**: GIVEN the index is reviewed, WHEN the
+- [x] **Endpoint disposition is exact**: GIVEN the index is reviewed, WHEN the
       endpoint row is read, THEN it states the exact route endpoint reached and
       whether manual browser/native two-client GAME_OVER is captured, blocked,
       or not claimed.
-- [ ] **Result screen disposition is exact**: GIVEN the index is reviewed, WHEN
+- [x] **Result screen disposition is exact**: GIVEN the index is reviewed, WHEN
       the result-screen row is read, THEN it states the Result Screen MVP status
       and links its evidence or blocker.
-- [ ] **Acknowledgement disposition is exact**: GIVEN the index is reviewed,
+- [x] **Acknowledgement disposition is exact**: GIVEN the index is reviewed,
       WHEN the Return to Lobby row is read, THEN it states whether
       `C2SAcknowledgeResult` and cleanup behavior were observed, blocked, or
       not claimed.
-- [ ] **Evidence links are complete**: GIVEN the index is reviewed, WHEN all
+- [x] **Evidence links are complete**: GIVEN the index is reviewed, WHEN all
       rows are checked, THEN each captured or blocked item links to the relevant
       evidence document, story file, or capture directory.
-- [ ] **Sprint 8 warning is preserved or closed exactly**: GIVEN S8-QA-001-W1
+- [x] **Sprint 8 warning is preserved or closed exactly**: GIVEN S8-QA-001-W1
       is mentioned, WHEN the index is reviewed, THEN it either remains carried
       or is closed only with a link to actual S9-QA-001 manual/browser evidence.
-- [ ] **QA conditions remain carried**: GIVEN QA-COND-0005 and QA-COND-0006 are
+- [x] **QA conditions remain carried**: GIVEN QA-COND-0005 and QA-COND-0006 are
       mentioned, WHEN the index is reviewed, THEN they remain accepted-risk or
       deferred unless separate actual closure evidence exists.
-- [ ] **No overclaim language appears**: GIVEN the index is reviewed, WHEN the
+- [x] **No overclaim language appears**: GIVEN the index is reviewed, WHEN the
       non-claims section is checked, THEN it does not claim public release
       readiness, broad accessibility completion, playtest validation, full
       playable-client manual QA, full regression campaign, or full game
       completion.
-- [ ] **Whitespace gates pass**: `git diff --check` passes and
+- [x] **Whitespace gates pass**: `git diff --check` passes and
       `git diff --cached --check` passes before commit.
 
 ---
@@ -184,7 +184,7 @@ N/A - documentation/evidence index only.
 - `git diff --check`
 - `git diff --cached --check` before commit
 
-**Status**: [ ] Not yet created or updated.
+**Status**: [x] Created at d2ac17c. Verified 2026-05-08.
 
 ---
 
@@ -197,8 +197,23 @@ N/A - documentation/evidence index only.
 
 ## Readiness Notes
 
-**Implementation readiness verdict**: BLOCKED.
+**Implementation readiness verdict**: COMPLETE (as of 2026-05-08).
 
-This story is intentionally blocked until S9-QA-001 evidence exists. It does
-not create the Sprint 9 index, close S8-QA-001-W1, or alter Sprint 8 conditions
-until the required evidence or blocker record exists.
+Pull condition was met: S9-QA-001 blocker record (MANUAL-FG-001) and
+`sprint-9-result-evidence-index.md` both existed at d2ac17c before this
+/story-done run.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-08
+**Criteria**: 9/9 passing (all auto-verified by file inspection and content review)
+**Deviations**: None
+**Test Evidence**: Config/Data — `production/qa/evidence/sprint-9-result-evidence-index.md` exists and satisfies all index ACs.
+**Code Review**: Skipped — Lean mode; documentation-only story.
+**Carried state preserved**:
+- S9-QA-001 remains in-progress/partial; MANUAL-FG-001 active.
+- S8-QA-001-W1 remains open in the index.
+- QA-COND-0005 and QA-COND-0006 remain accepted-risk/deferred.
+- No overclaims introduced.
