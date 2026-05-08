@@ -1602,65 +1602,60 @@ Every action in this project MUST use the Claude Game Studios defined skills:
 
 **Never substitute with:** raw bash/grep checks, manual file edits bypassing skills, skipping smoke-check, ad-hoc path existence checks.
 
-### Last Sync: 2026-05-08 (reconnect/board fix wave + snapshot_sent root cause)
+### Last Sync: 2026-05-08 (post-PROMPT-512 board fixes integrated; PROMPT 513 in flight)
 
-### CRITICAL CHAIN BLOCKING DRAFT_INITIAL
-1. `defer_unicast_for_reconnect` always returns false → S2CDraftOffering silently discarded
-2. Root cause: `initialise_reconnect_tracker` sets snapshot_sent=true for fresh players (should be false)
-3. PROMPT 499 fixes the one-line bug — branch `work/snapshot-sent-fix` PUSHED
-4. /code-review on reconnect.rs returned CHANGES REQUIRED (5 items unrelated to the fix line itself)
-5. PROMPT 501 fixing the required items — IN FLIGHT
-6. After 501 → re-run /code-review → if APPROVED → integrate snapshot_sent fix → DRAFT_INITIAL unblocked
+### origin/main HEAD: ac9305b
 
-### PROTOCOL ENFORCEMENT
-Per `feedback_paw_review_flow.md`: NEVER merge until /code-review passes. Even for "one-line obvious" fixes. The protocol is strict and applies to all branches.
+### POLICY UPDATE — /code-review = visibility, NOT merge gate
+Per updated `feedback_paw_review_flow.md`:
+- /code-review keeps running for quality tracking
+- Integration does NOT wait for /code-review pass
+- CHANGES REQUIRED items tracked as tech debt, fixed in parallel
+- Friend-game scope accept-risk on quality items (doc comments, method length, testability seams)
+- Real functional bugs (panics, dead branches, ADR violations causing misbehavior) DO block
 
-### ⚠️ DISK SPACE ALERT
-D: drive hit 100% full from Rust build artifacts. Clean inactive worktree targets before launching new builds. Keep only active worktrees.
-
-### origin/main HEAD: bd41df3
+### CRITICAL CHAIN — DRAFT_INITIAL still not showing 9 cards
+PROMPT 507 deep trace identified the actual root cause:
+1. `process_fresh_hello` never inserts fresh players into `ReconnectTracker.snapshot_sent` map
+2. `drain_deferred_dispatches` filters on `snapshot_sent==true` → missing entries silently dropped
+3. PROMPT 499's earlier fix (`initialise_reconnect_tracker` set to false) was a misdiagnose — needs revert per ADR-011 spec
+4. PROMPT 513 dispatched: revert to true + add fresh-hello registration with TRUE + R-1 compile fix (`trigger.entity` → `trigger.target()`)
 
 ### Currently Running (windows still open)
-- PROMPT 501 — reconnect-dedup-fix (server/src/core/session/reconnect.rs duplicate DeferredMessage variants)
-- PROMPT 502 — paw-final-fixes (LobbyViewState dependency violation + BID_INCREMENTS to game_config.ron)
-- PROMPT 504 — disk space cleanup (worktree targets)
+- PROMPT 513 — comprehensive reconnect.rs fix (R-1 compile, R-3 spec revert, fresh-hello snapshot_sent=true registration)
+- PROMPT 504 — disk space cleanup (status unknown, may have completed)
 
-### Worker branches PUSHED but BLOCKED on /code-review
-- work/snapshot-sent-fix (PROMPT 499) — one-line snapshot_sent fix; /code-review CHANGES REQUIRED, blocked on PROMPT 501
-- work/board-rendering-fixes-2 (PROMPT 500) — Pointer<Click> observers + 4 other fixes; needs /code-review
-- work/hand-ui-node-lens-fix (PROMPT 493) — NodePositionLens + 4 other fixes; needs /code-review
-- work/placeholder-assets-panic-fix (PROMPT 492) — already integrated as b92aa97 ✅
-- work/paw-review-fixes (PROMPT 494) + work/paw-functional-fixes (PROMPT 497) — needs follow-up after 502 lands
+### What's on main now (recent functional commits)
+- ac9305b: Pointer<Click> observers + co_occupancy clamp + BoardRenderingConfig threading (PROMPT 512)
+- a95a06b: PAW review #2 #3 #7 (PlayerTeamMapUpdated, BID_INCREMENTS to game_config.ron, dead Startup removed)
+- 7e9eedb: reconnect.rs duplicate DeferredMessage variants removed
+- ec5eadc: board_rendering ADR-021 fixes (B-1..B-6)
+- 2aed0bd: snapshot_sent=false (PROMPT 499 — TO BE REVERTED by PROMPT 513)
+- b92aa97: PlaceholderAssets panic fix (Option<Res<>>)
+- f5b7a34: ClientState dedup
+- 14c937d: Lightyear ReplicationSender
+- 0cb0766: B0004 fan root + server tracing
 
-### Closed Recently (this session)
-- PAW-001 through PAW-006: all on main (cb4e178, 3734f19, bb80b47, f5b7a34, 2132129 etc.)
-- ClientState dedup fix: f5b7a34 on main ✅
-- Lightyear ReplicationSender fix: 14c937d on main ✅
-- B0004 fan root + server tracing: 0cb0766 on main ✅
-- Placeholder panic fix (PROMPT 492): branch pushed, NOT yet integrated — blocked by /code-review CHANGES REQUIRED (4 items, 3 being fixed by PROMPT 493)
+### After PROMPT 513 lands → MOMENT OF TRUTH
+1. Cherry-pick PROMPT 513 commit to main
+2. cargo build -p server -p client --jobs 2
+3. User launches game → DRAFT_INITIAL should finally show 9 cards
+4. If yes → /story-done PAW-002 to PAW-006
+5. /smoke-check
+6. Polish phase work continues
 
-### Current Work Flow
-All PAW stories (002-006) are on main but have NOT had /story-done run yet.
-All PAW files failed /code-review — fixes in PROMPT 493 + 494.
-After both fix prompts complete:
-  1. /code-review on fixed files
-  2. If APPROVED → cherry-pick to main
-  3. /story-done for each PAW-002 through PAW-006
-  4. /smoke-check
-  5. Rebuild + retest DRAFT_INITIAL (main fix: ClientState dedup f5b7a34 + ReplicationSender 14c937d)
+### Pending /story-done (no longer blocked — code-review is now visibility-only)
+- PAW-002 to PAW-006 all eligible once DRAFT_INITIAL is verified working
 
-### Pending /story-done (blocked until code-review passes)
-- PAW-002: story-002-hand-ui-card-frames.md
-- PAW-003: story-003-shop-auction-chrome.md
-- PAW-004: story-004-hud-figurines-timer-dots.md
-- PAW-005: story-005-board-unit-sprites.md
-- PAW-006: story-006-lobby-portraits.md
+### Tech debt tracked from /code-review CHANGES REQUIRED
+- hand/mod.rs: doc comments missing, method length > 40 lines, hardcoded UI pixel constants
+- shop_auction/mod.rs: doc comments, method length, BID_INCREMENTS now in config ✅
+- hud/mod.rs: doc comments, method length, format_gold_display testability seam
+- board_rendering.rs: doc comments, large file split, untested pure functions (PAW-001 ACs)
+- reconnect.rs: doc comments, method length, deterministic SessionToken (ADR-011 deviation), testability seams
+- All UI files: localization (hardcoded English strings)
 
-### Active Blockers
-- PROMPT 492 (placeholder panic fix): not integrated — 3 of 4 review items being fixed by PROMPT 493
-- hand/mod.rs: CHANGES REQUIRED from /code-review — fix in PROMPT 493
-- PAW-003 to PAW-006 + asset_wiring.rs: APPROVED WITH SUGGESTIONS (3 small required fixes) — lobby.rs:33 dead Startup to be fixed in PROMPT 494
-- All /story-done for PAW-002 to PAW-006 blocked until /code-review passes on fixed files
+These are accept-risk for friend-game scope, captured for future cleanup pass.
 
 ### Closed Recently
 - PROMPT 450 — DRAFT_INITIAL grid repair → worker commit `5b6d030` ✅ (incomplete fix — see 461 follow-up; worker forgot the BackgroundColor fallback I had requested)
