@@ -1063,7 +1063,6 @@ impl Plugin for ShopAuctionUiPlugin {
             .init_resource::<ShopAuctionToastState>()
             .init_resource::<ShopAuctionRefreshConfig>()
             .init_resource::<AuctionBidKeyboardFocus>()
-            .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<PlayerEconomyView>()
             .init_resource::<ClientPhaseView>()
             .add_message::<PresentationGameSnapshotMessage>()

@@ -92,10 +92,13 @@ pub struct LobbyInputState {
 
 impl Default for LobbyInputState {
     fn default() -> Self {
+        #[cfg(not(target_arch = "wasm32"))]
+        let join_room_code =
+            normalize_room_code_text(&std::env::var("JOIN_ROOM_CODE").unwrap_or_default());
+        #[cfg(target_arch = "wasm32")]
+        let join_room_code = String::new();
         Self {
-            join_room_code: normalize_room_code_text(
-                &std::env::var("JOIN_ROOM_CODE").unwrap_or_default(),
-            ),
+            join_room_code,
             requested_slot: 1,
             selected_class: ClassId::Iop,
             room_code_focused: false,

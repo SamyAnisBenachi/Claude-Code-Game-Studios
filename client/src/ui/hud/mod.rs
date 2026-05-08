@@ -263,6 +263,21 @@ pub struct ScoreboardDotState {
     pub destroyed: bool,
 }
 
+/// Per-frame cache of drained `HudObjectiveUpdate` messages.
+///
+/// `MessageReader` is drain-based: only one system may call `.read()` per frame
+/// or the messages are lost. `handle_hud_objective_update_system` is the sole
+/// drainer; `sync_dot_image_on_objective_destroyed_system` reads from here instead.
+#[derive(Resource, Default)]
+pub struct DrainedHudObjectiveUpdates(pub Vec<HudObjectiveUpdate>);
+
+/// Per-frame cache of the latest drained `PresentationGameSnapshotMessage`.
+///
+/// `handle_game_snapshot_system` is the sole drainer of `MessageReader<PresentationGameSnapshotMessage>`.
+/// `sync_figurine_image_system` reads from this resource so it never calls `.read()` itself.
+#[derive(Resource, Default)]
+pub struct DrainedGameSnapshot(pub Option<PresentationGameSnapshotMessage>);
+
 pub struct HudPlugin;
 
 impl Plugin for HudPlugin {
@@ -275,6 +290,8 @@ impl Plugin for HudPlugin {
             .init_resource::<PlayerEconomyView>()
             .init_resource::<HudConfig>()
             .init_resource::<HudMode>()
+            .init_resource::<DrainedHudObjectiveUpdates>()
+            .init_resource::<DrainedGameSnapshot>()
             .add_message::<HudObjectiveUpdate>()
             .add_message::<HudGoldBroadcastMessage>()
             .add_message::<PresentationGameSnapshotMessage>()
@@ -798,9 +815,16 @@ pub fn drain_gold_broadcast_receiver_system(
     }
 }
 
+/// Sole drainer of `MessageReader<PresentationGameSnapshotMessage>`.
+///
+/// MessageReader is drain-based: calling `.read()` consumes messages for all systems.
+/// The latest snapshot is written into `DrainedGameSnapshot` so that downstream
+/// systems in StateSync (e.g. `sync_figurine_image_system`) can read it without
+/// a second drain call returning empty.
 pub fn handle_game_snapshot_system(
     mut commands: Commands,
     mut messages: MessageReader<PresentationGameSnapshotMessage>,
+    mut drained_snapshot: ResMut<DrainedGameSnapshot>,
     entities: Option<Res<HudEntities>>,
     mut current: ResMut<CurrentClientPhase>,
     mut mode: ResMut<HudMode>,
@@ -830,12 +854,16 @@ pub fn handle_game_snapshot_system(
         &mut BorderColor,
     )>,
 ) {
-    let mut last_snapshot = None;
-    for message in messages.read().map(|message| &message.0) {
-        last_snapshot = Some(message);
+    // Drain all messages; keep only the last (most recent snapshot wins).
+    // Also cache it in DrainedGameSnapshot for downstream StateSync systems
+    // that cannot call .read() themselves (drain semantics — second call returns empty).
+    let mut last_message: Option<PresentationGameSnapshotMessage> = None;
+    for message in messages.read() {
+        last_message = Some(message.clone());
     }
+    drained_snapshot.0 = last_message.clone();
 
-    let Some(snapshot) = last_snapshot else {
+    let Some(snapshot) = last_message.as_ref().map(|m| &m.0) else {
         return;
     };
     let Some(entities) = entities else {
@@ -937,9 +965,16 @@ pub fn handle_gold_broadcast_system(
     }
 }
 
+/// Sole drainer of `MessageReader<HudObjectiveUpdate>`.
+///
+/// MessageReader is drain-based: calling `.read()` consumes all pending messages.
+/// This system drains them once per frame into `DrainedHudObjectiveUpdates` so
+/// that `sync_dot_image_on_objective_destroyed_system` (StateSync) can also act
+/// on the same updates without a second drain call losing them.
 pub fn handle_hud_objective_update_system(
     mode: Res<HudMode>,
     mut updates: MessageReader<HudObjectiveUpdate>,
+    mut drained: ResMut<DrainedHudObjectiveUpdates>,
     entities: Option<Res<HudEntities>>,
     player_ids: Option<Res<HudPlayerIds>>,
     mut dots: Query<(
@@ -948,21 +983,22 @@ pub fn handle_hud_objective_update_system(
         &mut BorderColor,
     )>,
 ) {
+    // Collect and cache all messages this frame for downstream systems.
+    let this_frame: Vec<HudObjectiveUpdate> = updates.read().cloned().collect();
+    drained.0 = this_frame.clone();
+
     if *mode == HudMode::Frozen {
-        for _update in updates.read() {}
         return;
     }
 
     let Some(entities) = entities else {
-        for _update in updates.read() {}
         return;
     };
     let Some(player_ids) = player_ids else {
-        for _update in updates.read() {}
         return;
     };
 
-    for update in updates.read() {
+    for update in &this_frame {
         if !(1..=HUD_DOTS_PER_ROW as u8).contains(&update.lane) {
             warn!(
                 "HUD: OOB lane {} in HudObjectiveUpdate - ignored",
@@ -1017,26 +1053,26 @@ pub fn sync_scoreboard_dot_layout_system(
 /// PAW-004: StateSync — update the figurine `ImageNode` to the own player's
 /// class asset. Runs every frame but only writes when the snapshot class
 /// differs from what the figurine currently shows.
+///
+/// Reads from `DrainedGameSnapshot` instead of `MessageReader` directly —
+/// `handle_game_snapshot_system` (MessageDrain) is the sole drainer; a second
+/// `.read()` call here would return empty due to drain semantics.
 pub fn sync_figurine_image_system(
     asset_server: Option<Res<AssetServer>>,
     mut figurines: Query<&mut ImageNode, With<HudFigurine>>,
     hud_player_ids: Option<Res<HudPlayerIds>>,
     entities: Option<Res<HudEntities>>,
     mut last_class: Local<Option<shared::card::ClassId>>,
-    mut snapshot_messages: MessageReader<PresentationGameSnapshotMessage>,
+    drained_snapshot: Res<DrainedGameSnapshot>,
 ) {
-    // Drain messages to find the latest own class_id.
-    let mut latest_class = None;
-    for msg in snapshot_messages.read() {
-        if let Some(own) = msg
-            .0
+    // Read the latest snapshot cached by handle_game_snapshot_system this frame.
+    let latest_class = drained_snapshot.0.as_ref().and_then(|msg| {
+        msg.0
             .players
             .iter()
             .find(|p| p.player_id == msg.0.recipient_player_id)
-        {
-            latest_class = Some(own.class_id);
-        }
-    }
+            .map(|own| own.class_id)
+    });
 
     let Some(class_id) = latest_class else {
         return;
@@ -1064,30 +1100,30 @@ pub fn sync_figurine_image_system(
 
 /// PAW-004: StateSync — when a `HudObjectiveUpdate` message marks a dot as
 /// destroyed, update that dot's `ImageNode` to the destroyed asset.
+///
+/// Reads from `DrainedHudObjectiveUpdates` (populated by `handle_hud_objective_update_system`
+/// in MessageDrain) rather than calling `MessageReader::read()` directly — the reader
+/// is drain-based and would return nothing after MessageDrain already consumed the messages.
 pub fn sync_dot_image_on_objective_destroyed_system(
     asset_server: Option<Res<AssetServer>>,
     mode: Res<HudMode>,
-    mut updates: MessageReader<HudObjectiveUpdate>,
+    drained: Res<DrainedHudObjectiveUpdates>,
     entities: Option<Res<HudEntities>>,
     player_ids: Option<Res<HudPlayerIds>>,
     mut dot_images: Query<&mut ImageNode, With<ScoreboardDot>>,
-    dot_states: Query<&ScoreboardDotState, With<ScoreboardDot>>,
 ) {
-    if *mode == HudMode::Frozen {
-        for _u in updates.read() {}
+    if *mode == HudMode::Frozen || drained.0.is_empty() {
         return;
     }
 
     let Some(entities) = entities else {
-        for _u in updates.read() {}
         return;
     };
     let Some(player_ids) = player_ids else {
-        for _u in updates.read() {}
         return;
     };
 
-    for update in updates.read() {
+    for update in &drained.0 {
         if !(1..=HUD_DOTS_PER_ROW as u8).contains(&update.lane) {
             warn!(
                 "HUD(PAW-004): OOB lane {} in HudObjectiveUpdate image sync - ignored",
@@ -1107,18 +1143,8 @@ pub fn sync_dot_image_on_objective_destroyed_system(
         let lane_index = usize::from(update.lane - 1);
         let dot_entity = entities.dots[row_index][lane_index];
 
-        // Check current dot state to pick the correct asset.
-        let is_already_destroyed = dot_states
-            .get(dot_entity)
-            .map(|s| s.destroyed)
-            .unwrap_or(false);
-
-        if !is_already_destroyed {
-            // The ScoreboardDotState is updated by handle_hud_objective_update_system
-            // which runs before StateSync. We pick the destroyed asset unconditionally
-            // because this system is only triggered when an objective is destroyed.
-        }
-
+        // ScoreboardDotState was already updated by handle_hud_objective_update_system
+        // (MessageDrain, before StateSync). Load the destroyed asset unconditionally.
         if let Some(server) = &asset_server {
             if let Ok(mut img) = dot_images.get_mut(dot_entity) {
                 img.image = server.load(HUD_OBJECTIVE_DOT_DESTROYED_ASSET);

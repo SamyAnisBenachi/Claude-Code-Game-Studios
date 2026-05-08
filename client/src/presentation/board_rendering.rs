@@ -949,6 +949,8 @@ impl Plugin for BoardRenderingPlugin {
                     .after(crate::card_animations::resolution_executing_system)
                     .run_if(in_state(ClientState::InSession)),
             )
+            // No InSession guard: PlayerTeamMap must be populated from LobbyViewState
+            // even before entering InSession so board systems see correct team assignments.
             .add_systems(Update, drain_player_team_map_messages_system)
             .add_systems(
                 Update,
@@ -965,6 +967,8 @@ impl Plugin for BoardRenderingPlugin {
     }
 }
 
+/// Runs without an `InSession` guard so `PlayerTeamMap` is populated from lobby data
+/// before the session starts — board systems rely on it being ready at InSession entry.
 pub fn drain_player_team_map_messages_system(
     lobby: Option<Res<LobbyViewState>>,
     mut player_team_map: ResMut<PlayerTeamMap>,
