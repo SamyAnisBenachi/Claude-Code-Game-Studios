@@ -3,7 +3,7 @@
 > **Epic**: Audio System
 > **Status**: Ready
 > **Layer**: Polish
-> **Type**: Integration
+> **Type**: Visual/Feel
 > **Manifest Version**: 2026-05-08
 
 ## Context
