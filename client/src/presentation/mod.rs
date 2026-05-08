@@ -1,6 +1,6 @@
 use ::shared::protocol::{
-    CardSource, S2CCardAcquired, S2CDraftOffering, S2CGameSnapshot, S2CPhaseChanged,
-    S2CSessionSettingsUpdated, S2CShopSlots,
+    CardSource, S2CCardAcquired, S2CDraftOffering, S2CGameSnapshot, S2CObjectiveIdentities,
+    S2CPhaseChanged, S2CSessionSettingsUpdated, S2CShopSlots,
 };
 use bevy::prelude::*;
 use lightyear::prelude::MessageReceiver;
@@ -13,10 +13,11 @@ use crate::presentation::board_rendering::{
 use crate::presentation::result_screen::ResultScreenPlugin;
 use crate::presentation::shared::economy_view::drain_gold_update_receiver_system as drain_shared_gold_update_receiver_system;
 use crate::state::{
-    apply_phase_changed_message, apply_phase_view_message, apply_session_settings_updated_message,
-    apply_snapshot_to_session_settings_view, should_enter_session_from_phase,
-    should_enter_session_from_snapshot, ClientGameSnapshotMessage, ClientPhaseView,
-    ClientSessionIdentity, ClientState, SessionSettingsView,
+    apply_objective_identities_message, apply_phase_changed_message, apply_phase_view_message,
+    apply_session_settings_updated_message, apply_snapshot_to_session_settings_view,
+    should_enter_session_from_phase, should_enter_session_from_snapshot, ClientGameSnapshotMessage,
+    ClientObjectiveIdentities, ClientPhaseView, ClientSessionIdentity, ClientState,
+    SessionSettingsView,
 };
 use crate::ui::hand::{
     HandUiCardAcquiredReceived, HandUiDraftOfferingReceived, HandUiPlugin, HandUiSystemSet,
@@ -60,6 +61,7 @@ impl Plugin for PresentationPlugin {
             .init_resource::<ClientSessionIdentity>()
             .init_resource::<SessionSettingsView>()
             .init_resource::<PlayerEconomyView>()
+            .init_resource::<ClientObjectiveIdentities>()
             .add_message::<ClientGameSnapshotMessage>();
 
         // ADR-021 registration order is a contract.
@@ -116,6 +118,7 @@ impl Plugin for PresentationPlugin {
                 game_snapshot_sink_system,
                 drain_shared_gold_update_receiver_system,
                 draft_shop_hand_bridge_fanout_system,
+                drain_objective_identities_system,
             )
                 .in_set(PresentationSet::MessageDrain)
                 .before(BoardRenderSet::ReadMessages)
@@ -123,6 +126,17 @@ impl Plugin for PresentationPlugin {
                 .before(HandUiSystemSet::MessageDrain)
                 .before(ShopAuctionUiSystemSet::MessageDrain),
         );
+    }
+}
+
+pub fn drain_objective_identities_system(
+    mut receivers: Query<&mut MessageReceiver<S2CObjectiveIdentities>>,
+    mut identities: ResMut<ClientObjectiveIdentities>,
+) {
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            apply_objective_identities_message(&message, &mut identities);
+        }
     }
 }
 
