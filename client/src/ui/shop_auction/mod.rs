@@ -772,6 +772,14 @@ pub enum DraftInitialSlotState {
     Purchased,
 }
 
+/// Marker placed on the child text entity that displays card name + cost inside a draft slot.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DraftInitialSlotTextLabel;
+
+/// Stored on the slot entity; holds the `Entity` id of the child text node.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DraftInitialSlotText(pub Entity);
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DraftInitialBoughtOverlay {
     pub slot_index: u8,
@@ -1738,9 +1746,17 @@ pub fn handle_draft_offering_system(
     mut draft_state: ResMut<ShopAuctionDraftInitialState>,
     mut commands: Commands,
     mut draft_ui: ParamSet<(
-        Query<(&DraftInitialSlotIndex, &mut Text, &mut Visibility)>,
+        // p0: slot container — index + text-child link + visibility
+        Query<(
+            &DraftInitialSlotIndex,
+            &DraftInitialSlotText,
+            &mut Visibility,
+        )>,
+        // p1: bought overlays
         Query<(&DraftInitialBoughtOverlay, &mut Visibility)>,
     )>,
+    // Separate query so p0 and the text mutation don't alias
+    mut text_query: Query<&mut Text, With<DraftInitialSlotTextLabel>>,
 ) {
     let Some(entities) = entities else {
         for _offering in offerings.read() {}
@@ -1760,15 +1776,18 @@ pub fn handle_draft_offering_system(
         {
             let mut slots = draft_ui.p0();
             for slot_entity in entities.draft_initial_slots {
-                let Ok((slot_index, mut text, mut visibility)) = slots.get_mut(slot_entity) else {
+                let Ok((slot_index, slot_text, mut visibility)) = slots.get_mut(slot_entity) else {
                     continue;
                 };
+                let text_entity = slot_text.0;
 
                 let Some(card_id) = sorted_card_ids.get(slot_index.0 as usize).copied() else {
+                    // Clear: hide slot, wipe text child, remove state components.
                     clear_draft_initial_slot(
                         &mut commands,
                         slot_entity,
-                        &mut text,
+                        text_entity,
+                        &mut text_query,
                         &mut visibility,
                     );
                     continue;
@@ -1781,9 +1800,11 @@ pub fn handle_draft_offering_system(
                 let cost = card.map_or(0, |card| card.cost);
                 let rarity = card.map_or(Rarity::Common, |card| card.rarity);
 
-                text.0.clear();
-                text.0
-                    .push_str(&format!("{}\n{}g", card_name.as_str(), cost));
+                if let Ok(mut text) = text_query.get_mut(text_entity) {
+                    text.0.clear();
+                    text.0
+                        .push_str(&format!("{}\n{}g", card_name.as_str(), cost));
+                }
                 commands.entity(slot_entity).insert((
                     DraftInitialSlotCard(card_id),
                     DraftInitialSlotCardName(card_name),
@@ -3433,6 +3454,8 @@ fn spawn_draft_initial_grid(
 ) {
     let mut overlays = Vec::with_capacity(SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT);
     let slots = std::array::from_fn(|index| {
+        // Spawn the slot container WITHOUT Text so it doesn't render as a white dot
+        // when no text is set. Text lives in a dedicated child entity instead.
         let slot = commands
             .spawn((
                 Name::new(format!("Shop Auction Draft Slot {index}")),
@@ -3441,13 +3464,28 @@ fn spawn_draft_initial_grid(
                 Button,
                 Interaction::None,
                 draft_initial_slot_node(index),
-                Text::new(""),
-                shop_auction_text_font(14.0),
-                TextColor(Color::srgb(0.92, 0.94, 0.96)),
                 Visibility::Hidden,
                 ChildOf(parent),
             ))
             .id();
+
+        // Child text entity — holds card name + cost display.
+        let text_entity = commands
+            .spawn((
+                Name::new(format!("Shop Auction Draft Slot {index} Text")),
+                ShopAuctionUiEntity,
+                DraftInitialSlotTextLabel,
+                Text::new(""),
+                shop_auction_text_font(14.0),
+                TextColor(Color::srgb(0.92, 0.94, 0.96)),
+                ChildOf(slot),
+            ))
+            .id();
+
+        // Store the text child's id on the slot so systems can reach it directly.
+        commands
+            .entity(slot)
+            .insert(DraftInitialSlotText(text_entity));
 
         let overlay = commands
             .spawn((
@@ -4341,10 +4379,13 @@ fn rarity_sort_rank(rarity: Rarity) -> u8 {
 fn clear_draft_initial_slot(
     commands: &mut Commands,
     entity: Entity,
-    text: &mut Text,
+    text_entity: Entity,
+    text_query: &mut Query<&mut Text, With<DraftInitialSlotTextLabel>>,
     visibility: &mut Visibility,
 ) {
-    text.0.clear();
+    if let Ok(mut text) = text_query.get_mut(text_entity) {
+        text.0.clear();
+    }
     *visibility = Visibility::Hidden;
     commands.entity(entity).remove::<(
         DraftInitialSlotCard,
