@@ -137,8 +137,50 @@ pub fn card_acquisition_tick_system(
     mut gold_updates: MessageWriter<EconomyGoldUpdate>,
     server: Query<&Server>,
     mut sender: Option<ServerMultiMessageSender>,
+    mut pending_draft_offerings: Local<Vec<DraftOfferingDispatch>>,
 ) {
     let server = server.single().ok();
+
+    // Retry any draft offerings that could not be sent in a previous tick because
+    // ServerMultiMessageSender or the Server resource was not yet initialized.
+    if !pending_draft_offerings.is_empty() {
+        match (&server, sender.as_mut()) {
+            (None, _) => {
+                tracing::warn!(
+                    count = pending_draft_offerings.len(),
+                    "card_acquisition: server resource not yet available \
+                     — retaining {} pending draft offering(s) for next tick",
+                    pending_draft_offerings.len()
+                );
+            }
+            (_, None) => {
+                tracing::warn!(
+                    count = pending_draft_offerings.len(),
+                    "card_acquisition: ServerMultiMessageSender not yet initialized \
+                     — retaining {} pending draft offering(s) for next tick",
+                    pending_draft_offerings.len()
+                );
+            }
+            (Some(server), Some(sender)) => {
+                let mut sent_count: usize = 0;
+                // drain_filter is unstable; retain-then-send pattern keeps allocations minimal.
+                let to_send = std::mem::take(&mut *pending_draft_offerings);
+                for dispatch in to_send {
+                    if !defer_draft_offering(reconnect_tracker.as_deref_mut(), &dispatch) {
+                        send_draft_offering(sender, server, &dispatch);
+                        sent_count += 1;
+                    }
+                }
+                if sent_count > 0 {
+                    tracing::info!(
+                        "card_acquisition: broadcast S2CDraftOffering to {} client(s) \
+                         (retry from pending queue)",
+                        sent_count
+                    );
+                }
+            }
+        }
+    }
 
     for refresh in shop_refreshes.read() {
         if refresh.trigger == ShopRefreshTrigger::DraftInitial {
@@ -172,10 +214,32 @@ pub fn card_acquisition_tick_system(
                 }
             };
 
-            if let Some(dispatch) = dispatch.as_ref() {
-                if !defer_draft_offering(reconnect_tracker.as_deref_mut(), dispatch) {
-                    if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
-                        send_draft_offering(sender, server, dispatch);
+            if let Some(dispatch) = dispatch {
+                if !defer_draft_offering(reconnect_tracker.as_deref_mut(), &dispatch) {
+                    match (&server, sender.as_mut()) {
+                        (None, _) => {
+                            tracing::warn!(
+                                player_id = dispatch.player_id.0,
+                                "card_acquisition: server resource not yet available \
+                                 — queuing S2CDraftOffering for retry next tick"
+                            );
+                            pending_draft_offerings.push(dispatch);
+                        }
+                        (_, None) => {
+                            tracing::warn!(
+                                player_id = dispatch.player_id.0,
+                                "card_acquisition: ServerMultiMessageSender not yet initialized \
+                                 — queuing S2CDraftOffering for retry next tick"
+                            );
+                            pending_draft_offerings.push(dispatch);
+                        }
+                        (Some(server), Some(sender)) => {
+                            send_draft_offering(sender, server, &dispatch);
+                            tracing::info!(
+                                player_id = dispatch.player_id.0,
+                                "card_acquisition: broadcast S2CDraftOffering to 1 client"
+                            );
+                        }
                     }
                 }
             }
