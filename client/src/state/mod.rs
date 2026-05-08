@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 use shared::protocol::{
-    PlacementTimerMultiplier, RoundPhase, S2CGameSnapshot, S2CHandshake, S2CPhaseChanged,
-    S2CSessionSettingsUpdated, SessionToken,
+    PlacementTimerMultiplier, RoundPhase, S2CGameSnapshot, S2CHandshake, S2CObjectiveIdentities,
+    S2CPhaseChanged, S2CSessionSettingsUpdated, SessionToken,
 };
 use shared::session::PlayerId;
 
@@ -118,3 +118,18 @@ pub fn apply_snapshot_to_session_settings_view(
 
 #[derive(Message, Debug, Clone)]
 pub struct ClientGameSnapshotMessage(pub S2CGameSnapshot);
+
+/// Local player's objective identities, unicast at DRAFT_INITIAL (ADR-001).
+/// Each entry pairs a lane id with `is_fake` (true = fake objective for the
+/// local player). Empty until the unicast lands.
+#[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
+pub struct ClientObjectiveIdentities {
+    pub identities: Vec<(u8, bool)>,
+}
+
+pub fn apply_objective_identities_message(
+    msg: &S2CObjectiveIdentities,
+    identities: &mut ClientObjectiveIdentities,
+) {
+    identities.identities = msg.identities.clone();
+}
