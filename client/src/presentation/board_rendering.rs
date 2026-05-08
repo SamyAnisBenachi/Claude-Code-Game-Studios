@@ -25,7 +25,7 @@ use crate::ui::hand::{
     GhostClickedEvent, GhostDragStartEvent, GhostPlacementChanged, ObjectiveCell,
     PlacementTargetUnit,
 };
-use crate::ui::lobby::LobbyViewState;
+use crate::ui::lobby::PlayerTeamMapUpdated;
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 pub mod perf_harness;
@@ -949,7 +949,10 @@ impl Plugin for BoardRenderingPlugin {
                     .after(crate::card_animations::resolution_executing_system)
                     .run_if(in_state(ClientState::InSession)),
             )
-            .add_systems(Update, drain_player_team_map_messages_system)
+            .add_systems(
+                Update,
+                drain_player_team_map_messages_system.run_if(in_state(ClientState::InSession)),
+            )
             .add_systems(
                 Update,
                 (
@@ -966,11 +969,11 @@ impl Plugin for BoardRenderingPlugin {
 }
 
 pub fn drain_player_team_map_messages_system(
-    lobby: Option<Res<LobbyViewState>>,
+    mut updates: MessageReader<PlayerTeamMapUpdated>,
     mut player_team_map: ResMut<PlayerTeamMap>,
 ) {
-    if let Some(lobby) = lobby.as_deref() {
-        player_team_map.apply_slots(&lobby.slots);
+    for update in updates.read() {
+        player_team_map.apply_slots(&update.slots);
     }
 }
 

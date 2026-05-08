@@ -28,12 +28,13 @@ impl Plugin for LobbyUiPlugin {
             .init_resource::<LobbyInputState>()
             .add_message::<KeyboardInput>()
             .add_message::<LobbyCommand>()
-            .add_systems(
-                Startup,
-                spawn_lobby_ui_system.run_if(in_state(ClientState::Lobby)),
-            )
+            .add_message::<PlayerTeamMapUpdated>()
             .add_systems(OnEnter(ClientState::Lobby), spawn_lobby_ui_system)
             .add_systems(OnExit(ClientState::Lobby), despawn_lobby_ui_system)
+            .add_systems(
+                OnEnter(ClientState::InSession),
+                broadcast_player_team_map_on_session_enter_system,
+            )
             .add_systems(
                 Update,
                 (
@@ -47,6 +48,18 @@ impl Plugin for LobbyUiPlugin {
                     .run_if(in_state(ClientState::Lobby)),
             );
     }
+}
+
+/// On entering an in-session client state, re-emit the current lobby slot map
+/// so consumers like board rendering pick up the team assignments even if they
+/// only register their `MessageReader` while the InSession schedule is active.
+pub fn broadcast_player_team_map_on_session_enter_system(
+    lobby: Res<LobbyViewState>,
+    mut writer: MessageWriter<PlayerTeamMapUpdated>,
+) {
+    writer.write(PlayerTeamMapUpdated {
+        slots: lobby.slots.clone(),
+    });
 }
 
 #[derive(Resource, Debug, Clone, PartialEq, Eq)]
@@ -105,6 +118,15 @@ impl Default for LobbyInputState {
             class_confirm_in_flight: false,
         }
     }
+}
+
+/// Broadcast whenever the lobby slot map changes (room created, joined, or
+/// slot updated). Decouples downstream consumers (e.g. board rendering's
+/// `PlayerTeamMap`) from a direct `LobbyViewState` resource read across module
+/// boundaries.
+#[derive(Message, Debug, Clone, PartialEq, Eq)]
+pub struct PlayerTeamMapUpdated {
+    pub slots: Vec<SessionSlot>,
 }
 
 #[derive(Message, Debug, Clone, PartialEq, Eq)]
@@ -187,6 +209,7 @@ pub fn drain_lobby_s2c_system(
     mut identity: ResMut<ClientSessionIdentity>,
     mut lobby: ResMut<LobbyViewState>,
     mut input: ResMut<LobbyInputState>,
+    mut team_map_writer: MessageWriter<PlayerTeamMapUpdated>,
     mut handshakes: Query<&mut MessageReceiver<S2CHandshake>>,
     mut handshake_rejections: Query<&mut MessageReceiver<S2CHandshakeRejected>>,
     mut created: Query<&mut MessageReceiver<S2CRoomCreated>>,
@@ -216,6 +239,9 @@ pub fn drain_lobby_s2c_system(
     for mut receiver in &mut created {
         for message in receiver.receive() {
             apply_room_created(&mut lobby, &message);
+            team_map_writer.write(PlayerTeamMapUpdated {
+                slots: lobby.slots.clone(),
+            });
             input.create_in_flight = false;
         }
     }
@@ -230,6 +256,9 @@ pub fn drain_lobby_s2c_system(
     for mut receiver in &mut joined {
         for message in receiver.receive() {
             apply_join_ack(&mut lobby, &message);
+            team_map_writer.write(PlayerTeamMapUpdated {
+                slots: lobby.slots.clone(),
+            });
             input.join_in_flight = false;
         }
     }
@@ -244,6 +273,9 @@ pub fn drain_lobby_s2c_system(
     for mut receiver in &mut slot_updates {
         for message in receiver.receive() {
             apply_slot_update(&mut lobby, &message);
+            team_map_writer.write(PlayerTeamMapUpdated {
+                slots: lobby.slots.clone(),
+            });
         }
     }
 
