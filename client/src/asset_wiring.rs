@@ -253,10 +253,7 @@ pub struct PlaceholderAssets {
 
 /// Inserts [`PlaceholderAssets`] into the world by loading every path constant
 /// via [`AssetServer`]. Registered on `OnEnter(ClientState::InSession)`.
-pub fn insert_placeholder_assets(
-    asset_server: Res<AssetServer>,
-    mut commands: Commands,
-) {
+pub fn insert_placeholder_assets(asset_server: Res<AssetServer>, mut commands: Commands) {
     commands.insert_resource(PlaceholderAssets {
         fallback: asset_server.load(PLACEHOLDER_FALLBACK_ASSET),
         card_frame_common: asset_server.load(CARD_FRAME_COMMON_HAND_ASSET),
