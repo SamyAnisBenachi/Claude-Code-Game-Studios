@@ -1586,6 +1586,22 @@ worktree mode for all new code workers.
 > truth for "what is running, what just closed, what is launchable next."
 > Do NOT rely on conversation memory — always read this section first.
 
+## Mandatory Skill Gates (enforced by user — never skip)
+
+Every action in this project MUST use the Claude Game Studios defined skills:
+
+| Step | Skill | When |
+|---|---|---|
+| Before every integration to main | `/code-review <files>` | After worker pushes branch |
+| After every integration | `/story-done <story-file>` | Once on main |
+| After a batch of stories | `/smoke-check` | Before close-out |
+| Phase transitions | `/gate-check` | Never skip |
+| After GDD edits | `/design-review` | Always |
+| After cross-GDD changes | `/consistency-check` | Always |
+| After ADR changes | `/architecture-review` | Always |
+
+**Never substitute with:** raw bash/grep checks, manual file edits bypassing skills, skipping smoke-check, ad-hoc path existence checks.
+
 ### Last Sync: 2026-05-08 (post-B0004-fix, PROMPT 475 dispatched)
 
 ### ⚠️ DISK SPACE ALERT
