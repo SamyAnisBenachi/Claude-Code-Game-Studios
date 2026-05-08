@@ -122,6 +122,16 @@ pub fn class_type_icon_asset(class_id: ClassId) -> &'static str {
     }
 }
 
+/// Returns the path constant for a rarity icon matching the given rarity.
+pub fn rarity_icon_asset(rarity: Rarity) -> &'static str {
+    match rarity {
+        Rarity::Common | Rarity::Uncommon => RARITY_ICON_COMMON_ASSET,
+        Rarity::Rare => RARITY_ICON_RARE_ASSET,
+        Rarity::Epic => RARITY_ICON_EPIC_ASSET,
+        Rarity::Legendary => RARITY_ICON_LEGENDARY_ASSET,
+    }
+}
+
 /// Returns the path constant for a HUD class figurine matching the given class.
 pub fn hud_figurine_asset(class_id: ClassId) -> &'static str {
     match class_id {
