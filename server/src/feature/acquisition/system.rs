@@ -139,6 +139,9 @@ pub fn card_acquisition_tick_system(
     mut sender: Option<ServerMultiMessageSender>,
     mut pending_draft_offerings: Local<Vec<DraftOfferingDispatch>>,
 ) {
+    // Log point 1: system entry.
+    tracing::info!("acquisition_tick: system entered");
+
     let server = server.single().ok();
 
     // Retry any draft offerings that could not be sent in a previous tick because
@@ -182,7 +185,21 @@ pub fn card_acquisition_tick_system(
         }
     }
 
-    for refresh in shop_refreshes.read() {
+    // Log point 2: count drained ShopRefreshTriggered messages before iterating.
+    let shop_refresh_messages: Vec<_> = shop_refreshes.read().collect();
+    tracing::info!(
+        "acquisition_tick: drained {} ShopRefreshTriggered messages",
+        shop_refresh_messages.len()
+    );
+
+    for refresh in &shop_refresh_messages {
+        // Log point 3: each message processed.
+        tracing::info!(
+            "acquisition_tick: processing ShopRefreshTriggered for player_id={} trigger={:?}",
+            refresh.player_id.0,
+            refresh.trigger
+        );
+
         if refresh.trigger == ShopRefreshTrigger::DraftInitial {
             let dispatch = match (
                 pools.as_deref(),
@@ -192,15 +209,32 @@ pub fn card_acquisition_tick_system(
             ) {
                 (Some(pools), Some(sessions), Some(catalog), Some(server_rng)) => {
                     let seed = server_rng.draw_initial_draft(rng_player_id(refresh.player_id));
-                    build_draft_initial_offering(
+                    // Log point 4a: before building the offering.
+                    tracing::info!(
+                        "acquisition_tick: building draft initial offering for player_id={}",
+                        refresh.player_id.0
+                    );
+                    let offering = build_draft_initial_offering(
                         &mut shop_states,
                         pools,
                         sessions,
                         catalog,
                         refresh.player_id,
                         seed,
-                    )
-                    .map(|message| {
+                    );
+                    // Log point 4b: after building — log card count or early return.
+                    match &offering {
+                        Some(msg) => tracing::info!(
+                            "acquisition_tick: built offering with {} cards for player_id={}",
+                            msg.card_ids.len(),
+                            refresh.player_id.0
+                        ),
+                        None => tracing::info!(
+                            "acquisition_tick: early return — build_draft_initial_offering returned None for player_id={}",
+                            refresh.player_id.0
+                        ),
+                    }
+                    offering.map(|message| {
                         prepare_draft_offering_dispatch(
                             refresh.player_id,
                             message,
@@ -209,13 +243,35 @@ pub fn card_acquisition_tick_system(
                     })
                 }
                 _ => {
-                    apply_shop_refresh_trigger(&mut shop_states, *refresh);
+                    // Log point 10: early return due to missing resources.
+                    tracing::info!(
+                        "acquisition_tick: early return — pools/sessions/catalog/server_rng not available for player_id={}",
+                        refresh.player_id.0
+                    );
+                    apply_shop_refresh_trigger(&mut shop_states, **refresh);
                     None
                 }
             };
 
             if let Some(dispatch) = dispatch {
-                if !defer_draft_offering(reconnect_tracker.as_deref_mut(), &dispatch) {
+                // Log point 5: before defer check.
+                tracing::info!(
+                    "acquisition_tick: checking defer for player_id={}",
+                    dispatch.player_id.0
+                );
+                let deferred = defer_draft_offering(reconnect_tracker.as_deref_mut(), &dispatch);
+                // Log point 6: after defer check.
+                tracing::info!(
+                    "acquisition_tick: defer={} for player_id={}",
+                    deferred,
+                    dispatch.player_id.0
+                );
+                if !deferred {
+                    // Log point 8: attempting direct broadcast.
+                    tracing::info!(
+                        "acquisition_tick: attempting direct broadcast S2CDraftOffering to peer_id={:?}",
+                        dispatch.peer_id
+                    );
                     match (&server, sender.as_mut()) {
                         (None, _) => {
                             tracing::warn!(
@@ -241,7 +297,18 @@ pub fn card_acquisition_tick_system(
                             );
                         }
                     }
+                } else {
+                    // Log point 7: offering was deferred (queued for reconnecting player).
+                    tracing::info!(
+                        "acquisition_tick: queued offering in deferred_queue for player_id={}",
+                        dispatch.player_id.0
+                    );
                 }
+            } else {
+                tracing::info!(
+                    "acquisition_tick: early return — dispatch is None (no offering built) for player_id={}",
+                    refresh.player_id.0
+                );
             }
             continue;
         }
@@ -277,7 +344,7 @@ pub fn card_acquisition_tick_system(
                     })
                 }
                 _ => {
-                    apply_shop_refresh_trigger(&mut shop_states, *refresh);
+                    apply_shop_refresh_trigger(&mut shop_states, **refresh);
                     None
                 }
             };
@@ -292,7 +359,7 @@ pub fn card_acquisition_tick_system(
             continue;
         }
 
-        apply_shop_refresh_trigger(&mut shop_states, *refresh);
+        apply_shop_refresh_trigger(&mut shop_states, **refresh);
     }
 
     let connections = connections.as_deref();
