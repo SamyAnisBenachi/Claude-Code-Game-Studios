@@ -81,11 +81,10 @@ fn test_all_seven_portrait_entities_have_image_node() {
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();
 
-    let portrait_count = app
-        .world()
-        .query_filtered::<Entity, (With<LobbyClassPortrait>, With<ImageNode>)>()
-        .iter(app.world())
-        .count();
+    let mut q = app
+        .world_mut()
+        .query_filtered::<Entity, (With<LobbyClassPortrait>, With<ImageNode>)>();
+    let portrait_count = q.iter(app.world()).count();
 
     assert_eq!(
         portrait_count, 7,
@@ -100,7 +99,7 @@ fn test_portrait_image_nodes_are_non_default() {
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();
 
-    let world = app.world();
+    let world = app.world_mut();
     let mut query = world.query::<(&LobbyClassPortrait, &ImageNode)>();
     let portraits: Vec<_> = query.iter(world).collect();
 
@@ -127,7 +126,7 @@ fn test_portrait_image_paths_match_selector() {
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();
 
-    let world = app.world();
+    let world = app.world_mut();
 
     // Build expected paths from the selector for all 7 variants.
     let expected_paths: Vec<(&str, ClassId)> = all_class_ids()
@@ -160,7 +159,7 @@ fn test_own_slot_panel_has_image_node() {
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();
 
-    let world = app.world();
+    let world = app.world_mut();
 
     let own_count = world
         .query_filtered::<Entity, (With<LobbyOwnSlotPanel>, With<ImageNode>)>()
@@ -190,7 +189,7 @@ fn test_room_code_chip_has_image_node() {
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();
 
-    let world = app.world();
+    let world = app.world_mut();
     let chip_count = world
         .query_filtered::<Entity, (With<LobbyRoomCodeChip>, With<ImageNode>)>()
         .iter(world)
@@ -209,7 +208,7 @@ fn test_all_ten_lobby_chrome_entities_have_image_node() {
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();
 
-    let world = app.world();
+    let world = app.world_mut();
 
     let portrait_count = world
         .query_filtered::<Entity, (With<LobbyClassPortrait>, With<ImageNode>)>()
@@ -247,7 +246,7 @@ fn test_portrait_image_handle_unchanged_on_class_selection() {
 
     // Collect Cra portrait handle before any selection change.
     let handle_before = {
-        let world = app.world();
+        let world = app.world_mut();
         let mut query = world.query::<(&LobbyClassPortrait, &ImageNode)>();
         query
             .iter(world)
@@ -265,7 +264,7 @@ fn test_portrait_image_handle_unchanged_on_class_selection() {
 
     // Handle must be unchanged.
     let handle_after = {
-        let world = app.world();
+        let world = app.world_mut();
         let mut query = world.query::<(&LobbyClassPortrait, &ImageNode)>();
         query
             .iter(world)

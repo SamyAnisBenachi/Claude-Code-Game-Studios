@@ -479,6 +479,7 @@ fn install_runtime_board_assets(app: &mut App) {
     let objective_unknown = images.add(Image::default());
     let objective_real = images.add(Image::default());
     let objective_fake = images.add(Image::default());
+    let board_chrome = images.add(Image::default());
     drop(images);
 
     app.world_mut().insert_resource(BoardRuntimeAssets {
@@ -489,6 +490,7 @@ fn install_runtime_board_assets(app: &mut App) {
         objective_unknown,
         objective_real,
         objective_fake,
+        board_chrome,
     });
 }
 
