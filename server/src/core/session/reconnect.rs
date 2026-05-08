@@ -87,14 +87,14 @@ pub fn on_reconnect_connected(
     config: Option<Res<GameConfig>>,
     mut tracker: ResMut<ReconnectTracker>,
 ) {
-    let Ok(remote) = clients.get(trigger.entity) else {
+    let Ok(remote) = clients.get(trigger.event_target()) else {
         return;
     };
 
     tracker.pending_hellos.insert(
         remote.0,
         PendingHello {
-            entity: trigger.entity,
+            entity: trigger.event_target(),
             remaining_ms: hello_timeout_ms(config.as_deref()),
         },
     );
@@ -107,7 +107,11 @@ pub fn initialise_reconnect_tracker(
 ) -> ReconnectTracker {
     let mut tracker = ReconnectTracker::default();
     for player in session.players() {
-        tracker.snapshot_sent.insert(player, false);
+        tracker.snapshot_sent.insert(player, true);
+        tracing::info!(
+            "snapshot_sent registered for player_id={} (fresh=false)",
+            player.0
+        );
         tracker.deferred_queue.entry(player).or_default();
         let session_id = session_id_for_player(player, slots, active_sessions);
         let token = token_for_player(session_id, player);
@@ -608,6 +612,11 @@ fn process_fresh_hello(world: &mut World, peer_id: PeerId) -> ReconnectProcessRe
             .token_map
             .insert(session_token, (session_id, player_id));
         tracker.deferred_queue.entry(player_id).or_default();
+        tracker.snapshot_sent.insert(player_id, true);
+        tracing::info!(
+            "snapshot_sent registered for player_id={} (fresh=true)",
+            player_id.0
+        );
     }
 
     ReconnectProcessResult {
