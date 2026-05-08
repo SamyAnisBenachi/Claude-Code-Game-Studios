@@ -1351,11 +1351,11 @@ network_messages:
       - design/gdd/round-state-machine.md
       - design/gdd/network-protocol.md
       - design/gdd/hud.md
-    payload: "{ phase: RoundPhase, round_number: u32, timer_duration_ms: u32 }"
+    payload: "{ phase: RoundPhase, round_number: u32, timer_duration_ms: Option<u32> }"  # was: timer_duration_ms: u32 before 2026-05-08 (sync with NP line 119 + RSM Rule 14 Option<u32>)
     channel: reliable
-    notes: "Broadcast on every RSM phase transition, after all server-side entry actions have fired. Payload defined in network-protocol.md. timer_duration_ms=0 for RESOLUTION and GAME_OVER."
+    notes: "Broadcast on every RSM phase transition, after all server-side entry actions have fired. Payload defined in network-protocol.md. timer_duration_ms = Some(ms) for RSM-owned timers (DRAFT_INITIAL, DRAFT_SHOP, PLACEMENT); None for phases with no RSM-owned timer (DRAFT_AUCTION, RESOLUTION, GAME_OVER)."
     added: "2026-04-29"
-    revised: ""
+    revised: "2026-05-08"
 
   - name: S2CGameSnapshot
     status: active
@@ -1364,11 +1364,11 @@ network_messages:
       - design/gdd/network-protocol.md
       - design/gdd/round-state-machine.md
       - design/gdd/hud.md
-    payload: "{ protocol_version, round_number, phase, timer_remaining_ms, players: Vec<PlayerSnapshot>, board: BoardSnapshot, auction_state: Option<AuctionSnapshot> }"
+    payload: "{ protocol_version, round_number, phase, timer_remaining_ms: Option<u32>, placement_timer_multiplier_effective: PlacementTimerMultiplier, players: Vec<PlayerSnapshot>, board: BoardSnapshot, auction_state: Option<AuctionSnapshot>, active_sang_meprise_reveals: Option<Vec<ObjectiveReveal>> }"  # added placement_timer_multiplier_effective + active_sang_meprise_reveals on 2026-05-08 to match NP D.1 schema
     channel: reliable
-    notes: "Unicast per player on every connect and reconnect. Opponent secret fields stripped. Full schema in network-protocol.md Section D.1. Resolves RSM Open Question 4 (late-joiner sync)."
+    notes: "Unicast per player on every connect and reconnect. Opponent secret fields stripped (hand, pool, real-vs-fake objective identity). Full schema in network-protocol.md Section D.1. placement_timer_multiplier_effective is the frozen ADR-023 session value. active_sang_meprise_reveals populated only during RESOLUTION when Sang Méprise was played that round. Resolves RSM Open Question 4 (late-joiner sync)."
     added: "2026-04-29"
-    revised: ""
+    revised: "2026-05-08"
 
   - name: S2CGoldUpdate
     status: active

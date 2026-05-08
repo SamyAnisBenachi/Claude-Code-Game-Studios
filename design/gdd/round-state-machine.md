@@ -166,7 +166,7 @@ pub enum GameOverReason {
 
 | From | To | Trigger | Guard Condition |
 |---|---|---|---|
-| LOBBY | DRAFT_INITIAL | All expected players connected | Player count matches mode config |
+| LOBBY | DRAFT_INITIAL | `SessionReady` event from GSS | GSS preconditions per `game-session-system.md` Rule 8: all slots filled AND all classes confirmed AND `lobby_deadline` not expired (see Rule 1 cross-reference). Player-count-only is NOT sufficient. |
 | DRAFT_INITIAL | PLACEMENT | All players submit, OR `draft_initial_timer` expires | ≥1 player still connected |
 | DRAFT_INITIAL | GAME_OVER | Player disconnects > `disconnect_grace_seconds` | — |
 | PLACEMENT | RESOLUTION | All players submit, OR `placement_timer` reaches 0 | — |
@@ -396,7 +396,7 @@ The RSM drives the following UI elements via `S2CPhaseChanged` broadcasts. Each 
 
 | # | Criterion | Type |
 |---|---|---|
-| RSM-1 | GIVEN all expected players connect to the session, WHEN the RSM evaluates the LOBBY guard, THEN it transitions to DRAFT_INITIAL and broadcasts `S2CPhaseChanged(DRAFT_INITIAL, round=1)`. | BLOCKING |
+| RSM-1 | GIVEN all expected players have connected AND every player has confirmed their class AND `lobby_deadline` has not expired AND the GSS has fired `SessionReady`, WHEN the RSM evaluates the LOBBY guard, THEN it transitions to DRAFT_INITIAL and broadcasts `S2CPhaseChanged(DRAFT_INITIAL, round=1)`. (Player-count-only is NOT sufficient — a session where slots are filled but at least one class is unconfirmed must NOT transition; see `game-session-system.md` Rule 8 / GSS-20b / GSS-21.) | BLOCKING |
 | RSM-2 | GIVEN DRAFT_INITIAL ends (all players submit OR timer expires), WHEN the RSM transitions, THEN the next state is PLACEMENT and round_number = 1. The RSM does NOT transition to DRAFT_SHOP or DRAFT_AUCTION. | BLOCKING |
 | RSM-3 | GIVEN RESOLUTION completes with no loss condition and round_number increments to 3, WHEN the RSM evaluates `is_auction_round`, THEN it transitions to DRAFT_AUCTION (3 mod 3 = 0). | BLOCKING |
 | RSM-4 | GIVEN RESOLUTION completes and round_number increments to 4, WHEN the RSM evaluates `is_auction_round`, THEN it transitions to DRAFT_SHOP (4 mod 3 ≠ 0). | BLOCKING |
