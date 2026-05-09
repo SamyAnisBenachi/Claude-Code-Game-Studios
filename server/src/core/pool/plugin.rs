@@ -7,6 +7,8 @@ use crate::core::pool::system::{
     clear_pool_session_resources_on_game_over, initialize_player_pools_on_draft_started,
 };
 use crate::core::rsm::advance_phase;
+use crate::core::session::SessionConfig;
+use crate::foundation::config::{CardCatalog, GameConfig};
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CardPoolSet {
@@ -23,7 +25,14 @@ impl Plugin for CardPoolPlugin {
             .init_resource::<ShopSlots>()
             .init_resource::<InitialDraftOffering>()
             .init_resource::<ManualRefreshCount>()
-            .configure_sets(Update, CardPoolSet::Lifecycle.after(advance_phase))
+            .configure_sets(
+                Update,
+                CardPoolSet::Lifecycle
+                    .after(advance_phase)
+                    .run_if(resource_exists::<SessionConfig>)
+                    .run_if(resource_exists::<CardCatalog>)
+                    .run_if(resource_exists::<GameConfig>),
+            )
             .add_systems(
                 Update,
                 (

@@ -13,24 +13,19 @@ use crate::foundation::config::{CardCatalog, GameConfig};
 
 pub fn initialize_player_pools_on_draft_started(
     mut draft_started: MessageReader<DraftStarted>,
-    session: Option<Res<SessionConfig>>,
-    catalog: Option<Res<CardCatalog>>,
-    config: Option<Res<GameConfig>>,
+    session: Res<SessionConfig>,
+    catalog: Res<CardCatalog>,
+    config: Res<GameConfig>,
     mut pools: ResMut<PlayerPools>,
 ) {
+    tracing::info!(
+        "initialize_player_pools_on_draft_started: entered (session=true, catalog=true, config=true)"
+    );
+
     for message in draft_started.read() {
         if message.phase != DraftPhase::Initial {
             continue;
         }
-
-        let (Some(session), Some(catalog), Some(config)) =
-            (session.as_deref(), catalog.as_deref(), config.as_deref())
-        else {
-            tracing::warn!(
-                "DraftStarted::Initial received before SessionConfig, CardCatalog, or GameConfig; PlayerPools not initialized"
-            );
-            continue;
-        };
 
         pools.pools.clear();
         for player in session.players() {
