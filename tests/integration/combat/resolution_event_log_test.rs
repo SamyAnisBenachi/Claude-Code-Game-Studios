@@ -6,8 +6,8 @@ use server::core::board::{BoardPosition, UnitCardRef, UnitOwner, UnitStats};
 use server::core::economy::{PlayerEconomies, PlayerEconomy};
 use server::core::objective_contract::ObjectiveCounters;
 use server::core::rsm::{
-    advance_phase, BeginResolution, PlacementPhaseEntered, ResolutionPhaseEntered, RoundPhase,
-    RoundState, RsmNetworkOutbox, RsmPlugin,
+    advance_phase, AuctionSettled, BeginResolution, PlacementPhaseEntered, ResolutionPhaseEntered,
+    RoundPhase, RoundState, RsmNetworkOutbox, RsmPlugin,
 };
 use server::core::session::SessionConfig;
 use server::feature::board::{
@@ -92,6 +92,7 @@ fn app_with_combat(cards: Vec<CardData>) -> App {
 fn app_with_rsm_combat_dispatch() -> App {
     let mut app = App::new();
     app.add_plugins((RsmPlugin, CombatPlugin));
+    app.add_message::<AuctionSettled>();
     app.add_message::<PlacementCommitted>();
     app.insert_resource(Time::<()>::default());
     app.add_systems(Update, dispatch_phase_changed.after(advance_phase));

@@ -34,6 +34,7 @@ fn base_app() -> App {
     })
     .add_message::<DraftStarted>()
     .add_message::<ResolutionPhaseEntered>()
+    .add_message::<ResolutionComplete>()
     .add_plugins(ObjectivePlugin);
     app
 }

@@ -3,7 +3,7 @@ use std::{collections::HashMap, time::Duration};
 use bevy::prelude::*;
 use server::core::board::{BoardPosition, UnitOwner, UnitStats};
 use server::core::rsm::{
-    BeginResolution, BroadcastPhaseChanged, GameOverEmitted, PlacementPhaseEntered,
+    AuctionSettled, BeginResolution, BroadcastPhaseChanged, GameOverEmitted, PlacementPhaseEntered,
     ResolutionComplete, ResolutionPhaseEntered, RoundPhase, RoundState, RsmPlugin,
 };
 use server::core::session::SessionConfig;
@@ -44,6 +44,7 @@ fn app_with_combat() -> App {
 fn app_with_rsm_and_combat() -> App {
     let mut app = App::new();
     app.add_plugins((RsmPlugin, CombatPlugin));
+    app.add_message::<AuctionSettled>();
     app.insert_resource(Time::<()>::default());
     *app.world_mut().resource_mut::<RoundState>() = RoundState {
         phase: RoundPhase::Resolution,
