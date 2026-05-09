@@ -1669,6 +1669,7 @@ pub fn handle_grid_card_click_system(
     mut grid_cards: Query<(&GridSlotCard, Option<&GridSlotState>), With<GridSlotIndex>>,
     mut commands: Commands,
     mut outbound: ResMut<HandUiOutboundMessages>,
+    mut senders: Query<&mut MessageSender<C2SPurchaseCard>>,
 ) {
     for click in clicks.read() {
         if *mode != HandUiMode::Grid {
@@ -1683,9 +1684,11 @@ pub fn handle_grid_card_click_system(
             continue;
         }
 
-        outbound
-            .purchase_cards
-            .push(C2SPurchaseCard { card_id: card.0 });
+        let message = C2SPurchaseCard { card_id: card.0 };
+        if let Ok(mut sender) = senders.single_mut() {
+            sender.send::<ReliableChannel>(message.clone());
+        }
+        outbound.purchase_cards.push(message);
         commands.entity(click.card).insert((
             GridSlotState::Pending,
             PendingPurchaseTimer {
