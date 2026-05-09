@@ -8,7 +8,9 @@ use server::core::rsm::{
     BeginResolution, GameOverEmitted, ResolutionComplete, RoundPhase, RoundState, RsmPlugin,
 };
 use server::core::session::SessionConfig;
-use server::feature::board::{BoardCell, BoardConfig, BoardGrid, BoardOccupancy};
+use server::feature::board::{
+    BoardCell, BoardConfig, BoardGrid, BoardOccupancy, PlacementCommitted,
+};
 use server::feature::combat::{
     CombatPlugin, CombatResolutionTrace, CombatTraceEntry, GoldAwardReason,
 };
@@ -67,6 +69,8 @@ fn session_config() -> SessionConfig {
 fn app_with_combat() -> App {
     let mut app = App::new();
     app.add_plugins(CombatPlugin);
+    app.add_message::<BeginResolution>();
+    app.add_message::<PlacementCommitted>();
     insert_common_resources(&mut app);
     app
 }
@@ -74,6 +78,7 @@ fn app_with_combat() -> App {
 fn app_with_rsm_and_combat() -> App {
     let mut app = App::new();
     app.add_plugins((RsmPlugin, CombatPlugin));
+    app.add_message::<PlacementCommitted>();
     insert_common_resources(&mut app);
     app.insert_resource(Time::<()>::default());
     *app.world_mut().resource_mut::<RoundState>() = RoundState {

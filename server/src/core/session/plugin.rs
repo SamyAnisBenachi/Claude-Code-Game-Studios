@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use shared::card::ClassId;
 
-use crate::core::rsm::{advance_phase, on_session_ready, GameOverEmitted, PlayerHeartbeat};
+use crate::core::rsm::{advance_phase, on_session_ready, GameOverEmitted};
 use crate::core::session::{
     evaluate_room_session_ready, evaluate_session_ready, flush_deferred_queue,
     handle_confirm_class, handle_create_room, handle_game_over_teardown, handle_join_room,
@@ -33,7 +33,6 @@ impl Plugin for GameSessionPlugin {
             .init_resource::<ServerRngFactory>()
             .init_resource::<SessionNetworkOutbox>()
             .add_message::<GameOverEmitted>()
-            .add_message::<PlayerHeartbeat>()
             .configure_sets(
                 Update,
                 (

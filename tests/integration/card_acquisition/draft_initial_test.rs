@@ -129,6 +129,7 @@ fn test_draft_initial_app_system_consumes_one_rng_seed_and_updates_state() {
     let catalog = draft_catalog();
     let mut app = App::new();
     app.add_plugins(CardAcquisitionPlugin);
+    app.add_message::<ShopRefreshTriggered>();
     app.insert_resource(catalog.clone());
     app.insert_resource(pools_for(player, &catalog));
     app.insert_resource(sessions_for(player, ClassId::Iop));

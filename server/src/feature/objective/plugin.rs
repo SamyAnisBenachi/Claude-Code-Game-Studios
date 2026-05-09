@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use lightyear::prelude::*;
 
-use crate::core::economy::{AwardGold, ManaCapIncreased};
 use crate::core::rsm::{
     advance_phase, rsm_input_reader, ResolutionComplete, ResolutionPhaseEntered,
 };
@@ -36,8 +35,6 @@ impl Plugin for ObjectivePlugin {
             .add_message::<ObjectiveDestroyed>()
             .add_message::<ResolutionPhaseEntered>()
             .add_message::<ResolutionComplete>()
-            .add_message::<AwardGold>()
-            .add_message::<ManaCapIncreased>()
             .init_resource::<HiddenObjectives>()
             .init_resource::<ObjectiveCounters>()
             .init_resource::<PendingObjectiveEvents>()

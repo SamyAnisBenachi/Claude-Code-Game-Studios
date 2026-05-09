@@ -223,6 +223,7 @@ fn game_session_plugin_registers_class_resources() {
     let mut app = bevy::prelude::App::new();
     app.add_plugins(bevy::prelude::MinimalPlugins);
     app.add_plugins(GameSessionPlugin);
+    app.add_message::<server::core::rsm::PlayerHeartbeat>();
 
     app.update();
 

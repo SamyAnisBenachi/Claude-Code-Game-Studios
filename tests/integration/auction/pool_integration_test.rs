@@ -72,6 +72,8 @@ fn auction_fixture(catalog: CardCatalog) -> App {
     let config = config();
     let mut app = App::new();
     app.add_plugins((AuctionPlugin, CardPoolPlugin, EconomyPlugin))
+        .add_message::<AuctionPhaseEntered>()
+        .add_message::<AbortAuction>()
         .insert_resource(AuctionPool::from_catalog(&catalog, &config))
         .insert_resource(catalog)
         .insert_resource(config)

@@ -7,7 +7,7 @@ use server::core::rsm::BeginResolution;
 use server::core::session::SessionConfig;
 use server::feature::board::{
     AcceptedPlacement, BoardCell, BoardConfig, BoardGrid, BoardOccupancy, PendingPlacements,
-    PlayerSubmission,
+    PlacementCommitted, PlayerSubmission,
 };
 use server::feature::combat::{CombatPlugin, CombatResolutionTrace, CombatTraceEntry};
 use server::feature::keyword::components::UnitKeywordState;
@@ -103,6 +103,8 @@ fn session_config() -> SessionConfig {
 fn app_with_cards(cards: Vec<CardData>) -> App {
     let mut app = App::new();
     app.add_plugins(CombatPlugin);
+    app.add_message::<BeginResolution>();
+    app.add_message::<PlacementCommitted>();
     app.insert_resource(BoardConfig::default());
     app.insert_resource(BoardGrid::default());
     app.insert_resource(BoardOccupancy::default());

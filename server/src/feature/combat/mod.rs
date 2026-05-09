@@ -60,9 +60,7 @@ pub struct CombatPlugin;
 
 impl Plugin for CombatPlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<BeginResolution>()
-            .add_message::<ResolutionComplete>()
-            .add_message::<PlacementCommitted>()
+        app.add_message::<ResolutionComplete>()
             .init_resource::<BeginResolutionCursor>()
             .init_resource::<PlacementCommittedCursor>()
             .init_resource::<PendingResolutionComplete>()
