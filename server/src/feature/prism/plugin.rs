@@ -25,7 +25,6 @@ impl Plugin for PrismPlugin {
         app.init_resource::<PrismNetworkOutbox>()
             .add_message::<PrismCollected>()
             .add_message::<crate::core::rsm::DraftStarted>()
-            .add_message::<crate::core::rsm::GameOverEmitted>()
             .configure_sets(
                 Update,
                 (

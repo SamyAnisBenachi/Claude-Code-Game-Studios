@@ -44,7 +44,6 @@ impl Plugin for BoardPlugin {
             .add_message::<UnitAtObjective>()
             .add_message::<crate::core::rsm::PlacementPhaseEntered>()
             .add_message::<crate::core::rsm::PlacementSubmitted>()
-            .add_message::<crate::core::rsm::ResolutionPhaseEntered>()
             .configure_sets(
                 Update,
                 (

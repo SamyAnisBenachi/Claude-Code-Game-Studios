@@ -2,9 +2,7 @@ use bevy::prelude::*;
 use lightyear::prelude::*;
 
 use crate::core::economy::{AwardGold, ManaCapIncreased};
-use crate::core::rsm::{
-    advance_phase, rsm_input_reader, ResolutionComplete, ResolutionPhaseEntered,
-};
+use crate::core::rsm::{advance_phase, rsm_input_reader, ResolutionComplete};
 use crate::feature::objective::{
     broadcast_objective_events, deliver_objective_identities_on_ready,
     initialize_objectives_on_draft_initial, objective_resolution_ready, HiddenObjectives,
@@ -34,7 +32,6 @@ impl Plugin for ObjectivePlugin {
 
         app.add_message::<ObjectiveIdentitiesReady>()
             .add_message::<ObjectiveDestroyed>()
-            .add_message::<ResolutionPhaseEntered>()
             .add_message::<ResolutionComplete>()
             .add_message::<AwardGold>()
             .add_message::<ManaCapIncreased>()

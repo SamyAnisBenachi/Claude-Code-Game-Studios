@@ -2,9 +2,7 @@ use bevy::ecs::schedule::common_conditions::resource_exists;
 use bevy::prelude::*;
 
 use crate::core::economy::system::S2CGoldBroadcast;
-use crate::core::rsm::{
-    AbortAuction, AuctionPhaseEntered, AuctionSettled, DraftStarted, GameOverEmitted, RsmSet,
-};
+use crate::core::rsm::{AbortAuction, AuctionPhaseEntered, AuctionSettled, DraftStarted, RsmSet};
 use crate::core::session::{reconnect_snapshot_system, SessionSystemSet};
 use crate::feature::auction::{
     auction_tick_system, clear_auction_pool_on_game_over, initialize_auction_pool_on_draft_started,
@@ -29,7 +27,6 @@ impl Plugin for AuctionPlugin {
             .add_message::<AbortAuction>()
             .add_message::<AuctionSettled>()
             .add_message::<DraftStarted>()
-            .add_message::<GameOverEmitted>()
             .add_message::<S2CAuctionCard>()
             .add_message::<S2CGoldBroadcast>()
             .configure_sets(Update, AuctionSet::Tick.before(RsmSet::Tick))
