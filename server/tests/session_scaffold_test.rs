@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
+use server::core::rsm::PlayerHeartbeat;
 use server::core::session::{
     build_session_config, ClassSelections, GameSessionPlugin, LobbyDeadline, LobbyHeartbeats,
     LobbyState, RoomCode, SessionCancelled, SessionCancelledReason, SessionConfig, SessionId,
@@ -110,6 +111,7 @@ fn test_game_session_plugin_registers_cleanly() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(GameSessionPlugin);
+    app.add_message::<PlayerHeartbeat>();
 
     app.update();
 }

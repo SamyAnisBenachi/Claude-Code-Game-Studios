@@ -6,12 +6,13 @@ use server::core::board::{BoardPosition, UnitCardRef, UnitOwner, UnitStats};
 use server::core::economy::{PlayerEconomies, PlayerEconomy};
 use server::core::objective_contract::ObjectiveCounters;
 use server::core::rsm::{
-    advance_phase, BeginResolution, RoundPhase, RoundState, RsmNetworkOutbox, RsmPlugin,
+    advance_phase, BeginResolution, PlacementPhaseEntered, RoundPhase, RoundState,
+    RsmNetworkOutbox, RsmPlugin,
 };
 use server::core::session::SessionConfig;
 use server::feature::board::{
     AcceptedPlacement, BoardCell, BoardGrid, BoardOccupancy, BoardPlugin, PendingPlacements,
-    PlayerSubmission, SpawnRangeState,
+    PlacementCommitted, PlayerSubmission, SpawnRangeState,
 };
 use server::feature::combat::{
     CombatNetworkMessage, CombatNetworkMessageKind, CombatNetworkOutbox, CombatPlugin,
@@ -71,6 +72,8 @@ fn session_config() -> SessionConfig {
 fn app_with_combat(cards: Vec<CardData>) -> App {
     let mut app = App::new();
     app.add_plugins((BoardPlugin, CombatPlugin));
+    app.add_message::<BeginResolution>();
+    app.add_message::<PlacementPhaseEntered>();
     app.insert_resource(session_config());
     app.insert_resource(CardCatalog {
         cards: cards.into_iter().map(|card| (card.id, card)).collect(),
@@ -88,6 +91,7 @@ fn app_with_combat(cards: Vec<CardData>) -> App {
 fn app_with_rsm_combat_dispatch() -> App {
     let mut app = App::new();
     app.add_plugins((RsmPlugin, CombatPlugin));
+    app.add_message::<PlacementCommitted>();
     app.insert_resource(Time::<()>::default());
     app.add_systems(Update, dispatch_phase_changed.after(advance_phase));
     *app.world_mut().resource_mut::<RoundState>() = RoundState {

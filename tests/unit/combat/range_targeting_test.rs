@@ -4,7 +4,9 @@ use bevy::prelude::*;
 use server::core::board::{BoardPosition, UnitCardRef, UnitOwner, UnitStats};
 use server::core::rsm::BeginResolution;
 use server::core::session::SessionConfig;
-use server::feature::board::{BoardCell, BoardConfig, BoardGrid, BoardOccupancy};
+use server::feature::board::{
+    BoardCell, BoardConfig, BoardGrid, BoardOccupancy, PlacementCommitted,
+};
 use server::feature::combat::{CombatPlugin, CombatResolutionTrace, CombatTraceEntry};
 use server::feature::keyword::components::UnitKeywordState;
 use server::foundation::config::CardCatalog;
@@ -68,6 +70,8 @@ fn session_config() -> SessionConfig {
 fn app_with_cards(cards: Vec<CardData>, seed: u64) -> App {
     let mut app = App::new();
     app.add_plugins(CombatPlugin);
+    app.add_message::<BeginResolution>();
+    app.add_message::<PlacementCommitted>();
     app.insert_resource(BoardConfig::default());
     app.insert_resource(BoardGrid::default());
     app.insert_resource(BoardOccupancy::default());

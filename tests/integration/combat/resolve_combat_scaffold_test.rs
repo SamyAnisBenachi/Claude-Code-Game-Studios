@@ -3,11 +3,11 @@ use std::{collections::HashMap, time::Duration};
 use bevy::prelude::*;
 use server::core::board::{BoardPosition, UnitOwner, UnitStats};
 use server::core::rsm::{
-    BeginResolution, BroadcastPhaseChanged, GameOverEmitted, ResolutionComplete, RoundPhase,
-    RoundState, RsmPlugin,
+    BeginResolution, BroadcastPhaseChanged, GameOverEmitted, PlacementPhaseEntered,
+    ResolutionComplete, RoundPhase, RoundState, RsmPlugin,
 };
 use server::core::session::SessionConfig;
-use server::feature::board::{BoardPlugin, UnitAtObjective};
+use server::feature::board::{BoardPlugin, PlacementCommitted, UnitAtObjective};
 use server::feature::combat::{
     CombatIterationBudget, CombatNetworkMessageKind, CombatNetworkOutbox, CombatPlugin,
     CombatResolutionTrace, CombatTraceEntry, PendingResolutionComplete,
@@ -36,6 +36,8 @@ fn session_config() -> SessionConfig {
 fn app_with_combat() -> App {
     let mut app = App::new();
     app.add_plugins(CombatPlugin);
+    app.add_message::<BeginResolution>();
+    app.add_message::<PlacementCommitted>();
     app
 }
 
@@ -54,6 +56,8 @@ fn app_with_rsm_and_combat() -> App {
 fn app_with_board_and_combat() -> App {
     let mut app = App::new();
     app.add_plugins((BoardPlugin, CombatPlugin));
+    app.add_message::<BeginResolution>();
+    app.add_message::<PlacementPhaseEntered>();
     app.insert_resource(session_config());
     app
 }

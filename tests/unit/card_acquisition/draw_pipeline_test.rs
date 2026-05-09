@@ -132,6 +132,7 @@ fn test_shop_open_message_reader_draws_slots_in_app_system() {
     let catalog = rich_catalog();
     let mut app = App::new();
     app.add_plugins(CardAcquisitionPlugin);
+    app.add_message::<ShopRefreshTriggered>();
     app.insert_resource(catalog.clone());
     app.insert_resource(pools_for(player, &catalog));
     app.insert_resource(sessions_for(player));

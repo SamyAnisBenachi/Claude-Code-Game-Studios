@@ -66,6 +66,8 @@ fn placed(card_id: CardId, owner_id: PlayerId, lane: u8, cell: u8) -> AcceptedPl
 fn app_with_cards(cards: Vec<CardData>) -> App {
     let mut app = App::new();
     app.add_plugins(CombatPlugin);
+    app.add_message::<BeginResolution>();
+    app.add_message::<PlacementCommitted>();
     app.insert_resource(BoardGrid::default());
     app.insert_resource(BoardOccupancy::default());
     app.insert_resource(PendingPlacements::default());

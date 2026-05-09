@@ -5,7 +5,9 @@ use server::core::board::{BoardPosition, UnitCardRef, UnitOwner, UnitStats};
 use server::core::economy::{PlayerEconomies, PlayerEconomy};
 use server::core::rsm::BeginResolution;
 use server::core::session::SessionConfig;
-use server::feature::board::{BoardCell, BoardConfig, BoardGrid, BoardOccupancy};
+use server::feature::board::{
+    BoardCell, BoardConfig, BoardGrid, BoardOccupancy, PlacementCommitted,
+};
 use server::feature::combat::{
     CombatKillLog, CombatPlugin, CombatResolutionTrace, CombatTraceEntry, GoldAwardReason,
 };
@@ -89,6 +91,8 @@ fn economy(gold: u32) -> PlayerEconomy {
 fn app_with_cards(cards: Vec<CardData>) -> App {
     let mut app = App::new();
     app.add_plugins(CombatPlugin);
+    app.add_message::<BeginResolution>();
+    app.add_message::<PlacementCommitted>();
     app.insert_resource(BoardConfig::default());
     app.insert_resource(BoardGrid::default());
     app.insert_resource(BoardOccupancy::default());

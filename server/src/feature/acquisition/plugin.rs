@@ -7,7 +7,6 @@ use crate::core::session::SessionSystemSet;
 use crate::feature::auction::auction_tick_system;
 
 use super::hands::PlayerHands;
-use super::messages::ShopRefreshTriggered;
 use super::state::ShopStates;
 use super::system::{card_acquisition_tick_system, CardAcquisitionSet};
 
@@ -17,7 +16,6 @@ impl Plugin for CardAcquisitionPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ShopStates>()
             .init_resource::<PlayerHands>()
-            .add_message::<ShopRefreshTriggered>()
             .add_message::<EconomyGoldUpdate>()
             .configure_sets(
                 Update,

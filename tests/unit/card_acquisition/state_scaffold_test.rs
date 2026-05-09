@@ -76,6 +76,7 @@ fn pools_for(player: PlayerId, catalog: &CardCatalog) -> PlayerPools {
 fn plugin_registers_state_resources_and_refresh_message() {
     let mut app = App::new();
     app.add_plugins(CardAcquisitionPlugin);
+    app.add_message::<ShopRefreshTriggered>();
     app.finish();
     app.cleanup();
 
@@ -91,6 +92,7 @@ fn shop_refresh_trigger_enters_shop_active_from_message_bus() {
     let player = PlayerId(1);
     let mut app = App::new();
     app.add_plugins(CardAcquisitionPlugin);
+    app.add_message::<ShopRefreshTriggered>();
 
     app.world_mut()
         .resource_mut::<Messages<ShopRefreshTriggered>>()

@@ -194,6 +194,7 @@ fn app_with_board() -> App {
         tick_duration: Duration::from_secs_f64(1.0 / TICK_HZ),
     })
     .add_plugins(BoardPlugin)
+    .add_message::<PlacementPhaseEntered>()
     .insert_resource(RoundState {
         phase: RoundPhase::Placement,
         round_number: 1,
@@ -221,6 +222,7 @@ fn live_server_app(port: u16, connection_probe: ServerConnectionProbe) -> App {
     });
     register_lightyear_protocol(&mut app);
     app.add_plugins(BoardPlugin)
+        .add_message::<PlacementPhaseEntered>()
         .insert_resource(RoundState {
             phase: RoundPhase::Placement,
             round_number: 1,
