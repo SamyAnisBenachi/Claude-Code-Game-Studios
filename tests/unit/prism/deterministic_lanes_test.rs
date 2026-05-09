@@ -4,7 +4,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use lightyear::prelude::server::ServerPlugins;
 use server::core::economy::{PlayerEconomies, PlayerEconomy};
-use server::core::rsm::{RoundPhase, RoundState};
+use server::core::rsm::{GameOverEmitted, RoundPhase, RoundState};
 use server::feature::acquisition::PlayerHands;
 use server::feature::prism::{
     AuditLog, DiscardLog, PrismCollected, PrismLaneKey, PrismPlugin, PrismPresence, PrismState,
@@ -22,7 +22,8 @@ fn app_with_prism() -> App {
     app.add_plugins(ServerPlugins {
         tick_duration: Duration::from_secs_f64(1.0 / 60.0),
     })
-    .add_plugins(PrismPlugin);
+    .add_plugins(PrismPlugin)
+    .add_message::<GameOverEmitted>();
     app.world_mut().insert_resource(PrismState::default());
     app.world_mut().insert_resource(DiscardLog::default());
     app.world_mut().insert_resource(AuditLog::default());

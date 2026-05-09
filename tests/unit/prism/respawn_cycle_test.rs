@@ -6,7 +6,7 @@ use lightyear::prelude::server::ServerPlugins;
 use lightyear::prelude::PeerId;
 use server::core::economy::{PlayerEconomies, PlayerEconomy};
 use server::core::pool::{PlayerPool, PlayerPools};
-use server::core::rsm::{RoundPhase, RoundState};
+use server::core::rsm::{GameOverEmitted, RoundPhase, RoundState};
 use server::core::session::{PlayerConnectionMap, SessionConfig};
 use server::feature::acquisition::PlayerHands;
 use server::feature::prism::{
@@ -30,7 +30,8 @@ fn app_with_prism(session: Option<SessionConfig>) -> App {
     app.add_plugins(ServerPlugins {
         tick_duration: Duration::from_secs_f64(1.0 / 60.0),
     })
-    .add_plugins(PrismPlugin);
+    .add_plugins(PrismPlugin)
+    .add_message::<GameOverEmitted>();
     app.world_mut().insert_resource(PrismState::default());
     app.world_mut().insert_resource(DiscardLog::default());
     app.world_mut().insert_resource(AuditLog::default());

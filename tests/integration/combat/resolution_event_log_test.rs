@@ -6,8 +6,8 @@ use server::core::board::{BoardPosition, UnitCardRef, UnitOwner, UnitStats};
 use server::core::economy::{PlayerEconomies, PlayerEconomy};
 use server::core::objective_contract::ObjectiveCounters;
 use server::core::rsm::{
-    advance_phase, BeginResolution, PlacementPhaseEntered, RoundPhase, RoundState,
-    RsmNetworkOutbox, RsmPlugin,
+    advance_phase, BeginResolution, PlacementPhaseEntered, ResolutionPhaseEntered, RoundPhase,
+    RoundState, RsmNetworkOutbox, RsmPlugin,
 };
 use server::core::session::SessionConfig;
 use server::feature::board::{
@@ -74,6 +74,7 @@ fn app_with_combat(cards: Vec<CardData>) -> App {
     app.add_plugins((BoardPlugin, CombatPlugin));
     app.add_message::<BeginResolution>();
     app.add_message::<PlacementPhaseEntered>();
+    app.add_message::<ResolutionPhaseEntered>();
     app.insert_resource(session_config());
     app.insert_resource(CardCatalog {
         cards: cards.into_iter().map(|card| (card.id, card)).collect(),

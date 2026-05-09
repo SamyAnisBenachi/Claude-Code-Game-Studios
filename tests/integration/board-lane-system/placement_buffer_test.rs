@@ -195,6 +195,7 @@ fn app_with_board() -> App {
     })
     .add_plugins(BoardPlugin)
     .add_message::<PlacementPhaseEntered>()
+    .add_message::<ResolutionPhaseEntered>()
     .insert_resource(RoundState {
         phase: RoundPhase::Placement,
         round_number: 1,
@@ -223,6 +224,7 @@ fn live_server_app(port: u16, connection_probe: ServerConnectionProbe) -> App {
     register_lightyear_protocol(&mut app);
     app.add_plugins(BoardPlugin)
         .add_message::<PlacementPhaseEntered>()
+        .add_message::<ResolutionPhaseEntered>()
         .insert_resource(RoundState {
             phase: RoundPhase::Placement,
             round_number: 1,

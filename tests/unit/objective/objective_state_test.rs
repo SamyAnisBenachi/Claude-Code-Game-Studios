@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use lightyear::prelude::server::ServerPlugins;
 use lightyear::prelude::Replicate;
 use server::core::board::UnitStats;
-use server::core::rsm::DraftStarted;
+use server::core::rsm::{DraftStarted, ResolutionPhaseEntered};
 use server::core::session::{SessionConfig, TeamId};
 use server::feature::objective::{
     HiddenObjectives, ObjectiveCounters, ObjectiveHp, ObjectivePlugin, ObjectiveSlot,
@@ -39,6 +39,7 @@ fn app_with_objectives(objective_hp: u32) -> App {
         tick_duration: Duration::from_secs_f64(1.0 / 60.0),
     })
     .add_message::<DraftStarted>()
+    .add_message::<ResolutionPhaseEntered>()
     .add_plugins(ObjectivePlugin)
     .insert_resource(session_config([PlayerId(1), PlayerId(2)]))
     .insert_resource(config_with_objective_hp(objective_hp))
@@ -84,6 +85,7 @@ fn plugin_registers_objective_resources() {
         tick_duration: Duration::from_secs_f64(1.0 / 60.0),
     })
     .add_message::<DraftStarted>()
+    .add_message::<ResolutionPhaseEntered>()
     .add_plugins(ObjectivePlugin);
     app.finish();
     app.cleanup();

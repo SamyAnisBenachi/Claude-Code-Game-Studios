@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use lightyear::prelude::server::ServerPlugins;
-use server::core::rsm::DraftStarted;
+use server::core::rsm::{DraftStarted, ResolutionPhaseEntered};
 use server::core::session::{SessionConfig, TeamId};
 use server::feature::objective::system::{assign_fake_objectives, validate_objective_config};
 use server::feature::objective::{
@@ -47,6 +47,7 @@ fn app_with_objectives(config: shared::config::GameConfig, seed: u64) -> App {
         tick_duration: Duration::from_secs_f64(1.0 / 60.0),
     })
     .add_message::<DraftStarted>()
+    .add_message::<ResolutionPhaseEntered>()
     .add_plugins(ObjectivePlugin)
     .insert_resource(session_config(&[PlayerId(2), PlayerId(1)]))
     .insert_resource(GameConfig(config))
