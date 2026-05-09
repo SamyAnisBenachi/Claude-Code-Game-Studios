@@ -133,6 +133,11 @@ Color rule:
 - yellow = IN PROGRESS / WAITING / NEEDS REPAIR / partial
 - red = BLOCKED / FAILED
 
+**Visual delimiter (2026-05-09 update):** After the colored status line,
+the agent must end its output with one final delimiter line containing exactly
+`###################################################` (51 hash characters).
+Order: status line second-to-last, delimiter last. No further lines after.
+
 Prompt number policy: prompt numbers are global and monotonically increasing
 within the orchestration conversation. Do not reset the index to 1 in later
 answers. The last numbered response prompt issued was REPONSE 5, so the next
