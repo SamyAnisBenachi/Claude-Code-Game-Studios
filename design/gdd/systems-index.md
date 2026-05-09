@@ -1,7 +1,8 @@
 # Systems Index — Lanes and Lies
 
 **Source GDD:** `lanes-and-lies-gdd.md`
-**Last updated:** 2026-05-01
+**Last updated:** 2026-05-09
+**Last cross-review:** 2026-05-09 (R10) — `gdd-cross-review-2026-05-09-r10.md` — Verdict: CONCERNS (2 blockers + 4 warnings; 9 of 11 R9 blockers resolved)
 **Total systems:** 20
 **Design order:** Foundation → Core → Networking → Feature → Presentation
 
