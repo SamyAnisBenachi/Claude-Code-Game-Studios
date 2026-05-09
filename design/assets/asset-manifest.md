@@ -1,12 +1,12 @@
 # Asset Manifest
 
-> Last updated: 2026-05-07
+> Last updated: 2026-05-09
 
 ## Progress Summary
 
 | Total | Needed | In Progress | Done | Approved |
 |-------|--------|-------------|------|----------|
-| 242 | 242 | 0 | 0 | 0 |
+| 296 | 296 | 0 | 0 | 0 |
 
 Generated Placeholder and File Present Placeholder rows remain counted under Needed until production approval is recorded.
 
@@ -30,6 +30,17 @@ Generated Placeholder and File Present Placeholder rows remain counted under Nee
 - The full ~315-card catalog remains deferred until roster IDs, card IDs, and art IDs are reconciled.
 - GAME_OVER / outcome rows are placeholder ownership only and blocked pending result-screen UX.
 - Optional bid confirmation remains an unresolved accessibility design decision; no confirmation-step production assets are tracked in this manifest yet.
+
+---
+
+## 2026-05-09 Expansion — Card Animations, Objective System, Round State Machine
+
+Three new per-system spec files added covering the remaining GDDs that had no asset spec:
+- `design/assets/specs/card-animations-assets.md` — ASSET-243 through ASSET-266 (24 assets): custom lens types, timing constants config block, damage-number text/lifecycle components, PLACEMENT marker, domain message types, and the `StagedObjectiveRevealQueue` / `GroupDrainedSignal` pipeline types.
+- `design/assets/specs/objective-system-assets.md` — ASSET-267 through ASSET-280 (14 assets): reveal-moment two-beat VFX, owner identity indicator glyphs, Sang Méprise temporary slot tints, ADR-001 unicast message types, and the identity reveal audio sting.
+- `design/assets/specs/round-state-machine-assets.md` — ASSET-281 through ASSET-296 (16 assets): phase announcement banners, round number badge, GAME_OVER result panel and text styles (4 outcome variants), `RoundState` resource / `GameOverReason` enum, and PLACEMENT begin tension sting.
+- Assets that overlap with existing spec systems (objective destruction VFX, board sprites, HUD timer bar, auction/session audio) are cross-referenced by existing IDs and not re-minted.
+- New manifest total: 296 (was 242, +54).
 
 ---
 
@@ -342,6 +353,75 @@ Remaining work: production art review, final delivery evidence, approval/sign-of
 | ASSET-224 | Reduced-Motion Animation Policy Map | Accessibility Data Asset | Placeholder | design/assets/specs/shared-fonts-materials-shaders-assets.md |
 | ASSET-225 | Audio Bus Settings UI Controls | UI / Settings | Placeholder | design/assets/specs/shared-fonts-materials-shaders-assets.md |
 | ASSET-226 | Brightness / Gamma Overlay Material | Accessibility Material | Placeholder | design/assets/specs/shared-fonts-materials-shaders-assets.md |
+
+### System: card-animations
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-243 | `SpriteAlphaLens` Custom Lens | Rust / Animation Lens | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-244 | `BackgroundColorAlphaLens` Custom Lens | Rust / Animation Lens | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-245 | `SpriteColorLens` Custom Lens | Rust / Animation Lens | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-246 | `TransformScaleXLens` Custom Lens | Rust / Animation Lens | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-247 | `TextColorLens` Custom Lens | Rust / Animation Lens | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-248 | Card Animations Timing Constants Block | Config Data | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-249 | Damage Number Jitter Table | Static Data / Rust Const | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-250 | Damage Number Text Style | Runtime Text / Material | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-251 | Damage Number `DespawnAfter` Timer Component | ECS Component / Data | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-252 | `DamageNumber` Marker Component | ECS Component | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-253 | `PlacementPhaseAnimator` Marker Component | ECS Component | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-254 | `StagedObjectiveRevealQueue` Resource | ECS Resource | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-255 | `GroupDrainedSignal` Message | Rust / ECS Message Type | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-256 | `PlacementRevealAnimReady` Message | Rust / Message Type | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-257 | `ObjectiveDestroyedAnimReady` Message | Rust / Message Type | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-258 | `BoardRebuildRequested` Message | Rust / Message Type | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-259 | `PlacementCancelAllAnimsRequested` Message | Rust / Message Type | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-260 | `DamageNumberSpawnRequested` Message | Rust / Message Type | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-261 | `CardAcquiredAnimReady` Message | Rust / Message Type | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-262 | `SnapBackRequested` Message | Rust / Message Type | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-263 | `HandHideRequested` / `HandShowRequested` Messages | Rust / Message Type | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-264 | Shop/Auction UI Animation Messages (×6) | Rust / Message Type | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-265 | Keyword System Animation Messages (×3) | Rust / Message Type | Needed | design/assets/specs/card-animations-assets.md |
+| ASSET-266 | Reserved — card-animations system | — | Needed | design/assets/specs/card-animations-assets.md |
+
+### System: objective-system
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-267 | Objective Real Identity Reveal Frame | VFX / Overlay | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-268 | Objective Fake Identity Reveal Frame | VFX / Overlay | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-269 | Objective Reveal Hold Backdrop | Material / UI Overlay | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-270 | Objective Owner Real Indicator Glyph | UI / HUD | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-271 | Objective Owner Fake Indicator Glyph | UI / HUD | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-272 | Objective Owner Destroyed Slot Marker | UI / HUD | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-273 | Sang Méprise Slot Reveal Tint — Real | Material / Runtime Tint | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-274 | Sang Méprise Slot Reveal Tint — Fake | Material / Runtime Tint | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-275 | `S2CObjectiveIdentities` Message Type | Rust / Lightyear S2C | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-276 | `S2CSangMepriseReveal` Message Type | Rust / Lightyear S2C | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-277 | `HiddenObjectives` Server Resource | Rust / ECS Resource | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-278 | `ObjectiveDestroyed` Message Type | Rust / Lightyear S2C | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-279 | Objective HP Number Text Style | Runtime Text / Material | Needed | design/assets/specs/objective-system-assets.md |
+| ASSET-280 | Objective Identity Reveal Sting | Audio | Needed | design/assets/specs/objective-system-assets.md |
+
+### System: round-state-machine
+
+| Asset ID | Name | Category | Status | Spec File |
+|----------|------|----------|--------|-----------|
+| ASSET-281 | DRAFT_INITIAL Phase Banner | UI Overlay | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-282 | DRAFT_SHOP Phase Banner | UI Overlay | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-283 | DRAFT_AUCTION Phase Banner | UI Overlay | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-284 | PLACEMENT Phase Banner | UI Overlay | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-285 | RESOLUTION Phase Banner | UI Overlay | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-286 | Round Number Badge | UI / HUD Element | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-287 | GAME_OVER Result Panel Background | UI Background | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-288 | WIN Result Text Style | Runtime Text / Material | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-289 | LOSS Result Text Style | Runtime Text / Material | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-290 | DRAW Result Text Style | Runtime Text / Material | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-291 | ResolutionTimeout Result Text Style | Runtime Text / Material | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-292 | Disconnection Result Sub-label Text Style | Runtime Text / Material | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-293 | Round Number Result Sub-label Text Style | Runtime Text / Material | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-294 | `RoundState` Resource | ECS Resource | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-295 | `GameOverReason` Enum | Rust Type | Needed | design/assets/specs/round-state-machine-assets.md |
+| ASSET-296 | PLACEMENT Begin Tension Sting | Audio | Needed | design/assets/specs/round-state-machine-assets.md |
 
 ### Cards: Current cards.json Illustration Specs
 
