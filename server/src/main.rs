@@ -111,10 +111,22 @@ fn main() {
     app.add_plugins(core::session::GameSessionPlugin);
     app.add_plugins(core::rsm::RsmPlugin);
     app.add_plugins(core::economy::EconomyPlugin);
+    // CardPoolPlugin owns PlayerPools / ShopSlots / InitialDraftOffering /
+    // ManualRefreshCount lifecycle. Without it, `initialize_player_pools_on_draft_started`
+    // never runs and `card_acquisition_tick_system` early-returns at every
+    // DRAFT_INITIAL ShopRefreshTriggered with "PlayerPools resource not available",
+    // so no S2CDraftOffering is ever sent. (Root cause of every DRAFT_INITIAL
+    // failure since SAU-001; PROMPT 545 — comprehensive E2E analysis.)
+    app.add_plugins(core::pool::CardPoolPlugin);
     app.add_plugins(feature::board::BoardPlugin);
     app.add_plugins(feature::auction::AuctionPlugin);
     app.add_plugins(feature::acquisition::CardAcquisitionPlugin);
     app.add_plugins(feature::combat::CombatPlugin);
+    // KeywordPlugin owns the keyword observer registrations (`on_unit_appeared`,
+    // `on_unit_died`, `on_final_blow_dealt`, `on_start_of_turn`, `on_end_of_turn`)
+    // and the `start_of_turn_dispatch_system`. Without it, none of the keyword
+    // effects (Provocation, Shield, Charge, etc.) fire during combat resolution.
+    app.add_plugins(feature::keyword::KeywordPlugin);
     app.add_plugins(feature::prism::PrismPlugin);
 
     // Networking - Lightyear 0.26 WebSocket server and shared protocol manifest.
