@@ -1,8 +1,8 @@
 use super::events::{
-    AbortAuction, AuctionPhaseEntered, AuctionSettled, BeginResolution, BroadcastPhaseChanged,
-    DraftReadySignal, DraftStarted, GameOverEmitted, LobbyComplete, PlacementPhaseEntered,
-    PlacementSubmitted, PlayerDisconnected, PlayerHeartbeat, PlayerReconnected, ResolutionComplete,
-    ResolutionPhaseEntered, ShopRefreshTriggered,
+    AbortAuction, AuctionPhaseEntered, BeginResolution, BroadcastPhaseChanged, DraftReadySignal,
+    DraftStarted, GameOverEmitted, LobbyComplete, PlacementPhaseEntered, PlacementSubmitted,
+    PlayerDisconnected, PlayerHeartbeat, PlayerReconnected, ResolutionPhaseEntered,
+    ShopRefreshTriggered,
 };
 use super::state::{PendingPhaseAdvance, RoundState};
 use super::transitions::{
@@ -36,8 +36,6 @@ impl Plugin for RsmPlugin {
             .add_message::<BeginResolution>()
             .add_message::<GameOverEmitted>()
             .add_message::<BroadcastPhaseChanged>()
-            .add_message::<AuctionSettled>()
-            .add_message::<ResolutionComplete>()
             .add_message::<PlayerDisconnected>()
             .add_message::<PlayerReconnected>()
             .add_message::<PlayerHeartbeat>()

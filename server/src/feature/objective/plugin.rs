@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use lightyear::prelude::*;
 
-use crate::core::rsm::{advance_phase, rsm_input_reader, ResolutionComplete};
+use crate::core::rsm::{advance_phase, rsm_input_reader};
 use crate::feature::objective::{
     broadcast_objective_events, deliver_objective_identities_on_ready,
     initialize_objectives_on_draft_initial, objective_resolution_ready, HiddenObjectives,
@@ -31,7 +31,6 @@ impl Plugin for ObjectivePlugin {
 
         app.add_message::<ObjectiveIdentitiesReady>()
             .add_message::<ObjectiveDestroyed>()
-            .add_message::<ResolutionComplete>()
             .init_resource::<HiddenObjectives>()
             .init_resource::<ObjectiveCounters>()
             .init_resource::<PendingObjectiveEvents>()
