@@ -843,6 +843,7 @@ impl Plugin for HandUiPlugin {
                         handle_ghost_drag_ended_system,
                         handle_grid_card_click_system,
                         handle_hand_fan_card_click_system,
+                        handle_hand_fan_activate_click_system,
                         handle_placement_drop_resolved_system,
                         handle_reserve_strip_button_interactions_system,
                     )
@@ -1718,19 +1719,11 @@ pub fn handle_hand_fan_card_click_system(
     objectives: Query<(&ObjectiveCell, Option<&ObjectiveAlive>)>,
     mut reserve_strips: Query<(&ReserveStripForFanSlot, &mut Visibility)>,
     mut submit_buttons: Query<&mut Text, With<HandSubmitButton>>,
-    mut outbound: ResMut<HandUiOutboundMessages>,
 ) {
     for click in clicks.read() {
         let Ok((_entity, _slot_index, card, slot_state)) = hand_cards.get(click.card) else {
             continue;
         };
-
-        if mode.allows_activation() {
-            outbound
-                .activate_cards
-                .push(C2SActivateCard { card_id: card.0 });
-            continue;
-        }
 
         if *mode != HandUiMode::Staging {
             continue;
@@ -1770,6 +1763,30 @@ pub fn handle_hand_fan_card_click_system(
                 &mut disclosure_state,
             );
         }
+    }
+}
+
+pub fn handle_hand_fan_activate_click_system(
+    mode: Res<HandUiMode>,
+    mut clicks: MessageReader<HandFanCardClicked>,
+    hand_cards: Query<&HandSlotCard, With<FanSlotIndex>>,
+    mut outbound: ResMut<HandUiOutboundMessages>,
+    mut activate_senders: Query<&mut MessageSender<C2SActivateCard>>,
+) {
+    for click in clicks.read() {
+        if !mode.allows_activation() {
+            continue;
+        }
+
+        let Ok(card) = hand_cards.get(click.card) else {
+            continue;
+        };
+
+        let message = C2SActivateCard { card_id: card.0 };
+        if let Ok(mut sender) = activate_senders.single_mut() {
+            sender.send::<ReliableChannel>(message.clone());
+        }
+        outbound.activate_cards.push(message);
     }
 }
 
