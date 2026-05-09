@@ -87,6 +87,7 @@ fn app_with_card_pool(catalog: CardCatalog, players: &[PlayerId]) -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, CardPoolPlugin));
     app.add_message::<DraftStarted>();
+    app.add_message::<GameOverEmitted>();
     app.insert_resource(catalog);
     app.insert_resource(GameConfig(shared::config::GameConfig::default()));
     app.insert_resource(session_config(players));
@@ -164,6 +165,7 @@ fn test_pool_init_precedes_card_acquisition_refresh() {
     app.add_plugins((MinimalPlugins, CardPoolPlugin, CardAcquisitionPlugin));
     app.add_message::<DraftStarted>();
     app.add_message::<ShopRefreshTriggered>();
+    app.add_message::<GameOverEmitted>();
     app.insert_resource(catalog);
     app.insert_resource(GameConfig(shared::config::GameConfig::default()));
     app.insert_resource(session_config(&[player]));
@@ -239,6 +241,7 @@ fn test_card_pool_plugin_registers_cleanly() {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, CardPoolPlugin));
     app.add_message::<DraftStarted>();
+    app.add_message::<GameOverEmitted>();
     app.update();
 
     assert!(app.world().contains_resource::<PlayerPools>());

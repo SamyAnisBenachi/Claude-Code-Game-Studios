@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use server::core::economy::{EconomyPlugin, PlayerEconomies, PlayerEconomy};
 use server::core::pool::CardPoolPlugin;
-use server::core::rsm::{AbortAuction, AuctionPhaseEntered, AuctionSettled};
+use server::core::rsm::{AbortAuction, AuctionPhaseEntered, AuctionSettled, GameOverEmitted};
 use server::feature::acquisition::PlayerHands;
 use server::feature::auction::{
     AuctionPhase, AuctionPlugin, AuctionPool, AuctionState, S2CAuctionCard,
@@ -74,6 +74,7 @@ fn auction_fixture(catalog: CardCatalog) -> App {
     app.add_plugins((AuctionPlugin, CardPoolPlugin, EconomyPlugin))
         .add_message::<AuctionPhaseEntered>()
         .add_message::<AbortAuction>()
+        .add_message::<GameOverEmitted>()
         .insert_resource(AuctionPool::from_catalog(&catalog, &config))
         .insert_resource(catalog)
         .insert_resource(config)

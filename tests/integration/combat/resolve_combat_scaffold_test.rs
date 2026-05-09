@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use server::core::board::{BoardPosition, UnitOwner, UnitStats};
 use server::core::rsm::{
     BeginResolution, BroadcastPhaseChanged, GameOverEmitted, PlacementPhaseEntered,
-    ResolutionComplete, RoundPhase, RoundState, RsmPlugin,
+    ResolutionComplete, ResolutionPhaseEntered, RoundPhase, RoundState, RsmPlugin,
 };
 use server::core::session::SessionConfig;
 use server::feature::board::{BoardPlugin, PlacementCommitted, UnitAtObjective};
@@ -58,6 +58,7 @@ fn app_with_board_and_combat() -> App {
     app.add_plugins((BoardPlugin, CombatPlugin));
     app.add_message::<BeginResolution>();
     app.add_message::<PlacementPhaseEntered>();
+    app.add_message::<ResolutionPhaseEntered>();
     app.insert_resource(session_config());
     app
 }

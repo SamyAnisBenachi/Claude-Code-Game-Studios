@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use lightyear::prelude::server::ServerPlugins;
 use lightyear::prelude::PeerId;
 use server::core::pool::{PlayerPool, PlayerPools};
-use server::core::rsm::{RoundPhase, RoundState};
+use server::core::rsm::{GameOverEmitted, RoundPhase, RoundState};
 use server::core::session::{DeferredMessage, PlayerConnectionMap, ReconnectTracker};
 use server::feature::acquisition::PlayerHands;
 use server::feature::prism::{
@@ -29,7 +29,8 @@ fn app_with_prism(snapshot_sent: bool) -> App {
     app.add_plugins(ServerPlugins {
         tick_duration: Duration::from_secs_f64(1.0 / 60.0),
     })
-    .add_plugins(PrismPlugin);
+    .add_plugins(PrismPlugin)
+    .add_message::<GameOverEmitted>();
     app.world_mut().insert_resource(PrismState::default());
     app.world_mut().insert_resource(DiscardLog::default());
     app.world_mut().insert_resource(AuditLog::default());

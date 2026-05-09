@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use lightyear::prelude::client::*;
 use lightyear::prelude::server::*;
 use lightyear::prelude::*;
-use server_crate::core::rsm::{DraftStarted, ResolutionComplete};
+use server_crate::core::rsm::{DraftStarted, ResolutionComplete, ResolutionPhaseEntered};
 use server_crate::core::session::{SessionConfig, TeamId};
 use server_crate::feature::board::LaneId;
 use server_crate::feature::objective::{
@@ -172,6 +172,7 @@ fn build_server_app(port: u16) -> App {
     app.init_resource::<PeerMetadata>();
     register_lightyear_protocol(&mut app);
     app.add_message::<DraftStarted>();
+    app.add_message::<ResolutionPhaseEntered>();
     app.add_plugins(ObjectivePlugin);
     app.add_observer(add_replication_sender_to_connected_client);
     app.add_systems(Update, record_player_connections);

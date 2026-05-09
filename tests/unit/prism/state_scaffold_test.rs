@@ -39,7 +39,8 @@ fn app_with_prism() -> App {
     app.add_plugins(ServerPlugins {
         tick_duration: Duration::from_secs_f64(1.0 / 60.0),
     })
-    .add_plugins(PrismPlugin);
+    .add_plugins(PrismPlugin)
+    .add_message::<GameOverEmitted>();
     app
 }
 

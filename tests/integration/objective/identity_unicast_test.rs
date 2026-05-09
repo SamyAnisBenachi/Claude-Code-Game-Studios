@@ -4,7 +4,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use lightyear::prelude::server::ServerPlugins;
 use lightyear::prelude::PeerId;
-use server::core::rsm::DraftStarted;
+use server::core::rsm::{DraftStarted, ResolutionPhaseEntered};
 use server::core::session::{
     DeferredMessage, PlayerConnectionMap, ReconnectTracker, SessionConfig, TeamId,
 };
@@ -41,6 +41,7 @@ fn base_app() -> App {
         tick_duration: Duration::from_secs_f64(1.0 / 60.0),
     })
     .add_message::<DraftStarted>()
+    .add_message::<ResolutionPhaseEntered>()
     .add_plugins(ObjectivePlugin);
     app
 }
