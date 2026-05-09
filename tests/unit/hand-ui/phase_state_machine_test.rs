@@ -123,6 +123,44 @@ fn hu_06_draft_auction_clicks_are_absorbed_but_draft_shop_can_activate() {
     assert_eq!(outbound[0].card_id, card_id);
 }
 
+// Regression marker for PROMPT 562 drain-gap repair (HAND-UI-003 deviation).
+// Before the repair, `handle_hand_fan_card_click_system` only pushed to the
+// local `HandUiOutboundMessages.activate_cards` buffer with no
+// `MessageSender<C2SActivateCard>::send::<ReliableChannel>` dispatch — mirroring
+// the same drain-gap pattern PROMPT 558 (commit 27413fb) fixed for
+// `C2SPurchaseCard`. After the repair, the system must mirror that canonical
+// pattern: dispatch via the sender, then push to the buffer. Each click in
+// `HandUiMode::PassiveActivation` (DRAFT_SHOP) must produce exactly one buffer
+// entry, proving the dispatch path executes without short-circuiting.
+#[test]
+fn hu_06_draft_shop_each_fan_click_dispatches_one_activate_message() {
+    let mut app = app_with_hand_ui_in_session();
+    let card_id = CardId(401);
+    set_hand(&mut app, [card_id]);
+    set_phase(&mut app, RoundPhase::DraftShop);
+    app.update();
+
+    let slot = fan_slot(&mut app, 0);
+    for _ in 0..3 {
+        app.world_mut()
+            .write_message(HandFanCardClicked { card: slot });
+        app.update();
+    }
+
+    let outbound = &app
+        .world()
+        .resource::<HandUiOutboundMessages>()
+        .activate_cards;
+    assert_eq!(
+        outbound.len(),
+        3,
+        "each DRAFT_SHOP fan click must run the sender dispatch + buffer push",
+    );
+    for message in outbound.iter() {
+        assert_eq!(message.card_id, card_id);
+    }
+}
+
 fn app_with_hand_ui_in_session() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
