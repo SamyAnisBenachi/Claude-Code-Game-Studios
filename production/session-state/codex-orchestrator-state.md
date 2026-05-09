@@ -133,22 +133,30 @@ Color rule:
 - yellow = IN PROGRESS / WAITING / NEEDS REPAIR / partial
 - red = BLOCKED / FAILED
 
-**Visual delimiter (2026-05-09 update):** After the colored status line,
-the agent must end its output with one final delimiter line containing exactly
-`###################################################` (51 hash characters).
-Order: status line second-to-last, delimiter last. No further lines after.
+**Final line policy (2026-05-09 revision — single line, no delimiter):** The
+agent's last visible line is a single colored line in the form
+`PROMPT-NUMBER: TICKET-ID: STATUS`. No delimiter line, no second line, no
+further output after. The previous 51-hash delimiter convention is RETIRED.
 
-**Status pastille emoji (2026-05-09 update):** The status line must START with
-a colored circle emoji matching the outcome:
-- 🟢 for green outcomes (DONE / COMPLETE / NO-OP / ACCEPTED RISK)
-- 🟡 for yellow outcomes (IN PROGRESS / WAITING / NEEDS REPAIR / PARTIAL)
-- 🔴 for red outcomes (BLOCKED / FAILED)
+The colored line:
+- Is one line total
+- Starts with a pastille emoji matching the outcome (🟢 / 🟡 / 🔴) — optional
+  but recommended for human scan
+- The text including the STATUS word is fully colored (not just the emoji)
+- STATUS is a real outcome word chosen by the worker, NEVER the literal word
+  "STATUS", NEVER a color name, NEVER hardcoded by the orchestrator
 
-Example final two lines of an agent response:
-```
-🟡 553: INTEGRATE-ADD-MESSAGE-WAVE-3: PARTIAL
-###################################################
-```
+Color rule (unchanged):
+- green = positive outcomes (DONE / COMPLETE / NO-OP / ACCEPTED RISK)
+- yellow = in-progress / partial / warning / needs-repair / accepted-risk
+- red = blocked / failed
+
+**Orchestrator must NOT hardcode the STATUS word in launch prompts.** Write
+the requirement in plain language: "Last visible line uses
+`PROMPT-NUMBER: TICKET-ID: STATUS` where STATUS is replaced by the real
+outcome. Color the line by outcome. No HTML/span/code-color markup. No line
+after it." Do not paste literal templates like
+`🟢 558: HAND-UI-004-REPAIR: COMPLETE` because workers copy them literally.
 
 Prompt number policy: prompt numbers are global and monotonically increasing
 within the orchestration conversation. Do not reset the index to 1 in later
