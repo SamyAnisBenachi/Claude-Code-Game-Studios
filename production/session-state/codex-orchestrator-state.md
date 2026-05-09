@@ -1625,9 +1625,16 @@ Every action in this project MUST use the Claude Game Studios defined skills:
 
 **Never substitute with:** raw bash/grep checks, manual file edits bypassing skills, skipping smoke-check, ad-hoc path existence checks.
 
-### Last Sync: 2026-05-09 (DraftStarted dedup landed; PlayerPools still None at DRAFT_INITIAL; PROMPT 539 diagnostic in flight)
+### Last Sync: 2026-05-09 (PROMPT 545 dispatched — full E2E DRAFT_INITIAL analysis + fix in one pass)
 
-### origin/main HEAD: 4c132c9 (DraftStarted dedup) — Wave 1 remaining + Wave 2 pending integration
+### origin/main HEAD: 0f7d685 (PROMPT 543 PlayerPools resource gate)
+
+### Pivot to comprehensive analysis approach (2026-05-09)
+After ~10 narrow diagnostic prompts producing contradictory partial conclusions on DRAFT_INITIAL, switched approach: dispatched PROMPT 545 — single general-purpose agent with very thorough breadth that reads the ENTIRE flow (server + network + client) and identifies + fixes ALL remaining bugs in one coherent commit.
+
+Goal: stop the "fix → expose next bug → diagnostic → fix → repeat" cycle. The system has no E2E integration test, so each layer's bug surfaces only after the previous is fixed. A single agent with full context can identify all interacting bugs at once.
+
+**Lesson:** for complex distributed system bugs, dispatch comprehensive analysis early. Narrow Explore agents give partial conclusions that contradict each other.
 
 ### POLICY UPDATE — /code-review = visibility, NOT merge gate
 Per updated `feedback_paw_review_flow.md`:
@@ -1655,15 +1662,17 @@ PROMPT 539 dispatched: Explore diagnostic on PlayerPools init lifecycle.
 14 test fixtures across `tests/integration/` rely on the duplicate registrations as a side effect (they construct partial Apps without RsmPlugin). Once Wave 1 remaining + Wave 2 land on main, `cargo test -p server` will break for these fixtures. Pattern for fix already used in `tests/integration/auction/pool_integration_test.rs` — add explicit `.add_message::<T>()` to each affected test App. Do not run `cargo test` blindly after PROMPT 540 / 541 integrate; expect cascade failures and fix fixtures separately.
 
 ### Currently Running (windows still open)
-- PROMPT 539 — PlayerPools init diagnostic (explore why initialize_player_pools_on_draft_started does not populate the resource)
-- PROMPT 540 — integrate work/add-message-wave-2 to main
-- PROMPT 541 — integrate work/add-message-wave-1-remaining to main
+- PROMPT 545 — full E2E DRAFT_INITIAL analysis + fix all remaining bugs in single pass (general-purpose agent, very thorough breadth)
 
 ### What's on main now (recent functional commits)
+- 0f7d685: PlayerPools resource gate run_if (PROMPT 543) — system gated but doesn't fire (PROMPT 545 investigating)
+- 5005dff: gitignore .claude/worktrees/
+- 200d2d9: add_message Wave 2 dedup (10 medium-priority types)
+- 6f77d4b: add_message Wave 1 remaining dedup (GameOverEmitted + ResolutionPhaseEntered)
 - 4c132c9: DraftStarted duplicate add_message removed from CardPoolPlugin (PROMPT 532)
-- 11f0019: granular tracing for acquisition_tick early-returns (PROMPT 530)
-- 9efbe02: S2CDraftOffering dispatch tracing (PROMPT 528)
-- 41d2889: Lightyear protocol parity + S2CObjectiveIdentities client drain (PROMPT 525)
+- 11f0019: granular tracing for acquisition_tick early-returns
+- 9efbe02: S2CDraftOffering dispatch tracing
+- 41d2889: Lightyear protocol parity + S2CObjectiveIdentities client drain
 - 9623f08: reconnect.rs comprehensive fix (R-1 event_target, R-3 revert, fresh-hello registration)
 - ac9305b: Pointer<Click> observers + co_occupancy clamp + BoardRenderingConfig threading
 - a95a06b: PAW review #2 #3 #7 (PlayerTeamMapUpdated, BID_INCREMENTS to game_config.ron)
@@ -1674,14 +1683,14 @@ PROMPT 539 dispatched: Explore diagnostic on PlayerPools init lifecycle.
 - 14c937d: Lightyear ReplicationSender
 - 0cb0766: B0004 fan root + server tracing
 
-### Branches PUSHED but not on main
-- work/add-message-wave-1-remaining @ f286e30 — pending PROMPT 541 integration
-- work/add-message-wave-2 @ 3f18f79 — pending PROMPT 540 integration
-- work/add-message-wave-1 (original 9-removal scope, redundant with 532 + 536, do NOT push)
+### Test fixtures cascade-fail (from add_message Wave 1 + 2 dedup landing on main)
+14 test fixtures across `tests/integration/` rely on duplicate add_message registrations. Now that Wave 1 + Wave 2 dedup is on main, `cargo test -p server` will fail for these fixtures. Pattern for fix already established in `tests/integration/auction/pool_integration_test.rs` — add explicit `.add_message::<T>()` to each affected test App. Do not run `cargo test` blindly; track as separate cleanup story.
 
-### Next steps after PROMPT 539 returns
-1. Apply PlayerPools init fix per diagnostic
-2. Integrate Wave 1 remaining + Wave 2 (PROMPTs 540, 541)
+### Next steps after PROMPT 545 returns
+1. If PROMPT 545 identifies + fixes all bugs → cherry-pick + push + rebuild + retest game
+2. Test fixtures cleanup (separate story)
+3. /story-done PAW-002 to PAW-006
+4. /smoke-check + Polish phase
 3. Fix 14 test fixtures (add explicit add_message::<T>() to partial-App fixtures)
 4. Rebuild server + retest game → DRAFT_INITIAL should finally show 9 cards
 5. If yes → /story-done PAW-002 to PAW-006 + /smoke-check + Polish phase
