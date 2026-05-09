@@ -6,7 +6,7 @@ goal: "Deliver the minimum result acknowledgement contract, player-facing result
 start: "2026-05-07"
 end: "2026-05-20"
 generated: "2026-05-07"
-updated: "2026-05-08"  # S9-QA-002 marked done by /story-done Prompt 456
+updated: "2026-05-09"  # PAW-002..006 retroactive closure paperwork landed by /story-done Prompt 559
 stage: "Polish"
 scope: "internal 1v1 friend-game result flow and manual GAME_OVER evidence closure"
 status: "active"
@@ -215,3 +215,62 @@ stories:
       - "Integrated on main at 424bcfa with neutral card display/zoom placeholder art, asset resolver wiring, asset-manifest entries, and focused draft/shop hand bridge coverage."
       - "Supporting content/asset slice only; no /story-done was forced because no standalone story file exists."
       - "No asset approval, full card production, full balance completion, public release readiness, release-candidate readiness, full game completion, broad accessibility completion, or playtest/fun-hypothesis validation is claimed."
+
+presentation_asset_wiring:
+  closure_paperwork:
+    prompt: "559"
+    date: "2026-05-09"
+    source_of_truth: "origin/main@24e8095773b8c5f025c8a4b23220e79ee1fdb098"
+    note: "Retroactive closure paperwork only for PAW-002..006 implementation already integrated on main. No re-implementation. Sprint 10 activation prerequisite satisfied. No smoke, QA sign-off, /team-qa, gate-check, sprint close-out, or unrelated implementation was run."
+  stories:
+    - id: "PAW-002"
+      name: "Hand UI card frames, stat badges, rarity/type icons"
+      status: done
+      story_file: "production/epics/presentation-asset-wiring/story-002-hand-ui-card-frames.md"
+      integration_commit: "40a9f728a7aebf5abcf3b3f6feb543f48d2102a6"
+      merge_commit: "69a03cc3dc1b307f274f2f98fda888196444f560"
+      test_evidence: "tests/integration/presentation/hand_ui_asset_wiring_test.rs"
+      tech_debt:
+        - "PAW-TD-002-a: accept-risk — placeholder PNGs, not final art (friend-game scope)"
+        - "PAW-TD-002-b: accept-risk — no manual browser/native visual capture (friend-game scope)"
+    - id: "PAW-003"
+      name: "Shop and Auction panel chrome, slot wells, bid button"
+      status: done
+      story_file: "production/epics/presentation-asset-wiring/story-003-shop-auction-chrome.md"
+      integration_commit: "792a9d851eab68ee3f9cd9fdae2ab1b3d075f815"
+      merge_commit: ""
+      test_evidence: "tests/integration/presentation/shop_auction_asset_wiring_test.rs"
+      tech_debt:
+        - "PAW-TD-003-a: accept-risk — placeholder PNGs, not final art (friend-game scope)"
+        - "PAW-TD-003-b: accept-risk — no manual browser/native visual capture (friend-game scope)"
+    - id: "PAW-004"
+      name: "HUD figurines, phase timer bar, objective dots"
+      status: done
+      story_file: "production/epics/presentation-asset-wiring/story-004-hud-figurines-timer-dots.md"
+      integration_commit: "a7e397a18084318625134dea2df303420f605997"
+      merge_commit: "213212974824b758e9e671c9f206037d471b2256"
+      test_evidence: "tests/integration/presentation/hud_asset_wiring_test.rs"
+      tech_debt:
+        - "PAW-TD-004-a: accept-risk — placeholder PNGs, not final art (friend-game scope)"
+        - "PAW-TD-004-b: accept-risk — opponent objective dots start as Unknown; no Alive/Unknown disambiguation art (friend-game scope)"
+        - "PAW-TD-004-c: accept-risk — no manual browser/native visual capture (friend-game scope)"
+    - id: "PAW-005"
+      name: "Board unit sprites per class and board chrome"
+      status: done
+      story_file: "production/epics/presentation-asset-wiring/story-005-board-unit-sprites.md"
+      integration_commit: "7782c6ff585656f39cb9451e8b283266e9a799e1"
+      merge_commit: "ece5f484e0b28ad70fff06d3201d6a5e9407a9db"
+      test_evidence: "tests/integration/presentation/board_asset_wiring_test.rs"
+      tech_debt:
+        - "PAW-TD-005-a: accept-risk — placeholder PNGs at 7 class-unit paths and BOARD_CHROME_ASSET, not final art (friend-game scope)"
+        - "PAW-TD-005-b: accept-risk — no manual browser/native visual capture of Z-ordering and class-keyed art (friend-game scope)"
+    - id: "PAW-006"
+      name: "Lobby class portraits, slot panels, room code chip"
+      status: done
+      story_file: "production/epics/presentation-asset-wiring/story-006-lobby-portraits.md"
+      integration_commit: "724470ec11d64d2bc4e0f4412bd42e2103a0463b"
+      merge_commit: "bb80b47d30f8afe6c53fe0b0b2f15b3ed4a96150"
+      test_evidence: "tests/integration/presentation/lobby_asset_wiring_test.rs"
+      tech_debt:
+        - "PAW-TD-006-a: accept-risk — placeholder PNGs, not final art (friend-game scope)"
+        - "PAW-TD-006-b: accept-risk — no manual browser/native visual capture (friend-game scope)"

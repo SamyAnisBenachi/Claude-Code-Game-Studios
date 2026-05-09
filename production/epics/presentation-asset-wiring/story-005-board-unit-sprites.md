@@ -1,10 +1,10 @@
 # Story 005: Board Unit Sprites Per Class and Board Chrome
 
 > **Epic**: Presentation Asset Wiring
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
-> **Manifest Version**: 2026-05-05
+> **Manifest Version**: 2026-05-09
 
 ## Context
 
@@ -31,12 +31,12 @@
 
 *From TR-PAW-005 (scoped to board unit sprites and chrome):*
 
-- [ ] **PAW-005-a**: When a `BoardUnit` entity is spawned for a unit whose `ClassId` has a dedicated sprite, `Sprite.image` is set to `asset_server.load(board_unit_asset(class_id))`. The class is derived from `BoardUnitSourceClass(class_id)` on the entity.
-- [ ] **PAW-005-b**: When `CardAtlas::unit_frame(card_id)` returns `None` (no atlas frame for this card) AND no per-class sprite is available, `Sprite.image` falls back to the existing `UNIT_PLACEHOLDER_ASSET` path (unchanged from current board rendering). Class-based sprites take priority over the atlas fallback.
-- [ ] **PAW-005-c**: A board chrome entity exists (spawned on `OnEnter(ClientState::InSession)`) with `Sprite.image` loaded from `BOARD_CHROME_ASSET`. Chrome renders at a Z value between the board background (Z `0.0`) and unit entities (Z `3.0`–`5.0`) — use Z `1.5` unless board_rendering.rs constants dictate otherwise.
-- [ ] **PAW-005-d**: An integration test spawns a `BoardUnit` entity with `BoardUnitSourceClass(ClassId::Iop)` and asserts `Sprite.image` resolves to the Iop-class asset handle (not the placeholder).
-- [ ] **PAW-005-e**: An integration test spawns a `BoardUnit` entity with no matching class (or `ClassId::Neutral` if neutral has no dedicated sprite) and asserts `Sprite.image` resolves to `UNIT_PLACEHOLDER_ASSET` (the fallback path, not an empty handle).
-- [ ] **PAW-005-f**: `cargo check -p client` passes; no `ImageNode` used for board unit or board chrome entities.
+- [x] **PAW-005-a**: When a `BoardUnit` entity is spawned for a unit whose `ClassId` has a dedicated sprite, `Sprite.image` is set to `asset_server.load(board_unit_asset(class_id))`. The class is derived from `BoardUnitSourceClass(class_id)` on the entity. Evidence: integration commit `7782c6f` (`client/src/presentation/board_rendering.rs`); merge `ece5f48`.
+- [x] **PAW-005-b**: When `CardAtlas::unit_frame(card_id)` returns `None` (no atlas frame for this card) AND no per-class sprite is available, `Sprite.image` falls back to the existing `UNIT_PLACEHOLDER_ASSET` path (unchanged from current board rendering). Class-based sprites take priority over the atlas fallback. Evidence: integration commit `7782c6f`.
+- [x] **PAW-005-c**: A board chrome entity exists (spawned on `OnEnter(ClientState::InSession)`) with `Sprite.image` loaded from `BOARD_CHROME_ASSET`. Chrome renders at a Z value between the board background (Z `0.0`) and unit entities (Z `3.0`–`5.0`). Evidence: integration commit `7782c6f` (`client/src/presentation/board_rendering/rendering_constants.rs` 1-line diff adds Z constant).
+- [x] **PAW-005-d**: An integration test spawns a `BoardUnit` entity with `BoardUnitSourceClass(ClassId::Iop)` and asserts `Sprite.image` resolves to the Iop-class asset handle (not the placeholder). Evidence: `tests/integration/presentation/board_asset_wiring_test.rs` (introduced in `7782c6f`).
+- [x] **PAW-005-e**: An integration test spawns a `BoardUnit` entity with no matching class (or `ClassId::Neutral` if neutral has no dedicated sprite) and asserts `Sprite.image` resolves to `UNIT_PLACEHOLDER_ASSET` (the fallback path, not an empty handle). Evidence: `tests/integration/presentation/board_asset_wiring_test.rs`.
+- [x] **PAW-005-f**: `cargo check -p client` passes; no `ImageNode` used for board unit or board chrome entities. Evidence: integration commit `7782c6f` (no `ImageNode` introduced for board surfaces).
 
 ---
 
@@ -120,13 +120,23 @@ commands.spawn((
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/presentation/board_asset_wiring_test.rs` — must exist and pass
+**Required evidence**: `tests/integration/presentation/board_asset_wiring_test.rs`
+**Status**: [x] Created and passing in integration commit `7782c6f`; merged on main at `ece5f48`. Test file added under `client/Cargo.toml [[test]]` entry (148-line test file).
 
-**Status**: [ ] Not yet created
+**Accept-risk waiver**: None — automated test exists.
+
+---
+
+## Tech Debt
+
+*Quality items deferred per friend-game scope (logged as accept-risk):*
+
+- **PAW-TD-005-a**: Board unit sprites and board chrome currently load 1×1 px placeholder PNGs at the 7 class-unit paths and `BOARD_CHROME_ASSET` rather than final art. Accept-risk for friend-game scope; not a public-release-readiness or final-art completion claim.
+- **PAW-TD-005-b**: No browser/native manual visual capture of board unit sprite Z-ordering and class-keyed art; coverage is automated handle-resolution only. Accept-risk for friend-game scope; manual visual evidence is owned by future QA passes.
 
 ---
 
 ## Dependencies
 
-- Depends on: Story 001 (`asset_wiring.rs` Foundation) must be Done
+- Depends on: Story 001 (`asset_wiring.rs` Foundation) — Done
 - Unlocks: None (leaf story in this epic)
