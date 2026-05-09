@@ -2443,3 +2443,36 @@ C:\Program Files\GitHub CLI\gh.exe
 - Tech debt logged: None.
 - Preserved: S9-QA-001 in-progress/partial, MANUAL-FG-001 active, S8-QA-001-W1 open, QA-COND-0005/0006 carried, no overclaims.
 - Next recommended: Human operator runs manual two-client GAME_OVER route to close S9-QA-001 and S8-QA-001-W1.
+
+## Session Extract — Prompt 559 PAW-002..006 Retroactive Story-Done Batch 2026-05-09
+- Verdict: COMPLETE
+- Task: Retroactive closure paperwork for already-integrated PAW-002, PAW-003, PAW-004, PAW-005, PAW-006. No re-implementation. A previous /story-done batch worker (Prompt 558 or earlier) had claimed this closure but produced zero file writes; this run replaces it with real authored files, real commit, real push.
+- Source of truth: origin/main@24e8095773b8c5f025c8a4b23220e79ee1fdb098 (pre-commit base for the closure branch).
+- Branch: story-done/paw-002-006-batch (new branch tracking origin/main).
+- Worktree: D:\_DEV\claude-code-game-studios-worktrees\story-done-paw-002-006.
+- Integration commits confirmed on main:
+  - PAW-002 hand-ui card frames: feature 40a9f72, merge 69a03cc.
+  - PAW-003 shop/auction chrome: feature 792a9d8.
+  - PAW-004 HUD figurines/timer/dots: feature a7e397a, merge 2132129.
+  - PAW-005 board unit sprites: feature 7782c6f, merge ece5f48.
+  - PAW-006 lobby portraits: feature 724470e, merge bb80b47.
+- Files created (4 retroactive story files, structurally aligned with story-005 template):
+  - production/epics/presentation-asset-wiring/story-002-hand-ui-card-frames.md
+  - production/epics/presentation-asset-wiring/story-003-shop-auction-chrome.md
+  - production/epics/presentation-asset-wiring/story-004-hud-figurines-timer-dots.md
+  - production/epics/presentation-asset-wiring/story-006-lobby-portraits.md
+- Files updated:
+  - production/epics/presentation-asset-wiring/story-005-board-unit-sprites.md (Status Ready→Complete; Manifest Version 2026-05-05→2026-05-09; ACs marked [x] with integration commit evidence; Test Evidence status [ ]→[x]; Tech Debt section appended).
+  - production/sprint-status.yaml (top-level updated: 2026-05-08→2026-05-09; appended presentation_asset_wiring section with PAW-002..006 rows including status:done, integration_commit, merge_commit, story_file, test_evidence, tech_debt accept-risk items).
+  - production/session-state/active.md (this extract appended; prior entries untouched).
+- Tech debt logged (accept-risk for friend-game scope, stable ids):
+  - PAW-TD-002-a, PAW-TD-002-b — placeholder PNGs / no manual visual capture for hand UI chrome.
+  - PAW-TD-003-a, PAW-TD-003-b — placeholder PNGs / no manual visual capture for shop/auction chrome.
+  - PAW-TD-004-a, PAW-TD-004-b, PAW-TD-004-c — placeholder PNGs / opponent dot Alive/Unknown disambiguation art / no manual visual capture for HUD chrome.
+  - PAW-TD-005-a, PAW-TD-005-b — placeholder PNGs at 7 class-unit paths and BOARD_CHROME_ASSET / no manual visual capture for board unit sprites.
+  - PAW-TD-006-a, PAW-TD-006-b — placeholder PNGs / no manual visual capture for lobby chrome.
+- Test evidence: each PAW story has an automated integration test under tests/integration/presentation/ introduced in its integration commit; no accept-risk waiver was needed for missing tests.
+- Sprint 10 prerequisite: Sprint 10 activation prerequisite for PAW-002..006 closure paperwork is satisfied with this run. No Sprint 10 activation, smoke, QA sign-off, /team-qa, gate-check, sprint close-out, public release readiness, full game completion, broad accessibility completion, or playtest validation is claimed.
+- Preserved: Sprint 8 carried conditions (S8-QA-001-W1, QA-COND-0005, QA-COND-0006); Sprint 9 no-claims; S9-QA-001 in-progress/partial; MANUAL-FG-001 active.
+- Pre-flight: doc-only changeset; no cargo runs needed. git diff --check origin/main...HEAD passed (empty output).
+- Scope guard: No client/server/shared source or test files were modified by this closure run; all source code already shipped on main via the integration commits listed above.
