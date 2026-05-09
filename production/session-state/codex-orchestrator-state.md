@@ -106,9 +106,32 @@ Final red-line prompt policy: when instructing workers about their final line,
 do not paste literal HTML/CSS/ANSI/Markdown wrappers or bracket placeholders
 such as `<span style="color:red">349: S9-BACKLOG-PREP: [STATUS]</span>`.
 Workers sometimes copy those literally. Instead, write the requirement in plain
-language: the last visible line must be red, must contain exactly
-`PROMPT-NUMBER: TICKET-ID: STATUS`, and `STATUS` must be replaced with the true
-outcome chosen by the worker. No line may follow it.
+language: the last visible line must be color-formatted (the entire text, not
+just an emoji prefix), must contain exactly `PROMPT-NUMBER: TICKET-ID: STATUS`,
+and `STATUS` must be replaced with the true outcome chosen by the worker.
+No line may follow it.
+
+**STATUS must be a real outcome word, NOT the color name.** Examples of valid
+STATUS values:
+- DONE / COMPLETE — fully finished, integrated, verified
+- IN PROGRESS — partial, more work needed
+- WAITING USER — needs user decision/input
+- BLOCKED — cannot proceed without resolving an external dependency
+- FAILED — attempted but did not succeed
+- NEEDS REPAIR — partial output requires follow-up fix
+- ACCEPTED RISK — known issue waived per project scope
+- NO-OP / ALREADY-DONE — work was already completed previously
+
+**Color the entire status text, not just an emoji prefix.** The line should
+read like `534: ADD-MESSAGE-WAVE-1: COMPLETE` where COMPLETE itself is rendered
+in green. Wrong: `534: ADD-MESSAGE-WAVE-1: GREEN` (color name as status, not
+real outcome). Wrong: `🟢 534: ADD-MESSAGE-WAVE-1: DONE` (emoji-only color, the
+text "DONE" must also be green).
+
+Color rule:
+- green = DONE / COMPLETE / NO-OP / ACCEPTED RISK
+- yellow = IN PROGRESS / WAITING / NEEDS REPAIR / partial
+- red = BLOCKED / FAILED
 
 Prompt number policy: prompt numbers are global and monotonically increasing
 within the orchestration conversation. Do not reset the index to 1 in later
@@ -1602,9 +1625,9 @@ Every action in this project MUST use the Claude Game Studios defined skills:
 
 **Never substitute with:** raw bash/grep checks, manual file edits bypassing skills, skipping smoke-check, ad-hoc path existence checks.
 
-### Last Sync: 2026-05-08 (post-PROMPT-512 board fixes integrated; PROMPT 513 in flight)
+### Last Sync: 2026-05-09 (DraftStarted dedup landed; PlayerPools still None at DRAFT_INITIAL; PROMPT 539 diagnostic in flight)
 
-### origin/main HEAD: ac9305b
+### origin/main HEAD: 4c132c9 (DraftStarted dedup) — Wave 1 remaining + Wave 2 pending integration
 
 ### POLICY UPDATE — /code-review = visibility, NOT merge gate
 Per updated `feedback_paw_review_flow.md`:
@@ -1614,35 +1637,54 @@ Per updated `feedback_paw_review_flow.md`:
 - Friend-game scope accept-risk on quality items (doc comments, method length, testability seams)
 - Real functional bugs (panics, dead branches, ADR violations causing misbehavior) DO block
 
-### CRITICAL CHAIN — DRAFT_INITIAL still not showing 9 cards
-PROMPT 507 deep trace identified the actual root cause:
-1. `process_fresh_hello` never inserts fresh players into `ReconnectTracker.snapshot_sent` map
-2. `drain_deferred_dispatches` filters on `snapshot_sent==true` → missing entries silently dropped
-3. PROMPT 499's earlier fix (`initialise_reconnect_tracker` set to false) was a misdiagnose — needs revert per ADR-011 spec
-4. PROMPT 513 dispatched: revert to true + add fresh-hello registration with TRUE + R-1 compile fix (`trigger.entity` → `trigger.target()`)
+### CRITICAL CHAIN — DRAFT_INITIAL still not showing 9 cards (2026-05-09 update)
+
+Confirmed via tracing logs: card_acquisition_tick_system early-returns with `PlayerPools resource not available` even after DraftStarted duplicate fix (PROMPT 532, commit 4c132c9). The DraftStarted dedup was necessary but not sufficient — `initialize_player_pools_on_draft_started` either does not run or runs but does not insert PlayerPools.
+
+PROMPT 539 dispatched: Explore diagnostic on PlayerPools init lifecycle.
+
+### Systemic add_message duplicate bug (PROMPT 533 scan, 2026-05-09)
+15 message types had duplicate `add_message::<T>()` registrations. Bevy 0.18 silently replaces the Messages<T> resource on each call, orphaning writer/reader caches. Cleanup waves:
+- Wave 1 critical (3 types: DraftStarted, GameOverEmitted, ResolutionPhaseEntered):
+  - DraftStarted only: PROMPT 532 / commit 4c132c9 ON MAIN ✅
+  - GameOverEmitted + ResolutionPhaseEntered (PROMPT 536): pushed to `work/add-message-wave-1-remaining` (commit f286e30) — pending integration via PROMPT 541
+- Wave 2 medium (10 types: PlacementPhaseEntered, BeginResolution, ShopRefreshTriggered, AuctionPhaseEntered, AbortAuction, PlayerHeartbeat, AwardGold, ManaCapIncreased, S2CGoldBroadcast, PlacementCommitted): pushed to `work/add-message-wave-2` (commit 3f18f79) — pending integration via PROMPT 540
+- Wave 3 exceptions (ResolutionComplete, AuctionSettled): not started
+
+### ⚠️ Test fixtures cascade-fail risk (from PROMPT 534 incident)
+14 test fixtures across `tests/integration/` rely on the duplicate registrations as a side effect (they construct partial Apps without RsmPlugin). Once Wave 1 remaining + Wave 2 land on main, `cargo test -p server` will break for these fixtures. Pattern for fix already used in `tests/integration/auction/pool_integration_test.rs` — add explicit `.add_message::<T>()` to each affected test App. Do not run `cargo test` blindly after PROMPT 540 / 541 integrate; expect cascade failures and fix fixtures separately.
 
 ### Currently Running (windows still open)
-- PROMPT 513 — comprehensive reconnect.rs fix (R-1 compile, R-3 spec revert, fresh-hello snapshot_sent=true registration)
-- PROMPT 504 — disk space cleanup (status unknown, may have completed)
+- PROMPT 539 — PlayerPools init diagnostic (explore why initialize_player_pools_on_draft_started does not populate the resource)
+- PROMPT 540 — integrate work/add-message-wave-2 to main
+- PROMPT 541 — integrate work/add-message-wave-1-remaining to main
 
 ### What's on main now (recent functional commits)
-- ac9305b: Pointer<Click> observers + co_occupancy clamp + BoardRenderingConfig threading (PROMPT 512)
-- a95a06b: PAW review #2 #3 #7 (PlayerTeamMapUpdated, BID_INCREMENTS to game_config.ron, dead Startup removed)
+- 4c132c9: DraftStarted duplicate add_message removed from CardPoolPlugin (PROMPT 532)
+- 11f0019: granular tracing for acquisition_tick early-returns (PROMPT 530)
+- 9efbe02: S2CDraftOffering dispatch tracing (PROMPT 528)
+- 41d2889: Lightyear protocol parity + S2CObjectiveIdentities client drain (PROMPT 525)
+- 9623f08: reconnect.rs comprehensive fix (R-1 event_target, R-3 revert, fresh-hello registration)
+- ac9305b: Pointer<Click> observers + co_occupancy clamp + BoardRenderingConfig threading
+- a95a06b: PAW review #2 #3 #7 (PlayerTeamMapUpdated, BID_INCREMENTS to game_config.ron)
 - 7e9eedb: reconnect.rs duplicate DeferredMessage variants removed
 - ec5eadc: board_rendering ADR-021 fixes (B-1..B-6)
-- 2aed0bd: snapshot_sent=false (PROMPT 499 — TO BE REVERTED by PROMPT 513)
 - b92aa97: PlaceholderAssets panic fix (Option<Res<>>)
 - f5b7a34: ClientState dedup
 - 14c937d: Lightyear ReplicationSender
 - 0cb0766: B0004 fan root + server tracing
 
-### After PROMPT 513 lands → MOMENT OF TRUTH
-1. Cherry-pick PROMPT 513 commit to main
-2. cargo build -p server -p client --jobs 2
-3. User launches game → DRAFT_INITIAL should finally show 9 cards
-4. If yes → /story-done PAW-002 to PAW-006
-5. /smoke-check
-6. Polish phase work continues
+### Branches PUSHED but not on main
+- work/add-message-wave-1-remaining @ f286e30 — pending PROMPT 541 integration
+- work/add-message-wave-2 @ 3f18f79 — pending PROMPT 540 integration
+- work/add-message-wave-1 (original 9-removal scope, redundant with 532 + 536, do NOT push)
+
+### Next steps after PROMPT 539 returns
+1. Apply PlayerPools init fix per diagnostic
+2. Integrate Wave 1 remaining + Wave 2 (PROMPTs 540, 541)
+3. Fix 14 test fixtures (add explicit add_message::<T>() to partial-App fixtures)
+4. Rebuild server + retest game → DRAFT_INITIAL should finally show 9 cards
+5. If yes → /story-done PAW-002 to PAW-006 + /smoke-check + Polish phase
 
 ### Pending /story-done (no longer blocked — code-review is now visibility-only)
 - PAW-002 to PAW-006 all eligible once DRAFT_INITIAL is verified working
