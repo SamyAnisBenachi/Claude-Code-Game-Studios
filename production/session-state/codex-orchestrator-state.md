@@ -1650,9 +1650,55 @@ Every action in this project MUST use the Claude Game Studios defined skills:
 
 **Never substitute with:** raw bash/grep checks, manual file edits bypassing skills, skipping smoke-check, ad-hoc path existence checks.
 
-### Last Sync: 2026-05-09 (PROMPT 545 dispatched — full E2E DRAFT_INITIAL analysis + fix in one pass)
+### Last Sync: 2026-05-09 (PROMPT 558 active — HAND-UI-004 click+ready repair; 547+549 hallucinated, retry as 559+560)
 
-### origin/main HEAD: 0f7d685 (PROMPT 543 PlayerPools resource gate)
+### origin/main HEAD: 24e8095 (PROMPT 557 cherry-pick — AuctionSettled+ResolutionComplete fixtures, 27 tests green)
+
+### Current state (2026-05-09 post-breakthrough)
+
+**DRAFT_INITIAL verified working** — 9 cards displayed in client (user screenshot 2026-05-09 confirmed). Breakthrough commit `d7211f1` (PROMPT 545) wired CardPoolPlugin + KeywordPlugin into `server/src/main.rs`.
+
+**New game-blocker bugs surfaced post-breakthrough:**
+- Click cards in DRAFT_INITIAL → no visible feedback (HU-08 cassé despite story-004 marked Complete)
+- Ready button → toggle local works, but `2 ready != phase transition` (game stuck in DRAFT_INITIAL even when both clients press Ready)
+
+**Active workers:**
+- PROMPT 558 (HAND-UI-004 repair, hard verification gates) — in user window, parallel-safe with 559
+
+**Drafted prompts ready to launch:**
+- PROMPT 559 (PAW-002..006 closure retry, hard verification gates) — disjoint from 558, can launch now
+- PROMPT 560 (sprint-10 plan retry, hard verification gates) — sequential after 559 lands on main (collision on sprint-status.yaml)
+
+**Hallucination incident (2026-05-09):**
+- PROMPT 547 v1 (PAW closure batch) and PROMPT 549 v1 (sprint-10 plan) both returned SUCCESS/PARTIAL outputs with zero file writes, zero commits, zero pushes. Verification confirmed: no PAW closure or sprint-10 work exists anywhere in the repo (all branches, all reflog entries searched). Both windows classified CLEAR/FAILED.
+- Mitigation: drafted PROMPTs 559 + 560 with hard verification gates (verbatim `git rev-parse HEAD` before/after commit, verbatim push output, verbatim `git ls-remote` confirming remote ref). Worker MUST paste these outputs unmodified or report BLOCKED/FAILED.
+- Lesson: workers without mandatory verbatim-paste gates can hallucinate full reports. Always require POST_COMMIT_HASH confirmation + remote ref echo for any orchestrator-managed shared-file work (sprint-status.yaml, active.md, story-done batches).
+
+### What's on main now (recent functional + state commits)
+- 24e8095: PROMPT 557 cherry-pick — 7 fixtures AuctionSettled+ResolutionComplete (27 tests green)
+- 1de0589: orchestrator final-line policy — single colored line, no delimiter, STATUS placeholder (worker fills real outcome)
+- 7541753: persist 2026-05-09 DRAFT_INITIAL fix breakthrough findings
+- d7211f1: PROMPT 545 — CardPoolPlugin + KeywordPlugin wired (DRAFT_INITIAL breakthrough)
+- bbdbcd6: PROMPT 546 — RsmPlugin fixtures explicit message registrations
+- c9a5956: PROMPT 552 — apply_deferred between LobbyEval and CardPoolSet::Lifecycle
+- a391aa6: orchestrator format pastille emoji prefix (now superseded by 1de0589 single-line policy)
+- d319ea5: server dedup add_message ResolutionComplete + AuctionSettled
+- 5d58deb: /review-all-gdds R10 (9/11 blockers resolved)
+- 433c9af: asset-spec for 3 remaining systems (manifest 242→296)
+
+### Pending closure paperwork (Sprint 10 prerequisites)
+- PAW-002..006 retroactive story files (4 missing) — PROMPT 559
+- PAW rows in sprint-status.yaml — PROMPT 559
+- 2026-05-09 entry in active.md — PROMPT 559
+- sprint-10.md plan — PROMPT 560
+- Sprint 9 formal close-out — after 559 + 560 land
+- S9-QA-001 manual GAME_OVER evidence — now possible since DRAFT_INITIAL works
+
+### Worktree hygiene (2026-05-09)
+- Pruned: `D:\_DEV\claude-code-game-studios-worktrees\test-fixtures-add-message-wave-3` (PROMPT 557 v2 NO-OP — fix already on main as 24e8095)
+- Branch deleted: `work/test-fixtures-add-message-wave-3`
+
+### origin/main HEAD (legacy snapshot — pre-breakthrough): 0f7d685 (PROMPT 543 PlayerPools resource gate)
 
 ### Pivot to comprehensive analysis approach (2026-05-09)
 After ~10 narrow diagnostic prompts producing contradictory partial conclusions on DRAFT_INITIAL, switched approach: dispatched PROMPT 545 — single general-purpose agent with very thorough breadth that reads the ENTIRE flow (server + network + client) and identifies + fixes ALL remaining bugs in one coherent commit.
