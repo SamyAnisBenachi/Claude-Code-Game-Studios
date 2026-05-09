@@ -173,6 +173,7 @@ fn build_server_app(port: u16) -> App {
     register_lightyear_protocol(&mut app);
     app.add_message::<DraftStarted>();
     app.add_message::<ResolutionPhaseEntered>();
+    app.add_message::<ResolutionComplete>();
     app.add_plugins(ObjectivePlugin);
     app.add_observer(add_replication_sender_to_connected_client);
     app.add_systems(Update, record_player_connections);
