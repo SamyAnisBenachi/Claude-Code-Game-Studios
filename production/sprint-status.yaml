@@ -274,3 +274,26 @@ presentation_asset_wiring:
       tech_debt:
         - "PAW-TD-006-a: accept-risk — placeholder PNGs, not final art (friend-game scope)"
         - "PAW-TD-006-b: accept-risk — no manual browser/native visual capture (friend-game scope)"
+
+next_sprint:
+  sprint: 10
+  status: planned
+  dates:
+    start: "2026-05-21"
+    end: "2026-06-03"
+  goal_summary: >-
+    Close out the integrated Presentation Asset Wiring batch with
+    `/story-done` verification, drain the test-fixture and plugin-registration
+    tech debt surfaced by the DRAFT_INITIAL breakthrough, and start the
+    targeted visual-UI chrome work needed for the friend-game build to look
+    playable rather than raw — without expanding into broad production,
+    public release readiness, broad accessibility completion, full
+    playable-client manual QA, playtest validation, or full game completion.
+  plan_path: "production/sprints/sprint-10.md"
+  locked: false
+  activation_prerequisites:
+    - "Sprint 9 is `closed` or `closed-with-conditions`."
+    - "`S9-QA-001` is `done` via real manual evidence OR explicitly recorded as accepted-risk friend-game-lite QA evidence with `S8-QA-001-W1` disposition preserved (open or explicitly carried)."
+    - "`S9-AUDIO-001` worker commit `db7f1a9` is integrated to `main` or formally deferred into Sprint 10."
+    - "DRAFT_INITIAL displays 9 cards on `main` (verified at `d7211f1` by user screenshot 2026-05-09); no regression has reintroduced the silent failure."
+    - "`production/sprint-status.yaml` Sprint 9 row reads `closed` / `closed-with-conditions`."
