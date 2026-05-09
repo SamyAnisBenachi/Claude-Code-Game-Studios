@@ -1725,6 +1725,82 @@ PROMPT 539 dispatched: Explore diagnostic on PlayerPools init lifecycle.
 
 These are accept-risk for friend-game scope, captured for future cleanup pass.
 
+## Key Findings (2026-05-09 Session — DRAFT_INITIAL fix BREAKTHROUGH)
+
+### 🟢 REAL ROOT CAUSE — `CardPoolPlugin` + `KeywordPlugin` never registered in `App`
+
+After **months** of debugging and ~10 narrow diagnostic prompts producing contradictory partial conclusions, PROMPT 545 (single comprehensive E2E agent with full context) found the actual blocker in **12 lines** of `server/src/main.rs`:
+
+- `CardPoolPlugin` was defined in `server/src/core/pool/plugin.rs` but **never** added to `App` via `.add_plugins(...)` in `main.rs`
+- `KeywordPlugin` had the same issue
+- Consequence: `CardPoolSet::Lifecycle` had **zero registered systems**
+- Therefore `initialize_player_pools_on_draft_started` never ran
+- Therefore `PlayerPools` resource was never inserted
+- Therefore `card_acquisition_tick_system` early-returned with `PlayerPools resource not available`
+- Therefore `S2CDraftOffering` was never broadcast
+- Therefore the client never displayed the 9 draft cards
+
+**Fix:** PROMPT 545 worker commit `93193ea` → cherry-picked to main as `d7211f1` (PROMPT 556) → confirmed via screenshot: 9 cards now visible in DRAFT_INITIAL.
+
+### 🟢 Bevy 0.18 fact — `App::add_message` IS idempotent
+
+Verified at `bevy_app-0.18.1/src/sub_app.rs:358`. Duplicate `add_message::<T>()` calls are **no-ops**, NOT buffer-orphaning resource replacements as previously assumed.
+
+**Implication:** the entire add_message dedup wave (PROMPTs 532, 533, 536, 537, 540, 541, 548, 553) was based on a misunderstanding of Bevy 0.18 semantics. The cleanup remains correct hygiene but was never load-bearing for the DRAFT_INITIAL bug. The "systemic add_message duplicate bug" entry above (line 1670) is **wrong** — duplicates do not orphan caches in 0.18.
+
+### 🟢 Methodology lesson — comprehensive E2E > narrow Explore for distributed bugs
+
+**Pattern that failed (~10 prompts wasted):** dispatch narrow Explore agents on individual layers (snapshot_sent timing, defer_unicast logic, ClientState dedup, DraftStarted dedup, apply_deferred for SessionConfig flush, etc.). Each gave a partial conclusion that contradicted the previous and surfaced one more bug after fix → the system has no E2E integration test, so each layer's bug only surfaces after the previous is fixed.
+
+**Pattern that worked (PROMPT 545):** dispatch a single general-purpose agent with **very thorough** breadth that reads the ENTIRE flow (server plugins + network protocol + client handlers + scheduling + resource lifecycles) in ONE pass and identifies ALL interacting bugs in one coherent commit.
+
+**Rule for future:** for complex distributed-system bugs spanning ≥3 layers (server logic + network + client), dispatch comprehensive E2E analysis EARLY. Don't accumulate ~10 narrow diagnostics first.
+
+### 🟡 Wrong diagnoses chased — DO NOT REPEAT
+
+These were all investigated as candidate root causes for DRAFT_INITIAL silent failure. None was THE bug:
+
+1. **`snapshot_sent` timing flips** — multiple Explore agents gave contradictory verdicts; `/architecture-review` (PROMPT 520) confirmed current impl matches ADR-011 spec
+2. **`defer_unicast` logic** — red herring
+3. **`ClientState` dedup** — was a real bug, fixed at `f5b7a34`, but unrelated to DRAFT_INITIAL
+4. **Lightyear protocol mismatch** (`MissingComponent(ComponentId(320))`) — was a real bug, fixed at `41d2889` (PROMPT 524), helped but wasn't the final blocker
+5. **`DraftStarted` duplicate `add_message`** — cosmetic in 0.18 (idempotent); cleanup at `4c132c9` was unnecessary
+6. **`apply_deferred` for SessionConfig flush** — added at `c9a5956`; helped scheduling correctness but didn't fix the bug
+7. **`PlayerPools` resource gate `run_if`** — added at `0f7d685`; correct hardening but the system was never registered to fire in the first place
+
+### 🟢 Critical sanity-check pattern — plugin registration audit
+
+For every Bevy app with multiple feature plugins, **always verify** that every `pub struct *Plugin` defined under `server/src/feature/*` and `server/src/core/*` is actually `.add_plugins(...)`-registered in `server/src/main.rs`.
+
+**Audit grep:**
+```
+grep -rn "pub struct .*Plugin" server/src/
+grep -n "add_plugins\|\.add_plugins" server/src/main.rs
+```
+
+Diff the two lists. Any plugin defined but not registered is a silent dead-code path — the plugin's systems never run, but `cargo check` and `cargo test` still pass because the type compiles fine.
+
+This category of bug is **invisible to type checks** and **invisible to per-system tests** (each system tests in isolation with explicit `add_systems`). Only an E2E integration test that spawns the real `App` would catch it — and we don't have one for the server boot path.
+
+### 🟢 Use the right skill for the question
+
+- ADR compliance question → `/architecture-review`, NOT raw `Explore` agents
+- Cross-GDD consistency → `/consistency-check` or `/review-all-gdds`
+- Distributed-system bug spanning 3+ layers → comprehensive general-purpose agent with `breadth: very thorough`, NOT narrow Explore
+
+PROMPTs 498, 507, 513, 517, 518 all chased snapshot_sent contradictions via Explore. PROMPT 520 (`/architecture-review`) gave the definitive answer in one pass.
+
+### Files touched by the breakthrough fix (PROMPT 545 → d7211f1)
+
+- `server/src/main.rs` — added `.add_plugins(CardPoolPlugin)` and `.add_plugins(KeywordPlugin)` (the actual fix, ~12 lines)
+- (May have included supporting tracing/cleanup; full diff in commit `d7211f1`)
+
+### Bonus: the screenshot
+
+User confirmation 2026-05-09 — DRAFT_INITIAL now displays 9 cards (Vault Sentry 4g, Paddock Bruiser 3g, Double-Face Blade 3g, Training Banner 2g, Guild Errand 1g, Sturdy Gobball 2g, Wabbit Guard 2g, Market Runner 2g, Tofu Scout 1g) with the "Select up to 9 cards to keep. You have 45 seconds." overlay and Ready button. **Game flow unblocked past DRAFT_INITIAL for the first time.**
+
+---
+
 ## Key Findings (2026-05-08 Session)
 
 ### 🔴 REAL DRAFT_INITIAL ROOT CAUSE — Lightyear protocol mismatch (PROMPT 522)
