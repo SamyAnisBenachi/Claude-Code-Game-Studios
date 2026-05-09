@@ -133,30 +133,40 @@ Color rule:
 - yellow = IN PROGRESS / WAITING / NEEDS REPAIR / partial
 - red = BLOCKED / FAILED
 
-**Final line policy (2026-05-09 revision — single line, no delimiter):** The
-agent's last visible line is a single colored line in the form
-`PROMPT-NUMBER: TICKET-ID: STATUS`. No delimiter line, no second line, no
-further output after. The previous 51-hash delimiter convention is RETIRED.
+**Final line policy (2026-05-09 — conditional by agent runtime):**
 
-The colored line:
-- Is one line total
-- Starts with a pastille emoji matching the outcome (🟢 / 🟡 / 🔴) — optional
-  but recommended for human scan
-- The text including the STATUS word is fully colored (not just the emoji)
-- STATUS is a real outcome word chosen by the worker, NEVER the literal word
-  "STATUS", NEVER a color name, NEVER hardcoded by the orchestrator
+The format depends on which runtime the agent runs in:
 
-Color rule (unchanged):
-- green = positive outcomes (DONE / COMPLETE / NO-OP / ACCEPTED RISK)
-- yellow = in-progress / partial / warning / needs-repair / accepted-risk
-- red = blocked / failed
+**Claude agents (Claude Code, Claude desktop, Claude subagents) — TWO-LINE format with 51-hash delimiter:**
+- Line N-1: pastille emoji + `PROMPT-NUMBER: TICKET-ID: STATUS` (entire text colored)
+- Line N (last): exactly `###################################################` (51 hash characters)
+- No further line after the delimiter
+- This includes the orchestrator's own responses when running in Claude
 
-**Orchestrator must NOT hardcode the STATUS word in launch prompts.** Write
-the requirement in plain language: "Last visible line uses
-`PROMPT-NUMBER: TICKET-ID: STATUS` where STATUS is replaced by the real
-outcome. Color the line by outcome. No HTML/span/code-color markup. No line
-after it." Do not paste literal templates like
-`🟢 558: HAND-UI-004-REPAIR: COMPLETE` because workers copy them literally.
+Example (Claude):
+```
+🟢 559: PAW-STORIES-DONE-BATCH: INTEGRATED
+###################################################
+```
+
+**Codex agents — ONE-LINE format, no delimiter:**
+- Single colored line `PROMPT-NUMBER: TICKET-ID: STATUS` (entire text colored)
+- No delimiter, no second line, no further output
+
+Example (Codex):
+```
+559: PAW-STORIES-DONE-BATCH: DONE
+```
+
+**Common rules (both runtimes):**
+- STATUS is a real outcome word chosen by the worker, NEVER the literal word "STATUS", NEVER a color name (no "GREEN" / "YELLOW"), NEVER hardcoded by the orchestrator
+- Color the entire status text, not just an emoji prefix
+- Pastille emoji convention: `🟢` action/positive result, `🔵` verification, `🟡` attention/in-progress/needs-repair, `🟣` queue/next, `🔴` blocked/failed
+- Color rule: green = positive (DONE/COMPLETE/NO-OP/INTEGRATED/ACCEPTED RISK); yellow = partial/in-progress/warning/needs-repair; red = blocked/failed
+
+**Orchestrator must NOT hardcode the STATUS word in launch prompts.** Write the requirement in plain language: "Last visible line uses `PROMPT-NUMBER: TICKET-ID: STATUS` where STATUS is replaced by the real outcome. Color the line by outcome. No HTML/span/code-color markup." Do not paste literal templates like `🟢 558: HAND-UI-004-REPAIR: COMPLETE` because workers copy them literally.
+
+**For Claude workers**, append: "After the colored status line, output exactly one final line containing `###################################################` (51 hash characters). No line after the delimiter." For **Codex workers**, append: "No line after the colored status line."
 
 Prompt number policy: prompt numbers are global and monotonically increasing
 within the orchestration conversation. Do not reset the index to 1 in later
