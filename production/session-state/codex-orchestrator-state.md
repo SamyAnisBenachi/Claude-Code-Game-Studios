@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-07
+Updated: 2026-05-10
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -1933,12 +1933,17 @@ User decision pending on Option A (accept friend-game-lite raw UI), Option B (fu
 | SAU-008 | Done |
 | S9-CONTENT-001 | Done (supporting) |
 | S9-QA-002 | Done |
-| S9-QA-001 | in-progress / partial — blocked by MANUAL-FG-001 (human operator GUI route) |
-| S9-AUDIO-001 | worker pushed `db7f1a9`, pending integration to main |
+| S9-QA-001 | Done (accepted-risk friend-game-lite closure via PROMPT 572 at `8d3537c` 2026-05-10; S8-QA-001-W1 carried open; QA-COND-0005 / QA-COND-0006 carried) |
+| S9-AUDIO-001 | Done (already integrated to main at `9c00e06`; verified content-equivalent to worker `db7f1a9` via PROMPT 571 blob-hash cross-reference 2026-05-10) |
 | ECO-004 | conditional backlog — do not launch unless reward-loop issue surfaces |
 
 ### Active Blockers
-- **MANUAL-FG-001** (S9-QA-001) — human operator must run two-client GAME_OVER route. Hybrid approach approved: PROMPT 459 covers automated E2E test; user does 5 manual screenshots; PROMPT 460 will consolidate into accepted-risk friend-game-lite QA evidence.
+- None — MANUAL-FG-001 resolved 2026-05-10 via accepted-risk friend-game-lite closure of S9-QA-001 (PROMPT 572 at `8d3537c`). S8-QA-001-W1 remains explicitly carried open into Sprint 10.
+
+### Live Game Blockers (post-DRAFT_INITIAL fix)
+- **DRAFT_INITIAL click no visible feedback** — proven root cause: `DraftInitialSlotState::Pending` had no rendering branch in `sync_draft_initial_panel_system`. Repair via PROMPT 567 (`bcc90ef` on worker branch; cherry-pick PROMPT 578 queued).
+- **DRAFT_INITIAL grid duplicate-grid architectural finding** — TWO independent grids visible at Δy=2px overlap (HandUiPlugin spawns one, ShopAuctionUiPlugin spawns the other). Disambiguation observability added by PROMPT 568 (`tracing::info!` traces in both click handlers); empirical answer expected from runtime once 568 integrates. Deferred new-story for grid deduplication.
+- **Ready→phase silent send-Err pattern** — `if let Ok = senders.single_mut() { sender.send(...) }` silently skips on `Err` while local UI toggle still flips. PROMPT 568 repaired 9 sites (logging on `Err`); 10th site (`handle_hand_fan_activate_click_system`) follow-up via PROMPT 576 queued behind 575.
 
 ### Carried Conditions (do not close)
 - S8-QA-001-W1 — open, full manual GAME_OVER route not captured
@@ -1946,8 +1951,8 @@ User decision pending on Option A (accept friend-game-lite raw UI), Option B (fu
 - QA-COND-0006 — accepted-risk / deferred
 
 ### Next Available Prompt Numbers
-- 460 — pending (consolidation of automated E2E + manual screenshots + accepted-risk evidence; emit when both 459 and screenshots are ready)
-- 461+ — free
+- 580+ — free (next emit). Sprint 10 activation flip when ready.
+- 561–579 emitted in 2026-05-10 Sprint 9 close-out wave; see "Session 2026-05-10" section below for full lifecycle table.
 
 ### Non-Claims Preserved
 - no public release readiness, no release-candidate readiness, no full game completion
@@ -1964,3 +1969,101 @@ After every window return:
 4. Update Next Available Prompt Numbers when emitting a new prompt.
 5. Bump "Last Sync" date.
 6. Commit this file with message `state: update live orchestration status` whenever a non-trivial state change happens. Batch trivial changes — do not commit on every micro-return.
+
+---
+
+## Session 2026-05-10 — Sprint 9 Close-Out Wave (PROMPTs 561–579)
+
+### Commits landed on `main`
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `d7211f1` | PROMPT 545 / 556 (prior session, ref) | DRAFT_INITIAL plugin-registration breakthrough (CardPoolPlugin + KeywordPlugin) |
+| `9c00e06` | (prior session, S9-AUDIO-001) | Audio bootstrap + timer urgency cue (`.ogg` asset + `bevy_audio` feature + playback logic) |
+| `27413fb` | (prior, mislabel corrected this session) | DRAFT_INITIAL hand-UI grid drain dispatch (NOT DRAFT_SHOP — orchestrator's prior label was wrong) |
+| `edf2153` | PROMPT 549 | Sprint 10 plan draft |
+| `710d305` | PROMPT 560 | Sprint 10 next_sprint planning entry in sprint-status.yaml |
+| `0648deb` | PROMPT 564 | Cherry-pick PROMPT 563 plugin-registration audit doc |
+| `dd517bb` | PROMPT 565 | Cherry-pick PROMPT 562 (HAND-UI-003 fan activate `C2SActivateCard` dispatch via `f137ddd`) |
+| `8d3537c` | PROMPT 572 | S9-QA-001 accepted-risk friend-game-lite closure |
+
+### Worker branches awaiting integration
+
+| Branch | Worker commit | Source prompt | Status |
+|---|---|---|---|
+| `work/sau-002-pending-visual` | `bcc90ef` | PROMPT 567 | COMPLETE; cherry-pick PROMPT 578 queued |
+| `work/c2s-send-observability` | `eb90b56` | PROMPT 568 | PARTIAL (9 sites + 2 click traces; 10th site missing — pending 575); cherry-pick PROMPT 575 queued |
+| `work/hand-ui-test-fixture-init-state-repair` | `773f5b6` | PROMPT 566 | NEEDS REPAIR (init_state landed but PlaceholderAssets second-layer surfaced); cherry-pick PROMPT 573 + follow-up PROMPT 574 queued |
+| `work/hand-ui-outbound-drain-audit` | `f137ddd` | PROMPT 562 | DONE — already integrated to main as `dd517bb` via PROMPT 565; branch preserved for evidence |
+| `work/plugin-registration-audit-pre-stage` | `12c306f` | PROMPT 563 | DONE — already integrated as `0648deb` via PROMPT 564; branch preserved |
+
+### Drafted but launch-status unconfirmed by orchestrator
+
+| Prompt | Title | Branch / Type | Sequencing |
+|---|---|---|---|
+| 569 | AssetWiringPlugin registration in `client/src/main.rs` | worker / `work/asset-wiring-plugin-registration` | parallel-safe |
+| 570 | BoardWasmPerfHarnessPlugin deletion | worker / `work/board-wasm-perf-harness-deletion` | parallel-safe |
+| 573 | Cherry-pick PROMPT 566 init_state work to main | root checkout integration | serializes vs other root pushes |
+| 574 | Hand UI test fixture PlaceholderAssets insertion repair | worker / `work/hand-ui-fixture-placeholder-assets-repair` | depends on 573 |
+| 575 | Cherry-pick PROMPT 568 observability to main | root checkout integration | serializes vs other root pushes |
+| 576 | Extend 568 pattern to `handle_hand_fan_activate_click_system` (HAND-UI-003) | worker / `work/hand-ui-003-fan-activate-observability` | depends on 575 |
+| 577 | Sprint 9 close-out flip + S9-AUDIO-001 disposition record | root checkout closure | serializes; final close-out step |
+| 578 | Cherry-pick PROMPT 567 SAU-002 Pending visual to main | root checkout integration | serializes vs other root pushes |
+| 579 | Shop/Auction UI sibling test fixture repair (3-line pattern) | worker / `work/shop-auction-ui-sibling-fixture-repair` | depends on 578 |
+
+### Sprint 10 activation prerequisites
+
+| # | Prerequisite | Status |
+|---|---|---|
+| 1 | DRAFT_INITIAL displays 9 cards on main | ✅ `d7211f1` (user screenshot 2026-05-09) |
+| 2 | S9-QA-001 done (accepted-risk + S8-QA-001-W1 carried) | ✅ PROMPT 572 at `8d3537c` |
+| 3 | S9-AUDIO-001 integrated to main OR formally deferred | ✅ `9c00e06` (cross-referenced by PROMPT 571) |
+| 4 | next_sprint block on `production/sprint-status.yaml` | ✅ PROMPT 560 at `710d305` |
+| 5 | Sprint 9 row reads `closed` / `closed-with-conditions` | ⏳ pending PROMPT 577 flip |
+
+After PROMPT 577 lands: all 5 met. PROMPT 580 (drafted only after 577 returns) = Sprint 10 activation flip.
+
+### Key findings recorded this session
+
+1. **27413fb mislabel correction** — orchestrator's prior framing called it the "DRAFT_SHOP grid-click drain fix"; PROMPT 561 diagnostic verified it actually fixes the DRAFT_INITIAL hand-UI grid (`handle_grid_card_click_system` in `client/src/ui/hand/mod.rs`), not DRAFT_SHOP. The shop_auction parallel grid had its dispatch already at `mod.rs:2099` pre-27413fb.
+
+2. **TWO DRAFT_INITIAL grids architectural finding** — both `HandUiPlugin` and `ShopAuctionUiPlugin` spawn a DRAFT_INITIAL grid (Δy=2px overlap, identical 9-card render from `draft_shop_hand_bridge_fanout_system`). No story owns the deduplication. Empirical "which grid intercepts the click" answer expected once PROMPT 568 click traces land via 575. Deferred new story for grid dedup.
+
+3. **`AssetWiringPlugin` defined-but-not-registered** — exact same silent-failure pattern as PROMPT 545 CardPoolPlugin breakthrough. PAW-002..PAW-006 closure paperwork (PROMPT 559) marked stories DONE based on tests that hand-roll AssetWiringPlugin, but production binary silently omitted it. User authorized registration via PROMPT 569.
+
+4. **`BoardWasmPerfHarnessPlugin` verbatim duplicate** of `BoardRenderingPerfHarnessPlugin`; never referenced. User authorized deletion (Option 1 from audit doc) via PROMPT 570.
+
+5. **Hand UI test fixture multi-layer regression**:
+   - Layer 1 — `init_state::<ClientState>()` removed from sub-plugins by `f5b7a34` (2026-05-08); test fixtures using bare `HandUiPlugin` panic on missing `NextState<ClientState>`. Repair via PROMPT 566 / 573.
+   - Layer 2 — `spawn_hand_ui` early-returns on `Option<Res<PlaceholderAssets>>::None` (introduced by `b92aa97` 2026-05-08); `MinimalPlugins` test fixtures never insert the resource → silently skip Hand UI entity spawn → all entity-presence assertions fail. Repair via PROMPT 574 (depends on 573).
+
+6. **Shop/Auction UI test fixture parallel regression** — same f5b7a34 + asset-server gap pattern. PROMPT 567 worker repaired their own helper (3 lines: `AssetPlugin::default()`, `init_asset::<Image>()`, `init_state::<ClientState>()`). Sibling test files in `tests/integration/shop_auction_ui/` still broken; repair via PROMPT 579 (depends on 578).
+
+7. **C2S send-Err silent-skip pattern across 10 sites** — `if let Ok = senders.single_mut() { sender.send(...) }` silently drops `Err` cases while local outbound buffer + UI toggle still record. PROMPT 568 repaired 9 sites with explicit `match` + `tracing::error!` on `Err`; 10th site (`handle_hand_fan_activate_click_system` introduced by `f137ddd`) pending PROMPT 576.
+
+8. **Different-shape silent sites (deferred tech debt)** — `network/mod.rs:110/130`, `lobby.rs:461/471/479/486`, `board_rendering.rs:1354`, `result_screen.rs:799` all use `let-Some-iter_mut().next()` or for-loop patterns. Different fix shape, separate owners. Not blocking gameplay; defer to a single tech-debt sweep prompt or fold into Sprint 10 S10-TD work.
+
+9. **HAND-UI-003 / HAND-UI-004 / SAU-002 / SAU-003 / SAU-005 / Settings story Completion Notes are stale** — claim test verification ("passed N/N on date X") that was true at the time but silently invalidated by `f5b7a34` and `b92aa97`. Closure-paperwork refresh is orchestrator-side, batched after the integration wave settles.
+
+### Stories whose Completion Notes need closure-paperwork refresh
+
+- HAND-UI-003 (HU-06 verification stale)
+- HAND-UI-004 (HU-07/08/09/10/30 verification stale)
+- HAND-UI-001 (plugin scaffold + fan layout formula tests stale)
+- HAND-UI-005..015 (placement / staging / submit / reserve-strip stories — verify each)
+- SAU-002 (no AC explicitly covers Pending visual; new AC clause needed plus manifest version bump)
+- SAU-003, SAU-005, Settings story (silent send-Err pattern was unverified in completion notes)
+
+These are tracked here only; refresh happens via a separate orchestrator closure-paperwork prompt after the integration wave (PROMPTs 573–579) settles.
+
+### Memory updates added this session
+
+- `feedback_orchestrator_prompt_quality.md` (Claude-specific addendum, indexed in MEMORY.md) — UI-first investigation, evidence-backed suspects, studio ownership classification, existing-tests audit, commit-claim verification, scoped doc reads, minimal repair scope per root cause, uniform one-line colored final-line. Added 2026-05-10. Does not modify the base `feedback_orchestrator_skills_flow.md` (per user directive).
+
+### Carried Conditions Preserved (do not close)
+
+Reaffirmed in PROMPT 572 closure body and verified in PROMPT 577 spec:
+- S8-QA-001-W1 — open (full manual two-client GAME_OVER route still not captured by human-operator GUI run)
+- QA-COND-0005 — accepted-risk (Standard-tier accessibility waived for friend-game)
+- QA-COND-0006 — accepted-risk / deferred (playtest fun-hypothesis validation)
+- All Sprint 9 non-claims (no public release readiness, no full game completion, no broad accessibility completion, no full playable-client manual QA, no full regression campaign)
