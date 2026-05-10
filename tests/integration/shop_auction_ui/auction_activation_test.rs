@@ -104,7 +104,10 @@ fn sau_asset_loop_featured_auction_card_resolves_display_art_or_fallback() {
         })
     );
 
-    send_auction_card(&mut app, CardId(2), 5);
+    // CardId(99) is intentionally absent from the test catalog (1..=3); the
+    // catalog miss feeds None into apply_card_display_art, producing the
+    // MissingDisplayAsset fallback on the featured auction card.
+    send_auction_card(&mut app, CardId(99), 5);
     assert_eq!(
         app.world().get::<CardDisplayArtFallback>(featured_card),
         Some(&CardDisplayArtFallback {
