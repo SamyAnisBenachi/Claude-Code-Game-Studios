@@ -458,36 +458,55 @@ fn send_lobby_commands_system(
     for command in commands.read() {
         match command {
             LobbyCommand::CreateRoom => {
-                if let Some(mut sender) = create_room.iter_mut().next() {
-                    sender.send::<ReliableChannel>(C2SCreateRoom {
-                        mode: GameMode::OneVOne,
-                    });
-                }
+                let Some(mut sender) = create_room.iter_mut().next() else {
+                    warn!(
+                        "C2S send DROPPED: type=C2SCreateRoom, handler=send_lobby_commands_system, reason=no_sender_entity"
+                    );
+                    continue;
+                };
+                sender.send::<ReliableChannel>(C2SCreateRoom {
+                    mode: GameMode::OneVOne,
+                });
             }
             LobbyCommand::JoinRoom {
                 room_code,
                 requested_slot,
             } => {
-                if let Some(mut sender) = join_room.iter_mut().next() {
-                    sender.send::<ReliableChannel>(C2SJoinRoom {
-                        room_code: room_code.clone(),
-                        requested_slot: *requested_slot,
-                    });
-                }
+                let Some(mut sender) = join_room.iter_mut().next() else {
+                    warn!(
+                        room_code = %room_code,
+                        "C2S send DROPPED: type=C2SJoinRoom, handler=send_lobby_commands_system, reason=no_sender_entity"
+                    );
+                    continue;
+                };
+                sender.send::<ReliableChannel>(C2SJoinRoom {
+                    room_code: room_code.clone(),
+                    requested_slot: *requested_slot,
+                });
             }
             LobbyCommand::SelectClass { class_id } => {
-                if let Some(mut sender) = select_class.iter_mut().next() {
-                    sender.send::<ReliableChannel>(C2SSelectClass {
-                        class_id: *class_id,
-                    });
-                }
+                let Some(mut sender) = select_class.iter_mut().next() else {
+                    warn!(
+                        class_id = ?class_id,
+                        "C2S send DROPPED: type=C2SSelectClass, handler=send_lobby_commands_system, reason=no_sender_entity"
+                    );
+                    continue;
+                };
+                sender.send::<ReliableChannel>(C2SSelectClass {
+                    class_id: *class_id,
+                });
             }
             LobbyCommand::ConfirmClass { class_id } => {
-                if let Some(mut sender) = confirm_class.iter_mut().next() {
-                    sender.send::<ReliableChannel>(C2SConfirmClass {
-                        class_id: *class_id,
-                    });
-                }
+                let Some(mut sender) = confirm_class.iter_mut().next() else {
+                    warn!(
+                        class_id = ?class_id,
+                        "C2S send DROPPED: type=C2SConfirmClass, handler=send_lobby_commands_system, reason=no_sender_entity"
+                    );
+                    continue;
+                };
+                sender.send::<ReliableChannel>(C2SConfirmClass {
+                    class_id: *class_id,
+                });
             }
         }
     }
