@@ -1672,6 +1672,10 @@ pub fn handle_grid_card_click_system(
     mut senders: Query<&mut MessageSender<C2SPurchaseCard>>,
 ) {
     for click in clicks.read() {
+        info!(
+            "DRAFT_INITIAL click received — handler=handle_grid_card_click_system, click_entity={:?}",
+            click.card
+        );
         if *mode != HandUiMode::Grid {
             continue;
         }
@@ -1685,8 +1689,16 @@ pub fn handle_grid_card_click_system(
         }
 
         let message = C2SPurchaseCard { card_id: card.0 };
-        if let Ok(mut sender) = senders.single_mut() {
-            sender.send::<ReliableChannel>(message.clone());
+        match senders.single_mut() {
+            Ok(mut sender) => {
+                sender.send::<ReliableChannel>(message.clone());
+            }
+            Err(e) => {
+                error!(
+                    "C2S send failed: type=C2SPurchaseCard, handler=handle_grid_card_click_system, query_err={:?}",
+                    e
+                );
+            }
         }
         outbound.purchase_cards.push(message);
         commands.entity(click.card).insert((
@@ -2804,8 +2816,16 @@ fn submit_pending_placements(
     let msg = C2SSubmitPlacement {
         placements: pending_placements.placements.clone(),
     };
-    if let Ok(mut sender) = submit_senders.single_mut() {
-        sender.send::<ReliableChannel>(msg.clone());
+    match submit_senders.single_mut() {
+        Ok(mut sender) => {
+            sender.send::<ReliableChannel>(msg.clone());
+        }
+        Err(e) => {
+            error!(
+                "C2S send failed: type=C2SSubmitPlacement, handler=submit_pending_placements, query_err={:?}",
+                e
+            );
+        }
     }
     outbound.submit_placements.push(msg);
     placement_timer.submitted = true;

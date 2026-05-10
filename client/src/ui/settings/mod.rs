@@ -1038,8 +1038,16 @@ pub fn apply_placement_timer_selection(
     }
 
     let message = C2SSetPlacementTimerMultiplier { multiplier };
-    if let Ok(mut sender) = timer_senders.single_mut() {
-        sender.send::<ReliableChannel>(message.clone());
+    match timer_senders.single_mut() {
+        Ok(mut sender) => {
+            sender.send::<ReliableChannel>(message.clone());
+        }
+        Err(e) => {
+            error!(
+                "C2S send failed: type=C2SSetPlacementTimerMultiplier, handler=apply_placement_timer_selection, query_err={:?}",
+                e
+            );
+        }
     }
     outbound.placement_timer_requests.push(message);
 }
