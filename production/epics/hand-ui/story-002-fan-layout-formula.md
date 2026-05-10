@@ -144,3 +144,19 @@ All tuning values are read from `Res<GameConfig>` — never hardcoded in the sys
 **Test Evidence**: Logic test `tests/unit/hand-ui/fan_layout_formula_test.rs`; `cargo test -p client --test hand_ui_fan_layout_formula_test` passed 5/5; `cargo test -p client --test hand_ui_plugin_scaffold_test` passed 3/3; `cargo check -p client` passed.
 **Code Review**: Skipped - lean mode.
 **Scope**: Implementation already integrated on `main` via `047aff9`; worker commit `da0fe3a` is present on `work/hand-ui-002-fan-layout-formula`. `production/sprint-status.yaml` unchanged because no HAND-UI-002 row exists.
+
+---
+
+## Verdict 3 Reconciliation — Viewport Sync Repair (PROMPT 642, 2026-05-10)
+
+**Trigger**: Finding B v2 Verdict 3 traced the still-mispositioned hand fan to `HandFanViewport` having no writer system. The resource was registered with `init_resource` only and stayed at the `Default` value (800×600) for the lifetime of the app. Every consumer of `HandFanLayoutConfig::metrics_for_viewport(*viewport)` — including `apply_fan_layout_system` and `apply_reserve_strip_layout_system` — read this stale default, so the fan was anchored to a 600px-tall screen even when the actual primary window was 1080p+. AC-HU-02 (`fan_center_x = screen_width / 2`) and AC-HU-03b (`fan_base_y = screen_height − margin`) implicitly require a runtime-screen-anchored viewport; the missing writer silently violated both ACs whenever the real window size differed from 800×600.
+
+**Status flip**: Done → Done (retained). This is a reconciliation of a previously-implicit AC requirement, not a regression — the original 4/4 unit-test ACs remain satisfied. The new viewport-sync invariant is now explicit and test-enforced at runtime.
+
+**Repair**: Added `sync_hand_fan_viewport_from_window_system` in `client/src/ui/hand/mod.rs` (reads `Single<&Window, With<PrimaryWindow>>` and `set_if_neq`s the `HandFanViewport` resource each frame). Registered in `HandUiPlugin` with `.before(HandUiSystemSet::StateSync).run_if(in_state(ClientState::InSession))` so the writer always runs before `apply_fan_layout_system` and `apply_reserve_strip_layout_system` consume the resource.
+
+**New runtime test**: `tests/integration/hand-ui/hand_ui_viewport_sync_test.rs` (registered as `[[test]] hand_ui_viewport_sync_test` in `client/Cargo.toml`):
+- `viewport_sync_anchors_fan_layout_to_primary_window_at_1920_1080` — spawns `(Window 1920×1080, PrimaryWindow)`, drives 3 acquisitions, transitions to PLACEMENT, asserts `HandFanViewport == (1920.0, 1080.0)` and that fan slots 0/1/2 land at the formula positions for a 1920-wide × 1080-tall viewport (centered around `x=960`, base near `y=980`).
+- `default_viewport_persists_when_no_primary_window_is_present` — sanity guard so existing tests that inject `HandFanViewport` directly (and never spawn a Window) keep working: when no `(Window, PrimaryWindow)` entity exists, the system is a no-op and the resource keeps its 800×600 default.
+
+**Regression suite**: `cargo test -p client --test placement_entry_post_acquisition_test` → 1/1 PASS; `cargo test -p client --test hand_ui_draft_initial_grid_test` → 6/6 PASS; `cargo test -p client --test hand_ui_fan_layout_formula_test` → 5/5 PASS (default 800×600 path unchanged).
