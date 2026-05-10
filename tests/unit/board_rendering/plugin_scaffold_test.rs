@@ -3,8 +3,10 @@ use std::path::Path;
 
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
+use client::presentation::board_rendering::BoardLocalPlayer;
 use client::presentation::{BoardLayout, BoardRenderingPlugin, CardAtlas, PresentationPlugin};
-use client::state::ClientState;
+use client::state::{ClientSessionIdentity, ClientState};
+use shared::session::PlayerId;
 
 #[test]
 fn board_rendering_plugin_registers_in_minimal_client_app_without_panic() {
@@ -93,6 +95,39 @@ fn board_layout_asserts_on_cell_zero() {
 #[should_panic(expected = "invalid cell=9")]
 fn board_layout_asserts_on_cell_nine() {
     BoardLayout::default().cell_to_world(1, 9);
+}
+
+#[test]
+fn board_local_player_initializes_from_client_session_identity_handshake_only_path() {
+    const LOCAL: PlayerId = PlayerId(1);
+
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
+    app.insert_resource(client::asset_wiring::placeholder_assets_for_tests());
+    app.add_plugins(BoardRenderingPlugin);
+
+    app.insert_resource(ClientSessionIdentity {
+        player_id: Some(LOCAL),
+        session_id: None,
+        session_token: None,
+    });
+
+    assert_eq!(
+        app.world().resource::<BoardLocalPlayer>().player_id,
+        None,
+        "BoardLocalPlayer must start unpopulated before the init system runs"
+    );
+
+    app.update();
+
+    assert_eq!(
+        app.world().resource::<BoardLocalPlayer>().player_id,
+        Some(LOCAL),
+        "BoardLocalPlayer.player_id must be populated from ClientSessionIdentity \
+         on the handshake-only path (no S2CGameSnapshot received)"
+    );
 }
 
 #[test]
