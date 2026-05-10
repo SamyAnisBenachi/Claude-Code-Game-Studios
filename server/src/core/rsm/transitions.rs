@@ -141,6 +141,7 @@ pub fn tick_disconnect_timers(
     }
 
     let delta_ms = elapsed_millis(time.delta());
+    let phase = rsm.phase;
     let mut breaching_players = Vec::new();
     for (player, remaining_ms) in rsm.disconnect_trackers.iter_mut() {
         if !player_is_in_session(*player, session) {
@@ -150,6 +151,13 @@ pub fn tick_disconnect_timers(
         let before = *remaining_ms;
         *remaining_ms = remaining_ms.saturating_sub(delta_ms);
         if delta_ms > before {
+            tracing::warn!(
+                player_id = ?*player,
+                remaining_ms_before = before,
+                delta_ms = delta_ms,
+                phase = ?phase,
+                "RSM disconnect timer breach: grace window exceeded"
+            );
             breaching_players.push(*player);
         }
     }
@@ -194,6 +202,11 @@ pub fn on_lightyear_connected(
         return;
     };
 
+    tracing::info!(
+        peer_id = ?remote.0,
+        player_id = ?player,
+        "RSM lightyear connected"
+    );
     reconnected.write(PlayerReconnected { player });
 }
 
@@ -201,6 +214,7 @@ pub fn on_lightyear_disconnected(
     trigger: On<Add, Disconnected>,
     clients: Query<&RemoteId>,
     connections: Option<Res<PlayerConnectionMap>>,
+    rsm: Option<Res<RoundState>>,
     mut disconnected: MessageWriter<PlayerDisconnected>,
 ) {
     let Ok(remote) = clients.get(trigger.entity) else {
@@ -213,6 +227,12 @@ pub fn on_lightyear_disconnected(
         return;
     };
 
+    tracing::info!(
+        peer_id = ?remote.0,
+        player_id = ?player,
+        phase = ?rsm.as_deref().map(|s| s.phase),
+        "RSM lightyear disconnected"
+    );
     disconnected.write(PlayerDisconnected { player });
 }
 
@@ -235,6 +255,19 @@ pub fn tick_rsm_timers(
     };
 
     if finished {
+        let timer_name = match rsm.phase {
+            RoundPhase::DraftInitial => "draft_initial",
+            RoundPhase::DraftShop => "draft_shop",
+            RoundPhase::Placement => "placement",
+            RoundPhase::Resolution => "resolution_safety",
+            RoundPhase::Lobby | RoundPhase::DraftAuction | RoundPhase::GameOver => "",
+        };
+        tracing::info!(
+            phase = ?rsm.phase,
+            round = rsm.round_number,
+            timer = timer_name,
+            "RSM phase timer finished"
+        );
         if rsm.phase == RoundPhase::Resolution {
             pending.request(PhaseAdvanceRequest::game_over(
                 RoundPhase::Resolution,
@@ -266,6 +299,12 @@ pub fn on_session_ready(
     if rsm.phase != RoundPhase::Lobby {
         return;
     }
+
+    tracing::info!(
+        player_count = session.player_count,
+        round_number = rsm.round_number,
+        "RSM on_session_ready: entering DRAFT_INITIAL"
+    );
 
     let session = Some(session);
     enter_draft_initial(
@@ -323,6 +362,8 @@ pub fn advance_phase(
         return;
     }
 
+    let from_phase = rsm.phase;
+
     if let Some(game_over) = &request.game_over {
         rsm.phase = RoundPhase::GameOver;
         rsm.placement_timer = None;
@@ -330,11 +371,24 @@ pub fn advance_phase(
         rsm.draft_initial_timer = None;
         rsm.resolution_safety_timer = None;
         rsm.auction_safety_timer = None;
+        tracing::info!(
+            from = ?from_phase,
+            to = ?RoundPhase::GameOver,
+            round = rsm.round_number,
+            game_over = true,
+            "RSM advance_phase: game over"
+        );
         game_over_emitted.write(GameOverEmitted {
             reason: game_over.reason,
             loser: game_over.loser,
             round: rsm.round_number,
         });
+        tracing::info!(
+            reason = ?game_over.reason,
+            loser = ?game_over.loser,
+            round = rsm.round_number,
+            "RSM GameOverEmitted dispatched"
+        );
         broadcast.write(BroadcastPhaseChanged {
             phase: RoundPhase::GameOver,
             round: rsm.round_number,
@@ -356,6 +410,13 @@ pub fn advance_phase(
                 &mut auction_entered,
                 &mut broadcast,
             );
+            tracing::info!(
+                from = ?from_phase,
+                to = ?rsm.phase,
+                round = rsm.round_number,
+                game_over = false,
+                "RSM advance_phase: Lobby -> DraftInitial"
+            );
         }
         RoundPhase::DraftInitial => {
             rsm.phase = RoundPhase::Placement;
@@ -373,6 +434,13 @@ pub fn advance_phase(
                 round: rsm.round_number,
                 timer_ms,
             });
+            tracing::info!(
+                from = ?from_phase,
+                to = ?rsm.phase,
+                round = rsm.round_number,
+                game_over = false,
+                "RSM advance_phase: DraftInitial -> Placement"
+            );
         }
         RoundPhase::DraftAuction => {
             rsm.phase = RoundPhase::DraftShop;
@@ -391,6 +459,13 @@ pub fn advance_phase(
                 None,
                 &mut auction_entered,
                 &mut broadcast,
+            );
+            tracing::info!(
+                from = ?from_phase,
+                to = ?rsm.phase,
+                round = rsm.round_number,
+                game_over = false,
+                "RSM advance_phase: DraftAuction -> DraftShop"
             );
         }
         RoundPhase::DraftShop => {
@@ -412,6 +487,13 @@ pub fn advance_phase(
                 round: rsm.round_number,
                 timer_ms,
             });
+            tracing::info!(
+                from = ?from_phase,
+                to = ?rsm.phase,
+                round = rsm.round_number,
+                game_over = false,
+                "RSM advance_phase: DraftShop -> Placement"
+            );
         }
         RoundPhase::Placement => {
             rsm.phase = RoundPhase::Resolution;
@@ -430,6 +512,13 @@ pub fn advance_phase(
                 round: rsm.round_number,
                 timer_ms: 0,
             });
+            tracing::info!(
+                from = ?from_phase,
+                to = ?rsm.phase,
+                round = rsm.round_number,
+                game_over = false,
+                "RSM advance_phase: Placement -> Resolution"
+            );
         }
         RoundPhase::Resolution => {
             rsm.resolution_safety_timer = None;
@@ -468,8 +557,22 @@ pub fn advance_phase(
                 &mut auction_entered,
                 &mut broadcast,
             );
+            tracing::info!(
+                from = ?from_phase,
+                to = ?rsm.phase,
+                round = rsm.round_number,
+                game_over = false,
+                "RSM advance_phase: Resolution -> next draft"
+            );
         }
         RoundPhase::GameOver => {
+            tracing::info!(
+                from = ?from_phase,
+                to = ?rsm.phase,
+                round = rsm.round_number,
+                game_over = false,
+                "RSM advance_phase: no-op (already GameOver)"
+            );
             return;
         }
     }
@@ -504,6 +607,11 @@ fn enter_draft_initial(
         .map(|config| once_timer(config.draft_initial_timer_seconds));
     reset_disconnect_trackers_for_session(rsm, session, config);
 
+    tracing::info!(
+        round = rsm.round_number,
+        auction_round = is_auction_round(rsm.round_number),
+        "RSM enter_draft_initial"
+    );
     lobby_complete.write(LobbyComplete);
     emit_draft_entry(
         rsm,
