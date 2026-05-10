@@ -6,7 +6,7 @@ goal: "Close out the integrated Presentation Asset Wiring batch with `/story-don
 start: "2026-05-21"
 end: "2026-06-03"
 generated: "2026-05-07"
-updated: "2026-05-10"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600; S10-CARRY-001 closure per PROMPT 601-RETRY
+updated: "2026-05-10"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600; S10-CARRY-001 closure per PROMPT 601-RETRY; S10-PAW-001 closure per PROMPT 598-RETRY; S10-TD-001 closure per PROMPT 611; S10-POLISH-002 closure per PROMPT 621
 stage: "Polish"
 scope: "Polish slice — close out PAW asset wiring, drain test-fixture and plugin-registration tech debt, start targeted visual UI chrome — not broad production / public release / full game completion"
 status: "active"
@@ -94,25 +94,27 @@ stories:
     name: "PAW-002..PAW-006 /story-done close-out batch"
     file: ""
     priority: must-have
-    status: ready
+    status: done
     owner: "UI/client programmer + orchestrator"
     estimate_days: 1.50
     blocker: ""
-    completed: ""
+    completed: "2026-05-10"
     notes:
       - "From production/sprints/sprint-10.md Sprint 10 plan."
+      - "/story-done PROMPT 598-RETRY. Verdict COMPLETE WITH NOTES. 5/5 child stories already Status: Complete (PAW-002 40a9f72, PAW-003 792a9d8, PAW-004 a7e397a, PAW-005 7782c6f, PAW-006 724470e). 5/5 integration test files exist on disk under tests/integration/presentation/. PROMPT 605 / 7865bae restored PAW-003+PAW-005 test files — unblocks the prior BLOCKED verdict from PROMPT 598's first run. AssetWiringPlugin registered at 8932d8c (PROMPT 582); asset path drift repaired at 69c88b0 (PROMPT 589). ADVISORY: friend-game accept-risk waivers on placeholder PNGs and no manual visual capture (per child stories Tech Debt sections); not a public-release-readiness or final-art completion claim."
 
   - id: "S10-TD-001"
     name: "Test-fixture cascade-fail repair (14 fixtures)"
     file: "production/epics/playable-client/story-009-test-fixture-cascade-fail-repair.md"
     priority: must-have
-    status: ready
+    status: done
     owner: "server gameplay programmer"
     estimate_days: 1.50
     blocker: ""
-    completed: ""
+    completed: "2026-05-10"
     notes:
       - "From production/sprints/sprint-10.md Sprint 10 plan."
+      - "/story-done PROMPT 611. Verdict COMPLETE WITH NOTES. 4/4 ACs passing on commits 7075da7 / 4b0c456 / c11d1b6 / bb51463 / 7c8f400 (all on main); pre-cascade prep bbdbcd6 + 24e8095 grandfathered. PROMPT 606 verification: hand_ui_draft_initial_grid_test 6/6, shop_auction_ui_shop_panel_test 9/9, shop_auction_ui_auction_activation_test 7/7. Lean review mode → QL-TEST-COVERAGE + LP-CODE-REVIEW skipped. ADVISORY deviations: retroactive story authoring, AC3 test-helper in production source (placeholder_assets_for_tests in client/src/asset_wiring.rs, #[cfg(test)] callers only), AC scope expansion 14→~57 fixtures, AC4 evidence doc deferred to follow-up prompt."
 
   - id: "S10-TD-002"
     name: "Plugin-registration audit and dead-plugin sweep"
@@ -156,13 +158,14 @@ stories:
     name: "Shop/Auction panel chrome wiring"
     file: "production/epics/shop-auction-ui/story-014-panel-chrome-mvp.md"
     priority: must-have
-    status: ready
+    status: done
     owner: "UI/client programmer"
     estimate_days: 1.25
     blocker: ""
-    completed: ""
+    completed: "2026-05-10"
     notes:
       - "From production/sprints/sprint-10.md Sprint 10 plan."
+      - "/story-done verdict 2026-05-10 (PROMPT 621): COMPLETE WITH NOTES — 7/7 ACs (AC-1/2/4/5/6 PASS; AC-3/AC-7 manual screenshot DEFERRED per friend-game-lite paperwork pattern). Integration test chrome_wiring_test.rs 4/4 pass; SAU-007 (7/7) + SAU-008 (6/6) regression intact. ADVISORY: auction panel reuses SHOP_PANEL_CHROME_ASSET (PAW-TD-003-a accept-risk); auction border ramp tiles not wired (out of scope)."
 
   - id: "S10-POLISH-003"
     name: "Lobby visual chrome — class carousel + portraits + slot indicators"

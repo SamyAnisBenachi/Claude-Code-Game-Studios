@@ -2393,3 +2393,93 @@ All three are parallel-safe (different file scopes: `client/src/presentation/boa
 
 - **619+** = next free for new emit
 - 619 = Finding B targeted repair (drafted only after user retest + 612/616 cherry-picks land + new server logs surface peer_id-or-sender evidence)
+
+---
+
+## State Snapshot 2026-05-10 night-3 (Sprint 10 wave 3 — runtime validation + Finding D discovery — HEAD `fb30734`)
+
+### Commits added to `main` since last snapshot at `bceec60`
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `89d048d` | PROMPT 619 / cherry-pick 612 | BoardLocalPlayer init from ClientSessionIdentity on handshake-only path (Finding A repair) |
+| `fb30734` | PROMPT 620 / cherry-pick 617 | S10-POLISH-002 panel chrome wiring (4 files: client/src/ui/shop_auction/mod.rs +5, Cargo.toml +4, chrome_wiring_test.rs new 147 lines, evidence doc new 109 lines) |
+
+### Sprint 10 Must Have status — 4/6 done + 1 awaiting closure paperwork
+
+| Story | Status |
+|---|---|
+| ✅ S10-PAW-001, S10-TD-002, S10-CARRY-001, S10-TD-001 | done |
+| ⏳ S10-POLISH-001 | dev-story 618 in flight (Codex worker, HUD chrome — `hud_resolution_dim_test.rs` test file being authored per IDE-opened-file context) |
+| ⏳ S10-POLISH-002 | substantive dev-story integrated as `fb30734`; `/story-done` closure 621 emitted, runnable |
+
+### Finding A — VALIDATED AT RUNTIME
+
+PROMPT 619 cherry-pick of 612 fixed the `placement reveal received before local player id was known` warning. Runtime validation: client logs in launch sessions 185316, 184002, 185436 all show `BoardLocalPlayer initialized from ClientSessionIdentity (handshake-only path) player_id=PlayerId(N)` for both clients. Warning count = **0** across all post-fix sessions (vs 8 occurrences in pre-fix launch-528/154928 session). Fix confirmed live and effective.
+
+### Finding B — STILL EVIDENCE-DEFERRED (stale binary problem)
+
+Server binary issue:
+- `target/msvc-local/debug/server.exe` mtime: `May 10 13:59` (pre-`9bfb37c` observability commit)
+- `target/msvc-local/debug/deps/server.exe` mtime: `May 10 16:53` (post-`9bfb37c`, has observability)
+- Cargo's copy step `deps/ → parent/` failed silently (likely file lock from running server.exe)
+- Multiple user retest attempts (18:31, 18:40, 18:54) all use the stale parent-dir binary
+- All test sessions show ZERO `send_card_acquired enter` traces — confirms binary is pre-observability
+- BUT `start_of_turn_dispatch_system not yet implemented` warns DO fire, meaning the binary IS post-PROMPT 588 (so it's between commits f06271a and 9bfb37c)
+
+**Resolution path** for user: manual file copy to bypass cargo's broken copy step:
+```
+taskkill /F /IM server.exe 2>nul
+cp target/msvc-local/debug/deps/server.exe target/msvc-local/debug/server.exe
+```
+OR force clean rebuild:
+```
+taskkill /F /IM server.exe 2>nul
+rm -f target/msvc-local/debug/server.exe
+cargo build -p server
+```
+
+**Status**: PROMPT 622 (Finding B targeted repair) BLOCKED on rebuild + retest evidence. User aware of unblock procedure.
+
+### Finding D — NEW — Class-Confirm Silent Send Drop (lobby silent-Some-iter_mut anti-pattern)
+
+User report: lobby class-pick sometimes stuck at "Confirming..." indefinitely; user must restart game to escape. Reproduction is intermittent.
+
+**Diagnostic from session 185316 (May 10 17:53–17:54, the stuck case)**:
+- Both clients connected and reached past handshake (`BoardLocalPlayer initialized from ClientSessionIdentity` fired for both with correct player IDs)
+- Server `snapshot_sent registered for player_id=1 (fresh=true)` AND `player_id=2 (fresh=true)` at 17:53:21
+- ZERO `C2SClassChoice` events server-side (no `S2CClassLocked` broadcast either)
+- ZERO class-related events client-side (after BoardLocalPlayer init, complete log silence)
+- Server log ends with 60 seconds of `acquisition_tick` spam (server alive but idle, no game start)
+
+**Root cause located** at `client/src/ui/lobby.rs:451-494` — `send_lobby_commands_system` has 4 sites with the silent-skip pattern (different shape from PROMPT 568's `single_mut()` fixes — uses `iter_mut().next()`):
+
+```rust
+LobbyCommand::CreateRoom    => if let Some(mut sender) = create_room.iter_mut().next()    { sender.send::<ReliableChannel>(...); }   // line 461
+LobbyCommand::JoinRoom      => if let Some(mut sender) = join_room.iter_mut().next()      { sender.send::<ReliableChannel>(...); }   // line 471
+LobbyCommand::SelectClass   => if let Some(mut sender) = select_class.iter_mut().next()   { sender.send::<ReliableChannel>(...); }   // line 479
+LobbyCommand::ConfirmClass  => if let Some(mut sender) = confirm_class.iter_mut().next()  { sender.send::<ReliableChannel>(...); }   // line 486
+```
+
+When `iter_mut().next()` returns `None` (no sender entity exists yet — race condition during transient connection state), the send is silently skipped. Plus `sender.send()` returns `Result<(), SendError>` but the result is discarded — silent on Err too. Double silent-drop pattern.
+
+PROMPT 608 v2 had already flagged these sites as "different-shape silent sites (deferred tech debt) — separate prompt warranted". Finding D escalates them to actionable: same family as Finding B Suspect 1, fixable with the canonical PROMPT 568/575/584 hardening pattern adapted for the iter_mut().next() shape.
+
+**Repair**: PROMPT 622 (drafted in this state update, parallel-safe with Finding B rebuild path) — replaces silent skip with explicit `match` + `tracing::warn!` on missing sender + `tracing::error!` on send Err. Mirrors C2S send-Err observability style established by PROMPT 568.
+
+### Format violations recurring
+
+PROMPT 619 worker delimiter rendered as 1 row of 21 hashes (vs 3 × 51 spec). PROMPT 620 worker delimiter rendered as 3 × 51 hashes ✓ (first compliant rendering this batch). Pattern slowly normalizing.
+
+### Currently launchable
+
+- **618** (`/dev-story` POLISH-001 — Codex worker, HUD visual chrome) — in flight per IDE-opened-file context
+- **621** (`/story-done` POLISH-002 — Claude Code skill, closure paperwork) — runnable now
+- **622** (Finding D repair — Codex worker, lobby silent-Some-iter_mut hardening) — runnable now, parallel-safe with all of above
+- **Server rebuild + Finding B retest** — user-side action, blocking PROMPT 623 (Finding B targeted repair)
+
+### Next free prompt number
+
+- **623+** = next free for new emit
+- 623 = Finding B targeted repair (drafted after rebuild + retest evidence surfaces)
+- 624 = `/story-done` POLISH-001 (drafted after 618 returns + cherry-pick lands)

@@ -2,7 +2,7 @@
 
 > **Epic**: Shop/Auction UI
 > **Story ID**: S10-POLISH-002
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation (Polish)
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -491,3 +491,23 @@ Pull condition expectations:
       accessibility completion, playtest/fun-hypothesis validation,
       or full asset/content production.
 - [ ] No closure of S8-QA-001-W1, QA-COND-0005, or QA-COND-0006.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-10 (PROMPT 621 `/story-done` verdict)
+**Verdict**: COMPLETE WITH NOTES
+**Criteria**: 7/7 — AC-1, AC-2, AC-4, AC-5, AC-6 PASS; AC-3, AC-7 PARTIAL/DEFERRED (manual two-client friend-game route screenshot capture pending; documented inline in evidence doc as friend-game-lite paperwork pattern, precedent S10-TD-001).
+**Integration commit**: `fb30734` (PROMPT 620 cherry-pick of PROMPT 617) on `origin/main`.
+**Test Evidence**:
+- Automated: `tests/integration/shop_auction_ui/chrome_wiring_test.rs` — 4/4 pass (shop panel root, auction panel root, bid buttons, shop slots all carry non-default `ImageNode.image` after `OnEnter(ClientState::InSession)`).
+- Regression: `shop_auction_ui_auction_settlement_test` 7/7 pass; `shop_auction_ui_reconnect_late_message_test` 6/6 pass (SAU-007 + SAU-008 intact).
+- Manual: `production/qa/evidence/sprint-10-shop-auction-chrome-evidence.md` (walkthrough doc; live screenshots pending live two-client run, friend-game-lite paperwork pattern).
+**Deviations (ADVISORY only — none blocking)**:
+- AC-3 / AC-7 manual screenshot deferred (friend-game-lite paperwork pattern; documented inline in evidence doc).
+- Auction panel root reuses `SHOP_PANEL_CHROME_ASSET` constant vs a dedicated auction-specific chrome constant (PAW-TD-003-a accept-risk for friend-game scope; carried forward, not new tech debt).
+- Auction border ramp tiles not wired (no spawn site in `client/src/ui/shop_auction/`, no asset constant; out of scope for MVP verification).
+**Code Review**: Skipped — Lean review mode (LP-CODE-REVIEW gate not spawned per `/story-done` Phase 5 lean rule).
+**QA Coverage Gate**: Skipped — Lean review mode (QL-TEST-COVERAGE gate not spawned per `/story-done` Phase 4b lean rule).
+**Manifest staleness**: Story manifest version 2026-05-05 matches current `docs/architecture/control-manifest.md` baseline — no staleness flag.
