@@ -1,7 +1,7 @@
 # Story 007: Manual Browser GAME_OVER Evidence Closure
 
 > **Epic**: Playable Client
-> **Status**: Blocked - depends on result screen and acknowledgement handshake
+> **Status**: Complete
 > **Layer**: Polish / QA Evidence
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
@@ -302,3 +302,13 @@ This story is a ready evidence package, but it cannot be assigned until
 S9-RS-002 and S9-RS-003 are complete or explicitly replaced by
 producer-approved fallbacks. This story closes S8-QA-001-W1 only with actual
 captured manual/browser or native two-client evidence.
+
+---
+
+## Completion Notes (Accepted-Risk Closure 2026-05-10)
+
+- Closed accepted-risk friend-game-lite per PROMPT 572 user authorization 2026-05-10.
+- S8-QA-001-W1 manual/browser two-client GAME_OVER gap remains OPEN and explicitly carried.
+- QA-COND-0005 (Standard-tier accessibility) and QA-COND-0006 (playtest fun-hypothesis validation) remain accepted-risk; not closed by this entry.
+- No public release readiness, full game completion, broad accessibility completion, full playable-client manual QA, or playtest validation is claimed.
+- Existing automated regressions 16/16 pass at e26e240 remain the closure evidence; no manual two-client GUI route was executed.

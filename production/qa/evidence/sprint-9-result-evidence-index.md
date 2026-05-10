@@ -95,3 +95,9 @@ Resolution path: Human operator executes the route per
 | `native-friend-game-operator-controls-evidence.md` | S9-NATIVE-001 operator controls evidence |
 | `sprint-9-manual-evidence-harness-prep.md` | Harness prep and gate checklist (planning) |
 | `manual-friend-game-evidence-runbook.md` | Route execution runbook for human operator |
+
+---
+
+## Accepted-Risk Closure Note (2026-05-10)
+
+S9-QA-001 was closed accepted-risk friend-game-lite on 2026-05-10 per PROMPT 572 user authorization. Closure evidence remains the existing automated regressions 16/16 pass at e26e240; no manual two-client GUI route was executed. S8-QA-001-W1 remains OPEN and explicitly carried. QA-COND-0005 (Standard-tier accessibility) and QA-COND-0006 (playtest fun-hypothesis validation) remain accepted-risk and are not closed by this entry. No public release readiness, full game completion, broad accessibility completion, full playable-client manual QA, or playtest validation is claimed.
