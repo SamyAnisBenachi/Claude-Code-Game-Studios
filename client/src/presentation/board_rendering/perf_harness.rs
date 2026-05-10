@@ -48,14 +48,6 @@ impl Plugin for BoardRenderingPerfHarnessPlugin {
     }
 }
 
-pub struct BoardWasmPerfHarnessPlugin;
-
-impl Plugin for BoardWasmPerfHarnessPlugin {
-    fn build(&self, app: &mut App) {
-        add_board_rendering_perf_harness(app);
-    }
-}
-
 fn add_board_rendering_perf_harness(app: &mut App) {
     app.init_resource::<BoardRenderingPerfHarnessState>()
         .init_resource::<Assets<Image>>()
