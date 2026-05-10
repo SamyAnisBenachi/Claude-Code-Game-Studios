@@ -124,7 +124,7 @@ prompt and pass `/story-readiness`:
 | S10-TD-001 | `production/epics/playable-client/story-009-test-fixture-cascade-fail-repair.md` (NEW) |
 | S10-TD-002 | `production/epics/playable-client/story-010-plugin-registration-audit.md` (NEW) |
 | S10-CARRY-001 | No new story file required — orchestrator updates `sprint-status.yaml` and references existing S9 story files |
-| S10-POLISH-001 | `production/epics/hud/story-011-hud-visual-chrome-mvp.md` (NEW) |
+| S10-POLISH-001 | `production/epics/hud/story-013-hud-visual-chrome-mvp.md` (NEW — slot collision: `story-011-` and `story-012-` already occupied in the HUD epic by Sprint 6 / QA-COND-0005 accessibility stories; PROMPT 614 follow-up authored at `story-013-`) |
 | S10-POLISH-002 | `production/epics/shop-auction-ui/story-014-panel-chrome-mvp.md` (NEW) |
 | S10-POLISH-003 | `production/epics/game-session-system/story-011-lobby-visual-chrome-mvp.md` (NEW) |
 | S10-TD-003 | No new story file required — doc-only sweep |
