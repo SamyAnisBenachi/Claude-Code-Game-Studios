@@ -2069,6 +2069,10 @@ pub fn handle_draft_initial_slot_click_system(
     mut flash_writer: MessageWriter<ShopAuctionGoldCounterFlashRequested>,
 ) {
     for click in clicks.read() {
+        info!(
+            "DRAFT_INITIAL click received — handler=handle_draft_initial_slot_click_system, click_entity={:?}",
+            click.slot
+        );
         if !draft_initial_active(&mode, &draft_state) {
             continue;
         }
@@ -2096,8 +2100,16 @@ pub fn handle_draft_initial_slot_click_system(
         }
 
         let message = C2SPurchaseCard { card_id: card.0 };
-        if let Ok(mut sender) = senders.single_mut() {
-            sender.send::<ReliableChannel>(message.clone());
+        match senders.single_mut() {
+            Ok(mut sender) => {
+                sender.send::<ReliableChannel>(message.clone());
+            }
+            Err(e) => {
+                error!(
+                    "C2S send failed: type=C2SPurchaseCard, handler=handle_draft_initial_slot_click_system, query_err={:?}",
+                    e
+                );
+            }
         }
         outbound.purchase_cards.push(message);
         commands
@@ -2129,8 +2141,16 @@ pub fn handle_draft_initial_ready_click_system(
         let message = C2SSignalReady {
             retract: draft_state.ready_signalled,
         };
-        if let Ok(mut sender) = senders.single_mut() {
-            sender.send::<ReliableChannel>(message.clone());
+        match senders.single_mut() {
+            Ok(mut sender) => {
+                sender.send::<ReliableChannel>(message.clone());
+            }
+            Err(e) => {
+                error!(
+                    "C2S send failed: type=C2SSignalReady, handler=handle_draft_initial_ready_click_system, query_err={:?}",
+                    e
+                );
+            }
         }
         outbound.ready_signals.push(message);
         draft_state.ready_signalled = !draft_state.ready_signalled;
@@ -2298,8 +2318,16 @@ pub fn handle_shop_slot_click_system(
         }
 
         let message = C2SPurchaseCard { card_id: card.0 };
-        if let Ok(mut sender) = senders.single_mut() {
-            sender.send::<ReliableChannel>(message.clone());
+        match senders.single_mut() {
+            Ok(mut sender) => {
+                sender.send::<ReliableChannel>(message.clone());
+            }
+            Err(e) => {
+                error!(
+                    "C2S send failed: type=C2SPurchaseCard, handler=handle_shop_slot_click_system, query_err={:?}",
+                    e
+                );
+            }
         }
         outbound.purchase_cards.push(message);
         *slot_state = ShopSlotState::PendingPurchase;
@@ -2346,8 +2374,16 @@ pub fn handle_shop_refresh_click_system(
         }
 
         let message = C2SRefreshShop {};
-        if let Ok(mut sender) = senders.single_mut() {
-            sender.send::<ReliableChannel>(message.clone());
+        match senders.single_mut() {
+            Ok(mut sender) => {
+                sender.send::<ReliableChannel>(message.clone());
+            }
+            Err(e) => {
+                error!(
+                    "C2S send failed: type=C2SRefreshShop, handler=handle_shop_refresh_click_system, query_err={:?}",
+                    e
+                );
+            }
         }
         outbound.refresh_shops.push(message);
         shop_state.refresh_in_flight = true;
@@ -2388,8 +2424,16 @@ pub fn handle_shop_ready_click_system(
         let message = C2SSignalReady {
             retract: shop_state.ready_signalled,
         };
-        if let Ok(mut sender) = senders.single_mut() {
-            sender.send::<ReliableChannel>(message.clone());
+        match senders.single_mut() {
+            Ok(mut sender) => {
+                sender.send::<ReliableChannel>(message.clone());
+            }
+            Err(e) => {
+                error!(
+                    "C2S send failed: type=C2SSignalReady, handler=handle_shop_ready_click_system, query_err={:?}",
+                    e
+                );
+            }
         }
         outbound.ready_signals.push(message);
         shop_state.ready_signalled = !shop_state.ready_signalled;
@@ -2441,8 +2485,16 @@ pub fn handle_auction_bid_button_click_system(
         }
 
         let message = C2SPlaceBid { amount };
-        if let Ok(mut sender) = senders.single_mut() {
-            sender.send::<ReliableChannel>(message.clone());
+        match senders.single_mut() {
+            Ok(mut sender) => {
+                sender.send::<ReliableChannel>(message.clone());
+            }
+            Err(e) => {
+                error!(
+                    "C2S send failed: type=C2SPlaceBid, handler=handle_auction_bid_button_click_system, query_err={:?}",
+                    e
+                );
+            }
         }
         outbound.place_bids.push(message);
         auction_state.in_flight_bid_amount = Some(amount);
