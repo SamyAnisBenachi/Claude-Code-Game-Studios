@@ -2208,6 +2208,8 @@ dependencies = [
  "serde",
  "serde_json",
  "shared",
+ "tracing",
+ "tracing-subscriber",
  "wasm-bindgen",
  "web-sys",
 ]
