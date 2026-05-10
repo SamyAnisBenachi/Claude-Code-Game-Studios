@@ -1271,6 +1271,14 @@ fn remove_unit_from_board_state(world: &mut World, unit: Entity, position: Board
 }
 
 fn drain_kill_gold(world: &mut World, sub_step: u8) {
+    // Read kill_gold_reward once before the loop so the trace amount and the
+    // applied amount are guaranteed to match (EC16 / TR-ECO-006).
+    let kill_gold_reward = world
+        .get_resource::<ServerGameConfig>()
+        .map_or(SharedGameConfig::default().kill_gold_reward, |config| {
+            config.kill_gold_reward
+        });
+
     let records = world
         .get_resource_mut::<CombatKillLog>()
         .map(|mut kill_log| kill_log.drain_for_sub_step(sub_step))
@@ -1281,10 +1289,10 @@ fn drain_kill_gold(world: &mut World, sub_step: u8) {
             .resource_mut::<CombatResolutionTrace>()
             .push(CombatTraceEntry::GoldAwarded {
                 player: record.killer_player_id,
-                amount: 1,
+                amount: kill_gold_reward,
                 reason: GoldAwardReason::Kill,
             });
-        award_kill_gold(world, record.killer_player_id);
+        award_kill_gold(world, record.killer_player_id, kill_gold_reward);
     }
 }
 
@@ -1292,14 +1300,14 @@ fn drain_ss3_kill_gold(world: &mut World) {
     drain_kill_gold(world, 3);
 }
 
-fn award_kill_gold(world: &mut World, player: PlayerId) {
+fn award_kill_gold(world: &mut World, player: PlayerId, amount: u32) {
     let Some(mut economies) = world.get_resource_mut::<PlayerEconomies>() else {
         return;
     };
     let Some(economy) = economies.0.get_mut(&player) else {
         return;
     };
-    economy_api::apply_gold_award(economy, 1);
+    economy_api::apply_gold_award(economy, amount);
 }
 
 fn collect_combat_units(world: &mut World) -> Vec<CombatUnit> {

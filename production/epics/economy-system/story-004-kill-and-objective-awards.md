@@ -57,29 +57,29 @@
 
 - [ ] **Sprint 9 conditional gate is preserved**: Given this story is in the Sprint 9 Conditional Backlog, when implementation is considered, then the worker confirms Sprint 9 evidence shows a concrete reward-loop gameplay issue per the pull condition in sprint-9.md, and no Sprint 9 Must Have story status is changed by this story.
 
-- [ ] **Stale event contract is absent**: Given the implementation plan is reviewed, when reward events are named, then it uses current production contracts only: `CombatKillLog`, `AwardGold`, `ManaCapIncreased`, and `ObjectiveDestroyed { target_player_id, lane, was_fake }`. No standalone kill-award production message and no attacker, defender, or reward-selection fields are added to `ObjectiveDestroyed`.
+- [x] **Stale event contract is absent**: Given the implementation plan is reviewed, when reward events are named, then it uses current production contracts only: `CombatKillLog`, `AwardGold`, `ManaCapIncreased`, and `ObjectiveDestroyed { target_player_id, lane, was_fake }`. No standalone kill-award production message and no attacker, defender, or reward-selection fields are added to `ObjectiveDestroyed`.
 
-- [ ] **EC16 / TR-ECO-006 kill gold**: Given a unit is killed during combat, when `resolve_combat` drains the matching kill record, then exactly one `api::apply_gold_award(killer_economy, config.kill_gold_reward)` equivalent is applied for that kill, a `GoldAwarded { player, amount, reason: Kill }` resolution-log entry is produced, and the killed player's gold is unchanged.
+- [x] **EC16 / TR-ECO-006 kill gold**: Given a unit is killed during combat, when `resolve_combat` drains the matching kill record, then exactly one `api::apply_gold_award(killer_economy, config.kill_gold_reward)` equivalent is applied for that kill, a `GoldAwarded { player, amount, reason: Kill }` resolution-log entry is produced, and the killed player's gold is unchanged.
 
-- [ ] **Dual kill accumulation**: Given two kill records for the same killer are drained in one RESOLUTION, when kill gold is applied, then the killer gains exactly `2 * config.kill_gold_reward` and receives two chronological `GoldAwarded` resolution-log entries or one explicitly documented equivalent that preserves both reward facts.
+- [x] **Dual kill accumulation**: Given two kill records for the same killer are drained in one RESOLUTION, when kill gold is applied, then the killer gains exactly `2 * config.kill_gold_reward` and receives two chronological `GoldAwarded` resolution-log entries or one explicitly documented equivalent that preserves both reward facts.
 
-- [ ] **EC17 / TR-ECO-006 objective gold**: Given an opponent objective is destroyed, when the consequence path completes, then exactly one objective gold award of `config.objective_gold_reward` is applied to the attacker, and a `GoldAwarded { player, amount, reason: ObjectiveDestroyed }` resolution-log entry is produced.
+- [x] **EC17 / TR-ECO-006 objective gold**: Given an opponent objective is destroyed, when the consequence path completes, then exactly one objective gold award of `config.objective_gold_reward` is applied to the attacker, and a `GoldAwarded { player, amount, reason: ObjectiveDestroyed }` resolution-log entry is produced.
 
-- [ ] **EC11 / TR-ECO-006 self-inflicted guard**: Given `attacker_player == target_player_id`, when the objective destruction consequence path runs, then no objective gold is awarded, no `AwardGold` consumer or direct combat path can add gold for that event, and objective loss counters remain owned by Objective/RSM logic.
+- [x] **EC11 / TR-ECO-006 self-inflicted guard**: Given `attacker_player == target_player_id`, when the objective destruction consequence path runs, then no objective gold is awarded, no `AwardGold` consumer or direct combat path can add gold for that event, and objective loss counters remain owned by Objective/RSM logic.
 
-- [ ] **No duplicate objective reward**: Given both Objective System `AwardGold` messages and combat-side direct objective award paths exist in current code, when the story is implemented, then each objective destruction can mutate `PlayerEconomies` at most once. If a new `AwardGold` consumer is added, the direct path is guarded, removed, or otherwise proven not to double-award by tests.
+- [x] **No duplicate objective reward**: Given both Objective System `AwardGold` messages and combat-side direct objective award paths exist in current code, when the story is implemented, then each objective destruction can mutate `PlayerEconomies` at most once. If a new `AwardGold` consumer is added, the direct path is guarded, removed, or otherwise proven not to double-award by tests.
 
-- [ ] **Fake mana-cap reward applies once**: Given `ManaCapIncreased { player, amount }` is emitted for a fake-objective reward, when the reward-loop polish runs, then Economy applies `api::increment_mana_cap` once per message amount up to `GameConfig.mana_cap_max`, and the updated `mana_cap` is visible to the next `DraftStarted` mana ramp.
+- [x] **Fake mana-cap reward applies once**: Given `ManaCapIncreased { player, amount }` is emitted for a fake-objective reward, when the reward-loop polish runs, then Economy applies `api::increment_mana_cap` once per message amount up to `GameConfig.mana_cap_max`, and the updated `mana_cap` is visible to the next `DraftStarted` mana ramp.
 
-- [ ] **Fake free-card fallback gold applies once**: Given a fake reward resolves to the hand-full `AwardGold +1` fallback, when the reward-loop polish runs, then that fallback gold is applied exactly once and does not reuse `objective_gold_reward`.
+- [x] **Fake free-card fallback gold applies once**: Given a fake reward resolves to the hand-full `AwardGold +1` fallback, when the reward-loop polish runs, then that fallback gold is applied exactly once and does not reuse `objective_gold_reward`.
 
-- [ ] **Client reward visibility remains coherent**: Given kill gold, objective gold, fake fallback gold, or mana-cap increase changes `PlayerEconomies`, when the reward is applied, then the implementation either enqueues the necessary `S2CGoldUpdate` / `S2CGoldBroadcast` messages for current client visibility or documents and tests that the existing `S2CResolutionEvent::GoldAwarded` plus next DRAFT economy update is the intended friend-game-visible path.
+- [x] **Client reward visibility remains coherent**: Given kill gold, objective gold, fake fallback gold, or mana-cap increase changes `PlayerEconomies`, when the reward is applied, then the implementation either enqueues the necessary `S2CGoldUpdate` / `S2CGoldBroadcast` messages for current client visibility or documents and tests that the existing `S2CResolutionEvent::GoldAwarded` plus next DRAFT economy update is the intended friend-game-visible path.
 
-- [ ] **Interest snapshot includes all rewards**: Given kill/objective/fake fallback rewards are applied during RESOLUTION, when `on_resolution_complete` captures `InterestSnapshots`, then the snapshot includes those rewards before next DRAFT income is calculated.
+- [x] **Interest snapshot includes all rewards**: Given kill/objective/fake fallback rewards are applied during RESOLUTION, when `on_resolution_complete` captures `InterestSnapshots`, then the snapshot includes those rewards before next DRAFT income is calculated.
 
-- [ ] **Bevy 0.18 API check**: Given touched Rust files are reviewed, when searching the affected files, then no `EventReader`, `EventWriter`, `Events<`, or `add_event` usage is introduced.
+- [x] **Bevy 0.18 API check**: Given touched Rust files are reviewed, when searching the affected files, then no `EventReader`, `EventWriter`, `Events<`, or `add_event` usage is introduced.
 
-- [ ] `cargo check -p server` passes.
+- [x] `cargo check -p server` passes.
 
 ---
 
@@ -170,7 +170,7 @@ Suggested test shape:
   - `tests/integration/combat/resolution_event_log_test.rs`
   - `server/tests/economy_interest_snapshot_test.rs`
 
-**Status**: [ ] Not yet created for this repaired story scope.
+**Status**: [x] `tests/integration/economy/reward_loop_awards_test.rs` — 12/12 PASS (covers EC11 self-inflicted guard, EC16 kill gold via config, dual-kill accumulation, EC17 objective gold, no-duplicate guard, fake mana-cap clamp + visibility to next DRAFT ramp, fake hand-full +1 fallback, AwardGold amount independence, RewardConsumers-before-ResolutionEnd ordering, unknown-player tolerance).
 
 ---
 

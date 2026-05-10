@@ -23,7 +23,6 @@ use crate::foundation::config::{CardCatalog, GameConfig};
 use crate::foundation::rng::ServerRng;
 
 const LOSS_THRESHOLD: u32 = 2;
-const DEFAULT_OBJECTIVE_GOLD_REWARD: u32 = 3;
 const FAKE_OBJECTIVE_HAND_FULL_GOLD_REWARD: u32 = 1;
 /// Unfiltered pool draw used by fake objective FreeCardPick rewards.
 pub const FAKE_REWARD_POOL_FILTER: PoolFilter = PoolFilter {
@@ -352,14 +351,15 @@ pub fn apply_consequence_path(
 
     queue_objective_destroyed(world, defending_player, lane, was_fake);
 
-    if attacker_player != defending_player {
-        emit_award_gold(world, attacker_player);
-
-        if was_fake {
-            emit_fake_objective_destroyed(world, attacker_player);
-            increment_fake_destroyed(world, attacker_player);
-            draw_fake_reward(world, lane, attacker_player);
-        }
+    // Per ECO-004 / control manifest: combat is the exclusive in-RESOLUTION
+    // writer for direct objective gold awards (handled by `award_objective_gold`
+    // in `feature/combat/mod.rs`). The objective-system path here only owns the
+    // fake-reward draw, which may emit `AwardGold` ONLY for the hand-full
+    // FreeCardPick fallback inside `resolve_fake_reward_free_card_pick`.
+    if attacker_player != defending_player && was_fake {
+        emit_fake_objective_destroyed(world, attacker_player);
+        increment_fake_destroyed(world, attacker_player);
+        draw_fake_reward(world, lane, attacker_player);
     }
 
     if !was_fake {
@@ -387,16 +387,6 @@ fn queue_objective_destroyed(
             was_fake,
         });
     }
-}
-
-fn emit_award_gold(world: &mut World, player: PlayerId) {
-    let amount = world
-        .get_resource::<GameConfig>()
-        .map_or(DEFAULT_OBJECTIVE_GOLD_REWARD, |config| {
-            config.objective_gold_reward
-        });
-
-    emit_award_gold_amount(world, player, amount);
 }
 
 fn emit_award_gold_amount(world: &mut World, player: PlayerId, amount: u32) {
