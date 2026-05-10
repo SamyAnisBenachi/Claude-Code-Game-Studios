@@ -2564,6 +2564,7 @@ pub fn sync_draft_initial_panel_system(
                 Option<&DraftInitialSlotCard>,
                 &mut DraftInitialSlotState,
                 &mut Visibility,
+                &mut BackgroundColor,
             ),
             With<DraftInitialSlotIndex>,
         >,
@@ -2627,7 +2628,7 @@ pub fn sync_draft_initial_panel_system(
 
     {
         let mut slots = visibility_sets.p1();
-        for (slot_entity, card, mut slot_state, mut visibility) in &mut slots {
+        for (slot_entity, card, mut slot_state, mut visibility, mut background) in &mut slots {
             if !active || card.is_none() {
                 *visibility = Visibility::Hidden;
                 continue;
@@ -2640,6 +2641,12 @@ pub fn sync_draft_initial_panel_system(
                     .entity(slot_entity)
                     .remove::<PendingDraftInitialPurchase>();
             }
+            *background = match *slot_state {
+                DraftInitialSlotState::Pending => {
+                    BackgroundColor(Color::srgba(0.18, 0.28, 0.40, 0.95))
+                }
+                _ => BackgroundColor(Color::srgba(0.08, 0.12, 0.16, 0.9)),
+            };
         }
     }
 

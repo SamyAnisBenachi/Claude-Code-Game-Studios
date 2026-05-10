@@ -243,6 +243,40 @@ fn sau_002_placement_phase_dismisses_panel_and_blocks_purchase_sends() {
         .is_empty());
 }
 
+#[test]
+fn sau_002_pending_slot_visual_differs_from_available_within_one_tick() {
+    let mut app = active_draft_app(5, true);
+    let baseline_slot = draft_slot(&app, 1);
+    let pending_slot = draft_slot(&app, 0);
+
+    let baseline_color = slot_background_color(&app, baseline_slot);
+
+    click_slot(&mut app, pending_slot);
+
+    assert_eq!(
+        app.world().get::<DraftInitialSlotState>(pending_slot),
+        Some(&DraftInitialSlotState::Pending),
+        "click must transition slot to Pending state"
+    );
+    assert_eq!(
+        app.world().get::<DraftInitialSlotState>(baseline_slot),
+        Some(&DraftInitialSlotState::Available),
+        "untouched slot must remain Available"
+    );
+
+    let pending_color = slot_background_color(&app, pending_slot);
+    let post_baseline_color = slot_background_color(&app, baseline_slot);
+
+    assert_eq!(
+        post_baseline_color, baseline_color,
+        "untouched Available slot must keep its baseline BackgroundColor"
+    );
+    assert_ne!(
+        pending_color, baseline_color,
+        "Pending slot BackgroundColor must differ from Available baseline within one tick of click"
+    );
+}
+
 fn active_draft_app(gold: u32, economy_initialized: bool) -> App {
     let mut app = app_in_session(gold, economy_initialized);
     set_phase(&mut app, RoundPhase::DraftInitial);
@@ -253,7 +287,10 @@ fn active_draft_app(gold: u32, economy_initialized: bool) -> App {
 fn app_in_session(gold: u32, economy_initialized: bool) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
     app.add_plugins(ShopAuctionUiPlugin);
     insert_catalog(
         &mut app,
@@ -395,4 +432,11 @@ fn bought_overlay_visibility(app: &App, slot_index: u8) -> Option<&Visibility> {
         .resource::<ShopAuctionUiEntities>()
         .draft_initial_bought_overlays[slot_index as usize];
     app.world().get::<Visibility>(overlay)
+}
+
+fn slot_background_color(app: &App, slot: Entity) -> Color {
+    app.world()
+        .get::<BackgroundColor>(slot)
+        .expect("slot should have a BackgroundColor component")
+        .0
 }
