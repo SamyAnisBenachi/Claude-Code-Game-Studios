@@ -23,8 +23,14 @@ use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
 pub const HUD_DOT_ROWS: usize = 2;
 pub const HUD_DOTS_PER_ROW: usize = 5;
-/// Total HUD entities carrying the `HudEntity` marker (PAW-004: +2 for figurine + timer bar).
-pub const HUD_ENTITY_COUNT: usize = 21;
+/// Total HUD entities carrying the `HudEntity` marker.
+/// PAW-004: +2 for figurine + timer bar (19 → 21).
+/// S10-POLISH-001: +1 for the RESOLUTION dim overlay (21 → 22).
+pub const HUD_ENTITY_COUNT: usize = 22;
+/// Alpha applied to the RESOLUTION dim overlay's BackgroundColor — visibly
+/// dims the underlying HUD without obscuring gold/mana/phase readouts.
+/// Recorded in production/qa/evidence/sprint-10-hud-chrome-evidence.md.
+pub const HUD_DIM_OVERLAY_ALPHA: f32 = 0.45;
 pub const CURRENT_MANA_BAR_WIDTH_PX: f32 = 104.0;
 pub const CURRENT_MANA_BAR_HEIGHT_PX: f32 = 28.0;
 pub const RESERVE_MANA_DIAMOND_SIZE_PX: f32 = 74.0;
@@ -94,6 +100,7 @@ pub struct HudEntities {
     pub reserve_label: Entity,
     pub figurine: Entity,
     pub timer_bar: Entity,
+    pub dim_overlay: Entity,
     pub dots: [[Entity; HUD_DOTS_PER_ROW]; HUD_DOT_ROWS],
 }
 
@@ -246,6 +253,13 @@ pub struct HudFigurine;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HudTimerBar;
 
+/// Marker for the HUD RESOLUTION-phase dim/freeze overlay root entity.
+/// Visibility is governed solely by `sync_dim_overlay_for_resolution_system`
+/// reading `Res<CurrentClientPhase>`. The overlay is pre-pooled at HUD
+/// session entry — never spawned or despawned per phase transition.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudDimOverlay;
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScoreboardDot {
     pub row: ScoreboardRow,
@@ -319,6 +333,7 @@ impl Plugin for HudPlugin {
                     sync_scoreboard_dot_layout_system.in_set(HudSystemSet::StateSync),
                     sync_figurine_image_system.in_set(HudSystemSet::StateSync),
                     sync_dot_image_on_objective_destroyed_system.in_set(HudSystemSet::StateSync),
+                    sync_dim_overlay_for_resolution_system.in_set(HudSystemSet::StateSync),
                 ),
             );
     }
@@ -565,6 +580,35 @@ fn spawn_hud(
         ))
         .id();
 
+    // ── S10-POLISH-001: RESOLUTION dim/freeze overlay ─────────────────────────
+    // Pre-pooled at session entry — visibility flips via
+    // sync_dim_overlay_for_resolution_system reading Res<CurrentClientPhase>.
+    // Full-viewport translucent Node, child of root, spawned hidden.
+    let dim_overlay = commands
+        .spawn((
+            Name::new("HUD Resolution Dim Overlay"),
+            HudEntity,
+            HudDimOverlay,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(0.0),
+                right: Val::Px(0.0),
+                top: Val::Px(0.0),
+                bottom: Val::Px(0.0),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, HUD_DIM_OVERLAY_ALPHA)),
+            Visibility::Hidden,
+            ChildOf(root),
+        ))
+        .id();
+
+    #[cfg(feature = "ui_picking")]
+    commands.entity(dim_overlay).insert(Pickable {
+        should_block_lower: false,
+        is_hoverable: false,
+    });
+
     let dots = spawn_scoreboard_dots(&mut commands, asset_server.as_deref(), root, &config);
 
     commands.insert_resource(HudEntities {
@@ -580,6 +624,7 @@ fn spawn_hud(
         reserve_label,
         figurine,
         timer_bar,
+        dim_overlay,
         dots,
     });
 }
@@ -1125,6 +1170,35 @@ pub fn sync_dot_image_on_objective_destroyed_system(
             }
         }
     }
+}
+
+/// S10-POLISH-001: StateSync — flip the pre-pooled `HudDimOverlay` entity's
+/// `Visibility` to `Visible` while `Phase::Resolution`, `Hidden` otherwise.
+///
+/// Reads `Res<CurrentClientPhase>` only (the resource populated by the existing
+/// single `phase_sink_system`); never reads `MessageReceiver<S2CPhaseChanged>`
+/// directly, never writes to `CurrentClientPhase`, never emits a synthetic
+/// `S2CPhaseChanged`. Guarantees the single-source-of-phase-truth invariant
+/// (TR-HUD-006 + ADR-002).
+///
+/// Visibility flips are instantaneous (HUD-12b BLOCKING) — no `TweenAnim`
+/// or per-frame alpha mutation.
+pub fn sync_dim_overlay_for_resolution_system(
+    current: Res<CurrentClientPhase>,
+    entities: Option<Res<HudEntities>>,
+    mut visibility: Query<&mut Visibility>,
+) {
+    let Some(entities) = entities else {
+        return;
+    };
+
+    let target = if current.phase == RoundPhase::Resolution {
+        Visibility::Visible
+    } else {
+        Visibility::Hidden
+    };
+
+    set_visibility(&mut visibility, entities.dim_overlay, target);
 }
 
 pub fn update_phase_label_round_counter_system(
