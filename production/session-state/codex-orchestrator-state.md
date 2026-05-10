@@ -2483,3 +2483,68 @@ PROMPT 619 worker delimiter rendered as 1 row of 21 hashes (vs 3 × 51 spec). PR
 - **623+** = next free for new emit
 - 623 = Finding B targeted repair (drafted after rebuild + retest evidence surfaces)
 - 624 = `/story-done` POLISH-001 (drafted after 618 returns + cherry-pick lands)
+
+---
+
+## State Snapshot 2026-05-10 night-4 (Sprint 10 wave 4 — Finding B suspects-1-falsified + Finding D located + 5/6 Must Haves done — HEAD `325a2fc`)
+
+### Commits added to `main` since last snapshot at `fb30734`
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `325a2fc` | PROMPT 621 multi-file commit | Combined: state file update (Sprint 10 wave 3 documentation) + PROMPT 621 `/story-done` POLISH-002 closure paperwork (story-014 file edits + sprint-status.yaml flip + active.md extract) + parallel agent's `_build_once.bat` script. Multi-file commit due to parallel-agent staged-files contention pattern (consistent with PROMPT 575/578/580 observations). Substantively all useful work. |
+
+### Sprint 10 Must Have status — 5/6 done
+
+| Story | Status |
+|---|---|
+| ✅ S10-PAW-001, S10-TD-002, S10-CARRY-001, S10-TD-001, S10-POLISH-002 | done |
+| ⏳ S10-POLISH-001 | dev-story 618 in flight (Codex worker, HUD visual chrome — `hud_resolution_dim_test.rs` + evidence doc being authored per IDE-opened-file context) |
+
+After 618 returns + cherry-pick (PROMPT 625) + `/story-done` POLISH-001 (PROMPT 626) → **6/6 Must Haves done** → Sprint 10 close-out sequence (`/smoke-check sprint` → `/team-qa sprint` → `/gate-check`).
+
+### Finding B Suspects 1A + 1B FALSIFIED via runtime evidence
+
+Post-server-rebuild test at `target/launch-528/20260510-190629-server.stdout.log` produced clean Finding B observability data:
+- `send_card_acquired enter` count: **5** (function IS being called for each DRAFT_INITIAL purchase)
+- `DROPPED — peer_id unresolved` count: **0** (peer_id always resolved successfully)
+- `S2C send failed` count: **0** (Lightyear sender always returns Ok)
+- Sample evidence: `send_card_acquired enter player_id=2 peer_id=Some(Raw(127.0.0.1:49874)) card_id=CardId(102) source=DraftInitial` (and 4 similar)
+
+**Server-side dispatch is working correctly.** The 5 cards purchased reach Lightyear's send queue with valid targets. Bug is now confirmed CLIENT-SIDE.
+
+### Finding B v2 — Client-side root cause hypothesis (in-flight diagnostic via PROMPT 623)
+
+Combined evidence: 5 successful server sends + user's "RESERVE 0 CURRENT 0 autant de fois que je suis sensé avoir de cartes" observation = strong signal that hand cards reach client but the rendering pipeline misroutes them to Reserve/Current widgets at PLACEMENT entry.
+
+PROMPT 623 (Claude read-only diagnostic, in flight) traces the client-side S2CCardAcquired → `HandContents.cards` → fan-slot-spawn pipeline + per-card reserve-strip spawn semantics. Hypothesis: spawn system reads `HandContents.cards.len()` instead of `pending_placements.len()` for reserve-strip iteration, causing reserve strips to render per-hand-card instead of per-staged-card.
+
+PROMPT 624 (drafted only after 623 returns) = targeted Finding B repair scoped to the actual confirmed root cause.
+
+### Finding D — Class-Confirm Silent Send Drop — repair in flight via PROMPT 622
+
+Diagnosis from session 185316 (May 10 17:53–17:54 stuck case) located the bug at `client/src/ui/lobby.rs:451-494` (`send_lobby_commands_system`). 4 silent-skip sites with the `if let Some(mut sender) = X.iter_mut().next() { sender.send(...); }` anti-pattern (different shape from PROMPT 568's `single_mut()` fixes; same effect — silent on None). Plus `sender.send()` returns `Result<(), SendError>` discarded — silent on Err too. Double silent-drop pattern.
+
+PROMPT 622 (Codex worker, in flight) replaces all 4 silent-skip sites with explicit `Some(...) else` + `tracing::warn!` on None + explicit `Err(e) => tracing::error!` on send failure. Same canonical shape as PROMPT 568 hardening adapted for the iter_mut().next() shape.
+
+### Currently in flight (per user's parallel launches)
+
+| Prompt | Type | Subject |
+|---|---|---|
+| 618 | Codex worker | `/dev-story` POLISH-001 (HUD visual chrome implementation) |
+| 622 | Codex worker | Finding D repair (lobby silent-send hardening, 4 sites in lobby.rs) |
+| 623 | Claude read-only | Finding B v2 client-side rendering misroute diagnostic |
+
+All three parallel-safe — disjoint file scopes (HUD UI vs lobby UI vs read-only investigation).
+
+### Pattern observation: this session has been a recurring "silent failure" class of bugs
+
+See "Strategic insights" section appended below in conversation context — to be folded into permanent state-file note in next snapshot.
+
+### Next free prompt number
+
+- **624+** = next free for new emit
+- 624 = Finding B targeted repair (drafted after 623 returns)
+- 625 = cherry-pick of 618 (drafted after 618 returns)
+- 626 = `/story-done` POLISH-001 (drafted after 625 lands)
+- 627 = Sprint 10 close-out sequence (`/smoke-check sprint` first, then chain)
