@@ -3373,6 +3373,11 @@ pub fn spawn_shop_auction_ui(
         "Shop Auction Auction Root",
         auction_panel_node(),
     );
+    // Reuses SHOP_PANEL_CHROME_ASSET as a placeholder until an auction-specific
+    // chrome constant lands (PAW-TD-003-a is accept-risk for friend-game scope).
+    commands
+        .entity(auction_panel)
+        .insert(ImageNode::new(asset_server.load(SHOP_PANEL_CHROME_ASSET)));
     let (
         auction_featured_card,
         auction_status_text,
