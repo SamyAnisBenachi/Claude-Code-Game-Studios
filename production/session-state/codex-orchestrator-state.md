@@ -2222,7 +2222,7 @@ This supersedes the prior single-hash-line convention (single `###...` line per 
 - 561–591: emitted, all integrated or properly closed
 - 592–596: emitted Codex worker prompts, mid-flight
 - 597–601: emitted Game Studio skill prompts, mix of launchable-now (597/600/601) and deferred (598/599)
-- **602+** = next free for new emit
+- **619+** = next free for new emit (602–618 emitted in subsequent waves; see late snapshots below)
 
 ---
 
@@ -2300,3 +2300,96 @@ Going forward (PROMPT 605+), the final-line rule explicitly enumerates the canon
 ### Next free prompt number
 
 - **606+** = next free for new emit (605 was cherry-pick of 602; 604 was cherry-pick of 596)
+
+---
+
+## State Snapshot 2026-05-10 night-2 (Sprint 10 progress wave 2 — HEAD `811de8a`)
+
+### Commits added to `main` since last snapshot at `5193133`/`550422a`
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `ce3bc54` | PROMPT 601-RETRY | S10-CARRY-001 closure (Sprint 9 carry-over consolidation done — sprint-status.yaml flip + active.md extract; verification step caught first-run silent-non-persistence) |
+| `7c8f400` | PROMPT 607 | Cherry-pick PROMPT 606 asset-loop test design fix (3 files +30/-13 — HU + SAU asset-loop tests now pass 6/6 + 9/9 + 7/7) |
+| `9826e49` | PROMPT 609 | S10-TD-001 story file authoring (`production/epics/playable-client/story-009-test-fixture-cascade-fail-repair.md` — closes the 14-fixture cascade-fail substantive paperwork gap) |
+| `(impl. 611)` | PROMPT 611 | S10-TD-001 `/story-done` retry — closure on main per `updated:` field comment; sprint-status.yaml `S10-TD-001` row reads `status: done`, `completed: 2026-05-10` |
+| `e2b71e9` | PROMPT 615 follow-up | S10-POLISH-002 story file authoring (`production/epics/shop-auction-ui/story-014-panel-chrome-mvp.md`) — READY per 15/15 readiness checks |
+| `9bfb37c` | PROMPT 616 | Cherry-pick PROMPT 613 server S2C send-Err observability (3 functions hardened: `send_card_acquired`, `send_draft_offering`, `send_shop_slots` — 9 tracing call sites; smart 4→5-style scope expansion in same file) |
+| `811de8a` | PROMPT 614 follow-up | S10-POLISH-001 story file authoring + sprint-10.md path update (used `story-013-hud-visual-chrome-mvp.md` to resolve slot-011 collision with existing `story-011-current-reserve-mana-shapes.md`) — READY per 18/18 readiness checks |
+
+### Worker branches — current status (post wave 2)
+
+| Branch | Worker commit | Source prompt | Status |
+|---|---|---|---|
+| `work/asset-loop-test-design-fix` | `a3b5215` | 606 | ✅ Integrated as `7c8f400` via PROMPT 607 |
+| `work/server-card-acquired-send-observability` | `95fc3e0` | 613 | ✅ Integrated as `9bfb37c` via PROMPT 616 |
+| `work/board-local-player-init-from-handshake` | (mid-flight) | 612 | ⏳ Codex worker mid-flight (Finding A repair) |
+| `work/s10-polish-001-hud-visual-chrome` | (not yet created) | 618 | ⏳ Awaiting `/dev-story` Codex worker launch |
+| `work/s10-polish-002-shop-auction-panel-chrome` | (not yet created) | 617 | ⏳ Awaiting `/dev-story` Codex worker launch |
+
+### Sprint 10 Must Have status — 4/6 done
+
+| Story | Status on main | Closure mechanism |
+|---|---|---|
+| ✅ S10-PAW-001 | done | sprint-status.yaml at `550422a` (PROMPT 598-RETRY) |
+| ✅ S10-TD-002 | done | sprint-status.yaml at `550422a` (PROMPT 600) — story file `story-010-plugin-registration-audit.md` |
+| ✅ S10-CARRY-001 | done | `ce3bc54` (PROMPT 601-RETRY) |
+| ✅ S10-TD-001 | done | per `updated:` field comment (PROMPT 611) — story file `story-009-test-fixture-cascade-fail-repair.md` at `9826e49` |
+| ⏳ S10-POLISH-001 | ready | story file `story-013-hud-visual-chrome-mvp.md` at `811de8a`; READY per 614 (18/18); awaiting PROMPT 618 `/dev-story` (Codex) |
+| ⏳ S10-POLISH-002 | ready | story file `story-014-panel-chrome-mvp.md` at `e2b71e9`; READY per 615 (15/15); awaiting PROMPT 617 `/dev-story` (Codex) |
+
+### PLACEMENT visual state-sync findings (from PROMPT 608 v2 diagnostic)
+
+Three findings surfaced post-server-panic-fix (`f06271a`) when in-game test reached PLACEMENT phase for the first time:
+
+**Finding A — `BoardLocalPlayer.player_id` only set on reconnect** — PROVEN root cause.
+- Cause: `client/src/presentation/board_rendering.rs:1406-1426` is the only writer of `BoardLocalPlayer.player_id`, sourced exclusively from `S2CGameSnapshot.recipient_player_id`. Server only sends snapshot on reconnect. Fresh-session path leaves `player_id` as `None` forever.
+- Symptom: `Board Rendering: placement reveal received before local player id was known` warning fires every PLACEMENT round (8× over 7 minutes per launch-528 logs).
+- Repair: PROMPT 612 — adds tiny system in `BoardRenderingPlugin` reading `Res<ClientSessionIdentity>::player_id` (already populated from `S2CHandshake`) into `BoardLocalPlayer`. Status: in-flight worker.
+
+**Finding B — Hand fan empty at PLACEMENT entry** — NOT PROVEN; 2 ranked suspects.
+- Suspect 1 (high): server-side silent drop in `send_card_acquired` when `peer_id` resolution fails OR `sender.send` returns Err. Same anti-pattern shape as the C2S-side hardening done in PROMPTs 568/575/584/588.
+- Suspect 2 (weak): pre-InSession message loss (theoretical, evidence weak).
+- Hardening + diagnostic: PROMPT 613 / 616 — replaced silent drops with `tracing::warn!`/`error!` on 3 functions (smart scope expansion: `send_card_acquired` + `send_draft_offering` + `send_shop_slots`). Now on main at `9bfb37c`.
+- Diagnostic loop closes when user retests DRAFT_INITIAL post-`9bfb37c`: server stdout will surface `DROPPED — peer_id unresolved` OR `S2C send failed` OR neither (which flips to Suspect 2). PROMPT 619 = targeted repair driven by retest evidence.
+
+**Finding C — 1-frame glitch (cards visible briefly then cleared)** — DOWNSTREAM of Finding B. Resolves automatically when B is repaired.
+
+### Discrepancy noted: sprint-status.yaml `S10-POLISH-001` row has stale `file:` path
+
+- Actual file on main: `production/epics/hud/story-013-hud-visual-chrome-mvp.md` (PROMPT 614 follow-up at `811de8a`)
+- sprint-status.yaml `S10-POLISH-001` row currently shows: `file: "production/epics/hud/story-011-hud-visual-chrome-mvp.md"` (old path, not updated)
+- PROMPT 614 follow-up updated `production/sprints/sprint-10.md` row 127 (per worker's commit body) but NOT sprint-status.yaml row's `file:` field
+- Effect: minor — `/story-readiness` and `/dev-story` were invoked with the explicit corrected path so this didn't block work; but sprint-status.yaml audit-trail shows wrong filename
+- Fix: orchestrator-side row update at next state-file commit OR fold into S10-POLISH-001 `/story-done` closure (analogous to how PROMPT 600 + 601-RETRY edited sprint-status.yaml as part of their canonical 3-file write)
+
+### Skill prompts emitted in wave 2
+
+- **609** ✅ DONE — S10-TD-001 story authoring
+- **610** ✅ DONE — `/story-readiness` S10-TD-001 (READY 11/11)
+- **611** ✅ DONE — `/story-done` S10-TD-001 retry (with verification step that prevented silent-non-persistence)
+- **614** ✅ DONE — S10-POLISH-001 story authoring + readiness (READY 18/18)
+- **615** ✅ DONE — S10-POLISH-002 story authoring + readiness (READY 15/15)
+
+### Codex worker prompts emitted but unintegrated
+
+- **612** ⏳ Finding A repair (BoardLocalPlayer init) — work branch awaits creation
+- **617** ⏳ `/dev-story` POLISH-002 (shop_auction panel chrome) — work branch awaits creation
+- **618** ⏳ `/dev-story` POLISH-001 (HUD visual chrome) — work branch awaits creation
+
+All three are parallel-safe (different file scopes: `client/src/presentation/board_rendering.rs` vs `client/src/ui/hud/` vs `client/src/ui/shop_auction/`).
+
+### Late-batch lessons (added 2026-05-10 night-2)
+
+**17. Self-correction on format violations** (PROMPT 611) — worker initially emitted `<span style="color:green">DONE</span>` (HTML/CSS forbidden), noticed the anti-pattern in their own output, and re-emitted plain-text `DONE`. This is exactly the discipline the prompt-quality rules want when format violations occur. Document as positive pattern for reinforcement.
+
+**18. Slot collision in story-file numbering** (PROMPT 614) — sprint-10.md plan referenced `story-011-hud-visual-chrome-mvp.md` but that ID was already taken by `story-011-current-reserve-mana-shapes.md` (A11Y-ST-13 row). Worker correctly STOPPED at the collision and surfaced for orchestrator decision. Resolution: use next available slot (story-013) and document collision rationale in commit body. Going forward: when sprint plans list `(NEW)` story files, orchestrator should verify the slot is actually free before writing the path into the plan.
+
+**19. Race condition on root-checkout commits** (PROMPT 616) — parallel orchestrator process (`.claude/scheduled_tasks.lock` /loop machinery) committed pre-existing staged files on top of cherry-pick during cargo test/build window. Self-resolved cleanly (parallel commit was actually useful work — 614's docs landing). Pattern: when a long-running root-checkout operation (cherry-pick + multi-minute build/test) takes longer than parallel orchestrator's own polling cycle, the parallel process can interleave its commit. Mitigation: keep root-checkout windows short, OR use selective `git add` to scope your own commit narrowly even if other files are staged.
+
+**20. PROMPT 611 verification step prevented silent-non-persistence regression** — the explicit `grep -A 8 "S10-TD-001" production/sprint-status.yaml` post-skill verification step (added to PROMPT 599-retry spec after PROMPT 601's first-run silent-non-persistence) is what caught PROMPT 601's first-run failure. Worker for PROMPT 611 ran this verification at end-of-skill and confirmed the closure persisted on main. Pattern reinforces the value of orchestrator-mandated verification gates on state-mutating skill invocations.
+
+### Next free prompt number
+
+- **619+** = next free for new emit
+- 619 = Finding B targeted repair (drafted only after user retest + 612/616 cherry-picks land + new server logs surface peer_id-or-sender evidence)
