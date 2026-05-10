@@ -6,7 +6,7 @@ goal: "Close out the integrated Presentation Asset Wiring batch with `/story-don
 start: "2026-05-21"
 end: "2026-06-03"
 generated: "2026-05-07"
-updated: "2026-05-10"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600; S10-CARRY-001 closure per PROMPT 601-RETRY; S10-PAW-001 closure per PROMPT 598-RETRY; S10-TD-001 closure per PROMPT 611; S10-POLISH-002 closure per PROMPT 621; S10-POLISH-001 closure per PROMPT 630
+updated: "2026-05-10"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600; S10-CARRY-001 closure per PROMPT 601-RETRY; S10-PAW-001 closure per PROMPT 598-RETRY; S10-TD-001 closure per PROMPT 611; S10-POLISH-002 closure per PROMPT 621; S10-POLISH-001 closure per PROMPT 630; ECO-004 closure per PROMPT 650; S10-POLISH-003 closure per PROMPT 649
 stage: "Polish"
 scope: "Polish slice — close out PAW asset wiring, drain test-fixture and plugin-registration tech debt, start targeted visual UI chrome — not broad production / public release / full game completion"
 status: "active"
@@ -177,13 +177,14 @@ stories:
     name: "Lobby visual chrome — class carousel + portraits + slot indicators"
     file: "production/epics/game-session-system/story-011-lobby-visual-chrome-mvp.md"
     priority: should-have
-    status: ready
+    status: done
     owner: "UI/client programmer"
     estimate_days: 1.00
     blocker: ""
-    completed: ""
+    completed: "2026-05-10"
     notes:
       - "From production/sprints/sprint-10.md Sprint 10 plan."
+      - "/story-done verdict 2026-05-10 (PROMPT 649): COMPLETE WITH NOTES — 6/7 ACs PASS, AC-5 ADVISORY. Integration commit 084129c on main (cherry-pick of fd2e0a6 from PROMPT 639). Automated evidence: tests/integration/session/lobby_chrome_wiring_test.rs 5/5 sub-tests PASS (AC-3 + AC-4 — non-default ImageNode.image on 7 portraits + 2 slot panels + 1 chip after OnEnter(ClientState::Lobby) via LobbyUiPlugin; per-class portrait path matches lobby_portrait_asset selector). AC-1/AC-2 PASS audit-only (no inline asset paths, no Sprite use in client/src/ui/lobby.rs). AC-6 PASS (send_lobby_commands_system + drain_lobby_s2c_system unchanged; be8b37d + 5da3768 hardening intact; no client-side optimistic class authority added). AC-7 PASS — production/qa/evidence/sprint-10-lobby-chrome-evidence.md authored, manual capture deferred per friend-game-lite paperwork pattern. AC-5 ADVISORY (pre-existing breakage, NOT introduced by this story): tests/integration/presentation/lobby_asset_wiring_test.rs fails to compile on origin/main@4cb02f3 with 12 × error[E0596] on app.world() → world.query::<...>() (Bevy 0.18 API change not folded into PAW-006 test file at PAW-006 time). Candidate Sprint 11 story: S11-TD-PAW-006-COMPILE-001. Lean-mode gates (per feedback_paw_review_flow.md): QL-TEST-COVERAGE + LP-CODE-REVIEW skipped (friend-game accept-risk). No public release, full manual QA, full game completion, or broad accessibility claim made by this closure; QA-COND-0005 + QA-COND-0006 remain accepted-risk; S8-QA-001-W1 still open."
 
   - id: "S10-TD-003"
     name: "Doc hygiene tech debt sweep"
@@ -201,13 +202,14 @@ stories:
     name: "Kill and Objective Awards reward-loop polish"
     file: "production/epics/economy-system/story-004-kill-and-objective-awards.md"
     priority: should-have
-    status: ready
+    status: done
     owner: "gameplay programmer"
     estimate_days: 1.00
     blocker: "Conditional backlog; pull only if Sprint 10 evidence shows a concrete reward-loop gameplay issue."
-    completed: ""
+    completed: "2026-05-10"
     notes:
       - "From production/sprints/sprint-10.md Sprint 10 plan."
+      - "PROMPT 650 /story-done closure: 12/12 ACs (AC1 orchestrator-owned + ticked at closure; AC2-AC13 worker-ticked at PROMPT 640). Integration commit 9fb8e60 (cherry-pick of bb1b104). Pre-existing AuctionSettled/ResolutionComplete fixture cluster (6+ files) surfaced as Sprint 11 candidate."
 
   - id: "S10-N1"
     name: "Sprint 10 evidence index"

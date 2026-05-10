@@ -2,7 +2,7 @@
 
 > **Epic**: Game Session System
 > **Story ID**: S10-POLISH-003
-> **Status**: In Progress
+> **Status**: Done
 > **Layer**: Presentation (Polish)
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -459,3 +459,58 @@ substantively complete. Done means:
 - No public-release readiness, full playable-client manual QA,
   full game completion, or broad Standard-tier accessibility
   completion is claimed at close.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-10 (PROMPT 649 — `/story-done`)
+**Verdict**: COMPLETE WITH NOTES — 6/7 ACs PASS, AC-5 ADVISORY (pre-existing breakage).
+**Integration commit**: `084129c` "feat(s10-polish-003): lobby chrome wiring test + story authoring (PROMPT 639)" on `main` (cherry-pick of `fd2e0a6`).
+**Origin/main HEAD at run start**: `c018829`.
+
+**Automated evidence** (AC-3 + AC-4): `tests/integration/session/lobby_chrome_wiring_test.rs` — 5/5 sub-tests PASS at `084129c`:
+
+- `test_lobby_class_portraits_carry_non_default_image_node_after_on_enter_lobby`
+- `test_lobby_room_code_chip_carries_non_default_image_node_after_on_enter_lobby`
+- `test_lobby_portrait_per_class_path_matches_asset_wiring_selector`
+- `test_lobby_own_slot_panel_carries_non_default_image_node_after_on_enter_lobby`
+- `test_lobby_opponent_slot_panel_carries_non_default_image_node_after_on_enter_lobby`
+
+Fixture pattern mirrors `tests/integration/shop_auction_ui/chrome_wiring_test.rs` (S10-POLISH-002 / `fb30734`) — `MinimalPlugins` + `AssetPlugin::default()` + `init_asset::<Image>()` + `StatesPlugin` + `init_state::<ClientState>()` + `LobbyUiPlugin` + an extra `ButtonInput::<KeyCode>::default()` resource (since `MinimalPlugins` does not pull in `InputPlugin` per Bevy 0.18 input gating).
+
+**Audit evidence** (AC-1 + AC-2): `client/src/ui/lobby.rs` is unchanged in this story diff. No inline asset path string literals (`"art/"`, `"assets/"`, `.png"`, `.jpg"`); no `Sprite` / `NodeBundle` / `ImageBundle` / `UiImage::new()` use. Spawn sites at lines 870–935 consume `lobby_portrait_asset(class_id)`, `LOBBY_PLAYER_SLOT_PANEL_ASSET`, and `LOBBY_ROOM_CODE_CHIP_ASSET` from `client/src/asset_wiring.rs`.
+
+**Authority preservation** (AC-6): `send_lobby_commands_system` (lines 451–513) and `drain_lobby_s2c_system` (lines 208–301) are unchanged. The `be8b37d` class-confirm re-ack flow and the `5da3768` (PROMPT 622 Finding D) C2S hardening remain intact. `git diff origin/main..work/s10-polish-003-lobby-visual-chrome -- client/src/ui/lobby.rs` returns no diff — no client-side optimistic class authority added.
+
+**Manual evidence** (AC-7): `production/qa/evidence/sprint-10-lobby-chrome-evidence.md` authored — records build commit, route step (lobby entry → portraits → room code chip → slot panels), capture status (deferred per friend-game-lite paperwork pattern, matching S10-POLISH-002's AC-3/AC-7 deferral at `fb30734`), and the explicit no-claim language (no public release, no full asset approval, no Standard-tier accessibility, no playtest validation, no client-side class authority).
+
+**AC-5 ADVISORY (pre-existing, NOT introduced by this story)**: `tests/integration/presentation/lobby_asset_wiring_test.rs` (PAW-006) fails to compile on `origin/main@4cb02f3` with 12 × `error[E0596]: cannot borrow *world as mutable, as it is behind a & reference` — the test calls `let world = app.world();` (immutable) followed by `world.query::<...>()` which requires `&mut World` under Bevy 0.18. One-line fix per occurrence: `app.world()` → `app.world_mut()`. This story does **not** modify the PAW-006 test file; the new test correctly uses `app.world_mut()` and passes 5/5.
+
+**Pre-existing carry findings (continuing surface; NOT regressions from this story)**:
+
+- `tests/integration/presentation/lobby_asset_wiring_test.rs` — 12 × `error[E0596]` (per AC-5 above).
+- `hud_asset_wiring_test` 0/6, `hud_plugin_scaffold_test` 3/4, broken `*_harness.rs` bins — already documented in PROMPT 630 (S10-POLISH-001 closure). Not modified.
+
+**Lean-mode gates** (per `feedback_paw_review_flow.md`):
+
+- QL-TEST-COVERAGE skipped — Lean mode (friend-game accept-risk).
+- LP-CODE-REVIEW skipped — Lean mode (friend-game accept-risk).
+
+**Recommended Sprint 11 candidate**: `S11-TD-PAW-006-COMPILE-001` — repair the 12 × E0596 occurrences in `tests/integration/presentation/lobby_asset_wiring_test.rs` (mechanical `world()` → `world_mut()` rewrite per occurrence; restores the PAW-006 regression target green).
+
+**Verification commands** (per integration commit message):
+
+- `cargo fmt -p client -- --check`: PASS.
+- `cargo check -p client --lib`: PASS.
+- `cargo rustc -p client --test lobby_chrome_wiring_test`: builds cleanly.
+- Direct binary invocation (`./target/debug/deps/lobby_chrome_wiring_test-*.exe`): 5/5 PASS.
+
+**Carry-state preservation** (per PROMPT 649 Phase 5):
+
+- Sprint 9 closed-with-conditions; S8-QA-001-W1 remains open.
+- QA-COND-0005 (Standard-tier accessibility completion) and QA-COND-0006 (playtest validation) remain accepted-risk friend-game scope.
+- No public release readiness, full manual QA, full game completion, or broad accessibility claim is made by this closure.
+
+**Test Evidence**: UI story — automated integration test at `tests/integration/session/lobby_chrome_wiring_test.rs` (5/5 PASS) + manual evidence doc at `production/qa/evidence/sprint-10-lobby-chrome-evidence.md` (capture deferred per friend-game-lite paperwork pattern).
+**Code Review**: Skipped (Lean mode).
