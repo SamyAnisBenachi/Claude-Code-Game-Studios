@@ -350,6 +350,11 @@ fn log_reconnect_result(world: &mut World, result: &ReconnectProcessResult) {
 }
 
 fn send_reconnect_dispatches(world: &mut World, dispatches: &[ReconnectDispatch]) {
+    let peer_to_player: HashMap<PeerId, PlayerId> = world
+        .get_resource::<PlayerConnectionMap>()
+        .map(|connections| connections.0.clone())
+        .unwrap_or_default();
+
     let mut system_state: SystemState<(Query<&Server>, Option<ServerMultiMessageSender>)> =
         SystemState::new(world);
     let (server, mut sender) = system_state.get_mut(world);
@@ -360,63 +365,180 @@ fn send_reconnect_dispatches(world: &mut World, dispatches: &[ReconnectDispatch]
     for dispatch in dispatches {
         match dispatch {
             ReconnectDispatch::Handshake { peer_id, message } => {
-                let _ = sender.send::<S2CHandshake, ReliableChannel>(
-                    message,
-                    server,
-                    &single(*peer_id),
+                let player_id = peer_to_player.get(peer_id).copied();
+                tracing::info!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    session_id = message.session_id,
+                    "send_reconnect_dispatch: type=S2CHandshake enter"
                 );
+                if let Err(e) =
+                    sender.send::<S2CHandshake, ReliableChannel>(message, server, &single(*peer_id))
+                {
+                    tracing::error!(
+                        player_id = ?player_id,
+                        peer_id = ?peer_id,
+                        err = ?e,
+                        "S2C send failed: type=S2CHandshake, handler=send_reconnect_dispatches"
+                    );
+                }
             }
             ReconnectDispatch::GameSnapshot { peer_id, message } => {
-                let _ = sender.send::<S2CGameSnapshot, ReliableChannel>(
+                let player_id = peer_to_player.get(peer_id).copied();
+                tracing::info!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    round_number = message.round_number,
+                    phase = ?message.phase,
+                    "send_reconnect_dispatch: type=S2CGameSnapshot enter"
+                );
+                if let Err(e) = sender.send::<S2CGameSnapshot, ReliableChannel>(
                     message,
                     server,
                     &single(*peer_id),
-                );
+                ) {
+                    tracing::error!(
+                        player_id = ?player_id,
+                        peer_id = ?peer_id,
+                        err = ?e,
+                        "S2C send failed: type=S2CGameSnapshot, handler=send_reconnect_dispatches"
+                    );
+                }
             }
             ReconnectDispatch::ObjectiveIdentities { peer_id, message } => {
-                let _ = sender.send::<S2CObjectiveIdentities, ReliableChannel>(
+                let player_id = peer_to_player.get(peer_id).copied();
+                tracing::info!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    identity_count = message.identities.len(),
+                    "send_reconnect_dispatch: type=S2CObjectiveIdentities enter"
+                );
+                if let Err(e) = sender.send::<S2CObjectiveIdentities, ReliableChannel>(
                     message,
                     server,
                     &single(*peer_id),
-                );
+                ) {
+                    tracing::error!(
+                        player_id = ?player_id,
+                        peer_id = ?peer_id,
+                        err = ?e,
+                        "S2C send failed: type=S2CObjectiveIdentities, handler=send_reconnect_dispatches"
+                    );
+                }
             }
             ReconnectDispatch::GameOver { peer_id, message } => {
-                let _ =
-                    sender.send::<S2CGameOver, ReliableChannel>(message, server, &single(*peer_id));
+                let player_id = peer_to_player.get(peer_id).copied();
+                tracing::info!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    round = message.round,
+                    reason = ?message.reason,
+                    retained = true,
+                    "send_reconnect_dispatch: type=S2CGameOver enter"
+                );
+                if let Err(e) =
+                    sender.send::<S2CGameOver, ReliableChannel>(message, server, &single(*peer_id))
+                {
+                    tracing::error!(
+                        player_id = ?player_id,
+                        peer_id = ?peer_id,
+                        err = ?e,
+                        retained = true,
+                        "S2C send failed: type=S2CGameOver, handler=send_reconnect_dispatches"
+                    );
+                }
             }
             ReconnectDispatch::PhaseChanged { peer_id, message } => {
-                let _ = sender.send::<S2CPhaseChanged, ReliableChannel>(
+                let player_id = peer_to_player.get(peer_id).copied();
+                tracing::info!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    phase = ?message.phase,
+                    round_number = message.round_number,
+                    "send_reconnect_dispatch: type=S2CPhaseChanged enter"
+                );
+                if let Err(e) = sender.send::<S2CPhaseChanged, ReliableChannel>(
                     message,
                     server,
                     &single(*peer_id),
-                );
+                ) {
+                    tracing::error!(
+                        player_id = ?player_id,
+                        peer_id = ?peer_id,
+                        err = ?e,
+                        "S2C send failed: type=S2CPhaseChanged, handler=send_reconnect_dispatches"
+                    );
+                }
             }
             ReconnectDispatch::SangMepriseReveal { peer_id, message } => {
-                let _ = sender.send::<S2CSangMepriseReveal, ReliableChannel>(
+                let player_id = peer_to_player.get(peer_id).copied();
+                tracing::info!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    reveal_count = message.identities.len(),
+                    "send_reconnect_dispatch: type=S2CSangMepriseReveal enter"
+                );
+                if let Err(e) = sender.send::<S2CSangMepriseReveal, ReliableChannel>(
                     message,
                     server,
                     &single(*peer_id),
-                );
+                ) {
+                    tracing::error!(
+                        player_id = ?player_id,
+                        peer_id = ?peer_id,
+                        err = ?e,
+                        "S2C send failed: type=S2CSangMepriseReveal, handler=send_reconnect_dispatches"
+                    );
+                }
             }
             ReconnectDispatch::OpponentReconnected {
                 recipients,
                 message,
             } => {
-                let _ = sender.send::<S2COpponentReconnected, ReliableChannel>(
+                tracing::info!(
+                    reconnecting_player_id = message.player_id.0,
+                    recipient_count = recipients.len(),
+                    recipients = ?recipients,
+                    "send_reconnect_dispatch: type=S2COpponentReconnected enter"
+                );
+                if let Err(e) = sender.send::<S2COpponentReconnected, ReliableChannel>(
                     message,
                     server,
                     &NetworkTarget::Only(recipients.clone()),
-                );
+                ) {
+                    tracing::error!(
+                        reconnecting_player_id = message.player_id.0,
+                        recipients = ?recipients,
+                        err = ?e,
+                        "S2C send failed: type=S2COpponentReconnected, handler=send_reconnect_dispatches"
+                    );
+                }
             }
             ReconnectDispatch::HandshakeRejected { peer_id, message } => {
-                let _ = sender.send::<S2CHandshakeRejected, ReliableChannel>(
+                let player_id = peer_to_player.get(peer_id).copied();
+                tracing::info!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    server_version = message.server_version,
+                    client_version = message.client_version,
+                    "send_reconnect_dispatch: type=S2CHandshakeRejected enter"
+                );
+                if let Err(e) = sender.send::<S2CHandshakeRejected, ReliableChannel>(
                     message,
                     server,
                     &single(*peer_id),
-                );
+                ) {
+                    tracing::error!(
+                        player_id = ?player_id,
+                        peer_id = ?peer_id,
+                        err = ?e,
+                        "S2C send failed: type=S2CHandshakeRejected, handler=send_reconnect_dispatches"
+                    );
+                }
             }
             ReconnectDispatch::Deferred { peer_id, message } => {
-                send_deferred_message(sender, server, *peer_id, message);
+                let player_id = peer_to_player.get(peer_id).copied();
+                send_deferred_message(sender, server, *peer_id, player_id, message);
             }
         }
     }
@@ -426,69 +548,237 @@ fn send_deferred_message(
     sender: &mut ServerMultiMessageSender,
     server: &Server,
     peer_id: PeerId,
+    player_id: Option<PlayerId>,
     message: &DeferredMessage,
 ) {
     match message {
         DeferredMessage::GameOver(message) => {
-            let _ = sender.send::<S2CGameOver, ReliableChannel>(message, server, &single(peer_id));
+            tracing::info!(
+                player_id = ?player_id,
+                peer_id = ?peer_id,
+                round = message.round,
+                reason = ?message.reason,
+                deferred = true,
+                "send_deferred_message: type=S2CGameOver enter"
+            );
+            if let Err(e) =
+                sender.send::<S2CGameOver, ReliableChannel>(message, server, &single(peer_id))
+            {
+                tracing::error!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    err = ?e,
+                    deferred = true,
+                    "S2C send failed: type=S2CGameOver, handler=send_deferred_message"
+                );
+            }
         }
         DeferredMessage::SessionCancelled(message) => {
-            let _ = sender.send::<S2CSessionCancelled, ReliableChannel>(
+            tracing::info!(
+                player_id = ?player_id,
+                peer_id = ?peer_id,
+                deferred = true,
+                "send_deferred_message: type=S2CSessionCancelled enter"
+            );
+            if let Err(e) = sender.send::<S2CSessionCancelled, ReliableChannel>(
                 message,
                 server,
                 &single(peer_id),
-            );
+            ) {
+                tracing::error!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    err = ?e,
+                    deferred = true,
+                    "S2C send failed: type=S2CSessionCancelled, handler=send_deferred_message"
+                );
+            }
         }
         DeferredMessage::GoldUpdate(message) => {
-            let _ =
-                sender.send::<S2CGoldUpdate, ReliableChannel>(message, server, &single(peer_id));
+            tracing::info!(
+                player_id = ?player_id,
+                peer_id = ?peer_id,
+                gold = message.gold,
+                current_mana = message.current_mana,
+                deferred = true,
+                "send_deferred_message: type=S2CGoldUpdate enter"
+            );
+            if let Err(e) =
+                sender.send::<S2CGoldUpdate, ReliableChannel>(message, server, &single(peer_id))
+            {
+                tracing::error!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    err = ?e,
+                    deferred = true,
+                    "S2C send failed: type=S2CGoldUpdate, handler=send_deferred_message"
+                );
+            }
         }
         DeferredMessage::ObjectiveIdentities(message) => {
-            let _ = sender.send::<S2CObjectiveIdentities, ReliableChannel>(
+            tracing::info!(
+                player_id = ?player_id,
+                peer_id = ?peer_id,
+                identity_count = message.identities.len(),
+                deferred = true,
+                "send_deferred_message: type=S2CObjectiveIdentities enter"
+            );
+            if let Err(e) = sender.send::<S2CObjectiveIdentities, ReliableChannel>(
                 message,
                 server,
                 &single(peer_id),
-            );
+            ) {
+                tracing::error!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    err = ?e,
+                    deferred = true,
+                    "S2C send failed: type=S2CObjectiveIdentities, handler=send_deferred_message"
+                );
+            }
         }
         DeferredMessage::DraftOffering(message) => {
-            let _ =
-                sender.send::<S2CDraftOffering, ReliableChannel>(message, server, &single(peer_id));
+            tracing::info!(
+                player_id = ?player_id,
+                peer_id = ?peer_id,
+                offering_count = message.card_ids.len(),
+                deferred = true,
+                "send_deferred_message: type=S2CDraftOffering enter"
+            );
+            if let Err(e) =
+                sender.send::<S2CDraftOffering, ReliableChannel>(message, server, &single(peer_id))
+            {
+                tracing::error!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    err = ?e,
+                    deferred = true,
+                    "S2C send failed: type=S2CDraftOffering, handler=send_deferred_message"
+                );
+            }
         }
         DeferredMessage::ShopSlots(message) => {
-            let _ = sender.send::<S2CShopSlots, ReliableChannel>(message, server, &single(peer_id));
+            tracing::info!(
+                player_id = ?player_id,
+                peer_id = ?peer_id,
+                slot_count = message.slots.len(),
+                deferred = true,
+                "send_deferred_message: type=S2CShopSlots enter"
+            );
+            if let Err(e) =
+                sender.send::<S2CShopSlots, ReliableChannel>(message, server, &single(peer_id))
+            {
+                tracing::error!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    err = ?e,
+                    deferred = true,
+                    "S2C send failed: type=S2CShopSlots, handler=send_deferred_message"
+                );
+            }
         }
         DeferredMessage::AuctionBidRejected(message) => {
-            let _ = sender.send::<S2CAuctionBidRejected, ReliableChannel>(
+            tracing::info!(
+                player_id = ?player_id,
+                peer_id = ?peer_id,
+                reason = ?message.reason,
+                deferred = true,
+                "send_deferred_message: type=S2CAuctionBidRejected enter"
+            );
+            if let Err(e) = sender.send::<S2CAuctionBidRejected, ReliableChannel>(
                 message,
                 server,
                 &single(peer_id),
-            );
+            ) {
+                tracing::error!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    err = ?e,
+                    deferred = true,
+                    "S2C send failed: type=S2CAuctionBidRejected, handler=send_deferred_message"
+                );
+            }
         }
         DeferredMessage::AuctionBidAccepted(message) => {
-            let _ = sender.send::<S2CAuctionBidAccepted, ReliableChannel>(
+            tracing::info!(
+                player_id = ?player_id,
+                peer_id = ?peer_id,
+                bidder = message.bidder.0,
+                amount = message.amount,
+                deferred = true,
+                "send_deferred_message: type=S2CAuctionBidAccepted enter"
+            );
+            if let Err(e) = sender.send::<S2CAuctionBidAccepted, ReliableChannel>(
                 message,
                 server,
                 &single(peer_id),
-            );
+            ) {
+                tracing::error!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    err = ?e,
+                    deferred = true,
+                    "S2C send failed: type=S2CAuctionBidAccepted, handler=send_deferred_message"
+                );
+            }
         }
         DeferredMessage::CardAcquired { card_id, source } => {
             let message = S2CCardAcquired {
                 card_id: *card_id,
                 source: *source,
             };
-            let _ =
-                sender.send::<S2CCardAcquired, ReliableChannel>(&message, server, &single(peer_id));
+            tracing::info!(
+                player_id = ?player_id,
+                peer_id = ?peer_id,
+                card_id = ?card_id,
+                source = ?source,
+                deferred = true,
+                "send_deferred_message: type=S2CCardAcquired enter"
+            );
+            if let Err(e) =
+                sender.send::<S2CCardAcquired, ReliableChannel>(&message, server, &single(peer_id))
+            {
+                tracing::error!(
+                    player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    card_id = ?card_id,
+                    err = ?e,
+                    deferred = true,
+                    "S2C send failed: type=S2CCardAcquired, handler=send_deferred_message"
+                );
+            }
         }
-        DeferredMessage::PrismRewardDropped { player_id, lane } => {
+        DeferredMessage::PrismRewardDropped {
+            player_id: prism_player_id,
+            lane,
+        } => {
             let message = S2CPrismRewardDropped {
-                player_id: *player_id,
+                player_id: *prism_player_id,
                 lane: *lane,
             };
-            let _ = sender.send::<S2CPrismRewardDropped, ReliableChannel>(
+            tracing::info!(
+                recipient_player_id = ?player_id,
+                peer_id = ?peer_id,
+                prism_player_id = prism_player_id.0,
+                lane = lane,
+                deferred = true,
+                "send_deferred_message: type=S2CPrismRewardDropped enter"
+            );
+            if let Err(e) = sender.send::<S2CPrismRewardDropped, ReliableChannel>(
                 &message,
                 server,
                 &single(peer_id),
-            );
+            ) {
+                tracing::error!(
+                    recipient_player_id = ?player_id,
+                    peer_id = ?peer_id,
+                    prism_player_id = prism_player_id.0,
+                    lane = lane,
+                    err = ?e,
+                    deferred = true,
+                    "S2C send failed: type=S2CPrismRewardDropped, handler=send_deferred_message"
+                );
+            }
         }
     }
 }
