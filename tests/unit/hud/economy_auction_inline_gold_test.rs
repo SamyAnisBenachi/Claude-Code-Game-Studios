@@ -115,6 +115,8 @@ fn app_with_hud_in_session() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
+    app.insert_resource(client::asset_wiring::placeholder_assets_for_tests());
     app.add_plugins(HudPlugin);
     app.insert_resource(HudPlayerIds {
         local_id: player(1),

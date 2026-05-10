@@ -11,6 +11,8 @@ fn board_rendering_plugin_registers_in_minimal_client_app_without_panic() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
+    app.insert_resource(client::asset_wiring::placeholder_assets_for_tests());
     app.add_plugins(BoardRenderingPlugin);
 
     app.update();
@@ -21,6 +23,8 @@ fn board_rendering_resources_exist_only_during_session() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
+    app.insert_resource(client::asset_wiring::placeholder_assets_for_tests());
     app.add_plugins(BoardRenderingPlugin);
 
     assert!(app.world().get_resource::<BoardLayout>().is_none());
@@ -96,6 +100,7 @@ fn presentation_plugin_registers_board_rendering_resources_in_adr_order_slot() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
+    app.insert_resource(client::asset_wiring::placeholder_assets_for_tests());
     app.add_plugins(PresentationPlugin);
 
     app.world_mut()
