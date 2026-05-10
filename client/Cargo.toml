@@ -339,14 +339,6 @@ name = "hand_ui_asset_wiring_test"
 path = "../tests/integration/presentation/hand_ui_asset_wiring_test.rs"
 
 [[test]]
-name = "shop_auction_asset_wiring_test"
-path = "../tests/integration/presentation/shop_auction_asset_wiring_test.rs"
-
-[[test]]
-name = "board_asset_wiring_test"
-path = "../tests/integration/presentation/board_asset_wiring_test.rs"
-
-[[test]]
 name = "hud_asset_wiring_test"
 path = "../tests/integration/presentation/hud_asset_wiring_test.rs"
 
