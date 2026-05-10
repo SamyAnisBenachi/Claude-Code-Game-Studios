@@ -334,7 +334,10 @@ fn sau_008_draft_initial_snapshot_does_not_restore_grid_from_shop_slots() {
 fn app_in_session(gold: u32) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
     app.add_plugins(ShopAuctionUiPlugin);
     app.insert_resource(ShopAuctionCardCatalog {
         cards: (1..=12)

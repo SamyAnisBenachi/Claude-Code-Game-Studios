@@ -293,7 +293,10 @@ fn active_draft_app(gold: u32, economy_initialized: bool) -> App {
 fn app_in_session(gold: u32, economy_initialized: bool) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
     app.add_plugins(ShopAuctionUiPlugin);
     insert_catalog(&mut app);
     app.insert_resource(PlayerEconomyView {

@@ -171,7 +171,10 @@ fn auction_border_tier_maps_gdd_price_ranges() {
 fn app_with_shop_auction_ui_in_session() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
     app.add_plugins(ShopAuctionUiPlugin);
     app.world_mut()
         .resource_mut::<NextState<ClientState>>()

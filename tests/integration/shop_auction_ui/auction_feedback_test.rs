@@ -241,7 +241,10 @@ fn sau_006_phase_exit_clears_pending_gate_and_late_rejection_does_not_reenable()
 fn app_in_active_auction(starting_price: u32, timer_duration_ms: u32) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
     app.add_plugins(ShopAuctionUiPlugin);
     app.insert_resource(ShopAuctionCardCatalog {
         cards: HashMap::from([(CardId(1), test_card(1, Rarity::Rare, 4))]),

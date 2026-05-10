@@ -335,7 +335,10 @@ fn sau_007_placement_phase_interrupt_cancels_settlement_immediately() {
 fn app_in_active_auction(starting_price: u32, timer_duration_ms: u32) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
     app.add_plugins(CardAnimationsPlugin);
     app.add_plugins(ShopAuctionUiPlugin);
     app.insert_resource(ShopAuctionCardCatalog {
