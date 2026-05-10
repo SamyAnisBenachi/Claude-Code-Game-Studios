@@ -1090,19 +1090,33 @@ fn send_draft_offering(
     server: &Server,
     dispatch: &DraftOfferingDispatch,
 ) {
+    tracing::info!(
+        player_id = dispatch.player_id.0,
+        peer_id = ?dispatch.peer_id,
+        offering_count = dispatch.message.card_ids.len(),
+        "send_draft_offering enter"
+    );
+
     let Some(peer_id) = dispatch.peer_id else {
         tracing::warn!(
             player_id = dispatch.player_id.0,
-            "send_draft_offering: peer_id is None — S2CDraftOffering not sent"
+            "send_draft_offering DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
         );
         return;
     };
 
-    let _ = sender.send::<S2CDraftOffering, ReliableChannel>(
+    if let Err(e) = sender.send::<S2CDraftOffering, ReliableChannel>(
         &dispatch.message,
         server,
         &NetworkTarget::Single(peer_id),
-    );
+    ) {
+        tracing::error!(
+            player_id = dispatch.player_id.0,
+            peer_id = ?peer_id,
+            err = ?e,
+            "S2C send failed: type=S2CDraftOffering, handler=send_draft_offering"
+        );
+    }
 }
 
 pub fn defer_draft_offering(
@@ -1128,15 +1142,33 @@ fn send_shop_slots(
     server: &Server,
     dispatch: &ShopSlotsDispatch,
 ) {
+    tracing::info!(
+        player_id = dispatch.player_id.0,
+        peer_id = ?dispatch.peer_id,
+        slot_count = dispatch.message.slots.len(),
+        "send_shop_slots enter"
+    );
+
     let Some(peer_id) = dispatch.peer_id else {
+        tracing::warn!(
+            player_id = dispatch.player_id.0,
+            "send_shop_slots DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+        );
         return;
     };
 
-    let _ = sender.send::<S2CShopSlots, ReliableChannel>(
+    if let Err(e) = sender.send::<S2CShopSlots, ReliableChannel>(
         &dispatch.message,
         server,
         &NetworkTarget::Single(peer_id),
-    );
+    ) {
+        tracing::error!(
+            player_id = dispatch.player_id.0,
+            peer_id = ?peer_id,
+            err = ?e,
+            "S2C send failed: type=S2CShopSlots, handler=send_shop_slots"
+        );
+    }
 }
 
 fn dispatch_purchase_network_events(
@@ -1220,15 +1252,36 @@ fn send_card_acquired(
     server: &Server,
     dispatch: &CardAcquiredDispatch,
 ) {
+    tracing::info!(
+        player_id = dispatch.player_id.0,
+        peer_id = ?dispatch.peer_id,
+        card_id = ?dispatch.message.card_id,
+        source = ?dispatch.message.source,
+        "send_card_acquired enter"
+    );
+
     let Some(peer_id) = dispatch.peer_id else {
+        tracing::warn!(
+            player_id = dispatch.player_id.0,
+            card_id = ?dispatch.message.card_id,
+            "send_card_acquired DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+        );
         return;
     };
 
-    let _ = sender.send::<S2CCardAcquired, ReliableChannel>(
+    if let Err(e) = sender.send::<S2CCardAcquired, ReliableChannel>(
         &dispatch.message,
         server,
         &NetworkTarget::Single(peer_id),
-    );
+    ) {
+        tracing::error!(
+            player_id = dispatch.player_id.0,
+            peer_id = ?peer_id,
+            card_id = ?dispatch.message.card_id,
+            err = ?e,
+            "S2C send failed: type=S2CCardAcquired, handler=send_card_acquired"
+        );
+    }
 }
 
 pub fn defer_card_acquired(
