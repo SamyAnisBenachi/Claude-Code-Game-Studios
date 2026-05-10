@@ -9,6 +9,7 @@ use client::presentation::board_rendering::{
     BoardCellNode, BoardRenderingPlugin, BoardUnit, HpBarBackground, HpBarFill, StandingObjective,
     StatusIcon, StatusOverflowBadge,
 };
+use client::state::ClientState;
 use client::ui::shared::{BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 #[test]
@@ -96,6 +97,8 @@ fn app_with_harness() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
+    app.insert_resource(client::asset_wiring::placeholder_assets_for_tests());
     app.add_plugins((
         CardAnimationsPlugin,
         BoardRenderingPlugin,

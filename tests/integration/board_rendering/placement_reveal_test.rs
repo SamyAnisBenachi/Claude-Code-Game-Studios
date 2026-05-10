@@ -131,6 +131,8 @@ fn app_in_session() -> App {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
     app.add_plugins(CardAnimationsPlugin);
+    app.init_state::<ClientState>();
+    app.insert_resource(client::asset_wiring::placeholder_assets_for_tests());
     app.add_plugins(BoardRenderingPlugin);
     app.world_mut()
         .resource_mut::<NextState<ClientState>>()
