@@ -20,7 +20,9 @@ use crate::card_animations::{
     BoardRebuildRequested, PendingObjectiveDestroyedEvents, PendingPhaseChange,
     PlacementRevealAnimReady, PlacementRevealEntry, StagedObjectiveRevealQueue,
 };
-use crate::state::{ClientGameSnapshotMessage, ClientState, CurrentClientPhase};
+use crate::state::{
+    ClientGameSnapshotMessage, ClientSessionIdentity, ClientState, CurrentClientPhase,
+};
 use crate::ui::hand::{
     GhostClickedEvent, GhostDragStartEvent, GhostPlacementChanged, ObjectiveCell,
     PlacementTargetUnit,
@@ -941,6 +943,11 @@ impl Plugin for BoardRenderingPlugin {
             )
             .add_systems(
                 Update,
+                init_board_local_player_from_session_identity_system
+                    .in_set(PresentationSet::PhaseTransition),
+            )
+            .add_systems(
+                Update,
                 drain_resolution_event_system
                     .in_set(PresentationSet::MessageDrain)
                     .after(PresentationSet::PhaseTransition)
@@ -1401,6 +1408,30 @@ fn reveal_target_matches_unit(
         && card.card_id == Some(target.card_id)
         && lane_cell.lane == target.lane
         && lane_cell.cell == target.cell
+}
+
+/// Populate `BoardLocalPlayer.player_id` from `ClientSessionIdentity` on the
+/// fresh-session (handshake-only) path, where no `S2CGameSnapshot` arrives to
+/// drive `sync_reveal_state_from_snapshot_system`. Idempotent — short-circuits
+/// once `BoardLocalPlayer.player_id` is set.
+fn init_board_local_player_from_session_identity_system(
+    identity: Option<Res<ClientSessionIdentity>>,
+    mut local_player: ResMut<BoardLocalPlayer>,
+) {
+    if local_player.player_id.is_some() {
+        return;
+    }
+    let Some(identity) = identity else {
+        return;
+    };
+    let Some(player_id) = identity.player_id else {
+        return;
+    };
+    local_player.player_id = Some(player_id);
+    info!(
+        ?player_id,
+        "BoardLocalPlayer initialized from ClientSessionIdentity (handshake-only path)"
+    );
 }
 
 fn sync_reveal_state_from_snapshot_system(
