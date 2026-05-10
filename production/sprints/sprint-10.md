@@ -1,6 +1,6 @@
 # Sprint 10 -- 2026-05-21 to 2026-06-03
 
-> **Status**: Draft (planning only).
+> **Status**: Active (activated 2026-05-10, PROMPT 591).
 > **Drafted**: 2026-05-09 by `/sprint-plan` (producer agent).
 > **Activation**: Not active. Activation requires Sprint 9 close-out
 > (S9-QA-001 closed via the in-flight `DRAFT_INITIAL` fix wave evidence
