@@ -2548,3 +2548,143 @@ See "Strategic insights" section appended below in conversation context — to b
 - 625 = cherry-pick of 618 (drafted after 618 returns)
 - 626 = `/story-done` POLISH-001 (drafted after 625 lands)
 - 627 = Sprint 10 close-out sequence (`/smoke-check sprint` first, then chain)
+
+---
+
+## State Snapshot 2026-05-10 wave 5 (Sprint 10 close-out + silent-failure preventive campaign — HEAD `dc664c8`)
+
+### Commits added to `main` since last snapshot at `325a2fc`
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `89d048d` | PROMPT 619 / cherry-pick 612 | BoardLocalPlayer init from ClientSessionIdentity on handshake-only path (Finding A repair) |
+| `fb30734` | PROMPT 620 / cherry-pick 617 | S10-POLISH-002 panel chrome wiring (4 files) |
+| `7ca89fc` | (state update) | Orchestration status — wave 4 documentation |
+| `b780f0e` | PROMPT 629 / cherry-pick 618 | S10-POLISH-001 HUD visual chrome MVP (HudDimOverlay + sync_dim_overlay_for_resolution_system; 8/8 hud_resolution_dim_test) |
+| `5da3768` | PROMPT 631 / cherry-pick 622 | Finding D lobby C2S hardening (4 sites in send_lobby_commands_system; `no_sender_entity` warn on missing sender entity) |
+| `de42278` | PROMPT 630 | `/story-done` S10-POLISH-001 closure paperwork (sprint-status.yaml flip + active.md extract + stale-path correction story-011→story-013) |
+| `ae749ea` | PROMPT 633 / cherry-pick 625 | Cluster 2D — server network dispatch hardening (4 sites in rsm_dispatch.rs, mod.rs, economy_dispatch.rs) |
+| `e07361f` | PROMPT 635 / cherry-pick 626 | Cluster 2A — server session reconnect hardening (18 sites in core/session/reconnect.rs) |
+| `5e6bfb9` | PROMPT 636 / cherry-pick 627 | Cluster 2B — server session lobby+GAME_OVER hardening (12 sites in core/session/system.rs) |
+| `95bc7fb` | PROMPT 634 / push+cherry-pick 628 | Cluster 2C — server feature dispatch hardening (9 sites in feature/{auction,objective,prism}/system.rs) |
+| `dc664c8` | PROMPT 637 / cherry-pick 632 | Finding B v2 Verdict 2 — reserve strip child visibility repair (Visibility::Visible → Visibility::Inherited at hand/mod.rs:2649+2683 + new regression test placement_entry_post_acquisition_test) |
+
+### Sprint 10 Must Have status — 6/6 done + paperwork complete
+
+| Story | Status | Closure mechanism |
+|---|---|---|
+| ✅ S10-PAW-001 | done | sprint-status.yaml at `550422a` (PROMPT 598-RETRY) |
+| ✅ S10-TD-001 | done | per `updated:` field (PROMPT 611) |
+| ✅ S10-TD-002 | done | sprint-status.yaml at `550422a` (PROMPT 600) |
+| ✅ S10-CARRY-001 | done | `ce3bc54` (PROMPT 601-RETRY) |
+| ✅ S10-POLISH-002 | done | `325a2fc` multi-file commit (PROMPT 621) |
+| ✅ S10-POLISH-001 | done | `de42278` (PROMPT 630 /story-done) — integration commit `b780f0e` |
+
+→ Sprint 10 ready for close-out sequence: `/smoke-check sprint` → `/team-qa sprint` (or accept-risk friend-game) → `/gate-check Polish→Release` (or accept-risk advisory). NOT auto-launched; awaits user signal.
+
+### Findings status — all resolved or in repair-validation
+
+| Finding | Resolution | Validation |
+|---|---|---|
+| A (BoardLocalPlayer init handshake-only) | FIXED at `89d048d` | Runtime-validated: warning count 0 vs 8 pre-fix across launch sessions 185316/184002/185436 |
+| B v2 Verdict 1 (drain side) | NO-BUG | Single drain at `presentation/mod.rs:331`, ADR-021-compliant |
+| B v2 Verdict 2 (reserve strip child visibility) | REPAIRED at `dc664c8` | Awaiting user in-game retest |
+| B v2 Verdict 3 (1-frame glitch) | DEFERRED | Most likely visual-masking artifact of V2; reassess post-V2 retest |
+| D (lobby class-confirm silent send) | HARDENED both directions: client C2S at `5da3768`, server S2C at `5e6bfb9` (PROMPT 627 pair-complement to 622) | Awaiting user in-game retest |
+
+### Server hardening campaign — COMPLETE (4/4 clusters, 43 sites total)
+
+PROMPT 624 audit produced cluster mapping; PROMPTs 625/626/627/628 implemented; PROMPTs 633/635/636/634 cherry-picked.
+
+| Cluster | SHA | Module | Audit count | Actual sites |
+|---|---|---|---|---|
+| 2D — network | `ae749ea` | server/src/network/{rsm_dispatch,mod,economy_dispatch}.rs | 4 | 4 |
+| 2A — reconnect | `e07361f` | server/src/core/session/reconnect.rs | 14 | **18** (+4 multi-line wraps) |
+| 2B — session lobby+GAME_OVER | `5e6bfb9` | server/src/core/session/system.rs | 12 | 12 |
+| 2C — feature dispatch | `95bc7fb` | server/src/feature/{auction,objective,prism}/system.rs | 8 | **9** (+1 two-line form) |
+| **Total** | — | — | **38** | **43** |
+
+All sites follow canonical PROMPT 613 pattern: entry `tracing::info!` + `if let Err(e) = sender.send::<T, ReliableChannel>(...) { tracing::error!(...) }` with handler-distinguishing tracing fields.
+
+### Methodology lessons surfaced this wave
+
+**Audit-vs-actual count discrepancy** (Cluster 2A 14→18, Cluster 2C 8→9): PROMPT 624 audit used literal-line grep `let _ = .*\.send::<` which misses multi-line wraps (where `let _ =` ends one line and `sender.send::<...>` begins the next) and 2-line `match` forms. Workers self-verified scope and adjusted upward (good evidence discipline; audit counts are approximations, worker counts are ground truth).
+
+→ **Future audit prompts should use multiline grep mode** (`-U --multiline-dotall` in ripgrep) for accurate site counts.
+
+### Format violations recurring (worker outputs)
+
+Final-line drift continued this wave then began reversing:
+
+| Variant | PROMPT(s) | Issue |
+|---|---|---|
+| `🟢 ...: SUCCESS` | 625 worker | Emoji prefix + non-canonical word (SUCCESS) |
+| `🟢 ...: COMPLETE` | 628 worker | Emoji prefix (COMPLETE is canonical) |
+| `🟢 ...: GREEN` | 626 worker | Emoji prefix + forbidden color name (GREEN) |
+| `\x1b[32mDONE\x1b[0m` | 633 worker | Raw ANSI escape codes as literal characters |
+| `[32mDONE[0m` | 632 worker | Stripped-prefix ANSI escape codes (same family) |
+| `DONE` | 635, 636, 634, 637, 630 workers | ✅ Fully canonical |
+
+Pattern reversed mid-wave (635 onward all canonical). Workers internalizing the rule incrementally. State-file enforcement note for future audits: include explicit forbidden enumeration (`No GREEN/YELLOW/RED, no SUCCESS/OK, no emoji prefix, no ANSI escape codes either escaped or literal`).
+
+### Memory rule 14 added (no worker-runtime tags in prompts)
+
+User feedback 2026-05-10 night-4 after PROMPTs 625–628 emitted with explicit "Codex implementation worker" tags. Per new rule:
+- Do NOT write "Worker: Codex implementation worker", "Worker: Claude Code agent", "dispatch to Codex", etc.
+- Orchestrator describes the work (branch, worktree, phases, files, deliverable, final-line); user decides which pool to dispatch to.
+- Same applies to read-only diagnostic prompts.
+
+Applied from PROMPT 629 onward. Saved as rule 14 in `feedback_orchestrator_prompt_quality.md`.
+
+### Sprint 11 backlog accumulated this wave
+
+| Tag | Source | Description |
+|---|---|---|
+| S11-TD-NET-001 | PROMPT 625 worker note | Test parity for Cluster 2D (assertions that `tracing::error!` fires on simulated send Err) |
+| S11-TD-NET-002 | PROMPT 626 worker note | Test parity for Cluster 2A — 0 of 18 sites have send-Err test coverage |
+| S11-TD-NET-003 | PROMPT 627 worker note | Coverage gap on 4 rejection-path messages: S2CCreateRoomRejected, S2CConfirmClassRejected, S2CJoinRejected, S2CSessionCancelled (LobbyTimeout/RngFail/HeartbeatTimeout paths unexercised) |
+| S11-TD-PRISM-COV-001 | PROMPT 628 worker note | Advisory coverage gap on S2CPrismRewardDropped + S2CPrismRespawned |
+| (cluster) AuctionSettled MessageReader fixture | PROMPTs 625/627/628 baseline checks | Pre-existing 6-test failure cluster affects rsm_network_dispatch_test, economy_network_dispatch_test, game_over_teardown_test, lobby_to_draft_initial_test, real_e2e_loop_test. Pattern matches S10-TD-001 cascade tail. Candidate for bundled triage story. |
+| (cluster) HUD test-fixture cascade tail | PROMPT 618 worker note | hud_asset_wiring_test 0/6 + hud_plugin_scaffold_test 3/4. S10-TD-001 closure tail or new story on `playable-client` epic. |
+| (cluster) Broken `*_harness.rs` bins | PROMPT 618 worker note | Bevy 0.18 "Input behind features" reorganisation — missing imports cascade into `bin "client"` failure. Blocks `cargo run -p client` locally. Owning surface: harness/test-infra (cross-epic, likely DevOps/test-setup). |
+| Finding B v2 Verdict 3 instrumentation | PROMPT 623 diagnostic | Only if post-Verdict-2 retest perception of 1-frame glitch persists. TweenAnim ↔ apply_fan_layout transform write race investigation prompt. |
+
+### Pending user actions
+
+- **In-game retest validating Finding D** — full hardening on main: client `5da3768` (no_sender_entity warns on 4 lobby C2S sites) + server `5e6bfb9` (S2C send-Err logging on 12 session lobby+GAME_OVER sites). Round-trip class-confirm now fully observable.
+- **In-game retest validating Finding B v2** — Verdict 2 repair on main at `dc664c8`. Confirm: hand cards visible at PLACEMENT entry without "RESERVE 0 CURRENT 0" masking? If yes → V2 closed; V3 likely automatically resolved as visual-masking artifact. If glitch persists → emit V3 instrumentation prompt.
+
+### Sprint 10 close-out sequence — available, NOT auto-launched
+
+Awaits user signal after retests confirm. Standard sequence:
+1. `/smoke-check sprint`
+2. `/team-qa sprint` (or accept-risk per friend-game scope per `feedback_paw_review_flow.md`)
+3. `/gate-check Polish→Release` (or accept-risk advisory)
+
+### Sprint 10 Should/Nice-Have status — optional pulls
+
+| Story | Priority | Status | Next step |
+|---|---|---|---|
+| S10-POLISH-003 | should-have | ready | `/dev-story` PROMPT 639 emitted, parallel-safe (lobby visual chrome MVP) |
+| S10-TD-003 | should-have | ready | `file: ""` — needs `/create-stories` or manual authoring before `/dev-story` |
+| ECO-004 | should-have | ready | `/dev-story` PROMPT 640 emitted, parallel-safe (kill-and-objective-awards) |
+| S10-N1 | nice-to-have | ready | Skip per friend-game scope unless explicitly pulled |
+| S10-N2 | nice-to-have | ready | Skip per friend-game scope unless explicitly pulled |
+
+### Currently in flight (at snapshot time)
+
+| PROMPT | Type | Subject | Status |
+|---|---|---|---|
+| 638 | This state-file update | Wave 5 snapshot | In progress (this very edit) |
+| 639 | `/dev-story` worker | S10-POLISH-003 lobby visual chrome MVP | Dispatched per user; awaiting return |
+| 640 | `/dev-story` worker | ECO-004 kill-and-objective-awards | Dispatched per user; awaiting return |
+
+### Next free prompt number
+
+- **641+** = next free for new emit
+- 641 = cherry-pick of 639 (drafted after worker returns)
+- 642 = cherry-pick of 640 (drafted after worker returns)
+- 643 = `/story-done` S10-POLISH-003 (drafted after 641 lands)
+- 644 = `/story-done` ECO-004 (drafted after 642 lands)
+- 645 = Sprint 10 close-out skill chain (drafted after all close-out preconditions met)
+- 646 = Sprint 11 planning (drafted when user signals close-out approved)
