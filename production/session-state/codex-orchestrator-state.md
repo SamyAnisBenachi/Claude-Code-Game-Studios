@@ -2557,8 +2557,6 @@ See "Strategic insights" section appended below in conversation context — to b
 
 | SHA | Source prompt | Subject |
 |---|---|---|
-| `89d048d` | PROMPT 619 / cherry-pick 612 | BoardLocalPlayer init from ClientSessionIdentity on handshake-only path (Finding A repair) |
-| `fb30734` | PROMPT 620 / cherry-pick 617 | S10-POLISH-002 panel chrome wiring (4 files) |
 | `7ca89fc` | (state update) | Orchestration status — wave 4 documentation |
 | `b780f0e` | PROMPT 629 / cherry-pick 618 | S10-POLISH-001 HUD visual chrome MVP (HudDimOverlay + sync_dim_overlay_for_resolution_system; 8/8 hud_resolution_dim_test) |
 | `5da3768` | PROMPT 631 / cherry-pick 622 | Finding D lobby C2S hardening (4 sites in send_lobby_commands_system; `no_sender_entity` warn on missing sender entity) |
@@ -2568,6 +2566,8 @@ See "Strategic insights" section appended below in conversation context — to b
 | `5e6bfb9` | PROMPT 636 / cherry-pick 627 | Cluster 2B — server session lobby+GAME_OVER hardening (12 sites in core/session/system.rs) |
 | `95bc7fb` | PROMPT 634 / push+cherry-pick 628 | Cluster 2C — server feature dispatch hardening (9 sites in feature/{auction,objective,prism}/system.rs) |
 | `dc664c8` | PROMPT 637 / cherry-pick 632 | Finding B v2 Verdict 2 — reserve strip child visibility repair (Visibility::Visible → Visibility::Inherited at hand/mod.rs:2649+2683 + new regression test placement_entry_post_acquisition_test) |
+
+(9 commits — `89d048d` Finding A repair + `fb30734` POLISH-002 chrome wiring were already covered in waves 3/4 and pre-date the `325a2fc` baseline.)
 
 ### Sprint 10 Must Have status — 6/6 done + paperwork complete
 
