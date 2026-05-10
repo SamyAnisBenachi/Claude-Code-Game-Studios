@@ -2688,3 +2688,139 @@ Awaits user signal after retests confirm. Standard sequence:
 - 644 = `/story-done` ECO-004 (drafted after 642 lands)
 - 645 = Sprint 10 close-out skill chain (drafted after all close-out preconditions met)
 - 646 = Sprint 11 planning (drafted when user signals close-out approved)
+
+---
+
+## State Snapshot 2026-05-10 wave 6 (Finding B v2 V3 PARTIAL diagnostic + Should-Haves substantively integrated — HEAD `9fb8e60`)
+
+### Commits added to `main` since wave 5 (`4cb02f3`)
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `d0165b9` | PROMPT 643 / cherry-pick 642 | Finding B v2 V3 Worker A — `sync_hand_fan_viewport_from_window_system` registered before `HandUiSystemSet::StateSync`; new 2-test `hand_ui_viewport_sync_test.rs`; HU-02 reconciliation block. Suspect 1 from PROMPT 641 diagnostic — **subsequently FALSIFIED at runtime** (see Verdict 3 below). |
+| `084129c` | PROMPT 644 / cherry-pick 639 | S10-POLISH-003 lobby visual chrome MVP — story authoring + `lobby_chrome_wiring_test.rs` (5/5 PASS) + evidence doc + `client/Cargo.toml` [[test]] entry. 6/7 ACs PASS + 1 ADVISORY (AC-5 = pre-existing 12 × E0596 in `tests/integration/presentation/lobby_asset_wiring_test.rs` from Bevy 0.18 API breakage — flagged S11-TD-PAW-006-COMPILE-001). |
+| `9fb8e60` | PROMPT 645 / cherry-pick 640 | ECO-004 kill-and-objective-awards — 9 source files (combat/objective/economy core); 12/12 new `reward_loop_awards_test` PASS; new `EconomySystemSet::RewardConsumers` ordering; combat is sole direct writer of objective gold; pre-existing failure cluster expanded (AuctionSettled + ResolutionComplete fixture variants). |
+
+### Sprint 10 Substantive Integration Status — 6 Must + 2 Should done; paperwork pending for Shoulds
+
+| Story | Priority | Code on main | Paperwork |
+|---|---|---|---|
+| S10-PAW-001 | must-have | ✅ | ✅ done |
+| S10-TD-001 | must-have | ✅ | ✅ done |
+| S10-TD-002 | must-have | ✅ | ✅ done |
+| S10-CARRY-001 | must-have | ✅ | ✅ done |
+| S10-POLISH-001 | must-have | ✅ `b780f0e` | ✅ done at `de42278` |
+| S10-POLISH-002 | must-have | ✅ | ✅ done |
+| S10-POLISH-003 | should-have | ✅ `084129c` | ⏳ needs `/story-done` (PROMPT 649) |
+| ECO-004 | should-have | ✅ `9fb8e60` | ⏳ needs `/story-done` (PROMPT 650, AC1 Sprint 9 conditional gate orchestrator-owned) |
+| S10-TD-003 | should-have | ⚪ never started | `file: ""` — needs `/create-stories` or authoring; deferred Sprint 11 |
+| S10-N1 | nice-to-have | ⚪ skip | Friend-game scope skip |
+| S10-N2 | nice-to-have | ⚪ skip | Friend-game scope skip |
+
+→ Sprint 10 substantive scope **complete except** 2 paperwork closures + bug-fixing chain for Finding B v2 V3 + 2 user retests.
+
+### Findings status — Wave 6
+
+| Finding | Status | Validation |
+|---|---|---|
+| A (BoardLocalPlayer init) | FIXED | Runtime-validated wave 4 |
+| B v2 V1 (drain) | NO-BUG | PROMPT 623 |
+| B v2 V2 (reserve strip child Visibility) | REPAIRED at `dc664c8` | User screenshot confirms reserve labels gone wave 5 |
+| **B v2 V3 (PLACEMENT-specific fan absence)** | **PARTIAL** — 5/6 suspects FALSIFIED by PROMPT 646 source diagnostic; P5 (z-order / containing-block overflow at 1920×1080) EVIDENCE-INSUFFICIENT | Awaits 647 → 651 runtime instrumentation → retest |
+| D (lobby class-confirm) | HARDENED both directions on main | Awaits user retest (independent of V3) |
+
+### Diagnostic-misdiagnosis lesson (Suspect 1 viewport)
+
+PROMPT 641 worker reported Suspect 1 (HandFanViewport never updated) as PROVEN. Worker A (PROMPT 642) implemented the fix; cherry-picked at `d0165b9`. **User retest produced new screenshot evidence**: AUCTION shows fan correctly, PLACEMENT still empty. Same window resolution in both phases → viewport sync was NOT the gating bug for the user's actual symptom. PROMPT 646 re-diagnostic confirmed Suspect 1 was **misdiagnosed as PROVEN by 641**.
+
+**Methodology lesson** (folded into rule 2 application going forward): source-only diagnostics CAN report PROVEN incorrectly when:
+- A plausible mechanism is identified (here: hardcoded default viewport at 800×600)
+- The mechanism IS a real bug (viewport sync was genuinely missing)
+- But it doesn't explain the actual runtime symptom (because AUCTION renders fan correctly at the same resolution → delta is phase-specific, not viewport-specific)
+
+**Mitigation**: when a diagnostic worker reports PROVEN, the orchestrator should still require **phase-2 runtime evidence** before committing repair work — i.e., the user retest must validate the symptom is actually closed. PROMPT 642's repair stands (the viewport bug WAS real, just not THE bug) but new bug-fixing requires runtime tracing, which gates on S11-TD-CLIENT-LOG-001.
+
+### PROMPT 646 PARTIAL diagnostic — 5/6 suspects FALSIFIED with file:line evidence
+
+| Suspect | Verdict | File:line evidence |
+|---|---|---|
+| P1 HandUiMode mapping | FALSIFIED | mod.rs:147-148 — Placement→Staging, shows_fan_slots()=true |
+| P2 apply_fan_layout phase-gate | FALSIFIED | mod.rs:923-951 — pure hand_count driven, no phase guard |
+| P3 phase-transition Visibility flip | FALSIFIED | mod.rs:1130-1149 — Hidden only when !shows_fan_slots() |
+| P4 hand_count reset | FALSIFIED | mod.rs:1034-1038, 1542-1547 — both writers recompute from hand_contents.cards.len() |
+| P5 z-order / containing-block overflow at 1920×1080 | **EVIDENCE-INSUFFICIENT (suspicious)** | fan_base_y=980, fan_root height:260 bottom:0 → child top:980 may resolve off-screen |
+| P6 round-transition snapshot clobber | FALSIFIED | S2CGameSnapshot only sent on reconnect (server/src/core/session/reconnect.rs) |
+
+### Test fixture-vs-runtime divergence (critical finding)
+
+- `tests/integration/hand-ui/placement_entry_post_acquisition_test.rs` (PROMPT 632 test) — uses `MinimalPlugins` → no WindowPlugin → default 800×600 → fan_base_y=500 lands inside parent → **false-positive pass**
+- `tests/integration/hand-ui/hand_ui_viewport_sync_test.rs` (PROMPT 642 test) — tests 1920×1080 numeric positions but does NOT assert Visibility
+- **Gap**: no test combines 1920×1080 viewport + Placement transition + Visibility assertion + on-screen Y check
+- Candidate Sprint 11 story (or fold into V3 repair commit when emitted): extend coverage to catch the runtime-blind-spot pattern
+
+### New rule 15 — Prompt delimiter format (2 lines, N at end of line 2)
+
+User directive 2026-05-10 wave 6: simplify prompt block opening to exactly:
+
+```
+###################################################
+################################################### N
+```
+
+Where `N` is the prompt number at end of line 2. Drops the prior 3-line hash + `🔺🔺🔺 PROMPT N 🔺🔺🔺` triangle-header convention from wave 4 night-2. Apply from PROMPT 651 onward. Final colored status line continues per rule 11 (no separate closing block).
+
+### Bug-fixing chain status (Finding B v2 V3)
+
+Sequenced dependency:
+1. **647** (Client tracing init fix — S11-TD-CLIENT-LOG-001) — PREREQUISITE; runnable now
+2. **651** (V3 instrumentation: 5 `hand_ui_dbg` tracing additions per 646 recommendation) — DEFERRED until 647 lands
+3. **User retest with `RUST_LOG=hand_ui_dbg=trace`** — captures actual P5 evidence
+4. **V3 repair prompt** — drafted only after evidence proves OR falsifies P5
+5. **Cherry-pick + user retest** — closes V3 if repair works
+
+### Sprint 11-preview backlog accumulated (wave 6 additions)
+
+| Tag | Source | Description |
+|---|---|---|
+| S11-TD-NET-001 / 002 / 003 | Server hardening 625/626/627 | Test parity for send-Err logging |
+| S11-TD-PRISM-COV-001 | Cluster 2C advisory | Prism reward/respawn coverage |
+| S11-TD-CLIENT-LOG-001 | Multiple diagnostics | Client stdout empty — about to close via PROMPT 647 |
+| S11-TD-SERVER-LOG-SPAM-001 | PROMPT 641 advisory | 396k log lines in 1 session — investigation |
+| S11-TD-PAW-006-COMPILE-001 | PROMPT 639/644 advisory | 12 × E0596 in lobby_asset_wiring_test (Bevy 0.18 API: app.world() → world_mut()) |
+| AuctionSettled MessageReader + ResolutionComplete fixture cluster | PROMPTs 625/627/628/640 | 6+ test files affected; bundled triage candidate |
+| HUD test-fixture cascade tail | PROMPT 618/629 | hud_asset_wiring_test 0/6 + hud_plugin_scaffold_test 3/4 |
+| Broken `*_harness.rs` bins | PROMPT 618/629/639 | Bevy 0.18 "Input behind features" reorg; blocks cargo run -p client |
+| HAND-UI runtime-vs-fixture viewport coverage gap | PROMPT 646 | New test combining 1920×1080 + Placement + Visibility + on-screen Y check |
+| S10-TD-003 doc hygiene | Sprint 10 should-have | `file: ""`; needs authoring or `/create-stories`; deferred Sprint 11 if Sprint 10 closes |
+
+### Currently launchable at snapshot time (parallel-safe)
+
+| PROMPT | Type | Runnable | Parallel-safe with |
+|---|---|---|---|
+| 647 | Client tracing init fix | Now (worktree) | 648, 649, 650 |
+| 648 | Heavy-logging audit | Now (read-only) | 647, 649, 650 |
+| 649 | `/story-done` S10-POLISH-003 | Now (root, serializes with 650) | 647, 648 |
+| 650 | `/story-done` ECO-004 | Now (root, after 649) | 647, 648 |
+
+### Pending user actions
+
+- Dispatch the 4 launchable above
+- In-game retest validating Finding D (no code change since `5da3768` + `5e6bfb9`)
+- Defer Finding B v2 V3 retest until full bug-fixing chain lands (647 → 651 → repair → cherry-pick)
+
+### Sprint 10 close-out preconditions
+
+Once both paperwork closures (649 + 650) land:
+- `/smoke-check sprint`
+- `/team-qa sprint` (or accept-risk per friend-game scope)
+- `/gate-check Polish→Release` (or accept-risk advisory)
+
+Finding B v2 V3 closure is NOT a Sprint 10 close-out blocker (it's a bug-fix campaign that can extend past Sprint 10 paperwork close if needed; user's call).
+
+### Next free prompt number
+
+- **651+** = next free for new emit
+- 651 = V3 hand_ui_dbg instrumentation (5 tracing sites per 646 recommendation; gated on 647)
+- 652 = Test divergence repair (1920×1080 + Placement + Visibility + on-screen Y; optional Sprint 11)
+- 653 = V3 repair (drafted only after 651 + user trace capture)
+- 654 = Sprint 10 close-out skill chain (drafted after 649 + 650 land)
