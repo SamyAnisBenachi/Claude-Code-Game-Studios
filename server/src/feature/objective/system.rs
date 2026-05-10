@@ -604,15 +604,33 @@ fn send_objective_identities(
     server: &Server,
     dispatch: &ObjectiveIdentityDispatch,
 ) {
+    tracing::info!(
+        player_id = dispatch.player_id.0,
+        peer_id = ?dispatch.peer_id,
+        identity_count = dispatch.message.identities.len(),
+        "send_objective_identities enter"
+    );
+
     let Some(peer_id) = dispatch.peer_id else {
+        tracing::warn!(
+            player_id = dispatch.player_id.0,
+            "send_objective_identities DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+        );
         return;
     };
 
-    let _ = sender.send::<S2CObjectiveIdentities, ReliableChannel>(
+    if let Err(e) = sender.send::<S2CObjectiveIdentities, ReliableChannel>(
         &dispatch.message,
         server,
         &NetworkTarget::Single(peer_id),
-    );
+    ) {
+        tracing::error!(
+            player_id = dispatch.player_id.0,
+            peer_id = ?peer_id,
+            err = ?e,
+            "S2C send failed: type=S2CObjectiveIdentities, handler=send_objective_identities"
+        );
+    }
 }
 
 fn peer_for_player(
