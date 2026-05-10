@@ -143,6 +143,10 @@ name = "hand_ui_draft_initial_grid_test"
 path = "../tests/integration/hand-ui/draft_initial_grid_test.rs"
 
 [[test]]
+name = "placement_entry_post_acquisition_test"
+path = "../tests/integration/hand-ui/placement_entry_post_acquisition_test.rs"
+
+[[test]]
 name = "hud_phase_label_round_counter_test"
 path = "../tests/unit/hud/phase_label_round_counter_test.rs"
 

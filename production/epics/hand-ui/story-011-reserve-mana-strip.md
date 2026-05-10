@@ -122,3 +122,26 @@
 - Advisory: VA-9 specifies a 96 px strip width; the implementation uses 104 px. The logic criteria pass; visual sizing can be reconciled in UI polish if needed.
 **Test Evidence**: Logic: `tests/unit/hand-ui/reserve_mana_strip_test.rs`; `cargo test -p client --test hand_ui_reserve_mana_strip_test` passed 3/3.
 **Code Review**: Skipped - lean mode.
+
+### Finding B v2 — Verdict 2 Reconciliation (2026-05-10)
+
+PROMPT 623's read-only diagnostic of the runtime "RESERVE 0 CURRENT 0" leak at PLACEMENT entry traced the symptom to a child-visibility regression in `client/src/ui/hand/mod.rs`:
+
+- `spawn_reserve_strip` spawned `ReserveStripValueText` with `Visibility::Visible` (line 2649).
+- `spawn_reserve_strip_button` spawned the `[ - ]` and `[ + ]` `ReserveStripButton` entities with `Visibility::Visible` (line 2683).
+
+The strip parent (`ReserveStripForFanSlot`) was correctly `Visibility::Hidden` at spawn (line 2629), and HU-13(d) (Story 005) toggled it to `Visible`/`Hidden` on stage/un-stage. But Bevy's visibility model treats `Visibility::Visible` on a child as an explicit override of the parent's computed state — children with `Visible` ignore a `Hidden` parent. The fan-slot chrome convention (lines 2447, 2455, 2463, 2471, 2479, 2487, 2495) and the board-rendering convention (`client/src/presentation/board_rendering.rs` lines 2138, 2155, 2274, 2305) both use `Visibility::Inherited` for children that must follow a parent gating decision.
+
+Effect on this story's ACs:
+- **AC-27 (HU-27)** "free card strip hidden": the strip parent was `Hidden` as designed, but the value text and `[ - ] / [ + ]` buttons still rendered, leaking the strip onto the fan even for `cost == 0` staged cards.
+- **AC-13(d)** (Story 005 contract relied on here) "un-stage hides the strip": un-stage set the strip parent to `Hidden`, but the value text and buttons remained painted because their `Visible` overrode inheritance.
+
+The original `reserve_mana_strip_test.rs` exercised only the in-strip stepper logic on a freshly constructed parent and never asserted child propagation, so the regression slipped past the AC-27 contract.
+
+**Verdict 2 repair (this branch — `work/finding-b-v2-reserve-strip-child-visibility`):**
+
+- `client/src/ui/hand/mod.rs:2649` — `Visibility::Visible` → `Visibility::Inherited` on `ReserveStripValueText`.
+- `client/src/ui/hand/mod.rs:2683` — `Visibility::Visible` → `Visibility::Inherited` on `ReserveStripButton` (both `-` and `+` via the shared helper).
+- New regression test `tests/integration/hand-ui/placement_entry_post_acquisition_test.rs` drives 3 `HandUiCardAcquiredReceived` events in `DraftInitial`, transitions to `Placement`, and asserts: every `ReserveStripForFanSlot` parent is `Hidden`; every `ReserveStripValueText` child is `Visibility::Inherited`; every `ReserveStripButton` child is `Visibility::Inherited`.
+
+AC-27 and AC-13(d) status is re-affirmed `[x]` — the AC contract is unchanged; the propagation path it relied on is now enforced by an integration test rather than an implicit spawn-time convention. The branch HEAD will be assigned by the orchestrator on cherry-pick into `main`.

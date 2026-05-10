@@ -2646,7 +2646,7 @@ fn spawn_reserve_strip(commands: &mut Commands, fan_root: Entity, slot_index: u8
         ReserveStripValueText(slot_index),
         Text::new("Reserve 0 Current 0"),
         reserve_strip_child_node(28.0, 124.0),
-        Visibility::Visible,
+        Visibility::Inherited,
         ChildOf(strip),
     ));
 
@@ -2680,7 +2680,7 @@ fn spawn_reserve_strip_button(
             Interaction::None,
             Text::new(label),
             reserve_strip_child_node(left_px, 24.0),
-            Visibility::Visible,
+            Visibility::Inherited,
             ChildOf(parent),
         ))
         .id()
