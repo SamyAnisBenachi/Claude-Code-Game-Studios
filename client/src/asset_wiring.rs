@@ -6,55 +6,65 @@ use crate::state::ClientState;
 const CARD_DATA_JSON: &str = include_str!("../../assets/data/cards.json");
 
 // ── Shared fallback ───────────────────────────────────────────────────────────
-pub const PLACEHOLDER_FALLBACK_ASSET: &str = "art/ui/shared/ui_placeholder_1x1_white.png";
+// NO ANALOGUE on disk — repointed to universal placeholder.
+pub const PLACEHOLDER_FALLBACK_ASSET: &str = "art/characters/ui_unit_placeholder_default_board.png";
 
 // ── Card UI (hand fan chrome) ─────────────────────────────────────────────────
-pub const CARD_FRAME_COMMON_HAND_ASSET: &str = "art/ui/card/ui_card_frame_common_hand.png";
-pub const CARD_FRAME_RARE_HAND_ASSET: &str = "art/ui/card/ui_card_frame_rare_hand.png";
-pub const CARD_FRAME_EPIC_HAND_ASSET: &str = "art/ui/card/ui_card_frame_epic_hand.png";
-pub const CARD_FRAME_LEGENDARY_HAND_ASSET: &str = "art/ui/card/ui_card_frame_legendary_hand.png";
+// Disk has class-keyed card frames in art/ui/hand/, not rarity-keyed in art/ui/card/.
+// Map each rarity tier to a class frame as a stand-in placeholder.
+pub const CARD_FRAME_COMMON_HAND_ASSET: &str = "art/ui/hand/card_frame_neutral_default_display.png";
+pub const CARD_FRAME_RARE_HAND_ASSET: &str = "art/ui/hand/card_frame_cra_default_display.png";
+pub const CARD_FRAME_EPIC_HAND_ASSET: &str = "art/ui/hand/card_frame_iop_default_display.png";
+pub const CARD_FRAME_LEGENDARY_HAND_ASSET: &str =
+    "art/ui/hand/card_frame_sacrier_default_display.png";
 
-pub const STAT_BADGE_ATK_ASSET: &str = "art/ui/card/ui_stat_badge_atk.png";
-pub const STAT_BADGE_HP_ASSET: &str = "art/ui/card/ui_stat_badge_hp.png";
-pub const STAT_BADGE_MP_ASSET: &str = "art/ui/card/ui_stat_badge_mp.png";
-pub const STAT_BADGE_AR_ASSET: &str = "art/ui/card/ui_stat_badge_ar.png";
+pub const STAT_BADGE_ATK_ASSET: &str = "art/ui/hand/ui_badge_atk_default_hud.png";
+pub const STAT_BADGE_HP_ASSET: &str = "art/ui/hand/ui_badge_hp_default_hud.png";
+pub const STAT_BADGE_MP_ASSET: &str = "art/ui/hand/ui_badge_mana_neutral_default_hud.png";
+// NO ANALOGUE on disk — repointed to universal placeholder.
+pub const STAT_BADGE_AR_ASSET: &str = "art/characters/ui_unit_placeholder_default_board.png";
 
-pub const RARITY_ICON_COMMON_ASSET: &str = "art/ui/card/ui_rarity_common_icon.png";
-pub const RARITY_ICON_RARE_ASSET: &str = "art/ui/card/ui_rarity_rare_icon.png";
-pub const RARITY_ICON_EPIC_ASSET: &str = "art/ui/card/ui_rarity_epic_icon.png";
-pub const RARITY_ICON_LEGENDARY_ASSET: &str = "art/ui/card/ui_rarity_legendary_icon.png";
+pub const RARITY_ICON_COMMON_ASSET: &str = "art/ui/hand/ui_icon_field_common_default_hud.png";
+pub const RARITY_ICON_RARE_ASSET: &str = "art/ui/hand/ui_icon_field_rare_default_hud.png";
+pub const RARITY_ICON_EPIC_ASSET: &str = "art/ui/hand/ui_icon_trap_epic_default_hud.png";
+pub const RARITY_ICON_LEGENDARY_ASSET: &str = "art/ui/hand/ui_icon_field_legendary_default_hud.png";
 
-pub const CLASS_TYPE_ICON_IOP_ASSET: &str = "art/ui/card/ui_class_iop_type_icon.png";
-pub const CLASS_TYPE_ICON_CRA_ASSET: &str = "art/ui/card/ui_class_cra_type_icon.png";
-pub const CLASS_TYPE_ICON_SACRIER_ASSET: &str = "art/ui/card/ui_class_sacrier_type_icon.png";
-pub const CLASS_TYPE_ICON_XELOR_ASSET: &str = "art/ui/card/ui_class_xelor_type_icon.png";
-pub const CLASS_TYPE_ICON_ECAFLIP_ASSET: &str = "art/ui/card/ui_class_ecaflip_type_icon.png";
-pub const CLASS_TYPE_ICON_SADIDA_ASSET: &str = "art/ui/card/ui_class_sadida_type_icon.png";
-pub const CLASS_TYPE_ICON_NEUTRAL_ASSET: &str = "art/ui/card/ui_class_neutral_type_icon.png";
+pub const CLASS_TYPE_ICON_IOP_ASSET: &str = "art/ui/hand/ui_badge_mana_iop_default_hud.png";
+pub const CLASS_TYPE_ICON_CRA_ASSET: &str = "art/ui/hand/ui_badge_mana_cra_default_hud.png";
+pub const CLASS_TYPE_ICON_SACRIER_ASSET: &str = "art/ui/hand/ui_badge_mana_sacrier_default_hud.png";
+pub const CLASS_TYPE_ICON_XELOR_ASSET: &str = "art/ui/hand/ui_badge_mana_xelor_default_hud.png";
+pub const CLASS_TYPE_ICON_ECAFLIP_ASSET: &str = "art/ui/hand/ui_badge_mana_ecaflip_default_hud.png";
+pub const CLASS_TYPE_ICON_SADIDA_ASSET: &str = "art/ui/hand/ui_badge_mana_sadida_default_hud.png";
+pub const CLASS_TYPE_ICON_NEUTRAL_ASSET: &str = "art/ui/hand/ui_badge_mana_neutral_default_hud.png";
 
 // ── Shop / Auction UI ─────────────────────────────────────────────────────────
 pub const SHOP_PANEL_CHROME_ASSET: &str = "art/ui/shop/ui_shop_panel_chrome.png";
 pub const SHOP_SLOT_WELL_IDLE_ASSET: &str = "art/ui/shop/ui_slot_well_idle.png";
 
-pub const BID_BUTTON_NORMAL_ASSET: &str = "art/ui/auction/ui_bid_button_normal.png";
-pub const BID_BUTTON_HOVER_ASSET: &str = "art/ui/auction/ui_bid_button_hover.png";
+pub const BID_BUTTON_NORMAL_ASSET: &str = "art/ui/auction/ui_bid_button_active.png";
+// NO ANALOGUE on disk — repointed to universal placeholder.
+pub const BID_BUTTON_HOVER_ASSET: &str = "art/characters/ui_unit_placeholder_default_board.png";
 pub const BID_BUTTON_DISABLED_ASSET: &str = "art/ui/auction/ui_bid_button_disabled.png";
 
 // ── HUD ───────────────────────────────────────────────────────────────────────
-pub const HUD_FIGURINE_IOP_ASSET: &str = "art/ui/hud/ui_class_figurine_iop.png";
-pub const HUD_FIGURINE_CRA_ASSET: &str = "art/ui/hud/ui_class_figurine_cra.png";
-pub const HUD_FIGURINE_SACRIER_ASSET: &str = "art/ui/hud/ui_class_figurine_sacrier.png";
-pub const HUD_FIGURINE_XELOR_ASSET: &str = "art/ui/hud/ui_class_figurine_xelor.png";
-pub const HUD_FIGURINE_ECAFLIP_ASSET: &str = "art/ui/hud/ui_class_figurine_ecaflip.png";
-pub const HUD_FIGURINE_SADIDA_ASSET: &str = "art/ui/hud/ui_class_figurine_sadida.png";
-pub const HUD_FIGURINE_NEUTRAL_ASSET: &str = "art/ui/hud/ui_class_figurine_neutral.png";
+// Disk has no art/ui/hud/ directory. Map figurines to the class-keyed hand frames.
+pub const HUD_FIGURINE_IOP_ASSET: &str = "art/ui/hand/card_frame_iop_default_display.png";
+pub const HUD_FIGURINE_CRA_ASSET: &str = "art/ui/hand/card_frame_cra_default_display.png";
+pub const HUD_FIGURINE_SACRIER_ASSET: &str = "art/ui/hand/card_frame_sacrier_default_display.png";
+pub const HUD_FIGURINE_XELOR_ASSET: &str = "art/ui/hand/card_frame_xelor_default_display.png";
+pub const HUD_FIGURINE_ECAFLIP_ASSET: &str = "art/ui/hand/card_frame_ecaflip_default_display.png";
+pub const HUD_FIGURINE_SADIDA_ASSET: &str = "art/ui/hand/card_frame_sadida_default_display.png";
+pub const HUD_FIGURINE_NEUTRAL_ASSET: &str = "art/ui/hand/card_frame_neutral_default_display.png";
 
-pub const HUD_PHASE_TIMER_BAR_ASSET: &str = "art/ui/hud/ui_phase_timer_bar.png";
+// NO ANALOGUE on disk — repointed to universal placeholder.
+pub const HUD_PHASE_TIMER_BAR_ASSET: &str = "art/characters/ui_unit_placeholder_default_board.png";
 
-pub const HUD_OBJECTIVE_DOT_ALIVE_ASSET: &str = "art/ui/hud/ui_objective_dot_alive.png";
-pub const HUD_OBJECTIVE_DOT_DESTROYED_ASSET: &str = "art/ui/hud/ui_objective_dot_destroyed.png";
-pub const HUD_OBJECTIVE_DOT_UNKNOWN_ASSET: &str = "art/ui/hud/ui_objective_dot_unknown.png";
-pub const HUD_OBJECTIVE_DOT_FAKE_ASSET: &str = "art/ui/hud/ui_objective_dot_fake.png";
+pub const HUD_OBJECTIVE_DOT_ALIVE_ASSET: &str = "art/board/env_objective_real_reveal_board.png";
+// NO ANALOGUE on disk — repointed to universal placeholder.
+pub const HUD_OBJECTIVE_DOT_DESTROYED_ASSET: &str =
+    "art/characters/ui_unit_placeholder_default_board.png";
+pub const HUD_OBJECTIVE_DOT_UNKNOWN_ASSET: &str = "art/board/env_objective_unknown_board.png";
+pub const HUD_OBJECTIVE_DOT_FAKE_ASSET: &str = "art/board/env_objective_fake_crack_board.png";
 
 // ── Board characters (world-space Sprite — NOT ImageNode) ─────────────────────
 pub const BOARD_UNIT_IOP_ASSET: &str = "art/characters/ui_class_iop_unit_board.png";
