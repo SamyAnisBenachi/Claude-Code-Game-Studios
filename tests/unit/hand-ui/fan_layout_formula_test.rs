@@ -107,6 +107,7 @@ fn app_with_hand_ui_in_session(hand_count: usize) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
     app.add_plugins(HandUiPlugin);
     app.insert_resource(HandFanLayoutConfig {
         fan_base_margin_px: 100.0,
