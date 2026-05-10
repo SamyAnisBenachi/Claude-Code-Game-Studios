@@ -1363,6 +1363,13 @@ fn broadcast_game_over_from_world(
     message: S2CGameOver,
     recipients: &[PlayerId],
 ) {
+    tracing::info!(
+        recipient_count = recipients.len(),
+        round = message.round,
+        reason = ?message.reason,
+        "broadcast_game_over_from_world enter"
+    );
+
     if let Some(mut outbox) = world.get_resource_mut::<SessionNetworkOutbox>() {
         outbox.push_game_over(message.clone());
     }
@@ -1377,6 +1384,11 @@ fn broadcast_game_over_from_world(
         })
         .unwrap_or_default();
     if target_peers.is_empty() {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            round = message.round,
+            "broadcast_game_over_from_world DROPPED — target_peers empty; no PlayerConnectionMap or all recipients unresolved"
+        );
         return;
     }
 
@@ -1386,14 +1398,25 @@ fn broadcast_game_over_from_world(
     )> = bevy::ecs::system::SystemState::new(world);
     let (server, mut sender) = system_state.get_mut(world);
     let (Ok(server), Some(sender)) = (server.single(), sender.as_mut()) else {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            round = message.round,
+            "broadcast_game_over_from_world DROPPED — Server query empty or ServerMultiMessageSender missing"
+        );
         return;
     };
 
-    let _ = sender.send::<S2CGameOver, ReliableChannel>(
+    if let Err(e) = sender.send::<S2CGameOver, ReliableChannel>(
         &message,
         server,
         &NetworkTarget::Only(target_peers),
-    );
+    ) {
+        tracing::error!(
+            round = message.round,
+            err = ?e,
+            "S2C send failed: type=S2CGameOver, handler=broadcast_game_over_from_world"
+        );
+    }
 }
 
 fn participants_sorted(ended_state: &EndedSessionResultState) -> Vec<PlayerId> {
@@ -1450,17 +1473,39 @@ fn broadcast_game_over(
     message: S2CGameOver,
     recipients: &[PlayerId],
 ) {
+    tracing::info!(
+        recipient_count = recipients.len(),
+        round = message.round,
+        reason = ?message.reason,
+        "broadcast_game_over enter"
+    );
+
     if let Some(outbox) = outbox {
         outbox.push_game_over(message.clone());
     }
 
     let Some(sender) = sender else {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            round = message.round,
+            "broadcast_game_over DROPPED — ServerMultiMessageSender missing"
+        );
         return;
     };
     let Some(server) = server.single().ok() else {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            round = message.round,
+            "broadcast_game_over DROPPED — Server query empty"
+        );
         return;
     };
     let Some(connections) = connections else {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            round = message.round,
+            "broadcast_game_over DROPPED — PlayerConnectionMap missing"
+        );
         return;
     };
 
@@ -1469,14 +1514,25 @@ fn broadcast_game_over(
         .filter_map(|player_id| peer_for_player(&connections.0, *player_id))
         .collect::<Vec<_>>();
     if target_peers.is_empty() {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            round = message.round,
+            "broadcast_game_over DROPPED — target_peers empty; all recipients unresolved in PlayerConnectionMap"
+        );
         return;
     }
 
-    let _ = sender.send::<S2CGameOver, ReliableChannel>(
+    if let Err(e) = sender.send::<S2CGameOver, ReliableChannel>(
         &message,
         server,
         &NetworkTarget::Only(target_peers),
-    );
+    ) {
+        tracing::error!(
+            round = message.round,
+            err = ?e,
+            "S2C send failed: type=S2CGameOver, handler=broadcast_game_over"
+        );
+    }
 }
 
 fn broadcast_session_settings_updated(
@@ -1487,17 +1543,35 @@ fn broadcast_session_settings_updated(
     message: S2CSessionSettingsUpdated,
     recipients: &[PlayerId],
 ) {
+    tracing::info!(
+        recipient_count = recipients.len(),
+        placement_timer_multiplier = ?message.placement_timer_multiplier_effective,
+        "broadcast_session_settings_updated enter"
+    );
+
     if let Some(outbox) = outbox {
         outbox.push_session_settings_updated(message.clone());
     }
 
     let Some(sender) = sender else {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            "broadcast_session_settings_updated DROPPED — ServerMultiMessageSender missing"
+        );
         return;
     };
     let Some(server) = server.single().ok() else {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            "broadcast_session_settings_updated DROPPED — Server query empty"
+        );
         return;
     };
     let Some(connections) = connections else {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            "broadcast_session_settings_updated DROPPED — PlayerConnectionMap missing"
+        );
         return;
     };
 
@@ -1506,14 +1580,23 @@ fn broadcast_session_settings_updated(
         .filter_map(|player_id| peer_for_player(&connections.0, *player_id))
         .collect::<Vec<_>>();
     if target_peers.is_empty() {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            "broadcast_session_settings_updated DROPPED — target_peers empty; all recipients unresolved in PlayerConnectionMap"
+        );
         return;
     }
 
-    let _ = sender.send::<S2CSessionSettingsUpdated, ReliableChannel>(
+    if let Err(e) = sender.send::<S2CSessionSettingsUpdated, ReliableChannel>(
         &message,
         server,
         &NetworkTarget::Only(target_peers),
-    );
+    ) {
+        tracing::error!(
+            err = ?e,
+            "S2C send failed: type=S2CSessionSettingsUpdated, handler=broadcast_session_settings_updated"
+        );
+    }
 }
 
 fn find_lobby_heartbeat_timeout(
@@ -1704,20 +1787,45 @@ fn send_create_room_outcome(
 ) {
     match outcome {
         CreateRoomOutcome::Created(msg) => {
+            tracing::info!(
+                peer_id = ?peer_id,
+                room_code = %msg.room_code,
+                session_id = %msg.session_id,
+                "send_create_room_outcome enter (Created)"
+            );
             // Lightyear 0.26 unicast is NetworkTarget::Single(PeerId), verified in
             // tests/evidence/lightyear-026-verification.md item 7.
-            let _ = sender.send::<S2CRoomCreated, ReliableChannel>(
+            if let Err(e) = sender.send::<S2CRoomCreated, ReliableChannel>(
                 msg,
                 server,
                 &NetworkTarget::Single(peer_id),
-            );
+            ) {
+                tracing::error!(
+                    peer_id = ?peer_id,
+                    room_code = %msg.room_code,
+                    err = ?e,
+                    "S2C send failed: type=S2CRoomCreated, handler=send_create_room_outcome"
+                );
+            }
         }
         CreateRoomOutcome::Rejected(msg) => {
-            let _ = sender.send::<S2CCreateRoomRejected, ReliableChannel>(
+            tracing::info!(
+                peer_id = ?peer_id,
+                reason = ?msg.reason,
+                "send_create_room_outcome enter (Rejected)"
+            );
+            if let Err(e) = sender.send::<S2CCreateRoomRejected, ReliableChannel>(
                 msg,
                 server,
                 &NetworkTarget::Single(peer_id),
-            );
+            ) {
+                tracing::error!(
+                    peer_id = ?peer_id,
+                    reason = ?msg.reason,
+                    err = ?e,
+                    "S2C send failed: type=S2CCreateRoomRejected, handler=send_create_room_outcome"
+                );
+            }
         }
     }
 }
@@ -1735,11 +1843,23 @@ fn send_confirm_class_outcome(
             revealed,
             reveal_recipients,
         } => {
-            let _ = sender.send::<S2CClassLocked, ReliableChannel>(
+            tracing::info!(
+                peer_id = ?peer_id,
+                class_id = ?locked.class_id,
+                "send_confirm_class_outcome enter (Locked)"
+            );
+            if let Err(e) = sender.send::<S2CClassLocked, ReliableChannel>(
                 locked,
                 server,
                 &NetworkTarget::Single(peer_id),
-            );
+            ) {
+                tracing::error!(
+                    peer_id = ?peer_id,
+                    class_id = ?locked.class_id,
+                    err = ?e,
+                    "S2C send failed: type=S2CClassLocked, handler=send_confirm_class_outcome"
+                );
+            }
 
             if let Some(revealed) = revealed {
                 let target_peers = reveal_recipients
@@ -1747,21 +1867,44 @@ fn send_confirm_class_outcome(
                     .filter_map(|player_id| peer_for_player(connections, *player_id))
                     .collect::<Vec<_>>();
 
-                if !target_peers.is_empty() {
-                    let _ = sender.send::<S2CClassesRevealed, ReliableChannel>(
-                        revealed,
-                        server,
-                        &NetworkTarget::Only(target_peers),
+                if target_peers.is_empty() {
+                    tracing::warn!(
+                        peer_id = ?peer_id,
+                        recipient_count = reveal_recipients.len(),
+                        "send_confirm_class_outcome (Revealed) DROPPED — target_peers empty; all reveal recipients unresolved in connections map"
+                    );
+                } else if let Err(e) = sender.send::<S2CClassesRevealed, ReliableChannel>(
+                    revealed,
+                    server,
+                    &NetworkTarget::Only(target_peers),
+                ) {
+                    tracing::error!(
+                        peer_id = ?peer_id,
+                        recipient_count = reveal_recipients.len(),
+                        err = ?e,
+                        "S2C send failed: type=S2CClassesRevealed, handler=send_confirm_class_outcome"
                     );
                 }
             }
         }
         ConfirmClassOutcome::Rejected(msg) => {
-            let _ = sender.send::<S2CConfirmClassRejected, ReliableChannel>(
+            tracing::info!(
+                peer_id = ?peer_id,
+                reason = ?msg.reason,
+                "send_confirm_class_outcome enter (Rejected)"
+            );
+            if let Err(e) = sender.send::<S2CConfirmClassRejected, ReliableChannel>(
                 msg,
                 server,
                 &NetworkTarget::Single(peer_id),
-            );
+            ) {
+                tracing::error!(
+                    peer_id = ?peer_id,
+                    reason = ?msg.reason,
+                    err = ?e,
+                    "S2C send failed: type=S2CConfirmClassRejected, handler=send_confirm_class_outcome"
+                );
+            }
         }
         ConfirmClassOutcome::Ignored => {}
     }
@@ -1780,31 +1923,66 @@ fn send_join_room_outcome(
             slot_update,
             slot_update_recipients,
         } => {
-            let _ = sender.send::<S2CJoinAck, ReliableChannel>(
+            tracing::info!(
+                peer_id = ?peer_id,
+                session_id = %ack.session_id,
+                "send_join_room_outcome enter (Joined)"
+            );
+            if let Err(e) = sender.send::<S2CJoinAck, ReliableChannel>(
                 ack,
                 server,
                 &NetworkTarget::Single(peer_id),
-            );
+            ) {
+                tracing::error!(
+                    peer_id = ?peer_id,
+                    session_id = %ack.session_id,
+                    err = ?e,
+                    "S2C send failed: type=S2CJoinAck, handler=send_join_room_outcome"
+                );
+            }
 
             let target_peers = slot_update_recipients
                 .iter()
                 .filter_map(|player_id| peer_for_player(connections, *player_id))
                 .collect::<Vec<_>>();
 
-            if !target_peers.is_empty() {
-                let _ = sender.send::<S2CSlotUpdated, ReliableChannel>(
-                    slot_update,
-                    server,
-                    &NetworkTarget::Only(target_peers),
+            if target_peers.is_empty() {
+                tracing::warn!(
+                    peer_id = ?peer_id,
+                    recipient_count = slot_update_recipients.len(),
+                    "send_join_room_outcome (SlotUpdated) DROPPED — target_peers empty; all slot_update recipients unresolved in connections map"
+                );
+            } else if let Err(e) = sender.send::<S2CSlotUpdated, ReliableChannel>(
+                slot_update,
+                server,
+                &NetworkTarget::Only(target_peers),
+            ) {
+                tracing::error!(
+                    peer_id = ?peer_id,
+                    recipient_count = slot_update_recipients.len(),
+                    err = ?e,
+                    "S2C send failed: type=S2CSlotUpdated, handler=send_join_room_outcome"
                 );
             }
         }
         JoinRoomOutcome::Rejected(msg) => {
-            let _ = sender.send::<S2CJoinRejected, ReliableChannel>(
+            tracing::info!(
+                peer_id = ?peer_id,
+                reason = ?msg.reason,
+                "send_join_room_outcome enter (Rejected)"
+            );
+            if let Err(e) = sender.send::<S2CJoinRejected, ReliableChannel>(
                 msg,
                 server,
                 &NetworkTarget::Single(peer_id),
-            );
+            ) {
+                tracing::error!(
+                    peer_id = ?peer_id,
+                    reason = ?msg.reason,
+                    err = ?e,
+                    "S2C send failed: type=S2CJoinRejected, handler=send_join_room_outcome"
+                );
+            }
         }
     }
 }
@@ -1833,17 +2011,39 @@ fn broadcast_session_cancelled(
         },
     };
 
+    tracing::info!(
+        recipient_count = recipients.len(),
+        reason = ?reason,
+        exclude_player = ?exclude_player,
+        "broadcast_session_cancelled enter"
+    );
+
     if let Some(outbox) = outbox {
         outbox.push_session_cancelled(message.clone());
     }
 
     let Some(sender) = sender else {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            reason = ?reason,
+            "broadcast_session_cancelled DROPPED — ServerMultiMessageSender missing"
+        );
         return;
     };
     let Some(server) = server.single().ok() else {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            reason = ?reason,
+            "broadcast_session_cancelled DROPPED — Server query empty"
+        );
         return;
     };
     let Some(connections) = connections else {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            reason = ?reason,
+            "broadcast_session_cancelled DROPPED — PlayerConnectionMap missing"
+        );
         return;
     };
 
@@ -1856,14 +2056,25 @@ fn broadcast_session_cancelled(
         })
         .collect::<Vec<_>>();
     if target_peers.is_empty() {
+        tracing::warn!(
+            recipient_count = recipients.len(),
+            reason = ?reason,
+            "broadcast_session_cancelled DROPPED — target_peers empty; all recipients unresolved or excluded in PlayerConnectionMap"
+        );
         return;
     }
 
-    let _ = sender.send::<S2CSessionCancelled, ReliableChannel>(
+    if let Err(e) = sender.send::<S2CSessionCancelled, ReliableChannel>(
         &message,
         server,
         &NetworkTarget::Only(target_peers),
-    );
+    ) {
+        tracing::error!(
+            reason = ?reason,
+            err = ?e,
+            "S2C send failed: type=S2CSessionCancelled, handler=broadcast_session_cancelled"
+        );
+    }
 }
 
 fn peer_for_player(connections: &HashMap<PeerId, PlayerId>, player_id: PlayerId) -> Option<PeerId> {
