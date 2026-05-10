@@ -91,6 +91,10 @@ name = "economy_network_dispatch_test"
 path = "../tests/integration/economy/network_dispatch_test.rs"
 
 [[test]]
+name = "reward_loop_awards_test"
+path = "../tests/integration/economy/reward_loop_awards_test.rs"
+
+[[test]]
 name = "shop_dispatch_test"
 path = "../tests/unit/network/shop_dispatch_test.rs"
 

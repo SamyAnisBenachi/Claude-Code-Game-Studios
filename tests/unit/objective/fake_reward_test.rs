@@ -210,18 +210,15 @@ fn test_os15_free_card_reward_with_full_hand_awards_one_gold_without_draw_seed()
         copies_remaining(&app, PLAYER_A, REWARD_CARD_ID),
         copies_before
     );
+    // ECO-004: combat owns the +3 objective destruction gold via the direct
+    // path in `feature/combat/mod.rs`. The consequence path emits AwardGold
+    // ONLY for the hand-full FreeCardPick fallback (+1) handled here.
     assert_eq!(
         read_messages::<AwardGold>(&app),
-        vec![
-            AwardGold {
-                player: PLAYER_A,
-                amount: 3,
-            },
-            AwardGold {
-                player: PLAYER_A,
-                amount: 1,
-            },
-        ]
+        vec![AwardGold {
+            player: PLAYER_A,
+            amount: 1,
+        }]
     );
 }
 
@@ -255,13 +252,11 @@ fn test_os22_free_card_pool_exhausted_is_noop_after_draw_seed() {
 
     assert!(hand(&app, PLAYER_A).is_empty());
     assert!(read_messages::<ManaCapIncreased>(&app).is_empty());
-    assert_eq!(
-        read_messages::<AwardGold>(&app),
-        vec![AwardGold {
-            player: PLAYER_A,
-            amount: 3,
-        }]
-    );
+    // ECO-004: consequence path no longer emits `AwardGold` for the regular
+    // objective destruction path; combat is the exclusive direct writer.
+    // With pool exhausted and hand not full, the FreeCardPick path is a no-op
+    // and emits no AwardGold either.
+    assert!(read_messages::<AwardGold>(&app).is_empty());
     assert_eq!(seed_index(&app), seed_index_before + 2);
 }
 

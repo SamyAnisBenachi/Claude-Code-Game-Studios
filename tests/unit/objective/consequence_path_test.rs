@@ -84,18 +84,20 @@ fn objective_destroyed(app: &mut App, owner: PlayerId, lane: LaneId) -> bool {
 }
 
 #[test]
-fn test_os7_opponent_destruction_emits_one_award_gold_for_real_and_fake() {
+fn test_os7_opponent_destruction_does_not_emit_award_gold_from_consequence_path() {
+    // ECO-004 / control manifest: combat is the exclusive in-RESOLUTION direct
+    // writer for objective gold awards (`feature/combat/mod.rs::award_objective_gold`).
+    // The objective consequence path no longer emits a duplicate `AwardGold`
+    // for a regular destruction; emitting one here would double-award once
+    // Economy consumes `AwardGold` (ECO-004 hand-full fake-reward fallback path).
     for was_fake in [false, true] {
         let mut app = app_with_objective(PLAYER_B, LANE_1, was_fake);
 
         apply_consequence_path(app.world_mut(), LANE_1, PLAYER_A, PLAYER_B);
 
-        assert_eq!(
-            read_messages::<AwardGold>(&app),
-            vec![AwardGold {
-                player: PLAYER_A,
-                amount: 3,
-            }]
+        assert!(
+            read_messages::<AwardGold>(&app).is_empty(),
+            "consequence path must not emit AwardGold for regular destruction (was_fake={was_fake})",
         );
     }
 }

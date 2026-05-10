@@ -5,8 +5,9 @@ use bevy::prelude::*;
 
 use crate::core::economy::state::{InterestSnapshots, PlayerEconomies};
 use crate::core::economy::system::{
-    on_draft_started, on_resolution_complete, AwardGold, EconomySystemSet, ManaCapIncreased,
-    S2CGoldBroadcast, S2CGoldUpdate,
+    apply_award_gold_messages, apply_mana_cap_increased_messages, on_draft_started,
+    on_resolution_complete, AwardGold, EconomySystemSet, ManaCapIncreased, S2CGoldBroadcast,
+    S2CGoldUpdate,
 };
 use crate::core::rsm::{advance_phase, rsm_input_reader};
 use crate::core::session::SessionConfig;
@@ -21,7 +22,17 @@ impl Plugin for EconomyPlugin {
             .add_message::<ManaCapIncreased>()
             .add_message::<S2CGoldUpdate>()
             .add_message::<S2CGoldBroadcast>()
+            .configure_sets(
+                Update,
+                EconomySystemSet::RewardConsumers.before(EconomySystemSet::ResolutionEnd),
+            )
             .add_systems(Update, on_draft_started.after(advance_phase))
+            .add_systems(
+                Update,
+                (apply_award_gold_messages, apply_mana_cap_increased_messages)
+                    .in_set(EconomySystemSet::RewardConsumers)
+                    .run_if(resource_exists::<SessionConfig>),
+            )
             .add_systems(
                 Update,
                 on_resolution_complete
