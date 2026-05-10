@@ -80,7 +80,10 @@ fn sau_003_renders_three_server_supplied_shop_slots_and_empty_state() {
 
 #[test]
 fn sau_asset_loop_shop_slots_resolve_display_art_or_text_fallback() {
-    let app = active_shop_app(5, true, vec![Some(CardId(1)), Some(CardId(2)), None]);
+    // CardId(99) is intentionally absent from the test catalog (1..=6); the
+    // catalog miss feeds None into apply_card_display_art, producing the
+    // MissingDisplayAsset fallback on slot 1.
+    let app = active_shop_app(5, true, vec![Some(CardId(1)), Some(CardId(99)), None]);
     let slots = shop_slots(&app);
 
     assert_eq!(

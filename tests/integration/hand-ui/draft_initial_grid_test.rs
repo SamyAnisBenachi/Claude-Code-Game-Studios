@@ -70,7 +70,7 @@ fn hu_07_draft_offering_populates_nine_visible_grid_slots() {
 fn hu_asset_loop_draft_and_fan_slots_resolve_card_display_art_or_fallback() {
     let mut app = app_with_hand_ui_in_draft_initial();
 
-    send_offering(&mut app, vec![CardId(1), CardId(2)]);
+    send_offering(&mut app, vec![CardId(1)]);
 
     let known_art_slot = grid_slot(&mut app, 0);
     assert_eq!(
@@ -80,23 +80,34 @@ fn hu_asset_loop_draft_and_fan_slots_resolve_card_display_art_or_fallback() {
         })
     );
 
-    let missing_art_slot = grid_slot(&mut app, 1);
-    assert_eq!(
-        app.world().get::<CardDisplayArtFallback>(missing_art_slot),
-        Some(&CardDisplayArtFallback {
-            reason: CardDisplayArtFallbackReason::MissingDisplayAsset
-        })
-    );
-
     app.world_mut()
         .write_message(HandUiCardAcquiredReceived { card_id: CardId(1) });
     run_update(&mut app);
 
-    let fan_slot = fan_slot(&mut app, 0);
+    let known_fan_slot = fan_slot(&mut app, 0);
     assert_eq!(
-        app.world().get::<CardDisplayArtAsset>(fan_slot),
+        app.world().get::<CardDisplayArtAsset>(known_fan_slot),
         Some(&CardDisplayArtAsset {
             path: "art/cards/display/card_iop_knight_001_art_display.png"
+        })
+    );
+
+    // CardId(999) is intentionally absent from the test catalog (1..=18);
+    // the catalog miss feeds None into apply_card_display_art on the fan
+    // slot, producing the MissingDisplayAsset fallback. The grid slot
+    // path warns-and-hides on a catalog miss, so the fan path is the
+    // only place this fallback can land in hand UI.
+    app.world_mut().write_message(HandUiCardAcquiredReceived {
+        card_id: CardId(999),
+    });
+    run_update(&mut app);
+
+    let missing_art_fan_slot = fan_slot(&mut app, 1);
+    assert_eq!(
+        app.world()
+            .get::<CardDisplayArtFallback>(missing_art_fan_slot),
+        Some(&CardDisplayArtFallback {
+            reason: CardDisplayArtFallbackReason::MissingDisplayAsset
         })
     );
 }
