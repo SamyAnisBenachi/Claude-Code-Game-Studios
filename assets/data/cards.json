@@ -133,7 +133,7 @@
     "keywords": [{ "kw": "Simple", "val": "FinalBlow" }],
     "effect_text": "Tirez deux cartes. Gardez-en une, défaussez l'autre.",
     "art_id": "ecaflip_decree_007",
-    "pool_copies_override": -1
+    "pool_copies_override": null
   },
   {
     "id": 8,
