@@ -264,11 +264,24 @@ pub fn auction_tick_system(
                 card_id,
                 starting_price,
             };
-            let _ = sender.send::<ProtocolS2CAuctionCard, ReliableChannel>(
+            tracing::info!(
+                round = event.round,
+                card_id = ?card_id,
+                starting_price,
+                "auction_tick_system: broadcasting S2CAuctionCard enter"
+            );
+            if let Err(e) = sender.send::<ProtocolS2CAuctionCard, ReliableChannel>(
                 &message,
                 server,
                 &NetworkTarget::All,
-            );
+            ) {
+                tracing::error!(
+                    round = event.round,
+                    card_id = ?card_id,
+                    err = ?e,
+                    "S2C send failed: type=S2CAuctionCard, handler=auction_tick_system"
+                );
+            }
         }
     }
 
@@ -787,26 +800,60 @@ fn send_outbox_dispatches(
             continue;
         }
 
+        tracing::info!(
+            player_id = dispatch.player_id.0,
+            peer_id = ?dispatch.peer_id,
+            reason = ?dispatch.message.reason,
+            "send_outbox_dispatches: dispatching S2CAuctionBidRejected enter"
+        );
+
         let Some(peer_id) = dispatch.peer_id else {
+            tracing::warn!(
+                player_id = dispatch.player_id.0,
+                "send_outbox_dispatches: S2CAuctionBidRejected DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+            );
             continue;
         };
-        let _ = sender.send::<S2CAuctionBidRejected, ReliableChannel>(
+        if let Err(e) = sender.send::<S2CAuctionBidRejected, ReliableChannel>(
             &dispatch.message,
             server,
             &NetworkTarget::Single(peer_id),
-        );
+        ) {
+            tracing::error!(
+                player_id = dispatch.player_id.0,
+                peer_id = ?peer_id,
+                err = ?e,
+                "S2C send failed: type=S2CAuctionBidRejected, handler=send_outbox_dispatches"
+            );
+        }
     }
 
     for dispatch in outbox.accepted() {
+        tracing::info!(
+            bidder = dispatch.message.bidder.0,
+            amount = dispatch.message.amount,
+            "send_outbox_dispatches: dispatching S2CAuctionBidAccepted enter"
+        );
         let target = accepted_bid_target(connections, pending_players);
         let Some(target) = target else {
+            tracing::warn!(
+                bidder = dispatch.message.bidder.0,
+                "send_outbox_dispatches: S2CAuctionBidAccepted DROPPED — no broadcast target (all players pending reconnect)"
+            );
             continue;
         };
-        let _ = sender.send::<S2CAuctionBidAccepted, ReliableChannel>(
+        if let Err(e) = sender.send::<S2CAuctionBidAccepted, ReliableChannel>(
             &dispatch.message,
             server,
             &target,
-        );
+        ) {
+            tracing::error!(
+                bidder = dispatch.message.bidder.0,
+                amount = dispatch.message.amount,
+                err = ?e,
+                "S2C send failed: type=S2CAuctionBidAccepted, handler=send_outbox_dispatches"
+            );
+        }
     }
 
     for dispatch in outbox.card_acquired() {
@@ -814,23 +861,61 @@ fn send_outbox_dispatches(
             continue;
         }
 
+        tracing::info!(
+            player_id = dispatch.player_id.0,
+            peer_id = ?dispatch.peer_id,
+            card_id = ?dispatch.message.card_id,
+            source = ?dispatch.message.source,
+            "send_outbox_dispatches: dispatching S2CCardAcquired enter"
+        );
+
         let Some(peer_id) = dispatch.peer_id else {
+            tracing::warn!(
+                player_id = dispatch.player_id.0,
+                card_id = ?dispatch.message.card_id,
+                "send_outbox_dispatches: S2CCardAcquired DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+            );
             continue;
         };
-        let _ = sender.send::<S2CCardAcquired, ReliableChannel>(
+        if let Err(e) = sender.send::<S2CCardAcquired, ReliableChannel>(
             &dispatch.message,
             server,
             &NetworkTarget::Single(peer_id),
-        );
+        ) {
+            tracing::error!(
+                player_id = dispatch.player_id.0,
+                peer_id = ?peer_id,
+                card_id = ?dispatch.message.card_id,
+                err = ?e,
+                "S2C send failed: type=S2CCardAcquired, handler=send_outbox_dispatches"
+            );
+        }
     }
 
     for dispatch in outbox.settled() {
+        tracing::info!(
+            winner = ?dispatch.message.winner,
+            amount = dispatch.message.amount,
+            "send_outbox_dispatches: dispatching S2CAuctionSettled enter"
+        );
         let target = accepted_bid_target(connections, pending_players);
         let Some(target) = target else {
+            tracing::warn!(
+                winner = ?dispatch.message.winner,
+                "send_outbox_dispatches: S2CAuctionSettled DROPPED — no broadcast target (all players pending reconnect)"
+            );
             continue;
         };
-        let _ =
-            sender.send::<S2CAuctionSettled, ReliableChannel>(&dispatch.message, server, &target);
+        if let Err(e) =
+            sender.send::<S2CAuctionSettled, ReliableChannel>(&dispatch.message, server, &target)
+        {
+            tracing::error!(
+                winner = ?dispatch.message.winner,
+                amount = dispatch.message.amount,
+                err = ?e,
+                "S2C send failed: type=S2CAuctionSettled, handler=send_outbox_dispatches"
+            );
+        }
     }
 }
 

@@ -422,17 +422,40 @@ impl PrismNetworkContext<'_, '_, '_> {
             });
         }
 
-        let (Some(server), Some(sender), Some(peer_id)) =
-            (self.server, self.sender.as_deref_mut(), peer_id)
-        else {
+        tracing::info!(
+            player_id = player_id.0,
+            peer_id = ?peer_id,
+            card_id = ?card_id,
+            source = ?source,
+            "stage_card_acquired enter"
+        );
+
+        let Some(peer_id) = peer_id else {
+            tracing::warn!(
+                player_id = player_id.0,
+                card_id = ?card_id,
+                "stage_card_acquired DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+            );
             return;
         };
 
-        let _ = sender.send::<S2CCardAcquired, ReliableChannel>(
+        let (Some(server), Some(sender)) = (self.server, self.sender.as_deref_mut()) else {
+            return;
+        };
+
+        if let Err(e) = sender.send::<S2CCardAcquired, ReliableChannel>(
             &message,
             server,
             &NetworkTarget::Single(peer_id),
-        );
+        ) {
+            tracing::error!(
+                player_id = player_id.0,
+                peer_id = ?peer_id,
+                card_id = ?card_id,
+                err = ?e,
+                "S2C send failed: type=S2CCardAcquired, handler=stage_card_acquired"
+            );
+        }
     }
 
     fn stage_reward_dropped(&mut self, player_id: PlayerId, lane: u8) {
@@ -451,17 +474,39 @@ impl PrismNetworkContext<'_, '_, '_> {
             });
         }
 
-        let (Some(server), Some(sender), Some(peer_id)) =
-            (self.server, self.sender.as_deref_mut(), peer_id)
-        else {
+        tracing::info!(
+            player_id = player_id.0,
+            peer_id = ?peer_id,
+            lane,
+            "stage_reward_dropped enter"
+        );
+
+        let Some(peer_id) = peer_id else {
+            tracing::warn!(
+                player_id = player_id.0,
+                lane,
+                "stage_reward_dropped DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+            );
             return;
         };
 
-        let _ = sender.send::<S2CPrismRewardDropped, ReliableChannel>(
+        let (Some(server), Some(sender)) = (self.server, self.sender.as_deref_mut()) else {
+            return;
+        };
+
+        if let Err(e) = sender.send::<S2CPrismRewardDropped, ReliableChannel>(
             &message,
             server,
             &NetworkTarget::Single(peer_id),
-        );
+        ) {
+            tracing::error!(
+                player_id = player_id.0,
+                peer_id = ?peer_id,
+                lane,
+                err = ?e,
+                "S2C send failed: type=S2CPrismRewardDropped, handler=stage_reward_dropped"
+            );
+        }
     }
 
     fn stage_prism_respawned(&mut self, player_id: PlayerId) {
@@ -473,15 +518,24 @@ impl PrismNetworkContext<'_, '_, '_> {
             });
         }
 
+        tracing::info!(
+            player_id = player_id.0,
+            "stage_prism_respawned: broadcasting S2CPrismRespawned enter"
+        );
+
         let (Some(server), Some(sender)) = (self.server, self.sender.as_deref_mut()) else {
             return;
         };
 
-        let _ = sender.send::<S2CPrismRespawned, ReliableChannel>(
-            &message,
-            server,
-            &NetworkTarget::All,
-        );
+        if let Err(e) =
+            sender.send::<S2CPrismRespawned, ReliableChannel>(&message, server, &NetworkTarget::All)
+        {
+            tracing::error!(
+                player_id = player_id.0,
+                err = ?e,
+                "S2C send failed: type=S2CPrismRespawned, handler=stage_prism_respawned"
+            );
+        }
     }
 
     fn defer_if_snapshot_pending(&mut self, player_id: PlayerId, message: DeferredMessage) -> bool {
