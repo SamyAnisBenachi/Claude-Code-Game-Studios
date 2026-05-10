@@ -18,6 +18,7 @@ pub struct ResultScreenPlugin;
 
 impl Plugin for ResultScreenPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("ResultScreenPlugin loaded");
         app.init_resource::<CurrentClientPhase>()
             .init_resource::<ClientSessionIdentity>()
             .init_resource::<AccessibilityPreferences>()

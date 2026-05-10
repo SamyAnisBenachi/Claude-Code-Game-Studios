@@ -15,6 +15,7 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 
 impl Plugin for ClientNetworkPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("ClientNetworkPlugin loaded");
         app.add_plugins(ClientPlugins {
             tick_duration: Duration::from_secs_f64(1.0 / 60.0),
         });

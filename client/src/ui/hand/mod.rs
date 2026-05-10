@@ -774,6 +774,7 @@ pub struct HandUiPlugin;
 
 impl Plugin for HandUiPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("HandUiPlugin loaded");
         app.init_resource::<CurrentClientPhase>()
             .init_resource::<ClientPhaseView>()
             .init_resource::<HandFanLayoutConfig>()

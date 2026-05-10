@@ -281,6 +281,7 @@ pub struct HudPlugin;
 
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("HudPlugin loaded");
         if !app.is_plugin_added::<TweeningPlugin>() {
             app.add_plugins(TweeningPlugin);
         }

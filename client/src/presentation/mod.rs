@@ -55,6 +55,7 @@ pub enum PresentationSet {
 
 impl Plugin for PresentationPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("PresentationPlugin loaded");
         app.init_state::<ClientState>()
             .init_resource::<CurrentClientPhase>()
             .init_resource::<ClientPhaseView>()

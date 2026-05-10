@@ -23,6 +23,7 @@ const LOBBY_BUTTON_HEIGHT: f32 = 30.0;
 
 impl Plugin for LobbyUiPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("LobbyUiPlugin loaded");
         app.init_resource::<ClientSessionIdentity>()
             .init_resource::<LobbyViewState>()
             .init_resource::<LobbyInputState>()
