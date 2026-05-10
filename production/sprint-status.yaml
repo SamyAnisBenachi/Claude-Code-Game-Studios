@@ -6,7 +6,7 @@ goal: "Close out the integrated Presentation Asset Wiring batch with `/story-don
 start: "2026-05-21"
 end: "2026-06-03"
 generated: "2026-05-07"
-updated: "2026-05-10"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600
+updated: "2026-05-10"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600; S10-CARRY-001 closure per PROMPT 601-RETRY
 stage: "Polish"
 scope: "Polish slice — close out PAW asset wiring, drain test-fixture and plugin-registration tech debt, start targeted visual UI chrome — not broad production / public release / full game completion"
 status: "active"
@@ -131,13 +131,14 @@ stories:
     name: "Sprint 9 carry-over consolidation"
     file: ""
     priority: must-have
-    status: ready
+    status: done
     owner: "orchestrator + QA tester"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-05-10"
     notes:
       - "From production/sprints/sprint-10.md Sprint 10 plan."
+      - "/story-done PROMPT 601-RETRY. Verdict COMPLETE WITH NOTES. 3/3 ACs covered by paperwork-only carry decisions already on main: (a) S9-AUDIO-001 integrated at 9c00e06 + /story-done'd in Sprint 9 close-out 8edbf37 (PROMPT 577) — row appended with status: done, completed: 2026-05-10, notes pointing to 9c00e06 with PROMPT 571 blob-hash cross-reference; (b) Sprint 10 activation flip 8ff4f84 + post-push SHA record e35b955 (PROMPT 591) preserves carried_conditions block (10 entries) + previous_sprint_closeout.carried_into_sprint_10 (4 entries: S8-QA-001-W1 manual/browser two-client GAME_OVER gap open, QA-COND-0005 Standard-tier accessibility accepted-risk friend-game scope, QA-COND-0006 playtest fun-hypothesis validation accepted-risk/deferred, public release readiness / release-candidate readiness / full game completion none claimed); (c) no Sprint 9 condition silently dropped. Story Type Config/Data per sprint-10.md row 126 (No new story file required — orchestrator updates sprint-status.yaml). ADVISORY: friend-game-lite paperwork only; no smoke check, /team-qa, /gate-check, sprint close-out, public release readiness, full playable-client manual QA, full game completion, broad accessibility completion, or playtest fun-hypothesis validation claimed."
 
   - id: "S10-POLISH-001"
     name: "HUD visual chrome — timer + class figurines + RESOLUTION dim"
