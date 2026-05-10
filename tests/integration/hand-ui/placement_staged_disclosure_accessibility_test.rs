@@ -239,6 +239,7 @@ fn app_with_hand_ui_in_placement(catalog: HashMap<CardId, CardData>) -> App {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
     app.init_state::<ClientState>();
+    app.insert_resource(client::asset_wiring::placeholder_assets_for_tests());
     app.add_plugins(HandUiPlugin);
     app.insert_resource(BoardLayout {
         board_origin: Vec2::ZERO,

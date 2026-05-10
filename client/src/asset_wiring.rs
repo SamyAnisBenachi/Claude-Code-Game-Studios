@@ -328,6 +328,68 @@ pub fn remove_placeholder_assets(mut commands: Commands) {
     commands.remove_resource::<PlaceholderAssets>();
 }
 
+/// Test-only constructor returning a [`PlaceholderAssets`] with every field
+/// set to [`Handle::default`]. For `World`-based ECS tests where no
+/// [`AssetServer`] is running and the real loader cannot supply handles.
+pub fn placeholder_assets_for_tests() -> PlaceholderAssets {
+    PlaceholderAssets {
+        fallback: Handle::default(),
+        card_frame_common: Handle::default(),
+        card_frame_rare: Handle::default(),
+        card_frame_epic: Handle::default(),
+        card_frame_legendary: Handle::default(),
+        stat_badge_atk: Handle::default(),
+        stat_badge_hp: Handle::default(),
+        stat_badge_mp: Handle::default(),
+        stat_badge_ar: Handle::default(),
+        rarity_icon_common: Handle::default(),
+        rarity_icon_rare: Handle::default(),
+        rarity_icon_epic: Handle::default(),
+        rarity_icon_legendary: Handle::default(),
+        class_type_icon_iop: Handle::default(),
+        class_type_icon_cra: Handle::default(),
+        class_type_icon_sacrier: Handle::default(),
+        class_type_icon_xelor: Handle::default(),
+        class_type_icon_ecaflip: Handle::default(),
+        class_type_icon_sadida: Handle::default(),
+        class_type_icon_neutral: Handle::default(),
+        shop_panel_chrome: Handle::default(),
+        shop_slot_well_idle: Handle::default(),
+        bid_button_normal: Handle::default(),
+        bid_button_hover: Handle::default(),
+        bid_button_disabled: Handle::default(),
+        hud_figurine_iop: Handle::default(),
+        hud_figurine_cra: Handle::default(),
+        hud_figurine_sacrier: Handle::default(),
+        hud_figurine_xelor: Handle::default(),
+        hud_figurine_ecaflip: Handle::default(),
+        hud_figurine_sadida: Handle::default(),
+        hud_figurine_neutral: Handle::default(),
+        hud_phase_timer_bar: Handle::default(),
+        hud_objective_dot_alive: Handle::default(),
+        hud_objective_dot_destroyed: Handle::default(),
+        hud_objective_dot_unknown: Handle::default(),
+        hud_objective_dot_fake: Handle::default(),
+        board_unit_iop: Handle::default(),
+        board_unit_cra: Handle::default(),
+        board_unit_sacrier: Handle::default(),
+        board_unit_xelor: Handle::default(),
+        board_unit_ecaflip: Handle::default(),
+        board_unit_sadida: Handle::default(),
+        board_unit_neutral: Handle::default(),
+        board_chrome: Handle::default(),
+        lobby_portrait_iop: Handle::default(),
+        lobby_portrait_cra: Handle::default(),
+        lobby_portrait_sacrier: Handle::default(),
+        lobby_portrait_xelor: Handle::default(),
+        lobby_portrait_ecaflip: Handle::default(),
+        lobby_portrait_sadida: Handle::default(),
+        lobby_portrait_neutral: Handle::default(),
+        lobby_player_slot_panel: Handle::default(),
+        lobby_room_code_chip: Handle::default(),
+    }
+}
+
 /// Plugin that registers the [`PlaceholderAssets`] lifecycle systems.
 pub struct AssetWiringPlugin;
 
