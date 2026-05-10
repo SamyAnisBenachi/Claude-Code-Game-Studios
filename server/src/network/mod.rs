@@ -220,9 +220,15 @@ fn log_received<M: std::fmt::Debug + Send + Sync + 'static>(
 fn _unicast_compile_proof(mut sender: ServerMultiMessageSender, server: &Server, peer_id: PeerId) {
     let msg = S2CObjectiveIdentities { identities: vec![] };
     // ADR-001 unicast compile-proof - verified NetworkTarget::Single syntax.
-    let _ = sender.send::<S2CObjectiveIdentities, ReliableChannel>(
+    if let Err(e) = sender.send::<S2CObjectiveIdentities, ReliableChannel>(
         &msg,
         server,
         &NetworkTarget::Single(peer_id),
-    );
+    ) {
+        tracing::error!(
+            peer_id = ?peer_id,
+            err = ?e,
+            "S2C send failed: type=S2CObjectiveIdentities, handler=_unicast_compile_proof"
+        );
+    }
 }

@@ -98,11 +98,21 @@ pub fn dispatch_gold_update(
         }
 
         if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
-            let _ = sender.send::<ProtocolGoldUpdate, ReliableChannel>(
+            if let Err(e) = sender.send::<ProtocolGoldUpdate, ReliableChannel>(
                 &message,
                 server,
                 &NetworkTarget::Single(peer_id),
-            );
+            ) {
+                tracing::error!(
+                    player_id = update.player.0,
+                    peer_id = ?peer_id,
+                    gold = message.gold,
+                    current_mana = message.current_mana,
+                    reserve_mana = message.reserve_mana,
+                    err = ?e,
+                    "S2C send failed: type=S2CGoldUpdate, handler=dispatch_gold_update"
+                );
+            }
         }
     }
 }
@@ -127,11 +137,19 @@ pub fn dispatch_gold_broadcast(
         }
 
         if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
-            let _ = sender.send::<ProtocolGoldBroadcast, ReliableChannel>(
+            if let Err(e) = sender.send::<ProtocolGoldBroadcast, ReliableChannel>(
                 &message,
                 server,
                 &NetworkTarget::All,
-            );
+            ) {
+                tracing::error!(
+                    player_id = broadcast.player_id.0,
+                    gold = broadcast.gold,
+                    reserved_gold = broadcast.reserved_gold,
+                    err = ?e,
+                    "S2C send failed: type=S2CGoldBroadcast, handler=dispatch_gold_broadcast"
+                );
+            }
         }
     }
 }
