@@ -280,6 +280,10 @@ pub fn placement_buffer_open(
     mut pending: ResMut<PendingPlacements>,
 ) {
     if phase_entered.read().next().is_some() {
+        tracing::info!(
+            previous_submissions = pending.submissions.len(),
+            "placement_buffer_open: PlacementPhaseEntered consumer enter"
+        );
         pending.submissions.clear();
     }
 }
@@ -397,6 +401,12 @@ pub fn handle_placement_submission(
     let hands = hands.as_deref();
 
     for submission in submissions.read() {
+        tracing::info!(
+            player_id = submission.player.0,
+            placements_len = submission.placements.len(),
+            phase = ?phase,
+            "handle_placement_submission: PlacementSubmissionReceived consumer enter"
+        );
         if process_placement_submission(
             &mut pending,
             submission.player,

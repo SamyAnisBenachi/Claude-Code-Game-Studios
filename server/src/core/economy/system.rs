@@ -74,7 +74,15 @@ pub fn apply_award_gold_messages(
 ) {
     for event in awards.read() {
         if let Some(economy) = economies.0.get_mut(&event.player) {
+            let before = economy.gold;
             api::apply_gold_award(economy, event.amount);
+            tracing::info!(
+                player = event.player.0,
+                amount = event.amount,
+                before,
+                after = economy.gold,
+                "apply_award_gold_messages: AwardGold applied"
+            );
         }
     }
 }
@@ -95,6 +103,12 @@ pub fn apply_mana_cap_increased_messages(
             for _ in 0..event.amount {
                 api::increment_mana_cap(economy, &config.0);
             }
+            tracing::info!(
+                player = event.player.0,
+                amount = event.amount,
+                new_cap = economy.mana_cap,
+                "apply_mana_cap_increased_messages: ManaCapIncreased applied"
+            );
         }
     }
 }
@@ -149,6 +163,14 @@ pub fn on_draft_started(
                 api::apply_gold_award(
                     economy,
                     config.gold_baseline_per_round.saturating_add(interest),
+                );
+                tracing::info!(
+                    player = ?player,
+                    phase = ?event.phase,
+                    interest,
+                    baseline = snap,
+                    new_gold = economy.gold,
+                    "on_draft_started: per-player draft init"
                 );
             }
 

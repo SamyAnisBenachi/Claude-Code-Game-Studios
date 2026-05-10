@@ -294,6 +294,11 @@ pub fn handle_placement_timer_multiplier_requests(
     let mut requests = Vec::new();
     for (remote, mut receiver) in receivers.iter_mut() {
         for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                multiplier = ?msg.multiplier,
+                "c2s_set_placement_timer_multiplier: recv"
+            );
             let Some(player_id) = connections.0.get(&remote.0).copied() else {
                 continue;
             };
@@ -443,6 +448,10 @@ pub fn handle_result_acknowledgements(
     let mut terminal_cleanup = false;
     for (remote, mut receiver) in receivers.iter_mut() {
         for _message in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                "c2s_acknowledge_result: recv"
+            );
             if resolve_result_acknowledgement(
                 round_state.as_deref().map(|state| state.phase),
                 Some(&mut *ended_state),
@@ -556,6 +565,11 @@ pub fn handle_create_room(
 
     for (remote, mut receiver) in receivers.iter_mut() {
         for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                mode = ?msg.mode,
+                "c2s_create_room: recv"
+            );
             let Some(player_id) = connections.0.get(&remote.0).copied() else {
                 continue;
             };
@@ -595,6 +609,12 @@ pub fn handle_join_room(
 
     for (remote, mut receiver) in receivers.iter_mut() {
         for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                room_code = ?msg.room_code,
+                requested_slot = ?msg.requested_slot,
+                "c2s_join_room: recv"
+            );
             let Some(player_id) = connections.0.get(&remote.0).copied() else {
                 continue;
             };
@@ -632,6 +652,11 @@ pub fn handle_select_class(
 
     for (remote, mut receiver) in receivers.iter_mut() {
         for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                class_id = ?msg.class_id,
+                "c2s_select_class: recv"
+            );
             let Some(player_id) = connections.0.get(&remote.0).copied() else {
                 continue;
             };
@@ -668,6 +693,11 @@ pub fn handle_confirm_class(
 
     for (remote, mut receiver) in receivers.iter_mut() {
         for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                class_id = ?msg.class_id,
+                "c2s_confirm_class: recv"
+            );
             let Some(player_id) = connections.0.get(&remote.0).copied() else {
                 continue;
             };
@@ -750,6 +780,10 @@ pub fn handle_lobby_heartbeat(
 
     for (remote, mut receiver) in receivers.iter_mut() {
         for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                "c2s_heartbeat: recv"
+            );
             debug!("Received C2SHeartbeat: {:?}", msg);
             let Some(player_id) = connections.0.get(&remote.0).copied() else {
                 continue;

@@ -131,6 +131,7 @@ fn log_client_disconnected(trigger: On<Add, Disconnected>, clients: Query<&Remot
 }
 
 fn receive_c2s_messages(activate_card: Query<&mut MessageReceiver<C2SActivateCard>>) {
+    tracing::info!("c2s_activate_card: drain entry");
     log_received("C2SActivateCard", activate_card);
 }
 
@@ -141,6 +142,11 @@ pub fn drain_signal_ready_messages(
 ) {
     for (remote, mut receiver) in receivers.iter_mut() {
         for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                retract = msg.retract,
+                "c2s_signal_ready: recv"
+            );
             let Some(signal) = resolve_signal_ready_sender(&connections, remote.0, msg) else {
                 debug!(
                     "C2SSignalReady discarded because sender is not mapped to a player: {:?}",
@@ -176,6 +182,11 @@ pub fn drain_submit_placement_messages(
 ) {
     for (remote, mut receiver) in receivers.iter_mut() {
         for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                placements_len = msg.placements.len(),
+                "c2s_submit_placement: recv"
+            );
             let Some(resolved) = resolve_submit_placement_sender(&connections, remote.0, msg)
             else {
                 debug!(

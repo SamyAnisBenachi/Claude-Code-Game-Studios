@@ -386,6 +386,10 @@ pub fn card_acquisition_tick_system(
     let connections = connections.as_deref();
     for (remote, mut receiver) in c2s_receivers.p0().iter_mut() {
         for _message in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                "c2s_refresh_shop: recv"
+            );
             let Some(player_id) = resolve_player(remote, connections) else {
                 continue;
             };
@@ -446,6 +450,11 @@ pub fn card_acquisition_tick_system(
     let catalog = catalog.as_deref();
     for (remote, mut receiver) in c2s_receivers.p1().iter_mut() {
         for message in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                card_id = ?message.card_id,
+                "c2s_purchase_card: recv"
+            );
             let Some(player_id) = resolve_player(remote, connections) else {
                 continue;
             };
