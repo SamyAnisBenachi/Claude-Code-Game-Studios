@@ -25,8 +25,12 @@ use client::{
 };
 use shared::{card::CardId, protocol::PlayTarget, session::PlayerId};
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn br_8_board_cell_ghost_replaces_existing_card_preview() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_board_rendering();
     let layout = *app.world().resource::<BoardLayout>();
 
@@ -64,6 +68,7 @@ fn br_8_board_cell_ghost_replaces_existing_card_preview() {
 
 #[test]
 fn br_8_variant_matrix_marks_or_spawns_expected_board_ghosts() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_board_rendering();
     let unit = app
         .world_mut()
@@ -122,6 +127,7 @@ fn br_8_variant_matrix_marks_or_spawns_expected_board_ghosts() {
 
 #[test]
 fn br_10_clear_none_removes_matching_card_ghosts_without_spawn_range_edits() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_board_rendering();
     stage_ghost(
         &mut app,
@@ -140,6 +146,7 @@ fn br_10_clear_none_removes_matching_card_ghosts_without_spawn_range_edits() {
 
 #[test]
 fn br_8e_board_ghost_pointer_messages_leave_ghost_owned_by_hand_ui() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_board_rendering();
     stage_ghost(
         &mut app,

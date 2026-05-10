@@ -10,6 +10,9 @@ use client::ui::lobby::{
 };
 use shared::card::ClassId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 // Canonical partial-App fixture for S10-POLISH-003 lobby chrome MVP.
 //
 // Mirrors the S10-POLISH-002 pattern at
@@ -56,6 +59,7 @@ const ALL_CLASS_IDS: [ClassId; 7] = [
 
 #[test]
 fn test_lobby_class_portraits_carry_non_default_image_node_after_on_enter_lobby() {
+    test_helpers::init_test_tracing();
     // Arrange: build the partial-App fixture and drive through OnEnter(Lobby).
     let mut app = lobby_app();
 
@@ -88,6 +92,7 @@ fn test_lobby_class_portraits_carry_non_default_image_node_after_on_enter_lobby(
 
 #[test]
 fn test_lobby_own_slot_panel_carries_non_default_image_node_after_on_enter_lobby() {
+    test_helpers::init_test_tracing();
     // Arrange.
     let mut app = lobby_app();
 
@@ -113,6 +118,7 @@ fn test_lobby_own_slot_panel_carries_non_default_image_node_after_on_enter_lobby
 
 #[test]
 fn test_lobby_opponent_slot_panel_carries_non_default_image_node_after_on_enter_lobby() {
+    test_helpers::init_test_tracing();
     // Arrange.
     let mut app = lobby_app();
 
@@ -138,6 +144,7 @@ fn test_lobby_opponent_slot_panel_carries_non_default_image_node_after_on_enter_
 
 #[test]
 fn test_lobby_room_code_chip_carries_non_default_image_node_after_on_enter_lobby() {
+    test_helpers::init_test_tracing();
     // Arrange.
     let mut app = lobby_app();
 
@@ -169,6 +176,7 @@ fn test_lobby_room_code_chip_carries_non_default_image_node_after_on_enter_lobby
 // same fallback handle (e.g. hard-coded to `LOBBY_PORTRAIT_NEUTRAL_ASSET`).
 #[test]
 fn test_lobby_portrait_per_class_path_matches_asset_wiring_selector() {
+    test_helpers::init_test_tracing();
     // Arrange.
     let mut app = lobby_app();
 

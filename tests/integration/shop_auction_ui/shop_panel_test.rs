@@ -17,8 +17,12 @@ use client::ui::shop_auction::{
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::RoundPhase;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn sau_003_non_auction_shop_waits_for_phase_and_slots_before_interactive() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session(5, true);
 
     set_phase(&mut app, RoundPhase::DraftShop);
@@ -57,6 +61,7 @@ fn sau_003_non_auction_shop_waits_for_phase_and_slots_before_interactive() {
 
 #[test]
 fn sau_003_renders_three_server_supplied_shop_slots_and_empty_state() {
+    test_helpers::init_test_tracing();
     let app = active_shop_app(5, true, vec![Some(CardId(1)), None, Some(CardId(2))]);
 
     assert_eq!(shop_slots(&app).len(), SHOP_AUCTION_UI_SHOP_SLOT_COUNT);
@@ -80,6 +85,7 @@ fn sau_003_renders_three_server_supplied_shop_slots_and_empty_state() {
 
 #[test]
 fn sau_asset_loop_shop_slots_resolve_display_art_or_text_fallback() {
+    test_helpers::init_test_tracing();
     // CardId(99) is intentionally absent from the test catalog (1..=6); the
     // catalog miss feeds None into apply_card_display_art, producing the
     // MissingDisplayAsset fallback on slot 1.
@@ -103,6 +109,7 @@ fn sau_asset_loop_shop_slots_resolve_display_art_or_text_fallback() {
 
 #[test]
 fn sau_003_purchase_clicks_send_only_valid_affordable_non_empty_slots() {
+    test_helpers::init_test_tracing();
     let mut app = active_shop_app(
         10,
         true,
@@ -143,6 +150,7 @@ fn sau_003_purchase_clicks_send_only_valid_affordable_non_empty_slots() {
 
 #[test]
 fn sau_003_refresh_disables_same_frame_and_counts_only_confirmed_slots() {
+    test_helpers::init_test_tracing();
     let mut app = active_shop_app(
         5,
         true,
@@ -211,6 +219,7 @@ fn sau_003_refresh_disables_same_frame_and_counts_only_confirmed_slots() {
 
 #[test]
 fn sau_003_hand_full_locks_slots_but_keeps_affordable_refresh_enabled() {
+    test_helpers::init_test_tracing();
     let mut app = active_shop_app(
         1,
         true,
@@ -258,6 +267,7 @@ fn sau_003_hand_full_locks_slots_but_keeps_affordable_refresh_enabled() {
 
 #[test]
 fn sau_003_ready_retract_sends_once_per_click_and_shop_stays_interactive() {
+    test_helpers::init_test_tracing();
     let mut app = active_shop_app(
         5,
         true,
@@ -307,6 +317,7 @@ fn sau_003_ready_retract_sends_once_per_click_and_shop_stays_interactive() {
 
 #[test]
 fn sau_003_placement_dismisses_panel_blocks_sends_and_ignores_late_confirmation() {
+    test_helpers::init_test_tracing();
     let mut app = active_shop_app(
         5,
         true,
@@ -347,6 +358,7 @@ fn sau_003_placement_dismisses_panel_blocks_sends_and_ignores_late_confirmation(
 
 #[test]
 fn sau_003_auction_shop_slots_buffer_until_draft_shop() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session(5, true);
     set_phase(&mut app, RoundPhase::DraftAuction);
     send_shop_slots(

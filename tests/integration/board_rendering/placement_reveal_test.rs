@@ -16,8 +16,12 @@ use shared::card::CardId;
 use shared::protocol::{PlacedCardReveal, PlayTarget, S2CPlacementReveal, S2CResolutionEvent};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn test_placement_reveal_collects_one_frame_and_emits_sorted_opponent_batch() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
     let opponent_late = spawn_board_unit(&mut app, 101, player(2), CardId(10), 3, 4);
     let opponent_early = spawn_board_unit(&mut app, 102, player(2), CardId(11), 1, 8);
@@ -58,6 +62,7 @@ fn test_placement_reveal_collects_one_frame_and_emits_sorted_opponent_batch() {
 
 #[test]
 fn test_resolution_reveal_stuck_requests_one_snapshot() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
     let mut cursor = drained_cursor::<SnapshotRecoveryRequested>(&app);
 
@@ -87,6 +92,7 @@ fn test_resolution_reveal_stuck_requests_one_snapshot() {
 
 #[test]
 fn test_pending_resolution_script_stuck_requests_snapshot_and_keeps_script() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
     let script = S2CResolutionEvent {
         round: 7,

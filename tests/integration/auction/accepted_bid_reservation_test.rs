@@ -7,6 +7,9 @@ use server::foundation::config::GameConfig;
 use shared::card::CardId;
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -83,6 +86,7 @@ fn process(
 
 #[test]
 fn accepted_outbid_releases_previous_reservation_before_reserving_new_bid() {
+    test_helpers::init_test_tracing();
     let previous_leader = player(1);
     let new_leader = player(2);
     let config = auction_config(20, 5);
@@ -132,6 +136,7 @@ fn accepted_outbid_releases_previous_reservation_before_reserving_new_bid() {
 
 #[test]
 fn accepted_first_bid_skips_release_and_broadcasts_only_new_reservation() {
+    test_helpers::init_test_tracing();
     let bidder = player(1);
     let config = auction_config(20, 5);
     let mut auction = live_auction(3, None, 10_000);
@@ -156,6 +161,7 @@ fn accepted_first_bid_skips_release_and_broadcasts_only_new_reservation() {
 
 #[test]
 fn accepted_bid_timer_reset_adds_reset_when_below_cap() {
+    test_helpers::init_test_tracing();
     let bidder = player(1);
     let config = auction_config(20, 5);
     let mut auction = live_auction(3, None, 3_000);
@@ -170,6 +176,7 @@ fn accepted_bid_timer_reset_adds_reset_when_below_cap() {
 
 #[test]
 fn accepted_bid_timer_reset_caps_at_auction_timer() {
+    test_helpers::init_test_tracing();
     let bidder = player(1);
     let config = auction_config(20, 5);
     let mut auction = live_auction(3, None, 17_000);
@@ -184,6 +191,7 @@ fn accepted_bid_timer_reset_caps_at_auction_timer() {
 
 #[test]
 fn timer_decrement_clamps_lag_spikes_before_saturating_sub() {
+    test_helpers::init_test_tracing();
     for (start, raw_delta, expected) in [
         (12_000, 5_000, 11_000),
         (12_000, 1_000, 11_000),

@@ -14,6 +14,9 @@ use shared::protocol::{
 use shared::session::PlayerId;
 use uuid::Uuid;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -128,6 +131,7 @@ fn world_with_retained_result() -> (World, [u8; 16], PlayerId, PlayerId, Session
 
 #[test]
 fn game_over_reconnect_resends_retained_snapshot_result_and_phase_before_deferred_flush() {
+    test_helpers::init_test_tracing();
     let (mut world, token, player_a, _player_b, _session_id) = world_with_retained_result();
     let entity = world.spawn_empty().id();
     let new_peer = PeerId::Netcode(11);
@@ -207,6 +211,7 @@ fn game_over_reconnect_resends_retained_snapshot_result_and_phase_before_deferre
 
 #[test]
 fn reconnect_after_result_cleanup_uses_expired_session_rejection_path() {
+    test_helpers::init_test_tracing();
     let (mut world, token, player_a, _player_b, _session_id) = world_with_retained_result();
     let ended = world.resource::<EndedSessionResultState>().clone();
     {

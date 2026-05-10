@@ -13,8 +13,12 @@ use shared::{
     session::PlayerId,
 };
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn same_tick_gold_update_wins_over_own_gold_broadcast() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
 
     set_phase(&mut app, RoundPhase::DraftShop, 3);
@@ -35,6 +39,7 @@ fn same_tick_gold_update_wins_over_own_gold_broadcast() {
 
 #[test]
 fn same_tick_own_broadcast_gold_is_ignored_while_reserved_gold_updates() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
 
     set_phase(&mut app, RoundPhase::DraftAuction, 3);
@@ -55,6 +60,7 @@ fn same_tick_own_broadcast_gold_is_ignored_while_reserved_gold_updates() {
 
 #[test]
 fn own_gold_broadcast_alone_updates_only_reserved_gold() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
     let entities = hud_entities(&app);
 

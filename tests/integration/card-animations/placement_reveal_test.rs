@@ -17,6 +17,9 @@ use client::{
 };
 use shared::protocol::RoundPhase;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn app_with_card_animations() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
@@ -76,6 +79,7 @@ fn active_placement_animator_count(app: &mut App) -> usize {
 
 #[test]
 fn placement_reveal_payload_starts_all_entries_same_update() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     let entries = (1..=5)
         .map(|lane| {
@@ -127,6 +131,7 @@ fn placement_reveal_payload_starts_all_entries_same_update() {
 
 #[test]
 fn placement_reveal_empty_payload_is_noop() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
 
     app.world_mut().write_message(PlacementRevealAnimReady {
@@ -141,6 +146,7 @@ fn placement_reveal_empty_payload_is_noop() {
 
 #[test]
 fn drag_lift_duration_clamps_to_placement_cap() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     app.world_mut().insert_resource(InputGatingAnimationConfig {
         drag_lift_ms: 300,
@@ -177,6 +183,7 @@ fn drag_lift_duration_clamps_to_placement_cap() {
 
 #[test]
 fn snap_back_duration_clamps_to_placement_cap() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     app.world_mut().insert_resource(InputGatingAnimationConfig {
         snap_back_duration_ms: 300,
@@ -208,6 +215,7 @@ fn snap_back_duration_clamps_to_placement_cap() {
 
 #[test]
 fn hover_duration_clamps_to_placement_cap() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     app.world_mut().insert_resource(InputGatingAnimationConfig {
         hand_card_hover_ms: 300,
@@ -227,6 +235,7 @@ fn hover_duration_clamps_to_placement_cap() {
 
 #[test]
 fn cell_highlight_duration_clamps_to_placement_cap() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     app.world_mut().insert_resource(InputGatingAnimationConfig {
         cell_highlight_ms: 300,
@@ -244,6 +253,7 @@ fn cell_highlight_duration_clamps_to_placement_cap() {
 
 #[test]
 fn placement_duration_below_cap_is_preserved() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     app.world_mut().insert_resource(InputGatingAnimationConfig {
         snap_back_duration_ms: 200,
@@ -262,6 +272,7 @@ fn placement_duration_below_cap_is_preserved() {
 
 #[test]
 fn placement_cancel_stops_animators_and_snaps_targets_to_lane_cells() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     let direct_target = app
         .world_mut()
@@ -328,6 +339,7 @@ fn placement_cancel_stops_animators_and_snaps_targets_to_lane_cells() {
 
 #[test]
 fn placement_cancel_without_lane_cell_does_not_panic() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     let entity = app
         .world_mut()

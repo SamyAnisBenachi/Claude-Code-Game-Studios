@@ -22,8 +22,12 @@ use shared::{
     session::PlayerId,
 };
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn full_snapshot_rebuild_populates_all_hud_zones_without_respawning_entities() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
     let before = hud_entities(&app);
 
@@ -93,6 +97,7 @@ fn full_snapshot_rebuild_populates_all_hud_zones_without_respawning_entities() {
 
 #[test]
 fn draft_auction_snapshot_rebuild_uses_reserved_gold_format() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
 
     write_snapshot(
@@ -131,6 +136,7 @@ fn draft_auction_snapshot_rebuild_uses_reserved_gold_format() {
 
 #[test]
 fn game_over_snapshot_bypasses_frozen_then_reapplies_incremental_gate() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
     let entities = hud_entities(&app);
 

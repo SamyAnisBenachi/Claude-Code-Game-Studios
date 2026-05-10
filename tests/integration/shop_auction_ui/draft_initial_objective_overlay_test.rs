@@ -16,8 +16,12 @@ use client::ui::shop_auction::{
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::RoundPhase;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn sau_012_overlay_waits_for_phase_and_offering_before_showing_exact_copy() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session(5, true);
     send_offering(&mut app, card_ids(1, 9));
 
@@ -54,6 +58,7 @@ fn sau_012_overlay_waits_for_phase_and_offering_before_showing_exact_copy() {
 
 #[test]
 fn sau_012_overlay_dismiss_button_hides_overlay_without_hiding_draft_controls() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(5, true);
 
     click_objective_dismiss(&mut app);
@@ -92,6 +97,7 @@ fn sau_012_overlay_dismiss_button_hides_overlay_without_hiding_draft_controls() 
 
 #[test]
 fn sau_012_escape_dismisses_and_enter_retrieves_with_deterministic_focus() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(5, true);
 
     app.world_mut()
@@ -135,6 +141,7 @@ fn sau_012_escape_dismisses_and_enter_retrieves_with_deterministic_focus() {
 
 #[test]
 fn sau_012_outside_panel_click_dismisses_without_c2s_messages() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(5, true);
 
     app.world_mut()
@@ -154,6 +161,7 @@ fn sau_012_outside_panel_click_dismisses_without_c2s_messages() {
 
 #[test]
 fn sau_012_guarded_controls_do_not_count_as_outside_dismiss() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(5, true);
 
     app.world_mut()
@@ -209,6 +217,7 @@ fn sau_012_guarded_controls_do_not_count_as_outside_dismiss() {
 
 #[test]
 fn sau_012_retrieval_reopens_same_overlay_and_never_emits_c2s() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(5, true);
     click_objective_dismiss(&mut app);
 
@@ -233,6 +242,7 @@ fn sau_012_retrieval_reopens_same_overlay_and_never_emits_c2s() {
 
 #[test]
 fn sau_012_overlay_and_retrieval_hide_on_placement_phase_exit() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(5, true);
     click_objective_dismiss(&mut app);
     assert_eq!(
@@ -262,6 +272,7 @@ fn sau_012_overlay_and_retrieval_hide_on_placement_phase_exit() {
 
 #[test]
 fn sau_012_dismiss_and_retrieval_controls_are_button_interaction_targets() {
+    test_helpers::init_test_tracing();
     let app = active_draft_app(5, true);
     let entities = *app.world().resource::<ShopAuctionUiEntities>();
 

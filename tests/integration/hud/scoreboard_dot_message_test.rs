@@ -17,6 +17,9 @@ use shared::{
     session::PlayerId,
 };
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const EPSILON: f32 = 0.001;
 
 #[derive(Resource)]
@@ -24,6 +27,7 @@ struct PendingHudObjectiveUpdate(Option<HudObjectiveUpdate>);
 
 #[test]
 fn scoreboard_dot_alignment_uses_board_layout_lane_projection() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
     assert_dot_centers_match_board_layout(&mut app);
 
@@ -39,6 +43,7 @@ fn scoreboard_dot_alignment_uses_board_layout_lane_projection() {
 
 #[test]
 fn hud_objective_update_destroys_only_target_dot_in_same_tick() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
 
     app.insert_resource(PendingHudObjectiveUpdate(Some(HudObjectiveUpdate {
@@ -77,6 +82,7 @@ fn hud_objective_update_destroys_only_target_dot_in_same_tick() {
 
 #[test]
 fn duplicate_and_oob_hud_objective_updates_do_not_change_other_dots() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
 
     write_update(&mut app, player(2), 3);
@@ -94,6 +100,7 @@ fn duplicate_and_oob_hud_objective_updates_do_not_change_other_dots() {
 
 #[test]
 fn scoreboard_never_stores_or_renders_objective_identity() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
 
     write_update(&mut app, player(2), 1);

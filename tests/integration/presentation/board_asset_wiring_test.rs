@@ -7,13 +7,18 @@ use client::asset_wiring::{
 };
 use shared::card::ClassId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn board_chrome_asset_is_non_empty() {
+    test_helpers::init_test_tracing();
     assert!(!BOARD_CHROME_ASSET.is_empty());
 }
 
 #[test]
 fn board_unit_asset_maps_all_classes() {
+    test_helpers::init_test_tracing();
     assert_eq!(board_unit_asset(ClassId::Iop), BOARD_UNIT_IOP_ASSET);
     assert_eq!(board_unit_asset(ClassId::Cra), BOARD_UNIT_CRA_ASSET);
     assert_eq!(board_unit_asset(ClassId::Sacrier), BOARD_UNIT_SACRIER_ASSET);
@@ -25,6 +30,7 @@ fn board_unit_asset_maps_all_classes() {
 
 #[test]
 fn board_unit_asset_paths_are_non_empty() {
+    test_helpers::init_test_tracing();
     for class in [
         ClassId::Iop,
         ClassId::Cra,

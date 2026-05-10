@@ -29,6 +29,9 @@ use shared::keyword::KeywordKind;
 use shared::protocol::{GameMode, GoldReason, PlayTarget, ResolutionEvent, S2CResolutionEvent};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const ROUND: u32 = 7;
 const PLAYER_A: PlayerId = PlayerId(1);
 const PLAYER_B: PlayerId = PlayerId(2);
@@ -216,6 +219,7 @@ fn entity_id(entity: Entity) -> u64 {
 
 #[test]
 fn test_cr_30_placement_reveal_is_atomic_and_before_substep1_effects() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_combat(vec![
         card(10, vec![]),
         card(11, vec![]),
@@ -291,6 +295,7 @@ fn test_cr_30_placement_reveal_is_atomic_and_before_substep1_effects() {
 
 #[test]
 fn test_cr_32_resolution_event_batch_serializes_complete_ordered_log() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_combat(vec![
         card(
             20,
@@ -488,6 +493,7 @@ fn test_cr_32_resolution_event_batch_serializes_complete_ordered_log() {
 
 #[test]
 fn test_spawn_range_changed_follows_fake_objective_destroyed_in_resolution_batch() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_combat(vec![card(30, vec![])]);
     spawn_unit(
         &mut app,
@@ -540,6 +546,7 @@ fn test_spawn_range_changed_follows_fake_objective_destroyed_in_resolution_batch
 
 #[test]
 fn test_cr_32_phase_change_is_not_observable_before_resolution_batch() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_rsm_combat_dispatch();
     app.world_mut().write_message(BeginResolution { round: 1 });
 

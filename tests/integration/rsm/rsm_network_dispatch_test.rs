@@ -9,6 +9,9 @@ use server::foundation::config::GameConfig;
 use server::network::rsm_dispatch::dispatch_phase_changed;
 use shared::protocol::{GameOverReason, RoundPhase as ProtocolRoundPhase};
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn app_with_rsm_dispatch() -> App {
     let mut app = App::new();
     app.add_plugins(RsmPlugin);
@@ -34,6 +37,7 @@ fn run_for(app: &mut App, duration: Duration) {
 
 #[test]
 fn rsm_network_dispatch_sends_one_phase_change_per_broadcast() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_rsm_dispatch();
 
     app.update();
@@ -61,6 +65,7 @@ fn rsm_network_dispatch_sends_one_phase_change_per_broadcast() {
 
 #[test]
 fn rsm_network_dispatch_preserves_each_broadcast_payload_once() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_rsm_dispatch();
 
     app.world_mut().write_message(BroadcastPhaseChanged {
@@ -87,6 +92,7 @@ fn rsm_network_dispatch_preserves_each_broadcast_payload_once() {
 
 #[test]
 fn rsm_resolution_safety_timeout_transitions_to_game_over() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_rsm_dispatch();
     {
         let mut rsm = app.world_mut().resource_mut::<RoundState>();

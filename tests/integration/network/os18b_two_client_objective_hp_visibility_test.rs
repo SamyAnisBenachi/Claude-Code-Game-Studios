@@ -23,6 +23,9 @@ use shared::card::ClassId;
 use shared::protocol::{DraftPhase, GameMode, PlacementTimerMultiplier};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const TICK_HZ: f64 = 60.0;
 const MAX_FRAMES: usize = 900;
 const SETTLE_FRAMES: usize = 12;
@@ -41,6 +44,7 @@ struct ObjectiveHpObservations {
 
 #[test]
 fn test_os18b_two_clients_observe_only_final_objective_hp_after_same_substep_damage() {
+    test_helpers::init_test_tracing();
     let port = reserve_ephemeral_port();
     let url = format!("ws://127.0.0.1:{port}");
 

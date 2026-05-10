@@ -19,8 +19,12 @@ use shared::protocol::{
     ResolutionEvent, RoundPhase, S2CPhaseChanged, S2CResolutionEvent, TaggedEvent,
 };
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn test_resolution_event_groups_by_sub_step_and_sorts_ascending() {
+    test_helpers::init_test_tracing();
     let timings = AnimationTimingConfig {
         resolution_sub_step_duration_ms: 123,
         ..default()
@@ -52,6 +56,7 @@ fn test_resolution_event_groups_by_sub_step_and_sorts_ascending() {
 
 #[test]
 fn test_out_of_range_resolution_sub_step_rejects_queue_and_requests_one_snapshot() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
     let mut cursor = drained_cursor::<SnapshotRecoveryRequested>(&app);
 
@@ -86,6 +91,7 @@ fn test_out_of_range_resolution_sub_step_rejects_queue_and_requests_one_snapshot
 
 #[test]
 fn test_phase_change_buffers_while_resolution_executing_and_applies_after_queue_drain() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
     *app.world_mut().resource_mut::<CurrentClientPhase>() = CurrentClientPhase {
@@ -134,6 +140,7 @@ fn test_phase_change_buffers_while_resolution_executing_and_applies_after_queue_
 
 #[test]
 fn test_same_frame_resolution_script_buffers_draft_phase_before_playback() {
+    test_helpers::init_test_tracing();
     let mut current = CurrentClientPhase {
         phase: RoundPhase::Resolution,
         round: 8,
@@ -168,6 +175,7 @@ fn test_same_frame_resolution_script_buffers_draft_phase_before_playback() {
 
 #[test]
 fn test_out_of_range_group_builder_reports_offending_sub_step() {
+    test_helpers::init_test_tracing();
     let err = resolution_anim_groups_from_script(&script(vec![tagged(7, 42)]), default())
         .expect_err("sub-step 7 should be rejected");
 

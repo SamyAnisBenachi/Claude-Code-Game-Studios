@@ -12,8 +12,12 @@ use shared::card::CardId;
 use shared::protocol::{PlacedCardSubmit, PlayTarget, RoundPhase};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn hu_21_board_ghost_click_unstages_atomically() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement([CardId(10)]);
     let reserve_strip = reserve_strip(&mut app, 0, Visibility::Hidden);
     stage_card(
@@ -45,6 +49,7 @@ fn hu_21_board_ghost_click_unstages_atomically() {
 
 #[test]
 fn hu_21_unknown_ghost_click_is_ignored() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement([CardId(20)]);
     stage_card(
         &mut app,
@@ -79,6 +84,7 @@ fn hu_21_unknown_ghost_click_is_ignored() {
 
 #[test]
 fn hu_21b_board_ghost_drag_unstages_only_on_fan_zone_release() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement([CardId(30)]);
     app.insert_resource(FanZoneBounds {
         x_min: 100.0,
@@ -143,6 +149,7 @@ fn hu_21b_board_ghost_drag_unstages_only_on_fan_zone_release() {
 
 #[test]
 fn hu_21c_instant_fan_slot_click_unstages() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement([CardId(40)]);
     let reserve_strip = reserve_strip(&mut app, 0, Visibility::Hidden);
     stage_card(&mut app, 0, PlayerId(7), PlayTarget::Instant);

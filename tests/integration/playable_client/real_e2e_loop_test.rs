@@ -44,6 +44,9 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const TICK_HZ: f64 = 60.0;
 const MAX_FRAMES: usize = 600;
 const ROOM_FLOW_MAX_FRAMES: usize = 2_400;
@@ -51,6 +54,7 @@ const FRAME_SLEEP: Duration = Duration::from_millis(10);
 
 #[test]
 fn client_server_lightyear_protocol_features_cover_replication_metadata() {
+    test_helpers::init_test_tracing();
     let root = workspace_root();
     let client_manifest = fs::read_to_string(root.join("client").join("Cargo.toml"))
         .expect("client Cargo.toml should be readable");
@@ -69,6 +73,7 @@ fn client_server_lightyear_protocol_features_cover_replication_metadata() {
 
 #[test]
 fn real_lightyear_smoke_reaches_fresh_hello_handshake() {
+    test_helpers::init_test_tracing();
     let port = reserve_ephemeral_port();
     let url = format!("ws://127.0.0.1:{port}");
     let flags = HandshakeFlags::new();
@@ -116,6 +121,7 @@ fn real_lightyear_smoke_reaches_fresh_hello_handshake() {
 
 #[test]
 fn real_lightyear_two_client_room_session_reaches_class_reveal_and_session_entry() {
+    test_helpers::init_test_tracing();
     let port = reserve_ephemeral_port();
     let url = format!("ws://127.0.0.1:{port}");
     let flags = RoomSessionFlags::new();
@@ -205,6 +211,7 @@ fn real_lightyear_two_client_room_session_reaches_class_reveal_and_session_entry
 
 #[test]
 fn real_lightyear_two_client_draft_shop_auction_placement_resolution_reaches_next_loop() {
+    test_helpers::init_test_tracing();
     let port = reserve_ephemeral_port();
     let url = format!("ws://127.0.0.1:{port}");
     let flags = RoomSessionFlags::new();

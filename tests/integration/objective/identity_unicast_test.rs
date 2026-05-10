@@ -21,6 +21,9 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -60,6 +63,7 @@ fn hidden_objectives(player_a: PlayerId, player_b: PlayerId) -> HiddenObjectives
 
 #[test]
 fn draft_initial_sends_one_owner_unicast_per_player_in_order() {
+    test_helpers::init_test_tracing();
     let player_a = player(1);
     let player_b = player(2);
     let peer_a = PeerId::Netcode(10);
@@ -97,6 +101,7 @@ fn draft_initial_sends_one_owner_unicast_per_player_in_order() {
 
 #[test]
 fn identity_payload_contains_only_recipient_lanes() {
+    test_helpers::init_test_tracing();
     let player_a = player(1);
     let player_b = player(2);
     let mut app = base_app();
@@ -129,6 +134,7 @@ fn identity_payload_contains_only_recipient_lanes() {
 
 #[test]
 fn snapshot_pending_defers_identity_unicast() {
+    test_helpers::init_test_tracing();
     let player_a = player(1);
     let player_b = player(2);
     let mut app = base_app();
@@ -163,6 +169,7 @@ fn snapshot_pending_defers_identity_unicast() {
 
 #[test]
 fn protocol_manifest_registers_objective_identities_as_reliable_s2c() {
+    test_helpers::init_test_tracing();
     #[derive(Default)]
     struct RecordingRegistry {
         messages: Vec<(String, ProtocolDirection, ProtocolChannel)>,

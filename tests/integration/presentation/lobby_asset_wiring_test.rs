@@ -10,6 +10,9 @@ use client::ui::lobby::{
 };
 use shared::card::ClassId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /// Minimal app with asset infrastructure. Does NOT add LobbyUiPlugin to avoid
@@ -77,6 +80,7 @@ fn all_class_ids() -> [ClassId; 7] {
 /// All 7 class portrait entities have an `ImageNode` component (PAW-006-a).
 #[test]
 fn test_all_seven_portrait_entities_have_image_node() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();
@@ -96,6 +100,7 @@ fn test_all_seven_portrait_entities_have_image_node() {
 /// Each `LobbyClassPortrait` entity has a non-default `ImageNode` handle (PAW-006-a).
 #[test]
 fn test_portrait_image_nodes_are_non_default() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();
@@ -123,6 +128,7 @@ fn test_portrait_image_nodes_are_non_default() {
 /// Each portrait entity's image handle path matches `lobby_portrait_asset(class_id)` (PAW-006-a).
 #[test]
 fn test_portrait_image_paths_match_selector() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();
@@ -156,6 +162,7 @@ fn test_portrait_image_paths_match_selector() {
 /// Both player slot panel entities have an `ImageNode` component (PAW-006-b).
 #[test]
 fn test_own_slot_panel_has_image_node() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();
@@ -186,6 +193,7 @@ fn test_own_slot_panel_has_image_node() {
 /// The room code chip entity has an `ImageNode` component (PAW-006-c).
 #[test]
 fn test_room_code_chip_has_image_node() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();
@@ -205,6 +213,7 @@ fn test_room_code_chip_has_image_node() {
 /// All 10 expected lobby chrome entities have ImageNode (portraits x7, slots x2, chip x1). (PAW-006-e)
 #[test]
 fn test_all_ten_lobby_chrome_entities_have_image_node() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();
@@ -241,6 +250,7 @@ fn test_all_ten_lobby_chrome_entities_have_image_node() {
 /// Selection state is a separate concern; this test confirms handle identity is preserved.
 #[test]
 fn test_portrait_image_handle_unchanged_on_class_selection() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     app.add_systems(Startup, spawn_lobby_chrome);
     app.update();

@@ -28,12 +28,16 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const KNOWN_CARD: CardId = CardId(10);
 const KNOWN_CARD_FRAME: usize = 7;
 const KNOWN_CARD_MAX_HP: u8 = 5;
 
 #[test]
 fn test_snapshot_rebuild_clears_stale_visuals_and_spawns_snapshot_units_and_objectives() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
     install_test_atlas(&mut app);
 
@@ -147,6 +151,7 @@ fn test_snapshot_rebuild_clears_stale_visuals_and_spawns_snapshot_units_and_obje
 
 #[test]
 fn test_hp_bar_fill_thresholds_local_z_and_no_fill_tween() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
     install_test_atlas(&mut app);
 
@@ -198,6 +203,7 @@ fn test_hp_bar_fill_thresholds_local_z_and_no_fill_tween() {
 
 #[test]
 fn test_standing_objectives_use_unknown_frame_and_no_identity_components() {
+    test_helpers::init_test_tracing();
     #[derive(Component)]
     struct RealObjective;
     #[derive(Component)]
@@ -257,6 +263,7 @@ fn test_standing_objectives_use_unknown_frame_and_no_identity_components() {
 
 #[test]
 fn test_missing_card_art_uses_placeholder_and_keeps_hp_bar() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
     install_test_atlas(&mut app);
 
@@ -293,6 +300,7 @@ fn test_missing_card_art_uses_placeholder_and_keeps_hp_bar() {
 
 #[test]
 fn test_runtime_board_assets_drive_placeholder_hp_and_objective_images() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
     install_runtime_board_assets(&mut app);
 
@@ -350,6 +358,7 @@ fn test_runtime_board_assets_drive_placeholder_hp_and_objective_images() {
 
 #[test]
 fn test_baseline_board_path_supports_twenty_units_and_two_atlased_images() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
     install_distinct_test_atlas(&mut app);
 

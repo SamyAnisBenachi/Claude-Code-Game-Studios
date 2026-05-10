@@ -16,6 +16,9 @@ use server::foundation::rng::ServerRng;
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn card(id: u32, class: ClassId, cost: u32) -> CardData {
     CardData {
         id: CardId(id),
@@ -87,6 +90,7 @@ fn economy(gold: u32) -> PlayerEconomy {
 
 #[test]
 fn test_draft_initial_trigger_populates_nine_distinct_offering() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let catalog = draft_catalog();
     let pools = pools_for(player, &catalog);
@@ -125,6 +129,7 @@ fn test_draft_initial_trigger_populates_nine_distinct_offering() {
 
 #[test]
 fn test_draft_initial_app_system_consumes_one_rng_seed_and_updates_state() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let catalog = draft_catalog();
     let mut app = App::new();
@@ -159,6 +164,7 @@ fn test_draft_initial_app_system_consumes_one_rng_seed_and_updates_state() {
 
 #[test]
 fn test_draft_initial_purchase_carries_unspent_gold() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let card_id = CardId(42);
     let mut shops = ShopStates {
@@ -195,6 +201,7 @@ fn test_draft_initial_purchase_carries_unspent_gold() {
 
 #[test]
 fn test_refresh_request_in_draft_initial_is_silently_discarded() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let card_id = CardId(42);
     let initial_shop = PlayerShopState {
@@ -221,6 +228,7 @@ fn test_refresh_request_in_draft_initial_is_silently_discarded() {
 
 #[test]
 fn test_draft_initial_dispatch_targets_only_mapped_player() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let opponent = PlayerId(2);
     let target_peer = PeerId::Netcode(11);

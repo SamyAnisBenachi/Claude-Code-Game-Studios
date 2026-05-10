@@ -24,6 +24,9 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const TICK_HZ: f64 = 60.0;
 const MAX_FRAMES: usize = 600;
 const FRAME_SLEEP: Duration = Duration::from_millis(10);
@@ -107,6 +110,7 @@ struct ObservationState {
 
 #[test]
 fn auction_card_precedes_draft_auction_phase_on_reliable_channel() {
+    test_helpers::init_test_tracing();
     let port = reserve_ephemeral_port();
     let url = format!("ws://127.0.0.1:{port}");
     let flags = FifoFlags::new();
@@ -191,6 +195,7 @@ fn auction_card_precedes_draft_auction_phase_on_reliable_channel() {
 
 #[test]
 fn two_clients_same_window_duplicate_bid_first_valid_wins_on_reliable_channel() {
+    test_helpers::init_test_tracing();
     let port = reserve_ephemeral_port();
     let url = format!("ws://127.0.0.1:{port}");
     let flags = TwoClientBidFlags::new();

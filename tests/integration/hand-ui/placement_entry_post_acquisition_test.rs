@@ -15,6 +15,9 @@ use client::ui::hand::{
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::RoundPhase;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const ACQUIRED_CARD_COUNT: usize = 3;
 const FIRST_ACQUIRED_CARD_ID: u32 = 50;
 
@@ -29,6 +32,7 @@ const FIRST_ACQUIRED_CARD_ID: u32 = 50;
 // both rely on this propagation.
 #[test]
 fn reserve_strip_children_inherit_hidden_after_three_acquisitions_at_placement_entry() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_draft_initial();
 
     for offset in 0..ACQUIRED_CARD_COUNT {

@@ -20,10 +20,14 @@ use client::ui::hand::{
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::RoundPhase;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const EPSILON: f32 = 0.001;
 
 #[test]
 fn hu_07_draft_offering_populates_nine_visible_grid_slots() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_draft_initial();
     let initial_ids = card_ids(1, 9);
 
@@ -68,6 +72,7 @@ fn hu_07_draft_offering_populates_nine_visible_grid_slots() {
 
 #[test]
 fn hu_asset_loop_draft_and_fan_slots_resolve_card_display_art_or_fallback() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_draft_initial();
 
     send_offering(&mut app, vec![CardId(1)]);
@@ -114,6 +119,7 @@ fn hu_asset_loop_draft_and_fan_slots_resolve_card_display_art_or_fallback() {
 
 #[test]
 fn hu_08_confirmed_purchase_hides_grid_slot_and_animates_card_to_fan() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_draft_initial();
     send_offering(&mut app, card_ids(1, 9));
 
@@ -160,6 +166,7 @@ fn hu_08_confirmed_purchase_hides_grid_slot_and_animates_card_to_fan() {
 
 #[test]
 fn hu_09_and_hu_10c_hand_full_locks_all_remaining_visible_grid_slots() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_draft_initial();
     set_hand_to_nine_cards(&mut app);
     send_offering(&mut app, card_ids(1, 9));
@@ -206,6 +213,7 @@ fn hu_09_and_hu_10c_hand_full_locks_all_remaining_visible_grid_slots() {
 
 #[test]
 fn hu_10_pending_purchase_times_out_without_deducting_gold_and_can_retry() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_draft_initial();
     send_offering(&mut app, card_ids(1, 9));
 
@@ -245,6 +253,7 @@ fn hu_10_pending_purchase_times_out_without_deducting_gold_and_can_retry() {
 
 #[test]
 fn hu_30_hand_full_notification_uses_prepooled_entity_and_timer_lifecycle() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_draft_initial();
     set_hand_to_nine_cards(&mut app);
     send_offering(&mut app, card_ids(1, 9));

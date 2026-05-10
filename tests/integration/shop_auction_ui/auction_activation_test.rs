@@ -19,8 +19,12 @@ use client::ui::shop_auction::{
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::RoundPhase;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn sau_004_card_before_phase_enters_preparing_without_countdown() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
     send_auction_card(&mut app, CardId(1), 4);
@@ -52,6 +56,7 @@ fn sau_004_card_before_phase_enters_preparing_without_countdown() {
 
 #[test]
 fn sau_004_phase_before_card_waits_then_activates_countdown() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
     set_phase(&mut app, RoundPhase::DraftAuction, 20_000);
@@ -90,6 +95,7 @@ fn sau_004_phase_before_card_waits_then_activates_countdown() {
 
 #[test]
 fn sau_asset_loop_featured_auction_card_resolves_display_art_or_fallback() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
     send_auction_card(&mut app, CardId(1), 4);
@@ -118,6 +124,7 @@ fn sau_asset_loop_featured_auction_card_resolves_display_art_or_fallback() {
 
 #[test]
 fn sau_004_card_first_then_phase_activates_countdown() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
     send_auction_card(&mut app, CardId(3), 6);
@@ -139,6 +146,7 @@ fn sau_004_card_first_then_phase_activates_countdown() {
 
 #[test]
 fn sau_004_preparing_timeout_shows_connection_error() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
     send_auction_card(&mut app, CardId(1), 4);
@@ -166,6 +174,7 @@ fn sau_004_preparing_timeout_shows_connection_error() {
 
 #[test]
 fn sau_004_non_auction_phase_during_preparing_clears_buffer_and_dismisses() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
     send_auction_card(&mut app, CardId(1), 4);
@@ -186,6 +195,7 @@ fn sau_004_non_auction_phase_during_preparing_clears_buffer_and_dismisses() {
 
 #[test]
 fn sau_004_draft_auction_footer_is_locked_and_does_not_send_shop_messages() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
     set_phase(&mut app, RoundPhase::DraftAuction, 20_000);

@@ -12,6 +12,9 @@ use client::{
 };
 use shared::protocol::RoundPhase;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn app_with_card_animations() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
@@ -67,6 +70,7 @@ fn return_tween(start: f32, duration_ms: u64) -> Tween {
 
 #[test]
 fn timer_bar_ease_request_starts_animator_same_update() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     let timer_bar = app
         .world_mut()
@@ -93,6 +97,7 @@ fn timer_bar_ease_request_starts_animator_same_update() {
 
 #[test]
 fn timer_bar_duplicate_requests_leave_one_replaced_animator() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     let timer_bar = app
         .world_mut()
@@ -126,6 +131,7 @@ fn timer_bar_duplicate_requests_leave_one_replaced_animator() {
 
 #[test]
 fn timer_bar_missing_target_does_not_panic() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
 
     app.world_mut().write_message(TimerBarEaseRequested {
@@ -140,6 +146,7 @@ fn timer_bar_missing_target_does_not_panic() {
 
 #[test]
 fn drag_start_in_placement_starts_drag_sprite_animator_same_update() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     let card = app.world_mut().spawn((HandCard, Transform::default())).id();
     let drag_sprite = app
@@ -173,6 +180,7 @@ fn drag_start_in_placement_starts_drag_sprite_animator_same_update() {
 
 #[test]
 fn drag_start_outside_placement_does_not_gate_or_animate() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     app.world_mut().insert_resource(ClientPhaseView {
         phase: RoundPhase::DraftAuction,
@@ -202,6 +210,7 @@ fn drag_start_outside_placement_does_not_gate_or_animate() {
 
 #[test]
 fn hover_enter_keeps_returning_card_playing_and_starts_new_hover() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_card_animations();
     app.world_mut().insert_resource(InputGatingAnimationConfig {
         hand_card_dehover_ms: 5,

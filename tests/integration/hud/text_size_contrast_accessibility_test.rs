@@ -19,11 +19,15 @@ use shared::{
     session::PlayerId,
 };
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const HUD_CONTRAST_MIN_RATIO: f32 = 4.5;
 const VIEWPORTS: [(u32, u32); 2] = [(1366, 768), (1920, 1080)];
 
 #[test]
 fn test_hud_accessibility_fixture_meets_text_size_floors_and_contrast() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
     apply_accessibility_fixture(&mut app);
 
@@ -148,6 +152,7 @@ fn test_hud_accessibility_fixture_meets_text_size_floors_and_contrast() {
 
 #[test]
 fn test_cold_start_placeholders_meet_matching_accessibility_floors() {
+    test_helpers::init_test_tracing();
     let app = app_with_hud_in_session();
     let entities = hud_entities(&app);
 
@@ -201,6 +206,7 @@ fn test_cold_start_placeholders_meet_matching_accessibility_floors() {
 
 #[test]
 fn test_resolution_hud_contrast_has_no_phase_dimming_regression() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
     apply_accessibility_fixture(&mut app);
 
@@ -244,6 +250,7 @@ fn test_resolution_hud_contrast_has_no_phase_dimming_regression() {
 
 #[test]
 fn test_hud_accessibility_changes_preserve_visibility_and_entity_pool() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
     let initial_entities = hud_entity_ids(&mut app);
     apply_accessibility_fixture(&mut app);

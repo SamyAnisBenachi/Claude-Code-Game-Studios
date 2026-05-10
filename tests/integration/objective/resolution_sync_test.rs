@@ -12,6 +12,9 @@ use server::feature::objective::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const PLAYER_A: PlayerId = PlayerId(1);
 const PLAYER_B: PlayerId = PlayerId(2);
 
@@ -54,6 +57,7 @@ fn read_messages<T: Message + Clone>(app: &App) -> Vec<T> {
 
 #[test]
 fn test_os13a_objective_destroyed_broadcasts_only_at_resolution_end_sync() {
+    test_helpers::init_test_tracing();
     let mut app = base_app();
     let event = destroyed(PLAYER_B, 3, false);
     queue_destroyed(&mut app, [event]);
@@ -81,6 +85,7 @@ fn test_os13a_objective_destroyed_broadcasts_only_at_resolution_end_sync() {
 
 #[test]
 fn test_os13a_empty_resolution_end_sync_emits_zero_broadcasts() {
+    test_helpers::init_test_tracing();
     let mut app = base_app();
 
     app.world_mut().write_message(ResolutionComplete);
@@ -93,6 +98,7 @@ fn test_os13a_empty_resolution_end_sync_emits_zero_broadcasts() {
 
 #[test]
 fn test_os18a_multiple_objective_destroyed_broadcasts_are_lane_ordered() {
+    test_helpers::init_test_tracing();
     let mut app = base_app();
     queue_destroyed(
         &mut app,
@@ -117,6 +123,7 @@ fn test_os18a_multiple_objective_destroyed_broadcasts_are_lane_ordered() {
 
 #[test]
 fn test_os24_sang_meprise_visibility_does_not_suppress_objective_destroyed() {
+    test_helpers::init_test_tracing();
     let mut app = base_app();
     app.insert_resource(ReconnectTracker {
         sang_meprise_sent_to: HashSet::from([PLAYER_A]),
@@ -135,6 +142,7 @@ fn test_os24_sang_meprise_visibility_does_not_suppress_objective_destroyed() {
 
 #[test]
 fn test_resolution_phase_entered_marks_objective_resolution_ready() {
+    test_helpers::init_test_tracing();
     let mut app = base_app();
 
     app.world_mut()

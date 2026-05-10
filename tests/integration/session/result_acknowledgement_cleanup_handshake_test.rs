@@ -14,8 +14,12 @@ use shared::protocol::{
 use shared::session::PlayerId;
 use uuid::Uuid;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn duplicate_ack_before_all_ack_is_idempotent_and_then_terminal_cleanup_removes_retention() {
+    test_helpers::init_test_tracing();
     let mut ended = ended_state();
     let mut tracker = reconnect_tracker();
 
@@ -49,6 +53,7 @@ fn duplicate_ack_before_all_ack_is_idempotent_and_then_terminal_cleanup_removes_
 
 #[test]
 fn timeout_cleanup_uses_the_same_retention_cleanup_without_requiring_acknowledgements() {
+    test_helpers::init_test_tracing();
     let ended = ended_state();
     let mut tracker = reconnect_tracker();
 
@@ -63,6 +68,7 @@ fn timeout_cleanup_uses_the_same_retention_cleanup_without_requiring_acknowledge
 
 #[test]
 fn stale_acknowledgements_are_silent_discards_until_game_over_retention_exists() {
+    test_helpers::init_test_tracing();
     let mut ended = ended_state();
 
     assert_eq!(

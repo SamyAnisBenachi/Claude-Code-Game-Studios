@@ -15,6 +15,9 @@ use client::ui::hand::{
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::RoundPhase;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 // Verdict 3 — Suspect 1 PROVEN: HandFanViewport had no writer system, so
 // metrics_for_viewport always anchored the fan to the 800x600 default. This
 // test spawns a (Window, PrimaryWindow) at 1920x1080, runs HandUiPlugin, and
@@ -34,6 +37,7 @@ const POSITION_EPSILON_PX: f32 = 0.5;
 
 #[test]
 fn viewport_sync_anchors_fan_layout_to_primary_window_at_1920_1080() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_at_resolution(VIEWPORT_WIDTH_PX, VIEWPORT_HEIGHT_PX);
 
     for offset in 0..ACQUIRED_CARD_COUNT {
@@ -104,6 +108,7 @@ fn viewport_sync_anchors_fan_layout_to_primary_window_at_1920_1080() {
 
 #[test]
 fn default_viewport_persists_when_no_primary_window_is_present() {
+    test_helpers::init_test_tracing();
     // Sanity: tests that ran before Verdict 3 worked because they injected
     // HandFanViewport (800x600) directly. The new sync system must NOT clobber
     // the default when no Window/PrimaryWindow entity exists in the world.

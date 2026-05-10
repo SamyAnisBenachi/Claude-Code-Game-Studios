@@ -11,6 +11,9 @@ use server::foundation::config::{CardCatalog, GameConfig};
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -88,6 +91,7 @@ fn app_with_settling_auction(first: PlayerId, second: PlayerId) -> App {
 
 #[test]
 fn test_next_auction_entry_starts_with_zero_reserved_gold_for_all_players() {
+    test_helpers::init_test_tracing();
     let first = player(1);
     let second = player(2);
     let mut app = app_with_settling_auction(first, second);

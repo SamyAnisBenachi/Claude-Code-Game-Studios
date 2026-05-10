@@ -13,6 +13,9 @@ use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{DraftPhase, GameMode, GameOverReason, PlacementTimerMultiplier};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn card(id: u32, class: ClassId) -> CardData {
     CardData {
         id: CardId(id),
@@ -96,6 +99,7 @@ fn app_with_card_pool(catalog: CardCatalog, players: &[PlayerId]) -> App {
 
 #[test]
 fn test_draft_initial_initializes_player_pools() {
+    test_helpers::init_test_tracing();
     let players = [PlayerId(1), PlayerId(2)];
     let stale_player = PlayerId(99);
     let catalog = test_catalog();
@@ -131,6 +135,7 @@ fn test_draft_initial_initializes_player_pools() {
 
 #[test]
 fn test_non_initial_draft_does_not_reinitialize_pools() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let catalog = test_catalog();
     let mut app = app_with_card_pool(catalog.clone(), &[player]);
@@ -159,6 +164,7 @@ fn test_non_initial_draft_does_not_reinitialize_pools() {
 
 #[test]
 fn test_pool_init_precedes_card_acquisition_refresh() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let catalog = test_catalog();
     let mut app = App::new();
@@ -200,6 +206,7 @@ fn test_pool_init_precedes_card_acquisition_refresh() {
 
 #[test]
 fn test_game_over_clears_pool_session_resources() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let catalog = test_catalog();
     let mut app = app_with_card_pool(catalog.clone(), &[player]);
@@ -238,6 +245,7 @@ fn test_game_over_clears_pool_session_resources() {
 
 #[test]
 fn test_card_pool_plugin_registers_cleanly() {
+    test_helpers::init_test_tracing();
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, CardPoolPlugin));
     app.add_message::<DraftStarted>();

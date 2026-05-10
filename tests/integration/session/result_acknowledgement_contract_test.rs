@@ -14,6 +14,9 @@ use shared::protocol::{
 use shared::session::PlayerId;
 use uuid::Uuid;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -59,6 +62,7 @@ fn ended_state() -> EndedSessionResultState {
 
 #[test]
 fn ack_drain_is_session_owned_not_network_log_only() {
+    test_helpers::init_test_tracing();
     let network_source = include_str!("../../../server/src/network/mod.rs");
     let session_source = include_str!("../../../server/src/core/session/system.rs");
     let plugin_source = include_str!("../../../server/src/core/session/plugin.rs");
@@ -79,6 +83,7 @@ fn ack_drain_is_session_owned_not_network_log_only() {
 
 #[test]
 fn invalid_phase_unknown_sender_and_non_participant_ack_are_silent_discards() {
+    test_helpers::init_test_tracing();
     let mut state = ended_state();
 
     assert_eq!(
@@ -110,6 +115,7 @@ fn invalid_phase_unknown_sender_and_non_participant_ack_are_silent_discards() {
 
 #[test]
 fn acknowledgement_marks_only_sender_and_duplicate_is_noop() {
+    test_helpers::init_test_tracing();
     let mut state = ended_state();
 
     assert_eq!(
@@ -133,6 +139,7 @@ fn acknowledgement_marks_only_sender_and_duplicate_is_noop() {
 
 #[test]
 fn all_ack_cleanup_removes_result_session_tokens_and_deferred_queues() {
+    test_helpers::init_test_tracing();
     let mut state = ended_state();
     assert_eq!(
         apply_result_acknowledgement(Some(&mut state), player(1)),
@@ -194,6 +201,7 @@ fn all_ack_cleanup_removes_result_session_tokens_and_deferred_queues() {
 
 #[test]
 fn timeout_cleanup_uses_same_terminal_cleanup_path() {
+    test_helpers::init_test_tracing();
     let state = ended_state();
     let mut tracker = ReconnectTracker {
         snapshot_sent: HashMap::from([(player(1), true), (player(2), true)]),

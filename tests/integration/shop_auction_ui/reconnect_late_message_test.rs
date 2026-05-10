@@ -23,11 +23,15 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const LOCAL_PLAYER: PlayerId = PlayerId(1);
 const OPPONENT_PLAYER: PlayerId = PlayerId(2);
 
 #[test]
 fn sau_008_draft_auction_snapshot_rebuilds_without_auction_card_and_clears_transients() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session(8);
     set_phase(&mut app, RoundPhase::DraftAuction, 20_000);
     seed_stale_auction_transients(&mut app);
@@ -96,6 +100,7 @@ fn sau_008_draft_auction_snapshot_rebuilds_without_auction_card_and_clears_trans
 
 #[test]
 fn sau_008_auction_snapshot_no_bid_uses_starting_price_and_saturating_free_gold() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session(99);
     set_phase(&mut app, RoundPhase::DraftAuction, 18_000);
 
@@ -133,6 +138,7 @@ fn sau_008_auction_snapshot_no_bid_uses_starting_price_and_saturating_free_gold(
 
 #[test]
 fn sau_008_draft_shop_snapshot_uses_local_slots_and_beats_same_frame_late_slots() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session(10);
     set_phase(&mut app, RoundPhase::DraftShop, 30_000);
     {
@@ -201,6 +207,7 @@ fn sau_008_draft_shop_snapshot_uses_local_slots_and_beats_same_frame_late_slots(
 
 #[test]
 fn sau_008_late_auction_accepted_rejected_and_card_are_ignored_after_phase_exit() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session(20);
     set_phase(&mut app, RoundPhase::DraftAuction, 20_000);
     send_auction_card(&mut app, CardId(1), 4);
@@ -249,6 +256,7 @@ fn sau_008_late_auction_accepted_rejected_and_card_are_ignored_after_phase_exit(
 
 #[test]
 fn sau_008_late_shop_confirmations_are_ignored_after_phase_exit() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session(10);
     set_phase(&mut app, RoundPhase::DraftShop, 30_000);
     app.world_mut().write_message(ShopAuctionShopSlotsReceived {
@@ -275,6 +283,7 @@ fn sau_008_late_shop_confirmations_are_ignored_after_phase_exit() {
 
 #[test]
 fn sau_008_draft_initial_snapshot_does_not_restore_grid_from_shop_slots() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session(10);
     set_phase(&mut app, RoundPhase::DraftInitial, 45_000);
     app.world_mut()

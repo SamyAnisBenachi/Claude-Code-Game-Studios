@@ -13,8 +13,12 @@ use client::ui::shop_auction::{
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::RoundPhase;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn sau_002_panel_waits_for_phase_and_offering_before_showing_grid() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session(5, true);
     set_phase(&mut app, RoundPhase::DraftInitial);
     run_update(&mut app);
@@ -42,6 +46,7 @@ fn sau_002_panel_waits_for_phase_and_offering_before_showing_grid() {
 
 #[test]
 fn sau_002_grid_sorts_by_rarity_descending_then_cost_descending() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session(9, true);
     insert_catalog(
         &mut app,
@@ -78,6 +83,7 @@ fn sau_002_grid_sorts_by_rarity_descending_then_cost_descending() {
 
 #[test]
 fn sau_002_valid_slot_click_sends_exactly_one_purchase_intent() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(5, true);
     let slot = draft_slot(&app, 0);
     let card_id = slot_card(&app, slot);
@@ -95,6 +101,7 @@ fn sau_002_valid_slot_click_sends_exactly_one_purchase_intent() {
 
 #[test]
 fn sau_002_insufficient_gold_suppresses_purchase_and_requests_gold_flash() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(0, true);
     let slot = draft_slot(&app, 0);
 
@@ -111,6 +118,7 @@ fn sau_002_insufficient_gold_suppresses_purchase_and_requests_gold_flash() {
 
 #[test]
 fn sau_002_hand_size_ten_locks_unowned_slots_and_shows_banner() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_session(5, true);
     app.world_mut()
         .resource_mut::<ShopAuctionDraftHandView>()
@@ -144,6 +152,7 @@ fn sau_002_hand_size_ten_locks_unowned_slots_and_shows_banner() {
 
 #[test]
 fn sau_002_card_acquired_plus_gold_update_marks_slot_purchased_with_overlay() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(5, false);
     let slot = draft_slot(&app, 0);
     let card_id = slot_card(&app, slot);
@@ -175,6 +184,7 @@ fn sau_002_card_acquired_plus_gold_update_marks_slot_purchased_with_overlay() {
 
 #[test]
 fn sau_002_ready_and_retract_send_expected_signal_values() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(5, true);
     let ready = app
         .world()
@@ -208,6 +218,7 @@ fn sau_002_ready_and_retract_send_expected_signal_values() {
 
 #[test]
 fn sau_002_grid_remains_interactive_after_ready_until_phase_changes() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(5, true);
     let ready = app
         .world()
@@ -228,6 +239,7 @@ fn sau_002_grid_remains_interactive_after_ready_until_phase_changes() {
 
 #[test]
 fn sau_002_placement_phase_dismisses_panel_and_blocks_purchase_sends() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(5, true);
     let slot = draft_slot(&app, 0);
 
@@ -245,6 +257,7 @@ fn sau_002_placement_phase_dismisses_panel_and_blocks_purchase_sends() {
 
 #[test]
 fn sau_002_pending_slot_visual_differs_from_available_within_one_tick() {
+    test_helpers::init_test_tracing();
     let mut app = active_draft_app(5, true);
     let baseline_slot = draft_slot(&app, 1);
     let pending_slot = draft_slot(&app, 0);

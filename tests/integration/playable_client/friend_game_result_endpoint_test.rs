@@ -47,12 +47,16 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const TICK_HZ: f64 = 60.0;
 const ROOM_FLOW_MAX_FRAMES: usize = 3_600;
 const FRAME_SLEEP: Duration = Duration::from_millis(10);
 
 #[test]
 fn real_friend_game_route_reaches_game_over_result_endpoint() {
+    test_helpers::init_test_tracing();
     let port = reserve_ephemeral_port();
     let url = format!("ws://127.0.0.1:{port}");
     let flags = RoomSessionFlags::new();

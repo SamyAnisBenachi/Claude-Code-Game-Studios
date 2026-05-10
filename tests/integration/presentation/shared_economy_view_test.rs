@@ -16,8 +16,12 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn test_gold_update_updates_shared_player_economy_view() {
+    test_helpers::init_test_tracing();
     let mut view = PlayerEconomyView::default();
 
     view.apply_gold_update(&S2CGoldUpdate {
@@ -40,6 +44,7 @@ fn test_gold_update_updates_shared_player_economy_view() {
 
 #[test]
 fn test_snapshot_initializes_local_player_economy_view() {
+    test_helpers::init_test_tracing();
     let mut view = PlayerEconomyView::default();
     let snapshot = snapshot(
         player_snapshot(player(1), 9, 6, 4, 11),
@@ -61,6 +66,7 @@ fn test_snapshot_initializes_local_player_economy_view() {
 
 #[test]
 fn test_reserve_strip_input_does_not_mutate_player_economy_view() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(10), 5)]));
     set_hand(&mut app, [CardId(10)]);
     stage_card(

@@ -16,6 +16,9 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -42,6 +45,7 @@ fn app_with_economy_dispatch() -> App {
 
 #[test]
 fn draft_started_dispatches_private_updates_to_owner_peers_only() {
+    test_helpers::init_test_tracing();
     let player_a = player(1);
     let player_b = player(2);
     let peer_a = PeerId::Netcode(11);
@@ -84,6 +88,7 @@ fn draft_started_dispatches_private_updates_to_owner_peers_only() {
 
 #[test]
 fn queued_award_messages_dispatch_reliable_update_and_public_broadcast() {
+    test_helpers::init_test_tracing();
     let player_a = player(1);
     let peer_a = PeerId::Netcode(11);
     let mut app = app_with_economy_dispatch();
@@ -127,6 +132,7 @@ fn queued_award_messages_dispatch_reliable_update_and_public_broadcast() {
 
 #[test]
 fn missing_connection_skips_private_update_without_blocking_broadcasts() {
+    test_helpers::init_test_tracing();
     let player_a = player(1);
     let player_b = player(2);
     let mut app = app_with_economy_dispatch();
@@ -157,6 +163,7 @@ fn missing_connection_skips_private_update_without_blocking_broadcasts() {
 
 #[test]
 fn protocol_manifest_registers_gold_messages_as_reliable_s2c() {
+    test_helpers::init_test_tracing();
     #[derive(Default)]
     struct RecordingRegistry {
         messages: Vec<(String, ProtocolDirection, ProtocolChannel)>,

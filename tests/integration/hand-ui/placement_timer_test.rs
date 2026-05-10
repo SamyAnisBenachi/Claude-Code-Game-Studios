@@ -21,8 +21,12 @@ use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{PlayTarget, RoundPhase};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn hu_15_grace_window_expiry_submits_staged_cards_and_cancels_drag() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([
         (CardId(10), CardType::Minion),
         (CardId(11), CardType::Minion),
@@ -65,6 +69,7 @@ fn hu_15_grace_window_expiry_submits_staged_cards_and_cancels_drag() {
 
 #[test]
 fn hu_15b_valid_drop_during_grace_submits_extended_staged_set() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([
         (CardId(20), CardType::Minion),
         (CardId(21), CardType::Minion),
@@ -109,6 +114,7 @@ fn hu_15b_valid_drop_during_grace_submits_extended_staged_set() {
 
 #[test]
 fn hu_22_urgency_threshold_sets_state_and_writes_audio_once() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(30), CardType::Minion)]));
     let timer_entity = timer_entity(&mut app);
     {
@@ -134,6 +140,7 @@ fn hu_22_urgency_threshold_sets_state_and_writes_audio_once() {
 
 #[test]
 fn hu_23_submit_checkmark_visible_while_timer_keeps_running() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(40), CardType::Minion)]));
     app.world_mut()
         .resource_mut::<PlacementTimer>()
@@ -160,6 +167,7 @@ fn hu_23_submit_checkmark_visible_while_timer_keeps_running() {
 
 #[test]
 fn hu_24_placement_timer_uses_server_phase_duration() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(50), CardType::Minion)]));
 
     set_phase_with_round(&mut app, RoundPhase::DraftShop, 7);

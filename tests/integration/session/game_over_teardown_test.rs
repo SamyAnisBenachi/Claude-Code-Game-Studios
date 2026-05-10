@@ -14,6 +14,9 @@ use shared::protocol::{GameMode, GameOverReason};
 use shared::session::PlayerId;
 use uuid::Uuid;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -112,6 +115,7 @@ fn emit_game_over(app: &mut App) {
 
 #[test]
 fn game_over_teardown_removes_session_resources_and_broadcasts_result() {
+    test_helpers::init_test_tracing();
     let mut app = game_active_app();
 
     emit_game_over(&mut app);
@@ -148,6 +152,7 @@ fn game_over_teardown_removes_session_resources_and_broadcasts_result() {
 
 #[test]
 fn game_over_teardown_cleans_active_sessions_and_room_state() {
+    test_helpers::init_test_tracing();
     let mut app = game_active_app();
 
     emit_game_over(&mut app);
@@ -167,6 +172,7 @@ fn game_over_teardown_cleans_active_sessions_and_room_state() {
 
 #[test]
 fn game_over_teardown_retains_reconnect_tracker_until_result_ack_cleanup() {
+    test_helpers::init_test_tracing();
     let mut app = game_active_app();
     app.insert_resource(ReconnectTracker {
         snapshot_sent: HashMap::from([(player(1), true), (player(2), true), (player(9), true)]),
@@ -223,6 +229,7 @@ fn game_over_teardown_retains_reconnect_tracker_until_result_ack_cleanup() {
 
 #[test]
 fn game_over_teardown_is_idempotent_when_already_game_over() {
+    test_helpers::init_test_tracing();
     let mut app = game_active_app();
     app.insert_resource(LobbyState::GameOver);
 

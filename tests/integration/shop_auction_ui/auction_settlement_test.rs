@@ -24,11 +24,15 @@ use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{BidRejectedReason, RoundPhase};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const LOCAL_PLAYER: PlayerId = PlayerId(1);
 const OPPONENT_PLAYER: PlayerId = PlayerId(2);
 
 #[test]
 fn sau_007_local_winner_enters_settling_and_requests_card_feedback() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
 
     app.world_mut()
@@ -84,6 +88,7 @@ fn sau_007_local_winner_enters_settling_and_requests_card_feedback() {
 
 #[test]
 fn sau_007_opponent_and_no_bid_settlement_skip_local_card_feedback() {
+    test_helpers::init_test_tracing();
     let mut opponent_app = app_in_active_auction(4, 20_000);
     write_settled(&mut opponent_app, Some(OPPONENT_PLAYER), 8);
 
@@ -133,6 +138,7 @@ fn sau_007_opponent_and_no_bid_settlement_skip_local_card_feedback() {
 
 #[test]
 fn sau_007_settlement_suppresses_stale_bid_accepted_and_rejected_messages() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
 
     write_settled(&mut app, Some(LOCAL_PLAYER), 7);
@@ -165,6 +171,7 @@ fn sau_007_settlement_suppresses_stale_bid_accepted_and_rejected_messages() {
 
 #[test]
 fn sau_007_same_update_accepted_then_settled_renders_only_terminal_state() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
 
     app.world_mut()
@@ -201,6 +208,7 @@ fn sau_007_same_update_accepted_then_settled_renders_only_terminal_state() {
 
 #[test]
 fn sau_007_draft_shop_timer_defers_until_transition_completes() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
     send_shop_slots(
         &mut app,
@@ -259,6 +267,7 @@ fn sau_007_draft_shop_timer_defers_until_transition_completes() {
 
 #[test]
 fn sau_007_reduced_motion_completes_transition_without_reordering_timer_start() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
     app.insert_resource(AccessibilityPreferences {
         reduced_motion: true,
@@ -294,6 +303,7 @@ fn sau_007_reduced_motion_completes_transition_without_reordering_timer_start() 
 
 #[test]
 fn sau_007_placement_phase_interrupt_cancels_settlement_immediately() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
 
     write_settled(&mut app, Some(OPPONENT_PLAYER), 8);

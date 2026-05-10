@@ -12,8 +12,12 @@ use client::ui::settings::{
 };
 use shared::protocol::{PlacementTimerMultiplier, RoundPhase};
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn test_settings_shell_opens_and_closes_from_lobby_without_mutating_session_settings() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_settings();
     set_phase(&mut app, RoundPhase::Lobby);
     app.world_mut()
@@ -73,6 +77,7 @@ fn test_settings_shell_opens_and_closes_from_lobby_without_mutating_session_sett
 
 #[test]
 fn test_settings_unsafe_phase_queues_request_until_safe_boundary() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_settings();
     set_phase(&mut app, RoundPhase::Placement);
 
@@ -105,6 +110,7 @@ fn test_settings_unsafe_phase_queues_request_until_safe_boundary() {
 
 #[test]
 fn test_settings_actions_update_preferences_independently_and_apply_menu_scale_hook() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_settings();
     set_phase(&mut app, RoundPhase::Lobby);
     open_settings(&mut app, SettingsEntrySource::Lobby);
@@ -140,6 +146,7 @@ fn test_settings_actions_update_preferences_independently_and_apply_menu_scale_h
 
 #[test]
 fn test_settings_focus_order_excludes_hidden_controls_when_closed() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_settings();
 
     assert!(app

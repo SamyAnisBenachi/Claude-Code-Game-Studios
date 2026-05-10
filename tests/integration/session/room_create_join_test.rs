@@ -7,6 +7,9 @@ use shared::protocol::{CreateRoomRejectedReason, GameMode, JoinRejectedReason, S
 use shared::session::PlayerId;
 use uuid::Uuid;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -42,6 +45,7 @@ fn create_fixed_room(
 
 #[test]
 fn test_create_then_join_room_happy_path_updates_slots_and_active_sessions() {
+    test_helpers::init_test_tracing();
     let mut rooms = RoomSessions::default();
     let mut active = ActiveSessions::default();
     let player_a = player(1);
@@ -98,6 +102,7 @@ fn test_create_then_join_room_happy_path_updates_slots_and_active_sessions() {
 
 #[test]
 fn test_idempotent_create_returns_existing_lobby_waiting_room() {
+    test_helpers::init_test_tracing();
     let mut rooms = RoomSessions::default();
     let mut active = ActiveSessions::default();
     let owner = player(1);
@@ -134,6 +139,7 @@ fn test_idempotent_create_returns_existing_lobby_waiting_room() {
 
 #[test]
 fn test_full_session_rejects_third_joiner() {
+    test_helpers::init_test_tracing();
     let mut rooms = RoomSessions::default();
     let mut active = ActiveSessions::default();
     let id = session_id(1);
@@ -156,6 +162,7 @@ fn test_full_session_rejects_third_joiner() {
 
 #[test]
 fn test_create_rejects_player_already_in_non_waiting_session() {
+    test_helpers::init_test_tracing();
     let mut rooms = RoomSessions::default();
     let mut active = ActiveSessions::default();
     let owner = player(1);
@@ -185,6 +192,7 @@ fn test_create_rejects_player_already_in_non_waiting_session() {
 
 #[test]
 fn test_join_rejection_paths_are_distinct() {
+    test_helpers::init_test_tracing();
     let mut rooms = RoomSessions::default();
     let mut active = ActiveSessions::default();
     let owner = player(1);
@@ -221,6 +229,7 @@ fn test_join_rejection_paths_are_distinct() {
 
 #[test]
 fn test_join_after_session_start_returns_session_in_progress() {
+    test_helpers::init_test_tracing();
     let mut rooms = RoomSessions::default();
     let mut active = ActiveSessions::default();
     let owner = player(1);
@@ -240,6 +249,7 @@ fn test_join_after_session_start_returns_session_in_progress() {
 
 #[test]
 fn test_room_code_generation_uses_six_unambiguous_uppercase_alphanumerics() {
+    test_helpers::init_test_tracing();
     let bytes = [0, 1, 2, 30, 31, 255, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0];
     let code = room_code_from_bytes(&bytes);
 

@@ -18,6 +18,9 @@ use shared::config::GameConfig;
 use shared::protocol::{CardSource, S2CPrismRewardDropped};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const PRISM_STRIKE_ID: CardId = CardId(9001);
 const PRISM_RESERVE_ID: CardId = CardId(9002);
 const DRAW_SPELL_ID: CardId = CardId(9102);
@@ -123,6 +126,7 @@ fn hand_with_len(len: u32) -> Vec<CardId> {
 
 #[test]
 fn hand_full_lanes_1_2_4_5_stage_reward_dropped_unicast_without_card() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let mut app = app_with_prism(true);
     app.world_mut()
@@ -153,6 +157,7 @@ fn hand_full_lanes_1_2_4_5_stage_reward_dropped_unicast_without_card() {
 
 #[test]
 fn successful_collection_stages_card_acquired_unicast_to_owner_only() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let mut app = app_with_prism(true);
 
@@ -174,6 +179,7 @@ fn successful_collection_stages_card_acquired_unicast_to_owner_only() {
 
 #[test]
 fn lane3_success_stages_card_acquired_with_lane3_source() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let mut app = app_with_prism(true);
 
@@ -199,6 +205,7 @@ fn lane3_success_stages_card_acquired_with_lane3_source() {
 
 #[test]
 fn success_and_hand_full_in_same_resolution_stage_independent_messages() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let mut app = app_with_prism(true);
     app.world_mut()
@@ -227,6 +234,7 @@ fn success_and_hand_full_in_same_resolution_stage_independent_messages() {
 
 #[test]
 fn lane3_hand_full_is_silent_and_consumes_no_seed() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let mut app = app_with_prism(true);
     app.world_mut()
@@ -251,6 +259,7 @@ fn lane3_hand_full_is_silent_and_consumes_no_seed() {
 
 #[test]
 fn snapshot_gate_defers_prism_messages_until_owner_snapshot_is_sent() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let mut app = app_with_prism(false);
 
@@ -278,6 +287,7 @@ fn snapshot_gate_defers_prism_messages_until_owner_snapshot_is_sent() {
 
 #[test]
 fn snapshot_gate_defers_reward_dropped_until_owner_snapshot_is_sent() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let mut app = app_with_prism(false);
     app.world_mut()
