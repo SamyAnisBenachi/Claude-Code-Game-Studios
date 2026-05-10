@@ -2223,3 +2223,80 @@ This supersedes the prior single-hash-line convention (single `###...` line per 
 - 592–596: emitted Codex worker prompts, mid-flight
 - 597–601: emitted Game Studio skill prompts, mix of launchable-now (597/600/601) and deferred (598/599)
 - **602+** = next free for new emit
+
+---
+
+## State Snapshot 2026-05-10 night (Sprint 10 progress wave — HEAD `34f4f2d`)
+
+### Commits added to `main` since last snapshot at `5193133`
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `bb51463` | PROMPT 603 | Cherry-pick PROMPT 595 board_rendering+hud fixture sites (21 files +46) — Option 1 expansion: both `init_state::<ClientState>()` + `placeholder_assets_for_tests()` per fixture |
+| `34f4f2d` | PROMPT 604 | Cherry-pick PROMPT 596 CardId(7) pool_copies_override fix (-1 → null in `assets/data/cards.json`) |
+
+### Worker branches — current status
+
+| Branch | Worker commit | Source prompt | Status |
+|---|---|---|---|
+| `work/cargo-toml-test-block-cleanup` | `c17229f` | 593 | 🟡 PARKED — superseded by PROMPT 602 file-restore approach. Will not be cherry-picked. Preserved as evidence in case accept-risk reclassification becomes needed. |
+| `work/asset-loop-test-design-fix` | (mid-flight) | 594 | ⏳ Worker mid-flight; only remaining in-flight Codex worker |
+| `work/other-placeholder-assets-fixture-sites` | `339fe74` | 595 | ✅ Integrated as `bb51463` via PROMPT 603 |
+| `work/card-id-7-pool-override-fix` | `2146bcd` | 596 | ✅ Integrated as `34f4f2d` via PROMPT 604 |
+| `work/restore-paw-test-files` | `80f7198` | 602 | ⏳ Cherry-pick PROMPT 605 emitted, not yet integrated |
+
+### Game Studio skill prompts (2026-05-10)
+
+- **597** (`/qa-plan sprint`) ✅ DONE — artifact at `production/qa/qa-plan-sprint-10-2026-05-10.md`. Plan flagged 5 Sprint 10 stories lacking dedicated story files (Pre-/dev-story prerequisite). PAW close-out stories already have passing integration tests on main.
+- **598** (`/story-done` S10-PAW-001) 🔴 BLOCKED — waits for PROMPT 605 cherry-pick of 602 (PAW test files restore) to land. Worker discovered 2 .rs files dropped during PAW-003/005 merge conflict resolution; closure paperwork claim was unverifiable until restore.
+- **599** (`/story-done` S10-TD-001) 🔴 BLOCKED — waits for PROMPT 594 cherry-pick. Per worker investigation: real gate is 594 only; 593 is PARKED (superseded), 595 already on main via 603.
+- **600** (`/story-done` S10-TD-002) 🟢 ready, runnable now (substantively complete on main: 564 audit doc, 581 dead-plugin delete, 582 AssetWiring registration, 590 keyword observer fix). Serializes against any other `/story-done` (shared sprint-status.yaml).
+- **601** (`/story-done` S10-CARRY-001) ✅ DONE — skill ran canonical 3-file write (story file + sprint-status.yaml flip + active.md extract). Format note: skill output used 1 hash row of 35 chars instead of 3 rows of 51 — minor delimiter drift.
+
+### Sprint 10 Must Have status (post-601)
+
+| Story | Status | Substantive basis |
+|---|---|---|
+| S10-PAW-001 | ⏳ DEFERRED-CLOSURE | PAW-002..006 implementation + closure paperwork all integrated; 598 retry waits for 605 cherry-pick of 602 |
+| S10-TD-001 | ⏳ DEFERRED-CLOSURE | 4 of 5 fixture-repair components on main (573, 574/587, 579/586, 595/603); 594 (asset-loop) pending |
+| S10-TD-002 | 🟢 READY-CLOSURE | All audit findings resolved or formally tracked; PROMPT 600 runnable |
+| S10-CARRY-001 | ✅ DONE | Closed via PROMPT 601 (canonical /story-done) |
+| S10-POLISH-001 | ⚪ NOT STARTED | Genuinely new HUD chrome dev work; needs `/story-readiness` (likely needs `/create-stories` first — flagged by 597 QA plan as missing story file) |
+| S10-POLISH-002 | ⚪ NOT STARTED | Same shape — missing story file |
+
+→ Sprint 10: **1/6 Must Haves done**, 1 ready to close, 2 deferred-closure, 2 not started. Day 1 effective progress = 1 done + 3 substantively-ready-but-paperwork-pending = 4/6 on a Substantive Basis.
+
+### Currently launchable RIGHT NOW
+
+- **600** (`/story-done` S10-TD-002) — runnable, parallel-safe with cherry-picks (different files)
+- **604** ✅ ALREADY INTEGRATED at `34f4f2d`
+- **605** (cherry-pick 602 PAW test files restore) — runnable, root push, serializes against any other root push
+- **603** ✅ ALREADY INTEGRATED at `bb51463`
+
+### In-flight
+
+- **594** (asset-loop test design fix HAND-UI-004 + SAU-003/004) — worker branch, status unknown
+
+### Currently NOT launchable (DEFERRED — re-emit when deps land)
+
+- **598-retry** (`/story-done` S10-PAW-001) — waits for 605 cherry-pick to land
+- **599-retry** (`/story-done` S10-TD-001) — waits for 594 + its future cherry-pick
+
+### New findings surfaced this wave (separate-prompt candidates)
+
+1. **`tests/integration/presentation/lobby_asset_wiring_test.rs`** — 12 × E0596 errors (`world.query::<...>()` against `&World` instead of `&mut World`). Surfaced by PROMPT 602 worker. Blocks aggregate `cargo check -p client --tests`. Test-source compile fix; separate prompt.
+2. **`tests/integration/board_rendering/snapshot_spawn_test.rs:484`** — E0063 missing field `board_chrome` in `BoardRuntimeAssets` initializer. Surfaced by PROMPT 602 worker. Test-source compile fix; separate prompt.
+3. **5 Sprint 10 stories lack dedicated story files** — surfaced by PROMPT 597 QA plan. Blocks `/dev-story` and `/story-readiness` for those stories. Required before S10-POLISH-001/002 can advance.
+
+### Format violation patterns reinforced (workers continue using non-canonical status words)
+
+- PROMPT 595 used `SUCCESS` (non-canonical)
+- PROMPT 596 used `SUCCESS` (non-canonical)
+- PROMPT 599 used `BLOCKED-PRECONDITION-CHERRYPICKS-593-594-595-NOT-ON-MAIN` (multi-word concatenated; canonical would be just `BLOCKED` with details in body)
+- PROMPT 601 delimiter rendered as 1 row of 35 hashes instead of 3 rows of 51
+
+Going forward (PROMPT 605+), the final-line rule explicitly enumerates the canonical list (`DONE` / `COMPLETE` / `NO-OP` / `PARTIAL` / `BLOCKED` / `FAILED`) and explicitly forbids `SUCCESS`, `OK`, color names, and multi-word concatenated forms. Reinforcement applied in PROMPT 604 + 605 emit.
+
+### Next free prompt number
+
+- **606+** = next free for new emit (605 was cherry-pick of 602; 604 was cherry-pick of 596)

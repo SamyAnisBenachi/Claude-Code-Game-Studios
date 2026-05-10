@@ -6,7 +6,7 @@ goal: "Close out the integrated Presentation Asset Wiring batch with `/story-don
 start: "2026-05-21"
 end: "2026-06-03"
 generated: "2026-05-07"
-updated: "2026-05-10"  # Sprint 10 activation flip per PROMPT 591
+updated: "2026-05-10"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600
 stage: "Polish"
 scope: "Polish slice — close out PAW asset wiring, drain test-fixture and plugin-registration tech debt, start targeted visual UI chrome — not broad production / public release / full game completion"
 status: "active"
@@ -118,13 +118,14 @@ stories:
     name: "Plugin-registration audit and dead-plugin sweep"
     file: "production/epics/playable-client/story-010-plugin-registration-audit.md"
     priority: must-have
-    status: ready
+    status: done
     owner: "server programmer + orchestrator"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-05-10"
     notes:
       - "From production/sprints/sprint-10.md Sprint 10 plan."
+      - "/story-done PROMPT 600. Verdict COMPLETE WITH NOTES. 7/7 ACs met by audit doc 0648deb (PROMPT 563) plus resolution commits bbdb91e (BoardWasmPerfHarnessPlugin deletion, PROMPT 570), 8932d8c (AssetWiringPlugin registration, PROMPT 569), and f06271a (KeywordPlugin observer panic-prevention, PROMPT 588). Story file authored retroactively per friend-game-lite orchestrator rule. Net post-resolution: 14/14 server + 14/14 client = 0 silent dead plugins. No new automated test required (Config/Data per qa-plan)."
 
   - id: "S10-CARRY-001"
     name: "Sprint 9 carry-over consolidation"
