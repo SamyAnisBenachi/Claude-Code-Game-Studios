@@ -6,7 +6,7 @@ goal: "Close out the integrated Presentation Asset Wiring batch with `/story-don
 start: "2026-05-21"
 end: "2026-06-03"
 generated: "2026-05-07"
-updated: "2026-05-10"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600; S10-CARRY-001 closure per PROMPT 601-RETRY; S10-PAW-001 closure per PROMPT 598-RETRY; S10-TD-001 closure per PROMPT 611; S10-POLISH-002 closure per PROMPT 621
+updated: "2026-05-10"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600; S10-CARRY-001 closure per PROMPT 601-RETRY; S10-PAW-001 closure per PROMPT 598-RETRY; S10-TD-001 closure per PROMPT 611; S10-POLISH-002 closure per PROMPT 621; S10-POLISH-001 closure per PROMPT 630
 stage: "Polish"
 scope: "Polish slice — close out PAW asset wiring, drain test-fixture and plugin-registration tech debt, start targeted visual UI chrome — not broad production / public release / full game completion"
 status: "active"
@@ -144,15 +144,21 @@ stories:
 
   - id: "S10-POLISH-001"
     name: "HUD visual chrome — timer + class figurines + RESOLUTION dim"
-    file: "production/epics/hud/story-011-hud-visual-chrome-mvp.md"
+    file: "production/epics/hud/story-013-hud-visual-chrome-mvp.md"
     priority: must-have
-    status: ready
+    status: done
     owner: "UI/client programmer"
     estimate_days: 1.25
     blocker: ""
-    completed: ""
+    completed: "2026-05-10"
     notes:
       - "From production/sprints/sprint-10.md Sprint 10 plan."
+      - "/story-done PROMPT 630: integration commit b780f0e on main (cherry-pick of 1a1ae4f). Stale `file:` path corrected from story-011- to story-013- (slot collision rationale recorded in story Readiness Notes)."
+      - "AC verdict: 9/9 acceptance criteria satisfied — RESOLUTION dim overlay added (HudDimOverlay marker, sync_dim_overlay_for_resolution_system in StateSync, pre-pooled at session entry, instantaneous Visibility flips, HUD_ENTITY_COUNT 21→22, alpha 0.45). Timer bar + class figurines wired entities untouched (already in place at PAW-004 a7e397a + 2132129). Manual evidence document authored at production/qa/evidence/sprint-10-hud-chrome-evidence.md."
+      - "Automated evidence: tests/integration/hud/hud_resolution_dim_test.rs — 8/8 sub-tests PASS (covers AC1, AC3, AC4, AC5, AC6, AC7, AC8)."
+      - "Lean-mode gates: QL-TEST-COVERAGE skipped (no production/review-mode.txt); LP-CODE-REVIEW skipped per feedback_paw_review_flow.md (friend-game accept-risk; code-review = visibility, not merge gate)."
+      - "Pre-existing findings surfaced from 618/629 reports (NOT regressions from this story — predate b780f0e): (1) hud_asset_wiring_test 0/6 failing (HUD epic asset-wiring sub-area; S10-TD-001 closure tail); (2) hud_plugin_scaffold_test 3/4 (HUD epic; PAW-004 timer-bar Name break); (3) broken *_harness.rs bins (harness/test-infra cross-epic; Bevy 0.18 Input feature reorg). Recommend separate triage stories — not authored in this prompt."
+      - "Preserved carry state: Sprint 9 closed-with-conditions disposition; S8-QA-001-W1 manual/browser two-client GAME_OVER gap remains open; QA-COND-0005 (Standard-tier accessibility) accepted-risk friend-game scope; QA-COND-0006 (playtest fun-hypothesis validation) accepted-risk / deferred. No public release readiness, full playable-client manual QA, full game completion, or broad accessibility completion claimed."
 
   - id: "S10-POLISH-002"
     name: "Shop/Auction panel chrome wiring"

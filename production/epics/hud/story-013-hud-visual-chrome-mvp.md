@@ -2,11 +2,12 @@
 
 > **Epic**: HUD
 > **Story ID**: S10-POLISH-001
-> **Status**: Not Started
+> **Status**: Done
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-05-05
 > **Sprint**: Sprint 10 active
+> **Completed**: 2026-05-10
 
 ## Context
 
@@ -222,7 +223,7 @@ sprites from `asset_wiring.rs`; no new asset authoring is in scope").
 
 (Source: `production/sprints/sprint-10.md:95` S10-POLISH-001 row.)
 
-- [ ] **Wired phase timer bar visible**: GIVEN a friend-game session in
+- [x] **Wired phase timer bar visible**: GIVEN a friend-game session in
       a timed phase (DRAFT_INITIAL, DRAFT_SHOP, DRAFT_AUCTION, or
       PLACEMENT), WHEN the HUD renders, THEN the `HudTimerBar`
       `ImageNode.image` resolves to `HUD_PHASE_TIMER_BAR_ASSET` (not
@@ -232,7 +233,7 @@ sprites from `asset_wiring.rs`; no new asset authoring is in scope").
       `test_timer_bar_visible_in_timed_phases` sub-test reads
       `HudTimerBar` query and asserts `ImageNode.image == handle from
       asset_wiring::HUD_PHASE_TIMER_BAR_ASSET`.
-- [ ] **Wired class figurines visible**: GIVEN
+- [x] **Wired class figurines visible**: GIVEN
       `PresentationGameSnapshotMessage` arrives with `own_class=Iop`
       and `opponent_class=Cra`, WHEN HUD state sync completes, THEN the
       own and opponent `HudFigurine` `ImageNode.image` handles each
@@ -244,7 +245,7 @@ sprites from `asset_wiring.rs`; no new asset authoring is in scope").
       `hud_resolution_dim_test.rs` (or by extending the PAW-004 test
       file if the route is ergonomic) that exercises the same sync from
       a `HudPlugin`-registered system path.
-- [ ] **RESOLUTION dim overlay renders only while
+- [x] **RESOLUTION dim overlay renders only while
       `Phase::Resolution`**: GIVEN a HUD test world in any visible
       phase, WHEN `Res<CurrentClientPhase>` is set to `Phase::Resolution`
       and `sync_dim_overlay_for_resolution_system` runs in the
@@ -257,7 +258,7 @@ sprites from `asset_wiring.rs`; no new asset authoring is in scope").
       `tests/integration/hud/hud_resolution_dim_test.rs` —
       `test_dim_overlay_visible_only_in_resolution` sub-test enumerates
       all `Phase` variants and asserts the visibility flip.
-- [ ] **Dim overlay is pre-pooled, not per-update spawned**: GIVEN the
+- [x] **Dim overlay is pre-pooled, not per-update spawned**: GIVEN the
       `HudDimOverlay` entity ID is captured immediately after HUD
       session entry, WHEN three `S2CPhaseChanged` messages drive
       transitions PLACEMENT → RESOLUTION → DRAFT_SHOP → RESOLUTION,
@@ -269,7 +270,7 @@ sprites from `asset_wiring.rs`; no new asset authoring is in scope").
       `test_dim_overlay_pre_pooled` sub-test captures the entity ID,
       drives the transitions via the existing single
       `S2CPhaseChanged` drain, and asserts entity-ID stability.
-- [ ] **Single source of phase truth preserved (TR-HUD-006 +
+- [x] **Single source of phase truth preserved (TR-HUD-006 +
       ADR-002)**: GIVEN the HUD plugin registration, WHEN the union of
       systems registered by `HudPlugin` is enumerated, THEN exactly one
       system reads `MessageReceiver<S2CPhaseChanged>` (the existing
@@ -281,7 +282,7 @@ sprites from `asset_wiring.rs`; no new asset authoring is in scope").
       compiled system set and asserts the single-drain invariant via
       `App::world().resource::<Schedules>()` introspection or by
       direct grep evidence cited in the test doc-comment.
-- [ ] **FROZEN-mode tiebreak preserved (TR-HUD-009 + ADR-011)**: GIVEN
+- [x] **FROZEN-mode tiebreak preserved (TR-HUD-009 + ADR-011)**: GIVEN
       HUD is in `Phase::Resolution` with `HudDimOverlay` visible, WHEN
       `S2CPhaseChanged(GAME_OVER)` arrives and the HUD enters FROZEN,
       THEN the `HudDimOverlay` flips to `Visibility::Hidden` (FROZEN is
@@ -293,7 +294,7 @@ sprites from `asset_wiring.rs`; no new asset authoring is in scope").
       `test_frozen_mode_tiebreak_dim_overlay` sub-test mirrors the
       pattern used by HUD-19 and TR-HUD-009 in
       `tests/integration/hud/reconnect_snapshot_rebuild_test.rs`.
-- [ ] **No countdown numerals on the timer bar (HUD-11
+- [x] **No countdown numerals on the timer bar (HUD-11
       preserved)**: GIVEN the wired timer bar is visible, WHEN the
       `HudTimerBar` entity and its descendants are inspected, THEN no
       `Text` or `TextSpan` component holds a countdown or elapsed-time
@@ -302,7 +303,7 @@ sprites from `asset_wiring.rs`; no new asset authoring is in scope").
       `test_timer_bar_no_countdown_numerals` sub-test queries
       `Children` of `HudTimerBar` and asserts no `Text` or `TextSpan`
       child exists with a numeric countdown value.
-- [ ] **Pre-pooled entity count incremented to 22**: GIVEN
+- [x] **Pre-pooled entity count incremented to 22**: GIVEN
       `HUD_ENTITY_COUNT = 22` after this story's overlay addition, WHEN
       `tests/integration/presentation/asset_wiring_foundation_test.rs`
       runs, THEN the assertion against `HUD_ENTITY_COUNT` passes; the
@@ -310,7 +311,7 @@ sprites from `asset_wiring.rs`; no new asset authoring is in scope").
       the new count, mirroring PAW-004-f's 19→21 pattern. *Evidence
       target*: `tests/integration/presentation/asset_wiring_foundation_test.rs`
       diff in this story's commit set.
-- [ ] **Manual evidence document captured**: GIVEN the implementation
+- [x] **Manual evidence document captured**: GIVEN the implementation
       lands, WHEN
       `production/qa/evidence/sprint-10-hud-chrome-evidence.md` is
       authored, THEN it records the friend-game route, the build/commit
@@ -586,6 +587,87 @@ substantively complete. Done means:
   chosen overlay alpha, and the explicit no-claim language.
 - `/story-done` flips `production/sprint-status.yaml`
   S10-POLISH-001 → `done`.
+- No public-release readiness, full playable-client manual QA, full
+  game completion, or broad Standard-tier accessibility completion is
+  claimed at close.
+
+---
+
+## /story-done Closure (PROMPT 630 — 2026-05-10)
+
+**Verdict**: DONE — 9/9 acceptance criteria satisfied.
+
+**Integration commit on `main`**: `b780f0e` (cherry-pick of `1a1ae4f`)
+"feat(hud): add RESOLUTION dim overlay + test (S10-POLISH-001)".
+Verified via `git log --oneline | grep b780f0e`. Origin/main HEAD at
+closure-time: `5da3768` (post-PROMPT 622 lobby C2S hardening).
+
+**Automated evidence**: `tests/integration/hud/hud_resolution_dim_test.rs`
+— **8/8 sub-tests PASS** covering AC1, AC3, AC4, AC5, AC6, AC7, AC8.
+
+**Manual evidence**: `production/qa/evidence/sprint-10-hud-chrome-evidence.md`
+authored per AC9 — records build/commit SHA, four phase captures, the
+chosen `BackgroundColor` alpha (`HUD_DIM_OVERLAY_ALPHA = 0.45`), and the
+explicit no-claim language. Out of the four captures, the
+RESOLUTION/GAME_OVER pair is the substantive evidence for this story's
+in-scope changes; the timer-bar and figurine captures certify that the
+pre-existing PAW-004 wiring renders on the friend-game route as expected.
+
+**Implementation surface**:
+
+- `client/src/ui/hud/mod.rs` — added `HudDimOverlay` marker;
+  `sync_dim_overlay_for_resolution_system` registered in
+  `HudSystemSet::StateSync`; dim overlay pre-pooled at HUD session
+  entry; `HUD_ENTITY_COUNT` bumped 21 → 22; `HUD_DIM_OVERLAY_ALPHA = 0.45`.
+- `tests/integration/hud/hud_resolution_dim_test.rs` (NEW) — 8 sub-tests.
+- `client/Cargo.toml` — `[[test]] name = "hud_resolution_dim_test"`.
+- `production/qa/evidence/sprint-10-hud-chrome-evidence.md` (NEW).
+
+Timer bar (`HudTimerBar` + `HUD_PHASE_TIMER_BAR_ASSET`) and class
+figurines (`sync_figurine_image_system`) were left untouched — already
+in place at PAW-004 (`a7e397a` + `2132129`). AC1/AC2 satisfied by the
+inherited wiring; this story certified it via the friend-game-route
+evidence captures, not by adding new sync code.
+
+**Lean-mode gate skips (rationale per memory)**:
+
+- QL-TEST-COVERAGE skipped — no `production/review-mode.txt` flag.
+- LP-CODE-REVIEW skipped — per `feedback_paw_review_flow.md` for the
+  friend-game scope: code-review = visibility, not merge gate. The
+  integration commit was already on `main` before this closure run; no
+  new code is being introduced here.
+
+**Sprint-status.yaml stale-path correction folded in**:
+
+- `file:` for S10-POLISH-001 corrected from
+  `production/epics/hud/story-011-hud-visual-chrome-mvp.md` (stale —
+  slot collision with the existing `story-011-current-reserve-mana-shapes.md`
+  Sprint 6 file) to the canonical
+  `production/epics/hud/story-013-hud-visual-chrome-mvp.md`. Rationale
+  recorded in the Readiness Notes section above and in the closure
+  commit body.
+
+**Pre-existing findings surfaced (NOT regressions from this story —
+predate `b780f0e`)**:
+
+1. `hud_asset_wiring_test` — 0/6 sub-tests passing (HUD epic
+   asset-wiring sub-area; S10-TD-001 closure tail).
+2. `hud_plugin_scaffold_test` — 3/4 sub-tests passing (HUD epic;
+   PAW-004 timer-bar `Name` break).
+3. Broken `*_harness.rs` bins — Bevy 0.18 Input feature reorg
+   (harness/test-infra cross-epic).
+
+Recommend separate triage stories for each — **not authored in this
+closure prompt** per the prompt's explicit instruction.
+
+**Preserved carry state (unchanged by this closure)**:
+
+- Sprint 9 closed-with-conditions disposition remains.
+- S8-QA-001-W1 manual/browser two-client GAME_OVER gap remains open.
+- QA-COND-0005 (Standard-tier accessibility) — accepted-risk
+  friend-game scope.
+- QA-COND-0006 (playtest fun-hypothesis validation) — accepted-risk /
+  deferred.
 - No public-release readiness, full playable-client manual QA, full
   game completion, or broad Standard-tier accessibility completion is
   claimed at close.

@@ -3,6 +3,35 @@
 > Lis ce fichier EN PREMIER dans toute nouvelle session.
 > Il contient l'état complet du projet au 2026-04-30.
 >
+> **✅ SESSION 2026-05-10 — PROMPT 630 — /story-done S10-POLISH-001 (HUD visual chrome MVP closure paperwork) — DONE**
+>
+> **Skill**: `/story-done` (lean-mode; gate skips per `feedback_paw_review_flow.md`).
+>
+> **Verdict**: DONE — 9/9 acceptance criteria satisfied for the HUD visual-chrome MVP.
+>
+> **Integration commit** (already on `main` before this run): `b780f0e` "feat(hud): add RESOLUTION dim overlay + test (S10-POLISH-001)" — cherry-pick of `1a1ae4f`. Origin/main HEAD at run start: `5da3768`.
+>
+> **Automated evidence**: `tests/integration/hud/hud_resolution_dim_test.rs` — 8/8 sub-tests PASS (AC1, AC3, AC4, AC5, AC6, AC7, AC8). Implementation: `HudDimOverlay` marker + `sync_dim_overlay_for_resolution_system` (StateSync set), pre-pooled at HUD session entry, instantaneous Visibility flips, `HUD_ENTITY_COUNT` 21→22, `HUD_DIM_OVERLAY_ALPHA = 0.45`. Timer bar (`HudTimerBar` + `HUD_PHASE_TIMER_BAR_ASSET`) and class figurines (`sync_figurine_image_system`) untouched — already wired at PAW-004 (`a7e397a` + `2132129`); AC1/AC2 satisfied by inherited wiring.
+>
+> **Manual evidence**: `production/qa/evidence/sprint-10-hud-chrome-evidence.md` authored per AC9 — records the four phase captures + alpha + no-claim language.
+>
+> **Stale-path correction folded in**: `production/sprint-status.yaml` S10-POLISH-001 `file:` field corrected from `production/epics/hud/story-011-hud-visual-chrome-mvp.md` (stale — slot collision with the Sprint 6 `story-011-current-reserve-mana-shapes.md`) to the canonical `production/epics/hud/story-013-hud-visual-chrome-mvp.md`.
+>
+> **3-file write (canonical)**: story file (Status → Done, ACs ticked, /story-done closure section appended); `production/sprint-status.yaml` (S10-POLISH-001 → `status: done`, `completed: "2026-05-10"`, corrected `file:` path, top-level `updated:` comment appended); this `active.md` extract.
+>
+> **Lean-mode gate skips**: QL-TEST-COVERAGE skipped (no `production/review-mode.txt`); LP-CODE-REVIEW skipped per `feedback_paw_review_flow.md` (friend-game accept-risk; code already on main).
+>
+> **Pre-existing findings surfaced (NOT regressions from POLISH-001 — predate `b780f0e`; recommend separate triage stories — not authored in this prompt)**:
+> 1. `hud_asset_wiring_test` 0/6 (HUD epic asset-wiring sub-area; S10-TD-001 closure tail).
+> 2. `hud_plugin_scaffold_test` 3/4 (HUD epic; PAW-004 timer-bar `Name` break).
+> 3. Broken `*_harness.rs` bins (harness/test-infra cross-epic; Bevy 0.18 Input feature reorg).
+>
+> **Carry state preserved (unchanged by this run)**: Sprint 9 closed-with-conditions disposition; S8-QA-001-W1 manual/browser two-client GAME_OVER gap remains open; QA-COND-0005 (Standard-tier accessibility) accepted-risk friend-game scope; QA-COND-0006 (playtest fun-hypothesis validation) accepted-risk / deferred. No public-release readiness, full playable-client manual QA, full game completion, or broad accessibility completion claimed.
+>
+> **Sprint 10 Must-Haves status after this closure**: 6/6 done.
+>
+> **Next recommended**: triage stories for the 3 pre-existing findings above, OR Sprint 10 retrospective once the planned closure window is reached.
+>
 > **✅ SESSION 2026-05-01 (continued) — /design-review network-protocol.md (R7) + round-state-machine.md (R2) — COMPLETE**
 >
 > **network-protocol.md** — R7 lean: APPROVED (revisions accepted inline)
