@@ -11,6 +11,7 @@ pub struct AudioSystemPlugin;
 
 impl Plugin for AudioSystemPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("AudioSystemPlugin loaded");
         app.add_systems(Startup, load_timer_urgency_audio)
             .add_systems(Update, play_timer_urgency_cue);
     }

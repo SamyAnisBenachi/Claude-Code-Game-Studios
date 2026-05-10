@@ -44,6 +44,7 @@ pub struct BoardRenderingPerfHarnessPlugin;
 
 impl Plugin for BoardRenderingPerfHarnessPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("BoardRenderingPerfHarnessPlugin loaded");
         add_board_rendering_perf_harness(app);
     }
 }

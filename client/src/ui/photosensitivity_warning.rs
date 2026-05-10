@@ -42,6 +42,7 @@ pub struct PhotosensitivityWarningAcknowledge;
 
 impl Plugin for PhotosensitivityWarningPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("PhotosensitivityWarningPlugin loaded");
         app.init_resource::<PhotosensitivityWarningState>()
             .add_message::<PhotosensitivityWarningAcknowledged>()
             .add_systems(Startup, spawn_photosensitivity_warning)

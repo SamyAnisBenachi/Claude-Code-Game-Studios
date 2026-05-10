@@ -866,6 +866,7 @@ pub struct BoardRenderingPlugin;
 
 impl Plugin for BoardRenderingPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("BoardRenderingPlugin loaded");
         BoardRenderingConfig::default().assert_valid();
         BoardRevealTimingConfig::default().assert_valid();
 

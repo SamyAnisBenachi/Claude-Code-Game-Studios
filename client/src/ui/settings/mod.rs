@@ -257,6 +257,7 @@ pub struct SettingsAccessibilityPlugin;
 
 impl Plugin for SettingsAccessibilityPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("SettingsAccessibilityPlugin loaded");
         app.init_resource::<CurrentClientPhase>()
             .init_resource::<SessionSettingsView>()
             .init_resource::<AccessibilityPreferences>()

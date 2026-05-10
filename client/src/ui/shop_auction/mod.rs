@@ -1048,6 +1048,7 @@ pub struct ShopAuctionUiPlugin;
 
 impl Plugin for ShopAuctionUiPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("ShopAuctionUiPlugin loaded");
         app.init_resource::<CurrentClientPhase>()
             .init_resource::<ShopAuctionUiMode>()
             .init_resource::<ShopAuctionCardCatalog>()

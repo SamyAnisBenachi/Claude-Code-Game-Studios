@@ -49,6 +49,7 @@ pub enum CardAnimationsSet {
 
 impl Plugin for CardAnimationsPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("CardAnimationsPlugin loaded");
         AnimationTimingConfig::default().assert_damage_number_budget();
         AnimationTimingConfig::default().assert_unit_reveal_tween_budget();
 

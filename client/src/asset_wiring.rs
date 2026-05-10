@@ -405,6 +405,7 @@ pub struct AssetWiringPlugin;
 
 impl Plugin for AssetWiringPlugin {
     fn build(&self, app: &mut App) {
+        tracing::info!("AssetWiringPlugin loaded");
         app.add_systems(OnEnter(ClientState::InSession), insert_placeholder_assets)
             .add_systems(OnExit(ClientState::InSession), remove_placeholder_assets);
     }
