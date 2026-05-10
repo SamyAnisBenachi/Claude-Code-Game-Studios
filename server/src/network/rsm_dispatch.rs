@@ -25,11 +25,19 @@ pub fn dispatch_phase_changed(
         }
 
         if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
-            let _ = sender.send::<S2CPhaseChanged, ReliableChannel>(
+            if let Err(e) = sender.send::<S2CPhaseChanged, ReliableChannel>(
                 &message,
                 server,
                 &NetworkTarget::All,
-            );
+            ) {
+                tracing::error!(
+                    phase = ?event.phase,
+                    round = event.round,
+                    timer_ms = event.timer_ms,
+                    err = ?e,
+                    "S2C send failed: type=S2CPhaseChanged, handler=dispatch_phase_changed"
+                );
+            }
         }
     }
 }
