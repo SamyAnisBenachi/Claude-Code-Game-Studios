@@ -130,9 +130,18 @@ fn log_client_disconnected(trigger: On<Add, Disconnected>, clients: Query<&Remot
     info!("Client disconnected: {:?}", client_id);
 }
 
-fn receive_c2s_messages(activate_card: Query<&mut MessageReceiver<C2SActivateCard>>) {
-    tracing::info!("c2s_activate_card: drain entry");
-    log_received("C2SActivateCard", activate_card);
+fn receive_c2s_messages(
+    mut activate_card: Query<(&RemoteId, &mut MessageReceiver<C2SActivateCard>)>,
+) {
+    for (remote, mut receiver) in activate_card.iter_mut() {
+        for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                card_id = ?msg.card_id,
+                "c2s_activate_card: recv"
+            );
+        }
+    }
 }
 
 pub fn drain_signal_ready_messages(
@@ -216,6 +225,7 @@ pub fn resolve_submit_placement_sender(
         })
 }
 
+#[allow(dead_code)]
 fn log_received<M: std::fmt::Debug + Send + Sync + 'static>(
     label: &str,
     mut receivers: Query<&mut MessageReceiver<M>>,
