@@ -1795,8 +1795,16 @@ pub fn handle_hand_fan_activate_click_system(
         };
 
         let message = C2SActivateCard { card_id: card.0 };
-        if let Ok(mut sender) = activate_senders.single_mut() {
-            sender.send::<ReliableChannel>(message.clone());
+        match activate_senders.single_mut() {
+            Ok(mut sender) => {
+                sender.send::<ReliableChannel>(message.clone());
+            }
+            Err(e) => {
+                error!(
+                    "C2S send failed: type=C2SActivateCard, handler=handle_hand_fan_activate_click_system, query_err={:?}",
+                    e
+                );
+            }
         }
         outbound.activate_cards.push(message);
     }
