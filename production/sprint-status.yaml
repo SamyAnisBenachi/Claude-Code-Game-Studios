@@ -6,10 +6,10 @@ goal: "Deliver the minimum result acknowledgement contract, player-facing result
 start: "2026-05-07"
 end: "2026-05-20"
 generated: "2026-05-07"
-updated: "2026-05-09"  # PAW-002..006 retroactive closure paperwork landed by /story-done Prompt 559
+updated: "2026-05-10"  # Sprint 9 close-out per PROMPT 577 (S9-AUDIO-001 confirmed integrated at 9c00e06; S9-QA-001 closed accepted-risk per PROMPT 572 at 8d3537c)
 stage: "Polish"
 scope: "internal 1v1 friend-game result flow and manual GAME_OVER evidence closure"
-status: "active"
+status: "closed-with-conditions"
 
 activation:
   date: "2026-05-07"
@@ -36,6 +36,16 @@ carried_conditions:
   full_playable_client_manual_qa_claimed: false
   qa_cond_0005: "Accepted risk for friend-game scope only; not verified Standard-tier accessibility completion."
   qa_cond_0006: "Accepted-risk/deferred; not playtest evidence or fun-hypothesis validation."
+
+closed_with_conditions:
+  date: "2026-05-10"
+  prompt: "577"
+  basis: "All Sprint 9 Must Have stories done (4 fully completed + S9-QA-001 accepted-risk closed at 8d3537c + S9-AUDIO-001 integrated at 9c00e06). Sprint 9 carried conditions remain explicitly carried into Sprint 10. No public release readiness, full game completion, broad accessibility completion, playtest validation, or full playable-client manual QA is claimed."
+  carried_into_sprint_10:
+    - "S8-QA-001-W1 manual/browser two-client GAME_OVER gap (open)"
+    - "QA-COND-0005 Standard-tier accessibility (accepted-risk friend-game scope)"
+    - "QA-COND-0006 playtest fun-hypothesis validation (accepted-risk / deferred)"
+    - "Public release readiness, release-candidate readiness, full game completion (none claimed)"
 
 coordination:
   native_lobby_blank_screen_repair: "Integrated in tested code baseline via commit 1bfbf5b."
@@ -220,6 +230,21 @@ stories:
       - "Integrated on main at 424bcfa with neutral card display/zoom placeholder art, asset resolver wiring, asset-manifest entries, and focused draft/shop hand bridge coverage."
       - "Supporting content/asset slice only; no /story-done was forced because no standalone story file exists."
       - "No asset approval, full card production, full balance completion, public release readiness, release-candidate readiness, full game completion, broad accessibility completion, or playtest/fun-hypothesis validation is claimed."
+
+  - id: "S9-AUDIO-001"
+    name: "Audio bootstrap and timer urgency cue"
+    file: "production/epics/audio-system/story-001-audio-bootstrap-and-timer-urgency-cue.md"
+    priority: must-have
+    status: done
+    owner: "audio specialist + UI programmer"
+    estimate_days: 1.00
+    blocker: ""
+    completed: "2026-05-10"
+    notes:
+      - "Audio content integrated on main at 9c00e06 (verified content-equivalent to original worker commit db7f1a9 by PROMPT 571 blob-hash cross-reference)."
+      - "Includes assets/audio/ui/hand/sfx_timer_urgency_default.ogg, client/src/audio/mod.rs playback logic, bevy_audio feature in client/Cargo.toml."
+      - "PROMPT 571 cherry-pick of db7f1a9 itself failed on client/Cargo.toml conflict (main had diverged); content was already on main via 9c00e06, so no further integration needed."
+      - "No public release readiness, full game completion, broad accessibility completion, full playable-client manual QA, or playtest validation is claimed."
 
 presentation_asset_wiring:
   closure_paperwork:

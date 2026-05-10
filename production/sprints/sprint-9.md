@@ -1,6 +1,6 @@
 # Sprint 9 -- 2026-05-07 to 2026-05-20
 
-> **Status**: Active.
+> **Status**: Closed With Conditions (2026-05-10, PROMPT 577).
 > **Activated**: 2026-05-07 by Prompt 409.
 > **Source of truth**: `origin/main@879fd1dc4bd426d0d3ea4a985d73975755042c7c`.
 > **Status reconciliation**: Prompt 415 reconciled `S9-CONTENT-001` against
