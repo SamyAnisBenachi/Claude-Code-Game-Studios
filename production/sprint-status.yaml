@@ -14,7 +14,7 @@ status: "active"
 activation:
   date: "2026-05-10"
   prompt: "591"
-  source_of_truth: "origin/main@<post-push SHA — record after Phase 4>"
+  source_of_truth: "origin/main@8ff4f84dfa960d15eaae227eb52706e44a5d33cb"
   basis: "All 5 Sprint 10 activation prerequisites met as of 2026-05-10. Sprint 9 closed-with-conditions at 8edbf37 (PROMPT 577); S9-QA-001 accepted-risk closure at 8d3537c (PROMPT 572); S9-AUDIO-001 integrated at 9c00e06; next_sprint block in place at 710d305 (PROMPT 560); DRAFT_INITIAL display verified at d7211f1 (user screenshot 2026-05-09). Server panic fixed at f06271a (PROMPT 590) unblocks runtime testing. Sprint 9 carried conditions remain explicitly carried into Sprint 10."
   sprint_9_disposition: "closed-with-conditions"
   sprint_plan: "production/sprints/sprint-10.md"
