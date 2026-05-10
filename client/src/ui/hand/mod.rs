@@ -4,6 +4,7 @@ use std::time::Duration;
 use bevy::ecs::query::QueryFilter;
 use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 use bevy_tweening::{lens::TransformPositionLens, Tween, TweenAnim};
 use lightyear::prelude::MessageSender;
 use shared::card::{CardCatalog, CardId, CardType, ClassId, Rarity};
@@ -866,6 +867,12 @@ impl Plugin for HandUiPlugin {
                         .chain()
                         .in_set(HandUiSystemSet::StateSync),
                 ),
+            )
+            .add_systems(
+                Update,
+                sync_hand_fan_viewport_from_window_system
+                    .before(HandUiSystemSet::StateSync)
+                    .run_if(in_state(ClientState::InSession)),
             );
     }
 }
@@ -892,6 +899,25 @@ pub fn compute_fan_slot_layout(
         card_y: metrics.fan_base_y - metrics.arc_height * t * t,
         card_rotation_deg: metrics.max_rotation_deg * t,
     })
+}
+
+/// Syncs `HandFanViewport` to the current `PrimaryWindow` size each frame.
+///
+/// Without this writer, `HandFanViewport` keeps its 800×600 default forever, so
+/// `metrics_for_viewport` anchors the fan to the wrong base on every actual
+/// window size. Reads every frame and `set_if_neq`s — change detection on the
+/// viewport resource only fires when the window actually resizes.
+pub fn sync_hand_fan_viewport_from_window_system(
+    window: Option<Single<&Window, With<PrimaryWindow>>>,
+    mut viewport: ResMut<HandFanViewport>,
+) {
+    let Some(window) = window else {
+        return;
+    };
+    viewport.set_if_neq(HandFanViewport {
+        width_px: window.width(),
+        height_px: window.height(),
+    });
 }
 
 pub fn apply_fan_layout_system(
