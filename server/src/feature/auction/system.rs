@@ -207,6 +207,11 @@ pub fn auction_tick_system(
     mut writers: AuctionMessageWriters,
 ) {
     for event in phase_entered.read() {
+        tracing::info!(
+            round = event.round,
+            phase = ?auction.phase,
+            "auction_tick_system: AuctionPhaseEntered consumer enter"
+        );
         if auction.phase != AuctionPhase::Idle {
             tracing::error!(
                 round = event.round,
@@ -216,6 +221,12 @@ pub fn auction_tick_system(
             continue;
         }
 
+        tracing::info!(
+            round = event.round,
+            from = ?AuctionPhase::Idle,
+            to = ?AuctionPhase::Selecting,
+            "auction_tick_system: state transition"
+        );
         auction.phase = AuctionPhase::Selecting;
 
         let card_id = match select_auction_card(
@@ -252,6 +263,15 @@ pub fn auction_tick_system(
         auction.current_price = starting_price;
         auction.current_leader = None;
         auction.timer_remaining_ms = data.config.auction_timer_seconds.saturating_mul(1000);
+        tracing::info!(
+            round = event.round,
+            card_id = ?card_id,
+            starting_price,
+            timer_ms = auction.timer_remaining_ms,
+            from = ?AuctionPhase::Selecting,
+            to = ?AuctionPhase::LiveBidding,
+            "auction_tick_system: state transition"
+        );
         auction.phase = AuctionPhase::LiveBidding;
 
         writers.auction_cards.write(S2CAuctionCard {
@@ -553,6 +573,13 @@ pub fn settle_expired_auction(
 
     match auction.phase {
         AuctionPhase::LiveBidding => {
+            tracing::info!(
+                final_price = auction.current_price,
+                leader = ?auction.current_leader,
+                from = ?AuctionPhase::LiveBidding,
+                to = ?AuctionPhase::Resolving,
+                "settle_expired_auction: state transition"
+            );
             auction.phase = AuctionPhase::Resolving;
         }
         AuctionPhase::Resolving => {}
@@ -773,6 +800,11 @@ fn drain_bids(
     let mut bids = Vec::new();
     for (remote, mut receiver) in bid_receivers.iter_mut() {
         for bid in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                amount = bid.amount,
+                "c2s_place_bid: recv"
+            );
             let Some(player_id) =
                 connections.and_then(|connections| connections.0.get(&remote.0).copied())
             else {
@@ -1007,6 +1039,14 @@ fn peer_for_player(
 }
 
 fn reset_to_idle(auction: &mut AuctionState) {
+    tracing::info!(
+        from = ?auction.phase,
+        to = ?AuctionPhase::Idle,
+        card_id = ?auction.card_id,
+        final_price = auction.current_price,
+        leader = ?auction.current_leader,
+        "reset_to_idle: state transition"
+    );
     auction.phase = AuctionPhase::Idle;
     auction.card_id = None;
     auction.starting_price = 0;

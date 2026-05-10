@@ -447,7 +447,14 @@ pub fn draw_fake_reward(world: &mut World, lane: LaneId, attacker_player: Player
         return;
     };
 
-    match fake_reward_outcome(reward_seed) {
+    let outcome = fake_reward_outcome(reward_seed);
+    tracing::info!(
+        player_id = attacker_player.0,
+        lane = ?lane,
+        outcome = ?outcome,
+        "draw_fake_reward: outcome decided"
+    );
+    match outcome {
         FakeRewardOutcome::ManaCapIncreased => emit_mana_cap_increased(world, attacker_player),
         FakeRewardOutcome::FreeCardPick => {
             resolve_fake_reward_free_card_pick(world, lane, attacker_player, rng_player_id);
@@ -488,11 +495,22 @@ fn resolve_fake_reward_free_card_pick(
     attacker_player: PlayerId,
     rng_player_id: u32,
 ) {
+    tracing::info!(
+        player_id = attacker_player.0,
+        lane = ?lane,
+        "resolve_fake_reward_free_card_pick: enter"
+    );
     let Some(hands) = world.get_resource::<PlayerHands>() else {
         return;
     };
 
     if hands.hand_len(attacker_player) >= MAX_HAND_SIZE {
+        tracing::info!(
+            player_id = attacker_player.0,
+            lane = ?lane,
+            amount = FAKE_OBJECTIVE_HAND_FULL_GOLD_REWARD,
+            "resolve_fake_reward_free_card_pick: hand-full fallback emit AwardGold"
+        );
         emit_award_gold_amount(world, attacker_player, FAKE_OBJECTIVE_HAND_FULL_GOLD_REWARD);
         return;
     }

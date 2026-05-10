@@ -451,6 +451,11 @@ pub fn resolve_combat(world: &mut World) {
     };
 
     let trace_start = world.resource::<CombatResolutionTrace>().entries().len();
+    tracing::info!(
+        round = begin_resolution.round,
+        trace_start,
+        "resolve_combat: enter"
+    );
     world
         .resource_mut::<CombatResolutionTrace>()
         .push(CombatTraceEntry::BeginResolutionRead {
@@ -463,10 +468,21 @@ pub fn resolve_combat(world: &mut World) {
         world
             .resource_mut::<CombatResolutionTrace>()
             .push(CombatTraceEntry::IterationBudgetExceeded);
+        tracing::warn!(
+            round = begin_resolution.round,
+            iteration_limit,
+            "resolve_combat: IterationBudgetExceeded — game over forced"
+        );
         request_draw_game_over(world);
         return;
     }
 
+    let kills = world.resource::<CombatKillLog>().records().len();
+    tracing::info!(
+        round = begin_resolution.round,
+        kills,
+        "resolve_combat: exit"
+    );
     enqueue_resolution_event(world, begin_resolution.round, trace_start);
     world
         .resource_mut::<PendingResolutionComplete>()
@@ -497,6 +513,11 @@ fn read_begin_resolution(world: &mut World) -> Option<BeginResolution> {
 fn enqueue_resolution_event(world: &mut World, round: u32, trace_start: usize) {
     let events = build_resolution_events(
         &world.resource::<CombatResolutionTrace>().entries()[trace_start..],
+    );
+    tracing::info!(
+        round,
+        events_len = events.len(),
+        "enqueue_resolution_event: broadcasting S2CResolutionEvent"
     );
     let message = S2CResolutionEvent { round, events };
 
@@ -700,6 +721,10 @@ const fn gold_reason(reason: GoldAwardReason) -> GoldReason {
 }
 
 fn broadcast_placement_reveal(world: &mut World, message: &S2CPlacementReveal) {
+    tracing::info!(
+        placements_len = message.placements.len(),
+        "broadcast_placement_reveal: enter"
+    );
     let mut system_state: SystemState<(Query<&Server>, Option<ServerMultiMessageSender>)> =
         SystemState::new(world);
     let (server, mut sender) = system_state.get_mut(world);
@@ -707,11 +732,23 @@ fn broadcast_placement_reveal(world: &mut World, message: &S2CPlacementReveal) {
         return;
     };
 
-    let _ =
-        sender.send::<S2CPlacementReveal, ReliableChannel>(message, server, &NetworkTarget::All);
+    if let Err(e) =
+        sender.send::<S2CPlacementReveal, ReliableChannel>(message, server, &NetworkTarget::All)
+    {
+        tracing::error!(
+            placements_len = message.placements.len(),
+            err = ?e,
+            "S2C send failed: type=S2CPlacementReveal, handler=broadcast_placement_reveal"
+        );
+    }
 }
 
 fn broadcast_resolution_event(world: &mut World, message: &S2CResolutionEvent) {
+    tracing::info!(
+        round = message.round,
+        events_len = message.events.len(),
+        "broadcast_resolution_event: enter"
+    );
     let mut system_state: SystemState<(Query<&Server>, Option<ServerMultiMessageSender>)> =
         SystemState::new(world);
     let (server, mut sender) = system_state.get_mut(world);
@@ -719,8 +756,16 @@ fn broadcast_resolution_event(world: &mut World, message: &S2CResolutionEvent) {
         return;
     };
 
-    let _ =
-        sender.send::<S2CResolutionEvent, ReliableChannel>(message, server, &NetworkTarget::All);
+    if let Err(e) =
+        sender.send::<S2CResolutionEvent, ReliableChannel>(message, server, &NetworkTarget::All)
+    {
+        tracing::error!(
+            round = message.round,
+            events_len = message.events.len(),
+            err = ?e,
+            "S2C send failed: type=S2CResolutionEvent, handler=broadcast_resolution_event"
+        );
+    }
 }
 
 fn run_sub_step_scaffold(

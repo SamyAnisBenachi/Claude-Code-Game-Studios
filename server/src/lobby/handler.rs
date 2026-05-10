@@ -18,6 +18,12 @@ pub fn handle_class_choice(
 
     for (remote, mut receiver) in receivers.iter_mut() {
         for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                class = ?msg.class,
+                in_lobby,
+                "c2s_class_choice: recv"
+            );
             if !in_lobby {
                 continue;
             }

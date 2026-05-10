@@ -333,6 +333,7 @@ pub fn apply_repel_displacements(
         };
         let destination_lane = position.lane;
 
+        let origin_cell = position.cell;
         commit_unit_destination(
             &mut commands,
             &mut occupancy,
@@ -343,6 +344,14 @@ pub fn apply_repel_displacements(
             &mut position,
             destination_lane,
             destination_cell,
+        );
+        tracing::info!(
+            owner = owner.0.0,
+            lane = ?destination_lane,
+            origin_cell,
+            destination_cell,
+            amount = displacement.amount,
+            "apply_repel_displacements: REPEL committed"
         );
     }
 }
@@ -391,6 +400,7 @@ pub fn apply_attract_displacements(
             &board_config,
         );
         let destination_lane = target_position.lane;
+        let origin_cell = target_position.cell;
 
         commit_unit_destination(
             &mut commands,
@@ -402,6 +412,16 @@ pub fn apply_attract_displacements(
             &mut target_position,
             destination_lane,
             destination_cell,
+        );
+        tracing::info!(
+            owner = owner.0.0,
+            caster_owner = caster_owner.0,
+            lane = ?destination_lane,
+            origin_cell,
+            destination_cell,
+            amount = displacement.amount,
+            target_is_enemy,
+            "apply_attract_displacements: ATTRACT committed"
         );
     }
 }
@@ -467,6 +487,14 @@ pub fn apply_change_lane_displacements(
             original_lane,
             destination_lane,
             displacement.target,
+        );
+        tracing::info!(
+            owner = owner.0.0,
+            origin_lane = ?original_lane,
+            destination_lane = ?destination_lane,
+            cell = destination_cell,
+            delta = displacement.delta,
+            "apply_change_lane_displacements: CHANGE_LANE committed"
         );
     }
 }
