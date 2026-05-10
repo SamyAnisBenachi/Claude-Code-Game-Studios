@@ -9,8 +9,12 @@ use client::ui::shop_auction::{
 };
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn shop_auction_panel_root_carries_non_default_image_node_after_on_enter_in_session() {
+    test_helpers::init_test_tracing();
     // Arrange: build the canonical partial-App fixture and transition to
     // InSession so OnEnter spawn systems run and wire ImageNode chrome.
     let app = app_in_session();
@@ -32,6 +36,7 @@ fn shop_auction_panel_root_carries_non_default_image_node_after_on_enter_in_sess
 
 #[test]
 fn shop_auction_auction_panel_root_carries_non_default_image_node_after_on_enter_in_session() {
+    test_helpers::init_test_tracing();
     // Arrange.
     let app = app_in_session();
 
@@ -52,6 +57,7 @@ fn shop_auction_auction_panel_root_carries_non_default_image_node_after_on_enter
 
 #[test]
 fn shop_auction_bid_buttons_carry_non_default_image_node_after_on_enter_in_session() {
+    test_helpers::init_test_tracing();
     // Arrange.
     let app = app_in_session();
 
@@ -73,6 +79,7 @@ fn shop_auction_bid_buttons_carry_non_default_image_node_after_on_enter_in_sessi
 
 #[test]
 fn shop_auction_shop_slots_carry_non_default_image_node_after_on_enter_in_session() {
+    test_helpers::init_test_tracing();
     // Arrange.
     let app = app_in_session();
 

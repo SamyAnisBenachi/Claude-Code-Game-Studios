@@ -8,6 +8,9 @@ use shared::card::CardId;
 use shared::protocol::C2SPurchaseCard;
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn economy(gold: u32) -> PlayerEconomy {
     PlayerEconomy {
         gold,
@@ -34,6 +37,7 @@ fn inactive_shop_state(player: PlayerId) -> ShopStates {
 
 #[test]
 fn prism_bypass_pushes_card_without_purchase_or_gold_change() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let card_id = CardId(42);
     let starting_gold = 7;

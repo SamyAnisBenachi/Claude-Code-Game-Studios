@@ -11,11 +11,15 @@ use shared::protocol::{
     PlacementTimerMultiplier, RoundPhase, S2CPhaseChanged, S2CSessionSettingsUpdated,
 };
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[derive(Resource, Default, Debug, PartialEq, Eq)]
 struct PresentationOrder(Vec<&'static str>);
 
 #[test]
 fn presentation_plugin_registers_phase_state_and_runs_sets_in_order() {
+    test_helpers::init_test_tracing();
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
@@ -45,6 +49,7 @@ fn presentation_plugin_registers_phase_state_and_runs_sets_in_order() {
 
 #[test]
 fn phase_sink_application_is_last_write_wins_and_ignores_timer_data() {
+    test_helpers::init_test_tracing();
     let mut current = CurrentClientPhase {
         phase: RoundPhase::DraftInitial,
         round: 1,
@@ -72,6 +77,7 @@ fn phase_sink_application_is_last_write_wins_and_ignores_timer_data() {
 
 #[test]
 fn phase_receiver_source_guard_has_one_production_drain() {
+    test_helpers::init_test_tracing();
     let client_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut matches = Vec::new();
     collect_source_matches(
@@ -88,6 +94,7 @@ fn phase_receiver_source_guard_has_one_production_drain() {
 
 #[test]
 fn session_settings_update_application_is_neutral_last_write_wins() {
+    test_helpers::init_test_tracing();
     let mut settings = SessionSettingsView::default();
 
     for message in [
@@ -109,6 +116,7 @@ fn session_settings_update_application_is_neutral_last_write_wins() {
 
 #[test]
 fn session_settings_receiver_source_guard_has_one_production_drain() {
+    test_helpers::init_test_tracing();
     let client_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut matches = Vec::new();
     collect_source_matches(

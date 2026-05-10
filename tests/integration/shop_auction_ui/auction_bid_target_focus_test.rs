@@ -18,10 +18,14 @@ use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{RoundPhase, S2CGoldBroadcast};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const LOCAL_PLAYER: PlayerId = PlayerId(1);
 
 #[test]
 fn sau_011_bid_targets_meet_44px_minimum_and_preserve_split_labels() {
+    test_helpers::init_test_tracing();
     let app = app_in_active_auction(4, 20_000, 20, 0);
 
     for bounds in bid_target_bounds(&app) {
@@ -37,6 +41,7 @@ fn sau_011_bid_targets_meet_44px_minimum_and_preserve_split_labels() {
 
 #[test]
 fn sau_011_keyboard_focus_advances_in_bid_order_and_enter_sends_one_bid() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000, 20, 0);
 
     press_key(&mut app, KeyCode::Tab);
@@ -73,6 +78,7 @@ fn sau_011_keyboard_focus_advances_in_bid_order_and_enter_sends_one_bid() {
 
 #[test]
 fn sau_011_disabled_and_hidden_bid_controls_are_skipped_by_focus() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(0, 20_000, 2, 0);
 
     assert_eq!(
@@ -108,6 +114,7 @@ fn sau_011_disabled_and_hidden_bid_controls_are_skipped_by_focus() {
 
 #[test]
 fn sau_011_pointer_interaction_still_uses_existing_one_send_path() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000, 20, 0);
     press_bid_interaction(&mut app, 2);
 

@@ -30,10 +30,14 @@ use shared::{
     session::PlayerId,
 };
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 // ── Sub-test 1: Timer bar visible in timed phases (wired ImageNode) ──────────
 
 #[test]
 fn test_timer_bar_present_with_image_node() {
+    test_helpers::init_test_tracing();
     let app = app_with_hud_in_session();
 
     // After session entry, the timer bar entity exists and carries an
@@ -57,6 +61,7 @@ fn test_timer_bar_present_with_image_node() {
 
 #[test]
 fn test_timer_bar_no_countdown_numerals() {
+    test_helpers::init_test_tracing();
     let app = app_with_hud_in_session();
     let timer_bar = hud_entities(&app).timer_bar;
 
@@ -88,6 +93,7 @@ fn test_timer_bar_no_countdown_numerals() {
 
 #[test]
 fn test_dim_overlay_visible_only_in_resolution() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
     let dim_overlay = hud_entities(&app).dim_overlay;
 
@@ -139,6 +145,7 @@ fn test_dim_overlay_visible_only_in_resolution() {
 
 #[test]
 fn test_dim_overlay_pre_pooled_entity_id_stable_across_phase_transitions() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
     let initial_dim_overlay = hud_entities(&app).dim_overlay;
 
@@ -175,6 +182,7 @@ fn test_dim_overlay_pre_pooled_entity_id_stable_across_phase_transitions() {
 
 #[test]
 fn test_no_client_side_phase_authority_in_dim_overlay_system() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
 
     // The dim overlay system reads `Res<CurrentClientPhase>` and never
@@ -215,6 +223,7 @@ fn test_no_client_side_phase_authority_in_dim_overlay_system() {
 
 #[test]
 fn test_frozen_mode_tiebreak_dim_overlay_hidden_on_game_over_then_restored_by_snapshot() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
     let dim_overlay = hud_entities(&app).dim_overlay;
 
@@ -260,6 +269,7 @@ fn test_frozen_mode_tiebreak_dim_overlay_hidden_on_game_over_then_restored_by_sn
 
 #[test]
 fn test_hud_entity_count_is_twenty_two_after_dim_overlay_added() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
 
     let observed = count_with::<HudEntity>(&mut app);
@@ -279,6 +289,7 @@ fn test_hud_entity_count_is_twenty_two_after_dim_overlay_added() {
 
 #[test]
 fn test_dim_overlay_carries_hud_entity_marker() {
+    test_helpers::init_test_tracing();
     let app = app_with_hud_in_session();
     let dim_overlay = hud_entities(&app).dim_overlay;
 

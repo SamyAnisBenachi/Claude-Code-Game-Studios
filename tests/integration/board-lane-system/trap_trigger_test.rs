@@ -14,6 +14,9 @@ use shared::card::ClassId;
 use shared::protocol::GameMode;
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[derive(Component)]
 struct RepelLanding {
     lane: u8,
@@ -145,6 +148,7 @@ fn assert_trap_removed(world: &World, owner: PlayerId, lane: u8, cell: u8, trap:
 
 #[test]
 fn bl_16_standard_movement_into_enemy_trap_triggers_and_removes_it() {
+    test_helpers::init_test_tracing();
     let mut world = world_with_board_config();
     let trap = spawn_trap(&mut world, player(2), 1, 4);
     let unit = spawn_unit(&mut world, player(1), 1, 1, 3, None);
@@ -171,6 +175,7 @@ fn bl_16_standard_movement_into_enemy_trap_triggers_and_removes_it() {
 
 #[test]
 fn bl_17_repel_displacement_into_enemy_trap_triggers_and_removes_it() {
+    test_helpers::init_test_tracing();
     let mut world = world_with_board_config();
     let trap = spawn_trap(&mut world, player(2), 1, 5);
     let unit = spawn_unit(&mut world, player(1), 1, 8, 0, None);
@@ -200,6 +205,7 @@ fn bl_17_repel_displacement_into_enemy_trap_triggers_and_removes_it() {
 
 #[test]
 fn bl_31_simultaneous_change_lane_triggers_trap_once_by_lower_original_lane() {
+    test_helpers::init_test_tracing();
     let mut world = world_with_board_config();
     let trap = spawn_trap(&mut world, player(1), 2, 3);
     let lower_lane_unit = spawn_unit(&mut world, player(2), 1, 3, 0, None);
@@ -243,6 +249,7 @@ fn bl_31_simultaneous_change_lane_triggers_trap_once_by_lower_original_lane() {
 
 #[test]
 fn new_007a_charge_landing_on_enemy_trap_triggers_and_removes_it() {
+    test_helpers::init_test_tracing();
     let mut world = world_with_board_config();
     let trap = spawn_trap(&mut world, player(2), 1, 4);
     let unit = spawn_unit(&mut world, player(1), 1, 2, 0, Some(2));

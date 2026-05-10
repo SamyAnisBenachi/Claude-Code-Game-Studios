@@ -8,6 +8,9 @@ use client::ui::hand::{
     StatBadgeHp, StatBadgeMp, HAND_FAN_SLOT_COUNT,
 };
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 // ── App builder ───────────────────────────────────────────────────────────────
 
 fn make_app() -> App {
@@ -54,6 +57,7 @@ fn count_child_of_with<M: Component>(app: &mut App) -> usize {
 /// Every fan slot must have exactly one HandCardFrame child with ImageNode.
 #[test]
 fn test_fan_slot_chrome_card_frame_image_node_present() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
     assert_eq!(
@@ -66,6 +70,7 @@ fn test_fan_slot_chrome_card_frame_image_node_present() {
 /// Every fan slot must have a StatBadgeAtk child with ImageNode.
 #[test]
 fn test_fan_slot_chrome_stat_badge_atk_image_node_present() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
     assert_eq!(
@@ -77,6 +82,7 @@ fn test_fan_slot_chrome_stat_badge_atk_image_node_present() {
 /// Every fan slot must have a StatBadgeHp child with ImageNode.
 #[test]
 fn test_fan_slot_chrome_stat_badge_hp_image_node_present() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
     assert_eq!(
@@ -88,6 +94,7 @@ fn test_fan_slot_chrome_stat_badge_hp_image_node_present() {
 /// Every fan slot must have a StatBadgeMp child with ImageNode.
 #[test]
 fn test_fan_slot_chrome_stat_badge_mp_image_node_present() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
     assert_eq!(
@@ -99,6 +106,7 @@ fn test_fan_slot_chrome_stat_badge_mp_image_node_present() {
 /// Every fan slot must have a StatBadgeAr child with ImageNode.
 #[test]
 fn test_fan_slot_chrome_stat_badge_ar_image_node_present() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
     assert_eq!(
@@ -110,6 +118,7 @@ fn test_fan_slot_chrome_stat_badge_ar_image_node_present() {
 /// Every fan slot must have a HandRarityIcon child with ImageNode.
 #[test]
 fn test_fan_slot_chrome_rarity_icon_image_node_present() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
     assert_eq!(
@@ -121,6 +130,7 @@ fn test_fan_slot_chrome_rarity_icon_image_node_present() {
 /// Every fan slot must have a HandTypeIcon child with ImageNode.
 #[test]
 fn test_fan_slot_chrome_type_icon_image_node_present() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
     assert_eq!(
@@ -132,6 +142,7 @@ fn test_fan_slot_chrome_type_icon_image_node_present() {
 /// Chrome entities must be parented to FanSlotIndex entities.
 #[test]
 fn test_fan_slot_chrome_children_parent_is_fan_slot() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
 
@@ -161,6 +172,7 @@ fn test_fan_slot_chrome_children_parent_is_fan_slot() {
 /// HandCardFrame ImageNode must not hold the default (empty) handle.
 #[test]
 fn test_fan_slot_chrome_card_frame_handle_non_default() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
 
@@ -185,6 +197,7 @@ fn test_fan_slot_chrome_card_frame_handle_non_default() {
 /// Stat badge handles must all be non-default.
 #[test]
 fn test_fan_slot_chrome_stat_badge_handles_non_default() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
 

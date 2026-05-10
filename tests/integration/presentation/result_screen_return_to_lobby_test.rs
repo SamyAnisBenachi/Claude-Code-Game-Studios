@@ -13,8 +13,12 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn duplicate_return_to_lobby_activation_sends_one_ack_and_cleans_local_result_ui() {
+    test_helpers::init_test_tracing();
     let mut app = result_screen_app();
     open_result_screen(&mut app);
 
@@ -54,6 +58,7 @@ fn duplicate_return_to_lobby_activation_sends_one_ack_and_cleans_local_result_ui
 
 #[test]
 fn disconnected_transport_fallback_returns_to_lobby_without_mutating_server_phase_view() {
+    test_helpers::init_test_tracing();
     let mut app = result_screen_app();
     open_result_screen(&mut app);
 

@@ -3,6 +3,9 @@ use bevy::prelude::*;
 use server::feature::keyword::{ChainDeathBuffer, KeywordPlugin, KeywordTriggered};
 use shared::keyword::KeywordPayload;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn write_keyword_triggered(mut writer: MessageWriter<KeywordTriggered>) {
     writer.write(KeywordTriggered {
         source_unit_id: None,
@@ -13,6 +16,7 @@ fn write_keyword_triggered(mut writer: MessageWriter<KeywordTriggered>) {
 
 #[test]
 fn keyword_plugin_registers_keyword_triggered_message() {
+    test_helpers::init_test_tracing();
     let mut app = App::new();
     app.add_plugins(KeywordPlugin);
     app.finish();
@@ -38,6 +42,7 @@ fn keyword_plugin_registers_keyword_triggered_message() {
 
 #[test]
 fn keyword_plugin_initialises_empty_chain_death_buffer() {
+    test_helpers::init_test_tracing();
     let mut app = App::new();
     app.add_plugins(KeywordPlugin);
     app.finish();

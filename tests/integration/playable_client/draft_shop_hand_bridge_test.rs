@@ -25,6 +25,9 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn app_in_phase(phase: RoundPhase, gold: u32) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
@@ -65,6 +68,7 @@ fn run_update(app: &mut App) {
 
 #[test]
 fn test_one_draft_offering_fanout_updates_hand_grid_and_shop_grid() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_phase(RoundPhase::DraftInitial, 5);
     let card_ids = (1..=9).map(CardId).collect::<Vec<_>>();
     let fanout = draft_offering_fanout_messages(S2CDraftOffering {
@@ -81,6 +85,7 @@ fn test_one_draft_offering_fanout_updates_hand_grid_and_shop_grid() {
 
 #[test]
 fn test_one_card_acquired_fanout_updates_hand_and_draft_pending_purchase() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_phase(RoundPhase::DraftInitial, 5);
     let card_ids = (1..=9).map(CardId).collect::<Vec<_>>();
     let offering = draft_offering_fanout_messages(S2CDraftOffering {
@@ -118,6 +123,7 @@ fn test_one_card_acquired_fanout_updates_hand_and_draft_pending_purchase() {
 
 #[test]
 fn test_shop_purchase_reconciles_hand_size_slots_and_shared_economy() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_phase(RoundPhase::DraftShop, 5);
     app.world_mut()
         .write_message(shop_slots_message(S2CShopSlots {
@@ -176,6 +182,7 @@ fn test_shop_purchase_reconciles_hand_size_slots_and_shared_economy() {
 
 #[test]
 fn test_draft_shop_snapshot_seeds_hand_and_shop_before_live_messages() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_phase(RoundPhase::DraftShop, 5);
 
     app.world_mut()
@@ -201,6 +208,7 @@ fn test_draft_shop_snapshot_seeds_hand_and_shop_before_live_messages() {
 
 #[test]
 fn test_cards_json_art_ids_resolve_to_display_assets() {
+    test_helpers::init_test_tracing();
     let catalog = default_client_card_catalog();
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()

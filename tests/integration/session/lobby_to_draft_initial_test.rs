@@ -11,6 +11,9 @@ use shared::card::ClassId;
 use shared::protocol;
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -48,6 +51,7 @@ fn full_session_app() -> App {
 
 #[test]
 fn test_lobby_to_draft_initial_emits_phase_changed_same_update() {
+    test_helpers::init_test_tracing();
     let mut app = full_session_app();
 
     app.update();

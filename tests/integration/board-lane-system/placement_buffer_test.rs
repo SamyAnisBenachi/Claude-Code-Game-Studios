@@ -33,6 +33,9 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const TICK_HZ: f64 = 60.0;
 const MAX_FRAMES: usize = 600;
 const FRAME_SLEEP: Duration = Duration::from_millis(10);
@@ -351,6 +354,7 @@ fn read_messages<T: bevy::prelude::Message + Clone>(app: &App) -> Vec<T> {
 
 #[test]
 fn test_placement_phase_entered_clears_pending_buffer() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_board();
     app.world_mut()
         .resource_mut::<PendingPlacements>()
@@ -376,6 +380,7 @@ fn test_placement_phase_entered_clears_pending_buffer() {
 
 #[test]
 fn test_duplicate_submission_keeps_first_final_batch() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_board();
     let first = submitted_minion(card_id(10), 1, 1, 2);
     let second = submitted_minion(card_id(30), 2, 1, 1);
@@ -427,6 +432,7 @@ fn test_duplicate_submission_keeps_first_final_batch() {
 
 #[test]
 fn test_close_placement_phase_sends_reliable_reveal_before_spawning_units_atomically() {
+    test_helpers::init_test_tracing();
     let port = reserve_ephemeral_port();
     let url = format!("ws://127.0.0.1:{port}");
     let connection_probe = ServerConnectionProbe::new();

@@ -15,6 +15,9 @@ use shared::protocol::{
     C2SHeartbeat, ReliableChannel, S2CHandshakeRejected, S2CHeartbeat, UnreliableChannel,
 };
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const TICK_HZ: f64 = 60.0;
 const MAX_FRAMES: usize = 600;
 const FRAME_SLEEP: Duration = Duration::from_millis(10);
@@ -120,6 +123,7 @@ impl RoundTripFlags {
 
 #[test]
 fn e2e_websocket_heartbeat_roundtrip_and_reliable_channel() {
+    test_helpers::init_test_tracing();
     let port = reserve_ephemeral_port();
     let url = format!("ws://127.0.0.1:{port}");
     let flags = RoundTripFlags::new();

@@ -22,8 +22,12 @@ use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{PlayTarget, RoundPhase};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn a11y_st_14_entry_exposes_only_card_selection_stage() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([
         (CardId(10), CardType::Minion, 2),
         (CardId(11), CardType::Order, 1),
@@ -45,6 +49,7 @@ fn a11y_st_14_entry_exposes_only_card_selection_stage() {
 
 #[test]
 fn a11y_st_14_minion_selection_discloses_lane_cell_before_split_controls() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(20), CardType::Minion, 3)]));
     let board_cells = spawn_board_cells(&mut app);
     app.world_mut()
@@ -84,6 +89,7 @@ fn a11y_st_14_minion_selection_discloses_lane_cell_before_split_controls() {
 
 #[test]
 fn a11y_st_14_invalid_drop_recovers_to_card_selection_without_staging() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(30), CardType::Minion, 2)]));
     spawn_board_cells(&mut app);
     set_hand(&mut app, [CardId(30)]);
@@ -122,6 +128,7 @@ fn a11y_st_14_invalid_drop_recovers_to_card_selection_without_staging() {
 
 #[test]
 fn a11y_st_14_valid_stage_reveals_staged_guidance_and_split_text() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(40), CardType::Minion, 3)]));
     spawn_board_cells(&mut app);
     set_hand(&mut app, [CardId(40)]);
@@ -159,6 +166,7 @@ fn a11y_st_14_valid_stage_reveals_staged_guidance_and_split_text() {
 
 #[test]
 fn a11y_st_14_instant_stage_uses_same_staged_disclosure_without_board_highlights() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(50), CardType::Order, 1)]));
     spawn_board_cells(&mut app);
     set_hand(&mut app, [CardId(50)]);
@@ -186,6 +194,7 @@ fn a11y_st_14_instant_stage_uses_same_staged_disclosure_without_board_highlights
 
 #[test]
 fn a11y_st_14_submit_correction_keeps_player_in_disclosure_flow() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(60), CardType::Minion, 2)]));
     set_economy(&mut app, 0, 2);
     set_hand(&mut app, [CardId(60)]);

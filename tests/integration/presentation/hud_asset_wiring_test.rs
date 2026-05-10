@@ -15,6 +15,9 @@ use client::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn make_app() -> App {
@@ -52,6 +55,7 @@ fn enter_session(app: &mut App) {
 /// Total: 12 entities carrying ImageNode from pool spawn.
 #[test]
 fn test_hud_pool_spawn_all_chrome_entities_have_image_node() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
 
@@ -94,6 +98,7 @@ fn test_hud_pool_spawn_all_chrome_entities_have_image_node() {
 /// The figurine entity has the HudFigurine marker component.
 #[test]
 fn test_figurine_entity_has_marker_component() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
 
@@ -109,6 +114,7 @@ fn test_figurine_entity_has_marker_component() {
 /// The timer bar entity has the HudTimerBar marker component.
 #[test]
 fn test_timer_bar_entity_has_marker_component() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
 
@@ -124,6 +130,7 @@ fn test_timer_bar_entity_has_marker_component() {
 /// Every scoreboard dot entity has the ScoreboardDot marker component.
 #[test]
 fn test_all_dots_have_scoreboard_dot_marker() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
 
@@ -147,6 +154,7 @@ fn test_all_dots_have_scoreboard_dot_marker() {
 /// ImageNode must be updated to the destroyed asset.
 #[test]
 fn test_dot_image_node_updates_to_destroyed_on_objective_destroyed() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
 
     // Register the sync system in Update so we can trigger it.
@@ -208,6 +216,7 @@ fn test_dot_image_node_updates_to_destroyed_on_objective_destroyed() {
 /// Multiple objectives destroyed in one frame each update independently.
 #[test]
 fn test_multiple_dots_destroyed_in_same_frame_each_update_independently() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
 
     app.add_systems(

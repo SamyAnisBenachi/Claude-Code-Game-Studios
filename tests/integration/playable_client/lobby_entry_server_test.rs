@@ -11,8 +11,12 @@ use shared::protocol::{C2SHello, GameMode};
 use shared::session::PlayerId;
 use uuid::Uuid;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn fresh_hello_maps_peer_to_stable_player_and_returns_handshake() {
+    test_helpers::init_test_tracing();
     let mut world = World::new();
     world.insert_resource(PlayerConnectionMap::default());
     world.insert_resource(NextFreshPlayerId::default());
@@ -50,6 +54,7 @@ fn fresh_hello_maps_peer_to_stable_player_and_returns_handshake() {
 
 #[test]
 fn repeated_fresh_hello_reuses_existing_peer_mapping() {
+    test_helpers::init_test_tracing();
     let mut world = World::new();
     world.insert_resource(PlayerConnectionMap::default());
     world.insert_resource(NextFreshPlayerId::default());
@@ -78,6 +83,7 @@ fn repeated_fresh_hello_reuses_existing_peer_mapping() {
 
 #[test]
 fn mapped_fresh_players_can_create_join_select_and_confirm_lobby() {
+    test_helpers::init_test_tracing();
     let mut world = World::new();
     world.insert_resource(PlayerConnectionMap::default());
     world.insert_resource(NextFreshPlayerId::default());

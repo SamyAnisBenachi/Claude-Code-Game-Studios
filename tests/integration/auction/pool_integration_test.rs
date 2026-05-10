@@ -13,6 +13,9 @@ use server::foundation::rng::ServerRng;
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -113,6 +116,7 @@ fn rare_only_app() -> App {
 
 #[test]
 fn test_pool_distribution_is_permanent_after_auction_win() {
+    test_helpers::init_test_tracing();
     let winner = player(1);
     let mut app = rare_only_app();
 
@@ -144,6 +148,7 @@ fn test_pool_distribution_is_permanent_after_auction_win() {
 
 #[test]
 fn test_pool_distribution_is_permanent_after_no_bid_outcome() {
+    test_helpers::init_test_tracing();
     let mut app = rare_only_app();
 
     enter_auction(&mut app, 3);
@@ -160,6 +165,7 @@ fn test_pool_distribution_is_permanent_after_no_bid_outcome() {
 
 #[test]
 fn test_pool_distribution_is_permanent_after_abort_auction() {
+    test_helpers::init_test_tracing();
     let mut app = rare_only_app();
 
     enter_auction(&mut app, 3);
@@ -180,6 +186,7 @@ fn test_pool_distribution_is_permanent_after_abort_auction() {
 
 #[test]
 fn test_empty_eligible_pool_triggers_immediate_no_card_outcome() {
+    test_helpers::init_test_tracing();
     let rare_id = CardId(10);
     let legendary_id = CardId(99);
     let mut app = auction_fixture(catalog(vec![
@@ -209,6 +216,7 @@ fn test_empty_eligible_pool_triggers_immediate_no_card_outcome() {
 
 #[test]
 fn test_round_before_legendary_entry_draws_only_rare_card() {
+    test_helpers::init_test_tracing();
     let rare_id = CardId(10);
     let legendary_id = CardId(99);
     let mut app = auction_fixture(catalog(vec![

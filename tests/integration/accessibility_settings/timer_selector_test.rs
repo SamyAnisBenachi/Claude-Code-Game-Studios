@@ -8,8 +8,12 @@ use client::ui::settings::{
 };
 use shared::protocol::{PlacementTimerMultiplier, RoundPhase};
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn test_timer_selector_exposes_only_multiplayer_standard_values() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_open_settings();
 
     let labels = timer_option_texts(&app);
@@ -37,6 +41,7 @@ fn test_timer_selector_exposes_only_multiplayer_standard_values() {
 
 #[test]
 fn test_lobby_before_session_ready_timer_change_sends_one_c2s_intent() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_open_settings();
 
     app.world_mut().write_message(SettingsActionRequest {
@@ -60,6 +65,7 @@ fn test_lobby_before_session_ready_timer_change_sends_one_c2s_intent() {
 
 #[test]
 fn test_after_session_ready_timer_change_is_next_session_preference_only() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_open_settings();
     app.world_mut()
         .resource_mut::<SettingsSessionLifecycle>()
@@ -98,6 +104,7 @@ fn test_after_session_ready_timer_change_is_next_session_preference_only() {
 
 #[test]
 fn test_effective_timer_display_reads_neutral_session_settings_view() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_open_settings();
     app.world_mut()
         .resource_mut::<AccessibilityPreferences>()

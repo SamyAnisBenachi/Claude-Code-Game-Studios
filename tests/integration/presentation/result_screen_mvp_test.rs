@@ -22,8 +22,12 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn outcome_copy_uses_server_authored_result_data() {
+    test_helpers::init_test_tracing();
     let local = player(1);
     let opponent = player(2);
 
@@ -68,6 +72,7 @@ fn outcome_copy_uses_server_authored_result_data() {
 
 #[test]
 fn objective_summary_keeps_alive_opponent_objectives_unknown_without_reveal() {
+    test_helpers::init_test_tracing();
     let snapshot = game_over_snapshot();
     let summary = build_result_objective_summary(Some(&snapshot));
 
@@ -102,6 +107,7 @@ fn objective_summary_keeps_alive_opponent_objectives_unknown_without_reveal() {
 
 #[test]
 fn overlay_renders_game_over_result_and_hides_rematch() {
+    test_helpers::init_test_tracing();
     let mut app = result_screen_app();
     open_result_screen(
         &mut app,
@@ -128,6 +134,7 @@ fn overlay_renders_game_over_result_and_hides_rematch() {
 
 #[test]
 fn snapshot_only_game_over_uses_pending_fallback_and_return_action() {
+    test_helpers::init_test_tracing();
     let mut app = result_screen_app();
     open_result_screen(&mut app, None);
 
@@ -159,6 +166,7 @@ fn snapshot_only_game_over_uses_pending_fallback_and_return_action() {
 
 #[test]
 fn reduced_motion_disables_entry_and_row_motion() {
+    test_helpers::init_test_tracing();
     let mut preferences = AccessibilityPreferences::default();
     preferences.reduced_motion = true;
 
@@ -190,6 +198,7 @@ fn reduced_motion_disables_entry_and_row_motion() {
 
 #[test]
 fn result_screen_has_single_game_over_receiver_and_no_snapshot_receiver() {
+    test_helpers::init_test_tracing();
     let client_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let matches = collect_unique_source_matches(&client_src, "MessageReceiver<S2CGameOver>");
     let expected = BTreeSet::from([client_src.join("presentation").join("result_screen.rs")]);

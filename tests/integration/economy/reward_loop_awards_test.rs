@@ -27,6 +27,9 @@ use shared::card::ClassId;
 use shared::protocol::{DraftPhase, GameMode};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const PLAYER_A: PlayerId = PlayerId(1);
 const PLAYER_B: PlayerId = PlayerId(2);
 
@@ -108,6 +111,7 @@ fn current_mana_of(app: &App, player: PlayerId) -> u32 {
 
 #[test]
 fn test_kill_gold_award_writes_through_api_when_config_default() {
+    test_helpers::init_test_tracing();
     // Arrange: two-player session, both at gold=5; default config has
     // kill_gold_reward = 1.
     let mut app = app_with_economy(&[PLAYER_A, PLAYER_B]);
@@ -134,6 +138,7 @@ fn test_kill_gold_award_writes_through_api_when_config_default() {
 
 #[test]
 fn test_dual_kill_accumulates_two_awards() {
+    test_helpers::init_test_tracing();
     // Arrange.
     let mut app = app_with_economy(&[PLAYER_A]);
     insert_economy(&mut app, PLAYER_A, economy(5, 10));
@@ -154,6 +159,7 @@ fn test_dual_kill_accumulates_two_awards() {
 
 #[test]
 fn test_objective_gold_award_writes_through_api_once_per_destruction() {
+    test_helpers::init_test_tracing();
     // Arrange.
     let mut app = app_with_economy(&[PLAYER_A]);
     insert_economy(&mut app, PLAYER_A, economy(5, 10));
@@ -174,6 +180,7 @@ fn test_objective_gold_award_writes_through_api_once_per_destruction() {
 
 #[test]
 fn test_self_inflicted_objective_does_not_award_gold_via_award_gold_consumer() {
+    test_helpers::init_test_tracing();
     // Arrange: PLAYER_A starts with gold=5. The consequence path short-
     // circuits when attacker == defender, so no AwardGold message is emitted.
     let mut app = app_with_economy(&[PLAYER_A]);
@@ -188,6 +195,7 @@ fn test_self_inflicted_objective_does_not_award_gold_via_award_gold_consumer() {
 
 #[test]
 fn test_no_duplicate_objective_reward_when_combat_path_runs_and_no_award_gold_emitted() {
+    test_helpers::init_test_tracing();
     // Arrange: PLAYER_A at gold=5. Default objective_gold_reward = 3.
     let mut app = app_with_economy(&[PLAYER_A]);
     insert_economy(&mut app, PLAYER_A, economy(5, 10));
@@ -210,6 +218,7 @@ fn test_no_duplicate_objective_reward_when_combat_path_runs_and_no_award_gold_em
 
 #[test]
 fn test_fake_mana_cap_reward_increments_mana_cap_below_ceiling() {
+    test_helpers::init_test_tracing();
     // Arrange: cap=9 with default mana_cap_max=12.
     let mut app = app_with_economy(&[PLAYER_A]);
     insert_economy(&mut app, PLAYER_A, economy(0, 9));
@@ -227,6 +236,7 @@ fn test_fake_mana_cap_reward_increments_mana_cap_below_ceiling() {
 
 #[test]
 fn test_fake_mana_cap_reward_clamps_at_mana_cap_max() {
+    test_helpers::init_test_tracing();
     // Arrange: cap = mana_cap_max = 12 (the default).
     let mut app = app_with_economy(&[PLAYER_A]);
     let cap_max = app.world().resource::<GameConfig>().mana_cap_max;
@@ -245,6 +255,7 @@ fn test_fake_mana_cap_reward_clamps_at_mana_cap_max() {
 
 #[test]
 fn test_fake_mana_cap_reward_visible_to_next_draft_started_mana_ramp() {
+    test_helpers::init_test_tracing();
     // Arrange: cap=9 below mana_cap_max=12.
     let mut app = app_with_economy(&[PLAYER_A]);
     insert_economy(&mut app, PLAYER_A, economy(0, 9));
@@ -270,6 +281,7 @@ fn test_fake_mana_cap_reward_visible_to_next_draft_started_mana_ramp() {
 
 #[test]
 fn test_fake_free_card_fallback_award_gold_applies_once() {
+    test_helpers::init_test_tracing();
     // Arrange.
     let mut app = app_with_economy(&[PLAYER_A]);
     insert_economy(&mut app, PLAYER_A, economy(5, 10));
@@ -293,6 +305,7 @@ fn test_fake_free_card_fallback_award_gold_applies_once() {
 
 #[test]
 fn test_award_gold_amount_is_independent_from_objective_gold_reward() {
+    test_helpers::init_test_tracing();
     // Arrange.
     let mut app = app_with_economy(&[PLAYER_A]);
     insert_economy(&mut app, PLAYER_A, economy(0, 10));
@@ -311,6 +324,7 @@ fn test_award_gold_amount_is_independent_from_objective_gold_reward() {
 
 #[test]
 fn test_reward_consumers_run_before_on_resolution_complete() {
+    test_helpers::init_test_tracing();
     // Arrange: PLAYER_A at gold=9. In the same frame, emit AwardGold +1 and
     // ResolutionComplete. The reward consumer must run before
     // on_resolution_complete so the snapshot captures the post-reward total.
@@ -338,6 +352,7 @@ fn test_reward_consumers_run_before_on_resolution_complete() {
 
 #[test]
 fn test_award_gold_for_unknown_player_is_silently_ignored() {
+    test_helpers::init_test_tracing();
     // Arrange: only PLAYER_A is in PlayerEconomies. PLAYER_B is unknown to the
     // economy table (e.g., spectator id, race condition). The consumer must
     // not panic and must not synthesize a row.

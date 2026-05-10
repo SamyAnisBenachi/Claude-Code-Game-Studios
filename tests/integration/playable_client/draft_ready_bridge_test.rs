@@ -14,6 +14,9 @@ use shared::card::ClassId;
 use shared::protocol::{C2SSignalReady, GameMode, PlacementTimerMultiplier};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -68,6 +71,7 @@ fn read_messages<T: Message + Clone>(app: &App) -> Vec<T> {
 
 #[test]
 fn test_c2s_signal_ready_maps_peer_to_draft_ready_signal() {
+    test_helpers::init_test_tracing();
     let ready_peer = PeerId::Netcode(11);
     let retract_peer = PeerId::Netcode(12);
     let connections = server::core::session::PlayerConnectionMap(HashMap::from([
@@ -96,6 +100,7 @@ fn test_c2s_signal_ready_maps_peer_to_draft_ready_signal() {
 
 #[test]
 fn test_draft_initial_live_ready_advances_only_after_all_players_ready() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_rsm(RoundPhase::DraftInitial, 1);
     app.world_mut()
         .resource_mut::<RoundState>()
@@ -131,6 +136,7 @@ fn test_draft_initial_live_ready_advances_only_after_all_players_ready() {
 
 #[test]
 fn test_draft_shop_live_retract_blocks_advance_until_player_ready_again() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_rsm(RoundPhase::DraftShop, 2);
     app.world_mut()
         .resource_mut::<RoundState>()

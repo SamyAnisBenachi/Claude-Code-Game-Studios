@@ -28,10 +28,14 @@ use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{PlayTarget, RoundPhase};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const LOCAL_PLAYER: PlayerId = PlayerId(1);
 
 #[test]
 fn test_lobby_room_code_focus_separates_text_from_shortcuts() {
+    test_helpers::init_test_tracing();
     let mut app = lobby_app();
     let mut command_cursor = command_cursor(&app);
 
@@ -68,6 +72,7 @@ fn test_lobby_room_code_focus_separates_text_from_shortcuts() {
 
 #[test]
 fn test_lobby_room_code_textbox_click_selects_and_accepts_text_input() {
+    test_helpers::init_test_tracing();
     let mut app = lobby_app();
     let mut command_cursor = command_cursor(&app);
 
@@ -99,6 +104,7 @@ fn test_lobby_room_code_textbox_click_selects_and_accepts_text_input() {
 
 #[test]
 fn test_lobby_buttons_drive_create_join_slot_class_and_confirm_commands() {
+    test_helpers::init_test_tracing();
     let mut app = lobby_app();
     let mut command_cursor = command_cursor(&app);
 
@@ -151,6 +157,7 @@ fn test_lobby_buttons_drive_create_join_slot_class_and_confirm_commands() {
 
 #[test]
 fn test_shop_auction_pointer_controls_emit_operator_intents() {
+    test_helpers::init_test_tracing();
     let mut app = shop_app();
     set_phase(&mut app, RoundPhase::DraftInitial, 45_000);
     send_draft_offering(&mut app, (1..=9).map(CardId).collect());
@@ -205,6 +212,7 @@ fn test_shop_auction_pointer_controls_emit_operator_intents() {
 
 #[test]
 fn test_hand_pointer_controls_stage_unstage_and_submit_placement() {
+    test_helpers::init_test_tracing();
     let mut app = hand_app();
     set_hand(&mut app, vec![CardId(1)]);
     set_phase(&mut app, RoundPhase::Placement, 30_000);

@@ -27,6 +27,9 @@ use shared::protocol::{
 use shared::session::PlayerId;
 use uuid::Uuid;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -85,6 +88,7 @@ fn hidden_objectives(player_a: PlayerId, player_b: PlayerId) -> HiddenObjectives
 
 #[test]
 fn reconnect_hello_sends_snapshot_sequence_and_restores_sang_meprise() {
+    test_helpers::init_test_tracing();
     let player_a = player(1);
     let player_b = player(2);
     let old_peer = PeerId::Netcode(10);
@@ -217,6 +221,7 @@ fn reconnect_hello_sends_snapshot_sequence_and_restores_sang_meprise() {
 
 #[test]
 fn reconnect_hello_rejects_unknown_token_and_closes_connection() {
+    test_helpers::init_test_tracing();
     let peer = PeerId::Netcode(44);
     let mut world = World::new();
     world.insert_resource(GameConfig(shared::config::GameConfig::default()));
@@ -246,6 +251,7 @@ fn reconnect_hello_rejects_unknown_token_and_closes_connection() {
 
 #[test]
 fn deferred_queue_flush_preserves_original_order() {
+    test_helpers::init_test_tracing();
     let player = player(1);
     let peer = PeerId::Netcode(20);
     let mut world = World::new();
@@ -309,6 +315,7 @@ fn deferred_queue_flush_preserves_original_order() {
 
 #[test]
 fn hello_timeout_closes_silent_connection_without_s2c() {
+    test_helpers::init_test_tracing();
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.insert_resource(ReconnectNetworkOutbox::default());
@@ -335,6 +342,7 @@ fn hello_timeout_closes_silent_connection_without_s2c() {
 
 #[test]
 fn acquisition_unicast_helpers_defer_while_snapshot_pending() {
+    test_helpers::init_test_tracing();
     let player = player(1);
     let mut tracker = ReconnectTracker {
         snapshot_sent: HashMap::from([(player, false)]),
@@ -369,6 +377,7 @@ fn acquisition_unicast_helpers_defer_while_snapshot_pending() {
 
 #[test]
 fn auction_dispatch_guard_defers_pending_reconnect_players() {
+    test_helpers::init_test_tracing();
     let player_a = player(1);
     let player_b = player(2);
     let mut tracker = ReconnectTracker {

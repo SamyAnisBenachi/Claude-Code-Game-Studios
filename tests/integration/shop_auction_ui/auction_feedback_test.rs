@@ -17,11 +17,15 @@ use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{BidRejectedReason, RoundPhase, S2CGoldBroadcast};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const LOCAL_PLAYER: PlayerId = PlayerId(1);
 const OPPONENT_PLAYER: PlayerId = PlayerId(2);
 
 #[test]
 fn sau_006_accepted_local_bid_updates_leader_hides_buttons_and_writes_timer_target() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
 
     app.world_mut()
@@ -57,6 +61,7 @@ fn sau_006_accepted_local_bid_updates_leader_hides_buttons_and_writes_timer_targ
 
 #[test]
 fn sau_006_opponent_accepted_waits_for_local_gold_broadcast_gate() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
 
     app.world_mut()
@@ -125,6 +130,7 @@ fn sau_006_opponent_accepted_waits_for_local_gold_broadcast_gate() {
 
 #[test]
 fn sau_006_gold_before_opponent_accepted_satisfies_gate_on_accepted_arrival() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
 
     write_gold_broadcast(&mut app, LOCAL_PLAYER, 12, 0);
@@ -146,6 +152,7 @@ fn sau_006_gold_before_opponent_accepted_satisfies_gate_on_accepted_arrival() {
 
 #[test]
 fn sau_006_rejected_bid_clears_inflight_reenables_and_maps_toasts() {
+    test_helpers::init_test_tracing();
     let cases = [
         (BidRejectedReason::InsufficientGold, "Not enough gold"),
         (BidRejectedReason::AmountTooLow, "Bid must be at least 5g"),
@@ -186,6 +193,7 @@ fn sau_006_rejected_bid_clears_inflight_reenables_and_maps_toasts() {
 
 #[test]
 fn sau_006_toast_replacement_resets_timer_without_stacking() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
 
     write_bid_rejected(&mut app, BidRejectedReason::InsufficientGold);
@@ -203,6 +211,7 @@ fn sau_006_toast_replacement_resets_timer_without_stacking() {
 
 #[test]
 fn sau_006_phase_exit_clears_pending_gate_and_late_rejection_does_not_reenable() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
 
     app.world_mut()

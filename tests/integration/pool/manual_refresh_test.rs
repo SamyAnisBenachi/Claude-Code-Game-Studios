@@ -13,6 +13,9 @@ use server::foundation::rng::ServerRng;
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn card(id: u32, class: ClassId, family: Option<&str>) -> CardData {
     CardData {
         id: CardId(id),
@@ -182,6 +185,7 @@ impl RefreshFixture {
 
 #[test]
 fn test_first_manual_refresh_costs_base_gold() {
+    test_helpers::init_test_tracing();
     let mut fixture = RefreshFixture::new(10, 0);
 
     let result = fixture.process_refresh();
@@ -193,6 +197,7 @@ fn test_first_manual_refresh_costs_base_gold() {
 
 #[test]
 fn test_second_manual_refresh_cost_escalated() {
+    test_helpers::init_test_tracing();
     let mut fixture = RefreshFixture::new(10, 1);
 
     let result = fixture.process_refresh();
@@ -204,6 +209,7 @@ fn test_second_manual_refresh_cost_escalated() {
 
 #[test]
 fn test_refresh_cap_limits_cost() {
+    test_helpers::init_test_tracing();
     let mut fixture = RefreshFixture::new(10, 5);
 
     let result = fixture.process_refresh();
@@ -216,6 +222,7 @@ fn test_refresh_cap_limits_cost() {
 
 #[test]
 fn test_insufficient_gold_no_refresh() {
+    test_helpers::init_test_tracing();
     let mut fixture = RefreshFixture::new(1, 1);
     let before_shop = fixture.shop_state();
 
@@ -229,6 +236,7 @@ fn test_insufficient_gold_no_refresh() {
 
 #[test]
 fn test_wrong_phase_discards_refresh() {
+    test_helpers::init_test_tracing();
     let mut fixture = RefreshFixture::new(10, 1);
     fixture
         .shops
@@ -248,6 +256,7 @@ fn test_wrong_phase_discards_refresh() {
 
 #[test]
 fn test_draw_failure_refunds_gold() {
+    test_helpers::init_test_tracing();
     let mut fixture = RefreshFixture::new(10, 0);
     fixture.sessions.players.clear();
     let before_shop = fixture.shop_state();
@@ -262,6 +271,7 @@ fn test_draw_failure_refunds_gold() {
 
 #[test]
 fn test_draft_entry_resets_refresh_count() {
+    test_helpers::init_test_tracing();
     for trigger in [
         ShopRefreshTrigger::DraftInitial,
         ShopRefreshTrigger::AuctionLock,

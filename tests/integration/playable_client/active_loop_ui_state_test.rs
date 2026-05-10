@@ -24,11 +24,15 @@ use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{BidRejectedReason, PlacedCardSubmit, PlayTarget, RoundPhase};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const LOCAL_PLAYER: PlayerId = PlayerId(1);
 const OPPONENT_PLAYER: PlayerId = PlayerId(2);
 
 #[test]
 fn test_phase_boundaries_clear_stale_auction_feedback_before_next_loop_auction() {
+    test_helpers::init_test_tracing();
     let mut app = shop_app_in_active_auction(4, 20_000);
 
     write_bid_accepted(&mut app, OPPONENT_PLAYER, 7, 8_000);
@@ -92,6 +96,7 @@ fn test_phase_boundaries_clear_stale_auction_feedback_before_next_loop_auction()
 
 #[test]
 fn test_repeated_draft_shop_phase_message_resets_ready_and_waits_for_new_slots() {
+    test_helpers::init_test_tracing();
     let mut app = shop_app();
     set_phase(&mut app, RoundPhase::DraftShop, 30_000);
     send_shop_slots(
@@ -141,6 +146,7 @@ fn test_repeated_draft_shop_phase_message_resets_ready_and_waits_for_new_slots()
 
 #[test]
 fn test_late_settlement_after_shop_convergence_does_not_resurrect_auction_ui() {
+    test_helpers::init_test_tracing();
     let mut app = shop_app_in_active_auction(4, 20_000);
     send_shop_slots(
         &mut app,
@@ -220,6 +226,7 @@ fn test_late_settlement_after_shop_convergence_does_not_resurrect_auction_ui() {
 
 #[test]
 fn test_placement_exit_clears_stale_hand_timer_submit_and_pending_state() {
+    test_helpers::init_test_tracing();
     let mut app = hand_app_in_placement(30_000);
     let entities = *app.world().resource::<HandUiEntities>();
 

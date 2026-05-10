@@ -20,10 +20,14 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const TOKEN: [u8; 16] = [7; 16];
 
 #[test]
 fn fresh_handshake_records_identity_without_entering_session() {
+    test_helpers::init_test_tracing();
     let handshake = S2CHandshake {
         protocol_version: 1,
         session_id: 42,
@@ -47,6 +51,7 @@ fn fresh_handshake_records_identity_without_entering_session() {
 
 #[test]
 fn lobby_startup_spawns_visible_ui_camera_until_session_entry() {
+    test_helpers::init_test_tracing();
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
@@ -85,6 +90,7 @@ fn lobby_startup_spawns_visible_ui_camera_until_session_entry() {
 
 #[test]
 fn lobby_state_is_updated_only_from_authoritative_s2c_messages() {
+    test_helpers::init_test_tracing();
     let mut lobby = LobbyViewState::default();
     let input = LobbyInputState {
         join_room_code: "abc123".to_string(),
@@ -131,6 +137,7 @@ fn lobby_state_is_updated_only_from_authoritative_s2c_messages() {
 
 #[test]
 fn class_confirmations_are_server_confirmed() {
+    test_helpers::init_test_tracing();
     let mut lobby = LobbyViewState::default();
 
     apply_slot_update(
@@ -162,6 +169,7 @@ fn class_confirmations_are_server_confirmed() {
 
 #[test]
 fn in_session_transition_requires_server_phase_or_snapshot_and_identity() {
+    test_helpers::init_test_tracing();
     let mut identity = ClientSessionIdentity::default();
     assert!(!should_enter_session_from_phase(
         &identity,
@@ -201,6 +209,7 @@ fn in_session_transition_requires_server_phase_or_snapshot_and_identity() {
 
 #[test]
 fn heartbeat_timer_uses_practical_unreliable_path_interval() {
+    test_helpers::init_test_tracing();
     let mut timer = ClientHeartbeatTimer::default();
 
     assert!(!heartbeat_due_after_tick(

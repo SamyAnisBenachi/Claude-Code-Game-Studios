@@ -16,6 +16,9 @@ use shared::card::ClassId;
 use shared::protocol::{GameMode, GameOverReason};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
 }
@@ -86,6 +89,7 @@ fn spawn_unit(app: &mut App, owner: PlayerId, lane: u8, cell: u8) -> Entity {
 
 #[test]
 fn resolve_combat_idle_without_begin_resolution_touches_no_story_state() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_combat();
     app.update();
 
@@ -108,6 +112,7 @@ fn resolve_combat_idle_without_begin_resolution_touches_no_story_state() {
 
 #[test]
 fn resolve_combat_runs_substeps_and_completion_after_resolution_event() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_combat();
     send_begin_resolution(&mut app, 7);
 
@@ -144,6 +149,7 @@ fn resolve_combat_runs_substeps_and_completion_after_resolution_event() {
 
 #[test]
 fn resolve_combat_ss6_emits_unit_at_objective_messages() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_board_and_combat();
     let player_a_unit = spawn_unit(&mut app, player(1), 1, 8);
     let player_b_unit = spawn_unit(&mut app, player(2), 3, 1);
@@ -180,6 +186,7 @@ fn resolve_combat_ss6_emits_unit_at_objective_messages() {
 
 #[test]
 fn resolve_combat_iteration_budget_overflow_requests_draw_without_completion() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_rsm_and_combat();
     app.insert_resource(CombatIterationBudget::with_limit(0));
     send_begin_resolution(&mut app, 4);

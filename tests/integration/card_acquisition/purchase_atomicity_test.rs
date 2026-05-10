@@ -12,6 +12,9 @@ use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::CardSource;
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 fn card(id: u32, cost: u32, copies: i32) -> CardData {
     CardData {
         id: CardId(id),
@@ -92,6 +95,7 @@ impl PurchasePool for ExhaustingPurchasePool {
 
 #[test]
 fn ca13_unavailable_slot_rejects_purchase_and_leaves_dead_slot() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let card_id = CardId(42);
     let catalog = catalog_with(vec![card(42, 2, 1)]);
@@ -137,6 +141,7 @@ fn ca13_unavailable_slot_rejects_purchase_and_leaves_dead_slot() {
 
 #[test]
 fn ca14_successful_purchase_spends_distributes_and_removes_slot() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let card_id = CardId(42);
     let catalog = catalog_with(vec![card(42, 3, 1)]);
@@ -214,6 +219,7 @@ fn ca14_successful_purchase_spends_distributes_and_removes_slot() {
 
 #[test]
 fn playable_002_draft_initial_purchase_emits_card_acquired_and_gold_without_slots() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let card_id = CardId(42);
     let catalog = catalog_with(vec![card(42, 3, 1)]);
@@ -260,6 +266,7 @@ fn playable_002_draft_initial_purchase_emits_card_acquired_and_gold_without_slot
 
 #[test]
 fn playable_002_rejected_purchase_emits_no_acquisition_or_gold_event() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let card_id = CardId(42);
     let catalog = catalog_with(vec![card(42, 2, 1)]);
@@ -295,6 +302,7 @@ fn playable_002_rejected_purchase_emits_no_acquisition_or_gold_event() {
 
 #[test]
 fn ca18_distribute_failure_refunds_gold_and_leaves_slot() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let card_id = CardId(42);
     let catalog = catalog_with(vec![card(42, 2, 1)]);
@@ -337,6 +345,7 @@ fn ca18_distribute_failure_refunds_gold_and_leaves_slot() {
 
 #[test]
 fn ca20_wrong_phase_discards_stale_purchase_without_mutation() {
+    test_helpers::init_test_tracing();
     let player = PlayerId(1);
     let card_id = CardId(42);
     let catalog = catalog_with(vec![card(42, 2, 1)]);

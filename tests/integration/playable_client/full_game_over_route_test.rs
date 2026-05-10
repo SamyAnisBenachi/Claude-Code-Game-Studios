@@ -49,6 +49,9 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const TICK_HZ: f64 = 60.0;
 const ROOM_FLOW_MAX_FRAMES: usize = 5_400;
 const FRAME_SLEEP: Duration = Duration::from_millis(10);
@@ -61,6 +64,7 @@ const FRAME_SLEEP: Duration = Duration::from_millis(10);
 /// The visual leg (result screen renders, Return to Lobby button) is covered by MANUAL-FG-001.
 #[test]
 fn full_game_over_route_including_acknowledgement_handshake() {
+    test_helpers::init_test_tracing();
     let port = reserve_ephemeral_port();
     let url = format!("ws://127.0.0.1:{port}");
     let flags = RoomSessionFlags::new();

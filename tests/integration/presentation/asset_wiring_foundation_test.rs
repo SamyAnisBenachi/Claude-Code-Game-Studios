@@ -10,6 +10,9 @@ use client::asset_wiring::{
 use client::state::ClientState;
 use shared::card::ClassId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn make_app() -> App {
@@ -29,6 +32,7 @@ fn make_app() -> App {
 /// PAW-001-c/d: PlaceholderAssets must be present after InSession entry.
 #[test]
 fn test_placeholder_assets_resource_inserted_on_session_entry() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
 
     // Default state is Lobby — resource must not exist yet.
@@ -53,6 +57,7 @@ fn test_placeholder_assets_resource_inserted_on_session_entry() {
 /// PAW-001-c: PlaceholderAssets must be removed on InSession exit.
 #[test]
 fn test_placeholder_assets_resource_removed_on_session_exit() {
+    test_helpers::init_test_tracing();
     let mut app = make_app();
 
     // Enter InSession.
@@ -84,6 +89,7 @@ fn test_placeholder_assets_resource_removed_on_session_exit() {
 /// start with "art/", end with ".png", and contain no whitespace.
 #[test]
 fn test_path_constants_all_non_empty_and_well_formed() {
+    test_helpers::init_test_tracing();
     let representative = [
         PLACEHOLDER_FALLBACK_ASSET,
         HUD_FIGURINE_IOP_ASSET,
@@ -123,6 +129,7 @@ fn test_path_constants_all_non_empty_and_well_formed() {
 /// every ClassId variant.
 #[test]
 fn test_selector_functions_cover_all_class_variants() {
+    test_helpers::init_test_tracing();
     let all_variants = [
         ClassId::Iop,
         ClassId::Cra,
@@ -165,6 +172,7 @@ fn test_selector_functions_cover_all_class_variants() {
 /// Selector sanity: class_type_icon_asset covers all ClassId variants distinctly.
 #[test]
 fn test_class_type_icon_selector_covers_all_variants() {
+    test_helpers::init_test_tracing();
     let all_variants = [
         ClassId::Iop,
         ClassId::Cra,
@@ -191,6 +199,7 @@ fn test_class_type_icon_selector_covers_all_variants() {
 /// Selector sanity: board_unit_asset covers all ClassId variants distinctly.
 #[test]
 fn test_board_unit_selector_covers_all_variants() {
+    test_helpers::init_test_tracing();
     let all_variants = [
         ClassId::Iop,
         ClassId::Cra,
@@ -214,6 +223,7 @@ fn test_board_unit_selector_covers_all_variants() {
 /// Selector sanity: lobby_portrait_asset covers all ClassId variants distinctly.
 #[test]
 fn test_lobby_portrait_selector_covers_all_variants() {
+    test_helpers::init_test_tracing();
     let all_variants = [
         ClassId::Iop,
         ClassId::Cra,
@@ -240,6 +250,7 @@ fn test_lobby_portrait_selector_covers_all_variants() {
 /// Selector sanity: hud_objective_dot_asset covers all ObjectiveDotState variants.
 #[test]
 fn test_objective_dot_selector_covers_all_variants() {
+    test_helpers::init_test_tracing();
     let all_variants = [
         ObjectiveDotState::Alive,
         ObjectiveDotState::Destroyed,
@@ -263,6 +274,7 @@ fn test_objective_dot_selector_covers_all_variants() {
 /// Selector sanity: bid_button_asset covers all BidButtonChromeState variants.
 #[test]
 fn test_bid_button_selector_covers_all_variants() {
+    test_helpers::init_test_tracing();
     use client::asset_wiring::bid_button_asset;
 
     let all_variants = [

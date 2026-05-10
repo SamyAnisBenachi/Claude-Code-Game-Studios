@@ -10,6 +10,9 @@ use shared::protocol::GameMode;
 use shared::session::PlayerId;
 use std::collections::HashMap;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[derive(Resource, Default, Debug, PartialEq, Eq)]
 struct OrderLog(Vec<&'static str>);
 
@@ -84,6 +87,7 @@ fn app_for_draft_entry() -> App {
 
 #[test]
 fn rsm_f2_ordering_draft_entry_subscribers_process_broadcast_last() {
+    test_helpers::init_test_tracing();
     let mut app = app_for_draft_entry();
 
     app.world_mut().write_message(ResolutionComplete);

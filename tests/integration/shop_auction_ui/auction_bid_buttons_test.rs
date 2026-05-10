@@ -17,10 +17,14 @@ use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{RoundPhase, S2CGoldBroadcast};
 use shared::session::PlayerId;
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 const LOCAL_PLAYER: PlayerId = PlayerId(1);
 
 #[test]
 fn sau_005_bid_buttons_use_local_free_gold_and_split_labels() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(0, 20_000);
 
     write_local_gold_broadcast(&mut app, 5, 3);
@@ -38,6 +42,7 @@ fn sau_005_bid_buttons_use_local_free_gold_and_split_labels() {
 
 #[test]
 fn sau_005_hand_size_ten_disables_bids_and_shows_hand_full_message() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(2, 20_000);
 
     app.world_mut()
@@ -68,6 +73,7 @@ fn sau_005_hand_size_ten_disables_bids_and_shows_hand_full_message() {
 
 #[test]
 fn sau_005_local_leader_hides_bid_buttons_and_shows_badge() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
 
     app.world_mut()
@@ -92,6 +98,7 @@ fn sau_005_local_leader_hides_bid_buttons_and_shows_badge() {
 
 #[test]
 fn sau_005_enabled_click_sends_one_bid_and_locks_in_flight_buttons() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(2, 20_000);
 
     let buttons = app
@@ -129,6 +136,7 @@ fn sau_005_enabled_click_sends_one_bid_and_locks_in_flight_buttons() {
 
 #[test]
 fn sau_005_locally_expired_timer_disables_bids_and_escalates_status() {
+    test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(1, 1_000);
 
     run_for(&mut app, Duration::from_millis(1_000));

@@ -12,8 +12,12 @@ use client::presentation::board_rendering::{
 use client::state::ClientState;
 use client::ui::shared::{BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
+#[path = "../../test_helpers.rs"]
+mod test_helpers;
+
 #[test]
 fn test_browser_wasm_perf_harness_seeds_board_012_baseline_and_records_budgets() {
+    test_helpers::init_test_tracing();
     let mut app = app_with_harness();
 
     for _ in 0..180 {
@@ -76,6 +80,7 @@ fn test_browser_wasm_perf_harness_seeds_board_012_baseline_and_records_budgets()
 
 #[test]
 fn test_browser_wasm_perf_fixture_snapshot_uses_required_seed_counts() {
+    test_helpers::init_test_tracing();
     let snapshot = baseline_fixture_snapshot();
 
     assert_eq!(snapshot.recipient_player_id.0, 1);
