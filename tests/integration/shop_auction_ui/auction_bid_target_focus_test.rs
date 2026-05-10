@@ -141,7 +141,10 @@ fn app_in_active_auction(
 ) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
     app.add_plugins(ShopAuctionUiPlugin);
     app.insert_resource(ShopAuctionCardCatalog {
         cards: HashMap::from([(CardId(1), test_card(1, Rarity::Rare, 4))]),

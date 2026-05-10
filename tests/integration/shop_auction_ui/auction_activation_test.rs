@@ -225,7 +225,10 @@ fn sau_004_draft_auction_footer_is_locked_and_does_not_send_shop_messages() {
 fn app_in_session() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
     app.add_plugins(ShopAuctionUiPlugin);
     app.insert_resource(ShopAuctionCardCatalog {
         cards: (1..=3)
