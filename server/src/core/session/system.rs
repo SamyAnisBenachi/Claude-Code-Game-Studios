@@ -1151,7 +1151,7 @@ pub fn confirm_class(
 
     if let Some(confirmed) = selections.0.get(&player_id).copied() {
         return if confirmed == class_id {
-            class_lock_ack(&rooms, active_sessions, player_id, class_id)
+            ConfirmClassOutcome::Ignored
         } else {
             class_lock_rejected()
         };
@@ -1181,7 +1181,7 @@ pub fn confirm_class(
         if let Some(confirmed) = slot.class {
             selections.0.insert(player_id, confirmed);
             return if confirmed == class_id {
-                class_lock_ack(&rooms, active_sessions, player_id, class_id)
+                ConfirmClassOutcome::Ignored
             } else {
                 class_lock_rejected()
             };
