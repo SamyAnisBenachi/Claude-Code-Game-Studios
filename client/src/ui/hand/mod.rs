@@ -832,6 +832,14 @@ impl Plugin for HandUiPlugin {
             .add_message::<GhostPlacementChanged>()
             .add_message::<GhostClickedEvent>()
             .add_message::<GhostDragStartEvent>()
+            // PROMPT 696: bevy_picking's `DefaultPickingPlugins` already calls
+            // `add_message` for these in real gameplay. We re-declare them here
+            // so tests built on `MinimalPlugins + HandUiPlugin` can drive the
+            // producer systems via `write_message(Pointer::<E>::new(...))`.
+            // `add_message` is idempotent (see bevy_app `SubApp::add_message`).
+            .add_message::<Pointer<Press>>()
+            .add_message::<Pointer<Move>>()
+            .add_message::<Pointer<Release>>()
             .configure_sets(
                 Update,
                 (
@@ -863,6 +871,13 @@ impl Plugin for HandUiPlugin {
                         .in_set(HandUiSystemSet::MessageDrain),
                     (
                         handle_hand_control_interactions_system,
+                        // PROMPT 696: producers run BEFORE their consumers so
+                        // start/move/end messages flow into the existing
+                        // `handle_placement_drag_*_system` consumers the same
+                        // tick the pointer event was buffered.
+                        produce_fan_slot_drag_started_from_pointer_press_system,
+                        produce_drag_cursor_moved_from_pointer_move_system,
+                        produce_drag_ended_from_pointer_release_system,
                         handle_placement_drag_started_system,
                         handle_placement_cursor_moved_system,
                         handle_placement_drag_ended_system,
@@ -880,6 +895,12 @@ impl Plugin for HandUiPlugin {
                         handle_submit_button_click_system,
                         tick_placement_timer_system,
                         apply_placement_drag_highlights_system,
+                        // PROMPT 696 / HU-DRAG-04: HandDragSprite Node trails the
+                        // cursor every frame while the drag is live. Placed in
+                        // StateSync so it runs after the Input set has already
+                        // updated `active_drag.cursor_world_position` from the
+                        // produced `HandUiPlacementCursorMoved` messages.
+                        sync_hand_drag_sprite_position_system,
                         sync_placement_disclosure_guidance_system,
                         tick_pending_purchase_timeouts_system,
                         apply_fan_layout_system,
@@ -2125,6 +2146,116 @@ pub fn handle_placement_drag_ended_system(
 
         active_drag.clear();
         disclosure_state.step = PlacementDisclosureStep::CardSelection;
+    }
+}
+
+/// PROMPT 696 / HU-DRAG-01 — Producer for `HandUiPlacementDragStarted`.
+///
+/// Reads `bevy_picking`'s buffered `Pointer<Press>` messages, filters to the
+/// primary mouse button targeting a `FanSlotIndex` entity during
+/// `HandUiMode::Staging`, and emits the start message that the existing
+/// `handle_placement_drag_started_system` already consumes. The producer was
+/// the proven feature-gap in PROMPT 683 Phase 2: the drag sprite, consumers,
+/// and resources were all wired, but nothing was emitting these starts during
+/// gameplay.
+pub fn produce_fan_slot_drag_started_from_pointer_press_system(
+    mode: Res<HandUiMode>,
+    board_view: Res<PlacementBoardView>,
+    mut presses: MessageReader<Pointer<Press>>,
+    fan_slots: Query<(), (With<FanSlotIndex>, With<HandSlotCard>)>,
+    mut writer: MessageWriter<HandUiPlacementDragStarted>,
+) {
+    if *mode != HandUiMode::Staging {
+        for _ in presses.read() {}
+        return;
+    }
+    for press in presses.read() {
+        if press.button != PointerButton::Primary {
+            continue;
+        }
+        if fan_slots.get(press.entity).is_err() {
+            continue;
+        }
+        writer.write(HandUiPlacementDragStarted {
+            card: press.entity,
+            owner_id: board_view.local_player_id,
+        });
+    }
+}
+
+/// PROMPT 696 / HU-DRAG-02 — Producer for `HandUiPlacementCursorMoved`.
+///
+/// While an `ActivePlacementDrag` is live, forwards every buffered `Pointer<Move>`
+/// position to the cursor-moved message. Entity-agnostic on purpose: cursor
+/// position must continue to update once the cursor leaves the fan slot and
+/// passes over the board, which is the entire point of the drag flow.
+pub fn produce_drag_cursor_moved_from_pointer_move_system(
+    active_drag: Res<ActivePlacementDrag>,
+    mut moves: MessageReader<Pointer<Move>>,
+    mut writer: MessageWriter<HandUiPlacementCursorMoved>,
+) {
+    if !active_drag.is_active() {
+        for _ in moves.read() {}
+        return;
+    }
+    for ev in moves.read() {
+        writer.write(HandUiPlacementCursorMoved {
+            world_position: Some(ev.pointer_location.position),
+        });
+    }
+}
+
+/// PROMPT 696 / HU-DRAG-03 — Producer for `HandUiPlacementDragEnded`.
+///
+/// Closes the drag on the first primary-button `Pointer<Release>` while an
+/// `ActivePlacementDrag` is live. Entity-agnostic so that releases over the
+/// board, fan plate, or empty viewport space all terminate the drag — the
+/// downstream `handle_placement_drag_ended_system` decides whether the drop
+/// resolves to an Instant fan-plate target or no-op (PROMPT 697 handles board
+/// cell drops in a follow-up scope).
+pub fn produce_drag_ended_from_pointer_release_system(
+    active_drag: Res<ActivePlacementDrag>,
+    mut releases: MessageReader<Pointer<Release>>,
+    mut writer: MessageWriter<HandUiPlacementDragEnded>,
+) {
+    if !active_drag.is_active() {
+        for _ in releases.read() {}
+        return;
+    }
+    let mut emitted = false;
+    for ev in releases.read() {
+        if ev.button != PointerButton::Primary {
+            continue;
+        }
+        if emitted {
+            continue;
+        }
+        writer.write(HandUiPlacementDragEnded);
+        emitted = true;
+    }
+}
+
+/// PROMPT 696 / HU-DRAG-02, HU-DRAG-04 — Per-frame follow for the drag sprite.
+///
+/// Mirrors `ActivePlacementDrag::cursor_world_position` (a viewport-space
+/// `Vec2` despite the legacy field name) onto the `HandDragSprite` UI node.
+/// `handle_placement_drag_started_system` flips visibility to `Visible` on
+/// drag start and `handle_placement_drag_ended_system` flips it back to
+/// `Hidden`; this system only touches `Node.left` / `Node.top` so the sprite
+/// trails the cursor for as long as the drag is active.
+pub fn sync_hand_drag_sprite_position_system(
+    active_drag: Res<ActivePlacementDrag>,
+    mut drag_sprite: Query<&mut Node, With<HandDragSprite>>,
+) {
+    if !active_drag.is_active() {
+        return;
+    }
+    let Some(position) = active_drag.cursor_world_position else {
+        return;
+    };
+    for mut node in &mut drag_sprite {
+        node.left = Val::Px(position.x);
+        node.top = Val::Px(position.y);
     }
 }
 
