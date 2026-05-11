@@ -2019,26 +2019,75 @@ pub fn handle_placement_cursor_moved_system(
 pub fn handle_placement_drag_ended_system(
     mode: Res<HandUiMode>,
     viewport: Res<HandFanViewport>,
+    board_layout: Option<Res<BoardLayout>>,
     entities: Option<Res<HandUiEntities>>,
     mut ends: MessageReader<HandUiPlacementDragEnded>,
     mut active_drag: ResMut<ActivePlacementDrag>,
     mut disclosure_state: ResMut<PlacementDisclosureState>,
     fan_plates: Query<&Node, With<FanPlateDropZone>>,
+    objectives: Query<(&ObjectiveCell, Option<&ObjectiveAlive>)>,
+    target_units: Query<(&PlacementTargetUnit, &GlobalTransform)>,
     mut drops: MessageWriter<HandUiPlacementDropResolved>,
 ) {
     for _end in ends.read() {
-        if *mode == HandUiMode::Staging
-            && active_drag.target_kind == Some(PlacementTargetKind::Instant)
-        {
-            let target = entities
-                .as_ref()
-                .and_then(|entities| fan_plates.get(entities.fan_root).ok())
-                .and_then(|node| {
-                    active_drag
-                        .cursor_world_position
-                        .filter(|cursor| cursor_over_fan_plate(*cursor, node, *viewport))
-                })
-                .map(|_cursor| PlayTarget::Instant);
+        if *mode == HandUiMode::Staging {
+            // Resolve the drop target by target_kind. PROMPT 683 Phase 4 proved
+            // the prior Instant-only gate dropped Minion/TargetObj/LaneWide/
+            // TargetUnit drag-ends on the floor before reaching stage_or_update.
+            let target = match active_drag.target_kind {
+                Some(PlacementTargetKind::Instant) => entities
+                    .as_ref()
+                    .and_then(|entities| fan_plates.get(entities.fan_root).ok())
+                    .and_then(|node| {
+                        active_drag
+                            .cursor_world_position
+                            .filter(|cursor| cursor_over_fan_plate(*cursor, node, *viewport))
+                    })
+                    .map(|_cursor| PlayTarget::Instant),
+                Some(PlacementTargetKind::Minion) => board_layout
+                    .as_deref()
+                    .zip(active_drag.cursor_world_position)
+                    .and_then(|(layout, cursor)| cursor_to_lane_cell(cursor, layout))
+                    .map(|(lane, cell)| PlayTarget::BoardCell { lane, cell }),
+                Some(PlacementTargetKind::LaneWide) => board_layout
+                    .as_deref()
+                    .zip(active_drag.cursor_world_position)
+                    .and_then(|(layout, cursor)| cursor_to_lane_cell(cursor, layout))
+                    .map(|(lane, _cell)| PlayTarget::LaneWide { lane }),
+                Some(PlacementTargetKind::TargetObj) => board_layout
+                    .as_deref()
+                    .zip(active_drag.cursor_world_position)
+                    .and_then(|(layout, cursor)| cursor_to_lane_cell(cursor, layout))
+                    .and_then(|(lane, _cell)| {
+                        objectives.iter().find_map(|(objective, alive)| {
+                            (objective.lane == lane && alive.is_some()).then_some(
+                                PlayTarget::TargetObj {
+                                    player_id: objective.player_id,
+                                    lane: objective.lane,
+                                },
+                            )
+                        })
+                    }),
+                Some(PlacementTargetKind::TargetUnit) => board_layout
+                    .as_deref()
+                    .zip(active_drag.cursor_world_position)
+                    .and_then(|(layout, cursor)| {
+                        target_units.iter().find_map(|(unit, transform)| {
+                            if cursor_over_unit(cursor, transform, layout) {
+                                let unit_position = transform.translation().truncate();
+                                cursor_to_lane_cell(unit_position, layout).map(|(lane, _cell)| {
+                                    PlayTarget::TargetUnit {
+                                        lane,
+                                        unit_id: unit.unit_id,
+                                    }
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                    }),
+                None => None,
+            };
 
             if let (Some(card), Some(owner_id)) = (active_drag.card, active_drag.owner_id) {
                 drops.write(HandUiPlacementDropResolved {
@@ -3607,6 +3656,21 @@ fn val_px(value: Val) -> Option<f32> {
     match value {
         Val::Px(px) => Some(px),
         _ => None,
+    }
+}
+
+fn cursor_to_lane_cell(cursor: Vec2, layout: &BoardLayout) -> Option<(u8, u8)> {
+    if layout.cell_width <= 0.0 || layout.lane_height <= 0.0 {
+        return None;
+    }
+    let cell = ((cursor.x - layout.board_origin.x) / layout.cell_width).round() as i32 + 1;
+    let lane = ((layout.board_origin.y - cursor.y) / layout.lane_height).round() as i32 + 1;
+    if (1..=i32::from(BOARD_LANE_COUNT)).contains(&lane)
+        && (1..=i32::from(BOARD_CELL_COUNT)).contains(&cell)
+    {
+        Some((lane as u8, cell as u8))
+    } else {
+        None
     }
 }
 
