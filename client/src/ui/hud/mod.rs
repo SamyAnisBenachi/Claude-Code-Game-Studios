@@ -1184,7 +1184,7 @@ pub fn sync_dot_image_on_objective_destroyed_system(
 /// `Visibility` to `Visible` while `Phase::Resolution`, `Hidden` otherwise.
 ///
 /// Reads `Res<CurrentClientPhase>` only (the resource populated by the existing
-/// single `phase_sink_system`); never reads `MessageReceiver<S2CPhaseChanged>`
+/// single `phase_sink_system`); never reads the `S2CPhaseChanged` receiver
 /// directly, never writes to `CurrentClientPhase`, never emits a synthetic
 /// `S2CPhaseChanged`. Guarantees the single-source-of-phase-truth invariant
 /// (TR-HUD-006 + ADR-002).
