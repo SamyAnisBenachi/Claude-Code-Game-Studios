@@ -137,6 +137,7 @@ fn app_with_hand_ui_in_placement() -> App {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
     app.add_plugins(HandUiPlugin);
+    app.init_state::<ClientState>();
     app.insert_resource(BoardLayout {
         board_origin: Vec2::ZERO,
         cell_width: 64.0,

@@ -22,5 +22,6 @@ fn main() {
         BoardRenderingPlugin,
         BoardRenderingPerfHarnessPlugin,
     ));
+    app.init_state::<client::state::ClientState>();
     app.run();
 }
