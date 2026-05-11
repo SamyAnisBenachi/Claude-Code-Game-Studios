@@ -76,17 +76,26 @@ fn hu_03b_zero_cards_skips_formula_hides_slots_and_keeps_submit_active() {
 
 #[test]
 fn layout_system_applies_formula_to_visible_pooled_slots() {
+    // PROMPT 671 — coord-space update: `apply_fan_layout_system` writes
+    // `transform.translation.y` from `metrics_for_viewport`, which now produces
+    // LOCAL-to-fan_root coords (fan_base_y = HAND_FAN_STRIP_HEIGHT_PX -
+    // fan_base_margin_px = 260 - 100 = 160 at the inserted 800x600 viewport).
+    // The pure-formula tests above (hu_02/hu_02b/hu_03) still use
+    // `qa_metrics().fan_base_y = 500` because they feed the metric directly
+    // into `compute_fan_slot_layout` — they prove formula math, not screen
+    // anchoring. THIS test exercises the system end-to-end, so the asserted
+    // y-values must match the new LOCAL base.
     let mut app = app_with_hand_ui_in_session(5);
     app.update();
 
     let center = slot_transform(&mut app, 2);
     assert_approx(center.translation.x, 400.0);
-    assert_approx(center.translation.y, 500.0);
+    assert_approx(center.translation.y, 160.0);
     assert_approx(center.rotation.to_euler(EulerRot::XYZ).2, 0.0);
 
     let rightmost = slot_transform(&mut app, 4);
     assert_approx(rightmost.translation.x, 680.0);
-    assert_approx(rightmost.translation.y, 490.0);
+    assert_approx(rightmost.translation.y, 150.0);
     assert_approx(
         rightmost.rotation.to_euler(EulerRot::XYZ).2,
         -10.0_f32.to_radians(),

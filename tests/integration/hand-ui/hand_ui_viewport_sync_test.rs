@@ -10,7 +10,7 @@ use client::presentation::PlayerEconomyView;
 use client::state::{ClientState, CurrentClientPhase};
 use client::ui::hand::{
     FanSlotIndex, HandCardCatalog, HandContents, HandFanLayoutConfig, HandFanViewport,
-    HandUiCardAcquiredReceived, HandUiPlugin, HandUiTimingConfig,
+    HandUiCardAcquiredReceived, HandUiPlugin, HandUiTimingConfig, HAND_FAN_STRIP_HEIGHT_PX,
 };
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::RoundPhase;
@@ -18,17 +18,18 @@ use shared::protocol::RoundPhase;
 #[path = "../../test_helpers.rs"]
 mod test_helpers;
 
-// Verdict 3 — Suspect 1 PROVEN: HandFanViewport had no writer system, so
-// metrics_for_viewport always anchored the fan to the 800x600 default. This
-// test spawns a (Window, PrimaryWindow) at 1920x1080, runs HandUiPlugin, and
-// asserts:
-//   1. sync_hand_fan_viewport_from_window_system overwrites the default with
-//      the live primary-window dimensions.
-//   2. apply_fan_layout_system, downstream of the viewport sync, places the
-//      pre-pooled fan slots at the formula positions for 1920x1080 - not the
-//      stale 800x600 base. AC-HU-02 / AC-HU-02b / AC-HU-03b assume a
-//      runtime-screen-anchored fan; without the writer this assumption was
-//      silently violated whenever the actual window size differed from 800x600.
+// Verdict 3 (PROMPT 642) plus Verdict A (PROMPT 669) — two invariants gated
+// here:
+//   1. sync_hand_fan_viewport_from_window_system overwrites the 800x600 default
+//      `HandFanViewport` with the live primary-window dimensions (the original
+//      Verdict 3 fix).
+//   2. apply_fan_layout_system places the pre-pooled fan slots in
+//      `HandFanRoot` LOCAL coord space — Node.left uses viewport-X (the strip
+//      is full-width), Node.top uses HAND_FAN_STRIP_HEIGHT_PX -
+//      fan_base_margin_px (NOT viewport.height - margin). Pre-PROMPT-671
+//      `fan_base_y` was viewport-Y, which placed the children off-screen at
+//      anything larger than ~600px because they are ChildOf(fan_root) and
+//      fan_root sits at viewport bottom with height 260.
 const ACQUIRED_CARD_COUNT: usize = 3;
 const FIRST_ACQUIRED_CARD_ID: u32 = 50;
 const VIEWPORT_WIDTH_PX: f32 = 1920.0;
@@ -70,7 +71,11 @@ fn viewport_sync_anchors_fan_layout_to_primary_window_at_1920_1080() {
 
     let config = *app.world().resource::<HandFanLayoutConfig>();
     let fan_center_x = VIEWPORT_WIDTH_PX / 2.0;
-    let fan_base_y = VIEWPORT_HEIGHT_PX - config.fan_base_margin_px;
+    // LOCAL-to-fan_root coord per PROMPT 671 / Verdict A: fan_base_y is the
+    // distance DOWN from the strip's top edge, not from the viewport's top
+    // edge. Children are ChildOf(fan_root) so this is the only on-screen base
+    // that keeps slots inside the bottom-anchored 260px strip.
+    let fan_base_y = HAND_FAN_STRIP_HEIGHT_PX - config.fan_base_margin_px;
 
     // count=3 -> t values are -1, 0, +1
     let expectations: [(u8, f32, f32); ACQUIRED_CARD_COUNT] = [

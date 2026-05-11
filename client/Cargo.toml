@@ -159,6 +159,10 @@ name = "hand_ui_viewport_sync_test"
 path = "../tests/integration/hand-ui/hand_ui_viewport_sync_test.rs"
 
 [[test]]
+name = "hand_ui_slot_onscreen_test"
+path = "../tests/integration/hand-ui/hand_ui_slot_onscreen_test.rs"
+
+[[test]]
 name = "hud_phase_label_round_counter_test"
 path = "../tests/unit/hud/phase_label_round_counter_test.rs"
 
