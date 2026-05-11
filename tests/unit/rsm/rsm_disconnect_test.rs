@@ -3,8 +3,8 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use server::core::rsm::{
-    AbortAuction, BroadcastPhaseChanged, GameOverEmitted, PlayerDisconnected, PlayerHeartbeat,
-    PlayerReconnected, ResolutionComplete, RoundPhase, RoundState, RsmPlugin,
+    AbortAuction, AuctionSettled, BroadcastPhaseChanged, GameOverEmitted, PlayerDisconnected,
+    PlayerHeartbeat, PlayerReconnected, ResolutionComplete, RoundPhase, RoundState, RsmPlugin,
 };
 use server::core::session::SessionConfig;
 use server::foundation::config::GameConfig;
@@ -38,6 +38,8 @@ fn app_with_rsm(phase: RoundPhase) -> App {
     let players = [player(1), player(2)];
     let mut app = App::new();
     app.add_plugins(RsmPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(GameConfig(shared::config::GameConfig::default()));
     app.insert_resource(session_config(&players));
     app.insert_resource(Time::<()>::default());

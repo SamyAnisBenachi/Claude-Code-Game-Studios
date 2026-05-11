@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use server::core::economy::{EconomyPlugin, InterestSnapshots, PlayerEconomies, S2CGoldUpdate};
-use server::core::rsm::{DraftStarted, RsmPlugin};
+use server::core::rsm::{AuctionSettled, DraftStarted, ResolutionComplete, RsmPlugin};
 use server::core::session::{GameSessionPlugin, SessionConfig, SessionReady};
 use server::foundation::config::GameConfig;
 use server::foundation::rng::ServerRng;
@@ -51,6 +51,8 @@ fn test_economy_round_trace_rounds_one_to_three() {
     app.add_plugins(RsmPlugin);
     app.add_plugins(GameSessionPlugin);
     app.add_plugins(EconomyPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(GameConfig(shared::config::GameConfig::default()));
     app.insert_resource(session_config(&players));
     app.insert_resource(ServerRng::new());

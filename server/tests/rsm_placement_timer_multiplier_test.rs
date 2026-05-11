@@ -3,7 +3,8 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use server::core::rsm::{
-    BroadcastPhaseChanged, PhaseAdvanceRequest, RoundPhase, RoundState, RsmPlugin,
+    AuctionSettled, BroadcastPhaseChanged, PhaseAdvanceRequest, ResolutionComplete, RoundPhase,
+    RoundState, RsmPlugin,
 };
 use server::core::session::SessionConfig;
 use server::foundation::config::GameConfig;
@@ -35,6 +36,8 @@ fn game_config() -> GameConfig {
 fn app_with_rsm(phase: RoundPhase, round_number: u32, multiplier: PlacementTimerMultiplier) -> App {
     let mut app = App::new();
     app.add_plugins(RsmPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(Time::<()>::default());
     app.insert_resource(game_config());
     app.insert_resource(session_config(multiplier));

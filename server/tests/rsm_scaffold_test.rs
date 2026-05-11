@@ -26,6 +26,8 @@ fn test_round_state_resource_initializes_to_lobby() {
 fn test_rsm_plugin_registers_round_state_and_messages() {
     let mut app = App::new();
     app.add_plugins(RsmPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.finish();
     app.cleanup();
 

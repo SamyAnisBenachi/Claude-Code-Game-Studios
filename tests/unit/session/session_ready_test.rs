@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use server::core::rsm::{RoundPhase, RoundState, RsmNetworkOutbox, RsmPlugin};
+use server::core::rsm::{
+    AuctionSettled, ResolutionComplete, RoundPhase, RoundState, RsmNetworkOutbox, RsmPlugin,
+};
 use server::core::session::{
     confirm_class, create_room, f4_session_ready, join_room, ActiveSessions, ClassSelections,
     CreateRoomOutcome, GameSessionPlugin, JoinRoomOutcome, LobbyDeadline, LobbyHeartbeats,
@@ -50,6 +52,8 @@ fn ready_app() -> App {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(RsmPlugin);
     app.add_plugins(GameSessionPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(server::foundation::config::GameConfig(
         shared::config::GameConfig::default(),
     ));
@@ -145,6 +149,8 @@ fn test_room_session_ready_promotes_ready_room_into_draft_initial() {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(RsmPlugin);
     app.add_plugins(GameSessionPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(server::foundation::config::GameConfig(
         shared::config::GameConfig::default(),
     ));

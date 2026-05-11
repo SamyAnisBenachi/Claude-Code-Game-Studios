@@ -40,6 +40,8 @@ fn app_with_rsm(phase: RoundPhase, round_number: u32) -> App {
     let mut app = App::new();
     app.add_plugins(RsmPlugin);
     app.add_plugins(GameSessionPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(GameConfig(shared::config::GameConfig::default()));
     app.insert_resource(session_config(&players));
     app.insert_resource(ServerRng::new());
