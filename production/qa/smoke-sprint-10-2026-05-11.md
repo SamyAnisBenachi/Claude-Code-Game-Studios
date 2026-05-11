@@ -340,3 +340,119 @@ Option A is the immediate unblock for Sprint 10 close-out smoke; Option B is the
 - Companion fixture commit (incomplete sweep): `bc2d324` `test(fixtures): register AuctionSettled + ResolutionComplete messages in 8 test apps (S11-TD-FIXTURE-MESSAGES-001)`.
 - CI runs verified: `25675181918` (`59ba55e`), `25675565018` (`2b174a6` — HEAD). Both `failure`, both fail at `economy_draft_subscriber_test`, no other failures upstream or downstream.
 - Last green CI on `main`: still `1d683bb` at 2026-05-07 22:54 UTC (no green run on main since `b780f0e` S10-POLISH-001 integration).
+
+---
+
+## Retry 3 post-713 (PROMPT 714)
+
+**Date**: 2026-05-11 (UTC)
+**Invoked at**: origin/main HEAD `8f76b06` (`test(fixtures): register AuctionSettled + ResolutionComplete in economy_draft_subscriber_test (PROMPT 712 / S11-TD-FIXTURE-MESSAGES-001 tail)`).
+**Argument**: `sprint`
+**Trigger**: PROMPT 714 — re-run `/smoke-check sprint` after the full close-out chain:
+ - CI guard fix at `3a283c9` (PROMPT 686, doc-comment reword)
+ - Idempotent-confirm refinement at `59ba55e` (PROMPT 703, same-class confirm is noop)
+ - Stale-assertion fix at `2b174a6` (PROMPT 705, lobby_entry test aligned with Sprint 3 contract)
+ - Economy fixture tail fix at `8f76b06` (PROMPT 712, economy_draft_subscriber_test message registration)
+
+### Verdict: FAIL (FOURTH distinct root cause — same fixture-gap family, different sibling test target)
+
+The PROMPT 712 fixture registration **successfully** clears the `economy_draft_subscriber_test` 7/7 failures from PROMPT 708. All 7 tests in that target now pass deterministically on `8f76b06`. **A new failure surface immediately exposes** in a sibling economy test target — `economy_round_trace_test` — with the identical fixture-gap root cause pattern previously diagnosed at PROMPT 708. This is the same class of defect (Option B from PROMPT 708 — audit ALL `server/tests/*.rs` test apps for missing `MessageReader<T>` initializations) recurring in another sibling that was not in `bc2d324`'s 8-app sweep and was not in `8f76b06`'s single-file tail patch.
+
+### CI run verified
+
+| Run ID | Commit | Conclusion | Source-guard | Run server tests | Stage that failed |
+|---|---|---|---|---|---|
+| `25677965069` | `8f76b06` (PROMPT 712 — origin/main HEAD) | failure | PASS ✅ | FAIL ❌ | `economy_round_trace_test` — 0/1 (1 panic on `MessageReader<ResolutionComplete>` validation) |
+
+Confirmed progression vs PROMPT 708:
+- `economy_draft_subscriber_test` — was 0/7, **now 7/7 PASS** ✅ (PROMPT 712 fix worked exactly as designed)
+- `economy_interest_snapshot_test` — 7/7 PASS ✅ (already covered by `bc2d324`)
+- `economy_network_dispatch_test` — 4/4 PASS ✅
+- `economy_round_trace_test` — **0/1 FAIL ❌** (NEW failure; previously masked by upstream cascade)
+
+All upstream test targets in the `Run server tests` cargo invocation passed before reaching `economy_round_trace_test`; the run-list ordering exposed it deterministically.
+
+### New failure (now exposed by economy_draft fixture-gap fix)
+
+- **`server::tests::economy_round_trace_test::test_economy_round_trace_rounds_one_to_three`** in [server/tests/economy_round_trace_test.rs:46-47](server/tests/economy_round_trace_test.rs#L46-L47) — panicked.
+
+  Panic signature (identical class to PROMPT 708):
+
+  > `thread 'Compute Task Pool (1)' panicked at bevy_ecs-0.18.1/src/error/handler.rs:125:1: Encountered an error in system `server::core::economy::system::on_resolution_complete`: Parameter `MessageReader<'_, '_, ResolutionComplete>::messages` failed validation: Message not initialized`
+
+- **Root cause**: The test app at [server/tests/economy_round_trace_test.rs:49-56](server/tests/economy_round_trace_test.rs#L49-L56) is built via `App::new() + MinimalPlugins + RsmPlugin + GameSessionPlugin + EconomyPlugin` but never calls `app.add_message::<ResolutionComplete>()` (nor `app.add_message::<AuctionSettled>()`). `EconomyPlugin`'s `on_resolution_complete` system has a `MessageReader<ResolutionComplete>` parameter; in Bevy 0.18 the param validation fires on first system run and panics if the message type is not initialized on the test app's `World`. Confirmed by grep against the file: zero `add_message` calls present.
+- **Why this only surfaces now**: At PROMPT 708 the `economy_draft_subscriber_test` 7/7 panics happened first in the same `Run server tests` stage and `cargo test` exited non-zero before any downstream test binary ran. PROMPT 712 patched the draft subscriber test, so the runner now reaches `economy_round_trace_test`, where the same fixture-gap deterministically panics.
+- **Companion commit context (now confirmed as 3-step incomplete sweep)**:
+  - `bc2d324` patched 8 test apps (S11-TD-FIXTURE-MESSAGES-001 — origin).
+  - `8f76b06` patched `economy_draft_subscriber_test` (PROMPT 712 — TAIL 1).
+  - **`economy_round_trace_test` remains unpatched** (TAIL 2 — newly surfaced; companion to PROMPT 708's Option B recommendation).
+- **Functional impact**: **zero on game runtime behavior**. Production `EconomyPlugin` registers the `ResolutionComplete` message via `RsmPlugin` in the real server binary path; this is exclusively a test-harness initialization gap in one test target.
+
+### CI stages that now run vs PROMPT 708
+
+All stages reached, with the same `set -euo pipefail` cascade behavior after the server-tests FAIL:
+
+- ✅ Check Board Rendering source guards
+- ✅ Check shared crate
+- ✅ E2E WebSocket round-trip
+- ❌ Run server tests (1 economy_round_trace_test fixture panic — root cause above; ALL other server test targets PASS including former PROMPT 708 failure target)
+- — Run shared tests (SKIPPED by `set -euo pipefail` after server-test FAIL)
+- — Check RSM single-writer invariant (SKIPPED)
+- — Check shared/ purity (SKIPPED)
+- — WASM bundle size check (cascade SKIPPED)
+
+### Phase 3 — Test Coverage delta vs PROMPT 708
+
+No new MISSING entries against the Sprint 10 critical-path table. All Sprint 10 Logic/Integration stories (PAW close-out, TD fixtures, HUD/SAU/Lobby chrome, ECO-004 reward loop, Finding D lobby fix, Finding B v2 V3 hand-fan) still have test files on disk and remain COVERED. The failing target is the **3rd-of-3** companion in the economy test family — its 1 test asserts plugin-bootstrap-time gold-event-trace wiring across rounds 1-3 under an inadequately initialized test app. The ECO-004 reward loop integration test (`tests/integration/economy/reward_loop_awards_test.rs`) lives in a different test target and was not exercised because of the cascade — its CI-verified status remains unknown post-fix.
+
+### Phase 4 — Manual Smoke Checks
+
+Not run. Phase 2 returned a deterministic CI failure under the skill's first-matching-rule verdict logic. Per PROMPT 714 Phase 4: "If FAIL with a 4th root cause → STOP and surface." `/gate-check` (PROMPT 715) **NOT fired** from this report.
+
+### Required remediation before re-running `/smoke-check`
+
+A single zero-game-impact change must land on `main`:
+
+**Option A (recommended — minimal surface; mirrors `8f76b06` pattern)** — Add `app.add_message::<AuctionSettled>(); app.add_message::<ResolutionComplete>();` to the test-app constructor at [server/tests/economy_round_trace_test.rs:49-56](server/tests/economy_round_trace_test.rs#L49-L56). Identical pattern to what `8f76b06` applied to `economy_draft_subscriber_test`. Estimate ≤ 0.05 d. Carries WHACK-A-MOLE risk: the next-in-list sibling test target might also be missing the registration and surface as root cause #5.
+
+**Option B (recommended for durability — addresses Option B from PROMPT 708 that was deferred)** — Sweep every `server/tests/*.rs` and `client/tests/*.rs` test app for missing `app.add_message::<T>()` initializations against every `MessageReader<T>` consumed by registered plugins (`EconomyPlugin`, `GameSessionPlugin`, `RsmPlugin`, and any other plugin under test). The fact that the same root-cause class has now recurred TWICE in the close-out chain (PROMPT 708 → 712 → 714) is strong evidence that surgical single-file patches are inadequate. Estimate 0.25 d — file as `S11-TD-FIXTURE-MESSAGES-002` Sprint 11 tech-debt story.
+
+Given the WHACK-A-MOLE recurrence, **Option B is strongly preferred** even though it is slightly larger surface. Option A unblocks Sprint 10 close-out smoke immediately but does not de-risk the next retry.
+
+### Carry state (unchanged)
+
+- Sprint 9 closed-with-conditions; **Sprint 10 close-out NOT claimed** (now blocked on a fourth root cause across the close-out chain: source-guard false positive [fixed at `3a283c9`] → stale idempotent-confirm assertions [fixed at `59ba55e` + `2b174a6`] → economy_draft test-fixture message-registration gap [fixed at `8f76b06`] → economy_round_trace test-fixture message-registration gap [open at HEAD `8f76b06`]).
+- S8-QA-001-W1 manual/browser two-client GAME_OVER gap remains open.
+- QA-COND-0005 (Standard-tier accessibility) accepted-risk friend-game scope.
+- QA-COND-0006 (playtest fun-hypothesis validation) accepted-risk / deferred.
+- No public release readiness, release-candidate readiness, broad accessibility completion, full game completion, playtest validation, or full playable-client manual QA claimed.
+
+### Skill-compliant gate handoff
+
+> The smoke check failed (fourth distinct root cause across PROMPT 674 → 687 → 708 → 714; same fixture-gap family as PROMPT 708, sibling test file). Do not hand off to QA until this failure is resolved:
+> - `server::tests::economy_round_trace_test::test_economy_round_trace_rounds_one_to_three` — 1/1 panic on `MessageReader<ResolutionComplete>` validation; test-harness fixture gap (sibling of `bc2d324` + `8f76b06` sweep); production code path unaffected.
+>
+> Fix per Option A (surgical) or Option B (sweep — strongly preferred given WHACK-A-MOLE history) and re-run `/smoke-check sprint` before any subsequent `/team-qa` re-run or `/gate-check` re-attempt. **`/gate-check` retry (PROMPT 715) is NOT fired from this report**, per PROMPT 714 Phase 4 stop-on-FAIL clause.
+
+### Cross-references
+
+- Previous retry (PROMPT 708): root cause was `economy_draft_subscriber_test` 7/7 fixture-gap panics. Fixed at `8f76b06` (PROMPT 712 — verified PASS on this retry's CI run).
+- PROMPT 712 fix commit: `8f76b06` `test(fixtures): register AuctionSettled + ResolutionComplete in economy_draft_subscriber_test (PROMPT 712 / S11-TD-FIXTURE-MESSAGES-001 tail)`.
+- New failing test file (this retry): [server/tests/economy_round_trace_test.rs](server/tests/economy_round_trace_test.rs) — 108 lines, single `#[test]` `test_economy_round_trace_rounds_one_to_three`, no `add_message` calls present.
+- Sibling commit pattern for Option A: `8f76b06` against `economy_draft_subscriber_test.rs:54-55,80-81`.
+- Original sweep commit (incomplete): `bc2d324` `test(fixtures): register AuctionSettled + ResolutionComplete messages in 8 test apps (S11-TD-FIXTURE-MESSAGES-001)`.
+- CI run verified: `25677965069` (`8f76b06`) — `failure`. Failing stage: `Run server tests`. Failing target: `economy_round_trace_test`.
+- Last green CI on `main`: still `1d683bb` at 2026-05-07 22:54 UTC (no green run on main since `b780f0e` S10-POLISH-001 integration; close-out chain now in WAVE 4 of de-risk).
+
+---
+
+## Aggregate close-out chain summary (as of PROMPT 714)
+
+| Pass | Root cause | Fix landed | Verified PASS on |
+|---|---|---|---|
+| PROMPT 674 | CI source-invariant guard false-positive (HUD doc comment matched `MessageReceiver<S2CPhaseChanged>` regex) | `3a283c9` (PROMPT 686) | All subsequent CI runs |
+| PROMPT 687 | Stale `duplicate_confirm_with_same_class_is_silent_idempotent_noop` assertion vs Finding D (217428a) semantics | `59ba55e` (PROMPT 703) + `2b174a6` (PROMPT 705 lobby_entry companion) | CI runs `25677965069` and later — assertion now passes |
+| PROMPT 708 | `economy_draft_subscriber_test` 7/7 — missing `add_message::<ResolutionComplete>()` (S11-TD-FIXTURE-MESSAGES-001 tail-of-batch gap) | `8f76b06` (PROMPT 712) | CI run `25677965069` — 7/7 PASS |
+| PROMPT 714 (this retry) | `economy_round_trace_test` 1/1 — same fixture-gap family in sibling test file (NOT in `bc2d324` 8-app sweep, NOT in `8f76b06` single-file tail) | OPEN | — |
+
+The aggregate signal: the close-out chain has surfaced 3 distinct game-impact-zero blockers since PROMPT 674, all converging on test-harness hygiene rather than game-runtime regressions. The Sprint 10 delivered features themselves (HUD/SAU/Lobby chrome MVPs, Finding D lobby fix, Finding B v2 V3 hand-fan fix, ECO-004 reward loop) remain CI-unverified on the integrated tip due to the `set -euo pipefail` cascade after each surface-level fixture gap. PROMPT 708's Option B recommendation (full audit sweep) is now the load-bearing remediation path.
