@@ -436,9 +436,13 @@ fn visible_grid_slots(app: &mut App) -> Vec<Entity> {
 }
 
 fn qa_metrics() -> FanLayoutMetrics {
+    // LOCAL-to-fan_root coords per PROMPT 671: fan_base_y is `HAND_FAN_STRIP_HEIGHT_PX
+    // - fan_base_margin_px` = 260 - 100 = 160 at the default 800x600 viewport used
+    // here (MinimalPlugins, no Window → HandFanViewport stays at default). Compared
+    // against `transform.translation.y` written by `apply_fan_layout_system`.
     FanLayoutMetrics {
         fan_center_x: 400.0,
-        fan_base_y: 500.0,
+        fan_base_y: 160.0,
         fan_half_spread: 280.0,
         arc_height: 10.0,
         max_rotation_deg: 10.0,

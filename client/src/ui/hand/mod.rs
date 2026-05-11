@@ -26,6 +26,11 @@ use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 pub const HAND_FAN_SLOT_COUNT: usize = 10;
+/// Height of the absolute-positioned `HandFanRoot` strip anchored to the bottom
+/// of the viewport. `metrics_for_viewport` produces fan child positions in this
+/// strip's LOCAL coord space (origin = top-left of the strip), so `fan_base_y`
+/// is offset down from the strip top, not from the viewport top.
+pub const HAND_FAN_STRIP_HEIGHT_PX: f32 = 260.0;
 pub const DRAFT_INITIAL_GRID_SLOT_COUNT: usize = 9;
 pub const RESERVE_STRIP_ENTITY_COUNT: usize = 4;
 pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT
@@ -525,10 +530,29 @@ pub struct FanLayoutMetrics {
 }
 
 impl HandFanLayoutConfig {
+    /// Compute fan layout metrics in the `HandFanRoot` LOCAL coord space.
+    ///
+    /// The fan_root strip spans `left:0 right:0` (full viewport width) and is
+    /// anchored to `bottom:0` with `height: HAND_FAN_STRIP_HEIGHT_PX`. Fan slot
+    /// `Node.left`/`Node.top` values are interpreted relative to the strip
+    /// origin (top-left of the strip), not the viewport origin:
+    ///
+    /// - `fan_center_x = viewport.width_px / 2.0` — the strip is full-width, so
+    ///   its local X axis matches the viewport X axis with no offset.
+    /// - `fan_base_y = HAND_FAN_STRIP_HEIGHT_PX - fan_base_margin_px` — offset
+    ///   measured DOWN from the strip's top edge. With defaults (260 − 100)
+    ///   that places the card center at local y=160, well inside the 260px
+    ///   strip regardless of viewport height.
+    ///
+    /// Earlier revisions returned `viewport.height_px - fan_base_margin_px`
+    /// (viewport-coords). Because each fan slot is `ChildOf(fan_root)`, the
+    /// child was effectively positioned at `viewport.height + (viewport.height
+    /// − margin − strip_height)`, i.e. off-screen at 1080p. See HU-02 Verdict A
+    /// reconciliation block.
     pub fn metrics_for_viewport(&self, viewport: HandFanViewport) -> FanLayoutMetrics {
         FanLayoutMetrics {
             fan_center_x: viewport.width_px / 2.0,
-            fan_base_y: viewport.height_px - self.fan_base_margin_px,
+            fan_base_y: HAND_FAN_STRIP_HEIGHT_PX - self.fan_base_margin_px,
             fan_half_spread: self.fan_half_spread_px,
             arc_height: self.arc_height_px,
             max_rotation_deg: self.max_rotation_deg,
@@ -2529,7 +2553,7 @@ pub fn spawn_hand_ui(
                 left: Val::Px(0.0),
                 right: Val::Px(0.0),
                 bottom: Val::Px(0.0),
-                height: Val::Px(260.0),
+                height: Val::Px(HAND_FAN_STRIP_HEIGHT_PX),
                 ..default()
             },
             Transform::default(),
