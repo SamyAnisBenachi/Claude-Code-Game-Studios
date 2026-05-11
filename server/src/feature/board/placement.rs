@@ -547,11 +547,15 @@ pub fn close_placement_phase(
             .collect(),
     };
 
-    if sender
-        .send::<S2CPlacementReveal, ReliableChannel>(&reveal, server, &NetworkTarget::All)
-        .is_err()
+    if let Err(e) =
+        sender.send::<S2CPlacementReveal, ReliableChannel>(&reveal, server, &NetworkTarget::All)
     {
-        return;
+        tracing::error!(
+            round_number,
+            placements_len = reveal.placements.len(),
+            err = ?e,
+            "S2C send failed: type=S2CPlacementReveal, handler=close_placement_phase"
+        );
     }
     trace.push(PlacementCommitTraceEntry::PlacementRevealEnqueued);
 
