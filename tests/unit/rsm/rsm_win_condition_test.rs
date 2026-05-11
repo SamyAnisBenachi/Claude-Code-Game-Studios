@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use server::core::objective_contract::ObjectiveCounters;
 use server::core::rsm::{
-    BroadcastPhaseChanged, DraftStarted, GameOverEmitted, PhaseAdvanceRequest, ResolutionComplete,
-    RoundPhase, RoundState, RsmPlugin,
+    AuctionSettled, BroadcastPhaseChanged, DraftStarted, GameOverEmitted, PhaseAdvanceRequest,
+    ResolutionComplete, RoundPhase, RoundState, RsmPlugin,
 };
 use server::core::session::SessionConfig;
 use server::foundation::config::GameConfig;
@@ -37,6 +37,8 @@ fn app_with_resolution_state(round_number: u32, destroyed: &[(PlayerId, u32)]) -
     let players = [player(1), player(2)];
     let mut app = App::new();
     app.add_plugins(RsmPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(GameConfig(shared::config::GameConfig::default()));
     app.insert_resource(session_config(&players));
     app.insert_resource(Time::<()>::default());
