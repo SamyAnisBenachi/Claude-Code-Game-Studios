@@ -159,6 +159,17 @@ pub fn hand_card_drag_start_system(
             continue;
         };
 
+        tracing::info!(
+            target: "drag_lift_tween_install",
+            request_card = ?request.card,
+            drag_sprite_entity = ?drag_sprite,
+            node_left = ?node.left,
+            node_top = ?node.top,
+            tween_offset_px = config.drag_lift_offset_px,
+            tween_ms = config.drag_lift_ms,
+            existing_animator = animator.is_some(),
+            "drag lift tween install"
+        );
         let tween = drag_lift_tween(node, config.drag_lift_ms, config.drag_lift_offset_px);
         install_tween(&mut commands, drag_sprite, animator, tween, true);
     }

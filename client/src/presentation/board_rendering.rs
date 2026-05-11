@@ -1634,7 +1634,14 @@ fn apply_snapshot_spawn_highlights(
         With<BoardCellNode>,
     >,
 ) {
-    for (_lane_cell, mut state, mut sprite) in board_cells.iter_mut() {
+    for (lane_cell, mut state, mut sprite) in board_cells.iter_mut() {
+        tracing::info!(
+            target: "spawn_highlight_caller",
+            caller = "apply_snapshot_spawn_highlights_clear",
+            lane = lane_cell.lane,
+            cell = lane_cell.cell,
+            "clearing spawn highlight to Inactive prior to snapshot reapply"
+        );
         set_spawn_highlight_state(&mut state, &mut sprite, SpawnHighlightState::Inactive);
     }
 
@@ -1673,6 +1680,17 @@ fn apply_player_spawn_highlight(
             *state
         };
 
+        tracing::info!(
+            target: "spawn_highlight_caller",
+            caller = "apply_player_spawn_highlight",
+            lane = lane_cell.lane,
+            cell = lane_cell.cell,
+            player_id = ?player_id,
+            edge = ?edge,
+            range,
+            next_state = ?next_state,
+            "applying player spawn highlight"
+        );
         set_spawn_highlight_state(&mut state, &mut sprite, next_state);
     }
 }
@@ -1686,6 +1704,14 @@ fn set_spawn_highlight_state(
         return;
     }
 
+    tracing::info!(
+        target: "spawn_highlight_state_change",
+        from_state = ?*state,
+        to_state = ?next_state,
+        from_color = ?sprite.color,
+        to_color = ?next_state.tint(),
+        "spawn highlight state change"
+    );
     *state = next_state;
     sprite.color = next_state.tint();
 }
@@ -2591,6 +2617,14 @@ fn spawn_cell_node(
     let world_xy = board_layout.cell_to_world(lane, cell);
     let highlight_state = SpawnHighlightState::Inactive;
 
+    tracing::info!(
+        target: "spawn_highlight_caller",
+        caller = "spawn_cell_node_default",
+        lane,
+        cell,
+        initial_state = ?highlight_state,
+        "spawning board cell with default Inactive highlight"
+    );
     commands.spawn((
         BoardRenderingEntity,
         BoardCellNode,

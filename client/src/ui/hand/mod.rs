@@ -1876,6 +1876,14 @@ pub fn handle_hand_fan_card_click_system(
             if let Some(target) =
                 default_click_stage_target(card.0, &catalog, *board_view, &board_cells, &objectives)
             {
+                tracing::info!(
+                    target: "fan_active_default_drop",
+                    card_entity = ?click.card,
+                    card_id = ?card.0,
+                    default_target = ?target,
+                    mode = ?*mode,
+                    "fan active default drop"
+                );
                 drop_writer.write(HandUiPlacementDropResolved {
                     card: click.card,
                     owner_id: board_view.local_player_id,
@@ -1986,6 +1994,16 @@ pub fn handle_placement_drag_started_system(
 
         active_drag.start(start.card, card.0, start.owner_id, target_kind);
         disclosure_state.step = PlacementDisclosureStep::TargetSelection { target_kind };
+        let prior_visibility = visibility_query.get(entities.drag_sprite).ok().copied();
+        tracing::info!(
+            target: "drag_sprite_visible_flip",
+            card_entity = ?start.card,
+            card_id = ?card.0,
+            prior_visibility = ?prior_visibility,
+            drag_sprite_entity = ?entities.drag_sprite,
+            target_kind = ?target_kind,
+            "drag sprite Visibility flip"
+        );
         set_visibility(
             entities.drag_sprite,
             Visibility::Visible,
@@ -2006,6 +2024,13 @@ pub fn handle_placement_cursor_moved_system(
     mut active_ghost_drag: ResMut<ActiveGhostUnstageDrag>,
 ) {
     for cursor_move in moves.read() {
+        tracing::debug!(
+            target: "placement_cursor_move",
+            cursor_world_position = ?cursor_move.world_position,
+            active_drag_is_active = active_drag.is_active(),
+            active_drag_card = ?active_drag.card,
+            "placement cursor move"
+        );
         if active_drag.is_active() {
             active_drag.cursor_world_position = cursor_move.world_position;
         }
