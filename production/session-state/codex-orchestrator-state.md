@@ -2824,3 +2824,156 @@ Finding B v2 V3 closure is NOT a Sprint 10 close-out blocker (it's a bug-fix cam
 - 652 = Test divergence repair (1920×1080 + Placement + Visibility + on-screen Y; optional Sprint 11)
 - 653 = V3 repair (drafted only after 651 + user trace capture)
 - 654 = Sprint 10 close-out skill chain (drafted after 649 + 650 land)
+
+---
+
+## State Snapshot 2026-05-11 wave 7 (Heavy-logging campaign complete + Finding D real root cause + Finding B v2 V3 root cause PROVEN — HEAD `b6c0128`)
+
+### Commits added to `main` since wave 6 (`c018829`)
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `bc0b5d1` | PROMPT 649 (bundled with 650) | `/story-done` S10-POLISH-003 + ECO-004 paperwork (joint commit due to interleaved write-race; both closures recorded together) |
+| `09aa6ce` | PROMPT 657 / cherry-pick 647 | Client tracing-subscriber init + LogPlugin disable (S11-TD-CLIENT-LOG-001 closed). Unblocks heavy-logging campaign. |
+| `7317cca` | PROMPT 658 / cherry-pick 653 | Heavy-logging W3 — 14 client Plugin::build() lifecycle info! lines |
+| `6c20175` | PROMPT 659 / cherry-pick 654 | Heavy-logging W4 — 8 tracing sites in server/src/core/rsm/transitions.rs (708-line RSM file closed 0-tracing gap) |
+| `4bca5a4` | PROMPT 660 / cherry-pick 655 | Heavy-logging W5 — 10 server source files, server hot paths + S2C send-Err drift wrap. Phase 2 scope corrected: 8/11 alleged drift sites already canonical (multi-line wraps mis-flagged by audit grep); only 2 combat sites actually wrapped. board/placement.rs:541 deferred to PROMPT 663. |
+| `2b38faa` | PROMPT 661 / cherry-pick 656 | Heavy-logging W6 test infra — 80 integration test files instrumented with tests/test_helpers.rs::init_test_tracing() (helper reused from 647 per ADR-OBS-002 deferred decision). Captured-tracing proof: rsm_f2_ordering_test failure now surfaces ERROR before panic (silent pre-fix). |
+| `cb805de` | PROMPT 664 / cherry-pick 662 | W5 drain-entry spam fix — c2s_activate_card per-frame log (~1700 lines/sec) refactored to per-message info! at network/mod.rs. Other 13 W5 drains already canonical. Out-of-scope finding: acquisition::system has separate per-frame spam pattern. |
+| `59b3aa6` | PROMPT 666 / cherry-pick 663 | board/placement.rs:541 wrap (deferred from W5). Logic-change AUTHORIZED: continue-on-error chosen — fixes latent stuck-state bug where return-on-error consumed resolution_entered events with no retry. Consistent with combat/mod.rs:735, 759 sister sites. |
+| `c1b6a11` | PROMPT 667 / cherry-pick 651 | Heavy-logging W1 — client state machines + state mutations + animation tracing. ~40 instrumentation sites across asset_wiring.rs, state/mod.rs, card_animations/queue.rs, ui/hand/mod.rs. Unblocks Finding B v2 V3 runtime diagnosis. |
+| `b6c0128` | PROMPT 668 / cherry-pick-retry 652 | Heavy-logging W2 — 27 S2C drain sites + 19 C2S send-entry sites (10 client files / +262 lines). First attempt (PROMPT 665) aborted on parallel-write race with W1; retry against c1b6a11 baseline succeeded with clean three-way merge on disjoint line ranges. |
+
+### Heavy-logging campaign — COMPLETE (6 worker clusters + 2 follow-ups)
+
+| Cluster | Source | Status |
+|---|---|---|
+| W1 (client SM + mutations + anim) | `c1b6a11` | ✅ on main |
+| W2 (client drains + C2S sends) | `b6c0128` | ✅ on main |
+| W3 (client plugin lifecycle) | `7317cca` | ✅ on main |
+| W4 (server RSM transitions) | `6c20175` | ✅ on main |
+| W5 (server hot paths + S2C drift) | `4bca5a4` | ✅ on main (scope-corrected: 8/11 already canonical) |
+| W6 (test infra adoption) | `2b38faa` | ✅ on main (80 integration tests instrumented) |
+| W5-fix (drain spam) | `cb805de` | ✅ on main |
+| board/placement.rs:541 wrap | `59b3aa6` | ✅ on main (logic-change continue-on-error) |
+
+**Net result**: ~200+ tracing sites added across client + server; init_test_tracing() helper available for all 80+ integration tests; captured-tracing fires ERROR before test panic.
+
+### Finding D — RE-DIAGNOSED (PROMPT 670 emitted)
+
+PROMPT 622 + 627 hardening shipped silent-send observability for the class-confirm round-trip — but did NOT cover the inner silent-discard path inside the c2s_confirm_class handler when peer has no valid session/room yet.
+
+**02:16 session server log evidence** (Player 2 perspective):
+- `01:16:11` Player 2 connects (peer 62518), S2CHandshake sent
+- `01:16:15` `c2s_confirm_class: recv peer=62518 class=Iop` ← Player 2 confirms BEFORE creating room
+- `01:16:16` `c2s_create_room: recv peer=62518` (1 second later)
+- `01:16:16` `send_create_room_outcome (Created)` — room K9DVFY created
+- Player 1 joins at 01:16:26, confirms at 01:16:27 → gets `send_confirm_class_outcome (Locked)` reply ✓
+- **NEVER any `send_confirm_class_outcome` reply for peer 62518.** Silent discard inside handler.
+
+→ Player 2 UI stuck on "Confirming..." forever because their pre-room class-confirm got silently dropped server-side. This is the actual Finding D root cause that wave 6 misclassified as "hardened both directions".
+
+PROMPT 670 = repair prompt: server c2s_confirm_class handler emit S2CConfirmClassRejected with explicit reason when no valid session for peer; client lobby UI guard to disable Confirm button until S2CRoomCreated/S2CJoinAck received. Owning story candidate: S11-LOBBY-CONFIRM-EARLY-DISCARD-001.
+
+### Finding B v2 V3 — root cause PROVEN via PROMPT 669 diagnostic
+
+**Verdict A — PROVEN**: Coord-space mismatch.
+- `metrics_for_viewport` (client/src/ui/hand/mod.rs:528-536) computes `fan_base_y = viewport.height_px - 100.0` in VIEWPORT-coordinates
+- `apply_fan_layout_system` (L924-966) writes this value to slot `Node.top`
+- Slot is `position_type: Absolute` and `ChildOf(fan_root)`; per Bevy UI / Taffy / CSS, absolute children position relative to nearest positioned ancestor
+- `fan_root` is `Absolute, left:0 right:0, bottom:0, height:260` — slot effectively offsets from `viewport.height − 260`
+- Computed slot Y = `(viewport.height − 260) + (viewport.height − 100)` = `2 × viewport.height − 360`
+- At viewport 1080: slot Y = 1800 (720 px BELOW viewport bottom) → off-screen
+- At viewport 710 (runtime test): slot Y = 1060 (350 px below viewport) → off-screen
+- **C'est pourquoi user ne voit pas les cards en PLACEMENT**: Visibility::Visible OK, position computed AS DESIGNED but the design's coord-space assumption was wrong. Cards render off-screen.
+
+**Verdict B — PROVEN (secondary, deferred)**: Chrome children sizing. 7 entities (HandCardFrame, StatBadgeAtk/Hp/Mp/Ar, HandRarityIcon, HandTypeIcon) spawn with `Node::default()` (0×0). Even if Verdict A is fixed and slot is on-screen, chrome elements are invisible. Defer until A lands.
+
+**Verdict C/D/E — FALSIFIED/MOOT**: HandSlotCard lifecycle correct (handler inserts on Active indices, clear on empty); texture asset loading correct (16 PNG files present, PlaceholderAssets inserted OnEnter InSession with valid handles); Z-order overlap moot until A is fixed.
+
+**Test gap PROVEN**: No test exercises bevy_ui layout pipeline (WindowPlugin + UiPlugin + ComputedNode assertion) for slot on-screen positioning. Existing tests (placement_entry_post_acquisition_test, hand_ui_viewport_sync_test) use MinimalPlugins → 0×0 viewport OR assert formula values only → false-positive pass.
+
+PROMPT 671 = Worker A repair prompt: redefine `fan_base_y` as LOCAL-to-fan_root (`HAND_FAN_STRIP_HEIGHT_PX − fan_base_margin_px` = `260 − 100 = 160`). Update existing tests' expectations + new regression test `hand_ui_slot_onscreen_test` with full UiPlugin + ComputedNode assertion at 800×600, 1280×720, 1920×1080. Owning story: HU-02.
+
+### Wave 6 misdiagnosis lesson — extended
+
+Wave 6 documented that PROMPT 641 worker mis-PROVEN'd Suspect 1 (viewport sync) — runtime evidence (AUCTION fan visible, PLACEMENT not) falsified it. The viewport sync was a real (latent) bug fix but not THE bug for the user's symptom.
+
+This wave's PROMPT 669 went deeper: with W1+W2 runtime tracing showing `apply_fan_layout_slot slot_idx=0 hand_count=2 card_x=360 card_y=610 visibility="Visible"` consistently, the bug was clearly downstream of fan-slot Visibility. The diagnostic walked the entity hierarchy + studied bevy_ui layout semantics + applied CSS spec rules → identified the coord-space mismatch.
+
+**Methodology generalized**: when runtime tracing shows "system X writes value Y correctly" but user reports the effect not visible, the bug is in the LAYER BELOW system X — entity tree relationships, layout pipeline, render order, asset application. Source-only diagnostics need to read SUPPORTING infrastructure (entity hierarchy, CSS/Taffy semantics, asset pipeline) not just the system code.
+
+### Format compliance status
+
+Recent wave 7 worker emissions normalizing:
+- Triangle wrappers `🔺🔺🔺 ... 🔺🔺🔺` now consistently present
+- Canonical STATUS words used (DONE, COMPLETE, NO-OP, BLOCKED, PARTIAL)
+- 51-hash closer line still drifts (often ~30-50 chars vs 51 spec)
+
+Persisting violations:
+- "PASS", "SUCCESS", "GREEN", "COMPLETE WITH NOTES", "AUDIT-COMPLETE" — multi-word concatenated or color names. These trend down but appear sporadically.
+- Trailing descriptive prose after STATUS word (forbidden — final line is exactly `N: TICKET-ID: STATUS`).
+
+### New rule 15 evolution (this wave)
+
+User refined the prompt-block format multiple times during wave 7:
+1. Initial: 2 lines of ### with N at end of line 2
+2. Then: keep triangle headers, drop ### lines entirely
+3. Then: opener `🔺🔺🔺 PROMPT N : description`, closer `🔺🔺🔺 PROMPT N 🔺🔺🔺`
+4. Then: wrap entire prompt in 4-backtick fence so user can copy verbatim
+5. Worker final line: `🔺🔺🔺 N: TICKET-ID: STATUS 🔺🔺🔺` + 51-hash closer
+
+Memory rule 15 + rule 11 updated to reflect final agreed format.
+
+### project_scope.md memory rewrite
+
+User clarified scope explicitly: "friend-game ONLY skips accessibility work; everything else (functional, polished, complete game) is NOT friend-game-affected; don't argue friend-game accept-risk for QA/tests/polish/perf/code-review/smoke-check/gate-check".
+
+Rewritten `project_scope.md` to:
+- Game must be COMPLETE and POLISHED
+- Only accessibility tier + commercial-release artifacts are friend-game-skippable
+- QA / testing / polish / performance audits / code review (visibility) all KEEP normal quality bar
+- Lean-mode `/story-done` gate skips per `feedback_paw_review_flow.md` is OK for VISIBILITY items, not a catch-all
+- Carry-state preservation list (S8-QA-001-W1, QA-COND-0005/0006, no public-release claim) is TRACKING, not a "skip QA" cover
+
+### Sprint 10 status — substantively closed
+
+| Story | Code on main | Paperwork |
+|---|---|---|
+| ✅ S10-PAW-001 / S10-TD-001 / S10-TD-002 / S10-CARRY-001 / S10-POLISH-001 / S10-POLISH-002 | done | done |
+| ✅ S10-POLISH-003 | `084129c` | `bc0b5d1` |
+| ✅ ECO-004 | `9fb8e60` | `bc0b5d1` (joint with POLISH-003) |
+| ⚪ S10-TD-003 | no story file | deferred Sprint 11 |
+| ⚪ S10-N1, S10-N2 | nice-to-have skip | — |
+
+**Sprint 10 = 6 Must + 2 Should integrated + paperwork-complete.** Close-out sequence (`/smoke-check sprint` → `/team-qa sprint` → `/gate-check Polish→Release`) available when user signals.
+
+### Sprint 11-preview backlog (wave 7 update)
+
+Accumulated:
+- S11-TD-NET-001/002/003, S11-TD-PRISM-COV-001 (server hardening test parity)
+- S11-TD-SERVER-LOG-SPAM-001 — server log 396k+ lines per session; acquisition_tick: drained 0 ShopRefreshTriggered per-frame spam now confirmed (~120 lines / 15s baseline)
+- S11-TD-PAW-006-COMPILE-001 — 12 × E0596 errors in lobby_asset_wiring_test (Bevy 0.18 `app.world()` → `world_mut()`)
+- AuctionSettled + ResolutionComplete fixture cluster (6+ test files)
+- Broken `*_harness.rs` bins (Bevy 0.18 Input feature reorg)
+- HUD test-fixture cascade tail (hud_asset_wiring_test 0/6, hud_plugin_scaffold_test 3/4, board_rendering_snapshot_spawn_test E0063 missing board_chrome)
+- HAND-UI runtime-vs-fixture viewport coverage gap (closed by PROMPT 671's new hand_ui_slot_onscreen_test)
+- HU-card-slot-chrome-layout — 7 chrome children spawn Node::default() (0×0), never resized (V3 Verdict B repair, deferred until A lands)
+- S11-LOBBY-CONFIRM-EARLY-DISCARD-001 — c2s_confirm_class silent-discard + lobby UI premature-confirm enable (Finding D real root cause, PROMPT 670)
+- S11-LOBBY-UX-CONFIRM-STATE-001 — "Confirming..." UI ambiguity (separate from Finding D — own-confirm-acked vs waiting-opponent states)
+
+### Currently in flight / queued
+
+| PROMPT | Type | Status |
+|---|---|---|
+| 670 | Finding D silent-discard real fix (server c2s_confirm_class + client lobby UI guard) | Drafted, awaiting dispatch |
+| 671 | Finding B v2 V3 Worker A (fan-slot coord-space alignment + new on-screen regression test + HU-02 reconciliation) | Drafted, awaiting dispatch |
+| 669 returns | V3 card-art pipeline diagnostic | ✅ DONE, Verdicts A+B PROVEN |
+
+### Next free prompt number
+
+- **672+** = next free for new emit
+- 672 = cherry-pick of 671 (V3 Worker A) after worker return
+- 673 = cherry-pick of 670 (Finding D) after worker return
+- 674 = V3 Worker B chrome children sizing (drafted only after Worker A lands + user retest confirms cards now on-screen)
+- 675 = Sprint 10 close-out skill chain (drafted when user signals close-out trigger)
