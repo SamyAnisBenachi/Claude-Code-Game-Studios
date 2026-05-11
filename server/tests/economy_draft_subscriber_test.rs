@@ -5,7 +5,7 @@ use server::core::economy::{
     EconomyPlugin, InterestSnapshots, PlayerEconomies, PlayerEconomy, S2CGoldBroadcast,
     S2CGoldUpdate,
 };
-use server::core::rsm::{DraftStarted, RsmPlugin};
+use server::core::rsm::{AuctionSettled, DraftStarted, ResolutionComplete, RsmPlugin};
 use server::core::session::{GameSessionPlugin, SessionConfig, SessionReady};
 use server::foundation::config::GameConfig;
 use server::foundation::rng::ServerRng;
@@ -51,6 +51,8 @@ fn app_with_economy(players: &[PlayerId]) -> App {
     app.add_plugins(RsmPlugin);
     app.add_plugins(GameSessionPlugin);
     app.add_plugins(EconomyPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(GameConfig(shared::config::GameConfig::default()));
     app.insert_resource(session_config(players));
     app.insert_resource(ServerRng::new());
@@ -75,6 +77,8 @@ fn test_economy_draft_plugin_registers_cleanly_in_headless_app() {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(RsmPlugin);
     app.add_plugins(EconomyPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
 
     app.update();
 
