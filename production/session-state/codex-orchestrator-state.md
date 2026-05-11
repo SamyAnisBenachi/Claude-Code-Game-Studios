@@ -3314,3 +3314,113 @@ Plus tail-of-batch:
 - 718 = cherry-pick 700 (auction protocol)
 - 719 = state snapshot wave 11 (after Sprint 10 close-out completes; or after V3 user-retest evidence)
 - 720+ = Sprint 11 planning (`/sprint-plan new`)
+
+---
+
+## State Snapshot 2026-05-11 wave 11 (Sprint 10 close-out 4th attempt FAIL → whack-a-mole pattern confirmed → switching to Option B exhaustive sweep — HEAD `f319a2c`)
+
+### Commits added to `main` since wave 10 (`692ee25`)
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `8f76b06` | PROMPT 713 / cherry-pick 712 | economy_draft_subscriber_test fixture fix — registered AuctionSettled + ResolutionComplete (S11-TD-FIXTURE-MESSAGES-001 tail) |
+| `989b936` | (user-side) | tools(migration): audit-driven HIGH+MEDIUM patches |
+| `a7bfb7a` | PROMPT 718 (auto-renumbered 717 worker) | fix(proto): wire S2CAuctionCard.timer_duration_ms (S11-PROTO-AUCTION-TIMER-DURATION-001) — combines 700 base + L1795 completion fix |
+| `d1013c4` | (user-side) | docs(migration): document Codex resume + sessions/ tree contents |
+| `00ffe89` | PROMPT 719 / cherry-pick 696 | feat(hand-ui): wire HU-card-drag MVP producer surface (HU-DRAG-001) |
+| `f319a2c` | PROMPT 714 retry artifact | Sprint 10 smoke retry-3 post-713 FAILED — 4th root cause (economy_round_trace_test fixture gap, same family as 708/712) |
+
+### Sprint 10 close-out chain — 4 attempts, 4 root causes, whack-a-mole pattern confirmed
+
+| Attempt | PROMPT | Verdict | Root cause | Fix |
+|---|---|---|---|---|
+| 1 | 674/675/676 | FAIL / PARTIAL / FAIL | CI source-invariant guard false-positive on HUD doc-comment | 686 → 3a283c9 ✅ |
+| 2 | 687 (smoke retry) | FAIL | Stale Sprint 3 assertion `duplicate_confirm_with_same_class_is_silent_idempotent_noop` conflicted with PROMPT 670 over-rejection | 703 idempotent refine + 705 test align → 59ba55e + 2b174a6 ✅ |
+| 3 | 708 (smoke retry-2) | FAIL | economy_draft_subscriber_test fixture gap (Messages<ResolutionComplete> + AuctionSettled not init) — PROMPT 679 tail-of-batch miss | 712 → 8f76b06 ✅ |
+| 4 | 714 (smoke retry-3) | FAIL | economy_round_trace_test SAME fixture-gap class (sibling file, same MessageReader<ResolutionComplete> validation panic) | **PROMPT 720 in flight** — switched to Option B exhaustive sweep |
+
+### Methodology pivot — surgical Option A → exhaustive Option B sweep
+
+The 4th identical-class FAIL definitively confirms the **whack-a-mole pattern**:
+- PROMPT 679 swept 8 files for AuctionSettled/ResolutionComplete fixture registration
+- PROMPT 712 caught the 9th (economy_draft_subscriber)
+- PROMPT 714 surfaced the 10th (economy_round_trace_test)
+- Additional **stale-protocol-fixture finding** surfaced by PROMPT 719: `shop_auction_ui_auction_card_drop_buffer_test:260` omits `timer_duration_ms` field on `ShopAuctionAuctionCardReceived` (post-PROMPT 700 protocol change)
+
+**PROMPT 720 (Option B)** = exhaustive sweep:
+- All tests under `server/tests/`, `client/tests/`, `tests/integration/`, `tests/unit/`
+- For each fixture: enumerate loaded plugins → MessageReader<X> consumers (via plugin source reading)
+- Audit add_message coverage exhaustively
+- Add `Phase 1.5 — Stale-fixture-after-protocol-change audit`: enumerate recent protocol struct field changes, grep all fixtures for outdated initializers
+- Apply additive field migrations + add_message registrations
+- Mirror canonical patterns from bc2d324 (679 sweep) + 8f76b06 (712 single fix)
+- Single sweep replaces N+1 surgical patches
+
+### Methodology lessons reinforced this wave (wave-10 lessons re-validated + new)
+
+**1. Whack-a-mole pattern detection** — when 3+ identical-class FAILs surface in sequence, switch from surgical-per-instance to exhaustive-audit-of-pattern. Surgical Option A is correct ONLY when N=1; for recurring class, exhaustive Option B is the minimal-scope-per-actual-root-cause (root cause = pattern, not individual test).
+
+**2. Stale-fixture-after-protocol-change is a separate sub-class** — distinct from "missing add_message but plugin needs it" — surfaces when protocol struct gains a new field (e.g., timer_duration_ms on S2CAuctionCard / ShopAuctionAuctionCardReceived) and existing test fixtures using struct-literal initializers break. PROMPT 720 must include both sub-classes (Phase 1 = add_message audit; Phase 1.5 = stale-initializer audit).
+
+**3. Parallel-agent identical-SHA push convergence** — PROMPT 719 worker found 00ffe89 already on origin (parallel agent produced identical cherry-pick deterministically: same author/committer/tree → same SHA). Git's optimistic-concurrency handled cleanly. Pattern reinforces: deterministic cherry-picks naturally deduplicate across parallel agents.
+
+**4. Auto-renumber discipline by workers** — PROMPT 717 worker correctly detected idempotency NO-OP; parallel worker auto-renumbered to 718 when doing the substantive work. Both returned canonical statuses. Demonstrates worker rule-internalization on conflict-handling.
+
+**5. Premise-correction recurring** — PROMPT 717 (NO-OP detection) is the second instance this session of a worker proving the orchestrator's PROMPT premise wrong via direct source-check. Mitigation: orchestrator should verify state assumptions before emitting prompts that target current state.
+
+### Pending dispatches at root checkout
+
+| PROMPT | Purpose | Gating |
+|---|---|---|
+| 720 | Option B exhaustive fixture-messages sweep | In flight (per user) |
+| 721 | Cherry-pick 720 | After 720 returns |
+| 722 | /smoke-check sprint retry 4 | After 721 lands |
+| 723 | /gate-check Polish→Release retry | After 722 PASS or PARTIAL |
+
+After 723 PASS → **Sprint 10 CLOSED** → Sprint 11 planning unblocked.
+
+### Sprint 11 backlog status — closure tally this wave
+
+Closed during wave 10/11 cleanup:
+- ✅ S11-TD-CLIENT-LOG-001 (client tracing init)
+- ✅ S11-TD-PAW-006-COMPILE-001 (lobby_asset_wiring_test E0596)
+- ✅ S11-TD-HARNESS-INIT-STATE-001 (8 harness bins init_state)
+- ✅ S11-TD-FIXTURE-MESSAGES-001 (PROMPT 679 sweep — 8 files; tail-of-batch caught later via 712/714/720)
+- ✅ S11-TD-HUD-CASCADE-001 PARTIAL (3 tests; 1 deferred to S11-TD-BOARD-RENDERING-SNAPSHOT-PHASE-COUPLING-001)
+- ✅ S11-TD-SERVER-LOG-SPAM-001 (acquisition_tick spam)
+- ✅ S11-HU-DRAG-DROP-NON-INSTANT-001 (gate widened)
+- ✅ S11-OBS-GREY-SQUARE-ATTRIBUTION-001 (S1-S5 instrumentation)
+- ✅ S11-SAU-AUCTION-CARD-DROP-ON-PHASE-LAG-001 (buffer-defer)
+- ✅ S11-LOBBY-CONFIRM-IDEMPOTENT-REFINE-001 (same-class noop)
+- ✅ S11-TEST-LOBBY-ENTRY-IDEMPOTENT-ALIGNMENT-001 (assertion align)
+- ✅ S11-PROTO-AUCTION-TIMER-DURATION-001 (corrected at a7bfb7a)
+- ✅ HU-DRAG-001 (HU-card-drag-MVP at 00ffe89)
+
+**In flight**: S11-TD-FIXTURE-MESSAGES-002 (PROMPT 720 exhaustive sweep — replaces piecemeal whack-a-mole approach)
+
+**Still pending dispatch**:
+- S11-HUD-TIMER-BAR-VISIBILITY-001 (Surface A — PROMPT 699 drafted)
+- UI clean-pass 8-story milestone (PROMPT 685 audit; defer to Sprint 11 planning)
+- S11-TD-NET-001/002/003 (test parity for send-Err hardening)
+- S11-TD-PRISM-COV-001 (Cluster 2C advisory)
+- S11-TD-HARNESS-MESSAGES-001 (4 harness bins downstream from 690)
+- S11-TD-HARNESS-HANDUI-ENTITIES-001 (2 harness bins downstream)
+- S11-TD-BOARD-RENDERING-SNAPSHOT-PHASE-COUPLING-001 (from 702 PARTIAL)
+- S11-LOBBY-UX-CONFIRM-STATE-001 (quality-of-life UI text differentiation)
+- S10-TD-003 doc hygiene (S10 carry-over)
+
+### Migration kit progress (parallel user-side workstream)
+
+- 989b936 audit-driven HIGH+MEDIUM patches
+- d1013c4 docs(migration): document Codex resume + sessions/ tree
+- Out-of-orchestrator-scope but landed alongside Sprint 10 close-out work
+- Cross-PC migration capability now reasonably documented
+
+### Next free prompt number
+
+- **721+** = next free for new emit after Sprint 10 close-out chain completes
+- 721 = cherry-pick 720 (after sweep returns)
+- 722 = /smoke-check sprint retry 4 (after 721 lands)
+- 723 = /gate-check Polish→Release retry (after 722 PASS/PARTIAL)
+- 724 = state snapshot wave 12 (after Sprint 10 CLOSED)
+- 725+ = Sprint 11 planning (`/sprint-plan new`, `/create-stories` per epic)
