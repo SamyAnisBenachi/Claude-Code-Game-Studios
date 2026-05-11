@@ -564,6 +564,11 @@ pub struct S2CResolutionEvent {
 pub struct S2CAuctionCard {
     pub card_id: CardId,
     pub starting_price: u32,
+    /// Auction live-bidding countdown duration (ms), sourced from
+    /// `GameConfig::auction_timer_seconds` server-side. Replaces the prior
+    /// client-side reliance on `S2CPhaseChanged::timer_duration_ms` which
+    /// reports 0 for the auction phase per `draft_timer_ms`.
+    pub timer_duration_ms: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

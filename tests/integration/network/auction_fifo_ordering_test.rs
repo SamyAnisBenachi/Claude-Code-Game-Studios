@@ -528,6 +528,7 @@ fn send_auction_card_then_phase_once(
     let auction_card = S2CAuctionCard {
         card_id: AUCTION_CARD_ID,
         starting_price: AUCTION_STARTING_PRICE,
+        timer_duration_ms: AUCTION_TIMER_MS,
     };
     let phase_changed = S2CPhaseChanged {
         phase: RoundPhase::DraftAuction,

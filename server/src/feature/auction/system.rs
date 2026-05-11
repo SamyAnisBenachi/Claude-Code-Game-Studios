@@ -283,6 +283,7 @@ pub fn auction_tick_system(
             let message = ProtocolS2CAuctionCard {
                 card_id,
                 starting_price,
+                timer_duration_ms: data.config.auction_timer_seconds.saturating_mul(1000),
             };
             tracing::info!(
                 round = event.round,

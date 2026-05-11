@@ -191,6 +191,7 @@ fn seed_fixture_system(
     auction_cards.write(ShopAuctionAuctionCardReceived {
         card_id: HARNESS_CARD,
         starting_price: state.scenario.starting_price(),
+        timer_duration_ms: 20_000,
     });
     gold_broadcasts.write(HudGoldBroadcastMessage(S2CGoldBroadcast {
         player_id: LOCAL_PLAYER,

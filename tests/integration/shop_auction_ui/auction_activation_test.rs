@@ -27,7 +27,7 @@ fn sau_004_card_before_phase_enters_preparing_without_countdown() {
     test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
-    send_auction_card(&mut app, CardId(1), 4);
+    send_auction_card(&mut app, CardId(1), 4, 20_000);
 
     let auction_state = app.world().resource::<ShopAuctionAuctionState>();
     assert_eq!(
@@ -59,14 +59,17 @@ fn sau_004_phase_before_card_waits_then_activates_countdown() {
     test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
-    set_phase(&mut app, RoundPhase::DraftAuction, 20_000);
+    // S2CPhaseChanged carries timer 0 for the auction phase per server
+    // `draft_timer_ms(DraftPhase::Auction)`. The countdown duration is now
+    // sourced from S2CAuctionCard.timer_duration_ms.
+    set_phase(&mut app, RoundPhase::DraftAuction, 0);
     assert_eq!(
         app.world().resource::<ShopAuctionUiMode>(),
         &ShopAuctionUiMode::Inactive
     );
     assert_eq!(auction_panel_visibility(&app), Some(&Visibility::Hidden));
 
-    send_auction_card(&mut app, CardId(2), 5);
+    send_auction_card(&mut app, CardId(2), 5, 20_000);
 
     let auction_state = app.world().resource::<ShopAuctionAuctionState>();
     assert_eq!(
@@ -98,7 +101,7 @@ fn sau_asset_loop_featured_auction_card_resolves_display_art_or_fallback() {
     test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
-    send_auction_card(&mut app, CardId(1), 4);
+    send_auction_card(&mut app, CardId(1), 4, 20_000);
     let featured_card = app
         .world()
         .resource::<ShopAuctionUiEntities>()
@@ -113,7 +116,7 @@ fn sau_asset_loop_featured_auction_card_resolves_display_art_or_fallback() {
     // CardId(99) is intentionally absent from the test catalog (1..=3); the
     // catalog miss feeds None into apply_card_display_art, producing the
     // MissingDisplayAsset fallback on the featured auction card.
-    send_auction_card(&mut app, CardId(99), 5);
+    send_auction_card(&mut app, CardId(99), 5, 20_000);
     assert_eq!(
         app.world().get::<CardDisplayArtFallback>(featured_card),
         Some(&CardDisplayArtFallback {
@@ -123,12 +126,50 @@ fn sau_asset_loop_featured_auction_card_resolves_display_art_or_fallback() {
 }
 
 #[test]
+fn sau_zero_phase_timer_with_valid_card_timer_activates_countdown() {
+    // Regression for S11-PROTO-AUCTION-TIMER-DURATION-001 (Surface B):
+    // server `draft_timer_ms(DraftPhase::Auction)` returns 0, so
+    // S2CPhaseChanged.timer_duration_ms is 0 for the auction phase. The
+    // live-bidding countdown duration must come from
+    // S2CAuctionCard.timer_duration_ms instead — the client must enter
+    // ::Active with the card's timer ticking, even with phase timer 0.
+    test_helpers::init_test_tracing();
+    let mut app = app_in_session();
+
+    set_phase(&mut app, RoundPhase::DraftAuction, 0);
+    send_auction_card(&mut app, CardId(2), 5, 20_000);
+
+    let auction_state = app.world().resource::<ShopAuctionAuctionState>();
+    assert_eq!(
+        auction_state.panel_state,
+        ShopAuctionAuctionPanelState::Active
+    );
+    assert_eq!(auction_state.timer_duration_ms, 20_000);
+    assert_eq!(auction_state.timer_remaining_ms, 20_000);
+    assert_eq!(
+        timer_bar_state(&app),
+        Some(&AuctionTimerBarState {
+            greyed: false,
+            countdown_active: true,
+            connection_error: false,
+        })
+    );
+
+    run_for(&mut app, Duration::from_secs(1));
+    let after_tick = app.world().resource::<ShopAuctionAuctionState>();
+    assert_eq!(after_tick.timer_remaining_ms, 19_000);
+    assert_eq!(after_tick.timer_duration_ms, 20_000);
+}
+
+#[test]
 fn sau_004_card_first_then_phase_activates_countdown() {
     test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
-    send_auction_card(&mut app, CardId(3), 6);
-    set_phase(&mut app, RoundPhase::DraftAuction, 18_000);
+    // Card carries the live-bidding countdown (18_000); the subsequent
+    // phase-changed message reports timer 0 per server `draft_timer_ms`.
+    send_auction_card(&mut app, CardId(3), 6, 18_000);
+    set_phase(&mut app, RoundPhase::DraftAuction, 0);
 
     let auction_state = app.world().resource::<ShopAuctionAuctionState>();
     assert_eq!(
@@ -149,7 +190,7 @@ fn sau_004_preparing_timeout_shows_connection_error() {
     test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
-    send_auction_card(&mut app, CardId(1), 4);
+    send_auction_card(&mut app, CardId(1), 4, 20_000);
     run_for(&mut app, Duration::from_secs(10));
 
     let auction_state = app.world().resource::<ShopAuctionAuctionState>();
@@ -177,7 +218,7 @@ fn sau_004_non_auction_phase_during_preparing_clears_buffer_and_dismisses() {
     test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
-    send_auction_card(&mut app, CardId(1), 4);
+    send_auction_card(&mut app, CardId(1), 4, 20_000);
     set_phase(&mut app, RoundPhase::GameOver, 0);
 
     let auction_state = app.world().resource::<ShopAuctionAuctionState>();
@@ -198,9 +239,9 @@ fn sau_004_draft_auction_footer_is_locked_and_does_not_send_shop_messages() {
     test_helpers::init_test_tracing();
     let mut app = app_in_session();
 
-    set_phase(&mut app, RoundPhase::DraftAuction, 20_000);
+    set_phase(&mut app, RoundPhase::DraftAuction, 0);
     send_shop_slots(&mut app, vec![Some(CardId(1)), None, Some(CardId(2))]);
-    send_auction_card(&mut app, CardId(3), 6);
+    send_auction_card(&mut app, CardId(3), 6, 20_000);
 
     let entities = *app.world().resource::<ShopAuctionUiEntities>();
     assert_eq!(shop_footer_visibility(&app), Some(&Visibility::Visible));
@@ -279,11 +320,12 @@ fn set_phase(app: &mut App, phase: RoundPhase, timer_duration_ms: u32) {
     run_update(app);
 }
 
-fn send_auction_card(app: &mut App, card_id: CardId, starting_price: u32) {
+fn send_auction_card(app: &mut App, card_id: CardId, starting_price: u32, timer_duration_ms: u32) {
     app.world_mut()
         .write_message(ShopAuctionAuctionCardReceived {
             card_id,
             starting_price,
+            timer_duration_ms,
         });
     run_update(app);
 }

@@ -258,7 +258,7 @@ impl ShopAuctionAuctionState {
         self.starting_price = message.starting_price;
         self.current_price = message.starting_price;
         self.current_leader = None;
-        self.timer_duration_ms = 0;
+        self.timer_duration_ms = message.timer_duration_ms;
         self.timer_remaining_ms = 0;
         self.locally_expired_elapsed_ms = 0;
         self.clear_bid_resolution_state();
@@ -877,6 +877,7 @@ pub struct ShopAuctionDraftOfferingReceived {
 pub struct ShopAuctionAuctionCardReceived {
     pub card_id: CardId,
     pub starting_price: u32,
+    pub timer_duration_ms: u32,
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
@@ -1273,7 +1274,8 @@ pub fn shop_auction_ui_phase_transition_system(
         shop_state.enter_auction_phase();
         shop_timer.stop();
         if auction_state.card_id.is_some() {
-            auction_state.enter_active(phase_view.timer_duration_ms);
+            let timer_duration_ms = auction_state.timer_duration_ms;
+            auction_state.enter_active(timer_duration_ms);
             next_mode = ShopAuctionUiMode::Auction;
         } else {
             auction_state.panel_state = ShopAuctionAuctionPanelState::Hidden;
@@ -1405,12 +1407,14 @@ pub fn drain_auction_card_receiver_system(
             tracing::info!(
                 card_id = ?message.card_id,
                 starting_price = message.starting_price,
+                timer_duration_ms = message.timer_duration_ms,
                 msg_type = "S2CAuctionCard",
                 "drain_auction_card: recv"
             );
             writer.write(ShopAuctionAuctionCardReceived {
                 card_id: message.card_id,
                 starting_price: message.starting_price,
+                timer_duration_ms: message.timer_duration_ms,
             });
         }
     }
@@ -1729,7 +1733,6 @@ fn auction_settlement_can_start(
 
 pub fn handle_auction_card_system(
     current: Res<CurrentClientPhase>,
-    phase_view: Res<ClientPhaseView>,
     mut auction_cards: MessageReader<ShopAuctionAuctionCardReceived>,
     mut auction_state: ResMut<ShopAuctionAuctionState>,
     mut mode: ResMut<ShopAuctionUiMode>,
@@ -1792,6 +1795,7 @@ pub fn handle_auction_card_system(
             auction_state.buffer_card(&S2CAuctionCard {
                 card_id: message.card_id,
                 starting_price: message.starting_price,
+                timer_duration_ms: message.timer_duration_ms,
             });
             auction_state.enter_preparing();
             *mode = ShopAuctionUiMode::AuctionPreparing;
@@ -1801,10 +1805,12 @@ pub fn handle_auction_card_system(
         auction_state.buffer_card(&S2CAuctionCard {
             card_id: message.card_id,
             starting_price: message.starting_price,
+            timer_duration_ms: message.timer_duration_ms,
         });
 
         if current.phase == RoundPhase::DraftAuction {
-            auction_state.enter_active(phase_view.timer_duration_ms);
+            let timer_duration_ms = auction_state.timer_duration_ms;
+            auction_state.enter_active(timer_duration_ms);
             *mode = ShopAuctionUiMode::Auction;
         } else {
             auction_state.enter_preparing();
