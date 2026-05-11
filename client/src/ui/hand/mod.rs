@@ -1793,6 +1793,12 @@ pub fn handle_grid_card_click_system(
         let message = C2SPurchaseCard { card_id: card.0 };
         match senders.single_mut() {
             Ok(mut sender) => {
+                tracing::info!(
+                    msg_type = "C2SPurchaseCard",
+                    card_id = ?message.card_id,
+                    handler = "handle_grid_card_click_system",
+                    "c2s_send: enter"
+                );
                 sender.send::<ReliableChannel>(message.clone());
             }
             Err(e) => {
@@ -1898,6 +1904,12 @@ pub fn handle_hand_fan_activate_click_system(
         let message = C2SActivateCard { card_id: card.0 };
         match activate_senders.single_mut() {
             Ok(mut sender) => {
+                tracing::info!(
+                    msg_type = "C2SActivateCard",
+                    card_id = ?message.card_id,
+                    handler = "handle_hand_fan_activate_click_system",
+                    "c2s_send: enter"
+                );
                 sender.send::<ReliableChannel>(message.clone());
             }
             Err(e) => {
@@ -2953,6 +2965,12 @@ fn submit_pending_placements(
     };
     match submit_senders.single_mut() {
         Ok(mut sender) => {
+            tracing::info!(
+                msg_type = "C2SSubmitPlacement",
+                placements_len = msg.placements.len(),
+                handler = "submit_pending_placements",
+                "c2s_send: enter"
+            );
             sender.send::<ReliableChannel>(msg.clone());
         }
         Err(e) => {

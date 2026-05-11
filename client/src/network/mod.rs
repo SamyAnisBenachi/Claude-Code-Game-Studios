@@ -112,6 +112,11 @@ fn send_fresh_hello_once(
         return;
     };
 
+    tracing::info!(
+        msg_type = "C2SHello",
+        protocol_version = shared::config::GameConfig::default().protocol_version,
+        "c2s_send: enter"
+    );
     sender.send::<ReliableChannel>(C2SHello {
         protocol_version: shared::config::GameConfig::default().protocol_version,
         session_token: None,
@@ -132,6 +137,7 @@ fn send_heartbeat_system(
         return;
     };
 
+    tracing::info!(msg_type = "C2SHeartbeat", "c2s_send: enter");
     sender.send::<UnreliableChannel>(C2SHeartbeat {});
 }
 
@@ -141,5 +147,6 @@ pub fn heartbeat_due_after_tick(timer: &mut ClientHeartbeatTimer, delta: Duratio
 
 #[allow(dead_code)]
 fn _heartbeat_sender_compile_proof(mut sender: MessageSender<C2SHeartbeat>) {
+    tracing::info!(msg_type = "C2SHeartbeat", "c2s_send: enter (compile_proof)");
     sender.send::<UnreliableChannel>(C2SHeartbeat {});
 }
