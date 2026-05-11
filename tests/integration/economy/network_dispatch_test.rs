@@ -5,7 +5,7 @@ use lightyear::prelude::PeerId;
 use server::core::economy::{
     EconomyPlugin, S2CGoldBroadcast as EconomyGoldBroadcast, S2CGoldUpdate as EconomyGoldUpdate,
 };
-use server::core::rsm::{DraftStarted, RsmPlugin};
+use server::core::rsm::{AuctionSettled, DraftStarted, ResolutionComplete, RsmPlugin};
 use server::core::session::{PlayerConnectionMap, SessionConfig, TeamId};
 use server::foundation::config::GameConfig;
 use server::network::economy_dispatch::{EconomyNetworkOutbox, EconomyNetworkPlugin};
@@ -39,6 +39,8 @@ fn app_with_economy_dispatch() -> App {
     app.add_plugins(RsmPlugin);
     app.add_plugins(EconomyPlugin);
     app.add_plugins(EconomyNetworkPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(GameConfig(shared::config::GameConfig::default()));
     app
 }
