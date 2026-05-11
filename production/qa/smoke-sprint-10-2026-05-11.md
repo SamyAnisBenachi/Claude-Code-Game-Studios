@@ -157,3 +157,87 @@ Either fix is a candidate Sprint 10 close-out blocker repair (estimate ≤ 0.25 
   - `172c2d7` qa(gate-check): Polish→Release Sprint 10 close-out gate — FAIL (PROMPT 676)
   - `7382a82` docs(qa): team-qa Sprint 10 close-out report (PROMPT 675) — APPROVED WITH CONDITIONS
 - Smoke skill invoked: `.claude/skills/smoke-check/SKILL.md`.
+
+---
+
+## Retry post-686 (PROMPT 687)
+
+**Date**: 2026-05-11 (UTC)
+**Invoked at**: HEAD `b378512` (local) / `0501d88` (origin/main); CI source-invariant guard fix landed at `3a283c9` (PROMPT 686).
+**Argument**: `sprint`
+**Trigger**: PROMPT 687 — re-run `/smoke-check sprint` to verify the source-guard false-positive is cleared.
+
+### Verdict: FAIL (different root cause; source-guard cascade is cleared)
+
+The PROMPT 686 doc-comment reword **successfully** unblocks the CI source-invariant guard. All three CI runs spanning the fix now pass `Check Board Rendering source guards` and proceed through the stages that were SKIPPED in the PROMPT 674 cascade. **A new, contained failure** then surfaces in the server test stage that was masked by the previous cascade.
+
+### CI runs verified
+
+| Run ID | Commit | Conclusion | Source-guard step | New failure |
+|---|---|---|---|---|
+| `25669402727` | `3a283c9` (doc reword) | failure | PASS ✅ | `duplicate_confirm_with_same_class_is_silent_idempotent_noop` |
+| `25669486325` | `b378512` (HEAD local) | failure | PASS ✅ | same |
+| `25669539042` | `0501d88` (origin/main) | failure | PASS ✅ | same |
+
+All three runs report exactly one failing test out of ≥24 server test groups (97 individual server tests pass; 1 fails). The previously-blocking source-guard check is green on every run.
+
+### New failure (now exposed by source-guard unblock)
+
+- **`duplicate_confirm_with_same_class_is_silent_idempotent_noop`** in [tests/unit/session/class_reveal_test.rs:175](tests/unit/session/class_reveal_test.rs#L175) — panicked.
+  - Test asserts: after `confirm_class(...)` is called twice with the same player + same class, the second call returns `ConfirmClassOutcome::Ignored`.
+  - Actual outcome on current `main`: `ConfirmClassOutcome::Locked { ... }` (via `class_lock_ack(...)`).
+  - Root cause: the Finding D fix at `217428a` (PROMPT 670, `fix(session): close c2s_confirm_class silent-discard + lobby premature-confirm guard`) intentionally changed `confirm_class` in [server/src/core/session/system.rs:1152-1158](server/src/core/session/system.rs#L1152-L1158) so that a duplicate same-class confirm now returns an explicit lock-ack instead of silently discarding. The corresponding test, authored at `c93ff35` (S3-03, Sprint 3), was not updated to the new Finding D semantics.
+  - Why this only surfaces now: at PROMPT 674 the source-guard step bailed before server tests ran; the stale assertion was never exercised by CI. The source-guard reword at `3a283c9` removed the cascade, so server tests run and this assertion fails deterministically.
+  - Functional impact: **zero on game runtime behavior** — the Finding D code path is correct and intended. The failure is an out-of-date test expectation, not a game regression.
+
+### CI stages that now run (previously SKIPPED)
+
+All previously-skipped stages on `b378512` (HEAD) ran:
+
+- ✅ Check shared crate
+- ✅ E2E WebSocket round-trip
+- ❌ Run server tests (1 stale-assertion failure — root cause above)
+- — Run shared tests (SKIPPED by `set -euo pipefail` after server-test FAIL)
+- — Check RSM single-writer invariant (SKIPPED)
+- — Check shared/ purity (SKIPPED)
+- — WASM bundle size check (cascade SKIPPED)
+
+### Phase 3 — Test Coverage delta vs PROMPT 674
+
+No change. All Sprint 10 Logic / Integration stories from the original PROMPT 674 table still have test files on disk and remain COVERED (CI-verified for non-session stages on this retry; the failing test is in the lobby/class-reveal area, not in the Sprint 10 chrome stories).
+
+### Phase 4 — Manual Smoke Checks
+
+Not run. Phase 2 returned a deterministic CI failure under the skill's first-matching-rule verdict logic. Per PROMPT 687: "If FAIL → STOP and surface."
+
+### Required remediation before re-running `/smoke-check`
+
+One of two zero-game-impact options must land on `main`:
+
+**Option A (smallest surface — recommended)** — Update [tests/unit/session/class_reveal_test.rs:175](tests/unit/session/class_reveal_test.rs#L175) to match the Finding D semantics. Replace the assertion `assert!(matches!(duplicate, ConfirmClassOutcome::Ignored))` with the appropriate `ConfirmClassOutcome::Locked { .. }` shape (and rename the test to reflect the new "duplicate confirm acks instead of silently discarding" semantics). Estimate ≤ 0.25 d.
+
+**Option B (revert subset of Finding D)** — Re-introduce a silent-discard branch for the duplicate-same-class case inside `confirm_class`. NOT recommended — it would re-introduce the silent-discard behavior that PROMPT 670 explicitly closed.
+
+Option A is the correct remediation: the production semantics are intentional, the test is stale.
+
+### Carry state (unchanged)
+
+- Sprint 9 closed-with-conditions; **Sprint 10 close-out NOT claimed** (now blocked on a different root cause than at PROMPT 674).
+- S8-QA-001-W1 manual/browser two-client GAME_OVER gap remains open.
+- QA-COND-0005 (Standard-tier accessibility) accepted-risk friend-game scope.
+- QA-COND-0006 (playtest fun-hypothesis validation) accepted-risk / deferred.
+- No public release readiness, release-candidate readiness, broad accessibility completion, full game completion, playtest validation, or full playable-client manual QA claimed.
+
+### Skill-compliant gate handoff
+
+> The smoke check failed (different root cause vs PROMPT 674). Do not hand off to QA until this failure is resolved:
+> - `duplicate_confirm_with_same_class_is_silent_idempotent_noop` — stale assertion against Finding D (217428a) intended `confirm_class` duplicate-handling semantics; the production code path is correct.
+>
+> Fix per Option A and re-run `/smoke-check sprint` before any subsequent `/team-qa` re-run or `/gate-check` re-attempt.
+
+### Cross-references
+
+- Previous attempt: PROMPT 674 FAIL section above — source-guard false positive at HUD doc comment (root cause), fixed at `3a283c9` (PROMPT 686).
+- CI guard fix commit: `3a283c9` `fix(hud): reword doc comment to satisfy CI source-invariant guard (PROMPT 686)`.
+- Finding D fix commit: `217428a` `fix(session): close c2s_confirm_class silent-discard + lobby premature-confirm guard (PROMPT 670 / Finding D real root cause)`.
+- CI runs verified: `25669402727`, `25669486325`, `25669539042` — all completed `failure` 2026-05-11 UTC.
