@@ -241,3 +241,102 @@ Option A is the correct remediation: the production semantics are intentional, t
 - CI guard fix commit: `3a283c9` `fix(hud): reword doc comment to satisfy CI source-invariant guard (PROMPT 686)`.
 - Finding D fix commit: `217428a` `fix(session): close c2s_confirm_class silent-discard + lobby premature-confirm guard (PROMPT 670 / Finding D real root cause)`.
 - CI runs verified: `25669402727`, `25669486325`, `25669539042` — all completed `failure` 2026-05-11 UTC.
+
+---
+
+## Retry 2 post-707 (PROMPT 708)
+
+**Date**: 2026-05-11 (UTC)
+**Invoked at**: HEAD `2b174a6` (`test(session): align lobby_entry duplicate-confirm assertion with Sprint 3 contract (PROMPT 705 / S11-TEST-LOBBY-ENTRY-IDEMPOTENT-ALIGNMENT-001)`).
+**Argument**: `sprint`
+**Trigger**: PROMPT 708 — re-run `/smoke-check sprint` after the chain of post-687 fixes:
+ - CI guard fix at `3a283c9` (PROMPT 686, doc-comment reword)
+ - Idempotent-confirm refinement at `59ba55e` (PROMPT 703, same-class confirm is noop)
+ - Stale-assertion fix at `2b174a6` (PROMPT 705, lobby_entry test aligned with Sprint 3 contract)
+
+### Verdict: FAIL (different root cause — test-fixture gap, NOT game regression)
+
+The PROMPT 703 `confirm_class` idempotent refinement and PROMPT 705 test alignment **successfully** unblock the `duplicate_confirm_with_same_class_is_silent_idempotent_noop` failure that surfaced at PROMPT 687. The previously-failing assertion now passes deterministically across the CI runs on `59ba55e` and `2b174a6`. **A new, contained failure surface** is now exposed in a different test target — `economy_draft_subscriber_test` — which was previously masked by the earlier `set -euo pipefail` cascade.
+
+### CI runs verified
+
+| Run ID | Commit | Conclusion | Source-guard | Server tests | Stage that failed |
+|---|---|---|---|---|---|
+| `25675181918` | `59ba55e` (PROMPT 703 idempotent refine) | failure | PASS ✅ | FAIL ❌ | `economy_draft_subscriber_test` — 7/7 panicked on `MessageReader<ResolutionComplete>` validation |
+| `25675565018` | `2b174a6` (PROMPT 705 — HEAD) | failure | PASS ✅ | FAIL ❌ | same — `economy_draft_subscriber_test` 7/7 |
+
+Both runs reach the same point and fail identically. The PROMPT 705 test alignment is correct (the lobby_entry test no longer regresses), but a separate uncovered test-fixture defect now surfaces.
+
+### New failure (now exposed by idempotent-confirm chain)
+
+- **`server::tests::economy_draft_subscriber_test`** — 7 tests, **0 passed / 7 failed** in [server/tests/economy_draft_subscriber_test.rs](server/tests/economy_draft_subscriber_test.rs):
+  1. `test_economy_draft_applies_baseline_plus_interest_and_clears_snapshot`
+  2. `test_economy_draft_initialises_players_on_session_ready`
+  3. `test_economy_draft_plugin_registers_cleanly_in_headless_app`
+  4. `test_economy_draft_missing_snapshot_adds_baseline_only`
+  5. `test_economy_draft_preserves_reserve_and_applies_round_mana_ramp`
+  6. `test_economy_draft_round_one_initial_adds_no_gold`
+  7. `test_economy_draft_writes_gold_update_and_broadcast_per_player`
+
+  Identical panic signature on all 7:
+
+  > `thread 'Compute Task Pool (0)' panicked at bevy_ecs-0.18.1/src/error/handler.rs:125:1: Encountered an error in system `server::core::economy::system::on_resolution_complete`: Parameter `MessageReader<'_, '_, ResolutionComplete>::messages` failed validation: Message not initialized`
+
+- **Root cause**: The test harness in [server/tests/economy_draft_subscriber_test.rs:49-56](server/tests/economy_draft_subscriber_test.rs#L49-L56) builds its test app via `App::new() + MinimalPlugins + RsmPlugin + GameSessionPlugin + EconomyPlugin` but never calls `app.add_message::<ResolutionComplete>()`. `EconomyPlugin`'s `on_resolution_complete` system has a `MessageReader<ResolutionComplete>` parameter; in Bevy 0.18 the parameter validates the message type is initialized on first run and panics if not.
+- **Why this only surfaces now**: At PROMPT 687 the `class_reveal_test::duplicate_confirm_with_same_class_is_silent_idempotent_noop` panic happened first in the same `Run server tests` stage and the `cargo test` subprocess exited non-zero before any later test binary ran. PROMPT 703 fixed the class_reveal assertion and PROMPT 705 fixed the companion lobby_entry assertion, so the test runner now proceeds further and reaches `economy_draft_subscriber_test`, where the dormant fixture gap deterministically fails.
+- **Companion commit context**: `bc2d324` (`test(fixtures): register AuctionSettled + ResolutionComplete messages in 8 test apps (S11-TD-FIXTURE-MESSAGES-001)`) added the `add_message::<ResolutionComplete>()` registration in 8 sibling test apps but did NOT include `economy_draft_subscriber_test.rs`. This is a tail-of-batch gap in the S11-TD-FIXTURE-MESSAGES-001 sweep.
+- **Functional impact**: **zero on game runtime behavior**. Production `EconomyPlugin` registers the `ResolutionComplete` message via `RsmPlugin` (resolution state machine) which is what runs in the headless server binary. The failure is exclusively in test-harness initialization for a subset of test apps.
+
+### CI stages that now run (previously SKIPPED at PROMPT 687)
+
+All previously-skipped stages on `2b174a6` (HEAD):
+
+- ✅ Check shared crate
+- ✅ E2E WebSocket round-trip
+- ❌ Run server tests (7 economy_draft_subscriber_test fixture panics — root cause above)
+- — Run shared tests (SKIPPED by `set -euo pipefail` after server-test FAIL)
+- — Check RSM single-writer invariant (SKIPPED)
+- — Check shared/ purity (SKIPPED)
+- — WASM bundle size check (cascade SKIPPED)
+
+### Phase 3 — Test Coverage delta vs PROMPT 687
+
+No new MISSING entries. All Sprint 10 Logic/Integration stories from the original PROMPT 674 table still have test files on disk and remain COVERED. The failing test target (`economy_draft_subscriber_test`) is in the **economy** area (companion of the ECO-004 reward loop story); however its 7 tests do not assert game behavior the user reaches at runtime — they assert plugin-bootstrap-time wiring of the gold-update/broadcast channels under an inadequately initialized test app. The ECO-004 reward loop integration test (`tests/integration/economy/reward_loop_awards_test.rs`) lives in a different test target and was not exercised because of the cascade.
+
+### Phase 4 — Manual Smoke Checks
+
+Not run. Phase 2 returned a deterministic CI failure under the skill's first-matching-rule verdict logic. Per PROMPT 708 Phase 4: "If FAIL → STOP and surface."
+
+### Required remediation before re-running `/smoke-check`
+
+A single zero-game-impact change must land on `main`:
+
+**Option A (recommended — minimal surface)** — Add `app.add_message::<ResolutionComplete>();` to the test-app constructor at [server/tests/economy_draft_subscriber_test.rs:49-56](server/tests/economy_draft_subscriber_test.rs#L49-L56) (and any other un-swept companion test in the same file). Mirror the pattern from the 8 test apps covered by `bc2d324`. Estimate ≤ 0.1 d.
+
+**Option B (folded under S11-TD-FIXTURE-MESSAGES-002 sweep)** — Audit ALL `server/tests/*.rs` and any `client/tests/*.rs` test apps for missing message-type registrations (`ResolutionComplete`, `AuctionSettled`, and any other `MessageReader<T>` consumed by registered plugins). Likely a slightly larger surface but resolves the entire fixture class in one pass. Estimate 0.25 d.
+
+Option A is the immediate unblock for Sprint 10 close-out smoke; Option B is the more durable hygiene fix and a natural Sprint 11 tech-debt story. The IDE-active worktree at `d:\_DEV\claude-code-game-studios-worktrees\auction-resolution-fixture-fix\server\tests\economy_interest_snapshot_test.rs` strongly suggests a worker is already addressing the same fixture class in a parallel branch — coordination with that worker is in order.
+
+### Carry state (unchanged)
+
+- Sprint 9 closed-with-conditions; **Sprint 10 close-out NOT claimed** (now blocked on a third root cause across the chain: source-guard false positive [fixed at `3a283c9`] → stale idempotent-confirm assertions [fixed at `59ba55e` + `2b174a6`] → economy_draft test-fixture message-registration gap [open at HEAD]).
+- S8-QA-001-W1 manual/browser two-client GAME_OVER gap remains open.
+- QA-COND-0005 (Standard-tier accessibility) accepted-risk friend-game scope.
+- QA-COND-0006 (playtest fun-hypothesis validation) accepted-risk / deferred.
+- No public release readiness, release-candidate readiness, broad accessibility completion, full game completion, playtest validation, or full playable-client manual QA claimed.
+
+### Skill-compliant gate handoff
+
+> The smoke check failed (third distinct root cause across PROMPT 674 → 687 → 708). Do not hand off to QA until this failure is resolved:
+> - `server::tests::economy_draft_subscriber_test` — 7/7 panic on `MessageReader<ResolutionComplete>` validation; test-harness fixture gap (sibling of `bc2d324`); production code path unaffected.
+>
+> Fix per Option A (or Option B) and re-run `/smoke-check sprint` before any subsequent `/team-qa` re-run or `/gate-check` re-attempt. **`/gate-check` retry (PROMPT 709) is NOT fired from this report**, per PROMPT 708 stop-on-FAIL clause.
+
+### Cross-references
+
+- Previous retry (PROMPT 687): root cause was stale `duplicate_confirm_with_same_class_is_silent_idempotent_noop` assertion against Finding D (217428a). Fixed at `59ba55e` (PROMPT 703) + `2b174a6` (PROMPT 705 — lobby_entry alignment companion).
+- Sprint 3 contract restoration: `59ba55e` `fix(session): same-class confirm is idempotent noop (PROMPT 703 / S11-LOBBY-CONFIRM-IDEMPOTENT-REFINE-001)`.
+- Lobby-entry test alignment: `2b174a6` `test(session): align lobby_entry duplicate-confirm assertion with Sprint 3 contract (PROMPT 705 / S11-TEST-LOBBY-ENTRY-IDEMPOTENT-ALIGNMENT-001)`.
+- Companion fixture commit (incomplete sweep): `bc2d324` `test(fixtures): register AuctionSettled + ResolutionComplete messages in 8 test apps (S11-TD-FIXTURE-MESSAGES-001)`.
+- CI runs verified: `25675181918` (`59ba55e`), `25675565018` (`2b174a6` — HEAD). Both `failure`, both fail at `economy_draft_subscriber_test`, no other failures upstream or downstream.
+- Last green CI on `main`: still `1d683bb` at 2026-05-07 22:54 UTC (no green run on main since `b780f0e` S10-POLISH-001 integration).
