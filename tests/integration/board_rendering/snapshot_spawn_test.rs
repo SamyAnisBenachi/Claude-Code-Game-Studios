@@ -21,6 +21,7 @@ use client::presentation::board_rendering::{
 };
 use client::presentation::LaneCell;
 use client::state::{ClientGameSnapshotMessage, ClientState, CurrentClientPhase};
+use client::ui::lobby::PlayerTeamMapUpdated;
 use shared::card::{CardId, ClassId};
 use shared::protocol::{
     BoardSnapshot, ObjectiveSnapshot, PlayerSnapshot, RoundPhase, S2CGameSnapshot,
@@ -421,6 +422,7 @@ fn app_in_session() -> App {
     app.add_plugins(StatesPlugin);
     app.add_plugins(CardAnimationsPlugin);
     app.init_state::<ClientState>();
+    app.add_message::<PlayerTeamMapUpdated>();
     app.insert_resource(client::asset_wiring::placeholder_assets_for_tests());
     app.add_plugins(BoardRenderingPlugin);
 
@@ -490,6 +492,7 @@ fn install_runtime_board_assets(app: &mut App) {
     let objective_unknown = images.add(Image::default());
     let objective_real = images.add(Image::default());
     let objective_fake = images.add(Image::default());
+    let board_chrome = images.add(Image::default());
     drop(images);
 
     app.world_mut().insert_resource(BoardRuntimeAssets {
@@ -500,6 +503,7 @@ fn install_runtime_board_assets(app: &mut App) {
         objective_unknown,
         objective_real,
         objective_fake,
+        board_chrome,
     });
 }
 

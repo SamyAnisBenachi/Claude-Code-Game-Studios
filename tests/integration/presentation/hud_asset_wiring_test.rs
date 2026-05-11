@@ -26,6 +26,7 @@ fn make_app() -> App {
     app.add_plugins(StatesPlugin);
     app.add_plugins(AssetPlugin::default());
     app.init_asset::<Image>();
+    app.init_state::<ClientState>();
     app.add_plugins(HudPlugin);
     app.insert_resource(HudConfig {
         hud_margin_px: 12.0,
