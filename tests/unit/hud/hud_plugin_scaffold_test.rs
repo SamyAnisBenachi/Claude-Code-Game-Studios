@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use client::state::ClientState;
 use client::ui::hud::{
-    GoldDisplayState, HudConfig, HudEntities, HudEntity, HudPlugin, HudRoot, ScoreboardDot,
-    HUD_ENTITY_COUNT,
+    GoldDisplayState, HudConfig, HudEntities, HudEntity, HudPlugin, HudRoot, HudTimerBar,
+    ScoreboardDot, HUD_ENTITY_COUNT,
 };
 
 #[test]
@@ -86,7 +86,7 @@ fn count_with<T: Component>(app: &mut App) -> usize {
 fn count_hud_timer_named_entities(app: &mut App) -> usize {
     let mut query = app
         .world_mut()
-        .query_filtered::<&Name, (With<HudEntity>, With<Name>)>();
+        .query_filtered::<&Name, (With<HudEntity>, With<Name>, Without<HudTimerBar>)>();
     query
         .iter(app.world())
         .filter(|name| name.to_string().to_ascii_lowercase().contains("timer"))
