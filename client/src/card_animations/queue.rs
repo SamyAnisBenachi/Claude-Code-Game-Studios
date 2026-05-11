@@ -498,6 +498,14 @@ pub fn resolution_executing_system(
     if pending_phase.phase() == Some(RoundPhase::GameOver) {
         stage_objective_reveals(&mut pending_objectives, &mut staged_objectives, &timings);
         drain_pending_phase(&mut pending_phase, &mut current_phase, &mut phase_view);
+        tracing::info!(
+            track = "resolution",
+            group_index = queue.current_index,
+            group_count = queue.groups.len(),
+            completed_at_ms = time.elapsed().as_millis() as u64,
+            reason = "game_over",
+            "anim_queue_group_drained",
+        );
         drained_signals.write(GroupDrainedSignal);
         queue.clear_after_drain();
         return;
@@ -506,6 +514,14 @@ pub fn resolution_executing_system(
     if queue.current_index + 1 >= queue.groups.len() {
         stage_objective_reveals(&mut pending_objectives, &mut staged_objectives, &timings);
         drain_pending_phase(&mut pending_phase, &mut current_phase, &mut phase_view);
+        tracing::info!(
+            track = "resolution",
+            group_index = queue.current_index,
+            group_count = queue.groups.len(),
+            completed_at_ms = time.elapsed().as_millis() as u64,
+            reason = "last_group",
+            "anim_queue_group_drained",
+        );
         drained_signals.write(GroupDrainedSignal);
         queue.clear_after_drain();
         return;
@@ -554,6 +570,13 @@ pub fn resolution_objective_reveal_system(
         );
 
         if let Ok(mut entity_commands) = commands.get_entity(entity) {
+            tracing::info!(
+                track = "objective_reveal",
+                entity = ?entity,
+                lane = reveal.lane,
+                duration_ms = timings.objective_reveal_ms,
+                "anim_objective_reveal_install",
+            );
             entity_commands.insert(make_tween_anim(tween));
         } else {
             warn!(
