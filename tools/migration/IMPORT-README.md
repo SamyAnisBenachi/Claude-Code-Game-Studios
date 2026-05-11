@@ -98,16 +98,44 @@ cd D:\_DEV\claude-code-game-studios
 claude
 ```
 
-In the chat, paste:
+**Then paste this prompt verbatim** (copy the entire block between the `---` markers, including the absolute-rule paragraph):
 
-> Read `tools/migration/MIGRATION-HANDOVER.md` and execute the merge plan it describes. The migration archive is unzipped at `C:\ccgs-mig\claude\`. Do not overwrite my existing global Claude state — merge memories and skills selectively as the handover document instructs.
+---
 
-The handover document tells the agent exactly:
-- Which memory files to copy across (per-project memory only — won't touch your other projects)
-- Which `liv-*` skills to install via `/liv-subscribe`
-- Which `.claude/settings.json` snippets to merge (hooks, permissions) — and which to skip
+```
+Lis `tools/migration/MIGRATION-HANDOVER.md` end-to-end puis exécute le merge plan complet, dans l'ordre des étapes. Tu as carte blanche pour tout le travail technique (copies, restaurations, installations de skills, rewrites de paths) — je ne veux rien avoir à faire moi-même côté technique.
+
+L'archive de migration est dépaquetée à `C:\ccgs-mig\` (sous-dossiers : `project/`, `claude/`, `codex/`).
+
+RÈGLE ABSOLUE — MERGE-FIRST, JAMAIS D'ÉCRASEMENT SILENCIEUX :
+- Tu ne dois JAMAIS écraser silencieusement un fichier qui existe déjà sur ce PC avec un contenu différent du source.
+- Pour CHAQUE conflit (même chemin, contenu différent), tu STOP, tu présentes un diff clair (ou un résumé des sections divergentes si le fichier est trop gros), et tu me demandes : keep target / replace with source / merge sections / skip. Aucune exception.
+- Cette règle s'applique à TOUT : memory files, MEMORY.md, settings.json, .claude.json, hooks (`.ps1`), liv-skills, liv-skills.json, agent-memory, plugins, tasks, scheduled_tasks.lock, et tout autre destination side.
+- Si un fichier n'existe PAS encore target-side : tu peux le créer directement sans me demander (c'est un add, pas un override).
+- Pour les inserts/rewrites de paths Sam-hardcoded dans settings.json (forme `C:/Users/Sam/...`, `/c/Users/Sam/...`, etc.) : tu rewrites en utilisant `$env:USERPROFILE` ou le username target, et tu me montres la version finale avant write — même si la version actuelle target n'a pas ce chemin.
+
+PRIORITÉS DE PRÉSERVATION :
+1. Conversation Claude de référence à préserver absolument : session ID `15301581-d8cd-46e9-a61d-f9a97f15aef5` ("REVIEW SESSION STATE AND SPRINT STATUS"). Son `.jsonl` (45 MB) et son subagent dir sont dans l'archive sous `C:\ccgs-mig\claude\projects-recent\`. À la fin, vérifie que `claude --resume 15301581-d8cd-46e9-a61d-f9a97f15aef5` fonctionnerait (le fichier doit être à `$env:USERPROFILE\.claude\projects\D---DEV-claude-code-game-studios\` après ton merge).
+2. État de session courant : `production/session-state/active.md` (déjà restauré à l'étape 4 — vérifie qu'il est bien là).
+3. Toutes les mémoires per-project et agent-memory : à merger une par une avec la règle ci-dessus.
+
+À LA FIN :
+- Rapport structuré : (a) fichiers créés, (b) fichiers mergés avec mes décisions, (c) fichiers skipped à ma demande, (d) erreurs ou cas que tu n'as pas pu résoudre.
+- État réel actuel via `git log --oneline -10` (PAS via le header de `active.md` qui peut être stale).
+- Confirme que `claude --resume 15301581-d8cd-46e9-a61d-f9a97f15aef5` est prêt à fonctionner.
+```
+
+---
+
+The handover document (`tools/migration/MIGRATION-HANDOVER.md`) tells the agent exactly:
+- Which memory files to merge (per-project memory only — won't touch your other projects)
+- Which `liv-*` skills to install via `/liv-subscribe` (and how to bootstrap when the target is empty)
+- Which `.claude/settings.json` snippets to port and which to skip
+- Which `permissions.allow` entries to keep (`Skill(*)`, `WebFetch(domain:*)`, bare `Bash(cargo/git/gh *)`) and which to drop
+- How to merge `~/.claude.json` (MCP, project trust) WITHOUT clobbering the target's OAuth
 - Whether to install the sound-notification `.ps1` hook scripts
-- What's in `production/session-state/active.md` (the current task) so the agent can resume
+- How to restore `projects-recent/` so `claude --resume` works
+- How to reconcile `active.md` header against `git log` (header may be stale)
 
 ### 7. Authenticate
 

@@ -4,6 +4,21 @@
 >
 > Read this file completely before doing anything. The user is migrating their CCGS work from one Windows PC to another. The target PC **already has an existing Claude Code installation with its own global state** (other projects, other memories, other skills, other hooks). Your job is to **merge** project-specific state into the existing setup, not to clobber it.
 
+## ⚠️ ABSOLUTE RULE — MERGE-FIRST, NEVER SILENT OVERRIDE
+
+The user has stated this as a non-negotiable constraint of the migration. Internalize it before every write operation:
+
+- **You MUST NEVER overwrite a file that already exists target-side with different content** — under any circumstances, without an explicit user decision.
+- For EVERY conflict (same path, different content), you MUST:
+  1. STOP before writing.
+  2. Show a clear diff (or a structured summary of divergent sections if the file is too large for an inline diff — e.g. >500 lines).
+  3. Ask the user: keep target / replace with source / merge sections / skip. Wait for the answer.
+- This rule applies to ALL destinations covered below: memory files, MEMORY.md, settings.json, .claude.json, hook scripts (`.ps1`), liv-skills, liv-skills.json, agent-memory, plugins, tasks, scheduled_tasks.lock, projects-recent restoration, and any other file you touch.
+- **Adds (file does not exist target-side) do NOT require confirmation** — go ahead and create them.
+- **Rewrites of Sam-hardcoded paths** (`C:/Users/Sam/...`, `/c/Users/Sam/...`, etc.) inside files you're writing: ALWAYS show the user the rewritten content before writing, even when the file is a pure add. The user must see the final paths.
+
+If you violate this rule, you lose the user's trust and they cannot tell which of their files now contains the wrong content. Treat every existing target-side file as load-bearing until the user says otherwise.
+
 ## Inputs available to you
 
 - The repo, already cloned at the canonical path `D:\_DEV\claude-code-game-studios` (or wherever the user actually put it — note the actual path in your first response).
@@ -19,10 +34,21 @@
   - `claude/settings.json` — the source PC's GLOBAL Claude settings (reference only — do not overwrite the target's).
   - `claude/stop-sound.ps1`, `ask-sound.ps1`, `notify-sound.ps1` — sound-notification hook scripts referenced by `settings.json`.
   - `claude/CLAUDE.md` — may or may not exist.
-  - `claude/projects-recent/` — `.jsonl` transcripts from the last 7 days + the most-recent session's subagent dir. Enables `/resume` on the target.
+  - `claude/projects-recent/` — `.jsonl` transcripts from the last 7 days + the matching session subagent dirs (one per .jsonl). Enables `claude --resume <session-id>` on the target. **See Step 10 for the restoration procedure** (these need to be MOVED into the canonical projects directory, not left in `projects-recent/`).
 - The currently-active session state at `production/session-state/active.md` — one source of truth for the resumed task. **See warning in Step 7 about a known-stale header.**
 
-The user expects you to **report what you merged**, **ask before doing anything destructive**, and finish by handing them a one-liner about the current task they were on (read it from `active.md`).
+## Reference conversation to preserve
+
+The user has flagged ONE specific Claude conversation as the highest-priority reference to preserve:
+
+- **Name**: "REVIEW SESSION STATE AND SPRINT STATUS"
+- **Session ID**: `15301581-d8cd-46e9-a61d-f9a97f15aef5`
+- **Files in the archive**:
+  - `C:\ccgs-mig\claude\projects-recent\15301581-d8cd-46e9-a61d-f9a97f15aef5.jsonl` (~45 MB)
+  - `C:\ccgs-mig\claude\projects-recent\15301581-d8cd-46e9-a61d-f9a97f15aef5\` (subagent dir, ~12 subagents)
+- **Verification at end of merge**: confirm that the user can run `claude --resume 15301581-d8cd-46e9-a61d-f9a97f15aef5` on the target — i.e. both the `.jsonl` and the matching session dir are present at `$env:USERPROFILE\.claude\projects\D---DEV-claude-code-game-studios\`.
+
+The user expects you to **report what you merged**, **stop and ask on every existing-file conflict** (per the absolute rule above), and finish by handing them a current-state summary derived from `git log -10`, NOT from `active.md`'s header.
 
 ## Merge plan — execute in order
 
@@ -167,7 +193,7 @@ The archive does NOT include `.cargo/config.toml` from the source repo (it's mac
 
 `C:\ccgs-mig\claude\.claude.json` is the source PC's master config. It typically contains: MCP server definitions, project trust list, OAuth/account state, session counters.
 
-**⚠️ Do NOT blind-overwrite the target's `$env:USERPROFILE\.claude.json`** — that would clobber the target's OAuth and other-project trust list.
+**⚠️ Do NOT blind-overwrite the target's `$env:USERPROFILE\.claude.json`** — that would clobber the target's OAuth and other-project trust list. Apply the ABSOLUTE RULE (top of doc).
 
 **Action — surgical merge:**
 
@@ -178,6 +204,38 @@ The archive does NOT include `.cargo/config.toml` from the source repo (it's mac
    - Any MCP server definitions used by this project — confirm with the user before adding.
    - Leave the target's OAuth and other-project entries untouched.
 4. Show a JSON diff before writing.
+
+### Step 10. Restore `projects-recent/` so `claude --resume` works
+
+The archive's `claude/projects-recent/` contains `.jsonl` transcripts (last 7 days) and matching session subagent dirs. Claude Code's `--resume` feature reads them from the canonical location `$env:USERPROFILE\.claude\projects\D---DEV-claude-code-game-studios\`, NOT from `projects-recent/`. You must MOVE them.
+
+**Action:**
+
+1. Ensure the target directory exists:
+   ```powershell
+   New-Item -ItemType Directory -Force `
+     -Path "$env:USERPROFILE\.claude\projects\D---DEV-claude-code-game-studios" | Out-Null
+   ```
+2. For each `.jsonl` file in `C:\ccgs-mig\claude\projects-recent\*.jsonl`:
+   - Check if `$env:USERPROFILE\.claude\projects\D---DEV-claude-code-game-studios\<same-name>.jsonl` exists.
+   - If absent → copy it across. (Pure add — no confirmation needed per the absolute rule.)
+   - If present → apply the ABSOLUTE RULE: show a comparison (file size + last 50 lines diff is enough for these — full diff is impractical for 45 MB files), ask the user. Most likely "keep target" since `.jsonl` files are append-only logs.
+3. For each session subdirectory in `C:\ccgs-mig\claude\projects-recent\` (UUID-named folders containing `subagents/`):
+   - Check if `$env:USERPROFILE\.claude\projects\D---DEV-claude-code-game-studios\<session-id>\` exists.
+   - If absent → copy the whole subdir across.
+   - If present → apply the ABSOLUTE RULE.
+
+**Verification — the reference conversation**:
+
+After step 10, confirm that both of these exist target-side:
+- `$env:USERPROFILE\.claude\projects\D---DEV-claude-code-game-studios\15301581-d8cd-46e9-a61d-f9a97f15aef5.jsonl`
+- `$env:USERPROFILE\.claude\projects\D---DEV-claude-code-game-studios\15301581-d8cd-46e9-a61d-f9a97f15aef5\subagents\` (12+ agent jsonls)
+
+If either is missing, surface it loudly — `claude --resume 15301581-d8cd-46e9-a61d-f9a97f15aef5` will fail without them. This is the user's reference conversation "REVIEW SESSION STATE AND SPRINT STATUS".
+
+If both are present, tell the user explicitly in your final report:
+> Reference conversation restored. You can resume with:
+> `claude --resume 15301581-d8cd-46e9-a61d-f9a97f15aef5`
 
 ## Things to flag to the user proactively
 
@@ -201,6 +259,8 @@ You are done when ALL of the following are verifiable, not subjective:
 - `$env:USERPROFILE\.claude\liv-skills.json` exists.
 - `/liv-list` output contains at minimum `liv-bevy-018` and `liv-bevy-lightyear` (or the user explicitly waived them in chat).
 - If sound hooks were opted-in: the three `.ps1` scripts exist under `$env:USERPROFILE\.claude\`, and the target's `settings.json` references them via portable paths (no hardcoded "Sam").
+- **Reference conversation restored**: `$env:USERPROFILE\.claude\projects\D---DEV-claude-code-game-studios\15301581-d8cd-46e9-a61d-f9a97f15aef5.jsonl` exists AND `...\15301581-d8cd-46e9-a61d-f9a97f15aef5\subagents\` dir exists with its subagent transcripts. Test: `claude --resume 15301581-d8cd-46e9-a61d-f9a97f15aef5` would not error out due to missing files.
+- **No silent overrides**: you can produce a list of every existing-file conflict you encountered, with the user's decision recorded for each.
 - `cargo check --workspace` succeeded once OR the user acknowledged a known linker issue.
 - `$env:USERPROFILE\.claude.json` was merged or copied per Step 9, AND the user confirmed in chat.
 - The user has been briefed using **commit-derived** current state (not active.md header).
