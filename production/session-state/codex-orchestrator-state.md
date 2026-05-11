@@ -2977,3 +2977,87 @@ Accumulated:
 - 673 = cherry-pick of 670 (Finding D) after worker return
 - 674 = V3 Worker B chrome children sizing (drafted only after Worker A lands + user retest confirms cards now on-screen)
 - 675 = Sprint 10 close-out skill chain (drafted when user signals close-out trigger)
+
+---
+
+## State Snapshot 2026-05-11 wave 8 (V3 Worker A + Finding D fixes integrated; Sprint 10 close-out queued; Sprint 11 backlog batch dispatched in parallel — HEAD `217428a`)
+
+### Commits added to `main` since wave 7 (`9f00b5e`)
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `d9ee107` | PROMPT 672 / cherry-pick 671 | Finding B v2 V3 Verdict A — fan-slot coord-space alignment. `fan_base_y` redefined LOCAL-to-fan_root (`HAND_FAN_STRIP_HEIGHT_PX − fan_base_margin_px` = 160). HAND_FAN_STRIP_HEIGHT_PX = 260.0 const introduced. New `hand_ui_slot_onscreen_test` 3/3 PASS at 800×600/1280×720/1920×1080. HU-02 Verdict A reconciliation. |
+| `217428a` | PROMPT 673 / cherry-pick 670 | Finding D real root cause — `c2s_confirm_class` silent-discard fix + client lobby premature-confirm guard. Server emits `S2CConfirmClassRejected` with explicit reason when no valid session for peer. Client UI disables Confirm button until S2CRoomCreated/S2CJoinAck. Supersedes wave 6 "hardened both directions" misclassification — drain entry hardening was correct, but inner silent-discard path inside handler was the unaddressed root cause. |
+
+### Sprint 10 status (per `/sprint-status` skill run 2026-05-11)
+
+| Story | Priority | Status | Closure |
+|---|---|---|---|
+| ✅ S10-PAW-001 / S10-TD-001 / S10-TD-002 / S10-CARRY-001 / S10-POLISH-001 / S10-POLISH-002 | Must Have | done | various (wave 5/6) |
+| ✅ S10-POLISH-003 | Should Have | done | `bc0b5d1` |
+| ✅ ECO-004 | Should Have | done | `bc0b5d1` |
+| ⚪ S10-TD-003 | Should Have | NOT STARTED | `file: ""` — no story file |
+| ⚪ S10-N1, S10-N2 | Nice to Have | NOT STARTED | friend-game skip |
+
+8/11 substantively complete (6/6 Must + 2/3 Should + 0/2 Nice). All Must Haves done. Sprint formally starts 2026-05-21; work front-loaded (activated 2026-05-10, all closures 2026-05-10).
+
+**Bug-fix retests pending user action**: V3 Worker A (`d9ee107`) + Finding D (`217428a`).
+
+### Sprint 11 status (per `/sprint-status` skill on `next_sprint`)
+
+`next_sprint.status: not_planned`. No `production/sprints/sprint-11.md` file. Backlog accumulated across waves 5/6/7/8 (listed below in dispatched batch).
+
+### Sprint 10 close-out sequence — queued (PROMPTs 674/675/676)
+
+Gated on user signal post-retests. Sequential at root checkout:
+- PROMPT 674 — `/smoke-check sprint` (Sprint 10 scope; PASS / PASS WITH WARNINGS / FAIL)
+- PROMPT 675 — `/team-qa sprint` (qa-lead + qa-tester; APPROVED / APPROVED WITH CONDITIONS / FAILED)
+- PROMPT 676 — `/gate-check Polish→Release` (PASS / CONCERNS / FAIL)
+
+Per updated `project_scope.md`: friend-game ONLY skips accessibility-tier criteria (QA-COND-0005) + commercial-release artifacts. All other quality gates (functionality, tests, polish, perf, code-review visibility) must PASS for gate to PASS. NOT auto-skip per "friend-game accept-risk".
+
+### Sprint 11-preview tech-debt batch — dispatched in parallel (PROMPTs 677-681)
+
+Per user `/sprint-status` recommendation + parallelism-first preference, 5 parallel worker prompts addressing the Sprint 11 backlog drift:
+
+| PROMPT | Tag | Scope | File count |
+|---|---|---|---|
+| 677 | S11-TD-PAW-006-COMPILE-001 | `tests/integration/presentation/lobby_asset_wiring_test.rs` (12 × E0596: `app.world()` → `world_mut()`) | 1 |
+| 678 | broken `*_harness.rs` bins | `client/src/bin/*_harness.rs` (Bevy 0.18 Input feature reorg) | varies (~3-5) |
+| 679 | S11-TD-FIXTURE-MESSAGES-001 | 8+ test files: rsm_network_dispatch, economy_network_dispatch, game_over_teardown, lobby_to_draft_initial, real_e2e_loop, objective_damage_gameover, economy_interest_snapshot, rsm_f2_ordering (Messages<AuctionSettled>/Messages<ResolutionComplete> not initialized) | 8 |
+| 680 | S11-TD-HUD-CASCADE-001 | hud_asset_wiring_test + hud_plugin_scaffold_test + snapshot_spawn_test (init_state + Name + board_chrome field) | 3 |
+| 681 | S11-TD-SERVER-LOG-SPAM-001 | `server/src/feature/acquisition/system.rs` (acquisition_tick per-frame log spam; W5-fix pattern apply) | 1 |
+
+All 5 disjoint worktrees, parallel-safe.
+
+### Deferred prompts (await trigger)
+
+| PROMPT | Trigger condition |
+|---|---|
+| 682 (V3 Worker B chrome children sizing) | If user retest of V3 Worker A (`d9ee107`) confirms cards positioned correctly BUT chrome (frame, badges, icons) still 0×0 invisible → emit Worker B repair |
+| 674/675/676 (Sprint 10 close-out) | After user signal (post-retests OK or accept-risk decision) |
+
+### Methodology lessons reinforced this wave
+
+**1. `/sprint-status` skill MUST be used before answering sprint state questions** — user called out a rule 10 violation when I answered sprint status from grep/memory without invoking the skill. Skill-first is mandatory per `feedback_orchestrator_skills_flow.md` + `feedback_orchestrator_prompt_quality.md` rule 10. Corrected this wave by running skill and producing canonical 30-line output.
+
+**2. Diagnostic-misdiagnosis pattern documented** — wave 7 captured PROMPT 641 viewport-sync over-eager PROVEN. Wave 8 PROMPT 669 added the corrected methodology: when runtime tracing shows "system X writes Y correctly", bug is in LAYER BELOW (entity hierarchy, layout pipeline, render order, asset application). Source-only diagnostics need to read SUPPORTING infrastructure not just system code.
+
+**3. project_scope.md rewrite — "fully functional and polished game"** — User explicitly clarified: friend-game ONLY skips accessibility + commercial-release artifacts. QA/tests/polish/perf/code-review/smoke-check/gate-check all KEEP normal quality bar. Stop using "friend-game accept-risk" as catch-all. Applied to Sprint 10 close-out sequence (676 gate-check must PASS on non-accessibility criteria).
+
+**4. Prompt format converged (rule 15 final)** — 4-backtick fence wrapper + triangle opener `🔺🔺🔺 PROMPT N : description` + triangle closer `🔺🔺🔺 PROMPT N 🔺🔺🔺` + worker final line `🔺🔺🔺 N: TICKET-ID: STATUS 🔺🔺🔺` + 51-hash closer line. No ### prompt-header lines.
+
+### Currently in flight / queued
+
+| PROMPT | Type | Status |
+|---|---|---|
+| User retest V3 Worker A | in-game test | In progress (user side) |
+| User retest Finding D | in-game test | In progress (user side) |
+| 677 / 678 / 679 / 680 / 681 | Sprint 11-preview tech-debt fixes | Dispatched parallel; awaiting returns |
+
+### Next free prompt number
+
+- **682+** = next free for new emit
+- 682 = V3 Worker B chrome children sizing (conditional on user retest evidence)
+- 683-687 = cherry-picks of 677/678/679/680/681 (after worker returns)
+- 688+ = Sprint 11 planning prompts (after Sprint 10 close-out completes)
