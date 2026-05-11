@@ -281,6 +281,7 @@ fn app_in_session() -> App {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
     app.add_plugins((CardAnimationsPlugin, BoardRenderingPlugin));
+    app.init_state::<ClientState>();
     app.init_resource::<ClientPhaseView>();
     app.world_mut()
         .resource_mut::<NextState<ClientState>>()

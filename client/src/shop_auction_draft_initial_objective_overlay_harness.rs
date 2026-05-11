@@ -44,6 +44,7 @@ fn main() {
     app.add_plugins(HandUiPlugin);
     app.add_plugins(HudPlugin);
     app.add_plugins(ShopAuctionUiPlugin);
+    app.init_state::<ClientState>();
     app.insert_resource(UiScale(1.0));
     app.insert_resource(Sau012HarnessState::for_browser());
     app.add_systems(Startup, enter_harness_session_system);

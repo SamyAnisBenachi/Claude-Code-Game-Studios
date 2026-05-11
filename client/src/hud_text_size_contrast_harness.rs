@@ -20,6 +20,7 @@ fn main() {
         ..default()
     }));
     app.add_plugins(HudPlugin);
+    app.init_state::<ClientState>();
     app.init_resource::<HudTextSizeContrastHarnessState>()
         .add_systems(Startup, enter_hud_harness_session_system)
         .add_systems(
