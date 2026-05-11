@@ -139,8 +139,10 @@ pub fn card_acquisition_tick_system(
     mut sender: Option<ServerMultiMessageSender>,
     mut pending_draft_offerings: Local<Vec<DraftOfferingDispatch>>,
 ) {
-    // Log point 1: system entry.
-    tracing::info!("acquisition_tick: system entered");
+    // Log point 1: system entry. Downgraded to debug! to avoid per-frame spam
+    // (PROMPT 681 / S11-TD-SERVER-LOG-SPAM-001) — info-level retained only when
+    // an actual message is drained below.
+    tracing::debug!("acquisition_tick: system entered");
 
     let server = server.single().ok();
 
@@ -186,11 +188,16 @@ pub fn card_acquisition_tick_system(
     }
 
     // Log point 2: count drained ShopRefreshTriggered messages before iterating.
+    // Fire info! ONLY when a message is actually drained — the empty case
+    // happens every frame in idle and was the spam source (PROMPT 681
+    // / S11-TD-SERVER-LOG-SPAM-001). W5-fix pattern.
     let shop_refresh_messages: Vec<_> = shop_refreshes.read().collect();
-    tracing::info!(
-        "acquisition_tick: drained {} ShopRefreshTriggered messages",
-        shop_refresh_messages.len()
-    );
+    if !shop_refresh_messages.is_empty() {
+        tracing::info!(
+            "acquisition_tick: drained {} ShopRefreshTriggered messages",
+            shop_refresh_messages.len()
+        );
+    }
 
     for refresh in &shop_refresh_messages {
         // Log point 3: each message processed.
