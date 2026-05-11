@@ -1061,6 +1061,11 @@ pub fn drain_placement_reveal_system(
     let mut reveals = Vec::new();
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                placements_len = message.placements.len(),
+                msg_type = "S2CPlacementReveal",
+                "drain_placement_reveal: recv"
+            );
             reveals.push(message);
         }
     }
@@ -1132,6 +1137,12 @@ pub fn drain_resolution_event_system(
     let mut rejected = None;
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                round = message.round,
+                events_len = message.events.len(),
+                msg_type = "S2CResolutionEvent",
+                "drain_resolution_event: recv"
+            );
             if let Err(error) = validate_resolution_script(&message) {
                 rejected = Some(error);
                 latest = None;
@@ -1360,6 +1371,11 @@ pub fn send_snapshot_recovery_requests_system(
     for _request in requests.read() {
         let mut sent = false;
         for mut sender in &mut senders {
+            tracing::info!(
+                msg_type = "C2SRequestSnapshot",
+                handler = "send_snapshot_recovery_requests_system",
+                "c2s_send: enter"
+            );
             sender.send::<ReliableChannel>(C2SRequestSnapshot {});
             sent = true;
         }

@@ -839,6 +839,13 @@ pub fn drain_gold_broadcast_receiver_system(
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                player_id = ?message.player_id,
+                gold = message.gold,
+                reserved_gold = message.reserved_gold,
+                msg_type = "S2CGoldBroadcast",
+                "drain_gold_broadcast: recv"
+            );
             writer.write(HudGoldBroadcastMessage(message));
         }
     }

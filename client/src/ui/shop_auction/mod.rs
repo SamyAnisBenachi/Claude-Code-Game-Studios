@@ -1402,6 +1402,12 @@ pub fn drain_auction_card_receiver_system(
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                card_id = ?message.card_id,
+                starting_price = message.starting_price,
+                msg_type = "S2CAuctionCard",
+                "drain_auction_card: recv"
+            );
             writer.write(ShopAuctionAuctionCardReceived {
                 card_id: message.card_id,
                 starting_price: message.starting_price,
@@ -1416,6 +1422,13 @@ pub fn drain_auction_bid_accepted_receiver_system(
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                bidder = ?message.bidder,
+                amount = message.amount,
+                new_timer_ms = message.new_timer_ms,
+                msg_type = "S2CAuctionBidAccepted",
+                "drain_auction_bid_accepted: recv"
+            );
             writer.write(message.into());
         }
     }
@@ -1427,6 +1440,11 @@ pub fn drain_auction_bid_rejected_receiver_system(
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                reason = ?message.reason,
+                msg_type = "S2CAuctionBidRejected",
+                "drain_auction_bid_rejected: recv"
+            );
             writer.write(message.into());
         }
     }
@@ -1438,6 +1456,12 @@ pub fn drain_auction_settled_receiver_system(
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                winner = ?message.winner,
+                amount = message.amount,
+                msg_type = "S2CAuctionSettled",
+                "drain_auction_settled: recv"
+            );
             writer.write(message.into());
         }
     }
@@ -2103,6 +2127,12 @@ pub fn handle_draft_initial_slot_click_system(
         let message = C2SPurchaseCard { card_id: card.0 };
         match senders.single_mut() {
             Ok(mut sender) => {
+                tracing::info!(
+                    msg_type = "C2SPurchaseCard",
+                    card_id = ?message.card_id,
+                    handler = "handle_draft_initial_slot_click_system",
+                    "c2s_send: enter"
+                );
                 sender.send::<ReliableChannel>(message.clone());
             }
             Err(e) => {
@@ -2144,6 +2174,12 @@ pub fn handle_draft_initial_ready_click_system(
         };
         match senders.single_mut() {
             Ok(mut sender) => {
+                tracing::info!(
+                    msg_type = "C2SSignalReady",
+                    retract = message.retract,
+                    handler = "handle_draft_initial_ready_click_system",
+                    "c2s_send: enter"
+                );
                 sender.send::<ReliableChannel>(message.clone());
             }
             Err(e) => {
@@ -2321,6 +2357,12 @@ pub fn handle_shop_slot_click_system(
         let message = C2SPurchaseCard { card_id: card.0 };
         match senders.single_mut() {
             Ok(mut sender) => {
+                tracing::info!(
+                    msg_type = "C2SPurchaseCard",
+                    card_id = ?message.card_id,
+                    handler = "handle_shop_slot_click_system",
+                    "c2s_send: enter"
+                );
                 sender.send::<ReliableChannel>(message.clone());
             }
             Err(e) => {
@@ -2377,6 +2419,11 @@ pub fn handle_shop_refresh_click_system(
         let message = C2SRefreshShop {};
         match senders.single_mut() {
             Ok(mut sender) => {
+                tracing::info!(
+                    msg_type = "C2SRefreshShop",
+                    handler = "handle_shop_refresh_click_system",
+                    "c2s_send: enter"
+                );
                 sender.send::<ReliableChannel>(message.clone());
             }
             Err(e) => {
@@ -2427,6 +2474,12 @@ pub fn handle_shop_ready_click_system(
         };
         match senders.single_mut() {
             Ok(mut sender) => {
+                tracing::info!(
+                    msg_type = "C2SSignalReady",
+                    retract = message.retract,
+                    handler = "handle_shop_ready_click_system",
+                    "c2s_send: enter"
+                );
                 sender.send::<ReliableChannel>(message.clone());
             }
             Err(e) => {
@@ -2488,6 +2541,12 @@ pub fn handle_auction_bid_button_click_system(
         let message = C2SPlaceBid { amount };
         match senders.single_mut() {
             Ok(mut sender) => {
+                tracing::info!(
+                    msg_type = "C2SPlaceBid",
+                    amount = message.amount,
+                    handler = "handle_auction_bid_button_click_system",
+                    "c2s_send: enter"
+                );
                 sender.send::<ReliableChannel>(message.clone());
             }
             Err(e) => {

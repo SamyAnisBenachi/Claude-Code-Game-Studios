@@ -51,6 +51,14 @@ pub fn drain_gold_update_receiver_system(
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                gold = message.gold,
+                current_mana = message.current_mana,
+                reserve_mana = message.reserve_mana,
+                mana_cap = message.mana_cap,
+                msg_type = "S2CGoldUpdate",
+                "drain_gold_update: recv"
+            );
             economy_view.apply_gold_update(&message);
         }
     }
@@ -63,6 +71,14 @@ pub fn drain_game_snapshot_receiver_system(
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                player_id = ?message.recipient_player_id,
+                phase = ?message.phase,
+                round_number = message.round_number,
+                players_len = message.players.len(),
+                msg_type = "S2CGameSnapshot",
+                "drain_game_snapshot: recv"
+            );
             if !apply_snapshot_to_player_economy_view(&message, &mut economy_view) {
                 warn!(
                     "Presentation: snapshot for {:?} does not contain the local player economy",

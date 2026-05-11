@@ -224,12 +224,25 @@ pub fn drain_lobby_s2c_system(
 ) {
     for mut receiver in &mut handshakes {
         for message in receiver.receive() {
+            tracing::info!(
+                player_id = ?message.player_id,
+                session_id = message.session_id,
+                protocol_version = message.protocol_version,
+                msg_type = "S2CHandshake",
+                "drain_lobby_s2c: recv"
+            );
             apply_lobby_handshake(&mut lobby, &mut identity, &message);
         }
     }
 
     for mut receiver in &mut handshake_rejections {
         for message in receiver.receive() {
+            tracing::info!(
+                server_version = message.server_version,
+                client_version = message.client_version,
+                msg_type = "S2CHandshakeRejected",
+                "drain_lobby_s2c: recv"
+            );
             lobby.status = format!(
                 "Handshake rejected: server {} client {}",
                 message.server_version, message.client_version
@@ -239,6 +252,14 @@ pub fn drain_lobby_s2c_system(
 
     for mut receiver in &mut created {
         for message in receiver.receive() {
+            tracing::info!(
+                session_id = %message.session_id,
+                room_code = %message.room_code,
+                mode = ?message.mode,
+                slots_len = message.slots.len(),
+                msg_type = "S2CRoomCreated",
+                "drain_lobby_s2c: recv"
+            );
             apply_room_created(&mut lobby, &message);
             team_map_writer.write(PlayerTeamMapUpdated {
                 slots: lobby.slots.clone(),
@@ -249,6 +270,11 @@ pub fn drain_lobby_s2c_system(
 
     for mut receiver in &mut create_rejected {
         for message in receiver.receive() {
+            tracing::info!(
+                reason = ?message.reason,
+                msg_type = "S2CCreateRoomRejected",
+                "drain_lobby_s2c: recv"
+            );
             lobby.status = format!("Create rejected: {:?}", message.reason);
             input.create_in_flight = false;
         }
@@ -256,6 +282,13 @@ pub fn drain_lobby_s2c_system(
 
     for mut receiver in &mut joined {
         for message in receiver.receive() {
+            tracing::info!(
+                session_id = %message.session_id,
+                mode = ?message.mode,
+                slots_len = message.slots.len(),
+                msg_type = "S2CJoinAck",
+                "drain_lobby_s2c: recv"
+            );
             apply_join_ack(&mut lobby, &message);
             team_map_writer.write(PlayerTeamMapUpdated {
                 slots: lobby.slots.clone(),
@@ -266,6 +299,11 @@ pub fn drain_lobby_s2c_system(
 
     for mut receiver in &mut join_rejected {
         for message in receiver.receive() {
+            tracing::info!(
+                reason = ?message.reason,
+                msg_type = "S2CJoinRejected",
+                "drain_lobby_s2c: recv"
+            );
             lobby.status = format!("Join rejected: {:?}", message.reason);
             input.join_in_flight = false;
         }
@@ -273,6 +311,11 @@ pub fn drain_lobby_s2c_system(
 
     for mut receiver in &mut slot_updates {
         for message in receiver.receive() {
+            tracing::info!(
+                slots_len = message.slots.len(),
+                msg_type = "S2CSlotUpdated",
+                "drain_lobby_s2c: recv"
+            );
             apply_slot_update(&mut lobby, &message);
             team_map_writer.write(PlayerTeamMapUpdated {
                 slots: lobby.slots.clone(),
@@ -282,6 +325,11 @@ pub fn drain_lobby_s2c_system(
 
     for mut receiver in &mut class_locked {
         for message in receiver.receive() {
+            tracing::info!(
+                class_id = ?message.class_id,
+                msg_type = "S2CClassLocked",
+                "drain_lobby_s2c: recv"
+            );
             apply_class_locked(&mut lobby, &message);
             input.class_confirm_in_flight = false;
         }
@@ -289,12 +337,22 @@ pub fn drain_lobby_s2c_system(
 
     for mut receiver in &mut classes_revealed {
         for message in receiver.receive() {
+            tracing::info!(
+                map_len = message.player_class_map.len(),
+                msg_type = "S2CClassesRevealed",
+                "drain_lobby_s2c: recv"
+            );
             apply_classes_revealed(&mut lobby, &message);
         }
     }
 
     for mut receiver in &mut confirm_rejected {
         for message in receiver.receive() {
+            tracing::info!(
+                reason = ?message.reason,
+                msg_type = "S2CConfirmClassRejected",
+                "drain_lobby_s2c: recv"
+            );
             lobby.status = format!("Class confirm rejected: {:?}", message.reason);
             input.class_confirm_in_flight = false;
         }
@@ -465,6 +523,11 @@ fn send_lobby_commands_system(
                     );
                     continue;
                 };
+                tracing::info!(
+                    msg_type = "C2SCreateRoom",
+                    mode = ?GameMode::OneVOne,
+                    "c2s_send: enter"
+                );
                 sender.send::<ReliableChannel>(C2SCreateRoom {
                     mode: GameMode::OneVOne,
                 });
@@ -480,6 +543,12 @@ fn send_lobby_commands_system(
                     );
                     continue;
                 };
+                tracing::info!(
+                    msg_type = "C2SJoinRoom",
+                    room_code = %room_code,
+                    requested_slot = *requested_slot,
+                    "c2s_send: enter"
+                );
                 sender.send::<ReliableChannel>(C2SJoinRoom {
                     room_code: room_code.clone(),
                     requested_slot: *requested_slot,
@@ -493,6 +562,11 @@ fn send_lobby_commands_system(
                     );
                     continue;
                 };
+                tracing::info!(
+                    msg_type = "C2SSelectClass",
+                    class_id = ?class_id,
+                    "c2s_send: enter"
+                );
                 sender.send::<ReliableChannel>(C2SSelectClass {
                     class_id: *class_id,
                 });
@@ -505,6 +579,11 @@ fn send_lobby_commands_system(
                     );
                     continue;
                 };
+                tracing::info!(
+                    msg_type = "C2SConfirmClass",
+                    class_id = ?class_id,
+                    "c2s_send: enter"
+                );
                 sender.send::<ReliableChannel>(C2SConfirmClass {
                     class_id: *class_id,
                 });

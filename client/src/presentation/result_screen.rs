@@ -682,6 +682,13 @@ fn drain_result_screen_game_over_receiver_system(
 ) {
     for mut receiver in &mut receivers {
         for result in receiver.receive() {
+            tracing::info!(
+                loser = ?result.loser,
+                round = result.round,
+                reason = ?result.reason,
+                msg_type = "S2CGameOver",
+                "drain_result_screen_game_over: recv"
+            );
             view_state.cached_result = Some(result);
         }
     }
@@ -798,6 +805,11 @@ fn handle_result_screen_actions_system(
     if !return_state.acknowledgement_sent {
         let acknowledgement = C2SAcknowledgeResult {};
         for mut sender in &mut senders {
+            tracing::info!(
+                msg_type = "C2SAcknowledgeResult",
+                handler = "drain_result_screen_action_requests_system",
+                "c2s_send: enter"
+            );
             sender.send::<ReliableChannel>(acknowledgement.clone());
         }
         outbound_messages.acknowledgements.push(acknowledgement);

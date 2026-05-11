@@ -136,6 +136,11 @@ pub fn drain_objective_identities_system(
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                count = message.identities.len(),
+                msg_type = "S2CObjectiveIdentities",
+                "drain_objective_identities: recv"
+            );
             apply_objective_identities_message(&message, &mut identities);
         }
     }
@@ -156,6 +161,13 @@ pub fn phase_sink_system(
     let mut messages = Vec::new();
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                phase = ?message.phase,
+                round_number = message.round_number,
+                timer_duration_ms = message.timer_duration_ms,
+                msg_type = "S2CPhaseChanged",
+                "phase_sink: recv"
+            );
             messages.push(message);
         }
     }
@@ -234,6 +246,11 @@ pub fn session_settings_sink_system(
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                placement_timer_multiplier_effective = ?message.placement_timer_multiplier_effective,
+                msg_type = "S2CSessionSettingsUpdated",
+                "session_settings_sink: recv"
+            );
             apply_session_settings_updated_message(&message, &mut settings_view);
         }
     }
@@ -251,6 +268,15 @@ pub fn game_snapshot_sink_system(
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                player_id = ?message.recipient_player_id,
+                phase = ?message.phase,
+                round_number = message.round_number,
+                timer_remaining_ms = ?message.timer_remaining_ms,
+                players_len = message.players.len(),
+                msg_type = "S2CGameSnapshot",
+                "game_snapshot_sink: recv"
+            );
             if *state.get() == ClientState::Lobby
                 && should_enter_session_from_snapshot(&identity, &message)
             {
@@ -339,6 +365,11 @@ pub fn draft_shop_hand_bridge_fanout_system(
 ) {
     for mut receiver in &mut draft_offering_receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                count = message.card_ids.len(),
+                msg_type = "S2CDraftOffering",
+                "draft_shop_hand_bridge_fanout: recv"
+            );
             let fanout = draft_offering_fanout_messages(message);
             hand_offering_writer.write(fanout.hand);
             shop_offering_writer.write(fanout.shop);
@@ -347,12 +378,23 @@ pub fn draft_shop_hand_bridge_fanout_system(
 
     for mut receiver in &mut shop_slots_receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                slots_len = message.slots.len(),
+                msg_type = "S2CShopSlots",
+                "draft_shop_hand_bridge_fanout: recv"
+            );
             shop_slots_writer.write(shop_slots_message(message));
         }
     }
 
     for mut receiver in &mut card_acquired_receivers {
         for message in receiver.receive() {
+            tracing::info!(
+                card_id = ?message.card_id,
+                source = ?message.source,
+                msg_type = "S2CCardAcquired",
+                "draft_shop_hand_bridge_fanout: recv"
+            );
             let fanout = card_acquired_fanout_messages(message);
             hand_acquired_writer.write(fanout.hand);
             if let Some(message) = fanout.draft_initial {

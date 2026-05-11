@@ -1041,6 +1041,12 @@ pub fn apply_placement_timer_selection(
     let message = C2SSetPlacementTimerMultiplier { multiplier };
     match timer_senders.single_mut() {
         Ok(mut sender) => {
+            tracing::info!(
+                msg_type = "C2SSetPlacementTimerMultiplier",
+                multiplier = ?message.multiplier,
+                handler = "apply_placement_timer_selection",
+                "c2s_send: enter"
+            );
             sender.send::<ReliableChannel>(message.clone());
         }
         Err(e) => {
