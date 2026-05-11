@@ -3155,3 +3155,162 @@ All 5 disjoint worktrees, parallel-safe.
 - 696 = cherry-pick of 682 Worker B chrome composition (after return)
 - 697+ = per-bug repair prompts emitted from 683/684/685 diagnostic findings
 - 698+ = Sprint 11 planning prompts (after Sprint 10 close-out completes via 687 + 688)
+
+---
+
+## State Snapshot 2026-05-11 wave 10 (Sprint 10 close-out chain in flight — 3 FAIL passes diagnosed, 2 fixed + 1 pending; heavy cherry-pick wave landed; Sprint 11 backlog matured to 17+ candidates — HEAD `96d102f`)
+
+### Commits added to `main` since wave 9 (`0501d88`)
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `8089c1c` | PROMPT 689 / cherry-pick 677 | S11-TD-PAW-006-COMPILE-001 (lobby_asset_wiring_test 12 × E0596 fix; `.world()` → `world_mut()`) |
+| `ee27fb6` | PROMPT 691 / cherry-pick 681 | S11-TD-SERVER-LOG-SPAM-001 (acquisition_tick per-frame log spam rescope; system entered downgraded to debug!) |
+| `3a283c9` | PROMPT 692 / cherry-pick 686 | CI source-invariant guard fix — 1-line HUD doc-comment reword at L1187 (unblocks Sprint 10 close-out smoke gate) |
+| `b378512` | PROMPT 693 / cherry-pick 690 | S11-TD-HARNESS-INIT-STATE-001 (8 harness bins; init_state::<ClientState>() added; downstream 4 issues split as S11 candidates) |
+| `bc2d324` | PROMPT 694 / cherry-pick 679 | S11-TD-FIXTURE-MESSAGES-001 (8 test files registered AuctionSettled + ResolutionComplete; 30 tests PASS) |
+| `f190cc7` | PROMPT 695 / cherry-pick 682 | **Finding B v2 V3 Verdict B WORKER B landed** — 7 chrome children sized + positioned (frame 100×100%, badges 20×20%, icons 15×15%); new hand_ui_chrome_composition_test 1/1 + regression sanity all green |
+| `fad6767` | PROMPT 702 / cherry-pick 680 | S11-TD-HUD-CASCADE-001 PARTIAL — 2 tests fully PASS; snapshot_spawn 5/6 (1 pre-existing test-design coupling bug split as S11-TD-BOARD-RENDERING-SNAPSHOT-PHASE-COUPLING-001) |
+| `7c431ca` | PROMPT 687 retry artifact | Sprint 10 smoke retry post-686 FAILED report — exposed `duplicate_confirm_with_same_class_is_silent_idempotent_noop` stale Sprint 3 assertion |
+| `59ba55e` | PROMPT 703 | Finding D refinement — c2s_confirm_class same-class duplicate returns ConfirmClassOutcome::Ignored (idempotent noop); preserves PROMPT 670 no-session rejection |
+| `2b174a6` | PROMPT 707 / cherry-pick 705 | Stale lobby_entry_server_test assertion aligned with Sprint 3 canonical contract (S11-TEST-LOBBY-ENTRY-IDEMPOTENT-ALIGNMENT-001) |
+| `f7e22f5` | (user-side) | Tools: cross-PC migration kit |
+| `7e0c663` | PROMPT 709 / cherry-pick 706 | S11-OBS-GREY-SQUARE-ATTRIBUTION-001 — 5 tracing sites (S1-S5) per PROMPT 698 diagnostic spec |
+| `cbb2565` | PROMPT 710 / cherry-pick 697 | S11-HU-DRAG-DROP-NON-INSTANT-001 — handle_placement_drag_ended gate widened (Option A, all PlacementTargetKind variants supported) |
+| `32ed9f4` | PROMPT 711 / cherry-pick 701 | S11-SAU-AUCTION-CARD-DROP-ON-PHASE-LAG-001 (Surface C) — silent-continue replaced with buffer-then-defer flow |
+| `96d102f` | PROMPT 708 retry artifact | Sprint 10 smoke retry-2 post-707 FAILED report — exposed economy_draft_subscriber_test fixture gap (Messages<ResolutionComplete> not init; PROMPT 679 tail-of-batch miss) |
+
+### Sprint 10 close-out chain status — 3 FAIL passes diagnosed, 2 fixed + 1 pending
+
+| Attempt | PROMPT | Verdict | Root cause / Fix |
+|---|---|---|---|
+| 1 | 674 (smoke) → 675 (team-qa) → 676 (gate) | FAIL / APPROVED W/CONDITIONS / FAIL | CI source-invariant guard false-positive on HUD doc-comment at b780f0e — fixed via PROMPT 686 at 3a283c9 |
+| 2 | 687 (smoke retry) | FAIL | Stale Sprint 3 assertion duplicate_confirm_with_same_class_is_silent_idempotent_noop conflicted with PROMPT 670 over-rejection — fixed via PROMPT 703 idempotent refine at 59ba55e + PROMPT 705 test align at 2b174a6 |
+| 3 | 708 (smoke retry-2) | FAIL | economy_draft_subscriber_test 7/7 panic on Messages<ResolutionComplete> not init — fixture gap (tail-of-batch miss from PROMPT 679 sweep) — PROMPT 712 fix drafted/pending |
+
+After 712 cherry-pick: PROMPT 714 (smoke retry 3) → expected PASS or PARTIAL → PROMPT 715 (gate-check retry) → Sprint 10 closed.
+
+### Findings consolidation — Wave 10
+
+| Finding | Status | Landed at |
+|---|---|---|
+| A (BoardLocalPlayer init) | FIXED | wave 4 |
+| B v2 V1 (drain) | NO-BUG | PROMPT 623 |
+| B v2 V2 (reserve strip child Visibility) | REPAIRED | dc664c8 |
+| **B v2 V3 Verdict A (fan slot coord-space)** | **REPAIRED** | d9ee107 |
+| **B v2 V3 Verdict B (chrome children sizing)** | **REPAIRED** | f190cc7 (THIS WAVE — landed!) |
+| **Finding D refinement (c2s_confirm_class same-class idempotent)** | **REPAIRED** | 59ba55e + 2b174a6 (THIS WAVE) |
+| Surface A (HUD phase timer dead-code) | PROMPT 699 drafted, **pending dispatch** | — |
+| Surface B (S2CAuctionCard protocol timer gap) | PROMPT 700 drafted, **pending dispatch** | — |
+| **Surface C (auction card-drop on phase lag)** | **REPAIRED** | 32ed9f4 (THIS WAVE) |
+| Click/drag flow (683 diagnostic — PROVEN FEATURE-GAP) | PROMPT 696 (HU-card-drag-MVP) **pending dispatch**; PROMPT 697 gate widen REPAIRED at cbb2565 | partial |
+| Grey-square attribution (698 diagnostic) | S1-S5 instrumentation landed at 7e0c663; **user retest pending to lock attribution** | observability only |
+| UI clean-pass (685 audit) | 8 collapsed Sprint 11 candidate stories identified; defer to Sprint 11 planning | — |
+
+### Heavy-cherry-pick wave landed (chronologically into wave 10)
+
+12 cherry-picks landed on main this wave:
+- 689 → 8089c1c (PAW-006 compile fix)
+- 691 → ee27fb6 (server log spam)
+- 692 → 3a283c9 (CI guard fix)
+- 693 → b378512 (harness init_state)
+- 694 → bc2d324 (fixture cluster)
+- 695 → f190cc7 (chrome composition Worker B)
+- 702 → fad6767 (HUD cascade tail PARTIAL)
+- 704 → 59ba55e (idempotent refine)
+- 707 → 2b174a6 (lobby_entry alignment)
+- 709 → 7e0c663 (grey-square tracing)
+- 710 → cbb2565 (drag-ended gate widen)
+- 711 → 32ed9f4 (SAU buffer-defer)
+
+Plus 2 smoke retry artifacts (7c431ca, 96d102f) and 1 migration kit (f7e22f5) — 15 commits total since wave 9.
+
+### Parallel cherry-pick race observation
+
+Multiple wave-10 cherry-picks landed via parallel agents pushing concurrently — `709`/`710`/`711` all landed in the same push range (`2b174a6..32ed9f4`). Worker for 710 reported "Everything up-to-date" — Git's optimistic-concurrency detection handled cleanly. No work lost. Lesson: parallel-agent cherry-pick race is benign when scopes disjoint at file level.
+
+### Methodology lessons reinforced this wave
+
+**1. Premise correction discipline** — PROMPT 678 worker correctly identified my prompt's wrong path (`client/src/bin/*_harness.rs` → actual `client/src/*_harness.rs`) AND wrong root-cause assumption (Bevy 0.18 Input feature reorg ≠ root cause); compiles + reaches Bevy startup before different panic (missing init_state). Worker reported NO-OP truthfully + surfaced the real bug for separate prompt. Mitigation: rule 6 (verify claims) is bidirectional — orchestrator claims need worker verification too.
+
+**2. Tail-of-batch gap pattern** — PROMPT 679 swept 8 test files for AuctionSettled + ResolutionComplete fixture registration. PROMPT 708 exposed economy_draft_subscriber_test (9th file) was missed. Sweep prompts should ENUMERATE EXHAUSTIVELY via grep, not enumerate by sample. Mitigation: sweep diagnostics include "additionally check: <enumerate via specific grep pattern>" + worker validates the enumeration before patching.
+
+**3. Diagnostic-misdiagnosis recurring** — PROMPT 641 falsely PROVEN Suspect 1 (viewport); reproduced runtime evidence to falsify. PROMPT 678 caught my prompt premise wrong. PROMPT 698 (two worker runs) converged independently on same 5 sites — reproducibility of diagnostic-spec increases confidence. Pattern: when 2+ independent diagnostic returns converge, the recommendation is high-confidence even if upstream prompt was wrong.
+
+**4. Format compliance trending canonical** — wave 10 returns largely fully canonical (triangle + DONE/PARTIAL/FAILED/NO-OP + 51-hash closer). Persistent drift on hash closer length (often ~30-50 chars instead of 51). PASS (PROMPT 698 first return) was non-canonical; second return used DONE correctly. Minor signal of growing rule internalization.
+
+**5. Multi-fix cascade pattern in close-out** — Sprint 10 close-out exposed 3 distinct root causes in sequence: CI guard false-positive (cosmetic doc-comment) → stale Sprint 3 assertion (over-rejection from PROMPT 670 fix) → fixture tail-of-batch miss (PROMPT 679 incomplete enumeration). Each subsequent retry exposed a previously-masked failure. Pattern: failing tests under `set -euo pipefail` cascade hide later failures; retries surface them one at a time. Plan retries assuming N>1 unless proven otherwise.
+
+### Migration kit landed (f7e22f5)
+
+User added `tools/migration/` cross-PC migration kit. Out-of-orchestrator-scope content but relevant — Claude/Codex sessions can now be exported to another PC. Audit on export script identified scope gap (modified .jsonl in last 7 days + last subagents dir of most recent session); user approved Option 1 (patch export script) — landed in this wave.
+
+### Sprint 11 backlog matured to 17+ candidates
+
+Server-side observability:
+- S11-TD-NET-001/002/003 (test parity for send-Err hardening)
+- S11-TD-PRISM-COV-001 (Cluster 2C advisory)
+- S11-TD-SERVER-LOG-SPAM-001 ✅ closed at ee27fb6
+- S11-TD-CLIENT-LOG-001 ✅ closed at 09aa6ce
+
+Test infra:
+- S11-TD-PAW-006-COMPILE-001 ✅ closed at 8089c1c
+- S11-TD-HARNESS-INIT-STATE-001 ✅ closed at b378512
+- S11-TD-HARNESS-MESSAGES-001 (4 harness bins downstream from 690 needing add_message::<PlayerTeamMapUpdated>)
+- S11-TD-HARNESS-HANDUI-ENTITIES-001 (2 harness bins downstream from 690 needing HandUiEntities)
+- S11-TD-FIXTURE-MESSAGES-001 ✅ closed at bc2d324 (BUT tail-of-batch gap exposed → S11-TD-FIXTURE-MESSAGES-002 candidate for wider sweep, see PROMPT 708 artifact Option B)
+- S11-TD-HUD-CASCADE-001 ✅ closed PARTIAL at fad6767 (1 sub-test deferred as S11-TD-BOARD-RENDERING-SNAPSHOT-PHASE-COUPLING-001)
+
+Game UI / UX (from PROMPT 685 audit):
+- S11-TD-UI-ZINDEX-LAYERS (foundational; cross-cutting)
+- S11-TD-UI-FLEX-STRIPS + S11-UX-HUD-TOP-STRIP-LAYOUT + S11-UX-HUD-BOTTOM-STRIP-LAYOUT + S11-UX-HUD-OPP-FIGURINE (combined)
+- S11-UX-DRAFT-GRID-CENTERED-MODAL
+- S11-UX-AUCTION-FEATURED-CARD + S11-UX-AUCTION-FREE-GOLD-COUNTERS (combined)
+- S11-UX-LOBBY-CLASS-PICKER + S11-UX-LOBBY-BUTTON-HITTARGETS (combined)
+- S11-UX-BOARD-RENDERING-SPEC (author missing design/ux/board-rendering.md)
+- S11-TD-UI-FONT-CONSTANTS
+- S11-TD-UI-VIEWPORT-INVARIANT-TESTS
+
+Drag flow / placement:
+- HU-card-drag-MVP (PROMPT 696 pending dispatch — feature-gap; producers + per-frame Transform writer missing in production code)
+- S11-HU-DRAG-DROP-NON-INSTANT-001 ✅ closed at cbb2565 (gate widened)
+- S11-OBS-GREY-SQUARE-ATTRIBUTION-001 ✅ closed at 7e0c663
+
+Lobby UX:
+- S11-LOBBY-CONFIRM-IDEMPOTENT-REFINE-001 ✅ closed at 59ba55e
+- S11-TEST-LOBBY-ENTRY-IDEMPOTENT-ALIGNMENT-001 ✅ closed at 2b174a6
+- S11-LOBBY-UX-CONFIRM-STATE-001 (UI text differentiation own-confirm-acked vs waiting-opponent — quality-of-life)
+
+Auction-area surfaces (from PROMPT 684):
+- S11-HUD-TIMER-BAR-VISIBILITY-001 (Surface A — PROMPT 699 pending dispatch)
+- S11-PROTO-AUCTION-TIMER-DURATION-001 (Surface B — PROMPT 700 pending dispatch — cross-cutting shared/server/client)
+- S11-SAU-AUCTION-CARD-DROP-ON-PHASE-LAG-001 ✅ closed at 32ed9f4
+
+S10 carry-overs:
+- S10-TD-003 doc hygiene (Should-Have, never started)
+- S10-N1, S10-N2 nice-to-haves (skipped per friend-game scope)
+
+Plus tail-of-batch:
+- S11-TD-FIXTURE-MESSAGES-002 (wider sweep — PROMPT 712 is targeted Option A for economy_draft_subscriber only; Option B for full audit deferred Sprint 11)
+- S11-TD-BOARD-RENDERING-SNAPSHOT-PHASE-COUPLING-001 (test-design coupling bug from PROMPT 680 PARTIAL)
+
+### Pending dispatches (worker prompts drafted but awaiting user dispatch)
+
+| PROMPT | Type | Surface |
+|---|---|---|
+| 696 | HU-card-drag-MVP feature implementation | Drag producers + per-frame Transform writer (new story authoring) |
+| 699 | HUD timer bar visibility fix (Surface A) | client/src/ui/hud/mod.rs set_hud_visible add timer_bar |
+| 700 | S2CAuctionCard protocol timer field (Surface B) | shared crate + server emit + client buffer_card; cross-cutting |
+| 712 | economy_draft_subscriber fixture fix | server/tests/economy_draft_subscriber_test.rs add_message::<ResolutionComplete> |
+| 713 | cherry-pick 712 | After 712 returns |
+| 714 | /smoke-check sprint retry 3 | After 713 lands |
+| 715 | /gate-check Polish→Release retry | After 714 PASS/PARTIAL |
+
+### Next free prompt number
+
+- **716+** = next free for new emit after Sprint 10 close-out + outstanding repairs land
+- 716 = cherry-pick 696 if drag MVP implementation returns
+- 717 = cherry-pick 699 (HUD timer bar)
+- 718 = cherry-pick 700 (auction protocol)
+- 719 = state snapshot wave 11 (after Sprint 10 close-out completes; or after V3 user-retest evidence)
+- 720+ = Sprint 11 planning (`/sprint-plan new`)
