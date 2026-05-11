@@ -9,13 +9,18 @@
 - The repo, already cloned at the canonical path `D:\_DEV\claude-code-game-studios` (or wherever the user actually put it — note the actual path in your first response).
 - A folder of files extracted from the source PC's migration archive, at `C:\ccgs-mig\` (or wherever the user unzipped it). Inside you will find:
   - `project/` — gitignored project files (already restored to the repo by the user in step 4 of IMPORT-README).
-  - `claude/` — the relevant slices of the source PC's `~/.claude/`:
-    - `claude/memory/` — 12 memory `.md` files + `MEMORY.md` index from the source PC's per-project memory directory (`~/.claude/projects/D---DEV-claude-code-game-studios/memory/`)
-    - `claude/skills/` — the source PC's subscribed `liv-*` skills directory
-    - `claude/settings.json` — the source PC's GLOBAL Claude settings (reference only — do not overwrite the target's)
-    - `claude/stop-sound.ps1`, `ask-sound.ps1`, `notify-sound.ps1` — sound-notification hook scripts referenced by `settings.json`
-    - `claude/CLAUDE.md` — may or may not exist; source PC had none at export time
-- The currently-active session state at `production/session-state/active.md` — this is the source of truth for the resumed task.
+  - `claude/.claude.json` — **CRITICAL** master config at user-home root (MCP servers, project trust list, OAuth state, session counters). See Step 9.
+  - `claude/memory/` — per-project memory `.md` files + `MEMORY.md` index. Run `Get-ChildItem` to enumerate — counts and names drift; do not trust hardcoded lists.
+  - `claude/agent-memory/` — agent-level memory (creative-director, producer, technical-director). Distinct from per-project memory.
+  - `claude/skills/` — the source PC's subscribed `liv-*` skills directory.
+  - `claude/liv-skills.json` — liv-skills subscription manifest. Without it `/liv-sync` misbehaves.
+  - `claude/plugins/` — plugin marketplaces state (anything installed via `/plugin`).
+  - `claude/tasks/`, `claude/scheduled_tasks.lock` — `/schedule` cron state.
+  - `claude/settings.json` — the source PC's GLOBAL Claude settings (reference only — do not overwrite the target's).
+  - `claude/stop-sound.ps1`, `ask-sound.ps1`, `notify-sound.ps1` — sound-notification hook scripts referenced by `settings.json`.
+  - `claude/CLAUDE.md` — may or may not exist.
+  - `claude/projects-recent/` — `.jsonl` transcripts from the last 7 days + the most-recent session's subagent dir. Enables `/resume` on the target.
+- The currently-active session state at `production/session-state/active.md` — one source of truth for the resumed task. **See warning in Step 7 about a known-stale header.**
 
 The user expects you to **report what you merged**, **ask before doing anything destructive**, and finish by handing them a one-liner about the current task they were on (read it from `active.md`).
 
@@ -43,22 +48,30 @@ Per-project memory lives at `~/.claude/projects/<project-slug>/memory/`. Other p
   - Otherwise → copy it across.
 - For `MEMORY.md`:
   - If target has none → copy directly.
-  - If target has one → **merge** the bullet lists. Each line is `- [Title](file.md) — one-line hook`. Deduplicate by filename. Show the user the merged result before writing.
+  - If target has one → **merge** the bullet lists. Each line is `- [Title](file.md) — one-line hook`.
+    - **Order**: keep target's pre-existing entries at the top; append source-from-migration entries below.
+    - **Dedupe key**: filename in the link. If a filename appears on both sides, keep ONE bullet — prefer the source-PC description if the underlying `.md` is being copied across.
+    - **Conflict on underlying `.md`**: if same filename has different content on both sides, present a unified diff and ask the user (keep target / replace with source / merge sections manually).
+  - Show the merged result before writing.
 
-Note: the user's source-PC memory contains 12 files (project_tech_stack, feedback_bevy_skill_mandatory, project_bevy_018_violations, feedback_parallelism_first, project_scope, project_codex_split, feedback_commit_hygiene, feedback_disk_space, feedback_paw_review_flow, feedback_orchestrator_skills_flow, feedback_orchestrator_prompt_quality, project_tech_stack). The full live index is in MEMORY.md at the top of this conversation's claudeMd context if the user already loaded this repo — otherwise read `C:\ccgs-mig\claude\memory\MEMORY.md` directly.
+Run `Get-ChildItem C:\ccgs-mig\claude\memory\*.md` to enumerate the actual files. Do NOT trust any hardcoded count or list — memory files drift over time.
 
 ### Step 3. Skills merge (`liv-*`)
 
-The source PC has 8 `liv-*` skills under `~/.claude/skills/`: `liv-bevy-018`, `liv-bevy-lightyear`, `liv-grill-me`, `liv-info`, `liv-list`, `liv-subscribe`, `liv-sync`, `liv-unsubscribe`.
+The source PC has these `liv-*` skills under `~/.claude/skills/`: `liv-bevy-018`, `liv-bevy-lightyear`, `liv-grill-me`, `liv-info`, `liv-list`, `liv-subscribe`, `liv-sync`, `liv-unsubscribe`. Confirm by `Get-ChildItem C:\ccgs-mig\claude\skills\`.
 
-**Action:**
+**Bootstrap (chicken-and-egg)**: `/liv-subscribe` and `/liv-sync` are themselves liv-skills. If the target has ZERO liv-* skills installed, neither slash command exists yet on the target — you cannot use them. In that case, manually copy `liv-subscribe`, `liv-sync`, and `liv-list` folders from `C:\ccgs-mig\claude\skills\` to `$env:USERPROFILE\.claude\skills\` first. Once those three exist, the user can run `/liv-list` to verify, then `/liv-subscribe <name>` to install the rest properly.
+
+**Also restore the subscription manifest**: copy `C:\ccgs-mig\claude\liv-skills.json` to `$env:USERPROFILE\.claude\liv-skills.json` if the target has none. If the target has one, present a diff and ask before merging.
+
+**Action (post-bootstrap):**
 
 - For each skill folder in `C:\ccgs-mig\claude\skills\liv-*`:
-  - If the target already has the same skill folder → run `/liv-sync` (the canonical update flow) instead of copying files. This keeps the catalog state coherent.
-  - If absent → suggest the user run `/liv-subscribe <skill-name>` for each missing one. This is the proper install path; do not copy folders manually unless the catalog is unreachable.
-- After: run `/liv-list` and report which skills are now subscribed.
+  - If the target already has the same skill folder → run `/liv-sync` (canonical update flow).
+  - If absent → run `/liv-subscribe <skill-name>`. Do not copy folders manually unless the catalog is unreachable.
+- After: run `/liv-list` and report subscribed skills.
 
-**Critical**: `liv-bevy-018` and `liv-bevy-lightyear` are **mandatory** for this project (per `CLAUDE.md` and the user's memory `feedback_bevy_skill_mandatory`). If either is missing on the target after step 3, flag it loudly.
+**Critical**: `liv-bevy-018` and `liv-bevy-lightyear` are **mandatory** for this project (per `CLAUDE.md` and the user's memory `feedback_bevy_skill_mandatory`). If either is missing on the target after step 3, flag loudly.
 
 ### Step 4. Hooks / sound notifications (OPTIONAL — ask first)
 
@@ -67,52 +80,112 @@ The source PC's `~/.claude/settings.json` has hooks that play sounds via PowerSh
 - `Stop` → `stop-sound.ps1` (Claude finished)
 - `Notification` → `notify-sound.ps1` (system notification)
 - `PermissionRequest` / `PreToolUse:AskUserQuestion` → `ask-sound.ps1` (waiting for input)
-- Plus shell logging to `C:\Users\Sam\claude-bash-log.txt` and prompt logging.
+- Shell-command logging to `/c/Users/Sam/claude-bash-log.txt` (POSIX form, bash hook)
+- Prompt-submit logging to `/c/Users/Sam/claude-session-log.txt` (POSIX form, bash hook)
 
 **Action:**
 
 - Ask the user: "Do you want the sound notifications on the target PC? (Yes / No / Choose subset)"
 - If yes:
   - Copy the three `.ps1` scripts from `C:\ccgs-mig\claude\` to `$env:USERPROFILE\.claude\` on the target.
-  - Show the user the relevant `hooks` block from the source `settings.json` and propose merging it into the target's `settings.json` (use `/update-config` skill if available, otherwise manual edit).
-  - **Rewrite paths**: replace `C:/Users/Sam/.claude/` with `$env:USERPROFILE/.claude/` or the target user's actual path. The source paths are hardcoded.
-  - The bash log path `C:/Users/Sam/claude-bash-log.txt` must also be rewritten to the target user's home.
+  - Show the user the relevant `hooks` block from the source `settings.json` and propose merging into the target's `settings.json`.
+  - **Rewrite ALL path forms**, not just the obvious ones. The source `settings.json` mixes four prefixes:
+    | Source form | Where it appears | Replace with (PowerShell) |
+    |---|---|---|
+    | `C:/Users/Sam/.claude/...` | hook `.ps1` paths in `Stop`/`Notification`/`PermissionRequest`/`PreToolUse:AskUserQuestion` | `$env:USERPROFILE/.claude/...` (or expand at write time) |
+    | `C:\Users\Sam\.claude\...` (backslashes) | none currently in source but check before writing | `$env:USERPROFILE\.claude\...` |
+    | `/c/Users/Sam/...` (POSIX/bash form) | bash hooks under `PreToolUse:Bash` and `UserPromptSubmit` — log file paths | `/c/Users/<TARGET_USER>/...` (bash sees `$HOME` as `/c/Users/<TARGET_USER>` on Git-Bash). DO NOT use `$env:USERPROFILE` here — bash won't expand it. Get the target username via `[Environment]::UserName` and substitute. |
+    | `C:/Users/Sam/...` (bare home, not under `.claude/`) | the `claude-bash-log.txt` / `claude-session-log.txt` paths if rewritten back to Windows form | `$env:USERPROFILE/...` |
+  - Verify BOTH log paths are rewritten: `claude-bash-log.txt` AND `claude-session-log.txt`. Both POSIX form.
 
-### Step 5. Settings — global vs project (DO NOT BLIND-MERGE PERMISSIONS)
+### Step 5. Settings — global vs project (SELECTIVE permissions.allow merge)
 
-The source PC's `~/.claude/settings.json` has 220+ entries in `permissions.allow`. Most of those are one-off command patterns accumulated during specific past tasks (e.g. specific `gh run watch <run-id>` invocations). They are **not worth porting** — they'll regenerate as the user works.
+The source PC's `~/.claude/settings.json` has 220+ entries in `permissions.allow`. Most are one-shot patterns (`gh run watch <specific-id>`, full `powershell.exe -Command "..."` invocations) that are not worth porting. But a meaningful subset SHOULD be ported — otherwise the user gets dozens of re-approval prompts on day one.
 
-**Action:**
+**Action — top-level settings (high-value, port verbatim):**
 
-- Read source `settings.json` keys: `model`, `effortLevel`, `autoUpdatesChannel`, `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt`, `permissions.defaultMode`, `permissions.additionalDirectories`.
-- Propose merging **only** those high-value top-level settings into the target's `settings.json`. Show a diff before writing.
-- **Skip** the entire `permissions.allow` array. The user will re-approve commands as they come up. (If the user explicitly asks to port it, do so — but warn that most entries are stale one-shots.)
+- `model`, `effortLevel`, `autoUpdatesChannel`, `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt`
+- `permissions.defaultMode`
+- `permissions.additionalDirectories` — see Step 6 for path rewrites first
+- `hooks` — see Step 4 for path rewrites first
 
-The project-local `.claude/settings.local.json` was already restored by the user in step 4 of IMPORT-README — verify it's at `D:\_DEV\claude-code-game-studios\.claude\settings.local.json`. This file IS project-specific and SHOULD be kept verbatim.
+Propose merging only those into the target's `settings.json`. Show a diff before writing.
+
+**Action — `permissions.allow` selective port:**
+
+Extract from the source array ONLY the broad-and-stable patterns:
+- All `Skill(...)` entries (pre-authorized skills the user trusts).
+- All `WebFetch(domain:*)` entries (e.g. `docs.rs`, `github.com`, project wikis).
+- Bare-glob bash patterns: `Bash(cargo *)`, `Bash(cargo check *)`, `Bash(cargo test *)`, `Bash(git *)`, `Bash(git push *)`, `Bash(git commit -m ' *)`, `Bash(git add *)`, `Bash(git reset *)`, `Bash(git fetch *)`, `Bash(git pull *)`, `Bash(git stash *)`, `Bash(git restore *)`, `Bash(git rm *)`, `Bash(git check-ignore *)`, `Bash(git show *)`, `Bash(gh run *)`, `Bash(gh release *)`, `Bash(gh api *)`, `Bash(where.exe cargo *)`.
+- Bare wildcards under `Edit(/...)` and `Read(/...)` that target broad project areas.
+
+**Skip**: every entry containing `powershell.exe -Command "..."` (long one-shots) and every entry with a specific run-id or session-id baked in.
+
+Show the user the filtered list before writing. Roughly: ~30-40 entries out of 220 should survive the filter.
+
+The project-local `.claude/settings.local.json` was restored in step 4 of IMPORT-README — verify it's at `D:\_DEV\claude-code-game-studios\.claude\settings.local.json`. Keep this file verbatim.
 
 ### Step 6. `additionalDirectories` paths
 
-Source `settings.json` has `additionalDirectories` with Windows source paths. If the user cloned to the same path (`D:\_DEV\claude-code-game-studios`), these mostly work. Otherwise, rewrite each entry to the new clone path. Show the list to the user and confirm.
+Source `settings.json` has `additionalDirectories` with mixed-quality entries. Process them:
 
-### Step 7. Resume the task
+| Entry | Action |
+|---|---|
+| `"C:/Users/Sam/.claude"` | **Rewrite** to `$env:USERPROFILE/.claude` (or the actual target user path). The username "Sam" is hardcoded — this fails on any target unless the user is also "Sam". |
+| `"\\tmp"` | **Drop**. Malformed path (Windows interprets as bare-root `\tmp` which resolves nowhere). Pre-existing bug, not a migration regression. |
+| Anything under `d:\_DEV\claude-code-game-studios\...` | Keep as-is IF target cloned to the same path. Otherwise rewrite the prefix to the new clone path. |
+| `"D:\_DEV\claude-code-game-studios\docs\architecture"` (duplicated with different casing) | Dedupe — keep one. |
 
-Read `production/session-state/active.md` end-to-end. It contains the full state of the project at the source PC at export time, including:
+Show the rewritten list to the user before writing.
 
-- Active sprint and milestone (from the session-start hook preview)
-- Last completed prompt and what's next
-- Open blockers
-- Files in-flight
+### Step 7. Resume the task — RECONCILE WITH GIT LOG, DON'T TRUST THE HEADER
 
-Hand the user a one-line summary: "You were on `<task>` — last completed `<prompt N>`, next is `<prompt N+1>`. Resume?"
+Read `production/session-state/active.md` end-to-end. It contains the rolling state of the project — Session Extracts back to 2026-04-29.
 
-Do NOT immediately start implementing the next task. Wait for the user's go.
+**⚠️ Header staleness warning**: the banner at the TOP of `active.md` can lag the actual current state by many PROMPTs. The Session Extract sections in the body are reliable; the header is hand-maintained and drifts.
+
+**Procedure to determine "where the user actually is":**
+
+1. Read `active.md` body for context (Session Extracts, carried QA conditions, structural decisions, blockers).
+2. Run `git log --oneline -30` and look at the most recent N commits. The commit subjects encode the actual current PROMPT and Sprint (e.g. `PROMPT 705 / S11-TEST-LOBBY-ENTRY-IDEMPOTENT-ALIGNMENT-001`).
+3. Cross-reference with `production/sprint-status.yaml` for the canonical sprint number.
+4. If `active.md` header disagrees with git log (it probably will), **trust git log**.
+
+Hand the user a one-line summary referencing the actual most-recent commit, not the header. Example: "Last committed work: PROMPT N on S11-... (commit abc1234). Active blockers from `active.md`: X, Y. Resume?"
+
+Do NOT immediately implement the next task. Wait for the user's go.
+
+### Step 8. `.cargo/config.toml` (cargo build linker config)
+
+The archive does NOT include `.cargo/config.toml` from the source repo (it's machine-specific to the source PC's MSVC linker location). On the target:
+
+1. Run `cargo check --workspace` from the cloned repo.
+2. If it succeeds → done, no action needed.
+3. If it fails with a linker error (`link.exe not found`, etc.) → the user needs to install or open Developer PowerShell for VS 2022/2026 to make MSVC tools visible, and may want to recreate `.cargo/config.toml` with a portable `target-dir = "target/msvc-local"` override (carried over from the user's memory `project_tech_stack`). Ask the user before writing this file — it's gitignored.
+
+### Step 9. `~/.claude.json` master config merge
+
+`C:\ccgs-mig\claude\.claude.json` is the source PC's master config. It typically contains: MCP server definitions, project trust list, OAuth/account state, session counters.
+
+**⚠️ Do NOT blind-overwrite the target's `$env:USERPROFILE\.claude.json`** — that would clobber the target's OAuth and other-project trust list.
+
+**Action — surgical merge:**
+
+1. Read both source and target `.claude.json`.
+2. If target has no `.claude.json` → copy source verbatim, then warn the user that `claude login` may still be required (OAuth tokens may not be portable per Anthropic's design).
+3. If target has one → merge only the project-scoped sections:
+   - The `projects` (or equivalent) sub-object's entry for the repo path — copy from source.
+   - Any MCP server definitions used by this project — confirm with the user before adding.
+   - Leave the target's OAuth and other-project entries untouched.
+4. Show a JSON diff before writing.
 
 ## Things to flag to the user proactively
 
-1. **`.cargo/config.toml`** is not in the archive. Cargo will fall back to defaults and `cargo check` should still work. If it fails to find a linker, the user needs Developer PowerShell for VS 2022/2026 and a regenerated config.
+1. **`.cargo/config.toml`** — see Step 8. May or may not need recreation.
 2. **Auth**: the user must `claude login`, `codex login`, `gh auth login` themselves.
-3. **Git stashes** from the source PC were intentionally not migrated (the user said they'd commit them manually before export). Confirm there are no missing stashes the user expected.
-4. **Conversation transcripts** (`.jsonl` history) were NOT migrated. `/resume` history will only show sessions started on the target PC.
+3. **Git stashes** were intentionally not migrated (the user commits manually before export). Confirm no expected stashes are missing.
+4. **`.jsonl` transcripts**: only the last 7 days are in `claude/projects-recent/`. `/resume` for older sessions won't work.
+5. **External worktrees** at `D:\_DEV\claude-code-game-studios-worktrees\` (236 branches on source) were NOT migrated. If the user had WIP in any, it's lost unless they pushed branches.
 
 ## Style and constraints
 
@@ -122,9 +195,13 @@ Do NOT immediately start implementing the next task. Wait for the user's go.
 
 ## Done condition
 
-You are done when:
-- Memory directory at the target contains the merged set of memory files (with `MEMORY.md` index updated)
-- All mandatory `liv-*` skills are subscribed (or the user explicitly waived them)
-- Sound hooks are either installed-with-rewritten-paths or explicitly skipped by the user
-- The user has been briefed on the current task from `active.md`
-- A short "migration report" message has been delivered to the user listing: files merged, files skipped, decisions deferred to them, and any errors.
+You are done when ALL of the following are verifiable, not subjective:
+
+- `Get-ChildItem $env:USERPROFILE\.claude\projects\D---DEV-claude-code-game-studios\memory\` returns the merged set of `.md` files including `MEMORY.md`.
+- `$env:USERPROFILE\.claude\liv-skills.json` exists.
+- `/liv-list` output contains at minimum `liv-bevy-018` and `liv-bevy-lightyear` (or the user explicitly waived them in chat).
+- If sound hooks were opted-in: the three `.ps1` scripts exist under `$env:USERPROFILE\.claude\`, and the target's `settings.json` references them via portable paths (no hardcoded "Sam").
+- `cargo check --workspace` succeeded once OR the user acknowledged a known linker issue.
+- `$env:USERPROFILE\.claude.json` was merged or copied per Step 9, AND the user confirmed in chat.
+- The user has been briefed using **commit-derived** current state (not active.md header).
+- A short migration report has been delivered listing: files merged, files skipped, decisions deferred to the user, and any errors.

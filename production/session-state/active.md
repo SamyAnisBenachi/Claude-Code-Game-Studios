@@ -1,7 +1,23 @@
 # Session State — Lanes and Lies
 
-> Lis ce fichier EN PREMIER dans toute nouvelle session.
-> Il contient l'état complet du projet au 2026-04-30.
+> Lis ce fichier EN PREMIER dans toute nouvelle session, PUIS `git log --oneline -30` pour réconcilier.
+>
+> ---
+>
+> **📍 CURRENT STATE — last updated 2026-05-11**
+>
+> - **Most recent work commits (per `git log`)**:
+>   - `2b174a6` test(session): align lobby_entry duplicate-confirm assertion with Sprint 3 contract — **PROMPT 705 / S11-TEST-LOBBY-ENTRY-IDEMPOTENT-ALIGNMENT-001**
+>   - `59ba55e` fix(session): same-class confirm is idempotent noop — **PROMPT 703 / S11-LOBBY-CONFIRM-IDEMPOTENT-REFINE-001**
+> - **Active sprint slug** (per `production/sprint-status.yaml`): `sprint-10` — but recent commits are on **Sprint 11** workstreams (lobby/session). Reconcile against `sprint-status.yaml` if the slug field hasn't been bumped.
+> - **Active milestone**: `milestones`
+> - **Tooling note**: a cross-PC migration kit was added at `f7e22f5` (`tools/migration/`). Not part of any sprint backlog.
+>
+> The session-extract banners below are HISTORICAL — they capture past prompt closures and are kept for context. **Do NOT read the next banner as "current state"** — it is a Session 2026-05-10 / PROMPT 630 extract preserved for traceability. Authoritative current state is the bullets above + `git log`.
+>
+> ---
+>
+> Il contient l'état complet du projet au 2026-04-30 (rolling).
 >
 > **✅ SESSION 2026-05-10 — PROMPT 630 — /story-done S10-POLISH-001 (HUD visual chrome MVP closure paperwork) — DONE**
 >
