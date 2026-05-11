@@ -3061,3 +3061,97 @@ All 5 disjoint worktrees, parallel-safe.
 - 682 = V3 Worker B chrome children sizing (conditional on user retest evidence)
 - 683-687 = cherry-picks of 677/678/679/680/681 (after worker returns)
 - 688+ = Sprint 11 planning prompts (after Sprint 10 close-out completes)
+
+---
+
+## State Snapshot 2026-05-11 wave 9 (Sprint 10 close-out chain ran with FAIL on CI guard false-positive; tech-debt batch + V3 Worker B + diagnostic batch dispatched; close-out unblocked post-686 — HEAD `3a283c9`)
+
+### Commits added to `main` since wave 8 (`5634b8f`)
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `172c2d7` | PROMPT 676 | `/gate-check Polish→Release` Sprint 10 close-out gate — FAIL (preconditions: smoke artifact missing on disk at run time; team-qa report present) |
+| `7382a82` | PROMPT 675 | `/team-qa` Sprint 10 close-out report — APPROVED WITH CONDITIONS (5 conditions: S8-QA-001-W1 carry, ECO-004 test verification, Findings A-D carry, proper smoke artifact, S10-TD-003/N1/N2 disposition) |
+| `7d44681` | PROMPT 674 | `/smoke-check` Sprint 10 close-out gate — FAIL (CI source-invariant guard false-positive on HUD doc comment at `client/src/ui/hud/mod.rs:1187` introduced at `b780f0e` S10-POLISH-001 cherry-pick) |
+| `8089c1c` | PROMPT 689 / cherry-pick 677 | S11-TD-PAW-006-COMPILE-001 — 9 × `.world()` → `.world_mut()` in `tests/integration/presentation/lobby_asset_wiring_test.rs`; 12 × E0596 errors resolved; 7/7 PASS |
+| `ee27fb6` | PROMPT 691 / cherry-pick 681 | S11-TD-SERVER-LOG-SPAM-001 — `acquisition_tick: system entered` downgraded info!→debug!; `drained N` gated on `!is_empty()`; live smoke confirmed zero info-level emissions during ~12s idle |
+| `3a283c9` | PROMPT 692 / cherry-pick 686 | CI source-invariant guard false-positive unblock — 1-line doc-comment reword at `client/src/ui/hud/mod.rs:1187`; sole permitted location of `MessageReceiver<S2CPhaseChanged>` substring is now `client/src/presentation/mod.rs:150` |
+
+### Sprint 10 close-out chain — partial, blocked on CI guard, unblock dispatched
+
+| PROMPT | Step | Verdict | Status |
+|---|---|---|---|
+| 674 | `/smoke-check sprint` | FAIL | False-positive CI guard; report at `production/qa/smoke-sprint-10-2026-05-11.md` |
+| 675 | `/team-qa sprint` | APPROVED WITH CONDITIONS | 5 conditions; non-blocking close-out |
+| 676 | `/gate-check Polish→Release` | FAIL | Preconditions not met (smoke FAIL upstream) |
+| 686 | CI guard fix | DONE | 1-line HUD doc reword; commit `3a283c9` |
+| 687 | `/smoke-check sprint` retry | PENDING dispatch | Expected PARTIAL (PASS WITH WARNINGS) post-686 |
+| 688 | `/gate-check Polish→Release` retry | DEFERRED on 687 | Expected PARTIAL or DONE |
+
+### V3 + Sprint 11-preview tech-debt batch status (post wave 8 dispatch)
+
+| PROMPT | Subject | Status |
+|---|---|---|
+| 677 | S11-TD-PAW-006-COMPILE-001 — lobby_asset_wiring_test E0596 | ✅ DONE + cherry-picked via 689 → `8089c1c` |
+| 678 | Broken `*_harness.rs` bins Bevy 0.18 Input feature reorg | NO-OP — premise was MISDIAGNOSED. Worker verified all 8 harness bins compile clean; Bevy 0.18 Input reorg NOT the issue. Real bug: harness-setup missing `init_state::<ClientState>()` |
+| 679 | S11-TD-FIXTURE-MESSAGES-001 — AuctionSettled + ResolutionComplete fixture cluster (8 test files) | ✅ DONE; cherry-pick PROMPT 694 emitted |
+| 680 | S11-TD-HUD-CASCADE-001 — 3 failing HUD tests bundled triage | Pending return |
+| 681 | S11-TD-SERVER-LOG-SPAM-001 — acquisition_tick log spam | ✅ DONE + cherry-picked via 691 → `ee27fb6` |
+| 682 | V3 Worker B chrome composition (Verdict B PROVEN per 669) | Pending return |
+| 683 | PLACEMENT click/drag flow diagnostic | Pending return |
+| 684 | Phase timer + auction timer + AUCTION asymmetric rendering diagnostic | Pending return |
+| 685 | Comprehensive UI clean-pass audit | Pending return |
+| 690 | Harness bins init_state fix (replaces misdiagnosed 678 scope) | ✅ DONE; cherry-pick PROMPT 693 emitted |
+
+### Bug findings stack (post user retest of V3 Worker A + Finding D)
+
+| # | Bug | Status |
+|---|---|---|
+| 1 | Chrome composition (Verdict B PROVEN by 669 source-reading) | Worker dispatched (PROMPT 682) |
+| 2 | Click/drag flow — grey square + drop gap + 1-frame reserve+mana flash | Diagnostic dispatched (PROMPT 683) — runtime evidence shows 8 C2SActivateCard sends, zero stage_or_update events |
+| 3 | Subsequent drafts no card draft visible | Likely Verdict B downstream — reassess post-682 cherry-pick |
+| 4 | AUCTION mystery cards | Likely Verdict B downstream OR shop-slot persistence — reassess post-682 |
+| 5 | AUCTION asymmetric on 1 player (R12) | Confirmed via log evidence: phase_sink: recv = 78 vs 78 (symmetric message delivery) BUT DraftAuction total events 5108 vs 4578 (~10% UI render asymmetry). Diagnostic dispatched (PROMPT 684 Phase 3) |
+| 6 | Phase timer unclear | Diagnostic dispatched (PROMPT 684 Phase 1) |
+| 7 | Auction timer bar static | Diagnostic dispatched (PROMPT 684 Phase 2) |
+| 8 | Comprehensive UI scaling/placement/overlap | Audit dispatched (PROMPT 685) |
+
+### Methodology reinforced this wave
+
+**1. PROMPT 678 NO-OP — worker rigor as orchestrator-quality gold standard.** My drafting was wrong on two dimensions: (a) path `client/src/bin/*_harness.rs` → actual `client/src/*_harness.rs` per Cargo.toml:49-87, (b) root-cause hypothesis (Bevy 0.18 Input feature reorg) FALSIFIED by `cargo build -p client --bins` exiting 0. Worker correctly identified the REAL bug (missing `init_state::<ClientState>()` in harness App setups; PresentationPlugin is sole init_state caller) WITHOUT inventing a fix. PROMPT 690 emitted with corrected scope.
+
+**2. `/smoke-check` false-positive CI guard pattern documented.** Source-invariant guards that trip on doc comments are a known anti-pattern. PROMPT 674 worker correctly STOPPED on FAIL per skill spec; emitted FAIL report. PROMPT 686 minimal reword (Option A) unblocked the chain in 1 line. Future: consider PROMPT 686 follow-up to teach `normalize_source()` to strip Rust comments (Option B from 674's report) — Sprint 11 candidate.
+
+**3. Parallel cherry-pick races at root checkout — clean handling.** PROMPT 689 and PROMPT 691 ran in parallel at root checkout; 691 finished commit first, 689 finished second; both pushed in single combined push (`8089c1c` + `ee27fb6` together). Worker reports cleanly note the ride-along. Pattern is stable — no need to serialize.
+
+**4. Worker-discipline reinforcement on multi-word STATUS forbids.** 675 emitted "APPROVED WITH CONDITIONS" multi-word concatenated (forbidden per rule 11). Canonical: PARTIAL or ACCEPTED RISK. Format violations trending down but still appear when skills produce verbose verdicts. Reinforce on next /story-done / /gate-check / /smoke-check prompts.
+
+### Sprint 11-preview backlog (wave 9 additions/corrections)
+
+- S11-TD-HARNESS-INIT-STATE-001 (PROMPT 690) — closed via 693 cherry-pick (pending dispatch)
+- S11-TD-HARNESS-MESSAGES-001 — 2 harness bins fail on Messages<PlayerTeamMapUpdated> not initialized (separate from 690 scope)
+- S11-TD-HARNESS-HANDUI-ENTITIES-001 — 2 harness bins fail on HandUiEntities resource missing (separate from 690 scope)
+- S11-TD-CI-NORMALIZE-COMMENTS-001 — teach `normalize_source()` to strip Rust comments (Option B from 674 FAIL report)
+- HU-card-slot-chrome-layout (PROMPT 682) — pending
+- HU-card-drag-flow (PROMPT 683 outcome dependent)
+- HUD-timer-display + SAU-auction-timer (PROMPT 684 outcome dependent)
+- AUCTION-asymmetric-rendering (PROMPT 684 Phase 3 outcome)
+- UI-clean-pass roadmap (PROMPT 685 audit produces this)
+
+### Currently launchable / in flight at snapshot time
+
+| PROMPT | Status |
+|---|---|
+| 687 | `/smoke-check sprint` retry — runnable NOW post-3a283c9 (unblocks close-out chain) |
+| 688 | `/gate-check Polish→Release` retry — runnable after 687 PASS/PARTIAL |
+| 693 | Cherry-pick 690 (harness init_state fix) — runnable at root |
+| 694 | Cherry-pick 679 (fixture messages cluster) — runnable at root |
+| 680 / 682 / 683 / 684 / 685 | Worker returns pending |
+
+### Next free prompt number
+
+- **695+** = next free for new emit
+- 695 = cherry-pick of 680 (after return)
+- 696 = cherry-pick of 682 Worker B chrome composition (after return)
+- 697+ = per-bug repair prompts emitted from 683/684/685 diagnostic findings
+- 698+ = Sprint 11 planning prompts (after Sprint 10 close-out completes via 687 + 688)
