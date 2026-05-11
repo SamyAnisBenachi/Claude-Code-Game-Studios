@@ -699,6 +699,12 @@ pub fn handle_confirm_class(
                 "c2s_confirm_class: recv"
             );
             let Some(player_id) = connections.0.get(&remote.0).copied() else {
+                tracing::warn!(
+                    peer_id = ?remote.0,
+                    class_id = ?msg.class_id,
+                    reason = "no_player_for_peer",
+                    "c2s_confirm_class: silent discard prevented"
+                );
                 continue;
             };
 
@@ -710,11 +716,47 @@ pub fn handle_confirm_class(
                 msg.class_id,
             );
 
+            if matches!(outcome, ConfirmClassOutcome::Ignored) {
+                let reason =
+                    confirm_class_ignored_reason(&rooms, &active_sessions, player_id, msg.class_id);
+                tracing::warn!(
+                    peer_id = ?remote.0,
+                    player_id = ?player_id,
+                    class_id = ?msg.class_id,
+                    reason,
+                    "c2s_confirm_class: silent discard prevented"
+                );
+            }
+
             if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
                 send_confirm_class_outcome(sender, server, &connections.0, remote.0, &outcome);
             }
         }
     }
+}
+
+fn confirm_class_ignored_reason(
+    rooms: &RoomSessions,
+    active_sessions: &ActiveSessions,
+    player_id: PlayerId,
+    class_id: ClassId,
+) -> &'static str {
+    if class_id == ClassId::Neutral {
+        return "class_neutral_disallowed";
+    }
+    let Some(session_id) = active_sessions.0.get(&player_id).copied() else {
+        return "no_active_session";
+    };
+    let Some(session) = rooms.get(session_id) else {
+        return "session_id_not_in_rooms";
+    };
+    if session.state != LobbyState::LobbyWaiting {
+        return "session_not_in_lobby_waiting";
+    }
+    if !session.slots.0.iter().any(|s| s.player == Some(player_id)) {
+        return "slot_not_found_for_player";
+    }
+    "unknown"
 }
 
 pub fn handle_lobby_disconnect(
