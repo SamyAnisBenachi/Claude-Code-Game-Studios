@@ -1735,17 +1735,66 @@ pub fn handle_auction_card_system(
     mut mode: ResMut<ShopAuctionUiMode>,
 ) {
     for message in auction_cards.read() {
-        if matches!(
-            current.phase,
-            RoundPhase::DraftShop
-                | RoundPhase::Placement
-                | RoundPhase::Resolution
-                | RoundPhase::GameOver
-        ) {
+        // Placement is gameplay-active and never transitions directly into
+        // DraftAuction; auction cards arriving mid-placement are out-of-band.
+        if current.phase == RoundPhase::Placement {
+            info!(
+                target: "shop_auction",
+                phase = ?current.phase,
+                card_id = ?message.card_id,
+                starting_price = message.starting_price,
+                "handle_auction_card: dropped (Placement phase, no deferred activation path)"
+            );
             continue;
         }
 
         if auction_state.panel_state == ShopAuctionAuctionPanelState::Settling {
+            info!(
+                target: "shop_auction",
+                phase = ?current.phase,
+                card_id = ?message.card_id,
+                starting_price = message.starting_price,
+                "handle_auction_card: dropped (panel Settling)"
+            );
+            continue;
+        }
+
+        // S11-SAU-AUCTION-CARD-DROP-ON-PHASE-LAG-001: when a DraftAuction
+        // S2CPhaseChanged is held in PendingPhaseChange (Stage A buffering
+        // during BoardRenderState::ResolutionExecuting), the matching
+        // S2CAuctionCard arrives while CurrentClientPhase is still
+        // DraftShop/Resolution/GameOver. Previously the card was silently
+        // dropped via `continue`, leaving the auction panel hidden when the
+        // phase change eventually drained into DraftAuction. Buffer the card
+        // and stay in Preparing so the phase transition system promotes the
+        // panel to Active when the deferred phase change applies.
+        if matches!(
+            current.phase,
+            RoundPhase::DraftShop | RoundPhase::Resolution | RoundPhase::GameOver
+        ) {
+            if auction_state.card_id.is_some() {
+                info!(
+                    target: "shop_auction",
+                    phase = ?current.phase,
+                    card_id = ?message.card_id,
+                    starting_price = message.starting_price,
+                    "handle_auction_card: dropped (card already buffered)"
+                );
+                continue;
+            }
+            info!(
+                target: "shop_auction",
+                phase = ?current.phase,
+                card_id = ?message.card_id,
+                starting_price = message.starting_price,
+                "handle_auction_card: buffering during transitional phase (defer activation)"
+            );
+            auction_state.buffer_card(&S2CAuctionCard {
+                card_id: message.card_id,
+                starting_price: message.starting_price,
+            });
+            auction_state.enter_preparing();
+            *mode = ShopAuctionUiMode::AuctionPreparing;
             continue;
         }
 
