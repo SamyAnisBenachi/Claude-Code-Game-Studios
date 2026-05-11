@@ -97,14 +97,18 @@ if (Test-Path $projDir) {
         Copy-Item $f.FullName (Join-Path $dstJsonl $f.Name) -Force
     }
     Write-Host ("  [ok]   {0} recent .jsonl files (>= {1:yyyy-MM-dd})" -f $recentJsonl.Count, $cutoff)
-    # Most-recent session's subagent transcripts.
-    $recentSessionDir = Get-ChildItem -Path $projDir -Directory -ErrorAction SilentlyContinue `
-        | Where-Object { $_.Name -ne "memory" } `
-        | Sort-Object LastWriteTime -Descending `
-        | Select-Object -First 1
-    if ($recentSessionDir) {
-        CopyIfExists $recentSessionDir.FullName (Join-Path $staging ("claude\projects-recent\" + $recentSessionDir.Name))
+    # Subagent transcripts: include every session-dir whose corresponding .jsonl is in the window.
+    # Match by session-id (the .jsonl filename stem equals the session-dir name).
+    $sessionDirCount = 0
+    foreach ($f in $recentJsonl) {
+        $sessionId  = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
+        $sessionDir = Join-Path $projDir $sessionId
+        if (Test-Path $sessionDir) {
+            CopyIfExists $sessionDir (Join-Path $staging ("claude\projects-recent\" + $sessionId))
+            $sessionDirCount++
+        }
     }
+    Write-Host ("  [ok]   {0} matching subagent dirs" -f $sessionDirCount)
 } else {
     Write-Host "  [skip] $projDir absent"
 }
