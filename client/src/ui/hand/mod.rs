@@ -2584,11 +2584,16 @@ pub fn spawn_hand_ui(
             ))
             .id();
 
-        // Chrome children — PAW-002
+        // Chrome children — PAW-002 (sized + positioned absolutely within the
+        // fan slot's local box; see HU-card-slot-chrome-layout story for the
+        // chosen percent layout. Slot intrinsic box is
+        // HAND_CARD_DISPLAY_WIDTH_PX × HAND_CARD_DISPLAY_HEIGHT_PX so % values
+        // resolve against a real, non-zero containing block once the slot is
+        // promoted to Active by `apply_fan_layout_system`.)
         commands.spawn((
             Name::new(format!("Fan Slot {index} Card Frame")),
             HandCardFrame,
-            Node::default(),
+            fan_slot_card_frame_node(),
             ImageNode::new(placeholder.card_frame_common.clone()),
             Visibility::Inherited,
             ChildOf(slot),
@@ -2596,7 +2601,7 @@ pub fn spawn_hand_ui(
         commands.spawn((
             Name::new(format!("Fan Slot {index} Stat Badge ATK")),
             StatBadgeAtk,
-            Node::default(),
+            fan_slot_stat_badge_node(StatBadgeCorner::BottomLeft),
             ImageNode::new(placeholder.stat_badge_atk.clone()),
             Visibility::Inherited,
             ChildOf(slot),
@@ -2604,7 +2609,7 @@ pub fn spawn_hand_ui(
         commands.spawn((
             Name::new(format!("Fan Slot {index} Stat Badge HP")),
             StatBadgeHp,
-            Node::default(),
+            fan_slot_stat_badge_node(StatBadgeCorner::BottomRight),
             ImageNode::new(placeholder.stat_badge_hp.clone()),
             Visibility::Inherited,
             ChildOf(slot),
@@ -2612,7 +2617,7 @@ pub fn spawn_hand_ui(
         commands.spawn((
             Name::new(format!("Fan Slot {index} Stat Badge MP")),
             StatBadgeMp,
-            Node::default(),
+            fan_slot_stat_badge_node(StatBadgeCorner::TopLeft),
             ImageNode::new(placeholder.stat_badge_mp.clone()),
             Visibility::Inherited,
             ChildOf(slot),
@@ -2620,7 +2625,7 @@ pub fn spawn_hand_ui(
         commands.spawn((
             Name::new(format!("Fan Slot {index} Stat Badge AR")),
             StatBadgeAr,
-            Node::default(),
+            fan_slot_stat_badge_node(StatBadgeCorner::TopRight),
             ImageNode::new(placeholder.stat_badge_ar.clone()),
             Visibility::Inherited,
             ChildOf(slot),
@@ -2628,7 +2633,7 @@ pub fn spawn_hand_ui(
         commands.spawn((
             Name::new(format!("Fan Slot {index} Rarity Icon")),
             HandRarityIcon,
-            Node::default(),
+            fan_slot_icon_node(SlotIconAnchor::TopCenter),
             ImageNode::new(placeholder.rarity_icon_common.clone()),
             Visibility::Inherited,
             ChildOf(slot),
@@ -2636,7 +2641,7 @@ pub fn spawn_hand_ui(
         commands.spawn((
             Name::new(format!("Fan Slot {index} Type Icon")),
             HandTypeIcon,
-            Node::default(),
+            fan_slot_icon_node(SlotIconAnchor::BottomCenter),
             ImageNode::new(placeholder.class_type_icon_neutral.clone()),
             Visibility::Inherited,
             ChildOf(slot),
@@ -2846,6 +2851,78 @@ fn hidden_slot_node() -> Node {
         position_type: PositionType::Absolute,
         width: Val::Px(0.0),
         height: Val::Px(0.0),
+        ..default()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StatBadgeCorner {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SlotIconAnchor {
+    TopCenter,
+    BottomCenter,
+}
+
+/// Stat badge footprint inside a fan slot — kept symmetric so badges read at
+/// the four corners (MP top-left, AR top-right, ATK bottom-left, HP bottom-right).
+const FAN_SLOT_STAT_BADGE_PERCENT: f32 = 20.0;
+/// Rarity / type icon footprint — smaller than stat badges so the top-center
+/// rarity glyph stays visually distinct from the corner badges flanking it.
+const FAN_SLOT_ICON_PERCENT: f32 = 15.0;
+/// Horizontal offset that centers a `FAN_SLOT_ICON_PERCENT`-wide element
+/// inside the slot: `(100 - icon_width) / 2`.
+const FAN_SLOT_ICON_CENTER_LEFT_PERCENT: f32 = (100.0 - FAN_SLOT_ICON_PERCENT) / 2.0;
+
+fn fan_slot_card_frame_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Percent(0.0),
+        top: Val::Percent(0.0),
+        width: Val::Percent(100.0),
+        height: Val::Percent(100.0),
+        ..default()
+    }
+}
+
+fn fan_slot_stat_badge_node(corner: StatBadgeCorner) -> Node {
+    let (left, right, top, bottom) = match corner {
+        StatBadgeCorner::TopLeft => (Val::Percent(0.0), Val::Auto, Val::Percent(0.0), Val::Auto),
+        StatBadgeCorner::TopRight => (Val::Auto, Val::Percent(0.0), Val::Percent(0.0), Val::Auto),
+        StatBadgeCorner::BottomLeft => (Val::Percent(0.0), Val::Auto, Val::Auto, Val::Percent(0.0)),
+        StatBadgeCorner::BottomRight => {
+            (Val::Auto, Val::Percent(0.0), Val::Auto, Val::Percent(0.0))
+        }
+    };
+    Node {
+        position_type: PositionType::Absolute,
+        left,
+        right,
+        top,
+        bottom,
+        width: Val::Percent(FAN_SLOT_STAT_BADGE_PERCENT),
+        height: Val::Percent(FAN_SLOT_STAT_BADGE_PERCENT),
+        ..default()
+    }
+}
+
+fn fan_slot_icon_node(anchor: SlotIconAnchor) -> Node {
+    let (top, bottom) = match anchor {
+        SlotIconAnchor::TopCenter => (Val::Percent(0.0), Val::Auto),
+        SlotIconAnchor::BottomCenter => (Val::Auto, Val::Percent(0.0)),
+    };
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Percent(FAN_SLOT_ICON_CENTER_LEFT_PERCENT),
+        top,
+        bottom,
+        width: Val::Percent(FAN_SLOT_ICON_PERCENT),
+        height: Val::Percent(FAN_SLOT_ICON_PERCENT),
         ..default()
     }
 }
