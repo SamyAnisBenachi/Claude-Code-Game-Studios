@@ -5,7 +5,8 @@ use server::core::board::{BoardPosition, UnitCardRef, UnitOwner, UnitStats};
 use server::core::economy::{PlayerEconomies, PlayerEconomy};
 use server::core::objective_contract::ObjectiveCounters;
 use server::core::rsm::{
-    BeginResolution, GameOverEmitted, ResolutionComplete, RoundPhase, RoundState, RsmPlugin,
+    AuctionSettled, BeginResolution, GameOverEmitted, ResolutionComplete, RoundPhase, RoundState,
+    RsmPlugin,
 };
 use server::core::session::SessionConfig;
 use server::feature::board::{
@@ -78,6 +79,7 @@ fn app_with_combat() -> App {
 fn app_with_rsm_and_combat() -> App {
     let mut app = App::new();
     app.add_plugins((RsmPlugin, CombatPlugin));
+    app.add_message::<AuctionSettled>();
     app.add_message::<PlacementCommitted>();
     insert_common_resources(&mut app);
     app.insert_resource(Time::<()>::default());

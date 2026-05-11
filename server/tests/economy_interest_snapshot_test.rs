@@ -4,7 +4,9 @@ use bevy::prelude::*;
 use server::core::economy::{
     apply_gold_award, EconomyPlugin, InterestSnapshots, PlayerEconomies, PlayerEconomy,
 };
-use server::core::rsm::{DraftStarted, ResolutionComplete, RoundPhase, RoundState, RsmPlugin};
+use server::core::rsm::{
+    AuctionSettled, DraftStarted, ResolutionComplete, RoundPhase, RoundState, RsmPlugin,
+};
 use server::core::session::SessionConfig;
 use server::foundation::config::GameConfig;
 use shared::card::ClassId;
@@ -48,6 +50,8 @@ fn app_with_economy(players: &[PlayerId]) -> App {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(RsmPlugin);
     app.add_plugins(EconomyPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(GameConfig(shared::config::GameConfig::default()));
     app.insert_resource(session_config(players));
     app

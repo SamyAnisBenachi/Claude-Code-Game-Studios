@@ -14,7 +14,8 @@ use lightyear::prelude::client::*;
 use lightyear::prelude::server::*;
 use lightyear::prelude::*;
 use server_crate::core::rsm::{
-    advance_phase, rsm_input_reader, RoundPhase as ServerRoundPhase, RoundState, RsmPlugin,
+    advance_phase, rsm_input_reader, AuctionSettled, ResolutionComplete,
+    RoundPhase as ServerRoundPhase, RoundState, RsmPlugin,
 };
 use server_crate::core::session::{
     GameSessionPlugin, LobbyState, PlayerConnectionMap, RoomSessions,
@@ -1027,6 +1028,8 @@ fn build_server_app(port: u16, flags: HandshakeFlags) -> App {
     app.init_resource::<PeerMetadata>();
     app.add_plugins(RsmPlugin);
     app.add_plugins(GameSessionPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     register_lightyear_protocol(&mut app);
     app.insert_resource(flags);
     app.add_systems(Startup, move |mut commands: Commands| {

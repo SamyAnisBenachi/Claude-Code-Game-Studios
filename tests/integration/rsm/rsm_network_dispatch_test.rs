@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use server::core::rsm::{
-    advance_phase, BroadcastPhaseChanged, GameOverEmitted, PendingPhaseAdvance,
-    PhaseAdvanceRequest, RoundPhase, RoundState, RsmNetworkOutbox, RsmPlugin,
+    advance_phase, AuctionSettled, BroadcastPhaseChanged, GameOverEmitted, PendingPhaseAdvance,
+    PhaseAdvanceRequest, ResolutionComplete, RoundPhase, RoundState, RsmNetworkOutbox, RsmPlugin,
 };
 use server::foundation::config::GameConfig;
 use server::network::rsm_dispatch::dispatch_phase_changed;
@@ -15,6 +15,8 @@ mod test_helpers;
 fn app_with_rsm_dispatch() -> App {
     let mut app = App::new();
     app.add_plugins(RsmPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(Time::<()>::default());
     app.insert_resource(GameConfig(shared::config::GameConfig {
         resolution_max_duration_seconds: 1,

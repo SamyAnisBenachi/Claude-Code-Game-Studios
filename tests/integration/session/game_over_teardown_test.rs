@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
-use server::core::rsm::{GameOverEmitted, RoundPhase, RoundState, RsmPlugin};
+use server::core::rsm::{
+    AuctionSettled, GameOverEmitted, ResolutionComplete, RoundPhase, RoundState, RsmPlugin,
+};
 use server::core::session::{
     ActiveSessions, ClassPreviews, ClassSelections, DeferredMessage, EndedSessionResultState,
     GameSessionPlugin, LobbyDeadline, LobbyHeartbeats, LobbyState, ReconnectTracker, RoomCode,
@@ -87,6 +89,8 @@ fn game_active_app() -> App {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(RsmPlugin);
     app.add_plugins(GameSessionPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(LobbyState::GameActive);
     app.insert_resource(session_config());
     app.insert_resource(ServerRng::new());

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use server::core::rsm::{
-    advance_phase, BroadcastPhaseChanged, DraftStarted, ResolutionComplete, RoundPhase, RoundState,
-    RsmPlugin, ShopRefreshTriggered,
+    advance_phase, AuctionSettled, BroadcastPhaseChanged, DraftStarted, ResolutionComplete,
+    RoundPhase, RoundState, RsmPlugin, ShopRefreshTriggered,
 };
 use server::core::session::SessionConfig;
 use server::foundation::config::GameConfig;
@@ -67,6 +67,8 @@ fn app_for_draft_entry() -> App {
     let players = [player(1), player(2)];
     let mut app = App::new();
     app.add_plugins(RsmPlugin);
+    app.add_message::<AuctionSettled>();
+    app.add_message::<ResolutionComplete>();
     app.insert_resource(session_config(&players))
         .insert_resource(GameConfig(shared::config::GameConfig::default()))
         .insert_resource(Time::<()>::default())
