@@ -789,11 +789,35 @@ fn request_confirm_class(
     lobby: &mut LobbyViewState,
     commands: &mut MessageWriter<LobbyCommand>,
 ) {
+    if lobby.session_id.is_none() {
+        tracing::warn!(
+            can_confirm = false,
+            session_id = ?lobby.session_id,
+            local_player_id = ?lobby.local_player_id,
+            class_id = ?input.selected_class,
+            "lobby_ui_confirm_button_state: blocked — no active session_id (premature confirm)"
+        );
+        lobby.status = "Create or join a room before confirming class".to_string();
+        return;
+    }
+
     if input.class_confirm_in_flight {
+        tracing::info!(
+            can_confirm = false,
+            session_id = ?lobby.session_id,
+            class_id = ?input.selected_class,
+            "lobby_ui_confirm_button_state: blocked — confirm already in-flight"
+        );
         lobby.status = "Class confirm already pending".to_string();
         return;
     }
 
+    tracing::info!(
+        can_confirm = true,
+        session_id = ?lobby.session_id,
+        class_id = ?input.selected_class,
+        "lobby_ui_confirm_button_state: dispatching ConfirmClass command"
+    );
     input.class_confirm_in_flight = true;
     lobby.status = format!("Confirming {:?}", input.selected_class);
     commands.write(LobbyCommand::ConfirmClass {
