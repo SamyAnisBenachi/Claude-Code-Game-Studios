@@ -937,6 +937,12 @@ pub fn apply_fan_layout_system(
         let Some(layout) = compute_fan_slot_layout(slot_index.0 as usize, hand_count, metrics)
         else {
             *visibility = Visibility::Hidden;
+            tracing::debug!(
+                slot_idx = slot_index.0,
+                hand_count,
+                visibility = "Hidden",
+                "hand_ui_apply_fan_layout_slot",
+            );
             continue;
         };
 
@@ -948,6 +954,14 @@ pub fn apply_fan_layout_system(
         node.top = Val::Px(layout.card_y);
         node.width = Val::Px(HAND_CARD_DISPLAY_WIDTH_PX);
         node.height = Val::Px(HAND_CARD_DISPLAY_HEIGHT_PX);
+        tracing::debug!(
+            slot_idx = slot_index.0,
+            hand_count,
+            card_x = layout.card_x,
+            card_y = layout.card_y,
+            visibility = "Visible",
+            "hand_ui_apply_fan_layout_slot",
+        );
     }
 }
 
@@ -1029,17 +1043,45 @@ pub fn hand_ui_phase_transition_system(
         return;
     };
 
+    let prev_mode = *mode;
     let next_mode = HandUiMode::from_phase(current.phase);
     let entering_staging = phase_changed && next_mode == HandUiMode::Staging;
+    tracing::info!(
+        from = ?prev_mode,
+        to = ?next_mode,
+        phase = ?current.phase,
+        phase_changed,
+        entering_staging,
+        round = current.round,
+        hand_len = hand_contents.cards.len(),
+        "hand_ui_phase_transition",
+    );
     *mode = next_mode;
+    let prev_hand_count = layout_state.hand_count;
     layout_state.hand_count = if next_mode.shows_fan_slots() {
         hand_contents.cards.len().min(HAND_FAN_SLOT_COUNT)
     } else {
         0
     };
+    if prev_hand_count != layout_state.hand_count {
+        tracing::info!(
+            before = prev_hand_count,
+            after = layout_state.hand_count,
+            shows_fan_slots = next_mode.shows_fan_slots(),
+            source = "phase_transition",
+            "hand_ui_hand_count_set",
+        );
+    }
 
     if phase_changed {
+        let pending_before = pending_placements.staged_count();
         pending_placements.clear();
+        tracing::info!(
+            before = pending_before,
+            after = pending_placements.staged_count(),
+            source = "phase_transition",
+            "hand_ui_pending_placements_cleared",
+        );
         placement_timer.in_grace_window = false;
         placement_timer.grace_remaining_ms = 0;
         placement_timer.submitted = false;
@@ -1444,7 +1486,15 @@ pub fn handle_game_snapshot_system(
             continue;
         };
 
+        let before_len = hand_contents.cards.len();
         hand_contents.cards = local_player.hand.clone();
+        tracing::info!(
+            player_id = ?snapshot.recipient_player_id,
+            before_len,
+            after_len = hand_contents.cards.len(),
+            source = "game_snapshot",
+            "hand_ui_hand_contents_set",
+        );
     }
 }
 
@@ -1536,16 +1586,34 @@ pub fn handle_card_acquired_system(
     for acquisition in acquisitions.read() {
         hide_acquired_grid_slot(&mut commands, &mut grid_slots.p0(), acquisition.card_id);
 
+        let before_len = hand_contents.cards.len();
         if hand_contents.cards.len() < HAND_FAN_SLOT_COUNT {
             hand_contents.cards.push(acquisition.card_id);
         }
+        tracing::info!(
+            card_id = ?acquisition.card_id,
+            before_len,
+            after_len = hand_contents.cards.len(),
+            source = "card_acquired",
+            "hand_ui_hand_contents_set",
+        );
 
         let hand_count = hand_contents.cards.len().min(HAND_FAN_SLOT_COUNT);
+        let prev_hand_count = layout_state.hand_count;
         layout_state.hand_count = if mode.shows_fan_slots() {
             hand_count
         } else {
             0
         };
+        if prev_hand_count != layout_state.hand_count {
+            tracing::info!(
+                before = prev_hand_count,
+                after = layout_state.hand_count,
+                shows_fan_slots = mode.shows_fan_slots(),
+                source = "card_acquired",
+                "hand_ui_hand_count_set",
+            );
+        }
 
         if hand_count > 0 {
             let fan_index = hand_count - 1;
@@ -1569,6 +1637,12 @@ pub fn handle_card_acquired_system(
                         fan_entity,
                         catalog.cards.get(&acquisition.card_id),
                         asset_server.as_deref(),
+                    );
+                    tracing::info!(
+                        slot_idx = fan_index,
+                        card_id = ?acquisition.card_id,
+                        duration_ms = timing.card_draw_animation_ms,
+                        "hand_ui_install_card_draw_animation",
                     );
                     install_card_draw_animation(
                         &mut commands,
@@ -2044,7 +2118,16 @@ pub fn handle_placement_drop_resolved_system(
             current_mana_spend: cost,
             reserve_mana_spend: 0,
         };
+        let pending_before = pending_placements.staged_count();
         pending_placements.stage_or_update(placement);
+        tracing::info!(
+            before = pending_before,
+            after = pending_placements.staged_count(),
+            card_id = ?card.0,
+            cost,
+            source = "placement_drop",
+            "hand_ui_pending_placement_staged",
+        );
         disclosure_state.step = PlacementDisclosureStep::StagedCard;
         ghost_writer.write(GhostPlacementChanged {
             target: Some(target),
@@ -3125,9 +3208,17 @@ fn unstage_card(
         return false;
     };
 
+    let pending_before = pending_placements.staged_count();
     if pending_placements.remove_staged(card_id).is_none() {
         return false;
     }
+    tracing::info!(
+        before = pending_before,
+        after = pending_placements.staged_count(),
+        card_id = ?card_id,
+        source = "unstage_card",
+        "hand_ui_pending_placement_removed",
+    );
 
     ghost_writer.write(GhostPlacementChanged {
         target: None,

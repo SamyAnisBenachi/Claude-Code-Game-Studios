@@ -65,6 +65,11 @@ pub struct ClientSessionIdentity {
 }
 
 pub fn apply_handshake_message(msg: &S2CHandshake, identity: &mut ClientSessionIdentity) {
+    tracing::info!(
+        player_id = ?msg.player_id,
+        session_id = msg.session_id,
+        "client_apply_handshake",
+    );
     identity.player_id = Some(msg.player_id);
     identity.session_id = Some(msg.session_id);
     identity.session_token = Some(msg.session_token);
@@ -91,6 +96,12 @@ pub fn apply_phase_changed_message(msg: S2CPhaseChanged, current: &mut CurrentCl
         round_number,
         ..
     } = msg;
+    tracing::info!(
+        from = ?current.phase,
+        to = ?phase,
+        round = round_number,
+        "client_apply_phase_changed",
+    );
     current.phase = phase;
     current.round = round_number;
 }
@@ -131,5 +142,12 @@ pub fn apply_objective_identities_message(
     msg: &S2CObjectiveIdentities,
     identities: &mut ClientObjectiveIdentities,
 ) {
+    let count = msg.identities.len();
+    let fakes = msg
+        .identities
+        .iter()
+        .filter(|(_, is_fake)| *is_fake)
+        .count();
+    tracing::info!(count, fakes, "client_apply_objective_identities",);
     identities.identities = msg.identities.clone();
 }

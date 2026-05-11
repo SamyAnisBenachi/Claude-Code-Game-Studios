@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use shared::card::{CardCatalog, CardData, ClassId, Rarity};
 
-use crate::state::ClientState;
+use crate::state::{ClientSessionIdentity, ClientState};
 
 const CARD_DATA_JSON: &str = include_str!("../../assets/data/cards.json");
 
@@ -273,7 +273,16 @@ pub struct PlaceholderAssets {
 
 /// Inserts [`PlaceholderAssets`] into the world by loading every path constant
 /// via [`AssetServer`]. Registered on `OnEnter(ClientState::InSession)`.
-pub fn insert_placeholder_assets(asset_server: Res<AssetServer>, mut commands: Commands) {
+pub fn insert_placeholder_assets(
+    asset_server: Res<AssetServer>,
+    identity: Option<Res<ClientSessionIdentity>>,
+    mut commands: Commands,
+) {
+    tracing::info!(
+        state = "InSession",
+        player_id = ?identity.as_deref().and_then(|i| i.player_id),
+        "client_state_on_enter_in_session",
+    );
     commands.insert_resource(PlaceholderAssets {
         fallback: asset_server.load(PLACEHOLDER_FALLBACK_ASSET),
         card_frame_common: asset_server.load(CARD_FRAME_COMMON_HAND_ASSET),
@@ -334,7 +343,15 @@ pub fn insert_placeholder_assets(asset_server: Res<AssetServer>, mut commands: C
 
 /// Removes [`PlaceholderAssets`] from the world on session exit.
 /// Registered on `OnExit(ClientState::InSession)`.
-pub fn remove_placeholder_assets(mut commands: Commands) {
+pub fn remove_placeholder_assets(
+    identity: Option<Res<ClientSessionIdentity>>,
+    mut commands: Commands,
+) {
+    tracing::info!(
+        state = "Lobby",
+        player_id = ?identity.as_deref().and_then(|i| i.player_id),
+        "client_state_on_exit_in_session",
+    );
     commands.remove_resource::<PlaceholderAssets>();
 }
 
