@@ -182,6 +182,7 @@ fn app_with_settings() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
     app.add_plugins(SettingsAccessibilityPlugin);
     app.world_mut()
         .resource_mut::<NextState<ClientState>>()
