@@ -190,19 +190,29 @@ fn accepted_bid_timer_reset_caps_at_auction_timer() {
 }
 
 #[test]
-fn timer_decrement_clamps_lag_spikes_before_saturating_sub() {
+fn timer_decrement_subtracts_raw_delta_and_saturates_at_zero() {
+    // Regression: a prior `.min(1000)` clamp here caused auctions to never
+    // settle when Update ticks were sparse (e.g., 17-min stuck auctions in
+    // manual playtest 2026-05-12). The timer must track real wall-clock
+    // delta so settlement fires within the configured window even when the
+    // schedule fires infrequently between bid bursts.
     test_helpers::init_test_tracing();
     for (start, raw_delta, expected) in [
-        (12_000, 5_000, 11_000),
+        (12_000, 5_000, 7_000),
         (12_000, 1_000, 11_000),
         (12_000, 999, 11_001),
-        (12_000, 1_001, 11_000),
+        (12_000, 1_001, 10_999),
         (500, 5_000, 0),
+        (20_000, 20_000, 0),
+        (20_000, 60_000, 0),
     ] {
         let mut auction = live_auction(5, None, start);
 
         decrement_live_bidding_timer(&mut auction, raw_delta);
 
-        assert_eq!(auction.timer_remaining_ms, expected);
+        assert_eq!(
+            auction.timer_remaining_ms, expected,
+            "decrement_live_bidding_timer(start={start}, raw_delta={raw_delta})"
+        );
     }
 }

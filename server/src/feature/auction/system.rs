@@ -556,8 +556,14 @@ pub fn decrement_live_bidding_timer(auction: &mut AuctionState, raw_delta_ms: u3
         return;
     }
 
-    let safe_delta_ms = raw_delta_ms.min(1000);
-    auction.timer_remaining_ms = auction.timer_remaining_ms.saturating_sub(safe_delta_ms);
+    // No per-tick clamp: tracks raw wall-clock delta so the auction expires in
+    // bounded real time even when the Update schedule fires sparsely (e.g.,
+    // headless server with network-driven ticks). saturating_sub handles
+    // oversized deltas by zeroing the timer, which is the correct behavior —
+    // if real time exceeds the configured auction window, settlement must
+    // fire. A prior `.min(1000)` clamp here caused 17-minute stuck auctions
+    // when Update ticks were tens of seconds apart between bursts.
+    auction.timer_remaining_ms = auction.timer_remaining_ms.saturating_sub(raw_delta_ms);
 }
 
 pub fn settle_expired_auction(
