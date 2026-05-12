@@ -888,6 +888,7 @@ impl Plugin for BoardRenderingPlugin {
             .add_message::<GhostPlacementChanged>()
             .add_message::<GhostClickedEvent>()
             .add_message::<GhostDragStartEvent>()
+            .add_message::<PlayerTeamMapUpdated>()
             .add_observer(on_ghost_clicked)
             .add_observer(on_ghost_drag_start)
             .configure_sets(
