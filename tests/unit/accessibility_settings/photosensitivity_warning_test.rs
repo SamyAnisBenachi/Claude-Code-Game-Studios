@@ -96,8 +96,11 @@ fn test_warning_acknowledge_interaction_hides_warning() {
 fn warning_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
     app.add_plugins(PresentationPlugin);
+    app.add_message::<client::ui::lobby::PlayerTeamMapUpdated>();
     app
 }
 
