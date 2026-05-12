@@ -14,6 +14,8 @@ use shared::protocol::RoundPhase;
 fn shop_auction_ui_plugin_registers_in_minimal_client_app_without_panic() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
     app.add_plugins(ShopAuctionUiPlugin);
 
@@ -80,6 +82,8 @@ fn shop_auction_ui_roots_are_stable_during_session_updates() {
 fn shop_auction_ui_plugin_is_registered_fifth_through_presentation_plugin() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
     app.add_plugins(PresentationPlugin);
 

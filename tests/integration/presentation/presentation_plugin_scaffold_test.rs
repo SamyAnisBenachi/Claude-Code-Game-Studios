@@ -22,6 +22,8 @@ fn presentation_plugin_registers_phase_state_and_runs_sets_in_order() {
     test_helpers::init_test_tracing();
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
     app.add_plugins(PresentationPlugin);
     app.init_resource::<PresentationOrder>();

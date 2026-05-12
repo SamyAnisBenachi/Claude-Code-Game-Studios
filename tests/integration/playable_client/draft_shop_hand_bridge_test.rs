@@ -31,6 +31,8 @@ mod test_helpers;
 fn app_in_phase(phase: RoundPhase, gold: u32) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
     app.add_plugins(TweeningPlugin);
     app.add_plugins(HandUiPlugin);
