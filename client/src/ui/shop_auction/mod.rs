@@ -265,9 +265,15 @@ impl ShopAuctionAuctionState {
     }
 
     fn enter_preparing(&mut self) {
+        // Preserve `timer_duration_ms` — both call sites invoke `buffer_card`
+        // immediately before this, populating the live-bidding countdown
+        // duration from `S2CAuctionCard.timer_duration_ms`. When the card
+        // arrives before the DraftAuction phase change, the transition system
+        // reads this field to seed `enter_active`; clearing it here would
+        // strand the countdown at 0 (regression seen in
+        // `sau_004_card_first_then_phase_activates_countdown`).
         self.panel_state = ShopAuctionAuctionPanelState::Preparing;
         self.preparing_elapsed_ms = 0;
-        self.timer_duration_ms = 0;
         self.timer_remaining_ms = 0;
         self.locally_expired_elapsed_ms = 0;
         self.clear_bid_resolution_state();

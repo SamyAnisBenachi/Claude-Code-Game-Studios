@@ -236,6 +236,7 @@ fn sau_008_late_auction_accepted_rejected_and_card_are_ignored_after_phase_exit(
         .write_message(ShopAuctionAuctionCardReceived {
             card_id: CardId(3),
             starting_price: 12,
+            timer_duration_ms: 20_000,
         });
     run_update(&mut app);
 
@@ -401,6 +402,7 @@ fn send_auction_card(app: &mut App, card_id: CardId, starting_price: u32) {
         .write_message(ShopAuctionAuctionCardReceived {
             card_id,
             starting_price,
+            timer_duration_ms: 20_000,
         });
     run_update(app);
 }

@@ -299,6 +299,7 @@ fn send_auction_card(app: &mut App, card_id: CardId, starting_price: u32) {
         .write_message(ShopAuctionAuctionCardReceived {
             card_id,
             starting_price,
+            timer_duration_ms: 20_000,
         });
     run_update(app);
 }

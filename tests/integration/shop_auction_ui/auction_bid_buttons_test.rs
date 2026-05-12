@@ -189,7 +189,7 @@ fn app_in_active_auction(starting_price: u32, timer_duration_ms: u32) -> App {
         .set(ClientState::InSession);
     run_update(&mut app);
     set_phase(&mut app, RoundPhase::DraftAuction, timer_duration_ms);
-    send_auction_card(&mut app, CardId(1), starting_price);
+    send_auction_card(&mut app, CardId(1), starting_price, timer_duration_ms);
     app
 }
 
@@ -209,11 +209,12 @@ fn set_phase(app: &mut App, phase: RoundPhase, timer_duration_ms: u32) {
     run_update(app);
 }
 
-fn send_auction_card(app: &mut App, card_id: CardId, starting_price: u32) {
+fn send_auction_card(app: &mut App, card_id: CardId, starting_price: u32, timer_duration_ms: u32) {
     app.world_mut()
         .write_message(ShopAuctionAuctionCardReceived {
             card_id,
             starting_price,
+            timer_duration_ms,
         });
     run_update(app);
 }

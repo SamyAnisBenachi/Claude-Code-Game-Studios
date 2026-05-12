@@ -379,6 +379,7 @@ fn app_in_active_auction(starting_price: u32, timer_duration_ms: u32) -> App {
         .write_message(ShopAuctionAuctionCardReceived {
             card_id: CardId(1),
             starting_price,
+            timer_duration_ms,
         });
     run_update(&mut app);
     app
