@@ -134,6 +134,8 @@ fn board_local_player_initializes_from_client_session_identity_handshake_only_pa
 fn presentation_plugin_registers_board_rendering_resources_in_adr_order_slot() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
     app.insert_resource(client::asset_wiring::placeholder_assets_for_tests());
     app.add_plugins(PresentationPlugin);
