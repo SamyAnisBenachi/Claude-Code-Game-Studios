@@ -215,6 +215,10 @@ name = "hud_resolution_dim_test"
 path = "../tests/integration/hud/hud_resolution_dim_test.rs"
 
 [[test]]
+name = "hud_phase_timer_bar_test"
+path = "../tests/integration/hud/hud_phase_timer_bar_test.rs"
+
+[[test]]
 name = "card_animations_tween_lifecycle_test"
 path = "../tests/unit/card-animations/tween_lifecycle_test.rs"
 

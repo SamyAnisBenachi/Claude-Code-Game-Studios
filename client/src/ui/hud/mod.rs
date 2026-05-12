@@ -18,7 +18,7 @@ use crate::asset_wiring::{
 };
 use crate::card_animations::cancel_tween_anim_in_place;
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
-use crate::state::{ClientState, CurrentClientPhase};
+use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
 pub const HUD_DOT_ROWS: usize = 2;
@@ -31,6 +31,10 @@ pub const HUD_ENTITY_COUNT: usize = 22;
 /// dims the underlying HUD without obscuring gold/mana/phase readouts.
 /// Recorded in production/qa/evidence/sprint-10-hud-chrome-evidence.md.
 pub const HUD_DIM_OVERLAY_ALPHA: f32 = 0.45;
+/// Max pixel width of the HUD phase timer bar fill (matches spawn dimensions).
+/// `sync_hud_timer_bar_system` scales `Node.width` from 0 up to this value
+/// based on `PhaseTimerState` remaining ratio.
+pub const HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX: f32 = 200.0;
 pub const CURRENT_MANA_BAR_WIDTH_PX: f32 = 104.0;
 pub const CURRENT_MANA_BAR_HEIGHT_PX: f32 = 28.0;
 pub const RESERVE_MANA_DIAMOND_SIZE_PX: f32 = 74.0;
@@ -253,6 +257,23 @@ pub struct HudFigurine;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HudTimerBar;
 
+/// Display state for the HUD phase timer bar.
+///
+/// `duration_ms` is the phase budget echoed by `S2CPhaseChanged.timer_duration_ms`;
+/// `elapsed_ms` advances each frame while `active` is true. The fill width is
+/// `(1 - elapsed_ms / duration_ms) * HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX`; when
+/// `active` is false (duration_ms == 0) the bar is hidden.
+///
+/// Reset on every `ClientPhaseView` change by `reset_phase_timer_system`;
+/// advanced by `tick_phase_timer_system`; reflected onto the entity by
+/// `sync_hud_timer_bar_system`.
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PhaseTimerState {
+    pub elapsed_ms: u32,
+    pub duration_ms: u32,
+    pub active: bool,
+}
+
 /// Marker for the HUD RESOLUTION-phase dim/freeze overlay root entity.
 /// Visibility is governed solely by `sync_dim_overlay_for_resolution_system`
 /// reading `Res<CurrentClientPhase>`. The overlay is pre-pooled at HUD
@@ -287,9 +308,11 @@ impl Plugin for HudPlugin {
         }
 
         app.init_resource::<CurrentClientPhase>()
+            .init_resource::<ClientPhaseView>()
             .init_resource::<PlayerEconomyView>()
             .init_resource::<HudConfig>()
             .init_resource::<HudMode>()
+            .init_resource::<PhaseTimerState>()
             .add_message::<HudObjectiveUpdate>()
             .add_message::<HudGoldBroadcastMessage>()
             .add_message::<PresentationGameSnapshotMessage>()
@@ -312,6 +335,13 @@ impl Plugin for HudPlugin {
                         .in_set(HudSystemSet::PhaseTransition)
                         .before(update_phase_label_round_counter_system),
                     update_phase_label_round_counter_system.in_set(HudSystemSet::PhaseTransition),
+                    reset_phase_timer_system.in_set(HudSystemSet::PhaseTransition),
+                    tick_phase_timer_system
+                        .in_set(HudSystemSet::MessageDrain)
+                        .after(reset_phase_timer_system),
+                    sync_hud_timer_bar_system
+                        .in_set(HudSystemSet::StateSync)
+                        .after(tick_phase_timer_system),
                     handle_game_snapshot_system
                         .in_set(HudSystemSet::MessageDrain)
                         .before(handle_gold_broadcast_system)
@@ -571,7 +601,7 @@ fn spawn_hud(
                 position_type: PositionType::Absolute,
                 left: Val::Px(config.hud_margin_px),
                 top: Val::Px(config.hud_margin_px + 48.0),
-                width: Val::Px(200.0),
+                width: Val::Px(HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX),
                 height: Val::Px(8.0),
                 ..default()
             },
@@ -1728,6 +1758,59 @@ fn clamped_reserved_gold(message: &S2CGoldBroadcast) -> f32 {
         message.gold as f32
     } else {
         message.reserved_gold as f32
+    }
+}
+
+/// Reset `PhaseTimerState` on every `ClientPhaseView` change.
+///
+/// `phase_sink_system` (PresentationSet::PhaseTransition) writes
+/// `ClientPhaseView.timer_duration_ms` before this system runs in
+/// `HudSystemSet::PhaseTransition`, so change detection on the resource is
+/// sufficient — covers both per-phase transitions and snapshot rebuilds.
+pub fn reset_phase_timer_system(
+    phase_view: Res<ClientPhaseView>,
+    mut timer: ResMut<PhaseTimerState>,
+) {
+    if !phase_view.is_changed() {
+        return;
+    }
+    timer.elapsed_ms = 0;
+    timer.duration_ms = phase_view.timer_duration_ms;
+    timer.active = phase_view.timer_duration_ms > 0;
+}
+
+/// Advance `PhaseTimerState.elapsed_ms` by `Time::delta()` each frame while
+/// the timer is active. Saturating-clamped at `duration_ms`.
+pub fn tick_phase_timer_system(time: Res<Time>, mut timer: ResMut<PhaseTimerState>) {
+    if !timer.active || timer.duration_ms == 0 {
+        return;
+    }
+    let delta_ms = u32::try_from(time.delta().as_millis()).unwrap_or(u32::MAX);
+    let new_elapsed = timer.elapsed_ms.saturating_add(delta_ms);
+    timer.elapsed_ms = new_elapsed.min(timer.duration_ms);
+}
+
+/// Reflect `PhaseTimerState` onto the `HudTimerBar` `Node.width` and
+/// `Visibility`. Hidden when the timer is inactive (duration_ms == 0).
+pub fn sync_hud_timer_bar_system(
+    timer: Res<PhaseTimerState>,
+    mut query: Query<(&mut Node, &mut Visibility), With<HudTimerBar>>,
+) {
+    if !timer.is_changed() {
+        return;
+    }
+    let (target_width_px, target_visibility) = if timer.active && timer.duration_ms > 0 {
+        let remaining = timer.duration_ms.saturating_sub(timer.elapsed_ms) as f32;
+        let pct = (remaining / timer.duration_ms as f32).clamp(0.0, 1.0);
+        (HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX * pct, Visibility::Visible)
+    } else {
+        (0.0, Visibility::Hidden)
+    };
+    for (mut node, mut visibility) in &mut query {
+        node.width = Val::Px(target_width_px);
+        if *visibility != target_visibility {
+            *visibility = target_visibility;
+        }
     }
 }
 
