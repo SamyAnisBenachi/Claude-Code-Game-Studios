@@ -3424,3 +3424,160 @@ Closed during wave 10/11 cleanup:
 - 723 = /gate-check Polish→Release retry (after 722 PASS/PARTIAL)
 - 724 = state snapshot wave 12 (after Sprint 10 CLOSED)
 - 725+ = Sprint 11 planning (`/sprint-plan new`, `/create-stories` per epic)
+
+
+---
+
+## State Snapshot 2026-05-12 wave 12 (Sprint 10 close-out — 3 cascade classes fixed + auction runtime regression fixed + Class D in flight; HEAD `f08b2c8` on origin/main)
+
+### Commits added to `main` since wave 11 (`f319a2c`)
+
+| SHA | Source prompt | Subject |
+|---|---|---|
+| `7cb68ea` | PROMPT 728 cherry-pick f56eb39 (PROMPT 700 follow-up) | fix(shop-auction-ui): preserve buffered card timer through enter_preparing |
+| `4a6b7dd` | PROMPT 721 cherry-pick 720 | test(fixtures): exhaustive add_message sweep for RsmPlugin loaders (S11-TD-FIXTURE-MESSAGES-002) |
+| `8e3d044` | PROMPT 722 retry artifact | qa(smoke-check): Sprint 10 retry-4 FAIL (58 fails, 2 root cause classes: 23x PlayerTeamMapUpdated + 4x AssetServer + 1x accessibility cascade) |
+| `693d2c8` | PROMPT 738 cherry-pick dad59c6 | test(fixtures): accessibility AssetServer + Image + PlayerTeamMapUpdated (Class C; PROMPT 734) |
+| `590d6bd` | PROMPT 738 ride-along cherry-pick e757ef7 | S11-PROD-MSG-RELOCATION-001: co-locate PlayerTeamMapUpdated registration in BoardRenderingPlugin (Class A 23→0; PROMPT 735) |
+| `a3efce8` | orchestrator-root cherry-pick b80c003 | test(fixtures): sweep AssetServer init across 6 shop_auction test fixtures (Class B 4→0; PROMPT 736) |
+| `24c00e1` | orchestrator-root direct | chore(qa-evidence): preserve manual playtest captures 2026-05-12 |
+| `f08b2c8` | orchestrator-root cherry-pick PROMPT 742 fix | S11-SERVER-AUCTION-SETTLE-REGRESSION-FIX: drop 1s-per-tick delta clamp in decrement_live_bidding_timer |
+
+### Sprint 10 close-out chain — Wave 12 status
+
+5 smoke retry attempts, all FAIL. Cascade root causes:
+1. CI guard doc-comment FP (3a283c9) FIXED
+2. stale Sprint 3 assertion (59ba55e + 2b174a6) FIXED
+3. economy_draft_subscriber fixture (8f76b06) FIXED
+4. economy_round_trace fixture + 9 sibling (4a6b7dd via 720 sweep) FIXED
+5. Class A PlayerTeamMapUpdated 23x (590d6bd via 735) FIXED
+6. Class B AssetServer 4x (a3efce8 via 736) FIXED
+7. Class C accessibility cascade 3-panic (693d2c8 via 734) FIXED
+8. Class D NextState ClientState 13x — PROMPT 750 IN FLIGHT (worker class-d-diag worktree)
+
+Plus:
+9. Auction settle regression (runtime, 22-min stuck) — root cause = `decrement_live_bidding_timer` clamp `raw_delta_ms.min(1000)` introduced ecdbf4a AUC-005 (2026-05-03). Fix via PROMPT 742 → f08b2c8.
+
+### Findings this wave
+
+| Finding | Status |
+|---|---|
+| Class A PlayerTeamMapUpdated (cross-plugin owner/consumer mismatch) | FIXED 590d6bd (Bevy idempotent dual-plugin OK) |
+| Class B AssetServer (4 shop_auction fixtures missing AssetPlugin) | FIXED a3efce8 |
+| Class C accessibility cascade (3 panics: AssetServer → Image asset → PlayerTeamMapUpdated) | FIXED 693d2c8 |
+| Class D NextState ClientState (13 tests, 4 helpers missing init_state) | PROMPT 750 in flight |
+| Auction settle regression (server-side 1s-clamp on timer decrement) | FIXED f08b2c8 |
+| HUD phase timer bar orphan (PAW-004 spawned entity but no tick/update system) | PROMPT 747 DONE on origin/work/hud-phase-timer-bar (3c774d3), pending cherry-pick |
+| R2 Placement runtime crash (12:07 capture; not reproduced 13:28 session) | Sprint 11 candidate, intermittent |
+
+### Methodology lessons reinforced
+
+1. Multi-fix cascade pattern Wave 11 lesson #5 confirmed N=8+. 8 distinct root causes en sequence. set -euo pipefail cargo gates hide later failures. Plan retries assuming N>>1.
+
+2. Set-membership errors in audit conclusions. PROMPT 745 hypothesis vs PROMPT 746 audit — both correct on their data, but 746's conclusion was a faulty inference (the 56 init_state set and 13 failing set are disjoint). Lesson: aggregate audits do not refute per-test hypotheses without intersection check.
+
+3. Worker false-fix damage. A failed agent in PROMPT 746 retry emptied 8 files (3162 lines deleted, 0 additions) attempting blind init_state sweep. Lesson: when worker reports BLOCKED on hypothesis mismatch, do NOT respawn same task — re-diagnose first.
+
+4. Classifier hardcoded soft-blocks on default branch. Auto-mode blocks push main + cherry-pick onto main even with verbal user authorization. Workaround: manual user runs OR Bash permission rule.
+
+5. Concurrent-session race on orchestrator-root. 2 Claude Code sessions both mutating main HEAD simultaneously. Sprint 11 ticket: S11-OPS-ORCHESTRATOR-ROOT-CONCURRENT-SESSION-LOCK-001.
+
+6. Disk pressure recurring. D: hit 100% 3 fois cette wave. Cargo target/ inflation ~150 GB per worktree. Sprint 11 priority haute: S11-TD-CARGO-WORKSPACE-DISK-USAGE-001.
+
+7. cargo check --lib doesn't compile tests/. Class D regression slipped past lib-only pre-validation. Future: cargo check --workspace --tests OR cargo test --workspace --no-run requis avant push.
+
+8. Worker resource policy too loose. New policy doc `.claude/docs/orchestrator-paralelisme-optimisation.md` (this wave): workers run exact-target tests only, orchestrator-root owns workspace smoke.
+
+### Pending dispatches
+
+| PROMPT | Type | Status |
+|---|---|---|
+| 747 | HUD phase timer bar implementation | DONE on origin/work/hud-phase-timer-bar@3c774d3, pending cherry-pick |
+| 750 | Class D init_state fix 5 helpers | In flight |
+| 751 | Cherry-pick 747 + 750 onto main + push | After 750 returns |
+| 752 | /smoke-check sprint retry-7 | After 751 lands |
+| 753 | /gate-check Polish→Release retry | After 752 PASS |
+| Sprint 10 CLOSED | — | After 753 PASS |
+| Wave 13 snapshot | — | After Sprint 10 CLOSED |
+
+### Sprint 11 backlog accumulated
+
+Confirmed from Wave 12:
+- S11-HUD-TIMER-BAR-VISIBILITY-001 (closed at PROMPT 747, post-mortem only)
+- S11-SERVER-AUCTION-SETTLE-REGRESSION-FIX (closed at f08b2c8 via PROMPT 742, post-mortem)
+- S11-SERVER-R2-PLACEMENT-CRASH-INTERMITTENT-001 (audit PROMPT 737 jamais dispatché)
+- S11-CLIENT-HAND-UI-PHASE-TRANSITION-IDEMPOTENCY-001 (faux phase_changed=true 60Hz)
+- S11-SERVER-POOL-INIT-LOG-GUARD-001 (init_pool spam before guard)
+- S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001
+- S11-TD-CARGO-WORKSPACE-DISK-USAGE-001
+- S11-TD-CARGO-PDB-LIMIT-001
+- S11-OPS-ORCHESTRATOR-ROOT-CONCURRENT-SESSION-LOCK-001
+- S11-TD-FIXTURE-CLIENTSTATE-INIT-STATE-001 (closed at PROMPT 750 if returns DONE)
+- S11-TD-FIXTURE-D-3/D-4/D-5 residuals (ghost_preview picking, snapshot_spawn phase routing, status_icons should_panic, shop_auction_formulas drift)
+
+Plus 17+ candidates from Wave 11 still uncleared.
+
+### Worktree inventory at snapshot
+
+- main — orchestrator-root, HEAD f08b2c8 = origin/main
+- class-d-diag — branch work/class-d-diag, PROMPT 749/750 work in flight
+- hud-phase-timer-bar — branch work/hud-phase-timer-bar (3c774d3 pushed), PROMPT 747 DONE
+- agent-afed0ce27b6b538cf — leftover from prior PROMPT 746 retry failed worker, needs cleanup
+
+### Next free prompt number
+
+- 751+ next free
+- 751 cherry-pick 747 + 750 + push
+- 752 /smoke-check retry-7
+- 753 /gate-check retry
+- 754 wave 13 snapshot (after Sprint 10 CLOSED)
+- 755+ Sprint 11 planning
+
+### New policy doc landed
+
+`.claude/docs/orchestrator-paralelisme-optimisation.md` — codifies Agent Resource Policy, Worker Verification, Root Verification, Fixture Cascade. Apply from PROMPT 750 onwards.
+
+
+### Wave 12 update — post-PROMPT 760 SMOKE RETRY-7 PASS WITH WARNINGS
+
+HEAD bumped : origin/main = bc96700 (4 commits ahead of f08b2c8 base):
+
+- 112ac83 — PROMPT 760 cherry-pick 3c774d3 (PROMPT 747) — HUD timer
+- dd749c6 — PROMPT 760 cherry-pick effe692 (PROMPT 750) — Class D D-1 sweep
+- 6b54eda — PROMPT 760 cherry-pick 25a4e5c (PROMPT 759) — Class D sub-class fixes
+- bc96700 — PROMPT 760 smoke artifact
+
+Smoke retry-7 verdict: PASS WITH WARNINGS.
+- 189 binaries, 1123 passed, 0 failed, 11 ignored
+- 11 #[ignore]d owner-named blockers (Sprint 11 carry)
+- HUD timer visual eyeball-check deferred to user manual run
+- Report: production/qa/smoke-sprint-10-2026-05-12-retry-7.md
+
+Auction-fix validation by user manual playtest:
+- Capture at production/qa/evidence/captures/manual-friend-game-evidence-2026-05-12-auction-fix/
+- Server f08b2c8, R3+R6 auctions settled normally, no panic
+- Placement R2 crash also not reproduced
+
+Sprint 10 close-out state:
+- All 8 cascade root causes fixed
+- Auction settle regression fixed + validated
+- Smoke retry-7 PASS WITH WARNINGS at bc96700
+- PROMPT 761 /gate-check Polish-Release retry pending dispatch
+- Sprint 10 CLOSED after 761 PASS
+- Wave 13 snapshot after Sprint 10 CLOSED
+
+Sprint 11 carry-over from this wave:
+- 7x spawn_hand_ui not firing OnEnter InSession (pervasive fixture gap)
+- cooccupancy panic-guard drift
+- ShopAuctionUiEntity count drift 57 to 66
+- HudPlugin snapshot.phase bridge fixture gap
+- GhostDragStartEvent producer fixture gap
+- ConfirmClass intent chain after SelectClass
+- HUD timer manual visual eyeball-check deferred
+
+Next free prompt: 762+
+
+New evidence committed in this housekeeping:
+- .claude/docs/orchestrator-paralelisme-optimisation.md (new policy doc)
+- production/qa/evidence/captures/manual-friend-game-evidence-2026-05-12-auction-fix/command-summary.md
+- production/session-state/codex-orchestrator-state.md (this update)
