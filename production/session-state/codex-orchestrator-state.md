@@ -3581,3 +3581,81 @@ New evidence committed in this housekeeping:
 - .claude/docs/orchestrator-paralelisme-optimisation.md (new policy doc)
 - production/qa/evidence/captures/manual-friend-game-evidence-2026-05-12-auction-fix/command-summary.md
 - production/session-state/codex-orchestrator-state.md (this update)
+
+
+### Wave 12 update — PROMPT 761 GATE-CHECK Polish→Release FAIL + Sprint 11 candidate bug backlog capture (PROMPT 762)
+
+Commits added since 83bd8e5:
+
+- 32b777f — PROMPT 761 gate-check artifact (Polish→Release FAIL)
+
+PROMPT 761 verdict: FAIL on Polish→Release transition.
+- Reason: release-scope artifacts absent and Sprint 10 / friend-game scope explicitly disclaims release-candidate readiness.
+- Stage REMAINS Polish (no transition applied).
+- Next path: close Sprint 10 as Polish / friend-game with carried conditions, then plan Sprint 11. Do NOT attempt Release gate again until release scope/artifacts exist.
+
+Sprint 10 disposition path forward:
+- Smoke retry-7 PASS WITH WARNINGS at bc96700 stands as the quality gate for Polish-stage Sprint 10 close-out.
+- Sprint 10 close-out = friend-game scope, carried conditions preserved (S8-QA-001-W1 manual/browser GAME_OVER gap, QA-COND-0005 accessibility, QA-COND-0006 playtest fun-hypothesis).
+- Sprint 11 planning unblocked once Sprint 10 marked closed-with-conditions (paperwork pending — NOT done by this update).
+
+---
+
+### Sprint 11 Candidate Bug Backlog — PROMPT 762 capture
+
+Backlog entries below are CANDIDATES only. Not active sprint-status.yaml rows. To be promoted to formal S11-* tickets during /sprint-plan new for Sprint 11.
+
+1. **DRAG-AND-DROP runtime broken despite tests passing**
+   - User reported drag-and-drop pété in-game multiple times across this session.
+   - PROMPT 696 HU-card-drag MVP (00ffe89) + PROMPT 697 gate widen (cbb2565) + PROMPT 698 grey-square diag spec + PROMPT 706/709 S1-S5 instrumentation (7e0c663) all landed.
+   - Runtime retest with `RUST_LOG=client::ui::hand=trace,client::presentation::board_rendering=trace,client::card_animations::input_gating=info cargo run --bin client` NEVER completed.
+   - Grey-square attribution S1-S5 truth-table NEVER locked.
+   - Test-vs-runtime divergence unresolved.
+   - Priority: HIGH (gameplay-blocking for friend-game runtime).
+
+2. **7× spawn_hand_ui not firing on OnEnter(InSession) in MinimalPlugins fixtures** (pervasive fixture-design gap)
+   - Surfaced in PROMPT 759 closeout as 7 #[ignore]'d tests with owner-named comments.
+   - Pattern: tests using MinimalPlugins + sub-plugin in isolation miss the OnEnter(InSession) trigger chain.
+   - Worker flagged "highest-value follow-on item".
+   - Priority: HIGH (broad fixture-design fix unblocks 7+ tests + future ones).
+
+3. **cooccupancy panic-guard drift**
+   - Test `board_rendering_status_icons_test` #[should_panic(expected = "unit_index=2")] no longer panics in production.
+   - Production `co_occupancy_offset` no longer panics for unit_index >= 2.
+   - Decision needed: restore production panic guard OR remove/rewrite the should-panic test.
+   - Priority: MEDIUM (production behavior decision required).
+
+4. **ShopAuctionUiEntity count drift 57→66**
+   - Test `shop_auction_ui_plugin_scaffold_formulas_test` asserts count 57; production now produces 66.
+   - Either update the formula at L36-43 (add new entity-count term) OR audit recently-added `commands.spawn(...ShopAuctionUiEntity...)` calls if drift is unintended.
+   - Priority: MEDIUM (scaffold formula owner decision).
+
+5. **HudPlugin snapshot.phase bridge fixture gap**
+   - Test `board_rendering_snapshot_spawn_test` expects rebuild path to drive `CurrentClientPhase.phase` to Placement; stays at Lobby.
+   - Rebuild handler missing phase mutation OR test setup needs explicit `set_phase(Placement)` call.
+   - Priority: MEDIUM.
+
+6. **GhostDragStartEvent producer fixture gap**
+   - Test `board_rendering_ghost_preview_bridge_test` expects `GhostDragStartEvent` to fire; producer not present in fixture.
+   - Either fixture needs to register/load the producer OR the bridge under test is missing an event source.
+   - Priority: MEDIUM.
+
+7. **ConfirmClass intent chain after SelectClass**
+   - `native_operator_controls_test` sub-test `assertion "" == "2J"` — input system not chaining ConfirmClass after SelectClass.
+   - Investigate input routing or input-system ordering.
+   - Priority: MEDIUM (input-system bug).
+
+8. **HUD timer manual visual eyeball-check deferred**
+   - PROMPT 747 HUD timer bar wired and tested (4/4 automated). Visual eyeball-check on manual 2-client run deferred.
+   - Validate timer countdown renders correctly for DraftInitial 45s, DraftShop 30s, Placement 10-12s phases.
+   - Priority: LOW (cosmetic verification).
+
+9. **gh CLI absent on dev machine** (optional ops/tooling candidate)
+   - Observed 3+ times during this wave (PROMPT 725/734/735).
+   - Workers cannot run `gh auth status` or `gh run list` from their shells.
+   - Workaround: orchestrator-root checks Actions tab manually OR substitute via `git ls-remote`.
+   - Priority: LOW (operational quality-of-life).
+
+---
+
+These 9 candidates merge into existing Wave 11 + Wave 12 Sprint 11 backlog. Promotion to active sprint-status.yaml rows deferred to formal /sprint-plan new dispatch.
