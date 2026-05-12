@@ -34,6 +34,7 @@ fn app_in_phase(phase: RoundPhase, gold: u32) -> App {
     app.add_plugins(bevy::asset::AssetPlugin::default());
     app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
     app.add_plugins(TweeningPlugin);
     app.add_plugins(HandUiPlugin);
     app.add_plugins(ShopAuctionUiPlugin);
