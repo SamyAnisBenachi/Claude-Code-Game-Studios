@@ -54,10 +54,14 @@ fn lobby_startup_spawns_visible_ui_camera_until_session_entry() {
     test_helpers::init_test_tracing();
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::asset::AssetPlugin::default());
+    app.init_asset::<bevy::image::Image>();
     app.add_plugins(StatesPlugin);
+    app.init_state::<ClientState>();
     app.init_resource::<ButtonInput<KeyCode>>();
     app.add_plugins(LobbyUiPlugin);
 
+    app.update();
     app.update();
 
     {
