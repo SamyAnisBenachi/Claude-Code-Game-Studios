@@ -20,32 +20,29 @@ runtime dependency on Octogent is required for the orchestrator to function.
 | A **convenience layer** — fully optional and rollback-able in <30s | A required service — orchestrator works unchanged if Octogent is off |
 | Local-only (per-developer) | A team-shared service |
 
-## 2. Architecture — sidecar / observer pattern
+## 2. Architecture — closed loop, observer + reverse channel
 
 ```
 ┌──────────────────────────────────────┐
 │  Codex Orchestrator (UNCHANGED)      │   ← keeps its existing contract
-│  (Current Operating Rules            │      (production/session-state/
-│   2026-05-13 override)               │       codex-orchestrator-state.md)
+│  hosted in an Octogent terminal      │     (production/session-state/
+│  named `codex-orchestrator-main`     │      codex-orchestrator-state.md)
 │                                      │
 │  emits text blocks in conversation:  │
 │    NEW -- PROMPT N                   │
 │    PROMPT N -- Short Task Name       │
 │    body...                           │
-│    CLEAR -- PROMPT M                 │
-│    REPONDRE -- PROMPT P              │
-│    RELANCER -- PROMPT Q              │
+│    CLEAR / REPONDRE / RELANCER       │
 └──────────────┬───────────────────────┘
+               │ Codex writes assistant turn to
+               │ ~/.codex/sessions/.../rollout-<uuid>.jsonl
                │
-               │ Codex writes to ~/.codex/sessions/.../rollout-<uuid>.jsonl
-               │
-               ▼ (Codex Stop hook fires at end of every assistant turn)
+               ▼ Codex Stop hook fires at end of every assistant turn
 ┌──────────────────────────────────────┐
 │  ~/.codex/gcs-codex-stop-hook.py     │
 │   • opens latest rollout (mtime)     │
-│   • extracts last assistant          │
-│     output_text                      │
-│   • copies codex-orchestrator-       │
+│   • extracts last assistant text     │
+│   • mirrors codex-orchestrator-      │
 │     state.md → CONTEXT.md            │
 │   • pipes text to dispatcher         │
 └──────────────┬───────────────────────┘
@@ -55,22 +52,41 @@ runtime dependency on Octogent is required for the orchestrator to function.
 │  ~/.codex/gcs-octogent-dispatch.py   │
 │   • regex-splits text into blocks    │
 │   • per block: HTTP POST + sound     │
+│   • appends report-back curl         │
+│     instruction to every spawned     │
+│     worker's initialPrompt           │
 │   • writes inbox/<ts>.md backup      │
-│   • logs every action                │
 └──────────────┬───────────────────────┘
                │ HTTP (loopback only)
                ▼
         http://127.0.0.1:8787
    (Octogent API + Web UI on 5173)
                │
-               ▼
-   Workers appear/disappear under the
+               ▼ spawn / kill / channel-send
+   Workers `PROMPT-N` appear under the
    `gcs-orchestrator` tentacle in the UI
+               │
+               ▼ each worker's last action before ending its turn
+   `curl POST /api/channels/codex-orchestrator-main/messages`
+   with content "DONE PROMPT-N: <status line>"
+               │
+               ▼ Octogent queues the message in-memory until target is idle,
+               │ then delivers it as a bracketed-paste block + `\r`
+               │ (auto-submit). Patched into channelMessaging.ts — without
+               │ this, the message would land in the orchestrator's input
+               │ buffer unsubmitted and require a manual Enter.
+               ▼
+   Orchestrator's PTY receives `[Channel message from PROMPT-N]: DONE...`
+   as user-typed input → Codex processes it → orchestrator decides
+   CLEAR / REPONDRE / RELANCER → dispatcher executes → loop continues
 ```
 
-**Key invariant**: the orchestrator does not know any of this exists. Stop the
+**Key invariant**: the orchestrator's textual contract is unchanged. Stop the
 dispatcher, kill Octogent, delete the hook — orchestrator behavior is
-identical. The integration is a pure observer.
+identical, the integration is a pure sidecar. The reverse channel (worker →
+orchestrator) is opt-in per worker via the report-back instruction the
+dispatcher appends to every spawned `initialPrompt`. Workers from before that
+instruction was added must report manually (paste a curl line per #6).
 
 ## 3. The five header patterns
 
@@ -173,12 +189,23 @@ If the orchestrator's wording drifts, update `_HEADER_RX` in
 #### Claude Code side
 - `~/.claude/settings.json` — adds Octogent `/api/hooks/stop` and `/api/hooks/notification` callbacks (so Claude Code workers spawned inside Octogent terminals get idle-gated)
 
-#### Octogent install + binding
+#### Octogent install + 3 source patches
+
 - `D:\_APPS\Tools\octogent\` — the cloned Octogent source (Node 22+ / pnpm-managed)
-- `D:\_APPS\Tools\octogent\scripts\dev.mjs` — patched locally to use `pnpm.cmd` (not `pnpm.exe`, which doesn't exist with `npm install -g pnpm` on Windows) and `shell: true` (Node 24 requirement). **Lost on `git pull` of Octogent — re-apply if you upgrade.**
-- `D:\_APPS\Tools\octogent\.octogent\tentacles\gcs-orchestrator` — directory **junction** pointing at this repo's `.octogent/tentacles/gcs-orchestrator/`. Lets the install dir see GCS tentacle without needing `OCTOGENT_WORKSPACE_CWD` (which crashes Vite with `0xC0000409`).
-- `D:\_APPS\Tools\octogent\launch-here.bat` — launcher invoked by the right-click context menu; spawns a persistent cmd via `start cmd /k`.
+
+Three local patches to Octogent's source — **all lost on `git pull` of Octogent**, re-apply if you upgrade:
+
+1. `D:\_APPS\Tools\octogent\scripts\dev.mjs` — use `pnpm.cmd` (not `pnpm.exe`, which doesn't exist with `npm install -g pnpm` on Windows) + add `shell: process.platform === "win32"` to the spawn call (Node 24 requirement). Adds three `console.log` debug lines for `OCTOGENT_WORKSPACE_CWD` / `workspaceCwd` / `projectStateDir` so launches are self-diagnosing.
+2. `D:\_APPS\Tools\octogent\apps\api\src\terminalRuntime\channelMessaging.ts` — `deliverChannelMessages` wraps injected messages in **bracketed-paste markers** (`\x1b[200~` … `\x1b[201~`) and writes `\r` via a 150 ms `setTimeout`. Without this, channel-send to a Codex agent lands the text in the input buffer unsubmitted. The same pattern is used by `sessionRuntime.ts` for initial prompt injection — we're just bringing channel delivery in line.
+3. (No third file patched — these are the only two source modifications.)
+
+Launcher chain (not patches, project files maintained alongside the install dir):
+
+- `D:\_APPS\Tools\octogent\launch-here.bat` — invoked by the right-click context menu. Reads `%~1` as project dir, then `start "Octogent - X" cmd /k call launch-inner.bat "<dir>"` to spawn a detached persistent cmd window.
+- `D:\_APPS\Tools\octogent\launch-inner.bat` — runs in the spawned cmd. Clears `PWD/OLDPWD/INIT_CWD` (bash artifacts that leak when launched from MSYS), sets `OCTOGENT_WORKSPACE_CWD=<projectDir>`, then `cd /d D:\_APPS\Tools\octogent && pnpm dev`. **NO `setlocal`** (interferes with env propagation through pnpm) and **NO `pnpm --dir`** (pnpm strips `OCTOGENT_*` env vars when invoked with `--dir`).
 - `D:\_APPS\Tools\octogent\install-context-menu.reg` + `uninstall-context-menu.reg` — UTF-16 LE BOM `.reg` files for the Explorer right-click. Currently installed under `HKCU\Software\Classes\Directory\{Background\,}shell\Octogent`.
+
+The launch chain sets `OCTOGENT_WORKSPACE_CWD` correctly, so Octogent natively binds the per-folder workspace: state lives in `<projectDir>/.octogent/state/`, tentacles are read from `<projectDir>/.octogent/tentacles/`, and a different "Open Octogent here" from a different folder picks up that project's own state. The legacy install-dir junction approach is **no longer needed** and can be removed.
 
 #### Sound assets
 - `~/.claude/sounds/play-sound.ps1` — PowerShell MediaPlayer wrapper (pre-existing)
@@ -189,48 +216,67 @@ If the orchestrator's wording drifts, update `_HEADER_RX` in
 
 ## 5. First-time setup for a new dev machine
 
-Prerequisites: Node 22+, git, gh, curl. PowerShell + cmd. Codex CLI ≥0.130, Claude Code ≥2.1.
+Prerequisites: Node 22+, git, gh, curl, Python 3.10+. PowerShell + cmd. Codex CLI ≥0.130, Claude Code ≥2.1.
 
 1. Clone Octogent: `git clone https://github.com/hesamsheikh/octogent D:\_APPS\Tools\octogent`
 2. Install pnpm (user-prefix, no admin): `npm install -g pnpm`
-3. Patch `D:\_APPS\Tools\octogent\scripts\dev.mjs`:
-   - Line ~74: change `"pnpm.exe"` to `"pnpm.cmd"`
-   - In the `spawn()` call (~line 125), add `shell: process.platform === "win32",`
-4. Copy these files from a teammate or from a backup:
+3. Apply the two Octogent source patches (lost on `git pull`; keep a copy):
+   - `scripts/dev.mjs`:
+     - change `"pnpm.exe"` to `"pnpm.cmd"` (~line 74)
+     - add `shell: process.platform === "win32",` inside the spawn options object (~line 128)
+   - `apps/api/src/terminalRuntime/channelMessaging.ts` `deliverChannelMessages`:
+     - replace the `const prompt = ...; writeInput(...)` block with the bracketed-paste version (defines `BRACKETED_PASTE_START="\x1b[200~"`/`BRACKETED_PASTE_END="\x1b[201~"`, writes `wrapped`, then `setTimeout(() => writeInput(terminalId, "\r"), 150)`).
+4. Copy the dispatcher + hook scripts (or grab them from a teammate's backup):
    - `~/.codex/gcs-octogent-dispatch.py`
    - `~/.codex/gcs-codex-stop-hook.py`
-5. Add the Codex Stop hook to `~/.codex/hooks.json` (under `hooks.Stop[].hooks`):
+5. Add the Codex Stop hook to `~/.codex/hooks.json` (under `hooks.Stop[0].hooks`):
    ```json
    { "type": "command", "command": "python C:/Users/Sam/.codex/gcs-codex-stop-hook.py" }
    ```
 6. Trust the new hook on next Codex launch (press `t` in the hook review screen).
-7. From this repo's root, right-click context menu install:
-   - Copy `install-context-menu.reg`, `uninstall-context-menu.reg`, `launch-here.bat` from `D:\_APPS\Tools\octogent\` (already there if step 1 done)
-   - Run `reg import D:\_APPS\Tools\octogent\install-context-menu.reg` (or double-click; UTF-16 BOM required)
-8. In this repo, scaffold the tentacle:
+7. Install the right-click context menu:
+   - Place `launch-here.bat`, `launch-inner.bat`, `install-context-menu.reg`, `uninstall-context-menu.reg` in `D:\_APPS\Tools\octogent\` (already there after step 1).
+   - Run `reg import D:\_APPS\Tools\octogent\install-context-menu.reg` (or double-click; the `.reg` must be UTF-16 LE with BOM).
+8. In this repo, scaffold the tentacle (paths use forward slashes; `cmd` accepts them):
    ```
    mkdir .octogent\tentacles\gcs-orchestrator\inbox
    copy production\session-state\codex-orchestrator-state.md .octogent\tentacles\gcs-orchestrator\CONTEXT.md
-   echo "# GCS Orchestrator — Todo" > .octogent\tentacles\gcs-orchestrator\todo.md
-   echo "# Prompt Log" > .octogent\tentacles\gcs-orchestrator\prompt-log.md
+   echo # GCS Orchestrator Todo > .octogent\tentacles\gcs-orchestrator\todo.md
+   echo # Prompt Log > .octogent\tentacles\gcs-orchestrator\prompt-log.md
    ```
-9. Create the install-dir junction so Octogent sees the tentacle:
-   ```
-   mklink /J "D:\_APPS\Tools\octogent\.octogent\tentacles\gcs-orchestrator" "D:\_DEV\Work\Claude-Code-Game-Studios\.octogent\tentacles\gcs-orchestrator"
-   ```
-10. Launch: right-click on the repo folder in Explorer → "Show more options" → "Open Octogent here". UI opens on `http://localhost:5173`.
+9. Launch: right-click on the repo folder in Explorer → "Show more options" → "Open Octogent here". The cmd banner must show `OCTOGENT_WORKSPACE_CWD=<your project path>`. UI opens on `http://localhost:5173`, only the project's own tentacles are visible.
+10. Spawn the orchestrator host terminal once, then resume the Codex session inside it:
+    ```bash
+    # Replace <project> with your project root path.
+    curl -X POST http://127.0.0.1:8787/api/terminals \
+      -H 'Content-Type: application/json' \
+      -d '{"terminalId":"codex-orchestrator-main","name":"Codex Orchestrator Terminal","tentacleId":"gcs-orchestrator","workspaceMode":"shared"}'
+    # Then in the Octogent UI, click on "Codex Orchestrator Terminal" and run:
+    # codex resume <your-session-uuid>
+    ```
 
 ## 6. Daily use
 
-1. Make sure Octogent is running: right-click on the repo folder → "Open Octogent here". A persistent cmd window logs `Octogent API listening on http://127.0.0.1:8787` and `Local: http://localhost:5173/`.
-2. Open `http://localhost:5173/` in a browser. The `Codex Orchestrator State` tentacle should appear.
-3. Work with the Codex orchestrator normally. On each turn it ends with proper blocks, workers appear/disappear under the tentacle automatically.
-4. To inspect: click any worker in the UI to see its transcript and channel messages.
-5. To force a manual action without going through the orchestrator (debug):
+1. Make sure Octogent is running: right-click on the repo folder → "Open Octogent here". The cmd banner shows `OCTOGENT_WORKSPACE_CWD=<your project>` then `Octogent API listening on http://127.0.0.1:8787` and `Local: http://localhost:5173/`.
+2. Open `http://localhost:5173/` in a browser. The `Codex Orchestrator State` tentacle and the `Codex Orchestrator Terminal` host terminal should appear.
+3. Attach to the host terminal in the UI, run `codex resume <session-uuid>` once if you haven't already.
+4. Work with the Codex orchestrator normally. On each turn the dispatcher detects its disposition blocks, spawns/kills/messages workers in Octogent, and workers report back to the orchestrator via channel-send (auto-submitted thanks to the bracketed-paste patch).
+5. To inspect any worker: click it in the UI to see its transcript and channel messages.
+6. **Manual report-back fallback** (for workers spawned before the dispatcher's auto-instruction, or if a worker forgets): paste this into the worker's chat as its last action, replacing `<status>`:
+   ```bash
+   curl -s -X POST http://127.0.0.1:8787/api/channels/codex-orchestrator-main/messages \
+     -H 'Content-Type: application/json' \
+     --data-raw '{"fromTerminalId":"PROMPT-N","content":"DONE PROMPT-N: <status>"}'
+   ```
+7. To force a manual dispatch action without going through the orchestrator (debug):
    ```bash
    echo "CLEAR -- PROMPT 999" | python ~/.codex/gcs-octogent-dispatch.py
    ```
-6. To stop Octogent cleanly: Ctrl+C in the cmd window. Don't click the X — leaves orphan node processes.
+8. To stop Octogent cleanly: Ctrl+C in the cmd window. Don't click the X — leaves orphan node processes.
+
+### 6.1 Multi-project workflow
+
+Because `OCTOGENT_WORKSPACE_CWD` is bound per launch, "Open Octogent here" from a *different* project folder spawns Octogent against *that* project — its state, its tentacles, its terminals are isolated under `<thatProject>/.octogent/state/`. Switching projects = Ctrl+C the running Octogent, right-click "Open Octogent here" from the new folder. **One Octogent instance at a time on port 8787**; for two projects simultaneously, set `OCTOGENT_DEV_START_PORT=<other>` in the env before launch.
 
 ## 7. Logs and troubleshooting
 
@@ -291,8 +337,11 @@ toasts on.
 | Hook fires but dispatcher silent | The hook found no rollout or the last assistant message is empty — check `~/.codex/sessions/.../rollout-*.jsonl` exists and the latest assistant `output_text` isn't an empty string. |
 | Dispatcher crashes with traceback | Full traceback is captured in `~/.codex/gcs-stop-hook.log` (up to 4 KiB). The dispatcher itself never propagates exceptions, but the inbox backup or summary write can fail on weird inputs — those errors are logged and dispatch continues. |
 | Wrong terminal got killed | `terminalId` collision — the dispatcher uses `PROMPT-<N>` so two waves reusing the same N collide. Always use monotonically-increasing N (the orchestrator contract guarantees this). |
-| Vite crashes with `0xC0000409` | You set `OCTOGENT_WORKSPACE_CWD`; remove it from the launcher. Use the junction approach instead. |
+| Vite crashes with `0xC0000409` | Almost certainly a quoting bug in your `set "OCTOGENT_WORKSPACE_CWD=..."` line, not Vite itself. Make sure `launch-inner.bat` has `set "VAR=VAL"` (mandatory quotes around the whole assignment) and **no** `setlocal`. |
+| Channel-send message stuck in orchestrator's input bar (not submitted) | `channelMessaging.ts` not patched. Re-apply the bracketed-paste + delayed `\r` patch (see §4 / §5 step 3). |
+| Worker spawns but never reports back | Worker's `initialPrompt` is missing the report-back instruction — either spawned before the dispatcher started appending it, or the worker ignored the instruction. Paste the curl manually (§6 step 6). |
 | `pnpm.exe ENOENT` | `dev.mjs` not patched (step 3 above). Change `pnpm.exe` → `pnpm.cmd`, add `shell: true`. |
+| `OCTOGENT_WORKSPACE_CWD=(unset)` in dev.mjs debug log despite the env var being set | The cmd shell that runs `pnpm dev` was using `pnpm --dir X` instead of `cd X && pnpm dev`. pnpm strips `OCTOGENT_*` env vars when invoked with `--dir`. `launch-inner.bat` does it the right way. |
 | `git worktree remove` fails on DELETE | Use `POST /api/terminals/prune` instead of the UI delete button. |
 | API on 8787 unreachable | `netstat -ano \| grep ":8787"` — is anything listening? If not, Octogent is dead — relaunch from Explorer right-click. |
 | 2 mystery `node.exe` running, no port bound | `pnpm dev` parent + child orphan from a crashed launch; `taskkill /F /PID <pid>` is safe. |
@@ -303,14 +352,16 @@ toasts on.
 ## 8. Caveats and known issues
 
 1. **PTY non-persistent**: if Octogent crashes mid-wave, every live worker dies. The `inbox/<ts>.md` backup of each orchestrator response gives a manual recovery path.
-2. **Channels are in-memory**: messages queued via `octogent channel send` are lost on Octogent restart. The dispatcher only does spawn/kill/replace and `POST /api/channels/.../messages`, so a restart wipes pending REPONDRE deliveries that hadn't been injected yet.
+2. **Channels are in-memory**: messages queued via `POST /api/channels/.../messages` are lost on Octogent restart. Worker reports queued mid-flight at restart time will not be delivered.
 3. **9-children-per-parent limit**: hard cap inside Octogent. Current waves of 4–7 are well under. For 12+ lanes, chain a sub-parent.
 4. **Stop hook fires for every Codex session**: non-orchestrator sessions (research, dev, etc.) trigger the dispatcher too. Their responses contain no actionable headers, so the dispatcher logs `no actionable blocks found` and exits silently. Safe but watch the log noise.
 5. **Per-developer setup**: nothing is shared. Each dev runs their own Octogent instance on their own machine.
-6. **Octogent's own dev tentacles** (`api-runtime`, `web-ui`, etc.) are visible because the junction lives under the install dir. They're inert noise — click **HIDE IDLE** in the toolbar to mute them.
-7. **Patched `dev.mjs` lost on Octogent upgrade**: re-apply the two-line patch after `git pull` on the Octogent clone.
+6. **Octogent's own dev tentacles** (`api-runtime`, `web-ui`, etc.) are visible only when `OCTOGENT_WORKSPACE_CWD` is *not* set (Octogent falls back to its install dir and reads its own tentacles). With our launcher correctly setting `OCTOGENT_WORKSPACE_CWD` per project, only the project's tentacles appear — those install-dir ones are hidden.
+7. **Two Octogent source patches** (`scripts/dev.mjs`, `apps/api/src/terminalRuntime/channelMessaging.ts`) are lost on `git pull` of the Octogent clone. Keep a copy of the patched files alongside this repo or re-apply manually.
 8. **Codex loads hooks at session start**: if you add or modify hooks while a Codex orchestrator session is already running, the new hooks are NOT attached to that session. Restart Codex (`codex` for a fresh session, or `codex resume <id>` to pick up the existing rollout with the new hooks bound).
 9. **`POST /api/terminals` with an existing terminalId**: Octogent silently auto-assigns a new id (e.g. `terminal-3`) rather than reusing or rejecting. The dispatcher works around this for `RELANCER` by DELETing the registry record first. For SPAWN it would have produced a duplicate worker with a different id, which is why dedup is enforced.
+10. **Workers must follow the report-back instruction**: the dispatcher appends a curl-based `octogent channel send` instruction to every spawned worker's `initialPrompt`, but a Claude Code worker can in theory ignore it (e.g. forget to run the curl). If a worker doesn't report, the orchestrator will not know it's done — paste the manual curl line (§6 step 6) to recover.
+11. **`pnpm --dir` strips env vars**: a confirmed Windows/pnpm quirk — `pnpm --dir X dev` clears `OCTOGENT_*` env vars in the spawned dev process. The launcher uses `cd /d X && pnpm dev` instead. Don't switch back to `--dir`.
 
 ## 9. Full rollback
 
