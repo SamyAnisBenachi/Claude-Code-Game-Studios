@@ -95,6 +95,46 @@ Files touched by PROMPT 763: `production/sprint-status.yaml`,
 `production/stage.txt` change, no smoke / gate-check / QA sign-off /
 `/dev-story` run, no Sprint 11 activation.
 
+### Sprint 11 Evidence Index Carry — `S11-EVIDENCE-INDEX-CARRY-001` (PROMPT 771, 2026-05-13)
+
+PROMPT 771 landed the doc-only `S11-EVIDENCE-INDEX-CARRY-001` carry from
+deferred Sprint 10 nice-to-have `S10-N1` (per PROMPT 763 close-out and PROMPT
+764 Sprint 11 draft plan). Authored the Sprint 10 evidence aggregator index at
+`production/qa/evidence/sprint-10-evidence-index.md` (NEW). The aggregator
+collates per-story status (Must / Should / Nice-to-Have) with integration
+commit hashes and primary evidence paths; records the smoke retry-7 PASS WITH
+WARNINGS at `production/qa/smoke-sprint-10-2026-05-12-retry-7.md`; records
+the /team-qa APPROVED WITH CONDITIONS at
+`production/qa/team-qa-sprint-10-2026-05-11.md`; records the PROMPT 761
+Polish->Release gate-check `FAIL` at
+`production/gate-checks/gate-polish-release-2026-05-12.md`; records the three
+Sprint 10 deferred items (S10-TD-003, S10-N1, S10-N2) and their Sprint 11
+draft carry IDs (`S11-DOC-HYGIENE-CARRY-001`, `S11-EVIDENCE-INDEX-CARRY-001`,
+`S11-ROUTE-READABILITY-CARRY-001`); and preserves every carried condition
+(S8-QA-001-W1 OPEN, QA-COND-0005 accepted-risk, QA-COND-0006
+accepted-risk / deferred, 11 ignored D-5 tests from smoke retry-7 W1, HUD
+timer eyeball visual check deferred from W2, placeholder / friend-game art
+scope via PAW-TD-*-a accept-risk on placeholder PNGs) along with the standard
+friend-game-lite non-claims (no release / no release-candidate / no full-game
+completion / no broad / Standard-tier accessibility / no playtest validation /
+no full manual QA / no final-art / asset-production claim). The aggregator is
+read-only over the underlying evidence — it does not modify, supersede, or
+reclassify any existing artefact. Authoritative status remains
+`production/sprint-status.yaml`. Sprint 11 remains `draft / not_active`:
+`production/sprint-status.yaml` `sprint:` is unchanged, `production/sprints/sprint-11.md`
+is unchanged, `production/stage.txt` reads `Polish` and is unchanged, the
+PROMPT 761 Polish->Release gate-check FAIL is preserved as evidence, and
+Sprint 10 disposition stays `closed-with-conditions` per PROMPT 763. No code
+under `client/` / `server/` / `shared/` / `tests/` modified. No smoke,
+gate-check, QA sign-off, `/dev-story`, `/story-readiness`, `/story-done`, or
+`/qa-plan` run. No release artifact authored and no release claim. Marking
+the Sprint 11 row `done` vs outstanding is a Sprint 11 activation-time
+decision — PROMPT 771 did NOT mutate `production/sprint-status.yaml` or
+`production/sprints/sprint-11.md`. Files touched by PROMPT 771:
+`production/qa/evidence/sprint-10-evidence-index.md` (NEW),
+`production/session-state/active.md`,
+`production/session-state/codex-orchestrator-state.md`.
+
 ### Sprint 11 Doc Hygiene Carry — `S11-DOC-HYGIENE-CARRY-001` (PROMPT 770, 2026-05-13)
 
 PROMPT 770 landed the doc-only `S11-DOC-HYGIENE-CARRY-001` carry from
