@@ -4,7 +4,7 @@
 > **GDD**: Sprint 7 playable path traced to game-session-system, network-protocol, card-acquisition, hand-ui, shop-auction-ui, hud, board-rendering, and round-state-machine GDDs
 > **Architecture Module**: `client/src/main.rs`, `client/src/network/`, `client/src/state/`, `client/src/presentation/`, `client/src/ui/`, plus server message bridges in `server/src/network/` and owning server systems
 > **Status**: Ready
-> **Stories**: 8 Sprint 7/8 must-have stories, backlog prep stories, and Sprint 9 evidence-prep stories
+> **Stories**: 8 Sprint 7/8 must-have stories, backlog prep stories, Sprint 9 evidence-prep stories, Sprint 10 tech-debt stories, and Sprint 11 draft tech-debt stories
 
 ## Overview
 
@@ -104,6 +104,9 @@ The epic does not create public release readiness, broad accessibility completio
 | 006 | [Native Friend-Game Operator Controls](story-006-native-friend-game-operator-controls.md) | Integration | Ready - backlog prep only | Native operator controls / S8-QA-001-W1 |
 | 007 | [Manual Browser GAME_OVER Evidence Closure](story-007-manual-browser-game-over-evidence-closure.md) | Integration | Blocked - depends on result screen and acknowledgement handshake | S9-QA-001 / S8-QA-001-W1 |
 | 008 | [Sprint 9 Result Evidence Index Cleanup](story-008-sprint-9-result-evidence-index-cleanup.md) | Config/Data | Blocked - depends on S9-QA-001 evidence | S9-QA-002 |
+| 009 | [Test-Fixture Cascade-Fail Repair](story-009-test-fixture-cascade-fail-repair.md) | Integration | Complete | S10-TD-001 |
+| 010 | [Plugin Registration Audit](story-010-plugin-registration-audit.md) | Integration | See story | S10-TD-002 |
+| 011 | [Hand UI `OnEnter(InSession)` Fixture-Cascade Repair](story-011-hand-ui-onenter-fixture-repair.md) | Integration | Draft - Sprint 11 draft Must Have, NOT activated | S11-TD-FIXTURE-HAND-UI-ONENTER-001 |
 
 ## Definition of Done
 

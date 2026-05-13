@@ -95,6 +95,97 @@ Files touched by PROMPT 763: `production/sprint-status.yaml`,
 `production/stage.txt` change, no smoke / gate-check / QA sign-off /
 `/dev-story` run, no Sprint 11 activation.
 
+### Sprint 11 DRAFT Story Authoring — `S11-TD-FIXTURE-HAND-UI-ONENTER-001` (PROMPT 767, 2026-05-13)
+
+PROMPT 767 authored the Sprint 11 draft Must Have story file for
+`S11-TD-FIXTURE-HAND-UI-ONENTER-001` at
+`production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`
+(NEW). Sprint 11 remains `draft` per PROMPT 764; **Sprint 11 was NOT
+activated by PROMPT 767**. `production/sprint-status.yaml` `sprint:`
+field and active-row set are unchanged. `production/stage.txt` reads
+`Polish` and is unchanged. `production/sprints/sprint-11.md` is
+unchanged. PROMPT 761 Polish->Release gate-check FAIL evidence is
+preserved.
+
+Story scope (Layer 4 of the same fixture cascade that closed
+`S10-TD-001` under `story-009-test-fixture-cascade-fail-repair.md`;
+diagnosis + fixture-only repair):
+
+- Identifies the cluster of ignored tests from smoke retry-7 W1
+  (`production/qa/smoke-sprint-10-2026-05-12-retry-7.md` lines 60-74)
+  whose owner-named `#[ignore]` comments point at the same root cause:
+  `spawn_hand_ui` not firing on `OnEnter(InSession)` in `MinimalPlugins`
+  fixtures → `HandUiEntities` never inserted → downstream entity-presence
+  assertions fail. Six tests are explicitly enumerated; a seventh
+  referenced in the PROMPT 759 closeout / PROMPT 762 candidate-backlog
+  capture may have shifted disposition between retry-5 and retry-7, and
+  is recorded as a "Cluster count note" for diagnosis to confirm or
+  refute.
+- Scopes repair to `tests/` plus a single `#[cfg(test)]`-gated test-only
+  helper (precedent: `placeholder_assets_for_tests()` from S10-TD-001
+  Layer 3) plus a pattern doc at
+  `docs/architecture/test-fixture-patterns.md` (or appended location).
+  AC6 enforces zero production code change in `client/src/`,
+  `server/src/`, or `shared/src/` outside the helper exception. If
+  diagnosis surfaces a production-runtime regression, the disposition
+  is to author a separate follow-on production-fix story id and
+  reference it from this story's evidence document — the production
+  code change does NOT land under this story id.
+- AC2 requires either (a) workspace ignored-count drop by N (= tests
+  un-`#[ignore]`d) OR (b) explicit owner-named disposition comment on
+  every retained `#[ignore]` pointing at the resolving story id (this
+  story id, the referenced follow-on production-fix story id, or
+  `S11-TD-IGNORED-D5-TRIAGE-001`). No silent retention.
+- AC7 explicitly preserves Sprint 11 draft status:
+  `production/sprint-status.yaml`, `production/sprints/sprint-11.md`,
+  and `production/stage.txt` are not modified under this story.
+- Evidence document slot reserved at
+  `production/qa/evidence/sprint-11-hand-ui-onenter-fixture-evidence.md`
+  for population by the implementation prompt(s).
+- Story status authored as `Draft -- Sprint 11 draft Must Have, NOT
+  activated`. `/story-readiness` is the next step **after** Sprint 11
+  activation (separate prompt).
+
+EPIC index update: `production/epics/playable-client/EPIC.md` Stories
+table backfilled with rows 009 (S10-TD-001 Test-Fixture Cascade-Fail
+Repair — Complete), 010 (S10-TD-002 Plugin Registration Audit), and
+011 (the new S11 draft story). Rows 009 + 010 were authored
+retroactively because the story files existed on disk but had not been
+registered in the EPIC index. Status-line note updated to mention
+Sprint 10 tech-debt + Sprint 11 draft tech-debt.
+
+Sprint 11 Must Have story-file authoring status after PROMPT 767:
+
+| Must Have ID | Required story file | Status |
+|--------------|---------------------|--------|
+| `S11-DRAG-RUNTIME-RETEST-001` | `production/epics/hand-ui/story-018-drag-runtime-retest.md` | ✅ Authored by PROMPT 766 |
+| `S11-TD-FIXTURE-HAND-UI-ONENTER-001` | `production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md` | ✅ Authored by PROMPT 767 |
+| `S11-TD-IGNORED-D5-TRIAGE-001` | No new story file required (triage doc) | n/a |
+| `S11-DOC-HYGIENE-CARRY-001` | No new story file required (doc-only sweep) | n/a |
+| `S11-EVIDENCE-INDEX-CARRY-001` | No new story file required (evidence aggregator) | n/a |
+| `S11-ROUTE-READABILITY-CARRY-001` | No new story file required (notes file) | n/a |
+
+Both Lane A story-authoring slots (PROMPT 766 + PROMPT 767) are now
+filled. Remaining Sprint 11 Must Have artifacts (triage doc, doc-hygiene
+sweep, evidence-index aggregator, route-readability notes) are
+paperwork that lands at activation time via `/sprint-plan sprint-11` +
+`/qa-plan sprint` + the subsequent `/dev-story` dispatches.
+
+Files touched by PROMPT 767:
+`production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`
+(NEW),
+`production/epics/playable-client/EPIC.md` (Stories table rows 009 +
+010 + 011 added; status-line description updated),
+`production/session-state/active.md` (PROMPT 767 banner prepended
+above PROMPT 766 banner),
+`production/session-state/codex-orchestrator-state.md` (this section).
+No code under `client/`, `server/`, `shared/`, `tests/`. No
+`.octogent/` change. No `.gitignore` change. No `production/stage.txt`
+change. No `production/sprint-status.yaml` change. No
+`production/sprints/sprint-11.md` change. No smoke / gate-check / QA
+sign-off / `/dev-story` / `/story-done` run. No Sprint 11 activation.
+No release artifact authored. No release claim.
+
 ### Sprint 11 DRAFT Story Authoring — `S11-DRAG-RUNTIME-RETEST-001` (PROMPT 766, 2026-05-13)
 
 PROMPT 766 authored the Sprint 11 draft Must Have story file for
