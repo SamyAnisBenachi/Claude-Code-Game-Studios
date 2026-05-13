@@ -95,6 +95,51 @@ Files touched by PROMPT 763: `production/sprint-status.yaml`,
 `production/stage.txt` change, no smoke / gate-check / QA sign-off /
 `/dev-story` run, no Sprint 11 activation.
 
+### Sprint 11 Route Readability Carry — `S11-ROUTE-READABILITY-CARRY-001` (PROMPT 772, 2026-05-13)
+
+PROMPT 772 landed the doc-only `S11-ROUTE-READABILITY-CARRY-001` carry from
+deferred Sprint 10 nice-to-have `S10-N2` (per PROMPT 763 close-out and PROMPT
+764 Sprint 11 draft plan). Authored the friend-game route readability notes
+file at `production/qa/evidence/sprint-10-route-readability-notes.md` (NEW)
+covering eight routes: Lobby, Hand / Drag, Draft Grid, Shop, Auction, Board,
+HUD / Timer, and Result / Close-Out. Each observation is captured as either an
+`already-tracked` cross-reference to an existing Sprint 11 backlog row (e.g.
+`S11-DRAG-RUNTIME-RETEST-001`, `S11-UX-DRAFT-GRID-CENTERED-MODAL`,
+`S11-UX-AUCTION-FEATURED-CARD`, `S11-UX-AUCTION-FREE-GOLD-COUNTERS`,
+`S11-UX-HUD-TOP-STRIP-LAYOUT`, `S11-UX-BOARD-RENDERING-SPEC`,
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`, `S11-LOBBY-UX-CONFIRM-STATE-001`,
+`S8-QA-001-W1`) or a `future-story-candidate` slug that does NOT yet have a
+story file. No row authorises immediate implementation; a separate prompt with
+its own story + `/story-readiness` is required before any change lands.
+
+The notes file explicitly preserves friend-game scope: it does NOT propose
+broad Standard-tier accessibility completion, does NOT claim closure of
+`QA-COND-0005` (Standard-tier accessibility, accepted-risk), does NOT claim
+closure of `QA-COND-0006` (playtest / fun-hypothesis validation, accepted-risk
+/ deferred), does NOT claim closure of `S8-QA-001-W1` (manual / browser
+two-client GAME_OVER gap, OPEN), and does NOT claim closure of any other
+carried condition. Final-art replacement remains accept-risk under `PAW-TD-*-a`.
+
+Sprint 11 remains `draft / not_active`: `production/sprint-status.yaml`
+`sprint:` is unchanged, `production/sprints/sprint-11.md` is unchanged,
+`production/stage.txt` reads `Polish` and is unchanged, the PROMPT 761
+Polish->Release gate-check `FAIL` is preserved as evidence, and Sprint 10
+disposition stays `closed-with-conditions` per PROMPT 763. No code under
+`client/` / `server/` / `shared/` / `tests/` modified. No smoke, gate-check,
+QA sign-off, `/dev-story`, `/story-readiness`, or `/story-done` run. No
+release artifact authored and no release claim.
+
+With PROMPT 770 (`S11-DOC-HYGIENE-CARRY-001` landed at `0d19690`), PROMPT 771
+(`S11-EVIDENCE-INDEX-CARRY-001` landed at `348084b`), and PROMPT 772
+(`S11-ROUTE-READABILITY-CARRY-001`), all three Sprint 11 draft paperwork-carry
+Must Haves derived from Sprint 10 deferrals now have their outstanding
+deliverables on `main`. Marking the Sprint 11 rows as outstanding **vs** done
+is a Sprint 11 activation-time decision — PROMPT 772 did NOT mutate
+`production/sprint-status.yaml` or `production/sprints/sprint-11.md`. Files
+touched by PROMPT 772: `production/qa/evidence/sprint-10-route-readability-notes.md`
+(NEW), `production/session-state/active.md` (banner), and
+`production/session-state/codex-orchestrator-state.md` (this section).
+
 ### Sprint 11 Evidence Index Carry — `S11-EVIDENCE-INDEX-CARRY-001` (PROMPT 771, 2026-05-13)
 
 PROMPT 771 landed the doc-only `S11-EVIDENCE-INDEX-CARRY-001` carry from
