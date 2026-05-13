@@ -95,6 +95,31 @@ Files touched by PROMPT 763: `production/sprint-status.yaml`,
 `production/stage.txt` change, no smoke / gate-check / QA sign-off /
 `/dev-story` run, no Sprint 11 activation.
 
+### Sprint 11 Doc Hygiene Carry — `S11-DOC-HYGIENE-CARRY-001` (PROMPT 770, 2026-05-13)
+
+PROMPT 770 landed the doc-only `S11-DOC-HYGIENE-CARRY-001` carry from
+deferred `S10-TD-003` (PROMPT 763). Two literal `TR-NP-04` references in
+`docs/architecture/adr-011-reconnect-snapshot.md` (lines 173 and 810) were
+corrected to `TR-NP-006` — the TR-registry-canonical ID for the deferred-queue
+/ snapshot-first / `snapshot_sent` invariant (`docs/architecture/tr-registry.yaml`
+TR-NP-006 covering `NP-9, NP-16, NP-17, NP-18, NP-20, NP-21, NP-22`). Network
+Protocol Rule 7 (`design/gdd/network-protocol.md`) gained an `ADR-011`
+breadcrumb pointing at the full reconnect flow, mandatory send order, and the
+`ReconnectTracker.deferred_queue` / `snapshot_sent` gating that enforces
+TR-NP-006. No protocol or architecture decision is changed; no normative wire
+or behavior text was rewritten. Sprint 11 remains `draft / not_active`:
+`production/sprint-status.yaml` `sprint:` is unchanged, `production/sprints/sprint-11.md`
+is unchanged, `production/stage.txt` reads `Polish` and is unchanged, the
+PROMPT 761 Polish->Release gate-check FAIL is preserved as evidence, and
+Sprint 10 disposition stays `closed-with-conditions` per PROMPT 763. No code
+under `client/` / `server/` / `shared/` / `tests/` modified. No smoke,
+gate-check, QA sign-off, `/dev-story`, `/story-readiness`, or `/story-done`
+run. No release artifact authored and no release claim. Evidence is the diff
+itself plus this paragraph (per the Sprint 10 row spec carried into Sprint 11).
+Files touched by PROMPT 770: `docs/architecture/adr-011-reconnect-snapshot.md`,
+`design/gdd/network-protocol.md`, `production/session-state/active.md`,
+`production/session-state/codex-orchestrator-state.md`.
+
 ### Sprint 11 DRAFT Story Authoring — `S11-TD-FIXTURE-HAND-UI-ONENTER-001` (PROMPT 767, 2026-05-13)
 
 PROMPT 767 authored the Sprint 11 draft Must Have story file for

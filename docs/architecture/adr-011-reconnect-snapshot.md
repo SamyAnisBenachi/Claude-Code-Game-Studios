@@ -170,7 +170,7 @@ any implementation of handshake, snapshot, or session resume logic.
 - TR-NP-03: The snapshot is unicast per reconnecting player with opponent secret
   fields (hand, shop slots, pool, `is_fake`) stripped. No broadcast snapshot
   is ever sent.
-- TR-NP-04: Live messages destined for the reconnecting player that are generated
+- TR-NP-006: Live messages destined for the reconnecting player that are generated
   while the snapshot is being assembled and delivered are queued server-side and
   flushed only after snapshot delivery is confirmed.
 - TR-NP-07: Disconnect detection uses both `OnDisconnected` (primary) and
@@ -807,7 +807,7 @@ and write a new ADR documenting the simplified identity mechanism.
 | `design/gdd/network-protocol.md` | Network Protocol | TR-NP-01 (NP-1) — `S2CHandshake` is the first S2C message on fresh connect | Handshake is step 1 of the mandatory reconnect sequence |
 | `design/gdd/network-protocol.md` | Network Protocol | TR-NP-02 (NP-9) — `S2CGameSnapshot` first game message after reconnect | Enforced by `deferred_queue` and snapshot system scheduling before live-message systems |
 | `design/gdd/network-protocol.md` | Network Protocol | TR-NP-03 (NP-16) — Snapshot does not contain opponent secrets | Enforced by secret-stripping rules on `PlayerSnapshot` and `TrapBoardState` |
-| `design/gdd/network-protocol.md` | Network Protocol | TR-NP-04 — Live messages held until snapshot delivered | Defined via `ReconnectTracker.deferred_queue` and `snapshot_sent` flag |
+| `design/gdd/network-protocol.md` | Network Protocol | TR-NP-006 — Live messages held until snapshot delivered | Defined via `ReconnectTracker.deferred_queue` and `snapshot_sent` flag |
 | `design/gdd/network-protocol.md` | Network Protocol | TR-NP-07 (NP-12, NP-13, NP-24, NP-25) — Disconnect detection and grace window | Token map and reconnect tracker preserve session state for `disconnect_grace_seconds`; reconnect flow resumes within the grace window |
 | `design/gdd/network-protocol.md` | Network Protocol | TR-NP-08 (NP-17) — `S2COpponentReconnected` broadcast on reconnect | Defined as the terminal step of the mandatory reconnect sequence |
 | `design/gdd/network-protocol.md` | Network Protocol | Section D.1 — `S2CGameSnapshot` schema | Struct definitions in Key Interfaces are the authoritative Rust-typed implementation of the schema in Section D.1 |
