@@ -147,19 +147,41 @@ Dispatcher does, in order:
 Result in UI: terminal `PROMPT-762` disappears, terminal `PROMPT-763` appears
 under tentacle "Codex Orchestrator State".
 
-### Things that do NOT match
+### Decorative prefixes are tolerated
+
+The regex accepts up to **10 non-word, non-newline characters** before the
+disposition keyword, so the orchestrator can prefix each label with
+coloured emoji markers or list bullets without breaking the match. All of
+these are recognised:
+
+| Line | Match |
+|---|---|
+| `CLEAR -- PROMPT 771` | ✅ plain |
+| `🟢 CLEAR -- PROMPT 771` | ✅ green-dot prefix |
+| `🔺🔺🔺 PROMPT 763 -- Title` | ✅ multi-emoji prefix |
+| `- CLEAR -- PROMPT 100` | ✅ list bullet |
+| `> NEW -- PROMPT 200` | ✅ blockquote |
+| `   CLEAR -- PROMPT 999` | ✅ leading whitespace |
+
+### Things that still do NOT match
 
 | Line | Why ignored |
 |---|---|
 | `Prompt 813:` | Lowercase `p` |
 | `Nouveau prompt #813:` | Wrong wording |
 | `PROMPT 813 - Title` | Single dash (regex requires `--`) |
-| `   PROMPT 813 -- Title` | Indented (regex anchors to line start) |
 | `Voici le prompt à lancer:` | No header at all |
 | `NEW: PROMPT 813` | Wrong separator (colon, not `--`) |
+| `Just CLEAR -- PROMPT 813` | Word chars (`Just`) precede the keyword |
+| `Some text CLEAR -- PROMPT 813` | Word chars precede the keyword |
 
-If the orchestrator's wording drifts, update `_HEADER_RX` in
-`~/.codex/gcs-octogent-dispatch.py`. Five lines, no other code change needed.
+The "word chars before keyword" anti-match is intentional: it prevents
+the regex from grabbing dispositions mentioned inside prose paragraphs
+(e.g. `the worker emitted CLEAR -- PROMPT 813 yesterday`).
+
+If the orchestrator's wording drifts further (e.g. lowercase keywords,
+different separator, etc.), update `_HEADER_RX` in
+`~/.codex/gcs-octogent-dispatch.py`.
 
 ## 4. Components — what lives where
 
