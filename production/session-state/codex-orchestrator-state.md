@@ -21,7 +21,7 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@1bad399`, stage `Polish`,
+- Current verified state at this update: `origin/main@3ca1aff`, stage `Polish`,
   Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
   status `active` (PROMPT 773, 2026-05-13) as a Polish-stage sprint
   (`2026-06-04 -> 2026-06-17`) with plan at `production/sprints/sprint-11.md`
@@ -31,10 +31,19 @@ Current source of truth:
   backlog capture folded into the Sprint 11 plan. Sprint 11 Must Have
   paperwork-carry deliverables landed on `main` (`0d19690` / `348084b` /
   `d3ee8df`); `/story-done` ran for `S11-DOC-HYGIENE-CARRY-001` in PROMPT
-  780 (2026-05-13) and for `S11-EVIDENCE-INDEX-CARRY-001` in **PROMPT 781
-  (2026-05-13)**, flipping those two rows from `ready` to `done`; the
-  remaining paperwork carry (`S11-ROUTE-READABILITY-CARRY-001`) remains
-  `ready` pending its own `/story-done` prompt.
+  780 (2026-05-13), for `S11-EVIDENCE-INDEX-CARRY-001` in PROMPT 781
+  (2026-05-13), and for `S11-DRAG-RUNTIME-RETEST-001` in **PROMPT 783
+  (2026-05-13)**, flipping those three rows from `ready` to `done`.
+  PROMPT 778 /dev-story (2026-05-13) authored the drag-runtime evidence +
+  follow-on diagnostic story at worker commit `0fc05c3` with disposition
+  `PASS-CANNOT-REPRODUCE`; PROMPT 782 (2026-05-13) integrated the worker
+  to `main` at merge commit `3ca1aff`. The remaining paperwork carry
+  (`S11-ROUTE-READABILITY-CARRY-001`) remains `ready` pending its own
+  `/story-done` prompt. The follow-on diagnostic story
+  `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`
+  is on `main` at `0fc05c3` but not yet activated into Sprint 11 active
+  scope (separate `/sprint-plan sprint-11 --add story-019` prompt
+  required).
 
 Current next move:
 
@@ -52,16 +61,178 @@ Current next move:
 - Do not retry `Polish->Release` until release-scope artifacts exist.
 - Next launchable prompts (Sprint 11 QA plan on `main` per PROMPT 774;
   `S11-DOC-HYGIENE-CARRY-001` closed by PROMPT 780;
-  `S11-EVIDENCE-INDEX-CARRY-001` closed by PROMPT 781):
+  `S11-EVIDENCE-INDEX-CARRY-001` closed by PROMPT 781;
+  `S11-DRAG-RUNTIME-RETEST-001` closed by PROMPT 783 with
+  `PASS-CANNOT-REPRODUCE` disposition):
   (1) `/story-readiness` on
   `production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`
-  — formal verdict for `S11-TD-FIXTURE-HAND-UI-ONENTER-001`; (2) `/dev-story`
-  on `production/epics/hand-ui/story-018-drag-runtime-retest.md`
-  (`S11-DRAG-RUNTIME-RETEST-001` — only Must Have currently passing both the
-  story-file gate and the `/story-readiness` gate); (3) `/story-done` on the
-  remaining landed paperwork carry (`S11-ROUTE-READABILITY-CARRY-001`) as a
-  separate prompt; (4) story file authoring for Should Have / Nice to Have
-  rows if pulled into active scope.
+  — formal verdict for `S11-TD-FIXTURE-HAND-UI-ONENTER-001`; (2) `/story-done`
+  on the remaining landed paperwork carry (`S11-ROUTE-READABILITY-CARRY-001`)
+  as a separate prompt; (3) `/sprint-plan sprint-11 --add story-019` to
+  activate the new follow-on diagnostic story
+  `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`
+  into Sprint 11 active scope (separate prompt); (4) story file authoring
+  for Should Have / Nice to Have rows if pulled into active scope.
+
+### PROMPT 783 /story-done Disposition — S11-DRAG-RUNTIME-RETEST-001 (2026-05-13)
+
+Authoritative Sprint 11 row `S11-DRAG-RUNTIME-RETEST-001` closed by
+`/story-done` in PROMPT 783. Source-of-truth at run: `origin/main@3ca1aff`
+(PROMPT 782 merge integrating worker branch `work/s11-drag-runtime-retest`).
+Worker deliverables verified on `main` at worker commit `0fc05c3` (PROMPT
+778 /dev-story, 2026-05-13). PROMPT 778 worker disposition:
+`PASS-CANNOT-REPRODUCE`. Story 018 acceptance-criterion verification
+(read-only against `origin/main@3ca1aff`, deliverable commit `0fc05c3`):
+
+- HU-DRAG-RT-01 — Runtime trace captured. **Deferred under
+  cannot-reproduce disposition.** Story 018 §"Time-box" explicitly
+  prescribes `cannot-reproduce` as a valid disposition when the
+  1.0-day operator-driven two-client friend-game time-box cannot be
+  exercised. PROMPT 778 was an automated CLI worker dispatch that
+  cannot launch two browser tabs, manipulate `bevy_picking` pointers
+  via mouse, or capture release-frame screenshots. The time-box was
+  structurally unavailable. Static-code presence of S1-S5 emit sites
+  was verified instead and recorded as code-evidence pointers in the
+  truth-table.
+
+- HU-DRAG-RT-02 — S1-S5 truth-table locked. **PASS.**
+  `production/qa/evidence/sprint-11-drag-runtime-evidence.md` locks
+  every row of the S1-S5 truth-table as `NOT-OBSERVED` across drag
+  attempts A / B / C / D, with code-evidence pointers (file:line +
+  `target:` string) for the emit-site presence. Code-evidence
+  pointers from worker static verification: S1
+  `client/src/ui/hand/mod.rs:2020` (`target: "drag_sprite_visible_flip"`);
+  S2 `client/src/ui/hand/mod.rs:1901`
+  (`target: "fan_active_default_drop"`); S3
+  `client/src/ui/hand/mod.rs:2049`
+  (`target: "placement_cursor_move"`); S4
+  `client/src/card_animations/input_gating.rs:163`
+  (`target: "drag_lift_tween_install"`); S5
+  `client/src/presentation/board_rendering.rs:1709`
+  (`target: "spawn_highlight_state_change"`); S5-callers L1640 /
+  L1685 / L2622 (`target: "spawn_highlight_caller"`). Drag-ended
+  gate widening from commit `cbb2565` (PROMPT 697) confirmed present
+  at `client/src/ui/hand/mod.rs:2065`. Producer surface from commit
+  `00ffe89` (PROMPT 696) confirmed present.
+
+- HU-DRAG-RT-03 — Test-vs-runtime divergence dispositioned. **PASS.**
+  Disposition is `cannot-reproduce` per story 018 §"Time-box". The
+  PROMPT 683-era discrepancy (8 `C2SActivateCard` sends, zero
+  `stage_or_update` events) is preserved as the **primary suspect
+  for S5 release-branch → server** without being claimed as confirmed
+  or refuted. Offending stage is **not named** because no row
+  transitioned to FAIL in this run — every row was `NOT-OBSERVED`.
+
+- HU-DRAG-RT-04 — Repair or follow-on authored. **PASS.** Follow-on
+  diagnostic-only story authored at
+  `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`
+  (atomically by PROMPT 778 commit `0fc05c3`). It inherits the no-claim
+  banner verbatim, inherits the §"Reproduction Recipe" with a
+  tighter-capture protocol (adds `lightyear=debug` to the `RUST_LOG`
+  chain, frame-level release-moment video capture, synchronised
+  wall-clock timestamps for cross-client S2→S5 producer-consumer
+  cross-check), names S5 as primary suspect, restates the "no
+  optimistic client-side authority" prohibition, and is explicitly
+  diagnostic-only — no repair commit may land inside the story under
+  any disposition. Story 019 is currently `Draft`;
+  `/story-readiness` is pending; activation into Sprint 11 active
+  scope is a separate `/sprint-plan sprint-11 --add story-019`
+  prompt.
+
+- HU-DRAG-RT-05 — No production code changes in this story. **PASS.**
+  Worker commit `0fc05c3` changed exactly 3 files (795 insertions,
+  0 deletions): `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`
+  (442 lines NEW), `production/qa/evidence/captures/sprint-11-drag-runtime/README.md`
+  (36 lines NEW), `production/qa/evidence/sprint-11-drag-runtime-evidence.md`
+  (317 lines NEW). `git diff --stat origin/main@3ca1aff..0fc05c3 -- client/ server/ shared/ tests/`
+  returns EMPTY. Verified.
+
+- HU-DRAG-RT-06 — No optimistic client-side authority introduced.
+  **PASS.** Phrase "no optimistic client-side authority" present in
+  both `production/qa/evidence/sprint-11-drag-runtime-evidence.md`
+  and the follow-on story
+  `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`.
+  ADR-002 and ADR-009 lines preserved across the evidence file, the
+  follow-on story, and any disposition pathway recorded therein.
+
+- HU-DRAG-RT-07 — Non-claims preserved. **PASS.** Story 018
+  §"Status / No-Claim Banner" restated verbatim in
+  `production/qa/evidence/sprint-11-drag-runtime-evidence.md` §"Status
+  / No-Claim Banner". The following are explicitly **NOT** claimed
+  closed by this retest: public release readiness, release-candidate
+  readiness, full game completion, broad / Standard-tier accessibility
+  completion (`QA-COND-0005`), playtest / fun-hypothesis validation
+  (`QA-COND-0006`), full playable-client manual QA, two-client
+  GAME_OVER closure (`S8-QA-001-W1`), final-art / asset-production
+  completion.
+
+- HU-DRAG-RT-08 — Sprint 11 status/stage preserved. **PASS.** Worker
+  commit `0fc05c3` did NOT modify `production/sprint-status.yaml`,
+  `production/stage.txt`, or `production/sprints/sprint-11.md`.
+  Verified by `git diff --stat origin/main@d36bbbd..0fc05c3 -- production/sprint-status.yaml production/stage.txt production/sprints/sprint-11.md`
+  returning EMPTY. `production/stage.txt` reads `Polish`. Sprint 11
+  `status: active`, activation by PROMPT 773, QA plan by PROMPT 774.
+
+Files mutated by PROMPT 783:
+
+- `production/sprint-status.yaml` — `S11-DRAG-RUNTIME-RETEST-001` row
+  flipped `status: ready -> done`; `completed: "2026-05-13"`;
+  `blocker: ""`; appended a PROMPT 778 /dev-story run note (worker
+  branch, source-of-truth, commit, disposition, integration commit)
+  and the PROMPT 783 /story-done verdict note with the full AC
+  verification.
+
+- `production/session-state/active.md` — PROMPT 783 CURRENT-STATE
+  banner prepended above the prior PROMPT 781 banner. Prior banner
+  preserved as historical.
+
+- `production/session-state/codex-orchestrator-state.md` — current
+  operating rules updated; this PROMPT 783 disposition section
+  prepended above the PROMPT 781 disposition section.
+
+- `reports/PROMPT-783.md` — mandatory final report file (the only
+  `reports/` write in this run; not a substantive change to
+  orchestrator state).
+
+Forbidden / not-run by PROMPT 783: `/dev-story`, `/story-readiness`,
+`/smoke-check`, `/team-qa`, `/gate-check`, `/qa-plan`. PROMPT 783 did
+NOT modify production code under `client/` / `server/` / `shared/` /
+`tests/`. PROMPT 783 did NOT modify `production/stage.txt`,
+`production/sprints/sprint-11.md`, `.claude/settings.json`,
+`.claude/scheduled_tasks.lock`, or `.octogent/`. No release claim.
+No release-candidate claim. No accessibility-completion claim. No
+playtest-validation claim. No full-game-completion claim. No
+final-art / asset-production-completion claim. No
+full-playable-client-manual-QA claim. No Sprint 11 close-out claim.
+No retry of the Polish->Release gate-check. No optimistic
+client-side authority introduced (ADR-002 + ADR-009 binding).
+
+Carried forward unchanged: S8-QA-001-W1 manual/browser two-client
+GAME_OVER gap (OPEN); QA-COND-0005 Standard-tier accessibility
+(accepted-risk friend-game scope); QA-COND-0006 playtest /
+fun-hypothesis validation (accepted-risk / deferred); 11 ignored
+D-5 tests from smoke retry-7 W1 (folded into
+`S11-TD-IGNORED-D5-TRIAGE-001` + `S11-TD-FIXTURE-HAND-UI-ONENTER-001`);
+HUD timer eyeball visual check (W2; folded into
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`); placeholder / friend-game art
+scope (PAW-TD-*-a accept-risk); PROMPT 683-era runtime divergence
+question preserved unchanged for follow-on story 019.
+
+Sprint 11 Must Have status after PROMPT 783: 3/6 `done`
+(`S11-DOC-HYGIENE-CARRY-001`, `S11-EVIDENCE-INDEX-CARRY-001`,
+`S11-DRAG-RUNTIME-RETEST-001`); 3/6 `ready`
+(`S11-TD-FIXTURE-HAND-UI-ONENTER-001`,
+`S11-TD-IGNORED-D5-TRIAGE-001`, `S11-ROUTE-READABILITY-CARRY-001`).
+
+Next launchable prompts: (1) `/story-readiness
+production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`
+— formal verdict for `S11-TD-FIXTURE-HAND-UI-ONENTER-001`; (2)
+`/story-done` for the remaining landed paperwork carry
+(`S11-ROUTE-READABILITY-CARRY-001`) as a separate prompt; (3)
+`/sprint-plan sprint-11 --add story-019` to activate the new
+follow-on diagnostic story into Sprint 11 active scope (separate
+prompt); (4) story file authoring for Should Have / Nice to Have
+rows if pulled into active scope.
 
 ### PROMPT 781 /story-done Disposition — S11-EVIDENCE-INDEX-CARRY-001 (2026-05-13)
 
