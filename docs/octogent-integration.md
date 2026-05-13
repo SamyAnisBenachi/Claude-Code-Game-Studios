@@ -99,7 +99,7 @@ to start of line, `\d+` is the prompt number):
 | `NEW -- PROMPT N` | **NO-OP** (disposition label only). Recognised so it cleanly delimits preceding/following blocks; the real SPAWN trigger is the `PROMPT N -- Title` line that follows. Fallback: if no matching `PROMPT N -- Title` appears in the same response, an empty placeholder terminal is spawned **unless** `PROMPT-N` is already alive (then `DEDUP_SKIP`). | (no call unless fallback) | (silent) |
 | `CLEAR -- PROMPT N` | **KILL + DELETE** worker `PROMPT-N` so it disappears from the registry and the UI (matches the orchestrator contract's "close the agent window"). Earlier behaviour was kill-only, which left a `stopped` record visible — now fully removed. Logs `NOOP CLEAR` if the terminal does not exist. | `POST /api/terminals/PROMPT-N/kill` then `DELETE /api/terminals/PROMPT-N` | `travail-termine.mp3` |
 | `REPONDRE -- PROMPT N` | **Channel-message** the existing worker `PROMPT-N` with the body. Logs `WARN REPONDRE` if no such terminal — message still POSTed (Octogent will reply 404, audible only in dispatch log). | `POST /api/channels/PROMPT-N/messages` | `pret-a-travailler.mp3` |
-| `RELANCER -- PROMPT N` | **Bypasses dedup.** DELETEs the existing `PROMPT-N` record (regardless of state), then recreates with new body, preserving the same terminalId. Without the DELETE step Octogent silently auto-assigns a new id like `terminal-3`, which would break subsequent `CLEAR/REPONDRE -- PROMPT N` targeting. | `POST .../kill` → `DELETE /api/terminals/PROMPT-N` → `POST /api/terminals` | `encore-du-travail.mp3` |
+| `RELANCER -- PROMPT N` | **Bypasses dedup.** DELETEs the existing `PROMPT-N` record (regardless of state), then recreates with new body, preserving the same terminalId. Without the DELETE step Octogent silently auto-assigns a new id like `terminal-3`, which would break subsequent `CLEAR/REPONDRE -- PROMPT N` targeting. **Pairing**: if a `PROMPT N -- Title` block follows in the same response (orchestrator pattern: `🔴 RELANCER -- PROMPT N` header + `PROMPT N -- Title` + full body), the RELANCER line is treated as a no-op marker and the PROMPT block does the kill+DELETE+spawn with the real body — avoids a wasteful intermediate spawn-with-empty-body. Pre-scan computes `prompt_ns ∩ relancer_ns` once per dispatch. | `POST .../kill` → `DELETE /api/terminals/PROMPT-N` → `POST /api/terminals` | `encore-du-travail.mp3` |
 
 ### Dedup semantics
 
@@ -211,11 +211,11 @@ different separator, etc.), update `_HEADER_RX` in
 #### Claude Code side
 - `~/.claude/settings.json` — adds Octogent `/api/hooks/stop` and `/api/hooks/notification` callbacks (so Claude Code workers spawned inside Octogent terminals get idle-gated)
 
-#### Octogent install + 3 source patches
+#### Octogent install + 4 source patches
 
 - `D:\_APPS\Tools\octogent\` — the cloned Octogent source (Node 22+ / pnpm-managed)
 
-Three local patches to Octogent's source — **all lost on `git pull` of Octogent**, re-apply if you upgrade:
+Four local patches to Octogent's source — **all lost on `git pull` of Octogent**, re-apply if you upgrade:
 
 1. `D:\_APPS\Tools\octogent\scripts\dev.mjs` — use `pnpm.cmd` (not `pnpm.exe`, which doesn't exist with `npm install -g pnpm` on Windows) + add `shell: process.platform === "win32"` to the spawn call (Node 24 requirement). Adds three `console.log` debug lines for `OCTOGENT_WORKSPACE_CWD` / `workspaceCwd` / `projectStateDir` so launches are self-diagnosing.
 2. `D:\_APPS\Tools\octogent\apps\api\src\terminalRuntime\channelMessaging.ts` — three changes in `deliverChannelMessages`:
@@ -223,6 +223,7 @@ Three local patches to Octogent's source — **all lost on `git pull` of Octogen
    - Delivers **one message at a time** (`undelivered[0]`) instead of batching all queued messages into a single combined injection — keeps per-worker reports as separate orchestrator turns.
    - Per-session `inFlightDeliveries` lock covering the 150 ms paste→`\r` window — without this lock, a second message arriving during the window short-circuits the idle check and stacks on top of the first.
 3. `D:\_APPS\Tools\octogent\apps\api\src\terminalRuntime\sessionRuntime.ts` — `INITIAL_PROMPT_SUBMIT_DELAY_MS` bumped from `150` to `500` ms. The original 150 ms was reliable for a single spawn but flaky when two Codex PTYs bootstrapped close together (initial-prompt `\r` arrived before Codex finished consuming the paste, leaving the worker stuck on `[Pasted Content X chars]` waiting for a manual Enter). 500 ms gives the runtime breathing room under contention; the +350 ms latency cost is once per spawn.
+4. `D:\_APPS\Tools\octogent\apps\api\src\terminalRuntime.ts` — `onStateChange` callback triggers `deliverChannelMessages(sessionId)` whenever a session transitions to `idle`. Without this, Octogent only delivers queued channel messages on the Claude-Code-style `idle_prompt` notification, which Codex agents don't emit — so messages from workers reporting back to the orchestrator pile up `delivered:false` indefinitely (observed up to 16 stuck on one orchestrator before the patch). A `deliverChannelMessagesRef` forward-reference is declared above `createSessionRuntime(...)` and wired to `channelMessaging.deliverChannelMessages` after creation, so the runtime's idle transition can call into the messaging module's queue drainer.
 
 Launcher chain (not patches, project files maintained alongside the install dir):
 
@@ -245,7 +246,7 @@ Prerequisites: Node 22+, git, gh, curl, Python 3.10+. PowerShell + cmd. Codex CL
 
 1. Clone Octogent: `git clone https://github.com/hesamsheikh/octogent D:\_APPS\Tools\octogent`
 2. Install pnpm (user-prefix, no admin): `npm install -g pnpm`
-3. Apply the three Octogent source patches (lost on `git pull`; keep a copy):
+3. Apply the four Octogent source patches (lost on `git pull`; keep a copy):
    - `scripts/dev.mjs`:
      - change `"pnpm.exe"` to `"pnpm.cmd"` (~line 74)
      - add `shell: process.platform === "win32",` inside the spawn options object (~line 128)
@@ -255,6 +256,10 @@ Prerequisites: Node 22+, git, gh, curl, Python 3.10+. PowerShell + cmd. Codex CL
      - declare a `const inFlightDeliveries = new Set<string>()` at the closure level, set it at the start of `deliverChannelMessages`, clear it inside the `\r` setTimeout — this is the per-session lock
    - `apps/api/src/terminalRuntime/sessionRuntime.ts`:
      - change `const INITIAL_PROMPT_SUBMIT_DELAY_MS = 150;` to `500` (~line 440)
+   - `apps/api/src/terminalRuntime.ts` (the outer one, not the folder):
+     - declare `let deliverChannelMessagesRef: ((terminalId: string) => number) | undefined;` above `const sessionRuntime = createSessionRuntime({ ... })`
+     - in `onStateChange`, add `if (state === "idle" && deliverChannelMessagesRef) deliverChannelMessagesRef(sessionId);` right after the existing `broadcastTerminalStateChanged(...)` call
+     - after the `channelMessaging` object is created further down, add `deliverChannelMessagesRef = channelMessaging.deliverChannelMessages;` to wire the forward-reference
 4. Copy the dispatcher + hook scripts (or grab them from a teammate's backup):
    - `~/.codex/gcs-octogent-dispatch.py`
    - `~/.codex/gcs-codex-stop-hook.py`
@@ -293,12 +298,12 @@ Prerequisites: Node 22+, git, gh, curl, Python 3.10+. PowerShell + cmd. Codex CL
 5. To inspect any worker: click it in the UI to see its transcript and channel messages.
 6. **Manual report-back fallback** (for workers spawned before the dispatcher's auto-instruction, or if a worker forgets). Three steps — the worker (or you posing as it) must do all three:
    1. Worker writes its full report as its normal assistant message in chat (readable Markdown — for the human watching the worker UI).
-   2. Worker mirrors the same content to `reports/PROMPT-N.md` in the project root so the orchestrator can read it.
-   3. Worker sends a single-line channel message announcing completion:
+   2. Worker mirrors the same content to `reports/PROMPT-N-<task-slug>.md` in the project root so the orchestrator can read it. `<task-slug>` is the `Title` part of the worker's opening `PROMPT N -- Title` header, converted to a filesystem-safe slug (spaces/`/` → `-`, strip anything that's not alphanumeric/dash). Example: `reports/PROMPT-794-S11-DRAG-RUNTIME-RETEST-Story-Readiness.md`. The slug-in-filename makes reports greppable by ticket without opening each file. If a worker truly can't derive a slug, falling back to plain `reports/PROMPT-N.md` is acceptable — the orchestrator can still find it.
+   3. Worker sends a single-line channel message announcing completion (path **must** match the file written in step 2):
       ```bash
       curl -s -X POST http://127.0.0.1:8787/api/channels/codex-orchestrator-main/messages \
         -H 'Content-Type: application/json' \
-        --data-raw '{"fromTerminalId":"PROMPT-N","content":"DONE PROMPT-N: N: TICKET-ID: STATUS // full report at reports/PROMPT-N.md"}'
+        --data-raw '{"fromTerminalId":"PROMPT-N","content":"DONE PROMPT-N: N: TICKET-ID: STATUS // full report at reports/PROMPT-N-<task-slug>.md"}'
       ```
    The single-line constraint is critical: multi-line channel content triggers Codex's paste-mode, the message lands in the orchestrator's input as `[Pasted Content N chars]`, and the `\r` auto-submit fails. Single-line short content reliably auto-submits.
 7. To force a manual dispatch action without going through the orchestrator (debug):
