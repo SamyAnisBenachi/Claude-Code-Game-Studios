@@ -95,6 +95,72 @@ Files touched by PROMPT 763: `production/sprint-status.yaml`,
 `production/stage.txt` change, no smoke / gate-check / QA sign-off /
 `/dev-story` run, no Sprint 11 activation.
 
+### Sprint 11 DRAFT Story Authoring — `S11-DRAG-RUNTIME-RETEST-001` (PROMPT 766, 2026-05-13)
+
+PROMPT 766 authored the Sprint 11 draft Must Have story file for
+`S11-DRAG-RUNTIME-RETEST-001` at
+`production/epics/hand-ui/story-018-drag-runtime-retest.md` (NEW). Sprint 11
+remains `draft` per PROMPT 764; **Sprint 11 was NOT activated by PROMPT 766**.
+`production/sprint-status.yaml` `sprint:` field and active-row set are
+unchanged. `production/stage.txt` reads `Polish` and is unchanged.
+`production/sprints/sprint-11.md` is unchanged. PROMPT 761 Polish->Release
+gate-check FAIL evidence is preserved.
+
+Story scope (runtime-evidence retest, NOT a code-change story):
+
+- Defines the exact `RUST_LOG=client::ui::hand=trace,client::presentation::board_rendering=trace,client::card_animations::input_gating=info,lightyear=info,server::game=info` invocation for the runtime trace.
+- Defines a manual two-client friend-game route with four drag-attempts:
+  A (standard unit → BoardCell), B (Instant → fan plate), C (cancel onto
+  empty space), D (invalid board cell).
+- Defines the S1-S5 grey-square attribution truth-table (5 stages × 4
+  drag-attempts = 20 cells to fill PASS / FAIL / NOT-OBSERVED + evidence
+  pointer). Stages map to the 5 tracing sites landed at `7e0c663` per
+  PROMPT 706 / 709.
+- Acceptance criteria (`HU-DRAG-RT-01..08`) distinguish four disposition
+  outcomes for the test-green/runtime-broken divergence:
+  1. **Bug reproduced** — repro identified; follow-on repair story
+     authored; **no repair commit lands inside this story**.
+  2. **Bug fixed** — cumulative PROMPT 696 / 697 / 706 / 709 work
+     resolved it; truth-table locked as PASS; evidence note records the
+     disposition.
+  3. **Cannot reproduce with evidence** — time-box exhausted (1.0 day);
+     truth-table locked as best-effort with NOT-OBSERVED rows; follow-on
+     diagnostic-only story authored with tighter capture spec.
+  4. **Third-party / platform limitation** — divergence is browser /
+     OS / GPU / input-device specific; documented with no-claim note.
+- Explicitly forbids edits under `client/` / `server/` / `shared/` /
+  `tests/` as part of `/dev-story` on this story (HU-DRAG-RT-05).
+- Explicitly forbids introducing client-side optimistic authority for
+  stage / activate / submit (HU-DRAG-RT-06; ADR-002 + ADR-009 binding).
+- Preserves the no-claim banner (HU-DRAG-RT-07): no public release
+  claim, no full manual QA, no Standard-tier accessibility, no playtest
+  validation, no full game completion, no S8-QA-001-W1 / QA-COND-0005 /
+  QA-COND-0006 closure.
+- Preserves Sprint 11 draft status (HU-DRAG-RT-08): no edits to
+  `production/sprint-status.yaml`, `production/stage.txt`, or
+  `production/sprints/sprint-11.md`.
+
+EPIC index update: `production/epics/hand-ui/EPIC.md` Stories table gained
+row 018 with `Status: Draft (Sprint 11 not activated)` and ADRs
+`ADR-021, ADR-002, ADR-009`. Dependency-order line gained
+`017 → 018`. Counts note clarified — story 018 is a Sprint-11-draft
+retest/paperwork row and is not folded into the active completion ratios;
+stories 016 / 017 predate the last count refresh and are also not
+folded — see those files for their authoritative status.
+
+Sprint 11 Must Have story-file authoring status after PROMPT 766:
+
+| Must Have ID | Required story file | Status |
+|--------------|---------------------|--------|
+| `S11-DRAG-RUNTIME-RETEST-001` | `production/epics/hand-ui/story-018-drag-runtime-retest.md` | ✅ Authored by PROMPT 766 |
+| `S11-TD-FIXTURE-HAND-UI-ONENTER-001` | `production/epics/playable-client/story-XXX-spawn-hand-ui-fixture-cascade.md` | ⏳ Pending (Lane A second author in a separate prompt) |
+| `S11-TD-IGNORED-D5-TRIAGE-001` | No new story file required (triage doc) | n/a |
+| `S11-DOC-HYGIENE-CARRY-001` | No new story file required (doc-only sweep) | n/a |
+| `S11-EVIDENCE-INDEX-CARRY-001` | No new story file required (evidence aggregator) | n/a |
+| `S11-ROUTE-READABILITY-CARRY-001` | No new story file required (notes file) | n/a |
+
+Files touched by PROMPT 766: `production/epics/hand-ui/story-018-drag-runtime-retest.md` (NEW), `production/epics/hand-ui/EPIC.md`, `production/session-state/active.md`, `production/session-state/codex-orchestrator-state.md`. No code under `client/`, `server/`, `shared/`, `tests/`. No `.octogent/` change. No `.gitignore` change. No `production/stage.txt` change. No `production/sprint-status.yaml` change. No `production/sprints/sprint-11.md` change. No smoke / gate-check / QA sign-off / `/dev-story` / `/story-done` run. No Sprint 11 activation. No release artifact authored. No release claim.
+
 ### Sprint 11 DRAFT Planning Artifacts (PROMPT 764, 2026-05-13)
 
 Sprint 11 was drafted at `origin/main@a6132d7` as paperwork-only planning

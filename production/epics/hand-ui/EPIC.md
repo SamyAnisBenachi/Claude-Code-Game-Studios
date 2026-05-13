@@ -93,6 +93,7 @@ This epic is complete when:
 | 013 | [Reconnect Rebuild — PLACEMENT State Recovery](story-013-reconnect-rebuild.md) | Integration | Ready | ADR-021, ADR-002, ADR-009 |
 | 014 | [PLACEMENT Staged Disclosure Accessibility](story-014-placement-staged-disclosure-accessibility.md) | UI | Complete | ADR-021, ADR-002, ADR-023 |
 | 015 | [Card Text, Stat, and Keyword Accessibility](story-015-card-text-stat-keyword-accessibility.md) | UI | Ready | ADR-021, ADR-002, ADR-019 |
+| 018 | [S11-DRAG-RUNTIME-RETEST — Drag-and-Drop Runtime Divergence Retest + S1-S5 Truth-Table Lock](story-018-drag-runtime-retest.md) | Integration | Draft (Sprint 11 not activated) | ADR-021, ADR-002, ADR-009 |
 
-**Story counts**: 8 Logic · 5 Integration · 2 UI; status counts: 12 Complete · 2 Ready · 1 Blocked (OQ8)
-**Dependency order**: 001 → 002, 003; 003 → 004, 005, 013; 005 → 006, 007, 008, 009, 010, 011; 006, 007, 008, 010, 011 → 014; 002, 004, 005, 007, 008, 010, 011, 014 → 015
+**Story counts**: 8 Logic · 5 Integration · 2 UI; status counts: 12 Complete · 2 Ready · 1 Blocked (OQ8). Story 018 is a Sprint 11 DRAFT retest/paperwork story — not counted in the active completion ratios; status tracked separately under `production/sprints/sprint-11.md` `S11-DRAG-RUNTIME-RETEST-001`. Stories 016 (`card-slot-chrome-layout`) and 017 (`card-drag-mvp`) exist as files but predate the most recent count refresh and are not yet folded into the totals — see those files for their authoritative status.
+**Dependency order**: 001 → 002, 003; 003 → 004, 005, 013; 005 → 006, 007, 008, 009, 010, 011; 006, 007, 008, 010, 011 → 014; 002, 004, 005, 007, 008, 010, 011, 014 → 015; 017 → 018 (story 018 retests the drag MVP landed by 017 + PROMPT 697 / 706 / 709 follow-on work; depends on Sprint 11 activation).
