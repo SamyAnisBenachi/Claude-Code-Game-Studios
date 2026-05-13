@@ -21,7 +21,7 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@3ca1aff`, stage `Polish`,
+- Current verified state at this update: `origin/main@d7f4103`, stage `Polish`,
   Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
   status `active` (PROMPT 773, 2026-05-13) as a Polish-stage sprint
   (`2026-06-04 -> 2026-06-17`) with plan at `production/sprints/sprint-11.md`
@@ -32,12 +32,19 @@ Current source of truth:
   paperwork-carry deliverables landed on `main` (`0d19690` / `348084b` /
   `d3ee8df`); `/story-done` ran for `S11-DOC-HYGIENE-CARRY-001` in PROMPT
   780 (2026-05-13), for `S11-EVIDENCE-INDEX-CARRY-001` in PROMPT 781
-  (2026-05-13), and for `S11-DRAG-RUNTIME-RETEST-001` in **PROMPT 783
-  (2026-05-13)**, flipping those three rows from `ready` to `done`.
-  PROMPT 778 /dev-story (2026-05-13) authored the drag-runtime evidence +
-  follow-on diagnostic story at worker commit `0fc05c3` with disposition
-  `PASS-CANNOT-REPRODUCE`; PROMPT 782 (2026-05-13) integrated the worker
-  to `main` at merge commit `3ca1aff`. The remaining paperwork carry
+  (2026-05-13), for `S11-DRAG-RUNTIME-RETEST-001` in PROMPT 783
+  (2026-05-13), and for `S11-TD-FIXTURE-HAND-UI-ONENTER-001` in
+  **PROMPT 785 (2026-05-13)**, flipping those four rows from `ready` to
+  `done`. PROMPT 778 /dev-story (2026-05-13) authored the drag-runtime
+  evidence + follow-on diagnostic story at worker commit `0fc05c3` with
+  disposition `PASS-CANNOT-REPRODUCE`; PROMPT 782 (2026-05-13) integrated
+  the worker to `main` at merge commit `3ca1aff`. PROMPT 779 /dev-story
+  (2026-05-13) authored the Hand UI OnEnter fixture-cascade repair at
+  worker branch `work/s11-hand-ui-onenter-fixture-repair`; PROMPT 784
+  (2026-05-13) integrated the worker to `main` at commit `d7f4103`
+  (+1129 passed / -6 ignored at worker workspace; +390 passed / 0 failed
+  / 5 ignored at PROMPT 784 client-crate verification). The remaining
+  paperwork carry
   (`S11-ROUTE-READABILITY-CARRY-001`) remains `ready` pending its own
   `/story-done` prompt. The follow-on diagnostic story
   `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`
@@ -63,16 +70,198 @@ Current next move:
   `S11-DOC-HYGIENE-CARRY-001` closed by PROMPT 780;
   `S11-EVIDENCE-INDEX-CARRY-001` closed by PROMPT 781;
   `S11-DRAG-RUNTIME-RETEST-001` closed by PROMPT 783 with
-  `PASS-CANNOT-REPRODUCE` disposition):
-  (1) `/story-readiness` on
-  `production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`
-  — formal verdict for `S11-TD-FIXTURE-HAND-UI-ONENTER-001`; (2) `/story-done`
-  on the remaining landed paperwork carry (`S11-ROUTE-READABILITY-CARRY-001`)
-  as a separate prompt; (3) `/sprint-plan sprint-11 --add story-019` to
-  activate the new follow-on diagnostic story
+  `PASS-CANNOT-REPRODUCE` disposition;
+  `S11-TD-FIXTURE-HAND-UI-ONENTER-001` closed by PROMPT 785 with
+  `PASS` disposition):
+  (1) `/story-done` on the remaining landed paperwork carry
+  (`S11-ROUTE-READABILITY-CARRY-001`) as a separate prompt; (2) `/dev-story`
+  or `/story-readiness` against `S11-TD-IGNORED-D5-TRIAGE-001` (no story
+  file yet — Sprint 11 QA plan path is the triage doc at
+  `production/qa/evidence/sprint-11-ignored-d5-triage.md`; the 6 cluster
+  rows from this story are now closed and folded into the triage as
+  resolved); (3) `/sprint-plan sprint-11 --add story-019` to activate the
+  follow-on diagnostic story
   `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`
   into Sprint 11 active scope (separate prompt); (4) story file authoring
   for Should Have / Nice to Have rows if pulled into active scope.
+
+### PROMPT 785 /story-done Disposition — S11-TD-FIXTURE-HAND-UI-ONENTER-001 (2026-05-13)
+
+Authoritative Sprint 11 row `S11-TD-FIXTURE-HAND-UI-ONENTER-001` closed by
+`/story-done` in PROMPT 785. Source-of-truth at run: `origin/main@d7f4103`
+(PROMPT 784 integration of worker branch
+`work/s11-hand-ui-onenter-fixture-repair` produced by PROMPT 779 /dev-story).
+
+PROMPT 785 is paperwork-only `/story-done` paperwork on top of PROMPT 784's
+integration. No worker spawned. No worktree opened. Root checkout only.
+
+#### Worker provenance
+
+- PROMPT 779 /dev-story (2026-05-13): dispatched the Hand UI OnEnter
+  fixture-cascade repair from `origin/main@d36bbbd` (PROMPT 774 — Sprint
+  11 QA plan). Worker branch: `work/s11-hand-ui-onenter-fixture-repair`.
+  Worker disposition: PASS (all AC1-AC8 satisfied; full-workspace
+  verification 1129 passed / 0 failed / 5 ignored against retry-7
+  baseline 1123 passed / 0 failed / 11 ignored — delta +6 passed / -6
+  ignored = the 6 cluster tests un-#[ignore]d).
+- PROMPT 784 (2026-05-13): integrated the worker to `main` at commit
+  `d7f4103` (single commit; no merge commit). Integration verification
+  passed for the 4 affected integration test binaries individually
+  (`shared_economy_view_test`,
+  `playable_client_active_loop_ui_state_test`,
+  `playable_client_draft_shop_hand_bridge_test`,
+  `playable_client_native_operator_controls_test`) plus
+  `cargo test -p client --no-fail-fast` (390 passed / 0 failed / 5
+  ignored) plus `cargo fmt --check`. PROMPT 784 could not rerun the
+  full workspace test post-integration because D: drive was full and
+  `link.exe` failed with `LNK1180 insufficient disk space` —
+  environment limitation explicitly recorded.
+
+#### Story-011 acceptance-criterion verification (read-only against `origin/main@d7f4103`)
+
+- **AC1 — Per-test disposition**: PASS. All 6 cluster tests un-#[ignore]d
+  and passing under the repaired fixtures. Diff confirms removal of
+  `#[ignore = "PROMPT 750 D-5 follow-on: spawn_hand_ui not firing ..."]`
+  attributes at:
+  - `tests/integration/playable_client/active_loop_ui_state_test.rs:225`
+    (`test_placement_exit_clears_stale_hand_timer_submit_and_pending_state`)
+  - `tests/integration/playable_client/draft_shop_hand_bridge_test.rs:71`
+    (`test_one_draft_offering_fanout_updates_hand_grid_and_shop_grid`)
+  - `tests/integration/playable_client/draft_shop_hand_bridge_test.rs:87`
+    (`test_one_card_acquired_fanout_updates_hand_and_draft_pending_purchase`)
+  - `tests/integration/playable_client/draft_shop_hand_bridge_test.rs:123`
+    (`test_shop_purchase_reconciles_hand_size_slots_and_shared_economy`)
+  - `tests/integration/playable_client/native_operator_controls_test.rs:214`
+    (`test_hand_pointer_controls_stage_unstage_and_submit_placement`)
+  - `tests/integration/presentation/shared_economy_view_test.rs:67`
+    (`test_reserve_strip_input_does_not_mutate_player_economy_view`)
+- **AC2 — Workspace ignored-count reduction OR owner-named disposition**:
+  PASS. Workspace ignored count drops by 6 (11 -> 5) per PROMPT 779
+  worker workspace verification. Each of the 5 remaining ignored tests
+  carries an owner-named disposition comment pointing at a distinct
+  non-`spawn_hand_ui` sibling-cluster cause (board `GhostDragStartEvent`
+  producer; `HudPlugin` snapshot.phase bridge; lobby `ConfirmClass`
+  intent chain; `co_occupancy_offset` panic guard;
+  `ShopAuctionUiEntity` count drift). No silent `#[ignore]` retention.
+- **AC3 — Reusable fixture helper**: PASS.
+  `client::asset_wiring::enter_in_session_via_fixture` added at
+  `client/src/asset_wiring.rs:420-453`, mirroring the
+  `placeholder_assets_for_tests()` precedent (pub fn, no `#[cfg(test)]`
+  gate; integration test binaries consume the library as a normal
+  dependency). Called from all 4 repaired fixtures in place of the
+  ad-hoc `NextState + run_update` block. No duplicated entry boilerplate.
+- **AC4 — Pattern documentation**: PASS.
+  `docs/architecture/test-fixture-patterns.md` (new, ~138 lines, single
+  page). Covers: why the doc exists (silent-skip failure class), when
+  to use the helper, what goes wrong without it (the
+  `spawn_hand_ui` / `placeholder.is_none()` early-return chain), helper
+  signature + behavior + pre-conditions, minimal example, side effects
+  (does not also set `RoundPhase`; image handles are `Handle::default`),
+  related precedent (`placeholder_assets_for_tests` from S10-TD-001
+  Layer 3). Doc cross-links back to this story id and to story-009.
+- **AC5 — `cargo test -p client --no-fail-fast` passes for repaired
+  set**: PASS. PROMPT 784 integration verification: 390 passed / 0
+  failed / 5 ignored.
+- **AC6 — No production code modified**: PASS.
+  `git show --stat d7f4103` confines the diff to:
+  - `client/src/asset_wiring.rs` +48 (helper-only addition mirroring
+    `placeholder_assets_for_tests` precedent — AC6 test-helper
+    exception)
+  - `docs/architecture/test-fixture-patterns.md` +138 (NEW — pattern
+    doc)
+  - `production/qa/evidence/sprint-11-hand-ui-onenter-fixture-evidence.md`
+    +305 (NEW — evidence)
+  - 4 integration test files (un-#[ignore] + helper call replacing
+    ad-hoc `NextState + update` block)
+  Zero changes under `server/src/`, `shared/src/`, or any non-test
+  `client/src/` path.
+- **AC7 — Sprint 11 disposition preserved**: PASS. Worker commit
+  `d7f4103` did NOT modify `production/sprint-status.yaml`,
+  `production/sprints/sprint-11.md`, or `production/stage.txt`. Stage
+  remains `Polish`. PROMPT 785 /story-done paperwork flips the row to
+  `done` in `production/sprint-status.yaml` only (a separate paperwork
+  commit on top of `d7f4103`); no `production/sprints/sprint-11.md`
+  or `production/stage.txt` mutation. No release / release-candidate /
+  full-game / broad-accessibility / playtest / full-manual-QA /
+  final-art claim.
+- **AC8 — Evidence document populated**: PASS. 305 lines at
+  `production/qa/evidence/sprint-11-hand-ui-onenter-fixture-evidence.md`
+  covering diagnosis (S10-TD-001 Layer 3 cascade classification),
+  per-test repair table (6 rows), 7th-sibling-test resolution (no
+  7th — PROMPT 762 "7x" count was a counting artifact), sibling
+  ignored tests table (5 remaining), pre/post test counts per binary
+  + workspace, production source diff audit, Sprint 11 disposition
+  preservation audit, pattern documentation cross-link, AC1-AC8
+  sign-off table, verification commands run.
+
+#### Verification commands run by PROMPT 785 itself (root checkout)
+
+- `git fetch origin` — clean; HEAD == origin/main == `d7f4103`.
+- `git status` — only modification is `.claude/settings.json` (forbidden
+  territory; PROMPT 785 does not touch it).
+- `git show --stat d7f4103` — confirms the 7-file scope and the diff
+  shapes match the evidence document.
+- `cargo fmt --check` — PASS.
+- `git diff --check` — clean (only `.claude/settings.json` LF/CRLF
+  warning, expected).
+- `git diff --cached --check` — clean.
+- Full-workspace `cargo test --workspace --tests --no-fail-fast` NOT
+  rerun: D: drive has ~2 MB free (Get-PSDrive denied; `df -h /d`
+  reports `Avail 2.2M`); link.exe would fail with LNK1180 exactly as
+  PROMPT 784 reported. Environment limitation explicitly recorded.
+  PROMPT 779 worker-side full-workspace count (1129 passed / 0 failed
+  / 5 ignored) and PROMPT 784 client-crate integration count (390
+  passed / 0 failed / 5 ignored) cited as authoritative post-integration
+  verification.
+
+#### Files mutated by PROMPT 785
+
+- `production/sprint-status.yaml` — row
+  `S11-TD-FIXTURE-HAND-UI-ONENTER-001` flipped `status: ready -> done`;
+  `completed: "2026-05-13"`; `blocker:` cleared; appended PROMPT 779
+  /dev-story note + PROMPT 785 /story-done verdict note with the full
+  AC verification narrative. Top-of-file `updated:` annotation
+  refreshed.
+- `production/session-state/active.md` — PROMPT 785 CURRENT-STATE
+  banner prepended above the prior PROMPT 783 banner. Prior banners
+  preserved as historical.
+- `production/session-state/codex-orchestrator-state.md` — operating
+  rules updated (`Current verified state at this update` line and
+  `Next launchable prompts` listing reflect PROMPT 785 closure of
+  `S11-TD-FIXTURE-HAND-UI-ONENTER-001`); this PROMPT 785 disposition
+  section prepended above the PROMPT 783 disposition section.
+
+#### Forbidden / not-run by PROMPT 785
+
+`/dev-story`, `/story-readiness`, `/smoke-check`, `/team-qa`,
+`/gate-check`, `/qa-plan`. PROMPT 785 did NOT modify production code
+under `client/`, `server/`, `shared/`, or `tests/`. PROMPT 785 did NOT
+modify `production/stage.txt`, `production/sprints/sprint-11.md`,
+`.claude/settings.json`, `.claude/scheduled_tasks.lock`, `.octogent/`,
+or `.gitignore`. PROMPT 785 did NOT touch any file under `reports/`
+other than the mandatory `reports/PROMPT-785.md` final report file
+(written but NOT staged or committed).
+
+No release claim. No release-candidate claim. No accessibility-completion
+claim. No playtest-validation claim. No full-game-completion claim. No
+final-art / asset-production-completion claim. No
+full-playable-client-manual-QA claim. No Sprint 11 close-out claim. No
+retry of the Polish->Release gate-check. No optimistic client-side
+authority introduced (ADR-002 + ADR-009 binding).
+
+#### Sprint 11 Must Have status after PROMPT 785
+
+4/6 `done` (`S11-DOC-HYGIENE-CARRY-001`,
+`S11-EVIDENCE-INDEX-CARRY-001`, `S11-DRAG-RUNTIME-RETEST-001`,
+`S11-TD-FIXTURE-HAND-UI-ONENTER-001`); 2/6 `ready`
+(`S11-TD-IGNORED-D5-TRIAGE-001`, `S11-ROUTE-READABILITY-CARRY-001`).
+The remaining paperwork carry (`S11-ROUTE-READABILITY-CARRY-001`) has
+its deliverable on `main` at `d3ee8df` and remains `ready` pending its
+own `/story-done` prompt. `S11-TD-IGNORED-D5-TRIAGE-001` has no story
+file yet; the per-test triage doc target path is
+`production/qa/evidence/sprint-11-ignored-d5-triage.md` (per Sprint 11
+QA plan); the 6 cluster rows just closed by this prompt are now
+resolved cluster entries within the broader 11-test triage.
 
 ### PROMPT 783 /story-done Disposition — S11-DRAG-RUNTIME-RETEST-001 (2026-05-13)
 
