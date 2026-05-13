@@ -146,15 +146,15 @@ stories:
     name: "Carry S10-TD-003 outstanding — ADR-011 TR-NP-04 -> TR-NP-006 corrections + Rule 7 ADR-011 breadcrumb"
     file: ""
     priority: must-have
-    status: ready
+    status: done
     owner: "orchestrator + architect"
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-05-13"
     notes:
       - "From production/sprints/sprint-11.md Sprint 11 plan; carry of S10-TD-003 deferred (PROMPT 763)."
       - "Outstanding deliverables LANDED on main at 0d19690 (PROMPT 770, 2026-05-13): docs/architecture/adr-011-reconnect-snapshot.md lines 173 and 810 corrected from literal `TR-NP-04` to `TR-NP-006`; Network Protocol Rule 7 (design/gdd/network-protocol.md) gained the ADR-011 breadcrumb. App::add_message idempotency note already on main in codex-orchestrator-state.md (Bevy 0.18 verified at bevy_app-0.18.1/src/sub_app.rs:358) per PROMPT 763 partial-satisfaction disposition."
-      - "PROMPT 773 activation policy: /story-done NOT run; row marked `ready` (not `done`) per the no-invent-closure rule. Story closure pending /story-done verdict in a separate prompt. Deliverable-landed evidence preserved here as authoritative."
+      - "PROMPT 780 /story-done verdict (2026-05-13): DONE. AC verification (read-only against origin/main@0d19690): (AC1) docs/architecture/adr-011-reconnect-snapshot.md:173 reads `TR-NP-006: Live messages destined for the reconnecting player ...` (was `TR-NP-04`); (AC2) docs/architecture/adr-011-reconnect-snapshot.md:810 traceability-matrix row reads `TR-NP-006 — Live messages held until snapshot delivered` (was `TR-NP-04`); (AC3) design/gdd/network-protocol.md Rule 7 carries the `See docs/architecture/adr-011-reconnect-snapshot.md (ADR-011) ... ReconnectTracker.deferred_queue / snapshot_sent ... TR-NP-006` breadcrumb; (AC4) no protocol or architecture decision changed — only literal ID corrections + a cross-reference breadcrumb. Doc-only sweep; no code under client/ / server/ / shared/ / tests/; no normative wire or behavior text rewritten; no smoke / gate-check / QA sign-off / /dev-story run. No release / release-candidate / full-game / broad-accessibility / playtest / full-manual-QA / final-art claim."
 
   - id: "S11-EVIDENCE-INDEX-CARRY-001"
     name: "Sprint 10 evidence aggregator index (S10-N1 carry)"

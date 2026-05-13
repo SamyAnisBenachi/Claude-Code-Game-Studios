@@ -21,19 +21,20 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@07aafe2`, stage `Polish`,
+- Current verified state at this update: `origin/main@d36bbbd`, stage `Polish`,
   Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
   status `active` (PROMPT 773, 2026-05-13) as a Polish-stage sprint
   (`2026-06-04 -> 2026-06-17`) with plan at `production/sprints/sprint-11.md`
-  and **Sprint 11 QA plan authored at `production/qa/qa-plan-sprint-11.md`
-  by PROMPT 774 (2026-05-13)** — the
-  `sprint_11_activation.outstanding_before_dev_story[0]` prerequisite is now
-  satisfied. PROMPT 761 `Polish->Release` gate-check `FAIL` preserved as
-  evidence (no retry attempted). PROMPT 762 Sprint 11 candidate backlog
-  capture folded into the Sprint 11 plan. Sprint 11 Must Have paperwork-carry
-  deliverables landed on `main` prior to activation (`0d19690` / `348084b` /
-  `d3ee8df`) but `/story-done` has NOT been run against them — Sprint 11
-  rows recorded as `ready`, not `done`.
+  and Sprint 11 QA plan on `main` at `production/qa/qa-plan-sprint-11.md`
+  (PROMPT 774, 2026-05-13). PROMPT 761 `Polish->Release` gate-check `FAIL`
+  preserved as evidence (no retry attempted). PROMPT 762 Sprint 11 candidate
+  backlog capture folded into the Sprint 11 plan. Sprint 11 Must Have
+  paperwork-carry deliverables landed on `main` (`0d19690` / `348084b` /
+  `d3ee8df`); `/story-done` ran for `S11-DOC-HYGIENE-CARRY-001` in **PROMPT
+  780 (2026-05-13)** flipping that one row from `ready` to `done`; the
+  remaining two paperwork carries (`S11-EVIDENCE-INDEX-CARRY-001`,
+  `S11-ROUTE-READABILITY-CARRY-001`) remain `ready` pending their own
+  `/story-done` prompts.
 
 Current next move:
 
@@ -49,18 +50,78 @@ Current next move:
   `done` — `/story-done` pending per no-invent-closure rule.
 - Preserve the PROMPT 761 Release gate failure and all carried risks.
 - Do not retry `Polish->Release` until release-scope artifacts exist.
-- Next launchable prompts (Sprint 11 QA plan now on `main` per PROMPT 774):
+- Next launchable prompts (Sprint 11 QA plan on `main` per PROMPT 774;
+  `S11-DOC-HYGIENE-CARRY-001` closed by PROMPT 780):
   (1) `/story-readiness` on
   `production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`
   — formal verdict for `S11-TD-FIXTURE-HAND-UI-ONENTER-001`; (2) `/dev-story`
   on `production/epics/hand-ui/story-018-drag-runtime-retest.md`
   (`S11-DRAG-RUNTIME-RETEST-001` — only Must Have currently passing both the
   story-file gate and the `/story-readiness` gate); (3) `/story-done` on the
-  three landed paperwork carries (`S11-DOC-HYGIENE-CARRY-001`,
-  `S11-EVIDENCE-INDEX-CARRY-001`, `S11-ROUTE-READABILITY-CARRY-001`) — each
-  as a separate prompt, parallel-safe (they touch disjoint evidence files);
-  (4) story file authoring for Should Have / Nice to Have rows if pulled
-  into active scope.
+  two remaining landed paperwork carries (`S11-EVIDENCE-INDEX-CARRY-001`,
+  `S11-ROUTE-READABILITY-CARRY-001`) — each as a separate prompt,
+  parallel-safe (they touch disjoint evidence files); (4) story file
+  authoring for Should Have / Nice to Have rows if pulled into active scope.
+
+### PROMPT 780 /story-done Disposition — S11-DOC-HYGIENE-CARRY-001 (2026-05-13)
+
+Authoritative Sprint 11 row `S11-DOC-HYGIENE-CARRY-001` closed by `/story-done`
+in PROMPT 780. Source-of-truth at run: `origin/main@d36bbbd`. Deliverable
+verified on `main` at `0d19690` (PROMPT 770, 2026-05-13). Acceptance-criterion
+verification (read-only against `origin/main@0d19690`):
+
+- AC1 — `docs/architecture/adr-011-reconnect-snapshot.md:173` reads
+  `TR-NP-006: Live messages destined for the reconnecting player ...`
+  (was `TR-NP-04`). Verified via `git show 0d19690 -- docs/architecture/adr-011-reconnect-snapshot.md`.
+- AC2 — `docs/architecture/adr-011-reconnect-snapshot.md:810` traceability-matrix
+  row reads `TR-NP-006 — Live messages held until snapshot delivered`
+  (was `TR-NP-04`). Verified via the same diff.
+- AC3 — `design/gdd/network-protocol.md` Rule 7 carries the
+  `See docs/architecture/adr-011-reconnect-snapshot.md (ADR-011) ... mandatory
+  send order (S2CHandshake → S2CGameSnapshot → S2CObjectiveIdentities →
+  S2CPhaseChanged) ... ReconnectTracker.deferred_queue / snapshot_sent ...
+  TR-NP-006` breadcrumb. Verified via the same diff.
+- AC4 — No protocol or architecture decision changed; only literal ID
+  corrections + a cross-reference breadcrumb. No normative wire or behavior
+  text rewritten. Verified by inspecting the full diff of `0d19690`.
+- AC5 — Doc-only sweep. No code under `client/` / `server/` / `shared/` /
+  `tests/`. Verified via the file list of `0d19690` (only
+  `docs/architecture/adr-011-reconnect-snapshot.md`,
+  `design/gdd/network-protocol.md`,
+  `production/session-state/active.md`,
+  `production/session-state/codex-orchestrator-state.md`).
+
+Files mutated by PROMPT 780:
+
+- `production/sprint-status.yaml` — `S11-DOC-HYGIENE-CARRY-001` row
+  `status: ready -> done`; `completed: "2026-05-13"`; appended PROMPT 780
+  /story-done verdict note preserving AC verification and every non-claim.
+- `production/session-state/active.md` — PROMPT 780 CURRENT-STATE banner
+  prepended above the PROMPT 774 banner; prior banners preserved as
+  HISTORICAL.
+- `production/session-state/codex-orchestrator-state.md` — current operating
+  rules updated; this PROMPT 780 disposition section appended.
+
+Forbidden / not-run by PROMPT 780: `/dev-story`, `/story-readiness`,
+`/smoke-check`, `/team-qa`, `/gate-check`, `/qa-plan`. PROMPT 780 did NOT
+modify production code under `client/` / `server/` / `shared/` / `tests/`,
+did NOT modify `production/stage.txt`, did NOT modify `production/sprints/sprint-11.md`,
+did NOT modify `.claude/settings.json`, did NOT modify `reports/`, did NOT
+modify `.octogent/`, did NOT modify `.claude/scheduled_tasks.lock`, did NOT
+modify `.gitignore`. No public release claim. No release-candidate claim. No
+full-game-completion claim. No broad / Standard-tier accessibility-completion
+claim. No playtest / fun-hypothesis validation claim. No full playable-client
+manual-QA claim. No final-art / asset-production-completion claim. No Sprint
+11 close-out claim. No retry of the Polish->Release gate-check.
+
+Sprint 11 Must Have status after PROMPT 780: 1/6 `done`
+(`S11-DOC-HYGIENE-CARRY-001`), 5/6 `ready` (`S11-DRAG-RUNTIME-RETEST-001`,
+`S11-TD-FIXTURE-HAND-UI-ONENTER-001`, `S11-TD-IGNORED-D5-TRIAGE-001`,
+`S11-EVIDENCE-INDEX-CARRY-001`, `S11-ROUTE-READABILITY-CARRY-001`). All
+carried conditions preserved unchanged (S8-QA-001-W1 OPEN, QA-COND-0005
+accepted-risk, QA-COND-0006 accepted-risk / deferred, 11 ignored D-5 tests
+from smoke retry-7 W1, HUD timer eyeball deferred, placeholder / friend-game
+art scope PAW-TD-*-a accept-risk).
 
 ### Sprint 10 Polish Close-Out Disposition (PROMPT 763, 2026-05-13)
 
