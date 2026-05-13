@@ -1,21 +1,42 @@
-# Sprint 11 -- DRAFT (dates TBD at activation)
+# Sprint 11 -- ACTIVE (Polish stage)
 
-> **Status**: `draft` -- NOT active. Authored 2026-05-13 by PROMPT 764
-> (producer role, root checkout, no worktree). Source-of-truth at draft time:
-> `origin/main@a6132d7`. Stage remains `Polish`. Sprint 10 remains
-> `closed-with-conditions` per PROMPT 763. No Sprint 11 activation, no
-> `/dev-story`, no `/smoke-check`, no `/team-qa`, no `/gate-check`, no
-> `/story-done`, no implementation, no CI runs were performed by PROMPT 764.
+> **Status**: `active` -- activated 2026-05-13 by PROMPT 773 (producer +
+> qa-lead roles, root checkout, no worktree). Source-of-truth at activation:
+> `origin/main@d3ee8df`. Stage remains `Polish` (NOT Release).
+> Sprint 10 disposition preserved: `closed-with-conditions` per PROMPT 763.
+> Draft plan authored 2026-05-13 by PROMPT 764. PROMPT 773 paperwork-only
+> activation: NO `/dev-story`, NO `/smoke-check`, NO `/team-qa`,
+> NO `/gate-check`, NO `/story-done`, NO `/qa-plan`, NO implementation,
+> NO CI runs were performed.
 >
-> **Provisional start / end**: TBD by `/sprint-plan sprint-11` at activation.
-> Sprint 10 ran 2026-05-21 -> 2026-06-03; a continuous Sprint 11 would run
-> approximately 2026-06-04 -> 2026-06-17 (10 workdays), but these dates are
-> NOT locked.
+> **Start / end (locked at activation)**: 2026-06-04 -> 2026-06-17
+> (10 workdays). Continuous follow-on to Sprint 10
+> (2026-05-21 -> 2026-06-03).
 >
 > **Release scope**: explicitly OUT of Sprint 11. PROMPT 761 Polish->Release
-> gate-check is `FAIL` and preserved as evidence. Do not retry Release until
-> release-scope artifacts (final art, manual-QA sign-off, accessibility
-> completion, playtest evidence) actually exist on `main`.
+> gate-check is `FAIL` and preserved as evidence at
+> `production/gate-checks/gate-polish-release-2026-05-12.md`. Do not retry
+> Release until release-scope artifacts (final art, manual-QA sign-off,
+> accessibility completion, playtest evidence) actually exist on `main`.
+>
+> **Carry deliverables landed before activation** (all on `main`):
+> - `S11-DOC-HYGIENE-CARRY-001` outstanding deliverables at `0d19690`
+>   (PROMPT 770, 2026-05-13).
+> - `S11-EVIDENCE-INDEX-CARRY-001` outstanding deliverable at `348084b`
+>   (PROMPT 771, 2026-05-13).
+> - `S11-ROUTE-READABILITY-CARRY-001` outstanding deliverable at `d3ee8df`
+>   (PROMPT 772, 2026-05-13).
+>
+> Per PROMPT 773 activation policy, each carry row is `ready` (with
+> deliverable-landed note) in `production/sprint-status.yaml`, NOT `done`.
+> `/story-done` has not been run against any of them; closure verdicts
+> remain pending and must be authored in separate prompts.
+>
+> **Implementation story files authored before activation**:
+> - `production/epics/hand-ui/story-018-drag-runtime-retest.md`
+>   (PROMPT 766; `/story-readiness` READY per active.md banner).
+> - `production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`
+>   (PROMPT 767; content-ready, formal `/story-readiness` verdict pending).
 
 ## Planning Notes
 
@@ -291,11 +312,12 @@ Activation will require, at minimum:
 - PROMPT 761 Polish->Release gate-check FAIL evidence preserved.
 - This draft file is reviewed and locked.
 
-This file is a **draft**. PROMPT 764 did NOT write an active Sprint 11
-row to `production/sprint-status.yaml`. The `next_sprint` block in that
-file is updated to point at this draft and to remain
-`status: draft / not_active` until `/sprint-plan sprint-11` activates
-Sprint 11 in a separate prompt.
+This file is **active** as of PROMPT 773 (2026-05-13). PROMPT 773 wrote
+the active Sprint 11 rows to `production/sprint-status.yaml` (the
+`stories:` block now holds Sprint 11 Must Have / Should Have / Nice to
+Have rows; the `sprint_11_activation:` block replaces the prior
+`next_sprint:` draft block). Sprint 10's per-row history is preserved
+under `sprint_10_closeout:` in the same file and in git history.
 
 ## PROMPT 764 Producer Note -- Top 5 Recommended Must Have
 

@@ -21,28 +21,36 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@a6132d7`, stage `Polish`,
+- Current verified state at this update: `origin/main@d3ee8df`, stage `Polish`,
   Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
-  status `draft` (PROMPT 764, 2026-05-13) with draft plan at
-  `production/sprints/sprint-11.md` — **NOT activated**, PROMPT 761
-  `Polish->Release` gate-check `FAIL` preserved as evidence, PROMPT 762
-  Sprint 11 candidate backlog capture complete and folded into the draft.
+  status `active` (PROMPT 773, 2026-05-13) as a Polish-stage sprint
+  (`2026-06-04 -> 2026-06-17`) with plan at `production/sprints/sprint-11.md`,
+  PROMPT 761 `Polish->Release` gate-check `FAIL` preserved as evidence
+  (no retry attempted), PROMPT 762 Sprint 11 candidate backlog capture folded
+  into the Sprint 11 plan. Sprint 11 Must Have paperwork-carry deliverables
+  landed on `main` prior to activation (`0d19690` / `348084b` / `d3ee8df`)
+  but `/story-done` has NOT been run against them — Sprint 11 rows recorded
+  as `ready`, not `done`.
 
 Current next move:
 
-- Sprint 10 close-out paperwork is DONE (PROMPT 763). See
-  `production/sprint-status.yaml` `sprint_10_closeout:` block for the
-  authoritative disposition.
-- Sprint 11 DRAFT planning artifacts are authored (PROMPT 764). See
-  `production/sprints/sprint-11.md` and `production/sprint-status.yaml`
-  `next_sprint:` block. Sprint 11 is NOT activated by PROMPT 764.
+- Sprint 10 close-out paperwork is DONE (PROMPT 763). Sprint 10 disposition
+  preserved at `production/sprint-status.yaml` `sprint_10_closeout:` block.
+- Sprint 11 is ACTIVE as of PROMPT 773 (2026-05-13) as a Polish-stage
+  sprint (`2026-06-04 -> 2026-06-17`). See `production/sprints/sprint-11.md`
+  and `production/sprint-status.yaml` `sprint_11_activation:` block plus the
+  `stories:` block (16 Sprint 11 rows). Sprint 11 paperwork carries
+  (`S11-DOC-HYGIENE-CARRY-001`, `S11-EVIDENCE-INDEX-CARRY-001`,
+  `S11-ROUTE-READABILITY-CARRY-001`) have outstanding deliverables landed on
+  `main` (`0d19690` / `348084b` / `d3ee8df`); each row is `ready`, NOT
+  `done` — `/story-done` pending per no-invent-closure rule.
 - Preserve the PROMPT 761 Release gate failure and all carried risks.
 - Do not retry `Polish->Release` until release-scope artifacts exist.
-- Sprint 11 activation still requires `/sprint-plan sprint-11` in a
-  separate prompt, plus Sprint 11 story authoring + `/story-readiness` +
-  `/qa-plan sprint`. The PROMPT 764 draft already folds the deferred
-  S10-TD-003 / S10-N1 / S10-N2 carries and the PROMPT 762 backlog
-  candidates into the draft plan.
+- Next launchable prompts: (1) `/qa-plan sprint` for Sprint 11 — required
+  before any Sprint 11 `/dev-story` runs; (2) `/story-readiness` on
+  `production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`;
+  (3) `/story-done` on the three landed paperwork carries (separate prompts,
+  parallel-safe).
 
 ### Sprint 10 Polish Close-Out Disposition (PROMPT 763, 2026-05-13)
 
@@ -94,6 +102,94 @@ Files touched by PROMPT 763: `production/sprint-status.yaml`,
 `client/`, `server/`, `shared/`, `tests/`, no `.octogent/` changes, no
 `production/stage.txt` change, no smoke / gate-check / QA sign-off /
 `/dev-story` run, no Sprint 11 activation.
+
+### Sprint 11 Activation Paperwork (PROMPT 773, 2026-05-13)
+
+PROMPT 773 activated Sprint 11 as a **Polish-stage** sprint (not Release).
+Source-of-truth at activation: `origin/main@d3ee8df`. Activation policy and
+scope:
+
+- `production/sprint-status.yaml`: `sprint:` flipped from `10` to `11`;
+  `status:` flipped from `closed-with-conditions` to `active`; `goal:`,
+  `scope:`, `start:` (`2026-06-04`), `end:` (`2026-06-17`), `generated:`,
+  `updated:` rewritten for Sprint 11; `stage:` UNCHANGED (`Polish`).
+  `activation:` block rewritten for Sprint 11 (date 2026-05-13, prompt 773,
+  source-of-truth `origin/main@d3ee8df`, basis enumerated, `not_release_activation`
+  field added with explicit no-Release language). `previous_sprint_closeout:`
+  block rewritten to summarise Sprint 10 close-out (PROMPT 763,
+  `origin/main@a6132d7`, `closed-with-conditions`, full `carried_into_sprint_11:`
+  list including S8-QA-001-W1 / QA-COND-0005 / QA-COND-0006 / 11 ignored D-5
+  tests / HUD timer eyeball / placeholder art scope / explicit no-claims).
+  `stories:` block: prior Sprint 10 rows removed (preserved in git history
+  and summarised under `sprint_10_closeout:`); replaced with 16 Sprint 11
+  rows — 6 Must Have, 4 Should Have, 6 Nice to Have. The prior `next_sprint:`
+  draft block replaced with `sprint_11_activation:` recording the activation
+  facts and the outstanding-before-`/dev-story` list (Sprint 11 QA plan, formal
+  `/story-readiness` on the playable-client story, Should/Nice story files).
+  `sprint_10_closeout:` block preserved unchanged. `presentation_asset_wiring:`,
+  `coordination:`, `forbidden_runs_in_activation:`, `carried_conditions:` blocks
+  preserved unchanged.
+- Sprint 11 Must Have row dispositions: all six rows are `status: ready`.
+  - `S11-DRAG-RUNTIME-RETEST-001` — `file: production/epics/hand-ui/story-018-drag-runtime-retest.md`
+    (PROMPT 766, `/story-readiness` READY); blocker: Sprint 11 QA plan
+    required before `/dev-story`.
+  - `S11-TD-FIXTURE-HAND-UI-ONENTER-001` —
+    `file: production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`
+    (PROMPT 767, content-ready, formal readiness verdict pending); blocker:
+    Sprint 11 QA plan + formal `/story-readiness` verdict.
+  - `S11-TD-IGNORED-D5-TRIAGE-001` — no story file required per Sprint 11
+    draft (triage doc authored during `/dev-story`); blocker: Sprint 11 QA
+    plan required.
+  - `S11-DOC-HYGIENE-CARRY-001` — deliverable LANDED at `0d19690`
+    (PROMPT 770); `/story-done` NOT run — no-invent-closure rule applied.
+  - `S11-EVIDENCE-INDEX-CARRY-001` — deliverable LANDED at `348084b`
+    (PROMPT 771); `/story-done` NOT run — no-invent-closure rule applied.
+  - `S11-ROUTE-READABILITY-CARRY-001` — deliverable LANDED at `d3ee8df`
+    (PROMPT 772); `/story-done` NOT run — no-invent-closure rule applied.
+- Sprint 11 Should Have / Nice to Have rows are `status: blocked` with a
+  uniform blocker note: "No story file authored; /story-readiness pending;
+  Sprint 11 QA plan also required before /dev-story." This tracks them
+  without expanding scope.
+- `production/sprints/sprint-11.md`: header flipped from
+  `Sprint 11 -- DRAFT (dates TBD at activation)` to
+  `Sprint 11 -- ACTIVE (Polish stage)`. Status line flipped from
+  `draft / NOT active` to `active`. Dates locked
+  (`2026-06-04 -> 2026-06-17`). Carry-deliverable-landed evidence and
+  implementation-story-file authoring noted under the activation header.
+  Closing paragraph rewritten to record PROMPT 773 activation.
+- `production/session-state/active.md`: PROMPT 773 banner prepended above
+  PROMPT 772 banner.
+
+PROMPT 773 did NOT run `/dev-story`, `/story-readiness`, `/smoke-check`,
+`/team-qa`, `/gate-check`, `/story-done`, `/qa-plan`. PROMPT 773 did NOT
+modify production code under `client/`, `server/`, `shared/`, `tests/`.
+PROMPT 773 did NOT modify `production/stage.txt`, `.claude/settings.json`,
+`reports/`, `.claude/scheduled_tasks.lock`, `.octogent/`. PROMPT 773 did NOT
+modify the PROMPT 761 Polish->Release gate-check FAIL evidence; activation
+is explicitly Polish, not Release.
+
+Carried forward unchanged: S8-QA-001-W1 manual/browser two-client GAME_OVER
+gap (OPEN); QA-COND-0005 Standard-tier accessibility (accepted-risk
+friend-game scope); QA-COND-0006 playtest/fun-hypothesis validation
+(accepted-risk / deferred); 11 ignored D-5 tests (folded into Must Haves);
+HUD timer eyeball visual check (folded into Should Have); placeholder /
+friend-game art scope (PAW-TD-*-a accept-risk). No public release
+readiness, release-candidate readiness, full game completion, broad /
+Standard-tier accessibility completion, playtest / fun-hypothesis
+validation, full playable-client manual QA, or final-art /
+asset-production completion is claimed.
+
+Next launchable prompts after PROMPT 773:
+
+1. `/qa-plan sprint` for Sprint 11 — required before any Sprint 11
+   `/dev-story` runs.
+2. `/story-readiness` on
+   `production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`
+   — formal verdict pending.
+3. `/story-done` on the three landed paperwork carries
+   (`S11-DOC-HYGIENE-CARRY-001`, `S11-EVIDENCE-INDEX-CARRY-001`,
+   `S11-ROUTE-READABILITY-CARRY-001`), each as a separate prompt; safe to
+   dispatch in parallel — they touch disjoint evidence files.
 
 ### Sprint 11 Route Readability Carry — `S11-ROUTE-READABILITY-CARRY-001` (PROMPT 772, 2026-05-13)
 
@@ -505,6 +601,12 @@ Then state, briefly:
 
 Keep responses operational. Do not bury the answer in narrative. If no safe
 parallel work exists, say so and name the blocker.
+
+Before ending any orchestrator response, explicitly ask: "What is the next
+launchable step, and can any of it run safely in parallel?" If the response says
+there is a next step, include the actual prompt block(s) in that same response.
+Do not say "next step is X" and wait for the user to ask for the prompt. If the
+next step is not launchable yet, name the blocker and do not emit a fake `NEW`.
 
 ### Parallelism
 

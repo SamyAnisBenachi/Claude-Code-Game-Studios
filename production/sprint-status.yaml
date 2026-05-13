@@ -101,156 +101,213 @@ forbidden_runs_in_activation:
   ci: false
 
 stories:
-  - id: "S10-PAW-001"
-    name: "PAW-002..PAW-006 /story-done close-out batch"
+  # Sprint 11 Must Have (per production/sprints/sprint-11.md activated at PROMPT 773, 2026-05-13)
+
+  - id: "S11-DRAG-RUNTIME-RETEST-001"
+    name: "Drag-and-drop runtime divergence — retest, lock S1-S5 grey-square truth table, repair if needed"
+    file: "production/epics/hand-ui/story-018-drag-runtime-retest.md"
+    priority: must-have
+    status: ready
+    owner: "client gameplay programmer + orchestrator"
+    estimate_days: 1.50
+    blocker: "Sprint 11 QA plan must be authored via /qa-plan sprint before /dev-story runs."
+    completed: ""
+    notes:
+      - "From production/sprints/sprint-11.md Sprint 11 plan."
+      - "Story file authored by PROMPT 766; /story-readiness READY per active.md banner (PROMPT 766 banner). Runtime-evidence retest story; explicitly forbids /dev-story edits under client/ / server/ / shared/ / tests/. RUST_LOG=client::ui::hand=trace,client::presentation::board_rendering=trace,client::card_animations::input_gating=info,lightyear=info,server::game=info; manual two-client friend-game route; S1-S5 grey-square attribution truth-table; 4-way disposition (bug-reproduced / bug-fixed / cannot-reproduce / third-party-platform); evidence at production/qa/evidence/sprint-11-drag-runtime-evidence.md."
+
+  - id: "S11-TD-FIXTURE-HAND-UI-ONENTER-001"
+    name: "Pervasive fixture-design fix: spawn_hand_ui not firing on OnEnter(InSession) in MinimalPlugins fixtures"
+    file: "production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md"
+    priority: must-have
+    status: ready
+    owner: "server / client test infra"
+    estimate_days: 1.50
+    blocker: "Sprint 11 QA plan must be authored via /qa-plan sprint before /dev-story runs; story content-ready per PROMPT 767, formal /story-readiness verdict pending."
+    completed: ""
+    notes:
+      - "From production/sprints/sprint-11.md Sprint 11 plan."
+      - "Story file authored by PROMPT 767; content-ready (Draft status). Repair scoped to test/fixture correctness only — production-fix follow-on stories filed separately if source evidence proves runtime affected. AC2: ignored-count reduction by N (= tests un-#[ignore]d) OR explicit owner-named disposition on every retained #[ignore]. AC6: no production code modified outside the placeholder_assets_for_tests()-precedent test-only helper exception. AC7: explicitly preserves Sprint 11 draft status. Reusable fixture helper to be authored under tests/helpers/ (or equivalent); canonical pattern documented in docs/architecture/test-fixture-patterns.md (or appended to existing test-pattern doc)."
+
+  - id: "S11-TD-IGNORED-D5-TRIAGE-001"
+    name: "Owner-named #[ignore] triage — 11 D-5 tests from smoke retry-7"
     file: ""
     priority: must-have
-    status: done
-    owner: "UI/client programmer + orchestrator"
-    estimate_days: 1.50
-    blocker: ""
-    completed: "2026-05-10"
-    notes:
-      - "From production/sprints/sprint-10.md Sprint 10 plan."
-      - "/story-done PROMPT 598-RETRY. Verdict COMPLETE WITH NOTES. 5/5 child stories already Status: Complete (PAW-002 40a9f72, PAW-003 792a9d8, PAW-004 a7e397a, PAW-005 7782c6f, PAW-006 724470e). 5/5 integration test files exist on disk under tests/integration/presentation/. PROMPT 605 / 7865bae restored PAW-003+PAW-005 test files — unblocks the prior BLOCKED verdict from PROMPT 598's first run. AssetWiringPlugin registered at 8932d8c (PROMPT 582); asset path drift repaired at 69c88b0 (PROMPT 589). ADVISORY: friend-game accept-risk waivers on placeholder PNGs and no manual visual capture (per child stories Tech Debt sections); not a public-release-readiness or final-art completion claim."
-
-  - id: "S10-TD-001"
-    name: "Test-fixture cascade-fail repair (14 fixtures)"
-    file: "production/epics/playable-client/story-009-test-fixture-cascade-fail-repair.md"
-    priority: must-have
-    status: done
-    owner: "server gameplay programmer"
-    estimate_days: 1.50
-    blocker: ""
-    completed: "2026-05-10"
-    notes:
-      - "From production/sprints/sprint-10.md Sprint 10 plan."
-      - "/story-done PROMPT 611. Verdict COMPLETE WITH NOTES. 4/4 ACs passing on commits 7075da7 / 4b0c456 / c11d1b6 / bb51463 / 7c8f400 (all on main); pre-cascade prep bbdbcd6 + 24e8095 grandfathered. PROMPT 606 verification: hand_ui_draft_initial_grid_test 6/6, shop_auction_ui_shop_panel_test 9/9, shop_auction_ui_auction_activation_test 7/7. Lean review mode → QL-TEST-COVERAGE + LP-CODE-REVIEW skipped. ADVISORY deviations: retroactive story authoring, AC3 test-helper in production source (placeholder_assets_for_tests in client/src/asset_wiring.rs, #[cfg(test)] callers only), AC scope expansion 14→~57 fixtures, AC4 evidence doc deferred to follow-up prompt."
-
-  - id: "S10-TD-002"
-    name: "Plugin-registration audit and dead-plugin sweep"
-    file: "production/epics/playable-client/story-010-plugin-registration-audit.md"
-    priority: must-have
-    status: done
-    owner: "server programmer + orchestrator"
-    estimate_days: 0.75
-    blocker: ""
-    completed: "2026-05-10"
-    notes:
-      - "From production/sprints/sprint-10.md Sprint 10 plan."
-      - "/story-done PROMPT 600. Verdict COMPLETE WITH NOTES. 7/7 ACs met by audit doc 0648deb (PROMPT 563) plus resolution commits bbdb91e (BoardWasmPerfHarnessPlugin deletion, PROMPT 570), 8932d8c (AssetWiringPlugin registration, PROMPT 569), and f06271a (KeywordPlugin observer panic-prevention, PROMPT 588). Story file authored retroactively per friend-game-lite orchestrator rule. Net post-resolution: 14/14 server + 14/14 client = 0 silent dead plugins. No new automated test required (Config/Data per qa-plan)."
-
-  - id: "S10-CARRY-001"
-    name: "Sprint 9 carry-over consolidation"
-    file: ""
-    priority: must-have
-    status: done
-    owner: "orchestrator + QA tester"
-    estimate_days: 0.75
-    blocker: ""
-    completed: "2026-05-10"
-    notes:
-      - "From production/sprints/sprint-10.md Sprint 10 plan."
-      - "/story-done PROMPT 601-RETRY. Verdict COMPLETE WITH NOTES. 3/3 ACs covered by paperwork-only carry decisions already on main: (a) S9-AUDIO-001 integrated at 9c00e06 + /story-done'd in Sprint 9 close-out 8edbf37 (PROMPT 577) — row appended with status: done, completed: 2026-05-10, notes pointing to 9c00e06 with PROMPT 571 blob-hash cross-reference; (b) Sprint 10 activation flip 8ff4f84 + post-push SHA record e35b955 (PROMPT 591) preserves carried_conditions block (10 entries) + previous_sprint_closeout.carried_into_sprint_10 (4 entries: S8-QA-001-W1 manual/browser two-client GAME_OVER gap open, QA-COND-0005 Standard-tier accessibility accepted-risk friend-game scope, QA-COND-0006 playtest fun-hypothesis validation accepted-risk/deferred, public release readiness / release-candidate readiness / full game completion none claimed); (c) no Sprint 9 condition silently dropped. Story Type Config/Data per sprint-10.md row 126 (No new story file required — orchestrator updates sprint-status.yaml). ADVISORY: friend-game-lite paperwork only; no smoke check, /team-qa, /gate-check, sprint close-out, public release readiness, full playable-client manual QA, full game completion, broad accessibility completion, or playtest fun-hypothesis validation claimed."
-
-  - id: "S10-POLISH-001"
-    name: "HUD visual chrome — timer + class figurines + RESOLUTION dim"
-    file: "production/epics/hud/story-013-hud-visual-chrome-mvp.md"
-    priority: must-have
-    status: done
-    owner: "UI/client programmer"
-    estimate_days: 1.25
-    blocker: ""
-    completed: "2026-05-10"
-    notes:
-      - "From production/sprints/sprint-10.md Sprint 10 plan."
-      - "/story-done PROMPT 630: integration commit b780f0e on main (cherry-pick of 1a1ae4f). Stale `file:` path corrected from story-011- to story-013- (slot collision rationale recorded in story Readiness Notes)."
-      - "AC verdict: 9/9 acceptance criteria satisfied — RESOLUTION dim overlay added (HudDimOverlay marker, sync_dim_overlay_for_resolution_system in StateSync, pre-pooled at session entry, instantaneous Visibility flips, HUD_ENTITY_COUNT 21→22, alpha 0.45). Timer bar + class figurines wired entities untouched (already in place at PAW-004 a7e397a + 2132129). Manual evidence document authored at production/qa/evidence/sprint-10-hud-chrome-evidence.md."
-      - "Automated evidence: tests/integration/hud/hud_resolution_dim_test.rs — 8/8 sub-tests PASS (covers AC1, AC3, AC4, AC5, AC6, AC7, AC8)."
-      - "Lean-mode gates: QL-TEST-COVERAGE skipped (no production/review-mode.txt); LP-CODE-REVIEW skipped per feedback_paw_review_flow.md (friend-game accept-risk; code-review = visibility, not merge gate)."
-      - "Pre-existing findings surfaced from 618/629 reports (NOT regressions from this story — predate b780f0e): (1) hud_asset_wiring_test 0/6 failing (HUD epic asset-wiring sub-area; S10-TD-001 closure tail); (2) hud_plugin_scaffold_test 3/4 (HUD epic; PAW-004 timer-bar Name break); (3) broken *_harness.rs bins (harness/test-infra cross-epic; Bevy 0.18 Input feature reorg). Recommend separate triage stories — not authored in this prompt."
-      - "Preserved carry state: Sprint 9 closed-with-conditions disposition; S8-QA-001-W1 manual/browser two-client GAME_OVER gap remains open; QA-COND-0005 (Standard-tier accessibility) accepted-risk friend-game scope; QA-COND-0006 (playtest fun-hypothesis validation) accepted-risk / deferred. No public release readiness, full playable-client manual QA, full game completion, or broad accessibility completion claimed."
-
-  - id: "S10-POLISH-002"
-    name: "Shop/Auction panel chrome wiring"
-    file: "production/epics/shop-auction-ui/story-014-panel-chrome-mvp.md"
-    priority: must-have
-    status: done
-    owner: "UI/client programmer"
-    estimate_days: 1.25
-    blocker: ""
-    completed: "2026-05-10"
-    notes:
-      - "From production/sprints/sprint-10.md Sprint 10 plan."
-      - "/story-done verdict 2026-05-10 (PROMPT 621): COMPLETE WITH NOTES — 7/7 ACs (AC-1/2/4/5/6 PASS; AC-3/AC-7 manual screenshot DEFERRED per friend-game-lite paperwork pattern). Integration test chrome_wiring_test.rs 4/4 pass; SAU-007 (7/7) + SAU-008 (6/6) regression intact. ADVISORY: auction panel reuses SHOP_PANEL_CHROME_ASSET (PAW-TD-003-a accept-risk); auction border ramp tiles not wired (out of scope)."
-
-  - id: "S10-POLISH-003"
-    name: "Lobby visual chrome — class carousel + portraits + slot indicators"
-    file: "production/epics/game-session-system/story-011-lobby-visual-chrome-mvp.md"
-    priority: should-have
-    status: done
-    owner: "UI/client programmer"
+    status: ready
+    owner: "qa-lead + test owners"
     estimate_days: 1.00
-    blocker: ""
-    completed: "2026-05-10"
+    blocker: "Sprint 11 QA plan must be authored via /qa-plan sprint before /dev-story runs. Triage doc to be authored at production/qa/evidence/sprint-11-ignored-d5-triage.md during /dev-story; per Sprint 11 draft, no separate story file required — per-test follow-on stories authored as needed."
+    completed: ""
     notes:
-      - "From production/sprints/sprint-10.md Sprint 10 plan."
-      - "/story-done verdict 2026-05-10 (PROMPT 649): COMPLETE WITH NOTES — 6/7 ACs PASS, AC-5 ADVISORY. Integration commit 084129c on main (cherry-pick of fd2e0a6 from PROMPT 639). Automated evidence: tests/integration/session/lobby_chrome_wiring_test.rs 5/5 sub-tests PASS (AC-3 + AC-4 — non-default ImageNode.image on 7 portraits + 2 slot panels + 1 chip after OnEnter(ClientState::Lobby) via LobbyUiPlugin; per-class portrait path matches lobby_portrait_asset selector). AC-1/AC-2 PASS audit-only (no inline asset paths, no Sprite use in client/src/ui/lobby.rs). AC-6 PASS (send_lobby_commands_system + drain_lobby_s2c_system unchanged; be8b37d + 5da3768 hardening intact; no client-side optimistic class authority added). AC-7 PASS — production/qa/evidence/sprint-10-lobby-chrome-evidence.md authored, manual capture deferred per friend-game-lite paperwork pattern. AC-5 ADVISORY (pre-existing breakage, NOT introduced by this story): tests/integration/presentation/lobby_asset_wiring_test.rs fails to compile on origin/main@4cb02f3 with 12 × error[E0596] on app.world() → world.query::<...>() (Bevy 0.18 API change not folded into PAW-006 test file at PAW-006 time). Candidate Sprint 11 story: S11-TD-PAW-006-COMPILE-001. Lean-mode gates (per feedback_paw_review_flow.md): QL-TEST-COVERAGE + LP-CODE-REVIEW skipped (friend-game accept-risk). No public release, full manual QA, full game completion, or broad accessibility claim made by this closure; QA-COND-0005 + QA-COND-0006 remain accepted-risk; S8-QA-001-W1 still open."
+      - "From production/sprints/sprint-11.md Sprint 11 plan."
+      - "Source: smoke retry-7 W1 (production/qa/smoke-sprint-10-2026-05-12-retry-7.md). Each of the 11 owner-named #[ignore] tests is dispositioned: (a) un-#[ignore] after fixture/code repair; (b) redesign + retain; (c) delete with rationale. Tests covered by S11-TD-FIXTURE-HAND-UI-ONENTER-001 are linked, not re-resolved."
 
-  - id: "S10-TD-003"
-    name: "Doc hygiene tech debt sweep"
+  - id: "S11-DOC-HYGIENE-CARRY-001"
+    name: "Carry S10-TD-003 outstanding — ADR-011 TR-NP-04 -> TR-NP-006 corrections + Rule 7 ADR-011 breadcrumb"
     file: ""
-    priority: should-have
-    status: deferred
+    priority: must-have
+    status: ready
     owner: "orchestrator + architect"
-    estimate_days: 0.50
+    estimate_days: 0.25
     blocker: ""
     completed: ""
-    deferred_to: "sprint-11-planning"
     notes:
-      - "From production/sprints/sprint-10.md Sprint 10 plan."
-      - "PROMPT 763 close-out disposition (2026-05-13, origin/main@a6132d7): NOT silently dropped — explicitly DEFERRED to Sprint 11 planning. Partial: (c) `App::add_message` idempotency correction already on main in production/session-state/codex-orchestrator-state.md (Bevy 0.18 fact verified at bevy_app-0.18.1/src/sub_app.rs:358). Outstanding: (a) ADR-011 still contains literal `TR-NP-04` references at docs/architecture/adr-011-reconnect-snapshot.md lines 173 and 810, not yet corrected to `TR-NP-006`; (b) Network Protocol Rule 7 still lacks the `ADR-011` breadcrumb. Carry into Sprint 11 plan when authored. Also recorded in team-qa-sprint-10-2026-05-11.md Condition C-5."
+      - "From production/sprints/sprint-11.md Sprint 11 plan; carry of S10-TD-003 deferred (PROMPT 763)."
+      - "Outstanding deliverables LANDED on main at 0d19690 (PROMPT 770, 2026-05-13): docs/architecture/adr-011-reconnect-snapshot.md lines 173 and 810 corrected from literal `TR-NP-04` to `TR-NP-006`; Network Protocol Rule 7 (design/gdd/network-protocol.md) gained the ADR-011 breadcrumb. App::add_message idempotency note already on main in codex-orchestrator-state.md (Bevy 0.18 verified at bevy_app-0.18.1/src/sub_app.rs:358) per PROMPT 763 partial-satisfaction disposition."
+      - "PROMPT 773 activation policy: /story-done NOT run; row marked `ready` (not `done`) per the no-invent-closure rule. Story closure pending /story-done verdict in a separate prompt. Deliverable-landed evidence preserved here as authoritative."
 
-  - id: "ECO-004"
-    name: "Kill and Objective Awards reward-loop polish"
-    file: "production/epics/economy-system/story-004-kill-and-objective-awards.md"
-    priority: should-have
-    status: done
-    owner: "gameplay programmer"
-    estimate_days: 1.00
-    blocker: "Conditional backlog; pull only if Sprint 10 evidence shows a concrete reward-loop gameplay issue."
-    completed: "2026-05-10"
-    notes:
-      - "From production/sprints/sprint-10.md Sprint 10 plan."
-      - "PROMPT 650 /story-done closure: 12/12 ACs (AC1 orchestrator-owned + ticked at closure; AC2-AC13 worker-ticked at PROMPT 640). Integration commit 9fb8e60 (cherry-pick of bb1b104). Pre-existing AuctionSettled/ResolutionComplete fixture cluster (6+ files) surfaced as Sprint 11 candidate."
-
-  - id: "S10-N1"
-    name: "Sprint 10 evidence index"
+  - id: "S11-EVIDENCE-INDEX-CARRY-001"
+    name: "Sprint 10 evidence aggregator index (S10-N1 carry)"
     file: ""
-    priority: nice-to-have
-    status: deferred
+    priority: must-have
+    status: ready
     owner: "orchestrator"
     estimate_days: 0.25
     blocker: ""
     completed: ""
-    deferred_to: "sprint-11-planning"
     notes:
-      - "From production/sprints/sprint-10.md Sprint 10 plan."
-      - "PROMPT 763 close-out disposition (2026-05-13): NOT silently dropped — explicitly DEFERRED to Sprint 11 planning. No production/qa/evidence/sprint-10-evidence-index.md exists on origin/main@a6132d7 (only per-story evidence files: sprint-10-hud-chrome-evidence.md, sprint-10-shop-auction-chrome-evidence.md, sprint-10-lobby-chrome-evidence.md). Aggregator authoring deferred. Recorded in team-qa-sprint-10-2026-05-11.md Condition C-5 and gate-polish-release-2026-05-12.md Recommendation 1."
+      - "From production/sprints/sprint-11.md Sprint 11 plan; carry of S10-N1 deferred (PROMPT 763)."
+      - "Outstanding deliverable LANDED on main at 348084b (PROMPT 771, 2026-05-13): production/qa/evidence/sprint-10-evidence-index.md authored. Aggregator collates per-story status, integration commit hashes, primary evidence paths for Sprint 10 Must / Should / Nice-to-Have rows; records smoke retry-7 PASS WITH WARNINGS; records PROMPT 761 Polish->Release gate-check FAIL; records the three Sprint 10 deferred items (S10-TD-003, S10-N1, S10-N2) and their Sprint 11 carry IDs; preserves every carried condition and friend-game-lite non-claim. Read-only over underlying evidence; does NOT modify Sprint 10 close-out disposition."
+      - "PROMPT 773 activation policy: /story-done NOT run; row marked `ready` (not `done`) per the no-invent-closure rule. Story closure pending /story-done verdict in a separate prompt."
 
-  - id: "S10-N2"
-    name: "Friend-game route readability notes"
+  - id: "S11-ROUTE-READABILITY-CARRY-001"
+    name: "Friend-game route readability notes (S10-N2 carry)"
     file: ""
-    priority: nice-to-have
-    status: deferred
+    priority: must-have
+    status: ready
     owner: "UI programmer + orchestrator"
     estimate_days: 0.25
     blocker: ""
     completed: ""
-    deferred_to: "sprint-11-planning"
     notes:
-      - "From production/sprints/sprint-10.md Sprint 10 plan."
-      - "PROMPT 763 close-out disposition (2026-05-13): NOT silently dropped — explicitly DEFERRED to Sprint 11 planning. No sprint-10 friend-game route readability notes file exists on origin/main@a6132d7 (production/ux/, design/ux/, production/qa/ scanned). QA-COND-0005 / QA-COND-0006 friend-game-lite accepted-risk scope remains intact; broad Standard-tier accessibility completion remains explicitly NOT claimed. Recorded in team-qa-sprint-10-2026-05-11.md Condition C-5."
+      - "From production/sprints/sprint-11.md Sprint 11 plan; carry of S10-N2 deferred (PROMPT 763)."
+      - "Outstanding deliverable LANDED on main at d3ee8df (PROMPT 772, 2026-05-13): production/qa/evidence/sprint-10-route-readability-notes.md authored. Concise rough-edge readability observations for eight friend-game routes (Lobby, Hand / Drag, Draft Grid, Shop, Auction, Board, HUD / Timer, Result / Close-Out). Each observation either an `already-tracked` cross-reference to an existing Sprint 11 backlog row, or a `future-story-candidate` slug without a story file. No row in the notes file authorises immediate implementation."
+      - "Explicit no-claim preserved: notes file does NOT propose broad Standard-tier accessibility completion and does NOT claim closure of QA-COND-0005, QA-COND-0006, S8-QA-001-W1, or any other carried condition."
+      - "PROMPT 773 activation policy: /story-done NOT run; row marked `ready` (not `done`) per the no-invent-closure rule. Story closure pending /story-done verdict in a separate prompt."
+
+  # Sprint 11 Should Have (tracked per sprint-11.md draft; not active until story files + /story-readiness + QA plan exist)
+
+  - id: "S11-TD-FIXTURE-D-RESIDUALS-001"
+    name: "Residual fixture cluster from Wave 12 D-3 / D-4 / D-5 sweeps"
+    file: ""
+    priority: should-have
+    status: blocked
+    owner: "test infra"
+    estimate_days: 1.00
+    blocker: "No story file authored. /story-readiness pending. Sprint 11 QA plan also required before /dev-story."
+    completed: ""
+    notes:
+      - "From production/sprints/sprint-11.md Sprint 11 plan; sourced from Wave 12 backlog (codex-orchestrator-state.md L3939). Tracked without expanding scope. board_rendering_ghost_preview_bridge_test ghost-preview producer fixture gap; board_rendering_snapshot_spawn_test phase routing; board_rendering_status_icons_test should-panic drift; shop_auction_ui_plugin_scaffold_formulas_test count drift 57->66 — each dispositioned (fix OR redesign OR delete)."
+
+  - id: "S11-HU-PHASE-IDEMPOTENCY-001"
+    name: "Client phase_changed=true 60Hz idempotency"
+    file: ""
+    priority: should-have
+    status: blocked
+    owner: "client gameplay programmer"
+    estimate_days: 0.75
+    blocker: "No story file authored. /story-readiness pending. Sprint 11 QA plan also required before /dev-story."
+    completed: ""
+    notes:
+      - "From production/sprints/sprint-11.md Sprint 11 plan; sourced from Wave 12 backlog (S11-CLIENT-HAND-UI-PHASE-TRANSITION-IDEMPOTENCY-001). Spurious phase_changed=true on every frame reduced to actual phase transitions only. Existing S2CPhaseChanged drain remains the single source of phase truth. No client-side optimistic phase authority added."
+
+  - id: "S11-SERVER-POOL-INIT-LOG-GUARD-001"
+    name: "Server init_pool log emits before guard"
+    file: ""
+    priority: should-have
+    status: blocked
+    owner: "server gameplay programmer"
+    estimate_days: 0.25
+    blocker: "No story file authored. /story-readiness pending. Sprint 11 QA plan also required before /dev-story."
+    completed: ""
+    notes:
+      - "From production/sprints/sprint-11.md Sprint 11 plan; sourced from Wave 12 backlog. Pattern matches W5 acquisition_tick fix from ee27fb6. Smoke / log evidence target: <50 emitted lines per session for the cold path."
+
+  - id: "S11-HUD-TIMER-EYEBALL-VISUAL-001"
+    name: "HUD timer eyeball visual check (W2 carry)"
+    file: ""
+    priority: should-have
+    status: blocked
+    owner: "UI programmer"
+    estimate_days: 0.25
+    blocker: "No story file authored. Manual two-client visual evidence story; /story-readiness pending. Sprint 11 QA plan also required before /dev-story."
+    completed: ""
+    notes:
+      - "From production/sprints/sprint-11.md Sprint 11 plan; carry from smoke retry-7 W2. Manual 2-client run validates timer countdown renders correctly for DraftInitial 45s, DraftShop 30s, Placement 10-12s phases. Evidence: screenshot capture in production/qa/evidence/sprint-11-hud-timer-visual-check/. Cosmetic verification only."
+
+  # Sprint 11 Nice to Have (tracked per sprint-11.md draft; not active until story files + /story-readiness + QA plan exist)
+
+  - id: "S11-TD-CARGO-DISK-USAGE-001"
+    name: "Cargo workspace disk-usage reduction strategy"
+    file: ""
+    priority: nice-to-have
+    status: blocked
+    owner: "devops-engineer"
+    estimate_days: 0.50
+    blocker: "No story file authored. /story-readiness pending. Sprint 11 QA plan also required before /dev-story."
+    completed: ""
+    notes:
+      - "From production/sprints/sprint-11.md Sprint 11 plan; sourced from Wave 12 backlog (D: hit 100% 3x). Investigation note target: docs/architecture/cargo-workspace-disk-usage.md. No build-script changes land in this story."
+
+  - id: "S11-TD-CARGO-PDB-LIMIT-001"
+    name: "Cargo PDB-size pressure investigation"
+    file: ""
+    priority: nice-to-have
+    status: blocked
+    owner: "devops-engineer"
+    estimate_days: 0.25
+    blocker: "No story file authored. /story-readiness pending. Sprint 11 QA plan also required before /dev-story."
+    completed: ""
+    notes:
+      - "From production/sprints/sprint-11.md Sprint 11 plan; sourced from Wave 12 backlog. Document PDB-size impact on disk usage and CI runtime. Recommend Windows-side split-debuginfo / strip profile knobs. No profile changes land in this story."
+
+  - id: "S11-OPS-ORCHESTRATOR-LOCK-001"
+    name: "Orchestrator-root concurrent-session lock pattern"
+    file: ""
+    priority: nice-to-have
+    status: blocked
+    owner: "orchestrator"
+    estimate_days: 0.25
+    blocker: "No story file authored. /story-readiness pending. Sprint 11 QA plan also required before /dev-story."
+    completed: ""
+    notes:
+      - "From production/sprints/sprint-11.md Sprint 11 plan; sourced from Wave 12 backlog (2x sessions mutating main HEAD concurrently). Lock-file or convention documented at .octogent/orchestrator-lock.md (or appended to existing orchestrator docs). No code lands; pattern is documented only."
+
+  - id: "S11-OPS-GH-CLI-001"
+    name: "gh CLI installation note for dev machine"
+    file: ""
+    priority: nice-to-have
+    status: blocked
+    owner: "orchestrator"
+    estimate_days: 0.10
+    blocker: "No story file authored. /story-readiness pending. Sprint 11 QA plan also required before /dev-story."
+    completed: ""
+    notes:
+      - "From production/sprints/sprint-11.md Sprint 11 plan; sourced from Wave 12 backlog (gh absent 3+ times). One paragraph in repo onboarding doc (or docs/setup/dev-environment.md) names gh as required, with install command. No tooling changes land."
+
+  - id: "S11-LOBBY-UX-CONFIRM-STATE-001"
+    name: "Lobby 'Confirming...' text differentiation (own-confirm-acked vs waiting-opponent)"
+    file: ""
+    priority: nice-to-have
+    status: blocked
+    owner: "UI programmer"
+    estimate_days: 0.50
+    blocker: "No story file authored. /story-readiness pending. Sprint 11 QA plan also required before /dev-story."
+    completed: ""
+    notes:
+      - "From production/sprints/sprint-11.md Sprint 11 plan; sourced from Wave 8 backlog. Lobby UI text distinguishes the two states. No client-side class-lock authority added. Integration test asserts text differentiation across the two states."
+
+  - id: "S11-SERVER-R2-PLACEMENT-CRASH-AUDIT-001"
+    name: "Intermittent R2 Placement runtime crash audit"
+    file: ""
+    priority: nice-to-have
+    status: blocked
+    owner: "server gameplay programmer"
+    estimate_days: 0.50
+    blocker: "No story file authored. /story-readiness pending. Sprint 11 QA plan also required before /dev-story."
+    completed: ""
+    notes:
+      - "From production/sprints/sprint-11.md Sprint 11 plan; sourced from Wave 12 backlog (12:07 capture; not reproduced 13:28). Audit log emits enriched diagnostics around Phase::Placement round-2 transition. If a repro is captured during Sprint 11, a follow-on story is authored. No fix is implemented in this story."
 
 presentation_asset_wiring:
   closure_paperwork:
@@ -357,24 +414,23 @@ sprint_10_closeout:
     - "final-art / asset-production completion"
   retry_polish_to_release: "blocked — release-scope artifacts do not yet exist; do not retry the Polish->Release gate-check until they do"
 
-next_sprint:
-  sprint: 11
-  status: draft
-  active: false
-  sprint_plan_draft: "production/sprints/sprint-11.md"
-  drafted: "2026-05-13"
-  drafted_by_prompt: "764"
-  source_of_truth_at_draft: "origin/main@a6132d7"
+sprint_11_activation:
+  date: "2026-05-13"
+  prompt: "773"
+  source_of_truth_at_activation: "origin/main@d3ee8df"
+  status: active
+  stage_at_activation: "Polish"
+  not_release_activation: true
+  sprint_plan: "production/sprints/sprint-11.md"
   notes:
-    - "Sprint 11 plan is DRAFT only. PROMPT 764 did NOT activate Sprint 11."
-    - "Sprint 10 disposition unchanged: closed-with-conditions per PROMPT 763."
-    - "Stage unchanged: Polish. PROMPT 761 Polish->Release gate-check FAIL preserved as evidence."
-    - "No /dev-story, /smoke-check, /team-qa, /gate-check, /story-done, implementation, or CI run was performed."
-    - "S10-TD-003 / S10-N1 / S10-N2 carries are folded as Must Have rows in the Sprint 11 draft (S11-DOC-HYGIENE-CARRY-001 / S11-EVIDENCE-INDEX-CARRY-001 / S11-ROUTE-READABILITY-CARRY-001)."
-    - "S8-QA-001-W1, QA-COND-0005, QA-COND-0006 are explicitly preserved unchanged by the Sprint 11 draft."
+    - "Sprint 11 activated as a Polish-stage sprint by PROMPT 773 (2026-05-13). production/stage.txt remains 'Polish'. The PROMPT 761 Polish->Release gate-check FAIL evidence remains preserved at production/gate-checks/gate-polish-release-2026-05-12.md; no retry attempted."
+    - "Sprint 10 disposition preserved unchanged: closed-with-conditions per PROMPT 763, recorded under sprint_10_closeout: above."
+    - "Sprint 11 Must Have paperwork-carry deliverables landed on main prior to activation: S11-DOC-HYGIENE-CARRY-001 at 0d19690 (PROMPT 770), S11-EVIDENCE-INDEX-CARRY-001 at 348084b (PROMPT 771), S11-ROUTE-READABILITY-CARRY-001 at d3ee8df (PROMPT 772). PROMPT 773 marks each row `ready` with deliverable-landed notes — /story-done NOT run — per the no-invent-closure rule."
+    - "Sprint 11 Must Have implementation story files authored before activation: production/epics/hand-ui/story-018-drag-runtime-retest.md (PROMPT 766, READY) and production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md (PROMPT 767, content-ready)."
     - "Sprint 11 explicitly does NOT claim public release readiness, release-candidate readiness, full game completion, broad / Standard-tier accessibility completion, playtest / fun-hypothesis validation, full playable-client manual QA, or final-art / asset-production completion."
-    - "Sprint 11 activation requires /sprint-plan sprint-11 in a separate prompt, plus Sprint 11 story files + /story-readiness + /qa-plan sprint."
-  activation_blockers:
-    - "Sprint 11 QA plan not yet authored (run /qa-plan sprint after story files exist)."
-    - "S11-DRAG-RUNTIME-RETEST-001 and S11-TD-FIXTURE-HAND-UI-ONENTER-001 story files not yet authored."
-    - "Sprint 11 dates not locked."
+    - "Sprint 10 carry conditions preserved: S8-QA-001-W1 OPEN, QA-COND-0005 accepted-risk, QA-COND-0006 accepted-risk / deferred, 11 ignored D-5 tests pending owner review, HUD timer eyeball visual check deferred, placeholder / friend-game art scope (PAW-TD-*-a accept-risk)."
+    - "PROMPT 773 did NOT run /dev-story, /story-readiness, /smoke-check, /team-qa, /gate-check, /story-done, /qa-plan. PROMPT 773 did NOT modify production code under client/ / server/ / shared/ / tests/, did NOT modify production/stage.txt, did NOT modify .claude/settings.json, did NOT modify reports/, did NOT modify .claude/scheduled_tasks.lock, did NOT modify .octogent/."
+  outstanding_before_dev_story:
+    - "Sprint 11 QA plan authored via /qa-plan sprint (required before /dev-story runs on any Sprint 11 story)."
+    - "Formal /story-readiness verdict on S11-TD-FIXTURE-HAND-UI-ONENTER-001 (story content-ready; formal verdict pending)."
+    - "Story files + /story-readiness for Should Have and Nice-to-Have rows (currently `blocked` until story files exist)."
