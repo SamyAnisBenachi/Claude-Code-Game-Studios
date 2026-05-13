@@ -1,11 +1,17 @@
 # Sprint 10 -- 2026-05-21 to 2026-06-03
 
-> **Status**: Active (activated 2026-05-10, PROMPT 591).
-> **Drafted**: 2026-05-09 by `/sprint-plan` (producer agent).
-> **Activation**: Not active. Activation requires Sprint 9 close-out
-> (S9-QA-001 closed via the in-flight `DRAFT_INITIAL` fix wave evidence
-> consolidation, or explicit accepted-risk close-out per PROMPT 460).
-> **Source-of-truth assumption**: `origin/main` post `d7211f1`
+> **Status**: Closed-with-conditions (Polish / friend-game-lite paperwork) on
+> 2026-05-13 per PROMPT 763 at `origin/main@a6132d7`. 6/6 Must-Have, 2/3
+> Should-Have, 0/2 Nice-to-Have done; S10-TD-003 / S10-N1 / S10-N2 explicitly
+> deferred to Sprint 11 planning. PROMPT 761 Polish->Release gate-check is FAIL
+> and preserved as evidence — stage remains `Polish`. Sprint 11 remains
+> `not_planned`. No public release readiness, release-candidate readiness, full
+> game completion, broad Standard-tier accessibility completion, playtest /
+> fun-hypothesis validation, full playable-client manual QA, or final-art
+> completion is claimed.
+> **History**: Activated 2026-05-10 (PROMPT 591). Drafted 2026-05-09 by
+> `/sprint-plan` (producer agent).
+> **Source-of-truth assumption (draft)**: `origin/main` post `d7211f1`
 > (PROMPT 545/556 `CardPoolPlugin` + `KeywordPlugin` plugin-registration
 > fix that unblocked DRAFT_INITIAL display).
 

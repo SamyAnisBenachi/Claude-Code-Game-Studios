@@ -21,18 +21,73 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@f27d888`, stage `Polish`,
-  Sprint 10 still `active`, Sprint 11 `not_planned`, PROMPT 761
-  `Polish->Release` gate-check `FAIL`, PROMPT 762 Sprint 11 candidate backlog
-  capture complete.
+- Current verified state at this update: `origin/main@a6132d7`, stage `Polish`,
+  Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
+  `not_planned`, PROMPT 761 `Polish->Release` gate-check `FAIL` preserved as
+  evidence, PROMPT 762 Sprint 11 candidate backlog capture complete.
 
 Current next move:
 
-- Close Sprint 10 as Polish / friend-game `closed-with-conditions`.
+- Sprint 10 close-out paperwork is DONE (PROMPT 763). See
+  `production/sprint-status.yaml` `sprint_10_closeout:` block for the
+  authoritative disposition.
 - Preserve the PROMPT 761 Release gate failure and all carried risks.
 - Do not retry `Polish->Release` until release-scope artifacts exist.
 - Do not activate Sprint 11 or create active Sprint 11 rows before formal
-  Sprint 11 planning.
+  Sprint 11 planning. Carry the deferred S10-TD-003 / S10-N1 / S10-N2 plus
+  the PROMPT 762 backlog candidates into the Sprint 11 plan when it is
+  authored via `/sprint-plan sprint-11` in a separate prompt.
+
+### Sprint 10 Polish Close-Out Disposition (PROMPT 763, 2026-05-13)
+
+Sprint 10 was closed `closed-with-conditions` at `origin/main@a6132d7` as
+Polish / friend-game-lite paperwork only. 6/6 Must-Have and 2/3 Should-Have
+stories were already `done` on origin/main; the producer + qa-lead read-only
+review pair both returned APPROVE_WITH_NOTES. The three remaining `ready`
+rows were dispositioned as follows — they were NOT silently dropped:
+
+- **S10-TD-003 Doc hygiene tech-debt sweep** → DEFERRED to Sprint 11 planning.
+  Partially satisfied: `App::add_message` idempotency correction is on main
+  (Bevy 0.18 fact verified at `bevy_app-0.18.1/src/sub_app.rs:358`).
+  Outstanding: ADR-011 still contains literal `TR-NP-04` at
+  `docs/architecture/adr-011-reconnect-snapshot.md:173` and `:810`; Network
+  Protocol Rule 7 still lacks the `ADR-011` breadcrumb. Carry into Sprint 11.
+- **S10-N1 Sprint 10 evidence index** → DEFERRED to Sprint 11 planning.
+  Per-story evidence files exist (HUD chrome, shop/auction chrome, lobby
+  chrome) but no `production/qa/evidence/sprint-10-evidence-index.md`
+  aggregator was authored on origin/main.
+- **S10-N2 Friend-game route readability notes** → DEFERRED to Sprint 11
+  planning. No `sprint-10-readability*.md` or "route readability" file exists
+  under `production/ux/`, `design/ux/`, or `production/qa/`.
+
+All three are also recorded as deferred items in
+`production/qa/team-qa-sprint-10-2026-05-11.md` Condition C-5 and
+`production/gate-checks/gate-polish-release-2026-05-12.md` Recommendation 1.
+
+The PROMPT 761 Polish->Release gate-check verdict `FAIL` is preserved as
+evidence — do not retry the Polish->Release gate-check until release-scope
+artifacts (final art, manual-QA sign-off, accessibility completion, playtest
+evidence) actually exist on `main`.
+
+Carried forward unchanged at close-out: S8-QA-001-W1 manual/browser
+two-client GAME_OVER gap (open); QA-COND-0005 Standard-tier accessibility
+(accepted-risk friend-game scope); QA-COND-0006 playtest/fun-hypothesis
+validation (accepted-risk / deferred); 11 ignored D-5 tests pending owner
+review (smoke retry-7 W1); HUD timer eyeball visual check deferred (smoke
+retry-7 W2); placeholder / friend-game art scope (PAW-TD-*-a accept-risk on
+placeholder PNGs).
+
+Explicitly NOT claimed by this close-out: public release readiness,
+release-candidate readiness, full game completion, broad Standard-tier
+accessibility completion, playtest / fun-hypothesis validation, full
+playable-client manual QA, final-art / asset-production completion.
+
+Files touched by PROMPT 763: `production/sprint-status.yaml`,
+`production/sprints/sprint-10.md`, `production/session-state/active.md`,
+`production/session-state/codex-orchestrator-state.md`. No code under
+`client/`, `server/`, `shared/`, `tests/`, no `.octogent/` changes, no
+`production/stage.txt` change, no smoke / gate-check / QA sign-off /
+`/dev-story` run, no Sprint 11 activation.
 
 ### Orchestrator Response Style
 
@@ -112,6 +167,30 @@ Agent choice:
   read-only end-to-end diagnosis, UX/design review, and story/readiness docs.
 - Use Codex-style implementation workers for scoped code changes, integration,
   story-done, and git hygiene.
+
+When a prompt names Game Studio roles, state whether they are agents to spawn or
+roles to perform locally. Avoid ambiguous shorthand such as `Agent: producer +
+qa-lead`.
+
+Preferred wording:
+
+```text
+Agent:
+- Use Claude Code Game Studios agents if available:
+  - producer for sprint close-out disposition
+  - qa-lead for evidence/non-claims validation
+- If spawning agents is not available, perform both roles locally.
+- No Bevy/Lightyear code; no liv skill required.
+```
+
+Strict parallel review wording:
+
+```text
+Agent:
+- Spawn CCGS producer and qa-lead agents in parallel for read-only review.
+- Then apply the close-out edits locally from their combined verdict.
+- No Bevy/Lightyear code; no liv skill required.
+```
 
 ### Prompt Authoring Template
 
@@ -195,9 +274,12 @@ NEW -- PROMPT 763
 
 PROMPT 763 -- Sprint 10 Polish Close-Out Disposition
 
-Agent/skills:
-- producer / qa-lead
-- No Bevy or Lightyear code; no liv skill required.
+Agent:
+- Use Claude Code Game Studios agents if available:
+  - producer for sprint close-out disposition
+  - qa-lead for evidence/non-claims validation
+- If spawning agents is not available, perform both roles locally.
+- No Bevy/Lightyear code; no liv skill required.
 
 Repo/mode:
 - Root checkout only.

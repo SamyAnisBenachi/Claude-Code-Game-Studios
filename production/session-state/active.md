@@ -4,7 +4,24 @@
 >
 > ---
 >
-> **📍 CURRENT STATE — last updated 2026-05-11**
+> **📍 CURRENT STATE — last updated 2026-05-13 (PROMPT 763 — Sprint 10 Polish close-out)**
+>
+> - **Source-of-truth at this update**: `origin/main@a6132d7`.
+> - **Sprint 10 disposition**: `closed-with-conditions` (Polish / friend-game-lite paperwork only). 6/6 Must-Have done; 2/3 Should-Have done; **S10-TD-003 (Doc hygiene), S10-N1 (Sprint 10 evidence index), and S10-N2 (Friend-game route readability notes) explicitly DEFERRED to Sprint 11 planning** — NOT silently dropped. Recorded in `production/sprint-status.yaml` `sprint_10_closeout:` block.
+> - **Stage**: remains `Polish` (`production/stage.txt` unchanged).
+> - **PROMPT 761 Polish->Release gate-check**: `FAIL` — preserved as evidence at `production/gate-checks/gate-polish-release-2026-05-12.md`. Do not retry until release-scope artifacts exist.
+> - **Sprint 10 smoke retry-7** (`production/qa/smoke-sprint-10-2026-05-12-retry-7.md`): `PASS WITH WARNINGS` — 1123/1123 effective; 11 documented D-5 ignored tests (W1) carried forward; HUD timer eyeball visual check deferred (W2).
+> - **Sprint 10 /team-qa** (`production/qa/team-qa-sprint-10-2026-05-11.md`): `APPROVED WITH CONDITIONS` (5 conditions; C-5 carries S10-TD-003 / S10-N1 / S10-N2 into Sprint 11 planning).
+> - **Sprint 11 status**: remains `not_planned`. Sprint 11 backlog candidates live in `production/session-state/codex-orchestrator-state.md` until `/sprint-plan sprint-11` runs separately.
+> - **Carried forward unchanged**: S8-QA-001-W1 manual/browser two-client GAME_OVER gap (open); QA-COND-0005 Standard-tier accessibility (accepted-risk friend-game scope); QA-COND-0006 playtest/fun-hypothesis validation (accepted-risk / deferred); 11 ignored D-5 tests pending owner review; HUD timer eyeball visual check deferred; placeholder / friend-game art scope (PAW-TD-*-a accept-risk on placeholder PNGs).
+> - **Explicitly NOT claimed by this close-out**: public release readiness, release-candidate readiness, full game completion, broad / Standard-tier accessibility completion, playtest / fun-hypothesis validation, full playable-client manual QA, final-art / asset-production completion.
+> - **Files changed by PROMPT 763**: `production/sprint-status.yaml`, `production/sprints/sprint-10.md`, `production/session-state/active.md`, `production/session-state/codex-orchestrator-state.md`.
+>
+> The 2026-05-11 banner below and every earlier session-extract banner are HISTORICAL — they capture prior prompt closures and are kept for context. **Do NOT read them as "current state"**. Authoritative current state is this 2026-05-13 banner + `production/sprint-status.yaml` + `git log`.
+>
+> ---
+>
+> **📍 PRIOR CURRENT STATE — last updated 2026-05-11**
 >
 > - **Most recent work commits (per `git log`)**:
 >   - `2b174a6` test(session): align lobby_entry duplicate-confirm assertion with Sprint 3 contract — **PROMPT 705 / S11-TEST-LOBBY-ENTRY-IDEMPOTENT-ALIGNMENT-001**

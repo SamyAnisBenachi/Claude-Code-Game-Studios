@@ -6,10 +6,10 @@ goal: "Close out the integrated Presentation Asset Wiring batch with `/story-don
 start: "2026-05-21"
 end: "2026-06-03"
 generated: "2026-05-07"
-updated: "2026-05-10"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600; S10-CARRY-001 closure per PROMPT 601-RETRY; S10-PAW-001 closure per PROMPT 598-RETRY; S10-TD-001 closure per PROMPT 611; S10-POLISH-002 closure per PROMPT 621; S10-POLISH-001 closure per PROMPT 630; ECO-004 closure per PROMPT 650; S10-POLISH-003 closure per PROMPT 649
+updated: "2026-05-13"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600; S10-CARRY-001 closure per PROMPT 601-RETRY; S10-PAW-001 closure per PROMPT 598-RETRY; S10-TD-001 closure per PROMPT 611; S10-POLISH-002 closure per PROMPT 621; S10-POLISH-001 closure per PROMPT 630; ECO-004 closure per PROMPT 650; S10-POLISH-003 closure per PROMPT 649; Sprint 10 Polish closed-with-conditions per PROMPT 763 (S10-TD-003 / S10-N1 / S10-N2 deferred to Sprint 11 planning; PROMPT 761 Polish->Release gate-check FAIL preserved; stage remains Polish; Sprint 11 remains not_planned)
 stage: "Polish"
 scope: "Polish slice — close out PAW asset wiring, drain test-fixture and plugin-registration tech debt, start targeted visual UI chrome — not broad production / public release / full game completion"
-status: "active"
+status: "closed-with-conditions"
 
 activation:
   date: "2026-05-10"
@@ -190,13 +190,15 @@ stories:
     name: "Doc hygiene tech debt sweep"
     file: ""
     priority: should-have
-    status: ready
+    status: deferred
     owner: "orchestrator + architect"
     estimate_days: 0.50
     blocker: ""
     completed: ""
+    deferred_to: "sprint-11-planning"
     notes:
       - "From production/sprints/sprint-10.md Sprint 10 plan."
+      - "PROMPT 763 close-out disposition (2026-05-13, origin/main@a6132d7): NOT silently dropped — explicitly DEFERRED to Sprint 11 planning. Partial: (c) `App::add_message` idempotency correction already on main in production/session-state/codex-orchestrator-state.md (Bevy 0.18 fact verified at bevy_app-0.18.1/src/sub_app.rs:358). Outstanding: (a) ADR-011 still contains literal `TR-NP-04` references at docs/architecture/adr-011-reconnect-snapshot.md lines 173 and 810, not yet corrected to `TR-NP-006`; (b) Network Protocol Rule 7 still lacks the `ADR-011` breadcrumb. Carry into Sprint 11 plan when authored. Also recorded in team-qa-sprint-10-2026-05-11.md Condition C-5."
 
   - id: "ECO-004"
     name: "Kill and Objective Awards reward-loop polish"
@@ -215,25 +217,29 @@ stories:
     name: "Sprint 10 evidence index"
     file: ""
     priority: nice-to-have
-    status: ready
+    status: deferred
     owner: "orchestrator"
     estimate_days: 0.25
     blocker: ""
     completed: ""
+    deferred_to: "sprint-11-planning"
     notes:
       - "From production/sprints/sprint-10.md Sprint 10 plan."
+      - "PROMPT 763 close-out disposition (2026-05-13): NOT silently dropped — explicitly DEFERRED to Sprint 11 planning. No production/qa/evidence/sprint-10-evidence-index.md exists on origin/main@a6132d7 (only per-story evidence files: sprint-10-hud-chrome-evidence.md, sprint-10-shop-auction-chrome-evidence.md, sprint-10-lobby-chrome-evidence.md). Aggregator authoring deferred. Recorded in team-qa-sprint-10-2026-05-11.md Condition C-5 and gate-polish-release-2026-05-12.md Recommendation 1."
 
   - id: "S10-N2"
     name: "Friend-game route readability notes"
     file: ""
     priority: nice-to-have
-    status: ready
+    status: deferred
     owner: "UI programmer + orchestrator"
     estimate_days: 0.25
     blocker: ""
     completed: ""
+    deferred_to: "sprint-11-planning"
     notes:
       - "From production/sprints/sprint-10.md Sprint 10 plan."
+      - "PROMPT 763 close-out disposition (2026-05-13): NOT silently dropped — explicitly DEFERRED to Sprint 11 planning. No sprint-10 friend-game route readability notes file exists on origin/main@a6132d7 (production/ux/, design/ux/, production/qa/ scanned). QA-COND-0005 / QA-COND-0006 friend-game-lite accepted-risk scope remains intact; broad Standard-tier accessibility completion remains explicitly NOT claimed. Recorded in team-qa-sprint-10-2026-05-11.md Condition C-5."
 
 presentation_asset_wiring:
   closure_paperwork:
@@ -293,6 +299,52 @@ presentation_asset_wiring:
       tech_debt:
         - "PAW-TD-006-a: accept-risk — placeholder PNGs, not final art (friend-game scope)"
         - "PAW-TD-006-b: accept-risk — no manual browser/native visual capture (friend-game scope)"
+
+sprint_10_closeout:
+  date: "2026-05-13"
+  prompt: "763"
+  source_of_truth: "origin/main@a6132d7"
+  disposition: "closed-with-conditions"
+  scope: "Polish / friend-game-lite paperwork only. No release-tier, public, full-game, broad-accessibility, playtest, or full-manual-QA claim is made."
+  must_have_done: 6
+  must_have_total: 6
+  should_have_done: 2
+  should_have_total: 3
+  nice_to_have_done: 0
+  nice_to_have_total: 2
+  smoke:
+    file: "production/qa/smoke-sprint-10-2026-05-12-retry-7.md"
+    verdict: "PASS WITH WARNINGS"
+    notes: "Retry-7 effective 1123/1123; 11 documented D-5 ignored tests (W1) carried forward; HUD timer eyeball check deferred (W2)."
+  team_qa:
+    file: "production/qa/team-qa-sprint-10-2026-05-11.md"
+    verdict: "APPROVED WITH CONDITIONS"
+    notes: "5 conditions; Condition C-5 explicitly carries S10-TD-003 + S10-N1 + S10-N2 into Sprint 11 planning."
+  gate_check_polish_to_release:
+    file: "production/gate-checks/gate-polish-release-2026-05-12.md"
+    prompt: "761"
+    verdict: "FAIL"
+    notes: "Polish->Release gate is FAIL. Do not retry until release-scope artifacts exist. Stage remains Polish."
+  deferred_into_sprint_11_planning:
+    - "S10-TD-003 Doc hygiene tech debt sweep — partial; ADR-011 TR-NP-04→006 cross-ref correction + Rule 7 ADR-011 breadcrumb still outstanding."
+    - "S10-N1 Sprint 10 evidence index — aggregator file not authored on origin/main."
+    - "S10-N2 Friend-game route readability notes — not authored on origin/main."
+  carried_forward_unchanged:
+    - "S8-QA-001-W1 manual/browser two-client GAME_OVER gap (OPEN)."
+    - "QA-COND-0005 Standard-tier accessibility (accepted-risk friend-game scope)."
+    - "QA-COND-0006 playtest fun-hypothesis validation (accepted-risk / deferred)."
+    - "11 ignored D-5 tests pending owner review (smoke retry-7 Warning W1)."
+    - "HUD timer eyeball visual check deferred (smoke retry-7 Warning W2)."
+    - "Placeholder / friend-game art scope — PAW-TD-*-a accept-risk on placeholder PNGs; no final-art / public-release-art claim."
+  explicitly_not_claimed:
+    - "public release readiness"
+    - "release-candidate readiness"
+    - "full game completion"
+    - "broad / Standard-tier accessibility completion"
+    - "playtest / fun-hypothesis validation"
+    - "full playable-client manual QA"
+    - "final-art / asset-production completion"
+  retry_polish_to_release: "blocked — release-scope artifacts do not yet exist; do not retry the Polish->Release gate-check until they do"
 
 next_sprint:
   sprint: 11
