@@ -262,11 +262,11 @@ Prerequisites: Node 22+, git, gh, curl, Python 3.10+. PowerShell + cmd. Codex CL
 3. Attach to the host terminal in the UI, run `codex resume <session-uuid>` once if you haven't already.
 4. Work with the Codex orchestrator normally. On each turn the dispatcher detects its disposition blocks, spawns/kills/messages workers in Octogent, and workers report back to the orchestrator via channel-send (auto-submitted thanks to the bracketed-paste patch).
 5. To inspect any worker: click it in the UI to see its transcript and channel messages.
-6. **Manual report-back fallback** (for workers spawned before the dispatcher's auto-instruction, or if a worker forgets): paste this into the worker's chat as its last action, replacing `<status>`:
+6. **Manual report-back fallback** (for workers spawned before the dispatcher's auto-instruction, or if a worker forgets): paste this into the worker's chat as its last action. The `content` is the worker's FULL final output (the message it would have shown the user) — status line on the first line, then everything else. JSON-escape internal `"` as `\"` and newlines as `\n`:
    ```bash
    curl -s -X POST http://127.0.0.1:8787/api/channels/codex-orchestrator-main/messages \
      -H 'Content-Type: application/json' \
-     --data-raw '{"fromTerminalId":"PROMPT-N","content":"DONE PROMPT-N: <status>"}'
+     --data-raw '{"fromTerminalId":"PROMPT-N","content":"<FULL WORKER FINAL OUTPUT, JSON-ESCAPED>"}'
    ```
 7. To force a manual dispatch action without going through the orchestrator (debug):
    ```bash
@@ -360,7 +360,7 @@ toasts on.
 7. **Two Octogent source patches** (`scripts/dev.mjs`, `apps/api/src/terminalRuntime/channelMessaging.ts`) are lost on `git pull` of the Octogent clone. Keep a copy of the patched files alongside this repo or re-apply manually.
 8. **Codex loads hooks at session start**: if you add or modify hooks while a Codex orchestrator session is already running, the new hooks are NOT attached to that session. Restart Codex (`codex` for a fresh session, or `codex resume <id>` to pick up the existing rollout with the new hooks bound).
 9. **`POST /api/terminals` with an existing terminalId**: Octogent silently auto-assigns a new id (e.g. `terminal-3`) rather than reusing or rejecting. The dispatcher works around this for `RELANCER` by DELETing the registry record first. For SPAWN it would have produced a duplicate worker with a different id, which is why dedup is enforced.
-10. **Workers must follow the report-back instruction**: the dispatcher appends a curl-based `octogent channel send` instruction to every spawned worker's `initialPrompt`, but a Claude Code worker can in theory ignore it (e.g. forget to run the curl). If a worker doesn't report, the orchestrator will not know it's done — paste the manual curl line (§6 step 6) to recover.
+10. **Workers must follow the report-back instruction**: the dispatcher appends a curl-based channel-send instruction to every spawned worker's `initialPrompt`, telling the worker to POST its FULL final response (status line + body) to `codex-orchestrator-main`. A Claude Code worker can in theory ignore the instruction (forget to run the curl, or fail to JSON-escape correctly). If a worker doesn't report, the orchestrator stays blocked on it — paste the manual curl (§6 step 6) to recover.
 11. **`pnpm --dir` strips env vars**: a confirmed Windows/pnpm quirk — `pnpm --dir X dev` clears `OCTOGENT_*` env vars in the spawned dev process. The launcher uses `cd /d X && pnpm dev` instead. Don't switch back to `--dir`.
 
 ## 9. Full rollback
