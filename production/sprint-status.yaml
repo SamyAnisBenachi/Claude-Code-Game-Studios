@@ -160,15 +160,15 @@ stories:
     name: "Sprint 10 evidence aggregator index (S10-N1 carry)"
     file: ""
     priority: must-have
-    status: ready
+    status: done
     owner: "orchestrator"
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-05-13"
     notes:
       - "From production/sprints/sprint-11.md Sprint 11 plan; carry of S10-N1 deferred (PROMPT 763)."
       - "Outstanding deliverable LANDED on main at 348084b (PROMPT 771, 2026-05-13): production/qa/evidence/sprint-10-evidence-index.md authored. Aggregator collates per-story status, integration commit hashes, primary evidence paths for Sprint 10 Must / Should / Nice-to-Have rows; records smoke retry-7 PASS WITH WARNINGS; records PROMPT 761 Polish->Release gate-check FAIL; records the three Sprint 10 deferred items (S10-TD-003, S10-N1, S10-N2) and their Sprint 11 carry IDs; preserves every carried condition and friend-game-lite non-claim. Read-only over underlying evidence; does NOT modify Sprint 10 close-out disposition."
-      - "PROMPT 773 activation policy: /story-done NOT run; row marked `ready` (not `done`) per the no-invent-closure rule. Story closure pending /story-done verdict in a separate prompt."
+      - "PROMPT 781 /story-done verdict (2026-05-13): DONE. AC verification (read-only against origin/main@348084b): (AC1) production/qa/evidence/sprint-10-evidence-index.md exists on main at 348084b (PROMPT 771, 2026-05-13); (AC2) records Sprint 10 disposition `closed-with-conditions` per PROMPT 763; (AC3) records stage `Polish` (production/stage.txt unchanged); (AC4) records smoke retry-7 PASS WITH WARNINGS (1123/1123 effective; 11 ignored D-5 tests; HUD timer eyeball deferred) at production/qa/smoke-sprint-10-2026-05-12-retry-7.md; (AC5) records PROMPT 761 Polish->Release gate-check FAIL (0/13 required artefacts) at production/gate-checks/gate-polish-release-2026-05-12.md; (AC6) records the Sprint 10 story / evidence map across Must Have (S10-PAW-001 sub-rolling PAW-002..PAW-006, S10-TD-001, S10-TD-002, S10-CARRY-001, S10-POLISH-001, S10-POLISH-002), Should Have (S10-POLISH-003, S10-TD-003 deferred, ECO-004), and Nice to Have (S10-N1 deferred, S10-N2 deferred) with integration commits and per-story evidence paths; (AC7) records the three deferred items (S10-TD-003, S10-N1, S10-N2) and their Sprint 11 carry IDs (S11-DOC-HYGIENE-CARRY-001, S11-EVIDENCE-INDEX-CARRY-001, S11-ROUTE-READABILITY-CARRY-001); (AC8) preserves carried conditions (S8-QA-001-W1 OPEN, QA-COND-0005 accepted-risk, QA-COND-0006 accepted-risk / deferred, 11 ignored D-5 tests, HUD timer eyeball deferred, placeholder / friend-game art scope PAW-TD-*-a accept-risk); (AC9) preserves friend-game-lite non-claims (no public release / no release-candidate / no full-game / no broad / Standard-tier accessibility / no playtest / fun-hypothesis / no full playable-client manual-QA / no final-art / no asset-production-completion). Read-only over underlying evidence; no Sprint 10 close-out disposition modified; no code under client/ / server/ / shared/ / tests/; no smoke / gate-check / QA sign-off / /dev-story run. No release / release-candidate / full-game / broad-accessibility / playtest / full-manual-QA / final-art claim."
 
   - id: "S11-ROUTE-READABILITY-CARRY-001"
     name: "Friend-game route readability notes (S10-N2 carry)"

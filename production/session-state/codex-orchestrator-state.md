@@ -21,7 +21,7 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@d36bbbd`, stage `Polish`,
+- Current verified state at this update: `origin/main@1bad399`, stage `Polish`,
   Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
   status `active` (PROMPT 773, 2026-05-13) as a Polish-stage sprint
   (`2026-06-04 -> 2026-06-17`) with plan at `production/sprints/sprint-11.md`
@@ -30,11 +30,11 @@ Current source of truth:
   preserved as evidence (no retry attempted). PROMPT 762 Sprint 11 candidate
   backlog capture folded into the Sprint 11 plan. Sprint 11 Must Have
   paperwork-carry deliverables landed on `main` (`0d19690` / `348084b` /
-  `d3ee8df`); `/story-done` ran for `S11-DOC-HYGIENE-CARRY-001` in **PROMPT
-  780 (2026-05-13)** flipping that one row from `ready` to `done`; the
-  remaining two paperwork carries (`S11-EVIDENCE-INDEX-CARRY-001`,
-  `S11-ROUTE-READABILITY-CARRY-001`) remain `ready` pending their own
-  `/story-done` prompts.
+  `d3ee8df`); `/story-done` ran for `S11-DOC-HYGIENE-CARRY-001` in PROMPT
+  780 (2026-05-13) and for `S11-EVIDENCE-INDEX-CARRY-001` in **PROMPT 781
+  (2026-05-13)**, flipping those two rows from `ready` to `done`; the
+  remaining paperwork carry (`S11-ROUTE-READABILITY-CARRY-001`) remains
+  `ready` pending its own `/story-done` prompt.
 
 Current next move:
 
@@ -51,17 +51,97 @@ Current next move:
 - Preserve the PROMPT 761 Release gate failure and all carried risks.
 - Do not retry `Polish->Release` until release-scope artifacts exist.
 - Next launchable prompts (Sprint 11 QA plan on `main` per PROMPT 774;
-  `S11-DOC-HYGIENE-CARRY-001` closed by PROMPT 780):
+  `S11-DOC-HYGIENE-CARRY-001` closed by PROMPT 780;
+  `S11-EVIDENCE-INDEX-CARRY-001` closed by PROMPT 781):
   (1) `/story-readiness` on
   `production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`
   — formal verdict for `S11-TD-FIXTURE-HAND-UI-ONENTER-001`; (2) `/dev-story`
   on `production/epics/hand-ui/story-018-drag-runtime-retest.md`
   (`S11-DRAG-RUNTIME-RETEST-001` — only Must Have currently passing both the
   story-file gate and the `/story-readiness` gate); (3) `/story-done` on the
-  two remaining landed paperwork carries (`S11-EVIDENCE-INDEX-CARRY-001`,
-  `S11-ROUTE-READABILITY-CARRY-001`) — each as a separate prompt,
-  parallel-safe (they touch disjoint evidence files); (4) story file
-  authoring for Should Have / Nice to Have rows if pulled into active scope.
+  remaining landed paperwork carry (`S11-ROUTE-READABILITY-CARRY-001`) as a
+  separate prompt; (4) story file authoring for Should Have / Nice to Have
+  rows if pulled into active scope.
+
+### PROMPT 781 /story-done Disposition — S11-EVIDENCE-INDEX-CARRY-001 (2026-05-13)
+
+Authoritative Sprint 11 row `S11-EVIDENCE-INDEX-CARRY-001` closed by
+`/story-done` in PROMPT 781. Source-of-truth at run: `origin/main@1bad399`.
+Deliverable verified on `main` at `348084b` (PROMPT 771, 2026-05-13).
+Acceptance-criterion verification (read-only against `origin/main@348084b`):
+
+- AC1 — `production/qa/evidence/sprint-10-evidence-index.md` exists on
+  `main` at `348084b` (PROMPT 771, 2026-05-13). Verified via
+  `git show 348084b:production/qa/evidence/sprint-10-evidence-index.md`.
+- AC2 — Records Sprint 10 disposition `closed-with-conditions` per PROMPT 763
+  (linked through `production/sprint-status.yaml` `sprint_10_closeout:`
+  block). Verified in the file header and Sprint 10 Headline table.
+- AC3 — Records stage `Polish` (`production/stage.txt` unchanged). Verified
+  in the file header and the Sprint 10 Headline `Stage after close-out`
+  row.
+- AC4 — Records smoke retry-7 `PASS WITH WARNINGS` (1123/1123 effective;
+  11 ignored D-5 tests; HUD timer eyeball deferred) referencing
+  `production/qa/smoke-sprint-10-2026-05-12-retry-7.md`. Verified in
+  Sprint 10 Headline + Evidence File Map.
+- AC5 — Records PROMPT 761 Polish->Release gate-check `FAIL` (0/13 required
+  artefacts present) referencing
+  `production/gate-checks/gate-polish-release-2026-05-12.md`. Verified in
+  Sprint 10 Headline + the standing non-retry warning.
+- AC6 — Records the Sprint 10 story / evidence map across Must Have
+  (S10-PAW-001 sub-rolling PAW-002..PAW-006, S10-TD-001, S10-TD-002,
+  S10-CARRY-001, S10-POLISH-001, S10-POLISH-002), Should Have
+  (S10-POLISH-003, S10-TD-003 deferred, ECO-004), and Nice to Have
+  (S10-N1 deferred, S10-N2 deferred) with integration commits and
+  primary evidence paths. Verified in Per-Story Status tables +
+  PAW-002..PAW-006 sub-table + Evidence File Map.
+- AC7 — Records the three Sprint 10 deferred items (S10-TD-003, S10-N1,
+  S10-N2) and their Sprint 11 carry IDs (`S11-DOC-HYGIENE-CARRY-001`,
+  `S11-EVIDENCE-INDEX-CARRY-001`, `S11-ROUTE-READABILITY-CARRY-001`).
+  Verified in the Deferred Items table.
+- AC8 — Preserves carried conditions unchanged: S8-QA-001-W1 OPEN,
+  QA-COND-0005 accepted-risk, QA-COND-0006 accepted-risk / deferred,
+  11 ignored D-5 tests, HUD timer eyeball deferred, placeholder /
+  friend-game art scope `PAW-TD-*-a` accept-risk. Verified in the
+  Carried Conditions table.
+- AC9 — Preserves friend-game-lite non-claims: no public release / no
+  release-candidate / no full-game / no broad / Standard-tier
+  accessibility / no playtest / fun-hypothesis / no full
+  playable-client manual-QA / no final-art / no asset-production
+  completion. Verified in the Non-Claims section.
+
+Files mutated by PROMPT 781:
+
+- `production/sprint-status.yaml` — `S11-EVIDENCE-INDEX-CARRY-001` row
+  `status: ready -> done`; `completed: "2026-05-13"`; appended PROMPT 781
+  /story-done verdict note preserving AC verification and every non-claim.
+- `production/session-state/active.md` — PROMPT 781 CURRENT-STATE banner
+  prepended above the PROMPT 780 banner; prior banners preserved as
+  HISTORICAL.
+- `production/session-state/codex-orchestrator-state.md` — current operating
+  rules updated; this PROMPT 781 disposition section prepended above the
+  PROMPT 780 disposition section.
+
+Forbidden / not-run by PROMPT 781: `/dev-story`, `/story-readiness`,
+`/smoke-check`, `/team-qa`, `/gate-check`, `/qa-plan`. PROMPT 781 did NOT
+modify production code under `client/` / `server/` / `shared/` / `tests/`,
+did NOT modify `production/stage.txt`, did NOT modify `production/sprints/sprint-11.md`,
+did NOT modify `.claude/settings.json`, did NOT modify `reports/`, did NOT
+modify `.octogent/`, did NOT modify `.claude/scheduled_tasks.lock`, did NOT
+modify `.gitignore`. No public release claim. No release-candidate claim. No
+full-game-completion claim. No broad / Standard-tier accessibility-completion
+claim. No playtest / fun-hypothesis validation claim. No full playable-client
+manual-QA claim. No final-art / asset-production-completion claim. No Sprint
+10 close-out disposition modified. No Sprint 11 close-out claim. No retry of
+the Polish->Release gate-check.
+
+Sprint 11 Must Have status after PROMPT 781: 2/6 `done`
+(`S11-DOC-HYGIENE-CARRY-001`, `S11-EVIDENCE-INDEX-CARRY-001`), 4/6 `ready`
+(`S11-DRAG-RUNTIME-RETEST-001`, `S11-TD-FIXTURE-HAND-UI-ONENTER-001`,
+`S11-TD-IGNORED-D5-TRIAGE-001`, `S11-ROUTE-READABILITY-CARRY-001`). All
+carried conditions preserved unchanged (S8-QA-001-W1 OPEN, QA-COND-0005
+accepted-risk, QA-COND-0006 accepted-risk / deferred, 11 ignored D-5 tests
+from smoke retry-7 W1, HUD timer eyeball deferred, placeholder / friend-game
+art scope PAW-TD-*-a accept-risk).
 
 ### PROMPT 780 /story-done Disposition — S11-DOC-HYGIENE-CARRY-001 (2026-05-13)
 
