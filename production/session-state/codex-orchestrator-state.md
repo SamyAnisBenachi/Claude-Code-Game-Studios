@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-13 (PROMPT 789 — /story-done for S11-TD-IGNORED-D5-TRIAGE-001)
+Updated: 2026-05-13 (PROMPT 790 — Sprint 11 smoke check, verdict PASS-WITH-WARNINGS)
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -21,7 +21,14 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@1d96281`, stage `Polish`,
+- Current verified state at this update: `origin/main@18758b2` (PROMPT 789
+  `/story-done` for `S11-TD-IGNORED-D5-TRIAGE-001`; PROMPT 790 pushes a smoke
+  evidence commit on top — verdict **PASS-WITH-WARNINGS**, 1129 passed / 0
+  failed / 5 ignored, 5 ignored == the 5 Cluster B retained D-5 tests
+  documented at `production/qa/evidence/sprint-11-ignored-d5-triage.md`,
+  evidence at `production/qa/smoke-sprint-11-2026-05-13.md`. Sprint 11 NOT
+  closed by PROMPT 790; no `/gate-check` retry; no `/team-qa` re-run; no
+  QA sign-off; no release claim), stage `Polish`,
   Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
   status `active` (PROMPT 773, 2026-05-13) as a Polish-stage sprint
   (`2026-06-04 -> 2026-06-17`) with plan at `production/sprints/sprint-11.md`
@@ -109,6 +116,107 @@ Current next move:
   pulled into active scope and closed or explicitly deferred, and only
   after a Sprint 11 smoke + QA sign-off + (if release is asserted)
   Polish->Release gate-check retry.
+
+### PROMPT 790 Sprint 11 smoke check — verdict PASS-WITH-WARNINGS (2026-05-13)
+
+Sprint 11 Polish / friend-game smoke check executed on root checkout (no
+worktree) against `origin/main@18758b2` (PROMPT 789 integration tip
+`story-done(s11): close ignored D-5 triage`). Evidence written at
+`production/qa/smoke-sprint-11-2026-05-13.md`. This is a Polish-stage smoke
+check only — **NOT** a `/gate-check`, **NOT** a `/team-qa` run, **NOT** a
+`/release-check`, **NOT** a QA sign-off, **NOT** a Sprint 11 close-out.
+
+#### Preflight
+
+- `git fetch origin` OK.
+- `git rev-parse HEAD` == `git rev-parse origin/main` ==
+  `18758b25df209fa03cf9c0ba5237c7577ef33f8e`.
+- `git status --short` shows pre-existing ` M .claude/settings.json` only.
+  PROMPT 790 preserved this unstaged modification untouched per the
+  operating contract (the file is **not** staged, **not** committed).
+- D: free space ~222 GB / 1.3 TB (`df -h /d`). Sufficient for the workspace
+  test suite. No `BLOCKED-DISK` reached.
+
+#### Commands and results
+
+| Command | Verdict |
+|---|---|
+| `cargo fmt --check` | PASS — exit 0, no output |
+| `cargo check --workspace` | PASS — `Finished \`dev\` profile [optimized + debuginfo] target(s) in 1m 15s` |
+| `cargo test --workspace --tests --no-fail-fast` | PASS-WITH-WARNINGS — aggregated **1129 passed / 0 failed / 5 ignored** across 189 binaries |
+| `git diff --check` | informational CRLF advisory on `.claude/settings.json` only (not a whitespace error) |
+| `git diff --cached --check` | empty (no staged changes) |
+
+#### Ignored-test reconciliation (5 == documented Cluster B)
+
+The 5 ignored tests reported by `cargo test --workspace --tests` exactly
+match the 5 Cluster B retained D-5 tests documented at
+`production/qa/evidence/sprint-11-ignored-d5-triage.md` lines 30-32 and
+96-103:
+
+1. `tests/integration/board_rendering/ghost_preview_bridge_test.rs ::
+   br_8e_board_ghost_pointer_messages_leave_ghost_owned_by_hand_ui`
+   (Cluster B1 — board `GhostDragStartEvent` producer fixture gap).
+2. `tests/integration/board_rendering/snapshot_spawn_test.rs ::
+   test_snapshot_rebuild_clears_stale_visuals_and_spawns_snapshot_units_and_objectives`
+   (Cluster B2 — HUD `snapshot.phase` bridge fixture gap).
+3. `tests/integration/playable_client/native_operator_controls_test.rs ::
+   test_lobby_buttons_drive_create_join_slot_class_and_confirm_commands`
+   (Cluster B3 — lobby `ConfirmClass` after `SelectClass` intent chain).
+4. `tests/unit/board_rendering/status_icons_test.rs ::
+   test_cooccupancy_index_two_panics_with_offending_index`
+   (Cluster B4 — `co_occupancy_offset` panic-guard drift).
+5. `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs ::
+   shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes`
+   (Cluster B5 — `ShopAuctionUiEntity` count drift).
+
+No undocumented ignored test surfaced; no regression on the Cluster A
+(resolved by `S11-TD-FIXTURE-HAND-UI-ONENTER-001`) tests — those run and
+pass in the workspace aggregate (1129 passed).
+
+#### Verdict justification
+
+Per `/smoke-check` skill verdict rules: automated test suite ran cleanly
+with zero failures; remaining ignored tests are owner-named with landed
+triage disposition. Verdict = **PASS-WITH-WARNINGS** (warning = the 5
+documented D-5 ignored tests, not a regression).
+
+#### Files changed by PROMPT 790
+
+- `production/qa/smoke-sprint-11-2026-05-13.md` (NEW — Sprint 11 smoke
+  evidence; the only artifact this prompt produces under `production/qa/`).
+- `production/session-state/active.md` (PROMPT 790 banner prepended).
+- `production/session-state/codex-orchestrator-state.md` (operating-rules
+  `Current verified state` updated; this PROMPT 790 disposition section
+  prepended above PROMPT 789).
+- `reports/PROMPT-790.md` (mandatory final report; **not** staged or
+  committed).
+
+Explicitly **not** touched: `.claude/settings.json`, `client/`, `server/`,
+`shared/`, `tests/`, `production/sprint-status.yaml`, `production/stage.txt`,
+`production/sprints/sprint-11.md`,
+`production/qa/evidence/sprint-11-ignored-d5-triage.md`, any other
+`reports/` file.
+
+#### Sprint 11 disposition
+
+- Sprint 11 remains `active` (Polish-stage). All 6 Must Have rows remain
+  `done` per PROMPTs 780 / 781 / 783 / 785 / 786 / 789.
+- Stage remains `Polish`. PROMPT 761 Polish->Release gate `FAIL` preserved.
+  No retry.
+- Sprint 10 disposition unchanged (`closed-with-conditions` per PROMPT
+  763).
+- PROMPT 790 does **NOT** close Sprint 11. The 5 retained Cluster B
+  ignored tests remain open as future stories / decision gates.
+
+#### Non-claims (preserved)
+
+No public release readiness, no release-candidate readiness, no full game
+completion, no broad / Standard-tier accessibility completion
+(`QA-COND-0005` unchanged), no playtest / fun-hypothesis validation
+(`QA-COND-0006` unchanged), no full playable-client manual QA
+(`S8-QA-001-W1` unchanged), no final-art / asset-production completion
+(`PAW-TD-*-a` accept-risk preserved), no Sprint 11 close-out.
 
 ### PROMPT 789 /story-done Disposition — S11-TD-IGNORED-D5-TRIAGE-001 (2026-05-13)
 
