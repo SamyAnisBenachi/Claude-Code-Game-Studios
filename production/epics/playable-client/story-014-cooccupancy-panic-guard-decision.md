@@ -2,7 +2,7 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001
-> **Status**: Draft -- Sprint 12 draft Must Have (Cluster B4); NOT activated
+> **Status**: In Progress -- Sprint 12 Must Have (Cluster B4); Path B decision recorded by PROMPT 800 (decision-recording commit precedes code-change commit)
 > **Layer**: Tech Debt / Production Invariant -- Binary Design Decision
 > **Type**: Decision-first (test-only by default; production-code change only
 > under explicit Path A with a written design write-up)
@@ -188,40 +188,116 @@ The implementation prompt MUST record exactly one of the following
 before any code change is staged. **Both paths require a written
 rationale in this story file.**
 
-- [ ] **Path A -- Restore panic-guard in production**.
+- [ ] **Path A -- Restore panic-guard in production**. **NOT CHOSEN.**
   - Production rationale (mandatory, before code change):
-    _<implementation prompt fills in: e.g., upstream caller invariant
-    is `unit_index < N`; debug-build fail-fast is the established
-    pattern for presentation invariants; silent overflow risks
-    visual misalignment that is hard to diagnose>_
+    _N/A -- Path A explicitly NOT chosen. Restoring the panic would
+    crash the production renderer when 3+ allied units stack on the
+    same board cell, which is a recoverable visual condition rather
+    than a programmer-error invariant. The presentation-layer
+    contract (ADR-021) prefers non-fatal degradation over hard
+    panics in the snapshot-rendering hot path._
   - Production change shape:
-    `client/src/ui/board/<module>.rs` -- re-add
-    `assert!(unit_index < N, "unit_index={unit_index}")` (or
-    equivalent) at the entry of `co_occupancy_offset`. Test is
-    re-armed as `#[should_panic(expected = "unit_index=2")]` without
-    `#[ignore]`.
+    _N/A -- no production code change under Path A. (Reference
+    shape, for the record: `client/src/presentation/board_rendering.rs`
+    -- re-add `assert!(unit_index < 2, "unit_index={unit_index}")` at
+    the entry of `co_occupancy_offset`; re-arm test with
+    `#[should_panic(expected = "unit_index=2")]` and remove
+    `#[ignore]`.)_
 
-- [ ] **Path B -- Test rewritten to assert non-panic behaviour**.
-  - Production rationale (mandatory, before test rewrite):
-    _<implementation prompt fills in: e.g., caller bounds-check is
-    now performed upstream at the status-icon spawn site;
-    `co_occupancy_offset` is now total over the input domain (returns
-    a sentinel offset for out-of-range indices); silent overflow is
-    no longer a risk because the upstream check fail-fasts earlier
-    in the pipeline>_
+- [x] **Path B -- Test rewritten to assert non-panic behaviour**. **CHOSEN.**
+  - Production rationale (mandatory, before test rewrite -- recorded
+    at PROMPT 800 decision-recording commit, before the test rewrite
+    commit):
+    - **(a) Where the upstream bounds-check now lives.** The sole
+      caller of `co_occupancy_offset` is
+      `snapshot_co_occupancy_offsets` at
+      `client/src/presentation/board_rendering.rs:1888-1927`. That
+      caller already enforces an upstream invariant:
+      `assert!(index <= u8::MAX as usize, "F3 co-occupancy:
+      unit_index={} > 255 - invalid co-occupancy state", index)` at
+      `client/src/presentation/board_rendering.rs:1917-1921`. This
+      upstream assertion bounds the input domain of
+      `co_occupancy_offset` to fit in `u8` (i.e. the parameter
+      type's own invariant is preserved). Beyond that, the function
+      is intentionally defined as **total over its `u8` input
+      domain**: every `u8` value maps to a defined `f32` offset.
+    - **(b) What `co_occupancy_offset(2, ..)` now returns.** The
+      function `client/src/presentation/board_rendering.rs:1929-1938`
+      reads:
+      ```rust
+      pub fn co_occupancy_offset(unit_index: u8, side_offset: f32) -> f32 {
+          if unit_index > 1 {
+              warn!(
+                  "co_occupancy_offset: unit_index {} out of range, clamping to 1",
+                  unit_index
+              );
+          }
+          let index = unit_index.min(1);
+          (f32::from(index) - 0.5) * side_offset
+      }
+      ```
+      For `unit_index = 2` (and any `unit_index >= 2`) the function
+      emits a `warn!` diagnostic and clamps to `1`, returning
+      `(1.0 - 0.5) * side_offset = 0.5 * side_offset`. For
+      `side_offset = 8.0` (the test's call site), the return value
+      is exactly `4.0`.
+    - **(c) Why silent overflow is no longer a risk.** Two layers
+      defend against silent visual mis-alignment:
+      1. **Diagnostic visibility.** The `warn!` macro is wired
+         through Bevy's `bevy::log` subscriber (env-filter
+         `client=info` and above in dev / `server::game=debug` in
+         test harnesses). When 3+ allied units co-occupy a cell,
+         the warning surfaces in the log stream and is observable
+         in CI logs and developer consoles. This is the same
+         visibility profile that the previous panic provided in
+         debug builds, minus the crash.
+      2. **Clamp semantics.** The clamp deliberately overlaps the
+         third+ unit with the second-unit visual offset. This is
+         the **safe visual fallback** for an inherently 2-slot
+         layout: an extra unit at the same cell renders on top of
+         an existing slot rather than at an undefined offset
+         outside the cell. The cell-layout invariant in
+         `design/gdd/board-rendering.md` (TR-BR-007 co-occupancy
+         visual offsets) does NOT specify behaviour for >2
+         co-occupants, so overlap is the correct degradation.
+    - **(d) Why this is the right shape for the presentation
+      layer.** ADR-021 (Presentation Layer Architecture)
+      authoritative state lives on the server snapshot; the
+      presentation layer renders a derived view. A panic in the
+      snapshot-rendering path would crash the client on a *visual*
+      anomaly that does not affect game state. The current
+      warn+clamp shape is the ADR-021-aligned degradation: non-fatal
+      visual rendering with a diagnostic trail.
+    - **(e) Historical disposition.** The panic-guard was
+      intentionally replaced with warn+clamp in commit
+      `ac9305b07764038611f4a62e79c018e072d41002` on 2026-05-08
+      (`fix(board_rendering): observer refactor + Pointer<Click>/Press
+      to On<> + co_occupancy clamp + BoardRenderingConfig threading +
+      ADR-021 PresentationSet::MessageDrain`). That commit's
+      production change shape (warn+clamp) is the established
+      disposition; PROMPT 750 D-5 ignored the test pending the
+      written design write-up; PROMPT 800 records the write-up here
+      and updates the test to match the disposition.
   - Test rewrite shape:
     `tests/unit/board_rendering/status_icons_test.rs` -- rewrite
     `test_cooccupancy_index_two_panics_with_offending_index` to
-    `test_cooccupancy_index_two_returns_expected_offset` (or
-    equivalent canonical name); remove `#[should_panic]`; assert the
-    current production return value. Remove `#[ignore]`.
+    `test_cooccupancy_index_two_clamps_to_second_slot_offset` (or
+    equivalent canonical name); remove `#[should_panic(expected =
+    "unit_index=2")]`; remove `#[ignore = "PROMPT 750 D-5: ..."]`.
+    Assert that `co_occupancy_offset(2, 8.0)` returns `4.0`
+    (i.e. `0.5 * side_offset`), matching the production clamp
+    behaviour. Also assert that `co_occupancy_offset(0, 8.0)` and
+    `co_occupancy_offset(1, 8.0)` return `-4.0` and `4.0`
+    respectively, to lock the 2-slot canonical layout alongside the
+    >=2 clamp.
 
 The decision is binary; both paths are acceptable IFF the rationale is
-captured. The unchecked path must be explicitly marked NOT chosen.
+captured. The unchecked path is explicitly marked NOT chosen.
 
 **The `#[should_panic]` invariant may NOT be silently deleted without
 this written rationale.** This is the hard constraint of Cluster B4
-disposition.
+disposition. Under Path B (chosen), the rationale above is committed
+*before* the test rewrite lands.
 
 ---
 
@@ -552,3 +628,13 @@ prompt, not for the worker:
   (`/sprint-plan sprint-12`). No code changes, no smoke / gate / QA /
   `/dev-story` / `/story-done` / `/story-readiness` / `/qa-plan` run.
   Source-of-truth at authoring: `origin/main@f72cc60`.
+- 2026-05-14 -- PROMPT 800 -- `/dev-story` Wave 1 (decision +
+  rationale). Path B chosen and rationale recorded above before any
+  code change. This commit lands the decision + rationale only;
+  the test-rewrite commit follows in Wave 2. Source-of-truth at
+  decision time: `origin/main@b5eef0d` (PROMPT 799 Sprint 12 QA plan
+  authoring commit). Worker branch `work/s11-cooccupancy-panic-guard-decision`.
+  No production code under `client/`, `server/`, `shared/` is
+  modified by this commit. `production/sprint-status.yaml`,
+  `production/sprints/sprint-12.md`, `production/stage.txt`, and
+  all `production/session-state/*` files are NOT modified.
