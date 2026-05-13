@@ -21,7 +21,7 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@d7f4103`, stage `Polish`,
+- Current verified state at this update: `origin/main@a8af79a`, stage `Polish`,
   Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
   status `active` (PROMPT 773, 2026-05-13) as a Polish-stage sprint
   (`2026-06-04 -> 2026-06-17`) with plan at `production/sprints/sprint-11.md`
@@ -33,8 +33,9 @@ Current source of truth:
   `d3ee8df`); `/story-done` ran for `S11-DOC-HYGIENE-CARRY-001` in PROMPT
   780 (2026-05-13), for `S11-EVIDENCE-INDEX-CARRY-001` in PROMPT 781
   (2026-05-13), for `S11-DRAG-RUNTIME-RETEST-001` in PROMPT 783
-  (2026-05-13), and for `S11-TD-FIXTURE-HAND-UI-ONENTER-001` in
-  **PROMPT 785 (2026-05-13)**, flipping those four rows from `ready` to
+  (2026-05-13), for `S11-TD-FIXTURE-HAND-UI-ONENTER-001` in PROMPT 785
+  (2026-05-13), and for `S11-ROUTE-READABILITY-CARRY-001` in
+  **PROMPT 786 (2026-05-13)**, flipping all five rows from `ready` to
   `done`. PROMPT 778 /dev-story (2026-05-13) authored the drag-runtime
   evidence + follow-on diagnostic story at worker commit `0fc05c3` with
   disposition `PASS-CANNOT-REPRODUCE`; PROMPT 782 (2026-05-13) integrated
@@ -43,10 +44,12 @@ Current source of truth:
   worker branch `work/s11-hand-ui-onenter-fixture-repair`; PROMPT 784
   (2026-05-13) integrated the worker to `main` at commit `d7f4103`
   (+1129 passed / -6 ignored at worker workspace; +390 passed / 0 failed
-  / 5 ignored at PROMPT 784 client-crate verification). The remaining
-  paperwork carry
-  (`S11-ROUTE-READABILITY-CARRY-001`) remains `ready` pending its own
-  `/story-done` prompt. The follow-on diagnostic story
+  / 5 ignored at PROMPT 784 client-crate verification). All three Sprint
+  11 Must Have paperwork carries are now closed; the remaining Sprint 11
+  Must Have row (`S11-TD-IGNORED-D5-TRIAGE-001`) has no story file yet —
+  per-test triage doc target path is
+  `production/qa/evidence/sprint-11-ignored-d5-triage.md`. The follow-on
+  diagnostic story
   `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`
   is on `main` at `0fc05c3` but not yet activated into Sprint 11 active
   scope (separate `/sprint-plan sprint-11 --add story-019` prompt
@@ -59,11 +62,10 @@ Current next move:
 - Sprint 11 is ACTIVE as of PROMPT 773 (2026-05-13) as a Polish-stage
   sprint (`2026-06-04 -> 2026-06-17`). See `production/sprints/sprint-11.md`
   and `production/sprint-status.yaml` `sprint_11_activation:` block plus the
-  `stories:` block (16 Sprint 11 rows). Sprint 11 paperwork carries
-  (`S11-DOC-HYGIENE-CARRY-001`, `S11-EVIDENCE-INDEX-CARRY-001`,
-  `S11-ROUTE-READABILITY-CARRY-001`) have outstanding deliverables landed on
-  `main` (`0d19690` / `348084b` / `d3ee8df`); each row is `ready`, NOT
-  `done` — `/story-done` pending per no-invent-closure rule.
+  `stories:` block (16 Sprint 11 rows). All three Sprint 11 Must Have
+  paperwork carries (`S11-DOC-HYGIENE-CARRY-001`,
+  `S11-EVIDENCE-INDEX-CARRY-001`, `S11-ROUTE-READABILITY-CARRY-001`) are
+  now closed (`done`) by PROMPTs 780 / 781 / 786 respectively.
 - Preserve the PROMPT 761 Release gate failure and all carried risks.
 - Do not retry `Polish->Release` until release-scope artifacts exist.
 - Next launchable prompts (Sprint 11 QA plan on `main` per PROMPT 774;
@@ -72,18 +74,150 @@ Current next move:
   `S11-DRAG-RUNTIME-RETEST-001` closed by PROMPT 783 with
   `PASS-CANNOT-REPRODUCE` disposition;
   `S11-TD-FIXTURE-HAND-UI-ONENTER-001` closed by PROMPT 785 with
-  `PASS` disposition):
-  (1) `/story-done` on the remaining landed paperwork carry
-  (`S11-ROUTE-READABILITY-CARRY-001`) as a separate prompt; (2) `/dev-story`
-  or `/story-readiness` against `S11-TD-IGNORED-D5-TRIAGE-001` (no story
-  file yet — Sprint 11 QA plan path is the triage doc at
+  `PASS` disposition;
+  `S11-ROUTE-READABILITY-CARRY-001` closed by PROMPT 786):
+  (1) `/dev-story` or `/story-readiness` against
+  `S11-TD-IGNORED-D5-TRIAGE-001` (no story file yet — Sprint 11 QA plan
+  path is the triage doc at
   `production/qa/evidence/sprint-11-ignored-d5-triage.md`; the 6 cluster
-  rows from this story are now closed and folded into the triage as
-  resolved); (3) `/sprint-plan sprint-11 --add story-019` to activate the
-  follow-on diagnostic story
+  rows formerly under `S11-TD-FIXTURE-HAND-UI-ONENTER-001` are now closed
+  and folded into the triage as resolved); (2) `/sprint-plan sprint-11
+  --add story-019` to activate the follow-on diagnostic story
   `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`
-  into Sprint 11 active scope (separate prompt); (4) story file authoring
+  into Sprint 11 active scope (separate prompt); (3) story file authoring
   for Should Have / Nice to Have rows if pulled into active scope.
+
+### PROMPT 786 /story-done Disposition — S11-ROUTE-READABILITY-CARRY-001 (2026-05-13)
+
+Authoritative Sprint 11 row `S11-ROUTE-READABILITY-CARRY-001` closed by
+`/story-done` in PROMPT 786. Source-of-truth at run: `origin/main@a8af79a`
+(PROMPT 785 integration commit `story-done(s11): close hand-ui OnEnter fixture
+repair`). Deliverable shipped at commit `d3ee8df` via PROMPT 772 (2026-05-13).
+
+PROMPT 786 is paperwork-only `/story-done`-equivalent closure for a row that
+has no standalone story file by design; closure runs against
+`production/sprints/sprint-11.md` + `production/sprint-status.yaml` + the
+landed evidence at `production/qa/evidence/sprint-10-route-readability-notes.md`.
+No worker spawned. No worktree opened. Root checkout only.
+
+#### Deliverable provenance
+
+- PROMPT 772 (2026-05-13): authored
+  `production/qa/evidence/sprint-10-route-readability-notes.md` at integration
+  commit `d3ee8df`. Sprint 11 draft Must Have paperwork carry of deferred
+  Sprint 10 nice-to-have `S10-N2` per PROMPT 763 close-out and PROMPT 764
+  Sprint 11 draft plan. Concise rough-edge readability observations for the
+  friend-game route; explicitly does **not** activate Sprint 11, mutate
+  `production/sprint-status.yaml`, mutate `production/sprints/sprint-11.md`,
+  or claim closure of any carried condition.
+- PROMPT 773 (2026-05-13): activated Sprint 11 with this row marked `ready`
+  (not `done`) per the no-invent-closure rule.
+
+#### Story acceptance-criterion verification (read-only against `origin/main@a8af79a`)
+
+- **AC1 — evidence file exists**: `production/qa/evidence/sprint-10-route-readability-notes.md`
+  is on `main` at `d3ee8df` (PROMPT 772 commit).
+- **AC2 — all eight friend-game routes covered**: Route 1 Lobby (4 rows),
+  Route 2 Hand / Drag (3 rows), Route 3 Draft Grid / DRAFT_INITIAL (2 rows),
+  Route 4 Shop / DRAFT_SHOP (3 rows), Route 5 Auction / DRAFT_AUCTION
+  (3 rows), Route 6 Board / Placement + Resolution (3 rows), Route 7
+  HUD / Timer (4 rows), Route 8 Result / Close-Out (3 rows).
+- **AC3 — every observation classified**: classifications cover
+  `already-tracked` (cross-references to existing Sprint 11 backlog rows),
+  `future-story-candidate` (new slugs without a story file),
+  `accepted-risk-friend-game` (explicit out-of-scope rows), and a `scope
+  guard` Cross-Route Notes section calling out final-art accept-risk under
+  `PAW-TD-*-a`.
+- **AC4 — Non-Claims section explicit at lines 30-46**: public release
+  readiness NOT claimed, release-candidate readiness NOT claimed, full game
+  completion NOT claimed, broad / Standard-tier accessibility completion
+  NOT claimed (`QA-COND-0005` remains accepted-risk friend-game scope),
+  playtest / fun-hypothesis validation NOT claimed (`QA-COND-0006` remains
+  accepted-risk / deferred), full playable-client manual QA NOT claimed,
+  full manual / browser two-client GAME_OVER route NOT claimed
+  (`S8-QA-001-W1` remains OPEN), final-art / asset-production completion
+  NOT claimed (`PAW-TD-*-a` accept-risk preserved across PAW-002..PAW-006),
+  Sprint 11 activation NOT claimed (PROMPT 772 ran before PROMPT 773
+  activation), closure of any existing Sprint 10 carry or Sprint 11 row
+  NOT claimed.
+- **AC5 — no row authorises immediate implementation**: every
+  `future-story-candidate` slug explicitly requires its own story file +
+  `/story-readiness` in a separate prompt before `/dev-story` can begin
+  (file lines 173-178 + § Authoring Disposition).
+- **AC6 — Sprint 11 disposition preserved**: `production/sprints/sprint-11.md`
+  untouched by PROMPT 786; `production/stage.txt` unchanged (`Polish`);
+  the underlying evidence file itself untouched by PROMPT 786 (closure
+  paperwork only on top of the `d3ee8df` deliverable).
+
+#### Files changed by PROMPT 786
+
+- `production/sprint-status.yaml`:
+  - `S11-ROUTE-READABILITY-CARRY-001` row flipped `status: ready` → `status: done`.
+  - `completed: ""` → `completed: "2026-05-13"`.
+  - PROMPT 786 /story-done verdict note appended to `notes:`.
+  - Top-of-file `updated:` annotation refreshed.
+- `production/session-state/active.md`: PROMPT 786 banner prepended; PROMPT
+  785 banner demoted to `PRIOR CURRENT STATE`.
+- `production/session-state/codex-orchestrator-state.md`: `Current verified
+  state` updated (HEAD `d7f4103` → `a8af79a`, PROMPT 785 → PROMPT 786,
+  five rows closed); `Current next move` `Next launchable prompts` list
+  updated; this PROMPT 786 disposition section prepended above PROMPT 785.
+- `reports/PROMPT-786.md`: mandatory final report file (NOT staged or
+  committed).
+
+#### Working-tree state PROMPT 786 inherited
+
+- `.claude/settings.json` was already modified in the working copy at PROMPT
+  786 start; PROMPT 786 did NOT touch this file and explicitly excluded it
+  from the staged set. The modification carries over outside the PROMPT 786
+  commit.
+
+#### Paperwork-only — explicit non-actions
+
+PROMPT 786 did NOT:
+
+- run `/dev-story`, `/story-readiness`, `/smoke-check`, `/team-qa`,
+  `/gate-check`, sprint close-out, or release-check;
+- modify production code under `client/`, `server/`, `shared/`, `tests/`;
+- modify `production/sprints/sprint-11.md`, `production/stage.txt`,
+  `production/qa/evidence/sprint-10-route-readability-notes.md`,
+  `.claude/settings.json`, `.claude/scheduled_tasks.lock`, `.octogent/`,
+  `.gitignore`, or any `reports/` file other than `reports/PROMPT-786.md`;
+- mutate Sprint 10 close-out disposition (`closed-with-conditions` per
+  PROMPT 763 preserved unchanged under `sprint_10_closeout:`);
+- claim public release readiness, release-candidate readiness, full game
+  completion, broad / Standard-tier accessibility completion, playtest /
+  fun-hypothesis validation, full playable-client manual QA, or final-art /
+  asset-production completion;
+- claim closure of `QA-COND-0005`, `QA-COND-0006`, `S8-QA-001-W1`, or any
+  other carried condition;
+- retry the PROMPT 761 Polish→Release gate-check.
+
+#### Sprint 11 Must Have status after PROMPT 786
+
+- **done**: `S11-DOC-HYGIENE-CARRY-001` (PROMPT 780),
+  `S11-EVIDENCE-INDEX-CARRY-001` (PROMPT 781),
+  `S11-DRAG-RUNTIME-RETEST-001` (PROMPT 783),
+  `S11-TD-FIXTURE-HAND-UI-ONENTER-001` (PROMPT 785),
+  `S11-ROUTE-READABILITY-CARRY-001` (PROMPT 786).
+- **ready**: `S11-TD-IGNORED-D5-TRIAGE-001` (no story file yet; per-test
+  triage doc target path is
+  `production/qa/evidence/sprint-11-ignored-d5-triage.md`).
+
+#### Carried forward unchanged by PROMPT 786
+
+- `S8-QA-001-W1` manual/browser two-client GAME_OVER gap (OPEN).
+- `QA-COND-0005` Standard-tier accessibility (accepted-risk friend-game scope).
+- `QA-COND-0006` playtest / fun-hypothesis validation (accepted-risk / deferred).
+- 5 remaining ignored D-5 tests from smoke retry-7 W1 (folded into
+  `S11-TD-IGNORED-D5-TRIAGE-001`).
+- HUD timer eyeball visual check (W2; folded into
+  `S11-HUD-TIMER-EYEBALL-VISUAL-001`).
+- Placeholder / friend-game art scope (`PAW-TD-*-a` accept-risk on
+  placeholder PNGs across PAW-002..PAW-006).
+- PROMPT 683-era runtime divergence question preserved unchanged for
+  follow-on story 019 (`production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`,
+  on `main` at `0fc05c3`, not yet activated into Sprint 11 active scope).
 
 ### PROMPT 785 /story-done Disposition — S11-TD-FIXTURE-HAND-UI-ONENTER-001 (2026-05-13)
 
