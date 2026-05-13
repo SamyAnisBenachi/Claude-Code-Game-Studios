@@ -4,7 +4,7 @@
 > **GDD**: Sprint 7 playable path traced to game-session-system, network-protocol, card-acquisition, hand-ui, shop-auction-ui, hud, board-rendering, and round-state-machine GDDs
 > **Architecture Module**: `client/src/main.rs`, `client/src/network/`, `client/src/state/`, `client/src/presentation/`, `client/src/ui/`, plus server message bridges in `server/src/network/` and owning server systems
 > **Status**: Ready
-> **Stories**: 8 Sprint 7/8 must-have stories, backlog prep stories, Sprint 9 evidence-prep stories, Sprint 10 tech-debt stories, and Sprint 11 draft tech-debt stories
+> **Stories**: 8 Sprint 7/8 must-have stories, backlog prep stories, Sprint 9 evidence-prep stories, Sprint 10 tech-debt stories, Sprint 11 draft tech-debt stories, and Sprint 12 draft Must Have tech-debt / decision stories (Cluster B2/B3/B4 + B1+B5 umbrella)
 
 ## Overview
 
@@ -107,6 +107,10 @@ The epic does not create public release readiness, broad accessibility completio
 | 009 | [Test-Fixture Cascade-Fail Repair](story-009-test-fixture-cascade-fail-repair.md) | Integration | Complete | S10-TD-001 |
 | 010 | [Plugin Registration Audit](story-010-plugin-registration-audit.md) | Integration | See story | S10-TD-002 |
 | 011 | [Hand UI `OnEnter(InSession)` Fixture-Cascade Repair](story-011-hand-ui-onenter-fixture-repair.md) | Integration | Draft - Sprint 11 draft Must Have, NOT activated | S11-TD-FIXTURE-HAND-UI-ONENTER-001 |
+| 012 | [HUD Snapshot Phase Bridge -- Fixture Cleanup + Design Decision](story-012-fixture-hud-snapshot-phase-bridge.md) | Integration | Draft - Sprint 12 draft Must Have (Cluster B2), NOT activated | S11-TD-FIXTURE-HUD-SNAPSHOT-PHASE-BRIDGE-001 |
+| 013 | [Lobby ConfirmClass Intent Chain -- Production Fix](story-013-lobby-confirm-class-intent-chain.md) | Integration | Draft - Sprint 12 draft Must Have (Cluster B3), NOT activated | S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001 |
+| 014 | [Co-occupancy Panic-Guard -- Binary Design Decision](story-014-cooccupancy-panic-guard-decision.md) | Decision-first | Draft - Sprint 12 draft Must Have (Cluster B4), NOT activated | S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001 |
+| 015 | [Fixture D Residuals -- Cluster B1 + B5 Umbrella](story-015-fixture-d-residuals.md) | Decision-first composite | Draft - Sprint 12 draft Must Have (Cluster B1 + B5 umbrella), NOT activated | S11-TD-FIXTURE-D-RESIDUALS-001 |
 
 ## Definition of Done
 
