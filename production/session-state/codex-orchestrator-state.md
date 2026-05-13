@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-13 (PROMPT 790 — Sprint 11 smoke check, verdict PASS-WITH-WARNINGS)
+Updated: 2026-05-13 (PROMPT 791 — Sprint 11 Team-QA sign-off, verdict PASS-WITH-WARNINGS / APPROVED WITH CONDITIONS)
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -21,13 +21,15 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@18758b2` (PROMPT 789
-  `/story-done` for `S11-TD-IGNORED-D5-TRIAGE-001`; PROMPT 790 pushes a smoke
-  evidence commit on top — verdict **PASS-WITH-WARNINGS**, 1129 passed / 0
-  failed / 5 ignored, 5 ignored == the 5 Cluster B retained D-5 tests
-  documented at `production/qa/evidence/sprint-11-ignored-d5-triage.md`,
-  evidence at `production/qa/smoke-sprint-11-2026-05-13.md`. Sprint 11 NOT
-  closed by PROMPT 790; no `/gate-check` retry; no `/team-qa` re-run; no
+- Current verified state at this update: `origin/main@1617352` (PROMPT 790
+  smoke evidence commit `qa(smoke): Sprint 11 smoke check`; PROMPT 791 pushes
+  a Team-QA sign-off commit on top — verdict **PASS-WITH-WARNINGS /
+  APPROVED WITH CONDITIONS**, evidence at
+  `production/qa/team-qa-sprint-11-2026-05-13.md`. Sprint 11 disposition
+  unchanged: `active` Polish-stage; 6/6 Must Have rows `done`; the 5
+  Cluster B retained D-5 ignored tests remain open as documented
+  follow-ups; Sprint 11 NOT closed by PROMPT 791; no `/gate-check` retry;
+  no smoke rerun; no `/release-check`; no Sprint 11 close-out; no
   QA sign-off; no release claim), stage `Polish`,
   Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
   status `active` (PROMPT 773, 2026-05-13) as a Polish-stage sprint
@@ -116,6 +118,100 @@ Current next move:
   pulled into active scope and closed or explicitly deferred, and only
   after a Sprint 11 smoke + QA sign-off + (if release is asserted)
   Polish->Release gate-check retry.
+
+### PROMPT 791 Sprint 11 Team-QA sign-off — verdict PASS-WITH-WARNINGS / APPROVED WITH CONDITIONS (2026-05-13)
+
+Sprint 11 Team-QA / QA sign-off executed on root checkout (no worktree)
+against `origin/main@1617352` (PROMPT 790 smoke evidence tip
+`qa(smoke): Sprint 11 smoke check`). Evidence written at
+`production/qa/team-qa-sprint-11-2026-05-13.md`. This is a Polish-stage
+friend-game QA sign-off only — **NOT** a `/gate-check`, **NOT** a
+`/release-check`, **NOT** a Sprint 11 close-out, **NOT** a release-readiness
+claim, **NOT** a smoke rerun.
+
+#### Preflight
+
+- `git fetch origin` OK.
+- `git rev-parse HEAD` == `git rev-parse origin/main` == `1617352`.
+- `git status --short` shows pre-existing ` M .claude/settings.json` only.
+  PROMPT 791 preserved this unstaged modification untouched (not staged,
+  not committed).
+
+#### Verdict
+
+`PASS-WITH-WARNINGS` (Team-QA equivalent `APPROVED WITH CONDITIONS`).
+Recommendation: **ready for Sprint 11 close-out with conditions** — close-out
+itself is a separate orchestrator decision in a separate prompt.
+
+- All Sprint 11 Must Have rows are `done` on `origin/main@1617352` (6/6).
+- Smoke verdict `PASS-WITH-WARNINGS` (1129 passed / 0 failed / 5 ignored).
+- The 5 ignored tests match the documented Cluster B retainers in
+  `production/qa/evidence/sprint-11-ignored-d5-triage.md` (B1 board
+  `GhostDragStartEvent` producer fixture gap, B2 HUD `snapshot.phase`
+  bridge fixture gap, B3 lobby `ConfirmClass` after `SelectClass` intent
+  chain, B4 `co_occupancy_offset` panic-guard drift, B5
+  `ShopAuctionUiEntity` count drift) — each with owner-named follow-up
+  story slug or decision gate. No undocumented failure / no undocumented
+  ignored test surfaced.
+- Carried conditions preserved unchanged: `S8-QA-001-W1` OPEN,
+  `QA-COND-0005` accepted-risk friend-game scope, `QA-COND-0006`
+  accepted-risk / deferred, placeholder / friend-game art `PAW-TD-*-a`
+  accept-risk, HUD-timer eyeball check W2 deferred.
+- PROMPT 761 `Polish->Release` gate-check `FAIL` preserved at
+  `production/gate-checks/gate-polish-release-2026-05-12.md`. No retry
+  attempted.
+
+#### Conditions attached to this sign-off
+
+- **TQ-S11-C1** — Sprint 11 close-out is a separate orchestrator decision;
+  this sign-off does NOT close Sprint 11.
+- **TQ-S11-C2** — The 5 Cluster B ignored tests must be tracked as Sprint
+  12 (or later) backlog candidates; no row authorises immediate
+  implementation under this sign-off.
+- **TQ-S11-C3** — `S8-QA-001-W1` remains OPEN. Sign-off does NOT include
+  manual / browser two-client GAME_OVER evidence.
+- **TQ-S11-C4** — `QA-COND-0005` and `QA-COND-0006` remain accepted-risk /
+  deferred. Sign-off does NOT include accessibility or playtest evidence.
+- **TQ-S11-C5** — PROMPT 761 `Polish->Release` gate-check `FAIL` remains
+  preserved; do NOT retry until release-scope artefacts exist on `main`.
+- **TQ-S11-C6** — Placeholder / friend-game art scope (`PAW-TD-*-a`)
+  remains accept-risk; no final-art / asset-production-completion claim.
+
+#### Files changed by PROMPT 791
+
+- `production/qa/team-qa-sprint-11-2026-05-13.md` (NEW — Team-QA sign-off
+  evidence)
+- `production/session-state/active.md` (banner prepended)
+- `production/session-state/codex-orchestrator-state.md` (operating-rules
+  `Current verified state` updated; PROMPT 791 disposition section
+  prepended above PROMPT 790)
+- `reports/PROMPT-791.md` (mandatory final report; NOT staged or
+  committed)
+
+Explicitly NOT touched by PROMPT 791: `.claude/settings.json`,
+`client/`, `server/`, `shared/`, `tests/`, `production/sprint-status.yaml`,
+`production/stage.txt`, `production/sprints/sprint-11.md`,
+`production/qa/qa-plan-sprint-11.md`,
+`production/qa/smoke-sprint-11-2026-05-13.md`,
+`production/qa/evidence/sprint-11-ignored-d5-triage.md`,
+`production/gate-checks/gate-polish-release-2026-05-12.md`.
+
+#### Explicit non-claims
+
+- no public release readiness
+- no release-candidate readiness
+- no full game completion
+- no broad / Standard-tier accessibility completion (`QA-COND-0005`
+  unchanged)
+- no playtest / fun-hypothesis validation (`QA-COND-0006` unchanged)
+- no full playable-client manual QA (`S8-QA-001-W1` unchanged)
+- no final-art / asset-production completion (`PAW-TD-*-a` accept-risk
+  preserved)
+- no `S8-QA-001-W1` closure
+- no Polish→Release retry
+- no Sprint 11 close-out
+
+---
 
 ### PROMPT 790 Sprint 11 smoke check — verdict PASS-WITH-WARNINGS (2026-05-13)
 
