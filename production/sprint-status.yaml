@@ -538,7 +538,7 @@ next_sprint:
   qa_plan_found: false
   qa_plan_note: "No Sprint 12 QA plan exists at draft time. A Sprint 12 QA plan must be authored via /qa-plan sprint after Sprint 12 story files exist and pass /story-readiness, and before any Polish gate-check or sprint close-out claim for Sprint 12."
   must_have_draft:
-    - id: "S11-HU-DRAG-RUNTIME-TIGHTER-CAPTURE-001"
+    - id: "S11-DRAG-RUNTIME-RETEST-TIGHTER-CAPTURE-001"
       name: "Drag-and-drop runtime divergence -- tighter-capture diagnostic-only retest per story 019"
       story_file_existing: "production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md"
       story_readiness: "pending"

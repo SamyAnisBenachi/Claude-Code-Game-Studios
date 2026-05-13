@@ -84,7 +84,7 @@ Current source of truth:
   `codex-orchestrator-state.md` update). Sprint 12 disposition **NEW**:
   `draft` (Polish-stage; **NOT activated** by PROMPT 793; activation
   via `/sprint-plan sprint-12` is a separate prompt). Sprint 12 draft
-  Must Have rows (5): `S11-HU-DRAG-RUNTIME-TIGHTER-CAPTURE-001` (story
+  Must Have rows (5): `S11-DRAG-RUNTIME-RETEST-TIGHTER-CAPTURE-001` (story
   019 follow-on), `S11-TD-FIXTURE-HUD-SNAPSHOT-PHASE-BRIDGE-001` (B2),
   `S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001` (B3),
   `S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001` (B4),

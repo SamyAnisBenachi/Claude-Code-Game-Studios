@@ -120,7 +120,7 @@ completion.
 
 | ID | Task | Agent/Owner | Est. Days | Source | Acceptance Criteria (draft) |
 |----|------|-------------|-----------|--------|------------------------------|
-| S11-HU-DRAG-RUNTIME-TIGHTER-CAPTURE-001 | Drag-and-drop runtime divergence -- tighter-capture diagnostic-only retest per story 019 | client gameplay programmer + orchestrator | 1.50 | `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md` (follow-on from Sprint 11 `S11-DRAG-RUNTIME-RETEST-001` `cannot-reproduce`) | Story 019 `/story-readiness` passes; the upgraded `RUST_LOG=...,lightyear=debug,server::game=debug` invocation is exercised on a real two-client friend-game session; frame-level video captured for drag attempts A/B/C/D; S1-S5 truth-table locked at `production/qa/evidence/sprint-11-drag-runtime-evidence-tighter.md` (NEW; do **not** overwrite the story-018 evidence file) with at least one PASS/FAIL row per column; disposition is exactly one of `{bug-reproduced, bug-fixed, cannot-reproduce, third-party-limitation}`; no production code changes land inside this story (any repair commit is delegated to a follow-on story); no optimistic client-side authority introduced (ADR-002 + ADR-009 binding). Inherits story-018 / story-019 no-claim banner verbatim. |
+| S11-DRAG-RUNTIME-RETEST-TIGHTER-CAPTURE-001 | Drag-and-drop runtime divergence -- tighter-capture diagnostic-only retest per story 019 | client gameplay programmer + orchestrator | 1.50 | `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md` (follow-on from Sprint 11 `S11-DRAG-RUNTIME-RETEST-001` `cannot-reproduce`) | Story 019 `/story-readiness` passes; the upgraded `RUST_LOG=...,lightyear=debug,server::game=debug` invocation is exercised on a real two-client friend-game session; frame-level video captured for drag attempts A/B/C/D; S1-S5 truth-table locked at `production/qa/evidence/sprint-11-drag-runtime-evidence-tighter.md` (NEW; do **not** overwrite the story-018 evidence file) with at least one PASS/FAIL row per column; disposition is exactly one of `{bug-reproduced, bug-fixed, cannot-reproduce, third-party-limitation}`; no production code changes land inside this story (any repair commit is delegated to a follow-on story); no optimistic client-side authority introduced (ADR-002 + ADR-009 binding). Inherits story-018 / story-019 no-claim banner verbatim. |
 | S11-TD-FIXTURE-HUD-SNAPSHOT-PHASE-BRIDGE-001 | Cluster B2: `HudPlugin` `snapshot.phase -> CurrentClientPhase` bridge fixture gap -- design decision + repair | board-rendering test infra + HUD plugin owner + qa-lead | 0.75 | Sprint 11 D-5 triage evidence, Cluster B2 (`production/qa/evidence/sprint-11-ignored-d5-triage.md` line 84); PROMPT 762 candidate #5 | Story file authored at `production/epics/playable-client/story-XXX-fixture-hud-snapshot-phase-bridge.md` (NEW) and passes `/story-readiness`. Design decision recorded in story file: **expand `BoardRenderingPlugin`-only fixture to include `HudPlugin`** OR **relocate the `snapshot.phase -> CurrentClientPhase` assertion into a dedicated HUD test**. Test `test_snapshot_rebuild_clears_stale_visuals_and_spawns_snapshot_units_and_objectives` (`tests/integration/board_rendering/snapshot_spawn_test.rs:39`) is un-`#[ignore]`d under whichever path is chosen and passes. No production code modified outside of the test/fixture exception unless the chosen path explicitly requires it (write-up gates the production-code path). Original PROMPT 750 D-5 owner-comment removed only after the test passes. |
 | S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001 | Cluster B3: lobby `ConfirmClass` intent not emitted alongside `SelectClass` -- production fix in lobby input system | client gameplay programmer (lobby input) + ux-designer | 1.00 | Sprint 11 D-5 triage evidence, Cluster B3 (`production/qa/evidence/sprint-11-ignored-d5-triage.md` line 85); PROMPT 762 candidate #7 | Story file authored at `production/epics/playable-client/story-XXX-lobby-confirm-class-intent-chain.md` (NEW) and passes `/story-readiness`. Investigation note recorded in story file: input chain stops at `SelectClass` after the D-1 fix; reason determined. Production fix lands in lobby input system so that `ConfirmClass` intent is emitted alongside `SelectClass` (or via a follow-on production-driven event chain) -- **no client-side optimistic class-lock authority added** (ADR-002 binding). Test `test_lobby_buttons_drive_create_join_slot_class_and_confirm_commands` (`tests/integration/playable_client/native_operator_controls_test.rs:106`) is un-`#[ignore]`d and passes. Integration test asserts the two-intent chain end-to-end. |
 | S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001 | Cluster B4: `co_occupancy_offset` no longer panics on index 2 -- binary design decision | board-rendering owner + qa-lead | 0.50 | Sprint 11 D-5 triage evidence, Cluster B4 (`production/qa/evidence/sprint-11-ignored-d5-triage.md` line 86); PROMPT 762 candidate #3 | Story file authored at `production/epics/playable-client/story-XXX-cooccupancy-panic-guard-decision.md` (NEW) and passes `/story-readiness`. **Binary decision recorded in story file**: (a) panic-guard restored in production `co_occupancy_offset` with test re-armed as `#[should_panic(expected = "unit_index=2")]` OR (b) test rewritten to assert non-panic behaviour with production rationale captured. **Path (a) requires explicit production-design write-up before code change.** Resolution **must not** silently delete the `#[should_panic]` invariant without an explicit production-design write-up. Test `test_cooccupancy_index_two_panics_with_offending_index` (`tests/unit/board_rendering/status_icons_test.rs:167`) is un-`#[ignore]`d under whichever path is chosen and passes. |
@@ -152,7 +152,7 @@ completion.
 | Source row (Sprint 11) | Disposition into Sprint 12 |
 |------------------------|----------------------------|
 | Cluster B D-5 ignored tests (5/5 retained on `main`) | Each gets a dedicated Sprint 12 Must Have row OR is folded under `S11-TD-FIXTURE-D-RESIDUALS-001` umbrella (B1, B5). B2 / B3 / B4 are dedicated Must Have rows. None silently dropped. |
-| `story-019` follow-on diagnostic (`production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`; on `main` at `0fc05c3`) | Folded into `S11-HU-DRAG-RUNTIME-TIGHTER-CAPTURE-001` (Must Have). |
+| `story-019` follow-on diagnostic (`production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`; on `main` at `0fc05c3`) | Folded into `S11-DRAG-RUNTIME-RETEST-TIGHTER-CAPTURE-001` (Must Have). |
 | `S11-TD-FIXTURE-D-RESIDUALS-001` (Sprint 11 Should Have, blocked) | Pulled forward as Sprint 12 Must Have umbrella for B1 + B5 -- producer decision (umbrella vs split) recorded in the new story file. |
 | `S11-HU-PHASE-IDEMPOTENCY-001` (Sprint 11 Should Have, blocked) | Pulled forward as Sprint 12 Should Have. |
 | `S11-SERVER-POOL-INIT-LOG-GUARD-001` (Sprint 11 Should Have, blocked) | Pulled forward as Sprint 12 Should Have. |
@@ -249,7 +249,7 @@ row, the following story files must exist and pass `/story-readiness`:
 
 | Planned ID | Required story file |
 |------------|---------------------|
-| S11-HU-DRAG-RUNTIME-TIGHTER-CAPTURE-001 | `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md` (EXISTS on `main` at `0fc05c3`; `/story-readiness` pending) |
+| S11-DRAG-RUNTIME-RETEST-TIGHTER-CAPTURE-001 | `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md` (EXISTS on `main` at `0fc05c3`; `/story-readiness` pending) |
 | S11-TD-FIXTURE-HUD-SNAPSHOT-PHASE-BRIDGE-001 | `production/epics/playable-client/story-XXX-fixture-hud-snapshot-phase-bridge.md` (NEW) |
 | S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001 | `production/epics/playable-client/story-XXX-lobby-confirm-class-intent-chain.md` (NEW) |
 | S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001 | `production/epics/playable-client/story-XXX-cooccupancy-panic-guard-decision.md` (NEW) |
@@ -289,7 +289,7 @@ tracked as `blocked` by missing story docs.
   close-out paperwork) before Sprint 12 activation.
 - A local server and two real primary clients can be run for runtime
   evidence capture (browser/native) for
-  `S11-HU-DRAG-RUNTIME-TIGHTER-CAPTURE-001` (story 019) and
+  `S11-DRAG-RUNTIME-RETEST-TIGHTER-CAPTURE-001` (story 019) and
   `S11-HUD-TIMER-EYEBALL-VISUAL-001`.
 - Operator must have OBS Studio / ShareX / OS screen recorder
   (30 fps minimum; 60 fps preferred) for story 019 frame-level video
@@ -390,7 +390,7 @@ disposition (`closed-with-conditions`) is preserved unchanged under
 
 (Subject to user / producer revision before activation.)
 
-1. **`S11-HU-DRAG-RUNTIME-TIGHTER-CAPTURE-001`** (story 019) --
+1. **`S11-DRAG-RUNTIME-RETEST-TIGHTER-CAPTURE-001`** (story 019) --
    HIGH; closes the open-ended runtime divergence question carried
    over from PROMPT 683 / 696 / 697 / 698 / 706 / 709 / 778. The
    `cannot-reproduce` outcome from Sprint 11 is itself the trigger
