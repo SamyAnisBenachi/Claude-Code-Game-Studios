@@ -262,12 +262,16 @@ Prerequisites: Node 22+, git, gh, curl, Python 3.10+. PowerShell + cmd. Codex CL
 3. Attach to the host terminal in the UI, run `codex resume <session-uuid>` once if you haven't already.
 4. Work with the Codex orchestrator normally. On each turn the dispatcher detects its disposition blocks, spawns/kills/messages workers in Octogent, and workers report back to the orchestrator via channel-send (auto-submitted thanks to the bracketed-paste patch).
 5. To inspect any worker: click it in the UI to see its transcript and channel messages.
-6. **Manual report-back fallback** (for workers spawned before the dispatcher's auto-instruction, or if a worker forgets): paste this into the worker's chat as its last action. The `content` is the worker's FULL final output (the message it would have shown the user) — status line on the first line, then everything else. JSON-escape internal `"` as `\"` and newlines as `\n`:
-   ```bash
-   curl -s -X POST http://127.0.0.1:8787/api/channels/codex-orchestrator-main/messages \
-     -H 'Content-Type: application/json' \
-     --data-raw '{"fromTerminalId":"PROMPT-N","content":"<FULL WORKER FINAL OUTPUT, JSON-ESCAPED>"}'
-   ```
+6. **Manual report-back fallback** (for workers spawned before the dispatcher's auto-instruction, or if a worker forgets). Three steps — the worker (or you posing as it) must do all three:
+   1. Worker writes its full report as its normal assistant message in chat (readable Markdown — for the human watching the worker UI).
+   2. Worker mirrors the same content to `reports/PROMPT-N.md` in the project root so the orchestrator can read it.
+   3. Worker sends a single-line channel message announcing completion:
+      ```bash
+      curl -s -X POST http://127.0.0.1:8787/api/channels/codex-orchestrator-main/messages \
+        -H 'Content-Type: application/json' \
+        --data-raw '{"fromTerminalId":"PROMPT-N","content":"DONE PROMPT-N: N: TICKET-ID: STATUS // full report at reports/PROMPT-N.md"}'
+      ```
+   The single-line constraint is critical: multi-line channel content triggers Codex's paste-mode, the message lands in the orchestrator's input as `[Pasted Content N chars]`, and the `\r` auto-submit fails. Single-line short content reliably auto-submits.
 7. To force a manual dispatch action without going through the orchestrator (debug):
    ```bash
    echo "CLEAR -- PROMPT 999" | python ~/.codex/gcs-octogent-dispatch.py
@@ -338,8 +342,9 @@ toasts on.
 | Dispatcher crashes with traceback | Full traceback is captured in `~/.codex/gcs-stop-hook.log` (up to 4 KiB). The dispatcher itself never propagates exceptions, but the inbox backup or summary write can fail on weird inputs — those errors are logged and dispatch continues. |
 | Wrong terminal got killed | `terminalId` collision — the dispatcher uses `PROMPT-<N>` so two waves reusing the same N collide. Always use monotonically-increasing N (the orchestrator contract guarantees this). |
 | Vite crashes with `0xC0000409` | Almost certainly a quoting bug in your `set "OCTOGENT_WORKSPACE_CWD=..."` line, not Vite itself. Make sure `launch-inner.bat` has `set "VAR=VAL"` (mandatory quotes around the whole assignment) and **no** `setlocal`. |
-| Channel-send message stuck in orchestrator's input bar (not submitted) | `channelMessaging.ts` not patched. Re-apply the bracketed-paste + delayed `\r` patch (see §4 / §5 step 3). |
-| Worker spawns but never reports back | Worker's `initialPrompt` is missing the report-back instruction — either spawned before the dispatcher started appending it, or the worker ignored the instruction. Paste the curl manually (§6 step 6). |
+| Channel-send message stuck in orchestrator's input bar (not submitted) | Two possible causes: (a) `channelMessaging.ts` not patched — re-apply the bracketed-paste + delayed `\r` patch (see §4 / §5 step 3); (b) the channel message content has internal newlines (multi-line), which trips Codex paste-mode — keep the content single-line and put the multi-line body in a `reports/<id>.md` file instead (see §6 step 6, the 3-step protocol). |
+| Worker spawns but never reports back | Worker's `initialPrompt` is missing the 3-step report-back instruction — either spawned before the dispatcher started appending it, or the worker ignored a step. Paste the manual 3-step sequence (§6 step 6). |
+| Channel-send arrives as `[Pasted Content X chars]` and never executes | The content was multi-line — Codex treats it as paste. The Step 3 channel message must be ONE line. The full multi-line body lives in the file from Step 2. |
 | `pnpm.exe ENOENT` | `dev.mjs` not patched (step 3 above). Change `pnpm.exe` → `pnpm.cmd`, add `shell: true`. |
 | `OCTOGENT_WORKSPACE_CWD=(unset)` in dev.mjs debug log despite the env var being set | The cmd shell that runs `pnpm dev` was using `pnpm --dir X` instead of `cd X && pnpm dev`. pnpm strips `OCTOGENT_*` env vars when invoked with `--dir`. `launch-inner.bat` does it the right way. |
 | `git worktree remove` fails on DELETE | Use `POST /api/terminals/prune` instead of the UI delete button. |
@@ -360,7 +365,8 @@ toasts on.
 7. **Two Octogent source patches** (`scripts/dev.mjs`, `apps/api/src/terminalRuntime/channelMessaging.ts`) are lost on `git pull` of the Octogent clone. Keep a copy of the patched files alongside this repo or re-apply manually.
 8. **Codex loads hooks at session start**: if you add or modify hooks while a Codex orchestrator session is already running, the new hooks are NOT attached to that session. Restart Codex (`codex` for a fresh session, or `codex resume <id>` to pick up the existing rollout with the new hooks bound).
 9. **`POST /api/terminals` with an existing terminalId**: Octogent silently auto-assigns a new id (e.g. `terminal-3`) rather than reusing or rejecting. The dispatcher works around this for `RELANCER` by DELETing the registry record first. For SPAWN it would have produced a duplicate worker with a different id, which is why dedup is enforced.
-10. **Workers must follow the report-back instruction**: the dispatcher appends a curl-based channel-send instruction to every spawned worker's `initialPrompt`, telling the worker to POST its FULL final response (status line + body) to `codex-orchestrator-main`. A Claude Code worker can in theory ignore the instruction (forget to run the curl, or fail to JSON-escape correctly). If a worker doesn't report, the orchestrator stays blocked on it — paste the manual curl (§6 step 6) to recover.
+10. **Workers must follow the 3-step report-back instruction**: the dispatcher appends a 3-step protocol to every spawned worker's `initialPrompt` — (1) display full report in chat, (2) mirror to `reports/<terminalId>.md`, (3) send short single-line channel notification. A worker can in theory skip a step (forget to write the file, send multi-line content, etc.). If a worker doesn't notify, the orchestrator stays blocked on it — paste the manual sequence (§6 step 6) to recover.
+11. **Codex paste-mode threshold**: Codex's TUI input treats bracketed-paste content with internal newlines as a pasted block, displays it as `[Pasted Content N chars]`, and **does not auto-submit on the trailing `\r`**. Single-line content auto-submits cleanly even at 2 KB+. This is why Step 3 of the worker protocol is a short single-line channel message — the full multi-line report goes via the file (Step 2) instead.
 11. **`pnpm --dir` strips env vars**: a confirmed Windows/pnpm quirk — `pnpm --dir X dev` clears `OCTOGENT_*` env vars in the spawned dev process. The launcher uses `cd /d X && pnpm dev` instead. Don't switch back to `--dir`.
 
 ## 9. Full rollback
