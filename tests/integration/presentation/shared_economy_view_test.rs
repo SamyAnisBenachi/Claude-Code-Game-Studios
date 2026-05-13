@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
+use client::asset_wiring::enter_in_session_via_fixture;
 use client::presentation::{
     apply_snapshot_to_player_economy_view, PlayerEconomyView, PlayerEconomyViewUpdateSource,
 };
@@ -64,7 +65,6 @@ fn test_snapshot_initializes_local_player_economy_view() {
     );
 }
 
-#[ignore = "PROMPT 750 D-5 follow-on: spawn_hand_ui not firing on OnEnter(InSession) in MinimalPlugins fixture — fan slots never spawned (revealed after D-1 init_state fix unmasked deeper fixture gap)"]
 #[test]
 fn test_reserve_strip_input_does_not_mutate_player_economy_view() {
     test_helpers::init_test_tracing();
@@ -99,10 +99,7 @@ fn app_with_hand_ui_in_placement(catalog: HashMap<CardId, CardData>) -> App {
             reserve_mana: 3,
             mana_cap: 10,
         });
-    app.world_mut()
-        .resource_mut::<NextState<ClientState>>()
-        .set(ClientState::InSession);
-    app.update();
+    enter_in_session_via_fixture(&mut app);
     app.world_mut().resource_mut::<CurrentClientPhase>().phase = RoundPhase::Placement;
     app.update();
     app

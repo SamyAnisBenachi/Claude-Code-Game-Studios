@@ -4,6 +4,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
+use client::asset_wiring::enter_in_session_via_fixture;
 use client::presentation::PlayerEconomyView;
 use client::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use client::ui::hand::{
@@ -224,7 +225,6 @@ fn test_late_settlement_after_shop_convergence_does_not_resurrect_auction_ui() {
     assert_eq!(settlement_overlay_visibility(&app), Visibility::Hidden);
 }
 
-#[ignore = "PROMPT 750 D-5 follow-on: HandUiEntities missing after hand_app_in_placement fixture transitions to InSession — OnEnter(InSession) spawn_hand_ui not firing in this minimal fixture; needs HandUiPlugin owner to either expose fixture helper or expand minimal fixture deps"]
 #[test]
 fn test_placement_exit_clears_stale_hand_timer_submit_and_pending_state() {
     test_helpers::init_test_tracing();
@@ -330,10 +330,7 @@ fn hand_app_in_placement(timer_duration_ms: u32) -> App {
         initialized: true,
         ..default()
     });
-    app.world_mut()
-        .resource_mut::<NextState<ClientState>>()
-        .set(ClientState::InSession);
-    run_update(&mut app);
+    enter_in_session_via_fixture(&mut app);
     set_phase(&mut app, RoundPhase::Placement, timer_duration_ms);
     app
 }

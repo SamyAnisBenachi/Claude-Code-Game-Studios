@@ -417,6 +417,54 @@ pub fn placeholder_assets_for_tests() -> PlaceholderAssets {
     }
 }
 
+/// Test-only helper that drives the
+/// `OnEnter(ClientState::InSession)` entry sequence end-to-end inside a
+/// `MinimalPlugins`-based fixture so that `spawn_hand_ui` (and any sibling
+/// `OnEnter(InSession)` system that depends on [`PlaceholderAssets`]) actually
+/// runs and flushes its deferred entity spawns into the world.
+///
+/// Behavior:
+/// 1. Inserts [`placeholder_assets_for_tests`] into the world if absent so
+///    `spawn_hand_ui`'s `Option<Res<PlaceholderAssets>>::None` early-return
+///    does not silently skip the spawn (see `client::ui::hand::spawn_hand_ui`).
+/// 2. Sets `NextState::<ClientState>::Pending(ClientState::InSession)`.
+/// 3. Pumps `app.update()` twice: the first cycle applies the state
+///    transition + runs `OnEnter(InSession)` systems (which queue spawn
+///    commands); the second cycle flushes those deferred commands so
+///    downstream queries (e.g., `FanSlotIndex`, `ChildOf<HandCardFrame>`)
+///    resolve in the same tick as the assertions.
+///
+/// **Pre-conditions** the caller's `App` must satisfy:
+/// - `MinimalPlugins` is added.
+/// - `StatesPlugin` is added and `init_state::<ClientState>()` has run.
+/// - The plugin (or hand-picked subset of systems) that registers
+///   `spawn_hand_ui` on `OnEnter(ClientState::InSession)` is added — typically
+///   [`crate::ui::hand::HandUiPlugin`].
+///
+/// **Side effects**: this is the only test-only helper that flips `ClientState`
+/// to `InSession`; it does NOT also set a `RoundPhase`. Callers that need the
+/// hand UI in `Placement` (or any other round phase) must set
+/// `CurrentClientPhase`/`ClientPhaseView` themselves and then call
+/// `app.update()` once more so the phase-transition systems observe the new
+/// phase.
+///
+/// Mirrors the [`placeholder_assets_for_tests`] precedent (this helper lives
+/// next to it deliberately so the cluster of `MinimalPlugins`-fixture
+/// prerequisites stays in one place).
+///
+/// See `docs/architecture/test-fixture-patterns.md` for the canonical pattern
+/// and Sprint 11 story `S11-TD-FIXTURE-HAND-UI-ONENTER-001`.
+pub fn enter_in_session_via_fixture(app: &mut App) {
+    if !app.world().contains_resource::<PlaceholderAssets>() {
+        app.insert_resource(placeholder_assets_for_tests());
+    }
+    app.world_mut()
+        .resource_mut::<NextState<ClientState>>()
+        .set(ClientState::InSession);
+    app.update();
+    app.update();
+}
+
 /// Plugin that registers the [`PlaceholderAssets`] lifecycle systems.
 pub struct AssetWiringPlugin;
 

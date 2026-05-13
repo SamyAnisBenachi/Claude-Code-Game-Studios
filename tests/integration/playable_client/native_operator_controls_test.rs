@@ -7,6 +7,7 @@ use bevy::input::ButtonState;
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
+use client::asset_wiring::enter_in_session_via_fixture;
 use client::presentation::PlayerEconomyView;
 use client::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use client::ui::hand::{
@@ -211,7 +212,6 @@ fn test_shop_auction_pointer_controls_emit_operator_intents() {
     );
 }
 
-#[ignore = "PROMPT 750 D-5 follow-on: spawn_hand_ui not firing on OnEnter(InSession) in MinimalPlugins fixture — HandUiEntities never spawned (revealed after D-1 init_state fix unmasked deeper fixture gap)"]
 #[test]
 fn test_hand_pointer_controls_stage_unstage_and_submit_placement() {
     test_helpers::init_test_tracing();
@@ -317,10 +317,7 @@ fn hand_app() -> App {
         initialized: true,
         ..default()
     });
-    app.world_mut()
-        .resource_mut::<NextState<ClientState>>()
-        .set(ClientState::InSession);
-    run_update(&mut app);
+    enter_in_session_via_fixture(&mut app);
     app
 }
 
