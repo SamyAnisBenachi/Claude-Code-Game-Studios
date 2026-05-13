@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-13
+Updated: 2026-05-13 (PROMPT 789 — /story-done for S11-TD-IGNORED-D5-TRIAGE-001)
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -21,7 +21,7 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@a8af79a`, stage `Polish`,
+- Current verified state at this update: `origin/main@1d96281`, stage `Polish`,
   Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
   status `active` (PROMPT 773, 2026-05-13) as a Polish-stage sprint
   (`2026-06-04 -> 2026-06-17`) with plan at `production/sprints/sprint-11.md`
@@ -34,22 +34,30 @@ Current source of truth:
   780 (2026-05-13), for `S11-EVIDENCE-INDEX-CARRY-001` in PROMPT 781
   (2026-05-13), for `S11-DRAG-RUNTIME-RETEST-001` in PROMPT 783
   (2026-05-13), for `S11-TD-FIXTURE-HAND-UI-ONENTER-001` in PROMPT 785
-  (2026-05-13), and for `S11-ROUTE-READABILITY-CARRY-001` in
-  **PROMPT 786 (2026-05-13)**, flipping all five rows from `ready` to
-  `done`. PROMPT 778 /dev-story (2026-05-13) authored the drag-runtime
-  evidence + follow-on diagnostic story at worker commit `0fc05c3` with
-  disposition `PASS-CANNOT-REPRODUCE`; PROMPT 782 (2026-05-13) integrated
-  the worker to `main` at merge commit `3ca1aff`. PROMPT 779 /dev-story
-  (2026-05-13) authored the Hand UI OnEnter fixture-cascade repair at
-  worker branch `work/s11-hand-ui-onenter-fixture-repair`; PROMPT 784
-  (2026-05-13) integrated the worker to `main` at commit `d7f4103`
-  (+1129 passed / -6 ignored at worker workspace; +390 passed / 0 failed
-  / 5 ignored at PROMPT 784 client-crate verification). All three Sprint
-  11 Must Have paperwork carries are now closed; the remaining Sprint 11
-  Must Have row (`S11-TD-IGNORED-D5-TRIAGE-001`) has no story file yet —
-  per-test triage doc target path is
-  `production/qa/evidence/sprint-11-ignored-d5-triage.md`. The follow-on
-  diagnostic story
+  (2026-05-13), for `S11-ROUTE-READABILITY-CARRY-001` in PROMPT 786
+  (2026-05-13), and for `S11-TD-IGNORED-D5-TRIAGE-001` in
+  **PROMPT 789 (2026-05-13)**, flipping all six Sprint 11 Must Have rows
+  from `ready` to `done`. PROMPT 778 /dev-story (2026-05-13) authored the
+  drag-runtime evidence + follow-on diagnostic story at worker commit
+  `0fc05c3` with disposition `PASS-CANNOT-REPRODUCE`; PROMPT 782
+  (2026-05-13) integrated the worker to `main` at merge commit `3ca1aff`.
+  PROMPT 779 /dev-story (2026-05-13) authored the Hand UI OnEnter
+  fixture-cascade repair at worker branch
+  `work/s11-hand-ui-onenter-fixture-repair`; PROMPT 784 (2026-05-13)
+  integrated the worker to `main` at commit `d7f4103` (+1129 passed /
+  -6 ignored at worker workspace; +390 passed / 0 failed / 5 ignored at
+  PROMPT 784 client-crate verification). PROMPT 787 (2026-05-13) authored
+  the read-only D-5 `#[ignore]` triage evidence
+  `production/qa/evidence/sprint-11-ignored-d5-triage.md` (185 lines, 11/11
+  accounted, 6 resolved + 5 retained); PROMPT 788 (2026-05-13) integrated
+  the worker evidence to `main` at commit `1d96281`. All six Sprint 11
+  Must Have rows are now `done`; the 5 retained Cluster B ignored tests
+  (board `GhostDragStartEvent` producer fixture gap, HUD `snapshot.phase`
+  bridge fixture gap, lobby `ConfirmClass` after `SelectClass` intent
+  chain, `co_occupancy_offset` panic-guard drift, `ShopAuctionUiEntity`
+  count drift) remain open as future stories or decision gates per the
+  triage evidence; closing Sprint 11 is a separate orchestrator
+  decision. The follow-on diagnostic story
   `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`
   is on `main` at `0fc05c3` but not yet activated into Sprint 11 active
   scope (separate `/sprint-plan sprint-11 --add story-019` prompt
@@ -62,10 +70,19 @@ Current next move:
 - Sprint 11 is ACTIVE as of PROMPT 773 (2026-05-13) as a Polish-stage
   sprint (`2026-06-04 -> 2026-06-17`). See `production/sprints/sprint-11.md`
   and `production/sprint-status.yaml` `sprint_11_activation:` block plus the
-  `stories:` block (16 Sprint 11 rows). All three Sprint 11 Must Have
-  paperwork carries (`S11-DOC-HYGIENE-CARRY-001`,
-  `S11-EVIDENCE-INDEX-CARRY-001`, `S11-ROUTE-READABILITY-CARRY-001`) are
-  now closed (`done`) by PROMPTs 780 / 781 / 786 respectively.
+  `stories:` block (16 Sprint 11 rows). All six Sprint 11 Must Have rows
+  (`S11-DOC-HYGIENE-CARRY-001`, `S11-EVIDENCE-INDEX-CARRY-001`,
+  `S11-DRAG-RUNTIME-RETEST-001`, `S11-TD-FIXTURE-HAND-UI-ONENTER-001`,
+  `S11-ROUTE-READABILITY-CARRY-001`, `S11-TD-IGNORED-D5-TRIAGE-001`)
+  are now closed (`done`) by PROMPTs 780 / 781 / 783 / 785 / 786 / 789
+  respectively. **PROMPT 789 does NOT close Sprint 11** — the 5
+  retained Cluster B ignored tests remain open as future stories or
+  decision gates per `production/qa/evidence/sprint-11-ignored-d5-triage.md`
+  (B1 board `GhostDragStartEvent` producer fixture gap, B2 HUD
+  `snapshot.phase` bridge fixture gap, B3 lobby `ConfirmClass` after
+  `SelectClass` intent chain, B4 `co_occupancy_offset` panic-guard drift,
+  B5 `ShopAuctionUiEntity` count drift). Sprint 11 Should Have / Nice to
+  Have rows remain blocked pending story authoring + `/story-readiness`.
 - Preserve the PROMPT 761 Release gate failure and all carried risks.
 - Do not retry `Polish->Release` until release-scope artifacts exist.
 - Next launchable prompts (Sprint 11 QA plan on `main` per PROMPT 774;
@@ -75,17 +92,191 @@ Current next move:
   `PASS-CANNOT-REPRODUCE` disposition;
   `S11-TD-FIXTURE-HAND-UI-ONENTER-001` closed by PROMPT 785 with
   `PASS` disposition;
-  `S11-ROUTE-READABILITY-CARRY-001` closed by PROMPT 786):
-  (1) `/dev-story` or `/story-readiness` against
-  `S11-TD-IGNORED-D5-TRIAGE-001` (no story file yet — Sprint 11 QA plan
-  path is the triage doc at
-  `production/qa/evidence/sprint-11-ignored-d5-triage.md`; the 6 cluster
-  rows formerly under `S11-TD-FIXTURE-HAND-UI-ONENTER-001` are now closed
-  and folded into the triage as resolved); (2) `/sprint-plan sprint-11
-  --add story-019` to activate the follow-on diagnostic story
+  `S11-ROUTE-READABILITY-CARRY-001` closed by PROMPT 786;
+  `S11-TD-IGNORED-D5-TRIAGE-001` closed by PROMPT 789):
+  (1) `/sprint-plan sprint-11 --add story-019` to activate the
+  follow-on diagnostic story
   `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`
-  into Sprint 11 active scope (separate prompt); (3) story file authoring
-  for Should Have / Nice to Have rows if pulled into active scope.
+  into Sprint 11 active scope (separate prompt); (2) story file
+  authoring + `/story-readiness` for any Cluster B follow-up
+  (`S11-TD-FIXTURE-D-RESIDUALS-001` umbrella expansion already names B1
+  and B5, plus new slugs `S11-TD-FIXTURE-HUD-SNAPSHOT-PHASE-BRIDGE-001`,
+  `S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001`,
+  `S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001`, and optional splits
+  `S11-TD-FIXTURE-BOARD-GHOST-DRAG-PRODUCER-001` and
+  `S11-TD-SHOP-AUCTION-UI-COUNT-DRIFT-001`); (3) Sprint 11 close-out
+  decision — only after Should Have / Nice to Have scope is either
+  pulled into active scope and closed or explicitly deferred, and only
+  after a Sprint 11 smoke + QA sign-off + (if release is asserted)
+  Polish->Release gate-check retry.
+
+### PROMPT 789 /story-done Disposition — S11-TD-IGNORED-D5-TRIAGE-001 (2026-05-13)
+
+Authoritative Sprint 11 row `S11-TD-IGNORED-D5-TRIAGE-001` closed by
+`/story-done` in PROMPT 789. Source-of-truth at run: `origin/main@1d96281`
+(PROMPT 788 integration commit `docs(qa): triage Sprint 11 D-5 ignored tests`).
+Deliverable shipped at commit `1d96281` via PROMPT 787 worker + PROMPT 788
+integration.
+
+PROMPT 789 is paperwork-only `/story-done`-equivalent closure for a row that
+has no standalone story file by design; closure runs against
+`production/sprints/sprint-11.md` + `production/sprint-status.yaml` + the
+landed triage evidence at
+`production/qa/evidence/sprint-11-ignored-d5-triage.md`. No worker spawned.
+No worktree opened. Root checkout only.
+
+#### Deliverable provenance
+
+- PROMPT 787 (2026-05-13): authored
+  `production/qa/evidence/sprint-11-ignored-d5-triage.md` (185 lines)
+  read-only against `origin/main@798ecc0`. Owner-named per-test
+  disposition for the 11 D-5 `#[ignore]` tests surfaced by Sprint 10 smoke
+  retry-7 W1. No test files modified; no production code touched.
+- PROMPT 788 (2026-05-13): integrated the PROMPT 787 worker evidence to
+  `main` at commit `1d96281` (single-file `+185` lines doc-only commit).
+
+#### Accounting verdict — 11/11
+
+- **Original total** (Sprint 10 smoke retry-7 W1,
+  `production/qa/smoke-sprint-10-2026-05-12-retry-7.md` lines 59-74): 11
+  owner-named `#[ignore]` tests in 6 files.
+- **Cluster A — resolved by `S11-TD-FIXTURE-HAND-UI-ONENTER-001`** (6
+  tests): A1 `test_placement_exit_clears_stale_hand_timer_submit_and_pending_state`
+  (`tests/integration/playable_client/active_loop_ui_state_test.rs`), A2
+  `test_one_card_acquired_fanout_updates_hand_and_draft_pending_purchase`
+  (`tests/integration/playable_client/draft_shop_hand_bridge_test.rs`), A3
+  `test_one_draft_offering_fanout_updates_hand_grid_and_shop_grid`
+  (`tests/integration/playable_client/draft_shop_hand_bridge_test.rs`), A4
+  `test_shop_purchase_reconciles_hand_size_slots_and_shared_economy`
+  (`tests/integration/playable_client/draft_shop_hand_bridge_test.rs`), A5
+  `test_hand_pointer_controls_stage_unstage_and_submit_placement`
+  (`tests/integration/playable_client/native_operator_controls_test.rs`),
+  A6 `test_reserve_strip_input_does_not_mutate_player_economy_view`
+  (`tests/integration/presentation/shared_economy_view_test.rs`). All
+  un-`#[ignore]`d at PROMPT 784 integration commit `d7f4103` and closed
+  by PROMPT 785 `/story-done` at `a8af79a`.
+- **Cluster B — retained `#[ignore]` (5 tests)**: B1
+  `br_8e_board_ghost_pointer_messages_leave_ghost_owned_by_hand_ui`
+  (`tests/integration/board_rendering/ghost_preview_bridge_test.rs:147`)
+  — board `GhostDragStartEvent` producer fixture gap; B2
+  `test_snapshot_rebuild_clears_stale_visuals_and_spawns_snapshot_units_and_objectives`
+  (`tests/integration/board_rendering/snapshot_spawn_test.rs:39`) — HUD
+  `snapshot.phase` bridge fixture gap; B3
+  `test_lobby_buttons_drive_create_join_slot_class_and_confirm_commands`
+  (`tests/integration/playable_client/native_operator_controls_test.rs:106`)
+  — lobby `ConfirmClass` after `SelectClass` intent chain (production
+  lobby input investigation); B4
+  `test_cooccupancy_index_two_panics_with_offending_index`
+  (`tests/unit/board_rendering/status_icons_test.rs:167`) —
+  `co_occupancy_offset` panic-guard drift; B5
+  `shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes`
+  (`tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs:25`) —
+  `ShopAuctionUiEntity` count drift (actual=66, formula=57; +9 delta).
+- **Roll-up**: 6 + 5 = **11**. None silently dropped.
+
+#### Story acceptance-criterion verification (read-only against `origin/main@1d96281`)
+
+- **AC1 — triage evidence file exists on main**:
+  `production/qa/evidence/sprint-11-ignored-d5-triage.md` at commit
+  `1d96281` (PROMPT 788 integration of PROMPT 787 worker authoring).
+- **AC2 — 11/11 accounted**: evidence file totals table (lines 30-32) and
+  roll-up table (lines 96-103) confirm 6 resolved + 5 retained = 11.
+- **AC3 — 6 resolved tests linked to S11-TD-FIXTURE-HAND-UI-ONENTER-001 +
+  PROMPT 779 / 784 / 785 evidence**: Cluster A table (lines 58-65) cites
+  PROMPT 779 worker, PROMPT 784 integration commit `d7f4103`, PROMPT 785
+  `/story-done` verdict at `a8af79a`, and the underlying evidence file
+  `production/qa/evidence/sprint-11-hand-ui-onenter-fixture-evidence.md`
+  `Per-fixture repair` table for each A-row.
+- **AC4 — 5 retained tests carry owner-named disposition + follow-up
+  path**: Cluster B table (lines 81-87) names owner + production system,
+  classification (`needs-repair-story` for B1 / B3 vs.
+  `needs-design-decision` for B2 / B4 / B5), proposed follow-up story
+  slug, and decision gate. Follow-up slugs:
+  `S11-TD-FIXTURE-D-RESIDUALS-001` umbrella OR new
+  `S11-TD-FIXTURE-BOARD-GHOST-DRAG-PRODUCER-001` split for B1; new
+  `S11-TD-FIXTURE-HUD-SNAPSHOT-PHASE-BRIDGE-001` for B2; new
+  `S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001` for B3; new
+  `S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001` for B4;
+  `S11-TD-FIXTURE-D-RESIDUALS-001` umbrella OR new
+  `S11-TD-SHOP-AUCTION-UI-COUNT-DRIFT-001` split for B5.
+- **AC5 — no evidence row claims the retained 5 are fixed**: each B-row
+  carries `still ignored` state on `main` with the original PROMPT 750
+  D-5 owner-named comment unchanged in the test source file.
+- **AC6 — non-claims explicit**: evidence file lines 163-185 carry the
+  full friend-game-lite non-claim ladder — public release readiness NOT
+  claimed, release-candidate readiness NOT claimed, full game completion
+  NOT claimed, broad / Standard-tier accessibility completion NOT claimed
+  (`QA-COND-0005` unchanged), playtest / fun-hypothesis validation NOT
+  claimed (`QA-COND-0006` unchanged), full playable-client manual QA NOT
+  claimed (`S8-QA-001-W1` unchanged), final-art / asset-production
+  completion NOT claimed (`PAW-TD-*-a` accept-risk unchanged), Sprint 11
+  close-out NOT claimed, closure of any individual Cluster B ignored test
+  NOT claimed.
+- **AC7 — no row authorises immediate implementation**: each Cluster B
+  follow-up slug explicitly requires its own story file +
+  `/story-readiness` in a separate prompt before `/dev-story` can begin
+  (evidence file § "Proposed follow-up story slugs" lines 106-132).
+- **AC8 — Sprint 11 disposition preserved**:
+  `production/sprints/sprint-11.md` untouched by PROMPT 789;
+  `production/stage.txt` unchanged (`Polish`); the triage evidence file
+  itself untouched by PROMPT 789 (closure paperwork only on top of the
+  `1d96281` deliverable). Sprint 11 status remains `active` (Polish stage);
+  Sprint 10 disposition remains `closed-with-conditions`.
+
+#### Files changed by PROMPT 789
+
+- `production/sprint-status.yaml`:
+  - `S11-TD-IGNORED-D5-TRIAGE-001` row flipped `status: ready` → `status: done`.
+  - `blocker:` cleared.
+  - `completed: ""` → `completed: "2026-05-13"`.
+  - PROMPT 787 + PROMPT 788 worker / integration note appended to `notes:`.
+  - PROMPT 789 /story-done verdict note appended to `notes:`.
+  - Top-of-file `updated:` annotation refreshed.
+- `production/session-state/active.md`: PROMPT 789 banner prepended; PROMPT
+  786 banner demoted to `PRIOR CURRENT STATE`.
+- `production/session-state/codex-orchestrator-state.md`: `Updated:` header
+  refreshed; `Current verified state` updated (HEAD `a8af79a` → `1d96281`,
+  PROMPT 786 → PROMPT 789, six Sprint 11 Must Have rows closed); `Current
+  next move` `Next launchable prompts` list updated (S11-TD-IGNORED-D5
+  closed; Cluster B follow-up slugs enumerated; Sprint 11 close-out gate
+  flagged); this PROMPT 789 disposition section prepended above PROMPT 786.
+- `reports/PROMPT-789.md`: mandatory final report file (NOT staged or
+  committed).
+
+#### Working-tree state PROMPT 789 inherited
+
+- `.claude/settings.json` was already modified in the working copy at PROMPT
+  789 start; PROMPT 789 did NOT touch this file and explicitly excluded it
+  from the staged set. The modification carries over outside the PROMPT 789
+  commit.
+
+#### Paperwork-only — explicit non-actions
+
+PROMPT 789 did NOT:
+
+- run `/dev-story`, `/story-readiness`, `/smoke-check`, `/team-qa`,
+  `/gate-check`, `/release-check`, or any close-out skill;
+- modify production code under `client/`, `server/`, `shared/`, or `tests/`;
+- modify the triage evidence file
+  `production/qa/evidence/sprint-11-ignored-d5-triage.md` (read-only
+  verification only);
+- modify `production/sprints/sprint-11.md`, `production/stage.txt`,
+  `.claude/settings.json`, `reports/` (other than the mandatory
+  `reports/PROMPT-789.md` final report file), `.claude/scheduled_tasks.lock`,
+  or `.octogent/`;
+- close Sprint 11 — the 5 retained Cluster B ignored tests remain open as
+  future stories or decision gates; Sprint 11 Should Have / Nice to Have
+  rows remain blocked pending story authoring + `/story-readiness`;
+- claim closure of any individual Cluster B ignored test;
+- claim Sprint 11 release-candidate readiness, public release readiness,
+  full game completion, broad / Standard-tier accessibility completion
+  (`QA-COND-0005` unchanged), playtest / fun-hypothesis validation
+  (`QA-COND-0006` unchanged), full playable-client manual QA
+  (`S8-QA-001-W1` unchanged), final-art / asset-production completion
+  (`PAW-TD-*-a` accept-risk unchanged), Sprint 11 close-out, or a
+  Polish->Release gate-check retry.
+
+---
 
 ### PROMPT 786 /story-done Disposition — S11-ROUTE-READABILITY-CARRY-001 (2026-05-13)
 
