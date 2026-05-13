@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-13 (PROMPT 792 — Sprint 11 close-out disposition, verdict PASS-WITH-CONDITIONS; sprint flipped active -> closed-with-conditions)
+Updated: 2026-05-13 (PROMPT 793 — Sprint 12 draft plan; verdict PASS-WITH-NOTES; Sprint 12 authored at production/sprints/sprint-12.md; next_sprint: draft block appended to production/sprint-status.yaml; Sprint 12 NOT activated; Sprint 11 remains closed-with-conditions; stage UNCHANGED Polish)
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -17,10 +17,40 @@ section.
 
 Current source of truth:
 
-- **Authoritative correction for this header (PROMPT 792 update)**: current
-  `origin/main` is `d19ea12` at PROMPT 792 entry (PROMPT 791
-  `qa(team): Sprint 11 QA sign-off`); PROMPT 792 will push one paperwork
-  commit on top with the Sprint 11 close-out disposition. PROMPT 792 flipped
+- **Authoritative correction for this header (PROMPT 793 update)**: current
+  `origin/main` is `8a8451e` at PROMPT 793 entry (PROMPT 792
+  `close-out(s11): Sprint 11 close-out disposition PASS-WITH-CONDITIONS`);
+  PROMPT 793 will push one paperwork commit on top with the Sprint 12
+  draft plan. PROMPT 793 authored `production/sprints/sprint-12.md` (NEW
+  Sprint 12 draft plan) and appended a `next_sprint:` draft block to
+  `production/sprint-status.yaml`. **Sprint 12 is NOT activated by this
+  draft**; activation happens via `/sprint-plan sprint-12` in a separate
+  prompt. The Sprint 12 draft pulls forward (a) the Sprint 11 close-out
+  deferrals (4 Should Have + 6 Nice to Have rows from
+  `sprint_11_closeout.deferred_into_sprint_12_planning`), (b) the 5
+  Cluster B retained D-5 ignored tests from
+  `production/qa/evidence/sprint-11-ignored-d5-triage.md` (B1 board
+  `GhostDragStartEvent` producer fixture gap, B2 HUD `snapshot.phase`
+  bridge, B3 lobby `ConfirmClass` after `SelectClass` intent chain,
+  B4 `co_occupancy_offset` panic-guard drift, B5 `ShopAuctionUiEntity`
+  count drift), and (c) the follow-on diagnostic story 019
+  (`production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`;
+  on `main` at `0fc05c3`). Verdict **PASS-WITH-NOTES** — draft succeeds
+  with the explicit non-activation precondition; producer review
+  required before `/sprint-plan sprint-12` activation. Sprint 11
+  disposition UNCHANGED (`closed-with-conditions` per PROMPT 792).
+  Stage UNCHANGED (`Polish`). PROMPT 761 Polish->Release gate-check
+  `FAIL` preserved (no retry). The 5 Cluster B retained D-5 ignored
+  tests remain open as documented Sprint 12+ follow-ups / decision
+  gates. No release claim, no release-candidate claim, no full-game
+  claim, no broad / Standard-tier accessibility-completion claim, no
+  playtest / fun-hypothesis validation claim, no full playable-client
+  manual-QA claim, no final-art / asset-production claim, no
+  `S8-QA-001-W1` closure, no Polish->Release retry, no Sprint 12
+  activation is authorised by this draft. (Prior: PROMPT 792 update —
+  current `origin/main` was `d19ea12` at PROMPT 792 entry (PROMPT 791
+  `qa(team): Sprint 11 QA sign-off`); PROMPT 792 pushed one paperwork
+  commit on top with the Sprint 11 close-out disposition.) PROMPT 792 flipped
   Sprint 11 top-level `status` in `production/sprint-status.yaml` from
   `active` to **`closed-with-conditions`** with verdict
   **PASS-WITH-CONDITIONS** on basis of 6/6 Must Have `done` + Sprint 11
@@ -44,9 +74,59 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@d19ea12` at PROMPT
-  792 entry (PROMPT 791 Team-QA sign-off commit
-  `qa(team): Sprint 11 QA sign-off`); PROMPT 792 will push one
+- Current verified state at this update: `origin/main@8a8451e` at PROMPT
+  793 entry (PROMPT 792 Sprint 11 close-out commit
+  `close-out(s11): Sprint 11 close-out disposition PASS-WITH-CONDITIONS`);
+  PROMPT 793 will push one paperwork commit on top with the Sprint 12
+  draft plan (`production/sprints/sprint-12.md` NEW + `next_sprint:`
+  draft block appended to `production/sprint-status.yaml` +
+  `production/session-state/active.md` banner prepended + this
+  `codex-orchestrator-state.md` update). Sprint 12 disposition **NEW**:
+  `draft` (Polish-stage; **NOT activated** by PROMPT 793; activation
+  via `/sprint-plan sprint-12` is a separate prompt). Sprint 12 draft
+  Must Have rows (5): `S11-HU-DRAG-RUNTIME-TIGHTER-CAPTURE-001` (story
+  019 follow-on), `S11-TD-FIXTURE-HUD-SNAPSHOT-PHASE-BRIDGE-001` (B2),
+  `S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001` (B3),
+  `S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001` (B4),
+  `S11-TD-FIXTURE-D-RESIDUALS-001` (B1 + B5 umbrella). Sprint 12 draft
+  Should Have rows (4): `S11-HUD-TIMER-EYEBALL-VISUAL-001` (W2 carry),
+  `S11-HU-PHASE-IDEMPOTENCY-001`, `S11-SERVER-POOL-INIT-LOG-GUARD-001`,
+  `S11-LOBBY-UX-CONFIRM-STATE-001` (promoted from Sprint 11 Nice to
+  Have to batch with B3). Sprint 12 draft Nice to Have rows (5):
+  `S11-TD-CARGO-DISK-USAGE-001`, `S11-TD-CARGO-PDB-LIMIT-001`,
+  `S11-OPS-ORCHESTRATOR-LOCK-001`, `S11-OPS-GH-CLI-001`,
+  `S11-SERVER-R2-PLACEMENT-CRASH-AUDIT-001`. Optional split
+  candidates: `S11-TD-FIXTURE-BOARD-GHOST-DRAG-PRODUCER-001` (B1
+  split), `S11-TD-SHOP-AUCTION-UI-COUNT-DRIFT-001` (B5 split).
+  Sprint 11 disposition UNCHANGED (`closed-with-conditions` per PROMPT
+  792). Sprint 11 `stories:` block UNCHANGED. Stage UNCHANGED
+  (`Polish`). PROMPT 761 Polish->Release `FAIL` preserved (no retry).
+  PROMPT 793 did NOT run `/dev-story`, `/story-readiness`,
+  `/story-done`, `/smoke-check`, `/team-qa`, `/gate-check`,
+  `/release-check`, `/qa-plan`. PROMPT 793 did NOT modify production
+  code under `client/` / `server/` / `shared/` / `tests/`. PROMPT 793
+  did NOT modify `production/stage.txt`, `.claude/settings.json`
+  (pre-existing in-tree modification preserved untouched),
+  `production/sprints/sprint-11.md`,
+  `production/qa/qa-plan-sprint-11.md`,
+  `production/qa/smoke-sprint-11-2026-05-13.md`,
+  `production/qa/team-qa-sprint-11-2026-05-13.md`,
+  `production/qa/evidence/sprint-11-ignored-d5-triage.md`,
+  `production/qa/evidence/sprint-11-drag-runtime-evidence.md`,
+  `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`,
+  `production/gate-checks/gate-polish-release-2026-05-12.md`, or
+  `.octogent/`. No release claim. No release-candidate claim. No
+  full-game-completion claim. No broad / Standard-tier
+  accessibility-completion claim. No playtest / fun-hypothesis
+  validation claim. No full playable-client manual-QA claim. No
+  final-art / asset-production-completion claim. No `S8-QA-001-W1`
+  closure. No Polish->Release retry. No Sprint 12 activation. Sprint
+  12 close-out paperwork (when later authored by `/sprint-plan
+  sprint-12`) will use `production/sprints/sprint-12.md` as the plan
+  and the `next_sprint:` draft block as the source for the active
+  `stories:` rows. (Prior: PROMPT 792 update — current `origin/main`
+  was `d19ea12` at PROMPT 792 entry (PROMPT 791 Team-QA sign-off
+  commit `qa(team): Sprint 11 QA sign-off`); PROMPT 792 pushed one
   paperwork commit on top with the Sprint 11 close-out disposition.
   Sprint 11 disposition **CHANGED** by PROMPT 792 (paperwork-only):
   flipped from `active` to **`closed-with-conditions`** (Polish-stage);
@@ -107,8 +187,28 @@ Current source of truth:
 
 Current next move:
 
-- **Authoritative next-move correction after PROMPT 792**: Sprint 11
-  close-out disposition is now **DONE** —
+- **Authoritative next-move correction after PROMPT 793**: Sprint 12
+  draft plan is now **AUTHORED** at `production/sprints/sprint-12.md`
+  with a `next_sprint:` draft block appended to
+  `production/sprint-status.yaml`. Sprint 12 is **NOT activated** by
+  this draft; activation is a separate `/sprint-plan sprint-12`
+  prompt that will write the active `stories:` rows. The primary
+  next launchable prompts are: (1) `/sprint-plan sprint-12` to
+  activate Sprint 12 (producer review of the draft required first);
+  (2) story-file authoring + `/story-readiness` for the 4 new
+  Cluster B Must Haves (`S11-TD-FIXTURE-HUD-SNAPSHOT-PHASE-BRIDGE-001`,
+  `S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001`,
+  `S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001`,
+  `S11-TD-FIXTURE-D-RESIDUALS-001`) + 4 Should Haves + 5 Nice to
+  Haves; (3) `/story-readiness` on the existing story 019
+  (`production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`;
+  on `main` at `0fc05c3` but in `Draft` status); (4) `/qa-plan
+  sprint-12` after story files exist and pass `/story-readiness`;
+  (5) NO Polish->Release retry — preserved `FAIL` at
+  `production/gate-checks/gate-polish-release-2026-05-12.md`.
+  Sprint 11 disposition UNCHANGED (`closed-with-conditions` per
+  PROMPT 792). Stage UNCHANGED (`Polish`). (Prior: after PROMPT 792
+  — Sprint 11 close-out disposition is **DONE** —
   `production/sprint-status.yaml` top-level `status` flipped from `active`
   to **`closed-with-conditions`** with a `sprint_11_closeout:` block
   appended; Should/Nice rows deferred forward; carried conditions and
@@ -121,7 +221,7 @@ Current next move:
   activating it in Sprint 12). Do NOT retry `Polish->Release` —
   release-scope artifacts (final art, manual-QA sign-off, accessibility
   completion, playtest evidence) do not yet exist on `main`; PROMPT
-  761 Polish->Release `FAIL` preserved.
+  761 Polish->Release `FAIL` preserved.)
 - Sprint 10 close-out paperwork is DONE (PROMPT 763). Sprint 10 disposition
   preserved at `production/sprint-status.yaml` `sprint_10_closeout:` block.
 - Sprint 11 is ACTIVE as of PROMPT 773 (2026-05-13) as a Polish-stage
