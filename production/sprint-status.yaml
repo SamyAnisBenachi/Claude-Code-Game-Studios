@@ -6,7 +6,7 @@ goal: "Close out the integrated Presentation Asset Wiring batch with `/story-don
 start: "2026-05-21"
 end: "2026-06-03"
 generated: "2026-05-07"
-updated: "2026-05-13"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600; S10-CARRY-001 closure per PROMPT 601-RETRY; S10-PAW-001 closure per PROMPT 598-RETRY; S10-TD-001 closure per PROMPT 611; S10-POLISH-002 closure per PROMPT 621; S10-POLISH-001 closure per PROMPT 630; ECO-004 closure per PROMPT 650; S10-POLISH-003 closure per PROMPT 649; Sprint 10 Polish closed-with-conditions per PROMPT 763 (S10-TD-003 / S10-N1 / S10-N2 deferred to Sprint 11 planning; PROMPT 761 Polish->Release gate-check FAIL preserved; stage remains Polish; Sprint 11 remains not_planned)
+updated: "2026-05-13"  # Sprint 10 activation flip per PROMPT 591; S10-TD-002 closure per PROMPT 600; S10-CARRY-001 closure per PROMPT 601-RETRY; S10-PAW-001 closure per PROMPT 598-RETRY; S10-TD-001 closure per PROMPT 611; S10-POLISH-002 closure per PROMPT 621; S10-POLISH-001 closure per PROMPT 630; ECO-004 closure per PROMPT 650; S10-POLISH-003 closure per PROMPT 649; Sprint 10 Polish closed-with-conditions per PROMPT 763 (S10-TD-003 / S10-N1 / S10-N2 deferred to Sprint 11 planning; PROMPT 761 Polish->Release gate-check FAIL preserved; stage remains Polish; Sprint 11 remains not_planned); Sprint 11 DRAFT planning artifacts per PROMPT 764 (sprint-11.md authored; next_sprint block points at draft; Sprint 11 NOT activated; Sprint 10 disposition + stage + carried conditions unchanged)
 stage: "Polish"
 scope: "Polish slice — close out PAW asset wiring, drain test-fixture and plugin-registration tech debt, start targeted visual UI chrome — not broad production / public release / full game completion"
 status: "closed-with-conditions"
@@ -348,4 +348,22 @@ sprint_10_closeout:
 
 next_sprint:
   sprint: 11
-  status: not_planned
+  status: draft
+  active: false
+  sprint_plan_draft: "production/sprints/sprint-11.md"
+  drafted: "2026-05-13"
+  drafted_by_prompt: "764"
+  source_of_truth_at_draft: "origin/main@a6132d7"
+  notes:
+    - "Sprint 11 plan is DRAFT only. PROMPT 764 did NOT activate Sprint 11."
+    - "Sprint 10 disposition unchanged: closed-with-conditions per PROMPT 763."
+    - "Stage unchanged: Polish. PROMPT 761 Polish->Release gate-check FAIL preserved as evidence."
+    - "No /dev-story, /smoke-check, /team-qa, /gate-check, /story-done, implementation, or CI run was performed."
+    - "S10-TD-003 / S10-N1 / S10-N2 carries are folded as Must Have rows in the Sprint 11 draft (S11-DOC-HYGIENE-CARRY-001 / S11-EVIDENCE-INDEX-CARRY-001 / S11-ROUTE-READABILITY-CARRY-001)."
+    - "S8-QA-001-W1, QA-COND-0005, QA-COND-0006 are explicitly preserved unchanged by the Sprint 11 draft."
+    - "Sprint 11 explicitly does NOT claim public release readiness, release-candidate readiness, full game completion, broad / Standard-tier accessibility completion, playtest / fun-hypothesis validation, full playable-client manual QA, or final-art / asset-production completion."
+    - "Sprint 11 activation requires /sprint-plan sprint-11 in a separate prompt, plus Sprint 11 story files + /story-readiness + /qa-plan sprint."
+  activation_blockers:
+    - "Sprint 11 QA plan not yet authored (run /qa-plan sprint after story files exist)."
+    - "S11-DRAG-RUNTIME-RETEST-001 and S11-TD-FIXTURE-HAND-UI-ONENTER-001 story files not yet authored."
+    - "Sprint 11 dates not locked."

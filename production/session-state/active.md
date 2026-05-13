@@ -4,6 +4,23 @@
 >
 > ---
 >
+> **📍 CURRENT STATE — last updated 2026-05-13 (PROMPT 764 — Sprint 11 DRAFT planning artifacts)**
+>
+> - **Source-of-truth at this update**: `origin/main@a6132d7` (unchanged vs PROMPT 763).
+> - **Sprint 10 disposition**: UNCHANGED — `closed-with-conditions` per PROMPT 763. Not reopened.
+> - **Sprint 11 disposition**: now `draft` (was `not_planned`). Draft plan at `production/sprints/sprint-11.md`. **Sprint 11 is NOT activated.** No `sprint:` field bump, no active row in `production/sprint-status.yaml`. Activation requires `/sprint-plan sprint-11` + story authoring + `/qa-plan sprint` in a separate prompt.
+> - **Stage**: UNCHANGED — remains `Polish`. `production/stage.txt` not touched.
+> - **PROMPT 761 Polish->Release gate-check FAIL**: preserved unchanged at `production/gate-checks/gate-polish-release-2026-05-12.md`. No retry attempted by this prompt.
+> - **Sprint 11 Must Have (draft, top 5)**: `S11-DRAG-RUNTIME-RETEST-001` (HIGH; drag-and-drop runtime divergence retest + S1-S5 truth-table lock); `S11-TD-FIXTURE-HAND-UI-ONENTER-001` (HIGH; 7x `spawn_hand_ui` OnEnter fixture cascade); `S11-TD-IGNORED-D5-TRIAGE-001` (HIGH; 11 owner-named `#[ignore]` D-5 tests triage); `S11-DOC-HYGIENE-CARRY-001` (S10-TD-003 ADR-011 `TR-NP-04 -> TR-NP-006` + Rule 7 ADR-011 breadcrumb); `S11-EVIDENCE-INDEX-CARRY-001` (S10-N1 aggregator).
+> - **Sprint 10 deferred carries folded into Sprint 11 draft Must Have**: S10-TD-003 -> `S11-DOC-HYGIENE-CARRY-001`; S10-N1 -> `S11-EVIDENCE-INDEX-CARRY-001`; S10-N2 -> `S11-ROUTE-READABILITY-CARRY-001`. NONE silently dropped.
+> - **Carried forward unchanged**: S8-QA-001-W1 manual/browser two-client GAME_OVER gap (open); QA-COND-0005 Standard-tier accessibility (accepted-risk friend-game scope); QA-COND-0006 playtest/fun-hypothesis validation (accepted-risk / deferred); 11 ignored D-5 tests pending owner review (folded into draft Sprint 11 Must Haves); HUD timer eyeball visual check (folded into draft Sprint 11 Should-Have); placeholder / friend-game art scope (PAW-TD-*-a accept-risk on placeholder PNGs).
+> - **Explicitly NOT claimed by Sprint 11 draft**: public release readiness, release-candidate readiness, full game completion, broad / Standard-tier accessibility completion, playtest / fun-hypothesis validation, full playable-client manual QA, final-art / asset-production completion. Release-scope work is OUT of Sprint 11.
+> - **Files changed by PROMPT 764**: `production/sprints/sprint-11.md` (NEW), `production/sprint-status.yaml` (`next_sprint:` block + `updated:` comment), `production/session-state/active.md` (this banner), `production/session-state/codex-orchestrator-state.md` (PROMPT 764 disposition section). No code under `client/`, `server/`, `shared/`, `tests/`; no `.octogent/`; no `.gitignore`; no `production/stage.txt`; no smoke / gate-check / QA sign-off / `/dev-story` / `/story-done` / Sprint 11 activation / release artifact / release claim.
+>
+> The 2026-05-13 PROMPT 763 banner immediately below and every earlier session-extract banner are HISTORICAL. **Do NOT read them as "current state"**. Authoritative current state is this 2026-05-13 PROMPT 764 banner + `production/sprint-status.yaml` + `production/sprints/sprint-11.md` + `git log`.
+>
+> ---
+>
 > **📍 CURRENT STATE — last updated 2026-05-13 (PROMPT 763 — Sprint 10 Polish close-out)**
 >
 > - **Source-of-truth at this update**: `origin/main@a6132d7`.

@@ -23,20 +23,26 @@ Current source of truth:
   override.
 - Current verified state at this update: `origin/main@a6132d7`, stage `Polish`,
   Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
-  `not_planned`, PROMPT 761 `Polish->Release` gate-check `FAIL` preserved as
-  evidence, PROMPT 762 Sprint 11 candidate backlog capture complete.
+  status `draft` (PROMPT 764, 2026-05-13) with draft plan at
+  `production/sprints/sprint-11.md` — **NOT activated**, PROMPT 761
+  `Polish->Release` gate-check `FAIL` preserved as evidence, PROMPT 762
+  Sprint 11 candidate backlog capture complete and folded into the draft.
 
 Current next move:
 
 - Sprint 10 close-out paperwork is DONE (PROMPT 763). See
   `production/sprint-status.yaml` `sprint_10_closeout:` block for the
   authoritative disposition.
+- Sprint 11 DRAFT planning artifacts are authored (PROMPT 764). See
+  `production/sprints/sprint-11.md` and `production/sprint-status.yaml`
+  `next_sprint:` block. Sprint 11 is NOT activated by PROMPT 764.
 - Preserve the PROMPT 761 Release gate failure and all carried risks.
 - Do not retry `Polish->Release` until release-scope artifacts exist.
-- Do not activate Sprint 11 or create active Sprint 11 rows before formal
-  Sprint 11 planning. Carry the deferred S10-TD-003 / S10-N1 / S10-N2 plus
-  the PROMPT 762 backlog candidates into the Sprint 11 plan when it is
-  authored via `/sprint-plan sprint-11` in a separate prompt.
+- Sprint 11 activation still requires `/sprint-plan sprint-11` in a
+  separate prompt, plus Sprint 11 story authoring + `/story-readiness` +
+  `/qa-plan sprint`. The PROMPT 764 draft already folds the deferred
+  S10-TD-003 / S10-N1 / S10-N2 carries and the PROMPT 762 backlog
+  candidates into the draft plan.
 
 ### Sprint 10 Polish Close-Out Disposition (PROMPT 763, 2026-05-13)
 
@@ -88,6 +94,123 @@ Files touched by PROMPT 763: `production/sprint-status.yaml`,
 `client/`, `server/`, `shared/`, `tests/`, no `.octogent/` changes, no
 `production/stage.txt` change, no smoke / gate-check / QA sign-off /
 `/dev-story` run, no Sprint 11 activation.
+
+### Sprint 11 DRAFT Planning Artifacts (PROMPT 764, 2026-05-13)
+
+Sprint 11 was drafted at `origin/main@a6132d7` as paperwork-only planning
+artifacts. **Sprint 11 was NOT activated.** Sprint 10 disposition,
+`production/stage.txt`, all carried conditions, and the PROMPT 761
+Polish->Release gate-check FAIL evidence are unchanged.
+
+Files touched by PROMPT 764: `production/sprints/sprint-11.md` (NEW),
+`production/sprint-status.yaml` (`next_sprint:` block flipped from
+`not_planned` to `draft` + `updated:` comment appended),
+`production/session-state/active.md` (PROMPT 764 banner prepended above
+the PROMPT 763 banner), `production/session-state/codex-orchestrator-state.md`
+(this section + the Current Operating Rules `Current next move` update).
+
+No code under `client/`, `server/`, `shared/`, `tests/`. No `.octogent/`
+changes. No `.gitignore` change. No `production/stage.txt` change. No
+smoke / gate-check / QA sign-off / `/dev-story` / `/story-done` run. No
+Sprint 11 activation. No release artifact authored. No release claim.
+
+#### Sprint 11 draft top 5 Must Have (PROMPT 764 producer recommendation)
+
+1. `S11-DRAG-RUNTIME-RETEST-001` — HIGH; gameplay-blocking for
+   friend-game runtime. Runtime trace never completed across PROMPT 696
+   / 697 / 698 / 706 / 709. Locks the S1-S5 grey-square truth-table or
+   authors a precise follow-on repro.
+2. `S11-TD-FIXTURE-HAND-UI-ONENTER-001` — HIGH; pervasive fixture-design
+   gap; 7x `spawn_hand_ui` not firing on `OnEnter(InSession)` in
+   `MinimalPlugins` fixtures. Unblocks 7+ ignored tests + future ones.
+3. `S11-TD-IGNORED-D5-TRIAGE-001` — HIGH; 11 owner-named `#[ignore]` D-5
+   tests from smoke retry-7 W1 triaged per-test (fix / redesign /
+   delete) with explicit rationale.
+4. `S11-DOC-HYGIENE-CARRY-001` — MEDIUM; S10-TD-003 carry. ADR-011
+   `TR-NP-04 -> TR-NP-006` literal corrections at
+   `docs/architecture/adr-011-reconnect-snapshot.md:173` and `:810` +
+   Rule 7 `ADR-011` breadcrumb in `design/gdd/network-protocol.md`.
+5. `S11-EVIDENCE-INDEX-CARRY-001` — MEDIUM; S10-N1 carry. Author
+   `production/qa/evidence/sprint-10-evidence-index.md` aggregator
+   linking the per-story Sprint 10 evidence files.
+
+(`S11-ROUTE-READABILITY-CARRY-001` is also Must Have as the third S10
+carry — folds S10-N2 — but ranks 6th for capacity prioritisation.)
+
+#### Sprint 11 draft Should Have
+
+- `S11-TD-FIXTURE-D-RESIDUALS-001` — `ghost_preview_bridge_test`,
+  `snapshot_spawn_test` phase routing, `status_icons` should-panic
+  drift, `shop_auction_ui_plugin_scaffold_formulas_test` count drift
+  57->66.
+- `S11-HU-PHASE-IDEMPOTENCY-001` — client `phase_changed=true` 60Hz
+  idempotency tightening.
+- `S11-SERVER-POOL-INIT-LOG-GUARD-001` — `init_pool` log before guard
+  (W5-fix pattern apply).
+- `S11-HUD-TIMER-EYEBALL-VISUAL-001` — smoke retry-7 W2 carry.
+
+#### Sprint 11 draft Nice-to-Have
+
+- `S11-TD-CARGO-DISK-USAGE-001`, `S11-TD-CARGO-PDB-LIMIT-001`,
+  `S11-OPS-ORCHESTRATOR-LOCK-001`, `S11-OPS-GH-CLI-001`,
+  `S11-LOBBY-UX-CONFIRM-STATE-001`,
+  `S11-SERVER-R2-PLACEMENT-CRASH-AUDIT-001`.
+
+#### Sprint 11 draft — wider backlog NOT scheduled into this draft
+
+`S11-TD-NET-001/002/003`, `S11-TD-PRISM-COV-001`,
+`S11-TD-HARNESS-MESSAGES-001`, `S11-TD-HARNESS-HANDUI-ENTITIES-001`,
+`S11-TD-BOARD-RENDERING-SNAPSHOT-PHASE-COUPLING-001`,
+`S11-TD-FIXTURE-MESSAGES-002`, `S11-TD-CI-NORMALIZE-COMMENTS-001`,
+`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001`, ConfirmClass intent
+chain, cooccupancy panic-guard drift, HudPlugin snapshot.phase fixture
+gap, GhostDragStartEvent producer fixture gap, the PROMPT 685 UI
+clean-pass 8-story milestone
+(`S11-TD-UI-ZINDEX-LAYERS` / `S11-TD-UI-FLEX-STRIPS` /
+`S11-UX-HUD-TOP-STRIP-LAYOUT` / `S11-UX-HUD-BOTTOM-STRIP-LAYOUT` /
+`S11-UX-HUD-OPP-FIGURINE` / `S11-UX-DRAFT-GRID-CENTERED-MODAL` /
+`S11-UX-AUCTION-FEATURED-CARD` / `S11-UX-AUCTION-FREE-GOLD-COUNTERS` /
+`S11-UX-LOBBY-CLASS-PICKER` / `S11-UX-LOBBY-BUTTON-HITTARGETS` /
+`S11-UX-BOARD-RENDERING-SPEC` / `S11-TD-UI-FONT-CONSTANTS` /
+`S11-TD-UI-VIEWPORT-INVARIANT-TESTS`).
+
+These remain in the broader backlog. Producer may pull them into the
+draft before activation, or defer to Sprint 12.
+
+#### Sprint 11 draft — suggested first parallel batch after activation
+
+Once Sprint 11 is activated (via `/sprint-plan sprint-11`) and story
+files for the two HIGH Must Haves are authored + `/story-readiness`
+passes:
+
+- Lane A (story authoring + triage doc skeleton): author
+  `S11-DRAG-RUNTIME-RETEST-001` and `S11-TD-FIXTURE-HAND-UI-ONENTER-001`
+  story files in parallel with the `S11-TD-IGNORED-D5-TRIAGE-001`
+  triage-doc skeleton.
+- Lane B (paperwork carries, truly parallel): dispatch
+  `S11-DOC-HYGIENE-CARRY-001` (touches
+  `docs/architecture/adr-011-*` + `design/gdd/network-protocol.md`),
+  `S11-EVIDENCE-INDEX-CARRY-001` (touches
+  `production/qa/evidence/sprint-10-evidence-index.md`), and
+  `S11-ROUTE-READABILITY-CARRY-001` (touches
+  `production/qa/evidence/sprint-10-route-readability-notes.md` or
+  equivalent) as three separate small workers. Files are disjoint;
+  safe under the 2026-05-13 override (only one shared-status writer at
+  a time means `sprint-status.yaml` is OFF-limits for these workers).
+- Hold for serial: `/qa-plan sprint`, `/smoke-check`, `/team-qa`,
+  `/gate-check`, and all close-out work.
+
+#### Sprint 11 draft — blockers / missing evidence flagged
+
+- No Sprint 11 QA plan yet (`/qa-plan sprint` must run after story
+  files exist).
+- No Sprint 11 story files yet for the two HIGH Must Haves.
+- Runtime trace for drag-and-drop divergence has never been captured
+  end-to-end. `S11-DRAG-RUNTIME-RETEST-001` activation should specify
+  the exact `RUST_LOG=...` invocation, the friend-game route to
+  execute, and the expected truth-table form before worker dispatch.
+- Sprint 11 dates are not locked. Producer should lock them at
+  activation.
 
 ### Orchestrator Response Style
 
