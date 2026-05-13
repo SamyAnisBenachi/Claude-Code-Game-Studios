@@ -33,11 +33,37 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 @.Codex/docs/coordination-rules.md
 
+## Current Orchestrator Contract
+
+The current GCS orchestrator rules live in
+`production/session-state/codex-orchestrator-state.md` under
+`Current Operating Rules (2026-05-13 override)`. That section supersedes older
+prompt-formatting, delimiter, close-out, and parallelism notes elsewhere in the
+repo.
+
+Key current rules:
+
+- Put a state label directly above every agent-window disposition or launch
+  prompt:
+  - `CLEAR -- PROMPT N` for a window the user can close.
+  - `REPONDRE -- PROMPT N` for text to paste back into the same window.
+  - `RELANCER -- PROMPT N` for a corrected rerun/repair in the same workstream.
+  - `NEW -- PROMPT N` for a new prompt to launch in a new agent window.
+- Launch only work that is actually ready and file-disjoint; do not invent
+  parallelism to fill a quota.
+- Keep one shared-status writer active at a time (`/story-done`,
+  `production/sprint-status.yaml`, `production/session-state/active.md`, story
+  completion notes).
+- Future-sprint work may be prepared only when it is Ready, disjoint, and does
+  not activate that sprint.
+- Final prompt/status line is one line only: `N: TICKET-ID: STATUS`. No delimiter
+  line, no HTML/span/CSS/ANSI markup, and STATUS must be a real outcome word.
+
 ## Parallel Worker Isolation
 
 Implementation workers must use one Git worktree and one branch per story. The
-root checkout `D:\_DEV\claude-code-game-studios` is reserved for orchestration,
-integration merges, and serialized story-done updates.
+root checkout is reserved for orchestration, integration merges, and serialized
+story-done updates.
 
 - Worker branch format: `work/<story-id>-<short-slug>`
 - Worker path format: `D:\_DEV\claude-code-game-studios-worktrees\<story-id>`

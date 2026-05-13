@@ -1,5 +1,35 @@
 # Agent Coordination Rules
 
+## Current GCS Orchestrator Contract
+
+The live orchestration contract is the top override block in
+`production/session-state/codex-orchestrator-state.md`:
+`Current Operating Rules (2026-05-13 override)`.
+
+When this document conflicts with that override, use the override.
+
+Current rules for orchestrator-style agent work:
+
+- Put a state label directly above every agent-window disposition or launch
+  prompt.
+- `CLEAR` means the user can close the agent window.
+- `REPONDRE` means paste the response into that same window.
+- `RELANCER` means rerun the same work with a corrected prompt.
+- `NEW` means launch the prompt in a new agent window.
+- Use these exact labels: `CLEAR -- PROMPT N`, `REPONDRE -- PROMPT N`,
+  `RELANCER -- PROMPT N`, `NEW -- PROMPT N`.
+- New launch prompts use `PROMPT N -- Short Task Name`.
+- Launch only actually ready work; do not invent parallelism to satisfy a quota.
+- Keep only one shared-status writer active at a time.
+- Implementation workers use one worktree and one branch, push the worker branch
+  only, and never push `main`.
+- Workers do not run `/story-done`, smoke, gate-check, QA sign-off, or edit
+  shared tracker files unless explicitly scoped.
+- Final status line is one line only: `N: TICKET-ID: STATUS`; no delimiter line.
+- STATUS is a real outcome word, not a color name.
+- Use `liv-bevy-018` for Bevy reads/reviews/edits and `liv-bevy-lightyear` for
+  Lightyear/networking reads/reviews/edits.
+
 1. **Vertical Delegation**: Leadership agents delegate to department leads, who
    delegate to specialists. Never skip a tier for complex decisions.
 2. **Horizontal Consultation**: Agents at the same tier may consult each other

@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-10
+Updated: 2026-05-13
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -8,7 +8,344 @@ agent windows, pending story-done work, unlocks, and known blockers. It is not t
 authoritative story status tracker; `production/sprint-status.yaml` remains the
 source of truth for story status.
 
-## Current Policy
+## Current Operating Rules (2026-05-13 override)
+
+This section is the current GCS orchestrator contract. It supersedes older
+prompt-formatting, delimiter, close-out, and parallelism notes later in this
+file. Later dated snapshots are historical unless they explicitly replace this
+section.
+
+Current source of truth:
+
+- Story and sprint status: `production/sprint-status.yaml`.
+- Stage: `production/stage.txt`.
+- Coordination memory: this file, using the latest dated block plus this
+  override.
+- Current verified state at this update: `origin/main@f27d888`, stage `Polish`,
+  Sprint 10 still `active`, Sprint 11 `not_planned`, PROMPT 761
+  `Polish->Release` gate-check `FAIL`, PROMPT 762 Sprint 11 candidate backlog
+  capture complete.
+
+Current next move:
+
+- Close Sprint 10 as Polish / friend-game `closed-with-conditions`.
+- Preserve the PROMPT 761 Release gate failure and all carried risks.
+- Do not retry `Polish->Release` until release-scope artifacts exist.
+- Do not activate Sprint 11 or create active Sprint 11 rows before formal
+  Sprint 11 planning.
+
+### Orchestrator Response Style
+
+After every user-pasted agent return, lead with the action:
+
+- `CLEAR -- PROMPT N` when the user can close the agent window and no reply is
+  needed. Badge/color: green.
+- `REPONDRE -- PROMPT N` when the user should paste a reply into that same
+  window. Badge/color: yellow.
+- `RELANCER -- PROMPT N` when the same work needs a corrected prompt or repair
+  rerun. Badge/color: use a distinct repair color (red/orange if available).
+- `NEW -- PROMPT N` above each new prompt the user should launch in a new agent
+  window. Badge/color: purple.
+
+Every prompt or agent-window disposition must have one of these state labels
+directly above it. Use `NEW`, not a bare `PROMPT`, for newly launchable
+parallel work.
+
+Then state, briefly:
+
+1. What changed.
+2. Whether it is safe to clear, reply, repair, integrate, or launch new work.
+3. Newly unlocked work, if any.
+4. Exact next prompt(s), only if launchable now.
+
+Keep responses operational. Do not bury the answer in narrative. If no safe
+parallel work exists, say so and name the blocker.
+
+### Parallelism
+
+Maximize safe parallelism, but never invent work to fill a quota.
+
+- Keep at most one `/story-done` or shared status writer active because it edits
+  `production/sprint-status.yaml`, `production/session-state/active.md`, or
+  story completion notes.
+- Run two to four implementation/blocker-clear workers only when their file
+  ownership and architecture ownership are disjoint.
+- Docs/readiness/audit workers may run in parallel with implementation if they
+  do not touch shared status files.
+- Future-sprint work is allowed only when it is truly Ready, disjoint, and does
+  not imply activating that sprint.
+- CI/smoke/gate failures block release/close-out claims, not ordinary parallel
+  implementation, unless the failure is directly caused by the pending work.
+
+Root checkout is reserved for orchestration, integration, story-done, CI triage,
+and state tracking. Implementation workers use one worktree and one branch per
+story:
+
+- Branch: `work/<story-id>-<short-slug>`.
+- Worktree: `D:\_DEV\claude-code-game-studios-worktrees\<story-id>`.
+- Workers push their branch, never `main`.
+
+### Agent Roles And Skills
+
+Use Game Studio roles explicitly in prompts:
+
+- `ui-programmer`: Bevy UI, HUD, hand UI, lobby, shop/auction presentation.
+- `gameplay-programmer`: server gameplay, economy, combat, RSM, acquisition.
+- `network-programmer`: Lightyear protocol, client/server messages, reconnects.
+- `qa-lead` or `qa-tester`: evidence, smoke/readiness audits, blocker records.
+- `producer`: sprint planning, close-out disposition, scope decisions.
+- `ux-designer`: interaction/readability diagnostics and UX docs.
+- `art-director` or `technical-artist`: asset/art wiring and visual acceptance.
+- `audio-director` or `sound-designer`: audio specs, sound bible, cue evidence.
+
+Mandatory skills:
+
+- Use `liv-bevy-018` before reading, reviewing, or editing Bevy `.rs` code.
+- Use `liv-bevy-lightyear` before reading, reviewing, or editing Lightyear,
+  multiplayer, protocol, channel, or network-message code.
+- For read-only diagnostics, still name relevant skills so the worker uses the
+  correct Bevy/Lightyear mental model.
+
+Agent choice:
+
+- Use broad Claude-style diagnostic agents for source-of-truth audits,
+  read-only end-to-end diagnosis, UX/design review, and story/readiness docs.
+- Use Codex-style implementation workers for scoped code changes, integration,
+  story-done, and git hygiene.
+
+### Prompt Authoring Template
+
+Every launch prompt should include only the sections that apply:
+
+1. Title: `PROMPT N -- Short Task Name`.
+2. Agent/skills: role plus mandatory skills.
+3. Repo and mode:
+   - implementation: branch + worktree off latest `origin/main`;
+   - read-only diagnostic: root checkout, no writes, no branch;
+   - story-done/integration: root checkout only.
+4. Source of truth: exact branch/commit if known, otherwise latest
+   `origin/main` verified at start.
+5. Context: two to five bullets explaining why this task exists.
+6. Owned files and forbidden files.
+7. Investigation order, if the bug spans multiple systems.
+8. Required implementation or documentation scope.
+9. Verification:
+   - workers run narrow targeted tests only;
+   - root/orchestrator owns workspace smoke;
+   - `cargo check --workspace` only when shared protocol/config/workspace
+     surfaces changed or close-out requires it.
+10. Commit/push policy:
+   - no `main` push for workers;
+   - stage explicit paths only;
+   - no `/story-done`, smoke, gate-check, QA sign-off unless explicitly scoped.
+11. Final report fields: branch, worktree, commit, changed files, checks, rebase
+    yes/no, push yes/no, final status.
+12. Last visible line rule.
+
+For implementation prompts, include pre-integration duty:
+
+- `git fetch origin`;
+- rebase the worker branch on latest `origin/main`;
+- rerun listed checks after rebase;
+- `git diff --check origin/main...HEAD`;
+- push only the worker branch.
+
+For read-only diagnostics:
+
+- Allow `git fetch origin` only to refresh refs.
+- Forbid source/worktree edits, branch creation, commits, pushes, smoke, QA
+  sign-off, gate-check, `/dev-story`, and `/story-done`.
+- Require file/function/line evidence for every bug claim.
+- If evidence is insufficient, report ranked suspects instead of certainty.
+
+### Output Examples
+
+Use these as style examples for future orchestrator windows.
+
+Clear-only return:
+
+```text
+CLEAR -- PROMPT 762
+
+Already committed at f27d888 and verified. No reply needed in that window.
+```
+
+Reply-to-existing-window return:
+
+```text
+REPONDRE -- PROMPT 761
+
+Do not retry the Release gate. Record the FAIL as valid evidence, keep stage
+Polish, and proceed to Sprint 10 closed-with-conditions paperwork.
+```
+
+Rerun/repair-existing-window return:
+
+```text
+RELANCER -- PROMPT 558
+
+Use the corrected scope below in the same worker window. The prior prompt was too
+broad and allowed shared tracker edits.
+```
+
+Short launch prompt:
+
+```text
+NEW -- PROMPT 763
+
+PROMPT 763 -- Sprint 10 Polish Close-Out Disposition
+
+Agent/skills:
+- producer / qa-lead
+- No Bevy or Lightyear code; no liv skill required.
+
+Repo/mode:
+- Root checkout only.
+- Use latest origin/main as source of truth.
+
+Context:
+- Sprint 10 smoke retry-7 is PASS WITH WARNINGS.
+- PROMPT 761 Polish->Release gate-check is FAIL.
+- Stage remains Polish.
+- Sprint 10 is still active.
+
+Scope:
+- Close Sprint 10 as Polish/friend-game closed-with-conditions.
+- Preserve all carried risks and non-claims.
+- Do not activate Sprint 11.
+
+Allowed files:
+- production/sprint-status.yaml
+- production/session-state/active.md
+- production/session-state/codex-orchestrator-state.md
+- production/sprints/sprint-10.md only if its status/header must match.
+
+Forbidden:
+- client/, server/, shared/, tests/
+- smoke, gate-check, QA sign-off, /dev-story, Release claims
+
+Verification:
+- git status --short --branch
+- git diff --check
+- git diff --cached --check before commit
+
+Commit and push if scoped.
+
+Last visible line uses:
+763: SPRINT-10-POLISH-CLOSE-OUT-DISPOSITION: STATUS
+
+Color the line by outcome. Use the true final status. No line after it.
+```
+
+Implementation worker prompt skeleton:
+
+```text
+PROMPT N -- Focused Implementation Title
+
+Agent/skills:
+- ui-programmer
+- Mandatory: liv-bevy-018
+- Add liv-bevy-lightyear if protocol/network messages are touched.
+
+Repo/mode:
+- Branch: work/<story-id>-<short-slug>
+- Worktree: D:\_DEV\claude-code-game-studios-worktrees\<story-id>
+- Base: latest origin/main
+
+Scope:
+- Owned files: <exact files/modules>
+- Forbidden files: production/sprint-status.yaml,
+  production/session-state/active.md,
+  production/session-state/codex-orchestrator-state.md, unrelated code.
+
+Task:
+- Implement the smallest repair that satisfies the listed acceptance criteria.
+- Do not broaden into adjacent bugs; report them separately.
+
+Verification:
+- Narrow targeted cargo test(s) only.
+- cargo fmt --check
+- cargo check -p <crate> --lib if production source changed.
+- git diff --check origin/main...HEAD
+
+Pre-integration duty:
+- git fetch origin
+- rebase on origin/main
+- rerun listed checks
+- push only the worker branch
+
+Final report:
+- worktree, branch, commit hash, changed files, checks, rebase yes/no,
+  push yes/no, final git status, blockers.
+
+Last visible line uses:
+N: TICKET-ID: STATUS
+
+Color the line by outcome. Use the true final status. No line after it.
+```
+
+Read-only diagnostic prompt skeleton:
+
+```text
+PROMPT N -- Runtime Bug E2E Diagnostic
+
+Agent/skills:
+- broad diagnostic agent
+- Mandatory for Bevy reads: liv-bevy-018
+- Mandatory for networking reads: liv-bevy-lightyear
+
+Mode:
+- Root checkout.
+- Read-only diagnostic.
+- No source/worktree writes. git fetch origin allowed only to refresh refs.
+- No branch, commit, push, smoke, QA sign-off, gate-check, /dev-story, or
+  /story-done.
+
+Read first:
+- AGENTS.md
+- production/session-state/codex-orchestrator-state.md current override
+- relevant story file and ACs
+- relevant control-manifest / ADR / GDD references
+
+Diagnose in order:
+- UI/event path first
+- network/protocol path second
+- server/RSM path third
+- existing-test coverage last
+
+Deliver:
+- proven root cause with file/function/line evidence, or ranked suspects with
+  evidence gaps
+- owner/story/AC classification
+- minimal repair prompt(s), split by owner if needed
+
+Last visible line uses:
+N: TICKET-ID: STATUS
+
+Color the line by outcome. Use the true final status. No line after it.
+```
+
+### Final Line Rule
+
+Current convention for future prompts and orchestrator replies:
+
+- One status line only.
+- No delimiter line.
+- No HTML/span/CSS/ANSI markup in the prompt text.
+- Last visible line uses `N: TICKET-ID: STATUS`.
+- `STATUS` is replaced by a real outcome word, never `STATUS`, never a color
+  name such as `GREEN` or `YELLOW`.
+- Color the entire status line by outcome when the interface supports color:
+  green for DONE/COMPLETE/NO-OP/ACCEPTED RISK; yellow for PARTIAL/IN PROGRESS/
+  WAITING/NEEDS REPAIR/WARNING; red for BLOCKED/FAILED.
+
+Valid status words include DONE, COMPLETE, IN PROGRESS, WAITING USER, BLOCKED,
+FAILED, NEEDS REPAIR, ACCEPTED RISK, NO-OP, and ALREADY DONE.
+
+Prompt numbers are global and monotonically increasing. Use the latest number
+recorded in the current conversation/state; do not reset to 1.
+
+## Archived Legacy Policy (superseded by 2026-05-13 override above)
 
 - Do not block new implementation work on GitHub Actions unless CI reports a red
   failure that needs repair.
@@ -60,7 +397,11 @@ source of truth for story status.
 - Existing shared-tree workers already launched before the worktree switch may
   finish normally; do not migrate them mid-story.
 
-## Orchestrator Response Protocol
+## Archived Legacy Orchestrator Response Protocol (superseded by 2026-05-13 override above)
+
+The rules in this legacy section are preserved for historical context only. Do
+not use them for new orchestrator prompts when they conflict with the current
+override above.
 
 After every agent return from the user, the orchestrator must automatically:
 

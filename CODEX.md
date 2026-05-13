@@ -23,14 +23,49 @@ A 1v1 to 3v3 lane-based card game with auction mechanic, hidden objectives, and 
 
 You are NOT only an implementer. You are the user's **navigator** through implementation.
 
+## Current GCS Orchestrator Override
+
+Before following older workflow text in this file, read
+`production/session-state/codex-orchestrator-state.md` and apply
+`Current Operating Rules (2026-05-13 override)`.
+
+Current local root checkout:
+
+```text
+D:\_DEV\Work\Claude-Code-Game-Studios
+```
+
+Current orchestration rules:
+
+- Put a state label directly above every agent-window disposition or launch
+  prompt: `CLEAR -- PROMPT N`, `REPONDRE -- PROMPT N`,
+  `RELANCER -- PROMPT N`, or `NEW -- PROMPT N`.
+- Use `NEW -- PROMPT N` for newly launchable work in a new agent window.
+- Use `RELANCER -- PROMPT N` for corrected reruns/repairs in the same
+  workstream.
+- Do not append delimiter/hash lines to future prompts.
+- Final status line is one line only: `N: TICKET-ID: STATUS`.
+- STATUS must be a real outcome word, not `GREEN`, `YELLOW`, or the literal
+  word `STATUS`.
+- Workers use one worktree and one branch, push only `work/...`, and never push
+  `main`.
+- Workers do not edit shared tracker files unless the prompt is explicitly a
+  serialized tracking/closure task.
+- The orchestrator owns `main` integration, sprint/story tracking, and workspace
+  smoke.
+- Launch only actually ready, file-disjoint work. Do not create parallel work
+  just to fill a quota.
+
 At every interaction:
 1. **Tell the user where we are** in the project
 2. **Tell them the next concrete command** to run (and in which Codex window)
 3. **Tell them if it's parallelizable** with other work
 4. **Tell them how they'll know it worked** (local Cargo test for worker iteration; CI green for final authority; manual playtest at later milestone)
 5. **Implement** when asked
-6. **Claim work before coding** (`status: in-progress`, `owner: <window-id>`)
-7. **Update tracking files** when done (story Status, sprint-status.yaml, session-state/active.md)
+6. **Assign/confirm work ownership before coding** (branch/worktree and owned
+   files)
+7. **Update tracking files only from orchestrator/serialized closure tasks**
+   (story Status, sprint-status.yaml, session-state/active.md)
 8. **Do not append a manual attention footer** when control returns to the user. The Codex Stop hook is the only source for the `WAITING INPUT` footer.
 
 You are NOT the designer. If a story has design ambiguity → STOP and tell the user to go to Claude Code for `/quick-design` or `/architecture-decision`. Never invent design answers.
@@ -41,12 +76,14 @@ You are NOT the designer. If a story has design ambiguity → STOP and tell the 
 
 For parallel implementation, the default workflow is now **one story = one Git worktree = one branch**.
 
-The main repository checkout at `D:\_DEV\claude-code-game-studios` is the orchestrator/integration checkout. Worker agents must not implement code there unless the user explicitly says the task is an orchestrator task.
+The main repository checkout is the orchestrator/integration checkout. Worker
+agents must not implement code there unless the user explicitly says the task is
+an orchestrator task.
 
 Default paths:
 
 ```text
-D:\_DEV\claude-code-game-studios                         # orchestrator/main
+D:\_DEV\Work\Claude-Code-Game-Studios                    # current orchestrator/main
 D:\_DEV\claude-code-game-studios-worktrees\<story-id>    # worker worktree
 ```
 
@@ -81,7 +118,8 @@ Existing workers already launched in the shared checkout may finish normally. Al
 In this exact order:
 
 1. `CLAUDE.md` — engine version, conventions, technical preferences
-2. `production/stage.txt` — current project stage (`Production` as of now)
+2. `production/stage.txt` — current project stage (currently `Polish`; verify
+   the file instead of trusting this note)
 3. `production/session-state/active.md` — current high-level state
 4. `production/sprint-status.yaml` — story states (`ready-for-dev`, `done`, `backlog`, etc.)
 5. `docs/architecture/control-manifest.md` — code rules (forbidden / required patterns)
@@ -124,7 +162,10 @@ Read sprint-status.yaml + active.md + last 10 git commits. Reply with:
 1. Find next `ready-for-dev` story in `sprint-status.yaml`
 2. If multiple ready, recommend the foundational one first
 3. If this is a worker implementation task, create a dedicated worktree/branch for the story before editing code. Use branch `work/<story-id>-<short-slug>`.
-4. Claim the story in that branch before implementation: edit that story in `sprint-status.yaml` to `status: in-progress`, set `owner` to a unique window id, and save the file. The remote branch is the live reservation; the main tracker updates when the orchestrator merges the branch.
+4. Do not edit `sprint-status.yaml` from a normal implementation worker unless
+   the prompt explicitly authorizes a serialized tracking claim. The worker
+   branch and assigned worktree are the live reservation; the orchestrator
+   updates shared trackers during integration or closure.
 5. Tell the user: story, branch, owner id, next command/window, parallelizable?, how to know the claim worked
 6. Read story file fully
 7. Read every ADR referenced
@@ -526,10 +567,15 @@ You don't have persistent memory across sessions. Every Codex session reads:
 1. **Files** — sprint-status.yaml, active.md, recent commits → recovers state
 2. **CODEX.md** — your operating manual
 
-After completing work, ALWAYS update:
-- The story file (Status: Complete + Completion Notes)
-- `sprint-status.yaml` (`status: done`, `owner: ""`, `completed: <date>`)
-- `production/session-state/active.md` (append session extract)
+After completing serialized orchestrator/story-done work, update:
+- The story file (Status: Complete + Completion Notes), if story-done is in scope
+- `sprint-status.yaml` (`status: done`, `owner: ""`, `completed: <date>`), if
+  shared tracking is in scope
+- `production/session-state/active.md` (append session extract), if closure
+  tracking is in scope
+
+Normal implementation workers do not update shared tracker files unless their
+prompt explicitly authorizes that serialized tracking work.
 
 This is how the next Codex session (or Claude Code session) will know what you did.
 
@@ -545,7 +591,7 @@ You are the implementation orchestrator for Lanes and Lies (Bevy 0.18 + Lightyea
 1. Read CODEX.md fully.
 2. Read production/sprint-status.yaml and production/session-state/active.md.
 3. Tell me where we are, what's next, and whether parallelizable.
-4. If I say "implement next" — use a dedicated worktree/branch (`work/<story-id>-<short-slug>`), claim the story in that branch, read full context (story + ADRs + GDD + control-manifest), implement it, write tests, run local Cargo tests from Developer PowerShell for VS 2026, commit, push the branch, and hand off branch/commit/CI details to the orchestrator. Do not push main, wait for GitHub Actions, or mark Done unless explicitly assigned orchestrator/story-done duty.
+4. If I say "implement next" — use a dedicated worktree/branch (`work/<story-id>-<short-slug>`), treat the assigned branch/worktree as the reservation, read full context (story + ADRs + GDD + control-manifest), implement it, write tests, run local Cargo tests from Developer PowerShell for VS 2026, commit, push the branch, and hand off branch/commit/CI details to the orchestrator. Do not edit shared trackers, push main, wait for GitHub Actions, or mark Done unless explicitly assigned orchestrator/story-done duty.
 5. Use detailed commit messages with a body containing Summary, Files, Verification, and Notes.
 6. After every action, tell me: next concrete command, which window, parallelizable or not, how to know it worked.
 ```

@@ -4,6 +4,10 @@ Rules to maximize parallel worker throughput, minimize wasted compute, and keep
 caches warm across the multi-worker workflow. Apply to every worker prompt that
 touches code, tests, or build artifacts.
 
+This document is subordinate to
+`production/session-state/codex-orchestrator-state.md` >
+`Current Operating Rules (2026-05-13 override)`.
+
 ## Agent Resource Policy
 
 - Workers MUST investigate locally before editing.
@@ -34,11 +38,16 @@ Only run crate-level check if production source changed:
 cargo check -p <crate> --lib
 ```
 
-**Forbidden for workers:**
+**Forbidden for workers by default:**
 - `cargo test --workspace --tests`
 - `cargo check --workspace`
 - `cargo test` (bare, no targeting)
 - `cargo clean`
+
+Exception: a worker prompt may explicitly authorize `cargo check --workspace`
+only when the task touches shared protocol/config/workspace surfaces and the
+orchestrator deliberately chooses to pay that cost. Root/orchestrator still owns
+full workspace smoke.
 
 Example correct worker verify block:
 
