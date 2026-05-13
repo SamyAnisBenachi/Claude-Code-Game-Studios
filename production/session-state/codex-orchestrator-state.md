@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-13 (PROMPT 793 — Sprint 12 draft plan; verdict PASS-WITH-NOTES; Sprint 12 authored at production/sprints/sprint-12.md; next_sprint: draft block appended to production/sprint-status.yaml; Sprint 12 NOT activated; Sprint 11 remains closed-with-conditions; stage UNCHANGED Polish)
+Updated: 2026-05-14 (PROMPT 798 — Sprint 12 activation; verdict PASS; Sprint 12 promoted from next_sprint: draft block to top-level active sprint row in production/sprint-status.yaml; Sprint 12 stories: block written with 5 Must Have ready + 4 Should Have blocked + 5 Nice to Have blocked rows; sprint_12_activation: block appended at end of file; next_sprint: draft block removed; sprint-12.md ACTIVATED banner prepended; Sprint 11 closed-with-conditions preserved unchanged; Sprint 10 closed-with-conditions preserved unchanged; stage UNCHANGED Polish; PROMPT 761 Polish->Release FAIL preserved; Sprint 12 QA plan pending and required before /dev-story)
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -17,8 +17,46 @@ section.
 
 Current source of truth:
 
-- **Authoritative correction for this header (PROMPT 793 update)**: current
-  `origin/main` is `8a8451e` at PROMPT 793 entry (PROMPT 792
+- **Authoritative correction for this header (PROMPT 798 update)**: current
+  `origin/main` is `5029259` at PROMPT 798 entry (PROMPT 794-era docs commit
+  `docs(octogent): RELANCER+PROMPT pairing, idle-trigger patch, slug-in-filename reports`
+  on top of PROMPT 796 Sprint 12 Must Have story integration `487be6d`);
+  PROMPT 798 will push one paperwork commit on top with the Sprint 12
+  activation. PROMPT 798 promoted Sprint 12 from the `next_sprint:` draft
+  block (PROMPT 793) to the top-level active sprint row in
+  `production/sprint-status.yaml`: flipped `sprint: 11` -> `sprint: 12`,
+  `status: closed-with-conditions` -> `status: active`, `start: 2026-06-04`
+  -> `start: 2026-06-18`, `end: 2026-06-17` -> `end: 2026-07-01`; rewrote
+  `goal:` / `scope:` for Sprint 12; rewrote `activation:` block for
+  PROMPT 798; appended `carried_into_sprint_12:` block after
+  `previous_sprint_closeout:`; replaced the Sprint 11 `stories:` block with
+  the Sprint 12 `stories:` block (5 Must Have rows marked `ready` on the
+  basis of PROMPT 794 READY for story 019 and PROMPT 797 PASS-WITH-NOTES /
+  structurally READY for stories 012 / 013 / 014 / 015, all carrying the
+  explicit blocker note that Sprint 12 QA plan is required before
+  `/dev-story`; 4 Should Have rows marked `blocked` pending story files;
+  5 Nice to Have rows marked `blocked` pending story files); removed the
+  `next_sprint:` draft block (now superseded); appended a
+  `sprint_12_activation:` block at end of file. Prepended an ACTIVATED
+  banner to `production/sprints/sprint-12.md` above the PROMPT 793 DRAFT
+  body. Verdict **PASS** — activation succeeds with the explicit
+  precondition that Sprint 12 QA plan is still pending and required before
+  `/dev-story`, all carried conditions are preserved unchanged, and no
+  release / accessibility / playtest / manual-QA / final-art /
+  `S8-QA-001-W1` closure is claimed. Sprint 11 disposition UNCHANGED
+  (`closed-with-conditions` per PROMPT 792). Sprint 10 disposition
+  UNCHANGED (`closed-with-conditions` per PROMPT 763). Stage UNCHANGED
+  (`Polish`). PROMPT 761 Polish->Release gate-check `FAIL` preserved (no
+  retry). `production/stage.txt` reads `Polish` and was NOT modified by
+  PROMPT 798. `.claude/settings.json` working-tree modification preserved
+  untouched. No public release readiness claim, no release-candidate
+  readiness claim, no full-game-completion claim, no broad / Standard-tier
+  accessibility-completion claim, no playtest / fun-hypothesis-validation
+  claim, no full playable-client manual-QA claim, no final-art /
+  asset-production claim, no `S8-QA-001-W1` closure, no Polish->Release
+  retry, no stage advance from Polish to Release is authorised by this
+  activation. (Prior: PROMPT 793 update — current
+  `origin/main` was `8a8451e` at PROMPT 793 entry (PROMPT 792
   `close-out(s11): Sprint 11 close-out disposition PASS-WITH-CONDITIONS`);
   PROMPT 793 will push one paperwork commit on top with the Sprint 12
   draft plan. PROMPT 793 authored `production/sprints/sprint-12.md` (NEW
@@ -74,16 +112,32 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@8a8451e` at PROMPT
+- Current verified state at this update: `origin/main@5029259` at
+  PROMPT 798 entry (PROMPT 794-era docs commit
+  `docs(octogent): RELANCER+PROMPT pairing, idle-trigger patch, slug-in-filename reports`
+  on top of PROMPT 796 Sprint 12 Must Have story integration `487be6d`);
+  PROMPT 798 will push one paperwork commit on top with the Sprint 12
+  activation (`production/sprint-status.yaml` rewritten — top-level
+  `sprint: 12`, `status: active`; Sprint 12 `stories:` block with 5
+  Must Have `ready` + 4 Should Have `blocked` + 5 Nice to Have `blocked`
+  rows; `next_sprint:` draft block removed; `sprint_12_activation:`
+  block appended at end of file — plus `production/sprints/sprint-12.md`
+  ACTIVATED banner prepended above the PROMPT 793 DRAFT body, plus
+  `production/session-state/active.md` PROMPT 798 banner prepended,
+  plus this `codex-orchestrator-state.md` update). Sprint 12 disposition
+  **CHANGED**: `active` (Polish-stage; activated by PROMPT 798 with the
+  precondition that the Sprint 12 QA plan must be authored via
+  `/qa-plan sprint` before any `/dev-story` on the 5 Must Have rows;
+  `/qa-plan sprint-12` is the next required prompt).
+  Historical PROMPT 793 entry follows: `origin/main@8a8451e` at PROMPT
   793 entry (PROMPT 792 Sprint 11 close-out commit
   `close-out(s11): Sprint 11 close-out disposition PASS-WITH-CONDITIONS`);
-  PROMPT 793 will push one paperwork commit on top with the Sprint 12
+  PROMPT 793 pushed one paperwork commit on top with the Sprint 12
   draft plan (`production/sprints/sprint-12.md` NEW + `next_sprint:`
-  draft block appended to `production/sprint-status.yaml` +
-  `production/session-state/active.md` banner prepended + this
-  `codex-orchestrator-state.md` update). Sprint 12 disposition **NEW**:
-  `draft` (Polish-stage; **NOT activated** by PROMPT 793; activation
-  via `/sprint-plan sprint-12` is a separate prompt). Sprint 12 draft
+  draft block appended to `production/sprint-status.yaml`).
+  Sprint 12 historical disposition at PROMPT 793 entry: `draft`
+  (Polish-stage; NOT activated by PROMPT 793; activation
+  via `/sprint-plan sprint-12` happened in PROMPT 798). Sprint 12 draft
   Must Have rows (5): `S11-DRAG-RUNTIME-RETEST-TIGHTER-CAPTURE-001` (story
   019 follow-on), `S11-TD-FIXTURE-HUD-SNAPSHOT-PHASE-BRIDGE-001` (B2),
   `S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001` (B3),

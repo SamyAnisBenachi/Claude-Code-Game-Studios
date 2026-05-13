@@ -1,4 +1,43 @@
-# Sprint 12 -- DRAFT (Polish stage)
+# Sprint 12 -- ACTIVATED (Polish stage)
+
+> **Status**: `active` -- activated 2026-05-14 by PROMPT 798
+> (`/sprint-plan sprint-12` on root checkout, no worktree).
+> Source-of-truth at activation: `origin/main@5029259` (PROMPT 794-era
+> docs commit on top of PROMPT 796 Sprint 12 Must Have story
+> integration `487be6d`). Stage remains `Polish` (NOT Release).
+> Sprint 11 disposition preserved unchanged: `closed-with-conditions`
+> per PROMPT 792. PROMPT 798 paperwork-only activation: NO `/dev-story`,
+> NO `/smoke-check`, NO `/team-qa`, NO `/gate-check`,
+> NO `/release-check`, NO `/story-done`, NO `/story-readiness`,
+> NO `/qa-plan`, NO implementation, NO CI runs were performed by this
+> activation. The Sprint 12 stories block in
+> `production/sprint-status.yaml` was rewritten: 5 Must Have rows
+> marked `ready` (PROMPT 794 READY for story 019; PROMPT 797
+> PASS-WITH-NOTES / structurally READY for stories 012 / 013 / 014 /
+> 015) with the explicit blocker that the Sprint 12 QA plan must be
+> authored via `/qa-plan sprint` before any `/dev-story`. The 4 Should
+> Have rows and 5 Nice to Have rows remain `blocked` pending story
+> files + `/story-readiness`. The `next_sprint:` draft block in
+> `production/sprint-status.yaml` was removed (superseded by the
+> `sprint_12_activation:` block appended at end of file). PROMPT 761
+> Polish->Release gate-check `FAIL` evidence remains preserved at
+> `production/gate-checks/gate-polish-release-2026-05-12.md`;
+> **NO retry** is in scope for Sprint 12 (release-scope artifacts do
+> not yet exist on `main`). All carried conditions preserved
+> unchanged: `S8-QA-001-W1` OPEN; `QA-COND-0005` accepted-risk
+> (friend-game scope); `QA-COND-0006` accepted-risk / deferred;
+> `PAW-TD-*-a` placeholder-art accept-risk; PROMPT 683-era
+> runtime-divergence question folded into story 019 tighter-capture.
+> Explicitly **NOT claimed** by this activation: public release
+> readiness, release-candidate readiness, full game completion, broad /
+> Standard-tier accessibility completion, playtest / fun-hypothesis
+> validation, full playable-client manual QA, final-art /
+> asset-production completion, `S8-QA-001-W1` closure, Polish->Release
+> gate-check retry, stage advance from Polish to Release.
+
+---
+
+# Sprint 12 -- DRAFT (Polish stage) -- HISTORICAL pre-activation body below
 
 > **Status**: `draft` -- authored 2026-05-13 by PROMPT 793 (producer +
 > qa-lead roles, root checkout, no worktree). Source-of-truth at draft:
