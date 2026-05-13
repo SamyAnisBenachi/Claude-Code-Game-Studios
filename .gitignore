@@ -22,6 +22,9 @@ production/session-logs/
 .agents/
 .codex-tmp/
 
+# === Octogent local orchestration state ===
+.octogent/
+
 # === Internal Planning (not for public) ===
 
 expansions/
