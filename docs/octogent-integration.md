@@ -79,11 +79,29 @@ to start of line, `\d+` is the prompt number):
 
 | Pattern | Action | Octogent API call | Sound |
 |---|---|---|---|
-| `PROMPT N -- Title` | **SPAWN** worker `PROMPT-N` under `gcs-orchestrator`; body (until next header) becomes the `initialPrompt` | `POST /api/terminals` | `oui-messire.mp3` |
-| `NEW -- PROMPT N` | **NO-OP** (disposition label only). Recognised so it cleanly delimits preceding/following blocks; the real SPAWN trigger is the `PROMPT N -- Title` line that follows. Fallback: if no matching `PROMPT N -- Title` appears in the same response, an empty placeholder terminal is spawned and a WARN is logged. | (no call unless fallback) | (silent) |
-| `CLEAR -- PROMPT N` | **KILL** worker `PROMPT-N` | `POST /api/terminals/PROMPT-N/kill` | `travail-termine.mp3` |
-| `REPONDRE -- PROMPT N` | **Channel-message** the existing worker `PROMPT-N` with the body | `POST /api/channels/PROMPT-N/messages` | `pret-a-travailler.mp3` |
-| `RELANCER -- PROMPT N` | **Stop + recreate** worker `PROMPT-N` with new body | `POST .../stop` then `POST /api/terminals` | `encore-du-travail.mp3` |
+| `PROMPT N -- Title` | **SPAWN** worker `PROMPT-N` under `gcs-orchestrator`; body (until next header) becomes the `initialPrompt`. **Dedup**: skipped with `DEDUP_SKIP` if `PROMPT-N` already exists in a `running/live/starting` state. | `POST /api/terminals` | `oui-messire.mp3` |
+| `NEW -- PROMPT N` | **NO-OP** (disposition label only). Recognised so it cleanly delimits preceding/following blocks; the real SPAWN trigger is the `PROMPT N -- Title` line that follows. Fallback: if no matching `PROMPT N -- Title` appears in the same response, an empty placeholder terminal is spawned **unless** `PROMPT-N` is already alive (then `DEDUP_SKIP`). | (no call unless fallback) | (silent) |
+| `CLEAR -- PROMPT N` | **KILL** worker `PROMPT-N`. Logs `NOOP CLEAR` if the terminal does not exist in Octogent. | `POST /api/terminals/PROMPT-N/kill` | `travail-termine.mp3` |
+| `REPONDRE -- PROMPT N` | **Channel-message** the existing worker `PROMPT-N` with the body. Logs `WARN REPONDRE` if no such terminal — message still POSTed (Octogent will reply 404, audible only in dispatch log). | `POST /api/channels/PROMPT-N/messages` | `pret-a-travailler.mp3` |
+| `RELANCER -- PROMPT N` | **Bypasses dedup.** DELETEs the existing `PROMPT-N` record (regardless of state), then recreates with new body, preserving the same terminalId. Without the DELETE step Octogent silently auto-assigns a new id like `terminal-3`, which would break subsequent `CLEAR/REPONDRE -- PROMPT N` targeting. | `POST .../kill` → `DELETE /api/terminals/PROMPT-N` → `POST /api/terminals` | `encore-du-travail.mp3` |
+
+### Dedup semantics
+
+Before every SPAWN the dispatcher takes a snapshot of Octogent's terminal list.
+For each spawn block it then checks whether `PROMPT-N` is in `{running, live,
+starting}`:
+
+- **Yes** → `DEDUP_SKIP`, no API call, no sound. The orchestrator probably
+  re-emitted a prompt it already launched (e.g. the same PROMPT-N appearing
+  in two consecutive turns). The log message tells the user to switch to
+  `RELANCER -- PROMPT N` if they really want to overwrite.
+- **No** → spawn proceeds. The local snapshot is updated so that later blocks
+  in the same response see the freshly-spawned ID and dedup correctly too.
+
+`RELANCER -- PROMPT N` is the deliberate escape hatch when you do want to
+replace an alive worker — it skips the dedup check entirely.
+
+The snapshot is loaded once per dispatch run (one HTTP GET). Cost: <50 ms.
 
 ### Worked example
 
@@ -144,11 +162,12 @@ If the orchestrator's wording drifts, update `_HEADER_RX` in
 ### Outside this repo (user-global config)
 
 #### Codex side
-- `~/.codex/gcs-octogent-dispatch.py` — the dispatcher (regex + HTTP + sounds)
+- `~/.codex/gcs-octogent-dispatch.py` — the dispatcher (regex + HTTP + sounds + dedup)
 - `~/.codex/gcs-codex-stop-hook.py` — the Codex Stop hook entry point
 - `~/.codex/hooks.json` — Codex hook config (2 Stop hooks: sound + dispatcher)
-- `~/.codex/gcs-dispatch.log` — append-only action log
-- `~/.codex/gcs-stop-hook.log` — append-only hook-fire log
+- `~/.codex/gcs-dispatch.log` — verbose append-only action log (every HTTP call, every parsed block, full tracebacks on crash). Use for debug.
+- `~/.codex/gcs-dispatch-summary.log` — condensed one-line-per-dispatch counter log. Use for at-a-glance flow monitoring (`tail -F`).
+- `~/.codex/gcs-stop-hook.log` — append-only hook-fire log (every Codex Stop event with dispatcher exit code + truncated stderr).
 - `~/.codex/sessions/.../rollout-*.jsonl` — Codex's own rollout (read-only source for the hook)
 
 #### Claude Code side
@@ -215,18 +234,71 @@ Prerequisites: Node 22+, git, gh, curl. PowerShell + cmd. Codex CLI ≥0.130, Cl
 
 ## 7. Logs and troubleshooting
 
+### At-a-glance: the summary log
+
+`tail -F ~/.codex/gcs-dispatch-summary.log` gives one line per dispatch run.
+Format:
+
+```
+[YYYY-MM-DD HH:MM:SS] in=<chars>c blocks=<n> SPAWN=X DEDUP_SKIP=Y CLEAR=Z REPONDRE=W RELANCER=V NEW=U FALLBACK_SPAWN=F ERROR=E
+```
+
+Only non-zero counters appear. Empty dispatch = `no-ops`. Example session:
+
+```
+[2026-05-13 13:44:58] in=40c   blocks=1 SPAWN=1
+[2026-05-13 13:44:59] in=62c   blocks=1 DEDUP_SKIP=1
+[2026-05-13 13:45:01] in=64c   blocks=1 RELANCER=1
+[2026-05-13 13:45:02] in=20c   blocks=1 CLEAR=1
+[2026-05-13 13:46:30] in=11933c blocks=3 SPAWN=1 CLEAR=1 REPONDRE=1
+```
+
+For full HTTP detail of a specific dispatch, cross-reference the timestamp
+with `~/.codex/gcs-dispatch.log`.
+
+### Windows toast notifications
+
+Each dispatch that produced at least one meaningful counter (anything other
+than `NEW` alone or pure `no-ops`) also fires a non-blocking Windows toast
+in the top-right notification area. Example body:
+
+```
+GCS Octogent · dispatch
+SPAWN=1 · CLEAR=1  (PROMPT-813, PROMPT-812)
+```
+
+The toast lists up to 3 affected PROMPT-N ids, prioritised by importance
+(spawn/relance > clear > respond > skip > new). Non-blocking — PowerShell is
+spawned in a hidden window and the dispatcher continues immediately.
+
+**Disable toasts**: set `GCS_DISPATCH_TOAST=0` in the env where Codex runs.
+Equivalent values: `0`, `false`, `False`, empty string. Anything else keeps
+toasts on.
+
+**No toast on**:
+- A dispatch with no recognised blocks (no-op).
+- A dispatch with only `NEW -- PROMPT N` markers and nothing else (label-only
+  output; the real spawn would be in a later dispatch).
+
+### Symptom table
+
 | Symptom | First check |
 |---|---|
-| Block emitted but no terminal appears | `tail -30 ~/.codex/gcs-dispatch.log` — is the block detected? Is the POST returning 201? |
-| Hook not firing | `tail -10 ~/.codex/gcs-stop-hook.log` — should show `=== stop hook fired ===` on every Codex turn |
-| Hook fires but dispatcher silent | The hook found no rollout or the last assistant message is empty — check `~/.codex/sessions/.../rollout-*.jsonl` exists |
-| Wrong terminal got killed | `terminalId` collision — the dispatcher uses `PROMPT-<N>` so two waves reusing the same N collide. Always use monotonically-increasing N. |
+| Block emitted but no terminal appears | `tail -30 ~/.codex/gcs-dispatch.log` — is the block detected? Is the POST returning 201? Look for `DEDUP_SKIP` (block was a duplicate). |
+| Same `PROMPT N` repeatedly skipped | This is correct dedup. If you really want to overwrite, the orchestrator must emit `RELANCER -- PROMPT N`. |
+| `RELANCER` produced a `terminal-3` instead of reusing `PROMPT-N` | You're on an older dispatcher. Make sure RELANCER does `kill → DELETE → POST`, not just `stop → POST`. |
+| Hook not firing | `tail -10 ~/.codex/gcs-stop-hook.log` — should show `=== stop hook fired ===` on every Codex turn. If empty, the Codex session predates the hook trust — restart Codex (see §6). |
+| Hook fires but dispatcher silent | The hook found no rollout or the last assistant message is empty — check `~/.codex/sessions/.../rollout-*.jsonl` exists and the latest assistant `output_text` isn't an empty string. |
+| Dispatcher crashes with traceback | Full traceback is captured in `~/.codex/gcs-stop-hook.log` (up to 4 KiB). The dispatcher itself never propagates exceptions, but the inbox backup or summary write can fail on weird inputs — those errors are logged and dispatch continues. |
+| Wrong terminal got killed | `terminalId` collision — the dispatcher uses `PROMPT-<N>` so two waves reusing the same N collide. Always use monotonically-increasing N (the orchestrator contract guarantees this). |
 | Vite crashes with `0xC0000409` | You set `OCTOGENT_WORKSPACE_CWD`; remove it from the launcher. Use the junction approach instead. |
 | `pnpm.exe ENOENT` | `dev.mjs` not patched (step 3 above). Change `pnpm.exe` → `pnpm.cmd`, add `shell: true`. |
 | `git worktree remove` fails on DELETE | Use `POST /api/terminals/prune` instead of the UI delete button. |
 | API on 8787 unreachable | `netstat -ano \| grep ":8787"` — is anything listening? If not, Octogent is dead — relaunch from Explorer right-click. |
 | 2 mystery `node.exe` running, no port bound | `pnpm dev` parent + child orphan from a crashed launch; `taskkill /F /PID <pid>` is safe. |
 | Sound silent | The Claude/Codex sound hooks rely on `~/.claude/sounds/play-sound.ps1` and the 4 mp3 files being present. |
+| `UserPromptSubmit hook (failed)` in Codex | Pre-existing user sound hook with a trailing `&`; harmless noise, the sound still plays. Not related to the dispatcher. |
+| Toast not appearing | Check `GCS_DISPATCH_TOAST=0` is not set in the Codex environment. Also Windows Focus Assist (DND mode) suppresses toasts; check Settings → System → Notifications. To force-test: `printf 'PROMPT 9999 -- Test\nbody\n' \| python ~/.codex/gcs-octogent-dispatch.py`. |
 
 ## 8. Caveats and known issues
 
@@ -237,6 +309,8 @@ Prerequisites: Node 22+, git, gh, curl. PowerShell + cmd. Codex CLI ≥0.130, Cl
 5. **Per-developer setup**: nothing is shared. Each dev runs their own Octogent instance on their own machine.
 6. **Octogent's own dev tentacles** (`api-runtime`, `web-ui`, etc.) are visible because the junction lives under the install dir. They're inert noise — click **HIDE IDLE** in the toolbar to mute them.
 7. **Patched `dev.mjs` lost on Octogent upgrade**: re-apply the two-line patch after `git pull` on the Octogent clone.
+8. **Codex loads hooks at session start**: if you add or modify hooks while a Codex orchestrator session is already running, the new hooks are NOT attached to that session. Restart Codex (`codex` for a fresh session, or `codex resume <id>` to pick up the existing rollout with the new hooks bound).
+9. **`POST /api/terminals` with an existing terminalId**: Octogent silently auto-assigns a new id (e.g. `terminal-3`) rather than reusing or rejecting. The dispatcher works around this for `RELANCER` by DELETing the registry record first. For SPAWN it would have produced a duplicate worker with a different id, which is why dedup is enforced.
 
 ## 9. Full rollback
 
