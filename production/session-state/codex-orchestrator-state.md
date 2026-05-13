@@ -1,5 +1,28 @@
 # Codex Orchestrator State
 
+Updated: 2026-05-14 (PROMPT 799 — Sprint 12 QA plan landed; verdict PASS; `production/qa/qa-plan-sprint-12.md` authored covering all 5 Must Have rows + 4 Should Have + 5 Nice to Have; decision-gate evidence documented for stories 012/014/015; manual runtime evidence bar documented for story 019 tighter-capture; 5 retained Cluster B D-5 ignored tests handling policy documented; carry conditions + no-claims preserved verbatim; `/dev-story` against any Sprint 12 Must Have row is now unblocked from the QA-plan precondition; Sprint 12 sprint-status.yaml UNCHANGED by PROMPT 799; Sprint 11 closed-with-conditions preserved; Sprint 10 closed-with-conditions preserved; stage UNCHANGED Polish; PROMPT 761 Polish->Release FAIL preserved)
+
+## Current verified state (PROMPT 799 — 2026-05-14)
+
+- Source-of-truth: `origin/main@796851b` (PROMPT 798 Sprint 12 activation commit) at PROMPT 799 entry. PROMPT 799 pushes one paperwork commit on top with the Sprint 12 QA plan + session-state banners.
+- Files changed by PROMPT 799: `production/qa/qa-plan-sprint-12.md` (NEW); `production/session-state/active.md` (PROMPT 799 banner prepended); `production/session-state/codex-orchestrator-state.md` (this section prepended above PROMPT 798); `reports/PROMPT-799-Sprint-12-QA-Plan.md` (mandatory final report file; NOT staged or committed).
+- Files NOT modified by PROMPT 799: `production/sprint-status.yaml` (Sprint 12 row untouched — top-level still reads `sprint: 12`, `status: active`, `stage: Polish`); `production/sprints/sprint-12.md`; `production/sprints/sprint-11.md`; `production/stage.txt`; any Sprint 12 story file (012/013/014/015/019); Sprint 11 QA / smoke / Team-QA / D-5 triage evidence; `production/gate-checks/gate-polish-release-2026-05-12.md`; `.claude/settings.json` (pre-existing in-tree modification preserved untouched); `.octogent/`; `.claude/scheduled_tasks.lock`; client/server/shared/tests code.
+- Commands NOT run by PROMPT 799: `/dev-story`, `/story-readiness`, `/story-done`, `/smoke-check`, `/team-qa`, `/gate-check`, `/release-check`, `/qa-plan` re-author, any cargo / trunk build / test run.
+- Disposition verdict: **PASS** — Sprint 12 QA plan exists at `production/qa/qa-plan-sprint-12.md`. The Sprint 12 Must Have rows' `blocker:` field language ("Sprint 12 QA plan required before /dev-story (qa_plan_found: false at activation)") is now satisfied as a precondition; `/dev-story` against the 5 Must Have rows is unblocked from the QA-plan gate. Each Must Have story still requires its own decision-gate evidence at `/dev-story` time per the story file ACs and the QA plan §"Manual / Decision-Gate Evidence Required". Note: PROMPT 799 does NOT edit `sprint-status.yaml` `sprint_12_activation.qa_plan_found:` boolean — that edit is consumed by a future `/story-done` or `/sprint-plan` paperwork prompt.
+- Carry conditions preserved unchanged: `S8-QA-001-W1` OPEN; `QA-COND-0005` accepted-risk (friend-game scope); `QA-COND-0006` accepted-risk / deferred; `PAW-TD-*-a` placeholder-art accept-risk; PROMPT 683-era runtime divergence question folded into story 019 (not separately claimed closed); PROMPT 761 Polish→Release gate-check `FAIL` preserved at `production/gate-checks/gate-polish-release-2026-05-12.md` (no retry).
+- Explicitly NOT claimed: public release readiness; release-candidate readiness; full game completion; broad / Standard-tier accessibility completion; playtest / fun-hypothesis validation; full playable-client manual QA; final-art / asset-production completion; `S8-QA-001-W1` closure; Polish→Release gate-check retry; stage advance from Polish to Release; Sprint 12 close-out.
+- Sprint 12 D-5 retirement strategy (Cluster B 5 retained ignored tests; baseline 1129/0/5):
+  - B1 (board ghost-drag producer fixture gap) → story 015 umbrella OR split `S11-TD-FIXTURE-BOARD-GHOST-DRAG-PRODUCER-001`.
+  - B2 (HUD snapshot.phase bridge fixture gap) → story 012 (Path A expand fixture vs Path B relocate assertion).
+  - B3 (lobby ConfirmClass intent chain) → story 013 (primary path = production fix; fallback path = test redesign + UX write-up).
+  - B4 (co-occupancy panic-guard regression) → story 014 (Path A restore guard + re-arm test vs Path B rewrite test; rationale commit precedes code-change commit; `#[should_panic]` invariant cannot be silently dropped).
+  - B5 (shop-auction-ui count drift 57→66) → story 015 umbrella OR split `S11-TD-SHOP-AUCTION-UI-COUNT-DRIFT-001`.
+- Suggested first `/dev-story` order (advisory; producer may resequence; only one shared-status writer at a time per 2026-05-13 override): 014 (0.50d) → 012 (0.75d) → 015 (1.25d) → 013 (1.00d) → 019 (1.50d).
+
+---
+
+# Codex Orchestrator State — HISTORICAL (pre-PROMPT 799)
+
 Updated: 2026-05-14 (PROMPT 798 — Sprint 12 activation; verdict PASS; Sprint 12 promoted from next_sprint: draft block to top-level active sprint row in production/sprint-status.yaml; Sprint 12 stories: block written with 5 Must Have ready + 4 Should Have blocked + 5 Nice to Have blocked rows; sprint_12_activation: block appended at end of file; next_sprint: draft block removed; sprint-12.md ACTIVATED banner prepended; Sprint 11 closed-with-conditions preserved unchanged; Sprint 10 closed-with-conditions preserved unchanged; stage UNCHANGED Polish; PROMPT 761 Polish->Release FAIL preserved; Sprint 12 QA plan pending and required before /dev-story)
 Owner: Codex orchestration window
 
