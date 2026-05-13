@@ -21,16 +21,19 @@ Current source of truth:
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@d3ee8df`, stage `Polish`,
+- Current verified state at this update: `origin/main@07aafe2`, stage `Polish`,
   Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
   status `active` (PROMPT 773, 2026-05-13) as a Polish-stage sprint
-  (`2026-06-04 -> 2026-06-17`) with plan at `production/sprints/sprint-11.md`,
-  PROMPT 761 `Polish->Release` gate-check `FAIL` preserved as evidence
-  (no retry attempted), PROMPT 762 Sprint 11 candidate backlog capture folded
-  into the Sprint 11 plan. Sprint 11 Must Have paperwork-carry deliverables
-  landed on `main` prior to activation (`0d19690` / `348084b` / `d3ee8df`)
-  but `/story-done` has NOT been run against them — Sprint 11 rows recorded
-  as `ready`, not `done`.
+  (`2026-06-04 -> 2026-06-17`) with plan at `production/sprints/sprint-11.md`
+  and **Sprint 11 QA plan authored at `production/qa/qa-plan-sprint-11.md`
+  by PROMPT 774 (2026-05-13)** — the
+  `sprint_11_activation.outstanding_before_dev_story[0]` prerequisite is now
+  satisfied. PROMPT 761 `Polish->Release` gate-check `FAIL` preserved as
+  evidence (no retry attempted). PROMPT 762 Sprint 11 candidate backlog
+  capture folded into the Sprint 11 plan. Sprint 11 Must Have paperwork-carry
+  deliverables landed on `main` prior to activation (`0d19690` / `348084b` /
+  `d3ee8df`) but `/story-done` has NOT been run against them — Sprint 11
+  rows recorded as `ready`, not `done`.
 
 Current next move:
 
@@ -46,11 +49,18 @@ Current next move:
   `done` — `/story-done` pending per no-invent-closure rule.
 - Preserve the PROMPT 761 Release gate failure and all carried risks.
 - Do not retry `Polish->Release` until release-scope artifacts exist.
-- Next launchable prompts: (1) `/qa-plan sprint` for Sprint 11 — required
-  before any Sprint 11 `/dev-story` runs; (2) `/story-readiness` on
-  `production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`;
-  (3) `/story-done` on the three landed paperwork carries (separate prompts,
-  parallel-safe).
+- Next launchable prompts (Sprint 11 QA plan now on `main` per PROMPT 774):
+  (1) `/story-readiness` on
+  `production/epics/playable-client/story-011-hand-ui-onenter-fixture-repair.md`
+  — formal verdict for `S11-TD-FIXTURE-HAND-UI-ONENTER-001`; (2) `/dev-story`
+  on `production/epics/hand-ui/story-018-drag-runtime-retest.md`
+  (`S11-DRAG-RUNTIME-RETEST-001` — only Must Have currently passing both the
+  story-file gate and the `/story-readiness` gate); (3) `/story-done` on the
+  three landed paperwork carries (`S11-DOC-HYGIENE-CARRY-001`,
+  `S11-EVIDENCE-INDEX-CARRY-001`, `S11-ROUTE-READABILITY-CARRY-001`) — each
+  as a separate prompt, parallel-safe (they touch disjoint evidence files);
+  (4) story file authoring for Should Have / Nice to Have rows if pulled
+  into active scope.
 
 ### Sprint 10 Polish Close-Out Disposition (PROMPT 763, 2026-05-13)
 
@@ -102,6 +112,81 @@ Files touched by PROMPT 763: `production/sprint-status.yaml`,
 `client/`, `server/`, `shared/`, `tests/`, no `.octogent/` changes, no
 `production/stage.txt` change, no smoke / gate-check / QA sign-off /
 `/dev-story` run, no Sprint 11 activation.
+
+### Sprint 11 QA Plan Authoring (PROMPT 774, 2026-05-13)
+
+PROMPT 774 authored the Sprint 11 QA plan as required by
+`production/sprint-status.yaml` `sprint_11_activation.outstanding_before_dev_story[0]`.
+Source-of-truth at authoring: `origin/main@07aafe2` (PROMPT 773's commit).
+
+Scope and disposition:
+
+- `production/qa/qa-plan-sprint-11.md` (NEW): covers all 16 Sprint 11 rows.
+  6 Must Have: `S11-DRAG-RUNTIME-RETEST-001` (Integration — manual runtime
+  evidence; story file at PROMPT 766 READY), `S11-TD-FIXTURE-HAND-UI-ONENTER-001`
+  (Integration test-only; story file at PROMPT 767 content-ready, formal
+  `/story-readiness` pending), `S11-TD-IGNORED-D5-TRIAGE-001` (Config/Data
+  triage doc; no story file required per Sprint 11 plan), and three
+  paperwork-carry rows tracked as `ready` with deliverables LANDED on `main`
+  at `0d19690` / `348084b` / `d3ee8df` (`S11-DOC-HYGIENE-CARRY-001` /
+  `S11-EVIDENCE-INDEX-CARRY-001` / `S11-ROUTE-READABILITY-CARRY-001`;
+  `/story-done` NOT run, per the no-invent-closure rule). 4 Should Have rows
+  tracked as conditional (blocked until story file + `/story-readiness`):
+  `S11-TD-FIXTURE-D-RESIDUALS-001`, `S11-HU-PHASE-IDEMPOTENCY-001`,
+  `S11-SERVER-POOL-INIT-LOG-GUARD-001`, `S11-HUD-TIMER-EYEBALL-VISUAL-001`.
+  6 Nice to Have rows tracked as backlog-verification (blocked until story
+  file authored): `S11-TD-CARGO-DISK-USAGE-001`, `S11-TD-CARGO-PDB-LIMIT-001`,
+  `S11-OPS-ORCHESTRATOR-LOCK-001`, `S11-OPS-GH-CLI-001`,
+  `S11-LOBBY-UX-CONFIRM-STATE-001`, `S11-SERVER-R2-PLACEMENT-CRASH-AUDIT-001`.
+
+- Plan content: required evidence per story; required regression / test
+  commands per story type (Logic / Integration / Visual / UI / Config-Data);
+  manual runtime evidence expectations for `S11-DRAG-RUNTIME-RETEST-001`
+  (S1-S5 grey-square attribution truth-table across drag-attempts A / B / C / D,
+  4-way disposition `{bug-reproduced, bug-fixed, cannot-reproduce,
+  third-party-limitation}`, `RUST_LOG=client::ui::hand=trace,client::presentation::board_rendering=trace,client::card_animations::input_gating=info,lightyear=info,server::game=info`
+  capture, 1.0-day time-box) and for `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+  (cosmetic screenshot evidence for `DraftInitial` 45s / `DraftShop` 30s /
+  `Placement` 10-12s); pre-`/dev-story` prerequisites tracker; cross-cutting
+  workspace gates (`cargo fmt --check`, `cargo test --workspace --tests
+  --no-fail-fast`, workspace ignored-count regression check); smoke-test
+  scope (verified via `/smoke-check sprint` in a separate prompt — not
+  this plan); no playtest sessions required (QA-COND-0006 remains
+  accept-risk / deferred); Definition of Done for the sprint.
+
+- Carried conditions and non-claims preserved verbatim:
+  S8-QA-001-W1 manual/browser two-client GAME_OVER gap (OPEN);
+  QA-COND-0005 Standard-tier accessibility (accepted-risk friend-game
+  scope); QA-COND-0006 playtest/fun-hypothesis validation (accepted-risk /
+  deferred); 11 ignored D-5 tests carried until per-test disposition under
+  `S11-TD-IGNORED-D5-TRIAGE-001`; HUD timer eyeball visual check (W2)
+  carried until `S11-HUD-TIMER-EYEBALL-VISUAL-001` evidence captured;
+  placeholder / friend-game art scope (PAW-TD-*-a accept-risk on placeholder
+  PNGs). Explicitly NOT claimed: public release readiness, release-candidate
+  readiness, full game completion, broad / Standard-tier accessibility
+  completion, playtest / fun-hypothesis validation, full playable-client
+  manual QA, final-art / asset-production completion.
+
+- Unlock effect: with this plan on `main`, `/dev-story` is now authorised
+  against any Sprint 11 row that **also** has (a) story file existing, and
+  (b) `/story-readiness` PASS recorded. At this moment only
+  `S11-DRAG-RUNTIME-RETEST-001` satisfies both gates; the playable-client
+  fixture story has the file but the formal `/story-readiness` verdict is
+  still pending in a separate prompt.
+
+PROMPT 774 did NOT run `/dev-story`, `/story-readiness`, `/smoke-check`,
+`/team-qa`, `/gate-check`, `/story-done`. PROMPT 774 did NOT modify
+production code under `client/`, `server/`, `shared/`, `tests/`. PROMPT 774
+did NOT modify `production/sprint-status.yaml`, `production/sprints/sprint-11.md`,
+`production/stage.txt`, `.claude/settings.json`, `reports/`,
+`.claude/scheduled_tasks.lock`, or `.octogent/`. No release / release-candidate
+/ full-game / broad-accessibility / playtest / full-manual-QA / final-art
+claim. PROMPT 761 Polish->Release gate-check FAIL evidence preserved
+unchanged. `production/stage.txt` reads `Polish` and is unchanged.
+
+Files touched by PROMPT 774: `production/qa/qa-plan-sprint-11.md` (NEW),
+`production/session-state/active.md` (banner prepended),
+`production/session-state/codex-orchestrator-state.md` (this section).
 
 ### Sprint 11 Activation Paperwork (PROMPT 773, 2026-05-13)
 
