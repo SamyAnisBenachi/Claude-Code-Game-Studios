@@ -25,6 +25,16 @@ production/session-logs/
 # === Octogent local orchestration state ===
 .octogent/
 
+# === Worker report mirrors (3-step report-back protocol) ===
+# Workers write their full final output to reports/<terminalId>.md as
+# Step 2 of the report-back protocol. These are transient per-session
+# artefacts the orchestrator reads via channel-send notifications;
+# they should not pollute the repo.
+reports/
+
+# === Claude Code runtime artefacts (transient) ===
+.claude/scheduled_tasks.lock
+
 # === Internal Planning (not for public) ===
 
 expansions/
