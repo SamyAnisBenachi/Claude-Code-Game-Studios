@@ -2,11 +2,11 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S11-TD-FIXTURE-HAND-UI-ONENTER-001
-> **Status**: Draft -- Sprint 11 draft Must Have, NOT activated
+> **Status**: Content-ready -- Sprint 11 Must Have, Sprint 11 active per PROMPT 773 at `origin/main@07aafe2`
 > **Layer**: Tech Debt / Test Fixtures
 > **Type**: Integration (test-only)
 > **Manifest Version**: 2026-05-05
-> **Sprint**: Sprint 11 (draft -- NOT active per PROMPT 764)
+> **Sprint**: Sprint 11 (active per PROMPT 773 at `origin/main@07aafe2`)
 > **Authored**: 2026-05-13 by PROMPT 767 (producer + qa-lead, root checkout)
 > **Source-of-truth at authoring**: `origin/main@2f9abfb`
 
@@ -333,11 +333,12 @@ draft AC. ACs below are draft and become binding at Sprint 11 activation.)
       commit, WHEN `production/sprint-status.yaml`,
       `production/sprints/sprint-11.md`, and `production/stage.txt` are
       diffed, THEN none of them are modified under this story.
-      Sprint 11 remains `draft / not_active`. Stage remains `Polish`.
-      Sprint 10 disposition (`closed-with-conditions`) is unchanged.
-      No release claim, no `Polish->Release` retry, no manual-QA
-      sign-off, no accessibility completion claim, no playtest
-      validation claim.
+      Sprint 11 activation disposition (active per PROMPT 773, Polish
+      stage) is preserved unchanged by this story. Stage remains
+      `Polish`. Sprint 10 disposition (`closed-with-conditions`) is
+      unchanged. No release claim, no `Polish->Release` retry, no
+      manual-QA sign-off, no accessibility completion claim, no
+      playtest validation claim.
 
 - [ ] **AC8 -- Evidence document slot reserved**: GIVEN this story
       file, WHEN the evidence-doc path is checked, THEN a slot is
@@ -355,6 +356,7 @@ This story is **draft scope** at authoring time -- substantive work has
 not yet landed on `main`. Activation requires (in this order):
 
 1. `/sprint-plan sprint-11` activates Sprint 11 (separate prompt).
+   -- **DONE at `origin/main@07aafe2` per PROMPT 773.**
 2. This story passes `/story-readiness` (separate prompt).
 3. Sprint 11 `/qa-plan sprint` is authored (separate prompt).
 4. `/dev-story story-011-hand-ui-onenter-fixture-repair.md` is
@@ -473,8 +475,10 @@ prompt):
 - `git diff <pre-repair-sha>..<repair-sha> -- 'server/src/**' 'client/src/**' 'shared/src/**'`
   (expected: empty or `#[cfg(test)]`-gated helper additions only)
 
-**Status**: DRAFT -- substantive work has not started. Activation is
-gated by Sprint 11 activation in a separate prompt.
+**Status**: Content-ready -- substantive work has not started.
+Sprint 11 is active per PROMPT 773 at `origin/main@07aafe2`.
+Implementation is gated by Sprint 11 QA plan authorship and the
+downstream `/dev-story` dispatch (both separate prompts).
 
 ---
 
@@ -520,20 +524,22 @@ constraint regardless of file count.
 
 ## Readiness Notes
 
-**Implementation readiness verdict**: NOT READY (Sprint 11 not active).
-
-`/story-readiness` is the next step **after** Sprint 11 activation.
-Until then, this story exists as a draft Must Have row reference for
-Sprint 11 planning.
+**Implementation readiness verdict**: Content-ready. Sprint 11 is
+active per PROMPT 773 at `origin/main@07aafe2`. The live downstream
+gate is Sprint 11 QA plan authorship (and subsequent `/dev-story`
+dispatch), not Sprint 11 activation.
 
 Pre-conditions for `/story-readiness` PASS:
 
 - Sprint 11 is activated (`sprint:` field in
-  `production/sprint-status.yaml` bumped + active row written).
+  `production/sprint-status.yaml` bumped + active row written). --
+  **DONE at `origin/main@07aafe2` per PROMPT 773.**
 - Sprint 11 QA plan exists at
-  `production/qa/qa-plan-sprint-11.md`.
+  `production/qa/qa-plan-sprint-11.md`. -- **Outstanding unless
+  already landed on current origin/main; verify before `/dev-story`.**
 - This story file is referenced from Sprint 11's active row in
-  `production/sprint-status.yaml`.
+  `production/sprint-status.yaml`. -- **DONE at `origin/main@07aafe2`
+  per PROMPT 773 (active-row pointer present).**
 
 Open questions to resolve at `/story-readiness` time:
 
