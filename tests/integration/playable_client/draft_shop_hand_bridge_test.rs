@@ -6,7 +6,9 @@ use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 use bevy::{prelude::*, time::Virtual};
 use bevy_tweening::TweeningPlugin;
-use client::asset_wiring::{default_client_card_catalog, resolve_card_display_art};
+use client::asset_wiring::{
+    default_client_card_catalog, enter_in_session_via_fixture, resolve_card_display_art,
+};
 use client::presentation::{
     card_acquired_fanout_messages, draft_offering_fanout_messages, shop_slots_message,
     PlayerEconomyView, PresentationGameSnapshotMessage,
@@ -54,10 +56,7 @@ fn app_in_phase(phase: RoundPhase, gold: u32) -> App {
         .set_max_delta(Duration::from_secs(60));
     *app.world_mut().resource_mut::<TimeUpdateStrategy>() =
         TimeUpdateStrategy::ManualDuration(Duration::ZERO);
-    app.world_mut()
-        .resource_mut::<NextState<ClientState>>()
-        .set(ClientState::InSession);
-    run_update(&mut app);
+    enter_in_session_via_fixture(&mut app);
     app.world_mut().resource_mut::<CurrentClientPhase>().phase = phase;
     run_update(&mut app);
     app
@@ -69,7 +68,6 @@ fn run_update(app: &mut App) {
     app.update();
 }
 
-#[ignore = "PROMPT 750 D-5 follow-on: spawn_hand_ui not firing on OnEnter(InSession) in MinimalPlugins fixture — HandUiEntities never spawned (revealed after D-1 init_state fix unmasked deeper fixture gap)"]
 #[test]
 fn test_one_draft_offering_fanout_updates_hand_grid_and_shop_grid() {
     test_helpers::init_test_tracing();
@@ -87,7 +85,6 @@ fn test_one_draft_offering_fanout_updates_hand_grid_and_shop_grid() {
     assert_eq!(shop_draft_initial_cards(&mut app), card_ids);
 }
 
-#[ignore = "PROMPT 750 D-5 follow-on: spawn_hand_ui not firing on OnEnter(InSession) in MinimalPlugins fixture — HandUiEntities never spawned (revealed after D-1 init_state fix unmasked deeper fixture gap)"]
 #[test]
 fn test_one_card_acquired_fanout_updates_hand_and_draft_pending_purchase() {
     test_helpers::init_test_tracing();
@@ -126,7 +123,6 @@ fn test_one_card_acquired_fanout_updates_hand_and_draft_pending_purchase() {
     );
 }
 
-#[ignore = "PROMPT 750 D-5 follow-on: spawn_hand_ui not firing on OnEnter(InSession) in MinimalPlugins fixture — HandUiEntities never spawned (revealed after D-1 init_state fix unmasked deeper fixture gap)"]
 #[test]
 fn test_shop_purchase_reconciles_hand_size_slots_and_shared_economy() {
     test_helpers::init_test_tracing();
