@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-Updated: 2026-05-13 (PROMPT 791 — Sprint 11 Team-QA sign-off, verdict PASS-WITH-WARNINGS / APPROVED WITH CONDITIONS)
+Updated: 2026-05-13 (PROMPT 792 — Sprint 11 close-out disposition, verdict PASS-WITH-CONDITIONS; sprint flipped active -> closed-with-conditions)
 Owner: Codex orchestration window
 
 Purpose: durable coordination notes for parallel implementation. This file tracks
@@ -17,20 +17,53 @@ section.
 
 Current source of truth:
 
+- **Authoritative correction for this header (PROMPT 792 update)**: current
+  `origin/main` is `d19ea12` at PROMPT 792 entry (PROMPT 791
+  `qa(team): Sprint 11 QA sign-off`); PROMPT 792 will push one paperwork
+  commit on top with the Sprint 11 close-out disposition. PROMPT 792 flipped
+  Sprint 11 top-level `status` in `production/sprint-status.yaml` from
+  `active` to **`closed-with-conditions`** with verdict
+  **PASS-WITH-CONDITIONS** on basis of 6/6 Must Have `done` + Sprint 11
+  smoke `PASS-WITH-WARNINGS` (PROMPT 790, `1617352`) + Sprint 11 Team-QA
+  `PASS-WITH-WARNINGS / APPROVED WITH CONDITIONS` (PROMPT 791, `d19ea12`).
+  Should Have rows (4/4) and Nice to Have rows (6/6) remained `blocked`
+  (no story files / no `/story-readiness`) and were **explicitly deferred**
+  forward to Sprint 12+ planning by PROMPT 792 — none silently dropped, no
+  new scope pulled in. Stage UNCHANGED (`Polish`). PROMPT 761
+  Polish->Release gate-check `FAIL` preserved (no retry). The 5 Cluster B
+  retained D-5 ignored tests remain open as documented Sprint 12+
+  follow-ups / decision gates per
+  `production/qa/evidence/sprint-11-ignored-d5-triage.md`. Sprint 11 is
+  now **closed-with-conditions**; no release claim, no
+  release-candidate claim, no full-game claim, no broad / Standard-tier
+  accessibility-completion claim, no playtest / fun-hypothesis validation
+  claim, no full playable-client manual-QA claim, no final-art /
+  asset-production claim, no `S8-QA-001-W1` closure, no Polish->Release
+  retry is authorised by this close-out.
 - Story and sprint status: `production/sprint-status.yaml`.
 - Stage: `production/stage.txt`.
 - Coordination memory: this file, using the latest dated block plus this
   override.
-- Current verified state at this update: `origin/main@1617352` (PROMPT 790
-  smoke evidence commit `qa(smoke): Sprint 11 smoke check`; PROMPT 791 pushes
-  a Team-QA sign-off commit on top — verdict **PASS-WITH-WARNINGS /
-  APPROVED WITH CONDITIONS**, evidence at
-  `production/qa/team-qa-sprint-11-2026-05-13.md`. Sprint 11 disposition
-  unchanged: `active` Polish-stage; 6/6 Must Have rows `done`; the 5
-  Cluster B retained D-5 ignored tests remain open as documented
-  follow-ups; Sprint 11 NOT closed by PROMPT 791; no `/gate-check` retry;
-  no smoke rerun; no `/release-check`; no Sprint 11 close-out; no
-  QA sign-off; no release claim), stage `Polish`,
+- Current verified state at this update: `origin/main@d19ea12` at PROMPT
+  792 entry (PROMPT 791 Team-QA sign-off commit
+  `qa(team): Sprint 11 QA sign-off`); PROMPT 792 will push one
+  paperwork commit on top with the Sprint 11 close-out disposition.
+  Sprint 11 disposition **CHANGED** by PROMPT 792 (paperwork-only):
+  flipped from `active` to **`closed-with-conditions`** (Polish-stage);
+  6/6 Must Have rows `done`; Should Have (4/4 blocked) and Nice to Have
+  (6/6 blocked) explicitly deferred forward to Sprint 12+ planning;
+  Cluster B 5 retained D-5 ignored tests carried to Sprint 12+ backlog
+  with named follow-ups per `production/qa/evidence/sprint-11-ignored-d5-triage.md`.
+  PROMPT 792 did NOT run `/gate-check`, did NOT rerun smoke, did NOT run
+  `/release-check`, did NOT run `/dev-story` / `/story-done` /
+  `/story-readiness` / `/team-qa`. No release claim. No release-candidate
+  claim. No full-game-completion claim. No broad / Standard-tier
+  accessibility-completion claim. No playtest / fun-hypothesis validation
+  claim. No full playable-client manual-QA claim. No final-art /
+  asset-production claim. No `S8-QA-001-W1` closure. No retry of the
+  Polish->Release gate-check. Sprint 11 close-out paperwork recorded
+  under `sprint_11_closeout:` block in `production/sprint-status.yaml`
+  (appended by PROMPT 792). Stage remains `Polish`,
   Sprint 10 `closed-with-conditions` per PROMPT 763 (2026-05-13), Sprint 11
   status `active` (PROMPT 773, 2026-05-13) as a Polish-stage sprint
   (`2026-06-04 -> 2026-06-17`) with plan at `production/sprints/sprint-11.md`
@@ -74,6 +107,21 @@ Current source of truth:
 
 Current next move:
 
+- **Authoritative next-move correction after PROMPT 792**: Sprint 11
+  close-out disposition is now **DONE** —
+  `production/sprint-status.yaml` top-level `status` flipped from `active`
+  to **`closed-with-conditions`** with a `sprint_11_closeout:` block
+  appended; Should/Nice rows deferred forward; carried conditions and
+  non-claims preserved. The primary next launchable prompt is
+  `/sprint-plan sprint-12` to open Sprint 12 planning and pull forward
+  the deferred Should/Nice rows + Cluster B follow-up slugs + follow-on
+  diagnostic `story-019` (currently on `main` at `0fc05c3` but not
+  activated). Alternative next moves: author story files +
+  `/story-readiness` for any deferred row (a precondition for
+  activating it in Sprint 12). Do NOT retry `Polish->Release` —
+  release-scope artifacts (final art, manual-QA sign-off, accessibility
+  completion, playtest evidence) do not yet exist on `main`; PROMPT
+  761 Polish->Release `FAIL` preserved.
 - Sprint 10 close-out paperwork is DONE (PROMPT 763). Sprint 10 disposition
   preserved at `production/sprint-status.yaml` `sprint_10_closeout:` block.
 - Sprint 11 is ACTIVE as of PROMPT 773 (2026-05-13) as a Polish-stage

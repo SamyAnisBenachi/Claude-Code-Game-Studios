@@ -1,4 +1,86 @@
-# Sprint 11 -- ACTIVE (Polish stage)
+# Sprint 11 -- CLOSED-WITH-CONDITIONS (Polish stage)
+
+> **📍 CLOSE-OUT BANNER -- 2026-05-13 (PROMPT 792 -- Sprint 11 close-out disposition)**
+>
+> - **Disposition**: `closed-with-conditions`. Decision authority: PROMPT 792
+>   (producer + qa-lead roles, root checkout, no worktree).
+> - **Source-of-truth at close-out**: `origin/main@d19ea12` (PROMPT 791
+>   Team-QA sign-off commit `qa(team): Sprint 11 QA sign-off`).
+> - **Basis**: 6/6 Must Have rows `done`; Sprint 11 smoke
+>   `PASS-WITH-WARNINGS` at `production/qa/smoke-sprint-11-2026-05-13.md`
+>   (1129 passed / 0 failed / 5 ignored at `1617352`); Sprint 11 Team-QA
+>   sign-off `PASS-WITH-WARNINGS / APPROVED WITH CONDITIONS` at
+>   `production/qa/team-qa-sprint-11-2026-05-13.md` (PROMPT 791).
+> - **Should Have rows** (`S11-TD-FIXTURE-D-RESIDUALS-001`,
+>   `S11-HU-PHASE-IDEMPOTENCY-001`, `S11-SERVER-POOL-INIT-LOG-GUARD-001`,
+>   `S11-HUD-TIMER-EYEBALL-VISUAL-001`): 0/4 closed; all remain `blocked`
+>   (no story files, `/story-readiness` pending). **Explicitly deferred**
+>   into Sprint 12+ planning by this close-out. Not silently dropped.
+> - **Nice to Have rows** (`S11-TD-CARGO-DISK-USAGE-001`,
+>   `S11-TD-CARGO-PDB-LIMIT-001`, `S11-OPS-ORCHESTRATOR-LOCK-001`,
+>   `S11-OPS-GH-CLI-001`, `S11-LOBBY-UX-CONFIRM-STATE-001`,
+>   `S11-SERVER-R2-PLACEMENT-CRASH-AUDIT-001`): 0/6 closed; all remain
+>   `blocked`. **Explicitly deferred** into Sprint 12+ planning. Not
+>   silently dropped.
+> - **No new scope** pulled into Sprint 11 by this close-out. Follow-on
+>   diagnostic story
+>   `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`
+>   remains on `main` at `0fc05c3` but **not** activated into Sprint 11 --
+>   it is a Sprint 12+ candidate via a separate
+>   `/sprint-plan ... --add story-019` prompt.
+> - **Cluster B retained D-5 ignored tests** (5/5): each carries an
+>   owner-named follow-up slug or decision gate per
+>   `production/qa/evidence/sprint-11-ignored-d5-triage.md`. Carried
+>   forward to Sprint 12+ backlog; NOT silently fixed, NOT silently
+>   dropped.
+> - **Stage**: UNCHANGED -- remains `Polish`. PROMPT 761 Polish->Release
+>   gate-check `FAIL` preserved at
+>   `production/gate-checks/gate-polish-release-2026-05-12.md`; **no retry**
+>   attempted by PROMPT 792.
+> - **Carried conditions preserved unchanged**: `S8-QA-001-W1` OPEN;
+>   `QA-COND-0005` accepted-risk (friend-game scope); `QA-COND-0006`
+>   accepted-risk / deferred; HUD-timer eyeball check W2 carry; placeholder
+>   art `PAW-TD-*-a` accept-risk; PROMPT 683-era runtime divergence
+>   question carried forward.
+> - **Explicitly NOT claimed**: public release readiness;
+>   release-candidate readiness; full game completion; broad /
+>   Standard-tier accessibility completion; playtest / fun-hypothesis
+>   validation; full playable-client manual QA; final-art /
+>   asset-production completion; `S8-QA-001-W1` closure; Polish->Release
+>   retry.
+> - **Files mutated by PROMPT 792**: `production/sprint-status.yaml`
+>   (top-level `status` flipped `active -> closed-with-conditions`;
+>   `sprint_11_closeout:` block appended), this file (close-out banner
+>   prepended), `production/session-state/active.md` (PROMPT 792 banner
+>   prepended), `production/session-state/codex-orchestrator-state.md`
+>   (operating-rules banner + verified-state updated),
+>   `reports/PROMPT-792.md` (mandatory final-report file). **No** code
+>   under `client/`, `server/`, `shared/`, `tests/`; **no**
+>   `.claude/settings.json`; **no** `production/stage.txt`; **no**
+>   `production/qa/qa-plan-sprint-11.md`; **no**
+>   `production/qa/smoke-sprint-11-2026-05-13.md`; **no**
+>   `production/qa/team-qa-sprint-11-2026-05-13.md`; **no**
+>   `production/qa/evidence/sprint-11-ignored-d5-triage.md`; **no**
+>   `production/gate-checks/gate-polish-release-2026-05-12.md`; **no**
+>   `/gate-check` / `/smoke-check` / `/release-check` / `/dev-story` /
+>   `/story-done` / `/story-readiness` / `/team-qa` rerun.
+> - **Authoritative status**: this close-out banner + the
+>   `sprint_11_closeout:` block in `production/sprint-status.yaml` +
+>   `production/session-state/active.md` (PROMPT 792 banner) +
+>   `production/session-state/codex-orchestrator-state.md` (PROMPT 792
+>   verified state) + `git log`.
+>
+> The sections below are the **pre-close-out** Sprint 11 plan as
+> originally activated by PROMPT 773. They remain authoritative for the
+> Sprint 11 *plan* (what was in scope, what was deferred, risks, etc.)
+> but are NOT the current sprint status -- the status is now
+> `closed-with-conditions` per this banner and per
+> `production/sprint-status.yaml`. Any reference below to Sprint 11 being
+> `active` is HISTORICAL.
+>
+> ---
+
+# Sprint 11 -- ACTIVE (Polish stage)  *[HISTORICAL pre-close-out heading]*
 
 > **Status**: `active` -- activated 2026-05-13 by PROMPT 773 (producer +
 > qa-lead roles, root checkout, no worktree). Source-of-truth at activation:

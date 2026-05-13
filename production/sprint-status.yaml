@@ -6,10 +6,10 @@ goal: "Resolve the highest-severity friend-game runtime gap (drag-and-drop runti
 start: "2026-06-04"
 end: "2026-06-17"
 generated: "2026-05-13"
-updated: "2026-05-13"  # PROMPT 789 /story-done flipped S11-TD-IGNORED-D5-TRIAGE-001 from ready -> done; triage deliverable production/qa/evidence/sprint-11-ignored-d5-triage.md landed on main at 1d96281 via PROMPT 787 worker + PROMPT 788 integration. Sprint 11 disposition UNCHANGED (active, Polish stage). Sprint 10 closed-with-conditions disposition preserved under sprint_10_closeout. Stage UNCHANGED (Polish). PROMPT 761 Polish->Release gate-check FAIL preserved. All 6 Sprint 11 Must Have rows are now status: done. PROMPT 789 does NOT close Sprint 11; 5 retained Cluster B ignored tests remain open as future stories or decision gates per the triage evidence. (Prior: PROMPT 786 /story-done flipped S11-ROUTE-READABILITY-CARRY-001 from ready -> done; deliverable production/qa/evidence/sprint-10-route-readability-notes.md landed on main at d3ee8df via PROMPT 772.)
+updated: "2026-05-13"  # PROMPT 792 Sprint 11 close-out disposition: flipped top-level status from "active" to "closed-with-conditions" on basis of 6/6 Must Have done + Sprint 11 smoke PASS-WITH-WARNINGS (production/qa/smoke-sprint-11-2026-05-13.md, 1129 passed / 0 failed / 5 ignored at 1617352) + Sprint 11 Team-QA PASS-WITH-WARNINGS / APPROVED WITH CONDITIONS (production/qa/team-qa-sprint-11-2026-05-13.md at d19ea12). Should Have and Nice to Have rows explicitly deferred forward to Sprint 12+ planning; no new scope pulled into Sprint 11 by this prompt. Sprint 11 close-out paperwork recorded under sprint_11_closeout: at end of file. Sprint 10 closed-with-conditions disposition preserved unchanged under sprint_10_closeout. Stage UNCHANGED (Polish). PROMPT 761 Polish->Release gate-check FAIL preserved at production/gate-checks/gate-polish-release-2026-05-12.md; no retry. Carried conditions preserved: S8-QA-001-W1 OPEN, QA-COND-0005 accepted-risk, QA-COND-0006 accepted-risk / deferred, 5 retained Cluster B D-5 ignored tests with owner-named follow-ups, HUD timer eyeball W2 carry, PAW-TD-*-a placeholder-art accept-risk. No public release readiness, no release-candidate readiness, no full game completion, no broad / Standard-tier accessibility completion, no playtest / fun-hypothesis validation, no full playable-client manual QA, no final-art / asset-production completion claimed. (Prior: PROMPT 789 /story-done flipped S11-TD-IGNORED-D5-TRIAGE-001 from ready -> done; triage deliverable production/qa/evidence/sprint-11-ignored-d5-triage.md landed on main at 1d96281 via PROMPT 787 worker + PROMPT 788 integration.)
 stage: "Polish"
 scope: "Polish slice — friend-game runtime divergence retest + fixture-cascade drain + Sprint 10 paperwork carries + operational tech debt. Explicitly NOT release-scope, full-game, broad accessibility, playtest validation, or full manual QA."
-status: "active"
+status: "closed-with-conditions"
 
 activation:
   date: "2026-05-13"
@@ -441,3 +441,84 @@ sprint_11_activation:
     - "Sprint 11 QA plan authored via /qa-plan sprint (required before /dev-story runs on any Sprint 11 story)."
     - "Formal /story-readiness verdict on S11-TD-FIXTURE-HAND-UI-ONENTER-001 (story content-ready; formal verdict pending)."
     - "Story files + /story-readiness for Should Have and Nice-to-Have rows (currently `blocked` until story files exist)."
+
+sprint_11_closeout:
+  date: "2026-05-13"
+  prompt: "792"
+  source_of_truth: "origin/main@d19ea12"
+  disposition: "closed-with-conditions"
+  scope: "Polish / friend-game-lite slice only. No release-tier, public release, release-candidate, full game completion, broad / Standard-tier accessibility completion, playtest / fun-hypothesis validation, full playable-client manual QA, or final-art / asset-production completion claim is made by this close-out."
+  must_have_done: 6
+  must_have_total: 6
+  should_have_done: 0
+  should_have_total: 4
+  nice_to_have_done: 0
+  nice_to_have_total: 6
+  smoke:
+    file: "production/qa/smoke-sprint-11-2026-05-13.md"
+    verdict: "PASS-WITH-WARNINGS"
+    notes: "PROMPT 790 (2026-05-13) on root checkout at origin/main@1617352: cargo fmt --check PASS; cargo check --workspace PASS; cargo test --workspace --tests --no-fail-fast 1129 passed / 0 failed / 5 ignored across 189 binaries. The 5 ignored tests match the 5 Cluster B retained D-5 tests documented at production/qa/evidence/sprint-11-ignored-d5-triage.md (B1-B5). No undocumented ignored test or failure surfaced."
+  team_qa:
+    file: "production/qa/team-qa-sprint-11-2026-05-13.md"
+    verdict: "PASS-WITH-WARNINGS / APPROVED WITH CONDITIONS"
+    prompt: "791"
+    notes: "PROMPT 791 (2026-05-13) Team-QA sign-off on root checkout at origin/main@1617352. Conditions: TQ-S11-C1 close-out is separate; TQ-S11-C2 Cluster B 5 tests carried to Sprint 12+ backlog with named follow-ups; TQ-S11-C3 S8-QA-001-W1 remains OPEN; TQ-S11-C4 QA-COND-0005 + QA-COND-0006 remain accepted-risk / deferred; TQ-S11-C5 PROMPT 761 Polish->Release FAIL preserved (no retry); TQ-S11-C6 PAW-TD-*-a accept-risk preserved."
+  gate_check_polish_to_release:
+    file: "production/gate-checks/gate-polish-release-2026-05-12.md"
+    prompt: "761"
+    verdict: "FAIL (preserved unchanged)"
+    notes: "Polish->Release gate-check FAIL preserved. No retry attempted by PROMPT 792. Stage remains Polish. Do not retry until release-scope artifacts (final art, manual-QA sign-off, accessibility completion, playtest evidence) actually exist on main."
+  must_have_rows_closed:
+    - "S11-DRAG-RUNTIME-RETEST-001 (PROMPT 783 /story-done, PASS-CANNOT-REPRODUCE disposition; worker 0fc05c3 / integration 3ca1aff / closure 1fd0b95)"
+    - "S11-TD-FIXTURE-HAND-UI-ONENTER-001 (PROMPT 785 /story-done; worker integration d7f4103 / closure a8af79a)"
+    - "S11-TD-IGNORED-D5-TRIAGE-001 (PROMPT 789 /story-done; worker integration 1d96281 / closure 18758b2)"
+    - "S11-DOC-HYGIENE-CARRY-001 (PROMPT 780 /story-done; deliverable 0d19690)"
+    - "S11-EVIDENCE-INDEX-CARRY-001 (PROMPT 781 /story-done; deliverable 348084b)"
+    - "S11-ROUTE-READABILITY-CARRY-001 (PROMPT 786 /story-done; deliverable d3ee8df)"
+  deferred_into_sprint_12_planning:
+    - "S11-TD-FIXTURE-D-RESIDUALS-001 (Should Have, blocked — no story file, /story-readiness pending). Wave 12 D-3 / D-4 / D-5 residual fixture cluster: board_rendering_ghost_preview_bridge_test ghost-preview producer fixture gap, board_rendering_snapshot_spawn_test phase routing, board_rendering_status_icons_test should-panic drift, shop_auction_ui_plugin_scaffold_formulas_test count drift 57->66."
+    - "S11-HU-PHASE-IDEMPOTENCY-001 (Should Have, blocked — no story file, /story-readiness pending). Client phase_changed=true 60Hz idempotency."
+    - "S11-SERVER-POOL-INIT-LOG-GUARD-001 (Should Have, blocked — no story file, /story-readiness pending). Server init_pool log emits before guard."
+    - "S11-HUD-TIMER-EYEBALL-VISUAL-001 (Should Have, blocked — no story file, /story-readiness pending). HUD timer eyeball visual check (W2 carry)."
+    - "S11-TD-CARGO-DISK-USAGE-001 (Nice to Have, blocked — no story file, /story-readiness pending). Cargo workspace disk-usage reduction strategy."
+    - "S11-TD-CARGO-PDB-LIMIT-001 (Nice to Have, blocked — no story file, /story-readiness pending). Cargo PDB-size pressure investigation."
+    - "S11-OPS-ORCHESTRATOR-LOCK-001 (Nice to Have, blocked — no story file, /story-readiness pending). Orchestrator-root concurrent-session lock pattern."
+    - "S11-OPS-GH-CLI-001 (Nice to Have, blocked — no story file, /story-readiness pending). gh CLI installation note for dev machine."
+    - "S11-LOBBY-UX-CONFIRM-STATE-001 (Nice to Have, blocked — no story file, /story-readiness pending). Lobby 'Confirming...' text differentiation."
+    - "S11-SERVER-R2-PLACEMENT-CRASH-AUDIT-001 (Nice to Have, blocked — no story file, /story-readiness pending). Intermittent R2 Placement runtime crash audit."
+    - "Follow-on diagnostic story production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md (authored at worker commit 0fc05c3 by PROMPT 778; on main at 0fc05c3; not yet activated into Sprint 11 active scope — Sprint 12+ candidate via /sprint-plan ... --add story-019)."
+    - "Cluster B D-5 ignored test follow-ups from production/qa/evidence/sprint-11-ignored-d5-triage.md: S11-TD-FIXTURE-D-RESIDUALS-001 umbrella OR S11-TD-FIXTURE-BOARD-GHOST-DRAG-PRODUCER-001 split (B1), S11-TD-FIXTURE-HUD-SNAPSHOT-PHASE-BRIDGE-001 (B2), S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001 (B3), S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001 (B4), S11-TD-FIXTURE-D-RESIDUALS-001 umbrella OR S11-TD-SHOP-AUCTION-UI-COUNT-DRIFT-001 split (B5) — each requires its own story file + /story-readiness in a separate prompt before /dev-story can begin."
+  carried_forward_unchanged:
+    - "S8-QA-001-W1 manual/browser two-client GAME_OVER gap remains OPEN."
+    - "QA-COND-0005 Standard-tier accessibility remains accepted-risk (friend-game scope only)."
+    - "QA-COND-0006 playtest fun-hypothesis validation remains accepted-risk / deferred."
+    - "5 retained Cluster B D-5 ignored tests pending owner-named follow-up stories or decision gates (B1 board GhostDragStartEvent producer fixture gap, B2 HUD snapshot.phase bridge fixture gap, B3 lobby ConfirmClass after SelectClass intent chain, B4 co_occupancy_offset panic-guard drift, B5 ShopAuctionUiEntity count drift)."
+    - "HUD timer eyeball visual check deferred (W2; folded forward into S11-HUD-TIMER-EYEBALL-VISUAL-001 deferral)."
+    - "Placeholder / friend-game art scope — PAW-TD-*-a accept-risk on placeholder PNGs across PAW-002..PAW-006."
+    - "PROMPT 683-era runtime divergence question preserved unchanged for follow-on diagnostic story-019."
+  explicitly_not_claimed:
+    - "public release readiness"
+    - "release-candidate readiness"
+    - "full game completion"
+    - "broad / Standard-tier accessibility completion"
+    - "playtest / fun-hypothesis validation"
+    - "full playable-client manual QA"
+    - "final-art / asset-production completion"
+    - "S8-QA-001-W1 closure"
+    - "Polish->Release retry"
+  retry_polish_to_release: "blocked — release-scope artifacts do not yet exist; do not retry the Polish->Release gate-check until they do"
+  files_changed_by_prompt_792:
+    - "production/sprint-status.yaml (top-level status flipped active -> closed-with-conditions; updated annotation refreshed; sprint_11_closeout block appended)"
+    - "production/sprints/sprint-11.md (CLOSED banner prepended)"
+    - "production/session-state/active.md (PROMPT 792 banner prepended)"
+    - "production/session-state/codex-orchestrator-state.md (Current Operating Rules + Current verified state updated for PROMPT 792)"
+  forbidden_changes_observed:
+    - ".claude/settings.json NOT modified (pre-existing dirty modification preserved untouched)"
+    - "client/** / server/** / shared/** / tests/** NOT modified (zero code changes)"
+    - "production/stage.txt NOT modified (remains Polish)"
+    - "production/qa/qa-plan-sprint-11.md NOT modified"
+    - "production/qa/smoke-sprint-11-2026-05-13.md NOT modified"
+    - "production/qa/team-qa-sprint-11-2026-05-13.md NOT modified"
+    - "production/qa/evidence/sprint-11-ignored-d5-triage.md NOT modified"
+    - "production/gate-checks/gate-polish-release-2026-05-12.md NOT modified"
+    - "no /gate-check run; no /smoke-check rerun; no /release-check; no /dev-story; no /story-done; no /story-readiness; no /team-qa rerun"
