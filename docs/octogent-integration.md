@@ -293,7 +293,7 @@ Prerequisites: Node 22+, git, gh, curl, Python 3.10+. PowerShell + cmd. Codex CL
 
 1. Make sure Octogent is running: right-click on the repo folder → "Open Octogent here". The cmd banner shows `OCTOGENT_WORKSPACE_CWD=<your project>` then `Octogent API listening on http://127.0.0.1:8787` and `Local: http://localhost:5173/`.
 2. Open `http://localhost:5173/` in a browser. The `Codex Orchestrator State` tentacle and the `Codex Orchestrator Terminal` host terminal should appear.
-3. Attach to the host terminal in the UI, run `codex resume <session-uuid>` once if you haven't already. **For Claude Code launches** anywhere on this machine, prefer `claude-safe` over `claude` — it auto-fixes `~/.claude.json` if a concurrent worker write left it corrupted, then launches `claude` normally. See `~/.codex/claude-safe.py` for the fixer and `~/AppData/Roaming/npm/claude-safe.cmd` for the wrapper on PATH.
+3. Attach to the host terminal in the UI, run `codex resume <session-uuid>` once if you haven't already.
 4. Work with the Codex orchestrator normally. On each turn the dispatcher detects its disposition blocks, spawns/kills/messages workers in Octogent, and workers report back to the orchestrator via channel-send (auto-submitted thanks to the bracketed-paste patch).
 5. To inspect any worker: click it in the UI to see its transcript and channel messages.
 6. **Manual report-back fallback** (for workers spawned before the dispatcher's auto-instruction, or if a worker forgets). Three steps — the worker (or you posing as it) must do all three:
