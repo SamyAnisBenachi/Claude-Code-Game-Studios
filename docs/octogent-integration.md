@@ -196,8 +196,11 @@ If the orchestrator's wording drifts, update `_HEADER_RX` in
 Three local patches to Octogent's source — **all lost on `git pull` of Octogent**, re-apply if you upgrade:
 
 1. `D:\_APPS\Tools\octogent\scripts\dev.mjs` — use `pnpm.cmd` (not `pnpm.exe`, which doesn't exist with `npm install -g pnpm` on Windows) + add `shell: process.platform === "win32"` to the spawn call (Node 24 requirement). Adds three `console.log` debug lines for `OCTOGENT_WORKSPACE_CWD` / `workspaceCwd` / `projectStateDir` so launches are self-diagnosing.
-2. `D:\_APPS\Tools\octogent\apps\api\src\terminalRuntime\channelMessaging.ts` — `deliverChannelMessages` wraps injected messages in **bracketed-paste markers** (`\x1b[200~` … `\x1b[201~`) and writes `\r` via a 150 ms `setTimeout`. Without this, channel-send to a Codex agent lands the text in the input buffer unsubmitted. The same pattern is used by `sessionRuntime.ts` for initial prompt injection — we're just bringing channel delivery in line.
-3. (No third file patched — these are the only two source modifications.)
+2. `D:\_APPS\Tools\octogent\apps\api\src\terminalRuntime\channelMessaging.ts` — three changes in `deliverChannelMessages`:
+   - Wraps injected messages in **bracketed-paste markers** (`\x1b[200~` … `\x1b[201~`) and writes `\r` via a 150 ms `setTimeout` to trigger auto-submit; without this, channel-send to a Codex agent lands the text in the input buffer unsubmitted.
+   - Delivers **one message at a time** (`undelivered[0]`) instead of batching all queued messages into a single combined injection — keeps per-worker reports as separate orchestrator turns.
+   - Per-session `inFlightDeliveries` lock covering the 150 ms paste→`\r` window — without this lock, a second message arriving during the window short-circuits the idle check and stacks on top of the first.
+3. `D:\_APPS\Tools\octogent\apps\api\src\terminalRuntime\sessionRuntime.ts` — `INITIAL_PROMPT_SUBMIT_DELAY_MS` bumped from `150` to `500` ms. The original 150 ms was reliable for a single spawn but flaky when two Codex PTYs bootstrapped close together (initial-prompt `\r` arrived before Codex finished consuming the paste, leaving the worker stuck on `[Pasted Content X chars]` waiting for a manual Enter). 500 ms gives the runtime breathing room under contention; the +350 ms latency cost is once per spawn.
 
 Launcher chain (not patches, project files maintained alongside the install dir):
 
@@ -220,12 +223,16 @@ Prerequisites: Node 22+, git, gh, curl, Python 3.10+. PowerShell + cmd. Codex CL
 
 1. Clone Octogent: `git clone https://github.com/hesamsheikh/octogent D:\_APPS\Tools\octogent`
 2. Install pnpm (user-prefix, no admin): `npm install -g pnpm`
-3. Apply the two Octogent source patches (lost on `git pull`; keep a copy):
+3. Apply the three Octogent source patches (lost on `git pull`; keep a copy):
    - `scripts/dev.mjs`:
      - change `"pnpm.exe"` to `"pnpm.cmd"` (~line 74)
      - add `shell: process.platform === "win32",` inside the spawn options object (~line 128)
    - `apps/api/src/terminalRuntime/channelMessaging.ts` `deliverChannelMessages`:
-     - replace the `const prompt = ...; writeInput(...)` block with the bracketed-paste version (defines `BRACKETED_PASTE_START="\x1b[200~"`/`BRACKETED_PASTE_END="\x1b[201~"`, writes `wrapped`, then `setTimeout(() => writeInput(terminalId, "\r"), 150)`).
+     - take `undelivered[0]` instead of all messages (one-at-a-time delivery)
+     - wrap the chosen message in `BRACKETED_PASTE_START="\x1b[200~"` / `BRACKETED_PASTE_END="\x1b[201~"`, write it, then `setTimeout(() => writeInput(terminalId, "\r"), 150)`
+     - declare a `const inFlightDeliveries = new Set<string>()` at the closure level, set it at the start of `deliverChannelMessages`, clear it inside the `\r` setTimeout — this is the per-session lock
+   - `apps/api/src/terminalRuntime/sessionRuntime.ts`:
+     - change `const INITIAL_PROMPT_SUBMIT_DELAY_MS = 150;` to `500` (~line 440)
 4. Copy the dispatcher + hook scripts (or grab them from a teammate's backup):
    - `~/.codex/gcs-octogent-dispatch.py`
    - `~/.codex/gcs-codex-stop-hook.py`
@@ -259,7 +266,7 @@ Prerequisites: Node 22+, git, gh, curl, Python 3.10+. PowerShell + cmd. Codex CL
 
 1. Make sure Octogent is running: right-click on the repo folder → "Open Octogent here". The cmd banner shows `OCTOGENT_WORKSPACE_CWD=<your project>` then `Octogent API listening on http://127.0.0.1:8787` and `Local: http://localhost:5173/`.
 2. Open `http://localhost:5173/` in a browser. The `Codex Orchestrator State` tentacle and the `Codex Orchestrator Terminal` host terminal should appear.
-3. Attach to the host terminal in the UI, run `codex resume <session-uuid>` once if you haven't already.
+3. Attach to the host terminal in the UI, run `codex resume <session-uuid>` once if you haven't already. **For Claude Code launches** anywhere on this machine, prefer `claude-safe` over `claude` — it auto-fixes `~/.claude.json` if a concurrent worker write left it corrupted, then launches `claude` normally. See `~/.codex/claude-safe.py` for the fixer and `~/AppData/Roaming/npm/claude-safe.cmd` for the wrapper on PATH.
 4. Work with the Codex orchestrator normally. On each turn the dispatcher detects its disposition blocks, spawns/kills/messages workers in Octogent, and workers report back to the orchestrator via channel-send (auto-submitted thanks to the bracketed-paste patch).
 5. To inspect any worker: click it in the UI to see its transcript and channel messages.
 6. **Manual report-back fallback** (for workers spawned before the dispatcher's auto-instruction, or if a worker forgets). Three steps — the worker (or you posing as it) must do all three:
