@@ -171,9 +171,7 @@ fn set_phase(app: &mut App, phase: RoundPhase) {
 }
 
 fn set_submitted_sentinel(app: &mut App) {
-    app.world_mut()
-        .resource_mut::<PlacementTimer>()
-        .submitted = true;
+    app.world_mut().resource_mut::<PlacementTimer>().submitted = true;
 }
 
 fn submitted(app: &App) -> bool {
