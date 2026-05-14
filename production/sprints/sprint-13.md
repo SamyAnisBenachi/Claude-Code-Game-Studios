@@ -1,4 +1,47 @@
-# Sprint 13 -- DRAFT (Polish stage)
+# Sprint 13 -- ACTIVATED (Polish stage)
+
+> **PROMPT 826 activation (2026-05-14)**: Sprint 13 flipped from DRAFT
+> to ACTIVE. `production/sprint-status.yaml` top-level `sprint:` flipped
+> 12 -> 13 and `status:` flipped `closed-with-conditions` -> `active`.
+> `next_sprint:` draft block removed (now superseded by
+> `sprint_13_activation:` block appended at end of file). `stories:`
+> block content replaced with Sprint 13 row set (6 Must Have + 6 Should
+> Have + 7 Nice to Have = 19 rows, all `ready`). Stage remains
+> `Polish`. Sprint 12 disposition (`closed-with-conditions` per
+> PROMPT 817) preserved unchanged under `sprint_12_closeout:` block.
+> Sprint 11 / Sprint 10 closeouts preserved unchanged. PROMPT 761
+> Polish->Release gate-check `FAIL` preserved at
+> `production/gate-checks/gate-polish-release-2026-05-12.md` (no
+> retry). TQ-S12-C1..C7 preserved verbatim. S8-QA-001-W1 OPEN
+> preserved. QA-COND-0005 + QA-COND-0006 accepted-risk preserved.
+> PAW-TD-*-a accept-risk preserved. PROMPT 683-era runtime divergence
+> question preserved (folded into Sprint 12 story 019 cannot-reproduce
+> closure). Story 019 underlying drag-runtime bug NOT claimed fixed.
+> Sprint 13 QA plan does NOT exist at activation; must be authored via
+> `/qa-plan sprint` before any `/dev-story`. PROMPT 826 paperwork-only
+> activation: **NO** `/dev-story`, **NO** `/story-readiness` rerun,
+> **NO** `/story-done`, **NO** `/smoke-check`, **NO** `/team-qa`,
+> **NO** `/gate-check`, **NO** `/release-check`, **NO** `/qa-plan`,
+> **NO** implementation, **NO** CI runs, **NO** cargo/trunk build or
+> test runs were performed by this activation.
+>
+> **Status**: `active` (flipped from `draft` by PROMPT 826).
+> **Source-of-truth at activation**: `origin/main@6fbbe86`
+> (PROMPT 825 commit `paperwork(s13): refresh draft pointers to actual
+> story paths (PROMPT 825)`).
+> **Worktree**: `D:\_DEV\claude-code-game-studios-worktrees\sprint-13-activation`.
+> **Branch**: `sprint-plan/sprint-13-activation`.
+> **Start / end**: 2026-07-02 -> 2026-07-15 (10 workdays).
+>
+> **Release scope**: still explicitly OUT of Sprint 13. PROMPT 761
+> Polish->Release gate-check `FAIL` evidence preserved at
+> `production/gate-checks/gate-polish-release-2026-05-12.md`. Do **not**
+> retry the Polish->Release gate-check until release-scope artifacts
+> (final art, manual-QA sign-off, accessibility completion, playtest
+> evidence) actually exist on `main`. Sprint 13 does **not** advance
+> stage. Sprint 13 does **not** claim S8-QA-001-W1 closure.
+
+---
 
 > **PROMPT 825 pointer refresh (2026-05-14)**: Updated 11 story pointers
 > from placeholder `story-XXX` slugs to actual story file paths now
