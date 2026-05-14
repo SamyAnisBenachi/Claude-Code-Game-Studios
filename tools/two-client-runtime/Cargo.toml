@@ -1,0 +1,33 @@
+[package]
+name = "two-client-runtime"
+version = "0.1.0"
+edition = "2021"
+description = "S13-TWO-CLIENT-RUNTIME-HARNESS-001 — non-interactive scripted two-client runtime harness driving the friend-game route end-to-end over the production Lightyear WebSocket transport."
+
+[dependencies]
+shared = { path = "../../shared" }
+server = { path = "../../server" }
+# Used to register the production Lightyear protocol on the harness's client
+# Apps via `client::network::register_lightyear_protocol`. We do NOT pull
+# `client::main::main()` itself because that brings DefaultPlugins / windowing.
+client = { path = "../../client" }
+# Bevy 0.18 with the headless feature subset the server uses (no rendering, no
+# windowing). The harness ticks server + 2 clients in-process via
+# `App::update()` calls per liv-bevy-018 — production-faithful, no windowed run.
+bevy = { version = "0.18", default-features = false, features = ["multi_threaded", "bevy_log", "bevy_asset", "bevy_state"] }
+# Same Lightyear feature set as production server/client, with WebSocket
+# transport (ADR-008). "raw_connection" maps WebSocket links to Connected
+# entities without netcode — the verified localhost WebSocket path.
+lightyear = { version = "0.26", default-features = false, features = ["client", "server", "websocket", "raw_connection", "replication"] }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+# UTC ISO-8601 ms-precision timestamping per AC6. Mirrors server/main.rs and
+# client/main.rs subscriber setup (PROMPT 837 wall-clock landing).
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "time", "fmt"] }
+
+[[bin]]
+name = "two-client-runtime"
+path = "src/main.rs"

@@ -1,0 +1,29 @@
+2026-05-14T15:28:33.1784932Z  INFO harness::server: server app built
+2026-05-14T15:28:33.1793572Z  INFO lightyear_websocket::server: Server WebSocket starting at 0.0.0.0:57475
+2026-05-14T15:28:33.5145145Z  INFO harness::server: server prime ticks complete
+2026-05-14T15:28:33.7655128Z  INFO server::network: Client connected: Ok(Raw(127.0.0.1:57476))
+2026-05-14T15:28:33.7657901Z  INFO server::network: Client connected: Ok(Raw(127.0.0.1:57477))
+2026-05-14T15:28:33.7662194Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=1 (fresh=true)
+2026-05-14T15:28:33.7662524Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=1 (fresh=true)
+2026-05-14T15:28:33.7662605Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=2 (fresh=true)
+2026-05-14T15:28:33.7769316Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=2 (fresh=true)
+2026-05-14T15:28:33.7770051Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(1)) peer_id=Raw(127.0.0.1:57476) session_id=1
+2026-05-14T15:28:33.7770471Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(1)) peer_id=Raw(127.0.0.1:57476) session_id=1
+2026-05-14T15:28:33.7770513Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(2)) peer_id=Raw(127.0.0.1:57477) session_id=2
+2026-05-14T15:28:33.7770552Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(2)) peer_id=Raw(127.0.0.1:57477) session_id=2
+2026-05-14T15:28:33.7892805Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=1 (fresh=true)
+2026-05-14T15:28:33.7893311Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=2 (fresh=true)
+2026-05-14T15:28:33.7893573Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(1)) peer_id=Raw(127.0.0.1:57476) session_id=1
+2026-05-14T15:28:33.7893792Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(2)) peer_id=Raw(127.0.0.1:57477) session_id=2
+2026-05-14T15:28:33.8016494Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=1 (fresh=true)
+2026-05-14T15:28:33.8016968Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(1)) peer_id=Raw(127.0.0.1:57476) session_id=1
+2026-05-14T15:28:33.8377616Z  INFO server::core::rsm::transitions: RSM on_session_ready: entering DRAFT_INITIAL player_count=2 round_number=0
+2026-05-14T15:28:33.8378095Z  INFO server::core::rsm::transitions: RSM enter_draft_initial round=1 auction_round=false
+2026-05-14T15:28:33.9264837Z  INFO server::game: resolve_combat: enter round=1 trace_start=0
+2026-05-14T15:28:33.9266091Z  INFO server::game: resolve_combat: exit round=1 kills=0
+2026-05-14T15:28:33.9266158Z  INFO server::game: enqueue_resolution_event: broadcasting S2CResolutionEvent round=1 events_len=6
+2026-05-14T15:28:33.9266206Z  INFO server::game: broadcast_resolution_event: enter round=1 events_len=6
+2026-05-14T15:28:33.9885544Z  INFO server::game: resolve_combat: enter round=2 trace_start=10
+2026-05-14T15:28:33.9886263Z  INFO server::game: resolve_combat: exit round=2 kills=0
+2026-05-14T15:28:33.9886312Z  INFO server::game: enqueue_resolution_event: broadcasting S2CResolutionEvent round=2 events_len=6
+2026-05-14T15:28:33.9886349Z  INFO server::game: broadcast_resolution_event: enter round=2 events_len=6

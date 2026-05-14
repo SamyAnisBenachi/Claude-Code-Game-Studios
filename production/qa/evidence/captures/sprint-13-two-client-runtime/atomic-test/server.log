@@ -1,0 +1,200 @@
+2026-05-14T15:32:36.6762635Z  INFO harness::server: server app built
+2026-05-14T15:32:36.6766836Z  INFO server::foundation::config: AppState::Loading — requesting game_config.ron and cards.json
+2026-05-14T15:32:36.6769687Z  INFO lightyear_websocket::server: Server WebSocket starting at 0.0.0.0:61238
+2026-05-14T15:32:36.6796284Z  INFO server::foundation::config: Both assets loaded — transitioning to AppState::ConfigValidation
+2026-05-14T15:32:36.6913537Z  INFO server::foundation::config: Assets loaded: GameConfig + CardCatalog (16 cards) — transitioning to AppState::Lobby
+2026-05-14T15:32:37.0148652Z  INFO harness::server: server prime ticks complete
+2026-05-14T15:32:37.254294Z  INFO server::network: Client connected: Ok(Raw(127.0.0.1:61241))
+2026-05-14T15:32:37.2554435Z  INFO server::network: Client connected: Ok(Raw(127.0.0.1:61242))
+2026-05-14T15:32:37.2558268Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=1 (fresh=true)
+2026-05-14T15:32:37.2558433Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=1 (fresh=true)
+2026-05-14T15:32:37.2558475Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=2 (fresh=true)
+2026-05-14T15:32:37.2558503Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=2 (fresh=true)
+2026-05-14T15:32:37.2558755Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(1)) peer_id=Raw(127.0.0.1:61241) session_id=1
+2026-05-14T15:32:37.2559046Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(1)) peer_id=Raw(127.0.0.1:61241) session_id=1
+2026-05-14T15:32:37.2559085Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(2)) peer_id=Raw(127.0.0.1:61242) session_id=2
+2026-05-14T15:32:37.2559122Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(2)) peer_id=Raw(127.0.0.1:61242) session_id=2
+2026-05-14T15:32:37.2689226Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=1 (fresh=true)
+2026-05-14T15:32:37.2689837Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=2 (fresh=true)
+2026-05-14T15:32:37.2690412Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(1)) peer_id=Raw(127.0.0.1:61241) session_id=1
+2026-05-14T15:32:37.2690717Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(2)) peer_id=Raw(127.0.0.1:61242) session_id=2
+2026-05-14T15:32:37.2826253Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=1 (fresh=true)
+2026-05-14T15:32:37.282715Z  INFO server::core::session::reconnect: send_reconnect_dispatch: type=S2CHandshake enter player_id=Some(PlayerId(1)) peer_id=Raw(127.0.0.1:61241) session_id=1
+2026-05-14T15:32:37.2829115Z  INFO server::core::session::system: c2s_create_room: recv peer_id=Raw(127.0.0.1:61241) mode=OneVOne
+2026-05-14T15:32:37.2829978Z  INFO server::core::session::system: send_create_room_outcome enter (Created) peer_id=Raw(127.0.0.1:61241) room_code=6MGAAQ session_id=f74dcb7a-97fc-49f0-9af1-0987f3bc3990
+2026-05-14T15:32:37.3074555Z  INFO server::core::session::system: c2s_join_room: recv peer_id=Raw(127.0.0.1:61242) room_code="6MGAAQ" requested_slot=1
+2026-05-14T15:32:37.3075204Z  INFO server::core::session::system: send_join_room_outcome enter (Joined) peer_id=Raw(127.0.0.1:61242) session_id=f74dcb7a-97fc-49f0-9af1-0987f3bc3990
+2026-05-14T15:32:37.3327328Z  INFO server::core::session::system: c2s_select_class: recv peer_id=Raw(127.0.0.1:61241) class_id=Iop
+2026-05-14T15:32:37.332802Z  INFO server::core::session::system: c2s_select_class: recv peer_id=Raw(127.0.0.1:61242) class_id=Cra
+2026-05-14T15:32:37.3328999Z  INFO server::core::session::system: c2s_confirm_class: recv peer_id=Raw(127.0.0.1:61241) class_id=Iop
+2026-05-14T15:32:37.3329099Z  INFO server::core::session::system: send_confirm_class_outcome enter (Locked) peer_id=Raw(127.0.0.1:61241) class_id=Iop
+2026-05-14T15:32:37.332994Z  INFO server::core::session::system: c2s_confirm_class: recv peer_id=Raw(127.0.0.1:61242) class_id=Cra
+2026-05-14T15:32:37.3330045Z  INFO server::core::session::system: send_confirm_class_outcome enter (Locked) peer_id=Raw(127.0.0.1:61242) class_id=Cra
+2026-05-14T15:32:37.3332532Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=1 (fresh=false)
+2026-05-14T15:32:37.3332593Z  INFO server::core::session::reconnect: snapshot_sent registered for player_id=2 (fresh=false)
+2026-05-14T15:32:37.3333484Z  INFO server::core::rsm::transitions: RSM on_session_ready: entering DRAFT_INITIAL player_count=2 round_number=0
+2026-05-14T15:32:37.333397Z  INFO server::core::rsm::transitions: RSM enter_draft_initial round=1 auction_round=false
+2026-05-14T15:32:37.3335388Z  INFO server::core::pool::system: initialize_player_pools_on_draft_started: initializing PlayerPools on DraftStarted::Initial
+2026-05-14T15:32:37.3336519Z  INFO server::game: acquisition_tick: drained 2 ShopRefreshTriggered messages
+2026-05-14T15:32:37.3336643Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=1 trigger=DraftInitial
+2026-05-14T15:32:37.3336742Z  INFO server::game: acquisition_tick: building draft initial offering for player_id=1
+2026-05-14T15:32:37.3336951Z  INFO server::game: acquisition_tick: built offering with 9 cards for player_id=1
+2026-05-14T15:32:37.3336993Z  INFO server::game: acquisition_tick: checking defer for player_id=1
+2026-05-14T15:32:37.3337038Z  INFO server::game: acquisition_tick: defer=false for player_id=1
+2026-05-14T15:32:37.333707Z  INFO server::game: acquisition_tick: attempting direct broadcast S2CDraftOffering to peer_id=Some(Raw(127.0.0.1:61241))
+2026-05-14T15:32:37.3337123Z  INFO server::game: send_draft_offering enter player_id=1 peer_id=Some(Raw(127.0.0.1:61241)) offering_count=9
+2026-05-14T15:32:37.3337261Z  INFO server::game: card_acquisition: broadcast S2CDraftOffering to 1 client player_id=1
+2026-05-14T15:32:37.3337296Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=2 trigger=DraftInitial
+2026-05-14T15:32:37.3337326Z  INFO server::game: acquisition_tick: building draft initial offering for player_id=2
+2026-05-14T15:32:37.3337368Z  INFO server::game: acquisition_tick: built offering with 9 cards for player_id=2
+2026-05-14T15:32:37.3337399Z  INFO server::game: acquisition_tick: checking defer for player_id=2
+2026-05-14T15:32:37.333743Z  INFO server::game: acquisition_tick: defer=false for player_id=2
+2026-05-14T15:32:37.3337458Z  INFO server::game: acquisition_tick: attempting direct broadcast S2CDraftOffering to peer_id=Some(Raw(127.0.0.1:61242))
+2026-05-14T15:32:37.333749Z  INFO server::game: send_draft_offering enter player_id=2 peer_id=Some(Raw(127.0.0.1:61242)) offering_count=9
+2026-05-14T15:32:37.333754Z  INFO server::game: card_acquisition: broadcast S2CDraftOffering to 1 client player_id=2
+2026-05-14T15:32:37.3342558Z  INFO server::game: send_objective_identities enter player_id=1 peer_id=Some(Raw(127.0.0.1:61241)) identity_count=5
+2026-05-14T15:32:37.334312Z  INFO server::game: send_objective_identities enter player_id=2 peer_id=Some(Raw(127.0.0.1:61242)) identity_count=5
+2026-05-14T15:32:37.3502406Z  WARN server::game: start_of_turn_dispatch_system not yet implemented: keyword dispatch deferred to future story
+2026-05-14T15:32:37.3504185Z  INFO server::game: c2s_purchase_card: recv peer_id=Raw(127.0.0.1:61241) card_id=CardId(108)
+2026-05-14T15:32:37.350452Z  INFO server::game: send_card_acquired enter player_id=1 peer_id=Some(Raw(127.0.0.1:61241)) card_id=CardId(108) source=DraftInitial
+2026-05-14T15:32:37.3504699Z  INFO server::game: c2s_purchase_card: recv peer_id=Raw(127.0.0.1:61242) card_id=CardId(102)
+2026-05-14T15:32:37.350475Z  INFO server::game: send_card_acquired enter player_id=2 peer_id=Some(Raw(127.0.0.1:61242)) card_id=CardId(102) source=DraftInitial
+2026-05-14T15:32:37.3625535Z  INFO server::game: c2s_signal_ready: recv peer_id=Raw(127.0.0.1:61242) retract=false
+2026-05-14T15:32:37.3744896Z  INFO server::game: c2s_signal_ready: recv peer_id=Raw(127.0.0.1:61241) retract=false
+2026-05-14T15:32:37.3746643Z  INFO server::core::rsm::transitions: RSM advance_phase: DraftInitial -> Placement from=DraftInitial to=Placement round=1 game_over=false
+2026-05-14T15:32:37.3746903Z  INFO server::game: placement_buffer_open: PlacementPhaseEntered consumer enter previous_submissions=0
+2026-05-14T15:32:37.3990266Z  INFO server::game: c2s_submit_placement: recv peer_id=Raw(127.0.0.1:61241) placements_len=0
+2026-05-14T15:32:37.3990844Z  INFO server::game: c2s_submit_placement: recv peer_id=Raw(127.0.0.1:61242) placements_len=0
+2026-05-14T15:32:37.399325Z  INFO server::game: handle_placement_submission: PlacementSubmissionReceived consumer enter player_id=1 placements_len=0 phase=Some(Placement)
+2026-05-14T15:32:37.3993598Z  INFO server::game: handle_placement_submission: PlacementSubmissionReceived consumer enter player_id=2 placements_len=0 phase=Some(Placement)
+2026-05-14T15:32:37.4114395Z  INFO server::core::rsm::transitions: RSM advance_phase: Placement -> Resolution from=Placement to=Resolution round=1 game_over=false
+2026-05-14T15:32:37.4115915Z  INFO server::game: resolve_combat: enter round=1 trace_start=0
+2026-05-14T15:32:37.4116958Z  INFO server::game: resolve_combat: exit round=1 kills=0
+2026-05-14T15:32:37.4117009Z  INFO server::game: enqueue_resolution_event: broadcasting S2CResolutionEvent round=1 events_len=6
+2026-05-14T15:32:37.4117048Z  INFO server::game: broadcast_resolution_event: enter round=1 events_len=6
+2026-05-14T15:32:37.4234109Z  INFO server::core::rsm::transitions: RSM advance_phase: Resolution -> next draft from=Resolution to=DraftShop round=2 game_over=false
+2026-05-14T15:32:37.4234754Z  INFO server::core::economy::system: on_draft_started: per-player draft init player=PlayerId(1) phase=Shop interest=0 baseline=0 new_gold=2
+2026-05-14T15:32:37.423492Z  INFO server::core::economy::system: on_draft_started: per-player draft init player=PlayerId(2) phase=Shop interest=0 baseline=3 new_gold=5
+2026-05-14T15:32:37.4235134Z  INFO server::game: acquisition_tick: drained 2 ShopRefreshTriggered messages
+2026-05-14T15:32:37.4235165Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=1 trigger=ShopOpen
+2026-05-14T15:32:37.4235722Z  INFO server::game: send_shop_slots enter player_id=1 peer_id=Some(Raw(127.0.0.1:61241)) slot_count=3
+2026-05-14T15:32:37.4235805Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=2 trigger=ShopOpen
+2026-05-14T15:32:37.4235938Z  INFO server::game: send_shop_slots enter player_id=2 peer_id=Some(Raw(127.0.0.1:61242)) slot_count=3
+2026-05-14T15:32:37.4352801Z  WARN server::game: start_of_turn_dispatch_system not yet implemented: keyword dispatch deferred to future story
+2026-05-14T15:32:37.4352677Z  INFO server::game: c2s_signal_ready: recv peer_id=Raw(127.0.0.1:61241) retract=false
+2026-05-14T15:32:37.4353301Z  INFO server::game: c2s_signal_ready: recv peer_id=Raw(127.0.0.1:61242) retract=false
+2026-05-14T15:32:37.4354491Z  INFO server::core::rsm::transitions: RSM advance_phase: DraftShop -> Placement from=DraftShop to=Placement round=2 game_over=false
+2026-05-14T15:32:37.4354791Z  INFO server::game: placement_buffer_open: PlacementPhaseEntered consumer enter previous_submissions=0
+2026-05-14T15:32:37.4472638Z  INFO server::game: c2s_submit_placement: recv peer_id=Raw(127.0.0.1:61241) placements_len=0
+2026-05-14T15:32:37.447309Z  INFO server::game: c2s_submit_placement: recv peer_id=Raw(127.0.0.1:61242) placements_len=0
+2026-05-14T15:32:37.4474352Z  INFO server::game: handle_placement_submission: PlacementSubmissionReceived consumer enter player_id=1 placements_len=0 phase=Some(Placement)
+2026-05-14T15:32:37.447459Z  INFO server::game: handle_placement_submission: PlacementSubmissionReceived consumer enter player_id=2 placements_len=0 phase=Some(Placement)
+2026-05-14T15:32:37.4593704Z  INFO server::core::rsm::transitions: RSM advance_phase: Placement -> Resolution from=Placement to=Resolution round=2 game_over=false
+2026-05-14T15:32:37.4596553Z  INFO server::game: resolve_combat: enter round=2 trace_start=10
+2026-05-14T15:32:37.4597997Z  INFO server::game: resolve_combat: exit round=2 kills=0
+2026-05-14T15:32:37.459807Z  INFO server::game: enqueue_resolution_event: broadcasting S2CResolutionEvent round=2 events_len=6
+2026-05-14T15:32:37.4598112Z  INFO server::game: broadcast_resolution_event: enter round=2 events_len=6
+2026-05-14T15:32:37.4720631Z  INFO server::core::rsm::transitions: RSM advance_phase: Resolution -> next draft from=Resolution to=DraftAuction round=3 game_over=false
+2026-05-14T15:32:37.4721542Z  INFO server::core::economy::system: on_draft_started: per-player draft init player=PlayerId(1) phase=Auction interest=0 baseline=2 new_gold=4
+2026-05-14T15:32:37.4721757Z  INFO server::core::economy::system: on_draft_started: per-player draft init player=PlayerId(2) phase=Auction interest=1 baseline=5 new_gold=8
+2026-05-14T15:32:37.4722011Z  INFO server::game: acquisition_tick: drained 2 ShopRefreshTriggered messages
+2026-05-14T15:32:37.4722047Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=1 trigger=AuctionLock
+2026-05-14T15:32:37.4722461Z  INFO server::game: send_shop_slots enter player_id=1 peer_id=Some(Raw(127.0.0.1:61241)) slot_count=3
+2026-05-14T15:32:37.4722573Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=2 trigger=AuctionLock
+2026-05-14T15:32:37.4722724Z  INFO server::game: send_shop_slots enter player_id=2 peer_id=Some(Raw(127.0.0.1:61242)) slot_count=3
+2026-05-14T15:32:37.4836976Z  WARN server::game: start_of_turn_dispatch_system not yet implemented: keyword dispatch deferred to future story
+2026-05-14T15:32:37.4838452Z  INFO server::game: auction_tick_system: AuctionPhaseEntered consumer enter round=3 phase=Idle
+2026-05-14T15:32:37.4838528Z  INFO server::game: auction_tick_system: state transition round=3 from=Idle to=Selecting
+2026-05-14T15:32:37.4838649Z  INFO server::game: auction_tick_system: state transition round=3 card_id=CardId(107) starting_price=3 timer_ms=20000 from=Selecting to=LiveBidding
+2026-05-14T15:32:37.4838741Z  INFO server::game: auction_tick_system: broadcasting S2CAuctionCard enter round=3 card_id=CardId(107) starting_price=3
+2026-05-14T15:32:37.4962127Z  INFO server::game: c2s_place_bid: recv peer_id=Raw(127.0.0.1:61241) amount=4
+2026-05-14T15:32:37.4962679Z  INFO server::game: send_outbox_dispatches: dispatching S2CAuctionBidAccepted enter bidder=1 amount=4
+2026-05-14T15:32:58.2000926Z  INFO server::game: settle_expired_auction: state transition final_price=4 leader=Some(PlayerId(1)) from=LiveBidding to=Resolving
+2026-05-14T15:32:58.2001403Z  INFO server::game: reset_to_idle: state transition from=Resolving to=Idle card_id=Some(CardId(107)) final_price=4 leader=Some(PlayerId(1))
+2026-05-14T15:32:58.2001501Z  INFO server::game: send_outbox_dispatches: dispatching S2CCardAcquired enter player_id=1 peer_id=Some(Raw(127.0.0.1:61241)) card_id=CardId(107) source=AuctionWon
+2026-05-14T15:32:58.2001685Z  INFO server::game: send_outbox_dispatches: dispatching S2CAuctionSettled enter winner=Some(PlayerId(1)) amount=4
+2026-05-14T15:32:58.2002116Z  INFO server::core::rsm::transitions: RSM advance_phase: DraftAuction -> DraftShop from=DraftAuction to=DraftShop round=3 game_over=false
+2026-05-14T15:32:58.2002435Z  INFO server::core::economy::system: on_draft_started: per-player draft init player=PlayerId(1) phase=Shop interest=0 baseline=0 new_gold=2
+2026-05-14T15:32:58.2002484Z  INFO server::core::economy::system: on_draft_started: per-player draft init player=PlayerId(2) phase=Shop interest=0 baseline=0 new_gold=10
+2026-05-14T15:32:58.2003004Z  INFO server::game: acquisition_tick: drained 2 ShopRefreshTriggered messages
+2026-05-14T15:32:58.2003135Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=1 trigger=ShopUnlock
+2026-05-14T15:32:58.2003175Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=2 trigger=ShopUnlock
+2026-05-14T15:32:58.2120501Z  WARN server::game: start_of_turn_dispatch_system not yet implemented: keyword dispatch deferred to future story
+2026-05-14T15:32:58.2271783Z  INFO server::game: c2s_signal_ready: recv peer_id=Raw(127.0.0.1:61241) retract=false
+2026-05-14T15:32:58.2272525Z  INFO server::game: c2s_signal_ready: recv peer_id=Raw(127.0.0.1:61242) retract=false
+2026-05-14T15:32:58.2274501Z  INFO server::core::rsm::transitions: RSM advance_phase: DraftShop -> Placement from=DraftShop to=Placement round=3 game_over=false
+2026-05-14T15:32:58.227489Z  INFO server::game: placement_buffer_open: PlacementPhaseEntered consumer enter previous_submissions=0
+2026-05-14T15:32:58.2527336Z  INFO server::game: c2s_submit_placement: recv peer_id=Raw(127.0.0.1:61241) placements_len=0
+2026-05-14T15:32:58.2528008Z  INFO server::game: c2s_submit_placement: recv peer_id=Raw(127.0.0.1:61242) placements_len=0
+2026-05-14T15:32:58.2529868Z  INFO server::game: handle_placement_submission: PlacementSubmissionReceived consumer enter player_id=1 placements_len=0 phase=Some(Placement)
+2026-05-14T15:32:58.2530068Z  INFO server::game: handle_placement_submission: PlacementSubmissionReceived consumer enter player_id=2 placements_len=0 phase=Some(Placement)
+2026-05-14T15:32:58.2648984Z  INFO server::core::rsm::transitions: RSM advance_phase: Placement -> Resolution from=Placement to=Resolution round=3 game_over=false
+2026-05-14T15:32:58.2650663Z  INFO server::game: resolve_combat: enter round=3 trace_start=20
+2026-05-14T15:32:58.2651567Z  INFO server::game: resolve_combat: exit round=3 kills=0
+2026-05-14T15:32:58.2651651Z  INFO server::game: enqueue_resolution_event: broadcasting S2CResolutionEvent round=3 events_len=6
+2026-05-14T15:32:58.2651709Z  INFO server::game: broadcast_resolution_event: enter round=3 events_len=6
+2026-05-14T15:32:58.2768592Z  INFO server::core::rsm::transitions: RSM advance_phase: Resolution -> next draft from=Resolution to=DraftShop round=4 game_over=false
+2026-05-14T15:32:58.2769059Z  INFO server::core::economy::system: on_draft_started: per-player draft init player=PlayerId(1) phase=Shop interest=0 baseline=2 new_gold=4
+2026-05-14T15:32:58.2769117Z  INFO server::core::economy::system: on_draft_started: per-player draft init player=PlayerId(2) phase=Shop interest=2 baseline=10 new_gold=14
+2026-05-14T15:32:58.2769453Z  INFO server::game: acquisition_tick: drained 2 ShopRefreshTriggered messages
+2026-05-14T15:32:58.2769651Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=1 trigger=ShopOpen
+2026-05-14T15:32:58.2770053Z  INFO server::game: send_shop_slots enter player_id=1 peer_id=Some(Raw(127.0.0.1:61241)) slot_count=3
+2026-05-14T15:32:58.2770183Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=2 trigger=ShopOpen
+2026-05-14T15:32:58.277032Z  INFO server::game: send_shop_slots enter player_id=2 peer_id=Some(Raw(127.0.0.1:61242)) slot_count=3
+2026-05-14T15:32:58.2889365Z  WARN server::game: start_of_turn_dispatch_system not yet implemented: keyword dispatch deferred to future story
+2026-05-14T15:32:58.301689Z  INFO server::game: c2s_signal_ready: recv peer_id=Raw(127.0.0.1:61241) retract=false
+2026-05-14T15:32:58.3017409Z  INFO server::game: c2s_signal_ready: recv peer_id=Raw(127.0.0.1:61242) retract=false
+2026-05-14T15:32:58.3018839Z  INFO server::core::rsm::transitions: RSM advance_phase: DraftShop -> Placement from=DraftShop to=Placement round=4 game_over=false
+2026-05-14T15:32:58.3019039Z  INFO server::game: placement_buffer_open: PlacementPhaseEntered consumer enter previous_submissions=0
+2026-05-14T15:32:58.3255985Z  INFO server::game: c2s_submit_placement: recv peer_id=Raw(127.0.0.1:61241) placements_len=0
+2026-05-14T15:32:58.3256529Z  INFO server::game: c2s_submit_placement: recv peer_id=Raw(127.0.0.1:61242) placements_len=0
+2026-05-14T15:32:58.3258724Z  INFO server::game: handle_placement_submission: PlacementSubmissionReceived consumer enter player_id=1 placements_len=0 phase=Some(Placement)
+2026-05-14T15:32:58.3259045Z  INFO server::game: handle_placement_submission: PlacementSubmissionReceived consumer enter player_id=2 placements_len=0 phase=Some(Placement)
+2026-05-14T15:32:58.3381662Z  INFO server::core::rsm::transitions: RSM advance_phase: Placement -> Resolution from=Placement to=Resolution round=4 game_over=false
+2026-05-14T15:32:58.3391413Z  INFO server::game: resolve_combat: enter round=4 trace_start=30
+2026-05-14T15:32:58.3392216Z  INFO server::game: resolve_combat: exit round=4 kills=0
+2026-05-14T15:32:58.3392269Z  INFO server::game: enqueue_resolution_event: broadcasting S2CResolutionEvent round=4 events_len=6
+2026-05-14T15:32:58.3392309Z  INFO server::game: broadcast_resolution_event: enter round=4 events_len=6
+2026-05-14T15:32:58.3518006Z  INFO server::core::rsm::transitions: RSM advance_phase: Resolution -> next draft from=Resolution to=DraftShop round=5 game_over=false
+2026-05-14T15:32:58.3518643Z  INFO server::core::economy::system: on_draft_started: per-player draft init player=PlayerId(1) phase=Shop interest=0 baseline=4 new_gold=6
+2026-05-14T15:32:58.351889Z  INFO server::core::economy::system: on_draft_started: per-player draft init player=PlayerId(2) phase=Shop interest=2 baseline=14 new_gold=18
+2026-05-14T15:32:58.3519143Z  INFO server::game: acquisition_tick: drained 2 ShopRefreshTriggered messages
+2026-05-14T15:32:58.3519193Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=1 trigger=ShopOpen
+2026-05-14T15:32:58.351966Z  INFO server::game: send_shop_slots enter player_id=1 peer_id=Some(Raw(127.0.0.1:61241)) slot_count=3
+2026-05-14T15:32:58.3519797Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=2 trigger=ShopOpen
+2026-05-14T15:32:58.3519985Z  INFO server::game: send_shop_slots enter player_id=2 peer_id=Some(Raw(127.0.0.1:61242)) slot_count=3
+2026-05-14T15:32:58.3642096Z  WARN server::game: start_of_turn_dispatch_system not yet implemented: keyword dispatch deferred to future story
+2026-05-14T15:32:58.377002Z  INFO server::game: c2s_signal_ready: recv peer_id=Raw(127.0.0.1:61241) retract=false
+2026-05-14T15:32:58.3770748Z  INFO server::game: c2s_signal_ready: recv peer_id=Raw(127.0.0.1:61242) retract=false
+2026-05-14T15:32:58.37724Z  INFO server::core::rsm::transitions: RSM advance_phase: DraftShop -> Placement from=DraftShop to=Placement round=5 game_over=false
+2026-05-14T15:32:58.3772882Z  INFO server::game: placement_buffer_open: PlacementPhaseEntered consumer enter previous_submissions=0
+2026-05-14T15:32:58.4023252Z  INFO server::game: c2s_submit_placement: recv peer_id=Raw(127.0.0.1:61241) placements_len=0
+2026-05-14T15:32:58.402386Z  INFO server::game: c2s_submit_placement: recv peer_id=Raw(127.0.0.1:61242) placements_len=0
+2026-05-14T15:32:58.4025654Z  INFO server::game: handle_placement_submission: PlacementSubmissionReceived consumer enter player_id=1 placements_len=0 phase=Some(Placement)
+2026-05-14T15:32:58.4025887Z  INFO server::game: handle_placement_submission: PlacementSubmissionReceived consumer enter player_id=2 placements_len=0 phase=Some(Placement)
+2026-05-14T15:32:58.415159Z  INFO server::core::rsm::transitions: RSM advance_phase: Placement -> Resolution from=Placement to=Resolution round=5 game_over=false
+2026-05-14T15:32:58.415323Z  INFO server::game: resolve_combat: enter round=5 trace_start=40
+2026-05-14T15:32:58.4153914Z  INFO server::game: resolve_combat: exit round=5 kills=0
+2026-05-14T15:32:58.4153986Z  INFO server::game: enqueue_resolution_event: broadcasting S2CResolutionEvent round=5 events_len=6
+2026-05-14T15:32:58.4154053Z  INFO server::game: broadcast_resolution_event: enter round=5 events_len=6
+2026-05-14T15:32:58.4272732Z  INFO server::core::rsm::transitions: RSM advance_phase: Resolution -> next draft from=Resolution to=DraftAuction round=6 game_over=false
+2026-05-14T15:32:58.4273233Z  INFO server::core::economy::system: on_draft_started: per-player draft init player=PlayerId(1) phase=Auction interest=1 baseline=6 new_gold=9
+2026-05-14T15:32:58.4273519Z  INFO server::core::economy::system: on_draft_started: per-player draft init player=PlayerId(2) phase=Auction interest=2 baseline=18 new_gold=22
+2026-05-14T15:32:58.4273789Z  INFO server::game: acquisition_tick: drained 2 ShopRefreshTriggered messages
+2026-05-14T15:32:58.427382Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=1 trigger=AuctionLock
+2026-05-14T15:32:58.4274159Z  INFO server::game: send_shop_slots enter player_id=1 peer_id=Some(Raw(127.0.0.1:61241)) slot_count=3
+2026-05-14T15:32:58.4274258Z  INFO server::game: acquisition_tick: processing ShopRefreshTriggered for player_id=2 trigger=AuctionLock
+2026-05-14T15:32:58.427436Z  INFO server::game: send_shop_slots enter player_id=2 peer_id=Some(Raw(127.0.0.1:61242)) slot_count=3
+2026-05-14T15:32:58.439441Z  WARN server::game: start_of_turn_dispatch_system not yet implemented: keyword dispatch deferred to future story
+2026-05-14T15:32:58.4396425Z  INFO server::game: auction_tick_system: AuctionPhaseEntered consumer enter round=6 phase=Idle
+2026-05-14T15:32:58.4396647Z  INFO server::game: auction_tick_system: state transition round=6 from=Idle to=Selecting
+2026-05-14T15:32:58.4396796Z  INFO server::game: auction_tick_system: state transition round=6 card_id=CardId(107) starting_price=3 timer_ms=20000 from=Selecting to=LiveBidding
+2026-05-14T15:32:58.439685Z  INFO server::game: auction_tick_system: broadcasting S2CAuctionCard enter round=6 card_id=CardId(107) starting_price=3
+2026-05-14T15:32:58.4397Z  INFO server::game: c2s_place_bid: recv peer_id=Raw(127.0.0.1:61241) amount=4
+2026-05-14T15:32:58.439711Z  INFO server::game: send_outbox_dispatches: dispatching S2CAuctionBidAccepted enter bidder=1 amount=4
+2026-05-14T15:33:08.3642913Z  WARN server::core::rsm::transitions: RSM disconnect timer breach: grace window exceeded player_id=PlayerId(2) remaining_ms_before=10 delta_ms=12 phase=DraftAuction
+2026-05-14T15:33:08.3643345Z  WARN server::core::rsm::transitions: RSM disconnect timer breach: grace window exceeded player_id=PlayerId(1) remaining_ms_before=10 delta_ms=12 phase=DraftAuction
+2026-05-14T15:33:08.3643612Z  INFO server::core::rsm::transitions: RSM advance_phase: game over from=DraftAuction to=GameOver round=6 game_over=true
+2026-05-14T15:33:08.3643757Z  INFO server::core::rsm::transitions: RSM GameOverEmitted dispatched reason=Draw loser=None round=6
+2026-05-14T15:33:08.3644932Z  INFO server::core::session::system: broadcast_game_over_from_world enter recipient_count=2 round=6 reason=Draw
+2026-05-14T15:33:08.3661386Z  INFO server::game: reset_to_idle: state transition from=LiveBidding to=Idle card_id=Some(CardId(107)) final_price=4 leader=Some(PlayerId(1))

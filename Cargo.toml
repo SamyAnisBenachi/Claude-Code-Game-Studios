@@ -1,5 +1,5 @@
 [workspace]
-members = ["shared", "server", "client"]
+members = ["shared", "server", "client", "tools/two-client-runtime"]
 resolver = "2"
 
 # Shared dependency versions — update here, not per-crate

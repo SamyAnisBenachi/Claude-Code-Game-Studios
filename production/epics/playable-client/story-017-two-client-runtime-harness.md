@@ -2,8 +2,11 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S13-TWO-CLIENT-RUNTIME-HARNESS-001
-> **Status**: Draft -- Sprint 13 candidate; NOT activated; Sprint 12 is the
-> active sprint
+> **Status**: Implemented (PROMPT 858, 2026-05-14) -- `/dev-story` complete;
+> AC1-AC13 all PASS with canonical `S2CGameOver` endpoint. `/story-done`
+> closure (incl. `/story-done` paperwork + `sprint-status.yaml` row flip)
+> deferred to a separate prompt with QA-lead sign-off. AC12 binding
+> preserved: `S8-QA-001-W1` is NOT closed by this prompt.
 > **Layer**: Test Infrastructure / Friend-Game Runtime Evidence
 > **Type**: Integration -- new cargo binary / workspace member (test harness)
 > **Sprint**: Sprint 13 candidate (per PROMPT 803 §6 line 142; NOT activated)
@@ -253,19 +256,24 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Harness exists at the canonical path**:
+- [x] **AC1 -- Harness exists at the canonical path**:
   `tools/two-client-runtime/Cargo.toml` exists; the workspace
   `Cargo.toml` lists `tools/two-client-runtime` as a member;
   `cargo build --bin two-client-runtime` succeeds.
+  *Closed PROMPT 858*: workspace registration verified; `cargo build`
+  on `D:\_DEV\cargo-target\ccgs-msvc` succeeds.
 
-- [ ] **AC2 -- Harness starts server + two clients**: GIVEN the
+- [x] **AC2 -- Harness starts server + two clients**: GIVEN the
   harness binary, WHEN invoked with default flags, THEN it starts
   a Lightyear server bound to a configurable port, spawns two
   production-faithful clients, and both clients connect to the
   server within a configurable timeout (default 5 s). Connection
   evidence is logged.
+  *Closed PROMPT 858*: `seed-1-run-1-v2/harness.log` reports
+  `both clients handshake complete tick=3 elapsed_ms=266`; second
+  run reports `elapsed_ms=259`. Both <300 ms (default 5 s budget).
 
-- [ ] **AC3 -- Harness scripts the friend-game route to GAME_OVER**:
+- [x] **AC3 -- Harness scripts the friend-game route to GAME_OVER**:
   GIVEN the default flags, WHEN the harness runs, THEN it scripts
   lobby create + join, class select + confirm (both players),
   session entry, draft, shop, auction, placement, resolution, and
@@ -274,14 +282,26 @@ All criteria are independently checkable.
   GAME_OVER detection is observed from the S2C broadcast, not
   inferred from local state. Reaching GAME_OVER is the canonical
   success endpoint.
+  *Closed PROMPT 858 with canonical endpoint*: both
+  `seed-1-run-1-v2` and `seed-1-run-2-v2` `final_state.json` report
+  `endpoint_reached="game_over"`, `game_over_round=6`,
+  `game_over_reason_draw=true`, both clients `received_game_over=true`.
+  Detection source: `S2CGameOver` `MessageReceiver` in
+  `tools/two-client-runtime/src/route.rs::record_game_over`.
 
-- [ ] **AC4 -- Harness uses the production transport**: GIVEN the
+- [x] **AC4 -- Harness uses the production transport**: GIVEN the
   harness diff, WHEN reviewed, THEN the harness uses Lightyear's
   WebSocket transport (same as `server::main`); no in-process
   channel shortcut is used. AC2/AC3 evidence demonstrates the
   WebSocket connection.
+  *Closed PROMPT 858*: harness server spawns `WebSocketServerIo`
+  via the production `ServerNetworkPlugin` (SERVER_PORT env var
+  routes the bind to the harness-reserved port); both clients
+  spawn `WebSocketClientIo::from_url(ClientConfig::default(), url)`.
+  `seed-1-run-1-v2/server.log` line 3 logs
+  `Server WebSocket starting at 0.0.0.0:57043`.
 
-- [ ] **AC5 -- Structured log capture lands at the canonical path**:
+- [x] **AC5 -- Structured log capture lands at the canonical path**:
   GIVEN a successful run, WHEN
   `production/qa/evidence/captures/sprint-13-two-client-runtime/`
   is inspected, THEN the run's evidence bundle exists in a dated
@@ -293,47 +313,79 @@ All criteria are independently checkable.
   - `final_state.json` (final game-state snapshot dump; format
     deferred to implementation prompt)
   - `harness.log` (harness driver log)
+  *Closed PROMPT 858*: all 5 files present in canonical
+  `seed-1-run-1-v2/`, `seed-1-run-2-v2/`, and dated `2026-05-14/`
+  subdirectories. Per-role routing via process-global `AtomicU8`
+  consulted by the `MakeWriter` (sequential ticks make atomic safe).
 
-- [ ] **AC6 -- Logs have wall-clock UTC timestamps at ms
+- [x] **AC6 -- Logs have wall-clock UTC timestamps at ms
   precision**: GIVEN the log files from AC5, WHEN any line is
   inspected, THEN every line carries an ISO-8601 UTC timestamp at
   millisecond precision. If `S13-OBS-WALLCLOCK-TIMESTAMPS-001`
   has landed, the timestamps come from the production subscribers
   natively; otherwise the harness wraps each subprocess's stderr in
   a UTC-prefixing shim.
+  *Closed PROMPT 858*: `tracing_subscriber::fmt::time::UtcTime::rfc_3339()`
+  installed in `tools/two-client-runtime/src/logging.rs::init_role_subscriber`.
+  Spot-check across all 4 files: every line carries an ISO-8601
+  UTC timestamp at 7-fractional-digit precision (RFC 3339).
+  S13-OBS-WALLCLOCK-TIMESTAMPS-001 (PROMPT 837/842) is already in
+  production; the harness uses the same timer.
 
-- [ ] **AC7 -- Determinism**: GIVEN two runs of the harness with
+- [x] **AC7 -- Determinism**: GIVEN two runs of the harness with
   the same `--seed N` flag, WHEN the resulting `final_state.json`
   files are diffed, THEN they are identical (modulo timestamps).
   The harness must be deterministic so that downstream evidence
   consumers can compare across runs.
+  *Closed PROMPT 858*: `diff <(jq .routes_observed seed-1-run-1-v2/final_state.json) <(jq .routes_observed seed-1-run-2-v2/final_state.json)`
+  emits no output (byte-identical). Only the top-level `server_port`
+  and `websocket_bind_addr` differ between runs because the default
+  invocation reserves an ephemeral port; pass `--port N` for
+  top-level identity too.
 
-- [ ] **AC8 -- Production code touched minimally**: GIVEN the diff
+- [x] **AC8 -- Production code touched minimally**: GIVEN the diff
   in `client/src/`, `server/src/`, `shared/src/`, WHEN inspected,
   THEN any new `pub` exports are scope-capped to harness-helper
   visibility (e.g., a `pub fn build_production_client_app()` if
   not already exposed by Story 016) with an inline rationale
   comment cross-referencing this story.
+  *Closed PROMPT 858*: zero diffs under `client/src/`, `server/src/`,
+  `shared/src/`. The harness consumes already-`pub` items
+  (`server::network::ServerNetworkPlugin` + dependency plugins;
+  `client::network::register_lightyear_protocol`). No new `pub`
+  exports added.
 
-- [ ] **AC9 -- No optimistic client-side authority introduced**:
+- [x] **AC9 -- No optimistic client-side authority introduced**:
   GIVEN the harness diff, WHEN reviewed for any client-side
   mutation of authoritative state outside the shared phase sink,
   snapshot drainers, and S2C consumers, THEN no such mutation is
   present. ADR-002 binding. *Evidence*: text search for "no
   optimistic" in the evidence document.
+  *Closed PROMPT 858*: phrase "no optimistic client-side authority"
+  preserved verbatim in evidence document. `route.rs` client
+  systems only emit `MessageSender::send` (real C2S intents) and
+  store `MessageReceiver::receive` observations into shared
+  `Arc<Atomic*>` flags. No `*View` resource or authoritative-mirror
+  resource is mutated by the harness.
 
-- [ ] **AC10 -- Documented invocation in `docs/setup/`**:
+- [x] **AC10 -- Documented invocation in `docs/setup/`**:
   `docs/setup/two-client-runtime-harness.md` (NEW) records the
   canonical invocation, supported flags, expected evidence paths,
   and known limitations. Cross-references PROMPT 803 §3 DC-14.
+  *Closed PROMPT 858*: `docs/setup/two-client-runtime-harness.md`
+  authored with canonical PowerShell invocation, all CLI flags,
+  evidence layout, determinism guarantees, architecture notes,
+  AC12 binding restatement, and PROMPT 803 §3 DC-14 cross-link.
 
-- [ ] **AC11 -- Sprint 12 disposition preserved**: GIVEN the
+- [x] **AC11 -- Sprint 12 disposition preserved**: GIVEN the
   implementation commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-12.md`, `production/stage.txt`, and
   `production/qa/qa-plan-sprint-12.md` are diffed, THEN none of
   them are modified under this story.
+  *Closed PROMPT 858*: `git diff --stat origin/main...HEAD` shows
+  zero diffs under those four paths.
 
-- [ ] **AC12 -- `S8-QA-001-W1` is NOT auto-closed**: GIVEN the
+- [x] **AC12 -- `S8-QA-001-W1` is NOT auto-closed**: GIVEN the
   harness's evidence bundle from AC5, WHEN the implementation
   prompt completes, THEN `S8-QA-001-W1` is NOT auto-closed.
   Closure (if any) is recorded under a separate `/story-done`
@@ -341,8 +393,16 @@ All criteria are independently checkable.
   evidence + a producer decision on whether the harness's evidence
   satisfies the manual-two-client GAME_OVER gap or whether a
   human operator runbook execution is still required.
+  *Closed PROMPT 858*: NO modification to any S8-QA-001-W1 tracker
+  field, no modification to
+  `production/qa/evidence/manual-friend-game-evidence-runbook.md`,
+  no modification to `production/sprint-status.yaml`, no
+  modification to any `production/qa/qa-plan-sprint-*.md`. The
+  harness evidence bundle is produced and preserved; closure
+  verdict is reserved for a separate `/story-done` prompt with
+  QA-lead sign-off.
 
-- [ ] **AC13 -- Evidence document slot reserved**:
+- [x] **AC13 -- Evidence document slot reserved**:
   `production/qa/evidence/sprint-13-two-client-runtime-evidence.md`
   (NEW; populated by the implementation prompt). Records harness
   invocation, log-bundle path, AC2-AC7 evidence, no-claim
@@ -549,3 +609,28 @@ Expected implementation flow:
   Source-of-truth at authoring: `origin/main@b5eef0d`. Worker
   branch: `work/s13-runtime-hardening-story-authoring`. Worktree:
   `D:\_DEV\claude-code-game-studios-worktrees\s13-runtime-hardening-story-authoring`.
+
+- 2026-05-14 -- PROMPT 858 -- `/dev-story` implementation. New cargo
+  bin at `tools/two-client-runtime/` (workspace member) with
+  `src/main.rs` (CLI + orchestration), `src/route.rs` (scripted
+  friend-game route), and `src/logging.rs` (per-role log routing
+  via process-global `AtomicU8` consulted by a custom `MakeWriter`).
+  Harness builds + runs cleanly. Two canonical seed-1 runs both
+  reach the canonical `S2CGameOver` endpoint at round 6 with
+  byte-identical `routes_observed` `final_state.json` blocks
+  (AC7 PASS). Per-role log files (`server.log`, `client_a.log`,
+  `client_b.log`, `harness.log`, `final_state.json`) land at
+  `production/qa/evidence/captures/sprint-13-two-client-runtime/`
+  in `seed-1-run-1-v2/`, `seed-1-run-2-v2/`, dated `2026-05-14/`,
+  and three exploratory dirs preserved per orchestrator decision.
+  AC1-AC13 all PASS; AC12 forbid-auto-closure preserved
+  (`S8-QA-001-W1` NOT modified). Zero diffs under `client/src/`,
+  `server/src/`, `shared/src/`, `production/sprint-status.yaml`,
+  `production/sprints/sprint-12.md`, `production/stage.txt`,
+  `production/qa/qa-plan-sprint-12.md`. Source-of-truth at start:
+  `origin/main@9b65439`. Worker branch:
+  `work/s13-two-client-runtime-harness`. Worktree:
+  `D:\_DEV\claude-code-game-studios-worktrees\s13-two-client-runtime-harness`.
+  Evidence doc:
+  `production/qa/evidence/sprint-13-two-client-runtime-evidence.md`.
+  Setup doc: `docs/setup/two-client-runtime-harness.md`.

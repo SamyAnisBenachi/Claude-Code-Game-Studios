@@ -1,0 +1,6 @@
+2026-05-14T18:10:54.2782421Z  INFO harness: harness boot seed=1 max_rounds=10 connect_timeout_secs=10 overall_timeout_secs=60 evidence_dir=D:\_DEV\claude-code-game-studios-worktrees\s13-two-client-runtime-harness\production\qa\evidence\captures\sprint-13-two-client-runtime\2026-05-14
+2026-05-14T18:10:54.2795286Z  INFO harness: ephemeral websocket port reserved port=55395 url=ws://127.0.0.1:55395
+2026-05-14T18:10:54.6362542Z  INFO harness: both client apps built
+2026-05-14T18:10:54.6889127Z  INFO harness: both clients handshake complete tick=3 elapsed_ms=52
+2026-05-14T18:11:25.9350532Z  INFO harness: S2CGameOver observed -- canonical AC3 endpoint reached tick=2550 round=6
+2026-05-14T18:11:25.9366752Z  INFO harness: harness exit endpoint_reached="game_over" success=true elapsed_secs=31.3004066
