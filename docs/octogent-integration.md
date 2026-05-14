@@ -438,6 +438,127 @@ After step 1+2 the orchestrator continues to work exactly as before with zero
 behavioural change. The remaining steps just reclaim disk and tidy the
 context menu.
 
+## 9-bis. Codex orchestrator via `codex app-server` (2026-05-14)
+
+The classic flow (Sections 2–6) routes worker → orchestrator DONE reports through Octogent's channel-send (HTTP POST → PTY input → Codex auto-submit on `\r`). This is unreliable for a **Codex CLI orchestrator**: Codex's TUI raw-input mode does not reliably auto-submit on `\r`/`\n`, so worker reports occasionally stack as `[Pasted Content N chars]` in the input bar requiring a manual Enter. (Claude Code workers do not have this issue — they have `idle_prompt` hooks Octogent uses natively.)
+
+The 2026-05-14 migration replaces the orchestrator's runtime from `codex resume` (interactive TUI inside an Octogent terminal) to `codex app-server` (long-running JSON-RPC server), with two thin clients on top.
+
+### Architecture
+
+```
+                ┌─────────────────────────────────────────┐
+                │ codex app-server (long-running)         │
+                │   --listen ws://127.0.0.1:9787          │
+                │   thread 019dddb4-... (loaded once)     │
+                └─────────────────────────────────────────┘
+                          ▲           ▲           ▲
+                          │JSON-RPC   │JSON-RPC   │JSON-RPC
+        ┌─────────────────┘           │           └──────────────┐
+        │                             │                          │
+  ┌────────────────┐         ┌────────────────┐         ┌────────────────┐
+  │ gcs-app-       │         │ User           │         │ Worker relay   │
+  │ viewer.py      │         │ (you type into │         │ (via worker's  │
+  │ (streams       │         │  the viewer)   │         │  Step 3 — see  │
+  │  deltas)       │         │                │         │  gcs-mode=     │
+  │                │         │ same client    │         │  relay branch  │
+  │                │         │ as viewer      │         │  in dispatcher)│
+  └────────────────┘         └────────────────┘         └────────────────┘
+```
+
+All three clients connect via the WebSocket transport on loopback (no auth needed for loopback per `codex app-server` defaults). The user's stdin to the viewer becomes a `turn/start` JSON-RPC call; workers do the same via `gcs-app-relay.py`. The app-server keeps the (89 MB) rollout loaded in memory after the first `thread/resume`, so subsequent client invocations are near-instant.
+
+### Components
+
+| File | Role |
+|---|---|
+| `C:/Users/Sam/.codex/gcs-app-viewer.py` | Interactive viewer + typer. Connects via WS, streams agent message deltas, sends user input as `turn/start`. Long-running, lives as long as the user wants to watch. |
+| `C:/Users/Sam/.codex/gcs-app-relay.py` | Single-shot worker DONE relay. `python gcs-app-relay.py <session-id> -` reads stdin content and injects it as a user turn. File lock (`%LOCALAPPDATA%/gcs-app-relay/turn.lock`) + sha256 idempotency receipts + TCP keepalive. Auto-prunes receipts at >14 days or >500 files. |
+| `C:/Users/Sam/.codex/gcs-octogent-dispatch.py` | Dispatcher with `_load_report_mode()` that reads `gcs-mode` and `gcs-orch-session-id` config files at every dispatch. Worker initialPrompt's Step 3 branches on the mode (curl channel-send vs python relay). |
+| `C:/Users/Sam/.codex/gcs-mode` | Single-line config file. Contents `relay` activates app-server mode; missing / `channel-send` keeps legacy. **Atomic toggle**: `echo relay > C:/Users/Sam/.codex/gcs-mode` then next worker spawn uses relay. |
+| `C:/Users/Sam/.codex/gcs-orch-session-id` | Single-line config file. Contents = the Codex thread/session UUID the relay will inject into. Must match the thread loaded in app-server. |
+
+### Boot procedure (after PC reboot)
+
+```cmd
+:: 1. Start the long-running app-server in a dedicated cmd window
+start "GCS app-server" cmd /k codex app-server --listen ws://127.0.0.1:9787
+
+:: 2. Wait ~3 seconds, then launch the viewer in another window
+start "GCS Viewer" cmd /k python C:/Users/Sam/.codex/gcs-app-viewer.py 019dddb4-95f7-79e1-b48c-fdfc34fa3cd8
+
+:: 3. Verify Octogent is running for workers (separate, port 8787)
+::    -- Right-click "Open Octogent here" on the project folder if needed
+```
+
+First `thread/resume` on the 89 MB rollout takes ~2–3 s; subsequent connects are sub-second (already loaded in app-server memory).
+
+### Troubleshooting
+
+| Symptom | Check | Recovery |
+|---|---|---|
+| Viewer prints `[DISCONNECTED from app-server: …]` | `curl http://127.0.0.1:9787/readyz` — if non-200, app-server is dead | Re-run the app-server cmd, then re-run the viewer (it auto-resumes the loaded session) |
+| Worker exits with code 4 (`EXIT_APP_SERVER_ERROR`) | App-server unreachable | Same as above — restart the app-server cmd window |
+| Worker exits with code 3 (`EXIT_LOCK_TIMEOUT`) | A previous relay holds the file lock | Check `%LOCALAPPDATA%/gcs-app-relay/turn.lock` content (PID + timestamp) — if PID is dead, delete the lock file |
+| Worker exits with code 5 / 6 | Turn aborted / timeout | Check `%LOCALAPPDATA%/gcs-app-relay/relay.log`; investigate why orchestrator interrupted or stalled |
+| App-server seems alive but worker relays still timeout | Codex CLI version mismatch | `codex --version` should report `0.130.x`+; the JSON-RPC method names are tied to the version (see "Verified Codex CLI version" below) |
+| Viewer connects but `thread/resume` returns `no rollout found` | `~/.codex/gcs-orch-session-id` is wrong | Verify the UUID in the file matches the actual rollout filename in `~/.codex/sessions/YYYY/MM/DD/rollout-…-<UUID>.jsonl` |
+| Orchestrator's shell exec calls report `invalid directory` | `session_meta.cwd` in the rollout is stale | One-time fix: kill the app-server, edit the JSON of the first line of the rollout to set `payload.cwd` to the correct path, restart the app-server (the 2026-05-14 migration backup includes a verified procedure) |
+
+### Rollback to channel-send mode (legacy)
+
+If the relay system breaks and you need the old behaviour back:
+
+```cmd
+:: 1. Disable relay mode
+del C:/Users/Sam/.codex/gcs-mode
+::    Future worker spawns now use Octogent channel-send + watchdog protocol
+
+:: 2. Kill app-server + viewer cmd windows (they're no longer needed)
+
+:: 3. Inside the Octogent terminal "codex-orchestrator-main",
+::    re-launch the interactive Codex against the session:
+codex resume 019dddb4-95f7-79e1-b48c-fdfc34fa3cd8
+::    (close the terminal entirely first if a dead process is still listed)
+
+:: 4. The dispatcher will now embed the legacy 4-step protocol in new
+::    workers' initialPrompts. Already-spawned workers keep whatever
+::    protocol was baked at their spawn time.
+```
+
+The migration backup is at `D:/_DEV/Work/Claude-Code-Game-Studios/reports/.backups/app-server-migration/rollout-019dddb4.pre-migration-2026-05-14T11-14-42.jsonl` (89 MB verbatim, sha256 verified) in case of catastrophic rollout corruption.
+
+### Changing the orchestrator session-id
+
+Forks, recovery resumes, or starting a new conversation can change the UUID. The relay's path depends on `gcs-orch-session-id` matching the rollout filename.
+
+```cmd
+:: 1. Update the config file
+echo NEW-UUID-HERE > C:/Users/Sam/.codex/gcs-orch-session-id
+
+:: 2. Verify the rollout exists at:
+ls C:/Users/Sam/.codex/sessions/*/*/*/rollout-*NEW-UUID-HERE.jsonl
+
+:: 3. Reconnect the viewer to the new id:
+python C:/Users/Sam/.codex/gcs-app-viewer.py NEW-UUID-HERE
+```
+
+The app-server keeps prior threads loaded — if you resume a different thread, the previous one stays in memory but channel/turn ops are routed by `threadId` so no conflict.
+
+### Verified Codex CLI version
+
+Tested with `codex-cli 0.130.0`. The JSON-RPC schema is officially marked **experimental** in `codex app-server --help`. Method names like `thread/resume`, `turn/start`, `item/agentMessage/delta` can change in future versions. Pin the binary if drift is a concern:
+
+```cmd
+codex --version       :: should print 0.130.x or compatible
+```
+
+Generated JSON schemas live at `D:/tmp/codex-app-schema/` after running `codex app-server generate-json-schema --out <dir>` — useful diff against the running CLI's surface.
+
+### What was reverted from the pre-app-server experiments
+
+During the morning of 2026-05-14, several Octogent source patches were added in `D:/_APPS/Tools/octogent/` attempting to fix the channel-send-to-Codex-orchestrator issue at the Octogent layer (paste-mode hacks, retry chains, status flags, raw-keystroke branch). After the app-server migration, the raw-keystroke branch and the `submittedAt`/`submitFailed` flag-setting logic in `channelMessaging.ts` + the `ChannelMessage` core type were reverted (the orchestrator no longer receives reports via channel-send, so those code paths were dead-letter and risked false-positive submit-failed marks). Kept: `inFlightDeliveries` lock, one-at-a-time delivery, bracketed-paste + 200 ms `\r` (still used for orchestrator → worker REPONDRE), and the `initialPromptSubmittedAt`/`initialPromptSubmitFailed` mirror on PersistedTerminal/TerminalSnapshot (consumed by `gcs-spawn-watchdog.py`).
+
 ## 10. Related
 
 - [Octogent — GitHub](https://github.com/hesamsheikh/octogent)

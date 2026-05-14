@@ -163,3 +163,7 @@ $RECYCLE.BIN/
 # === Rust / Cargo ===
 target/
 # Note: Cargo.lock IS committed for binaries
+
+# Phase 4 cleanup: migration backups stay local-only
+reports/.backups/
+reports/.watchdog/

@@ -33,6 +33,19 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 @.claude/docs/coordination-rules.md
 
+## Orchestrator Runtime
+
+The Codex orchestrator runs in `codex app-server` mode (long-running JSON-RPC
+on `ws://127.0.0.1:9787`) since 2026-05-14, not the legacy `codex resume`
+TUI. User interaction goes through `C:/Users/Sam/.codex/gcs-app-viewer.py`
+and worker DONE reports through `C:/Users/Sam/.codex/gcs-app-relay.py`. The
+toggle file `C:/Users/Sam/.codex/gcs-mode` (`relay` vs missing) and
+`C:/Users/Sam/.codex/gcs-orch-session-id` (current thread UUID) drive the
+dispatcher (`C:/Users/Sam/.codex/gcs-octogent-dispatch.py`).
+
+See `docs/octogent-integration.md` Section 9-bis for full architecture,
+boot procedure, troubleshooting, rollback, and verified Codex CLI version.
+
 ## Collaboration Protocol
 
 **User-driven collaboration, not autonomous execution.**
