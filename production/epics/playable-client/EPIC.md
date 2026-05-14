@@ -117,8 +117,12 @@ The epic does not create public release readiness, broad accessibility completio
 | 019 | [ISO-8601 UTC Wall-Clock Timestamps in Tracing Subscribers](story-019-obs-wallclock-timestamps.md) | Integration -- subscriber-config edits in 3 files | Draft - Sprint 13 candidate (S13-OBS-WALLCLOCK-TIMESTAMPS-001 per PROMPT 803/804), NOT activated | S13-OBS-WALLCLOCK-TIMESTAMPS-001 / DC-12 |
 | 020 | [Client-Side Idempotency for Late / Duplicate Reliable S2C Messages](story-020-late-msg-dedupe.md) | Integration -- per-drain dedupe state + integration tests | Draft - Sprint 13 candidate (S13-LATE-MSG-DEDUPE-001 per PROMPT 803/804), NOT activated | S13-LATE-MSG-DEDUPE-001 / DC-6 |
 | 021 | [Proactive Connection-Lost / Reconnecting Client UI](story-021-conn-lost-ux.md) | Integration -- new overlay module + transport-event subscription | Draft - Sprint 13 candidate (S13-CONN-LOST-UX-001 per PROMPT 803/804), NOT activated | S13-CONN-LOST-UX-001 / DC-13 / S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001 backlog row |
+| 022 | [Client `phase_changed=true` 60Hz Idempotency](story-022-client-phase-changed-idempotency.md) | Integration -- targeted phase-consumer fix + integration test | Draft - Sprint 13 candidate (S11-HU-PHASE-IDEMPOTENCY-001 per PROMPT 819; folds with PROMPT 803 §3 DC-5), NOT activated | S11-HU-PHASE-IDEMPOTENCY-001 / DC-5 |
+| 023 | [Lobby "Confirming..." Text Differentiation](story-023-lobby-confirm-state.md) | Integration -- targeted lobby UI text + integration test | Draft - Sprint 13 candidate (S11-LOBBY-UX-CONFIRM-STATE-001 per PROMPT 819), NOT activated | S11-LOBBY-UX-CONFIRM-STATE-001 |
 
 > Stories 016-021 are Sprint 13 candidate runtime-hardening rows sourced from `reports/PROMPT-803-MULTIPLAYER-RUNTIME-HARDENING-AUDIT-ROADMAP.md` §3 (defect-class taxonomy) and §5 (Must / Should rows). All six are authored as Sprint 13 candidates by PROMPT 804 and are NOT activated. Activation happens via a separate `/sprint-plan sprint-13` prompt after Sprint 12 close-out. The Sprint 12 Must Have row set (Stories 011-015 + hand-ui Story 019) is unchanged by PROMPT 804.
+
+> Stories 022-023 are Sprint 13 candidate Sprint 12 close-out deferral rows authored by PROMPT 819 from `production/sprints/sprint-13.md` Should Have rows `S11-HU-PHASE-IDEMPOTENCY-001` and `S11-LOBBY-UX-CONFIRM-STATE-001`. Both are NOT activated. Story 022 also folds with PROMPT 803 §3 DC-5 (client-side phase idempotency drift).
 
 ## Definition of Done
 
