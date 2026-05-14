@@ -42,15 +42,22 @@ static INIT: Once = Once::new();
 /// `info` for app code and `warn` for renderer / shader noise.
 pub fn init_test_tracing() {
     INIT.call_once(|| {
+        use tracing_subscriber::fmt::time::UtcTime;
         use tracing_subscriber::EnvFilter;
         let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
             EnvFilter::new("info,wgpu=warn,wgpu_hal=warn,naga=warn,bevy_ecs=info")
         });
+        // S13-OBS-WALLCLOCK-TIMESTAMPS-001 (PROMPT 837): UTC ISO-8601 (RFC 3339)
+        // timer matches server/src/main.rs and client/src/main.rs so a
+        // multi-process trace stitched together at the harness layer aligns at
+        // sub-second precision.
+        //
         // try_init returns Err if a subscriber is already set (e.g. by another
         // helper); the Once guard plus this fallback together ensure we never
         // panic on duplicate installation.
         let _ = tracing_subscriber::fmt()
             .with_env_filter(filter)
+            .with_timer(UtcTime::rfc_3339())
             .with_test_writer()
             .try_init();
     });
