@@ -218,11 +218,14 @@ different separator, etc.), update `_HEADER_RX` in
 Four local patches to Octogent's source — **all lost on `git pull` of Octogent**, re-apply if you upgrade:
 
 1. `D:\_APPS\Tools\octogent\scripts\dev.mjs` — use `pnpm.cmd` (not `pnpm.exe`, which doesn't exist with `npm install -g pnpm` on Windows) + add `shell: process.platform === "win32"` to the spawn call (Node 24 requirement). Adds three `console.log` debug lines for `OCTOGENT_WORKSPACE_CWD` / `workspaceCwd` / `projectStateDir` so launches are self-diagnosing.
-2. `D:\_APPS\Tools\octogent\apps\api\src\terminalRuntime\channelMessaging.ts` — three changes in `deliverChannelMessages`:
-   - Wraps injected messages in **bracketed-paste markers** (`\x1b[200~` … `\x1b[201~`) and writes `\r` via a 150 ms `setTimeout` to trigger auto-submit; without this, channel-send to a Codex agent lands the text in the input buffer unsubmitted.
+2. `D:\_APPS\Tools\octogent\apps\api\src\terminalRuntime\channelMessaging.ts` — four changes in `deliverChannelMessages`:
+   - Wraps injected messages in **bracketed-paste markers** (`\x1b[200~` … `\x1b[201~`) and writes `\r` via a 200 ms `setTimeout` to trigger auto-submit; without this, channel-send to a Codex agent lands the text in the input buffer unsubmitted.
    - Delivers **one message at a time** (`undelivered[0]`) instead of batching all queued messages into a single combined injection — keeps per-worker reports as separate orchestrator turns.
-   - Per-session `inFlightDeliveries` lock covering the 150 ms paste→`\r` window — without this lock, a second message arriving during the window short-circuits the idle check and stacks on top of the first.
-3. `D:\_APPS\Tools\octogent\apps\api\src\terminalRuntime\sessionRuntime.ts` — `INITIAL_PROMPT_SUBMIT_DELAY_MS` bumped from `150` to `500` ms. The original 150 ms was reliable for a single spawn but flaky when two Codex PTYs bootstrapped close together (initial-prompt `\r` arrived before Codex finished consuming the paste, leaving the worker stuck on `[Pasted Content X chars]` waiting for a manual Enter). 500 ms gives the runtime breathing room under contention; the +350 ms latency cost is once per spawn.
+   - Per-session `inFlightDeliveries` lock covering the paste→`\r` window — without this lock, a second message arriving during the window short-circuits the idle check and stacks on top of the first.
+   - **Submit-with-retry**: 1500 ms after each `\r`, re-checks `agentState`. If still `idle`, the `\r` didn't trigger Codex to submit (paste stuck in the input bar under PC/TTY lag — the keystroke was discarded before the END marker was consumed). Re-writes `\r`, up to 3 retries. Worst-case end-to-end ~4.7 s; success path (no lag) sees `agentState` go to `processing` after the first `\r` and the retries are no-ops. Uses Codex's `esc to interrupt` PTY marker (see `agentStateDetection.ts`) as the implicit "submit landed" signal.
+3. `D:\_APPS\Tools\octogent\apps\api\src\terminalRuntime\sessionRuntime.ts` — two changes around the initial-prompt injection:
+   - `INITIAL_PROMPT_SUBMIT_DELAY_MS` bumped from `150` to `500` ms. The original 150 ms was reliable for a single spawn but flaky when two Codex PTYs bootstrapped close together (initial-prompt `\r` arrived before Codex finished consuming the paste, leaving the worker stuck on `[Pasted Content X chars]` waiting for a manual Enter). 500 ms gives the runtime breathing room under contention; the +350 ms latency cost is once per spawn.
+   - **Submit-with-retry** on the initial prompt: same mechanism as channelMessaging — if `agentState` is still `idle` 1500 ms after each `\r`, retry up to 3 times. Catches the "spawn arrived but stuck in input bar" failure that the user reported on multiple Sprint 12 worker launches.
 4. `D:\_APPS\Tools\octogent\apps\api\src\terminalRuntime.ts` — `onStateChange` callback triggers `deliverChannelMessages(sessionId)` whenever a session transitions to `idle`. Without this, Octogent only delivers queued channel messages on the Claude-Code-style `idle_prompt` notification, which Codex agents don't emit — so messages from workers reporting back to the orchestrator pile up `delivered:false` indefinitely (observed up to 16 stuck on one orchestrator before the patch). A `deliverChannelMessagesRef` forward-reference is declared above `createSessionRuntime(...)` and wired to `channelMessaging.deliverChannelMessages` after creation, so the runtime's idle transition can call into the messaging module's queue drainer.
 
 Launcher chain (not patches, project files maintained alongside the install dir):
@@ -252,10 +255,12 @@ Prerequisites: Node 22+, git, gh, curl, Python 3.10+. PowerShell + cmd. Codex CL
      - add `shell: process.platform === "win32",` inside the spawn options object (~line 128)
    - `apps/api/src/terminalRuntime/channelMessaging.ts` `deliverChannelMessages`:
      - take `undelivered[0]` instead of all messages (one-at-a-time delivery)
-     - wrap the chosen message in `BRACKETED_PASTE_START="\x1b[200~"` / `BRACKETED_PASTE_END="\x1b[201~"`, write it, then `setTimeout(() => writeInput(terminalId, "\r"), 150)`
-     - declare a `const inFlightDeliveries = new Set<string>()` at the closure level, set it at the start of `deliverChannelMessages`, clear it inside the `\r` setTimeout — this is the per-session lock
+     - wrap the chosen message in `BRACKETED_PASTE_START="\x1b[200~"` / `BRACKETED_PASTE_END="\x1b[201~"`
+     - declare a `const inFlightDeliveries = new Set<string>()` at the closure level, set it at the start of `deliverChannelMessages` (after the early-return guards), clear it when the submit-retry chain ends
+     - replace the simple 150 ms `setTimeout(writeInput(\r))` with the submit-retry loop: write `\r`, then 1500 ms later check `sessions.get(terminalId)?.agentState === "idle"`; if so re-write `\r` up to 3 retries; otherwise clear `inFlightDeliveries`
    - `apps/api/src/terminalRuntime/sessionRuntime.ts`:
      - change `const INITIAL_PROMPT_SUBMIT_DELAY_MS = 150;` to `500` (~line 440)
+     - wrap the initial-prompt `\r` write in the same submit-retry loop: `writeInitialSubmit` closure that writes `\r`, then 1500 ms later checks `session.agentState === "idle"`; if so re-fires itself up to 3 times
    - `apps/api/src/terminalRuntime.ts` (the outer one, not the folder):
      - declare `let deliverChannelMessagesRef: ((terminalId: string) => number) | undefined;` above `const sessionRuntime = createSessionRuntime({ ... })`
      - in `onStateChange`, add `if (state === "idle" && deliverChannelMessagesRef) deliverChannelMessagesRef(sessionId);` right after the existing `broadcastTerminalStateChanged(...)` call
@@ -296,7 +301,7 @@ Prerequisites: Node 22+, git, gh, curl, Python 3.10+. PowerShell + cmd. Codex CL
 3. Attach to the host terminal in the UI, run `codex resume <session-uuid>` once if you haven't already.
 4. Work with the Codex orchestrator normally. On each turn the dispatcher detects its disposition blocks, spawns/kills/messages workers in Octogent, and workers report back to the orchestrator via channel-send (auto-submitted thanks to the bracketed-paste patch).
 5. To inspect any worker: click it in the UI to see its transcript and channel messages.
-6. **Manual report-back fallback** (for workers spawned before the dispatcher's auto-instruction, or if a worker forgets). Three steps — the worker (or you posing as it) must do all three:
+6. **Manual report-back fallback** (for workers spawned before the dispatcher's auto-instruction, or if a worker forgets). Four steps — the worker (or you posing as it) must do all four:
    1. Worker writes its full report as its normal assistant message in chat (readable Markdown — for the human watching the worker UI).
    2. Worker mirrors the same content to `reports/PROMPT-N-<task-slug>.md` in the project root so the orchestrator can read it. `<task-slug>` is the `Title` part of the worker's opening `PROMPT N -- Title` header, converted to a filesystem-safe slug (spaces/`/` → `-`, strip anything that's not alphanumeric/dash). Example: `reports/PROMPT-794-S11-DRAG-RUNTIME-RETEST-Story-Readiness.md`. The slug-in-filename makes reports greppable by ticket without opening each file. If a worker truly can't derive a slug, falling back to plain `reports/PROMPT-N.md` is acceptable — the orchestrator can still find it.
    3. Worker sends a single-line channel message announcing completion (path **must** match the file written in step 2):
@@ -306,6 +311,7 @@ Prerequisites: Node 22+, git, gh, curl, Python 3.10+. PowerShell + cmd. Codex CL
         --data-raw '{"fromTerminalId":"PROMPT-N","content":"DONE PROMPT-N: N: TICKET-ID: STATUS // full report at reports/PROMPT-N-<task-slug>.md"}'
       ```
    The single-line constraint is critical: multi-line channel content triggers Codex's paste-mode, the message lands in the orchestrator's input as `[Pasted Content N chars]`, and the `\r` auto-submit fails. Single-line short content reliably auto-submits.
+   4. Worker sleeps 90 s then re-checks its own inbox length (`/api/channels/PROMPT-N/messages`). If the count hasn't grown vs the pre-Step-3 snapshot AND the worker is still alive, the channel message likely never reached the orchestrator (PC/TTY lag); re-send the Step 3 curl **once** (no further retries). If the orchestrator CLEAR'd the worker between Step 3 and now, the bash sleep dies with the process and no harm is done. This is a protocol-level safety net stacked on top of Octogent's own paste-submit retry (see §4 patch 2). See `_report_back_instructions` in the dispatcher for the canonical snippet.
 7. To force a manual dispatch action without going through the orchestrator (debug):
    ```bash
    echo "CLEAR -- PROMPT 999" | python ~/.codex/gcs-octogent-dispatch.py
