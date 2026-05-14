@@ -1,0 +1,50 @@
+# GCS Orchestrator unified config — ~/.codex/gcs.toml
+# Copy to %USERPROFILE%/.codex/gcs.toml and edit as needed.
+# All values are optional — defaults shown.
+# Env vars override these (GCS_MODE, GCS_ORCH_SESSION_ID, GCS_APPSERVER_WS, ...).
+
+[orchestrator]
+# UUID of the persistent Codex thread that hosts your orchestrator.
+# Read off ~/.codex/sessions/YYYY/MM/DD/rollout-*-<uuid>.jsonl
+session_id = "019dddb4-95f7-79e1-b48c-fdfc34fa3cd8"
+# Optional: cwd override sent on resume + start_turn (rarely needed since
+# session_meta.cwd is the source of truth; only used as a runtime override)
+cwd_override = ""
+
+[transport]
+# Codex app-server WebSocket URL
+ws_url = "ws://127.0.0.1:9787"
+# Health probe URL exposed by app-server
+readyz_url = "http://127.0.0.1:9787/readyz"
+# Per-turn timeout (seconds). The relay returns EXIT_TIMEOUT if a turn
+# exceeds this. Default 600 = 10 min.
+turn_timeout_s = 600
+# Initial WS handshake timeout
+handshake_timeout_s = 30
+
+[octogent]
+# Octogent HTTP API base (terminal-snapshots, /api/terminals, ...)
+port = 8787
+
+[paths]
+# Codex home directory. Override only for testing.
+codex_home = "C:/Users/Sam/.codex"
+
+[pin]
+# OPTIONAL: pin a specific codex binary. Leave empty to let supervisor
+# auto-resolve from PATH or the default npm install location.
+# You said you don't want to block auto-upgrades, so leave this empty
+# unless you specifically need to pin a version.
+codex_bin = ""
+codex_version = ""  # for /version sidecar endpoint (read-only display)
+
+[reliability]
+# Receipt retention — pruned lazily once per hour
+receipt_ttl_days = 30
+receipt_max_count = 5000
+
+[backup]
+# GFS rollout backup retention (used by gcs-rollout-backup)
+daily_retain = 7
+weekly_retain = 4
+monthly_retain = 12
