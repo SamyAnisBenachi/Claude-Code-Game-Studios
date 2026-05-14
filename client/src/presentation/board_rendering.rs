@@ -866,7 +866,7 @@ pub struct BoardRenderingPlugin;
 
 impl Plugin for BoardRenderingPlugin {
     fn build(&self, app: &mut App) {
-        tracing::info!("BoardRenderingPlugin loaded");
+        tracing::info!(target: "client::presentation::board_rendering", "BoardRenderingPlugin loaded");
         BoardRenderingConfig::default().assert_valid();
         BoardRevealTimingConfig::default().assert_valid();
 
@@ -1063,6 +1063,7 @@ pub fn drain_placement_reveal_system(
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
             tracing::info!(
+                target: "client::presentation::board_rendering",
                 placements_len = message.placements.len(),
                 msg_type = "S2CPlacementReveal",
                 "drain_placement_reveal: recv"
@@ -1139,6 +1140,7 @@ pub fn drain_resolution_event_system(
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
             tracing::info!(
+                target: "client::presentation::board_rendering",
                 round = message.round,
                 events_len = message.events.len(),
                 msg_type = "S2CResolutionEvent",
@@ -1373,6 +1375,7 @@ pub fn send_snapshot_recovery_requests_system(
         let mut sent = false;
         for mut sender in &mut senders {
             tracing::info!(
+                target: "client::presentation::board_rendering",
                 msg_type = "C2SRequestSnapshot",
                 handler = "send_snapshot_recovery_requests_system",
                 "c2s_send: enter"
@@ -1637,7 +1640,7 @@ fn apply_snapshot_spawn_highlights(
 ) {
     for (lane_cell, mut state, mut sprite) in board_cells.iter_mut() {
         tracing::info!(
-            target: "spawn_highlight_caller",
+            target: "client::presentation::board_rendering::spawn_highlight_caller",
             caller = "apply_snapshot_spawn_highlights_clear",
             lane = lane_cell.lane,
             cell = lane_cell.cell,
@@ -1682,7 +1685,7 @@ fn apply_player_spawn_highlight(
         };
 
         tracing::info!(
-            target: "spawn_highlight_caller",
+            target: "client::presentation::board_rendering::spawn_highlight_caller",
             caller = "apply_player_spawn_highlight",
             lane = lane_cell.lane,
             cell = lane_cell.cell,
@@ -1706,7 +1709,7 @@ fn set_spawn_highlight_state(
     }
 
     tracing::info!(
-        target: "spawn_highlight_state_change",
+        target: "client::presentation::board_rendering::spawn_highlight_state_change",
         from_state = ?*state,
         to_state = ?next_state,
         from_color = ?sprite.color,
@@ -2619,7 +2622,7 @@ fn spawn_cell_node(
     let highlight_state = SpawnHighlightState::Inactive;
 
     tracing::info!(
-        target: "spawn_highlight_caller",
+        target: "client::presentation::board_rendering::spawn_highlight_caller",
         caller = "spawn_cell_node_default",
         lane,
         cell,

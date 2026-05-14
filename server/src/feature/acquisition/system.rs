@@ -142,7 +142,7 @@ pub fn card_acquisition_tick_system(
     // Log point 1: system entry. Downgraded to debug! to avoid per-frame spam
     // (PROMPT 681 / S11-TD-SERVER-LOG-SPAM-001) — info-level retained only when
     // an actual message is drained below.
-    tracing::debug!("acquisition_tick: system entered");
+    tracing::debug!(target: "server::game", "acquisition_tick: system entered");
 
     let server = server.single().ok();
 
@@ -152,6 +152,7 @@ pub fn card_acquisition_tick_system(
         match (&server, sender.as_mut()) {
             (None, _) => {
                 tracing::warn!(
+                    target: "server::game",
                     count = pending_draft_offerings.len(),
                     "card_acquisition: server resource not yet available \
                      — retaining {} pending draft offering(s) for next tick",
@@ -160,6 +161,7 @@ pub fn card_acquisition_tick_system(
             }
             (_, None) => {
                 tracing::warn!(
+                    target: "server::game",
                     count = pending_draft_offerings.len(),
                     "card_acquisition: ServerMultiMessageSender not yet initialized \
                      — retaining {} pending draft offering(s) for next tick",
@@ -178,6 +180,7 @@ pub fn card_acquisition_tick_system(
                 }
                 if sent_count > 0 {
                     tracing::info!(
+                        target: "server::game",
                         "card_acquisition: broadcast S2CDraftOffering to {} client(s) \
                          (retry from pending queue)",
                         sent_count
@@ -194,6 +197,7 @@ pub fn card_acquisition_tick_system(
     let shop_refresh_messages: Vec<_> = shop_refreshes.read().collect();
     if !shop_refresh_messages.is_empty() {
         tracing::info!(
+            target: "server::game",
             "acquisition_tick: drained {} ShopRefreshTriggered messages",
             shop_refresh_messages.len()
         );
@@ -202,6 +206,7 @@ pub fn card_acquisition_tick_system(
     for refresh in &shop_refresh_messages {
         // Log point 3: each message processed.
         tracing::info!(
+            target: "server::game",
             "acquisition_tick: processing ShopRefreshTriggered for player_id={} trigger={:?}",
             refresh.player_id.0,
             refresh.trigger
@@ -212,24 +217,28 @@ pub fn card_acquisition_tick_system(
             // DRAFT_INITIAL so we can pinpoint the root cause (PROMPT 529).
             if pools.is_none() {
                 tracing::warn!(
+                    target: "server::game",
                     player_id = refresh.player_id.0,
                     "acquisition_tick: early return — PlayerPools resource not available"
                 );
             }
             if sessions.is_none() {
                 tracing::warn!(
+                    target: "server::game",
                     player_id = refresh.player_id.0,
                     "acquisition_tick: early return — PlayerSessions resource not available"
                 );
             }
             if catalog.is_none() {
                 tracing::warn!(
+                    target: "server::game",
                     player_id = refresh.player_id.0,
                     "acquisition_tick: early return — CardCatalog resource not available"
                 );
             }
             if server_rng.is_none() {
                 tracing::warn!(
+                    target: "server::game",
                     player_id = refresh.player_id.0,
                     "acquisition_tick: early return — ServerRng resource not available"
                 );
@@ -244,6 +253,7 @@ pub fn card_acquisition_tick_system(
                     let seed = server_rng.draw_initial_draft(rng_player_id(refresh.player_id));
                     // Log point 4a: before building the offering.
                     tracing::info!(
+                        target: "server::game",
                         "acquisition_tick: building draft initial offering for player_id={}",
                         refresh.player_id.0
                     );
@@ -258,11 +268,13 @@ pub fn card_acquisition_tick_system(
                     // Log point 4b: after building — log card count or early return.
                     match &offering {
                         Some(msg) => tracing::info!(
+                            target: "server::game",
                             "acquisition_tick: built offering with {} cards for player_id={}",
                             msg.card_ids.len(),
                             refresh.player_id.0
                         ),
                         None => tracing::info!(
+                            target: "server::game",
                             "acquisition_tick: early return — build_draft_initial_offering returned None for player_id={}",
                             refresh.player_id.0
                         ),
@@ -284,12 +296,14 @@ pub fn card_acquisition_tick_system(
             if let Some(dispatch) = dispatch {
                 // Log point 5: before defer check.
                 tracing::info!(
+                    target: "server::game",
                     "acquisition_tick: checking defer for player_id={}",
                     dispatch.player_id.0
                 );
                 let deferred = defer_draft_offering(reconnect_tracker.as_deref_mut(), &dispatch);
                 // Log point 6: after defer check.
                 tracing::info!(
+                    target: "server::game",
                     "acquisition_tick: defer={} for player_id={}",
                     deferred,
                     dispatch.player_id.0
@@ -297,12 +311,14 @@ pub fn card_acquisition_tick_system(
                 if !deferred {
                     // Log point 8: attempting direct broadcast.
                     tracing::info!(
+                        target: "server::game",
                         "acquisition_tick: attempting direct broadcast S2CDraftOffering to peer_id={:?}",
                         dispatch.peer_id
                     );
                     match (&server, sender.as_mut()) {
                         (None, _) => {
                             tracing::warn!(
+                                target: "server::game",
                                 player_id = dispatch.player_id.0,
                                 "card_acquisition: server resource not yet available \
                                  — queuing S2CDraftOffering for retry next tick"
@@ -311,6 +327,7 @@ pub fn card_acquisition_tick_system(
                         }
                         (_, None) => {
                             tracing::warn!(
+                                target: "server::game",
                                 player_id = dispatch.player_id.0,
                                 "card_acquisition: ServerMultiMessageSender not yet initialized \
                                  — queuing S2CDraftOffering for retry next tick"
@@ -320,6 +337,7 @@ pub fn card_acquisition_tick_system(
                         (Some(server), Some(sender)) => {
                             send_draft_offering(sender, server, &dispatch);
                             tracing::info!(
+                                target: "server::game",
                                 player_id = dispatch.player_id.0,
                                 "card_acquisition: broadcast S2CDraftOffering to 1 client"
                             );
@@ -328,12 +346,14 @@ pub fn card_acquisition_tick_system(
                 } else {
                     // Log point 7: offering was deferred (queued for reconnecting player).
                     tracing::info!(
+                        target: "server::game",
                         "acquisition_tick: queued offering in deferred_queue for player_id={}",
                         dispatch.player_id.0
                     );
                 }
             } else {
                 tracing::info!(
+                    target: "server::game",
                     "acquisition_tick: early return — dispatch is None (no offering built) for player_id={}",
                     refresh.player_id.0
                 );
@@ -394,6 +414,7 @@ pub fn card_acquisition_tick_system(
     for (remote, mut receiver) in c2s_receivers.p0().iter_mut() {
         for _message in receiver.receive() {
             tracing::info!(
+                target: "server::game",
                 peer_id = ?remote.0,
                 "c2s_refresh_shop: recv"
             );
@@ -458,6 +479,7 @@ pub fn card_acquisition_tick_system(
     for (remote, mut receiver) in c2s_receivers.p1().iter_mut() {
         for message in receiver.receive() {
             tracing::info!(
+                target: "server::game",
                 peer_id = ?remote.0,
                 card_id = ?message.card_id,
                 "c2s_purchase_card: recv"
@@ -838,6 +860,7 @@ pub fn process_purchase_card_with_pool(
         Err(error) => {
             economy_api::refund_gold(economy, card.cost);
             tracing::error!(
+                target: "server::game",
                 player_id = player_id.0,
                 card_id = card_id.0,
                 ?error,
@@ -1107,6 +1130,7 @@ fn send_draft_offering(
     dispatch: &DraftOfferingDispatch,
 ) {
     tracing::info!(
+        target: "server::game",
         player_id = dispatch.player_id.0,
         peer_id = ?dispatch.peer_id,
         offering_count = dispatch.message.card_ids.len(),
@@ -1115,6 +1139,7 @@ fn send_draft_offering(
 
     let Some(peer_id) = dispatch.peer_id else {
         tracing::warn!(
+            target: "server::game",
             player_id = dispatch.player_id.0,
             "send_draft_offering DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
         );
@@ -1127,6 +1152,7 @@ fn send_draft_offering(
         &NetworkTarget::Single(peer_id),
     ) {
         tracing::error!(
+            target: "server::game",
             player_id = dispatch.player_id.0,
             peer_id = ?peer_id,
             err = ?e,
@@ -1146,6 +1172,7 @@ pub fn defer_draft_offering(
     );
     if deferred {
         tracing::debug!(
+            target: "server::game",
             player_id = dispatch.player_id.0,
             "defer_draft_offering: S2CDraftOffering queued for reconnecting player"
         );
@@ -1159,6 +1186,7 @@ fn send_shop_slots(
     dispatch: &ShopSlotsDispatch,
 ) {
     tracing::info!(
+        target: "server::game",
         player_id = dispatch.player_id.0,
         peer_id = ?dispatch.peer_id,
         slot_count = dispatch.message.slots.len(),
@@ -1167,6 +1195,7 @@ fn send_shop_slots(
 
     let Some(peer_id) = dispatch.peer_id else {
         tracing::warn!(
+            target: "server::game",
             player_id = dispatch.player_id.0,
             "send_shop_slots DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
         );
@@ -1179,6 +1208,7 @@ fn send_shop_slots(
         &NetworkTarget::Single(peer_id),
     ) {
         tracing::error!(
+            target: "server::game",
             player_id = dispatch.player_id.0,
             peer_id = ?peer_id,
             err = ?e,
@@ -1269,6 +1299,7 @@ fn send_card_acquired(
     dispatch: &CardAcquiredDispatch,
 ) {
     tracing::info!(
+        target: "server::game",
         player_id = dispatch.player_id.0,
         peer_id = ?dispatch.peer_id,
         card_id = ?dispatch.message.card_id,
@@ -1278,6 +1309,7 @@ fn send_card_acquired(
 
     let Some(peer_id) = dispatch.peer_id else {
         tracing::warn!(
+            target: "server::game",
             player_id = dispatch.player_id.0,
             card_id = ?dispatch.message.card_id,
             "send_card_acquired DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
@@ -1291,6 +1323,7 @@ fn send_card_acquired(
         &NetworkTarget::Single(peer_id),
     ) {
         tracing::error!(
+            target: "server::game",
             player_id = dispatch.player_id.0,
             peer_id = ?peer_id,
             card_id = ?dispatch.message.card_id,

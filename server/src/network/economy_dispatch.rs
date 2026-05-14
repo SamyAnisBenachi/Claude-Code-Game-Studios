@@ -104,6 +104,7 @@ pub fn dispatch_gold_update(
                 &NetworkTarget::Single(peer_id),
             ) {
                 tracing::error!(
+                    target: "server::game",
                     player_id = update.player.0,
                     peer_id = ?peer_id,
                     gold = message.gold,
@@ -143,6 +144,7 @@ pub fn dispatch_gold_broadcast(
                 &NetworkTarget::All,
             ) {
                 tracing::error!(
+                    target: "server::game",
                     player_id = broadcast.player_id.0,
                     gold = broadcast.gold,
                     reserved_gold = broadcast.reserved_gold,

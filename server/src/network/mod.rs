@@ -136,6 +136,7 @@ fn receive_c2s_messages(
     for (remote, mut receiver) in activate_card.iter_mut() {
         for msg in receiver.receive() {
             tracing::info!(
+                target: "server::game",
                 peer_id = ?remote.0,
                 card_id = ?msg.card_id,
                 "c2s_activate_card: recv"
@@ -152,6 +153,7 @@ pub fn drain_signal_ready_messages(
     for (remote, mut receiver) in receivers.iter_mut() {
         for msg in receiver.receive() {
             tracing::info!(
+                target: "server::game",
                 peer_id = ?remote.0,
                 retract = msg.retract,
                 "c2s_signal_ready: recv"
@@ -192,6 +194,7 @@ pub fn drain_submit_placement_messages(
     for (remote, mut receiver) in receivers.iter_mut() {
         for msg in receiver.receive() {
             tracing::info!(
+                target: "server::game",
                 peer_id = ?remote.0,
                 placements_len = msg.placements.len(),
                 "c2s_submit_placement: recv"
@@ -247,6 +250,7 @@ fn _unicast_compile_proof(mut sender: ServerMultiMessageSender, server: &Server,
         &NetworkTarget::Single(peer_id),
     ) {
         tracing::error!(
+            target: "server::game",
             peer_id = ?peer_id,
             err = ?e,
             "S2C send failed: type=S2CObjectiveIdentities, handler=_unicast_compile_proof"

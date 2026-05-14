@@ -208,12 +208,14 @@ pub fn auction_tick_system(
 ) {
     for event in phase_entered.read() {
         tracing::info!(
+            target: "server::game",
             round = event.round,
             phase = ?auction.phase,
             "auction_tick_system: AuctionPhaseEntered consumer enter"
         );
         if auction.phase != AuctionPhase::Idle {
             tracing::error!(
+                target: "server::game",
                 round = event.round,
                 phase = ?auction.phase,
                 "AuctionPhaseEntered received while auction state is non-idle"
@@ -222,6 +224,7 @@ pub fn auction_tick_system(
         }
 
         tracing::info!(
+            target: "server::game",
             round = event.round,
             from = ?AuctionPhase::Idle,
             to = ?AuctionPhase::Selecting,
@@ -249,6 +252,7 @@ pub fn auction_tick_system(
             }
             AuctionDrawOutcome::MissingIntegration => {
                 tracing::error!(
+                    target: "server::game",
                     round = event.round,
                     "AuctionPhaseEntered received before auction draw integration is available"
                 );
@@ -264,6 +268,7 @@ pub fn auction_tick_system(
         auction.current_leader = None;
         auction.timer_remaining_ms = data.config.auction_timer_seconds.saturating_mul(1000);
         tracing::info!(
+            target: "server::game",
             round = event.round,
             card_id = ?card_id,
             starting_price,
@@ -286,6 +291,7 @@ pub fn auction_tick_system(
                 timer_duration_ms: data.config.auction_timer_seconds.saturating_mul(1000),
             };
             tracing::info!(
+                target: "server::game",
                 round = event.round,
                 card_id = ?card_id,
                 starting_price,
@@ -297,6 +303,7 @@ pub fn auction_tick_system(
                 &NetworkTarget::All,
             ) {
                 tracing::error!(
+                    target: "server::game",
                     round = event.round,
                     card_id = ?card_id,
                     err = ?e,
@@ -373,6 +380,7 @@ pub fn initialize_auction_pool_on_draft_started(
 
         let (Some(catalog), Some(config)) = (catalog.as_deref(), config.as_deref()) else {
             tracing::warn!(
+                target: "server::game",
                 "DraftStarted::Initial received before CardCatalog or GameConfig; AuctionPool not initialized"
             );
             continue;
@@ -424,6 +432,7 @@ fn draw_from_auction_pool(
 
     if let Err(error) = auction_pool.pool.distribute(card_id) {
         tracing::error!(
+            target: "server::game",
             card_id = card_id.0,
             ?error,
             "auction draw selected a card that could not be distributed"
@@ -440,6 +449,7 @@ fn auction_draw_seed(rng: Option<&mut ServerRng>, round: u32) -> u64 {
     }
 
     tracing::warn!(
+        target: "server::game",
         round,
         "AuctionPhaseEntered processed without ServerRng; using deterministic round seed"
     );
@@ -528,6 +538,7 @@ pub fn process_bid_batch(
 
         let Some(economy) = economies.0.get(&bid.bidder) else {
             tracing::debug!(
+                target: "server::game",
                 bidder = bid.bidder.0,
                 amount = bid.amount,
                 "auction bid discarded because bidder economy is missing"
@@ -581,6 +592,7 @@ pub fn settle_expired_auction(
     match auction.phase {
         AuctionPhase::LiveBidding => {
             tracing::info!(
+                target: "server::game",
                 final_price = auction.current_price,
                 leader = ?auction.current_leader,
                 from = ?AuctionPhase::LiveBidding,
@@ -596,7 +608,7 @@ pub fn settle_expired_auction(
     }
 
     let card_id = auction.card_id.unwrap_or_else(|| {
-        tracing::error!("auction settlement reached without an auction card");
+        tracing::error!(target: "server::game", "auction settlement reached without an auction card");
         CardId(0)
     });
 
@@ -608,6 +620,7 @@ pub fn settle_expired_auction(
                 gold_broadcasts.push(gold_broadcast(winner, economy));
             } else {
                 tracing::error!(
+                    target: "server::game",
                     winner = winner.0,
                     bid_amount,
                     "auction settlement winner economy missing"
@@ -655,6 +668,7 @@ fn settle_winner_economy(
 ) {
     if economy.gold < economy.reserved_gold {
         tracing::error!(
+            target: "server::game",
             winner = winner.0,
             gold = economy.gold,
             reserved_gold = economy.reserved_gold,
@@ -668,6 +682,7 @@ fn settle_winner_economy(
 
     if economy.reserved_gold != bid_amount {
         tracing::error!(
+            target: "server::game",
             winner = winner.0,
             bid_amount,
             reserved_gold = economy.reserved_gold,
@@ -679,6 +694,7 @@ fn settle_winner_economy(
     api::release_gold_reservation(economy, reserved_gold);
     if api::spend_gold(economy, bid_amount).is_err() {
         tracing::error!(
+            target: "server::game",
             winner = winner.0,
             bid_amount,
             "CRITICAL: auction settlement spend failed after reservation release"
@@ -695,6 +711,7 @@ fn award_auction_card(
 ) {
     let Some(hands) = hands else {
         tracing::error!(
+            target: "server::game",
             winner = winner.0,
             card_id = card_id.0,
             "auction settlement could not award card because PlayerHands is missing"
@@ -704,6 +721,7 @@ fn award_auction_card(
 
     if hand_push(hands, winner, card_id).is_err() {
         tracing::error!(
+            target: "server::game",
             winner = winner.0,
             card_id = card_id.0,
             "auction settlement winner hand full; card discarded"
@@ -757,6 +775,7 @@ fn accept_bid(
 
     let Some(economy) = economies.0.get_mut(&bid.bidder) else {
         tracing::debug!(
+            target: "server::game",
             bidder = bid.bidder.0,
             amount = bid.amount,
             "auction bid acceptance skipped because bidder economy is missing"
@@ -766,6 +785,7 @@ fn accept_bid(
 
     if api::reserve_gold(economy, bid.amount).is_err() {
         tracing::error!(
+            target: "server::game",
             bidder = bid.bidder.0,
             amount = bid.amount,
             "auction bid passed validation but reservation failed"
@@ -808,6 +828,7 @@ fn drain_bids(
     for (remote, mut receiver) in bid_receivers.iter_mut() {
         for bid in receiver.receive() {
             tracing::info!(
+                target: "server::game",
                 peer_id = ?remote.0,
                 amount = bid.amount,
                 "c2s_place_bid: recv"
@@ -840,6 +861,7 @@ fn send_outbox_dispatches(
         }
 
         tracing::info!(
+            target: "server::game",
             player_id = dispatch.player_id.0,
             peer_id = ?dispatch.peer_id,
             reason = ?dispatch.message.reason,
@@ -848,6 +870,7 @@ fn send_outbox_dispatches(
 
         let Some(peer_id) = dispatch.peer_id else {
             tracing::warn!(
+                target: "server::game",
                 player_id = dispatch.player_id.0,
                 "send_outbox_dispatches: S2CAuctionBidRejected DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
             );
@@ -859,6 +882,7 @@ fn send_outbox_dispatches(
             &NetworkTarget::Single(peer_id),
         ) {
             tracing::error!(
+                target: "server::game",
                 player_id = dispatch.player_id.0,
                 peer_id = ?peer_id,
                 err = ?e,
@@ -869,6 +893,7 @@ fn send_outbox_dispatches(
 
     for dispatch in outbox.accepted() {
         tracing::info!(
+            target: "server::game",
             bidder = dispatch.message.bidder.0,
             amount = dispatch.message.amount,
             "send_outbox_dispatches: dispatching S2CAuctionBidAccepted enter"
@@ -876,6 +901,7 @@ fn send_outbox_dispatches(
         let target = accepted_bid_target(connections, pending_players);
         let Some(target) = target else {
             tracing::warn!(
+                target: "server::game",
                 bidder = dispatch.message.bidder.0,
                 "send_outbox_dispatches: S2CAuctionBidAccepted DROPPED — no broadcast target (all players pending reconnect)"
             );
@@ -887,6 +913,7 @@ fn send_outbox_dispatches(
             &target,
         ) {
             tracing::error!(
+                target: "server::game",
                 bidder = dispatch.message.bidder.0,
                 amount = dispatch.message.amount,
                 err = ?e,
@@ -901,6 +928,7 @@ fn send_outbox_dispatches(
         }
 
         tracing::info!(
+            target: "server::game",
             player_id = dispatch.player_id.0,
             peer_id = ?dispatch.peer_id,
             card_id = ?dispatch.message.card_id,
@@ -910,6 +938,7 @@ fn send_outbox_dispatches(
 
         let Some(peer_id) = dispatch.peer_id else {
             tracing::warn!(
+                target: "server::game",
                 player_id = dispatch.player_id.0,
                 card_id = ?dispatch.message.card_id,
                 "send_outbox_dispatches: S2CCardAcquired DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
@@ -922,6 +951,7 @@ fn send_outbox_dispatches(
             &NetworkTarget::Single(peer_id),
         ) {
             tracing::error!(
+                target: "server::game",
                 player_id = dispatch.player_id.0,
                 peer_id = ?peer_id,
                 card_id = ?dispatch.message.card_id,
@@ -933,6 +963,7 @@ fn send_outbox_dispatches(
 
     for dispatch in outbox.settled() {
         tracing::info!(
+            target: "server::game",
             winner = ?dispatch.message.winner,
             amount = dispatch.message.amount,
             "send_outbox_dispatches: dispatching S2CAuctionSettled enter"
@@ -940,6 +971,7 @@ fn send_outbox_dispatches(
         let target = accepted_bid_target(connections, pending_players);
         let Some(target) = target else {
             tracing::warn!(
+                target: "server::game",
                 winner = ?dispatch.message.winner,
                 "send_outbox_dispatches: S2CAuctionSettled DROPPED — no broadcast target (all players pending reconnect)"
             );
@@ -949,6 +981,7 @@ fn send_outbox_dispatches(
             sender.send::<S2CAuctionSettled, ReliableChannel>(&dispatch.message, server, &target)
         {
             tracing::error!(
+                target: "server::game",
                 winner = ?dispatch.message.winner,
                 amount = dispatch.message.amount,
                 err = ?e,
@@ -1047,6 +1080,7 @@ fn peer_for_player(
 
 fn reset_to_idle(auction: &mut AuctionState) {
     tracing::info!(
+        target: "server::game",
         from = ?auction.phase,
         to = ?AuctionPhase::Idle,
         card_id = ?auction.card_id,
@@ -1069,6 +1103,7 @@ fn starting_price_for(card_id: CardId, catalog: &CardCatalog, config: &GameConfi
         Some(Rarity::Legendary) => config.auction_floor_legendary,
         Some(rarity) => {
             tracing::error!(
+                target: "server::game",
                 card_id = ?card_id,
                 rarity = ?rarity,
                 "Auction draw fixture returned a card with non-auction rarity"
@@ -1077,6 +1112,7 @@ fn starting_price_for(card_id: CardId, catalog: &CardCatalog, config: &GameConfi
         }
         None => {
             tracing::error!(
+                target: "server::game",
                 card_id = ?card_id,
                 "Auction draw fixture returned a card missing from CardCatalog"
             );
