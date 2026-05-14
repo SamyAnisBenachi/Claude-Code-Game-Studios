@@ -194,24 +194,29 @@ This is **NOT** a:
 The implementation prompt (or a separate producer prompt) MUST record
 exactly one of the following before any code change is staged.
 
-- [ ] **Umbrella (this story)**: keep B1 + B5 dispositions inside this
+- [x] **Umbrella (this story)**: keep B1 + B5 dispositions inside this
       story; close both clusters under
       `S11-TD-FIXTURE-D-RESIDUALS-001`. Rationale:
-      _<implementation prompt fills in: e.g., review surface is small;
-      both clusters share the fixture-vs-production decision shape;
-      batching reduces re-review cost>_
+      Both B1 and B5 are test-only or near-test-only changes (B1 is a
+      fixture event-firing repair; B5 is a one-line formula multiplier
+      update with zero production-code touch). Combined diff is small
+      (~5 lines across two test files plus this story file). Both
+      share the "decision-before-code" discipline and the same Sprint
+      11 D-5 triage origin (Cluster B residuals). Batching reduces
+      re-review cost and lets one evidence document
+      (`production/qa/evidence/sprint-12-fixture-d-residuals-evidence.md`)
+      cover both un-`#[ignore]` actions. The umbrella also matches how
+      the Sprint 11 close-out paperwork and Sprint 12 draft already
+      folded the row.
 
-- [ ] **Split into two stories**: author two follow-on story files
-      (`S11-TD-FIXTURE-BOARD-GHOST-DRAG-PRODUCER-001` for B1 and
-      `S11-TD-SHOP-AUCTION-UI-COUNT-DRIFT-001` for B5) and close this
-      umbrella story as the producer-decision-record artefact. The
-      split stories inherit the no-claim banner, evidence-path
-      conventions, and decision-first discipline from this story.
-      Rationale:
-      _<implementation prompt fills in: e.g., B1 and B5 touch
-      different reviewers (board-rendering test-infra vs shop-auction-ui
-      scaffold); B5 may land production change while B1 is fixture-
-      only; separating clarifies ownership>_
+- [ ] **Split into two stories**: NOT CHOSEN. Authoring two follow-on
+      story files (`S11-TD-FIXTURE-BOARD-GHOST-DRAG-PRODUCER-001` for
+      B1 and `S11-TD-SHOP-AUCTION-UI-COUNT-DRIFT-001` for B5) is
+      unnecessary because the combined diff is small, both changes are
+      test-only or near-test-only (zero production-code change under
+      the chosen B1.a and B5.a sub-dispositions), and a single
+      evidence document covers both. Split would add paperwork without
+      proportional review-surface reduction.
 
 The default producer recommendation (advisory only; not binding) is
 **umbrella** because (a) both clusters were folded under
@@ -230,28 +235,72 @@ records its own sub-disposition.
 
 ### B1 (Ghost-Drag Producer Fixture Gap)
 
-- [ ] **Path B1.a -- Expand fixture to include `HandUiPlugin` pointer-
-      to-drag bridge**. Rationale:
-      _<implementation prompt fills in: e.g., the assertion exercises
-      end-to-end producer-consumer wiring; relocating loses the cross-
-      plugin verification value>_
+- [x] **Path B1.a -- Expand fixture (test-only event-firing repair)**.
+      Rationale: Investigation at PROMPT 812 time shows that the
+      `GhostDragStartEvent` producer is NOT actually in `HandUiPlugin`
+      as the PROMPT 750 D-5 owner comment supposed. The producer is an
+      observer on `BoardRenderingPlugin` itself:
+      `add_observer(on_ghost_drag_start)` at
+      `client/src/presentation/board_rendering.rs:893`, with the
+      observer function at line 1113 (`fn on_ghost_drag_start(trigger:
+      On<Pointer<Press>>, ...)`). The matching click observer
+      `on_ghost_clicked` is registered at line 892 and defined at line
+      1095. The fixture failure is therefore not a missing plugin --
+      it is that the test uses `world.write_message(Pointer::<Press>::
+      new(...))`, which only queues the message but does NOT fire the
+      observer. In real gameplay,
+      `bevy_picking::DefaultPickingPlugins` calls
+      `commands.trigger_targets(...)`; under `MinimalPlugins` the test
+      must do the same itself. The fix is therefore to drive the
+      `Pointer<Press>` / `Pointer<Click>` events via
+      `world.trigger_targets(event, ghost)` in the test, which fires
+      the observer and lets it `writer.write(GhostDragStartEvent {...})`
+      and `writer.write(GhostClickedEvent {...})` into the message
+      buffer that the assertions then drain. No `HandUiPlugin`
+      registration is required. The test stays in
+      `tests/integration/board_rendering/` because the assertion still
+      exercises the board-rendering observer end-to-end. Zero
+      production-code change. ADR-002 (no client-side optimism)
+      preserved because this is a test fix only.
+
 - [ ] **Path B1.b -- Scope assertion to a `HandUiPlugin` fixture**.
-      Rationale:
-      _<implementation prompt fills in: e.g., producer-side coverage
-      already exists in
-      `tests/integration/hand-ui/`; the board-rendering test should
-      assert only consumer-side behaviour to stay cohesive>_
+      NOT CHOSEN. Relocating would lose the cross-plugin verification
+      value, and the producer is in `BoardRenderingPlugin` (not Hand
+      UI) so relocation is semantically wrong. The PROMPT 750 D-5
+      owner comment that suggested the producer lived in `HandUiPlugin`
+      was based on an older code shape; the current `origin/main`
+      shape has the observer on `BoardRenderingPlugin`.
 
 ### B5 (`ShopAuctionUiEntity` Count Drift)
 
-- [ ] **Path B5.a -- Update formula (57 -> 66)**. Rationale:
-      _<implementation prompt fills in: e.g., the actual prepool of 66
-      reflects intentional capacity added since the formula was
-      written; the formula is the stale artefact>_
-- [ ] **Path B5.b -- Trim spawn (66 -> 57)**. Rationale:
-      _<implementation prompt fills in: e.g., the 9-entity over-
-      production was an oversight in commit X; the formula reflects
-      the intended prepool; trim restores the contract>_
+- [x] **Path B5.a -- Update formula (57 -> 66)**. Rationale:
+      Investigation at PROMPT 812 time shows the 9-entity delta is
+      intentional capacity, not over-production. `spawn_draft_initial_grid`
+      at `client/src/ui/shop_auction/mod.rs:3654-3720` spawns three
+      `ShopAuctionUiEntity`-tagged entities per draft slot: (1) the
+      slot container (line 3666-3677), (2) a dedicated text-child
+      entity that holds the card name + cost text (line 3680-3690),
+      and (3) the "BOUGHT" bought-overlay (line 3697-3711). The
+      slot-text child was added deliberately -- the inline comment at
+      lines 3663-3664 says: "Spawn the slot container WITHOUT Text so
+      it doesn't render as a white dot when no text is set. Text lives
+      in a dedicated child entity instead." Trimming this child back
+      out (Path B5.b) would re-introduce the white-dot rendering
+      regression that the split text-child fix prevents. The formula
+      is therefore the stale artefact: the multiplier
+      `SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT * 2` was written when
+      only `slot + overlay` were tagged, and was not updated when the
+      `text_entity` was added. The fix is to change the multiplier
+      from `* 2` to `* 3` in the assertion, which raises the expected
+      total from 57 to 66. Zero production-code change (formula lives
+      in the test file at
+      `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs`).
+      ADR-002 preserved.
+
+- [ ] **Path B5.b -- Trim spawn (66 -> 57)**. NOT CHOSEN. The 9-entity
+      over-production is not over-production -- it is the 9 slot
+      text-child entities deliberately introduced to fix the
+      white-dot rendering bug. Trimming would regress that fix.
 
 **Both B5 paths require a written rationale before code change.** The
 silent-deletion guard from Cluster B4 (Story 014) applies in spirit
