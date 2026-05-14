@@ -291,6 +291,10 @@ name = "playable_client_lobby_entry_test"
 path = "../tests/integration/playable_client/lobby_entry_test.rs"
 
 [[test]]
+name = "playable_client_lobby_confirm_state_text_test"
+path = "../tests/integration/playable_client/lobby_confirm_state_text_test.rs"
+
+[[test]]
 name = "playable_client_draft_shop_hand_bridge_test"
 path = "../tests/integration/playable_client/draft_shop_hand_bridge_test.rs"
 

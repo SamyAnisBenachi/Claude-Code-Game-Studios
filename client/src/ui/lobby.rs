@@ -1142,16 +1142,44 @@ fn lobby_dynamic_copy(
         LobbyDynamicText::Join if input.join_room_code.is_empty() => "Join Room".to_string(),
         LobbyDynamicText::Join => format!("Join {}", input.join_room_code),
         LobbyDynamicText::Confirm if input.class_confirm_in_flight => "Confirming...".to_string(),
-        LobbyDynamicText::Confirm => {
-            let locked = lobby
-                .locked_class
-                .map_or(false, |locked| locked == input.selected_class);
-            if locked {
-                format!("Confirmed {:?}", input.selected_class)
-            } else {
-                format!("Confirm {:?}", input.selected_class)
-            }
-        }
+        LobbyDynamicText::Confirm => lobby_confirm_button_text(lobby, input),
+    }
+}
+
+/// Confirm-button text for the lobby UI, after the in-flight branch.
+///
+/// Differentiates two states that previously rendered an identical
+/// "Confirming..." surface (S11-LOBBY-UX-CONFIRM-STATE-001 / story 023):
+///
+/// - **State B** — local player has not yet sent `C2SConfirmClass`
+///   (`lobby.locked_class` is `None`). Renders: `"Confirm your class to
+///   continue"`.
+/// - **State A** — `S2CClassLocked` for the local player has been applied
+///   (`lobby.locked_class` is `Some`) but `S2CClassesRevealed` has not yet
+///   arrived (`lobby.revealed_classes` is empty). Renders: `"Waiting for
+///   opponent..."`.
+/// - Post-reveal (both classes broadcast) renders: `"All players
+///   confirmed"`. The lobby transitions to `InSession` shortly after, so
+///   this string is a transient surface for the gap between reveal and
+///   state transition.
+///
+/// Sprint 12 story 013 fallback path (duplicate same-class confirm
+/// returning an `S2CClassLocked` re-ack) preserves State A: the re-ack
+/// keeps `locked_class` `Some(class_id)` and does not clear
+/// `revealed_classes`.
+///
+/// `_input` is accepted for API symmetry with `lobby_dynamic_copy` and to
+/// reserve a hook for future input-state-driven copy variants without
+/// breaking callers. Treat the caller as responsible for routing
+/// `class_confirm_in_flight` to its own branch before invoking this
+/// helper.
+pub fn lobby_confirm_button_text(lobby: &LobbyViewState, _input: &LobbyInputState) -> String {
+    let own_locked = lobby.locked_class.is_some();
+    let opponent_revealed = !lobby.revealed_classes.is_empty();
+    match (own_locked, opponent_revealed) {
+        (false, _) => "Confirm your class to continue".to_string(),
+        (true, false) => "Waiting for opponent...".to_string(),
+        (true, true) => "All players confirmed".to_string(),
     }
 }
 
