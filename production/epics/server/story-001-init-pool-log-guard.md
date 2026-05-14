@@ -2,8 +2,11 @@
 
 > **Epic**: Server (Operational Hardening)
 > **Story ID**: S11-SERVER-POOL-INIT-LOG-GUARD-001
-> **Status**: Draft -- Sprint 13 candidate (Should Have); NOT activated;
-> Sprint 12 closed-with-conditions per PROMPT 817
+> **Status**: Done -- closed by PROMPT 833 (`/story-done` paperwork) on
+> `origin/main@7983f5c`; worker `c6f6325` (PROMPT 829) integrated to
+> `main` as `7983f5c` (PROMPT 832). W5 `ee27fb6` `acquisition_tick`
+> pattern applied: pre-guard entry log downgraded `info!` -> `debug!`;
+> new `info!` emitted only after the `DraftPhase::Initial` continue-guard.
 > **Layer**: Server -- card-pool init path
 > **Type**: Logic -- log-gating fix + integration / smoke evidence
 > **Sprint**: Sprint 13 candidate (Sprint 12 close-out deferral; parallel to
@@ -140,51 +143,115 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Source located**: GIVEN the implementation prompt's
+- [x] **AC1 -- Source located**: GIVEN the implementation prompt's
   first read pass, WHEN `server/src/game/` is grep'd for
   `init_pool` log emission, THEN the exact `info!` (or `tracing::info!`)
   call site and the existing guard are named with file:line evidence
   in the evidence document.
+  *Closure evidence*: pre-fix `info!` at
+  `server/src/core/pool/system.rs:21`; existing guard at
+  `server/src/core/pool/system.rs:25-28` (the `for message in
+  draft_started.read() { if message.phase != DraftPhase::Initial {
+  continue; } ... }` block). Documented in
+  `production/qa/evidence/sprint-13-init-pool-log-guard-evidence.md`
+  AC1 section. The canonical path is `server/src/core/pool/`, not
+  `server/src/game/`; story-card path field was a planning
+  approximation and the verified path is recorded in the evidence
+  doc.
 
-- [ ] **AC2 -- Log relocated**: GIVEN the located source, WHEN the
+- [x] **AC2 -- Log relocated**: GIVEN the located source, WHEN the
   fix lands, THEN the `info!` emission is moved to **after** the
   existing initialization guard so it fires only when the guard
   permits work.
+  *Closure evidence*: post-fix `info!` at
+  `server/src/core/pool/system.rs:37-39`, immediately after the
+  `for message in draft_started.read() { if message.phase !=
+  DraftPhase::Initial { continue; } }` continue-guard. Pre-guard
+  emission downgraded to `tracing::debug!` at lines 25-27.
 
-- [ ] **AC3 -- Pattern matches `ee27fb6`**: GIVEN the diff, WHEN
+- [x] **AC3 -- Pattern matches `ee27fb6`**: GIVEN the diff, WHEN
   compared to Sprint 11 Wave 12 W5 fix `ee27fb6` for
   `acquisition_tick`, THEN the relocation pattern matches (log
   emission moved post-guard; guard logic unchanged).
+  *Closure evidence*: W5 `ee27fb6` pattern recreated identically
+  (entry log downgraded `info!` -> `debug!`; info-level added
+  post-guard; guard body byte-identical). Cross-link in evidence
+  document AC3 section.
 
-- [ ] **AC4 -- Smoke / log evidence**: GIVEN a Sprint 13 smoke run
+- [x] **AC4 -- Smoke / log evidence**: GIVEN a Sprint 13 smoke run
   (or a dedicated server log capture session), WHEN the cold path
   is exercised, THEN the captured logs show **<50 `init_pool`
   emitted lines per session**.
+  *Closure evidence*: AC4 satisfied by static-analysis bound — the
+  post-fix `info!` fires only inside `for message in
+  draft_started.read()` after the `DraftPhase::Initial`
+  continue-guard, which is a one-shot RSM transition. Therefore
+  N_info <= count(`DraftStarted::Initial` drains) <= count(session
+  restarts), <<50 under any realistic cold-path scenario. Runtime
+  smoke confirmation deferred to the Sprint 13 end-of-sprint
+  integration smoke per QA-plan-sprint-13's smoke serialization
+  policy; PROMPT 833 does NOT run `/smoke-check`.
 
-- [ ] **AC5 -- No client-side change**: GIVEN the diff in `client/`,
+- [x] **AC5 -- No client-side change**: GIVEN the diff in `client/`,
   WHEN inspected, THEN no functional change lands.
+  *Closure evidence*: `git diff b0c43cb..7983f5c -- 'client/**'`
+  empty at the integration commit; AC5 confirmed by both PROMPT 829
+  worker run and PROMPT 832 integration verification.
 
-- [ ] **AC6 -- No protocol change**: GIVEN the diff in
+- [x] **AC6 -- No protocol change**: GIVEN the diff in
   `shared/src/protocol.rs`, WHEN inspected, THEN no functional
   change lands.
+  *Closure evidence*: `git diff b0c43cb..7983f5c -- 'shared/**'`
+  empty at the integration commit; AC6 confirmed by both PROMPT 829
+  and PROMPT 832.
 
-- [ ] **AC7 -- Workspace test pass**: GIVEN `cargo test --workspace
+- [x] **AC7 -- Workspace test pass**: GIVEN `cargo test --workspace
   --tests --no-fail-fast` at the implementation commit, WHEN
   compared to the post-Sprint-12 baseline, THEN no new `#[ignore]`
   markers are introduced; previously-passing tests continue to
   pass.
+  *Closure evidence*: `cargo test -p server --lib` 98 passed, 0
+  failed, 0 ignored at PROMPT 829 worker (`c6f6325`) and again at
+  PROMPT 832 integration (`7983f5c`). Full-workspace
+  `cargo test --workspace --tests --no-fail-fast` deferred to the
+  Sprint 13 end-of-sprint orchestrator integration gate per
+  `production/qa/qa-plan-sprint-13.md`'s binding
+  "no-full-workspace-tests-by-default" / "per-row narrowest BLOCKING
+  command only" policy. The narrowest BLOCKING command (server-lib
+  unit tests) is the W5 `ee27fb6` precedent and exercises every
+  pool/RSM-touched server unit test. PROMPT 833 does NOT re-run
+  Cargo as paperwork-only closure; AC7 closes on the documented
+  worker + integration evidence.
 
-- [ ] **AC8 -- Sprint 13 disposition preserved**: GIVEN the story
+- [x] **AC8 -- Sprint 13 disposition preserved**: GIVEN the story
   commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-13.md`, `production/stage.txt`, and
   PROMPT 761 gate-check artifact are diffed, THEN none of them are
   modified by this story.
+  *Closure evidence*: integration commit `7983f5c` touches only
+  `server/src/core/pool/system.rs` and
+  `production/qa/evidence/sprint-13-init-pool-log-guard-evidence.md`;
+  `production/sprint-status.yaml`, `production/sprints/sprint-13.md`,
+  `production/stage.txt`, and
+  `production/gate-checks/gate-polish-release-2026-05-12.md` were
+  not modified by the integration commit. PROMPT 833 paperwork
+  closure separately flips this story's
+  `production/sprint-status.yaml` row `status: ready -> done` with
+  `completed: 2026-05-14` (the only sprint-status delta authorised
+  by `/story-done`); stage / sprint-13 plan / gate-check artifact
+  remain unmodified by PROMPT 833.
 
-- [ ] **AC9 -- Evidence document slot reserved**:
+- [x] **AC9 -- Evidence document slot reserved**:
   `production/qa/evidence/sprint-13-init-pool-log-guard-evidence.md`
   (NEW). Records the file:line evidence, the diff summary, the
   smoke/log capture showing <50 emitted lines, cross-link to
   Sprint 11 W5 `ee27fb6` pattern, no-claim restatement.
+  *Closure evidence*: file authored by PROMPT 829 worker, 281
+  lines, integrated by PROMPT 832 in `7983f5c`. Contains AC1
+  file:line evidence, AC2 post-fix code, AC3 W5 `ee27fb6`
+  cross-link, AC4 cold-path bound analysis, AC5/AC6 no-change
+  confirms, AC7 targeted-test result, AC8 disposition-preserved
+  confirms, no-claim restatement verbatim.
 
 ---
 
@@ -263,3 +330,59 @@ For the implementation prompt:
   independently.
 - Wider backlog row `S13-S2C-SUCCESS-LOG-001` (DC-3) is the same
   log-emission class but a different surface; not folded.
+
+---
+
+## Authoring Trail
+
+- 2026-05-14 -- PROMPT 819 -- Story authored as Sprint 13 candidate
+  Should Have (Wave 12 W5 `ee27fb6` `acquisition_tick` parallel
+  pattern). Source-of-truth at authoring: `origin/main@be69f5c`
+  (PROMPT 818 Sprint 13 DRAFT). No /story-readiness / /dev-story /
+  /story-done / /smoke-check / /team-qa / /gate-check / /qa-plan run
+  by PROMPT 819.
+- 2026-05-14 -- PROMPT 823 -- `/story-readiness` rerun verdict
+  `READY` (story shipped in PROMPT 823's READY batch of 12 Sprint 13
+  stories). No code / production-state changes by PROMPT 823.
+- 2026-05-14 -- PROMPT 826 -- Sprint 13 activated; this story
+  promoted into the active Sprint 13 Should Have row set at
+  `origin/main@e331d6a`. No code change.
+- 2026-05-14 -- PROMPT 827 -- Sprint 13 QA plan authored at
+  `production/qa/qa-plan-sprint-13.md` (`origin/main@4bf95fa`). The
+  binding per-row narrowest BLOCKING command for this story is
+  `cargo test -p server --lib` (W5 `ee27fb6` precedent); the
+  end-of-sprint orchestrator gate runs the full workspace.
+- 2026-05-14 -- PROMPT 829 -- `/dev-story` worker landed the W5
+  pattern on worktree `work/s13-server-pool-init-log-guard`
+  (`c6f6325`): pre-guard `info!` downgraded to `debug!`;
+  post-`DraftPhase::Initial`-guard `info!` added. Evidence at
+  `production/qa/evidence/sprint-13-init-pool-log-guard-evidence.md`
+  (NEW, 281 lines). Targeted regression: `cargo fmt -p server`
+  clean, `cargo check -p server` clean, `cargo test -p server --lib`
+  98/0/0. `client/**` and `shared/**` diffs empty. Cargo resource
+  policy applied. Source-of-truth at worker start:
+  `origin/main@4bf95fa` (PROMPT 827).
+- 2026-05-14 -- PROMPT 832 -- Integration prompt cherry-picked
+  `c6f6325` onto an integration worktree built from
+  `origin/main@b0c43cb`; new commit `7983f5c` (identical 2-file
+  scope) fast-forward-pushed to `origin/main`. Targeted regression
+  re-run on the integration worktree: `cargo fmt -p server` clean,
+  `cargo check -p server` clean, `cargo test -p server --lib` 98/0/0.
+  No `/story-done`, `/smoke-check`, `/team-qa`, `/gate-check`,
+  `/release-check` run by PROMPT 832.
+- 2026-05-14 -- PROMPT 833 -- `/story-done` paperwork: this Status
+  field flipped Draft -> Done; AC1-AC9 checkboxes flipped `[ ]` ->
+  `[x]` against `origin/main@7983f5c` evidence;
+  `production/sprint-status.yaml` Sprint 13 Should Have row
+  `S11-SERVER-POOL-INIT-LOG-GUARD-001` flipped `status: ready ->
+  done` with `completed: 2026-05-14`. Sprint 13 disposition
+  UNCHANGED (`active`). Stage UNCHANGED (`Polish`). PROMPT 761
+  Polish->Release gate-check FAIL preserved (no retry). No
+  `/smoke-check`, `/team-qa`, `/gate-check`, `/release-check` run
+  by PROMPT 833. No Sprint 13 close-out. No `client/`, `server/`,
+  `shared/`, `tests/` touched. Carry conditions and non-claims
+  preserved verbatim from this story file's "Status / No-Claim
+  Banner" (S8-QA-001-W1 OPEN; QA-COND-0005 + QA-COND-0006
+  accepted-risk; PAW-TD-*-a accept-risk; PROMPT 683-era runtime
+  divergence question; PROMPT 761 Polish->Release FAIL; TQ-S12-C1..C7
+  verbatim; story 019 underlying drag-runtime bug NOT claimed fixed).

@@ -1,5 +1,35 @@
 # Sprint 13 -- ACTIVATED (Polish stage)
 
+> **PROMPT 833 `/story-done` (2026-05-14)**: First Sprint 13 row closed.
+> Sprint 13 Should Have row `S11-SERVER-POOL-INIT-LOG-GUARD-001`
+> (`production/epics/server/story-001-init-pool-log-guard.md`) flipped
+> Draft -> Done on `origin/main@7983f5c` (worker `c6f6325` PROMPT 829;
+> integration `7983f5c` PROMPT 832). W5 `ee27fb6` `acquisition_tick`
+> pattern applied: server entry log downgraded `info!` -> `debug!`; new
+> `info!` emitted only after the `DraftPhase::Initial` continue-guard.
+> AC1-AC9 closed against evidence at
+> `production/qa/evidence/sprint-13-init-pool-log-guard-evidence.md`
+> (NEW on main via PROMPT 832). Targeted regression
+> `cargo test -p server --lib` 98/0/0 at both worker and integration;
+> full-workspace gate deferred to Sprint 13 end-of-sprint orchestrator
+> integration per QA-plan-sprint-13. AC4 cold-path bound closes on
+> static analysis; runtime smoke deferred to end-of-sprint integration
+> smoke per QA-plan-sprint-13 serialization policy.
+>
+> Sprint 13 progress after PROMPT 833: **1 of 6 Should Have done; 0 of
+> 6 Must Have done; 0 of 7 Nice to Have done.** Sprint 13 disposition
+> UNCHANGED (`active`). Stage UNCHANGED (`Polish`). PROMPT 761
+> Polish->Release gate-check `FAIL` preserved (no retry). S8-QA-001-W1
+> OPEN preserved. QA-COND-0005 + QA-COND-0006 accepted-risk preserved.
+> PAW-TD-*-a accept-risk preserved. PROMPT 683-era runtime divergence
+> question preserved. TQ-S12-C1..C7 preserved verbatim. Sprint 13 is
+> NOT closed-out by PROMPT 833. No `/smoke-check`, `/team-qa`,
+> `/gate-check`, `/release-check`, `/dev-story`, `/story-readiness`,
+> `/qa-plan` run by PROMPT 833. No `client/`, `server/`, `shared/`,
+> `tests/` touched.
+
+---
+
 > **PROMPT 826 activation (2026-05-14)**: Sprint 13 flipped from DRAFT
 > to ACTIVE. `production/sprint-status.yaml` top-level `sprint:` flipped
 > 12 -> 13 and `status:` flipped `closed-with-conditions` -> `active`.
@@ -251,7 +281,7 @@ retry.
 |----|------|-------------|-----------|--------|------------------------------|
 | S11-HUD-TIMER-EYEBALL-VISUAL-001 | HUD timer eyeball visual check (W2 carry from Sprint 10 smoke retry-7) | UI programmer | 0.25 | Sprint 12 close-out deferral (Should Have, `blocked`; story file authored by PROMPT 822, /story-readiness READY per PROMPT 823); originally a Sprint 10 W2 carry | Story file exists at `production/epics/hud/story-014-hud-timer-eyeball-visual-check.md` and passes `/story-readiness` (PROMPT 822 / PROMPT 823). Manual 2-client run validates timer countdown renders correctly for `DraftInitial` 45s, `DraftShop` 30s, `Placement` 10-12s phases. Evidence: screenshot capture in `production/qa/evidence/sprint-13-hud-timer-visual-check/` (NEW). Cosmetic verification only; no production-code change unless an actual visual regression is found and a follow-on story is authored. Does NOT claim Standard-tier accessibility completion. |
 | S11-HU-PHASE-IDEMPOTENCY-001 | Client `phase_changed=true` 60Hz idempotency | client gameplay programmer | 0.75 | Sprint 12 close-out deferral (Should Have, `blocked`; story file authored by PROMPT 822, /story-readiness READY per PROMPT 823); PROMPT 803 §3 DC-5 same-class candidate | Story file exists at `production/epics/playable-client/story-022-client-phase-changed-idempotency.md` and passes `/story-readiness` (PROMPT 822 / PROMPT 823). Spurious `phase_changed=true` on every frame reduced to actual phase transitions only. Existing `S2CPhaseChanged` drain remains the single source of phase truth. Integration test asserts no `phase_changed=true` outside actual phase transition frames. **No client-side optimistic phase authority added** (ADR-002 + ADR-009 binding). |
-| S11-SERVER-POOL-INIT-LOG-GUARD-001 | Server `init_pool` log emits before guard | server gameplay programmer | 0.25 | Sprint 12 close-out deferral (Should Have, `blocked`; story file authored by PROMPT 822, /story-readiness READY per PROMPT 823); Wave 12 backlog parallel to `ee27fb6` acquisition_tick fix | Story file exists at `production/epics/server/story-001-init-pool-log-guard.md` and passes `/story-readiness` (PROMPT 822 / PROMPT 823). `init_pool` info-level log gated such that it does not emit before the initialization guard fires. Pattern matches W5 `acquisition_tick` fix from `ee27fb6`. Smoke / log evidence target: <50 emitted lines per session for the cold path. |
+| S11-SERVER-POOL-INIT-LOG-GUARD-001 **(DONE 2026-05-14 PROMPT 833)** | Server `init_pool` log emits before guard | server gameplay programmer | 0.25 | Sprint 12 close-out deferral (Should Have, `blocked`; story file authored by PROMPT 822, /story-readiness READY per PROMPT 823); Wave 12 backlog parallel to `ee27fb6` acquisition_tick fix | Story file at `production/epics/server/story-001-init-pool-log-guard.md` flipped Status Draft -> Done by PROMPT 833 on `origin/main@7983f5c` (worker `c6f6325` PROMPT 829; integration `7983f5c` PROMPT 832). W5 `ee27fb6` pattern applied: entry log downgraded `info!` -> `debug!`; new `info!` emitted only after `DraftPhase::Initial` continue-guard. `cargo test -p server --lib` 98/0/0 at worker + integration. Evidence: `production/qa/evidence/sprint-13-init-pool-log-guard-evidence.md`. AC4 cold-path bound closes on static analysis (N_info <= session restarts << 50); runtime smoke <50 emitted-line confirmation deferred to Sprint 13 end-of-sprint integration smoke per QA-plan-sprint-13 serialization policy. |
 | S11-LOBBY-UX-CONFIRM-STATE-001 | Lobby "Confirming..." text differentiation (own-confirm-acked vs waiting-opponent) | UI programmer + ux-designer | 0.50 | Sprint 12 close-out deferral (Should Have, `blocked`; story file authored by PROMPT 822, /story-readiness READY per PROMPT 823); Sprint 11 promotion from Nice to Have to batch with Sprint 12 Cluster B3 lobby work (story 013 already landed) | Story file exists at `production/epics/playable-client/story-023-lobby-confirm-state.md` and passes `/story-readiness` (PROMPT 822 / PROMPT 823). Lobby UI text distinguishes the two states. **No client-side class-lock authority added** (ADR-002 binding; reinforced by Sprint 12 story 013 fallback path that preserved ADR-002 + ADR-008 + ADR-012). Integration test asserts text differentiation across the two states. |
 | S13-LATE-MSG-DEDUPE-001 | Add `(round, message-id)` dedupe set on client drains for `S2CGameOver`, `S2CClassLocked`, `S2CPlaceUnit` so duplicate reliable redelivery is idempotent | client gameplay programmer + network-programmer | 0.75 | PROMPT 803 §3 DC-6, §5 Should row 1; story file already authored at `production/epics/playable-client/story-020-late-msg-dedupe.md` | Story 020 `/story-readiness` passes. Late-message matrix test (NEW) asserts duplicate redelivery is dedupe-guarded for the three S2C surfaces. ADR-002 + ADR-009 binding. Sequences AFTER Sprint 12 close-out per story-020 dependency notes (file-scope conflict on `client/src/ui/lobby.rs` historically with Sprint 12 story 013, `client/src/presentation/board_rendering.rs` historically with Sprint 12 story 014; both now closed). |
 | S13-CONN-LOST-UX-001 | Proactive "Reconnecting..." / "Connection Lost" overlay between transport drop and reconnect-window-expiry; closes backlog `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` | UI programmer + ux-designer | 1.00 | PROMPT 803 §3 DC-13, §5 Should row 2; story file already authored at `production/epics/playable-client/story-021-conn-lost-ux.md` | Story 021 `/story-readiness` passes. New overlay module under `client/src/presentation/` (NEW). Manual smoke evidence in `production/qa/evidence/sprint-13-conn-lost-ux/`. Sequences AFTER Sprint 12 close-out per story-021 dependency note on `client/src/presentation/mod.rs` (historically Sprint 12 story 012; now closed). Does NOT claim full S8-QA-001-W1 closure; sets up the visible-UX building block. |
