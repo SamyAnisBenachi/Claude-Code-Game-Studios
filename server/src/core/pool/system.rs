@@ -18,7 +18,11 @@ pub fn initialize_player_pools_on_draft_started(
     config: Res<GameConfig>,
     mut pools: ResMut<PlayerPools>,
 ) {
-    tracing::info!(
+    // Log point 1: system entry. Downgraded to debug! to avoid per-frame spam
+    // (S11-SERVER-POOL-INIT-LOG-GUARD-001) — info-level retained only when an
+    // actual DraftStarted::Initial message is drained below. Matches the
+    // Sprint 11 W5 ee27fb6 acquisition_tick pattern.
+    tracing::debug!(
         "initialize_player_pools_on_draft_started: entered (session=true, catalog=true, config=true)"
     );
 
@@ -26,6 +30,13 @@ pub fn initialize_player_pools_on_draft_started(
         if message.phase != DraftPhase::Initial {
             continue;
         }
+
+        // Log point 2: fire info! only after the DraftPhase::Initial guard
+        // permits work — the per-frame entry case happens every tick in idle
+        // and was the spam source. W5-fix pattern.
+        tracing::info!(
+            "initialize_player_pools_on_draft_started: initializing PlayerPools on DraftStarted::Initial"
+        );
 
         pools.pools.clear();
         for player in session.players() {
