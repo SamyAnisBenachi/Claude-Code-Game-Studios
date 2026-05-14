@@ -3,7 +3,9 @@
 use bevy::prelude::*;
 use shared::protocol::{
     PlacementTimerMultiplier, RoundPhase, S2CGameSnapshot, S2CHandshake, S2CObjectiveIdentities,
-    S2CPhaseChanged, S2CSessionSettingsUpdated, SessionToken,
+    S2COpponentDisconnected, S2COpponentReconnected, S2CPhaseChanged, S2CPrismRespawned,
+    S2CPrismRewardDropped, S2CSessionCancelled, S2CSessionSettingsUpdated, SessionCancelledReason,
+    SessionToken,
 };
 use shared::session::PlayerId;
 
@@ -150,4 +152,74 @@ pub fn apply_objective_identities_message(
         .count();
     tracing::info!(count, fakes, "client_apply_objective_identities",);
     identities.identities = msg.identities.clone();
+}
+
+#[derive(Resource, Debug, Default, Clone, PartialEq, Eq)]
+pub struct OpponentConnectionView {
+    pub disconnected: Option<OpponentDisconnectIndicator>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OpponentDisconnectIndicator {
+    pub player_id: PlayerId,
+    pub grace_remaining_ms: u32,
+}
+
+pub fn apply_opponent_disconnected_message(
+    msg: &S2COpponentDisconnected,
+    view: &mut OpponentConnectionView,
+) {
+    view.disconnected = Some(OpponentDisconnectIndicator {
+        player_id: msg.player_id,
+        grace_remaining_ms: msg.grace_remaining_ms,
+    });
+}
+
+pub fn apply_opponent_reconnected_message(
+    _msg: &S2COpponentReconnected,
+    view: &mut OpponentConnectionView,
+) {
+    view.disconnected = None;
+}
+
+#[derive(Resource, Debug, Default, Clone, PartialEq, Eq)]
+pub struct PrismLifecycleView {
+    pub last_respawn: Option<PrismRespawnEvent>,
+    pub pending_rewards_lost: Vec<PrismRewardDroppedEvent>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PrismRespawnEvent {
+    pub player_id: PlayerId,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PrismRewardDroppedEvent {
+    pub player_id: PlayerId,
+    pub lane: u8,
+}
+
+pub fn apply_prism_respawned_message(msg: &S2CPrismRespawned, view: &mut PrismLifecycleView) {
+    view.last_respawn = Some(PrismRespawnEvent {
+        player_id: msg.player_id,
+    });
+}
+
+pub fn apply_prism_reward_dropped_message(
+    msg: &S2CPrismRewardDropped,
+    view: &mut PrismLifecycleView,
+) {
+    view.pending_rewards_lost.push(PrismRewardDroppedEvent {
+        player_id: msg.player_id,
+        lane: msg.lane,
+    });
+}
+
+#[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct SessionLifecycleView {
+    pub cancellation: Option<SessionCancelledReason>,
+}
+
+pub fn apply_session_cancelled_message(msg: &S2CSessionCancelled, view: &mut SessionLifecycleView) {
+    view.cancellation = Some(msg.reason);
 }

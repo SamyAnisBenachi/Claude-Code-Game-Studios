@@ -262,6 +262,12 @@ path = "../tests/integration/session/result_acknowledgement_cleanup_handshake_te
 name = "game_over_reconnect_result_resend_test"
 path = "../tests/integration/session/game_over_reconnect_result_resend_test.rs"
 
+# S13-PROTO-ORPHAN-DRAIN-001 (Story 008 AC5): C2SRequestSnapshot handler
+# cluster — cooldown math + plugin wiring + single-drainer source guard.
+[[test]]
+name = "request_snapshot_handler_test"
+path = "../tests/integration/session/request_snapshot_handler_test.rs"
+
 [[test]]
 name = "playable_client_lobby_entry_server_test"
 path = "../tests/integration/playable_client/lobby_entry_server_test.rs"

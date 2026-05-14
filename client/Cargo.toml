@@ -270,6 +270,13 @@ path = "../tests/integration/presentation/result_screen_mvp_test.rs"
 name = "result_screen_return_to_lobby_test"
 path = "../tests/integration/presentation/result_screen_return_to_lobby_test.rs"
 
+# S13-PROTO-ORPHAN-DRAIN-001 (Story 008 AC5): drain wiring + single-drainer
+# assertions for the S2C orphan Path A cluster (opponent connection +
+# session lifecycle + prism lifecycle).
+[[test]]
+name = "presentation_protocol_orphan_drain_test"
+path = "../tests/integration/presentation/protocol_orphan_drain_test.rs"
+
 [[test]]
 name = "accessibility_settings_preferences_test"
 path = "../tests/unit/accessibility_settings/preferences_test.rs"

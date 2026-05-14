@@ -15,11 +15,13 @@
 //! missing side, and a one-line remediation hint.
 //!
 //! Defect-class anchor: PROMPT 803 §3 DC-1 + DC-15 / §4 Lane A.
-//! Pre-`S13-PROTO-ORPHAN-DRAIN-001` the test FAILS with the documented
-//! orphan list captured in
-//! `production/qa/evidence/sprint-13-proto-invariant-evidence.md`; the
-//! `#[ignore]` attribute below is removed by `S13-PROTO-ORPHAN-DRAIN-001`
-//! once the drains land.
+//!
+//! S13-PROTO-ORPHAN-DRAIN-001 (PROMPT 852) landed the per-orphan
+//! dispositions and removed the `#[ignore]` attribute. The remaining
+//! allowlist below records every retained orphan with an inline rationale
+//! and a follow-on story reference, per Story 008 AC4
+//! "passes with a documented allowlist where each allowlist entry has an
+//! inline rationale + follow-on story reference".
 //!
 //! Detection patterns (Lightyear 0.26):
 //! - **C2S send-site (client)**: `MessageSender<C2SX>` SystemParam.
@@ -263,8 +265,93 @@ fn has_drain_site(files: &[(PathBuf, String)], type_name: &str) -> bool {
     })
 }
 
+/// Allowlist entries for the protocol-completeness invariant.
+///
+/// Each row records an orphan that is intentionally retained without a
+/// production-code drain or send-site at the current commit, along with the
+/// rationale (verbatim from the per-orphan disposition table in
+/// `production/epics/lightyear-protocol-verification/story-008-protocol-orphan-drain.md`)
+/// and the follow-on story responsible for retiring it. The match is by
+/// exact type name AND missing side (`MissingSide::Send` or
+/// `MissingSide::Drain`). Any orphan not in this list panics the test.
+#[allow(dead_code)] // `rationale` and `follow_on` are read by humans, not by the assertion.
+struct AllowlistEntry {
+    type_name: &'static str,
+    missing: MissingSide,
+    rationale: &'static str,
+    follow_on: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MissingSide {
+    /// The send-site side is missing (no `MessageSender<T>` for a C2S in
+    /// `client/src/` or no `MessageSender<T>` / `send::<T, _>` for an S2C in
+    /// `server/src/`).
+    Send,
+    /// The drain-site side is missing (no `MessageReceiver<T>` for a C2S in
+    /// `server/src/` or no `MessageReceiver<T>` for an S2C in `client/src/`).
+    Drain,
+}
+
+const ALLOWLIST: &[AllowlistEntry] = &[
+    AllowlistEntry {
+        type_name: "S2CSangMepriseReveal",
+        missing: MissingSide::Drain,
+        rationale: "Path C deferral per S13-PROTO-ORPHAN-DRAIN-001 (Story 008): \
+                    live producer at server/src/core/session/reconnect.rs:54,479-490; \
+                    client-side reveal-rendering contract depends on the pending \
+                    \"Sang Méprise reveal mechanism\" ADR listed in \
+                    .claude/docs/technical-preferences.md. Drain wiring is deferred \
+                    until that ADR is Accepted to avoid a redo.",
+        follow_on: "Sprint 14 candidate S14-PROTO-SANG-MEPRISE-DRAIN-001 \
+                    (story file authoring pending; see Story 008 Per-Orphan \
+                    Decisions § S2CSangMepriseReveal Path C).",
+    },
+    AllowlistEntry {
+        type_name: "C2SClassChoice",
+        missing: MissingSide::Send,
+        rationale: "Surfaced by PROMPT 845 as an additional orphan beyond the 9 \
+                    PROMPT 803 §4 Lane A named orphans: server has the drain at \
+                    server/src/lobby/handler.rs:15, but no client/src/ file \
+                    references MessageSender<C2SClassChoice>. The client lobby \
+                    uses C2SSelectClass + C2SConfirmClass instead. Story 008 \
+                    scope is the 9 PROMPT 803 named orphans only; C2SClassChoice \
+                    disposition (drain-vs-delete) is out of scope here and \
+                    requires its own producer decision.",
+        follow_on: "Sprint 14 candidate S14-PROTO-CLASSCHOICE-DISPOSITION-001 \
+                    (story file authoring pending; producer to decide \
+                    drain-vs-delete based on a workspace audit of lobby \
+                    C2SSelectClass + C2SConfirmClass coverage).",
+    },
+    AllowlistEntry {
+        type_name: "S2COpponentDisconnected",
+        missing: MissingSide::Send,
+        rationale: "Story 008 Per-Orphan Decisions § S2COpponentDisconnected \
+                    (Path A drain): the GDD-mandated server-side broadcast \
+                    sender is currently absent from the workspace (verified by \
+                    grep at PROMPT 821: no `MessageSender<S2COpponentDisconnected>` \
+                    call site in `server/src/`); landing the server sender is \
+                    out-of-scope for this story (separate follow-on row). The \
+                    client-side drain landed at \
+                    `client/src/presentation/mod.rs::drain_opponent_connection_messages` \
+                    is read-only and ADR-002 / ADR-008 compliant. GDD \
+                    `network-protocol.md` Rule 8 still mandates the broadcast \
+                    on `OnDisconnected`; the missing send-site remains a \
+                    known follow-on.",
+        follow_on: "Sprint 13 or 14 candidate S13/S14-PROTO-OPPONENT-DC-BROADCAST-001 \
+                    (story file authoring pending; producer to schedule the \
+                    server broadcast against the `tick_disconnect_timers` \
+                    path + GDD Rule 8).",
+    },
+];
+
+fn allowlist_allows(type_name: &str, missing: MissingSide) -> bool {
+    ALLOWLIST
+        .iter()
+        .any(|entry| entry.type_name == type_name && entry.missing == missing)
+}
+
 #[test]
-#[ignore = "S13-PROTO-ORPHAN-DRAIN-001 pending — pre-drain orphan list captured in production/qa/evidence/sprint-13-proto-invariant-evidence.md; remove this attribute in the drain-story commit"]
 fn protocol_completeness_assert_send_and_drain_sites() {
     let root = workspace_root();
     let client_src = root.join("client").join("src");
@@ -314,7 +401,9 @@ fn protocol_completeness_assert_send_and_drain_sites() {
 
         match msg.direction {
             Direction::C2S => {
-                if !has_send_site(&client_files, &msg.name) {
+                if !has_send_site(&client_files, &msg.name)
+                    && !allowlist_allows(&msg.name, MissingSide::Send)
+                {
                     violations.push(format!(
                         "{name}  ({decl})\n    missing client-side send-site: \
                          add a `MessageSender<{name}>` SystemParam (or call \
@@ -324,7 +413,9 @@ fn protocol_completeness_assert_send_and_drain_sites() {
                         decl = decl,
                     ));
                 }
-                if !has_drain_site(&server_files, &msg.name) {
+                if !has_drain_site(&server_files, &msg.name)
+                    && !allowlist_allows(&msg.name, MissingSide::Drain)
+                {
                     violations.push(format!(
                         "{name}  ({decl})\n    missing server-side drain: add a \
                          `MessageReceiver<{name}>` SystemParam under server/src/, \
@@ -335,7 +426,9 @@ fn protocol_completeness_assert_send_and_drain_sites() {
                 }
             }
             Direction::S2C => {
-                if !has_send_site(&server_files, &msg.name) {
+                if !has_send_site(&server_files, &msg.name)
+                    && !allowlist_allows(&msg.name, MissingSide::Send)
+                {
                     violations.push(format!(
                         "{name}  ({decl})\n    missing server-side send-site: \
                          add a `MessageSender<{name}>` SystemParam or call \
@@ -346,7 +439,9 @@ fn protocol_completeness_assert_send_and_drain_sites() {
                         decl = decl,
                     ));
                 }
-                if !has_drain_site(&client_files, &msg.name) {
+                if !has_drain_site(&client_files, &msg.name)
+                    && !allowlist_allows(&msg.name, MissingSide::Drain)
+                {
                     violations.push(format!(
                         "{name}  ({decl})\n    missing client-side drain: add a \
                          `MessageReceiver<{name}>` SystemParam under client/src/, \
@@ -405,9 +500,11 @@ fn protocol_manifest_parser_discovers_registered_messages() {
         c2s >= 16,
         "expected >=16 C2S messages from register_c2s::<...> scan, found {c2s}"
     );
+    // S13-PROTO-ORPHAN-DRAIN-001 (PROMPT 852) deleted `S2CHeartbeat` and
+    // `S2CPoolUpdate` Path B → 34 - 2 = 32 retained S2C registrations.
     assert!(
-        s2c >= 34,
-        "expected >=34 S2C messages from register_s2c::<...> scan, found {s2c}"
+        s2c >= 32,
+        "expected >=32 S2C messages from register_s2c::<...> scan, found {s2c}"
     );
 
     for msg in &messages {

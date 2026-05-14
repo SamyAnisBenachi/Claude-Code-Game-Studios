@@ -82,7 +82,9 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_s2c::<S2CPrismRespawned>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CShopSlots>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CDraftOffering>(registry, ProtocolChannel::Reliable);
-    register_s2c::<S2CPoolUpdate>(registry, ProtocolChannel::Reliable);
+    // S2CPoolUpdate removed by S13-PROTO-ORPHAN-DRAIN-001 (Path B): no server
+    // producer and no client consumer ever existed; private pool state lives on
+    // the server only and reaches the client through `S2CGameSnapshot.PlayerSnapshot.pool_snapshot`.
     register_s2c::<S2CPlacementReveal>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CResolutionEvent>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CAuctionCard>(registry, ProtocolChannel::Reliable);
@@ -104,7 +106,10 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_s2c::<S2CObjectiveIdentities>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CSangMepriseReveal>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CGameSnapshot>(registry, ProtocolChannel::Reliable);
-    register_s2c::<S2CHeartbeat>(registry, ProtocolChannel::Unreliable);
+    // S2CHeartbeat removed by S13-PROTO-ORPHAN-DRAIN-001 (Path B): the GDD's
+    // Rule 8 disconnect-detection contract uses `C2SHeartbeat` only (client →
+    // server on the unreliable channel); no S2C heartbeat was ever produced or
+    // consumed, and the unreliable channel binding has no other S2C message.
 }
 
 fn register_c2s<M: Serialize + DeserializeOwned + Send + Sync + 'static>(
@@ -544,11 +549,6 @@ pub struct S2CDraftOffering {
     pub card_ids: Vec<CardId>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct S2CPoolUpdate {
-    pub updates: Vec<(CardId, u8)>,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct S2CPlacementReveal {
     pub placements: Vec<PlacedCardReveal>,
@@ -812,9 +812,6 @@ pub struct S2CGameSnapshot {
     pub auction_state: Option<AuctionSnapshot>,
     pub active_sang_meprise_reveals: Option<Vec<ObjectiveReveal>>,
 }
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct S2CHeartbeat {}
 
 #[cfg(test)]
 mod tests {

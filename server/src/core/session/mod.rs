@@ -8,6 +8,7 @@ pub mod events;
 pub mod plugin;
 pub mod reconnect;
 pub mod snapshot;
+pub mod snapshot_request;
 pub mod state;
 pub mod system;
 
@@ -24,6 +25,7 @@ pub use reconnect::{
     ReconnectDispatch, ReconnectProcessResult,
 };
 pub use snapshot::{build_game_snapshot, build_snapshot};
+pub use snapshot_request::{handle_request_snapshot, SnapshotRequestCooldowns};
 pub use state::{
     ActiveSessions, ClassPreviews, ClassSelections, DeferredMessage, EndedSessionResultState,
     LobbyDeadline, LobbyHeartbeats, LobbyState, NextFreshPlayerId, PendingHello,
