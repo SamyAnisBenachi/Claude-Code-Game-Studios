@@ -4,7 +4,7 @@
 > **GDD**: Sprint 7 playable path traced to game-session-system, network-protocol, card-acquisition, hand-ui, shop-auction-ui, hud, board-rendering, and round-state-machine GDDs
 > **Architecture Module**: `client/src/main.rs`, `client/src/network/`, `client/src/state/`, `client/src/presentation/`, `client/src/ui/`, plus server message bridges in `server/src/network/` and owning server systems
 > **Status**: Ready
-> **Stories**: 8 Sprint 7/8 must-have stories, backlog prep stories, Sprint 9 evidence-prep stories, Sprint 10 tech-debt stories, Sprint 11 draft tech-debt stories, and Sprint 12 draft Must Have tech-debt / decision stories (Cluster B2/B3/B4 + B1+B5 umbrella)
+> **Stories**: 8 Sprint 7/8 must-have stories, backlog prep stories, Sprint 9 evidence-prep stories, Sprint 10 tech-debt stories, Sprint 11 draft tech-debt stories, Sprint 12 draft Must Have tech-debt / decision stories (Cluster B2/B3/B4 + B1+B5 umbrella), and 6 Sprint 13 candidate runtime-hardening stories (fixture factory, two-client runtime harness, observability targets + wallclock timestamps, late-message dedupe, connection-lost UX) authored as Sprint 13 candidates per PROMPT 803/804 -- NOT activated
 
 ## Overview
 
@@ -111,6 +111,14 @@ The epic does not create public release readiness, broad accessibility completio
 | 013 | [Lobby ConfirmClass Intent Chain -- Production Fix](story-013-lobby-confirm-class-intent-chain.md) | Integration | Draft - Sprint 12 draft Must Have (Cluster B3), NOT activated | S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001 |
 | 014 | [Co-occupancy Panic-Guard -- Binary Design Decision](story-014-cooccupancy-panic-guard-decision.md) | Decision-first | Draft - Sprint 12 draft Must Have (Cluster B4), NOT activated | S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001 |
 | 015 | [Fixture D Residuals -- Cluster B1 + B5 Umbrella](story-015-fixture-d-residuals.md) | Decision-first composite | Draft - Sprint 12 draft Must Have (Cluster B1 + B5 umbrella), NOT activated | S11-TD-FIXTURE-D-RESIDUALS-001 |
+| 016 | [Canonical Production-Faithful Test App Factory](story-016-fixture-factory.md) | Integration -- test helper + targeted fixture migration | Draft - Sprint 13 candidate (S13-FIXTURE-FACTORY-001 per PROMPT 803/804), NOT activated | S13-FIXTURE-FACTORY-001 / DC-7 / DC-8 |
+| 017 | [Non-Interactive Scripted Two-Client Runtime Harness](story-017-two-client-runtime-harness.md) | Integration -- new cargo bin / workspace member | Draft - Sprint 13 candidate (S13-TWO-CLIENT-RUNTIME-HARNESS-001 per PROMPT 803/804), NOT activated | S13-TWO-CLIENT-RUNTIME-HARNESS-001 / DC-14 / S8-QA-001-W1 evidence track |
+| 018 | [Module-Scoped Tracing Targets for Diagnostic Capture](story-018-obs-tracing-targets.md) | Integration -- targeted edits across emission sites | Draft - Sprint 13 candidate (S13-OBS-TRACING-TARGETS-001 per PROMPT 803/804), NOT activated | S13-OBS-TRACING-TARGETS-001 / DC-11 |
+| 019 | [ISO-8601 UTC Wall-Clock Timestamps in Tracing Subscribers](story-019-obs-wallclock-timestamps.md) | Integration -- subscriber-config edits in 3 files | Draft - Sprint 13 candidate (S13-OBS-WALLCLOCK-TIMESTAMPS-001 per PROMPT 803/804), NOT activated | S13-OBS-WALLCLOCK-TIMESTAMPS-001 / DC-12 |
+| 020 | [Client-Side Idempotency for Late / Duplicate Reliable S2C Messages](story-020-late-msg-dedupe.md) | Integration -- per-drain dedupe state + integration tests | Draft - Sprint 13 candidate (S13-LATE-MSG-DEDUPE-001 per PROMPT 803/804), NOT activated | S13-LATE-MSG-DEDUPE-001 / DC-6 |
+| 021 | [Proactive Connection-Lost / Reconnecting Client UI](story-021-conn-lost-ux.md) | Integration -- new overlay module + transport-event subscription | Draft - Sprint 13 candidate (S13-CONN-LOST-UX-001 per PROMPT 803/804), NOT activated | S13-CONN-LOST-UX-001 / DC-13 / S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001 backlog row |
+
+> Stories 016-021 are Sprint 13 candidate runtime-hardening rows sourced from `reports/PROMPT-803-MULTIPLAYER-RUNTIME-HARDENING-AUDIT-ROADMAP.md` §3 (defect-class taxonomy) and §5 (Must / Should rows). All six are authored as Sprint 13 candidates by PROMPT 804 and are NOT activated. Activation happens via a separate `/sprint-plan sprint-13` prompt after Sprint 12 close-out. The Sprint 12 Must Have row set (Stories 011-015 + hand-ui Story 019) is unchanged by PROMPT 804.
 
 ## Definition of Done
 
