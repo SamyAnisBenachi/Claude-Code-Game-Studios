@@ -1,0 +1,2 @@
+2026-05-14T15:28:03.8253663Z  INFO harness::client_b: client B app build start url=ws://127.0.0.1:61159
+2026-05-14T15:28:03.8277146Z  INFO harness::client_b: client B app built

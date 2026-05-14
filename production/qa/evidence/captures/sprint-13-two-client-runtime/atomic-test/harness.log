@@ -1,0 +1,6 @@
+2026-05-14T15:32:36.6635239Z  INFO harness: harness boot seed=1 max_rounds=10 connect_timeout_secs=10 overall_timeout_secs=60 evidence_dir=production/qa/evidence/captures/sprint-13-two-client-runtime/atomic-test
+2026-05-14T15:32:36.6647429Z  INFO harness: ephemeral websocket port reserved port=61238 url=ws://127.0.0.1:61238
+2026-05-14T15:32:37.0205973Z  INFO harness: both client apps built
+2026-05-14T15:32:37.2712704Z  INFO harness: both clients handshake complete tick=3 elapsed_ms=250
+2026-05-14T15:33:08.3658942Z  INFO harness: S2CGameOver observed -- canonical AC3 endpoint reached tick=2574 round=6
+2026-05-14T15:33:08.3671431Z  INFO harness: harness exit endpoint_reached="game_over" success=true elapsed_secs=31.3465315

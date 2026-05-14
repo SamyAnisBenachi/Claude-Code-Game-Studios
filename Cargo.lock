@@ -7033,6 +7033,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "two-client-runtime"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "client",
+ "lightyear",
+ "rand 0.8.6",
+ "rand_chacha 0.3.1",
+ "serde",
+ "serde_json",
+ "server",
+ "shared",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "typeid"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

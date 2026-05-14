@@ -1,0 +1,37 @@
+{
+  "harness_version": "0.1.0",
+  "seed": 1,
+  "max_rounds": 10,
+  "connect_timeout_secs": 10,
+  "server_port": 55395,
+  "server_url": "ws://127.0.0.1:55395",
+  "server_evidence_payload": {
+    "websocket_bound": true,
+    "websocket_bind_addr": "0.0.0.0:55395"
+  },
+  "routes_observed": {
+    "host_sent_hello": true,
+    "joiner_sent_hello": true,
+    "host_received_handshake": true,
+    "joiner_received_handshake": true,
+    "host_player_id": 1,
+    "joiner_player_id": 2,
+    "host_received_room_created": true,
+    "joiner_received_join_ack": true,
+    "host_received_classes_revealed": true,
+    "joiner_received_classes_revealed": true,
+    "host_received_card_acquired": true,
+    "joiner_received_card_acquired": true,
+    "placement_phase_count": 5,
+    "draft_shop_phase_count": 4,
+    "resolution_phase_count": 5,
+    "auction_phase_count": 2,
+    "host_received_game_over": true,
+    "joiner_received_game_over": true,
+    "game_over_round": 6,
+    "game_over_reason_draw": true,
+    "endpoint_reached": "game_over",
+    "rounds_observed": 5
+  },
+  "extra": {}
+}

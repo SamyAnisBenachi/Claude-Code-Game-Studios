@@ -1,0 +1,24 @@
+2026-05-14T15:32:37.014925Z  INFO harness::client_a: client A app build start url=ws://127.0.0.1:61238
+2026-05-14T15:32:37.0181053Z  INFO harness::client_a: client A app built
+2026-05-14T15:32:37.2703221Z  INFO two_client_runtime::route: S2CHandshake received target="harness::probe" role="host" player_id=1
+2026-05-14T15:32:37.2704077Z  INFO two_client_runtime::route: S2CHandshake received target="harness::probe" role="host" player_id=1
+2026-05-14T15:32:37.2704291Z  INFO two_client_runtime::route: S2CHandshake received target="harness::probe" role="host" player_id=1
+2026-05-14T15:32:37.2953681Z  INFO two_client_runtime::route: S2CHandshake received target="harness::probe" role="host" player_id=1
+2026-05-14T15:32:37.3364052Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=DraftInitial
+2026-05-14T15:32:37.3869819Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=Placement
+2026-05-14T15:32:37.4241509Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=Resolution
+2026-05-14T15:32:37.4241689Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=DraftShop
+2026-05-14T15:32:37.4360048Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=Placement
+2026-05-14T15:32:37.4604312Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=Resolution
+2026-05-14T15:32:37.4844125Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=DraftAuction
+2026-05-14T15:32:58.2147569Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=DraftShop
+2026-05-14T15:32:58.2412978Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=Placement
+2026-05-14T15:32:58.2775853Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=Resolution
+2026-05-14T15:32:58.2898185Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=DraftShop
+2026-05-14T15:32:58.3144094Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=Placement
+2026-05-14T15:32:58.3399068Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=Resolution
+2026-05-14T15:32:58.3651651Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=DraftShop
+2026-05-14T15:32:58.3907879Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=Placement
+2026-05-14T15:32:58.4280882Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=Resolution
+2026-05-14T15:32:58.4281084Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=DraftAuction
+2026-05-14T15:33:08.3665069Z  INFO two_client_runtime::route: S2CPhaseChanged received target="harness::probe" role="host" phase=GameOver
