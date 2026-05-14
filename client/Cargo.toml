@@ -26,7 +26,7 @@ bevy_tweening = { workspace = true, default-features = false, features = ["bevy_
 # dispatcher is installed by default. Without this, every `tracing::*` call
 # from app code is a silent no-op and client stdout is dark during native runs.
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
 
 [features]
 default = []

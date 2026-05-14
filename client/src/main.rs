@@ -27,13 +27,22 @@ fn main() {
     //
     // wasm32 has no usable stdout for tracing-subscriber; browser logging is
     // out of scope for this prompt and handled by the trunk build separately.
+    //
+    // S13-OBS-WALLCLOCK-TIMESTAMPS-001 (PROMPT 837): wall-clock UTC ISO-8601
+    // (RFC 3339) timer so multi-process logs from server + client + tests
+    // align at sub-second precision. Default fmt timer emits relative seconds
+    // since process start, which is useless for cross-process correlation.
     #[cfg(not(target_arch = "wasm32"))]
     {
+        use tracing_subscriber::fmt::time::UtcTime;
         use tracing_subscriber::EnvFilter;
         let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
             EnvFilter::new("info,wgpu=warn,wgpu_hal=warn,naga=warn,bevy_ecs=info")
         });
-        tracing_subscriber::fmt().with_env_filter(filter).init();
+        tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .with_timer(UtcTime::rfc_3339())
+            .init();
     }
 
     let mut app = App::new();
