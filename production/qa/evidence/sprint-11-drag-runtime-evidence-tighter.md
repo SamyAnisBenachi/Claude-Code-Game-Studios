@@ -248,6 +248,31 @@ operating on Sprint 13 scope).
 (where `NNN` is the next available story number in the hand-ui epic at the time
 of Sprint 13 authoring; the producer / orchestrator picks the number).
 
+> **Mapping to existing PROMPT 804 Sprint 13 candidates (added 2026-05-14 during
+> PROMPT 807 post-rebase reconciliation; `origin/main@55b25be`)**: PROMPT 804
+> already landed 8 Sprint 13 candidate runtime-hardening story files. Three of
+> them map almost 1:1 to the expanded-tracing scope this evidence file recommends:
+>
+> - `production/epics/playable-client/story-017-two-client-runtime-harness.md`
+>   — two-client runtime harness (covers the operator-driven friend-game route
+>   that this PROMPT 807 CLI dispatch could not exercise).
+> - `production/epics/playable-client/story-018-obs-tracing-targets.md` —
+>   observation tracing targets (covers per-channel selective tracing target
+>   discipline, including the upgraded `lightyear` / `server::game` levels this
+>   story 019 specifies).
+> - `production/epics/playable-client/story-019-obs-wallclock-timestamps.md` —
+>   observation wallclock timestamps (covers the persistent UTC-millisecond
+>   tracing init this evidence file's scope item (2) calls out).
+>
+> If the Sprint 13 orchestrator chooses to thread the drag-runtime expanded-tracing
+> capture through those three existing playable-client candidate stories rather
+> than authoring a new hand-ui follow-on story, that is acceptable per
+> `HU-DRAG-RT-19-04` second-time `cannot-reproduce` rule — the rule's intent
+> is "no third same-scope retest without expanded tracing scope," and the three
+> playable-client candidates collectively constitute the expanded tracing scope.
+> The disposition this evidence file records (`cannot-reproduce`, second time)
+> stands either way.
+
 **Recommended expanded-tracing scope (advisory; final scope is the
 follow-on story's author's call)**:
 
