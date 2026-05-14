@@ -121,9 +121,11 @@ This epic is complete when:
 | 010 | [Numeric Tween Animation](story-010-numeric-tween-animation.md) | Visual/Feel | Ready | ADR-021 |
 | 011 | [Current and Reserve Mana Shape Distinction](story-011-current-reserve-mana-shapes.md) | UI | Ready | ADR-021, ADR-002 |
 | 012 | [HUD Text Size and Contrast Accessibility Evidence](story-012-text-size-and-contrast-accessibility.md) | UI | Ready | ADR-021, ADR-002 |
+| 014 | [HUD Timer Eyeball Visual Check](story-014-hud-timer-eyeball-visual-check.md) | Visual/Feel | Draft -- Sprint 13 candidate (Should Have, `S11-HUD-TIMER-EYEBALL-VISUAL-001`), NOT activated | ADR-021, ADR-002 |
 
 **12 stories total: 5 Logic · 3 UI · 3 Integration · 1 Visual/Feel**
 Story 004 blocked on OQ-HUD-05 (HudObjectiveUpdate trigger type crate location).
+Story 014 is a Sprint 13 candidate (Sprint 12 close-out deferral; Sprint 10 smoke retry-7 W2 carry); NOT activated.
 
 ## Next Step
 
