@@ -243,19 +243,34 @@ if HAS_TEXTUAL:
                    "connecting…": "[yellow]●[/yellow]",
                    "disconnected": "[red]●[/red]"}.get(self.connection_status,
                                                        "[yellow]●[/yellow]")
-            turn_str = ""
+            # Context budget gauge: uses LAST turn's input+output as proxy
+            # for "current context window usage" (the running session's
+            # context is approximately the last turn's input prefix, since
+            # Codex feeds the rolling history each turn).
+            # `total.totalTokens` is cumulative-since-session-start and is
+            # NOT comparable to the 200k context window.
+            ctx_used = self.turn.input_tokens + self.turn.output_tokens
+            budget = self.token_budget
+            pct = (ctx_used / budget * 100) if budget else 0
+            bar_color = "green" if pct < 60 else ("yellow" if pct < 85 else "red")
+            cache_pct = (
+                self.turn.cached_input_tokens / self.turn.input_tokens * 100
+                if self.turn.input_tokens else 0
+            )
+
+            parts = [f"{led} thread {self.thread_id[:8] if self.thread_id else '?'}"]
             if self.turn.in_progress and self.turn.started_at:
                 elapsed = int(time.time() - self.turn.started_at)
-                turn_str = f"[cyan]turn {elapsed // 60:02d}:{elapsed % 60:02d}[/cyan]"
-            tokens = self.turn.total_thread_tokens
-            budget = self.token_budget
-            pct = (tokens / budget * 100) if budget else 0
-            bar_color = "green" if pct < 60 else ("yellow" if pct < 85 else "red")
-            tok_str = (f"tokens in={self.turn.input_tokens:,} cached={self.turn.cached_input_tokens:,} "
-                       f"out={self.turn.output_tokens:,} | "
-                       f"[{bar_color}]thread {tokens:,}/{budget:,} ({pct:.0f}%)[/{bar_color}]")
-            tid_short = self.thread_id[:8] if self.thread_id else "?"
-            bar.update(f"{led} thread {tid_short} | {turn_str} | {tok_str}")
+                parts.append(f"[cyan]turn {elapsed // 60:02d}:{elapsed % 60:02d}[/cyan]")
+            parts.append(
+                f"last in={self.turn.input_tokens:,} (cached {cache_pct:.0f}%) "
+                f"out={self.turn.output_tokens:,}"
+            )
+            parts.append(
+                f"[{bar_color}]ctx {ctx_used:,}/{budget:,} ({pct:.0f}%)[/{bar_color}]"
+            )
+            parts.append(f"[dim]Σ {self.turn.total_thread_tokens / 1_000_000:.1f}M[/dim]")
+            bar.update(" | ".join(parts))
 
         def _handle_status(self, status: str) -> None:
             self.connection_status = status
