@@ -74,7 +74,10 @@ class CodexEventBus(threading.Thread):
         self._next_id = 0
         self._stop_evt = threading.Event()
         self._reconnect_evt = threading.Event()
-        self._initialized = False
+        # NOTE: do NOT name this `_initialized` — that's a private flag on
+        # threading.Thread itself and clobbering it makes start() raise
+        # RuntimeError("thread.__init__() not called").
+        self._ws_initialized = False
 
     def stop(self) -> None:
         self._stop_evt.set()
@@ -130,7 +133,7 @@ class CodexEventBus(threading.Thread):
                 if self.cwd_override:
                     params["cwd"] = self.cwd_override
                 self.send("thread/resume", params)
-                self._initialized = True
+                self._ws_initialized = True
 
                 # Read loop
                 while not self._stop_evt.is_set() and not self._reconnect_evt.is_set():
@@ -155,7 +158,7 @@ class CodexEventBus(threading.Thread):
             if self._stop_evt.is_set():
                 return
             self._reconnect_evt.clear()
-            self._initialized = False
+            self._ws_initialized = False
             self.on_status(f"reconnecting in {backoff:.0f}s…")
             time.sleep(backoff)
             backoff = min(backoff * 2, 30.0)
