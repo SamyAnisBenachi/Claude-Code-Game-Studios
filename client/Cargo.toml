@@ -277,6 +277,12 @@ path = "../tests/integration/presentation/result_screen_return_to_lobby_test.rs"
 name = "presentation_protocol_orphan_drain_test"
 path = "../tests/integration/presentation/protocol_orphan_drain_test.rs"
 
+# S13-LATE-MSG-DEDUPE-001 (Story 020): per-drain dedupe + reconnect-replay
+# idempotency for S2CGameOver, S2CClassLocked, S2CPlacementReveal.
+[[test]]
+name = "late_msg_dedupe_test"
+path = "../tests/integration/session/late_msg_dedupe_test.rs"
+
 [[test]]
 name = "accessibility_settings_preferences_test"
 path = "../tests/unit/accessibility_settings/preferences_test.rs"

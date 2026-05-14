@@ -7,7 +7,10 @@ use shared::protocol::{
 use shared::session::PlayerId;
 
 use crate::presentation::{PresentationGameSnapshotMessage, PresentationSet};
-use crate::state::{ClientSessionIdentity, ClientState, CurrentClientPhase};
+use crate::state::{
+    ClientIdempotencyState, ClientSessionIdentity, ClientState, CurrentClientPhase,
+    GameOverDedupeKey,
+};
 use crate::ui::settings::AccessibilityPreferences;
 
 const OBJECTIVE_LANES: usize = 5;
@@ -27,6 +30,10 @@ impl Plugin for ResultScreenPlugin {
             .init_resource::<ResultScreenFocusOrder>()
             .init_resource::<ResultScreenMotionState>()
             .init_resource::<ResultScreenOutboundMessages>()
+            // S13-LATE-MSG-DEDUPE-001: ensure the dedupe ring exists even when
+            // tests load this plugin in isolation (PresentationPlugin would
+            // normally install ClientIdempotencyPlugin first).
+            .init_resource::<ClientIdempotencyState>()
             .add_message::<PresentationGameSnapshotMessage>()
             .add_message::<ResultScreenActionRequest>()
             .add_systems(OnEnter(ClientState::InSession), spawn_result_screen_system)
@@ -679,19 +686,47 @@ fn despawn_result_screen_system(
 fn drain_result_screen_game_over_receiver_system(
     mut receivers: Query<&mut MessageReceiver<S2CGameOver>>,
     mut view_state: ResMut<ResultScreenViewState>,
+    mut idempotency: ResMut<ClientIdempotencyState>,
 ) {
     for mut receiver in &mut receivers {
         for result in receiver.receive() {
-            tracing::info!(
-                loser = ?result.loser,
-                round = result.round,
-                reason = ?result.reason,
-                msg_type = "S2CGameOver",
-                "drain_result_screen_game_over: recv"
-            );
-            view_state.cached_result = Some(result);
+            apply_game_over_drain(&mut idempotency, &mut view_state, result);
         }
     }
+}
+
+/// Idempotent apply for `S2CGameOver` per S13-LATE-MSG-DEDUPE-001.
+///
+/// On a fresh `(round, reason, loser)` key the message is logged and cached
+/// into [`ResultScreenViewState::cached_result`]. On a duplicate
+/// (reconnect-replay re-send) the message is logged at DEBUG and discarded
+/// without mutating view state — matching the `C2SAcknowledgeResult`
+/// idempotency precedent.
+pub fn apply_game_over_drain(
+    idempotency: &mut ClientIdempotencyState,
+    view_state: &mut ResultScreenViewState,
+    result: S2CGameOver,
+) {
+    let key = GameOverDedupeKey::from_message(&result);
+    if !idempotency.game_over.check_and_insert(key) {
+        tracing::debug!(
+            loser = ?result.loser,
+            round = result.round,
+            reason = ?result.reason,
+            msg_type = "S2CGameOver",
+            "drain_result_screen_game_over: duplicate; no-op"
+        );
+        return;
+    }
+
+    tracing::info!(
+        loser = ?result.loser,
+        round = result.round,
+        reason = ?result.reason,
+        msg_type = "S2CGameOver",
+        "drain_result_screen_game_over: recv"
+    );
+    view_state.cached_result = Some(result);
 }
 
 fn cache_result_screen_snapshot_system(

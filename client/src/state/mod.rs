@@ -9,6 +9,12 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+pub mod idempotency;
+pub use idempotency::{
+    reset_client_idempotency_on_session_exit_system, ClassLockedDedupeKey, ClientIdempotencyPlugin,
+    ClientIdempotencyState, DedupeRing, GameOverDedupeKey, PlacementRevealDedupeKey, DEDUPE_BOUND,
+};
+
 /// Client presentation lifecycle. It gates session-scoped UI pools.
 #[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ClientState {

@@ -13,7 +13,10 @@ use shared::session::PlayerId;
 use crate::asset_wiring::{
     lobby_portrait_asset, LOBBY_PLAYER_SLOT_PANEL_ASSET, LOBBY_ROOM_CODE_CHIP_ASSET,
 };
-use crate::state::{apply_handshake_message, ClientSessionIdentity, ClientState};
+use crate::state::{
+    apply_handshake_message, ClassLockedDedupeKey, ClientIdempotencyState, ClientSessionIdentity,
+    ClientState,
+};
 
 pub struct LobbyUiPlugin;
 
@@ -27,6 +30,9 @@ impl Plugin for LobbyUiPlugin {
         app.init_resource::<ClientSessionIdentity>()
             .init_resource::<LobbyViewState>()
             .init_resource::<LobbyInputState>()
+            // S13-LATE-MSG-DEDUPE-001: ensure the dedupe ring exists even when
+            // tests load this plugin in isolation.
+            .init_resource::<ClientIdempotencyState>()
             .add_message::<KeyboardInput>()
             .add_message::<LobbyCommand>()
             .add_message::<PlayerTeamMapUpdated>()
@@ -211,6 +217,7 @@ pub fn drain_lobby_s2c_system(
     mut lobby: ResMut<LobbyViewState>,
     mut input: ResMut<LobbyInputState>,
     mut team_map_writer: MessageWriter<PlayerTeamMapUpdated>,
+    mut idempotency: ResMut<ClientIdempotencyState>,
     mut handshakes: Query<&mut MessageReceiver<S2CHandshake>>,
     mut handshake_rejections: Query<&mut MessageReceiver<S2CHandshakeRejected>>,
     mut created: Query<&mut MessageReceiver<S2CRoomCreated>>,
@@ -325,13 +332,7 @@ pub fn drain_lobby_s2c_system(
 
     for mut receiver in &mut class_locked {
         for message in receiver.receive() {
-            tracing::info!(
-                class_id = ?message.class_id,
-                msg_type = "S2CClassLocked",
-                "drain_lobby_s2c: recv"
-            );
-            apply_class_locked(&mut lobby, &message);
-            input.class_confirm_in_flight = false;
+            apply_class_locked_drain(&mut idempotency, &mut lobby, &mut input, &message);
         }
     }
 
@@ -392,6 +393,38 @@ pub fn apply_slot_update(lobby: &mut LobbyViewState, message: &S2CSlotUpdated) {
 pub fn apply_class_locked(lobby: &mut LobbyViewState, message: &S2CClassLocked) {
     lobby.locked_class = Some(message.class_id);
     lobby.status = format!("Class locked: {:?}", message.class_id);
+}
+
+/// Idempotent apply for `S2CClassLocked` per S13-LATE-MSG-DEDUPE-001.
+///
+/// On a fresh `ClassId` key the message is logged and applied to the lobby
+/// view; the in-flight confirm latch is cleared. On a duplicate
+/// (reconnect-replay re-send) the message is logged at DEBUG and discarded
+/// without mutating lobby state — matching the `C2SAcknowledgeResult`
+/// idempotency precedent.
+pub fn apply_class_locked_drain(
+    idempotency: &mut ClientIdempotencyState,
+    lobby: &mut LobbyViewState,
+    input: &mut LobbyInputState,
+    message: &S2CClassLocked,
+) {
+    let key = ClassLockedDedupeKey::from_message(message);
+    if !idempotency.class_locked.check_and_insert(key) {
+        tracing::debug!(
+            class_id = ?message.class_id,
+            msg_type = "S2CClassLocked",
+            "drain_lobby_s2c: duplicate; no-op"
+        );
+        return;
+    }
+
+    tracing::info!(
+        class_id = ?message.class_id,
+        msg_type = "S2CClassLocked",
+        "drain_lobby_s2c: recv"
+    );
+    apply_class_locked(lobby, message);
+    input.class_confirm_in_flight = false;
 }
 
 pub fn apply_classes_revealed(lobby: &mut LobbyViewState, message: &S2CClassesRevealed) {
