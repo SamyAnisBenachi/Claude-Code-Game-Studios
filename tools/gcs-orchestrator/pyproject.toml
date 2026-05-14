@@ -38,6 +38,9 @@ gcs-rollout-backup = "gcs_orchestrator.backup:main"
 gcs-rollout-check = "gcs_orchestrator.jsonl_integrity:main"
 gcs-viewer-tui = "gcs_orchestrator.viewer_tui:main"
 gcs-rollout-grep = "gcs_orchestrator.rollout_grep:main"
+gcs-relay-daemon = "gcs_orchestrator.daemon:main"
+gcs-app-status = "gcs_orchestrator.sidecar:main"
+gcs-reconcile = "gcs_orchestrator.reconcile:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
