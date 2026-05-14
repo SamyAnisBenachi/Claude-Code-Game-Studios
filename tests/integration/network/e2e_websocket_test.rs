@@ -11,9 +11,7 @@ use lightyear::prelude::client::*;
 use lightyear::prelude::server::*;
 use lightyear::prelude::*;
 use server_crate::network::register_lightyear_protocol;
-use shared::protocol::{
-    C2SHeartbeat, ReliableChannel, S2CHandshakeRejected, S2CHeartbeat, UnreliableChannel,
-};
+use shared::protocol::{C2SHeartbeat, ReliableChannel, S2CHandshakeRejected, UnreliableChannel};
 
 #[path = "../../test_helpers.rs"]
 mod test_helpers;
@@ -27,7 +25,6 @@ struct RoundTripFlags {
     client_sent_heartbeat: Arc<AtomicBool>,
     server_received_heartbeat: Arc<AtomicBool>,
     server_sent_roundtrip_messages: Arc<AtomicBool>,
-    client_received_unreliable_heartbeat: Arc<AtomicBool>,
     client_received_reliable_message: Arc<AtomicBool>,
     client_connected_count: Arc<AtomicUsize>,
     client_linking_count: Arc<AtomicUsize>,
@@ -55,7 +52,6 @@ impl RoundTripFlags {
             client_sent_heartbeat: Arc::new(AtomicBool::new(false)),
             server_received_heartbeat: Arc::new(AtomicBool::new(false)),
             server_sent_roundtrip_messages: Arc::new(AtomicBool::new(false)),
-            client_received_unreliable_heartbeat: Arc::new(AtomicBool::new(false)),
             client_received_reliable_message: Arc::new(AtomicBool::new(false)),
             client_connected_count: Arc::new(AtomicUsize::new(0)),
             client_linking_count: Arc::new(AtomicUsize::new(0)),
@@ -82,19 +78,15 @@ impl RoundTripFlags {
         self.client_sent_heartbeat.load(Ordering::SeqCst)
             && self.server_received_heartbeat.load(Ordering::SeqCst)
             && self.server_sent_roundtrip_messages.load(Ordering::SeqCst)
-            && self
-                .client_received_unreliable_heartbeat
-                .load(Ordering::SeqCst)
             && self.client_received_reliable_message.load(Ordering::SeqCst)
     }
 
     fn report(&self) -> String {
         format!(
-            "client_sent_heartbeat={}, server_received_heartbeat={}, server_sent_roundtrip_messages={}, client_received_unreliable_heartbeat={}, client_received_reliable_message={}, client_connected_count={}, client_linking_count={}, client_linked_count={}, client_unlinked_count={}, client_transport_count={}, client_unreliable_sender_count={}, client_link_send_len={}, client_link_recv_len={}, client_unlinked_reason={:?}, server_client_count={}, server_linked_count={}, server_link_of_count={}, server_link_of_linked_count={}, server_transport_count={}, server_unreliable_receiver_count={}, server_link_send_len={}, server_link_recv_len={}, server_heartbeat_receiver_count={}",
+            "client_sent_heartbeat={}, server_received_heartbeat={}, server_sent_roundtrip_messages={}, client_received_reliable_message={}, client_connected_count={}, client_linking_count={}, client_linked_count={}, client_unlinked_count={}, client_transport_count={}, client_unreliable_sender_count={}, client_link_send_len={}, client_link_recv_len={}, client_unlinked_reason={:?}, server_client_count={}, server_linked_count={}, server_link_of_count={}, server_link_of_linked_count={}, server_transport_count={}, server_unreliable_receiver_count={}, server_link_send_len={}, server_link_recv_len={}, server_heartbeat_receiver_count={}",
             self.client_sent_heartbeat.load(Ordering::SeqCst),
             self.server_received_heartbeat.load(Ordering::SeqCst),
             self.server_sent_roundtrip_messages.load(Ordering::SeqCst),
-            self.client_received_unreliable_heartbeat.load(Ordering::SeqCst),
             self.client_received_reliable_message.load(Ordering::SeqCst),
             self.client_connected_count.load(Ordering::SeqCst),
             self.client_linking_count.load(Ordering::SeqCst),
@@ -159,14 +151,7 @@ fn e2e_websocket_heartbeat_roundtrip_and_reliable_channel() {
     );
     assert!(
         flags.server_sent_roundtrip_messages.load(Ordering::SeqCst),
-        "server did not send S2CHeartbeat and S2CHandshakeRejected: {}",
-        flags.report()
-    );
-    assert!(
-        flags
-            .client_received_unreliable_heartbeat
-            .load(Ordering::SeqCst),
-        "client did not receive S2CHeartbeat on UnreliableChannel: {}",
+        "server did not send S2CHandshakeRejected: {}",
         flags.report()
     );
     assert!(
@@ -249,7 +234,6 @@ fn build_client_app(url: String, flags: RoundTripFlags) -> App {
         (
             record_client_connection_counts,
             send_client_heartbeat_until_received,
-            record_client_unreliable_heartbeat,
             record_client_reliable_message,
         )
             .chain(),
@@ -396,36 +380,19 @@ fn send_server_roundtrip_messages(
         return;
     };
 
-    let unreliable = S2CHeartbeat {};
     let reliable = S2CHandshakeRejected {
         server_version: 1,
         client_version: 0,
     };
 
-    let sent_unreliable = sender
-        .send::<S2CHeartbeat, UnreliableChannel>(&unreliable, server, &NetworkTarget::All)
-        .is_ok();
     let sent_reliable = sender
         .send::<S2CHandshakeRejected, ReliableChannel>(&reliable, server, &NetworkTarget::All)
         .is_ok();
 
-    if sent_unreliable && sent_reliable {
+    if sent_reliable {
         flags
             .server_sent_roundtrip_messages
             .store(true, Ordering::SeqCst);
-    }
-}
-
-fn record_client_unreliable_heartbeat(
-    flags: Res<RoundTripFlags>,
-    mut receivers: Query<&mut MessageReceiver<S2CHeartbeat>>,
-) {
-    for mut receiver in receivers.iter_mut() {
-        for _msg in receiver.receive() {
-            flags
-                .client_received_unreliable_heartbeat
-                .store(true, Ordering::SeqCst);
-        }
     }
 }
 

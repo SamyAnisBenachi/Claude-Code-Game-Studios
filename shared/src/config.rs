@@ -69,6 +69,10 @@ pub struct GameConfig {
     pub hello_timeout_ms: u32,
     pub ack_timeout_ms: u32,
     pub heartbeat_interval_ms: u32,
+    /// Minimum interval between server-honoured `C2SRequestSnapshot` responses
+    /// per client. Below this floor the server silently ignores the request
+    /// (network-protocol.md Table A `C2SRequestSnapshot`, default 5000ms).
+    pub snapshot_cooldown_ms: u32,
 }
 
 /// Design-intent defaults per game-config.md Tuning Knobs table.
@@ -118,6 +122,7 @@ impl Default for GameConfig {
             hello_timeout_ms: 5000,
             ack_timeout_ms: 10000,
             heartbeat_interval_ms: 5000,
+            snapshot_cooldown_ms: 5000,
         }
     }
 }

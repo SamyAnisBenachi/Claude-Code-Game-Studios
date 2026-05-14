@@ -31,48 +31,6 @@ use bevy::state::app::StatesPlugin;
 // ADR-005: ChaCha20 seeded from OS entropy, full audit log, per-session resource.
 
 // ---------------------------------------------------------------------------
-// C2S message handler entry point
-// ADR-002 Implementation Guideline 3: ALL C2S handlers route through this
-// single function. It validates phase, sender identity, and domain rules
-// before applying state. On any validation failure it returns silently —
-// zero S2C response is sent to the client (network-protocol.md Rule 4).
-// ---------------------------------------------------------------------------
-
-/// Canonical C2S dispatch entry point.
-///
-/// ADR-002: every C2S message flows through here. Never panic on invalid input.
-///
-/// # Implementation note
-/// This stub will be replaced in the Lightyear integration story (Epic 4,
-/// S1-05 spike) with a proper Bevy system accepting `MessageReceiver<T>` and
-/// mutable `RoundState` system params. The signature is reserved here to
-/// document the authority-dispatch contract before any networking code is wired.
-///
-/// # References
-/// - ADR-002 §Key Interfaces — `handle_c2s_message` dispatch sketch
-/// - ADR-008 — channel config; `MessageReceiver<T>` (verify against Lightyear
-///   0.26 docs; checklist items 4–7 must be resolved before implementation)
-/// - network-protocol.md Rule 4 — silent discard on validation failure
-// TODO(S1-05 Lightyear spike): verify exact Lightyear 0.26 channel + message registration
-// API against docs.rs/lightyear/0.26 before implementing. Checklist items 1-6 must be
-// signed off first. Stub lives here (not shared/) per ADR-003 fallback.
-// Scaffold API consumed by downstream stories.
-#[allow(dead_code)]
-fn handle_c2s_message() {
-    // TODO(Epic 4 — S1-05 Lightyear spike):
-    //   1. Resolve Lightyear ClientId → PlayerId via SessionRegistry.
-    //      Unknown sender: tracing::warn! and return.
-    //   2. Phase-gate: check RoundState.phase(); discard with tracing::debug!.
-    //   3. Domain validation: gold, hand size, bid amount, etc.
-    //      Discard with tracing::debug! on any failure.
-    //   4. Apply to authoritative ECS state atomically (Rule 5).
-    //   5. Emit required S2C message(s) via MessageSender.
-    //
-    // ADR-008 verification checklist items 4–7 MUST be resolved before
-    // implementing MessageReceiver / MessageSender system params.
-}
-
-// ---------------------------------------------------------------------------
 // App entry point
 // ---------------------------------------------------------------------------
 

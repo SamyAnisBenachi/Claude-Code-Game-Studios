@@ -125,7 +125,7 @@ enum PlayTarget {
 | `S2COpponentSubmitted` | Reliable | Unicast (non-submitting player) | `{ player_id: PlayerId }` — sent when one player submits their placement; the other player receives this immediately so they can show "waiting for opponent" state. NOT sent to the player who submitted. |
 | `S2CShopSlots` | Reliable | Unicast | `{ slots: Vec<Option<CardId>> }` — `None` = empty slot (dedup exhaustion or pool exhaustion for that slot type) |
 | `S2CDraftOffering` | Reliable | Unicast | `{ card_ids: Vec<CardId> }` — exactly 9 cards at DRAFT_INITIAL (fewer only in stripped test fixtures) |
-| `S2CPoolUpdate` | Reliable | Unicast | `{ updates: Vec<(CardId, u8)> }` — delta `copies_remaining` |
+<!-- `S2CPoolUpdate` removed by S13-PROTO-ORPHAN-DRAIN-001 (2026-05-14): no server producer or client consumer ever existed in the workspace. Pool deltas reach the client through `S2CGameSnapshot.PlayerSnapshot.pool_snapshot` only; there is no separate pool-delta broadcast in the shipped protocol. -->
 | `S2CPlacementReveal` | Reliable | Broadcast | `{ placements: Vec<PlacedCardReveal> }` — atomic simultaneous reveal; both players receive this as the sole signal that placement is closed. Client MUST render from this payload, not from pre-arrived component replication. **Pre-arrived unreliable `BoardPosition` replication that contradicts placement positions MUST be discarded — the reveal payload is authoritative for all placement-related board positions.** Cross-reference: `board-rendering.md` Rule 7 (collect-then-reveal buffer). |
 | `S2CResolutionEvent` | Reliable | Broadcast | `{ events: Vec<TaggedEvent> }` — ordered sub-step replay log. Includes live `ResolutionEvent::SpawnRangeChanged { player_id, new_spawn_range_cells }` entries for spawn range changes; no standalone spawn-range message exists. |
 | `S2CAuctionCard` | Reliable | Broadcast | `{ card_id: CardId, starting_price: u32 }` |
@@ -195,7 +195,7 @@ enum PlayTarget {
 |---|---|---|
 | **Round State Machine** | Phase change events, GAME_OVER data | `S2CPhaseChanged`, `S2CGameOver` (reliable broadcast) |
 | **Economy System** | Per-player gold/mana change events | `S2CGoldUpdate` (reliable unicast) |
-| **Card Data & Pool** | Shop slots per player, draft offering, pool delta per purchase | `S2CShopSlots`, `S2CDraftOffering`, `S2CPoolUpdate` (reliable unicast) |
+| **Card Data & Pool** | Shop slots per player, draft offering, snapshot-borne pool state | `S2CShopSlots`, `S2CDraftOffering` (reliable unicast); pool deltas carried only in `S2CGameSnapshot.PlayerSnapshot.pool_snapshot` (S2CPoolUpdate removed by S13-PROTO-ORPHAN-DRAIN-001) |
 | **Board / Lane System** | Placement reveal data, live spawn range projection, resolution replay log, unit position updates | `S2CPlacementReveal`, `S2CResolutionEvent` (reliable broadcast, including `SpawnRangeChanged` entries); `BoardPosition` component replication |
 | **Server-side RNG** | RNG results via consuming systems | No direct protocol messages — consuming systems broadcast results after reading from RNG |
 | **Auction System** | Bid accepted events, auction settled event, auction card selection | `S2CAuctionCard`, `S2CAuctionBidAccepted`, `S2CAuctionSettled` (reliable broadcast). Gold reservation changes on bid acceptance trigger `S2CGoldBroadcast` (reserved_gold rule). |
@@ -832,7 +832,7 @@ enum GrantedKeyword {
 | **Game Config** | Hard | Reads `protocol_version`, `hello_timeout_ms`, `ack_timeout_ms`, `heartbeat_interval_ms`, `disconnect_grace_seconds` at startup | All protocol constants now in `game-config.md` ✓ |
 | **Round State Machine** | Hard | RSM phase transition events drive `S2CPhaseChanged` broadcasts; RSM fires GAME_OVER data | Network Protocol has no phase logic — it is a delivery layer for RSM signals |
 | **Economy System** | Hard | Economy fires per-player gold/mana change events; protocol delivers via `S2CGoldUpdate` | Economy System emits events; protocol handles delivery — no direct coupling |
-| **Card Data & Pool** | Hard | Pool fires shop-refresh and draft-offering events; pool delta updates on purchase | `S2CShopSlots`, `S2CDraftOffering`, `S2CPoolUpdate` all sourced from Card Data & Pool |
+| **Card Data & Pool** | Hard | Pool fires shop-refresh and draft-offering events; pool state delivered through `S2CGameSnapshot` only | `S2CShopSlots`, `S2CDraftOffering` sourced from Card Data & Pool (S2CPoolUpdate removed by S13-PROTO-ORPHAN-DRAIN-001 — pool deltas no longer broadcast as a standalone message) |
 | **Board / Lane System** | Hard | Board fires placement reveal data, owns live spawn range projection, and contributes resolution replay events; provides unit positions for component replication | `S2CPlacementReveal` and `S2CResolutionEvent::SpawnRangeChanged` are Board/Lane-sourced |
 | **Server-side RNG** | Soft | RNG results are broadcast by consuming systems after reading from RNG — protocol never calls RNG directly | Indirect dependency only |
 
@@ -851,7 +851,7 @@ enum GrantedKeyword {
 ### Cross-system bidirectionality
 
 - Board/Lane GDD confirms `protocol_version: u32` validated at LOBBY handshake. ✓
-- Card Data Pool GDD lists `S2CPoolUpdate`, `S2CPoolSnapshot`, `S2CDraftOffering`, `S2CShopSlots`, `S2CAuctionCard` as requiring Network Protocol GDD for full definition. ✓
+- Card Data Pool GDD lists `S2CPoolUpdate`, `S2CPoolSnapshot`, `S2CDraftOffering`, `S2CShopSlots`, `S2CAuctionCard` as requiring Network Protocol GDD for full definition. ✓ (`S2CPoolUpdate` removed by S13-PROTO-ORPHAN-DRAIN-001 — pool deltas are carried in `S2CGameSnapshot.PlayerSnapshot.pool_snapshot`; `S2CPoolSnapshot` already superseded by `S2CGameSnapshot` per the note above.)
 - RSM GDD lists Network Protocol as a hard downstream dependent. ✓
 
 ## Tuning Knobs

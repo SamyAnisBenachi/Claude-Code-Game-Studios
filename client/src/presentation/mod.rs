@@ -1,6 +1,7 @@
 use ::shared::protocol::{
     CardSource, S2CCardAcquired, S2CDraftOffering, S2CGameSnapshot, S2CObjectiveIdentities,
-    S2CPhaseChanged, S2CSessionSettingsUpdated, S2CShopSlots,
+    S2COpponentDisconnected, S2COpponentReconnected, S2CPhaseChanged, S2CPrismRespawned,
+    S2CPrismRewardDropped, S2CSessionCancelled, S2CSessionSettingsUpdated, S2CShopSlots,
 };
 use bevy::prelude::*;
 use lightyear::prelude::MessageReceiver;
@@ -13,11 +14,14 @@ use crate::presentation::board_rendering::{
 use crate::presentation::result_screen::ResultScreenPlugin;
 use crate::presentation::shared::economy_view::drain_gold_update_receiver_system as drain_shared_gold_update_receiver_system;
 use crate::state::{
-    apply_objective_identities_message, apply_phase_changed_message, apply_phase_view_message,
-    apply_session_settings_updated_message, apply_snapshot_to_session_settings_view,
-    should_enter_session_from_phase, should_enter_session_from_snapshot, ClientGameSnapshotMessage,
-    ClientObjectiveIdentities, ClientPhaseView, ClientSessionIdentity, ClientState,
-    SessionSettingsView,
+    apply_objective_identities_message, apply_opponent_disconnected_message,
+    apply_opponent_reconnected_message, apply_phase_changed_message, apply_phase_view_message,
+    apply_prism_respawned_message, apply_prism_reward_dropped_message,
+    apply_session_cancelled_message, apply_session_settings_updated_message,
+    apply_snapshot_to_session_settings_view, should_enter_session_from_phase,
+    should_enter_session_from_snapshot, ClientGameSnapshotMessage, ClientObjectiveIdentities,
+    ClientPhaseView, ClientSessionIdentity, ClientState, OpponentConnectionView,
+    PrismLifecycleView, SessionLifecycleView, SessionSettingsView,
 };
 use crate::ui::hand::{
     HandUiCardAcquiredReceived, HandUiDraftOfferingReceived, HandUiPlugin, HandUiSystemSet,
@@ -63,6 +67,9 @@ impl Plugin for PresentationPlugin {
             .init_resource::<SessionSettingsView>()
             .init_resource::<PlayerEconomyView>()
             .init_resource::<ClientObjectiveIdentities>()
+            .init_resource::<OpponentConnectionView>()
+            .init_resource::<PrismLifecycleView>()
+            .init_resource::<SessionLifecycleView>()
             .add_message::<ClientGameSnapshotMessage>();
 
         // ADR-021 registration order is a contract.
@@ -120,6 +127,9 @@ impl Plugin for PresentationPlugin {
                 drain_shared_gold_update_receiver_system,
                 draft_shop_hand_bridge_fanout_system,
                 drain_objective_identities_system,
+                drain_opponent_connection_messages,
+                drain_prism_lifecycle_messages,
+                drain_session_lifecycle_messages,
             )
                 .in_set(PresentationSet::MessageDrain)
                 .before(BoardRenderSet::ReadMessages)
@@ -349,6 +359,85 @@ pub fn card_acquired_fanout_messages(message: S2CCardAcquired) -> CardAcquiredFa
         hand,
         draft_initial,
         shop_purchase,
+    }
+}
+
+pub fn drain_opponent_connection_messages(
+    mut disconnected_receivers: Query<&mut MessageReceiver<S2COpponentDisconnected>>,
+    mut reconnected_receivers: Query<&mut MessageReceiver<S2COpponentReconnected>>,
+    mut view: ResMut<OpponentConnectionView>,
+) {
+    for mut receiver in &mut disconnected_receivers {
+        for message in receiver.receive() {
+            tracing::info!(
+                target: "client::presentation",
+                player_id = ?message.player_id,
+                grace_remaining_ms = message.grace_remaining_ms,
+                msg_type = "S2COpponentDisconnected",
+                "drain_opponent_connection: recv"
+            );
+            apply_opponent_disconnected_message(&message, &mut view);
+        }
+    }
+
+    for mut receiver in &mut reconnected_receivers {
+        for message in receiver.receive() {
+            tracing::info!(
+                target: "client::presentation",
+                player_id = ?message.player_id,
+                msg_type = "S2COpponentReconnected",
+                "drain_opponent_connection: recv"
+            );
+            apply_opponent_reconnected_message(&message, &mut view);
+        }
+    }
+}
+
+pub fn drain_prism_lifecycle_messages(
+    mut respawned_receivers: Query<&mut MessageReceiver<S2CPrismRespawned>>,
+    mut reward_dropped_receivers: Query<&mut MessageReceiver<S2CPrismRewardDropped>>,
+    mut view: ResMut<PrismLifecycleView>,
+) {
+    for mut receiver in &mut respawned_receivers {
+        for message in receiver.receive() {
+            tracing::info!(
+                target: "client::presentation",
+                player_id = ?message.player_id,
+                msg_type = "S2CPrismRespawned",
+                "drain_prism_lifecycle: recv"
+            );
+            apply_prism_respawned_message(&message, &mut view);
+        }
+    }
+
+    for mut receiver in &mut reward_dropped_receivers {
+        for message in receiver.receive() {
+            tracing::info!(
+                target: "client::presentation",
+                player_id = ?message.player_id,
+                lane = message.lane,
+                msg_type = "S2CPrismRewardDropped",
+                "drain_prism_lifecycle: recv"
+            );
+            apply_prism_reward_dropped_message(&message, &mut view);
+        }
+    }
+}
+
+pub fn drain_session_lifecycle_messages(
+    mut receivers: Query<&mut MessageReceiver<S2CSessionCancelled>>,
+    mut view: ResMut<SessionLifecycleView>,
+) {
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            tracing::info!(
+                target: "client::presentation",
+                reason = ?message.reason,
+                msg_type = "S2CSessionCancelled",
+                "drain_session_lifecycle: recv"
+            );
+            apply_session_cancelled_message(&message, &mut view);
+        }
     }
 }
 
