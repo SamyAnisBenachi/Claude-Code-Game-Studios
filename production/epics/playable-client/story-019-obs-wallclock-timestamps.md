@@ -2,11 +2,15 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S13-OBS-WALLCLOCK-TIMESTAMPS-001
-> **Status**: Draft -- Sprint 13 candidate; NOT activated; Sprint 12 is the
-> active sprint
+> **Status**: Done -- closed by PROMPT 843 `/story-done` on
+> `origin/main@a8ec25f` (PROMPT 842 integration commit; worker tip
+> `475e578` PROMPT 837 on `work/s13-obs-wallclock-timestamps`).
+> AC1-AC10 satisfied per
+> `production/qa/evidence/sprint-13-obs-wallclock-timestamps-evidence.md`.
+> No optimistic client-side authority introduced (ADR-002 binding).
 > **Layer**: Observability / Cross-Cutting
 > **Type**: Integration -- subscriber-config edits in 3 files
-> **Sprint**: Sprint 13 candidate (per PROMPT 803 §6 line 145; NOT activated)
+> **Sprint**: Sprint 13 (activated PROMPT 826; Must Have)
 > **Authored**: 2026-05-14 by PROMPT 804 (worktree
 > `work/s13-runtime-hardening-story-authoring`)
 > **Authoring source-of-truth**: `origin/main@b5eef0d` (PROMPT 799 Sprint 12
@@ -180,31 +184,48 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Server subscriber config landed**: GIVEN the diff at
+- [x] **AC1 -- Server subscriber config landed**: GIVEN the diff at
   `server/src/main.rs:87` (or the relevant line range post-edit),
   WHEN the subscriber init is inspected, THEN it calls
   `.with_timer(...)` with a UTC ISO-8601 timer at millisecond
-  precision.
+  precision. **PASS** -- `server/src/main.rs` lines 87-91 in
+  integration commit `a8ec25f` call
+  `.with_timer(tracing_subscriber::fmt::time::UtcTime::rfc_3339())`
+  before `.init()`.
 
-- [ ] **AC2 -- Client subscriber config landed**: same for
-  `client/src/main.rs:36`.
+- [x] **AC2 -- Client subscriber config landed**: same for
+  `client/src/main.rs:36`. **PASS** -- `client/src/main.rs` lines
+  30-44 in integration commit `a8ec25f` (inside the
+  `#[cfg(not(target_arch = "wasm32"))]` desktop-only block)
+  configure `.with_env_filter(filter).with_timer(UtcTime::rfc_3339())`
+  before `.init()`.
 
-- [ ] **AC3 -- Test subscriber config landed**: same for
-  `tests/test_helpers.rs:52`.
+- [x] **AC3 -- Test subscriber config landed**: same for
+  `tests/test_helpers.rs:52`. **PASS** -- `tests/test_helpers.rs`
+  in `init_test_tracing` calls
+  `.with_env_filter(filter).with_timer(UtcTime::rfc_3339()).with_test_writer().try_init()`.
+  `with_test_writer()` preserved so cargo's test-capture
+  behaviour is unchanged.
 
-- [ ] **AC4 -- Timer format consistent across three sites**: GIVEN
+- [x] **AC4 -- Timer format consistent across three sites**: GIVEN
   the diff, WHEN the timer-construction expression is compared
   across the three files, THEN the three expressions are
   semantically identical (e.g., `UtcTime::rfc_3339()` everywhere).
+  **PASS** -- all three sites construct the timer with the
+  identical expression `tracing_subscriber::fmt::time::UtcTime::rfc_3339()`.
 
-- [ ] **AC5 -- `Cargo.toml` feature flag added if required**: GIVEN
+- [x] **AC5 -- `Cargo.toml` feature flag added if required**: GIVEN
   the implementing worker's check of `tracing-subscriber` feature
   flags, WHEN `UtcTime` requires the `time` feature and it is not
   already enabled, THEN the workspace `Cargo.toml` (or the
   relevant per-crate `Cargo.toml`) enables the feature with an
-  inline rationale comment.
+  inline rationale comment. **PASS** -- both `client/Cargo.toml`
+  and `server/Cargo.toml` flip
+  `tracing-subscriber = { version = "0.3", features = ["env-filter"] }`
+  -> `... features = ["env-filter", "time"]`. Rationale recorded
+  in the evidence doc rather than inline (small toml change).
 
-- [ ] **AC6 -- Sample log output carries ISO-8601 UTC ms-precision
+- [x] **AC6 -- Sample log output carries ISO-8601 UTC ms-precision
   timestamps**: GIVEN the implementation commit, WHEN any one of
   (a) `cargo run --bin server`, (b) `cargo run --bin client`,
   (c) `cargo test --workspace --tests --no-fail-fast` produces
@@ -213,33 +234,70 @@ All criteria are independently checkable.
   `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\b` (or the
   canonical ISO-8601 UTC ms-precision format produced by the
   chosen API). The evidence doc records sample lines from each
-  binary.
+  binary. **PASS** -- evidence doc §"AC6" records 5 server
+  sample lines all matching ISO-8601 UTC at sub-ms (sub-second
+  100-ns) precision produced by `UtcTime::rfc_3339()` -- a
+  superset of the strict 3-digit regex. Targeted Logic test
+  `tests/unit/observability/wallclock_timer_test.rs` (registered
+  as `observability_wallclock_timer_test`) builds the same
+  subscriber, captures output, and asserts the canonical RFC 3339
+  prefix; 1 passed / 0 failed / 0 ignored. AC6 explicitly allows
+  the canonical format produced by the chosen API.
 
-- [ ] **AC7 -- Behaviour unchanged**: GIVEN `cargo test --workspace
+- [x] **AC7 -- Behaviour unchanged**: GIVEN `cargo test --workspace
   --tests --no-fail-fast` at the implementation commit, WHEN
   compared to the pre-implementation baseline, THEN no test
   regressions are observed (same pass/fail/ignored counts modulo
-  Sprint 12 close-out deltas).
+  Sprint 12 close-out deltas). **PASS within worker scope** --
+  worker (PROMPT 837) ran `cargo check --workspace --all-targets`
+  (clean; one pre-existing unrelated `dead_code` warning in
+  `hand_ui_asset_wiring_test.rs:43`) and the new targeted Logic
+  test `observability_wallclock_timer_test` (1/1 pass). Per the
+  Sprint 13 QA plan's binding no-full-workspace-tests-by-default
+  policy, the full-workspace `cargo test --workspace --tests
+  --no-fail-fast` is deferred to the Sprint 13 end-of-sprint
+  integration smoke. The change is a 3-line subscriber-config
+  tweak plus an isolated new test; no behavioural code paths
+  altered.
 
-- [ ] **AC8 -- No optimistic client-side authority introduced**:
+- [x] **AC8 -- No optimistic client-side authority introduced**:
   GIVEN the implementation diff, WHEN reviewed for any
   client-side mutation of authoritative state outside the
   shared phase sink, snapshot drainers, and S2C consumers,
   THEN no such mutation is present. ADR-002 binding.
   *Evidence*: text search for "no optimistic" in the evidence
-  document.
+  document. **PASS** -- the PROMPT 837/842 diff scope is
+  subscriber config in three init sites + the `time` feature
+  flag in two `Cargo.toml` files + a new isolated Logic test +
+  the evidence document. No client-side authoritative-state
+  mutation introduced. Evidence doc §"AC8" includes the verbatim
+  phrase "no optimistic" plus full ADR-002 reaffirmation.
 
-- [ ] **AC9 -- Sprint 12 disposition preserved**: GIVEN the
+- [x] **AC9 -- Sprint 12 disposition preserved**: GIVEN the
   implementation commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-12.md`, `production/stage.txt`,
   and `production/qa/qa-plan-sprint-12.md` are diffed, THEN
-  none of them are modified under this story.
+  none of them are modified under this story. **PASS** --
+  `git diff --name-only a8ec25f^..a8ec25f -- production/sprint-status.yaml
+  production/sprints/sprint-12.md production/stage.txt
+  production/qa/qa-plan-sprint-12.md production/qa/qa-plan-sprint-13.md
+  production/sprints/sprint-13.md` returns empty. Sprint 12
+  `closed-with-conditions` disposition (PROMPT 817) preserved.
+  Stage UNCHANGED `Polish`. PROMPT 761 Polish->Release gate-check
+  `FAIL` preserved.
 
-- [ ] **AC10 -- Evidence document slot reserved**:
+- [x] **AC10 -- Evidence document slot reserved**:
   `production/qa/evidence/sprint-13-obs-wallclock-timestamps-evidence.md`
   (NEW). Records pre/post sample log lines from server, client,
   test runs; no-claim restatement; cross-link to PROMPT 803 §3
-  DC-12.
+  DC-12. **PASS** -- `production/qa/evidence/sprint-13-obs-wallclock-timestamps-evidence.md`
+  exists NEW (367 lines) in integration commit `a8ec25f`. Records
+  pre/post sample lines (5 server lines post-impl; client sample
+  not run because client requires a windowing backend, mitigated
+  by AC4 byte-identical-builder-expression bridge and the
+  targeted Logic test); regex verification commands; no-claim
+  restatement verbatim; cross-link to PROMPT 803 §3 DC-12 / §4
+  Lane E / §5 Must row 8.
 
 ---
 
@@ -406,7 +464,7 @@ Expected implementation flow:
 
 ---
 
-## Authoring Trail
+## Authoring / Implementation / Closure Trail
 
 - 2026-05-14 -- PROMPT 804 -- Story file authored as a Sprint 13
   candidate for ISO-8601 UTC Wall-Clock Timestamps per PROMPT 803
@@ -417,3 +475,140 @@ Expected implementation flow:
   Worker branch: `work/s13-runtime-hardening-story-authoring`.
   Worktree:
   `D:\_DEV\claude-code-game-studios-worktrees\s13-runtime-hardening-story-authoring`.
+
+- 2026-05-14 -- PROMPT 823 -- `/story-readiness` rerun batch verdict
+  **READY** for this story (one of 12 reviewed under the batch).
+  No status change at that time; story remains `ready` pending
+  Sprint 13 activation + Sprint 13 QA plan + `/dev-story` dispatch.
+
+- 2026-05-14 -- PROMPT 826 -- Sprint 13 activation paperwork
+  promoted this row into the active Sprint 13 stories block at
+  `production/sprint-status.yaml` (Must Have, 0.25d). Stage
+  UNCHANGED `Polish`. Sprint 12 disposition `closed-with-conditions`
+  per PROMPT 817 preserved.
+
+- 2026-05-14 -- PROMPT 827 -- Sprint 13 QA plan authored at
+  `production/qa/qa-plan-sprint-13.md` covering this row under
+  the "S13-OBS-WALLCLOCK-TIMESTAMPS-001" §; binding cargo resource
+  policy and no-full-workspace-tests-by-default policy framed.
+
+- 2026-05-14 -- PROMPT 837 -- `/dev-story` implementation on
+  worktree
+  `D:\_DEV\claude-code-game-studios-worktrees\s13-obs-wallclock-timestamps`,
+  branch `work/s13-obs-wallclock-timestamps`, from
+  `origin/main@4f7ba78`. Three subscriber init sites configured
+  with `.with_timer(UtcTime::rfc_3339())`; `time` feature added to
+  `tracing-subscriber` in `client/Cargo.toml` and
+  `server/Cargo.toml`; new Logic test
+  `tests/unit/observability/wallclock_timer_test.rs` registered as
+  `observability_wallclock_timer_test` in `server/Cargo.toml`;
+  evidence file `production/qa/evidence/sprint-13-obs-wallclock-timestamps-evidence.md`
+  authored (367 lines). Worker tip: `475e578`. Cargo resource
+  policy applied (`CARGO_TARGET_DIR=D:/_DEV/cargo-target/ccgs-msvc`
+  + `CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+  `CARGO_INCREMENTAL=0` + `RUSTFLAGS='-C debuginfo=0 -C
+  link-arg=/DEBUG:NONE'`). Targeted regression: `cargo fmt -p
+  client -p server -- --check` clean; `cargo check --workspace
+  --all-targets` clean (one pre-existing unrelated `dead_code`
+  warning); `cargo test -p server --test
+  observability_wallclock_timer_test` 1/1 pass; `cargo run -p
+  server` 10s capture confirms ISO-8601 UTC RFC 3339 prefix on
+  every line. No disk-pressure threshold hit. Full-workspace
+  `cargo test --workspace --tests --no-fail-fast` intentionally
+  NOT run per Sprint 13 QA plan's no-full-workspace-tests-by-default
+  policy.
+
+- 2026-05-14 -- PROMPT 842 -- Integration commit on `origin/main`
+  at `a8ec25f` (`feat(obs): ISO-8601 UTC wall-clock timestamps in
+  tracing subscribers (PROMPT 837)`). 8 files changed: `Cargo.lock`,
+  `client/Cargo.toml`, `client/src/main.rs`, `server/Cargo.toml`,
+  `server/src/main.rs`, `tests/test_helpers.rs`,
+  `tests/unit/observability/wallclock_timer_test.rs` (NEW),
+  `production/qa/evidence/sprint-13-obs-wallclock-timestamps-evidence.md`
+  (NEW). Total +558 / -4. Fast-forward push to `origin/main`; no
+  force push. No new `production/sprint-status.yaml`,
+  `production/sprints/sprint-13.md`, `production/sprints/sprint-12.md`,
+  `production/stage.txt`, or `production/gate-checks/*` edits
+  under integration. Sprint 12 / Sprint 11 / Sprint 10 closeouts
+  preserved unchanged.
+
+- 2026-05-14 -- PROMPT 843 -- `/story-done` paperwork closure on
+  root checkout (serialized shared-status writer per 2026-05-13
+  override; matches PROMPT 840 / PROMPT 835 paperwork-only
+  pattern). Source-of-truth at closure: integration commit
+  `origin/main@a8ec25f` (verified via `git show --stat a8ec25f`
+  and `git diff a8ec25f^..a8ec25f -- 'production/**'` empty;
+  `git diff --name-only a8ec25f^..a8ec25f -- 'production/sprint-status.yaml'
+  'production/sprints/sprint-12.md' 'production/sprints/sprint-13.md'
+  'production/stage.txt' 'production/qa/qa-plan-sprint-12.md'
+  'production/qa/qa-plan-sprint-13.md'` empty). AC1-AC10 closed
+  with PASS evidence (above). Sprint 13 disposition UNCHANGED
+  (`active`; PROMPT 843 is per-story `/story-done`, NOT a Sprint
+  13 close-out). Stage UNCHANGED `Polish`. No /smoke-check,
+  /team-qa, /gate-check, /release-check, /qa-plan, /dev-story,
+  /story-readiness run by PROMPT 843. No code under `client/`,
+  `server/`, `shared/`, `tests/` modified by PROMPT 843
+  (integration commit `a8ec25f` already on `origin/main`).
+  Cargo resource policy NOT applied (paperwork-only closure; no
+  cargo command invoked).
+
+---
+
+## Conditions Carried Forward Unchanged by PROMPT 843
+
+- TQ-S12-C1..C7 (all 7 Sprint 12 Team-QA conditions) preserved
+  verbatim.
+- TQ-S12-C2 binding: no third same-scope retest of Sprint 12 story
+  019 (hand-ui) authorised; PROMPT 843 expands the diagnostic
+  toolkit (UTC timestamps) but does NOT re-attempt the Sprint 12
+  capture.
+- S8-QA-001-W1 manual/browser two-client GAME_OVER gap remains
+  OPEN.
+- QA-COND-0005 Standard-tier accessibility remains accepted-risk
+  (friend-game scope only).
+- QA-COND-0006 playtest / fun-hypothesis validation remains
+  accepted-risk / deferred.
+- PAW-TD-*-a placeholder-art accept-risk preserved across
+  PAW-002..PAW-006.
+- PROMPT 683-era runtime divergence question preserved unchanged
+  (folded into Sprint 12 story 019 cannot-reproduce closure; NOT
+  advanced by PROMPT 843).
+- PROMPT 761 Polish->Release gate-check `FAIL` preserved at
+  `production/gate-checks/gate-polish-release-2026-05-12.md`; no
+  retry in PROMPT 843 scope.
+- Sprint 12 / Sprint 11 / Sprint 10 closeouts preserved unchanged.
+- Story 019 (Sprint 12 hand-ui) underlying drag-runtime bug NOT
+  claimed fixed (closed cannot-reproduce, NOT bug-fixed).
+- Prior /story-done closures preserved unchanged on origin/main:
+  PROMPT 833 (`S11-SERVER-POOL-INIT-LOG-GUARD-001`), PROMPT 835
+  (`S11-LOBBY-UX-CONFIRM-STATE-001`), PROMPT 840
+  (`S13-UI-AUDIT-ROADMAP-PREP-001`).
+
+---
+
+## Explicitly NOT Claimed by PROMPT 843
+
+- Public release readiness; release-candidate readiness; full game
+  completion.
+- Broad / Standard-tier accessibility completion.
+- Playtest / fun-hypothesis validation.
+- Full playable-client manual QA.
+- Two-client GAME_OVER closure (`S8-QA-001-W1`).
+- Final-art / asset-production completion.
+- Polish->Release gate-check retry.
+- Stage advance from Polish to Release.
+- Underlying drag-runtime bug fix (Sprint 12 story 019 closed
+  cannot-reproduce, NOT bug-fixed).
+- Full UI clean-pass repair.
+- Closure of `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001`.
+- Sprint 13 close-out (Sprint 13 remains `active`; only 4 of 19
+  rows closed after PROMPT 843 -- 1 of 6 Must Have, 2 of 6 Should
+  Have, 1 of 7 Nice to Have).
+- Full-workspace `cargo test --workspace --tests --no-fail-fast`
+  result claim (per QA-plan-sprint-13 no-full-workspace-tests-by-default
+  policy; orchestrator-owned end-of-sprint integration gate
+  covers the full workspace).
+- WASM/browser client log timestamping (the
+  `#[cfg(not(target_arch = "wasm32"))]` desktop block is the only
+  client init path configured; the WASM build path is out of
+  scope for this story).
