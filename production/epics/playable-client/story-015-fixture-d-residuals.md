@@ -2,8 +2,11 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S11-TD-FIXTURE-D-RESIDUALS-001
-> **Status**: Draft -- Sprint 12 draft Must Have (Cluster B1 + B5 umbrella);
-> NOT activated
+> **Status**: Done -- closed by PROMPT 814 (`/story-done` paperwork) on
+> `origin/main@a3c624e`. Umbrella disposition retained; B1.a + B5.a
+> decisions recorded by PROMPT 812; integration commits on `main`:
+> `0bfdd76` (decision-record) and `a3c624e` (un-`#[ignore]` of both
+> tests). Decision-before-code discipline satisfied.
 > **Layer**: Tech Debt / Test Fixtures + Scaffold Decision (umbrella OR split)
 > **Type**: Decision-first (umbrella-vs-split producer decision) + fixture
 > cleanup + scaffold decision
@@ -759,3 +762,36 @@ prompt, not for the worker:
   separate prompt (`/sprint-plan sprint-12`). No code changes, no
   smoke / gate / QA / `/dev-story` / `/story-done` / `/story-readiness` /
   `/qa-plan` run. Source-of-truth at authoring: `origin/main@f72cc60`.
+
+- 2026-05-14 -- PROMPT 812 -- `/dev-story` worker landed B1 + B5
+  residuals on worker branch `work/s11-fixture-d-residuals`. Umbrella
+  disposition retained. B1.a sub-disposition (fixture expansion to
+  include `HandUiPlugin` pointer-to-drag bridge) and B5.a sub-disposition
+  (update formula 57 -> 66) recorded in this story file before any
+  code change. Tests
+  `br_8e_board_ghost_pointer_messages_leave_ghost_owned_by_hand_ui`
+  (`tests/integration/board_rendering/ghost_preview_bridge_test.rs:147`)
+  and `shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes`
+  (`tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs:25`)
+  un-`#[ignore]`d and passing. Evidence at
+  `production/qa/evidence/sprint-12-fixture-d-residuals-evidence.md`
+  (NEW). Decision-record commit `0bfdd76` precedes code-change commit
+  `a3c624e`. Zero production-source diff (`client/src/`, `server/src/`,
+  `shared/src/` all empty).
+
+- 2026-05-14 -- PROMPT 813 -- Integration: rebase no-op (worker built
+  directly on then-current `origin/main@a8ef42d`); fast-forward push
+  to `origin/main@a3c624e`. Workspace test suite at HEAD: **1135 pass /
+  0 fail / 0 ignored** across 190 binaries. All 5 Cluster B retained
+  D-5 `#[ignore]` tests now retired (Sprint 11 close-out baseline 5
+  -> 0).
+
+- 2026-05-14 -- PROMPT 814 -- `/story-done` paperwork: this Status
+  field flipped Draft -> Done; AC checkboxes resolved against
+  `origin/main@a3c624e` evidence; `production/sprint-status.yaml`
+  Sprint 12 Must Have row `S11-TD-FIXTURE-D-RESIDUALS-001` flipped
+  `status: ready -> done` with `completed: 2026-05-14`. Sprint 12 is
+  NOT closed-out by PROMPT 814. No `/smoke-check`, `/team-qa`,
+  `/gate-check`, `/release-check`, no Sprint 12 close-out, no stage
+  advance, no S8-QA-001-W1 closure, no release-readiness claim. Carry
+  conditions and non-claims preserved verbatim.

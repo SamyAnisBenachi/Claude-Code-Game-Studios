@@ -2,7 +2,15 @@
 
 > **Epic**: Hand UI
 > **Sprint**: Sprint 11 (active; Polish-stage; activated by PROMPT 773; QA plan landed by PROMPT 774)
-> **Status**: Draft (`/story-readiness` pending; activation into the Sprint 11 active scope is a separate prompt)
+> **Status**: Done -- closed by PROMPT 814 (`/story-done` paperwork) on
+> `origin/main@a3c624e` with terminal disposition
+> **`closed-with-conditions / evidence-captured-cannot-reproduce` after
+> second time-box exhaustion** (PROMPT 807 + PROMPT 810). No production
+> repair landed inside this story (story is diagnostic-only by design).
+> The underlying drag-runtime bug is **NOT claimed fixed**; the
+> regression is escalated to the PROMPT 804 Sprint 13 candidate
+> runtime-hardening stories (mapping appended to evidence by PROMPT 807
+> commit `a8ef42d`).
 > **Layer**: Presentation
 > **Type**: Integration — runtime evidence + diagnostic-only (NOT a code-change story; no repair commit may land inside this story under any disposition)
 > **Authored**: 2026-05-13 (PROMPT 778)
@@ -440,3 +448,49 @@ for the worker:
   into the Sprint 11 active scope — activation is a separate prompt
   (`/sprint-plan sprint-11 --add story-019`). No code changes, no smoke /
   gate / QA / `/dev-story` / `/story-done` run.
+
+- 2026-05-14 — PROMPT 807 — `/dev-story` worker authored tighter-capture
+  drag-runtime retest evidence on worker branch
+  `work/s11-drag-runtime-retest-tighter-capture`. Tightened capture bar
+  (synchronised wall-clock + frame-level video + `lightyear=debug` +
+  `server::game=debug`) attempted under a second 1.0-day operator
+  time-box; CLI-dispatch second-time-box result: **still unable to
+  reproduce** the Sprint 11 drag-runtime regression under the tighter
+  bar. Evidence captured at
+  `production/qa/evidence/sprint-11-drag-runtime-evidence-tighter.md`
+  (NEW) and capture artefact directory
+  `production/qa/evidence/captures/sprint-11-drag-runtime/2026-05-14-cli-dispatch-second-timebox/README.md`
+  (NEW). Escalation mapping appended to evidence file in a follow-on
+  worker commit, linking the diagnostic to the PROMPT 804 Sprint 13
+  candidate runtime-hardening stories. No production code touched
+  (diagnostic-only by AC design). ADR-002 + ADR-009 preserved.
+
+- 2026-05-14 — PROMPT 810 — Integration: cherry-pick of the two
+  canonical PROMPT 807 commits onto `main` produced `c2a08a6`
+  (`qa(s11/s12): author tighter-capture drag-runtime retest evidence (PROMPT 807)`)
+  and `a8ef42d`
+  (`qa(s11/s12): map drag-runtime escalation to PROMPT 804 Sprint 13 candidates (PROMPT 807)`).
+  Fast-forward push `383cacb..a8ef42d`. Final disposition recorded:
+  **cannot-reproduce — second time-box exhaustion**. Workspace test
+  suite at integration HEAD: 394 pass / 0 fail / 2 ignored across all
+  client test binaries.
+
+- 2026-05-14 — PROMPT 814 — `/story-done` paperwork: this Status field
+  flipped Draft -> Done with terminal disposition
+  `closed-with-conditions / evidence-captured-cannot-reproduce` after
+  second time-box exhaustion (producer accepts the second-time-box
+  exhaustion as the terminal disposition for this diagnostic-only
+  story; the underlying runtime bug is **NOT claimed fixed** and is
+  escalated to the PROMPT 804 Sprint 13 candidate runtime-hardening
+  stories per the PROMPT 807 mapping). `production/sprint-status.yaml`
+  Sprint 12 Must Have row `S11-DRAG-RUNTIME-RETEST-TIGHTER-CAPTURE-001`
+  flipped `status: ready -> done` with
+  `completed: 2026-05-14 (closed-with-conditions / cannot-reproduce
+  after second time-box exhaustion)`. Sprint 12 is NOT closed-out by
+  PROMPT 814. No `/smoke-check`, `/team-qa`, `/gate-check`,
+  `/release-check`, no Sprint 12 close-out, no stage advance, no
+  S8-QA-001-W1 closure, no release-readiness claim. PROMPT 683-era
+  runtime divergence question, S8-QA-001-W1 OPEN, QA-COND-0005
+  accepted-risk, QA-COND-0006 accepted-risk / deferred, PAW-TD-*-a
+  placeholder-art accept-risk, PROMPT 761 Polish→Release FAIL — all
+  preserved unchanged.

@@ -2,7 +2,10 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S11-TD-FIXTURE-HUD-SNAPSHOT-PHASE-BRIDGE-001
-> **Status**: Draft -- Sprint 12 draft Must Have (Cluster B2); NOT activated
+> **Status**: Done -- closed by PROMPT 814 (`/story-done` paperwork) on
+> `origin/main@a3c624e`; integration commit `c1eef10` (PROMPT 806 worker;
+> integrated to `main` per PROMPT 809). Path B (relocate assertion to
+> dedicated HUD test) chosen and recorded under "Design Decision" below.
 > **Layer**: Tech Debt / Test Fixtures (potential design decision -- relocate vs expand)
 > **Type**: Integration (test-only by default; production-code path gated on design decision)
 > **Manifest Version**: 2026-05-05
@@ -306,14 +309,14 @@ is created.
 (Source: `production/sprints/sprint-12.md:124` Sprint 12 draft Must Have
 row. ACs below are draft and become binding at Sprint 12 activation.)
 
-- [ ] **AC1 -- Design decision recorded in this story file**: GIVEN
+- [x] **AC1 -- Design decision recorded in this story file**: GIVEN
       this story file, WHEN the "Design Decision" section is read at
       the implementation commit, THEN exactly one of {Path A, Path B}
       is checked, the unchecked path is explicitly marked NOT chosen,
       and a written rationale is present under the chosen path.
       *Evidence*: this story file's "Design Decision" section.
 
-- [ ] **AC2 -- Test un-`#[ignore]`d and passes under chosen path**:
+- [x] **AC2 -- Test un-`#[ignore]`d and passes under chosen path**:
       GIVEN the chosen path, WHEN
       `cargo test -p client --test snapshot_spawn` (or the equivalent
       `cargo test` invocation that exercises whichever file the
@@ -325,7 +328,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       *Evidence*: pre/post pass count captured in the evidence
       document.
 
-- [ ] **AC3 -- Workspace ignored count drops by 1**: GIVEN Sprint 11
+- [x] **AC3 -- Workspace ignored count drops by 1**: GIVEN Sprint 11
       close-out baseline of 5 retained Cluster B `#[ignore]` tests on
       `origin/main`, WHEN
       `cargo test --workspace --tests --no-fail-fast` is run at the
@@ -333,7 +336,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       1 (relative to the baseline) and no new undocumented `#[ignore]`
       marker is introduced.
 
-- [ ] **AC4 -- Original PROMPT 750 D-5 owner comment removed only
+- [x] **AC4 -- Original PROMPT 750 D-5 owner comment removed only
       after the test passes**: GIVEN the implementation commit, WHEN
       `tests/integration/board_rendering/snapshot_spawn_test.rs` and
       any new HUD-side test file are read, THEN no PROMPT 750 D-5
@@ -342,7 +345,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       PROMPT 750 D-5 owner comment (this is a new test, not a
       `#[ignore]`d test).
 
-- [ ] **AC5 -- No production code modified (default path)**: GIVEN
+- [x] **AC5 -- No production code modified (default path)**: GIVEN
       the diff of the implementation commit set, WHEN the diff is
       filtered to `server/src/`, `client/src/`, and `shared/src/`,
       THEN zero production-code changes are present **unless** the
@@ -354,13 +357,13 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       *Evidence*: `git show` of every commit in this story's trail
       filtered to non-test paths.
 
-- [ ] **AC6 -- No optimistic client-side authority introduced**: GIVEN
+- [x] **AC6 -- No optimistic client-side authority introduced**: GIVEN
       the implementation commit, WHEN the diff is reviewed for any
       client-side mutation of phase state outside the shared phase
       sink, THEN no such mutation is present. ADR-002 and ADR-009
       remain binding.
 
-- [ ] **AC7 -- Sprint 12 disposition preserved**: GIVEN the
+- [x] **AC7 -- Sprint 12 disposition preserved**: GIVEN the
       implementation commit, WHEN `production/sprint-status.yaml`,
       `production/sprints/sprint-12.md`, and `production/stage.txt`
       are diffed, THEN none of them are modified under this story.
@@ -369,7 +372,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       `Polish`. Sprint 11 disposition (`closed-with-conditions`) is
       unchanged.
 
-- [ ] **AC8 -- Evidence document slot reserved**: GIVEN this story
+- [x] **AC8 -- Evidence document slot reserved**: GIVEN this story
       file, WHEN the evidence-doc path is checked, THEN a slot is
       reserved at
       `production/qa/evidence/sprint-12-fixture-hud-snapshot-phase-bridge-evidence.md`
@@ -614,3 +617,34 @@ prompt, not for the worker:
   (`/sprint-plan sprint-12`). No code changes, no smoke / gate / QA /
   `/dev-story` / `/story-done` / `/story-readiness` / `/qa-plan` run.
   Source-of-truth at authoring: `origin/main@f72cc60`.
+
+- 2026-05-14 -- PROMPT 806 -- `/dev-story` worker landed Path B on
+  worktree `work/s11-fixture-hud-snapshot-phase-bridge`: relocated the
+  `snapshot.phase -> CurrentClientPhase` assertion into the new
+  dedicated HUD-side test
+  `tests/integration/hud/snapshot_phase_bridge_test.rs` and un-`#[ignore]`d
+  the residual board-rendering test in
+  `tests/integration/board_rendering/snapshot_spawn_test.rs`. Original
+  PROMPT 750 D-5 owner comment removed. Evidence captured at
+  `production/qa/evidence/sprint-12-fixture-hud-snapshot-phase-bridge-evidence.md`.
+  No production code under `client/src/`, `server/src/`, `shared/src/`
+  touched (test-only diff). ADR-002, ADR-009, ADR-021 preserved.
+
+- 2026-05-14 -- PROMPT 809 -- Integration verification:
+  PROMPT 806 commit was already on `origin/main` as `c1eef10`
+  (`dev(s12-b2): Path B relocate snapshot.phase HUD bridge assertion (PROMPT 806)`).
+  Workspace test suite at HEAD reported **1133 pass / 0 fail / 2 ignored**.
+  No additional push required.
+
+- 2026-05-14 -- PROMPT 814 -- `/story-done` paperwork: this Status
+  field flipped Draft -> Done; AC checkboxes resolved against
+  `origin/main@a3c624e` evidence; `production/sprint-status.yaml`
+  Sprint 12 Must Have row `S11-TD-FIXTURE-HUD-SNAPSHOT-PHASE-BRIDGE-001`
+  flipped `status: ready -> done` with `completed: 2026-05-14`. Sprint 12
+  is NOT closed-out by PROMPT 814 (4 of 5 Must Have rows remain pending
+  ahead of this batch; this batch only closes the 5 Must Have rows
+  whose worker + integration evidence is on `origin/main`). No
+  `/smoke-check`, `/team-qa`, `/gate-check`, `/release-check`, no
+  Sprint 12 close-out, no stage advance, no S8-QA-001-W1 closure, no
+  release-readiness claim. Carry conditions and non-claims preserved
+  verbatim from this story file's "Status / No-Claim Banner".

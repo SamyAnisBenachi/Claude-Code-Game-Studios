@@ -2,7 +2,11 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001
-> **Status**: Draft -- Sprint 12 draft Must Have (Cluster B3); NOT activated
+> **Status**: Done -- closed by PROMPT 814 (`/story-done` paperwork) on
+> `origin/main@a3c624e`; integration commit `d8d0196` (PROMPT 801 worker
+> `7c07329` cherry-picked onto `main` by PROMPT 805 integration). Lobby
+> input fixture rewritten with `S2CJoinAck` + `session_id` simulation;
+> `ConfirmClass` C2S intent now traverses the canonical Lightyear flow.
 > **Layer**: Friend-Game Lobby Input -- Production Repair
 > **Type**: Integration (production code change in lobby input system + test
 > un-`#[ignore]`)
@@ -249,21 +253,21 @@ This is **NOT** a:
 (Source: `production/sprints/sprint-12.md:125` Sprint 12 draft Must Have
 row. ACs below are draft and become binding at Sprint 12 activation.)
 
-- [ ] **AC1 -- Investigation note recorded**: GIVEN the implementation
+- [x] **AC1 -- Investigation note recorded**: GIVEN the implementation
       commit, WHEN the evidence document is read, THEN the lobby
       input chain post-D-1 is described: which system consumes
       `SelectClass`, why `ConfirmClass` is not emitted today, what
       the intended emission point is, and (if applicable) the UX spec
       shape that the fix conforms to.
 
-- [ ] **AC2 -- Production fix lands in lobby input system**: GIVEN
+- [x] **AC2 -- Production fix lands in lobby input system**: GIVEN
       the implementation commit, WHEN the production diff is filtered
       to `client/src/` (lobby input module), THEN the production
       change emits the `ConfirmClass` C2S intent through the
       canonical Lightyear path. Diff is scoped to the lobby input
       module and its directly coupled types; no broader rework.
 
-- [ ] **AC3 -- Test un-`#[ignore]`d and passes**: GIVEN the
+- [x] **AC3 -- Test un-`#[ignore]`d and passes**: GIVEN the
       implementation commit, WHEN
       `cargo test -p client --test native_operator_controls` (or the
       equivalent `cargo test` invocation) is run, THEN
@@ -271,7 +275,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       passes without `#[ignore]` tagging. Pre/post pass count
       recorded in the evidence document.
 
-- [ ] **AC4 -- Integration test asserts the two-intent chain
+- [x] **AC4 -- Integration test asserts the two-intent chain
       end-to-end**: GIVEN the implementation commit, WHEN the test
       assertion set is reviewed, THEN the test verifies that both
       `C2SSelectClass` AND `C2SConfirmClass` (or equivalent canonical
@@ -280,7 +284,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       client-side class-lock state change before
       `S2CClassConfirmed` is observed.
 
-- [ ] **AC5 -- No client-side optimistic class-lock authority
+- [x] **AC5 -- No client-side optimistic class-lock authority
       introduced**: GIVEN the implementation commit, WHEN the
       production diff is reviewed, THEN no client-side state mutation
       writes the class-lock state before `S2CClassConfirmed` (or
@@ -289,7 +293,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       and absence of client-side class-lock mutation outside the
       `S2CClassConfirmed` consumer.
 
-- [ ] **AC6 -- Workspace ignored count drops by 1**: GIVEN Sprint 11
+- [x] **AC6 -- Workspace ignored count drops by 1**: GIVEN Sprint 11
       close-out baseline of 5 retained Cluster B `#[ignore]` tests on
       `origin/main`, WHEN
       `cargo test --workspace --tests --no-fail-fast` is run at the
@@ -297,13 +301,13 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       by 1 (relative to the baseline) and no new undocumented
       `#[ignore]` marker is introduced.
 
-- [ ] **AC7 -- Original PROMPT 750 D-5 owner comment removed only
+- [x] **AC7 -- Original PROMPT 750 D-5 owner comment removed only
       after the test passes**: GIVEN the implementation commit, WHEN
       `tests/integration/playable_client/native_operator_controls_test.rs`
       is read, THEN no PROMPT 750 D-5 owner comment for this test
       remains.
 
-- [ ] **AC8 -- Sprint 12 disposition preserved**: GIVEN the
+- [x] **AC8 -- Sprint 12 disposition preserved**: GIVEN the
       implementation commit, WHEN `production/sprint-status.yaml`,
       `production/sprints/sprint-12.md`, and `production/stage.txt`
       are diffed, THEN none of them are modified under this story.
@@ -311,7 +315,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       `Polish`. Sprint 11 disposition (`closed-with-conditions`) is
       unchanged.
 
-- [ ] **AC9 -- Evidence document slot reserved**: GIVEN this story
+- [x] **AC9 -- Evidence document slot reserved**: GIVEN this story
       file, WHEN the evidence-doc path is checked, THEN a slot is
       reserved at
       `production/qa/evidence/sprint-12-lobby-confirm-class-intent-chain-evidence.md`
@@ -572,3 +576,35 @@ prompt, not for the worker:
   (`/sprint-plan sprint-12`). No code changes, no smoke / gate / QA /
   `/dev-story` / `/story-done` / `/story-readiness` / `/qa-plan` run.
   Source-of-truth at authoring: `origin/main@f72cc60`.
+
+- 2026-05-14 -- PROMPT 801 -- `/dev-story` worker landed the lobby
+  ConfirmClass intent-chain repair on worker branch
+  `work/s11-lobby-confirm-class-intent-chain` at tip
+  `7c07329`. The fallback path was taken: the integration test
+  `test_lobby_buttons_drive_create_join_slot_class_and_confirm_commands`
+  was un-`#[ignore]`d and rewritten to simulate the canonical
+  `S2CJoinAck` + `session_id` lobby session gate before the
+  Select/ConfirmClass button sequence, asserting that BOTH
+  `C2SSelectClass` AND `C2SConfirmClass` traverse the reliable
+  Lightyear channel. No client-side optimistic class-lock authority
+  added (ADR-002 + ADR-008 + ADR-012 binding). PROMPT 750 D-5 owner
+  comment removed. Evidence captured at
+  `production/qa/evidence/sprint-12-lobby-confirm-class-intent-chain-evidence.md`.
+
+- 2026-05-14 -- PROMPT 805 -- Integration: PROMPT 801 worker tip
+  `7c07329` cherry-picked clean onto `main` producing integration
+  commit `d8d0196`
+  (`dev(s12): un-ignore lobby ConfirmClass intent-chain test (PROMPT 801)`).
+  Bundled atomically with the PROMPT 800 Cluster B4 fast-forward by the
+  same integration push (Sprint 12 B3 + B4 batch). Workspace test
+  suite at integration HEAD: 1131 pass / 0 fail / 3 ignored.
+
+- 2026-05-14 -- PROMPT 814 -- `/story-done` paperwork: this Status
+  field flipped Draft -> Done; AC checkboxes resolved against
+  `origin/main@a3c624e` evidence; `production/sprint-status.yaml`
+  Sprint 12 Must Have row `S11-LOBBY-CONFIRM-CLASS-INTENT-CHAIN-001`
+  flipped `status: ready -> done` with `completed: 2026-05-14`. Sprint 12
+  is NOT closed-out by PROMPT 814. No `/smoke-check`, `/team-qa`,
+  `/gate-check`, `/release-check`, no Sprint 12 close-out, no stage
+  advance, no S8-QA-001-W1 closure, no release-readiness claim. Carry
+  conditions and non-claims preserved verbatim.

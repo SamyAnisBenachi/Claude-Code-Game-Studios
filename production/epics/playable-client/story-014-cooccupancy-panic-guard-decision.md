@@ -2,7 +2,12 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001
-> **Status**: In Progress -- Sprint 12 Must Have (Cluster B4); Path B decision recorded by PROMPT 800 (decision-recording commit precedes code-change commit)
+> **Status**: Done -- closed by PROMPT 814 (`/story-done` paperwork) on
+> `origin/main@a3c624e`. Path B (rewrite test to assert non-panic
+> clamp behaviour) chosen by PROMPT 800; integration via fast-forward
+> merge per PROMPT 805 lineage; final integration commit on `main`
+> is `1c3f760` (`docs(s12-b4): author co-occupancy panic-guard evidence (PROMPT 800 Wave 4)`)
+> with decision commit `d5053fe` preceding code-change commit `ae6635d`.
 > **Layer**: Tech Debt / Production Invariant -- Binary Design Decision
 > **Type**: Decision-first (test-only by default; production-code change only
 > under explicit Path A with a written design write-up)
@@ -306,7 +311,7 @@ disposition. Under Path B (chosen), the rationale above is committed
 (Source: `production/sprints/sprint-12.md:126` Sprint 12 draft Must Have
 row. ACs below are draft and become binding at Sprint 12 activation.)
 
-- [ ] **AC1 -- Binary decision recorded in this story file before
+- [x] **AC1 -- Binary decision recorded in this story file before
       code change**: GIVEN this story file, WHEN the "Binary Design
       Decision" section is read at the implementation commit, THEN
       exactly one of {Path A, Path B} is checked, the unchecked path
@@ -317,7 +322,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       trail shows the decision-recording commit before the code-
       change commit.
 
-- [ ] **AC2 -- Production-design write-up under Path A**: GIVEN that
+- [x] **AC2 -- Production-design write-up under Path A**: GIVEN that
       Path A is the chosen path, WHEN the evidence document and/or
       this story file is read, THEN a production-design write-up is
       present that captures: (a) upstream caller invariant; (b) why
@@ -327,7 +332,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       document. The write-up is committed *before* the production
       code change.
 
-- [ ] **AC3 -- Production rationale under Path B**: GIVEN that Path B
+- [x] **AC3 -- Production rationale under Path B**: GIVEN that Path B
       is the chosen path, WHEN the evidence document and/or this
       story file is read, THEN a production rationale is present
       that captures: (a) where the upstream bounds-check now lives;
@@ -335,7 +340,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       silent overflow is no longer a risk. The rationale is at most
       ~one page; it is committed *before* the test rewrite lands.
 
-- [ ] **AC4 -- Test un-`#[ignore]`d and passes under chosen path**:
+- [x] **AC4 -- Test un-`#[ignore]`d and passes under chosen path**:
       GIVEN the chosen path's implementation commit, WHEN
       `cargo test -p client --test status_icons` (or the equivalent
       `cargo test` invocation) is run, THEN whichever test variant
@@ -346,7 +351,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       `#[should_panic]` and no `#[ignore]`) passes locally. Pre/post
       pass count recorded in the evidence document.
 
-- [ ] **AC5 -- Workspace ignored count drops by 1**: GIVEN Sprint 11
+- [x] **AC5 -- Workspace ignored count drops by 1**: GIVEN Sprint 11
       close-out baseline of 5 retained Cluster B `#[ignore]` tests on
       `origin/main`, WHEN
       `cargo test --workspace --tests --no-fail-fast` is run at the
@@ -354,12 +359,12 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       by 1 (relative to the baseline) and no new undocumented
       `#[ignore]` marker is introduced.
 
-- [ ] **AC6 -- Original PROMPT 750 D-5 owner comment removed only
+- [x] **AC6 -- Original PROMPT 750 D-5 owner comment removed only
       after the test passes**: GIVEN the implementation commit, WHEN
       `tests/unit/board_rendering/status_icons_test.rs` is read,
       THEN no PROMPT 750 D-5 owner comment for this test remains.
 
-- [ ] **AC7 -- `#[should_panic]` invariant NOT silently deleted**:
+- [x] **AC7 -- `#[should_panic]` invariant NOT silently deleted**:
       GIVEN the diff of the implementation commit set, WHEN the
       `#[should_panic]` attribute removal is reviewed (Path B only;
       Path A keeps the attribute), THEN the rationale in AC3 is
@@ -369,7 +374,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       `git log --oneline -- tests/unit/board_rendering/status_icons_test.rs`
       shows the rationale commit before the test rewrite commit.
 
-- [ ] **AC8 -- Sprint 12 disposition preserved**: GIVEN the
+- [x] **AC8 -- Sprint 12 disposition preserved**: GIVEN the
       implementation commit, WHEN `production/sprint-status.yaml`,
       `production/sprints/sprint-12.md`, and `production/stage.txt`
       are diffed, THEN none of them are modified under this story.
@@ -377,7 +382,7 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       `Polish`. Sprint 11 disposition (`closed-with-conditions`) is
       unchanged.
 
-- [ ] **AC9 -- Evidence document slot reserved**: GIVEN this story
+- [x] **AC9 -- Evidence document slot reserved**: GIVEN this story
       file, WHEN the evidence-doc path is checked, THEN a slot is
       reserved at
       `production/qa/evidence/sprint-12-cooccupancy-panic-guard-evidence.md`
@@ -638,3 +643,34 @@ prompt, not for the worker:
   modified by this commit. `production/sprint-status.yaml`,
   `production/sprints/sprint-12.md`, `production/stage.txt`, and
   all `production/session-state/*` files are NOT modified.
+
+- 2026-05-14 -- PROMPT 800 Wave 2-4 -- Test rewrite + evidence:
+  `tests/unit/board_rendering/status_icons_test.rs` un-`#[ignore]`d
+  and rewritten as
+  `test_cooccupancy_index_two_clamps_to_second_slot_offset`
+  asserting Path B clamp invariant
+  `co_occupancy_offset(2, 8.0) == co_occupancy_offset(1, 8.0) == 4.0`.
+  `#[should_panic]` removed; original PROMPT 750 D-5 owner comment
+  removed. Evidence at
+  `production/qa/evidence/sprint-12-cooccupancy-panic-guard-evidence.md`
+  (NEW). Worker branch tip `1c3f760`. Decision commit `d5053fe`
+  precedes test-change commit `ae6635d`, satisfying decision-before-code
+  discipline.
+
+- 2026-05-14 -- PROMPT 805 -- Integration: worker branch fast-forward
+  merged onto `main`
+  (`git merge --ff-only origin/work/s11-cooccupancy-panic-guard-decision`
+  -> `Updating b5eef0d..1c3f760 Fast-forward`). Atomic push delivered
+  the PROMPT 800 lineage together with PROMPT 801 / Cluster B3 cherry-pick
+  to `origin/main@d8d0196`. Workspace test suite at integration HEAD:
+  1131 pass / 0 fail / 3 ignored.
+
+- 2026-05-14 -- PROMPT 814 -- `/story-done` paperwork: this Status
+  field flipped In Progress -> Done; AC checkboxes resolved against
+  `origin/main@a3c624e` evidence; `production/sprint-status.yaml`
+  Sprint 12 Must Have row `S11-TD-COOCCUPANCY-PANIC-GUARD-DECISION-001`
+  flipped `status: ready -> done` with `completed: 2026-05-14`. Sprint 12
+  is NOT closed-out by PROMPT 814. No `/smoke-check`, `/team-qa`,
+  `/gate-check`, `/release-check`, no Sprint 12 close-out, no stage
+  advance, no S8-QA-001-W1 closure, no release-readiness claim. Carry
+  conditions and non-claims preserved verbatim.
