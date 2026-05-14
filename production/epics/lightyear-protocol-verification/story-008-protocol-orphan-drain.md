@@ -264,22 +264,39 @@ This is **NOT** a:
 The implementation prompt (or a separate producer prompt) MUST record
 exactly one of the following before any code change is staged.
 
-- [ ] **Umbrella (this story)**: keep all 9 orphan dispositions in
+- [x] **Umbrella (this story)**: keep all 9 orphan dispositions in
       this story; close each cluster (8 S2C + 1 C2S) under
-      `S13-PROTO-ORPHAN-DRAIN-001`. Rationale:
-      _<implementation prompt fills in: e.g., the orphan set is small
-      and shares the same decision shape; batching reduces re-review
-      cost and lets the invariant test flip to PASS in one commit
-      set>_
+      `S13-PROTO-ORPHAN-DRAIN-001`. Rationale (PROMPT 821, 2026-05-14
+      producer decision):
+      The 9-orphan set is small, shares one decision shape
+      (drain-or-delete-with-rationale), and the only orphan with an
+      open ADR dependency (`S2CSangMepriseReveal`) is dispositioned
+      below as Path C (defer to a per-message split story) without
+      blocking the other eight. Batching the remaining 8 dispositions
+      under a single umbrella lets the `S13-PROTO-INVARIANT-001`
+      invariant test (Story 007) flip to PASS in one Sprint 13 wave
+      with at most a single documented allowlist entry for the Sang
+      Méprise reveal. ADR-002 / ADR-008 / ADR-011 / ADR-012 are
+      preserved verbatim by every per-orphan decision below: no
+      optimistic client-side authority is introduced; no channel
+      bindings change; Path A drains for messages already produced on
+      the server (`S2COpponentReconnected`, `S2CSessionCancelled`,
+      `S2CPrismRespawned`, `S2CPrismRewardDropped`) consume those
+      existing sends without altering the reconnect / SessionReady
+      ordering; Path B deletions target three messages with neither
+      live sender nor consumer plan and remove their GDD entries
+      atomically.
 
 - [ ] **Split into per-message stories**: author up to 9 follow-on
       story files (one per orphan); close this umbrella story as the
       producer-decision-record artefact. Each split story inherits
       the no-claim banner, evidence-path conventions, and decision-
       first discipline from this story. Rationale:
-      _<implementation prompt fills in: e.g., `S2CSangMepriseReveal`
-      depends on the pending reveal-mechanism ADR; separating
-      clarifies that block>_
+      _Not chosen — see umbrella rationale above. The single per-
+      message split that IS required is the `S2CSangMepriseReveal`
+      Path C deferral; that one-row split is recorded under
+      "Per-Orphan Decisions" without converting the entire umbrella
+      to a split._
 
 The default producer recommendation (advisory, not binding) is
 **umbrella**, because (a) the 9-orphan set is small; (b) batched review
@@ -301,75 +318,299 @@ disposition.
 #### `S2CHeartbeat` -- `shared/src/protocol.rs:107` (UnreliableChannel)
 
 - [ ] **Path A -- Drain**. Rationale + drain location:
-      _<implementation prompt fills in>_
-- [ ] **Path B -- Delete**. Rationale:
-      _<implementation prompt fills in>_
+      _Not chosen._
+- [x] **Path B -- Delete**. Rationale (PROMPT 821):
+      No producer exists anywhere in the workspace — `S2CHeartbeat`
+      is defined as an empty struct at `shared/src/protocol.rs:817`
+      and registered at `shared/src/protocol.rs:107`, but no
+      `MessageSender<S2CHeartbeat>` call site exists in `server/src/`
+      or anywhere else (verified by grep at PROMPT 821). The GDD's
+      Rule 8 disconnect-detection contract specifies
+      `C2SHeartbeat` (client → server, unreliable channel, `5000ms`
+      cadence) as the sole application-layer liveness probe — see
+      `design/gdd/network-protocol.md` Rule 8 and the C2S table
+      entry for `C2SHeartbeat`. There is no documented server →
+      client heartbeat in any rule, table, or ADR; `S2CHeartbeat`
+      appears to be a vestigial mirror artefact. ADR-008 compliance
+      preserved: the `UnreliableChannel` binding at
+      `shared/src/protocol.rs:107` is removed in the same commit set
+      that removes the type definition at `shared/src/protocol.rs:817`
+      (channel-binding removal for a deleted message is the only
+      kind of channel change allowed under ADR-008). Atomic-deletion
+      pre-condition satisfied: no GDD Table A row exists to remove;
+      no sender call site exists to remove. ADR-002 / ADR-011 /
+      ADR-012 unaffected (S2CHeartbeat has no role in the authority
+      model, reconnect snapshot, or SessionReady ordering).
 
 #### `S2COpponentDisconnected` -- `shared/src/protocol.rs:92`
 
-- [ ] **Path A -- Drain**. Rationale + drain location:
-      _<implementation prompt fills in>_
+- [x] **Path A -- Drain**. Rationale + drain location (PROMPT 821):
+      GDD `design/gdd/network-protocol.md` Rule 8 explicitly mandates
+      this broadcast: *"The protocol broadcasts
+      `S2COpponentDisconnected { grace_remaining_ms }` on
+      `OnDisconnected` so the remaining player sees the countdown."*
+      The "Zero idle time" pillar row in the Player Fantasy table
+      lists `S2COpponentDisconnected` as a load-bearing rule. The
+      type definition (`shared/src/protocol.rs:593`) carries the
+      `grace_remaining_ms: u32` field documented in Rule 8. The
+      server-side sender is currently absent from the workspace
+      (verified by grep at PROMPT 821: no `MessageSender<S2COpponent
+      Disconnected>` call site in `server/src/`); landing the server
+      sender is out-of-scope for this story (separate Sprint 13 or
+      14 row, not yet authored — flag as a follow-on). Path B
+      (delete) would contradict GDD Rule 8 and is forbidden. Drain
+      location: **session UI surface module** outside
+      `client/src/ui/lobby.rs` to avoid the Sprint 12 story 013
+      lobby.rs collision risk flagged in this story's "Risks" table;
+      candidate home is `client/src/presentation/mod.rs` next to the
+      shared phase sink (`apply_phase_changed_message` ~`:163-222`)
+      or a new disconnect-modal module under `client/src/ui/`. The
+      drain is read-only (renders a "Opponent disconnected, grace
+      remaining: N ms" indicator); never mutates authoritative state
+      (ADR-002 binding). Channel binding unchanged
+      (`ReliableChannel` per `shared/src/protocol.rs:92`; ADR-008
+      binding). Single-drainer rule per ADR-008.
 - [ ] **Path B -- Delete**. Rationale:
-      _<implementation prompt fills in>_
+      _Not chosen — would contradict GDD `network-protocol.md` Rule
+      8 ("The protocol broadcasts `S2COpponentDisconnected
+      { grace_remaining_ms }` on `OnDisconnected`...") and remove a
+      load-bearing rule for the "Zero idle time" pillar._
 
 #### `S2COpponentReconnected` -- `shared/src/protocol.rs:93`
 
-- [ ] **Path A -- Drain**. Rationale + drain location:
-      _<implementation prompt fills in>_
+- [x] **Path A -- Drain**. Rationale + drain location (PROMPT 821):
+      Live producer already exists in the reconnect flow at
+      `server/src/core/session/reconnect.rs:54-58, 231, 502-513`
+      (sent through the `send_reconnect_dispatches` /
+      `send_deferred_message` path; `S2COpponentReconnected` is one
+      of the messages broadcast to the *remaining* player when their
+      opponent re-establishes a transport identity). ADR-011 §"Verified
+      Implementation Checklist" item 8 + item 9 reference this
+      send. Pairs symmetrically with `S2COpponentDisconnected`
+      (above) for the "Zero idle time" pillar (`design/gdd/network-
+      protocol.md` Player Fantasy table row 4). Path B (delete) is
+      forbidden because deletion would silently drop the live
+      reconnect broadcast and break ADR-011's reconnect-notification
+      contract. Drain location: **same session UI module** chosen
+      for `S2COpponentDisconnected`, paired in a single drain system
+      that clears the "Opponent disconnected" indicator on receipt.
+      Drain is read-only (UI state only); never mutates authoritative
+      state (ADR-002 binding). Channel binding unchanged
+      (`ReliableChannel` per `shared/src/protocol.rs:93`; ADR-008
+      binding). Single-drainer rule per ADR-008.
 - [ ] **Path B -- Delete**. Rationale:
-      _<implementation prompt fills in>_
+      _Not chosen — live producer exists at
+      `server/src/core/session/reconnect.rs:54-58, 231, 502-513`;
+      deletion would silently drop the reconnect broadcast and
+      contradict ADR-011's reconnect-notification contract._
 
 #### `S2CPoolUpdate` -- `shared/src/protocol.rs:85`
 
 - [ ] **Path A -- Drain**. Rationale + drain location:
-      _<implementation prompt fills in>_
-- [ ] **Path B -- Delete**. Rationale:
-      _<implementation prompt fills in>_
+      _Not chosen._
+- [x] **Path B -- Delete**. Rationale (PROMPT 821):
+      No producer exists in the workspace — type defined at
+      `shared/src/protocol.rs:548`, channel-registered at
+      `shared/src/protocol.rs:85`, but no `MessageSender<S2CPoolUpdate>`
+      call site in `server/src/` (verified by grep at PROMPT 821).
+      No GDD rule, ADR, or table entry requires it: the card pool
+      lives entirely on the server (per `design/gdd/network-protocol.md`
+      Rule 1 + Rule 6 — private per-player state is unicast on
+      demand, public pool state is not broadcast); no client-facing
+      pool view is in scope for the friend-game milestone or any
+      named Sprint 13 / Sprint 14 row. The hypothesised "ladder-
+      telemetry" use case in this story's "Context" table is
+      advisory speculation, not a roadmap commitment. Path A drain
+      to a no-op TODO would create a never-fired receiver and
+      complicate the `S13-PROTO-INVARIANT-001` allowlist; cleaner
+      to delete and re-add the message if a future feature row
+      authors a pool-broadcast story. Atomic-deletion: type
+      definition at `shared/src/protocol.rs:548` removed; channel
+      binding at `shared/src/protocol.rs:85` removed; no sender to
+      remove (none exists); GDD `network-protocol.md` Table A has no
+      row for `S2CPoolUpdate` (verified at PROMPT 821 by reading the
+      GDD's C2S + S2C inventory tables), so the GDD-update
+      sub-condition is satisfied by a no-op. ADR-002 / ADR-008 /
+      ADR-011 / ADR-012 unaffected.
 
 #### `S2CPrismRespawned` -- `shared/src/protocol.rs:82`
 
-- [ ] **Path A -- Drain**. Rationale + drain location:
-      _<implementation prompt fills in>_
+- [x] **Path A -- Drain**. Rationale + drain location (PROMPT 821):
+      Live producer in `server/src/feature/prism/system.rs:513-531`
+      (`stage_prism_respawned`: broadcasts `S2CPrismRespawned
+      { player_id }` on `NetworkTarget::All` over `ReliableChannel`).
+      The prism system is an active feature (ADR-016, prism system
+      architecture) — Path B (delete) would silently drop a live
+      server broadcast and orphan the sender, contradicting ADR-008's
+      no-orphaned-sender requirement (and AC3 of this story). Drain
+      location: `client/src/presentation/mod.rs` next to the shared
+      phase sink at ~`:163-222`, since prism respawn is a
+      presentation-layer concern (rendering the prism entity back
+      into the lane visualisation). Drain is read-only — it updates
+      a presentation-side `PrismVisualState` and never mutates
+      authoritative state (ADR-002 binding). Channel binding
+      unchanged (`ReliableChannel`; ADR-008 binding). Single-drainer
+      rule per ADR-008.
 - [ ] **Path B -- Delete**. Rationale:
-      _<implementation prompt fills in>_
+      _Not chosen — live producer in
+      `server/src/feature/prism/system.rs:513-531`; deletion would
+      orphan the sender (forbidden by ADR-008 / AC3) and break
+      ADR-016 (prism system architecture)._
 
 #### `S2CPrismRewardDropped` -- `shared/src/protocol.rs:81`
 
-- [ ] **Path A -- Drain**. Rationale + drain location:
-      _<implementation prompt fills in>_
+- [x] **Path A -- Drain**. Rationale + drain location (PROMPT 821):
+      Live producer in `server/src/feature/prism/system.rs:467-497`
+      (`stage_reward_dropped`: emits `S2CPrismRewardDropped
+      { player_id, lane }` to `NetworkTarget::All` on
+      `ReliableChannel`) plus the reconnect-deferred sender at
+      `server/src/core/session/reconnect.rs:755-779` that replays
+      pending drops on session restore. Tied to ADR-016 (prism
+      system) and the economy/reward pillar; Path B (delete) would
+      silently break the reward broadcast and the reconnect replay.
+      Drain location: `client/src/presentation/mod.rs` (same
+      presentation-layer home as `S2CPrismRespawned`), paired in a
+      single prism-event drain system to keep the prism presentation
+      surface coherent. Drain is read-only — it updates a
+      presentation-side reward indicator and never mutates
+      authoritative gold / economy state (ADR-002 binding: server
+      remains sole authority on gold via `S2CGoldUpdate` and
+      `S2CGoldBroadcast`, which are already drained elsewhere).
+      Channel binding unchanged (`ReliableChannel`; ADR-008 binding).
+      Single-drainer rule per ADR-008.
 - [ ] **Path B -- Delete**. Rationale:
-      _<implementation prompt fills in>_
+      _Not chosen — live producer set in
+      `server/src/feature/prism/system.rs:467-497` and the reconnect
+      replay at `server/src/core/session/reconnect.rs:755-779`;
+      deletion would orphan both senders (forbidden by ADR-008 /
+      AC3) and break the prism reward broadcast contract._
 
 #### `S2CSangMepriseReveal` -- `shared/src/protocol.rs:105`
 
 - [ ] **Path A -- Drain (with TODO)**. Rationale + drain location:
-      _<implementation prompt fills in; e.g., "drain to a no-op log
-      handler pending the Sang Méprise reveal mechanism ADR">_
+      _Not chosen — see Path C._
 - [ ] **Path B -- Delete**. Rationale:
-      _<implementation prompt fills in>_
-- [ ] **Path C -- Defer to a per-message split story**. Rationale:
-      _<implementation prompt fills in; e.g., "block on the pending
-      reveal-mechanism ADR; track under a separate Sprint 14
-      candidate row">_
+      _Not chosen — live producer exists in
+      `server/src/core/session/reconnect.rs:54, 479-490` and the
+      builder at `server/src/core/session/reconnect.rs:998-1005`
+      (`sang_meprise_reveal_message`). Deletion would silently break
+      the reconnect path and the reveal contract referenced in
+      ADR-011 §"Verified Implementation Checklist" item 14 (Sang
+      Méprise reveal restore is included in snapshot and re-send
+      flow). Forbidden by ADR-011 binding._
+- [x] **Path C -- Defer to a per-message split story**. Rationale
+      (PROMPT 821):
+      `.claude/docs/technical-preferences.md` lists "Sang Méprise
+      reveal mechanism" among the **Pending ADRs needed**, and the
+      client-side reveal-rendering contract depends on that ADR's
+      authority decisions (when does the reveal animation play,
+      what UI surface owns it, what visibility rules guard the
+      reveal payload). Choosing Path A (no-op log drain) now risks
+      having to rip out the drain and redo it once the reveal ADR
+      lands, which costs more than the cost of keeping the
+      `S13-PROTO-INVARIANT-001` allowlist single-row. Path B is
+      forbidden (live producer; see above). Path C therefore: this
+      umbrella story records the deferral; a separate Sprint 14
+      candidate row (proposed identifier
+      `S14-PROTO-SANG-MEPRISE-DRAIN-001`) authors the consumer-side
+      drain *after* the Sang Méprise reveal-mechanism ADR is
+      Accepted. The `S13-PROTO-INVARIANT-001` invariant test (Story
+      007) lands with `S2CSangMepriseReveal` on its allowlist; the
+      allowlist entry's rationale cites this umbrella decision and
+      the pending ADR (single-row exception per the umbrella
+      rationale). PROMPT 821 does NOT author the Sprint 14 candidate
+      story (paperwork-only run; story-file authoring is a separate
+      paperwork prompt).
 
 #### `S2CSessionCancelled` -- `shared/src/protocol.rs:103`
 
-- [ ] **Path A -- Drain**. Rationale + drain location:
-      _<implementation prompt fills in>_
+- [x] **Path A -- Drain**. Rationale + drain location (PROMPT 821):
+      Live producer set: `server/src/core/session/system.rs:2075`
+      builds the message and
+      `server/src/core/session/system.rs:2143` sends it via
+      `MessageSender::send::<S2CSessionCancelled, ReliableChannel>`;
+      `server/src/core/session/state.rs:126, 234, 240, 252` queue
+      it through the session-state machinery; and
+      `server/src/core/session/reconnect.rs:581-593`
+      (`send_deferred_message`) replays it for reconnecting clients.
+      Session-cancellation semantics are owned by
+      `design/gdd/game-session-system.md`; ADR-012 (SessionReady
+      Delivery) requires that lifecycle S2C messages integrate with
+      the SessionReady observer's flush ordering without introducing
+      new ordering — this story's drain reads the message after the
+      observer flush and never re-orders. Path B (delete) is
+      forbidden because deletion would silently drop the live cancel
+      broadcast and the deferred replay. Drain location: **session
+      UI surface module outside `client/src/ui/lobby.rs`** to avoid
+      the Sprint 12 story 013 lobby.rs collision risk flagged in
+      this story's "Risks" table and "Dependency Notes Against
+      Sprint 12 Active Scope" — candidate home is
+      `client/src/presentation/mod.rs` (next to phase sink) or a
+      dedicated session-lifecycle module under `client/src/network/`.
+      Drain renders a graceful-exit indicator and routes the client
+      state machine to a post-session screen; never mutates server-
+      authoritative state (ADR-002 binding). Channel binding
+      unchanged (`ReliableChannel`; ADR-008 binding). Single-drainer
+      rule per ADR-008.
 - [ ] **Path B -- Delete**. Rationale:
-      _<implementation prompt fills in>_
+      _Not chosen — live producer set:
+      `server/src/core/session/system.rs:2075, 2143`,
+      `server/src/core/session/state.rs:126, 234, 240, 252`, and
+      `server/src/core/session/reconnect.rs:581-593` (deferred
+      replay). Deletion would orphan all of them (forbidden by
+      ADR-008 / AC3) and break the session-cancellation broadcast
+      contract owned by `design/gdd/game-session-system.md`._
 
 ### C2S orphan (1 row)
 
 #### `C2SRequestSnapshot` -- `shared/src/protocol.rs:71` + `server/src/main.rs:138-143` TODO
 
-- [ ] **Path A -- Add server handler that reuses the reconnect snapshot
+- [x] **Path A -- Add server handler that reuses the reconnect snapshot
       builder at `server/src/core/session/snapshot.rs`**. Rationale +
-      handler location:
-      _<implementation prompt fills in>_
+      handler location (PROMPT 821):
+      `design/gdd/network-protocol.md` Table A explicitly specifies
+      `C2SRequestSnapshot { }` with payload "Client-initiated desync
+      recovery. Server responds with `S2CGameSnapshot` unicast (same
+      path as reconnect). Rate-limited: server ignores if a snapshot
+      was sent to this client within the last `snapshot_cooldown_ms`
+      (default 5000ms). This is a recovery tool — clients must not
+      poll for snapshots. Resolves OQ-BR-06." The GDD distinguishes
+      this client-initiated recovery path from the server-driven
+      reconnect snapshot (ADR-011 §"Snapshot-first reconnect
+      sequence"): reconnect snapshot fires automatically on
+      transport identity recovery; `C2SRequestSnapshot` fires on
+      client-side stale-data heuristics (e.g., a Sprint 13 candidate
+      Story 021 `S13-CONN-LOST-UX-001` "request fresh state" button
+      surfacing this path). Path B (delete) would contradict GDD
+      Table A and break OQ-BR-06's resolution; rejected. Handler
+      location: `server/src/core/session/` — new system
+      `handle_request_snapshot` that reads
+      `MessageReceiver<C2SRequestSnapshot>`, calls the existing
+      snapshot builder at `server/src/core/session/snapshot.rs` (no
+      new construction path; ADR-011 binding), enforces the
+      `snapshot_cooldown_ms` rate-limit per the GDD, and unicasts
+      `S2CGameSnapshot` via `NetworkTarget::Single(PeerId)` (ADR-011
+      reconnect-snapshot pattern). The TODO at
+      `server/src/main.rs:138-143` is removed in the same commit
+      set. ADR-002 binding (server remains authoritative on snapshot
+      contents; the C2S message is advisory only — server can
+      ignore via rate-limit). ADR-008 channel binding unchanged
+      (`ReliableChannel` per `shared/src/protocol.rs:71`). ADR-011
+      reuse: the existing snapshot builder is the only authoring
+      path; no new snapshot construction lands. ADR-012 unaffected
+      (SessionReady ordering not involved — this handler runs in
+      `IN_GAME` phases only per GDD Table A Valid Phase(s)).
 - [ ] **Path B -- Delete the C2S message from the protocol** (server's
       automatic snapshot at reconnect is the only path). Rationale:
-      _<implementation prompt fills in>_
+      _Not chosen — GDD Table A entry for `C2SRequestSnapshot`
+      explicitly distinguishes it from the reconnect-driven
+      snapshot path (the reconnect path is server-initiated on
+      transport-identity recovery; `C2SRequestSnapshot` is client-
+      initiated on stale-data heuristics, e.g., the Sprint 13
+      candidate Story 021 conn-lost UX). Deletion would close OQ-BR-
+      06 by amputation, not resolution, and would remove the only
+      named recovery path the client has between `OnDisconnected`
+      and full reconnect. Forbidden by GDD Table A binding._
 
 ---
 
