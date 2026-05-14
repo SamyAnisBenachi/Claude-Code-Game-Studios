@@ -37,6 +37,7 @@ gcs-app-supervisor = "gcs_orchestrator.supervisor:main"
 gcs-rollout-backup = "gcs_orchestrator.backup:main"
 gcs-rollout-check = "gcs_orchestrator.jsonl_integrity:main"
 gcs-viewer-tui = "gcs_orchestrator.viewer_tui:main"
+gcs-rollout-grep = "gcs_orchestrator.rollout_grep:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
