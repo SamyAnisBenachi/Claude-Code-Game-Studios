@@ -1,0 +1,61 @@
+
+
+---
+**REPORT BACK ON COMPLETION (mandatory, 3 steps — relay mode)**
+
+When you finish your task (or hit a blocker), do these 3 things in order.
+The orchestrator is hosted as a `codex app-server` (not interactive TUI),
+so worker DONE reports go via a synchronous JSON-RPC relay instead of
+Octogent channel-send.
+
+### Step 1 — Display your full final report normally in chat
+
+Write your COMPLETE final response as your normal assistant message in
+this worker conversation. Status line first, then everything — branch,
+commit, files, tests, blockers, follow-up. Readable Markdown.
+
+### Step 2 — Mirror the same report to disk
+
+Save the EXACT same content to a file in the project root. Name it
+`reports/{{tid}}-<slug>.md` where `<slug>` is your task title from
+`PROMPT N -- Title` converted to a filesystem-safe slug.
+
+```bash
+mkdir -p reports
+cat > reports/{{tid}}-<your-task-slug>.md <<'REPORT_END'
+# {{tid}} — <your task title verbatim>
+
+[Same full content as your chat message — verbatim Markdown.]
+REPORT_END
+```
+
+### Step 3 — Inject your DONE notification via the app-server relay
+
+Pipe the single-line summary via stdin (shell-escape-safe):
+
+```bash
+cat > reports/{{tid}}-<your-task-slug>.summary.txt <<'SUMMARY_END'
+DONE {{tid}}: {{n}}: TICKET-ID: STATUS // full report at reports/{{tid}}-<your-task-slug>.md
+SUMMARY_END
+
+"{{py_exe}}" -m gcs_orchestrator.relay "{{orch_sid}}" - < reports/{{tid}}-<your-task-slug>.summary.txt
+RELAY_EXIT=$?
+echo "relay exit code: $RELAY_EXIT"
+```
+
+**Relay exit codes:**
+- `0` = success (orchestrator received + processed the turn)
+- `2` = duplicate (you already sent this exact content; no-op, safe)
+- `3` = lock timeout (>10 min queue contention; relay log at
+  `%LOCALAPPDATA%\gcs-app-relay\relay.log` shows holder PID)
+- `4` = app-server unreachable (your `reports/` file is durable backup)
+- `5` = turn aborted/interrupted (orchestrator pressed Esc; don't auto-retry)
+- `6` = turn timeout (>10 min; investigate manually)
+
+For ANY non-zero exit, the file on disk is your durable record. Do NOT
+spam retries; the relay has its own internal idempotency.
+
+### What you should NOT do
+- Do not skip Step 1 (chat display) — human-visible trail.
+- Do not skip Step 2 (file on disk) — durable backup.
+- Do not invent a Step 4 watchdog — the relay is synchronous + idempotent.

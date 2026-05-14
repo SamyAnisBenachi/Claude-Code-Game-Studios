@@ -167,3 +167,6 @@ target/
 # Phase 4 cleanup: migration backups stay local-only
 reports/.backups/
 reports/.watchdog/
+
+# Python egg-info from editable installs
+*.egg-info/
