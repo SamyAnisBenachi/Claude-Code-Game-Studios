@@ -17,3 +17,14 @@ serde_json = { workspace = true }
 [[test]]
 name = "spawn_range_live_update_contract"
 path = "../tests/unit/protocol/spawn_range_live_update_contract_test.rs"
+
+# S13-PROTO-INVARIANT-001: workspace invariant test ensuring every
+# register_c2s::<T> / register_s2c::<T> entry in shared/src/protocol.rs has
+# at least one send-site and one drain-site across client/src/ and
+# server/src/. Pre-S13-PROTO-ORPHAN-DRAIN-001 the test is #[ignore]-gated
+# (orphan list captured in
+# production/qa/evidence/sprint-13-proto-invariant-evidence.md); the
+# drain-story commit removes the ignore. See tests/invariants/ header.
+[[test]]
+name = "protocol_completeness_invariant"
+path = "../tests/invariants/protocol_completeness_test.rs"
