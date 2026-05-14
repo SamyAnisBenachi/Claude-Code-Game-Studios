@@ -84,7 +84,14 @@ fn main() {
     // MinimalPlugins does not include LogPlugin, so we initialise tracing here
     // directly. This must come before App::new() so that all plugin startup
     // messages are captured.
-    tracing_subscriber::fmt().init();
+    //
+    // S13-OBS-WALLCLOCK-TIMESTAMPS-001 (PROMPT 837): wall-clock UTC ISO-8601
+    // (RFC 3339) timer so multi-process logs from server + client + tests
+    // align at sub-second precision. Default fmt timer emits relative seconds
+    // since process start, which is useless for cross-process correlation.
+    tracing_subscriber::fmt()
+        .with_timer(tracing_subscriber::fmt::time::UtcTime::rfc_3339())
+        .init();
 
     let mut app = App::new();
 
