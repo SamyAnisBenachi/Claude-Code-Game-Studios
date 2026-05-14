@@ -2,15 +2,26 @@
 
 > **Epic**: Lightyear Protocol & Verification Spike
 > **Story ID**: S13-PROTO-INVARIANT-001
-> **Status**: Draft -- Sprint 13 candidate; NOT activated; Sprint 12 is the
-> active sprint
+> **Status**: Done -- closed by PROMPT 851 `/story-done` on
+> `origin/main@c1b7753` (worker `96c1600` PROMPT 845 on
+> `work/s13-protocol-completeness-invariant` from base
+> `origin/main@fe74fb0` + integration merge commit `25573e6` PROMPT 849
+> fast-forward push to `origin/main`; subsequent PROMPT 850 closure
+> commit `c1b7753` for the sibling Must Have row
+> `S13-OBS-TRACING-TARGETS-001` lands after PROMPT 849 and does not
+> modify story-007 scope). AC1-AC11 all satisfied per worker +
+> integration evidence (see Closure Trail below).
 > **Layer**: Test Infrastructure / Invariant Gate
 > **Type**: Logic (workspace invariant test) -- no production-code change
-> **Sprint**: Sprint 13 candidate (per PROMPT 803 §6 line 141; NOT activated)
+> **Sprint**: Sprint 13 active (activated by PROMPT 826; Must Have row)
 > **Authored**: 2026-05-14 by PROMPT 804 (worktree
 > `work/s13-runtime-hardening-story-authoring`)
 > **Authoring source-of-truth**: `origin/main@b5eef0d` (PROMPT 799 Sprint 12
 > QA-plan commit). Sprint 12 active per PROMPT 798 at `origin/main@796851b`.
+> **Closure source-of-truth**: `origin/main@c1b7753` (PROMPT 850
+> closure commit on top of PROMPT 849 integration merge `25573e6`
+> which fast-forward-pushed PROMPT 845 worker commit `96c1600`
+> together with PROMPT 847 unrelated `9e32fbe`).
 
 ---
 
@@ -232,15 +243,21 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Test file exists at the canonical path**:
+- [x] **AC1 -- Test file exists at the canonical path**:
   `tests/invariants/protocol_completeness_test.rs` exists on the
   implementation branch. The file is registered as a workspace test
   (i.e., the `tests/` runner finds it; if a custom `Cargo.toml`
   `[[test]]` block is needed because `tests/invariants/` is a new
   subdirectory, it lands in the workspace Cargo.toml under
   scope-capped controls -- see AC8).
+  **Closure evidence (PROMPT 851)**: file `tests/invariants/protocol_completeness_test.rs`
+  exists on `origin/main` at `25573e6` (421 lines; landed via PROMPT 845
+  worker commit `96c1600`). Registered as `[[test]] name =
+  "protocol_completeness_invariant"` in `shared/Cargo.toml` (the
+  scope-capped block authored per AC8 with an inline rationale comment
+  cross-referencing `S13-PROTO-ORPHAN-DRAIN-001`). PASS.
 
-- [ ] **AC2 -- Test enumerates every C2S* and S2C* message type from
+- [x] **AC2 -- Test enumerates every C2S* and S2C* message type from
   `shared/src/protocol.rs`**: The test discovers the message-type
   inventory by parsing the source file (via `include_str!` + token-
   scanning) OR by reading a single canonical list constant exposed
@@ -248,31 +265,74 @@ All criteria are independently checkable.
   inventory matches the human-readable list in
   `design/gdd/network-protocol.md` Table A modulo any documented
   deviations.
+  **Closure evidence (PROMPT 851)**: parsing approach (a) chosen --
+  `const PROTOCOL_SOURCE: &str = include_str!("../../shared/src/protocol.rs");`
+  plus a token scan for `register_c2s::<...>` / `register_s2c::<...>`
+  lines (see `discover_registered_messages()` and `find_decl_line()`).
+  Companion enabled test `protocol_manifest_parser_discovers_registered_messages`
+  asserts the floors `c2s >= 16` and `s2c >= 34` (50 types
+  discovered at closure tip). Per evidence doc §"What landed"
+  bullet 1.2: every registered name has a `pub struct` declaration
+  in `shared/src/protocol.rs`. PASS.
 
-- [ ] **AC3 -- For every message type, the test verifies at least one
+- [x] **AC3 -- For every message type, the test verifies at least one
   send-site reference**: For C2S types, the test searches the
   workspace source for `MessageSender<C2SX>` references in production
   code under `client/src/`. For S2C types, the test searches for
   `MessageSender<S2CX>` references under `server/src/`. The search
   excludes `tests/` and `#[cfg(test)]`-gated blocks.
+  **Closure evidence (PROMPT 851)**: `has_send_site()` in the test
+  file looks for either `MessageSender<T>` SystemParam OR the
+  canonical `send::<T,` broadcast-call shape on
+  `ServerMultiMessageSender`. Per-file alias scan via
+  `extract_aliases_in()` follows `T as Alias` imports so that
+  `server/src/network/economy_dispatch.rs`
+  (`S2CGoldBroadcast as ProtocolGoldBroadcast`) and
+  `server/src/feature/auction/system.rs`
+  (`S2CAuctionCard as ProtocolS2CAuctionCard`) are correctly counted.
+  `read_stripped()` invokes `strip_cfg_test_blocks()` to erase
+  brace-balanced `#[cfg(test)] mod ... { ... }` blocks before
+  scanning; files under `tests/` are not scanned (only `client/src/`
+  and `server/src/`). PASS.
 
-- [ ] **AC4 -- For every message type, the test verifies at least one
+- [x] **AC4 -- For every message type, the test verifies at least one
   drain-site reference**: For C2S types, the test searches the
   workspace source for `MessageReceiver<C2SX>` references in
   production code under `server/src/`. For S2C types, the test
   searches for `MessageReceiver<S2CX>` references under
   `client/src/`. The search excludes `tests/` and
   `#[cfg(test)]`-gated blocks.
+  **Closure evidence (PROMPT 851)**: `has_drain_site()` in the test
+  file looks for `MessageReceiver<T>` SystemParam references with
+  the same alias-following machinery used by AC3. C2S types are
+  searched in `server_files`; S2C types in `client_files`. `#[cfg(test)]`
+  blocks erased via `strip_cfg_test_blocks()`; `tests/` not scanned.
+  AC4 unreliable-channel non-exemption is honoured: `C2SHeartbeat`
+  and `S2CHeartbeat` are required to have send + drain sites even
+  though they ride `UnreliableChannel` (see evidence doc §"Test
+  design summary" bullet 6). PASS.
 
-- [ ] **AC5 -- Violation report is actionable**: When the test fails,
+- [x] **AC5 -- Violation report is actionable**: When the test fails,
   the failure message lists every violating message type, the
   `shared/src/protocol.rs:LINE` of its declaration, the side that
   lacks the reference (client or server, send or drain), and a
   one-line remediation hint ("add MessageReceiver<S2CFooBar> drain in
   client/src/..." or "add MessageSender<C2SFoo> in client/src/..." or
   "delete from protocol with rationale").
+  **Closure evidence (PROMPT 851)**: per evidence doc §"Pre-
+  `S13-PROTO-ORPHAN-DRAIN-001` test output (verbatim, PROMPT 845)",
+  every violating entry prints
+  `<MessageType>  (shared/src/protocol.rs:LINE)\n    missing-side:
+  <one-line remediation hint>` and the report's preamble cross-links
+  `reports/PROMPT-803-MULTIPLAYER-RUNTIME-HARDENING-AUDIT-ROADMAP.md`
+  §3 DC-1, §3 DC-15, §4 Lane A. Hint text differentiates "missing
+  client-side send-site", "missing client-side drain", "missing
+  server-side send-site", "missing server-side drain" and each
+  variant proposes either the canonical SystemParam / call-site
+  addition OR `delete the type from the protocol with a rationale`.
+  PASS.
 
-- [ ] **AC6 -- Test surfaces today's PROMPT 803 §4 Lane A orphans**:
+- [x] **AC6 -- Test surfaces today's PROMPT 803 §4 Lane A orphans**:
   Run against `origin/main` at the implementation commit's parent
   (i.e., before `S13-PROTO-ORPHAN-DRAIN-001` lands), the test FAILS
   with at minimum the 8 S2C orphans (`S2CHeartbeat`,
@@ -285,16 +345,37 @@ All criteria are independently checkable.
   test output verbatim. The test is allowed to additionally surface
   any other orphans discovered at implementation time; the 9 named
   orphans are a floor, not a ceiling.
+  **Closure evidence (PROMPT 851)**: per evidence doc §"Cross-check
+  vs PROMPT 803 §4 Lane A '9 named orphans'", all 9 named orphans
+  surfaced (table maps each PROMPT 803 §4 row to the PROMPT 845
+  test output and records "PASS" for each). One additional orphan
+  surfaced -- `C2SClassChoice` (`shared/src/protocol.rs:421`) --
+  allowed by the "floor, not ceiling" clause; client lobby uses
+  `C2SSelectClass` / `C2SConfirmClass` instead and the disposition
+  (drain / send / delete) rolls into `S13-PROTO-ORPHAN-DRAIN-001`.
+  PROMPT 849 integration verification re-ran the ignored invariant
+  test at the integration tip and got the identical 13-violation
+  output across 10 unique message types (per `reports/PROMPT-849-S13-PROTOCOL-COMPLETENESS-INVARIANT-INTEGRATION.md`
+  "Invariant / orphan caveats preserved" section). PASS.
 
-- [ ] **AC7 -- Test does not modify any production code**: The
+- [x] **AC7 -- Test does not modify any production code**: The
   implementation commit's diff under `client/src/**`, `server/src/**`,
   and `shared/src/**` is empty (modulo a single canonical
   message-name-list constant exposed from `shared/src/protocol.rs`
   IF AC2's parsing approach requires it; that constant addition is
   the only allowed production-side change and is scope-capped to
   declarative metadata).
+  **Closure evidence (PROMPT 851)**: `git diff --name-only 96c1600^1
+  96c1600` returns exactly three paths:
+  `production/qa/evidence/sprint-13-proto-invariant-evidence.md`,
+  `shared/Cargo.toml`, and `tests/invariants/protocol_completeness_test.rs`.
+  No file under `client/src/**`, `server/src/**`, or `shared/src/**`
+  modified -- AC2's parsing approach was (a) `include_str!` source
+  scanning, so no name-list constant was added; the only `shared/*`
+  edit is `shared/Cargo.toml` `[[test]]` registration (scope-capped
+  per AC8). PASS.
 
-- [ ] **AC8 -- Test runs under `cargo test --workspace`**: After the
+- [x] **AC8 -- Test runs under `cargo test --workspace`**: After the
   implementation lands, `cargo test --workspace --tests --no-fail-fast`
   invokes the new test (verified by grepping the test runner output
   for the test function name). If `Cargo.toml` workspace member
@@ -302,13 +383,40 @@ All criteria are independently checkable.
   subdirectory, the change is scope-capped to a single `[[test]]`
   block or `tests/invariants/Cargo.toml` shim with a rationale comment
   cross-referencing this story.
+  **Closure evidence (PROMPT 851)**: `shared/Cargo.toml` carries a
+  single new `[[test]] name = "protocol_completeness_invariant"
+  path = "../tests/invariants/protocol_completeness_test.rs"` block
+  with an inline rationale comment cross-referencing
+  `S13-PROTO-ORPHAN-DRAIN-001` and pointing at the
+  `production/qa/evidence/sprint-13-proto-invariant-evidence.md`
+  orphan list. Worker (PROMPT 845) ran `cargo test -p shared --test
+  protocol_completeness_invariant -- --nocapture` -- exit 0, 1
+  passed (`protocol_manifest_parser_discovers_registered_messages`),
+  1 ignored (`protocol_completeness_assert_send_and_drain_sites`).
+  Integration (PROMPT 849) re-ran the same command at integration
+  tip with identical output (per integration report row 5 +
+  row 11). Full-workspace `cargo test --workspace --tests --no-fail-fast`
+  intentionally NOT run per QA-plan-sprint-13 binding
+  no-full-workspace-tests-by-default policy (orchestrator
+  end-of-sprint integration gate covers full workspace). PASS.
 
-- [ ] **AC9 -- No optimistic client-side authority introduced**: The
+- [x] **AC9 -- No optimistic client-side authority introduced**: The
   test reads source files; it does not call any client/server
   runtime API. ADR-002 binding. *Evidence*: text search for "no
   optimistic" in the evidence document.
+  **Closure evidence (PROMPT 851)**: test file imports are limited
+  to `std::fs` + `std::path::{Path, PathBuf}` (per
+  `tests/invariants/protocol_completeness_test.rs:37-38`). Zero
+  `bevy` or `lightyear` crate imports. No Bevy `App` is constructed
+  and no Lightyear runtime API is called. Evidence doc carries the
+  verbatim "**No optimistic client-side authority is introduced or
+  proposed by this story.**" line in §"Status / No-Claim Banner
+  (verbatim from story 007)" and the verbatim restatement "no
+  optimistic client-side authority is introduced or implied" in
+  §"ADR / GDD / protocol surfaces -- no change". ADR-002 + ADR-008
+  binding preserved. PASS.
 
-- [ ] **AC10 -- Sprint 12 disposition preserved**: GIVEN the
+- [x] **AC10 -- Sprint 12 disposition preserved**: GIVEN the
   implementation commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-12.md`, `production/stage.txt`, and
   `production/qa/qa-plan-sprint-12.md` are diffed, THEN none of them
@@ -316,13 +424,46 @@ All criteria are independently checkable.
   preserved. Stage remains `Polish`. Sprint 11 disposition
   (`closed-with-conditions`) is unchanged. Sprint 10 disposition
   (`closed-with-conditions`) is unchanged.
+  **Closure evidence (PROMPT 851)**: `git diff --name-only 96c1600^1
+  96c1600` does NOT include any of `production/sprint-status.yaml`,
+  `production/sprints/sprint-12.md`, `production/sprints/sprint-13.md`,
+  `production/stage.txt`, `production/qa/qa-plan-sprint-12.md`, or
+  `production/qa/qa-plan-sprint-13.md`. Sprint 12
+  `closed-with-conditions` per PROMPT 817 preserved. Sprint 11
+  `closed-with-conditions` per PROMPT 792 preserved. Sprint 10
+  `closed-with-conditions` per PROMPT 763 preserved. Stage UNCHANGED
+  `Polish`. PROMPT 761 Polish->Release gate-check `FAIL` at
+  `production/gate-checks/gate-polish-release-2026-05-12.md`
+  preserved. (Note: PROMPT 845 / 849 ran during Sprint 13's active
+  window; the AC10 preservation extends to Sprint 13's `sprint:` /
+  `status:` / `stage:` top-level fields as well -- none touched by
+  the integration commit.) The PROMPT 851 row-level
+  `status: ready -> done` + `completed: 2026-05-14` flip in
+  `production/sprint-status.yaml` is the permitted disposition-
+  preserving paperwork edit. PASS.
 
-- [ ] **AC11 -- Evidence document slot reserved**: A slot is reserved
+- [x] **AC11 -- Evidence document slot reserved**: A slot is reserved
   at `production/qa/evidence/sprint-13-proto-invariant-evidence.md`
   (NEW; populated by the implementation prompt). The evidence file
   records pre-`S13-PROTO-ORPHAN-DRAIN-001` test output (FAIL with the
   9 named orphans) and a re-run after the drain story lands (PASS
   except for any explicit allowlist with rationale).
+  **Closure evidence (PROMPT 851)**: evidence document exists NEW
+  on `origin/main` via PROMPT 845 worker commit `96c1600` (then on
+  origin/main via PROMPT 849 integration merge `25573e6`): 330 lines
+  at `production/qa/evidence/sprint-13-proto-invariant-evidence.md`.
+  Records: no-claim restatement (verbatim from story banner with
+  the "no optimistic" phrase preserved in §"Status / No-Claim
+  Banner"); pre-drain test output verbatim (13 violations across
+  10 unique types; all 9 PROMPT 803 §4 Lane A named orphans
+  surfaced plus 1 additional `C2SClassChoice`); regression commands
+  actually run with Cargo resource policy applied; AC1-AC11
+  sectioned evidence; cross-link to
+  `reports/PROMPT-803-MULTIPLAYER-RUNTIME-HARDENING-AUDIT-ROADMAP.md`
+  §3 DC-1, §3 DC-15, §4 Lane A; slot reserved §"Post-
+  `S13-PROTO-ORPHAN-DRAIN-001` re-run (slot reserved)" for the
+  PASS rerun that lands when the drain story removes the
+  `#[ignore]` attribute. PASS.
 
 ---
 
@@ -544,9 +685,9 @@ prompt, not for the worker:
 
 ---
 
-## Authoring Trail
+## Authoring / Implementation / Closure Trail
 
-- 2026-05-14 -- PROMPT 804 -- Story file authored as a Sprint 13
+- **PROMPT 804 (2026-05-14)** -- Story file authored as a Sprint 13
   candidate for the Protocol Completeness Invariant Test. Sprint 12
   is `active` (PROMPT 798) and is not modified by this authoring run.
   No code changes, no smoke / gate / QA / `/dev-story` / `/story-done` /
@@ -554,3 +695,200 @@ prompt, not for the worker:
   `origin/main@b5eef0d`. Worker branch:
   `work/s13-runtime-hardening-story-authoring`. Worktree:
   `D:\_DEV\claude-code-game-studios-worktrees\s13-runtime-hardening-story-authoring`.
+- **PROMPT 808 (2026-05-14)** -- Integration of the PROMPT 804
+  authoring batch onto `origin/main` as `55b25be` (8-story
+  paperwork integration covering 007 / 008 / 016-021).
+- **PROMPT 823 (2026-05-14)** -- `/story-readiness` batch verdict
+  **READY** for this story file (12 newly authored Sprint 13 story
+  files reviewed).
+- **PROMPT 826 (2026-05-14)** -- Sprint 13 activated (flipped
+  top-level `sprint: 12 -> 13` and `status:
+  closed-with-conditions -> active`). This story row promoted into
+  Sprint 13 active Must Have at status `ready`.
+- **PROMPT 845 (2026-05-14)** -- `/dev-story` worker implementation
+  on `work/s13-protocol-completeness-invariant` from base
+  `origin/main@fe74fb0` (PROMPT 844 closure). Worker commit
+  `96c16003024d836cf4c24b0eeb35cdeb78e2cb20`:
+  - `tests/invariants/protocol_completeness_test.rs` (NEW; 421
+    lines): manifest scanner (`discover_registered_messages` over
+    `register_c2s::<...>` / `register_s2c::<...>` lines), alias-aware
+    send/drain detection (`MessageSender<T>` / `MessageReceiver<T>`
+    + `send::<T,` broadcast-call), `#[cfg(test)]` block stripper.
+    Two `#[test]` functions: enabled parser-smoke (`protocol_manifest_parser_discovers_registered_messages`)
+    asserts `>= 16 C2S + >= 34 S2C`; ignored invariant
+    (`protocol_completeness_assert_send_and_drain_sites`) gated by
+    `#[ignore = "S13-PROTO-ORPHAN-DRAIN-001 pending --
+    pre-drain orphan list captured in production/qa/evidence/
+    sprint-13-proto-invariant-evidence.md; remove this attribute
+    in the drain-story commit"]`.
+  - `shared/Cargo.toml`: one `[[test]] name =
+    "protocol_completeness_invariant" path = "../tests/invariants/
+    protocol_completeness_test.rs"` block with an inline rationale
+    comment cross-referencing `S13-PROTO-ORPHAN-DRAIN-001` and the
+    evidence file. Scope-cap per AC8.
+  - `production/qa/evidence/sprint-13-proto-invariant-evidence.md`
+    (NEW; 330 lines): AC1-AC11 closure evidence with verbatim
+    no-claim restatement, pre-drain test output (13 violations
+    across 10 unique types), regression commands with Cargo
+    resource policy, cross-link to PROMPT 803 §3 DC-1 / §3 DC-15 /
+    §4 Lane A.
+  - Targeted regression: `cargo fmt --all -- --check` (EXIT=0);
+    `cargo test -p shared --test protocol_completeness_invariant
+    -- --nocapture` (EXIT=0, 1 passed / 1 ignored); `cargo test
+    -p shared --test protocol_completeness_invariant
+    protocol_completeness_assert_send_and_drain_sites --
+    --ignored --nocapture` (EXIT=101, 13 violations expected
+    pre-drain); `git diff --check origin/main...HEAD` (EXIT=0);
+    `git diff --check` (EXIT=0); `git diff --cached --check`
+    (EXIT=0 pre-commit). Cargo resource policy applied
+    (`CARGO_TARGET_DIR=D:/_DEV/cargo-target/ccgs-msvc`,
+    `CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`,
+    `CARGO_INCREMENTAL=0`, `RUSTFLAGS=-C debuginfo=0 -C
+    link-arg=/DEBUG:NONE`). `cargo check --workspace
+    --all-targets` intentionally NOT run per the worker dispatch
+    directive and the QA-plan-sprint-13 no-full-workspace-tests-
+    by-default policy.
+  - AC verdicts at worker tip: AC1-AC11 all PASS per
+    `reports/PROMPT-845-S13-PROTOCOL-COMPLETENESS-INVARIANT.md`
+    "AC verification" table.
+- **PROMPT 847 (2026-05-14)** -- Unrelated Sprint 13 observability
+  story (`S13-OBS-TRACING-TARGETS-001`) landed on `origin/main` as
+  `9e32fbe` during the PROMPT 849 integration window. No file
+  overlap with PROMPT 845 (per integration report row 10:
+  PROMPT 847 touched `client/src/{ui/hand/mod.rs,
+  presentation/board_rendering.rs, card_animations/input_gating.rs}`
+  + `server/src/{feature/*, network/*}` -- disjoint from
+  `tests/invariants/` and `shared/Cargo.toml`).
+- **PROMPT 849 (2026-05-14)** -- Integration to `origin/main`.
+  Integration worktree
+  `D:\_DEV\claude-code-game-studios-worktrees\integration-s13-protocol-completeness-invariant-849`;
+  branch `integrate/s13-protocol-completeness-invariant-849` built
+  from `origin/main@fe74fb0`; merged worker tip `96c1600` via
+  fast-forward; merged advanced `origin/main` (now at PROMPT 847
+  `9e32fbe`) into integration branch producing merge commit
+  `25573e6d550c916eba22130791142ab9986d2dde`; fast-forward pushed
+  to `origin/main` (non-force). Integration verification re-ran
+  the worker's targeted commands at integration tip with identical
+  output (13-violation orphan caveat preserved exactly); AC7 /
+  AC8 / AC10 zero-touch verified. `cargo check --workspace
+  --all-targets` not run (worker report explicitly stated not
+  required; targeted `cargo test` invocation proves the new test
+  compiles and discovers cleanly).
+- **PROMPT 850 (2026-05-14)** -- Sibling `/story-done` for the
+  parallel Must Have row `S13-OBS-TRACING-TARGETS-001` (playable-
+  client story 018); commit `c1b7753` on `origin/main` landed
+  between PROMPT 849 and PROMPT 851. Preserves the PROMPT 845 /
+  849 work for story 007 unchanged on `origin/main` (no file
+  overlap with story 007's integration scope).
+- **PROMPT 851 (2026-05-14)** -- `/story-done` paperwork closure
+  at root checkout against `origin/main@c1b7753` (serialized
+  shared-status writer per 2026-05-13 override; matches
+  PROMPT 850 / PROMPT 844 / PROMPT 843 / PROMPT 840 / PROMPT 835 /
+  PROMPT 833 paperwork pattern). AC1-AC11 all verified against
+  integrated evidence on `origin/main`. Files modified:
+  - This story file (Status flipped Draft -> Done with PROMPT 851
+    closure context; AC1-AC11 checkboxes `[ ]` -> `[x]` with
+    per-AC closure-evidence annotations; Authoring / Implementation /
+    Closure Trail rewritten with PROMPT 804 / 808 / 823 / 826 / 845 /
+    847 / 849 / 851 entries + Conditions carried forward unchanged +
+    Explicitly NOT claimed sub-sections).
+  - `production/sprint-status.yaml` (Sprint 13 Must Have row
+    `S13-PROTO-INVARIANT-001` flipped `status: ready -> done` with
+    `completed: 2026-05-14`, `worker_prompt: 845`, `worker_commit:
+    96c16003024d836cf4c24b0eeb35cdeb78e2cb20`, `integration_prompt:
+    849`, `integration_commit:
+    25573e6d550c916eba22130791142ab9986d2dde`, `story_done_prompt:
+    851`, `test_evidence: tests/invariants/protocol_completeness_test.rs`,
+    `acceptance_evidence: production/qa/evidence/sprint-13-proto-invariant-evidence.md`;
+    top-level `updated:` annotation refreshed for PROMPT 851;
+    `sprint_13_story_done:` block extended with PROMPT 851 entry as
+    a sibling to the prior PROMPT 833 + 840 + 843 + 844 + 850
+    entries).
+  - `production/session-state/active.md` (PROMPT 851 banner
+    prepended above PROMPT 850 banner).
+  - `production/session-state/codex-orchestrator-state.md` (PROMPT
+    851 section prepended above PROMPT 850 section).
+- **Cargo policy**: N/A for PROMPT 851 itself (paperwork-only
+  closure; no cargo command invoked). Worker (PROMPT 845) and
+  integration (PROMPT 849) targeted regression runs applied the
+  binding Windows/MSVC Cargo resource policy at their respective
+  checkpoints.
+
+## Conditions carried forward unchanged
+
+- S8-QA-001-W1 manual/browser two-client GAME_OVER gap remains
+  OPEN. Story 017 (two-client runtime harness) AC12 forbid-auto-
+  closure: explicitly does NOT close S8-QA-001-W1 by itself.
+- QA-COND-0005 Standard-tier accessibility accepted-risk
+  (friend-game scope only).
+- QA-COND-0006 playtest / fun-hypothesis validation accepted-risk
+  / deferred.
+- PAW-TD-*-a placeholder-art accept-risk preserved across
+  PAW-002..PAW-006.
+- PROMPT 683-era runtime divergence question preserved (folded
+  into Sprint 12 story 019 cannot-reproduce closure; third
+  same-scope retest NOT authorised per TQ-S12-C2). PROMPT 851 does
+  NOT re-attempt the Sprint 12 capture.
+- PROMPT 761 Polish->Release gate-check FAIL preserved at
+  `production/gate-checks/gate-polish-release-2026-05-12.md`; no
+  retry in PROMPT 851 scope.
+- Story 019 (Sprint 12 hand-ui) underlying drag-runtime bug NOT
+  claimed fixed (closed cannot-reproduce, NOT bug-fixed).
+- TQ-S12-C1..C7 (all 7 Sprint 12 Team-QA conditions) preserved
+  verbatim.
+- Sprint 12 disposition `closed-with-conditions` per PROMPT 817
+  preserved unchanged.
+- Sprint 11 / Sprint 10 closeouts preserved unchanged.
+- Prior `/story-done` closures preserved unchanged on
+  `origin/main`: PROMPT 833 (`S11-SERVER-POOL-INIT-LOG-GUARD-001`),
+  PROMPT 835 (`S11-LOBBY-UX-CONFIRM-STATE-001`), PROMPT 840
+  (`S13-UI-AUDIT-ROADMAP-PREP-001`), PROMPT 843
+  (`S13-OBS-WALLCLOCK-TIMESTAMPS-001`), PROMPT 844
+  (`S11-HU-PHASE-IDEMPOTENCY-001`), PROMPT 850
+  (`S13-OBS-TRACING-TARGETS-001`).
+- **Pre-`S13-PROTO-ORPHAN-DRAIN-001` orphan caveat preserved.**
+  The ignored invariant
+  `protocol_completeness_assert_send_and_drain_sites` continues to
+  panic with 13 violations across 10 unique message types at
+  `origin/main@c1b7753` (all 9 PROMPT 803 §4 Lane A named orphans
+  + `C2SClassChoice`). The `#[ignore]` attribute is the documented
+  pre-drain disposition per the story Implementation Notes Wave 4;
+  removal of the attribute is owned by the `S13-PROTO-ORPHAN-DRAIN-001`
+  drain-story commit (a future `/dev-story` prompt) -- PROMPT 851
+  does NOT modify the test file or remove the `#[ignore]`
+  attribute.
+
+## Explicitly NOT claimed by PROMPT 851
+
+- public release readiness
+- release-candidate readiness
+- full game completion
+- broad / Standard-tier accessibility completion
+- playtest / fun-hypothesis validation
+- full playable-client manual QA
+- two-client GAME_OVER closure (`S8-QA-001-W1`)
+- final-art / asset-production completion
+- Polish->Release gate-check retry
+- Stage advance from Polish to Release
+- underlying drag-runtime bug fix (Sprint 12 story 019 closed
+  cannot-reproduce, NOT bug-fixed)
+- full UI clean-pass repair
+- closure of `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001`
+- **Protocol Orphan Drain implementation** (`S13-PROTO-ORPHAN-DRAIN-001`
+  remains `ready`; not started, not closed, not modified by
+  PROMPT 851)
+- removal of the `#[ignore]` attribute on
+  `protocol_completeness_assert_send_and_drain_sites` (owned by
+  the drain-story commit)
+- Sprint 13 close-out (Sprint 13 remains active; 7 of 19 rows
+  closed after PROMPT 851 -- 3 of 6 Must Have, 3 of 6 Should
+  Have, 1 of 7 Nice to Have)
+- full-workspace `cargo test --workspace --tests --no-fail-fast`
+  result claim (deferred to orchestrator end-of-sprint
+  integration gate per QA-plan-sprint-13 no-full-workspace-tests-
+  by-default policy)
+- Plugin Registration Invariant test (`S13-PLUGIN-REGISTRATION-INVARIANT-001`
+  Sprint 14+ row -- not authored, not landed)
+- `#[ignore]` / `#[should_panic]` attribute-drift invariant test
+  (`S13-IGNORE-ATTRIBUTE-DRIFT-001` Sprint 14+ row -- not authored,
+  not landed)
