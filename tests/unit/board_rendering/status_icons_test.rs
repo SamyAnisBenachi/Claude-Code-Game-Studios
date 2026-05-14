@@ -164,11 +164,21 @@ fn test_status_icon_global_x_inherits_cooccupancy_parent_offset() {
     assert!((derived_icon_world_x - (unit_x + STATUS_ICON_TOP_RIGHT_X_OFFSET)).abs() <= 0.01);
 }
 
-#[ignore = "PROMPT 750 D-5: production co_occupancy_offset no longer panics on index 2 — needs design decision: restore panic guard or update test to assert non-panic behavior"]
+// Path B (story 014, PROMPT 800 Wave 1 d5053fe): production
+// co_occupancy_offset is total over u8 — emits warn! then clamps
+// unit_index to 1 for any unit_index >= 2. See story 014 "Binary
+// Design Decision" for the full rationale (upstream caller invariant +
+// ADR-021 non-fatal degradation in the snapshot-rendering hot path).
 #[test]
-#[should_panic(expected = "unit_index=2")]
-fn test_cooccupancy_index_two_panics_with_offending_index() {
-    let _ = co_occupancy_offset(2, 8.0);
+fn test_cooccupancy_index_two_clamps_to_second_slot_offset() {
+    let side_offset = 8.0_f32;
+    let slot_zero = co_occupancy_offset(0, side_offset);
+    let slot_one = co_occupancy_offset(1, side_offset);
+    let slot_two_clamped = co_occupancy_offset(2, side_offset);
+
+    assert!((slot_zero - (-4.0)).abs() <= f32::EPSILON);
+    assert!((slot_one - 4.0).abs() <= f32::EPSILON);
+    assert!((slot_two_clamped - slot_one).abs() <= f32::EPSILON);
 }
 
 fn app_in_session() -> App {
