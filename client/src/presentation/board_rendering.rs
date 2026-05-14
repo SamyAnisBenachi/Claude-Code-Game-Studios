@@ -21,7 +21,8 @@ use crate::card_animations::{
     PlacementRevealAnimReady, PlacementRevealEntry, StagedObjectiveRevealQueue,
 };
 use crate::state::{
-    ClientGameSnapshotMessage, ClientSessionIdentity, ClientState, CurrentClientPhase,
+    ClientGameSnapshotMessage, ClientIdempotencyState, ClientSessionIdentity, ClientState,
+    CurrentClientPhase, PlacementRevealDedupeKey,
 };
 use crate::ui::hand::{
     GhostClickedEvent, GhostDragStartEvent, GhostPlacementChanged, ObjectiveCell,
@@ -881,6 +882,9 @@ impl Plugin for BoardRenderingPlugin {
             .init_resource::<PlacementRevealCollectState>()
             .init_resource::<PendingResolutionScript>()
             .init_resource::<ResolutionRevealWait>()
+            // S13-LATE-MSG-DEDUPE-001: ensure the dedupe ring exists even when
+            // tests load this plugin in isolation.
+            .init_resource::<ClientIdempotencyState>()
             .add_message::<ClientGameSnapshotMessage>()
             .add_message::<BoardRebuildRequested>()
             .add_message::<PlacementRevealAnimReady>()
@@ -1051,6 +1055,8 @@ pub fn drain_placement_reveal_system(
     mut commands: Commands,
     mut receivers: Query<&mut MessageReceiver<S2CPlacementReveal>>,
     local_player: Res<BoardLocalPlayer>,
+    current_phase: Res<CurrentClientPhase>,
+    mut idempotency: ResMut<ClientIdempotencyState>,
     mut collect_state: ResMut<PlacementRevealCollectState>,
     mut reveal_wait: ResMut<ResolutionRevealWait>,
     mut render_state: ResMut<BoardRenderState>,
@@ -1062,13 +1068,11 @@ pub fn drain_placement_reveal_system(
     let mut reveals = Vec::new();
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
-            tracing::info!(
-                target: "client::presentation::board_rendering",
-                placements_len = message.placements.len(),
-                msg_type = "S2CPlacementReveal",
-                "drain_placement_reveal: recv"
-            );
-            reveals.push(message);
+            if let Some(message) =
+                filter_placement_reveal_for_dedupe(&mut idempotency, current_phase.round, message)
+            {
+                reveals.push(message);
+            }
         }
     }
 
@@ -1091,6 +1095,38 @@ pub fn drain_placement_reveal_system(
     collect_state.start_from_reveals(&reveals, local_player.player_id);
     reveal_wait.start();
     *render_state = BoardRenderState::ResolutionReveal;
+}
+
+/// Idempotent dedupe filter for `S2CPlacementReveal` per
+/// S13-LATE-MSG-DEDUPE-001. Returns `Some(message)` for the first observation
+/// of a `(round, content-digest)` key and `None` for any duplicate
+/// (reconnect-replay re-send) — matching the `C2SAcknowledgeResult`
+/// idempotency precedent.
+pub fn filter_placement_reveal_for_dedupe(
+    idempotency: &mut ClientIdempotencyState,
+    round: u32,
+    message: S2CPlacementReveal,
+) -> Option<S2CPlacementReveal> {
+    let key = PlacementRevealDedupeKey::from_message(round, &message);
+    if !idempotency.placement_reveal.check_and_insert(key) {
+        tracing::debug!(
+            target: "client::presentation::board_rendering",
+            round,
+            placements_len = message.placements.len(),
+            msg_type = "S2CPlacementReveal",
+            "drain_placement_reveal: duplicate; no-op"
+        );
+        return None;
+    }
+
+    tracing::info!(
+        target: "client::presentation::board_rendering",
+        round,
+        placements_len = message.placements.len(),
+        msg_type = "S2CPlacementReveal",
+        "drain_placement_reveal: recv"
+    );
+    Some(message)
 }
 
 fn on_ghost_clicked(

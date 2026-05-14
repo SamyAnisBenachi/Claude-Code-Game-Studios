@@ -19,9 +19,9 @@ use crate::state::{
     apply_prism_respawned_message, apply_prism_reward_dropped_message,
     apply_session_cancelled_message, apply_session_settings_updated_message,
     apply_snapshot_to_session_settings_view, should_enter_session_from_phase,
-    should_enter_session_from_snapshot, ClientGameSnapshotMessage, ClientObjectiveIdentities,
-    ClientPhaseView, ClientSessionIdentity, ClientState, OpponentConnectionView,
-    PrismLifecycleView, SessionLifecycleView, SessionSettingsView,
+    should_enter_session_from_snapshot, ClientGameSnapshotMessage, ClientIdempotencyPlugin,
+    ClientObjectiveIdentities, ClientPhaseView, ClientSessionIdentity, ClientState,
+    OpponentConnectionView, PrismLifecycleView, SessionLifecycleView, SessionSettingsView,
 };
 use crate::ui::hand::{
     HandUiCardAcquiredReceived, HandUiDraftOfferingReceived, HandUiPlugin, HandUiSystemSet,
@@ -73,6 +73,10 @@ impl Plugin for PresentationPlugin {
             .add_message::<ClientGameSnapshotMessage>();
 
         // ADR-021 registration order is a contract.
+        // S13-LATE-MSG-DEDUPE-001: Install the dedupe resource and the
+        // OnExit(InSession) reset before any drain plugin so consumers see a
+        // ready resource at first build.
+        app.add_plugins(ClientIdempotencyPlugin);
         app.add_plugins(CardAnimationsPlugin);
         app.add_plugins(BoardRenderingPlugin);
         app.add_plugins(HandUiPlugin);
