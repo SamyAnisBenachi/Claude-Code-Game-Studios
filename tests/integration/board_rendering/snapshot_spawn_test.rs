@@ -20,7 +20,7 @@ use client::presentation::board_rendering::{
     UNIT_PLACEHOLDER_FRAME_INDEX,
 };
 use client::presentation::LaneCell;
-use client::state::{ClientGameSnapshotMessage, ClientState, CurrentClientPhase};
+use client::state::{ClientGameSnapshotMessage, ClientState};
 use client::ui::lobby::PlayerTeamMapUpdated;
 use shared::card::{CardId, ClassId};
 use shared::protocol::{
@@ -36,7 +36,6 @@ const KNOWN_CARD: CardId = CardId(10);
 const KNOWN_CARD_FRAME: usize = 7;
 const KNOWN_CARD_MAX_HP: u8 = 5;
 
-#[ignore = "PROMPT 750 D-5: assertion expects HudPlugin to bridge snapshot.phase -> CurrentClientPhase, but HudPlugin is not in this fixture; either expand fixture to include HudPlugin or relocate the assertion to a hud test (needs owner decision)"]
 #[test]
 fn test_snapshot_rebuild_clears_stale_visuals_and_spawns_snapshot_units_and_objectives() {
     test_helpers::init_test_tracing();
@@ -97,10 +96,12 @@ fn test_snapshot_rebuild_clears_stale_visuals_and_spawns_snapshot_units_and_obje
         .resource::<StagedObjectiveRevealQueue>()
         .is_empty());
     assert!(app.world().resource::<ObjectiveIdentityCache>().is_empty());
-    assert_eq!(
-        app.world().resource::<CurrentClientPhase>().phase,
-        RoundPhase::Placement
-    );
+    // Sprint 12 Story 012 Path B (relocate): the snapshot.phase ->
+    // Res<CurrentClientPhase> bridge is owned by HudPlugin, not
+    // BoardRenderingPlugin. That invariant is covered by
+    // `tests/integration/hud/snapshot_phase_bridge_test.rs` and by
+    // `tests/integration/hud/reconnect_snapshot_rebuild_test.rs`. This test
+    // retains only board-rendering-owned post-snapshot assertions.
     assert_eq!(
         *app.world().resource::<BoardRenderState>(),
         BoardRenderState::Placement

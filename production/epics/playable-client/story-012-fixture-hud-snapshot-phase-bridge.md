@@ -223,19 +223,62 @@ This is **NOT** a:
 
 The implementation prompt MUST record exactly one of:
 
-- [ ] **Path A -- Expand fixture to include `HudPlugin`**. Rationale:
-      _<implementation prompt fills in: e.g., HUD bridge invariant has
-      no other dedicated coverage; expansion cost is one plugin
-      registration + N transitive sub-plugins; cascading sub-plugin
-      cost is bounded>_
-- [ ] **Path B -- Relocate the `snapshot.phase -> CurrentClientPhase`
-      assertion to a HUD-side test**. Rationale:
-      _<implementation prompt fills in: e.g., the phase-bridge
-      invariant is already implicitly covered by
-      `tests/integration/hud/*` tests with a properly wired HUD
-      fixture; the board-rendering test's residual assertion set is
-      cohesive after relocation; expansion cost would cascade into
-      asset-wiring fixture work>_
+- [ ] **Path A -- Expand fixture to include `HudPlugin`**. NOT chosen.
+- [x] **Path B -- Relocate the `snapshot.phase -> CurrentClientPhase`
+      assertion to a HUD-side test**. CHOSEN by PROMPT 806
+      (`/dev-story`) on `origin/main@d8d0196` in worktree
+      `work/s11-fixture-hud-snapshot-phase-bridge`. Rationale recorded
+      below before any test code modification:
+
+      1. **Authority root-cause**: `BoardRenderingPlugin` does not
+         own the `snapshot.phase -> CurrentClientPhase` write. The
+         write happens in
+         `client::ui::hud::handle_game_snapshot_system`
+         (`client/src/ui/hud/mod.rs:884-941`, lines 940-941:
+         `current.phase = snapshot.phase; current.round =
+         snapshot.round_number;`), which is a `HudPlugin` system
+         consuming `PresentationGameSnapshotMessage`. The board
+         rendering plugin consumes a different message
+         (`ClientGameSnapshotMessage`) and writes only board-side
+         state (`BoardRenderState`, unit/objective entities,
+         `AnimQueue`, `PendingPhaseChange`, etc.) -- it never writes
+         `CurrentClientPhase`. Putting the assertion in a
+         `BoardRenderingPlugin`-only fixture is therefore a
+         test-layout defect, not a fixture-cascade problem.
+      2. **HUD coverage already exists**: the HUD bridge invariant is
+         already exercised by
+         `tests/integration/hud/reconnect_snapshot_rebuild_test.rs::full_snapshot_rebuild_populates_all_hud_zones_without_respawning_entities`
+         at lines 65-69, which asserts
+         `app.world().resource::<CurrentClientPhase>().phase ==
+         RoundPhase::Placement` and
+         `app.world().resource::<CurrentClientPhase>().round == 7`
+         after a `PresentationGameSnapshotMessage` is written into
+         an App with `HudPlugin`. Path B does NOT create a coverage
+         gap. To make the invariant trace explicit (vs buried inside
+         a 9-zone rebuild test), PROMPT 806 adds a small dedicated
+         HUD-side test
+         `tests/integration/hud/snapshot_phase_bridge_test.rs`
+         whose single responsibility is the
+         `snapshot.phase + snapshot.round_number ->
+         CurrentClientPhase` bridge under `HudPlugin`.
+      3. **Path A cost (rejected)**: registering `HudPlugin` into
+         `app_in_session()` cascades into HUD asset-wiring fixture
+         work (HUD UI nodes, text spans, asset placeholders for
+         class figurines, scoreboard dot textures, gold/mana label
+         entities), all of which is already wired in
+         `tests/integration/hud/*` fixtures. Doubling that wiring in
+         the board-rendering fixture inflates fixture surface for
+         every other test in `snapshot_spawn_test.rs` (the other
+         five tests in that file are pure board-rendering and do not
+         need a HUD plugin) and increases reviewer cost without
+         improving invariant coverage.
+      4. **AC5 / ADR conformance**: Path B is test-only. No
+         production code in `client/`, `server/`, or `shared/` is
+         touched. ADR-002 (no optimistic client-side authority),
+         ADR-009 (server-authoritative phase transitions), and
+         ADR-021 (single shared phase sink) remain binding and
+         unchanged. The HUD bridge already conforms to ADR-021 by
+         reading from the shared `Res<CurrentClientPhase>`.
 
 The decision is binary; both paths are acceptable. Whichever path is
 chosen, the rationale is captured in **this story file** (the
@@ -248,6 +291,13 @@ defect, not the fixture composition. If the HUD-side coverage gap turns
 out to be real (i.e., no existing HUD test covers the snapshot.phase
 bridge), Path A becomes binding because relocation would create the
 gap.
+
+**Coverage gap verification (PROMPT 806)**: The "Open Questions" item
+"Is there an existing HUD-side integration test that already covers the
+`snapshot.phase -> CurrentClientPhase` bridge invariant?" resolved
+**YES** at implementation time (see rationale item 2 above). The
+producer recommendation (Path B) is therefore binding; no coverage gap
+is created.
 
 ---
 
