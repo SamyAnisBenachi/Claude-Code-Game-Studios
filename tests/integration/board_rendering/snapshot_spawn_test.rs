@@ -2,26 +2,23 @@ use std::time::Duration;
 
 use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
-use bevy::state::app::StatesPlugin;
 use bevy_tweening::{lens::TransformPositionLens, PlaybackState, Tween, TweenAnim};
 use client::card_animations::{
-    make_tween_anim, AnimGroup, AnimQueue, CardAnimationsPlugin, PendingObjectiveDestroyedEvents,
-    PendingPhaseChange, StagedObjectiveRevealQueue,
+    make_tween_anim, AnimGroup, AnimQueue, PendingObjectiveDestroyedEvents, PendingPhaseChange,
+    StagedObjectiveRevealQueue,
 };
 use client::presentation::board_rendering::rendering_constants::{
     HEALTH_BAR_LOCAL_Z, Z_HEALTH_BARS, Z_UNITS,
 };
 use client::presentation::board_rendering::{
     hp_bar_visual, BoardCellNode, BoardRenderState, BoardRenderingConfig, BoardRenderingEntity,
-    BoardRenderingPlugin, BoardRuntimeAssets, BoardSnapshotEntity, BoardUnit, BoardUnitCard,
-    BoardUnitOwner, BoardUnitStats, CardAtlas, HpBarBackground, HpBarColor, HpBarFill,
-    ObjectiveArtKind, ObjectiveIdentityCache, StandingObjective, StandingObjectiveArt,
-    StandingObjectiveHp, HP_BAR_WHITE_PIXEL_FRAME_INDEX, OBJECTIVE_UNKNOWN_FRAME_INDEX,
-    UNIT_PLACEHOLDER_FRAME_INDEX,
+    BoardRuntimeAssets, BoardSnapshotEntity, BoardUnit, BoardUnitCard, BoardUnitOwner,
+    BoardUnitStats, CardAtlas, HpBarBackground, HpBarColor, HpBarFill, ObjectiveArtKind,
+    ObjectiveIdentityCache, StandingObjective, StandingObjectiveArt, StandingObjectiveHp,
+    HP_BAR_WHITE_PIXEL_FRAME_INDEX, OBJECTIVE_UNKNOWN_FRAME_INDEX, UNIT_PLACEHOLDER_FRAME_INDEX,
 };
 use client::presentation::LaneCell;
-use client::state::{ClientGameSnapshotMessage, ClientState};
-use client::ui::lobby::PlayerTeamMapUpdated;
+use client::state::ClientGameSnapshotMessage;
 use shared::card::{CardId, ClassId};
 use shared::protocol::{
     BoardSnapshot, ObjectiveSnapshot, PlayerSnapshot, RoundPhase, S2CGameSnapshot,
@@ -31,6 +28,9 @@ use shared::session::PlayerId;
 
 #[path = "../../test_helpers.rs"]
 mod test_helpers;
+
+#[path = "../../helpers/production_app_factory.rs"]
+mod production_app_factory;
 
 const KNOWN_CARD: CardId = CardId(10);
 const KNOWN_CARD_FRAME: usize = 7;
@@ -418,26 +418,34 @@ fn test_baseline_board_path_supports_twenty_units_and_two_atlased_images() {
     assert!(atlased_image_ids.contains(&atlas.board_elements_image.id()));
 }
 
+// S13-FIXTURE-FACTORY-001: this fixture is now a thin wrapper over the
+// canonical production-faithful test app factory. Previously it omitted
+// `HudPlugin` (and the broader `PresentationPlugin` sub-plugin set), so
+// spawn-pipeline producer divergence was the root cause of the cluster B2
+// incident (PROMPT 803 §3 DC-7 / §4 Lane D). `PlayerTeamMapUpdated` is
+// registered by `LobbyUiPlugin`, which is now included via the factory, so the
+// previous manual `add_message::<PlayerTeamMapUpdated>()` registration is no
+// longer needed.
 fn app_in_session() -> App {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-    app.add_plugins(StatesPlugin);
-    app.add_plugins(CardAnimationsPlugin);
-    app.init_state::<ClientState>();
-    app.add_message::<PlayerTeamMapUpdated>();
-    app.insert_resource(client::asset_wiring::placeholder_assets_for_tests());
-    app.add_plugins(BoardRenderingPlugin);
-
-    app.world_mut()
-        .resource_mut::<NextState<ClientState>>()
-        .set(ClientState::InSession);
-    app.update();
-    app
+    production_app_factory::production_client_app_in_session()
 }
 
 fn install_test_atlas(app: &mut App) {
     *app.world_mut().resource_mut::<CardAtlas>() =
         CardAtlas::default().with_unit_frame(KNOWN_CARD, KNOWN_CARD_FRAME, KNOWN_CARD_MAX_HP);
+    // S13-FIXTURE-FACTORY-001: pre-factory, this fixture used `MinimalPlugins`
+    // without an `AssetServer`, so `insert_board_rendering_session_resources`
+    // skipped its `BoardRuntimeAssets::load` branch and the board rendering
+    // pipeline took the atlas-only path the tests below assert against. Now
+    // that the factory adds `AssetPlugin` (a substrate `DefaultPlugins`
+    // provides), `BoardRuntimeAssets` is inserted on `OnEnter(InSession)` and
+    // the runtime-asset path takes precedence over the atlas path. Tests in
+    // this file that call `install_test_atlas` specifically exercise the
+    // atlas path; remove the runtime resource so the original test intent is
+    // preserved. The runtime path is covered by
+    // `test_runtime_board_assets_drive_placeholder_hp_and_objective_images`,
+    // which is unaffected by this helper.
+    app.world_mut().remove_resource::<BoardRuntimeAssets>();
 }
 
 fn install_distinct_test_atlas(app: &mut App) {
@@ -482,6 +490,11 @@ fn install_distinct_test_atlas(app: &mut App) {
         unit_frames: default(),
     }
     .with_unit_frame(KNOWN_CARD, KNOWN_CARD_FRAME, KNOWN_CARD_MAX_HP);
+    // S13-FIXTURE-FACTORY-001: same rationale as `install_test_atlas` above —
+    // this helper installs an atlas with two distinct images and the baseline
+    // board test asserts on atlas-path sprite counts. Remove the
+    // factory-inserted `BoardRuntimeAssets` so the atlas path is exercised.
+    app.world_mut().remove_resource::<BoardRuntimeAssets>();
 }
 
 fn install_runtime_board_assets(app: &mut App) {

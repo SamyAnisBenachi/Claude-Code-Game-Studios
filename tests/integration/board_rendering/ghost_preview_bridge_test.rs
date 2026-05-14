@@ -8,16 +8,14 @@ use bevy::picking::{
     pointer::{Location, PointerId},
 };
 use bevy::prelude::*;
-use bevy::state::app::StatesPlugin;
 use client::{
     presentation::{
         board_rendering::{
-            rendering_constants, BoardCamera, BoardGhostInteraction, BoardRenderingPlugin,
-            GhostUnit, LaneGhostWash, ObjectiveTargetGhost, TargetUnitGhost,
+            rendering_constants, BoardCamera, BoardGhostInteraction, GhostUnit, LaneGhostWash,
+            ObjectiveTargetGhost, TargetUnitGhost,
         },
         BoardLayout,
     },
-    state::ClientState,
     ui::hand::{
         GhostClickedEvent, GhostDragStartEvent, GhostPlacementChanged, ObjectiveCell,
         PlacementTargetUnit,
@@ -27,6 +25,9 @@ use shared::{card::CardId, protocol::PlayTarget, session::PlayerId};
 
 #[path = "../../test_helpers.rs"]
 mod test_helpers;
+
+#[path = "../../helpers/production_app_factory.rs"]
+mod production_app_factory;
 
 #[test]
 fn br_8_board_cell_ghost_replaces_existing_card_preview() {
@@ -187,19 +188,19 @@ fn br_8e_board_ghost_pointer_messages_leave_ghost_owned_by_hand_ui() {
     assert_eq!(ghost_unit_count(&mut app, CardId(40)), 1);
 }
 
+// S13-FIXTURE-FACTORY-001: this fixture is now a thin wrapper over the
+// canonical production-faithful test app factory. Previously the fixture used
+// `MinimalPlugins + StatesPlugin + ClientState + BoardRenderingPlugin` only,
+// which omitted `HandUiPlugin` (and the broader `PresentationPlugin` sub-plugin
+// set). PROMPT 803 §3 DC-7 / §4 Lane D cluster B1 incident shows the producer-
+// system gap that the factory closes. The pointer Message types are still
+// registered manually because they are picking-backend types added explicitly
+// here for the click/press-driven ghost interaction tests below; they are not
+// part of the production plugin set.
 fn app_with_board_rendering() -> App {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-    app.add_plugins(StatesPlugin);
-    app.init_state::<ClientState>();
-    app.insert_resource(client::asset_wiring::placeholder_assets_for_tests());
-    app.add_plugins(BoardRenderingPlugin);
+    let mut app = production_app_factory::production_client_app_in_session();
     app.add_message::<bevy::picking::events::Pointer<bevy::picking::events::Press>>();
     app.add_message::<bevy::picking::events::Pointer<bevy::picking::events::Click>>();
-    app.world_mut()
-        .resource_mut::<NextState<ClientState>>()
-        .set(ClientState::InSession);
-    app.update();
     app
 }
 
