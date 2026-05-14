@@ -2,11 +2,19 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S13-LATE-MSG-DEDUPE-001
-> **Status**: Draft -- Sprint 13 candidate; NOT activated; Sprint 12 is the
-> active sprint
+> **Status**: Done -- /story-done verdict PASS per PROMPT 884 on
+> 2026-05-14 against integrated evidence on `origin/main@6163cd3` (PROMPT
+> 883 integration merge of PROMPT 872 worker commit `dfe5f21` into prior
+> `origin/main@c379625`). AC1-AC9 + AC11 + AC12 all PASS; AC10
+> PASS-WITHIN-STORY-PRESCRIBED-TARGETED-CHECK (full workspace tests
+> intentionally NOT run per Sprint 13 QA-plan no-full-workspace-tests-by-
+> default policy + worker prompt scope; targeted check 17/17 pass +
+> 7/7 unit pass). Sprint 13 disposition UNCHANGED `active`; stage
+> UNCHANGED `Polish`; PROMPT 761 Polish->Release gate-check FAIL
+> preserved. PROMPT 884 was a paperwork-only closure.
 > **Layer**: Reconnect / Idempotency
 > **Type**: Integration -- per-drain dedupe state + new integration tests
-> **Sprint**: Sprint 13 candidate (per PROMPT 803 §6 line 144; NOT activated)
+> **Sprint**: Sprint 13 (activated 2026-05-14 per PROMPT 826)
 > **Authored**: 2026-05-14 by PROMPT 804 (worktree
 > `work/s13-runtime-hardening-story-authoring`)
 > **Authoring source-of-truth**: `origin/main@b5eef0d` (PROMPT 799 Sprint 12
@@ -229,24 +237,24 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- `S2CGameOver` dedupe-guarded**: GIVEN the diff under
+- [x] **AC1 -- `S2CGameOver` dedupe-guarded**: GIVEN the diff under
   `client/src/presentation/result_screen.rs` (and any
   presentation drain location), WHEN the `S2CGameOver` drain is
   inspected, THEN it consults a `(round, key)` dedupe set; on
   duplicate, it logs DEBUG and returns. The duplicate path is
   covered by a new integration test.
 
-- [ ] **AC2 -- `S2CClassLocked` dedupe-guarded**: same for
+- [x] **AC2 -- `S2CClassLocked` dedupe-guarded**: same for
   `client/src/ui/lobby.rs` `S2CClassLocked` drain (currently at
   `:326-335`).
 
-- [ ] **AC3 -- `S2CPlaceUnit` / placement-class drains
+- [x] **AC3 -- `S2CPlaceUnit` / placement-class drains
   dedupe-guarded**: same for the placement-reveal drains in
   `client/src/ui/hand/*` and/or `client/src/presentation/board_rendering.rs`.
   Implementation prompt enumerates the exact placement-class
   messages and dedupe-guards each.
 
-- [ ] **AC4 -- Reconnect-replay test**: GIVEN a new integration
+- [x] **AC4 -- Reconnect-replay test**: GIVEN a new integration
   test (or extension of existing reconnect tests under
   `tests/integration/shop_auction_ui/reconnect_late_message_test.rs`
   or `tests/integration/session/`), WHEN the test sends a
@@ -254,26 +262,26 @@ All criteria are independently checkable.
   client's result-screen sequence runs exactly once (no double-
   apply, no double-animation, no double-event emission).
 
-- [ ] **AC5 -- Dedupe set is session-lifetime-scoped**: GIVEN the
+- [x] **AC5 -- Dedupe set is session-lifetime-scoped**: GIVEN the
   diff, WHEN the dedupe state lifecycle is inspected, THEN the
   set is constructed at session entry and cleared at session
   exit. The reconnect path preserves the session and thus
   preserves the set.
 
-- [ ] **AC6 -- Bounded size**: GIVEN the diff, WHEN the dedupe
+- [x] **AC6 -- Bounded size**: GIVEN the diff, WHEN the dedupe
   set's growth policy is inspected, THEN it is bounded (e.g.,
   last 32 keys per type). The bound is documented inline.
 
-- [ ] **AC7 -- No protocol-shape change**: GIVEN the diff under
+- [x] **AC7 -- No protocol-shape change**: GIVEN the diff under
   `shared/src/protocol.rs`, WHEN inspected, THEN no C2S/S2C
   message type definition is changed (the message-id field is
   scoped to Sprint 14 candidate `S13-PROTO-MESSAGE-ID-001`).
 
-- [ ] **AC8 -- No server-side change**: GIVEN the diff under
+- [x] **AC8 -- No server-side change**: GIVEN the diff under
   `server/`, WHEN inspected, THEN no functional behaviour change
   lands. Server-side reconnect logic is unchanged.
 
-- [ ] **AC9 -- No optimistic client-side authority introduced**:
+- [x] **AC9 -- No optimistic client-side authority introduced**:
   GIVEN the implementation diff, WHEN reviewed for any
   client-side mutation of authoritative state outside the
   shared phase sink, snapshot drainers, and S2C consumers,
@@ -281,20 +289,20 @@ All criteria are independently checkable.
   *Evidence*: text search for "no optimistic" in the evidence
   document.
 
-- [ ] **AC10 -- Workspace test pass + ignored count behave
+- [x] **AC10 -- Workspace test pass + ignored count behave
   predictably**: GIVEN `cargo test --workspace --tests
   --no-fail-fast` at the implementation commit, WHEN compared to
   the post-Sprint-12 baseline, THEN no new `#[ignore]` markers
   are introduced; the new dedupe tests pass; previously-passing
   tests continue to pass.
 
-- [ ] **AC11 -- Sprint 12 disposition preserved**: GIVEN the
+- [x] **AC11 -- Sprint 12 disposition preserved**: GIVEN the
   implementation commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-12.md`, `production/stage.txt`,
   and `production/qa/qa-plan-sprint-12.md` are diffed, THEN
   none of them are modified under this story.
 
-- [ ] **AC12 -- Evidence document slot reserved**:
+- [x] **AC12 -- Evidence document slot reserved**:
   `production/qa/evidence/sprint-13-late-msg-dedupe-evidence.md`
   (NEW). Records per-message dedupe diff summary, new
   integration-test pass evidence, dedupe key construction
@@ -488,3 +496,135 @@ Expected implementation flow:
   Worker branch: `work/s13-runtime-hardening-story-authoring`.
   Worktree:
   `D:\_DEV\claude-code-game-studios-worktrees\s13-runtime-hardening-story-authoring`.
+
+## Closure Trail
+
+- 2026-05-14 -- PROMPT 872 -- Worker implementation on
+  `work/s13-late-msg-dedupe` from base `origin/main@3cf5e41`. Worker
+  commit `dfe5f217aa99b4b5cd3c995a71db2c74f15a1135` adds session-
+  lifetime dedupe rings on the three reliable S2C drains
+  (`S2CGameOver` -> `apply_game_over_drain`; `S2CClassLocked` ->
+  `apply_class_locked_drain`; `S2CPlacementReveal` ->
+  `filter_placement_reveal_for_dedupe`) backed by new resource
+  `ClientIdempotencyState` (3x `DedupeRing<K>`, `DEDUPE_BOUND = 32`
+  per ring, oldest-key eviction), new plugin `ClientIdempotencyPlugin`
+  (installs resource + registers `OnExit(ClientState::InSession)`
+  clear), and new integration test
+  `tests/integration/session/late_msg_dedupe_test.rs` (17 tests).
+  9 files changed (+1095 / -28). No protocol-shape change, no
+  server-side change, no optimistic client-side authority. Cargo
+  resource policy applied (`CARGO_TARGET_DIR=D:\\_DEV\\cargo-target\\ccgs-msvc`).
+  Targeted regression: `cargo fmt -p client -- --check` clean +
+  `cargo check -p client` clean + `cargo test -p client --test
+  late_msg_dedupe_test` 17/17 pass + `cargo test -p client --lib
+  state::idempotency` 7/7 pass. Full-workspace tests intentionally
+  NOT run per Sprint 13 QA-plan binding no-full-workspace-tests-by-
+  default policy + worker prompt scope.
+
+- 2026-05-14 -- PROMPT 883 -- Integration. `--no-ff` merge of worker
+  tip `dfe5f21` into prior `origin/main@c379625` (post-PROMPT 876)
+  producing merge commit
+  `6163cd30d31821aa178444c48b854f086c97f4f0` on origin/main; zero
+  conflicts. First integration attempt `adf429d` discarded after
+  origin/main advanced under PROMPT 882 + PROMPT 876 mid-run; fresh
+  worktree on new tip re-merged cleanly. Merge-introduced delta
+  matches worker stat exactly (9 files / +1095 / -28). Forbidden
+  paths (`production/sprint-status.yaml`,
+  `production/session-state/`, `production/stage.txt`) untouched by
+  worker + integration. AC1-AC12 evidence recorded at
+  `production/qa/evidence/sprint-13-late-msg-dedupe-evidence.md`
+  + `reports/PROMPT-883-S13-Late-Msg-Dedupe-Integration.md`. No
+  `/story-done`, `/smoke-check`, `/team-qa`, `/gate-check`,
+  `/release-check` run.
+
+- 2026-05-14 -- PROMPT 884 -- `/story-done` paperwork closure.
+  Verdict PASS. Source-of-truth at closure:
+  `origin/main@6163cd30d31821aa178444c48b854f086c97f4f0`. AC1-AC9
+  + AC11 + AC12 all PASS verified against the integrated diff:
+  AC1 PASS (`apply_game_over_drain` at
+  `client/src/presentation/result_screen.rs:693,705` consults
+  `ClientIdempotencyState::game_over` + `S2CGameOver` integration
+  tests `s2c_game_over_drain_first_apply_caches_then_duplicate_is_noop`
+  + `s2c_game_over_drain_consults_dedupe_ring_in_production_source`);
+  AC2 PASS (`apply_class_locked_drain` at
+  `client/src/ui/lobby.rs:335,405` consults
+  `ClientIdempotencyState::class_locked` + tests
+  `s2c_class_locked_drain_first_apply_locks_then_duplicate_is_noop`
+  + `s2c_class_locked_drain_consults_dedupe_ring_in_production_source`);
+  AC3 PASS (`filter_placement_reveal_for_dedupe` at
+  `client/src/presentation/board_rendering.rs:1072,1105` consults
+  `ClientIdempotencyState::placement_reveal` + tests
+  `s2c_placement_reveal_drain_first_apply_returns_message_then_duplicate_is_noop`
+  + `s2c_placement_reveal_drain_consults_dedupe_ring_in_production_source`;
+  story's "`S2CPlaceUnit`" naming maps to the protocol's
+  `S2CPlacementReveal` placement-class S2C message);
+  AC4 PASS (test
+  `ac4_game_over_reconnect_replay_runs_result_screen_sequence_exactly_once`);
+  AC5 PASS (`reset_client_idempotency_on_session_exit_system`
+  wired to `OnExit(ClientState::InSession)` in
+  `ClientIdempotencyPlugin::build` at
+  `client/src/state/idempotency.rs:236,250` + tests
+  `ac5_clear_for_session_exit_resets_all_drain_rings` +
+  `ac5_session_exit_system_is_wired_to_on_exit_in_session`;
+  reconnect path does not exit `InSession` so dedupe state is
+  preserved across reconnect per ADR-011);
+  AC6 PASS (`pub const DEDUPE_BOUND: usize = 32` documented
+  inline at `client/src/state/idempotency.rs:50` + tests
+  `ac6_dedupe_ring_evicts_oldest_when_bound_exceeded` +
+  `ac6_dedupe_bound_documented_inline` +
+  `state::idempotency::tests::dedupe_ring_evicts_oldest_when_bound_exceeded`);
+  AC7 PASS (`git diff 6163cd3^1..6163cd3 -- 'shared/src/protocol.rs'`
+  empty + test `ac7_no_new_message_id_field_in_protocol`);
+  AC8 PASS (`git diff 6163cd3^1..6163cd3 -- 'server/'` empty);
+  AC9 PASS (read-only dedupe projection; test
+  `ac9_dedupe_state_is_a_read_only_projection_no_optimistic_authority`
+  + "No optimistic client-side authority is introduced" phrase
+  preserved verbatim in evidence doc);
+  AC10 PASS-WITHIN-STORY-PRESCRIBED-TARGETED-CHECK (per PROMPT 872
+  + Sprint 13 QA-plan no-full-workspace-tests-by-default policy:
+  `cargo test -p client --test late_msg_dedupe_test` 17/17 pass +
+  `cargo test -p client --lib state::idempotency` 7/7 pass + nearby
+  regression set green; no new `#[ignore]` markers; full-workspace
+  cargo test deferred to Sprint 13 end-of-sprint integration smoke);
+  AC11 PASS (`git diff 6163cd3^1..6163cd3 -- 'production/sprint-status.yaml'
+  'production/sprints/sprint-12.md' 'production/stage.txt'
+  'production/qa/qa-plan-sprint-12.md'` empty across worker +
+  integration; PROMPT 884 row-level flip is the permitted
+  disposition-preserving paperwork edit);
+  AC12 PASS (`production/qa/evidence/sprint-13-late-msg-dedupe-evidence.md`
+  NEW 138 lines on origin/main via PROMPT 883 integration; not
+  modified by PROMPT 884). Expected worker report at
+  `reports/PROMPT-872-S13-LATE-MSG-DEDUPE-001-Client-Side-Dedupe.md`
+  is missing per PROMPT 883 §Worker artifacts; per PROMPT 884 task
+  rubric the missing worker report is documented as non-blocking
+  because the integration report + worker commit message body +
+  evidence document collectively cover all twelve ACs. Paperwork-
+  only run: no /dev-story, no /story-readiness, no /smoke-check,
+  no /team-qa, no /gate-check, no /release-check, no /qa-plan, no
+  Sprint 13 close-out, no stage advance, no `S8-QA-001-W1` closure
+  invoked by PROMPT 884. No Cargo invoked by PROMPT 884; Cargo
+  resource policy N/A for the closure run itself (PROMPT 872 worker
+  applied the binding Windows/MSVC Cargo resource policy for its
+  targeted regression invocations; PROMPT 883 integration did not
+  invoke cargo for the merge-only operation). No client/, server/,
+  shared/, tests/ touched by PROMPT 884. No production/stage.txt,
+  production/sprints/sprint-13.md, production/sprints/sprint-12.md,
+  production/qa/qa-plan-sprint-13.md, production/qa/qa-plan-sprint-12.md,
+  production/qa/evidence/sprint-13-late-msg-dedupe-evidence.md, or
+  production/gate-checks/* touched by PROMPT 884. All carried
+  non-claims preserved: `S8-QA-001-W1` OPEN, `QA-COND-0005` +
+  `QA-COND-0006` accepted-risk, `PAW-TD-*-a` accept-risk,
+  PROMPT 683-era runtime divergence question (folded into Sprint 12
+  story 019 cannot-reproduce closure; third same-scope retest NOT
+  authorised per TQ-S12-C2), Story 019 (Sprint 12 hand-ui) underlying
+  drag-runtime bug NOT claimed fixed, `TQ-S12-C1..C7` verbatim,
+  Sprint 12 / Sprint 11 / Sprint 10 closeouts unchanged. Sprint 13
+  progress after PROMPT 884: 6 of 6 Must Have done (track COMPLETE
+  per PROMPT 871); **4 of 6 Should Have done** (this row + the
+  three prior Should Have closures via PROMPT 833 + 844 + and the
+  PROMPT 835 inline closure); 5 of 7 Nice to Have done; **total
+  14 of 19** rows closed. Sprint 13 disposition UNCHANGED `active`.
+  Stage UNCHANGED `Polish`. PROMPT 761 Polish->Release gate-check
+  FAIL preserved. No connection-lost UX implementation by PROMPT
+  884 (forbidden per task scope; S13-CONN-LOST-UX-001 row remains
+  `ready`).
