@@ -1,4 +1,128 @@
-# Sprint 12 -- ACTIVATED (Polish stage)
+# Sprint 12 -- CLOSED WITH CONDITIONS (Polish stage)
+
+> **Status**: `closed-with-conditions` -- closed 2026-05-14 by PROMPT 817
+> (`/sprint-close` close-out paperwork on fresh worktree
+> `D:\_DEV\claude-code-game-studios-worktrees\sprint-12-closeout` on
+> branch `closeout/sprint-12`). Source-of-truth at close-out:
+> `origin/main@e7bf296` (PROMPT 816 Sprint 12 Team-QA evidence commit
+> `qa(s12): /team-qa Sprint 12 APPROVED WITH CONDITIONS (PROMPT 816)`).
+> Stage UNCHANGED `Polish` (NOT Release).
+>
+> **Sprint 12 disposition rationale**:
+> - 5/5 Must Have rows `done` per PROMPT 814 `/story-done` batch
+>   (stories 012 / 013 / 014 / 015 / 019). All 5 Cluster B retained
+>   D-5 ignored tests retired by Sprint 12 Must Have stories
+>   (workspace ignored count: 5 → 0 verified by PROMPT 816 Team-QA grep).
+> - Sprint 12 smoke PASS-WITH-WARNINGS (PROMPT 815;
+>   `production/qa/smoke-sprint-12-2026-05-14.md`). Warning is Windows
+>   AppCompat environmental false positive (NOT a code regression;
+>   functional total 1135 / 0 / 0 at parity with PROMPT 813 baseline).
+> - Sprint 12 Team-QA APPROVED-WITH-CONDITIONS (PROMPT 816;
+>   `production/qa/team-qa-sprint-12-2026-05-14.md`; conditions
+>   TQ-S12-C1..C7).
+> - 0/4 Should Have done; all 4 Should Have rows deferred into
+>   Sprint 13 planning.
+> - 0/5 Nice to Have done; all 5 Nice to Have rows deferred into
+>   Sprint 13 planning.
+>
+> **Conditions carried forward unchanged (TQ-S12-C1..C7 preserved
+> verbatim)**:
+> - **TQ-S12-C1**: Sprint 12 close-out is a separate orchestrator
+>   decision; PROMPT 817 candidate (this prompt).
+> - **TQ-S12-C2**: Story 019 underlying drag-runtime bug remains OPEN
+>   diagnostic question; Sprint 13 expanded-tracing escalation required
+>   via PROMPT 804 candidate stories 017 / 018 / 019 OR new hand-ui
+>   follow-on; no third same-scope retest authorised.
+> - **TQ-S12-C3**: `S8-QA-001-W1` remains OPEN; no manual/browser
+>   two-client GAME_OVER evidence in Sprint 12 scope.
+> - **TQ-S12-C4**: `QA-COND-0005` (Standard-tier accessibility) +
+>   `QA-COND-0006` (playtest validation) remain accepted-risk /
+>   deferred.
+> - **TQ-S12-C5**: PROMPT 761 Polish→Release gate-check `FAIL` preserved;
+>   no retry authorised.
+> - **TQ-S12-C6**: `PAW-TD-*-a` placeholder-art accept-risk preserved;
+>   no final-art claim.
+> - **TQ-S12-C7**: Windows AppCompat smoke warning is informational;
+>   recommend Sprint 13 devops-engineer candidate if persistent; NOT a
+>   Sprint 12 close-out blocker.
+>
+> **Carry conditions also preserved unchanged**: `S8-QA-001-W1`
+> manual/browser two-client GAME_OVER gap (OPEN); `QA-COND-0005`
+> accepted-risk (friend-game scope); `QA-COND-0006` accepted-risk /
+> deferred; `PAW-TD-*-a` placeholder-art accept-risk on placeholder PNGs
+> across PAW-002..PAW-006; PROMPT 683-era runtime-divergence question
+> folded into story 019 tighter-capture (NOT separately claimed closed
+> even though story 019 closed `cannot-reproduce`); PROMPT 761
+> Polish→Release gate-check `FAIL` preserved at
+> `production/gate-checks/gate-polish-release-2026-05-12.md`; Sprint 11
+> disposition (`closed-with-conditions` per PROMPT 792) preserved;
+> Sprint 10 disposition (`closed-with-conditions` per PROMPT 763)
+> preserved.
+>
+> **PROMPT 817 paperwork-only run (w.r.t. code + sprint state)**:
+> NO `/dev-story`, NO `/story-readiness`, NO `/story-done`, NO
+> `/smoke-check` rerun, NO `/team-qa` rerun, NO `/gate-check`, NO
+> `/release-check`, NO `/qa-plan`, NO implementation, NO CI runs, NO
+> cargo / trunk build / test runs. Files modified by PROMPT 817:
+> `production/sprint-status.yaml` (top-level `status: active →
+> closed-with-conditions`; `updated:` annotation refreshed;
+> `sprint_12_closeout:` block appended at end of file following
+> `sprint_11_closeout:` pattern); this `production/sprints/sprint-12.md`
+> (CLOSED banner prepended above ACTIVATED banner);
+> `production/session-state/active.md` (PROMPT 817 banner prepended);
+> `production/session-state/codex-orchestrator-state.md` (Current
+> verified state updated for PROMPT 817). Files explicitly NOT modified
+> by PROMPT 817: production code under `client/` / `server/` /
+> `shared/` / `tests/`; `production/stage.txt` (remains `Polish`);
+> any Sprint 12 story file; any QA artifact under `production/qa/`;
+> `production/gate-checks/gate-polish-release-2026-05-12.md`;
+> `.claude/settings.json` (root-checkout dirt preserved untouched);
+> the staged `production/session-state/autonomous-monitor-task.md`
+> (root-checkout dirt preserved untouched); the untracked
+> `Dtmpworkspace-test-output.txt` (root-checkout dirt preserved
+> untouched); `.octogent/`; `.claude/scheduled_tasks.lock`.
+>
+> **Explicitly NOT claimed by this close-out**: public release
+> readiness, release-candidate readiness, full game completion,
+> broad / Standard-tier accessibility completion, playtest /
+> fun-hypothesis validation, full playable-client manual QA,
+> two-client GAME_OVER closure (`S8-QA-001-W1`), final-art /
+> asset-production completion, Polish→Release gate-check retry, stage
+> advance from Polish to Release, Sprint 13 activation, underlying
+> drag-runtime bug fix (story 019 closed `cannot-reproduce`, NOT
+> `bug-fixed`).
+>
+> **Next eligible orchestrator paths (advisory; producer may
+> resequence; only one shared-status writer at a time per the
+> 2026-05-13 override)**:
+> 1. Author Sprint 13 candidate runtime-hardening stories per the
+>    PROMPT 804 mapping (drag-runtime escalation from story 019
+>    `cannot-reproduce` disposition; mapping appended at
+>    `production/qa/evidence/sprint-11-drag-runtime-evidence-tighter.md`
+>    by PROMPT 807 commit `a8ef42d`). Candidate slugs include the
+>    playable-client 017 / 018 / 019 series OR a new hand-ui follow-on.
+> 2. Author Sprint 12 Should Have story files
+>    (`S11-HUD-TIMER-EYEBALL-VISUAL-001`, `S11-HU-PHASE-IDEMPOTENCY-001`,
+>    `S11-SERVER-POOL-INIT-LOG-GUARD-001`,
+>    `S11-LOBBY-UX-CONFIRM-STATE-001`) for Sprint 13 pull-in candidacy;
+>    run `/story-readiness` for each.
+> 3. Author Sprint 12 Nice to Have story files
+>    (`S11-TD-CARGO-DISK-USAGE-001`, `S11-TD-CARGO-PDB-LIMIT-001`,
+>    `S11-OPS-ORCHESTRATOR-LOCK-001`, `S11-OPS-GH-CLI-001`,
+>    `S11-SERVER-R2-PLACEMENT-CRASH-AUDIT-001`) for Sprint 13 pull-in
+>    candidacy.
+> 4. Author Sprint 13 devops-engineer candidate for
+>    `docs/setup/dev-environment.md` AppCompat heuristic note +
+>    manifest/rename workaround (TQ-S12-C7 informational).
+> 5. `/sprint-plan sprint-13` draft authoring (separate prompt; this
+>    close-out does NOT activate Sprint 13).
+>
+> The historical `ACTIVATED` banner immediately below and the historical
+> `DRAFT` body further below are preserved verbatim for audit trail.
+
+---
+
+# Sprint 12 -- ACTIVATED (Polish stage) -- HISTORICAL pre-close-out body below
 
 > **Status**: `active` -- activated 2026-05-14 by PROMPT 798
 > (`/sprint-plan sprint-12` on root checkout, no worktree).
