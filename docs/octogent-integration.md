@@ -566,3 +566,285 @@ During the morning of 2026-05-14, several Octogent source patches were added in 
 - `production/session-state/codex-orchestrator-state.md` — orchestrator contract (source of truth)
 - `.claude/docs/coordination-rules.md` — disposition label spec (`NEW / CLEAR / REPONDRE / RELANCER`)
 - `.claude/docs/orchestrator-paralelisme-optimisation.md` — wave parallelism context
+
+## 11. Orchestrator-root concurrent-session lock pattern
+
+> **Story**: S11-OPS-ORCHESTRATOR-LOCK-001 (Sprint 13 candidate; Nice to Have)
+> **Authored**: 2026-05-14 by PROMPT 862 (`/dev-story` doc-only run)
+> **Story file**: `production/epics/devops/story-003-orchestrator-lock.md`
+> **Type**: Documentation only — no code, lock file, hook, or runtime tooling lands.
+>
+> The originally proposed path `.octogent/orchestrator-lock.md` is rejected
+> by `.gitignore:26` (`.octogent/` is the Octogent local orchestration
+> state directory). This section is the story-listed alternative
+> location (story-003-orchestrator-lock.md lines 83--85 and "Likely
+> Files" table line 209).
+
+This section is the pattern reference backing the operational rule
+*"only one shared-status writer at a time per coordination window"*
+introduced on 2026-05-13 (the "2026-05-13 override"). The override
+rule is enforced operationally today; this section records the
+underlying failure mode, the shared surfaces involved, and a
+detection / avoidance / release pattern that a future story can
+promote into runtime tooling if desired.
+
+### 11.1 Status / No-Claim Banner
+
+> This story is authored as a Sprint 13 candidate. Sprint 13 is **NOT**
+> activated by PROMPT 819. Sprint 12 is closed-with-conditions per PROMPT
+> 817 and is not changed by this authoring run.
+>
+> PROMPT 819 (this authoring run) does NOT:
+>
+> - Activate Sprint 13.
+> - Modify `production/sprint-status.yaml`.
+> - Modify `production/sprints/sprint-13.md` or any other sprint plan file.
+> - Modify `production/stage.txt` (remains `Polish`).
+> - Modify any `production/session-state/*` file.
+> - Modify any QA-plan / smoke / Team-QA / gate-check / release-check
+>   artifact.
+> - Run `/story-readiness`, `/dev-story`, `/story-done`, `/smoke-check`,
+>   `/team-qa`, `/gate-check`, `/release-check`, or `/qa-plan` on this
+>   story.
+> - Modify any code under `client/`, `server/`, `shared/`, or `tests/`.
+> - Implement any actual lock file or runtime tooling.
+> - Retry the PROMPT 761 Polish->Release gate-check.
+>
+> This story does **not** claim: public release readiness, release-candidate
+> readiness, full game completion, broad / Standard-tier accessibility
+> completion (`QA-COND-0005`), playtest / fun-hypothesis validation
+> (`QA-COND-0006`), full playable-client manual QA, two-client GAME_OVER
+> closure (`S8-QA-001-W1`), or final-art / asset-production completion.
+>
+> Sprint 10 / Sprint 11 / Sprint 12 dispositions unchanged. PROMPT 761
+> Polish->Release gate-check FAIL evidence preserved.
+>
+> **This story documents a pattern only. NO CODE OR LOCK FILE LANDS.**
+
+*Note*: The no-claim restatement above is reproduced verbatim from
+the AC8-required source block in
+`production/epics/devops/story-003-orchestrator-lock.md` lines
+18--49. The doc-authoring run that materialised this section is
+PROMPT 862; the banner's reference to "PROMPT 819" is preserved
+verbatim from the source story as required by AC8.
+
+### 11.2 Failure mode
+
+Two parallel orchestrator sessions can each attempt to mutate root
+checkout `main` HEAD concurrently. Typical collision: both sessions
+running close-out paperwork against shared trackers in the same
+coordination window. Observed effects:
+
+- **Rebase / merge conflicts** — second session's `git pull --rebase`
+  fails on overlapping YAML rows or Markdown banner regions.
+- **Lost paperwork** — one session's update is overwritten by the
+  other when the conflict is resolved naively (e.g., `--ours` /
+  `--theirs` without re-merging the YAML rows).
+- **Confused audit trail** — the conflict resolution itself is not
+  recorded in either session's final report, so the audit trail
+  shows two "successful" paperwork runs against the same commit
+  range with one of them effectively dropped.
+
+The failure surfaced in Sprint 11 Wave 12 backlog (close-out phase)
+and was deferred forward to Sprint 13 by Sprint 12 close-out (PROMPT
+817). The 2026-05-13 override rule is the operational fix; this
+section is the backing pattern reference.
+
+### 11.3 Shared-status writer surfaces (AC2)
+
+A *shared-status writer* is any turn that writes to one of the
+following three root-checkout surfaces. The lock pattern in
+sub-sections 11.4--11.6 applies whenever a session intends to write
+any of these files.
+
+| # | Surface | Purpose | Typical writers |
+|---|---------|---------|-----------------|
+| 1 | `production/session-state/active.md` | Lanes-and-Lies session state (current-state banner, ledger). | Orchestrator close-out, `/story-done`, sprint-status flips. |
+| 2 | `production/sprint-status.yaml` | Top-level sprint state (story rows, sprint disposition, story-done blocks). | `/story-done`, `/sprint-plan` activation, sprint close-out. |
+| 3 | `production/session-state/codex-orchestrator-state.md` | Orchestrator contract block + recent decisions log. | Orchestrator session start / close-out, override-rule changes. |
+
+A turn that touches **any** of those three files is a shared-status
+writer for the purposes of this pattern. A read-only session (status
+checks, `git log`, file reads, doc-only worktree work outside the
+three surfaces) is **not** a shared-status writer and does not need
+to acquire the lock.
+
+### 11.4 Detection pattern (AC3.a)
+
+Before becoming a shared-status writer, a session **detects** whether
+another session is already a shared-status writer in the current
+coordination window. The detection check is read-only.
+
+Proposed detection signal: a lock file at
+`production/session-state/.lock-shared-writer` whose presence
+indicates an active shared-status writer. The lock file is a small
+Markdown / plain-text body with three fields:
+
+```text
+session_id: <UUID or session label assigned by the orchestrator>
+acquired_at: <ISO-8601 UTC timestamp>
+intent: <one-line description of the paperwork-write scope>
+```
+
+Detection procedure (no writes, no hooks):
+
+1. Read `production/session-state/.lock-shared-writer` if it exists.
+2. If absent: no active shared-status writer; the session may proceed
+   to acquire the lock (sub-section 11.5).
+3. If present and `acquired_at` is within the documented timeout
+   window (see sub-section 11.6): another session is the active
+   shared-status writer; the new session **must not** write to any
+   of the three surfaces in sub-section 11.3 until the lock is
+   released or expired.
+4. If present and `acquired_at` is older than the documented
+   timeout: the lock is stale (likely a crashed session); the new
+   session may forcibly release the lock (sub-section 11.6) and
+   acquire a fresh one, logging the takeover in its final report.
+
+Detection is the only step performed by read-only sessions. A
+session that intends to read but not write the three surfaces never
+proceeds past step 1 and never acquires the lock.
+
+### 11.5 Avoidance pattern (AC3.b)
+
+A session that *intends to write* one of the three surfaces in
+sub-section 11.3 must **acquire** the lock before its first write to
+any of those surfaces. The acquire step is the only write that can
+occur before the lock is held.
+
+Proposed acquire procedure (single shared-status writer):
+
+1. Run the detection step (sub-section 11.4).
+2. If another active lock is present: **abort the write** and report
+   `BLOCKED — shared-status writer in progress, see
+   production/session-state/.lock-shared-writer`. Do not retry in a
+   tight loop; the operational rule is queue not race.
+3. If absent or stale: write the lock file with the current
+   session's `session_id`, `acquired_at`, and a one-line `intent`
+   description.
+4. Re-read the lock file immediately after the write. If the
+   `session_id` matches, the lock is acquired. If it does not (race
+   with another session), **abort the write**, do not overwrite the
+   other session's lock, and report `BLOCKED — lock race lost`.
+5. Perform the paperwork-write turn against the three surfaces in
+   sub-section 11.3.
+6. Run the release procedure (sub-section 11.6).
+
+The acquire-then-confirm pattern in steps 3--4 is the avoidance
+guarantee. Two sessions racing on step 3 will both write the lock
+file, but step 4 ensures only the session that "won" the race
+proceeds; the loser aborts cleanly and the audit trail records the
+abort.
+
+The avoidance pattern is consistent with the 2026-05-13 override
+rule: it does not allow two shared-status writers to be active
+simultaneously, and it forces the loser of any race to surface as a
+`BLOCKED` final-line status rather than silently overwriting.
+
+### 11.6 Release pattern (AC3.c)
+
+A session that holds the lock **releases** it as the final step of
+the paperwork-write turn. Two release paths are documented; both end
+with the lock file deleted (no stale lock left on disk).
+
+**Normal release** (paperwork-write turn completed):
+
+1. Confirm all writes to the three surfaces in sub-section 11.3 are
+   committed and pushed (or staged for orchestrator commit, per the
+   session's contract).
+2. Delete `production/session-state/.lock-shared-writer`.
+3. Record the release in the session's final report (a single line
+   noting the lock acquire and release timestamps).
+
+**Timeout release** (lock holder crashed or hung):
+
+1. The lock file is considered stale when `acquired_at` is older
+   than a documented timeout. **Proposed default**: 30 minutes;
+   adjustable by a future implementation story if real-world
+   paperwork-write turns regularly exceed this.
+2. A new session detecting a stale lock may forcibly delete the
+   lock file (sub-section 11.4 step 4) and then acquire a fresh
+   lock per sub-section 11.5.
+3. The takeover must be logged in the new session's final report
+   with the stale lock's `session_id` and `acquired_at` so the
+   audit trail records who got pre-empted.
+
+Both release paths leave the disk clean (no lock file present) so
+the next session's detection step (sub-section 11.4) sees a clean
+state.
+
+### 11.7 Cross-link to the 2026-05-13 override rule (AC4)
+
+The lock pattern in sub-sections 11.4--11.6 backs the operational
+rule **"only one shared-status writer at a time per coordination
+window"** introduced on 2026-05-13. The override rule is the
+authoritative source-of-truth for orchestrator behaviour today.
+
+Canonical location of the override rule at the time of writing:
+
+- `production/session-state/codex-orchestrator-state.md`, the
+  `## Current Operating Rules (2026-05-13 override)` section
+  (line 524 at `origin/main@9b65439`).
+
+The override rule is also cited from `CLAUDE.md` via
+`.claude/docs/coordination-rules.md` ("Current GCS Orchestrator
+Contract") which instructs readers to consult the top override
+block in `production/session-state/codex-orchestrator-state.md`
+when conflicts arise. If the override block moves (e.g., section
+renumbering or migration into a dedicated contract doc), the
+canonical pointer is whichever location the `Current GCS
+Orchestrator Contract` cross-reference in `coordination-rules.md`
+points to.
+
+If this section and the override block ever disagree, the
+**override block wins**. This section is descriptive of the
+pattern, not prescriptive of operational behaviour.
+
+### 11.8 Recommended follow-on (AC7)
+
+**Recommendation**: no implementation follow-on is recommended at
+Sprint 13 activation HEAD; the pattern is enforced operationally via
+the 2026-05-13 override rule, and the operational enforcement has
+held across Sprint 12 close-out (PROMPT 817) plus every Sprint 13
+`/story-done` paperwork run from PROMPT 833 through PROMPT 856
+without a recurrence of the Sprint 11 Wave 12 failure mode.
+
+If a future coordination-window incident does demonstrate that
+operational enforcement is insufficient, a single follow-on story
+should be authored to implement the lock file at
+`production/session-state/.lock-shared-writer` per sub-sections
+11.4--11.6 of this section. Suggested slug for that hypothetical
+follow-on: `S14-OPS-ORCHESTRATOR-LOCK-IMPL-001`. That story does
+**not** exist at Sprint 13 activation HEAD and is not authored by
+this doc-only run.
+
+### 11.9 Out-of-scope reminder (AC5 + AC6)
+
+This section is the only artifact landed by PROMPT 862. The
+following are explicitly **out of scope** for this story and are
+**not** modified by the doc-authoring commit:
+
+- No file under `client/`, `server/`, `shared/`, `tests/`,
+  `.cargo/`, `.github/`, or any build script is modified (AC5).
+- No `production/session-state/.lock-shared-writer` file is created
+  (AC5).
+- `production/sprint-status.yaml` is not modified (AC6).
+- `production/sprints/sprint-13.md` is not modified (AC6).
+- `production/stage.txt` is not modified (AC6).
+- The PROMPT 761 Polish->Release gate-check artifact is not
+  modified (AC6).
+- No orchestrator script, hook, or runtime tool is added or
+  changed.
+
+Verification commands (recorded here for the implementing prompt;
+re-run by the integration prompt if/when this story is integrated):
+
+```sh
+git diff <pre-impl-sha>..<impl-sha> -- \
+  'client/**' 'server/**' 'shared/**' 'tests/**' \
+  'Cargo.toml' '.cargo/**' '.github/**' '*.sh' '*.ps1'
+git diff --check origin/main...HEAD
+git diff --cached --check
+```
+
+No `cargo` command is required by this story.
