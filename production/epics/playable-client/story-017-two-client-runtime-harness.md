@@ -2,11 +2,13 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S13-TWO-CLIENT-RUNTIME-HARNESS-001
-> **Status**: Implemented (PROMPT 858, 2026-05-14) -- `/dev-story` complete;
-> AC1-AC13 all PASS with canonical `S2CGameOver` endpoint. `/story-done`
-> closure (incl. `/story-done` paperwork + `sprint-status.yaml` row flip)
-> deferred to a separate prompt with QA-lead sign-off. AC12 binding
-> preserved: `S8-QA-001-W1` is NOT closed by this prompt.
+> **Status**: Done (PROMPT 871, 2026-05-14) -- `/story-done` paperwork closure
+> verified AC1-AC13 all PASS against integrated evidence on
+> `origin/main@3cf5e41` (PROMPT 870 integration merge of PROMPT 858 worker
+> commit `cb4454a`). Sprint 13 Must Have row `S13-TWO-CLIENT-RUNTIME-HARNESS-001`
+> flipped `ready -> done` in `production/sprint-status.yaml` (top-level
+> `sprint:` / `status:` / `stage:` unchanged). AC12 forbid-auto-closure
+> preserved: `S8-QA-001-W1` remains OPEN and is NOT closed by PROMPT 871.
 > **Layer**: Test Infrastructure / Friend-Game Runtime Evidence
 > **Type**: Integration -- new cargo binary / workspace member (test harness)
 > **Sprint**: Sprint 13 candidate (per PROMPT 803 §6 line 142; NOT activated)
@@ -634,3 +636,113 @@ Expected implementation flow:
   Evidence doc:
   `production/qa/evidence/sprint-13-two-client-runtime-evidence.md`.
   Setup doc: `docs/setup/two-client-runtime-harness.md`.
+
+- 2026-05-14 -- PROMPT 870 -- `/integrate` merge of
+  `work/s13-two-client-runtime-harness` worker tip `cb4454a` onto
+  `origin/main`. Final integration commit
+  `3cf5e419a8a0c055de0acb84991515f0f0ef280e` is a real merge commit
+  with PROMPT 866 closure `6cdab34` as first-parent and PROMPT 858
+  worker `cb4454a` as second-parent. Single merge with `--no-ff` over
+  the prior `origin/main@6cdab34`; no rebase, no conflict. Files
+  changed match worker scope exactly: 49 files / +4211 / -21
+  (`Cargo.lock` +17, workspace `Cargo.toml` +1/-1, new
+  `tools/two-client-runtime/{Cargo.toml,src/main.rs,src/route.rs,src/logging.rs}`,
+  `docs/setup/two-client-runtime-harness.md` NEW, story file inline
+  AC annotations, `production/qa/evidence/sprint-13-two-client-runtime-evidence.md`
+  NEW 312 lines, eight evidence-bundle subdirectories under
+  `production/qa/evidence/captures/sprint-13-two-client-runtime/`).
+  Zero files under `client/src/`, `server/src/`, `shared/src/`,
+  `tests/`, `production/sprint-status.yaml`, `production/sprints/sprint-12.md`,
+  `production/sprints/sprint-13.md`, `production/stage.txt`,
+  `production/qa/qa-plan-sprint-12.md`, `production/qa/qa-plan-sprint-13.md`,
+  `production/gate-checks/*`. Fast-forward push `6cdab34..3cf5e41` to
+  `origin/main`, no force. PROMPT 870 did NOT run `/story-done`,
+  `/smoke-check`, `/team-qa`, `/gate-check`, `/release-check`, or
+  `/qa-plan`. AC12 forbid-auto-closure preserved: `S8-QA-001-W1` is
+  NOT modified by PROMPT 870.
+
+- 2026-05-14 -- PROMPT 871 -- `/story-done` paperwork closure. Verified
+  HEAD fast-forwarded to `origin/main == 3cf5e41` (PROMPT 870
+  integration merge; PROMPT 858 worker `cb4454a` reachable as the
+  merge's second-parent). AC1-AC13 all verified PASS against integrated
+  evidence on `origin/main@3cf5e41` (see
+  `production/qa/evidence/sprint-13-two-client-runtime-evidence.md`
+  AC2-AC13 sections + worker commit `cb4454a` `git show --stat`). AC12
+  forbid-auto-closure independently re-checked: no modification to any
+  `S8-QA-001-W1` tracker field, no modification to
+  `production/qa/evidence/manual-friend-game-evidence-runbook.md`, no
+  modification to any `production/qa/qa-plan-sprint-*.md`. PROMPT 871
+  paperwork-only run at root checkout (serialized shared-status writer
+  per 2026-05-13 override; matches PROMPT 868 / 865 / 856 / 854 / 851
+  / 844 / 843 / 840 / 835 paperwork pattern). Files changed by PROMPT
+  871: this story file (Status header flipped `Implemented` -> `Done`
+  with PROMPT 871 closure context; this Closure Trail entry appended);
+  `production/sprint-status.yaml` (Sprint 13 Must Have row
+  `S13-TWO-CLIENT-RUNTIME-HARNESS-001` flipped `status: ready -> done`
+  with `completed: 2026-05-14`, `worker_prompt: 858`, `worker_commit:
+  cb4454a625421229f5adfb64d5036fbcff3fa940`, `integration_prompt: 870`,
+  `integration_commit: 3cf5e419a8a0c055de0acb84991515f0f0ef280e`,
+  `story_done_prompt: 871`, `test_evidence` + `acceptance_evidence`
+  cross-links, plus 3 new notes lines; top-level `updated:` refreshed;
+  `sprint_13_story_done:` block extended with PROMPT 871 entry as a
+  sibling to the prior PROMPT 833 / 840 / 843 / 844 / 850 / 851 / 854
+  / 856 / 865 / 868 entries -- eleventh `/story-done` block of
+  Sprint 13); `production/session-state/active.md` (PROMPT 871 banner
+  prepended above PROMPT 868 banner); `production/session-state/codex-orchestrator-state.md`
+  (PROMPT 871 section prepended above PROMPT 868 section). Zero file
+  under `client/`, `server/`, `shared/`, `tests/`,
+  `tools/two-client-runtime/`, `production/stage.txt`,
+  `production/sprints/sprint-13.md`, `production/sprints/sprint-12.md`,
+  `production/qa/qa-plan-sprint-13.md`, `production/qa/qa-plan-sprint-12.md`,
+  `production/qa/evidence/*` (evidence doc already on origin/main via
+  PROMPT 870), `production/gate-checks/*` modified. No cargo invoked
+  by PROMPT 871. No `/dev-story`, `/story-readiness`, `/smoke-check`,
+  `/team-qa`, `/gate-check`, `/release-check`, `/qa-plan` invoked.
+  AC12 forbid-auto-closure preserved: `S8-QA-001-W1` remains OPEN.
+  Sprint 13 disposition UNCHANGED (`active`; NOT closed-out by PROMPT
+  871). Stage UNCHANGED `Polish`. PROMPT 761 Polish->Release FAIL
+  preserved. Sprint 13 progress after PROMPT 871: **6 of 6 Must Have
+  done** (Sprint 13 Must Have track COMPLETE); 3 of 6 Should Have done;
+  3 of 7 Nice to Have done; total **12 of 19** rows closed.
+
+### Conditions carried forward unchanged
+
+- `S8-QA-001-W1` manual/browser two-client GAME_OVER gap remains
+  OPEN. AC12 forbid-auto-closure explicitly preserved by PROMPT 871.
+- `QA-COND-0005` Standard-tier accessibility remains accepted-risk
+  (friend-game scope only).
+- `QA-COND-0006` playtest / fun-hypothesis validation remains
+  accepted-risk / deferred.
+- `PAW-TD-*-a` placeholder-art accept-risk preserved across
+  `PAW-002..PAW-006`.
+- PROMPT 683-era runtime divergence question preserved unchanged.
+- PROMPT 761 Polish->Release gate-check FAIL preserved.
+- Story 019 (Sprint 12 hand-ui) underlying drag-runtime bug NOT
+  claimed fixed.
+- `TQ-S12-C1..C7` (all 7 Sprint 12 Team-QA conditions) preserved
+  verbatim.
+- Sprint 10 (`closed-with-conditions`), Sprint 11
+  (`closed-with-conditions`), Sprint 12 (`closed-with-conditions` per
+  PROMPT 817) dispositions preserved unchanged.
+
+### Explicitly NOT claimed by PROMPT 871
+
+- public release readiness
+- release-candidate readiness
+- full game completion
+- broad / Standard-tier accessibility completion
+- playtest / fun-hypothesis validation
+- full playable-client manual QA
+- two-client GAME_OVER closure (`S8-QA-001-W1`)
+- final-art / asset-production completion
+- Polish->Release gate-check retry
+- Stage advance from Polish to Release
+- underlying drag-runtime bug fix
+- full UI clean-pass repair
+- Sprint 13 close-out (Sprint 13 remains `active`; Must Have track
+  complete but 3 of 6 Should Have + 4 of 7 Nice to Have rows remain
+  open)
+- harness CI integration (operator-invokable only; nightly cadence
+  scoped to Sprint 14 follow-on)
+- harness mid-game disconnect/reconnect scripting (happy-path GAME_OVER
+  only)
