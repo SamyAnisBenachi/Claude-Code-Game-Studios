@@ -449,6 +449,7 @@ pub fn draw_fake_reward(world: &mut World, lane: LaneId, attacker_player: Player
 
     let outcome = fake_reward_outcome(reward_seed);
     tracing::info!(
+        target: "server::game",
         player_id = attacker_player.0,
         lane = ?lane,
         outcome = ?outcome,
@@ -496,6 +497,7 @@ fn resolve_fake_reward_free_card_pick(
     rng_player_id: u32,
 ) {
     tracing::info!(
+        target: "server::game",
         player_id = attacker_player.0,
         lane = ?lane,
         "resolve_fake_reward_free_card_pick: enter"
@@ -506,6 +508,7 @@ fn resolve_fake_reward_free_card_pick(
 
     if hands.hand_len(attacker_player) >= MAX_HAND_SIZE {
         tracing::info!(
+            target: "server::game",
             player_id = attacker_player.0,
             lane = ?lane,
             amount = FAKE_OBJECTIVE_HAND_FULL_GOLD_REWARD,
@@ -613,6 +616,7 @@ fn send_objective_identities(
     dispatch: &ObjectiveIdentityDispatch,
 ) {
     tracing::info!(
+        target: "server::game",
         player_id = dispatch.player_id.0,
         peer_id = ?dispatch.peer_id,
         identity_count = dispatch.message.identities.len(),
@@ -621,6 +625,7 @@ fn send_objective_identities(
 
     let Some(peer_id) = dispatch.peer_id else {
         tracing::warn!(
+            target: "server::game",
             player_id = dispatch.player_id.0,
             "send_objective_identities DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
         );
@@ -633,6 +638,7 @@ fn send_objective_identities(
         &NetworkTarget::Single(peer_id),
     ) {
         tracing::error!(
+            target: "server::game",
             player_id = dispatch.player_id.0,
             peer_id = ?peer_id,
             err = ?e,

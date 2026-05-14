@@ -160,7 +160,7 @@ pub fn hand_card_drag_start_system(
         };
 
         tracing::info!(
-            target: "drag_lift_tween_install",
+            target: "client::card_animations::input_gating::drag_lift_tween_install",
             request_card = ?request.card,
             drag_sprite_entity = ?drag_sprite,
             node_left = ?node.left,

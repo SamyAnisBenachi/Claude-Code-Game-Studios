@@ -423,6 +423,7 @@ impl PrismNetworkContext<'_, '_, '_> {
         }
 
         tracing::info!(
+            target: "server::game",
             player_id = player_id.0,
             peer_id = ?peer_id,
             card_id = ?card_id,
@@ -432,6 +433,7 @@ impl PrismNetworkContext<'_, '_, '_> {
 
         let Some(peer_id) = peer_id else {
             tracing::warn!(
+                target: "server::game",
                 player_id = player_id.0,
                 card_id = ?card_id,
                 "stage_card_acquired DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
@@ -449,6 +451,7 @@ impl PrismNetworkContext<'_, '_, '_> {
             &NetworkTarget::Single(peer_id),
         ) {
             tracing::error!(
+                target: "server::game",
                 player_id = player_id.0,
                 peer_id = ?peer_id,
                 card_id = ?card_id,
@@ -475,6 +478,7 @@ impl PrismNetworkContext<'_, '_, '_> {
         }
 
         tracing::info!(
+            target: "server::game",
             player_id = player_id.0,
             peer_id = ?peer_id,
             lane,
@@ -483,6 +487,7 @@ impl PrismNetworkContext<'_, '_, '_> {
 
         let Some(peer_id) = peer_id else {
             tracing::warn!(
+                target: "server::game",
                 player_id = player_id.0,
                 lane,
                 "stage_reward_dropped DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
@@ -500,6 +505,7 @@ impl PrismNetworkContext<'_, '_, '_> {
             &NetworkTarget::Single(peer_id),
         ) {
             tracing::error!(
+                target: "server::game",
                 player_id = player_id.0,
                 peer_id = ?peer_id,
                 lane,
@@ -519,6 +525,7 @@ impl PrismNetworkContext<'_, '_, '_> {
         }
 
         tracing::info!(
+            target: "server::game",
             player_id = player_id.0,
             "stage_prism_respawned: broadcasting S2CPrismRespawned enter"
         );
@@ -531,6 +538,7 @@ impl PrismNetworkContext<'_, '_, '_> {
             sender.send::<S2CPrismRespawned, ReliableChannel>(&message, server, &NetworkTarget::All)
         {
             tracing::error!(
+                target: "server::game",
                 player_id = player_id.0,
                 err = ?e,
                 "S2C send failed: type=S2CPrismRespawned, handler=stage_prism_respawned"

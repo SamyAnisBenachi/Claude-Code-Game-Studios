@@ -281,6 +281,7 @@ pub fn placement_buffer_open(
 ) {
     if phase_entered.read().next().is_some() {
         tracing::info!(
+            target: "server::game",
             previous_submissions = pending.submissions.len(),
             "placement_buffer_open: PlacementPhaseEntered consumer enter"
         );
@@ -402,6 +403,7 @@ pub fn handle_placement_submission(
 
     for submission in submissions.read() {
         tracing::info!(
+            target: "server::game",
             player_id = submission.player.0,
             placements_len = submission.placements.len(),
             phase = ?phase,
@@ -551,6 +553,7 @@ pub fn close_placement_phase(
         sender.send::<S2CPlacementReveal, ReliableChannel>(&reveal, server, &NetworkTarget::All)
     {
         tracing::error!(
+            target: "server::game",
             round_number,
             placements_len = reveal.placements.len(),
             err = ?e,

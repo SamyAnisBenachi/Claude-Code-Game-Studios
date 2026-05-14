@@ -11,6 +11,7 @@ use super::events::{
 
 pub fn on_unit_appeared(_trigger: On<UnitAppeared>) {
     tracing::warn!(
+        target: "server::game",
         "keyword observer not yet implemented: on_unit_appeared — keyword dispatch deferred to future story"
     );
 }
@@ -41,18 +42,21 @@ pub fn on_unit_died(
 
 pub fn on_final_blow_dealt(_trigger: On<FinalBlowDealt>) {
     tracing::warn!(
+        target: "server::game",
         "keyword observer not yet implemented: on_final_blow_dealt — keyword dispatch deferred to future story"
     );
 }
 
 pub fn on_start_of_turn(_trigger: On<StartOfTurnTriggered>) {
     tracing::warn!(
+        target: "server::game",
         "keyword observer not yet implemented: on_start_of_turn — keyword dispatch deferred to future story"
     );
 }
 
 pub fn on_end_of_turn(_trigger: On<EndOfTurnTriggered>) {
     tracing::warn!(
+        target: "server::game",
         "keyword observer not yet implemented: on_end_of_turn — keyword dispatch deferred to future story"
     );
 }
@@ -60,6 +64,7 @@ pub fn on_end_of_turn(_trigger: On<EndOfTurnTriggered>) {
 pub fn start_of_turn_dispatch_system(mut draft_started: MessageReader<DraftStarted>) {
     if draft_started.read().next().is_some() {
         tracing::warn!(
+            target: "server::game",
             "start_of_turn_dispatch_system not yet implemented: keyword dispatch deferred to future story"
         );
     }

@@ -31,6 +31,7 @@ pub fn dispatch_phase_changed(
                 &NetworkTarget::All,
             ) {
                 tracing::error!(
+                    target: "server::game",
                     phase = ?event.phase,
                     round = event.round,
                     timer_ms = event.timer_ms,

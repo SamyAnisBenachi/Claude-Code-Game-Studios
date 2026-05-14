@@ -799,7 +799,7 @@ pub struct HandUiPlugin;
 
 impl Plugin for HandUiPlugin {
     fn build(&self, app: &mut App) {
-        tracing::info!("HandUiPlugin loaded");
+        tracing::info!(target: "client::ui::hand", "HandUiPlugin loaded");
         app.init_resource::<CurrentClientPhase>()
             .init_resource::<ClientPhaseView>()
             .init_resource::<HandFanLayoutConfig>()
@@ -984,6 +984,7 @@ pub fn apply_fan_layout_system(
         else {
             *visibility = Visibility::Hidden;
             tracing::debug!(
+                target: "client::ui::hand",
                 slot_idx = slot_index.0,
                 hand_count,
                 visibility = "Hidden",
@@ -1001,6 +1002,7 @@ pub fn apply_fan_layout_system(
         node.width = Val::Px(HAND_CARD_DISPLAY_WIDTH_PX);
         node.height = Val::Px(HAND_CARD_DISPLAY_HEIGHT_PX);
         tracing::debug!(
+            target: "client::ui::hand",
             slot_idx = slot_index.0,
             hand_count,
             card_x = layout.card_x,
@@ -1123,6 +1125,7 @@ pub fn hand_ui_phase_transition_system(
     let next_mode = HandUiMode::from_phase(current.phase);
     let entering_staging = phase_changed && next_mode == HandUiMode::Staging;
     tracing::info!(
+        target: "client::ui::hand",
         from = ?prev_mode,
         to = ?next_mode,
         phase = ?current.phase,
@@ -1141,6 +1144,7 @@ pub fn hand_ui_phase_transition_system(
     };
     if prev_hand_count != layout_state.hand_count {
         tracing::info!(
+            target: "client::ui::hand",
             before = prev_hand_count,
             after = layout_state.hand_count,
             shows_fan_slots = next_mode.shows_fan_slots(),
@@ -1153,6 +1157,7 @@ pub fn hand_ui_phase_transition_system(
         let pending_before = pending_placements.staged_count();
         pending_placements.clear();
         tracing::info!(
+            target: "client::ui::hand",
             before = pending_before,
             after = pending_placements.staged_count(),
             source = "phase_transition",
@@ -1567,6 +1572,7 @@ pub fn handle_game_snapshot_system(
         let before_len = hand_contents.cards.len();
         hand_contents.cards = local_player.hand.clone();
         tracing::info!(
+            target: "client::ui::hand",
             player_id = ?snapshot.recipient_player_id,
             before_len,
             after_len = hand_contents.cards.len(),
@@ -1669,6 +1675,7 @@ pub fn handle_card_acquired_system(
             hand_contents.cards.push(acquisition.card_id);
         }
         tracing::info!(
+            target: "client::ui::hand",
             card_id = ?acquisition.card_id,
             before_len,
             after_len = hand_contents.cards.len(),
@@ -1685,6 +1692,7 @@ pub fn handle_card_acquired_system(
         };
         if prev_hand_count != layout_state.hand_count {
             tracing::info!(
+                target: "client::ui::hand",
                 before = prev_hand_count,
                 after = layout_state.hand_count,
                 shows_fan_slots = mode.shows_fan_slots(),
@@ -1717,6 +1725,7 @@ pub fn handle_card_acquired_system(
                         asset_server.as_deref(),
                     );
                     tracing::info!(
+                        target: "client::ui::hand",
                         slot_idx = fan_index,
                         card_id = ?acquisition.card_id,
                         duration_ms = timing.card_draw_animation_ms,
@@ -1872,6 +1881,7 @@ pub fn handle_grid_card_click_system(
         match senders.single_mut() {
             Ok(mut sender) => {
                 tracing::info!(
+                    target: "client::ui::hand",
                     msg_type = "C2SPurchaseCard",
                     card_id = ?message.card_id,
                     handler = "handle_grid_card_click_system",
@@ -1931,7 +1941,7 @@ pub fn handle_hand_fan_card_click_system(
                 default_click_stage_target(card.0, &catalog, *board_view, &board_cells, &objectives)
             {
                 tracing::info!(
-                    target: "fan_active_default_drop",
+                    target: "client::ui::hand::fan_active_default_drop",
                     card_entity = ?click.card,
                     card_id = ?card.0,
                     default_target = ?target,
@@ -1991,6 +2001,7 @@ pub fn handle_hand_fan_activate_click_system(
         match activate_senders.single_mut() {
             Ok(mut sender) => {
                 tracing::info!(
+                    target: "client::ui::hand",
                     msg_type = "C2SActivateCard",
                     card_id = ?message.card_id,
                     handler = "handle_hand_fan_activate_click_system",
@@ -2050,7 +2061,7 @@ pub fn handle_placement_drag_started_system(
         disclosure_state.step = PlacementDisclosureStep::TargetSelection { target_kind };
         let prior_visibility = visibility_query.get(entities.drag_sprite).ok().copied();
         tracing::info!(
-            target: "drag_sprite_visible_flip",
+            target: "client::ui::hand::drag_sprite_visible_flip",
             card_entity = ?start.card,
             card_id = ?card.0,
             prior_visibility = ?prior_visibility,
@@ -2079,7 +2090,7 @@ pub fn handle_placement_cursor_moved_system(
 ) {
     for cursor_move in moves.read() {
         tracing::debug!(
-            target: "placement_cursor_move",
+            target: "client::ui::hand::placement_cursor_move",
             cursor_world_position = ?cursor_move.world_position,
             active_drag_is_active = active_drag.is_active(),
             active_drag_card = ?active_drag.card,
@@ -2395,6 +2406,7 @@ pub fn handle_placement_drop_resolved_system(
         let pending_before = pending_placements.staged_count();
         pending_placements.stage_or_update(placement);
         tracing::info!(
+            target: "client::ui::hand",
             before = pending_before,
             after = pending_placements.staged_count(),
             card_id = ?card.0,
@@ -3305,6 +3317,7 @@ fn submit_pending_placements(
     match submit_senders.single_mut() {
         Ok(mut sender) => {
             tracing::info!(
+                target: "client::ui::hand",
                 msg_type = "C2SSubmitPlacement",
                 placements_len = msg.placements.len(),
                 handler = "submit_pending_placements",
@@ -3570,6 +3583,7 @@ fn unstage_card(
         return false;
     }
     tracing::info!(
+        target: "client::ui::hand",
         before = pending_before,
         after = pending_placements.staged_count(),
         card_id = ?card_id,

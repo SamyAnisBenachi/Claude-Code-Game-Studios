@@ -452,6 +452,7 @@ pub fn resolve_combat(world: &mut World) {
 
     let trace_start = world.resource::<CombatResolutionTrace>().entries().len();
     tracing::info!(
+        target: "server::game",
         round = begin_resolution.round,
         trace_start,
         "resolve_combat: enter"
@@ -469,6 +470,7 @@ pub fn resolve_combat(world: &mut World) {
             .resource_mut::<CombatResolutionTrace>()
             .push(CombatTraceEntry::IterationBudgetExceeded);
         tracing::warn!(
+            target: "server::game",
             round = begin_resolution.round,
             iteration_limit,
             "resolve_combat: IterationBudgetExceeded — game over forced"
@@ -479,6 +481,7 @@ pub fn resolve_combat(world: &mut World) {
 
     let kills = world.resource::<CombatKillLog>().records().len();
     tracing::info!(
+        target: "server::game",
         round = begin_resolution.round,
         kills,
         "resolve_combat: exit"
@@ -515,6 +518,7 @@ fn enqueue_resolution_event(world: &mut World, round: u32, trace_start: usize) {
         &world.resource::<CombatResolutionTrace>().entries()[trace_start..],
     );
     tracing::info!(
+        target: "server::game",
         round,
         events_len = events.len(),
         "enqueue_resolution_event: broadcasting S2CResolutionEvent"
@@ -722,6 +726,7 @@ const fn gold_reason(reason: GoldAwardReason) -> GoldReason {
 
 fn broadcast_placement_reveal(world: &mut World, message: &S2CPlacementReveal) {
     tracing::info!(
+        target: "server::game",
         placements_len = message.placements.len(),
         "broadcast_placement_reveal: enter"
     );
@@ -736,6 +741,7 @@ fn broadcast_placement_reveal(world: &mut World, message: &S2CPlacementReveal) {
         sender.send::<S2CPlacementReveal, ReliableChannel>(message, server, &NetworkTarget::All)
     {
         tracing::error!(
+            target: "server::game",
             placements_len = message.placements.len(),
             err = ?e,
             "S2C send failed: type=S2CPlacementReveal, handler=broadcast_placement_reveal"
@@ -745,6 +751,7 @@ fn broadcast_placement_reveal(world: &mut World, message: &S2CPlacementReveal) {
 
 fn broadcast_resolution_event(world: &mut World, message: &S2CResolutionEvent) {
     tracing::info!(
+        target: "server::game",
         round = message.round,
         events_len = message.events.len(),
         "broadcast_resolution_event: enter"
@@ -760,6 +767,7 @@ fn broadcast_resolution_event(world: &mut World, message: &S2CResolutionEvent) {
         sender.send::<S2CResolutionEvent, ReliableChannel>(message, server, &NetworkTarget::All)
     {
         tracing::error!(
+            target: "server::game",
             round = message.round,
             events_len = message.events.len(),
             err = ?e,

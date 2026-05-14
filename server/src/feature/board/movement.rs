@@ -346,6 +346,7 @@ pub fn apply_repel_displacements(
             destination_cell,
         );
         tracing::info!(
+            target: "server::game",
             owner = owner.0.0,
             lane = ?destination_lane,
             origin_cell,
@@ -414,6 +415,7 @@ pub fn apply_attract_displacements(
             destination_cell,
         );
         tracing::info!(
+            target: "server::game",
             owner = owner.0.0,
             caster_owner = caster_owner.0,
             lane = ?destination_lane,
@@ -489,6 +491,7 @@ pub fn apply_change_lane_displacements(
             displacement.target,
         );
         tracing::info!(
+            target: "server::game",
             owner = owner.0.0,
             origin_lane = ?original_lane,
             destination_lane = ?destination_lane,
