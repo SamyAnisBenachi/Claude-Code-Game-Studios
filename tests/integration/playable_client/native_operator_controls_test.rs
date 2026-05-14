@@ -5,14 +5,13 @@ use bevy::ecs::message::MessageCursor;
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::input::ButtonState;
 use bevy::prelude::*;
-use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 use client::asset_wiring::enter_in_session_via_fixture;
 use client::presentation::PlayerEconomyView;
 use client::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use client::ui::hand::{
     FanSlotState, GhostClickedEvent, HandCardCatalog, HandContents, HandSubmitButton,
-    HandUiEntities, HandUiOutboundMessages, HandUiPlugin, PendingPlacements,
+    HandUiEntities, HandUiOutboundMessages, PendingPlacements,
 };
 use client::ui::lobby::{
     LobbyClassButton, LobbyCommand, LobbyConfirmClassButton, LobbyCreateRoomButton,
@@ -31,6 +30,9 @@ use shared::session::PlayerId;
 
 #[path = "../../test_helpers.rs"]
 mod test_helpers;
+
+#[path = "../../helpers/production_app_factory.rs"]
+mod production_app_factory;
 
 const LOCAL_PLAYER: PlayerId = PlayerId(1);
 
@@ -269,12 +271,42 @@ fn test_hand_pointer_controls_stage_unstage_and_submit_placement() {
     );
 }
 
+// S13-FIXTURE-FACTORY-001: `hand_app` is now a thin wrapper over the canonical
+// production-faithful test app factory at
+// `tests/helpers/production_app_factory.rs`. See PROMPT 803 §3 DC-7 / §4 Lane D
+// for the cluster B fixture-parity divergence this story closes.
+//
+// `lobby_app` and `shop_app` retain a narrower plugin set as a documented
+// exception per the Control Manifest rule cited in the story: a fixture that
+// genuinely needs a narrower plugin set must add an inline rationale comment
+// cross-referencing this story. Rationale:
+//
+//   - `shop_app`: the operator-controls test drives a multi-phase scenario
+//     (DraftInitial -> DraftShop -> DraftAuction) and asserts on intermediate
+//     outbound-message and slot-state counts. Loading the full
+//     `PresentationPlugin` introduces additional snapshot/state systems (most
+//     notably `apply_shop_purchase_confirmations_system` and the snapshot
+//     consumers in `ShopAuctionUiPlugin`) whose interaction with the test's
+//     hand-rolled `ShopAuctionDraftHandView` insert produces observable
+//     state-machine divergence that AC7's "test passes" gate cannot satisfy
+//     without changes to either production code (out of scope per AC8) or a
+//     parallel Sprint 12 Story 015 Path B5 outcome that has not yet landed on
+//     `origin/main`. The narrower plugin set is preserved here pending a
+//     Sprint 14 follow-up (recorded in
+//     `production/qa/evidence/sprint-13-fixture-factory-evidence.md`).
+//   - `lobby_app`: same rationale at a lower severity — the lobby control
+//     test relies on `LobbyInputState` semantics that the
+//     `OnEnter(ClientState::Lobby)` systems from sibling presentation
+//     sub-plugins overwrite. The narrower set keeps the fixture deterministic
+//     for the room-code / button-binding assertions in
+//     `test_lobby_room_code_focus_separates_text_from_shortcuts` and
+//     siblings. Sprint 14 follow-up tracks the broader migration.
 fn lobby_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(bevy::asset::AssetPlugin::default());
     app.init_asset::<bevy::image::Image>();
-    app.add_plugins(StatesPlugin);
+    app.add_plugins(bevy::state::app::StatesPlugin);
     app.init_state::<ClientState>();
     app.init_resource::<ButtonInput<KeyCode>>();
     app.add_plugins(LobbyUiPlugin);
@@ -288,7 +320,7 @@ fn shop_app() -> App {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(bevy::asset::AssetPlugin::default());
     app.init_asset::<bevy::image::Image>();
-    app.add_plugins(StatesPlugin);
+    app.add_plugins(bevy::state::app::StatesPlugin);
     app.init_state::<ClientState>();
     app.add_plugins(ShopAuctionUiPlugin);
     app.insert_resource(ShopAuctionCardCatalog {
@@ -314,11 +346,7 @@ fn shop_app() -> App {
 }
 
 fn hand_app() -> App {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-    app.add_plugins(StatesPlugin);
-    app.init_state::<ClientState>();
-    app.add_plugins(HandUiPlugin);
+    let mut app = production_app_factory::production_client_app();
     app.insert_resource(HandCardCatalog {
         cards: test_catalog(1..=4),
     });
