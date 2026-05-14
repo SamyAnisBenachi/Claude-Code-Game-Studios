@@ -22,7 +22,6 @@ fn shop_auction_ui_plugin_registers_in_minimal_client_app_without_panic() {
     app.update();
 }
 
-#[ignore = "PROMPT 750 D-5: ShopAuctionUiEntity count drift — actual=66, formula expects=57 (9 entity delta); needs scaffold owner to either update formula or trim spawn"]
 #[test]
 fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
     let mut app = app_with_shop_auction_ui_in_session();
@@ -32,10 +31,19 @@ fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
         count_with::<ShopAuctionPanelRoot>(&mut app),
         SHOP_AUCTION_UI_PANEL_ROOT_COUNT
     );
+    // PROMPT 812 (story 015 B5.a): each draft slot spawns three
+    // `ShopAuctionUiEntity`-tagged entities, not two — the slot
+    // container, a dedicated text-child (added in
+    // `spawn_draft_initial_grid` at
+    // `client/src/ui/shop_auction/mod.rs:3680-3690` to avoid the
+    // white-dot rendering bug when no slot text is set; see inline
+    // comment at lines 3663-3664), and the bought overlay. The
+    // multiplier was `* 2` when only `slot + overlay` were tagged;
+    // it must be `* 3` now that the text-child is also tagged.
     assert_eq!(
         count_with::<ShopAuctionUiEntity>(&mut app),
         1 + SHOP_AUCTION_UI_PANEL_ROOT_COUNT * 2
-            + SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT * 2
+            + SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT * 3
             + 3
             + 4
             + SHOP_AUCTION_UI_SHOP_SLOT_COUNT

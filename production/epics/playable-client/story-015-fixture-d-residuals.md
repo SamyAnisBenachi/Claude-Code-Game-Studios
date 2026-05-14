@@ -366,23 +366,27 @@ production-side reason.
 (Source: `production/sprints/sprint-12.md:127` Sprint 12 draft Must Have
 row. ACs below are draft and become binding at Sprint 12 activation.)
 
-- [ ] **AC1 -- Umbrella-vs-split producer decision recorded in this
+- [x] **AC1 -- Umbrella-vs-split producer decision recorded in this
       story file**: GIVEN this story file, WHEN the "Producer
       Decision" section is read at the implementation commit, THEN
       exactly one of {umbrella, split} is checked, the unchecked path
       is explicitly marked NOT chosen, and a written rationale is
       present under the chosen path. The decision-recording commit
       precedes any code change.
+      *PROMPT 812: umbrella checked at commit `0bfdd76`; split marked
+      NOT chosen; rationale recorded BEFORE the code-change commit.*
 
-- [ ] **AC2 -- Per-sub-disposition decisions recorded**: GIVEN the
+- [x] **AC2 -- Per-sub-disposition decisions recorded**: GIVEN the
       umbrella-vs-split decision, WHEN the relevant story file(s)
       are read, THEN both B1 and B5 sub-dispositions are recorded
       with a written rationale (under "Per-Sub-Disposition
       Decisions" if umbrella; in each follow-on story if split).
       Each sub-disposition recording commit precedes its
       corresponding code change.
+      *PROMPT 812: B1.a + B5.a recorded at commit `0bfdd76` (decision
+      commit precedes code commit).*
 
-- [ ] **AC3 -- B1 test un-`#[ignore]`d and passes under chosen
+- [x] **AC3 -- B1 test un-`#[ignore]`d and passes under chosen
       sub-disposition**: GIVEN the chosen B1 sub-disposition, WHEN
       `cargo test -p client --test ghost_preview_bridge` (or the
       equivalent `cargo test` invocation) is run at the
@@ -391,8 +395,10 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       (B1.a) **or** its relocated counterpart in the Hand UI test
       plus the residual board-rendering test (B1.b) pass without
       `#[ignore]` tagging.
+      *PROMPT 812: B1.a chosen; test passes; `#[ignore]` removed;
+      observer driven via `world.trigger(...)`.*
 
-- [ ] **AC4 -- B5 test un-`#[ignore]`d and passes under chosen
+- [x] **AC4 -- B5 test un-`#[ignore]`d and passes under chosen
       sub-disposition**: GIVEN the chosen B5 sub-disposition, WHEN
       `cargo test -p client --test plugin_scaffold_formulas` (or
       the equivalent `cargo test` invocation) is run at the
@@ -401,8 +407,10 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       passes without `#[ignore]` tagging. The assertion's expected
       count (57 under B5.b; 66 under B5.a) matches the production
       reality post-fix.
+      *PROMPT 812: B5.a chosen; expected count = 66 (multiplier
+      `* 3`); test passes; `#[ignore]` removed.*
 
-- [ ] **AC5 -- Workspace ignored count drops by 2 (umbrella) or 1
+- [x] **AC5 -- Workspace ignored count drops by 2 (umbrella) or 1
       per split story**: GIVEN Sprint 11 close-out baseline of 5
       retained Cluster B `#[ignore]` tests on `origin/main`, WHEN
       `cargo test --workspace --tests --no-fail-fast` is run at the
@@ -410,8 +418,10 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       by 2 (umbrella path closes both B1 and B5) or by 1 per split
       story commit (each split story drops 1). No new undocumented
       `#[ignore]` marker is introduced.
+      *PROMPT 812: client ignored count drops 2 -> 0 (B1 + B5);
+      total workspace delta = -2.*
 
-- [ ] **AC6 -- Original PROMPT 750 D-5 owner comments removed only
+- [x] **AC6 -- Original PROMPT 750 D-5 owner comments removed only
       after each test passes**: GIVEN the implementation commit,
       WHEN
       `tests/integration/board_rendering/ghost_preview_bridge_test.rs`
@@ -419,8 +429,10 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs`
       are read, THEN no PROMPT 750 D-5 owner comment for either test
       remains.
+      *PROMPT 812: both PROMPT 750 D-5 ignore-comments removed only
+      after the respective tests pass green.*
 
-- [ ] **AC7 -- Production-code change scope-capped**: GIVEN the diff
+- [x] **AC7 -- Production-code change scope-capped**: GIVEN the diff
       of the implementation commit set, WHEN paths under
       `client/src/` (excluding `#[cfg(test)]`-gated test helpers)
       and `shared/src/` are filtered, THEN:
@@ -435,15 +447,20 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
         scaffold spawn site and a single rationale doc reference.
       *Evidence*: `git show` of every commit in this story's trail
       filtered to non-test paths.
+      *PROMPT 812: B1.a + B5.a chosen; both are test-only.
+      `git diff origin/main...HEAD -- 'client/src/**' 'shared/src/**' 'server/src/**'`
+      returns empty diff.*
 
-- [ ] **AC8 -- No optimistic client-side authority introduced**:
+- [x] **AC8 -- No optimistic client-side authority introduced**:
       GIVEN the implementation commit, WHEN the diff is reviewed for
       any client-side mutation of authoritative state outside the
       shared phase sink, snapshot drainers, and S2C consumers, THEN
       no such mutation is present. ADR-002 binding. *Evidence*: text
       search for "no optimistic" in the evidence document.
+      *PROMPT 812: no production-code change at all; ADR-002 trivially
+      preserved. Evidence doc states this explicitly.*
 
-- [ ] **AC9 -- If split chosen, two follow-on story files authored**:
+- [x] **AC9 -- If split chosen, two follow-on story files authored**:
       GIVEN the split decision, WHEN
       `production/epics/playable-client/` is listed, THEN
       `story-NNN-fixture-board-ghost-drag-producer.md`
@@ -454,22 +471,28 @@ row. ACs below are draft and become binding at Sprint 12 activation.)
       discipline inherited from this story. This umbrella story's
       Sprint 12 row in `production/sprint-status.yaml` (once
       activated) is closed as the producer-decision-record artefact.
+      *PROMPT 812: N/A -- umbrella chosen. AC9 is conditional on
+      split; no follow-on stories required.*
 
-- [ ] **AC10 -- Sprint 12 disposition preserved**: GIVEN the
+- [x] **AC10 -- Sprint 12 disposition preserved**: GIVEN the
       implementation commit, WHEN `production/sprint-status.yaml`,
       `production/sprints/sprint-12.md`, and `production/stage.txt`
       are diffed, THEN none of them are modified under this story.
       Sprint 12 activation disposition is preserved. Stage remains
       `Polish`. Sprint 11 disposition (`closed-with-conditions`) is
       unchanged.
+      *PROMPT 812: none of those files touched. Verified by
+      `git diff origin/main...HEAD --stat`.*
 
-- [ ] **AC11 -- Evidence document slot(s) reserved**: GIVEN this
+- [x] **AC11 -- Evidence document slot(s) reserved**: GIVEN this
       story file, WHEN the evidence-doc path is checked, THEN a slot
       is reserved at
       `production/qa/evidence/sprint-12-fixture-d-residuals-evidence.md`
       (umbrella) or one slot per split story (if split chosen).
       Authoring of the evidence file(s) is deferred to the
       implementation prompt(s).
+      *PROMPT 812: evidence document authored at
+      `production/qa/evidence/sprint-12-fixture-d-residuals-evidence.md`.*
 
 ---
 

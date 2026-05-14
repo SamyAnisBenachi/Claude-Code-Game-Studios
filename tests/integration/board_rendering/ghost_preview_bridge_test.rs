@@ -144,9 +144,16 @@ fn br_10_clear_none_removes_matching_card_ghosts_without_spawn_range_edits() {
     assert_eq!(lane_wash_lanes(&mut app, CardId(31)), vec![2]);
 }
 
-#[ignore = "PROMPT 750 D-5 follow-on: GhostDragStartEvent producer system not present in BoardRenderingPlugin-only fixture — needs HandUiPlugin pointer-to-drag bridge or fixture expansion (revealed after D-3 picking events were registered)"]
 #[test]
 fn br_8e_board_ghost_pointer_messages_leave_ghost_owned_by_hand_ui() {
+    // PROMPT 812 (story 015 B1.a): BoardRenderingPlugin registers
+    // `on_ghost_drag_start` and `on_ghost_clicked` as observers
+    // (`add_observer(...)` at presentation::board_rendering, not as
+    // MessageReader systems). Under `MinimalPlugins`, bevy_picking's
+    // `DefaultPickingPlugins` is absent, so the observers are not
+    // fired by buffered `Pointer<E>` messages. The fixture drives the
+    // producer via `trigger_targets(...)`, which is what
+    // `DefaultPickingPlugins` does in real gameplay.
     test_helpers::init_test_tracing();
     let mut app = app_with_board_rendering();
     stage_ghost(
@@ -159,8 +166,10 @@ fn br_8e_board_ghost_pointer_messages_leave_ghost_owned_by_hand_ui() {
     let mut click_cursor = drained_cursor::<GhostClickedEvent>(&app);
     let mut drag_cursor = drained_cursor::<GhostDragStartEvent>(&app);
 
-    app.world_mut().write_message(pointer_press(ghost, camera));
-    app.world_mut().write_message(pointer_click(ghost, camera));
+    let press = pointer_press(ghost, camera);
+    let click = pointer_click(ghost, camera);
+    app.world_mut().trigger(press);
+    app.world_mut().trigger(click);
     app.update();
 
     assert_eq!(
