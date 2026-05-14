@@ -258,19 +258,25 @@ if HAS_TEXTUAL:
                 if self.turn.input_tokens else 0
             )
 
-            parts = [f"{led} thread {self.thread_id[:8] if self.thread_id else '?'}"]
+            # Compact format that survives 80-column terminals
+            parts = [led]
             if self.turn.in_progress and self.turn.started_at:
                 elapsed = int(time.time() - self.turn.started_at)
-                parts.append(f"[cyan]turn {elapsed // 60:02d}:{elapsed % 60:02d}[/cyan]")
+                parts.append(f"[cyan]●{elapsed // 60:02d}:{elapsed % 60:02d}[/cyan]")
+            # Token counts in k notation when large
+            def _k(n: int) -> str:
+                return f"{n / 1000:.1f}k" if n >= 1000 else str(n)
             parts.append(
-                f"last in={self.turn.input_tokens:,} (cached {cache_pct:.0f}%) "
-                f"out={self.turn.output_tokens:,}"
+                f"last in={_k(self.turn.input_tokens)} "
+                f"(c{cache_pct:.0f}%) out={_k(self.turn.output_tokens)}"
             )
             parts.append(
-                f"[{bar_color}]ctx {ctx_used:,}/{budget:,} ({pct:.0f}%)[/{bar_color}]"
+                f"[{bar_color}]ctx {_k(ctx_used)}/{_k(budget)} ({pct:.0f}%)[/{bar_color}]"
             )
-            parts.append(f"[dim]Σ {self.turn.total_thread_tokens / 1_000_000:.1f}M[/dim]")
-            bar.update(" | ".join(parts))
+            parts.append(f"[dim]Σ{self.turn.total_thread_tokens / 1_000_000:.1f}M[/dim]")
+            tid_short = self.thread_id[:8] if self.thread_id else "?"
+            parts.append(f"[dim]{tid_short}[/dim]")
+            bar.update(" │ ".join(parts))
 
         def _handle_status(self, status: str) -> None:
             self.connection_status = status
@@ -324,20 +330,14 @@ if HAS_TEXTUAL:
             elif method == "item/started":
                 item = params.get("item", {})
                 it = item.get("type", "?")
-                if it == "userMessage":
-                    content = item.get("content") or []
-                    text = ""
-                    for c in content:
-                        if isinstance(c, dict):
-                            text += c.get("text", "") or c.get("input_text", "")
-                    if text:
-                        log.write(f"[blue]user>[/blue] {text[:500]}")
-                elif it == "commandExecution":
+                # Suppress userMessage echo — we already wrote it locally
+                # when the user pressed Enter (avoids "user> ping" doubling).
+                # Also suppress agentMessage (we render via delta).
+                if it == "commandExecution":
                     cmd = item.get("command", "")[:150]
                     log.write(f"[magenta][exec][/magenta] [dim]{cmd}[/dim]")
                 elif it == "reasoning":
                     log.write("[dim][thinking…][/dim]")
-                # Suppress agentMessage start (we render via delta)
 
             elif method == "item/commandExecution/outputDelta":
                 chunk = params.get("chunk", "") or params.get("delta", "")
@@ -377,16 +377,21 @@ if HAS_TEXTUAL:
             log.write("[yellow][interrupting…][/yellow]")
 
         def action_copy_last(self) -> None:
+            log = self.query_one("#transcript", RichLog)
             if not self.last_agent_message:
+                log.write("[yellow][copy] no agent message buffered yet — wait for first [turn done][/yellow]")
                 return
             try:
                 import pyperclip
                 pyperclip.copy(self.last_agent_message)
-                log = self.query_one("#transcript", RichLog)
-                log.write(f"[dim][copied {len(self.last_agent_message)} chars to clipboard][/dim]")
+                preview = self.last_agent_message[:40].replace("\n", " ")
+                log.write(f"[green][copy] {len(self.last_agent_message)} chars → clipboard ({preview!r}…)[/green]")
             except Exception as exc:
-                log = self.query_one("#transcript", RichLog)
-                log.write(f"[red][copy failed: {exc}][/red]")
+                # Fallback: dump to log so user can manually shift+drag-select it
+                log.write(f"[red][copy] pyperclip failed: {exc}[/red]")
+                log.write(f"[dim]--- copy below this line ---[/dim]")
+                log.write(self.last_agent_message)
+                log.write(f"[dim]--- end copy ---[/dim]")
 
 
 def main(argv: Optional[list[str]] = None) -> int:

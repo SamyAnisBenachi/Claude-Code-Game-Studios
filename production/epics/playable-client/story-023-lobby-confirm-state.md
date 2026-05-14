@@ -2,8 +2,14 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S11-LOBBY-UX-CONFIRM-STATE-001
-> **Status**: Draft -- Sprint 13 candidate (Should Have); NOT activated;
-> Sprint 12 closed-with-conditions per PROMPT 817
+> **Status**: Done -- closed by PROMPT 835 (`/story-done` paperwork) on
+> `origin/main@64ed0dc`; worker commit `fa69de6e` (PROMPT 830) integrated
+> by PROMPT 834 as `64ed0dc6e273d09def64e755785f295949d3f848`. Lobby
+> confirm-button copy now disambiguates State B ("Confirm your class to
+> continue") from State A ("Waiting for opponent..."); new pure helper
+> `lobby_confirm_button_text` is integration-tested across 5 cases (all
+> pass). No client-side class-lock authority added; ADR-002 / ADR-008 /
+> ADR-012 bindings preserved. No protocol or server-side change.
 > **Layer**: Lobby UI / UX (Client)
 > **Type**: Integration -- targeted lobby UI text edit + integration test
 > **Sprint**: Sprint 13 candidate (Sprint 12 close-out deferral; Sprint 11
@@ -168,54 +174,54 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- ux-designer consultation recorded**: GIVEN the
+- [x] **AC1 -- ux-designer consultation recorded**: GIVEN the
   implementation prompt's first ux-designer interaction, WHEN the
   final text variants are chosen, THEN the consultation note and
   chosen copy are recorded in the evidence document.
 
-- [ ] **AC2 -- Two distinct text variants render**: GIVEN the lobby
+- [x] **AC2 -- Two distinct text variants render**: GIVEN the lobby
   UI at runtime, WHEN the local lobby state is "waiting for
   opponent's confirm" (State A), THEN the text reads the State A
   variant. WHEN the local lobby state is "local player has not
   confirmed yet" (State B), THEN the text reads the State B variant.
 
-- [ ] **AC3 -- Integration test asserts text differentiation**:
+- [x] **AC3 -- Integration test asserts text differentiation**:
   GIVEN a new or extended integration test (e.g.,
   `tests/integration/playable_client/lobby_confirm_state_text_test.rs`),
   WHEN the test drives both lobby states, THEN it asserts the
   rendered text matches the State A variant in State A and the
   State B variant in State B.
 
-- [ ] **AC4 -- No client-side class-lock authority added**: GIVEN
+- [x] **AC4 -- No client-side class-lock authority added**: GIVEN
   the implementation diff, WHEN reviewed, THEN no client-side
   mutation of class-lock state outside `S2CClassLocked` /
   `S2CSessionReady` drains is present. ADR-002 binding (reinforced
   by Sprint 12 story 013 fallback path).
 
-- [ ] **AC5 -- No protocol or server-side change**: GIVEN the diff
+- [x] **AC5 -- No protocol or server-side change**: GIVEN the diff
   in `shared/src/protocol.rs` and `server/`, WHEN inspected, THEN
   no functional change lands.
 
-- [ ] **AC6 -- Sprint 12 story 013 fallback preserved**: GIVEN the
+- [x] **AC6 -- Sprint 12 story 013 fallback preserved**: GIVEN the
   Sprint 12 story 013 fallback path (where duplicate same-class
   confirm returns `S2CClassLocked` re-ack), WHEN the lobby state
   reaches the duplicate-confirm condition, THEN the new text
   differentiation still renders correctly (i.e., the re-ack lands
   the local player in State A, displaying the State A variant).
 
-- [ ] **AC7 -- Workspace test pass**: GIVEN `cargo test --workspace
+- [x] **AC7 -- Workspace test pass**: GIVEN `cargo test --workspace
   --tests --no-fail-fast` at the implementation commit, WHEN
   compared to the post-Sprint-12 baseline, THEN no new `#[ignore]`
   markers are introduced; the new test passes; previously-passing
   tests continue to pass.
 
-- [ ] **AC8 -- Sprint 13 disposition preserved**: GIVEN the story
+- [x] **AC8 -- Sprint 13 disposition preserved**: GIVEN the story
   commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-13.md`, `production/stage.txt`, and
   PROMPT 761 gate-check artifact are diffed, THEN none of them are
   modified by this story.
 
-- [ ] **AC9 -- Evidence document slot reserved**:
+- [x] **AC9 -- Evidence document slot reserved**:
   `production/qa/evidence/sprint-13-lobby-confirm-state-evidence.md`
   (NEW). Records the diff summary, the chosen text variants, the
   ux-designer consultation note, the integration-test pass output,
@@ -312,3 +318,76 @@ For the implementation prompt:
 - Sequences after Sprint 13 Must Have row
   `S13-OBS-TRACING-TARGETS-001` (story 018) if both touch lobby
   emission sites.
+
+---
+
+## Authoring / Implementation / Closure Trail
+
+- 2026-05-14 -- PROMPT 819 -- Story file authored (DRAFT) by Sprint 13
+  candidate authoring run. No code, no sprint-status flip, no QA, no
+  smoke, no gate-check run.
+
+- 2026-05-14 -- PROMPT 823 -- `/story-readiness` verdict: **READY**
+  (Sprint 13 batch rerun, recorded under
+  `sprint_13_activation.must_have_rows` / `should_have_rows` block
+  via `sprint-status.yaml` updates by PROMPT 826).
+
+- 2026-05-14 -- PROMPT 826 -- Sprint 13 activated; this row carried
+  forward as `S11-LOBBY-UX-CONFIRM-STATE-001` Should Have (status:
+  ready).
+
+- 2026-05-14 -- PROMPT 827 -- Sprint 13 QA plan authored; story-023
+  per-story expectations captured at
+  `production/qa/qa-plan-sprint-13.md`.
+
+- 2026-05-14 -- PROMPT 830 -- `/dev-story` worker landed the lobby
+  confirm-button text differentiation on worker branch
+  `work/s13-lobby-confirm-state` at tip
+  `fa69de6e77780dd2f5a7a78f105b10eae1f7f818`. New pure helper
+  `lobby_confirm_button_text(&LobbyViewState, &LobbyInputState) ->
+  String` differentiates State A ("Waiting for opponent...") from
+  State B ("Confirm your class to continue"); pre-existing in-flight
+  branch and post-reveal text preserved. New integration test
+  `tests/integration/playable_client/lobby_confirm_state_text_test.rs`
+  (5 cases, 5 pass). Evidence captured at
+  `production/qa/evidence/sprint-13-lobby-confirm-state-evidence.md`.
+  No client-side class-lock authority added (ADR-002 + ADR-008 +
+  ADR-012 binding). No edits to `shared/`, `server/`,
+  `production/sprint-status.yaml`, `production/sprints/sprint-13.md`,
+  `production/stage.txt`, or PROMPT 761 gate-check artifact.
+
+- 2026-05-14 -- PROMPT 834 -- Integration: PROMPT 830 worker tip
+  `fa69de6e` cherry-picked clean onto `main` producing integration
+  commit
+  `64ed0dc6e273d09def64e755785f295949d3f848`
+  (`feat(client/lobby): differentiate Confirming text for State A /
+  State B (story 023 / PROMPT 830)`). 4 files changed, +382 / -10
+  vs. integration parent `0cf3286`; matches worker report
+  byte-for-byte (no scope drift during integration). Format /
+  cargo-check / targeted-test all PASS at integration tip; full
+  workspace tests intentionally NOT run (per Sprint 13 QA plan
+  no-full-workspace-tests-by-default policy; orchestrator-owned at
+  end-of-sprint smoke).
+
+- 2026-05-14 -- PROMPT 835 -- `/story-done` paperwork (this entry):
+  this Status field flipped Draft -> Done; AC1-AC9 checkboxes
+  resolved against `origin/main@64ed0dc` evidence (with subsequent
+  non-Rust HEAD advances `b0c43cb`, `7983f5c`, `0cf3286`, `4c2c85b`
+  not regressing this story);
+  `production/sprint-status.yaml` Sprint 13 Should Have row
+  `S11-LOBBY-UX-CONFIRM-STATE-001` flipped `status: ready -> done`
+  with `completed: 2026-05-14`, `integration_commit: 64ed0dc6e273...`,
+  `worker_commit: fa69de6e7778...`, `test_evidence` cross-link.
+  Sprint 13 is NOT closed-out by PROMPT 835. No `/smoke-check`,
+  `/team-qa`, `/gate-check`, `/release-check`, no Sprint 13 close-out,
+  no stage advance, no `S8-QA-001-W1` closure, no release-readiness
+  claim. Cargo NOT invoked (story-done paperwork only; integration
+  evidence on origin/main is authoritative and subsequent HEAD
+  advances are non-Rust). Carry conditions and non-claims preserved
+  verbatim: TQ-S12-C1..C7, S8-QA-001-W1 OPEN, QA-COND-0005 +
+  QA-COND-0006 accepted-risk, PAW-TD-*-a accept-risk, PROMPT 683-era
+  runtime divergence question (folded into Sprint 12 story 019
+  cannot-reproduce; third same-scope retest NOT authorised per
+  TQ-S12-C2), PROMPT 761 Polish->Release FAIL preserved, Sprint 12 /
+  Sprint 11 / Sprint 10 closeouts unchanged, story 019 (Sprint 12
+  hand-ui) underlying drag-runtime bug NOT claimed fixed.
