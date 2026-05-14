@@ -3,7 +3,7 @@
 Replaces the bare cmd-window streaming viewer with a proper TUI:
 - Always-visible status footer (connection LED, token gauge, turn elapsed)
 - Filtered transcript: only agent deltas + turn lifecycle + user input
-  (noise like hook/started, hook/completed, item/completed suppressed
+  (hook/started, hook/completed, item/completed shown compactly
    from main stream)
 - Esc → turn/interrupt for the active turn
 - Ctrl+Y → copy last agent message to clipboard (pyperclip)
@@ -40,6 +40,7 @@ try:
     from textual.containers import Vertical
     from textual.reactive import reactive
     from textual.widgets import Footer, Header, Input, RichLog, Static
+    from rich.markup import escape as _rich_escape
     HAS_TEXTUAL = True
 except ImportError:  # pragma: no cover
     HAS_TEXTUAL = False
@@ -208,9 +209,29 @@ if HAS_TEXTUAL:
             self.turn = TurnState()
             self.last_agent_message = ""
             self._current_agent_buffer = ""
+            # In-flight line buffer: Codex streams deltas of 2-8 chars; each
+            # RichLog.write() forces a new line. We accumulate until we see
+            # a '\n', then write the complete line — preserving paragraph
+            # shape and letting RichLog's wrap handle long lines.
+            self._delta_line_buf = ""
+            # Speaker tracking: when a userMessage item arrives, we need to
+            # know whether WE typed it locally (already echoed as "user>")
+            # or it was injected externally via the relay (worker DONE).
+            # Set True when local Input is submitted; cleared on first
+            # item/started userMessage that arrives after.
+            self._local_turn_pending = False
+            # True once we've emitted the orchestrator> header for the
+            # current turn (cleared on turn/started).
+            self._orch_header_emitted = False
+            # Tracks whether the last line written was blank — used to
+            # collapse runs of empty lines (Codex often streams "\n\n\n…"
+            # as paragraph separators which render as huge gaps).
+            self._last_line_was_blank = False
             self.bus: Optional[CodexEventBus] = None
             # Token budget — model dependent; default 200k
             self.token_budget = 200_000
+            # Rolling p50/p95 latency summary, refreshed every 5s
+            self._metrics_summary = ""
 
         def compose(self) -> ComposeResult:
             yield Static(id="status_bar")
@@ -220,7 +241,9 @@ if HAS_TEXTUAL:
 
         def on_mount(self) -> None:
             self._refresh_status_bar()
+            self._refresh_metrics_summary()
             self.set_interval(1.0, self._refresh_status_bar)
+            self.set_interval(5.0, self._refresh_metrics_summary)
             self.bus = CodexEventBus(
                 ws_url=self.ws_url,
                 thread_id=self.thread_id,
@@ -274,9 +297,20 @@ if HAS_TEXTUAL:
                 f"[{bar_color}]ctx {_k(ctx_used)}/{_k(budget)} ({pct:.0f}%)[/{bar_color}]"
             )
             parts.append(f"[dim]Σ{self.turn.total_thread_tokens / 1_000_000:.1f}M[/dim]")
+            # p50/p95 from metrics.jsonl (refreshed via _refresh_metrics_summary every 5s)
+            if self._metrics_summary:
+                parts.append(f"[dim]{self._metrics_summary}[/dim]")
             tid_short = self.thread_id[:8] if self.thread_id else "?"
             parts.append(f"[dim]{tid_short}[/dim]")
             bar.update(" │ ".join(parts))
+
+        def _refresh_metrics_summary(self) -> None:
+            """Read p50/p95 from metrics.jsonl. Called every 5s by timer."""
+            try:
+                from . import metrics as _metrics
+                self._metrics_summary = _metrics.summary_line(n=20)
+            except Exception:
+                self._metrics_summary = ""
 
         def _handle_status(self, status: str) -> None:
             self.connection_status = status
@@ -287,6 +321,17 @@ if HAS_TEXTUAL:
 
         # ---- Notification dispatch ----
 
+        def _write_line(self, log: "RichLog", content: str, *, is_blank: bool = False) -> None:
+            """log.write wrapper that collapses runs of blank lines to max 1."""
+            if is_blank:
+                if self._last_line_was_blank:
+                    return
+                self._last_line_was_blank = True
+                log.write("")
+            else:
+                self._last_line_was_blank = False
+                log.write(content, scroll_end=True)
+
         def _handle_event(self, d: dict) -> None:
             log = self.query_one("#transcript", RichLog)
             method = d.get("method", "")
@@ -295,8 +340,21 @@ if HAS_TEXTUAL:
             if method == "item/agentMessage/delta":
                 delta = params.get("delta", "")
                 if isinstance(delta, str):
+                    # Emit orchestrator> header once per turn, on first agent delta
+                    if not self._orch_header_emitted:
+                        self._write_line(log, "[bold green]orchestrator>[/bold green]")
+                        self._orch_header_emitted = True
                     self._current_agent_buffer += delta
-                    log.write(f"[white]{delta}[/white]", scroll_end=True)
+                    self._delta_line_buf += delta
+                    # Emit only complete lines; trailing partial stays buffered.
+                    # Blank lines are collapsed by _write_line to avoid huge
+                    # vertical gaps when Codex streams paragraph separators.
+                    while "\n" in self._delta_line_buf:
+                        line, self._delta_line_buf = self._delta_line_buf.split("\n", 1)
+                        if line.strip():
+                            self._write_line(log, f"[white]{_rich_escape(line)}[/white]")
+                        else:
+                            self._write_line(log, "", is_blank=True)
 
             elif method == "turn/started":
                 self.turn = TurnState(
@@ -305,17 +363,29 @@ if HAS_TEXTUAL:
                     in_progress=True,
                 )
                 self._current_agent_buffer = ""
-                log.write("\n[cyan][turn started][/cyan]")
+                self._delta_line_buf = ""
+                self._orch_header_emitted = False
 
             elif method == "turn/completed":
+                # Flush any trailing partial line before the turn-done marker
+                if self._delta_line_buf:
+                    if self._delta_line_buf.strip():
+                        self._write_line(log, f"[white]{_rich_escape(self._delta_line_buf)}[/white]")
+                    self._delta_line_buf = ""
                 turn = params.get("turn", {}) or {}
                 status = turn.get("status") or "completed"
+                elapsed = ""
+                if self.turn.started_at:
+                    e = time.time() - self.turn.started_at
+                    elapsed = f" · {e:.1f}s"
+                tok = f" · in={self.turn.input_tokens} out={self.turn.output_tokens}"
                 if status == "completed":
-                    log.write("[cyan][turn done][/cyan]\n")
+                    self._write_line(log, f"[dim]── done{elapsed}{tok} ──[/dim]")
                 else:
                     err = turn.get("error") or {}
                     msg = err.get("message", "") if isinstance(err, dict) else str(err)
-                    log.write(f"[red][turn {status}: {msg[:200]}][/red]\n")
+                    self._write_line(log, f"[red]── {status}{elapsed}: {_rich_escape(msg[:200])} ──[/red]")
+                self._write_line(log, "", is_blank=True)
                 self.last_agent_message = self._current_agent_buffer
                 self.turn.in_progress = False
 
@@ -330,22 +400,77 @@ if HAS_TEXTUAL:
             elif method == "item/started":
                 item = params.get("item", {})
                 it = item.get("type", "?")
-                # Suppress userMessage echo — we already wrote it locally
-                # when the user pressed Enter (avoids "user> ping" doubling).
-                # Also suppress agentMessage (we render via delta).
-                if it == "commandExecution":
+                if it == "userMessage":
+                    if self._local_turn_pending:
+                        # We already echoed it locally as "user>" — don't double
+                        self._local_turn_pending = False
+                    else:
+                        # External injection (relay → worker DONE, or another client)
+                        # Extract text from content array
+                        text = ""
+                        for c in item.get("content", []) or []:
+                            if isinstance(c, dict):
+                                text += (c.get("text") or c.get("input_text") or "")
+                            elif isinstance(c, str):
+                                text += c
+                        # Detect worker prompt ID for a clearer label
+                        import re
+                        m = re.search(r"PROMPT[-\s]?(\d+)", text[:300])
+                        label = f"worker PROMPT-{m.group(1)}" if m else "external"
+                        preview = text.strip()[:200].replace("\n", " ⏎ ")
+                        if len(text.strip()) > 200:
+                            preview += "…"
+                        self._write_line(log, f"[bold yellow]{label}>[/bold yellow] [dim]{_rich_escape(preview)}[/dim]")
+                elif it == "commandExecution":
                     cmd = item.get("command", "")[:150]
-                    log.write(f"[magenta][exec][/magenta] [dim]{cmd}[/dim]")
+                    self._write_line(log, f"[magenta][exec][/magenta] [dim]{_rich_escape(cmd)}[/dim]")
                 elif it == "reasoning":
-                    log.write("[dim][thinking…][/dim]")
+                    self._write_line(log, "[dim][thinking…][/dim]")
 
             elif method == "item/commandExecution/outputDelta":
                 chunk = params.get("chunk", "") or params.get("delta", "")
-                if chunk:
-                    log.write(f"[dim]{chunk.rstrip()}[/dim]")
+                if chunk and chunk.strip():
+                    self._write_line(log, f"[dim]{_rich_escape(chunk.rstrip())}[/dim]")
 
-            # Drop noise: hook/started, hook/completed, item/completed,
-            # thread/status/changed, account/rateLimits/updated
+            elif method == "hook/started":
+                hook = params.get("hook", {}) or {}
+                name = hook.get("name") or hook.get("id") or "?"
+                self._write_line(log, f"[dim cyan][hook ▸ {_rich_escape(str(name))}][/dim cyan]")
+
+            elif method == "hook/completed":
+                hook = params.get("hook", {}) or {}
+                name = hook.get("name") or hook.get("id") or "?"
+                exit_code = hook.get("exitCode")
+                dur = hook.get("durationMs")
+                bits = [f"hook ◂ {_rich_escape(str(name))}"]
+                if exit_code is not None:
+                    bits.append(f"exit={exit_code}")
+                if dur is not None:
+                    bits.append(f"{dur}ms")
+                color = "dim cyan" if (exit_code in (0, None)) else "red"
+                self._write_line(log, f"[{color}][{' '.join(bits)}][/{color}]")
+
+            elif method == "item/completed":
+                item = params.get("item", {}) or {}
+                it = item.get("type", "?")
+                # commandExecution completion: show exit status compactly
+                if it == "commandExecution":
+                    exit_code = item.get("exitCode")
+                    if exit_code is not None:
+                        color = "dim" if exit_code == 0 else "red"
+                        self._write_line(log, f"[{color}][exec ◂ exit={exit_code}][/{color}]")
+
+            elif method == "thread/status/changed":
+                status = params.get("status") or "?"
+                # status may be a dict like {"type": "active", "activeFlags": []}
+                if isinstance(status, dict):
+                    label = status.get("type") or "?"
+                    flags = status.get("activeFlags") or []
+                    if flags:
+                        label += f"({','.join(map(str, flags))})"
+                else:
+                    label = str(status)
+                self._write_line(log, f"[dim][thread ▸ {_rich_escape(label)}][/dim]")
 
             self._refresh_status_bar()
 
@@ -366,8 +491,11 @@ if HAS_TEXTUAL:
             if self.cwd_override:
                 params["cwd"] = self.cwd_override
             self.bus.send("turn/start", params)
+            # Mark so the upcoming item/started userMessage echo from server
+            # is suppressed (we already rendered it locally below)
+            self._local_turn_pending = True
             log = self.query_one("#transcript", RichLog)
-            log.write(f"[blue]user>[/blue] {line}")
+            self._write_line(log, f"[bold blue]user>[/bold blue] {_rich_escape(line)}")
 
         def action_interrupt_turn(self) -> None:
             if self.bus is None or not self.turn.in_progress or not self.turn.turn_id:
@@ -385,12 +513,12 @@ if HAS_TEXTUAL:
                 import pyperclip
                 pyperclip.copy(self.last_agent_message)
                 preview = self.last_agent_message[:40].replace("\n", " ")
-                log.write(f"[green][copy] {len(self.last_agent_message)} chars → clipboard ({preview!r}…)[/green]")
+                log.write(f"[green][copy] {len(self.last_agent_message)} chars → clipboard ({_rich_escape(repr(preview))}…)[/green]")
             except Exception as exc:
                 # Fallback: dump to log so user can manually shift+drag-select it
-                log.write(f"[red][copy] pyperclip failed: {exc}[/red]")
+                log.write(f"[red][copy] pyperclip failed: {_rich_escape(str(exc))}[/red]")
                 log.write(f"[dim]--- copy below this line ---[/dim]")
-                log.write(self.last_agent_message)
+                log.write(_rich_escape(self.last_agent_message))
                 log.write(f"[dim]--- end copy ---[/dim]")
 
 

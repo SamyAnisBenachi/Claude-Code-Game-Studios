@@ -61,6 +61,8 @@ class TurnResult:
     cached_input_tokens: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
+    # Latency breakdown (ms). Populated when available; default 0.
+    ttft_ms: int = 0  # time-to-first-token: start_turn → first delta
 
 
 @dataclass
@@ -260,6 +262,7 @@ class AppServerTransport:
         started_info: dict = {}
         assistant_text = ""
         last_token_usage: dict = {}
+        ttft_s: Optional[float] = None  # time-to-first-token, captured on first delta
 
         while time.time() < deadline:
             try:
@@ -288,6 +291,8 @@ class AppServerTransport:
             elif method == "item/agentMessage/delta":
                 delta = params.get("delta", "")
                 if isinstance(delta, str):
+                    if ttft_s is None and delta:
+                        ttft_s = time.time() - handle.started_at
                     assistant_text += delta
 
             elif method == "thread/tokenUsage/updated":
@@ -307,6 +312,7 @@ class AppServerTransport:
                     cached_input_tokens=last_token_usage.get("cachedInputTokens", 0) or 0,
                     input_tokens=last_token_usage.get("inputTokens", 0) or 0,
                     output_tokens=last_token_usage.get("outputTokens", 0) or 0,
+                    ttft_ms=int(ttft_s * 1000) if ttft_s is not None else 0,
                 )
 
         return TurnResult(
@@ -314,6 +320,7 @@ class AppServerTransport:
             status="timeout",
             assistant_text=assistant_text,
             elapsed_s=time.time() - handle.started_at,
+            ttft_ms=int(ttft_s * 1000) if ttft_s is not None else 0,
         )
 
     def interrupt_turn(self, thread_id: str, turn_id: str) -> None:

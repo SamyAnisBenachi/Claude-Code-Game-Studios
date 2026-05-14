@@ -132,6 +132,9 @@ class AppServerSupervisor:
                  rpc_probe_interval_s: float = 60.0,
                  max_http_misses: int = 3,
                  max_rpc_misses: int = 3,
+                 daemon_enabled: bool = True,
+                 daemon_host: str = "127.0.0.1",
+                 daemon_port: int = 9789,
                  ) -> None:
         self.codex_bin = codex_bin
         self.ws_url = ws_url
@@ -147,6 +150,16 @@ class AppServerSupervisor:
         self._reconnect_now = threading.Event()
         self._backoff_s = 2.0
         self._max_backoff_s = 60.0
+
+        # Relay daemon (sibling thread, co-located with app-server supervision)
+        self.daemon_enabled = daemon_enabled
+        self.daemon_host = daemon_host
+        self.daemon_port = daemon_port
+        self._daemon_server: Optional[object] = None
+        self._daemon_thread: Optional[threading.Thread] = None
+        # Status sidecar (read-only HTTP, port 9788)
+        self._sidecar_server: Optional[object] = None
+        self._sidecar_thread: Optional[threading.Thread] = None
 
     def _ws_url_to_listen_arg(self) -> str:
         return self.ws_url  # codex app-server --listen takes the ws:// URL directly
@@ -221,6 +234,73 @@ class AppServerSupervisor:
     def request_reconnect(self) -> None:
         """Called by power-resume hook: force a probe cycle now."""
         self._reconnect_now.set()
+        # Also force the relay daemon's transport to reconnect
+        if self._daemon_server is not None:
+            try:
+                self._daemon_server.worker.request_reconnect()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+
+    def _start_daemon(self) -> None:
+        if not self.daemon_enabled or self._daemon_thread is not None:
+            return
+        try:
+            from . import daemon as _daemon_mod
+            from .config import load as load_config
+            cfg = load_config()
+            self._daemon_server = _daemon_mod.DaemonServer(
+                self.daemon_host, self.daemon_port, cfg,
+                lambda lvl, msg: self.log(f"DAEMON.{lvl}", msg),
+            )
+            self._daemon_server.worker.start()
+            self._daemon_thread = threading.Thread(
+                target=self._daemon_server.serve_forever,
+                daemon=True, name="RelayDaemonServer",
+            )
+            self._daemon_thread.start()
+            self.log("INFO", f"relay daemon up on {self.daemon_host}:{self.daemon_port}")
+        except OSError as exc:
+            # Port already in use, etc. Daemon is optional — log and continue.
+            self.log("WARN", f"relay daemon NOT started: {exc!r}")
+            self._daemon_server = None
+            self._daemon_thread = None
+
+    def _stop_daemon(self) -> None:
+        if self._daemon_server is None:
+            return
+        try:
+            self._daemon_server.worker.stop()  # type: ignore[attr-defined]
+            self._daemon_server.shutdown()  # type: ignore[attr-defined]
+            self._daemon_server.server_close()  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        self._daemon_server = None
+        self._daemon_thread = None
+
+    def _start_sidecar(self) -> None:
+        if self._sidecar_thread is not None:
+            return
+        try:
+            from . import sidecar
+            self._sidecar_server, self._sidecar_thread = sidecar.start(
+                supervisor_ref=self, host="127.0.0.1", port=9788,
+            )
+            self.log("INFO", "status sidecar up on 127.0.0.1:9788")
+        except OSError as exc:
+            self.log("WARN", f"status sidecar NOT started: {exc!r}")
+            self._sidecar_server = None
+            self._sidecar_thread = None
+
+    def _stop_sidecar(self) -> None:
+        if self._sidecar_server is None:
+            return
+        try:
+            self._sidecar_server.shutdown()  # type: ignore[attr-defined]
+            self._sidecar_server.server_close()  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        self._sidecar_server = None
+        self._sidecar_thread = None
 
     def run(self) -> int:
         """Main loop. Blocks until self.stop() is called."""
@@ -243,14 +323,27 @@ class AppServerSupervisor:
 
                 self.log("INFO", "app-server READY")
                 self._backoff_s = 2.0  # reset
+                # Start the relay daemon + status sidecar after app-server is READY
+                # (first time only — both survive across app-server restarts)
+                self._start_daemon()
+                self._start_sidecar()
                 self._monitor_loop()
                 # If we get here, _monitor_loop returned because of a failure
                 self._kill_proc()
+                # Force daemon to drop its transport so it reconnects to the
+                # restarted app-server cleanly
+                if self._daemon_server is not None:
+                    try:
+                        self._daemon_server.worker.request_reconnect()  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
                 time.sleep(self._backoff_s)
                 self._backoff_s = min(self._backoff_s * 2, self._max_backoff_s)
         finally:
             watcher.stop()
             self._kill_proc()
+            self._stop_daemon()
+            self._stop_sidecar()
         return 0
 
     def _monitor_loop(self) -> None:

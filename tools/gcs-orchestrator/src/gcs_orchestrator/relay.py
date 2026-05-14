@@ -1,11 +1,16 @@
-"""Single-shot worker DONE relay.
+"""Single-shot worker DONE relay (one-shot fallback path).
 
 Workers invoke this from their Step 3:
     python -m gcs_orchestrator.relay <thread-id> <content-or-dash>
 
 Resolves config, acquires file lock, checks idempotency receipt, opens
-an `AppServerTransport`, runs the turn, writes a final receipt, exits
+an AppServerTransport, runs the turn via turn_executor.run_turn, exits
 with a status code the caller can branch on.
+
+This is the FALLBACK path. The persistent daemon (`gcs-relay-daemon`)
+is the preferred fast path (no per-call WS handshake). The spawn_watchdog
+probes the daemon first and falls back to this module when the daemon
+is unreachable.
 
 Exit codes:
     0  EXIT_OK              turn delivered and processed
@@ -18,90 +23,28 @@ Exit codes:
 """
 from __future__ import annotations
 
-import hashlib
-import json
 import os
 import sys
 import time
 from pathlib import Path
 from typing import Optional
 
+from . import daemon as _daemon
+from . import receipts as _receipts
+from . import turn_executor as _executor
 from .config import GcsConfig, load as load_config
 from .platform import FileLock, write_holder_diag
-from .transport import AppServerTransport, TransportError, server_reachable
+from .transport import TransportError, server_reachable
 
 
-EXIT_OK = 0
-EXIT_DUPLICATE = 2
-EXIT_LOCK_TIMEOUT = 3
-EXIT_APP_SERVER_ERROR = 4
-EXIT_TURN_ABORTED = 5
-EXIT_TIMEOUT = 6
+EXIT_OK = _executor.EXIT_OK
+EXIT_DUPLICATE = _executor.EXIT_DUPLICATE
+EXIT_LOCK_TIMEOUT = _executor.EXIT_LOCK_TIMEOUT
+EXIT_APP_SERVER_ERROR = _executor.EXIT_APP_SERVER_ERROR
+EXIT_TURN_ABORTED = _executor.EXIT_TURN_ABORTED
+EXIT_TIMEOUT = _executor.EXIT_TIMEOUT
 EXIT_BAD_USAGE = 9
 
-
-# ---- Receipts / idempotency ----
-
-def _receipt_key(session_id: str, content: str) -> str:
-    return hashlib.sha256(
-        f"{session_id}\0{content}".encode("utf-8")
-    ).hexdigest()[:32]
-
-
-def _receipt_path(base: Path, key: str) -> Path:
-    return base / "receipts" / f"{key}.receipt"
-
-
-def _check_receipt(base: Path, key: str) -> bool:
-    """True only if a SUCCESS receipt exists. Pending receipts don't block."""
-    p = _receipt_path(base, key)
-    if not p.exists():
-        return False
-    try:
-        d = json.loads(p.read_text(encoding="utf-8"))
-        return d.get("status") == "success"
-    except (OSError, json.JSONDecodeError):
-        return False
-
-
-def _write_receipt_atomic(base: Path, key: str, payload: dict) -> None:
-    """Write receipt via tmp + os.replace (Windows-safe atomic)."""
-    receipts_dir = base / "receipts"
-    receipts_dir.mkdir(parents=True, exist_ok=True)
-    p = _receipt_path(base, key)
-    tmp = p.with_suffix(".receipt.tmp")
-    try:
-        tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        os.replace(tmp, p)
-    except OSError:
-        pass
-
-
-def _prune_receipts(base: Path, ttl_days: int, max_count: int) -> None:
-    """Lazy prune. Only fires if last prune was >1 hour ago (sentinel file)."""
-    receipts_dir = base / "receipts"
-    if not receipts_dir.exists():
-        return
-    sentinel = base / ".last_prune_at"
-    try:
-        if sentinel.exists():
-            if time.time() - sentinel.stat().st_mtime < 3600:
-                return
-        receipts_dir.mkdir(parents=True, exist_ok=True)
-        files = sorted(receipts_dir.glob("*.receipt"), key=lambda p: p.stat().st_mtime, reverse=True)
-        cutoff = time.time() - ttl_days * 86400
-        for i, f in enumerate(files):
-            try:
-                if i >= max_count or f.stat().st_mtime < cutoff:
-                    f.unlink(missing_ok=True)
-            except OSError:
-                pass
-        sentinel.touch()
-    except OSError:
-        pass
-
-
-# ---- Logging ----
 
 def _log(base: Path, level: str, msg: str) -> None:
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -115,19 +58,66 @@ def _log(base: Path, level: str, msg: str) -> None:
     sys.stderr.write(line)
 
 
-# ---- Main relay flow ----
+def _try_daemon(cfg: GcsConfig, session_id: str, content: str,
+                worker_id: Optional[str], base: Path) -> Optional[int]:
+    """Probe daemon at 127.0.0.1:9789 and submit there if healthy.
 
-def relay_turn(cfg: GcsConfig, session_id: str, content: str) -> int:
+    Returns the exit code on daemon success, or None if daemon is
+    unreachable / unhealthy (caller should fall back to one-shot path).
+    """
+    health = _daemon.client_health(timeout_s=1.0)
+    if health is None:
+        return None
+    if not health.get("ws_connected", False):
+        _log(base, "INFO", "daemon up but ws_connected=false — fallback to one-shot")
+        return None
+    try:
+        resp = _daemon.client_turn(
+            session_id, content,
+            worker_id=worker_id,
+            timeout_s=cfg.transport.turn_timeout_s,
+        )
+        if resp.get("type") != "turn_result":
+            _log(base, "WARN", f"daemon non-turn response: {resp}")
+            return None
+        exit_code = int(resp.get("exit_code", EXIT_APP_SERVER_ERROR))
+        agent_text = resp.get("agent_text", "") or ""
+        if exit_code == EXIT_OK and agent_text:
+            print(agent_text)
+        _log(base, "INFO", f"delivered via daemon, exit={exit_code} "
+                            f"elapsed={resp.get('elapsed_s', 0):.1f}s")
+        return exit_code
+    except (ConnectionError, OSError) as exc:
+        _log(base, "WARN", f"daemon mid-request failure ({exc!r}) — fallback")
+        return None
+
+
+def relay_turn(cfg: GcsConfig, session_id: str, content: str,
+               worker_id: Optional[str] = None) -> int:
+    """Synchronously deliver a worker DONE to the orchestrator.
+
+    Fast path: probe relay daemon, submit there.
+    Fallback: one-shot WS handshake (legacy behavior).
+
+    Returns one of the EXIT_* constants.
+    """
     base = cfg.relay_base_dir()
     base.mkdir(parents=True, exist_ok=True)
 
-    _prune_receipts(base, cfg.reliability.receipt_ttl_days, cfg.reliability.receipt_max_count)
+    _receipts.prune_if_stale(base,
+                             cfg.reliability.receipt_ttl_days,
+                             cfg.reliability.receipt_max_count)
 
-    key = _receipt_key(session_id, content)
+    key = _receipts.key_for(session_id, content)
 
-    if _check_receipt(base, key):
+    if _receipts.is_success(base, key):
         _log(base, "SKIP", f"idempotent: receipt {key} already present for {session_id}")
         return EXIT_DUPLICATE
+
+    # Try the persistent daemon first (saves ~500ms WS handshake)
+    daemon_result = _try_daemon(cfg, session_id, content, worker_id, base)
+    if daemon_result is not None:
+        return daemon_result
 
     if not server_reachable(cfg.transport.readyz_url, timeout_s=3.0):
         _log(base, "ERROR", f"app-server not reachable at {cfg.transport.readyz_url}")
@@ -135,96 +125,50 @@ def relay_turn(cfg: GcsConfig, session_id: str, content: str) -> int:
 
     lock_path = base / "turn.lock"
     _log(base, "INFO", f"acquiring lock for session={session_id} receipt={key}")
+    lock_t0 = time.time()
     try:
         with FileLock(lock_path, cfg.transport.turn_timeout_s):
-            write_holder_diag(lock_path, f"pid={os.getpid()} session={session_id[:12]} receipt={key[:12]} since={time.strftime('%H:%M:%S')}")
-            _log(base, "INFO", "lock acquired")
-            # Re-check receipt under lock (another concurrent relay might have completed it)
-            if _check_receipt(base, key):
+            lock_wait_ms = int((time.time() - lock_t0) * 1000)
+            write_holder_diag(
+                lock_path,
+                f"pid={os.getpid()} session={session_id[:12]} "
+                f"receipt={key[:12]} since={time.strftime('%H:%M:%S')}",
+            )
+            _log(base, "INFO", f"lock acquired in {lock_wait_ms}ms")
+            # Re-check receipt under lock (concurrent relay might have completed)
+            if _receipts.is_success(base, key):
                 _log(base, "SKIP", "duplicate detected after lock acquired")
                 return EXIT_DUPLICATE
-            return _do_turn(cfg, base, session_id, content, key)
+            return _do_turn(cfg, base, session_id, content, key,
+                            lock_wait_ms=lock_wait_ms, worker_id=worker_id)
     except TimeoutError as exc:
         _log(base, "ERROR", f"lock timeout: {exc}")
         return EXIT_LOCK_TIMEOUT
 
 
-def _do_turn(cfg: GcsConfig, base: Path, session_id: str, content: str, key: str) -> int:
-    transport = AppServerTransport(cfg.transport.ws_url, handshake_timeout_s=cfg.transport.handshake_timeout_s)
-    t_start = time.time()
+def _do_turn(cfg: GcsConfig, base: Path, session_id: str, content: str, key: str,
+             lock_wait_ms: int, worker_id: Optional[str]) -> int:
     try:
-        try:
-            transport.connect()
-        except Exception as exc:
-            _log(base, "ERROR", f"WS connect failed: {exc!r}")
-            return EXIT_APP_SERVER_ERROR
+        transport, connect_metrics = _executor.connect_and_initialize(cfg)
+    except TransportError as exc:
+        _log(base, "ERROR", f"initialize: {exc}")
+        return EXIT_APP_SERVER_ERROR
+    except Exception as exc:
+        _log(base, "ERROR", f"WS connect failed: {exc!r}")
+        return EXIT_APP_SERVER_ERROR
 
-        try:
-            transport.initialize(client_name="gcs-app-relay")
-        except TransportError as exc:
-            _log(base, "ERROR", f"initialize: {exc}")
-            return EXIT_APP_SERVER_ERROR
-
-        cwd = cfg.orchestrator.cwd_override or None
-        try:
-            transport.resume_thread(session_id, cwd_override=cwd)
-        except TransportError as exc:
-            _log(base, "ERROR", f"resume: {exc}")
-            return EXIT_APP_SERVER_ERROR
-        _log(base, "INFO", f"thread resumed in {time.time()-t_start:.2f}s")
-
-        handle = transport.start_turn(session_id, content, cwd_override=cwd)
-
-        # Write pending receipt so a mid-turn crash doesn't permanently block retry
-        _write_receipt_atomic(base, key, {
-            "status": "pending",
-            "session_id": session_id,
-            "content_sha256": key,
-            "started_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-        })
-
-        result = transport.wait_for_turn(handle, cfg.transport.turn_timeout_s)
-        elapsed = result.elapsed_s
-
-        if result.status == "timeout":
-            _log(base, "ERROR", f"turn timeout after {elapsed:.1f}s")
-            return EXIT_TIMEOUT
-        if result.status == "failed":
-            _log(base, "ERROR", f"turn FAILED after {elapsed:.1f}s: {result.error_message}")
-            # Drop pending receipt so retry isn't blocked
-            try:
-                _receipt_path(base, key).unlink(missing_ok=True)
-            except OSError:
-                pass
-            return EXIT_APP_SERVER_ERROR
-        if result.status == "interrupted":
-            _log(base, "ERROR", f"turn INTERRUPTED after {elapsed:.1f}s: {result.error_message}")
-            try:
-                _receipt_path(base, key).unlink(missing_ok=True)
-            except OSError:
-                pass
-            return EXIT_TURN_ABORTED
-
-        _log(base, "INFO", f"turn completed in {elapsed:.1f}s, agent text len={len(result.assistant_text)}, "
-                            f"tokens in={result.input_tokens} cached={result.cached_input_tokens} out={result.output_tokens}")
-
-        _write_receipt_atomic(base, key, {
-            "status": "success",
-            "session_id": session_id,
-            "content_sha256": key,
-            "turn_id": result.turn_id,
-            "elapsed_s": elapsed,
-            "completed_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "input_tokens": result.input_tokens,
-            "cached_input_tokens": result.cached_input_tokens,
-            "output_tokens": result.output_tokens,
-            "assistant_text_preview": result.assistant_text[:500],
-        })
-
-        if result.assistant_text:
-            print(result.assistant_text)
-        return EXIT_OK
-
+    try:
+        execution = _executor.run_turn(
+            cfg, transport, session_id, content,
+            receipt_key=key,
+            worker_id=worker_id,
+            lock_wait_ms=lock_wait_ms,
+            connect_metrics=connect_metrics,
+            log=lambda lvl, msg: _log(base, lvl, msg),
+        )
+        if execution.exit_code == EXIT_OK and execution.agent_text:
+            print(execution.agent_text)
+        return execution.exit_code
     except Exception as exc:
         _log(base, "ERROR", f"unexpected: {exc!r}")
         return EXIT_APP_SERVER_ERROR
@@ -236,6 +180,7 @@ def _usage() -> None:
     sys.stderr.write(
         "Usage: python -m gcs_orchestrator.relay <thread-id> <content-or-dash>\n"
         "       (use '-' as content to read from stdin)\n"
+        "       set GCS_WORKER_ID=PROMPT-NNN to tag the metric record\n"
     )
 
 
@@ -244,7 +189,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     if len(argv) != 3:
         _usage()
         return EXIT_BAD_USAGE
-    # Force UTF-8 stdin on Windows
     try:
         sys.stdin.reconfigure(encoding="utf-8", errors="strict")
     except Exception:
@@ -263,7 +207,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     if not session_id or not content.strip():
         _usage()
         return EXIT_BAD_USAGE
-    return relay_turn(cfg, session_id, content)
+    worker_id = os.environ.get("GCS_WORKER_ID") or None
+    return relay_turn(cfg, session_id, content, worker_id=worker_id)
 
 
 if __name__ == "__main__":
