@@ -113,8 +113,18 @@ in Sprint 14+.
 
 - **`reports/PROMPT-802-Expert-UI-Layout-Audit-And-Repair-Roadmap.md`**:
   the source audit (read-only by this story).
-- **`reports/PROMPT-685-*` (or canonical equivalent)**: the prior
-  8-story milestone backlog (read-only).
+- **PROMPT 685 8-story milestone backlog**: **no
+  `reports/PROMPT-685*` file exists on `origin/main` at PROMPT 823
+  readiness verification.** The implementing worker MUST locate
+  the canonical 8-story milestone backlog wherever it actually
+  lives at implementation time (likely candidates: a
+  milestone-level doc under `production/milestones/`, an older
+  sprint plan under `production/sprints/`, a backlog row in
+  `production/sprint-status.yaml`, or a session-state archive)
+  and record the canonical source in roadmap evidence; **or**, if
+  no canonical source exists, the worker proceeds with AC3 by
+  marking each formerly-PROMPT-685 row obsolete with rationale,
+  citing the missing source.
 - **`production/epics/hand-ui/`, `production/epics/hud/`,
   `production/epics/shop-auction-ui/`, `production/epics/board-rendering/`,
   `production/epics/playable-client/` (lobby surface)**: target
@@ -186,12 +196,24 @@ All criteria are independently checkable.
   preserved.
 
 - [ ] **AC3 -- PROMPT 685 backlog reconciled**: GIVEN the roadmap
-  note, WHEN inspected, THEN for each row in the existing PROMPT
-  685 8-story milestone backlog, the note records one
-  disposition:
-  - `subsumed-by <PROMPT 802 slug>` (with the slug named).
-  - `still valid (sequence after PROMPT 802)`.
-  - `obsolete (rationale)`.
+  note, WHEN inspected, THEN one of:
+  - (a) The implementing worker has located the canonical
+    PROMPT 685 8-story milestone backlog (no `reports/PROMPT-685*`
+    file exists on `main` at PROMPT 823 verification; canonical
+    source must be located wherever it actually lives -- likely a
+    milestone-level doc, older sprint plan, `sprint-status.yaml`
+    row, or session-state archive). For each row in the located
+    backlog, the note records one disposition:
+    - `subsumed-by <PROMPT 802 slug>` (with the slug named).
+    - `still valid (sequence after PROMPT 802)`.
+    - `obsolete (rationale)`.
+    The canonical source path is recorded in roadmap evidence.
+  - (b) **No canonical source located**: the roadmap note
+    explicitly records that no canonical PROMPT 685 source exists
+    on `main` at implementation time, and each formerly-PROMPT-685
+    row is marked `obsolete (rationale: PROMPT 685 backlog
+    not-findable per PROMPT 823 / 824 hygiene; superseded by
+    PROMPT 802 audit)` with a brief one-line rationale.
 
 - [ ] **AC4 -- 3-4 highest-impact rows named**: GIVEN the
   roadmap note, WHEN inspected, THEN exactly 3 or 4 of the 14

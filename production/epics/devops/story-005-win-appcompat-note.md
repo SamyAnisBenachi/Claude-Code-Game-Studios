@@ -79,8 +79,24 @@ test binaries for tests named `spawn_range_live_update_contract_*`
 inherit a filename containing `update`, triggering the heuristic
 falsely.
 
-**Prevention target**: A paragraph in
-`docs/setup/dev-environment.md` (existing) that:
+**Path-existence note (PROMPT 823 / PROMPT 824 verification)**:
+`docs/setup/` does **NOT** exist on `origin/main` at PROMPT 823
+readiness verification. `docs/setup/dev-environment.md` is therefore
+a **target path**, not an existing file. The implementing worker
+chooses one of two paths and records the chosen path in story
+evidence:
+
+- (a) Create `docs/setup/` and `docs/setup/dev-environment.md`
+  in the same doc-only commit as the AppCompat paragraph; **or**
+- (b) Amend a canonical sibling doc that already exists on `main`
+  (e.g. `docs/WORKFLOW-GUIDE.md`, `docs/octogent-integration.md`,
+  `CONTRIBUTING.md`) and record the chosen path in story evidence.
+
+The implementing worker picks (a) **or** (b) -- not both -- and
+records the rationale in story evidence.
+
+**Prevention target**: A paragraph in the chosen target doc (per
+(a) or (b) above) that:
 
 - Documents the AppCompat heuristic and the exact substrings that
   trigger it (`update`, `install`, `setup`, `patch`, `uninst`,
@@ -106,8 +122,14 @@ its follow-on story owns the actual manifest/build-script change.
 
 ### Existing surface
 
-- **`docs/setup/dev-environment.md`** (existing): Windows
-  dev-environment doc.
+- **`docs/setup/dev-environment.md`**: **target path, not an
+  existing file** as of PROMPT 823 readiness verification.
+  `docs/setup/` does not exist on `origin/main`. Implementing
+  worker either creates the directory + file in the same doc-only
+  commit, or amends a canonical sibling doc that already exists
+  (e.g. `docs/WORKFLOW-GUIDE.md`, `docs/octogent-integration.md`,
+  `CONTRIBUTING.md`) and records the chosen path in story
+  evidence.
 - **Test target name**: `spawn_range_live_update_contract` --
   trigger source. Renaming is workspace-cargo affecting; **out of
   scope** for this story.
@@ -123,8 +145,11 @@ its follow-on story owns the actual manifest/build-script change.
 
 ### Control Manifest Rules
 
-- Required: Paragraph in `docs/setup/dev-environment.md`
-  documents the heuristic and the chosen workaround.
+- Required: Paragraph in the chosen target doc (per option (a)
+  newly created `docs/setup/dev-environment.md`, or option (b)
+  amended canonical sibling doc -- see Prevention target)
+  documents the heuristic and the chosen workaround. Chosen path
+  is recorded in story evidence.
 - Required: If option (b) embedded manifest is chosen, its
   follow-on story slug is named with rationale.
 - Forbidden: Renaming any Cargo test target under this story.
@@ -151,11 +176,14 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Dev-environment doc updated**: GIVEN
-  `docs/setup/dev-environment.md` post-story, WHEN inspected,
-  THEN it contains a clearly named paragraph or section
-  documenting the Windows AppCompat heuristic and the substrings
-  that trigger it.
+- [ ] **AC1 -- Dev-environment doc updated**: GIVEN the chosen
+  target doc post-story (either newly created
+  `docs/setup/dev-environment.md` per option (a), or an amended
+  canonical sibling doc per option (b) -- see Prevention target),
+  WHEN inspected, THEN it contains a clearly named paragraph or
+  section documenting the Windows AppCompat heuristic and the
+  substrings that trigger it, and story evidence records which
+  path was chosen and the rationale.
 
 - [ ] **AC2 -- Single workaround chosen**: GIVEN the new
   paragraph / section, WHEN inspected, THEN exactly one of:
@@ -200,7 +228,7 @@ All criteria are independently checkable.
 
 | Path | Anticipated change |
 |------|--------------------|
-| `docs/setup/dev-environment.md` | Paragraph or small section added documenting the AppCompat heuristic + chosen workaround. |
+| `docs/setup/dev-environment.md` (NEW; created by option (a)) **or** an existing canonical sibling doc on `main` (e.g. `docs/WORKFLOW-GUIDE.md`, `docs/octogent-integration.md`, `CONTRIBUTING.md`) per option (b) | Paragraph or small section added documenting the AppCompat heuristic + chosen workaround. Chosen path recorded in story evidence. |
 | This story file | Status update on `/story-done`. |
 
 ---
@@ -257,7 +285,12 @@ No `cargo` command is required by this story.
 
 - Doc-only; no file-scope collision with any Sprint 13 Must Have
   or Should Have row.
-- May share `docs/setup/dev-environment.md` with Sprint 13 Nice to
-  Have row `S11-OPS-GH-CLI-001` (story 004 in this epic). Both
-  edits are paragraph-scale; same-file conflict risk is low. The
-  worker can sequence them in either order.
+- May share a target doc with Sprint 13 Nice to Have row
+  `S11-OPS-GH-CLI-001` (story 004 in this epic) if both stories
+  pick the same option (a) target path
+  (`docs/setup/dev-environment.md`) or the same option (b)
+  canonical sibling doc. Both edits are paragraph-scale; same-file
+  conflict risk is low. The worker can sequence them in either
+  order; whichever runs first creates the file/directory (option
+  (a)) or establishes the chosen sibling-doc path (option (b)),
+  and the second worker appends.

@@ -70,11 +70,25 @@ name `gh` as required tooling; new worktrees / new sessions hit
 "`gh` not found" the first time they need it, forcing a context
 switch to install or to fall back to web UI.
 
-**Prevention target**: A one-paragraph note in
-`docs/setup/dev-environment.md` (existing) **or** in the repo
-onboarding doc (canonical path verified by implementing worker;
-likely `docs/setup/dev-environment.md` or `CONTRIBUTING.md` or
-`docs/onboarding.md`) that:
+**Path-existence note (PROMPT 823 / PROMPT 824 verification)**:
+`docs/setup/` does **NOT** exist on `origin/main` at PROMPT 823
+readiness verification. `docs/setup/dev-environment.md` is therefore
+a **target path**, not an existing file. The implementing worker
+chooses one of two paths and records the chosen path in story
+evidence:
+
+- (a) Create `docs/setup/` and `docs/setup/dev-environment.md`
+  in the same doc-only commit as the `gh` paragraph; **or**
+- (b) Amend a canonical sibling doc that already exists on `main`
+  (e.g. `docs/WORKFLOW-GUIDE.md`, `docs/octogent-integration.md`,
+  `CONTRIBUTING.md`, or `docs/onboarding.md` if any of these are
+  the project's canonical onboarding doc at implementation time).
+
+The implementing worker picks (a) **or** (b) -- not both -- and
+records the rationale in story evidence.
+
+**Prevention target**: A one-paragraph note in the chosen target
+doc (per (a) or (b) above) that:
 
 - Names `gh` as required tooling for orchestrator and producer
   workflows.
@@ -94,9 +108,14 @@ story.** The note is the artifact.
 
 ### Existing surface
 
-- **`docs/setup/dev-environment.md`** (existing; canonical path
-  verified by implementing worker): onboarding tooling doc. This
-  story appends or amends a paragraph.
+- **`docs/setup/dev-environment.md`**: **target path, not an
+  existing file** as of PROMPT 823 readiness verification.
+  `docs/setup/` does not exist on `origin/main`. Implementing
+  worker either creates the directory + file in the same doc-only
+  commit, or amends a canonical sibling doc that already exists
+  (e.g. `docs/WORKFLOW-GUIDE.md`, `docs/octogent-integration.md`,
+  `CONTRIBUTING.md`) and records the chosen path in story
+  evidence.
 
 ### Engine / skills
 
@@ -131,9 +150,12 @@ This is **NOT** a:
 All criteria are independently checkable.
 
 - [ ] **AC1 -- Onboarding doc updated**: GIVEN the canonical
-  onboarding doc (likely `docs/setup/dev-environment.md`), WHEN
-  inspected post-story, THEN it contains a clearly named
-  paragraph or section listing `gh` as required tooling.
+  onboarding doc chosen by the implementing worker (either newly
+  created `docs/setup/dev-environment.md` per option (a), or an
+  amended canonical sibling doc per option (b) -- see Prevention
+  target), WHEN inspected post-story, THEN it contains a clearly
+  named paragraph or section listing `gh` as required tooling and
+  story evidence records which path was chosen and the rationale.
 
 - [ ] **AC2 -- Install commands provided**: GIVEN the new
   paragraph / section, WHEN inspected, THEN it provides
@@ -163,7 +185,7 @@ All criteria are independently checkable.
 
 | Path | Anticipated change |
 |------|--------------------|
-| `docs/setup/dev-environment.md` (or canonical onboarding doc path) | Paragraph or small section added naming `gh` and install commands. |
+| `docs/setup/dev-environment.md` (NEW; created by option (a)) **or** an existing canonical sibling doc on `main` (e.g. `docs/WORKFLOW-GUIDE.md`, `docs/octogent-integration.md`, `CONTRIBUTING.md`) per option (b) | Paragraph or small section added naming `gh` and install commands. Chosen path recorded in story evidence. |
 | This story file | Status update on `/story-done`. |
 
 ---
