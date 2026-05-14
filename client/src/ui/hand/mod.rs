@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 use std::time::Duration;
 
 use bevy::ecs::query::QueryFilter;
+use bevy::ecs::system::SystemParam;
 use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
@@ -1061,6 +1062,21 @@ pub fn sync_reserve_strip_state_system(
     );
 }
 
+/// Bundles the entity-modifying queries used by [`hand_ui_phase_transition_system`]
+/// into a single `SystemParam` slot so the system stays under Bevy 0.18's
+/// 16-param limit after the story 022 idempotency `Local` was added.
+#[derive(SystemParam)]
+pub struct HandUiPhaseTransitionQueries<'w, 's> {
+    submit_buttons: Query<
+        'w,
+        's,
+        (&'static mut Text, &'static mut HandSubmitInteractionState),
+        With<HandSubmitButton>,
+    >,
+    animators: Query<'w, 's, (Entity, &'static mut TweenAnim), With<HandUiEntity>>,
+    timer_states: Query<'w, 's, &'static mut TimerState, With<HandTimer>>,
+}
+
 pub fn hand_ui_phase_transition_system(
     current: Res<CurrentClientPhase>,
     phase_view: Res<ClientPhaseView>,
@@ -1075,11 +1091,26 @@ pub fn hand_ui_phase_transition_system(
     entities: Option<Res<HandUiEntities>>,
     mut commands: Commands,
     mut visibility_query: Query<&mut Visibility>,
-    mut submit_buttons: Query<(&mut Text, &mut HandSubmitInteractionState), With<HandSubmitButton>>,
-    mut animators: Query<(Entity, &mut TweenAnim), With<HandUiEntity>>,
-    mut timer_states: Query<&mut TimerState, With<HandTimer>>,
+    queries: HandUiPhaseTransitionQueries,
+    mut last_observed_phase: Local<Option<RoundPhase>>,
 ) {
-    let phase_changed = current.is_changed();
+    let HandUiPhaseTransitionQueries {
+        mut submit_buttons,
+        mut animators,
+        mut timer_states,
+    } = queries;
+    // Phase idempotency (story 022 / DC-5): the `phase_sink_system` upstream
+    // takes `ResMut<CurrentClientPhase>` and dereferences it mutably every
+    // frame (when passing it through to `apply_phase_changed_messages_with_resolution_gate`),
+    // which makes `current.is_changed()` fire at 60Hz even when no real phase
+    // transition occurred. Compare the just-observed phase against the
+    // previous frame's observed phase instead, so `phase_changed=true` only
+    // fires on actual `RoundPhase` inequality.
+    let observed_phase = current.phase;
+    let phase_changed = match *last_observed_phase {
+        Some(prev) => prev != observed_phase,
+        None => true,
+    };
     if !phase_changed && !hand_contents.is_changed() {
         return;
     }
@@ -1257,6 +1288,8 @@ pub fn hand_ui_phase_transition_system(
             *interaction_state = HandSubmitInteractionState::Active;
         }
     }
+
+    *last_observed_phase = Some(observed_phase);
 }
 
 pub fn sync_hand_fan_card_art_system(
