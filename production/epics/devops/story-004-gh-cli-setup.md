@@ -2,16 +2,25 @@
 
 > **Epic**: DevOps (Operational Hardening)
 > **Story ID**: S11-OPS-GH-CLI-001
-> **Status**: Draft -- Sprint 13 candidate (Nice to Have); NOT activated;
-> Sprint 12 closed-with-conditions per PROMPT 817
+> **Status**: Done — closed by PROMPT 876 `/story-done` on 2026-05-14
+> against `origin/main@7403e8f` (PROMPT 873 worker commit `91db9d5` on
+> `work/s13-gh-cli-setup-note` from base `origin/main@3cf5e41` → PROMPT
+> 875 integration merge commit `7403e8f` on `origin/main` via `--no-ff`
+> merge of worker tip into prior `origin/main@3cf5e41`). Sprint 13
+> remains `active`; PROMPT 876 is per-story closure paperwork only.
 > **Layer**: DevOps -- onboarding documentation only
 > **Type**: Documentation only -- no tooling changes land
-> **Sprint**: Sprint 13 candidate (Sprint 12 close-out deferral; Sprint 11
-> Wave 12 backlog: `gh` absent 3+ times during orchestrator workflows);
-> NOT activated
+> **Sprint**: Sprint 13 Nice to Have (activated by PROMPT 826; closed by
+> PROMPT 876). Sprint 12 close-out deferral; Sprint 11 Wave 12 backlog
+> (`gh` absent 3+ times during orchestrator workflows).
 > **Authored**: 2026-05-14 by PROMPT 819
 > **Authoring source-of-truth**: `origin/main@be69f5c` (PROMPT 818
 > `/sprint-plan sprint-13` DRAFT)
+> **Closed**: 2026-05-14 by PROMPT 876 `/story-done` at
+> `origin/main@7403e8f` (HEAD at closure time `dd9630b` via fast-forward
+> over PROMPT 871's local `51e6228` story-017 closure and PROMPT 877's
+> integration of PROMPT 874's R2-placement-audit work; neither commit
+> changed the story-004 evidence at `7403e8f`)
 
 ---
 
@@ -149,7 +158,7 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Onboarding doc updated**: GIVEN the canonical
+- [x] **AC1 -- Onboarding doc updated**: GIVEN the canonical
   onboarding doc chosen by the implementing worker (either newly
   created `docs/setup/dev-environment.md` per option (a), or an
   amended canonical sibling doc per option (b) -- see Prevention
@@ -157,24 +166,24 @@ All criteria are independently checkable.
   named paragraph or section listing `gh` as required tooling and
   story evidence records which path was chosen and the rationale.
 
-- [ ] **AC2 -- Install commands provided**: GIVEN the new
+- [x] **AC2 -- Install commands provided**: GIVEN the new
   paragraph / section, WHEN inspected, THEN it provides
   platform-appropriate install commands for at least Windows
   (`winget install --id GitHub.cli` or canonical equivalent).
   macOS / Linux commands are optional but encouraged.
 
-- [ ] **AC3 -- No tooling installed**: GIVEN the story commit,
+- [x] **AC3 -- No tooling installed**: GIVEN the story commit,
   WHEN inspected, THEN no actual installation, CI workflow
   change, or build-script change lands. Only the doc edit (and
   optionally this story file's status) is touched.
 
-- [ ] **AC4 -- Sprint 13 disposition preserved**: GIVEN the story
+- [x] **AC4 -- Sprint 13 disposition preserved**: GIVEN the story
   commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-13.md`, `production/stage.txt`, and
   PROMPT 761 gate-check artifact are diffed, THEN none of them
   are modified by this story.
 
-- [ ] **AC5 -- No-claim restatement embedded**: GIVEN the new
+- [x] **AC5 -- No-claim restatement embedded**: GIVEN the new
   paragraph / section, WHEN inspected, THEN it (or this story
   file) includes the verbatim "Status / No-Claim Banner" no-claim
   restatement.
@@ -243,3 +252,96 @@ No `cargo` command is required by this story.
   Have row `S13-OPS-WIN-APPCOMPAT-NOTE-001` (story 005 in this
   epic). Both edits are paragraph-scale; they can be applied in
   sequence or together; same-file conflict risk is low.
+
+---
+
+## Authoring / Implementation / Closure Trail
+
+- **PROMPT 819** (2026-05-14, `/sprint-plan sprint-13` candidate
+  authoring at `origin/main@be69f5c`): Story authored as Sprint 13
+  Nice to Have candidate. NOT activated.
+- **PROMPT 823** (2026-05-14, `/story-readiness` batch): Verdict
+  `READY` with advisory "`docs/setup/` directory does not yet exist
+  on `main`; worker creates target path."
+- **PROMPT 826** (2026-05-14, Sprint 13 activation): Sprint 13
+  activated; this row moved from `next_sprint: draft` into the
+  top-level active stories block at status `ready`.
+- **PROMPT 873** (2026-05-14, `/dev-story` worker commit `91db9d5`
+  on `work/s13-gh-cli-setup-note` from base `origin/main@3cf5e41`):
+  Authored `docs/setup/dev-environment.md` (NEW; 156 lines).
+  Chose option (a) from the Prevention target — created the new
+  canonical onboarding doc rather than amending a sibling.
+  Rationale recorded in the doc body (lines 133-156):
+  `docs/setup/` already exists on `origin/main@3cf5e41` (created
+  by Story 017 / PROMPT 858 for `two-client-runtime-harness.md`),
+  so option (a) only adds a new file under the established
+  convention; the sibling story 005 (`S13-OPS-WIN-APPCOMPAT-NOTE-001`)
+  is expected to also land in `docs/setup/dev-environment.md`,
+  establishing the file now gives that future story an unambiguous
+  target. AC1-AC5 all satisfied at worker tip. Worker pushed worker
+  branch only; did NOT push `main`.
+- **PROMPT 875** (2026-05-14, integration merge commit `7403e8f`
+  on `origin/main` via `--no-ff` merge of worker tip `91db9d5` into
+  prior `origin/main@3cf5e41`): Single-file integration; net delta
+  `docs/setup/dev-environment.md +156 / -0`. No code, CI, build
+  script, or sprint-tracker artifact modified. Did NOT run
+  `/story-done`.
+- **PROMPT 876** (2026-05-14, `/story-done` closure at
+  `origin/main@7403e8f`; HEAD advanced during the closure session
+  to `dd9630b` via fast-forward over PROMPT 871's local `51e6228`
+  closure for story 017 and PROMPT 877's integration of PROMPT
+  874's R2-placement-audit work — neither commit changed the
+  story-004 evidence at `7403e8f`): Flipped `status: ready -> done`
+  with `completed: 2026-05-14`; AC1-AC5 all PASS against integrated
+  evidence on `origin/main@7403e8f`. Paperwork-only run: this
+  story file Status header flipped to Done + AC1-AC5 checkboxes
+  flipped `[ ]` -> `[x]` + this Authoring/Implementation/Closure
+  Trail section added; `production/sprint-status.yaml` row flipped
+  + top-level `updated:` annotation refreshed + `sprint_13_story_done`
+  block extended with PROMPT 876 entry; `production/session-state/active.md`
+  + `production/session-state/codex-orchestrator-state.md` PROMPT
+  876 banner / section prepended.
+
+### Conditions carried forward unchanged
+
+- Sprint 12 disposition `closed-with-conditions` per PROMPT 817.
+- Sprint 13 disposition `active` (NOT closed by PROMPT 876).
+- Stage `Polish` (production/stage.txt NOT modified).
+- PROMPT 761 Polish->Release gate-check FAIL preserved.
+- `S8-QA-001-W1` OPEN preserved.
+- `QA-COND-0005` (friend-game scope) + `QA-COND-0006` (playtest
+  deferred) accepted-risk preserved.
+- `PAW-TD-*-a` placeholder-art accept-risk preserved.
+- `TQ-S12-C1..C7` preserved verbatim.
+- Sprint 10 / Sprint 11 / Sprint 12 closeouts preserved unchanged.
+- PROMPT 683-era runtime divergence question preserved (folded
+  into Sprint 12 story 019 cannot-reproduce closure).
+- Story 019 underlying drag-runtime bug NOT claimed fixed.
+
+### Explicitly NOT claimed by PROMPT 876
+
+- Sprint 13 close-out.
+- Public release readiness / release-candidate readiness.
+- Full game completion.
+- Broad / Standard-tier accessibility completion.
+- Playtest / fun-hypothesis validation.
+- Full playable-client manual QA.
+- Two-client GAME_OVER closure (`S8-QA-001-W1` remains OPEN).
+- Final-art / asset-production completion.
+- Polish->Release gate-check retry.
+- Stage advance from Polish to Release.
+- `gh` actually installed on any machine.
+- Any CI workflow or build-script change touching `gh`.
+- `/story-done` for `S11-OPS-ORCHESTRATOR-LOCK-001` (PROMPT 869
+  retry territory; the row was already at `status: done` on
+  `origin/main` via parallel-writer carry-through; the story-003
+  file flip remains the PROMPT 869 retry orchestrator's work).
+
+PROMPT 876 did NOT run: `/smoke-check`, `/team-qa`, `/gate-check`,
+`/release-check`, `/dev-story`, `/story-readiness`, `/qa-plan`, or
+any Cargo command. PROMPT 876 did NOT touch: `client/`, `server/`,
+`shared/`, `tests/`, `Cargo.toml`, `.cargo/`, `production/stage.txt`,
+`production/sprints/sprint-13.md`, `production/qa/qa-plan-sprint-13.md`,
+`production/sprints/sprint-12.md`, `production/qa/qa-plan-sprint-12.md`,
+`production/qa/evidence/*`, `production/gate-checks/*`, or any
+story file other than this one.
