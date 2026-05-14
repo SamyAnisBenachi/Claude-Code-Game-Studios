@@ -17,7 +17,7 @@ use client::ui::hand::{
 use client::ui::lobby::{
     LobbyClassButton, LobbyCommand, LobbyConfirmClassButton, LobbyCreateRoomButton,
     LobbyInputState, LobbyJoinRoomButton, LobbyRequestedSlotButton, LobbyRoomCodeField,
-    LobbyUiPlugin,
+    LobbyUiPlugin, LobbyViewState,
 };
 use client::ui::shop_auction::{
     AuctionBidButtonState, DraftInitialSlotState, ShopAuctionAuctionCardReceived,
@@ -103,7 +103,6 @@ fn test_lobby_room_code_textbox_click_selects_and_accepts_text_input() {
     );
 }
 
-#[ignore = "PROMPT 750 D-5 follow-on: ConfirmClass intent not emitted alongside SelectClass — input chain stops at SelectClass; needs lobby input system investigation (revealed after D-1 fix)"]
 #[test]
 fn test_lobby_buttons_drive_create_join_slot_class_and_confirm_commands() {
     test_helpers::init_test_tracing();
@@ -139,6 +138,19 @@ fn test_lobby_buttons_drive_create_join_slot_class_and_confirm_commands() {
             requested_slot: 2,
         }]
     );
+
+    // Mirror production S2CJoinAck round-trip: the server-authoritative
+    // join-acknowledge sets `session_id`, which is the precondition the
+    // ADR-002 gate in `request_confirm_class` checks before emitting
+    // `LobbyCommand::ConfirmClass`. Without this, the confirm intent is
+    // (correctly) suppressed as premature.
+    {
+        let mut lobby = app.world_mut().resource_mut::<LobbyViewState>();
+        lobby.session_id = Some("XY9".to_string());
+    }
+    app.world_mut()
+        .resource_mut::<LobbyInputState>()
+        .join_in_flight = false;
 
     let class = class_button(&mut app, ClassId::Xelor);
     let confirm = entity_with::<LobbyConfirmClassButton>(&mut app);
