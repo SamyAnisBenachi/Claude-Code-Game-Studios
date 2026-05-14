@@ -88,6 +88,14 @@ pub fn rsm_input_reader(
     }
 
     for submission in placement_submitted.read() {
+        tracing::debug!(
+            target: "server::game::placement",
+            player_id = ?submission.player,
+            phase = ?rsm.phase,
+            round = rsm.round_number,
+            submissions_seen = rsm.submissions_received.len(),
+            "rsm_input_reader: PlacementSubmitted observed (audit: R2 placement transition audit)"
+        );
         if rsm.phase != RoundPhase::Placement {
             continue;
         }
@@ -96,7 +104,20 @@ pub fn rsm_input_reader(
         }
 
         rsm.submissions_received.insert(submission.player);
+        tracing::debug!(
+            target: "server::game::placement",
+            player_id = ?submission.player,
+            round = rsm.round_number,
+            submissions_received = rsm.submissions_received.len(),
+            "rsm_input_reader: submission recorded (audit: R2 placement transition audit)"
+        );
         if all_players_seen(&rsm.submissions_received, session.as_deref()) {
+            tracing::info!(
+                target: "server::game::placement",
+                round = rsm.round_number,
+                submissions_received = rsm.submissions_received.len(),
+                "rsm_input_reader: all placements received; requesting Placement->Resolution (audit: R2 placement transition audit)"
+            );
             pending.request(PhaseAdvanceRequest::new(RoundPhase::Placement));
         }
     }
@@ -364,6 +385,15 @@ pub fn advance_phase(
 
     let from_phase = rsm.phase;
 
+    tracing::debug!(
+        target: "server::game::placement",
+        from_phase = ?from_phase,
+        expected_source = ?request.expected_source,
+        request_is_game_over = request.game_over.is_some(),
+        round = rsm.round_number,
+        "advance_phase: entry (audit: R2 placement transition audit)"
+    );
+
     if let Some(game_over) = &request.game_over {
         rsm.phase = RoundPhase::GameOver;
         rsm.placement_timer = None;
@@ -419,6 +449,12 @@ pub fn advance_phase(
             );
         }
         RoundPhase::DraftInitial => {
+            tracing::info!(
+                target: "server::game::placement",
+                from = ?from_phase,
+                round = rsm.round_number,
+                "advance_phase: DraftInitial->Placement entry (audit: R2 placement transition audit)"
+            );
             rsm.phase = RoundPhase::Placement;
             rsm.draft_initial_timer = None;
             rsm.draft_shop_timer = None;
@@ -426,6 +462,13 @@ pub fn advance_phase(
             rsm.submissions_received.clear();
             let timer_ms = placement_timer_ms(session.as_deref(), &config, false);
             rsm.placement_timer = (timer_ms > 0).then(|| once_timer_ms(timer_ms));
+            tracing::debug!(
+                target: "server::game::placement",
+                round = rsm.round_number,
+                timer_ms,
+                has_timer = rsm.placement_timer.is_some(),
+                "advance_phase: DraftInitial->Placement substep state mutated (audit: R2 placement transition audit)"
+            );
             placement_entered.write(PlacementPhaseEntered {
                 round: rsm.round_number,
             });
@@ -434,6 +477,11 @@ pub fn advance_phase(
                 round: rsm.round_number,
                 timer_ms,
             });
+            tracing::debug!(
+                target: "server::game::placement",
+                round = rsm.round_number,
+                "advance_phase: DraftInitial->Placement events dispatched (audit: R2 placement transition audit)"
+            );
             tracing::info!(
                 from = ?from_phase,
                 to = ?rsm.phase,
@@ -469,6 +517,13 @@ pub fn advance_phase(
             );
         }
         RoundPhase::DraftShop => {
+            tracing::info!(
+                target: "server::game::placement",
+                from = ?from_phase,
+                round = rsm.round_number,
+                auction_round = is_auction_round(rsm.round_number),
+                "advance_phase: DraftShop->Placement entry (audit: R2 placement transition audit)"
+            );
             rsm.phase = RoundPhase::Placement;
             rsm.draft_shop_timer = None;
             rsm.draft_ready_players.clear();
@@ -479,6 +534,13 @@ pub fn advance_phase(
                 is_auction_round(rsm.round_number),
             );
             rsm.placement_timer = (timer_ms > 0).then(|| once_timer_ms(timer_ms));
+            tracing::debug!(
+                target: "server::game::placement",
+                round = rsm.round_number,
+                timer_ms,
+                has_timer = rsm.placement_timer.is_some(),
+                "advance_phase: DraftShop->Placement substep state mutated (audit: R2 placement transition audit)"
+            );
             placement_entered.write(PlacementPhaseEntered {
                 round: rsm.round_number,
             });
@@ -487,6 +549,11 @@ pub fn advance_phase(
                 round: rsm.round_number,
                 timer_ms,
             });
+            tracing::debug!(
+                target: "server::game::placement",
+                round = rsm.round_number,
+                "advance_phase: DraftShop->Placement events dispatched (audit: R2 placement transition audit)"
+            );
             tracing::info!(
                 from = ?from_phase,
                 to = ?rsm.phase,
@@ -496,11 +563,24 @@ pub fn advance_phase(
             );
         }
         RoundPhase::Placement => {
+            tracing::info!(
+                target: "server::game::placement",
+                from = ?from_phase,
+                round = rsm.round_number,
+                submissions_received = rsm.submissions_received.len(),
+                "advance_phase: Placement->Resolution entry (audit: R2 placement transition audit)"
+            );
             rsm.phase = RoundPhase::Resolution;
             rsm.placement_timer = None;
             rsm.resolution_safety_timer = config
                 .as_ref()
                 .map(|config| once_timer(config.resolution_max_duration_seconds));
+            tracing::debug!(
+                target: "server::game::placement",
+                round = rsm.round_number,
+                has_safety_timer = rsm.resolution_safety_timer.is_some(),
+                "advance_phase: Placement->Resolution substep state mutated (audit: R2 placement transition audit)"
+            );
             resolution_entered.write(ResolutionPhaseEntered {
                 round: rsm.round_number,
             });
@@ -512,6 +592,11 @@ pub fn advance_phase(
                 round: rsm.round_number,
                 timer_ms: 0,
             });
+            tracing::debug!(
+                target: "server::game::placement",
+                round = rsm.round_number,
+                "advance_phase: Placement->Resolution events dispatched (audit: R2 placement transition audit)"
+            );
             tracing::info!(
                 from = ?from_phase,
                 to = ?rsm.phase,

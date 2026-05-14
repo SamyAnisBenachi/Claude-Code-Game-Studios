@@ -285,7 +285,16 @@ pub fn placement_buffer_open(
             previous_submissions = pending.submissions.len(),
             "placement_buffer_open: PlacementPhaseEntered consumer enter"
         );
+        tracing::info!(
+            target: "server::game::placement",
+            previous_submissions = pending.submissions.len(),
+            "placement_buffer_open: audit entry, clearing pending submissions (audit: R2 placement transition audit)"
+        );
         pending.submissions.clear();
+        tracing::debug!(
+            target: "server::game::placement",
+            "placement_buffer_open: pending submissions cleared (audit: R2 placement transition audit)"
+        );
     }
 }
 
@@ -519,10 +528,27 @@ pub fn close_placement_phase(
         return;
     };
 
+    tracing::info!(
+        target: "server::game::placement",
+        round = round_number,
+        pending_submissions = pending.submissions.len(),
+        "close_placement_phase: ResolutionPhaseEntered consumer enter (audit: R2 placement transition audit)"
+    );
+
     let Some(catalog) = catalog.as_deref() else {
+        tracing::warn!(
+            target: "server::game::placement",
+            round = round_number,
+            "close_placement_phase: CardCatalog missing; early return (audit: R2 placement transition audit)"
+        );
         return;
     };
     let (Ok(server), Some(sender)) = (server.single(), sender.as_mut()) else {
+        tracing::warn!(
+            target: "server::game::placement",
+            round = round_number,
+            "close_placement_phase: server or sender missing; early return (audit: R2 placement transition audit)"
+        );
         return;
     };
 
@@ -531,14 +557,37 @@ pub fn close_placement_phase(
         .iter()
         .cloned()
         .collect::<HashMap<_, _>>();
+    tracing::debug!(
+        target: "server::game::placement",
+        round = round_number,
+        committed_players = committed_sequence.len(),
+        committed_placements_len = committed_placements.len(),
+        "close_placement_phase: committed sequence collected (audit: R2 placement transition audit)"
+    );
     if !committed_placements.is_empty() {
         let Some(economies) = economies.as_deref_mut() else {
+            tracing::warn!(
+                target: "server::game::placement",
+                round = round_number,
+                "close_placement_phase: PlayerEconomies missing; early return (audit: R2 placement transition audit)"
+            );
             return;
         };
         if !deduct_committed_mana(&committed_placements, catalog, economies) {
+            tracing::warn!(
+                target: "server::game::placement",
+                round = round_number,
+                committed_players = committed_placements.len(),
+                "close_placement_phase: deduct_committed_mana returned false; early return (audit: R2 placement transition audit)"
+            );
             return;
         }
         trace.push(PlacementCommitTraceEntry::ManaDeducted);
+        tracing::debug!(
+            target: "server::game::placement",
+            round = round_number,
+            "close_placement_phase: mana deducted substep complete (audit: R2 placement transition audit)"
+        );
     }
 
     let reveal = S2CPlacementReveal {
@@ -549,18 +598,25 @@ pub fn close_placement_phase(
             .collect(),
     };
 
+    let reveal_placements_len = reveal.placements.len();
     if let Err(e) =
         sender.send::<S2CPlacementReveal, ReliableChannel>(&reveal, server, &NetworkTarget::All)
     {
         tracing::error!(
             target: "server::game",
             round_number,
-            placements_len = reveal.placements.len(),
+            placements_len = reveal_placements_len,
             err = ?e,
             "S2C send failed: type=S2CPlacementReveal, handler=close_placement_phase"
         );
     }
     trace.push(PlacementCommitTraceEntry::PlacementRevealEnqueued);
+    tracing::debug!(
+        target: "server::game::placement",
+        round = round_number,
+        reveal_placements = reveal_placements_len,
+        "close_placement_phase: S2CPlacementReveal sent substep complete (audit: R2 placement transition audit)"
+    );
 
     let mut spawned_units = Vec::new();
     for (_, placements) in &committed_sequence {
@@ -577,7 +633,15 @@ pub fn close_placement_phase(
             }
         }
     }
+    tracing::debug!(
+        target: "server::game::placement",
+        round = round_number,
+        spawned_units = spawned_units.len(),
+        "close_placement_phase: spawn loop substep complete (audit: R2 placement transition audit)"
+    );
 
+    let committed_placements_len = committed_placements.len();
+    let spawned_units_len = spawned_units.len();
     committed.write(PlacementCommitted {
         round_number,
         committed_placements,
@@ -585,6 +649,13 @@ pub fn close_placement_phase(
     });
     trace.push(PlacementCommitTraceEntry::PlacementCommittedWritten);
     pending.submissions.clear();
+    tracing::info!(
+        target: "server::game::placement",
+        round = round_number,
+        committed_players = committed_placements_len,
+        spawned_units = spawned_units_len,
+        "close_placement_phase: PlacementCommitted dispatched; pending cleared (audit: R2 placement transition audit)"
+    );
 }
 
 /// Returns all spawned unit entities visible at one board cell.
