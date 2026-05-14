@@ -33,6 +33,9 @@ gcs-relay = "gcs_orchestrator.relay:main"
 gcs-dispatch = "gcs_orchestrator.dispatch:main"
 gcs-config = "gcs_orchestrator.config:cli"
 gcs-relay-history = "gcs_orchestrator.history:main"
+gcs-app-supervisor = "gcs_orchestrator.supervisor:main"
+gcs-rollout-backup = "gcs_orchestrator.backup:main"
+gcs-rollout-check = "gcs_orchestrator.jsonl_integrity:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
