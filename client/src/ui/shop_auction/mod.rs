@@ -32,6 +32,21 @@ pub const AUCTION_TOAST_HOLD_MS: u32 = 2_000;
 pub const AUCTION_TOAST_FADE_OUT_MS: u32 = 120;
 pub const AUCTION_SETTLEMENT_TRANSITION_MS: u32 = 350;
 pub const DRAFT_INITIAL_OBJECTIVE_COPY: &str = "Select up to 9 cards to keep. You have 45 seconds.";
+pub const DRAFT_INITIAL_MODAL_WIDTH_PERCENT: f32 = 88.0;
+pub const DRAFT_INITIAL_MODAL_MAX_WIDTH_PX: f32 = 860.0;
+pub const DRAFT_INITIAL_MODAL_HEIGHT_PX: f32 = 300.0;
+pub const DRAFT_INITIAL_MODAL_MAX_HEIGHT_PERCENT: f32 = 92.0;
+pub const DRAFT_INITIAL_MODAL_PADDING_PX: f32 = spacing::SPACING_LG;
+pub const DRAFT_INITIAL_GRID_COLUMN_WIDTH_PX: f32 = 120.0;
+pub const DRAFT_INITIAL_GRID_ROW_HEIGHT_PX: f32 = 56.0;
+pub const DRAFT_INITIAL_GRID_COLUMN_GAP_PX: f32 = spacing::SPACING_MD;
+pub const DRAFT_INITIAL_GRID_ROW_GAP_PX: f32 = spacing::SPACING_MD;
+pub const DRAFT_INITIAL_GRID_WIDTH_PX: f32 =
+    DRAFT_INITIAL_GRID_COLUMN_WIDTH_PX * 3.0 + DRAFT_INITIAL_GRID_COLUMN_GAP_PX * 2.0;
+pub const DRAFT_INITIAL_GRID_HEIGHT_PX: f32 =
+    DRAFT_INITIAL_GRID_ROW_HEIGHT_PX * 3.0 + DRAFT_INITIAL_GRID_ROW_GAP_PX * 2.0;
+pub const DRAFT_INITIAL_GRID_LEFT_PX: f32 = spacing::SPACING_XL + spacing::SPACING_XL;
+pub const DRAFT_INITIAL_GRID_TOP_PX: f32 = spacing::SPACING_XL + spacing::SPACING_XL;
 pub const AUCTION_BID_TARGET_WIDTH_PX: f32 = 108.0;
 pub const AUCTION_BID_TARGET_HEIGHT_PX: f32 = 44.0;
 pub const AUCTION_BID_FOCUS_RING_WIDTH_PX: f32 = 2.0;
@@ -573,6 +588,8 @@ impl ShopAuctionLocalGoldView {
 pub struct ShopAuctionUiEntities {
     pub root: Entity,
     pub draft_offering_panel: Entity,
+    pub draft_initial_modal_panel: Entity,
+    pub draft_initial_grid: Entity,
     pub draft_initial_slots: [Entity; SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT],
     pub draft_initial_bought_overlays: [Entity; SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT],
     pub draft_initial_ready_button: Entity,
@@ -633,6 +650,12 @@ pub enum ShopAuctionPanelRoot {
     Toast,
     SettlementOverlay,
 }
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DraftInitialModalPanel;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DraftInitialGrid;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuctionBidButton {
@@ -3510,29 +3533,30 @@ pub fn spawn_shop_auction_ui(
         root,
         ShopAuctionPanelRoot::DraftOffering,
         "Shop Auction Draft Offering Root",
-        bottom_panel_node(),
+        draft_initial_centering_root_node(),
     );
     commands
         .entity(draft_offering_panel)
-        .insert(z_layers::UI_BASE);
+        .insert(z_layers::MODAL);
+    let draft_initial_modal_panel =
+        spawn_draft_initial_modal_panel(&mut commands, draft_offering_panel);
+    let draft_initial_grid =
+        spawn_draft_initial_grid_container(&mut commands, draft_initial_modal_panel);
     let (draft_initial_slots, draft_initial_bought_overlays) =
-        spawn_draft_initial_grid(&mut commands, draft_offering_panel);
+        spawn_draft_initial_grid(&mut commands, draft_initial_grid);
     let draft_initial_ready_button =
-        spawn_draft_initial_ready_button(&mut commands, draft_offering_panel);
+        spawn_draft_initial_ready_button(&mut commands, draft_initial_modal_panel);
     let draft_initial_ready_status =
-        spawn_draft_initial_status_text(&mut commands, draft_offering_panel);
+        spawn_draft_initial_status_text(&mut commands, draft_initial_modal_panel);
     let draft_initial_hand_full_banner =
-        spawn_draft_initial_hand_full_banner(&mut commands, draft_offering_panel);
+        spawn_draft_initial_hand_full_banner(&mut commands, draft_initial_modal_panel);
     let (
         draft_initial_objective_overlay,
         draft_initial_objective_copy,
         draft_initial_objective_dismiss_button,
-    ) = spawn_draft_initial_objective_overlay(&mut commands, draft_offering_panel);
-    commands
-        .entity(draft_initial_objective_overlay)
-        .insert(z_layers::UI_OVERLAY);
+    ) = spawn_draft_initial_objective_overlay(&mut commands, draft_initial_modal_panel);
     let draft_initial_objective_retrieval_button =
-        spawn_draft_initial_objective_retrieval_button(&mut commands, draft_offering_panel);
+        spawn_draft_initial_objective_retrieval_button(&mut commands, draft_initial_modal_panel);
     let shop_panel = spawn_panel_root(
         &mut commands,
         root,
@@ -3616,6 +3640,8 @@ pub fn spawn_shop_auction_ui(
     commands.insert_resource(ShopAuctionUiEntities {
         root,
         draft_offering_panel,
+        draft_initial_modal_panel,
+        draft_initial_grid,
         draft_initial_slots,
         draft_initial_bought_overlays,
         draft_initial_ready_button,
@@ -3727,6 +3753,34 @@ struct PendingDraftInitialPurchase;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 struct PendingShopPurchase;
+
+fn spawn_draft_initial_modal_panel(commands: &mut Commands, parent: Entity) -> Entity {
+    commands
+        .spawn((
+            Name::new("Shop Auction Draft Initial Modal Panel"),
+            ShopAuctionUiEntity,
+            DraftInitialModalPanel,
+            draft_initial_modal_panel_node(),
+            BackgroundColor(Color::srgba(0.055, 0.062, 0.078, 0.94)),
+            BorderColor::all(Color::srgba(0.82, 0.86, 0.90, 0.26)),
+            Visibility::Visible,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
+fn spawn_draft_initial_grid_container(commands: &mut Commands, parent: Entity) -> Entity {
+    commands
+        .spawn((
+            Name::new("Shop Auction Draft Initial Grid"),
+            ShopAuctionUiEntity,
+            DraftInitialGrid,
+            draft_initial_grid_node(),
+            Visibility::Visible,
+            ChildOf(parent),
+        ))
+        .id()
+}
 
 fn spawn_draft_initial_grid(
     commands: &mut Commands,
@@ -4223,15 +4277,60 @@ fn bottom_panel_node() -> Node {
     }
 }
 
+fn draft_initial_centering_root_node() -> Node {
+    Node {
+        display: Display::Flex,
+        position_type: PositionType::Absolute,
+        left: Val::Px(0.0),
+        right: Val::Px(0.0),
+        top: Val::Px(0.0),
+        bottom: Val::Px(0.0),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        padding: UiRect::all(Val::Px(DRAFT_INITIAL_MODAL_PADDING_PX)),
+        ..default()
+    }
+}
+
+fn draft_initial_modal_panel_node() -> Node {
+    Node {
+        display: Display::Flex,
+        position_type: PositionType::Relative,
+        width: Val::Percent(DRAFT_INITIAL_MODAL_WIDTH_PERCENT),
+        max_width: Val::Px(DRAFT_INITIAL_MODAL_MAX_WIDTH_PX),
+        height: Val::Px(DRAFT_INITIAL_MODAL_HEIGHT_PX),
+        max_height: Val::Percent(DRAFT_INITIAL_MODAL_MAX_HEIGHT_PERCENT),
+        border: UiRect::all(Val::Px(spacing::SPACING_XS / 2.0)),
+        border_radius: BorderRadius::all(Val::Px(spacing::SPACING_SM)),
+        padding: UiRect::all(Val::Px(DRAFT_INITIAL_MODAL_PADDING_PX)),
+        ..default()
+    }
+}
+
+fn draft_initial_grid_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(DRAFT_INITIAL_GRID_LEFT_PX),
+        top: Val::Px(DRAFT_INITIAL_GRID_TOP_PX),
+        width: Val::Px(DRAFT_INITIAL_GRID_WIDTH_PX),
+        height: Val::Px(DRAFT_INITIAL_GRID_HEIGHT_PX),
+        ..default()
+    }
+}
+
 fn draft_initial_slot_node(index: usize) -> Node {
     let column = index % 3;
     let row = index / 3;
     Node {
         position_type: PositionType::Absolute,
-        left: Val::Px(96.0 + column as f32 * 132.0),
-        top: Val::Px(30.0 + row as f32 * 66.0),
-        width: Val::Px(120.0),
-        height: Val::Px(56.0),
+        left: Val::Px(
+            column as f32 * (DRAFT_INITIAL_GRID_COLUMN_WIDTH_PX + DRAFT_INITIAL_GRID_COLUMN_GAP_PX),
+        ),
+        top: Val::Px(
+            row as f32 * (DRAFT_INITIAL_GRID_ROW_HEIGHT_PX + DRAFT_INITIAL_GRID_ROW_GAP_PX),
+        ),
+        width: Val::Px(DRAFT_INITIAL_GRID_COLUMN_WIDTH_PX),
+        height: Val::Px(DRAFT_INITIAL_GRID_ROW_HEIGHT_PX),
         border: UiRect::all(Val::Px(1.0)),
         ..default()
     }
@@ -4249,8 +4348,8 @@ fn overlay_text_node() -> Node {
 fn draft_initial_ready_button_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
-        right: Val::Px(96.0),
-        top: Val::Px(58.0),
+        right: Val::Px(spacing::SPACING_XL + spacing::SPACING_XL),
+        top: Val::Px(spacing::SPACING_XL + spacing::SPACING_XL + spacing::SPACING_SM),
         width: Val::Px(132.0),
         height: Val::Px(36.0),
         border: UiRect::all(Val::Px(1.0)),
@@ -4261,8 +4360,8 @@ fn draft_initial_ready_button_node() -> Node {
 fn draft_initial_status_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
-        right: Val::Px(96.0),
-        top: Val::Px(100.0),
+        right: Val::Px(spacing::SPACING_XL + spacing::SPACING_XL),
+        top: Val::Px(112.0),
         width: Val::Px(180.0),
         height: Val::Px(28.0),
         ..default()
@@ -4272,8 +4371,8 @@ fn draft_initial_status_node() -> Node {
 fn draft_initial_hand_full_banner_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
-        right: Val::Px(96.0),
-        top: Val::Px(138.0),
+        right: Val::Px(spacing::SPACING_XL + spacing::SPACING_XL),
+        top: Val::Px(150.0),
         width: Val::Px(260.0),
         height: Val::Px(30.0),
         ..default()
@@ -4283,10 +4382,10 @@ fn draft_initial_hand_full_banner_node() -> Node {
 fn draft_initial_objective_overlay_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
-        left: Val::Px(88.0),
-        top: Val::Px(2.0),
+        left: Val::Px(DRAFT_INITIAL_GRID_LEFT_PX),
+        top: Val::Px(spacing::SPACING_MD),
         width: Val::Px(640.0),
-        height: Val::Px(28.0),
+        height: Val::Px(32.0),
         border: UiRect::all(Val::Px(1.0)),
         ..default()
     }
@@ -4296,7 +4395,7 @@ fn draft_initial_objective_copy_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
         left: Val::Px(10.0),
-        top: Val::Px(5.0),
+        top: Val::Px(7.0),
         width: Val::Px(500.0),
         height: Val::Px(18.0),
         ..default()
@@ -4307,7 +4406,7 @@ fn draft_initial_objective_dismiss_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
         right: Val::Px(8.0),
-        top: Val::Px(4.0),
+        top: Val::Px(6.0),
         width: Val::Px(88.0),
         height: Val::Px(20.0),
         border: UiRect::all(Val::Px(1.0)),
@@ -4318,8 +4417,8 @@ fn draft_initial_objective_dismiss_node() -> Node {
 fn draft_initial_objective_retrieval_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
-        right: Val::Px(96.0),
-        top: Val::Px(12.0),
+        right: Val::Px(spacing::SPACING_XL + spacing::SPACING_XL),
+        top: Val::Px(spacing::SPACING_LG),
         width: Val::Px(116.0),
         height: Val::Px(28.0),
         border: UiRect::all(Val::Px(1.0)),

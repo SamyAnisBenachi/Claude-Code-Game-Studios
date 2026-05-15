@@ -43,11 +43,13 @@ fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
     assert_eq!(
         count_with::<ShopAuctionUiEntity>(&mut app),
         1 + SHOP_AUCTION_UI_PANEL_ROOT_COUNT * 2
+            + 2
             + SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT * 3
             + 3
             + 4
             + SHOP_AUCTION_UI_SHOP_SLOT_COUNT
             + 4
+            + SHOP_AUCTION_UI_SHOP_SLOT_COUNT
             + 12
     );
 
