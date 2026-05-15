@@ -17,6 +17,7 @@ use crate::state::{
     apply_handshake_message, ClassLockedDedupeKey, ClientIdempotencyState, ClientSessionIdentity,
     ClientState,
 };
+use crate::ui::design_tokens::z_layers;
 
 pub struct LobbyUiPlugin;
 
@@ -890,6 +891,7 @@ fn spawn_lobby_ui_system(
                 ..default()
             },
             BackgroundColor(Color::srgba(0.07, 0.09, 0.12, 0.92)),
+            z_layers::UI_BASE,
         ))
         .with_children(|parent| {
             parent.spawn((

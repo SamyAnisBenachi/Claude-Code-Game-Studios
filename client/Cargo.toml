@@ -289,6 +289,13 @@ path = "../tests/integration/session/late_msg_dedupe_test.rs"
 name = "connection_lost_overlay_test"
 path = "../tests/integration/playable_client/connection_lost_overlay_test.rs"
 
+# S11-TD-UI-ZINDEX-LAYERS (Sprint 14 story 002): UI z-layer design-token
+# module grep-guard, reconnect-respawn paint-order invariant, and migration
+# spot-checks (AC5, AC6, AC7, AC8).
+[[test]]
+name = "ui_clean_pass_z_layers_test"
+path = "../tests/integration/ui_clean_pass/z_layers_test.rs"
+
 [[test]]
 name = "accessibility_settings_preferences_test"
 path = "../tests/unit/accessibility_settings/preferences_test.rs"

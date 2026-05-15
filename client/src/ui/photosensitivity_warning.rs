@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::ui::design_tokens::z_layers;
+
 pub const PHOTOSENSITIVITY_WARNING_TITLE: &str = "Photosensitivity Warning";
 pub const PHOTOSENSITIVITY_WARNING_COPY: &str = "Lanes and Lies uses brief impact flashes, timer urgency effects, objective-destruction bursts, and phase transitions. Stop playing and consult a medical professional if you feel discomfort, dizziness, eye twitching, or nausea.";
 pub const PHOTOSENSITIVITY_WARNING_ACKNOWLEDGE_COPY: &str = "I understand";
@@ -71,6 +73,7 @@ pub fn spawn_photosensitivity_warning(
             photosensitivity_warning_root_node(),
             BackgroundColor(Color::srgba(0.04, 0.04, 0.08, 0.94)),
             Visibility::Visible,
+            z_layers::MODAL,
         ))
         .id();
 

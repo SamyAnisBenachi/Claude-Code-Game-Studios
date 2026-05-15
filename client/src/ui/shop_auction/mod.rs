@@ -18,6 +18,7 @@ use crate::card_animations::{
 };
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
+use crate::ui::design_tokens::z_layers;
 use crate::ui::hud::{HudGoldBroadcastMessage, HudPlayerIds};
 use crate::ui::settings::AccessibilityPreferences;
 
@@ -3442,6 +3443,7 @@ pub fn spawn_shop_auction_ui(
                 ..default()
             },
             Visibility::Hidden,
+            z_layers::UI_BASE,
         ))
         .id();
 
@@ -3457,6 +3459,9 @@ pub fn spawn_shop_auction_ui(
         "Shop Auction Draft Offering Root",
         bottom_panel_node(),
     );
+    commands
+        .entity(draft_offering_panel)
+        .insert(z_layers::UI_BASE);
     let (draft_initial_slots, draft_initial_bought_overlays) =
         spawn_draft_initial_grid(&mut commands, draft_offering_panel);
     let draft_initial_ready_button =
@@ -3470,6 +3475,9 @@ pub fn spawn_shop_auction_ui(
         draft_initial_objective_copy,
         draft_initial_objective_dismiss_button,
     ) = spawn_draft_initial_objective_overlay(&mut commands, draft_offering_panel);
+    commands
+        .entity(draft_initial_objective_overlay)
+        .insert(z_layers::UI_OVERLAY);
     let draft_initial_objective_retrieval_button =
         spawn_draft_initial_objective_retrieval_button(&mut commands, draft_offering_panel);
     let shop_panel = spawn_panel_root(
@@ -3479,6 +3487,7 @@ pub fn spawn_shop_auction_ui(
         "Shop Auction Shop Root",
         bottom_panel_node(),
     );
+    commands.entity(shop_panel).insert(z_layers::UI_BASE);
     commands
         .entity(shop_panel)
         .insert(ImageNode::new(asset_server.load(SHOP_PANEL_CHROME_ASSET)));
@@ -3494,6 +3503,7 @@ pub fn spawn_shop_auction_ui(
         "Shop Auction Auction Root",
         auction_panel_node(),
     );
+    commands.entity(auction_panel).insert(z_layers::UI_BASE);
     // Reuses SHOP_PANEL_CHROME_ASSET as a placeholder until an auction-specific
     // chrome constant lands (PAW-TD-003-a is accept-risk for friend-game scope).
     commands
@@ -3518,6 +3528,7 @@ pub fn spawn_shop_auction_ui(
         "Shop Auction Footer Root",
         footer_node(),
     );
+    commands.entity(shop_footer).insert(z_layers::UI_BASE);
     let shop_footer_slots = spawn_shop_footer_slots(&mut commands, shop_footer);
     let toast_root = spawn_panel_root(
         &mut commands,
@@ -3526,6 +3537,7 @@ pub fn spawn_shop_auction_ui(
         "Shop Auction Toast Root",
         toast_node(),
     );
+    commands.entity(toast_root).insert(z_layers::TOAST);
     let toast_text = spawn_auction_toast_text(&mut commands, toast_root);
     let settlement_overlay = spawn_panel_root(
         &mut commands,
@@ -3534,9 +3546,10 @@ pub fn spawn_shop_auction_ui(
         "Shop Auction Settlement Overlay Root",
         overlay_node(),
     );
-    commands
-        .entity(settlement_overlay)
-        .insert(BackgroundColor(Color::srgba(0.02, 0.05, 0.08, 0.58)));
+    commands.entity(settlement_overlay).insert((
+        BackgroundColor(Color::srgba(0.02, 0.05, 0.08, 0.58)),
+        z_layers::UI_OVERLAY,
+    ));
     let settlement_overlay_text = spawn_settlement_overlay_text(&mut commands, settlement_overlay);
 
     commands.insert_resource(ShopAuctionUiEntities {
