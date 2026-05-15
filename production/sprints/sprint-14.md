@@ -1,9 +1,51 @@
-# Sprint 14 -- DRAFT / NOT ACTIVATED (Polish stage)
+# Sprint 14 -- ACTIVATED (Polish stage)
 
-> **PROMPT 896 draft authoring (2026-05-15)**: This is the Sprint 14 sprint plan
-> **DRAFT**. Sprint 14 is **NOT activated** by this draft. Activation happens in
-> a separate explicit prompt that flips `production/sprint-status.yaml` top-level
-> `sprint: 13 -> 14` and `status: closed-with-conditions -> active` and appends a
+> **PROMPT 897 activation (2026-05-15)**: Sprint 14 is **ACTIVATED** as of commit
+> on `origin/main` from this paperwork-only activation prompt. Source-of-truth at
+> activation: `origin/main@ce8f590` (PROMPT 896 Sprint 14 plan draft tip).
+> `production/sprint-status.yaml` top-level `sprint: 13 -> 14` and
+> `status: closed-with-conditions -> active` flipped by PROMPT 897. Stage UNCHANGED
+> `Polish`. PROMPT 761 Polish->Release gate-check `FAIL` preserved at
+> `production/gate-checks/gate-polish-release-2026-05-12.md` (NO retry). Sprint 13
+> close-out `closed-with-conditions` (PROMPT 894) preserved unchanged. All carried
+> conditions preserved verbatim (S8-QA-001-W1 OPEN, QA-COND-0005 + QA-COND-0006
+> accepted-risk, PAW-TD-*-a accept-risk, PROMPT 683-era runtime divergence
+> question, TQ-S12-C1..C7, Sprint 12 / 11 / 10 closeouts). Sprint 14 explicitly
+> does NOT claim public release readiness, release-candidate readiness, full game
+> completion, broad / Standard-tier accessibility completion, playtest validation,
+> full playable-client manual QA, two-client GAME_OVER closure (S8-QA-001-W1),
+> final-art / asset-production completion, Polish->Release retry, stage advance,
+> or underlying drag-runtime bug fix.
+>
+> **`production/qa/qa-plan-sprint-14.md` was NOT created by PROMPT 897 and MUST be
+> authored separately** via `/qa-plan sprint-14` **after** activation and
+> **before** any Sprint 14 `/dev-story` runs. Per-story `/story-readiness` must
+> re-run against Sprint 14 activation HEAD for each of the 16 UI candidate story
+> files before `/dev-story`. The Sprint 13 carry `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+> remains human-operator-blocked; no LLM `/story-done` is authorised.
+>
+> **Worktree**: `D:\_DEV\wt\ccgs-prompt-897-s14-activation` (fresh detached
+> worktree on `origin/main@ce8f590` because root checkout was behind origin/main
+> by 7 commits and had unrelated dirt — `M .claude/settings.json` +
+> `_run_build_server.bat` staged-add + 3 untracked files; root-checkout dirt NOT
+> touched by PROMPT 897; pattern matches PROMPT 884 / 885 / 888 / 891 / 894
+> precedent).
+>
+> **Files changed by PROMPT 897 (4 paperwork files + 1 report)**:
+> `production/sprint-status.yaml` (top-level flips + stories block replaced +
+> `carried_into_sprint_14:` appended + `sprint_14_activation:` block appended) +
+> `production/sprints/sprint-14.md` (this banner) +
+> `production/session-state/active.md` (PROMPT 897 banner prepended) +
+> `production/session-state/codex-orchestrator-state.md` (PROMPT 897 section
+> prepended) + `reports/PROMPT-897-Sprint-14-Activation.md` (gitignored).
+>
+> ---
+>
+> **Prior PROMPT 896 draft authoring (2026-05-15)**: This was the Sprint 14
+> sprint plan **DRAFT**. Sprint 14 was **NOT activated** by that draft.
+> Activation happened in PROMPT 897 (this prompt) which flipped
+> `production/sprint-status.yaml` top-level `sprint: 13 -> 14` and
+> `status: closed-with-conditions -> active` and appended a
 > `sprint_14_activation:` block, mirroring the PROMPT 798 (Sprint 12 activation)
 > / PROMPT 826 (Sprint 13 activation) pattern.
 >
