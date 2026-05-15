@@ -4,6 +4,16 @@
 >
 > ---
 >
+> **CURRENT STATE -- last updated 2026-05-15 (PROMPT 953 story-done closure after PROMPT 951 draft centered modal integration)**
+>
+> - **Committed source-of-truth at closure base**: `origin/main@a9721bce02dd4a2a3a5516d017ea69c0cd2d5b65` (PROMPT 951 integration merge of PROMPT 946 worker tip `0b3ef30d43cbce9599f976cc4b820817b65cd192` into prior `origin/main@21c3a020a4d3984878ec764a29af6253fe98b8e0`). PROMPT 953 is the serialized shared-status writer paperwork closure on top of that commit.
+> - **Story closed**: `S11-UX-DRAFT-GRID-CENTERED-MODAL` / shop-auction-ui story 015 / Sprint 14 Should Have rank 9 flipped `ready -> done`. AC1-AC11 accepted against PROMPT 951 integration verification, on-main evidence `production/qa/evidence/shop-auction-ui-draft-grid-centered-modal-2026-05-15.md`, and on-main test `tests/integration/shop_auction_ui/draft_initial_centered_modal_layout_test.rs` 4/4 PASS per PROMPT 951. Browser/WASM captures for 1366x768 and 1920x1080 remain deferred and are not claimed by PROMPT 953.
+> - **Sprint 14 progress**: 9 of 9 Must Have done; 1 of 4 Should Have done; 0 of 4 Nice to Have done; total 10 of 17 rows closed. Sprint 14 remains active until a separate close-out prompt runs.
+> - **Disposition**: Sprint 14 remains active; stage remains Polish; PROMPT 761 Polish->Release FAIL preserved with no retry. Non-claims preserved: `S8-QA-001-W1` OPEN, `QA-COND-0005/0006` accepted-risk, `PAW-TD-*-a` accepted-risk, no release/RC/full-game/broad-accessibility/playtest/final-art/Sprint14-closeout claim.
+> - **Paperwork-only scope**: changed only `production/epics/shop-auction-ui/story-015-draft-grid-centered-modal.md`, `production/sprint-status.yaml`, `production/session-state/active.md`, and `production/session-state/codex-orchestrator-state.md`. No `client/`, `server/`, `shared/`, `tests/`, Cargo files, `production/sprints/sprint-14.md`, `production/qa/qa-plan-sprint-14.md`, `production/stage.txt`, or gate-check artifact changed.
+>
+> ---
+>
 > **CURRENT STATE -- last updated 2026-05-15 (PROMPT 942 story-done closure after PROMPT 941 HUD top strip integration)**
 >
 > - **Committed source-of-truth at closure base**: `origin/main@4b9a23b660c8804ee212b6dd3e856a6cc92984b3` (PROMPT 941 `--no-ff` integration merge of PROMPT 940 worker tip `ea92597d6b89eec7b990820acea420776ecc7078` into prior `origin/main@e3ed056f432bf7787337d5aa9ec7dc59e99cfb13`). PROMPT 942 is the serialized shared-status writer paperwork closure on top of that commit.

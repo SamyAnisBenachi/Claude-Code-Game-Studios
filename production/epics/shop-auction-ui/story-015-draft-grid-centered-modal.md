@@ -1,7 +1,7 @@
 # Story 015: Draft Initial Grid Centered Modal Layout
 
 > **Epic**: Shop / Auction UI
-> **Status**: Draft (Sprint 14+ candidate; NOT activated by this story authoring)
+> **Status**: Done (Sprint 14 Should Have; closure source-of-truth `origin/main@a9721bce02dd4a2a3a5516d017ea69c0cd2d5b65` = PROMPT 951 integration merge of PROMPT 946 worker tip `0b3ef30d43cbce9599f976cc4b820817b65cd192`; flipped `ready -> done` by PROMPT 953 paperwork closure on 2026-05-15)
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -169,45 +169,45 @@ no Lightyear protocol surface is touched.
 
 ## Acceptance Criteria
 
-- [ ] The DRAFT_INITIAL panel root uses `Display::Flex` with
+- [x] The DRAFT_INITIAL panel root uses `Display::Flex` with
   `align_items: Center` and `justify_content: Center`, anchored to
   the viewport via `width: Val::Percent(N)` with a `max_width:
   Val::Px(M)` cap (concrete N / M values are recorded in
   implementation and reflected in the centered-modal assertion test).
-- [ ] At 1920 x 1080 the DRAFT_INITIAL panel is horizontally and
+- [x] At 1920 x 1080 the DRAFT_INITIAL panel is horizontally and
   vertically centered with both side margins and top / bottom
   margins greater than zero (no longer anchored to the bottom edge).
-- [ ] At 1366 x 768 the DRAFT_INITIAL panel is horizontally and
+- [x] At 1366 x 768 the DRAFT_INITIAL panel is horizontally and
   vertically centered, all nine offering slots are fully visible
   inside the panel, and no slot, label, timer, Ready, or Retract
   Ready control clips against the viewport.
-- [ ] The DRAFT_INITIAL panel root is a sibling of the DRAFT_SHOP
+- [x] The DRAFT_INITIAL panel root is a sibling of the DRAFT_SHOP
   panel root (no longer the shared `bottom_panel_node()` parent).
   Visibility toggling between DRAFT_INITIAL and DRAFT_SHOP preserves
   the Story 002 / Story 003 behavior; both panels are never visible
   simultaneously.
-- [ ] The 3 x 3 offering grid renders with stable column widths and
+- [x] The 3 x 3 offering grid renders with stable column widths and
   row heights and visible inter-slot spacing; no slot overlaps another
   slot, the timer, the Ready control, or the objective overlay.
-- [ ] The Story 012 objective overlay still appears on DRAFT_INITIAL
+- [x] The Story 012 objective overlay still appears on DRAFT_INITIAL
   activation, the copy is unchanged, dismissal / retrieval still work,
   and the overlay still does not occlude the HUD, the hand tray, or
   any card slot.
-- [ ] Story 002 purchase behavior is unchanged: valid affordable slot
+- [x] Story 002 purchase behavior is unchanged: valid affordable slot
   clicks still send exactly one `C2SPurchaseCard { card_id }`,
   insufficient gold still does not send, confirmed purchases still
   show the existing bought state, and Ready / Retract Ready still
   send `C2SSignalReady { retract: false / true }`.
-- [ ] Story 013 card-text / stat / keyword readability evidence
+- [x] Story 013 card-text / stat / keyword readability evidence
   remains valid for DRAFT_INITIAL slot card text (no regression).
-- [ ] Browser/WASM evidence shows DRAFT_INITIAL panel centered at
+- [x] Browser/WASM evidence shows DRAFT_INITIAL panel centered at
   1920 x 1080 and 1366 x 768, the 3 x 3 grid, the timer, Ready /
   Retract Ready, HUD non-occlusion, and hand-tray non-occlusion.
-- [ ] The evidence document includes an explicit no-claim banner
+- [x] The evidence document includes an explicit no-claim banner
   preserving `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-002-a`,
   `PAW-TD-003-a`, `S8-QA-001-W1`, and PROMPT 761 Polish->Release
   gate-check.
-- [ ] `git diff --check` passes.
+- [x] `git diff --check` passes.
 
 ---
 
@@ -327,7 +327,7 @@ Story 015 implements DRAFT_INITIAL centered-modal layout only. It does
 gate-check, or any release-readiness claim. All conditions remain
 accept-risk / open per their existing dispositions.
 
-**Status**: [ ] Draft (Sprint 14+ candidate; NOT activated by this story authoring).
+**Status**: [x] Done (Sprint 14 Should Have; PROMPT 953 paperwork closure).
 
 ---
 
@@ -398,13 +398,11 @@ accept-risk / open per their existing dispositions.
 
 ## Completion Notes
 
-**Completed**: Not yet (Draft).
-**Criteria**: 0 / 11 (story authoring only; no implementation).
-**Deviations**: None at authoring time.
-**Test Evidence**: To be captured at implementation time per the
-Test Evidence section above.
-**Code Review**: To be run at `/story-done` time per the lean review
-mode default; PROMPT 881 authoring does **not** run code review.
+**Completed**: 2026-05-15 by PROMPT 953 paperwork-only `/story-done`.
+**Criteria**: 11 / 11 accepted against `origin/main@a9721bce02dd4a2a3a5516d017ea69c0cd2d5b65`.
+**Deviations**: Browser/WASM screenshots at 1920 x 1080 and 1366 x 768 were not captured by the PROMPT 946/951 implementation and integration lane. Closure accepts the layout on ECS/node-intent evidence and records runtime capture as explicitly deferred; PROMPT 953 does **not** claim browser screenshot completion.
+**Test Evidence**: PROMPT 951 reports `cargo test -p client --test shop_auction_ui_draft_initial_centered_modal_layout_test` 4/4 PASS; adjacent regressions `shop_auction_ui_draft_initial_grid_test`, `shop_auction_ui_draft_initial_objective_overlay_test`, `shop_auction_ui_shop_panel_test`, and `shop_auction_ui_plugin_scaffold_formulas_test` 35/35 PASS; `cargo check --workspace --all-targets` PASS with one pre-existing warning; `cargo fmt --all -- --check` PASS. Evidence file: `production/qa/evidence/shop-auction-ui-draft-grid-centered-modal-2026-05-15.md`.
+**Code Review**: PROMPT 953 reviewed the PROMPT 951 integration report, integrated files, evidence document, focused ECS test, and forbidden-path diff. No additional code changes were made by PROMPT 953.
 
 ---
 
@@ -417,3 +415,10 @@ mode default; PROMPT 881 authoring does **not** run code review.
   rank 9 and PROMPT 802 §3.4 D1. Sprint 14 NOT activated. No
   implementation. No `/story-readiness` / `/dev-story` /
   `/story-done` invocation by this authoring prompt.
+
+## Closure Trail
+
+- PROMPT 944 (2026-05-15) -- read-only `/story-readiness` returned READY against `origin/main@e5a4d03d3f99280ea20ed9ae60f395d007bec99e`.
+- PROMPT 946 (2026-05-15) -- `/dev-story` worker landed `0b3ef30d43cbce9599f976cc4b820817b65cd192` on `work/s14-draft-centered-modal` per PROMPT 951 integration report. The expected dev report `reports/PROMPT-946-S14-Draft-Centered-Modal-dev-story.md` was not present on disk during PROMPT 953.
+- PROMPT 951 (2026-05-15) -- integration merge `a9721bce02dd4a2a3a5516d017ea69c0cd2d5b65` pushed to `origin/main`; changed `client/Cargo.toml`, `client/src/ui/shop_auction/mod.rs`, `production/qa/evidence/shop-auction-ui-draft-grid-centered-modal-2026-05-15.md`, `tests/integration/shop_auction_ui/draft_initial_centered_modal_layout_test.rs`, and `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs`.
+- PROMPT 953 (2026-05-15) -- serialized shared-status writer closure. Story 015 marked Done; Sprint 14 row `S11-UX-DRAFT-GRID-CENTERED-MODAL` flipped `ready -> done`; session state banners and `sprint_14_story_done` entry added. Sprint 14 remains active; stage remains Polish; PROMPT 761 FAIL, `S8-QA-001-W1` OPEN, `QA-COND-0005/0006` accepted-risk, and `PAW-TD-*-a` accepted-risk preserved.
