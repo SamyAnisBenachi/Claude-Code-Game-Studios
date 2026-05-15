@@ -2,8 +2,14 @@
 
 > **Epic**: DevOps (Operational Hardening)
 > **Story ID**: S13-OPS-WIN-APPCOMPAT-NOTE-001
-> **Status**: Draft -- Sprint 13 candidate (Nice to Have); NOT activated;
-> Sprint 12 closed-with-conditions per PROMPT 817
+> **Status**: Done -- closed by PROMPT 888 `/story-done` on 2026-05-15 on
+> basis of PROMPT 886 worker (`db98b64d91b6b086cfd821d91f80518e439b1f6f`
+> on `work/s13-win-appcompat-note` from base `origin/main@75b6602`) +
+> PROMPT 887 integration (`--no-ff` merge commit
+> `807c3e7377cf58330fc5e2f9b61fbdd6eb9127a1` on `origin/main` via merge
+> of worker tip `db98b64` into prior `origin/main@75b6602`). All AC1-AC7
+> PASS. Sprint 13 disposition UNCHANGED `active`; Stage UNCHANGED
+> `Polish`. PROMPT 761 Polish->Release `FAIL` preserved.
 > **Layer**: DevOps -- Windows dev-environment documentation only
 > **Type**: Documentation only -- no production-source change lands
 > **Sprint**: Sprint 13 candidate (informational from TQ-S12-C7; PROMPT 815
@@ -13,6 +19,8 @@
 > **Authored**: 2026-05-14 by PROMPT 819
 > **Authoring source-of-truth**: `origin/main@be69f5c` (PROMPT 818
 > `/sprint-plan sprint-13` DRAFT)
+> **Closed**: 2026-05-15 by PROMPT 888 `/story-done`
+> **Closure source-of-truth**: `origin/main@807c3e7377cf58330fc5e2f9b61fbdd6eb9127a1` (PROMPT 887 integration)
 
 ---
 
@@ -176,51 +184,100 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Dev-environment doc updated**: GIVEN the chosen
+- [x] **AC1 -- Dev-environment doc updated**: GIVEN the chosen
   target doc post-story (either newly created
   `docs/setup/dev-environment.md` per option (a), or an amended
   canonical sibling doc per option (b) -- see Prevention target),
   WHEN inspected, THEN it contains a clearly named paragraph or
   section documenting the Windows AppCompat heuristic and the
   substrings that trigger it, and story evidence records which
-  path was chosen and the rationale.
+  path was chosen and the rationale. **PASS** (PROMPT 888): H2
+  section `## Windows AppCompat heuristic for Cargo test binaries`
+  appended to existing `docs/setup/dev-environment.md` at
+  `origin/main@807c3e7`:160-307 (option (a) chosen, appended to
+  the file Story 004 / PROMPT 873 established). Triggering
+  substrings (`update`, `install`, `setup`, `patch`, `uninst`)
+  enumerated at lines 181-185. Choice + rationale recorded at
+  `production/qa/evidence/sprint-13-win-appcompat-note-evidence.md`
+  lines 13-35.
 
-- [ ] **AC2 -- Single workaround chosen**: GIVEN the new
+- [x] **AC2 -- Single workaround chosen**: GIVEN the new
   paragraph / section, WHEN inspected, THEN exactly one of:
   - (a) Binary-rename workaround documented (specific command or
     Cargo `[[test]] name = "..."` example), **or**
   - (b) Embedded manifest follow-on documented (with named
     follow-on story slug + rationale).
+  **PASS** (PROMPT 888): exactly one workaround option chosen --
+  option (a) binary-rename / `[[test]] name` -- documented with a
+  PowerShell example at `docs/setup/dev-environment.md:239-251` and
+  a Cargo `[[test]]` `name = "..."` example at lines 227-234.
+  Option (b) embedded `asInvoker` manifest explicitly marked **NOT
+  IMPLEMENTED** at lines 262-278 with the candidate follow-on
+  story slug `S13-OPS-WIN-APPCOMPAT-MANIFEST-001` named (NOT
+  authored or activated by this story).
 
-- [ ] **AC3 -- Cross-link to TQ-S12-C7**: GIVEN the new
+- [x] **AC3 -- Cross-link to TQ-S12-C7**: GIVEN the new
   paragraph / section, WHEN inspected, THEN it cross-links to
   TQ-S12-C7 in
   `production/qa/team-qa-sprint-12-2026-05-14.md` (or the
   Sprint 12 close-out disposition referencing TQ-S12-C7).
+  **PASS** (PROMPT 888): "Cross-reference" subsection at
+  `docs/setup/dev-environment.md:280-288` links to
+  `production/qa/team-qa-sprint-12-2026-05-14.md` and references
+  TQ-S12-C7 verbatim; the "Evidence trace" subsection at
+  lines 195-208 also names TQ-S12-C7 directly. Cross-link target
+  line confirmed present at
+  `production/qa/team-qa-sprint-12-2026-05-14.md:280`.
 
-- [ ] **AC4 -- No production-source change lands**: GIVEN the
+- [x] **AC4 -- No production-source change lands**: GIVEN the
   story commit, WHEN inspected, THEN no file under `client/`,
   `server/`, `shared/`, `tests/` is modified. No Cargo target is
   renamed. No build-script change lands. Only the doc edit (and
   optionally this story file's status) is touched.
+  **PASS** (PROMPT 888): `git diff 807c3e7^1..807c3e7 -- 'client/'
+  'server/' 'shared/' 'tests/' 'Cargo.toml' 'Cargo.lock' '.cargo/'
+  '.github/' '*.sh' '*.ps1'` reports empty. PROMPT 887 integration
+  commit touches only `docs/setup/dev-environment.md` (+187) and
+  `production/qa/evidence/sprint-13-win-appcompat-note-evidence.md`
+  (NEW, +186). No Cargo target renamed; no build-script change.
 
-- [ ] **AC5 -- Sprint 13 disposition preserved**: GIVEN the story
+- [x] **AC5 -- Sprint 13 disposition preserved**: GIVEN the story
   commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-13.md`, `production/stage.txt`, and
   PROMPT 761 gate-check artifact are diffed, THEN none of them
   are modified by this story.
+  **PASS** (PROMPT 888): `git diff 807c3e7^1..807c3e7 --stat --
+  'production/sprint-status.yaml' 'production/sprints/'
+  'production/stage.txt' 'production/session-state/'` reports
+  empty. PROMPT 888 row-level `status: ready -> done` flip is the
+  permitted disposition-preserving paperwork edit; top-level
+  `sprint:`/`status:`/`stage:` unchanged.
+  `production/gate-checks/gate-polish-release-2026-05-12.md` NOT
+  modified.
 
-- [ ] **AC6 -- TQ-S12-C7 NOT closed by this story**: GIVEN the
+- [x] **AC6 -- TQ-S12-C7 NOT closed by this story**: GIVEN the
   story commit, WHEN the team-qa Sprint 12 condition tracking is
   reviewed, THEN TQ-S12-C7 remains preserved as informational
   (this story does NOT mark it closed). Closure of TQ-S12-C7 (if
   ever) happens via a separate `/team-qa` or close-out prompt.
+  **PASS** (PROMPT 888): `git diff 807c3e7^1..807c3e7 --stat --
+  'production/qa/team-qa-sprint-12-2026-05-14.md'
+  'production/qa/qa-plan-sprint-12.md'` reports empty. The new
+  doc section explicitly states "TQ-S12-C7 is **NOT closed** by
+  this story" in two places
+  (`docs/setup/dev-environment.md:204-208` Evidence trace +
+  `:281-286` Cross-reference).
 
-- [ ] **AC7 -- No-claim restatement embedded**: GIVEN the new
+- [x] **AC7 -- No-claim restatement embedded**: GIVEN the new
   paragraph / section, WHEN inspected, THEN it (or this story
   file) includes the verbatim "Status / No-Claim Banner" no-claim
   restatement plus the explicit "NOT a Sprint 12 close-out
   blocker" line from TQ-S12-C7.
+  **PASS** (PROMPT 888): verbatim Status / No-Claim Banner
+  restated at `docs/setup/dev-environment.md:309-344` under the
+  heading `## Status / No-Claim Banner (verbatim restatement for
+  Story 005, per AC7)`. The "NOT a Sprint 12 close-out blocker"
+  line preserved verbatim at line 341-343.
 
 ---
 
@@ -294,3 +351,82 @@ No `cargo` command is required by this story.
   order; whichever runs first creates the file/directory (option
   (a)) or establishes the chosen sibling-doc path (option (b)),
   and the second worker appends.
+
+---
+
+## Closure Trail
+
+- **PROMPT 819** (2026-05-14): authored this story file as a Sprint 13
+  candidate. Sprint 13 not activated by 819.
+- **PROMPT 823** (2026-05-14): `/story-readiness` verdict `READY (advisory:
+  docs/setup/dev-environment.md named 'existing' in story Context but
+  directory does not yet exist on main; worker creates)`.
+- **PROMPT 873** (2026-05-14): sibling Story 004 (`S11-OPS-GH-CLI-001`) /
+  `/dev-story` worker established `docs/setup/dev-environment.md` on
+  `origin/main` (commit `91db9d5` integrated as `7403e8f` via PROMPT 875).
+  This created the canonical path Story 005 targets via option (a).
+- **PROMPT 886** (2026-05-14): `/dev-story` worker. Branch
+  `work/s13-win-appcompat-note`; commit
+  `db98b64d91b6b086cfd821d91f80518e439b1f6f` from base
+  `origin/main@75b6602`. Chose option (a) doc-path (append H2 section to
+  existing `docs/setup/dev-environment.md`) + option (a) workaround
+  (binary-rename / `[[test]] name`). Two files touched: existing
+  `docs/setup/dev-environment.md` (+187 append) +
+  `production/qa/evidence/sprint-13-win-appcompat-note-evidence.md`
+  (NEW, 186 lines). No production-source change. Worker report:
+  `reports/PROMPT-886-S13-OPS-WIN-APPCOMPAT-NOTE-Dev-Story.md`.
+- **PROMPT 887** (2026-05-14): `--no-ff` integration merge of worker tip
+  `db98b64` into prior `origin/main@75b6602` producing merge commit
+  `807c3e7377cf58330fc5e2f9b61fbdd6eb9127a1` on `origin/main`. Zero
+  conflicts; worker reachable as merge's second-parent. Integration
+  stat byte-identical to worker (2 files / +373). Integration report:
+  `reports/PROMPT-887-S13-OPS-WIN-APPCOMPAT-NOTE-INTEGRATION.md`.
+- **PROMPT 888** (2026-05-15): `/story-done` paperwork-only closure of
+  this row. All AC1-AC7 verified PASS against `origin/main@807c3e7`
+  via read-only `git diff` and `git grep`. Three files touched:
+  this story file (Status header flip + AC1-AC7 checkboxes
+  `[ ] -> [x]` with per-AC closure-evidence annotations + this
+  Closure Trail) + `production/sprint-status.yaml` (top-level
+  `updated:` refreshed, row flip with worker/integration/story-done
+  hashes + 3 new notes lines, plus `sprint_13_story_done:` block
+  extended with the fourteenth Sprint 13 `/story-done` entry) +
+  `production/session-state/active.md` (PROMPT 888 banner prepended
+  above PROMPT 885 banner). `production/session-state/codex-orchestrator-state.md`
+  NOT modified by PROMPT 888 (closure ran outside the orchestrator
+  session; precedent: PROMPT 884 + PROMPT 876).
+
+### Conditions carried forward unchanged
+
+- `S8-QA-001-W1` manual/browser two-client GAME_OVER gap remains OPEN.
+- `QA-COND-0005` Standard-tier accessibility remains accepted-risk.
+- `QA-COND-0006` playtest / fun-hypothesis validation remains accepted-risk.
+- `PAW-TD-*-a` placeholder-art accept-risk preserved.
+- PROMPT 683-era runtime divergence question preserved unchanged.
+- PROMPT 761 Polish->Release `FAIL` preserved at
+  `production/gate-checks/gate-polish-release-2026-05-12.md`.
+- Sprint 12 story 019 underlying drag-runtime bug NOT claimed fixed.
+- `TQ-S12-C1..C7` (all 7 Sprint 12 Team-QA conditions) preserved
+  verbatim. **TQ-S12-C7 NOT closed** by PROMPT 888 (story-level
+  AC6); remains informational.
+- Sprint 12 / Sprint 11 / Sprint 10 closeouts preserved unchanged.
+- All 14 prior Sprint 13 `/story-done` closures (PROMPT 833 / 835
+  inline / 840 / 843 / 844 / 850 / 851 / 854 / 856 / 865 / 868 /
+  869 via PROMPT 882 carry / 871 / 876 / 884 / 885) preserved
+  unchanged on `origin/main`.
+
+### Explicitly NOT claimed
+
+- public release readiness; release-candidate readiness; full game
+  completion; broad / Standard-tier accessibility completion;
+  playtest / fun-hypothesis validation; full playable-client manual
+  QA; two-client GAME_OVER closure (`S8-QA-001-W1`); final-art /
+  asset-production completion; Polish->Release gate-check retry;
+  Stage advance from Polish to Release; TQ-S12-C7 closure; closure
+  of `S11-HUD-TIMER-EYEBALL-VISUAL-001` (Should Have row remains
+  ready); closure of `S13-CONN-LOST-UX-001` (Should Have row
+  remains ready); authoring or activation of
+  `S13-OPS-WIN-APPCOMPAT-MANIFEST-001` (named in the doc only;
+  NOT authored by PROMPT 888); Sprint 13 close-out (Sprint 13
+  remains active; 17 of 19 rows closed after PROMPT 888; 2 rows
+  still ready); any embedded-manifest or `build.rs` change; any
+  Cargo test target rename.
