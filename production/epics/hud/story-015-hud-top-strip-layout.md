@@ -2,14 +2,17 @@
 
 > **Epic**: HUD
 > **Story ID**: S11-UX-HUD-TOP-STRIP-LAYOUT
-> **Status**: Draft -- Sprint 14 candidate (Must Have framing per
-> PROMPT 802 §3.2 H1 / H8 + `docs/ux/ui-clean-pass-roadmap.md` rank 7);
-> NOT activated; Sprint 14 NOT activated
+> **Status**: Done (Sprint 14 Must Have; closure source-of-truth
+> `origin/main@4b9a23b660c8804ee212b6dd3e856a6cc92984b3` = PROMPT 941
+> `--no-ff` integration merge of PROMPT 940 worker tip
+> `ea92597d6b89eec7b990820acea420776ecc7078` into prior
+> `origin/main@e3ed056`; flipped `ready -> done` by PROMPT 942 paperwork
+> closure on 2026-05-15)
 > **Layer**: HUD / Presentation (layout / composition only)
 > **Type**: UI -- layout composition + visual evidence
-> **Sprint**: Sprint 14 candidate (drawn from PROMPT 802 Expert UI Layout
+> **Sprint**: Sprint 14 Must Have (drawn from PROMPT 802 Expert UI Layout
 > audit roadmap, reconciled by `docs/ux/ui-clean-pass-roadmap.md` rank 7
-> "Tier 1 Must"); NOT activated
+> "Tier 1 Must"). Activated by PROMPT 897; closed by PROMPT 942.
 > **Authored**: 2026-05-14 by PROMPT 879 (worktree
 > `D:\_DEV\claude-code-game-studios-worktrees\s14-hud-layout-story-authoring`,
 > branch `story/s14-hud-layout-story-authoring`)
@@ -281,7 +284,7 @@ still ships but with lower assertion coverage):
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Single flex parent introduced**: GIVEN the HUD root
+- [x] **AC1 -- Single flex parent introduced**: GIVEN the HUD root
   spawn, WHEN `spawn_hud` runs, THEN a single new child entity carrying
   a `HudTopStrip` marker and `Display::Flex` is spawned as a child of
   `HudRoot`. All top-strip pre-pooled children (`phase_label`,
@@ -289,7 +292,7 @@ All criteria are independently checkable.
   `mana_label`, `reserve_container`, `timer_bar`) are reparented under
   `HudTopStrip` (not direct children of `HudRoot`).
 
-- [ ] **AC2 -- Flex composition replaces absolute offsets on
+- [x] **AC2 -- Flex composition replaces absolute offsets on
   top-strip children**: GIVEN the post-refactor spawn, WHEN each
   top-strip child `Node` is inspected, THEN none of them carries
   `PositionType::Absolute` with `top: Val::Px(hud_margin + N)` or
@@ -298,7 +301,7 @@ All criteria are independently checkable.
   position. (The `HudRoot` itself may keep its full-viewport absolute
   anchor; only top-strip children change.)
 
-- [ ] **AC3 -- Entity identity preserved in `HudEntities`**:
+- [x] **AC3 -- Entity identity preserved in `HudEntities`**:
   GIVEN the post-refactor `HudEntities` resource, WHEN inspected,
   THEN it still exposes every existing field (`phase_label`,
   `round_counter`, `own_gold_parent`, `own_gold_span`,
@@ -309,13 +312,13 @@ All criteria are independently checkable.
   downstream systems that look up entities by `HudEntities.x` continue
   to work).
 
-- [ ] **AC4 -- ADR-021 schedule preserved**: GIVEN a `cargo build -p
+- [x] **AC4 -- ADR-021 schedule preserved**: GIVEN a `cargo build -p
   client` (or equivalent), WHEN run against the post-refactor code,
   THEN no new system, system-set, or schedule wiring is introduced by
   this story. `HudPlugin` registers the same sets in the same order
   (`PhaseTransition` → `MessageDrain` → `StateSync` → `AnimationTick`).
 
-- [ ] **AC5 -- Visual evidence captured at two viewports**: GIVEN
+- [x] **AC5 -- Visual evidence captured at two viewports**: GIVEN
   the post-refactor build runs end-to-end through the friend-game
   route, WHEN HUD is visible (any non-`Hidden` phase), THEN
   screenshots are captured at **desktop** (1920×1080) AND at a
@@ -325,7 +328,7 @@ All criteria are independently checkable.
   `top-strip-1366x768-<phase>.png` for at least one phase
   (e.g. `DraftShop`).
 
-- [ ] **AC6 -- Text fitting anti-regression**: GIVEN the captures,
+- [x] **AC6 -- Text fitting anti-regression**: GIVEN the captures,
   WHEN visually inspected against the longest expected content
   (ECONOMY_AUCTION `Xg (Yr)` inline gold with two-digit reserved gold;
   phase label `DraftAuction`; round counter `Round 6 / 6`; reserve
@@ -333,14 +336,14 @@ All criteria are independently checkable.
   container. The evidence document records the longest content
   observed and confirms no clipping.
 
-- [ ] **AC7 -- Stable dimensions anti-regression**: GIVEN the captures,
+- [x] **AC7 -- Stable dimensions anti-regression**: GIVEN the captures,
   WHEN dimensions of each top-strip child are measured (manually from
   the capture, or asserted by a layout test if `S11-TD-UI-VIEWPORT-INVARIANT-TESTS`
   exposes it), THEN each child's rendered width and height is the same
   at 1920×1080 as at 1366×768 (i.e. fixed pixel sizing preserved; no
   viewport-width font scaling, no `Val::Percent` on font sizes).
 
-- [ ] **AC8 -- No overlap anti-regression**: GIVEN the captures at
+- [x] **AC8 -- No overlap anti-regression**: GIVEN the captures at
   both viewports, WHEN siblings are inspected, THEN no top-strip
   child visually overlaps a sibling, the timer bar, or any
   non-top-strip element (HUD figurine, scoreboard dots, dim overlay,
@@ -348,7 +351,7 @@ All criteria are independently checkable.
   reserve-mana label (ECONOMY_AUCTION with `reserve_mana > 0`) are
   included.
 
-- [ ] **AC9 -- No viewport-width font scaling anti-regression**:
+- [x] **AC9 -- No viewport-width font scaling anti-regression**:
   GIVEN a grep across `client/src/ui/hud/` post-refactor, WHEN run
   with pattern `Val::Percent`/`Val::Vw`/`Val::Vh` filtered to lines
   touching `TextFont` or `font_size`, THEN zero hits. Font sizes on
@@ -357,14 +360,14 @@ All criteria are independently checkable.
   `HUD_RESERVED_GOLD_FONT_SIZE_PX` (or their `S12-UX-GLOBAL-UI-DESIGN-SPEC-001`
   successors).
 
-- [ ] **AC10 -- Z-index layer slot consumed (not re-invented)**: GIVEN
+- [x] **AC10 -- Z-index layer slot consumed (not re-invented)**: GIVEN
   the post-refactor spawn, WHEN the `HudRoot` and `HudTopStrip` z
   positioning is inspected, THEN they consume the HUD layer slot
   defined by `S11-TD-UI-ZINDEX-LAYERS` (e.g. `HudLayers::TopStrip`
   enum variant or equivalent named constant) — NOT a hard-coded
   `GlobalZIndex(N)` re-introduced inline.
 
-- [ ] **AC11 -- ADR-001 invariant preserved**: GIVEN the post-refactor
+- [x] **AC11 -- ADR-001 invariant preserved**: GIVEN the post-refactor
   build, WHEN any path that surfaces objective identity is inspected,
   THEN `was_fake` remains stripped at the Board Rendering boundary
   and is never exposed on a top-strip child. (Scoreboard dots are not
@@ -372,26 +375,26 @@ All criteria are independently checkable.
   refactor did not accidentally bring objective state into the
   strip.)
 
-- [ ] **AC12 -- Sprint 13/14 disposition preserved**: GIVEN the story
+- [x] **AC12 -- Sprint 13/14 disposition preserved**: GIVEN the story
   commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-13.md`, `production/sprints/sprint-14.md`
   (when authored), `production/stage.txt`, and PROMPT 761 gate-check
   artifact are diffed, THEN none of them are modified by this story.
 
-- [ ] **AC13 -- No accept-risk closure claimed**: GIVEN the evidence
+- [x] **AC13 -- No accept-risk closure claimed**: GIVEN the evidence
   document, WHEN inspected, THEN it explicitly does NOT claim closure
   of `S8-QA-001-W1`, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-004-a`,
   or any other accept-risk disposition. Final-art replacement on HUD
   top-strip elements is explicitly out of scope.
 
-- [ ] **AC14 -- Targeted regression passes**: GIVEN the post-refactor
+- [x] **AC14 -- Targeted regression passes**: GIVEN the post-refactor
   code, WHEN `cargo test -p client --lib` is run (HUD-scoped unit
   tests in `client/src/ui/hud/`), THEN it passes. Existing HUD
   observer + tween + tie-break tests (story 004, story 009, story
   010) continue to pass because the entity identities in
   `HudEntities` are preserved (AC3).
 
-- [ ] **AC15 -- Evidence document slot reserved**:
+- [x] **AC15 -- Evidence document slot reserved**:
   `production/qa/evidence/sprint-14-hud-top-strip-layout/README.md`
   (NEW). Records the build commit, the two viewport captures, the
   longest-content observation (AC6), the dimension measurements
@@ -537,3 +540,99 @@ Before this story enters `/dev-story` in Sprint 14:
 
 If any precondition fails, the row holds in `ready` / `blocked` and
 does NOT enter `/dev-story`.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-15 (PROMPT 942 `/story-done` paperwork).
+**Criteria**: 15 / 15 accepted for closure against integrated commit
+`4b9a23b660c8804ee212b6dd3e856a6cc92984b3`, PROMPT 941 integration
+verification, and on-main evidence under
+`production/qa/evidence/sprint-14-hud-top-strip-layout/`.
+
+**Evidence**:
+
+- AC1 / AC2 / AC3 / AC4 / AC9 / AC10:
+  `tests/integration/ui_clean_pass/hud_top_strip_layout_test.rs` landed with
+  six tests covering `HudTopStrip`, `strips::HeaderBar`, `Display::Flex`,
+  non-absolute top-strip children, `HudEntities.top_strip`, preserved
+  pre-pooled entity identities, schedule-source stability, fixed font-size
+  grep guard, and `z_layers::UI_BASE` use by `HudRoot` and `HudTopStrip`.
+- AC5 / AC6 / AC7 / AC8:
+  `production/qa/evidence/sprint-14-hud-top-strip-layout/README.md` records
+  the required longest-content table, fixed-dimension Node intent table, and
+  overlap audit. Runtime browser/WASM PNG captures remain explicitly deferred
+  in `manual-capture-instructions.md`; PROMPT 942 accepts the integrated
+  node-intent / geometric proof and does not claim live screenshot capture.
+- AC11:
+  `client/src/ui/hud/mod.rs` remains scoreboard/objective-dot only for
+  objective identity in the HUD module; `was_fake` is not surfaced on the top
+  strip. PROMPT 941 integration diff touched no server or protocol surface.
+- AC12 / AC13:
+  PROMPT 941 forbidden-path review found no implementation diff in
+  `server/`, `shared/`, `production/sprint-status.yaml`,
+  `production/session-state/`, `production/sprints/sprint-14.md`,
+  `production/qa/qa-plan-sprint-14.md`, or `production/stage.txt`. Evidence
+  restates `S8-QA-001-W1` OPEN, `QA-COND-0005` / `QA-COND-0006`
+  accepted-risk, `PAW-TD-004-a` accepted-risk, and PROMPT 761
+  Polish->Release FAIL.
+- AC14:
+  PROMPT 941 reports `cargo test -p client --lib` PASS (45 passed), story
+  test `cargo test -p client --test hud_top_strip_layout_test` PASS (6
+  passed), adjacent HUD regression batches PASS (38 + 29 tests), and
+  `cargo check --workspace --all-targets` PASS with one pre-existing warning.
+- AC15:
+  `production/qa/evidence/sprint-14-hud-top-strip-layout/README.md` and
+  `manual-capture-instructions.md` are present on `origin/main@4b9a23b`.
+
+**Source-report caveat**: the requested PROMPT 940 dev report
+`reports/PROMPT-940-S14-HUD-Top-Strip-Layout-Dev-Story.md` is absent from
+`reports/` and from the worker branch tree, as recorded by PROMPT 941. PROMPT
+942 therefore verified closure from the PROMPT 941 integration report,
+integrated code/tests, and on-main evidence files.
+
+**Story-done scope**: PROMPT 942 flips only this story file, the
+`S11-UX-HUD-TOP-STRIP-LAYOUT` row in `production/sprint-status.yaml`, and the
+two session-state banners. No code, tests, Cargo manifests, Sprint 14 plan, QA
+plan, stage file, or gate-check artifact is modified by the paperwork commit.
+
+---
+
+## Authoring / Implementation / Closure Trail
+
+- 2026-05-14 -- PROMPT 879 -- Story file authored (Draft) by Sprint 14
+  candidate authoring run on worktree
+  `D:\_DEV\claude-code-game-studios-worktrees\s14-hud-layout-story-authoring`,
+  branch `story/s14-hud-layout-story-authoring`. Source-of-truth:
+  `origin/main@dd9630b`. No code, no sprint-status flip, no QA, no smoke, no
+  gate-check, no `cargo` / `trunk` invocation, no Sprint 14 activation, no
+  claim against `QA-COND-0005` / `QA-COND-0006` / `S8-QA-001-W1` /
+  `PAW-TD-*-a` / PROMPT 761 `Polish->Release` retry.
+- 2026-05-15 -- PROMPT 940 -- `/dev-story` worker on branch
+  `work/s14-hud-top-strip-layout-940`, base `origin/main@e3ed056`. Worker
+  commit `ea92597d6b89eec7b990820acea420776ecc7078` landed the HUD
+  `HudTopStrip` / `HeaderBar` composition refactor, new integration test bin,
+  test registration, and evidence documents. Worker branch pushed; `main` not
+  pushed by the worker. The requested worker report file was not present in
+  `reports/` or the worker branch tree per PROMPT 941.
+- 2026-05-15 -- PROMPT 941 -- Integration merge commit
+  `4b9a23b660c8804ee212b6dd3e856a6cc92984b3` on `origin/main`, merging
+  PROMPT 940 worker tip `ea92597d6b89eec7b990820acea420776ecc7078` into prior
+  `origin/main@e3ed056f432bf7787337d5aa9ec7dc59e99cfb13`. Zero conflicts; 5
+  files changed (+608 / -84). Verification: `cargo fmt --all -- --check`,
+  `cargo check --workspace --all-targets`, story test 6/6, `cargo test -p
+  client --lib` 45/45, adjacent HUD regression batches 38/38 and 29/29,
+  `git diff --check`, `git diff --cached --check`, and forbidden-path filter
+  all PASS. One unrelated `ui_clean_pass_z_layers_test` lobby assertion
+  remained pre-existing and untouched.
+- 2026-05-15 -- PROMPT 942 -- `/story-done` paperwork closure on clean
+  worktree `D:/Tmp/ccgs-prompt-942-storydone` from
+  `origin/main@4b9a23b660c8804ee212b6dd3e856a6cc92984b3`. Row
+  `S11-UX-HUD-TOP-STRIP-LAYOUT` flipped `ready -> done`; AC1-AC15
+  checkboxes flipped `[ ] -> [x]`; `production/session-state/active.md` and
+  `production/session-state/codex-orchestrator-state.md` PROMPT 942 banners
+  prepended; `sprint_14_story_done:` entry appended. Sprint 14 remains active;
+  stage remains Polish; PROMPT 761 FAIL, `S8-QA-001-W1` OPEN,
+  `QA-COND-0005` / `QA-COND-0006` accepted-risk, and `PAW-TD-*-a`
+  accepted-risk all preserved.

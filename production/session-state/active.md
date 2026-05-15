@@ -4,6 +4,16 @@
 >
 > ---
 >
+> **CURRENT STATE -- last updated 2026-05-15 (PROMPT 942 story-done closure after PROMPT 941 HUD top strip integration)**
+>
+> - **Committed source-of-truth at closure base**: `origin/main@4b9a23b660c8804ee212b6dd3e856a6cc92984b3` (PROMPT 941 `--no-ff` integration merge of PROMPT 940 worker tip `ea92597d6b89eec7b990820acea420776ecc7078` into prior `origin/main@e3ed056f432bf7787337d5aa9ec7dc59e99cfb13`). PROMPT 942 is the serialized shared-status writer paperwork closure on top of that commit.
+> - **Story closed**: `S11-UX-HUD-TOP-STRIP-LAYOUT` / HUD story 015 / Sprint 14 Must Have rank 7 flipped `ready -> done`. AC1-AC15 accepted against PROMPT 941 integration verification, on-main test `tests/integration/ui_clean_pass/hud_top_strip_layout_test.rs`, and on-main evidence under `production/qa/evidence/sprint-14-hud-top-strip-layout/`. Runtime PNG captures for 1366x768 and 1920x1080 remain deferred per `manual-capture-instructions.md` and are not claimed by PROMPT 942.
+> - **Sprint 14 progress**: 9 of 9 Must Have done; 0 of 4 Should Have done; 0 of 4 Nice to Have done; total 9 of 17 rows closed. Must Have set is complete, but Sprint 14 remains active until a separate close-out prompt runs.
+> - **Disposition**: Sprint 14 remains active; stage remains Polish; PROMPT 761 Polish->Release FAIL preserved with no retry. Non-claims preserved: `S8-QA-001-W1` OPEN, `QA-COND-0005/0006` accepted-risk, `PAW-TD-*-a` accepted-risk, no release/RC/full-game/broad-accessibility/playtest/final-art/Sprint14-closeout claim.
+> - **Paperwork-only scope**: changed only `production/epics/hud/story-015-hud-top-strip-layout.md`, `production/sprint-status.yaml`, `production/session-state/active.md`, and `production/session-state/codex-orchestrator-state.md`. No `client/`, `server/`, `shared/`, `tests/`, Cargo files, `production/sprints/sprint-14.md`, `production/qa/qa-plan-sprint-14.md`, `production/stage.txt`, or gate-check artifact changed.
+>
+> ---
+>
 > **CURRENT STATE -- last updated 2026-05-15 (PROMPT 939 story-done closure after PROMPT 938 lobby modal integration)**
 >
 > - **Committed source-of-truth at closure base**: `origin/main@c25aba766a371a0540ec41bf5c6d66103d9c712d` (PROMPT 938 `--no-ff` integration merge of PROMPT 937 worker tip `2ad29c90ca292deb737c90c60186111689cdb97f` into prior `origin/main@fc77503515827e61337fd9cb4cbc7ccfd2a4fab3`). PROMPT 939 is the serialized shared-status writer paperwork closure on top of that commit.
