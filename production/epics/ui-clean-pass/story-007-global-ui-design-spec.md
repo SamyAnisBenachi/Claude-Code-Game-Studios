@@ -2,7 +2,7 @@
 
 > **Epic**: UI Clean-Pass
 > **Story ID**: S12-UX-GLOBAL-UI-DESIGN-SPEC-001
-> **Status**: Draft (Sprint 14 candidate; NOT activated)
+> **Status**: Done (PROMPT 922 `/story-done`; closure source-of-truth `origin/main@3d99a0482d24ce89230159ac3565f6e823b97c04` = PROMPT 912 `--no-ff` integration merge of PROMPT 911 worker tip `f4ef52a45eb80b192a70acee35d9416f092ed971` into prior `origin/main@ab3da3e`; ancestor of latest `origin/main@f6e538f` = PROMPT 921 tip)
 > **Layer**: UX / Producer-planning / Design-spec authoring
 > **Type**: UX -- design-spec authoring (doc-only)
 > **Sprint**: Sprint 14 candidate (Tier 0 foundational; PROMPT 802 §4 rank 0.7;
@@ -162,89 +162,198 @@ producer-decision-2, this is also a producer-decision item: UX-designer
 
 All criteria are independently checkable BLOCKING criteria.
 
-- [ ] **AC1 -- Spec authored**: GIVEN the story commit, WHEN the new
+- [x] **AC1 -- Spec authored**: GIVEN the story commit, WHEN the new
   spec file is inspected, THEN `docs/ux/global-ui-design-spec.md`
   exists. Verification: file presence.
+  **PROMPT 922 verdict: PASS** -- `docs/ux/global-ui-design-spec.md`
+  NEW 637 lines present on `origin/main@3d99a04` via PROMPT 912
+  `--no-ff` integration of PROMPT 911 worker tip `f4ef52a`
+  (`git ls-tree -r origin/main -- docs/ux/global-ui-design-spec.md`
+  returns blob `b3dc3054`).
 
-- [ ] **AC2 -- All required sections present**: GIVEN the spec, WHEN
+- [x] **AC2 -- All required sections present**: GIVEN the spec, WHEN
   the table of contents is inspected, THEN at least sections §1
   (Status / No-Claim Banner), §2 (Scope Boundaries), §3 (Z-Index Layer
   System), §4 (Spacing Scale), §5 (Typography Hierarchy), §6 (Overlay
   Alpha Tokens), §7 (Color Tokens), §8 (Responsive Layout Rules), and
   §9 (Strip Composition Patterns) are present. Verification: heading
   scan.
+  **PROMPT 922 verdict: PASS** -- `grep "^## §" docs/ux/global-ui-design-spec.md`
+  returns 10 §-headed sections at lines 24/76/116/155/186/246/288/322/379/431:
+  §1 Status, §2 Scope Boundaries, §3 Z-Index Layer System, §4 Spacing
+  Scale, §5 Typography Hierarchy, §6 Overlay Alpha Tokens, §7 Color
+  Tokens, §8 Responsive Layout Rules, §9 Strip Composition Patterns,
+  §10 Component Specifications (stretch). All required §1-§9 present
+  plus optional §10.
 
-- [ ] **AC3 -- Z-layer canonical values**: GIVEN §3, WHEN inspected,
+- [x] **AC3 -- Z-layer canonical values**: GIVEN §3, WHEN inspected,
   THEN it enumerates the 8 named layers (Background, World, Units,
   UiBase, UiOverlay, Modal, Toast, Debug) with integer values
   ordered strictly ascending and with sufficient gap to allow future
   intermediate layers. Verification: doc review against story 002's
   layer module.
+  **PROMPT 922 verdict: PASS** -- §3 table at
+  `docs/ux/global-ui-design-spec.md` lines 128-137 enumerates 8 named
+  layers `Background=0` / `World=100` / `Units=200` / `UiBase=300` /
+  `UiOverlay=400` / `Modal=500` / `Toast=600` / `Debug=700`, strictly
+  ascending, 100-unit gap, `LAYER_MIN_GAP=10` audit floor at :139-142.
+  Ratified verbatim from `client/src/ui/design_tokens/z_layers.rs`
+  (story 002, PROMPT 903 `/story-done`).
 
-- [ ] **AC4 -- Spacing canonical values**: GIVEN §4, WHEN inspected,
+- [x] **AC4 -- Spacing canonical values**: GIVEN §4, WHEN inspected,
   THEN at least 5 named spacing tokens (`SPACING_XS`, `SM`, `MD`,
   `LG`, `XL` or equivalent) are defined with strictly increasing
   pixel values. Verification: doc review.
+  **PROMPT 922 verdict: PASS** -- §4 at spec lines 161-167 enumerates
+  `SPACING_XS=4` / `SPACING_SM=8` / `SPACING_MD=16` / `SPACING_LG=24` /
+  `SPACING_XL=32` (5 tokens, strictly ascending; geometric step
+  approximately ×2 per spec :169-172). Consumed verbatim by story 004
+  module `client/src/ui/design_tokens/spacing.rs` (PROMPT 919
+  `/story-done`).
 
-- [ ] **AC5 -- Typography canonical values**: GIVEN §5, WHEN
+- [x] **AC5 -- Typography canonical values**: GIVEN §5, WHEN
   inspected, THEN at least 6 named semantic-size tokens (Caption,
   Body, H3, H2, H1, Display) are defined with strictly increasing
   pixel values, plus at least 3 font-weight tokens, plus a canonical
   line-height ratio. Verification: doc review against story 003's
   typography module.
+  **PROMPT 922 verdict: PASS** -- §5 at spec lines 196-203 enumerates
+  6 sizes `Caption=13` / `Body=15` / `H3=18` / `H2=22` / `H1=30` /
+  `Display=40` (strictly ascending), :213-217 enumerates 3 weights
+  `WEIGHT_REGULAR=400` / `WEIGHT_SEMIBOLD=600` / `WEIGHT_BOLD=700`,
+  :226 names `LINE_HEIGHT_DEFAULT_RATIO=1.25`. Ratified verbatim from
+  `client/src/ui/design_tokens/typography.rs` (story 003, PROMPT 908
+  `/story-done`). Accessibility-floor guard rails preserved at
+  :234-239 (Display ≥ 40 HUD gold floor; H2 ≥ 20 HUD resource floor).
 
-- [ ] **AC6 -- Overlay alpha canonical values**: GIVEN §6, WHEN
+- [x] **AC6 -- Overlay alpha canonical values**: GIVEN §6, WHEN
   inspected, THEN `OVERLAY_DIM_ALPHA` and `OVERLAY_SCRIM_ALPHA` are
   named with their canonical float values (0.0 < alpha < 1.0) and
   rationale. Verification: doc review against story 006's overlay
   module.
+  **PROMPT 922 verdict: PASS** -- §6 at spec lines 261-263 names
+  `OVERLAY_DIM_ALPHA=0.45` (preserves HUD `hud/mod.rs:34`),
+  `OVERLAY_SCRIM_ALPHA=0.55` (consolidates shipped 0.46 result + 0.58
+  settlement values), `OVERLAY_TOAST_ALPHA=0.80`, each with rationale
+  paragraph. Per-token range invariant `0.0 < alpha < 1.0` at :265-267.
+  Per-existing-literal migration mapping table at :272-276. Consumed
+  verbatim by story 006 module `client/src/ui/design_tokens/overlays.rs`
+  (PROMPT 921 `/story-done`).
 
-- [ ] **AC7 -- Color palette named**: GIVEN §7, WHEN inspected, THEN
+- [x] **AC7 -- Color palette named**: GIVEN §7, WHEN inspected, THEN
   at least 6 named color tokens (primary, secondary, accent,
   surface, surface-elevated, semantic-error) are listed with RGB hex
   + Bevy `Color::srgb()` reference. Verification: doc review.
+  **PROMPT 922 verdict: PASS** -- §7 at spec lines 296-303 enumerates
+  8 named tokens `PRIMARY=#4A90E2` / `SECONDARY=#E29E4A` /
+  `ACCENT=#F2C94C` / `SURFACE=#0A0D14` / `SURFACE_ELEVATED=#161B27` /
+  `SEMANTIC_SUCCESS=#27AE60` / `SEMANTIC_WARNING=#F2994A` /
+  `SEMANTIC_ERROR=#EB5757`, each with RGB hex + canonical
+  `Color::srgb(...)` literal. Friend-game placeholder palette per
+  :305-307; not WCAG contrast-checked. `PAW-TD-*-a` accept-risk
+  preserved at :292.
 
-- [ ] **AC8 -- Responsive layout rules named**: GIVEN §8, WHEN
+- [x] **AC8 -- Responsive layout rules named**: GIVEN §8, WHEN
   inspected, THEN the minimum viewport (1366×768), target viewports
   (1920×1080, 1920×1200, 1280×960), max viewport (3840×2160), and
   aspect-ratio handling (16:9, 16:10, 4:3, 21:9) are enumerated.
   Verification: doc review against story 005's viewport matrix.
+  **PROMPT 922 verdict: PASS** -- §8 canonical viewport matrix at
+  spec lines 335-340 enumerates `1366×768` minimum (16:9, laptop
+  default), `1920×1080` baseline (16:9), `1920×1200` (16:10),
+  `1280×960` (4:3 legacy), `3840×2160` 4K max (16:9), `2560×1080`
+  ultrawide (21:9). All four aspect ratios (16:9 / 16:10 / 4:3 / 21:9)
+  enumerated. Ratified verbatim from
+  `tests/integration/helpers/ui_viewport.rs::CANONICAL_VIEWPORTS`
+  (story 005, PROMPT 909 `/story-done`). Per-class scaling rules
+  table at :344-350; strip-height determinism invariant at :374-375.
 
-- [ ] **AC9 -- Strip composition patterns named**: GIVEN §9, WHEN
+- [x] **AC9 -- Strip composition patterns named**: GIVEN §9, WHEN
   inspected, THEN HeaderBar / HandBar / FooterBar canonical heights
   + flex direction + child alignment are defined. LaneBar is
   defined IFF it makes sense as bevy_ui (TBD). Verification: doc
   review against story 004's strip primitives.
+  **PROMPT 922 verdict: PASS** -- §9 strip-primitive table at spec
+  lines 392-397 enumerates `HeaderBar=60`px `Row` `SpaceBetween`
+  `Center` top-anchored, `LaneBar=60`px `Row` `Center` `Center`
+  (documented-only per story 004 worker discretion), `HandBar=180`px
+  `Row` `Center` `End` bottom-anchored, `FooterBar=40`px `Row`
+  `SpaceBetween` `Center` above-HandBar-anchored. Ratified verbatim
+  from `tests/integration/fixtures/ui_viewport_baseline.rs` baseline
+  fixture (story 005); landed as production primitive by story 004
+  `client/src/ui/design_tokens/strips.rs` (PROMPT 919 `/story-done`).
+  Strip column composition + default child spacing rules at :402-417.
 
-- [ ] **AC10 -- Spec adoption matrix present**: GIVEN the spec,
+- [x] **AC10 -- Spec adoption matrix present**: GIVEN the spec,
   WHEN inspected, THEN a "Spec adoption matrix" section enumerates
   which Sprint 14+ stories consume which spec sections (at minimum:
   story 002 → §3; story 003 → §5; story 004 → §4 + §9; story 005 →
   §8; story 006 → §6). Verification: doc review.
+  **PROMPT 922 verdict: PASS** -- "Spec Adoption Matrix" section at
+  spec line 477. Tier 0 token-module consumer table at :483-491
+  enumerates story 002 (`S11-TD-UI-ZINDEX-LAYERS`) → §3; story 003
+  (`S11-TD-UI-FONT-CONSTANTS`) → §5; story 004 (`S11-TD-UI-FLEX-STRIPS`)
+  → §4 + §9; story 005 (`S11-TD-UI-VIEWPORT-INVARIANT-TESTS`) → §8;
+  story 006 (`S12-TD-UI-OVERLAY-ALPHA-TOKEN-001`) → §6. Tier 1
+  surface story consumers at :495-502, Tier 1 Should-priority
+  adjacent rows at :506-512, Tier 0 Should-priority adjacent row at
+  :516-518, Tier 3 deferred to Sprint 15 at :522-525.
 
-- [ ] **AC11 -- Friend-game scope boundary named**: GIVEN §2, WHEN
+- [x] **AC11 -- Friend-game scope boundary named**: GIVEN §2, WHEN
   inspected, THEN the friend-game-vs-Standard-tier scope boundary is
   explicitly stated; `QA-COND-0005` accessibility, `QA-COND-0006`
   playtest, and `PAW-TD-*-a` placeholder-art accept-risk are each
   named as out of spec scope. Verification: doc review.
+  **PROMPT 922 verdict: PASS** -- §1 Status banner at spec :41-46
+  enumerates `QA-COND-0005`, `QA-COND-0006`, and `PAW-TD-002-a` ..
+  `PAW-TD-006-a` as explicitly NOT claimed; :54-72 enumerates each
+  disposition as preserved-unchanged with per-condition rationale. §2
+  Scope Boundaries at :78-104 explicitly states friend-game-vs-Standard-tier
+  boundary; :85-89 lists Standard-tier accessibility components
+  (WCAG contrast / ≥44px hit-targets / focus order / keyboard /
+  screen-reader / colorblind / text scaling) as out-of-spec; :90-93
+  names `PAW-TD-*-a` placeholder-art accept-risk preserved.
 
-- [ ] **AC12 -- Producer ratification checklist**: GIVEN the spec,
+- [x] **AC12 -- Producer ratification checklist**: GIVEN the spec,
   WHEN inspected, THEN a producer-ratification section names the
   UX-designer + art-director sign-off rows per PROMPT 802 §9
   producer-decision-2. Verification: doc review.
+  **PROMPT 922 verdict: PASS** -- "Producer Ratification Checklist"
+  section at spec line 529 with §"Producer-decision-2 resolution"
+  subsection at :537 closing PROMPT 802 §9 producer-decision-2 (numeric
+  values for Tier 0 token modules). Sign-off rows table at :554-566
+  names three ratification rows: **Producer** (PROMPT 911),
+  **UX-designer** (PROMPT 911), **Art-director** (PROMPT 911), each
+  with rationale. Ratification scope guard at :568-587 limits
+  ratification to friend-game visual polish; explicitly does NOT
+  ratify Standard-tier accessibility, final-art, playtest, or
+  producer-decisions 3 / 4 / 5.
 
-- [ ] **AC13 -- No code change**: GIVEN the story commit, WHEN `git
+- [x] **AC13 -- No code change**: GIVEN the story commit, WHEN `git
   diff` is inspected, THEN no file under `client/`, `server/`,
   `shared/`, or `tests/` is modified. Verification: `git diff
   origin/main...HEAD -- 'client/**' 'server/**' 'shared/**' 'tests/**'`
   returns no output.
+  **PROMPT 922 verdict: PASS** -- `git diff 3d99a04^1..3d99a04 --stat
+  -- 'client/' 'server/' 'shared/' 'tests/' 'Cargo.toml' 'Cargo.lock'`
+  EMPTY across the PROMPT 912 integration merge. PROMPT 911 worker
+  changed 2 NEW files only (`docs/ux/global-ui-design-spec.md` 637
+  lines + `production/qa/evidence/sprint-14-ui-foundation/global-ui-design-spec/doc-review-checklist.md`
+  163 lines; 800 insertions total). No code surface touched.
 
-- [ ] **AC14 -- Friend-game scope preserved**: GIVEN the story
+- [x] **AC14 -- Friend-game scope preserved**: GIVEN the story
   commit, WHEN `QA-COND-0005`, `QA-COND-0006`, and `PAW-TD-*-a`
   accept-risk dispositions are inspected, THEN none of them has
   been flipped to `closed` by this story. Verification: `git diff`
   of `production/sprint-status.yaml` shows no accept-risk disposition
   change.
+  **PROMPT 922 verdict: PASS** -- `git diff 3d99a04^1..3d99a04 --stat
+  -- 'production/sprint-status.yaml'` EMPTY across the PROMPT 912
+  integration merge; no `QA-COND-0005` / `QA-COND-0006` / `PAW-TD-*-a`
+  field touched by worker or integration. Accept-risk dispositions
+  preserved verbatim throughout PROMPT 911 / 912 / 922. PROMPT 922
+  row-level flip is the permitted disposition-preserving paperwork
+  edit per /story-done scope.
 
 ---
 
@@ -342,3 +451,85 @@ for the realised set.
   art-director per AC12.
 - Accept-risk preservation: `PAW-TD-*-a`, `QA-COND-0005`, `QA-COND-0006`
   preserved unchanged. This story does not advance any of them.
+
+---
+
+## Closure Trail
+
+| PROMPT | Action | Commit / Reference |
+|--------|--------|---------------------|
+| 878 | Authored story file (Sprint 14 candidate; not activated) | `production/epics/ui-clean-pass/story-007-global-ui-design-spec.md` NEW |
+| 893 | Sprint 14 candidate-story authoring batch integration | merge `9f36663` |
+| 897 | Sprint 14 activation (story row `status: ready`) | `origin/main@fffaf1c` |
+| 898 | Sprint 14 QA plan authored covering this row | `production/qa/qa-plan-sprint-14.md` NEW |
+| 910 | `/story-readiness` re-run -- verdict READY | `reports/PROMPT-910-S14-GLOBAL-UI-DESIGN-SPEC-READINESS.md` (gitignored) |
+| 911 | `/dev-story` worker -- authored `docs/ux/global-ui-design-spec.md` (NEW 637 lines) + `production/qa/evidence/sprint-14-ui-foundation/global-ui-design-spec/doc-review-checklist.md` (NEW 163 lines) on branch `work/s14-global-ui-design-spec` | worker commit `f4ef52a45eb80b192a70acee35d9416f092ed971` |
+| 912 | Integration `--no-ff` merge of worker into `origin/main@ab3da3e` (zero conflicts; PROMPT 911 worker reachable as merge's second-parent) | merge commit `3d99a0482d24ce89230159ac3565f6e823b97c04`, fast-forward push `ab3da3e..3d99a04` |
+| 922 | `/story-done` paperwork closure: row `status: ready -> done`; AC1-AC14 checkboxes `[ ] -> [x]`; this Closure Trail appended | paperwork commit on `origin/main` from worktree `D:/_DEV/wt/ccgs-prompt-922-storydone` |
+
+### AC verdicts (PROMPT 922 closure)
+
+| AC | Title | Verdict | Evidence |
+|----|-------|---------|----------|
+| AC1 | Spec authored | **PASS** | `docs/ux/global-ui-design-spec.md` NEW 637 lines present on `origin/main@3d99a04`. |
+| AC2 | All required sections present | **PASS** | `grep "^## §"` returns 10 sections §1..§10; required §1..§9 all present. |
+| AC3 | Z-layer canonical values | **PASS** | §3 enumerates 8 layers Background=0..Debug=700 strictly ascending with 100-unit gap; cited from `client/src/ui/design_tokens/z_layers.rs`. |
+| AC4 | Spacing canonical values | **PASS** | §4 enumerates `SPACING_XS=4 / SM=8 / MD=16 / LG=24 / XL=32` strictly ascending. |
+| AC5 | Typography canonical values | **PASS** | §5 enumerates 6 sizes Caption=13..Display=40 + 3 weights + `LINE_HEIGHT_DEFAULT_RATIO=1.25`. |
+| AC6 | Overlay alpha canonical values | **PASS** | §6 names `OVERLAY_DIM_ALPHA=0.45` + `OVERLAY_SCRIM_ALPHA=0.55` + `OVERLAY_TOAST_ALPHA=0.80` with rationale + per-existing-literal migration mapping. |
+| AC7 | Color palette named | **PASS** | §7 enumerates 8 tokens (`PRIMARY`/`SECONDARY`/`ACCENT`/`SURFACE`/`SURFACE_ELEVATED`/`SEMANTIC_SUCCESS`/`SEMANTIC_WARNING`/`SEMANTIC_ERROR`) with RGB hex + `Color::srgb()` literal. Friend-game placeholder palette. |
+| AC8 | Responsive layout rules named | **PASS** | §8 enumerates 6-viewport matrix (1366×768 / 1920×1080 / 1920×1200 / 1280×960 / 3840×2160 / 2560×1080) with 16:9 / 16:10 / 4:3 / 21:9 aspect ratios. |
+| AC9 | Strip composition patterns named | **PASS** | §9 enumerates `HeaderBar=60` / `LaneBar=60` (bevy_ui deferred) / `HandBar=180` / `FooterBar=40` px with flex direction + child alignment. |
+| AC10 | Spec adoption matrix present | **PASS** | "Spec Adoption Matrix" section enumerates story 002→§3 / 003→§5 / 004→§4+§9 / 005→§8 / 006→§6 + Tier 1 + Tier 3 deferred. |
+| AC11 | Friend-game scope boundary named | **PASS** | §1 Status Banner + §2 Scope Boundaries enumerate `QA-COND-0005` + `QA-COND-0006` + `PAW-TD-*-a` accept-risk verbatim as out-of-spec scope. |
+| AC12 | Producer ratification checklist | **PASS** | "Producer Ratification Checklist" names producer + UX-designer + art-director sign-off rows; PROMPT 802 §9 producer-decision-2 RESOLVED. |
+| AC13 | No code change | **PASS** | `git diff 3d99a04^1..3d99a04 -- client/ server/ shared/ tests/ Cargo.toml Cargo.lock` empty. 2 NEW files only: spec (+637) + evidence checklist (+163). |
+| AC14 | Friend-game scope preserved | **PASS** | `git diff 3d99a04^1..3d99a04 -- production/sprint-status.yaml` empty across worker + integration; no accept-risk row touched. |
+
+### Conditions carried forward unchanged
+
+- `S8-QA-001-W1` (two-client GAME_OVER manual / browser gap) remains **OPEN**.
+- `QA-COND-0005` (Standard-tier accessibility) remains **accepted-risk** (friend-game scope only; lobby `LOBBY_BUTTON_HEIGHT = 30.0` defect preserved).
+- `QA-COND-0006` (playtest / fun-hypothesis validation) remains **accepted-risk / deferred**.
+- `PAW-TD-002-a` ... `PAW-TD-006-a` remain **accepted-risk**. §7 Color Tokens is friend-game placeholder palette.
+- PROMPT 761 Polish->Release gate-check `FAIL` preserved; **NO** retry attempted by PROMPT 922.
+- Stage UNCHANGED `Polish`.
+- Sprint 14 disposition UNCHANGED `active`.
+- Sprint 12 story 019 underlying drag-runtime bug NOT claimed fixed; third same-scope retest NOT authorised per `TQ-S12-C2`.
+- `TQ-S12-C1..C7` preserved verbatim.
+- Sprint 13 / 12 / 11 / 10 closeouts preserved unchanged.
+- All prior Sprint 14 `/story-done` closures preserved verbatim: PROMPT 909 (story 005) + PROMPT 908 (story 003) + PROMPT 903 (story 002) + PROMPT 919 (story 004) + PROMPT 921 (story 006). PROMPT 922 entry appended as sixth `sprint_14_story_done` list item.
+- `S11-HUD-TIMER-EYEBALL-VISUAL-001` Sprint 14 Should Have carry preserved unchanged (status: ready, human-operator-blocked).
+- `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` backlog row remains as-is.
+- PROMPT 802 §9 producer-decision-2 RESOLVED in spec body; producer-decision-3 / -4 STILL UNRESOLVED.
+
+### Explicitly NOT claimed by PROMPT 922
+
+- Public release readiness / RC readiness / full game completion.
+- Broad / Standard-tier accessibility completion.
+- Playtest / fun-hypothesis validation.
+- Full playable-client manual QA.
+- Two-client GAME_OVER closure (`S8-QA-001-W1`).
+- Final-art / asset-production completion.
+- Polish->Release gate-check retry.
+- Stage advance from `Polish` to `Release`.
+- Underlying drag-runtime bug fix.
+- Sprint 14 close-out (Sprint 14 remains `active`; 6 of 17 rows closed after PROMPT 922; Tier 0 foundation now 6 of 6 landed).
+- Closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`, `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001`, or `TQ-S12-C7`.
+- Closure of any other Sprint 14 row (only `S12-UX-GLOBAL-UI-DESIGN-SPEC-001` flipped by PROMPT 922).
+- Tier 1 surface story `/dev-story` or `/story-done`.
+- PROMPT 802 §9 producer-decision-3 / -4 resolution.
+- Sprint 15 planning.
+
+### Downstream unblock
+
+With this `/story-done`, Tier 0 foundation is now **6 of 6 landed** on `origin/main`:
+
+1. `S11-TD-UI-ZINDEX-LAYERS` (rank 1, PROMPT 903)
+2. `S11-TD-UI-FONT-CONSTANTS` (rank 2, PROMPT 908)
+3. `S11-TD-UI-FLEX-STRIPS` (rank 3, PROMPT 919)
+4. `S11-TD-UI-VIEWPORT-INVARIANT-TESTS` (rank 4, PROMPT 909)
+5. `S12-TD-UI-OVERLAY-ALPHA-TOKEN-001` (rank 5, PROMPT 921)
+6. `S12-UX-GLOBAL-UI-DESIGN-SPEC-001` (rank 6, **PROMPT 922 -- this row**)
+
+All Tier 1 surface stories (ranks 7-12) can now consume the canonical spec + the five Tier 0 token modules implementing it. Story 005's provisional baseline-fixture numeric values are ratified by §8 + §9 of this spec.
