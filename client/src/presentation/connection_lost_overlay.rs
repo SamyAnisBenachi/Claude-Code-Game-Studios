@@ -12,18 +12,25 @@
 //! Composition contract (ADR-021): `PresentationPlugin` registers
 //! [`ConnectionLostOverlayPlugin`] after `ResultScreenPlugin` so the
 //! presentation order matches the visual layering — gameplay UI below, this
-//! overlay in the middle, result screen on top via `GlobalZIndex(100)`.
+//! overlay in the middle, result screen on top. Both layers consume the
+//! Sprint 14 z-layer constants from `crate::ui::design_tokens::z_layers`
+//! ([`UI_OVERLAY`](crate::ui::design_tokens::z_layers::UI_OVERLAY) for this
+//! overlay; [`MODAL`](crate::ui::design_tokens::z_layers::MODAL) for the
+//! result screen).
 
 use bevy::prelude::*;
 use lightyear::prelude::{Connected, Disconnected};
 use shared::protocol::RoundPhase;
 
 use crate::state::{ClientState, CurrentClientPhase};
+use crate::ui::design_tokens::z_layers;
 
-/// Z-index sits below the result screen's `GlobalZIndex(100)` so that on
-/// `GameOver` the result screen renders above the overlay even if both have a
-/// frame of overlap.
-pub const CONNECTION_LOST_OVERLAY_Z_INDEX: i32 = 90;
+/// Z-layer for this overlay. Resolved from the canonical
+/// [`UI_OVERLAY`](crate::ui::design_tokens::z_layers::UI_OVERLAY) constant so
+/// the overlay sits above gameplay UI but below the result screen modal —
+/// the invariant guarded by `ac7_overlay_z_index_is_below_result_screen` in
+/// `tests/integration/playable_client/connection_lost_overlay_test.rs`.
+pub const CONNECTION_LOST_OVERLAY_Z_INDEX: i32 = z_layers::UI_OVERLAY.0;
 
 pub struct ConnectionLostOverlayPlugin;
 
@@ -200,7 +207,7 @@ fn spawn_connection_lost_overlay_system(mut commands: Commands) {
             // visible underneath while the overlay is shown (AC7).
             BackgroundColor(Color::srgba(0.02, 0.025, 0.035, 0.32)),
             Visibility::Hidden,
-            GlobalZIndex(CONNECTION_LOST_OVERLAY_Z_INDEX),
+            z_layers::UI_OVERLAY,
         ))
         .id();
 

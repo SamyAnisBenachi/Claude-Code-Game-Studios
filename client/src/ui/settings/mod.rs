@@ -6,6 +6,7 @@ use shared::protocol::{
 };
 
 use crate::state::{CurrentClientPhase, SessionSettingsView};
+use crate::ui::design_tokens::z_layers;
 
 pub const ACCESSIBILITY_PREFERENCES_STORAGE_KEY: &str =
     "lanes_and_lies.accessibility_preferences.v1";
@@ -558,6 +559,7 @@ pub fn spawn_settings_shell(
             },
             BackgroundColor(Color::srgba(0.02, 0.025, 0.03, 0.70)),
             Visibility::Hidden,
+            z_layers::MODAL,
         ))
         .id();
 

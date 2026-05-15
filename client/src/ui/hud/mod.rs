@@ -19,6 +19,7 @@ use crate::asset_wiring::{
 use crate::card_animations::cancel_tween_anim_in_place;
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
+use crate::ui::design_tokens::z_layers;
 use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
 pub const HUD_DOT_ROWS: usize = 2;
@@ -513,6 +514,7 @@ fn spawn_hud(
                 ..default()
             },
             Visibility::Hidden,
+            z_layers::UI_BASE,
         ))
         .id();
 
@@ -631,6 +633,7 @@ fn spawn_hud(
             BackgroundColor(Color::srgba(0.0, 0.0, 0.0, HUD_DIM_OVERLAY_ALPHA)),
             Visibility::Hidden,
             ChildOf(root),
+            z_layers::UI_OVERLAY,
         ))
         .id();
 

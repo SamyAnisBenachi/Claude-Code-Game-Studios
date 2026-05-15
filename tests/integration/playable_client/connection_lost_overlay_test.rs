@@ -23,6 +23,7 @@ use client::presentation::connection_lost_overlay::{
     CONNECTION_LOST_OVERLAY_Z_INDEX,
 };
 use client::state::{ClientState, CurrentClientPhase};
+use client::ui::design_tokens::z_layers;
 use shared::protocol::RoundPhase;
 
 #[path = "../../test_helpers.rs"]
@@ -221,15 +222,23 @@ fn ac1_overlay_root_carries_marker_component_for_query_targeting() {
 
 #[test]
 fn ac7_overlay_z_index_is_below_result_screen() {
-    // ResultScreenPlugin uses GlobalZIndex(100); the overlay must sit below
-    // so that on GameOver the result screen visually overlays it.
+    // Post Sprint 14 story 002 z-layer migration: ResultScreenPlugin spawns at
+    // the named `MODAL` layer; this overlay spawns at `UI_OVERLAY`. The
+    // overlay must continue to sit below the result screen so that on
+    // GameOver the result screen visually overlays it.
     assert!(
-        CONNECTION_LOST_OVERLAY_Z_INDEX < 100,
-        "Connection-lost overlay z-index must stay below the result screen (AC7)"
+        CONNECTION_LOST_OVERLAY_Z_INDEX < z_layers::MODAL.0,
+        "Connection-lost overlay z-index ({}) must stay below the result \
+         screen MODAL layer ({}) (AC7)",
+        CONNECTION_LOST_OVERLAY_Z_INDEX,
+        z_layers::MODAL.0,
     );
     assert!(
-        CONNECTION_LOST_OVERLAY_Z_INDEX > 0,
-        "Connection-lost overlay z-index must sit above gameplay UI (AC7)"
+        CONNECTION_LOST_OVERLAY_Z_INDEX > z_layers::UI_BASE.0,
+        "Connection-lost overlay z-index ({}) must sit above the UI_BASE \
+         layer ({}) so gameplay UI is occluded (AC7)",
+        CONNECTION_LOST_OVERLAY_Z_INDEX,
+        z_layers::UI_BASE.0,
     );
 }
 

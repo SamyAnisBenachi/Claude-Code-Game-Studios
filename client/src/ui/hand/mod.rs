@@ -24,6 +24,7 @@ use crate::card_animations::{
 };
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
+use crate::ui::design_tokens::z_layers;
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 pub const HAND_FAN_SLOT_COUNT: usize = 10;
@@ -2809,6 +2810,7 @@ pub fn spawn_hand_ui(
             Transform::default(),
             GlobalTransform::default(),
             Visibility::Hidden,
+            z_layers::UI_BASE,
         ))
         .id();
 
@@ -2927,6 +2929,7 @@ pub fn spawn_hand_ui(
             Transform::from_scale(Vec3::splat(HAND_DRAG_SPRITE_SCALE)),
             Visibility::Hidden,
             ChildOf(fan_root),
+            z_layers::UI_OVERLAY,
         ))
         .id();
 
