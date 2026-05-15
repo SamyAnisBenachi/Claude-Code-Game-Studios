@@ -130,11 +130,14 @@ with a centred, responsive composition that:
 
 ## Producer Decision -- Modal Panel vs Full-Viewport Hero
 
-> **Status**: Open. Must be resolved by the producer (with ux-designer
-> + art-director consultation) **before** the implementing prompt
-> enters `/dev-story` on this row. The decision is the same gate
-> recorded as `PROMPT 802 §9 producer-decision-3` and is restated here
-> as a non-derivable input to this story.
+> **Status**: Resolved (Option A -- centred modal panel) per PROMPT 933
+> (2026-05-15). See §"Decision Capture (PROMPT 933, 2026-05-15)" below
+> for the producer + ux-designer + art-director consultation note,
+> chosen Option-A literals, rationale, and cross-reference to PROMPT
+> 802 §9 producer-decision-3 + `docs/ux/global-ui-design-spec.md`. The
+> decision is the same gate recorded as `PROMPT 802 §9 producer-
+> decision-3` and is captured here as a non-derivable input to this
+> story before `/dev-story` opens on this row.
 
 ### Option A -- Centred Modal Panel (analogous to `result_screen.rs`)
 
@@ -175,6 +178,96 @@ The implementing prompt MUST:
   implementing prompt MUST stop and reroute to PROMPT 802 §9 producer-
   decision-3 for re-scope. This story file is not authoritative for
   any layout outside Option A / Option B.
+
+### Decision Capture (PROMPT 933, 2026-05-15)
+
+**Chosen option**: **Option A -- Centred modal panel** (analogous to
+`client/src/presentation/result_screen.rs:488`).
+
+**Consultation note**: producer + ux-designer + art-director
+consultation captured at PROMPT 933 (2026-05-15) by the CCGS producer
+agent (PROMPT 933 paperwork-only producer-authority capture run). The
+ux-designer co-signs the Option-A panel literals below as friend-game-
+tier acceptable values consistent with `docs/ux/global-ui-design-
+spec.md` §3 / §4 / §5 / §8 / §10. The art-director co-signs the no-
+new-background-art-slot disposition (Option A introduces no
+`PAW-TD-006-c` placeholder asset dependency); `PAW-TD-*-a` accept-risk
+across PAW-002..PAW-006 is preserved verbatim and is **not** advanced
+by this capture.
+
+**Option-A literals (friend-game-tier; locked by the producer +
+ux-designer at PROMPT 933 capture; final tuning at `/dev-story` time
+remains within ux-designer discretion provided the §3 / §4 / §5 / §8 /
+§10 invariants below hold)**:
+
+| Aspect | Value | Provenance |
+|---|---|---|
+| Panel `max_width` | `Val::Px(860.0)` | Mirrors `result_screen.rs:488` literal verbatim; the only surface in the PROMPT 802 audit that does layout correctly. |
+| Panel `width` | `Val::Percent(88.0)` | Mirrors `result_screen.rs` literal verbatim. |
+| Panel `max_height` | `Val::Percent(92.0)` | Mirrors `result_screen.rs` literal verbatim. |
+| Panel padding (all sides) | `SPACING_LG` (`24` px) | Per `docs/ux/global-ui-design-spec.md` §10 "Panel chrome" rule for primary modal panels (draft centered modal, result screen). |
+| Inter-child gap (cluster-to-cluster) | `SPACING_MD` (`16` px) | Per `docs/ux/global-ui-design-spec.md` §4 default cluster-to-cluster spacing. |
+| Section separator gap | `SPACING_XL` (`32` px) | Per `docs/ux/global-ui-design-spec.md` §4 — used between status/room-code section, create/join row, class-picker region, and confirm CTA. |
+| Full-viewport parent backdrop | `Color::srgb` of §7 `SURFACE` token at `OVERLAY_SCRIM_ALPHA` (`0.55`) | Per `docs/ux/global-ui-design-spec.md` §10 modal-centering pattern. |
+| `GlobalZIndex` (parent backdrop) | `UI_OVERLAY` (`400`) | Per §3 z-layer ordering — backdrop sits immediately below the modal layer. |
+| `GlobalZIndex` (panel) | `MODAL` (`500`) | Per §3 z-layer ordering — centred modal panels paint on the Modal layer. |
+| Font-size adjustments | **No new size literals**. Lobby children continue to read `typography::BODY` (`15`) for default buttons / labels (room-code chip body, slot labels, "Create" / "Join" / "Confirm class" CTAs), `typography::H3` (`18`) for the status banner and section labels (class label, slot heading), `typography::H2` (`22`) for any panel title, `typography::H1` (`30`) for the room-code chip headline. The PROMPT 802 §3.1 L6 lobby typography-inversion fix shipped by story 003 is preserved verbatim; no further font-size literal is introduced by this capture. | Per `docs/ux/global-ui-design-spec.md` §5 typography hierarchy. |
+
+**Option-B literals**: N/A. Option B was not chosen. No
+`PAW-TD-006-c` placeholder background-art slot is introduced and the
+art-director did not need to take a placeholder-vs-final-art stance on
+a background asset that does not exist. `PAW-TD-*-a` accept-risk
+preserved verbatim.
+
+**Rationale**: Option A minimises new visual-design surface area for a
+friend-game-tier first-impression surface by reusing the only lobby-
+adjacent surface (`result_screen.rs:488`) that the PROMPT 802 audit
+named as doing layout correctly, and it composes cleanly with the
+already-ratified `Modal` z-layer (§3, `GlobalZIndex(500)`) and the
+modal-centering pattern (§10). Option B was rejected because the
+larger first-impression visual identity it offers would require a new
+`PAW-TD-006-c` placeholder background-art slot dependency, an art-
+director coordination loop for a hero-art asset that does not exist
+on `origin/main`, and a larger surface-area diff than the rest of the
+Sprint 14 Tier 1 budget supports. Option A keeps the lobby modal
+surface inside the existing design-token primitives (no new tokens, no
+new asset slot, no new background-art-pipeline coupling) and lets
+story 025 (`S11-UX-LOBBY-CLASS-PICKER`) own the class-portrait
+hierarchy treatment without a hero-art dependency.
+
+**Cross-references**:
+
+- PROMPT 802 §9 producer-decision-3 (modal-panel vs full-viewport
+  hero): RESOLVED -- Option A (centred modal panel) per PROMPT 933,
+  2026-05-15.
+- `docs/ux/global-ui-design-spec.md` §"Spec Adoption Matrix" rank-12
+  row (lobby layout modal -- Option A consumes §3 `Modal` z-layer +
+  §4 spacing tokens + §5 typography hierarchy + §8 centred-modal
+  responsive rules + §10 modal-centering pattern).
+- `docs/ux/global-ui-design-spec.md` §"Ratification scope guard"
+  producer-decision-3 bullet: back-reference flipped to "resolved per
+  story 024 §Decision Capture (PROMPT 933, 2026-05-15) -- Option A
+  (centred modal panel)" by PROMPT 933.
+- `production/sprint-status.yaml` story-024 `blocker:` field: flipped
+  from the producer-decision-3 unresolved wording to "Producer-
+  decision-3 resolved per PROMPT 933 (Option A); ranks 1, 3, 4, 6
+  landed; ready for /story-readiness re-run before /dev-story." by
+  PROMPT 933. Row `status: ready` preserved verbatim; the flip to
+  `done` is reserved for the `/story-done` paperwork after `/dev-
+  story` lands.
+
+**Scope this capture does NOT advance**: public release readiness,
+release-candidate readiness, full game completion, Standard-tier
+accessibility (`QA-COND-0005`), playtest / fun-hypothesis validation
+(`QA-COND-0006`), two-client `GAME_OVER` closure (`S8-QA-001-W1`),
+final-art / asset-production completion (`PAW-TD-*-a`),
+`Polish->Release` gate-check retry (PROMPT 761 `FAIL` preserved),
+stage advance from `Polish` to `Release`, Sprint 14 close-out, or
+underlying drag-runtime bug fix (Sprint 12 story 019 `closed-with-
+conditions / cannot-reproduce` preserved). ADR-002 / ADR-008 /
+ADR-012 / ADR-021 binding preserved -- this capture is paperwork-only
+producer-authority decision capture; no client-side state authority,
+no protocol shape change, no server-side change is introduced.
 
 ---
 

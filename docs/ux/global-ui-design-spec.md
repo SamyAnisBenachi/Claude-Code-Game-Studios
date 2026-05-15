@@ -578,8 +578,11 @@ polish** per §2 Scope Boundaries. It does **not** ratify:
 - Per-element layout for any specific surface (owned by the per-surface
   Tier 1 story).
 - Animation / motion / interaction-state primitives.
-- Producer-decision-3 (lobby layout modal vs full-viewport hero — owned
-  by story 024).
+- Producer-decision-3 (lobby layout modal vs full-viewport hero —
+  resolved per story 024 §"Decision Capture (PROMPT 933, 2026-05-15)"
+  — Option A (centred modal panel); this spec's ratified §3 `Modal`
+  z-layer + §4 spacing + §5 typography + §8 centred-modal responsive
+  rules + §10 modal-centering pattern apply unchanged).
 - Producer-decision-4 (auction lead/loss visual language — owned by
   `S12-UX-AUCTION-LEAD-LOSS-STATE-001`).
 - Producer-decision-5 (Tier 2 cosmetic captures bundling — owned by
