@@ -2,10 +2,10 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S12-UX-LOBBY-LAYOUT-MODAL-001
-> **Status**: Draft -- Sprint 14 candidate (per `docs/ux/ui-clean-pass-roadmap.md` rank 12, Tier 1, Must), NOT activated
+> **Status**: Done (Sprint 14 Must Have; closure source-of-truth `origin/main@c25aba766a371a0540ec41bf5c6d66103d9c712d` = PROMPT 938 `--no-ff` integration merge of PROMPT 937 worker tip `2ad29c90ca292deb737c90c60186111689cdb97f` into prior `origin/main@fc77503515827e61337fd9cb4cbc7ccfd2a4fab3`; flipped `ready -> done` by PROMPT 939 paperwork closure on 2026-05-15)
 > **Layer**: Lobby UI / UX (Client)
 > **Type**: Integration -- net-new lobby root layout (replaces top-left 420px column with a producer-chosen modal-panel or full-viewport hero composition); paired with viewport-invariant test + visual evidence
-> **Sprint**: Sprint 14 candidate (per `docs/ux/ui-clean-pass-roadmap.md` 14-slug Sprint 14+ MVP sequence rank 12; PROMPT 802 §6 Lane C). **NOT** activated by this authoring run.
+> **Sprint**: Sprint 14 Must Have (per `docs/ux/ui-clean-pass-roadmap.md` 14-slug Sprint 14+ MVP sequence rank 12; PROMPT 802 section 6 Lane C). Activated by PROMPT 897; closed by PROMPT 939.
 > **Authored**: 2026-05-14 by PROMPT 880
 > **Authoring source-of-truth**: `origin/main@51e6228` (PROMPT 871 `qa(s13): /story-done S13-TWO-CLIENT-RUNTIME-HARNESS-001`)
 > **Authoring worktree**: `D:\_DEV\claude-code-game-studios-worktrees\s14-lobby-layout-story-authoring`
@@ -371,14 +371,14 @@ All criteria are independently checkable. ACs marked **Producer-gated**
 are only resolvable once the Producer Decision section above is
 recorded.
 
-- [ ] **AC1 -- Producer decision recorded (Producer-gated)**: GIVEN
+- [x] **AC1 -- Producer decision recorded (Producer-gated)**: GIVEN
   the implementing prompt's evidence document, WHEN read at the top,
   THEN it records the chosen layout option (A: centred modal panel, B:
   full-viewport hero) with the producer name + date + ux-designer +
   art-director consultation note. Reroute applies if neither A nor B
   was chosen.
 
-- [ ] **AC2 -- Lobby root composes via flex (not absolute)**: GIVEN
+- [x] **AC2 -- Lobby root composes via flex (not absolute)**: GIVEN
   `client/src/ui/lobby.rs` `spawn_lobby_ui_system` after the
   implementation, WHEN inspected, THEN the lobby root inhabits a full-
   viewport flex container (`Display::Flex`, viewport-anchored width /
@@ -387,7 +387,7 @@ recorded.
   Absolute` on the primary form column. The current top-left
   `Val::Px(24.0)` anchor pattern is removed.
 
-- [ ] **AC3 -- 1920×1080 responsive fit**: GIVEN the lobby UI rendered
+- [x] **AC3 -- 1920×1080 responsive fit**: GIVEN the lobby UI rendered
   at viewport size `1920×1080`, WHEN captured, THEN (a) no sibling
   overlaps another sibling; (b) all text fits inside its parent button
   without truncation, ellipsis insertion, or single-line overflow at
@@ -398,26 +398,26 @@ recorded.
   status / room-code -> create-join -> class picker -> confirm ->
   waiting / slot status.
 
-- [ ] **AC4 -- 1366×768 responsive fit**: GIVEN the lobby UI rendered
+- [x] **AC4 -- 1366×768 responsive fit**: GIVEN the lobby UI rendered
   at viewport size `1366×768`, WHEN captured, THEN (a)-(e) of AC3 hold;
   (f) no clipping of the primary CTA, room-code chip, or class picker;
   (g) Option-A panel scales via `max_width` / `Percent` rules; Option-B
   hero scales without orphaning foreground content off-viewport.
 
-- [ ] **AC5 -- Read order preserved across resize**: GIVEN the lobby
+- [x] **AC5 -- Read order preserved across resize**: GIVEN the lobby
   UI at any viewport in `[1366×768, 1920×1080]`, WHEN resized between
   the two endpoints during a single session, THEN the read order from
   AC3(e) is preserved; no child re-renders below the confirm CTA; no
   z-order flip is observable.
 
-- [ ] **AC6 -- Stable button dimensions across rebuild**: GIVEN repeat
+- [x] **AC6 -- Stable button dimensions across rebuild**: GIVEN repeat
   spawns of the lobby root (e.g. exit-and-re-enter the `ClientState::
   Lobby` state), WHEN button widths and heights are sampled across the
   rebuild, THEN they match the canonical dimensions from paired story
   026 (`S11-UX-LOBBY-BUTTON-HITTARGETS`) within 1 Px tolerance. Paired
   story 026 owns the canonical dimensions; this story consumes them.
 
-- [ ] **AC7 -- Class-picker hierarchy preserved**: GIVEN paired story
+- [x] **AC7 -- Class-picker hierarchy preserved**: GIVEN paired story
   025 (`S11-UX-LOBBY-CLASS-PICKER`) has landed (or lands in the same
   sprint), WHEN this story's repair lands, THEN the class portrait
   row + class button row + class label are composed as a single
@@ -426,7 +426,7 @@ recorded.
   the dependency and either wait or stage the hierarchy with a `TODO`
   reference to story 025.
 
-- [ ] **AC8 -- Viewport-invariant test added**: GIVEN a new or extended
+- [x] **AC8 -- Viewport-invariant test added**: GIVEN a new or extended
   test under `tests/integration/playable_client/` (canonical path
   chosen by the implementing prompt, e.g.
   `lobby_layout_viewport_invariant_test.rs`), WHEN the test asserts
@@ -438,28 +438,28 @@ recorded.
   4; this story may consume that bin if it has landed, or may author a
   standalone test if not.)
 
-- [ ] **AC9 -- No client-side authority added (ADR-002)**: GIVEN the
+- [x] **AC9 -- No client-side authority added (ADR-002)**: GIVEN the
   implementation diff, WHEN reviewed, THEN no client-side mutation of
   class-lock, slot-assignment, or session-ready state is introduced
   outside the existing `S2CClassLocked` / `S2CSlotUpdated` /
   `S2CSessionReady` drain paths. No protocol shape change in
   `shared/src/protocol.rs`. No server-side change.
 
-- [ ] **AC10 -- ux-designer consultation recorded**: GIVEN the
+- [x] **AC10 -- ux-designer consultation recorded**: GIVEN the
   implementation prompt's first ux-designer interaction, WHEN final
   literals (panel max-width, padding, gap, font sizes if changed) are
   locked, THEN the consultation note and chosen literals are recorded
   in the evidence document. Friend-game-tier literals are acceptable;
   Standard-tier accessibility conformance is **not** claimed.
 
-- [ ] **AC11 -- Workspace test pass**: GIVEN
+- [x] **AC11 -- Workspace test pass**: GIVEN
   `cargo test --workspace --tests --no-fail-fast` at the
   implementation commit, WHEN compared to the post-Sprint-13 baseline,
   THEN no new `#[ignore]` markers are introduced; the new
   viewport-invariant test passes; previously-passing tests continue
   to pass.
 
-- [ ] **AC12 -- No `production/` shared-tracker edits, no sprint
+- [x] **AC12 -- No `production/` shared-tracker edits, no sprint
   advance**: GIVEN the implementation commit, WHEN
   `production/sprint-status.yaml`, `production/sprints/sprint-13.md`,
   `production/sprints/sprint-14.md` (if it exists by then),
@@ -469,7 +469,7 @@ recorded.
   except in the `/story-done` paperwork commit (which is a separate
   prompt scope).
 
-- [ ] **AC13 -- Friend-game-scope no-claim restated in evidence**:
+- [x] **AC13 -- Friend-game-scope no-claim restated in evidence**:
   GIVEN the evidence document, WHEN read at the bottom, THEN it
   verbatim restates the friend-game-scope-only disposition and the
   non-claims list from this story's Status / No-Claim Banner above:
@@ -607,6 +607,48 @@ This story does **not** advance:
 
 ---
 
+## Completion Notes
+
+**Completed**: 2026-05-15 (PROMPT 939 `/story-done` paperwork).
+**Criteria**: 13 / 13 accepted for closure against integrated commit
+`c25aba766a371a0540ec41bf5c6d66103d9c712d` and PROMPT 937 / 938
+evidence.
+**Evidence**:
+
+- AC1 / AC10: Producer + ux-designer + art-director Option A decision
+  captured by PROMPT 933 and restated in
+  `production/qa/evidence/sprint-14-lobby-layout-modal-evidence.md`
+  sections 1-2.
+- AC2 / AC3 / AC4 / AC5 / AC8 / AC11:
+  `tests/integration/playable_client/lobby_layout_viewport_invariant_test.rs`
+  landed with 12 tests covering the full-viewport flex root, Option A
+  `860px / 88% / 92%` panel literals, 1366x768 + 1920x1080 analytical
+  fit, confirm CTA last-child read order, section gap invariant, z-layer
+  literals, scrim alpha token, and test-bin filename. PROMPT 937 and PROMPT
+  938 both report the story viewport test 12/12 PASS plus adjacent lobby
+  regression tests PASS. Runtime PNG captures remain deferred as explicitly
+  documented in evidence section 5; closure accepts the integrated
+  node-intent / geometric proof and does not claim live visual screenshots.
+- AC6 / AC7: `LOBBY_BUTTON_HEIGHT = 30.0` and existing button width
+  literals were preserved; class portraits, class buttons, and slot panels
+  remain above the confirm CTA, with story 025 / 026 follow-up ownership
+  preserved.
+- AC9 / AC12: PROMPT 938 forbidden-path review found no implementation diff
+  in `server/`, `shared/`, `production/sprint-status.yaml`,
+  `production/session-state/`, `production/sprints/sprint-14.md`,
+  `production/qa/qa-plan-sprint-14.md`, or `production/stage.txt`.
+- AC13: Evidence section 9 restates friend-game scope and preserves
+  `S8-QA-001-W1` OPEN, `QA-COND-0005` / `QA-COND-0006` accepted-risk,
+  `PAW-TD-*-a` accepted-risk, and PROMPT 761 Polish->Release FAIL.
+
+**Story-done scope**: PROMPT 939 flips only this story file, the
+`S12-UX-LOBBY-LAYOUT-MODAL-001` row in `production/sprint-status.yaml`,
+and the two session-state banners. No code, tests, Cargo manifests,
+Sprint 14 plan, QA plan, stage file, or gate-check artifact is modified by
+the paperwork commit.
+
+---
+
 ## Authoring / Implementation / Closure Trail
 
 - 2026-05-14 -- PROMPT 880 -- Story file authored (Draft) by Sprint 14
@@ -617,3 +659,27 @@ This story does **not** advance:
   smoke, no gate-check, no `cargo` / `trunk` invocation, no Sprint 14
   activation, no claim against `QA-COND-0005` / `QA-COND-0006` /
   `S8-QA-001-W1` / `PAW-TD-*-a` / PROMPT 761 `Polish->Release` retry.
+- 2026-05-15 -- PROMPT 937 -- `/dev-story` worker on branch
+  `work/s14-lobby-layout-modal`, base `origin/main@fc77503`. Worker commit
+  `2ad29c90ca292deb737c90c60186111689cdb97f` landed the Option A lobby
+  modal implementation, new viewport-invariant test bin, test registration,
+  and evidence document. Worker branch pushed; `main` not pushed by the
+  worker. Cargo policy applied; story viewport test 12/12 PASS plus adjacent
+  lobby and Tier 0 viewport tests PASS per worker report.
+- 2026-05-15 -- PROMPT 938 -- Integration merge commit
+  `c25aba766a371a0540ec41bf5c6d66103d9c712d` on `origin/main`, merging
+  PROMPT 937 worker tip `2ad29c90ca292deb737c90c60186111689cdb97f` into
+  prior `origin/main@fc77503515827e61337fd9cb4cbc7ccfd2a4fab3`. Zero
+  conflicts; 4 files changed (+1222 / -169); `cargo fmt`, workspace check,
+  story viewport test 12/12, adjacent lobby tests 23/23, and forbidden-path
+  filter all PASS per integration report.
+- 2026-05-15 -- PROMPT 939 -- `/story-done` paperwork closure on clean
+  worktree `D:/Tmp/ccgs-prompt-939-s14-lobby-layout-modal-storydone` from
+  `origin/main@c25aba766a371a0540ec41bf5c6d66103d9c712d`. Row
+  `S12-UX-LOBBY-LAYOUT-MODAL-001` flipped `ready -> done`; AC1-AC13
+  checkboxes flipped `[ ] -> [x]`; `production/session-state/active.md`
+  and `production/session-state/codex-orchestrator-state.md` banners
+  prepended; `sprint_14_story_done:` entry appended. Sprint 14 remains
+  active; stage remains Polish; PROMPT 761 FAIL, `S8-QA-001-W1` OPEN,
+  `QA-COND-0005` / `QA-COND-0006` accepted-risk, and `PAW-TD-*-a`
+  accepted-risk all preserved.

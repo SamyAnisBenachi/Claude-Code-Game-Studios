@@ -4,6 +4,16 @@
 >
 > ---
 >
+> **CURRENT STATE -- last updated 2026-05-15 (PROMPT 939 story-done closure after PROMPT 938 lobby modal integration)**
+>
+> - **Committed source-of-truth at closure base**: `origin/main@c25aba766a371a0540ec41bf5c6d66103d9c712d` (PROMPT 938 `--no-ff` integration merge of PROMPT 937 worker tip `2ad29c90ca292deb737c90c60186111689cdb97f` into prior `origin/main@fc77503515827e61337fd9cb4cbc7ccfd2a4fab3`). PROMPT 939 is the serialized shared-status writer paperwork closure on top of that commit.
+> - **Story closed**: `S12-UX-LOBBY-LAYOUT-MODAL-001` / playable-client story 024 / Sprint 14 Must Have rank 12 flipped `ready -> done`. AC1-AC13 accepted against PROMPT 937 worker evidence + PROMPT 938 integration verification. Runtime PNG captures for 1366x768 and 1920x1080 remain deferred per evidence section 5 and are not claimed by PROMPT 939.
+> - **Sprint 14 progress**: 8 of 9 Must Have done; 0 of 4 Should Have done; 0 of 4 Nice to Have done; total 8 of 17 rows closed. Remaining Must Have row is `S11-UX-HUD-TOP-STRIP-LAYOUT`.
+> - **Disposition**: Sprint 14 remains active; stage remains Polish; PROMPT 761 Polish->Release FAIL preserved with no retry. Non-claims preserved: `S8-QA-001-W1` OPEN, `QA-COND-0005/0006` accepted-risk, `PAW-TD-*-a` accepted-risk, no release/RC/full-game/broad-accessibility/playtest/final-art/Sprint14-closeout claim.
+> - **Paperwork-only scope**: changed only `production/epics/playable-client/story-024-lobby-layout-modal.md`, `production/sprint-status.yaml`, `production/session-state/active.md`, and `production/session-state/codex-orchestrator-state.md`. No `client/`, `server/`, `shared/`, `tests/`, Cargo files, `production/sprints/sprint-14.md`, `production/qa/qa-plan-sprint-14.md`, `production/stage.txt`, or gate-check artifact changed.
+>
+> ---
+>
 > **CURRENT STATE -- last updated 2026-05-15 (PROMPT 936 readiness refresh after PROMPT 935 producer-decision-3 integration)**
 >
 > - **Committed source-of-truth**: `origin/main@39cc97f319ac15f1b3b14278db82947e6378bfe0` (PROMPT 935 `--no-ff` integration of PROMPT 933 producer-decision-3 paperwork capture `fd3862d0218f93b80ac5fadb46d8ff724a6b4070` on top of PROMPT 931 story-done tip `601ddca08437b36bc5c2217363eafb94d7398fdb`).
