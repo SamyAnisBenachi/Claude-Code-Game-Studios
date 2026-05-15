@@ -202,9 +202,15 @@ fn spawn_connection_lost_overlay_system(mut commands: Commands) {
                 padding: UiRect::all(Val::Px(24.0)),
                 ..default()
             },
-            // Backdrop alpha is intentionally lower than the result screen's
-            // 0.46 backdrop so the gameplay UI (hand, HUD, board) remains
-            // visible underneath while the overlay is shown (AC7).
+            // Backdrop alpha is intentionally lower than the canonical
+            // `overlays::OVERLAY_SCRIM_ALPHA` (0.55) used by the settlement
+            // / result-screen modal scrims so the gameplay UI (hand, HUD,
+            // board) remains visible underneath while the overlay is
+            // shown (AC7). This 0.32 value is preserved as a documented
+            // AC6 exclusion by Sprint 14 story 006
+            // (`S12-TD-UI-OVERLAY-ALPHA-TOKEN-001`); see
+            // `client/src/ui/design_tokens/overlays.rs` module doc and
+            // `production/qa/evidence/sprint-14-overlay-alpha-token/`.
             BackgroundColor(Color::srgba(0.02, 0.025, 0.035, 0.32)),
             Visibility::Hidden,
             z_layers::UI_OVERLAY,

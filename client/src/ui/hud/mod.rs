@@ -19,7 +19,7 @@ use crate::asset_wiring::{
 use crate::card_animations::cancel_tween_anim_in_place;
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
-use crate::ui::design_tokens::{spacing, strips, typography, z_layers};
+use crate::ui::design_tokens::{overlays, spacing, strips, typography, z_layers};
 use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
 pub const HUD_DOT_ROWS: usize = 2;
@@ -31,7 +31,13 @@ pub const HUD_ENTITY_COUNT: usize = 22;
 /// Alpha applied to the RESOLUTION dim overlay's BackgroundColor — visibly
 /// dims the underlying HUD without obscuring gold/mana/phase readouts.
 /// Recorded in production/qa/evidence/sprint-10-hud-chrome-evidence.md.
-pub const HUD_DIM_OVERLAY_ALPHA: f32 = 0.45;
+///
+/// Sprint 14 story 006 (`S12-TD-UI-OVERLAY-ALPHA-TOKEN-001`) routes this
+/// constant through the canonical [`overlays::OVERLAY_DIM_ALPHA`] token
+/// so the value is owned by `client/src/ui/design_tokens/overlays.rs`.
+/// The [`HUD_DIM_OVERLAY_ALPHA`] name is preserved as a grep-stable
+/// alias for consumer code; the *value* is the design-token module's.
+pub const HUD_DIM_OVERLAY_ALPHA: f32 = overlays::OVERLAY_DIM_ALPHA;
 /// Max pixel width of the HUD phase timer bar fill (matches spawn dimensions).
 /// `sync_hud_timer_bar_system` scales `Node.width` from 0 up to this value
 /// based on `PhaseTimerState` remaining ratio.

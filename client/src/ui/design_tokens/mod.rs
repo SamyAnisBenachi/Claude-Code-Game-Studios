@@ -20,6 +20,9 @@
 //!   (`HeaderBar` / `LaneBar` / `HandBar` / `FooterBar`) with
 //!   deterministic pixel heights and documented flex axes
 //!   (Sprint 14 story 004 / S11-TD-UI-FLEX-STRIPS).
+//! - [`overlays`] — named overlay alpha tokens (Dim / Scrim / Toast)
+//!   for translucent UI overlays (Sprint 14 story 006 /
+//!   S12-TD-UI-OVERLAY-ALPHA-TOKEN-001).
 //!
 //! ## Scope discipline
 //!
@@ -28,6 +31,7 @@
 //! validation (`QA-COND-0006`), or final-art / asset-production
 //! (`PAW-TD-*-a`). Friend-game scope boundary preserved.
 
+pub mod overlays;
 pub mod spacing;
 pub mod strips;
 pub mod typography;
