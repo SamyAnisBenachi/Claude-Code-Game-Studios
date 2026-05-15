@@ -4,6 +4,18 @@
 >
 > ---
 >
+> **CURRENT STATE -- last updated 2026-05-15 (PROMPT 936 readiness refresh after PROMPT 935 producer-decision-3 integration)**
+>
+> - **Committed source-of-truth**: `origin/main@39cc97f319ac15f1b3b14278db82947e6378bfe0` (PROMPT 935 `--no-ff` integration of PROMPT 933 producer-decision-3 paperwork capture `fd3862d0218f93b80ac5fadb46d8ff724a6b4070` on top of PROMPT 931 story-done tip `601ddca08437b36bc5c2217363eafb94d7398fdb`).
+> - **PROMPT 935 result**: `S12-UX-LOBBY-LAYOUT-MODAL-001` producer-decision-3 is resolved as Option A, centred modal panel. The canonical capture lives in story 024 and the global UI design spec; story-024 sprint-status row blocker now points to a readiness rerun, not an unresolved decision. No code, session-state, sprint plan, QA plan, Cargo, or release/gate surface was touched by PROMPT 935.
+> - **PROMPT 936 result**: read-only `/story-readiness` rerun for `production/epics/playable-client/story-024-lobby-layout-modal.md` returned READY against `origin/main@39cc97f`; local report `reports/PROMPT-936-S14-LOBBY-LAYOUT-MODAL-READINESS-RERUN.md` is gitignored and not committed.
+> - **HUD top strip lane**: PROMPT 932 readiness returned READY for `S11-UX-HUD-TOP-STRIP-LAYOUT`; PROMPT 934 `/dev-story` was launched by orchestration and is awaiting report at this state snapshot.
+> - **Sprint 14 progress**: 7 of 9 Must Have done; 0 of 4 Should Have done; 0 of 4 Nice to Have done; total 7 of 17 rows closed. Remaining Must Have implementation lanes are HUD top strip (PROMPT 934 running/awaiting report) and lobby layout modal (READY as of PROMPT 936; next launchable `/dev-story`).
+> - **Disposition**: Sprint 14 remains active; stage remains Polish; PROMPT 761 Polish->Release FAIL preserved, no retry. Non-claims preserved: `S8-QA-001-W1` OPEN, `QA-COND-0005/0006` accepted-risk, `PAW-TD-*-a` accepted-risk, no release/RC/full-game/broad-accessibility/playtest/final-art/Sprint14-closeout claim.
+> - **Next launchable**: PROMPT 937 or next free slot for story-024 lobby layout modal `/dev-story`, file-disjoint from HUD top strip. Keep `/story-done`, sprint-status, active.md, and codex-orchestrator-state.md serialized.
+>
+> ---
+>
 > **📍 CURRENT STATE — last updated 2026-05-15 (PROMPT 931 — Sprint 14 Auction Featured Card `/story-done` Paperwork; seventh `/story-done` of Sprint 14 after PROMPT 922 global-ui-design-spec + PROMPT 921 overlay-alpha-token + PROMPT 919 flex-strips + PROMPT 903 z-layers reconcile + PROMPT 908 font-constants + PROMPT 909 viewport-tests preserved verbatim)**
 >
 > - **Source-of-truth at closure**: `origin/main@b8285870df7612d24fe6a7d06643aa699650ca5e` (PROMPT 930 `--no-ff` integration merge of PROMPT 928 worker tip `1ddc3722538c5b9689c2411b4185f9e516951041` into prior `origin/main@06d3cdcc61da072f839873171de49c449ef4fad1` PROMPT 922 `/story-done` global-ui-design-spec tip; zero conflicts; 5 files / +995 / -11; PROMPT 928 worker reachable as merge's second-parent). Worktree: `D:/_DEV/wt/ccgs-prompt-931-storydone` (fresh detached worktree from `origin/main@b828587` because root checkout was behind origin/main with unrelated dirt — `M .claude/settings.json` + staged-add `_run_build_server.bat` + `Dtmpsprint-status-origin.yaml` + `Dtmpworkspace-test-output.txt` + `production/session-state/autonomous-monitor-task.md` + `tools/gcs-orchestrator/docs/ARCHITECTURE.md` untracked; root-checkout dirt NOT touched by PROMPT 931; pattern matches PROMPT 884 / 885 / 888 / 891 / 894 / 897 / 898 / 903 / 908 / 909 / 919 / 921 / 922 precedent).
