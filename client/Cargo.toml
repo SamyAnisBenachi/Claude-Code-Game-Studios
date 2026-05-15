@@ -304,6 +304,16 @@ path = "../tests/integration/ui_clean_pass/z_layers_test.rs"
 name = "ui_clean_pass_typography_test"
 path = "../tests/integration/ui_clean_pass/typography_test.rs"
 
+# S11-TD-UI-FLEX-STRIPS (Sprint 14 story 004): flex strip composition
+# primitive contract (AC1), spacing-scale invariants (AC2), HUD top /
+# bottom strip migration spot-checks (AC3, AC4), hand UI HandBar wrap
+# spot-check (AC5), deterministic per-viewport pixel heights (AC6),
+# `_GAP_PX` grep-guard (AC7), and runnable strip primitive unit-style
+# assertions (AC8).
+[[test]]
+name = "ui_clean_pass_strips_test"
+path = "../tests/integration/ui_clean_pass/strips_test.rs"
+
 [[test]]
 name = "accessibility_settings_preferences_test"
 path = "../tests/unit/accessibility_settings/preferences_test.rs"

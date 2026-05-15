@@ -24,7 +24,7 @@ use crate::card_animations::{
 };
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
-use crate::ui::design_tokens::z_layers;
+use crate::ui::design_tokens::{strips, z_layers};
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 pub const HAND_FAN_SLOT_COUNT: usize = 10;
@@ -35,10 +35,16 @@ pub const HAND_FAN_SLOT_COUNT: usize = 10;
 pub const HAND_FAN_STRIP_HEIGHT_PX: f32 = 260.0;
 pub const DRAFT_INITIAL_GRID_SLOT_COUNT: usize = 9;
 pub const RESERVE_STRIP_ENTITY_COUNT: usize = 4;
+// Sprint 14 story 004 (S11-TD-UI-FLEX-STRIPS): the `+ 1` accounts for
+// the canonical `HandBar` strip primitive spawned by `spawn_hand_ui` as
+// the viewport-edge-anchored parent of `HandFanRoot`. The strip is
+// tagged with `HandUiEntity` so it is despawned with the hand UI tree
+// on session exit.
 pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT
     + DRAFT_INITIAL_GRID_SLOT_COUNT
     + 8
-    + HAND_FAN_SLOT_COUNT * RESERVE_STRIP_ENTITY_COUNT;
+    + HAND_FAN_SLOT_COUNT * RESERVE_STRIP_ENTITY_COUNT
+    + 1;
 const HAND_CARD_DISPLAY_WIDTH_PX: f32 = 96.0;
 const HAND_CARD_DISPLAY_HEIGHT_PX: f32 = 136.0;
 const HAND_DRAFT_GRID_CARD_WIDTH_PX: f32 = 120.0;
@@ -714,6 +720,11 @@ pub struct ReserveStripValueText(pub u8);
 
 #[derive(Resource, Debug, Clone, Copy)]
 pub struct HandUiEntities {
+    /// Sprint 14 story 004 (S11-TD-UI-FLEX-STRIPS): canonical
+    /// `strips::HandBar` primitive — viewport-edge-anchored 180 px
+    /// flex container that wraps `fan_root`. Owns the despawn root
+    /// for the hand-UI entity tree on session exit.
+    pub hand_bar: Entity,
     pub fan_root: Entity,
     pub fan_slots: [Entity; HAND_FAN_SLOT_COUNT],
     pub grid_slots: [Entity; DRAFT_INITIAL_GRID_SLOT_COUNT],
@@ -2793,6 +2804,29 @@ pub fn spawn_hand_ui(
         return;
     };
 
+    // Sprint 14 story 004 (S11-TD-UI-FLEX-STRIPS) — canonical HandBar
+    // strip primitive (180 px footprint at viewport bottom edge) wraps
+    // the existing `HandFanRoot` (260 px local height). The strip is
+    // the viewport-edge-anchored layout box that the responsive matrix
+    // invariant (story 005 deterministic strip height) reads against;
+    // `HandFanRoot` retains its `f190cc7` chrome contract verbatim and
+    // its 260 px height so the existing fan layout — 7 chrome children
+    // at 100×100% / 20×20% / 15×15% — is preserved unchanged. The fan
+    // extends 80 px above the HandBar footprint via `overflow: visible`
+    // on the strip parent (set by `strips::hand_bar_node()`). See
+    // `docs/ux/global-ui-design-spec.md` §9 "HandBar vs.
+    // HAND_FAN_STRIP_HEIGHT_PX reconciliation".
+    let hand_bar = commands
+        .spawn((
+            Name::new("Hand UI HandBar"),
+            HandUiEntity,
+            strips::HandBar,
+            strips::hand_bar_node(),
+            Visibility::Inherited,
+            z_layers::UI_BASE,
+        ))
+        .id();
+
     let fan_root = commands
         .spawn((
             Name::new("Hand UI Fan Root"),
@@ -2810,7 +2844,7 @@ pub fn spawn_hand_ui(
             Transform::default(),
             GlobalTransform::default(),
             Visibility::Hidden,
-            z_layers::UI_BASE,
+            ChildOf(hand_bar),
         ))
         .id();
 
@@ -3009,6 +3043,7 @@ pub fn spawn_hand_ui(
         .id();
 
     commands.insert_resource(HandUiEntities {
+        hand_bar,
         fan_root,
         fan_slots,
         grid_slots,
@@ -3095,7 +3130,13 @@ fn despawn_hand_ui(mut commands: Commands, entities: Option<Res<HandUiEntities>>
         return;
     };
 
-    commands.entity(entities.fan_root).despawn();
+    // Sprint 14 story 004: despawn `hand_bar` (the canonical `HandBar`
+    // strip primitive at the new top of the hand-UI tree) instead of
+    // `fan_root`. `fan_root` is a child of `hand_bar` and is despawned
+    // recursively with its parent, so this preserves the previous
+    // despawn behaviour while also reclaiming the strip primitive
+    // entity (PROMPT 915).
+    commands.entity(entities.hand_bar).despawn();
     commands.remove_resource::<HandUiEntities>();
 }
 
