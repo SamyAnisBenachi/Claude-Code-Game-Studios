@@ -17,7 +17,7 @@ use crate::state::{
     apply_handshake_message, ClassLockedDedupeKey, ClientIdempotencyState, ClientSessionIdentity,
     ClientState,
 };
-use crate::ui::design_tokens::z_layers;
+use crate::ui::design_tokens::{typography, z_layers};
 
 pub struct LobbyUiPlugin;
 
@@ -897,7 +897,7 @@ fn spawn_lobby_ui_system(
             parent.spawn((
                 LobbyStatusText,
                 Text::new(lobby_status_copy(&lobby, &input)),
-                lobby_text_font(18.0),
+                lobby_text_font(typography::H3),
                 TextColor(Color::srgb(0.92, 0.95, 0.98)),
             ));
 
@@ -911,7 +911,7 @@ fn spawn_lobby_ui_system(
                     &lobby,
                     &input,
                 )),
-                lobby_text_font(15.0),
+                lobby_text_font(typography::BODY),
                 TextColor(Color::srgb(0.90, 0.96, 1.0)),
                 lobby_button_node(Val::Percent(100.0)),
                 BackgroundColor(Color::srgba(0.11, 0.15, 0.19, 0.95)),
@@ -925,7 +925,7 @@ fn spawn_lobby_ui_system(
                     Button,
                     Interaction::None,
                     Text::new(lobby_dynamic_copy(LobbyDynamicText::Create, &lobby, &input)),
-                    lobby_text_font(14.0),
+                    lobby_text_font(typography::BODY),
                     TextColor(Color::srgb(0.98, 0.93, 0.72)),
                     lobby_button_node(Val::Px(128.0)),
                     BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
@@ -937,7 +937,7 @@ fn spawn_lobby_ui_system(
                     Button,
                     Interaction::None,
                     Text::new(lobby_dynamic_copy(LobbyDynamicText::Join, &lobby, &input)),
-                    lobby_text_font(14.0),
+                    lobby_text_font(typography::BODY),
                     TextColor(Color::srgb(0.82, 0.95, 1.0)),
                     lobby_button_node(Val::Px(128.0)),
                     BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
@@ -945,7 +945,14 @@ fn spawn_lobby_ui_system(
                 ));
             });
 
-            parent.spawn((Text::new("Requested slot"), lobby_text_font(13.0)));
+            // Sprint 14 story 003 AC6: lobby labels are at least as
+            // large as the data they describe; previously 13 px (Caption)
+            // versus 15 px room code (Body) — the PROMPT 802 §3.1 L6
+            // inversion. Now routed through typography::BODY (15 px).
+            parent.spawn((
+                Text::new("Requested slot"),
+                lobby_text_font(typography::BODY),
+            ));
             parent.spawn((lobby_row_node(),)).with_children(|row| {
                 for slot in 0..=3 {
                     row.spawn((
@@ -958,7 +965,7 @@ fn spawn_lobby_ui_system(
                             &lobby,
                             &input,
                         )),
-                        lobby_text_font(13.0),
+                        lobby_text_font(typography::BODY),
                         TextColor(Color::srgb(0.92, 0.95, 0.98)),
                         lobby_button_node(Val::Px(72.0)),
                         BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
@@ -967,7 +974,7 @@ fn spawn_lobby_ui_system(
                 }
             });
 
-            parent.spawn((Text::new("Class"), lobby_text_font(13.0)));
+            parent.spawn((Text::new("Class"), lobby_text_font(typography::BODY)));
             parent.spawn((lobby_wrap_row_node(),)).with_children(|row| {
                 for class_id in lobby_class_options() {
                     row.spawn((
@@ -980,7 +987,7 @@ fn spawn_lobby_ui_system(
                             &lobby,
                             &input,
                         )),
-                        lobby_text_font(13.0),
+                        lobby_text_font(typography::BODY),
                         TextColor(Color::srgb(0.92, 0.95, 0.98)),
                         lobby_button_node(Val::Px(92.0)),
                         BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
@@ -999,7 +1006,7 @@ fn spawn_lobby_ui_system(
                     &lobby,
                     &input,
                 )),
-                lobby_text_font(14.0),
+                lobby_text_font(typography::BODY),
                 TextColor(Color::srgb(0.98, 0.93, 0.72)),
                 lobby_button_node(Val::Percent(100.0)),
                 BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
@@ -1068,7 +1075,7 @@ fn spawn_lobby_ui_system(
                     let room_code = lobby.room_code.as_deref().unwrap_or("--------").to_string();
                     chip.spawn((
                         Text::new(room_code),
-                        lobby_text_font(14.0),
+                        lobby_text_font(typography::BODY),
                         TextColor(Color::srgb(0.92, 0.95, 0.98)),
                     ));
                 });

@@ -23,7 +23,7 @@ use lightyear::prelude::{Connected, Disconnected};
 use shared::protocol::RoundPhase;
 
 use crate::state::{ClientState, CurrentClientPhase};
-use crate::ui::design_tokens::z_layers;
+use crate::ui::design_tokens::{typography, z_layers};
 
 /// Z-layer for this overlay. Resolved from the canonical
 /// [`UI_OVERLAY`](crate::ui::design_tokens::z_layers::UI_OVERLAY) constant so
@@ -240,7 +240,7 @@ fn spawn_connection_lost_overlay_system(mut commands: Commands) {
             ChildOf(panel),
             Text::new("Connection Lost"),
             TextFont {
-                font_size: 30.0,
+                font_size: typography::H1,
                 ..default()
             },
             TextColor(Color::srgb(0.99, 0.96, 0.84)),
@@ -254,7 +254,7 @@ fn spawn_connection_lost_overlay_system(mut commands: Commands) {
             ChildOf(panel),
             Text::new("Reconnecting..."),
             TextFont {
-                font_size: 18.0,
+                font_size: typography::H3,
                 ..default()
             },
             TextColor(Color::srgb(0.92, 0.90, 0.82)),

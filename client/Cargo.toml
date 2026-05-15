@@ -296,6 +296,14 @@ path = "../tests/integration/playable_client/connection_lost_overlay_test.rs"
 name = "ui_clean_pass_z_layers_test"
 path = "../tests/integration/ui_clean_pass/z_layers_test.rs"
 
+# S11-TD-UI-FONT-CONSTANTS (Sprint 14 story 003): typography scale
+# design-token module grep-guard, HUD constant subsumption checks, result
+# screen / lobby migration spot-checks, and lobby hierarchy inversion
+# regression assertion (AC3, AC4, AC5, AC6, AC7, AC8).
+[[test]]
+name = "ui_clean_pass_typography_test"
+path = "../tests/integration/ui_clean_pass/typography_test.rs"
+
 [[test]]
 name = "accessibility_settings_preferences_test"
 path = "../tests/unit/accessibility_settings/preferences_test.rs"
