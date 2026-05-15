@@ -253,13 +253,20 @@ fn ac4_hud_module_spawns_footer_bar_primitive() {
 }
 
 #[test]
-fn ac4_hud_figurine_anchors_to_footer_bar_and_spacing_tokens() {
+fn ac4_hud_figurine_composes_through_bottom_strip() {
     let text = read_client_source("ui/hud/mod.rs");
     assert!(
-        text.contains("strips::FOOTER_BAR_HEIGHT_PX + spacing::SPACING_XL"),
-        "AC4: HUD figurine bottom offset must recompose via \
-         `strips::FOOTER_BAR_HEIGHT_PX + spacing::SPACING_XL` \
-         (replaces the previous `hud_margin + 60.0` magic offset)"
+        text.contains("HudBottomStrip") && text.contains("ChildOf(bottom_strip)"),
+        "AC4: HUD figurine must compose through the `HudBottomStrip` parent"
+    );
+    assert!(
+        text.contains("hud_bottom_strip_node(*config)")
+            && text.contains("strips::footer_bar_node()"),
+        "AC4: `HudBottomStrip` must still consume the canonical FooterBar node"
+    );
+    assert!(
+        !text.contains("strips::FOOTER_BAR_HEIGHT_PX + spacing::SPACING_XL"),
+        "AC4: HUD figurine should no longer use a root-level bottom offset"
     );
 }
 
