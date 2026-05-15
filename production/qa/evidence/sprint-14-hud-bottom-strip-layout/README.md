@@ -6,7 +6,7 @@ Worker branch: `work/s14-hud-bottom-strip`
 
 Source base: `origin/main@72438318f5065c70003ab5ae6fa586092a46524b`
 
-Implementation commit: `<pending worker commit>`
+Implementation commit: `1ad7296af94c86de32949556479a2faf5c082ea2`
 
 ## Acceptance Evidence
 
