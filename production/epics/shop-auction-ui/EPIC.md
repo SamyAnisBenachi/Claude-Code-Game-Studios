@@ -3,8 +3,8 @@
 > **Layer**: Presentation
 > **GDD**: design/gdd/shop-auction-ui.md
 > **Architecture Module**: `client/src/ui/shop_auction/` - `ShopAuctionUiPlugin` (sub-plugin #5 inside `PresentationPlugin`)
-> **Status**: Ready - core story set drafted for S5-21; Sprint 6 accessibility remediation stories added for A11Y-ST-12, A11Y-ST-18, and A11Y-ST-02
-> **Stories**: 12 story docs present - 8 Complete, 3 Ready, 1 Blocked by UX evidence/layout gate
+> **Status**: Ready - core story set drafted for S5-21; Sprint 6 accessibility remediation stories added for A11Y-ST-12, A11Y-ST-18, and A11Y-ST-02; Sprint 14+ UI Clean-Pass layout candidates 015 / 016 / 017 / 018 authored as Draft (NOT activated)
+> **Stories**: 16 story docs listed in this index - 8 Complete, 3 Ready, 1 Blocked by UX evidence/layout gate, 4 Draft (Sprint 14+ UI Clean-Pass layout candidates 015 / 016 / 017 / 018; NOT activated by their authoring; depend on the UI Clean-Pass Roadmap Tier 0 foundational stories landing first)
 
 ## Overview
 
@@ -104,8 +104,45 @@ This epic is complete when:
 | 011 | [Auction Bid Target Size and Focus Evidence](story-011-auction-bid-target-size-and-focus-evidence.md) | UI | Complete | TR-SAU-002, TR-SAU-005, TR-SAU-006 | ADR-013, ADR-019, ADR-021 |
 | 012 | [Draft Initial Clear Objective Overlay](story-012-draft-initial-clear-objective-overlay.md) | UI | Complete | TR-SAU-006, A11Y-ST-18 | ADR-015, ADR-021 |
 | 013 | [Card Text, Stat, and Keyword Accessibility](story-013-card-text-stat-keyword-accessibility.md) | UI | Ready | TR-CDP-010, TR-SAU-003, TR-SAU-004, TR-SAU-006, A11Y-ST-02 | ADR-002, ADR-013, ADR-015, ADR-019, ADR-021 |
+| 015 | [Draft Initial Grid Centered Modal Layout](story-015-draft-grid-centered-modal.md) | UI | Draft | TR-SAU-006 | ADR-015, ADR-021 |
+| 016 | [Auction Featured Card Visual Hierarchy](story-016-auction-featured-card.md) | UI | Draft | TR-SAU-002, TR-SAU-006 | ADR-013, ADR-021 |
+| 017 | [Auction Free-Gold Counters Layout and Readability](story-017-auction-free-gold-counters.md) | UI | Draft | TR-SAU-001, TR-SAU-006 | ADR-013, ADR-019, ADR-021 |
+| 018 | [Auction Featured Card Leading / Losing State Visual](story-018-auction-lead-loss-state.md) | UI | Draft | TR-SAU-005, TR-SAU-006 | ADR-013, ADR-021 |
 
-**Story counts**: 1 Logic, 3 Integration, 7 UI, 1 Visual/Feel.
+**Story counts**: 1 Logic, 3 Integration, 11 UI, 1 Visual/Feel.
+
+## Sprint 14+ UI Clean-Pass Layout Candidates (NOT activated)
+
+Stories 015 / 016 / 017 / 018 are Sprint 14+ candidates authored from the
+[UI Clean-Pass Roadmap](../../../docs/ux/ui-clean-pass-roadmap.md)
+and the
+[PROMPT 802 Expert UI Layout Audit](../../../reports/PROMPT-802-Expert-UI-Layout-Audit-And-Repair-Roadmap.md).
+They are **paperwork only**. Authoring them does **not**:
+
+- activate Sprint 14
+- pull these rows into any active sprint
+- invoke `/dev-story`, `/story-readiness`, `/story-done`, `/smoke-check`,
+  `/team-qa`, `/gate-check`, `/release-check`, or `/qa-plan`
+- advance stage (Polish remains)
+- retry the PROMPT 761 Polish->Release gate-check FAIL
+- claim final-art / asset-production completion
+  (`PAW-TD-002-a` / `PAW-TD-003-a` accept-risk preserved)
+- claim Standard-tier accessibility completion (`QA-COND-0005`)
+- claim playtest / fun-hypothesis validation (`QA-COND-0006`)
+- close `S8-QA-001-W1` (two-client GAME_OVER closure)
+
+Each of the four stories is **scoped to layout / composition /
+typography / readability** for the friend-game product showcase. Each
+depends on the UI Clean-Pass Roadmap Tier 0 foundational stories
+(`S11-TD-UI-ZINDEX-LAYERS`, `S11-TD-UI-FONT-CONSTANTS`,
+`S11-TD-UI-FLEX-STRIPS`, `S11-TD-UI-VIEWPORT-INVARIANT-TESTS`,
+`S12-UX-GLOBAL-UI-DESIGN-SPEC-001`) landing first. Each story carries
+a no-claim banner preserving the accept-risk dispositions named above.
+
+Story 018 additionally requires PROMPT 802 §9 producer-decision-4
+(leading / losing visual language: border vs color pulse vs leader
+badge) to be resolved on the Sprint 14 activation artifact before
+`/dev-story`.
 
 ## Sprint 6 Candidate Order
 
