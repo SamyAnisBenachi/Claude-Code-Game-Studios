@@ -11,7 +11,7 @@ use crate::state::{
     ClientIdempotencyState, ClientSessionIdentity, ClientState, CurrentClientPhase,
     GameOverDedupeKey,
 };
-use crate::ui::design_tokens::z_layers;
+use crate::ui::design_tokens::{typography, z_layers};
 use crate::ui::settings::AccessibilityPreferences;
 
 const OBJECTIVE_LANES: usize = 5;
@@ -547,7 +547,7 @@ fn spawn_result_screen_system(
         &mut commands,
         panel,
         "RESULT PENDING",
-        36.0,
+        typography::H1,
         Color::srgb(0.96, 0.97, 0.99),
         Some(ResultScreenHeadline),
     );
@@ -555,7 +555,7 @@ fn spawn_result_screen_system(
         &mut commands,
         panel,
         "Result data is unavailable. No winner or reason was declared.",
-        18.0,
+        typography::H3,
         Color::srgb(0.82, 0.86, 0.9),
         Some(ResultScreenCause),
     );
@@ -564,7 +564,7 @@ fn spawn_result_screen_system(
         &mut commands,
         panel,
         "Round Unknown | Resources Unknown | Objectives Unknown",
-        15.0,
+        typography::BODY,
         Color::srgb(0.74, 0.79, 0.84),
         Some(ResultScreenSummaryText),
     );
@@ -652,7 +652,7 @@ fn spawn_result_screen_system(
             BorderColor::all(IDLE_BORDER),
             Text::new("Return to Lobby"),
             TextFont {
-                font_size: 17.0,
+                font_size: typography::H3,
                 ..default()
             },
             TextColor(Color::srgb(0.96, 0.97, 0.99)),
@@ -976,7 +976,7 @@ fn spawn_objective_column(commands: &mut Commands, parent: Entity, title: &str) 
         commands,
         column,
         title,
-        16.0,
+        typography::BODY,
         Color::srgb(0.91, 0.93, 0.96),
         None::<ResultScreenSummaryText>,
     );
@@ -996,7 +996,7 @@ fn spawn_objective_row<M: Component>(
             marker,
             Text::new(value),
             TextFont {
-                font_size: 14.0,
+                font_size: typography::CAPTION,
                 ..default()
             },
             TextColor(Color::srgb(0.78, 0.83, 0.87)),

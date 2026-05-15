@@ -19,7 +19,7 @@ use crate::asset_wiring::{
 use crate::card_animations::cancel_tween_anim_in_place;
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
-use crate::ui::design_tokens::z_layers;
+use crate::ui::design_tokens::{typography, z_layers};
 use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
 pub const HUD_DOT_ROWS: usize = 2;
@@ -40,11 +40,36 @@ pub const CURRENT_MANA_BAR_WIDTH_PX: f32 = 104.0;
 pub const CURRENT_MANA_BAR_HEIGHT_PX: f32 = 28.0;
 pub const RESERVE_MANA_DIAMOND_SIZE_PX: f32 = 74.0;
 pub const RESERVE_MANA_DIAMOND_ROTATION_DEGREES: f32 = 45.0;
+/// Accessibility floor for HUD secondary resource text (phase label,
+/// round counter, current mana, reserve mana). Held intentionally
+/// independent of the [`typography`] scale because the integration
+/// test at `tests/integration/hud/text_size_contrast_accessibility_test.rs`
+/// asserts the rendered font ≥ this floor — it is a regression *floor*,
+/// not a typography token. Sprint 14 story 003 leaves this constant
+/// unchanged.
 pub const HUD_RESOURCE_TEXT_MIN_SIZE_PX: f32 = 20.0;
+/// Accessibility floor for HUD primary gold readout. Same role as
+/// [`HUD_RESOURCE_TEXT_MIN_SIZE_PX`] but for the gold readout; kept
+/// independent of the typography scale for the same reason.
 pub const HUD_GOLD_TEXT_MIN_SIZE_PX: f32 = 40.0;
-pub const HUD_GOLD_FONT_SIZE_PX: f32 = HUD_GOLD_TEXT_MIN_SIZE_PX;
-pub const HUD_RESERVED_GOLD_FONT_SIZE_PX: f32 = 26.0;
-pub const HUD_SECONDARY_FONT_SIZE_PX: f32 = HUD_RESOURCE_TEXT_MIN_SIZE_PX;
+/// HUD primary gold readout font size. Sprint 14 story 003 routes this
+/// through the [`typography::DISPLAY`] design token (40 px); equal to
+/// [`HUD_GOLD_TEXT_MIN_SIZE_PX`] so the accessibility regression test
+/// remains satisfied. An inline `const_assert` in
+/// `client/src/ui/design_tokens/typography.rs` guards this invariant.
+pub const HUD_GOLD_FONT_SIZE_PX: f32 = typography::DISPLAY;
+/// HUD reserved-gold readout font size. Sprint 14 story 003 routes this
+/// through the [`typography::H1`] design token (30 px); previously a
+/// bare 26 px literal. Reserved gold remains visibly smaller than the
+/// primary gold readout while sitting one semantic level above the
+/// resource readouts.
+pub const HUD_RESERVED_GOLD_FONT_SIZE_PX: f32 = typography::H1;
+/// HUD secondary readout font size (phase / round / current mana /
+/// reserve mana). Sprint 14 story 003 routes this through the
+/// [`typography::H2`] design token (22 px); previously aliased to
+/// [`HUD_RESOURCE_TEXT_MIN_SIZE_PX`] (20 px). H2 sits 2 px above the
+/// accessibility floor so the regression test continues to pass.
+pub const HUD_SECONDARY_FONT_SIZE_PX: f32 = typography::H2;
 pub const HUD_TEXT_BACKGROUND_COLOR: Color = Color::srgba(0.04, 0.07, 0.12, 1.0);
 pub const HUD_PRIMARY_TEXT_COLOR: Color = Color::srgba(0.96, 0.98, 1.0, 1.0);
 pub const HUD_GOLD_TEXT_COLOR: Color = Color::srgba(1.0, 0.82, 0.28, 1.0);

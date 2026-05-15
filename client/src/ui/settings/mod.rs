@@ -6,7 +6,7 @@ use shared::protocol::{
 };
 
 use crate::state::{CurrentClientPhase, SessionSettingsView};
-use crate::ui::design_tokens::z_layers;
+use crate::ui::design_tokens::{typography, z_layers};
 
 pub const ACCESSIBILITY_PREFERENCES_STORAGE_KEY: &str =
     "lanes_and_lies.accessibility_preferences.v1";
@@ -651,7 +651,7 @@ pub fn spawn_settings_shell(
                 multiplier: settings_view.placement_timer_multiplier_effective,
             },
             Text::new(""),
-            settings_text_font(15.0),
+            settings_text_font(typography::BODY),
             TextColor(Color::srgb(0.82, 0.88, 0.94)),
             effective_timer_node(),
             Visibility::Hidden,
@@ -681,7 +681,7 @@ pub fn spawn_settings_shell(
             Name::new("Settings Status Footer"),
             SettingsStatusFooter,
             Text::new(""),
-            settings_text_font(14.0),
+            settings_text_font(typography::CAPTION),
             TextColor(Color::srgb(0.80, 0.86, 0.92)),
             status_footer_node(),
             Visibility::Hidden,
@@ -1109,7 +1109,7 @@ fn spawn_text_control<M: Component>(
             Interaction::None,
             SettingsControlActionMarker(action),
             Text::new(text),
-            settings_text_font(16.0),
+            settings_text_font(typography::BODY),
             TextColor(Color::srgb(0.94, 0.96, 0.98)),
             node,
             BackgroundColor(Color::srgb(0.13, 0.15, 0.18)),
