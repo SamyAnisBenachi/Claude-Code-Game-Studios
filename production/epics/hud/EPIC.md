@@ -4,7 +4,9 @@
 > **GDD**: design/gdd/hud.md
 > **Architecture Module**: `client/src/ui/hud/` — `HudPlugin` within `PresentationPlugin`
 > **Status**: Ready
-> **Stories**: 12 stories created/updated through 2026-05-05
+> **Stories**: 12 stories created/updated through 2026-05-05; 3 Sprint 14
+> layout-composition candidates appended 2026-05-14 by PROMPT 879
+> (stories 015 / 016 / 017; NOT activated — Sprint 14 NOT activated)
 
 ## Overview
 
@@ -122,11 +124,48 @@ This epic is complete when:
 | 011 | [Current and Reserve Mana Shape Distinction](story-011-current-reserve-mana-shapes.md) | UI | Ready | ADR-021, ADR-002 |
 | 012 | [HUD Text Size and Contrast Accessibility Evidence](story-012-text-size-and-contrast-accessibility.md) | UI | Ready | ADR-021, ADR-002 |
 | 014 | [HUD Timer Eyeball Visual Check](story-014-hud-timer-eyeball-visual-check.md) | Visual/Feel | Draft -- Sprint 13 candidate (Should Have, `S11-HUD-TIMER-EYEBALL-VISUAL-001`), NOT activated | ADR-021, ADR-002 |
+| 015 | [HUD Top Strip Layout (Composition Only)](story-015-hud-top-strip-layout.md) | UI | Draft -- Sprint 14 candidate (Must framing per `docs/ux/ui-clean-pass-roadmap.md` rank 7, `S11-UX-HUD-TOP-STRIP-LAYOUT`), NOT activated | ADR-021, ADR-002 |
+| 016 | [HUD Bottom Strip Layout (Composition Only)](story-016-hud-bottom-strip-layout.md) | UI | Draft -- Sprint 14 candidate (Tier 1 Must per `docs/ux/ui-clean-pass-roadmap.md` rank 8, `S11-UX-HUD-BOTTOM-STRIP-LAYOUT`), NOT activated | ADR-021, ADR-002 |
+| 017 | [HUD Opponent Figurine Composition (Layout Only)](story-017-hud-opponent-figurine.md) | UI | Draft -- Sprint 14 candidate (Tier 1 Should per `docs/ux/ui-clean-pass-roadmap.md` adjacent-rows table, `S11-UX-HUD-OPP-FIGURINE`), NOT activated | ADR-021, ADR-002, ADR-012 |
 
-**12 stories total: 5 Logic · 3 UI · 3 Integration · 1 Visual/Feel**
+**15 stories total: 5 Logic · 6 UI · 3 Integration · 1 Visual/Feel**
 Story 004 blocked on OQ-HUD-05 (HudObjectiveUpdate trigger type crate location).
 Story 014 is a Sprint 13 candidate (Sprint 12 close-out deferral; Sprint 10 smoke retry-7 W2 carry); NOT activated.
+Stories 015 / 016 / 017 are Sprint 14 candidates from PROMPT 802 Expert UI
+Layout audit roadmap (reconciled by `docs/ux/ui-clean-pass-roadmap.md` ranks
+7, 8, and Tier 1 Should-Priority Adjacent Rows table). Sprint 14 is NOT
+activated. The three stories are layout-composition only — no final-art
+claim, no Standard-tier accessibility claim. PAW-TD-004-a placeholder-art
+accept-risk and QA-COND-0005 accept-risk are preserved verbatim. Stories
+015 + 016 are siblings on `spawn_hud`; story 017 DEPENDS on story 016
+(opponent figurine is hosted inside the bottom-strip flex parent).
+
+## Sprint 14 UI Layout Candidate Dependency Chain
+
+Before any of stories 015 / 016 / 017 enter `/dev-story` in Sprint 14, the
+following Tier 0 foundational stories MUST be Done (not just Ready) per
+`docs/ux/ui-clean-pass-roadmap.md` sequencing rules:
+
+- `S11-TD-UI-ZINDEX-LAYERS` (rank 1, Tier 0 Must) — z-index layer module
+- `S11-TD-UI-FLEX-STRIPS` (rank 3, Tier 0 Must) — flex strip primitives
+- `S12-UX-GLOBAL-UI-DESIGN-SPEC-001` (rank 6, Tier 0 Must) — global UI
+  design spec (numeric inputs for spacing/gap/padding/line-height)
+
+Optional but recommended (for assertion coverage, not blocking):
+
+- `S11-TD-UI-VIEWPORT-INVARIANT-TESTS` (rank 4, Tier 0 Must) — viewport
+  invariant test bin scaffolding
+
+None of these foundational stories exist as story files in this epic yet;
+they live in their respective epics under `production/epics/`. The Sprint
+14 activation orchestrator is responsible for confirming each foundational
+story has a Done status before pulling stories 015 / 016 / 017 into the
+`/dev-story` queue.
 
 ## Next Step
 
 Run `/story-readiness production/epics/hud/story-012-text-size-and-contrast-accessibility.md` before assigning the Sprint 6 A11Y-ST-01/A11Y-ST-03 HUD evidence story. Work through stories in dependency order — each story's `Depends on:` field tells you what must be DONE first.
+
+Stories 015 / 016 / 017 are Sprint 14 candidates and should be left in
+`Draft` until Sprint 14 is activated and the Tier 0 foundational
+dependencies above are Done.
