@@ -131,6 +131,7 @@ pub enum HudMode {
 pub struct HudEntities {
     pub root: Entity,
     pub top_strip: Entity,
+    pub bottom_strip: Entity,
     pub phase_label: Entity,
     pub round_counter: Entity,
     pub own_gold_parent: Entity,
@@ -151,6 +152,9 @@ pub struct HudRoot;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HudTopStrip;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudBottomStrip;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HudEntity;
@@ -579,14 +583,17 @@ fn spawn_hud(
             z_layers::UI_BASE,
         ))
         .id();
-    commands.spawn((
-        Name::new("HUD FooterBar"),
-        strips::FooterBar,
-        strips::footer_bar_node(),
-        Visibility::Inherited,
-        ChildOf(root),
-        z_layers::UI_BASE,
-    ));
+    let bottom_strip = commands
+        .spawn((
+            Name::new("HUD Bottom Strip"),
+            HudBottomStrip,
+            strips::FooterBar,
+            hud_bottom_strip_node(*config),
+            Visibility::Inherited,
+            ChildOf(root),
+            z_layers::UI_BASE,
+        ))
+        .id();
 
     let phase_label = spawn_text_label(
         &mut commands,
@@ -630,30 +637,17 @@ fn spawn_hud(
     // ── PAW-004: class figurine (own player) ──────────────────────────────────
     // Spawned with fallback; updated to the correct class asset in StateSync
     // when the first S2CGameSnapshot arrives and own ClassId is known.
-    // Sprint 14 story 004: previously `bottom: hud_margin + 60.0` magic
-    // offset. Replaced with FooterBar-relative anchoring expressed via
-    // strip + spacing tokens. Anchor = `FOOTER_BAR_HEIGHT_PX + SPACING_XL`
-    // (40 + 32 = 72), same pixel value, now derived from
-    // `docs/ux/global-ui-design-spec.md` §9 strip composition rather
-    // than a per-module magic. The figurine sits in the FooterBar
-    // band; its full visual footprint extends above the strip into the
-    // play area via overflow-visible on the parent.
+    // Sprint 14 story 016: the figurine is a flex child of HudBottomStrip so
+    // future bottom readouts can share the same structural parent.
     let figurine = commands
         .spawn((
             Name::new("HUD Class Figurine"),
             HudEntity,
             HudFigurine,
-            Node {
-                position_type: PositionType::Absolute,
-                left: Val::Px(config.hud_margin_px),
-                bottom: Val::Px(strips::FOOTER_BAR_HEIGHT_PX + spacing::SPACING_XL),
-                width: Val::Px(64.0),
-                height: Val::Px(64.0),
-                ..default()
-            },
+            bottom_strip_figurine_node(),
             ImageNode::new(fallback_handle.clone()),
             Visibility::Hidden,
-            ChildOf(root),
+            ChildOf(bottom_strip),
         ))
         .id();
 
@@ -718,6 +712,7 @@ fn spawn_hud(
     commands.insert_resource(HudEntities {
         root,
         top_strip,
+        bottom_strip,
         phase_label,
         round_counter,
         own_gold_parent,
@@ -1885,6 +1880,8 @@ pub fn sync_hud_timer_bar_system(
 fn set_hud_visible(entities: &HudEntities, visibility: &mut Query<&mut Visibility>) {
     for entity in [
         entities.root,
+        entities.top_strip,
+        entities.bottom_strip,
         entities.phase_label,
         entities.round_counter,
         entities.own_gold_parent,
@@ -1892,6 +1889,7 @@ fn set_hud_visible(entities: &HudEntities, visibility: &mut Query<&mut Visibilit
         entities.opponent_gold_parent,
         entities.opponent_gold_span,
         entities.mana_label,
+        entities.figurine,
     ] {
         set_visibility(visibility, entity, Visibility::Visible);
     }
@@ -2156,6 +2154,27 @@ fn hud_top_strip_node() -> Node {
     node.min_height = Val::Px(strips::HEADER_BAR_HEIGHT_PX);
     node.overflow = Overflow::visible();
     node
+}
+
+fn hud_bottom_strip_node(config: HudConfig) -> Node {
+    let mut node = strips::footer_bar_node();
+    node.padding.left = Val::Px(config.hud_margin_px);
+    node.padding.right = Val::Px(spacing::SPACING_LG);
+    node.column_gap = Val::Px(spacing::SPACING_LG);
+    node.row_gap = Val::Px(spacing::SPACING_SM);
+    node.overflow = Overflow::visible();
+    node
+}
+
+fn bottom_strip_figurine_node() -> Node {
+    Node {
+        width: Val::Px(64.0),
+        height: Val::Px(64.0),
+        min_width: Val::Px(64.0),
+        min_height: Val::Px(64.0),
+        flex_shrink: 0.0,
+        ..default()
+    }
 }
 
 fn top_strip_text_node() -> Node {

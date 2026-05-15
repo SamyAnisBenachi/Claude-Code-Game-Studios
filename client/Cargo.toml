@@ -322,6 +322,15 @@ path = "../tests/integration/ui_clean_pass/strips_test.rs"
 name = "hud_top_strip_layout_test"
 path = "../tests/integration/ui_clean_pass/hud_top_strip_layout_test.rs"
 
+# S14-HUD-BOTTOM-STRIP-LAYOUT (Sprint 14 story 016): HUD bottom-strip
+# FooterBar composition, figurine ownership, top-strip mana/reserve ownership,
+# entity preservation, schedule stability, font-size grep guard, UI_BASE z-layer
+# usage, and scoreboard identity boundary (AC1, AC2, AC3, AC4, AC5, AC10, AC11,
+# AC12).
+[[test]]
+name = "hud_bottom_strip_layout_test"
+path = "../tests/integration/ui_clean_pass/hud_bottom_strip_layout_test.rs"
+
 # S12-TD-UI-OVERLAY-ALPHA-TOKEN-001 (Sprint 14 story 006): overlay alpha
 # design-token module grep-guard, HUD dim / settlement scrim / result
 # backdrop migration spot-checks, and connection-lost overlay AC6
