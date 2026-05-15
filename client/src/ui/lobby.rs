@@ -17,11 +17,28 @@ use crate::state::{
     apply_handshake_message, ClassLockedDedupeKey, ClientIdempotencyState, ClientSessionIdentity,
     ClientState,
 };
-use crate::ui::design_tokens::{typography, z_layers};
+use crate::ui::design_tokens::{
+    overlays,
+    spacing::{SPACING_LG, SPACING_MD, SPACING_XL},
+    typography, z_layers,
+};
 
 pub struct LobbyUiPlugin;
 
-const LOBBY_PANEL_WIDTH: f32 = 420.0;
+/// Story 024 (S12-UX-LOBBY-LAYOUT-MODAL-001 / PROMPT 933 Option A): centred
+/// lobby modal panel max-width literal, mirrored verbatim from
+/// `client/src/presentation/result_screen.rs:538` (the only surface in the
+/// PROMPT 802 audit that does layout correctly).
+pub const LOBBY_PANEL_MAX_WIDTH_PX: f32 = 860.0;
+
+/// Story 024 Option A: lobby modal panel width percentage. Mirrors
+/// `result_screen.rs:537`.
+pub const LOBBY_PANEL_WIDTH_PERCENT: f32 = 88.0;
+
+/// Story 024 Option A: lobby modal panel max height percentage. Mirrors
+/// `result_screen.rs:539`.
+pub const LOBBY_PANEL_MAX_HEIGHT_PERCENT: f32 = 92.0;
+
 const ROOM_CODE_MAX: usize = 8;
 const LOBBY_BUTTON_HEIGHT: f32 = 30.0;
 
@@ -152,8 +169,20 @@ pub enum LobbyCommand {
     },
 }
 
+/// Lobby UI root — Story 024 Option A: full-viewport flex container that
+/// owns the modal scrim backdrop and the `UI_OVERLAY` z-layer (per
+/// `docs/ux/global-ui-design-spec.md` §10 "Modal centering pattern").
+/// The centred [`LobbyPanel`] child paints above this at `MODAL`.
 #[derive(Component)]
-struct LobbyRoot;
+pub struct LobbyRoot;
+
+/// Lobby modal panel — Story 024 Option A: the centred panel that owns the
+/// lobby form content (status banner, room-code chip, create/join row,
+/// requested-slot row, class picker + portraits, slot panels, confirm CTA).
+/// Mirrors `client/src/presentation/result_screen.rs` panel literals
+/// (`width: 88%`, `max_width: 860 Px`, `max_height: 92%`) per PROMPT 933.
+#[derive(Component)]
+pub struct LobbyPanel;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LobbyCamera;
@@ -875,210 +904,303 @@ fn spawn_lobby_ui_system(
         return;
     }
 
+    // Story 024 (S12-UX-LOBBY-LAYOUT-MODAL-001 / PROMPT 933 Option A):
+    // full-viewport flex root owns the modal scrim backdrop and the
+    // `UI_OVERLAY` z-layer. The centred [`LobbyPanel`] child paints above
+    // it on `MODAL`. Replaces the prior top-left anchored 420-px column
+    // (PROMPT 802 §3.1 L1 / L4 "rough-bordering-unacceptable" verdict).
     commands
         .spawn((
             LobbyRoot,
             Name::new("Lobby UI Root"),
             Node {
+                display: Display::Flex,
                 position_type: PositionType::Absolute,
-                left: Val::Px(24.0),
-                top: Val::Px(24.0),
-                width: Val::Px(LOBBY_PANEL_WIDTH),
-                max_width: Val::Percent(92.0),
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(8.0),
-                padding: UiRect::all(Val::Px(16.0)),
+                left: Val::Px(0.0),
+                right: Val::Px(0.0),
+                top: Val::Px(0.0),
+                bottom: Val::Px(0.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                padding: UiRect::all(Val::Px(SPACING_LG)),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.07, 0.09, 0.12, 0.92)),
-            z_layers::UI_BASE,
+            // `SURFACE` color (`Color::srgb(0.039, 0.051, 0.078)` per
+            // `docs/ux/global-ui-design-spec.md` §7) at
+            // `OVERLAY_SCRIM_ALPHA` (0.55) per §10 modal-centering
+            // pattern.
+            BackgroundColor(Color::srgba(
+                0.039,
+                0.051,
+                0.078,
+                overlays::OVERLAY_SCRIM_ALPHA,
+            )),
+            z_layers::UI_OVERLAY,
         ))
-        .with_children(|parent| {
-            parent.spawn((
-                LobbyStatusText,
-                Text::new(lobby_status_copy(&lobby, &input)),
-                lobby_text_font(typography::H3),
-                TextColor(Color::srgb(0.92, 0.95, 0.98)),
-            ));
+        .with_children(|root| {
+            root.spawn((
+                LobbyPanel,
+                Name::new("Lobby UI Panel"),
+                Node {
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Column,
+                    width: Val::Percent(LOBBY_PANEL_WIDTH_PERCENT),
+                    max_width: Val::Px(LOBBY_PANEL_MAX_WIDTH_PX),
+                    max_height: Val::Percent(LOBBY_PANEL_MAX_HEIGHT_PERCENT),
+                    row_gap: Val::Px(SPACING_MD),
+                    padding: UiRect::all(Val::Px(SPACING_LG)),
+                    border: UiRect::all(Val::Px(2.0)),
+                    border_radius: BorderRadius::all(Val::Px(8.0)),
+                    ..default()
+                },
+                // `SURFACE_ELEVATED` per §7 / §10 "Panel chrome" rule
+                // (`Color::srgb(0.086, 0.106, 0.153)` per spec §7).
+                BackgroundColor(Color::srgb(0.086, 0.106, 0.153)),
+                BorderColor::all(Color::srgba(0.82, 0.86, 0.9, 0.26)),
+                z_layers::MODAL,
+            ))
+            .with_children(|panel| {
+                // Section 1 — status banner + room-code chip (read-order
+                // top-of-panel per AC3(e) "status / room-code -> ...").
+                panel.spawn((
+                    LobbyStatusText,
+                    Text::new(lobby_status_copy(&lobby, &input)),
+                    lobby_text_font(typography::H3),
+                    TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                ));
 
-            parent.spawn((
-                LobbyRoomCodeField,
-                LobbyDynamicText::RoomCode,
-                Button,
-                Interaction::None,
-                Text::new(lobby_dynamic_copy(
+                panel
+                    .spawn((
+                        LobbyRoomCodeChip,
+                        Name::new("Lobby Room Code Chip"),
+                        Node {
+                            width: Val::Px(200.0),
+                            height: Val::Px(40.0),
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
+                            ..default()
+                        },
+                        ImageNode::new(asset_server.load(LOBBY_ROOM_CODE_CHIP_ASSET)),
+                    ))
+                    .with_children(|chip| {
+                        let room_code =
+                            lobby.room_code.as_deref().unwrap_or("--------").to_string();
+                        chip.spawn((
+                            Text::new(room_code),
+                            lobby_text_font(typography::BODY),
+                            TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                        ));
+                    });
+
+                // Section separator before the create/join section
+                // (`SPACING_XL` total cumulative gap = default `row_gap`
+                // `SPACING_MD` + this margin's extra `SPACING_XL -
+                // SPACING_MD`).
+                panel.spawn((
+                    Name::new("Lobby Section Separator 1"),
+                    Node {
+                        width: Val::Percent(100.0),
+                        height: Val::Px(0.0),
+                        margin: UiRect {
+                            top: Val::Px(SPACING_XL - SPACING_MD),
+                            ..default()
+                        },
+                        ..default()
+                    },
+                ));
+
+                // Section 2 — create / join row + room-code input.
+                panel.spawn((
+                    LobbyRoomCodeField,
                     LobbyDynamicText::RoomCode,
-                    &lobby,
-                    &input,
-                )),
-                lobby_text_font(typography::BODY),
-                TextColor(Color::srgb(0.90, 0.96, 1.0)),
-                lobby_button_node(Val::Percent(100.0)),
-                BackgroundColor(Color::srgba(0.11, 0.15, 0.19, 0.95)),
-                BorderColor::all(Color::srgb(0.33, 0.52, 0.68)),
-            ));
-
-            parent.spawn((lobby_row_node(),)).with_children(|row| {
-                row.spawn((
-                    LobbyCreateRoomButton,
-                    LobbyDynamicText::Create,
                     Button,
                     Interaction::None,
-                    Text::new(lobby_dynamic_copy(LobbyDynamicText::Create, &lobby, &input)),
+                    Text::new(lobby_dynamic_copy(
+                        LobbyDynamicText::RoomCode,
+                        &lobby,
+                        &input,
+                    )),
+                    lobby_text_font(typography::BODY),
+                    TextColor(Color::srgb(0.90, 0.96, 1.0)),
+                    lobby_button_node(Val::Percent(100.0)),
+                    BackgroundColor(Color::srgba(0.11, 0.15, 0.19, 0.95)),
+                    BorderColor::all(Color::srgb(0.33, 0.52, 0.68)),
+                ));
+
+                panel.spawn((lobby_row_node(),)).with_children(|row| {
+                    row.spawn((
+                        LobbyCreateRoomButton,
+                        LobbyDynamicText::Create,
+                        Button,
+                        Interaction::None,
+                        Text::new(lobby_dynamic_copy(LobbyDynamicText::Create, &lobby, &input)),
+                        lobby_text_font(typography::BODY),
+                        TextColor(Color::srgb(0.98, 0.93, 0.72)),
+                        lobby_button_node(Val::Px(128.0)),
+                        BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
+                        BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
+                    ));
+                    row.spawn((
+                        LobbyJoinRoomButton,
+                        LobbyDynamicText::Join,
+                        Button,
+                        Interaction::None,
+                        Text::new(lobby_dynamic_copy(LobbyDynamicText::Join, &lobby, &input)),
+                        lobby_text_font(typography::BODY),
+                        TextColor(Color::srgb(0.82, 0.95, 1.0)),
+                        lobby_button_node(Val::Px(128.0)),
+                        BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
+                        BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
+                    ));
+                });
+
+                // Sprint 14 story 003 AC6: lobby labels are at least as
+                // large as the data they describe.
+                panel.spawn((
+                    Text::new("Requested slot"),
+                    lobby_text_font(typography::BODY),
+                ));
+                panel.spawn((lobby_row_node(),)).with_children(|row| {
+                    for slot in 0..=3 {
+                        row.spawn((
+                            LobbyRequestedSlotButton { slot },
+                            LobbyDynamicText::Slot(slot),
+                            Button,
+                            Interaction::None,
+                            Text::new(lobby_dynamic_copy(
+                                LobbyDynamicText::Slot(slot),
+                                &lobby,
+                                &input,
+                            )),
+                            lobby_text_font(typography::BODY),
+                            TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                            lobby_button_node(Val::Px(72.0)),
+                            BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
+                            BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
+                        ));
+                    }
+                });
+
+                // Section separator before the class-picker region.
+                panel.spawn((
+                    Name::new("Lobby Section Separator 2"),
+                    Node {
+                        width: Val::Percent(100.0),
+                        height: Val::Px(0.0),
+                        margin: UiRect {
+                            top: Val::Px(SPACING_XL - SPACING_MD),
+                            ..default()
+                        },
+                        ..default()
+                    },
+                ));
+
+                // Section 3 — class picker. Portrait row (PAW-006-a)
+                // renders BEFORE the class buttons so the portrait + button
+                // pairing reads as a single hierarchical region per
+                // AC3(d) "class portraits are visually associated with
+                // selectable class buttons". Paired story 025
+                // (`S11-UX-LOBBY-CLASS-PICKER`) owns the final pairing
+                // affordance; this story preserves the portrait row in
+                // place ahead of the button row.
+                panel.spawn((Text::new("Class"), lobby_text_font(typography::BODY)));
+                panel.spawn((lobby_wrap_row_node(),)).with_children(|row| {
+                    for class_id in lobby_all_class_ids() {
+                        row.spawn((
+                            LobbyClassPortrait { class_id },
+                            Name::new(format!("Lobby Portrait {:?}", class_id)),
+                            Node {
+                                width: Val::Px(64.0),
+                                height: Val::Px(80.0),
+                                ..default()
+                            },
+                            ImageNode::new(asset_server.load(lobby_portrait_asset(class_id))),
+                        ));
+                    }
+                });
+                panel.spawn((lobby_wrap_row_node(),)).with_children(|row| {
+                    for class_id in lobby_class_options() {
+                        row.spawn((
+                            LobbyClassButton { class_id },
+                            LobbyDynamicText::Class(class_id),
+                            Button,
+                            Interaction::None,
+                            Text::new(lobby_dynamic_copy(
+                                LobbyDynamicText::Class(class_id),
+                                &lobby,
+                                &input,
+                            )),
+                            lobby_text_font(typography::BODY),
+                            TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                            lobby_button_node(Val::Px(92.0)),
+                            BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
+                            BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
+                        ));
+                    }
+                });
+
+                // Section 4 — slot panels (PAW-006-b). Per AC3(e) the slot
+                // panels MUST render above the confirm CTA so the player's
+                // attention reaches the seating affordance before the
+                // primary action button.
+                panel.spawn((lobby_row_node(),)).with_children(|row| {
+                    row.spawn((
+                        LobbyOwnSlotPanel,
+                        Name::new("Lobby Own Slot Panel"),
+                        Node {
+                            width: Val::Px(160.0),
+                            height: Val::Px(48.0),
+                            ..default()
+                        },
+                        ImageNode::new(asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET)),
+                    ));
+                    row.spawn((
+                        LobbyOpponentSlotPanel,
+                        Name::new("Lobby Opponent Slot Panel"),
+                        Node {
+                            width: Val::Px(160.0),
+                            height: Val::Px(48.0),
+                            ..default()
+                        },
+                        ImageNode::new(asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET)),
+                    ));
+                });
+
+                // Section separator before the confirm CTA (final section).
+                panel.spawn((
+                    Name::new("Lobby Section Separator 3"),
+                    Node {
+                        width: Val::Percent(100.0),
+                        height: Val::Px(0.0),
+                        margin: UiRect {
+                            top: Val::Px(SPACING_XL - SPACING_MD),
+                            ..default()
+                        },
+                        ..default()
+                    },
+                ));
+
+                // Section 5 — confirm CTA. Last child per AC3(e) read
+                // order; PROMPT 802 §3.1 L4 "portraits / slot panels /
+                // room-code chip render below confirm" inversion is
+                // resolved by placing the CTA last in the panel.
+                panel.spawn((
+                    LobbyConfirmClassButton,
+                    LobbyDynamicText::Confirm,
+                    Button,
+                    Interaction::None,
+                    Text::new(lobby_dynamic_copy(
+                        LobbyDynamicText::Confirm,
+                        &lobby,
+                        &input,
+                    )),
                     lobby_text_font(typography::BODY),
                     TextColor(Color::srgb(0.98, 0.93, 0.72)),
-                    lobby_button_node(Val::Px(128.0)),
+                    lobby_button_node(Val::Percent(100.0)),
                     BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
                     BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
                 ));
-                row.spawn((
-                    LobbyJoinRoomButton,
-                    LobbyDynamicText::Join,
-                    Button,
-                    Interaction::None,
-                    Text::new(lobby_dynamic_copy(LobbyDynamicText::Join, &lobby, &input)),
-                    lobby_text_font(typography::BODY),
-                    TextColor(Color::srgb(0.82, 0.95, 1.0)),
-                    lobby_button_node(Val::Px(128.0)),
-                    BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
-                    BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
-                ));
             });
-
-            // Sprint 14 story 003 AC6: lobby labels are at least as
-            // large as the data they describe; previously 13 px (Caption)
-            // versus 15 px room code (Body) — the PROMPT 802 §3.1 L6
-            // inversion. Now routed through typography::BODY (15 px).
-            parent.spawn((
-                Text::new("Requested slot"),
-                lobby_text_font(typography::BODY),
-            ));
-            parent.spawn((lobby_row_node(),)).with_children(|row| {
-                for slot in 0..=3 {
-                    row.spawn((
-                        LobbyRequestedSlotButton { slot },
-                        LobbyDynamicText::Slot(slot),
-                        Button,
-                        Interaction::None,
-                        Text::new(lobby_dynamic_copy(
-                            LobbyDynamicText::Slot(slot),
-                            &lobby,
-                            &input,
-                        )),
-                        lobby_text_font(typography::BODY),
-                        TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                        lobby_button_node(Val::Px(72.0)),
-                        BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
-                        BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
-                    ));
-                }
-            });
-
-            parent.spawn((Text::new("Class"), lobby_text_font(typography::BODY)));
-            parent.spawn((lobby_wrap_row_node(),)).with_children(|row| {
-                for class_id in lobby_class_options() {
-                    row.spawn((
-                        LobbyClassButton { class_id },
-                        LobbyDynamicText::Class(class_id),
-                        Button,
-                        Interaction::None,
-                        Text::new(lobby_dynamic_copy(
-                            LobbyDynamicText::Class(class_id),
-                            &lobby,
-                            &input,
-                        )),
-                        lobby_text_font(typography::BODY),
-                        TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                        lobby_button_node(Val::Px(92.0)),
-                        BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
-                        BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
-                    ));
-                }
-            });
-
-            parent.spawn((
-                LobbyConfirmClassButton,
-                LobbyDynamicText::Confirm,
-                Button,
-                Interaction::None,
-                Text::new(lobby_dynamic_copy(
-                    LobbyDynamicText::Confirm,
-                    &lobby,
-                    &input,
-                )),
-                lobby_text_font(typography::BODY),
-                TextColor(Color::srgb(0.98, 0.93, 0.72)),
-                lobby_button_node(Val::Percent(100.0)),
-                BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
-                BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
-            ));
-
-            // ── Class portraits (PAW-006-a) ───────────────────────────────────
-            // One portrait ImageNode per ClassId variant (7 total, including Neutral).
-            // The portrait image is always shown; selection state uses a separate overlay.
-            parent.spawn((lobby_wrap_row_node(),)).with_children(|row| {
-                for class_id in lobby_all_class_ids() {
-                    row.spawn((
-                        LobbyClassPortrait { class_id },
-                        Name::new(format!("Lobby Portrait {:?}", class_id)),
-                        Node {
-                            width: Val::Px(64.0),
-                            height: Val::Px(80.0),
-                            ..default()
-                        },
-                        ImageNode::new(asset_server.load(lobby_portrait_asset(class_id))),
-                    ));
-                }
-            });
-
-            // ── Player slot panels (PAW-006-b) ────────────────────────────────
-            parent.spawn((lobby_row_node(),)).with_children(|row| {
-                row.spawn((
-                    LobbyOwnSlotPanel,
-                    Name::new("Lobby Own Slot Panel"),
-                    Node {
-                        width: Val::Px(160.0),
-                        height: Val::Px(48.0),
-                        ..default()
-                    },
-                    ImageNode::new(asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET)),
-                ));
-                row.spawn((
-                    LobbyOpponentSlotPanel,
-                    Name::new("Lobby Opponent Slot Panel"),
-                    Node {
-                        width: Val::Px(160.0),
-                        height: Val::Px(48.0),
-                        ..default()
-                    },
-                    ImageNode::new(asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET)),
-                ));
-            });
-
-            // ── Room code chip (PAW-006-c) ─────────────────────────────────────
-            // The chip is the background image; the room code text is a separate
-            // Text child layered above it.
-            parent
-                .spawn((
-                    LobbyRoomCodeChip,
-                    Name::new("Lobby Room Code Chip"),
-                    Node {
-                        width: Val::Px(200.0),
-                        height: Val::Px(40.0),
-                        align_items: AlignItems::Center,
-                        justify_content: JustifyContent::Center,
-                        ..default()
-                    },
-                    ImageNode::new(asset_server.load(LOBBY_ROOM_CODE_CHIP_ASSET)),
-                ))
-                .with_children(|chip| {
-                    let room_code = lobby.room_code.as_deref().unwrap_or("--------").to_string();
-                    chip.spawn((
-                        Text::new(room_code),
-                        lobby_text_font(typography::BODY),
-                        TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                    ));
-                });
         });
 }
 
