@@ -4,6 +4,16 @@
 >
 > ---
 >
+> **CURRENT STATE -- last updated 2026-05-15 (PROMPT 956 story-done closure after PROMPT 955 HUD bottom strip integration)**
+>
+> - **Committed source-of-truth at closure base**: `origin/main@45c2d03a9be6d8a23ddaabf3088397312b53481b` (PROMPT 955 integration merge of PROMPT 954 worker evidence tip `acfc43860c22c81f5a7d3678ec54c96bc46af09f` into prior `origin/main@72438318f5065c70003ab5ae6fa586092a46524b`). PROMPT 956 is the serialized shared-status writer paperwork closure on top of that commit.
+> - **Story closed**: `S11-UX-HUD-BOTTOM-STRIP-LAYOUT` / HUD story 016 / Sprint 14 Should Have rank 8 flipped `ready -> done`. AC1-AC16 accepted against PROMPT 954 worker evidence, PROMPT 955 integration verification, on-main evidence `production/qa/evidence/sprint-14-hud-bottom-strip-layout/README.md`, and on-main test `tests/integration/ui_clean_pass/hud_bottom_strip_layout_test.rs` 8/8 PASS per PROMPT 955. Runtime PNG captures for 1366x768 and 1920x1080 remain deferred and are not claimed by PROMPT 956.
+> - **Sprint 14 progress**: 9 of 9 Must Have done; 2 of 4 Should Have done; 0 of 4 Nice to Have done; total 11 of 17 rows closed. Sprint 14 remains active until a separate close-out prompt runs.
+> - **Disposition**: Sprint 14 remains active; stage remains Polish; PROMPT 761 Polish->Release FAIL preserved with no retry. Non-claims preserved: `S8-QA-001-W1` OPEN, `QA-COND-0005/0006` accepted-risk, `PAW-TD-*-a` accepted-risk, no release/RC/full-game/broad-accessibility/playtest/final-art/Sprint14-closeout claim.
+> - **Paperwork-only scope**: changed only `production/epics/hud/story-016-hud-bottom-strip-layout.md`, `production/sprint-status.yaml`, `production/session-state/active.md`, and `production/session-state/codex-orchestrator-state.md`. No `client/`, `server/`, `shared/`, `tests/`, Cargo files, `production/sprints/sprint-14.md`, `production/qa/qa-plan-sprint-14.md`, `production/stage.txt`, or gate-check artifact changed.
+>
+> ---
+>
 > **CURRENT STATE -- last updated 2026-05-15 (PROMPT 953 story-done closure after PROMPT 951 draft centered modal integration)**
 >
 > - **Committed source-of-truth at closure base**: `origin/main@a9721bce02dd4a2a3a5516d017ea69c0cd2d5b65` (PROMPT 951 integration merge of PROMPT 946 worker tip `0b3ef30d43cbce9599f976cc4b820817b65cd192` into prior `origin/main@21c3a020a4d3984878ec764a29af6253fe98b8e0`). PROMPT 953 is the serialized shared-status writer paperwork closure on top of that commit.
