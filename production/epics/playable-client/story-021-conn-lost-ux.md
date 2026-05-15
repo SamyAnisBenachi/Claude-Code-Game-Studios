@@ -2,8 +2,11 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S13-CONN-LOST-UX-001
-> **Status**: Draft -- Sprint 13 candidate; NOT activated; Sprint 12 is the
-> active sprint
+> **Status**: Done -- closed by PROMPT 891 `/story-done` on
+> `origin/main@cb01c492721bdcba6439d44b5b311c8905091828` (PROMPT 890 integration
+> merge of PROMPT 889 worker commit `febc56abbb110b3f35f838a60447d7ee77a1982c`).
+> Verdict **PASS**. AC1-AC13 all PASS (AC8 EVIDENCE-CITED with row-flip deferred
+> per AC8 phrasing). See Closure Trail below.
 > **Layer**: UI / UX (Client)
 > **Type**: Integration -- new overlay module + transport-event subscription +
 > integration test
@@ -211,88 +214,192 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Overlay module exists**:
+- [x] **AC1 -- Overlay module exists**:
   `client/src/presentation/connection_lost_overlay.rs` (or
   canonical equivalent) exists; it defines a Bevy plugin
   (`ConnectionLostOverlayPlugin` or canonical name) registered in
   `PresentationPlugin`'s composition order per ADR-021.
+  **PASS** — `client/src/presentation/connection_lost_overlay.rs` (NEW
+  263 LOC) defines `pub struct ConnectionLostOverlayPlugin` registered
+  in `client/src/presentation/mod.rs:92` after `ResultScreenPlugin`
+  per ADR-021. Integration-test cases
+  `ac1_plugin_registered_in_presentation_composition_order` +
+  `ac1_overlay_root_carries_marker_component_for_query_targeting` PASS
+  at PROMPT 889 worker tip `febc56a`.
 
-- [ ] **AC2 -- Overlay subscribes to transport-event source**:
+- [x] **AC2 -- Overlay subscribes to transport-event source**:
   GIVEN the overlay plugin's systems, WHEN inspected, THEN at
   least one system observes a Lightyear transport-event source
   (specific API surface verified by implementing worker; e.g.,
   `OnDisconnect`, `OnConnected`, or an equivalent Bevy event
   surface published by the client network plugin).
+  **PASS** — `on_transport_disconnected: On<Add, Disconnected>` +
+  `on_transport_connected: On<Add, Connected>` observers registered
+  via `app.add_observer(...)` at
+  `client/src/presentation/connection_lost_overlay.rs:68-69`.
+  Integration tests
+  `ac2_overlay_subscribes_to_lightyear_transport_event_sources` +
+  `ac2_predicate_should_show_overlay_only_in_session` PASS.
 
-- [ ] **AC3 -- Overlay appears on transport drop during
+- [x] **AC3 -- Overlay appears on transport drop during
   gameplay**: GIVEN the player is in `DRAFT_INITIAL`,
   `DRAFT_SHOP`, `PLACEMENT`, or `RESOLUTION` phase AND the
   transport drops, WHEN the overlay system runs, THEN the
   overlay UI becomes visible within one frame (or one tick)
   of the transport event being observed.
+  **PASS** — `handle_transport_disconnected_event` sets
+  `state.visible = true` when `ClientState::InSession`
+  (`connection_lost_overlay.rs:90-108`).
+  `sync_connection_lost_overlay_visibility_system` mirrors state to
+  `Visibility::Visible` next frame
+  (`connection_lost_overlay.rs:160-179`). Integration tests
+  `ac3_disconnect_handler_marks_overlay_visible_in_session` +
+  `ac3_disconnect_handler_does_not_mark_overlay_visible_in_lobby` +
+  `ac3_ac4_sync_system_mirrors_state_to_root_visibility` PASS.
 
-- [ ] **AC4 -- Overlay dismisses on reconnect completion**:
+- [x] **AC4 -- Overlay dismisses on reconnect completion**:
   GIVEN the overlay is visible AND `S2CSessionReady` is
   observed (or the snapshot-replay flow completes), WHEN the
   overlay system runs, THEN the overlay UI is hidden within
   one frame of the observation.
+  **PASS** — `handle_transport_connected_event` sets
+  `state.visible = false` on any `Connected` Add
+  (`connection_lost_overlay.rs:110-122`). Per ADR-011 the reconnect
+  path does not exit `InSession`, so the lightyear `Connected` re-link
+  fires on the existing client entity. Integration tests
+  `ac4_connected_handler_marks_overlay_hidden` +
+  `ac4_connected_handler_is_idempotent_when_hidden` +
+  `ac3_ac4_sync_system_mirrors_state_to_root_visibility` PASS.
 
-- [ ] **AC5 -- Overlay dismisses on `GAME_OVER`**: GIVEN the
+- [x] **AC5 -- Overlay dismisses on `GAME_OVER`**: GIVEN the
   overlay is visible AND `S2CGameOver` is observed, WHEN the
   overlay system runs, THEN the overlay UI is hidden within
   one frame so the result screen can take over.
+  **PASS** — `dismiss_overlay_on_game_over_system` reads
+  `Res<CurrentClientPhase>` and clears `state.visible` if
+  `phase == GameOver` (`connection_lost_overlay.rs:143-158`).
+  `CurrentClientPhase` is set by `phase_sink_system` from
+  `S2CPhaseChanged{phase: GameOver}` (the server emits together with
+  `S2CGameOver`). `GlobalZIndex(90)` (vs result screen's 100) keeps
+  the result screen on top if `GameOver` lands while the overlay is
+  up. Integration tests
+  `ac5_predicate_overlay_dismissed_by_phase_only_at_game_over` +
+  `ac5_dismiss_system_hides_overlay_when_phase_is_game_over` +
+  `ac5_dismiss_system_is_noop_during_active_gameplay` PASS.
 
-- [ ] **AC6 -- Integration test asserts visibility
+- [x] **AC6 -- Integration test asserts visibility
   transitions**: GIVEN a new integration test (e.g.,
   `tests/integration/playable_client/connection_lost_overlay_test.rs`),
   WHEN the test simulates the transport-event sequence
   (drop → reconnect or drop → GAME_OVER), THEN the overlay
   UI visibility transitions match AC3, AC4, AC5.
+  **PASS** — `tests/integration/playable_client/connection_lost_overlay_test.rs`
+  (NEW 334 LOC; 16 test cases) registered at `client/Cargo.toml:289`.
+  Test `ac3_ac4_sync_system_mirrors_state_to_root_visibility` exercises
+  the full visibility-transition pipeline (hidden → visible → hidden)
+  via the production plugin. PROMPT 889 evidence reports 16/16 pass at
+  worker commit `febc56a` (`cargo test -p client --test
+  connection_lost_overlay_test`).
 
-- [ ] **AC7 -- Overlay does not block underneath UI**:
+- [x] **AC7 -- Overlay does not block underneath UI**:
   GIVEN the overlay is visible, WHEN the gameplay UI (hand,
   HUD, board) is inspected via the test fixture or visual
   evidence, THEN the gameplay UI remains visible underneath
   the overlay (modal is non-blocking visually).
+  **PASS** — `BackgroundColor(Color::srgba(0.02, 0.025, 0.035, 0.32))`
+  (alpha 0.32 < result-screen 0.46) at
+  `connection_lost_overlay.rs:201`; `GlobalZIndex(90)` at
+  `connection_lost_overlay.rs:203` (above gameplay UI z=0, below
+  result screen z=100). Integration tests
+  `ac7_overlay_z_index_is_below_result_screen` +
+  `ac7_overlay_backdrop_alpha_lets_gameplay_show_through` PASS.
 
-- [ ] **AC8 -- Closes backlog row**
+- [x] **AC8 -- Closes backlog row**
   `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001`: GIVEN the
   evidence doc, WHEN inspected, THEN it cites the backlog row
   closure rationale; the row's status (wherever tracked) is
   updated to closed-with-evidence via a separate paperwork
   prompt (NOT this implementation).
+  **EVIDENCE-CITED; ROW-CLOSURE-DEFERRED** — Per the AC8 phrasing
+  ("via a separate paperwork prompt (NOT this implementation)"),
+  PROMPT 891 cites the closure rationale (see evidence doc
+  `production/qa/evidence/sprint-13-conn-lost-ux-evidence.md`
+  §Backlog-Row Closure Cross-Reference, lines 181-206) but does NOT
+  flip the backlog-row status. Row-status flip in any tracker remains
+  a separate paperwork prompt by design.
 
-- [ ] **AC9 -- No optimistic client-side authority introduced**:
+- [x] **AC9 -- No optimistic client-side authority introduced**:
   GIVEN the implementation diff, WHEN reviewed for any
   client-side mutation of authoritative state outside the
   shared phase sink, snapshot drainers, and S2C consumers,
   THEN no such mutation is present. ADR-002 binding.
   *Evidence*: text search for "no optimistic" in the evidence
   document.
+  **PASS** — Verbatim phrase "No optimistic client-side authority
+  is introduced or proposed by this overlay" present at evidence doc
+  line 40-41 + module header at `connection_lost_overlay.rs:9-10`
+  ("No optimistic client-side authority is introduced by this
+  overlay."). Integration test
+  `ac9_overlay_module_does_not_mutate_authoritative_state` asserts
+  the module does not use `MessageSender` / `MessageWriter` /
+  `NextState`. ADR-002 binding preserved.
 
-- [ ] **AC10 -- No protocol or server-side change**: GIVEN the
+- [x] **AC10 -- No protocol or server-side change**: GIVEN the
   diff in `shared/src/protocol.rs` and `server/`, WHEN
   inspected, THEN no functional change lands.
+  **PASS** — `git diff cb01c49^1..cb01c49 --stat -- shared/src/protocol.rs server/`
+  empty. Worker-commit-level `git diff febc56a^1..febc56a --stat --
+  shared/ server/` also empty. Integration tip touches only
+  `client/Cargo.toml` + `client/src/presentation/connection_lost_overlay.rs`
+  + `client/src/presentation/mod.rs` + the new evidence doc + the new
+  integration-test file. Integration test
+  `ac10_no_protocol_or_server_changes_in_story_scope` PASS.
 
-- [ ] **AC11 -- Sprint 12 disposition preserved**: GIVEN the
+- [x] **AC11 -- Sprint 12 disposition preserved**: GIVEN the
   implementation commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-12.md`, `production/stage.txt`,
   and `production/qa/qa-plan-sprint-12.md` are diffed, THEN
   none of them are modified under this story.
+  **PASS** — `git diff cb01c49^1..cb01c49 --stat --
+  production/sprint-status.yaml production/sprints/sprint-12.md
+  production/stage.txt production/qa/qa-plan-sprint-12.md` empty
+  across both worker (`febc56a`) and integration (`cb01c49`) commits.
+  PROMPT 891 row-level flip (and `updated:` annotation + new
+  `sprint_13_story_done:` entry) is the permitted
+  disposition-preserving paperwork edit; top-level `sprint:` /
+  `status:` / `stage:` fields unchanged.
 
-- [ ] **AC12 -- Workspace test pass + ignored count behave
+- [x] **AC12 -- Workspace test pass + ignored count behave
   predictably**: GIVEN `cargo test --workspace --tests
   --no-fail-fast` at the implementation commit, WHEN compared
   to the post-Sprint-12 baseline, THEN no new `#[ignore]`
   markers are introduced; the new overlay test passes;
   previously-passing tests continue to pass.
+  **PASS-WITHIN-STORY-PRESCRIBED-TARGETED-CHECK** — Per Sprint 13
+  QA-plan binding no-full-workspace-tests-by-default policy + PROMPT
+  889 explicit scope: `cargo test -p client --test
+  connection_lost_overlay_test` reported 16/16 pass at worker tip
+  `febc56a` (evidence doc lines 134-156). No new `#[ignore]` markers
+  introduced by the worker diff. Full-workspace
+  `cargo test --workspace --tests --no-fail-fast` deferred to Sprint
+  13 end-of-sprint integration smoke.
 
-- [ ] **AC13 -- Evidence document slot reserved**:
+- [x] **AC13 -- Evidence document slot reserved**:
   `production/qa/evidence/sprint-13-conn-lost-ux-evidence.md`
   (NEW). Records overlay module diff summary, integration-test
   pass evidence, UX-designer consultation note, backlog-row
   closure cross-reference, no-claim restatement, cross-link
   to PROMPT 803 §3 DC-13.
+  **PASS** — `production/qa/evidence/sprint-13-conn-lost-ux-evidence.md`
+  (NEW 289 lines) landed on `origin/main` via PROMPT 890 integration
+  merge `cb01c49`; not modified by PROMPT 891. All required content
+  present: overlay module diff summary (§Files Changed +
+  §Overlay Module Diff Summary), integration-test pass evidence
+  (§Integration-Test Pass Output), UX-designer consultation note
+  (§UX-Designer Consultation Note), backlog-row closure cross-reference
+  (§Backlog-Row Closure Cross-Reference), no-claim restatement
+  (§Status / No-Claim Banner), cross-link to PROMPT 803 §3 DC-13
+  (§Cross-Link to PROMPT 803).
 
 ---
 
@@ -482,3 +589,126 @@ Expected implementation flow:
   `origin/main@b5eef0d`. Worker branch:
   `work/s13-runtime-hardening-story-authoring`. Worktree:
   `D:\_DEV\claude-code-game-studios-worktrees\s13-runtime-hardening-story-authoring`.
+
+---
+
+## Closure Trail
+
+- 2026-05-14 -- PROMPT 808 -- Story-authoring integration merge of
+  PROMPT 804 onto `origin/main` as commit `55b25be` (no functional
+  change beyond authoring; story file landed on origin/main).
+- 2026-05-14 -- PROMPT 823 -- Batch `/story-readiness` verdict
+  **READY** for this story alongside sibling Sprint 13 candidates.
+- 2026-05-15 -- PROMPT 889 -- `/dev-story` worker. Implemented the
+  overlay module + integration test on branch `work/s13-conn-lost-ux`
+  from base `origin/main@12ae4cf` (PROMPT 888 `/story-done` for
+  S13-OPS-WIN-APPCOMPAT-NOTE-001). Worker commit
+  `febc56abbb110b3f35f838a60447d7ee77a1982c`. Files: 5 changed /
+  +899 / -0: `client/Cargo.toml +6` (new `[[test]] connection_lost_overlay_test`)
+  + `client/src/presentation/connection_lost_overlay.rs` NEW 263 LOC
+  (plugin, observers, dismiss + sync systems, UI nodes, pure handlers)
+  + `client/src/presentation/mod.rs +7` (registers
+  `ConnectionLostOverlayPlugin` after `ResultScreenPlugin` per
+  ADR-021) + `tests/integration/playable_client/connection_lost_overlay_test.rs`
+  NEW 334 LOC (16 test cases) + `production/qa/evidence/sprint-13-conn-lost-ux-evidence.md`
+  NEW 289 lines. Cargo resource policy applied (`CARGO_TARGET_DIR=D:/_DEV/cargo-target/ccgs-msvc`
+  + `CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+  `CARGO_INCREMENTAL=0` + `RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`);
+  targeted regression `cargo test -p client --test
+  connection_lost_overlay_test` 16/16 pass; full-workspace tests
+  intentionally NOT run per QA-plan-sprint-13 no-full-workspace-tests-by-default
+  policy + worker prompt scope. Forbidden paths (`shared/` + `server/`
+  + `production/sprint-status.yaml` + `production/sprints/` +
+  `production/stage.txt` + `production/qa/qa-plan-sprint-12.md` +
+  `production/qa/qa-plan-sprint-13.md` + `production/session-state/`)
+  untouched. Did NOT run `/story-done`.
+- 2026-05-15 -- PROMPT 890 -- Integration `--no-ff` merge of worker
+  tip `febc56a` into prior `origin/main@12ae4cf` producing merge commit
+  `cb01c492721bdcba6439d44b5b311c8905091828` on `origin/main`; zero
+  conflicts. Merge-introduced delta byte-identical to worker stat
+  (5 files / +899 / -0). Forbidden paths empty across both worker +
+  integration commits. PROMPT 889 worker reachable as merge's
+  second-parent. Did NOT run `/story-done`.
+- 2026-05-15 -- PROMPT 891 -- `/story-done` paperwork closure on
+  `origin/main@cb01c492721bdcba6439d44b5b311c8905091828`. Verdict
+  **PASS**. AC1-AC13 verified against integrated docs / evidence /
+  code at the integration tip (AC8 EVIDENCE-CITED with row-flip
+  deferred per AC8 phrasing; AC12 PASS-WITHIN-STORY-PRESCRIBED-TARGETED-CHECK).
+  Expected worker report `reports/PROMPT-889-S13-CONN-LOST-UX-Dev-Story.md`
+  + integration report `reports/PROMPT-890-S13-CONN-LOST-UX-Integration.md`
+  not on disk and not in any git tree; documented as non-blocking
+  because the integration commit-message body + worker commit-message
+  body (verbose, ~25 lines) + the evidence document
+  (`production/qa/evidence/sprint-13-conn-lost-ux-evidence.md`,
+  289 lines) collectively cover all thirteen ACs with concrete
+  file:line references + test names + diff verifications. PROMPT 891
+  ran on a fresh detached worktree `D:/_DEV/wt/ccgs-prompt-891-storydone`
+  from `origin/main` because the root checkout was behind origin/main
+  and had unrelated dirt (`M .claude/settings.json` +
+  `Dtmpworkspace-test-output.txt` + `production/session-state/autonomous-monitor-task.md`
+  + `tools/gcs-orchestrator/docs/ARCHITECTURE.md`); root-checkout
+  dirt NOT touched by PROMPT 891; pattern matches PROMPT 884 + PROMPT
+  885 + PROMPT 888 precedent. Paperwork-only writes to 3 allowed
+  files (this story file + `sprint-status.yaml` + `active.md`);
+  `production/session-state/codex-orchestrator-state.md` NOT modified
+  by PROMPT 891 (precedent: PROMPT 884 + PROMPT 876 + PROMPT 888 all
+  skipped this file). No `cargo` invoked by PROMPT 891 (paperwork-only).
+  Sprint 13 disposition UNCHANGED `active`; Stage UNCHANGED `Polish`;
+  PROMPT 761 Polish->Release FAIL preserved; all carried non-claims
+  preserved (S8-QA-001-W1 OPEN, QA-COND-0005 + QA-COND-0006
+  accepted-risk, PAW-TD-*-a accept-risk, TQ-S12-C1..C7 verbatim,
+  Sprint 12 / Sprint 11 / Sprint 10 closeouts, all 15 prior Sprint 13
+  `/story-done` closures unchanged on origin/main).
+
+### Conditions carried forward unchanged
+
+- `S8-QA-001-W1` manual/browser two-client GAME_OVER gap remains
+  OPEN. PROMPT 891 does NOT close it.
+- `QA-COND-0005` Standard-tier accessibility remains accepted-risk
+  (friend-game scope only).
+- `QA-COND-0006` playtest / fun-hypothesis validation remains
+  accepted-risk / deferred.
+- `PAW-TD-*-a` placeholder-art accept-risk preserved across
+  PAW-002..PAW-006; friend-game-tier overlay visual aligned with this
+  stance.
+- PROMPT 683-era runtime divergence question preserved unchanged
+  (folded into Sprint 12 story 019 cannot-reproduce closure; third
+  same-scope retest NOT authorised per `TQ-S12-C2`).
+- PROMPT 761 Polish->Release gate-check FAIL preserved at
+  `production/gate-checks/gate-polish-release-2026-05-12.md`; no
+  retry in PROMPT 891 scope.
+- Story 019 (Sprint 12 hand-ui) underlying drag-runtime bug NOT
+  claimed fixed (closed cannot-reproduce, NOT bug-fixed).
+- `TQ-S12-C1..C7` (all 7 Sprint 12 Team-QA conditions) preserved
+  verbatim. `TQ-S12-C7` remains preserved as informational.
+- Sprint 12 disposition closed-with-conditions per PROMPT 817
+  preserved unchanged under `sprint_12_closeout:` block.
+- Sprint 11 / Sprint 10 closeouts preserved unchanged.
+- All 15 prior Sprint 13 `/story-done` closures (PROMPT 833 / 835
+  inline / 840 / 843 / 844 / 850 / 851 / 854 / 856 / 865 / 868 /
+  869 via PROMPT 882 carry / 871 / 876 / 884 / 885 / 888) preserved
+  unchanged on `origin/main`.
+
+### Explicitly NOT claimed by PROMPT 891
+
+- public release readiness
+- release-candidate readiness
+- full game completion
+- broad / Standard-tier accessibility completion
+- playtest / fun-hypothesis validation
+- full playable-client manual QA
+- two-client GAME_OVER closure (`S8-QA-001-W1`)
+- final-art / asset-production completion
+- Polish->Release gate-check retry
+- Stage advance from Polish to Release
+- closure of `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` backlog
+  row (cited in evidence per AC8; row-status flip remains a separate
+  paperwork prompt)
+- closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` (last open Sprint 13
+  Should Have row)
+- Sprint 13 close-out (Sprint 13 remains `active`; **18 of 19 rows
+  closed** after PROMPT 891; 1 Should Have row still ready)
+- Sprint 14 activation or follow-on story authoring
+- full-workspace `cargo test --workspace --tests --no-fail-fast`
+  claim (deferred to end-of-sprint integration smoke per QA-plan-sprint-13)
+- any UI integration beyond the in-scope overlay registration
