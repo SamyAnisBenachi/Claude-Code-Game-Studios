@@ -130,6 +130,7 @@ pub enum HudMode {
 #[derive(Resource, Debug, Clone, Copy)]
 pub struct HudEntities {
     pub root: Entity,
+    pub top_strip: Entity,
     pub phase_label: Entity,
     pub round_counter: Entity,
     pub own_gold_parent: Entity,
@@ -147,6 +148,9 @@ pub struct HudEntities {
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HudRoot;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudTopStrip;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HudEntity;
@@ -560,22 +564,21 @@ fn spawn_hud(
         is_hoverable: false,
     });
 
-    // Sprint 14 story 004 (S11-TD-UI-FLEX-STRIPS) — canonical HeaderBar
-    // and FooterBar strip primitives. Spawned as named structural
-    // anchors per `docs/ux/global-ui-design-spec.md` §9 with the
-    // ratified deterministic heights (60 / 40). Children of HUD root so
-    // they are despawned automatically with the HUD entity tree on
-    // session exit. Tagged with their own marker components (not
-    // `HudEntity`) so `HUD_ENTITY_COUNT` remains aligned with the
-    // existing entity-count assertion contract.
-    commands.spawn((
-        Name::new("HUD HeaderBar"),
-        strips::HeaderBar,
-        strips::header_bar_node(),
-        Visibility::Inherited,
-        ChildOf(root),
-        z_layers::UI_BASE,
-    ));
+    // Sprint 14 story 015: the HeaderBar primitive is the structural
+    // HUD top-strip parent. It is not tagged `HudEntity`, so the
+    // pre-pooled HUD entity-count contract remains aligned with the
+    // gameplay readouts and downstream systems.
+    let top_strip = commands
+        .spawn((
+            Name::new("HUD Top Strip"),
+            HudTopStrip,
+            strips::HeaderBar,
+            hud_top_strip_node(),
+            Visibility::Inherited,
+            ChildOf(root),
+            z_layers::UI_BASE,
+        ))
+        .id();
     commands.spawn((
         Name::new("HUD FooterBar"),
         strips::FooterBar,
@@ -587,49 +590,42 @@ fn spawn_hud(
 
     let phase_label = spawn_text_label(
         &mut commands,
-        root,
+        top_strip,
         "HUD Phase Label",
         "",
         PhaseLabel,
-        top_left_node(config.hud_margin_px),
+        top_strip_text_node(),
     );
     let round_counter = spawn_text_label(
         &mut commands,
-        root,
+        top_strip,
         "HUD Round Counter",
         "",
         RoundCounter,
-        top_left_second_line_node(config.hud_margin_px),
+        top_strip_text_node(),
     );
     let (own_gold_parent, own_gold_span) = spawn_gold_label(
         &mut commands,
-        root,
+        top_strip,
         "HUD Own Gold",
         GoldLabelOwner::Local,
-        config.hud_margin_px,
-        0.0,
     );
-    // Sprint 14 story 004: previously `HUD_GOLD_ROW_GAP_PX = 48.0`.
-    // Recomposed via `docs/ux/global-ui-design-spec.md` §4 spacing scale
-    // ratification rule: values larger than SPACING_XL (32) are expressed
-    // as `XL + MD`, `XL + XL`, etc.  HUD opponent-gold vertical offset
-    // below own-gold = SPACING_XL + SPACING_MD = 48.
+    // The HudTopStrip flex parent owns inter-readout spacing through
+    // `spacing::SPACING_XL + spacing::SPACING_MD`; individual gold
+    // labels no longer carry per-line absolute offsets.
     let (opponent_gold_parent, opponent_gold_span) = spawn_gold_label(
         &mut commands,
-        root,
+        top_strip,
         "HUD Opponent Gold",
         GoldLabelOwner::Opponent,
-        config.hud_margin_px,
-        spacing::SPACING_XL + spacing::SPACING_MD,
     );
     let mana_label = spawn_mana_label(
         &mut commands,
-        root,
+        top_strip,
         "HUD Mana Label",
-        current_mana_bar_node(config.hud_margin_px),
+        current_mana_bar_node(),
     );
-    let (reserve_container, reserve_label) =
-        spawn_reserve_mana_label(&mut commands, root, config.hud_margin_px);
+    let (reserve_container, reserve_label) = spawn_reserve_mana_label(&mut commands, top_strip);
 
     // ── PAW-004: class figurine (own player) ──────────────────────────────────
     // Spawned with fallback; updated to the correct class asset in StateSync
@@ -680,17 +676,10 @@ fn spawn_hud(
             Name::new("HUD Phase Timer Bar"),
             HudEntity,
             HudTimerBar,
-            Node {
-                position_type: PositionType::Absolute,
-                left: Val::Px(config.hud_margin_px),
-                top: Val::Px(strips::HEADER_BAR_HEIGHT_PX),
-                width: Val::Px(HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX),
-                height: Val::Px(8.0),
-                ..default()
-            },
+            top_strip_timer_bar_node(),
             timer_bar_image,
             Visibility::Hidden,
-            ChildOf(root),
+            ChildOf(top_strip),
         ))
         .id();
 
@@ -728,6 +717,7 @@ fn spawn_hud(
 
     commands.insert_resource(HudEntities {
         root,
+        top_strip,
         phase_label,
         round_counter,
         own_gold_parent,
@@ -807,11 +797,7 @@ fn spawn_mana_label(
         .id()
 }
 
-fn spawn_reserve_mana_label(
-    commands: &mut Commands,
-    parent: Entity,
-    margin_px: f32,
-) -> (Entity, Entity) {
+fn spawn_reserve_mana_label(commands: &mut Commands, parent: Entity) -> (Entity, Entity) {
     let container = commands
         .spawn((
             Name::new("HUD Reserve Mana Diamond"),
@@ -823,7 +809,7 @@ fn spawn_reserve_mana_label(
                 height_px: RESERVE_MANA_DIAMOND_SIZE_PX,
                 rotation_degrees: RESERVE_MANA_DIAMOND_ROTATION_DEGREES,
             },
-            reserve_mana_diamond_node(margin_px),
+            reserve_mana_diamond_node(),
             UiTransform::from_rotation(Rot2::degrees(RESERVE_MANA_DIAMOND_ROTATION_DEGREES)),
             BackgroundColor(reserve_mana_diamond_fill()),
             BorderColor::all(reserve_mana_diamond_border()),
@@ -854,8 +840,6 @@ fn spawn_gold_label(
     parent: Entity,
     name: &'static str,
     owner: GoldLabelOwner,
-    margin_px: f32,
-    top_offset_px: f32,
 ) -> (Entity, Entity) {
     let parent_entity = commands
         .spawn((
@@ -868,7 +852,7 @@ fn spawn_gold_label(
             hud_text_font(HUD_GOLD_FONT_SIZE_PX),
             TextColor(HUD_GOLD_TEXT_COLOR),
             BackgroundColor(HUD_TEXT_BACKGROUND_COLOR),
-            top_right_node(margin_px, top_offset_px),
+            top_strip_gold_node(),
             Visibility::Hidden,
             ChildOf(parent),
         ))
@@ -2164,67 +2148,67 @@ fn hud_text_font(font_size: f32) -> TextFont {
     }
 }
 
-fn top_left_node(margin_px: f32) -> Node {
+fn hud_top_strip_node() -> Node {
+    let mut node = strips::header_bar_node();
+    node.padding = UiRect::horizontal(Val::Px(spacing::SPACING_LG));
+    node.column_gap = Val::Px(spacing::SPACING_XL + spacing::SPACING_MD);
+    node.row_gap = Val::Px(spacing::SPACING_XL - spacing::SPACING_XS);
+    node.min_height = Val::Px(strips::HEADER_BAR_HEIGHT_PX);
+    node.overflow = Overflow::visible();
+    node
+}
+
+fn top_strip_text_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(margin_px),
-        top: Val::Px(margin_px),
+        padding: UiRect::axes(Val::Px(spacing::SPACING_SM), Val::Px(spacing::SPACING_XS)),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
         ..default()
     }
 }
 
-fn top_left_second_line_node(margin_px: f32) -> Node {
-    // Sprint 14 story 004: previously `HUD_SECONDARY_ROW_GAP_PX = 28.0`.
-    // Recomposed via `docs/ux/global-ui-design-spec.md` §4 spacing scale:
-    // SPACING_XL - SPACING_XS = 32 - 4 = 28.  Phase / round vertical
-    // separation expressed in tokens instead of a per-module magic.
+fn top_strip_gold_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(margin_px),
-        top: Val::Px(margin_px + spacing::SPACING_XL - spacing::SPACING_XS),
+        padding: UiRect::horizontal(Val::Px(spacing::SPACING_SM)),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
         ..default()
     }
 }
 
-fn top_right_node(margin_px: f32, top_offset_px: f32) -> Node {
+fn current_mana_bar_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        right: Val::Px(margin_px),
-        top: Val::Px(margin_px + top_offset_px),
-        ..default()
-    }
-}
-
-fn current_mana_bar_node(margin_px: f32) -> Node {
-    Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(margin_px),
-        bottom: Val::Px(margin_px),
         width: Val::Px(CURRENT_MANA_BAR_WIDTH_PX),
         height: Val::Px(CURRENT_MANA_BAR_HEIGHT_PX),
         min_width: Val::Px(CURRENT_MANA_BAR_WIDTH_PX),
         min_height: Val::Px(CURRENT_MANA_BAR_HEIGHT_PX),
-        padding: UiRect::axes(Val::Px(10.0), Val::Px(3.0)),
-        border: UiRect::all(Val::Px(2.0)),
-        border_radius: BorderRadius::all(Val::Px(4.0)),
+        padding: UiRect::axes(Val::Px(spacing::SPACING_SM), Val::Px(spacing::SPACING_XS)),
+        border: UiRect::all(Val::Px(spacing::SPACING_XS / 2.0)),
+        border_radius: BorderRadius::all(Val::Px(spacing::SPACING_XS)),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
         ..default()
     }
 }
 
-fn reserve_mana_diamond_node(margin_px: f32) -> Node {
+fn reserve_mana_diamond_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(margin_px + 9.0),
-        bottom: Val::Px(margin_px + 42.0),
         width: Val::Px(RESERVE_MANA_DIAMOND_SIZE_PX),
         height: Val::Px(RESERVE_MANA_DIAMOND_SIZE_PX),
         min_width: Val::Px(RESERVE_MANA_DIAMOND_SIZE_PX),
         min_height: Val::Px(RESERVE_MANA_DIAMOND_SIZE_PX),
-        border: UiRect::all(Val::Px(2.0)),
+        border: UiRect::all(Val::Px(spacing::SPACING_XS / 2.0)),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
+        ..default()
+    }
+}
+
+fn top_strip_timer_bar_node() -> Node {
+    Node {
+        width: Val::Px(HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX),
+        height: Val::Px(spacing::SPACING_SM),
+        min_height: Val::Px(spacing::SPACING_SM),
         ..default()
     }
 }

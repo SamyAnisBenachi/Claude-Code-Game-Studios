@@ -314,6 +314,14 @@ path = "../tests/integration/ui_clean_pass/typography_test.rs"
 name = "ui_clean_pass_strips_test"
 path = "../tests/integration/ui_clean_pass/strips_test.rs"
 
+# S11-UX-HUD-TOP-STRIP-LAYOUT (Sprint 14 story 015): HUD top-strip
+# HeaderBar composition, entity preservation, schedule stability,
+# font-size grep guard, and UI_BASE z-layer usage (AC1, AC2, AC3,
+# AC4, AC9, AC10).
+[[test]]
+name = "hud_top_strip_layout_test"
+path = "../tests/integration/ui_clean_pass/hud_top_strip_layout_test.rs"
+
 # S12-TD-UI-OVERLAY-ALPHA-TOKEN-001 (Sprint 14 story 006): overlay alpha
 # design-token module grep-guard, HUD dim / settlement scrim / result
 # backdrop migration spot-checks, and connection-lost overlay AC6
