@@ -13,6 +13,13 @@
 //! - [`typography`] — named typography scale (Caption / Body / H3 / H2 /
 //!   H1 / Display), font weights, and line-height ratio
 //!   (Sprint 14 story 003 / S11-TD-UI-FONT-CONSTANTS).
+//! - [`spacing`] — named spacing scale (`SPACING_XS` / `SM` / `MD` /
+//!   `LG` / `XL`) for child gaps, padding, and inter-element margins
+//!   (Sprint 14 story 004 / S11-TD-UI-FLEX-STRIPS).
+//! - [`strips`] — named flex-strip composition primitives
+//!   (`HeaderBar` / `LaneBar` / `HandBar` / `FooterBar`) with
+//!   deterministic pixel heights and documented flex axes
+//!   (Sprint 14 story 004 / S11-TD-UI-FLEX-STRIPS).
 //!
 //! ## Scope discipline
 //!
@@ -21,5 +28,7 @@
 //! validation (`QA-COND-0006`), or final-art / asset-production
 //! (`PAW-TD-*-a`). Friend-game scope boundary preserved.
 
+pub mod spacing;
+pub mod strips;
 pub mod typography;
 pub mod z_layers;

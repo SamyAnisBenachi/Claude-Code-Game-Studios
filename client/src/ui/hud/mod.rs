@@ -19,7 +19,7 @@ use crate::asset_wiring::{
 use crate::card_animations::cancel_tween_anim_in_place;
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
-use crate::ui::design_tokens::{typography, z_layers};
+use crate::ui::design_tokens::{spacing, strips, typography, z_layers};
 use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
 pub const HUD_DOT_ROWS: usize = 2;
@@ -74,8 +74,13 @@ pub const HUD_TEXT_BACKGROUND_COLOR: Color = Color::srgba(0.04, 0.07, 0.12, 1.0)
 pub const HUD_PRIMARY_TEXT_COLOR: Color = Color::srgba(0.96, 0.98, 1.0, 1.0);
 pub const HUD_GOLD_TEXT_COLOR: Color = Color::srgba(1.0, 0.82, 0.28, 1.0);
 pub const HUD_RESERVED_GOLD_TEXT_COLOR: Color = Color::srgba(0.95, 0.90, 0.70, 0.65);
-const HUD_GOLD_ROW_GAP_PX: f32 = 48.0;
-const HUD_SECONDARY_ROW_GAP_PX: f32 = 28.0;
+// Sprint 14 story 004 (S11-TD-UI-FLEX-STRIPS) — per-module `_GAP_PX`
+// magic constants `HUD_GOLD_ROW_GAP_PX = 48.0` and
+// `HUD_SECONDARY_ROW_GAP_PX = 28.0` (PROMPT 802 §3.9 G2) are deleted in
+// favour of the `spacing` design-token recompositions documented at
+// each call site. AC7 grep guard at
+// `tests/integration/ui_clean_pass/strips_test.rs` enforces no
+// surviving `_GAP_PX` identifier.
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HudSystemSet {
@@ -549,6 +554,31 @@ fn spawn_hud(
         is_hoverable: false,
     });
 
+    // Sprint 14 story 004 (S11-TD-UI-FLEX-STRIPS) — canonical HeaderBar
+    // and FooterBar strip primitives. Spawned as named structural
+    // anchors per `docs/ux/global-ui-design-spec.md` §9 with the
+    // ratified deterministic heights (60 / 40). Children of HUD root so
+    // they are despawned automatically with the HUD entity tree on
+    // session exit. Tagged with their own marker components (not
+    // `HudEntity`) so `HUD_ENTITY_COUNT` remains aligned with the
+    // existing entity-count assertion contract.
+    commands.spawn((
+        Name::new("HUD HeaderBar"),
+        strips::HeaderBar,
+        strips::header_bar_node(),
+        Visibility::Inherited,
+        ChildOf(root),
+        z_layers::UI_BASE,
+    ));
+    commands.spawn((
+        Name::new("HUD FooterBar"),
+        strips::FooterBar,
+        strips::footer_bar_node(),
+        Visibility::Inherited,
+        ChildOf(root),
+        z_layers::UI_BASE,
+    ));
+
     let phase_label = spawn_text_label(
         &mut commands,
         root,
@@ -573,13 +603,18 @@ fn spawn_hud(
         config.hud_margin_px,
         0.0,
     );
+    // Sprint 14 story 004: previously `HUD_GOLD_ROW_GAP_PX = 48.0`.
+    // Recomposed via `docs/ux/global-ui-design-spec.md` §4 spacing scale
+    // ratification rule: values larger than SPACING_XL (32) are expressed
+    // as `XL + MD`, `XL + XL`, etc.  HUD opponent-gold vertical offset
+    // below own-gold = SPACING_XL + SPACING_MD = 48.
     let (opponent_gold_parent, opponent_gold_span) = spawn_gold_label(
         &mut commands,
         root,
         "HUD Opponent Gold",
         GoldLabelOwner::Opponent,
         config.hud_margin_px,
-        HUD_GOLD_ROW_GAP_PX,
+        spacing::SPACING_XL + spacing::SPACING_MD,
     );
     let mana_label = spawn_mana_label(
         &mut commands,
@@ -593,6 +628,14 @@ fn spawn_hud(
     // ── PAW-004: class figurine (own player) ──────────────────────────────────
     // Spawned with fallback; updated to the correct class asset in StateSync
     // when the first S2CGameSnapshot arrives and own ClassId is known.
+    // Sprint 14 story 004: previously `bottom: hud_margin + 60.0` magic
+    // offset. Replaced with FooterBar-relative anchoring expressed via
+    // strip + spacing tokens. Anchor = `FOOTER_BAR_HEIGHT_PX + SPACING_XL`
+    // (40 + 32 = 72), same pixel value, now derived from
+    // `docs/ux/global-ui-design-spec.md` §9 strip composition rather
+    // than a per-module magic. The figurine sits in the FooterBar
+    // band; its full visual footprint extends above the strip into the
+    // play area via overflow-visible on the parent.
     let figurine = commands
         .spawn((
             Name::new("HUD Class Figurine"),
@@ -601,7 +644,7 @@ fn spawn_hud(
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(config.hud_margin_px),
-                bottom: Val::Px(config.hud_margin_px + 60.0),
+                bottom: Val::Px(strips::FOOTER_BAR_HEIGHT_PX + spacing::SPACING_XL),
                 width: Val::Px(64.0),
                 height: Val::Px(64.0),
                 ..default()
@@ -619,6 +662,13 @@ fn spawn_hud(
     } else {
         ImageNode::new(Handle::default())
     };
+    // Sprint 14 story 004: previously `top: hud_margin + 48.0` magic
+    // offset. Replaced with HeaderBar-relative anchoring: the timer bar
+    // sits immediately below the canonical HeaderBar strip footprint,
+    // so `top = HEADER_BAR_HEIGHT_PX` (60) expressed via the strip
+    // token rather than a per-module magic. Default hud_margin (12) +
+    // 48 = 60 = HEADER_BAR_HEIGHT_PX — same pixel value, now derived
+    // from `docs/ux/global-ui-design-spec.md` §9.
     let timer_bar = commands
         .spawn((
             Name::new("HUD Phase Timer Bar"),
@@ -627,7 +677,7 @@ fn spawn_hud(
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(config.hud_margin_px),
-                top: Val::Px(config.hud_margin_px + 48.0),
+                top: Val::Px(strips::HEADER_BAR_HEIGHT_PX),
                 width: Val::Px(HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX),
                 height: Val::Px(8.0),
                 ..default()
@@ -2118,10 +2168,14 @@ fn top_left_node(margin_px: f32) -> Node {
 }
 
 fn top_left_second_line_node(margin_px: f32) -> Node {
+    // Sprint 14 story 004: previously `HUD_SECONDARY_ROW_GAP_PX = 28.0`.
+    // Recomposed via `docs/ux/global-ui-design-spec.md` §4 spacing scale:
+    // SPACING_XL - SPACING_XS = 32 - 4 = 28.  Phase / round vertical
+    // separation expressed in tokens instead of a per-module magic.
     Node {
         position_type: PositionType::Absolute,
         left: Val::Px(margin_px),
-        top: Val::Px(margin_px + HUD_SECONDARY_ROW_GAP_PX),
+        top: Val::Px(margin_px + spacing::SPACING_XL - spacing::SPACING_XS),
         ..default()
     }
 }
