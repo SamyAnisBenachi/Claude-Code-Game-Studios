@@ -18,7 +18,7 @@ use crate::card_animations::{
 };
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
-use crate::ui::design_tokens::{overlays, typography, z_layers};
+use crate::ui::design_tokens::{overlays, spacing, typography, z_layers};
 use crate::ui::hud::{HudGoldBroadcastMessage, HudPlayerIds};
 use crate::ui::settings::AccessibilityPreferences;
 
@@ -35,6 +35,20 @@ pub const DRAFT_INITIAL_OBJECTIVE_COPY: &str = "Select up to 9 cards to keep. Yo
 pub const AUCTION_BID_TARGET_WIDTH_PX: f32 = 108.0;
 pub const AUCTION_BID_TARGET_HEIGHT_PX: f32 = 44.0;
 pub const AUCTION_BID_FOCUS_RING_WIDTH_PX: f32 = 2.0;
+
+/// Featured-card pixel footprint — Sprint 14 story 016
+/// (`S11-UX-AUCTION-FEATURED-CARD`). Width × height are each strictly
+/// larger than any shop slot well (`shop_slot_node` = 136 × 78 px) so
+/// the featured auction-up surface reads as the visually dominant card
+/// at every canonical viewport (`docs/ux/global-ui-design-spec.md` §8).
+pub const AUCTION_FEATURED_CARD_WIDTH_PX: f32 = 380.0;
+pub const AUCTION_FEATURED_CARD_HEIGHT_PX: f32 = 280.0;
+/// Featured-card frame stroke thickness — chosen from spec §4 spacing
+/// scale (`SPACING_XS / 2 ≈ 2 px`, rounded up). Story 016 Implementation
+/// Notes line 230-232 binds the *intent* (frame primitive) rather than
+/// the exact pixel value; story 018 may extend this constant for the
+/// leading / losing state without re-authoring geometry.
+pub const AUCTION_FEATURED_CARD_FRAME_THICKNESS_PX: f32 = 3.0;
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShopAuctionUiSystemSet {
@@ -576,6 +590,9 @@ pub struct ShopAuctionUiEntities {
     pub shop_hand_full_banner: Entity,
     pub auction_panel: Entity,
     pub auction_featured_card: Entity,
+    pub auction_featured_card_frame: Entity,
+    pub auction_featured_card_stats: Entity,
+    pub auction_featured_card_keyword: Entity,
     pub auction_status_text: Entity,
     pub auction_timer_bar: Entity,
     pub auction_bid_status_text: Entity,
@@ -677,6 +694,27 @@ pub struct AuctionBidStatusText;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuctionFeaturedCard;
+
+/// Sprint 14 story 016 (`S11-UX-AUCTION-FEATURED-CARD`) — stable marker
+/// for the explicit visual frame surrounding the featured auction-up
+/// card. Story 018 (`S12-UX-AUCTION-LEAD-LOSS-STATE-001`) extends this
+/// primitive by re-coloring the frame border; the geometry is owned
+/// here.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionFeaturedCardFrame;
+
+/// Sprint 14 story 016 — stable marker for the ATK / HP / cost stats
+/// readout sitting inside the featured card. Carries `TextFont`
+/// `H2 = 22 px` so AC4's numeric hierarchy assertion (name > stats >
+/// keyword) is observable without touching layout.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionFeaturedCardStats;
+
+/// Sprint 14 story 016 — stable marker for the keyword / rarity text
+/// sitting beneath the stats readout. Carries `TextFont` `BODY = 15 px`
+/// so AC4's numeric hierarchy assertion is observable.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionFeaturedCardKeyword;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuctionStatusText;
@@ -3096,6 +3134,21 @@ pub fn sync_auction_panel_system(
         );
         set_visibility(
             &mut visibility,
+            entities.auction_featured_card_frame,
+            visibility_for(auction_visible),
+        );
+        set_visibility(
+            &mut visibility,
+            entities.auction_featured_card_stats,
+            visibility_for(auction_visible),
+        );
+        set_visibility(
+            &mut visibility,
+            entities.auction_featured_card_keyword,
+            visibility_for(auction_visible),
+        );
+        set_visibility(
+            &mut visibility,
             entities.auction_status_text,
             visibility_for(auction_visible),
         );
@@ -3511,6 +3564,9 @@ pub fn spawn_shop_auction_ui(
         .insert(ImageNode::new(asset_server.load(SHOP_PANEL_CHROME_ASSET)));
     let (
         auction_featured_card,
+        auction_featured_card_frame,
+        auction_featured_card_stats,
+        auction_featured_card_keyword,
         auction_status_text,
         auction_timer_bar,
         auction_bid_status_text,
@@ -3577,6 +3633,9 @@ pub fn spawn_shop_auction_ui(
         shop_hand_full_banner,
         auction_panel,
         auction_featured_card,
+        auction_featured_card_frame,
+        auction_featured_card_stats,
+        auction_featured_card_keyword,
         auction_status_text,
         auction_timer_bar,
         auction_bid_status_text,
@@ -3958,7 +4017,16 @@ fn spawn_auction_contents(
     asset_server: &AssetServer,
     bid_increments: &[u32; 3],
     parent: Entity,
-) -> (Entity, Entity, Entity, Entity, [Entity; 3]) {
+) -> (
+    Entity,
+    Entity,
+    Entity,
+    Entity,
+    Entity,
+    Entity,
+    Entity,
+    [Entity; 3],
+) {
     let featured_card = commands
         .spawn((
             Name::new("Shop Auction Featured Auction Card"),
@@ -3968,8 +4036,62 @@ fn spawn_auction_contents(
             shop_auction_text_font(typography::H1),
             TextColor(Color::srgb(0.98, 0.94, 0.80)),
             auction_featured_card_node(),
+            BorderColor::all(auction_featured_card_accent_color()),
             Visibility::Hidden,
             ChildOf(parent),
+        ))
+        .id();
+
+    // Sprint 14 story 016 AC2: explicit visual frame primitive painted as
+    // a transparent sub-node overlapping the featured card. The frame
+    // marker is observable via `AuctionFeaturedCardFrame` queries; story
+    // 018 (lead / loss state) extends this primitive by recoloring the
+    // border without re-authoring geometry.
+    let featured_card_frame = commands
+        .spawn((
+            Name::new("Shop Auction Featured Card Frame"),
+            ShopAuctionUiEntity,
+            AuctionFeaturedCardFrame,
+            auction_featured_card_frame_node(),
+            BorderColor::all(auction_featured_card_accent_color()),
+            BackgroundColor(Color::NONE),
+            Visibility::Hidden,
+            ChildOf(featured_card),
+        ))
+        .id();
+
+    // Sprint 14 story 016 AC4: typography hierarchy markers. The stats
+    // and keyword readouts carry `H2` and `BODY` font sizes so that the
+    // numeric hierarchy assertion (name `H1` > stats `H2` > keyword
+    // `BODY`) is observable via stable marker queries. Authored as
+    // hidden sub-nodes (test-observable UI state) — story 016 is
+    // layout / composition / hierarchy scope only and does not author
+    // new visible content; future content rows may set their `Text`.
+    let featured_card_stats = commands
+        .spawn((
+            Name::new("Shop Auction Featured Card Stats"),
+            ShopAuctionUiEntity,
+            AuctionFeaturedCardStats,
+            Text::new(""),
+            shop_auction_text_font(typography::H2),
+            TextColor(Color::srgb(0.92, 0.94, 0.96)),
+            auction_featured_card_stats_node(),
+            Visibility::Hidden,
+            ChildOf(featured_card),
+        ))
+        .id();
+
+    let featured_card_keyword = commands
+        .spawn((
+            Name::new("Shop Auction Featured Card Keyword"),
+            ShopAuctionUiEntity,
+            AuctionFeaturedCardKeyword,
+            Text::new(""),
+            shop_auction_text_font(typography::BODY),
+            TextColor(Color::srgb(0.86, 0.90, 0.96)),
+            auction_featured_card_keyword_node(),
+            Visibility::Hidden,
+            ChildOf(featured_card),
         ))
         .id();
 
@@ -4058,6 +4180,9 @@ fn spawn_auction_contents(
 
     (
         featured_card,
+        featured_card_frame,
+        featured_card_stats,
+        featured_card_keyword,
         status_text,
         timer_bar,
         bid_status_text,
@@ -4273,22 +4398,97 @@ fn auction_panel_node() -> Node {
 }
 
 fn auction_featured_card_node() -> Node {
+    // Sprint 14 story 016 AC1 + AC3: width × height each strictly larger
+    // than `shop_slot_node` (136 × 78 px); center-of-panel anchor via the
+    // canonical bevy_ui centering trick (left/top = 50% with a negative
+    // margin = half the size). The auction panel inhabits the full
+    // viewport width (`left: 0, right: 0`) and a fixed vertical band
+    // (`top: 80, bottom: 140`), so the relative percent anchor resolves
+    // to the panel's geometric center at every viewport in the canonical
+    // matrix (`docs/ux/global-ui-design-spec.md` §8).
     Node {
         position_type: PositionType::Absolute,
-        left: Val::Percent(34.0),
-        top: Val::Px(48.0),
-        width: Val::Px(300.0),
-        height: Val::Px(120.0),
-        border: UiRect::all(Val::Px(1.0)),
+        left: Val::Percent(50.0),
+        top: Val::Percent(50.0),
+        margin: UiRect {
+            left: Val::Px(-AUCTION_FEATURED_CARD_WIDTH_PX / 2.0),
+            right: Val::Px(0.0),
+            top: Val::Px(-AUCTION_FEATURED_CARD_HEIGHT_PX / 2.0),
+            bottom: Val::Px(0.0),
+        },
+        width: Val::Px(AUCTION_FEATURED_CARD_WIDTH_PX),
+        height: Val::Px(AUCTION_FEATURED_CARD_HEIGHT_PX),
+        border: UiRect::all(Val::Px(AUCTION_FEATURED_CARD_FRAME_THICKNESS_PX)),
+        padding: UiRect::all(Val::Px(spacing::SPACING_LG)),
         ..default()
     }
 }
 
+fn auction_featured_card_frame_node() -> Node {
+    // Sprint 14 story 016 AC2: explicit visual frame overlay. Anchored
+    // to the featured-card parent's full extent so the frame paints
+    // exactly the perimeter of the card without occluding the inline
+    // card content. Border thickness matches `auction_featured_card_node`
+    // so the frame primitive stays visually flush even when story 018
+    // (lead / loss state) recolors it.
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(0.0),
+        right: Val::Px(0.0),
+        top: Val::Px(0.0),
+        bottom: Val::Px(0.0),
+        border: UiRect::all(Val::Px(AUCTION_FEATURED_CARD_FRAME_THICKNESS_PX)),
+        ..default()
+    }
+}
+
+fn auction_featured_card_stats_node() -> Node {
+    // Sprint 14 story 016 AC4: stats readout sub-node. Anchored beneath
+    // the name region inside the featured card; height is sized off the
+    // H2 line-height-ratio so the typography hierarchy reads
+    // unambiguously.
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(spacing::SPACING_LG),
+        right: Val::Px(spacing::SPACING_LG),
+        bottom: Val::Px(
+            spacing::SPACING_LG + typography::BODY * typography::LINE_HEIGHT_DEFAULT_RATIO,
+        ),
+        height: Val::Px(typography::H2 * typography::LINE_HEIGHT_DEFAULT_RATIO),
+        ..default()
+    }
+}
+
+fn auction_featured_card_keyword_node() -> Node {
+    // Sprint 14 story 016 AC4: keyword readout sub-node. Anchored at the
+    // card's bottom-inside edge per the read-order (name → stats →
+    // keyword) per story 016 §Scope line 138-143.
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(spacing::SPACING_LG),
+        right: Val::Px(spacing::SPACING_LG),
+        bottom: Val::Px(spacing::SPACING_SM),
+        height: Val::Px(typography::BODY * typography::LINE_HEIGHT_DEFAULT_RATIO),
+        ..default()
+    }
+}
+
+/// Sprint 14 story 016 — featured-card frame fill color. ACCENT token
+/// `#F2C94C` per `docs/ux/global-ui-design-spec.md` §7. Friend-game
+/// placeholder palette; `PAW-TD-*-a` accept-risk preserved.
+pub fn auction_featured_card_accent_color() -> Color {
+    Color::srgb(0.949, 0.788, 0.298)
+}
+
 fn auction_status_text_node() -> Node {
+    // Sprint 14 story 016: status text anchored near the panel top so it
+    // sits clear of the panel-centered featured card at both the 1080p
+    // and 768p viewports. Story 004 contract (status visibility &
+    // content) is unchanged; only the absolute offset moves.
     Node {
         position_type: PositionType::Absolute,
         left: Val::Percent(34.0),
-        top: Val::Px(176.0),
+        top: Val::Px(spacing::SPACING_XL),
         width: Val::Px(360.0),
         height: Val::Px(32.0),
         ..default()
@@ -4296,20 +4496,27 @@ fn auction_status_text_node() -> Node {
 }
 
 fn auction_timer_bar_node() -> Node {
+    // Sprint 14 story 016: timer bar anchored near the panel top.
+    // Story 004 contract (timer visibility / fill animation) is
+    // unchanged; only the absolute offset moves.
     Node {
         position_type: PositionType::Absolute,
         left: Val::Percent(34.0),
-        top: Val::Px(216.0),
+        top: Val::Px(spacing::SPACING_XL + spacing::SPACING_XL + spacing::SPACING_MD),
         height: Val::Px(10.0),
         ..default()
     }
 }
 
 fn auction_bid_status_text_node() -> Node {
+    // Sprint 14 story 016: bid-status text anchored to the panel bottom
+    // so it sits clear of the featured card (panel-centered, 380×280).
+    // Story 005 + 006 contracts (status text visibility) are unchanged;
+    // only the absolute offset moves.
     Node {
         position_type: PositionType::Absolute,
         left: Val::Percent(34.0),
-        top: Val::Px(292.0),
+        bottom: Val::Px(24.0),
         width: Val::Px(360.0),
         height: Val::Px(40.0),
         ..default()
@@ -4317,10 +4524,14 @@ fn auction_bid_status_text_node() -> Node {
 }
 
 fn auction_bid_button_node(index: usize) -> Node {
+    // Sprint 14 story 016: bid buttons anchored to the panel bottom so
+    // they read alongside (not on top of) the panel-centered featured
+    // card. Bid target 44 × 44 CSS px (story 011) and focus-ring width
+    // (story 011) are unchanged; only the absolute offset moves.
     Node {
         position_type: PositionType::Absolute,
         left: Val::Percent(34.0 + index as f32 * 9.0),
-        top: Val::Px(248.0),
+        bottom: Val::Px(72.0),
         width: Val::Px(AUCTION_BID_TARGET_WIDTH_PX),
         height: Val::Px(AUCTION_BID_TARGET_HEIGHT_PX),
         border: UiRect::all(Val::Px(1.0)),
