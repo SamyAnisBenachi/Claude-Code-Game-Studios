@@ -182,10 +182,9 @@ candidate `S11-UX-HUD-OPP-FIGURINE` per PROMPT 802 §3.2 H10).
 
 ### GDD / ADR / TR trace
 
-- **GDD**: `design/gdd/hud.md` TR-HUD-002 (mana display), TR-HUD-011
-  (current mana bar / reserve mana diamond shape distinction — covered
-  by Sprint 6 story 011, already `Ready`). All preserved by this
-  story.
+- **GDD / accessibility trace**: `design/gdd/hud.md` TR-HUD-002 (mana
+  display), plus HUD story 011 / `A11Y-ST-13` for the current mana bar
+  / reserve mana diamond shape distinction. All preserved by this story.
 - **ADR-021** (Presentation Layer Architecture): `HudPlugin` 4th in
   `PresentationPlugin`; `PresentationSet` ordering preserved. This
   story does not change the system schedule, only spawn-time Node
@@ -227,8 +226,9 @@ candidate `S11-UX-HUD-OPP-FIGURINE` per PROMPT 802 §3.2 H10).
 - Required: ADR-021 system schedule preserved (no `PresentationSet`
   reordering, no new schedule sets added under this story).
 - Required: ADR-002 + ADR-021 preserved (HUD remains read-only).
-- Required: TR-HUD-011 shape distinction (current mana = bar / reserve
-  mana = diamond) preserved exactly in `HudTopStrip`.
+- Required: HUD story 011 / `A11Y-ST-13` shape distinction (current
+  mana = bar / reserve mana = diamond) preserved exactly in
+  `HudTopStrip`.
   `ManaShapeGeometry` component unchanged. Rotation transform
   preserved on reserve diamond.
 - Forbidden: Introducing `Val::Percent(...)` on any `font_size` /
@@ -330,9 +330,9 @@ All criteria are independently checkable.
   `mana_label` / `reserve_container` / `reserve_label` remain under
   the existing `HudTopStrip` tree.
 
-- [ ] **AC4 -- TR-HUD-011 shape distinction preserved**: GIVEN the
-  post-refactor spawn, WHEN current mana and reserve mana entities
-  are inspected in `HudTopStrip`, THEN the current mana entity retains
+- [ ] **AC4 -- HUD story 011 / `A11Y-ST-13` shape distinction preserved**:
+  GIVEN the post-refactor spawn, WHEN current mana and reserve mana
+  entities are inspected in `HudTopStrip`, THEN the current mana entity retains
   `ManaShapeGeometry { kind: Bar, width_px: CURRENT_MANA_BAR_WIDTH_PX,
   height_px: CURRENT_MANA_BAR_HEIGHT_PX }` and the reserve mana
   entity retains its diamond geometry with
@@ -478,7 +478,7 @@ because no code is touched at authoring time.
 - No-claim restatement (verbatim from "Status / No-Claim Banner").
 - Cross-link to PROMPT 802 §3.2 H1 / H2 / H9.
 - Cross-link to `docs/ux/ui-clean-pass-roadmap.md` rank 8.
-- Cross-link to TR-HUD-011 (shape distinction).
+- Cross-link to HUD story 011 / `A11Y-ST-13` (shape distinction).
 
 ---
 
