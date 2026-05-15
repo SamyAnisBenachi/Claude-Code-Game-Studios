@@ -4,10 +4,14 @@
 > **GDD**: design/gdd/hand-ui.md, design/gdd/hud.md, design/gdd/shop-auction-ui.md, design/gdd/board-rendering.md (cross-cut)
 > **Architecture Module**: `client/src/ui/`, `client/src/presentation/`
 > (read-only roadmap; no code edits land in this epic during Sprint 13)
-> **Status**: Draft -- Sprint 13 candidate index for the UI clean-pass
-> audit roadmap; NOT activated
-> **Stories**: 1 Sprint 13 candidate roadmap-prep story; NOT activated.
-> The 14 PROMPT 802 candidate UI repair rows are NOT activated here.
+> **Status**: Draft -- Sprint 13 roadmap-prep landed (story 001 Done
+> via PROMPT 840 on `origin/main@0d59ba3`); Sprint 14 foundation
+> candidate stories 002-007 authored by PROMPT 878 as candidates only;
+> Sprint 14 NOT activated by this authoring run
+> **Stories**: 1 Sprint 13 roadmap-prep story (Done) + 6 Sprint 14
+> Tier 0 foundation candidate stories (authored PROMPT 878 as
+> candidates; NOT activated). The 14 PROMPT 802 candidate UI repair
+> rows remain NOT activated.
 
 ## Overview
 
@@ -80,15 +84,44 @@ accepted-risk and are **not** advanced by this roadmap-prep.
 
 ## Stories
 
-| # | Story | Type | Status | Sprint 13 Slug |
-|---|-------|------|--------|----------------|
-| 001 | [PROMPT 802 Expert UI Layout Audit -- Roadmap Prep](story-001-prompt-802-audit-roadmap-prep.md) | Documentation only | Draft -- Sprint 13 candidate (Nice to Have), NOT activated | S13-UI-AUDIT-ROADMAP-PREP-001 |
+| # | Story | Type | Status | Story ID |
+|---|-------|------|--------|----------|
+| 001 | [PROMPT 802 Expert UI Layout Audit -- Roadmap Prep](story-001-prompt-802-audit-roadmap-prep.md) | Documentation only | Done -- Sprint 13 Nice to Have (closed PROMPT 840 on `origin/main@0d59ba3`) | S13-UI-AUDIT-ROADMAP-PREP-001 |
+| 002 | [UI Z-Index Layer Constants](story-002-ui-zindex-layers.md) | Tech Debt -- Tier 0 foundational | Draft -- Sprint 14 candidate, NOT activated | S11-TD-UI-ZINDEX-LAYERS |
+| 003 | [UI Typography Scale Tokens](story-003-ui-font-constants.md) | Tech Debt -- Tier 0 foundational | Draft -- Sprint 14 candidate, NOT activated | S11-TD-UI-FONT-CONSTANTS |
+| 004 | [UI Flex-Based Strip Composition Primitives](story-004-ui-flex-strips.md) | Tech Debt -- Tier 0 foundational | Draft -- Sprint 14 candidate, NOT activated | S11-TD-UI-FLEX-STRIPS |
+| 005 | [UI Viewport-Invariant Test Bin](story-005-ui-viewport-invariant-tests.md) | Tech Debt -- Tier 0 foundational | Draft -- Sprint 14 candidate, NOT activated | S11-TD-UI-VIEWPORT-INVARIANT-TESTS |
+| 006 | [UI Overlay Alpha Token (Single Source)](story-006-ui-overlay-alpha-token.md) | Tech Debt -- Tier 0 foundational | Draft -- Sprint 14 candidate, NOT activated | S12-TD-UI-OVERLAY-ALPHA-TOKEN-001 |
+| 007 | [Canonical Global UI Design Spec](story-007-global-ui-design-spec.md) | UX -- design-spec authoring | Draft -- Sprint 14 candidate, NOT activated | S12-UX-GLOBAL-UI-DESIGN-SPEC-001 |
+
+### Sprint 14 Candidate Sequencing Notes
+
+Stories 002-007 are the Tier 0 foundational set per
+`docs/ux/ui-clean-pass-roadmap.md` ranks 1-6. Per the roadmap §3
+sequencing rules:
+
+- Story 007 (global UI design spec) should land **first** because the
+  other five Tier 0 modules need its numeric values as input. Tier 0
+  internal sequencing is mostly serial across stories 002 / 003 / 004
+  / 006 (shared `client/src/ui/design_tokens/` host module); story 005
+  (viewport-invariant test bin) is parallel-safe with the design-token
+  work because it lives in `tests/integration/`.
+- None of stories 002-007 are activated by PROMPT 878. Sprint 14
+  activation is a separate prompt. Sprint 13 disposition (`active`,
+  `Polish` stage) is preserved unchanged.
 
 ## Definition of Done
 
-- Story 001 passes `/story-readiness` against Sprint 13 activation
-  HEAD.
-- `docs/ux/ui-clean-pass-roadmap.md` (NEW) is authored with the 14
-  PROMPT 802 slugs sequenced and reconciled against PROMPT 685.
+- Story 001 (Sprint 13 roadmap-prep): Done -- closed by PROMPT 840 on
+  `origin/main@0d59ba3`.
+- Stories 002-007 (Sprint 14 Tier 0 foundation candidates): Done when
+  each passes its own AC matrix after Sprint 14 activation, separate
+  per-story `/dev-story` runs, separate `/code-review`, and separate
+  `/story-done` closure.
 - Sprint 13 activation does **not** silently pull in any of the 14
-  PROMPT 802 candidate slugs.
+  PROMPT 802 candidate slugs (preserved by PROMPT 826 activation,
+  PROMPT 840 closure, and PROMPT 878 authoring).
+- Sprint 14 activation (when it happens, in a separate prompt) preserves
+  the friend-game vs Standard-tier-accessibility scope boundary;
+  `QA-COND-0005`, `QA-COND-0006`, and `PAW-TD-*-a` accept-risk
+  dispositions remain preserved.
