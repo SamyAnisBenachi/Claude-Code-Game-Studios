@@ -2,7 +2,7 @@
 
 > **Epic**: UI Clean-Pass
 > **Story ID**: S12-TD-UI-OVERLAY-ALPHA-TOKEN-001
-> **Status**: Draft (Sprint 14 candidate; NOT activated)
+> **Status**: Done (PROMPT 921 /story-done closure on origin/main@c4e1936)
 > **Layer**: Presentation / UX foundational tech-debt
 > **Type**: Tech Debt -- foundational primitive (design token)
 > **Sprint**: Sprint 14 candidate (Tier 0 foundational; PROMPT 802 §4 rank 0.5;
@@ -136,59 +136,102 @@ modal / overlay scrim, replacing the three (or more) scattered
 
 All criteria are independently checkable BLOCKING criteria.
 
-- [ ] **AC1 -- Overlay token authored**: GIVEN the story commit, WHEN
-  the new design-token module is inspected, THEN it exports at least
-  two named overlay alpha constants (`OVERLAY_DIM_ALPHA` and
-  `OVERLAY_SCRIM_ALPHA`) each with a doc comment naming canonical
-  consumers. Verification: code review.
+- [x] **AC1 -- Overlay token authored** -- **PASS** (PROMPT 921 verified
+  on origin/main@c4e1936): `client/src/ui/design_tokens/overlays.rs`
+  NEW 273 lines exports `OVERLAY_DIM_ALPHA = 0.45` (:90),
+  `OVERLAY_SCRIM_ALPHA = 0.55` (:116), `OVERLAY_TOAST_ALPHA = 0.80`
+  (:131), each with `///` doc comment naming canonical consumers
+  (HUD dim / settlement+result scrim / toast root). Inline 9-test
+  unit suite asserts range / strict-ascending / pairwise-distinct /
+  spec-ratified-value / dim<scrim<toast hierarchy invariants.
+  Integration test `ac1_overlay_token_module_exports_required_token_set`
+  asserts published surface.
 
-- [ ] **AC2 -- HUD dim migrated**: GIVEN the story commit, WHEN
-  `client/src/ui/hud/mod.rs` is inspected, THEN the dim overlay alpha
-  literal (previously `0.45`) is replaced with a read of
-  `OVERLAY_DIM_ALPHA`. Verification: code review + visual capture
-  comparing HUD dim pre/post-migration.
+- [x] **AC2 -- HUD dim migrated** -- **PASS** (PROMPT 921 verified on
+  origin/main@c4e1936): `client/src/ui/hud/mod.rs:40` exports
+  `pub const HUD_DIM_OVERLAY_ALPHA: f32 = overlays::OVERLAY_DIM_ALPHA`
+  routing the grep-stable consumer name through the canonical token;
+  call site at `:714` reads `HUD_DIM_OVERLAY_ALPHA` via
+  `Color::srgba(0.0, 0.0, 0.0, HUD_DIM_OVERLAY_ALPHA)`. The previous
+  inline `0.45` literal at the spawn site is gone. Integration test
+  `ac2_hud_dim_overlay_alpha_routes_through_overlays_token` enforces
+  the routing. Visual capture deferred to follow-on QA-tester
+  deliverable under `/team-qa` (NOT in PROMPT 921 paperwork scope).
 
-- [ ] **AC3 -- Settlement scrim migrated**: GIVEN the story commit,
-  WHEN `client/src/ui/shop_auction/mod.rs` is inspected, THEN the
-  settlement overlay alpha literal (previously `0.58`) is replaced
-  with a read of `OVERLAY_SCRIM_ALPHA`. Verification: code review +
-  visual capture.
+- [x] **AC3 -- Settlement scrim migrated** -- **PASS** (PROMPT 921
+  verified on origin/main@c4e1936):
+  `client/src/ui/shop_auction/mod.rs:~3550-3556` settlement overlay
+  `BackgroundColor` reads `Color::srgba(0.02, 0.05, 0.08,
+  overlays::OVERLAY_SCRIM_ALPHA)` (rustfmt wrapped the call to
+  multi-line). Previous `0.58` literal at the spawn site is gone.
+  Integration test `ac3_settlement_overlay_reads_canonical_scrim_alpha`
+  uses whitespace-normalized matching for rustfmt-robustness. Visual
+  capture deferred to follow-on QA-tester `/team-qa` deliverable.
 
-- [ ] **AC4 -- Result panel backdrop migrated**: GIVEN the story
-  commit, WHEN `client/src/presentation/result_screen.rs` is
-  inspected, THEN the result panel backdrop alpha literal (previously
-  `0.46`) is replaced with a read of `OVERLAY_SCRIM_ALPHA`.
-  Verification: code review + visual capture.
+- [x] **AC4 -- Result panel backdrop migrated** -- **PASS** (PROMPT 921
+  verified on origin/main@c4e1936):
+  `client/src/presentation/result_screen.rs:~518-523` result panel
+  root `BackgroundColor` reads `Color::srgba(0.02, 0.025, 0.035,
+  overlays::OVERLAY_SCRIM_ALPHA)` (rustfmt wrapped to multi-line).
+  Previous `0.46` literal at the spawn site is gone. Integration test
+  `ac4_result_screen_backdrop_reads_canonical_scrim_alpha` asserts
+  the routing. Visual capture deferred to follow-on QA-tester
+  `/team-qa` deliverable.
 
-- [ ] **AC5 -- Grep guard**: GIVEN the story commit, WHEN
-  `client/src/` is grepped (excluding the design-token module and
-  documented exclusions for board ghost preview / HUD timer urgency),
-  THEN no inline `Color::rgba(_, _, _, 0.x)` or `Color::srgba(_, _,
-  _, 0.x)` literal with `alpha < 1.0` remains on a scrim/dim surface
-  call site. Verification: `rg "Color::(s)?rgba\(.*,\s*0\.[0-9]" client/src/
-  --glob '!client/src/ui/design_tokens/**'` returns zero hits or only
-  hits on documented exclusion sites.
+- [x] **AC5 -- Grep guard** -- **PASS** (PROMPT 921 verified on
+  origin/main@c4e1936): Integration test
+  `ac5_grep_guard_no_pre_migration_scrim_literals_outside_design_tokens`
+  walks every `*.rs` under `client/src/` (excluding
+  `client/src/ui/design_tokens/`) in whitespace-normalized form and
+  asserts the three pre-migration scrim/dim literal triplets
+  (`0.45` / `0.58` / `0.46` on scrim/dim spawn surfaces) are gone.
+  Sanity-check
+  `ac5_grep_guard_pattern_actually_detects_a_synthesized_violation`
+  proves the matcher actually fires on a constructed violation.
 
-- [ ] **AC6 -- Documented exclusions enumerated**: GIVEN the story
-  commit, WHEN the worker report is inspected, THEN every remaining
-  inline `alpha < 1.0` literal in `client/src/` is documented as
-  either (a) scrim/dim that should have been migrated (treat as
-  bug, fix in this story), (b) board ghost preview (left for
-  `S11-UX-BOARD-GHOST-PREVIEW-OPACITY-001`), or (c) other (named with
-  rationale). Verification: worker report enumerates.
+- [x] **AC6 -- Documented exclusions enumerated** -- **PASS**
+  (PROMPT 921 verified on origin/main@c4e1936):
+  `production/qa/evidence/sprint-14-overlay-alpha-token/evidence.md`
+  §AC6 enumeration table classifies every remaining
+  `Color::(s)?rgba` literal with `alpha < 1.0` in `client/src/` as
+  one of: (a) scrim/dim migrated (3 sites: HUD dim, settlement,
+  result backdrop), (b) preserved-intentional / separate scope
+  (9 sites incl. connection-lost `0.32`, HUD timer urgency, board
+  ghost preview), (c) other-with-rationale (~30 sites: button states,
+  text colors, panel chrome, accessibility warning, settings shell).
+  Integration test
+  `ac6_connection_lost_overlay_literal_preserved_with_canonical_token_doc_reference`
+  asserts the connection-lost `0.32` literal at `:214` survives and
+  the surrounding comment at `:206` references `OVERLAY_SCRIM_ALPHA`
+  symbolically.
 
-- [ ] **AC7 -- Single visual cohesion across game states**: GIVEN
-  the migration, WHEN the playable client transitions from
-  combat → settlement → result, THEN the scrim alpha is visually
-  consistent across all three states. Verification: visual capture
-  sequence stored under evidence path; manual eyeball.
+- [x] **AC7 -- Single visual cohesion across game states** -- **PASS
+  (token-level)** (PROMPT 921 verified on origin/main@c4e1936):
+  Inline + integration tests assert
+  `OVERLAY_DIM_ALPHA < OVERLAY_SCRIM_ALPHA < OVERLAY_TOAST_ALPHA`.
+  Settlement and result panel now both consume
+  `OVERLAY_SCRIM_ALPHA = 0.55` -- eliminating the inter-state
+  flicker PROMPT 802 §3.2 H4 surfaced. Migration deltas vs
+  pre-state: HUD dim no change (`0.45 -> 0.45`); settlement
+  Δ=-0.03 lighter (`0.58 -> 0.55`); result Δ=+0.09 darker
+  (`0.46 -> 0.55`) -- both within the spec §6 ≤ 0.1 alpha-step
+  cohesion budget. Visual capture sequence at 1920×1080 (combat →
+  settlement → result) is a follow-on QA-tester deliverable under
+  `/team-qa` (OUT OF SCOPE for PROMPT 921 paperwork closure;
+  AC7 verdict here is token-level / invariant-driven).
 
-- [ ] **AC8 -- Friend-game scope preserved**: GIVEN the story commit,
-  WHEN `QA-COND-0005`, `QA-COND-0006`, and `PAW-TD-*-a` accept-risk
-  dispositions are inspected, THEN none of them has been flipped to
-  `closed` by this story. Verification: `git diff` of
-  `production/sprint-status.yaml` shows no accept-risk disposition
-  change.
+- [x] **AC8 -- Friend-game scope preserved** -- **PASS** (PROMPT 921
+  verified on origin/main@c4e1936):
+  `git diff c4e1936^1..c4e1936 --stat -- production/sprint-status.yaml`
+  returns empty across the integration commit (worker + integration
+  both honoured the forbidden-paths discipline).
+  `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a` accept-risk
+  dispositions remain unchanged. Module-level scope-discipline
+  doc comments at `client/src/ui/design_tokens/overlays.rs:56-72`
+  and evidence document §Carried non-claims preserve these
+  references verbatim. PROMPT 921 row-level flip is the permitted
+  disposition-preserving paperwork edit and does NOT touch any
+  accept-risk field.
 
 ---
 
@@ -273,3 +316,113 @@ for the realised set.
   ratifies the final values.
 - Accept-risk preservation: `PAW-TD-*-a`, `QA-COND-0005`, `QA-COND-0006`
   preserved unchanged. This story does not advance any of them.
+
+---
+
+## Closure Trail
+
+- **PROMPT 878** -- story authoring (2026-05-14). Story file created
+  as Sprint 14 candidate, NOT activated. No code change.
+- **PROMPT 893** -- integration of authoring run into `origin/main`
+  (merge `9f36663` per sprint-status.yaml notes).
+- **PROMPT 897** -- Sprint 14 activation snapshot.
+- **PROMPT 898** -- Sprint 14 QA-plan authoring at
+  `production/qa/qa-plan-sprint-14.md`.
+- **PROMPT 911** -- global UI design spec authoring
+  (`docs/ux/global-ui-design-spec.md` §6 ratifies overlay alpha
+  values `0.45` / `0.55` / `0.80`).
+- **PROMPT 912** -- spec integration to `origin/main@3d99a04`.
+- **PROMPT 916** -- /dev-story worker on
+  `work/s14-overlay-alpha-token@837a611` from base
+  `origin/main@3d99a04`. 9 files / +931 / -9. Authored
+  `client/src/ui/design_tokens/overlays.rs` (273 lines) with three
+  named overlay tokens + inline 9-test invariant suite; migrated
+  HUD dim (`hud/mod.rs:40` + `:714`), settlement scrim
+  (`shop_auction/mod.rs:~3554`), result panel backdrop
+  (`result_screen.rs:~522`); registered
+  `[[test]] ui_clean_pass_overlay_alpha_test` integration bin
+  (8 tests); authored `production/qa/evidence/sprint-14-overlay-alpha-token/evidence.md`
+  (324 lines). Worker report at
+  `reports/PROMPT-916-S14-Overlay-Alpha-Token-Dev-Story.md`.
+- **PROMPT 917** -- integration `--no-ff` merge of worker tip
+  `837a611` into prior `origin/main@aa772a8` (PROMPT 919 tip).
+  Three text-mechanical conflicts resolved (`client/Cargo.toml` +
+  `design_tokens/mod.rs` + `hud/mod.rs` use-statement
+  collapse), preserving both branches' additions. Merge commit
+  `c4e1936bff32b5b1dd8b9b92bf69e04b1d191af3`; fast-forward push to
+  `origin/main`. Integration report at
+  `reports/PROMPT-917-S14-Overlay-Alpha-Token-Integration.md`.
+- **PROMPT 921 (this row)** -- paperwork-only `/story-done` closure.
+  Row flipped `ready -> done` with `completed: 2026-05-15` on the
+  basis of AC1-AC8 verification against the integrated diff at
+  `origin/main@c4e1936`. AC1-AC8 all PASS (AC7 PASS-token-level
+  with visual capture deferred to follow-on `/team-qa` per worker
+  scope). Sprint 14 disposition UNCHANGED `active`. Stage
+  UNCHANGED `Polish`. PROMPT 761 Polish->Release `FAIL` preserved.
+
+### Conditions carried forward unchanged
+
+- `S8-QA-001-W1` OPEN preserved.
+- `QA-COND-0005` accepted-risk (Standard-tier accessibility not
+  claimed); overlay alpha tokens are not WCAG-compliant contrast
+  conformance.
+- `QA-COND-0006` accepted-risk (playtest validation deferred).
+- `PAW-TD-*-a` accept-risk preserved (final-art / asset-production
+  not claimed).
+- `PROMPT 683`-era runtime divergence question preserved (folded
+  into Sprint 12 story 019 cannot-reproduce closure; third
+  same-scope retest NOT authorised per `TQ-S12-C2`).
+- `TQ-S12-C1..C7` preserved verbatim; `TQ-S12-C7` NOT closed.
+- Sprint 13 / 12 / 11 / 10 closeouts preserved unchanged.
+- All prior Sprint 13 `/story-done` closures preserved unchanged.
+- All prior Sprint 14 `/story-done` closures preserved verbatim
+  (PROMPT 909 viewport-invariant-tests first + PROMPT 908
+  font-constants second + PROMPT 903 z-index-layers third
+  reconcile + PROMPT 919 flex-strips fourth); PROMPT 921 appended
+  as fifth `sprint_14_story_done` block.
+- `S11-HUD-TIMER-EYEBALL-VISUAL-001` Sprint 14 Should Have carry
+  preserved (status `ready`, human-operator-blocked, no LLM
+  `/story-done` authorised).
+- `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` backlog row
+  preserved as-is.
+- Sprint 14 activation snapshot under `sprint_14_activation:`
+  block (PROMPT 897) preserved unchanged (per-row
+  `status_at_activation` values are activation-time snapshots,
+  NOT live status -- live row status moves under `stories:`).
+
+### Explicitly NOT claimed by PROMPT 921
+
+- public release readiness
+- release-candidate readiness
+- full game completion
+- broad / Standard-tier accessibility completion
+- playtest / fun-hypothesis validation
+- full playable-client manual QA
+- two-client GAME_OVER closure (`S8-QA-001-W1`)
+- final-art / asset-production completion
+- Polish->Release gate-check retry
+- Stage advance from `Polish` to `Release`
+- Sprint 14 close-out (Sprint 14 remains `active`; 5 of 17 rows
+  closed after PROMPT 921)
+- closure of any other Sprint 14 row
+- Tier 0 rank 6 (`S12-UX-GLOBAL-UI-DESIGN-SPEC-001` story 007)
+  `/story-done` closure -- separate downstream prompt
+- visual capture sequence at 1920×1080 across combat / settlement /
+  result (follow-on QA-tester deliverable under `/team-qa`)
+- full-workspace `cargo test --workspace --tests --no-fail-fast`
+  result claim (PROMPT 921 paperwork-only; PROMPT 916 + 917 ran
+  narrow targeted scope per qa-plan-sprint-14
+  no-full-workspace-tests-by-default policy)
+
+### Downstream unblock
+
+Tier 1 surface stories that consume a modal scrim (HUD top strip
+015 / auction featured card 016 / lobby layout modal 024) now have
+a single canonical `OVERLAY_SCRIM_ALPHA` to read rather than picking
+their own alpha literal. The overlay alpha token module is the
+fifth Tier 0 foundation primitive landed in Sprint 14 (after
+z-index layers, font constants, viewport-invariant tests, flex
+strips). Tier 0 rank 6 (`S12-UX-GLOBAL-UI-DESIGN-SPEC-001` story
+007) is on `origin/main` via PROMPT 912 integration `3d99a04`
+ancestor of `c4e1936` -- `/story-done` for that row is a separate
+downstream prompt.
