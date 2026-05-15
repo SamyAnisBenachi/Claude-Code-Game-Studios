@@ -11,6 +11,7 @@ use crate::card_animations::{CardAnimationsPlugin, CardAnimationsSet};
 use crate::presentation::board_rendering::{
     BoardRenderSet, BoardRenderState, PendingResolutionScript, ResolutionRevealWait,
 };
+use crate::presentation::connection_lost_overlay::ConnectionLostOverlayPlugin;
 use crate::presentation::result_screen::ResultScreenPlugin;
 use crate::presentation::shared::economy_view::drain_gold_update_receiver_system as drain_shared_gold_update_receiver_system;
 use crate::state::{
@@ -36,6 +37,7 @@ use crate::ui::shop_auction::{
 };
 
 pub mod board_rendering;
+pub mod connection_lost_overlay;
 pub mod result_screen;
 pub mod shared;
 
@@ -83,6 +85,11 @@ impl Plugin for PresentationPlugin {
         app.add_plugins(HudPlugin);
         app.add_plugins(ShopAuctionUiPlugin);
         app.add_plugins(ResultScreenPlugin);
+        // S13-CONN-LOST-UX-001 (Story 021): proactive Reconnecting / Connection
+        // Lost overlay registered after ResultScreenPlugin per ADR-021.
+        // Z-ordering (90 vs result screen 100) keeps the result screen on top
+        // if GameOver lands while the overlay is up.
+        app.add_plugins(ConnectionLostOverlayPlugin);
         app.add_plugins(SettingsAccessibilityPlugin);
         app.add_plugins(PhotosensitivityWarningPlugin);
 
