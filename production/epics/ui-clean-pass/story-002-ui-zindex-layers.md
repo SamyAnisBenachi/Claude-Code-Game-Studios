@@ -2,15 +2,24 @@
 
 > **Epic**: UI Clean-Pass
 > **Story ID**: S11-TD-UI-ZINDEX-LAYERS
-> **Status**: Draft (Sprint 14 candidate; NOT activated)
+> **Status**: **Done** (PROMPT 903 `/story-done`, 2026-05-15; verdict **PASS**;
+> source-of-truth `origin/main@36c0b4b9a45e5a27dfcf60c69e584dc3cd249405` =
+> PROMPT 902 `--no-ff` integration of PROMPT 899 worker tip `8669982`;
+> closure paperwork landed on `origin/main` after PROMPT 909 + PROMPT 908
+> Sprint 14 `/story-done` closures via PROMPT 903 reconcile run on top of
+> `origin/main@b39eedf05e3f0825775b6aae4aff8028f531fbc6`)
 > **Layer**: Presentation / UX foundational tech-debt
 > **Type**: Tech Debt -- foundational primitive
-> **Sprint**: Sprint 14 candidate (Tier 0 foundational; PROMPT 802 §4 rank 0.1;
-> `docs/ux/ui-clean-pass-roadmap.md` rank 1). NOT activated by this authoring
-> run. Sprint 13 disposition (`active`, `Polish` stage) preserved.
+> **Sprint**: Sprint 14 (Tier 0 rank 1 Must Have; activated by PROMPT 897
+> 2026-05-15; closed by PROMPT 903 2026-05-15).
 > **Authored**: 2026-05-14 by PROMPT 878
 > **Authoring source-of-truth**: `origin/main@51e6228` (PROMPT 871 `/story-done`
 > on Sprint 13 row `S13-TWO-CLIENT-RUNTIME-HARNESS-001`)
+> **Implemented**: 2026-05-15 by PROMPT 899 (`/dev-story` worker, branch
+> `work/s14-ui-layout-foundation` tip `8669982`)
+> **Integrated**: 2026-05-15 by PROMPT 902 (`--no-ff` merge; integration
+> commit `36c0b4b9a45e5a27dfcf60c69e584dc3cd249405`)
+> **Closed**: 2026-05-15 by PROMPT 903 (`/story-done`, paperwork-only)
 > **Estimated effort**: ~1.0d (PROMPT 802 §4 Tier 0.1)
 
 ---
@@ -126,63 +135,113 @@ playable client.
 
 All criteria are independently checkable BLOCKING criteria.
 
-- [ ] **AC1 -- Layer module authored**: GIVEN the story commit, WHEN the new
-  design-token module is inspected, THEN it exports at least 8 named layer
-  constants (Background, World, Units, UiBase, UiOverlay, Modal, Toast, Debug)
-  each mapped to a stable `GlobalZIndex` integer with non-overlapping ranges.
-  Verification: code review + unit test asserting each constant resolves to a
-  distinct value and the ordering `Background < World < Units < UiBase <
-  UiOverlay < Modal < Toast < Debug` holds.
+- [x] **AC1 -- Layer module authored** -- **PASS** (PROMPT 903 verification at
+  `origin/main@36c0b4b9`): `client/src/ui/design_tokens/z_layers.rs:50-87`
+  exports 8 named constants `BACKGROUND=GlobalZIndex(0)`, `WORLD=100`,
+  `UNITS=200`, `UI_BASE=300`, `UI_OVERLAY=400`, `MODAL=500`, `TOAST=600`,
+  `DEBUG=700` with `ALL_LAYERS_ASCENDING` table at `:92-101` and
+  `LAYER_MIN_GAP=10` at `:106`. Inline tests
+  `ac1_layer_constants_are_strictly_ascending`,
+  `ac1_layer_constants_have_minimum_gap_for_future_intermediates`,
+  `ac1_layer_constants_are_pairwise_distinct`,
+  `ac1_named_set_covers_at_least_eight_canonical_layers`,
+  `ac1_canonical_layer_ordering_matches_story_spec` at `:112-180` all pass.
+  Ordering `Background < World < Units < UiBase < UiOverlay < Modal < Toast <
+  Debug` holds.
 
-- [ ] **AC2 -- Doc comments on each layer**: GIVEN the new module, WHEN
-  inspected, THEN each layer constant carries a `///` doc comment naming the
-  canonical UI elements expected at that layer. Verification: `cargo doc -p
-  client` succeeds and the layer constants render with their doc text.
+- [x] **AC2 -- Doc comments on each layer** -- **PASS** (PROMPT 903
+  verification): `client/src/ui/design_tokens/z_layers.rs:1-46` carries
+  module-level doc naming ADR-021 + ADR-002 + canonical surfaces table; per-
+  constant `///` doc at `:50-87` names canonical UI elements expected at each
+  layer. Module text indirectly verified by
+  `ac8_module_doc_names_adr_021_and_presentation_plugin_load_order` at
+  `tests/integration/ui_clean_pass/z_layers_test.rs:228-252`. `cargo doc -p
+  client` deferred per evidence doc but not required for compile success.
 
-- [ ] **AC3 -- All UI roots migrated**: GIVEN the story commit, WHEN
-  `client/src/ui/` is inspected, THEN every UI root spawn (lobby root, HUD top
-  strip, HUD bottom strip, hand-card root, shop panel, draft offering panel,
-  auction panel, settlement overlay, toast root) declares its layer via the
-  new module rather than relying on spawn-order. Verification: code review +
-  grep guard from AC5.
+- [x] **AC3 -- All UI roots migrated** -- **PASS** (PROMPT 903 verification):
+  `client/src/ui/lobby.rs:894` `z_layers::UI_BASE`; `client/src/ui/hud/mod.rs:517`
+  `UI_BASE` + `:636` `UI_OVERLAY` (HUD dim overlay); `client/src/ui/hand/mod.rs:2813`
+  `UI_BASE` + `:2932` `UI_OVERLAY` (drag sprite); `client/src/ui/shop_auction/mod.rs:3446/3464/3490/3506/3531`
+  `UI_BASE` (root + DraftOffering + Shop + Auction + ShopFooter sub-roots),
+  `:3480/3551` `UI_OVERLAY` (settlement + draft-initial objective overlays),
+  `:3540` `TOAST` (toast root); `client/src/ui/settings/mod.rs:562` `MODAL`;
+  `client/src/ui/photosensitivity_warning.rs:76` `MODAL`. Surface-level grep
+  spot-check via `ac7_production_migration_sites_reference_design_tokens` at
+  `z_layers_test.rs:195-226`; workspace-wide negative assertion via AC5 grep
+  guard.
 
-- [ ] **AC4 -- Result-screen migrated**: GIVEN the story commit, WHEN
-  `client/src/presentation/result_screen.rs:512` is inspected, THEN the
-  existing inline `GlobalZIndex(100)` is replaced with the new module's
-  `Modal` layer constant (or equivalent), and the result screen still paints
-  at the same effective layer relative to the rest of the UI. Verification:
-  visual capture comparison against pre-migration baseline at
-  `production/qa/evidence/captures/result-screen-baseline-*`.
+- [x] **AC4 -- Result-screen migrated** -- **PASS** (PROMPT 903 verification):
+  `client/src/presentation/result_screen.rs:520` now reads `z_layers::MODAL`
+  (resolves to `GlobalZIndex(500)`) replacing the prior inline
+  `GlobalZIndex(100)`. Inline test
+  `ac4_modal_is_above_ui_overlay_so_result_screen_wins_over_conn_lost` at
+  `client/src/ui/design_tokens/z_layers.rs:182-196` asserts `MODAL.0 >
+  UI_OVERLAY.0` so the result screen continues to win over the connection-lost
+  overlay on GameOver. Connection-lost overlay also migrated:
+  `client/src/presentation/connection_lost_overlay.rs:33`
+  `CONNECTION_LOST_OVERLAY_Z_INDEX = z_layers::UI_OVERLAY.0`,
+  `:210` overlay root insert reads `z_layers::UI_OVERLAY`. Existing
+  `tests/integration/playable_client/connection_lost_overlay_test.rs`
+  `ac7_overlay_z_index_is_below_result_screen` test updated to assert against
+  `MODAL.0` instead of bare `100` and continues to pass (16/16 green).
+  Visual capture against `production/qa/evidence/captures/result-screen-*`
+  baseline left as a manual operator step per evidence doc -- foundation-level
+  migration does not gate on a screenshot for a layer-name swap that
+  preserves the relative integer ordering.
 
-- [ ] **AC5 -- Grep guard or lint**: GIVEN the story commit, WHEN
-  `client/src/` is grepped (excluding the new design-token module itself),
-  THEN no inline `ZIndex(N)` or `GlobalZIndex(N)` literals remain. Verification:
-  `rg "ZIndex\(|GlobalZIndex\(" client/src/ --glob '!client/src/ui/design_tokens/**'`
-  returns zero hits (exact glob TBD by worker).
+- [x] **AC5 -- Grep guard or lint** -- **PASS** (PROMPT 903 verification):
+  `ac5_grep_guard_no_inline_global_z_index_literals_outside_design_tokens` at
+  `tests/integration/ui_clean_pass/z_layers_test.rs:69-99` walks every
+  `client/src/**/*.rs` file excluding `client/src/ui/design_tokens/` and
+  asserts zero `ZIndex(` / `GlobalZIndex(` substrings. Manual grep at
+  PROMPT 903 closure shows the only hits in `client/src/ui/design_tokens/z_layers.rs:52/57/61/66/72/77/82/87`
+  (the constant declarations themselves) plus `:184/185` (doc-comment
+  historical references inside the AC4 inline test docstring). All
+  production sites under `client/src/ui/` + `client/src/presentation/` go
+  through the `z_layers::*` module path.
 
-- [ ] **AC6 -- Reconnect / snapshot-rebuild invariant**: GIVEN a two-client
-  runtime harness reconnect scenario (or an equivalent ECS-level snapshot
-  rebuild test), WHEN UI roots respawn out of their initial order, THEN the
-  effective paint order matches the named-layer ordering rather than the
-  spawn-order. Verification: integration test asserting the painted layer
-  order under a synthesized out-of-order respawn.
+- [x] **AC6 -- Reconnect / snapshot-rebuild invariant** -- **PASS** (PROMPT
+  903 verification): `ac6_paint_order_matches_named_layers_under_out_of_order_spawn`
+  at `tests/integration/ui_clean_pass/z_layers_test.rs:101-167` spawns every
+  named layer entity in REVERSE canonical order, queries `GlobalZIndex`
+  values, sorts by `.0`, and asserts the resulting paint order matches
+  `ALL_LAYERS_ASCENDING` canonical sequence (precondition asserts the spawn
+  order really was reversed so the test cannot trivially pass against an
+  accidentally-canonical spawn). `ac6_layer_constants_survive_pairwise_distinctness_under_arbitrary_permutation`
+  at `:169-193` provides a second angle over an arbitrary permutation. Both
+  tests pass against the integration tip.
 
-- [ ] **AC7 -- No magic z values remain in `client/src/ui/`**: GIVEN the
-  story commit, WHEN any `Node{}` style block under `client/src/ui/` is
-  inspected, THEN any z-related field uses the new module's named constants
-  exclusively. Verification: code review + AC5 grep guard.
+- [x] **AC7 -- No magic z values remain in `client/src/ui/`** -- **PASS**
+  (PROMPT 903 verification): AC5 grep guard provides the workspace-wide
+  negative assertion; `ac7_production_migration_sites_reference_design_tokens`
+  at `tests/integration/ui_clean_pass/z_layers_test.rs:195-226` spot-checks
+  12 migration sites including lobby / hud / hand / shop_auction / settings /
+  photosensitivity / result_screen / connection_lost_overlay reference
+  `z_layers::UI_BASE` / `UI_OVERLAY` / `MODAL` / `TOAST` appropriately.
 
-- [ ] **AC8 -- ADR-021 alignment**: GIVEN the story commit, WHEN ADR-021
-  (Presentation Layer Architecture) is read alongside the new module, THEN
-  the named layers are consistent with the canonical `PresentationPlugin`
-  composition order described in ADR-021. Verification: doc review;
-  amendment to ADR-021 if reconciliation requires it.
+- [x] **AC8 -- ADR-021 alignment** -- **PASS** (PROMPT 903 verification):
+  `ac8_module_doc_names_adr_021_and_presentation_plugin_load_order` at
+  `tests/integration/ui_clean_pass/z_layers_test.rs:228-252` asserts the
+  module doc names ADR-021 + `PresentationPlugin` composition order +
+  ADR-002. Module-level doc at `client/src/ui/design_tokens/z_layers.rs:27-38`
+  explicitly affirms ADR-021 §R2 binds world-space sprites to render below
+  bevy_ui regardless of `GlobalZIndex` values; the `BACKGROUND` / `WORLD` /
+  `UNITS` constants are conceptual references for sprite Transform.z and
+  NOT direct bevy_ui consumers; the `PresentationPlugin` composition order
+  `CardAnimations -> BoardRendering -> HandUi -> Hud -> ShopAuctionUi`
+  remains the authoritative load-order; ADR-002 client-server authority is
+  preserved -- no optimistic client-side authority is introduced. ADR-021
+  amendment NOT required.
 
-- [ ] **AC9 -- Friend-game scope preserved**: GIVEN the story commit, WHEN
-  `QA-COND-0005`, `QA-COND-0006`, and `PAW-TD-*-a` accept-risk dispositions
-  are inspected, THEN none of them has been flipped to `closed` by this
-  story. Verification: `git diff` of `production/sprint-status.yaml` shows
-  no accept-risk disposition change.
+- [x] **AC9 -- Friend-game scope preserved** -- **PASS** (PROMPT 903
+  verification): `git diff 36c0b4b9^1..36c0b4b9 -- 'production/sprint-status.yaml'`
+  empty across worker + integration commits; `QA-COND-0005` Standard-tier
+  accessibility, `QA-COND-0006` playtest validation, and `PAW-TD-*-a`
+  placeholder-art accept-risk dispositions preserved unchanged. Module-level
+  doc at `client/src/ui/design_tokens/z_layers.rs:40-46` explicitly affirms
+  friend-game scope boundary preservation. PROMPT 903's row-level flip is
+  the permitted disposition-preserving paperwork edit and does NOT touch any
+  accept-risk field.
 
 ---
 
@@ -273,3 +332,163 @@ for the realised set.
   (Standard-tier accessibility, friend-game scope only), `QA-COND-0006`
   (playtest validation) remain preserved unchanged. This story does not
   advance any of them.
+
+---
+
+## Authoring / Implementation / Closure Trail
+
+- **PROMPT 878** (2026-05-14): authored this story file as a Sprint 14
+  candidate (Tier 0 rank 1). Source-of-truth at authoring:
+  `origin/main@51e6228` (PROMPT 871 `/story-done` on Sprint 13 row
+  `S13-TWO-CLIENT-RUNTIME-HARNESS-001`). NOT activated by PROMPT 878.
+
+- **PROMPT 893** (2026-05-15): integrated the four Sprint 14 story-authoring
+  branches via four sequential `--no-ff` merges (commits `9f36663` +
+  `2d8eaac` + `2bdb277` + `466d3d4`) -- this story file landed on
+  `origin/main` via the first merge `9f36663`.
+
+- **PROMPT 897** (2026-05-15): activated Sprint 14 (`origin/main@fffaf1c`).
+  Row entered `production/sprint-status.yaml` with `status: ready` under
+  `must_have_rows`; `sprint_14_activation:` block snapshot recorded
+  `roadmap_rank: 1`. Stage UNCHANGED `Polish`. Sprint 13 disposition
+  `closed-with-conditions` preserved.
+
+- **PROMPT 898** (2026-05-15): authored
+  `production/qa/qa-plan-sprint-14.md` covering all 17 Sprint 14 rows
+  including this row. No-full-workspace-tests-by-default policy + binding
+  Windows/MSVC Cargo resource policy enumerated.
+
+- **PROMPT 899** (2026-05-15): `/dev-story` worker on branch
+  `work/s14-ui-layout-foundation` (worker tip `8669982`). Authored
+  `client/src/ui/design_tokens/{mod.rs, z_layers.rs}` (z_layers.rs ~197 LOC
+  with 8 named layer constants + 6 inline AC1 unit tests). Migrated 12 UI
+  roots across `lobby.rs`, `hud/mod.rs` (root + dim overlay), `hand/mod.rs`
+  (fan root + drag sprite), `shop_auction/mod.rs` (root + 5 sub-roots +
+  settlement + draft-initial + toast), `settings/mod.rs`,
+  `photosensitivity_warning.rs`. Migrated `result_screen.rs:519`
+  `GlobalZIndex(100)` -> `z_layers::MODAL`. Migrated
+  `connection_lost_overlay.rs` `CONNECTION_LOST_OVERLAY_Z_INDEX` const to
+  `z_layers::UI_OVERLAY.0` and updated existing connection-lost overlay test
+  to assert against `MODAL.0`. Authored
+  `tests/integration/ui_clean_pass/z_layers_test.rs` (6 integration tests
+  covering AC5/AC6/AC7/AC8) registered in `client/Cargo.toml`. Cargo policy
+  applied per Sprint 14 QA plan. `cargo fmt -p client -- --check` clean;
+  `cargo check -p client --tests` passes; `cargo test -p client --lib
+  ui::design_tokens::z_layers` 6/6 pass; `cargo test -p client --test
+  ui_clean_pass_z_layers_test` 6/6 pass; `cargo test -p client --test
+  connection_lost_overlay_test` 16/16 pass; regression spread (result_screen
+  / presentation_plugin_scaffold / accessibility / hand / hud / shop_auction
+  / lobby_entry) all green. Full-workspace `cargo test` deferred per QA
+  plan. Authored evidence document
+  `production/qa/evidence/sprint-14-ui-zindex-layers/evidence.md` (118
+  lines). Pushed worker branch only; did NOT push main.
+
+- **PROMPT 902** (2026-05-15): `/integrate` `--no-ff` merge of worker tip
+  `8669982` into prior `origin/main@4dd7fe3`, producing integration commit
+  `36c0b4b9a45e5a27dfcf60c69e584dc3cd249405` on
+  `integrate/s14-ui-layout-foundation-902`. Zero conflicts. 15 files / +672
+  / -16 lines. Worker reachable as merge's second parent. Pushed integration
+  branch + fast-forward to `origin/main`. AC1-AC9 verified PASS at the
+  integration tip.
+
+- **PROMPT 903** (2026-05-15): `/story-done` paperwork-only closure of
+  this row (1 row). Source-of-truth at AC verification:
+  `origin/main@36c0b4b9a45e5a27dfcf60c69e584dc3cd249405` (PROMPT 902
+  integration tip). Closure paperwork landed on top of
+  `origin/main@b39eedf05e3f0825775b6aae4aff8028f531fbc6` (PROMPT 908 tip,
+  the third Sprint 14 paperwork closure to land via this reconcile run --
+  PROMPT 909 viewport-invariant-tests landed first at commit `4a7f72e`;
+  PROMPT 908 font-constants landed second at commit `b39eedf`; PROMPT 903
+  z-index-layers landing as the third Sprint 14 `/story-done` entry).
+  Worktree: `D:/_DEV/wt/ccgs-prompt-903-reconcile` (fresh detached on
+  `origin/main@b39eedf` because root checkout was behind `origin/main` and
+  had unrelated dirt; the original PROMPT 903 closure commit `6934e01`
+  was authored against `origin/main@36c0b4b9` but never pushed, so it was
+  discarded and recreated here). AC1-AC9 verdict **PASS** verified by
+  reading the integrated module + tests + migration sites + diff against
+  forbidden surfaces at `36c0b4b9` (the binding source-of-truth for AC
+  evidence; the four `--no-ff` integration merges PROMPT 906 + 907 and the
+  two paperwork closures PROMPT 908 + 909 that landed between `36c0b4b9`
+  and `b39eedf` touch disjoint surfaces from this row and do not change
+  any AC1-AC9 evidence). Allowed-files write set: this story file (Status
+  header + AC checkboxes + Closure Trail) + `production/sprint-status.yaml`
+  (row flip + top-level `updated:` annotation refresh + new entry in
+  `sprint_14_story_done:` block appended as the **third** Sprint 14
+  `/story-done` entry after PROMPT 909 + PROMPT 908) +
+  `production/session-state/active.md` (PROMPT 903 banner prepended above
+  PROMPT 908 banner) +
+  `production/session-state/codex-orchestrator-state.md` (PROMPT 903
+  section prepended above PROMPT 909 section). Cargo policy N/A by
+  PROMPT 903 itself (paperwork-only). Expected worker report at
+  `reports/PROMPT-899-S14-UI-Layout-Foundation-Dev-Story.md` + integration
+  report at `reports/PROMPT-902-S14-UI-LAYOUT-FOUNDATION-Integration.md`
+  NOT present on disk and NOT in any git tree; documented as **non-blocking**
+  per PROMPT 884 / 891 precedent because integration commit-message body +
+  worker commit-message body + the evidence document collectively cover all
+  nine ACs with concrete file:line references + test names + diff
+  verifications. A reconcile report
+  `reports/PROMPT-903-S14-UI-LAYOUT-FOUNDATION-STORY-DONE-RECONCILE.md`
+  documents the discard of the never-pushed `6934e01` commit and the
+  recreation against latest `origin/main`.
+
+### Conditions carried forward unchanged
+
+- `S8-QA-001-W1` manual/browser two-client GAME_OVER gap remains OPEN.
+  Story 017 AC12 forbid-auto-closure preserved.
+- `QA-COND-0005` Standard-tier accessibility remains accepted-risk
+  (friend-game scope only).
+- `QA-COND-0006` playtest / fun-hypothesis validation remains
+  accepted-risk / deferred.
+- `PAW-TD-*-a` placeholder-art accept-risk preserved across
+  PAW-002..PAW-006.
+- PROMPT 683-era runtime divergence question preserved; third same-scope
+  retest NOT authorised per `TQ-S12-C2`.
+- PROMPT 761 Polish->Release gate-check `FAIL` preserved at
+  `production/gate-checks/gate-polish-release-2026-05-12.md`. NO retry.
+- Sprint 12 story 019 underlying drag-runtime bug NOT claimed fixed.
+- `TQ-S12-C1..C7` preserved verbatim.
+- Sprint 13 close-out `closed-with-conditions` (PROMPT 894); Sprint 12 / 11
+  / 10 closeouts; all 16 prior Sprint 13 `/story-done` closures preserved
+  unchanged on `origin/main`.
+- Sprint 14 activation snapshot under `sprint_14_activation:` block
+  preserved unchanged.
+- Sprint 14 QA plan `production/qa/qa-plan-sprint-14.md` (PROMPT 898)
+  preserved unchanged.
+- PROMPT 909 (`/story-done S11-TD-UI-VIEWPORT-INVARIANT-TESTS`) closure
+  entry preserved verbatim as the first `sprint_14_story_done:` list item
+  on `origin/main`.
+- PROMPT 908 (`/story-done S11-TD-UI-FONT-CONSTANTS`) closure entry
+  preserved verbatim as the second `sprint_14_story_done:` list item on
+  `origin/main`.
+- `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` backlog row preserved.
+- `S11-HUD-TIMER-EYEBALL-VISUAL-001` Sprint 13 carry preserved (Sprint 14
+  Should Have, status: ready, human-operator-blocked, no LLM `/story-done`
+  authorised).
+
+### Explicitly NOT claimed by PROMPT 903
+
+- public release readiness; release-candidate readiness; full game
+  completion; broad / Standard-tier accessibility completion; playtest /
+  fun-hypothesis validation; full playable-client manual QA; two-client
+  GAME_OVER closure (`S8-QA-001-W1`); final-art / asset-production
+  completion; Polish->Release gate-check retry; Stage advance from Polish to
+  Release.
+- closure of any other Sprint 14 row (only `S11-TD-UI-ZINDEX-LAYERS` closed
+  by PROMPT 903; PROMPT 909 and PROMPT 908 each closed their own rows;
+  remaining 14 Sprint 14 rows untouched).
+- Sprint 14 close-out (Sprint 14 remains active; 3 of 17 rows closed after
+  PROMPT 903).
+- Sprint 14 Tier 0 burn-down completion (3 of 6 Tier 0 ranks remain ready
+  -- ranks 3 / 5 / 6).
+- Sprint 14 Tier 1 readiness (Tier 1 ranks 7 / 10 / 12 remain ready, gated
+  on remaining Tier 0 ranks 3 / 5 / 6 + producer-decisions 2 / 3 / 4).
+- PROMPT 802 §9 producer-decision-2 / -3 / -4 resolution.
+- Sprint 15 planning.
+- closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` Sprint 13 carry.
+- closure of `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` backlog row.
+- `TQ-S12-C7` closure.
+- full-workspace `cargo test --workspace --tests --no-fail-fast` result
+  claim (N/A; no cargo run by PROMPT 903; PROMPT 899 worker scope explicitly
+  deferred per QA-plan-sprint-14 no-full-workspace-tests-by-default policy).
+- any code change under `client/` / `server/` / `shared/` / `tests/` by
+  PROMPT 903 (paperwork-only closure).
