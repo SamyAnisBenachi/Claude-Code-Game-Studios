@@ -43,12 +43,14 @@ repo.
 
 Key current rules:
 
-- Put a state label directly above every agent-window disposition or launch
-  prompt:
-  - `CLEAR -- PROMPT N` for a window the user can close.
-  - `REPONDRE -- PROMPT N` for text to paste back into the same window.
-  - `RELANCER -- PROMPT N` for a corrected rerun/repair in the same workstream.
-  - `NEW -- PROMPT N` for a new prompt to launch in a new agent window.
+- Put a plain emoji disposition label directly above every agent-window action:
+  - `🟢 CLEAR -- PROMPT N` for a window the user can close.
+  - `🟡 REPONDRE -- PROMPT N` for text to paste back into the same window.
+  - `🔴 RELANCER -- PROMPT N` for a corrected rerun/repair in the same workstream.
+  - `🟣 NEW -- PROMPT N` for a new prompt to launch in a new agent window.
+- Do not wrap launch prompts in fences, triangle headers/closers, hash
+  delimiters, or copied template wrappers. Put the body directly under the
+  disposition label; for NEW, first body line is `PROMPT N -- Task Title`.
 - Launch only work that is actually ready and file-disjoint; do not invent
   parallelism to fill a quota.
 - Keep one shared-status writer active at a time (`/story-done`,

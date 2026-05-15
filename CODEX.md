@@ -37,13 +37,15 @@ D:\_DEV\Work\Claude-Code-Game-Studios
 
 Current orchestration rules:
 
-- Put a state label directly above every agent-window disposition or launch
-  prompt: `CLEAR -- PROMPT N`, `REPONDRE -- PROMPT N`,
-  `RELANCER -- PROMPT N`, or `NEW -- PROMPT N`.
-- Use `NEW -- PROMPT N` for newly launchable work in a new agent window.
-- Use `RELANCER -- PROMPT N` for corrected reruns/repairs in the same
+- Put a plain emoji disposition label directly above every agent-window action:
+  `🟢 CLEAR -- PROMPT N`, `🟡 REPONDRE -- PROMPT N`,
+  `🔴 RELANCER -- PROMPT N`, or `🟣 NEW -- PROMPT N`.
+- Use `🟣 NEW -- PROMPT N` for newly launchable work in a new agent window.
+- Use `🔴 RELANCER -- PROMPT N` for corrected reruns/repairs in the same
   workstream.
-- Do not append delimiter/hash lines to future prompts.
+- Do not wrap launch prompts in fences, triangle headers/closers, hash
+  delimiters, or copied template wrappers. Put the body directly under the
+  disposition label; for NEW, first body line is `PROMPT N -- Task Title`.
 - Final status line is one line only: `N: TICKET-ID: STATUS`.
 - STATUS must be a real outcome word, not `GREEN`, `YELLOW`, or the literal
   word `STATUS`.

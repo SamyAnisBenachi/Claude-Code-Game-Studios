@@ -842,6 +842,27 @@ prompt-formatting, delimiter, close-out, and parallelism notes later in this
 file. Later dated snapshots are historical unless they explicitly replace this
 section.
 
+Prompt display format correction (2026-05-15):
+
+- This correction is authoritative for compaction/resume: after context
+  compacts, re-read this section and ignore older triangle/fence/hash prompt
+  snapshots below unless a newer dated rule explicitly replaces this one.
+- Do not wrap worker launch prompts in 4-backtick fences, triangle headers,
+  triangle closers, hash delimiters, or copied template wrappers.
+- Put one plain disposition label directly above each action:
+  - `🟢 CLEAR -- PROMPT N` for a worker window the user can close.
+  - `🟡 REPONDRE -- PROMPT N` for text to send back to the same worker.
+  - `🔴 RELANCER -- PROMPT N` for a corrected rerun/repair.
+  - `🟣 NEW -- PROMPT N` for a new worker launch.
+- For CLEAR, write one short human sentence below the label explaining what can
+  be closed.
+- For NEW/RELANCER/REPONDRE, put the worker prompt body immediately below the
+  label. The first body line is `PROMPT N -- Task Title`.
+- Use plain Markdown in the body; keep paths/commands in backticks where useful.
+- The worker's final instruction remains one visible line:
+  `N: TICKET-ID: STATUS`. STATUS is replaced by the real worker outcome, never
+  hardcoded by the orchestrator, never `GREEN`/`YELLOW`, and no line follows it.
+
 Current source of truth:
 
 - **Authoritative correction for this header (PROMPT 798 update)**: current
