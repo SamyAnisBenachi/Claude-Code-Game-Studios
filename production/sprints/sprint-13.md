@@ -1,4 +1,72 @@
-# Sprint 13 -- ACTIVATED (Polish stage)
+# Sprint 13 -- CLOSED-WITH-CONDITIONS (Polish stage)
+
+> **PROMPT 894 close-out disposition (2026-05-15)**: Sprint 13 disposition
+> flipped `active -> closed-with-conditions` on `origin/main@466d3d419a2853d014d5bfc848a8d0667dc3f9b4`
+> (PROMPT 893 final integration tip).
+>
+> **Verdict**: `closed-with-conditions`. Must Have track **6/6 done**
+> (track COMPLETE per PROMPT 871). Should Have track **5/6 done**
+> (PROMPT 833 + 835 inline + 844 + 884 + 891 closures). Nice to Have
+> track **7/7 done** (track COMPLETE per PROMPT 888). Total
+> **18 of 19 rows closed**. Only `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+> (Should Have, story 014, 0.25d) remains `ready` as the
+> human-operator-blocked carry: cosmetic visual check requires human
+> screenshot capture across DraftInitial 45s / DraftShop 30s /
+> Placement 10-12s phases per story file ACs and cannot be auto-closed
+> by an LLM `/story-done`. Carried forward into Sprint 14 planning.
+>
+> **Stage UNCHANGED**: `Polish`. `production/stage.txt` NOT modified by
+> PROMPT 894. PROMPT 761 Polish->Release gate-check `FAIL` preserved at
+> `production/gate-checks/gate-polish-release-2026-05-12.md`; NO retry
+> attempted by PROMPT 894. Sprint 14 NOT activated by PROMPT 894;
+> `production/sprints/sprint-14.md` NOT created. Sprint 14 UI candidate
+> story-authoring batch already merged onto `origin/main` via PROMPT 893
+> (commits `9f36663` + `2d8eaac` + `2bdb277` + `466d3d4`) but Sprint 14
+> activation remains a separate explicit workflow.
+>
+> **Conditions carried forward unchanged**: `S8-QA-001-W1` OPEN
+> (Story 017 AC12 forbid-auto-closure preserved through Sprint 13);
+> `QA-COND-0005` Standard-tier accessibility accepted-risk;
+> `QA-COND-0006` playtest validation accepted-risk; `PAW-TD-*-a`
+> placeholder-art accept-risk across PAW-002..PAW-006; PROMPT 683-era
+> runtime divergence question preserved (folded into Sprint 12 story 019
+> cannot-reproduce closure; third same-scope retest NOT authorised per
+> `TQ-S12-C2`); Sprint 12 story 019 underlying drag-runtime bug NOT
+> claimed fixed; `TQ-S12-C1..C7` (all 7 Sprint 12 Team-QA conditions)
+> preserved verbatim (TQ-S12-C7 explicitly NOT closed by
+> `S13-OPS-WIN-APPCOMPAT-NOTE-001`); `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001`
+> backlog row NOT flipped (cited in evidence per S13-CONN-LOST-UX-001
+> AC8 design); Sprint 12 / Sprint 11 / Sprint 10 closeouts preserved
+> unchanged.
+>
+> **Explicitly NOT claimed by PROMPT 894**: public release readiness;
+> release-candidate readiness; full game completion; broad /
+> Standard-tier accessibility completion; playtest / fun-hypothesis
+> validation; full playable-client manual QA; two-client GAME_OVER
+> closure (`S8-QA-001-W1`); final-art / asset-production completion;
+> Polish->Release gate-check retry; Stage advance from Polish to
+> Release; Sprint 14 activation; Sprint 14 sprint-status active row;
+> closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` (human-blocked carry);
+> closure of `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` backlog row;
+> underlying drag-runtime bug fix; full UI clean-pass repair (Sprint 14
+> candidates authored but NOT activated); any code change under
+> `client/` / `server/` / `shared/` / `tests/` by PROMPT 894
+> (paperwork-only close-out).
+>
+> **Files changed by PROMPT 894**: `production/sprint-status.yaml`
+> (top-level `status:` flipped + `updated:` annotation refreshed +
+> `sprint_13_closeout:` block appended) +
+> `production/sprints/sprint-13.md` (this banner prepended) +
+> `production/session-state/active.md` (PROMPT 894 banner prepended) +
+> `production/session-state/codex-orchestrator-state.md` (PROMPT 894
+> section prepended) +
+> `production/qa/evidence/sprint-13-close-out-disposition.md` (NEW
+> close-out evidence). No `client/` / `server/` / `shared/` / `tests/`
+> touched. No `production/stage.txt` touched. No Sprint 14 file created.
+>
+> **Cargo policy**: N/A — paperwork-only close-out, no `cargo` invoked.
+
+---
 
 > **PROMPT 833 `/story-done` (2026-05-14)**: First Sprint 13 row closed.
 > Sprint 13 Should Have row `S11-SERVER-POOL-INIT-LOG-GUARD-001`
