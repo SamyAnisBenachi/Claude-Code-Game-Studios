@@ -304,6 +304,14 @@ path = "../tests/integration/ui_clean_pass/z_layers_test.rs"
 name = "ui_clean_pass_typography_test"
 path = "../tests/integration/ui_clean_pass/typography_test.rs"
 
+# S12-TD-UI-OVERLAY-ALPHA-TOKEN-001 (Sprint 14 story 006): overlay alpha
+# design-token module grep-guard, HUD dim / settlement scrim / result
+# backdrop migration spot-checks, and connection-lost overlay AC6
+# documented-exclusion regression assertion (AC2, AC3, AC4, AC5, AC6, AC7).
+[[test]]
+name = "ui_clean_pass_overlay_alpha_test"
+path = "../tests/integration/ui_clean_pass/overlay_alpha_test.rs"
+
 [[test]]
 name = "accessibility_settings_preferences_test"
 path = "../tests/unit/accessibility_settings/preferences_test.rs"

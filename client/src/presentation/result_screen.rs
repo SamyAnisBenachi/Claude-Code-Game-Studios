@@ -11,7 +11,7 @@ use crate::state::{
     ClientIdempotencyState, ClientSessionIdentity, ClientState, CurrentClientPhase,
     GameOverDedupeKey,
 };
-use crate::ui::design_tokens::{typography, z_layers};
+use crate::ui::design_tokens::{overlays, typography, z_layers};
 use crate::ui::settings::AccessibilityPreferences;
 
 const OBJECTIVE_LANES: usize = 5;
@@ -515,7 +515,12 @@ fn spawn_result_screen_system(
                 padding: UiRect::all(Val::Px(24.0)),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.02, 0.025, 0.035, 0.46)),
+            BackgroundColor(Color::srgba(
+                0.02,
+                0.025,
+                0.035,
+                overlays::OVERLAY_SCRIM_ALPHA,
+            )),
             Visibility::Hidden,
             z_layers::MODAL,
         ))

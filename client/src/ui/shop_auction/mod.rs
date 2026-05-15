@@ -18,7 +18,7 @@ use crate::card_animations::{
 };
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
-use crate::ui::design_tokens::{typography, z_layers};
+use crate::ui::design_tokens::{overlays, typography, z_layers};
 use crate::ui::hud::{HudGoldBroadcastMessage, HudPlayerIds};
 use crate::ui::settings::AccessibilityPreferences;
 
@@ -3547,7 +3547,12 @@ pub fn spawn_shop_auction_ui(
         overlay_node(),
     );
     commands.entity(settlement_overlay).insert((
-        BackgroundColor(Color::srgba(0.02, 0.05, 0.08, 0.58)),
+        BackgroundColor(Color::srgba(
+            0.02,
+            0.05,
+            0.08,
+            overlays::OVERLAY_SCRIM_ALPHA,
+        )),
         z_layers::UI_OVERLAY,
     ));
     let settlement_overlay_text = spawn_settlement_overlay_text(&mut commands, settlement_overlay);
