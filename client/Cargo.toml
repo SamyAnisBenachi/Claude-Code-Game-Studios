@@ -443,3 +443,12 @@ path = "../tests/integration/presentation/lobby_asset_wiring_test.rs"
 [[test]]
 name = "lobby_chrome_wiring_test"
 path = "../tests/integration/session/lobby_chrome_wiring_test.rs"
+
+# S11-TD-UI-VIEWPORT-INVARIANT-TESTS (Sprint 14 story 005): automated UI
+# viewport-invariant test bin asserting no-overlap, no-clipping,
+# anchor-stability, and deterministic-strip-height across the six canonical
+# viewport sizes (1366x768, 1920x1080, 1920x1200, 1280x960, 3840x2160,
+# 2560x1080).
+[[test]]
+name = "ui_viewport_invariants_test"
+path = "../tests/integration/ui_viewport_invariants_test.rs"
