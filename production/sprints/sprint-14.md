@@ -1,6 +1,101 @@
-# Sprint 14 -- ACTIVATED (Polish stage)
+# Sprint 14 -- CLOSED-WITH-CONDITIONS (Polish stage)
 
-> **PROMPT 897 activation (2026-05-15)**: Sprint 14 is **ACTIVATED** as of commit
+> **PROMPT 987 close-out disposition (2026-05-16)**: Sprint 14 disposition
+> flipped `active -> closed-with-conditions` on
+> `origin/main@f6906020074f3d31e6594fb78788596bbac99477` (PROMPT 986 QA
+> evidence integration tip).
+>
+> **Verdict**: `closed-with-conditions` (NOT release-ready, NOT `closed`).
+> Must Have track **9/9 done**. Should Have track **3/4 done** (PROMPT
+> 956 + PROMPT 953 + PROMPT 962 closures). Nice to Have track **4/4
+> done** (PROMPT 976 + PROMPT 960 + PROMPT 972 + PROMPT 974 closures).
+> Total **16 of 17 rows closed**. The single open row is
+> `S11-HUD-TIMER-EYEBALL-VISUAL-001` (Should Have, story 014, 0.25d),
+> which remains `ready` as the **human-operator-blocked carry**:
+> cosmetic visual check requires human screenshot capture across
+> `DraftInitial 45s` / `DraftShop 30s` / `Placement 10-12s` phases per
+> story file ACs and cannot be auto-closed by an LLM `/story-done`.
+> **Carried forward into Sprint 15 planning** (Sprint 13 -> Sprint 14
+> -> Sprint 15 carry; originally Sprint 10 smoke retry-7 W2).
+>
+> **Smoke (PROMPT 983)**: `PASS-WITH-WARNINGS` at
+> `production/qa/smoke-sprint-14-2026-05-16-rerun.md` (integrated on
+> `origin/main` per PROMPT 986). Cargo aggregate 213 binaries /
+> 1350 passed / 0 failed / 0 ignored; functional total with renamed
+> AppCompat-blocked binary 1355 passed / 0 failed / 0 ignored across
+> 214 effective binaries. Single warning is **environment/tool-only**
+> (Windows AppCompat heuristic on `update` substring; identical
+> classification to PROMPT 815 / 790 / 979 / 982; no code regression).
+> PROMPT 978/979 UI drift repair targeted reruns
+> `shop_auction_ui_plugin_scaffold_formulas_test` 8/8 PASS and
+> `ui_clean_pass_z_layers_test` 6/6 PASS.
+>
+> **Team-QA (PROMPT 984)**: `APPROVED-WITH-CONDITIONS` at
+> `production/qa/team-qa-sprint-14-2026-05-16.md` (integrated on
+> `origin/main` per PROMPT 986). All 10 approval conditions are
+> existing carry conditions; none closed by Team-QA.
+>
+> **Stage UNCHANGED**: `Polish`. `production/stage.txt` NOT modified by
+> PROMPT 987. PROMPT 761 Polish->Release gate-check `FAIL` preserved at
+> `production/gate-checks/gate-polish-release-2026-05-12.md`; **NO retry**
+> attempted by Sprint 14 or PROMPT 987. Sprint 15 NOT activated by
+> PROMPT 987; `production/sprints/sprint-15.md` NOT created;
+> `production/qa/qa-plan-sprint-15.md` NOT created.
+>
+> **Conditions carried forward unchanged** (none closed by PROMPT 987):
+> `S11-HUD-TIMER-EYEBALL-VISUAL-001` carried as human-operator-blocked
+> Sprint 13 -> Sprint 14 -> Sprint 15 row; `S8-QA-001-W1` OPEN (Story
+> 017 AC12 forbid-auto-closure preserved through Sprint 14);
+> `QA-COND-0005` Standard-tier accessibility accepted-risk (L5
+> `LOBBY_BUTTON_HEIGHT = 30.0` defect remains accepted-risk; story 026
+> was friend-game stability work, not >=44 px hit-target conformance);
+> `QA-COND-0006` playtest validation accepted-risk; `PAW-TD-*-a`
+> placeholder-art accept-risk across PAW-002..PAW-006 (story 016 / 017 /
+> 018 differentiation by layout / token color, NOT final-art
+> replacement); PROMPT 683-era runtime divergence question preserved
+> (folded into Sprint 12 story 019 cannot-reproduce closure; third
+> same-scope retest NOT authorised per `TQ-S12-C2`); Sprint 12 story
+> 019 underlying drag-runtime bug NOT claimed fixed; `TQ-S12-C1..C7`
+> (all 7 Sprint 12 Team-QA conditions) preserved verbatim;
+> `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` backlog row NOT
+> flipped; Sprint 13 / Sprint 12 / Sprint 11 / Sprint 10 closeouts
+> preserved unchanged.
+>
+> **Explicitly NOT claimed by PROMPT 987**: public release readiness;
+> release-candidate readiness; full game completion; broad /
+> Standard-tier accessibility completion; playtest / fun-hypothesis
+> validation; full playable-client manual QA; two-client GAME_OVER
+> closure (`S8-QA-001-W1` remains OPEN); final-art / asset-production
+> completion (`PAW-TD-*-a` accept-risk preserved); Polish->Release
+> gate-check retry (PROMPT 761 `FAIL` preserved); stage advance from
+> Polish to Release; closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+> (human-operator-blocked carry); closure of
+> `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001`; TQ-S12-C7 closure;
+> underlying drag-runtime bug fix (Sprint 12 story 019 closed
+> cannot-reproduce, NOT bug-fixed); full UI clean-pass repair beyond
+> the 17 Sprint 14 candidate rows (Tier 2 / Tier 3 ranks remain out of
+> scope); Sprint 15 activation; any code change under `client/` /
+> `server/` / `shared/` / `tests/` by PROMPT 987 (paperwork-only
+> close-out); any change to `production/stage.txt`,
+> `production/qa/qa-plan-sprint-14.md`, `production/gate-checks/*`,
+> release artifacts, release-checklist, launch-checklist, changelog, or
+> patch notes by PROMPT 987.
+>
+> **PROMPT 987 paperwork-only close-out scope**: changed only
+> `production/sprint-status.yaml` (top-level `status:` flip + `updated:`
+> refresh + `sprint_14_closeout:` block appended at EOF) +
+> `production/sprints/sprint-14.md` (this banner only; plan body NOT
+> rewritten) + `production/session-state/active.md` (banner prepended) +
+> `production/session-state/codex-orchestrator-state.md` (section
+> prepended) + `production/qa/evidence/sprint-14-close-out-disposition.md`
+> (NEW). No `cargo` / `trunk` command invoked. The 16 Sprint 14 closed
+> rows and their `/story-done` paperwork remain on `origin/main`
+> unchanged; PROMPT 987 does not re-edit any story file or any
+> previously-closed sprint-status row.
+>
+> ---
+>
+> **Prior PROMPT 897 activation (2026-05-15)**: Sprint 14 was **ACTIVATED** as of commit
 > on `origin/main` from this paperwork-only activation prompt. Source-of-truth at
 > activation: `origin/main@ce8f590` (PROMPT 896 Sprint 14 plan draft tip).
 > `production/sprint-status.yaml` top-level `sprint: 13 -> 14` and

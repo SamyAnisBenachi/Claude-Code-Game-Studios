@@ -1,3 +1,75 @@
+# PROMPT 987 State Banner -- Sprint 14 Close-Out Disposition
+
+Updated 2026-05-16 by PROMPT 987. Source-of-truth at close-out:
+`origin/main@f6906020074f3d31e6594fb78788596bbac99477` (PROMPT 986
+QA evidence integration tip).
+
+PROMPT 987 flipped Sprint 14 top-level `status:` from `active` to
+`closed-with-conditions` on `production/sprint-status.yaml` and
+appended a `sprint_14_closeout:` block at end of file following the
+`sprint_13_closeout:` / `sprint_12_closeout:` pattern. Sprint 14
+closes with **16 of 17 rows done**: Must Have 9/9, Should Have 3/4,
+Nice to Have 4/4. The single open row,
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` (Should Have, story 014, 0.25d),
+is the **human-operator-blocked carry** from Sprint 13 and is
+**carried forward into Sprint 15 planning** unchanged; closure
+requires real two-client screenshot capture across `DraftInitial 45s`
+/ `DraftShop 30s` / `Placement 10-12s` and cannot be auto-closed by
+an LLM `/story-done`.
+
+Smoke evidence (PROMPT 983) **PASS-WITH-WARNINGS** at
+`production/qa/smoke-sprint-14-2026-05-16-rerun.md` (on `origin/main`
+per PROMPT 986); cargo aggregate 213 binaries / 1350 passed / 0
+failed / 0 ignored, functional total with renamed AppCompat-blocked
+binary 1355 passed / 0 failed across 214 effective binaries. The
+single warning is environment-only (Windows AppCompat installer
+heuristic on `update` substring; identical classification to PROMPT
+815 / 790 / 979 / 982; no code regression). Team-QA evidence (PROMPT
+984) **APPROVED-WITH-CONDITIONS** at
+`production/qa/team-qa-sprint-14-2026-05-16.md` (on `origin/main` per
+PROMPT 986).
+
+Stage UNCHANGED `Polish`. `production/stage.txt` NOT modified by
+PROMPT 987. PROMPT 761 Polish->Release gate-check `FAIL` preserved at
+`production/gate-checks/gate-polish-release-2026-05-12.md`; **NO
+retry** attempted. Sprint 15 NOT activated;
+`production/sprints/sprint-15.md` NOT created.
+
+All carried conditions preserved verbatim (none closed by PROMPT 987):
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` carried forward into Sprint 15;
+`S8-QA-001-W1` OPEN; `QA-COND-0005` Standard-tier accessibility
+accepted-risk (L5 `LOBBY_BUTTON_HEIGHT = 30.0` remains accepted-risk);
+`QA-COND-0006` playtest validation accepted-risk; `PAW-TD-*-a`
+placeholder-art accept-risk across PAW-002..PAW-006; PROMPT 683-era
+runtime divergence question preserved; Sprint 12 story 019
+underlying drag-runtime bug NOT claimed fixed (cannot-reproduce
+preserved); `TQ-S12-C1..C7` preserved verbatim;
+`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` backlog row NOT
+flipped; Sprint 13 / 12 / 11 / 10 closeouts preserved unchanged.
+
+Explicit non-claims: no public release readiness, no
+release-candidate readiness, no full game completion, no broad /
+Standard-tier accessibility completion, no playtest validation, no
+full playable-client manual QA, no two-client GAME_OVER closure
+(`S8-QA-001-W1` OPEN), no final-art completion, no Polish->Release
+gate-check retry, no stage advance, no Sprint 15 activation, no
+underlying drag-runtime bug fix, no closure of any of the carried
+OPEN items.
+
+Paperwork-only scope. Changed only
+`production/sprint-status.yaml`, `production/sprints/sprint-14.md`
+(CLOSED-WITH-CONDITIONS banner prepended above PROMPT 897 ACTIVATED
+banner; plan body NOT rewritten), this file,
+`production/session-state/codex-orchestrator-state.md`, and NEW
+`production/qa/evidence/sprint-14-close-out-disposition.md`. No
+`client/`, `server/`, `shared/`, `tests/`, Cargo files, `.cargo/`,
+`.github/`, `production/stage.txt`, `production/qa/qa-plan-sprint-14.md`,
+`production/gate-checks/*`, release / RC / launch / changelog / patch
+notes artifact, any Sprint 14 story file, or any prior Sprint 14
+`/story-done` block touched. No `cargo` / `trunk` command invoked.
+
+---
+
 # PROMPT 976 State Banner -- S14 HUD Opponent Figurine Story-Done
 
 Updated 2026-05-16 by PROMPT 976. Source-of-truth at closure:
