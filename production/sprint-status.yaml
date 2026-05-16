@@ -3139,7 +3139,7 @@ sprint_14_activation:
   outstanding_before_dev_story:
     - "Sprint 14 QA plan authored via /qa-plan sprint-14 (REQUIRED before /dev-story runs on any Sprint 14 story)"
     - "Per-row /story-readiness re-run against Sprint 14 activation HEAD for each of the 16 UI candidate story files (story 014 Sprint 13 carry already READY per PROMPT 823 and unchanged)"
-    - "PROMPT 802 section 9 producer-decisions 2 (numeric values, blocks ranks 2 / 3 / 5), 3 (lobby modal-panel vs full-viewport hero, blocks rank 12), 4 (auction lead-loss visual language, blocks Nice to Have lead-loss-state row) must resolve before their respective /dev-story"
+    - "PROMPT 802 section 9 producer-decisions 2 and 3 are resolved; decision 4 (auction lead-loss visual language) resolved after activation by PROMPT 967; affected rows still require /story-readiness re-runs before /dev-story."
     - "Tier 0 (ranks 1-6) must land before Tier 1 (ranks 7, 10, 12) per roadmap section 3 Sequencing Rule 1"
     - "Within Tier 0, rank 6 (global UI design spec) authored first because token modules (ranks 2, 3, 5) need its numeric values as input"
   cargo_resource_policy: "N/A -- no cargo command was invoked by PROMPT 897 (paperwork-only activation run; reads existing main + edits 4 allowed paperwork files; no cargo / trunk build / test run). Cargo resource policy ($env:CARGO_TARGET_DIR / $env:CARGO_PROFILE_DEV_DEBUG / $env:CARGO_PROFILE_TEST_DEBUG / $env:CARGO_INCREMENTAL / $env:RUSTFLAGS) NOT applied because not needed. Sprint 14 implementation prompts (post-activation /dev-story workers and integration merges) MUST apply the binding Windows / MSVC Cargo resource policy per the Sprint 13 precedent."
