@@ -1,7 +1,8 @@
 # Story 018: Auction Featured Card Leading / Losing State Visual
 
 > **Epic**: Shop / Auction UI
-> **Status**: Draft (Sprint 14+ candidate; NOT activated by this story authoring)
+> **Status**: Draft; producer-decision-4 captured by PROMPT 967 (2026-05-16);
+> `/story-readiness` re-run required before `/dev-story`
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -13,13 +14,13 @@
 
 ## Status / No-Claim Banner
 
-This story file is **authoring only**. It is a Sprint 14+ candidate row
-drawn from the
+This story file began as **authoring only** and now also carries the
+PROMPT 967 producer-decision-4 paperwork capture. It is a Sprint 14
+candidate row drawn from the
 [UI Clean-Pass Roadmap](../../../docs/ux/ui-clean-pass-roadmap.md)
 Tier 1 Should adjacent row (effort 0.5d; pairs with rank 10
-`S11-UX-AUCTION-FEATURED-CARD`; net-new; producer must pick visual
-language per PROMPT 802 §9 producer-decision-4 before
-`/dev-story`) and the
+`S11-UX-AUCTION-FEATURED-CARD`; net-new; producer decision captured by
+PROMPT 967 before `/dev-story`) and the
 [PROMPT 802 Expert UI Layout Audit](../../../reports/PROMPT-802-Expert-UI-Layout-Audit-And-Repair-Roadmap.md)
 §3.6 A7. Authoring this story:
 
@@ -42,10 +43,11 @@ language per PROMPT 802 §9 producer-decision-4 before
   hypothesis validation (`QA-COND-0006`). All four conditions remain
   accept-risk per friend-game scope.
 - Does **not** close `S8-QA-001-W1` (two-client GAME_OVER closure).
-- Does **not** by itself resolve PROMPT 802 §9 producer-decision-4
-  (visual language for leading / losing). That decision is required
-  **before** `/dev-story` and must be recorded on the activation
-  artifact.
+- PROMPT 967 **does** resolve PROMPT 802 producer-decision-4
+  (visual language for leading / losing) as a static token-colored
+  border-frame extension of the Story 016 `AuctionFeaturedCardFrame`.
+  This paperwork-only decision capture does **not** invoke
+  `/dev-story`; `/story-readiness` must re-run before implementation.
 
 Sprint 14 activation, if and when it happens, must re-state every
 accept-risk disposition above on the activation artifact, and must
@@ -69,16 +71,23 @@ local player is currently winning the auction; the affordance is
 buried in a text label that competes with the bid cluster, gold
 counters, and timer for attention.
 
-**Producer decision required** (PROMPT 802 §9 producer-decision-4):
-the visual language for leading vs losing is **not yet picked**.
-Three known candidates: (a) border-frame on the featured card (e.g.,
-a green or gold outline when leading, a red or muted outline when
-losing); (b) color pulse / tween on the featured card frame; (c)
-animated chevron / leader-badge anchored to the featured card. The
-choice is recorded **before** `/dev-story` on the activation
-artifact; this story does not bind a choice in advance, but the
-acceptance criteria below are written so any of the three candidates
-satisfies them.
+**Producer decision captured** (PROMPT 802 §9 producer-decision-4):
+PROMPT 967 selects **Option A -- static token-colored border-frame**
+on the featured card. The implementation extends the Story 016
+`AuctionFeaturedCardFrame` primitive and changes only the frame color
+by auction state:
+
+- **Leading**: `SEMANTIC_SUCCESS` (`#27AE60`) border/frame color.
+- **Losing**: `SEMANTIC_ERROR` (`#EB5757`) border/frame color.
+- **Neutral / pre-bid**: retain the existing Story 016 `ACCENT`
+  (`#F2C94C`) frame color.
+
+No color pulse, required tween, animated chevron, leader badge, or
+new art is selected. If implementation discovers a true tied state,
+it may use `SEMANTIC_WARNING` (`#F2994A`) as the tied-state token,
+but the story acceptance contract remains the three authored states
+(leading / losing / neutral). The existing leader-state text remains
+the colorblind fallback.
 
 **Friend-game scope**: this story is for the friend-game product
 showcase. Standard-tier accessibility (color-only feedback,
@@ -146,9 +155,9 @@ no Lightyear protocol surface is touched.
 
 - Add a leading / losing visual state on the featured auction-up
   card that is observable at a glance from a friend-game showcase
-  capture. The visual language is producer-picked (border, color
-  pulse, leader badge, or equivalent) per PROMPT 802 §9 producer-
-  decision-4.
+  capture. The visual language is the PROMPT 967 producer-picked
+  static token-colored border frame on the Story 016
+  `AuctionFeaturedCardFrame`.
 - Drive the state from the existing shared auction-state resource
   populated by Story 005 / Story 006: when the local player matches
   the current leader, the featured card carries the "leading" state;
@@ -160,10 +169,10 @@ no Lightyear protocol surface is touched.
 - Drive the state through the ADR-021 `StateSync` system phase,
   consuming the existing shared resource; do not add a parallel
   drain.
-- Establish smooth state transitions where appropriate: any tween
-  used to express the state must not exceed the ADR-021 3 ms phase-
-  boundary guardrail and must remain inside the `AnimationTick`
-  phase.
+- Establish smooth state transitions where appropriate. PROMPT 967
+  does not require a tween; if a worker elects to add one, it must
+  not exceed the ADR-021 3 ms phase-boundary guardrail and must
+  remain inside the `AnimationTick` phase.
 - Add or update test-observable UI state so automated tests can
   assert leading vs losing vs neutral state against stable marker
   components, observe the visual indicator's binding to the shared
@@ -175,12 +184,12 @@ no Lightyear protocol surface is touched.
 
 ### Out of Scope
 
-- Do **not** finalize the producer's visual-language decision in
-  this story file. The decision is recorded on the Sprint 14
-  activation artifact before `/dev-story`.
+- Do **not** re-litigate the PROMPT 967 producer decision during
+  `/dev-story`; implement the static token-colored border-frame
+  decision unless `/story-readiness` identifies a contradiction.
 - Do **not** finalize replacement chrome art (`PAW-TD-003-a`
   accept-risk preserved). The visual state is a layout / composition
-  primitive (border, color, badge), not new chrome art.
+  primitive (token-colored border), not new chrome art.
 - Do **not** change bid increment amounts, current price calculation,
   free-gold calculation, server validation, settlement behavior, or
   protocol surface.
@@ -195,8 +204,10 @@ no Lightyear protocol surface is touched.
   as the colorblind fallback.
 - Do **not** claim Standard-tier colorblind conformance or close
   `QA-COND-0005`.
-- Do **not** modify `production/sprint-status.yaml`,
+- Implementation work must not modify `production/sprint-status.yaml`,
   `production/session-state/**`, `AGENTS.md`, or unrelated epics.
+  PROMPT 967 is the separate authorised paperwork capture that
+  updates shared trackers for this producer decision only.
 - Do **not** advance `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`,
   `S8-QA-001-W1`, or PROMPT 761 Polish->Release gate-check.
 
@@ -244,26 +255,28 @@ no Lightyear protocol surface is touched.
 
 ## Implementation Notes
 
-- The producer decision (border, color pulse, leader badge, or
-  equivalent) is recorded on the Sprint 14 activation artifact
-  before this story enters `/dev-story`. The acceptance criteria
-  above are written so any of the three candidates satisfies them.
+- The producer decision is recorded by PROMPT 967 before this story
+  enters `/dev-story`: extend the Story 016 `AuctionFeaturedCardFrame`
+  as a static token-colored border frame. Use `SEMANTIC_SUCCESS` for
+  leading, `SEMANTIC_ERROR` for losing, and the existing `ACCENT`
+  frame for neutral / pre-bid. Do not introduce a required pulse,
+  badge, chevron, or new art.
 - The Tier 0 `S11-TD-UI-ZINDEX-LAYERS` story owns `GlobalZIndex`
   layer constants; this story consumes them.
 - The Tier 0 `S11-TD-UI-FONT-CONSTANTS` story owns shared font-size
-  constants. If the leader-badge candidate is picked, the badge
-  label font size consumes that module.
+  constants. PROMPT 967 does not pick a leader badge, so no new badge
+  label font size is required.
 - The Tier 0 `S11-TD-UI-FLEX-STRIPS` story owns spacing-scale
-  constants for any badge / outline thickness derived from the
-  design spec.
+  constants for any border/frame thickness derived from the design
+  spec. Prefer the existing Story 016 3 px frame thickness unless
+  `/story-readiness` requires a different tokenized value.
 - The Tier 0 `S11-TD-UI-VIEWPORT-INVARIANT-TESTS` story owns the
   viewport-invariant test harness used by this story's
   leading / losing / neutral state assertion test at 1920 x 1080 and
   1366 x 768.
 - The Tier 0 `S12-UX-GLOBAL-UI-DESIGN-SPEC-001` story authors the
-  numeric inputs (outline thickness, color tokens, badge size,
-  tween durations). **Must be authored before this story
-  implements.**
+  color tokens consumed here. Badge size and tween duration inputs
+  are intentionally unused by the PROMPT 967 decision.
 - If
   [`story-016-auction-featured-card.md`](story-016-auction-featured-card.md)
   has landed, this story extends the Story 016 featured-card frame
@@ -397,7 +410,8 @@ closure), the PROMPT 761 Polish->Release gate-check, or any
 release-readiness claim. All conditions remain accept-risk / open
 per their existing dispositions.
 
-**Status**: [ ] Draft (Sprint 14+ candidate; NOT activated by this story authoring).
+**Status**: [ ] Draft; producer-decision-4 resolved by PROMPT 967.
+`/story-readiness` must re-run before `/dev-story`.
 
 ---
 
@@ -422,10 +436,10 @@ per their existing dispositions.
   (roadmap rank 6; Tier 0 Must) -- provides the numeric inputs
   (outline thickness, color tokens, badge size, tween durations).
   **Must be authored before this story implements.**
-- Depends on: PROMPT 802 §9 producer-decision-4 -- the producer
-  picks the visual language (border, color pulse, leader badge, or
-  equivalent) **before** this story enters `/dev-story`. Recorded on
-  the Sprint 14 activation artifact.
+- Depends on: PROMPT 802 §9 producer-decision-4 -- **Resolved by
+  PROMPT 967** as a static token-colored border-frame extension of
+  `AuctionFeaturedCardFrame`: leading uses `SEMANTIC_SUCCESS`, losing
+  uses `SEMANTIC_ERROR`, neutral / pre-bid retains `ACCENT`.
 - Depends on:
   [Story 001](story-001-plugin-scaffold-panel-tree-and-formulas.md)
   -- Complete; provides `ShopAuctionUiPlugin`, panel roots, and
@@ -472,14 +486,13 @@ per their existing dispositions.
   candidate and is **blocked until Sprint 14 is opened**, the Tier 0
   foundational stories named above land, and `/story-readiness` is
   run against this story file.
-- PROMPT 802 §9 producer-decision-4 has not been resolved. The
-  visual-language choice (border, color pulse, leader badge, or
-  equivalent) must be picked and recorded on the Sprint 14
-  activation artifact before this story enters `/dev-story`.
-- If `S12-UX-GLOBAL-UI-DESIGN-SPEC-001` has not been authored, the
-  numeric inputs for outline thickness / color tokens / badge size /
-  tween durations are undefined; this story remains blocked until
-  the design spec authoring lands.
+- PROMPT 802 §9 producer-decision-4 is resolved by PROMPT 967. No
+  producer-decision blocker remains; re-run `/story-readiness` against
+  this updated story before `/dev-story`.
+- `S12-UX-GLOBAL-UI-DESIGN-SPEC-001` has landed and provides the
+  `ACCENT`, `SEMANTIC_SUCCESS`, `SEMANTIC_ERROR`, and optional
+  `SEMANTIC_WARNING` tokens consumed by this decision. No badge-size
+  or required-tween input remains.
 
 ## Completion Notes
 
@@ -505,3 +518,9 @@ mode default; PROMPT 881 authoring does **not** run code review.
   this authoring prompt. Producer-decision-4 visual-language choice
   NOT bound by this authoring prompt -- recorded on activation
   artifact.
+- PROMPT 967 (2026-05-16) -- paperwork-only producer-decision-4
+  capture. Decision: static token-colored border-frame extension of
+  the Story 016 `AuctionFeaturedCardFrame`; leading =
+  `SEMANTIC_SUCCESS`, losing = `SEMANTIC_ERROR`, neutral / pre-bid =
+  existing `ACCENT`. No code, tests, Cargo, gate, smoke, release, or
+  final-art claim. `/story-readiness` re-run is required next.

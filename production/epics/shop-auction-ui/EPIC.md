@@ -139,10 +139,12 @@ depends on the UI Clean-Pass Roadmap Tier 0 foundational stories
 `S12-UX-GLOBAL-UI-DESIGN-SPEC-001`) landing first. Each story carries
 a no-claim banner preserving the accept-risk dispositions named above.
 
-Story 018 additionally requires PROMPT 802 §9 producer-decision-4
-(leading / losing visual language: border vs color pulse vs leader
-badge) to be resolved on the Sprint 14 activation artifact before
-`/dev-story`.
+Story 018 additionally carries PROMPT 802 §9 producer-decision-4
+resolution from PROMPT 967: static token-colored border-frame on the
+Story 016 `AuctionFeaturedCardFrame` (`SEMANTIC_SUCCESS` leading,
+`SEMANTIC_ERROR` losing, existing `ACCENT` neutral / pre-bid). No
+new art, pulse, chevron, or badge is selected; `/story-readiness`
+must re-run before `/dev-story`.
 
 ## Sprint 6 Candidate Order
 
