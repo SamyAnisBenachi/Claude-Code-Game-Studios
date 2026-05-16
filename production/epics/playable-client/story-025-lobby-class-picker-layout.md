@@ -2,7 +2,7 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S11-UX-LOBBY-CLASS-PICKER
-> **Status**: Draft -- Sprint 14 candidate (per `docs/ux/ui-clean-pass-roadmap.md` rank 11, Tier 1, Must), NOT activated
+> **Status**: Done -- Sprint 14 /story-done closure by PROMPT 962 on `origin/main@fed5fb9be135db274310c363151a073056927b92`
 > **Layer**: Lobby UI / UX (Client)
 > **Type**: Integration -- targeted lobby UI composition edit (class-picker region: portrait row + button row + class label hierarchy) + viewport-invariant + visual capture
 > **Sprint**: Sprint 14 candidate (per `docs/ux/ui-clean-pass-roadmap.md` rank 11; PROMPT 802 §6 Lane C; PROMPT 685 row 5 class-picker slice, `subsumed-by` PROMPT 802 §3.1 L2 + L3, §4 Tier 1.8). **NOT** activated by this authoring run.
@@ -220,7 +220,7 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Single hierarchical class-picker block**: GIVEN
+- [x] **AC1 -- Single hierarchical class-picker block**: GIVEN
   `client/src/ui/lobby.rs` `spawn_lobby_ui_system` after the
   implementation, WHEN inspected, THEN the class-picker region is
   composed as a single hierarchical block (one `"Class"` heading +
@@ -229,7 +229,7 @@ All criteria are independently checkable.
   independent-siblings shape (label + button wrap-row + portrait
   wrap-row) is replaced.
 
-- [ ] **AC2 -- Portrait↔button pairing**: GIVEN the class-picker
+- [x] **AC2 -- Portrait↔button pairing**: GIVEN the class-picker
   region rendered at runtime, WHEN inspected, THEN for each `ClassId`
   in `lobby_class_options()`, the portrait image and the selectable
   button are visually paired (same cell, adjacent cells, or shared
@@ -239,14 +239,14 @@ All criteria are independently checkable.
   `lobby_all_class_ids()` (`Neutral` handling) and record the
   reconciliation in the evidence document.
 
-- [ ] **AC3 -- Predictable grid columns**: GIVEN the class-picker
+- [x] **AC3 -- Predictable grid columns**: GIVEN the class-picker
   region, WHEN rendered at `1920×1080` and at `1366×768`, THEN the
   grid columns are predictable (e.g. 4-column or 7-column;
   implementing-prompt-locked with ux-designer sign-off) and do not
   wrap portrait-row vs button-row apart. Cells of the same row align
   vertically.
 
-- [ ] **AC4 -- No overlap, text fit**: GIVEN the class-picker region
+- [x] **AC4 -- No overlap, text fit**: GIVEN the class-picker region
   at either viewport, WHEN inspected, THEN (a) no cell overlaps an
   adjacent cell; (b) the class name text fits inside its parent cell
   at the canonical font size without silent ellipsis insertion; if
@@ -255,14 +255,14 @@ All criteria are independently checkable.
   decrease, or two-line wrap (ux-designer sign-off required for
   whichever option).
 
-- [ ] **AC5 -- Stable cell dimensions across rebuild**: GIVEN repeat
+- [x] **AC5 -- Stable cell dimensions across rebuild**: GIVEN repeat
   spawns of the lobby root (e.g. exit-and-re-enter `ClientState::
   Lobby`), WHEN class-picker cell widths and heights are sampled
   across the rebuild, THEN they match the canonical dimensions
   declared by this story (or by paired story 026 if applied to the
   class buttons) within 1 Px tolerance.
 
-- [ ] **AC6 -- Selection affordance**: GIVEN the class-picker region,
+- [x] **AC6 -- Selection affordance**: GIVEN the class-picker region,
   WHEN the player's `LobbyInputState.selected_class` is set to a
   given `ClassId`, THEN that `ClassId`'s cell is visually distinct
   from non-selected cells (border, background, scale, or other ux-
@@ -270,7 +270,7 @@ All criteria are independently checkable.
   re-renders on `LobbyInputState` change without requiring a full
   spawn.
 
-- [ ] **AC7 -- Viewport-invariant test**: GIVEN a new or extended
+- [x] **AC7 -- Viewport-invariant test**: GIVEN a new or extended
   test under `tests/integration/playable_client/` (canonical path
   chosen by the implementing prompt), WHEN the test asserts that
   class-picker cells fit within `1366×768` and `1920×1080` viewports
@@ -279,7 +279,7 @@ All criteria are independently checkable.
   authoring is owned by `S11-TD-UI-VIEWPORT-INVARIANT-TESTS`; this
   story may consume that bin or author standalone.
 
-- [ ] **AC8 -- ux-designer consultation recorded**: GIVEN the
+- [x] **AC8 -- ux-designer consultation recorded**: GIVEN the
   implementation prompt's first ux-designer interaction, WHEN the
   final pairing pattern (cell shape, selection affordance literal,
   grid column count, font sizes if changed) is locked, THEN the
@@ -287,7 +287,7 @@ All criteria are independently checkable.
   document. Friend-game-tier literals are acceptable; Standard-tier
   accessibility conformance is **not** claimed.
 
-- [ ] **AC9 -- No client-side class-lock authority (ADR-002)**:
+- [x] **AC9 -- No client-side class-lock authority (ADR-002)**:
   GIVEN the implementation diff, WHEN reviewed, THEN no client-side
   mutation of class-lock state is introduced outside the existing
   `S2CClassLocked` drain path. The class-button interaction handler
@@ -295,21 +295,21 @@ All criteria are independently checkable.
   does not synthesise `S2CClassLocked` locally. No protocol shape
   change in `shared/src/protocol.rs`. No server-side change.
 
-- [ ] **AC10 -- Workspace test pass**: GIVEN
+- [x] **AC10 -- Workspace test pass**: GIVEN
   `cargo test --workspace --tests --no-fail-fast` at the
   implementation commit, WHEN compared to the post-Sprint-13
   baseline, THEN no new `#[ignore]` markers are introduced; the new
   viewport-invariant test passes; previously-passing tests continue
   to pass.
 
-- [ ] **AC11 -- No `production/` shared-tracker edits**: GIVEN the
+- [x] **AC11 -- No `production/` shared-tracker edits**: GIVEN the
   implementation commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/`, `production/qa/`, `production/stage.txt`,
   `production/session-state/`, and the PROMPT 761 gate-check
   artifact are diffed, THEN none is modified by this story's
   implementing prompt except in the `/story-done` paperwork commit.
 
-- [ ] **AC12 -- Friend-game-scope no-claim restated in evidence**:
+- [x] **AC12 -- Friend-game-scope no-claim restated in evidence**:
   GIVEN the evidence document, WHEN read at the bottom, THEN it
   verbatim restates the friend-game-scope-only disposition from the
   Status / No-Claim Banner: no public release readiness, no
@@ -443,6 +443,71 @@ This story does **not** advance: `S8-QA-001-W1`, `QA-COND-0005`,
 
 ---
 
+## Completion Notes -- PROMPT 962 /story-done 2026-05-16
+
+Verdict: PASS. PROMPT 962 accepted AC1-AC12 against the integrated
+commit `origin/main@fed5fb9be135db274310c363151a073056927b92`
+(PROMPT 961 merge of worker commit
+`334434822fbea125d0ebe402611a0ed03212162b` from
+`origin/work/s14-lobby-class-picker-957`).
+
+Evidence used:
+
+- PROMPT 961 integration report:
+  `reports/PROMPT-961-S14-Lobby-Class-Picker-Integration.md`.
+- On-main evidence:
+  `production/qa/evidence/sprint-14-lobby-class-picker-evidence.md`.
+- On-main test:
+  `tests/integration/playable_client/lobby_class_picker_layout_test.rs`
+  (5/5 PASS per PROMPT 961).
+- Adjacent lobby regressions PASS per PROMPT 961:
+  `playable_client_lobby_layout_viewport_invariant_test` 12/12,
+  `playable_client_lobby_entry_test` 6/6,
+  `playable_client_lobby_confirm_state_text_test` 5/5,
+  `lobby_chrome_wiring_test` 5/5, and
+  `lobby_asset_wiring_test` 7/7.
+
+AC summary:
+
+- AC1 PASS: `LobbyClassPickerBlock` owns one `LobbyClassPickerHeading`
+  and one `LobbyClassPickerGrid`, replacing the prior label plus
+  independent wrap rows.
+- AC2 PASS: each selectable `ClassId` pairs its `LobbyClassPortrait`
+  and `LobbyClassButton` in one `LobbyClassPickerCell`; `Neutral`
+  remains portrait-only and non-selectable, documented in evidence.
+- AC3 PASS: grid is locked to seven no-wrap columns and fits
+  `1366x768` and `1920x1080` panel widths per automated test/evidence.
+- AC4 PASS: fixed `108x132` cells, 96px buttons, and label-width
+  estimate prevent overlap and silent ellipsis in the story test.
+- AC5 PASS: repeat lobby spawns preserve cell dimensions within 1px.
+- AC6 PASS: selected-cell affordance exists on first spawn and refreshes
+  from `LobbyInputState.selected_class` without respawning the grid.
+- AC7 PASS: new integration test covers hierarchy, bounds intent,
+  viewport fit, and row-wrap divergence prevention.
+- AC8 PASS: UX choices are recorded in the evidence document; no
+  Standard-tier accessibility completion is claimed.
+- AC9 PASS: forbidden-path review and integrated diff show no server,
+  shared, protocol, or class-lock authority change.
+- AC10 PASS-WITHIN-STORY-PRESCRIBED-TARGETED-CHECKS: PROMPT 961
+  targeted and adjacent lobby checks passed; full-workspace cargo
+  smoke remains deferred to Sprint 14 close-out policy.
+- AC11 PASS: implementation/integration did not edit shared sprint
+  trackers; PROMPT 962 is the separate authorized paperwork edit.
+- AC12 PASS: evidence restates friend-game scope and all non-claims.
+
+Runtime browser PNG captures were not produced by the worker or
+integration prompts and are not claimed by PROMPT 962. Automated ECS
+geometry is the accepted closure evidence for viewport fit and
+non-overlap.
+
+No public release readiness, release-candidate readiness, full game
+completion, broad accessibility completion, playtest validation,
+final-art completion, Sprint 14 close-out, `S8-QA-001-W1` closure,
+Polish->Release retry, stage advance, server/shared/protocol change, or
+client-side class-lock authority is claimed by this closure.
+
+---
+
 ## Authoring / Implementation / Closure Trail
 
 - 2026-05-14 -- PROMPT 880 -- Story file authored (Draft) by Sprint 14
@@ -453,3 +518,17 @@ This story does **not** advance: `S8-QA-001-W1`, `QA-COND-0005`,
   smoke, no gate-check, no `cargo` / `trunk` invocation, no Sprint 14
   activation, no claim against `QA-COND-0005` / `QA-COND-0006` /
   `S8-QA-001-W1` / `PAW-TD-*-a` / PROMPT 761 `Polish->Release` retry.
+- 2026-05-16 -- PROMPT 957 -- Dev-story worker commit
+  `334434822fbea125d0ebe402611a0ed03212162b` on
+  `origin/work/s14-lobby-class-picker-957` implemented the class-picker
+  hierarchy, selection affordance refresh, evidence, and integration
+  test target.
+- 2026-05-16 -- PROMPT 961 -- Integration commit
+  `fed5fb9be135db274310c363151a073056927b92` merged the worker branch
+  into `origin/main` with targeted and adjacent lobby verification
+  PASS.
+- 2026-05-16 -- PROMPT 962 -- `/story-done` paperwork closure: Status
+  flipped to Done, AC1-AC12 marked complete, Sprint 14 row
+  `S11-UX-LOBBY-CLASS-PICKER` flipped `ready -> done`, and shared state
+  banners updated. Sprint 14 remains active; stage remains Polish; all
+  carried non-claims preserved.

@@ -4,6 +4,16 @@
 >
 > ---
 >
+> **CURRENT STATE -- last updated 2026-05-16 (PROMPT 962 story-done closure after PROMPT 961 lobby class-picker integration)**
+>
+> - **Committed source-of-truth at closure base**: `origin/main@fed5fb9be135db274310c363151a073056927b92` (PROMPT 961 integration merge of PROMPT 957 worker tip `334434822fbea125d0ebe402611a0ed03212162b` into prior `origin/main@a40dddc9c37b5d9116c570a517af0ebe766b9ff5`). PROMPT 962 is the serialized shared-status writer paperwork closure on top of that commit.
+> - **Story closed**: `S11-UX-LOBBY-CLASS-PICKER` / playable-client story 025 / Sprint 14 Should Have rank 11 flipped `ready -> done`. AC1-AC12 accepted against PROMPT 961 integration verification, on-main evidence `production/qa/evidence/sprint-14-lobby-class-picker-evidence.md`, and on-main test `tests/integration/playable_client/lobby_class_picker_layout_test.rs` 5/5 PASS per PROMPT 961. Runtime browser PNG captures for 1366x768 and 1920x1080 are not claimed by PROMPT 962.
+> - **Sprint 14 progress**: 9 of 9 Must Have done; 3 of 4 Should Have done; 1 of 4 Nice to Have done; total 13 of 17 rows closed. Sprint 14 remains active until a separate close-out prompt runs.
+> - **Disposition**: Sprint 14 remains active; stage remains Polish; PROMPT 761 Polish->Release FAIL preserved with no retry. Non-claims preserved: `S8-QA-001-W1` OPEN, `QA-COND-0005/0006` accepted-risk, `PAW-TD-*-a` accepted-risk, no release/RC/full-game/broad-accessibility/playtest/final-art/Sprint14-closeout claim.
+> - **Paperwork-only scope**: changed only `production/epics/playable-client/story-025-lobby-class-picker-layout.md`, `production/sprint-status.yaml`, `production/session-state/active.md`, and `production/session-state/codex-orchestrator-state.md`. No `client/`, `server/`, `shared/`, `tests/`, Cargo files, `production/sprints/sprint-14.md`, `production/qa/qa-plan-sprint-14.md`, `production/stage.txt`, or gate-check artifact changed.
+>
+> ---
+>
 > **CURRENT STATE -- last updated 2026-05-16 (PROMPT 960 story-done closure after PROMPT 959 auction free-gold counters integration)**
 >
 > - **Committed source-of-truth at closure base**: `origin/main@5f5e72fcbd73872496cd4fff2bd7286ad9da46d1` (PROMPT 959 integration merge of PROMPT 958 worker tip `8a91b18da961f45b61d4b319c72b1a4e39afd67b` into prior `origin/main@29851a9e410347078771600c4ae8048962331708`). PROMPT 960 is the serialized shared-status writer paperwork closure on top of that commit.
