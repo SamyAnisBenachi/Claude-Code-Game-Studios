@@ -50,6 +50,18 @@ pub const DRAFT_INITIAL_GRID_TOP_PX: f32 = spacing::SPACING_XL + spacing::SPACIN
 pub const AUCTION_BID_TARGET_WIDTH_PX: f32 = 108.0;
 pub const AUCTION_BID_TARGET_HEIGHT_PX: f32 = 44.0;
 pub const AUCTION_BID_FOCUS_RING_WIDTH_PX: f32 = 2.0;
+pub const AUCTION_FREE_GOLD_COUNTER_COUNT: usize = 2;
+pub const AUCTION_FREE_GOLD_COUNTER_ANCHOR_LEFT_PERCENT: f32 = 52.0;
+pub const AUCTION_FREE_GOLD_COUNTER_LEFT_GAP_PX: f32 = spacing::SPACING_MD;
+pub const AUCTION_FREE_GOLD_COUNTER_LEFT_OFFSET_PX: f32 =
+    AUCTION_BID_TARGET_WIDTH_PX + AUCTION_FREE_GOLD_COUNTER_LEFT_GAP_PX;
+pub const AUCTION_FREE_GOLD_COUNTER_BOTTOM_PX: f32 = 70.0;
+pub const AUCTION_FREE_GOLD_COUNTER_GROUP_WIDTH_PX: f32 = 240.0;
+pub const AUCTION_FREE_GOLD_COUNTER_GROUP_HEIGHT_PX: f32 = 48.0;
+pub const AUCTION_FREE_GOLD_COUNTER_WIDTH_PX: f32 = 104.0;
+pub const AUCTION_FREE_GOLD_COUNTER_PADDING_PX: f32 = spacing::SPACING_XS + 2.0;
+pub const AUCTION_FREE_GOLD_COUNTER_LABEL_FONT_PX: f32 = typography::CAPTION;
+pub const AUCTION_FREE_GOLD_COUNTER_VALUE_FONT_PX: f32 = typography::H2;
 
 /// Featured-card pixel footprint — Sprint 14 story 016
 /// (`S11-UX-AUCTION-FEATURED-CARD`). Width × height are each strictly
@@ -613,6 +625,10 @@ pub struct ShopAuctionUiEntities {
     pub auction_status_text: Entity,
     pub auction_timer_bar: Entity,
     pub auction_bid_status_text: Entity,
+    pub auction_free_gold_counter_group: Entity,
+    pub auction_free_gold_counters: [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
+    pub auction_free_gold_counter_labels: [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
+    pub auction_free_gold_counter_values: [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
     pub auction_bid_buttons: [Entity; 3],
     pub shop_footer: Entity,
     pub shop_footer_slots: [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT],
@@ -738,6 +754,46 @@ pub struct AuctionFeaturedCardStats;
 /// so AC4's numeric hierarchy assertion is observable.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuctionFeaturedCardKeyword;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AuctionFreeGoldCounterKind {
+    Interest,
+    RefundedBid,
+}
+
+impl AuctionFreeGoldCounterKind {
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Interest => "INTEREST",
+            Self::RefundedBid => "BID REFUND",
+        }
+    }
+}
+
+pub const AUCTION_FREE_GOLD_COUNTER_KINDS: [AuctionFreeGoldCounterKind;
+    AUCTION_FREE_GOLD_COUNTER_COUNT] = [
+    AuctionFreeGoldCounterKind::Interest,
+    AuctionFreeGoldCounterKind::RefundedBid,
+];
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionFreeGoldCounterGroup;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionFreeGoldCounter {
+    pub kind: AuctionFreeGoldCounterKind,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionFreeGoldCounterLabel {
+    pub kind: AuctionFreeGoldCounterKind,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionFreeGoldCounterValue {
+    pub kind: AuctionFreeGoldCounterKind,
+    pub amount: u32,
+}
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuctionStatusText;
@@ -3114,6 +3170,7 @@ pub fn sync_auction_panel_system(
             &mut AuctionBidFocusState,
             &mut ImageNode,
         )>,
+        Query<&mut AuctionFreeGoldCounterValue>,
     )>,
 ) {
     let Some(entities) = entities else {
@@ -3130,6 +3187,8 @@ pub fn sync_auction_panel_system(
     let local_leading = local_player_is_leading(&auction_state, &local_gold);
     let hand_full = hand_view.hand_size >= 10;
     let bid_status_visible = footer_visible && (local_leading || hand_full);
+    let local_free_gold = local_gold.free_gold(&economy);
+    let has_gold_source = economy.initialized || local_gold.initialized;
 
     {
         let mut visibility = auction_ui.p0();
@@ -3185,6 +3244,20 @@ pub fn sync_auction_panel_system(
             entities.auction_bid_status_text,
             visibility_for(bid_status_visible),
         );
+        set_visibility(
+            &mut visibility,
+            entities.auction_free_gold_counter_group,
+            visibility_for(auction_visible),
+        );
+        for entity in entities.auction_free_gold_counters {
+            set_visibility(&mut visibility, entity, visibility_for(auction_visible));
+        }
+        for entity in entities.auction_free_gold_counter_labels {
+            set_visibility(&mut visibility, entity, visibility_for(auction_visible));
+        }
+        for entity in entities.auction_free_gold_counter_values {
+            set_visibility(&mut visibility, entity, visibility_for(auction_visible));
+        }
         set_visibility(
             &mut visibility,
             entities.shop_footer,
@@ -3250,6 +3323,23 @@ pub fn sync_auction_panel_system(
                 text.0.push_str("Hand full - no bids possible this auction");
             }
         }
+
+        let free_gold_text = format!("{local_free_gold}g");
+        for entity in entities.auction_free_gold_counter_values {
+            if let Ok(mut text) = texts.get_mut(entity) {
+                text.0.clear();
+                text.0.push_str(&free_gold_text);
+            }
+        }
+    }
+
+    {
+        let mut counter_values = auction_ui.p5();
+        for entity in entities.auction_free_gold_counter_values {
+            if let Ok(mut value) = counter_values.get_mut(entity) {
+                value.amount = local_free_gold;
+            }
+        }
     }
 
     {
@@ -3285,8 +3375,6 @@ pub fn sync_auction_panel_system(
     }
 
     {
-        let local_free_gold = local_gold.free_gold(&economy);
-        let has_gold_source = economy.initialized || local_gold.initialized;
         let focused_button = keyboard_focus.focused_button;
         let mut focused_button_is_focusable = false;
         let mut bid_buttons = auction_ui.p4();
@@ -3594,6 +3682,10 @@ pub fn spawn_shop_auction_ui(
         auction_status_text,
         auction_timer_bar,
         auction_bid_status_text,
+        auction_free_gold_counter_group,
+        auction_free_gold_counters,
+        auction_free_gold_counter_labels,
+        auction_free_gold_counter_values,
         auction_bid_buttons,
     ) = spawn_auction_contents(
         &mut commands,
@@ -3665,6 +3757,10 @@ pub fn spawn_shop_auction_ui(
         auction_status_text,
         auction_timer_bar,
         auction_bid_status_text,
+        auction_free_gold_counter_group,
+        auction_free_gold_counters,
+        auction_free_gold_counter_labels,
+        auction_free_gold_counter_values,
         auction_bid_buttons,
         shop_footer,
         shop_footer_slots,
@@ -4079,6 +4175,10 @@ fn spawn_auction_contents(
     Entity,
     Entity,
     Entity,
+    Entity,
+    [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
+    [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
+    [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
     [Entity; 3],
 ) {
     let featured_card = commands
@@ -4197,6 +4297,13 @@ fn spawn_auction_contents(
         ))
         .id();
 
+    let (
+        free_gold_counter_group,
+        free_gold_counters,
+        free_gold_counter_labels,
+        free_gold_counter_values,
+    ) = spawn_auction_free_gold_counter_group(commands, parent);
+
     let bid_buttons = std::array::from_fn(|index| {
         commands
             .spawn((
@@ -4240,7 +4347,84 @@ fn spawn_auction_contents(
         status_text,
         timer_bar,
         bid_status_text,
+        free_gold_counter_group,
+        free_gold_counters,
+        free_gold_counter_labels,
+        free_gold_counter_values,
         bid_buttons,
+    )
+}
+
+fn spawn_auction_free_gold_counter_group(
+    commands: &mut Commands,
+    parent: Entity,
+) -> (
+    Entity,
+    [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
+    [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
+    [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
+) {
+    let group = commands
+        .spawn((
+            Name::new("Shop Auction Free Gold Counter Group"),
+            ShopAuctionUiEntity,
+            AuctionFreeGoldCounterGroup,
+            auction_free_gold_counter_group_node(),
+            BackgroundColor(Color::srgba(0.05, 0.07, 0.10, 0.72)),
+            BorderColor::all(Color::srgba(0.98, 0.78, 0.30, 0.42)),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id();
+
+    let counter_triplets = AUCTION_FREE_GOLD_COUNTER_KINDS.map(|kind| {
+        let counter = commands
+            .spawn((
+                Name::new(format!("Shop Auction Free Gold Counter {:?}", kind)),
+                ShopAuctionUiEntity,
+                AuctionFreeGoldCounter { kind },
+                auction_free_gold_counter_node(),
+                Visibility::Hidden,
+                ChildOf(group),
+            ))
+            .id();
+
+        let label = commands
+            .spawn((
+                Name::new(format!("Shop Auction Free Gold {:?} Label", kind)),
+                ShopAuctionUiEntity,
+                AuctionFreeGoldCounterLabel { kind },
+                Text::new(kind.label()),
+                shop_auction_text_font(AUCTION_FREE_GOLD_COUNTER_LABEL_FONT_PX),
+                TextColor(Color::srgb(0.78, 0.84, 0.92)),
+                auction_free_gold_counter_label_node(),
+                Visibility::Hidden,
+                ChildOf(counter),
+            ))
+            .id();
+
+        let value = commands
+            .spawn((
+                Name::new(format!("Shop Auction Free Gold {:?} Value", kind)),
+                ShopAuctionUiEntity,
+                AuctionFreeGoldCounterValue { kind, amount: 0 },
+                Text::new("0g"),
+                shop_auction_text_font(AUCTION_FREE_GOLD_COUNTER_VALUE_FONT_PX),
+                TextColor(Color::srgb(0.98, 0.78, 0.30)),
+                auction_free_gold_counter_value_node(),
+                Visibility::Hidden,
+                ChildOf(counter),
+            ))
+            .id();
+
+        (counter, label, value)
+    });
+
+    (
+        group,
+        counter_triplets.map(|(counter, _, _)| counter),
+        counter_triplets.map(|(_, label, _)| label),
+        counter_triplets.map(|(_, _, value)| value),
     )
 }
 
@@ -4618,6 +4802,67 @@ fn auction_bid_status_text_node() -> Node {
         bottom: Val::Px(24.0),
         width: Val::Px(360.0),
         height: Val::Px(40.0),
+        ..default()
+    }
+}
+
+fn auction_free_gold_counter_group_node() -> Node {
+    // Sprint 14 story 017: a single shared container adjacent to the
+    // bid cluster. It anchors from the final +5 bid-button x-position,
+    // then adds one spacing-token gap so the counters read as part of
+    // the decision cluster without overlapping button targets.
+    Node {
+        display: Display::Flex,
+        flex_direction: FlexDirection::Row,
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        column_gap: Val::Px(AUCTION_FREE_GOLD_COUNTER_LEFT_GAP_PX),
+        position_type: PositionType::Absolute,
+        left: Val::Percent(AUCTION_FREE_GOLD_COUNTER_ANCHOR_LEFT_PERCENT),
+        bottom: Val::Px(AUCTION_FREE_GOLD_COUNTER_BOTTOM_PX),
+        margin: UiRect {
+            left: Val::Px(AUCTION_FREE_GOLD_COUNTER_LEFT_OFFSET_PX),
+            right: Val::Px(0.0),
+            top: Val::Px(0.0),
+            bottom: Val::Px(0.0),
+        },
+        width: Val::Px(AUCTION_FREE_GOLD_COUNTER_GROUP_WIDTH_PX),
+        height: Val::Px(AUCTION_FREE_GOLD_COUNTER_GROUP_HEIGHT_PX),
+        padding: UiRect::all(Val::Px(AUCTION_FREE_GOLD_COUNTER_PADDING_PX)),
+        border: UiRect::all(Val::Px(1.0)),
+        ..default()
+    }
+}
+
+fn auction_free_gold_counter_node() -> Node {
+    Node {
+        display: Display::Flex,
+        flex_direction: FlexDirection::Column,
+        justify_content: JustifyContent::Center,
+        align_items: AlignItems::FlexStart,
+        width: Val::Px(AUCTION_FREE_GOLD_COUNTER_WIDTH_PX),
+        height: Val::Percent(100.0),
+        row_gap: Val::Px(0.0),
+        ..default()
+    }
+}
+
+fn auction_free_gold_counter_label_node() -> Node {
+    Node {
+        width: Val::Percent(100.0),
+        height: Val::Px(
+            AUCTION_FREE_GOLD_COUNTER_LABEL_FONT_PX * typography::LINE_HEIGHT_DEFAULT_RATIO,
+        ),
+        ..default()
+    }
+}
+
+fn auction_free_gold_counter_value_node() -> Node {
+    Node {
+        width: Val::Percent(100.0),
+        height: Val::Px(
+            AUCTION_FREE_GOLD_COUNTER_VALUE_FONT_PX * typography::LINE_HEIGHT_DEFAULT_RATIO,
+        ),
         ..default()
     }
 }
