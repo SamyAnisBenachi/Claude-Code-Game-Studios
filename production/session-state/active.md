@@ -1,3 +1,87 @@
+# PROMPT 988 State Banner -- Sprint 15 Plan Draft (NOT ACTIVATED)
+
+Updated 2026-05-16 by PROMPT 988. Source-of-truth at authoring:
+`origin/main@7ceba822cd99bb3119292bda0a100817f3103335` (PROMPT 987
+Sprint 14 close-out disposition tip).
+
+PROMPT 988 authored `production/sprints/sprint-15.md` as a Sprint 15
+sprint plan **DRAFT**. **Sprint 15 is NOT activated by PROMPT 988**;
+activation is a separate explicit prompt that mirrors the PROMPT 826 /
+PROMPT 897 pattern. `production/sprint-status.yaml` `next_sprint_15_draft:`
+block appended at EOF (sprint 15 draft pointer only). Top-level
+`sprint: 14 / status: closed-with-conditions / stage: Polish`
+preserved verbatim; `sprint_14_closeout:` block NOT modified; no row
+flips by PROMPT 988.
+
+Sprint 15 scope is a **deliberately small, executable plan** per
+PROMPT 988 instruction "Prefer a small, executable plan over a broad
+mega-sprint". 2 Must Have rows (`S11-HUD-TIMER-EYEBALL-VISUAL-001`
+human-operator-blocked Sprint 13 -> 14 -> 15 carry, promoted Should
+-> Must; `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` backlog
+row-status flip paperwork-only), 2 Should Have rows
+(`S12-UX-HAND-DRAG-STATE-VISUALS-001` Tier 1 Should adjacent 0.5d;
+`S11-UX-BOARD-RENDERING-SPEC` Tier 3 rank 14 doc-only 0.75d), 1 Nice
+to Have row (`S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001` Tier 0
+Should adjacent 1.0d). Total implementation effort ~2.75d against
+8d available capacity. Tier 3 rank 13
+`S12-TD-UI-CARD-SLOT-PRIMITIVE-001` (1.5d multi-surface refactor)
+deferred to Sprint 16+ to avoid mega-sprint expansion. Tier 2
+cosmetic captures bundle, Sprint 11/12/13 server hardening backlog,
+PROMPT 803 section 5 unpulled rows, dead-code warning cleanup, and
+AppCompat manifest all deferred to backlog.
+
+Stage UNCHANGED `Polish`. `production/stage.txt` NOT modified by
+PROMPT 988. PROMPT 761 Polish->Release gate-check `FAIL` preserved at
+`production/gate-checks/gate-polish-release-2026-05-12.md`; **NO
+retry** attempted; **NO retry** authorised by Sprint 15. Sprint 15
+NOT activated; `sprint_15_activation:` block NOT authored;
+`production/qa/qa-plan-sprint-15.md` NOT authored.
+
+All carried conditions preserved verbatim (none closed by PROMPT 988):
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` Sprint 13 -> 14 -> 15
+human-operator-blocked carry; `S8-QA-001-W1` OPEN; `QA-COND-0005`
+Standard-tier accessibility accepted-risk (L5 `LOBBY_BUTTON_HEIGHT
+= 30.0` remains accepted-risk); `QA-COND-0006` playtest validation
+accepted-risk; `PAW-TD-*-a` placeholder-art accept-risk across
+PAW-002..PAW-006; PROMPT 683-era runtime divergence question
+preserved (third same-scope retest NOT authorised per
+`TQ-S12-C2`); Sprint 12 story 019 underlying drag-runtime bug NOT
+claimed fixed (cannot-reproduce preserved); `TQ-S12-C1..C7`
+preserved verbatim; `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001`
+backlog row remains as-is (flip is a Sprint 15 Must Have candidate
+to be executed AFTER activation by a separate paperwork prompt);
+Sprint 14 / 13 / 12 / 11 / 10 closeouts preserved unchanged; all 16
+Sprint 14 `/story-done` closures preserved unchanged on origin/main.
+
+Explicit non-claims: no public release readiness, no
+release-candidate readiness, no full game completion, no broad /
+Standard-tier accessibility completion, no playtest validation, no
+full playable-client manual QA, no two-client GAME_OVER closure
+(`S8-QA-001-W1` OPEN), no final-art completion, no Polish->Release
+gate-check retry, no stage advance, no Sprint 15 activation by
+PROMPT 988, no Sprint 14 row reopen, no closure of any of the
+carried OPEN items, no `/dev-story`, no `/story-done`, no
+`/story-readiness`, no `/smoke-check`, no `/team-qa`, no
+`/gate-check`, no `/release-check`, no `/qa-plan`.
+
+Paperwork-only scope. Changed only `production/sprints/sprint-15.md`
+(NEW), `production/sprint-status.yaml` (`updated:` annotation
+refresh + `next_sprint_15_draft:` block appended at EOF), this file
+(PROMPT 988 banner prepended above PROMPT 987 banner), and
+`production/session-state/codex-orchestrator-state.md` (PROMPT 988
+section prepended above PROMPT 987 section). No `client/`,
+`server/`, `shared/`, `tests/`, Cargo files, `.cargo/`, `.github/`,
+`production/stage.txt`, `production/qa/qa-plan-sprint-14.md`,
+`production/qa/qa-plan-sprint-15.md`, `production/gate-checks/*`,
+release / RC / launch / changelog / patch notes artifact, any
+Sprint 14 / 13 / 12 / 11 / 10 story file, any Sprint 15 candidate
+story file, or any prior Sprint 14 `/story-done` block touched. No
+`cargo` / `trunk` command invoked. Worktree
+`D:/_DEV/claude-code-game-studios-worktrees/sprint-15-plan-draft-988`
+on branch `sprint-plan/sprint-15-draft` (base `origin/main@7ceba82`).
+
+---
+
 # PROMPT 987 State Banner -- Sprint 14 Close-Out Disposition
 
 Updated 2026-05-16 by PROMPT 987. Source-of-truth at close-out:
