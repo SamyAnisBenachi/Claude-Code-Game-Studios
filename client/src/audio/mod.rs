@@ -22,19 +22,16 @@ fn load_timer_urgency_audio(mut commands: Commands, asset_server: Res<AssetServe
     commands.insert_resource(TimerUrgencyAudioHandle(handle));
 }
 
-fn play_timer_urgency_cue(
-    mut commands: Commands,
-    handle_res: Option<Res<TimerUrgencyAudioHandle>>,
+pub fn play_timer_urgency_cue(
+    _handle_res: Option<Res<TimerUrgencyAudioHandle>>,
     mut reader: MessageReader<TimerUrgencyAudio>,
 ) {
-    let Some(handle_res) = handle_res else {
-        return;
-    };
-    for _ in reader.read() {
-        // TODO: route to ui_hand bus
-        commands.spawn((
-            AudioPlayer::new(handle_res.0.clone()),
-            PlaybackSettings::ONCE,
-        ));
-    }
+    // PROMPT 996 crash guard: drain TimerUrgencyAudio without spawning an
+    // AudioPlayer. The placeholder asset at `audio/ui/hand/sfx_timer_urgency_default.ogg`
+    // is Ogg Opus, which rodio/Bevy 0.18 cannot decode -- spawning an
+    // AudioPlayer for it panics `play_queued_audio_system` with
+    // `Err(UnrecognizedFormat)` once the 5s placement-timer urgency threshold
+    // fires. Playback must only be re-enabled after the placeholder is
+    // replaced with a supported codec (e.g. Vorbis, MP3 with `mp3` feature).
+    for _ in reader.read() {}
 }
