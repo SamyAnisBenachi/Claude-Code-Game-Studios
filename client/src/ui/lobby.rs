@@ -40,7 +40,15 @@ pub const LOBBY_PANEL_WIDTH_PERCENT: f32 = 88.0;
 pub const LOBBY_PANEL_MAX_HEIGHT_PERCENT: f32 = 92.0;
 
 const ROOM_CODE_MAX: usize = 8;
-const LOBBY_BUTTON_HEIGHT: f32 = 30.0;
+pub const LOBBY_BUTTON_HEIGHT_PX: f32 = 30.0;
+pub const LOBBY_ROOM_CODE_FIELD_WIDTH_PERCENT: f32 = 100.0;
+pub const LOBBY_ROOM_CODE_FIELD_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
+pub const LOBBY_CREATE_BUTTON_WIDTH_PX: f32 = 128.0;
+pub const LOBBY_CREATE_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
+pub const LOBBY_JOIN_BUTTON_WIDTH_PX: f32 = 128.0;
+pub const LOBBY_JOIN_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
+pub const LOBBY_REQUESTED_SLOT_BUTTON_WIDTH_PX: f32 = 80.0;
+pub const LOBBY_REQUESTED_SLOT_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
 pub const LOBBY_CLASS_PICKER_GRID_COLUMNS: usize = 7;
 pub const LOBBY_CLASS_PICKER_SELECTABLE_COUNT: usize = 6;
 pub const LOBBY_CLASS_PICKER_CELL_WIDTH_PX: f32 = 108.0;
@@ -49,6 +57,13 @@ pub const LOBBY_CLASS_PICKER_CELL_PADDING_PX: f32 = 6.0;
 pub const LOBBY_CLASS_PICKER_PORTRAIT_WIDTH_PX: f32 = 64.0;
 pub const LOBBY_CLASS_PICKER_PORTRAIT_HEIGHT_PX: f32 = 80.0;
 pub const LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX: f32 = 96.0;
+pub const LOBBY_CLASS_PICKER_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
+pub const LOBBY_CONFIRM_BUTTON_WIDTH_PERCENT: f32 = 100.0;
+pub const LOBBY_CONFIRM_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
+pub const LOBBY_ROOM_CODE_CHIP_WIDTH_PX: f32 = 200.0;
+pub const LOBBY_ROOM_CODE_CHIP_HEIGHT_PX: f32 = 40.0;
+pub const LOBBY_SLOT_PANEL_WIDTH_PX: f32 = 160.0;
+pub const LOBBY_SLOT_PANEL_HEIGHT_PX: f32 = 48.0;
 
 impl Plugin for LobbyUiPlugin {
     fn build(&self, app: &mut App) {
@@ -999,8 +1014,8 @@ fn spawn_lobby_ui_system(
                         LobbyRoomCodeChip,
                         Name::new("Lobby Room Code Chip"),
                         Node {
-                            width: Val::Px(200.0),
-                            height: Val::Px(40.0),
+                            width: Val::Px(LOBBY_ROOM_CODE_CHIP_WIDTH_PX),
+                            height: Val::Px(LOBBY_ROOM_CODE_CHIP_HEIGHT_PX),
                             align_items: AlignItems::Center,
                             justify_content: JustifyContent::Center,
                             ..default()
@@ -1047,7 +1062,10 @@ fn spawn_lobby_ui_system(
                     )),
                     lobby_text_font(typography::BODY),
                     TextColor(Color::srgb(0.90, 0.96, 1.0)),
-                    lobby_button_node(Val::Percent(100.0)),
+                    lobby_button_node(
+                        Val::Percent(LOBBY_ROOM_CODE_FIELD_WIDTH_PERCENT),
+                        LOBBY_ROOM_CODE_FIELD_HEIGHT_PX,
+                    ),
                     BackgroundColor(Color::srgba(0.11, 0.15, 0.19, 0.95)),
                     BorderColor::all(Color::srgb(0.33, 0.52, 0.68)),
                 ));
@@ -1061,7 +1079,10 @@ fn spawn_lobby_ui_system(
                         Text::new(lobby_dynamic_copy(LobbyDynamicText::Create, &lobby, &input)),
                         lobby_text_font(typography::BODY),
                         TextColor(Color::srgb(0.98, 0.93, 0.72)),
-                        lobby_button_node(Val::Px(128.0)),
+                        lobby_button_node(
+                            Val::Px(LOBBY_CREATE_BUTTON_WIDTH_PX),
+                            LOBBY_CREATE_BUTTON_HEIGHT_PX,
+                        ),
                         BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
                         BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
                     ));
@@ -1073,7 +1094,10 @@ fn spawn_lobby_ui_system(
                         Text::new(lobby_dynamic_copy(LobbyDynamicText::Join, &lobby, &input)),
                         lobby_text_font(typography::BODY),
                         TextColor(Color::srgb(0.82, 0.95, 1.0)),
-                        lobby_button_node(Val::Px(128.0)),
+                        lobby_button_node(
+                            Val::Px(LOBBY_JOIN_BUTTON_WIDTH_PX),
+                            LOBBY_JOIN_BUTTON_HEIGHT_PX,
+                        ),
                         BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
                         BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
                     ));
@@ -1099,7 +1123,10 @@ fn spawn_lobby_ui_system(
                             )),
                             lobby_text_font(typography::BODY),
                             TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                            lobby_button_node(Val::Px(72.0)),
+                            lobby_button_node(
+                                Val::Px(LOBBY_REQUESTED_SLOT_BUTTON_WIDTH_PX),
+                                LOBBY_REQUESTED_SLOT_BUTTON_HEIGHT_PX,
+                            ),
                             BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
                             BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
                         ));
@@ -1196,9 +1223,10 @@ fn spawn_lobby_ui_system(
                                             )),
                                             lobby_text_font(typography::BODY),
                                             TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                                            lobby_button_node(Val::Px(
-                                                LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX,
-                                            )),
+                                            lobby_button_node(
+                                                Val::Px(LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX),
+                                                LOBBY_CLASS_PICKER_BUTTON_HEIGHT_PX,
+                                            ),
                                             BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
                                             BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
                                         ));
@@ -1252,8 +1280,8 @@ fn spawn_lobby_ui_system(
                         LobbyOwnSlotPanel,
                         Name::new("Lobby Own Slot Panel"),
                         Node {
-                            width: Val::Px(160.0),
-                            height: Val::Px(48.0),
+                            width: Val::Px(LOBBY_SLOT_PANEL_WIDTH_PX),
+                            height: Val::Px(LOBBY_SLOT_PANEL_HEIGHT_PX),
                             ..default()
                         },
                         ImageNode::new(asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET)),
@@ -1262,8 +1290,8 @@ fn spawn_lobby_ui_system(
                         LobbyOpponentSlotPanel,
                         Name::new("Lobby Opponent Slot Panel"),
                         Node {
-                            width: Val::Px(160.0),
-                            height: Val::Px(48.0),
+                            width: Val::Px(LOBBY_SLOT_PANEL_WIDTH_PX),
+                            height: Val::Px(LOBBY_SLOT_PANEL_HEIGHT_PX),
                             ..default()
                         },
                         ImageNode::new(asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET)),
@@ -1300,7 +1328,10 @@ fn spawn_lobby_ui_system(
                     )),
                     lobby_text_font(typography::BODY),
                     TextColor(Color::srgb(0.98, 0.93, 0.72)),
-                    lobby_button_node(Val::Percent(100.0)),
+                    lobby_button_node(
+                        Val::Percent(LOBBY_CONFIRM_BUTTON_WIDTH_PERCENT),
+                        LOBBY_CONFIRM_BUTTON_HEIGHT_PX,
+                    ),
                     BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
                     BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
                 ));
@@ -1511,7 +1542,7 @@ fn lobby_text_font(font_size: f32) -> TextFont {
 fn lobby_row_node() -> Node {
     Node {
         width: Val::Percent(100.0),
-        height: Val::Px(LOBBY_BUTTON_HEIGHT),
+        height: Val::Px(LOBBY_BUTTON_HEIGHT_PX),
         flex_direction: FlexDirection::Row,
         column_gap: Val::Px(8.0),
         align_items: AlignItems::Center,
@@ -1566,10 +1597,10 @@ fn lobby_class_picker_cell_colors(
     }
 }
 
-fn lobby_button_node(width: Val) -> Node {
+fn lobby_button_node(width: Val, height_px: f32) -> Node {
     Node {
         width,
-        height: Val::Px(LOBBY_BUTTON_HEIGHT),
+        height: Val::Px(height_px),
         border: UiRect::all(Val::Px(1.0)),
         padding: UiRect::horizontal(Val::Px(8.0)),
         align_items: AlignItems::Center,
