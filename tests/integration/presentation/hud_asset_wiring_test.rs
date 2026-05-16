@@ -8,7 +8,8 @@ use client::{
     ui::{
         hud::{
             sync_dot_image_on_objective_destroyed_system, HudConfig, HudEntities, HudFigurine,
-            HudPlayerIds, HudPlugin, HudTimerBar, ScoreboardDot, HUD_DOTS_PER_ROW, HUD_DOT_ROWS,
+            HudPlayerIds, HudPlugin, HudTimerBar, OpponentFigurineMarker, ScoreboardDot,
+            HUD_DOTS_PER_ROW, HUD_DOT_ROWS,
         },
         shared::HudObjectiveUpdate,
     },
@@ -50,10 +51,10 @@ fn enter_session(app: &mut App) {
 // ── PAW-004-e: figurine, timer bar, and all 10 dots have ImageNode ────────────
 
 /// Spawning the HUD pool must produce:
-///   - 1 figurine entity with ImageNode
+///   - 2 figurine entities with ImageNode (own + opponent)
 ///   - 1 timer bar entity with ImageNode
 ///   - 10 scoreboard dot entities with ImageNode (5 own + 5 opponent)
-/// Total: 12 entities carrying ImageNode from pool spawn.
+/// Total: 13 entities carrying ImageNode from pool spawn.
 #[test]
 fn test_hud_pool_spawn_all_chrome_entities_have_image_node() {
     test_helpers::init_test_tracing();
@@ -66,7 +67,11 @@ fn test_hud_pool_spawn_all_chrome_entities_have_image_node() {
     // Figurine must have ImageNode.
     assert!(
         world.get::<ImageNode>(entities.figurine).is_some(),
-        "HUD figurine entity must have ImageNode (PAW-004-a)"
+        "HUD own figurine entity must have ImageNode (PAW-004-a)"
+    );
+    assert!(
+        world.get::<ImageNode>(entities.opponent_figurine).is_some(),
+        "HUD opponent figurine entity must have ImageNode (S14-HUD-OPP-FIGURINE)"
     );
 
     // Timer bar must have ImageNode.
@@ -96,9 +101,9 @@ fn test_hud_pool_spawn_all_chrome_entities_have_image_node() {
     );
 }
 
-/// The figurine entity has the HudFigurine marker component.
+/// The figurine entities have the HudFigurine marker component.
 #[test]
-fn test_figurine_entity_has_marker_component() {
+fn test_figurine_entities_have_marker_components() {
     test_helpers::init_test_tracing();
     let mut app = make_app();
     enter_session(&mut app);
@@ -108,7 +113,19 @@ fn test_figurine_entity_has_marker_component() {
 
     assert!(
         world.get::<HudFigurine>(entities.figurine).is_some(),
-        "HUD figurine entity must carry HudFigurine marker"
+        "HUD own figurine entity must carry HudFigurine marker"
+    );
+    assert!(
+        world
+            .get::<HudFigurine>(entities.opponent_figurine)
+            .is_some(),
+        "HUD opponent figurine entity must carry HudFigurine marker"
+    );
+    assert!(
+        world
+            .get::<OpponentFigurineMarker>(entities.opponent_figurine)
+            .is_some(),
+        "HUD opponent figurine entity must carry OpponentFigurineMarker"
     );
 }
 

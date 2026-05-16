@@ -9,7 +9,7 @@
 //! - FROZEN-mode tiebreak: GAME_OVER hides dim overlay; later snapshot with
 //!   `phase == Resolution` rebuilds dim overlay visibility.
 //! - No countdown numerals on the timer bar (no `Text`/`TextSpan` child).
-//! - `HUD_ENTITY_COUNT == 22` invariant after this story.
+//! - `HUD_ENTITY_COUNT == 23` invariant after HUD opponent figurine.
 
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
@@ -265,10 +265,10 @@ fn test_frozen_mode_tiebreak_dim_overlay_hidden_on_game_over_then_restored_by_sn
     );
 }
 
-// ── Sub-test 7: HUD_ENTITY_COUNT invariant (post-S10-POLISH-001 = 22) ────────
+// ── Sub-test 7: HUD_ENTITY_COUNT invariant (post-opponent-figurine = 23) ─────
 
 #[test]
-fn test_hud_entity_count_is_twenty_two_after_dim_overlay_added() {
+fn test_hud_entity_count_is_twenty_three_after_opponent_figurine_added() {
     test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
 
@@ -279,9 +279,9 @@ fn test_hud_entity_count_is_twenty_two_after_dim_overlay_added() {
          of HudEntity-marked entities after S10-POLISH-001 (dim overlay = +1)"
     );
     assert_eq!(
-        HUD_ENTITY_COUNT, 22,
-        "Post-S10-POLISH-001 invariant: HUD_ENTITY_COUNT must be 22 \
-         (PAW-004 baseline 21 + dim overlay 1)"
+        HUD_ENTITY_COUNT, 23,
+        "Post-S14-HUD-OPP-FIGURINE invariant: HUD_ENTITY_COUNT must be 23 \
+         (PAW-004 baseline 21 + dim overlay 1 + opponent figurine 1)"
     );
 }
 
