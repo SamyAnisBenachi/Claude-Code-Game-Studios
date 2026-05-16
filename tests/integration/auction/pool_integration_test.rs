@@ -114,6 +114,12 @@ fn rare_only_app() -> App {
     auction_fixture(catalog(vec![make_card(10, Rarity::Rare, 3)]))
 }
 
+fn rare_only_app_without_rng() -> App {
+    let mut app = rare_only_app();
+    app.world_mut().remove_resource::<ServerRng>();
+    app
+}
+
 #[test]
 fn test_pool_distribution_is_permanent_after_auction_win() {
     test_helpers::init_test_tracing();
@@ -212,6 +218,22 @@ fn test_empty_eligible_pool_triggers_immediate_no_card_outcome() {
     );
     assert!(read_messages::<S2CAuctionCard>(&app).is_empty());
     assert_eq!(copies_remaining(&app, legendary_id), 2);
+}
+
+#[test]
+fn test_pool_draw_without_server_rng_rejects_without_pool_mutation() {
+    test_helpers::init_test_tracing();
+    let mut app = rare_only_app_without_rng();
+
+    enter_auction(&mut app, 3);
+
+    assert_eq!(copies_remaining(&app, CardId(10)), 3);
+    assert_eq!(
+        app.world().resource::<AuctionState>().phase,
+        AuctionPhase::Idle
+    );
+    assert!(read_messages::<S2CAuctionCard>(&app).is_empty());
+    assert!(read_messages::<AuctionSettled>(&app).is_empty());
 }
 
 #[test]

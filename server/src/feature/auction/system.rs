@@ -425,7 +425,9 @@ fn draw_from_auction_pool(
     round: u32,
 ) -> AuctionDrawOutcome {
     let eligible_pool = build_eligible_auction_pool(&auction_pool.pool, catalog, config, round);
-    let seed = auction_draw_seed(rng, round);
+    let Some(seed) = auction_draw_seed(rng, round) else {
+        return AuctionDrawOutcome::MissingIntegration;
+    };
     let Some(card_id) = PlayerPool::draw_auction_card(&eligible_pool, &catalog.cards, seed) else {
         return AuctionDrawOutcome::EmptyPool;
     };
@@ -443,17 +445,17 @@ fn draw_from_auction_pool(
     AuctionDrawOutcome::Drawn(card_id)
 }
 
-fn auction_draw_seed(rng: Option<&mut ServerRng>, round: u32) -> u64 {
+fn auction_draw_seed(rng: Option<&mut ServerRng>, round: u32) -> Option<u64> {
     if let Some(rng) = rng {
-        return rng.draw_auction_card(round);
+        return Some(rng.draw_auction_card(round));
     }
 
-    tracing::warn!(
+    tracing::error!(
         target: "server::game",
         round,
-        "AuctionPhaseEntered processed without ServerRng; using deterministic round seed"
+        "AuctionPhaseEntered processed without ServerRng; auction draw skipped"
     );
-    u64::from(round)
+    None
 }
 
 fn build_eligible_auction_pool(
