@@ -5,15 +5,15 @@
 > **Architecture Module**: `client/src/ui/hud/` — `HudPlugin` within `PresentationPlugin`
 > **Status**: Ready
 > **Stories**: 12 stories created/updated through 2026-05-05; 3 Sprint 14
-> layout-composition candidates appended 2026-05-14 by PROMPT 879
-> (stories 015 / 016 / 017; NOT activated — Sprint 14 NOT activated)
+> layout-composition candidates appended 2026-05-14 by PROMPT 879.
+> Story 017 closed by PROMPT 976 on 2026-05-16.
 
 ## Overview
 
 This epic implements the `HudPlugin` — the client-side persistent readout layer that
 surfaces economic and tactical state to both players at all times. The HUD owns four
 screen-edge zones (top-left phase/round, top-center scoreboard, top-right gold, bottom-left
-mana), pre-pools all 18 entities at session start, and reacts to four server signals:
+mana), pre-pools all 23 entities at session start, and reacts to four server signals:
 `S2CGoldUpdate` (own economy), `S2CGoldBroadcast` (both players' gold), `S2CPhaseChanged`
 (round + phase via `Res<CurrentClientPhase>`), and a Bevy Observer for `HudObjectiveUpdate`
 (re-emitted by Board Rendering after draining `ObjectiveDestroyed`). It rebuilds fully from
@@ -30,17 +30,17 @@ ADR-021; dot state flips and phase/round labels are instantaneous (StateSync, no
 
 | ADR | Decision Summary | Engine Risk |
 |-----|-----------------|-------------|
-| ADR-021: Presentation Layer Architecture | PRIMARY — `HudPlugin` 4th in `PresentationPlugin`; `PresentationSet` (PhaseTransition → MessageDrain → StateSync → AnimationTick); 18 pre-pooled entities; `PickingBehavior` guard behind `#[cfg(feature = "ui_picking")]`; bevy_tweening cancel-and-replace via `Animator::set_tweenable()` | HIGH |
+| ADR-021: Presentation Layer Architecture | PRIMARY — `HudPlugin` 4th in `PresentationPlugin`; `PresentationSet` (PhaseTransition → MessageDrain → StateSync → AnimationTick); 23 pre-pooled entities after Sprint 14 HUD opponent figurine; `PickingBehavior` guard behind `#[cfg(feature = "ui_picking")]`; bevy_tweening cancel-and-replace via `Animator::set_tweenable()` | HIGH |
 | ADR-002: Client-Server Authority | HUD is read-only; zero C2S messages; all state received as S2C messages; no client-side game logic | LOW |
 | ADR-001: Objective Identity Unicast | `ObjectiveIdentity` is server-only; `HudObjectiveUpdate` strips `was_fake` at Board Rendering boundary — HUD scoreboard architecturally cannot reveal real/fake | LOW |
 | ADR-008: Lightyear Channel Config | `S2CGoldUpdate`, `S2CGoldBroadcast`, `S2CPhaseChanged`, `S2CGameSnapshot` all on `ReliableChannel`; drained via `MessageReceiver<T>` in `MessageDrain` set; single-drain constraint: one reader per message type per frame | HIGH |
-| ADR-011: Reconnect + Snapshot | `S2CGameSnapshot` triggers full HUD rebuild (all 18 entities rewritten, no respawn); deferred queue flushed after snapshot; FROZEN mode tiebreak — snapshot always wins, FROZEN re-applies | HIGH |
+| ADR-011: Reconnect + Snapshot | `S2CGameSnapshot` triggers full HUD rebuild (all 23 entities rewritten, no respawn); deferred queue flushed after snapshot; FROZEN mode tiebreak — snapshot always wins, FROZEN re-applies | HIGH |
 
 ## GDD Requirements
 
 | TR-ID | Requirement | ADR Coverage |
 |-------|-------------|--------------|
-| TR-HUD-001 | Gold label format adaptive (ECONOMY_BASIC `Xg` / ECONOMY_AUCTION `Xg (Yr)`); 18 pre-pooled entities: 6 label parents + 2 TextSpan children (gold label `(Yr)` spans) + 10 scoreboard dots | ADR-021 ✅ |
+| TR-HUD-001 | Gold label format adaptive (ECONOMY_BASIC `Xg` / ECONOMY_AUCTION `Xg (Yr)`); 23 pre-pooled entities after Sprint 14 HUD opponent figurine: 6 label parents + 2 TextSpan children (gold label `(Yr)` spans) + 10 scoreboard dots + top/bottom strip and HUD chrome entities including own/opponent figurines | ADR-021 ✅ |
 | TR-HUD-002 | Mana display `current_mana / mana_cap`; reserve mana label visible iff `reserve_mana > 0`; sourced from `S2CGoldUpdate` in `MessageDrain` set | ADR-021 ✅ |
 | TR-HUD-003 | Phase label strings for DRAFT\_INITIAL / DRAFT\_SHOP / DRAFT\_AUCTION / PLACEMENT / RESOLUTION / GAME\_OVER; sourced via `Res<CurrentClientPhase>` (never direct `MessageReceiver<S2CPhaseChanged>`) | ADR-021 ✅ |
 | TR-HUD-004 | Scoreboard dot state machine: all 10 dots ALIVE at session start; `HudObjectiveUpdate` Bevy Observer transitions single dot ALIVE → DESTROYED; `HudPlugin` registers `app.observe(handle_hud_objective_update)` | ADR-021 ✅ |
@@ -126,23 +126,23 @@ This epic is complete when:
 | 014 | [HUD Timer Eyeball Visual Check](story-014-hud-timer-eyeball-visual-check.md) | Visual/Feel | Draft -- Sprint 13 candidate (Should Have, `S11-HUD-TIMER-EYEBALL-VISUAL-001`), NOT activated | ADR-021, ADR-002 |
 | 015 | [HUD Top Strip Layout (Composition Only)](story-015-hud-top-strip-layout.md) | UI | Draft -- Sprint 14 candidate (Must framing per `docs/ux/ui-clean-pass-roadmap.md` rank 7, `S11-UX-HUD-TOP-STRIP-LAYOUT`), NOT activated | ADR-021, ADR-002 |
 | 016 | [HUD Bottom Strip Layout (Composition Only)](story-016-hud-bottom-strip-layout.md) | UI | Draft -- Sprint 14 candidate (Tier 1 Must per `docs/ux/ui-clean-pass-roadmap.md` rank 8, `S11-UX-HUD-BOTTOM-STRIP-LAYOUT`), NOT activated | ADR-021, ADR-002 |
-| 017 | [HUD Opponent Figurine Composition (Layout Only)](story-017-hud-opponent-figurine.md) | UI | Draft -- Sprint 14 candidate (Tier 1 Should per `docs/ux/ui-clean-pass-roadmap.md` adjacent-rows table, `S11-UX-HUD-OPP-FIGURINE`), NOT activated | ADR-021, ADR-002, ADR-012 |
+| 017 | [HUD Opponent Figurine Composition (Layout Only)](story-017-hud-opponent-figurine.md) | UI | Done via PROMPT 976 (Sprint 14 Nice to Have, `S11-UX-HUD-OPP-FIGURINE`) | ADR-021, ADR-002, ADR-012 |
 
 **15 stories total: 5 Logic · 6 UI · 3 Integration · 1 Visual/Feel**
 Story 004 blocked on OQ-HUD-05 (HudObjectiveUpdate trigger type crate location).
 Story 014 is a Sprint 13 candidate (Sprint 12 close-out deferral; Sprint 10 smoke retry-7 W2 carry); NOT activated.
-Stories 015 / 016 / 017 are Sprint 14 candidates from PROMPT 802 Expert UI
+Stories 015 / 016 / 017 began as Sprint 14 candidates from PROMPT 802 Expert UI
 Layout audit roadmap (reconciled by `docs/ux/ui-clean-pass-roadmap.md` ranks
-7, 8, and Tier 1 Should-Priority Adjacent Rows table). Sprint 14 is NOT
-activated. The three stories are layout-composition only — no final-art
-claim, no Standard-tier accessibility claim. PAW-TD-004-a placeholder-art
-accept-risk and QA-COND-0005 accept-risk are preserved verbatim. Stories
-015 + 016 are siblings on `spawn_hud`; story 017 DEPENDS on story 016
-(opponent figurine is hosted inside the bottom-strip flex parent).
+7, 8, and Tier 1 Should-Priority Adjacent Rows table). Story 017 is Done via
+PROMPT 976; the row remains layout-composition only with no final-art claim and
+no Standard-tier accessibility claim. PAW-TD-004-a placeholder-art accept-risk
+and QA-COND-0005 accept-risk are preserved verbatim. Stories 015 + 016 are
+siblings on `spawn_hud`; story 017 consumes story 016 because the opponent
+figurine is hosted inside the bottom-strip flex parent.
 
 ## Sprint 14 UI Layout Candidate Dependency Chain
 
-Before any of stories 015 / 016 / 017 enter `/dev-story` in Sprint 14, the
+Before any future work on stories 015 / 016 / 017 enters `/dev-story` in Sprint 14, the
 following Tier 0 foundational stories MUST be Done (not just Ready) per
 `docs/ux/ui-clean-pass-roadmap.md` sequencing rules:
 
@@ -166,6 +166,6 @@ story has a Done status before pulling stories 015 / 016 / 017 into the
 
 Run `/story-readiness production/epics/hud/story-012-text-size-and-contrast-accessibility.md` before assigning the Sprint 6 A11Y-ST-01/A11Y-ST-03 HUD evidence story. Work through stories in dependency order — each story's `Depends on:` field tells you what must be DONE first.
 
-Stories 015 / 016 / 017 are Sprint 14 candidates and should be left in
-`Draft` until Sprint 14 is activated and the Tier 0 foundational
-dependencies above are Done.
+Stories 015 / 016 were Sprint 14 layout candidates and story 017 is now Done
+via PROMPT 976. Future HUD layout work should still respect the Tier 0
+foundational dependencies above.

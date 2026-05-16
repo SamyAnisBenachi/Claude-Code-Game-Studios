@@ -1,3 +1,35 @@
+# PROMPT 976 State Banner -- S14 HUD Opponent Figurine Story-Done
+
+Updated 2026-05-16 by PROMPT 976. Source-of-truth at closure:
+`origin/main@a3bc885f5f54e9b4e254d9abeb6b72a3e2321e8a` (PROMPT 975
+integration merge of `origin/work/s14-hud-opponent-figurine` worker
+tip `69f81364137a8248c9976ad30f21671c6070b315`).
+
+PROMPT 976 closed `S11-UX-HUD-OPP-FIGURINE` / HUD story 017 /
+Sprint 14 Nice to Have. Paperwork-only scope: story file
+`production/epics/hud/story-017-hud-opponent-figurine.md` flipped to
+Done with closure notes, HUD EPIC count/story row updated,
+`production/sprint-status.yaml` row flipped `ready -> done`, this file
+and `production/session-state/codex-orchestrator-state.md` received
+PROMPT 976 banners, and the `sprint_14_story_done` block received the
+sixteenth Sprint 14 story-done entry. Closure evidence used PROMPT 968
+worker report, PROMPT 975 integration report, on-main evidence
+`production/qa/evidence/sprint-14-hud-opponent-figurine/README.md`,
+and on-main tests `tests/integration/hud/hud_opp_figurine_test.rs`
+5/5 PASS plus HUD regression bins per PROMPT 975.
+
+Sprint 14 progress after PROMPT 976: 9 of 9 Must Have done; 3 of 4
+Should Have done; 4 of 4 Nice to Have done; total 16 of 17 rows
+closed. Sprint 14 remains active; stage remains Polish; PROMPT 761
+Polish->Release FAIL preserved with no retry. Non-claims preserved:
+`S8-QA-001-W1` OPEN, `QA-COND-0005/0006` accepted-risk,
+`PAW-TD-*-a` accepted-risk, no release/RC/full-game/broad-accessibility/
+playtest/final-art/Sprint14-closeout claim. Runtime PNG captures for
+1366x768 and 1920x1080 are not claimed; ECS hierarchy/snapshot/
+dimension/z-layer/source assertions are the accepted closure evidence.
+
+---
+
 # PROMPT 974 State Banner -- S14 Auction Lead/Loss State Story-Done
 
 Updated 2026-05-16 by PROMPT 974. Source-of-truth at closure:

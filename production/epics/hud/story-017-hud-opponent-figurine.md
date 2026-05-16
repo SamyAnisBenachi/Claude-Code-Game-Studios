@@ -2,14 +2,14 @@
 
 > **Epic**: HUD
 > **Story ID**: S11-UX-HUD-OPP-FIGURINE
-> **Status**: Draft -- Sprint 14 candidate (Tier 1 Should per
-> `docs/ux/ui-clean-pass-roadmap.md` "Tier 1 Should-Priority Adjacent
-> Rows" / PROMPT 802 §3.2 H10); NOT activated; Sprint 14 NOT activated
+> **Status**: Done via PROMPT 976 (2026-05-16) after PROMPT 968
+> implementation and PROMPT 975 integration on
+> `origin/main@a3bc885f5f54e9b4e254d9abeb6b72a3e2321e8a`
 > **Layer**: HUD / Presentation (layout / composition only)
 > **Type**: UI -- layout composition + visual evidence
-> **Sprint**: Sprint 14 candidate (drawn from PROMPT 802 Expert UI Layout
-> audit roadmap; pairs with ranks 7 and 8 per
-> `docs/ux/ui-clean-pass-roadmap.md` adjacent-rows table); NOT activated
+> **Sprint**: Sprint 14 Nice to Have (drawn from PROMPT 802 Expert UI
+> Layout audit roadmap; pairs with ranks 7 and 8 per
+> `docs/ux/ui-clean-pass-roadmap.md` adjacent-rows table)
 > **Authored**: 2026-05-14 by PROMPT 879 (worktree
 > `D:\_DEV\claude-code-game-studios-worktrees\s14-hud-layout-story-authoring`,
 > branch `story/s14-hud-layout-story-authoring`)
@@ -22,10 +22,36 @@
 
 ## Status / No-Claim Banner
 
-This story is authored as a **Sprint 14 candidate**. Sprint 14 is
-**NOT** activated by PROMPT 879. Sprint 13 remains `active` and is
-not changed by this authoring run. Sprint 12 remains
-`closed-with-conditions` per PROMPT 817 and is not changed.
+This story is closed by PROMPT 976 as the Sprint 14 Nice to Have HUD
+opponent figurine row. PROMPT 976 is paperwork-only closure after
+PROMPT 975 integrated PROMPT 968 onto `origin/main`.
+
+This closure:
+
+- Does **not** close Sprint 14; Sprint 14 remains active.
+- Does **not** invoke `/smoke-check`, `/team-qa`, `/gate-check`,
+  `/release-check`, `/qa-plan`, or Sprint 14 close-out.
+- Does **not** modify `client/`, `server/`, `shared/`, `tests/`,
+  Cargo files, `production/sprints/sprint-14.md`,
+  `production/qa/qa-plan-sprint-14.md`, `production/stage.txt`, or
+  the PROMPT 761 gate artifact.
+- Does **not** advance stage (Polish remains).
+- Does **not** retry the PROMPT 761 Polish->Release gate-check FAIL.
+- Does **not** claim final-art / asset-production completion
+  (`PAW-TD-004-a` accept-risk preserved).
+- Does **not** claim release-candidate readiness, public release
+  readiness, full game completion, broad / Standard-tier
+  accessibility completion (`QA-COND-0005`), or playtest / fun-
+  hypothesis validation (`QA-COND-0006`).
+- Does **not** close `S8-QA-001-W1` (two-client GAME_OVER closure).
+
+PROMPT 976 verifies AC evidence from the PROMPT 968 worker report,
+PROMPT 975 integration report, integrated HUD code/tests, and
+`production/qa/evidence/sprint-14-hud-opponent-figurine/README.md`.
+Runtime browser/WASM PNG captures remain unclaimed by this closure.
+
+PROMPT 879 originally authored this story as a Sprint 14 candidate.
+That historical authoring run did not activate Sprint 14.
 
 PROMPT 879 (this authoring run) does **NOT**:
 
@@ -277,65 +303,65 @@ with screenshot evidence as ADVISORY gate.
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Opponent figurine entity pre-pooled at session start**:
+- [x] **AC1 -- Opponent figurine entity pre-pooled at session start**:
   GIVEN `spawn_hud` runs, WHEN inspected post-refactor, THEN a new
   entity carrying `HudFigurine` + (new) `OpponentFigurineMarker` (or
   equivalent) is spawned with the same `hud_figurine_asset` fallback
   resolver as the own-player figurine. `HUD_ENTITY_COUNT` increments
   by 1 (currently 22 → 23) to reflect the new pre-pooled entity.
 
-- [ ] **AC2 -- Opponent figurine hosted inside flex strip parent**:
+- [x] **AC2 -- Opponent figurine hosted inside flex strip parent**:
   GIVEN the post-refactor spawn, WHEN the opponent figurine's `Node`
   is inspected, THEN it carries NO `PositionType::Absolute` direct
   anchor. It is a flex child of `HudBottomStrip` (or `HudTopStrip`,
   per the design-spec decision) with dimensions stable across
   viewports.
 
-- [ ] **AC3 -- `HudEntities` exposes opponent figurine**: GIVEN
+- [x] **AC3 -- `HudEntities` exposes opponent figurine**: GIVEN
   the post-refactor `HudEntities` resource, WHEN inspected, THEN it
   exposes an `opponent_figurine: Entity` field pointing at the new
   entity. The existing own-player figurine remains reachable
   (`HudEntities.figurine` or `HudEntities.own_figurine` per the
   implementation-prompt rename decision).
 
-- [ ] **AC4 -- Asset resolution from server-authoritative state**:
+- [x] **AC4 -- Asset resolution from server-authoritative state**:
   GIVEN an `S2CGameSnapshot` is drained, WHEN the snapshot contains
   the opponent's `ClassId`, THEN the opponent figurine's `ImageNode`
   is updated to the resolved `hud_figurine_asset(class_id)`. Update
   happens in the `StateSync` set (instantaneous, no tween — matches
   TR-HUD-008 behaviour).
 
-- [ ] **AC5 -- Reconnect / snapshot rebuild covers opponent
+- [x] **AC5 -- Reconnect / snapshot rebuild covers opponent
   figurine**: GIVEN an `S2CGameSnapshot` arrives mid-session, WHEN
   the HUD rebuilds, THEN the opponent figurine is part of the rebuild
   with the snapshot-correct class asset. ADR-011 binding.
 
-- [ ] **AC6 -- FROZEN-on-GAME_OVER applies**: GIVEN
+- [x] **AC6 -- FROZEN-on-GAME_OVER applies**: GIVEN
   `phase == GAME_OVER`, WHEN a (hypothetical) incremental class
   update arrives, THEN the opponent figurine is NOT updated; only
   `S2CGameSnapshot` can overwrite it (snapshot bypasses FROZEN per
   TR-HUD-009 + ADR-011).
 
-- [ ] **AC7 -- ADR-001 invariant preserved**: GIVEN the post-refactor
+- [x] **AC7 -- ADR-001 invariant preserved**: GIVEN the post-refactor
   build, WHEN any path that surfaces the opponent figurine is
   inspected, THEN no objective identity or `was_fake` data flows to
   the figurine. The figurine is class-identity-bearing only, not
   objective-identity-bearing. Defence-in-depth grep + code review
   recorded in the evidence document.
 
-- [ ] **AC8 -- No client-side class authority added**: GIVEN the
+- [x] **AC8 -- No client-side class authority added**: GIVEN the
   post-refactor build, WHEN the opponent figurine update path is
   inspected, THEN it reads from `S2CGameSnapshot` / `S2CClassLocked`
   drained-resource state ONLY. No system derives class from spawned
   units, lane state, or any other client-side observation. ADR-002 +
   ADR-012 binding.
 
-- [ ] **AC9 -- ADR-021 schedule preserved**: GIVEN a `cargo build -p
+- [x] **AC9 -- ADR-021 schedule preserved**: GIVEN a `cargo build -p
   client`, WHEN run, THEN no new system-set or schedule wiring is
   introduced. The opponent-figurine update system slots into the
   existing `StateSync` set inside `PresentationSet`.
 
-- [ ] **AC10 -- Visual evidence captured at two viewports**: GIVEN
+- [x] **AC10 -- Visual evidence captured at two viewports**: GIVEN
   the post-refactor build runs end-to-end through the friend-game
   route with two clients connected as different classes, WHEN HUD is
   visible (any non-`Hidden` phase), THEN screenshots are captured at
@@ -346,7 +372,7 @@ All criteria are independently checkable.
   `opp-figurine-1366x768-<phase>.png` for at least one phase that
   shows both figurines visibly (e.g. `DraftShop` after class lock).
 
-- [ ] **AC11 -- Text fitting anti-regression**: GIVEN the captures,
+- [x] **AC11 -- Text fitting anti-regression**: GIVEN the captures,
   WHEN visually inspected against the figurine label (if any caption
   is added by the design spec, e.g. class name under the figurine),
   THEN no text is clipped or truncated. If no caption is rendered by
@@ -354,51 +380,51 @@ All criteria are independently checkable.
   document records "no figurine caption rendered; AC trivially
   satisfied."
 
-- [ ] **AC12 -- Stable dimensions anti-regression**: GIVEN the
+- [x] **AC12 -- Stable dimensions anti-regression**: GIVEN the
   captures, WHEN dimensions of the opponent figurine are measured,
   THEN width and height are identical at 1920×1080 and 1366×768
   (fixed pixel sizing — 64×64 or the post-refactor constant).
 
-- [ ] **AC13 -- No overlap anti-regression**: GIVEN the captures at
+- [x] **AC13 -- No overlap anti-regression**: GIVEN the captures at
   both viewports, WHEN the opponent figurine region is inspected,
   THEN it does NOT overlap the own-player figurine, current mana
   bar, reserve mana diamond, scoreboard dots, dim overlay edge, or
   any top-strip child. Captures span at least DRAFT_SHOP and
   DRAFT_AUCTION phases.
 
-- [ ] **AC14 -- No viewport-width font scaling anti-regression**:
+- [x] **AC14 -- No viewport-width font scaling anti-regression**:
   GIVEN a grep across `client/src/ui/hud/` post-refactor, WHEN run
   with pattern `Val::Percent`/`Val::Vw`/`Val::Vh` filtered to lines
   touching `TextFont` or `font_size`, THEN zero hits on opponent-figurine
   caption (if present).
 
-- [ ] **AC15 -- Z-index layer slot consumed (not re-invented)**:
+- [x] **AC15 -- Z-index layer slot consumed (not re-invented)**:
   GIVEN the post-refactor spawn, WHEN the opponent figurine's z
   positioning is inspected, THEN it inherits the parent strip's z
   layer slot from `S11-TD-UI-ZINDEX-LAYERS` — NOT a hard-coded
   `GlobalZIndex(N)` re-introduced inline.
 
-- [ ] **AC16 -- Sprint 13/14 disposition preserved**: GIVEN the
+- [x] **AC16 -- Sprint 13/14 disposition preserved**: GIVEN the
   story commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-13.md`, `production/sprints/sprint-14.md`
   (when authored), `production/stage.txt`, and PROMPT 761 gate-check
   artifact are diffed, THEN none of them are modified by this story.
 
-- [ ] **AC17 -- No accept-risk closure claimed**: GIVEN the evidence
+- [x] **AC17 -- No accept-risk closure claimed**: GIVEN the evidence
   document, WHEN inspected, THEN it explicitly does NOT claim closure
   of `S8-QA-001-W1`, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-004-a`,
   or any other accept-risk disposition. Final-art replacement on the
   opponent figurine is explicitly out of scope. Standard-tier
   accessibility is not pursued.
 
-- [ ] **AC18 -- Targeted regression passes**: GIVEN the post-refactor
+- [x] **AC18 -- Targeted regression passes**: GIVEN the post-refactor
   code, WHEN `cargo test -p client --lib` is run, THEN it passes.
   Existing HUD scaffold + observer + snapshot rebuild tests (stories
   001, 004, 008) continue to pass; tests that previously asserted
   `HUD_ENTITY_COUNT == 22` are updated to the new pre-pool count by
   the implementation prompt.
 
-- [ ] **AC19 -- Evidence document slot reserved**:
+- [x] **AC19 -- Evidence document slot reserved**:
   `production/qa/evidence/sprint-14-hud-opponent-figurine/README.md`
   (NEW). Records the build commit, the two viewport captures, the
   class-swap observation (at least one opponent class change captured
@@ -407,13 +433,56 @@ All criteria are independently checkable.
   cross-links to PROMPT 802 §3.2 H10 + `docs/ux/ui-clean-pass-roadmap.md`
   "Tier 1 Should-Priority Adjacent Rows" table.
 
-- [ ] **AC20 -- HUD epic count updated**: GIVEN the epic file
+- [x] **AC20 -- HUD epic count updated**: GIVEN the epic file
   `production/epics/hud/EPIC.md`, WHEN updated by the implementation
   prompt at `/story-done` time, THEN the "Stories" table reflects the
   new story 017 entry and the `HUD_ENTITY_COUNT` summary line in the
   epic body (currently "18 pre-pooled entities" wording, or updated
   to "22 pre-pooled entities" elsewhere) is bumped consistently to
   the post-refactor count.
+
+## Completion Notes
+
+**Completed**: 2026-05-16 by PROMPT 976 `/story-done` paperwork
+closure.
+
+**Criteria**: 20 / 20 accepted. AC1-AC9, AC11-AC12, and AC14-AC19
+PASS through integrated ECS/source/evidence checks and PROMPT 975
+verification. AC10 and AC13 are accepted as
+PASS-WITH-RUNTIME-CAPTURE-DEFERRED: the evidence README reserves the
+1920x1080 and 1366x768 DRAFT_SHOP / DRAFT_AUCTION capture filenames
+and records manual capture pending, while automated ECS tests verify
+bottom-strip hierarchy, fixed 64 x 64 dimensions, class-swap asset
+resolution, z-layer inheritance, and no objective/client-inference
+path. AC20 is satisfied by PROMPT 976 updating
+`production/epics/hud/EPIC.md` to the post-refactor 23-entity HUD
+count and Done story row.
+
+**Deviations**: Runtime browser/WASM PNG captures at 1920 x 1080 and
+1366 x 768 remain deferred; PROMPT 976 does not claim browser
+screenshot completion, Standard-tier accessibility, release readiness,
+Sprint 14 close-out, final-art completion, or any gate retry. No GDD
+addition is paired with this closure; the implementation remained
+code/test/evidence scoped and this closure updates the HUD epic count
+only.
+
+**Test Evidence**: PROMPT 975 reports `cargo fmt --all -- --check`
+PASS, `cargo check --workspace --all-targets` PASS with one
+pre-existing `hand_ui_asset_wiring_test` warning, `cargo test -p
+client --lib` PASS 45/45, story test `cargo test -p client --test
+hud_opp_figurine_test` PASS 5/5, `hud_resolution_dim_test` PASS 8/8,
+`hud_phase_timer_bar_test` PASS 4/4, `hud_top_strip_layout_test` PASS
+6/6, `hud_bottom_strip_layout_test` PASS 8/8,
+`hud_asset_wiring_test` PASS 6/6, `cargo build -p client` PASS, AC14
+viewport-font grep PASS with zero hits, forbidden-path review empty,
+and diff checks PASS.
+
+**Code Review**: PROMPT 976 verified integration commit
+`a3bc885f5f54e9b4e254d9abeb6b72a3e2321e8a` is reachable from
+`origin/main`, reviewed the integrated source/test/evidence for AC
+coverage, and performed paperwork-only closure. No `client/`,
+`server/`, `shared/`, `tests/`, Cargo, Sprint 14 plan, QA plan, stage,
+or gate artifact was edited by PROMPT 976.
 
 ---
 
@@ -544,10 +613,10 @@ The authoring prompt (PROMPT 879) runs only `git diff --check`,
 
 ---
 
-## Sprint 14 Activation Preconditions (for the orchestrator that
-activates Sprint 14)
+## Historical Sprint 14 Activation Preconditions
 
-Before this story enters `/dev-story` in Sprint 14:
+The preconditions that were required before PROMPT 968 entered
+`/dev-story` in Sprint 14 were:
 
 1. Sprint 14 activation prompt MUST re-state the accept-risk
    preservations from `docs/ux/ui-clean-pass-roadmap.md` "Accept-Risk
@@ -568,5 +637,27 @@ Before this story enters `/dev-story` in Sprint 14:
    - Whether a small `design/gdd/hud.md` addition is paired with this
      story or deferred to a follow-on doc story.
 
-If any precondition fails, the row holds in `ready` / `blocked` and
-does NOT enter `/dev-story`.
+These gates were satisfied before implementation; no blocker remains
+for this closed row.
+
+## Closure Trail
+
+- PROMPT 968 (2026-05-16) -- `/dev-story` implementation on branch
+  `work/s14-hud-opponent-figurine`, commit
+  `69f81364137a8248c9976ad30f21671c6070b315`. Added the
+  pre-pooled opponent figurine under `HudBottomStrip`, exposed
+  `HudEntities.opponent_figurine`, synchronized own/opponent
+  figurines from authoritative snapshot class ids, registered the
+  HUD story test target, and wrote the evidence README.
+- PROMPT 975 (2026-05-16) -- integration merge
+  `a3bc885f5f54e9b4e254d9abeb6b72a3e2321e8a` onto `origin/main`.
+  Verification passed `cargo fmt`, `cargo check`, client lib, HUD
+  story/regression bins, `cargo build -p client`, AC14 grep, diff
+  checks, and forbidden-path review.
+- PROMPT 976 (2026-05-16) -- serialized `/story-done` paperwork
+  closure. Story status marked Done, Sprint 14 row flipped
+  `ready -> done`, HUD EPIC count/story row updated, session-state
+  banners prepended, and `sprint_14_story_done` entry appended.
+  Sprint 14 remains active; stage remains Polish; PROMPT 761 FAIL,
+  `S8-QA-001-W1` OPEN, `QA-COND-0005/0006` accepted-risk, and
+  `PAW-TD-*-a` accepted-risk are preserved.
