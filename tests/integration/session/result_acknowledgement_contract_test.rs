@@ -1,4 +1,6 @@
 use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use server::core::rsm::RoundPhase;
 use server::core::session::{
@@ -23,6 +25,27 @@ fn player(id: u64) -> PlayerId {
 
 fn session_id(value: u128) -> SessionId {
     SessionId(Uuid::from_u128(value))
+}
+
+fn workspace_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("server crate should live under the workspace root")
+        .to_path_buf()
+}
+
+fn read_workspace_file(path: impl AsRef<Path>) -> String {
+    let path = path.as_ref();
+    fs::read_to_string(path)
+        .unwrap_or_else(|error| panic!("failed to read {}: {error}", path.display()))
+}
+
+fn assert_manifest_has_test_bin(manifest: &str, bin_name: &str, manifest_path: &str) {
+    let name_line = format!("name = \"{bin_name}\"");
+    assert!(
+        manifest.contains(&name_line),
+        "{manifest_path} must keep {bin_name} registered so workflow coverage cannot go green while the route test is not built"
+    );
 }
 
 fn snapshot(recipient: PlayerId) -> S2CGameSnapshot {
@@ -58,6 +81,71 @@ fn ended_state() -> EndedSessionResultState {
         expires_at_ms: 10_000,
         session_ids: HashSet::from([session_id(10)]),
     }
+}
+
+#[test]
+fn workflow_route_coverage_tests_stay_registered_and_unignored() {
+    test_helpers::init_test_tracing();
+    let root = workspace_root();
+
+    let server_manifest = read_workspace_file(root.join("server/Cargo.toml"));
+    for bin_name in [
+        "playable_client_real_e2e_loop_test",
+        "playable_client_full_game_over_route_test",
+        "reconnect_snapshot_test",
+        "game_over_reconnect_result_resend_test",
+        "result_acknowledgement_contract_test",
+        "result_acknowledgement_cleanup_handshake_test",
+        "rsm_disconnect_test",
+    ] {
+        assert_manifest_has_test_bin(&server_manifest, bin_name, "server/Cargo.toml");
+    }
+
+    let client_manifest = read_workspace_file(root.join("client/Cargo.toml"));
+    for bin_name in [
+        "playable_client_native_operator_controls_test",
+        "hand_ui_placement_submit_core_test",
+        "hand_ui_drag_to_board_cell_test",
+        "hand_ui_drag_end_non_instant_test",
+        "connection_lost_overlay_test",
+        "result_screen_mvp_test",
+        "result_screen_return_to_lobby_test",
+        "reconnect_snapshot_rebuild_test",
+    ] {
+        assert_manifest_has_test_bin(&client_manifest, bin_name, "client/Cargo.toml");
+    }
+
+    for relative_path in [
+        "tests/integration/playable_client/real_e2e_loop_test.rs",
+        "tests/integration/playable_client/full_game_over_route_test.rs",
+        "tests/integration/session/reconnect_snapshot_test.rs",
+        "tests/integration/session/game_over_reconnect_result_resend_test.rs",
+        "tests/unit/rsm/rsm_disconnect_test.rs",
+    ] {
+        let source = read_workspace_file(root.join(relative_path));
+        assert!(
+            !source.contains("#[ignore]"),
+            "{relative_path} must remain an active workflow regression, not an ignored manual reminder"
+        );
+    }
+
+    let runbook = read_workspace_file(
+        root.join("production/qa/evidence/manual-friend-game-evidence-runbook.md"),
+    );
+    assert!(
+        runbook.contains("Do not close `S8-QA-001-W1`"),
+        "manual friend-game evidence must keep the explicit no-closure guardrail"
+    );
+    assert!(
+        runbook.contains("Return to Lobby / ack"),
+        "manual friend-game evidence must continue to require result acknowledgement coverage"
+    );
+
+    let harness_doc = read_workspace_file(root.join("docs/setup/two-client-runtime-harness.md"));
+    assert!(
+        harness_doc.contains("`S8-QA-001-W1` is NOT closed by running this harness"),
+        "two-client runtime docs must not claim the runtime harness closes the manual QA story"
+    );
 }
 
 #[test]
