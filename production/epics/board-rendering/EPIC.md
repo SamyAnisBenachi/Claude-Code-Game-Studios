@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/board-rendering.md
 > **Architecture Module**: `client/src/ui/board/` - `BoardRenderingPlugin` (sub-plugin #2 inside `PresentationPlugin`)
 > **Status**: Ready - story set drafted for S5-21; Story 001 depends on Presentation Layer Story 001
-> **Stories**: 12 stories created - 7 Complete, 3 Ready, 2 Blocked; S6-03 browser/WASM evidence follow-up added as Story 012
+> **Stories**: 13 stories created - 7 Complete, 3 Ready, 2 Blocked, 1 Draft (Sprint 15 candidate); S6-03 browser/WASM evidence follow-up added as Story 012; canonical board rendering spec authoring story added as Story 013 (Sprint 15 candidate, NOT activated)
 
 ## Overview
 
@@ -107,8 +107,9 @@ This epic is complete when:
 | 010 | [Performance Evidence and CI Guards](story-010-performance-evidence-and-ci-guards.md) | Config/Data | Complete | TR-BR-003 | ADR-021 |
 | 011 | [Spawn Range Highlights](story-011-spawn-range-highlights.md) | Visual/Feel | Ready | TR-BR-008, TR-NP-014 | ADR-011, ADR-020, ADR-021, ADR-008 |
 | 012 | [Browser/WASM Board Performance Evidence](story-012-browser-wasm-board-performance-evidence.md) | Config/Data | Ready | TR-BR-003, TR-BR-005 | ADR-021 |
+| 013 | [Canonical Board Rendering Spec](story-013-board-rendering-spec.md) | UX -- design-spec authoring (doc-only) | Draft (Sprint 15 candidate; NOT activated) | TR-BR-002, TR-BR-006, TR-BR-007, TR-BR-008 | ADR-021, ADR-020, ADR-017, ADR-011, ADR-008, ADR-002 |
 
-**Story counts**: 2 Logic, 5 Integration, 3 Visual/Feel, 2 Config/Data, plus later final evidence split follow-up.
+**Story counts**: 2 Logic, 5 Integration, 3 Visual/Feel, 2 Config/Data, 1 UX design-spec authoring (Sprint 15 candidate), plus later final evidence split follow-up.
 
 ## Sprint 6 Candidate Order
 
@@ -127,4 +128,4 @@ Recommended Sprint 6 sequence:
 
 ## Next Step
 
-BR-011 is ready for `/dev-story` after NP-006 and BLS-012 completion. Story 012 remains ready for Sprint 6 S6-03 browser/WASM baseline evidence. Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file.
+BR-011 is ready for `/dev-story` after NP-006 and BLS-012 completion. Story 012 remains ready for Sprint 6 S6-03 browser/WASM baseline evidence. Story 013 is Draft (Sprint 15 candidate; doc-only canonical board rendering spec authoring at `docs/ux/board-rendering-spec.md`; NOT activated; depends on Sprint 14 DONE `S12-UX-GLOBAL-UI-DESIGN-SPEC-001` as parent design-spec doc; folds the two Tier 2 cosmetic-capture future candidates `S11-UX-BOARD-GHOST-PREVIEW-OPACITY-001` and `S11-UX-BOARD-STATUS-ICON-LEGEND-001` as sections rather than as separate Sprint 15 stories). Use `liv-bevy-018` for every Bevy `.rs` file and `liv-bevy-lightyear` for every Lightyear/networking `.rs` file.
