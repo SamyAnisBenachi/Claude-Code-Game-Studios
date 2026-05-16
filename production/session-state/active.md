@@ -1,3 +1,114 @@
+# PROMPT 997 State Banner -- Sprint 15 Activation
+
+Updated 2026-05-17 by PROMPT 997. Source-of-truth at activation:
+`origin/main@8294f9a02ee14a09e8add43db181f0e4ce890816` (PROMPT 995 ui
+interaction state primitives story-authoring integration tip;
+`integrate(s15): merge ui interaction state primitives story authoring`).
+
+PROMPT 997 activated Sprint 15 using the established PROMPT 826 / PROMPT
+897 activation pattern. `production/sprint-status.yaml` top-level flipped
+`sprint: 14` -> `sprint: 15` and `status: closed-with-conditions` ->
+`active`; `stage: Polish` preserved verbatim (`production/stage.txt` NOT
+modified). Top-level `goal:` / `start:` / `end:` / `scope:` / `updated:` /
+`generated:` refreshed to Sprint 15 plan content (2026-07-30 -> 2026-08-12,
+10 workdays). Top-level `activation:` block rewritten to PROMPT 997 / Sprint
+15; top-level `previous_sprint_closeout:` block rewritten to PROMPT 987 /
+Sprint 14 `closed-with-conditions`. `stories:` block replaced with the
+Sprint 15 5-row active set (2 Must Have + 2 Should Have + 1 Nice to Have).
+`next_sprint_15_draft:` block at EOF removed and replaced by
+`sprint_15_activation:` block following the
+`sprint_11_activation:`/`sprint_12_activation:`/`sprint_13_activation:`/
+`sprint_14_activation:` precedent. All
+`sprint_10_closeout:`/`sprint_11_*`/`sprint_12_*`/`sprint_13_*`/
+`sprint_14_*` historical blocks (activation + story_done + closeout)
+preserved verbatim. ACTIVATED banner prepended to
+`production/sprints/sprint-15.md` above PROMPT 988 DRAFT banner (plan body
+NOT rewritten).
+
+Sprint 15 active row set: **Must Have** S11-HUD-TIMER-EYEBALL-VISUAL-001
+(Sprint 13 -> 14 -> 15 human-operator-blocked carry; story 014 in HUD epic;
+promoted Should -> Must by PROMPT 988 plan; READY per PROMPT 823) +
+S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP (paperwork-only sprint-
+status.yaml row-status flip; no story file; discharges Sprint 13 evidence-
+vs-status gap from PROMPT 891). **Should Have**
+S12-UX-HAND-DRAG-STATE-VISUALS-001 (story 020 in hand-ui epic; PROMPT 991
+worker 066c028; PROMPT 995 integration f357a65; ~0.5d) +
+S11-UX-BOARD-RENDERING-SPEC (story 013 in board-rendering epic; PROMPT 992
+worker 29953a1; PROMPT 995 integration db07347; ~0.75d doc-only). **Nice
+to Have** S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001 (story 008 in
+ui-clean-pass epic; PROMPT 993 worker 0f113e1; PROMPT 995 integration
+8294f9a; ~1.0d). Total estimated effort ~2.75d against 8d available
+capacity.
+
+Stage UNCHANGED `Polish`. PROMPT 761 `Polish->Release` gate-check `FAIL`
+preserved at `production/gate-checks/gate-polish-release-2026-05-12.md`;
+**NO retry** attempted by PROMPT 997; **NO retry** in scope for Sprint 15;
+Sprint 15 is NOT a `Polish->Release` sprint.
+
+All carried conditions preserved verbatim (none closed by PROMPT 997):
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked carry (closure
+remains gated on human-operator screenshot capture; no LLM `/story-done`
+authorised); `S8-QA-001-W1` OPEN; `QA-COND-0005` Standard-tier
+accessibility accepted-risk (L5 `LOBBY_BUTTON_HEIGHT = 30.0` remains
+accepted-risk); `QA-COND-0006` playtest validation accepted-risk;
+`PAW-TD-*-a` placeholder-art accept-risk across PAW-002..PAW-006; PROMPT
+683-era runtime divergence preserved (third same-scope retest NOT
+authorised per `TQ-S12-C2`); Sprint 12 story 019 underlying drag-runtime
+bug NOT claimed fixed (cannot-reproduce preserved); `TQ-S12-C1..C7`
+preserved verbatim (`TQ-S12-C7` explicitly NOT closed by Sprint 15);
+`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` backlog row remains
+un-flipped (flip is a Sprint 15 Must Have paperwork-only candidate
+executed AFTER activation by a separate prompt); Sprint 14 / 13 / 12 /
+11 / 10 closeouts preserved unchanged; all 16 Sprint 14 `/story-done`
+closures preserved unchanged on `origin/main`.
+
+Explicit non-claims: no public release readiness, no release-candidate
+readiness, no full game completion, no broad / Standard-tier
+accessibility completion, no playtest validation, no full playable-
+client manual QA, no two-client GAME_OVER closure (`S8-QA-001-W1` OPEN),
+no final-art completion, no `Polish->Release` gate-check retry, no
+stage advance, no underlying drag-runtime bug fix, no Sprint 14 row
+reopen, no closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` /
+`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` / `S8-QA-001-W1` /
+`TQ-S12-C7` by PROMPT 997, no `/dev-story`, no `/story-done`, no
+`/story-readiness`, no `/smoke-check`, no `/team-qa`, no `/gate-check`,
+no `/release-check`, no `/qa-plan` by PROMPT 997.
+
+Paperwork-only scope. Changed only `production/sprints/sprint-15.md`
+(ACTIVATED banner prepended above PROMPT 988 DRAFT banner; plan body
+unchanged), `production/sprint-status.yaml` (top-level flips + stories
+replacement + sprint_15_activation: block appended; next_sprint_15_draft:
+removed; all historical closeouts preserved), this file (PROMPT 997
+banner prepended above PROMPT 988 banner), and `production/session-state/
+codex-orchestrator-state.md` (PROMPT 997 section prepended above PROMPT
+988 section). No `client/`, `server/`, `shared/`, `tests/`, Cargo files,
+`.cargo/`, `.github/`, `production/stage.txt`, `production/qa/qa-plan-
+sprint-15.md`, `production/qa/qa-plan-sprint-14.md`, `production/qa/
+smoke-*.md`, `production/qa/team-qa-*.md`, `production/qa/evidence/*`,
+`production/gate-checks/*`, release / RC / launch / changelog / patch
+notes artifact, any Sprint 14 / 13 / 12 / 11 / 10 story file, any
+Sprint 15 candidate story file, any prior `sprint_N_closeout` /
+`sprint_N_activation` / `sprint_N_story_done` block, or any prior
+Sprint 14 `/story-done` block touched. No `cargo` / `trunk` command
+invoked. Worktree `D:/_DEV/claude-code-game-studios-worktrees/
+sprint-15-activation-997` on branch `activate/sprint-15-997` (base
+`origin/main@8294f9a02ee14a09e8add43db181f0e4ce890816`).
+
+Next launchable prompts: (1) `/qa-plan sprint-15` (single shared-status
+writer; must complete before any Sprint 15 `/dev-story`); (2) per-row
+`/story-readiness` reruns against Sprint 15 activation HEAD for the 4
+Sprint 15 story files (story 014 HUD timer eyeball READY per PROMPT 823
+and unchanged; story 020 hand drag state visuals + story 013 board
+rendering spec + story 008 UI interaction state primitives all integrated
+PROMPT 995 - new `/story-readiness` required); (3) Sprint 15 row-flip
+paperwork prompt for `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001`
+backlog row (paperwork-only; serialized shared-status writer); (4) Sprint
+15 human-operator screenshot capture session for
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` (producer must schedule; closure NOT
+via `/dev-story`).
+
+---
+
 # PROMPT 988 State Banner -- Sprint 15 Plan Draft (NOT ACTIVATED)
 
 Updated 2026-05-16 by PROMPT 988. Source-of-truth at authoring:

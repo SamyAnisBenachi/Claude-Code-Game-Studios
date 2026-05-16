@@ -1,3 +1,80 @@
+# Sprint 15 -- ACTIVATED (PROMPT 997; Polish stage)
+
+> **PROMPT 997 paperwork-only Sprint 15 activation (2026-05-17)**. Source-of-truth
+> at activation: `origin/main@8294f9a02ee14a09e8add43db181f0e4ce890816` (PROMPT
+> 995 ui interaction state primitives story-authoring integration tip).
+> Worktree: `D:/_DEV/claude-code-game-studios-worktrees/sprint-15-activation-997`.
+> Branch: `activate/sprint-15-997`.
+>
+> **Status**: `active` (flipped on `production/sprint-status.yaml` top-level
+> from `sprint: 14 / status: closed-with-conditions` to `sprint: 15 / status:
+> active`). **Stage**: `Polish` UNCHANGED (`production/stage.txt` NOT modified
+> by PROMPT 997).
+>
+> Sprint 15 active row set (5 rows; ~2.75d estimated effort against 8d
+> available capacity): **Must Have** S11-HUD-TIMER-EYEBALL-VISUAL-001
+> (Sprint 13 -> 14 -> 15 human-operator-blocked carry; promoted Should ->
+> Must) + S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP
+> (paperwork-only sprint-status.yaml row-status flip); **Should Have**
+> S12-UX-HAND-DRAG-STATE-VISUALS-001 (story 020, hand-ui surface, 0.5d) +
+> S11-UX-BOARD-RENDERING-SPEC (story 013, doc-only, 0.75d); **Nice to
+> Have** S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001 (story 008, design-
+> tokens module, 1.0d).
+>
+> PROMPT 988 DRAFT plan body below is preserved verbatim; activation does
+> NOT rewrite the plan. PROMPT 997 changed only the top banner above this
+> line, `production/sprint-status.yaml` (top-level flips +
+> stories: block + sprint_15_activation: block append +
+> next_sprint_15_draft: removal; sprint_14_closeout: and all prior closeout
+> blocks preserved unchanged), `production/session-state/active.md` and
+> `production/session-state/codex-orchestrator-state.md` (PROMPT 997
+> activation banners prepended).
+>
+> **PROMPT 761 `Polish->Release` gate-check `FAIL` preserved** at
+> `production/gate-checks/gate-polish-release-2026-05-12.md`; **NO retry**
+> attempted by PROMPT 997; **NO retry** in scope for Sprint 15. Sprint 15
+> is NOT a `Polish->Release` sprint.
+>
+> **Carried conditions preserved verbatim** (none closed by PROMPT 997):
+> S11-HUD-TIMER-EYEBALL-VISUAL-001 human-operator-blocked carry, S8-QA-001-W1
+> OPEN, QA-COND-0005 accepted-risk (friend-game scope), QA-COND-0006
+> accepted-risk, PAW-TD-*-a accepted-risk across PAW-002..PAW-006, PROMPT
+> 683-era runtime divergence preserved (no third same-scope retest per
+> TQ-S12-C2), TQ-S12-C1..C7 preserved verbatim, Sprint 12 story 019
+> cannot-reproduce preserved (no underlying drag-runtime bug fix claim),
+> Sprint 14 disposition closed-with-conditions preserved unchanged
+> (PROMPT 987), all 16 closed Sprint 14 /story-done closures preserved.
+>
+> **Explicit non-claims by PROMPT 997 activation**: NO public release
+> readiness, NO RC readiness, NO full game completion, NO broad / Standard-
+> tier accessibility completion (QA-COND-0005), NO playtest validation
+> (QA-COND-0006), NO full playable-client manual QA, NO two-client
+> GAME_OVER closure (S8-QA-001-W1 OPEN), NO final-art completion
+> (PAW-TD-*-a), NO Polish->Release gate-check retry (PROMPT 761 FAIL
+> preserved), NO stage advance from Polish to Release, NO underlying
+> drag-runtime bug fix, NO closure of S11-HUD-TIMER-EYEBALL-VISUAL-001
+> (closure remains gated on human-operator screenshot capture; no LLM
+> /story-done authorised), NO closure of S11-CLIENT-CONNECTION-LOST-
+> OBSERVABILITY-001 (the row-status flip is a separate Sprint 15 Must
+> Have paperwork-only prompt, NOT performed by activation), NO closure
+> of S8-QA-001-W1 / TQ-S12-C7, NO Sprint 14 row reopen, NO Sprint 15
+> /dev-story / /story-done / /story-readiness / /smoke-check / /team-qa /
+> /gate-check / /release-check / /qa-plan by PROMPT 997.
+>
+> **PROMPT 997 paperwork-only activation scope**: NO `/dev-story`, NO
+> `/story-readiness`, NO `/story-done`, NO `/smoke-check`, NO `/team-qa`,
+> NO `/gate-check`, NO `/release-check`, NO `/qa-plan`, NO production/
+> qa/qa-plan-sprint-15.md authored, NO stage advance, NO implementation,
+> NO CI run, NO `cargo` / `trunk` invocation, NO touch of `client/` /
+> `server/` / `shared/` / `tests/` / `Cargo.toml` / `Cargo.lock` /
+> `.cargo/` / `.github/` / `production/stage.txt` / `production/qa/*` /
+> `production/gate-checks/*`. Files changed only: `production/sprints/
+> sprint-15.md` (this banner prepended; plan body unchanged), `production/
+> sprint-status.yaml`, `production/session-state/active.md`, `production/
+> session-state/codex-orchestrator-state.md`.
+
+---
+
 # Sprint 15 -- DRAFT (NOT ACTIVATED; Polish stage)
 
 > **PROMPT 988 paperwork-only sprint plan draft (2026-05-16)**.
