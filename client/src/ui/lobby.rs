@@ -19,7 +19,7 @@ use crate::state::{
 };
 use crate::ui::design_tokens::{
     overlays,
-    spacing::{SPACING_LG, SPACING_MD, SPACING_XL},
+    spacing::{SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL},
     typography, z_layers,
 };
 
@@ -41,6 +41,14 @@ pub const LOBBY_PANEL_MAX_HEIGHT_PERCENT: f32 = 92.0;
 
 const ROOM_CODE_MAX: usize = 8;
 const LOBBY_BUTTON_HEIGHT: f32 = 30.0;
+pub const LOBBY_CLASS_PICKER_GRID_COLUMNS: usize = 7;
+pub const LOBBY_CLASS_PICKER_SELECTABLE_COUNT: usize = 6;
+pub const LOBBY_CLASS_PICKER_CELL_WIDTH_PX: f32 = 108.0;
+pub const LOBBY_CLASS_PICKER_CELL_HEIGHT_PX: f32 = 132.0;
+pub const LOBBY_CLASS_PICKER_CELL_PADDING_PX: f32 = 6.0;
+pub const LOBBY_CLASS_PICKER_PORTRAIT_WIDTH_PX: f32 = 64.0;
+pub const LOBBY_CLASS_PICKER_PORTRAIT_HEIGHT_PX: f32 = 80.0;
+pub const LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX: f32 = 96.0;
 
 impl Plugin for LobbyUiPlugin {
     fn build(&self, app: &mut App) {
@@ -183,6 +191,23 @@ pub struct LobbyRoot;
 /// (`width: 88%`, `max_width: 860 Px`, `max_height: 92%`) per PROMPT 933.
 #[derive(Component)]
 pub struct LobbyPanel;
+
+/// Class-picker region container. Owns the region heading and the class grid
+/// so portraits and selectable controls no longer wrap as independent rows.
+#[derive(Component)]
+pub struct LobbyClassPickerBlock;
+
+#[derive(Component)]
+pub struct LobbyClassPickerHeading;
+
+#[derive(Component)]
+pub struct LobbyClassPickerGrid;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LobbyClassPickerCell {
+    pub class_id: ClassId,
+    pub selectable: bool,
+}
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LobbyCamera;
@@ -1095,49 +1120,128 @@ fn spawn_lobby_ui_system(
                     },
                 ));
 
-                // Section 3 — class picker. Portrait row (PAW-006-a)
-                // renders BEFORE the class buttons so the portrait + button
-                // pairing reads as a single hierarchical region per
-                // AC3(d) "class portraits are visually associated with
-                // selectable class buttons". Paired story 025
-                // (`S11-UX-LOBBY-CLASS-PICKER`) owns the final pairing
-                // affordance; this story preserves the portrait row in
-                // place ahead of the button row.
-                panel.spawn((Text::new("Class"), lobby_text_font(typography::BODY)));
-                panel.spawn((lobby_wrap_row_node(),)).with_children(|row| {
-                    for class_id in lobby_all_class_ids() {
-                        row.spawn((
-                            LobbyClassPortrait { class_id },
-                            Name::new(format!("Lobby Portrait {:?}", class_id)),
-                            Node {
-                                width: Val::Px(64.0),
-                                height: Val::Px(80.0),
-                                ..default()
-                            },
-                            ImageNode::new(asset_server.load(lobby_portrait_asset(class_id))),
-                        ));
-                    }
-                });
-                panel.spawn((lobby_wrap_row_node(),)).with_children(|row| {
-                    for class_id in lobby_class_options() {
-                        row.spawn((
-                            LobbyClassButton { class_id },
-                            LobbyDynamicText::Class(class_id),
-                            Button,
-                            Interaction::None,
-                            Text::new(lobby_dynamic_copy(
-                                LobbyDynamicText::Class(class_id),
-                                &lobby,
-                                &input,
-                            )),
-                            lobby_text_font(typography::BODY),
+                // Section 3 -- class picker.
+                // Story 025 replaces the independent portrait/button rows
+                // with one hierarchy: heading -> fixed grid -> paired
+                // portrait/button cells. Neutral remains in the same block
+                // as a non-selectable portrait reconciliation cell.
+                panel
+                    .spawn((
+                        LobbyClassPickerBlock,
+                        Name::new("Lobby Class Picker"),
+                        Node {
+                            width: Val::Percent(100.0),
+                            flex_direction: FlexDirection::Column,
+                            row_gap: Val::Px(SPACING_SM),
+                            ..default()
+                        },
+                    ))
+                    .with_children(|class_picker| {
+                        class_picker.spawn((
+                            LobbyClassPickerHeading,
+                            Text::new("Class"),
+                            lobby_text_font(typography::H3),
                             TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                            lobby_button_node(Val::Px(92.0)),
-                            BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
-                            BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
                         ));
-                    }
-                });
+
+                        class_picker
+                            .spawn((
+                                LobbyClassPickerGrid,
+                                Name::new("Lobby Class Picker Grid"),
+                                Node {
+                                    width: Val::Percent(100.0),
+                                    flex_direction: FlexDirection::Row,
+                                    flex_wrap: FlexWrap::NoWrap,
+                                    column_gap: Val::Px(SPACING_SM),
+                                    align_items: AlignItems::Center,
+                                    justify_content: JustifyContent::Center,
+                                    ..default()
+                                },
+                            ))
+                            .with_children(|grid| {
+                                for class_id in lobby_class_options() {
+                                    let (background, border) = lobby_class_picker_cell_colors(
+                                        class_id,
+                                        input.selected_class,
+                                        true,
+                                    );
+                                    grid.spawn((
+                                        LobbyClassPickerCell {
+                                            class_id,
+                                            selectable: true,
+                                        },
+                                        Name::new(format!("Lobby Class Cell {:?}", class_id)),
+                                        lobby_class_picker_cell_node(),
+                                        background,
+                                        border,
+                                    ))
+                                    .with_children(|cell| {
+                                        cell.spawn((
+                                            LobbyClassPortrait { class_id },
+                                            Name::new(format!("Lobby Portrait {:?}", class_id)),
+                                            lobby_class_portrait_node(),
+                                            ImageNode::new(
+                                                asset_server.load(lobby_portrait_asset(class_id)),
+                                            ),
+                                        ));
+                                        cell.spawn((
+                                            LobbyClassButton { class_id },
+                                            LobbyDynamicText::Class(class_id),
+                                            Button,
+                                            Interaction::None,
+                                            Text::new(lobby_dynamic_copy(
+                                                LobbyDynamicText::Class(class_id),
+                                                &lobby,
+                                                &input,
+                                            )),
+                                            lobby_text_font(typography::BODY),
+                                            TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                                            lobby_button_node(Val::Px(
+                                                LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX,
+                                            )),
+                                            BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
+                                            BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
+                                        ));
+                                    });
+                                }
+
+                                for class_id in lobby_all_class_ids() {
+                                    if lobby_class_options().contains(&class_id) {
+                                        continue;
+                                    }
+                                    let (background, border) = lobby_class_picker_cell_colors(
+                                        class_id,
+                                        input.selected_class,
+                                        false,
+                                    );
+                                    grid.spawn((
+                                        LobbyClassPickerCell {
+                                            class_id,
+                                            selectable: false,
+                                        },
+                                        Name::new(format!("Lobby Class Cell {:?}", class_id)),
+                                        lobby_class_picker_cell_node(),
+                                        background,
+                                        border,
+                                    ))
+                                    .with_children(|cell| {
+                                        cell.spawn((
+                                            LobbyClassPortrait { class_id },
+                                            Name::new(format!("Lobby Portrait {:?}", class_id)),
+                                            lobby_class_portrait_node(),
+                                            ImageNode::new(
+                                                asset_server.load(lobby_portrait_asset(class_id)),
+                                            ),
+                                        ));
+                                        cell.spawn((
+                                            Text::new(format!("{class_id:?}")),
+                                            lobby_text_font(typography::CAPTION),
+                                            TextColor(Color::srgba(0.74, 0.80, 0.86, 0.74)),
+                                        ));
+                                    });
+                                }
+                            });
+                    });
 
                 // Section 4 — slot panels (PAW-006-b). Per AC3(e) the slot
                 // panels MUST render above the confirm CTA so the player's
@@ -1209,6 +1313,11 @@ fn refresh_lobby_ui_system(
     input: Res<LobbyInputState>,
     mut texts: Query<&mut Text, With<LobbyStatusText>>,
     mut dynamic_texts: Query<(&LobbyDynamicText, &mut Text), Without<LobbyStatusText>>,
+    mut class_cells: Query<(
+        &LobbyClassPickerCell,
+        &mut BackgroundColor,
+        &mut BorderColor,
+    )>,
 ) {
     if !lobby.is_changed() && !input.is_changed() {
         return;
@@ -1222,6 +1331,13 @@ fn refresh_lobby_ui_system(
 
     for (role, mut text) in &mut dynamic_texts {
         text.0 = lobby_dynamic_copy(*role, &lobby, &input);
+    }
+
+    for (cell, mut background, mut border) in &mut class_cells {
+        let (next_background, next_border) =
+            lobby_class_picker_cell_colors(cell.class_id, input.selected_class, cell.selectable);
+        *background = next_background;
+        *border = next_border;
     }
 }
 
@@ -1347,7 +1463,7 @@ pub fn lobby_confirm_button_text(lobby: &LobbyViewState, _input: &LobbyInputStat
     }
 }
 
-fn lobby_class_options() -> [ClassId; 6] {
+pub fn lobby_class_options() -> [ClassId; 6] {
     [
         ClassId::Iop,
         ClassId::Cra,
@@ -1359,7 +1475,7 @@ fn lobby_class_options() -> [ClassId; 6] {
 }
 
 /// All 7 ClassId variants used for portrait display (includes Neutral).
-fn lobby_all_class_ids() -> [ClassId; 7] {
+pub fn lobby_all_class_ids() -> [ClassId; 7] {
     [
         ClassId::Iop,
         ClassId::Cra,
@@ -1403,15 +1519,50 @@ fn lobby_row_node() -> Node {
     }
 }
 
-fn lobby_wrap_row_node() -> Node {
+fn lobby_class_picker_cell_node() -> Node {
     Node {
-        width: Val::Percent(100.0),
-        flex_direction: FlexDirection::Row,
-        flex_wrap: FlexWrap::Wrap,
-        row_gap: Val::Px(6.0),
-        column_gap: Val::Px(6.0),
+        width: Val::Px(LOBBY_CLASS_PICKER_CELL_WIDTH_PX),
+        height: Val::Px(LOBBY_CLASS_PICKER_CELL_HEIGHT_PX),
+        flex_direction: FlexDirection::Column,
+        row_gap: Val::Px(SPACING_SM),
+        padding: UiRect::all(Val::Px(LOBBY_CLASS_PICKER_CELL_PADDING_PX)),
+        border: UiRect::all(Val::Px(2.0)),
+        border_radius: BorderRadius::all(Val::Px(6.0)),
         align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        flex_shrink: 0.0,
         ..default()
+    }
+}
+
+fn lobby_class_portrait_node() -> Node {
+    Node {
+        width: Val::Px(LOBBY_CLASS_PICKER_PORTRAIT_WIDTH_PX),
+        height: Val::Px(LOBBY_CLASS_PICKER_PORTRAIT_HEIGHT_PX),
+        ..default()
+    }
+}
+
+fn lobby_class_picker_cell_colors(
+    class_id: ClassId,
+    selected_class: ClassId,
+    selectable: bool,
+) -> (BackgroundColor, BorderColor) {
+    if selectable && class_id == selected_class {
+        (
+            BackgroundColor(Color::srgba(0.18, 0.16, 0.08, 0.96)),
+            BorderColor::all(Color::srgb(0.949, 0.788, 0.298)),
+        )
+    } else if selectable {
+        (
+            BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.92)),
+            BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
+        )
+    } else {
+        (
+            BackgroundColor(Color::srgba(0.08, 0.10, 0.13, 0.62)),
+            BorderColor::all(Color::srgba(0.42, 0.48, 0.56, 0.42)),
+        )
     }
 }
 
