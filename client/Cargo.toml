@@ -219,6 +219,10 @@ name = "hud_phase_timer_bar_test"
 path = "../tests/integration/hud/hud_phase_timer_bar_test.rs"
 
 [[test]]
+name = "hud_opp_figurine_test"
+path = "../tests/integration/hud/hud_opp_figurine_test.rs"
+
+[[test]]
 name = "snapshot_phase_bridge_test"
 path = "../tests/integration/hud/snapshot_phase_bridge_test.rs"
 

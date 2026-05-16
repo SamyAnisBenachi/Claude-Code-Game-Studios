@@ -7,6 +7,7 @@ use bevy_tweening::{
     lens::Lens, AnimationSystem, PlaybackState, Tween, TweenAnim, TweenState, TweeningPlugin,
 };
 use lightyear::prelude::MessageReceiver;
+use shared::card::ClassId;
 use shared::protocol::{
     OpponentObjectiveSnapshot, PlayerSnapshot, RoundPhase, S2CGameSnapshot, S2CGoldBroadcast,
 };
@@ -27,7 +28,8 @@ pub const HUD_DOTS_PER_ROW: usize = 5;
 /// Total HUD entities carrying the `HudEntity` marker.
 /// PAW-004: +2 for figurine + timer bar (19 → 21).
 /// S10-POLISH-001: +1 for the RESOLUTION dim overlay (21 → 22).
-pub const HUD_ENTITY_COUNT: usize = 22;
+/// S14-HUD-OPP-FIGURINE: +1 for opponent figurine (22 → 23).
+pub const HUD_ENTITY_COUNT: usize = 23;
 /// Alpha applied to the RESOLUTION dim overlay's BackgroundColor — visibly
 /// dims the underlying HUD without obscuring gold/mana/phase readouts.
 /// Recorded in production/qa/evidence/sprint-10-hud-chrome-evidence.md.
@@ -142,6 +144,7 @@ pub struct HudEntities {
     pub reserve_container: Entity,
     pub reserve_label: Entity,
     pub figurine: Entity,
+    pub opponent_figurine: Entity,
     pub timer_bar: Entity,
     pub dim_overlay: Entity,
     pub dots: [[Entity; HUD_DOTS_PER_ROW]; HUD_DOT_ROWS],
@@ -294,9 +297,13 @@ impl Lens<ManaTweenTarget> for ManaTweenLens {
 #[derive(Message, Debug, Clone)]
 pub struct HudGoldBroadcastMessage(pub S2CGoldBroadcast);
 
-/// Marker for the HUD class figurine entity (own player's class portrait).
+/// Marker for HUD class figurine entities.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HudFigurine;
+
+/// Marker for the opponent HUD class figurine entity.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OpponentFigurineMarker;
 
 /// Marker for the HUD phase timer bar fill entity.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -650,6 +657,18 @@ fn spawn_hud(
             ChildOf(bottom_strip),
         ))
         .id();
+    let opponent_figurine = commands
+        .spawn((
+            Name::new("HUD Opponent Class Figurine"),
+            HudEntity,
+            HudFigurine,
+            OpponentFigurineMarker,
+            bottom_strip_figurine_node(),
+            ImageNode::new(fallback_handle.clone()),
+            Visibility::Hidden,
+            ChildOf(bottom_strip),
+        ))
+        .id();
 
     // ── PAW-004: phase timer bar fill ─────────────────────────────────────────
     // Image is static; only Node width changes to represent timer progress.
@@ -723,6 +742,7 @@ fn spawn_hud(
         reserve_container,
         reserve_label,
         figurine,
+        opponent_figurine,
         timer_bar,
         dim_overlay,
         dots,
@@ -1160,40 +1180,33 @@ pub fn sync_scoreboard_dot_layout_system(
     }
 }
 
-/// PAW-004: StateSync — update the figurine `ImageNode` to the own player's
-/// class asset. Runs every frame but only writes when the snapshot class
-/// differs from what the figurine currently shows.
+#[derive(Default)]
+pub struct FigurineClassCache {
+    own: Option<ClassId>,
+    opponent: Option<ClassId>,
+}
+
+/// PAW-004 / S14-HUD-OPP-FIGURINE: StateSync — update the own and opponent
+/// figurine `ImageNode`s from the authoritative snapshot class ids. Runs every
+/// frame but only writes when the snapshot class differs from the last asset
+/// written for that figurine.
 pub fn sync_figurine_image_system(
     asset_server: Option<Res<AssetServer>>,
     mut figurines: Query<&mut ImageNode, With<HudFigurine>>,
-    hud_player_ids: Option<Res<HudPlayerIds>>,
     entities: Option<Res<HudEntities>>,
-    mut last_class: Local<Option<shared::card::ClassId>>,
+    mut last_classes: Local<FigurineClassCache>,
     mut snapshot_messages: MessageReader<PresentationGameSnapshotMessage>,
 ) {
-    // Drain messages to find the latest own class_id.
-    let mut latest_class = None;
+    let mut latest_classes = None;
     for msg in snapshot_messages.read() {
-        if let Some(own) = msg
-            .0
-            .players
-            .iter()
-            .find(|p| p.player_id == msg.0.recipient_player_id)
-        {
-            latest_class = Some(own.class_id);
+        if let Some((own, opponent)) = snapshot_hud_players(&msg.0) {
+            latest_classes = Some((own.class_id, opponent.class_id));
         }
     }
 
-    let Some(class_id) = latest_class else {
+    let Some((own_class_id, opponent_class_id)) = latest_classes else {
         return;
     };
-
-    // Only update if the class changed since last sync.
-    if *last_class == Some(class_id) {
-        return;
-    }
-    *last_class = Some(class_id);
-
     let Some(entities) = entities else {
         return;
     };
@@ -1201,11 +1214,37 @@ pub fn sync_figurine_image_system(
         return;
     };
 
-    if let Ok(mut img) = figurines.get_mut(entities.figurine) {
-        img.image = server.load(hud_figurine_asset(class_id));
+    sync_one_figurine_image(
+        &mut figurines,
+        entities.figurine,
+        own_class_id,
+        &mut last_classes.own,
+        &server,
+    );
+    sync_one_figurine_image(
+        &mut figurines,
+        entities.opponent_figurine,
+        opponent_class_id,
+        &mut last_classes.opponent,
+        &server,
+    );
+}
+
+fn sync_one_figurine_image(
+    figurines: &mut Query<&mut ImageNode, With<HudFigurine>>,
+    entity: Entity,
+    class_id: ClassId,
+    last_class: &mut Option<ClassId>,
+    server: &AssetServer,
+) {
+    if *last_class == Some(class_id) {
+        return;
     }
 
-    let _ = hud_player_ids; // used for future class-change detection
+    if let Ok(mut img) = figurines.get_mut(entity) {
+        img.image = server.load(hud_figurine_asset(class_id));
+        *last_class = Some(class_id);
+    }
 }
 
 /// PAW-004: StateSync — when a `HudObjectiveUpdate` message marks a dot as
@@ -1890,6 +1929,7 @@ fn set_hud_visible(entities: &HudEntities, visibility: &mut Query<&mut Visibilit
         entities.opponent_gold_span,
         entities.mana_label,
         entities.figurine,
+        entities.opponent_figurine,
     ] {
         set_visibility(visibility, entity, Visibility::Visible);
     }
