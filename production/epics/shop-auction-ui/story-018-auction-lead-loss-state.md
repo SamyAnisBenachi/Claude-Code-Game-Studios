@@ -1,8 +1,8 @@
 # Story 018: Auction Featured Card Leading / Losing State Visual
 
 > **Epic**: Shop / Auction UI
-> **Status**: Draft; producer-decision-4 captured by PROMPT 967 (2026-05-16);
-> `/story-readiness` re-run required before `/dev-story`
+> **Status**: Done via PROMPT 974 (2026-05-16) after PROMPT 971 / PROMPT 973
+> implementation and integration on `origin/main@e3ca5d69a751342fb7f94e4cccd5a107413b7f74`
 > **Layer**: Presentation
 > **Type**: UI
 > **Manifest Version**: 2026-05-05
@@ -14,9 +14,11 @@
 
 ## Status / No-Claim Banner
 
-This story file began as **authoring only** and now also carries the
-PROMPT 967 producer-decision-4 paperwork capture. It is a Sprint 14
-candidate row drawn from the
+This story file began as **authoring only**, then carried the PROMPT
+967 producer-decision-4 paperwork capture, and is now closed by
+PROMPT 974 after the PROMPT 971 implementation and PROMPT 973
+integration landed on `origin/main`. It is a Sprint 14 candidate row
+drawn from the
 [UI Clean-Pass Roadmap](../../../docs/ux/ui-clean-pass-roadmap.md)
 Tier 1 Should adjacent row (effort 0.5d; pairs with rank 10
 `S11-UX-AUCTION-FEATURED-CARD`; net-new; producer decision captured by
@@ -215,41 +217,41 @@ no Lightyear protocol surface is touched.
 
 ## Acceptance Criteria
 
-- [ ] The featured auction-up card carries a leading visual state
+- [x] The featured auction-up card carries a leading visual state
   whenever the shared auction-state resource reports the local
   player as the current leader, observable via a stable marker
   component in automated tests.
-- [ ] The featured auction-up card carries a losing visual state
+- [x] The featured auction-up card carries a losing visual state
   whenever the shared auction-state resource reports another player
   as the current leader and the local player has placed at least one
   bid, observable via a stable marker component.
-- [ ] The featured auction-up card carries a neutral / pre-bid
+- [x] The featured auction-up card carries a neutral / pre-bid
   visual state whenever no bid has been placed yet, observable via a
   stable marker component.
-- [ ] The leading / losing / neutral states are mutually exclusive
+- [x] The leading / losing / neutral states are mutually exclusive
   and the active state is asserted by a strict equality test against
   the marker component.
-- [ ] The text-rendered leader state is preserved alongside the
+- [x] The text-rendered leader state is preserved alongside the
   visual indicator and remains readable in all three states.
-- [ ] State transitions are driven by the ADR-021 `StateSync` phase
+- [x] State transitions are driven by the ADR-021 `StateSync` phase
   reading from the existing shared auction-state resource (no
   parallel `MessageReceiver` drain added).
-- [ ] Any tween used to express the state remains inside the
+- [x] Any tween used to express the state remains inside the
   `AnimationTick` phase and the phase-boundary spike stays under
   the ADR-021 3 ms guardrail.
-- [ ] Story 004 / Story 005 / Story 006 / Story 011 / Story 013
+- [x] Story 004 / Story 005 / Story 006 / Story 011 / Story 013
   contracts remain unchanged.
-- [ ] Browser/WASM evidence shows the three states (leading,
+- [x] Browser/WASM evidence shows the three states (leading,
   losing, neutral) at 1920 x 1080 and 1366 x 768; alongside the
   featured card, bid cluster, gold counters, timer; HUD non-
   occlusion and hand-tray non-occlusion preserved; the colorblind-
   fallback text remains readable in every captured state.
-- [ ] The evidence document includes an explicit no-claim banner
+- [x] The evidence document includes an explicit no-claim banner
   preserving `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-002-a`,
   `PAW-TD-003-a`, `S8-QA-001-W1`, and PROMPT 761 Polish->Release
   gate-check, plus an explicit "Standard-tier colorblind
   conformance not claimed" line.
-- [ ] `git diff --check` passes.
+- [x] `git diff --check` passes.
 
 ---
 
@@ -410,8 +412,8 @@ closure), the PROMPT 761 Polish->Release gate-check, or any
 release-readiness claim. All conditions remain accept-risk / open
 per their existing dispositions.
 
-**Status**: [ ] Draft; producer-decision-4 resolved by PROMPT 967.
-`/story-readiness` must re-run before `/dev-story`.
+**Status**: [x] Done by PROMPT 974 after PROMPT 971 implementation and
+PROMPT 973 integration.
 
 ---
 
@@ -496,13 +498,32 @@ per their existing dispositions.
 
 ## Completion Notes
 
-**Completed**: Not yet (Draft).
-**Criteria**: 0 / 11 (story authoring only; no implementation).
-**Deviations**: None at authoring time.
-**Test Evidence**: To be captured at implementation time per the
-Test Evidence section above.
-**Code Review**: To be run at `/story-done` time per the lean review
-mode default; PROMPT 881 authoring does **not** run code review.
+**Completed**: 2026-05-16 by PROMPT 974.
+**Criteria**: 11 / 11 accepted. AC1-AC8, AC10, and AC11 PASS. AC9 is
+accepted as PASS-WITH-RUNTIME-CAPTURE-DEFERRED: no browser/WASM PNG
+capture is claimed, but the integrated ECS tests assert the three
+strict marker states, frame colors, text fallback, and adjacent
+auction-surface regressions.
+**Deviations**: Runtime PNG captures at 1920 x 1080 and 1366 x 768
+remain deferred; PROMPT 974 does not claim browser screenshot
+completion, Standard-tier colorblind conformance, release readiness,
+Sprint 14 close-out, or any gate retry. No tween was introduced, so
+AC7 is satisfied by absence of an animation path.
+**Test Evidence**: PROMPT 973 reports `cargo fmt --all -- --check`
+PASS, `cargo check --workspace --all-targets` PASS with one
+pre-existing `hand_ui_asset_wiring_test` warning, story test
+`cargo test -p client --test shop_auction_ui_auction_lead_loss_state_test`
+PASS 4/4, and targeted adjacent shop-auction regression bins PASS:
+activation 8/8, bid buttons 5/5, feedback 6/6, bid target focus 4/4,
+featured card layout 7/7, free-gold counters layout 5/5, and
+settlement 7/7. Evidence file:
+`production/qa/evidence/shop-auction-ui-auction-lead-loss-state-2026-05-16.md`.
+**Code Review**: PROMPT 974 verified the integrated commit
+`e3ca5d69a751342fb7f94e4cccd5a107413b7f74` is reachable from
+`origin/main`, reviewed the integrated source/test/evidence for AC
+coverage, and performed paperwork-only closure. No `client/`,
+`server/`, `shared/`, `tests/`, Cargo, Sprint 14 plan, QA plan, or
+stage file was edited by PROMPT 974.
 
 ---
 
@@ -524,3 +545,24 @@ mode default; PROMPT 881 authoring does **not** run code review.
   `SEMANTIC_SUCCESS`, losing = `SEMANTIC_ERROR`, neutral / pre-bid =
   existing `ACCENT`. No code, tests, Cargo, gate, smoke, release, or
   final-art claim. `/story-readiness` re-run is required next.
+
+## Closure Trail
+
+- PROMPT 971 (2026-05-16) -- `/dev-story` implementation on
+  `work/s14-auction-lead-loss-state`, commit
+  `bef153a38de665be9453defd01c6d0cf0361d02a`. Added
+  `AuctionFeaturedCardLeadLossState::{Neutral, Leading, Losing}`,
+  reused the Story 016 `AuctionFeaturedCardFrame`, recolored the
+  border through the existing Shop/Auction UI `StateSync` path, and
+  preserved text fallback (`YOU ARE LEADING` / `OPPONENT LEADING`).
+- PROMPT 973 (2026-05-16) -- integration merge
+  `e3ca5d69a751342fb7f94e4cccd5a107413b7f74` onto `origin/main`.
+  Verification PASS: cargo fmt, cargo check, story test 4/4, adjacent
+  shop-auction regression bins, diff checks, and forbidden-path review.
+- PROMPT 974 (2026-05-16) -- serialized `/story-done` paperwork
+  closure. Story status marked Done, Sprint 14 row flipped
+  `ready -> done`, session-state banners prepended, and
+  `sprint_14_story_done` entry appended. Sprint 14 remains active;
+  stage remains Polish; PROMPT 761 FAIL, `S8-QA-001-W1` OPEN,
+  `QA-COND-0005/0006` accepted-risk, and `PAW-TD-*-a` accepted-risk
+  are preserved.

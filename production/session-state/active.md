@@ -1,3 +1,38 @@
+# PROMPT 974 State Banner -- S14 Auction Lead/Loss State Story-Done
+
+Updated 2026-05-16 by PROMPT 974. Source-of-truth at closure:
+`origin/main@e3ca5d69a751342fb7f94e4cccd5a107413b7f74` (PROMPT 973
+integration merge of `origin/work/s14-auction-lead-loss-state` worker
+tip `bef153a38de665be9453defd01c6d0cf0361d02a`).
+
+PROMPT 974 closed `S12-UX-AUCTION-LEAD-LOSS-STATE-001` /
+shop-auction-ui story 018 / Sprint 14 Nice to Have. Paperwork-only
+scope: story file
+`production/epics/shop-auction-ui/story-018-auction-lead-loss-state.md`
+flipped to Done, `production/sprint-status.yaml` row flipped
+`ready -> done`, this file and
+`production/session-state/codex-orchestrator-state.md` received
+PROMPT 974 banners, and the `sprint_14_story_done` block received the
+fifteenth Sprint 14 story-done entry. Closure evidence used PROMPT 971
+worker report, PROMPT 973 integration report, on-main evidence
+`production/qa/evidence/shop-auction-ui-auction-lead-loss-state-2026-05-16.md`,
+and on-main test
+`tests/integration/shop_auction_ui/auction_lead_loss_state_test.rs`
+4/4 PASS per PROMPT 973.
+
+Sprint 14 progress after PROMPT 974: 9 of 9 Must Have done; 3 of 4
+Should Have done; 3 of 4 Nice to Have done; total 15 of 17 rows
+closed. Sprint 14 remains active; stage remains Polish; PROMPT 761
+Polish->Release FAIL preserved with no retry. Non-claims preserved:
+`S8-QA-001-W1` OPEN, `QA-COND-0005/0006` accepted-risk,
+`PAW-TD-*-a` accepted-risk, no release/RC/full-game/broad-accessibility/
+playtest/final-art/Sprint14-closeout claim. Runtime PNG captures for
+1366x768 and 1920x1080 are not claimed; ECS marker/color/text
+assertions and adjacent auction UI regression bins are the accepted
+closure evidence for this friend-game-scope row.
+
+---
+
 # PROMPT 972 State Banner -- S14 Lobby Button Hit Targets Story-Done
 
 Updated 2026-05-16 by PROMPT 972. Source-of-truth at closure:
