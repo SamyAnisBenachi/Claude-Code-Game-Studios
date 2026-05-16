@@ -196,7 +196,8 @@ fn ac6_layer_constants_survive_pairwise_distinctness_under_arbitrary_permutation
 fn ac7_production_migration_sites_reference_design_tokens() {
     test_helpers::init_test_tracing();
     let cases = [
-        ("ui/lobby.rs", "z_layers::UI_BASE"),
+        ("ui/lobby.rs", "z_layers::UI_OVERLAY"),
+        ("ui/lobby.rs", "z_layers::MODAL"),
         ("ui/hud/mod.rs", "z_layers::UI_BASE"),
         ("ui/hud/mod.rs", "z_layers::UI_OVERLAY"),
         ("ui/hand/mod.rs", "z_layers::UI_BASE"),
