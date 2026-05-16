@@ -452,6 +452,10 @@ name = "shop_auction_ui_auction_free_gold_counters_layout_test"
 path = "../tests/integration/shop_auction_ui/auction_free_gold_counters_layout_test.rs"
 
 [[test]]
+name = "shop_auction_ui_auction_lead_loss_state_test"
+path = "../tests/integration/shop_auction_ui/auction_lead_loss_state_test.rs"
+
+[[test]]
 name = "board_rendering_grid_camera_test"
 path = "../tests/unit/board_rendering/board_grid_camera_test.rs"
 

@@ -742,6 +742,15 @@ pub struct AuctionFeaturedCard;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuctionFeaturedCardFrame;
 
+/// Sprint 14 story 018 (`S12-UX-AUCTION-LEAD-LOSS-STATE-001`) -
+/// strict, test-observable visual state for the featured-card frame.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuctionFeaturedCardLeadLossState {
+    Neutral,
+    Leading,
+    Losing,
+}
+
 /// Sprint 14 story 016 — stable marker for the ATK / HP / cost stats
 /// readout sitting inside the featured card. Carries `TextFont`
 /// `H2 = 22 px` so AC4's numeric hierarchy assertion (name > stats >
@@ -3171,6 +3180,10 @@ pub fn sync_auction_panel_system(
             &mut ImageNode,
         )>,
         Query<&mut AuctionFreeGoldCounterValue>,
+        Query<
+            (&mut AuctionFeaturedCardLeadLossState, &mut BorderColor),
+            With<AuctionFeaturedCardFrame>,
+        >,
     )>,
 ) {
     let Some(entities) = entities else {
@@ -3184,9 +3197,11 @@ pub fn sync_auction_panel_system(
             | ShopAuctionUiMode::AuctionSettling
     ) && auction_state.panel_visible();
     let footer_visible = *mode == ShopAuctionUiMode::Auction && auction_visible;
+    let featured_card_state = auction_featured_card_lead_loss_state(&auction_state, &local_gold);
     let local_leading = local_player_is_leading(&auction_state, &local_gold);
     let hand_full = hand_view.hand_size >= 10;
-    let bid_status_visible = footer_visible && (local_leading || hand_full);
+    let opponent_leading = featured_card_state == AuctionFeaturedCardLeadLossState::Losing;
+    let bid_status_visible = footer_visible && (local_leading || hand_full || opponent_leading);
     let local_free_gold = local_gold.free_gold(&economy);
     let has_gold_source = economy.initialized || local_gold.initialized;
 
@@ -3266,6 +3281,17 @@ pub fn sync_auction_panel_system(
     }
 
     {
+        let mut featured_card_frames = auction_ui.p6();
+        if let Ok((mut state, mut border_color)) =
+            featured_card_frames.get_mut(entities.auction_featured_card_frame)
+        {
+            *state = featured_card_state;
+            *border_color =
+                BorderColor::all(auction_featured_card_lead_loss_color(featured_card_state));
+        }
+    }
+
+    {
         let mut texts = auction_ui.p1();
         if let Ok(mut text) = texts.get_mut(entities.auction_featured_card) {
             text.0.clear();
@@ -3321,6 +3347,8 @@ pub fn sync_auction_panel_system(
                 text.0.push_str("YOU ARE LEADING");
             } else if hand_full {
                 text.0.push_str("Hand full - no bids possible this auction");
+            } else if opponent_leading {
+                text.0.push_str("OPPONENT LEADING");
             }
         }
 
@@ -4206,6 +4234,7 @@ fn spawn_auction_contents(
             Name::new("Shop Auction Featured Card Frame"),
             ShopAuctionUiEntity,
             AuctionFeaturedCardFrame,
+            AuctionFeaturedCardLeadLossState::Neutral,
             auction_featured_card_frame_node(),
             BorderColor::all(auction_featured_card_accent_color()),
             BackgroundColor(Color::NONE),
@@ -4763,6 +4792,24 @@ pub fn auction_featured_card_accent_color() -> Color {
     Color::srgb(0.949, 0.788, 0.298)
 }
 
+/// Sprint 14 story 018 leading token, `SEMANTIC_SUCCESS #27AE60`.
+pub fn auction_featured_card_leading_color() -> Color {
+    Color::srgb(0.153, 0.682, 0.376)
+}
+
+/// Sprint 14 story 018 losing token, `SEMANTIC_ERROR #EB5757`.
+pub fn auction_featured_card_losing_color() -> Color {
+    Color::srgb(0.922, 0.341, 0.341)
+}
+
+pub fn auction_featured_card_lead_loss_color(state: AuctionFeaturedCardLeadLossState) -> Color {
+    match state {
+        AuctionFeaturedCardLeadLossState::Neutral => auction_featured_card_accent_color(),
+        AuctionFeaturedCardLeadLossState::Leading => auction_featured_card_leading_color(),
+        AuctionFeaturedCardLeadLossState::Losing => auction_featured_card_losing_color(),
+    }
+}
+
 fn auction_status_text_node() -> Node {
     // Sprint 14 story 016: status text anchored near the panel top so it
     // sits clear of the panel-centered featured card at both the 1080p
@@ -4986,6 +5033,19 @@ fn local_player_is_leading(
     local_gold: &ShopAuctionLocalGoldView,
 ) -> bool {
     state.current_leader.is_some() && state.current_leader == local_gold.player_id
+}
+
+pub fn auction_featured_card_lead_loss_state(
+    state: &ShopAuctionAuctionState,
+    local_gold: &ShopAuctionLocalGoldView,
+) -> AuctionFeaturedCardLeadLossState {
+    match state.current_leader {
+        Some(leader) if Some(leader) == local_gold.player_id => {
+            AuctionFeaturedCardLeadLossState::Leading
+        }
+        Some(_) => AuctionFeaturedCardLeadLossState::Losing,
+        None => AuctionFeaturedCardLeadLossState::Neutral,
+    }
 }
 
 pub fn auction_bid_amount(current_price: u32, increment: u32) -> u32 {
