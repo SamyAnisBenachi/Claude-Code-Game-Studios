@@ -2,10 +2,10 @@
 
 > **Epic**: Playable Client
 > **Story ID**: S11-UX-LOBBY-BUTTON-HITTARGETS
-> **Status**: Draft -- Sprint 14 candidate (per `docs/ux/ui-clean-pass-roadmap.md` Tier 1 Should-priority adjacent row, paired with rank 11; PROMPT 685 row 5 button-hittargets slice), NOT activated
+> **Status**: Done -- closed by PROMPT 972 on `origin/main@2e0715f775650509440f280847fe4f70cf92930d`; friend-game scope only, `QA-COND-0005` accepted-risk preserved
 > **Layer**: Lobby UI / UX (Client)
 > **Type**: Integration -- targeted lobby UI dimension edit (canonical button width/height constants + dimension-stability invariant) + assertion test + visual capture
-> **Sprint**: Sprint 14 candidate (per `docs/ux/ui-clean-pass-roadmap.md` Tier 1 Should-priority adjacent rows table; PROMPT 802 §3.1 L5, §4 Tier 1.9; PROMPT 685 row 5 button-hittargets slice, `subsumed-by` PROMPT 802). **NOT** activated by this authoring run.
+> **Sprint**: Sprint 14 Nice to Have -- done by PROMPT 972 after PROMPT 970 integration of `origin/work/s14-lobby-button-hit-targets`
 > **Authored**: 2026-05-14 by PROMPT 880
 > **Authoring source-of-truth**: `origin/main@51e6228` (PROMPT 871 `qa(s13): /story-done S13-TWO-CLIENT-RUNTIME-HARNESS-001`)
 > **Authoring worktree**: `D:\_DEV\claude-code-game-studios-worktrees\s14-lobby-layout-story-authoring`
@@ -14,6 +14,13 @@
 ---
 
 ## Status / No-Claim Banner
+
+PROMPT 972 closes this story as a Sprint 14 Nice to Have row after the
+PROMPT 970 integration landed on `origin/main`. Closure is based on the
+integrated code/test/evidence surfaces and does **not** claim browser
+PNG capture completion for 1920x1080 or 1366x768. The visual-capture
+gap remains documented in
+`production/qa/evidence/sprint-14-lobby-button-hittargets-evidence.md`.
 
 This story is authored as a **Sprint 14 candidate** by PROMPT 880. Sprint
 14 is **NOT** activated by PROMPT 880. Sprint 13 disposition (`active` per
@@ -219,7 +226,7 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Named per-button-class dimension constants**: GIVEN
+- [x] **AC1 -- Named per-button-class dimension constants**: GIVEN
   `client/src/ui/lobby.rs` after the implementation, WHEN inspected,
   THEN per-button-class width and height are declared as named
   constants (e.g. `LOBBY_CREATE_BUTTON_WIDTH`, `LOBBY_SLOT_BUTTON_
@@ -230,7 +237,7 @@ All criteria are independently checkable.
   `spawn_lobby_ui_system` for button-class dimensions; literals are
   resolved through the named constants.
 
-- [ ] **AC2 -- Dimension stability across rebuild**: GIVEN a new
+- [x] **AC2 -- Dimension stability across rebuild**: GIVEN a new
   integration test (e.g.
   `tests/integration/playable_client/lobby_button_dimensions_test.rs`),
   WHEN the test drives `OnExit(ClientState::Lobby)` followed by
@@ -240,7 +247,7 @@ All criteria are independently checkable.
   per-button-class width / height values match the named constants
   introduced by AC1.
 
-- [ ] **AC3 -- Text fit at canonical dimensions**: GIVEN the lobby
+- [x] **AC3 -- Text fit at canonical dimensions**: GIVEN the lobby
   UI rendered at `1920×1080` and at `1366×768`, WHEN button text is
   inspected, THEN the canonical font size renders each button label
   fully inside the button without silent ellipsis insertion or
@@ -250,7 +257,7 @@ All criteria are independently checkable.
   sign-off subject to friend-game-tier readability, or (c) label
   wrap to two lines with ux-designer sign-off.
 
-- [ ] **AC4 -- ux-designer consultation recorded**: GIVEN the
+- [x] **AC4 -- ux-designer consultation recorded**: GIVEN the
   implementation prompt's first ux-designer interaction, WHEN the
   final per-button-class dimensions are locked, THEN the consultation
   note and chosen literals are recorded in the evidence document.
@@ -258,7 +265,7 @@ All criteria are independently checkable.
   carve-out and confirm that the chosen literals remain in
   friend-game scope (no claim of ≥44 Px Standard-tier compliance).
 
-- [ ] **AC5 -- `QA-COND-0005` carve-out preserved**: GIVEN the
+- [x] **AC5 -- `QA-COND-0005` carve-out preserved**: GIVEN the
   evidence document and the implementation diff rationale, WHEN
   read, THEN the friend-game-scope-only carve-out is restated
   verbatim from this story's Status / No-Claim Banner including
@@ -267,7 +274,7 @@ All criteria are independently checkable.
   `production/qa/accept-risk-registry.md` (or canonical equivalent)
   is permitted.
 
-- [ ] **AC6 -- Consumed by paired stories 024 / 025**: GIVEN this
+- [x] **AC6 -- Consumed by paired stories 024 / 025**: GIVEN this
   story's named constants land, WHEN paired stories 024
   (`S12-UX-LOBBY-LAYOUT-MODAL-001`) and 025 (`S11-UX-LOBBY-CLASS-
   PICKER`) reference dimension stability (story 024 AC6, story 025
@@ -277,20 +284,20 @@ All criteria are independently checkable.
   to a reader of `client/src/ui/lobby.rs` without grep'ing for magic
   literals).
 
-- [ ] **AC7 -- No client-side authority added (ADR-002)**: GIVEN
+- [x] **AC7 -- No client-side authority added (ADR-002)**: GIVEN
   the implementation diff, WHEN reviewed, THEN no client-side
   state mutation, no protocol change in `shared/src/protocol.rs`,
   no server-side change is present. The diff is composition /
   dimensions only.
 
-- [ ] **AC8 -- Workspace test pass**: GIVEN
+- [x] **AC8 -- Workspace test pass**: GIVEN
   `cargo test --workspace --tests --no-fail-fast` at the
   implementation commit, WHEN compared to the post-Sprint-13
   baseline, THEN no new `#[ignore]` markers are introduced; the new
   dimension-stability test passes; previously-passing tests continue
   to pass.
 
-- [ ] **AC9 -- No `production/` shared-tracker edits**: GIVEN the
+- [x] **AC9 -- No `production/` shared-tracker edits**: GIVEN the
   implementation commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/`, `production/qa/`, `production/stage.txt`,
   `production/session-state/`, and the PROMPT 761 gate-check
@@ -298,14 +305,14 @@ All criteria are independently checkable.
   implementing prompt except in the `/story-done` paperwork
   commit. Critically, no `QA-COND-0005` status flip lands.
 
-- [ ] **AC10 -- Visual capture at 1920×1080 and 1366×768**: GIVEN
+- [x] **AC10 -- Visual capture at 1920×1080 and 1366×768**: GIVEN
   the lobby UI rendered at both viewports, WHEN captured, THEN
   no button text overflows its container; no button overlaps
   another button (paired with story 024 AC3 / AC4 and story 025
   AC4); per-button-class dimensions look visually consistent within
   each class.
 
-- [ ] **AC11 -- Friend-game-scope no-claim restated in evidence**:
+- [x] **AC11 -- Friend-game-scope no-claim restated in evidence**:
   GIVEN the evidence document, WHEN read at the bottom, THEN it
   verbatim restates the friend-game-scope-only disposition and the
   `QA-COND-0005` accept-risk carve-out from this story's Status /
@@ -446,3 +453,28 @@ This story does **not** advance: `S8-QA-001-W1`, `QA-COND-0005`,
   activation, no claim against `QA-COND-0005` / `QA-COND-0006` /
   `S8-QA-001-W1` / `PAW-TD-*-a` / PROMPT 761 `Polish->Release` retry.
   `QA-COND-0005` accept-risk carve-out preserved verbatim.
+
+- 2026-05-16 -- PROMPT 970 -- Integrated worker branch
+  `origin/work/s14-lobby-button-hit-targets` at
+  `fd0ec222bec3c99e2d9b038ac7d5e0d8fb21705e` into `origin/main`
+  as merge commit `2e0715f775650509440f280847fe4f70cf92930d`.
+  Evidence landed at
+  `production/qa/evidence/sprint-14-lobby-button-hittargets-evidence.md`;
+  test landed at
+  `tests/integration/playable_client/lobby_button_dimensions_test.rs`.
+  Verification PASS: `cargo fmt --all -- --check`, `cargo check
+  --workspace --all-targets`, story-specific lobby dimensions test
+  4/4, targeted adjacent lobby tests, diff checks, and forbidden-path
+  review. The worker dev report path named by orchestration was absent;
+  closure uses integrated files, on-main evidence, and PROMPT 970
+  integration report.
+- 2026-05-16 -- PROMPT 972 -- `/story-done` paperwork closure. AC1-AC9
+  and AC11 PASS by integrated source/test/evidence. AC10 accepted with
+  runtime PNG capture deferred: evidence records no pixel screenshots
+  were captured, while ECS node-dimension sampling and analytical
+  text-fit checks cover the 1366x768 and 1920x1080 dimensions. This
+  closure does not claim Standard-tier accessibility, `>=44 px`
+  hit-target completion, `QA-COND-0005` advancement, public release
+  readiness, release-candidate readiness, full game completion,
+  playtest validation, final-art completion, two-client GAME_OVER
+  closure, Sprint 14 close-out, or Polish->Release retry.

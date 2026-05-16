@@ -1,3 +1,34 @@
+# PROMPT 972 State Banner -- S14 Lobby Button Hit Targets Story-Done
+
+Updated 2026-05-16 by PROMPT 972. Source-of-truth at closure:
+`origin/main@2e0715f775650509440f280847fe4f70cf92930d` (PROMPT 970
+integration merge of `origin/work/s14-lobby-button-hit-targets` worker
+tip `fd0ec222bec3c99e2d9b038ac7d5e0d8fb21705e`).
+
+PROMPT 972 closed `S11-UX-LOBBY-BUTTON-HITTARGETS` / playable-client
+story 026 / Sprint 14 Nice to Have. Paperwork-only scope: story file
+`production/epics/playable-client/story-026-lobby-button-hittargets.md`
+flipped to Done, `production/sprint-status.yaml` row flipped
+`ready -> done`, this file and `production/session-state/codex-orchestrator-state.md`
+received PROMPT 972 banners, and the `sprint_14_story_done` block
+received the fourteenth Sprint 14 story-done entry. PROMPT 966 dev
+report was absent; closure used integrated files, on-main evidence
+`production/qa/evidence/sprint-14-lobby-button-hittargets-evidence.md`,
+on-main test `tests/integration/playable_client/lobby_button_dimensions_test.rs`,
+and PROMPT 970 integration verification.
+
+Sprint 14 progress after PROMPT 972: 9 of 9 Must Have done; 3 of 4
+Should Have done; 2 of 4 Nice to Have done; total 14 of 17 rows closed.
+Sprint 14 remains active; stage remains Polish; PROMPT 761
+Polish->Release FAIL preserved with no retry. Non-claims preserved:
+`S8-QA-001-W1` OPEN, `QA-COND-0005/0006` accepted-risk, `PAW-TD-*-a`
+accepted-risk, no release/RC/full-game/broad-accessibility/playtest/
+final-art/Sprint14-closeout claim. Runtime PNG captures for 1366x768
+and 1920x1080 are not claimed; ECS dimension and text-fit checks are
+the accepted closure evidence for this friend-game-scope row.
+
+---
+
 # Session State — Lanes and Lies
 
 > Lis ce fichier EN PREMIER dans toute nouvelle session, PUIS `git log --oneline -30` pour réconcilier.
