@@ -64,32 +64,6 @@ pub fn drain_gold_update_receiver_system(
     }
 }
 
-pub fn drain_game_snapshot_receiver_system(
-    mut receivers: Query<&mut MessageReceiver<S2CGameSnapshot>>,
-    mut economy_view: ResMut<PlayerEconomyView>,
-    mut snapshot_writer: MessageWriter<PresentationGameSnapshotMessage>,
-) {
-    for mut receiver in &mut receivers {
-        for message in receiver.receive() {
-            tracing::info!(
-                player_id = ?message.recipient_player_id,
-                phase = ?message.phase,
-                round_number = message.round_number,
-                players_len = message.players.len(),
-                msg_type = "S2CGameSnapshot",
-                "drain_game_snapshot: recv"
-            );
-            if !apply_snapshot_to_player_economy_view(&message, &mut economy_view) {
-                warn!(
-                    "Presentation: snapshot for {:?} does not contain the local player economy",
-                    message.recipient_player_id
-                );
-            }
-            snapshot_writer.write(PresentationGameSnapshotMessage(message));
-        }
-    }
-}
-
 pub fn apply_snapshot_to_player_economy_view(
     snapshot: &S2CGameSnapshot,
     economy_view: &mut PlayerEconomyView,

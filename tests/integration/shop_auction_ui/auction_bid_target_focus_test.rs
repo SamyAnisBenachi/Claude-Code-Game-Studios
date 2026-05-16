@@ -77,6 +77,24 @@ fn sau_011_keyboard_focus_advances_in_bid_order_and_enter_sends_one_bid() {
 }
 
 #[test]
+fn sau_011_same_phase_mutable_touch_preserves_keyboard_focus_until_enter() {
+    test_helpers::init_test_tracing();
+    let mut app = app_in_active_auction(4, 20_000, 20, 0);
+
+    press_key(&mut app, KeyCode::Tab);
+    assert_focused_increment(&app, Some(1));
+
+    touch_current_phase_without_transition(&mut app);
+    assert_focused_increment(&app, Some(1));
+
+    press_key(&mut app, KeyCode::Enter);
+
+    let outbound = app.world().resource::<ShopAuctionUiOutboundMessages>();
+    assert_eq!(outbound.place_bids.len(), 1);
+    assert_eq!(outbound.place_bids[0].amount, 5);
+}
+
+#[test]
 fn sau_011_disabled_and_hidden_bid_controls_are_skipped_by_focus() {
     test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(0, 20_000, 2, 0);
@@ -223,6 +241,17 @@ fn press_key(app: &mut App, key: KeyCode) {
         let mut input = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
         input.release(key);
         input.clear();
+    }
+    run_update(app);
+}
+
+fn touch_current_phase_without_transition(app: &mut App) {
+    let current_phase = app.world().resource::<CurrentClientPhase>().phase;
+    let current_round = app.world().resource::<CurrentClientPhase>().round;
+    {
+        let mut current = app.world_mut().resource_mut::<CurrentClientPhase>();
+        current.phase = current_phase;
+        current.round = current_round;
     }
     run_update(app);
 }

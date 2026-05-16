@@ -19,6 +19,7 @@ use crate::state::{
     apply_opponent_reconnected_message, apply_phase_changed_message, apply_phase_view_message,
     apply_prism_respawned_message, apply_prism_reward_dropped_message,
     apply_session_cancelled_message, apply_session_settings_updated_message,
+    apply_snapshot_phase_message, apply_snapshot_phase_view_message,
     apply_snapshot_to_session_settings_view, should_enter_session_from_phase,
     should_enter_session_from_snapshot, ClientGameSnapshotMessage, ClientIdempotencyPlugin,
     ClientObjectiveIdentities, ClientPhaseView, ClientSessionIdentity, ClientState,
@@ -279,6 +280,8 @@ pub fn session_settings_sink_system(
 
 pub fn game_snapshot_sink_system(
     mut receivers: Query<&mut MessageReceiver<S2CGameSnapshot>>,
+    mut current: ResMut<CurrentClientPhase>,
+    mut phase_view: ResMut<ClientPhaseView>,
     mut economy_view: ResMut<PlayerEconomyView>,
     mut settings_view: ResMut<SessionSettingsView>,
     mut board_writer: MessageWriter<ClientGameSnapshotMessage>,
@@ -303,6 +306,8 @@ pub fn game_snapshot_sink_system(
             {
                 next_state.set(ClientState::InSession);
             }
+            apply_snapshot_phase_message(&message, &mut current);
+            apply_snapshot_phase_view_message(&message, &mut phase_view);
             if !apply_snapshot_to_player_economy_view(&message, &mut economy_view) {
                 warn!(
                     "Presentation: snapshot for {:?} does not contain the local player economy",

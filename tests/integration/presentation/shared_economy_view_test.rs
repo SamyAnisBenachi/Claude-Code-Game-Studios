@@ -66,6 +66,28 @@ fn test_snapshot_initializes_local_player_economy_view() {
 }
 
 #[test]
+fn test_game_snapshot_has_single_presentation_receiver_drain() {
+    test_helpers::init_test_tracing();
+    let client_src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let presentation_mod = std::fs::read_to_string(client_src.join("presentation/mod.rs"))
+        .expect("presentation mod source should be readable");
+    let economy_view =
+        std::fs::read_to_string(client_src.join("presentation/shared/economy_view.rs"))
+            .expect("shared economy source should be readable");
+
+    assert_eq!(
+        presentation_mod
+            .matches("MessageReceiver<S2CGameSnapshot>")
+            .count(),
+        1
+    );
+    assert!(
+        !economy_view.contains("MessageReceiver<S2CGameSnapshot>"),
+        "S2CGameSnapshot should be drained only by presentation::game_snapshot_sink_system"
+    );
+}
+
+#[test]
 fn test_reserve_strip_input_does_not_mutate_player_economy_view() {
     test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(10), 5)]));

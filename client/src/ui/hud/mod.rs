@@ -19,7 +19,10 @@ use crate::asset_wiring::{
 };
 use crate::card_animations::cancel_tween_anim_in_place;
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
-use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
+use crate::state::{
+    apply_snapshot_phase_message, apply_snapshot_phase_view_message, ClientPhaseView, ClientState,
+    CurrentClientPhase,
+};
 use crate::ui::design_tokens::{overlays, spacing, strips, typography, z_layers};
 use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
@@ -969,6 +972,8 @@ pub fn handle_game_snapshot_system(
     mut messages: MessageReader<PresentationGameSnapshotMessage>,
     entities: Option<Res<HudEntities>>,
     mut current: ResMut<CurrentClientPhase>,
+    mut phase_view: ResMut<ClientPhaseView>,
+    mut timer: ResMut<PhaseTimerState>,
     mut mode: ResMut<HudMode>,
     mut visibility: Query<&mut Visibility>,
     mut gold_labels: Query<(
@@ -1020,8 +1025,9 @@ pub fn handle_game_snapshot_system(
         opponent_id: opponent.player_id,
     });
 
-    current.phase = snapshot.phase;
-    current.round = snapshot.round_number;
+    apply_snapshot_phase_message(snapshot, &mut current);
+    apply_snapshot_phase_view_message(snapshot, &mut phase_view);
+    reset_phase_timer_from_view(&phase_view, &mut timer);
 
     let next_mode = hud_mode_for_phase(snapshot.phase);
     *mode = next_mode;
@@ -1865,10 +1871,9 @@ fn clamped_reserved_gold(message: &S2CGoldBroadcast) -> f32 {
 
 /// Reset `PhaseTimerState` on every `ClientPhaseView` change.
 ///
-/// `phase_sink_system` (PresentationSet::PhaseTransition) writes
-/// `ClientPhaseView.timer_duration_ms` before this system runs in
-/// `HudSystemSet::PhaseTransition`, so change detection on the resource is
-/// sufficient — covers both per-phase transitions and snapshot rebuilds.
+/// `phase_sink_system` writes phase-change durations before this system runs.
+/// Snapshot rebuilds also call `reset_phase_timer_from_view` directly after
+/// applying their authoritative remaining budget in `handle_game_snapshot_system`.
 pub fn reset_phase_timer_system(
     phase_view: Res<ClientPhaseView>,
     mut timer: ResMut<PhaseTimerState>,
@@ -1876,6 +1881,10 @@ pub fn reset_phase_timer_system(
     if !phase_view.is_changed() {
         return;
     }
+    reset_phase_timer_from_view(&phase_view, &mut timer);
+}
+
+fn reset_phase_timer_from_view(phase_view: &ClientPhaseView, timer: &mut PhaseTimerState) {
     timer.elapsed_ms = 0;
     timer.duration_ms = phase_view.timer_duration_ms;
     timer.active = phase_view.timer_duration_ms > 0;

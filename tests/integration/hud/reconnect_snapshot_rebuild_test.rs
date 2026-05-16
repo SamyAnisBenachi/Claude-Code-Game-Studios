@@ -7,10 +7,10 @@ use bevy_tweening::{lens::TransformScaleLens, TweenAnim};
 use client::card_animations::make_tween_anim;
 use client::{
     presentation::{PlayerEconomyView, PresentationGameSnapshotMessage},
-    state::{ClientState, CurrentClientPhase},
+    state::{ClientPhaseView, ClientState, CurrentClientPhase},
     ui::hud::{
         GoldDisplayState, HudEntities, HudMode, HudPlayerIds, HudPlugin, ManaDisplayState,
-        ScoreboardDotState, HUD_DOTS_PER_ROW, HUD_ENTITY_COUNT,
+        PhaseTimerState, ScoreboardDotState, HUD_DOTS_PER_ROW, HUD_ENTITY_COUNT,
     },
 };
 use shared::{
@@ -67,6 +67,14 @@ fn full_snapshot_rebuild_populates_all_hud_zones_without_respawning_entities() {
         RoundPhase::Placement
     );
     assert_eq!(app.world().resource::<CurrentClientPhase>().round, 7);
+    let phase_view = app.world().resource::<ClientPhaseView>();
+    assert_eq!(phase_view.phase, RoundPhase::Placement);
+    assert_eq!(phase_view.round_number, 7);
+    assert_eq!(phase_view.timer_duration_ms, 12_000);
+    let timer = app.world().resource::<PhaseTimerState>();
+    assert_eq!(timer.duration_ms, 12_000);
+    assert!(timer.active);
+    assert!(timer.elapsed_ms <= 12_000);
     assert_eq!(text(&app, after.own_gold_parent), "20g");
     assert_eq!(text(&app, after.opponent_gold_parent), "15g");
     assert_eq!(text(&app, after.mana_label), "6 / 10");

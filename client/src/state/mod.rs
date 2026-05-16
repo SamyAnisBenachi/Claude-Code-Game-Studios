@@ -24,7 +24,8 @@ pub enum ClientState {
 }
 
 /// Timer-bearing client view used by timer/animation presentation systems.
-/// This never drives server transitions.
+/// This never drives server transitions. Phase-change messages carry the full
+/// phase budget; reconnect snapshots carry the remaining display budget.
 #[derive(Resource, Default)]
 pub struct ClientPhaseView {
     pub phase: RoundPhase,
@@ -118,6 +119,27 @@ pub fn apply_phase_view_message(msg: &S2CPhaseChanged, phase_view: &mut ClientPh
     phase_view.phase = msg.phase;
     phase_view.round_number = msg.round_number;
     phase_view.timer_duration_ms = msg.timer_duration_ms;
+}
+
+pub fn apply_snapshot_phase_message(snapshot: &S2CGameSnapshot, current: &mut CurrentClientPhase) {
+    tracing::info!(
+        from = ?current.phase,
+        to = ?snapshot.phase,
+        round = snapshot.round_number,
+        timer_remaining_ms = ?snapshot.timer_remaining_ms,
+        "client_apply_snapshot_phase",
+    );
+    current.phase = snapshot.phase;
+    current.round = snapshot.round_number;
+}
+
+pub fn apply_snapshot_phase_view_message(
+    snapshot: &S2CGameSnapshot,
+    phase_view: &mut ClientPhaseView,
+) {
+    phase_view.phase = snapshot.phase;
+    phase_view.round_number = snapshot.round_number;
+    phase_view.timer_duration_ms = snapshot.timer_remaining_ms.unwrap_or(0);
 }
 
 pub fn apply_session_settings_updated_message(

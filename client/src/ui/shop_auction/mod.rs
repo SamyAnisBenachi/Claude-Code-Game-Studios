@@ -1371,19 +1371,22 @@ pub fn shop_auction_ui_phase_transition_system(
     mut timer_target: ResMut<AuctionTimerTargetFill>,
     mut keyboard_focus: ResMut<AuctionBidKeyboardFocus>,
     mut visibility: Query<&mut Visibility>,
+    mut last_observed_phase: Local<Option<RoundPhase>>,
 ) {
-    if !current.is_changed() {
+    let observed_phase = current.phase;
+    let phase_changed = last_observed_phase.is_none_or(|phase| phase != observed_phase);
+    if !phase_changed {
         return;
     }
 
     let previous_mode = *mode;
-    let mut next_mode = ShopAuctionUiMode::from_phase(current.phase);
+    let mut next_mode = ShopAuctionUiMode::from_phase(observed_phase);
     let settlement_active = settlement_state.transition_active;
 
     clear_auction_feedback_state(&mut toast_state, &mut timer_target, &mut keyboard_focus);
 
     if settlement_active {
-        match current.phase {
+        match observed_phase {
             RoundPhase::DraftShop => {
                 shop_state.enter_shop_phase();
                 shop_timer.defer(phase_view.timer_duration_ms);
@@ -1403,7 +1406,7 @@ pub fn shop_auction_ui_phase_transition_system(
                 shop_timer.stop();
             }
         }
-    } else if current.phase == RoundPhase::DraftAuction {
+    } else if observed_phase == RoundPhase::DraftAuction {
         shop_state.enter_auction_phase();
         shop_timer.stop();
         if auction_state.card_id.is_some() {
@@ -1413,7 +1416,7 @@ pub fn shop_auction_ui_phase_transition_system(
         } else {
             auction_state.panel_state = ShopAuctionAuctionPanelState::Hidden;
         }
-    } else if current.phase == RoundPhase::DraftShop
+    } else if observed_phase == RoundPhase::DraftShop
         && auction_state.card_id.is_some()
         && matches!(
             auction_state.panel_state,
@@ -1453,7 +1456,7 @@ pub fn shop_auction_ui_phase_transition_system(
             shop_state.clear_all();
             shop_timer.stop();
         }
-        ShopAuctionUiMode::Inactive if current.phase != RoundPhase::DraftAuction => {
+        ShopAuctionUiMode::Inactive if observed_phase != RoundPhase::DraftAuction => {
             shop_state.clear_all();
             shop_timer.stop();
         }
@@ -1466,6 +1469,8 @@ pub fn shop_auction_ui_phase_transition_system(
     let Some(entities) = entities else {
         return;
     };
+
+    *last_observed_phase = Some(observed_phase);
 
     let root_visible = match next_mode {
         ShopAuctionUiMode::Inactive => false,
