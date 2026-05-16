@@ -5,7 +5,7 @@ use client::state::{ClientState, CurrentClientPhase};
 use client::ui::shop_auction::{
     auction_border_color_tier, bid_button_label_texts, local_free_gold, AuctionBorderColorTier,
     ShopAuctionPanelRoot, ShopAuctionUiEntities, ShopAuctionUiEntity, ShopAuctionUiMode,
-    ShopAuctionUiPlugin, SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT,
+    ShopAuctionUiPlugin, AUCTION_FREE_GOLD_COUNTER_COUNT, SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT,
     SHOP_AUCTION_UI_PANEL_ROOT_COUNT, SHOP_AUCTION_UI_SHOP_SLOT_COUNT,
 };
 use shared::protocol::RoundPhase;
@@ -48,6 +48,8 @@ fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
             + 3
             + 4
             + SHOP_AUCTION_UI_SHOP_SLOT_COUNT
+            + 1
+            + AUCTION_FREE_GOLD_COUNTER_COUNT * 3
             + 4
             + SHOP_AUCTION_UI_SHOP_SLOT_COUNT
             + 12
