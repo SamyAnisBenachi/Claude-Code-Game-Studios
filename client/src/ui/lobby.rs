@@ -1316,6 +1316,12 @@ fn spawn_lobby_ui_system(
                 // order; PROMPT 802 §3.1 L4 "portraits / slot panels /
                 // room-code chip render below confirm" inversion is
                 // resolved by placing the CTA last in the panel.
+                //
+                // PROMPT 985: `flex_shrink: 0.0` keeps the CTA at its
+                // canonical 30 px even if other panel children expand
+                // and push against the panel's `max_height: 92%` clamp.
+                // Without this, the CTA was the first child the flex
+                // solver squashed to zero, making it invisible.
                 panel.spawn((
                     LobbyConfirmClassButton,
                     LobbyDynamicText::Confirm,
@@ -1328,10 +1334,13 @@ fn spawn_lobby_ui_system(
                     )),
                     lobby_text_font(typography::BODY),
                     TextColor(Color::srgb(0.98, 0.93, 0.72)),
-                    lobby_button_node(
-                        Val::Percent(LOBBY_CONFIRM_BUTTON_WIDTH_PERCENT),
-                        LOBBY_CONFIRM_BUTTON_HEIGHT_PX,
-                    ),
+                    Node {
+                        flex_shrink: 0.0,
+                        ..lobby_button_node(
+                            Val::Percent(LOBBY_CONFIRM_BUTTON_WIDTH_PERCENT),
+                            LOBBY_CONFIRM_BUTTON_HEIGHT_PX,
+                        )
+                    },
                     BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
                     BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
                 ));
@@ -1372,6 +1381,16 @@ fn refresh_lobby_ui_system(
     }
 }
 
+/// Status banner copy.
+///
+/// **PROMPT 985 — Confirm CTA reachability**: the format is intentionally
+/// two lines (was six) so the lobby panel content fits inside its
+/// `max_height: 92%` clamp at the minimum 1366×768 viewport without
+/// pushing the bottom-most child (`LobbyConfirmClassButton`) past the
+/// visible viewport. See
+/// `tests/integration/playable_client/lobby_confirm_button_reachable_test.rs`.
+/// The `Players: N/M` substring is preserved for the
+/// `lobby_entry_test::class_confirmations_are_server_confirmed` assertion.
 pub fn lobby_status_copy(lobby: &LobbyViewState, input: &LobbyInputState) -> String {
     let room = lobby.room_code.as_deref().unwrap_or("----");
     let joined = lobby
@@ -1391,7 +1410,7 @@ pub fn lobby_status_copy(lobby: &LobbyViewState, input: &LobbyInputState) -> Str
     };
 
     format!(
-        "Status: {}\nRoom: {}\nPlayers: {}/{}\nJoin: {} slot {}\nClass: {:?}\nConfirmed: {}",
+        "Status: {} | Room: {} | Players: {}/{}\nJoin: {} slot {} | Class: {:?} | {}",
         lobby.status,
         room,
         joined,

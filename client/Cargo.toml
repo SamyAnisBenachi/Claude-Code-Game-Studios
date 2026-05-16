@@ -380,6 +380,10 @@ name = "playable_client_lobby_button_dimensions_test"
 path = "../tests/integration/playable_client/lobby_button_dimensions_test.rs"
 
 [[test]]
+name = "playable_client_lobby_confirm_button_reachable_test"
+path = "../tests/integration/playable_client/lobby_confirm_button_reachable_test.rs"
+
+[[test]]
 name = "playable_client_phase_changed_idempotency_test"
 path = "../tests/integration/playable_client/phase_changed_idempotency_test.rs"
 
