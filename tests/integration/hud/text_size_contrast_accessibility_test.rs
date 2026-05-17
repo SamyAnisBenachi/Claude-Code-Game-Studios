@@ -156,8 +156,10 @@ fn test_cold_start_placeholders_meet_matching_accessibility_floors() {
     let app = app_with_hud_in_session();
     let entities = hud_entities(&app);
 
+    // PROMPT 1027 — opponent cold-start placeholder is "?" (hidden info)
+    // while the local cold-start placeholder stays "--g" (loading).
     assert_eq!(text(&app, entities.own_gold_parent), "--g");
-    assert_eq!(text(&app, entities.opponent_gold_parent), "--g");
+    assert_eq!(text(&app, entities.opponent_gold_parent), "?");
     assert_eq!(text(&app, entities.mana_label), "-- / --");
 
     for viewport in VIEWPORTS {

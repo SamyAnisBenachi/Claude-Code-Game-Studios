@@ -105,9 +105,11 @@ fn cold_start_placeholders_distinguish_unpopulated_from_zero() {
     let mut app = app_with_hud_in_session();
     let entities = hud_entities(&app);
 
+    // PROMPT 1027 — opponent cold-start placeholder is "?" (hidden info)
+    // while the local cold-start placeholder stays "--g" (loading).
     assert_eq!(text(&app, entities.own_gold_parent), "--g");
     assert_eq!(text(&app, entities.mana_label), "-- / --");
-    assert_eq!(text(&app, entities.opponent_gold_parent), "--g");
+    assert_eq!(text(&app, entities.opponent_gold_parent), "?");
 
     apply_own_gold_update(&mut app, gold_update(0, 0, 10, 0));
     app.update();

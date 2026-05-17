@@ -29,6 +29,14 @@ pub const HUD_DOTS_PER_ROW: usize = 5;
 /// PAW-004: +2 for figurine + timer bar (19 → 21).
 /// S10-POLISH-001: +1 for the RESOLUTION dim overlay (21 → 22).
 /// S14-HUD-OPP-FIGURINE: +1 for opponent figurine (22 → 23).
+///
+/// PROMPT 1027: the per-pill prefix labels (PHASE / ROUND / GOLD / OPP / MANA)
+/// and their structural pill containers are intentionally **not** tagged
+/// `HudEntity`. They are read-only decorations that ride on the
+/// `Visibility::Inherited` chain from the HUD root and do not participate in
+/// the prepooled-entity contract that downstream systems rely on. Keeping
+/// them outside the `HudEntity` count preserves the 23-entity invariant
+/// without inflating it.
 pub const HUD_ENTITY_COUNT: usize = 23;
 /// Alpha applied to the RESOLUTION dim overlay's BackgroundColor — visibly
 /// dims the underlying HUD without obscuring gold/mana/phase readouts.
@@ -78,10 +86,23 @@ pub const HUD_RESERVED_GOLD_FONT_SIZE_PX: f32 = typography::H1;
 /// [`HUD_RESOURCE_TEXT_MIN_SIZE_PX`] (20 px). H2 sits 2 px above the
 /// accessibility floor so the regression test continues to pass.
 pub const HUD_SECONDARY_FONT_SIZE_PX: f32 = typography::H2;
+/// HUD pill-prefix label font size (PROMPT 1027). Smaller than the value
+/// font sitting next to it so the prefix reads as a label, not data.
+/// Routed through [`typography::H3`] (18 px) — the canonical "subhead /
+/// section label" semantic level. Stays below the secondary-readout font
+/// size so the prefix never visually competes with the value; stays above
+/// the accessibility floor for any future floor sweep that audits every
+/// HUD readout.
+pub const HUD_PILL_PREFIX_FONT_SIZE_PX: f32 = typography::H3;
 pub const HUD_TEXT_BACKGROUND_COLOR: Color = Color::srgba(0.04, 0.07, 0.12, 1.0);
 pub const HUD_PRIMARY_TEXT_COLOR: Color = Color::srgba(0.96, 0.98, 1.0, 1.0);
 pub const HUD_GOLD_TEXT_COLOR: Color = Color::srgba(1.0, 0.82, 0.28, 1.0);
 pub const HUD_RESERVED_GOLD_TEXT_COLOR: Color = Color::srgba(0.95, 0.90, 0.70, 0.65);
+/// PROMPT 1027 — colour for the static pill-prefix labels ("PHASE",
+/// "ROUND", "GOLD", "OPP", "MANA"). Softer than [`HUD_PRIMARY_TEXT_COLOR`]
+/// so the prefix reads as a label, not data — the brighter value text
+/// remains the visual anchor of each pill.
+pub const HUD_PILL_PREFIX_TEXT_COLOR: Color = Color::srgba(0.70, 0.78, 0.90, 0.90);
 // Sprint 14 story 004 (S11-TD-UI-FLEX-STRIPS) — per-module `_GAP_PX`
 // magic constants `HUD_GOLD_ROW_GAP_PX = 48.0` and
 // `HUD_SECONDARY_ROW_GAP_PX = 28.0` (PROMPT 802 §3.9 G2) are deleted in
@@ -134,12 +155,22 @@ pub struct HudEntities {
     pub root: Entity,
     pub top_strip: Entity,
     pub bottom_strip: Entity,
+    pub phase_pill: Entity,
+    pub phase_prefix: Entity,
     pub phase_label: Entity,
+    pub round_pill: Entity,
+    pub round_prefix: Entity,
     pub round_counter: Entity,
+    pub own_gold_pill: Entity,
+    pub own_gold_prefix: Entity,
     pub own_gold_parent: Entity,
     pub own_gold_span: Entity,
+    pub opponent_gold_pill: Entity,
+    pub opponent_gold_prefix: Entity,
     pub opponent_gold_parent: Entity,
     pub opponent_gold_span: Entity,
+    pub mana_pill: Entity,
+    pub mana_prefix: Entity,
     pub mana_label: Entity,
     pub reserve_container: Entity,
     pub reserve_label: Entity,
@@ -161,6 +192,20 @@ pub struct HudBottomStrip;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HudEntity;
+
+/// PROMPT 1027 — marker for HUD pill containers (flex parents that
+/// group a prefix label with its value entity). Structural only —
+/// intentionally NOT tagged `HudEntity` so the pre-pooled
+/// `HUD_ENTITY_COUNT` contract is preserved.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudPillContainer;
+
+/// PROMPT 1027 — marker for HUD pill-prefix text labels ("PHASE",
+/// "ROUND", "GOLD", "OPP", "MANA"). Structural only — intentionally
+/// NOT tagged `HudEntity` so the pre-pooled `HUD_ENTITY_COUNT`
+/// contract is preserved.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudPillPrefixLabel;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PhaseLabel;
@@ -462,6 +507,7 @@ pub fn hud_phase_transition_system(
                 entities.own_gold_parent,
                 entities.own_gold_span,
                 HudMode::EconomyBasic,
+                GoldLabelOwner::Local,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
@@ -470,6 +516,7 @@ pub fn hud_phase_transition_system(
                 entities.opponent_gold_parent,
                 entities.opponent_gold_span,
                 HudMode::EconomyBasic,
+                GoldLabelOwner::Opponent,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
@@ -482,6 +529,7 @@ pub fn hud_phase_transition_system(
                 entities.own_gold_parent,
                 entities.own_gold_span,
                 HudMode::EconomyAuction,
+                GoldLabelOwner::Local,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
@@ -490,6 +538,7 @@ pub fn hud_phase_transition_system(
                 entities.opponent_gold_parent,
                 entities.opponent_gold_span,
                 HudMode::EconomyAuction,
+                GoldLabelOwner::Opponent,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
@@ -515,6 +564,7 @@ pub fn hud_phase_transition_system(
                 entities.own_gold_parent,
                 entities.own_gold_span,
                 render_mode,
+                GoldLabelOwner::Local,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
@@ -523,6 +573,7 @@ pub fn hud_phase_transition_system(
                 entities.opponent_gold_parent,
                 entities.opponent_gold_span,
                 render_mode,
+                GoldLabelOwner::Opponent,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
@@ -602,40 +653,63 @@ fn spawn_hud(
         ))
         .id();
 
+    // PROMPT 1027 — wrap each top-strip readout in a pill container with a
+    // short static prefix label so phase / round / gold / opp / mana are
+    // each scannable as a labelled chunk instead of a row of bare values.
+    // Pill containers and prefix labels are structural decorations: they
+    // are NOT tagged `HudEntity`, so `HUD_ENTITY_COUNT` stays at 23 and the
+    // prepooled-entity contract is preserved.
+    let phase_pill = spawn_pill_container(&mut commands, top_strip, "HUD Phase Pill");
+    let phase_prefix = spawn_pill_prefix(&mut commands, phase_pill, "HUD Phase Prefix", "PHASE");
     let phase_label = spawn_text_label(
         &mut commands,
-        top_strip,
+        phase_pill,
         "HUD Phase Label",
         "",
         PhaseLabel,
         top_strip_text_node(),
     );
+    let round_pill = spawn_pill_container(&mut commands, top_strip, "HUD Round Pill");
+    let round_prefix = spawn_pill_prefix(&mut commands, round_pill, "HUD Round Prefix", "ROUND");
     let round_counter = spawn_text_label(
         &mut commands,
-        top_strip,
+        round_pill,
         "HUD Round Counter",
         "",
         RoundCounter,
         top_strip_text_node(),
     );
+    let own_gold_pill = spawn_pill_container(&mut commands, top_strip, "HUD Own Gold Pill");
+    let own_gold_prefix =
+        spawn_pill_prefix(&mut commands, own_gold_pill, "HUD Own Gold Prefix", "GOLD");
     let (own_gold_parent, own_gold_span) = spawn_gold_label(
         &mut commands,
-        top_strip,
+        own_gold_pill,
         "HUD Own Gold",
         GoldLabelOwner::Local,
     );
     // The HudTopStrip flex parent owns inter-readout spacing through
     // `spacing::SPACING_XL + spacing::SPACING_MD`; individual gold
     // labels no longer carry per-line absolute offsets.
+    let opponent_gold_pill =
+        spawn_pill_container(&mut commands, top_strip, "HUD Opponent Gold Pill");
+    let opponent_gold_prefix = spawn_pill_prefix(
+        &mut commands,
+        opponent_gold_pill,
+        "HUD Opponent Gold Prefix",
+        "OPP",
+    );
     let (opponent_gold_parent, opponent_gold_span) = spawn_gold_label(
         &mut commands,
-        top_strip,
+        opponent_gold_pill,
         "HUD Opponent Gold",
         GoldLabelOwner::Opponent,
     );
+    let mana_pill = spawn_pill_container(&mut commands, top_strip, "HUD Mana Pill");
+    let mana_prefix = spawn_pill_prefix(&mut commands, mana_pill, "HUD Mana Prefix", "MANA");
     let mana_label = spawn_mana_label(
         &mut commands,
-        top_strip,
+        mana_pill,
         "HUD Mana Label",
         current_mana_bar_node(),
     );
@@ -732,12 +806,22 @@ fn spawn_hud(
         root,
         top_strip,
         bottom_strip,
+        phase_pill,
+        phase_prefix,
         phase_label,
+        round_pill,
+        round_prefix,
         round_counter,
+        own_gold_pill,
+        own_gold_prefix,
         own_gold_parent,
         own_gold_span,
+        opponent_gold_pill,
+        opponent_gold_prefix,
         opponent_gold_parent,
         opponent_gold_span,
+        mana_pill,
+        mana_prefix,
         mana_label,
         reserve_container,
         reserve_label,
@@ -754,6 +838,50 @@ fn despawn_hud(mut commands: Commands, entities: Option<Res<HudEntities>>) {
         commands.entity(entities.root).despawn();
         commands.remove_resource::<HudEntities>();
     }
+}
+
+/// PROMPT 1027 — spawn a structural flex-row pill container under
+/// `parent`. The container groups a prefix label with its value entity
+/// so each top-strip readout reads as a labelled chunk. Returns the
+/// container entity so callers can spawn children into it.
+fn spawn_pill_container(commands: &mut Commands, parent: Entity, name: &'static str) -> Entity {
+    commands
+        .spawn((
+            Name::new(name),
+            HudPillContainer,
+            pill_container_node(),
+            // No BackgroundColor — the container is a flex grouping only;
+            // the value entity inside still carries its own pill background.
+            Visibility::Inherited,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
+/// PROMPT 1027 — spawn a static short prefix label ("PHASE", "ROUND",
+/// "GOLD", "OPP", "MANA") inside a pill container. Structural only,
+/// not `HudEntity`-tagged so the pre-pooled `HUD_ENTITY_COUNT`
+/// invariant is preserved. Visibility rides on
+/// `Visibility::Inherited` so the prefix follows the HUD root
+/// visibility chain without participating in `set_hud_visible`.
+fn spawn_pill_prefix(
+    commands: &mut Commands,
+    parent: Entity,
+    name: &'static str,
+    text: &'static str,
+) -> Entity {
+    commands
+        .spawn((
+            Name::new(name),
+            HudPillPrefixLabel,
+            Text::new(text),
+            hud_text_font(HUD_PILL_PREFIX_FONT_SIZE_PX),
+            TextColor(HUD_PILL_PREFIX_TEXT_COLOR),
+            pill_prefix_node(),
+            Visibility::Inherited,
+            ChildOf(parent),
+        ))
+        .id()
 }
 
 fn spawn_text_label<M: Component>(
@@ -856,6 +984,14 @@ fn spawn_gold_label(
     name: &'static str,
     owner: GoldLabelOwner,
 ) -> (Entity, Entity) {
+    // PROMPT 1027 — the cold-start placeholder reflects whether this is
+    // the local player's gold (loading: "--g") or the opponent's gold
+    // (hidden-by-design: "?"). The PROMPT 1022 audit (F-P3-13) called out
+    // that "--g" for the opponent reads as broken because it visually
+    // matches the local "still loading" placeholder. A single-glyph "?"
+    // clearly signals "hidden information" using existing text
+    // primitives only.
+    let placeholder = unpopulated_gold_placeholder(owner);
     let parent_entity = commands
         .spawn((
             Name::new(name),
@@ -863,7 +999,7 @@ fn spawn_gold_label(
             owner,
             GoldDisplayState::default(),
             GoldTweenTarget::default(),
-            Text::new("--g"),
+            Text::new(placeholder),
             hud_text_font(HUD_GOLD_FONT_SIZE_PX),
             TextColor(HUD_GOLD_TEXT_COLOR),
             BackgroundColor(HUD_TEXT_BACKGROUND_COLOR),
@@ -927,7 +1063,19 @@ fn spawn_scoreboard_dots(
                     ScoreboardDotState::default(),
                     Node {
                         position_type: PositionType::Absolute,
-                        top: Val::Px(config.hud_margin_px + row as f32 * 20.0),
+                        // PROMPT 1027 — anchor scoreboard dots BELOW the
+                        // HeaderBar instead of at `hud_margin_px` from the
+                        // root top. Before this change the dots sat at
+                        // y ∈ [12, 32] which is inside the 60 px HeaderBar
+                        // footprint, so they rendered as small circular
+                        // silhouettes behind / next to the top-strip text
+                        // pills (PROMPT 1022 audit F-P1-03). Re-anchoring
+                        // below the HeaderBar clears the overlap without
+                        // disturbing the X projection driven by
+                        // `BoardLayout::scoreboard_lane_center_x`.
+                        top: Val::Px(
+                            strips::HEADER_BAR_HEIGHT_PX + config.hud_margin_px + row as f32 * 20.0,
+                        ),
                         left: Val::Px(0.0),
                         width: Val::Px(config.hud_dot_diameter_px),
                         height: Val::Px(config.hud_dot_diameter_px),
@@ -1488,6 +1636,7 @@ pub fn sync_gold_text_system(
     mode: Res<HudMode>,
     mut gold_labels: Query<(
         &GoldDisplayState,
+        &GoldLabelOwner,
         &mut GoldTweenTarget,
         &mut Text,
         Option<&Children>,
@@ -1495,13 +1644,13 @@ pub fn sync_gold_text_system(
     )>,
     mut spans: Query<&mut TextSpan>,
 ) {
-    for (state, mut target, mut text, children, animator) in &mut gold_labels {
+    for (state, owner, mut target, mut text, children, animator) in &mut gold_labels {
         if !is_hud_tween_active(animator) {
             sync_gold_tween_target_to_authoritative(state, &mut target);
         }
 
         let display = gold_display_state_from_target(&target);
-        text.0 = format_gold_text(&display);
+        text.0 = format_gold_text(&display, *owner);
 
         if let Some(children) = children {
             for child in children.iter() {
@@ -1561,11 +1710,24 @@ pub fn sync_mana_text_system(
     }
 }
 
-fn format_gold_text(state: &GoldDisplayState) -> String {
+fn format_gold_text(state: &GoldDisplayState, owner: GoldLabelOwner) -> String {
     if state.is_populated {
         format!("{}g", state.gold as u32)
     } else {
-        "--g".to_string()
+        unpopulated_gold_placeholder(owner).to_string()
+    }
+}
+
+/// PROMPT 1027 — single source of truth for the unpopulated-state gold
+/// placeholder. Local gold uses the legacy "--g" loading placeholder
+/// (the value will be replaced as soon as the first `S2CGoldUpdate`
+/// arrives). Opponent gold uses "?" to signal hidden information using
+/// existing text primitives only — PROMPT 1022 audit F-P3-13 / REPAIR-A3
+/// disposition.
+fn unpopulated_gold_placeholder(owner: GoldLabelOwner) -> &'static str {
+    match owner {
+        GoldLabelOwner::Local => "--g",
+        GoldLabelOwner::Opponent => "?",
     }
 }
 
@@ -1649,7 +1811,7 @@ fn write_snapshot_gold_states(
         remove_hud_tween(commands, entity, animator);
 
         if let Ok(mut text) = texts.get_mut(entity) {
-            text.0 = format_gold_text(&state);
+            text.0 = format_gold_text(&state, *owner);
         }
         if let Some(children) = children {
             for child in children.iter() {
@@ -2018,6 +2180,7 @@ fn sync_gold_label_for_mode(
     parent: Entity,
     span: Entity,
     mode: HudMode,
+    owner: GoldLabelOwner,
     gold_states: &Query<&GoldDisplayState>,
     gold_texts: &mut Query<&mut Text>,
     gold_spans: &mut Query<&mut TextSpan>,
@@ -2025,7 +2188,7 @@ fn sync_gold_label_for_mode(
     let state = gold_states.get(parent).ok();
 
     if let (Some(state), Ok(mut text)) = (state, gold_texts.get_mut(parent)) {
-        text.0 = format_gold_text(state);
+        text.0 = format_gold_text(state, owner);
     }
 
     if let Ok(mut span_text) = gold_spans.get_mut(span) {
@@ -2220,6 +2383,33 @@ fn bottom_strip_figurine_node() -> Node {
 fn top_strip_text_node() -> Node {
     Node {
         padding: UiRect::axes(Val::Px(spacing::SPACING_SM), Val::Px(spacing::SPACING_XS)),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        ..default()
+    }
+}
+
+/// PROMPT 1027 — flex-row container that groups a pill prefix label
+/// ("PHASE" / "ROUND" / "GOLD" / "OPP" / "MANA") with its value entity.
+/// The inter-element gap is `spacing::SPACING_SM` so the prefix reads
+/// as part of the same chunk as the value while still being visually
+/// distinguishable.
+fn pill_container_node() -> Node {
+    Node {
+        display: Display::Flex,
+        flex_direction: FlexDirection::Row,
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::FlexStart,
+        column_gap: Val::Px(spacing::SPACING_SM),
+        ..default()
+    }
+}
+
+/// PROMPT 1027 — node for the static prefix label inside a pill. Small
+/// horizontal padding keeps it readable without crowding the value.
+fn pill_prefix_node() -> Node {
+    Node {
+        padding: UiRect::horizontal(Val::Px(spacing::SPACING_XS)),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
         ..default()
