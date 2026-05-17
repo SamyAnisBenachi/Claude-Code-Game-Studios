@@ -1,26 +1,41 @@
-//! Integration tests for the PROMPT 1013 QA snapshot overlay.
+//! Integration tests for the QA snapshot overlay (PROMPT 1013 / PROMPT 1019).
 //!
 //! Asserts:
 //!  - The overlay is hidden / absent when [`QASnapshotConfig::enabled`] is
 //!    `false` — the default — so production UI is unaffected.
 //!  - The overlay spawns when `enabled` is `true`, on the `DEBUG` z-layer.
 //!  - The full system path (button-click message -> file write) produces
-//!    a snapshot JSON on disk in a minimal Bevy app, without panicking.
+//!    a snapshot JSON on disk with a populated `screenshot` block.
 //!  - `build_snapshot` populates every documented field and records
 //!    `warnings` instead of panicking when source resources are missing.
 //!  - `QASnapshotConfig::from_env_values` parses the documented activation
 //!    rule deterministically without touching the process environment.
+//!  - The `F9` keyboard shortcut routes through the same `QASnapshotRequested`
+//!    channel as the button click.
+//!  - The feedback state machine flips to `Capturing` on trigger, `Saved`
+//!    when the capture observer reports back, and reverts to `Idle` after
+//!    the wall-clock timeout.
+//!  - The capture-completed system rewrites `snapshot.json` to mark the
+//!    screenshot `captured` or `failed` depending on whether the PNG was
+//!    written.
 
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::thread::sleep;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use bevy::input::InputPlugin;
 use bevy::prelude::*;
 use client::presentation::qa_snapshot::{
-    build_snapshot, write_snapshot_to_dir, QASnapshotButton, QASnapshotConfig, QASnapshotCounter,
-    QASnapshotData, QASnapshotOverlayEntities, QASnapshotOverlayRoot, QASnapshotPlugin,
-    QASnapshotRequested, UiCounts, DEFAULT_QA_SNAPSHOT_DIR, SCREENSHOT_STATUS_MANUAL,
+    apply_qa_snapshot_capture_completed_system, build_snapshot,
+    revert_qa_snapshot_feedback_state_system, update_snapshot_json_status, write_snapshot_to_dir,
+    QASnapshotButton, QASnapshotCaptureCompleted, QASnapshotConfig, QASnapshotCounter,
+    QASnapshotData, QASnapshotFeedbackState, QASnapshotOverlayEntities, QASnapshotOverlayRoot,
+    QASnapshotPlugin, QASnapshotRequested, ScreenshotInfo, UiCounts, DEFAULT_QA_SNAPSHOT_DIR,
+    QA_CAPTURE_TIMEOUT_SECS, QA_FEEDBACK_REVERT_SECS, QA_SCREENSHOT_FILENAME, QA_SCREENSHOT_FORMAT,
+    QA_SNAPSHOT_SHORTCUT_KEY, SCREENSHOT_STATUS_CAPTURED, SCREENSHOT_STATUS_FAILED,
+    SCREENSHOT_STATUS_PENDING,
 };
 use client::state::{ClientPhaseView, ClientSessionIdentity, ClientState, CurrentClientPhase};
 use client::ui::design_tokens::z_layers;
@@ -39,6 +54,18 @@ fn unique_tmp_dir(label: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("ccgs-qa-snapshot-{label}-{nanos}-{n}"));
     let _ = fs::remove_dir_all(&dir);
     dir
+}
+
+fn placeholder_screenshot(requested_at_ms: u128) -> ScreenshotInfo {
+    ScreenshotInfo {
+        relative_path: QA_SCREENSHOT_FILENAME.to_string(),
+        absolute_path: format!("/abs/{QA_SCREENSHOT_FILENAME}"),
+        format: QA_SCREENSHOT_FORMAT.to_string(),
+        requested_at_ms,
+        status: SCREENSHOT_STATUS_PENDING.to_string(),
+        captured_at_ms: None,
+        error: None,
+    }
 }
 
 #[test]
@@ -88,6 +115,7 @@ fn overlay_spawns_when_enabled() {
     let entities = app
         .world()
         .get_resource::<QASnapshotOverlayEntities>()
+        .copied()
         .expect("QASnapshotOverlayEntities must be inserted when enabled");
 
     assert!(
@@ -114,10 +142,17 @@ fn overlay_spawns_when_enabled() {
         z_layers::DEBUG,
         "overlay must paint on the DEBUG z-layer so it sits above production UI"
     );
+
+    // Feedback state is initialised to Idle so the button reads "Snapshot".
+    let feedback = app.world().resource::<QASnapshotFeedbackState>();
+    match feedback {
+        QASnapshotFeedbackState::Idle => {}
+        other => panic!("feedback state must default to Idle, got {other:?}"),
+    }
 }
 
 #[test]
-fn snapshot_request_writes_json_file_without_panic() {
+fn snapshot_request_writes_json_with_screenshot_block() {
     test_helpers::init_test_tracing();
     let mut app = App::new();
     let tmp = unique_tmp_dir("request");
@@ -146,7 +181,7 @@ fn snapshot_request_writes_json_file_without_panic() {
     app.update();
 
     // Emit a snapshot request through the public message channel — this
-    // is the same channel the button click writes into.
+    // is the same channel both the button click and F9 shortcut write into.
     app.world_mut()
         .resource_mut::<Messages<QASnapshotRequested>>()
         .write(QASnapshotRequested);
@@ -169,14 +204,64 @@ fn snapshot_request_writes_json_file_without_panic() {
         "snapshot.json must be written under {}",
         snapshot_subdir.display()
     );
+    let readme_path = snapshot_subdir.join("README.md");
+    assert!(
+        readme_path.is_file(),
+        "README.md must be written next to snapshot.json"
+    );
+    let readme = fs::read_to_string(&readme_path).unwrap();
+    assert!(
+        readme.contains("Screenshot::primary_window"),
+        "README must document the Bevy capture API in use"
+    );
+    assert!(
+        readme.contains("F9"),
+        "README must mention the F9 keyboard shortcut"
+    );
 
     let json = fs::read_to_string(&json_path).expect("snapshot.json must be readable");
     let parsed: serde_json::Value =
         serde_json::from_str(&json).expect("snapshot.json must be valid JSON");
+
+    let screenshot = parsed
+        .get("screenshot")
+        .expect("snapshot.json must include a `screenshot` block");
     assert_eq!(
-        parsed["screenshot_status"], SCREENSHOT_STATUS_MANUAL,
-        "screenshot_status must surface the manual-capture sentinel so operators know to pair with an OS screenshot"
+        screenshot["relative_path"], QA_SCREENSHOT_FILENAME,
+        "screenshot.relative_path must match the canonical filename"
     );
+    assert!(
+        screenshot["absolute_path"].is_string(),
+        "screenshot.absolute_path must be a string"
+    );
+    assert!(
+        screenshot["absolute_path"]
+            .as_str()
+            .unwrap()
+            .ends_with(QA_SCREENSHOT_FILENAME),
+        "screenshot.absolute_path must end with the canonical filename"
+    );
+    assert_eq!(
+        screenshot["format"], QA_SCREENSHOT_FORMAT,
+        "screenshot.format must surface the encoded format"
+    );
+    assert!(
+        screenshot["requested_at_ms"].is_number(),
+        "screenshot.requested_at_ms must be numeric"
+    );
+    assert_eq!(
+        screenshot["status"], SCREENSHOT_STATUS_PENDING,
+        "screenshot.status starts at pending until the render world reports back"
+    );
+    assert!(
+        screenshot["captured_at_ms"].is_null(),
+        "screenshot.captured_at_ms must be null while pending"
+    );
+    assert!(
+        screenshot["error"].is_null(),
+        "screenshot.error must be null while pending"
+    );
+
     assert!(
         parsed["client_state"].is_string(),
         "client_state must be serialised as a string"
@@ -193,6 +278,14 @@ fn snapshot_request_writes_json_file_without_panic() {
         parsed["ui_counts"]["hud_entities"].is_number(),
         "ui_counts.hud_entities must be a numeric field"
     );
+
+    // Feedback state must have advanced to Capturing immediately so the
+    // operator sees the button change without waiting for the render world.
+    let feedback = app.world().resource::<QASnapshotFeedbackState>().clone();
+    match feedback {
+        QASnapshotFeedbackState::Capturing { .. } => {}
+        other => panic!("feedback state must be Capturing after request, got {other:?}"),
+    }
 }
 
 #[test]
@@ -224,12 +317,72 @@ fn snapshot_request_is_inert_when_disabled() {
 }
 
 #[test]
+fn f9_shortcut_writes_snapshot_request_through_same_channel() {
+    use bevy::ecs::system::RunSystemOnce;
+    use client::presentation::qa_snapshot::{
+        qa_snapshot_keyboard_shortcut_system, write_qa_snapshot_system,
+    };
+
+    test_helpers::init_test_tracing();
+    let mut app = App::new();
+    let tmp = unique_tmp_dir("shortcut");
+    app.insert_resource(QASnapshotConfig {
+        enabled: true,
+        output_dir: tmp.clone(),
+    });
+    app.add_plugins(MinimalPlugins);
+    app.add_plugins(InputPlugin);
+    app.add_plugins(bevy::state::app::StatesPlugin);
+    app.init_state::<ClientState>();
+    app.insert_resource(CurrentClientPhase {
+        phase: RoundPhase::Placement,
+        round: 1,
+    });
+    app.insert_resource(ClientPhaseView::default());
+    app.insert_resource(ClientSessionIdentity::default());
+    app.add_plugins(QASnapshotPlugin);
+    // First update lets the plugin register its systems and run startup.
+    app.update();
+
+    // Stage F9 as just-pressed. Driving the system directly via
+    // `run_system_once` bypasses the InputPlugin frame-start `clear()` that
+    // wipes `just_pressed` at the top of every PreUpdate — under
+    // MinimalPlugins + InputPlugin we cannot synthesise a real
+    // `KeyboardInput` event without a Window entity, so we exercise the
+    // shortcut system in isolation.
+    {
+        let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+        keys.press(QA_SNAPSHOT_SHORTCUT_KEY);
+    }
+    app.world_mut()
+        .run_system_once(qa_snapshot_keyboard_shortcut_system)
+        .expect("shortcut system must run");
+    app.world_mut()
+        .run_system_once(write_qa_snapshot_system)
+        .expect("write system must run");
+
+    let entries: Vec<_> = fs::read_dir(&tmp)
+        .expect("output_dir must exist after the shortcut fires")
+        .filter_map(|e| e.ok())
+        .collect();
+    assert_eq!(
+        entries.len(),
+        1,
+        "F9 must route through the same snapshot channel as the button click"
+    );
+    let subdir = entries[0].path();
+    assert!(subdir.join("snapshot.json").is_file());
+    assert!(subdir.join("README.md").is_file());
+}
+
+#[test]
 fn build_snapshot_includes_all_documented_fields_and_records_warnings() {
     // No state, no phase view, no identity, no window -> every source-
     // missing branch should record a warning instead of panicking.
     let snapshot = build_snapshot(
         7,
         1_700_000_000_000,
+        placeholder_screenshot(1_700_000_000_000),
         None,
         None,
         None,
@@ -240,7 +393,10 @@ fn build_snapshot_includes_all_documented_fields_and_records_warnings() {
 
     assert_eq!(snapshot.counter, 7);
     assert_eq!(snapshot.unix_millis, 1_700_000_000_000);
-    assert_eq!(snapshot.screenshot_status, SCREENSHOT_STATUS_MANUAL);
+    assert_eq!(snapshot.screenshot.relative_path, QA_SCREENSHOT_FILENAME);
+    assert_eq!(snapshot.screenshot.format, QA_SCREENSHOT_FORMAT);
+    assert_eq!(snapshot.screenshot.status, SCREENSHOT_STATUS_PENDING);
+    assert!(snapshot.screenshot.error.is_none());
     assert_eq!(snapshot.client_state, "unknown");
     assert!(snapshot.current_phase.phase.is_none());
     assert!(snapshot.phase_view.phase.is_none());
@@ -273,6 +429,7 @@ fn build_snapshot_serialises_present_resources_without_warnings() {
     let snapshot = build_snapshot(
         0,
         0,
+        placeholder_screenshot(0),
         Some(ClientState::InSession),
         Some(CurrentClientPhase {
             phase: RoundPhase::DraftShop,
@@ -319,7 +476,7 @@ fn write_snapshot_to_dir_creates_per_id_subdirectory() {
         snapshot_id: "test-1".to_string(),
         counter: 1,
         unix_millis: 0,
-        screenshot_status: SCREENSHOT_STATUS_MANUAL.to_string(),
+        screenshot: placeholder_screenshot(0),
         client_state: "Lobby".to_string(),
         current_phase: client::presentation::qa_snapshot::PhaseInfo {
             phase: None,
@@ -352,13 +509,310 @@ fn write_snapshot_to_dir_creates_per_id_subdirectory() {
     let readme = json_path.with_file_name("README.md");
     assert!(
         readme.is_file(),
-        "README.md must be written alongside snapshot.json to remind operators about manual screenshots"
+        "README.md must be written alongside snapshot.json"
     );
     let readme_body = fs::read_to_string(&readme).unwrap();
     assert!(
         readme_body.contains("screenshot"),
-        "README.md must mention manual screenshot pairing"
+        "README.md must mention the screenshot bundle"
     );
+}
+
+#[test]
+fn update_snapshot_json_status_flips_to_captured_when_png_present() {
+    let tmp = unique_tmp_dir("status-captured");
+    let snapshot = QASnapshotData {
+        snapshot_id: "status-1".to_string(),
+        counter: 1,
+        unix_millis: 1_700_000_000_000,
+        screenshot: placeholder_screenshot(1_700_000_000_000),
+        client_state: "Lobby".to_string(),
+        current_phase: client::presentation::qa_snapshot::PhaseInfo {
+            phase: None,
+            round: None,
+        },
+        phase_view: client::presentation::qa_snapshot::PhaseViewInfo {
+            phase: None,
+            round_number: None,
+            timer_duration_ms: None,
+        },
+        session_identity: client::presentation::qa_snapshot::SessionIdentityInfo {
+            player_id: None,
+            session_id: None,
+            has_session_token: false,
+        },
+        window: client::presentation::qa_snapshot::WindowInfo {
+            width: None,
+            height: None,
+            scale_factor: None,
+        },
+        ui_counts: UiCounts::default(),
+        warnings: vec![],
+    };
+    let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
+    let png_path = json_path.with_file_name(QA_SCREENSHOT_FILENAME);
+    fs::write(&png_path, b"\x89PNG-fake").expect("write fake png");
+
+    update_snapshot_json_status(&json_path, &png_path, 1_700_000_001_000, true)
+        .expect("update must succeed");
+
+    let parsed: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&json_path).unwrap()).unwrap();
+    assert_eq!(
+        parsed["screenshot"]["status"], SCREENSHOT_STATUS_CAPTURED,
+        "status must flip to captured once the PNG is on disk"
+    );
+    assert_eq!(
+        parsed["screenshot"]["captured_at_ms"], 1_700_000_001_000_u64,
+        "captured_at_ms must be filled in"
+    );
+    assert!(
+        parsed["screenshot"]["error"].is_null(),
+        "error must be null on success"
+    );
+}
+
+#[test]
+fn update_snapshot_json_status_marks_failed_when_png_missing() {
+    let tmp = unique_tmp_dir("status-failed");
+    let snapshot = QASnapshotData {
+        snapshot_id: "status-2".to_string(),
+        counter: 2,
+        unix_millis: 1_700_000_000_000,
+        screenshot: placeholder_screenshot(1_700_000_000_000),
+        client_state: "Lobby".to_string(),
+        current_phase: client::presentation::qa_snapshot::PhaseInfo {
+            phase: None,
+            round: None,
+        },
+        phase_view: client::presentation::qa_snapshot::PhaseViewInfo {
+            phase: None,
+            round_number: None,
+            timer_duration_ms: None,
+        },
+        session_identity: client::presentation::qa_snapshot::SessionIdentityInfo {
+            player_id: None,
+            session_id: None,
+            has_session_token: false,
+        },
+        window: client::presentation::qa_snapshot::WindowInfo {
+            width: None,
+            height: None,
+            scale_factor: None,
+        },
+        ui_counts: UiCounts::default(),
+        warnings: vec![],
+    };
+    let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
+    let png_path = json_path.with_file_name(QA_SCREENSHOT_FILENAME);
+    // Note: png file NOT created.
+
+    update_snapshot_json_status(&json_path, &png_path, 1_700_000_001_000, false)
+        .expect("update must succeed even when capture failed");
+
+    let parsed: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&json_path).unwrap()).unwrap();
+    assert_eq!(
+        parsed["screenshot"]["status"], SCREENSHOT_STATUS_FAILED,
+        "status must mark as failed when png is missing"
+    );
+    assert!(
+        parsed["screenshot"]["error"].is_string(),
+        "error field must carry a human-readable reason on failure"
+    );
+}
+
+#[test]
+fn capture_completed_message_updates_feedback_to_saved() {
+    test_helpers::init_test_tracing();
+    let tmp = unique_tmp_dir("capture-completed");
+    let snapshot = QASnapshotData {
+        snapshot_id: "ack-1".to_string(),
+        counter: 1,
+        unix_millis: 1_700_000_000_000,
+        screenshot: placeholder_screenshot(1_700_000_000_000),
+        client_state: "Lobby".to_string(),
+        current_phase: client::presentation::qa_snapshot::PhaseInfo {
+            phase: None,
+            round: None,
+        },
+        phase_view: client::presentation::qa_snapshot::PhaseViewInfo {
+            phase: None,
+            round_number: None,
+            timer_duration_ms: None,
+        },
+        session_identity: client::presentation::qa_snapshot::SessionIdentityInfo {
+            player_id: None,
+            session_id: None,
+            has_session_token: false,
+        },
+        window: client::presentation::qa_snapshot::WindowInfo {
+            width: None,
+            height: None,
+            scale_factor: None,
+        },
+        ui_counts: UiCounts::default(),
+        warnings: vec![],
+    };
+    let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
+    let png_path = json_path.with_file_name(QA_SCREENSHOT_FILENAME);
+    fs::write(&png_path, b"\x89PNG-fake").unwrap();
+
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.init_resource::<QASnapshotFeedbackState>();
+    app.add_message::<QASnapshotCaptureCompleted>();
+    app.add_systems(Update, apply_qa_snapshot_capture_completed_system);
+
+    // Seed feedback with Capturing so we can observe the transition.
+    *app.world_mut().resource_mut::<QASnapshotFeedbackState>() =
+        QASnapshotFeedbackState::Capturing {
+            snapshot_id: "ack-1".to_string(),
+            since_real_seconds: 0.0,
+        };
+    app.world_mut()
+        .resource_mut::<Messages<QASnapshotCaptureCompleted>>()
+        .write(QASnapshotCaptureCompleted {
+            snapshot_id: "ack-1".to_string(),
+            json_path: json_path.clone(),
+            png_path: png_path.clone(),
+            captured_at_ms: 1_700_000_002_000,
+        });
+    app.update();
+
+    let feedback = app.world().resource::<QASnapshotFeedbackState>().clone();
+    match feedback {
+        QASnapshotFeedbackState::Saved { snapshot_id, .. } => {
+            assert_eq!(snapshot_id, "ack-1");
+        }
+        other => panic!("feedback must advance to Saved after capture, got {other:?}"),
+    }
+
+    let parsed: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&json_path).unwrap()).unwrap();
+    assert_eq!(parsed["screenshot"]["status"], SCREENSHOT_STATUS_CAPTURED);
+}
+
+#[test]
+fn capture_completed_with_missing_png_demotes_to_failed() {
+    test_helpers::init_test_tracing();
+    let tmp = unique_tmp_dir("capture-failed");
+    let snapshot = QASnapshotData {
+        snapshot_id: "ack-2".to_string(),
+        counter: 2,
+        unix_millis: 1_700_000_000_000,
+        screenshot: placeholder_screenshot(1_700_000_000_000),
+        client_state: "Lobby".to_string(),
+        current_phase: client::presentation::qa_snapshot::PhaseInfo {
+            phase: None,
+            round: None,
+        },
+        phase_view: client::presentation::qa_snapshot::PhaseViewInfo {
+            phase: None,
+            round_number: None,
+            timer_duration_ms: None,
+        },
+        session_identity: client::presentation::qa_snapshot::SessionIdentityInfo {
+            player_id: None,
+            session_id: None,
+            has_session_token: false,
+        },
+        window: client::presentation::qa_snapshot::WindowInfo {
+            width: None,
+            height: None,
+            scale_factor: None,
+        },
+        ui_counts: UiCounts::default(),
+        warnings: vec![],
+    };
+    let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
+    let png_path = json_path.with_file_name(QA_SCREENSHOT_FILENAME);
+    // Intentionally do NOT write png.
+
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.init_resource::<QASnapshotFeedbackState>();
+    app.add_message::<QASnapshotCaptureCompleted>();
+    app.add_systems(Update, apply_qa_snapshot_capture_completed_system);
+
+    app.world_mut()
+        .resource_mut::<Messages<QASnapshotCaptureCompleted>>()
+        .write(QASnapshotCaptureCompleted {
+            snapshot_id: "ack-2".to_string(),
+            json_path: json_path.clone(),
+            png_path: png_path.clone(),
+            captured_at_ms: 1_700_000_002_000,
+        });
+    app.update();
+
+    let feedback = app.world().resource::<QASnapshotFeedbackState>().clone();
+    match feedback {
+        QASnapshotFeedbackState::Failed { reason, .. } => {
+            assert!(
+                reason.contains("png missing"),
+                "failure reason must explain the missing png file: {reason:?}"
+            );
+        }
+        other => panic!("feedback must advance to Failed when png missing, got {other:?}"),
+    }
+}
+
+#[test]
+fn feedback_state_capturing_times_out_to_failed() {
+    test_helpers::init_test_tracing();
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.init_resource::<QASnapshotFeedbackState>();
+    app.add_systems(Update, revert_qa_snapshot_feedback_state_system);
+    app.update();
+
+    *app.world_mut().resource_mut::<QASnapshotFeedbackState>() =
+        QASnapshotFeedbackState::Capturing {
+            snapshot_id: "timeout-1".to_string(),
+            since_real_seconds: 0.0,
+        };
+    // Sleep past the timeout budget so Time<Real>::elapsed_secs() crosses
+    // the threshold on the next update. Sleep is bounded so the test
+    // remains fast even in CI.
+    sleep(Duration::from_millis(
+        ((QA_CAPTURE_TIMEOUT_SECS + 0.1) * 1_000.0) as u64,
+    ));
+    app.update();
+
+    let feedback = app.world().resource::<QASnapshotFeedbackState>().clone();
+    match feedback {
+        QASnapshotFeedbackState::Failed { reason, .. } => {
+            assert!(
+                reason.contains("timeout"),
+                "timeout reason must mention timeout, got {reason:?}"
+            );
+        }
+        other => panic!("feedback must time out to Failed, got {other:?}"),
+    }
+}
+
+#[test]
+fn feedback_state_saved_reverts_to_idle_after_wall_clock_window() {
+    test_helpers::init_test_tracing();
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.init_resource::<QASnapshotFeedbackState>();
+    app.add_systems(Update, revert_qa_snapshot_feedback_state_system);
+    app.update();
+
+    *app.world_mut().resource_mut::<QASnapshotFeedbackState>() = QASnapshotFeedbackState::Saved {
+        snapshot_id: "revert-1".to_string(),
+        since_real_seconds: 0.0,
+    };
+    sleep(Duration::from_millis(
+        ((QA_FEEDBACK_REVERT_SECS + 0.1) * 1_000.0) as u64,
+    ));
+    app.update();
+
+    let feedback = app.world().resource::<QASnapshotFeedbackState>().clone();
+    matches!(feedback, QASnapshotFeedbackState::Idle)
+        .then_some(())
+        .unwrap_or_else(|| panic!("feedback must revert to Idle, got {feedback:?}"));
 }
 
 #[test]
@@ -418,7 +872,7 @@ fn presentation_plugin_registers_qa_snapshot_plugin() {
     });
     assert!(
         source.contains("QASnapshotPlugin"),
-        "PresentationPlugin must register QASnapshotPlugin (PROMPT 1013)"
+        "PresentationPlugin must register QASnapshotPlugin"
     );
     assert!(
         source.contains("app.add_plugins(QASnapshotPlugin)"),
