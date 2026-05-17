@@ -8,10 +8,10 @@ use client::presentation::PlayerEconomyView;
 use client::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use client::ui::hud::HudGoldBroadcastMessage;
 use client::ui::shop_auction::{
-    AuctionBidButtonState, ShopAuctionAuctionCardReceived, ShopAuctionAuctionState,
-    ShopAuctionBidButtonClicked, ShopAuctionCardCatalog, ShopAuctionDraftHandView,
-    ShopAuctionLocalGoldView, ShopAuctionUiEntities, ShopAuctionUiOutboundMessages,
-    ShopAuctionUiPlugin,
+    AuctionBidButtonState, AuctionLocallyPassed, ShopAuctionAuctionCardReceived,
+    ShopAuctionAuctionPassButtonClicked, ShopAuctionAuctionState, ShopAuctionBidButtonClicked,
+    ShopAuctionCardCatalog, ShopAuctionDraftHandView, ShopAuctionLocalGoldView,
+    ShopAuctionUiEntities, ShopAuctionUiOutboundMessages, ShopAuctionUiPlugin,
 };
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{RoundPhase, S2CGoldBroadcast};
@@ -316,6 +316,171 @@ fn auction_status_text(app: &App) -> String {
         .expect("auction status should have text")
         .0
         .clone()
+}
+
+/// PROMPT 1042 — three bid buttons render concrete bid labels in the
+/// `{total}g\n(+{increment})` form and the Pass affordance carries the
+/// "PASS" label, all visible during DraftAuction. No "?" placeholder
+/// glyphs.
+#[test]
+fn prompt_1042_bid_buttons_and_pass_render_concrete_labels() {
+    test_helpers::init_test_tracing();
+    let mut app = app_in_active_auction(0, 20_000);
+
+    write_local_gold_broadcast(&mut app, 5, 0);
+
+    assert_eq!(bid_button_texts(&app), ["1g\n(+1)", "3g\n(+3)", "5g\n(+5)"]);
+    for text in bid_button_texts(&app).iter() {
+        assert!(
+            !text.contains('?'),
+            "bid button text must not contain '?' placeholders, got {text:?}"
+        );
+    }
+
+    let pass_text = pass_button_text(&app);
+    assert_eq!(pass_text, "PASS");
+    assert_eq!(pass_button_visibility(&app), Visibility::Visible);
+}
+
+/// PROMPT 1042 — clicking Pass toggles the local "PASSED" state, dims the
+/// bid row to `GenericDisabled`, and the button relabels itself. A
+/// second click reverses the state. The local Pass state never emits an
+/// outbound bid (no server-side Pass protocol exists).
+#[test]
+fn prompt_1042_pass_button_toggles_local_pass_state_without_outbound_bid() {
+    test_helpers::init_test_tracing();
+    let mut app = app_in_active_auction(0, 20_000);
+    write_local_gold_broadcast(&mut app, 5, 0);
+
+    assert!(
+        !app.world().resource::<AuctionLocallyPassed>().passed,
+        "fresh auction must not start in passed state"
+    );
+
+    click_pass_button(&mut app);
+    assert!(
+        app.world().resource::<AuctionLocallyPassed>().passed,
+        "first Pass click must set locally_passed.passed = true"
+    );
+    assert_eq!(pass_button_text(&app), "PASSED");
+    assert_eq!(
+        bid_button_states(&app),
+        [
+            AuctionBidButtonState::GenericDisabled,
+            AuctionBidButtonState::GenericDisabled,
+            AuctionBidButtonState::GenericDisabled,
+        ],
+        "local Pass must dim every bid button"
+    );
+
+    click_pass_button(&mut app);
+    assert!(
+        !app.world().resource::<AuctionLocallyPassed>().passed,
+        "second Pass click must clear locally_passed.passed"
+    );
+    assert_eq!(pass_button_text(&app), "PASS");
+
+    assert!(
+        app.world()
+            .resource::<ShopAuctionUiOutboundMessages>()
+            .place_bids
+            .is_empty(),
+        "Pass must not emit an outbound C2SPlaceBid"
+    );
+}
+
+/// PROMPT 1042 — when a new `S2CAuctionCard` arrives the local Pass
+/// intent is cleared so Pass on round N never leaks into round N+1.
+#[test]
+fn prompt_1042_pass_resets_when_new_auction_card_arrives() {
+    test_helpers::init_test_tracing();
+    let mut app = app_in_active_auction(0, 20_000);
+    write_local_gold_broadcast(&mut app, 5, 0);
+
+    click_pass_button(&mut app);
+    assert!(app.world().resource::<AuctionLocallyPassed>().passed);
+
+    // Server delivers the next auction card for this DraftAuction phase.
+    send_auction_card(&mut app, CardId(1), 1, 20_000);
+    assert!(
+        !app.world().resource::<AuctionLocallyPassed>().passed,
+        "new auction card must clear local Pass"
+    );
+}
+
+/// PROMPT 1042 — bid buttons carry visually distinct background colors
+/// for Enabled vs Unaffordable so the player can read affordability at a
+/// glance (per PROMPT 1034 §2.5 P1 finding F-4).
+#[test]
+fn prompt_1042_unaffordable_bid_has_distinct_visual_state() {
+    test_helpers::init_test_tracing();
+    let mut app = app_in_active_auction(0, 20_000);
+    write_local_gold_broadcast(&mut app, 2, 0);
+
+    // With free_gold = 2, +1 is Enabled, +3 / +5 are Unaffordable.
+    assert_eq!(
+        bid_button_states(&app),
+        [
+            AuctionBidButtonState::Enabled,
+            AuctionBidButtonState::Unaffordable,
+            AuctionBidButtonState::Unaffordable,
+        ],
+        "+1 button affordable, +3 / +5 must be Unaffordable"
+    );
+
+    let colors = bid_button_background_colors(&app);
+    assert_ne!(
+        colors[0], colors[1],
+        "Enabled and Unaffordable backgrounds must differ"
+    );
+    assert_eq!(
+        colors[1], colors[2],
+        "both Unaffordable backgrounds must match"
+    );
+}
+
+fn click_pass_button(app: &mut App) {
+    let button = app
+        .world()
+        .resource::<ShopAuctionUiEntities>()
+        .auction_pass_button;
+    app.world_mut()
+        .write_message(ShopAuctionAuctionPassButtonClicked { button });
+    run_update(app);
+}
+
+fn pass_button_text(app: &App) -> String {
+    app.world()
+        .get::<Text>(
+            app.world()
+                .resource::<ShopAuctionUiEntities>()
+                .auction_pass_button,
+        )
+        .expect("pass button should have text")
+        .0
+        .clone()
+}
+
+fn pass_button_visibility(app: &App) -> Visibility {
+    *app.world()
+        .get::<Visibility>(
+            app.world()
+                .resource::<ShopAuctionUiEntities>()
+                .auction_pass_button,
+        )
+        .expect("pass button should have visibility")
+}
+
+fn bid_button_background_colors(app: &App) -> [BackgroundColor; 3] {
+    let buttons = app
+        .world()
+        .resource::<ShopAuctionUiEntities>()
+        .auction_bid_buttons;
+    buttons.map(|button| {
+        *app.world()
+            .get::<BackgroundColor>(button)
+            .expect("bid button should have BackgroundColor")
+    })
 }
 
 fn test_card(id: u32, rarity: Rarity, cost: u32) -> CardData {

@@ -26,7 +26,21 @@ fn sau_003_non_auction_shop_waits_for_phase_and_slots_before_interactive() {
     let mut app = app_in_session(5, true);
 
     set_phase(&mut app, RoundPhase::DraftShop);
-    assert_eq!(shop_panel_visibility(&app), Some(&Visibility::Hidden));
+    // PROMPT 1042 — shop_panel chrome (title + empty-state copy) appears
+    // as soon as the phase changes so the player never sees a blank
+    // playfield that looks like Placement. The slot wells stay hidden
+    // until `S2CShopSlots` arrives.
+    assert_eq!(shop_panel_visibility(&app), Some(&Visibility::Visible));
+    assert_eq!(
+        shop_phase_title_visibility(&app),
+        Some(&Visibility::Visible),
+        "phase title must render in DraftShop even without offers"
+    );
+    assert_eq!(
+        shop_empty_state_visibility(&app),
+        Some(&Visibility::Visible),
+        "empty-state copy must render while waiting for shop slots"
+    );
     assert_eq!(visible_shop_slot_count(&app), 0);
 
     send_shop_slots(
@@ -34,6 +48,11 @@ fn sau_003_non_auction_shop_waits_for_phase_and_slots_before_interactive() {
         vec![Some(CardId(1)), Some(CardId(2)), Some(CardId(3))],
     );
     assert_eq!(shop_panel_visibility(&app), Some(&Visibility::Visible));
+    assert_eq!(
+        shop_empty_state_visibility(&app),
+        Some(&Visibility::Hidden),
+        "empty-state must hide once slots are loaded"
+    );
     assert_eq!(
         visible_shop_slot_count(&app),
         SHOP_AUCTION_UI_SHOP_SLOT_COUNT
@@ -48,7 +67,7 @@ fn sau_003_non_auction_shop_waits_for_phase_and_slots_before_interactive() {
     assert_eq!(
         shop_panel_visibility(&app),
         Some(&Visibility::Hidden),
-        "slots alone must not show the DRAFT_SHOP panel"
+        "Resolution phase must not show the DRAFT_SHOP panel even if slots are buffered"
     );
 
     set_phase(&mut app, RoundPhase::DraftShop);
@@ -56,6 +75,61 @@ fn sau_003_non_auction_shop_waits_for_phase_and_slots_before_interactive() {
     assert_eq!(
         shop_slot_cards(&app),
         vec![Some(CardId(1)), Some(CardId(2)), Some(CardId(3))]
+    );
+}
+
+/// PROMPT 1042 — explicit empty-state surface for the DraftShop race
+/// window: phase title visible immediately, empty-state copy visible
+/// while slots are pending, slot wells hidden, refresh / ready
+/// affordances disabled until offers exist.
+#[test]
+fn prompt_1042_draftshop_renders_empty_state_until_slots_load() {
+    test_helpers::init_test_tracing();
+    let mut app = app_in_session(5, true);
+    set_phase(&mut app, RoundPhase::DraftShop);
+
+    let entities = *app.world().resource::<ShopAuctionUiEntities>();
+    assert_eq!(
+        app.world().get::<Visibility>(entities.shop_panel).copied(),
+        Some(Visibility::Visible)
+    );
+    assert_eq!(
+        app.world()
+            .get::<Visibility>(entities.shop_phase_title)
+            .copied(),
+        Some(Visibility::Visible)
+    );
+    assert_eq!(
+        app.world()
+            .get::<Visibility>(entities.shop_empty_state)
+            .copied(),
+        Some(Visibility::Visible)
+    );
+    assert_eq!(
+        app.world()
+            .get::<Visibility>(entities.shop_refresh_button)
+            .copied(),
+        Some(Visibility::Hidden),
+        "refresh affordance must stay hidden until shop slots load"
+    );
+    assert_eq!(
+        app.world()
+            .get::<Visibility>(entities.shop_ready_button)
+            .copied(),
+        Some(Visibility::Hidden),
+        "ready affordance must stay hidden until shop slots load"
+    );
+    assert_eq!(
+        app.world()
+            .get::<Text>(entities.shop_phase_title)
+            .map(|t| t.0.as_str()),
+        Some("SHOP")
+    );
+    assert_eq!(
+        app.world()
+            .get::<Text>(entities.shop_empty_state)
+            .map(|t| t.0.as_str()),
+        Some("Waiting for shop offers...")
     );
 }
 
@@ -489,6 +563,22 @@ fn shop_slots(app: &App) -> [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT] {
 fn shop_panel_visibility(app: &App) -> Option<&Visibility> {
     app.world()
         .get::<Visibility>(app.world().resource::<ShopAuctionUiEntities>().shop_panel)
+}
+
+fn shop_phase_title_visibility(app: &App) -> Option<&Visibility> {
+    app.world().get::<Visibility>(
+        app.world()
+            .resource::<ShopAuctionUiEntities>()
+            .shop_phase_title,
+    )
+}
+
+fn shop_empty_state_visibility(app: &App) -> Option<&Visibility> {
+    app.world().get::<Visibility>(
+        app.world()
+            .resource::<ShopAuctionUiEntities>()
+            .shop_empty_state,
+    )
 }
 
 fn visible_shop_slot_count(app: &App) -> usize {
