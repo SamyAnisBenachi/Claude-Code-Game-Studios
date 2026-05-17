@@ -1,0 +1,12 @@
+24:## §1 Status / No-Claim Banner
+76:## §2 Scope Boundaries — Friend-Game vs Standard-Tier
+121:## §3 Z-Index Layer System
+160:## §4 Spacing Scale
+191:## §5 Typography Hierarchy
+251:## §6 Overlay Alpha Tokens
+293:## §7 Color Tokens
+327:## §8 Responsive Layout Rules
+384:## §9 Strip Composition Patterns
+436:## §10 Component Specifications (stretch / optional)
+491:## §11 Interaction State Primitives
+584:## §12 Card Slot Primitive

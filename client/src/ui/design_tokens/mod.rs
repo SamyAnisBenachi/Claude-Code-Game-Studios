@@ -28,6 +28,14 @@
 //!   S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001). Visual primitives only;
 //!   per-surface migration of existing Sprint 14 button surfaces is
 //!   deferred to Sprint 16+.
+//! - [`card_slot`] — named card-slot primitive (kind enum, geometry,
+//!   `Node` builder, image / text / hit-target inset accessors) shared
+//!   across every card-painting surface (hand fan, draft initial grid,
+//!   shop slot, auction featured card, board staged-ghost preview)
+//!   (Sprint 16 story 009 / S12-TD-UI-CARD-SLOT-PRIMITIVE-001). Phase 1
+//!   migrates only the shop slot call site; per-surface migration of the
+//!   remaining four surfaces is owned by the Sprint 16+
+//!   `S16-UI-CARD-SLOT-MIGRATION-*` follow-on family.
 //!
 //! ## Scope discipline
 //!
@@ -36,6 +44,7 @@
 //! validation (`QA-COND-0006`), or final-art / asset-production
 //! (`PAW-TD-*-a`). Friend-game scope boundary preserved.
 
+pub mod card_slot;
 pub mod interaction_states;
 pub mod overlays;
 pub mod spacing;

@@ -386,6 +386,22 @@ path = "../tests/integration/ui_clean_pass/overlay_alpha_test.rs"
 name = "ui_clean_pass_interaction_state_primitives_test"
 path = "../tests/integration/ui_clean_pass/interaction_state_primitives_test.rs"
 
+# S12-TD-UI-CARD-SLOT-PRIMITIVE-001 (Sprint 16 story 009): card-slot
+# primitive module shape integration test — exports for the five
+# CardSlotKind variants, aspect-ratio band containment per kind,
+# image / text inset containment + disjointness, hit-target superset
+# rule, distinct (width, height, z_layer) triples per kind,
+# card_slot_node ↔ card_slot_geometry agreement, viewport-invariant
+# aspect ratio across CANONICAL_VIEWPORTS, interaction-state token
+# family imports, Phase 1 shop_slot_node migration assertion, and
+# spec §12 amendment anchor scan (AC1, AC2, AC3, AC4, AC5, AC6,
+# AC7, AC8). Per-surface migration of hand / draft / auction-featured
+# / board staged-ghost surfaces is OUT OF SCOPE (deferred to Sprint 16+
+# family `S16-UI-CARD-SLOT-MIGRATION-*`).
+[[test]]
+name = "ui_clean_pass_card_slot_primitive_test"
+path = "../tests/integration/ui_clean_pass/card_slot_primitive_test.rs"
+
 [[test]]
 name = "accessibility_settings_preferences_test"
 path = "../tests/unit/accessibility_settings/preferences_test.rs"
