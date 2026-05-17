@@ -21,9 +21,13 @@
 > modsplit / 011 hand modsplit / 012 modal primitive / 013 button
 > primitive / 014 panel primitive / 015 architecture sequencing
 > note; all Draft, NOT activated; address PROMPT 1034 visual audit
-> D1-D4 + PROMPT 1035 architecture audit Phase A/B). The remaining
-> PROMPT 802 candidate UI repair rows outside this epic remain NOT
-> activated.
+> D1-D4 + PROMPT 1035 architecture audit Phase A/B) + 1 Sprint 16
+> Nice to Have test-hygiene candidate story authored by PROMPT 1058
+> (016 workspace dead-code warning cleanup; Draft, NOT activated;
+> addresses the `count_with_image_node` pre-existing warning surfaced
+> by Sprint 14 PROMPT 983 smoke and preserved through Sprint 15). The
+> remaining PROMPT 802 candidate UI repair rows outside this epic
+> remain NOT activated.
 
 ## Overview
 
@@ -113,6 +117,7 @@ accepted-risk and are **not** advanced by this roadmap-prep.
 | 013 | [UI Button Primitive](story-013-ui-button-primitive.md) | Tech Debt -- foundational primitive (shared widget) | Draft -- Sprint 16/17 candidate (Phase B per PROMPT 1035; addresses PROMPT 1034 D3), NOT activated | S16-TD-UI-BUTTON-PRIMITIVE-001 |
 | 014 | [UI Panel Primitive](story-014-ui-panel-primitive.md) | Tech Debt -- foundational primitive (shared widget) | Draft -- Sprint 16/17 candidate (Phase B.3 per PROMPT 1035; addresses PROMPT 1034 D4), NOT activated | S16-TD-UI-PANEL-PRIMITIVE-001 |
 | 015 | [UI Architecture Split + Primitive Sequencing](story-015-ui-architecture-sequencing.md) | Documentation -- sequencing roadmap (doc only) | Draft -- Sprint 16/17 candidate, NOT activated | S16-TD-UI-ARCHITECTURE-SEQUENCING-001 |
+| 016 | [Workspace Dead-Code Warning Cleanup](story-016-workspace-dead-code-warning.md) | Tech Debt -- test hygiene (single-helper cleanup) | Draft -- Sprint 16 Nice to Have candidate, NOT activated | S15-TD-WORKSPACE-DEAD-CODE-WARNING-001 |
 
 ### Sprint 16/17 Architecture-Split + Primitive Candidate Sequencing Notes (PROMPT 1044)
 
@@ -191,6 +196,38 @@ condensed; canonical sequencing note is story 015 deliverable):
 
 Story 015 is the canonical sequencing reference; the table above is a
 summary.
+
+### Sprint 16 Nice to Have Test Hygiene Candidate Sequencing Notes (PROMPT 1058)
+
+Story 016 (`S15-TD-WORKSPACE-DEAD-CODE-WARNING-001`) is a Sprint 16
+**Nice to Have** test-hygiene row authored by PROMPT 1058 in response
+to `production/sprints/sprint-16.md` §"Nice to Have" row 2 +
+§"Pre-activation paperwork inventory" row 3. The row addresses the
+pre-existing `count_with_image_node` dead-code warning at
+`tests/integration/presentation/hand_ui_asset_wiring_test.rs:43`
+surfaced by Sprint 14 PROMPT 983 smoke
+(`production/qa/smoke-sprint-14-2026-05-16-rerun.md` §"`cargo check
+--workspace --all-targets`" lines ~89-104) and preserved through
+Sprint 15.
+
+- Story 016 is **test-hygiene only**: single helper in one test file;
+  no production-code change; no spec body amendment; no PROMPT 802 /
+  PROMPT 1034 / PROMPT 1035 row dependency.
+- Story 016 is **file-disjoint with every other Sprint 16 row**
+  (story 009 Should Have card-slot primitive lives under
+  `client/src/ui/design_tokens/` or `client/src/ui/primitives/` +
+  consumer-surface migrations; the AppCompat manifest Nice to Have
+  row lives under `Cargo.toml` + the `spawn_range_live_update_contract`
+  test binary; the HUD timer eyeball visual carry is doc / manual
+  evidence). It can run in parallel under a separate worker.
+- Story 016 is NOT activated by PROMPT 1058. Sprint 16 activation is
+  a separate prompt. Sprint 15 disposition (`active` with 4 closed
+  Sprint 15 rows + 1 human-operator-blocked Must Have carry per
+  PROMPT 1009 / PROMPT 1054) is preserved unchanged. Sprint 14
+  disposition (`closed-with-conditions`, `Polish` stage, PROMPT 987)
+  is preserved unchanged. The story explicitly does NOT claim
+  release readiness, Standard-tier accessibility, playtest
+  validation, final-art replacement, or any `QA-COND-*` closure.
 
 ### Sprint 16 Candidate Sequencing Notes
 
@@ -326,3 +363,16 @@ sequencing rules:
   Per-surface migration of hand fan + draft grid + auction featured +
   board staged ghost is scoped as Sprint 16+ follow-on sibling stories
   under the family `S16-UI-CARD-SLOT-MIGRATION-*`.
+- Story 016 (Sprint 16 Nice to Have test-hygiene candidate): Draft --
+  authored by PROMPT 1058 on branch `story/s16-dead-code-warning` from
+  base `origin/main@8bec9dca624a191fbc7c12409b2ea4690a1040ab`
+  (PROMPT 1055 `chore(state): record P1 UI snapshot retest human
+  block`). Sprint 16 activation is a separate prompt; story 016 is
+  NOT activated by PROMPT 1058. The story preserves the friend-game
+  vs Standard-tier-accessibility scope boundary verbatim and
+  explicitly does NOT claim Standard-tier hit-target conformance
+  (≥44px), broad accessibility completion, playtest validation,
+  final-art replacement, or release readiness. Test-hygiene only:
+  single helper in `tests/integration/presentation/hand_ui_asset_wiring_test.rs`
+  at line 43; no production-code change; no spec body amendment;
+  no `QA-COND-*` closure.
