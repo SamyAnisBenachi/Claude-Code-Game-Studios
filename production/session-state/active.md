@@ -1,3 +1,72 @@
+# PROMPT 1038 State Banner -- QA Snapshot / Runtime UI Repair Wave
+
+Updated 2026-05-17 by orchestrator state update. Source-of-truth verified in
+the clean state worktree: `origin/main@c9d16638cc948145af59f57edff77dd00abdeb01`
+(`fix(placement): replace flat-colour ghost preview with class placeholder
+(PROMPT 1028)`). Stage remains `Polish`. Sprint 15 remains `active`.
+Sprint 16 remains draft-only / not activated.
+
+Main now includes the following post-PROMPT-1024 repair/planning chain:
+
+- PROMPT 1020 / 1023: QA snapshot auto-capture, F9 shortcut, button feedback,
+  and dev-build default enablement landed on main. Dev builds enable the
+  snapshot overlay by default; release builds remain disabled unless explicitly
+  overridden.
+- PROMPT 1025 / 1031: Sprint 16 `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` story
+  authoring landed on main. Sprint 16 is still not activated.
+- PROMPT 1026 / 1030: photosensitivity warning gating + scrim hardening landed
+  on main at `dd0759a`; warning is gated out of active sessions and scrim is
+  hardened. Visual retest still needed.
+- PROMPT 1028 / 1032: placement grey-square drag preview repair landed on main
+  at `c9d1663`; ghost previews now use tinted class/generic placeholders instead
+  of flat grey rectangles. Human retest still needed.
+
+Worker branches ready or pending orchestration:
+
+- PROMPT 1027 HUD ghost glyph / label legibility repair is complete on
+  `origin/work/hud-ghost-glyph-legibility` (`865ae70`). Integration branch
+  `origin/integrate/hud-ghost-glyph-legibility-1033-v2` points at `291f73e`
+  on top of `c9d1663`, but no final 1033 report is present in `reports/` yet.
+  Treat as pending confirmation before main integration / closure.
+- PROMPT 1029 card cost + combat stat rendering repair is complete on
+  `origin/work/card-cost-combat-stat-rendering` (`eaff1c0`). Local branch
+  `integrate/card-cost-combat-stat-rendering-1037` is one commit ahead of
+  `origin/main`, but no 1037 report is present yet. Do not launch shop/auction
+  follow-up repairs until this lands or is explicitly rejected.
+- PROMPT 1034 full UI visual-quality audit, PROMPT 1035 UI code architecture /
+  layout debt audit, and PROMPT 1036 snapshot state/log correlation audit were
+  launched as read-only QA/deep-analysis lanes and are awaiting reports.
+
+Known QA/audit findings still open from PROMPT 1022:
+
+- P1: DraftShop shop UI missing/incorrect, photosensitivity warning was visible
+  over active gameplay before PROMPT 1030, HUD ghost glyph overlap before
+  PROMPT 1027, auction bid buttons show placeholder `?`, keep-9 modal backdrop
+  bleed.
+- P2/P3: placement side-panel raw text fragments, card row clipping, card stat
+  values missing before PROMPT 1029, bottom-corner placeholders, auction
+  featured-card readability, snapshot tool/count/timer mismatches.
+
+Next orchestration stance:
+
+- First consume/clear final reports for PROMPT 1033 and PROMPT 1037.
+- If 1033/1037 are clean and file-disjoint with current main, integrate them
+  before launching additional `shop_auction` UI repairs.
+- Then use 1034/1035/1036 audit outputs to author narrow follow-up repair
+  prompts. Keep QA/debugging non-blocking for parallel development unless the
+  bug blocks playable-client runtime.
+- Keep one shared-status writer active at a time. Workers cannot officially
+  launch prompts; only the orchestrator dispatches `SPAWN`, `REPONDRE`,
+  `RELANCER`, `CLEAR`, or `NEW` via structured GCS dispatch.
+
+Non-claims preserved: no Sprint 15 close-out, no Sprint 16 activation, no
+Polish->Release retry, no public release / RC readiness, no full game
+completion, no broad accessibility completion, no playtest validation, no
+final-art completion, no `S8-QA-001-W1` closure, and no LLM closure of
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`.
+
+---
+
 # PROMPT 1024 State Banner -- Sprint 16 Plan Draft (NOT ACTIVATED; Sprint 15 NOT closed)
 
 Updated 2026-05-17 by PROMPT 1024. Source-of-truth at authoring:
