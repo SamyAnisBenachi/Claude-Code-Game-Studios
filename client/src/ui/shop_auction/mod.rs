@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use lightyear::prelude::{MessageReceiver, MessageSender};
-use shared::card::{CardCatalog, CardId, Rarity};
+use shared::card::{CardCatalog, CardData, CardId, CardType, Rarity};
 use shared::protocol::{
     AuctionSnapshot, BidRejectedReason, C2SPlaceBid, C2SPurchaseCard, C2SRefreshShop,
     C2SSignalReady, ReliableChannel, RoundPhase, S2CAuctionBidAccepted, S2CAuctionBidRejected,
@@ -2014,11 +2014,20 @@ pub fn handle_draft_offering_system(
                     .unwrap_or_else(|| format!("Card {}", card_id.0));
                 let cost = card.map_or(0, |card| card.cost);
                 let rarity = card.map_or(Rarity::Common, |card| card.rarity);
+                // PROMPT 1029: append ATK/HP for minion-shaped cards so players
+                // can read combat stats from the keep-9 grid. Empty string for
+                // spells / traps keeps existing layout unchanged.
+                let stats = card.map(format_card_combat_stats).unwrap_or_default();
 
                 if let Ok(mut text) = text_query.get_mut(text_entity) {
                     text.0.clear();
-                    text.0
-                        .push_str(&format!("{}\n{}g", card_name.as_str(), cost));
+                    if stats.is_empty() {
+                        text.0
+                            .push_str(&format!("{}\n{}g", card_name.as_str(), cost));
+                    } else {
+                        text.0
+                            .push_str(&format!("{}\n{}g · {}", card_name.as_str(), cost, stats));
+                    }
                 }
                 commands.entity(slot_entity).insert((
                     DraftInitialSlotCard(card_id),
@@ -3313,6 +3322,25 @@ pub fn sync_auction_panel_system(
                 ));
             } else {
                 clear_card_display_art(&mut commands, entities.auction_featured_card);
+            }
+        }
+
+        // PROMPT 1029: featured-card stats node was spawned with `Text::new("")`
+        // (story 016 reserved the typography slot but never wired content). Bind
+        // ATK/HP + mana cost for the current auction card so the player can read
+        // combat values on the most prominent card surface.
+        if let Ok(mut text) = texts.get_mut(entities.auction_featured_card_stats) {
+            text.0.clear();
+            if let Some(card_id) = auction_state.card_id {
+                if let Some(card) = catalog.cards.get(&card_id) {
+                    let stats = format_card_combat_stats(card);
+                    if stats.is_empty() {
+                        text.0.push_str(&format!("Cost {}g", card.cost));
+                    } else {
+                        text.0
+                            .push_str(&format!("ATK/HP {stats} · Cost {}g", card.cost));
+                    }
+                }
             }
         }
 
@@ -5232,6 +5260,23 @@ fn rarity_sort_rank(rarity: Rarity) -> u8 {
     }
 }
 
+/// PROMPT 1029 — formats the combat-stat readout shown on draft / shop / auction
+/// card tiles. Returns `"ATK/HP"` for `Minion` / `Structure` cards (where the
+/// numeric stat pair is gameplay-relevant) and an empty string for spells /
+/// traps / fields / orders / double-face (where ATK/HP carry no meaning per
+/// `shared/src/card.rs` `CardType` doc comment). Tiles use this to extend their
+/// existing `name + cost` label without disturbing layout for non-minion cards.
+pub fn format_card_combat_stats(card: &CardData) -> String {
+    match card.card_type {
+        CardType::Minion | CardType::Structure => format!("{}/{}", card.atk, card.hp),
+        CardType::Spell
+        | CardType::Trap
+        | CardType::Field
+        | CardType::Order
+        | CardType::DoubleFace => String::new(),
+    }
+}
+
 fn clear_draft_initial_slot(
     commands: &mut Commands,
     entity: Entity,
@@ -5276,10 +5321,23 @@ fn apply_shop_slot(
         .unwrap_or_else(|| format!("Card {}", card_id.0));
     let cost = card.map_or(0, |card| card.cost);
     let rarity = card.map_or(Rarity::Common, |card| card.rarity);
+    // PROMPT 1029: append ATK/HP on the shop slot label so the player can
+    // compare stats against the 3 offered cards without hovering.
+    let stats = card.map(format_card_combat_stats).unwrap_or_default();
 
     text.0.clear();
-    text.0
-        .push_str(&format!("{}\n{:?} · {}g", card_name.as_str(), rarity, cost));
+    if stats.is_empty() {
+        text.0
+            .push_str(&format!("{}\n{:?} · {}g", card_name.as_str(), rarity, cost));
+    } else {
+        text.0.push_str(&format!(
+            "{}\n{:?} · {}g · {}",
+            card_name.as_str(),
+            rarity,
+            cost,
+            stats
+        ));
+    }
     commands.entity(entity).insert((
         ShopSlotCard(card_id),
         ShopSlotCardName(card_name),
