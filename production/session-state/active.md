@@ -1,3 +1,73 @@
+# PROMPT 1056 State Banner -- Sprint 15 Closed With Conditions
+
+Updated 2026-05-17 by PROMPT 1056. Source-of-truth at authoring:
+`origin/main@8bec9dca624a191fbc7c12409b2ea4690a1040ab` (PROMPT 1055 P1 UI
+snapshot retest human-block state-record tip).
+
+Sprint 15 disposition flipped `active -> closed-with-conditions` by
+PROMPT 1056 paperwork-only close-out. Basis: 4 of 5 Sprint 15 rows
+closed (Must 1/2 + Should 2/2 + Nice 1/1). Sole open row
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` remains human-operator-blocked and is
+deferred / carried forward into Sprint 16 planning. The orchestrator
+explicitly decided on 2026-05-17 to continue without human input and
+defer human visual testing later; human-operated snapshot / HUD timer
+eyeball capture is NOT a stop-the-line blocker for close-out.
+
+Preserved verbatim by PROMPT 1056:
+
+- PROMPT 1012 Sprint 15 smoke `PASS-WITH-WARNINGS`
+  (`reports/PROMPT-1012-Sprint-15-Smoke-Check.md`).
+- PROMPT 1015 Sprint 15 Team-QA `APPROVED-WITH-CONDITIONS`
+  (`reports/PROMPT-1015-Sprint-15-Team-QA.md`).
+- PROMPT 1054 P1 UI snapshot visual retest `BLOCKED-HUMAN-OPERATOR`
+  (`reports/PROMPT-1054-s15-p1-ui-snapshot-visual-retest.md`); no
+  pixel-level acceptance claim.
+- P1 UI structural repairs integrated on main post-PROMPT-1034 audit:
+  Placement action panel (PROMPT 1046 / 1049), DraftShop / Auction
+  Pass bid affordances (PROMPT 1048 / 1050), Keep-9 modal opaque
+  scrim + footer-anchored Ready (PROMPT 1052 / 1053).
+- Stage UNCHANGED `Polish`. PROMPT 761 Polish->Release `FAIL`
+  preserved; NO retry.
+- Sprint 16 NOT activated by PROMPT 1056; existing
+  `next_sprint_16_draft:` PROMPT 1024 pointer remains unchanged.
+- All carry conditions preserved verbatim:
+  `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked carry,
+  `S8-QA-001-W1` OPEN, `QA-COND-0005` accepted-risk, `QA-COND-0006`
+  accepted-risk, `PAW-TD-*-a` accepted-risk, PROMPT 683-era runtime
+  divergence preserved (no third same-scope retest per
+  `TQ-S12-C2`), Sprint 12 story 019 cannot-reproduce preserved (no
+  underlying drag-runtime bug fix claim), `TQ-S12-C1..C7` preserved
+  verbatim, Sprint 14 closed-with-conditions preserved (PROMPT 987),
+  Sprint 13/12/11/10 dispositions preserved unchanged, all 4 closed
+  Sprint 15 /story-done closures preserved.
+
+Files changed by PROMPT 1056:
+
+- `production/sprint-status.yaml` (top-level `status:` flipped
+  `active -> closed-with-conditions`; `# Last close-out:` comment
+  refreshed; `sprint_15_closeout:` block appended between
+  `sprint_15_story_done:` and `next_sprint_16_draft:`).
+- `production/sprints/sprint-15.md` (CLOSED-WITH-CONDITIONS banner
+  prepended above prior PROMPT 997 ACTIVATED + PROMPT 988 DRAFT
+  banners; plan body NOT rewritten).
+- `production/session-state/active.md` (this PROMPT 1056 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1056 section prepended).
+- `reports/PROMPT-1056-Sprint-15-Close-Out-Disposition.md`
+  (gitignored final report).
+
+Explicit non-claims: NO public release readiness, NO RC readiness, NO
+full game completion, NO broad / Standard-tier accessibility
+completion, NO playtest validation, NO full playable-client manual QA,
+NO two-client GAME_OVER closure, NO final-art completion, NO Polish->
+Release gate-check retry, NO stage advance, NO underlying drag-runtime
+bug fix, NO closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`, NO
+pixel-level closure of PROMPT 1054 retest, NO closure of
+`S8-QA-001-W1` / `TQ-S12-C7`, NO Sprint 14/15 row reopen, NO Sprint 16
+activation.
+
+---
+
 # PROMPT 1055 State Banner -- P1 UI Snapshot Retest Human-Blocked
 
 Updated 2026-05-17 after consuming PROMPT 1054.

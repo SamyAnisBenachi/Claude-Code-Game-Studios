@@ -1,3 +1,109 @@
+# Sprint 15 -- CLOSED-WITH-CONDITIONS (Polish stage)
+
+> **PROMPT 1056 close-out disposition (2026-05-17)**: Sprint 15 disposition
+> flipped `active -> closed-with-conditions` on
+> `origin/main@8bec9dca624a191fbc7c12409b2ea4690a1040ab` (PROMPT 1055 P1 UI
+> snapshot retest human-block state-record tip).
+>
+> **Verdict**: `closed-with-conditions` (NOT release-ready, NOT `closed`).
+> Must Have track **1/2 done** (PROMPT 1010
+> `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP` closure).
+> Should Have track **2/2 done** (PROMPT 1009
+> `S12-UX-HAND-DRAG-STATE-VISUALS-001` +
+> `S11-UX-BOARD-RENDERING-SPEC` closures). Nice to Have track
+> **1/1 done** (PROMPT 1009
+> `S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001` closure). Total
+> **4 of 5 rows closed**. The single open row is
+> `S11-HUD-TIMER-EYEBALL-VISUAL-001` (Must Have, story 014, 0.25d),
+> which remains `ready` as the **human-operator-blocked carry**:
+> cosmetic visual check requires human screenshot capture across
+> `DraftInitial 45s` / `DraftShop 30s` / `Placement 10-12s` phases per
+> story file ACs and cannot be auto-closed by an LLM `/story-done`.
+> **Carried forward / deferred into Sprint 16 planning** (Sprint 13 ->
+> Sprint 14 -> Sprint 15 -> Sprint 16 carry; originally Sprint 10
+> smoke retry-7 W2). The orchestrator explicitly decided on 2026-05-17
+> to continue without human input and defer human visual testing
+> later; human-operated snapshot / HUD timer eyeball capture is NOT a
+> stop-the-line blocker for close-out under PROMPT 1056.
+>
+> **Smoke (PROMPT 1012)**: `PASS-WITH-WARNINGS` at
+> `reports/PROMPT-1012-Sprint-15-Smoke-Check.md` (gitignored worker
+> report; NOT integrated under `production/qa/` by PROMPT 1056).
+> Environment-only AppCompat warning class consistent with prior
+> PROMPT 815 / 790 / 979 / 982 / 983 smoke runs. No code regression.
+>
+> **Team-QA (PROMPT 1015)**: `APPROVED-WITH-CONDITIONS` at
+> `reports/PROMPT-1015-Sprint-15-Team-QA.md` (gitignored worker
+> report; NOT integrated under `production/qa/` by PROMPT 1056). All
+> approval conditions are existing carry conditions; none closed by
+> Team-QA.
+>
+> **P1 UI snapshot visual retest (PROMPT 1054)**:
+> `BLOCKED-HUMAN-OPERATOR` at
+> `reports/PROMPT-1054-s15-p1-ui-snapshot-visual-retest.md`. Source/
+> test structure verified on `origin/main@a07656a`; four scoped P1
+> surfaces confirmed structurally fixed (DraftInitial keep-9 modal
+> scrim + Ready footer; Placement action panel + real Submit
+> affordance; DraftShop visible shop surface before/after slots
+> arrive; DraftAuction numeric bid labels + Pass/PASSED affordance)
+> but pixel-level visual acceptance remains pending. **Deferred --
+> no pixel-level acceptance claim by PROMPT 1056.** PROMPT 1055
+> recorded the BLOCKED-HUMAN-OPERATOR verdict on `origin/main` at
+> commit 8bec9dc; preserved verbatim by PROMPT 1056.
+>
+> **P1 UI structural repairs integrated on main after PROMPT 1034
+> audit**: Placement action panel (PROMPT 1043 worker / PROMPT 1046
+> integration / PROMPT 1049 state-record), DraftShop / Auction Pass
+> bid affordances (PROMPT 1042 worker / PROMPT 1048 integration /
+> PROMPT 1050 state-record), Keep-9 modal opaque scrim +
+> footer-anchored Ready (PROMPT 1051 worker / PROMPT 1052
+> integration / PROMPT 1053 state-record).
+>
+> **Stage UNCHANGED**: `Polish`. `production/stage.txt` NOT modified by
+> PROMPT 1056. PROMPT 761 Polish->Release gate-check `FAIL` preserved at
+> `production/gate-checks/gate-polish-release-2026-05-12.md`; **NO retry**
+> attempted by Sprint 15 or PROMPT 1056. **Sprint 16 NOT activated** by
+> PROMPT 1056; the existing PROMPT 1024 `next_sprint_16_draft:` pointer
+> remains unchanged; `production/sprints/sprint-16.md` NOT modified.
+>
+> **Conditions carried forward unchanged** (none closed by PROMPT 1056):
+> `S11-HUD-TIMER-EYEBALL-VISUAL-001` carried as human-operator-blocked
+> Sprint 13 -> Sprint 14 -> Sprint 15 -> Sprint 16 row; PROMPT 1054
+> P1 UI snapshot visual retest `BLOCKED-HUMAN-OPERATOR` deferred;
+> `S8-QA-001-W1` OPEN (Story 017 AC12 forbid-auto-closure preserved
+> through Sprint 15); `QA-COND-0005` Standard-tier accessibility
+> accepted-risk; `QA-COND-0006` playtest validation accepted-risk;
+> `PAW-TD-*-a` placeholder-art accept-risk across PAW-002..PAW-006;
+> PROMPT 683-era runtime divergence question preserved (folded into
+> Sprint 12 story 019 cannot-reproduce closure; third same-scope
+> retest NOT authorised per `TQ-S12-C2`); Sprint 12 story 019
+> underlying drag-runtime bug NOT claimed fixed; `TQ-S12-C1..C7`
+> (all 7 Sprint 12 Team-QA conditions) preserved verbatim; Sprint 14
+> closed-with-conditions per PROMPT 987 preserved unchanged; all 16
+> closed Sprint 14 /story-done closures preserved unchanged; all 4
+> closed Sprint 15 /story-done closures (PROMPT 1009 three-row batch
+> + PROMPT 1010 single-row row-flip) preserved unchanged.
+>
+> **Explicitly NOT claimed by PROMPT 1056**: public release
+> readiness, RC readiness, full game completion, broad / Standard-
+> tier accessibility completion (QA-COND-0005), playtest validation
+> (QA-COND-0006), full playable-client manual QA, two-client
+> GAME_OVER closure (S8-QA-001-W1 OPEN), final-art completion
+> (PAW-TD-*-a), Polish->Release gate-check retry (PROMPT 761 FAIL
+> preserved), stage advance Polish -> Release, underlying drag-runtime
+> bug fix (Sprint 12 story 019 cannot-reproduce preserved; NOT
+> bug-fixed), closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` (closure
+> remains gated on human-operator screenshot capture; no LLM
+> `/story-done` authorised), pixel-level closure of PROMPT 1054 P1
+> UI snapshot visual retest, closure of `S8-QA-001-W1` / `TQ-S12-C7`,
+> Sprint 14 row reopen, Sprint 15 row reopen, Sprint 16 activation,
+> Sprint 16 sprint-status active row.
+>
+> Activation banner from PROMPT 997 and PROMPT 988 DRAFT banner are
+> preserved verbatim below.
+
+---
+
 # Sprint 15 -- ACTIVATED (PROMPT 997; Polish stage)
 
 > **PROMPT 997 paperwork-only Sprint 15 activation (2026-05-17)**. Source-of-truth
