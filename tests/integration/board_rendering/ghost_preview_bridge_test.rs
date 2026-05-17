@@ -9,16 +9,17 @@ use bevy::picking::{
 };
 use bevy::prelude::*;
 use client::{
+    asset_wiring::PlaceholderAssets,
     presentation::{
         board_rendering::{
-            rendering_constants, BoardCamera, BoardGhostInteraction, GhostUnit, LaneGhostWash,
-            ObjectiveTargetGhost, TargetUnitGhost,
+            rendering_constants, BoardCamera, BoardGhostInteraction, BoardRuntimeAssets, GhostUnit,
+            LaneGhostWash, ObjectiveTargetGhost, TargetUnitGhost, GHOST_PREVIEW_ALPHA,
         },
         BoardLayout,
     },
     ui::hand::{
-        GhostClickedEvent, GhostDragStartEvent, GhostPlacementChanged, ObjectiveCell,
-        PlacementTargetUnit,
+        GhostClickedEvent, GhostDragStartEvent, GhostPlacementChanged, HandCardCatalog,
+        ObjectiveCell, PlacementTargetUnit,
     },
 };
 use shared::{card::CardId, protocol::PlayTarget, session::PlayerId};
@@ -65,6 +66,113 @@ fn br_8_board_cell_ghost_replaces_existing_card_preview() {
             .extend(rendering_constants::Z_GHOST_UNIT)
     );
     assert_eq!(ghost_unit_count(&mut app, CardId(10)), 1);
+}
+
+// PROMPT 1028 regression: the BoardCell ghost preview previously spawned
+// as a flat half-alpha colour rectangle (`Sprite::from_color`), which
+// reads as a uniform grey square on a dark board and was the visible
+// symptom of "card drop only produces a grey square". Per
+// `docs/ux/board-rendering-spec.md` §7 GHOST_PREVIEW_ALPHA, the ghost
+// must reuse the real unit's class / placeholder image with a 0.5 alpha
+// tint, falling back to the generic unit placeholder when the catalog
+// has no class for the card.
+#[test]
+fn br_8_ghost_preview_uses_class_placeholder_image_for_known_card() {
+    test_helpers::init_test_tracing();
+    let mut app = app_with_board_rendering();
+
+    // CardId(1) -> Iop Knight in `assets/data/cards.json`, loaded into
+    // HandCardCatalog via the HandUiPlugin default-resource init.
+    stage_ghost(
+        &mut app,
+        CardId(1),
+        PlayTarget::BoardCell { lane: 1, cell: 1 },
+    );
+
+    let entity = single_ghost_unit(&mut app, CardId(1));
+    let sprite = app.world().get::<Sprite>(entity).unwrap().clone();
+    assert_eq!(
+        sprite.color.alpha(),
+        GHOST_PREVIEW_ALPHA,
+        "ghost preview must keep the canonical GHOST_PREVIEW_ALPHA tint",
+    );
+
+    let placeholders = app.world().resource::<PlaceholderAssets>();
+    assert_eq!(
+        sprite.image,
+        placeholders.board_unit_iop.clone(),
+        "ghost preview must reuse the Iop class placeholder image for \
+         CardId(1) (Iop Knight) instead of a flat colour rectangle",
+    );
+    assert_eq!(
+        sprite.custom_size,
+        Some(rendering_constants::UNIT_SPRITE_SIZE),
+        "ghost preview must use UNIT_SPRITE_SIZE, not CELL_NODE_SIZE",
+    );
+
+    // The catalog has no atlas frame for CardId(1) at runtime, so the
+    // sprite must not carry a texture_atlas slice (atlas-frame path is
+    // covered by the perf harness; this branch covers the class
+    // placeholder path).
+    assert!(
+        sprite.texture_atlas.is_none(),
+        "no atlas frame is registered for CardId(1) at runtime; ghost \
+         must use a direct image handle, not a texture_atlas slice",
+    );
+    assert!(
+        app.world().get::<Children>(entity).is_none(),
+        "ghost preview entity must remain childless (BR-8 contract)",
+    );
+}
+
+#[test]
+fn br_8_ghost_preview_falls_back_to_generic_placeholder_for_unknown_card() {
+    test_helpers::init_test_tracing();
+    let mut app = app_with_board_rendering();
+
+    // CardId(99_999) is intentionally not present in cards.json /
+    // HandCardCatalog. With no source_class lookup, the ghost falls
+    // through to the generic BoardRuntimeAssets unit placeholder so the
+    // player still sees a placement preview rather than nothing.
+    stage_ghost(
+        &mut app,
+        CardId(99_999),
+        PlayTarget::BoardCell { lane: 2, cell: 4 },
+    );
+
+    let entity = single_ghost_unit(&mut app, CardId(99_999));
+    let sprite = app.world().get::<Sprite>(entity).unwrap().clone();
+    assert_eq!(sprite.color.alpha(), GHOST_PREVIEW_ALPHA);
+
+    let board_assets = app.world().resource::<BoardRuntimeAssets>();
+    assert_eq!(
+        sprite.image,
+        board_assets.unit_placeholder.clone(),
+        "unknown CardId must fall back to BoardRuntimeAssets unit \
+         placeholder image (not a flat colour rectangle)",
+    );
+    assert_eq!(
+        sprite.custom_size,
+        Some(rendering_constants::UNIT_SPRITE_SIZE),
+    );
+    assert!(sprite.texture_atlas.is_none());
+    assert!(app.world().get::<Children>(entity).is_none());
+}
+
+// Stronger sanity check on the HandCardCatalog wiring: the production
+// fixture must actually load the cards.json catalogue (this confirms the
+// regression test above is exercising the real catalog path, not a
+// silent default-empty resource).
+#[test]
+fn br_8_hand_card_catalog_loads_iop_class_for_card_id_1() {
+    test_helpers::init_test_tracing();
+    let app = app_with_board_rendering();
+    let catalog = app.world().resource::<HandCardCatalog>();
+    let card = catalog
+        .cards
+        .get(&CardId(1))
+        .expect("CardId(1) (Iop Knight) must be present in default HandCardCatalog");
+    assert_eq!(card.class, shared::card::ClassId::Iop);
 }
 
 #[test]
