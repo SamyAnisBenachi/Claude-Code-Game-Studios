@@ -1,3 +1,102 @@
+# PROMPT 1066 State Banner -- Sprint 16 QA Plan Authored
+
+Updated 2026-05-17 by PROMPT 1066. Source-of-truth at authoring:
+`origin/main@c908f73c1e72c4be17b1ed1ada37d1e6` (PROMPT 1064 Sprint 16
+activation tip: `activate(s16): Sprint 16 activation -- Polish stage
+(PROMPT 1064)`).
+
+PROMPT 1066 authored `production/qa/qa-plan-sprint-16.md` (NEW) for
+Sprint 16. Single-context paperwork-only authoring run; no spawned
+CCGS subagents; no `/dev-story`, `/story-done`, `/smoke-check`,
+`/team-qa`, `/gate-check`, `/release-check` invoked. Plan content:
+
+- Stage marked `Polish` (no Release claim; no Polish->Release retry).
+- QA snapshot / HUD timer human visual capture deferred / human-later;
+  does NOT block non-human Sprint 16 development lanes (story 009 +
+  story 006 + story 016).
+- Story-by-story QA gates:
+  1. `S11-HUD-TIMER-EYEBALL-VISUAL-001` (HUD timer eyeball; Sprint 13
+     -> 14 -> 15 -> 16 carry): human-operator screenshot evidence
+     only; no LLM `/story-done`; allowed to carry to Sprint 17 if no
+     human-operator slot.
+  2. `S12-TD-UI-CARD-SLOT-PRIMITIVE-001`: targeted Rust tests
+     expected after `/dev-story` (BLOCKING `cargo test --test
+     ui_clean_pass_card_slot_primitive_test`); Phase 1 = `shop_slot_node`
+     consumer migration only; AC6 BLOCKING QA snapshot bundles at
+     1366x768 + 1920x1080; Cargo resource policy bound by precedent.
+  3. `S15-OPS-APPCOMPAT-MANIFEST-001`: targeted Windows/MSVC
+     validation; AC3 BLOCKING 5 consecutive `cargo test -p shared
+     --test spawn_range_live_update_contract` invocations without
+     rename workaround / no `os error 740`; Cargo resource policy
+     required per AC5; no full workspace test by default.
+  4. `S15-TD-WORKSPACE-DEAD-CODE-WARNING-001`: targeted
+     warning/check validation for
+     `tests/integration/presentation/hand_ui_asset_wiring_test.rs`;
+     AC3 BLOCKING warning-free `cargo check --workspace --all-targets`
+     + AC4 BLOCKING `cargo test -p client --test
+     hand_ui_asset_wiring_test`; no production behaviour change.
+- Smoke policy: full workspace tests only inside serialized
+  smoke/checkpoint prompts; before any full workspace cargo, report
+  D: free space, `CARGO_TARGET_DIR`, and no-PDB env vars; if D: free
+  < 40 GB, worker authorised to clean stale target dirs under
+  `D:\_DEV\cargo-target\ccgs-msvc\` after path safety verification
+  per orchestrator Cargo policy.
+- Non-claims preserved verbatim: no public release readiness, no RC
+  readiness, no full game completion, no broad / Standard-tier
+  accessibility completion (`QA-COND-0005` accept-risk preserved), no
+  playtest validation (`QA-COND-0006` preserved), no full manual QA,
+  no two-client `GAME_OVER` closure (`S8-QA-001-W1` OPEN), no final-art
+  completion (`PAW-TD-*-a` preserved), no `Polish->Release` retry
+  (PROMPT 761 FAIL preserved), no stage advance, no `TQ-S12-C7`
+  closure, no PROMPT 1054 P1 UI snapshot retest closure, no LLM
+  `/story-done` on `S11-HUD-TIMER-EYEBALL-VISUAL-001`, no Sprint
+  14/15 row reopen.
+- Evidence paths to create later under
+  `production/qa/evidence/sprint-16-*` (sprint-16-hud-timer-visual-check/,
+  sprint-16-ui-card-slot-primitive/,
+  sprint-16-appcompat-manifest-evidence.md,
+  sprint-16-workspace-dead-code-warning/).
+- Parallelization: after this QA plan lands, non-human `/dev-story`
+  lanes for card-slot, AppCompat, and dead-code CAN run in parallel
+  if file scopes remain disjoint per the per-row scope table;
+  shared-status writers (`/story-done`, smoke, team-qa, close-out)
+  serialize.
+
+Files changed by PROMPT 1066:
+
+- `production/qa/qa-plan-sprint-16.md` (NEW).
+- `production/session-state/active.md` (this banner prepended above
+  PROMPT 1064 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT 1066
+  paragraph prepended above PROMPT 1064 paragraph).
+- `reports/PROMPT-1066-Sprint-16-QA-Plan.md` (mandatory final report;
+  gitignored).
+
+Files explicitly NOT touched by PROMPT 1066: `production/sprint-status.yaml`,
+`production/sprints/*` (including sprint-16.md), `production/stage.txt`,
+`production/epics/*` story files, `client/`, `server/`, `shared/`,
+`tests/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`, `.github/`, `Trunk.toml`,
+`production/gate-checks/*`, `.octogent/`, `.claude/settings.json`. No
+cargo / trunk / CI command invoked. **Cargo policy: N/A** for this
+prompt.
+
+Next launchable prompts:
+
+- 3 non-human `/dev-story` lanes (parallel-safe per QA plan
+  Wave 2 parallelization map):
+  - `/dev-story production/epics/ui-clean-pass/story-009-ui-card-slot-primitive.md`
+  - `/dev-story production/epics/devops/story-006-appcompat-manifest.md`
+  - `/dev-story production/epics/ui-clean-pass/story-016-workspace-dead-code-warning.md`
+- HUD human capture session for `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+  remains deferred / human-scheduled / allowed to carry to Sprint 17
+  per 2026-05-17 orchestrator decision.
+
+Final status line:
+
+1066: SPRINT-16-QA-PLAN: STATUS
+
+---
+
 # PROMPT 1064 State Banner -- Sprint 16 Activated
 
 Updated 2026-05-17 by PROMPT 1064. Source-of-truth at activation:
