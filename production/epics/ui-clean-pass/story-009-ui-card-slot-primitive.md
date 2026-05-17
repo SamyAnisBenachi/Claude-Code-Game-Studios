@@ -2,7 +2,20 @@
 
 > **Epic**: UI Clean-Pass
 > **Story ID**: S12-TD-UI-CARD-SLOT-PRIMITIVE-001
-> **Status**: Draft -- Sprint 16 candidate, NOT activated
+> **Status**: Done -- Sprint 16 Should Have (closed PROMPT 1074 on
+> `origin/main@c9b5716052204c795c2bf1a396eba948d373346c`; PROMPT 1067
+> worker commit `3bdf6accb3a321f43da406c867c93ffb18c4bc12` + PROMPT
+> 1073 integration commit `d12adc4701c845bcbee32fb60ff72d495125abeb`;
+> evidence dir `production/qa/evidence/sprint-16-ui-card-slot-primitive/`.
+> AC1..AC5 + AC7 + AC8 PASS via worker + integration verification; AC6
+> partial -- documentation/test paperwork present and §12 spec heading
+> assertion PASS in the integration test, but the QA snapshot bundles
+> at 1366x768 and 1920x1080 remain placeholder / human-operator
+> deferred per the evidence `evidence.md` table (PROMPT 1067 worker has
+> no playable-client runtime; bundles must be captured by a human
+> operator via the `S15-QA-SNAPSHOT-DEFAULT-DEV` flow per the
+> instructions in `qa-snapshot-1366x768/README.md` and
+> `qa-snapshot-1920x1080/README.md`)
 > **Layer**: Presentation / UX foundational tech-debt
 > **Type**: Tech Debt -- foundational primitive (multi-surface layout contract)
 > **Sprint**: Sprint 16 candidate (Tier 3 rank 13 per
@@ -470,7 +483,7 @@ the future `/dev-story` worker's deliverable; this authoring run does
 **not** verify any of them (no AC is `[x]` until `/dev-story` completes
 and `/story-done` runs).
 
-- [ ] **AC1 -- Authoritative primitive module + token usage**: GIVEN the
+- [x] **AC1 -- Authoritative primitive module + token usage**: GIVEN the
   story commit, WHEN the new module file is inspected, THEN
   `client/src/ui/design_tokens/card_slot.rs` exists, is declared from
   `client/src/ui/design_tokens/mod.rs`, and exports the
@@ -487,7 +500,7 @@ and `/story-done` runs).
   doc-comment scan + grep for `Val::Px(\d` inside the module body
   catches any naked literal.
 
-- [ ] **AC2 -- No nested cards, no layout shift, stable aspect ratio**:
+- [x] **AC2 -- No nested cards, no layout shift, stable aspect ratio**:
   GIVEN the primitive module + the new integration test, WHEN the
   test runs, THEN it asserts that:
   - For each `CardSlotKind` variant, `outer_width_px / outer_height_px`
@@ -510,7 +523,7 @@ and `/story-done` runs).
     is introduced).
   Verification: integration-test assertions (AC8) + module read.
 
-- [ ] **AC3 -- Hover / focus / pressed / disabled state mapping via
+- [x] **AC3 -- Hover / focus / pressed / disabled state mapping via
   existing interaction primitives**: GIVEN the primitive module, WHEN
   inspected, THEN each `CardSlotKind` carries a doc-comment forward
   reference to the four token sets published by
@@ -531,7 +544,7 @@ and `/story-done` runs).
   not that every clickable surface is fully wired. Verification:
   doc-comment scan + integration-test import assertion.
 
-- [ ] **AC4 -- Image / text containment at 1366 × 768 and a smaller
+- [x] **AC4 -- Image / text containment at 1366 × 768 and a smaller
   viewport**: GIVEN the integration test, WHEN run, THEN it asserts
   that for each `CardSlotKind` the image inset rectangle and text
   inset rectangle each fit inside the outer rectangle (per AC2's
@@ -547,7 +560,7 @@ and `/story-done` runs).
   outer rectangle). Verification: integration-test viewport-iteration
   loop + per-kind containment assertion.
 
-- [ ] **AC5 -- Per-surface migration boundaries split into phases**:
+- [x] **AC5 -- Per-surface migration boundaries split into phases**:
   GIVEN the story file + the future `/dev-story` worker's commit, WHEN
   the diff is inspected, THEN exactly ONE existing card-surface call
   site is migrated to the new primitive (default canonical: shop slot
@@ -569,7 +582,9 @@ and `/story-done` runs).
   `hand/mod.rs` or to the auction featured-card call site or to the
   board ghost preview path under `client/src/presentation/`.
 
-- [ ] **AC6 -- Visual evidence / screenshot harness expectations**:
+- [~] **AC6 -- Visual evidence / screenshot harness expectations**
+  (PARTIAL -- paperwork present; QA snapshot bundles deferred to human
+  operator per `evidence.md`; do not claim pixel-level capture):
   GIVEN the future `/dev-story` worker's evidence directory at
   `production/qa/evidence/sprint-16-ui-card-slot-primitive/` (NEW),
   THEN the directory contains at minimum:
@@ -593,7 +608,7 @@ and `/story-done` runs).
   evidence-directory file presence + integration-test pass log + spec
   cross-reference.
 
-- [ ] **AC7 -- Tests expected, including viewport-invariant /
+- [x] **AC7 -- Tests expected, including viewport-invariant /
   layout-contract test**: GIVEN the story commit, WHEN the new
   integration test bin at
   `tests/integration/ui_clean_pass/card_slot_primitive_test.rs` (NEW)
@@ -626,7 +641,7 @@ and `/story-done` runs).
   registration from Sprint 15 PROMPT 1005). Verification: `cargo
   test` of the new bin passes.
 
-- [ ] **AC8 -- Non-claims (no gameplay / no server / no release / no
+- [x] **AC8 -- Non-claims (no gameplay / no server / no release / no
   final-art)**: GIVEN the story commit, WHEN the closure paperwork is
   inspected, THEN this row does NOT:
   - Modify any gameplay logic (no change under
@@ -989,10 +1004,13 @@ referenced from the `/story-done` paperwork directly.
 | PROMPT | Action | Commit / Reference |
 |--------|--------|---------------------|
 | 1025 | Authored story file (Sprint 16 candidate; NOT activated) on branch `story/s16-ui-card-slot-primitive` from base `origin/main@7b663df75e63a4e46512c5d88e0de2aa704a114a` (PROMPT 1023 `integrate(s15): default QA snapshot enabled in dev builds`). EPIC index updated to include this row as story 009. | `production/epics/ui-clean-pass/story-009-ui-card-slot-primitive.md` NEW + `production/epics/ui-clean-pass/EPIC.md` MODIFIED |
+| 1060 | Repaired card-slot primitive readiness blockers (story-authoring follow-up). | Integrated by PROMPT 1063 on `origin/main@e769757`. |
+| 1064 | Sprint 16 activation -- story 009 pulled into Sprint 16 as Should Have row. | `production/sprint-status.yaml` `sprint_16_activation:` block (commit `6f9308c` on `origin/main`). |
+| 1066 | Sprint 16 QA plan authored (paperwork-only). | `production/qa/qa-plan-sprint-16.md` NEW on `origin/main@c908f73`. |
+| 1067 | `/dev-story` worker for story 009 -- authored primitive module, spec amendment, Phase 1 shop slot migration, integration test, and evidence dir on branch `work/s16-card-slot-primitive`. | Worker commit `3bdf6accb3a321f43da406c867c93ffb18c4bc12` (`feat(ui): add card-slot primitive and migrate shop slot phase 1 (PROMPT 1067)`). |
+| 1073 | Integration of PROMPT 1067 worker into `origin/main`. | Integration commit `d12adc4701c845bcbee32fb60ff72d495125abeb` (`integrate(s16): merge card-slot primitive worker into 1073 (PROMPT 1073)`). |
+| 1074 | Paperwork-only `/story-done` closure on branch `prompt-1074-sprint-16-card-slot-story-done` from base `origin/main@c9b5716052204c795c2bf1a396eba948d373346c` (PROMPT 1072 final story-done tip). Flips Status to Done; AC1..AC5 + AC7 + AC8 `[x]`; AC6 `[~]` partial per evidence (QA snapshot bundles deferred to human operator). Preserves non-claims: no Sprint 16 close-out; no closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`; no public release readiness; no Polish->Release retry; no stage advance. | `production/epics/ui-clean-pass/story-009-ui-card-slot-primitive.md` MODIFIED + `production/epics/ui-clean-pass/EPIC.md` MODIFIED + `production/sprint-status.yaml` MODIFIED (status: ready -> done; `sprint_16_story_done:` block extended with PROMPT 1074 entry). |
 
-Subsequent prompts (integration, `/story-readiness` against Sprint 16
-activation HEAD, Sprint 16 activation, `/qa-plan sprint-16`,
-`/dev-story` for this row (and for the 3 Sprint 16+ follow-on
-migration siblings if Sprint 16 producer adopts the split shape),
-integration of the worker, `/story-done`) are TBD and will be
-appended to this Closure Trail as they land.
+This row's per-surface migration follow-ons (hand fan + draft grid,
+auction featured, board staged ghost) remain owned by the Sprint 16+
+`S16-UI-CARD-SLOT-MIGRATION-*` family and are NOT closed by PROMPT 1074.

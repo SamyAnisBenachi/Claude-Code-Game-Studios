@@ -1,3 +1,112 @@
+# PROMPT 1074 State Banner -- Sprint 16 Card-Slot Primitive Story-Done
+
+Updated 2026-05-17 by PROMPT 1074. Source-of-truth at closure:
+`origin/main@c9b5716052204c795c2bf1a396eba948d373346c` (PROMPT 1072
+final /story-done tip: `story-done(s16): close AppCompat and dead-code
+warning rows (PROMPT 1072)`). Branch:
+`prompt-1074-sprint-16-card-slot-story-done` from base
+`origin/main@c9b5716`; in-place edits on the primary checkout.
+
+PROMPT 1074 is a paperwork-only shared-status writer that ran a
+single-row `/story-done` closure for one integrated Sprint 16 row:
+
+- **`S12-TD-UI-CARD-SLOT-PRIMITIVE-001`** (Should Have): closed on
+  basis of PROMPT 1067 worker (`3bdf6accb3a321f43da406c867c93ffb18c4bc12`,
+  `feat(ui): add card-slot primitive and migrate shop slot phase 1
+  (PROMPT 1067)`) + PROMPT 1073 integration
+  (`d12adc4701c845bcbee32fb60ff72d495125abeb`,
+  `integrate(s16): merge card-slot primitive worker into 1073 (PROMPT
+  1073)`) + evidence dir
+  `production/qa/evidence/sprint-16-ui-card-slot-primitive/`. Phase 1
+  deliverable: primitive module `client/src/ui/design_tokens/card_slot.rs`
+  NEW with the 5-variant `CardSlotKind` enum + `CardSlotGeometry`
+  struct + accessor functions; aggregator declaration at
+  `client/src/ui/design_tokens/mod.rs`; spec amendment §12 Card Slot
+  Primitive added to `docs/ux/global-ui-design-spec.md`; integration
+  test bin `tests/integration/ui_clean_pass/card_slot_primitive_test.rs`
+  NEW registered in `client/Cargo.toml`; Phase 1 shop slot migration in
+  `client/src/ui/shop_auction/mod.rs::shop_slot_node` only (hand /
+  presentation / auction_featured_card_node UNCHANGED). AC1..AC5 + AC7
+  + AC8 PASS; AC6 PARTIAL (paperwork present, QA snapshot bundles at
+  1366x768 + 1920x1080 placeholder / human-operator deferred per
+  `evidence.md` table; capture remains gated on a human operator via
+  the `S15-QA-SNAPSHOT-DEFAULT-DEV` flow per
+  `qa-snapshot-1366x768/README.md` + `qa-snapshot-1920x1080/README.md`
+  inside the evidence dir).
+
+Row explicitly NOT closed by PROMPT 1074 (preserved as `ready`):
+
+- **`S11-HUD-TIMER-EYEBALL-VISUAL-001`** (Must Have human-operator-
+  blocked Sprint 13->14->15->16 carry): closure remains gated on
+  human-operator screenshot capture across DraftInitial 45s /
+  DraftShop 30s / Placement 10-12s phases; no LLM /story-done
+  authorised per the 2026-05-17 orchestrator decision; allowed to
+  carry to Sprint 17 if no human-operator slot.
+
+Sprint 16 progress after PROMPT 1074: 3 of 4 active rows done
+(0/1 Must Have + 1/1 Should Have + 2/2 Nice to Have). Sprint 16
+disposition: `active` (UNCHANGED; NOT closed-out by PROMPT 1074).
+Stage `Polish` (UNCHANGED; `production/stage.txt` NOT touched).
+
+Files changed by PROMPT 1074:
+
+- `production/epics/ui-clean-pass/story-009-ui-card-slot-primitive.md`
+  (Status banner flipped Draft -> Done; AC1..AC5 + AC7 + AC8 to [x];
+  AC6 to [~] partial with paperwork-present / QA-snapshot-bundles-
+  deferred annotation; Closure Trail extended with PROMPT 1060/1064/
+  1066/1067/1073/1074 entries).
+- `production/epics/ui-clean-pass/EPIC.md` (story 009 row flipped to
+  Done; overview banner extended with story 009 closure chain).
+- `production/sprint-status.yaml` (S12-TD-UI-CARD-SLOT-PRIMITIVE-001
+  row flipped status: ready -> done with completed: 2026-05-17 +
+  worker/integration/evidence metadata + AC1..AC8 outcomes notes +
+  closure note; `sprint_16_story_done:` block extended at EOF with
+  PROMPT 1074 entry following PROMPT 1072 precedent).
+- `production/session-state/active.md` (this PROMPT 1074 banner
+  prepended above PROMPT 1072 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT 1074
+  paragraph prepended above PROMPT 1072 paragraph).
+- `reports/PROMPT-1074-S16-Card-Slot-Primitive-Story-Done.md`
+  (mandatory final report; gitignored).
+
+Files explicitly NOT touched by PROMPT 1074: `client/`, `server/`,
+`shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`, `.github/`,
+`Trunk.toml`, `docs/ux/global-ui-design-spec.md`,
+`docs/ux/ui-clean-pass-roadmap.md`, `docs/ux/board-rendering-spec.md`,
+`production/stage.txt`, `production/sprints/*`,
+`production/qa/qa-plan-sprint-16.md`, `production/qa/evidence/*`,
+`production/qa/smoke-*.md`, `production/qa/team-qa-*.md`,
+`production/gate-checks/*`, `production/epics/hud/story-014-*`,
+`.octogent/`, `.claude/settings.json`. No cargo / trunk / CI command
+invoked. **Cargo policy: N/A** for this paperwork-only `/story-done`
+single-row closure.
+
+Non-claims preserved verbatim: no Sprint 16 close-out; no closure of
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`; no pixel-level QA snapshot capture
+by PROMPT 1067 or PROMPT 1074 (1366x768 / 1920x1080 / 1024x600 remain
+human-operator deferred); no public release readiness; no RC
+readiness; no full game completion; no broad / Standard-tier
+accessibility completion (`QA-COND-0005` preserved); no playtest
+validation (`QA-COND-0006` preserved); no full manual QA; no two-
+client `GAME_OVER` closure (`S8-QA-001-W1` preserved); no final-art
+completion (`PAW-TD-*-a` preserved); no `Polish->Release` retry
+(PROMPT 761 FAIL preserved); no stage advance; no `TQ-S12-C7`
+closure; no Sprint 12 story 019 underlying drag-runtime bug fix
+claim; no Sprint 15/14/13/12/11/10 row reopen; no closure of the
+three per-surface card-slot migration siblings (Sprint 16+
+`S16-UI-CARD-SLOT-MIGRATION-HAND-001` / `-AUCTION-001` /
+`-BOARD-GHOST-001`); no closure of any of the 24 PROMPT 1022 QA
+snapshot audit findings.
+
+Branch / push: PROMPT 1074 commits
+`story-done(s16): close card-slot primitive row (PROMPT 1074)` on
+branch `prompt-1074-sprint-16-card-slot-story-done` (base
+`origin/main@c9b5716`). Push target: `origin/main` if allowed; if
+direct main push is blocked, the commit is pushed on the worker
+branch only and never force-pushed.
+
+---
+
 # PROMPT 1072 State Banner -- Sprint 16 Story-Done Batch (AppCompat + Dead-Code Warning)
 
 Updated 2026-05-17 by PROMPT 1072. Source-of-truth at closure:

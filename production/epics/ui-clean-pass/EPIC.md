@@ -12,7 +12,13 @@
 > authored by PROMPT 993, implemented by PROMPT 1005, integrated by
 > PROMPT 1007, and closed Done by PROMPT 1009 as a Sprint 15 Nice
 > to Have row; Sprint 16 Tier 3 rank 13 candidate story 009 authored
-> by PROMPT 1025 (Sprint 16 candidate, NOT activated)
+> by PROMPT 1025, repaired by PROMPT 1060 (integrated PROMPT 1063
+> `e769757`), activated into Sprint 16 by PROMPT 1064 (`6f9308c`),
+> implemented by PROMPT 1067 worker (`3bdf6ac`), integrated by
+> PROMPT 1073 (`d12adc4`), and closed Done by PROMPT 1074 on
+> `origin/main@c9b5716` as a Sprint 16 Should Have row (AC1..AC5 +
+> AC7 + AC8 PASS; AC6 partial -- QA snapshot bundles human-operator
+> deferred)
 > **Stories**: 1 Sprint 13 roadmap-prep story (Done) + 6 Sprint 14
 > Tier 0 foundation stories (Done) + 1 Sprint 15 Tier 0
 > Should-priority adjacent story (Done via PROMPT 1009) + 1 Sprint 16
@@ -110,7 +116,7 @@ accepted-risk and are **not** advanced by this roadmap-prep.
 | 006 | [UI Overlay Alpha Token (Single Source)](story-006-ui-overlay-alpha-token.md) | Tech Debt -- Tier 0 foundational | Draft -- Sprint 14 candidate, NOT activated | S12-TD-UI-OVERLAY-ALPHA-TOKEN-001 |
 | 007 | [Canonical Global UI Design Spec](story-007-global-ui-design-spec.md) | UX -- design-spec authoring | Draft -- Sprint 14 candidate, NOT activated | S12-UX-GLOBAL-UI-DESIGN-SPEC-001 |
 | 008 | [UI Interaction State Primitives](story-008-ui-interaction-state-primitives.md) | Tech Debt -- Tier 0 Should-priority adjacent primitive | Done -- Sprint 15 Nice to Have (closed PROMPT 1009 on `origin/main` after PROMPT 1005 dev-story + PROMPT 1007 integration `5d36c4b`) | S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001 |
-| 009 | [UI Card Slot Primitive](story-009-ui-card-slot-primitive.md) | Tech Debt -- Tier 3 rank 13 multi-surface primitive | Draft -- Sprint 16 candidate, NOT activated | S12-TD-UI-CARD-SLOT-PRIMITIVE-001 |
+| 009 | [UI Card Slot Primitive](story-009-ui-card-slot-primitive.md) | Tech Debt -- Tier 3 rank 13 multi-surface primitive | Done -- Sprint 16 Should Have (closed PROMPT 1074 on `origin/main@c9b5716`; PROMPT 1067 worker `3bdf6ac` + PROMPT 1073 integration `d12adc4`; AC1..AC5 + AC7 + AC8 PASS; AC6 partial -- QA snapshot bundles human-operator deferred) | S12-TD-UI-CARD-SLOT-PRIMITIVE-001 |
 | 010 | [Shop/Auction Module Split](story-010-ui-shop-auction-module-split.md) | Tech Debt -- structural refactor (file split) | Draft -- Sprint 16/17 candidate (Phase A.1 per PROMPT 1035), NOT activated | S16-TD-UI-SHOPAUCTION-MODSPLIT-001 |
 | 011 | [Hand Module Split](story-011-ui-hand-module-split.md) | Tech Debt -- structural refactor (file split) | Draft -- Sprint 16/17 candidate (Phase A.2 per PROMPT 1035), NOT activated | S16-TD-UI-HAND-MODSPLIT-001 |
 | 012 | [UI Modal Primitive](story-012-ui-modal-primitive.md) | Tech Debt -- foundational primitive (shared widget) | Draft -- Sprint 16/17 candidate (Phase B per PROMPT 1035; addresses PROMPT 1034 D2), NOT activated | S16-TD-UI-MODAL-PRIMITIVE-001 |
