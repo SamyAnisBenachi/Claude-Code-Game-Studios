@@ -307,6 +307,15 @@ path = "../tests/integration/playable_client/connection_lost_overlay_test.rs"
 name = "timer_urgency_audio_crash_guard_test"
 path = "../tests/integration/playable_client/timer_urgency_audio_crash_guard_test.rs"
 
+# PROMPT 1013 — QA snapshot overlay button (dev tool, disabled by default).
+# Asserts overlay is absent unless QASnapshotConfig::enabled is true, that
+# the snapshot request path writes a deterministic JSON file without
+# panicking in a minimal Bevy app, and that the env-parsing rule matches
+# the documented "CCGS_QA_SNAPSHOT=1" activation contract.
+[[test]]
+name = "qa_snapshot_overlay_test"
+path = "../tests/integration/qa_snapshot/qa_snapshot_overlay_test.rs"
+
 # S11-TD-UI-ZINDEX-LAYERS (Sprint 14 story 002): UI z-layer design-token
 # module grep-guard, reconnect-respawn paint-order invariant, and migration
 # spot-checks (AC5, AC6, AC7, AC8).

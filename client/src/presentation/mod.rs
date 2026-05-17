@@ -12,6 +12,7 @@ use crate::presentation::board_rendering::{
     BoardRenderSet, BoardRenderState, PendingResolutionScript, ResolutionRevealWait,
 };
 use crate::presentation::connection_lost_overlay::ConnectionLostOverlayPlugin;
+use crate::presentation::qa_snapshot::QASnapshotPlugin;
 use crate::presentation::result_screen::ResultScreenPlugin;
 use crate::presentation::shared::economy_view::drain_gold_update_receiver_system as drain_shared_gold_update_receiver_system;
 use crate::state::{
@@ -38,6 +39,7 @@ use crate::ui::shop_auction::{
 
 pub mod board_rendering;
 pub mod connection_lost_overlay;
+pub mod qa_snapshot;
 pub mod result_screen;
 pub mod shared;
 
@@ -92,6 +94,12 @@ impl Plugin for PresentationPlugin {
         app.add_plugins(ConnectionLostOverlayPlugin);
         app.add_plugins(SettingsAccessibilityPlugin);
         app.add_plugins(PhotosensitivityWarningPlugin);
+        // PROMPT 1013 — QA snapshot overlay (disabled by default; activated
+        // by `CCGS_QA_SNAPSHOT=1` env var on native, or by pre-inserting a
+        // `QASnapshotConfig { enabled: true, .. }` resource in tests).
+        // When disabled, the plugin spawns no UI and adds no per-frame work
+        // beyond the inert system registrations.
+        app.add_plugins(QASnapshotPlugin);
 
         app.configure_sets(
             Update,
