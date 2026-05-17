@@ -43,6 +43,10 @@ fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
     // PROMPT 1042 adds three further `ShopAuctionUiEntity`-tagged
     // children: the shop_phase_title, the shop_empty_state, and the
     // auction_pass_button — collected in the trailing `+ 3` term.
+    // PROMPT 1051 adds one further `ShopAuctionUiEntity`-tagged
+    // child: the draft_initial_modal_footer band hosting Ready /
+    // Retract Ready and the waiting status text — collected in the
+    // trailing `+ 1` term.
     assert_eq!(
         count_with::<ShopAuctionUiEntity>(&mut app),
         1 + SHOP_AUCTION_UI_PANEL_ROOT_COUNT * 2
@@ -57,6 +61,7 @@ fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
             + SHOP_AUCTION_UI_SHOP_SLOT_COUNT
             + 12
             + 3
+            + 1
     );
 
     for panel_root in entities.panel_roots() {

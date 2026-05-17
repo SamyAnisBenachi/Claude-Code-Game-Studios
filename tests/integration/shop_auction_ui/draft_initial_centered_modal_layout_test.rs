@@ -5,13 +5,14 @@ use bevy::state::app::StatesPlugin;
 use bevy::ui::GlobalZIndex;
 use client::presentation::PlayerEconomyView;
 use client::state::{ClientState, CurrentClientPhase};
-use client::ui::design_tokens::z_layers;
+use client::ui::design_tokens::{overlays, z_layers};
 use client::ui::shop_auction::{
-    DraftInitialGrid, DraftInitialModalPanel, DraftInitialSlotCard, ShopAuctionCardCatalog,
-    ShopAuctionDraftOfferingReceived, ShopAuctionShopSlotsReceived, ShopAuctionUiEntities,
-    ShopAuctionUiPlugin, DRAFT_INITIAL_GRID_COLUMN_GAP_PX, DRAFT_INITIAL_GRID_COLUMN_WIDTH_PX,
-    DRAFT_INITIAL_GRID_HEIGHT_PX, DRAFT_INITIAL_GRID_LEFT_PX, DRAFT_INITIAL_GRID_ROW_GAP_PX,
-    DRAFT_INITIAL_GRID_ROW_HEIGHT_PX, DRAFT_INITIAL_GRID_TOP_PX, DRAFT_INITIAL_GRID_WIDTH_PX,
+    DraftInitialGrid, DraftInitialModalFooter, DraftInitialModalPanel, DraftInitialSlotCard,
+    ShopAuctionCardCatalog, ShopAuctionDraftOfferingReceived, ShopAuctionShopSlotsReceived,
+    ShopAuctionUiEntities, ShopAuctionUiPlugin, DRAFT_INITIAL_GRID_COLUMN_GAP_PX,
+    DRAFT_INITIAL_GRID_COLUMN_WIDTH_PX, DRAFT_INITIAL_GRID_HEIGHT_PX, DRAFT_INITIAL_GRID_LEFT_PX,
+    DRAFT_INITIAL_GRID_ROW_GAP_PX, DRAFT_INITIAL_GRID_ROW_HEIGHT_PX, DRAFT_INITIAL_GRID_TOP_PX,
+    DRAFT_INITIAL_GRID_WIDTH_PX, DRAFT_INITIAL_MODAL_FOOTER_HEIGHT_PX,
     DRAFT_INITIAL_MODAL_HEIGHT_PX, DRAFT_INITIAL_MODAL_MAX_HEIGHT_PERCENT,
     DRAFT_INITIAL_MODAL_MAX_WIDTH_PX, DRAFT_INITIAL_MODAL_PADDING_PX,
     DRAFT_INITIAL_MODAL_WIDTH_PERCENT, SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT,
@@ -167,7 +168,7 @@ fn sau_015_draft_initial_grid_has_stable_rows_columns_and_spacing() {
 }
 
 #[test]
-fn sau_015_objective_and_ready_controls_do_not_overlap_the_grid_band() {
+fn sau_015_objective_overlay_and_retrieval_do_not_overlap_the_grid_band() {
     test_helpers::init_test_tracing();
     let app = active_draft_app();
     let entities = *app.world().resource::<ShopAuctionUiEntities>();
@@ -187,14 +188,133 @@ fn sau_015_objective_and_ready_controls_do_not_overlap_the_grid_band() {
         "retrieval affordance bottom {retrieval_bottom} must stay above grid top {}",
         DRAFT_INITIAL_GRID_TOP_PX
     );
+}
 
-    let ready = node(&app, entities.draft_initial_ready_button);
-    let ready_left_at_max_width =
-        DRAFT_INITIAL_MODAL_MAX_WIDTH_PX - px(ready.right) - px(ready.width);
-    let grid_right = DRAFT_INITIAL_GRID_LEFT_PX + DRAFT_INITIAL_GRID_WIDTH_PX;
+/// PROMPT 1051 AC: the keep-9 modal must paint an opaque modal contract
+/// — a scrim layer on the centering root + a fully-opaque modal body —
+/// so background or other overlay text cannot bleed through the modal
+/// edges (the failure mode the PROMPT 1034 audit captured at
+/// `000000-1779017730856`).
+#[test]
+fn prompt_1051_keep9_modal_paints_scrim_and_opaque_body() {
+    test_helpers::init_test_tracing();
+    let app = active_draft_app();
+    let entities = *app.world().resource::<ShopAuctionUiEntities>();
+
+    let scrim_bg = app
+        .world()
+        .get::<BackgroundColor>(entities.draft_offering_panel)
+        .expect("draft_offering_panel must carry a BackgroundColor that acts as the modal scrim");
+    let scrim_alpha = scrim_bg.0.alpha();
     assert!(
-        grid_right < ready_left_at_max_width,
-        "grid right {grid_right} must stay left of ready button left {ready_left_at_max_width}"
+        (scrim_alpha - overlays::OVERLAY_SCRIM_ALPHA).abs() < f32::EPSILON,
+        "draft_offering_panel scrim alpha must equal OVERLAY_SCRIM_ALPHA \
+         ({}); was {scrim_alpha}",
+        overlays::OVERLAY_SCRIM_ALPHA,
+    );
+
+    let modal_bg = app
+        .world()
+        .get::<BackgroundColor>(entities.draft_initial_modal_panel)
+        .expect("modal panel must carry a BackgroundColor");
+    let body_alpha = modal_bg.0.alpha();
+    assert!(
+        (body_alpha - 1.0).abs() < f32::EPSILON,
+        "draft_initial_modal_panel body alpha must be fully opaque (1.0) so \
+         background or overlay text cannot bleed through the modal edge; was \
+         {body_alpha}",
+    );
+}
+
+/// PROMPT 1051 AC: Ready / Retract Ready belongs to the modal footer band,
+/// not a detached side action. The button's ChildOf chain must include
+/// the `DraftInitialModalFooter` marker, the footer's parent must be the
+/// modal panel, and the footer must be anchored to the modal bottom.
+#[test]
+fn prompt_1051_ready_button_parents_into_modal_footer() {
+    test_helpers::init_test_tracing();
+    let app = active_draft_app();
+    let entities = *app.world().resource::<ShopAuctionUiEntities>();
+
+    assert!(
+        app.world()
+            .get::<DraftInitialModalFooter>(entities.draft_initial_modal_footer)
+            .is_some(),
+        "draft_initial_modal_footer entity must carry the DraftInitialModalFooter marker"
+    );
+    assert_eq!(
+        parent_of(&app, entities.draft_initial_modal_footer),
+        entities.draft_initial_modal_panel,
+        "footer must be a direct child of the modal panel"
+    );
+    assert_eq!(
+        parent_of(&app, entities.draft_initial_ready_button),
+        entities.draft_initial_modal_footer,
+        "Ready button must parent into the modal footer, not the modal panel root"
+    );
+    assert_eq!(
+        parent_of(&app, entities.draft_initial_ready_status),
+        entities.draft_initial_modal_footer,
+        "Ready status text must parent into the modal footer next to the Ready button"
+    );
+
+    let footer = node(&app, entities.draft_initial_modal_footer);
+    assert_eq!(footer.position_type, PositionType::Absolute);
+    assert_eq!(footer.bottom, Val::Px(DRAFT_INITIAL_MODAL_PADDING_PX));
+    assert_eq!(footer.height, Val::Px(DRAFT_INITIAL_MODAL_FOOTER_HEIGHT_PX));
+    assert_eq!(footer.display, Display::Flex);
+    assert_eq!(footer.flex_direction, FlexDirection::Row);
+}
+
+/// PROMPT 1051 AC: the keep grid and the new footer band must not
+/// overlap inside the 360px modal. Guarantees the footer sits strictly
+/// below the grid so the keep decision row reads as a footer-attached
+/// action, not as a side rail competing with the grid.
+#[test]
+fn prompt_1051_modal_footer_band_sits_strictly_below_keep_grid() {
+    test_helpers::init_test_tracing();
+    let app = active_draft_app();
+    let entities = *app.world().resource::<ShopAuctionUiEntities>();
+
+    let grid_bottom = DRAFT_INITIAL_GRID_TOP_PX + DRAFT_INITIAL_GRID_HEIGHT_PX;
+    let footer = node(&app, entities.draft_initial_modal_footer);
+    // `bottom` + `height` are anchored from the modal bottom edge, so
+    // converting to top-relative coords yields the footer-top y in modal
+    // coordinates.
+    let footer_top_in_modal = DRAFT_INITIAL_MODAL_HEIGHT_PX - px(footer.bottom) - px(footer.height);
+    assert!(
+        footer_top_in_modal >= grid_bottom,
+        "footer top ({footer_top_in_modal}) must sit at or below the grid \
+         bottom ({grid_bottom}) so the footer band does not overlap the keep grid"
+    );
+
+    let footer_bottom_in_modal = DRAFT_INITIAL_MODAL_HEIGHT_PX - px(footer.bottom);
+    assert!(
+        footer_bottom_in_modal <= DRAFT_INITIAL_MODAL_HEIGHT_PX,
+        "footer bottom ({footer_bottom_in_modal}) must stay inside the modal panel \
+         ({DRAFT_INITIAL_MODAL_HEIGHT_PX})"
+    );
+}
+
+/// PROMPT 1051 AC: the modal must remain visible and usable at
+/// 1280×720 without introducing viewport overflow. Asserts the modal
+/// height + 2×padding fits inside the 720px viewport and inside the
+/// 92% max-height guard.
+#[test]
+fn prompt_1051_modal_height_fits_inside_720_viewport() {
+    let viewport_height_px: f32 = 720.0;
+    let max_height = viewport_height_px * (DRAFT_INITIAL_MODAL_MAX_HEIGHT_PERCENT / 100.0);
+    assert!(
+        DRAFT_INITIAL_MODAL_HEIGHT_PX <= max_height,
+        "modal height ({DRAFT_INITIAL_MODAL_HEIGHT_PX}) must stay inside the \
+         {DRAFT_INITIAL_MODAL_MAX_HEIGHT_PERCENT}% max-height guard at 720px \
+         ({max_height})"
+    );
+    let with_padding = DRAFT_INITIAL_MODAL_HEIGHT_PX + 2.0 * DRAFT_INITIAL_MODAL_PADDING_PX;
+    assert!(
+        with_padding <= viewport_height_px,
+        "modal height + 2× centering padding ({with_padding}) must fit inside \
+         the 720px viewport"
     );
 }
 

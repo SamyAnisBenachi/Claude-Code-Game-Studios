@@ -34,9 +34,18 @@ pub const AUCTION_SETTLEMENT_TRANSITION_MS: u32 = 350;
 pub const DRAFT_INITIAL_OBJECTIVE_COPY: &str = "Select up to 9 cards to keep. You have 45 seconds.";
 pub const DRAFT_INITIAL_MODAL_WIDTH_PERCENT: f32 = 88.0;
 pub const DRAFT_INITIAL_MODAL_MAX_WIDTH_PX: f32 = 860.0;
-pub const DRAFT_INITIAL_MODAL_HEIGHT_PX: f32 = 300.0;
+// PROMPT 1051 — modal height extended from 300px to 360px to house the
+// new keep-decision footer (Ready + Retract Ready + Waiting status) while
+// preserving the 3×3 grid band above it. At 360px the modal still fits
+// inside the 720px viewport (margin = (720 - 360)/2 = 180px top/bottom)
+// and stays inside the 92% max-height guard.
+pub const DRAFT_INITIAL_MODAL_HEIGHT_PX: f32 = 360.0;
 pub const DRAFT_INITIAL_MODAL_MAX_HEIGHT_PERCENT: f32 = 92.0;
 pub const DRAFT_INITIAL_MODAL_PADDING_PX: f32 = spacing::SPACING_LG;
+// PROMPT 1051 — footer band height inside the modal. Hosts the Ready /
+// Retract Ready button and the waiting-for-opponent status line as a
+// single visually-grouped decision row anchored to the modal bottom.
+pub const DRAFT_INITIAL_MODAL_FOOTER_HEIGHT_PX: f32 = 64.0;
 pub const DRAFT_INITIAL_GRID_COLUMN_WIDTH_PX: f32 = 120.0;
 pub const DRAFT_INITIAL_GRID_ROW_HEIGHT_PX: f32 = 56.0;
 pub const DRAFT_INITIAL_GRID_COLUMN_GAP_PX: f32 = spacing::SPACING_MD;
@@ -601,6 +610,7 @@ pub struct ShopAuctionUiEntities {
     pub root: Entity,
     pub draft_offering_panel: Entity,
     pub draft_initial_modal_panel: Entity,
+    pub draft_initial_modal_footer: Entity,
     pub draft_initial_grid: Entity,
     pub draft_initial_slots: [Entity; SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT],
     pub draft_initial_bought_overlays: [Entity; SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT],
@@ -672,6 +682,13 @@ pub enum ShopAuctionPanelRoot {
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DraftInitialModalPanel;
+
+// PROMPT 1051 — marker for the keep-decision footer band anchored to the
+// bottom of the keep-9 modal panel. Parents the Ready / Retract Ready
+// button and the waiting-for-opponent status text so they read as a
+// single footer-attached decision row instead of a detached side action.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DraftInitialModalFooter;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DraftInitialGrid;
@@ -3861,19 +3878,36 @@ pub fn spawn_shop_auction_ui(
         "Shop Auction Draft Offering Root",
         draft_initial_centering_root_node(),
     );
-    commands
-        .entity(draft_offering_panel)
-        .insert(z_layers::MODAL);
+    // PROMPT 1051 — the centering root doubles as the modal scrim. A
+    // near-black background painted at the canonical OVERLAY_SCRIM_ALPHA
+    // dims and blocks the layer beneath so any pre-session warning text
+    // (photosensitivity body copy, etc.) cannot bleed through the modal
+    // edge during DraftInitial. Pairs with the fully-opaque modal panel
+    // body below so the keep-9 picker reads as a true modal layer.
+    commands.entity(draft_offering_panel).insert((
+        z_layers::MODAL,
+        BackgroundColor(Color::srgba(
+            0.02,
+            0.05,
+            0.08,
+            overlays::OVERLAY_SCRIM_ALPHA,
+        )),
+    ));
     let draft_initial_modal_panel =
         spawn_draft_initial_modal_panel(&mut commands, draft_offering_panel);
     let draft_initial_grid =
         spawn_draft_initial_grid_container(&mut commands, draft_initial_modal_panel);
     let (draft_initial_slots, draft_initial_bought_overlays) =
         spawn_draft_initial_grid(&mut commands, draft_initial_grid);
+    // PROMPT 1051 — footer band anchored to the modal bottom; Ready and
+    // Retract Ready / waiting status now parent into the footer instead
+    // of floating absolutely in the modal's top-right column.
+    let draft_initial_modal_footer =
+        spawn_draft_initial_modal_footer(&mut commands, draft_initial_modal_panel);
     let draft_initial_ready_button =
-        spawn_draft_initial_ready_button(&mut commands, draft_initial_modal_panel);
+        spawn_draft_initial_ready_button(&mut commands, draft_initial_modal_footer);
     let draft_initial_ready_status =
-        spawn_draft_initial_status_text(&mut commands, draft_initial_modal_panel);
+        spawn_draft_initial_status_text(&mut commands, draft_initial_modal_footer);
     let draft_initial_hand_full_banner =
         spawn_draft_initial_hand_full_banner(&mut commands, draft_initial_modal_panel);
     let (
@@ -3974,6 +4008,7 @@ pub fn spawn_shop_auction_ui(
         root,
         draft_offering_panel,
         draft_initial_modal_panel,
+        draft_initial_modal_footer,
         draft_initial_grid,
         draft_initial_slots,
         draft_initial_bought_overlays,
@@ -4095,14 +4130,38 @@ struct PendingDraftInitialPurchase;
 struct PendingShopPurchase;
 
 fn spawn_draft_initial_modal_panel(commands: &mut Commands, parent: Entity) -> Entity {
+    // PROMPT 1051 — modal body is fully opaque (alpha 1.0). The previous
+    // 0.94-alpha let any text painted at the same z-layer (notably the
+    // pre-session photosensitivity warning body) bleed through the modal
+    // edges. The fully-opaque body combined with the centering-root scrim
+    // gives the keep-9 modal a proper modal contract: nothing beneath it
+    // is visible.
     commands
         .spawn((
             Name::new("Shop Auction Draft Initial Modal Panel"),
             ShopAuctionUiEntity,
             DraftInitialModalPanel,
             draft_initial_modal_panel_node(),
-            BackgroundColor(Color::srgba(0.055, 0.062, 0.078, 0.94)),
+            BackgroundColor(Color::srgb(0.055, 0.062, 0.078)),
             BorderColor::all(Color::srgba(0.82, 0.86, 0.90, 0.26)),
+            Visibility::Visible,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
+fn spawn_draft_initial_modal_footer(commands: &mut Commands, parent: Entity) -> Entity {
+    // PROMPT 1051 — flex row anchored to the modal panel bottom, hosting
+    // the Ready / Retract Ready button and the waiting-for-opponent status
+    // text. The top border visually separates the footer from the grid
+    // band above so the keep decision reads as a single grouped action.
+    commands
+        .spawn((
+            Name::new("Shop Auction Draft Initial Modal Footer"),
+            ShopAuctionUiEntity,
+            DraftInitialModalFooter,
+            draft_initial_modal_footer_node(),
+            BorderColor::all(Color::srgba(0.82, 0.86, 0.90, 0.20)),
             Visibility::Visible,
             ChildOf(parent),
         ))
@@ -4826,25 +4885,52 @@ fn overlay_text_node() -> Node {
     }
 }
 
-fn draft_initial_ready_button_node() -> Node {
+fn draft_initial_modal_footer_node() -> Node {
+    // PROMPT 1051 — footer anchored to modal-panel bottom, full width
+    // minus the modal padding. Flex row with status text on the left
+    // and the Ready CTA on the right so the keep decision reads as a
+    // single grouped action band rather than two floating widgets.
     Node {
         position_type: PositionType::Absolute,
-        right: Val::Px(spacing::SPACING_XL + spacing::SPACING_XL),
-        top: Val::Px(spacing::SPACING_XL + spacing::SPACING_XL + spacing::SPACING_SM),
+        left: Val::Px(DRAFT_INITIAL_MODAL_PADDING_PX),
+        right: Val::Px(DRAFT_INITIAL_MODAL_PADDING_PX),
+        bottom: Val::Px(DRAFT_INITIAL_MODAL_PADDING_PX),
+        height: Val::Px(DRAFT_INITIAL_MODAL_FOOTER_HEIGHT_PX),
+        display: Display::Flex,
+        flex_direction: FlexDirection::Row,
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::SpaceBetween,
+        padding: UiRect::horizontal(Val::Px(spacing::SPACING_MD)),
+        column_gap: Val::Px(spacing::SPACING_MD),
+        border: UiRect::top(Val::Px(1.0)),
+        ..default()
+    }
+}
+
+fn draft_initial_ready_button_node() -> Node {
+    // PROMPT 1051 — flex child of the footer, pushed to the right end
+    // by the footer's SpaceBetween distribution. No absolute positioning
+    // so the button stays inside the footer band and reads as the
+    // primary CTA of the keep-9 decision.
+    Node {
+        position_type: PositionType::Relative,
         width: Val::Px(132.0),
         height: Val::Px(36.0),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
         border: UiRect::all(Val::Px(1.0)),
         ..default()
     }
 }
 
 fn draft_initial_status_node() -> Node {
+    // PROMPT 1051 — flex child of the footer, sits on the left and
+    // hosts the "Waiting for opponent..." copy when Ready is engaged.
     Node {
-        position_type: PositionType::Absolute,
-        right: Val::Px(spacing::SPACING_XL + spacing::SPACING_XL),
-        top: Val::Px(112.0),
-        width: Val::Px(180.0),
+        position_type: PositionType::Relative,
+        width: Val::Px(220.0),
         height: Val::Px(28.0),
+        align_items: AlignItems::Center,
         ..default()
     }
 }
