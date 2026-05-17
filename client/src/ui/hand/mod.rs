@@ -24,7 +24,7 @@ use crate::card_animations::{
 };
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
-use crate::ui::design_tokens::{strips, typography, z_layers};
+use crate::ui::design_tokens::{spacing, strips, typography, z_layers};
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 pub mod drag_state_visuals;
@@ -52,13 +52,27 @@ pub const RESERVE_STRIP_ENTITY_COUNT: usize = 4;
 // children of pre-existing pre-pooled entities (slots / fan_root); no
 // new top-level pre-pool entries are introduced (ADR-021 Impl
 // Guideline 5 preserved).
+//
+// PROMPT 1043 (Placement Action Panel + Submit Affordance P1 repair):
+// the trailing `+ 4` accounts for the four new tagged entities introduced
+// by the bordered placement action panel:
+//   1. `PlacementActionPanel` container (parent of the disclosure /
+//      timer / placed-count / submit children),
+//   2. `PlacementActionPanelHeader` text label ("Placement"),
+//   3. the timer row that hosts the countdown + submitted-checkmark
+//      side-by-side,
+//   4. `PlacedCountReadout` text ("X placed") wired to
+//      `PendingPlacements.staged_count()`.
+// All four are tagged with `HandUiEntity` so they are despawned with
+// the hand-UI tree on session exit (ADR-021 Impl Guideline 5 preserved).
 pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT
     + DRAFT_INITIAL_GRID_SLOT_COUNT
     + 8
     + HAND_FAN_SLOT_COUNT * RESERVE_STRIP_ENTITY_COUNT
     + 1
     + HAND_FAN_SLOT_COUNT * 2
-    + 1;
+    + 1
+    + 4;
 const HAND_CARD_DISPLAY_WIDTH_PX: f32 = 96.0;
 const HAND_CARD_DISPLAY_HEIGHT_PX: f32 = 136.0;
 const HAND_DRAFT_GRID_CARD_WIDTH_PX: f32 = 120.0;
@@ -711,6 +725,25 @@ pub struct NoValidTargetsOverlay;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PlacementDisclosureGuidance;
 
+// PROMPT 1043 — Placement Action Panel container. Wraps the disclosure
+// guidance, countdown timer, placed-count readout, submit button, and
+// submitted checkmark so the placement-phase action surface reads as one
+// bordered panel instead of a left-column of floating text fragments.
+// Visibility tracks `HandUiMode::Staging` (see
+// `hand_ui_phase_transition_system`); chrome paints only while the player
+// is committing placements.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlacementActionPanel;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlacementActionPanelHeader;
+
+// PROMPT 1043 — "X / Y placed" readout next to the submit button so the
+// player can see how many slots are committed against their hand size at
+// a glance.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlacedCountReadout;
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReserveStripForFanSlot(pub u8);
 
@@ -750,6 +783,12 @@ pub struct HandUiEntities {
     pub hand_full_notification: Entity,
     pub no_valid_targets_overlay: Entity,
     pub placement_disclosure_guidance: Entity,
+    // PROMPT 1043 — bordered container that owns the placement action UI
+    // (disclosure guidance, timer, placed-count readout, submit button,
+    // submitted checkmark). Visibility tracks `HandUiMode::Staging`.
+    pub placement_action_panel: Entity,
+    // PROMPT 1043 — "X / Y placed" readout child of the action panel.
+    pub placed_count_readout: Entity,
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -946,6 +985,11 @@ impl Plugin for HandUiPlugin {
                         // produced `HandUiPlacementCursorMoved` messages.
                         sync_hand_drag_sprite_position_system,
                         sync_placement_disclosure_guidance_system,
+                        // PROMPT 1043 — keep the "X placed" readout in
+                        // step with `PendingPlacements.staged_count()` so
+                        // unstaging, restaging, and phase resets all
+                        // refresh the visible budget.
+                        sync_placed_count_readout_system,
                         tick_pending_purchase_timeouts_system,
                         apply_fan_layout_system,
                         sync_hand_fan_card_art_system,
@@ -1282,6 +1326,13 @@ pub fn hand_ui_phase_transition_system(
     );
     set_visibility(
         entities.placement_disclosure_guidance,
+        visibility_for(next_mode == HandUiMode::Staging),
+        &mut visibility_query,
+    );
+    // PROMPT 1043 — the bordered action panel itself paints only while
+    // staging, so the chrome does not leak into Lobby/Draft/Auction.
+    set_visibility(
+        entities.placement_action_panel,
         visibility_for(next_mode == HandUiMode::Staging),
         &mut visibility_query,
     );
@@ -2722,6 +2773,32 @@ pub fn sync_submit_validation_error_system(
     }
 }
 
+// PROMPT 1043 — keeps the "X placed" readout in the placement action panel
+// in sync with `PendingPlacements.staged_count()`. The readout displays
+// "0 placed" while staging is empty and "{N} placed" otherwise; it goes
+// blank outside `HandUiMode::Staging` so the chrome does not paint
+// orphaned numbers in DraftShop / Auction / DraftInitial.
+pub fn sync_placed_count_readout_system(
+    mode: Res<HandUiMode>,
+    pending_placements: Res<PendingPlacements>,
+    entities: Option<Res<HandUiEntities>>,
+    mut readouts: Query<&mut Text, With<PlacedCountReadout>>,
+) {
+    let Some(entities) = entities else {
+        return;
+    };
+
+    let Ok(mut text) = readouts.get_mut(entities.placed_count_readout) else {
+        return;
+    };
+
+    text.0.clear();
+    if *mode == HandUiMode::Staging {
+        let count = pending_placements.staged_count();
+        text.0.push_str(&format!("{count} placed"));
+    }
+}
+
 pub fn sync_placement_disclosure_guidance_system(
     mode: Res<HandUiMode>,
     disclosure_state: Res<PlacementDisclosureState>,
@@ -3142,18 +3219,69 @@ pub fn spawn_hand_ui(
         ))
         .id();
 
-    let submit_button = commands
+    // PROMPT 1043 — bordered container that hosts the placement-phase
+    // action surface (header, disclosure guidance, countdown, placed-count
+    // readout, submit button, submitted checkmark). Replaces the previous
+    // four-floating-text-fragments layout (`Select a card` / timer digit /
+    // `Submit` / `(0` clipped) — reports/PROMPT-1034 §2.3 + §3 D3/D4 and
+    // reports/PROMPT-1036 §4.5 documented the affordance as visually
+    // unrecognisable, which left every Placement round closing with
+    // `committed_players=0`.
+    let placement_action_panel = commands
         .spawn((
-            Name::new("Hand UI Submit Button"),
+            Name::new("Hand UI Placement Action Panel"),
             HandUiEntity,
-            HandSubmitButton,
-            HandSubmitInteractionState::Inactive,
-            Button,
-            Interaction::None,
-            Text::new("Submit (0 cards)"),
-            hidden_control_node(96.0, 28.0, 88.0),
+            PlacementActionPanel,
+            placement_action_panel_node(),
+            BackgroundColor(PLACEMENT_ACTION_PANEL_BACKGROUND),
+            BorderColor::all(PLACEMENT_ACTION_PANEL_BORDER),
             Visibility::Hidden,
             ChildOf(fan_root),
+        ))
+        .id();
+
+    commands.spawn((
+        Name::new("Hand UI Placement Action Panel Header"),
+        HandUiEntity,
+        PlacementActionPanelHeader,
+        Text::new("Placement"),
+        TextColor(PLACEMENT_ACTION_PANEL_HEADER_COLOR),
+        TextFont {
+            font_size: typography::H3,
+            ..default()
+        },
+        action_panel_flex_label_node(),
+        Visibility::Inherited,
+        ChildOf(placement_action_panel),
+    ));
+
+    let placement_disclosure_guidance = commands
+        .spawn((
+            Name::new("Hand UI Placement Disclosure Guidance"),
+            HandUiEntity,
+            PlacementDisclosureGuidance,
+            Text::new(""),
+            TextColor(PLACEMENT_ACTION_PANEL_BODY_COLOR),
+            TextFont {
+                font_size: typography::BODY,
+                ..default()
+            },
+            action_panel_flex_label_node(),
+            Visibility::Hidden,
+            ChildOf(placement_action_panel),
+        ))
+        .id();
+
+    // PROMPT 1043 — timer + submitted checkmark live on a single row so
+    // the countdown reads as a labelled pill ("Time: 8s") and the OK badge
+    // sits adjacent to it after submit.
+    let timer_row = commands
+        .spawn((
+            Name::new("Hand UI Placement Timer Row"),
+            HandUiEntity,
+            action_panel_row_node(),
+            Visibility::Inherited,
+            ChildOf(placement_action_panel),
         ))
         .id();
 
@@ -3164,9 +3292,14 @@ pub fn spawn_hand_ui(
             HandTimer,
             TimerState::Normal,
             Text::new(""),
-            hidden_control_node(64.0, 28.0, 128.0),
+            TextColor(PLACEMENT_ACTION_PANEL_BODY_COLOR),
+            TextFont {
+                font_size: typography::H3,
+                ..default()
+            },
+            action_panel_flex_label_node(),
             Visibility::Hidden,
-            ChildOf(fan_root),
+            ChildOf(timer_row),
         ))
         .id();
 
@@ -3176,9 +3309,60 @@ pub fn spawn_hand_ui(
             HandUiEntity,
             TimerSubmittedCheckmark,
             Text::new("OK"),
-            hidden_control_node(24.0, 28.0, 128.0),
+            TextColor(PLACEMENT_ACTION_PANEL_OK_COLOR),
+            TextFont {
+                font_size: typography::H3,
+                ..default()
+            },
+            action_panel_flex_label_node(),
             Visibility::Hidden,
-            ChildOf(fan_root),
+            ChildOf(timer_row),
+        ))
+        .id();
+
+    // PROMPT 1043 — "X / Y placed" readout. Replaces the truncated `(0`
+    // micro-copy that the previous 96 px submit button overflowed into.
+    let placed_count_readout = commands
+        .spawn((
+            Name::new("Hand UI Placed Count Readout"),
+            HandUiEntity,
+            PlacedCountReadout,
+            Text::new("0 placed"),
+            TextColor(PLACEMENT_ACTION_PANEL_BODY_COLOR),
+            TextFont {
+                font_size: typography::BODY,
+                ..default()
+            },
+            action_panel_flex_label_node(),
+            Visibility::Inherited,
+            ChildOf(placement_action_panel),
+        ))
+        .id();
+
+    // PROMPT 1043 — Submit button promoted from a 96×28 bare-text node to
+    // a 200×40 chromed button. Background + border + border-radius make
+    // the affordance read as a button at all; the wider intrinsic width
+    // also stops the existing "Submit (X cards)" string from wrapping into
+    // the `(0` fragment that the audit captured.
+    let submit_button = commands
+        .spawn((
+            Name::new("Hand UI Submit Button"),
+            HandUiEntity,
+            HandSubmitButton,
+            HandSubmitInteractionState::Inactive,
+            Button,
+            Interaction::None,
+            Text::new("Submit (0 cards)"),
+            TextColor(PLACEMENT_ACTION_PANEL_BUTTON_TEXT_COLOR),
+            TextFont {
+                font_size: typography::BODY,
+                ..default()
+            },
+            submit_button_node(),
+            BackgroundColor(PLACEMENT_ACTION_PANEL_BUTTON_BACKGROUND),
+            BorderColor::all(PLACEMENT_ACTION_PANEL_BUTTON_BORDER),
+            Visibility::Hidden,
+            ChildOf(placement_action_panel),
         ))
         .id();
 
@@ -3205,18 +3389,6 @@ pub fn spawn_hand_ui(
         ))
         .id();
 
-    let placement_disclosure_guidance = commands
-        .spawn((
-            Name::new("Hand UI Placement Disclosure Guidance"),
-            HandUiEntity,
-            PlacementDisclosureGuidance,
-            Text::new(""),
-            hidden_control_node(260.0, 28.0, 208.0),
-            Visibility::Hidden,
-            ChildOf(fan_root),
-        ))
-        .id();
-
     commands.insert_resource(HandUiEntities {
         hand_bar,
         fan_root,
@@ -3230,6 +3402,8 @@ pub fn spawn_hand_ui(
         hand_full_notification,
         no_valid_targets_overlay,
         placement_disclosure_guidance,
+        placement_action_panel,
+        placed_count_readout,
     });
 }
 
@@ -3456,6 +3630,98 @@ fn hidden_control_node(width_px: f32, height_px: f32, bottom_px: f32) -> Node {
         width: Val::Px(width_px),
         height: Val::Px(height_px),
         bottom: Val::Px(bottom_px),
+        ..default()
+    }
+}
+
+// PROMPT 1043 — Placement Action Panel layout + chrome constants.
+//
+// Replaces the previous four floating `hidden_control_node(w, h, bottom)`
+// absolute placements (reports/PROMPT-1034 §2.3 / §3 D4) with a single
+// bordered container anchored to the bottom-right of the viewport, sitting
+// outside the centered card-fan footprint so the panel does not occlude
+// the cards.
+//
+// Width / height are chosen so "Submit (0 cards)" — the longest string
+// the existing label cycles through — fits the 200 px button without
+// wrapping, and the column-flex layout has visual room for the header,
+// disclosure caption, timer row, placed-count readout, and submit button
+// stacked vertically with `SPACING_SM` gaps.
+const PLACEMENT_ACTION_PANEL_WIDTH_PX: f32 = 240.0;
+const PLACEMENT_ACTION_PANEL_RIGHT_PX: f32 = 16.0;
+const PLACEMENT_ACTION_PANEL_BOTTOM_PX: f32 = 16.0;
+const PLACEMENT_ACTION_PANEL_BORDER_PX: f32 = 1.0;
+const PLACEMENT_ACTION_SUBMIT_BUTTON_WIDTH_PX: f32 = 200.0;
+const PLACEMENT_ACTION_SUBMIT_BUTTON_HEIGHT_PX: f32 = 40.0;
+
+// Panel chrome colors — surface-elevated dark fill with a light translucent
+// border so the panel reads as a distinct surface against the dark
+// playfield without introducing a fresh palette entry. Mirrors the
+// `Color::srgb(0.086, 0.106, 0.153)` SURFACE_ELEVATED pattern already used
+// by the lobby class-picker panel (`client/src/ui/lobby.rs`).
+const PLACEMENT_ACTION_PANEL_BACKGROUND: Color = Color::srgba(0.086, 0.106, 0.153, 0.94);
+const PLACEMENT_ACTION_PANEL_BORDER: Color = Color::srgba(0.82, 0.86, 0.9, 0.40);
+const PLACEMENT_ACTION_PANEL_HEADER_COLOR: Color = Color::srgb(0.96, 0.96, 0.98);
+const PLACEMENT_ACTION_PANEL_BODY_COLOR: Color = Color::srgb(0.85, 0.88, 0.93);
+const PLACEMENT_ACTION_PANEL_OK_COLOR: Color = Color::srgb(0.55, 0.85, 0.55);
+const PLACEMENT_ACTION_PANEL_BUTTON_BACKGROUND: Color = Color::srgba(0.20, 0.42, 0.74, 0.95);
+const PLACEMENT_ACTION_PANEL_BUTTON_BORDER: Color = Color::srgb(0.40, 0.62, 0.92);
+const PLACEMENT_ACTION_PANEL_BUTTON_TEXT_COLOR: Color = Color::srgb(0.98, 0.99, 1.0);
+
+fn placement_action_panel_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        right: Val::Px(PLACEMENT_ACTION_PANEL_RIGHT_PX),
+        bottom: Val::Px(PLACEMENT_ACTION_PANEL_BOTTOM_PX),
+        width: Val::Px(PLACEMENT_ACTION_PANEL_WIDTH_PX),
+        display: Display::Flex,
+        flex_direction: FlexDirection::Column,
+        align_items: AlignItems::Stretch,
+        justify_content: JustifyContent::FlexStart,
+        padding: UiRect::all(Val::Px(spacing::SPACING_MD)),
+        row_gap: Val::Px(spacing::SPACING_SM),
+        border: UiRect::all(Val::Px(PLACEMENT_ACTION_PANEL_BORDER_PX)),
+        border_radius: BorderRadius::all(Val::Px(spacing::SPACING_SM)),
+        ..default()
+    }
+}
+
+fn action_panel_flex_label_node() -> Node {
+    Node {
+        // Relative flow inside the column-flex panel — no absolute
+        // positioning, so each row stacks naturally with the panel's
+        // `row_gap`. AC: the chrome composition test guards against
+        // accidental `position_type: Absolute` regressions on these
+        // children (which would re-introduce the floating-fragment bug).
+        position_type: PositionType::Relative,
+        width: Val::Percent(100.0),
+        ..default()
+    }
+}
+
+fn action_panel_row_node() -> Node {
+    Node {
+        position_type: PositionType::Relative,
+        width: Val::Percent(100.0),
+        display: Display::Flex,
+        flex_direction: FlexDirection::Row,
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::FlexStart,
+        column_gap: Val::Px(spacing::SPACING_SM),
+        ..default()
+    }
+}
+
+fn submit_button_node() -> Node {
+    Node {
+        position_type: PositionType::Relative,
+        width: Val::Px(PLACEMENT_ACTION_SUBMIT_BUTTON_WIDTH_PX),
+        height: Val::Px(PLACEMENT_ACTION_SUBMIT_BUTTON_HEIGHT_PX),
+        display: Display::Flex,
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        border: UiRect::all(Val::Px(PLACEMENT_ACTION_PANEL_BORDER_PX)),
+        border_radius: BorderRadius::all(Val::Px(spacing::SPACING_XS)),
         ..default()
     }
 }
