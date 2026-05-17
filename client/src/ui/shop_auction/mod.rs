@@ -612,6 +612,8 @@ pub struct ShopAuctionUiEntities {
     pub draft_initial_objective_dismiss_button: Entity,
     pub draft_initial_objective_retrieval_button: Entity,
     pub shop_panel: Entity,
+    pub shop_phase_title: Entity,
+    pub shop_empty_state: Entity,
     pub shop_slots: [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT],
     pub shop_refresh_button: Entity,
     pub shop_ready_button: Entity,
@@ -630,6 +632,7 @@ pub struct ShopAuctionUiEntities {
     pub auction_free_gold_counter_labels: [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
     pub auction_free_gold_counter_values: [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
     pub auction_bid_buttons: [Entity; 3],
+    pub auction_pass_button: Entity,
     pub shop_footer: Entity,
     pub shop_footer_slots: [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT],
     pub toast_root: Entity,
@@ -727,6 +730,20 @@ impl AuctionBidFocusState {
 pub struct AuctionBidKeyboardFocus {
     pub focused_button: Option<Entity>,
 }
+
+/// PROMPT 1042 — local-only "I am passing this auction" state. The auction
+/// protocol has no server-side Pass message; the auction simply expires if
+/// the player does not bid. The Pass affordance documents that intent
+/// visually: clicking Pass sets this resource which dims the bid buttons
+/// and labels the Pass button "PASSED" until the next auction card arrives
+/// or the phase changes.
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionLocallyPassed {
+    pub passed: bool,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionPassButton;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuctionBidStatusText;
@@ -984,6 +1001,22 @@ pub struct ShopReadyStatus;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShopHandFullBanner;
 
+/// PROMPT 1042 — explicit DraftShop phase title rendered at the top of the
+/// shop panel. The HUD top-bar collapses DraftInitial / DraftShop /
+/// DraftAuction into the single word "DRAFT" (separate HUD scope), so the
+/// shop surface needs its own in-panel title so the player can distinguish
+/// the shop from Placement at a glance.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopPhaseTitle;
+
+/// PROMPT 1042 — explicit empty-state copy shown when the DraftShop panel
+/// is mounted but the server has not yet delivered offer slots (race
+/// window between `S2CPhaseChanged{DraftShop}` and `S2CShopSlots`, or a
+/// dropped slot broadcast). Keeps the phase legible instead of rendering
+/// a blank rectangle that looks like Placement.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopEmptyState;
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShopRefreshButtonState {
     pub enabled: bool,
@@ -1140,6 +1173,11 @@ pub struct ShopAuctionShopReadyButtonClicked {
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopAuctionAuctionPassButtonClicked {
+    pub button: Entity,
+}
+
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShopAuctionBidButtonClicked {
     pub button: Entity,
 }
@@ -1198,6 +1236,7 @@ impl Plugin for ShopAuctionUiPlugin {
             .init_resource::<ShopAuctionToastState>()
             .init_resource::<ShopAuctionRefreshConfig>()
             .init_resource::<AuctionBidKeyboardFocus>()
+            .init_resource::<AuctionLocallyPassed>()
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<PlayerEconomyView>()
             .init_resource::<ClientPhaseView>()
@@ -1222,6 +1261,7 @@ impl Plugin for ShopAuctionUiPlugin {
             .add_message::<ShopAuctionShopRefreshClicked>()
             .add_message::<ShopAuctionShopReadyButtonClicked>()
             .add_message::<ShopAuctionBidButtonClicked>()
+            .add_message::<ShopAuctionAuctionPassButtonClicked>()
             .add_message::<ShopAuctionGoldCounterFlashRequested>()
             .configure_sets(
                 Update,
@@ -1274,6 +1314,8 @@ impl Plugin for ShopAuctionUiPlugin {
                         handle_auction_bid_button_interactions_system,
                         handle_auction_bid_keyboard_focus_system,
                         handle_auction_bid_button_click_system,
+                        handle_auction_pass_button_interactions_system,
+                        handle_auction_pass_button_click_system,
                     )
                         .chain()
                         .in_set(ShopAuctionUiSystemSet::Input),
@@ -1370,6 +1412,7 @@ pub fn shop_auction_ui_phase_transition_system(
     mut toast_state: ResMut<ShopAuctionToastState>,
     mut timer_target: ResMut<AuctionTimerTargetFill>,
     mut keyboard_focus: ResMut<AuctionBidKeyboardFocus>,
+    mut locally_passed: ResMut<AuctionLocallyPassed>,
     mut visibility: Query<&mut Visibility>,
 ) {
     if !current.is_changed() {
@@ -1380,7 +1423,12 @@ pub fn shop_auction_ui_phase_transition_system(
     let mut next_mode = ShopAuctionUiMode::from_phase(current.phase);
     let settlement_active = settlement_state.transition_active;
 
-    clear_auction_feedback_state(&mut toast_state, &mut timer_target, &mut keyboard_focus);
+    clear_auction_feedback_state(
+        &mut toast_state,
+        &mut timer_target,
+        &mut keyboard_focus,
+        &mut locally_passed,
+    );
 
     if settlement_active {
         match current.phase {
@@ -1474,7 +1522,10 @@ pub fn shop_auction_ui_phase_transition_system(
             auction_state.panel_visible()
         }
         ShopAuctionUiMode::AuctionSettling => auction_state.panel_visible(),
-        ShopAuctionUiMode::Shop => shop_state.slots_loaded,
+        // PROMPT 1042 — root visible immediately on entering DraftShop so
+        // the explicit shop surface (phase title + empty state + chrome)
+        // renders even before `S2CShopSlots` arrives.
+        ShopAuctionUiMode::Shop => true,
     };
 
     set_visibility(&mut visibility, entities.root, visibility_for(root_visible));
@@ -1485,10 +1536,13 @@ pub fn shop_auction_ui_phase_transition_system(
             next_mode == ShopAuctionUiMode::DraftOffering && draft_state.offering_loaded,
         ),
     );
+    // PROMPT 1042 — shop_panel visibility no longer gated on slots_loaded;
+    // empty-state copy + phase title carry the surface during the race
+    // window between phase change and `S2CShopSlots` delivery.
     set_visibility(
         &mut visibility,
         entities.shop_panel,
-        visibility_for(next_mode == ShopAuctionUiMode::Shop && shop_state.slots_loaded),
+        visibility_for(next_mode == ShopAuctionUiMode::Shop),
     );
     set_visibility(
         &mut visibility,
@@ -1525,10 +1579,14 @@ fn clear_auction_feedback_state(
     toast_state: &mut ShopAuctionToastState,
     timer_target: &mut AuctionTimerTargetFill,
     keyboard_focus: &mut AuctionBidKeyboardFocus,
+    locally_passed: &mut AuctionLocallyPassed,
 ) {
     toast_state.clear();
     *timer_target = AuctionTimerTargetFill::default();
     keyboard_focus.focused_button = None;
+    // PROMPT 1042 — clear the local Pass intent on any phase change so a
+    // pass in round N never leaks into round N+1's auction.
+    locally_passed.passed = false;
 }
 
 pub fn drain_auction_card_receiver_system(
@@ -1615,6 +1673,7 @@ pub fn handle_auction_snapshot_system(
     mut toast_state: ResMut<ShopAuctionToastState>,
     mut timer_target: ResMut<AuctionTimerTargetFill>,
     mut keyboard_focus: ResMut<AuctionBidKeyboardFocus>,
+    mut locally_passed: ResMut<AuctionLocallyPassed>,
     mut local_gold: ResMut<ShopAuctionLocalGoldView>,
     mut hand_view: ResMut<ShopAuctionDraftHandView>,
     mut mode: ResMut<ShopAuctionUiMode>,
@@ -1626,7 +1685,12 @@ pub fn handle_auction_snapshot_system(
         auction_state.clear();
         settlement_state.clear();
         shop_timer.stop();
-        clear_auction_feedback_state(&mut toast_state, &mut timer_target, &mut keyboard_focus);
+        clear_auction_feedback_state(
+            &mut toast_state,
+            &mut timer_target,
+            &mut keyboard_focus,
+            &mut locally_passed,
+        );
 
         local_gold.player_id = Some(snapshot.recipient_player_id);
         let mut local_shop_slots = None;
@@ -1869,8 +1933,12 @@ pub fn handle_auction_card_system(
     mut auction_cards: MessageReader<ShopAuctionAuctionCardReceived>,
     mut auction_state: ResMut<ShopAuctionAuctionState>,
     mut mode: ResMut<ShopAuctionUiMode>,
+    mut locally_passed: ResMut<AuctionLocallyPassed>,
 ) {
     for message in auction_cards.read() {
+        // PROMPT 1042 — clear local Pass intent whenever a new auction
+        // card is buffered. Pass is per-card, not per-phase.
+        locally_passed.passed = false;
         // Placement is gameplay-active and never transitions directly into
         // DraftAuction; auction cards arriving mid-placement are out-of-band.
         if current.phase == RoundPhase::Placement {
@@ -2769,6 +2837,64 @@ pub fn handle_auction_bid_button_interactions_system(
     }
 }
 
+/// PROMPT 1042 — converts a `Pressed` interaction on the Pass affordance
+/// to a `ShopAuctionAuctionPassButtonClicked` message so the click handler
+/// can run after input is drained.
+pub fn handle_auction_pass_button_interactions_system(
+    mut interactions: Query<
+        (Entity, &Interaction),
+        (Changed<Interaction>, With<AuctionPassButton>),
+    >,
+    mut clicks: MessageWriter<ShopAuctionAuctionPassButtonClicked>,
+) {
+    for (entity, interaction) in &mut interactions {
+        if *interaction == Interaction::Pressed {
+            clicks.write(ShopAuctionAuctionPassButtonClicked { button: entity });
+        }
+    }
+}
+
+/// PROMPT 1042 — toggles the local "I am passing" state on Pass-button
+/// click. Pure UI state — the server has no Pass protocol message; the
+/// auction simply expires if the player does not bid. Clicking Pass a
+/// second time un-passes so the player can change their mind before the
+/// auction ends.
+pub fn handle_auction_pass_button_click_system(
+    entities: Option<Res<ShopAuctionUiEntities>>,
+    current: Res<CurrentClientPhase>,
+    mode: Res<ShopAuctionUiMode>,
+    auction_state: Res<ShopAuctionAuctionState>,
+    hand_view: Res<ShopAuctionDraftHandView>,
+    local_gold: Res<ShopAuctionLocalGoldView>,
+    mut clicks: MessageReader<ShopAuctionAuctionPassButtonClicked>,
+    mut locally_passed: ResMut<AuctionLocallyPassed>,
+) {
+    let Some(entities) = entities else {
+        for _click in clicks.read() {}
+        return;
+    };
+
+    for click in clicks.read() {
+        if click.button != entities.auction_pass_button
+            || current.phase != RoundPhase::DraftAuction
+            || !auction_active(&mode, &auction_state)
+        {
+            continue;
+        }
+
+        // Pass is meaningless when the player is already locked out of
+        // bidding (leading, hand full, in-flight bid).
+        if local_player_is_leading(&auction_state, &local_gold)
+            || hand_view.hand_size >= 10
+            || auction_state.in_flight_bid_amount.is_some()
+        {
+            continue;
+        }
+
+        locally_passed.passed = !locally_passed.passed;
+    }
+}
+
 pub fn handle_auction_bid_keyboard_focus_system(
     entities: Option<Res<ShopAuctionUiEntities>>,
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -2960,6 +3086,11 @@ pub fn sync_shop_panel_system(
     };
 
     let active = shop_active(&mode, &shop_state);
+    // PROMPT 1042 — when in DraftShop but no slots have arrived yet, the
+    // shop panel still renders explicit phase chrome (title + empty-state)
+    // while interactive affordances (refresh / ready) stay hidden so the
+    // player cannot click a ghost button before offers exist.
+    let interactive = active && shop_state.slots_loaded;
     {
         let mut visibility = shop_ui.p0();
         if *mode == ShopAuctionUiMode::Shop {
@@ -2968,30 +3099,44 @@ pub fn sync_shop_panel_system(
         set_visibility(&mut visibility, entities.shop_panel, visibility_for(active));
         set_visibility(
             &mut visibility,
-            entities.shop_refresh_button,
+            entities.shop_phase_title,
             visibility_for(active),
+        );
+        set_visibility(
+            &mut visibility,
+            entities.shop_empty_state,
+            visibility_for(active && !shop_state.slots_loaded),
+        );
+        set_visibility(
+            &mut visibility,
+            entities.shop_refresh_button,
+            visibility_for(interactive),
         );
         set_visibility(
             &mut visibility,
             entities.shop_ready_button,
-            visibility_for(active),
+            visibility_for(interactive),
         );
         set_visibility(
             &mut visibility,
             entities.shop_ready_status,
-            visibility_for(active && shop_state.ready_signalled),
+            visibility_for(interactive && shop_state.ready_signalled),
         );
         set_visibility(
             &mut visibility,
             entities.shop_hand_full_banner,
-            visibility_for(active && hand_view.hand_size >= 10),
+            visibility_for(interactive && hand_view.hand_size >= 10),
         );
     }
 
     {
         let mut slots = shop_ui.p1();
         for (slot_entity, card, mut slot_state, mut visibility, mut text) in &mut slots {
-            if !active {
+            // PROMPT 1042 — slot wells stay hidden until `S2CShopSlots`
+            // delivers offers; while waiting, the shop_empty_state copy
+            // ("Waiting for shop offers...") is the placeholder so 3
+            // "Empty" wells do not look like a loaded-empty shop.
+            if !interactive {
                 *visibility = Visibility::Hidden;
                 if *slot_state == ShopSlotState::PendingPurchase {
                     *slot_state = ShopSlotState::Available;
@@ -3017,7 +3162,10 @@ pub fn sync_shop_panel_system(
         refresh_config.refresh_cap,
         shop_state.refresh_count_this_draft,
     );
-    let refresh_enabled = active
+    // PROMPT 1042 — refresh enabled only once the first `S2CShopSlots`
+    // batch has been applied, so the player cannot click an affordance
+    // that has nothing to refresh.
+    let refresh_enabled = interactive
         && !shop_state.refresh_in_flight
         && economy.initialized
         && economy.gold >= refresh_cost;
@@ -3167,6 +3315,7 @@ pub fn sync_auction_panel_system(
     settlement_state: Res<ShopAuctionSettlementState>,
     shop_state: Res<ShopAuctionShopState>,
     entities: Option<Res<ShopAuctionUiEntities>>,
+    locally_passed: Res<AuctionLocallyPassed>,
     mut keyboard_focus: ResMut<AuctionBidKeyboardFocus>,
     mut commands: Commands,
     mut auction_ui: ParamSet<(
@@ -3285,6 +3434,14 @@ pub fn sync_auction_panel_system(
         set_visibility(
             &mut visibility,
             entities.shop_footer,
+            visibility_for(footer_visible),
+        );
+        // PROMPT 1042 — Pass affordance is visible whenever the bid row is
+        // visible. It stays visible after a local pass so the player keeps
+        // the "PASSED" feedback (it just disables itself + the bid row).
+        set_visibility(
+            &mut visibility,
+            entities.auction_pass_button,
             visibility_for(footer_visible),
         );
     }
@@ -3454,7 +3611,7 @@ pub fn sync_auction_panel_system(
             };
 
             let amount = auction_bid_amount(auction_state.current_price, button.increment);
-            let next_state = auction_bid_button_state(
+            let base_state = auction_bid_button_state(
                 amount,
                 local_free_gold,
                 has_gold_source,
@@ -3463,6 +3620,17 @@ pub fn sync_auction_panel_system(
                 auction_state.waiting_for_local_gold_after_opponent_bid(),
                 &auction_state,
             );
+            // PROMPT 1042 — local Pass dims the bid row to communicate the
+            // player's intent. Pass is purely local — auction settles
+            // server-side based on actual bids — so we only adjust the
+            // visual state, never short-circuit a bid that is already in
+            // flight (`InFlight` wins over `Pass`).
+            let next_state =
+                if locally_passed.passed && base_state != AuctionBidButtonState::InFlight {
+                    AuctionBidButtonState::GenericDisabled
+                } else {
+                    base_state
+                };
 
             *visibility = visibility_for(
                 footer_visible && next_state != AuctionBidButtonState::HiddenLeading,
@@ -3520,6 +3688,20 @@ pub fn sync_auction_panel_system(
         }
         if focused_button.is_some() && !focused_button_is_focusable {
             keyboard_focus.focused_button = None;
+        }
+    }
+
+    // PROMPT 1042 — Pass button text reflects local pass state. Server
+    // never sees this; auction settles based on actual bids placed.
+    {
+        let mut texts = auction_ui.p1();
+        if let Ok(mut text) = texts.get_mut(entities.auction_pass_button) {
+            text.0.clear();
+            if locally_passed.passed {
+                text.0.push_str("PASSED");
+            } else {
+                text.0.push_str("PASS");
+            }
         }
     }
 
@@ -3712,6 +3894,8 @@ pub fn spawn_shop_auction_ui(
     commands
         .entity(shop_panel)
         .insert(ImageNode::new(asset_server.load(SHOP_PANEL_CHROME_ASSET)));
+    let shop_phase_title = spawn_shop_phase_title(&mut commands, shop_panel);
+    let shop_empty_state = spawn_shop_empty_state(&mut commands, shop_panel);
     let shop_slots = spawn_shop_slots(&mut commands, &asset_server, shop_panel);
     let shop_refresh_button = spawn_shop_refresh_button(&mut commands, shop_panel);
     let shop_ready_button = spawn_shop_ready_button(&mut commands, shop_panel);
@@ -3743,6 +3927,7 @@ pub fn spawn_shop_auction_ui(
         auction_free_gold_counter_labels,
         auction_free_gold_counter_values,
         auction_bid_buttons,
+        auction_pass_button,
     ) = spawn_auction_contents(
         &mut commands,
         &asset_server,
@@ -3800,6 +3985,8 @@ pub fn spawn_shop_auction_ui(
         draft_initial_objective_dismiss_button,
         draft_initial_objective_retrieval_button,
         shop_panel,
+        shop_phase_title,
+        shop_empty_state,
         shop_slots,
         shop_refresh_button,
         shop_ready_button,
@@ -3818,6 +4005,7 @@ pub fn spawn_shop_auction_ui(
         auction_free_gold_counter_labels,
         auction_free_gold_counter_values,
         auction_bid_buttons,
+        auction_pass_button,
         shop_footer,
         shop_footer_slots,
         toast_root,
@@ -4218,6 +4406,38 @@ fn spawn_shop_hand_full_banner(commands: &mut Commands, parent: Entity) -> Entit
         .id()
 }
 
+fn spawn_shop_phase_title(commands: &mut Commands, parent: Entity) -> Entity {
+    commands
+        .spawn((
+            Name::new("Shop Auction Shop Phase Title"),
+            ShopAuctionUiEntity,
+            ShopPhaseTitle,
+            Text::new("SHOP"),
+            shop_auction_text_font(typography::H2),
+            TextColor(Color::srgb(0.98, 0.88, 0.45)),
+            shop_phase_title_node(),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
+fn spawn_shop_empty_state(commands: &mut Commands, parent: Entity) -> Entity {
+    commands
+        .spawn((
+            Name::new("Shop Auction Shop Empty State"),
+            ShopAuctionUiEntity,
+            ShopEmptyState,
+            Text::new("Waiting for shop offers..."),
+            shop_auction_text_font(typography::BODY),
+            TextColor(Color::srgb(0.86, 0.90, 0.96)),
+            shop_empty_state_node(),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
 fn spawn_auction_contents(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -4236,6 +4456,7 @@ fn spawn_auction_contents(
     [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
     [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
     [Entity; 3],
+    Entity,
 ) {
     let featured_card = commands
         .spawn((
@@ -4396,6 +4617,24 @@ fn spawn_auction_contents(
             .id()
     });
 
+    let pass_button = commands
+        .spawn((
+            Name::new("Shop Auction Pass Button"),
+            ShopAuctionUiEntity,
+            AuctionPassButton,
+            Button,
+            Interaction::None,
+            Text::new("PASS"),
+            shop_auction_text_font(typography::H3),
+            TextColor(Color::srgb(0.92, 0.94, 0.96)),
+            BackgroundColor(Color::srgba(0.12, 0.14, 0.18, 0.75)),
+            BorderColor::all(Color::srgba(0.92, 0.94, 0.96, 0.55)),
+            auction_pass_button_node(),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id();
+
     (
         featured_card,
         featured_card_frame,
@@ -4409,6 +4648,7 @@ fn spawn_auction_contents(
         free_gold_counter_labels,
         free_gold_counter_values,
         bid_buttons,
+        pass_button,
     )
 }
 
@@ -4725,6 +4965,35 @@ fn shop_hand_full_banner_node() -> Node {
     }
 }
 
+fn shop_phase_title_node() -> Node {
+    // PROMPT 1042 — anchored to the top of the 260px shop_panel so the
+    // word "SHOP" sits above the slot row at every captured viewport. Wide
+    // enough to host an optional " — ROUND N" suffix without re-laying-out.
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(spacing::SPACING_LG),
+        top: Val::Px(spacing::SPACING_SM),
+        width: Val::Px(280.0),
+        height: Val::Px(28.0),
+        ..default()
+    }
+}
+
+fn shop_empty_state_node() -> Node {
+    // PROMPT 1042 — centered above the row of shop_slot wells so the
+    // message lands where the cards will eventually render. Width matches
+    // the slot strip (3 × 136 + 2 × 18 = 444 px) so the text reads as the
+    // placeholder for the offer row.
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(92.0),
+        top: Val::Px(70.0),
+        width: Val::Px(444.0),
+        height: Val::Px(28.0),
+        ..default()
+    }
+}
+
 fn auction_panel_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
@@ -4950,6 +5219,21 @@ fn auction_bid_button_node(index: usize) -> Node {
     Node {
         position_type: PositionType::Absolute,
         left: Val::Percent(34.0 + index as f32 * 9.0),
+        bottom: Val::Px(72.0),
+        width: Val::Px(AUCTION_BID_TARGET_WIDTH_PX),
+        height: Val::Px(AUCTION_BID_TARGET_HEIGHT_PX),
+        border: UiRect::all(Val::Px(1.0)),
+        ..default()
+    }
+}
+
+fn auction_pass_button_node() -> Node {
+    // PROMPT 1042 — Pass affordance anchored after the 3rd bid button at
+    // index 3 (`34% + 3 × 9% = 61%`) so the auction decision cluster reads
+    // [Bid +1] [Bid +3] [Bid +5] [Pass] in left-to-right scan order.
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Percent(34.0 + 3.0 * 9.0),
         bottom: Val::Px(72.0),
         width: Val::Px(AUCTION_BID_TARGET_WIDTH_PX),
         height: Val::Px(AUCTION_BID_TARGET_HEIGHT_PX),
@@ -5225,8 +5509,13 @@ fn draft_initial_active(mode: &ShopAuctionUiMode, state: &ShopAuctionDraftInitia
     *mode == ShopAuctionUiMode::DraftOffering && state.offering_loaded
 }
 
-fn shop_active(mode: &ShopAuctionUiMode, state: &ShopAuctionShopState) -> bool {
-    *mode == ShopAuctionUiMode::Shop && state.slots_loaded
+/// PROMPT 1042 — return true whenever the client is in DraftShop mode,
+/// regardless of whether shop slots have arrived. The shop surface now
+/// renders explicit chrome + an empty-state copy while waiting for
+/// `S2CShopSlots`, so the player never sees a blank panel that looks like
+/// Placement (PROMPT 1034 finding F-shop / §2.4).
+fn shop_active(mode: &ShopAuctionUiMode, _state: &ShopAuctionShopState) -> bool {
+    *mode == ShopAuctionUiMode::Shop
 }
 
 fn should_buffer_shop_slots(phase: RoundPhase) -> bool {
