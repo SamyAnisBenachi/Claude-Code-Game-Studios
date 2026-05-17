@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::state::ClientState;
 use crate::ui::design_tokens::{typography, z_layers};
 
 pub const PHOTOSENSITIVITY_WARNING_TITLE: &str = "Photosensitivity Warning";
@@ -54,6 +55,10 @@ impl Plugin for PhotosensitivityWarningPlugin {
                     acknowledge_photosensitivity_warning_from_message,
                     acknowledge_photosensitivity_warning_from_interaction,
                 ),
+            )
+            .add_systems(
+                OnEnter(ClientState::InSession),
+                hide_photosensitivity_warning_on_session_entry,
             );
     }
 }
@@ -71,7 +76,7 @@ pub fn spawn_photosensitivity_warning(
             Name::new("Photosensitivity Warning Root"),
             PhotosensitivityWarningRoot,
             photosensitivity_warning_root_node(),
-            BackgroundColor(Color::srgba(0.04, 0.04, 0.08, 0.94)),
+            BackgroundColor(Color::srgb(0.04, 0.04, 0.08)),
             Visibility::Visible,
             z_layers::MODAL,
         ))
@@ -169,6 +174,28 @@ fn acknowledge_photosensitivity_warning(
     state: &mut PhotosensitivityWarningState,
     entities: Option<&PhotosensitivityWarningEntities>,
     roots: &mut Query<&mut Visibility, With<PhotosensitivityWarningRoot>>,
+) {
+    state.acknowledged = true;
+
+    let Some(entities) = entities else {
+        return;
+    };
+
+    if let Ok(mut visibility) = roots.get_mut(entities.root) {
+        *visibility = Visibility::Hidden;
+    }
+}
+
+/// Hide the photosensitivity warning when the client enters [`ClientState::InSession`].
+///
+/// The warning must never paint over active gameplay (PROMPT 1022 visual audit
+/// found it appearing over `DraftInitial` and `Placement` UI). Once a session
+/// starts, the warning is considered dismissed for this app run regardless of
+/// whether the player clicked the acknowledgement button.
+pub fn hide_photosensitivity_warning_on_session_entry(
+    mut state: ResMut<PhotosensitivityWarningState>,
+    entities: Option<Res<PhotosensitivityWarningEntities>>,
+    mut roots: Query<&mut Visibility, With<PhotosensitivityWarningRoot>>,
 ) {
     state.acknowledged = true;
 
