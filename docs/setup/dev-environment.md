@@ -304,6 +304,83 @@ This story is **documentation only**. The following are explicitly
   `production/sprint-status.yaml` / `production/sprints/**` /
   `production/stage.txt` / `production/session-state/**` artifact.
 
+### S15-OPS-APPCOMPAT-MANIFEST-001 follow-up (Sprint 16; PROMPT 1068)
+
+> Story: `S15-OPS-APPCOMPAT-MANIFEST-001` (Sprint 16 Nice to Have;
+> implementation follow-on to Story 005's doc-only note).
+> Source: `production/epics/devops/story-006-appcompat-manifest.md`
+> Implemented: 2026-05-17 (PROMPT 1068).
+> Mechanism chosen: **(d)** -- Cargo `[[test]] name` rename of the
+> `spawn_range_live_update_contract` target to
+> `spawn_range_live_refresh_contract` in `shared/Cargo.toml`. The
+> source file `tests/unit/protocol/spawn_range_live_update_contract_test.rs`
+> is **NOT renamed** under this story; the Cargo `[[test]]` `path`
+> attribute still pointers it verbatim. Mechanism (d) was selected
+> over the manifest-embed alternatives (a) / (b) / (c) because it
+> requires zero new build dependency, zero `build.rs`, zero new
+> resource file, and is cross-platform clean -- it changes only
+> one Cargo manifest line on every host class regardless of OS,
+> whereas the embed-manifest mechanisms require a Windows-only
+> `build.rs`, a new build-dependency, and a Cargo resource compiler.
+> Evidence: `production/qa/evidence/sprint-16-appcompat-manifest-evidence.md`.
+
+**Primary path now**: the Cargo-emitted test binary filename is
+`spawn_range_live_refresh_contract-<hash>.exe`, which contains no
+AppCompat installer-detection trigger substring (`update`,
+`install`, `setup`, `patch`, `uninst`). Invoke the test directly:
+
+```pwsh
+$env:CARGO_TARGET_DIR='D:\_DEV\cargo-target\ccgs-msvc'
+$env:CARGO_PROFILE_DEV_DEBUG='0'
+$env:CARGO_PROFILE_TEST_DEBUG='0'
+$env:CARGO_INCREMENTAL='0'
+$env:RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'
+cargo test -p shared --test spawn_range_live_refresh_contract
+```
+
+The per-run binary-rename workaround at the smoke level (see
+"Workaround used during Sprint 12 (option (a))" above) is **no
+longer required** by the primary path after S15-OPS-APPCOMPAT-MANIFEST-001
+lands; future smoke invocations call the renamed Cargo target
+directly without any `cp ... srluc_appcompat_renamed.exe` step.
+
+**Fallback retained (documented, NOT deleted)**: the per-run
+binary-rename workaround documented above (option 3 under
+"Workaround used during Sprint 12") remains valid as a
+documented fallback for:
+
+- non-MSVC Windows builds (where Cargo's emitted test-binary
+  naming differs);
+- hosts where a future re-introduction of a trigger substring
+  (`update`, `install`, `setup`, `patch`, `uninst`) in any new
+  Cargo test target name occurs and the rename has not yet been
+  applied to that target;
+- hosts where the AppCompat heuristic intercepts a binary whose
+  name only incidentally contains a trigger substring (e.g.,
+  third-party test binaries surfaced under workspace cargo runs);
+- forensic / archeological reproduction of the Sprint 12 / 13 /
+  14 smoke / Team-QA evidence (where the rename workaround was
+  the historical mechanism).
+
+**What this follow-up does NOT do**:
+
+- It does **not** delete or alter the existing Story 005 text
+  above. Story 005's AC1-AC7 evidence remains valid for the
+  historical record.
+- It does **not** close TQ-S12-C7 (Sprint 12 Team-QA AppCompat
+  informational condition); closure is a separate `/team-qa`
+  decision outside Sprint 16 scope.
+- It does **not** retry the PROMPT 761 Polish->Release
+  gate-check.
+- It does **not** modify any code under `client/`, `server/`,
+  `shared/src/`, or the test source file itself.
+- It does **not** claim public release readiness, release-candidate
+  readiness, full game completion, broad / Standard-tier
+  accessibility completion (`QA-COND-0005`), playtest /
+  fun-hypothesis validation (`QA-COND-0006`), two-client
+  GAME_OVER closure (`S8-QA-001-W1`), or `PAW-TD-*-a`
+  resolution.
+
 ---
 
 ## Status / No-Claim Banner (verbatim restatement for Story 005, per AC7)

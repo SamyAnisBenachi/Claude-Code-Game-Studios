@@ -14,8 +14,21 @@ description = "Protocol types, GameConfig struct, and shared data definitions. Z
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+# S15-OPS-APPCOMPAT-MANIFEST-001 (PROMPT 1068, mechanism (d)): the Cargo
+# `[[test]] name` attribute is renamed from `spawn_range_live_update_contract`
+# to `spawn_range_live_refresh_contract` so the emitted test binary filename
+# no longer contains the Windows AppCompat installer-detection trigger
+# substring `update`. The `path` attribute still pointers the canonical
+# source file `spawn_range_live_update_contract_test.rs` (NOT renamed under
+# this story; renaming the source file is explicitly out of scope per
+# story 006 §"Forbidden"). See
+# `docs/setup/dev-environment.md` §"Windows AppCompat heuristic for Cargo
+# test binaries" for the heuristic background and the
+# `S15-OPS-APPCOMPAT-MANIFEST-001` follow-up subsection for the rename
+# rationale; evidence at
+# `production/qa/evidence/sprint-16-appcompat-manifest-evidence.md`.
 [[test]]
-name = "spawn_range_live_update_contract"
+name = "spawn_range_live_refresh_contract"
 path = "../tests/unit/protocol/spawn_range_live_update_contract_test.rs"
 
 # S13-PROTO-INVARIANT-001: workspace invariant test ensuring every
