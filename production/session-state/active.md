@@ -1,3 +1,26 @@
+# PROMPT 1053 State Banner -- Keep-9 Modal P1 Integrated On Main
+
+Updated 2026-05-17 after resolving PROMPT 1052 main-push block.
+
+PROMPT 1052 `S15-KEEP9-MODAL-SCRIM-READY-P1-INTEGRATION` is now on
+`origin/main@3a395302cd79659d0679b8fcf66b789aa6700b14`. The worker integration
+branch was valid and already pushed; the orchestrator verified the diff and
+performed the authorized fast-forward main push from `d11b53c` to `3a39530`.
+
+Integrated files:
+
+- `client/src/ui/shop_auction/mod.rs`
+- `tests/integration/shop_auction_ui/draft_initial_centered_modal_layout_test.rs`
+- `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs`
+
+PROMPT 1052 is cleared. The three PROMPT 1034 P1 surface repairs are now on
+main: Placement action panel, DraftShop/Auction bid affordances, and Keep-9
+modal scrim/footer Ready. Next concrete step is a QA snapshot visual retest of
+DraftInitial, Placement, DraftShop, and DraftAuction against the PROMPT 1034
+baseline.
+
+---
+
 # PROMPT 1050 State Banner -- DraftShop/Auction P1 Integrated On Main
 
 Updated 2026-05-17 after resolving PROMPT 1048 main-push block.
