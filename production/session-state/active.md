@@ -1,3 +1,60 @@
+# PROMPT 1041 State Banner -- UI Architecture + Visual Audits Consumed
+
+Updated 2026-05-17 after consuming PROMPT 1035 and PROMPT 1034.
+Source-of-truth before this state note:
+`origin/main@0b6abe3189483e58c29d3e91e9895015fa717252`.
+
+PROMPT 1035 `UI-CODE-ARCHITECTURE-LAYOUT-DEBT-AUDIT` is complete and cleared.
+PROMPT 1034 `FULL-UI-VISUAL-QUALITY-AUDIT` is complete and cleared.
+
+Architecture findings from PROMPT 1035:
+
+- `client/src/ui/shop_auction/mod.rs` is the critical hotspot: one 5k+ LOC file
+  owns DraftInitial, DraftShop, DraftAuction, settlement, toasts, and footer.
+  It blocks safe parallel repairs because every shop/auction/draft worker
+  collides in one module.
+- `client/src/ui/hand/mod.rs` should split into fan, draft-grid, reserve,
+  submit, and state modules.
+- Missing primitives remain the durable UI root cause:
+  `design_tokens/colors.rs`, `design_tokens/card_slot.rs`,
+  `design_tokens/panel.rs`, shared pill/readout primitive, auction toolbar,
+  shop control row, and board ghost constants.
+- Sprint 16 story `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` is authored but not
+  activated. It should become the foundation for card layout convergence.
+
+Visual findings from PROMPT 1034:
+
+- New P1 not covered by prior workers: DraftShop has no visible shop surface.
+- New P1 not covered by prior workers: Auction bid buttons render as `?`
+  placeholders instead of real bid values / Pass.
+- New P1 not covered by prior workers: Keep-9 modal lacks its own opaque scrim
+  and Ready belongs in the modal footer, not as a detached action.
+- New P1 not covered by prior workers: Placement side panel is unstructured text
+  fragments; it needs a real Submit button, countdown, and budget/readiness pill.
+- Snapshot tooling gaps: `visible_ui_counts`, warnings emitter, session-prefixed
+  snapshot IDs, and capture coverage for Lobby / Initial / Placement / Shop /
+  Auction / Result.
+
+Next launch order:
+
+1. Launch the P1 gameplay/UI repairs that are not already covered:
+   DraftShop surface, Auction bid values, Placement action panel. These are code
+   workers and must use `liv-bevy-018` plus the Windows/MSVC Cargo resource
+   policy before any Cargo command.
+2. Do not launch Keep-9 modal scrim until photosensitivity/overlay main state is
+   verified and the worker is scoped to avoid modal-layer collision.
+3. In parallel with P1 surface repairs, launch a read-only or docs/story prompt
+   for the structural Sprint 16/17 sequence: `shop_auction` module split, `hand`
+   module split, and primitives (`card`, `modal`, `button`, `panel`).
+
+Non-claims preserved: no Sprint 15 close-out, no Sprint 16 activation, no
+Polish->Release retry, no public release / RC readiness, no full game
+completion, no broad accessibility completion, no playtest validation, no
+final-art completion, no `S8-QA-001-W1` closure, and no LLM closure of
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`.
+
+---
+
 # PROMPT 1040 State Banner -- Card Cost / Combat Stat Rendering Integrated
 
 Updated 2026-05-17 after PROMPT 1037 main integration. Source-of-truth:
