@@ -40,11 +40,6 @@ fn enter_session(app: &mut App) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-fn count_with_image_node<M: Component>(app: &mut App) -> usize {
-    let mut q = app.world_mut().query_filtered::<&ImageNode, With<M>>();
-    q.iter(app.world()).count()
-}
-
 fn count_child_of_with<M: Component>(app: &mut App) -> usize {
     let mut q = app
         .world_mut()
