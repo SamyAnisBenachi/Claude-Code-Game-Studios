@@ -2,16 +2,17 @@
 
 > **Epic**: UI Clean-Pass
 > **Story ID**: S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001
-> **Status**: Draft -- Sprint 15 candidate (Nice to Have); **NOT activated** by
-> this authoring run. Sprint 14 disposition (`closed-with-conditions` per
-> PROMPT 987) preserved unchanged.
+> **Status**: Done via PROMPT 1009 (2026-05-17) after PROMPT 1005
+> `/dev-story` authored the primitive module + spec amendment and
+> PROMPT 1007 integrated it onto
+> `origin/main@5d36c4b4fe061981b6c1949f3f4f7986ca0cf0cb`.
 > **Layer**: Presentation / UX foundational tech-debt
 > **Type**: Tech Debt -- foundational primitive (design token)
-> **Sprint**: Sprint 15 candidate (Tier 0 Should-priority adjacent;
+> **Sprint**: Sprint 15 Nice to Have (Tier 0 Should-priority adjacent;
 > `docs/ux/ui-clean-pass-roadmap.md` Tier 0 Should-priority adjacent row;
-> PROMPT 802 §3.9 G7). Pair with rank 6
-> (`S12-UX-GLOBAL-UI-DESIGN-SPEC-001` Done on Sprint 14 PROMPT 922). NOT
-> activated by this authoring run. Sprint 14 disposition
+> PROMPT 802 §3.9 G7). Paired with rank 6
+> (`S12-UX-GLOBAL-UI-DESIGN-SPEC-001` Done on Sprint 14 PROMPT 922).
+> Sprint 15 activated by PROMPT 997; Sprint 14 disposition
 > (`closed-with-conditions`, `Polish` stage) preserved.
 > **Authored**: 2026-05-16 by PROMPT 993
 > **Authoring source-of-truth**: `origin/main@2c84d6e37f2ec58b729064b6dbe4c9b017e5ceb3`
@@ -272,7 +273,7 @@ the future `/dev-story` worker's deliverable; this authoring run does
 **not** verify any of them (no AC is `[x]` until `/dev-story` completes
 and `/story-done` runs).
 
-- [ ] **AC1 -- Interaction-state primitive module authored**: GIVEN
+- [x] **AC1 -- Interaction-state primitive module authored**: GIVEN
   the story commit, WHEN the new module file is inspected, THEN
   `client/src/ui/design_tokens/interaction_states.rs` exists, is
   declared from `client/src/ui/design_tokens/mod.rs`, and exports the
@@ -280,7 +281,7 @@ and `/story-done` runs).
   Verification: file presence + module re-export + grep for the four
   token-set prefixes.
 
-- [ ] **AC2 -- Named hover tokens with defaults**: GIVEN the module,
+- [x] **AC2 -- Named hover tokens with defaults**: GIVEN the module,
   WHEN inspected, THEN at least the following hover tokens are
   exported with documented numeric defaults:
   - `HOVER_BG_TINT_ALPHA: f32` (range `0.0 <= alpha <= 1.0`, default
@@ -291,7 +292,7 @@ and `/story-done` runs).
   surfaces. Verification: module read + integration-test assertions
   (AC8).
 
-- [ ] **AC3 -- Named focus tokens with defaults**: GIVEN the module,
+- [x] **AC3 -- Named focus tokens with defaults**: GIVEN the module,
   WHEN inspected, THEN at least the following focus tokens are
   exported with documented numeric defaults:
   - `FOCUS_RING_COLOR: Color` (default referenced from spec §7
@@ -306,7 +307,7 @@ and `/story-done` runs).
   advanced by token presence. Verification: module read +
   integration-test assertions (AC8) + doc-comment scan.
 
-- [ ] **AC4 -- Named pressed tokens with defaults**: GIVEN the module,
+- [x] **AC4 -- Named pressed tokens with defaults**: GIVEN the module,
   WHEN inspected, THEN at least the following pressed tokens are
   exported with documented numeric defaults:
   - `PRESSED_BG_TINT_ALPHA: f32` (range `0.0 <= alpha <= 1.0`,
@@ -316,7 +317,7 @@ and `/story-done` runs).
   Each token has a `///` doc comment. Verification: module read +
   integration-test assertions (AC8).
 
-- [ ] **AC5 -- Named disabled tokens with defaults**: GIVEN the module,
+- [x] **AC5 -- Named disabled tokens with defaults**: GIVEN the module,
   WHEN inspected, THEN at least the following disabled tokens are
   exported with documented numeric defaults:
   - `DISABLED_BG_TINT_ALPHA: f32` (range `0.0 <= alpha <= 1.0`,
@@ -330,7 +331,7 @@ and `/story-done` runs).
   leading; shop slot when unaffordable). Verification: module read
   + integration-test assertions (AC8).
 
-- [ ] **AC6 -- Export shape**: GIVEN the module, WHEN consumed from
+- [x] **AC6 -- Export shape**: GIVEN the module, WHEN consumed from
   a downstream file via `use client::ui::design_tokens::interaction_states::*;`
   (or project-idiomatic equivalent), THEN each named token from
   AC2..AC5 is resolvable as a public symbol. The module is
@@ -340,7 +341,7 @@ and `/story-done` runs).
   imports the module by its public path; compile success
   demonstrates export shape.
 
-- [ ] **AC7 -- Global UI spec amendment**: GIVEN the story commit,
+- [x] **AC7 -- Global UI spec amendment**: GIVEN the story commit,
   WHEN `docs/ux/global-ui-design-spec.md` is inspected, THEN:
   - A new spec section is present (heading style consistent with the
     spec's existing `## §N <Title>` pattern; suggested location
@@ -362,7 +363,7 @@ and `/story-done` runs).
     `QA-COND-0006`, or `PAW-TD-*-a` accept-risk.
   Verification: spec heading scan + cross-reference grep.
 
-- [ ] **AC8 -- Integration test asserts primitive module shape**:
+- [x] **AC8 -- Integration test asserts primitive module shape**:
   GIVEN the story commit, WHEN the new integration test bin at
   `tests/integration/ui_clean_pass/` is run (suggested filename
   `interaction_state_primitives_test.rs`; exact name TBD by
@@ -382,7 +383,7 @@ and `/story-done` runs).
   consistent with the existing Sprint 14 Tier 0 integration test
   pattern. Verification: `cargo test` of the new bin passes.
 
-- [ ] **AC9 -- No inline literal regressions on the module's own
+- [x] **AC9 -- No inline literal regressions on the module's own
   surface**: GIVEN the story commit, WHEN the new module file is
   inspected, THEN every numeric value in the module is named
   (`const NAME: f32 = ...;` or `pub const NAME: Color = ...;`)
@@ -394,7 +395,7 @@ and `/story-done` runs).
   does NOT enforce per-surface migration of existing Sprint 14
   button surfaces (that is the Sprint 16+ follow-on story).
 
-- [ ] **AC10 -- Per-surface migration explicitly OUT OF SCOPE**:
+- [x] **AC10 -- Per-surface migration explicitly OUT OF SCOPE**:
   GIVEN the story commit, WHEN `git diff` is inspected, THEN no
   existing Sprint 14 button surface call site is migrated to read
   the new interaction-state tokens. Specifically:
@@ -421,7 +422,7 @@ and `/story-done` runs).
   pattern). Per-surface migration is the Sprint 16+ follow-on
   story.
 
-- [ ] **AC11 -- Friend-game scope preserved**: GIVEN the story
+- [x] **AC11 -- Friend-game scope preserved**: GIVEN the story
   commit, WHEN `QA-COND-0005`, `QA-COND-0006`, and `PAW-TD-*-a`
   accept-risk dispositions are inspected, THEN none of them has
   been flipped to `closed` by this story. The new module's `FOCUS_*`
@@ -434,7 +435,7 @@ and `/story-done` runs).
   `production/sprint-status.yaml` shows no accept-risk disposition
   change.
 
-- [ ] **AC12 -- No release / playtest / final-art / two-client
+- [x] **AC12 -- No release / playtest / final-art / two-client
   GAME_OVER claims**: GIVEN the story commit, WHEN the closure
   paperwork is inspected, THEN this row does NOT claim public
   release readiness, release-candidate readiness, full game
@@ -649,3 +650,95 @@ plan draft (PROMPT 988), the expected sequencing is:
 7. `/story-done` for this row -- paperwork-only closure flip
    `ready -> done` + AC1..AC12 verdict capture + Closure Trail
    append.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-17 by PROMPT 1009 `/story-done` serialized
+paperwork closure (Sprint 15 integrated story-done batch).
+
+**Criteria**: 12 / 12 accepted. AC1-AC12 PASS via the
+PROMPT 1005 `/dev-story` worker and PROMPT 1007 integration
+verification. The primitive module
+`client/src/ui/design_tokens/interaction_states.rs` (NEW; 445 lines
+post-integration) exports four named token-set families
+(`HOVER_*`, `FOCUS_*`, `PRESSED_*`, `DISABLED_*`); the global UI
+design spec `docs/ux/global-ui-design-spec.md` was amended in §2 /
+§10 / NEW §11 / Spec Adoption Matrix / Ratification scope guard;
+the integration test bin
+`tests/integration/ui_clean_pass/interaction_state_primitives_test.rs`
+ships 8 ECS-query tests covering AC1-AC9 module-shape assertions;
+inline lib unit tests under
+`design_tokens::interaction_states::tests` cover the same families
+with 10 alpha-range / pixel-range / ordering / doc-comment /
+pairwise-distinctness assertions.
+
+**Deviations**: Per-surface migration of existing Sprint 14 button
+surfaces is explicitly OUT OF SCOPE for Sprint 15 (AC10) and
+deferred to Sprint 16+ family `S16-UI-INTERACTION-STATE-MIGRATION-*`.
+No existing button call sites under `client/src/ui/lobby.rs`,
+`client/src/ui/shop_auction/`, `client/src/ui/hud/`, or
+`client/src/presentation/` are touched -- PROMPT 1007 AC10 disjoint-
+surface verification PASS (empty diff).
+
+**Test Evidence**: PROMPT 1007 integration runs reported `cargo
+check -p client` PASS (12.87s), `cargo fmt -p client -- --check`
+PASS (no diff), targeted primitive test bin
+`ui_clean_pass_interaction_state_primitives_test` PASS 8/8, inline
+lib unit tests for `design_tokens::interaction_states` PASS 10/10,
+`git diff --check origin/main..HEAD` PASS (no whitespace errors),
+`git diff --cached --check` PASS. Cargo resource policy applied
+(`CARGO_TARGET_DIR=D:/_DEV/cargo-target/ccgs-msvc` +
+`CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+`CARGO_INCREMENTAL=0` + `RUSTFLAGS=-C debuginfo=0 -C
+link-arg=/DEBUG:NONE`); PROMPT 1009 itself did NOT re-run cargo
+(paperwork-only closure).
+
+**Code Review**: PROMPT 1009 verified integration commit
+`5d36c4b4fe061981b6c1949f3f4f7986ca0cf0cb` is reachable from
+`origin/main` (current tip `88a6db16e8abec6b2e7df1f8efac0fc933b5c0b3`
+via PROMPT 1008), reviewed PROMPT 1005 worker report and PROMPT 1007
+integration report for AC coverage, and performed paperwork-only
+closure. No `client/`, `server/`, `shared/`, `tests/`, Cargo,
+`production/sprints/sprint-15.md`, `production/qa/qa-plan-sprint-15.md`,
+`production/stage.txt`, or gate artifact was edited by PROMPT 1009.
+
+## Closure Trail
+
+- PROMPT 993 (2026-05-16) -- story authoring on branch
+  `story-authoring/sprint-15-ui-interaction-state-primitives`,
+  worker commit `0f113e1`. Integrated into `origin/main` by
+  PROMPT 995 batch merge `8294f9a`.
+- PROMPT 1005 (2026-05-17) -- `/dev-story` implementation on branch
+  `work/s15-ui-interaction-state-primitives`, worker commit
+  `ea26e34cedbbed61cbf377751b386c18b55f8fcd`. Authored
+  `client/src/ui/design_tokens/interaction_states.rs` (NEW), modified
+  `client/src/ui/design_tokens/mod.rs` to register the submodule,
+  amended `docs/ux/global-ui-design-spec.md` per AC7, added
+  `tests/integration/ui_clean_pass/interaction_state_primitives_test.rs`
+  (NEW; 8 tests), registered the integration test bin in
+  `client/Cargo.toml`, and wrote
+  `production/qa/evidence/sprint-15-ui-interaction-state-primitives/evidence.md`.
+- PROMPT 1007 (2026-05-17) -- integration merge
+  `5d36c4b4fe061981b6c1949f3f4f7986ca0cf0cb` onto `origin/main`.
+  No-ff merge from `origin/main@08f389b` (PROMPT 1006 board-rendering
+  tip; first integration worktree was abandoned after origin/main
+  drift and a v2 worktree was created from the new tip per the
+  concurrency clause); 6 files / 1048 insertions / 6 deletions;
+  AC10 disjoint-surface verification PASS (no lobby / shop / hud /
+  presentation file touched); cargo verification PASS; diff checks
+  PASS.
+- PROMPT 1009 (2026-05-17) -- serialized `/story-done` paperwork
+  closure within the Sprint 15 integrated story-done batch. Story
+  status marked Done, Sprint 15 row flipped `ready -> done` with
+  completed date 2026-05-17, AC1-AC12 checkboxes marked complete,
+  session-state banners prepended, and `sprint_15_story_done` block
+  appended at EOF of `production/sprint-status.yaml`. Sprint 15
+  remains active; stage remains Polish; PROMPT 761 Polish->Release
+  FAIL, `S8-QA-001-W1` OPEN, `QA-COND-0005/0006` accepted-risk,
+  `PAW-TD-*-a` accepted-risk, `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+  human-operator-blocked carry, and
+  `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP` open status
+  all preserved. Per-surface migration remains deferred to Sprint
+  16+ family `S16-UI-INTERACTION-STATE-MIGRATION-*`.

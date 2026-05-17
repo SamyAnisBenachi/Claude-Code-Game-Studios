@@ -1,3 +1,169 @@
+# PROMPT 1009 State Banner -- Sprint 15 Integrated /story-done Batch
+
+Updated 2026-05-17 by PROMPT 1009. Source-of-truth at closure:
+`origin/main@88a6db16e8abec6b2e7df1f8efac0fc933b5c0b3` (PROMPT 1008
+S15 hand drag state visuals integration tip;
+`integrate(s15): merge hand drag state visuals (PROMPT 1008)`).
+
+PROMPT 1009 is the **Sprint 15 integrated /story-done paperwork
+batch**. It closes exactly **3 Sprint 15 rows** in **one serialized
+commit** following the established Sprint 14 PROMPT 909 / 908
+single-commit /story-done pattern.
+
+**Rows closed by PROMPT 1009 (3 rows)**:
+
+1. **`S11-UX-BOARD-RENDERING-SPEC`** (Should Have; story 013 in
+   board-rendering epic). Closure basis: PROMPT 1004 `/dev-story`
+   worker `477806a` authored `docs/ux/board-rendering-spec.md` (NEW
+   865 lines) + 3 evidence files under
+   `production/qa/evidence/sprint-15-board-rendering-spec/`; PROMPT
+   1006 integration merge `08f389b` onto `origin/main`. AC1-AC16
+   PASS via worker doc-review-checklist + integration verification
+   (13 ## headings, 26 global-UI-spec cross-references, 10 folded-
+   capture matches, `GHOST_PREVIEW_ALPHA` named 6 times, no
+   forbidden-path touch, diff checks PASS). Doc-only; no Cargo
+   invoked.
+
+2. **`S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001`** (Nice to Have;
+   story 008 in ui-clean-pass epic). Closure basis: PROMPT 1005
+   `/dev-story` worker `ea26e34` authored
+   `client/src/ui/design_tokens/interaction_states.rs` (NEW; 445
+   lines post-integration) + amended `docs/ux/global-ui-design-spec.md`
+   §2 / §10 / NEW §11 / Spec Adoption Matrix / Ratification scope
+   guard +
+   `tests/integration/ui_clean_pass/interaction_state_primitives_test.rs`
+   (NEW; 8 tests) + evidence document; PROMPT 1007 integration merge
+   `5d36c4b` onto `origin/main`. AC1-AC12 PASS via worker + integration
+   verification (cargo check + cargo fmt + primitive test bin 8/8 +
+   inline lib tests 10/10 + AC10 disjoint-surface verification empty
+   diff + diff checks PASS). Per-surface migration explicitly OUT OF
+   SCOPE for Sprint 15 per AC10 -- deferred to Sprint 16+ family
+   `S16-UI-INTERACTION-STATE-MIGRATION-*`.
+
+3. **`S12-UX-HAND-DRAG-STATE-VISUALS-001`** (Should Have; story 020
+   in hand-ui epic). Closure basis: PROMPT 1003 `/dev-story` worker
+   `cce9a90` authored `client/src/ui/hand/drag_state_visuals.rs`
+   (NEW; 368 lines) + modified `client/src/ui/hand/mod.rs` (+42 /
+   -5) +
+   `tests/integration/hand-ui/hand_ui_drag_state_visuals_test.rs`
+   (NEW; 726 lines / 11 ECS-query AC9 BLOCKING assertions) +
+   `client/Cargo.toml` (+4); PROMPT 1008 integration merge
+   `88a6db1` onto `origin/main`. AC1-AC19 PASS via worker + integration
+   verification (11/11 + plugin_scaffold 3/3 + 8 adjacent hand-ui
+   bins + ui viewport invariants 12/12 + client lib 55/55 + diff
+   checks PASS). ADR-012 binding preserved (read-only over
+   already-extant client-side ephemeral drag state); ADR-021
+   preserved (HandUiPlugin registration order unchanged; new
+   overlays are children of existing pre-pooled fan-slot / fan_root
+   entities; `HAND_UI_ENTITY_COUNT` bump validated by
+   plugin_scaffold_test).
+
+**Rows explicitly NOT closed by PROMPT 1009 (2 rows remain open)**:
+
+- **`S11-HUD-TIMER-EYEBALL-VISUAL-001`** (Must Have; story 014 in
+  HUD epic). Sprint 13 -> 14 -> 15 human-operator-blocked carry
+  promoted Should -> Must by PROMPT 988 plan. **NOT closed by PROMPT
+  1009**. Closure remains gated on a real two-client human-operator
+  screenshot capture session across `DraftInitial` 45s /
+  `DraftShop` 30s / `Placement` 10-12s phases per the story AC matrix.
+  No LLM `/story-done` is authorised. Producer schedules.
+- **`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP`** (Must
+  Have paperwork-only row-status flip). Discharges the long-carried
+  Sprint 13 -> 14 evidence-vs-status gap from PROMPT 891. **NOT
+  closed by PROMPT 1009**. Serializes through
+  `production/sprint-status.yaml` as a separate dedicated paperwork
+  prompt sequenced AFTER this `/story-done` batch.
+
+**Sprint 15 progress after PROMPT 1009**: 0 of 2 Must Have done; 2
+of 2 Should Have done; 1 of 1 Nice to Have done; **total 3 of 5
+rows closed**. Sprint 15 remains `active`. Stage UNCHANGED `Polish`
+(`production/stage.txt` NOT touched by PROMPT 1009). PROMPT 761
+`Polish->Release` gate-check `FAIL` preserved at
+`production/gate-checks/gate-polish-release-2026-05-12.md`; NO retry
+attempted; NO retry in scope for Sprint 15; Sprint 15 is NOT a
+`Polish->Release` sprint.
+
+All carried conditions preserved verbatim (none closed by PROMPT
+1009): `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked
+carry; `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP` open;
+`S8-QA-001-W1` OPEN; `QA-COND-0005` Standard-tier accessibility
+accepted-risk (L5 `LOBBY_BUTTON_HEIGHT = 30.0` remains accepted-risk);
+`QA-COND-0006` playtest validation accepted-risk; `PAW-TD-*-a`
+placeholder-art accept-risk across PAW-002..PAW-006; PROMPT 683-era
+runtime divergence preserved (third same-scope retest NOT authorised
+per `TQ-S12-C2`); Sprint 12 story 019 underlying drag-runtime bug
+NOT claimed fixed (cannot-reproduce preserved); `TQ-S12-C1..C7`
+preserved verbatim (`TQ-S12-C7` explicitly NOT closed by Sprint 15);
+Sprint 14 / 13 / 12 / 11 / 10 closeouts preserved unchanged; all 16
+Sprint 14 `/story-done` closures (PROMPT 903 / 908 / 909 / 919 / 921
+/ 922 / 931 / 939 / 942 / 953 / 956 / 960 / 962 / 972 / 974 / 976)
+preserved unchanged on `origin/main`. Sprint 15 activation (PROMPT
+997) `sprint_15_activation:` block preserved verbatim. Sprint 15 QA
+plan (PROMPT 1002) `production/qa/qa-plan-sprint-15.md` preserved
+verbatim on `origin/main`. Three Sprint 15 story-authoring runs
+(PROMPT 991 / 992 / 993) and PROMPT 995 batch-merge integration
+(`origin/main@8294f9a`) preserved verbatim. Three Sprint 15
+`/dev-story` workers (PROMPT 1003 / 1004 / 1005) and their
+integration prompts (PROMPT 1006 / 1007 / 1008) preserved verbatim
+on `origin/main`.
+
+Explicit non-claims: no public release readiness, no release-candidate
+readiness, no full game completion, no broad / Standard-tier
+accessibility completion, no playtest validation, no full playable-
+client manual QA, no two-client GAME_OVER closure (`S8-QA-001-W1`
+OPEN), no final-art completion (`PAW-TD-*-a` accepted-risk), no
+`Polish->Release` gate-check retry (PROMPT 761 FAIL preserved), no
+stage advance from `Polish` to `Release`, no underlying drag-runtime
+bug fix (Sprint 12 story 019 cannot-reproduce preserved), no Sprint
+14 row reopen, no closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` /
+`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP` / `S8-QA-001-W1`
+/ `TQ-S12-C7` by PROMPT 1009, no per-surface migration of existing
+Sprint 14 button surfaces to the interaction-state primitive module
+(deferred to Sprint 16+ family
+`S16-UI-INTERACTION-STATE-MIGRATION-*`), no full UI clean-pass repair
+beyond the 3 Sprint 15 rows closed by PROMPT 1009, no Sprint 15
+close-out (Sprint 15 remains active; 3 of 5 rows closed), no
+`/dev-story` / `/story-readiness` / `/smoke-check` / `/team-qa` /
+`/gate-check` / `/release-check` / `/qa-plan` run by PROMPT 1009,
+no `cargo` / `trunk` command invoked by PROMPT 1009 (paperwork-only
+closure).
+
+Paperwork-only closure scope. PROMPT 1009 changed only the 3 story
+files (story 013 in board-rendering, story 008 in ui-clean-pass,
+story 020 in hand-ui), the 3 corresponding `EPIC.md` files,
+`production/sprint-status.yaml` (3 `stories:` row flips
+`ready -> done` with `completed: 2026-05-17` and per-row evidence
+notes + `sprint_15_story_done:` block appended at EOF as the first
+/story-done block of Sprint 15 + top-level `updated:` annotation
+refresh demoting PROMPT 997 narrative to `# Previous:` comment),
+this file (PROMPT 1009 banner prepended above PROMPT 1002 banner),
+and `production/session-state/codex-orchestrator-state.md` (PROMPT
+1009 section prepended above PROMPT 1002 section). No `client/`,
+`server/`, `shared/`, `tests/`, Cargo files, `.cargo/`, `.github/`,
+`production/stage.txt`, `production/sprints/sprint-15.md`,
+`production/qa/qa-plan-sprint-15.md`, `production/qa/smoke-*.md`,
+`production/qa/team-qa-*.md`, `production/qa/evidence/*` (the three
+already-on-main evidence directories preserved verbatim),
+`production/gate-checks/*`, release / RC / launch-checklist /
+changelog / patch notes artifact, any Sprint 14 / 13 / 12 / 11 / 10
+story file under `production/epics/`, the
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` story file (story 014; preserved
+verbatim), or any prior `sprint_N_closeout:` / `sprint_N_activation:` /
+`sprint_N_story_done:` block touched.
+
+Worktree `D:/Tmp/ccgs-prompt-1009-storydone` on branch
+`storydone/sprint-15-integrated-batch-1009` (base
+`origin/main@88a6db16e8abec6b2e7df1f8efac0fc933b5c0b3`).
+
+Next launchable: row-flip paperwork prompt for
+`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP` (separate
+dedicated paperwork prompt; serializes through
+`production/sprint-status.yaml`); Sprint 15 human-operator HUD timer
+eyeball capture session for `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+(producer schedules; parallel-safe with row-flip by file scope).
+
+---
+
 # PROMPT 1002 State Banner -- Sprint 15 QA Plan Authored
 
 Updated 2026-05-17 by PROMPT 1002. Source-of-truth at authoring:

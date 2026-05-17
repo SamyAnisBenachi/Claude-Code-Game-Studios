@@ -2,8 +2,10 @@
 
 > **Epic**: Hand UI
 > **Story ID**: S12-UX-HAND-DRAG-STATE-VISUALS-001
-> **Status**: Draft -- Sprint 15 candidate; **Sprint 15 NOT activated**;
-> pending `/story-readiness` after Sprint 15 activation
+> **Status**: Done via PROMPT 1009 (2026-05-17) after PROMPT 1003
+> `/dev-story` implemented the drag-state visual submodule and
+> PROMPT 1008 integrated it onto
+> `origin/main@88a6db16e8abec6b2e7df1f8efac0fc933b5c0b3`.
 > **Layer**: Presentation -- Hand UI (visual differentiation only)
 > **Type**: UI -- layout/composition + integration test (ECS marker / color /
 > z-layer assertions)
@@ -426,7 +428,7 @@ the per-slot card-staging state.
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Tier 0 token consumption**: GIVEN the post-refactor
+- [x] **AC1 -- Tier 0 token consumption**: GIVEN the post-refactor
   build, WHEN the new drag-state visual systems are inspected,
   THEN they reference the §3 (`UI_OVERLAY`), §6 (`OVERLAY_DIM_ALPHA`,
   `OVERLAY_SCRIM_ALPHA`), and §7 (`ACCENT`, `SEMANTIC_SUCCESS`)
@@ -438,7 +440,7 @@ All criteria are independently checkable.
   (`0.45`, `0.55`, `UI_OVERLAY` integer = `400`) introduced in
   hand-UI source.
 
-- [ ] **AC2 -- `Idle` baseline preserved**: GIVEN `HandUiMode == Passive`
+- [x] **AC2 -- `Idle` baseline preserved**: GIVEN `HandUiMode == Passive`
   (or `Staging` with no active drag), WHEN a fan-slot card with no
   pointer hover and no staged placement is inspected, THEN no new
   overlay child node is present, no new tint is applied, and the
@@ -447,7 +449,7 @@ All criteria are independently checkable.
   (or equivalent marker) returns the expected idle slots; their
   `Sprite::color` / `BackgroundColor` are unchanged from baseline.
 
-- [ ] **AC3 -- `Drag` source-slot dim + ghost ascends to `UI_OVERLAY`**:
+- [x] **AC3 -- `Drag` source-slot dim + ghost ascends to `UI_OVERLAY`**:
   GIVEN `ActivePlacementDrag::is_active()` is true AND
   `active_drag.card == Some(slot_entity)`, WHEN the fan-slot card
   and the `HandDragSprite` are inspected, THEN:
@@ -462,7 +464,7 @@ All criteria are independently checkable.
     story 017 PROMPT 696).
   Verified by integration test query.
 
-- [ ] **AC4 -- `DropTarget` (fan-plate) tint applied**: GIVEN
+- [x] **AC4 -- `DropTarget` (fan-plate) tint applied**: GIVEN
   `ActivePlacementDrag::is_active()` is true AND the cursor is over
   the fan-plate region (Instant-drop target per story 007), WHEN
   the fan-plate region is inspected, THEN it carries a new child
@@ -474,7 +476,7 @@ All criteria are independently checkable.
   board-cell drop-target ghosting (owned by Board Rendering, not
   Hand UI).
 
-- [ ] **AC5 -- `Disabled` treatment applied**: GIVEN `HandUiMode == PassiveLocked`
+- [x] **AC5 -- `Disabled` treatment applied**: GIVEN `HandUiMode == PassiveLocked`
   OR a card is already in `PendingPlacements::placements` OR the
   slot card cannot be afforded per existing submit pre-validation
   (story 010), WHEN the fan-slot card is inspected, THEN it
@@ -484,7 +486,7 @@ All criteria are independently checkable.
   pointer is over it. Verified by integration test query covering
   all three disable triggers.
 
-- [ ] **AC6 -- `Hover` state (non-drag) treatment**: GIVEN
+- [x] **AC6 -- `Hover` state (non-drag) treatment**: GIVEN
   `HandUiMode == Passive` OR `HandUiMode == Staging` AND
   `!ActivePlacementDrag::is_active()` AND the pointer is over a
   non-disabled fan-slot card, WHEN the slot is inspected, THEN it
@@ -495,7 +497,7 @@ All criteria are independently checkable.
   AC: pressed / focus visual states (owned by the parallel Sprint 15
   Nice candidate `S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001`).
 
-- [ ] **AC7 -- State transitions are visually consistent across the
+- [x] **AC7 -- State transitions are visually consistent across the
   pre-pooled entity set**: GIVEN the pre-pooled fan-slot entity
   count (10) is unchanged, WHEN the drag-state visual systems
   toggle treatments, THEN they do so via `Visibility` toggles on
@@ -506,7 +508,7 @@ All criteria are independently checkable.
   remains `10` across all drag-state transitions in the integration
   test.
 
-- [ ] **AC8 -- ADR-002 + ADR-012 binding preserved (read-only over
+- [x] **AC8 -- ADR-002 + ADR-012 binding preserved (read-only over
   ephemeral drag state; no new server-authoritative state)**: GIVEN
   the post-refactor build, WHEN the drag-state visual systems are
   inspected, THEN they read `Res<ActivePlacementDrag>`, `Res<HandUiMode>`,
@@ -520,7 +522,7 @@ All criteria are independently checkable.
   base) -- the integration test additionally asserts that the
   diff against `shared/src/protocol.rs` is empty.
 
-- [ ] **AC9 -- Integration test in `tests/integration/hand-ui/` with
+- [x] **AC9 -- Integration test in `tests/integration/hand-ui/` with
   ECS marker / colour / z-layer assertions**: GIVEN the post-refactor
   build, WHEN `cargo test -p client --test hand_ui_drag_state_visuals_test`
   is run (file path TBD by the `/dev-story` worker; likely
@@ -535,7 +537,7 @@ All criteria are independently checkable.
   insertion (`ActivePlacementDrag::start(...)`, `HandUiMode::set(...)`)
   and asserts the resulting visual treatment by ECS query.
 
-- [ ] **AC10 -- ADR-021 plugin registration + pre-pool count
+- [x] **AC10 -- ADR-021 plugin registration + pre-pool count
   preserved**: GIVEN the post-refactor build, WHEN `HandUiPlugin`
   is inspected, THEN it remains the third sub-plugin inside
   `PresentationPlugin` (after `CardAnimationsPlugin` and
@@ -545,7 +547,7 @@ All criteria are independently checkable.
   spawned as **children** of the existing slot entities, not new
   top-level pre-pool entries).
 
-- [ ] **AC11 -- Tween conflict-free**: GIVEN the post-refactor
+- [x] **AC11 -- Tween conflict-free**: GIVEN the post-refactor
   build, WHEN any tween installed by the drag-state visual systems
   is inspected, THEN it does NOT target a `Sprite` / `Node` component
   already targeted by an existing card lift / staging tween. The
@@ -554,21 +556,21 @@ All criteria are independently checkable.
   `cancel_tween_anim_in_place` / `replace_tweenable` usage in any
   new tween install path.
 
-- [ ] **AC12 -- No new Lightyear / protocol message**: GIVEN the
+- [x] **AC12 -- No new Lightyear / protocol message**: GIVEN the
   post-refactor build, WHEN `git diff` is inspected for paths
   matching `shared/src/protocol.rs` / `shared/src/network/` /
   `client/src/network/` / `server/src/network/`, THEN no diff is
   present. `liv-bevy-lightyear` is NOT activated for this story
   because no networking code is touched.
 
-- [ ] **AC13 -- `Res<ActivePlacementDrag>` read-only inside new
+- [x] **AC13 -- `Res<ActivePlacementDrag>` read-only inside new
   systems**: GIVEN the post-refactor build, WHEN any new system
   added by this story is inspected, THEN it takes
   `Res<ActivePlacementDrag>` (not `ResMut<...>`) and does NOT
   re-introduce a write path. Verified by grep across
   `client/src/ui/hand/` for new system signatures.
 
-- [ ] **AC14 -- Sprint 12 story 019 disposition preserved**: GIVEN
+- [x] **AC14 -- Sprint 12 story 019 disposition preserved**: GIVEN
   the story commit, WHEN `production/epics/hand-ui/story-019-drag-runtime-retest-tighter-capture.md`,
   `production/qa/evidence/sprint-11-drag-runtime-evidence.md`,
   `production/qa/evidence/sprint-11-drag-runtime-evidence-tighter.md`,
@@ -579,7 +581,7 @@ All criteria are independently checkable.
   runtime bug is **NOT claimed fixed** by this story. `TQ-S12-C2`
   preserved (no third same-scope retest authorised).
 
-- [ ] **AC15 -- Sprint 13/14/15 disposition preserved**: GIVEN the
+- [x] **AC15 -- Sprint 13/14/15 disposition preserved**: GIVEN the
   story commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-13.md`, `production/sprints/sprint-14.md`,
   `production/sprints/sprint-15.md`, `production/stage.txt`, and
@@ -587,7 +589,7 @@ All criteria are independently checkable.
   modified by this story. **Sprint 15 remains NOT activated by this
   authoring run.**
 
-- [ ] **AC16 -- No accept-risk closure claimed**: GIVEN the
+- [x] **AC16 -- No accept-risk closure claimed**: GIVEN the
   implementation evidence, WHEN inspected, THEN it explicitly does
   NOT claim closure of `S8-QA-001-W1`, `QA-COND-0005`,
   `QA-COND-0006`, `PAW-TD-*-a`, `TQ-S12-C1..C7`, or any other
@@ -595,7 +597,7 @@ All criteria are independently checkable.
   Standard-tier accessibility is not pursued; final-art / asset
   replacement is not pursued.
 
-- [ ] **AC17 -- Targeted regression passes**: GIVEN the post-refactor
+- [x] **AC17 -- Targeted regression passes**: GIVEN the post-refactor
   code, WHEN `cargo test -p client --lib` is run AND
   `cargo test -p client --test hand_ui_drag_to_board_cell_test`
   AND `cargo test -p client --test hand_ui_drag_end_non_instant_test`
@@ -610,7 +612,7 @@ All criteria are independently checkable.
   `tests/integration/ui_viewport_invariants_test.rs` must also
   continue to PASS.
 
-- [ ] **AC18 -- Hand UI EPIC count updated**: GIVEN the epic file
+- [x] **AC18 -- Hand UI EPIC count updated**: GIVEN the epic file
   `production/epics/hand-ui/EPIC.md`, WHEN updated by the
   `/story-done` paperwork at terminal disposition, THEN the
   "Stories" table reflects this story 020 row consistently with
@@ -619,7 +621,7 @@ All criteria are independently checkable.
   paperwork updates the row to Done and refreshes the count
   summary line).
 
-- [ ] **AC19 -- Evidence slot reserved** (advisory; only required
+- [x] **AC19 -- Evidence slot reserved** (advisory; only required
   if the `/dev-story` worker opts to capture a manual visual
   walkthrough alongside the AC9 integration test):
   `production/qa/evidence/sprint-15-hand-drag-state-visuals/README.md`
@@ -798,3 +800,119 @@ These are sanity checks for the orchestrator that emits the
   PROMPT 761 gate-check FAIL preserved; `QA-COND-0005`,
   `QA-COND-0006`, `PAW-TD-*-a`, `S8-QA-001-W1`, `TQ-S12-C1..C7`
   all preserved verbatim.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-17 by PROMPT 1009 `/story-done` serialized
+paperwork closure (Sprint 15 integrated story-done batch).
+
+**Criteria**: 19 / 19 accepted. AC1-AC19 PASS via the PROMPT 1003
+`/dev-story` worker and PROMPT 1008 integration verification. The
+new submodule `client/src/ui/hand/drag_state_visuals.rs` (NEW;
+368 lines) hosts marker components, overlay spawn helpers, and
+`sync_hand_drag_state_visuals_system`; `client/src/ui/hand/mod.rs`
+declares the submodule, spawns the fan-plate drop-target overlay
+under `HandFanRoot`, spawns per-slot dim + hover overlays as
+children of each pre-pooled fan slot, registers the sync system in
+`HandUiSystemSet::StateSync`, and bumps `HAND_UI_ENTITY_COUNT` to
+account for the new overlay children of existing pre-pooled
+entities (ADR-021 Impl Guideline 5 preserved -- no new top-level
+pre-pool entries). AC9 BLOCKING integration test
+`tests/integration/hand-ui/hand_ui_drag_state_visuals_test.rs`
+ships 726 lines / 11 ECS-query-driven assertions covering AC1 /
+AC2 / AC3 / AC4 / AC5 (3 triggers) / AC6 (2 cases) / AC7 / AC8 /
+AC13. AC10 plugin registration order and `HAND_UI_ENTITY_COUNT`
+match are validated by `hand_ui_plugin_scaffold_test` (3/3 PASS).
+AC11 tween conflict-free (new system installs zero tweens; hover
+treatment is `BorderColor`-only). AC12 + AC13 no Lightyear /
+protocol message (no edit to `shared/src/protocol.rs`,
+`shared/src/network/`, `client/src/network/`, `server/src/network/`;
+`liv-bevy-lightyear` skill not required and not activated).
+
+**Deviations**: AC19 evidence README slot was advisory per story;
+the AC9 BLOCKING integration test is the sole accepted evidence
+path for the closure. The underlying Sprint 12 story 019
+drag-runtime question is explicitly preserved unchanged (story
+019 remains `closed-with-conditions / cannot-reproduce`); this
+story is layout / visual-state work over already-extant
+client-side ephemeral drag state per ADR-012 and does NOT modify
+the runtime drag pipeline.
+
+**Test Evidence**: PROMPT 1008 integration runs reported
+`cargo check -p client` PASS (13.09s), `cargo fmt -p client --
+--check` PASS (no output), `hand_ui_drag_state_visuals_test`
+PASS 11/11, `hand_ui_plugin_scaffold_test` PASS 3/3 (validates
+bumped `HAND_UI_ENTITY_COUNT` matches actual pre-pool count),
+adjacent regressions `hand_ui_drag_to_board_cell_test` 4/4 +
+`hand_ui_drag_end_non_instant_test` 4/4 +
+`hand_ui_chrome_composition_test` 1/1 +
+`hand_ui_slot_onscreen_test` 3/3 +
+`hand_ui_viewport_sync_test` 2/2 +
+`hand_ui_placement_staged_disclosure_accessibility_test` 6/6 +
+`hand_ui_placement_timer_test` 5/5 +
+`hand_ui_placement_unstaging_test` 4/4 +
+`ui_viewport_invariants_test` 12/12 +
+`cargo test -p client --lib` 55/55 (includes 10 new
+`design_tokens::interaction_states` tests merged in via
+PROMPT 1007 history), and `git diff --check origin/main..HEAD`
+PASS + `git diff --cached --check` PASS. Cargo resource policy
+applied (`CARGO_TARGET_DIR=D:/_DEV/cargo-target/ccgs-msvc` +
+`CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+`CARGO_INCREMENTAL=0` + `RUSTFLAGS=-C debuginfo=0 -C
+link-arg=/DEBUG:NONE`); PROMPT 1009 itself did NOT re-run cargo
+(paperwork-only closure).
+
+**Code Review**: PROMPT 1009 verified integration commit
+`88a6db16e8abec6b2e7df1f8efac0fc933b5c0b3` is reachable from
+`origin/main` (this commit IS the current `origin/main` tip),
+reviewed PROMPT 1003 worker report and PROMPT 1008 integration
+report for AC coverage, and performed paperwork-only closure.
+No `client/`, `server/`, `shared/`, `tests/`, Cargo,
+`production/sprints/sprint-15.md`, `production/qa/qa-plan-sprint-15.md`,
+`production/stage.txt`, or gate artifact was edited by PROMPT 1009.
+
+## Closure Trail
+
+- PROMPT 991 (2026-05-16) -- story authoring on branch
+  `story-authoring/sprint-15-hand-drag-state-visuals`, worker
+  commit `066c028`. Integrated into `origin/main` by PROMPT 995
+  batch merge `f357a65`.
+- PROMPT 1003 (2026-05-17) -- `/dev-story` implementation on
+  branch `work/s15-hand-drag-state-visuals`, worker commit
+  `cce9a90733dbc42fda45e9f9427de2835e4d8b40`. Added
+  `client/src/ui/hand/drag_state_visuals.rs` (NEW; 368 lines),
+  modified `client/src/ui/hand/mod.rs` (+42 lines / -5 lines),
+  added `tests/integration/hand-ui/hand_ui_drag_state_visuals_test.rs`
+  (NEW; 726 lines, 11 ECS-query assertions), and registered the
+  test bin in `client/Cargo.toml` (+4 lines). All 19 ACs
+  evaluated PASS by the worker against the targeted regression
+  suite.
+- PROMPT 1008 (2026-05-17) -- integration merge
+  `88a6db16e8abec6b2e7df1f8efac0fc933b5c0b3` onto `origin/main`.
+  No-ff merge from `origin/main@5d36c4b` (PROMPT 1007 interaction
+  state primitives tip); 4 files / 1135 insertions / 5 deletions;
+  `client/Cargo.toml` auto-merged cleanly (the worker's
+  `hand_ui_drag_state_visuals_test` block and PROMPT 1007's
+  `ui_clean_pass_interaction_state_primitives_test` block were
+  file-disjoint and both registrations preserved); full targeted
+  test sweep + 10 adjacent regressions + client lib + ui viewport
+  invariants all PASS at integration tip; diff checks PASS.
+- PROMPT 1009 (2026-05-17) -- serialized `/story-done` paperwork
+  closure within the Sprint 15 integrated story-done batch. Story
+  status marked Done, Sprint 15 row flipped `ready -> done` with
+  completed date 2026-05-17, AC1-AC19 checkboxes marked complete,
+  session-state banners prepended, and `sprint_15_story_done`
+  block appended at EOF of `production/sprint-status.yaml`. Sprint
+  15 remains active; stage remains Polish; PROMPT 761
+  Polish->Release FAIL, `S8-QA-001-W1` OPEN, `QA-COND-0005/0006`
+  accepted-risk, `PAW-TD-*-a` accepted-risk,
+  `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked carry,
+  and `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP` open
+  status all preserved. Sprint 12 story 019 underlying
+  drag-runtime bug NOT claimed fixed (`cannot-reproduce`
+  preserved; third same-scope retest NOT authorised per
+  `TQ-S12-C2`); story 020 is layout / visual-state work over
+  already-extant client-side ephemeral drag state per ADR-012
+  and does NOT modify the runtime drag pipeline.

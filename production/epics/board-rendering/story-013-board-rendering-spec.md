@@ -2,13 +2,15 @@
 
 > **Epic**: Board Rendering
 > **Story ID**: S11-UX-BOARD-RENDERING-SPEC
-> **Status**: Draft (Sprint 15 candidate; NOT activated)
+> **Status**: Done via PROMPT 1009 (2026-05-17) after PROMPT 1004
+> `/dev-story` authored the canonical spec and PROMPT 1006 integrated
+> it onto `origin/main@08f389b276fba73769816fcb206de61a6bb9fda8`.
 > **Layer**: UX / Producer-planning / Design-spec authoring
 > **Type**: UX -- design-spec authoring (doc-only)
-> **Sprint**: Sprint 15 candidate (Tier 3 rank 14, Should; PROMPT 685 row 6
+> **Sprint**: Sprint 15 Should Have (Tier 3 rank 14, Should; PROMPT 685 row 6
 > re-validated by PROMPT 802 §3.7 B1 / §4 Tier 3.2;
-> `docs/ux/ui-clean-pass-roadmap.md` rank 14). NOT activated by this
-> authoring run. Sprint 14 disposition (`closed-with-conditions`, `Polish`
+> `docs/ux/ui-clean-pass-roadmap.md` rank 14). Sprint 15 activated by
+> PROMPT 997; Sprint 14 disposition (`closed-with-conditions`, `Polish`
 > stage) preserved.
 > **Authored**: 2026-05-16 by PROMPT 992
 > **Authoring source-of-truth**: `origin/main@2c84d6e` (PROMPT 990
@@ -334,11 +336,11 @@ All criteria are independently checkable BLOCKING criteria. They apply
 to the **future `/dev-story` output** at `docs/ux/board-rendering-spec.md`,
 not to this story-authoring run.
 
-- [ ] **AC1 -- Spec authored**: GIVEN the future `/dev-story` commit,
+- [x] **AC1 -- Spec authored**: GIVEN the future `/dev-story` commit,
   WHEN the new spec file is inspected, THEN
   `docs/ux/board-rendering-spec.md` exists. Verification: file presence.
 
-- [ ] **AC2 -- All required sections present**: GIVEN the spec, WHEN
+- [x] **AC2 -- All required sections present**: GIVEN the spec, WHEN
   the table of contents is inspected, THEN at least sections §1
   (Status / No-Claim Banner), §2 (Scope Boundaries), §3 (Cell Rendering
   Rules), §4 (Unit Placement Rules), §5 (Range Overlay Rules), §6
@@ -348,7 +350,7 @@ not to this story-authoring run.
   Verification: heading scan
   (`rg "^## " docs/ux/board-rendering-spec.md`).
 
-- [ ] **AC3 -- Status / No-Claim Banner**: GIVEN §1, WHEN inspected,
+- [x] **AC3 -- Status / No-Claim Banner**: GIVEN §1, WHEN inspected,
   THEN the friend-game-vs-Standard-tier scope is explicitly stated and
   `QA-COND-0005` (Standard-tier accessibility), `QA-COND-0006`
   (playtest validation), `PAW-TD-002-a..006-a` (placeholder-art),
@@ -356,7 +358,7 @@ not to this story-authoring run.
   `Polish->Release` gate-check `FAIL` are each named as preserved
   accept-risk / not-claimed-by-this-spec. Verification: doc review.
 
-- [ ] **AC4 -- Cell rendering rules named**: GIVEN §3, WHEN inspected,
+- [x] **AC4 -- Cell rendering rules named**: GIVEN §3, WHEN inspected,
   THEN canonical 5-lane x 8-cell grid layout, `cell_to_world` authority
   reference, world-space z-layer reference to
   `docs/ux/global-ui-design-spec.md` §3 (`World` / `Units`), and the
@@ -364,13 +366,13 @@ not to this story-authoring run.
   matrix from `docs/ux/global-ui-design-spec.md` §8 are present.
   Verification: doc review against ADR-021 R2, TR-BR-002.
 
-- [ ] **AC5 -- Unit placement rules named**: GIVEN §4, WHEN inspected,
+- [x] **AC5 -- Unit placement rules named**: GIVEN §4, WHEN inspected,
   THEN canonical unit sprite anchor on `(team, lane, cell)`, co-occupancy
   ±half-offset rule with the F3 index-2 `assert!` reference, and ChildOf
   hierarchy for HP bars and status icons are present. Verification: doc
   review against ADR-021 R3, TR-BR-007, BR-009 acceptance.
 
-- [ ] **AC6 -- Range overlay rules named**: GIVEN §5, WHEN inspected,
+- [x] **AC6 -- Range overlay rules named**: GIVEN §5, WHEN inspected,
   THEN canonical spawn range highlight rendering rule with reference to
   the TR-BR-008 / BR-011 source contract
   (`PlayerSnapshot.spawn_range_cells` for snapshot rebuild +
@@ -378,7 +380,7 @@ not to this story-authoring run.
   draft-phase placement-ghost cursor mapping rule (per BR-004 Complete)
   are present. Verification: doc review.
 
-- [ ] **AC7 -- Status icon legend present**: GIVEN §6, WHEN inspected,
+- [x] **AC7 -- Status icon legend present**: GIVEN §6, WHEN inspected,
   THEN canonical mapping of persistent keyword / state kinds (SHIELD,
   STUN, SILENCE, INJURED, LEADER, HASTE, BODYGUARD, OUTNUMBERED) to
   status icon atlas frames, Tier 1 / Tier 2 priority ordering, overflow
@@ -389,7 +391,7 @@ not to this story-authoring run.
   Verification: doc review against BR-009 closure notes, TR-BR-006,
   TR-BR-007, TR-KW-010.
 
-- [ ] **AC8 -- Ghost preview opacity present**: GIVEN §7, WHEN inspected,
+- [x] **AC8 -- Ghost preview opacity present**: GIVEN §7, WHEN inspected,
   THEN a single canonical ghost preview opacity rule with named alpha
   value and rationale, an explicit scope-guard cross-link to
   `docs/ux/global-ui-design-spec.md` §6 confirming ghost preview alpha
@@ -399,7 +401,7 @@ not to this story-authoring run.
   cosmetic-capture future candidate into the spec rather than as a
   separate story. Verification: doc review against BR-004 Complete.
 
-- [ ] **AC9 -- References to docs/ux/global-ui-design-spec.md present**:
+- [x] **AC9 -- References to docs/ux/global-ui-design-spec.md present**:
   GIVEN §8, WHEN inspected, THEN the cross-reference enumeration names
   the global UI design spec §3 (Z-Index Layer System), §6 (Overlay Alpha
   Tokens scope-guard cross-link), §7 (Color Tokens), and §8
@@ -408,12 +410,12 @@ not to this story-authoring run.
   `docs/ux/global-ui-design-spec.md` returns at least 4 matches inside
   `docs/ux/board-rendering-spec.md`.
 
-- [ ] **AC10 -- ADR / GDD cross-references present**: GIVEN §9, WHEN
+- [x] **AC10 -- ADR / GDD cross-references present**: GIVEN §9, WHEN
   inspected, THEN read-only links to ADR-021, ADR-020, ADR-017,
   ADR-011, ADR-008, ADR-002, and `design/gdd/board-rendering.md` are
   present. Verification: doc review.
 
-- [ ] **AC11 -- Producer + UX-designer + art-director ratification
+- [x] **AC11 -- Producer + UX-designer + art-director ratification
   checklist present**: GIVEN §10, WHEN inspected, THEN producer +
   UX-designer + art-director sign-off rows are present with a one-
   paragraph rationale per role recorded at the future `/dev-story`
@@ -423,13 +425,13 @@ not to this story-authoring run.
   the three sign-offs. Verification: doc review of §10 + commit body /
   evidence doc inspection.
 
-- [ ] **AC12 -- No code change**: GIVEN the future `/dev-story`
+- [x] **AC12 -- No code change**: GIVEN the future `/dev-story`
   commit, WHEN `git diff` is inspected, THEN no file under `client/`,
   `server/`, `shared/`, or `tests/` is modified. Verification:
   `git diff origin/main...HEAD -- 'client/**' 'server/**' 'shared/**'
   'tests/**'` returns no output.
 
-- [ ] **AC13 -- Friend-game scope preserved**: GIVEN the future
+- [x] **AC13 -- Friend-game scope preserved**: GIVEN the future
   `/dev-story` commit, WHEN `QA-COND-0005`, `QA-COND-0006`, and
   `PAW-TD-002-a..006-a` accept-risk dispositions are inspected, THEN
   none of them has been flipped to `closed` by this story.
@@ -439,7 +441,7 @@ not to this story-authoring run.
   change; `production/gate-checks/gate-polish-release-2026-05-12.md`
   remains untouched.
 
-- [ ] **AC14 -- No Sprint 15 activation by future /dev-story**: GIVEN
+- [x] **AC14 -- No Sprint 15 activation by future /dev-story**: GIVEN
   the future `/dev-story` commit, WHEN
   `production/sprint-status.yaml`, `production/sprints/sprint-15.md`,
   `production/session-state/*`, `production/stage.txt`, and
@@ -450,13 +452,13 @@ not to this story-authoring run.
   'production/sprints/**' 'production/session-state/**'
   'production/stage.txt' 'production/qa/**'` returns no output.
 
-- [ ] **AC15 -- Status Icon Legend folded as section**: GIVEN §6 of
+- [x] **AC15 -- Status Icon Legend folded as section**: GIVEN §6 of
   the future spec, WHEN inspected, THEN the section text explicitly
   names `S11-UX-BOARD-STATUS-ICON-LEGEND-001` as a future-candidate
   cosmetic capture that this spec folds into a section rather than as
   a separate Sprint 15 story. Verification: doc review.
 
-- [ ] **AC16 -- Ghost Preview Opacity folded as section**: GIVEN §7
+- [x] **AC16 -- Ghost Preview Opacity folded as section**: GIVEN §7
   of the future spec, WHEN inspected, THEN the section text explicitly
   names `S11-UX-BOARD-GHOST-PREVIEW-OPACITY-001` as a future-candidate
   cosmetic capture that this spec folds into a section rather than as
@@ -616,3 +618,81 @@ authoritative for the realised set.
   `docs/ux/board-rendering-spec.md` (+ optional evidence directory and
   optional cross-link amendments per the Likely Files Touched table).
   No code change. No protocol change. No GDD change.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-17 by PROMPT 1009 `/story-done` serialized
+paperwork closure (Sprint 15 integrated story-done batch).
+
+**Criteria**: 16 / 16 accepted. AC1-AC16 PASS via the
+PROMPT 1004 `/dev-story` worker and PROMPT 1006 integration
+verification. The doc-only spec at `docs/ux/board-rendering-spec.md`
+ships 865 lines covering §1-§10 plus Spec Adoption Matrix,
+Cross-References, and Authoring Trail meta sections; cross-references
+to `docs/ux/global-ui-design-spec.md` resolved at 26 hits (>> AC9 ≥ 4
+threshold); folded captures `S11-UX-BOARD-STATUS-ICON-LEGEND-001` and
+`S11-UX-BOARD-GHOST-PREVIEW-OPACITY-001` enumerated 10 combined
+matches; `GHOST_PREVIEW_ALPHA` named in §7 token table, scope-guard
+table, §10 ratification, and Spec Adoption Matrix.
+
+**Deviations**: None. The spec is doc-only as scoped; no `client/`,
+`server/`, `shared/`, or `tests/` file touched; `production/
+sprint-status.yaml` and `production/sprints/sprint-15.md` untouched
+by PROMPT 1006 integration; producer + UX-designer + art-director
+ratifications captured under
+`production/qa/evidence/sprint-15-board-rendering-spec/ratification.md`
+per AC11.
+
+**Test Evidence**: AC1-AC16 verified per
+`production/qa/evidence/sprint-15-board-rendering-spec/doc-review-checklist.md`
+and the PROMPT 1006 integration command table (spec heading
+enumeration, global-UI-spec cross-reference count, folded-capture
+match count, ghost-preview-alpha token count, allowed-path scan,
+forbidden-path scan, `git diff --check`, and `git diff --cached
+--check` — all PASS at integration commit
+`08f389b276fba73769816fcb206de61a6bb9fda8`). Cargo not run (doc-only;
+"No Cargo expected" per task spec).
+
+**Code Review**: PROMPT 1009 verified integration commit
+`08f389b276fba73769816fcb206de61a6bb9fda8` is reachable from
+`origin/main` (current tip `88a6db16e8abec6b2e7df1f8efac0fc933b5c0b3`
+via PROMPT 1008), reviewed PROMPT 1004 worker report and PROMPT 1006
+integration report for AC coverage, and performed paperwork-only
+closure. No `client/`, `server/`, `shared/`, `tests/`, Cargo,
+`production/sprints/sprint-15.md`, `production/qa/qa-plan-sprint-15.md`,
+`production/stage.txt`, or gate artifact was edited by PROMPT 1009.
+
+## Closure Trail
+
+- PROMPT 992 (2026-05-16) -- story authoring on branch
+  `story-authoring/sprint-15-board-rendering-spec`, worker commit
+  `29953a1`. Integrated into `origin/main` by PROMPT 995 batch
+  merge `8294f9a`.
+- PROMPT 1004 (2026-05-17) -- `/dev-story` authoring of the
+  canonical board rendering spec on branch
+  `work/s15-board-rendering-spec`, worker commit
+  `477806ac88e71da152f4852399450dba6f4ee1de`. Authored
+  `docs/ux/board-rendering-spec.md` (NEW; 865 lines) plus three
+  evidence files under
+  `production/qa/evidence/sprint-15-board-rendering-spec/`
+  (`doc-review-checklist.md`, `cross-ref-matrix.md`,
+  `ratification.md`).
+- PROMPT 1006 (2026-05-17) -- integration merge
+  `08f389b276fba73769816fcb206de61a6bb9fda8` onto `origin/main`.
+  No-ff merge from `origin/main@84e621e`; 4 files / 1232 insertions;
+  allowed-path scan PASS; forbidden-path scan PASS;
+  `git diff --check` PASS; `git diff --cached --check` PASS.
+- PROMPT 1009 (2026-05-17) -- serialized `/story-done` paperwork
+  closure within the Sprint 15 integrated story-done batch.
+  Story status marked Done, Sprint 15 row flipped `ready -> done`
+  with completed date 2026-05-17, AC1-AC16 checkboxes marked
+  complete, session-state banners prepended, and
+  `sprint_15_story_done` block appended at EOF of
+  `production/sprint-status.yaml`. Sprint 15 remains active; stage
+  remains Polish; PROMPT 761 Polish->Release FAIL, `S8-QA-001-W1`
+  OPEN, `QA-COND-0005/0006` accepted-risk, `PAW-TD-*-a` accepted-risk,
+  `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked carry,
+  and `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP` open
+  status all preserved.
