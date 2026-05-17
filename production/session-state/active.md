@@ -1,3 +1,51 @@
+# PROMPT 1040 State Banner -- Card Cost / Combat Stat Rendering Integrated
+
+Updated 2026-05-17 after PROMPT 1037 main integration. Source-of-truth:
+`origin/main@f27e0981473ddc62e60018e36ed57bc49b547fae`
+(`fix(client/ui): surface card cost + ATK/HP on draft/shop/auction tiles and
+hand badges (PROMPT 1029)`).
+
+PROMPT 1037 `CARD-COST-COMBAT-STAT-RENDERING-INTEGRATION` is no longer
+blocked. The original integration commit `eaff1c0` was based on `c9d1663`;
+after PROMPT 1038/1039 advanced main, the verified patch was re-applied on top
+of `origin/main@583bca6` as `f27e098` and pushed to main. Remote branch
+`origin/integrate/card-cost-combat-stat-rendering-1037-v2` also points at
+`f27e098`.
+
+Integrated files:
+
+- `client/Cargo.toml`
+- `client/src/ui/hand/mod.rs`
+- `client/src/ui/shop_auction/mod.rs`
+- `tests/integration/hand-ui/hand_card_stat_label_rendering_test.rs`
+- `tests/integration/shop_auction_ui/card_cost_combat_stat_rendering_test.rs`
+
+Verification before main push: `origin/main` was ancestor of `f27e098`,
+`git diff --check origin/main...HEAD` was clean, and the diff touched only the
+five card-rendering files above. Cargo was not rerun by the orchestrator
+because the worker already ran the targeted 60/60 assertion suite; the
+intervening commits were session-state docs and HUD-only integration, with no
+overlap in `hand`, `shop_auction`, or `client/Cargo.toml`.
+
+Current pending lanes after PROMPT 1037 integration:
+
+- PROMPT 1034 full UI visual-quality audit and PROMPT 1035 UI code
+  architecture/layout debt audit remain pending read-only reports.
+- PROMPT 1036 snapshot-state/log correlation audit has been consumed and
+  cleared. It elevated placement submit affordance and DraftShop slot rendering
+  to confirmed P1 follow-up repairs.
+- With 1037 integrated, dependent `shop_auction` and placement/DraftShop repair
+  prompts can now be launched after consuming any overlapping 1034/1035 audit
+  findings.
+
+Non-claims preserved: no Sprint 15 close-out, no Sprint 16 activation, no
+Polish->Release retry, no public release / RC readiness, no full game
+completion, no broad accessibility completion, no playtest validation, no
+final-art completion, no `S8-QA-001-W1` closure, and no LLM closure of
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`.
+
+---
+
 # PROMPT 1039 State Banner -- HUD Legibility Integrated
 
 Updated 2026-05-17 after PROMPT 1033 main integration. Source-of-truth:
