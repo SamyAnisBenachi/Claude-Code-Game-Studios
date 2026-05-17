@@ -179,6 +179,10 @@ name = "hand_ui_drag_state_visuals_test"
 path = "../tests/integration/hand-ui/hand_ui_drag_state_visuals_test.rs"
 
 [[test]]
+name = "hand_card_stat_label_rendering_test"
+path = "../tests/integration/hand-ui/hand_card_stat_label_rendering_test.rs"
+
+[[test]]
 name = "hud_phase_label_round_counter_test"
 path = "../tests/unit/hud/phase_label_round_counter_test.rs"
 
@@ -497,6 +501,10 @@ path = "../tests/integration/shop_auction_ui/auction_free_gold_counters_layout_t
 [[test]]
 name = "shop_auction_ui_auction_lead_loss_state_test"
 path = "../tests/integration/shop_auction_ui/auction_lead_loss_state_test.rs"
+
+[[test]]
+name = "shop_auction_ui_card_cost_combat_stat_rendering_test"
+path = "../tests/integration/shop_auction_ui/card_cost_combat_stat_rendering_test.rs"
 
 [[test]]
 name = "board_rendering_grid_camera_test"

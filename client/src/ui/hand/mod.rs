@@ -24,7 +24,7 @@ use crate::card_animations::{
 };
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
-use crate::ui::design_tokens::{strips, z_layers};
+use crate::ui::design_tokens::{strips, typography, z_layers};
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 pub mod drag_state_visuals;
@@ -807,6 +807,23 @@ pub struct StatBadgeMp;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StatBadgeAr;
 
+// PROMPT 1029 — numeric text labels overlaid on the four stat-badge images.
+// QA captured the stat badges rendering as value-less diamond icons; the
+// existing chrome only painted the badge background, never a number.
+// Labels are children of their badge so badge layout/despawn flows
+// recursively cover them.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StatBadgeAtkLabel;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StatBadgeHpLabel;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StatBadgeMpLabel;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StatBadgeArLabel;
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandRarityIcon;
 
@@ -933,6 +950,10 @@ impl Plugin for HandUiPlugin {
                         apply_fan_layout_system,
                         sync_hand_fan_card_art_system,
                         sync_fan_slot_chrome_system,
+                        // PROMPT 1029: fills numeric ATK/HP/MP/AR labels overlaid
+                        // on the stat-badge images so cards in the hand no longer
+                        // read as value-less diamonds.
+                        sync_fan_slot_stat_labels_system,
                         apply_reserve_strip_layout_system,
                         sync_reserve_strip_state_system,
                         tick_hand_full_notification_system,
@@ -1347,6 +1368,76 @@ pub fn sync_hand_fan_card_art_system(
             catalog.cards.get(&card.0),
             asset_server.as_deref(),
         );
+    }
+}
+
+/// PROMPT 1029 — populates the numeric stat labels overlaid on each hand-card
+/// stat badge. Each label is a grandchild of the fan slot (slot → badge → label),
+/// so we resolve the slot via two `ChildOf` hops. When the slot has no card or
+/// the catalog lookup fails, the label is left empty (no diamond-without-number
+/// glyph rendered). Runs in [`HandUiSystemSet::StateSync`] alongside the chrome
+/// image sync so atk/hp/mp/ar text stays consistent with the rendered badges.
+#[allow(clippy::type_complexity)]
+pub fn sync_fan_slot_stat_labels_system(
+    catalog: Res<HandCardCatalog>,
+    slots: Query<&HandSlotCard, With<FanSlotIndex>>,
+    badge_parents: Query<
+        &ChildOf,
+        Or<(
+            With<StatBadgeAtk>,
+            With<StatBadgeHp>,
+            With<StatBadgeMp>,
+            With<StatBadgeAr>,
+        )>,
+    >,
+    mut atk_labels: Query<(&mut Text, &ChildOf), With<StatBadgeAtkLabel>>,
+    mut hp_labels: Query<
+        (&mut Text, &ChildOf),
+        (With<StatBadgeHpLabel>, Without<StatBadgeAtkLabel>),
+    >,
+    mut mp_labels: Query<
+        (&mut Text, &ChildOf),
+        (
+            With<StatBadgeMpLabel>,
+            Without<StatBadgeAtkLabel>,
+            Without<StatBadgeHpLabel>,
+        ),
+    >,
+    mut ar_labels: Query<
+        (&mut Text, &ChildOf),
+        (
+            With<StatBadgeArLabel>,
+            Without<StatBadgeAtkLabel>,
+            Without<StatBadgeHpLabel>,
+            Without<StatBadgeMpLabel>,
+        ),
+    >,
+) {
+    let resolve = |child_of: &ChildOf| -> Option<&shared::card::CardData> {
+        let badge = child_of.parent();
+        let slot = badge_parents.get(badge).ok()?.parent();
+        let slot_card = slots.get(slot).ok()?;
+        catalog.cards.get(&slot_card.0)
+    };
+
+    for (mut text, child_of) in &mut atk_labels {
+        write_stat_label_text(&mut text, resolve(child_of).map(|c| c.atk));
+    }
+    for (mut text, child_of) in &mut hp_labels {
+        write_stat_label_text(&mut text, resolve(child_of).map(|c| c.hp));
+    }
+    for (mut text, child_of) in &mut mp_labels {
+        write_stat_label_text(&mut text, resolve(child_of).map(|c| c.mp));
+    }
+    for (mut text, child_of) in &mut ar_labels {
+        write_stat_label_text(&mut text, resolve(child_of).map(|c| c.ar));
+    }
+}
+
+fn write_stat_label_text(text: &mut Text, value: Option<u8>) {
+    text.0.clear();
+    if let Some(value) = value {
+        text.0.push_str(&value.to_string());
     }
 }
 
@@ -2909,37 +3000,89 @@ pub fn spawn_hand_ui(
             Visibility::Inherited,
             ChildOf(slot),
         ));
+        let atk_badge = commands
+            .spawn((
+                Name::new(format!("Fan Slot {index} Stat Badge ATK")),
+                StatBadgeAtk,
+                fan_slot_stat_badge_node(StatBadgeCorner::BottomLeft),
+                ImageNode::new(placeholder.stat_badge_atk.clone()),
+                Visibility::Inherited,
+                ChildOf(slot),
+            ))
+            .id();
         commands.spawn((
-            Name::new(format!("Fan Slot {index} Stat Badge ATK")),
-            StatBadgeAtk,
-            fan_slot_stat_badge_node(StatBadgeCorner::BottomLeft),
-            ImageNode::new(placeholder.stat_badge_atk.clone()),
+            Name::new(format!("Fan Slot {index} Stat Badge ATK Label")),
+            StatBadgeAtkLabel,
+            stat_badge_label_node(),
+            Text::new(""),
+            stat_badge_label_text_font(),
+            TextColor(STAT_BADGE_LABEL_COLOR),
+            TextLayout::new_with_justify(Justify::Center),
             Visibility::Inherited,
-            ChildOf(slot),
+            ChildOf(atk_badge),
         ));
+        let hp_badge = commands
+            .spawn((
+                Name::new(format!("Fan Slot {index} Stat Badge HP")),
+                StatBadgeHp,
+                fan_slot_stat_badge_node(StatBadgeCorner::BottomRight),
+                ImageNode::new(placeholder.stat_badge_hp.clone()),
+                Visibility::Inherited,
+                ChildOf(slot),
+            ))
+            .id();
         commands.spawn((
-            Name::new(format!("Fan Slot {index} Stat Badge HP")),
-            StatBadgeHp,
-            fan_slot_stat_badge_node(StatBadgeCorner::BottomRight),
-            ImageNode::new(placeholder.stat_badge_hp.clone()),
+            Name::new(format!("Fan Slot {index} Stat Badge HP Label")),
+            StatBadgeHpLabel,
+            stat_badge_label_node(),
+            Text::new(""),
+            stat_badge_label_text_font(),
+            TextColor(STAT_BADGE_LABEL_COLOR),
+            TextLayout::new_with_justify(Justify::Center),
             Visibility::Inherited,
-            ChildOf(slot),
+            ChildOf(hp_badge),
         ));
+        let mp_badge = commands
+            .spawn((
+                Name::new(format!("Fan Slot {index} Stat Badge MP")),
+                StatBadgeMp,
+                fan_slot_stat_badge_node(StatBadgeCorner::TopLeft),
+                ImageNode::new(placeholder.stat_badge_mp.clone()),
+                Visibility::Inherited,
+                ChildOf(slot),
+            ))
+            .id();
         commands.spawn((
-            Name::new(format!("Fan Slot {index} Stat Badge MP")),
-            StatBadgeMp,
-            fan_slot_stat_badge_node(StatBadgeCorner::TopLeft),
-            ImageNode::new(placeholder.stat_badge_mp.clone()),
+            Name::new(format!("Fan Slot {index} Stat Badge MP Label")),
+            StatBadgeMpLabel,
+            stat_badge_label_node(),
+            Text::new(""),
+            stat_badge_label_text_font(),
+            TextColor(STAT_BADGE_LABEL_COLOR),
+            TextLayout::new_with_justify(Justify::Center),
             Visibility::Inherited,
-            ChildOf(slot),
+            ChildOf(mp_badge),
         ));
+        let ar_badge = commands
+            .spawn((
+                Name::new(format!("Fan Slot {index} Stat Badge AR")),
+                StatBadgeAr,
+                fan_slot_stat_badge_node(StatBadgeCorner::TopRight),
+                ImageNode::new(placeholder.stat_badge_ar.clone()),
+                Visibility::Inherited,
+                ChildOf(slot),
+            ))
+            .id();
         commands.spawn((
-            Name::new(format!("Fan Slot {index} Stat Badge AR")),
-            StatBadgeAr,
-            fan_slot_stat_badge_node(StatBadgeCorner::TopRight),
-            ImageNode::new(placeholder.stat_badge_ar.clone()),
+            Name::new(format!("Fan Slot {index} Stat Badge AR Label")),
+            StatBadgeArLabel,
+            stat_badge_label_node(),
+            Text::new(""),
+            stat_badge_label_text_font(),
+            TextColor(STAT_BADGE_LABEL_COLOR),
+            TextLayout::new_with_justify(Justify::Center),
             Visibility::Inherited,
-            ChildOf(slot),
+            ChildOf(ar_badge),
         ));
         commands.spawn((
             Name::new(format!("Fan Slot {index} Rarity Icon")),
@@ -3236,6 +3379,37 @@ fn fan_slot_stat_badge_node(corner: StatBadgeCorner) -> Node {
         ..default()
     }
 }
+
+/// PROMPT 1029 — text-label child of each stat badge. Fills the badge's local
+/// box so the numeric value (e.g. "3") renders centered over the diamond icon
+/// at every viewport. Inheriting visibility keeps the label visible only while
+/// the badge itself is visible.
+fn stat_badge_label_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Percent(0.0),
+        top: Val::Percent(0.0),
+        width: Val::Percent(100.0),
+        height: Val::Percent(100.0),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        ..default()
+    }
+}
+
+/// PROMPT 1029 — stat badge labels share the BODY size token because the
+/// numbers must read at 1280×720 inside a `FAN_SLOT_STAT_BADGE_PERCENT` ×
+/// `FAN_SLOT_STAT_BADGE_PERCENT` corner of a `HAND_CARD_DISPLAY_WIDTH_PX` ×
+/// `HAND_CARD_DISPLAY_HEIGHT_PX` card. Using the token instead of a literal
+/// font size keeps typography review in one place.
+fn stat_badge_label_text_font() -> TextFont {
+    TextFont {
+        font_size: typography::BODY,
+        ..default()
+    }
+}
+
+const STAT_BADGE_LABEL_COLOR: Color = Color::srgb(0.98, 0.98, 0.98);
 
 fn fan_slot_icon_node(anchor: SlotIconAnchor) -> Node {
     let (top, bottom) = match anchor {
