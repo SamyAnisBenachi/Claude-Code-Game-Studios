@@ -1,3 +1,160 @@
+# PROMPT 1024 State Banner -- Sprint 16 Plan Draft (NOT ACTIVATED; Sprint 15 NOT closed)
+
+Updated 2026-05-17 by PROMPT 1024. Source-of-truth at authoring:
+`origin/main@a53a33820789b0c4dd8d390963db5a3ef59250f9` (PROMPT 1020
+Sprint 15 QA-snapshot auto-capture + F9 integration tip:
+`integrate(s15): apply QA snapshot auto-capture + F9 shortcut (PROMPT 1020)`).
+
+PROMPT 1024 authored `production/sprints/sprint-16.md` as a Sprint 16
+sprint plan **DRAFT**. **Sprint 16 is NOT activated by PROMPT 1024**;
+activation is a separate explicit prompt that mirrors the PROMPT 826 /
+PROMPT 897 / PROMPT 997 pattern and requires Sprint 15 close-out to land
+on `origin/main` first (NOT performed by PROMPT 1024). **Sprint 15
+remains `active`**; PROMPT 1024 does NOT close Sprint 15.
+`production/sprint-status.yaml` `next_sprint_16_draft:` block appended at
+EOF (Sprint 16 draft pointer only). Top-level
+`sprint: 15 / status: active / stage: Polish` preserved verbatim;
+`sprint_15_activation:` block NOT modified; `sprint_15_story_done:`
+PROMPT 1009 + PROMPT 1010 entries preserved verbatim; all Sprint 14 / 13
+/ 12 / 11 / 10 closeout blocks preserved verbatim; no row flips by
+PROMPT 1024.
+
+**Sprint 15 disposition at draft time**: `active`. 4 of 5 Sprint 15 rows
+are closed on `origin/main` (PROMPT 1009 batch + PROMPT 1010 paperwork).
+Single un-closed row is `S11-HUD-TIMER-EYEBALL-VISUAL-001` (Must Have;
+human-operator-blocked Sprint 13 -> 14 -> 15 carry). Sprint 16 planning
+preserves this row as a **conditional Sprint 15 -> Sprint 16 carry**:
+dropped at Sprint 16 activation if closed on `origin/main` by a separate
+prompt before activation; otherwise pulled into Sprint 16 as Must Have
+unchanged.
+
+**Live QA / debugging / snapshot phase is non-blocking for Sprint 16
+planning** per the 2026-05-17 PROMPT 1024 instruction. The parallel
+tracks are NOT represented as Sprint 15 close-out and NOT pulled as
+Sprint 16 active rows:
+
+- **PROMPT 1019 / 1020** (`integrate(s15): apply QA snapshot auto-capture
+  + F9 shortcut`) landed on `origin/main@a53a338`. Auto-capture + F9
+  shortcut available in dev builds.
+- **PROMPT 1022** QA snapshot visual + state audit (read-only): produced
+  `reports/PROMPT-1022-qa-snapshot-visual-state-audit.md` (CONCERNS
+  verdict; 24 findings across 5 P1, 6 P2, 5 P3, 6 state-mismatch /
+  instrumentation, 2 snapshot-tool). Report-only; not integrated as
+  production-source change. Findings inform future story authoring but
+  are **NOT pulled as Sprint 16 rows in this draft**.
+- **PROMPT 1021 / 1023** QA snapshot default-dev integration (code-only):
+  landed on `origin/main` (worker `10057dc` / integration `7b663df`). QA
+  snapshot enabled by default in dev builds.
+
+Sprint 16 scope is a **deliberately small, executable plan** per the
+2026-05-17 PROMPT 1024 instruction ("Prefer a small, executable plan
+over a broad mega-sprint"). **4 candidate rows** (1 Must + 1 Should + 2
+Nice):
+
+- **Must Have (1 row; conditional)**:
+  `S11-HUD-TIMER-EYEBALL-VISUAL-001` carry (human-operator-blocked;
+  dropped at activation if closed on `origin/main` before activation;
+  story 014 file READY; 0.25d).
+- **Should Have (1 row; headline)**:
+  `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` Tier 3 rank 13 UI primitive
+  refactor (the last remaining canonical UI clean-pass roadmap row;
+  explicitly deferred from Sprint 15 by PROMPT 988 plan; touches hand +
+  shop + auction per PROMPT 802 §8; story file NEW; needs story-authoring
+  prompt before Sprint 16 activation; 1.5d net-new).
+- **Nice to Have (2 rows; ops / test-harness hygiene)**:
+  `S15-OPS-APPCOMPAT-MANIFEST-001` Windows AppCompat manifest for
+  `spawn_range_live_update_contract` test binary (removes per-run rename
+  workaround surfaced by Sprint 14 PROMPT 983 smoke; 0.25d net-new;
+  story file NEW) + `S15-TD-WORKSPACE-DEAD-CODE-WARNING-001` remove
+  `count_with_image_node` pre-existing dead-code warning at
+  `tests/integration/presentation/hand_ui_asset_wiring_test.rs:43`
+  (preserved through Sprint 14/15 deferred backlog; 0.1d net-new; story
+  file NEW).
+
+Total implementation effort ~1.85d against 8d available capacity. Sprint
+16 is NOT a `Polish->Release` sprint and explicitly does NOT claim
+public release readiness, RC readiness, full game completion, broad /
+Standard-tier accessibility completion (`QA-COND-0005`), playtest
+validation (`QA-COND-0006`), full playable-client manual QA, two-client
+GAME_OVER closure (`S8-QA-001-W1`), final-art completion (`PAW-TD-*-a`),
+`Polish->Release` gate-check retry (PROMPT 761 FAIL preserved), stage
+advance from Polish to Release, underlying drag-runtime bug fix (Sprint
+12 story 019 closed cannot-reproduce, NOT bug-fixed), closure of any of
+the 24 PROMPT 1022 QA snapshot audit findings (those inform future
+Sprint 17+ scoping; none are Sprint 16 active rows), Sprint 15 close-out,
+OR closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` by an LLM.
+
+**Files changed by PROMPT 1024** (paperwork-only):
+
+- `production/sprints/sprint-16.md` (NEW; this draft).
+- `production/sprint-status.yaml`: top-level `updated:` annotation
+  refreshed with PROMPT 1024 prefix (PROMPT 1010 narrative demoted to
+  `# Previous:` comment line). `next_sprint_16_draft:` block appended at
+  EOF (Sprint 16 draft pointer only). Top-level `sprint: 15 / status:
+  active / stage: Polish` preserved verbatim. No row flips.
+- `production/session-state/active.md` (this file): PROMPT 1024 banner
+  prepended above PROMPT 1010 banner.
+- `production/session-state/codex-orchestrator-state.md`: PROMPT 1024
+  section prepended above PROMPT 1010 section.
+- `reports/PROMPT-1024-sprint-16-plan-draft.md`: final report (NOT staged
+  or committed; `reports/` is gitignored).
+
+**Rows explicitly NOT closed by PROMPT 1024**:
+
+- `S11-HUD-TIMER-EYEBALL-VISUAL-001` (Sprint 15 Must Have; story 014 in
+  HUD epic). Sprint 13 -> 14 -> 15 human-operator-blocked carry preserved
+  unchanged. Closure remains gated on a real two-client human-operator
+  screenshot capture session across `DraftInitial` 45s / `DraftShop` 30s
+  / `Placement` 10-12s phases per the story AC matrix. No LLM
+  `/story-done` is authorised. Producer schedules. **Sprint 15 is NOT
+  closed by PROMPT 1024** -- Sprint 15 close-out is a separate paperwork
+  prompt that must run before Sprint 16 activation.
+
+All carried conditions preserved verbatim (none closed by PROMPT 1024):
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked carry (now a
+conditional Sprint 15 -> Sprint 16 carry); `S8-QA-001-W1` OPEN;
+`QA-COND-0005` Standard-tier accessibility accepted-risk (L5
+`LOBBY_BUTTON_HEIGHT = 30.0` remains accepted-risk); `QA-COND-0006`
+playtest validation accepted-risk; `PAW-TD-*-a` placeholder-art
+accept-risk across PAW-002..PAW-006; PROMPT 683-era runtime divergence
+preserved (third same-scope retest NOT authorised per `TQ-S12-C2`);
+Sprint 12 story 019 underlying drag-runtime bug NOT claimed fixed
+(cannot-reproduce preserved); `TQ-S12-C1..C7` preserved verbatim
+(`TQ-S12-C7` explicitly NOT closed by Sprint 16); Sprint 14 / 13 / 12 /
+11 / 10 closeouts preserved unchanged; all 16 Sprint 14 `/story-done`
+closures preserved unchanged on `origin/main`; all 4 closed Sprint 15
+`/story-done` closures (PROMPT 1009 batch + PROMPT 1010 paperwork)
+preserved unchanged on `origin/main`; Sprint 15 activation (PROMPT 997),
+Sprint 15 QA plan (PROMPT 1002), Sprint 15 story-authoring (PROMPT 991 /
+992 / 993) + integration (PROMPT 995), Sprint 15 dev-stories (PROMPT
+1003 / 1004 / 1005) + integrations (PROMPT 1006 / 1007 / 1008), PROMPT
+1009 Sprint 15 integrated `/story-done` batch, PROMPT 1010 S15
+`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP` `/story-done`
+paperwork, and PROMPT 1019 / 1020 / 1021 / 1022 / 1023 QA snapshot
+tooling tracks all preserved verbatim on `origin/main`.
+
+**Explicit non-claims by PROMPT 1024**: NO public release readiness, NO
+RC readiness, NO full game completion, NO broad / Standard-tier
+accessibility completion (`QA-COND-0005`), NO playtest validation
+(`QA-COND-0006`), NO full playable-client manual QA, NO two-client
+GAME_OVER closure (`S8-QA-001-W1` OPEN), NO final-art completion
+(`PAW-TD-*-a`), NO `Polish->Release` gate-check retry (PROMPT 761 FAIL
+preserved), NO stage advance from Polish to Release, NO underlying
+drag-runtime bug fix, NO closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+(closure remains gated on human-operator screenshot capture; no LLM
+`/story-done` authorised), NO closure of any of the 24 PROMPT 1022 audit
+findings, NO Sprint 15 close-out, NO Sprint 16 activation, NO Sprint 14
+/ 15 row reopen, NO closure of `S8-QA-001-W1` / `TQ-S12-C7`, NO
+modification of PROMPT 1019 / 1020 / 1021 / 1023 QA snapshot tooling
+tracks, NO `/dev-story`, NO `/story-done`, NO `/story-readiness`, NO
+`/smoke-check`, NO `/team-qa`, NO `/gate-check`, NO `/release-check`,
+NO `/qa-plan`, NO `cargo` / `trunk` build, NO touch of `client/` /
+`server/` / `shared/` / `tests/` / `Cargo.toml` / `Cargo.lock` /
+`.cargo/` / `.github/` / `production/stage.txt` / `production/qa/*` /
+`production/gate-checks/*` by PROMPT 1024.
+
+---
+
 # PROMPT 1010 State Banner -- S15 S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP /story-done
 
 Updated 2026-05-17 by PROMPT 1010. Source-of-truth at closure:
