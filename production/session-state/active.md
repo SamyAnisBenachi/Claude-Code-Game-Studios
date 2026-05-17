@@ -1,3 +1,142 @@
+# PROMPT 1064 State Banner -- Sprint 16 Activated
+
+Updated 2026-05-17 by PROMPT 1064. Source-of-truth at activation:
+`origin/main@6f9308c9defcdeb1a29b20eecfa21d5ba8a3bbec` (PROMPT 1056
+Sprint 15 close-out tip: `closeout(s15): close Sprint 15 with deferred
+human visual conditions (PROMPT 1056)`).
+
+Sprint 16 activated by PROMPT 1064 paperwork-only activation. Sprint 16
+mirrors the PROMPT 826 / 897 / 997 activation precedent: flipped
+top-level `sprint: 15 -> 16` and `status: closed-with-conditions ->
+active` in `production/sprint-status.yaml`; preserved `stage: Polish`
+verbatim (`production/stage.txt` NOT touched); replaced the `stories:`
+block with the Sprint 16 4-row active set (1 Must Have + 1 Should Have +
+2 Nice to Have); replaced the `next_sprint_16_draft:` block at EOF with
+a `sprint_16_activation:` block; added a PROMPT 1064 ACTIVATED banner to
+`production/sprints/sprint-16.md`.
+
+Sprint 16 active rows (status: ready):
+
+- `S11-HUD-TIMER-EYEBALL-VISUAL-001` -- Must Have, ready,
+  human-operator-blocked Sprint 13 -> 14 -> 15 -> 16 carry; carried
+  unchanged from Sprint 15 close-out per the 2026-05-17 orchestrator
+  decision to defer human visual testing later; MUST NOT block
+  non-human Sprint 16 development lanes; no LLM `/story-done`
+  authorised; closure remains gated on a human-operator screenshot
+  capture session across DraftInitial 45s / DraftShop 30s / Placement
+  10-12s phases; story file
+  `production/epics/hud/story-014-hud-timer-eyeball-visual-check.md`
+  (`/story-readiness` READY per PROMPT 823 + PROMPT 1000).
+- `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` -- Should Have, ready, story
+  `production/epics/ui-clean-pass/story-009-ui-card-slot-primitive.md`
+  (PROMPT 1044 / 1045 authored + integrated; PROMPT 1060 / 1063 repair
+  + integrated). `/story-readiness` rerun against activation HEAD
+  (`6f9308c`) is pending before `/dev-story`.
+- `S15-OPS-APPCOMPAT-MANIFEST-001` -- Nice to Have, ready, story
+  `production/epics/devops/story-006-appcompat-manifest.md`
+  (PROMPT 1057 author + PROMPT 1062 integration). `/story-readiness`
+  rerun against activation HEAD pending before `/dev-story`.
+- `S15-TD-WORKSPACE-DEAD-CODE-WARNING-001` -- Nice to Have, ready,
+  story
+  `production/epics/ui-clean-pass/story-016-workspace-dead-code-warning.md`
+  (PROMPT 1058 author + PROMPT 1061 integration). `/story-readiness`
+  rerun against activation HEAD pending before `/dev-story`.
+
+Carried conditions preserved verbatim:
+
+- `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked Sprint 13
+  -> 14 -> 15 -> 16 carry. Closure remains gated on human-operator
+  screenshot capture. No LLM `/story-done` authorised. Carried as
+  human-later evidence only.
+- PROMPT 1054 P1 UI snapshot visual retest verdict
+  `BLOCKED-HUMAN-OPERATOR` preserved (state record at
+  `origin/main@8bec9dc` per PROMPT 1055). No pixel-level acceptance
+  claimed.
+- `S8-QA-001-W1` manual / browser two-client `GAME_OVER` gap remains
+  OPEN.
+- `QA-COND-0005` Standard-tier accessibility accepted-risk
+  (friend-game scope).
+- `QA-COND-0006` playtest / fun-hypothesis validation accepted-risk
+  / deferred.
+- `PAW-TD-*-a` placeholder-art accept-risk across PAW-002..PAW-006.
+- PROMPT 683-era runtime divergence question preserved (folded into
+  Sprint 12 story 019 cannot-reproduce closure). Third same-scope
+  retest NOT authorised per `TQ-S12-C2`.
+- PROMPT 761 `Polish->Release` gate-check `FAIL` preserved at
+  `production/gate-checks/gate-polish-release-2026-05-12.md`. NO
+  retry attempted; NO retry in scope for Sprint 16.
+- Sprint 12 story 019 underlying drag-runtime bug NOT claimed fixed
+  (closed cannot-reproduce, NOT bug-fixed).
+- `TQ-S12-C1..C7` preserved verbatim. `TQ-S12-C7` NOT closed.
+- Sprint 15 / 14 / 13 / 12 / 11 / 10 closeouts preserved unchanged.
+- All 4 closed Sprint 15 rows preserved unchanged on origin/main.
+- All 16 closed Sprint 14 rows preserved unchanged on origin/main.
+
+Non-claims (preserved verbatim):
+
+- no public release readiness
+- no release-candidate readiness
+- no full game completion
+- no broad / Standard-tier accessibility completion
+  (`QA-COND-0005` remains accepted-risk)
+- no playtest / fun-hypothesis validation
+  (`QA-COND-0006` remains accepted-risk)
+- no full playable-client manual QA
+- no two-client `GAME_OVER` closure (`S8-QA-001-W1` remains OPEN)
+- no final-art / asset-production completion
+- no `Polish->Release` gate-check retry (PROMPT 761 `FAIL` preserved)
+- no stage advance from Polish to Release
+- no closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+- no pixel-level closure of PROMPT 1054 P1 UI snapshot visual retest
+- no closure of Sprint 12 story 019 underlying drag-runtime bug
+- no Sprint 15 / 14 / 13 / 12 / 11 / 10 row reopen
+- no closure of any of the 24 PROMPT 1022 QA snapshot audit findings
+
+Files changed by PROMPT 1064:
+
+- `production/sprint-status.yaml` (top-level `sprint: 15 -> 16`,
+  `status: closed-with-conditions -> active`, stage preserved; goal /
+  start / end / scope / generated / updated refreshed to Sprint 16;
+  `stories:` block replaced with 4-row Sprint 16 active set;
+  `next_sprint_16_draft:` block at EOF replaced by
+  `sprint_16_activation:` block following PROMPT 997 precedent).
+- `production/sprints/sprint-16.md` (PROMPT 1064 ACTIVATED banner
+  prepended above PROMPT 1024 DRAFT banner; plan body NOT rewritten).
+- `production/session-state/active.md` (this file; PROMPT 1064
+  banner prepended above PROMPT 1056 banner).
+- `production/session-state/codex-orchestrator-state.md`
+  (PROMPT 1064 section prepended above PROMPT 1056 section).
+- `reports/PROMPT-1064-Sprint-16-Activation.md` (final report;
+  `reports/` is gitignored).
+
+Files explicitly NOT touched by PROMPT 1064: `client/`, `server/`,
+`shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`, `.github/`,
+`Trunk.toml`, `production/stage.txt`, `production/sprints/sprint-15.md`
+(read-only), `production/qa/*`, `production/gate-checks/*`, any story
+file under `production/epics/`, `.octogent/`,
+`.claude/scheduled_tasks.lock`, `.claude/settings.json`. NO cargo /
+trunk command invoked. NO `/dev-story`, `/story-readiness`,
+`/story-done`, `/smoke-check`, `/team-qa`, `/gate-check`,
+`/release-check`, `/qa-plan` run by PROMPT 1064.
+
+Next launchable prompts:
+
+1. Sprint 16 `/story-readiness` rerun batch against activation HEAD
+   (`origin/main@6f9308c`) -- the three net-new rows
+   (`S12-TD-UI-CARD-SLOT-PRIMITIVE-001`,
+   `S15-OPS-APPCOMPAT-MANIFEST-001`,
+   `S15-TD-WORKSPACE-DEAD-CODE-WARNING-001`). The Must Have HUD timer
+   carry is already READY per PROMPT 823 + PROMPT 1000.
+2. `/qa-plan sprint-16` -- authors `production/qa/qa-plan-sprint-16.md`
+   AFTER the `/story-readiness` batch. NO `/dev-story` authorised
+   before the QA plan exists.
+
+Worktree: in-place on `D:/_DEV/Work/Claude-Code-Game-Studios` (branch
+`prompt-1064-sprint-16-activation` from base
+`origin/main@6f9308c9defcdeb1a29b20eecfa21d5ba8a3bbec`).
+
+---
+
 # PROMPT 1056 State Banner -- Sprint 15 Closed With Conditions
 
 Updated 2026-05-17 by PROMPT 1056. Source-of-truth at authoring:

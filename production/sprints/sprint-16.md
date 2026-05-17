@@ -1,4 +1,87 @@
-# Sprint 16 -- DRAFT (NOT ACTIVATED; Polish stage; Sprint 15 still ACTIVE)
+# Sprint 16 -- ACTIVATED (Polish stage; Sprint 15 closed-with-conditions)
+
+> **PROMPT 1064 ACTIVATED 2026-05-17.** Sprint 16 was activated from the
+> PROMPT 1024 draft below by PROMPT 1064 paperwork-only activation against
+> `origin/main@6f9308c9defcdeb1a29b20eecfa21d5ba8a3bbec` (PROMPT 1056
+> Sprint 15 close-out tip: `closeout(s15): close Sprint 15 with deferred
+> human visual conditions (PROMPT 1056)`). Activation mirrors the PROMPT
+> 826 / 897 / 997 precedent: flipped top-level `sprint: 15 -> 16` and
+> `status: closed-with-conditions -> active` in
+> `production/sprint-status.yaml`; replaced the `stories:` block with the
+> Sprint 16 4-row active set (1 Must Have + 1 Should Have + 2 Nice to
+> Have); replaced the `next_sprint_16_draft:` block at EOF with a
+> `sprint_16_activation:` block; preserved `stage: Polish` verbatim
+> (`production/stage.txt` NOT touched). PROMPT 761 `Polish->Release`
+> gate-check `FAIL` preserved at
+> `production/gate-checks/gate-polish-release-2026-05-12.md`; **NO retry**
+> is in scope for Sprint 16. Sprint 16 is **NOT** a `Polish->Release`
+> sprint.
+>
+> **Sprint 16 active rows (status: ready)**:
+>
+> 1. `S11-HUD-TIMER-EYEBALL-VISUAL-001` -- Must Have, ready,
+>    human-operator-blocked Sprint 13 -> 14 -> 15 -> 16 carry; carried
+>    unchanged from Sprint 15 close-out per the 2026-05-17 orchestrator
+>    decision to defer human visual testing later; **MUST NOT block
+>    non-human Sprint 16 development lanes**; no LLM `/story-done`
+>    authorised; story file
+>    `production/epics/hud/story-014-hud-timer-eyeball-visual-check.md`
+>    (PROMPT 822 author / PROMPT 823 + PROMPT 1000 READY).
+> 2. `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` -- Should Have, ready, story
+>    `production/epics/ui-clean-pass/story-009-ui-card-slot-primitive.md`
+>    (PROMPT 1044 / PROMPT 1045 authored + integrated; PROMPT 1060 /
+>    PROMPT 1063 repair + integrated); `/story-readiness` rerun against
+>    activation HEAD pending before `/dev-story`.
+> 3. `S15-OPS-APPCOMPAT-MANIFEST-001` -- Nice to Have, ready, story
+>    `production/epics/devops/story-006-appcompat-manifest.md`
+>    (PROMPT 1057 author + PROMPT 1062 integration);
+>    `/story-readiness` rerun against activation HEAD pending before
+>    `/dev-story`.
+> 4. `S15-TD-WORKSPACE-DEAD-CODE-WARNING-001` -- Nice to Have, ready,
+>    story
+>    `production/epics/ui-clean-pass/story-016-workspace-dead-code-warning.md`
+>    (PROMPT 1058 author + PROMPT 1061 integration);
+>    `/story-readiness` rerun against activation HEAD pending before
+>    `/dev-story`.
+>
+> **PROMPT 1064 explicitly does NOT claim**: public release readiness,
+> release-candidate readiness, full game completion, broad /
+> Standard-tier accessibility completion (`QA-COND-0005` remains
+> accepted-risk), playtest validation (`QA-COND-0006` remains
+> accepted-risk), full playable-client manual QA, two-client
+> `GAME_OVER` closure (`S8-QA-001-W1` remains OPEN), final-art /
+> asset-production completion (`PAW-TD-*-a` accepted-risk preserved),
+> `Polish->Release` gate-check retry (PROMPT 761 `FAIL` preserved),
+> stage advance from Polish to Release, underlying drag-runtime bug
+> fix (Sprint 12 story 019 `cannot-reproduce` preserved), closure of
+> `S11-HUD-TIMER-EYEBALL-VISUAL-001` (human-later carry; no LLM
+> `/story-done` authorised; closure remains gated on human-operator
+> screenshot capture), pixel-level closure of PROMPT 1054 P1 UI
+> snapshot visual retest (`BLOCKED-HUMAN-OPERATOR` preserved), Sprint
+> 15 row reopen (4 closed Sprint 15 rows preserved on origin/main),
+> Sprint 14 / 13 / 12 / 11 / 10 row reopen, or closure of any of the
+> 24 PROMPT 1022 QA snapshot audit findings (those remain report-only
+> inputs to future story authoring; none are Sprint 16 active rows).
+>
+> **PROMPT 1064 paperwork-only activation scope**: changed only
+> `production/sprint-status.yaml`, this file (`production/sprints/sprint-16.md`
+> banner only; plan body NOT rewritten),
+> `production/session-state/active.md` (PROMPT 1064 banner prepended
+> above PROMPT 1056 banner), `production/session-state/codex-orchestrator-state.md`
+> (PROMPT 1064 section prepended above PROMPT 1056 section), and
+> `reports/PROMPT-1064-Sprint-16-Activation.md` (final report;
+> `reports/` is gitignored). NO `client/` / `server/` / `shared/` /
+> `tests/` / `Cargo.toml` / `Cargo.lock` / `.cargo/` / `.github/` /
+> `Trunk.toml` touch. NO `production/stage.txt` touch. NO `production/qa/*`
+> touch. NO `production/gate-checks/*` touch. NO story file under
+> `production/epics/` touch. NO `/story-readiness`, `/dev-story`,
+> `/story-done`, `/smoke-check`, `/team-qa`, `/gate-check`,
+> `/release-check`, `/qa-plan` run by PROMPT 1064; NO cargo/trunk
+> invocation. Sprint 16 QA plan does NOT exist at activation; must be
+> authored via `/qa-plan sprint-16` BEFORE any `/dev-story` runs and
+> BEFORE any Sprint 16 close-out claim.
+
+---
 
 > **PROMPT 1024 paperwork-only Sprint 16 plan draft (2026-05-17)**.
 > Source-of-truth at authoring: `origin/main@a53a33820789b0c4dd8d390963db5a3ef59250f9`
