@@ -34,6 +34,27 @@ fn test_warning_appears_before_gameplay_exposure() {
 
     let body = warning_body_text(&mut app);
     assert_eq!(body, PHOTOSENSITIVITY_WARNING_COPY);
+}
+
+#[test]
+fn test_warning_hides_when_client_enters_in_session_state() {
+    // PROMPT 1026 — the photosensitivity warning must not paint over active
+    // gameplay. Entering `ClientState::InSession` is the canonical signal that
+    // session UI is now live (lobby ⇒ in-session handshake), so the warning's
+    // visibility must flip to Hidden and the acknowledgement state must be
+    // marked so it does not reappear if the player returns to Lobby.
+    let mut app = warning_app();
+    app.update();
+
+    let root = app
+        .world()
+        .resource::<PhotosensitivityWarningEntities>()
+        .root;
+    assert_eq!(
+        app.world().get::<Visibility>(root),
+        Some(&Visibility::Visible),
+        "warning must be visible before gameplay starts"
+    );
 
     app.world_mut()
         .resource_mut::<NextState<ClientState>>()
@@ -42,8 +63,14 @@ fn test_warning_appears_before_gameplay_exposure() {
 
     assert_eq!(
         app.world().get::<Visibility>(root),
-        Some(&Visibility::Visible),
-        "warning must remain visible if gameplay state is entered before acknowledgement"
+        Some(&Visibility::Hidden),
+        "warning must be hidden once ClientState::InSession is entered"
+    );
+    let state = app.world().resource::<PhotosensitivityWarningState>();
+    assert!(
+        state.is_acknowledged(),
+        "entering InSession must mark the warning acknowledged so it does not \
+         reappear on subsequent Lobby returns this app run"
     );
 }
 
