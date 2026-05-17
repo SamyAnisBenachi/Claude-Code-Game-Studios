@@ -470,10 +470,13 @@ section as guidance rather than a strict contract.
 
 ### Card slot composition
 
-Owned by Tier 3 story 13 (`S12-TD-UI-CARD-SLOT-PRIMITIVE-001`) — refactor
-of hand + shop + auction card slot primitive. This spec does not bind a
-card slot composition; story 13 authors the primitive after Tier 1
-surfaces stabilise.
+Forward reference: see §12 "Card Slot Primitive" below. Sprint 16 story
+009 (`S12-TD-UI-CARD-SLOT-PRIMITIVE-001`) authors the canonical primitive
+module at `client/src/ui/design_tokens/card_slot.rs` and Phase 1 migrates
+the shop slot well call site. Hand / draft / auction-featured / board
+staged-ghost migrations are owned by the Sprint 16+
+`S16-UI-CARD-SLOT-MIGRATION-*` follow-on family. §12 is the source-of-
+truth for the canonical numeric values; this section is a pointer.
 
 ### Modal centering pattern
 
@@ -578,6 +581,126 @@ states:
 
 ---
 
+## §12 Card Slot Primitive
+
+Canonical layout primitive for every card-painting surface in the
+playable client. Sprint 16 story 009
+(`S12-TD-UI-CARD-SLOT-PRIMITIVE-001`, Tier 3 rank 13) authors the token
+module and amends this section; per-surface migration of the four
+existing card surfaces is split between this story (Phase 1 shop slot
+only) and the Sprint 16+ follow-on family
+(`S16-UI-CARD-SLOT-MIGRATION-*`).
+
+**Source-of-truth module**:
+`client/src/ui/design_tokens/card_slot.rs` (NEW; landed by Sprint 16
+story 009). This section ratifies the canonical numeric values for each
+of the five `CardSlotKind` variants; the §10 "Card slot composition"
+subsection above forward-references this section as the binding source.
+
+### CardSlotKind variants
+
+| Variant | Outer (px) | Aspect band | Border (px) | Z-layer | Canonical consumer |
+|---------|------------|-------------|-------------|---------|--------------------|
+| `HandFan`          |  96 × 136 portrait  | `0.69..=0.72` | `1.0` | `UI_BASE`    | `client/src/ui/hand/mod.rs` hand fan card (`HAND_CARD_DISPLAY_*`). |
+| `DraftGrid`        | 120 ×  56 landscape | `2.10..=2.18` | `1.0` | `UI_BASE`    | `client/src/ui/hand/mod.rs` draft initial grid (`HAND_DRAFT_GRID_CARD_*`). |
+| `ShopSlot`         | 136 ×  78 landscape | `1.70..=1.78` | `1.0` | `UI_BASE`    | `client/src/ui/shop_auction/mod.rs::shop_slot_node` (Phase 1 migration target). |
+| `AuctionFeatured`  | 380 × 280 landscape | `1.32..=1.40` | `3.0` | `UI_BASE`    | `client/src/ui/shop_auction/mod.rs::auction_featured_card_node` (`AUCTION_FEATURED_CARD_*`). |
+| `BoardStagedGhost` |  64 ×  80 portrait  | `0.78..=0.82` | `0.0` | `UI_OVERLAY` | World-space ghost preview sized to one board cell per `docs/ux/board-rendering-spec.md` BR-001 (`cell_width = 64.0`, `lane_height = 80.0`). |
+
+### Image / text / hit-target insets
+
+Insets are expressed as a `(left, right, top, bottom)` `UiRect` in
+pixels. The image rectangle and text rectangle MUST be disjoint within
+the outer rectangle — the integration test asserts containment per kind.
+
+| Variant | Image inset (L / R / T / B) | Text inset (L / R / T / B) | Hit-target inset |
+|---------|-----------------------------|----------------------------|------------------|
+| `HandFan`          |   4 /  4 /   4 / 28 |   4 /  4 / 112 /  4 | `UiRect::ZERO` (hit target == visual outer rectangle). |
+| `DraftGrid`        |   4 / 64 /   4 /  4 |  60 /  4 /   4 /  4 | `UiRect::ZERO`. |
+| `ShopSlot`         |   4 / 80 /   4 /  4 |  60 /  4 /   4 /  4 | `UiRect::ZERO`. |
+| `AuctionFeatured`  |  16 / 16 /  16 / 96 |  16 / 16 / 200 / 16 | `UiRect::ZERO`. |
+| `BoardStagedGhost` |   2 /  2 /   2 / 14 |   2 /  2 /  70 /  2 | `UiRect::ZERO`. |
+
+Per the AC7 contract the hit-target rectangle is a **superset of or
+equal to** the visual outer rectangle. The default `UiRect::ZERO` means
+the hit target equals the visual outer rectangle; a future per-surface
+migration sibling MAY outset further (e.g. focus-ring outset).
+
+### Composition rules
+
+1. **No nested cards.** A card slot is **leaf-only** — it has image and
+   text regions, NOT a child card slot. The `card_slot_node` builder for
+   kind `K` MUST NOT instantiate `card_slot_node(K')` for any other
+   kind. Composition that paints multiple cards (draft initial grid;
+   shop slot row) does so by placing N siblings under a flex parent.
+2. **Stable aspect ratio across viewports.** Slot dimensions are
+   pixel-fixed per §4 spacing scale — no viewport-driven scaling. The
+   integration test iterates `CANONICAL_VIEWPORTS` (§8) and confirms
+   `outer_width_px / outer_height_px` is constant per kind.
+3. **Distinct geometry per kind.** Each `CardSlotKind` variant resolves
+   to a distinct `(outer_width_px, outer_height_px, z_layer)` triple —
+   no two kinds collapse to the same slot.
+4. **Pixel-fixed under canonical viewports.** Containment is asserted
+   at the smallest canonical viewport (`1366 × 768`) and at one
+   smaller-than-canonical sentinel (`1024 × 600`) per AC4; the test
+   harness confirms no image or text region extends past the slot's
+   outer rectangle even when the viewport drops below the canonical
+   floor.
+
+### Interaction-state composition
+
+Card-slot kinds compose with the §11 interaction-state primitive
+families published by `client/src/ui/design_tokens/interaction_states.rs`
+(Sprint 15 story 008). Doc comments on each `CardSlotKind` variant
+name which token family the kind consumes (e.g. `ShopSlot` consumes
+`HOVER_BG_TINT_ALPHA` / `HOVER_BORDER_ALPHA` for pointer hover;
+`FOCUS_RING_*` for Tab focus; `PRESSED_BG_TINT_ALPHA` for purchase
+click; `DISABLED_*` for `cannot afford`). Per-surface migration of the
+actual interaction-state visuals is owned by the Sprint 16+
+`S16-UI-INTERACTION-STATE-MIGRATION-*` follow-on family — this primitive
+declares the references only.
+
+### Friend-game scope guard (§2)
+
+- **Layout primitive only.** This section composes the *layout*; it
+  does **not** replace placeholder art (`PAW-TD-002-a` /
+  `PAW-TD-003-a`), introduce final-art chrome, or alter game-state
+  machines. The underlying placeholder PNGs (e.g.
+  `assets/ui/shop_slot_well.png`) remain accept-risk per
+  `PAW-TD-*-a`.
+- **`QA-COND-0005` accept-risk preserved.** Hit-target sizes are
+  declared verbatim from the existing per-surface literals; the
+  primitive does **not** enforce a ≥44px Standard-tier floor. WCAG
+  contrast on the slot chrome is **not** introduced.
+- **`QA-COND-0006` accept-risk preserved.** Playtest / fun-hypothesis
+  validation is **not** advanced.
+
+### Scope (Sprint 16 story 009)
+
+- **Phase 1 migration only by this row.** Sprint 16 default scope is
+  the primitive module + this spec amendment + the shop slot
+  (`shop_slot_node`) Phase 1 migration + viewport-invariant
+  integration test + evidence dir. The remaining three migration
+  phases (hand surfaces / auction featured / board staged-ghost) are
+  Sprint 16+ follow-on rows in the family
+  `S16-UI-CARD-SLOT-MIGRATION-*`.
+- **No per-surface interaction-state migration.** Hover / focus /
+  pressed / disabled visual state mapping references the §11 token
+  families by doc-comment forward reference only; actual per-surface
+  wiring is the Sprint 16+ `S16-UI-INTERACTION-STATE-MIGRATION-*`
+  family (out of scope here).
+- **No drag-state visuals re-author.** Hand fan drag-state visuals
+  remain owned by `S12-UX-HAND-DRAG-STATE-VISUALS-001` (Sprint 15
+  DONE).
+- **No board-rendering spec change.** `docs/ux/board-rendering-spec.md`
+  (Sprint 15 DONE) is the authority for board-cell geometry; the
+  `BoardStagedGhost` variant reads cell geometry from that spec.
+- **No new color-palette tokens.** Card-slot chrome reads from §7
+  palette tokens (`SURFACE_ELEVATED` default; `ACCENT` for the
+  featured-card differentiation contract from Sprint 14 PROMPT 931).
+
+---
+
 ## Spec Adoption Matrix
 
 This matrix is the **canonical mapping** of spec sections to Sprint 14+
@@ -621,11 +744,11 @@ surface story reads its numeric values from the cited section.
 |------|------------------------|-------|
 | `S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001` | §7 color tokens + §10 button affordance + §11 interaction state primitives (canonical default values authored by story 008) | Hover / focus / pressed / disabled visual primitive set. Module: `client/src/ui/design_tokens/interaction_states.rs`. §11 is the source-of-truth section for the four token sets' canonical defaults. Per-surface migration deferred to Sprint 16+ family `S16-UI-INTERACTION-STATE-MIGRATION-*`. |
 
-### Tier 3 deferred to Sprint 15
+### Tier 3 deferred to Sprint 15 (and beyond)
 
 | Slug | Reads spec section(s) | Notes |
 |------|------------------------|-------|
-| `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` (rank 13) | §4 + §5 + §10 card slot composition (deferred) | Sprint 15 refactor; reads this spec. |
+| `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` (rank 13) | §4 + §5 + §10 (forward reference) + §12 (card slot primitive — canonical values authored by story 009) | **Sprint 16** refactor (deferred from Sprint 15 per `production/sprints/sprint-15.md` "Wider Sprint 15 Backlog"). Token module: `client/src/ui/design_tokens/card_slot.rs`. §12 is the source-of-truth section for the five `CardSlotKind` variants' canonical outer-rectangle / aspect-ratio band / image / text / hit-target inset / z-layer defaults. Phase 1 migration: shop slot well only (`shop_slot_node`); hand / draft / auction-featured / board staged-ghost migrations deferred to the Sprint 16+ family `S16-UI-CARD-SLOT-MIGRATION-*`. |
 | `S11-UX-BOARD-RENDERING-SPEC` (rank 14) | §3 World / Units layers + §8 world-space scaling | Sprint 15 doc-only spec authoring; depends on this spec as the parent design-spec doc. |
 
 ---

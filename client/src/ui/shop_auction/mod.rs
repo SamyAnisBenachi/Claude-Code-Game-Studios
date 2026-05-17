@@ -18,6 +18,7 @@ use crate::card_animations::{
 };
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
+use crate::ui::design_tokens::card_slot::{card_slot_node, CardSlotKind};
 use crate::ui::design_tokens::{overlays, spacing, typography, z_layers};
 use crate::ui::hud::{HudGoldBroadcastMessage, HudPlayerIds};
 use crate::ui::settings::AccessibilityPreferences;
@@ -4994,15 +4995,16 @@ fn draft_initial_objective_retrieval_node() -> Node {
 }
 
 fn shop_slot_node(index: usize) -> Node {
-    Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(92.0 + index as f32 * 154.0),
-        top: Val::Px(44.0),
-        width: Val::Px(136.0),
-        height: Val::Px(78.0),
-        border: UiRect::all(Val::Px(1.0)),
-        ..default()
-    }
+    // Sprint 16 story 009 (`S12-TD-UI-CARD-SLOT-PRIMITIVE-001`) Phase 1
+    // migration: the slot's outer rectangle / border now flow from the
+    // shared card-slot primitive so layout drift across hand / draft /
+    // shop / auction surfaces cannot recur. Per-index horizontal
+    // positioning remains a shop-panel concern and is overlaid on the
+    // primitive's `position_type: Absolute` Node.
+    let mut node = card_slot_node(CardSlotKind::ShopSlot);
+    node.left = Val::Px(92.0 + index as f32 * 154.0);
+    node.top = Val::Px(44.0);
+    node
 }
 
 fn shop_refresh_button_node() -> Node {
