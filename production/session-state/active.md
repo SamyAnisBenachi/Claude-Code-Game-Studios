@@ -1,3 +1,30 @@
+# PROMPT 1049 State Banner -- Placement Action Panel Integrated On Main
+
+Updated 2026-05-17 after resolving PROMPT 1046 main-push block.
+
+PROMPT 1046 `S15-PLACEMENT-ACTION-PANEL-SUBMIT-P1-INTEGRATION` is now on
+`origin/main@b48f576e3ce83527c05a83ae4d92ccbbe92e48ac`. The worker
+integration commit `e97c908` was based on `7b412fd`; after PROMPT 1047 advanced
+main to `0557219`, the orchestrator rebuilt the merge on top of current main as
+`b48f576` and pushed it.
+
+Integrated files:
+
+- `client/Cargo.toml`
+- `client/src/ui/hand/mod.rs`
+- `tests/integration/hand-ui/placement_action_panel_test.rs`
+
+Scope preserved: no server/shared/protocol edits; no sprint-status,
+session-state, sprint-plan, stage, QA/smoke/team/gate/release worker writes.
+PROMPT 1046 is cleared. Manual visual retest remains recommended for the actual
+Placement window.
+
+Still running:
+
+- PROMPT 1048 `S15-DRAFTSHOP-AUCTION-BID-P1-INTEGRATION`
+
+---
+
 # PROMPT 1047 State Banner -- UI Architecture Story Integration On Main
 
 Updated 2026-05-17 after resolving PROMPT 1045 main-push block.
