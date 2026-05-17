@@ -18,15 +18,21 @@
 //!
 //! ## Non-product rule
 //!
-//! - Disabled by default. The plugin is registered unconditionally but the
-//!   overlay / shortcut / capture systems only do work when
-//!   [`QASnapshotConfig::enabled`] is `true`.
-//! - Activation paths (native only):
-//!     - Environment variable `CCGS_QA_SNAPSHOT=1` flips the default config
-//!       to enabled at plugin build time.
-//!     - Tests / harnesses may insert `QASnapshotConfig { enabled: true, .. }`
-//!       directly before adding the plugin; `init_resource` will not
-//!       overwrite the pre-inserted resource.
+//! - The plugin is registered unconditionally; the overlay / shortcut /
+//!   capture systems only do work when [`QASnapshotConfig::enabled`] is
+//!   `true`.
+//! - Default activation rule (native, env-driven):
+//!     - `CCGS_QA_SNAPSHOT=1` forces enabled.
+//!     - `CCGS_QA_SNAPSHOT=0` forces disabled.
+//!     - Unset (or empty/whitespace-only): defaults to
+//!       `cfg!(debug_assertions)` — enabled in dev/debug builds, disabled in
+//!       release builds. This keeps QA snapshot available out of the box for
+//!       agents and manual QA without requiring an env var, while keeping
+//!       release builds clean.
+//!     - Any other value is logged as invalid and treated as disabled.
+//! - Tests / harnesses may insert `QASnapshotConfig { enabled: true, .. }`
+//!   directly before adding the plugin; `init_resource` will not overwrite
+//!   the pre-inserted resource.
 //! - Output directory is `qa-snapshots/` under the current working directory
 //!   by default; override with `CCGS_QA_SNAPSHOT_DIR=<path>`.
 //! - The plugin does not send any C2S messages, does not touch the lightyear
@@ -144,21 +150,51 @@ impl Default for QASnapshotConfig {
 impl QASnapshotConfig {
     /// Build a config from environment variables.
     ///
-    /// `CCGS_QA_SNAPSHOT=1` enables the overlay; any other value (including
-    /// unset) keeps it disabled. `CCGS_QA_SNAPSHOT_DIR=<path>` overrides
-    /// the output directory.
+    /// Activation rule for `CCGS_QA_SNAPSHOT`:
+    /// - `1` forces enabled.
+    /// - `0` forces disabled.
+    /// - Unset (or empty/whitespace-only): defaults to
+    ///   `cfg!(debug_assertions)` — enabled in dev/debug builds, disabled in
+    ///   release builds.
+    /// - Any other value is logged as invalid and treated as disabled (never
+    ///   panics).
+    ///
+    /// `CCGS_QA_SNAPSHOT_DIR=<path>` overrides the output directory; blank
+    /// values fall back to the default.
     pub fn from_env() -> Self {
         Self::from_env_values(
             std::env::var(QA_SNAPSHOT_ENV_VAR).ok().as_deref(),
             std::env::var(QA_SNAPSHOT_DIR_ENV_VAR).ok().as_deref(),
+            cfg!(debug_assertions),
         )
     }
 
-    /// Deterministic constructor used by `from_env` and the unit tests so
-    /// the env-parsing rules can be exercised without touching the process
-    /// environment.
-    pub fn from_env_values(enable_var: Option<&str>, dir_var: Option<&str>) -> Self {
-        let enabled = enable_var.map(str::trim).is_some_and(|v| v == "1");
+    /// Deterministic constructor used by [`from_env`](Self::from_env) and the
+    /// unit tests so the env-parsing rules can be exercised without touching
+    /// the process environment or relying on the build-mode
+    /// `debug_assertions` flag.
+    ///
+    /// `dev_default_enabled` is the value applied when `enable_var` is unset
+    /// (`None`) or empty/whitespace only. Production callers pass
+    /// `cfg!(debug_assertions)`.
+    pub fn from_env_values(
+        enable_var: Option<&str>,
+        dir_var: Option<&str>,
+        dev_default_enabled: bool,
+    ) -> Self {
+        let enabled = match enable_var.map(str::trim) {
+            None | Some("") => dev_default_enabled,
+            Some("1") => true,
+            Some("0") => false,
+            Some(other) => {
+                tracing::warn!(
+                    target: "client::presentation::qa_snapshot",
+                    value = %other,
+                    "CCGS_QA_SNAPSHOT has invalid value; treating as disabled (expected 1, 0, or unset)"
+                );
+                false
+            }
+        };
         let output_dir = dir_var
             .map(str::trim)
             .filter(|v| !v.is_empty())
