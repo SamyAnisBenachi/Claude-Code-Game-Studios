@@ -11,10 +11,12 @@
 > 921 / 922; Sprint 15 Tier 0 Should-priority adjacent story 008
 > authored by PROMPT 993, implemented by PROMPT 1005, integrated by
 > PROMPT 1007, and closed Done by PROMPT 1009 as a Sprint 15 Nice
-> to Have row
+> to Have row; Sprint 16 Tier 3 rank 13 candidate story 009 authored
+> by PROMPT 1025 (Sprint 16 candidate, NOT activated)
 > **Stories**: 1 Sprint 13 roadmap-prep story (Done) + 6 Sprint 14
 > Tier 0 foundation stories (Done) + 1 Sprint 15 Tier 0
-> Should-priority adjacent story (Done via PROMPT 1009). The
+> Should-priority adjacent story (Done via PROMPT 1009) + 1 Sprint 16
+> Tier 3 rank 13 candidate story (Draft, NOT activated). The
 > remaining PROMPT 802 candidate UI repair rows outside this epic
 > remain NOT activated.
 
@@ -99,6 +101,47 @@ accepted-risk and are **not** advanced by this roadmap-prep.
 | 006 | [UI Overlay Alpha Token (Single Source)](story-006-ui-overlay-alpha-token.md) | Tech Debt -- Tier 0 foundational | Draft -- Sprint 14 candidate, NOT activated | S12-TD-UI-OVERLAY-ALPHA-TOKEN-001 |
 | 007 | [Canonical Global UI Design Spec](story-007-global-ui-design-spec.md) | UX -- design-spec authoring | Draft -- Sprint 14 candidate, NOT activated | S12-UX-GLOBAL-UI-DESIGN-SPEC-001 |
 | 008 | [UI Interaction State Primitives](story-008-ui-interaction-state-primitives.md) | Tech Debt -- Tier 0 Should-priority adjacent primitive | Done -- Sprint 15 Nice to Have (closed PROMPT 1009 on `origin/main` after PROMPT 1005 dev-story + PROMPT 1007 integration `5d36c4b`) | S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001 |
+| 009 | [UI Card Slot Primitive](story-009-ui-card-slot-primitive.md) | Tech Debt -- Tier 3 rank 13 multi-surface primitive | Draft -- Sprint 16 candidate, NOT activated | S12-TD-UI-CARD-SLOT-PRIMITIVE-001 |
+
+### Sprint 16 Candidate Sequencing Notes
+
+Story 009 is the Tier 3 rank 13 multi-surface card-slot primitive
+refactor per `docs/ux/ui-clean-pass-roadmap.md` rank 13 (Tier 3,
+Should, 1.5d, net-new, PROMPT 802 §3.3 HA1 / §3.3 HA5 / §4 Tier 3.1).
+Deferred from Sprint 15 per `production/sprints/sprint-15.md`
+"Wider Sprint 15 Backlog (NOT scheduled into this draft; deferred) --
+Deliberately deferred to Sprint 16+ (size or coordination overhead)"
+because the refactor touches hand + shop + auction together per
+PROMPT 802 §8 and would have inflated Sprint 15 into a mega-sprint.
+
+- Story 009 is authored as a **single primitive + spec amendment +
+  shop slot phase 1 migration + evidence** row by default, with three
+  follow-on migration sibling rows scoped under the family
+  `S16-UI-CARD-SLOT-MIGRATION-*` (hand surfaces / auction featured /
+  board staged ghost). The Sprint 16 producer MAY bundle the
+  primitive + all four migration phases into one row at activation
+  time by amending AC5; the default split-shape keeps Sprint 16
+  scope discrete and parallel-safe.
+- Story 009 depends on:
+  - Sprint 14 ranks 1 + 2 + 3 + 6 (DONE: stories 002 / 003 / 004 /
+    007) -- the foundational design-token modules and the global UI
+    design spec that this story amends with §12.
+  - At least one Tier 1 surface stable (DONE: HUD top strip PROMPT 942,
+    auction featured PROMPT 931, draft grid centered modal PROMPT 953,
+    lobby modal PROMPT 939).
+  - Story 008 (`S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001` DONE
+    PROMPT 1009) -- the card-slot kinds reference the four
+    interaction-state primitive families via doc-comment cross
+    reference (AC3); no `interaction_states` edit is authored by
+    story 009.
+- Story 009 is NOT activated by PROMPT 1025. Sprint 16 activation is
+  a separate prompt. Sprint 15 disposition (active; closeout in
+  progress) and Sprint 14 disposition (`closed-with-conditions`,
+  `Polish` stage) are preserved unchanged. **Per-surface migration
+  of hand fan + draft grid + auction featured + board staged ghost
+  is OUT OF SCOPE for story 009 by default** -- only the shop slot
+  call site is migrated in phase 1; the other three migration phases
+  are Sprint 16+ follow-on sibling stories.
 
 ### Sprint 15 Candidate Sequencing Notes
 
@@ -182,3 +225,15 @@ sequencing rules:
   Story 008 explicitly does NOT claim Standard-tier hit-target
   conformance, broad accessibility completion, playtest validation,
   final-art replacement, or release readiness.
+- Story 009 (Sprint 16 Tier 3 rank 13 candidate): Draft -- authored by
+  PROMPT 1025 on branch `story/s16-ui-card-slot-primitive` from base
+  `origin/main@7b663df` (PROMPT 1023 `integrate(s15): default QA
+  snapshot enabled in dev builds`). Sprint 16 activation is a separate
+  prompt; story 009 is NOT activated by PROMPT 1025. The story
+  preserves the friend-game vs Standard-tier-accessibility scope
+  boundary verbatim and explicitly does NOT claim Standard-tier
+  hit-target conformance (≥44px), broad accessibility completion,
+  playtest validation, final-art replacement, or release readiness.
+  Per-surface migration of hand fan + draft grid + auction featured +
+  board staged ghost is scoped as Sprint 16+ follow-on sibling stories
+  under the family `S16-UI-CARD-SLOT-MIGRATION-*`.
