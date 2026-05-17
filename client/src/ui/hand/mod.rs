@@ -27,6 +27,8 @@ use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use crate::ui::design_tokens::{strips, z_layers};
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
+pub mod drag_state_visuals;
+
 pub const HAND_FAN_SLOT_COUNT: usize = 10;
 /// Height of the absolute-positioned `HandFanRoot` strip anchored to the bottom
 /// of the viewport. `metrics_for_viewport` produces fan child positions in this
@@ -35,15 +37,27 @@ pub const HAND_FAN_SLOT_COUNT: usize = 10;
 pub const HAND_FAN_STRIP_HEIGHT_PX: f32 = 260.0;
 pub const DRAFT_INITIAL_GRID_SLOT_COUNT: usize = 9;
 pub const RESERVE_STRIP_ENTITY_COUNT: usize = 4;
-// Sprint 14 story 004 (S11-TD-UI-FLEX-STRIPS): the `+ 1` accounts for
-// the canonical `HandBar` strip primitive spawned by `spawn_hand_ui` as
-// the viewport-edge-anchored parent of `HandFanRoot`. The strip is
-// tagged with `HandUiEntity` so it is despawned with the hand UI tree
-// on session exit.
+// Sprint 14 story 004 (S11-TD-UI-FLEX-STRIPS): the trailing `+ 1` accounts
+// for the canonical `HandBar` strip primitive spawned by `spawn_hand_ui`
+// as the viewport-edge-anchored parent of `HandFanRoot`. The strip is
+// tagged with `HandUiEntity` so it is despawned with the hand UI tree on
+// session exit.
+//
+// Sprint 15 story 020 (S12-UX-HAND-DRAG-STATE-VISUALS-001): the trailing
+// `+ HAND_FAN_SLOT_COUNT * 2 + 1` accounts for the per-slot drag-state
+// overlay child nodes (`FanSlotDimOverlay` + `FanSlotHoverOverlay`, two
+// per slot) plus the single `FanPlateDropTargetOverlay` spawned under
+// `HandFanRoot`. Each overlay is tagged with `HandUiEntity` so it is
+// despawned with the hand UI tree on session exit. All overlays are
+// children of pre-existing pre-pooled entities (slots / fan_root); no
+// new top-level pre-pool entries are introduced (ADR-021 Impl
+// Guideline 5 preserved).
 pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT
     + DRAFT_INITIAL_GRID_SLOT_COUNT
     + 8
     + HAND_FAN_SLOT_COUNT * RESERVE_STRIP_ENTITY_COUNT
+    + 1
+    + HAND_FAN_SLOT_COUNT * 2
     + 1;
 const HAND_CARD_DISPLAY_WIDTH_PX: f32 = 96.0;
 const HAND_CARD_DISPLAY_HEIGHT_PX: f32 = 136.0;
@@ -922,6 +936,12 @@ impl Plugin for HandUiPlugin {
                         apply_reserve_strip_layout_system,
                         sync_reserve_strip_state_system,
                         tick_hand_full_notification_system,
+                        // Sprint 15 story 020 (S12-UX-HAND-DRAG-STATE-VISUALS-001):
+                        // read-only over `ActivePlacementDrag`, `HandUiMode`,
+                        // `PendingPlacements`, `PlayerEconomyView`. Patches
+                        // per-slot dim / hover overlays + the fan-plate
+                        // drop-target overlay. ADR-002 + ADR-012 preserved.
+                        drag_state_visuals::sync_hand_drag_state_visuals_system,
                     )
                         .chain()
                         .in_set(HandUiSystemSet::StateSync),
@@ -2853,6 +2873,11 @@ pub fn spawn_hand_ui(
         .entity(fan_root)
         .insert(bevy::picking::Pickable::IGNORE);
 
+    // Sprint 15 story 020 (S12-UX-HAND-DRAG-STATE-VISUALS-001): fan-plate
+    // Instant drop-target overlay — full-cover child of `fan_root`. Hidden
+    // by default; flips Visible while an Instant drag is in flight.
+    drag_state_visuals::spawn_fan_plate_drop_target_overlay(&mut commands, fan_root);
+
     let fan_slots = std::array::from_fn(|index| {
         let slot = commands
             .spawn((
@@ -2932,6 +2957,13 @@ pub fn spawn_hand_ui(
             Visibility::Inherited,
             ChildOf(slot),
         ));
+
+        // Sprint 15 story 020 (S12-UX-HAND-DRAG-STATE-VISUALS-001): per-slot
+        // drag-state overlay child nodes (dim + hover) spawn here so they
+        // sit on top of the chrome children in paint order. Overlays start
+        // Hidden; `drag_state_visuals::sync_hand_drag_state_visuals_system`
+        // flips them Visible per the resolved drag state.
+        drag_state_visuals::spawn_fan_slot_drag_state_overlays(&mut commands, slot, index as u8);
 
         slot
     });

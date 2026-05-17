@@ -175,6 +175,10 @@ name = "hand_ui_drag_to_board_cell_test"
 path = "../tests/integration/hand-ui/hand_ui_drag_to_board_cell_test.rs"
 
 [[test]]
+name = "hand_ui_drag_state_visuals_test"
+path = "../tests/integration/hand-ui/hand_ui_drag_state_visuals_test.rs"
+
+[[test]]
 name = "hud_phase_label_round_counter_test"
 path = "../tests/unit/hud/phase_label_round_counter_test.rs"
 
