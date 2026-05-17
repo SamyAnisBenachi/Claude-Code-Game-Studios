@@ -1,3 +1,47 @@
+# PROMPT 1039 State Banner -- HUD Legibility Integrated
+
+Updated 2026-05-17 after PROMPT 1033 main integration. Source-of-truth:
+`origin/main@fe80ca891bfc112204a8f5cb336288243e42bf78`
+(`hud(prompt-1027): pill-labelled top strip + scoreboard-dot un-overlap`).
+
+PROMPT 1033 `HUD-GHOST-GLYPH-LABEL-LEGIBILITY-INTEGRATION` is no longer
+blocked. The worker's `291f73e` integration was based on `c9d1663`; after the
+PROMPT 1038 state update advanced main to `9b2aee5`, the same verified HUD patch
+was re-applied on top of `origin/main` as `fe80ca8` and pushed to main. Remote
+branch `origin/integrate/hud-ghost-glyph-legibility-1033-v3` also points at
+`fe80ca8`.
+
+Integrated files:
+
+- `client/src/ui/hud/mod.rs`
+- `tests/integration/hud/text_size_contrast_accessibility_test.rs`
+- `tests/integration/ui_clean_pass/hud_bottom_strip_layout_test.rs`
+- `tests/integration/ui_clean_pass/hud_top_strip_layout_test.rs`
+- `tests/unit/hud/gold_mana_display_test.rs`
+
+Verification before main push: `origin/main` was ancestor of `fe80ca8`,
+`git diff --check origin/main...HEAD` was clean, and the diff touched only the
+five HUD/test files above. Cargo was not rerun by the orchestrator because the
+worker already reran the HUD checks after rebasing onto `c9d1663`; the only new
+intervening commit was PROMPT 1038 session-state documentation.
+
+Current pending lanes after PROMPT 1033 integration:
+
+- PROMPT 1037 / PROMPT 1029 card cost + combat stat rendering integration still
+  needs to be consumed/rebased onto current main before dependent shop/auction
+  repairs launch.
+- PROMPT 1034 full UI visual-quality audit, PROMPT 1035 UI code architecture /
+  layout debt audit, and PROMPT 1036 snapshot state/log correlation audit remain
+  pending read-only reports.
+
+Non-claims preserved: no Sprint 15 close-out, no Sprint 16 activation, no
+Polish->Release retry, no public release / RC readiness, no full game
+completion, no broad accessibility completion, no playtest validation, no
+final-art completion, no `S8-QA-001-W1` closure, and no LLM closure of
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`.
+
+---
+
 # PROMPT 1038 State Banner -- QA Snapshot / Runtime UI Repair Wave
 
 Updated 2026-05-17 by orchestrator state update. Source-of-truth verified in
