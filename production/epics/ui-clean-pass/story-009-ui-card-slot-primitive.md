@@ -123,7 +123,7 @@ NOT authored by this story file) that exports:
    `bevy::ui::UiRect` (or equivalent) for the card's art region and
    text-block region. This guarantees that long card names, long cost
    readouts, and rare-art atlas frames do not overflow the slot's outer
-   rectangle at 1280 × 720 (the smallest canonical viewport per §8) or
+   rectangle at 1366 × 768 (the smallest canonical viewport per §8) or
    at any larger canonical viewport. Containment is asserted by the
    AC8 viewport-invariant test below.
 5. A doc-comment cross-reference to `docs/ux/global-ui-design-spec.md`
@@ -366,7 +366,7 @@ stable". Dependencies satisfied at story-authoring time:
     section reference.
   - `git diff` showing the shop slot migration applied and showing
     the other surfaces' call sites UNCHANGED.
-  - QA snapshot bundle from a manual playable-client run at 1280 × 720
+  - QA snapshot bundle from a manual playable-client run at 1366 × 768
     and 1920 × 1080 (per `S15-QA-SNAPSHOT-DEFAULT-DEV` flow per
     PROMPT 1021 / 1023; the QA snapshot button defaults to enabled in
     dev builds) showing the shop slot rendered via the new primitive.
@@ -531,14 +531,14 @@ and `/story-done` runs).
   not that every clickable surface is fully wired. Verification:
   doc-comment scan + integration-test import assertion.
 
-- [ ] **AC4 -- Image / text containment at 1280 × 720 and a smaller
+- [ ] **AC4 -- Image / text containment at 1366 × 768 and a smaller
   viewport**: GIVEN the integration test, WHEN run, THEN it asserts
   that for each `CardSlotKind` the image inset rectangle and text
   inset rectangle each fit inside the outer rectangle (per AC2's
   per-kind containment check) AND that the same containment holds at
-  the smallest canonical viewport (`1280 × 720` per §8 of the global
-  UI spec; this is the friend-game smallest viewport in the canonical
-  matrix) and at one smaller-than-canonical sentinel viewport
+  the smallest canonical viewport (`1366 × 768` per §8 of the global
+  UI spec; this is the friend-game minimum supported viewport in the
+  canonical matrix) and at one smaller-than-canonical sentinel viewport
   (`1024 × 600`; chosen as a worker sentinel below the canonical
   matrix to prove that the slot's pixel-fixed sizing does NOT shift
   even when the viewport drops below the canonical floor). The
@@ -577,7 +577,7 @@ and `/story-done` runs).
     `S15-QA-SNAPSHOT-DEFAULT-DEV` flow per PROMPT 1021 / 1023; the QA
     snapshot overlay button is enabled by default in dev builds via
     `CCGS_QA_SNAPSHOT=1`) captured from a manual playable-client run
-    at `1280 × 720` showing the shop panel composed via the migrated
+    at `1366 × 768` showing the shop panel composed via the migrated
     primitive. The snapshot bundle MAY include a single screenshot PNG
     + a feedback / audit log; exact format is worker-discretion within
     the existing QA snapshot harness.
@@ -664,7 +664,7 @@ and `/story-done` runs).
 | `docs/ux/global-ui-design-spec.md` | Amend: new §12 spec section enumerating the five `CardSlotKind` variants + canonical defaults + image / text / hit-target insets + z-layer references; flip the §10 "Card slot composition" stub to a forward reference; update the Spec Adoption Matrix row for `S12-TD-UI-CARD-SLOT-PRIMITIVE-001`. |
 | `tests/integration/ui_clean_pass/card_slot_primitive_test.rs` (NEW; suggested filename) | Integration test asserting primitive module shape + per-kind aspect-ratio + image / text containment at canonical viewports + hit-target superset + interaction-state token presence + migrated shop-slot Node sanity (AC1-AC8). |
 | `client/Cargo.toml` | Register the new `[[test]]` bin if the project pattern requires explicit registration, mirroring the Sprint 14 / Sprint 15 Tier 0 integration-test bins (e.g. `ui_clean_pass_interaction_state_primitives_test` from PROMPT 1005). |
-| `production/qa/evidence/sprint-16-ui-card-slot-primitive/` (NEW) | Evidence dir per AC6: QA snapshot bundles at `1280 × 720` and `1920 × 1080`, integration-test pass log, doc-review checklist, `git diff` proving phase-1-only migration, spec heading scan output. |
+| `production/qa/evidence/sprint-16-ui-card-slot-primitive/` (NEW) | Evidence dir per AC6: QA snapshot bundles at `1366 × 768` and `1920 × 1080`, integration-test pass log, doc-review checklist, `git diff` proving phase-1-only migration, spec heading scan output. |
 
 This table is a planning estimate. The implementation prompt is
 authoritative for the realised set.
@@ -823,7 +823,7 @@ evidence is designed to consume future QA snapshot bundles (per the
 | `git-diff-stat-disjoint-surfaces.txt` | Output of `git diff origin/main...HEAD --stat -- 'client/src/ui/hand/mod.rs' 'client/src/ui/shop_auction/mod.rs' 'client/src/presentation/'` proving only the shop_slot_node call site changed (no hand/mod.rs change; no presentation/ change; no auction_featured_card_node change). | Plain text |
 | `spec-heading-scan.txt` | Output of `grep "^## §" docs/ux/global-ui-design-spec.md` showing the new §12 "Card Slot Primitive" section is present. | Plain text |
 | `spec-adoption-matrix-diff.md` | `git diff docs/ux/global-ui-design-spec.md` excerpt showing the Spec Adoption Matrix row for `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` updated. | Markdown |
-| `qa-snapshot-1280x720/` | QA snapshot bundle from a manual playable-client run at `1280 × 720` showing the migrated shop slot composed via the new primitive. Captured via the `S15-QA-SNAPSHOT-DEFAULT-DEV` overlay button per PROMPT 1021 / 1023 (defaults to enabled in dev builds via `CCGS_QA_SNAPSHOT=1`). Bundle MAY include screenshot PNG, feedback text, and audit log per the existing QA snapshot flow's output shape. | Per `S15-QA-SNAPSHOT-DEFAULT-DEV` bundle format (worker-discretion within that contract) |
+| `qa-snapshot-1366x768/` | QA snapshot bundle from a manual playable-client run at `1366 × 768` showing the migrated shop slot composed via the new primitive. Captured via the `S15-QA-SNAPSHOT-DEFAULT-DEV` overlay button per PROMPT 1021 / 1023 (defaults to enabled in dev builds via `CCGS_QA_SNAPSHOT=1`). Bundle MAY include screenshot PNG, feedback text, and audit log per the existing QA snapshot flow's output shape. | Per `S15-QA-SNAPSHOT-DEFAULT-DEV` bundle format (worker-discretion within that contract) |
 | `qa-snapshot-1920x1080/` | Same as above at `1920 × 1080` (canonical 1080p viewport from §8 of the global UI spec). | Same |
 | `qa-snapshot-1024x600-optional/` | OPTIONAL: snapshot at `1024 × 600` (smaller-than-canonical sentinel from AC4) if the playable-client launcher supports that viewport. If not, document the limitation in `evidence.md`. | Same / optional |
 
@@ -880,7 +880,7 @@ referenced from the `/story-done` paperwork directly.
 - `git diff` of `production/sprint-status.yaml` empty across the
   worker tip and integration merge (only the activation paperwork
   + `/story-done` paperwork edits `sprint-status.yaml`).
-- QA snapshot bundles at `1280 × 720` and `1920 × 1080` present
+- QA snapshot bundles at `1366 × 768` and `1920 × 1080` present
   under `production/qa/evidence/sprint-16-ui-card-slot-primitive/`
   -- AC6.
 
@@ -929,6 +929,14 @@ referenced from the `/story-done` paperwork directly.
   Sprint 15 row that touches `client/src/ui/design_tokens/` (story
   008 `interaction_states`) is DONE PROMPT 1009. No file collision
   with active Sprint 15 work is expected.
+- **Story 010 sequencing (`S16-TD-UI-SHOPAUCTION-MODSPLIT-001`,
+  PROMPT 1044)**: if Sprint 16 activates story 010 before or alongside
+  this row, the Phase 1 shop slot migration target named in
+  Implementation Notes and AC5 (`client/src/ui/shop_auction/mod.rs::shop_slot_node`)
+  resolves to the post-split sibling submodule that story 010 lands
+  `shop_slot_node` in; the symbol name and file content are unchanged
+  and only the path moves to that submodule. The Sprint 16 activation
+  prompt re-pins the exact path for this row.
 - **No producer-decision blocker.** PROMPT 802 §9 producer-decisions
   1 through 5 are all RESOLVED or not-applicable to this row. The
   card-slot geometry values in this story (`HandFan` 96 × 136 px,
