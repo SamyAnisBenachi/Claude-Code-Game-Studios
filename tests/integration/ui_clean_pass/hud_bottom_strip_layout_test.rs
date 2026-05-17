@@ -224,7 +224,14 @@ fn ac4_mana_and_reserve_remain_top_strip_owned_and_shape_distinct() {
     let entities = hud_entities(&app);
 
     assert!(app.world().get::<HudTopStrip>(entities.top_strip).is_some());
-    assert_eq!(parent_of(&app, entities.mana_label), entities.top_strip);
+    // PROMPT 1027 — the mana label now lives inside its pill container
+    // (the pill is the direct child of HudTopStrip). Assert via the
+    // descendant relation so the contract survives the pill wrapping
+    // without losing strip-ownership semantics.
+    assert!(
+        is_descendant_of(&app, entities.mana_label, entities.top_strip),
+        "mana label should remain under HudTopStrip"
+    );
     assert_eq!(
         parent_of(&app, entities.reserve_container),
         entities.top_strip
