@@ -997,6 +997,10 @@ pub fn drain_player_team_map_messages_system(
 pub fn apply_ghost_placement_changed_system(
     mut commands: Commands,
     board_layout: Res<BoardLayout>,
+    card_atlas: Option<Res<CardAtlas>>,
+    board_assets: Option<Res<BoardRuntimeAssets>>,
+    placeholder_assets: Option<Res<PlaceholderAssets>>,
+    hand_catalog: Option<Res<crate::ui::hand::HandCardCatalog>>,
     mut changes: MessageReader<GhostPlacementChanged>,
     ghost_units: Query<(Entity, &GhostUnit)>,
     lane_washes: Query<(Entity, &LaneGhostWash)>,
@@ -1035,7 +1039,17 @@ pub fn apply_ghost_placement_changed_system(
 
         match target {
             Some(PlayTarget::BoardCell { lane, cell }) => {
-                spawn_ghost_unit(&mut commands, &board_layout, card_id, lane, cell);
+                spawn_ghost_unit(
+                    &mut commands,
+                    &board_layout,
+                    card_atlas.as_deref(),
+                    board_assets.as_deref(),
+                    placeholder_assets.as_deref(),
+                    hand_catalog.as_deref(),
+                    card_id,
+                    lane,
+                    cell,
+                );
             }
             Some(PlayTarget::TargetUnit { unit_id, .. }) => {
                 apply_target_unit_ghost(&mut commands, card_id, unit_id, &target_units);
@@ -2422,6 +2436,30 @@ fn unit_sprite(
     source_class: Option<ClassId>,
     placeholder_assets: Option<&PlaceholderAssets>,
 ) -> Sprite {
+    unit_sprite_tinted(
+        card_atlas,
+        board_assets,
+        frame_index,
+        source_class,
+        placeholder_assets,
+        Color::srgba(1.0, 1.0, 1.0, 1.0),
+    )
+}
+
+/// Shared sprite-resolution path for both real placed units and ghost
+/// placement previews. Picks the most specific image available
+/// (atlas frame → class placeholder → generic placeholder) and applies
+/// the caller-supplied `tint` as `Sprite.color` so ghosts can reuse
+/// the same image with vertex-data alpha (per
+/// `docs/ux/board-rendering-spec.md` §7 GHOST_PREVIEW_ALPHA).
+fn unit_sprite_tinted(
+    card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
+    frame_index: usize,
+    source_class: Option<ClassId>,
+    placeholder_assets: Option<&PlaceholderAssets>,
+    tint: Color,
+) -> Sprite {
     // Atlas frame takes priority when available.
     if frame_index != UNIT_PLACEHOLDER_FRAME_INDEX {
         return atlas_sprite(
@@ -2429,7 +2467,7 @@ fn unit_sprite(
             card_atlas.layout.clone(),
             frame_index,
             rendering_constants::UNIT_SPRITE_SIZE,
-            Color::srgba(1.0, 1.0, 1.0, 1.0),
+            tint,
         );
     }
     // Class-specific sprite when no atlas frame exists.
@@ -2437,7 +2475,7 @@ fn unit_sprite(
         return direct_sprite(
             board_unit_class_handle(class_id, pa),
             rendering_constants::UNIT_SPRITE_SIZE,
-            Color::srgba(1.0, 1.0, 1.0, 1.0),
+            tint,
         );
     }
     // Generic placeholder fallback.
@@ -2445,7 +2483,7 @@ fn unit_sprite(
         return direct_sprite(
             board_assets.unit_placeholder.clone(),
             rendering_constants::UNIT_SPRITE_SIZE,
-            Color::srgba(1.0, 1.0, 1.0, 1.0),
+            tint,
         );
     }
     atlas_sprite(
@@ -2453,7 +2491,7 @@ fn unit_sprite(
         card_atlas.layout.clone(),
         frame_index,
         rendering_constants::UNIT_SPRITE_SIZE,
-        Color::srgba(1.0, 1.0, 1.0, 1.0),
+        tint,
     )
 }
 
@@ -2693,26 +2731,92 @@ fn cell_node_sprite(
     )
 }
 
+/// Canonical ghost-preview alpha (`docs/ux/board-rendering-spec.md` §7
+/// `GHOST_PREVIEW_ALPHA`). Locked at 0.5 — vertex-data alpha on the
+/// ghost sprite that reuses the real unit's atlas frame / class
+/// placeholder where available, falling back to the generic
+/// unit-placeholder image when the atlas/class lookup yields nothing.
+pub const GHOST_PREVIEW_ALPHA: f32 = 0.5;
+
+fn ghost_preview_tint() -> Color {
+    Color::srgba(1.0, 1.0, 1.0, GHOST_PREVIEW_ALPHA)
+}
+
 fn spawn_ghost_unit(
     commands: &mut Commands,
     board_layout: &BoardLayout,
+    card_atlas: Option<&CardAtlas>,
+    board_assets: Option<&BoardRuntimeAssets>,
+    placeholder_assets: Option<&PlaceholderAssets>,
+    hand_catalog: Option<&crate::ui::hand::HandCardCatalog>,
     card_id: CardId,
     lane: u8,
     cell: u8,
 ) {
     let world_xy = board_layout.cell_to_world(lane, cell);
+    let sprite = ghost_unit_sprite(
+        card_atlas,
+        board_assets,
+        placeholder_assets,
+        hand_catalog,
+        card_id,
+    );
 
     commands.spawn((
         BoardRenderingEntity,
         GhostUnit { card_id },
         BoardGhostInteraction { card_id },
         Pickable::default(),
-        Sprite::from_color(
-            Color::srgba(1.0, 1.0, 1.0, 0.5),
-            Vec2::splat(rendering_constants::CELL_NODE_SIZE),
-        ),
+        sprite,
         Transform::from_xyz(world_xy.x, world_xy.y, rendering_constants::Z_GHOST_UNIT),
     ));
+}
+
+fn ghost_unit_sprite(
+    card_atlas: Option<&CardAtlas>,
+    board_assets: Option<&BoardRuntimeAssets>,
+    placeholder_assets: Option<&PlaceholderAssets>,
+    hand_catalog: Option<&crate::ui::hand::HandCardCatalog>,
+    card_id: CardId,
+) -> Sprite {
+    let tint = ghost_preview_tint();
+    let frame_index = card_atlas
+        .and_then(|atlas| atlas.unit_frame(card_id))
+        .map(|frame| frame.frame_index)
+        .unwrap_or(UNIT_PLACEHOLDER_FRAME_INDEX);
+    let source_class = hand_catalog
+        .and_then(|catalog| catalog.cards.get(&card_id))
+        .map(|card| card.class);
+
+    if let Some(card_atlas) = card_atlas {
+        return unit_sprite_tinted(
+            card_atlas,
+            board_assets,
+            frame_index,
+            source_class,
+            placeholder_assets,
+            tint,
+        );
+    }
+    // CardAtlas not loaded yet (e.g. very early test fixtures): fall
+    // through to the class placeholder when available, else the
+    // generic placeholder image, else the legacy flat-colour cell so
+    // pre-resource frames still render a ghost rather than nothing.
+    if let (Some(class_id), Some(pa)) = (source_class, placeholder_assets) {
+        return direct_sprite(
+            board_unit_class_handle(class_id, pa),
+            rendering_constants::UNIT_SPRITE_SIZE,
+            tint,
+        );
+    }
+    if let Some(board_assets) = board_assets {
+        return direct_sprite(
+            board_assets.unit_placeholder.clone(),
+            rendering_constants::UNIT_SPRITE_SIZE,
+            tint,
+        );
+    }
+    Sprite::from_color(tint, Vec2::splat(rendering_constants::CELL_NODE_SIZE))
 }
 
 fn spawn_lane_ghost_wash(
