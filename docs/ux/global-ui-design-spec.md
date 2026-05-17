@@ -93,8 +93,13 @@ It is **not** the spec for:
   asset replacement is a separate sprint scope.
 - **Animation / motion** — tween / transition spec is a separate scope.
 - **Interaction-state primitives** — hover / focus / pressed / disabled
-  state is owned by the Tier 0 Should-priority adjacent row
-  `S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001`, not this spec.
+  visual primitives are authored by the Tier 0 Should-priority adjacent
+  row `S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001` and ratified in §11.
+  Per-surface migration of existing Sprint 14 button surfaces is deferred
+  to a Sprint 16+ follow-on story family
+  (`S16-UI-INTERACTION-STATE-MIGRATION-*`). The friend-game-vs-Standard-
+  tier scope boundary is preserved: visual focus-ring presence does
+  **not** advance `QA-COND-0005`.
 - **Localization** — string layout, RTL, text expansion. Separate scope.
 - **Per-element layout (HUD top-strip child order, lobby form sequencing,
   shop slot well composition)** — owned by the per-surface Tier 1 stories
@@ -439,8 +444,11 @@ section as guidance rather than a strict contract.
 - Background: `PRIMARY` token (§7).
 - Text: `BODY` (15 px) / `Bold` (700) per §5.
 - Padding: `SPACING_SM` vertical + `SPACING_LG` horizontal (8 + 24 px).
-- Hover / pressed: future scope under
-  `S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001` (Tier 0 Should-priority).
+- Hover / focus / pressed / disabled: see §11 "Interaction State
+  Primitives". The token module
+  `client/src/ui/design_tokens/interaction_states.rs` is the source of
+  truth; per-surface migration of existing Sprint 14 button surfaces is
+  deferred to Sprint 16+ (`S16-UI-INTERACTION-STATE-MIGRATION-*`).
 
 ### Secondary button affordance
 
@@ -448,6 +456,9 @@ section as guidance rather than a strict contract.
 - Border: 1 px `PRIMARY` token outline.
 - Text: `BODY` (15 px) / `Regular` (400) per §5.
 - Padding: same as primary.
+- Hover / focus / pressed / disabled: see §11 "Interaction State
+  Primitives". Same forward reference and per-surface-migration deferral
+  as Primary above.
 
 ### Panel chrome
 
@@ -471,6 +482,99 @@ surfaces stabilise.
 - Backdrop: full-viewport scrim at `OVERLAY_SCRIM_ALPHA` (0.55) on
   `SURFACE` color, painted at z-layer `UiOverlay` (400) immediately below
   the modal.
+
+---
+
+## §11 Interaction State Primitives
+
+Canonical hover / focus / pressed / disabled visual primitives for any
+clickable surface (lobby Join / Create / Confirm buttons; auction bid
+buttons; HUD action buttons; shop slot purchase buttons; draft buttons).
+Sprint 15 story 008 (`S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001`,
+Tier 0 Should-priority adjacent) authors the token module and amends this
+section; per-surface migration of existing Sprint 14 button surfaces is
+**out of scope for Sprint 15** and is deferred to a Sprint 16+ follow-on
+story family (`S16-UI-INTERACTION-STATE-MIGRATION-*`).
+
+**Source-of-truth module**:
+`client/src/ui/design_tokens/interaction_states.rs` (NEW; landed by
+story 008). This section ratifies the canonical numeric values; the §10
+"Primary button affordance" / "Secondary button affordance" subsections
+above forward-reference this section as the binding source for hover /
+focus / pressed / disabled treatment.
+
+### Hover tokens
+
+| Token | Default | Bevy module symbol | Canonical use |
+|-------|---------|---------------------|----------------|
+| `HOVER_BG_TINT_ALPHA` | `0.08` | `interaction_states::HOVER_BG_TINT_ALPHA` | Alpha of a white `BackgroundColor` overlay painted over the surface's base palette token when the pointer is over it. Subtle pointer-feedback affordance. |
+| `HOVER_BORDER_ALPHA` | `0.40` | `interaction_states::HOVER_BORDER_ALPHA` | Alpha of a `BorderColor` outline drawn around the surface on hover. Heavier than the tint so the border reads as a clear pointer-feedback edge. |
+
+### Focus tokens
+
+| Token | Default | Bevy module symbol | Canonical use |
+|-------|---------|---------------------|----------------|
+| `FOCUS_RING_COLOR` | `Color::srgb(0.949, 0.788, 0.298)` — verbatim §7 `ACCENT` token (hex `#F2C94C`) | `interaction_states::FOCUS_RING_COLOR` | Color of the keyboard / accessibility focus ring drawn around a focused clickable surface. Ratifies §7 `ACCENT` verbatim; **not** a fresh RGB triple. |
+| `FOCUS_RING_WIDTH_PX` | `2.0` px | `interaction_states::FOCUS_RING_WIDTH_PX` | Stroke width of the focus-ring outline. Wide enough to read as a deliberate indicator at every §8 canonical viewport; narrow enough not to distort the surface's perceived size. |
+| `FOCUS_RING_OFFSET_PX` | `2.0` px | `interaction_states::FOCUS_RING_OFFSET_PX` | Outset between the surface's outer edge and the inner edge of the focus ring. Non-zero so the ring reads distinct from a base border. |
+
+**Friend-game scope guard**: focus-ring token presence is a **visual**
+primitive only. It does **not** advance `QA-COND-0005` Standard-tier
+focus-order conformance, keyboard navigation completeness, screen-reader
+hints, ≥44px hit-target enforcement, or any other Standard-tier
+accessibility requirement. `QA-COND-0006` playtest validation and
+`PAW-TD-*-a` placeholder-art accept-risk are likewise unchanged by this
+section.
+
+### Pressed tokens
+
+| Token | Default | Bevy module symbol | Canonical use |
+|-------|---------|---------------------|----------------|
+| `PRESSED_BG_TINT_ALPHA` | `0.16` | `interaction_states::PRESSED_BG_TINT_ALPHA` | Alpha of a black `BackgroundColor` overlay painted over the surface's base palette token while a mouse button is held down on it. Twice the magnitude of `HOVER_BG_TINT_ALPHA` so pressed reads as a clearly distinct visual state from hover. |
+| `PRESSED_OFFSET_Y_PX` | `1.0` px | `interaction_states::PRESSED_OFFSET_Y_PX` | Vertical pixel offset applied to the surface's content while pressed — a one-pixel press-down nudge. Subtle by design; larger offsets would visibly shift the bounding box and disrupt neighbouring layout. |
+
+### Disabled tokens
+
+| Token | Default | Bevy module symbol | Canonical use |
+|-------|---------|---------------------|----------------|
+| `DISABLED_BG_TINT_ALPHA` | `0.50` | `interaction_states::DISABLED_BG_TINT_ALPHA` | Alpha of a black `BackgroundColor` overlay painted over the surface when it is not interactable. Heavy enough to flatten perceived saturation so disabled is unambiguously distinct from hover / pressed / default. |
+| `DISABLED_TEXT_ALPHA` | `0.40` | `interaction_states::DISABLED_TEXT_ALPHA` | Alpha applied to the surface's label `TextColor` when disabled. Sits below the background tint band so the label reads as faded relative to an enabled surface's label without becoming unreadable. |
+| `DISABLED_BORDER_ALPHA` | `0.20` | `interaction_states::DISABLED_BORDER_ALPHA` | Alpha of the surface's `BorderColor` outline when disabled. Lower than `HOVER_BORDER_ALPHA` so the border recedes alongside the flattened fill. |
+
+**Canonical disabled-state surfaces**: auction bid button when the
+player already holds the lead; shop slot when the player cannot afford
+the unit; HUD action button when no valid target exists; lobby Confirm
+button when class selection is incomplete. (Per-surface migration
+deferred to Sprint 16+ per the section preamble.)
+
+### Visual-state ordering invariants
+
+Story 008's integration test enforces the following ordering invariants
+so a future spec revision cannot silently collapse adjacent visual
+states:
+
+1. `PRESSED_BG_TINT_ALPHA > HOVER_BG_TINT_ALPHA` — pressed reads heavier
+   than hover so the player perceives a clear state change between
+   hover-enter and mouse-down.
+2. `DISABLED_BG_TINT_ALPHA > PRESSED_BG_TINT_ALPHA` — disabled reads
+   heaviest so the disabled state is unambiguously distinguishable from
+   any interactive state.
+
+### Scope (Sprint 15 story 008)
+
+- **Friend-game scope boundary preserved** per the §2 boundary list and
+  the per-token-set scope guard above.
+- **Per-surface migration OUT OF SCOPE for Sprint 15.** Lobby buttons
+  (`S11-UX-LOBBY-BUTTON-HITTARGETS` DONE), auction bid buttons
+  (`S11-UX-AUCTION-FEATURED-CARD` DONE), HUD action buttons
+  (`S11-UX-HUD-TOP-STRIP-LAYOUT` DONE), draft buttons, and shop slot
+  buttons remain on their existing per-site styling for the duration of
+  Sprint 15. Migration is a Sprint 16+ follow-on story.
+- **No new color-palette tokens.** The four interaction-state token sets
+  layer on top of the existing §7 palette; `FOCUS_RING_COLOR` ratifies
+  §7 `ACCENT` verbatim and is not a fresh RGB choice.
+- **No tween / animation of state transitions.** Static visual states
+  only; future per-state easing is a separate scope.
 
 ---
 
@@ -515,7 +619,7 @@ surface story reads its numeric values from the cited section.
 
 | Slug | Reads spec section(s) | Notes |
 |------|------------------------|-------|
-| `S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001` | §7 color tokens + §10 button affordance | Hover / focus / pressed / disabled state primitive set. Pairs with this spec; not authored by it. |
+| `S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001` | §7 color tokens + §10 button affordance + §11 interaction state primitives (canonical default values authored by story 008) | Hover / focus / pressed / disabled visual primitive set. Module: `client/src/ui/design_tokens/interaction_states.rs`. §11 is the source-of-truth section for the four token sets' canonical defaults. Per-surface migration deferred to Sprint 16+ family `S16-UI-INTERACTION-STATE-MIGRATION-*`. |
 
 ### Tier 3 deferred to Sprint 15
 
@@ -577,7 +681,12 @@ polish** per §2 Scope Boundaries. It does **not** ratify:
 - Playtest validation (`QA-COND-0006` accept-risk preserved).
 - Per-element layout for any specific surface (owned by the per-surface
   Tier 1 story).
-- Animation / motion / interaction-state primitives.
+- Animation / motion. (Interaction-state primitives — hover / focus /
+  pressed / disabled — are now authored in §11 as a friend-game-scope
+  visual primitive set per Sprint 15 story 008. Per-surface migration of
+  existing Sprint 14 button surfaces remains deferred to Sprint 16+
+  family `S16-UI-INTERACTION-STATE-MIGRATION-*`; visual focus-ring
+  presence does NOT advance `QA-COND-0005`.)
 - Producer-decision-3 (lobby layout modal vs full-viewport hero —
   resolved per story 024 §"Decision Capture (PROMPT 933, 2026-05-15)"
   — Option A (centred modal panel); this spec's ratified §3 `Modal`

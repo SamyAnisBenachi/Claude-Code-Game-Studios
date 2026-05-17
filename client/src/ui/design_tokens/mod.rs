@@ -23,6 +23,11 @@
 //! - [`overlays`] — named overlay alpha tokens (Dim / Scrim / Toast)
 //!   for translucent UI overlays (Sprint 14 story 006 /
 //!   S12-TD-UI-OVERLAY-ALPHA-TOKEN-001).
+//! - [`interaction_states`] — named hover / focus / pressed / disabled
+//!   visual-state tokens for clickable surfaces (Sprint 15 story 008 /
+//!   S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001). Visual primitives only;
+//!   per-surface migration of existing Sprint 14 button surfaces is
+//!   deferred to Sprint 16+.
 //!
 //! ## Scope discipline
 //!
@@ -31,6 +36,7 @@
 //! validation (`QA-COND-0006`), or final-art / asset-production
 //! (`PAW-TD-*-a`). Friend-game scope boundary preserved.
 
+pub mod interaction_states;
 pub mod overlays;
 pub mod spacing;
 pub mod strips;
