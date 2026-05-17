@@ -1,3 +1,32 @@
+# PROMPT 1050 State Banner -- DraftShop/Auction P1 Integrated On Main
+
+Updated 2026-05-17 after resolving PROMPT 1048 main-push block.
+
+PROMPT 1048 `S15-DRAFTSHOP-AUCTION-BID-P1-INTEGRATION` is now on
+`origin/main@39192be5057d7c5288ae7750ca4aadb048f0d086`. The worker integration
+commit `3d03c2b` was based on `0557219`; after PROMPT 1049 advanced main to
+`cd8b598`, the orchestrator rebuilt the merge on top of current main as
+`39192be` and pushed it.
+
+Integrated files:
+
+- `client/src/ui/shop_auction/mod.rs`
+- `tests/integration/shop_auction_ui/auction_bid_buttons_test.rs`
+- `tests/integration/shop_auction_ui/shop_panel_test.rs`
+- `tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs`
+
+Verification rerun by orchestrator before push with Windows/MSVC Cargo resource
+policy: `cargo fmt -p client -- --check`; `shop_auction_ui_shop_panel_test`
+10/10; `shop_auction_ui_auction_bid_buttons_test` 9/9;
+`shop_auction_ui_plugin_scaffold_formulas_test` 8/8.
+
+PROMPT 1048 is cleared. Manual visual retest remains recommended for DraftShop
+and Auction after all current P1 surface repairs land.
+
+Next open P1 from PROMPT 1034: Keep-9 modal opaque scrim + Ready footer.
+
+---
+
 # PROMPT 1049 State Banner -- Placement Action Panel Integrated On Main
 
 Updated 2026-05-17 after resolving PROMPT 1046 main-push block.
