@@ -1,3 +1,164 @@
+# PROMPT 1010 State Banner -- S15 S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP /story-done
+
+Updated 2026-05-17 by PROMPT 1010. Source-of-truth at closure:
+`origin/main@3b6acecbaad2f8df9db88e42abfc7e64e0beb2cf` (PROMPT 1009
+Sprint 15 integrated /story-done batch tip;
+`story-done(s15): close 3 integrated Sprint 15 rows (PROMPT 1009)`).
+
+PROMPT 1010 is the **dedicated paperwork-only row-status flip** for
+the Sprint 15 Must Have row
+`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP`. It discharges
+the long-carried Sprint 13 -> 14 evidence-vs-status gap whose closure
+was designed by S13-CONN-LOST-UX-001 AC8 as **"via a separate
+paperwork prompt (NOT this implementation)"** -- PROMPT 1010 is that
+separate paperwork prompt.
+
+**Evidence chain cited** (all already on `origin/main`; not modified
+by PROMPT 1010):
+
+- **PROMPT 889** (2026-05-15) `/dev-story` worker
+  `febc56abbb110b3f35f838a60447d7ee77a1982c` authored
+  `client/src/presentation/connection_lost_overlay.rs` (NEW;
+  `ConnectionLostOverlayPlugin` registered after `ResultScreenPlugin`
+  per ADR-021) + `tests/integration/playable_client/connection_lost_overlay_test.rs`
+  (NEW 334 LOC; 16 test cases registered at `client/Cargo.toml:289`);
+  `cargo test -p client --test connection_lost_overlay_test` 16/16
+  PASS; ADR-002 + ADR-008 + ADR-011 + ADR-021 binding preserved; no
+  optimistic client-side authority introduced; no protocol or
+  server-side change. Skill activation: `liv-bevy-018` +
+  `liv-bevy-lightyear`.
+- **PROMPT 890** (2026-05-15) integration merge
+  `cb01c492721bdcba6439d44b5b311c8905091828` onto `origin/main` from
+  prior `origin/main@12ae4cf` via `--no-ff` (PROMPT 889 worker
+  reachable as merge's second-parent); 5 files / +899 / -0; zero
+  conflicts; `production/qa/evidence/sprint-13-conn-lost-ux-evidence.md`
+  NEW 289 lines published on `origin/main` as the canonical AC8
+  closure-rationale cite.
+- **PROMPT 891** (2026-05-15) `/story-done` closure
+  `fcdad9aa428395e53fbd4e61f4a6ac34d84fd3fd` flipped story 021
+  (`S13-CONN-LOST-UX-001`) status `ready -> done` with
+  `completed: 2026-05-15`; AC1-AC13 PASS with **AC8 EVIDENCE-CITED;
+  ROW-CLOSURE-DEFERRED** per AC8 phrasing; the
+  `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` backlog row was
+  cited as closure-with-evidence rationale but its status was
+  preserved unchanged at PROMPT 891 time.
+- **PROMPT 894** Sprint 13 close-out (2026-05-15)
+  `conditions_carried_forward_unchanged` explicitly recorded the
+  deferred row-status flip. Sprint 13 closed-with-conditions without
+  flipping this row.
+- **PROMPT 987** Sprint 14 close-out (2026-05-17)
+  `explicitly_not_claimed` re-recorded the deferred row-status flip.
+  Sprint 14 closed-with-conditions without flipping this row.
+- **PROMPT 988** Sprint 15 plan draft (2026-05-16) + **PROMPT 997**
+  Sprint 15 activation (2026-05-17) promoted the row into Sprint 15
+  as a Must Have paperwork-only candidate.
+- **PROMPT 1009** Sprint 15 integrated `/story-done` batch (2026-05-17)
+  preserved the row as open per its
+  `conditions_carried_forward_unchanged`.
+
+**Files changed by PROMPT 1010** (paperwork-only):
+
+- `production/sprint-status.yaml`: top-level `updated:` annotation
+  refreshed with PROMPT 1010 prefix (PROMPT 1009 narrative demoted to
+  `# Previous:` comment line). Row
+  `S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP` flipped
+  `status: ready -> done` with `completed: 2026-05-17` and per-row
+  evidence pointers to PROMPT 889 / 890 / 891 / 894 / 987 / 1010 +
+  `acceptance_evidence:
+  production/qa/evidence/sprint-13-conn-lost-ux-evidence.md`. New
+  PROMPT 1010 entry appended to `sprint_15_story_done:` as the
+  **second `/story-done` block of Sprint 15** (after PROMPT 1009).
+- `production/session-state/active.md` (this file): PROMPT 1010
+  banner prepended above PROMPT 1009 banner.
+- `production/session-state/codex-orchestrator-state.md`: PROMPT
+  1010 section prepended above PROMPT 1009 section.
+- `reports/PROMPT-1010-S15-Connection-Lost-Observability-Rowflip.md`:
+  final report (NOT staged or committed; `reports/` is gitignored).
+
+**Sprint 15 progress after PROMPT 1010**: 1 of 2 Must Have done
+(`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP` closed;
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` remains ready human-operator-
+blocked); 2 of 2 Should Have done; 1 of 1 Nice to Have done;
+**total 4 of 5 rows closed**. Sprint 15 remains `active`. Stage
+UNCHANGED `Polish` (`production/stage.txt` NOT touched by PROMPT
+1010). PROMPT 761 `Polish->Release` gate-check `FAIL` preserved at
+`production/gate-checks/gate-polish-release-2026-05-12.md`; NO
+retry attempted; NO retry in scope for Sprint 15; Sprint 15 is NOT
+a `Polish->Release` sprint.
+
+**Row explicitly NOT closed by PROMPT 1010**:
+
+- `S11-HUD-TIMER-EYEBALL-VISUAL-001` (Must Have; story 014 in HUD
+  epic). Sprint 13 -> 14 -> 15 human-operator-blocked carry
+  promoted Should -> Must by PROMPT 988 plan. Closure remains gated
+  on a real two-client human-operator screenshot capture session
+  across `DraftInitial` 45s / `DraftShop` 30s / `Placement` 10-12s
+  phases per the story AC matrix. No LLM `/story-done` is
+  authorised. Producer schedules.
+
+All carried conditions preserved verbatim (none closed by PROMPT
+1010): `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked
+carry; `S8-QA-001-W1` OPEN; `QA-COND-0005` Standard-tier
+accessibility accepted-risk (L5 `LOBBY_BUTTON_HEIGHT = 30.0`
+remains accepted-risk); `QA-COND-0006` playtest validation
+accepted-risk; `PAW-TD-*-a` placeholder-art accept-risk across
+PAW-002..PAW-006; PROMPT 683-era runtime divergence preserved
+(third same-scope retest NOT authorised per `TQ-S12-C2`); Sprint
+12 story 019 underlying drag-runtime bug NOT claimed fixed
+(cannot-reproduce preserved); `TQ-S12-C1..C7` preserved verbatim
+(`TQ-S12-C7` explicitly NOT closed by Sprint 15); Sprint 14 / 13 /
+12 / 11 / 10 closeouts preserved unchanged; all 16 Sprint 14
+`/story-done` closures preserved unchanged on `origin/main`;
+Sprint 15 activation (PROMPT 997), Sprint 15 QA plan (PROMPT
+1002), Sprint 15 story-authoring (PROMPT 991/992/993) +
+integration (PROMPT 995), Sprint 15 dev-stories (PROMPT
+1003/1004/1005) + integrations (PROMPT 1006/1007/1008), and
+PROMPT 1009 Sprint 15 integrated `/story-done` batch all
+preserved verbatim on `origin/main`. PROMPT 889 / 890 / 891 / 894
+/ 987 / 1009 chain preserved verbatim on `origin/main`.
+
+**Explicit non-claims by PROMPT 1010**: NO public release
+readiness, NO RC readiness, NO full game completion, NO broad /
+Standard-tier accessibility completion, NO playtest validation,
+NO full playable-client manual QA, NO two-client `GAME_OVER`
+closure (`S8-QA-001-W1` OPEN), NO final-art completion (`PAW-TD-
+*-a`), NO `Polish->Release` gate-check retry (PROMPT 761 FAIL
+preserved), NO stage advance from Polish to Release, NO
+underlying drag-runtime bug fix, NO closure of `S11-HUD-TIMER-
+EYEBALL-VISUAL-001` (closure remains gated on human-operator
+screenshot capture; no LLM `/story-done` authorised), NO closure
+of `S8-QA-001-W1` / `TQ-S12-C7`, NO re-closure of `S13-CONN-LOST-
+UX-001` (already closed by PROMPT 891 on 2026-05-15; cited as
+evidence chain), NO re-implementation of the connection-lost
+overlay (preserved verbatim on `origin/main`), NO re-authoring of
+`production/qa/evidence/sprint-13-conn-lost-ux-evidence.md`
+(preserved verbatim on `origin/main`), NO authoring of a new
+story file for the paperwork-only row, NO Sprint 14 row reopen,
+NO Sprint 15 close-out (Sprint 15 remains `active`; 4 of 5 rows
+closed), NO `/dev-story` / `/story-readiness` / `/smoke-check` /
+`/team-qa` / `/gate-check` / `/release-check` / `/qa-plan` by
+PROMPT 1010, NO `cargo` / `trunk` invocation.
+
+**PROMPT 1010 paperwork-only scope**: NO `client/`, `server/`,
+`shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`,
+`.github/`, `production/stage.txt`, `production/sprints/sprint-
+15.md`, `production/qa/qa-plan-sprint-15.md`, `production/qa/
+smoke-*.md`, `production/qa/team-qa-*.md`, `production/qa/
+evidence/*`, `production/gate-checks/*` edited; no `cargo` /
+`trunk` command invoked. Worktree
+`D:/tmp/gcs-prompt-1010` on branch
+`prompt-1010-s15-conn-lost-rowflip` (base
+`origin/main@3b6acecbaad2f8df9db88e42abfc7e64e0beb2cf`).
+
+Next launchable (do NOT launch from this banner):
+
+- Sprint 15 human-operator HUD timer eyeball capture session for
+  `S11-HUD-TIMER-EYEBALL-VISUAL-001` (producer schedules).
+- After the HUD timer evidence lands: Sprint 15 `/smoke-check` ->
+  `/team-qa sprint` -> Sprint 15 close-out.
+
+---
+
 # PROMPT 1009 State Banner -- Sprint 15 Integrated /story-done Batch
 
 Updated 2026-05-17 by PROMPT 1009. Source-of-truth at closure:
