@@ -5,9 +5,13 @@
 > **Architecture Module**: `Cargo.toml` (workspace + members), `docs/setup/`,
 > `docs/architecture/` (operational notes), `.octogent/` (orchestrator docs)
 > **Status**: Draft -- Sprint 13 candidate index for DevOps operational
-> rows; NOT activated
+> rows; NOT activated. Story 005 closed on `origin/main` per PROMPT 888
+> (2026-05-15). Story 006 added 2026-05-17 by PROMPT 1057 as a Sprint 16
+> candidate (NOT activated).
 > **Stories**: 5 Sprint 13 candidate stories (Sprint 12 close-out deferrals
-> + Windows AppCompat note); NOT activated
+> + Windows AppCompat note) + 1 Sprint 16 candidate story (AppCompat
+> manifest follow-on); Sprint 13 stories activated by PROMPT 826; Sprint
+> 16 NOT activated.
 
 ## Overview
 
@@ -29,7 +33,14 @@ tooling change, or production-source change in this sprint.
   `docs/setup/dev-environment.md`.
 - `S13-OPS-WIN-APPCOMPAT-NOTE-001` -- Windows AppCompat heuristic +
   manifest/rename workaround note at `docs/setup/dev-environment.md`
-  (informational from TQ-S12-C7).
+  (informational from TQ-S12-C7). **DONE** on `origin/main` per PROMPT
+  888 (2026-05-15).
+- `S15-OPS-APPCOMPAT-MANIFEST-001` -- **Sprint 16 candidate** follow-on
+  to Story 005: embed a Windows manifest with
+  `requestedExecutionLevel level="asInvoker"` (or equivalent robust
+  mechanism) for the `spawn_range_live_update_contract` test binary so
+  future smoke runs do not need the per-run rename workaround. **NOT
+  activated** by PROMPT 1057 (Sprint 16 candidate authoring only).
 
 Sprint 13 does **not** advance stage. PROMPT 761 Polish->Release
 gate-check `FAIL` evidence is preserved. None of these stories closes
@@ -49,6 +60,7 @@ gate-check `FAIL` evidence is preserved. None of these stories closes
 | PROMPT 815 Sprint 12 smoke disk-pressure invocation | Cleaned 25 GB + ~200 GB worker `target/` directories; re-affirms disk-usage strategy candidate |
 | 2026-05-13 override rule "only one shared-status writer at a time" | Reinforces orchestrator-lock pattern candidate |
 | TQ-S12-C7 informational (PROMPT 815/816/817 evidence) | Windows AppCompat heuristic on the substring `update` in `spawn_range_live_update_contract-*.exe` |
+| Sprint 14 PROMPT 983 smoke rerun §"Windows AppCompat Workaround" Option B | Per-run rename workaround used at smoke time; manifest-embed candidate filed as Sprint 15 deferred and pulled into Sprint 16 candidate (Story 006). |
 
 ## Scope
 
@@ -58,11 +70,21 @@ gate-check `FAIL` evidence is preserved. None of these stories closes
   `.octogent/`.
 - Investigation notes documenting trade-offs and recommending a
   single follow-on story per investigation.
+- (Sprint 16 candidate, Story 006 only) A bounded Cargo test-target
+  configuration change embedding a Windows `asInvoker` manifest (or
+  equivalent robust mechanism) on the
+  `spawn_range_live_update_contract` test binary. Scope limited to
+  `shared/Cargo.toml` + optional `shared/build.rs` + optional
+  manifest XML file; no production-source change under `client/`,
+  `server/`, `shared/src/`.
 
 ### Out of Scope
 
 - Build-script changes, profile changes, CI workflow changes, or
-  tooling installation in this sprint.
+  tooling installation in this sprint (except the Sprint 16 candidate
+  Story 006 bounded Cargo test-target configuration change above,
+  which is the explicit exception and is itself NOT activated by the
+  story-authoring run).
 - Production-source changes under `client/`, `server/`, `shared/`,
   `tests/`.
 - Polish->Release gate-check retry.
@@ -74,6 +96,12 @@ gate-check `FAIL` evidence is preserved. None of these stories closes
 - Investigation / documentation stories land notes only; no code lands.
 - Each investigation story names exactly one recommended follow-on
   story (or explicitly defers naming until evidence is captured).
+- (Story 006 only) Implementation is scoped to one Cargo test target's
+  manifest configuration; production-source paths under `client/`,
+  `server/`, `shared/src/`, and the
+  `spawn_range_live_update_contract_test.rs` source file are
+  off-limits. Any new Cargo build dependency is gated behind
+  `cfg(target_os = "windows")` (or nearest Cargo equivalent).
 
 ## Dependency Map
 
@@ -91,12 +119,19 @@ gate-check `FAIL` evidence is preserved. None of these stories closes
 | 003 | [Orchestrator-Root Concurrent-Session Lock Pattern](story-003-orchestrator-lock.md) | Documentation only | Draft -- Sprint 13 candidate (Nice to Have), NOT activated | S11-OPS-ORCHESTRATOR-LOCK-001 |
 | 004 | [`gh` CLI Installation Note](story-004-gh-cli-setup.md) | Documentation only | Draft -- Sprint 13 candidate (Nice to Have), NOT activated | S11-OPS-GH-CLI-001 |
 | 005 | [Windows AppCompat Heuristic + Workaround Note](story-005-win-appcompat-note.md) | Documentation only | Draft -- Sprint 13 candidate (Nice to Have), NOT activated | S13-OPS-WIN-APPCOMPAT-NOTE-001 |
+| 006 | [Windows AppCompat Manifest for `spawn_range_live_update_contract` Test Binary](story-006-appcompat-manifest.md) | Implementation / ops hygiene -- bounded Cargo test-target configuration change | Draft -- Sprint 16 candidate (Nice to Have), NOT activated | S15-OPS-APPCOMPAT-MANIFEST-001 |
 
 ## Definition of Done
 
-- Each story passes `/story-readiness` against Sprint 13 activation
-  HEAD before `/dev-story` is run.
-- Each story's note artifact is authored at the named path and
+- Each story passes `/story-readiness` against the relevant sprint
+  activation HEAD (Sprint 13 for stories 001-005; Sprint 16 for story
+  006) before `/dev-story` is run.
+- Each story 001-005 note artifact is authored at the named path and
   records the trade-offs and recommended follow-on (if any).
-- No build / tooling / CI / production-source change lands under any
-  of these stories.
+- For stories 001-005: no build / tooling / CI / production-source
+  change lands.
+- For story 006: a bounded Cargo test-target configuration change
+  lands (one `[[test]]` block plus optionally one `build.rs` and one
+  manifest XML file), with zero touch under `client/`, `server/`,
+  `shared/src/`, or
+  `tests/unit/protocol/spawn_range_live_update_contract_test.rs`.
