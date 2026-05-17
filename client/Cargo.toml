@@ -343,6 +343,18 @@ path = "../tests/integration/ui_clean_pass/hud_bottom_strip_layout_test.rs"
 name = "ui_clean_pass_overlay_alpha_test"
 path = "../tests/integration/ui_clean_pass/overlay_alpha_test.rs"
 
+# S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001 (Sprint 15 story 008):
+# interaction-state primitive module shape integration test — exports
+# for HOVER_* / FOCUS_* / PRESSED_* / DISABLED_* token families,
+# numeric-range guards, FOCUS_RING_COLOR == spec §7 ACCENT triple,
+# doc-comment sanity scan, and spec §11 amendment anchor scan
+# (AC1, AC2, AC3, AC4, AC5, AC6, AC7, AC8, AC9). Per-surface migration
+# of existing Sprint 14 button surfaces is OUT OF SCOPE (deferred to
+# Sprint 16+ family `S16-UI-INTERACTION-STATE-MIGRATION-*`).
+[[test]]
+name = "ui_clean_pass_interaction_state_primitives_test"
+path = "../tests/integration/ui_clean_pass/interaction_state_primitives_test.rs"
+
 [[test]]
 name = "accessibility_settings_preferences_test"
 path = "../tests/unit/accessibility_settings/preferences_test.rs"
