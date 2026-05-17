@@ -40,6 +40,9 @@ fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
     // comment at lines 3663-3664), and the bought overlay. The
     // multiplier was `* 2` when only `slot + overlay` were tagged;
     // it must be `* 3` now that the text-child is also tagged.
+    // PROMPT 1042 adds three further `ShopAuctionUiEntity`-tagged
+    // children: the shop_phase_title, the shop_empty_state, and the
+    // auction_pass_button — collected in the trailing `+ 3` term.
     assert_eq!(
         count_with::<ShopAuctionUiEntity>(&mut app),
         1 + SHOP_AUCTION_UI_PANEL_ROOT_COUNT * 2
@@ -53,6 +56,7 @@ fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
             + 4
             + SHOP_AUCTION_UI_SHOP_SLOT_COUNT
             + 12
+            + 3
     );
 
     for panel_root in entities.panel_roots() {
@@ -141,9 +145,12 @@ fn shop_auction_ui_phase_visibility_reads_current_phase_resource() {
         app.world().get_resource::<ShopAuctionUiMode>(),
         Some(&ShopAuctionUiMode::Shop)
     );
+    // PROMPT 1042 — shop_panel renders immediately on entering DraftShop
+    // (phase title + empty-state copy) rather than waiting for
+    // `S2CShopSlots`; the auction_panel stays hidden as before.
     assert_eq!(
         app.world().get::<Visibility>(entities.shop_panel),
-        Some(&Visibility::Hidden)
+        Some(&Visibility::Visible)
     );
     assert_eq!(
         app.world().get::<Visibility>(entities.auction_panel),
