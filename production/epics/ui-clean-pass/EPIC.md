@@ -16,9 +16,14 @@
 > **Stories**: 1 Sprint 13 roadmap-prep story (Done) + 6 Sprint 14
 > Tier 0 foundation stories (Done) + 1 Sprint 15 Tier 0
 > Should-priority adjacent story (Done via PROMPT 1009) + 1 Sprint 16
-> Tier 3 rank 13 candidate story (Draft, NOT activated). The
-> remaining PROMPT 802 candidate UI repair rows outside this epic
-> remain NOT activated.
+> Tier 3 rank 13 candidate story (Draft, NOT activated) + 6 Sprint
+> 16/17 candidate stories authored by PROMPT 1044 (010 shop_auction
+> modsplit / 011 hand modsplit / 012 modal primitive / 013 button
+> primitive / 014 panel primitive / 015 architecture sequencing
+> note; all Draft, NOT activated; address PROMPT 1034 visual audit
+> D1-D4 + PROMPT 1035 architecture audit Phase A/B). The remaining
+> PROMPT 802 candidate UI repair rows outside this epic remain NOT
+> activated.
 
 ## Overview
 
@@ -102,6 +107,90 @@ accepted-risk and are **not** advanced by this roadmap-prep.
 | 007 | [Canonical Global UI Design Spec](story-007-global-ui-design-spec.md) | UX -- design-spec authoring | Draft -- Sprint 14 candidate, NOT activated | S12-UX-GLOBAL-UI-DESIGN-SPEC-001 |
 | 008 | [UI Interaction State Primitives](story-008-ui-interaction-state-primitives.md) | Tech Debt -- Tier 0 Should-priority adjacent primitive | Done -- Sprint 15 Nice to Have (closed PROMPT 1009 on `origin/main` after PROMPT 1005 dev-story + PROMPT 1007 integration `5d36c4b`) | S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001 |
 | 009 | [UI Card Slot Primitive](story-009-ui-card-slot-primitive.md) | Tech Debt -- Tier 3 rank 13 multi-surface primitive | Draft -- Sprint 16 candidate, NOT activated | S12-TD-UI-CARD-SLOT-PRIMITIVE-001 |
+| 010 | [Shop/Auction Module Split](story-010-ui-shop-auction-module-split.md) | Tech Debt -- structural refactor (file split) | Draft -- Sprint 16/17 candidate (Phase A.1 per PROMPT 1035), NOT activated | S16-TD-UI-SHOPAUCTION-MODSPLIT-001 |
+| 011 | [Hand Module Split](story-011-ui-hand-module-split.md) | Tech Debt -- structural refactor (file split) | Draft -- Sprint 16/17 candidate (Phase A.2 per PROMPT 1035), NOT activated | S16-TD-UI-HAND-MODSPLIT-001 |
+| 012 | [UI Modal Primitive](story-012-ui-modal-primitive.md) | Tech Debt -- foundational primitive (shared widget) | Draft -- Sprint 16/17 candidate (Phase B per PROMPT 1035; addresses PROMPT 1034 D2), NOT activated | S16-TD-UI-MODAL-PRIMITIVE-001 |
+| 013 | [UI Button Primitive](story-013-ui-button-primitive.md) | Tech Debt -- foundational primitive (shared widget) | Draft -- Sprint 16/17 candidate (Phase B per PROMPT 1035; addresses PROMPT 1034 D3), NOT activated | S16-TD-UI-BUTTON-PRIMITIVE-001 |
+| 014 | [UI Panel Primitive](story-014-ui-panel-primitive.md) | Tech Debt -- foundational primitive (shared widget) | Draft -- Sprint 16/17 candidate (Phase B.3 per PROMPT 1035; addresses PROMPT 1034 D4), NOT activated | S16-TD-UI-PANEL-PRIMITIVE-001 |
+| 015 | [UI Architecture Split + Primitive Sequencing](story-015-ui-architecture-sequencing.md) | Documentation -- sequencing roadmap (doc only) | Draft -- Sprint 16/17 candidate, NOT activated | S16-TD-UI-ARCHITECTURE-SEQUENCING-001 |
+
+### Sprint 16/17 Architecture-Split + Primitive Candidate Sequencing Notes (PROMPT 1044)
+
+Stories 010-015 are the **architecture split + missing-primitives** wave
+authored by PROMPT 1044 in response to PROMPT 1034 visual audit (`reports/
+PROMPT-1034-full-ui-visual-quality-audit.md`) and PROMPT 1035 architecture
+audit (`reports/PROMPT-1035-ui-code-architecture-layout-debt-audit.md`).
+Sprint activation decisions for these rows are deferred to a future
+producer prompt; none of stories 010-015 are activated by PROMPT 1044.
+
+- **Story 010** (`S16-TD-UI-SHOPAUCTION-MODSPLIT-001`) -- Phase A.1
+  split of the 5 435-line `client/src/ui/shop_auction/mod.rs` into a
+  thin aggregator + 7 per-surface submodules (draft_initial / shop /
+  auction / settlement / toasts / state / spawn). Re-exports preserved,
+  no behaviour change. Unblocks story 009 phase-1 shop slot migration,
+  Phase C.2 / C.4 / C.5 / C.6 / C.7. **Parallel-safe with story 011.**
+- **Story 011** (`S16-TD-UI-HAND-MODSPLIT-001`) -- Phase A.2 split of
+  the 4 149-line `client/src/ui/hand/mod.rs` into a thin aggregator +
+  5 per-surface submodules (fan / draft_grid / reserve / submit /
+  state). Re-exports preserved; `drag_state_visuals.rs` unchanged.
+  Unblocks Phase C.1 hand card-slot migration. **Parallel-safe with
+  story 010.**
+- **Story 012** (`S16-TD-UI-MODAL-PRIMITIVE-001`) -- Phase B modal
+  primitive addressing PROMPT 1034 D2. Authors `ModalKind::{Standard,
+  Narrow, Featured}` + mandatory opaque scrim + mandatory
+  header/body/footer slots + per-modal z-stack policy. Phase 1
+  canonical migration: DraftInitial keep-9 modal (PROMPT 1034 A7 P1
+  fix; moves `Ready` action into footer slot). Per-surface migration
+  of the remaining four modals is Phase C.6 family
+  `S16-UI-MODAL-PANEL-CONSOLIDATION-001`.
+- **Story 013** (`S16-TD-UI-BUTTON-PRIMITIVE-001`) -- Phase B button
+  primitive addressing PROMPT 1034 D3. Authors `ButtonKind::{Primary,
+  Secondary, Bid}` + `ButtonState::{Default, Hover, Pressed,
+  Disabled, Focused}` composed from story 008's `interaction_states::*`
+  tokens. Phase 1 canonical migration: Placement `Submit` button
+  (PROMPT 1034 A8 P1 fix). Per-surface migration of remaining button
+  families is the Phase C.8 + Phase C-mid family
+  `S16-UI-INTERACTION-STATE-MIGRATION-*` (already named by story 008
+  close-out).
+- **Story 014** (`S16-TD-UI-PANEL-PRIMITIVE-001`) -- Phase B.3 panel
+  primitive addressing PROMPT 1034 D4 + PROMPT 1035 §"Result screen /
+  connection-lost / photosensitivity cluster". Authors `PanelKind::{
+  Standard, Narrow, Toolbar}` + per-kind chrome (background + border
+  + padding + border-radius) consolidating three deprecation-target
+  RGB triples. Phase 1 canonical migration: Placement action panel
+  OR result-screen panel. Per-surface migration of remaining panel
+  sites is Phase C.6 family `S16-UI-MODAL-PANEL-CONSOLIDATION-001`.
+- **Story 015** (`S16-TD-UI-ARCHITECTURE-SEQUENCING-001`) --
+  Documentation-only sequencing note at
+  `docs/ux/ui-architecture-split-sequencing.md` (NEW). Inventories
+  every Sprint 16+ UI clean-pass story / family member with
+  prerequisites, unblocks, owned files, conflicts-with; answers the
+  four producer questions ("What must land before DraftShop /
+  Auction / Placement re-skins?" + "What can run in parallel after
+  Phase A?"). Cross-linked from `docs/ux/ui-clean-pass-roadmap.md`.
+
+Dependency summary (per PROMPT 1035 §"Suggested refactor sequence"
+condensed; canonical sequencing note is story 015 deliverable):
+
+- **Phase A (parallel-safe)**: stories 010 + 011. Foundation for every
+  Phase B / C row that touches shop / auction / draft / settlement /
+  toasts / footer / hand surfaces.
+- **Phase B (parallel-safe after Phase A)**: stories 009 (existing
+  Sprint 16 candidate) + 012 + 013 + 014. Authoring is file-disjoint
+  (different submodules of `design_tokens/`); each story's phase-1
+  migration site collides with other Phase B / C rows that target the
+  same site, so the producer schedules migration sites accordingly.
+- **Phase C (parallel-safe after Phase A + B; per-row file conflicts
+  apply)**: hand / shop / auction / board card-slot migrations,
+  auction flex primitives, shop control row, modal-panel
+  consolidation, palette sweep (runs LAST within Phase C), bid
+  interaction states, status icon tints, HUD pill lift. Story 015's
+  sequencing note enumerates the file-conflict matrix.
+- **Phase D (test discipline)**: cross-surface palette grep guard,
+  modal panel consistency test, auction anchor derivation test.
+
+Story 015 is the canonical sequencing reference; the table above is a
+summary.
 
 ### Sprint 16 Candidate Sequencing Notes
 
