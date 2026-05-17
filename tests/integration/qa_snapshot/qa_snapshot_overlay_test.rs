@@ -817,38 +817,124 @@ fn feedback_state_saved_reverts_to_idle_after_wall_clock_window() {
 
 #[test]
 fn config_from_env_values_parses_documented_rule() {
-    // Default: nothing set -> disabled, default dir.
-    let cfg = QASnapshotConfig::from_env_values(None, None);
-    assert!(!cfg.enabled);
-    assert_eq!(cfg.output_dir, PathBuf::from(DEFAULT_QA_SNAPSHOT_DIR));
-
-    // Any value other than literal "1" must NOT enable (avoids accidental
-    // activation from `true`, `yes`, `0`, leading whitespace mistakes).
-    for not_one in ["", "0", "true", "yes", "1.0", "01"] {
-        let cfg = QASnapshotConfig::from_env_values(Some(not_one), None);
-        assert!(
-            !cfg.enabled,
-            "value {not_one:?} must not enable QA snapshot overlay"
-        );
+    // Explicit "1" forces enabled regardless of the dev default.
+    for one in ["1", " 1 "] {
+        for dev_default in [true, false] {
+            let cfg = QASnapshotConfig::from_env_values(Some(one), None, dev_default);
+            assert!(
+                cfg.enabled,
+                "value {one:?} must force-enable QA snapshot overlay (dev_default={dev_default})"
+            );
+        }
     }
 
-    // Exactly "1" enables, with or without surrounding whitespace.
-    for one in ["1", " 1 "] {
-        let cfg = QASnapshotConfig::from_env_values(Some(one), None);
-        assert!(cfg.enabled, "value {one:?} must enable QA snapshot overlay");
+    // Explicit "0" forces disabled regardless of the dev default.
+    for zero in ["0", " 0 "] {
+        for dev_default in [true, false] {
+            let cfg = QASnapshotConfig::from_env_values(Some(zero), None, dev_default);
+            assert!(
+                !cfg.enabled,
+                "value {zero:?} must force-disable QA snapshot overlay (dev_default={dev_default})"
+            );
+        }
+    }
+
+    // Any other value (including legacy enablers like "true" / "yes") must
+    // not panic and must be treated as disabled.
+    for invalid in ["true", "yes", "1.0", "01", "TRUE", "no", "off"] {
+        for dev_default in [true, false] {
+            let cfg = QASnapshotConfig::from_env_values(Some(invalid), None, dev_default);
+            assert!(
+                !cfg.enabled,
+                "invalid value {invalid:?} must be treated as disabled (dev_default={dev_default})"
+            );
+        }
     }
 
     // Output dir override is honoured.
-    let cfg = QASnapshotConfig::from_env_values(Some("1"), Some("/tmp/elsewhere"));
+    let cfg = QASnapshotConfig::from_env_values(Some("1"), Some("/tmp/elsewhere"), false);
     assert_eq!(cfg.output_dir, PathBuf::from("/tmp/elsewhere"));
 
     // Empty / whitespace-only dir override falls back to the default.
     for blank in ["", "   "] {
-        let cfg = QASnapshotConfig::from_env_values(Some("1"), Some(blank));
+        let cfg = QASnapshotConfig::from_env_values(Some("1"), Some(blank), false);
         assert_eq!(
             cfg.output_dir,
             PathBuf::from(DEFAULT_QA_SNAPSHOT_DIR),
             "blank CCGS_QA_SNAPSHOT_DIR ({blank:?}) must fall back to the default"
+        );
+    }
+}
+
+#[test]
+fn config_from_env_values_unset_uses_dev_default() {
+    // PROMPT 1021: when CCGS_QA_SNAPSHOT is unset, the dev default
+    // (cfg!(debug_assertions) at the call site) decides activation.
+
+    // Unset + dev default true (debug build) -> enabled by default.
+    let cfg = QASnapshotConfig::from_env_values(None, None, true);
+    assert!(
+        cfg.enabled,
+        "unset CCGS_QA_SNAPSHOT must enable QA snapshot in dev/debug builds"
+    );
+    assert_eq!(cfg.output_dir, PathBuf::from(DEFAULT_QA_SNAPSHOT_DIR));
+
+    // Unset + dev default false (release build) -> disabled by default,
+    // keeping shipped builds clean.
+    let cfg = QASnapshotConfig::from_env_values(None, None, false);
+    assert!(
+        !cfg.enabled,
+        "unset CCGS_QA_SNAPSHOT must keep QA snapshot disabled in release builds"
+    );
+
+    // Empty / whitespace-only values are treated like unset so accidental
+    // `$env:CCGS_QA_SNAPSHOT=""` does not surprise the operator.
+    for blank in ["", "   "] {
+        let cfg = QASnapshotConfig::from_env_values(Some(blank), None, true);
+        assert!(
+            cfg.enabled,
+            "blank CCGS_QA_SNAPSHOT ({blank:?}) must follow dev default (true)"
+        );
+        let cfg = QASnapshotConfig::from_env_values(Some(blank), None, false);
+        assert!(
+            !cfg.enabled,
+            "blank CCGS_QA_SNAPSHOT ({blank:?}) must follow dev default (false)"
+        );
+    }
+}
+
+#[test]
+fn config_from_env_values_override_beats_dev_default() {
+    // Explicit "0" disables even in dev/debug builds — operator can opt out.
+    let cfg = QASnapshotConfig::from_env_values(Some("0"), None, true);
+    assert!(
+        !cfg.enabled,
+        "CCGS_QA_SNAPSHOT=0 must force-disable even when dev default is enabled"
+    );
+
+    // Explicit "1" enables even in release builds — operator can opt in.
+    let cfg = QASnapshotConfig::from_env_values(Some("1"), None, false);
+    assert!(
+        cfg.enabled,
+        "CCGS_QA_SNAPSHOT=1 must force-enable even when dev default is disabled"
+    );
+}
+
+#[test]
+fn config_from_env_values_invalid_value_does_not_panic() {
+    // Invalid values must never panic and must default to disabled,
+    // regardless of the dev default — accidental misspellings should not
+    // silently flip the overlay on.
+    for invalid in ["true", "yes", "01", "1.0", "enable", "disable"] {
+        let cfg = QASnapshotConfig::from_env_values(Some(invalid), None, true);
+        assert!(
+            !cfg.enabled,
+            "invalid value {invalid:?} must be treated as disabled even when dev default is true"
+        );
+        let cfg = QASnapshotConfig::from_env_values(Some(invalid), None, false);
+        assert!(
+            !cfg.enabled,
+            "invalid value {invalid:?} must be treated as disabled even when dev default is false"
         );
     }
 }
