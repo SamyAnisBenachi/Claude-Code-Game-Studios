@@ -1,3 +1,146 @@
+# PROMPT 1002 State Banner -- Sprint 15 QA Plan Authored
+
+Updated 2026-05-17 by PROMPT 1002. Source-of-truth at authoring:
+`origin/main@7a5965e1ad211222092f941bf8cfc66cd8bdfa94` (PROMPT 1001
+Sprint 15 activation main integration tip;
+`integrate(s15): merge Sprint 15 activation (PROMPT 1001)`).
+
+PROMPT 1002 authored `production/qa/qa-plan-sprint-15.md` (NEW) covering
+the 5 Sprint 15 active rows on `origin/main`: **Must Have**
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` (story 014 HUD epic; Sprint 13 -> 14
+-> 15 human-operator-blocked carry; no LLM `/story-done` authorised;
+evidence path redirected to
+`production/qa/evidence/sprint-15-hud-timer-visual-check/`) +
+`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP` (paperwork-only
+`production/sprint-status.yaml` row-status flip; no story file; dedicated
+row-flip prompt sequenced in Wave 2 AFTER this QA plan); **Should Have**
+`S12-UX-HAND-DRAG-STATE-VISUALS-001` (story 020 hand-ui epic; AC9
+BLOCKING integration test asserting 5 drag states `Idle` / `Hover` /
+`Drag` / `DropTarget` / `Disabled` via ECS markers; `liv-bevy-018`
+MANDATORY; `liv-bevy-lightyear` NOT required; AC12 zero protocol diff) +
+`S11-UX-BOARD-RENDERING-SPEC` (story 013 board-rendering epic; doc-only
+target `docs/ux/board-rendering-spec.md` NEW; AC11 BLOCKING producer +
+ux-designer + art-director ratification); **Nice to Have**
+`S12-TD-UI-INTERACTION-STATE-PRIMITIVES-001` (story 008 ui-clean-pass
+epic; AC8 BLOCKING integration test asserting `HOVER_*` / `FOCUS_*` /
+`PRESSED_*` / `DISABLED_*` token families; AC10 BLOCKING per-surface
+migration OUT OF SCOPE check; `liv-bevy-018` MANDATORY; per-surface
+migration deferred to Sprint 16+).
+
+Plan covers per-row acceptance evidence + test evidence expectations,
+the human-operator path for the HUD timer eyeball capture session
+(producer schedules a real two-client run; captures 3 mid-countdown
+screenshots across `DraftInitial` 45s / `DraftShop` 30s / `Placement`
+10-12s; authors evidence README under
+`production/qa/evidence/sprint-15-hud-timer-visual-check/` with explicit
+Sprint 13 -> 14 -> 15 path-redirect note; no LLM substitute), QA
+sequencing (Wave 1 this QA plan -> Wave 2 row-flip paperwork -> Wave 3
+parallel `/dev-story` rows 3/4/5 -> Wave 4 integration prompts ->
+Wave 5 human-operator HUD timer session -> Wave 6 `/story-done`
+paperwork -> Wave 7 `/smoke-check` -> Wave 8 `/team-qa sprint` ->
+Wave 9 close-out), parallelization map (rows 3/4/5 file-disjoint by
+surface: hand-ui vs `docs/ux/board-rendering-spec.md` vs design_tokens
+module; row 2 shared-status writer serialized AFTER this plan; row 1
+human-operator parallel-safe with Waves 2-4 by file scope),
+Windows/MSVC Cargo Resource Policy preamble binding for every Sprint 15
+cargo command block + stale-target cleanup authorisation with path
+verification, QA policy (normal `/dev-story` workers run
+story-prescribed targeted tests + justified adjacent regressions;
+integration prompts run targeted verification; smoke/checkpoint prompts
+may run `cargo test --workspace --tests --no-fail-fast` serialized;
+doc-only and paperwork-only prompts do not run cargo), and explicit
+external pending integration note for PROMPT 998 placement-timer audio
+crash repair branch (READY on
+`origin/integrate/placement-timer-audio-crash-repair-998@c508d9d`;
+not on `origin/main` at this plan's authoring; code-only; OUT OF SCOPE
+for this QA plan; workers MUST rebase on post-merge tip if PROMPT 998
+lands on `main` before their `/dev-story`; no Sprint 15 row closes the
+PROMPT 996 / 998 disposition).
+
+Stage UNCHANGED `Polish`. PROMPT 761 `Polish->Release` gate-check
+`FAIL` preserved at
+`production/gate-checks/gate-polish-release-2026-05-12.md`; NO retry
+attempted by PROMPT 1002; NO retry in scope for Sprint 15; Sprint 15
+is NOT a `Polish->Release` sprint.
+
+All carried conditions preserved verbatim (none closed by PROMPT 1002):
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked carry;
+`S8-QA-001-W1` OPEN; `QA-COND-0005` Standard-tier accessibility
+accepted-risk (L5 `LOBBY_BUTTON_HEIGHT = 30.0` remains accepted-risk);
+`QA-COND-0006` playtest validation accepted-risk; `PAW-TD-*-a`
+placeholder-art accept-risk across PAW-002..PAW-006; PROMPT 683-era
+runtime divergence preserved (third same-scope retest NOT authorised
+per `TQ-S12-C2`); Sprint 12 story 019 underlying drag-runtime bug NOT
+claimed fixed (cannot-reproduce preserved); `TQ-S12-C1..C7` preserved
+verbatim (`TQ-S12-C7` explicitly NOT closed by Sprint 15);
+`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` backlog row remains
+un-flipped at this plan's authoring (the row-flip is a separate
+dedicated paperwork prompt -- Wave 2 -- sequenced AFTER this plan;
+this plan only documents the path); Sprint 14 / 13 / 12 / 11 / 10
+closeouts preserved unchanged; all 16 Sprint 14 `/story-done` closures
+preserved unchanged on `origin/main`.
+
+Explicit non-claims: no public release readiness, no release-candidate
+readiness, no full game completion, no broad / Standard-tier
+accessibility completion, no playtest validation, no full playable-
+client manual QA, no two-client GAME_OVER closure (`S8-QA-001-W1`
+OPEN), no final-art completion, no `Polish->Release` gate-check retry,
+no stage advance, no underlying drag-runtime bug fix, no Sprint 14
+row reopen, no closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` /
+`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001` / `S8-QA-001-W1` /
+`TQ-S12-C7` by PROMPT 1002, no `/dev-story`, no `/story-done`, no
+`/story-readiness`, no `/smoke-check`, no `/team-qa`, no `/gate-check`,
+no `/release-check` by PROMPT 1002, no row-status flip on any Sprint
+15 story row by PROMPT 1002, no PROMPT 998 audio repair branch closure
+by PROMPT 1002.
+
+Paperwork-only scope. Changed only `production/qa/qa-plan-sprint-15.md`
+(NEW), this file (PROMPT 1002 banner prepended above PROMPT 997
+banner), and `production/session-state/codex-orchestrator-state.md`
+(PROMPT 1002 section prepended above PROMPT 997 section). No
+`client/`, `server/`, `shared/`, `tests/`, Cargo files, `.cargo/`,
+`.github/`, `production/stage.txt`, `production/sprints/sprint-15.md`
+(except read-only), `production/sprints/sprint-14.md` /
+`sprint-13.md` / `sprint-12.md` / `sprint-11.md` / `sprint-10.md`,
+`production/gate-checks/*`, `production/qa/smoke-*.md`,
+`production/qa/team-qa-*.md`, `production/qa/evidence/*`, release /
+RC / launch-checklist / changelog / patch notes artifact, any Sprint
+14 / 13 / 12 / 11 / 10 story file under `production/epics/`, any
+Sprint 15 candidate story file (story 014 / 020 / 013 / 008 preserved
+verbatim), `production/sprint-status.yaml` (the established `/qa-plan`
+pattern in Sprint 14 PROMPT 898 did not flip any `stories:` row
+content and PROMPT 1002 preserves that pattern), or any prior
+`sprint_N_closeout` / `sprint_N_activation` / `sprint_N_story_done`
+block touched. No `cargo` / `trunk` command invoked. Worktree
+`D:/Tmp/ccgs-prompt-1002-qa-plan` on branch `qa-plan/sprint-15-1002`
+(base `origin/main@7a5965e1ad211222092f941bf8cfc66cd8bdfa94`).
+
+Next launchable prompts: (1) Sprint 15 row-flip paperwork prompt for
+`S11-CLIENT-CONNECTION-LOST-OBSERVABILITY-001-ROWFLIP` (Wave 2; single
+shared-status writer; flips legacy backlog row to `closed-by-evidence`
+naming PROMPT 891 / `S13-CONN-LOST-UX-001` evidence); (2) Sprint 15
+human-operator HUD timer eyeball capture session (Wave 5; producer
+schedules; runs real two-client browser/WASM or native build at
+activation HEAD or later; captures 3 mid-countdown screenshots;
+authors evidence README; parallel-safe with Waves 2-4 by file scope);
+(3) Sprint 15 Wave 3 parallel `/dev-story` batch for rows 3 / 4 / 5
+on file-disjoint worktrees (after Wave 1 this plan + Wave 2 row-flip
+both land on `origin/main`): `/dev-story
+production/epics/hand-ui/story-020-hand-drag-state-visuals.md` (0.5d;
+`liv-bevy-018` MANDATORY) + `/dev-story
+production/epics/board-rendering/story-013-board-rendering-spec.md`
+(0.75d; doc-only; no engine skill activation) + `/dev-story
+production/epics/ui-clean-pass/story-008-ui-interaction-state-primitives.md`
+(1.0d; `liv-bevy-018` MANDATORY); (4) Wave 4 integration prompts (one
+`--no-ff` per worker branch); (5) Wave 6 `/story-done` paperwork (5
+rows; serialized shared-status writer); (6) Wave 7 `/smoke-check`
+end-of-sprint (only context in which `cargo test --workspace --tests
+--no-fail-fast` is authorised); (7) Wave 8 `/team-qa sprint` after
+smoke; (8) Wave 9 Sprint 15 close-out disposition (expected
+`closed-with-conditions`).
+
+---
+
 # PROMPT 997 State Banner -- Sprint 15 Activation
 
 Updated 2026-05-17 by PROMPT 997. Source-of-truth at activation:
