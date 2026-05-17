@@ -2,21 +2,20 @@
 
 > **Epic**: UI Clean-Pass
 > **Story ID**: S15-TD-WORKSPACE-DEAD-CODE-WARNING-001
-> **Status**: Draft -- Sprint 16 candidate, NOT activated
+> **Status**: Done -- closed by PROMPT 1072 on 2026-05-17 on basis of PROMPT 1069 worker (`2251a93ef362a692bbb452c8718f8f2780c8fc91`) + PROMPT 1070 integration final tip (`bd374ddf4360f01838830cef22bc36e3763fb8c1`) + evidence at `production/qa/evidence/sprint-16-workspace-dead-code-warning/evidence.md`
 > **Layer**: Test hygiene -- workspace warning cleanup
 > **Type**: Tech Debt -- test hygiene (single-helper cleanup in one test file)
-> **Sprint**: Sprint 16 candidate (Nice to Have row per
-> `production/sprints/sprint-16.md` §"Nice to Have" / §"Capacity"). NOT
-> activated by this authoring run. Sprint 15 disposition (`active` with 4
-> closed Should/Nice rows + 1 human-operator-blocked Must Have carry per
-> PROMPT 1009 / PROMPT 1054) is preserved unchanged; Sprint 14 disposition
-> (`closed-with-conditions`, `Polish` stage, PROMPT 987) is preserved
-> unchanged.
+> **Sprint**: Sprint 16 Nice to Have row per `production/sprints/sprint-16.md`
+> §"Nice to Have". Activated by PROMPT 1064 on `origin/main@6f9308c`.
 > **Authored**: 2026-05-17 by PROMPT 1058
 > **Authoring source-of-truth**: `origin/main@8bec9dca624a191fbc7c12409b2ea4690a1040ab`
 > (PROMPT 1055 `chore(state): record P1 UI snapshot retest human block`)
 > **Estimated effort**: ~0.1d (single-helper cleanup; one test file +
 > targeted `cargo check` verification)
+> **Closed**: 2026-05-17 by PROMPT 1072
+> **Closure source-of-truth**: `origin/main@bd374ddf4360f01838830cef22bc36e3763fb8c1`
+> (PROMPT 1070 final integration tip merging `origin/main` into the
+> workspace dead-code warning integration branch).
 
 ---
 
@@ -183,100 +182,71 @@ any production code under `client/`, `server/`, or `shared/`.
 
 All BLOCKING.
 
-- [ ] **AC1 -- `/story-readiness` PASS before Sprint 16 `/dev-story`**:
-  This story file passes `/story-readiness` against the Sprint 16
-  activation HEAD (commit hash recorded by the activation prompt). All
-  required headings are present (Status / Overview / Scope / Acceptance
-  Criteria / Implementation Notes / Worker Contract). Story ID matches
-  Sprint 16 plan row. No open design question remains for the
-  `/dev-story` worker. Verification: `/story-readiness` verdict line
-  reads READY.
+- [x] **AC1 -- `/story-readiness` PASS before Sprint 16 `/dev-story`**:
+  Verdict READY recorded against Sprint 16 activation HEAD prior to
+  PROMPT 1069 `/dev-story`. All required headings present; story ID
+  matches Sprint 16 Nice to Have row; no open design question remained
+  for the implementing worker (Option A default applied with no
+  producer sign-off required).
 
-- [ ] **AC2 -- Helper handled deliberately, no silent test coverage
-  reduction**: The implementing `/dev-story` worker either (a) removes
-  the `count_with_image_node` helper definition entirely (Option A,
-  default) **or** (b) wires it into exactly one new test function with
-  a documented rationale in the test doc-comment AND the commit
-  message (Option B, producer sign-off). The four existing
+- [x] **AC2 -- Helper handled deliberately, no silent test coverage
+  reduction**: PROMPT 1069 worker applied Option A (default deletion).
+  Single hunk in
+  `tests/integration/presentation/hand_ui_asset_wiring_test.rs`
+  removes the `count_with_image_node` helper definition + its trailing
+  blank line. The four existing
   `test_fan_slot_chrome_*_image_node_present` tests (`HandCardFrame`,
-  `StatBadgeAtk`, `StatBadgeHp`, `StatBadgeMp`) remain functionally
-  unchanged: their assertion bodies, expected counts, and call site
-  to `count_child_of_with` are preserved verbatim. Verification:
-  `git diff origin/main...HEAD -- tests/integration/presentation/hand_ui_asset_wiring_test.rs`
-  shows only the deletion of the `count_with_image_node` block
-  (Option A) or the deletion of the helper plus the addition of a
-  single new test function that names the helper in its body (Option
-  B); no other diff hunks inside the file.
+  `StatBadgeAtk`, `StatBadgeHp`, `StatBadgeMp`) preserved verbatim:
+  bodies, expected counts, and `count_child_of_with` call sites
+  unchanged. Evidence:
+  `production/qa/evidence/sprint-16-workspace-dead-code-warning/evidence.md`
+  §"Option Chosen: Option A -- Delete".
 
-- [ ] **AC3 -- Dead-code warning is gone (targeted check)**: A
-  targeted `cargo check --workspace --all-targets` invocation (under
-  the Cargo resource policy below) returns exit 0 and its stderr / stdout
-  contains zero occurrences of
-  `warning: function \`count_with_image_node\` is never used`.
-  Worker captures the relevant `cargo check` tail (or the relevant
-  `--message-format=human` line range) in the commit message or a
-  worker-tracked log line. **The full workspace `cargo test` is NOT
-  required for this row** (per Sprint 15 QA Policy §"Test Scope Per
-  Prompt Type" line 104: "Normal implementation workers ... run
-  story-prescribed targeted tests only"). A targeted `cargo check`
-  is the policy-correct verification.
+- [x] **AC3 -- Dead-code warning is gone (targeted check)**: Targeted
+  `cargo check --workspace --all-targets` invocation (under Cargo
+  resource policy) returned exit 0 with zero occurrences of
+  `warning: function ``count_with_image_node`` is never used` on
+  `origin/main@bd374dd`. Captured in
+  `production/qa/evidence/sprint-16-workspace-dead-code-warning/evidence.md`
+  §"Verification Results".
 
-- [ ] **AC4 -- Existing hand UI asset wiring coverage remains intact**:
+- [x] **AC4 -- Existing hand UI asset wiring coverage remains intact**:
   `cargo test -p client --test hand_ui_asset_wiring_test --no-fail-fast`
-  PASSES with the same count of green tests as on `origin/main` at
-  Sprint 16 activation HEAD (expected: 4 PAW-002-f chrome-presence
-  tests minimum; worker confirms exact count from the activation
-  HEAD before running). No `#[ignore]` is introduced. No test is
-  removed or renamed. Worker MAY add **at most one** new test
-  function (Option B path only).
+  passed with the four PAW-002-f chrome-presence tests
+  (`HandCardFrame`, `StatBadgeAtk`, `StatBadgeHp`, `StatBadgeMp`) PASS
+  unchanged. No `#[ignore]` introduced; no test removed or renamed;
+  Option A path -- no new test function added. Evidence in
+  `production/qa/evidence/sprint-16-workspace-dead-code-warning/evidence.md`.
 
-- [ ] **AC5 -- Cargo resource policy is required for any future Cargo
-  command**: The future `/dev-story` worker MUST set the Sprint 14 \
-  Sprint 15 binding Cargo resource policy environment variables for
-  every `cargo` invocation on Windows / MSVC (mirrors the binding
-  precedent from PROMPT 815 disk-pressure incident; preserved across
-  Sprint 14 / 15 worker + integration prompts per `production/qa/qa-plan-sprint-15.md`
-  §"Cargo Resource Policy on Windows/MSVC"):
+- [x] **AC5 -- Cargo resource policy is required for any future Cargo
+  command**: PROMPT 1069 worker set the binding Cargo resource policy
+  env vars (`CARGO_TARGET_DIR='D:\_DEV\cargo-target\ccgs-msvc'`,
+  `CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`,
+  `CARGO_INCREMENTAL=0`,
+  `RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`) before every
+  `cargo` invocation on Windows / MSVC. Disk preflight recorded ~860 GB
+  free on D:. Attestation in evidence file. PROMPT 1072 paperwork
+  closure invoked no Cargo command.
 
-  ```powershell
-  $env:CARGO_TARGET_DIR='D:\_DEV\cargo-target\ccgs-msvc'
-  $env:CARGO_PROFILE_DEV_DEBUG='0'
-  $env:CARGO_PROFILE_TEST_DEBUG='0'
-  $env:CARGO_INCREMENTAL='0'
-  $env:RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'
-  ```
+- [x] **AC6 -- No production behavior change, no release claim, no
+  `QA-COND-*` closure**: PROMPT 1069 worker diff scoped to
+  `tests/integration/presentation/hand_ui_asset_wiring_test.rs` only.
+  Zero touch under `client/src/`, `server/src/`, `shared/src/`,
+  `production/sprint-status.yaml` (worker-time), `production/sprints/`,
+  `production/stage.txt`, `production/session-state/`, or
+  `production/qa/`. No release readiness, `QA-COND-0005`,
+  `QA-COND-0006`, `PAW-TD-*-a`, or `S8-QA-001-W1` advancement claimed.
+  No `Polish->Release` retry; no stage advance.
 
-  Verification: worker commit message or worker-tracked log includes
-  a one-line attestation that these env vars were set before each
-  `cargo check` / `cargo test` invocation.
-
-- [ ] **AC6 -- No production behavior change, no release claim, no
-  `QA-COND-*` closure**: `git diff origin/main...HEAD --stat` against
-  the worker branch shows NO change under `client/src/`, `server/src/`,
-  or `shared/src/`. NO release-readiness claim is made. NO
-  `QA-COND-0005` Standard-tier accessibility advancement is claimed.
-  NO `QA-COND-0006` playtest validation advancement is claimed. NO
-  `PAW-TD-*-a` placeholder-art accept-risk advancement is claimed. NO
-  closure of `S8-QA-001-W1` two-client GAME_OVER row is claimed. NO
-  `Polish->Release` retry is attempted. NO stage advance is performed.
-  Verification:
-  `git diff origin/main...HEAD --stat -- 'client/src/' 'server/src/' 'shared/src/' 'production/sprint-status.yaml' 'production/sprints/' 'production/stage.txt' 'production/session-state/' 'production/qa/'`
-  is empty.
-
-- [ ] **AC7 -- Worker branch scope contained**: The implementing
-  `/dev-story` worker pushes a single worker branch (suggested slug
-  `work/s16-workspace-dead-code-warning` or producer-renamed at
-  activation) with at most these changed paths:
-  - `tests/integration/presentation/hand_ui_asset_wiring_test.rs`
-    (one deletion + optionally one added test function).
-  - `production/epics/ui-clean-pass/story-016-workspace-dead-code-warning.md`
-    (status-block update for closure paperwork by `/story-done`,
-    if and when that runs in a later prompt).
-
-  No edit to any other path. Worker MUST NOT push to `main`. If
-  branch push is blocked, worker leaves a local commit ready and
-  reports the exact commit hash + blocker per the standard worker
-  protocol.
+- [x] **AC7 -- Worker branch scope contained**: PROMPT 1069 worker
+  branch `work/s16-workspace-dead-code-warning` worker commit
+  `2251a93ef362a692bbb452c8718f8f2780c8fc91` integrated via PROMPT
+  1070 (`e90d97d`) merged with `origin/main` into the final
+  integration tip `bd374ddf4360f01838830cef22bc36e3763fb8c1`. Worker
+  did NOT push to `main`. Files changed at worker time: only
+  `tests/integration/presentation/hand_ui_asset_wiring_test.rs`. The
+  story file `production/epics/ui-clean-pass/story-016-workspace-dead-code-warning.md`
+  closure-block updates are landed under this PROMPT 1072 `/story-done`.
 
 ---
 
@@ -421,4 +391,66 @@ The worker MUST NOT:
 
 ---
 
-`016: S15-TD-WORKSPACE-DEAD-CODE-WARNING-001: DRAFT`
+## Closure Trail (added 2026-05-17 by PROMPT 1072)
+
+- **PROMPT 1064** (2026-05-17, paperwork-only Sprint 16 activation at
+  `origin/main@6f9308c`): this row entered the Sprint 16 active set
+  as Nice to Have `ready`.
+- **PROMPT 1066** (2026-05-17, paperwork-only Sprint 16 QA plan at
+  `origin/main@c908f73`): authored `production/qa/qa-plan-sprint-16.md`
+  naming this row's targeted warning/check gates (AC3 BLOCKING
+  warning-free `cargo check --workspace --all-targets`; AC4 BLOCKING
+  `cargo test -p client --test hand_ui_asset_wiring_test`).
+- **PROMPT 1069** `/dev-story` (worker
+  `2251a93ef362a692bbb452c8718f8f2780c8fc91`): applied Option A
+  (default delete) on
+  `tests/integration/presentation/hand_ui_asset_wiring_test.rs`,
+  removing the unused `count_with_image_node` helper. Captured
+  evidence in
+  `production/qa/evidence/sprint-16-workspace-dead-code-warning/evidence.md`.
+- **PROMPT 1070** integration: worker integration commit `e90d97d`
+  (`integrate(s16): workspace dead-code warning removal (PROMPT 1070)`)
+  merged into `origin/main`; subsequent `bd374dd`
+  (`integrate(s16): merge origin/main into PROMPT 1070 integration`)
+  is the final integration tip carrying both this row and the
+  PROMPT 1071 AppCompat row forward on `origin/main`.
+- **PROMPT 1072** (this `/story-done`, 2026-05-17, paperwork-only at
+  `origin/main@bd374dd`): flipped AC1-AC7 checkboxes to `[x]`;
+  flipped the sprint-status row to `status: done` with
+  `completed: 2026-05-17`; recorded the closure trail. No Cargo /
+  Trunk / CI command. No production source edit. No code under
+  `client/`, `server/`, `shared/`, `tests/`.
+
+### Conditions carried forward unchanged by PROMPT 1072
+
+- Sprint 16 disposition: `active` (UNCHANGED).
+- Stage `Polish` (UNCHANGED; `production/stage.txt` NOT touched).
+- PROMPT 761 Polish->Release gate-check `FAIL` preserved; NO retry.
+- `S8-QA-001-W1` OPEN preserved.
+- `QA-COND-0005` (friend-game scope) + `QA-COND-0006` (playtest
+  deferred) accepted-risk preserved.
+- `PAW-TD-*-a` placeholder-art accept-risk preserved.
+- `TQ-S12-C1..C7` preserved verbatim.
+- Sprint 15 / 14 / 13 / 12 / 11 / 10 dispositions preserved
+  unchanged.
+- HUD timer row `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-
+  blocked carry preserved; NOT closed by this row.
+- Card-slot row `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` remains Sprint 16
+  Should Have `ready`; NOT closed by this row (PROMPT 1067 still
+  running at closure time).
+
+### Explicitly NOT claimed by PROMPT 1072
+
+- Sprint 16 close-out.
+- Closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` (human-operator-
+  blocked Must Have carry).
+- Closure of `S12-TD-UI-CARD-SLOT-PRIMITIVE-001`.
+- Public release readiness; release-candidate readiness; full game
+  completion.
+- Broad / Standard-tier accessibility completion; playtest /
+  fun-hypothesis validation; full playable-client manual QA;
+  two-client GAME_OVER closure; final-art / asset-production
+  completion; Polish->Release gate-check retry; stage advance.
+- Any Cargo / Trunk / CI command invocation under PROMPT 1072.
+
+`016: S15-TD-WORKSPACE-DEAD-CODE-WARNING-001: DONE`

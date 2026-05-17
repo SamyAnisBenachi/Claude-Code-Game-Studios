@@ -117,7 +117,7 @@ accepted-risk and are **not** advanced by this roadmap-prep.
 | 013 | [UI Button Primitive](story-013-ui-button-primitive.md) | Tech Debt -- foundational primitive (shared widget) | Draft -- Sprint 16/17 candidate (Phase B per PROMPT 1035; addresses PROMPT 1034 D3), NOT activated | S16-TD-UI-BUTTON-PRIMITIVE-001 |
 | 014 | [UI Panel Primitive](story-014-ui-panel-primitive.md) | Tech Debt -- foundational primitive (shared widget) | Draft -- Sprint 16/17 candidate (Phase B.3 per PROMPT 1035; addresses PROMPT 1034 D4), NOT activated | S16-TD-UI-PANEL-PRIMITIVE-001 |
 | 015 | [UI Architecture Split + Primitive Sequencing](story-015-ui-architecture-sequencing.md) | Documentation -- sequencing roadmap (doc only) | Draft -- Sprint 16/17 candidate, NOT activated | S16-TD-UI-ARCHITECTURE-SEQUENCING-001 |
-| 016 | [Workspace Dead-Code Warning Cleanup](story-016-workspace-dead-code-warning.md) | Tech Debt -- test hygiene (single-helper cleanup) | Draft -- Sprint 16 Nice to Have candidate, NOT activated | S15-TD-WORKSPACE-DEAD-CODE-WARNING-001 |
+| 016 | [Workspace Dead-Code Warning Cleanup](story-016-workspace-dead-code-warning.md) | Tech Debt -- test hygiene (single-helper cleanup) | Done -- Sprint 16 Nice to Have (closed PROMPT 1072 on `origin/main@bd374dd`; PROMPT 1069 worker `2251a93` + PROMPT 1070 integration tip `bd374dd`) | S15-TD-WORKSPACE-DEAD-CODE-WARNING-001 |
 
 ### Sprint 16/17 Architecture-Split + Primitive Candidate Sequencing Notes (PROMPT 1044)
 

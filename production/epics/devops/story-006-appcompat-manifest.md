@@ -2,20 +2,23 @@
 
 > **Epic**: DevOps (Operational Hardening)
 > **Story ID**: S15-OPS-APPCOMPAT-MANIFEST-001
-> **Status**: Draft -- Sprint 16 candidate, NOT activated
+> **Status**: Done -- closed by PROMPT 1072 on 2026-05-17 on basis of PROMPT 1068 worker (`ed58e3d98ab0ddc851dfcf6fdad84680a0006937`) + PROMPT 1071 integration (`488a9cd96e6bce2b9ecca7db172ab1be1acc8878`) + evidence at `production/qa/evidence/sprint-16-appcompat-manifest-evidence.md`
 > **Layer**: DevOps -- Cargo test-binary configuration (Windows manifest embed)
 > **Type**: Implementation / ops hygiene -- bounded build-system change scoped
 > to one Cargo test target
-> **Sprint**: Sprint 16 Nice to Have candidate per
-> `production/sprints/sprint-16.md` §"Nice to Have" row
-> `S15-OPS-APPCOMPAT-MANIFEST-001` (sourced from Sprint 14 PROMPT 983 smoke
-> rerun §"Windows AppCompat Workaround" Option B; preserved into Sprint 15
-> deferred backlog by PROMPT 988 plan §"Smoke evidence hygiene"). NOT
-> activated.
+> **Sprint**: Sprint 16 Nice to Have row per `production/sprints/sprint-16.md`
+> §"Nice to Have" (sourced from Sprint 14 PROMPT 983 smoke rerun §"Windows
+> AppCompat Workaround" Option B; preserved into Sprint 15 deferred backlog
+> by PROMPT 988 plan §"Smoke evidence hygiene"). Activated by PROMPT 1064
+> on `origin/main@6f9308c`.
 > **Authored**: 2026-05-17 by PROMPT 1057
 > **Authoring source-of-truth**: `origin/main@8bec9dc` (PROMPT 1055 state
 > banner record, P1 UI snapshot retest human-block; latest `origin/main`
 > at authoring time)
+> **Closed**: 2026-05-17 by PROMPT 1072
+> **Closure source-of-truth**: `origin/main@bd374ddf4360f01838830cef22bc36e3763fb8c1`
+> (PROMPT 1070 final integration tip merging the dead-code warning cleanup
+> on top of PROMPT 1071 AppCompat integration `488a9cd`)
 
 ---
 
@@ -314,91 +317,64 @@ All criteria are independently checkable. AC1 is the readiness gate
 for `/dev-story`; AC2-AC6 are the implementation/closure gates for
 `/story-done`.
 
-- [ ] **AC1 -- Story readiness passes before Sprint 16 `/dev-story`**:
-  GIVEN this story file at the Sprint 16 activation HEAD on
-  `origin/main`, WHEN `/story-readiness` is run, THEN the verdict is
-  `READY` (with at most advisory annotations about the mechanism
-  choice still being `/dev-story`-time deferred -- the mechanism is
-  intentionally deferred to the implementing worker per Mechanism
-  list (a)-(e) above; advisories on deferred mechanism choice do
-  NOT block `READY`). If the verdict is `NEEDS WORK` or `BLOCKED`,
-  the readiness gate fails and the implementation prompt is
-  deferred until the gaps are addressed in a separate authoring
-  revision.
+- [x] **AC1 -- Story readiness passes before Sprint 16 `/dev-story`**:
+  Verdict READY rerun against Sprint 16 activation HEAD prior to
+  PROMPT 1068 `/dev-story` (deferred mechanism advisory preserved as
+  non-blocking per the story body). Closure evidence: PROMPT 1068
+  worker (`ed58e3d`) proceeded only after a documented READY rerun.
 
-- [ ] **AC2 -- Windows manifest embedded (or equivalent robust
-  mechanism)**: GIVEN the implementation commit, WHEN inspected,
-  THEN the `spawn_range_live_update_contract` Cargo test target's
-  emitted binary embeds a Windows application manifest with
-  `<requestedExecutionLevel level="asInvoker"/>` **OR** the Cargo
-  `[[test]] name = "..."` attribute is renamed to a value that does
-  not contain any AppCompat trigger substring (`update`, `install`,
-  `setup`, `patch`, `uninst`, etc.) **OR** an equivalent robust
-  mechanism (per Mechanism (e) above) is in place. The chosen
-  mechanism is recorded in story evidence with rationale. **Exactly
-  one mechanism is chosen** -- mechanisms are NOT layered.
-
-- [ ] **AC3 -- Test binary runs without OS error 740 for 5
-  consecutive runs without rename workaround**: GIVEN the
-  implementation commit on a Windows MSVC host of the same class
-  as the PROMPT 983 / PROMPT 982 / PROMPT 815 smoke hosts, WHEN
-  the `spawn_range_live_update_contract` test target is invoked 5
-  consecutive times under `cargo test -p shared --test
-  spawn_range_live_update_contract` (or under the renamed target
-  name if mechanism (d) was chosen) **without** any per-run
-  `cp ... srluc_appcompat_renamed.exe` rename step, THEN all 5
-  invocations succeed with `test result: ok. 5 passed; 0 failed; 0
-  ignored` and zero `os error 740` / "The requested operation
-  requires elevation" diagnostics across all 5 runs. Evidence: 5
-  consecutive cargo invocations captured in
+- [x] **AC2 -- Windows manifest embedded (or equivalent robust
+  mechanism)**: Mechanism (d) chosen -- Cargo `[[test]] name = "..."`
+  renamed from `spawn_range_live_update_contract` to
+  `spawn_range_live_refresh_contract` (no trigger substring
+  `update` / `install` / `setup` / `patch` / `uninst`). Source file
+  `tests/unit/protocol/spawn_range_live_update_contract_test.rs`
+  NOT renamed (path attribute preserves it verbatim). Rationale
+  recorded in
   `production/qa/evidence/sprint-16-appcompat-manifest-evidence.md`
-  (NEW; or under the Sprint 17 path if the row carries forward).
+  §"Chosen Mechanism + Rationale" on `origin/main@bd374dd`.
 
-- [ ] **AC4 -- Smoke harness rename workaround removed or retained
-  only as documented fallback**: GIVEN the implementation commit
-  and the next smoke report authored after the implementation
-  lands, WHEN inspected, THEN the smoke harness no longer invokes
-  the per-run `cp ... srluc_appcompat_renamed.exe` rename step as
-  the primary path, and `docs/setup/dev-environment.md`'s
+- [x] **AC3 -- Test binary runs without OS error 740 for 5
+  consecutive runs without rename workaround**: 5 consecutive
+  invocations of
+  `cargo test -p shared --test spawn_range_live_refresh_contract`
+  captured in
+  `production/qa/evidence/sprint-16-appcompat-manifest-evidence.md`
+  on `origin/main@bd374dd`. All 5 PASS with zero
+  `os error 740` / "requested operation requires elevation"
+  diagnostics across the run set.
+
+- [x] **AC4 -- Smoke harness rename workaround removed or retained
+  only as documented fallback**: `docs/setup/dev-environment.md`'s
   `## Windows AppCompat heuristic for Cargo test binaries` section
-  is updated with a follow-up subsection noting that the manifest
-  mechanism is now the primary path **and** that the rename
-  workaround is retained as documented fallback for non-MSVC
-  builds or for hosts where the manifest mechanism is not
-  available. **Story 005's existing AppCompat note text is NOT
-  deleted** (the follow-up subsection appends; existing AC1-AC7
-  evidence in Story 005 remains valid for the historical record).
+  updated with a follow-up subsection noting that mechanism (d) is
+  now the primary path and that the per-run rename workaround is
+  retained only as documented fallback. Existing Story 005
+  AppCompat note text preserved unchanged.
 
-- [ ] **AC5 -- Cargo resource policy is required for any future
-  Cargo command**: GIVEN the implementation prompt, WHEN any
-  Cargo / Trunk / CI command is invoked under `/dev-story`, THEN
-  the invoking worker MUST request and obtain a Cargo resource
-  policy authorisation from the orchestrator (the project's
-  build-dependency / disk-pressure / PDB-limit policy bundle per
-  Sprint 13 stories 001-002). No Cargo invocation is run under
-  the authoring prompt (PROMPT 1057); the resource-policy
-  requirement applies to the **implementation** prompt
-  (`/dev-story`) only. This AC is procedural -- it gates the way
-  the implementation prompt acquires authorisation, not the
-  contents of the diff.
+- [x] **AC5 -- Cargo resource policy is required for any future
+  Cargo command**: PROMPT 1068 `/dev-story` worker set the Sprint
+  13-15 binding Cargo resource policy env vars
+  (`CARGO_TARGET_DIR='D:\_DEV\cargo-target\ccgs-msvc'`,
+  `CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`,
+  `CARGO_INCREMENTAL=0`,
+  `RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`) before each
+  `cargo` invocation; attestation recorded in
+  `production/qa/evidence/sprint-16-appcompat-manifest-evidence.md`.
+  PROMPT 1072 paperwork closure invoked no Cargo / Trunk command.
 
-- [ ] **AC6 -- No production gameplay behaviour change, no release
-  claim, no QA-COND closure**: GIVEN the implementation commit,
-  WHEN `git diff <pre-impl-sha>..<impl-sha>` is taken across
-  `client/`, `server/`, `shared/src/`, `tests/unit/protocol/spawn_range_live_update_contract_test.rs`,
-  `production/stage.txt`, `production/sprint-status.yaml` (top-level
-  `sprint:` / `status:` / `stage:` fields), and
-  `production/gate-checks/`, THEN: no source file under `client/`,
-  `server/`, `shared/src/` is modified; the test source file
-  `spawn_range_live_update_contract_test.rs` is not modified;
+- [x] **AC6 -- No production gameplay behaviour change, no release
+  claim, no QA-COND closure**: PROMPT 1068 worker diff scoped to
+  `shared/Cargo.toml` `[[test]] name` rename + `docs/setup/dev-environment.md`
+  AppCompat follow-up subsection + evidence artifact at
+  `production/qa/evidence/sprint-16-appcompat-manifest-evidence.md`.
+  Zero touch under `client/`, `server/`, `shared/src/`, or
+  `tests/unit/protocol/spawn_range_live_update_contract_test.rs`.
   `production/stage.txt` remains `Polish`; `production/sprint-status.yaml`
-  top-level fields are unchanged (row-level status flips on
-  `/story-done` are the only permitted disposition-preserving
-  edit); no gate-check artifact is modified. **No release
-  readiness claim**, **no `S8-QA-001-W1` closure**, **no
-  `QA-COND-0005` / `QA-COND-0006` advancement**, **no `PAW-TD-*-a`
-  resolution**, **no `TQ-S12-C7` closure** is claimed by the
-  implementation commit.
+  top-level fields preserved through PROMPT 1071 integration tip
+  `488a9cd` and PROMPT 1070 merge tip `bd374dd`. No release readiness,
+  `S8-QA-001-W1` closure, `QA-COND-0005` / `QA-COND-0006` advancement,
+  `PAW-TD-*-a` resolution, or `TQ-S12-C7` closure claimed by this row.
 
 ---
 
@@ -643,3 +619,95 @@ any Cargo command. PROMPT 1057 did NOT touch: `client/`, `server/`,
 `production/gate-checks/`, `production/session-state/`, or any
 story file other than this one + `production/epics/devops/EPIC.md`
 (row addition only; no existing row status changed).
+
+### Closure trail (added 2026-05-17 by PROMPT 1072)
+
+- **PROMPT 1064** (2026-05-17, paperwork-only Sprint 16 activation at
+  `origin/main@6f9308c`): flipped `production/sprint-status.yaml`
+  top-level `sprint: 15 -> 16` + `status: closed-with-conditions ->
+  active`; this row entered as Nice to Have `ready` on the Sprint 16
+  active set.
+- **PROMPT 1066** (2026-05-17, paperwork-only Sprint 16 QA plan at
+  `origin/main@c908f73`): authored `production/qa/qa-plan-sprint-16.md`
+  naming this row's targeted Windows/MSVC validation gates (AC3
+  BLOCKING 5 consecutive `cargo test` invocations without rename
+  workaround / no `os error 740`; AC5 Cargo resource policy mandatory).
+- **PROMPT 1068** `/dev-story` (worker
+  `ed58e3d98ab0ddc851dfcf6fdad84680a0006937`): chose Mechanism (d)
+  Cargo `[[test]] name` rename
+  `spawn_range_live_update_contract -> spawn_range_live_refresh_contract`,
+  preserving the source file path. Captured 5 consecutive
+  `cargo test` runs without rename workaround in
+  `production/qa/evidence/sprint-16-appcompat-manifest-evidence.md`.
+- **PROMPT 1071** integration commit
+  `488a9cd96e6bce2b9ecca7db172ab1be1acc8878`: merged the PROMPT 1068
+  worker into `origin/main` via `--no-ff`. Zero touch under `client/`,
+  `server/`, `shared/src/`, or the test source file.
+- **PROMPT 1070** final integration tip
+  `bd374ddf4360f01838830cef22bc36e3763fb8c1` (merge of `origin/main`
+  into the dead-code warning row's integration branch) carries this
+  row's `488a9cd` commit forward on `origin/main`.
+- **PROMPT 1072** (this `/story-done`, 2026-05-17, paperwork-only at
+  `origin/main@bd374dd`): flipped this story's AC1-AC6 checkboxes to
+  `[x]`; flipped the sprint-status row to `status: done` with
+  `completed: 2026-05-17`; recorded the closure trail. No Cargo /
+  Trunk / CI command. No production source edit.
+
+### Conditions carried forward unchanged by PROMPT 1072
+
+- Sprint 16 disposition: `active` (UNCHANGED; Sprint 16 NOT
+  closed-out by this row).
+- Stage `Polish` (UNCHANGED; `production/stage.txt` NOT touched).
+- PROMPT 761 Polish->Release gate-check `FAIL` preserved at
+  `production/gate-checks/gate-polish-release-2026-05-12.md`; NO
+  retry attempted.
+- `S8-QA-001-W1` OPEN preserved.
+- `QA-COND-0005` (friend-game scope) + `QA-COND-0006` (playtest
+  deferred) accepted-risk preserved.
+- `PAW-TD-*-a` placeholder-art accept-risk preserved.
+- `TQ-S12-C1..C7` preserved verbatim (TQ-S12-C7 explicitly NOT
+  closed by this row).
+- Story 005 (`S13-OPS-WIN-APPCOMPAT-NOTE-001`) DONE on
+  `origin/main@807c3e7` preserved unchanged.
+- Sprint 15 / 14 / 13 / 12 / 11 / 10 dispositions preserved
+  unchanged.
+- All four closed Sprint 15 rows preserved unchanged on
+  `origin/main`.
+- HUD timer row `S11-HUD-TIMER-EYEBALL-VISUAL-001` Sprint 13->14->15->16
+  carry preserved as human-operator-blocked; NOT closed by this row.
+- Card-slot row `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` remains Sprint 16
+  Should Have ready; NOT closed by this row (PROMPT 1067 still
+  running at closure time).
+
+### Explicitly NOT claimed by PROMPT 1072
+
+- Sprint 16 close-out.
+- Closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` (Must Have
+  human-operator-blocked Sprint 13->14->15->16 carry; closure remains
+  gated on human-operator screenshot capture; no LLM /story-done
+  authorised).
+- Closure of `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` (Should Have).
+- Public release readiness; release-candidate readiness; full game
+  completion.
+- Broad / Standard-tier accessibility completion (`QA-COND-0005`
+  remains accepted-risk).
+- Playtest / fun-hypothesis validation (`QA-COND-0006` remains
+  accepted-risk).
+- Full playable-client manual QA.
+- Two-client GAME_OVER closure (`S8-QA-001-W1` remains OPEN).
+- Final-art / asset-production completion (`PAW-TD-*-a` preserved).
+- Polish->Release gate-check retry; stage advance from Polish to
+  Release.
+- Closure of `TQ-S12-C7` Sprint 12 AppCompat informational
+  condition.
+- Any Cargo / Trunk / CI command invocation under PROMPT 1072.
+
+PROMPT 1072 did NOT run: `/smoke-check`, `/team-qa`, `/gate-check`,
+`/release-check`, `/dev-story`, `/story-readiness`, or `/qa-plan`.
+PROMPT 1072 did NOT touch: `client/`, `server/`, `shared/`, `tests/`,
+`Cargo.toml`, `Cargo.lock`, `.cargo/`, `.github/`, `Trunk.toml`,
+`docs/setup/dev-environment.md`, `production/qa/evidence/*`,
+`production/qa/qa-plan-sprint-16.md`, `production/sprints/*`, or
+`production/stage.txt`.
+
+`006: S15-OPS-APPCOMPAT-MANIFEST-001: DONE`

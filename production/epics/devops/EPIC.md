@@ -35,12 +35,16 @@ tooling change, or production-source change in this sprint.
   manifest/rename workaround note at `docs/setup/dev-environment.md`
   (informational from TQ-S12-C7). **DONE** on `origin/main` per PROMPT
   888 (2026-05-15).
-- `S15-OPS-APPCOMPAT-MANIFEST-001` -- **Sprint 16 candidate** follow-on
-  to Story 005: embed a Windows manifest with
-  `requestedExecutionLevel level="asInvoker"` (or equivalent robust
-  mechanism) for the `spawn_range_live_update_contract` test binary so
-  future smoke runs do not need the per-run rename workaround. **NOT
-  activated** by PROMPT 1057 (Sprint 16 candidate authoring only).
+- `S15-OPS-APPCOMPAT-MANIFEST-001` -- **DONE** on `origin/main` per
+  PROMPT 1072 (`/story-done` 2026-05-17 on `origin/main@bd374dd`).
+  Activated in Sprint 16 by PROMPT 1064. Implementation via Mechanism
+  (d) Cargo `[[test]] name` rename
+  `spawn_range_live_update_contract -> spawn_range_live_refresh_contract`
+  (PROMPT 1068 worker `ed58e3d`, integrated PROMPT 1071 `488a9cd`,
+  carried forward by PROMPT 1070 `bd374dd`). Source file
+  `spawn_range_live_update_contract_test.rs` NOT renamed. 5 consecutive
+  cargo runs without rename workaround / no `os error 740` recorded
+  in `production/qa/evidence/sprint-16-appcompat-manifest-evidence.md`.
 
 Sprint 13 does **not** advance stage. PROMPT 761 Polish->Release
 gate-check `FAIL` evidence is preserved. None of these stories closes
@@ -119,7 +123,7 @@ gate-check `FAIL` evidence is preserved. None of these stories closes
 | 003 | [Orchestrator-Root Concurrent-Session Lock Pattern](story-003-orchestrator-lock.md) | Documentation only | Draft -- Sprint 13 candidate (Nice to Have), NOT activated | S11-OPS-ORCHESTRATOR-LOCK-001 |
 | 004 | [`gh` CLI Installation Note](story-004-gh-cli-setup.md) | Documentation only | Draft -- Sprint 13 candidate (Nice to Have), NOT activated | S11-OPS-GH-CLI-001 |
 | 005 | [Windows AppCompat Heuristic + Workaround Note](story-005-win-appcompat-note.md) | Documentation only | Draft -- Sprint 13 candidate (Nice to Have), NOT activated | S13-OPS-WIN-APPCOMPAT-NOTE-001 |
-| 006 | [Windows AppCompat Manifest for `spawn_range_live_update_contract` Test Binary](story-006-appcompat-manifest.md) | Implementation / ops hygiene -- bounded Cargo test-target configuration change | Draft -- Sprint 16 candidate (Nice to Have), NOT activated | S15-OPS-APPCOMPAT-MANIFEST-001 |
+| 006 | [Windows AppCompat Manifest for `spawn_range_live_update_contract` Test Binary](story-006-appcompat-manifest.md) | Implementation / ops hygiene -- bounded Cargo test-target configuration change | Done -- Sprint 16 Nice to Have (closed PROMPT 1072 on `origin/main@bd374dd`; PROMPT 1068 worker `ed58e3d` + PROMPT 1071 integration `488a9cd`) | S15-OPS-APPCOMPAT-MANIFEST-001 |
 
 ## Definition of Done
 

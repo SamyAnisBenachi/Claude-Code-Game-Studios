@@ -1,3 +1,107 @@
+# PROMPT 1072 State Banner -- Sprint 16 Story-Done Batch (AppCompat + Dead-Code Warning)
+
+Updated 2026-05-17 by PROMPT 1072. Source-of-truth at closure:
+`origin/main@bd374ddf4360f01838830cef22bc36e3763fb8c1` (PROMPT 1070
+final integration tip: `integrate(s16): merge origin/main into PROMPT
+1070 integration`). Branch: `prompt-1072-sprint-16-story-done` from
+base `origin/main@bd374dd`; worktree
+`D:/_DEV/claude-code-game-studios-worktrees/s16-story-done-1072`.
+
+PROMPT 1072 is a paperwork-only shared-status writer that ran a
+batch `/story-done` closure for two integrated Sprint 16 rows:
+
+- **`S15-OPS-APPCOMPAT-MANIFEST-001`** (Nice to Have): closed on
+  basis of PROMPT 1068 worker (`ed58e3d`) Mechanism (d) Cargo
+  `[[test]] name` rename
+  `spawn_range_live_update_contract -> spawn_range_live_refresh_contract`
+  (source file NOT renamed) + PROMPT 1071 integration (`488a9cd`) +
+  evidence at
+  `production/qa/evidence/sprint-16-appcompat-manifest-evidence.md`
+  (5 consecutive `cargo test -p shared --test
+  spawn_range_live_refresh_contract` invocations PASS without rename
+  workaround / no `os error 740`). AC1-AC6 all PASS.
+- **`S15-TD-WORKSPACE-DEAD-CODE-WARNING-001`** (Nice to Have):
+  closed on basis of PROMPT 1069 worker (`2251a93`) Option A
+  deletion of `count_with_image_node` helper in
+  `tests/integration/presentation/hand_ui_asset_wiring_test.rs` +
+  PROMPT 1070 final integration tip (`bd374dd`) + evidence at
+  `production/qa/evidence/sprint-16-workspace-dead-code-warning/evidence.md`
+  (targeted `cargo check --workspace --all-targets` exit 0 with
+  zero `count_with_image_node` warning lines; 4 PAW-002-f
+  chrome-presence tests PASS unchanged). AC1-AC7 all PASS.
+
+Rows explicitly NOT closed by PROMPT 1072 (preserved as `ready`):
+
+- **`S11-HUD-TIMER-EYEBALL-VISUAL-001`** (Must Have human-operator-
+  blocked Sprint 13->14->15->16 carry): closure remains gated on
+  human-operator screenshot capture across DraftInitial 45s /
+  DraftShop 30s / Placement 10-12s phases; no LLM /story-done
+  authorised per the 2026-05-17 orchestrator decision; allowed to
+  carry to Sprint 17 if no human-operator slot.
+- **`S12-TD-UI-CARD-SLOT-PRIMITIVE-001`** (Should Have): PROMPT 1067
+  `/dev-story` still running at PROMPT 1072 closure time; closure
+  deferred to a later prompt sequenced after PROMPT 1067 worker +
+  integration land.
+
+Sprint 16 progress after PROMPT 1072: 2 of 4 active rows done
+(0/1 Must Have + 0/1 Should Have + 2/2 Nice to Have). Sprint 16
+disposition: `active` (UNCHANGED; NOT closed-out by PROMPT 1072).
+Stage `Polish` (UNCHANGED; `production/stage.txt` NOT touched).
+
+Files changed by PROMPT 1072:
+
+- `production/epics/devops/story-006-appcompat-manifest.md`
+  (AC1-AC6 flipped to [x]; status banner Done; closure trail).
+- `production/epics/devops/EPIC.md` (story 006 row flipped to Done;
+  overview bullet flipped to DONE).
+- `production/epics/ui-clean-pass/story-016-workspace-dead-code-warning.md`
+  (AC1-AC7 flipped to [x]; status banner Done; closure trail).
+- `production/epics/ui-clean-pass/EPIC.md` (story 016 row flipped to
+  Done).
+- `production/sprint-status.yaml` (S15-OPS-APPCOMPAT-MANIFEST-001 +
+  S15-TD-WORKSPACE-DEAD-CODE-WARNING-001 rows flipped status:
+  ready -> done with completed: 2026-05-17 + worker/integration/
+  evidence metadata + closure notes; `sprint_16_story_done:` block
+  appended at EOF following sprint_15_story_done: precedent).
+- `production/session-state/active.md` (this PROMPT 1072 banner
+  prepended above PROMPT 1066 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT 1072
+  section prepended above PROMPT 1066 section).
+- `reports/PROMPT-1072-Sprint-16-Story-Done-Batch-AppCompat-DeadCode.md`
+  (mandatory final report; gitignored).
+
+Files explicitly NOT touched by PROMPT 1072: `client/`, `server/`,
+`shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`, `.github/`,
+`Trunk.toml`, `docs/setup/dev-environment.md`, `production/stage.txt`,
+`production/sprints/*`, `production/qa/qa-plan-sprint-16.md`,
+`production/qa/evidence/*`, `production/qa/smoke-*.md`,
+`production/qa/team-qa-*.md`, `production/gate-checks/*`,
+`production/epics/hud/story-014-*`,
+`production/epics/ui-clean-pass/story-009-*`, `.octogent/`,
+`.claude/settings.json`. No cargo / trunk / CI command invoked.
+**Cargo policy: N/A** for this paperwork-only `/story-done` batch.
+
+Non-claims preserved verbatim: no Sprint 16 close-out; no closure of
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`; no closure of
+`S12-TD-UI-CARD-SLOT-PRIMITIVE-001`; no public release readiness; no
+RC readiness; no full game completion; no broad / Standard-tier
+accessibility completion (`QA-COND-0005` preserved); no playtest
+validation (`QA-COND-0006` preserved); no full manual QA; no
+two-client `GAME_OVER` closure (`S8-QA-001-W1` preserved); no
+final-art completion (`PAW-TD-*-a` preserved); no `Polish->Release`
+retry (PROMPT 761 FAIL preserved); no stage advance; no `TQ-S12-C7`
+closure; no `TQ-S12-C2` violation; no Sprint 12 story 019 underlying
+drag-runtime bug fix claim; no Sprint 15/14/13/12/11/10 row reopen;
+no closure of any of the 24 PROMPT 1022 QA snapshot audit findings.
+
+Branch / push: PROMPT 1072 commits
+`story-done(s16): close AppCompat and dead-code warning rows
+(PROMPT 1072)` on branch `prompt-1072-sprint-16-story-done` (base
+`origin/main@bd374dd`). Push target: `origin/main` if allowed;
+otherwise push branch only, never force.
+
+---
+
 # PROMPT 1066 State Banner -- Sprint 16 QA Plan Authored
 
 Updated 2026-05-17 by PROMPT 1066. Source-of-truth at authoring:
