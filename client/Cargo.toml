@@ -297,6 +297,16 @@ path = "../tests/integration/session/late_msg_dedupe_test.rs"
 name = "connection_lost_overlay_test"
 path = "../tests/integration/playable_client/connection_lost_overlay_test.rs"
 
+# PROMPT 1017 (re-land of PROMPT 996): placement-timer urgency audio crash
+# guard. Pins that `play_timer_urgency_cue` consumes `TimerUrgencyAudio`
+# messages without spawning `AudioPlayer` while the placeholder Ogg Opus
+# asset is unsupported by rodio/Bevy 0.18. Adding `bevy/vorbis` alone is
+# NOT sufficient -- the asset is Opus, not Vorbis, and rodio's Vorbis
+# decoder still returns `Err(UnrecognizedFormat)` on Opus content.
+[[test]]
+name = "timer_urgency_audio_crash_guard_test"
+path = "../tests/integration/playable_client/timer_urgency_audio_crash_guard_test.rs"
+
 # S11-TD-UI-ZINDEX-LAYERS (Sprint 14 story 002): UI z-layer design-token
 # module grep-guard, reconnect-respawn paint-order invariant, and migration
 # spot-checks (AC5, AC6, AC7, AC8).
