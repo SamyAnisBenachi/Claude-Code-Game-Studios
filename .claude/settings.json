@@ -47,6 +47,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST \"http://127.0.0.1:8787/api/hooks/session-start?octogent_session=$OCTOGENT_SESSION_ID\" -H 'Content-Type: application/json' -d @- || true",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -62,6 +72,22 @@
             "type": "command",
             "command": "bash .claude/hooks/validate-push.sh",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://127.0.0.1:8787/api/hooks/pre-tool-use",
+            "headers": {
+              "X-Octogent-Session": "$OCTOGENT_SESSION_ID"
+            },
+            "allowedEnvVars": [
+              "OCTOGENT_SESSION_ID"
+            ],
+            "timeout": 5
           }
         ]
       }
@@ -81,6 +107,22 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://127.0.0.1:8787/api/code-intel/events",
+            "headers": {
+              "X-Octogent-Session": "$OCTOGENT_SESSION_ID"
+            },
+            "allowedEnvVars": [
+              "OCTOGENT_SESSION_ID"
+            ],
+            "timeout": 5
+          }
+        ]
       }
     ],
     "Notification": [
@@ -91,6 +133,22 @@
             "type": "command",
             "command": "bash .claude/hooks/notify.sh",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://127.0.0.1:8787/api/hooks/notification",
+            "headers": {
+              "X-Octogent-Session": "$OCTOGENT_SESSION_ID"
+            },
+            "allowedEnvVars": [
+              "OCTOGENT_SESSION_ID"
+            ],
+            "timeout": 5
           }
         ]
       }
@@ -129,6 +187,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST \"http://127.0.0.1:8787/api/hooks/stop?octogent_session=$OCTOGENT_SESSION_ID\" -H 'Content-Type: application/json' -d @- || true",
+            "timeout": 15
+          }
+        ]
       }
     ],
     "SubagentStart": [
@@ -150,6 +218,18 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/log-agent-stop.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST \"http://127.0.0.1:8787/api/hooks/user-prompt-submit?octogent_session=$OCTOGENT_SESSION_ID\" -H 'Content-Type: application/json' -d @- || true",
             "timeout": 5
           }
         ]
