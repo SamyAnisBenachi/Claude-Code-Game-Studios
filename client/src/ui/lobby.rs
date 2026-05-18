@@ -267,6 +267,14 @@ pub struct LobbyRequestedSlotButton {
     pub slot: u8,
 }
 
+/// PROMPT 1178 — text label that introduces the manual-typed-join
+/// requested-slot row. Marked as its own component so tests can assert
+/// that the label is present only while `lobby.session_id` is `None`
+/// (manual typed-join surface), and absent after the player joined a
+/// room from the existing-room browser or created their own room.
+#[derive(Component)]
+pub struct LobbyRequestedSlotLabel;
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LobbyClassButton {
     pub class_id: ClassId,
@@ -1028,6 +1036,14 @@ pub fn request_refresh_rooms(
 /// the server-supplied `requested_slot`. Mirrors the `Join` button path so the
 /// existing `input.join_in_flight` latch and rejection surface (`apply_join_ack`
 /// / `S2CJoinRejected` drainer) continue to apply.
+///
+/// PROMPT 1178 — `input.requested_slot` is now synced to the clicked row's
+/// `first_open_slot` so the displayed own-slot label in the lobby cannot read
+/// a stale value (e.g. the `LobbyInputState::default()` `requested_slot = 1`
+/// after the user clicks a row whose only open seat is slot `2`). The
+/// authoritative server-confirmed slot still lands through `S2CJoinAck` /
+/// `S2CSlotUpdated` -> `lobby.slots`; this just keeps the optimistic
+/// input-side mirror coherent until the ack lands.
 pub fn request_join_room_from_row(
     row: &LobbyRoomListRow,
     input: &mut LobbyInputState,
@@ -1039,6 +1055,7 @@ pub fn request_join_room_from_row(
         return;
     }
 
+    input.requested_slot = row.requested_slot;
     input.join_in_flight = true;
     lobby.status = format!("Joining {}", row.room_code);
     commands.write(LobbyCommand::JoinRoom {
@@ -1204,22 +1221,14 @@ fn spawn_lobby_ui_system(
                         ));
                     });
 
-                // Section separator before the create/join section
-                // (`SPACING_XL` total cumulative gap = default `row_gap`
-                // `SPACING_MD` + this margin's extra `SPACING_XL -
-                // SPACING_MD`).
-                panel.spawn((
-                    Name::new("Lobby Section Separator 1"),
-                    Node {
-                        width: Val::Percent(100.0),
-                        height: Val::Px(0.0),
-                        margin: UiRect {
-                            top: Val::Px(SPACING_XL - SPACING_MD),
-                            ..default()
-                        },
-                        ..default()
-                    },
-                ));
+                // PROMPT 1178 — section separator 1 (the SPACING_XL gap
+                // between the status/room-code group and the create-join
+                // row) is removed. The default `row_gap: SPACING_MD`
+                // panel rule still gives an air-gap between sections, and
+                // the saved 16 px of vertical real-estate buys part of
+                // the budget needed to keep the Confirm CTA inside the
+                // viewport at 1280×720 after the PROMPT 1160 existing-
+                // room browser landed.
 
                 // Section 2 — create / join row + room-code input.
                 panel.spawn((
@@ -1275,103 +1284,124 @@ fn spawn_lobby_ui_system(
                     ));
                 });
 
-                // PROMPT 1160 — existing-room browser section. Sits between
-                // Section 2 (create / join row) and the Requested-slot row so
-                // the read order is "see who's playing here right now ->
-                // join one of those, or create your own, or type a private
-                // code -> pick a slot -> pick a class".
-                panel
-                    .spawn((
-                        Name::new("Lobby Existing Rooms Block"),
-                        Node {
-                            width: Val::Percent(100.0),
-                            flex_direction: FlexDirection::Column,
-                            row_gap: Val::Px(SPACING_SM),
-                            ..default()
-                        },
-                    ))
-                    .with_children(|block| {
-                        block.spawn((lobby_row_node(),)).with_children(|row| {
-                            row.spawn((
-                                Text::new("Existing rooms"),
-                                lobby_text_font(typography::H3),
-                                TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                            ));
-                            row.spawn((
-                                LobbyRefreshRoomsButton,
-                                LobbyDynamicText::Refresh,
-                                Button,
-                                Interaction::None,
-                                Text::new(lobby_dynamic_copy(
-                                    LobbyDynamicText::Refresh,
-                                    &lobby,
-                                    &input,
-                                )),
-                                lobby_text_font(typography::BODY),
-                                TextColor(Color::srgb(0.82, 0.95, 1.0)),
-                                lobby_button_node(
-                                    Val::Px(LOBBY_JOIN_BUTTON_WIDTH_PX),
-                                    LOBBY_JOIN_BUTTON_HEIGHT_PX,
-                                ),
-                                BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
-                                BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
-                            ));
-                        });
-                        block.spawn((
-                            LobbyRoomListContainer,
-                            Name::new("Lobby Room List Container"),
+                // PROMPT 1160 / PROMPT 1178 — existing-room browser section.
+                // Visible only before the local client has an active
+                // `session_id`. Once the player has joined or created a
+                // room, the browser becomes irrelevant: it can only list
+                // OTHER joinable rooms (the server filters out the local
+                // player's own room), and clicking another row at that
+                // point would race the `S2CJoinAck`. Hiding it post-join
+                // also reclaims ~84 px of panel content height (heading
+                // row 30 + intra-block row_gap SPACING_SM + room-list row
+                // 30 + the panel-level row_gap SPACING_MD before/after),
+                // which is part of the budget that keeps the Confirm CTA
+                // visible at the minimum 1280×720 viewport.
+                if lobby.session_id.is_none() {
+                    panel
+                        .spawn((
+                            Name::new("Lobby Existing Rooms Block"),
                             Node {
                                 width: Val::Percent(100.0),
                                 flex_direction: FlexDirection::Column,
                                 row_gap: Val::Px(SPACING_SM),
                                 ..default()
                             },
-                        ));
-                    });
+                        ))
+                        .with_children(|block| {
+                            block.spawn((lobby_row_node(),)).with_children(|row| {
+                                row.spawn((
+                                    Text::new("Existing rooms"),
+                                    lobby_text_font(typography::H3),
+                                    TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                                ));
+                                row.spawn((
+                                    LobbyRefreshRoomsButton,
+                                    LobbyDynamicText::Refresh,
+                                    Button,
+                                    Interaction::None,
+                                    Text::new(lobby_dynamic_copy(
+                                        LobbyDynamicText::Refresh,
+                                        &lobby,
+                                        &input,
+                                    )),
+                                    lobby_text_font(typography::BODY),
+                                    TextColor(Color::srgb(0.82, 0.95, 1.0)),
+                                    lobby_button_node(
+                                        Val::Px(LOBBY_JOIN_BUTTON_WIDTH_PX),
+                                        LOBBY_JOIN_BUTTON_HEIGHT_PX,
+                                    ),
+                                    BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
+                                    BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
+                                ));
+                            });
+                            block.spawn((
+                                LobbyRoomListContainer,
+                                Name::new("Lobby Room List Container"),
+                                Node {
+                                    width: Val::Percent(100.0),
+                                    flex_direction: FlexDirection::Column,
+                                    row_gap: Val::Px(SPACING_SM),
+                                    ..default()
+                                },
+                            ));
+                        });
+                }
 
-                // Sprint 14 story 003 AC6: lobby labels are at least as
-                // large as the data they describe.
-                panel.spawn((
-                    Text::new("Requested slot"),
-                    lobby_text_font(typography::BODY),
-                ));
-                panel.spawn((lobby_row_node(),)).with_children(|row| {
-                    for slot in 0..=3 {
-                        row.spawn((
-                            LobbyRequestedSlotButton { slot },
-                            LobbyDynamicText::Slot(slot),
-                            Button,
-                            Interaction::None,
-                            Text::new(lobby_dynamic_copy(
+                // PROMPT 1178 — `Requested slot` label + slot buttons are a
+                // manual-typed-Join seat preference, NOT a primary
+                // progression path after the player joined a room (either
+                // via the browser row click or via `Create Room`). They
+                // are now visible only when `session_id` is `None`, so
+                // they appear next to the typed-Join controls instead of
+                // squatting between the browser and the class picker
+                // after join — which read as "still need to pick a slot"
+                // and obscured the actual next step (Confirm class). When
+                // present, the row stays keyboard-reachable via the
+                // existing digit-key handlers and is consumed by
+                // `C2SJoinRoom { requested_slot }` for manual typed
+                // joins. Hiding this section post-join also reclaims
+                // ~81 px of panel content height, which restores
+                // Confirm-CTA visibility at the minimum 1280×720
+                // viewport.
+                if lobby.session_id.is_none() {
+                    // Sprint 14 story 003 AC6: lobby labels are at least as
+                    // large as the data they describe.
+                    panel.spawn((
+                        LobbyRequestedSlotLabel,
+                        Text::new("Requested slot (manual join)"),
+                        lobby_text_font(typography::BODY),
+                    ));
+                    panel.spawn((lobby_row_node(),)).with_children(|row| {
+                        for slot in 0..=3 {
+                            row.spawn((
+                                LobbyRequestedSlotButton { slot },
                                 LobbyDynamicText::Slot(slot),
-                                &lobby,
-                                &input,
-                            )),
-                            lobby_text_font(typography::BODY),
-                            TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                            lobby_button_node(
-                                Val::Px(LOBBY_REQUESTED_SLOT_BUTTON_WIDTH_PX),
-                                LOBBY_REQUESTED_SLOT_BUTTON_HEIGHT_PX,
-                            ),
-                            BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
-                            BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
-                        ));
-                    }
-                });
+                                Button,
+                                Interaction::None,
+                                Text::new(lobby_dynamic_copy(
+                                    LobbyDynamicText::Slot(slot),
+                                    &lobby,
+                                    &input,
+                                )),
+                                lobby_text_font(typography::BODY),
+                                TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                                lobby_button_node(
+                                    Val::Px(LOBBY_REQUESTED_SLOT_BUTTON_WIDTH_PX),
+                                    LOBBY_REQUESTED_SLOT_BUTTON_HEIGHT_PX,
+                                ),
+                                BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
+                                BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
+                            ));
+                        }
+                    });
+                }
 
-                // Section separator before the class-picker region.
-                panel.spawn((
-                    Name::new("Lobby Section Separator 2"),
-                    Node {
-                        width: Val::Percent(100.0),
-                        height: Val::Px(0.0),
-                        margin: UiRect {
-                            top: Val::Px(SPACING_XL - SPACING_MD),
-                            ..default()
-                        },
-                        ..default()
-                    },
-                ));
+                // PROMPT 1178 — section separator 2 (between the (now
+                // session-gated) Requested-slot row and the class picker)
+                // is removed. With both the browser and the slot picker
+                // hidden post-join, an extra SPACING_XL air-gap before
+                // the class picker would only widen the space the
+                // Confirm CTA still needs to fit inside.
 
                 // Section 3 -- class picker.
                 // Story 025 replaces the independent portrait/button rows
@@ -1542,6 +1572,16 @@ fn spawn_lobby_ui_system(
                 // of unidentified card placeholders (AUDIT-1129-08). The
                 // inline labels turn them into informative status panels:
                 // "You · {class} · slot N" / "Opp · {class or unknown}".
+                //
+                // PROMPT 1178 — the `ImageNode.color` field tints the panel
+                // asset down to a low-saturation greyish-blue so the chip
+                // reads as informational status, not as a primary click
+                // target. The two panels carry NO `Button` / `Interaction`
+                // markers (they have not in any prior revision either) so
+                // they remain non-interactive at the ECS level; the tint
+                // closes the visual gap. The PROMPT 1138 chrome-wiring
+                // contract (non-default `ImageNode.image` handle sourced
+                // from `LOBBY_PLAYER_SLOT_PANEL_ASSET`) is preserved.
                 panel.spawn((lobby_row_node(),)).with_children(|row| {
                     row.spawn((
                         LobbyOwnSlotPanel,
@@ -1554,7 +1594,9 @@ fn spawn_lobby_ui_system(
                             padding: UiRect::horizontal(Val::Px(SPACING_SM)),
                             ..default()
                         },
-                        ImageNode::new(asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET)),
+                        lobby_slot_chip_image_node(
+                            asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET),
+                        ),
                     ))
                     .with_children(|own| {
                         own.spawn((
@@ -1580,7 +1622,9 @@ fn spawn_lobby_ui_system(
                             padding: UiRect::horizontal(Val::Px(SPACING_SM)),
                             ..default()
                         },
-                        ImageNode::new(asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET)),
+                        lobby_slot_chip_image_node(
+                            asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET),
+                        ),
                     ))
                     .with_children(|opp| {
                         opp.spawn((
@@ -1742,10 +1786,7 @@ fn rebuild_room_list_rows(
                         Text::new(label),
                         lobby_text_font(typography::BODY),
                         TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                        lobby_button_node(
-                            Val::Percent(100.0),
-                            LOBBY_BUTTON_HEIGHT_PX,
-                        ),
+                        lobby_button_node(Val::Percent(100.0), LOBBY_BUTTON_HEIGHT_PX),
                         BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
                         BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
                     ));
@@ -1894,15 +1935,35 @@ fn lobby_dynamic_copy(
 /// blue-card placeholder (AUDIT-1129-08). The asterisk re-uses the
 /// existing convention from [`LobbyDynamicText::Class`] / `Slot` so it does
 /// not introduce a new selection-state glyph.
+///
+/// PROMPT 1178 — the displayed slot index now prefers the
+/// server-authoritative `lobby.slots[local_player_id].slot` when both are
+/// present, falling back to `input.requested_slot` only before the join
+/// acknowledgement has landed. This closes the gap where a row-click
+/// join into a different slot (e.g. row says `first_open_slot = 2`)
+/// could otherwise read "You · X · slot 1" because `LobbyInputState`
+/// defaulted to `requested_slot = 1`. The fallback path is kept so the
+/// label still reads sensibly during the pre-handshake / pre-join
+/// window where `slots` is empty.
 pub fn lobby_own_slot_label_text(lobby: &LobbyViewState, input: &LobbyInputState) -> String {
     let confirmed_marker = if lobby.locked_class.is_some() {
         " *"
     } else {
         ""
     };
+    let slot_index = lobby
+        .local_player_id
+        .and_then(|local| {
+            lobby
+                .slots
+                .iter()
+                .find(|s| s.player_id == Some(local))
+                .map(|s| s.slot)
+        })
+        .unwrap_or(input.requested_slot);
     format!(
         "You · {:?}{} · slot {}",
-        input.selected_class, confirmed_marker, input.requested_slot
+        input.selected_class, confirmed_marker, slot_index
     )
 }
 
@@ -2098,6 +2159,24 @@ fn lobby_class_picker_cell_colors(
             BorderColor::all(Color::srgba(0.42, 0.48, 0.56, 0.42)),
         )
     }
+}
+
+/// PROMPT 1178 — build a desaturated `ImageNode` for the lobby slot-panel
+/// chips so they read as informational status, not as primary buttons.
+///
+/// The panel's PNG asset (`ui_player_slot_panel.png`) is a saturated
+/// blue card placeholder; rendered at full color it competes with the
+/// gold-accent primary Confirm CTA for the player's attention and
+/// reads as "click me". Tinting `ImageNode.color` desaturates the
+/// chrome to a muted slate-grey, which is the visual cue the §3.1 L4
+/// hierarchy uses for "informational chip / readout / status panel".
+/// The `image` handle is preserved verbatim so the existing PROMPT
+/// 1138 chrome-wiring contract
+/// (`tests/integration/session/lobby_chrome_wiring_test.rs`) — which
+/// asserts a non-default `ImageNode.image` handle for both slot
+/// panels — continues to pass.
+pub fn lobby_slot_chip_image_node(image: Handle<Image>) -> ImageNode {
+    ImageNode::new(image).with_color(Color::srgba(0.62, 0.68, 0.78, 0.70))
 }
 
 fn lobby_button_node(width: Val, height_px: f32) -> Node {

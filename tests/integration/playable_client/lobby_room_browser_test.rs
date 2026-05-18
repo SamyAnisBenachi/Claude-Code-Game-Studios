@@ -5,7 +5,8 @@ use client::state::ClientState;
 use client::ui::lobby::{
     apply_room_list, format_room_list_row_label, lobby_initial_room_list_refresh_system,
     request_join_room_from_row, request_refresh_rooms, LobbyCommand, LobbyInputState,
-    LobbyRoomListRow, LobbyUiPlugin, LobbyViewState,
+    LobbyRefreshRoomsButton, LobbyRequestedSlotButton, LobbyRequestedSlotLabel,
+    LobbyRoomListContainer, LobbyRoomListRow, LobbyUiPlugin, LobbyViewState,
 };
 use shared::protocol::{GameMode, RoomListEntry, S2CRoomList};
 use shared::session::PlayerId;
@@ -92,7 +93,9 @@ fn test_handshake_triggers_one_refresh_rooms_command() {
     app.update();
     let baseline = collect_lobby_commands(app.world_mut());
     assert!(
-        !baseline.iter().any(|cmd| matches!(cmd, LobbyCommand::RefreshRooms)),
+        !baseline
+            .iter()
+            .any(|cmd| matches!(cmd, LobbyCommand::RefreshRooms)),
         "no RefreshRooms before handshake; baseline={:?}",
         baseline
     );
@@ -210,6 +213,241 @@ fn test_clicking_room_row_writes_join_command_with_first_open_slot() {
         app.world().resource::<LobbyInputState>().join_in_flight,
         "join_in_flight latch must be set after the click"
     );
+
+    // PROMPT 1178 — clicking a row also syncs the optimistic input-side
+    // mirror so the displayed own-slot label can no longer read a stale
+    // default while the server's `S2CJoinAck` is still in flight. The
+    // authoritative slot still lands via `apply_join_ack` ->
+    // `lobby.slots`; this just keeps the pre-ack readout coherent.
+    assert_eq!(
+        app.world().resource::<LobbyInputState>().requested_slot,
+        2,
+        "PROMPT 1178: clicking a row whose `first_open_slot = 2` must sync \
+         `input.requested_slot` to `2` so the optimistic own-slot label \
+         cannot read the stale `LobbyInputState::default()` slot 1"
+    );
+}
+
+/// PROMPT 1178 — clicking a row whose `first_open_slot` differs from the
+/// `LobbyInputState::default()` slot must surface as a join command that
+/// targets the row's slot AND must keep `input.requested_slot` in sync.
+/// This guards against a regression where the row click silently joined
+/// a different slot than the one the UI was about to display.
+#[test]
+fn test_clicking_row_with_different_slot_syncs_requested_slot() {
+    test_helpers::init_test_tracing();
+    let mut app = lobby_browser_app();
+    app.world_mut()
+        .resource_mut::<LobbyViewState>()
+        .local_player_id = Some(PlayerId(1));
+    app.update();
+    let _ = collect_lobby_commands(app.world_mut());
+
+    // `LobbyInputState::default()` reads `requested_slot = 1`. Click a
+    // row whose only open seat is slot `3` and confirm both sides line
+    // up.
+    let click_system = move |mut input: ResMut<LobbyInputState>,
+                             mut lobby: ResMut<LobbyViewState>,
+                             mut commands: MessageWriter<LobbyCommand>| {
+        let row = LobbyRoomListRow {
+            room_code: "ZZZZZZ".to_string(),
+            requested_slot: 3,
+        };
+        request_join_room_from_row(&row, &mut input, &mut lobby, &mut commands);
+    };
+    let id = app.world_mut().register_system(click_system);
+    app.world_mut().run_system(id).unwrap();
+    app.update();
+
+    assert_eq!(
+        app.world().resource::<LobbyInputState>().requested_slot,
+        3,
+        "PROMPT 1178: row.requested_slot = 3 must be mirrored into \
+         LobbyInputState.requested_slot so the own-slot label cannot read \
+         stale slot 1 while the join is in flight"
+    );
+    let cmds = collect_lobby_commands(app.world_mut());
+    assert!(
+        cmds.iter().any(|cmd| matches!(
+            cmd,
+            LobbyCommand::JoinRoom {
+                requested_slot: 3,
+                ..
+            }
+        )),
+        "PROMPT 1178: row click must still write JoinRoom with row's \
+         first_open_slot (= 3); got {cmds:?}"
+    );
+}
+
+/// PROMPT 1178 — existing-room browser block (refresh button + room-list
+/// container + room rows) is rendered only while `lobby.session_id` is
+/// `None`. Once the local player has joined or created a room, the
+/// browser is irrelevant: it can only list OTHER joinable rooms (the
+/// server filters out the local player's own room), and clicking
+/// another row at that point would race the `S2CJoinAck`. Hiding it
+/// post-join also reclaims panel content height — part of the budget
+/// that keeps the Confirm CTA visible at the minimum 1280×720
+/// viewport.
+#[test]
+fn test_existing_rooms_block_is_hidden_after_session_is_joined() {
+    test_helpers::init_test_tracing();
+    let mut app = lobby_browser_app();
+
+    // Pre-session baseline: refresh button + container present.
+    {
+        let world = app.world_mut();
+        let pre_refresh = world
+            .query_filtered::<Entity, With<LobbyRefreshRoomsButton>>()
+            .iter(world)
+            .count();
+        let pre_container = world
+            .query_filtered::<Entity, With<LobbyRoomListContainer>>()
+            .iter(world)
+            .count();
+        assert_eq!(
+            pre_refresh, 1,
+            "pre-session baseline: exactly one LobbyRefreshRoomsButton must exist"
+        );
+        assert_eq!(
+            pre_container, 1,
+            "pre-session baseline: exactly one LobbyRoomListContainer must exist"
+        );
+    }
+
+    // Simulate the player joining a room (the lobby plugin enters with no
+    // session; the room browser is what the user clicks to acquire one).
+    // The lobby UI is respawned only on `OnEnter(ClientState::Lobby)`, so
+    // we re-spawn the lobby UI by toggling state. Simpler: assert the
+    // composition after re-spawning from scratch with a session injected
+    // *before* the spawn system runs. We achieve that by despawning the
+    // lobby UI and re-entering Lobby state with session_id pre-set.
+    //
+    // The lobby plugin's OnEnter system bails if a root already exists,
+    // so the cleanest in-test approach is to drive the post-session
+    // composition by spawning a fresh app with the session injected
+    // before the initial `app.update()` runs.
+    let mut joined_app = App::new();
+    joined_app.add_plugins(MinimalPlugins);
+    joined_app.add_plugins(bevy::asset::AssetPlugin::default());
+    joined_app.init_asset::<bevy::image::Image>();
+    joined_app.add_plugins(StatesPlugin);
+    joined_app.init_state::<ClientState>();
+    joined_app.insert_resource(ButtonInput::<KeyCode>::default());
+    // Seed the lobby with a server-acknowledged session so the
+    // OnEnter(Lobby) spawn system sees `session_id.is_some()`.
+    joined_app.insert_resource(LobbyViewState {
+        session_id: Some("session-uuid".to_string()),
+        room_code: Some("ABCDEF".to_string()),
+        local_player_id: Some(PlayerId(1)),
+        ..Default::default()
+    });
+    joined_app.add_plugins(LobbyUiPlugin);
+    joined_app.update();
+    joined_app.update();
+
+    let world = joined_app.world_mut();
+    let refresh = world
+        .query_filtered::<Entity, With<LobbyRefreshRoomsButton>>()
+        .iter(world)
+        .count();
+    let container = world
+        .query_filtered::<Entity, With<LobbyRoomListContainer>>()
+        .iter(world)
+        .count();
+    let rows = world
+        .query_filtered::<Entity, With<LobbyRoomListRow>>()
+        .iter(world)
+        .count();
+    assert_eq!(
+        refresh, 0,
+        "PROMPT 1178: LobbyRefreshRoomsButton MUST NOT be present when \
+         `lobby.session_id` is Some at OnEnter(Lobby); got {refresh}"
+    );
+    assert_eq!(
+        container, 0,
+        "PROMPT 1178: LobbyRoomListContainer MUST NOT be present when \
+         `lobby.session_id` is Some at OnEnter(Lobby); got {container}"
+    );
+    assert_eq!(
+        rows, 0,
+        "PROMPT 1178: no LobbyRoomListRow may be spawned post-session; got {rows}"
+    );
+}
+
+/// PROMPT 1178 — `Requested slot (manual join)` label + slot buttons are
+/// rendered only while `lobby.session_id` is `None`. Once the player
+/// has joined a room (via browser row click, manual typed-Join, or
+/// `Create Room`), the requested-slot row is irrelevant — they've
+/// already committed to a seat — and its continued presence read as
+/// "next step is still slot selection", obscuring the actual Confirm
+/// CTA. Hiding it post-session also reclaims panel content height,
+/// part of the budget that keeps the Confirm CTA visible at the
+/// minimum 1280×720 viewport.
+#[test]
+fn test_requested_slot_row_is_hidden_after_session_is_joined() {
+    test_helpers::init_test_tracing();
+
+    // Pre-session baseline: label + 4 slot buttons present.
+    let mut pre_app = lobby_browser_app();
+    {
+        let world = pre_app.world_mut();
+        let labels = world
+            .query_filtered::<Entity, With<LobbyRequestedSlotLabel>>()
+            .iter(world)
+            .count();
+        let buttons = world
+            .query_filtered::<Entity, With<LobbyRequestedSlotButton>>()
+            .iter(world)
+            .count();
+        assert_eq!(
+            labels, 1,
+            "pre-session baseline: exactly one LobbyRequestedSlotLabel must exist"
+        );
+        assert_eq!(
+            buttons, 4,
+            "pre-session baseline: exactly 4 LobbyRequestedSlotButton entities \
+             (slots 0..=3) must exist"
+        );
+    }
+
+    // Post-session: respawn with `session_id` seeded.
+    let mut joined_app = App::new();
+    joined_app.add_plugins(MinimalPlugins);
+    joined_app.add_plugins(bevy::asset::AssetPlugin::default());
+    joined_app.init_asset::<bevy::image::Image>();
+    joined_app.add_plugins(StatesPlugin);
+    joined_app.init_state::<ClientState>();
+    joined_app.insert_resource(ButtonInput::<KeyCode>::default());
+    joined_app.insert_resource(LobbyViewState {
+        session_id: Some("session-uuid".to_string()),
+        room_code: Some("ABCDEF".to_string()),
+        local_player_id: Some(PlayerId(1)),
+        ..Default::default()
+    });
+    joined_app.add_plugins(LobbyUiPlugin);
+    joined_app.update();
+    joined_app.update();
+
+    let world = joined_app.world_mut();
+    let labels = world
+        .query_filtered::<Entity, With<LobbyRequestedSlotLabel>>()
+        .iter(world)
+        .count();
+    let buttons = world
+        .query_filtered::<Entity, With<LobbyRequestedSlotButton>>()
+        .iter(world)
+        .count();
+    assert_eq!(
+        labels, 0,
+        "PROMPT 1178: LobbyRequestedSlotLabel MUST NOT be present post-session; \
+         got {labels}"
+    );
+    assert_eq!(
+        buttons, 0,
+        "PROMPT 1178: LobbyRequestedSlotButton entities MUST NOT be present \
+         post-session; got {buttons}"
+    );
 }
 
 #[test]
@@ -233,7 +471,11 @@ fn test_full_room_renders_without_row_component() {
         .iter(world)
         .map(|row| row.room_code.clone())
         .collect();
-    assert_eq!(row_codes.len(), 1, "only joinable rows carry LobbyRoomListRow");
+    assert_eq!(
+        row_codes.len(),
+        1,
+        "only joinable rows carry LobbyRoomListRow"
+    );
     assert_eq!(
         row_codes[0], "AAAAAA",
         "the joinable row keeps its code; the full row is rendered as a non-button label"
@@ -250,10 +492,10 @@ fn test_refresh_button_request_writes_one_refresh_rooms_command() {
     let _ = collect_lobby_commands(app.world_mut());
 
     // Drive a refresh via a one-shot system that calls request_refresh_rooms.
-    let click_system =
-        move |mut lobby: ResMut<LobbyViewState>, mut commands: MessageWriter<LobbyCommand>| {
-            request_refresh_rooms(&mut lobby, &mut commands);
-        };
+    let click_system = move |mut lobby: ResMut<LobbyViewState>,
+                             mut commands: MessageWriter<LobbyCommand>| {
+        request_refresh_rooms(&mut lobby, &mut commands);
+    };
     let id = app.world_mut().register_system(click_system);
     app.world_mut().run_system(id).unwrap();
     app.update();
@@ -290,9 +532,6 @@ fn test_lobby_initial_room_list_refresh_system_is_exposed() {
     // Compile-only guard: the system must remain part of the public API so the
     // plugin can register it. If the symbol disappears, the link breaks here
     // before drift accumulates into a silent regression.
-    let _fn_ptr: fn(
-        Res<LobbyViewState>,
-        MessageWriter<LobbyCommand>,
-        Local<bool>,
-    ) = lobby_initial_room_list_refresh_system;
+    let _fn_ptr: fn(Res<LobbyViewState>, MessageWriter<LobbyCommand>, Local<bool>) =
+        lobby_initial_room_list_refresh_system;
 }
