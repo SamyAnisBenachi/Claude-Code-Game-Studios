@@ -407,6 +407,17 @@ path = "../tests/integration/qa_snapshot/qa_snapshot_overlay_test.rs"
 name = "ui_clean_pass_qa_snapshot_marker_split_test"
 path = "../tests/integration/ui_clean_pass/qa_snapshot_marker_split_test.rs"
 
+# S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001 (PROMPT 1188 / Lane K):
+# conservative button-vs-chip lint over client/src/ui/** and
+# client/src/presentation/**. Enforces docs/ux/global-ui-layout-
+# contract.md §5 (Overflow::visible() justification) and §6 (Button
+# spawn tuples carry BackgroundColor + Interaction). Ships with an
+# allowlisted baseline so the current branch is not blocked; only new
+# violations fail.
+[[test]]
+name = "ui_clean_pass_button_vs_chip_lint_test"
+path = "../tests/integration/ui_clean_pass/button_vs_chip_lint_test.rs"
+
 # S11-TD-UI-ZINDEX-LAYERS (Sprint 14 story 002): UI z-layer design-token
 # module grep-guard, reconnect-respawn paint-order invariant, and migration
 # spot-checks (AC5, AC6, AC7, AC8).
