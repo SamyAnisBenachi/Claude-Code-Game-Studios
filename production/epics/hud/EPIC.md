@@ -127,6 +127,7 @@ This epic is complete when:
 | 015 | [HUD Top Strip Layout (Composition Only)](story-015-hud-top-strip-layout.md) | UI | Draft -- Sprint 14 candidate (Must framing per `docs/ux/ui-clean-pass-roadmap.md` rank 7, `S11-UX-HUD-TOP-STRIP-LAYOUT`), NOT activated | ADR-021, ADR-002 |
 | 016 | [HUD Bottom Strip Layout (Composition Only)](story-016-hud-bottom-strip-layout.md) | UI | Draft -- Sprint 14 candidate (Tier 1 Must per `docs/ux/ui-clean-pass-roadmap.md` rank 8, `S11-UX-HUD-BOTTOM-STRIP-LAYOUT`), NOT activated | ADR-021, ADR-002 |
 | 017 | [HUD Opponent Figurine Composition (Layout Only)](story-017-hud-opponent-figurine.md) | UI | Done via PROMPT 976 (Sprint 14 Nice to Have, `S11-UX-HUD-OPP-FIGURINE`) | ADR-021, ADR-002, ADR-012 |
+| 018 | [HUD Opponent Figurine + OPP Label + Mana Duplicate Cleanup](story-018-opp-figurine-mana-cleanup.md) | Integration | Draft -- Sprint 17 candidate (Should Have, `S17-UI-HUD-OPP-MANA-CLEANUP-001`; PROMPT 1076 AUDIT-1076-10 + -16 + -17 bundle), NOT activated | ADR-021, ADR-002, ADR-012 |
 
 **15 stories total: 5 Logic · 6 UI · 3 Integration · 1 Visual/Feel**
 Story 004 blocked on OQ-HUD-05 (HudObjectiveUpdate trigger type crate location).

@@ -108,6 +108,7 @@ This epic is complete when:
 | 016 | [Auction Featured Card Visual Hierarchy](story-016-auction-featured-card.md) | UI | Draft | TR-SAU-002, TR-SAU-006 | ADR-013, ADR-021 |
 | 017 | [Auction Free-Gold Counters Layout and Readability](story-017-auction-free-gold-counters.md) | UI | Draft | TR-SAU-001, TR-SAU-006 | ADR-013, ADR-019, ADR-021 |
 | 018 | [Auction Featured Card Leading / Losing State Visual](story-018-auction-lead-loss-state.md) | UI | Draft | TR-SAU-005, TR-SAU-006 | ADR-013, ADR-021 |
+| 019 | [Bid-Button Phase-Entry Race / Empty + Baked-`?` Cleanup](story-019-bid-button-phase-race.md) | UI / Integration | Draft -- Sprint 17 candidate (Should Have, `S17-UI-BID-BUTTON-PHASE-RACE-001`; PROMPT 1077 SOURCE-1077-10), NOT activated | TR-SAU-002, TR-SAU-005 | ADR-013, ADR-021 |
 
 **Story counts**: 1 Logic, 3 Integration, 11 UI, 1 Visual/Feel.
 
