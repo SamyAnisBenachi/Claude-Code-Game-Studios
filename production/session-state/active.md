@@ -1,3 +1,43 @@
+# PROMPT 1224 State Banner -- Runtime/UI Integration Catch-Up
+
+Updated 2026-05-18 by orchestrator after the post-compaction main-land catch-up.
+Source-of-truth at refresh:
+`origin/main@dbacb85b282787825e93d150383672124e1c91d0` (PROMPT 1211
+opponent-disconnect broadcast integration tip). Stage remains `Polish`; Sprint
+17 remains `active`; Sprint 18 is still not activated by this update. No
+Sprint 17 close-out, Polish->Release retry, release claim, or stage advance is
+performed.
+
+Recent serialized main lands now on `origin/main`:
+
+- PROMPT 1219 / 1189: Sprint 18 UI roadmap candidate story authoring landed as
+  `0680fb4` after refresh onto the then-current main.
+- PROMPT 1209: server Placement deadline grace window landed as `f48583d`;
+  targeted RSM/timer tests passed. The shared `ccgs-msvc` target was locked by
+  a live `server.exe`, so verification used the sibling no-PDB target
+  `D:\_DEV\cargo-target\ccgs-msvc-test` without killing the user's run.
+- PROMPT 1185: live-spawn viewport invariant harness landed as `671c677`;
+  `cargo test -p client --test ui_viewport_live_test -- --nocapture` passed
+  8/8 under the Cargo resource policy.
+- PROMPT 1212: session-settings-on-join unicast landed as `6a18c78`; targeted
+  server tests passed 9/9 + 7/7 in the sibling no-PDB target.
+- PROMPT 1211: opponent-disconnect broadcast send-site landed as `dbacb85`;
+  targeted server/shared tests passed 24/24 in the sibling no-PDB target.
+
+Current pending worker state:
+
+- PROMPT 1210 placement drag cursor coord-space repair remains awaited; no
+  local report or worker branch was visible at this refresh.
+- PROMPT 1212 and PROMPT 1211 did not have local report files, but their pushed
+  worker commits contained detailed scope/test evidence and were integrated
+  after fresh worktree verification.
+
+Current next action: wait for PROMPT 1210. After it lands, integrate it
+serially before launching the dependent client-side placement auto-submit or
+placement rejection protocol follow-up. Continue using fresh worktrees for all
+integration/main-land work; the root checkout is not a clean orchestrator
+checkout.
+
 # Orchestrator Runtime Update -- Launcher Sidecar Follow-up
 
 Updated 2026-05-18 by orchestrator after PROMPT 1170 report and the user's
