@@ -1,0 +1,17 @@
+[package]
+name = "dev-launcher-app"
+version = "0.1.0"
+edition = "2021"
+description = "Windows two-button developer launcher EXE wrapping tools/dev-launcher PowerShell scripts."
+publish = false
+
+[[bin]]
+name = "ccgs-dev-launcher"
+path = "src/main.rs"
+
+[target.'cfg(windows)'.dependencies]
+native-windows-gui = "1"
+native-windows-derive = "1"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-pc-windows-msvc"]

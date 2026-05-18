@@ -2,26 +2,41 @@
 
 > Story-scope: PROMPT 1155 -- One-Button (now Two-Button) Latest-Main
 > Two-Client Test Launcher.
+> PROMPT 1162 added the optional native Windows EXE wrapper under
+> `tools/dev-launcher-app/`.
 > Path: `tools/dev-launcher/` (scripts), `update-latest-main.bat` +
-> `start-two-clients.bat` (one-click wrappers at repo root).
+> `start-two-clients.bat` (one-click wrappers at repo root),
+> `tools/dev-launcher-app/` (EXE wrapper).
 > Authored: 2026-05-18.
 
-Two one-click developer-only launchers for the manual two-client friend-game
-test loop. Each script is self-contained and exits without modifying any
-git remote, production tracker, sprint state, QA artifact, or evidence
-runbook.
+Three equivalent entry points for the manual two-client friend-game
+test loop:
+
+1. The raw PowerShell scripts (always available, no build step).
+2. The `.bat` wrappers at the repo root (one-click).
+3. The native Windows EXE wrapper (`ccgs-dev-launcher.exe`) -- a small
+   two-button GUI that invokes the same scripts and streams their output
+   into a log window. Build it once with `build-launcher-exe.ps1`.
+
+All three paths converge on the same scripts and produce the same
+artifacts. None of them modify git remotes, production trackers, sprint
+state, QA artifacts, or evidence runbooks.
 
 ## Where to click
 
-| Button | Wrapper at repo root | Real script |
-|--------|----------------------|-------------|
-| **Update + Rebuild** | `update-latest-main.bat` | `tools\dev-launcher\Update-LatestMain.ps1` |
-| **Launch 2 Clients** | `start-two-clients.bat` | `tools\dev-launcher\Start-TwoClients.ps1` |
+| Button | EXE button label | Wrapper at repo root | Real script |
+|--------|------------------|----------------------|-------------|
+| **Update + Rebuild** | `Rebuild Latest Main` | `update-latest-main.bat` | `tools\dev-launcher\Update-LatestMain.ps1` |
+| **Launch 2 Clients** | `Start Two-Client Play Session` | `start-two-clients.bat` | `tools\dev-launcher\Start-TwoClients.ps1` |
 
 Both `.bat` files invoke `powershell -NoProfile -ExecutionPolicy Bypass -File`
 under the hood and pass `%*` through, so any extra PowerShell flags below can
 be appended to the `.bat` invocation directly, e.g.
 `update-latest-main.bat -Release` or `start-two-clients.bat -Port 5050`.
+
+The EXE wrapper (`ccgs-dev-launcher.exe`) calls those same scripts with no
+extra flags and streams their stdout/stderr into a scrolling log window.
+See [Button 3 -- the EXE wrapper](#button-3----ccgs-dev-launcherexe) below.
 
 ## Button 1 -- Update + Rebuild (`update-latest-main.bat`)
 
@@ -132,6 +147,133 @@ production/qa/evidence/dev-runs/<UTC-stamp>/
 story; it is intentionally separate from existing capture / runbook trees
 under `production/qa/evidence/captures/` so dev-only one-button runs
 cannot be confused with formal QA-lead-signed evidence bundles.
+
+## Button 3 -- `ccgs-dev-launcher.exe`
+
+A small native Windows GUI (no console window in release builds) that wraps
+the same two PowerShell scripts. Built from the in-workspace Rust crate
+`tools/dev-launcher-app/` using `native-windows-gui` (Win32 controls).
+
+### What it looks like
+
+- Title: `CCGS Dev Launcher`
+- Two buttons, exact labels:
+  - `Rebuild Latest Main`
+  - `Start Two-Client Play Session`
+- A status line above the buttons (Idle / RUNNING / DONE / ERROR with exit code).
+- A `Logs / evidence:` line that fills in once `Start Two-Client Play Session`
+  prints its `Evidence dir:` marker.
+- A read-only log box below the buttons that streams stdout (and `[err]`-prefixed
+  stderr) from the underlying script.
+
+### Button-to-script mapping
+
+| EXE button | What it spawns |
+|------------|----------------|
+| `Rebuild Latest Main` | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\dev-launcher\Update-LatestMain.ps1` |
+| `Start Two-Client Play Session` | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\dev-launcher\Start-TwoClients.ps1` |
+
+Both invocations use the **resolved repo root** as the working directory.
+
+### Repo-root resolution order
+
+1. `CCGS_REPO_ROOT` environment variable, if it points at a directory that
+   contains `Cargo.toml`, `tools/dev-launcher/`, and `.git`.
+2. The EXE's own directory, walked upward until those three markers exist.
+3. The current working directory, walked upward.
+
+If none match, the EXE falls back to the current working directory and the
+log box prints an `ERROR: launcher script not found at ...` message when a
+button is clicked. Move the EXE inside the worktree, set `CCGS_REPO_ROOT`,
+or run it from the repo root.
+
+### Race / double-click protection
+
+- Both buttons are **disabled** while a job is running. They re-enable when
+  the script exits (or errors).
+- The status line shows the job kind plus the exit code (`DONE: ... (exit 0)`
+  or `DONE WITH ERRORS: ... (exit N)`).
+- The log box has a 2000-line ring buffer so a long run cannot grow it
+  unboundedly.
+
+### Build the EXE
+
+```text
+powershell -ExecutionPolicy Bypass -File tools\dev-launcher\build-launcher-exe.ps1
+# release-mode (smaller / faster, slower build):
+powershell -ExecutionPolicy Bypass -File tools\dev-launcher\build-launcher-exe.ps1 -Release
+```
+
+The build script applies the documented Windows/MSVC Cargo resource policy
+(`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc`,
+`CARGO_PROFILE_DEV_DEBUG=0`, etc.) and then runs:
+
+```text
+cargo build -p dev-launcher-app --bin ccgs-dev-launcher [--release]
+```
+
+Resulting EXE path:
+
+```text
+D:\_DEV\cargo-target\ccgs-msvc\debug\ccgs-dev-launcher.exe
+# or with -Release:
+D:\_DEV\cargo-target\ccgs-msvc\release\ccgs-dev-launcher.exe
+```
+
+The debug-profile EXE is ~450 KB; the release-profile EXE is smaller still
+(LTO + strip + panic=abort per the workspace `[profile.release]`).
+
+Alternatively, build directly with cargo from the repo root:
+
+```text
+$env:CARGO_TARGET_DIR='D:\_DEV\cargo-target\ccgs-msvc'
+$env:CARGO_PROFILE_DEV_DEBUG='0'
+$env:CARGO_PROFILE_TEST_DEBUG='0'
+$env:CARGO_INCREMENTAL='0'
+$env:RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'
+cargo build -p dev-launcher-app --bin ccgs-dev-launcher
+```
+
+### Run the EXE
+
+Double-click the EXE in Explorer, or run from PowerShell:
+
+```text
+D:\_DEV\cargo-target\ccgs-msvc\debug\ccgs-dev-launcher.exe
+```
+
+If you copy the EXE outside the worktree (e.g. to a tester's desktop), set
+`CCGS_REPO_ROOT` before launching so it can find the scripts:
+
+```text
+$env:CCGS_REPO_ROOT='D:\_DEV\Work\Claude-Code-Game-Studios'
+D:\_DEV\cargo-target\ccgs-msvc\debug\ccgs-dev-launcher.exe
+```
+
+### What the EXE does NOT do
+
+- It does not replace the `.bat` / `.ps1` paths. Both remain supported and
+  are the source of truth for behavior, safety, and flags.
+- It does not pass any flags through. To use `-Release`, `-Port`,
+  `-StrictPort`, `-Force`, etc., run the underlying script directly. The EXE
+  is the zero-friction tester path; the script is the power-user path.
+- It does not start any sidecar, fetch git, or write outside the script's
+  own evidence dir.
+
+### Validation (PROMPT 1162)
+
+- `cargo build -p dev-launcher-app --bin ccgs-dev-launcher` -- compiles
+  clean under the documented Cargo policy. Resulting EXE is ~450 KB debug.
+- `cargo test -p dev-launcher-app` -- 7 unit tests pass (evidence-dir
+  parsing, log ring-buffer truncation, button-label / script-path
+  invariants).
+- `powershell -File tools\dev-launcher\build-launcher-exe.ps1 -Help` --
+  prints usage; exit 0.
+- `powershell -File tools\dev-launcher\build-launcher-exe.ps1 -DryRun` --
+  prints the cargo command without invoking it; exit 0.
+- End-to-end click of the rebuild / launch buttons was **not** exercised
+  under PROMPT 1162 (out of scope per the prompt: "Do not actually click /
+  execute rebuild or two-client launch unless using a dry-run mode").
 
 ## Recommended workflow
 
