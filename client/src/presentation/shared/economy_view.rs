@@ -108,3 +108,69 @@ pub fn local_player_snapshot(snapshot: &S2CGameSnapshot) -> Option<&PlayerSnapsh
         .iter()
         .find(|player| player.player_id == snapshot.recipient_player_id)
 }
+
+/// Pure helper — compute the projected `(current_mana, reserve_mana)` pair the
+/// player would be left with if a card of `cost` mana were paid right now.
+///
+/// Returns `None` when the card is unaffordable (`current + reserve < cost`),
+/// matching the affordability rule used by
+/// `client/src/ui/hand/drag_state_visuals.rs::slot_is_affordable` so the
+/// HUD preview affordance stays consistent with the per-slot disabled
+/// overlay.
+///
+/// Spend order mirrors the canonical default split applied at drop staging in
+/// `client/src/ui/hand/mod.rs` (see `placement_drop` → `PlacedCardSubmit`
+/// construction): current mana is consumed first, then reserve. Used by the
+/// HUD mana label to paint a projected affordance during placement drag
+/// (PROMPT 1228 / HUNT-1201-12). Display-only — never mutates server state.
+pub fn project_mana_after_spend(
+    current_mana: u32,
+    reserve_mana: u32,
+    cost: u32,
+) -> Option<(u32, u32)> {
+    let spend_from_current = cost.min(current_mana);
+    let remaining_cost = cost.saturating_sub(spend_from_current);
+    if remaining_cost > reserve_mana {
+        return None;
+    }
+    Some((
+        current_mana - spend_from_current,
+        reserve_mana - remaining_cost,
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn project_mana_zero_cost_returns_inputs_unchanged() {
+        assert_eq!(project_mana_after_spend(5, 3, 0), Some((5, 3)));
+    }
+
+    #[test]
+    fn project_mana_pays_from_current_first() {
+        assert_eq!(project_mana_after_spend(5, 3, 2), Some((3, 3)));
+    }
+
+    #[test]
+    fn project_mana_spills_into_reserve_when_current_insufficient() {
+        assert_eq!(project_mana_after_spend(2, 5, 4), Some((0, 3)));
+    }
+
+    #[test]
+    fn project_mana_exhausts_pools_exactly() {
+        assert_eq!(project_mana_after_spend(3, 4, 7), Some((0, 0)));
+    }
+
+    #[test]
+    fn project_mana_returns_none_when_unaffordable() {
+        assert_eq!(project_mana_after_spend(2, 1, 5), None);
+    }
+
+    #[test]
+    fn project_mana_handles_zero_pools() {
+        assert_eq!(project_mana_after_spend(0, 0, 0), Some((0, 0)));
+        assert_eq!(project_mana_after_spend(0, 0, 1), None);
+    }
+}

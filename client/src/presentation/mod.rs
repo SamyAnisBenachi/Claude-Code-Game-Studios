@@ -45,8 +45,8 @@ pub mod shared;
 
 pub use crate::presentation::board_rendering::{BoardRenderingPlugin, CardAtlas};
 pub use crate::presentation::shared::economy_view::{
-    apply_snapshot_to_player_economy_view, PlayerEconomyView, PlayerEconomyViewUpdateSource,
-    PresentationGameSnapshotMessage,
+    apply_snapshot_to_player_economy_view, project_mana_after_spend, PlayerEconomyView,
+    PlayerEconomyViewUpdateSource, PresentationGameSnapshotMessage,
 };
 pub use crate::state::CurrentClientPhase;
 pub use crate::ui::shared::{BoardLayout, LaneCell};

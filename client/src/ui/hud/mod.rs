@@ -18,9 +18,12 @@ use crate::asset_wiring::{
     HUD_OBJECTIVE_DOT_DESTROYED_ASSET, HUD_PHASE_TIMER_BAR_ASSET,
 };
 use crate::card_animations::cancel_tween_anim_in_place;
-use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
+use crate::presentation::{
+    project_mana_after_spend, PlayerEconomyView, PresentationGameSnapshotMessage,
+};
 use crate::state::{ClientPhaseView, ClientSessionIdentity, ClientState, CurrentClientPhase};
 use crate::ui::design_tokens::{overlays, spacing, strips, typography, z_layers};
+use crate::ui::hand::{ActivePlacementDrag, HandCardCatalog};
 use crate::ui::lobby::LobbyViewState;
 use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
@@ -2063,6 +2066,9 @@ pub fn sync_gold_text_system(
 
 pub fn sync_mana_text_system(
     entities: Option<Res<HudEntities>>,
+    economy_view: Res<PlayerEconomyView>,
+    active_drag: Option<Res<ActivePlacementDrag>>,
+    hand_catalog: Option<Res<HandCardCatalog>>,
     mut mana_labels: Query<
         (
             &ManaDisplayState,
@@ -2093,6 +2099,34 @@ pub fn sync_mana_text_system(
         return;
     }
 
+    // PROMPT 1228 / HUNT-1201-12 — paint a projected mana/reserve readout
+    // while an affordable placement drag is in flight so the player can see
+    // the post-drop economy impact before releasing the card. Display-only;
+    // never mutates `ManaDisplayState` or `ManaTweenTarget`, so the next
+    // frame after the drag clears reverts to the authoritative numbers
+    // automatically. Resource look-ups are `Option<Res<…>>` so HUD plugins
+    // running without `HandUiPlugin` (existing tests) continue to compile.
+    let preview = active_drag
+        .as_deref()
+        .zip(hand_catalog.as_deref())
+        .and_then(|(drag, catalog)| compute_placement_drag_mana_preview(drag, catalog, &economy_view));
+
+    if let Some((preview_current, preview_reserve)) = preview {
+        mana_text.0 = format!(
+            "{} / {}",
+            preview_current,
+            display_numeric_value(target.mana_cap)
+        );
+        if preview_reserve > 0 {
+            reserve_text.0 = format!("+{} reserve", preview_reserve);
+            set_reserve_mana_visibility(&entities, &mut visibility, Visibility::Visible);
+        } else {
+            reserve_text.0.clear();
+            set_reserve_mana_visibility(&entities, &mut visibility, Visibility::Hidden);
+        }
+        return;
+    }
+
     mana_text.0 = format!(
         "{} / {}",
         display_numeric_value(target.current_mana),
@@ -2107,6 +2141,31 @@ pub fn sync_mana_text_system(
         reserve_text.0.clear();
         set_reserve_mana_visibility(&entities, &mut visibility, Visibility::Hidden);
     }
+}
+
+/// PROMPT 1228 — return `Some((preview_current, preview_reserve))` when the
+/// active placement drag identifies an affordable card in the local hand
+/// catalog. Returns `None` otherwise (no active drag, unknown card, or
+/// unaffordable cost). Affordability and spend split match the helper in
+/// `crate::presentation::project_mana_after_spend`.
+fn compute_placement_drag_mana_preview(
+    drag: &ActivePlacementDrag,
+    catalog: &HandCardCatalog,
+    economy_view: &PlayerEconomyView,
+) -> Option<(u32, u32)> {
+    if drag.card.is_none() || drag.target_kind.is_none() {
+        return None;
+    }
+    let card_id = drag.card_id?;
+    let card = catalog.cards.get(&card_id)?;
+    if card.cost == 0 {
+        return None;
+    }
+    project_mana_after_spend(
+        economy_view.current_mana,
+        economy_view.reserve_mana,
+        card.cost,
+    )
 }
 
 fn format_gold_text(state: &GoldDisplayState, owner: GoldLabelOwner) -> String {
