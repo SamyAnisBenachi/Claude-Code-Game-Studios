@@ -120,9 +120,23 @@ if (-not $DryRun) {
         "# Format: first non-blank, non-comment line is the absolute repo root."
         $RepoRoot
     ) -join "`r`n"
-    Set-Content -LiteralPath $sidecarPath -Value $sidecarBody -Encoding UTF8 -NoNewline
+    # Write as UTF-8 *without* BOM. PowerShell 5.x `Set-Content -Encoding UTF8`
+    # prepends a UTF-8 BOM (0xEF 0xBB 0xBF), which then attaches to the first
+    # line of the file. The Rust parser strips that BOM defensively, but we
+    # also want the on-disk bytes to be clean so cat/Get-Content/diff/etc.
+    # show the comment header without a leading "" glyph. Using
+    # [System.IO.File]::WriteAllText with UTF8Encoding($false) emits no BOM
+    # on both Windows PowerShell 5.x and PowerShell Core 7+.
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($sidecarPath, $sidecarBody, $utf8NoBom)
     if (Test-Path $sidecarPath) {
-        Write-Host "Sidecar written: yes"
+        $firstBytes = [System.IO.File]::ReadAllBytes($sidecarPath) | Select-Object -First 3
+        $hasBom = ($firstBytes.Count -ge 3 -and $firstBytes[0] -eq 0xEF -and $firstBytes[1] -eq 0xBB -and $firstBytes[2] -eq 0xBF)
+        if ($hasBom) {
+            Write-Warning "Sidecar written WITH UTF-8 BOM -- parser tolerates this but writer should be no-BOM. Check encoding."
+        } else {
+            Write-Host "Sidecar written: yes (UTF-8 no-BOM)"
+        }
     } else {
         Write-Warning "Sidecar not present after write."
     }

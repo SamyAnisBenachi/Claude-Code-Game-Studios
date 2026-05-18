@@ -206,7 +206,7 @@ and the log box lists every resolution attempt that was tried. To recover:
 
 ### Sidecar file format
 
-`ccgs-dev-launcher.repo-root.txt` is plain UTF-8 text written by
+`ccgs-dev-launcher.repo-root.txt` is plain UTF-8 text (**no BOM**) written by
 `build-launcher-exe.ps1` next to the built EXE. The first non-blank,
 non-comment line is the absolute repo root path. Example contents:
 
@@ -221,6 +221,20 @@ D:\_DEV\Work\Claude-Code-Game-Studios
 The sidecar is regenerated on every successful `build-launcher-exe.ps1` run.
 `-DryRun` prints the resolved path that *would* be written without modifying
 the filesystem.
+
+> **Encoding note.** PowerShell 5.x `Set-Content -Encoding UTF8` writes a
+> UTF-8 BOM (`0xEF 0xBB 0xBF`) before the first byte. With a comment header as
+> line 1, the on-disk first line then reads `\u{FEFF}# ccgs-dev-launcher...`,
+> which the parser's pre-1173 `trim().starts_with('#')` check did not
+> recognise as a comment (U+FEFF is not Unicode `White_Space`), so the BOM-
+> decorated comment line leaked through as the resolved "path" and the EXE
+> surfaced `launcher script not found ...`. PROMPT 1173 fixes this on both
+> sides: `build-launcher-exe.ps1` now writes the sidecar via
+> `[System.IO.File]::WriteAllText(..., UTF8Encoding($false))` so no BOM is
+> emitted, and `parse_sidecar_content` defensively strips a leading
+> `\u{FEFF}` before parsing (covering any older BOM-prefixed sidecars left on
+> disk). The build script also re-reads the first three bytes after writing
+> and prints a warning if a BOM was emitted anyway.
 
 ### Race / double-click protection
 
@@ -329,6 +343,27 @@ long as that sibling sidecar travels with it.
   invalid-env-falls-through-to-sidecar, sidecar-falls-through-to-walk-up,
   failed-resolution surfaces every attempt, and the explicit assertion
   that `target/debug` is never accepted as the repo root.
+
+### Validation (PROMPT 1173 -- BOM repair on integration refresh)
+
+- Runtime bug discovered: with PROMPT 1170's writer
+  (`Set-Content -Encoding UTF8`) on PowerShell 5.x, the sidecar gained a
+  UTF-8 BOM and the parser then resolved the BOM-prefixed comment header
+  as the "repo root" path, re-triggering "launcher script not found ..."
+  even though the file existed on disk.
+- Writer fix: `build-launcher-exe.ps1` now uses
+  `[System.IO.File]::WriteAllText(..., UTF8Encoding($false))` so the
+  sidecar is written as UTF-8 **without** BOM, and re-reads the first
+  three bytes post-write to warn if a BOM is somehow still present.
+- Parser fix: `parse_sidecar_content` strips a leading `\u{FEFF}` BOM
+  from the raw text before iterating lines, and `trim_matches` ignores
+  any stray BOM characters on individual lines.
+- New tests in `tools/dev-launcher-app/src/main.rs` cover:
+  `parse_sidecar_content_skips_bom_prefixed_comment_header`,
+  `parse_sidecar_content_strips_bom_directly_before_path`, and
+  `read_sidecar_root_handles_utf8_bom_with_comment_header` (end-to-end:
+  write a BOM+comment-header+path body via `fs::write` into a temp dir
+  and assert the parser returns the bare path, not the BOM line).
 
 ## Recommended workflow
 
