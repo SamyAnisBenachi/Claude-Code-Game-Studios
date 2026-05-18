@@ -71,8 +71,29 @@ use bevy::time::Real;
 use bevy::window::PrimaryWindow;
 use serde::Serialize;
 
-use crate::state::{ClientPhaseView, ClientSessionIdentity, ClientState, CurrentClientPhase};
+use crate::presentation::board_rendering::{
+    BoardLocalPlayer, BoardRenderState, BoardUnit, BoardUnitCard, BoardUnitOwner, BoardUnitStats,
+    ObjectiveArtKind, StandingObjective, StandingObjectiveArt, StandingObjectiveHp,
+};
+use crate::presentation::shared::economy_view::{PlayerEconomyView, PlayerEconomyViewUpdateSource};
+use crate::state::{
+    ClientObjectiveIdentities, ClientPhaseView, ClientSessionIdentity, ClientState,
+    CurrentClientPhase, OpponentConnectionView, SessionLifecycleView, SessionSettingsView,
+};
 use crate::ui::design_tokens::{typography, z_layers};
+use crate::ui::hand::{
+    ActiveGhostUnstageDrag, ActivePlacementDrag, HandContents, HandUiMode, HandUiOutboundMessages,
+    PendingPlacements, PlacementBoardView, PlacementDisclosureState, PlacementDisclosureStep,
+    PlacementTargetKind, PlacementTimer,
+};
+use crate::ui::hud::{HudClassReveal, HudMode, HudPlayerIds, PhaseTimerState};
+use crate::ui::shop_auction::{
+    AuctionBidKeyboardFocus, AuctionLocallyPassed, ShopAuctionAuctionPanelState,
+    ShopAuctionAuctionState, ShopAuctionDraftInitialState, ShopAuctionLocalGoldView,
+    ShopAuctionSettlementOutcome, ShopAuctionSettlementState, ShopAuctionShopState,
+    ShopAuctionShopTimerState, ShopAuctionToastState, ShopAuctionUiMode,
+    ShopAuctionUiOutboundMessages,
+};
 
 /// Environment variable that, when set to `1`, enables the QA snapshot
 /// overlay at plugin build time on native builds.
@@ -345,6 +366,11 @@ pub struct QASnapshotData {
     pub session_identity: SessionIdentityInfo,
     pub window: WindowInfo,
     pub ui_counts: UiCounts,
+    /// PROMPT 1132 — broader observability bag covering timers, resources,
+    /// hand, drag, shop/auction, board, HUD, settings, intents. Every
+    /// sub-field is `Option` (or empty by default) so missing resources or
+    /// disabled plugins serialise as `null` / `[]` rather than panicking.
+    pub extras: ExtrasSnapshot,
     pub warnings: Vec<String>,
 }
 
@@ -715,6 +741,940 @@ impl<'w, 's> UiCountQueries<'w, 's> {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// PROMPT 1132 — ExtrasSnapshot + ExtrasInputs (broader observability bag)
+// ─────────────────────────────────────────────────────────────────────────
+
+/// PROMPT 1132 — broader observability bag added to every QA snapshot. Each
+/// sub-field is `Option` (or an empty `Vec`) so a missing resource / disabled
+/// plugin serialises as `null` / `[]` rather than panicking. The struct is
+/// `#[serde(default)]`-friendly via [`Default`] so downstream tooling can
+/// deserialize older snapshots that pre-date this field.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct ExtrasSnapshot {
+    /// `bevy::diagnostic::FrameCount` (frames since app start); `None` when
+    /// the diagnostics plugin is absent (e.g. `MinimalPlugins` tests).
+    pub frame_count: Option<u64>,
+    /// Local + opponent `PlayerId` projected as Debug strings so the value
+    /// can be cross-referenced with server logs without coupling this module
+    /// to the protocol accessor surface.
+    pub players: PlayerIdsSnapshot,
+    /// Aggregated timers (phase / placement / auction / shop). Sub-fields
+    /// are `None` when the source resource is absent.
+    pub timers: TimersSnapshot,
+    /// Local player's economy + per-panel free-gold mirror.
+    pub resources: Option<PlayerResourcesSnapshot>,
+    /// Hand contents, mode, disclosure step, pending placements.
+    pub hand: Option<HandSnapshot>,
+    /// Active drag state (placement drag + ghost unstage drag).
+    pub drag: DragSnapshot,
+    /// Shop / draft / auction surfaces.
+    pub shop_auction: Option<ShopAuctionExtrasSnapshot>,
+    /// HUD-side state (mode, class reveal).
+    pub hud: Option<HudExtrasSnapshot>,
+    /// Board entities (units + standing objectives), capped to
+    /// [`MAX_BOARD_ENTITIES_PER_KIND`] each to keep the payload compact.
+    pub board: BoardSnapshot,
+    /// `BoardRenderState` enum (Debug name) — observability into the
+    /// pre/post-resolution gating.
+    pub board_render_state: Option<String>,
+    /// Local player's `SessionSettingsView` (placement timer multiplier).
+    pub session_settings: Option<SessionSettingsSnapshot>,
+    /// Unicast-revealed objective identities (ADR-001).
+    pub objective_identities: Vec<ObjectiveIdentitySnapshot>,
+    /// Opponent connection indicator (grace remaining when disconnected).
+    pub opponent_connection: Option<OpponentConnectionSnapshot>,
+    /// Session cancellation reason (Lifecycle view).
+    pub session_lifecycle: Option<SessionLifecycleSnapshot>,
+    /// Pending outbound message buffer sizes — never the message bodies, so
+    /// the payload stays compact regardless of churn.
+    pub outbound_intents: OutboundIntentsSnapshot,
+}
+
+/// Maximum number of board entities of one kind (units OR objectives)
+/// serialised into a snapshot. 60 covers the 15-cell board × 2 owners with
+/// headroom for ghosts; the cap keeps the JSON bounded if any future
+/// regression spawns extra entities.
+pub const MAX_BOARD_ENTITIES_PER_KIND: usize = 60;
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct PlayerIdsSnapshot {
+    pub local_player_id: Option<String>,
+    pub opponent_player_id: Option<String>,
+    /// Source of `opponent_player_id`: `placement_board_view`,
+    /// `hud_player_ids`, or `unknown`. Helps disambiguate when one source
+    /// disagrees with another.
+    pub opponent_source: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct TimersSnapshot {
+    pub phase_timer: Option<PhaseTimerSnapshot>,
+    pub placement_timer: Option<PlacementTimerSnapshot>,
+    pub auction_timer: Option<AuctionTimerSnapshot>,
+    pub shop_timer: Option<ShopTimerSnapshot>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PhaseTimerSnapshot {
+    pub duration_ms: u32,
+    pub elapsed_ms: u32,
+    pub remaining_ms: u32,
+    pub active: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PlacementTimerSnapshot {
+    pub remaining_ms: u32,
+    pub urgency_fired: bool,
+    pub in_grace_window: bool,
+    pub grace_remaining_ms: u32,
+    pub submitted: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AuctionTimerSnapshot {
+    pub panel_state: String,
+    pub duration_ms: u32,
+    pub remaining_ms: u32,
+    pub preparing_elapsed_ms: u32,
+    pub locally_expired_elapsed_ms: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ShopTimerSnapshot {
+    pub duration_ms: u32,
+    pub remaining_ms: u32,
+    pub started: bool,
+    pub deferred: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PlayerResourcesSnapshot {
+    pub initialized: bool,
+    pub last_update_source: Option<String>,
+    pub gold: u32,
+    pub current_mana: u32,
+    pub reserve_mana: u32,
+    pub mana_cap: u8,
+    pub local_gold_view: Option<LocalGoldViewSnapshot>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct LocalGoldViewSnapshot {
+    pub initialized: bool,
+    pub gold: u32,
+    pub reserved_gold: u32,
+    pub free_gold: u32,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct HandSnapshot {
+    pub mode: Option<String>,
+    pub disclosure_step: Option<String>,
+    pub hand_count: usize,
+    pub cards: Vec<HandCardSnapshot>,
+    pub pending_placements: Vec<PendingPlacementSnapshot>,
+    pub staged_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct HandCardSnapshot {
+    pub card_id: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PendingPlacementSnapshot {
+    pub card_id: u32,
+    pub target: String,
+    pub current_mana_spend: u32,
+    pub reserve_mana_spend: u32,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct DragSnapshot {
+    pub placement_drag_active: bool,
+    pub placement_drag_card_id: Option<u32>,
+    pub placement_drag_card_entity: Option<String>,
+    pub placement_drag_owner_id: Option<String>,
+    pub placement_drag_target_kind: Option<String>,
+    pub placement_drag_cursor_world: Option<[f32; 2]>,
+    pub ghost_unstage_active: bool,
+    pub ghost_unstage_card_id: Option<u32>,
+    pub ghost_unstage_cursor_screen: Option<[f32; 2]>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct ShopAuctionExtrasSnapshot {
+    pub ui_mode: Option<String>,
+    pub draft_initial: Option<DraftInitialPanelSnapshot>,
+    pub shop: Option<ShopPanelSnapshot>,
+    pub auction: Option<AuctionPanelSnapshot>,
+    pub settlement: Option<SettlementPanelSnapshot>,
+    pub bid_keyboard_focus: Option<String>,
+    pub locally_passed: bool,
+    pub toast: Option<ToastSnapshot>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DraftInitialPanelSnapshot {
+    pub offering_loaded: bool,
+    pub ready_signalled: bool,
+    pub objective_overlay_visible: bool,
+    pub objective_overlay_dismissed: bool,
+    pub objective_focus_target: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ShopPanelSnapshot {
+    pub slots_loaded: bool,
+    pub ready_signalled: bool,
+    pub refresh_count_this_draft: u32,
+    pub refresh_in_flight: bool,
+    pub footer_slots_loaded: bool,
+    /// `None` represents an empty footer slot.
+    pub footer_slots: Vec<Option<u32>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AuctionPanelSnapshot {
+    pub panel_state: String,
+    pub card_id: Option<u32>,
+    pub starting_price: u32,
+    pub current_price: u32,
+    pub current_leader: Option<String>,
+    pub timer_duration_ms: u32,
+    pub timer_remaining_ms: u32,
+    pub preparing_elapsed_ms: u32,
+    pub locally_expired_elapsed_ms: u32,
+    pub in_flight_bid_amount: Option<u32>,
+    pub pending_bid_accepted: bool,
+    pub pending_gold_broadcast_seen: bool,
+    pub opponent_bid_gate_satisfied: bool,
+    pub waiting_for_local_gold_after_opponent_bid: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SettlementPanelSnapshot {
+    pub outcome: Option<String>,
+    pub winner: Option<String>,
+    pub amount: u32,
+    pub card_id: Option<u32>,
+    pub elapsed_ms: u32,
+    pub transition_duration_ms: u32,
+    pub transition_active: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ToastSnapshot {
+    pub text: String,
+    pub elapsed_ms: u32,
+    pub active: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct HudExtrasSnapshot {
+    pub mode: Option<String>,
+    pub local_class: Option<String>,
+    pub opponent_class: Option<String>,
+    pub hud_player_ids: Option<HudPlayerIdsSnapshot>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct HudPlayerIdsSnapshot {
+    pub local_id: String,
+    pub opponent_id: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct BoardSnapshot {
+    pub local_player_id: Option<String>,
+    pub units: Vec<BoardUnitSnapshot>,
+    pub units_truncated: bool,
+    pub objectives: Vec<BoardObjectiveSnapshot>,
+    pub objectives_truncated: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BoardUnitSnapshot {
+    pub entity: String,
+    pub unit_id: u64,
+    pub owner_id: String,
+    pub card_id: Option<u32>,
+    pub frame_index: Option<usize>,
+    pub used_missing_art_fallback: Option<bool>,
+    pub hp_current: Option<u8>,
+    pub hp_max: Option<u8>,
+    pub atk: Option<u8>,
+    pub mp: Option<u8>,
+    pub ar: Option<u8>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BoardObjectiveSnapshot {
+    pub entity: String,
+    pub owner_id: String,
+    pub lane: u8,
+    pub hp_current: Option<u8>,
+    pub hp_max: Option<u8>,
+    pub art_kind: Option<String>,
+    pub used_runtime_asset: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SessionSettingsSnapshot {
+    pub placement_timer_multiplier_effective: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ObjectiveIdentitySnapshot {
+    pub lane: u8,
+    pub is_fake: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct OpponentConnectionSnapshot {
+    pub disconnected_player_id: Option<String>,
+    pub grace_remaining_ms: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SessionLifecycleSnapshot {
+    pub cancellation_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct OutboundIntentsSnapshot {
+    pub hand_activate_cards: usize,
+    pub hand_purchase_cards: usize,
+    pub hand_submit_placements: usize,
+    pub shop_purchase_cards: usize,
+    pub shop_refresh_shops: usize,
+    pub shop_ready_signals: usize,
+    pub shop_place_bids: usize,
+    pub shop_gold_counter_flash_requests: u32,
+}
+
+/// Bevy's `SystemParam` limit is 16 fields. The extras bag groups its
+/// resources into nested SystemParams so [`write_qa_snapshot_system`] can
+/// keep everything in a single SystemParam parameter while still respecting
+/// the ceiling.
+#[derive(SystemParam)]
+pub struct ExtrasInputs<'w, 's> {
+    pub frame_count: Option<Res<'w, bevy::diagnostic::FrameCount>>,
+    pub identity: Option<Res<'w, ClientSessionIdentity>>,
+    pub timers: ExtrasTimerInputs<'w>,
+    pub hand: ExtrasHandInputs<'w>,
+    pub shop_auction: ExtrasShopAuctionInputs<'w>,
+    pub hud: ExtrasHudInputs<'w>,
+    pub board: ExtrasBoardInputs<'w, 's>,
+    pub session: ExtrasSessionInputs<'w>,
+    pub economy: Option<Res<'w, PlayerEconomyView>>,
+    pub local_gold: Option<Res<'w, ShopAuctionLocalGoldView>>,
+    pub board_render_state: Option<Res<'w, BoardRenderState>>,
+    pub objective_identities: Option<Res<'w, ClientObjectiveIdentities>>,
+    pub hand_outbound: Option<Res<'w, HandUiOutboundMessages>>,
+    pub shop_outbound: Option<Res<'w, ShopAuctionUiOutboundMessages>>,
+}
+
+#[derive(SystemParam)]
+pub struct ExtrasTimerInputs<'w> {
+    pub phase_timer: Option<Res<'w, PhaseTimerState>>,
+    pub placement_timer: Option<Res<'w, PlacementTimer>>,
+    pub auction_state: Option<Res<'w, ShopAuctionAuctionState>>,
+    pub shop_timer: Option<Res<'w, ShopAuctionShopTimerState>>,
+}
+
+#[derive(SystemParam)]
+pub struct ExtrasHandInputs<'w> {
+    pub mode: Option<Res<'w, HandUiMode>>,
+    pub disclosure: Option<Res<'w, PlacementDisclosureState>>,
+    pub contents: Option<Res<'w, HandContents>>,
+    pub pending_placements: Option<Res<'w, PendingPlacements>>,
+    pub placement_drag: Option<Res<'w, ActivePlacementDrag>>,
+    pub ghost_unstage_drag: Option<Res<'w, ActiveGhostUnstageDrag>>,
+    pub placement_board_view: Option<Res<'w, PlacementBoardView>>,
+}
+
+#[derive(SystemParam)]
+pub struct ExtrasShopAuctionInputs<'w> {
+    pub ui_mode: Option<Res<'w, ShopAuctionUiMode>>,
+    pub draft_initial: Option<Res<'w, ShopAuctionDraftInitialState>>,
+    pub shop: Option<Res<'w, ShopAuctionShopState>>,
+    pub auction: Option<Res<'w, ShopAuctionAuctionState>>,
+    pub settlement: Option<Res<'w, ShopAuctionSettlementState>>,
+    pub bid_focus: Option<Res<'w, AuctionBidKeyboardFocus>>,
+    pub locally_passed: Option<Res<'w, AuctionLocallyPassed>>,
+    pub toast: Option<Res<'w, ShopAuctionToastState>>,
+}
+
+#[derive(SystemParam)]
+pub struct ExtrasHudInputs<'w> {
+    pub mode: Option<Res<'w, HudMode>>,
+    pub class_reveal: Option<Res<'w, HudClassReveal>>,
+    pub player_ids: Option<Res<'w, HudPlayerIds>>,
+}
+
+#[derive(SystemParam)]
+pub struct ExtrasBoardInputs<'w, 's> {
+    pub local_player: Option<Res<'w, BoardLocalPlayer>>,
+    pub units: Query<
+        'w,
+        's,
+        (
+            Entity,
+            &'static BoardUnit,
+            &'static BoardUnitOwner,
+            Option<&'static BoardUnitCard>,
+            Option<&'static BoardUnitStats>,
+        ),
+    >,
+    pub objectives: Query<
+        'w,
+        's,
+        (
+            Entity,
+            &'static StandingObjective,
+            Option<&'static StandingObjectiveHp>,
+            Option<&'static StandingObjectiveArt>,
+        ),
+    >,
+}
+
+#[derive(SystemParam)]
+pub struct ExtrasSessionInputs<'w> {
+    pub session_settings: Option<Res<'w, SessionSettingsView>>,
+    pub opponent_connection: Option<Res<'w, OpponentConnectionView>>,
+    pub session_lifecycle: Option<Res<'w, SessionLifecycleView>>,
+}
+
+impl<'w, 's> ExtrasInputs<'w, 's> {
+    /// Collect every available extra into an [`ExtrasSnapshot`]. Missing
+    /// resources produce `None`/empty fields without panicking; warnings
+    /// are surfaced through the caller's `Vec<String>` collector via
+    /// [`build_extras_snapshot`].
+    pub fn snapshot(&self) -> ExtrasSnapshot {
+        let mut warnings = Vec::new();
+        self.snapshot_with_warnings(&mut warnings)
+    }
+
+    /// Same as [`Self::snapshot`] but appends "<resource> missing"
+    /// diagnostics into `warnings` for missing top-level resources. The
+    /// host system can fold these into [`QASnapshotData::warnings`].
+    pub fn snapshot_with_warnings(&self, warnings: &mut Vec<String>) -> ExtrasSnapshot {
+        let frame_count = self.frame_count.as_deref().map(|c| c.0 as u64);
+
+        let players = build_player_ids_snapshot(
+            self.identity.as_deref(),
+            self.hand.placement_board_view.as_deref(),
+            self.hud.player_ids.as_deref(),
+        );
+
+        let timers = build_timers_snapshot(&self.timers);
+
+        let resources = self
+            .economy
+            .as_deref()
+            .map(|economy| build_resources_snapshot(economy, self.local_gold.as_deref()));
+        if resources.is_none() {
+            warnings.push("extras: PlayerEconomyView resource missing".to_string());
+        }
+
+        let hand = build_hand_snapshot(&self.hand);
+        let drag = build_drag_snapshot(&self.hand);
+        let shop_auction = build_shop_auction_snapshot(&self.shop_auction);
+        let hud = build_hud_snapshot(&self.hud);
+        let board = build_board_snapshot(&self.board);
+
+        let board_render_state = self
+            .board_render_state
+            .as_deref()
+            .map(|state| format!("{:?}", state));
+
+        let session_settings =
+            self.session
+                .session_settings
+                .as_deref()
+                .map(|s| SessionSettingsSnapshot {
+                    placement_timer_multiplier_effective: format!(
+                        "{:?}",
+                        s.placement_timer_multiplier_effective
+                    ),
+                });
+
+        let objective_identities = self
+            .objective_identities
+            .as_deref()
+            .map(|res| {
+                res.identities
+                    .iter()
+                    .map(|(lane, is_fake)| ObjectiveIdentitySnapshot {
+                        lane: *lane,
+                        is_fake: *is_fake,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let opponent_connection =
+            self.session
+                .opponent_connection
+                .as_deref()
+                .map(|view| match view.disconnected {
+                    Some(ind) => OpponentConnectionSnapshot {
+                        disconnected_player_id: Some(format!("{:?}", ind.player_id)),
+                        grace_remaining_ms: Some(ind.grace_remaining_ms),
+                    },
+                    None => OpponentConnectionSnapshot {
+                        disconnected_player_id: None,
+                        grace_remaining_ms: None,
+                    },
+                });
+
+        let session_lifecycle =
+            self.session
+                .session_lifecycle
+                .as_deref()
+                .map(|view| SessionLifecycleSnapshot {
+                    cancellation_reason: view.cancellation.map(|r| format!("{:?}", r)),
+                });
+
+        let outbound_intents = build_outbound_intents_snapshot(
+            self.hand_outbound.as_deref(),
+            self.shop_outbound.as_deref(),
+        );
+
+        ExtrasSnapshot {
+            frame_count,
+            players,
+            timers,
+            resources,
+            hand,
+            drag,
+            shop_auction,
+            hud,
+            board,
+            board_render_state,
+            session_settings,
+            objective_identities,
+            opponent_connection,
+            session_lifecycle,
+            outbound_intents,
+        }
+    }
+}
+
+fn build_player_ids_snapshot(
+    identity: Option<&ClientSessionIdentity>,
+    placement_board_view: Option<&PlacementBoardView>,
+    hud_player_ids: Option<&HudPlayerIds>,
+) -> PlayerIdsSnapshot {
+    let local_player_id = identity.and_then(|i| i.player_id).map(|p| format!("{:?}", p));
+    // Opponent is not directly stored on `ClientSessionIdentity`; pull from
+    // `PlacementBoardView` (placement-phase) or fall back to `HudPlayerIds`.
+    let (opponent_player_id, opponent_source) = if let Some(view) = placement_board_view {
+        (
+            Some(format!("{:?}", view.opponent_player_id)),
+            Some("placement_board_view".to_string()),
+        )
+    } else if let Some(ids) = hud_player_ids {
+        (
+            Some(format!("{:?}", ids.opponent_id)),
+            Some("hud_player_ids".to_string()),
+        )
+    } else {
+        (None, None)
+    };
+
+    PlayerIdsSnapshot {
+        local_player_id,
+        opponent_player_id,
+        opponent_source,
+    }
+}
+
+fn build_timers_snapshot(inputs: &ExtrasTimerInputs<'_>) -> TimersSnapshot {
+    let phase_timer = inputs.phase_timer.as_deref().map(|t| {
+        let remaining_ms = t.duration_ms.saturating_sub(t.elapsed_ms);
+        PhaseTimerSnapshot {
+            duration_ms: t.duration_ms,
+            elapsed_ms: t.elapsed_ms,
+            remaining_ms,
+            active: t.active,
+        }
+    });
+    let placement_timer = inputs.placement_timer.as_deref().map(|t| PlacementTimerSnapshot {
+        remaining_ms: t.remaining_ms,
+        urgency_fired: t.urgency_fired,
+        in_grace_window: t.in_grace_window,
+        grace_remaining_ms: t.grace_remaining_ms,
+        submitted: t.submitted,
+    });
+    let auction_timer = inputs.auction_state.as_deref().map(|s| AuctionTimerSnapshot {
+        panel_state: format!("{:?}", s.panel_state),
+        duration_ms: s.timer_duration_ms,
+        remaining_ms: s.timer_remaining_ms,
+        preparing_elapsed_ms: s.preparing_elapsed_ms,
+        locally_expired_elapsed_ms: s.locally_expired_elapsed_ms,
+    });
+    let shop_timer = inputs.shop_timer.as_deref().map(|s| ShopTimerSnapshot {
+        duration_ms: s.duration_ms,
+        remaining_ms: s.remaining_ms,
+        started: s.started,
+        deferred: s.deferred,
+    });
+    TimersSnapshot {
+        phase_timer,
+        placement_timer,
+        auction_timer,
+        shop_timer,
+    }
+}
+
+fn build_resources_snapshot(
+    economy: &PlayerEconomyView,
+    local_gold: Option<&ShopAuctionLocalGoldView>,
+) -> PlayerResourcesSnapshot {
+    let last_update_source = economy.last_update_source.map(|src| match src {
+        PlayerEconomyViewUpdateSource::GoldUpdate => "GoldUpdate".to_string(),
+        PlayerEconomyViewUpdateSource::Snapshot => "Snapshot".to_string(),
+    });
+    let local_gold_view = local_gold.map(|g| {
+        let free = g.free_gold(economy);
+        LocalGoldViewSnapshot {
+            initialized: g.initialized,
+            gold: g.gold,
+            reserved_gold: g.reserved_gold,
+            free_gold: free,
+        }
+    });
+    PlayerResourcesSnapshot {
+        initialized: economy.initialized,
+        last_update_source,
+        gold: economy.gold,
+        current_mana: economy.current_mana,
+        reserve_mana: economy.reserve_mana,
+        mana_cap: economy.mana_cap,
+        local_gold_view,
+    }
+}
+
+fn build_hand_snapshot(inputs: &ExtrasHandInputs<'_>) -> Option<HandSnapshot> {
+    let mode = inputs.mode.as_deref().copied();
+    let contents = inputs.contents.as_deref();
+    let pending = inputs.pending_placements.as_deref();
+    let disclosure = inputs.disclosure.as_deref();
+
+    if mode.is_none() && contents.is_none() && pending.is_none() && disclosure.is_none() {
+        return None;
+    }
+
+    let cards = contents
+        .map(|c| {
+            c.cards
+                .iter()
+                .map(|card_id| HandCardSnapshot { card_id: card_id.0 })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let hand_count = contents.map(|c| c.cards.len()).unwrap_or(0);
+    let pending_placements = pending
+        .map(|p| {
+            p.placements
+                .iter()
+                .map(|placement| PendingPlacementSnapshot {
+                    card_id: placement.card_id.0,
+                    target: format!("{:?}", placement.target),
+                    current_mana_spend: placement.current_mana_spend,
+                    reserve_mana_spend: placement.reserve_mana_spend,
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let staged_count = pending.map(|p| p.staged_count()).unwrap_or(0);
+    let disclosure_step = disclosure.map(|d| disclosure_step_name(d.step));
+
+    Some(HandSnapshot {
+        mode: mode.map(|m| format!("{:?}", m)),
+        disclosure_step,
+        hand_count,
+        cards,
+        pending_placements,
+        staged_count,
+    })
+}
+
+fn disclosure_step_name(step: PlacementDisclosureStep) -> String {
+    match step {
+        PlacementDisclosureStep::Hidden => "Hidden".to_string(),
+        PlacementDisclosureStep::CardSelection => "CardSelection".to_string(),
+        PlacementDisclosureStep::TargetSelection { target_kind } => {
+            format!("TargetSelection({})", target_kind_name(target_kind))
+        }
+        PlacementDisclosureStep::StagedCard => "StagedCard".to_string(),
+        PlacementDisclosureStep::Correction { error } => format!("Correction({:?})", error),
+        PlacementDisclosureStep::Submitted => "Submitted".to_string(),
+    }
+}
+
+fn target_kind_name(kind: PlacementTargetKind) -> &'static str {
+    match kind {
+        PlacementTargetKind::Minion => "Minion",
+        PlacementTargetKind::TargetObj => "TargetObj",
+        PlacementTargetKind::LaneWide => "LaneWide",
+        PlacementTargetKind::TargetUnit => "TargetUnit",
+        PlacementTargetKind::Instant => "Instant",
+    }
+}
+
+fn build_drag_snapshot(inputs: &ExtrasHandInputs<'_>) -> DragSnapshot {
+    let placement_drag = inputs.placement_drag.as_deref().copied().unwrap_or_default();
+    let ghost = inputs
+        .ghost_unstage_drag
+        .as_deref()
+        .copied()
+        .unwrap_or_default();
+
+    DragSnapshot {
+        placement_drag_active: placement_drag.card.is_some() && placement_drag.target_kind.is_some(),
+        placement_drag_card_id: placement_drag.card_id.map(|c| c.0),
+        placement_drag_card_entity: placement_drag.card.map(|e| format!("{:?}", e)),
+        placement_drag_owner_id: placement_drag.owner_id.map(|p| format!("{:?}", p)),
+        placement_drag_target_kind: placement_drag
+            .target_kind
+            .map(|k| target_kind_name(k).to_string()),
+        placement_drag_cursor_world: placement_drag
+            .cursor_world_position
+            .map(|v| [v.x, v.y]),
+        ghost_unstage_active: ghost.card_id.is_some(),
+        ghost_unstage_card_id: ghost.card_id.map(|c| c.0),
+        ghost_unstage_cursor_screen: ghost.cursor_screen_position.map(|v| [v.x, v.y]),
+    }
+}
+
+fn auction_panel_state_name(state: ShopAuctionAuctionPanelState) -> &'static str {
+    match state {
+        ShopAuctionAuctionPanelState::Hidden => "Hidden",
+        ShopAuctionAuctionPanelState::Preparing => "Preparing",
+        ShopAuctionAuctionPanelState::Active => "Active",
+        ShopAuctionAuctionPanelState::Settling => "Settling",
+        ShopAuctionAuctionPanelState::ConnectionError => "ConnectionError",
+    }
+}
+
+fn build_shop_auction_snapshot(
+    inputs: &ExtrasShopAuctionInputs<'_>,
+) -> Option<ShopAuctionExtrasSnapshot> {
+    let ui_mode = inputs.ui_mode.as_deref().copied();
+    let draft_initial_res = inputs.draft_initial.as_deref();
+    let shop_res = inputs.shop.as_deref();
+    let auction_res = inputs.auction.as_deref();
+    let settlement_res = inputs.settlement.as_deref();
+    let bid_focus = inputs.bid_focus.as_deref().copied();
+    let locally_passed = inputs.locally_passed.as_deref().copied();
+    let toast_res = inputs.toast.as_deref();
+
+    if ui_mode.is_none()
+        && draft_initial_res.is_none()
+        && shop_res.is_none()
+        && auction_res.is_none()
+        && settlement_res.is_none()
+        && bid_focus.is_none()
+        && locally_passed.is_none()
+        && toast_res.is_none()
+    {
+        return None;
+    }
+
+    let draft_initial = draft_initial_res.map(|d| DraftInitialPanelSnapshot {
+        offering_loaded: d.offering_loaded,
+        ready_signalled: d.ready_signalled,
+        objective_overlay_visible: d.objective_overlay_visible,
+        objective_overlay_dismissed: d.objective_overlay_dismissed,
+        objective_focus_target: format!("{:?}", d.objective_focus_target),
+    });
+
+    let shop = shop_res.map(|s| {
+        let footer_slots: Vec<Option<u32>> = s
+            .footer_slots()
+            .iter()
+            .copied()
+            .map(|slot| slot.map(|card_id| card_id.0))
+            .collect();
+        ShopPanelSnapshot {
+            slots_loaded: s.slots_loaded,
+            ready_signalled: s.ready_signalled,
+            refresh_count_this_draft: s.refresh_count_this_draft,
+            refresh_in_flight: s.refresh_in_flight,
+            footer_slots_loaded: s.footer_slots_loaded,
+            footer_slots,
+        }
+    });
+
+    let auction = auction_res.map(|a| AuctionPanelSnapshot {
+        panel_state: auction_panel_state_name(a.panel_state).to_string(),
+        card_id: a.card_id.map(|c| c.0),
+        starting_price: a.starting_price,
+        current_price: a.current_price,
+        current_leader: a.current_leader.map(|p| format!("{:?}", p)),
+        timer_duration_ms: a.timer_duration_ms,
+        timer_remaining_ms: a.timer_remaining_ms,
+        preparing_elapsed_ms: a.preparing_elapsed_ms,
+        locally_expired_elapsed_ms: a.locally_expired_elapsed_ms,
+        in_flight_bid_amount: a.in_flight_bid_amount,
+        pending_bid_accepted: a.pending_bid_accepted,
+        pending_gold_broadcast_seen: a.pending_gold_broadcast_seen,
+        opponent_bid_gate_satisfied: a.opponent_bid_gate_satisfied,
+        waiting_for_local_gold_after_opponent_bid: a
+            .waiting_for_local_gold_after_opponent_bid(),
+    });
+
+    let settlement = settlement_res.map(|s| SettlementPanelSnapshot {
+        outcome: s.outcome.map(settlement_outcome_name).map(String::from),
+        winner: s.winner.map(|p| format!("{:?}", p)),
+        amount: s.amount,
+        card_id: s.card_id.map(|c| c.0),
+        elapsed_ms: s.elapsed_ms,
+        transition_duration_ms: s.transition_duration_ms,
+        transition_active: s.transition_active,
+    });
+
+    let bid_keyboard_focus = bid_focus
+        .and_then(|f| f.focused_button)
+        .map(|e| format!("{:?}", e));
+
+    let locally_passed = locally_passed.map(|p| p.passed).unwrap_or(false);
+
+    let toast = toast_res.map(|t| ToastSnapshot {
+        text: t.text.clone(),
+        elapsed_ms: t.elapsed_ms,
+        active: t.active,
+    });
+
+    Some(ShopAuctionExtrasSnapshot {
+        ui_mode: ui_mode.map(|m| format!("{:?}", m)),
+        draft_initial,
+        shop,
+        auction,
+        settlement,
+        bid_keyboard_focus,
+        locally_passed,
+        toast,
+    })
+}
+
+fn settlement_outcome_name(outcome: ShopAuctionSettlementOutcome) -> &'static str {
+    match outcome {
+        ShopAuctionSettlementOutcome::LocalWinner => "LocalWinner",
+        ShopAuctionSettlementOutcome::OpponentWinner => "OpponentWinner",
+        ShopAuctionSettlementOutcome::NoBid => "NoBid",
+    }
+}
+
+fn build_hud_snapshot(inputs: &ExtrasHudInputs<'_>) -> Option<HudExtrasSnapshot> {
+    let mode = inputs.mode.as_deref().copied();
+    let reveal = inputs.class_reveal.as_deref().copied();
+    let ids = inputs.player_ids.as_deref().copied();
+
+    if mode.is_none() && reveal.is_none() && ids.is_none() {
+        return None;
+    }
+
+    Some(HudExtrasSnapshot {
+        mode: mode.map(|m| format!("{:?}", m)),
+        local_class: reveal.and_then(|r| r.local).map(|c| format!("{:?}", c)),
+        opponent_class: reveal.and_then(|r| r.opponent).map(|c| format!("{:?}", c)),
+        hud_player_ids: ids.map(|ids| HudPlayerIdsSnapshot {
+            local_id: format!("{:?}", ids.local_id),
+            opponent_id: format!("{:?}", ids.opponent_id),
+        }),
+    })
+}
+
+fn objective_art_kind_name(kind: ObjectiveArtKind) -> &'static str {
+    match kind {
+        ObjectiveArtKind::Unknown => "Unknown",
+        ObjectiveArtKind::Real => "Real",
+        ObjectiveArtKind::Fake => "Fake",
+    }
+}
+
+fn build_board_snapshot(inputs: &ExtrasBoardInputs<'_, '_>) -> BoardSnapshot {
+    let local_player_id = inputs
+        .local_player
+        .as_deref()
+        .and_then(|lp| lp.player_id)
+        .map(|p| format!("{:?}", p));
+
+    let mut units = Vec::new();
+    let mut units_truncated = false;
+    for (entity, board_unit, owner, card, stats) in inputs.units.iter() {
+        if units.len() >= MAX_BOARD_ENTITIES_PER_KIND {
+            units_truncated = true;
+            break;
+        }
+        units.push(BoardUnitSnapshot {
+            entity: format!("{:?}", entity),
+            unit_id: board_unit.unit_id,
+            owner_id: format!("{:?}", owner.0),
+            card_id: card.and_then(|c| c.card_id).map(|c| c.0),
+            frame_index: card.map(|c| c.frame_index),
+            used_missing_art_fallback: card.map(|c| c.used_missing_art_fallback),
+            hp_current: stats.map(|s| s.hp_current),
+            hp_max: stats.map(|s| s.hp_max),
+            atk: stats.map(|s| s.atk),
+            mp: stats.map(|s| s.mp),
+            ar: stats.map(|s| s.ar),
+        });
+    }
+
+    let mut objectives = Vec::new();
+    let mut objectives_truncated = false;
+    for (entity, standing, hp, art) in inputs.objectives.iter() {
+        if objectives.len() >= MAX_BOARD_ENTITIES_PER_KIND {
+            objectives_truncated = true;
+            break;
+        }
+        objectives.push(BoardObjectiveSnapshot {
+            entity: format!("{:?}", entity),
+            owner_id: format!("{:?}", standing.owner_id),
+            lane: standing.lane,
+            hp_current: hp.map(|h| h.hp_current),
+            hp_max: hp.map(|h| h.hp_max),
+            art_kind: art.map(|a| objective_art_kind_name(a.kind).to_string()),
+            used_runtime_asset: art.map(|a| a.used_runtime_asset),
+        });
+    }
+
+    BoardSnapshot {
+        local_player_id,
+        units,
+        units_truncated,
+        objectives,
+        objectives_truncated,
+    }
+}
+
+fn build_outbound_intents_snapshot(
+    hand: Option<&HandUiOutboundMessages>,
+    shop: Option<&ShopAuctionUiOutboundMessages>,
+) -> OutboundIntentsSnapshot {
+    let mut out = OutboundIntentsSnapshot::default();
+    if let Some(h) = hand {
+        out.hand_activate_cards = h.activate_cards.len();
+        out.hand_purchase_cards = h.purchase_cards.len();
+        out.hand_submit_placements = h.submit_placements.len();
+    }
+    if let Some(s) = shop {
+        out.shop_purchase_cards = s.purchase_cards.len();
+        out.shop_refresh_shops = s.refresh_shops.len();
+        out.shop_ready_signals = s.ready_signals.len();
+        out.shop_place_bids = s.place_bids.len();
+        out.shop_gold_counter_flash_requests = s.gold_counter_flash_requests;
+    }
+    out
+}
+
 impl Plugin for QASnapshotPlugin {
     fn build(&self, app: &mut App) {
         if !app.world().contains_resource::<QASnapshotConfig>() {
@@ -883,6 +1843,7 @@ pub fn write_qa_snapshot_system(
     identity: Option<Res<ClientSessionIdentity>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     ui_count_queries: UiCountQueries,
+    extras_inputs: ExtrasInputs,
 ) {
     if requests.is_empty() {
         return;
@@ -913,7 +1874,12 @@ pub fn write_qa_snapshot_system(
         let absolute_png_path = absolute_path(&png_path);
         let json_path = snapshot_dir.join("snapshot.json");
 
-        let snapshot = build_snapshot(
+        // Collect the PROMPT 1132 broader observability bag. Missing
+        // resources are tolerated and surfaced as warnings on the snapshot.
+        let mut extras_warnings = Vec::new();
+        let extras = extras_inputs.snapshot_with_warnings(&mut extras_warnings);
+
+        let mut snapshot = build_snapshot_with_extras(
             counter_value,
             requested_at_ms,
             ScreenshotInfo {
@@ -931,7 +1897,9 @@ pub fn write_qa_snapshot_system(
             identity.as_deref().copied(),
             window,
             ui_counts,
+            extras,
         );
+        snapshot.warnings.extend(extras_warnings);
 
         match write_snapshot_to_dir(&config.output_dir, &snapshot) {
             Ok(json_path_actual) => {
@@ -1113,6 +2081,11 @@ pub fn update_qa_snapshot_button_visuals_system(
 /// gathered by [`write_qa_snapshot_system`]. Exposed so unit / integration
 /// tests can exercise the serialization shape and warning behaviour
 /// without driving a full Bevy app.
+///
+/// Pre-1132 callers passing 9 arguments still resolve through this entry
+/// point — the new PROMPT 1132 `extras` bag defaults to
+/// [`ExtrasSnapshot::default`] (every sub-field `None` / empty). For richer
+/// captures see [`build_snapshot_with_extras`].
 #[allow(clippy::too_many_arguments)]
 pub fn build_snapshot(
     counter: u64,
@@ -1124,6 +2097,37 @@ pub fn build_snapshot(
     identity: Option<ClientSessionIdentity>,
     window: Option<&Window>,
     ui_counts: UiCounts,
+) -> QASnapshotData {
+    build_snapshot_with_extras(
+        counter,
+        unix_millis,
+        screenshot,
+        state,
+        current_phase,
+        phase_view,
+        identity,
+        window,
+        ui_counts,
+        ExtrasSnapshot::default(),
+    )
+}
+
+/// Same as [`build_snapshot`] but accepts a fully-populated
+/// [`ExtrasSnapshot`] (PROMPT 1132). The host system pre-collects extras
+/// through [`ExtrasInputs::snapshot_with_warnings`] so this function is
+/// pure / non-`SystemParam`-using and remains test-friendly.
+#[allow(clippy::too_many_arguments)]
+pub fn build_snapshot_with_extras(
+    counter: u64,
+    unix_millis: u128,
+    screenshot: ScreenshotInfo,
+    state: Option<ClientState>,
+    current_phase: Option<CurrentClientPhase>,
+    phase_view: Option<&ClientPhaseView>,
+    identity: Option<ClientSessionIdentity>,
+    window: Option<&Window>,
+    ui_counts: UiCounts,
+    extras: ExtrasSnapshot,
 ) -> QASnapshotData {
     let mut warnings: Vec<String> = Vec::new();
 
@@ -1210,6 +2214,7 @@ pub fn build_snapshot(
         session_identity: session_identity_info,
         window: window_info,
         ui_counts,
+        extras,
         warnings,
     }
 }

@@ -504,6 +504,7 @@ fn write_snapshot_to_dir_creates_per_id_subdirectory() {
             scale_factor: None,
         },
         ui_counts: UiCounts::default(),
+        extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
         warnings: vec![],
     };
 
@@ -553,6 +554,7 @@ fn update_snapshot_json_status_flips_to_captured_when_png_present() {
             scale_factor: None,
         },
         ui_counts: UiCounts::default(),
+        extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
         warnings: vec![],
     };
     let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
@@ -607,6 +609,7 @@ fn update_snapshot_json_status_marks_failed_when_png_missing() {
             scale_factor: None,
         },
         ui_counts: UiCounts::default(),
+        extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
         warnings: vec![],
     };
     let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
@@ -658,6 +661,7 @@ fn capture_completed_message_updates_feedback_to_saved() {
             scale_factor: None,
         },
         ui_counts: UiCounts::default(),
+        extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
         warnings: vec![],
     };
     let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
@@ -729,6 +733,7 @@ fn capture_completed_with_missing_png_demotes_to_failed() {
             scale_factor: None,
         },
         ui_counts: UiCounts::default(),
+        extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
         warnings: vec![],
     };
     let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
@@ -982,4 +987,293 @@ fn counter_is_monotonic() {
         a < b && b < c,
         "counter must produce strictly increasing ids"
     );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PROMPT 1132 — ExtrasSnapshot observability expansion
+// ─────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn extras_snapshot_default_serialises_as_null_friendly_payload() {
+    // The default ExtrasSnapshot must serialise with every optional sub-field
+    // as null / empty so a snapshot from a `MinimalPlugins` or pre-handshake
+    // build never panics and tooling can parse it deterministically.
+    use client::presentation::qa_snapshot::ExtrasSnapshot;
+
+    let extras = ExtrasSnapshot::default();
+    let value = serde_json::to_value(&extras).expect("ExtrasSnapshot must serialise");
+
+    assert!(value["frame_count"].is_null());
+    assert!(value["players"].is_object());
+    assert!(value["players"]["local_player_id"].is_null());
+    assert!(value["players"]["opponent_player_id"].is_null());
+    assert!(value["timers"].is_object());
+    assert!(value["timers"]["phase_timer"].is_null());
+    assert!(value["timers"]["placement_timer"].is_null());
+    assert!(value["timers"]["auction_timer"].is_null());
+    assert!(value["timers"]["shop_timer"].is_null());
+    assert!(value["resources"].is_null());
+    assert!(value["hand"].is_null());
+    assert!(value["drag"].is_object());
+    assert_eq!(value["drag"]["placement_drag_active"], false);
+    assert_eq!(value["drag"]["ghost_unstage_active"], false);
+    assert!(value["shop_auction"].is_null());
+    assert!(value["board"].is_object());
+    assert!(value["board"]["units"].is_array());
+    assert!(value["board"]["objectives"].is_array());
+    assert_eq!(value["board"]["units"].as_array().unwrap().len(), 0);
+    assert!(value["hud"].is_null());
+    assert!(value["board_render_state"].is_null());
+    assert!(value["session_settings"].is_null());
+    assert!(value["objective_identities"].is_array());
+    assert!(value["opponent_connection"].is_null());
+    assert!(value["session_lifecycle"].is_null());
+    assert!(value["outbound_intents"].is_object());
+    assert_eq!(value["outbound_intents"]["hand_activate_cards"], 0);
+}
+
+#[test]
+fn snapshot_request_serialises_extras_block_into_json() {
+    // Drive the end-to-end snapshot write path under MinimalPlugins and
+    // verify the on-disk JSON carries an `extras` block whose sub-fields
+    // reflect the (mostly absent) world state. The plugin must NOT panic
+    // when full-app resources like PlayerEconomyView, HudClassReveal, etc.
+    // are not registered — the extras path is defensive.
+    test_helpers::init_test_tracing();
+    let mut app = App::new();
+    let tmp = unique_tmp_dir("extras-request");
+    app.insert_resource(QASnapshotConfig {
+        enabled: true,
+        output_dir: tmp.clone(),
+    });
+    app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::state::app::StatesPlugin);
+    app.init_state::<ClientState>();
+    app.insert_resource(CurrentClientPhase {
+        phase: RoundPhase::Placement,
+        round: 2,
+    });
+    app.insert_resource(ClientPhaseView {
+        phase: RoundPhase::Placement,
+        round_number: 2,
+        timer_duration_ms: 45_000,
+    });
+    app.insert_resource(ClientSessionIdentity::default());
+    // Seed a couple of resources that the extras path consumes so the
+    // output is more than just nulls.
+    app.insert_resource(client::presentation::shared::economy_view::PlayerEconomyView {
+        gold: 7,
+        current_mana: 3,
+        reserve_mana: 2,
+        mana_cap: 5,
+        initialized: true,
+        last_update_source: Some(
+            client::presentation::shared::economy_view::PlayerEconomyViewUpdateSource::Snapshot,
+        ),
+    });
+    app.add_plugins(QASnapshotPlugin);
+    app.update();
+
+    app.world_mut()
+        .resource_mut::<Messages<QASnapshotRequested>>()
+        .write(QASnapshotRequested);
+    app.update();
+
+    let entries: Vec<_> = fs::read_dir(&tmp)
+        .expect("output_dir must exist after a snapshot write")
+        .filter_map(|e| e.ok())
+        .collect();
+    assert_eq!(entries.len(), 1);
+    let json_path = entries[0].path().join("snapshot.json");
+    let json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&json_path).unwrap()).unwrap();
+
+    // Top-level `extras` block present.
+    let extras = json
+        .get("extras")
+        .expect("snapshot.json must include an `extras` block (PROMPT 1132)");
+
+    // Frame count is `null` when bevy_diagnostic's FrameCount is not
+    // registered, and a number once `FrameCountPlugin` is loaded. Bevy 0.18
+    // includes `FrameCountPlugin` in `MinimalPlugins`, but tooling must
+    // tolerate either shape — assert the contract rather than a specific
+    // value.
+    let frame_count = &extras["frame_count"];
+    assert!(
+        frame_count.is_null() || frame_count.is_number(),
+        "extras.frame_count must serialise as null or a number, got {frame_count:?}"
+    );
+
+    // Resources block carries the seeded values.
+    let resources = extras
+        .get("resources")
+        .and_then(|v| v.as_object())
+        .expect("extras.resources must be populated when PlayerEconomyView is present");
+    assert_eq!(resources["gold"], 7);
+    assert_eq!(resources["current_mana"], 3);
+    assert_eq!(resources["reserve_mana"], 2);
+    assert_eq!(resources["mana_cap"], 5);
+    assert_eq!(resources["initialized"], true);
+    assert_eq!(resources["last_update_source"], "Snapshot");
+
+    // Defensive contract: missing resources surface as null / empty, never panic.
+    assert!(extras["hand"].is_null());
+    assert!(extras["shop_auction"].is_null());
+    assert!(extras["hud"].is_null());
+    assert!(extras["board_render_state"].is_null());
+    assert!(extras["session_settings"].is_null());
+    assert!(extras["objective_identities"].is_array());
+    assert_eq!(
+        extras["objective_identities"].as_array().unwrap().len(),
+        0
+    );
+    // Drag block always present, with both drag tracks reading inactive.
+    assert_eq!(extras["drag"]["placement_drag_active"], false);
+    assert_eq!(extras["drag"]["ghost_unstage_active"], false);
+}
+
+#[test]
+fn build_snapshot_with_extras_embeds_extras_field() {
+    use client::presentation::qa_snapshot::{
+        build_snapshot_with_extras, ExtrasSnapshot, OutboundIntentsSnapshot, PhaseTimerSnapshot,
+        PlayerIdsSnapshot, PlayerResourcesSnapshot, TimersSnapshot,
+    };
+
+    let extras = ExtrasSnapshot {
+        frame_count: Some(42),
+        players: PlayerIdsSnapshot {
+            local_player_id: Some("PlayerId(1)".to_string()),
+            opponent_player_id: Some("PlayerId(2)".to_string()),
+            opponent_source: Some("placement_board_view".to_string()),
+        },
+        timers: TimersSnapshot {
+            phase_timer: Some(PhaseTimerSnapshot {
+                duration_ms: 30_000,
+                elapsed_ms: 5_000,
+                remaining_ms: 25_000,
+                active: true,
+            }),
+            placement_timer: None,
+            auction_timer: None,
+            shop_timer: None,
+        },
+        resources: Some(PlayerResourcesSnapshot {
+            initialized: true,
+            last_update_source: Some("GoldUpdate".to_string()),
+            gold: 12,
+            current_mana: 4,
+            reserve_mana: 1,
+            mana_cap: 6,
+            local_gold_view: None,
+        }),
+        outbound_intents: OutboundIntentsSnapshot {
+            hand_submit_placements: 3,
+            ..OutboundIntentsSnapshot::default()
+        },
+        ..ExtrasSnapshot::default()
+    };
+
+    let snapshot = build_snapshot_with_extras(
+        9,
+        1_700_000_000_999,
+        ScreenshotInfo {
+            relative_path: QA_SCREENSHOT_FILENAME.to_string(),
+            absolute_path: format!("/abs/{QA_SCREENSHOT_FILENAME}"),
+            format: QA_SCREENSHOT_FORMAT.to_string(),
+            requested_at_ms: 1_700_000_000_999,
+            status: SCREENSHOT_STATUS_PENDING.to_string(),
+            captured_at_ms: None,
+            error: None,
+        },
+        Some(ClientState::InSession),
+        Some(CurrentClientPhase {
+            phase: RoundPhase::Placement,
+            round: 4,
+        }),
+        None,
+        Some(ClientSessionIdentity::default()),
+        None,
+        UiCounts::default(),
+        extras,
+    );
+
+    assert_eq!(snapshot.extras.frame_count, Some(42));
+    assert_eq!(
+        snapshot.extras.players.local_player_id.as_deref(),
+        Some("PlayerId(1)")
+    );
+    assert_eq!(
+        snapshot.extras.players.opponent_source.as_deref(),
+        Some("placement_board_view")
+    );
+    let phase_timer = snapshot
+        .extras
+        .timers
+        .phase_timer
+        .clone()
+        .expect("phase_timer must be present");
+    assert_eq!(phase_timer.remaining_ms, 25_000);
+    let resources = snapshot
+        .extras
+        .resources
+        .clone()
+        .expect("resources must be present");
+    assert_eq!(resources.gold, 12);
+    assert_eq!(resources.mana_cap, 6);
+    assert_eq!(resources.last_update_source.as_deref(), Some("GoldUpdate"));
+    assert_eq!(snapshot.extras.outbound_intents.hand_submit_placements, 3);
+
+    // Round-trip through JSON to confirm Serialize produces a well-formed
+    // payload that downstream tooling (graphs, diffs) can deserialise.
+    let json = serde_json::to_string(&snapshot).expect("snapshot must serialise");
+    let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed["extras"]["frame_count"], 42);
+    assert_eq!(parsed["extras"]["timers"]["phase_timer"]["remaining_ms"], 25_000);
+    assert_eq!(parsed["extras"]["resources"]["gold"], 12);
+    assert_eq!(parsed["extras"]["outbound_intents"]["hand_submit_placements"], 3);
+}
+
+#[test]
+fn extras_inputs_snapshot_with_warnings_records_missing_economy() {
+    // ExtrasInputs is a SystemParam; drive it through a one-shot system on
+    // a MinimalPlugins app to verify the missing-economy warning path. The
+    // system asserts the snapshot is produced *without panic* and that the
+    // warnings list contains the expected diagnostic.
+    use bevy::ecs::system::{In, RunSystemOnce};
+    use client::presentation::qa_snapshot::{ExtrasInputs, ExtrasSnapshot};
+
+    test_helpers::init_test_tracing();
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::state::app::StatesPlugin);
+    app.init_state::<ClientState>();
+
+    let (extras, warnings): (ExtrasSnapshot, Vec<String>) = app
+        .world_mut()
+        .run_system_once(
+            |inputs: ExtrasInputs| -> (ExtrasSnapshot, Vec<String>) {
+                let mut warnings = Vec::new();
+                let extras = inputs.snapshot_with_warnings(&mut warnings);
+                (extras, warnings)
+            },
+        )
+        .expect("run_system_once must succeed");
+
+    // Players / drag / outbound never short-circuit so they must produce a
+    // valid (mostly empty) sub-payload even when no game-state resources are
+    // present.
+    assert!(extras.players.local_player_id.is_none());
+    assert!(!extras.drag.placement_drag_active);
+    assert_eq!(extras.outbound_intents.hand_submit_placements, 0);
+    // The PlayerEconomyView missing warning must be on the list so QA can
+    // disambiguate "economy seeded but reads zero" from "economy resource
+    // never registered".
+    assert!(
+        warnings.iter().any(|w| w.contains("PlayerEconomyView resource missing")),
+        "expected PlayerEconomyView missing warning, got {:?}",
+        warnings
+    );
+    // Suppress unused import warning for In in build configurations that
+    // omit it.
+    let _ = std::any::TypeId::of::<In<()>>();
 }
