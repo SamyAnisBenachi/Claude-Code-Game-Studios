@@ -25,8 +25,8 @@ use crate::state::{
     CurrentClientPhase, PlacementRevealDedupeKey,
 };
 use crate::ui::hand::{
-    GhostClickedEvent, GhostDragStartEvent, GhostPlacementChanged, ObjectiveCell,
-    PlacementTargetUnit,
+    GhostClickedEvent, GhostDragStartEvent, GhostPlacementChanged, LocalPlayerSpawnRangeChanged,
+    ObjectiveCell, PlacementTargetUnit,
 };
 use crate::ui::lobby::PlayerTeamMapUpdated;
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
@@ -893,6 +893,11 @@ impl Plugin for BoardRenderingPlugin {
             .add_message::<GhostClickedEvent>()
             .add_message::<GhostDragStartEvent>()
             .add_message::<PlayerTeamMapUpdated>()
+            // PROMPT 1149: published by `consume_pending_resolution_script_system`
+            // when a SpawnRangeChanged event applies to the local player.
+            // Mirrors the registration in HandUiPlugin (idempotent) so
+            // BoardRenderingPlugin can be tested in isolation.
+            .add_message::<LocalPlayerSpawnRangeChanged>()
             .add_observer(on_ghost_clicked)
             .add_observer(on_ghost_drag_start)
             .configure_sets(
@@ -1235,6 +1240,7 @@ pub fn consume_pending_resolution_script_system(
     player_team_map: Res<PlayerTeamMap>,
     mut board_cells: Query<(&LaneCell, &mut SpawnHighlightState, &mut Sprite), With<BoardCellNode>>,
     mut recovery_writer: MessageWriter<SnapshotRecoveryRequested>,
+    mut local_spawn_range_writer: MessageWriter<LocalPlayerSpawnRangeChanged>,
 ) {
     if !pending_resolution_script_ready_for_playback(
         &pending_script,
@@ -1262,6 +1268,15 @@ pub fn consume_pending_resolution_script_system(
                 &player_team_map,
                 &mut board_cells,
             );
+            // PROMPT 1149 — mirror local-player spawn-range expansions into
+            // hand-ui's PlacementBoardView so the click-to-stage default
+            // tracks the latest legal cells after a fake objective is
+            // destroyed (latent NEW-1130-02 from PROMPT 1130).
+            forward_local_spawn_range_changes(
+                &script,
+                local_player.player_id,
+                &mut local_spawn_range_writer,
+            );
             anim_queue.load_groups(groups);
             reveal_wait.clear();
             *render_state = BoardRenderState::ResolutionExecuting;
@@ -1273,6 +1288,36 @@ pub fn consume_pending_resolution_script_system(
                 Some(anim_queue),
                 &mut recovery_writer,
             );
+        }
+    }
+}
+
+/// PROMPT 1149 — Forward each `SpawnRangeChanged` event whose `player_id`
+/// matches the local player to hand-ui as a `LocalPlayerSpawnRangeChanged`
+/// message. The hand-ui consumer
+/// (`apply_placement_board_view_spawn_range_system`) applies the new value
+/// to `PlacementBoardView.spawn_range_cells`. Decouples hand-ui from
+/// `PendingResolutionScript` so no cross-module resource access is
+/// required.
+pub fn forward_local_spawn_range_changes(
+    script: &S2CResolutionEvent,
+    local_player_id: Option<PlayerId>,
+    writer: &mut MessageWriter<LocalPlayerSpawnRangeChanged>,
+) {
+    let Some(local_player_id) = local_player_id else {
+        return;
+    };
+    for event in &script.events {
+        if let ResolutionEvent::SpawnRangeChanged {
+            player_id,
+            new_spawn_range_cells,
+        } = &event.event
+        {
+            if *player_id == local_player_id {
+                writer.write(LocalPlayerSpawnRangeChanged {
+                    new_spawn_range_cells: *new_spawn_range_cells,
+                });
+            }
         }
     }
 }

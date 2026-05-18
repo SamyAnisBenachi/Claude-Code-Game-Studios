@@ -24,8 +24,9 @@ use crate::card_animations::{
 };
 use crate::presentation::board_rendering::PlayerTeamMap;
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
-use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
+use crate::state::{ClientPhaseView, ClientSessionIdentity, ClientState, CurrentClientPhase};
 use crate::ui::design_tokens::{spacing, strips, typography, z_layers};
+use crate::ui::lobby::PlayerTeamMapUpdated;
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 pub mod drag_state_visuals;
@@ -557,6 +558,17 @@ pub struct GhostDragStartEvent {
     pub card_id: CardId,
 }
 
+/// PROMPT 1149 — Bridge from resolution-event `SpawnRangeChanged` (consumed
+/// by `consume_pending_resolution_script_system` in `board_rendering`) to
+/// `PlacementBoardView.spawn_range_cells` (owned by hand UI). Avoids
+/// cross-module resource coupling: the board renderer writes the message
+/// only when the changed range belongs to the local player; the hand
+/// consumer applies it to `PlacementBoardView`.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LocalPlayerSpawnRangeChanged {
+    pub new_spawn_range_cells: u8,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FanLayoutMetrics {
     pub fan_center_x: f32,
@@ -939,6 +951,12 @@ impl Plugin for HandUiPlugin {
             // self-contained (see PROMPT 735 pattern for the cross-plugin
             // message-registration analogue).
             .init_resource::<PlayerTeamMap>()
+            // PROMPT 1149: same pattern — the normal-flow team-map bootstrap
+            // reads `ClientSessionIdentity` (owned by `LobbyUiPlugin`) so we
+            // mirror the registration so HandUiPlugin tests can drive it
+            // without also loading LobbyUiPlugin. `init_resource` is
+            // idempotent.
+            .init_resource::<ClientSessionIdentity>()
             .init_resource::<ActivePlacementDrag>()
             .init_resource::<ActiveGhostUnstageDrag>()
             .init_resource::<PlacementDisclosureState>()
@@ -948,6 +966,15 @@ impl Plugin for HandUiPlugin {
             .add_message::<HandUiDraftOfferingReceived>()
             .add_message::<HandUiCardAcquiredReceived>()
             .add_message::<PresentationGameSnapshotMessage>()
+            // PROMPT 1149: PlayerTeamMapUpdated is registered by LobbyUiPlugin
+            // and by BoardRenderingPlugin already, but `add_message` is
+            // idempotent (matches PROMPT 696 / PROMPT 1086 mirror pattern)
+            // and HandUiPlugin tests do not necessarily load either of the
+            // other plugins. LocalPlayerSpawnRangeChanged is brand-new and
+            // owned by hand-ui; board_rendering writes it from
+            // `consume_pending_resolution_script_system`.
+            .add_message::<PlayerTeamMapUpdated>()
+            .add_message::<LocalPlayerSpawnRangeChanged>()
             .add_message::<HandUiPlacementDragStarted>()
             .add_message::<HandUiPlacementCursorMoved>()
             .add_message::<HandUiPlacementDragEnded>()
@@ -988,6 +1015,13 @@ impl Plugin for HandUiPlugin {
                     (
                         handle_game_snapshot_system,
                         apply_placement_board_view_from_snapshot_system,
+                        // PROMPT 1149 — normal-flow PlacementBoardView bootstrap
+                        // (NEW-1130-01) and resolution-event spawn-range
+                        // mirror (latent NEW-1130-02). Ordered after the
+                        // reconnect-snapshot system so a reconnect snapshot
+                        // (authoritative) wins when both fire in the same tick.
+                        apply_placement_board_view_from_team_map_system,
+                        apply_placement_board_view_spawn_range_system,
                         handle_draft_offering_system,
                         handle_card_acquired_system,
                         handle_ghost_clicked_unstage_system,
@@ -1881,6 +1915,134 @@ fn spawn_edge_for_local_player(
     } else {
         BoardSpawnEdge::HighCells
     }
+}
+
+// PROMPT 1149 — Drive `PlacementBoardView` perspective fields from
+// `PlayerTeamMapUpdated` + `ClientSessionIdentity` during normal play.
+//
+// Background (NEW-1130-01, AUDIT-1126-01): `S2CGameSnapshot` (the only
+// trigger for `apply_placement_board_view_from_snapshot_system`) is sent
+// by the server **only** on reconnect or explicit `C2SRequestSnapshot`.
+// In a clean session start no snapshot ever fires, so `PlacementBoardView`
+// stays pinned to its `Default`: `(PlayerId(1), LowCells, range=1)`.
+// Player A coincidentally matches that default; Player B does not, so
+// the click-to-stage default at `default_click_stage_target` routes every
+// drop to `BoardCell { lane: 1, cell: 1 }` and the server correctly
+// rejects every Player B submission with `SpawnRangeRejected` (server log
+// line `WARN handle_placement_submission: submission rejected
+// reason=SpawnRangeRejected` — PROMPT 1079 audit line).
+//
+// This system listens for `PlayerTeamMapUpdated`, which is broadcast by
+// `drain_lobby_s2c_system` on every `S2CRoomCreated` / `S2CJoinAck` /
+// `S2CSlotUpdated` AND re-broadcast by
+// `broadcast_player_team_map_on_session_enter_system` on
+// `OnEnter(ClientState::InSession)`. It reads the local player from
+// `ClientSessionIdentity` (populated by `apply_handshake_message` on
+// `S2CHandshake`) and resolves the spawn edge from the message's slots —
+// self-contained, no dependency on the `PlayerTeamMap` resource update
+// order. `spawn_range_cells` is preserved so the reconnect snapshot
+// system and the resolution-event consumer remain authoritative for that
+// field.
+pub fn apply_placement_board_view_from_team_map_system(
+    mut updates: MessageReader<PlayerTeamMapUpdated>,
+    identity: Res<ClientSessionIdentity>,
+    mut board_view: ResMut<PlacementBoardView>,
+) {
+    let Some(latest_slots) = updates.read().last().map(|update| update.slots.clone()) else {
+        return;
+    };
+
+    let Some(local_player_id) = identity.player_id else {
+        return;
+    };
+
+    let local_team = latest_slots
+        .iter()
+        .find(|slot| slot.player_id == Some(local_player_id))
+        .map(|slot| slot.team);
+
+    let spawn_edge = match local_team {
+        Some(0) => BoardSpawnEdge::LowCells,
+        Some(_) => BoardSpawnEdge::HighCells,
+        None => {
+            if local_player_id == PlayerId(1) {
+                BoardSpawnEdge::LowCells
+            } else {
+                BoardSpawnEdge::HighCells
+            }
+        }
+    };
+
+    let opponent_player_id = latest_slots
+        .iter()
+        .filter_map(|slot| slot.player_id)
+        .find(|player_id| *player_id != local_player_id)
+        .unwrap_or(board_view.opponent_player_id);
+
+    let next = PlacementBoardView {
+        local_player_id,
+        opponent_player_id,
+        spawn_edge,
+        spawn_range_cells: board_view.spawn_range_cells,
+    };
+
+    if *board_view != next {
+        tracing::info!(
+            target: "client::ui::hand::placement_board_view",
+            local_player_id = ?next.local_player_id,
+            opponent_player_id = ?next.opponent_player_id,
+            spawn_edge = ?next.spawn_edge,
+            spawn_range_cells = next.spawn_range_cells,
+            source = "team_map",
+            "placement_board_view_updated"
+        );
+        *board_view = next;
+    }
+}
+
+// PROMPT 1149 — Apply local-player spawn-range expansion to
+// `PlacementBoardView.spawn_range_cells` (latent NEW-1130-02).
+//
+// Background: `apply_resolution_spawn_range_changes` in
+// `presentation::board_rendering` updates the visual highlight set when
+// a `ResolutionEvent::SpawnRangeChanged` fires (after a fake objective
+// is destroyed), but the hand UI's `PlacementBoardView` was never told.
+// `default_click_stage_target` reads `PlacementBoardView.spawn_range_cells`
+// to decide which cells are legal staging targets — so after a fake
+// destruction the click-to-stage default would still target the
+// pre-expansion cells, and any expansion past the first row would be
+// invisible to the staging path.
+//
+// `consume_pending_resolution_script_system` in `board_rendering` writes
+// a `LocalPlayerSpawnRangeChanged` for every `SpawnRangeChanged` event
+// whose `player_id` matches the local player. This consumer mirrors the
+// new value into `PlacementBoardView.spawn_range_cells`.
+pub fn apply_placement_board_view_spawn_range_system(
+    mut updates: MessageReader<LocalPlayerSpawnRangeChanged>,
+    mut board_view: ResMut<PlacementBoardView>,
+) {
+    let mut latest = None;
+    for update in updates.read() {
+        latest = Some(update.new_spawn_range_cells);
+    }
+    let Some(new_spawn_range_cells) = latest else {
+        return;
+    };
+
+    if board_view.spawn_range_cells == new_spawn_range_cells {
+        return;
+    }
+
+    tracing::info!(
+        target: "client::ui::hand::placement_board_view",
+        local_player_id = ?board_view.local_player_id,
+        opponent_player_id = ?board_view.opponent_player_id,
+        spawn_edge = ?board_view.spawn_edge,
+        spawn_range_cells = new_spawn_range_cells,
+        source = "resolution_spawn_range_changed",
+        "placement_board_view_updated"
+    );
+    board_view.spawn_range_cells = new_spawn_range_cells;
 }
 
 pub fn handle_draft_offering_system(

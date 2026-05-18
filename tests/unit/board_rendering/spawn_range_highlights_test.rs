@@ -1,11 +1,13 @@
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use client::presentation::board_rendering::{
-    apply_resolution_spawn_range_changes, BoardCellNode, BoardLocalPlayer, BoardRenderState,
-    BoardRenderingPlugin, PlayerTeamMap, SpawnHighlightState, StandingObjective,
+    apply_resolution_spawn_range_changes, forward_local_spawn_range_changes, BoardCellNode,
+    BoardLocalPlayer, BoardRenderState, BoardRenderingPlugin, PlayerTeamMap, SpawnHighlightState,
+    StandingObjective,
 };
 use client::presentation::LaneCell;
 use client::state::{ClientGameSnapshotMessage, ClientState, CurrentClientPhase};
+use client::ui::hand::LocalPlayerSpawnRangeChanged;
 use shared::card::ClassId;
 use shared::protocol::{
     BoardSnapshot, ObjectiveSnapshot, PlayerSnapshot, ResolutionEvent, RoundPhase, S2CGameSnapshot,
@@ -376,4 +378,95 @@ fn objective_count(app: &mut App) -> usize {
 
 fn player(id: u64) -> PlayerId {
     PlayerId(id)
+}
+
+// ── PROMPT 1149 — `forward_local_spawn_range_changes` (producer side) ──────
+
+#[derive(Resource)]
+struct CapturedLocalSpawnRangeChanges(Vec<LocalPlayerSpawnRangeChanged>);
+
+#[test]
+fn forward_local_spawn_range_changes_emits_message_for_local_player_only() {
+    let mut app = App::new();
+    app.add_message::<LocalPlayerSpawnRangeChanged>();
+    app.insert_resource(CapturedLocalSpawnRangeChanges(Vec::new()));
+    app.add_systems(
+        Update,
+        (
+            forward_for_player_one_system,
+            capture_local_spawn_range_changes,
+        )
+            .chain(),
+    );
+
+    app.world_mut().spawn(ForwardingScript(script(vec![
+        spawn_range_changed(player(1), 2),
+        spawn_range_changed(player(2), 4),
+    ])));
+    app.update();
+
+    let captured = &app.world().resource::<CapturedLocalSpawnRangeChanges>().0;
+    assert_eq!(
+        captured.len(),
+        1,
+        "exactly one local-player SpawnRangeChanged must be forwarded; opponent events are dropped"
+    );
+    assert_eq!(captured[0].new_spawn_range_cells, 2);
+}
+
+#[test]
+fn forward_local_spawn_range_changes_noop_when_local_player_is_none() {
+    let mut app = App::new();
+    app.add_message::<LocalPlayerSpawnRangeChanged>();
+    app.insert_resource(CapturedLocalSpawnRangeChanges(Vec::new()));
+    app.add_systems(
+        Update,
+        (
+            forward_with_no_local_player_system,
+            capture_local_spawn_range_changes,
+        )
+            .chain(),
+    );
+
+    app.world_mut().spawn(ForwardingScript(script(vec![spawn_range_changed(
+        player(1),
+        2,
+    )])));
+    app.update();
+
+    let captured = &app.world().resource::<CapturedLocalSpawnRangeChanges>().0;
+    assert!(
+        captured.is_empty(),
+        "forward_local_spawn_range_changes must no-op when local_player_id is None"
+    );
+}
+
+#[derive(Component)]
+struct ForwardingScript(S2CResolutionEvent);
+
+fn forward_for_player_one_system(
+    scripts: Query<&ForwardingScript>,
+    mut writer: MessageWriter<LocalPlayerSpawnRangeChanged>,
+) {
+    for script in &scripts {
+        forward_local_spawn_range_changes(&script.0, Some(player(1)), &mut writer);
+    }
+}
+
+fn forward_with_no_local_player_system(
+    scripts: Query<&ForwardingScript>,
+    mut writer: MessageWriter<LocalPlayerSpawnRangeChanged>,
+) {
+    for script in &scripts {
+        forward_local_spawn_range_changes(&script.0, None, &mut writer);
+    }
+}
+
+fn capture_local_spawn_range_changes(
+    mut updates: MessageReader<LocalPlayerSpawnRangeChanged>,
+    mut captured: ResMut<CapturedLocalSpawnRangeChanges>,
+) {
+    for update in updates.read() {
+        captured.0.push(*update);
+    }
 }
