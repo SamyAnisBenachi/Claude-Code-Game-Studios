@@ -480,16 +480,39 @@ pub struct AssetWiringPlugin;
 impl Plugin for AssetWiringPlugin {
     fn build(&self, app: &mut App) {
         tracing::info!("AssetWiringPlugin loaded");
-        app.add_systems(OnEnter(ClientState::InSession), insert_placeholder_assets)
+        app.init_resource::<MissingCardArtWarnings>()
+            .add_systems(OnEnter(ClientState::InSession), insert_placeholder_assets)
+            .add_systems(
+                OnEnter(ClientState::InSession),
+                probe_card_display_art_paths.after(insert_placeholder_assets),
+            )
             .add_systems(OnExit(ClientState::InSession), remove_placeholder_assets);
     }
 }
 
-// ── Existing card display art resolution (unchanged) ─────────────────────────
+// ── Card display art resolution + helpers (Sprint 17 S17-UI-CARD-DISPLAY-ART-HELPER-001)
 
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+/// Documented sentinel `art_id` whose resolution intentionally routes through
+/// the placeholder path rather than the per-card display PNG. Used by test
+/// fixtures and by content stubs whose final art is not yet authored
+/// (`PAW-TD-*-a` placeholder-art accept-risk). [`resolve_card_display_art`]
+/// returns `Ok(CARD_ART_PLACEHOLDER_ASSET.into())` for this sentinel — no
+/// `warn!` fires for it; the slot draws the universal placeholder.
+pub const CARD_ART_MISSING_SENTINEL: &str = "missing";
+
+/// Placeholder path that resolves to a real 1×1 PNG on disk. Used by
+/// [`resolve_card_display_art`] when [`CARD_ART_MISSING_SENTINEL`] is the
+/// requested `art_id`. AC4 — missing-art fallthrough path.
+pub const CARD_ART_PLACEHOLDER_ASSET: &str = PLACEHOLDER_FALLBACK_ASSET;
+
+/// Marker component holding the resolved display-art path bound to a
+/// presentation slot (shop / draft / auction / hand fan / drag sprite).
+/// Stores `String` rather than `&'static str` to satisfy
+/// SOURCE-1077-03 — the previous `'static` constraint forced
+/// [`resolve_card_display_art`] to leak the formatted path on every call.
+#[derive(Component, Debug, Clone, PartialEq, Eq)]
 pub struct CardDisplayArtAsset {
-    pub path: &'static str,
+    pub path: String,
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -503,6 +526,15 @@ pub enum CardDisplayArtFallbackReason {
     MissingDisplayAsset,
 }
 
+/// Session-scoped counter for missing-card-art `warn!` events emitted by
+/// [`probe_card_display_art_paths`]. Tests observe this resource rather
+/// than capturing the logger directly (AC10). Reset on session exit when
+/// the resource is removed and re-initialised on the next session entry.
+#[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct MissingCardArtWarnings {
+    pub count: u32,
+}
+
 pub fn default_client_card_catalog() -> CardCatalog {
     serde_json::from_str::<Vec<CardData>>(CARD_DATA_JSON)
         .expect("assets/data/cards.json should deserialize for client display catalog")
@@ -511,9 +543,25 @@ pub fn default_client_card_catalog() -> CardCatalog {
         .collect()
 }
 
+/// Resolves the display-art path for a card.
+///
+/// Returns `Ok(String)` for resolvable card data (including the documented
+/// [`CARD_ART_MISSING_SENTINEL`] which routes through [`CARD_ART_PLACEHOLDER_ASSET`])
+/// or `Err(CardDisplayArtFallbackReason)` when the card is absent or its
+/// `art_id` is empty / whitespace-only.
+///
+/// SOURCE-1077-03 — the previous implementation leaked a `Box::leak`-promoted
+/// `&'static str` on every call so that `apply_card_display_art` could insert
+/// the path into a `'static`-constrained component. The component now stores
+/// `String`, removing the leak entirely.
+///
+/// SOURCE-1077-04 — the existence check that prevents silent blank slots is
+/// implemented by [`probe_card_display_art_paths`], which runs on session
+/// entry and warns for any `art_id` whose constructed path does not resolve
+/// to a real asset. The resolver itself does not block on filesystem I/O.
 pub fn resolve_card_display_art(
     card: Option<&CardData>,
-) -> Result<&'static str, CardDisplayArtFallbackReason> {
+) -> Result<String, CardDisplayArtFallbackReason> {
     let Some(card) = card else {
         return Err(CardDisplayArtFallbackReason::MissingDisplayAsset);
     };
@@ -521,7 +569,139 @@ pub fn resolve_card_display_art(
     if art_id.is_empty() {
         return Err(CardDisplayArtFallbackReason::NoArtId);
     }
+    if art_id == CARD_ART_MISSING_SENTINEL {
+        return Ok(CARD_ART_PLACEHOLDER_ASSET.to_string());
+    }
 
-    let path = format!("art/cards/display/card_{art_id}_art_display.png");
-    Ok(Box::leak(path.into_boxed_str()))
+    Ok(format!("art/cards/display/card_{art_id}_art_display.png"))
+}
+
+/// Binds a display-art `ImageNode` and marker component to the slot entity
+/// presenting `card` (shop / draft / auction / hand fan / drag sprite).
+///
+/// Sprint 17 S17-UI-CARD-DISPLAY-ART-HELPER-001 single-owner lift site —
+/// previously duplicated verbatim under `client/src/ui/shop_auction/mod.rs`
+/// and `client/src/ui/hand/mod.rs` (SOURCE-1077-02). Future fixes land here.
+///
+/// **Chrome preservation strategy (SOURCE-1077-01, AC2)**: on the `Err`
+/// branch the helper inserts only [`CardDisplayArtFallback`] and does **not**
+/// remove the slot's `ImageNode`. The previous implementation removed
+/// `ImageNode` alongside [`CardDisplayArtAsset`], which stripped the spawn-
+/// time chrome `ImageNode` (e.g. the shop slot's `SHOP_SLOT_WELL_IDLE_ASSET`
+/// well) and left an empty rectangle whenever a card landed whose `art_id`
+/// was empty, missing, or unresolvable. [`clear_card_display_art`] applies
+/// the same rule on slot vacate.
+pub fn apply_card_display_art(
+    commands: &mut Commands,
+    entity: Entity,
+    card: Option<&CardData>,
+    asset_server: Option<&AssetServer>,
+) {
+    match resolve_card_display_art(card) {
+        Ok(path) => {
+            let mut entity_commands = commands.entity(entity);
+            if let Some(asset_server) = asset_server {
+                let handle: Handle<Image> = asset_server.load(path.clone());
+                entity_commands.insert(ImageNode::new(handle));
+            }
+            entity_commands.insert(CardDisplayArtAsset { path });
+            entity_commands.remove::<CardDisplayArtFallback>();
+        }
+        Err(reason) => {
+            // Chrome preservation: leave the slot's existing `ImageNode`
+            // attached so the spawn-time chrome (e.g. shop well) — or the
+            // most recently bound card art — keeps drawing. We only flip
+            // the marker components so consumers can observe the fallback.
+            commands
+                .entity(entity)
+                .insert(CardDisplayArtFallback { reason })
+                .remove::<CardDisplayArtAsset>();
+        }
+    }
+}
+
+/// Releases the display-art binding on a slot (slot vacate / hand-card
+/// discard / shop-slot refresh). Removes only the
+/// [`CardDisplayArtAsset`] / [`CardDisplayArtFallback`] markers — never the
+/// slot's `ImageNode`, so the spawn-time chrome survives (AC6).
+pub fn clear_card_display_art(commands: &mut Commands, entity: Entity) {
+    commands
+        .entity(entity)
+        .remove::<(CardDisplayArtAsset, CardDisplayArtFallback)>();
+}
+
+/// Startup probe registered on `OnEnter(ClientState::InSession)` that walks
+/// the baked client `CardCatalog`, attempts to load each card's display-art
+/// path via [`AssetServer::load`], and warns when the constructed path does
+/// not resolve to a real file on the asset reader.
+///
+/// SOURCE-1077-04 — Bevy's [`AssetServer::load`] returns a `Handle<Image>`
+/// even when the underlying file is missing, so the silent blank-slot
+/// symptom is only ever surfaced as an `error!` from the async loader and
+/// never in association with the card's `art_id`. This probe emits a
+/// `warn!` with both `art_id` and `path` so missing-art defects are visible
+/// at startup rather than as a silent runtime blank.
+///
+/// Notes:
+/// - The documented [`CARD_ART_MISSING_SENTINEL`] does **not** trigger a
+///   warning — its resolution routes through [`CARD_ART_PLACEHOLDER_ASSET`]
+///   on purpose (AC7).
+/// - On native builds the probe verifies the file via `std::fs::metadata`
+///   in addition to scheduling the load; on `wasm32` the filesystem check
+///   is skipped (the bundled asset reader makes synchronous probing
+///   impossible). The `Handle<Image>` is dropped at end of scope; the
+///   probe does not pin the texture into memory.
+/// - Warning count is recorded in [`MissingCardArtWarnings`] so tests can
+///   observe missing-art events without a logger capture hook (AC10).
+pub fn probe_card_display_art_paths(
+    asset_server: Option<Res<AssetServer>>,
+    mut warnings: ResMut<MissingCardArtWarnings>,
+) {
+    warnings.count = 0;
+    let catalog = default_client_card_catalog();
+    for card in catalog.values() {
+        let path = match resolve_card_display_art(Some(card)) {
+            Ok(path) => path,
+            Err(reason) => {
+                tracing::warn!(
+                    target: "client::asset_wiring",
+                    card_id = ?card.id,
+                    art_id = %card.art_id,
+                    reason = ?reason,
+                    "card_display_art_probe_unresolved",
+                );
+                warnings.count = warnings.count.saturating_add(1);
+                continue;
+            }
+        };
+
+        let art_id_trimmed = card.art_id.trim();
+        if art_id_trimmed == CARD_ART_MISSING_SENTINEL {
+            // Documented sentinel — routes through placeholder by design.
+            continue;
+        }
+
+        // Start the async load so the texture is acquired before its first
+        // bind. The handle is intentionally discarded — `apply_card_display_art`
+        // re-issues a load on demand. We rely on the cache hit for the warm
+        // path and accept a cheap re-load on the cold path.
+        if let Some(ref asset_server) = asset_server {
+            let _handle: Handle<Image> = asset_server.load(path.clone());
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let asset_file = std::path::Path::new("assets").join(path.as_str());
+            if std::fs::metadata(&asset_file).map_or(true, |meta| !meta.is_file()) {
+                tracing::warn!(
+                    target: "client::asset_wiring",
+                    card_id = ?card.id,
+                    art_id = %card.art_id,
+                    path = %path,
+                    "card_display_art_probe_missing",
+                );
+                warnings.count = warnings.count.saturating_add(1);
+            }
+        }
+    }
 }

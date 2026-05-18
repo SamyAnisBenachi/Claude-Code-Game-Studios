@@ -622,6 +622,23 @@ path = "../tests/integration/presentation/lobby_asset_wiring_test.rs"
 name = "lobby_portrait_distinct_classes_test"
 path = "../tests/integration/presentation/lobby_portrait_distinct_classes_test.rs"
 
+# Sprint 17 S17-UI-CARD-DISPLAY-ART-HELPER-001 (PROMPT 1113) — AC8 unit
+# coverage for the lifted `client::asset_wiring::resolve_card_display_art`
+# (SOURCE-1077-02 dedup + SOURCE-1077-03 no-leak + SOURCE-1077-04 placeholder
+# sentinel routing).
+[[test]]
+name = "card_display_art_helper_test"
+path = "../tests/unit/asset_wiring/card_display_art_helper_test.rs"
+
+# Sprint 17 S17-UI-CARD-DISPLAY-ART-HELPER-001 (PROMPT 1113) — AC9 + AC10
+# integration coverage for chrome preservation under
+# `apply_card_display_art` / `clear_card_display_art` and for the
+# `MissingCardArtWarnings` resource emitted by
+# `probe_card_display_art_paths`.
+[[test]]
+name = "card_display_art_chrome_preservation_test"
+path = "../tests/integration/presentation/card_display_art_chrome_preservation_test.rs"
+
 [[test]]
 name = "lobby_chrome_wiring_test"
 path = "../tests/integration/session/lobby_chrome_wiring_test.rs"
