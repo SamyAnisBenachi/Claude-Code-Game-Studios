@@ -127,6 +127,46 @@ accepted-risk and are **not** advanced by this roadmap-prep.
 | 017 | [Card Display Art Helper / Chrome Preservation + Dedup + Leak Fix + Existence Check](story-017-card-display-art-helper-bundle.md) | Tech Debt -- structural dedup + correctness bundle (Logic + Integration) | Draft -- Sprint 17 candidate (Must Have, `S17-UI-CARD-DISPLAY-ART-HELPER-001`; PROMPT 1077 SOURCE-1077-01 + 02 + 03 + 04 bundle), NOT activated | S17-UI-CARD-DISPLAY-ART-HELPER-001 |
 | 018 | [Card-Slot `card_slot_node` Image / Text Inset + GlobalZIndex Wiring](story-018-card-slot-inset-wiring.md) | Tech Debt -- primitive ratification (no consumer-surface migration) | Draft -- Sprint 17 candidate (Should Have, `S17-UI-CARD-SLOT-INSET-WIRING-001`; PROMPT 1077 SOURCE-1077-06), NOT activated | S17-UI-CARD-SLOT-INSET-WIRING-001 |
 | 019 | [QA Snapshot Marker Split + Visibility-Aware Counts + Session ID Prefix](story-019-qa-snapshot-marker-split.md) | Tech Debt -- structural refactor + tooling correctness (Integration) | Draft -- Sprint 17 candidate (Should Have, `S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`; PROMPT 1077 SOURCE-1077-08 + 09 + 16 bundle), NOT activated | S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 |
+| 020 | [PlayArea Flex Container + Strip-Budget Contract](story-020-ui-play-area-container.md) | Tech Debt -- structural refactor (Integration) | Draft -- future Sprint 18 candidate (`S18-UI-PLAY-AREA-CONTAINER-001`; PROMPT 1180 Lane A / RC-1; PROMPT 1190 candidate), NOT activated | S18-UI-PLAY-AREA-CONTAINER-001 |
+| 021 | [Live-Spawn Viewport Invariant Test Harness](story-021-ui-viewport-invariant-live-harness.md) | Tech Debt -- test infrastructure rewrite (Integration) | Draft -- future Sprint 18 candidate (`S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001`; PROMPT 1180 Lane B / RC-5; PROMPT 1191 candidate; active impl PROMPT 1185), NOT activated | S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001 |
+| 022 | [Card-Art `NodeImageMode::Fit` + Opaque Label-Strip Primitive](story-022-ui-card-art-and-label-strip.md) | Tech Debt -- primitive extension + per-surface migration (Integration) | Draft -- future Sprint 18 candidate (`S18-UI-CARD-ART-AND-LABEL-STRIP-001`; PROMPT 1180 Lane C / RC-3; PROMPT 1192 candidate), NOT activated | S18-UI-CARD-ART-AND-LABEL-STRIP-001 |
+| 023 | [QA Snapshot Layout-Debug Field Enrichment (Q-01..Q-10)](story-023-obs-snapshot-layout-fields.md) | Tech Debt -- observability extension (Integration) | Draft -- future Sprint 18 candidate (`S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001`; PROMPT 1180 Lane D; PROMPT 1193 candidate; active impl PROMPT 1186), NOT activated | S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001 |
+| 024 | [Settings Panel Flex Re-Layout + UI-Scale Invariant](story-024-ui-settings-panel-flex-relayout.md) | Tech Debt -- per-surface re-layout (Integration) | Draft -- future Sprint 18 candidate (`S18-UI-SETTINGS-PANEL-FLEX-RELAYOUT-001`; PROMPT 1180 Lane F / O-01 / RC-2; PROMPT 1195 candidate; active impl PROMPT 1187), NOT activated | S18-UI-SETTINGS-PANEL-FLEX-RELAYOUT-001 |
+| 025 | [Interaction-State Migration Wave 2 (Bind Tokens to P1 Surfaces)](story-025-ui-interaction-state-migration-wave-2.md) | Tech Debt -- per-surface token migration (Integration) | Draft -- future Sprint 18 candidate (`S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001`; PROMPT 1180 Lane I / RC-4; PROMPT 1198 candidate), NOT activated | S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001 |
+| 026 | [Overlay Panel Overflow Hardening (Photosensitivity + Connection-Lost + Draft-Initial)](story-026-ui-overlay-panel-overflow-hardening.md) | Tech Debt -- per-surface overflow hardening (Integration) | Draft -- future Sprint 18 candidate (`S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001`; PROMPT 1180 Lane J / RC-2 / O-02 / O-03 / S-08 / S-09; PROMPT 1199 candidate), NOT activated | S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001 |
+| 027 | [Global UI Layout Contract Doc + Button-vs-Chip Lint](story-027-ui-layout-contract-doc-and-lint.md) | UX -- contract authoring + lint enforcement (Documentation + Integration) | Draft -- future Sprint 18 candidate (`S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001`; PROMPT 1180 Lane K / C-1..C-7; PROMPT 1200 candidate; active impl PROMPT 1188), NOT activated | S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001 |
+
+### Sprint 18 Roadmap Candidate Sequencing Notes (PROMPT 1189)
+
+Stories 020-027 are the **Sprint 18 candidate set** authored by PROMPT 1189 in response to the PROMPT 1180 Global UI Layout System Deep Audit (`reports/PROMPT-1180-global-ui-layout-system-deep-audit.md`). The audit catalogued **five architectural root causes** (RC-1..RC-5) and proposed **eleven file-disjoint repair lanes** (A..K) with PROMPT IDs 1190..1200. Sprint 18 activation is NOT performed by PROMPT 1189; none of stories 020-027 are activated by this authoring run.
+
+Lane coverage map:
+
+| Lane | Coverage | Story / PROMPT |
+|---|---|---|
+| A — PlayArea container | **Story 020** authored; partial overlap with PROMPT 1181 foundation primitives | `S18-UI-PLAY-AREA-CONTAINER-001` |
+| B — Live-spawn viewport invariant harness (RC-5 fix) | **Story 021** authored; active impl PROMPT 1185 | `S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001` |
+| C — Card-art `NodeImageMode::Fit` + label-strip primitive | **Story 022** authored; no active impl PROMPT | `S18-UI-CARD-ART-AND-LABEL-STRIP-001` |
+| D — QA snapshot layout-debug fields (Q-01..Q-10) | **Story 023** authored; active impl PROMPT 1186 | `S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001` |
+| E — Lobby panel overflow + portrait + confirm CTA | **NOT** authored (skip; owned by active PROMPT 1178) | active impl PROMPT 1178 |
+| F — Settings panel flex re-layout | **Story 024** authored; active impl PROMPT 1187 | `S18-UI-SETTINGS-PANEL-FLEX-RELAYOUT-001` |
+| G — HUD top-strip wrap + opp class + scoreboard dot round bind | **NOT** authored (skip; owned by active PROMPT 1183) | active impl PROMPT 1183 |
+| H — Shop / auction paint + bid-button label + auction control row | **NOT** authored (skip; owned by active PROMPT 1182) | active impl PROMPT 1182 |
+| I — Interaction-state migration Wave 2 | **Story 025** authored; no active impl PROMPT | `S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001` |
+| J — Photosensitivity / connection-lost / draft-modal overflow hardening | **Story 026** authored; no active impl PROMPT (partial overlap with PROMPT 1183 on `connection_lost_overlay.rs`) | `S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001` |
+| K — Global UI layout contract doc + button-vs-chip lint | **Story 027** authored; active impl PROMPT 1188 | `S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001` |
+
+Lanes E, G, H intentionally **NOT** authored as new story files by PROMPT 1189 because their implementation scope is owned by in-flight PROMPTs 1178, 1183, 1182 respectively. Authoring duplicate story files would create paperwork drift. If those PROMPTs land on `origin/main` without a story file, a separate paperwork prompt MAY back-fill Lane E / G / H story files later.
+
+Stories 021, 023, 024, 027 have **active implementation PROMPTs** (1185, 1186, 1187, 1188) running concurrently. If the implementation PROMPT lands first, the corresponding story may close via `/story-done` against the landed commit at activation time; otherwise the story remains a Draft Sprint 18 candidate and a fresh `/dev-story` worker re-implements per the story's Worker Contract.
+
+PROMPT 1180 §6 launch order:
+
+- **Wave 1 (serialised)**: Lane A → Lane B.
+- **Wave 2 (parallel after Wave 1)**: Lanes C, D, E, F, G, H, J.
+- **Wave 3 (parallel after Wave 2)**: Lanes I and K.
+
+Per `production/sprints/sprint-17.md` lines 743-809, Sprint 17 deferred all PROMPT 1022 / 1077 remaining structural findings to Sprint 18+. Stories 020-027 honour that deferral. None claim release readiness, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, or gate-check retry.
 
 ### Sprint 16/17 Architecture-Split + Primitive Candidate Sequencing Notes (PROMPT 1044)
 
