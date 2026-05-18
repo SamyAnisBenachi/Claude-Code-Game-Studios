@@ -1,3 +1,90 @@
+# Sprint 18 -- ACTIVATED (Polish stage; Sprint 17 closed-with-conditions + evidence reconcile landed)
+
+> **PROMPT 1301 paperwork-only Sprint 18 activation (2026-05-18).**
+> Source-of-truth at activation: `origin/main@1345c6b8b1cbd543dbd63d279186c93924ca54db`
+> (PROMPT 1292 Sprint 18 plan draft main-land tip; strict fast-forward descendant
+> of PROMPT 1291 closeout evidence reconcile main-land tip `4efe800` and
+> PROMPT 1283 cargo-fmt drift repair main-land tip `d73e25e`).
+> Worktree: `.claude/worktrees/prompt-1301-sprint-18-activation`.
+> Branch: `worktree-prompt-1301-sprint-18-activation`.
+> Readiness verdict: PROMPT 1293 PASS preserved at
+> `reports/PROMPT-1293-sprint-18-activation-readiness.md` (gitignored).
+>
+> **Status**: `active -- activated 2026-05-18 by PROMPT 1301`.
+> Top-level `production/sprint-status.yaml` flipped: `sprint: 17 -> 18`;
+> `status: closed-with-conditions -> active`; `stage: Polish` PRESERVED
+> verbatim (`production/stage.txt` NOT modified; PROMPT 761
+> `Polish -> Release` gate-check FAIL preserved at
+> `production/gate-checks/gate-polish-release-2026-05-12.md` with NO retry).
+> A `sprint_18_activation:` block was appended at EOF of
+> `production/sprint-status.yaml` following the
+> `sprint_11/12/13/14/15/16/17_activation:` precedent. All prior
+> `sprint_*_closeout` / `sprint_*_activation` / `sprint_*_story_done` blocks
+> and the `sprint_17_closeout_evidence_reconcile` block (PROMPT 1289) are
+> preserved verbatim.
+>
+> **Section 0 activation blockers DISCHARGED**:
+> - §0.1 PROMPT 1284 Sprint 17 post-fmt smoke rerun -- DISCHARGED through
+>   PROMPT 1289 / PROMPT 1291 closeout evidence reconcile main-land
+>   (`reports/PROMPT-1284-sprint-17-post-fmt-smoke-rerun.md` cited verbatim
+>   as discharge basis in
+>   `sprint_17_closeout_evidence_reconcile.discharges_from_sprint_17_closeout.discharge_basis`;
+>   `cargo fmt --check PASS; cargo test --workspace --tests --no-fail-fast PASS at 263 suites / 1861 tests / 0 failed / 0 ignored`).
+> - §0.2 Sprint 17 closeout evidence reconcile -- LANDED on `origin/main`
+>   via PROMPT 1289 (worker `4efe800`) and main-landed by PROMPT 1291;
+>   `origin/main@4efe800` is an ancestor of the PROMPT 1301 activation tip
+>   `origin/main@1345c6b`. The "provisional from an evidence standpoint"
+>   qualifier on the Sprint 17 closeout no longer applies; documentation /
+>   evidence condition is discharged. Reconcile narrative-of-record at
+>   `production/qa/closeout-evidence-reconcile-sprint-17-2026-05-18-prompt-1289.md`;
+>   PROMPT 1288 Team-QA refresh-of-record at
+>   `production/qa/team-qa-sprint-17-2026-05-18-post-fmt-refresh.md`.
+> - §0.3 Sprint 18 plan draft landed -- LANDED via PROMPT 1292 at
+>   `origin/main@1345c6b8b1cbd543dbd63d279186c93924ca54db` (subject
+>   `plan(s18): draft Sprint 18 plan (PROMPT 1285)`).
+> - §0.4 Sprint 18 QA plan -- still absent at activation; sequenced as
+>   the next prompt (`/qa-plan sprint-18`) per the Section 5 step 5
+>   sequencing.
+>
+> **Sprint 18 active row set at activation**: 4 Must Have + 6 Should
+> Have + 2 Nice to Have = 12 rows (~5.4d / 7.5d capacity). The 13th
+> plan candidate row `S18-UI-HAND-RESERVE-STRIP-CLEANUP-001` (0.2d
+> Nice to Have) was DROPPED at activation per Section 2.3 explicit
+> constraint because no story file exists on `origin/main` under
+> `production/epics/hand-ui/` at the activation tip (verified via
+> `git ls-files`). The dropped row is recorded under
+> `sprint_18_activation.dropped_rows:` with disposition
+> `not activated / story-authoring-needed` and re-evaluation deferred
+> to Sprint 19 planning. The preferred discharge path for the
+> `S17-UI-HUD-OPP-MANA-CLEANUP-001` parent-row paperwork gap (AC3
+> hand-reserve microbadge follow-up) therefore remains open as a
+> Sprint 19 candidate.
+>
+> **Non-claims preserved verbatim from Section 7**: no public release
+> readiness, no RC readiness, no full game completion, no QA-COND-0005
+> Standard-tier accessibility advancement, no QA-COND-0006 playtest
+> validation advancement, no full playable-client manual QA, no
+> S8-QA-001-W1 closure, no PAW-TD-*-a final-art completion, no
+> `Polish -> Release` retry, no stage advance, no LLM closure of
+> `S11-HUD-TIMER-EYEBALL-VISUAL-001`, no silent closure of
+> `S17-UI-HUD-OPP-MANA-CLEANUP-001` parent row, no closure of any
+> PROMPT 1022 / 1076 / 1077 finding outside concrete repairs already
+> on `origin/main`, no Sprint 10 through Sprint 17 row reopen, no
+> Sprint 17 close-out reopen / re-author / silent overwrite, no
+> retroactive closure of any row not implemented on `origin/main` at
+> the activation tip. PROMPT 1301 invokes no `/story-readiness`,
+> `/dev-story`, `/story-done`, `/smoke-check`, `/team-qa`,
+> `/gate-check`, `/release-check`, `/qa-plan`, and runs no cargo /
+> trunk / CI command. Cargo policy: **N/A** for this paperwork-only
+> activation.
+>
+> The Section 0 wording below is left intact for traceability; the
+> PROMPT 1293 readiness verdict and this banner together supersede
+> the "treated as pending" / "provisional from an evidence
+> standpoint" qualifiers in §0.1 and §0.2.
+
+---
+
 # Sprint 18 -- DRAFT (Polish stage; Sprint 17 closed-with-conditions, evidence reconcile pending)
 
 > **PROMPT 1285 paperwork-only Sprint 18 plan draft (2026-05-18).**
