@@ -1,7 +1,7 @@
 use server::core::economy::{PlayerEconomies, PlayerEconomy, S2CGoldBroadcast};
 use server::feature::auction::{
-    decrement_live_bidding_timer, process_bid_batch, AuctionBid, AuctionNetworkOutbox,
-    AuctionPhase, AuctionState,
+    decrement_live_bidding_timer, enforce_live_bidding_deadline, process_bid_batch, AuctionBid,
+    AuctionNetworkOutbox, AuctionPhase, AuctionState,
 };
 use server::foundation::config::GameConfig;
 use shared::card::CardId;
@@ -34,6 +34,7 @@ fn live_auction(
         current_price,
         current_leader,
         timer_remaining_ms: timer_ms,
+        live_bidding_deadline_elapsed_ms: None,
     }
 }
 
@@ -77,6 +78,7 @@ fn process(
         economies,
         None,
         config,
+        None,
         bids,
         &mut network_outbox,
         &mut gold_broadcasts,
@@ -187,6 +189,66 @@ fn accepted_bid_timer_reset_caps_at_auction_timer() {
 
     assert_eq!(auction.timer_remaining_ms, 20_000);
     assert_eq!(outbox.accepted()[0].message.new_timer_ms, 20_000);
+}
+
+#[test]
+fn enforce_live_bidding_deadline_collapses_timer_when_deadline_passed() {
+    // PROMPT 1091 / AUDIT-1076-12 regression: in the 2026-05-17 run-7 manual
+    // playtest, a 20s auction window took 149s of wall-clock time to settle.
+    // The bid extension reset `timer_remaining_ms` to 20_000, but the per-tick
+    // `decrement_live_bidding_timer` under-counted real time (~13% of
+    // wall-clock), so settlement only fired ~7.5x later than configured.
+    //
+    // `enforce_live_bidding_deadline` is the safety net: it collapses
+    // `timer_remaining_ms` to the absolute remainder against
+    // `live_bidding_deadline_elapsed_ms`. Even when the decrement path is
+    // off by 7x, the deadline anchor is wall-clock truthful — so the auction
+    // still settles within (initial + extension) seconds of the last bid.
+    test_helpers::init_test_tracing();
+
+    // Scenario A: decrement under-counted (timer_remaining_ms still says
+    // 19_500), but real wall-clock has already passed the absolute deadline.
+    // Safety net must collapse to 0 so `settle_expired_auction` fires.
+    let mut auction = live_auction(5, None, 19_500);
+    auction.live_bidding_deadline_elapsed_ms = Some(10_000);
+    let now_ms = 30_000; // 20s past the deadline
+    enforce_live_bidding_deadline(&mut auction, now_ms);
+    assert_eq!(
+        auction.timer_remaining_ms, 0,
+        "deadline past -> timer must collapse to 0 for settle_expired_auction"
+    );
+
+    // Scenario B: deadline still in the future, decrement value is the
+    // smaller of the two — safety net must not move the timer backwards
+    // (i.e., must not extend it).
+    let mut auction = live_auction(5, None, 5_000);
+    auction.live_bidding_deadline_elapsed_ms = Some(50_000);
+    let now_ms = 35_000; // deadline_remaining = 15_000, decrement value = 5_000
+    enforce_live_bidding_deadline(&mut auction, now_ms);
+    assert_eq!(
+        auction.timer_remaining_ms, 5_000,
+        "decrement smaller than deadline_remaining -> use decrement value"
+    );
+
+    // Scenario C: deadline anchor absent (None) — no-op so unit tests and
+    // legacy callers without a Time resource keep their existing semantics.
+    let mut auction = live_auction(5, None, 12_000);
+    auction.live_bidding_deadline_elapsed_ms = None;
+    enforce_live_bidding_deadline(&mut auction, 99_999_999);
+    assert_eq!(
+        auction.timer_remaining_ms, 12_000,
+        "no deadline anchor -> enforce_live_bidding_deadline must be a no-op"
+    );
+
+    // Scenario D: phase is not LiveBidding — no-op even with a deadline set.
+    let mut auction = live_auction(5, None, 12_000);
+    auction.phase = AuctionPhase::Resolving;
+    auction.live_bidding_deadline_elapsed_ms = Some(0);
+    enforce_live_bidding_deadline(&mut auction, 99_999_999);
+    assert_eq!(
+        auction.timer_remaining_ms, 12_000,
+        "non-LiveBidding phase -> enforce_live_bidding_deadline must be a no-op"
+    );
 }
 
 #[test]

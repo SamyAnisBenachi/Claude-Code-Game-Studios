@@ -837,6 +837,7 @@ fn collect_and_process_two_client_bids_once(
         &mut economies,
         None,
         &config,
+        None,
         bids,
         &mut outbox,
         &mut gold_broadcasts,
@@ -935,6 +936,7 @@ fn two_client_live_auction() -> AuctionState {
         current_price: AUCTION_STARTING_PRICE,
         current_leader: None,
         timer_remaining_ms: AUCTION_TIMER_MS,
+        live_bidding_deadline_elapsed_ms: None,
     }
 }
 

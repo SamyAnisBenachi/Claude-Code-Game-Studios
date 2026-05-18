@@ -32,6 +32,7 @@ fn live_auction(
         current_price,
         current_leader,
         timer_remaining_ms: timer_ms,
+        live_bidding_deadline_elapsed_ms: None,
     }
 }
 
@@ -81,6 +82,7 @@ fn process(
         economies,
         hands,
         &config,
+        None,
         bids,
         &mut outbox,
         &mut gold_broadcasts,

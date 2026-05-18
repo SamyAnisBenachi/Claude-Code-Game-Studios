@@ -18,8 +18,29 @@ pub struct AuctionState {
     pub current_price: u32,
     /// `None` until the first bid is accepted.
     pub current_leader: Option<PlayerId>,
-    /// Authoritative remaining auction timer, in milliseconds.
+    /// Authoritative remaining auction timer, in milliseconds. Decremented
+    /// each `auction_tick_system` run via `time.delta()`. The absolute deadline
+    /// in [`AuctionState::live_bidding_deadline_elapsed_ms`] acts as a safety
+    /// net so the auction settles in bounded wall-clock time even when the
+    /// system's per-tick delta accumulation under-counts (PROMPT 1091:
+    /// observed 149s drain of a 20s timer in run-7, 2026-05-17).
     pub timer_remaining_ms: u32,
+    /// Absolute wall-clock-elapsed time (in milliseconds, from
+    /// `Time<Real>::elapsed()`) at which the auction must expire.
+    ///
+    /// `Some(_)` while in `LiveBidding` (set on phase entry, recomputed on
+    /// every accepted bid). `None` otherwise. `None` also when the system
+    /// has no `Time<Real>` resource (e.g., unit tests that bypass the schedule).
+    ///
+    /// PROMPT 1091: this field is the authoritative settlement clock. The
+    /// per-tick `timer_remaining_ms` decrement remains for the broadcast
+    /// contract, but settlement is gated on this absolute deadline. The
+    /// anchor is `Time<Real>` (not `Time<Virtual>`) because
+    /// `Time<Virtual>::max_delta` is capped at 250ms by default, which
+    /// makes the Virtual delta under-count when `Update` fires sparsely —
+    /// the exact root cause of the 149s LiveBidding stall reproduced in
+    /// AUDIT-1076-12.
+    pub live_bidding_deadline_elapsed_ms: Option<u64>,
 }
 
 /// Auction state-machine phase.
@@ -44,6 +65,7 @@ impl Default for AuctionState {
             current_price: 0,
             current_leader: None,
             timer_remaining_ms: 0,
+            live_bidding_deadline_elapsed_ms: None,
         }
     }
 }

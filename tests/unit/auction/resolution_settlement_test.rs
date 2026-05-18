@@ -56,6 +56,7 @@ fn live_auction(
         current_price,
         current_leader,
         timer_remaining_ms: 0,
+        live_bidding_deadline_elapsed_ms: None,
     }
 }
 

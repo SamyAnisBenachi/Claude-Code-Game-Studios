@@ -188,6 +188,20 @@ impl AuctionNetworkOutbox {
     }
 }
 
+/// Absolute wall-clock-elapsed time in milliseconds from `Time<Real>::elapsed()`,
+/// or `None` if `Time<Real>` is unavailable (e.g. unit tests without `TimePlugin`).
+///
+/// PROMPT 1091: anchored to `Time<Real>` (not the generic `Time<()>` /
+/// `Time<Virtual>`) because `Time<Virtual>::max_delta` is capped at 250ms by
+/// default. With that cap and sparsely scheduled `Update` runs, the per-tick
+/// Virtual delta under-counts wall-clock time — the exact failure mode
+/// AUDIT-1076-12 reproduced (149s drain of a 20s auction window).
+/// `Time<Real>` has no such cap; its `elapsed()` always tracks true
+/// monotonic wall-clock time.
+fn current_real_elapsed_ms(time_real: Option<&Time<bevy::time::Real>>) -> Option<u64> {
+    time_real.map(|t| u64::try_from(t.elapsed().as_millis()).unwrap_or(u64::MAX))
+}
+
 pub fn auction_tick_system(
     mut auction: ResMut<AuctionState>,
     mut phase_entered: MessageReader<AuctionPhaseEntered>,
@@ -198,7 +212,12 @@ pub fn auction_tick_system(
     draw_fixture: Option<Res<AuctionCardDrawFixture>>,
     data: AuctionStaticData,
     mut rng: Option<ResMut<ServerRng>>,
-    time: Option<Res<Time>>,
+    // PROMPT 1091: settlement clock comes from `Time<Real>` (uncapped
+    // wall-clock), not the generic `Time<()>` / `Time<Virtual>` which is
+    // clamped by `max_delta` (default 250ms). With sparse `Update` ticks on
+    // the headless server the Virtual delta under-counts by ~7x — see
+    // `enforce_live_bidding_deadline` doc for full root-cause notes.
+    time_real: Option<Res<Time<bevy::time::Real>>>,
     connections: Option<Res<PlayerConnectionMap>>,
     mut reconnect_tracker: Option<ResMut<ReconnectTracker>>,
     mut bid_receivers: Query<(&RemoteId, &mut MessageReceiver<C2SPlaceBid>)>,
@@ -206,6 +225,8 @@ pub fn auction_tick_system(
     mut sender: Option<ServerMultiMessageSender>,
     mut writers: AuctionMessageWriters,
 ) {
+    let now_elapsed_ms = current_real_elapsed_ms(time_real.as_deref());
+
     for event in phase_entered.read() {
         tracing::info!(
             target: "server::game",
@@ -266,7 +287,13 @@ pub fn auction_tick_system(
         auction.starting_price = starting_price;
         auction.current_price = starting_price;
         auction.current_leader = None;
-        auction.timer_remaining_ms = data.config.auction_timer_seconds.saturating_mul(1000);
+        let timer_ms = data.config.auction_timer_seconds.saturating_mul(1000);
+        auction.timer_remaining_ms = timer_ms;
+        // PROMPT 1091: anchor the settlement deadline to wall-clock elapsed so
+        // the auction expires in bounded real time even when per-tick deltas
+        // under-count (observed 7.5x drain slowdown in run-7 manual playtest).
+        auction.live_bidding_deadline_elapsed_ms =
+            now_elapsed_ms.map(|now| now.saturating_add(u64::from(timer_ms)));
         tracing::info!(
             target: "server::game",
             round = event.round,
@@ -325,14 +352,23 @@ pub fn auction_tick_system(
         &mut economies,
         hands.as_deref(),
         &data.config,
+        now_elapsed_ms,
         bids,
         &mut frame_outbox,
         &mut frame_gold_broadcasts,
     );
 
-    if let Some(time) = time.as_deref() {
-        let raw_delta_ms = u32::try_from(time.delta().as_millis()).unwrap_or(u32::MAX);
+    if let Some(time_real) = time_real.as_deref() {
+        let raw_delta_ms = u32::try_from(time_real.delta().as_millis()).unwrap_or(u32::MAX);
         decrement_live_bidding_timer(&mut auction, raw_delta_ms);
+    }
+
+    // PROMPT 1091: safety net — collapse `timer_remaining_ms` to the
+    // absolute-deadline remainder so the auction settles in bounded real time
+    // even if `decrement_live_bidding_timer` under-counts (root cause of the
+    // 149s LiveBidding stall in AUDIT-1076-12).
+    if let Some(now_ms) = now_elapsed_ms {
+        enforce_live_bidding_deadline(&mut auction, now_ms);
     }
 
     if let Some(settled) = settle_expired_auction(
@@ -512,6 +548,7 @@ pub fn process_bid_batch(
     economies: &mut PlayerEconomies,
     hands: Option<&PlayerHands>,
     config: &GameConfig,
+    now_elapsed_ms: Option<u64>,
     bids: impl IntoIterator<Item = AuctionBid>,
     outbox: &mut AuctionNetworkOutbox,
     gold_broadcasts: &mut Vec<S2CGoldBroadcast>,
@@ -558,7 +595,15 @@ pub fn process_bid_batch(
             continue;
         }
 
-        accept_bid(auction, economies, config, bid, outbox, gold_broadcasts);
+        accept_bid(
+            auction,
+            economies,
+            config,
+            now_elapsed_ms,
+            bid,
+            outbox,
+            gold_broadcasts,
+        );
     }
 }
 
@@ -575,6 +620,44 @@ pub fn decrement_live_bidding_timer(auction: &mut AuctionState, raw_delta_ms: u3
     // fire. A prior `.min(1000)` clamp here caused 17-minute stuck auctions
     // when Update ticks were tens of seconds apart between bursts.
     auction.timer_remaining_ms = auction.timer_remaining_ms.saturating_sub(raw_delta_ms);
+}
+
+/// Collapse `timer_remaining_ms` to the absolute-deadline remainder.
+///
+/// PROMPT 1091 safety net for AUDIT-1076-12. The per-tick
+/// `decrement_live_bidding_timer` accumulates `Time<()>::delta()` (i.e.
+/// `Time<Virtual>::delta()`) across schedule runs. That delta is clamped by
+/// `Time<Virtual>::max_delta` (default 250ms) — sparse `Update` ticks
+/// (~1.8s real time between runs on the headless server) push the Virtual
+/// delta below wall-clock by ~7x, so the timer drains far slower than
+/// configured. The 2026-05-17 run-7 manual playtest reproduced this: a 20s
+/// auction window took 149s of wall-clock time to settle.
+///
+/// The settlement deadline in
+/// [`AuctionState::live_bidding_deadline_elapsed_ms`] is anchored to
+/// `Time<Real>::elapsed()` (uncapped wall-clock) and recomputed on every
+/// accepted bid, so it tracks real time regardless of how often
+/// `auction_tick_system` is dispatched and regardless of any Virtual delta
+/// clamping.
+///
+/// Called after `decrement_live_bidding_timer` so the final
+/// `timer_remaining_ms` is the smaller of the two estimates — i.e., the timer
+/// only ever moves toward zero, never away from it.
+///
+/// No-op when:
+/// - `phase != LiveBidding`
+/// - `live_bidding_deadline_elapsed_ms` is `None` (no anchor was captured,
+///   e.g. unit tests bypassing the schedule)
+pub fn enforce_live_bidding_deadline(auction: &mut AuctionState, now_elapsed_ms: u64) {
+    if auction.phase != AuctionPhase::LiveBidding {
+        return;
+    }
+    let Some(deadline_ms) = auction.live_bidding_deadline_elapsed_ms else {
+        return;
+    };
+    let deadline_remaining = deadline_ms.saturating_sub(now_elapsed_ms);
+    let deadline_remaining_u32 = u32::try_from(deadline_remaining).unwrap_or(u32::MAX);
+    auction.timer_remaining_ms = auction.timer_remaining_ms.min(deadline_remaining_u32);
 }
 
 pub fn settle_expired_auction(
@@ -761,6 +844,7 @@ fn accept_bid(
     auction: &mut AuctionState,
     economies: &mut PlayerEconomies,
     config: &GameConfig,
+    now_elapsed_ms: Option<u64>,
     bid: AuctionBid,
     outbox: &mut AuctionNetworkOutbox,
     gold_broadcasts: &mut Vec<S2CGoldBroadcast>,
@@ -800,6 +884,13 @@ fn accept_bid(
         .timer_remaining_ms
         .saturating_add(config.auction_timer_reset_seconds.saturating_mul(1000))
         .min(config.auction_timer_seconds.saturating_mul(1000));
+    // PROMPT 1091: rebase the absolute deadline off the now-extended
+    // remainder so the deadline-enforced safety net (see
+    // [`enforce_live_bidding_deadline`]) tracks bid extensions correctly.
+    if let Some(now_ms) = now_elapsed_ms {
+        auction.live_bidding_deadline_elapsed_ms =
+            Some(now_ms.saturating_add(u64::from(auction.timer_remaining_ms)));
+    }
 
     outbox.push_accepted(AuctionAcceptedDispatch {
         player_id: bid.bidder,
@@ -1094,6 +1185,7 @@ fn reset_to_idle(auction: &mut AuctionState) {
     auction.current_price = 0;
     auction.current_leader = None;
     auction.timer_remaining_ms = 0;
+    auction.live_bidding_deadline_elapsed_ms = None;
 }
 
 fn starting_price_for(card_id: CardId, catalog: &CardCatalog, config: &GameConfig) -> u32 {

@@ -132,6 +132,7 @@ fn duplicate_phase_entry_in_non_idle_state_is_rejected() {
             current_price: 4,
             current_leader: Some(PlayerId(1)),
             timer_remaining_ms: 8_000,
+            live_bidding_deadline_elapsed_ms: None,
         };
         send_phase_entered(&mut app);
 
