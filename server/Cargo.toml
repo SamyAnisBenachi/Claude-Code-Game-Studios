@@ -243,6 +243,10 @@ name = "room_create_join_test"
 path = "../tests/integration/session/room_create_join_test.rs"
 
 [[test]]
+name = "room_list_test"
+path = "../tests/integration/session/room_list_test.rs"
+
+[[test]]
 name = "game_over_teardown_test"
 path = "../tests/integration/session/game_over_teardown_test.rs"
 

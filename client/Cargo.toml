@@ -505,6 +505,13 @@ path = "../tests/unit/board_rendering/plugin_scaffold_test.rs"
 name = "playable_client_lobby_entry_test"
 path = "../tests/integration/playable_client/lobby_entry_test.rs"
 
+# PROMPT 1160 — existing-room browser tests: drainer populates lobby state,
+# handshake triggers exactly one initial refresh, row click writes JoinRoom
+# with the server-supplied first_open_slot, refresh button writes RefreshRooms.
+[[test]]
+name = "playable_client_lobby_room_browser_test"
+path = "../tests/integration/playable_client/lobby_room_browser_test.rs"
+
 [[test]]
 name = "playable_client_lobby_confirm_state_text_test"
 path = "../tests/integration/playable_client/lobby_confirm_state_text_test.rs"
