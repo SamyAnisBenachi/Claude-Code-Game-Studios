@@ -1,3 +1,223 @@
+# PROMPT 1121 State Banner -- Sprint 17 S17-UI-BID-BUTTON-PHASE-RACE-001 Story-Done
+
+Updated 2026-05-18 by PROMPT 1121. Source-of-truth at closure:
+`origin/main@d35d24d01ebc59e387ba749883596aa1f29418e4` (PROMPT 1119
+integration tip `integrate(s17): merge PROMPT 1116 bid-button
+phase-race into main (PROMPT 1119)`), the integration tip for the
+row this prompt closes. `origin/main` HEAD at the start of this
+PROMPT 1121 closure window is
+`89ce1498953c362a86d70037bbc71f7452fdcab5` (PROMPT 1120 story-done
+`story-done(s17): close S17-UI-HAND-B0004-CLEANUP-001 (PROMPT
+1120)`), a strict fast-forward descendant of `d35d24d`. PROMPT 1119
+merged PROMPT 1116 worker
+`6f8f5ae169a3ca89568a0c8bea49326eb818ec73`
+`dev-story(s17-bid-button-phase-race): spawn-state Loading… +
+HiddenLeading chrome override (PROMPT 1116)` onto `origin/main` via
+no-ff merge; strict fast-forward descendant of
+`origin/main@29ad4c6` PROMPT 1118 hand-fan-root B0004 cleanup
+integration tip, of `origin/main@30c9e0f` PROMPT 1114 card-display
+art-helper integration tip, of `origin/main@2250add` PROMPT 1117
+card-display art-helper story-done tip, of `origin/main@f2ba917`
+PROMPT 1112 paperwork-only PARTIAL DISPOSITION tip, of
+`origin/main@4bd4f56` PROMPT 1111 PARTIAL integration tip, of
+`origin/main@9a9b1dc` PROMPT 1110 card-slot inset wiring
+story-done tip, of `origin/main@30f166f` PROMPT 1106 card-slot
+inset wiring integration tip, of `origin/main@72d56bc` PROMPT 1108
+server start-of-turn-debug story-done tip, and of
+`origin/main@dc8adb6` PROMPT 1107 server warn->debug integration
+tip. Branch: in-place edits on the primary checkout (`main`).
+
+PROMPT 1121 is a paperwork-only Sprint 17 `/story-done` closure for
+`S17-UI-BID-BUTTON-PHASE-RACE-001` (Should Have; story 019 in
+`production/epics/shop-auction-ui/`; SOURCE-1077-10 P2 bid-button
+text-spawn / chrome-asset race). Closure paperwork records the
+PROMPT 1116 worker + PROMPT 1119 integration result on the story
+file, in `production/sprint-status.yaml`, in
+`production/session-state/*`, and authors the mandatory final
+report under `reports/` (gitignored).
+
+**Result delivered on origin/main@d35d24d by PROMPT 1119:**
+
+- **Source-side remediation for SOURCE-1077-10 applied** -- three
+  concrete edits in `client/src/ui/shop_auction/mod.rs`:
+  1. New `pub const AUCTION_BID_BUTTON_LOADING_LABEL: &str =
+     "Loading…"` at module scope (`mod.rs:40`).
+  2. Spawn-state `Text::new("")` → `Text::new(
+     AUCTION_BID_BUTTON_LOADING_LABEL)` at the bid-button spawn
+     site (`mod.rs:4883`).
+  3. `sync_auction_panel_system` text branch surfaces the
+     pending label when `auction_state.card_id.is_none()`
+     (`mod.rs:3831`); chrome apply site falls back to
+     `Handle::<Image>::default()` when the
+     `auction_bid_chrome_state` mapper returns `None`
+     (`mod.rs:3783`).
+  4. `auction_bid_chrome_state` (`mod.rs:5890`) now returns
+     `Option<BidButtonChromeState>` with the new
+     `HiddenLeading => None` branch; `Normal` (Enabled) and
+     `Disabled` (every other non-`HiddenLeading` variant)
+     mappings preserved verbatim.
+- **AC3 strategy chosen by worker**: both (a)
+  `Visibility::Hidden` AND (b) `Handle::<Image>::default()`
+  chrome simultaneously. (a) was already in place; (b) is
+  defensive so a future refactor of the visibility logic cannot
+  reintroduce the baked-`?` glyph on the entity-rendered chrome.
+  `Handle::<Image>::default()` is the AC3 (b) "no-image asset"
+  branch -- no new `BID_BUTTON_HIDDEN_LEADING_ASSET` constant
+  added; `client/src/asset_wiring.rs` NOT modified.
+- **`PAW-TD-*-a` preserved verbatim** --
+  `assets/art/ui/auction/ui_bid_button_disabled.png` (baked-`?`
+  PNG) NOT modified.
+- **PROMPT 1042 Pass affordance preserved** -- the existing
+  `auction_bid_buttons_test.rs` Pass-affordance assertions PASS
+  (9/9) at the integration tip; this row is additive over
+  PROMPT 1042.
+- **`chrome_wiring_test` invariant preserved** -- chrome override
+  narrowed to `HiddenLeading` only; InSession-idle bid buttons
+  continue to carry a non-default `ImageNode.image` (the
+  `GenericDisabled` path with `card_id == None` still maps to
+  `Some(Disabled)`).
+
+**Tests delivered**:
+`tests/integration/shop_auction_ui/auction_bid_buttons_phase_race_test.rs`
+(NEW; AC9) 5/5 PASS at integration tip
+(`s17_phase_race_ac1_spawn_state_text_is_loading_label`,
+`s17_phase_race_ac2_text_updates_to_numeric_on_auction_card_arrival`,
+`s17_phase_race_ac3_ac5_hidden_leading_clears_chrome_and_hides_row`,
+`s17_phase_race_ac4_draft_auction_without_card_keeps_loading_or_hidden`,
+`s17_phase_race_ac7_chrome_mapping_preserved_for_enabled_and_disabled_states`).
+Adjacent bid-button regression sweep at integration tip
+(PROMPT 1119), 42/42 PASS across 7 test bins
+(`auction_activation_test 8/8`, `auction_bid_buttons_test 9/9`,
+`auction_bid_target_focus_test 4/4`, `auction_feedback_test 6/6`,
+`auction_lead_loss_state_test 4/4`, `auction_settlement_test 7/7`,
+`chrome_wiring_test 4/4`). `cargo check -p client` PASS in 7.04s.
+`git diff --check origin/main...HEAD` clean.
+
+**AC1..AC15 all PASS** via PROMPT 1116 worker + PROMPT 1119
+integration. The exhaustive per-AC outcome is recorded inline in
+the story-019 Completion Notes section, the PROMPT 1121
+`sprint_17_story_done` block in `production/sprint-status.yaml`,
+the PROMPT 1121 paragraph in
+`production/session-state/codex-orchestrator-state.md`, and the
+final report under `reports/`.
+
+**Cargo resource policy advisory (AC15)**: PROMPT 1116 worker
+applied all 5 env vars before every cargo invocation
+(`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc` +
+`CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+`CARGO_INCREMENTAL=0` +
+`RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`); build line
+printed `[optimized]` with no `+ debuginfo`. PROMPT 1119
+integration encountered a one-call env-var propagation gap on the
+first `cargo check` (bash-tool `$env:` token-expansion gap; that
+one invocation used the worktree-local `target/`). All subsequent
+calls used inline bash env-var syntax that propagated correctly;
+D: free remained > 770 GB; build correctness gate UNAFFECTED (all
+47/47 targeted sub-tests + 2 cargo check invocations PASS at
+integration tip). Recorded explicitly above and in PROMPT 1119's
+integration report; NOT hidden as a product failure. PROMPT 1121
+itself does NOT invoke Cargo (paperwork-only closure).
+
+**Sprint 17 active row coverage after PROMPT 1121**: 5 of 9 active
+rows DONE (S17-SERVER-START-OF-TURN-DEBUG-001 by PROMPT 1108 +
+S17-UI-CARD-SLOT-INSET-WIRING-001 by PROMPT 1110 +
+S17-UI-CARD-DISPLAY-ART-HELPER-001 by PROMPT 1117 +
+S17-UI-HAND-B0004-CLEANUP-001 by PROMPT 1120 +
+S17-UI-BID-BUTTON-PHASE-RACE-001 by PROMPT 1121); 1 of 9 active
+rows PARTIAL / IN_PROGRESS (S17-UI-HUD-OPP-MANA-CLEANUP-001 via
+PROMPT 1112 with AC3 carried); 3 rows preserved as `ready` and
+NOT closed by PROMPT 1121 (S11-HUD-TIMER-EYEBALL-VISUAL-001 Must
+Have human-operator-blocked carry, S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001
+Should Have, S17-OPS-VULKAN-VALIDATION-GATING-001 Nice to Have).
+Must Have 1/2 done + Should Have 2/4 done + 1 partial / 4 + Nice
+to Have 2/3 done.
+
+**SOURCE-1077-10 (P2) discharged on origin/main by PROMPT 1119
+integration** -- the closure target of this row. SOURCE-1077-01/02/03/04
+discharged by PROMPT 1114/1117 closure; SOURCE-1077-06 by
+PROMPT 1106/1110; SOURCE-1077-08/09/16 reserved for
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`; SOURCE-1077-05/07/11/12/13/14/15
+deferred to Sprint 18+. PROMPT 1121 does NOT discharge any
+SOURCE-1077-* finding outside SOURCE-1077-10.
+
+**PROMPT 1112 AC3 hand reserve-strip carry (AUDIT-1076-17 floating
+`Reserve N + / Current N` microbadge in `client/src/ui/hand/mod.rs`
+reserve strip) preserved OPEN; PROMPT 1121 does NOT close it.**
+Semantically distinct surface: the hand reserve-strip per-card
+microbadge vs the auction bid-button chrome / spawn-state
+behaviour.
+
+**Files changed by PROMPT 1121**:
+- `production/epics/shop-auction-ui/story-019-bid-button-phase-race.md`
+  (Status banner Draft → Done; AC1..AC15 flipped to `[x]`;
+  Closure Trail replaced with Completion Notes containing PROMPT
+  1116 worker + PROMPT 1119 integration outcome, Test evidence,
+  Cargo resource policy advisory, Per-AC outcome, Closure trail
+  (commits) numbered list, Conditions carried forward,
+  Explicitly NOT claimed; final status line `DRAFT` → `DONE`).
+- `production/sprint-status.yaml` (S17-UI-BID-BUTTON-PHASE-RACE-001
+  row in `stories:` block flipped `status: ready` → `done` with
+  `completed: 2026-05-18` + worker/integration/integrated_commit/
+  story_done_prompt/evidence metadata + closure notes;
+  `sprint_17_story_done:` PROMPT 1121 block appended after the
+  PROMPT 1120 entry and before the `sprint_17_partial_disposition:`
+  block with `stories_closed` entry covering AC1..AC15 outcomes,
+  `rows_not_closed_by_prompt_1121` enumerating the other 8 Sprint
+  17 active rows, `cargo_resource_policy_advisory`,
+  `conditions_carried_forward_unchanged`,
+  `explicitly_not_claimed`, `files_changed_by_prompt_1121`, and
+  `forbidden_changes_observed` sections).
+- `production/session-state/active.md` (this PROMPT 1121 banner
+  prepended above the PROMPT 1120 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1121 paragraph prepended above the PROMPT 1120 paragraph).
+- `reports/PROMPT-1121-s17-bid-button-phase-race-story-done.md`
+  (mandatory final report; `reports/` is gitignored; not staged
+  or committed).
+
+**Files explicitly NOT touched by PROMPT 1121**: `client/`,
+`server/`, `shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`,
+`.cargo/`, `.github/`, `Trunk.toml`, `production/stage.txt`
+(remains `Polish`), `production/sprints/**`,
+`production/qa/qa-plan-sprint-17.md`, `production/qa/smoke-*.md`,
+`production/qa/team-qa-*.md`, `production/qa/evidence/*`
+(`sprint-17-bid-button-phase-race/` preserved verbatim on
+`origin/main` via PROMPT 1119 integration),
+`production/gate-checks/**` (PROMPT 761 Polish→Release FAIL
+preserved with NO retry), `docs/architecture/adr-*.md`, all 8
+other Sprint 17 active row story files under `production/epics/`
+(`S11-HUD-TIMER-EYEBALL-VISUAL-001` story 014 untouched;
+`S17-UI-HUD-OPP-MANA-CLEANUP-001` story 018 PROMPT 1112 PARTIAL
+disposition preserved verbatim; `S17-UI-CARD-DISPLAY-ART-HELPER-001`
+story 017 PROMPT 1117 closure preserved verbatim;
+`S17-UI-HAND-B0004-CLEANUP-001` story 021 PROMPT 1120 closure
+preserved verbatim), all prior `sprint_N_*` blocks in
+`production/sprint-status.yaml` (including PROMPT 1108 + PROMPT
+1110 + PROMPT 1117 + PROMPT 1120 `sprint_17_story_done` entries
+and the PROMPT 1112 `sprint_17_partial_disposition` entry which
+are preserved verbatim above and below this new PROMPT 1121
+entry), `.octogent/`, `.claude/settings.json`,
+`.claude/scheduled_tasks.lock`. No cargo / trunk / CI command
+invoked.
+
+**Next launchable prompts**: per-row `/story-readiness` reruns
+against PROMPT 1121 closure HEAD for the 2 remaining `ready`
+Sprint 17 active rows (`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`,
+`S17-OPS-VULKAN-VALIDATION-GATING-001`); AC3 carry-forward
+producer decision on `S17-UI-HUD-OPP-MANA-CLEANUP-001` (Sprint 17
+pull vs Sprint 18 deferral) before final `/story-done` closure of
+that row; per-row `/dev-story` + integration + `/story-done`
+paperwork for the remaining `ready` rows; Sprint 17 smoke harness
+prompt with two-client session.
+
+**Branch / push**: PROMPT 1121 commits `story-done(s17): close
+S17-UI-BID-BUTTON-PHASE-RACE-001 (PROMPT 1121)` on `main`; pushes
+to `origin/main` if policy allows; if direct `main` push is
+blocked, the commit is pushed on a worker branch and the exact
+commit/branch reported, never force-pushed.
+
+---
+
 # PROMPT 1120 State Banner -- Sprint 17 S17-UI-HAND-B0004-CLEANUP-001 Story-Done
 
 Updated 2026-05-18 by PROMPT 1120. Source-of-truth at closure:
