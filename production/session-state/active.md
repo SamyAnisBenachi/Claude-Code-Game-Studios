@@ -1,3 +1,132 @@
+# PROMPT 1108 State Banner -- Sprint 17 S17-SERVER-START-OF-TURN-DEBUG-001 Story-Done
+
+Updated 2026-05-18 by PROMPT 1108. Source-of-truth at closure:
+`origin/main@dc8adb6a2c67a975fb241639f2b242000e7db926` (PROMPT 1107
+integration tip `integrate(s17): merge PROMPT 1104 server
+start_of_turn_dispatch_system warn->debug into main (PROMPT 1107)`
+merging PROMPT 1104 worker `b26beab18f3a707f66713bae1198378d4d15d09f`
+`tech-debt(server): downgrade start_of_turn_dispatch_system warn ->
+debug (S17-SERVER-START-OF-TURN-DEBUG-001, PROMPT 1104)` onto
+`origin/main` via no-ff merge; strict fast-forward descendant of
+`origin/main@ff47075` PROMPT 1100 Sprint 17 QA plan tip and of
+`origin/main@cb62a9e` PROMPT 1099 Sprint 17 activation tip and of
+`origin/main@bc3db29` PROMPT 1097 net-new Sprint 17 story authoring
+batch integration tip). Worktree: in-place edits on the primary
+checkout. Branch: `story-done/s17-server-start-of-turn-debug-1108`
+from base `origin/main@dc8adb6`.
+
+PROMPT 1108 is a paperwork-only Sprint 17 `/story-done` closure for
+`S17-SERVER-START-OF-TURN-DEBUG-001` (Nice to Have, story 003 in
+`production/epics/server/`). Single-row closure on the basis of:
+PROMPT 1104 worker (single-line `tracing::warn!` -> `tracing::debug!`
+substitution at `server/src/feature/keyword/observers.rs:66` inside
+`start_of_turn_dispatch_system`; message text, `target` field, and
+system body unchanged; `cargo check -p server` passed under Sprint
+15+ Cargo resource policy via `.ps1` wrappers); PROMPT 1107
+integration (no-ff merge onto `origin/main`; `git diff --name-only
+origin/main...HEAD` returns 2 paths only -- the 1-line `.rs` edit
+plus new `production/qa/evidence/sprint-17-start-of-turn-debug/
+evidence.md`; `cargo check -p server` passed exit 0 2m07s). AC1 +
+AC4..AC9 PASS; AC2 + AC3 PARTIAL (advisory; non-BLOCKING for Config
+/ Data row classification per `.claude/docs/coding-standards.md`
+"Test Evidence by Story Type" matrix; binding two-client smoke gate
+remains Sprint 17 smoke prompt scope); AC10 PASS-WORKER +
+ADVISORY-DEVIATION-INTEGRATION.
+
+**Cargo resource policy advisory deviation (PROMPT 1107)** preserved
+explicitly: the PROMPT 1107 integration prompt's PowerShell-syntax
+env-var block (`$env:CARGO_TARGET_DIR=...` etc.) was issued through
+the Bash tool, which does not interpret `$env:` assignments. Bash
+emitted "command not found" for each line; the 5 Sprint 15+ Cargo
+resource policy env vars were **NOT** exported during the integration
+`cargo check -p server` invocation, which then ran with the default
+`dev` profile into the integration worktree's local `target/` rather
+than `D:\_DEV\cargo-target\ccgs-msvc`. The build correctness gate
+this integration row required is **unaffected** -- `cargo check -p
+server` still passed against the merged tree. Recorded explicitly as
+a process / policy advisory note, NOT a product failure. PROMPT 1104
+worker applied the policy correctly. PROMPT 1108 itself does NOT
+invoke Cargo.
+
+Sprint 17 progress after PROMPT 1108: 1 of 9 active rows done (Must
+Have 0/2 + Should Have 0/4 + Nice to Have 1/3). Rows preserved as
+ready and **NOT** closed by PROMPT 1108: `S11-HUD-TIMER-EYEBALL-
+VISUAL-001` (Must Have human-operator-blocked Sprint 13 -> 14 -> 15
+-> 16 -> 17 carry; no LLM `/story-done` authorised);
+`S17-UI-CARD-DISPLAY-ART-HELPER-001` (Must Have);
+`S17-UI-HUD-OPP-MANA-CLEANUP-001`, `S17-UI-CARD-SLOT-INSET-WIRING-001`,
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`, `S17-UI-BID-BUTTON-PHASE-RACE-001`
+(all 4 Should Have); `S17-OPS-VULKAN-VALIDATION-GATING-001`,
+`S17-UI-HAND-B0004-CLEANUP-001` (2 of 3 Nice to Have). All non-claims
+preserved verbatim: `S8-QA-001-W1` OPEN, `QA-COND-0005` /
+`QA-COND-0006` accepted-risk, `PAW-TD-*-a` preserved, `TQ-S12-C1..C7`
+preserved (`TQ-S12-C7` explicitly NOT closed), PROMPT 683-era runtime
+divergence preserved, PROMPT 761 `Polish->Release` FAIL preserved
+with NO retry, PROMPT 1054 P1 UI snapshot retest BLOCKED-HUMAN
+preserved, 24 PROMPT 1022 QA snapshot audit findings preserved,
+long-tail AUDIT-1076-05 / 08 / 11 + SOURCE-1077-05 / 07 / 11 / 12 /
+13 / 14 / 15 deferred to Sprint 18+, all five dropped conditional
+Must Have rows preserved on `origin/main`, no LLM closure of
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`. `start_of_turn_dispatch_system`
+implementation remains **deferred** -- this row only changed the log
+macro; the system body, registration, schedule, and per-`DraftStarted`
+trigger are unchanged. The pre-existing `tracing_subscriber` wiring
+gap (`server/src/main.rs:50-52` builder init without
+`.with_env_filter(EnvFilter::from_default_env())`) is preserved as a
+candidate Sprint 18+ ops-hardening row, NOT closed by PROMPT 1108.
+Stage `Polish` UNCHANGED; `production/stage.txt` NOT modified.
+
+Files changed by PROMPT 1108:
+
+- `production/epics/server/story-003-start-of-turn-debug-downgrade.md`
+  (Status banner Draft -> Done; AC1 + AC4..AC9 [x]; AC2 + AC3 [~]
+  PARTIAL advisory; AC10 [~] PASS-WORKER + ADVISORY-DEVIATION-
+  INTEGRATION; Completion Notes section added; Cargo resource policy
+  advisory deviation note recorded explicitly; Closure Trail table
+  populated with PROMPT 1095 / 1097 / 1099 / 1100 / 1104 / 1107 /
+  1108 entries; final status line flipped DRAFT -> DONE).
+- `production/sprint-status.yaml` (S17-SERVER-START-OF-TURN-DEBUG-001
+  row in `stories:` block flipped `status: ready -> done` with
+  `completed: 2026-05-18` + worker / integration / evidence
+  metadata + closure note + Cargo resource policy advisory rationale;
+  `sprint_17_story_done:` block appended at EOF following
+  `sprint_16_story_done:` precedent with full PROMPT 1108 disposition
+  block).
+- `production/session-state/active.md` (this PROMPT 1108 banner
+  prepended above PROMPT 1100 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1108 paragraph prepended above PROMPT 1100 paragraph).
+- `reports/PROMPT-1108-s17-server-start-of-turn-debug-story-done.md`
+  (mandatory final report file; `reports/` is gitignored; not staged
+  or committed).
+
+Files explicitly NOT touched by PROMPT 1108: `client/`, `server/`,
+`shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`,
+`.github/`, `Trunk.toml`, `production/stage.txt`,
+`production/sprints/**` (sprint-17 plan body NOT rewritten),
+`production/qa/qa-plan-sprint-17.md`, `production/qa/smoke-*.md`,
+`production/qa/team-qa-*.md`, `production/qa/evidence/*`
+(sprint-17-start-of-turn-debug/ preserved verbatim on `origin/main`
+via PROMPT 1107 integration), `production/gate-checks/**`,
+`docs/architecture/adr-*.md`, any Sprint 17 story file under
+`production/epics/` other than `story-003-start-of-turn-debug-
+downgrade.md` (the other 8 Sprint 17 active row story files preserved
+verbatim; S11-HUD-TIMER-EYEBALL-VISUAL-001 story 014 untouched), all
+prior `sprint_N_*` blocks in `production/sprint-status.yaml`,
+`.octogent/`, `.claude/settings.json`, `.claude/scheduled_tasks.lock`.
+No cargo / trunk / CI command invoked. **Cargo policy: N/A** for
+this paperwork-only closure.
+
+Branch / push: PROMPT 1108 commits the story-done paperwork on
+branch `story-done/s17-server-start-of-turn-debug-1108` from base
+`origin/main@dc8adb6`. Push target per prompt policy: push to `main`
+if allowed; if `main` push is blocked, push the worker branch and
+report exact commit/branch. No `/dev-story`, `/smoke-check`,
+`/team-qa`, `/gate-check`, `/release-check`, `/qa-plan`, or
+`/story-readiness` invoked by PROMPT 1108.
+
+---
+
 # PROMPT 1100 State Banner -- Sprint 17 QA Plan Authored
 
 Updated 2026-05-18 by PROMPT 1100. Source-of-truth at authoring:
