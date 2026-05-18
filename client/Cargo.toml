@@ -514,6 +514,10 @@ name = "shop_auction_ui_auction_bid_buttons_test"
 path = "../tests/integration/shop_auction_ui/auction_bid_buttons_test.rs"
 
 [[test]]
+name = "shop_auction_ui_auction_bid_buttons_phase_race_test"
+path = "../tests/integration/shop_auction_ui/auction_bid_buttons_phase_race_test.rs"
+
+[[test]]
 name = "shop_auction_ui_auction_bid_target_focus_test"
 path = "../tests/integration/shop_auction_ui/auction_bid_target_focus_test.rs"
 
