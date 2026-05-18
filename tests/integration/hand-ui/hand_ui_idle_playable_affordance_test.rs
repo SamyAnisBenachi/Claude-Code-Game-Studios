@@ -296,7 +296,10 @@ fn empty_fan_slots_show_no_affordance_overlay() {
         );
         empty_slot_count += 1;
     }
-    assert_eq!(empty_slot_count, 8, "exactly 8 empty pre-pool slots expected");
+    assert_eq!(
+        empty_slot_count, 8,
+        "exactly 8 empty pre-pool slots expected"
+    );
 }
 
 // ── AC14: pre-pool count preserved across transitions ────────────────────────
@@ -519,7 +522,11 @@ fn playable_overlay_under_slot_lacks_drag_state_marker(app: &mut App, slot: Enti
     for (overlay_entity, child_of) in q.iter(app.world()) {
         if child_of.parent() == slot {
             found = true;
-            if app.world().get::<DragStateOverlay>(overlay_entity).is_some() {
+            if app
+                .world()
+                .get::<DragStateOverlay>(overlay_entity)
+                .is_some()
+            {
                 return false;
             }
         }
@@ -553,9 +560,7 @@ fn assert_no_visible_affordance_overlays(app: &mut App) {
 }
 
 fn assert_no_affordance_markers(app: &mut App) {
-    let mut q = app
-        .world_mut()
-        .query::<&FanSlotPlayableAffordanceActive>();
+    let mut q = app.world_mut().query::<&FanSlotPlayableAffordanceActive>();
     let count = q.iter(app.world()).count();
     assert_eq!(
         count, 0,

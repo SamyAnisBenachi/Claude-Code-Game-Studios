@@ -1362,8 +1362,7 @@ pub fn emit_resolution_combat_feedback(
                 if *damage_amount == 0 {
                     continue;
                 }
-                let Some((target_entity, _, _)) =
-                    find_board_unit_by_id(*defender_id, board_units)
+                let Some((target_entity, _, _)) = find_board_unit_by_id(*defender_id, board_units)
                 else {
                     continue;
                 };
@@ -1378,11 +1377,7 @@ pub fn emit_resolution_combat_feedback(
                 let Some((_, _, transform)) = find_board_unit_by_id(*unit_id, board_units) else {
                     continue;
                 };
-                spawn_resolution_kill_marker(
-                    commands,
-                    transform.translation,
-                    tagged.trigger_index,
-                );
+                spawn_resolution_kill_marker(commands, transform.translation, tagged.trigger_index);
             }
             _ => {}
         }

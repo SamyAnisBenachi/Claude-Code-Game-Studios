@@ -3,7 +3,9 @@ use lightyear::prelude::{NetworkTarget, PeerId, Server, ServerMultiMessageSender
 use shared::protocol::{ReliableChannel, S2COpponentDisconnected, S2CPhaseChanged};
 use shared::session::PlayerId;
 
-use crate::core::rsm::{BroadcastPhaseChanged, OpponentDisconnectNotice, RoundPhase, RsmNetworkOutbox};
+use crate::core::rsm::{
+    BroadcastPhaseChanged, OpponentDisconnectNotice, RoundPhase, RsmNetworkOutbox,
+};
 use crate::core::session::{PlayerConnectionMap, SessionConfig};
 
 /// Sends one reliable `S2CPhaseChanged` broadcast for each RSM phase-change message.

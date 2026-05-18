@@ -167,12 +167,7 @@ fn test_build_snapshot_emits_default_layout_block_without_panic() {
         );
     }
     let viewport = layout.get("viewport").unwrap();
-    for key in [
-        "width_px",
-        "height_px",
-        "ui_scale",
-        "window_scale_factor",
-    ] {
+    for key in ["width_px", "height_px", "ui_scale", "window_scale_factor"] {
         assert!(
             viewport.get(key).is_some(),
             "layout.viewport.{key} key must be present"
@@ -552,10 +547,8 @@ fn test_snapshot_json_round_trip_preserves_layout_block_keys_after_write_to_dir(
         ui_counts: UiCounts::default(),
         extras: ExtrasSnapshot::default(),
         layout,
-        placement_state:
-            client::presentation::qa_snapshot::PlacementStateSnapshot::default(),
-        auction_state:
-            client::presentation::qa_snapshot::AuctionStateSnapshot::default(),
+        placement_state: client::presentation::qa_snapshot::PlacementStateSnapshot::default(),
+        auction_state: client::presentation::qa_snapshot::AuctionStateSnapshot::default(),
         warnings: vec![],
     };
 
@@ -585,7 +578,10 @@ fn test_snapshot_json_round_trip_preserves_layout_block_keys_after_write_to_dir(
         "hand_bar"
     );
     assert_eq!(layout["collisions"]["shop_panel_bottom_edge_y"], 310.0);
-    assert_eq!(layout["collisions"]["shop_panel_vs_hand_bar_overlap_px"], 30.0);
+    assert_eq!(
+        layout["collisions"]["shop_panel_vs_hand_bar_overlap_px"],
+        30.0
+    );
     assert_eq!(layout["limitations"][0], "Q-05 text not computable");
 
     // Cleanup.
@@ -642,15 +638,18 @@ fn test_qa_snapshot_layout_block_emits_default_surfaces_and_limitations_under_mi
         }
     }
     let snapshot_dir = snapshot_dir.expect("a per-id snapshot dir must exist after one request");
-    let raw = std::fs::read_to_string(snapshot_dir.join("snapshot.json"))
-        .expect("snapshot.json written");
+    let raw =
+        std::fs::read_to_string(snapshot_dir.join("snapshot.json")).expect("snapshot.json written");
     let value: serde_json::Value = serde_json::from_str(&raw).expect("snapshot.json parses");
 
     // Assert layout block shape under MinimalPlugins (no ComputedNode → all
     // surfaces report spawned=false).
     let layout = value.get("layout").expect("layout key present");
     let surfaces = layout["surfaces"].as_array().expect("surfaces array");
-    let names: Vec<&str> = surfaces.iter().map(|s| s["name"].as_str().unwrap()).collect();
+    let names: Vec<&str> = surfaces
+        .iter()
+        .map(|s| s["name"].as_str().unwrap())
+        .collect();
     assert_eq!(names, EXPECTED_SURFACE_NAMES);
     // Under `MinimalPlugins` the QA snapshot overlay self-spawns (it's the
     // dev affordance whose plugin we just added). Every other surface
@@ -671,15 +670,21 @@ fn test_qa_snapshot_layout_block_emits_default_surfaces_and_limitations_under_mi
 
     let limitations = layout["limitations"].as_array().expect("limitations array");
     assert!(
-        limitations.iter().any(|s| s.as_str().unwrap().contains("Q-05")),
+        limitations
+            .iter()
+            .any(|s| s.as_str().unwrap().contains("Q-05")),
         "Q-05 limitation must be documented"
     );
     assert!(
-        limitations.iter().any(|s| s.as_str().unwrap().contains("Q-06")),
+        limitations
+            .iter()
+            .any(|s| s.as_str().unwrap().contains("Q-06")),
         "Q-06 limitation must be documented"
     );
     assert!(
-        limitations.iter().any(|s| s.as_str().unwrap().contains("Q-07")),
+        limitations
+            .iter()
+            .any(|s| s.as_str().unwrap().contains("Q-07")),
         "Q-07 disabled-state limitation must be documented"
     );
 

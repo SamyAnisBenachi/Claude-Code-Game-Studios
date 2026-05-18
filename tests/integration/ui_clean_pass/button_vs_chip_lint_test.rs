@@ -127,9 +127,7 @@ fn collect_rs_files(root: &Path, into: &mut Vec<PathBuf>) {
         let file_type = entry.file_type().expect("lint: file_type");
         if file_type.is_dir() {
             collect_rs_files(&path, into);
-        } else if file_type.is_file()
-            && path.extension().is_some_and(|ext| ext == "rs")
-        {
+        } else if file_type.is_file() && path.extension().is_some_and(|ext| ext == "rs") {
             into.push(path);
         }
     }
@@ -298,10 +296,7 @@ fn collect_button_tuple_violations(
             // whitespace, followed by end-of-line). This avoids
             // false-positives on `ButtonInput`, `ButtonStyleState`,
             // etc.
-            let line_start = text[..abs_pos]
-                .rfind('\n')
-                .map(|nl| nl + 1)
-                .unwrap_or(0);
+            let line_start = text[..abs_pos].rfind('\n').map(|nl| nl + 1).unwrap_or(0);
             let line_end = text[abs_pos..]
                 .find('\n')
                 .map(|nl| abs_pos + nl)
@@ -350,14 +345,8 @@ fn l1_every_button_spawn_tuple_carries_background_color() {
         .iter()
         .map(|(p, l)| ((*p).to_string(), *l))
         .collect();
-    let new_violations: Vec<_> = observed
-        .iter()
-        .filter(|v| !baseline.contains(v))
-        .collect();
-    let stale_baseline: Vec<_> = baseline
-        .iter()
-        .filter(|b| !observed.contains(b))
-        .collect();
+    let new_violations: Vec<_> = observed.iter().filter(|v| !baseline.contains(v)).collect();
+    let stale_baseline: Vec<_> = baseline.iter().filter(|b| !observed.contains(b)).collect();
     assert!(
         new_violations.is_empty(),
         "L1: new Button spawn tuples without BackgroundColor (or an \
@@ -386,14 +375,8 @@ fn l2_every_button_spawn_tuple_carries_interaction() {
         .iter()
         .map(|(p, l)| ((*p).to_string(), *l))
         .collect();
-    let new_violations: Vec<_> = observed
-        .iter()
-        .filter(|v| !baseline.contains(v))
-        .collect();
-    let stale_baseline: Vec<_> = baseline
-        .iter()
-        .filter(|b| !observed.contains(b))
-        .collect();
+    let new_violations: Vec<_> = observed.iter().filter(|v| !baseline.contains(v)).collect();
+    let stale_baseline: Vec<_> = baseline.iter().filter(|b| !observed.contains(b)).collect();
     assert!(
         new_violations.is_empty(),
         "L2: new Button spawn tuples without Interaction:: initialiser. \
@@ -476,10 +459,7 @@ fn l3_overflow_visible_sites_carry_ac_justification_or_baseline_entry() {
     }
     new_violations.sort();
 
-    let site_keys: Vec<(String, usize)> = sites
-        .iter()
-        .map(|(p, l, _)| (p.clone(), *l))
-        .collect();
+    let site_keys: Vec<(String, usize)> = sites.iter().map(|(p, l, _)| (p.clone(), *l)).collect();
     let stale_baseline: Vec<(String, usize)> = baseline
         .iter()
         .filter(|b| !site_keys.contains(b))

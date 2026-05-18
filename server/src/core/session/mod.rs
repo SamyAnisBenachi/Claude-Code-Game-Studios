@@ -35,8 +35,8 @@ pub use state::{
 };
 pub use system::{
     all_classes_confirmed, all_slots_filled, apply_placement_timer_multiplier_request_batch,
-    apply_result_acknowledgement, build_room_list, cancel_lobby_by_session, cancel_lobby_for_player,
-    cleanup_ended_session_reconnect_state, confirm_class, create_room,
+    apply_result_acknowledgement, build_room_list, cancel_lobby_by_session,
+    cancel_lobby_for_player, cleanup_ended_session_reconnect_state, confirm_class, create_room,
     effective_session_settings_update, evaluate_room_session_ready, evaluate_session_ready,
     f4_session_ready, generate_unique_room_code, handle_confirm_class, handle_create_room,
     handle_game_over_teardown, handle_join_room, handle_list_rooms, handle_lobby_disconnect,

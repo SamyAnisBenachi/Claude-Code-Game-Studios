@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use server::core::session::{
-    apply_placement_timer_multiplier_request_batch, build_session_config_with_settings, create_room,
-    effective_session_settings_update, join_room, ActiveSessions, JoinRoomOutcome, LobbyState,
-    PlacementTimerMultiplierRequests, RoomCode, RoomSessions, SessionConfig, SessionId, SessionSlot,
-    SessionSlots,
+    apply_placement_timer_multiplier_request_batch, build_session_config_with_settings,
+    create_room, effective_session_settings_update, join_room, ActiveSessions, JoinRoomOutcome,
+    LobbyState, PlacementTimerMultiplierRequests, RoomCode, RoomSessions, SessionConfig, SessionId,
+    SessionSlot, SessionSlots,
 };
 use shared::card::ClassId;
 use shared::protocol::{GameMode, PlacementTimerMultiplier};
@@ -204,10 +204,8 @@ fn effective_session_settings_update_returns_room_effective_multiplier_for_joine
     ]);
 
     // P1 set X3 before P2 joined.
-    let requests = PlacementTimerMultiplierRequests(HashMap::from([(
-        p1,
-        PlacementTimerMultiplier::X3,
-    )]));
+    let requests =
+        PlacementTimerMultiplierRequests(HashMap::from([(p1, PlacementTimerMultiplier::X3)]));
 
     let update = effective_session_settings_update(&slots, Some(&requests));
     assert_eq!(

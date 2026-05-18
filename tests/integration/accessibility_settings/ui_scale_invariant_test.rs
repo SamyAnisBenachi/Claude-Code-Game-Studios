@@ -185,12 +185,7 @@ fn test_settings_panel_width_scales_with_ui_scale_at_75_and_150_percent() {
     // Act + Assert: at every supported UI-scale step, panel width tracks
     // SETTINGS_PANEL_BASE_WIDTH_PX × factor, with a min-width floor so 75 %
     // keeps the category column + content pane reachable.
-    for percent in [
-        UI_SCALE_MIN_PERCENT,
-        100,
-        125,
-        UI_SCALE_MAX_PERCENT,
-    ] {
+    for percent in [UI_SCALE_MIN_PERCENT, 100, 125, UI_SCALE_MAX_PERCENT] {
         app.world_mut()
             .resource_mut::<AccessibilityPreferences>()
             .set_menu_ui_scale_percent(percent);
@@ -260,7 +255,11 @@ fn test_settings_focus_order_traverses_flex_hierarchy_in_documented_order() {
 
     // Act: open the panel and read the focus order.
     let entities = *app.world().resource::<SettingsEntities>();
-    let order = app.world().resource::<SettingsFocusOrder>().entities.clone();
+    let order = app
+        .world()
+        .resource::<SettingsFocusOrder>()
+        .entities
+        .clone();
 
     // Assert: focus order start / continuity / end match the documented
     // sequence even though the new flex hierarchy reparents controls into

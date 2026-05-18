@@ -260,7 +260,10 @@ fn test_kill_marker_despawns_after_ttl() {
     assert_eq!(count_kill_markers(&mut app), 1);
 
     // Tick well shy of TTL: the marker is still up.
-    run_for(&mut app, Duration::from_millis(RESOLUTION_KILL_MARKER_TTL_MS / 2));
+    run_for(
+        &mut app,
+        Duration::from_millis(RESOLUTION_KILL_MARKER_TTL_MS / 2),
+    );
     assert_eq!(count_kill_markers(&mut app), 1);
 
     // Tick past TTL: feedback must not bleed into a later phase.

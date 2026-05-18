@@ -2062,8 +2062,7 @@ pub struct LayoutHudQueries<'w, 's> {
     pub hud_root: Query<'w, 's, SurfaceTuple, With<crate::ui::hud::HudRoot>>,
     pub hud_top_strip: Query<'w, 's, SurfaceTuple, With<crate::ui::hud::HudTopStripRoot>>,
     pub hud_bottom_strip: Query<'w, 's, SurfaceTuple, With<crate::ui::hud::HudBottomStripRoot>>,
-    pub hud_scoreboard_dot:
-        Query<'w, 's, SurfaceTuple, With<crate::ui::hud::HudScoreboardDotRoot>>,
+    pub hud_scoreboard_dot: Query<'w, 's, SurfaceTuple, With<crate::ui::hud::HudScoreboardDotRoot>>,
     pub hud_dim_overlay: Query<'w, 's, SurfaceTuple, With<crate::ui::hud::HudDimOverlayRoot>>,
 }
 
@@ -2153,18 +2152,16 @@ fn build_surface_snapshot_from_query<M: Component>(
 ) -> SurfaceLayoutSnapshot {
     let mut iter = query.iter();
     match iter.next() {
-        Some((computed, transform, visibility, global_z, children)) => {
-            SurfaceLayoutSnapshot {
-                name: name.to_string(),
-                spawned: true,
-                visible: Some(is_visibility_visible(visibility)),
-                bounds: Some(surface_bounds_logical(computed, transform)),
-                children_count: Some(children.map(|c| c.len()).unwrap_or(0)),
-                z_layer_resolved: global_z.map(|g| g.0),
-                stack_index: Some(computed.stack_index),
-                overflow_clipped: Some(surface_overflows_content(computed)),
-            }
-        }
+        Some((computed, transform, visibility, global_z, children)) => SurfaceLayoutSnapshot {
+            name: name.to_string(),
+            spawned: true,
+            visible: Some(is_visibility_visible(visibility)),
+            bounds: Some(surface_bounds_logical(computed, transform)),
+            children_count: Some(children.map(|c| c.len()).unwrap_or(0)),
+            z_layer_resolved: global_z.map(|g| g.0),
+            stack_index: Some(computed.stack_index),
+            overflow_clipped: Some(surface_overflows_content(computed)),
+        },
         None => SurfaceLayoutSnapshot {
             name: name.to_string(),
             spawned: false,
@@ -2195,10 +2192,12 @@ impl<'w, 's> LayoutInputs<'w, 's> {
         let mut surfaces: Vec<SurfaceLayoutSnapshot> = Vec::new();
 
         // HUD surfaces.
-        surfaces.push(build_surface_snapshot_from_query::<crate::ui::hud::HudRoot>(
-            "hud_root",
-            &self.hud.hud_root,
-        ));
+        surfaces.push(
+            build_surface_snapshot_from_query::<crate::ui::hud::HudRoot>(
+                "hud_root",
+                &self.hud.hud_root,
+            ),
+        );
         surfaces.push(build_surface_snapshot_from_query::<
             crate::ui::hud::HudTopStripRoot,
         >("hud_top_strip", &self.hud.hud_top_strip));
@@ -2221,11 +2220,14 @@ impl<'w, 's> LayoutInputs<'w, 's> {
         >("hand_fan", &self.hand.hand_fan));
         surfaces.push(build_surface_snapshot_from_query::<
             crate::ui::hand::HandDraftGridSlotRoot,
-        >("hand_draft_grid_slot", &self.hand.hand_draft_grid_slot));
+        >(
+            "hand_draft_grid_slot", &self.hand.hand_draft_grid_slot
+        ));
         surfaces.push(build_surface_snapshot_from_query::<
             crate::ui::hand::PlacementActionPanelRoot,
         >(
-            "placement_action_panel", &self.hand.placement_action_panel
+            "placement_action_panel",
+            &self.hand.placement_action_panel,
         ));
 
         // Shop / auction surfaces — five canonical variants. The enum-keyed
@@ -2355,7 +2357,9 @@ impl<'w, 's> LayoutInputs<'w, 's> {
     }
 }
 
-fn shop_auction_variant_name(variant: crate::ui::shop_auction::ShopAuctionPanelRoot) -> &'static str {
+fn shop_auction_variant_name(
+    variant: crate::ui::shop_auction::ShopAuctionPanelRoot,
+) -> &'static str {
     use crate::ui::shop_auction::ShopAuctionPanelRoot;
     match variant {
         ShopAuctionPanelRoot::DraftOffering => "shop_draft_offering",
