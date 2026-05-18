@@ -1,3 +1,187 @@
+# PROMPT 1120 State Banner -- Sprint 17 S17-UI-HAND-B0004-CLEANUP-001 Story-Done
+
+Updated 2026-05-18 by PROMPT 1120. Source-of-truth at closure:
+`origin/main@d35d24d01ebc59e387ba749883596aa1f29418e4` (PROMPT 1119
+integration tip `integrate(s17): merge PROMPT 1116 bid-button
+phase-race into main (PROMPT 1119)`), a strict fast-forward descendant
+of the PROMPT 1118 integration tip
+`origin/main@29ad4c6cb066f61d82db02820d42612e66a97256`
+(`integrate(s17): merge PROMPT 1115 hand-fan-root B0004 cleanup into
+main (PROMPT 1118)`) which is the integration tip for the row this
+prompt closes. PROMPT 1119 (bid-button phase-race integration) landed
+during the PROMPT 1120 closure window after the initial origin/main
+read at 29ad4c6; PROMPT 1120 rebased its in-place paperwork edits onto
+the new tip via `git pull --rebase --autostash`. PROMPT 1119 touched
+only `client/`, `tests/`, `evidence/` paths; zero file overlap with
+PROMPT 1120 paperwork-only edits. PROMPT 1118 merged PROMPT 1115
+worker
+`535450d101fb034f5946896f303533f4ce4f6435`
+`dev-story(s17-hand-fan-root-b0004): Strategy A — Transform on HandBar
+(PROMPT 1115)` onto `origin/main` via no-ff merge; strict fast-forward
+descendant of `origin/main@30c9e0f` PROMPT 1114 card-display
+art-helper integration tip, of `origin/main@2250add` PROMPT 1117
+card-display art-helper story-done tip, of `origin/main@f2ba917`
+PROMPT 1112 paperwork-only PARTIAL DISPOSITION tip, of
+`origin/main@4bd4f56` PROMPT 1111 PARTIAL integration tip, of
+`origin/main@9a9b1dc` PROMPT 1110 card-slot inset wiring story-done
+tip, of `origin/main@30f166f` PROMPT 1106 card-slot inset wiring
+integration tip, of `origin/main@72d56bc` PROMPT 1108 server
+start-of-turn-debug story-done tip, and of `origin/main@dc8adb6`
+PROMPT 1107 server warn->debug integration tip). Branch:
+`story-done/s17-hand-b0004-cleanup-1120` from base
+`origin/main@29ad4c6`; in-place edits on the primary checkout.
+
+PROMPT 1120 is a paperwork-only Sprint 17 `/story-done` closure for
+`S17-UI-HAND-B0004-CLEANUP-001` (Nice to Have; story 021 in
+`production/epics/hand-ui/`; AUDIT-1076-14 P3 single B0004 hierarchy
+warning per client per InSession entry). Closure paperwork records the
+PROMPT 1115 worker + PROMPT 1118 integration result on the story file,
+in `production/sprint-status.yaml`, in `production/session-state/*`,
+and authors the mandatory final report under `reports/` (gitignored).
+
+**Result delivered on origin/main@29ad4c6 by PROMPT 1118:**
+- **Strategy A applied** — `Transform::default()` inserted on the
+  `HandBar` strip entity at `client/src/ui/hand/mod.rs:3122` inside
+  `spawn_hand_ui`. The Bevy 0.18 Required Components API
+  (`Transform` `#[require(GlobalTransform, TransformTreeChanged)]`)
+  auto-derives `GlobalTransform`, silencing the `B0004` hierarchy
+  warning the PROMPT 1076 `AUDIT-1076-14` evidence cited on every
+  `InSession` entry (run-7 client-a:94, client-b:116).
+- **Registry-level verification** — `bevy_ui-0.18.1::Node`'s
+  `#[require(...)]` set is `(ComputedNode, ComputedUiTargetCamera,
+  ComputedUiRenderTargetInfo, UiTransform, BackgroundColor, BorderColor,
+  FocusPolicy, ScrollPosition, Visibility, ZIndex)` — `Node` does NOT
+  require `Transform`/`GlobalTransform`, so the explicit insert is
+  the minimal repair. `bevy_transform-0.18.1::Transform`'s
+  `#[require(GlobalTransform, TransformTreeChanged)]` confirms the
+  single-component-insert is sufficient.
+- **No fan-layout / drag-state / placement / staging behaviour
+  change** — repair touches only the `HandBar` spawn tuple. Fan
+  layout numbers, drag-state visuals, placement staging, the Sprint
+  12 story 019 `closed-with-conditions / cannot-reproduce`
+  disposition (`TQ-S12-C2`), and the PROMPT 1112 AC3 hand
+  reserve-strip carry are preserved unchanged.
+
+**Tests delivered + adjusted**:
+`tests/integration/hand-ui/hand_fan_root_b0004_hierarchy_test.rs`
+(NEW; AC4) 1/1 PASS at integration tip; asserts `HandFanRoot` has
+`GlobalTransform`, its `ChildOf` parent matches the `HandBar` marker
+(locking the audit's exact edge), and the parent carries both
+`Transform` and `GlobalTransform`. Adjacent hand UI regression sweep
+at integration tip (PROMPT 1118): `hand_ui_fan_layout_formula_test`
+5/5, `hand_ui_chrome_composition_test` 1/1,
+`hand_ui_slot_onscreen_test` 3/3, `hand_ui_viewport_sync_test` 2/2,
+`hand_ui_drag_state_visuals_test` 11/11,
+`hand_ui_phase_state_machine_test` 4/4,
+`hand_ui_plugin_scaffold_test` 3/3,
+`hand_ui_reserve_mana_strip_test` 3/3 (PROMPT 1112 AC3 surface),
+`card_display_art_chrome_preservation_test` 8/8,
+`card_display_art_helper_test` 6/6.
+
+**AC outcomes**: AC1..AC11 PASS via PROMPT 1115 worker + PROMPT 1118
+integration verification. AC1 cross-machine smoke evidence remains
+later-prompt scope; binding gate for AC1 is the AC4 in-test
+invariant (PASS).
+
+**Cargo resource policy (AC11)**: PROMPT 1115 worker + PROMPT 1118
+integration both applied all 5 Cargo resource policy env vars
+(`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc` +
+`CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+`CARGO_INCREMENTAL=0` +
+`RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`) before every
+cargo invocation via PowerShell launcher scripts; both build lines
+printed `Finished \`dev\` profile [optimized]` /
+`Finished \`test\` profile [optimized]` (no `+ debuginfo`),
+confirming the policy was applied. D: free 774 GB at PROMPT 1118
+integration start (well above the 50 GB preflight threshold). PROMPT
+1120 itself does NOT invoke Cargo (paperwork-only closure).
+
+**Sprint 17 progress after PROMPT 1120**: 4 of 9 active rows DONE
+(S17-SERVER-START-OF-TURN-DEBUG-001 by PROMPT 1108 +
+S17-UI-CARD-SLOT-INSET-WIRING-001 by PROMPT 1110 +
+S17-UI-CARD-DISPLAY-ART-HELPER-001 by PROMPT 1117 +
+S17-UI-HAND-B0004-CLEANUP-001 by PROMPT 1120) + 1 of 9 active rows
+PARTIAL / IN_PROGRESS (S17-UI-HUD-OPP-MANA-CLEANUP-001 carried via
+PROMPT 1112; AC3 carried) + 4 rows preserved as `ready`. Must Have
+1/2 done + Should Have 1 done + 1 partial / 4 + Nice to Have 2/3
+done. Rows preserved as ready / not closed or partial by PROMPT
+1120: `S11-HUD-TIMER-EYEBALL-VISUAL-001` (Must Have
+human-operator-blocked Sprint 13 -> 14 -> 15 -> 16 -> 17 carry; no
+LLM `/story-done` authorised per 2026-05-17 orchestrator decision);
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`,
+`S17-UI-BID-BUTTON-PHASE-RACE-001` (2 of remaining 3 Should Have);
+`S17-OPS-VULKAN-VALIDATION-GATING-001` (1 of remaining 1 Nice to
+Have).
+
+**AUDIT-1076-14 discharged on origin/main by PROMPT 1118
+integration**. Other `AUDIT-1076-*` findings preserved as open /
+report-only outside AUDIT-1076-15 (discharged PROMPT 1107/1108) and
+AUDIT-1076-10 + AUDIT-1076-16 (discharged PROMPT 1111; AUDIT-1076-17
+remains OPEN carried with AC3 of `S17-UI-HUD-OPP-MANA-CLEANUP-001`).
+PROMPT 1112 AC3 hand reserve-strip carry (AUDIT-1076-17 floating
+`Reserve N + / Current N` microbadge in `client/src/ui/hand/mod.rs`
+reserve strip) preserved OPEN; PROMPT 1120 does NOT close it
+(semantically distinct surface vs HandBar/FanRoot ECS hierarchy).
+SOURCE-1077-01 + SOURCE-1077-02 + SOURCE-1077-03 + SOURCE-1077-04
+remain discharged by PROMPT 1114 integration via PROMPT 1117
+closure; other SOURCE-1077-* findings preserved per the prior PROMPT
+1117 banner.
+
+**Files changed by PROMPT 1120**:
+- `production/epics/hand-ui/story-021-hand-fan-root-b0004-hierarchy.md`
+  (Status banner Draft -> Done; AC1..AC11 flipped to `[x]`;
+  Completion Notes section added with PROMPT 1115 worker + PROMPT
+  1118 integration outcome + Test evidence + Cargo resource policy
+  (AC11) + Per-AC outcome + Closure trail (commits) numbered list;
+  Closure Trail section replaced; final status line DRAFT -> DONE)
+- `production/sprint-status.yaml` (S17-UI-HAND-B0004-CLEANUP-001
+  row flipped `status: ready -> done` with `completed: 2026-05-18`
+  + worker/integration/integrated_commit/story_done_prompt/evidence
+  metadata + closure notes; PROMPT 1120 `sprint_17_story_done:`
+  entry appended after PROMPT 1117 entry and before
+  `sprint_17_partial_disposition:` block following the multi-prompt
+  pattern, with stories_closed entry covering AC1..AC11 outcomes,
+  rows_not_closed_by_prompt_1120 enumerating the other 8 Sprint 17
+  active rows, conditions_carried_forward_unchanged +
+  explicitly_not_claimed + files_changed_by_prompt_1120 +
+  forbidden_changes_observed sections)
+- `production/session-state/active.md` (this banner prepended above
+  PROMPT 1117 banner)
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1120 paragraph prepended above PROMPT 1117 paragraph)
+- `reports/PROMPT-1120-s17-hand-b0004-cleanup-story-done.md`
+  (mandatory final report; reports/ gitignored; not staged or
+  committed)
+
+**Files explicitly NOT touched by PROMPT 1120**: `client/`,
+`server/`, `shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`,
+`.cargo/`, `.github/`, `Trunk.toml`, `production/stage.txt`
+(remains `Polish`), `production/sprints/**` (sprint-17 plan body
+NOT rewritten), `production/qa/qa-plan-sprint-17.md`,
+`production/qa/smoke-*.md`, `production/qa/team-qa-*.md`,
+`production/qa/evidence/*`
+(sprint-17-hand-fan-root-b0004/ preserved verbatim on origin/main
+via PROMPT 1118 integration), `production/gate-checks/**` (PROMPT
+761 Polish->Release FAIL preserved with NO retry),
+`docs/architecture/adr-*.md`, all 8 other Sprint 17 active row
+story files under `production/epics/` (S11-HUD-TIMER-EYEBALL-VISUAL-001
+story 014 untouched; S17-UI-HUD-OPP-MANA-CLEANUP-001 story 018
+PROMPT 1112 PARTIAL disposition preserved verbatim;
+S17-UI-CARD-DISPLAY-ART-HELPER-001 story 017 PROMPT 1117 closure
+preserved verbatim), all prior `sprint_N_*` blocks in
+`production/sprint-status.yaml` (including the PROMPT 1108 + PROMPT
+1110 + PROMPT 1117 `sprint_17_story_done` entries and the PROMPT
+1112 `sprint_17_partial_disposition` entry which are preserved
+verbatim above and below this new PROMPT 1120 entry), `.octogent/`,
+`.claude/settings.json`, `.claude/scheduled_tasks.lock`. No cargo /
+trunk build or test run by PROMPT 1120; no `/smoke-check`,
+`/team-qa`, `/gate-check`, `/release-check`, `/qa-plan`,
+`/story-readiness`, `/dev-story` invoked.
+
+PROMPT 1120 final status line: `1120: S17-HAND-B0004-CLEANUP-STORY-DONE: PASS`.
+
+---
+
 # PROMPT 1117 State Banner -- Sprint 17 S17-UI-CARD-DISPLAY-ART-HELPER-001 Story-Done
 
 Updated 2026-05-18 by PROMPT 1117. Source-of-truth at closure:
