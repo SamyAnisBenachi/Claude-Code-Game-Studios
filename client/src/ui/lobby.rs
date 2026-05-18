@@ -11,7 +11,8 @@ use shared::protocol::{
 use shared::session::PlayerId;
 
 use crate::asset_wiring::{
-    lobby_portrait_asset, LOBBY_PLAYER_SLOT_PANEL_ASSET, LOBBY_ROOM_CODE_CHIP_ASSET,
+    class_type_icon_asset, lobby_portrait_asset, LOBBY_PLAYER_SLOT_PANEL_ASSET,
+    LOBBY_ROOM_CODE_CHIP_ASSET,
 };
 use crate::state::{
     apply_handshake_message, ClassLockedDedupeKey, ClientIdempotencyState, ClientSessionIdentity,
@@ -60,6 +61,13 @@ pub const LOBBY_CLASS_PICKER_CELL_HEIGHT_PX: f32 = 132.0;
 pub const LOBBY_CLASS_PICKER_CELL_PADDING_PX: f32 = 6.0;
 pub const LOBBY_CLASS_PICKER_PORTRAIT_WIDTH_PX: f32 = 64.0;
 pub const LOBBY_CLASS_PICKER_PORTRAIT_HEIGHT_PX: f32 = 80.0;
+
+/// PROMPT 1138 — pixel size of the class-distinct emblem overlay composited
+/// on top of each picker tile portrait. The emblem is sourced from
+/// [`class_type_icon_asset`] (per-class mana-badge PNGs with class-distinct
+/// SHA-256 fingerprints), giving the picker an at-a-glance class identity
+/// while the canonical lobby portrait slot still hosts a generic stand-in.
+pub const LOBBY_CLASS_PICKER_EMBLEM_PX: f32 = 24.0;
 pub const LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX: f32 = 96.0;
 pub const LOBBY_CLASS_PICKER_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
 pub const LOBBY_CONFIRM_BUTTON_WIDTH_PERCENT: f32 = 100.0;
@@ -265,6 +273,15 @@ pub struct LobbyClassPortrait {
     pub class_id: ClassId,
 }
 
+/// PROMPT 1138 — class-distinct emblem overlay composited on top of the picker
+/// tile portrait. Sourced from [`class_type_icon_asset`]; one entity per
+/// `ClassId` variant. Provides at-a-glance class identity while the canonical
+/// lobby portrait slot still hosts a generic stand-in.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LobbyClassPickerEmblem {
+    pub class_id: ClassId,
+}
+
 /// Background panel image for the local player's slot in the lobby.
 #[derive(Component)]
 pub struct LobbyOwnSlotPanel;
@@ -272,6 +289,17 @@ pub struct LobbyOwnSlotPanel;
 /// Background panel image for the opponent's slot in the lobby.
 #[derive(Component)]
 pub struct LobbyOpponentSlotPanel;
+
+/// PROMPT 1138 — text label composited on top of the own-slot panel so it
+/// reads as informative status ("You · {class} · slot N") instead of an
+/// unidentified blue-card placeholder (AUDIT-1129-08).
+#[derive(Component)]
+pub struct LobbyOwnSlotLabel;
+
+/// PROMPT 1138 — text label composited on top of the opponent-slot panel
+/// (AUDIT-1129-08).
+#[derive(Component)]
+pub struct LobbyOpponentSlotLabel;
 
 /// Background image chip that frames the room code display in the lobby.
 #[derive(Component)]
@@ -285,6 +313,10 @@ enum LobbyDynamicText {
     Create,
     Join,
     Confirm,
+    /// PROMPT 1138 — own-slot panel inline label.
+    OwnSlot,
+    /// PROMPT 1138 — opponent-slot panel inline label.
+    OpponentSlot,
 }
 
 pub fn drain_lobby_s2c_system(
@@ -1196,6 +1228,7 @@ fn spawn_lobby_ui_system(
                                         class_id,
                                         input.selected_class,
                                         true,
+                                        lobby.locked_class,
                                     );
                                     grid.spawn((
                                         LobbyClassPickerCell {
@@ -1215,7 +1248,23 @@ fn spawn_lobby_ui_system(
                                             ImageNode::new(
                                                 asset_server.load(lobby_portrait_asset(class_id)),
                                             ),
-                                        ));
+                                        ))
+                                        .with_children(
+                                            |portrait| {
+                                                portrait.spawn((
+                                                    LobbyClassPickerEmblem { class_id },
+                                                    Name::new(format!(
+                                                        "Lobby Class Emblem {:?}",
+                                                        class_id
+                                                    )),
+                                                    lobby_class_picker_emblem_node(),
+                                                    ImageNode::new(
+                                                        asset_server
+                                                            .load(class_type_icon_asset(class_id)),
+                                                    ),
+                                                ));
+                                            },
+                                        );
                                         cell.spawn((
                                             LobbyClassButton { class_id },
                                             LobbyDynamicText::Class(class_id),
@@ -1246,6 +1295,7 @@ fn spawn_lobby_ui_system(
                                         class_id,
                                         input.selected_class,
                                         false,
+                                        lobby.locked_class,
                                     );
                                     grid.spawn((
                                         LobbyClassPickerCell {
@@ -1265,7 +1315,23 @@ fn spawn_lobby_ui_system(
                                             ImageNode::new(
                                                 asset_server.load(lobby_portrait_asset(class_id)),
                                             ),
-                                        ));
+                                        ))
+                                        .with_children(
+                                            |portrait| {
+                                                portrait.spawn((
+                                                    LobbyClassPickerEmblem { class_id },
+                                                    Name::new(format!(
+                                                        "Lobby Class Emblem {:?}",
+                                                        class_id
+                                                    )),
+                                                    lobby_class_picker_emblem_node(),
+                                                    ImageNode::new(
+                                                        asset_server
+                                                            .load(class_type_icon_asset(class_id)),
+                                                    ),
+                                                ));
+                                            },
+                                        );
                                         cell.spawn((
                                             Text::new(format!("{class_id:?}")),
                                             lobby_text_font(typography::CAPTION),
@@ -1280,6 +1346,13 @@ fn spawn_lobby_ui_system(
                 // panels MUST render above the confirm CTA so the player's
                 // attention reaches the seating affordance before the
                 // primary action button.
+                //
+                // PROMPT 1138 — the slot panel asset is a generic blue chip
+                // (`ui_player_slot_panel.png` placeholder) shared by both
+                // slots. Without text overlays the two chips read as a pair
+                // of unidentified card placeholders (AUDIT-1129-08). The
+                // inline labels turn them into informative status panels:
+                // "You · {class} · slot N" / "Opp · {class or unknown}".
                 panel.spawn((lobby_row_node(),)).with_children(|row| {
                     row.spawn((
                         LobbyOwnSlotPanel,
@@ -1287,20 +1360,52 @@ fn spawn_lobby_ui_system(
                         Node {
                             width: Val::Px(LOBBY_SLOT_PANEL_WIDTH_PX),
                             height: Val::Px(LOBBY_SLOT_PANEL_HEIGHT_PX),
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
+                            padding: UiRect::horizontal(Val::Px(SPACING_SM)),
                             ..default()
                         },
                         ImageNode::new(asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET)),
-                    ));
+                    ))
+                    .with_children(|own| {
+                        own.spawn((
+                            LobbyOwnSlotLabel,
+                            LobbyDynamicText::OwnSlot,
+                            Text::new(lobby_dynamic_copy(
+                                LobbyDynamicText::OwnSlot,
+                                &lobby,
+                                &input,
+                            )),
+                            lobby_text_font(typography::BODY),
+                            TextColor(Color::srgb(0.95, 0.97, 1.0)),
+                        ));
+                    });
                     row.spawn((
                         LobbyOpponentSlotPanel,
                         Name::new("Lobby Opponent Slot Panel"),
                         Node {
                             width: Val::Px(LOBBY_SLOT_PANEL_WIDTH_PX),
                             height: Val::Px(LOBBY_SLOT_PANEL_HEIGHT_PX),
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
+                            padding: UiRect::horizontal(Val::Px(SPACING_SM)),
                             ..default()
                         },
                         ImageNode::new(asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET)),
-                    ));
+                    ))
+                    .with_children(|opp| {
+                        opp.spawn((
+                            LobbyOpponentSlotLabel,
+                            LobbyDynamicText::OpponentSlot,
+                            Text::new(lobby_dynamic_copy(
+                                LobbyDynamicText::OpponentSlot,
+                                &lobby,
+                                &input,
+                            )),
+                            lobby_text_font(typography::BODY),
+                            TextColor(Color::srgb(0.86, 0.90, 0.96)),
+                        ));
+                    });
                 });
 
                 // Section separator before the confirm CTA (final section).
@@ -1389,8 +1494,12 @@ fn refresh_lobby_ui_system(
     }
 
     for (cell, mut background, mut border) in &mut class_cells {
-        let (next_background, next_border) =
-            lobby_class_picker_cell_colors(cell.class_id, input.selected_class, cell.selectable);
+        let (next_background, next_border) = lobby_class_picker_cell_colors(
+            cell.class_id,
+            input.selected_class,
+            cell.selectable,
+            lobby.locked_class,
+        );
         *background = next_background;
         *border = next_border;
     }
@@ -1406,6 +1515,15 @@ fn refresh_lobby_ui_system(
 /// `tests/integration/playable_client/lobby_confirm_button_reachable_test.rs`.
 /// The `Players: N/M` substring is preserved for the
 /// `lobby_entry_test::class_confirmations_are_server_confirmed` assertion.
+///
+/// **PROMPT 1138 — Status banner grouping**: AUDIT-1129-13 reported that
+/// the legacy `Status: ... | Room: ... | Players: N/M` pipe-delimited
+/// format read as terminal log output. The pipe `|` delimiters are now
+/// replaced with bullet `·` separators with breathing space, the leading
+/// `Status:` and `Join:` prefixes are dropped (their context is implied
+/// by line position), and the join-input is folded into a `Joining {code}`
+/// segment only when the user is mid-type. The two-line bound is preserved
+/// and the `Players: N/M` substring is preserved verbatim.
 pub fn lobby_status_copy(lobby: &LobbyViewState, input: &LobbyInputState) -> String {
     let room = lobby.room_code.as_deref().unwrap_or("----");
     let joined = lobby
@@ -1418,22 +1536,18 @@ pub fn lobby_status_copy(lobby: &LobbyViewState, input: &LobbyInputState) -> Str
         .locked_class
         .map(|class_id| format!("{:?}", class_id))
         .unwrap_or_else(|| "not confirmed".to_string());
-    let code_input = if input.join_room_code.is_empty() {
-        "empty".to_string()
+    let slot_segment = if input.join_room_code.is_empty() {
+        format!("Slot {}", input.requested_slot)
     } else {
-        input.join_room_code.clone()
+        format!(
+            "Joining {} · Slot {}",
+            input.join_room_code, input.requested_slot
+        )
     };
 
     format!(
-        "Status: {} | Room: {} | Players: {}/{}\nJoin: {} slot {} | Class: {:?} | {}",
-        lobby.status,
-        room,
-        joined,
-        total,
-        code_input,
-        input.requested_slot,
-        input.selected_class,
-        locked
+        "{}  ·  Room: {}  ·  Players: {}/{}\n{}  ·  Class: {:?}  ·  {}",
+        lobby.status, room, joined, total, slot_segment, input.selected_class, locked
     )
 }
 
@@ -1488,6 +1602,46 @@ fn lobby_dynamic_copy(
         LobbyDynamicText::Join => format!("Join {}", input.join_room_code),
         LobbyDynamicText::Confirm if input.class_confirm_in_flight => "Confirming...".to_string(),
         LobbyDynamicText::Confirm => lobby_confirm_button_text(lobby, input),
+        LobbyDynamicText::OwnSlot => lobby_own_slot_label_text(lobby, input),
+        LobbyDynamicText::OpponentSlot => lobby_opponent_slot_label_text(lobby),
+    }
+}
+
+/// PROMPT 1138 — own-slot panel inline label.
+///
+/// Composes "You · {class}{*} · slot N" where `*` is appended when the
+/// local player has confirmed their class (`lobby.locked_class.is_some()`)
+/// so the slot panel reads as informative status, not an unidentified
+/// blue-card placeholder (AUDIT-1129-08). The asterisk re-uses the
+/// existing convention from [`LobbyDynamicText::Class`] / `Slot` so it does
+/// not introduce a new selection-state glyph.
+pub fn lobby_own_slot_label_text(lobby: &LobbyViewState, input: &LobbyInputState) -> String {
+    let confirmed_marker = if lobby.locked_class.is_some() {
+        " *"
+    } else {
+        ""
+    };
+    format!(
+        "You · {:?}{} · slot {}",
+        input.selected_class, confirmed_marker, input.requested_slot
+    )
+}
+
+/// PROMPT 1138 — opponent-slot panel inline label.
+///
+/// Resolves the opponent's revealed class when `lobby.revealed_classes`
+/// carries an entry not matching `lobby.local_player_id`; otherwise reads
+/// as "Opp · waiting" so the slot panel still announces the seat instead
+/// of rendering as a blank placeholder (AUDIT-1129-08).
+pub fn lobby_opponent_slot_label_text(lobby: &LobbyViewState) -> String {
+    let opponent_class = lobby
+        .revealed_classes
+        .iter()
+        .find(|(player_id, _)| Some(*player_id) != lobby.local_player_id)
+        .map(|(_, class_id)| format!("{:?}", class_id));
+    match opponent_class {
+        Some(class) => format!("Opp · {}", class),
+        None => "Opp · waiting".to_string(),
     }
 }
 
@@ -1604,16 +1758,52 @@ fn lobby_class_portrait_node() -> Node {
     Node {
         width: Val::Px(LOBBY_CLASS_PICKER_PORTRAIT_WIDTH_PX),
         height: Val::Px(LOBBY_CLASS_PICKER_PORTRAIT_HEIGHT_PX),
+        // Relative so an absolutely-positioned emblem child anchors
+        // against the portrait's bounding box.
+        position_type: PositionType::Relative,
         ..default()
     }
 }
 
+/// PROMPT 1138 — class-distinct emblem overlay node. Anchored to the
+/// portrait's top-right corner via `position_type: Absolute`. Square
+/// dimensions match [`LOBBY_CLASS_PICKER_EMBLEM_PX`] so the badge keeps
+/// a readable footprint without obscuring the portrait body.
+fn lobby_class_picker_emblem_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        right: Val::Px(2.0),
+        top: Val::Px(2.0),
+        width: Val::Px(LOBBY_CLASS_PICKER_EMBLEM_PX),
+        height: Val::Px(LOBBY_CLASS_PICKER_EMBLEM_PX),
+        ..default()
+    }
+}
+
+/// PROMPT 1138 — picker cell `(BackgroundColor, BorderColor)` derived from
+/// `(class_id, selected_class, selectable, locked_class)`.
+///
+/// State precedence (highest first):
+///   * **Confirmed** — `locked_class == Some(class_id)`; mirrors the
+///     `LobbyConfirmButtonStyleState::Confirmed` green palette so the
+///     locked-class cell and the confirm CTA read as one decision.
+///   * **Selected** — `selectable && class_id == selected_class`; gold
+///     accent ratifying
+///     [`design_tokens::interaction_states::FOCUS_RING_COLOR`].
+///   * **Selectable** — neutral resting state.
+///   * **Non-selectable** — Neutral reconciliation tile; dimmed.
 fn lobby_class_picker_cell_colors(
     class_id: ClassId,
     selected_class: ClassId,
     selectable: bool,
+    locked_class: Option<ClassId>,
 ) -> (BackgroundColor, BorderColor) {
-    if selectable && class_id == selected_class {
+    if selectable && locked_class == Some(class_id) {
+        (
+            BackgroundColor(Color::srgba(0.10, 0.28, 0.16, 0.96)),
+            BorderColor::all(Color::srgb(0.40, 0.84, 0.50)),
+        )
+    } else if selectable && class_id == selected_class {
         (
             BackgroundColor(Color::srgba(0.18, 0.16, 0.08, 0.96)),
             BorderColor::all(Color::srgb(0.949, 0.788, 0.298)),

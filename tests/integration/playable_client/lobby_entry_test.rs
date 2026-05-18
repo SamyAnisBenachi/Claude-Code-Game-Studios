@@ -74,10 +74,12 @@ fn lobby_startup_spawns_visible_ui_camera_until_session_entry() {
             .iter(world)
             .map(|text| text.0.as_str())
             .collect::<Vec<_>>();
+        // PROMPT 1138 — AUDIT-1129-13 dropped the redundant `Status: ` prefix
+        // from `lobby_status_copy`; the substring assertion now checks the
+        // raw status state surface ("Connecting"), which is invariant under
+        // the regrouping.
         assert!(
-            rendered_copy
-                .iter()
-                .any(|copy| copy.contains("Status: Connecting")),
+            rendered_copy.iter().any(|copy| copy.contains("Connecting")),
             "lobby text should be populated on the first lobby frame"
         );
     }
