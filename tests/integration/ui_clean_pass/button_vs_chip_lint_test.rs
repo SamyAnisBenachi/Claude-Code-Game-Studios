@@ -89,65 +89,20 @@ const BUTTON_BG_BUILDER_ALLOWLIST: &[&str] = &[];
 /// `VIOLATION`, and panics with `STALE` if the recorded site no
 /// longer violates the rule.
 ///
-/// The baseline records the L1 violations the lint observes at
-/// `origin/main@efb698e` (the PROMPT 1180 audit cut). Each entry
-/// corresponds to a real audit finding and is owned by a Wave-2 lane
-/// that will either supply the missing `BackgroundColor` directly or
-/// register a builder helper in `BUTTON_BG_BUILDER_ALLOWLIST`.
-///
-/// Sites listed:
-///
-/// - `src/ui/hand/mod.rs:3362 / :3503 / :3774` — hand-fan slot
-///   parents (audit F-01 / F-02). The slot's visible background is
-///   painted by the child `HandCardFrame` chrome, not by the slot
-///   parent. Owned by Wave-2 Lane C (PROMPT 1192 — card-art +
-///   label-strip primitive) which will either move the background to
-///   the parent or register the chrome builder as an allowlisted
-///   helper.
-/// - `src/ui/lobby.rs:1637` — `LobbyConfirmClassButton` spawn
-///   (audit L-03; UI-1129-08). The confirm CTA is the headline
-///   button-styled-as-text symptom. Owned by Wave-2 Lane E
-///   (PROMPT 1194 — lobby panel overflow + confirm CTA).
-/// - `src/ui/shop_auction/mod.rs:4434 / :4514 / :4537 / :4615 / :4634`
-///   — draft / shop / auction control buttons (audit S-03 / S-05).
-///   Background is currently supplied by a sibling builder
-///   (`draft_initial_ready_button_node()`, `bid_button_node()`)
-///   rather than `BackgroundColor` on the tuple. Owned by Wave-2
-///   Lane H (PROMPT 1197 — shop / auction paint + bid label).
-const BUTTON_NO_BG_BASELINE: &[(&str, usize)] = &[
-    ("src/ui/hand/mod.rs", 3362),
-    ("src/ui/hand/mod.rs", 3503),
-    ("src/ui/hand/mod.rs", 3783),
-    ("src/ui/lobby.rs", 1637),
-    ("src/ui/shop_auction/mod.rs", 4434),
-    ("src/ui/shop_auction/mod.rs", 4514),
-    ("src/ui/shop_auction/mod.rs", 4537),
-    ("src/ui/shop_auction/mod.rs", 4615),
-    ("src/ui/shop_auction/mod.rs", 4634),
-];
+/// L1 baseline. Empty: production button spawn tuples must carry a
+/// direct `BackgroundColor` or an explicitly allowlisted helper.
+const BUTTON_NO_BG_BASELINE: &[(&str, usize)] = &[];
 
-/// L2 baseline. The single site is the QA snapshot button — a
-/// dev-overlay button that relies on Bevy 0.18's Required Components
-/// to inject `Interaction` automatically rather than declaring it
-/// explicitly. PROMPT 1140 ratified this overlay as the QA snapshot
-/// affordance; the lint surfaces it once for future hardening but
-/// does not block the current branch.
-const BUTTON_NO_INTERACTION_BASELINE: &[(&str, usize)] = &[
-    ("src/presentation/qa_snapshot.rs", 1787),
-];
+/// L2 baseline. Empty: clickable production surfaces must declare
+/// their initial `Interaction` state explicitly in the spawn tuple.
+const BUTTON_NO_INTERACTION_BASELINE: &[(&str, usize)] = &[];
 
 // ─── L3 allowlist ──────────────────────────────────────────────────────
 
 /// Baseline `Overflow::visible()` sites that lack the `// AC: `
-/// justification comment. PROMPT 1180 audit RC-2 / H-01 / H-02
-/// identified these two HUD strip sites as the only non-strip-primitive
-/// consumers. PROMPT 1196 (Lane G — HUD top-strip wrap + opp class
-/// repair) clears both entries; the lint reports them as `STALE` on
-/// lane landing so the migrating worker remembers to delete them.
-const OVERFLOW_VISIBLE_BASELINE: &[(&str, usize)] = &[
-    ("src/ui/hud/mod.rs", 2806),
-    ("src/ui/hud/mod.rs", 2816),
-];
+/// justification comment. Empty: non-strip-primitive consumers must
+/// carry a local AC comment instead of relying on a carried baseline.
+const OVERFLOW_VISIBLE_BASELINE: &[(&str, usize)] = &[];
 
 // ─── Path resolution ────────────────────────────────────────────────────
 

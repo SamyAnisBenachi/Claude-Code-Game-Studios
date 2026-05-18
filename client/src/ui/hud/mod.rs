@@ -2877,6 +2877,7 @@ fn hud_top_strip_node() -> Node {
     node.column_gap = Val::Px(spacing::SPACING_MD);
     node.row_gap = Val::Px(spacing::SPACING_XL - spacing::SPACING_XS);
     node.min_height = Val::Px(strips::HEADER_BAR_HEIGHT_PX);
+    // AC: PROMPT-1183 - reserve-mana diamond and pill shadows escape the 60 px header.
     node.overflow = Overflow::visible();
     node
 }
@@ -2887,6 +2888,7 @@ fn hud_bottom_strip_node(config: HudConfig) -> Node {
     node.padding.right = Val::Px(spacing::SPACING_LG);
     node.column_gap = Val::Px(spacing::SPACING_LG);
     node.row_gap = Val::Px(spacing::SPACING_SM);
+    // AC: S11-UX-HUD-BOTTOM-STRIP-LAYOUT - 64 px figurines extend beyond the 40 px footer.
     node.overflow = Overflow::visible();
     node
 }

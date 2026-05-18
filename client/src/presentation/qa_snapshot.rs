@@ -1954,7 +1954,7 @@ pub struct SurfaceLayoutSnapshot {
     /// axis. This catches RC-2 ("computed children extend past parent's
     /// content_size") regardless of the parent's `Overflow` clip mode; the
     /// audit's "clipped" semantic is conservative — content that overflows
-    /// is reported as `true` even when `Overflow::visible()` is set, so the
+    /// is reported as `true` even when visible overflow is set, so the
     /// next audit can grep for true → investigate.
     pub overflow_clipped: Option<bool>,
 }
@@ -2487,6 +2487,7 @@ pub fn spawn_qa_snapshot_overlay_system(
             QASnapshotButton,
             ChildOf(root),
             Button,
+            Interaction::None,
             Node {
                 width: Val::Px(160.0),
                 height: Val::Px(32.0),

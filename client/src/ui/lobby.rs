@@ -1673,7 +1673,7 @@ fn spawn_lobby_ui_system(
                 // band waiting for the first interaction to repaint.
                 let initial_state =
                     lobby_confirm_button_style_state(&lobby, &input, Interaction::None);
-                let (initial_bg, initial_border, initial_text_color) =
+                let (BackgroundColor(initial_bg), initial_border, initial_text_color) =
                     lobby_confirm_button_colors(initial_state);
                 panel.spawn((
                     LobbyConfirmClassButton,
@@ -1694,7 +1694,7 @@ fn spawn_lobby_ui_system(
                             LOBBY_CONFIRM_BUTTON_HEIGHT_PX,
                         )
                     },
-                    initial_bg,
+                    BackgroundColor(initial_bg),
                     initial_border,
                 ));
             });

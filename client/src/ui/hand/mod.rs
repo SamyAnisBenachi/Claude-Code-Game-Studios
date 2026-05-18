@@ -3672,6 +3672,7 @@ pub fn spawn_hand_ui(
                 Button,
                 Interaction::None,
                 hidden_slot_node(),
+                BackgroundColor(HAND_CARD_SLOT_BACKGROUND),
                 Transform::default(),
                 Visibility::Hidden,
                 ChildOf(fan_root),
@@ -3820,6 +3821,7 @@ pub fn spawn_hand_ui(
                 Button,
                 Interaction::None,
                 hand_draft_grid_slot_node(index),
+                BackgroundColor(HAND_CARD_SLOT_BACKGROUND),
                 Visibility::Hidden,
                 ChildOf(fan_root),
             ))
@@ -4101,6 +4103,7 @@ fn spawn_reserve_strip_button(
             Interaction::None,
             Text::new(label),
             reserve_strip_child_node(left_px, 24.0),
+            BackgroundColor(HAND_RESERVE_STRIP_BUTTON_BACKGROUND),
             Visibility::Inherited,
             ChildOf(parent),
         ))
@@ -4478,6 +4481,8 @@ const PLACEMENT_ACTION_PANEL_OK_COLOR: Color = Color::srgb(0.55, 0.85, 0.55);
 const PLACEMENT_ACTION_PANEL_BUTTON_BACKGROUND: Color = Color::srgba(0.20, 0.42, 0.74, 0.95);
 const PLACEMENT_ACTION_PANEL_BUTTON_BORDER: Color = Color::srgb(0.40, 0.62, 0.92);
 const PLACEMENT_ACTION_PANEL_BUTTON_TEXT_COLOR: Color = Color::srgb(0.98, 0.99, 1.0);
+const HAND_CARD_SLOT_BACKGROUND: Color = Color::srgba(0.07, 0.10, 0.14, 0.95);
+const HAND_RESERVE_STRIP_BUTTON_BACKGROUND: Color = Color::srgba(0.08, 0.12, 0.16, 0.90);
 
 fn placement_action_panel_node() -> Node {
     Node {
