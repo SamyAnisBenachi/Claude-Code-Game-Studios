@@ -36,6 +36,26 @@
 //!   migrates only the shop slot call site; per-surface migration of the
 //!   remaining four surfaces is owned by the Sprint 16+
 //!   `S16-UI-CARD-SLOT-MIGRATION-*` follow-on family.
+//! - [`viewport_matrix`] — layout-safety viewport matrix
+//!   (`1280×720` / `1366×768` / `1920×1080`) consumed by every modal /
+//!   CTA / scroll / text-fit primitive's viewport-safety test
+//!   (Sprint 17 PROMPT 1181 layout-foundation row).
+//! - [`modal_panel`] — modal / centred-panel content-budget primitive
+//!   that computes `outer_height – chrome → body` and fails closed when
+//!   the body region would clip the CTA off-screen at the smallest
+//!   safety viewport (Sprint 17 PROMPT 1181).
+//! - [`cta_row`] — stable CTA-row primitive that pins
+//!   `flex_grow: 0 / flex_shrink: 0` so the row's pixel height is
+//!   invariant under body-region flex pressure (Sprint 17 PROMPT 1181).
+//! - [`scroll_region`] — body / scroll-region primitive for long
+//!   modal-panel content with `flex_grow: 1 / flex_shrink: 1 /
+//!   min_height: 0` and `Overflow::scroll_y()` (Sprint 17 PROMPT 1181).
+//! - [`status_chip`] — status-chip vs CTA-button visual-role
+//!   distinction (read-only chip ≠ interactive button)
+//!   (Sprint 17 PROMPT 1181).
+//! - [`text_fit`] — text-fitting / wrap-policy primitive that names the
+//!   three canonical `LineBreak` modes (single-line never-wrap,
+//!   word-boundary wrap, word-or-character wrap) (Sprint 17 PROMPT 1181).
 //!
 //! ## Scope discipline
 //!
@@ -45,9 +65,15 @@
 //! (`PAW-TD-*-a`). Friend-game scope boundary preserved.
 
 pub mod card_slot;
+pub mod cta_row;
 pub mod interaction_states;
+pub mod modal_panel;
 pub mod overlays;
+pub mod scroll_region;
 pub mod spacing;
+pub mod status_chip;
 pub mod strips;
+pub mod text_fit;
 pub mod typography;
+pub mod viewport_matrix;
 pub mod z_layers;

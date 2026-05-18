@@ -485,6 +485,23 @@ path = "../tests/integration/ui_clean_pass/interaction_state_primitives_test.rs"
 name = "ui_clean_pass_card_slot_primitive_test"
 path = "../tests/integration/ui_clean_pass/card_slot_primitive_test.rs"
 
+# Sprint 17 PROMPT 1181 (S17-UI-LAYOUT-FOUNDATION-PRIMITIVES-REPAIR):
+# Layout-foundation viewport-safety invariants — modal-panel content
+# budget, stable CTA row, scroll-region body protection, status-chip vs
+# button role boundary, and text-fit single-line vs wrap policy. The
+# integration test fails if a surface claims viewport safety without
+# accounting for content height, row gaps, padding, AND CTA height.
+[[test]]
+name = "ui_clean_pass_layout_primitives_test"
+path = "../tests/integration/ui_clean_pass/layout_primitives_test.rs"
+
+# Sprint 17 PROMPT 1181 — unit-level shape guard for the same
+# foundation primitives, exercising the published constants surface
+# without any World / App composition.
+[[test]]
+name = "ui_design_tokens_layout_primitives_shape_test"
+path = "../tests/unit/ui/design_tokens/layout_primitives_shape_test.rs"
+
 [[test]]
 name = "accessibility_settings_preferences_test"
 path = "../tests/unit/accessibility_settings/preferences_test.rs"
