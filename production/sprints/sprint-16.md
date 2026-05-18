@@ -1,3 +1,119 @@
+# Sprint 16 -- CLOSED-WITH-CONDITIONS (Polish stage)
+
+> **PROMPT 1082 close-out disposition (2026-05-18)**: Sprint 16 disposition
+> flipped `active -> closed-with-conditions` on
+> `origin/main@dd7f5d32c420ab92bd42f61d95d4db4470d07d28` (PROMPT 1084
+> server placement buffer + spawn integration tip; strict fast-forward
+> descendant of `origin/main@f8eac30` which is the Sprint 16
+> source-of-truth at PROMPT 1078 Team-QA review-of-record).
+>
+> **Verdict**: `closed-with-conditions` (NOT release-ready, NOT `closed`).
+> Must Have track **0/1 done**. Should Have track **1/1 done** (PROMPT 1074
+> `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` closure). Nice to Have track **2/2
+> done** (PROMPT 1072 batch -- `S15-OPS-APPCOMPAT-MANIFEST-001` +
+> `S15-TD-WORKSPACE-DEAD-CODE-WARNING-001` closures). Total
+> **3 of 4 rows closed**. The single open row is
+> `S11-HUD-TIMER-EYEBALL-VISUAL-001` (Must Have, story 014, 0.25d),
+> which remains `ready` / `human_operator_blocked: true` as the
+> **Sprint 13 -> 14 -> 15 -> 16 human-operator-blocked carry**:
+> cosmetic visual check requires real human-operator screenshot
+> capture across `DraftInitial 45s` / `DraftShop 30s` / `Placement
+> 10-12s` phases per story file ACs and cannot be auto-closed by an
+> LLM `/story-done`. **Carried forward unchanged as human-later**
+> per the 2026-05-17 orchestrator decision to continue without human
+> input and defer human visual testing later; allowed to carry to
+> Sprint 17 if no human-operator slot opens.
+>
+> **Smoke (PROMPT 1075)**: `PASS-WITH-WARNINGS` at commit
+> `56655fc8c20c1aad8485f2de41c656cbb7c96900` on
+> `origin/qa/sprint-16-smoke-check-1075` (evidence file
+> `production/qa/smoke-sprint-16-2026-05-18.md` lives on smoke
+> branch; NOT integrated under `production/qa/` on `origin/main` by
+> PROMPT 1082). Cargo aggregate **1464 passed / 0 failed / 0 ignored
+> / 0 measured / 0 filtered across 223 binaries**;
+> `cargo fmt --all -- --check` PASS; `cargo check --workspace
+> --all-targets` PASS (zero warnings); `cargo test -p shared --test
+> spawn_range_live_refresh_contract` 5/5 PASS (no AppCompat OS-740
+> block). Single warning is **environment / host-state-only**: live
+> game-binary contention on the mandated `CARGO_TARGET_DIR` forced a
+> sibling target dir `D:/_DEV/cargo-target/ccgs-msvc-smoke-1075`;
+> documented; no code regression; accepted by PROMPT 1078 without
+> remediation.
+>
+> **Team-QA (PROMPT 1078)**: `APPROVED-WITH-CONDITIONS` at commit
+> `70f6b2345890dfc83ac09755f7622d918f47df36` on
+> `origin/qa/sprint-16-team-qa-1078` (evidence file
+> `production/qa/team-qa-sprint-16-2026-05-18.md` lives on team-qa
+> branch; NOT integrated under `production/qa/` on `origin/main` by
+> PROMPT 1082). Strict fast-forward descendant of
+> `origin/main@f8eac30`; merge-base == HEAD. 13 carry conditions
+> enumerated; all are existing carry conditions; none closed by
+> Team-QA.
+>
+> **Stage UNCHANGED**: `Polish`. `production/stage.txt` NOT modified by
+> PROMPT 1082. PROMPT 761 Polish->Release gate-check `FAIL` preserved at
+> `production/gate-checks/gate-polish-release-2026-05-12.md`; **NO retry**
+> attempted by Sprint 16, PROMPT 1075 smoke, PROMPT 1078 Team-QA, or
+> PROMPT 1082 close-out. Sprint 16 is **NOT** a `Polish->Release` sprint.
+> **Sprint 17 NOT activated** by PROMPT 1082; no
+> `next_sprint_17_draft:` pointer created;
+> `production/sprints/sprint-16.md` plan body NOT rewritten.
+>
+> **Conditions carried forward unchanged** (none closed by PROMPT 1082):
+> `S11-HUD-TIMER-EYEBALL-VISUAL-001` carried as human-operator-blocked
+> Sprint 13 -> 14 -> 15 -> 16 row (allowed to carry to Sprint 17);
+> PROMPT 1054 P1 UI snapshot visual retest `BLOCKED-HUMAN-OPERATOR`
+> deferred; `S8-QA-001-W1` OPEN (Story 017 AC12 forbid-auto-closure
+> preserved through Sprint 16); `QA-COND-0005` Standard-tier
+> accessibility accepted-risk; `QA-COND-0006` playtest validation
+> accepted-risk; `PAW-TD-*-a` placeholder-art accept-risk across
+> PAW-002..PAW-006; PROMPT 683-era runtime divergence question
+> preserved (folded into Sprint 12 story 019 cannot-reproduce closure;
+> third same-scope retest NOT authorised per `TQ-S12-C2`); Sprint 12
+> story 019 underlying drag-runtime bug NOT claimed fixed;
+> `TQ-S12-C1..C7` (all 7 Sprint 12 Team-QA conditions) preserved
+> verbatim (`TQ-S12-C7` AppCompat informational condition explicitly
+> NOT closed by `S15-OPS-APPCOMPAT-MANIFEST-001` row closure); Sprint
+> 15 closed-with-conditions per PROMPT 1056 preserved unchanged;
+> Sprint 14 closed-with-conditions per PROMPT 987 preserved unchanged;
+> Sprint 13 / 12 / 11 / 10 dispositions preserved unchanged; all 3
+> closed Sprint 16 /story-done closures (PROMPT 1072 AppCompat +
+> dead-code two-row batch + PROMPT 1074 card-slot primitive single-row
+> closure) preserved unchanged on `origin/main`. PROMPT 1076 (latest
+> user-test log/snapshot deep audit) + PROMPT 1077 (UI state source
+> consistency deep audit) findings are post-Sprint inputs; NOT
+> claimed as repairs by PROMPT 1082. PROMPT 1079 / 1080 / 1083 /
+> 1084 server-placement + UI modal repair commits on `origin/main`
+> are file-disjoint from the Sprint 16 4-row active set + the
+> Sprint 16 QA evidence files; NOT pulled into Sprint 16 close-out
+> scope by PROMPT 1082.
+>
+> **Explicitly NOT claimed by PROMPT 1082**: public release
+> readiness, RC readiness, full game completion, broad / Standard-
+> tier accessibility completion (QA-COND-0005), playtest validation
+> (QA-COND-0006), full playable-client manual QA, two-client
+> GAME_OVER closure (S8-QA-001-W1 OPEN), final-art completion
+> (PAW-TD-*-a), Polish->Release gate-check retry (PROMPT 761 FAIL
+> preserved), stage advance Polish -> Release, underlying drag-runtime
+> bug fix (Sprint 12 story 019 cannot-reproduce preserved; NOT
+> bug-fixed), closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` (closure
+> remains gated on human-operator screenshot capture; no LLM
+> `/story-done` authorised), pixel-level closure of PROMPT 1054 P1
+> UI snapshot visual retest, pixel-level QA snapshot capture for the
+> Sprint 16 card-slot primitive shop-panel bundles at 1366x768 /
+> 1920x1080 (story 009 AC6 PARTIAL preserved), closure of
+> `S8-QA-001-W1` / `TQ-S12-C7`, closure of the three per-surface
+> card-slot migration siblings (S16-UI-CARD-SLOT-MIGRATION-HAND-001
+> / -AUCTION-001 / -BOARD-GHOST-001), closure of any of the 24
+> PROMPT 1022 QA snapshot audit findings, PROMPT 1076 / 1077 audit
+> repairs, Sprint 17 activation, Sprint 17 sprint-status active row,
+> Sprint 16 / 15 / 14 / 13 / 12 / 11 / 10 row reopen.
+>
+> Activation banner from PROMPT 1064 and PROMPT 1024 DRAFT banner are
+> preserved verbatim below.
+
+---
+
 # Sprint 16 -- ACTIVATED (Polish stage; Sprint 15 closed-with-conditions)
 
 > **PROMPT 1064 ACTIVATED 2026-05-17.** Sprint 16 was activated from the
