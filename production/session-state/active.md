@@ -1,3 +1,32 @@
+# PROMPT 1227 State Banner -- Placement Drag Landed + Auto-Submit Worker Launched
+
+Updated 2026-05-18 by orchestrator after PROMPT 1210 main-land and PROMPT
+1226 launch. Source-of-truth at refresh:
+`origin/main@c61bab34b775e420ef752135bb50d49611eae379` (PROMPT 1210
+placement drag cursor coord-space integration tip). Stage remains `Polish`;
+Sprint 17 remains `active`; Sprint 18 is still not activated by this update.
+No Sprint 17 close-out, Polish->Release retry, release claim, or stage advance
+is performed.
+
+PROMPT 1210 `S18-PLACEMENT-DRAG-CURSOR-COORD-SPACE-001` is now on
+`origin/main` at `c61bab3`. The worker report file was not present locally,
+but the pushed worker commit `origin/work/s18-placement-drag-cursor-coord-space-1210@a652418`
+contained complete scope evidence. The orchestrator integrated it in a fresh
+worktree and verified targeted hand-ui tests: 27/27 passed under the required
+Windows/MSVC Cargo resource policy. Diff checks were clean. PROMPT 1210 was
+cleared via structured dispatch.
+
+PROMPT 1226 `S18-PLACEMENT-AUTO-SUBMIT-CLIENT-001` was officially launched via
+structured dispatch after PROMPT 1209 and PROMPT 1210 were both on main. Its
+scope is the client-side final-submit follow-up: queue `C2SSubmitPlacement`
+before pending placements are cleared when `S2CPhaseChanged(Resolution)`
+arrives with local staged placements. It must not touch server/shared/protocol
+unless explicitly required and must not push main.
+
+Current next action: wait for PROMPT 1226. After it reports, integrate it
+serially before launching any overlapping placement rejection protocol or hand
+UI placement follow-up.
+
 # PROMPT 1224 State Banner -- Runtime/UI Integration Catch-Up
 
 Updated 2026-05-18 by orchestrator after the post-compaction main-land catch-up.
