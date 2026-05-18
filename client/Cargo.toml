@@ -399,6 +399,15 @@ path = "../tests/integration/playable_client/timer_urgency_audio_crash_guard_tes
 name = "qa_snapshot_overlay_test"
 path = "../tests/integration/qa_snapshot/qa_snapshot_overlay_test.rs"
 
+# PROMPT 1186 — S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001 / PROMPT 1180 Lane D.
+# Layout-debug field coverage for Q-01..Q-10: viewport, per-surface bounds,
+# children_count, resolved z, overflow signal, button affordance,
+# placement_action_panel collision helpers, and shop_panel vs hand_bar edge
+# diff. Asserts every field is present (null/empty or value, never missing).
+[[test]]
+name = "qa_snapshot_layout_field_coverage_test"
+path = "../tests/integration/qa_snapshot/layout_field_coverage_test.rs"
+
 # S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 — per-sub-surface marker split,
 # visibility-aware UI counts, and session-id-prefixed snapshot directory
 # names (SOURCE-1077-08 + SOURCE-1077-09 + SOURCE-1077-16). Covers ACs
